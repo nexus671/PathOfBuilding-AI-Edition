@@ -5,8 +5,13 @@ function M.alert(styles)
 	local custom=styles.CustomAlertSound or styles.CustomAlertSoundOptional
 	if custom then
 		if custom[1]=="None" then return nil,"The custom alert is disabled; no custom audio is previewed." end
+		if styles.CustomAlertSoundOptional and not styles.CustomAlertSound then
+			local fallback=styles.PlayAlertSound or styles.PlayAlertSoundPositional
+			if fallback and fallback[1]~="None" and tonumber(fallback[2])~=0 then return nil,"Optional custom audio may fall back to a numbered alert if its file is missing. Custom files are not previewed." end
+			if tonumber(custom[2])==0 then return nil,"The custom alert volume is zero." end
+			return nil,"Optional custom audio plays only if its file is available. Custom files are not previewed."
+		end
 		if tonumber(custom[2])==0 then return nil,"The custom alert volume is zero." end
-		if styles.CustomAlertSoundOptional and not styles.CustomAlertSound then return nil,"Optional custom audio may fall back to a numbered alert if its file is missing. Custom files are not previewed." end
 		return nil,"Custom audio overrides numbered alerts. Custom files are not previewed."
 	end
 	local values=styles.PlayAlertSound or styles.PlayAlertSoundPositional
