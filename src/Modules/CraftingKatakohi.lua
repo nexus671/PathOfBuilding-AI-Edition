@@ -1,4 +1,4 @@
--- cspell:ignore Katakohi
+-- cspell:ignore Katakohi ockets
 -- Pinned modifier descriptions for reviewing socket enchantments. Random rolls
 -- are deliberately not inferred from the individual spawn-weight tags.
 local K={}

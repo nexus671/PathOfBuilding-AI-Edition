@@ -1504,7 +1504,7 @@
 	<File name="Modules/CraftingInspection.lua" part="program" sha1="888220e857fc88ceda80fb61a6bf2e1e205b1860" />
 	<File name="Modules/CraftingInventory.lua" part="program" sha1="d273ecaae81f4d7a81d65a91ad8e6619a13c0795" />
 	<File name="Modules/CraftingItemStats.lua" part="program" sha1="9311b1009123eed0600491248a5bccd0bff34343" />
-	<File name="Modules/CraftingKatakohi.lua" part="program" sha1="edee2575b080be521c5daf9714c70d30e577b5ab" />
+	<File name="Modules/CraftingKatakohi.lua" part="program" sha1="d640132bc92afeed11b34d5e39c24c0dcd1305f5" />
 	<File name="Modules/CraftingLeague.lua" part="program" sha1="947365404de9f6008b564714a88967a3a2f3de5d" />
 	<File name="Modules/CraftingLightRadius330.lua" part="program" sha1="7fa9ebd4efce1f060c946ef44af0e35cb6ad065c" />
 	<File name="Modules/CraftingMemory.lua" part="program" sha1="57763bb0f5960fa2954977b6b535160d73c0a14a" />
