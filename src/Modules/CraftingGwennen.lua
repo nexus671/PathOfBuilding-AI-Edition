@@ -1,11 +1,56 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1014]=true,[1015]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1029]=true,[1041]=true,[1042]=true}
+local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1012]=true,[1014]=true,[1015]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1029]=true,[1041]=true,[1042]=true}
 local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
 function G.supports(id) return supported[id]==true end
 function G.deterministic(id) return deterministic[id] end
+function G.isDiscrete(id) return deterministic[id]~=nil or id==1004 or id==1006 or id==1007 or id==1023 or id==1026 or id==1041 end
+-- Enumerate removal sets without multiplying equivalent removal orders.
+function G.discrete(model,state,id)
+	if deterministic[id] then return {{draws={},probability=1,text=deterministic[id]}} end
+	local choices={}
+	if id==1004 or id==1023 or id==1026 then for i=1,#state.affixes do choices[#choices+1]=i end
+	elseif id==1006 or id==1007 then
+		local side=id==1006 and "Suffix" or "Prefix"
+		for i,entry in ipairs(state.affixes) do if model.byId[entry.id].type==side then choices[#choices+1]=i end end
+	elseif id==1041 then
+		local lowest
+		for i,entry in ipairs(state.affixes) do
+			local level=assert(model.byId[entry.id].level,"Modifier level is unavailable")
+			if not lowest or level<lowest then lowest=level;choices={} end
+			if level==lowest then choices[#choices+1]=i end
+		end
+	else return nil end
+	if id==1026 then
+		assert(#choices>=3,"This experimental outcome requires at least three modifiers")
+		local result={};local chosen={}
+		local function enumerate(start,remaining,count)
+			if remaining==0 then
+				local draws={(count-0.5)/3};local labels={}
+				for order,index in ipairs(chosen) do
+					draws[#draws+1]=(index-order+0.5)/(#choices-order+1)
+					labels[#labels+1]=table.concat(model.byId[state.affixes[index].id]," / ")
+				end
+				result[#result+1]={draws=draws,text="Remove: "..table.concat(labels,"; "),count=count}
+				return
+			end
+			for index=start,#choices-remaining+1 do chosen[#chosen+1]=index;enumerate(index+1,remaining-1,count);chosen[#chosen]=nil end
+		end
+		for count=1,3 do enumerate(1,count,count) end
+		local totals={};for _,entry in ipairs(result) do totals[entry.count]=(totals[entry.count] or 0)+1 end
+		for _,entry in ipairs(result) do entry.probability=1/(3*totals[entry.count]) end
+		return result
+	end
+	assert(#choices>0,"No eligible modifier for this Gwennen outcome")
+	local result={}
+	for index,affixIndex in ipairs(choices) do
+		local text=table.concat(model.byId[state.affixes[affixIndex].id]," / ")
+		result[#result+1]={draws={(index-0.5)/#choices},probability=1/#choices,text=(id==1023 and "Keep: " or "Remove: ")..text}
+	end
+	return result
+end
 function G.validate(craft)
 	assert(supported[craft.firstOutcome] and supported[craft.secondOutcome],"Choose two supported, observed Gwennen outcomes")
 	assert(not craft.allflame,"Allflame cannot be used with Gwennen")
@@ -94,7 +139,7 @@ function G.extend(M,api)
 				assert(model.item.base.armour or data.weaponTypeInfo[model.item.type],"This quality outcome requires a weapon or armour")
 				local result=copyTable(input);result.quality=20;return result
 			end
-			local method=({[1004]="annul",[1005]="exalt",[1014]="chaos",[1015]="divine"})[id]
+			local method=({[1003]="fracture",[1004]="annul",[1005]="exalt",[1012]="vaal",[1014]="chaos",[1015]="divine"})[id]
 			return action(model,input,{method=method},draw)
 		end
 		-- An observed pair is valid only when both modeled branches are usable.

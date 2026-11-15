@@ -6,19 +6,25 @@ function C.extend(M)
 	function M.calculate(raw,craft,targets,initialState,options)
 		options=options or {}
 		local gwennen=require("Modules.CraftingGwennen")
-		if craft.method=="gwennen" and gwennen.deterministic(craft.firstOutcome) and gwennen.deterministic(craft.secondOutcome) then
+		if craft.method=="gwennen" and gwennen.isDiscrete(craft.firstOutcome) and gwennen.isDiscrete(craft.secondOutcome) then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
-			model=M.context(model,state);local outcomes,hits={},0
-			for index,id in ipairs({craft.firstOutcome,craft.secondOutcome}) do
-				local result=M.action(model,state,craft,function() return index==1 and 0.25 or 0.75 end)
-				local hit=M.matches(result,targets,nil,model,options.requirements,options.requiredGroups)
-				if hit then hits=hits+1 end
-				outcomes[#outcomes+1]={id=tostring(id),text=gwennen.deterministic(id),chance=50,weight=1,matches=hit,state=result}
+			model=M.context(model,state);local first=gwennen.discrete(model,state,craft.firstOutcome);local second=gwennen.discrete(model,state,craft.secondOutcome)
+			if first and second then
+				local outcomes,hits={},0
+				for side,branches in ipairs({first,second}) do for _,branch in ipairs(branches) do
+					local cursor=0;local result=M.action(model,state,craft,function()
+						cursor=cursor+1;if cursor==1 then return side==1 and 0.25 or 0.75 end
+						return assert(branch.draws[cursor-1],"Unexpected Gwennen random draw")
+					end)
+					local hit=M.matches(result,targets,nil,model,options.requirements,options.requiredGroups);local probability=branch.probability/2
+					if hit then hits=hits+probability end
+					outcomes[#outcomes+1]={id=tostring(side)..":"..#outcomes,text=branch.text,chance=100*probability,weight=probability,matches=hit,state=result}
+				end end
+				local sample=outcomes[1].state
+				return {exactFor="Gwennen branches under the assumed fair coin and uniform selections",showAllOutcomes=true,sampled=false,successChance=100*hits,totalWeight=1,matchingWeight=hits,
+					outcomes=outcomes,sampleState=sample,sampleItem=not sample.destroyed and M.toItem(model,sample).raw or nil,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 			end
-			local sample=outcomes[1].state
-			return {exactFor="Two deterministic Gwennen outcomes under the assumed fair coin",showAllOutcomes=true,sampled=false,successChance=50*hits,totalWeight=2,matchingWeight=hits,
-				outcomes=outcomes,sampleState=sample,sampleItem=not sample.destroyed and M.toItem(model,sample).raw or nil,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 		end
 		local method=M.baseCurrency(craft)
 		if method=="jeweller" and not craft.allflame then
