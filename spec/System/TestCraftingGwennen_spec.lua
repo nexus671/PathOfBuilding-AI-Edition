@@ -32,7 +32,7 @@ describe("Experimental Gwennen pair",function()
 		local usage={};for _,entry in ipairs(result.resourceUsage) do usage[entry.key]=entry.amount end
 		assert.equal(2,usage[astragali]);assert.equal(40,usage[grand]);assert.is_nil(result.meanCost)
 		assert.has_error(function() sim.components({method="gwennen",firstOutcome=1000,secondOutcome=1022,artifactCost={grand=-1}}) end)
-		assert.has_error(function() sim.validateRecipe({steps={{method="gwennenu",firstOutcome=1000,secondOutcome=1022}},targets={},requirements={minAffixes=1}}) end)
+		assert.has_error(function() sim.validateRecipe({steps={{method="unsupported_method",firstOutcome=1000,secondOutcome=1022}},targets={},requirements={minAffixes=1}}) end)
 		assert.has_error(function() sim.validateRecipe({steps={{method="gwennen",firstOutcome=1000,secondOutcome=1044}},targets={},requirements={minAffixes=1}}) end)
 	end)
 	it("models the quality and modifier reroll branches",function()
