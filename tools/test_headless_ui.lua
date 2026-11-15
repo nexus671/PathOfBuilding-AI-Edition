@@ -1,4 +1,4 @@
--- cspell:ignore Ukatoa
+-- cspell:ignore Ukatoa Katakohi
 -- Run from src: luajit ../tools/test_headless_ui.lua <existing-output-directory>
 local directory=assert(arg[1],"Supply an output directory")
 arg={}
@@ -427,7 +427,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("settings");ui:text("paletteSearch",sim.labels.socket_bench);assert(main.popups[1].controls.paletteUse:IsEnabled());ui:click("paletteUse")
 		local choices={};for _,option in ipairs(main.popups[1].controls.option.list) do choices[#choices+1]=option.label end
 		local joined=table.concat(choices," | ");assert(joined:find("3 sockets",1,true) and not joined:find("4 sockets",1,true),"Etched socket limit was not reflected in bench options")
-		frame("crafting-etched-socket-options");ui:click("close")
+		frame("crafting-etched-socket-options");ui:click("tab_settings");ui:click("manual");ui:click("katakohi")
+		assert(#main.popups[1].controls.choice1.list==25,"The socket enchantment catalogue is incomplete")
+		ui:choose("choice1","DeepwaterTattooEnchantDexMovementSpeed","val");frame("crafting-katakohi-catalogue");ui:click("use");ui:click("keep");ui:click("tab_craft");frame("crafting-katakohi-hypothetical");ui:click("close")
 	end
 
 	do

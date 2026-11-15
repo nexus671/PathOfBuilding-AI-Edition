@@ -1,3 +1,4 @@
+-- cspell:ignore Katakohi
 -- A staged hypothetical starting item; edits never equip gear or spend currency.
 local sim=require("Modules.CraftingSimulator")
 local Panel={}
@@ -6,7 +7,8 @@ function Panel.Open(model,input,onKeep)
 	model=sim.context(model,input)
 	local state=copyTable(input);local controls={}
 	local hasOffers=model.unveiledJewels and next(model.unveiledJewels)~=nil
-	local extra=hasOffers and 34 or 0
+	local hasKatakohi=model.item.type=="Gloves"
+	local extra=(hasOffers or hasKatakohi) and 34 or 0
 	local function button(key,x,y,w,text,callback)
 		controls[key]=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,w,24},text,function()
 			local ok,message=pcall(callback);if not ok then main:OpenMessagePopup("Edit hypothetical item",require("Modules.PlanningUI").errorText(message)) end
@@ -113,6 +115,26 @@ function Panel.Open(model,input,onKeep)
 		popup.clear.enabled=function() return state.veil~=nil end
 		popup.close=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{644,222,116,28},"Cancel",function() main:ClosePopup() end)
 		main:OpenPopup(776,268,"Jewel unveil choices",popup,nil,nil,"close")
+	end) end
+	if hasKatakohi then button("katakohi",16,340,376,"Set socket enchantments",function()
+		local rows=require("Modules.CraftingKatakohi").catalog("",100);local popup={};local options={{label="No enchantment",val=""}}
+		for _,row in ipairs(rows) do options[#options+1]={label=row.lines[2] or row.id,val=row.id} end
+		popup.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,26,0,14},"Choose observed or hypothetical enchantments; each removes one maximum socket.")
+		for i=1,3 do
+			popup["choice"..i]=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,58+(i-1)*34,744,26},options)
+			popup["choice"..i]:SelByValue(state.katakohiEnchants and state.katakohiEnchants[i] or "","val")
+		end
+		popup.note=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,171,0,14},"Replaces existing enchantments. Extra sockets are removed from the end. No odds are simulated.")
+		popup.use=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{16,208,230,28},"Use these enchantments",function()
+			local ok,result=pcall(function()
+				local ids={};for i=1,3 do local id=popup["choice"..i]:GetSelValueByKey("val");if id and id~="" then ids[#ids+1]=id end end
+				return sim.setKatakohi(model,state,ids)
+			end)
+			if not ok then main:OpenMessagePopup("Socket enchantments",require("Modules.PlanningUI").errorText(result));return end
+			state=result;refresh();main:ClosePopup()
+		end)
+		popup.close=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{644,208,116,28},"Cancel",function() main:ClosePopup() end)
+		main:OpenPopup(776,254,"Socket enchantments",popup,nil,nil,"close")
 	end) end
 	button("keep",16,368+extra,260,"Use as recipe starting item",function() applyProperties();onKeep(sim.validateState(model,state));main:ClosePopup() end)
 	button("close",644,368+extra,116,"Cancel",function() main:ClosePopup() end)

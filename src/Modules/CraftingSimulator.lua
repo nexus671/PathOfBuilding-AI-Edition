@@ -1,12 +1,13 @@
--- cspell:ignore Ukatoa Ukatoas
+-- cspell:ignore Ukatoa Ukatoas Katakohi
 -- cspell:ignore RGBW
 -- Independent, bounded crafting model using PoB's game-data modifier tables.
 local encounter = require("Modules.CalcEncounter")
 local M = {methodChecks={}}
 -- GGG 3.30: these cluster small-passive speed modifiers share one family.
 -- Socket-reducing enchantments occupy a glove socket even after later crafts.
-function M.socketLimit(model)
+function M.socketLimit(model,state)
 	local item=model.item;local limit=item.base.socketLimit or 0
+	if state and state.katakohiEnchants then return math.max(0,limit-#state.katakohiEnchants) end
 	if item.type=="Gloves" then
 		for _,line in ipairs(item.enchantModLines or {}) do
 			local value=StripEscapes(line.line or ""):match("^%-(%d+) to maximum Sockets$")

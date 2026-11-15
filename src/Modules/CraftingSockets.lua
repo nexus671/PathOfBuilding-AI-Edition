@@ -6,15 +6,15 @@ function S.extend(M,A,api)
 	local methods={beast_max_links="Bestiary: maximum links",omen_jeweller="Jeweller's Orb + Omen of the Jeweller",omen_trichromatism="Omen of Trichromatism (RGB)",omen_connections="Orb of Fusing + Omen of Connections",chromatic="Chromatic Orb",socket_colour_bench="Bench: non-white sockets",socket_white_bench="Bench: white sockets (3.30)",tainted_chromatic="Tainted Chromatic Orb",tainted_jeweller="Tainted Jeweller's Orb",tainted_fusing="Tainted Orb of Fusing"}
 	for method,label in pairs(methods) do M.methods[#M.methods+1]=method;M.labels[method]=label end;table.sort(M.methods)
 	local originalAction,originalOptions,originalPrice,originalComponents=M.action,M.actionOptions,M.priceKey,M.components
-	local function naturalLimit(model)
+	local function naturalLimit(model,state)
 		local level=model.item.itemLevel
-		return math.min(M.socketLimit(model),level >= 50 and 6 or level >= 35 and 5 or level >= 25 and 4 or level >= 2 and 3 or 2)
+		return math.min(M.socketLimit(model,state),level >= 50 and 6 or level >= 35 and 5 or level >= 25 and 4 or level >= 2 and 3 or 2)
 	end
 	M.methodChecks.omen_jeweller=function(model,state)
 		local sockets=state.sockets or {}
 		if #sockets==0 then return "Add a socket before using a Jeweller's Orb." end
 		for _,socket in ipairs(sockets) do if socket.color=="A" then return "Abyssal sockets need a separate socket model." end end
-		if #sockets>=naturalLimit(model) then return "The item already has its maximum natural socket count." end
+		if #sockets>=naturalLimit(model,state) then return "The item already has its maximum natural socket count." end
 	end
 	M.methodChecks.omen_connections=function(model,state)
 		local sockets=state.sockets or {}
@@ -67,11 +67,11 @@ function S.extend(M,A,api)
 			for _,socket in ipairs(sockets) do socket.color="W" end
 		elseif method == "omen_jeweller" then
 			local free=0;for _,socket in ipairs(sockets) do free=math.max(free,socket.group+1) end
-			while #sockets<naturalLimit(model) do sockets[#sockets+1]={color="W",group=free};free=free+1 end
+			while #sockets<naturalLimit(model,state) do sockets[#sockets+1]={color="W",group=free};free=free+1 end
 		elseif method == "omen_connections" or method == "beast_max_links" then
 			for _,socket in ipairs(sockets) do socket.group=0 end
 		elseif method == "tainted_jeweller" then
-			local limit=naturalLimit(model)
+			local limit=naturalLimit(model,state)
 			if random() < 0.5 then if #sockets < limit then
 				local free=0;for _,socket in ipairs(sockets) do free=math.max(free,socket.group+1) end
 				sockets[#sockets+1]={color="W",group=free}

@@ -1,4 +1,4 @@
-// cspell:ignore Ukatoa
+// cspell:ignore Ukatoa Katakohi
 // A real MCP stdio client drives an isolated native host and explicit UI review.
 // cspell:ignore GGGRRW craic
 'use strict';
@@ -60,6 +60,13 @@ async function main(){
   const etchedInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:etchedRaw,query:'socket_bench',limit:50},'inspected');
   const etchedOptions=etchedInspection.crafting.nativeEngine.socketCrafts.filter(entry=>entry.method==='socket_bench');
   assert.ok(etchedOptions.some(entry=>entry.action.count===3));assert.ok(etchedOptions.every(entry=>entry.action.count<=3));
+  const katakohiInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:etchedRaw,query:'Movement Speed',limit:20},'inspected');
+  assert.equal(katakohiInspection.crafting.nativeEngine.katakohiEnchants[0].id,'DeepwaterTattooEnchantDexMovementSpeed');
+  assert.match(katakohiInspection.crafting.nativeEngine.katakohiNote,/not probabilities/);
+  const hypotheticalEnchant={...etchedInspection.crafting.nativeEngine.initialState,katakohiEnchants:['DeepwaterTattooEnchantDexMovementSpeed']};
+  const enchantPreview=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:etchedRaw,initialState:hypotheticalEnchant,action:{method:'socket_white_bench'},seed:1},'crafted');
+  assert.deepEqual(enchantPreview.nativeCrafting.state.katakohiEnchants,hypotheticalEnchant.katakohiEnchants);
+  assert.match(enchantPreview.nativeCrafting.itemText,/6% increased Movement Speed/);
   const ukatoaRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86';
   const ukatoaInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ukatoaRaw,limit:10},'inspected');
   assert.equal(ukatoaInspection.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='ducat_ukatoa').available,true);
