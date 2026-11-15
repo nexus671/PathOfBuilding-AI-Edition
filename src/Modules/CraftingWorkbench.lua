@@ -84,7 +84,8 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 		local ax,ay=cx+12+(artSize-artWidth)/2,cy+66+(artSize-artHeight)/2
 		M.drawArt(art,ax,ay,artWidth,artHeight,flaskSprite)
 		text(cx+propertyX,cy+67,16,"Item level "..item.itemLevel)
-		text(cx+propertyX,cy+89,16,"Quality: +"..(state.quality or item.quality or 0).."%")
+		local quality=state.quality or item.quality or 0
+		if item.type~="Jewel" or quality~=0 then text(cx+propertyX,cy+89,16,"Quality: +"..quality.."%") end
 		text(cx+propertyX,cy+111,16,self.defences or "",nil,w-propertyX-16)
 		if self.weaponStats then
 			local weapon=self.weaponStats

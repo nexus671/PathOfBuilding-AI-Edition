@@ -78,6 +78,9 @@ def main():
         archive.unlink()
     paths = sorted(frames.glob("*.json"))
     assert len(paths) == 1176, f"Expected 1176 UI frames, found {len(paths)}"
+    for width in (960, 1024, 1280):
+        jewel = json.loads((frames / f"{width}-crafting-assembled-eye-crafted.json").read_text())
+        assert not any(command.get("kind") == "text" and command.get("text", "").startswith("Quality:") for command in jewel["commands"]), "Jewel card shows an inapplicable zero-quality stat"
     flask_asset = json.loads((ROOT / "src/Assets/Crafting/items.json").read_text())["bases"]["Small Life Flask"]["path"]
     for width in (960, 1024, 1280):
         for name in ("crafting-flask-vaal-ready", "crafting-flask-inventory", "journey-flask-card"):
