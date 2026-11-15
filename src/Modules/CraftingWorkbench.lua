@@ -148,7 +148,7 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 				if options.compact and lines[firstMod] then lines[firstMod][2]=(lines[firstMod].changed and "^x92D39C+" or entry.fractured and "^xD6B677" or "^x8D9DB0")..(entry.fractured and "F " or entry.crafted and "C " or "")..mod.type:sub(1,1)..groupIndex end
 			end
 			if #state.affixes == 0 then wrap(lines,"No explicit modifiers","^xAAAAAA",w-30) end
-			if state.veil then wrap(lines,"Veiled modifier - select Unveil to reveal choices","^xD3B987",w-30) end
+			if state.veil then wrap(lines,(state.veil.fractured and "Fractured veiled modifier" or "Veiled modifier").." - choose an offered modifier","^xD3B987",w-30) end
 			if state.corrupted then wrap(lines,state.twiceCorrupted and "Twice Corrupted" or "Corrupted","^xE07070",w-30) end
 			if (state.intangibility or 0)>0 then wrap(lines,"Intangibility: "..state.intangibility.."%","^xD3B987",w-30) end
 			if (state.memoryStrands or 0)>0 then wrap(lines,"Memory strands: "..state.memoryStrands,"^xD3B987",w-30) end
