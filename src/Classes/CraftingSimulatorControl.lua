@@ -156,6 +156,9 @@ function Panel.Open(build,project,layout)
 					or method=="bench_reroll" and "Experimental lock: protection is selected once; some selections may leave too few removable modifiers."
 					or "Experimental partial lock: random protection is modeled with assumed equal weights."
 			end
+			if selected and selected.action then for _,warning in ipairs(simulator.actionWarnings(selected.action,{item=model.item,initial=state})) do
+				if warning.code=="abyss_socket_layout" then hint=hint.." Abyss socket placement and removal are unverified.";break end
+			end end
 			controls.actionHint.list=ui.rows({hint},leftWidth-30,14)
 		end
 	end
@@ -172,6 +175,13 @@ function Panel.Open(build,project,layout)
 		local previous=controls.option:GetSelValue()
 		local reference=stateAwareOptions[method] and configured[method] or previous and previous.action
 		local choices=simulator.actionOptions(model,state,method);local selected=1;local found=false
+		if method=="fossil" and configured.fossil and type(configured.fossil.fossils)=="table" and #configured.fossil.fossils>0 then
+			local names={};for _,id in ipairs(configured.fossil.fossils) do
+				local name=id;for _,fossil in ipairs(model.fossils) do if fossil.id==id then name=fossil.name;break end end;names[#names+1]=name
+			end
+			table.insert(choices,1,{label="Configured: "..table.concat(names," + "),action=copyTable(configured.fossil),configuredFossils=true})
+			reference=configured.fossil
+		end
 		for i,choice in ipairs(choices) do if tableDeepEquals(choice.action,reference) then selected=i;found=true;break end end
 		controls.option:SetList(choices)
 		if #choices>0 then controls.option:SetSel(selected,true) else controls.option.selIndex=1 end
@@ -185,7 +195,7 @@ function Panel.Open(build,project,layout)
 	controls.option.selFunc=function()
 		local method=controls.method:GetSelValueByKey("val");local previous=configured[method]
 		local selected=controls.option:GetSelValue()
-		configured[method]=stateAwareOptions[method] and selected and copyTable(selected.action) or nil
+		configured[method]=(stateAwareOptions[method] or method=="fossil" and selected and selected.configuredFossils) and selected and copyTable(selected.action) or nil
 		if previous and previous.allflame and previous.allflame.auto and selected then
 			configured[method]=copyTable(selected.action);configured[method].allflame=copyTable(previous.allflame)
 		end
@@ -239,6 +249,7 @@ function Panel.Open(build,project,layout)
 			local label=craft.method=="essence" and "Essence: "..workbench.actionLabel(craft,model) or simulator.labels[craft.method] or "craft"
 			state=nextState;actions[#actions+1]=craft;updateOptions()
 			local message="Applied "..label..". Select another currency or undo."
+			for _,warning in ipairs(result.warnings or {}) do if warning.code=="abyss_socket_layout" then message="Applied "..label..". Abyss socket layout is experimental.";break end end
 			if result.gwennen then for _,entry in ipairs(require("Modules.CraftingGwennenReference").search("",100).offers) do if entry.id==result.gwennen.outcome then message="Gwennen modeled outcome: "..entry.description;break end end end
 			refresh({message})
 		end
@@ -331,7 +342,7 @@ function Panel.Open(build,project,layout)
 		local popup={}
 		if method == "gwennen" then openGwennen();return
 		elseif method == "fossil" then
-			require("Classes.CraftingFossilControl").Open(model,configured.fossil,function(craft) configured.fossil=craft;changed() end)
+			require("Classes.CraftingFossilControl").Open(model,configured.fossil,function(craft) configured.fossil=craft;updateOptions();changed();refresh() end)
 			return
 		elseif method == "awakener" or method == "recombine" or method == "recombine_predictable" then
 			edit(popup,"donor",16,36,608,170,"","Paste the donor item",24000)

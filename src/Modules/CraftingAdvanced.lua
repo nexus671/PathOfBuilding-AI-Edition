@@ -1138,6 +1138,7 @@ function A.extend(M,api)
 		"Partial locks use uniform random selection from all modifiers on the protected side, including fractures; group conflicts and other interactions are assumptions. Core affix actions, Harvest reforge/augment, and independent socket, quality, implicit and enchantment crafts are supported; other interactions are rejected.",
 		"Bench ingredient prices use the 3.30.0.1.4 client catalogue; later client changes are not included.",
 		"Rare modifier counts and Eldritch Chaos counts are model assumptions. Numeric display rolls and sampling intervals do not establish exact in-game odds.",
+		"Abyssal socket modifier changes use an experimental last-socket and unlinked-white restoration model; placement, zero-socket behavior and removal are unverified.",
 		"Every result is a separate hypothetical item. Costs use supplied prices; no game currency is spent."}
 	require("Modules.CraftingProperties").extend(M,A,api)
 	require("Modules.CraftingCorruption").extend(M,A,api)

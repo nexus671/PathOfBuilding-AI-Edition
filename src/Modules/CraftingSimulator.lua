@@ -41,6 +41,10 @@ end
 local partialWarningMessage="Partial locks assume uniform selection; bench rerolls select once, and Harvest augment selects before adding. Some selections fail and other interactions remain unsupported."
 function M.actionWarnings(action,model)
 	local result={}
+	local abyss=false
+	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingAbyss" then abyss=true end end
+	for _,entry in ipairs(model and model.initial and model.initial.affixes or {}) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true end end
+	if abyss then result[#result+1]={code="abyss_socket_layout",message="Experimental: adding the Abyssal socket modifier replaces the final socket; removing it restores an unlinked white socket. Placement, zero-socket behavior and removal are not verified.",source="https://www.poewiki.net/wiki/Abyssal_socket"} end
 	if action.method=="bench" and type(action.modId)=="string" and action.modId:match("^bench:partial%-") then result[#result+1]={code="partial_lock_model",message=partialWarningMessage} end
 	if action.method=="recombine" then result[#result+1]={code="recombination_count_odds",message="Recombination uses older count odds; 3.30 odds are not verified."} end
 	if action.method=="ducat_ukatoa" then result[#result+1]={code="ukatoa_assumptions",message="Ukatoa assumes equal Exarch/Eater and tier 1-4 chances; these odds are unverified. Modifier selection uses pinned spawn weights.",source="https://poedb.tw/us/Ukatoas_Ducat"} end
@@ -865,8 +869,37 @@ function M.methodReason(model,state,method)
 	if check then return check(M.context(model,state),state) end
 end
 local transition=M.action
+local function abyssModifier(state)
+	for _,entry in ipairs(state.affixes or {}) do if entry.id=="DelveAbyssJewelSocket1" then return true end end
+	return false
+end
+-- Socket placement and restoration are explicit assumptions; keep the actual
+-- simulated socket layout consistent with the modifier instead of retaining a
+-- false full link. Existing unusual layouts are not rewritten on import.
+local function syncAbyssSocket(before,after)
+	if after.destroyed or abyssModifier(before)==abyssModifier(after) then return end
+	local sockets=after.sockets or {};after.sockets=sockets
+	local group=0;for _,socket in ipairs(sockets) do group=math.max(group,socket.group+1) end
+	if abyssModifier(after) then
+		for _,socket in ipairs(sockets) do if socket.color=="A" then return end end
+		if #sockets==0 then sockets[1]={color="A",group=group}
+		else sockets[#sockets]={color="A",group=group} end
+	else
+		local replaced=false
+		for i=#sockets,1,-1 do if sockets[i].color=="A" then sockets[i]={color="W",group=group};replaced=true;break end end
+		if not replaced then return end
+	end
+	local previous,normalized=nil,-1
+	for _,socket in ipairs(sockets) do local old=socket.group;if old~=previous then normalized=normalized+1;previous=old end;socket.group=normalized end
+	return true
+end
 function M.action(model,state,craft,random)
 	if type(state)=="table" and type(craft)=="table" then local reason=M.methodReason(model,state,craft.method);assert(not reason,reason) end
-	return transition(model,state,craft,random)
+	local result,details=transition(model,state,craft,random)
+	local updated=syncAbyssSocket(state,result)
+	if details and details.choices then for _,choice in ipairs(details.choices) do
+		if choice.state and (syncAbyssSocket(state,choice.state) or updated and choice.state==result) then choice.itemText=not choice.state.veil and not choice.state.destroyed and M.toItem(model,choice.state).raw or nil end
+	end end
+	return result,details
 end
 return M

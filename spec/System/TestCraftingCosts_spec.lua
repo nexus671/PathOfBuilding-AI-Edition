@@ -82,8 +82,11 @@ describe("Native crafting ingredient costs",function()
 		p.run={schemaVersion=1,state=state,initial=state,history={},actions={},sequence=0,configured={fossil={method="fossil"}},targets={},requirements={minAffixes=1},settings={},method="fossil",page="Craft settings"}
 		local c=require("Classes.CraftingSimulatorControl").Open(build,p);c.configure:Click();local edit=main.popups[1].controls
 		assert.are.equal("Fossil combination",main.popups[1].title);assert.is_nil(edit.fossil1:GetSelValueByKey("id"));assert.is_nil(edit.tangled:GetSelValueByKey("id"))
-		edit.fossil1:SelByValue(life,"id");edit.use:Click();c.configure:Click()
+		edit.fossil1:SelByValue(life,"id");edit.fossil2:SelByValue(cold,"id");edit.use:Click()
+		assert.are.equal("Configured: Pristine Fossil + Frigid Fossil",c.option:GetSelValue().label)
+		c.configure:Click()
 		assert.are.equal(life,main.popups[1].controls.fossil1:GetSelValueByKey("id"))
+		assert.are.equal(cold,main.popups[1].controls.fossil2:GetSelValueByKey("id"))
 	end)
 	it("orders mixed priced, unknown and zero-cost subsets consistently without mutating results",function()
 		local entries={{fossils={"a"},successChance=10,costPerSuccess=5,meanCost=0.5},{fossils={"b"},successChance=90,costPerSuccess=10,meanCost=9},{fossils={"c"},successChance=50},{fossils={"d"},successChance=100,costPerSuccess=0,meanCost=0},{fossils={"e"},error="Unavailable"}}

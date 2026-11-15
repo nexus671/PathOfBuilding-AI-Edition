@@ -4,6 +4,21 @@ describe("Advanced native crafting", function()
 	local random=function() return 0.42 end
 	local function rare() return sim.perform(raw,{method="alchemy"},12).state end
 	local function tag(model,id,wanted) for _,value in ipairs(model.byId[id].modTags or {}) do if value == wanted then return true end end;return nil end
+	it("updates socket state and breaks links when a Hollow Fossil adds its modifier",function()
+		local item=raw.."\nSockets: R-R-R-R";local hollow={method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingAbyss"}}
+		local result=sim.perform(item,hollow,7)
+		assert.is_truthy(result.itemText:find("Sockets: R%-R%-R A"));assert.equal("A",result.state.sockets[4].color)
+		assert.is_truthy(result.warnings[1].message:find("not verified",1,true))
+		local model=sim.model(item);assert.is_false(sim.matches(result.state,{},nil,model,{links=4}));assert.is_true(sim.matches(result.state,{},nil,model,{links=3}))
+		local other=sim.perform(result.itemText,{method="scour"},7)
+		assert.is_truthy(other.itemText:find("Sockets: R%-R%-R W"));assert.is_truthy(other.warnings[1].message:find("not verified",1,true))
+		local noSockets=sim.perform(raw,hollow,7);assert.equal("A",noSockets.state.sockets[1].color);assert.is_truthy(noSockets.itemText:find("Sockets: A",1,true))
+		local unusual=copyTable(model.initial);for _,socket in ipairs(unusual.sockets) do socket.group=6 end
+		local numbered=sim.perform(item,hollow,7,unusual);assert.is_truthy(sim.validateState(model,numbered.state))
+		local ghosts=copyTable(hollow);ghosts.allflame={outcomes=2,gainMin=1,gainMax=1,sulphur=0}
+		local options=sim.perform(item,ghosts,7);assert.equal(2,#options.choices)
+		for _,choice in ipairs(options.choices) do assert.equal("A",choice.state.sockets[4].color);assert.is_truthy(choice.itemText:find("Sockets: R%-R%-R A")) end
+	end)
 	it("resolves plain tincture and multi-line flask values without losing their rolls", function()
 		local tincture="Rarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nItem Level: 85\nQuality: 20\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed"
 		local model=sim.model(tincture)
