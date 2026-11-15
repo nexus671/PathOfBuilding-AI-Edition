@@ -6,6 +6,22 @@ function C.extend(M)
 	function M.calculate(raw,craft,targets,initialState,options)
 		options=options or {}
 		local method=M.baseCurrency(craft)
+		if method=="jeweller" and not craft.allflame then
+			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
+			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
+			if M.context then model=M.context(model,state) end
+			local reason=M.methodReason(model,state,method);assert(not reason,reason)
+			local probabilities=require("Modules.CraftingSockets").jewellerProbabilities(model,state);local outcomes,hitWeight,offset={},0,0
+			for count,probability in ipairs(probabilities) do if probability>0 then
+				local draw=offset+probability/2;offset=offset+probability
+				local result=M.action(model,state,craft,function() return draw end)
+				local hit=M.matches(result,targets,nil,model,options.requirements,options.requiredGroups)
+				if hit then hitWeight=hitWeight+probability end
+				outcomes[#outcomes+1]={id=tostring(count),text=count..(count==1 and " socket" or " sockets"),chance=100*probability,weight=probability,matches=hit,state=result}
+			end end
+			return {exactFor="One Jeweller's Orb under the historical socket-weight and quality assumptions",sampled=false,successChance=100*hitWeight,totalWeight=1,matchingWeight=hitWeight,
+				outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+		end
 		if method=="fusing" and not craft.allflame then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial

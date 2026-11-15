@@ -30,4 +30,16 @@ describe("Experimental Jeweller socket model",function()
 		assert.equal("jeweller_estimate",sampled.warnings[1].code);assert.equal(2,sampled.meanCost)
 		assert.equal(4,sampled.currencySpent.jeweller)
 	end)
+	it("enumerates the modeled socket counts and retains the uncertainty warning",function()
+		local result=sim.calculate(raw,{method="jeweller"},{},nil,{requirements={sockets=6}})
+		assert.is_false(result.sampled);assert.equal(5,#result.outcomes);assert.equal("jeweller_estimate",result.warnings[1].code)
+		local total,matching=0,0
+		for _,entry in ipairs(result.outcomes) do
+			total=total+entry.chance;assert.equal(tonumber(entry.id),#entry.state.sockets)
+			if entry.matches then matching=matching+entry.chance;assert.equal(6,#entry.state.sockets) end
+		end
+		assert.are.near(100,total,1e-8);assert.are.near(matching,result.successChance,1e-8);assert.are.near(100/276,matching,1e-8)
+		local full=raw:gsub("R%-G W%-W","R-G W-W W W")
+		assert.is_false(pcall(sim.calculate,full,{method="jeweller"},{},nil,{requirements={sockets=6}}))
+	end)
 end)

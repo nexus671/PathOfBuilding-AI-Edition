@@ -436,11 +436,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 	do
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20\nSockets: R-G W-W"
-		require("Classes.CraftingSimulatorControl").Open(build,{id="jeweller-ui",title="Experimental Jeweller",slot="Body Armour",startingItem=raw,goals={},steps={}})
+		require("Classes.CraftingSimulatorControl").Open(build,{id="jeweller-ui",title="Experimental Jeweller",slot="Body Armour",startingItem=raw,goals={},steps={},nativeRecipe={steps={{method="jeweller"}},targets={},requirements={sockets=6}}})
 		ui:click("settings");ui:text("paletteSearch",sim.labels.jeweller);assert(main.popups[1].controls.paletteUse:IsEnabled());ui:click("paletteUse")
 		local hints={};for _,row in ipairs(main.popups[1].controls.actionHint.list) do hints[#hints+1]=StripEscapes(row[1]) end
 		assert(table.concat(hints," "):find("Experimental",1,true),"Jeweller assumptions were not shown");frame("crafting-jeweller-experimental")
-		ui:click("item");assert(main.popups[1].controls.intro.label:find("Applied Jeweller",1,true),"Jeweller action failed");ui:click("close")
+		ui:click("tab_settings");ui:click("exact");local jobs=require("Modules.CraftingTasks");for i=1,1000 do if not jobs.job then break end;jobs.tick(build) end
+		local odds=build.craftingAnalyses["jeweller-ui"].results.odds.result
+		assert(not jobs.job and not odds.sampled and odds.warnings[1].code=="jeweller_estimate","Jeweller exact model warning was not shown")
+		ui:click("tab_simulate");frame("crafting-jeweller-odds");ui:click("tab_craft");ui:click("item");assert(main.popups[1].controls.intro.label:find("Applied Jeweller",1,true),"Jeweller action failed");ui:click("close")
 	end
 	do
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20\nSockets: R G B W W W"
