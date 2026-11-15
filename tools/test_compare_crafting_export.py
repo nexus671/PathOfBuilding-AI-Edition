@@ -1,9 +1,25 @@
 import unittest
 
-from compare_crafting_export import compare
+from compare_crafting_export import compare, compare_records, currency_records
 
 
 class CompareCraftingExportTest(unittest.TestCase):
+    def test_reports_fossil_record_and_field_changes(self):
+        result = compare_records({"same": {"weight": 1}, "changed": {"weight": 2}, "missing": {}},
+                                 {"same": {"weight": 1}, "changed": {"weight": 3, "tag": None}, "new": {}})
+        self.assertEqual(result["added_ids"], ["new"])
+        self.assertEqual(result["missing_ids"], ["missing"])
+        self.assertEqual(result["changed_fields_by_id"], {"changed": ["tag", "weight"]})
+        with self.assertRaises(ValueError):
+            compare_records({}, [])
+
+    def test_extracts_same_currency_subset_as_the_supplement(self):
+        base = lambda name, kind: {"name": name, "item_class": kind, "release_state": "released", "properties": {"description": "text"}}
+        rows = {"currency": base("Orb", "StackableCurrency"), "other": base("Helmet", "Helmet"),
+                "Metadata/Deepwater/item": base("Deep", "MapFragment")}
+        self.assertEqual(currency_records(rows), {"currency": {"name": "Orb", "description": "text", "release": "released"},
+                                                   "Metadata/Deepwater/item": {"name": "Deep", "description": "text", "release": "released"}})
+
     def test_reports_missing_additional_and_changed_records(self):
         previous = {"patch": "old", "mods": {
             "same": {"groups": ["A"], "stats": [1]},

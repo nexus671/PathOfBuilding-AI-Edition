@@ -4,6 +4,7 @@ This reports differences only; matching identifiers do not establish that an
 export or its schema is correct for a game version.
 """
 import argparse
+import hashlib
 import json
 from collections import Counter
 from pathlib import Path
@@ -49,16 +50,59 @@ def compare(previous, exported):
     }
 
 
+def compare_records(previous, exported):
+    """Report identity and field changes without treating a match as validation."""
+    if not isinstance(previous, dict) or not isinstance(exported, dict):
+        raise ValueError("Expected objects indexed by record ID")
+    shared = previous.keys() & exported.keys()
+    if any(not isinstance(row, dict) for row in list(previous.values()) + list(exported.values())):
+        raise ValueError("Expected record objects")
+    return {
+        "previous_count": len(previous), "export_count": len(exported),
+        "added_ids": sorted(exported.keys() - previous.keys()),
+        "missing_ids": sorted(previous.keys() - exported.keys()),
+        "changed_fields_by_id": {
+            key: sorted(field for field in previous[key].keys() | exported[key].keys()
+                        if field not in previous[key] or field not in exported[key]
+                        or previous[key][field] != exported[key][field])
+            for key in sorted(shared) if previous[key] != exported[key]
+        },
+    }
+
+
+def currency_records(bases):
+    if not isinstance(bases, dict):
+        raise ValueError("Expected base items indexed by record ID")
+    return {key: {"name": value["name"], "description": value.get("properties", {}).get("description"),
+                  "release": value["release_state"]}
+            for key, value in bases.items()
+            if value["item_class"] in ("StackableCurrency", "DeepwaterCurrency") or "/Deepwater/" in key}
+
+
+def read_candidate(path):
+    raw = path.read_bytes()
+    return json.loads(raw), hashlib.sha256(raw).hexdigest()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mods", type=Path, help="Path to the candidate mods.json")
     parser.add_argument("--previous", type=Path, default=ROOT / "src/Data/Crafting/3.29.json")
+    parser.add_argument("--fossils", type=Path, help="Optional candidate fossils.json")
+    parser.add_argument("--base-items", type=Path, help="Optional candidate base_items.json for currency metadata")
     args = parser.parse_args()
     with args.previous.open(encoding="utf-8") as source:
         previous = json.load(source)
     with args.mods.open(encoding="utf-8") as source:
         exported = json.load(source)
-    print(json.dumps(compare(previous, exported), indent=2, ensure_ascii=False))
+    result = compare(previous, exported)
+    for path, name, convert in ((args.fossils, "fossils", lambda value: value),
+                                (args.base_items, "currencies", currency_records)):
+        if path:
+            candidate, digest = read_candidate(path)
+            result[name] = compare_records(previous[name], convert(candidate))
+            result[name]["candidate_sha256"] = digest
+    print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":
