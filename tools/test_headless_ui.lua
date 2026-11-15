@@ -434,6 +434,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("tab_targets");ui:click("targetPicker");ui:choose("kind","Enchant");ui:text("search","Movement Speed");frame("crafting-enchantment-target-picker");ui:click("choose")
 		ui:click("targetGroups");ui:click("groupConditions");assert(main.popups[1].controls.scope:GetSelValue()=="Enchantments","Socket enchantment target scope was not retained");ui:click("keep");ui:click("keepGroups");ui:click("close")
 	end
+	do
+		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20\nSockets: R-G W-W"
+		require("Classes.CraftingSimulatorControl").Open(build,{id="jeweller-ui",title="Experimental Jeweller",slot="Body Armour",startingItem=raw,goals={},steps={}})
+		ui:click("settings");ui:text("paletteSearch",sim.labels.jeweller);assert(main.popups[1].controls.paletteUse:IsEnabled());ui:click("paletteUse")
+		local hints={};for _,row in ipairs(main.popups[1].controls.actionHint.list) do hints[#hints+1]=StripEscapes(row[1]) end
+		assert(table.concat(hints," "):find("Experimental",1,true),"Jeweller assumptions were not shown");frame("crafting-jeweller-experimental")
+		ui:click("item");assert(main.popups[1].controls.intro.label:find("Applied Jeweller",1,true),"Jeweller action failed");ui:click("close")
+	end
 
 	do
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: R-G B W-W R"

@@ -3,7 +3,7 @@
 local S={}
 local colours={"R","G","B"}
 function S.extend(M,A,api)
-	local methods={beast_max_links="Bestiary: maximum links",omen_jeweller="Jeweller's Orb + Omen of the Jeweller",omen_trichromatism="Omen of Trichromatism (RGB)",omen_connections="Orb of Fusing + Omen of Connections",chromatic="Chromatic Orb",socket_colour_bench="Bench: non-white sockets",socket_white_bench="Bench: white sockets (3.30)",tainted_chromatic="Tainted Chromatic Orb",tainted_jeweller="Tainted Jeweller's Orb",tainted_fusing="Tainted Orb of Fusing"}
+	local methods={beast_max_links="Bestiary: maximum links",jeweller="Jeweller's Orb (experimental)",omen_jeweller="Jeweller's Orb + Omen of the Jeweller",omen_trichromatism="Omen of Trichromatism (RGB)",omen_connections="Orb of Fusing + Omen of Connections",chromatic="Chromatic Orb",socket_colour_bench="Bench: non-white sockets",socket_white_bench="Bench: white sockets (3.30)",tainted_chromatic="Tainted Chromatic Orb",tainted_jeweller="Tainted Jeweller's Orb",tainted_fusing="Tainted Orb of Fusing"}
 	for method,label in pairs(methods) do M.methods[#M.methods+1]=method;M.labels[method]=label end;table.sort(M.methods)
 	local originalAction,originalOptions,originalPrice,originalComponents=M.action,M.actionOptions,M.priceKey,M.components
 	local function naturalLimit(model,state)
@@ -15,6 +15,23 @@ function S.extend(M,A,api)
 		if #sockets==0 then return "Add a socket before using a Jeweller's Orb." end
 		for _,socket in ipairs(sockets) do if socket.color=="A" then return "Abyssal sockets need a separate socket model." end end
 		if #sockets>=naturalLimit(model,state) then return "The item already has its maximum natural socket count." end
+	end
+	M.methodChecks.jeweller=M.methodChecks.omen_jeweller
+	-- Historical community estimates for zero-quality weapons. Applying these
+	-- weights to other bases, and the quality adjustment, are model assumptions.
+	function S.jewellerProbabilities(model,state)
+		local limit=naturalLimit(model,state);local current=#(state.sockets or {})
+		local weights={100,90,80,30,5,1};local total=0
+		for count=1,limit do if count~=current then total=total+weights[count] end end
+		assert(total>0,"No different socket count is available")
+		local maximum=weights[limit]/total
+		local adjusted=math.min(1,maximum*(1+math.min(math.max(state.quality or 0,0),30)/100))
+		local remainder=maximum<1 and (1-adjusted)/(1-maximum) or 0
+		local probabilities={}
+		for count=1,limit do
+			probabilities[count]=count==current and 0 or count==limit and adjusted or weights[count]/total*remainder
+		end
+		return probabilities
 	end
 	M.methodChecks.omen_connections=function(model,state)
 		local sockets=state.sockets or {}
@@ -65,9 +82,15 @@ function S.extend(M,A,api)
 		for _,socket in ipairs(sockets) do assert(socket.color ~= "A","Abyssal sockets need a separate socket model") end
 		if method == "socket_white_bench" then
 			for _,socket in ipairs(sockets) do socket.color="W" end
-		elseif method == "omen_jeweller" then
+		elseif method == "jeweller" or method == "omen_jeweller" then
+			local count=naturalLimit(model,state)
+			if method=="jeweller" then
+				local probabilities=S.jewellerProbabilities(model,state);local pick=random()
+				for i,chance in ipairs(probabilities) do pick=pick-chance;if pick<0 then count=i;break end end
+			end
+			while #sockets>count do table.remove(sockets) end
 			local free=0;for _,socket in ipairs(sockets) do free=math.max(free,socket.group+1) end
-			while #sockets<naturalLimit(model,state) do sockets[#sockets+1]={color="W",group=free};free=free+1 end
+			while #sockets<count do sockets[#sockets+1]={color="W",group=free};free=free+1 end
 		elseif method == "omen_connections" or method == "beast_max_links" then
 			for _,socket in ipairs(sockets) do socket.group=0 end
 		elseif method == "tainted_jeweller" then
@@ -131,7 +154,7 @@ function S.extend(M,A,api)
 		local state=initialState and M.validateState(model,initialState) or model.initial
 		model=M.context(model,state);query=(query or ""):lower();result.socketCrafts={}
 		local available=require("Modules.CraftingAvailability").check
-		for _,method in ipairs({"socket_bench","socket_white_bench","socket_colour_bench","chromatic","beast_max_links","omen_jeweller","omen_connections","omen_trichromatism","tainted_chromatic","tainted_jeweller","tainted_fusing"}) do
+		for _,method in ipairs({"socket_bench","socket_white_bench","socket_colour_bench","chromatic","beast_max_links","jeweller","omen_jeweller","omen_connections","omen_trichromatism","tainted_chromatic","tainted_jeweller","tainted_fusing"}) do
 			local choices=(method=="socket_bench" or method=="socket_colour_bench") and M.actionOptions(model,state,method) or {{label=M.labels[method],action={method=method}}}
 			local allowed,reason=available(method,state,model)
 			for _,choice in ipairs(choices) do

@@ -88,6 +88,13 @@ async function main(){
   assert.match(inspected.crafting.nativeEngine.methodAvailabilityNote,/further restrictions/);
   const modifier=inspected.crafting.nativeEngine.modifiers[0].id;
   const bodyRaw='Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20\nSockets: W W W W W W';
+  const jewelRaw=bodyRaw.replace('Sockets: W W W W W W','Sockets: W-W W');
+  const jewelInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:jewelRaw,query:'jeweller',limit:20},'inspected');
+  const jewelAction=jewelInspection.crafting.nativeEngine.socketCrafts.find(entry=>entry.method==='jeweller');assert.equal(jewelAction.available,true);
+  const jewelResult=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:jewelRaw,action:jewelAction.action,seed:104729},'crafted');
+  assert.equal(jewelResult.nativeCrafting.warnings[0].code,'jeweller_estimate');assert.notEqual(jewelResult.nativeCrafting.state.sockets.length,3);
+  const jewelPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:jewelRaw,recipe:{steps:[jewelAction.action],targets:[],requirements:{sockets:6}},options:{trials:4,maxActions:1}},'crafted');
+  assert.equal(jewelPlan.nativeCrafting.warnings[0].code,'jeweller_estimate');
   const bodyInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'life',limit:20},'inspected');
   const attributeInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'Attributes',limit:100},'inspected');
   const attributeBench=attributeInspection.crafting.nativeEngine.bench.find(entry=>entry.costSources?.includes('EinharMasterAllAttributes1'));
