@@ -304,6 +304,14 @@ function Panel.Open(build,project,layout)
 		button(popup,"close",448,266,116,"Cancel",function() main:ClosePopup() end)
 		updateProfile();main:OpenPopup(660,318,"Allflame settings (3.29)",popup,nil,nil,"close")
 	end)
+	button(controls,"gwennen",232,378,200,"Record Gwennen pair",function()
+		require("Classes.CraftingGwennenControl").Open(function(first,second,cost)
+			assert(#draft.steps<40,"This guide already has forty steps")
+			local price=cost~="" and " Artifact price: "..cost.."." or " Verify the artifact price in game."
+			draft.steps[#draft.steps+1]={action="Gwennen observed pair: "..first.description.." OR "..second.description.."."..price,stopWhen="Review both possible outcomes before choosing.",onFailure="The selected outcome is random; this pair is not simulated.",done=false}
+			changed();refresh({"Pair added to this guide. Keep working craft, then save the build."})
+		end)
+	end)
 	button(controls,"configure",16,231,416,"Configure fossil combination / donor item",function()
 		local method=controls.method:GetSelValueByKey("val")
 		local popup={}
@@ -660,7 +668,7 @@ function Panel.Open(build,project,layout)
 	end
 	controls.actionHint=ui.description(controls,"actionHint",16,264,416,40,{})
 	local pages={
-		["Craft settings"]={methodLabel=96,method=116,configure=160,keepRecipe=198,reset=198,exact=238,compareItem=238,seedLabel=278,seed=298,inspectItem=338,allflame=378,manual=418},
+		["Craft settings"]={methodLabel=96,method=116,configure=160,keepRecipe=198,reset=198,exact=238,compareItem=238,seedLabel=278,seed=298,inspectItem=338,allflame=378,gwennen=378,manual=418},
 		["Emulate item"]={selectedAction=230,actionHint=264,optionLabel=310,option=330,apply=370,undo=370,settings=414,history=414},
 		["Target conditions"]={targetLabel=96,target=116,addTarget=154,alternative=154,clearTargets=154,targetPicker=188,targetConditions=226,targetGroups=226,targetSummary=270},
 		["Simulate recipe"]={trialsLabel=96,trials=116,budget=116,priceLabel=160,price=180,currency=180,baseCost=180,simulate=224,runRecipe=224,editRecipe=266,resourcePrices=266,optimize=310,fossilResults=310,distribution=354,compareRecipes=354,resultSummary=398},
@@ -678,6 +686,7 @@ function Panel.Open(build,project,layout)
 	controls.targetSummary.height=height-338
 	controls.history.enabled=function() return #history>0 end
 	controls.settings.label="Find currencies"
+	controls.allflame.width=200
 	controls.cancelJob.shown=function() return require("Modules.CraftingTasks").job~=nil end
 	ui.style(controls,{apply=true,preview=true},{item=true})
 	ui.tabs(controls,controls.page,{{"tab_craft","Emulate item","Craft"},{"tab_targets","Target conditions","Targets"},{"tab_simulate","Simulate recipe","Simulate"},{"tab_settings","Craft settings","Settings"}},16,18,416)

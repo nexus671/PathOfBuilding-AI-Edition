@@ -409,6 +409,19 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("paletteUse");ui:click("item");assert(main.popups[1].controls.intro.label:find("Applied Bestiary: maximum links",1,true));frame("crafting-beast-linked");ui:click("close")
 	end
 	do
+		local raw="Rarity: RARE\nExample\nIron Hat\nItem Level: 86"
+		require("Classes.CraftingSimulatorControl").Open(build,{id="gwennen-ui",title="Gwennen pair",slot="Helmet",startingItem=raw,goals={},steps={}})
+		ui:click("tab_settings");ui:click("gwennen");assert(not main.popups[1].controls.keep:IsEnabled());frame("crafting-gwennen-empty")
+		ui:choose("first",1030,"val");local warning={};for _,row in ipairs(main.popups[1].controls.firstNote.list) do warning[#warning+1]=StripEscapes(row[1]) end
+		assert(table.concat(warning," "):find("conflict",1,true),"Disputed outcome did not show its warning");frame("crafting-gwennen-conflict")
+		ui:choose("first",1005,"val");ui:choose("second",1022,"val");ui:text("cost","20 Grand Broken Circle Artifacts")
+		assert(main.popups[1].controls.keep:IsEnabled());frame("crafting-gwennen-pair");ui:click("keep");ui:click("keepWorking")
+		local saved;for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id=="gwennen-ui" then saved=project end end
+		assert(saved and #saved.steps==1 and saved.steps[1].action=="Gwennen observed pair: Add a random Modifier OR Destroy. Artifact price: 20 Grand Broken Circle Artifacts.","Observed pair was not saved in the guide")
+		assert(build:SaveDB("Gwennen test"):find("20 Grand Broken Circle Artifacts",1,true),"Observed pair was not serialized in the build")
+		assert(not saved.nativeRecipe,"Observed pair was incorrectly added to simulated actions");ui:click("close")
+	end
+	do
 		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 1";local model=sim.model(raw)
 		require("Classes.CraftingSimulatorControl").Open(build,{id="binding-legacy-ui",title="Legacy Binding",slot="Helmet",startingItem=raw,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch","Orb of Binding")
