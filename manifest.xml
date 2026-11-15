@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview199" />
+	<Version number="2.67.2-ai.preview200" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1309,7 +1309,7 @@
 	<File name="Data/LootFilters/source.json" part="program" sha1="b871d8f97b0e23383e68f5e2169e25e310e9975c" />
 	<File name="Data/Minions.lua" part="program" sha1="96b00b39dded3f5459349665abc3d2e6c30a142f" />
 	<File name="Data/Misc.lua" part="program" sha1="9c3fdbb7ca8fa4ed4948dea18df0b058e6c0658b" />
-	<File name="Data/ModCache.lua" part="program" sha1="c65e8c1766073d2bfc4448a7db91abbcac895674" />
+	<File name="Data/ModCache.lua" part="program" sha1="11b1d30984770cc468684b2993955e0e2ed8a1fe" />
 	<File name="Data/ModCorrupted.lua" part="program" sha1="8b8e9275644b74deb84bc717781bb154766d58ec" />
 	<File name="Data/ModDelve.lua" part="program" sha1="482a169c977a59fcf26ce80b4b2e4eed303fc0ed" />
 	<File name="Data/ModDucat.lua" part="program" sha1="bd8f79ab5b1011ce9e34e8a6b93947f1377a9dba" />

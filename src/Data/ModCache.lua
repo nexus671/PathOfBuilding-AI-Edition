@@ -2801,7 +2801,7 @@ c["-3 Prefix Modifiers allowed"]={{},nil}
 c["-3 Suffix Modifiers allowed"]={{},nil}
 c["-3 to Total Mana Cost of Skills"]={{[1]={flags=0,keywordFlags=0,name="ManaCost",type="BASE",value=-3}},nil}
 c["-3 to maximum Fortification"]={{[1]={flags=0,keywordFlags=0,name="MaximumFortification",type="BASE",value=-3}},nil}
-c["-3 to maximum Sockets"]={{}," maximum Sockets "}
+c["-3 to maximum Sockets"]={{[1]={flags=0,keywordFlags=0,name="MaximumSocketCount",type="BASE",value=-3}},nil}
 c["-3% to Chaos Resistance"]={{[1]={flags=0,keywordFlags=0,name="ChaosResist",type="BASE",value=-3}},nil}
 c["-3% to Cold Resistance"]={{[1]={flags=0,keywordFlags=0,name="ColdResist",type="BASE",value=-3}},nil}
 c["-3% to Fire Resistance"]={{[1]={flags=0,keywordFlags=0,name="FireResist",type="BASE",value=-3}},nil}

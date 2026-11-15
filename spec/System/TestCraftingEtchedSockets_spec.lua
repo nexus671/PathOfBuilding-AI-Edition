@@ -24,6 +24,11 @@ describe("Socket-reducing glove enchantments",function()
    assert.equal(limit,sim.socketLimit(sim.model(output)))
   end
  end)
+ it("handles a single enchantment that removes three maximum sockets",function()
+  local text="Rarity: NORMAL\nIron Gauntlets\nItem Level: 86\nSockets: W\nImplicits: 1\n{enchant}-3 to maximum Sockets"
+  local model=sim.model(text);assert.equal(1,sim.socketLimit(model));assert.equal(1,model.item.selectableSocketCount)
+  assert.is_false(require("Modules.CraftingAvailability").check("socket_bench",model.initial,model))
+ end)
  it("does not treat an explicit stat or a non-glove enchant as an etched socket",function()
   local model=sim.model("Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: W W W W W W\nImplicits: 1\n{enchant}-1 to maximum Sockets")
   assert.equal(6,sim.socketLimit(model))
