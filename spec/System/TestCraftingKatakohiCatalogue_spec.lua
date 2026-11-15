@@ -50,6 +50,9 @@ describe("Hypothetical socket enchantments",function()
  end)
  it("matches socket enchantment targets on edited and imported gloves",function()
   local model=sim.model(raw);local state=sim.setKatakohi(model,model.initial,{movement,fire})
+  local rows=require("Modules.CraftingModifiers").inspect(model,state).rows;local found
+  for _,row in ipairs(rows) do if row.id==movement then found=row;break end end
+  assert.is_not_nil(found);assert.is_nil(found.chance)
   local target={{scope="enchant",anyOf={movement}}}
   assert.is_true(sim.matches(state,target,nil,model))
   assert.is_false(sim.matches(state,{{scope="implicit",anyOf={movement}}},nil,model))

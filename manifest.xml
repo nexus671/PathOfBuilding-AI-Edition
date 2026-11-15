@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview203" />
+	<Version number="2.67.2-ai.preview204" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1508,7 +1508,7 @@
 	<File name="Modules/CraftingLeague.lua" part="program" sha1="947365404de9f6008b564714a88967a3a2f3de5d" />
 	<File name="Modules/CraftingLightRadius330.lua" part="program" sha1="7fa9ebd4efce1f060c946ef44af0e35cb6ad065c" />
 	<File name="Modules/CraftingMemory.lua" part="program" sha1="57763bb0f5960fa2954977b6b535160d73c0a14a" />
-	<File name="Modules/CraftingModifiers.lua" part="program" sha1="868177d2ed8a62c24d98de2c764b0e4efc7bc7b6" />
+	<File name="Modules/CraftingModifiers.lua" part="program" sha1="8f30be6209ba6610a50380f15cfdc184c33fd068" />
 	<File name="Modules/CraftingPalette.lua" part="program" sha1="edd27dc9231769e2c5035238bc2e6aa1a5df5de6" />
 	<File name="Modules/CraftingPredictable.lua" part="program" sha1="96bf14e9645edc1a52dcb4baec013afc37c91131" />
 	<File name="Modules/CraftingPrices.lua" part="program" sha1="2afd370a6d9995396ad9a26fda93e244a548e912" />
