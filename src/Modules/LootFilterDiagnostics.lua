@@ -44,17 +44,27 @@ function M.shadowing(parsed)
   if not prior then
    for _,condition in ipairs(rule.conditions) do
     local current=bound(condition)
-    if current then
+    local exact=(condition.operator=="=" or condition.operator=="==") and numeric[condition.keyword]
+     and condition.keyword~="Sockets" and #condition.values==1 and tonumber(condition.values[1])
+    if exact and (exact~=exact or math.abs(exact)==math.huge) then exact=nil end
+    if current or exact then
      local removed=false;local other={};local target=encoded(condition)
      for _,value in ipairs(conditions) do if not removed and value==target then removed=true else other[#other+1]=field(value) end end
-     local group=field(condition.keyword)..field(current.direction)..table.concat(other)
-     current.group=group;variants[#variants+1]=current
-     -- Stored bounds become progressively broader, so the first covering
-     -- predecessor can be found without scanning every earlier rule.
-     local candidates=thresholds[group] or {};local low,high=1,#candidates
-     while low<=high do local middle=math.floor((low+high)/2);if covers(candidates[middle].bound,current) then high=middle-1 else low=middle+1 end end
-     local candidate=candidates[low]
-     if candidate and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
+     local function findCover(query)
+      local group=field(condition.keyword)..field(query.direction)..table.concat(other)
+      -- Stored bounds become progressively broader, so binary search finds
+      -- the earliest covering predecessor without scanning the whole filter.
+      local candidates=thresholds[group] or {};local low,high=1,#candidates
+      while low<=high do local middle=math.floor((low+high)/2);if covers(candidates[middle].bound,query) then high=middle-1 else low=middle+1 end end
+      local candidate=candidates[low]
+      if candidate and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
+      return group
+     end
+     if current then current.group=findCover(current);variants[#variants+1]=current
+     else
+      findCover({direction="lower",value=exact,inclusive=true})
+      findCover({direction="upper",value=exact,inclusive=true})
+     end
     end
    end
   end

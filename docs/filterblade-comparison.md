@@ -18,7 +18,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Hierarchical customizer | Category sidebar, search, personal/base/policy scope and collapsible compiled sections | Human-edited subcategories |
 | Base-filter rule browsing | Full parsed preset catalogue with styled examples | Human-edited descriptions for every source rule |
 | Category coverage | Sixteen families including cards, flasks, tinctures, jewels, recipes and special currency | Deeper nested sections |
-| Rule editing | Stable override identities across catalogue, matched rules and structure; provable shadowing diagnostics, including narrower numeric thresholds and more specific condition sets | Broader predicate-overlap analysis |
+| Rule editing | Stable override identities across catalogue, matched rules and structure; provable shadowing diagnostics, including narrower numeric thresholds, exact values inside a range and more specific condition sets | Broader predicate-overlap analysis |
 | Show/hide toggles | Personal enable/disable; action editor | Per-category inclusion policies |
 | Rule order | Select with one click, edit with a double-click, and drag personal rules or use arrows or Alt+Up/Down relative to visible rules | Base-filter rule order remains pinned |
 | Currency tier lists | Custom/preset tier browsing, exact item movement, drag/drop, tier creation/removal/order | Economy-driven automatic reassignment |

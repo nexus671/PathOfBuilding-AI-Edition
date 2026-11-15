@@ -25,6 +25,24 @@ describe("Compiled filter structure",function()
 		assert.equal(1,#conflicts);local reason=structure.diagnostics(view,conflicts[1])[1]
 		assert.is_truthy(reason.shadowedBy);assert.matches("every item matched",reason.warning)
 	end)
+	it("finds exact numeric values covered by an earlier terminating range",function()
+		local parser=require("Modules.LootFilterParser")
+		local diagnostics=require("Modules.LootFilterDiagnostics")
+		local cases={
+			{">=",70,80,true},{">",80,80,false},{">=",80,80,true},
+			{"<=",80,70,true},{"<",80,80,false},{"<=",80,80,true},
+			{">=",80,70,false},{"<=",70,80,false},
+		}
+		for _,case in ipairs(cases) do
+			local raw="Show\n Class == \"Helmets\"\n ItemLevel "..case[1].." "..case[2].."\nHide\n Class == \"Helmets\"\n ItemLevel == "..case[3]
+			local conflicts=diagnostics.shadowing(parser.parse(raw))
+			assert.are.equal(case[4],#conflicts==1,raw)
+		end
+		local unrelated='Show\n Class == "Boots"\n ItemLevel >= 70\nHide\n Class == "Helmets"\n ItemLevel == 80'
+		assert.are.equal(0,#diagnostics.shadowing(parser.parse(unrelated)))
+		local continuing='Show\n ItemLevel >= 70\n Continue\nHide\n ItemLevel == 80'
+		assert.are.equal(0,#diagnostics.shadowing(parser.parse(continuing)))
+	end)
 	it("finds rules covered by a broader earlier condition set",function()
 		local p=filters.profile("subset","Subset")
 		p.template='Show\n Class == "Currency"\nHide\n Class == "Currency"\n BaseType == "Chaos Orb"\n ItemLevel >= 50\nShow\n Class == "Maps"\n BaseType == "Chaos Orb"'
