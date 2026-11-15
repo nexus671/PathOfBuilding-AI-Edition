@@ -19,6 +19,8 @@ In 3.30, Harvest includes Sacred Flora and Fauna; the Wildwood filter focuses on
 
 **Routes** compares the shortest connection with available alternatives. In **Plan tools**, mark a selected node as a preferred waypoint, open editable mechanic starting routes, compare the draft with a saved plan, or restore an earlier history state. Starting routes compare target orders and connect up to three nearby notables from the bundled graph; they do not predict farming income. Route comparisons honor the current budget and exclusions. In **Stages & strategy**, choose a previous stage and use **Copy route** to copy its refund and allocation steps with their point-budget assumptions.
 
+If an imported stage references a missing, incompatible or cyclic previous stage, **Stages & strategy** shows the unavailable link and keeps it in the draft. Choose another saved stage or **No previous plan** to resolve the link before saving the plan.
+
 **Allocated stats** opens an investment overview, mechanic counts, keystone tradeoffs and searchable raw bonuses. Saved-plan comparison can overlay added paths in green and removed paths in red. Counts are not effective map odds: increased effect, conditions and keystone interactions are not simulated. Atlas allocations do not change character DPS or EHP.
 
 ## Sharing

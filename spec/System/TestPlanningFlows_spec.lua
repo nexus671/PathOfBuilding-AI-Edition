@@ -101,6 +101,17 @@ describe("Connected planning workflows",function()
 		assert.equal(999,#candidates);assert.equal("1",candidates[1].id);assert.equal("999",candidates[#candidates].id)
 		assert.equal(2000,#strategy.previousCandidates(plan("new"),plans))
 	end)
+	it("preserves and explains unavailable imported previous stages until explicitly changed",function()
+		local store=build.savers.AtlasPlans;local other=plan("other");other.version="3.29.3";store:Upsert(other)
+		for _,id in ipairs({"missing","other"}) do
+			local draft=plan("imported");draft.progression={stage="final",previousId=id};local saved
+			require("Classes.AtlasPlanningControl").Open(build,draft,function(value) saved=value end)
+			local c=main.popups[1].controls;assert.equal(id,c.previous:GetSelValueByKey("val"));assert.matches("unavailable",c.transition.list[1][1]);assert.is_false(c.copyRoute.enabled())
+			c.keep:Click();assert.equal(id,saved.progression.previousId)
+			require("Classes.AtlasPlanningControl").Open(build,saved,function(value) saved=value end);c=main.popups[1].controls
+			c.previous:SelByValue("","val");c.previous.selFunc();c.keep:Click();assert.is_nil(saved.progression.previousId)
+		end
+	end)
 	it("exports native planning data and reviews an imported bundle without changing the source",function()
 		build.savers.AtlasPlans:Upsert(plan("starter"))
 		build.savers.CraftingProjects:Upsert({id="hat",title="Hat",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat",goals={},steps={}})

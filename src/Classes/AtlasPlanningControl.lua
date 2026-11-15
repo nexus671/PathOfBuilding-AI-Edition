@@ -15,14 +15,22 @@ function M.Open(build,plan,keep)
 	ui.label(c,"stageLabel",16,76,"Stage")
 	c.stage=new("DropDownControl"):DropDownControl(ui.anchor,{16,102,240,28},{{label="Starter",val="starter"},{label="Intermediate",val="intermediate"},{label="Final",val="final"}});c.stage:SelByValue(draft.progression and draft.progression.stage or "starter","val")
 	ui.label(c,"previousLabel",280,76,"Previous saved Atlas plan")
-	local previous={{label="No previous plan",val=""}};for _,p in ipairs(require("Modules.AtlasStrategy").previousCandidates(plan,build.savers.AtlasPlans.plans)) do previous[#previous+1]={label=p.title,val=p.id} end
-	c.previous=new("DropDownControl"):DropDownControl(ui.anchor,{280,102,w-296,28},previous);c.previous:SelByValue(draft.progression and draft.progression.previousId or "","val")
+	local previous={{label="No previous plan",val=""}};local savedPrevious=draft.progression and draft.progression.previousId or "";local found=savedPrevious==""
+	for _,p in ipairs(require("Modules.AtlasStrategy").previousCandidates(plan,build.savers.AtlasPlans.plans)) do previous[#previous+1]={label=p.title,val=p.id};if p.id==savedPrevious then found=true end end
+	local unavailable=not found and savedPrevious or nil
+	if unavailable then previous[#previous+1]={label="Unavailable previous plan (review)",val=unavailable} end
+	c.previous=new("DropDownControl"):DropDownControl(ui.anchor,{280,102,w-296,28},previous);c.previous:SelByValue(savedPrevious,"val")
 	c.previous.tooltipText="Only saved plans from this tree that do not create a progression loop are offered."
 	c.transition=new("TextListControl"):TextListControl(ui.anchor,{16,156,w-32,h-230},nil,{})
 	local function refresh()
 		routeLines=nil
 		local lines={"Keep each stage as its own saved plan. Choose the prior stage to review the respec.","Later stages that depend on this plan cannot be selected as its previous stage.","No prior stage selected."}
-		for _,p in ipairs(build.savers.AtlasPlans.plans) do if p.id==c.previous:GetSelValueByKey("val") then lines=require("Modules.PlanningPerformance").measure(build,"Atlas respec route",require("Modules.AtlasStrategy").transition,p,draft).lines;routeLines=lines end end
+		local selected=c.previous:GetSelValueByKey("val")
+		if unavailable and selected==unavailable then
+			lines={"Previous plan is unavailable or would make an invalid progression chain.","Saved plan ID: "..unavailable,"Choose another saved stage or No previous plan to resolve it. The original link stays in the draft until you choose."}
+		else
+			for _,p in ipairs(build.savers.AtlasPlans.plans) do if p.id==selected then lines=require("Modules.PlanningPerformance").measure(build,"Atlas respec route",require("Modules.AtlasStrategy").transition,p,draft).lines;routeLines=lines end end
+		end
 		c.transition.list=ui.rows(lines,w-56)
 	end
 	c.previous.selFunc=refresh
