@@ -25,3 +25,11 @@ Planning tools support Tab / Shift+Tab, Enter and visible keyboard focus. Escape
 `Modules.HeadlessUI` provides the reusable drawing/input adapter for additional control scenarios. It uses PoB's bundled bitmap-font metrics and glyph atlases. Bundled textures loaded during a scenario are rendered with their draw tint. Older untracked textures and non-ASCII glyphs are recorded as placeholders, so these frames validate control layout and text including the official Atlas sprite crops, rather than GPU rendering or operating-system dialogs. Clipboard operations remain inside the test process.
 
 Recovery performance can also be tested without a desktop: `CalcsTab:BuildOutput(true)` queues the same background work used after desktop edits; `Modules.RecoveryTasks.tick` advances it. The ordinary headless calculation path stays synchronous for deterministic build and AI tests.
+
+For a read-only passive-tree interaction benchmark, run from `src`:
+
+```sh
+luajit ../tools/benchmark_tree_ui.lua /path/to/build.xml 5
+```
+
+It loads the build into memory, focuses an adjacent ordinary passive, and sends mouse events to allocate and remove it. It checks that the build revision is restored. The reported CPU times include the headless drawing recorder and are not desktop frame times; compare like-for-like runs and validate responsiveness in the desktop separately. The optional cycle count is 1–20.
