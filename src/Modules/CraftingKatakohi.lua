@@ -21,6 +21,29 @@ function K.catalog(query,limit)
  for i=#rows,(limit or 50)+1,-1 do rows[i]=nil end
  return rows
 end
+-- Recognize only complete, unambiguous imports. Unknown enchantments must not
+-- be silently presented as an empty set in the hypothetical editor.
+function K.identify(item)
+ if item.type~="Gloves" then return nil end
+ local lines=item.enchantModLines or {};if #lines==0 then return {} end
+ local effects={}
+ for id,entry in pairs(K.data().mods) do
+  local parts=entry.text:split("\n");local text=parts[2]
+  if effects[text] then effects[text]=false else effects[text]=id end
+ end
+ local ids,seen,reduction={}, {},0
+ for _,entry in ipairs(lines) do
+  local line=entry.line or "";local count=line:match("^%-(%d+) to maximum [Ss]ockets$")
+  if count then reduction=reduction+tonumber(count)
+  else
+   local id=effects[line]
+   if not id or seen[id] then return nil end
+   seen[id]=true;ids[#ids+1]=id
+  end
+ end
+ if #ids==0 or #ids>3 or reduction~=#ids then return nil end
+ return ids
+end
 function K.extend(M)
  local catalog,decorate,validate=M.catalog,M.decorateItem,M.validateState
  function M.decorateItem(model,state,item)

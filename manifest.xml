@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview201" />
+	<Version number="2.67.2-ai.preview202" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1148,7 +1148,7 @@
 	<File name="Classes/CraftingHistoryControl.lua" part="program" sha1="e5d93860b1f0b56531e3c581c95713d4ce1c9ad0" />
 	<File name="Classes/CraftingInventoryControl.lua" part="program" sha1="1f308bb98c3492dd3625cee4ab412f52952ff5a8" />
 	<File name="Classes/CraftingItemComparisonControl.lua" part="program" sha1="e2a04459cde8751208135bfea6239dd98280bc81" />
-	<File name="Classes/CraftingItemEditorControl.lua" part="program" sha1="eb0efc3a8721955055c893640a7c5307882a99a3" />
+	<File name="Classes/CraftingItemEditorControl.lua" part="program" sha1="f7245e2b8717e54fb7edbabfe195824222544a62" />
 	<File name="Classes/CraftingItemStatsControl.lua" part="program" sha1="615c8d786f5900e23b58681d30fdec750f41ee81" />
 	<File name="Classes/CraftingModifierControl.lua" part="program" sha1="cb7143a0283c367bd9e92cc59803a7fd1d57a9a7" />
 	<File name="Classes/CraftingPricesControl.lua" part="program" sha1="99d7a4a770e74c0a8b966cab180452787bd55722" />
@@ -1504,7 +1504,7 @@
 	<File name="Modules/CraftingInspection.lua" part="program" sha1="888220e857fc88ceda80fb61a6bf2e1e205b1860" />
 	<File name="Modules/CraftingInventory.lua" part="program" sha1="d273ecaae81f4d7a81d65a91ad8e6619a13c0795" />
 	<File name="Modules/CraftingItemStats.lua" part="program" sha1="9311b1009123eed0600491248a5bccd0bff34343" />
-	<File name="Modules/CraftingKatakohi.lua" part="program" sha1="642cbf88a8d655a7effec0dda36a8441a0546e84" />
+	<File name="Modules/CraftingKatakohi.lua" part="program" sha1="edee2575b080be521c5daf9714c70d30e577b5ab" />
 	<File name="Modules/CraftingLeague.lua" part="program" sha1="947365404de9f6008b564714a88967a3a2f3de5d" />
 	<File name="Modules/CraftingLightRadius330.lua" part="program" sha1="7fa9ebd4efce1f060c946ef44af0e35cb6ad065c" />
 	<File name="Modules/CraftingMemory.lua" part="program" sha1="57763bb0f5960fa2954977b6b535160d73c0a14a" />
