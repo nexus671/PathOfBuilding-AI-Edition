@@ -62,6 +62,8 @@ async function main(){
   const gwennenCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:gwennenAction,seed:1},'crafted');
   assert.equal(gwennenCraft.nativeCrafting.warnings[0].code,'gwennen_estimate');assert.ok([1000,1022].includes(gwennenCraft.nativeCrafting.gwennen.outcome));
   const gwennenOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:gwennenAction,targets:[],options:{requirements:{minAffixes:1},trials:4}},'crafted');assert.equal(gwennenOdds.nativeCrafting.warnings[0].code,'gwennen_estimate');
+  const sideRemoval=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1006,secondOutcome:1007},seed:1},'crafted');
+  assert.equal(sideRemoval.nativeCrafting.state.affixes.length,binding.nativeCrafting.state.affixes.length-1);assert.ok([1006,1007].includes(sideRemoval.nativeCrafting.gwennen.outcome));
   const etchedRaw='Rarity: NORMAL\nIron Gauntlets\nItem Level: 86\nSockets: W-W-W\nImplicits: 2\n{enchant}-1 to maximum Sockets\n{enchant}20% increased Fire Damage';
   const etchedInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:etchedRaw,query:'socket_bench',limit:50},'inspected');
   const etchedOptions=etchedInspection.crafting.nativeEngine.socketCrafts.filter(entry=>entry.method==='socket_bench');

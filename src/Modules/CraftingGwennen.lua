@@ -1,6 +1,6 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1004]=true,[1005]=true,[1014]=true,[1015]=true,[1022]=true,[1029]=true}
+local supported={[1000]=true,[1001]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1014]=true,[1015]=true,[1022]=true,[1023]=true,[1025]=true,[1026]=true,[1029]=true}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
 function G.supports(id) return supported[id]==true end
@@ -31,6 +31,38 @@ function G.extend(M,api)
 		local function branch(id,draw)
 			if id==1000 then return copyTable(input) end
 			if id==1022 then local result=copyTable(input);result.destroyed=true;result.affixes={};result.imprint=nil;result.implicits=nil;result.corruptedImplicits=nil;return result end
+			if id==1001 then
+				assert(#input.affixes>0,"No modifier can be removed")
+				local result=copyTable(input);result.affixes={};result.rarity="NORMAL";return result
+			end
+			if id==1006 or id==1007 then
+				local result=copyTable(input);local side=id==1006 and "Suffix" or "Prefix";local choices={}
+				for index,entry in ipairs(result.affixes) do if model.byId[entry.id].type==side then choices[#choices+1]=index end end
+				assert(#choices>0,"No "..side:lower().." modifier can be removed")
+				table.remove(result.affixes,choices[math.floor(draw()*#choices)+1]);return result
+			end
+			if id==1008 or id==1009 then
+				local result=copyTable(input);local side=id==1008 and "Suffix" or "Prefix";local pool,total={},0
+				for _,entry in ipairs(M.pool(model,result)) do if model.byId[entry.id].type==side then pool[#pool+1]=entry;total=total+entry.weight end end
+				assert(total>0,"No "..side:lower().." modifier can be added")
+				local pick=draw()*total
+				for _,entry in ipairs(pool) do pick=pick-entry.weight;if pick<0 then result.affixes[#result.affixes+1]={id=entry.id,range=M.rollRange(model.byId[entry.id],draw)};return result end end
+				error("Could not select a modifier")
+			end
+			if id==1023 then
+				assert(#input.affixes>0,"No modifier can be retained")
+				local result=copyTable(input);result.affixes={copyTable(input.affixes[math.floor(draw()*#input.affixes)+1])};return result
+			end
+			if id==1025 then
+				local result=copyTable(input);local maximum=M.capacities(model,result).total
+				assert(#result.affixes<maximum,"No empty modifier slot")
+				while #result.affixes<maximum do api.add(model,result,draw) end;return result
+			end
+			if id==1026 then
+				assert(#input.affixes>=3,"This experimental outcome requires at least three modifiers")
+				local result=copyTable(input);local count=math.floor(draw()*3)+1
+				for _=1,count do table.remove(result.affixes,math.floor(draw()*#result.affixes)+1) end;return result
+			end
 			if id==1029 then
 				assert(model.item.base.armour or data.weaponTypeInfo[model.item.type],"This quality outcome requires a weapon or armour")
 				local result=copyTable(input);result.quality=20;return result
@@ -60,6 +92,6 @@ function G.extend(M,api)
 		else for key,amount in pairs(craft.artifactCost) do if amount>0 then result[currencies[key]]=amount end end end
 		return result
 	end
-	M.limits[#M.limits+1]="Experimental Gwennen pairs use only observed supported outcomes. A fair coin and reuse of ordinary crafting transitions are assumptions; offer generation, prices and special modifier interactions are not verified. Unknown artifact prices remain unpriced."
+	M.limits[#M.limits+1]="Experimental Gwennen pairs use only observed supported outcomes. A fair coin, uniform removal counts and reuse of ordinary crafting transitions are assumptions; offer generation, prices and special modifier interactions are not verified. Unknown artifact prices remain unpriced."
 end
 return G

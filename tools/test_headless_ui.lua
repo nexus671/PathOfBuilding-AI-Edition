@@ -421,8 +421,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(saved and #saved.steps==1 and saved.steps[1].action=="Gwennen observed pair: Add a random Modifier OR Destroy. Artifact price: 20 Grand Broken Circle Artifacts.","Observed pair was not saved in the guide")
 		assert(build:SaveDB("Gwennen test"):find("20 Grand Broken Circle Artifacts",1,true),"Observed pair was not serialized in the build")
 		assert(not saved.nativeRecipe,"Observed pair was incorrectly added to simulated actions")
-		ui:click("gwennen");ui:choose("first",1005,"val");ui:choose("second",1022,"val");ui:text("cost","20 Grand Broken Circle Artifacts");assert(main.popups[1].controls.simulate:IsEnabled());ui:click("simulate")
-		ui:click("tab_settings");ui:click("configure");assert(main.popups[1].controls.first:GetSelValueByKey("val")==1005 and main.popups[1].controls.second:GetSelValueByKey("val")==1022 and main.popups[1].controls.cost.buf=="20 Grand Broken Circle Artifacts","Gwennen configuration was not restored");ui:click("simulate")
+		ui:click("gwennen");ui:choose("first",1009,"val");ui:choose("second",1022,"val");ui:text("cost","20 Grand Broken Circle Artifacts");assert(main.popups[1].controls.simulate:IsEnabled());ui:click("simulate")
+		ui:click("tab_settings");ui:click("configure");assert(main.popups[1].controls.first:GetSelValueByKey("val")==1009 and main.popups[1].controls.second:GetSelValueByKey("val")==1022 and main.popups[1].controls.cost.buf=="20 Grand Broken Circle Artifacts","Gwennen configuration was not restored");ui:click("simulate")
 		ui:click("item");assert(main.popups[1].controls.intro.label:find("Gwennen modeled outcome",1,true),"Modeled outcome was not identified");frame("crafting-gwennen-modeled");ui:click("undo");ui:click("close")
 	end
 	do

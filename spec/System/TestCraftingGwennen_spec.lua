@@ -45,6 +45,37 @@ describe("Experimental Gwennen pair",function()
 		for i,entry in ipairs(values.affixes) do assert.equal(before.affixes[i].id,entry.id) end
 		assert.same(before,state)
 	end)
+	it("adds and removes only the selected affix side",function()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE";state.affixes={}
+		local groups={};for _,side in ipairs({"Prefix","Suffix"}) do
+			for _,candidate in ipairs(model.mods) do local mod=candidate.mod
+				if mod.type==side and not groups[mod.group] then state.affixes[#state.affixes+1]={id=candidate.id,range=0.5};groups[mod.group]=true;break end
+			end
+		end
+		assert.equal(2,#state.affixes);local before=copyTable(state)
+		for _,case in ipairs({{1006,"Suffix"},{1007,"Prefix"}}) do
+			local result=sim.action(model,state,{method="gwennen",firstOutcome=case[1],secondOutcome=1000},function() return 0.1 end)
+			assert.equal(1,#result.affixes);assert.are_not.equal(case[2],model.byId[result.affixes[1].id].type)
+		end
+		for _,case in ipairs({{1008,"Suffix"},{1009,"Prefix"}}) do
+			local result=sim.action(model,state,{method="gwennen",firstOutcome=case[1],secondOutcome=1000},function() return 0.1 end)
+			assert.equal(3,#result.affixes);assert.equal(case[2],model.byId[result.affixes[3].id].type)
+		end
+		assert.same(before,state)
+	end)
+	it("models explicit removal, retained modifiers and filled slots",function()
+		local model,state=item();local before=copyTable(state)
+		local cleared=sim.action(model,state,{method="gwennen",firstOutcome=1001,secondOutcome=1000},function() return 0.1 end)
+		assert.equal("NORMAL",cleared.rarity);assert.equal(0,#cleared.affixes)
+		local kept=sim.action(model,state,{method="gwennen",firstOutcome=1023,secondOutcome=1000},function() return 0.1 end)
+		assert.equal("RARE",kept.rarity);assert.equal(1,#kept.affixes);assert.equal(state.affixes[1].id,kept.affixes[1].id)
+		local filled=sim.action(model,state,{method="gwennen",firstOutcome=1025,secondOutcome=1000},function() return 0.1 end)
+		assert.equal(sim.capacities(model,state).total,#filled.affixes)
+		local pair={method="gwennen",firstOutcome=1026,secondOutcome=1026}
+		assert.equal(#state.affixes-1,#sim.action(model,state,pair,function() return 0.1 end).affixes)
+		assert.equal(#state.affixes-3,#sim.action(model,state,pair,function() return 0.9 end).affixes)
+		assert.same(before,state)
+	end)
 	it("rejects unsupported pairs and a pair with an unusable branch",function()
 		local model,state=item()
 		assert.has_error(function() sim.action(model,state,{method="gwennen",firstOutcome=1000,secondOutcome=1044},function() return 0.1 end) end)
