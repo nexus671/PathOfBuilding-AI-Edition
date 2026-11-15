@@ -25,7 +25,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Stacked currency tiering | Existing stack conditions are preserved and editable | Uniform/adjusted stacked-tier controls |
 | Economy-based tiers | Pinned NeverSink snapshot | Live pricing, outlier handling and recalculation |
 | Global search | Searches names and raw condition/action text | Cross-page command palette |
-| Loot generator | Deterministic example scenes, including cards and essences, and build-target samples | Representative drop distributions and encounter presets |
+| Loot generator | Deterministic example scenes, including maps, threads, flasks, tinctures, cards, essences and build targets | Representative drop distributions and more encounter presets |
 | Hidden-drop display | Simulator toggle and searchable scene review with shown, minimal, hidden and uncertain counts | Counts describe examples, not drop rates |
 | Click a simulated item | Explains results and opens matched blocks for editing | More unknown-property guidance |
 | Item configuration | Editable properties and native game-clipboard import | Hidden identities are never inferred |

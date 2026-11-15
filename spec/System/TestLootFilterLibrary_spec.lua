@@ -4,6 +4,29 @@ describe("Visual filter catalogue",function()
 	local library=require("Modules.LootFilterLibrary")
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("provides reproducible mapping and flask examples with their filter classes",function()
+		local profile=filters.profile("test","Test")
+		for _,case in ipairs({{kind="Maps & threads",base="Beach Map",class="Maps",other="Breach Thread",otherClass="Map Fragments"},
+			{kind="Flasks & tinctures",base="Sacred Life Flask",class="Life Flasks",other="Prismatic Tincture",otherClass="Tinctures"}}) do
+			local scene=library.scene(profile,build,case.kind,0,76,81);assert.equal(12,#scene)
+			assert.equal(case.base,scene[1].BaseType);assert.equal(case.class,scene[1].Class)
+			if case.kind=="Maps & threads" then
+				assert.is_nil(scene[1].MapTier)
+				assert.equal("unknown",parser.simulate(parser.parse('Hide\n MapTier >= 10\nShow'),scene[1]).status)
+			end
+			local found
+			for _,item in ipairs(scene) do
+				assert.equal(76,item.AreaLevel);assert.equal(81,item.ItemLevel)
+				if item.BaseType==case.other then found=item end
+			end
+			assert.equal(case.otherClass,assert(found).Class)
+			local rule=parser.parse('Show\n Class == "'..case.otherClass..'"\n BaseType == "'..case.other..'"\nHide')
+			assert.equal("Show",parser.simulate(rule,found).action)
+			assert.equal("Hide",parser.simulate(rule,scene[1]).action)
+			local rotated=library.scene(profile,build,case.kind,1,76,81)
+			assert.equal(scene[2].BaseType,rotated[1].BaseType);assert.same(rotated,library.scene(profile,build,case.kind,1,76,81))
+		end
+	end)
 	it("offers reproducible card and essence examples for testing filter rules",function()
 		local profile=filters.profile("test","Test")
 		for _,case in ipairs({{kind="Divination cards",class="Divination Cards",base="The Doctor",count=12},

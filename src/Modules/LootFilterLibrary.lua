@@ -170,6 +170,24 @@ local essenceExamples={
 	{"Essence of Insanity","Stackable Currency"},{"Essence of Hysteria","Stackable Currency"},
 	{"Essence of Trickery","Stackable Currency"},{"Remnant of Corruption","Stackable Currency"},
 }
+-- Released 3.30 client base names and filter classes. These are independent
+-- comparison examples, not a prediction of what an encounter will drop.
+local mapExamples={
+	{"Beach Map","Maps","Normal"},{"Strand Map","Maps","Magic"},
+	{"Mausoleum Map","Maps","Rare"},{"Crimson Temple Map","Maps","Rare"},
+	{"Toxic Sewer Map","Maps","Rare"},{"Frayed Thread","Stackable Currency"},
+	{"Breach Thread","Map Fragments"},{"Expedition Thread","Map Fragments"},
+	{"Abyss Thread","Map Fragments"},{"Ritual Thread","Map Fragments"},
+	{"Timeless Maraketh Emblem","Map Fragments"},{"Chaos Orb","Stackable Currency"},
+}
+local flaskExamples={
+	{"Sacred Life Flask","Life Flasks"},{"Divine Life Flask","Life Flasks"},
+	{"Divine Mana Flask","Mana Flasks"},{"Granite Flask","Utility Flasks"},
+	{"Quicksilver Flask","Utility Flasks"},{"Amethyst Flask","Utility Flasks"},
+	{"Silver Flask","Utility Flasks"},{"Bismuth Flask","Utility Flasks"},
+	{"Prismatic Tincture","Tinctures"},{"Oakbranch Tincture","Tinctures"},
+	{"Rosethorn Tincture","Tinctures"},{"Instilling Orb","Stackable Currency"},
+}
 function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 	local list={}
 	if kind=="Tiered gear" then
@@ -182,8 +200,11 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		return list
 	end
 	if kind=="Build targets" then for _,rule in ipairs(targetRules or filters.generate(build,profile)) do list[#list+1]=M.sample(rule) end end
-	local source=({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples})[kind] or examples
+	local source=({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
+		-- A map name alone does not establish its current Atlas tier. Let the
+		-- preview ask for that value rather than treating every map as tier zero.
+		if kind=="Maps & threads" and item.Class=="Maps" then item.MapTier=nil end
 		if kind~="Currency" or item.Class=="Stackable Currency" then list[#list+1]=item end
 	end
 	for _,item in ipairs(list) do item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86 end
