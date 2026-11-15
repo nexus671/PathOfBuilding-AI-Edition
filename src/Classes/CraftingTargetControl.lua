@@ -33,8 +33,8 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
 	edit("socketColours",212,406,conditions.socketColours,"Socket colours (e.g. RRBG)")
 	controls.linkedColours=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{408,422,180,24},{"Anywhere on item","In one linked group"})
 	controls.linkedColours:SelByValue(conditions.linkedColours and "In one linked group" or "Anywhere on item")
-	controls.corrupted=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,462,572,24},{"Any corruption state","Must be corrupted","Must be uncorrupted"})
-	controls.corrupted:SelByValue(conditions.corrupted == true and "Must be corrupted" or conditions.corrupted == false and "Must be uncorrupted" or "Any corruption state")
+	controls.corrupted=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,462,572,24},{"Any corruption state","Must be corrupted","Must be uncorrupted","Must be twice corrupted","Must be corrupted once","Must not be twice corrupted"})
+	controls.corrupted:SelByValue(conditions.twiceCorrupted==true and "Must be twice corrupted" or conditions.corrupted==false and "Must be uncorrupted" or conditions.twiceCorrupted==false and (conditions.corrupted==true and "Must be corrupted once" or "Must not be twice corrupted") or conditions.corrupted==true and "Must be corrupted" or "Any corruption state")
 	local enchantments={{label="Any Harvest enchantment",val=false}}
 	for id,craft in pairs(require("Modules.CraftingEnchants").data().crafts) do enchantments[#enchantments+1]={label=(id:find("Body",1,true) and "Body: " or "Weapon: ")..craft.lines[#craft.lines],val=id} end
 	table.sort(enchantments,function(a,b) if not a.val then return not not b.val elseif not b.val then return false else return a.label<b.label end end)
@@ -48,7 +48,9 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
 			for _,key in ipairs({"fractured","crafted"}) do local value=controls[key]:GetSelValue();group[key]=nil;if not value:match("^Any ") then group[key]=not value:match("^Not ") end end
 		end
 		local result={nativeStats=conditions.nativeStats and copyTable(conditions.nativeStats)};for _,entry in ipairs(properties) do local value=controls[entry[1]].buf;if value ~= "" then result[entry[1]]=assert(tonumber(value),"Enter a number for "..entry[2]:lower()) end end
-		local corruption=controls.corrupted:GetSelValue();if corruption ~= "Any corruption state" then result.corrupted=corruption == "Must be corrupted" end
+		local corruption=controls.corrupted:GetSelValue()
+		if corruption=="Must be corrupted" or corruption=="Must be corrupted once" then result.corrupted=true elseif corruption=="Must be uncorrupted" then result.corrupted=false end
+		if corruption=="Must be twice corrupted" then result.twiceCorrupted=true elseif corruption=="Must be corrupted once" or corruption=="Must not be twice corrupted" then result.twiceCorrupted=false end
 		result.harvestEnchant=controls.harvestEnchant:GetSelValueByKey("val") or nil
 		if controls.socketColours.buf~="" then result.socketColours=controls.socketColours.buf:upper();result.linkedColours=controls.linkedColours:GetSelValue()=="In one linked group" end
 		local required=controls.groups.buf ~= "" and assert(tonumber(controls.groups.buf),"Invalid required group count") or nil

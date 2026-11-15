@@ -114,6 +114,7 @@ function Panel.Open(build,project,layout)
 		for key,value in pairsSortByKey(requirements or {}) do
 			if key=="nativeStats" then
 				for _,field in ipairs(require("Modules.CraftingItemStats").fields) do if value[field[1]] then lines[#lines+1]="Minimum "..field[2]..": "..value[field[1]] end end
+			elseif key=="twiceCorrupted" then lines[#lines+1]=value and "Must be twice corrupted" or "Must not be twice corrupted"
 			else lines[#lines+1]=key:gsub("(%l)(%u)","%1 %2")..": "..tostring(value) end
 		end
 		controls.targetSummary.list=rows(lines)

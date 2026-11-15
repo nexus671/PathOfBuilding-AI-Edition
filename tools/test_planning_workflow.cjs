@@ -58,6 +58,14 @@ async function main(){
   assert.equal(gwennenReference.crafting.nativeEngine.gwennenReference.offers[0].id,1022);assert.match(gwennenReference.crafting.nativeEngine.gwennenReference.note,/not available crafting actions/);
   assert.equal(inspected.crafting.nativeEngine.methodWarnings.binding[0].code,'binding_legacy');
   const binding=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,action:{method:'binding'},seed:1},'crafted');assert.equal(binding.nativeCrafting.warnings[0].code,'binding_legacy');assert.equal(binding.nativeCrafting.state.rarity,'RARE');
+  const abyssRaw='Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86';
+  const abyssFirst=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:abyssRaw,action:{method:'vaal'},seed:1},'crafted');
+  assert.equal(abyssFirst.nativeCrafting.state.corrupted,true);assert.equal(abyssFirst.nativeCrafting.warnings[0].code,'abyss_vaal_assumptions');
+  const twiceRecipe={initialState:abyssFirst.nativeCrafting.state,steps:[{method:'locus'}],targets:[],requirements:{twiceCorrupted:true}};
+  const twicePlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:abyssRaw,recipe:twiceRecipe,options:{trials:8,maxActions:1,seed:2}},'crafted');
+  assert.equal(twicePlan.nativeCrafting.warnings[0].code,'locus_assumptions');assert.match(twicePlan.nativeCrafting.warnings[0].message,/Jewel Locus/);
+  const twiceOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:abyssRaw,initialState:abyssFirst.nativeCrafting.state,action:{method:'locus'},targets:[],options:{requirements:{twiceCorrupted:true},trials:8}},'crafted');
+  assert.equal(twiceOdds.nativeCrafting.sampled,true);assert.equal(twiceOdds.nativeCrafting.warnings[0].code,'locus_assumptions');
   const gwennenAction={method:'gwennen',firstOutcome:1000,secondOutcome:1022,artifactCost:{grand:20}};
   const gwennenCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:gwennenAction,seed:1},'crafted');
   assert.equal(gwennenCraft.nativeCrafting.warnings[0].code,'gwennen_estimate');assert.ok([1000,1022].includes(gwennenCraft.nativeCrafting.gwennen.outcome));

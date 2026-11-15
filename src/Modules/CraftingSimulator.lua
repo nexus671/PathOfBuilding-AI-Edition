@@ -524,6 +524,7 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   if requirements.minMemoryStrands and (state.memoryStrands or 0) < requirements.minMemoryStrands then return false end
   if requirements.maxMemoryStrands and (state.memoryStrands or 0) > requirements.maxMemoryStrands then return false end
   if requirements.corrupted ~= nil and (state.corrupted or false) ~= requirements.corrupted then return false end
+  if requirements.twiceCorrupted ~= nil and (state.twiceCorrupted or false) ~= requirements.twiceCorrupted then return false end
   if requirements.harvestEnchant and state.harvestEnchant~=requirements.harvestEnchant then return false end
   if requirements.nativeStats and not require("Modules.CraftingItemStats").matches(M,model,state,requirements.nativeStats) then return false end
   if requirements.sockets and #(state.sockets or model.item.sockets or {}) < requirements.sockets then return false end
@@ -559,11 +560,12 @@ function M.validateRecipe(recipe)
 		for key,value in pairs(requirements) do
 			if key == "nativeStats" then require("Modules.CraftingItemStats").validate(value)
 			elseif key == "harvestEnchant" then assert(type(value)=="string" and require("Modules.CraftingEnchants").data().crafts[value],"Choose a known Harvest enchantment")
-			elseif key == "corrupted" or key == "linkedColours" then assert(type(value) == "boolean","Invalid boolean property condition")
+			elseif key == "corrupted" or key == "twiceCorrupted" or key == "linkedColours" then assert(type(value) == "boolean","Invalid boolean property condition")
 			elseif key == "socketColours" then assert(type(value)=="string" and #value>=1 and #value<=6 and not value:find("[^RGBW]"),"Use one to six socket colours: R, G, B or W")
 			else integer(value,0,assert(limits[key],"Unknown property condition"),key) end
 		end
 		assert(not requirements.linkedColours or requirements.socketColours,"Linked colours require a socket colour target")
+		assert(not (requirements.corrupted==false and requirements.twiceCorrupted==true),"A twice corrupted item cannot be uncorrupted")
 		for _,pair in ipairs({{"minAffixes","maxAffixes"},{"minMemoryStrands","maxMemoryStrands"},{"minFractured","maxFractured"},{"minIntangibility","maxIntangibility"}}) do
 			assert(not requirements[pair[1]] or not requirements[pair[2]] or requirements[pair[1]] <= requirements[pair[2]],"Minimum property condition exceeds maximum")
 		end

@@ -120,6 +120,32 @@ describe("Corrupted jewel implicit import",function()
   local model=sim.model(raw("Searching Eye Jewel"));local destroyed=sim.action(model,model.initial,{method="locus"},function() return 0.9 end)
   assert.is_true(destroyed.destroyed);local validated=sim.validateState(model,destroyed);assert.is_nil(validated.corruptedImplicits)
  end)
+ it("matches, edits and saves once- and twice-corrupted item goals",function()
+  newBuild();local source="Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86";local model=sim.model(source)
+  local normal=copyTable(model.initial);local once=copyTable(normal);once.corrupted=true
+  local twice=copyTable(once);twice.twiceCorrupted=true
+  local function matches(state,requirements) return sim.matches(state,{},nil,model,requirements) end
+  assert.is_false(matches(normal,{twiceCorrupted=true}));assert.is_false(matches(once,{twiceCorrupted=true}));assert.is_true(matches(twice,{twiceCorrupted=true}))
+  assert.is_true(matches(normal,{twiceCorrupted=false}));assert.is_true(matches(once,{corrupted=true,twiceCorrupted=false}));assert.is_false(matches(twice,{twiceCorrupted=false}))
+  assert.has_error(function() sim.validateRecipe({steps={{method="vaal"}},targets={},requirements={corrupted=false,twiceCorrupted=true}}) end)
+  local trial=sim.simulate(source,{initialState=once,steps={{method="locus"}},targets={},requirements={twiceCorrupted=true}},{trials=20,maxActions=1,retainSuccesses=20,seed=5})
+  assert.is_true(trial.successes>0);assert.is_true(trial.successes<20);assert.equal(trial.successes,#trial.retainedSuccesses)
+  for _,success in ipairs(trial.retainedSuccesses) do assert.is_true(success.state.twiceCorrupted) end
+  local saved;main.popups={};local editor=require("Classes.CraftingTargetControl").Open({},nil,nil,function(_,value) saved=value end)
+  editor.corrupted:SelByValue("Must be twice corrupted");editor.keep:Click();assert.same({twiceCorrupted=true},saved)
+  editor=require("Classes.CraftingTargetControl").Open({},saved,nil,function(_,value) saved=value end);assert.equal("Must be twice corrupted",editor.corrupted:GetSelValue())
+  editor.corrupted:SelByValue("Must be corrupted once");editor.keep:Click();assert.same({corrupted=true,twiceCorrupted=false},saved)
+  editor=require("Classes.CraftingTargetControl").Open({},saved,nil,function(_,value) saved=value end);assert.equal("Must be corrupted once",editor.corrupted:GetSelValue())
+  editor.corrupted:SelByValue("Must not be twice corrupted");editor.keep:Click();assert.same({twiceCorrupted=false},saved)
+  editor=require("Classes.CraftingTargetControl").Open({},saved,nil,function(_,value) saved=value end);assert.equal("Must not be twice corrupted",editor.corrupted:GetSelValue());editor.close:Click()
+  local slot;local item=require("Modules.CraftingProjects").item(source)
+  for name in pairs(build.itemsTab.slots) do if name:match("^Jewel %d+$") and build.itemsTab:IsItemValidForSlot(item,name) then slot=name;break end end
+  assert.is_truthy(slot);local project={id="twice-goal",title="Corruption goal",slot=slot,startingItem=source,goals={},steps={},nativeRecipe={steps={{method="locus"}},targets={},requirements={twiceCorrupted=true}}}
+  build.savers.CraftingProjects:Upsert(project);local xml=build:SaveDB("Corruption goal");loadBuildFromXML(xml,"Corruption goal")
+  assert.is_true(build.savers.CraftingProjects.projects[1].nativeRecipe.requirements.twiceCorrupted)
+  project.nativeRecipe.requirements={corrupted=true,twiceCorrupted=false};build.savers.CraftingProjects:Upsert(project)
+  xml=build:SaveDB("Once goal");loadBuildFromXML(xml,"Once goal");assert.same({corrupted=true,twiceCorrupted=false},build.savers.CraftingProjects.projects[1].nativeRecipe.requirements)
+ end)
  it("retains uniquely identifiable legacy implicits without generating them",function()
   local text="Rarity: MAGIC\nCobalt Jewel\nItem Level: 86\nImplicits: 1\n4% reduced Chill Duration on you\nCorrupted"
   local legacy="ReducedChillDurationJewelCorrupted";local model=sim.model(text);assert.is_nil(model.unresolvedCorruption)

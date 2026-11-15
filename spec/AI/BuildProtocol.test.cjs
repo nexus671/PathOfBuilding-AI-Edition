@@ -374,6 +374,11 @@ test('preserves typed twice-corruption flags in crafting requests', t => {
   assert.deepEqual(queued.initialState,args.initialState);
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   assert.throws(()=>f.call('apply_crafting_action',{...args,initialState:{...args.initialState,twiceCorrupted:'true'}}),/arguments/);
+  const recipe={steps:[{method:'locus',untilRequirements:{twiceCorrupted:true}}],targets:[],requirements:{twiceCorrupted:true}};
+  f.call('simulate_crafting',{baseRevision:f.state.revision,itemText:args.itemText,recipe});
+  const plan=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.deepEqual(plan.recipe,recipe);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  assert.throws(()=>f.call('simulate_crafting',{baseRevision:f.state.revision,itemText:args.itemText,recipe:{...recipe,requirements:{twiceCorrupted:'true'}}}),/arguments/);
 });
 
 test('queues property-only recipes, exact odds and bounded fossil optimization', t => {
