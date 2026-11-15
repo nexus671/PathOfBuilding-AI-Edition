@@ -76,7 +76,7 @@ function M.Open(title,entries,options)
 		controls.favorite.enabled=function() return selected~=nil end
 	end
 	button("close",width-132,height-48,116,"Close",function() main:ClosePopup() end)
-	controls.search.enterFunc=choose
+	if options.enterChooses~=false then controls.search.enterFunc=choose end
 	local original=controls.search.OnKeyDown
 	function controls.search:OnKeyDown(key,...)
 		if key=="DOWN" or key=="UP" then
