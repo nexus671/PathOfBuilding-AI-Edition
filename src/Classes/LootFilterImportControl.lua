@@ -5,12 +5,20 @@ local M={}
 function M.Open(profile,keep)
 	local draft=copyTable(profile);draft.importFiles=draft.importFiles or {};local c={};local selected=0;local suggested
 	local w,h=math.min(860,main.screenW-40),math.min(640,main.screenH-60)
-	ui.description(c,"help",16,28,w-32,48,{"Find unresolved imports, then paste each file's contents. Edits are kept when switching files or choosing Keep files."},14)
+	ui.description(c,"help",16,28,w-32,48,{"Find unresolved imports, then paste contents or load a local file. The saved copy travels with this build."},14)
 	c.files=new("DropDownControl"):DropDownControl(ui.anchor,{16,82,w-32,26},{})
 	ui.label(c,"nameLabel",16,120,"Import filename",14)
 	c.name=new("EditControl"):EditControl(ui.anchor,{16,142,w-32,26},"",nil,nil,240)
 	ui.label(c,"textLabel",16,180,"Filter file contents",14)
-	c.text=new("EditControl"):EditControl(ui.anchor,{16,202,w-32,h-322},"",nil,"^%C\t\n",filters.limit,nil,14,true)
+	c.text=new("EditControl"):EditControl(ui.anchor,{16,202,w-32,h-370},"",nil,"^%C\t\n",filters.limit,nil,14,true)
+	ui.label(c,"pathLabel",16,h-160,"Local file path",14)
+	c.path=new("EditControl"):EditControl(ui.anchor,{16,h-140,w-176,26},"",nil,nil,1024)
+	c.loadFile=new("ButtonControl"):ButtonControl(ui.anchor,{w-148,h-140,132,26},"Load file",function()
+		local ok,contents=pcall(require("Modules.LootFilterImports").readFile,c.path.buf,filters.limit)
+		if not ok then main:OpenMessagePopup("Included filter",ui.errorText(contents));return end
+		if c.name.buf=="" then c.name:SetText(c.path.buf:match("([^/\\]+)$") or "") end
+		c.text:SetText(contents)
+	end)
 	local function refresh(index)
 		selected=index or 0;suggested=nil;local list={{label="Add a file",val=0}}
 		for i,file in ipairs(draft.importFiles) do list[#list+1]={label=file.name,val=i} end

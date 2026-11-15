@@ -1,6 +1,19 @@
 -- Expand only explicitly supplied filter texts; never read arbitrary paths.
 local parser=require("Modules.LootFilterParser")
 local M={}
+-- Only called after the user explicitly enters a path and chooses Load file.
+function M.readFile(path,limit)
+	assert(type(path)=="string" and path~="","Enter a local file path")
+	local handle,why=io.open(path,"rb")
+	assert(handle,"Could not open file: "..tostring(why))
+	local contents,err=handle:read((limit or 2*1024*1024)+1)
+	handle:close()
+	assert(contents or not err,"Could not read file: "..tostring(err))
+	contents=contents or ""
+	assert(#contents<=(limit or 2*1024*1024),"Filter file exceeds 2 MiB")
+	assert(not contents:find("\0",1,true),"Filter file contains binary data")
+	return contents
+end
 function M.expand(raw,files,limit)
 	local sources={};for _,file in ipairs(files or {}) do sources[file.name]=file.text end
 	local size=0;local stack={};local output={};limit=limit or 2*1024*1024

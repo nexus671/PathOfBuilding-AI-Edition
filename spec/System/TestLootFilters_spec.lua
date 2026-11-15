@@ -238,6 +238,18 @@ describe("Build-owned loot filters",function()
 		assert.equal(2,#saved);assert.equal("inner.filter",saved[2].name)
 		profile.importFiles=saved;assert.equal("matched",filters.simulate(profile,{BaseType="Iron Hat"}).status)
 	end)
+	it("loads an explicitly selected local import and keeps a portable copy",function()
+		local path=os.tmpname();local file=assert(io.open(path,"wb"));file:write('Show\n BaseType "Iron Hat"');file:close()
+		local profile=filters.profile("local-import","Local import");profile.template='Import "nested.filter"\nHide';local saved
+		require("Classes.LootFilterImportControl").Open(profile,function(files) saved=files end);local c=main.popups[1].controls
+		c.name:SetText("nested.filter");c.path:SetText(path);c.loadFile:Click();os.remove(path);c.keep:Click()
+		assert.equal("nested.filter",saved[1].name);profile.importFiles=saved
+		assert.equal("Show",filters.simulate(profile,{BaseType="Iron Hat"}).action)
+		local read=require("Modules.LootFilterImports").readFile
+		assert.has_error(function() read(path,10) end)
+		path=os.tmpname();file=assert(io.open(path,"wb"));file:write("12345");file:close()
+		assert.has_error(function() read(path,4) end);os.remove(path)
+	end)
 	it("retains attachment edits across selection and rejected saves",function()
 		local profile=filters.profile("included","Included");profile.importFiles={{name="one.filter",text="Show"},{name="two.filter",text="Hide"}};local saved
 		require("Classes.LootFilterImportControl").Open(profile,function(files) saved=files end);local c=main.popups[1].controls
