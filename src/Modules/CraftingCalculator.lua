@@ -5,6 +5,21 @@ function C.extend(M)
 	local finite={recombine_predictable=true,augmentation=true,regal=true,exalt=true,influence_exalt=true,beast_talisman_fracture=true,ducat_kishara=true,ducat_tzamoto=true}
 	function M.calculate(raw,craft,targets,initialState,options)
 		options=options or {}
+		local gwennen=require("Modules.CraftingGwennen")
+		if craft.method=="gwennen" and gwennen.deterministic(craft.firstOutcome) and gwennen.deterministic(craft.secondOutcome) then
+			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
+			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
+			model=M.context(model,state);local outcomes,hits={},0
+			for index,id in ipairs({craft.firstOutcome,craft.secondOutcome}) do
+				local result=M.action(model,state,craft,function() return index==1 and 0.25 or 0.75 end)
+				local hit=M.matches(result,targets,nil,model,options.requirements,options.requiredGroups)
+				if hit then hits=hits+1 end
+				outcomes[#outcomes+1]={id=tostring(id),text=gwennen.deterministic(id),chance=50,weight=1,matches=hit,state=result}
+			end
+			local sample=outcomes[1].state
+			return {exactFor="Two deterministic Gwennen outcomes under the assumed fair coin",showAllOutcomes=true,sampled=false,successChance=50*hits,totalWeight=2,matchingWeight=hits,
+				outcomes=outcomes,sampleState=sample,sampleItem=not sample.destroyed and M.toItem(model,sample).raw or nil,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+		end
 		local method=M.baseCurrency(craft)
 		if method=="jeweller" and not craft.allflame then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})

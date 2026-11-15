@@ -33,7 +33,7 @@ function M.Open(keep,simulate,initial)
 			controls.cost:SetText(#parts>0 and table.concat(parts," + ") or "0 Lesser Broken Circle Artifacts")
 		end
 	end
-	ui.description(controls,"limits",16,322,width-32,50,{"Fifteen outcomes have an experimental model. Coin odds and crafting interactions are assumptions. Verify the pair and price in game."},14)
+	ui.description(controls,"limits",16,322,width-32,50,{"Eighteen outcomes have an experimental model. Coin odds and crafting interactions are assumptions. Verify the pair and price in game."},14)
 	controls.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,height-48,220,28},"Add pair to guide",function()
 		local first=assert(byId[controls.first:GetSelValueByKey("val")],"Select the first observed outcome")
 		local second=assert(byId[controls.second:GetSelValueByKey("val")],"Select the second observed outcome")
@@ -53,7 +53,7 @@ function M.Open(keep,simulate,initial)
 			local supported=require("Modules.CraftingGwennen").supports
 			return supported(controls.first:GetSelValueByKey("val")) and supported(controls.second:GetSelValueByKey("val"))
 		end
-		controls.simulate.tooltipText="Available for fifteen experimental outcomes. Unknown or unrecognized artifact prices remain unpriced."
+		controls.simulate.tooltipText="Available for eighteen experimental outcomes. Unknown or unrecognized artifact prices remain unpriced."
 	end
 	controls.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{width-132,height-48,116,28},"Cancel",function() main:ClosePopup() end))
 	ui.style(controls,{keep=true});for _,control in pairs(controls) do control.layoutAudit="gwennen-pair" end

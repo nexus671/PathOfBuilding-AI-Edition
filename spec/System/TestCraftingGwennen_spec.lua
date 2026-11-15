@@ -76,6 +76,40 @@ describe("Experimental Gwennen pair",function()
 		assert.equal(#state.affixes-3,#sim.action(model,state,pair,function() return 0.9 end).affixes)
 		assert.same(before,state)
 	end)
+	it("removes a lowest-level modifier and protects maximum rolls",function()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE";state.affixes={}
+		local groups,counts={}, {Prefix=0,Suffix=0}
+		for _,candidate in ipairs(model.mods) do
+			local mod=candidate.mod;local text=table.concat(mod," / ")
+			if #state.affixes<3 and counts[mod.type] and counts[mod.type]<2 and not groups[mod.group] and text:match("%(%-?%d+%-%-?%d+%)") then
+				state.affixes[#state.affixes+1]={id=candidate.id,range=#state.affixes==0 and 0.2 or 1};groups[mod.group]=true;counts[mod.type]=counts[mod.type]+1
+			end
+		end
+		assert.equal(3,#state.affixes);local before=copyTable(state)
+		local removed=sim.action(model,state,{method="gwennen",firstOutcome=1041,secondOutcome=1000},function() return 0.1 end)
+		local lowest=math.huge;for _,entry in ipairs(state.affixes) do lowest=math.min(lowest,model.byId[entry.id].level) end
+		local remaining={};for _,entry in ipairs(removed.affixes) do remaining[entry.id]=true end
+		local found;for _,entry in ipairs(state.affixes) do if not remaining[entry.id] then found=entry end end
+		assert.equal(lowest,model.byId[found.id].level)
+		for _,id in ipairs({1024,1042}) do
+			local result=sim.action(model,state,{method="gwennen",firstOutcome=id,secondOutcome=1000},function() return 0.1 end)
+			assert.same(before.affixes[2],result.affixes[2]);assert.same(before.affixes[3],result.affixes[3])
+			assert.are_not.same(before.affixes[1].range,result.affixes[1].range)
+		end
+		local maximum=copyTable(state);for _,entry in ipairs(maximum.affixes) do entry.range=1 end
+		assert.has_error(function() sim.action(model,maximum,{method="gwennen",firstOutcome=1024,secondOutcome=1000},function() return 0.1 end) end)
+		assert.same(before,state)
+	end)
+	it("enumerates deterministic pairs under the assumed fair coin",function()
+		local _,state=item();local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022}
+		local result=sim.calculate(raw,pair,{},state,{requirements={minAffixes=1}})
+		assert.is_false(result.sampled);assert.equal(50,result.successChance);assert.equal(2,#result.outcomes)
+		assert.equal(50,result.outcomes[1].chance);assert.is_true(result.outcomes[2].state.destroyed)
+		assert.equal("gwennen_estimate",result.warnings[1].code)
+		pair.firstOutcome=1022;pair.secondOutcome=1022
+		local destroyed=sim.calculate(raw,pair,{},state,{requirements={minAffixes=1}})
+		assert.equal(0,destroyed.successChance);assert.is_nil(destroyed.sampleItem)
+	end)
 	it("rejects unsupported pairs and a pair with an unusable branch",function()
 		local model,state=item()
 		assert.has_error(function() sim.action(model,state,{method="gwennen",firstOutcome=1000,secondOutcome=1044},function() return 0.1 end) end)

@@ -1,9 +1,11 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1014]=true,[1015]=true,[1022]=true,[1023]=true,[1025]=true,[1026]=true,[1029]=true}
+local supported={[1000]=true,[1001]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1014]=true,[1015]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1029]=true,[1041]=true,[1042]=true}
+local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
 function G.supports(id) return supported[id]==true end
+function G.deterministic(id) return deterministic[id] end
 function G.validate(craft)
 	assert(supported[craft.firstOutcome] and supported[craft.secondOutcome],"Choose two supported, observed Gwennen outcomes")
 	assert(not craft.allflame,"Allflame cannot be used with Gwennen")
@@ -53,6 +55,31 @@ function G.extend(M,api)
 				assert(#input.affixes>0,"No modifier can be retained")
 				local result=copyTable(input);result.affixes={copyTable(input.affixes[math.floor(draw()*#input.affixes)+1])};return result
 			end
+			if id==1041 then
+				local lowest,choices=nil,{}
+				for index,entry in ipairs(input.affixes) do
+					local level=assert(model.byId[entry.id].level,"Modifier level is unavailable")
+					if not lowest or level<lowest then lowest=level;choices={} end
+					if level==lowest then choices[#choices+1]=index end
+				end
+				assert(#choices>0,"No modifier can be removed")
+				local result=copyTable(input);table.remove(result.affixes,choices[math.floor(draw()*#choices)+1]);return result
+			end
+			if id==1024 or id==1042 then
+				local result=copyTable(input);local choices={}
+				for index,entry in ipairs(result.affixes) do
+					local mod=model.byId[entry.id];local ranges=type(entry.range)=="table" and entry.range or {entry.range or 0.5};local rangeIndex=0;local below=false
+					for _,line in ipairs(mod) do for low,high in line:gmatch("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)") do
+						rangeIndex=rangeIndex+1
+						if tonumber(low)~=tonumber(high) and (ranges[rangeIndex] or ranges[1] or 0.5)<1 then below=true end
+					end end
+					if below then choices[#choices+1]=index end
+				end
+				assert(#choices>0,"No supported modifier has a value below its maximum")
+				if id==1042 then choices={choices[math.floor(draw()*#choices)+1]} end
+				for _,index in ipairs(choices) do local entry=result.affixes[index];entry.legacyLightRadius=nil;entry.range=M.rollRange(model.byId[entry.id],draw) end
+				return result
+			end
 			if id==1025 then
 				local result=copyTable(input);local maximum=M.capacities(model,result).total
 				assert(#result.affixes<maximum,"No empty modifier slot")
@@ -92,6 +119,6 @@ function G.extend(M,api)
 		else for key,amount in pairs(craft.artifactCost) do if amount>0 then result[currencies[key]]=amount end end end
 		return result
 	end
-	M.limits[#M.limits+1]="Experimental Gwennen pairs use only observed supported outcomes. A fair coin, uniform removal counts and reuse of ordinary crafting transitions are assumptions; offer generation, prices and special modifier interactions are not verified. Unknown artifact prices remain unpriced."
+	M.limits[#M.limits+1]="Experimental Gwennen pairs use only observed supported outcomes. A fair coin, uniform selection and removal counts, normalized maximum-roll checks and ordinary crafting transitions are assumptions; offer generation, prices and special modifier interactions are not verified. Unknown artifact prices remain unpriced."
 end
 return G

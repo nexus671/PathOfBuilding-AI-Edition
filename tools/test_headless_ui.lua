@@ -421,9 +421,22 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(saved and #saved.steps==1 and saved.steps[1].action=="Gwennen observed pair: Add a random Modifier OR Destroy. Artifact price: 20 Grand Broken Circle Artifacts.","Observed pair was not saved in the guide")
 		assert(build:SaveDB("Gwennen test"):find("20 Grand Broken Circle Artifacts",1,true),"Observed pair was not serialized in the build")
 		assert(not saved.nativeRecipe,"Observed pair was incorrectly added to simulated actions")
-		ui:click("gwennen");ui:choose("first",1009,"val");ui:choose("second",1022,"val");ui:text("cost","20 Grand Broken Circle Artifacts");assert(main.popups[1].controls.simulate:IsEnabled());ui:click("simulate")
+		ui:click("gwennen");ui:choose("first",1041,"val");ui:choose("second",1022,"val");assert(main.popups[1].controls.simulate:IsEnabled(),"Lowest-level removal is not available");ui:choose("first",1009,"val");ui:text("cost","20 Grand Broken Circle Artifacts");assert(main.popups[1].controls.simulate:IsEnabled());ui:click("simulate")
 		ui:click("tab_settings");ui:click("configure");assert(main.popups[1].controls.first:GetSelValueByKey("val")==1009 and main.popups[1].controls.second:GetSelValueByKey("val")==1022 and main.popups[1].controls.cost.buf=="20 Grand Broken Circle Artifacts","Gwennen configuration was not restored");ui:click("simulate")
 		ui:click("item");assert(main.popups[1].controls.intro.label:find("Gwennen modeled outcome",1,true),"Modeled outcome was not identified");frame("crafting-gwennen-modeled");ui:click("undo");ui:click("close")
+	end
+	do
+		local raw="Rarity: RARE\nExample\nIron Hat\nItem Level: 86"
+		local recipe={steps={{method="gwennen",firstOutcome=1029,secondOutcome=1022}},targets={},requirements={minQuality=20}}
+		require("Classes.CraftingSimulatorControl").Open(build,{id="gwennen-exact-ui",title="Gwennen odds",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe=recipe})
+		ui:click("tab_settings");ui:click("gwennen");ui:choose("first",1029,"val");ui:choose("second",1022,"val");ui:click("simulate");ui:click("tab_settings");ui:click("exact")
+		local jobs=require("Modules.CraftingTasks");for i=1,1000 do if not jobs.job then break end;jobs.tick(build) end
+		local odds=build.craftingAnalyses["gwennen-exact-ui"].results.odds.result
+		assert(not jobs.job and not odds.sampled and odds.successChance==50,"Gwennen deterministic branches were not enumerated")
+		local lines={};for _,row in ipairs(main.popups[1].controls.resultSummary.list) do lines[#lines+1]=StripEscapes(row[1]) end
+		local summary=table.concat(lines," ");assert(summary:find("Destroy",1,true) and summary:find("Set quality to 20%",1,true),"Both Gwennen outcomes were not shown")
+		assert(summary:find("Destroy",1,true)<summary:find("Model note",1,true) and summary:find("assumed fair coin",1,true)<summary:find("Destroy",1,true),"The branch breakdown should follow the visible coin assumption")
+		ui:click("tab_simulate");frame("crafting-gwennen-exact");ui:click("close")
 	end
 	do
 		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 1";local model=sim.model(raw)
