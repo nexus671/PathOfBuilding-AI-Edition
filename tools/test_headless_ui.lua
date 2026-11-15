@@ -702,7 +702,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		local function finish() local jobs=require("Modules.CraftingTasks");for i=1,1000 do if not jobs.job then return end;jobs.tick(build) end;error("Action price job did not complete") end
 		local function summary(key) local lines={};for _,row in ipairs(main.popups[1].controls[key].list) do lines[#lines+1]=row[1] end;return table.concat(lines," ") end
 		finish();assert(summary("resultSummary"):find("Mean spent: 1.00 chaos",1,true));assert(summary("resultSummary"):find("override was not used",1,true));frame("crafting-action-override-unused")
-		ui:text("price","99");ui:text("budget","5");ui:click("distribution");frame("crafting-saved-recipe-results");ui:click("moreTrials");finish()
+		ui:text("price","99");ui:text("budget","5");ui:click("distribution");frame("crafting-saved-recipe-results")
+		local equipped=build.itemsTab.slots["Body Armour"].selItemId
+		ui:click("keepTarget");local keptProject;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==p.id then keptProject=entry end end
+		assert(summary("precision"):find("Save the build",1,true),"Keeping a target should explain how to persist it")
+		assert(keptProject and keptProject.targetItem and keptProject.targetItem:find("Plate Vest",1,true),"Retained result was not kept in the crafting guide")
+		assert(keptProject.nativeRecipe and keptProject.priceBook and build.itemsTab.slots["Body Armour"].selItemId==equipped,"Keeping the target changed the recipe, prices or equipped item")
+		local saved={};build.savers.CraftingProjects:Save(saved);local reopened=require("Modules.CraftingProjects").new(build);reopened:Load(saved)
+		local found;for _,entry in ipairs(reopened.projects) do if entry.id==p.id then found=entry end end;assert(found and found.targetItem==keptProject.targetItem,"Kept target did not survive serialization")
+		frame("crafting-result-target-kept");ui:click("moreTrials");finish()
 		assert(summary("resultSummary"):find("Mean spent: 1.00 chaos",1,true));assert(summary("resultSummary"):find("Saved recipe",1,true));assert(main.popups[1].controls.trials.buf=="32");frame("crafting-saved-recipe-refined")
 		ui:text("price","7");ui:text("budget","1");ui:text("trials","2000");ui:click("simulate")
 		assert(not main.popups[1].controls.simulate:IsEnabled() and not main.popups[1].controls.runRecipe:IsEnabled());frame("crafting-simulation-running")
@@ -713,6 +721,13 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(main.popups[1].controls.price1.buf=="many");ui:text("price1","7");ui:click("run");finish()
 		assert(summary("results"):find("Mean spent: 7.00 chaos",1,true) and summary("results"):find("Mean spent: 1.00 chaos",1,true));frame("crafting-property-action-comparison")
 		ui:click("close");ui:click("close")
+		local replacement=copyTable(p);replacement.id="replacement-target-ui";replacement.targetItem=raw;build.savers.CraftingProjects:Upsert(replacement)
+		require("Classes.CraftingSimulatorControl").Open(build,replacement);ui:click("tab_simulate");ui:text("trials","2");ui:text("budget","1");ui:click("runRecipe");finish();ui:click("distribution");ui:click("keepTarget")
+		assert(main.popups[1].title=="Replace crafting target","Replacing a target must ask for confirmation")
+		local cancel;for key,control in pairs(main.popups[1].controls) do if control.label=="Cancel" then cancel=key end end;ui:click(assert(cancel))
+		local function replacementTarget() for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==replacement.id then return entry.targetItem end end end
+		assert(replacementTarget()==raw,"Cancelling target replacement changed the guide")
+		ui:click("keepTarget");ui:click("confirm");assert(replacementTarget()~=raw,"Confirmed target replacement did not update the guide");frame("crafting-result-target-replaced");ui:click("close");ui:click("close")
 		local life="Metadata/Items/Currency/CurrencyDelveCraftingLife";local key=sim.priceKey({method="fossil",fossils={life}})
 		local fossilResult=sim.optimizeFossils(raw,{}, {fossils={life},maxSockets=1,trials=2,requirements={minAffixes=1},priceBook={currency="chaos",source="Fossil action quotes",quotedAt=1700000000,values={[life]=1,["Metadata/Items/Delve/DelveStackableSocketableCurrencyReroll1"]=2}},prices={["resonator:1"]=4},actionPrices={[key]=9}})
 		require("Classes.CraftingFossilCompareControl").Open(fossilResult);assert(summary("stats"):find("Mean / trial: 9 chaos",1,true))

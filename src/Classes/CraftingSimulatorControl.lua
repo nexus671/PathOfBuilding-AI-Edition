@@ -583,12 +583,34 @@ function Panel.Open(build,project,layout)
 		popup.resources.enabled=result.resourceUsage and #result.resourceUsage>0 or false
 		popup.resources.tooltipText=not result.resourceUsage and "Rerun this older simulation to record ingredient usage." or #result.resourceUsage==0 and "No modeled resources or services were used in this run." or "Browse captured ingredients and service quantities with currency artwork."
 		popup.item=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{208,resultHeight-84,348,24},kept)
-		button(popup,"preview",572,resultHeight-84,272,"Preview retained item",function()
+		button(popup,"preview",572,resultHeight-84,132,"Preview",function()
 			local index=assert(popup.item:GetSelValueByKey("val"),"No successful items retained")
 			local entry=copyTable(draft);entry.targetItem=result.retainedSuccesses[index].itemText
 			require("Classes.CraftingProjectControl").Preview(build,entry)
 		end)
-		popup.item.enabled=#kept>0;popup.preview.enabled=#kept>0
+		popup.preview.tooltipText="Preview this item against the current build."
+		button(popup,"keepTarget",712,resultHeight-84,132,"Keep target",function()
+			local index=assert(popup.item:GetSelValueByKey("val"),"No successful items retained")
+			local target=result.retainedSuccesses[index].itemText
+			local function keep()
+				local entry=copyTable(draft);entry.targetItem=target
+				build.savers.CraftingProjects:Upsert(entry)
+				draft.targetItem=target
+				popup.precision.list=ui.rows({"Target kept in guide. Save the build to persist it.",precision[#precision]},828,14)
+			end
+			if draft.targetItem and draft.targetItem:match("%S") and draft.targetItem~=target then
+				main:OpenConfirmPopup("Replace crafting target","Replace the target item in this crafting guide?\nUse build Save to persist the change.","Replace",function()
+					local ok,err=pcall(keep);if not ok then main:OpenMessagePopup("Native crafting",ui.errorText(err)) end
+				end)
+			else keep() end
+		end)
+		popup.keepTarget.label=function()
+			local index=popup.item:GetSelValueByKey("val")
+			local selected=index and result.retainedSuccesses and result.retainedSuccesses[index]
+			return selected and draft.targetItem==selected.itemText and "Target kept" or "Keep target"
+		end
+		popup.keepTarget.tooltipText="Keep this sampled item as the guide's target. Use build Save to persist it."
+		popup.item.enabled=#kept>0;popup.preview.enabled=#kept>0;popup.keepTarget.enabled=#kept>0
 		if #kept==0 then popup.item:SetList({{label="No successful items retained",val=0}}) end
 		button(popup,"close",728,resultHeight-42,116,"Close",function() main:ClosePopup() end)
 		button(popup,"sample",252,resultHeight-42,220,"Inspect sampled outcome",function()
