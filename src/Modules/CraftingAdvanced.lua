@@ -694,8 +694,12 @@ function A.extend(M,api)
 			entry.id=upgraded;entry.range=M.rollRange(model.byId[upgraded],random);table.remove(state.affixes,removed)
 		elseif method == "unveil" then
 			local veil=assert(state.veil,"The item has no pending unveil"); local id
-			for _,wanted in ipairs(action.preferredMods or {action.modId}) do if contains(veil.choices,wanted) then id=wanted; break end end
-			id=id or veil.choices[1]; state.affixes[#state.affixes+1]={id=id,range=M.rollRange(model.byId[id],random)}; state.veil=nil
+			if action.preferredMods then
+				for _,wanted in ipairs(action.preferredMods) do if contains(veil.choices,wanted) then id=wanted; break end end
+			elseif action.modId then
+				assert(contains(veil.choices,action.modId),"The selected modifier is not an offered unveil choice");id=action.modId
+			end
+			id=id or veil.choices[1]; state.affixes[#state.affixes+1]={id=id,range=M.rollRange(model.byId[id],random),fractured=veil.fractured or nil}; state.veil=nil
 		elseif method == "beast_aspect" then
 			assert(model.item.type ~= "Jewel","Aspect crafts require equipment")
 			local mod=assert(data.beastCraft[action.modId],"Select a native Aspect modifier")
@@ -798,7 +802,22 @@ function A.extend(M,api)
 			local seen={}; for _,key in ipairs(state.influences) do assert(influences[key] and not seen[key] and model.item.base.influenceTags and model.item.base.influenceTags[key],"Invalid influence state"); seen[key]=true end
 		end
 		if model.item.type == "Flask" or model.item.type == "Tincture" then assert(state.rarity ~= "RARE","Flasks and tinctures cannot be rare") end
-		if state.veil then assert(type(state.veil.choices) == "table" and #state.veil.choices >= 1 and #state.veil.choices <= 3,"Invalid unveil choices"); for _,id in ipairs(state.veil.choices) do assert(model.special[id] and data.veiledMods[id],"Invalid unveil modifier") end end
+		if state.veil then
+			local veil=state.veil
+			assert(not state.corrupted and not state.mirrored and state.rarity~="NORMAL","A pending unveil requires an uncorrupted magic or rare item")
+			assert(veil.type=="Prefix" or veil.type=="Suffix","Invalid unveil side")
+			assert(veil.fractured==nil or type(veil.fractured)=="boolean","Invalid fractured unveil marker")
+			assert(type(veil.choices)=="table" and #veil.choices>=1 and #veil.choices<=3,"Invalid unveil choices")
+			local seen={};for _,id in ipairs(veil.choices) do
+				local mod=model.byId[id]
+				assert(not seen[id] and model.special[id] and (data.veiledMods[id] or model.unveiledJewels and model.unveiledJewels[id]) and mod and mod.type==veil.type,"Invalid unveil modifier")
+				seen[id]=true
+				if model.unveiledJewels and model.unveiledJewels[id] then
+					for _,existing in ipairs(state.affixes or {}) do for _,left in ipairs(groups(model,id)) do for _,right in ipairs(groups(model,existing.id)) do assert(left~=right,"Unveil choice conflicts with an existing modifier") end end end
+				end
+			end
+			if veil.fractured then for _,entry in ipairs(state.affixes or {}) do assert(not entry.fractured,"An item cannot have another fractured modifier") end end
+		end
 		for _,key in ipairs({"corrupted","mirrored"}) do assert(state[key] == nil or type(state[key]) == "boolean","Invalid item flag") end
 		if state.quality then api.integer(state.quality,0,30,"item quality") end
 		if state.baseImplicit330~=nil then assert(state.baseImplicit330==true and model.blessed330 and state.baseImplicitRanges,"Invalid updated base implicit") end
@@ -853,6 +872,16 @@ function A.extend(M,api)
 		local ok,result=pcall(originalValidate,model,state); model.initial=old; assert(ok,result)
 		if state.veil then assert(api.counts(model,state)[state.veil.type] < cap(model,state)[state.veil.type],"No slot for the pending unveil") end
 		return result
+	end
+	-- Record choices already observed by the user, or a hypothetical offer. This
+	-- does not generate a veil or estimate the chance of seeing these choices.
+	function M.recordJewelOffers(model,state,choices,fractured)
+		assert(model.item.type=="Jewel" and model.unveiledJewels and next(model.unveiledJewels),"This jewel has no supported unveil choices")
+		assert(type(choices)=="table" and #choices>=1 and #choices<=3,"Select one to three observed choices")
+		assert(fractured==nil or type(fractured)=="boolean","Invalid fractured unveil marker")
+		local first=assert(model.unveiledJewels[choices[1]],"Choose an eligible jewel modifier")
+		local next=copyTable(state);next.veil={type=first.type,choices=copyTable(choices),fractured=fractured or nil}
+		return M.validateState(model,next)
 	end
 	function M.catalog(raw,query,limit,initialState)
 		local result=originalCatalog(raw,query,limit); local model=M.model(raw)

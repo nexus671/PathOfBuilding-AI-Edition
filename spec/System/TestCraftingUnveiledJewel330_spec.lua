@@ -36,6 +36,39 @@ describe("3.30 unveiled jewel modifiers",function()
 		assert.is_truthy(saved);assert.equal(id,saved.affixes[1].id);assert.matches("4%% increased Elusive Effect",sim.toItem(model,saved).raw)
 		main.popups={}
 	end)
+	it("records observed jewel choices and preserves a fractured unveil",function()
+		local model=sim.model(regular);local first="JunMasterVeiledJewelElusiveEffect";local second="JunMasterVeiledJewelLifeOnBlock"
+		local input=copyTable(model.initial);input.rarity="MAGIC"
+		local pending=sim.recordJewelOffers(model,input,{first,second},true)
+		assert.same({type="Suffix",choices={first,second},fractured=true},pending.veil)
+		assert.is_false(sim.matches(pending,{},nil,model))
+		assert.is_false(pcall(sim.perform,regular,{method="unveil",modId="JunMasterVeiledJewelLifeCost"},7,pending))
+		local fallback=sim.perform(regular,{method="unveil",preferredMods={"JunMasterVeiledJewelLifeCost"}},7,pending)
+		assert.equal(first,fallback.state.affixes[1].id)
+		local result=sim.perform(regular,{method="unveil",modId=second},7,pending)
+		assert.is_nil(result.state.veil);assert.equal(second,result.state.affixes[1].id);assert.is_true(result.state.affixes[1].fractured)
+		assert.matches("Recover",result.itemText);assert.matches("fractured",result.itemText:lower())
+		local reopened=sim.model(result.itemText);assert.equal(second,reopened.initial.affixes[1].id);assert.is_true(reopened.initial.affixes[1].fractured)
+		assert.is_false(pcall(sim.recordJewelOffers,model,input,{first,first},false))
+		assert.is_false(pcall(sim.recordJewelOffers,model,input,{first,"JunMasterVeiledJewelLifeCost"},false))
+		assert.is_false(pcall(sim.recordJewelOffers,model,input,{"JunMasterVeiledAbyssHypnoticDaggerDamageAsSpellDamage"},false))
+		local conflict=copyTable(input);conflict.affixes={{id=first,range=0.5}}
+		assert.is_false(pcall(sim.recordJewelOffers,model,conflict,{first},false))
+		local corrupted=copyTable(input);corrupted.corrupted=true;assert.is_false(pcall(sim.recordJewelOffers,model,corrupted,{first},false))
+	end)
+	it("records and selects jewel unveil choices through the editor",function()
+		newBuild();main.popups={};local model=sim.model(regular);local saved
+		local editor=require("Classes.CraftingItemEditorControl").Open(model,model.initial,function(state) saved=state end)
+		editor.rarity:SelByValue("MAGIC");editor.offers:Click()
+		local popup=main.popups[1].controls
+		popup.choice1:SelByValue("JunMasterVeiledJewelElusiveEffect","val");popup.choice2:SelByValue("JunMasterVeiledJewelLifeOnBlock","val")
+		popup.fractured:SelByValue("Fractured veil");popup.use:Click()
+		assert.matches("Recorded unveil choices: 2",editor.info.label);editor.keep:Click()
+		assert.is_true(saved.veil.fractured);assert.equal(2,#saved.veil.choices)
+		local result=sim.perform(regular,{method="unveil",modId=saved.veil.choices[1]},7,saved)
+		assert.is_true(result.state.affixes[1].fractured);assert.matches("Elusive Effect",result.itemText)
+		main.popups={}
+	end)
 	it("distinguishes identical unveiled descriptions in the editor",function()
 		newBuild();main.popups={}
 		local model=sim.model(abyss);local first="JunMasterVeiledAbyssMurderousImpaleEffect";local second="JunMasterVeiledAbyssSearchingImpaleEffect"

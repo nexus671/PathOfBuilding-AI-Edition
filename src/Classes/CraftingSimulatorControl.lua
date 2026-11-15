@@ -571,6 +571,7 @@ function Panel.Open(build,project,layout)
 	button(controls,"manual",16,448,416,"Edit hypothetical item",function()
 		require("Classes.CraftingItemEditorControl").Open(model,state,function(edited)
 			state=edited;initial=copyTable(edited);history={};actions={};analysis:clearSimulation();syncAnalysis();changedAffixes={};ui.draft(build,"workingCraft",draft.id)
+			if state.veil then controls.method:SelByValue("unveil","val") end
 			updateOptions();refresh({"Manual edits set a new recipe starting state."})
 		end)
 	end)

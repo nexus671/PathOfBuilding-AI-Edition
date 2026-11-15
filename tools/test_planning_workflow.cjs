@@ -323,6 +323,11 @@ async function main(){
   assert.ok(unveiledRow);assert.equal(unveiledRow.source,'Special');
   const unveiledDivine=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:unveiledJewel,action:{method:'divine'},seed:7},'crafted');
   assert.equal(unveiledDivine.nativeCrafting.state.affixes[0].id,'JunMasterVeiledJewelElusiveEffect');
+  const jewelChoices={rarity:'MAGIC',affixes:[],veil:{type:'Suffix',choices:['JunMasterVeiledJewelElusiveEffect','JunMasterVeiledJewelLifeOnBlock'],fractured:true}};
+  const invalidJewelChoice=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nCobalt Jewel\nItem Level: 86',initialState:jewelChoices,action:{method:'unveil',modId:'JunMasterVeiledJewelLifeCost'},seed:7},'failed');
+  assert.match(invalidJewelChoice.error,/not an offered unveil choice/);
+  const chosenJewel=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nCobalt Jewel\nItem Level: 86',initialState:jewelChoices,action:{method:'unveil',modId:'JunMasterVeiledJewelLifeOnBlock'},seed:7},'crafted');
+  assert.equal(chosenJewel.nativeCrafting.state.affixes[0].id,'JunMasterVeiledJewelLifeOnBlock');assert.equal(chosenJewel.nativeCrafting.state.affixes[0].fractured,true);
   const reopenedUnveiled=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:unveiledDivine.nativeCrafting.itemText,limit:5},'inspected');
   assert.equal(reopenedUnveiled.crafting.nativeEngine.initialState.affixes[0].id,'JunMasterVeiledJewelElusiveEffect');
   const altarItem='Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W W W\nCorrupted';

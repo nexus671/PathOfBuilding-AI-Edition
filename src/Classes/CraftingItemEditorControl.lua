@@ -5,6 +5,8 @@ function Panel.Open(model,input,onKeep)
 	assert(not input.destroyed and not input.veil,"Reset destruction or finish the unveil before editing")
 	model=sim.context(model,input)
 	local state=copyTable(input);local controls={}
+	local hasOffers=model.unveiledJewels and next(model.unveiledJewels)~=nil
+	local extra=hasOffers and 34 or 0
 	local function button(key,x,y,w,text,callback)
 		controls[key]=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,w,24},text,function()
 			local ok,message=pcall(callback);if not ok then main:OpenMessagePopup("Edit hypothetical item",require("Modules.PlanningUI").errorText(message)) end
@@ -39,6 +41,7 @@ function Panel.Open(model,input,onKeep)
 	edit("roll",16,154,180,50,"Roll % (0-100)")
 	controls.fractured=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{212,154,220,24},{"Not fractured","Fractured"})
 	local function refresh()
+		controls.info.label=state.veil and ("Recorded unveil choices: "..#state.veil.choices..". Use them as the recipe start.") or "Manual edits establish a new recipe start. Cancel discards all edits."
 		local list={}
 		for i,entry in ipairs(state.affixes) do list[#list+1]={label=i.." | "..(entry.fractured and "Fractured | " or "")..source(entry.id)..table.concat(sim.entryMod(model,entry)," / "),val=i} end
 		if #list == 0 then list={{label="No explicit modifiers",val=0}} end
@@ -76,7 +79,7 @@ function Panel.Open(model,input,onKeep)
 	edit("memoryStrands",584,260,176,state.memoryStrands or 0,nil)
 	controls.corrupted=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,308,376,24},{"Uncorrupted","Corrupted","Twice Corrupted"})
 	controls.corrupted:SelByValue(state.twiceCorrupted and "Twice Corrupted" or state.corrupted and "Corrupted" or "Uncorrupted")
-	local hint=require("Modules.PlanningUI").description(controls,"corruptionHint",16,340,744,20,{"Marker only. This editor does not roll second-corruption outcomes."},14)
+	local hint=require("Modules.PlanningUI").description(controls,"corruptionHint",16,340+extra,744,20,{"Marker only. This editor does not roll second-corruption outcomes."},14)
 	hint.shown=function() return controls.corrupted:GetSelValue()=="Twice Corrupted" end
 	local function applyProperties()
 		local candidate=copyTable(state);candidate.rarity=controls.rarity:GetSelValue();candidate.corrupted=controls.corrupted:GetSelValue() ~= "Uncorrupted"
@@ -86,9 +89,34 @@ function Panel.Open(model,input,onKeep)
 		commit(candidate)
 	end
 	button("properties",408,308,352,"Apply properties to draft",applyProperties)
-	button("keep",16,368,260,"Use as recipe starting item",function() applyProperties();onKeep(sim.validateState(model,state));main:ClosePopup() end)
-	button("close",644,368,116,"Cancel",function() main:ClosePopup() end)
-	refresh();main:OpenPopup(776,416,"Edit hypothetical item",controls,nil,nil,"close")
+	if hasOffers then button("offers",16,340,376,"Record jewel unveil choices",function()
+		applyProperties()
+		local popup={};local options={{label="No choice",val=""}}
+		for id,mod in pairs(model.unveiledJewels) do options[#options+1]={label=mod.type.." | "..source(id)..table.concat(mod," / "),val=id} end
+		table.sort(options,function(a,b) if a.val=="" then return b.val~="" elseif b.val=="" then return false end;return a.label<b.label end)
+		popup.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,26,0,14},"Enter observed or hypothetical choices. Offer probabilities are not simulated.")
+		for i=1,3 do
+			popup["choice"..i]=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,58+(i-1)*36,744,26},options)
+			popup["choice"..i]:SelByValue(state.veil and state.veil.choices[i] or "","val")
+		end
+		popup.fractured=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,174,360,26},{"Unfractured veil","Fractured veil"})
+		popup.fractured:SelByValue(state.veil and state.veil.fractured and "Fractured veil" or "Unfractured veil")
+		popup.use=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{16,222,200,28},"Use these choices",function()
+			local ok,result=pcall(function()
+				local choices={};for i=1,3 do local id=popup["choice"..i]:GetSelValueByKey("val");if id and id~="" then choices[#choices+1]=id end end
+				return sim.recordJewelOffers(model,state,choices,popup.fractured:GetSelValue()=="Fractured veil")
+			end)
+			if not ok then main:OpenMessagePopup("Jewel unveil choices",require("Modules.PlanningUI").errorText(result));return end
+			state=result;refresh();main:ClosePopup()
+		end)
+		popup.clear=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{232,222,200,28},"Clear choices",function() state=copyTable(state);state.veil=nil;refresh();main:ClosePopup() end)
+		popup.clear.enabled=function() return state.veil~=nil end
+		popup.close=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{644,222,116,28},"Cancel",function() main:ClosePopup() end)
+		main:OpenPopup(776,268,"Jewel unveil choices",popup,nil,nil,"close")
+	end) end
+	button("keep",16,368+extra,260,"Use as recipe starting item",function() applyProperties();onKeep(sim.validateState(model,state));main:ClosePopup() end)
+	button("close",644,368+extra,116,"Cancel",function() main:ClosePopup() end)
+	refresh();main:OpenPopup(776,416+extra,"Edit hypothetical item",controls,nil,nil,"close")
 	return controls
 end
 return Panel
