@@ -60,6 +60,14 @@ describe("Visual filter catalogue",function()
 		local incompatible={text='Show\n Class == "Rings"\n BaseType == "Iron Hat"\nHide'};local sample=library.sample(incompatible)
 		assert.equal("Helmets",sample.Class);assert.equal("Hide",parser.simulate(parser.parse(incompatible.text),sample).action)
 	end)
+	it("keeps sample fields above the actions on shorter windows",function()
+		local height=main.screenH;main.screenH=500
+		local ok,err=pcall(function()
+			require("Classes.LootFilterControl").EditSample(library.sample(),function() end);local c=main.popups[1].controls
+			for _,key in ipairs({"DropLevel","Width","Height","HasExplicitMod"}) do assert.is_true(c[key].y+c[key].height<c.useSample.y,key) end
+		end)
+		main.screenH=height;main.popups={};assert(ok,err)
+	end)
 	it("offers reproducible card and essence examples for testing filter rules",function()
 		local profile=filters.profile("test","Test")
 		for _,case in ipairs({{kind="Divination cards",class="Divination Cards",base="The Doctor",count=12},
