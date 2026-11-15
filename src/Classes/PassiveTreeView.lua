@@ -1308,6 +1308,12 @@ function PassiveTreeViewClass:DrawAsset(data, x, y, scale, isHalf)
 	end
 	local width = data.width * scale * 1.33
 	local height = data.height * scale * 1.33
+	-- Half-backgrounds use two vertically mirrored images, each twice as tall.
+	local verticalExtent = height * (isHalf and 2 or 1)
+	if x + width < 0 or x - width > main.screenW
+		or y + verticalExtent < 0 or y - verticalExtent > main.screenH then
+		return
+	end
 	if isHalf then
 		DrawImage(data.handle, x - width, y - height * 2, width * 2, height * 2)
 		DrawImage(data.handle, x - width, y, width * 2, height * 2, 0, 1, 1, 0)
