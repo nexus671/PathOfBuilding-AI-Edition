@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview198" />
+	<Version number="2.67.2-ai.preview199" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1170,7 +1170,7 @@
 	<File name="Classes/GemSelectControl.lua" part="program" sha1="8954e020052121d13122873b578b87e0bb7c60fc" />
 	<File name="Classes/GemTooltip.lua" part="program" sha1="aa0ce7d2eb619fc6b6e55aec9767320bee187343" />
 	<File name="Classes/ImportTab.lua" part="program" sha1="1a7cbb47f77f6eb500f2fa11d9f8ab42c7c4a46c" />
-	<File name="Classes/Item.lua" part="program" sha1="6c3335973bf3384f9a52fcf1e36a0f74b00d6625" />
+	<File name="Classes/Item.lua" part="program" sha1="0f2db9ef234b7096190bb4a00a1bbdb1a8e5fcea" />
 	<File name="Classes/ItemDBControl.lua" part="program" sha1="102cd044133926ef2844103e4243023d87ca4510" />
 	<File name="Classes/ItemListControl.lua" part="program" sha1="01546a91c647cb978ffb757cbe75a7afaa2d0cba" />
 	<File name="Classes/ItemSetListControl.lua" part="program" sha1="5ff494b708b1b633f0cf4157e30ad295c1044ed4" />
@@ -1485,10 +1485,10 @@
 	<File name="Modules/ConfigOptions.lua" part="program" sha1="d5e646beef6d763ac43d9aca88cc72428ff5f217" />
 	<File name="Modules/ConfigVisibility.lua" part="program" sha1="ad4a825bfe36dc94dca1ac7033d815110fd46d3c" />
 	<File name="Modules/CraftingAbyss330.lua" part="program" sha1="5dff0ec5ebef1bd922689b12b498dfff74ea6d59" />
-	<File name="Modules/CraftingAdvanced.lua" part="program" sha1="276cc4e04ae3f01e0d8d781f9b8d55d5d9fcc2ff" />
+	<File name="Modules/CraftingAdvanced.lua" part="program" sha1="4f341c3112ea0437d9ec4ea1b5eddcd1ecace68e" />
 	<File name="Modules/CraftingAllflame.lua" part="program" sha1="0562226de8673586b2e139d7e83f16eff1c44071" />
 	<File name="Modules/CraftingAnalysis.lua" part="program" sha1="33e31717c40a26f1a2cb13b4ba8bb05bea8aa917" />
-	<File name="Modules/CraftingAvailability.lua" part="program" sha1="1f9ab0b898ab860f80b9eaeb6b1578cb9711035c" />
+	<File name="Modules/CraftingAvailability.lua" part="program" sha1="6a9daae27a06a8b323b2db2c4ada47dd3e769e63" />
 	<File name="Modules/CraftingBenchCosts.lua" part="program" sha1="0597fbe2b35fe25fb60f259de0f2f01c558d5b7e" />
 	<File name="Modules/CraftingCalculator.lua" part="program" sha1="a53e5c4cfeb092d3fa56ff331b0598bf5abf5d06" />
 	<File name="Modules/CraftingChartData.lua" part="program" sha1="fffe2d9267fac92af038cbb25cd711faee3781b2" />
@@ -1514,8 +1514,8 @@
 	<File name="Modules/CraftingProperties.lua" part="program" sha1="ae12f7c969947c17178f08a1876b227acfaa5371" />
 	<File name="Modules/CraftingRecombination.lua" part="program" sha1="c311ee26dbe82f9dbfda0539fee985ff02b2dcd3" />
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />
-	<File name="Modules/CraftingSimulator.lua" part="program" sha1="2d6bad92b49692a493b6ff80d5c044d7adc5f57c" />
-	<File name="Modules/CraftingSockets.lua" part="program" sha1="1da72dd26f3207af7b2aa3a3b2d6ff32ab89deb8" />
+	<File name="Modules/CraftingSimulator.lua" part="program" sha1="d30d64aa0ec32efe2afbc26847ae1aac11c9d655" />
+	<File name="Modules/CraftingSockets.lua" part="program" sha1="66bf11f5926cc65fd181d09d0c1dab4191193400" />
 	<File name="Modules/CraftingTasks.lua" part="program" sha1="5884e439905689280d65534ef8e78591341970d6" />
 	<File name="Modules/CraftingUnveiledJewel330.lua" part="program" sha1="5b05b7293ddad3c073f1cb82ab53932899f739c0" />
 	<File name="Modules/CraftingWorkbench.lua" part="program" sha1="8ed480f42e432b4aa1cf173fd22d578b1b76dd2e" />
@@ -1551,7 +1551,7 @@
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="be9225c9fc464f460796411d8f4d28c9a9f41dc0" />
 	<File name="Modules/LootFilters.lua" part="program" sha1="6c9c4bea7913b05b7be192f254e732baeaac1a13" />
 	<File name="Modules/Main.lua" part="program" sha1="6a77993392e839506b9594e8e0802b13d6bed530" />
-	<File name="Modules/ModParser.lua" part="program" sha1="9381f6990e0475c80348fccf293d28a71864c1a8" />
+	<File name="Modules/ModParser.lua" part="program" sha1="d6ae07751fd828102be06b8d362acda0649dbce8" />
 	<File name="Modules/ModTools.lua" part="program" sha1="c987491da4021b5bdc4744b5eec84fb5995284cf" />
 	<File name="Modules/PantheonTools.lua" part="program" sha1="ebe91a7d8f8444a6061acf4758da0e775cc8c314" />
 	<File name="Modules/PlanningBundle.lua" part="program" sha1="d92c0ff1dec21ac0d042d6ff268be9e8aa91a610" />

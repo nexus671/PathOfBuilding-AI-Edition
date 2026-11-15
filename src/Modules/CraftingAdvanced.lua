@@ -427,7 +427,7 @@ function A.extend(M,api)
 		end
 	end
 	M.methodChecks.blessed=function(model,state) if model.blessed330Unresolved and not state.implicits then return "This base implicit could not be identified. Supply a recognized original or current implicit before using a Blessed Orb." end end
-	M.methodChecks.binding=function(model) if (model.item.base.socketLimit or 0)==0 then return "This base cannot have equipment sockets" end end
+	M.methodChecks.binding=function(model) if M.socketLimit(model)==0 then return "This base cannot have equipment sockets" end end
 	M.methodChecks.veiled_orb=function(model,state)
 		if #model.veiled==0 then return "This base has no supported veiled modifiers" end
 		local f=api.flags(model,state);local removable=false
@@ -812,7 +812,7 @@ function A.extend(M,api)
 			assert(next(state.percentiles),"This armour has no base defence variance")
 		elseif method == "socket_bench" or method == "binding" then
 			for _,socket in ipairs(state.sockets or {}) do assert(socket.color~="A","Abyssal sockets need a separate socket model") end
-			local limit=model.item.base.socketLimit or 0
+			local limit=M.socketLimit(model)
 			assert(limit > 0,"This base cannot have equipment sockets")
 			local count=method == "binding" and math.min(4,limit) or api.integer(action.count,2,limit,"socket count")
 			-- Binding and socket bench recipes ignore the natural item-level limit;
@@ -865,7 +865,7 @@ function A.extend(M,api)
 		end
 		if state.sockets then
 			local base=model.item.base;local intrinsic=type(base.implicit)=="string" and tonumber(base.implicit:match("Has (%d+) Abyssal Sockets?")) or 0
-			local limit=math.max(base.socketLimit or 0,model.item.abyssalSocketCount or 0,intrinsic or 0)
+			local limit=math.max(M.socketLimit(model),model.item.abyssalSocketCount or 0,intrinsic or 0)
 			assert(type(state.sockets) == "table" and #state.sockets <= limit,"Invalid socket count")
 			local ended,previous,previousColour,ordinary={},nil,nil,0
 			for _,socket in ipairs(state.sockets) do
@@ -878,7 +878,7 @@ function A.extend(M,api)
 				end
 				previousColour=socket.color
 			end
-			assert(ordinary <= (base.socketLimit or 0),"Invalid ordinary socket count")
+			assert(ordinary <= M.socketLimit(model),"Invalid ordinary socket count")
 		end
 		if state.implicits then
 			assert(type(state.implicits) == "table" and #state.implicits <= 2 and not baseInfluences(state),"Invalid Eldritch implicit state")
@@ -1002,7 +1002,7 @@ function A.extend(M,api)
 		elseif method == "bench_reroll" then local possible=M.benchRerollChoices(model,state);if possible[1] then option("Reroll one random modifier",{count=1}) end;if possible[3] then option("Reroll three random modifiers",{count=3}) end
 		elseif method == "eldritch_implicit" then for _,side in ipairs({"Exarch","Eater"}) do for tier=1,4 do option(side.." | "..({"Lesser","Greater","Grand","Exceptional"})[tier],{side=side,tier=tier}) end end
 		elseif method == "harvest_resistance" then result=M.resistanceOptions(model,state)
-		elseif method == "socket_bench" then for count=2,(model.item.base.socketLimit or 0) do option(count.." sockets (added sockets white)",{count=count}); option("Set "..count.." sockets and link them",{count=count,linked=true}) end
+		elseif method == "socket_bench" then for count=2,M.socketLimit(model) do option(count.." sockets (added sockets white)",{count=count}); option("Set "..count.." sockets and link them",{count=count,linked=true}) end
 		end
 		table.sort(result,function(a,b) return a.label < b.label end)
 		return result

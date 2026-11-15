@@ -4,6 +4,17 @@
 local encounter = require("Modules.CalcEncounter")
 local M = {methodChecks={}}
 -- GGG 3.30: these cluster small-passive speed modifiers share one family.
+-- Socket-reducing enchantments occupy a glove socket even after later crafts.
+function M.socketLimit(model)
+	local item=model.item;local limit=item.base.socketLimit or 0
+	if item.type=="Gloves" then
+		for _,line in ipairs(item.enchantModLines or {}) do
+			local value=StripEscapes(line.line or ""):match("^%-(%d+) to maximum Sockets$")
+			if value then limit=limit-tonumber(value) end
+		end
+	end
+	return math.max(0,limit)
+end
 M.clusterSpeedGroup="3.30 cluster small-passive speed family"
 function M.isClusterSpeedMod(model,id)
 	if not model.item.clusterJewel then return false end

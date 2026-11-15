@@ -77,10 +77,15 @@ def main():
             assert all(b"Covens pickup plan" in z.read(name) for name in z.namelist()), "ZIP lost the personal filter"
         archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1182, f"Expected 1182 UI frames, found {len(paths)}"
+    assert len(paths) == 1185, f"Expected 1185 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         jewel = json.loads((frames / f"{width}-crafting-assembled-eye-crafted.json").read_text())
         assert not any(command.get("kind") == "text" and command.get("text", "").startswith("Quality:") for command in jewel["commands"]), "Jewel card shows an inapplicable zero-quality stat"
+    for width in (960, 1024, 1280):
+        etched = json.loads((frames / f"{width}-crafting-etched-socket-options.json").read_text())
+        labels = [command.get("text", "") for command in etched["commands"] if command.get("kind") == "text"]
+        assert any("-1 to maximum Sockets" in label for label in labels), "Etched socket enchantment is missing"
+        assert not any("maximum Sockets (Not supported" in label for label in labels), "Native socket reduction is not parsed"
     flask_asset = json.loads((ROOT / "src/Assets/Crafting/items.json").read_text())["bases"]["Small Life Flask"]["path"]
     for width in (960, 1024, 1280):
         for name in ("crafting-flask-vaal-ready", "crafting-flask-inventory", "journey-flask-card"):

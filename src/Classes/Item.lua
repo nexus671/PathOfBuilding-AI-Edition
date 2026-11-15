@@ -2703,7 +2703,7 @@ function ItemClass:BuildModList()
 	end
 	local socketCount = calcLocal(baseList, "SocketCount", "BASE", 0)
 	self.abyssalSocketCount = calcLocal(baseList, "AbyssalSocketCount", "BASE", 0)
-	self.selectableSocketCount = m_max(self.base.socketLimit or 0, #self.sockets) - self.abyssalSocketCount
+	self.selectableSocketCount = m_max(0, m_max(self.base.socketLimit or 0, #self.sockets) + calcLocal(baseList, "MaximumSocketCount", "BASE", 0) - self.abyssalSocketCount)
 	if calcLocal(baseList, "NoSockets", "FLAG", 0) then
 		-- Remove all sockets
 		wipeTable(self.sockets)

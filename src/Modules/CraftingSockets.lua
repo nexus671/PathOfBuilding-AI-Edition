@@ -8,7 +8,7 @@ function S.extend(M,A,api)
 	local originalAction,originalOptions,originalPrice,originalComponents=M.action,M.actionOptions,M.priceKey,M.components
 	local function naturalLimit(model)
 		local level=model.item.itemLevel
-		return math.min(model.item.base.socketLimit or 0,level >= 50 and 6 or level >= 35 and 5 or level >= 25 and 4 or level >= 2 and 3 or 2)
+		return math.min(M.socketLimit(model),level >= 50 and 6 or level >= 35 and 5 or level >= 25 and 4 or level >= 2 and 3 or 2)
 	end
 	M.methodChecks.omen_jeweller=function(model,state)
 		local sockets=state.sockets or {}

@@ -422,6 +422,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 
 	do
+		local raw="Rarity: NORMAL\nIron Gauntlets\nItem Level: 86\nSockets: W-W-W\nImplicits: 2\n{enchant}-1 to maximum Sockets\n{enchant}20% increased Fire Damage"
+		require("Classes.CraftingSimulatorControl").Open(build,{id="etched-gloves-ui",title="Etched gloves",slot="Gloves",startingItem=raw,goals={},steps={}})
+		ui:click("settings");ui:text("paletteSearch",sim.labels.socket_bench);assert(main.popups[1].controls.paletteUse:IsEnabled());ui:click("paletteUse")
+		local choices={};for _,option in ipairs(main.popups[1].controls.option.list) do choices[#choices+1]=option.label end
+		local joined=table.concat(choices," | ");assert(joined:find("3 sockets",1,true) and not joined:find("4 sockets",1,true),"Etched socket limit was not reflected in bench options")
+		frame("crafting-etched-socket-options");ui:click("close")
+	end
+
+	do
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: R-G B W-W R"
 		require("Classes.CraftingSimulatorControl").Open(build,{id="white-socket-bench-ui",title="White sockets",slot="Body Armour",startingItem=raw,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch","white sockets (3.30)");assert(main.popups[1].controls.paletteUse:IsEnabled());frame("crafting-white-socket-bench-selection")
