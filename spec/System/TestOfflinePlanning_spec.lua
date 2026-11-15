@@ -77,6 +77,27 @@ describe("Offline planning refinements",function()
 		assert.same(recipe,sim.validateRecipe(recipe))
 		for _,conditions in ipairs({{socketColours=""},{socketColours="RRRRRRR"},{socketColours="RGX"},{socketColours="R",linkedColours=1},{linkedColours=true}}) do recipe.requirements=conditions;assert.is_false(pcall(sim.validateRecipe,recipe)) end
 	end)
+	it("targets actual Abyssal sockets independently of modifier text and linked gems",function()
+		local model=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86");local state=copyTable(model.initial)
+		state.rarity="RARE";state.affixes={{id="DelveAbyssJewelSocket1",range=0.5}};state.sockets={{color="R",group=0}}
+		assert.is_false(sim.matches(state,{},nil,model,{minAbyssSockets=1}))
+		state.sockets={{color="R",group=0},{color="G",group=0},{color="A",group=1}}
+		assert.is_true(sim.matches(state,{},nil,model,{minAbyssSockets=1,links=2}));assert.is_false(sim.matches(state,{},nil,model,{minAbyssSockets=2}))
+		assert.is_false(sim.matches(state,{},nil,model,{minAbyssSockets=1,links=3}))
+		local recipe={steps={{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingAbyss"},untilRequirements={minAbyssSockets=1}}},targets={},requirements={minAbyssSockets=1}}
+		assert.same(recipe,sim.validateRecipe(recipe))
+		newBuild();local store=build.savers.CraftingProjects
+		store:Upsert({id="abyss-goal",title="Abyss helmet",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={},nativeRecipe=recipe})
+		local xml={};store:Save(xml);local reloaded=require("Modules.CraftingProjects").new(build);reloaded:Load(xml)
+		assert.same(recipe,reloaded.projects[1].nativeRecipe)
+		for _,bad in ipairs({-1,7,1.5}) do recipe.requirements={minAbyssSockets=bad};assert.is_false(pcall(sim.validateRecipe,recipe)) end
+	end)
+	it("keeps the Abyss socket goal through the item-properties editor",function()
+		main.popups={};local saved
+		local editor=require("Classes.CraftingTargetControl").Open({},nil,nil,function(_,value) saved=value end)
+		editor.minAbyssSockets:SetText("1");editor.keep:Click();assert.equal(1,saved.minAbyssSockets)
+		editor=require("Classes.CraftingTargetControl").Open({},saved,nil,function() end);assert.equal("1",editor.minAbyssSockets.buf);editor.close:Click()
+	end)
 	it("uses property conditions in action odds and fossil comparisons",function()
 		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"
 		local failed=sim.calculate(raw,{method="alchemy"},{},nil,{trials=8,requirements={socketColours="R"}})

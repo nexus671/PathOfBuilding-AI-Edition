@@ -38,8 +38,10 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
 	local enchantments={{label="Any Harvest enchantment",val=false}}
 	for id,craft in pairs(require("Modules.CraftingEnchants").data().crafts) do enchantments[#enchantments+1]={label=(id:find("Body",1,true) and "Body: " or "Weapon: ")..craft.lines[#craft.lines],val=id} end
 	table.sort(enchantments,function(a,b) if not a.val then return not not b.val elseif not b.val then return false else return a.label<b.label end end)
-	controls.harvestEnchant=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,502,572,24},enchantments)
+	controls.harvestEnchant=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,502,376,24},enchantments)
 	controls.harvestEnchant:SelByValue(conditions.harvestEnchant or false,"val")
+	edit("minAbyssSockets",408,486,conditions.minAbyssSockets,"Minimum Abyss sockets")
+	controls.minAbyssSockets.tooltipText="Counts actual Abyssal sockets, independently of modifier text. Modeled layout changes can be experimental."
 	button("keep",16,552,220,"Keep target conditions",function()
 		if group then
 			group.atLeast=assert(tonumber(controls.count.buf),"Enter a matching-mod count")
@@ -48,6 +50,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
 			for _,key in ipairs({"fractured","crafted"}) do local value=controls[key]:GetSelValue();group[key]=nil;if not value:match("^Any ") then group[key]=not value:match("^Not ") end end
 		end
 		local result={nativeStats=conditions.nativeStats and copyTable(conditions.nativeStats)};for _,entry in ipairs(properties) do local value=controls[entry[1]].buf;if value ~= "" then result[entry[1]]=assert(tonumber(value),"Enter a number for "..entry[2]:lower()) end end
+		if controls.minAbyssSockets.buf~="" then result.minAbyssSockets=assert(tonumber(controls.minAbyssSockets.buf),"Enter a number for Abyss sockets") end
 		local corruption=controls.corrupted:GetSelValue()
 		if corruption=="Must be corrupted" or corruption=="Must be corrupted once" then result.corrupted=true elseif corruption=="Must be uncorrupted" then result.corrupted=false end
 		if corruption=="Must be twice corrupted" then result.twiceCorrupted=true elseif corruption=="Must be corrupted once" or corruption=="Must not be twice corrupted" then result.twiceCorrupted=false end

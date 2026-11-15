@@ -532,6 +532,10 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   if requirements.harvestEnchant and state.harvestEnchant~=requirements.harvestEnchant then return false end
   if requirements.nativeStats and not require("Modules.CraftingItemStats").matches(M,model,state,requirements.nativeStats) then return false end
   if requirements.sockets and #(state.sockets or model.item.sockets or {}) < requirements.sockets then return false end
+  if requirements.minAbyssSockets then
+   local count=0;for _,socket in ipairs(state.sockets or model.item.sockets or {}) do if socket.color=="A" then count=count+1 end end
+   if count < requirements.minAbyssSockets then return false end
+  end
   if requirements.socketColours then
    local groups={};local needed={}
    for color in requirements.socketColours:gmatch(".") do needed[color]=(needed[color] or 0)+1 end
@@ -560,7 +564,7 @@ function M.validateRecipe(recipe)
 	local function validateRequirements(requirements)
 		if not requirements then return end
 		assert(type(requirements) == "table" and next(requirements),"Choose at least one property condition")
-		local limits={openPrefixes=3,openSuffixes=3,minAffixes=6,maxAffixes=6,minQuality=40,sockets=6,links=6,minMemoryStrands=100,maxMemoryStrands=100,minFractured=6,maxFractured=6,minIntangibility=100,maxIntangibility=100}
+		local limits={openPrefixes=3,openSuffixes=3,minAffixes=6,maxAffixes=6,minQuality=40,sockets=6,links=6,minAbyssSockets=6,minMemoryStrands=100,maxMemoryStrands=100,minFractured=6,maxFractured=6,minIntangibility=100,maxIntangibility=100}
 		for key,value in pairs(requirements) do
 			if key == "nativeStats" then require("Modules.CraftingItemStats").validate(value)
 			elseif key == "harvestEnchant" then assert(type(value)=="string" and require("Modules.CraftingEnchants").data().crafts[value],"Choose a known Harvest enchantment")

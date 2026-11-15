@@ -490,6 +490,15 @@ test('queues offline appearance, colour goals and optimized Atlas routing', t =>
   assert.throws(()=>f.call('simulate_crafting',{...base,itemText:craftingProject().startingItem,recipe:{...recipe,requirements:{socketColours:'RGX'}}}),/arguments/);
 });
 
+test('queues bounded Abyss socket goals in recipes and step conditions', t => {
+  const f=fixture(t), base={baseRevision:f.state.revision,itemText:craftingProject().startingItem};
+  const recipe={steps:[{method:'fossil',fossils:['Metadata/Items/Currency/CurrencyDelveCraftingAbyss'],untilRequirements:{minAbyssSockets:1}}],targets:[],requirements:{minAbyssSockets:1}};
+  f.call('simulate_crafting',{...base,recipe,options:{trials:2,maxActions:1}});
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.deepEqual(request.recipe,recipe);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  for(const invalid of [-1,7,1.5]) assert.throws(()=>f.call('simulate_crafting',{...base,recipe:{...recipe,requirements:{minAbyssSockets:invalid}}}),/arguments/);
+});
+
 test('queues native item stat goals with decimal thresholds and rejects unknown stats', t => {
   const f=fixture(t);const base={baseRevision:f.state.revision,itemText:craftingProject().startingItem};
   const recipe={steps:[{method:'quality',maxAttempts:20,untilRequirements:{nativeStats:{PhysicalDPS:12.4}}}],targets:[],requirements:{nativeStats:{PhysicalDPS:12.4,AttackRate:1.55}}};

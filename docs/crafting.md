@@ -80,6 +80,8 @@ Use a blank base or item text PoB can identify. Unresolved explicit modifiers ar
 
 **Orb of Remembrance** samples published observations. Memory strands restrict tiers for applicable currencies; **Orb of Unravelling** consumes the remaining strands to attempt upgrades. Foulborn Augmentation, Regal and Exalted orbs add a separate tier bias. Their estimates and uncertain cases are listed under **Rules**. Import counts with a `Memory Strands: 82` line or continue the structured state returned by MCP; native PoB item text alone does not retain this property.
 
+Item-property goals can require a minimum number of actual Abyssal sockets. This checks the socket layout rather than the modifier text. Hollow Fossil socket placement and restoration use the experimental assumptions described in **Rules & sources**.
+
 **Locus of Corruption** can destroy the hypothetical item. Destruction stops that trial, retains its currency spending and prevents previewing a nonexistent item. **Undo currency** still restores the prior emulated state.
 
 **Predictable recombination (observed odds)** needs the game's displayed success percentage for the exact inputs and selected modifiers. Add one exact target for each selected modifier, with at least one from each input, then configure the donor and percentage. MCP accepts explicit `selectedMods.left` and `selectedMods.right` ID lists. The model preserves the chosen base's item level and treats failure as destruction. It fits a shared constant to your observation; its base shares remain estimates. It cannot independently calculate the game's displayed percentage.
