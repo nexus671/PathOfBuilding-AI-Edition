@@ -51,7 +51,13 @@ function M.check(method,state,model)
 	end
 	if socket[method] then
 		if #(state.sockets or {})==0 then return false,"Add sockets before using this action." end
-		for _,entry in ipairs(state.sockets) do if entry.color=="A" then return false,"Abyssal sockets need a separate socket model." end end
+		local ordinary=0
+		for _,entry in ipairs(state.sockets) do
+			if entry.color=="A" then
+				if method~="chromatic" then return false,"Abyssal sockets need a separate socket model." end
+			else ordinary=ordinary+1 end
+		end
+		if method=="chromatic" and ordinary==0 then return false,"Requires at least one ordinary socket." end
 	end
 	if method=="socket_bench" or method=="binding" then
 		for _,entry in ipairs(state.sockets or {}) do if entry.color=="A" then return false,"Abyssal sockets need a separate socket model." end end

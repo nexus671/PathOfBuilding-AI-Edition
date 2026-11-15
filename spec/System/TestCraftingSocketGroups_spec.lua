@@ -72,6 +72,23 @@ describe("Crafting socket group validation",function()
 			local draws=0;assert.is_false(pcall(sim.action,model,state,{method=method,count=2,linked=true},function() draws=draws+1;return 0.5 end));assert.are.equal(0,draws)
 		end
 	end)
+	it("colours ordinary sockets while preserving Abyss sockets and links",function()
+		local model=sim.model(raw);local state=copyTable(model.initial)
+		state.sockets={{color="W",group=0},{color="W",group=0},{color="A",group=1},{color="W",group=2}}
+		assert.is_true(require("Modules.CraftingAvailability").check("chromatic",state,model))
+		for seed=1,30 do
+			local result=sim.perform(raw,{method="chromatic"},seed,state).state
+			assert.are.equal("A",result.sockets[3].color)
+			assert.are.equal(4,#result.sockets)
+			for i=2,4 do assert.are.equal(state.sockets[i].group==state.sockets[i-1].group,result.sockets[i].group==result.sockets[i-1].group) end
+			local coloured=0;for _,socket in ipairs(result.sockets) do if socket.color~="A" and socket.color~="W" then coloured=coloured+1 end end
+			assert.is_true(coloured>=1)
+		end
+		state.sockets={{color="A",group=0}}
+		local available,reason=require("Modules.CraftingAvailability").check("chromatic",state,model)
+		assert.is_false(available);assert.is_truthy(reason:find("ordinary socket",1,true))
+		local draws=0;assert.is_false(pcall(sim.action,model,state,{method="chromatic"},function() draws=draws+1;return 0.5 end));assert.are.equal(0,draws)
+	end)
 	it("retains a Stygian Vise Abyss socket through crafting and inventory",function()
 		for _,implicit in ipairs({"","\nImplicits: 1\nHas 1 Abyssal Socket"}) do
 			local text="Rarity: NORMAL\nStygian Vise\nItem Level: 86\nSockets: A"..implicit

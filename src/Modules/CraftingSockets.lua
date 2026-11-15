@@ -115,7 +115,7 @@ function S.extend(M,A,api)
 		assert(method == "socket_colour_bench" or method == "socket_white_bench" or (input.corrupted or false) == tainted,tainted and "Tainted socket currency requires corruption" or "Use tainted currency or the bench on corrupted items")
 		local state=copyTable(input);local sockets=state.sockets or {};state.sockets=sockets
 		assert(#sockets > 0,"This item has no sockets")
-		for _,socket in ipairs(sockets) do assert(socket.color ~= "A","Abyssal sockets need a separate socket model") end
+		for _,socket in ipairs(sockets) do assert(socket.color ~= "A" or method=="chromatic","Abyssal sockets need a separate socket model") end
 		if method == "socket_white_bench" then
 			for _,socket in ipairs(sockets) do socket.color="W" end
 		elseif method == "jeweller" or method == "omen_jeweller" then
@@ -155,8 +155,8 @@ function S.extend(M,A,api)
 		else
 			local rgb=method == "omen_trichromatism"
 			local forced=rgb and 3 or method == "socket_colour_bench" and api.integer(craft.count,2,4,"minimum non-white sockets") or 1
-			assert(forced <= #sockets,"Not enough sockets for this colour craft")
-			local indices={};for i=1,#sockets do indices[i]=i end
+			local indices={};for i,socket in ipairs(sockets) do if socket.color~="A" then indices[#indices+1]=i end end
+			assert(forced <= #indices,"Not enough ordinary sockets for this colour craft")
 			for i=#indices,2,-1 do local j=math.floor(random()*i)+1;indices[i],indices[j]=indices[j],indices[i] end
 			local weights=colourWeights(model,tainted)
 			local chance=math.min(1,0.00375*math.max(model.item.itemLevel-14,1)*(1+math.min(state.quality or 0,30)/100))
