@@ -19,6 +19,26 @@ describe("Advanced native crafting", function()
 		local options=sim.perform(item,ghosts,7);assert.equal(2,#options.choices)
 		for _,choice in ipairs(options.choices) do assert.equal("A",choice.state.sockets[4].color);assert.is_truthy(choice.itemText:find("Sockets: R%-R%-R A")) end
 	end)
+	it("uses the selected recombination host when reconciling Abyssal sockets",function()
+		local item=raw.."\nSockets: R-R-R-R";local hollow={method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingAbyss"}}
+		local recipient=sim.perform(item,{method="alchemy"},17).itemText;local donor=sim.perform(item,hollow,7).itemText
+		local tested={}
+		for seed=1,24 do local result=sim.perform(recipient,{method="recombine",donorItem=donor},seed);local mod,socket=false,false
+			for _,entry in ipairs(result.state.affixes) do if entry.id=="DelveAbyssJewelSocket1" then mod=true end end
+			for _,entry in ipairs(result.state.sockets) do if entry.color=="A" then socket=true end end
+			local donorHost=result.state.baseItem:find("DelveAbyssJewelSocket1",1,true)~=nil
+			tested[tostring(donorHost)..":"..tostring(mod)]=true;assert.equal(mod,socket,"seed "..seed)
+		end
+		assert.is_true(tested["true:false"]);assert.is_true(tested["false:true"])
+	end)
+	it("updates the socket when removing the modifier in the hypothetical editor",function()
+		local item=raw.."\nSockets: R-R-R-R";local crafted=sim.perform(item,{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingAbyss"}},7)
+		local model=sim.model(crafted.itemText);local saved
+		local editor=require("Classes.CraftingItemEditorControl").Open(model,model.initial,function(state) saved=state end)
+		local index;for i,entry in ipairs(model.initial.affixes) do if entry.id=="DelveAbyssJewelSocket1" then index=i end end
+		editor.current:SelByValue(index,"val");editor.remove:Click();assert.is_truthy(editor.info.label:find("experimental",1,true));editor.keep:Click()
+		assert.is_truthy(saved);assert.equal("W",saved.sockets[4].color);assert.is_truthy(sim.toItem(model,saved).raw:find("Sockets: R%-R%-R W"))
+	end)
 	it("resolves plain tincture and multi-line flask values without losing their rolls", function()
 		local tincture="Rarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nItem Level: 85\nQuality: 20\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed"
 		local model=sim.model(tincture)

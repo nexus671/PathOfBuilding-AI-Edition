@@ -389,7 +389,7 @@ function Panel.Open(build,project,layout)
 		end,present=function(id)
 			assert(not state.destroyed and not state.veil,"Reset destruction or finish the unveil first")
 			local next=copyTable(state);if next.rarity=="NORMAL" then next.rarity="RARE" end
-			next.affixes[#next.affixes+1]={id=id,range=0.5,crafted=false};state=simulator.validateState(model,next);initial=copyTable(state);history={};actions={};analysis:clearSimulation();syncAnalysis();changedAffixes={};ui.draft(build,"workingCraft",draft.id);updateOptions();refresh({"Modifier staged on a hypothetical item. Working actions reset."})
+			next.affixes[#next.affixes+1]={id=id,range=0.5,crafted=false};local socketAdjusted=simulator.syncAbyssSocket(state,next);state=simulator.validateState(model,next);initial=copyTable(state);history={};actions={};analysis:clearSimulation();syncAnalysis();changedAffixes={};ui.draft(build,"workingCraft",draft.id);updateOptions();refresh({socketAdjusted and "Modifier staged. Abyss socket layout is experimental." or "Modifier staged on a hypothetical item. Working actions reset."})
 		end})
 	end)
 	button(controls,"addTarget",16,310,132,"Add target",function()

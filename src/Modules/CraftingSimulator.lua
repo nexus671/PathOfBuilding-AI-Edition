@@ -876,7 +876,7 @@ end
 -- Socket placement and restoration are explicit assumptions; keep the actual
 -- simulated socket layout consistent with the modifier instead of retaining a
 -- false full link. Existing unusual layouts are not rewritten on import.
-local function syncAbyssSocket(before,after)
+function M.syncAbyssSocket(before,after)
 	if after.destroyed or abyssModifier(before)==abyssModifier(after) then return end
 	local sockets=after.sockets or {};after.sockets=sockets
 	local group=0;for _,socket in ipairs(sockets) do group=math.max(group,socket.group+1) end
@@ -896,9 +896,13 @@ end
 function M.action(model,state,craft,random)
 	if type(state)=="table" and type(craft)=="table" then local reason=M.methodReason(model,state,craft.method);assert(not reason,reason) end
 	local result,details=transition(model,state,craft,random)
-	local updated=syncAbyssSocket(state,result)
+	local function startingState(candidate)
+		if not candidate.destroyed and candidate.baseItem and (craft.method=="recombine" or craft.method=="recombine_predictable") then return M.context(model,candidate).initial end
+		return state
+	end
+	local updated=M.syncAbyssSocket(startingState(result),result)
 	if details and details.choices then for _,choice in ipairs(details.choices) do
-		if choice.state and (syncAbyssSocket(state,choice.state) or updated and choice.state==result) then choice.itemText=not choice.state.veil and not choice.state.destroyed and M.toItem(model,choice.state).raw or nil end
+		if choice.state and (M.syncAbyssSocket(startingState(choice.state),choice.state) or updated and choice.state==result) then choice.itemText=not choice.state.veil and not choice.state.destroyed and M.toItem(model,choice.state).raw or nil end
 	end end
 	return result,details
 end

@@ -5,7 +5,7 @@ local Panel={}
 function Panel.Open(model,input,onKeep)
 	assert(not input.destroyed and not input.veil,"Reset destruction or finish the unveil before editing")
 	model=sim.context(model,input)
-	local state=copyTable(input);local controls={}
+	local state=copyTable(input);local controls={};local socketAdjusted=false
 	local hasOffers=model.unveiledJewels and next(model.unveiledJewels)~=nil
 	local hasKatakohi=model.item.type=="Gloves"
 	local extra=(hasOffers or hasKatakohi) and 34 or 0
@@ -43,7 +43,7 @@ function Panel.Open(model,input,onKeep)
 	edit("roll",16,154,180,50,"Roll % (0-100)")
 	controls.fractured=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{212,154,220,24},{"Not fractured","Fractured"})
 	local function refresh()
-		controls.info.label=state.veil and ("Recorded unveil choices: "..#state.veil.choices..". Use them as the recipe start.") or "Manual edits establish a new recipe start. Cancel discards all edits."
+		controls.info.label=state.veil and ("Recorded unveil choices: "..#state.veil.choices..". Use them as the recipe start.") or socketAdjusted and "Abyss socket layout is experimental. Cancel discards all edits." or "Manual edits establish a new recipe start. Cancel discards all edits."
 		local list={}
 		for i,entry in ipairs(state.affixes) do list[#list+1]={label=i.." | "..(entry.fractured and "Fractured | " or "")..source(entry.id)..table.concat(sim.entryMod(model,entry)," / "),val=i} end
 		if #list == 0 then list={{label="No explicit modifiers",val=0}} end
@@ -55,7 +55,7 @@ function Panel.Open(model,input,onKeep)
 		assert(roll >= 0 and roll <= 100,"Use a roll from zero to 100 percent")
 		return {id=id,range=roll/100,crafted=id:match("^bench:") ~= nil,fractured=controls.fractured:GetSelValue() == "Fractured"}
 	end
-	local function commit(candidate) state=sim.validateState(model,candidate);refresh() end
+	local function commit(candidate) local adjusted=sim.syncAbyssSocket(state,candidate);state=sim.validateState(model,candidate);socketAdjusted=socketAdjusted or adjusted;refresh() end
 	button("add",16,202,180,"Add modifier",function() local candidate=copyTable(state);candidate.affixes[#candidate.affixes+1]=selected();commit(candidate) end)
 	button("replace",212,202,180,"Replace selected",function()
 		local index=controls.current:GetSelValueByKey("val");assert(state.affixes[index],"Choose an existing modifier")
