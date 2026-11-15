@@ -1,3 +1,4 @@
+-- cspell:ignore Katakohi
 describe("Crafting bench enchantment removal",function()
 	local sim=require("Modules.CraftingSimulator")
 	local action={method="bench_remove_enchant"}
@@ -18,7 +19,7 @@ describe("Crafting bench enchantment removal",function()
 		assert.is_nil(sim.validateState(model,saved).harvestEnchant)
 		assert.are.equal(0,#sim.model(removed.itemText).item.enchantModLines)
 		newBuild();local project={id="remove-enchant",title="Remove enchantment",slot="Weapon 1",startingItem=enchanted.itemText,goals={},steps={}}
-		project.inventory={require("Modules.CraftingInventory").capture(project,saved,"Unenchanted weapon")};build.savers.CraftingProjects:Upsert(project)
+		project.inventory={require("Modules.CraftingInventory").capture(project,saved,"Plain weapon")};build.savers.CraftingProjects:Upsert(project)
 		local xml=build:SaveDB("Enchantment removal");loadBuildFromXML(xml,"Enchantment removal")
 		local restored=build.savers.CraftingProjects.projects[1].inventory[1].state
 		assert.is_true(restored.enchantCleared);assert.are.equal(0,#sim.toItem(model,sim.validateState(model,restored)).enchantModLines)

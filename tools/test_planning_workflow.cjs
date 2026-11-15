@@ -79,10 +79,10 @@ async function main(){
   const removalInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:etchedRaw,query:'bench_remove_enchant',limit:10},'inspected');
   const removalService=removalInspection.crafting.nativeEngine.benchServiceCosts[0];
   assert.equal(removalService.available,true);assert.deepEqual(removalService.components,{'Metadata/Items/Currency/CurrencyConvertToNormal':3});
-  const unetched=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:etchedRaw,action:removalService.action,seed:1},'crafted');
-  assert.equal(unetched.nativeCrafting.state.enchantCleared,true);assert.equal(unetched.nativeCrafting.state.sockets.length,3);assert.doesNotMatch(unetched.nativeCrafting.itemText,/maximum Sockets/);
-  const unetchedInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:etchedRaw,initialState:unetched.nativeCrafting.state,query:'bench_remove_enchant',limit:10},'inspected');
-  assert.equal(unetchedInspection.crafting.nativeEngine.benchServiceCosts[0].available,false);
+  const cleared=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:etchedRaw,action:removalService.action,seed:1},'crafted');
+  assert.equal(cleared.nativeCrafting.state.enchantCleared,true);assert.equal(cleared.nativeCrafting.state.sockets.length,3);assert.doesNotMatch(cleared.nativeCrafting.itemText,/maximum Sockets/);
+  const clearedInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:etchedRaw,initialState:cleared.nativeCrafting.state,query:'bench_remove_enchant',limit:10},'inspected');
+  assert.equal(clearedInspection.crafting.nativeEngine.benchServiceCosts[0].available,false);
   const katakohiInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:etchedRaw,query:'Movement Speed',limit:20},'inspected');
   assert.equal(katakohiInspection.crafting.nativeEngine.katakohiEnchants[0].id,'DeepwaterTattooEnchantDexMovementSpeed');
   assert.match(katakohiInspection.crafting.nativeEngine.katakohiNote,/not probabilities/);

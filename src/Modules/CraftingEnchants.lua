@@ -1,3 +1,4 @@
+-- cspell:ignore Katakohi
 -- Deterministic Harvest services; replacing an enchant never changes affix rolls.
 local E={}
 local catalog
