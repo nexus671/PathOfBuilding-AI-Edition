@@ -1,6 +1,6 @@
 local C={}
 -- Client 3.30.0.1.4 lowers these three ring weights; other bases retain
--- their original weights. The remaining corruption data is pinned to 3.29.
+-- their original weights. Other modifier metadata uses the reviewed 3.30 overlay.
 local ringChargeWeights330={V2MaxPowerChargesCorrupted=50,V2MaxFrenzyChargesCorrupted=50,V2MaximumEnduranceChargesCorruption=50}
 local lifeGainOnHit330="V2SupportedByLifeGainOnHitCorrupted"
 function C.extend(M,A,api)

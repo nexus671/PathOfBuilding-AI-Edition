@@ -409,7 +409,7 @@ function Panel.Open(build,project,layout)
 			string.format("95%% sampling interval: %.2f%% to %.2f%%",result.confidenceLow,result.confidenceHigh),string.format("Mean attempted actions: %.2f",result.meanActions)}
 		local warnings=result.warnings or simulator.recipeWarnings(captured.recipe,model)
 		for i,warning in ipairs(warnings) do table.insert(lines,1+i,"Model note: "..warning.message) end
-		if result.treeVersion then table.insert(lines,2+#warnings,"Build tree: "..(treeVersions[result.treeVersion] and treeVersions[result.treeVersion].display or result.treeVersion).." (context only) | crafting data: "..tostring(result.dataPatch)) end
+		if result.treeVersion then table.insert(lines,2+#warnings,"Build tree: "..(treeVersions[result.treeVersion] and treeVersions[result.treeVersion].display or result.treeVersion).." (context only) | crafting data: "..tostring(result.dataPatch).."; modifiers: "..tostring(result.modifierPatch or simulator.modifierPatch or "bundled")) end
 		if result.priceSource then lines[#lines+1]="Quotes: "..result.priceSource.." | "..os.date("%Y-%m-%d",result.priceQuotedAt) end
 		if result.actionPriceOverridesSupplied then
 			lines[#lines+1]=result.actionPriceOverridesApplied>0 and "Includes selected-action price overrides." or "Selected-action override was not used by this recipe."
@@ -499,7 +499,7 @@ function Panel.Open(build,project,layout)
 		if result.showAllOutcomes then lines[#lines+1]="All modeled outcomes (target matches marked):" end
 		for _,entry in ipairs(result.outcomes) do if entry.matches or result.showAllOutcomes then lines[#lines+1]=string.format("%.6f%% | %s%s",entry.chance,entry.text or "Finite item outcome",result.showAllOutcomes and entry.matches and " | Target" or "") end end
 		if result.showAllOutcomes then for _,warning in ipairs(result.warnings or {}) do lines[#lines+1]="Model note: "..warning.message end end
-		if result.treeVersion then lines[#lines+1]="Build tree: "..(treeVersions[result.treeVersion] and treeVersions[result.treeVersion].display or result.treeVersion).." (context only) | crafting data: "..tostring(result.dataPatch) end
+		if result.treeVersion then lines[#lines+1]="Build tree: "..(treeVersions[result.treeVersion] and treeVersions[result.treeVersion].display or result.treeVersion).." (context only) | crafting data: "..tostring(result.dataPatch).."; modifiers: "..tostring(result.modifierPatch or simulator.modifierPatch or "bundled") end
 		refresh(lines)
 	end
 	button(controls,"exact",232,574,200,"Calculate action odds",function()
@@ -608,12 +608,12 @@ function Panel.Open(build,project,layout)
 	button(controls,"cancelJob",232,height-48,200,"Cancel crafting job",function() require("Modules.CraftingTasks").cancel() end)
 	button(controls,"coverage",width-312,height-48,132,"Coverage",function()
 		local entries={}
-		for i,line in ipairs(simulator.limits) do entries[#entries+1]={id=i,label=line,category="Assumptions",details={line,"Data patch: "..tostring(simulator.dataPatch or "bundled")}} end
+		for i,line in ipairs(simulator.limits) do entries[#entries+1]={id=i,label=line,category="Assumptions",details={line,"Supplemental baseline: "..tostring(simulator.dataPatch or "bundled"),"Modifier data: "..tostring(simulator.modifierPatch or "bundled")}} end
 		for _,method in ipairs(simulator.methods) do entries[#entries+1]={id=method,label=simulator.labels[method],category=inspect.category(method),details={"Implemented in the bounded model",workbench.hint(method,state,model),"Item-specific options and prerequisites are validated when applying.","Coverage does not imply complete game parity."}} end
 		browser.Open("Crafting coverage and assumptions",entries)
 	end)
-	controls.coverage.label=function() return "Rules "..tostring(simulator.dataPatch or "bundled") end
-	controls.coverage.tooltipText="View supported crafting methods and assumptions."
+	controls.coverage.label=function() return "Rules & sources" end
+	controls.coverage.tooltipText="View supported crafting methods, data versions and assumptions."
 	button(controls,"close",width-164,height-48,148,layout and "Back to projects" or "Close",function()
 		if tasks.job and tasks.job.owner==controls then tasks.cancel("Crafting view closed") end
 		if layout then layout.openProjects() else ui.discard(build,"workingCraft",draft.id);main:ClosePopup() end

@@ -30,6 +30,7 @@ M.methods = {"transmute","alteration","augmentation","regal","alchemy","chaos","
 M.labels = {transmute="Orb of Transmutation",alteration="Orb of Alteration",augmentation="Orb of Augmentation",regal="Regal Orb",alchemy="Orb of Alchemy",chaos="Chaos Orb",exalt="Exalted Orb",annul="Orb of Annulment",scour="Orb of Scouring",divine="Divine Orb",bench="Crafting bench",remove_crafted="Remove crafted modifiers",essence="Essence"}
 function M.withTreeContext(result,version)
 	result.dataPatch=result.dataPatch or M.dataPatch
+	result.modifierPatch=result.modifierPatch or M.modifierPatch
 	if version~=nil then
 		assert(type(version)=="string" and treeVersions[version],"Unknown build tree version")
 		result.treeVersion=version;result.treeVersionScope="build_context_only"

@@ -737,7 +737,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:text("minQuality","");ui:click("itemStats");ui:text("Armour","5");frame("crafting-native-stat-goals");ui:text("Armour","many");ui:click("keep");frame("crafting-native-stat-error");ui:click("close");ui:text("Armour","5");ui:click("keep");frame("targets");ui:click("keep")
 	ui:choose("page","Simulate recipe")
 	ui:choose("page","Craft settings");frame("settings");ui:click("inspectItem");frame("crafting-affix-inspector");ui:click("close")
-	ui:click("compareItem");frame("crafting-item-diff");ui:click("close");ui:click("coverage");frame("crafting-coverage");ui:click("close");ui:choose("page","Simulate recipe")
+	ui:click("compareItem");frame("crafting-item-diff");ui:click("close");ui:click("coverage");frame("crafting-coverage")
+	local coverageText={};for _,line in ipairs(main.popups[1].controls.details.list) do coverageText[#coverageText+1]=line[1] end
+	assert(StripEscapes(table.concat(coverageText," ")):find("Modifier data: 3.30.0.1.4",1,true),"Crafting coverage did not disclose the modifier version")
+	ui:click("close");ui:choose("page","Simulate recipe")
 	frame("simulation");ui:text("trials","12")
 	ui:choose("page","Target conditions")
 	ui:choose("page","Emulate item");ui:click("currency_chaos")

@@ -4,10 +4,21 @@
 local json=require("dkjson")
 local A={}
 local cached
+local function applyOverlay(data,overlay,pause)
+	assert(overlay.schemaVersion==1 and overlay.basePatch==data.patch and data.source and overlay.baseCommit==data.source.commit and overlay.clientVersion=="3.30.0.1.4" and type(overlay.mods)=="table","Invalid crafting modifier overlay")
+	for id,mod in pairs(overlay.mods) do data.mods[id]=mod;if pause then pause() end end
+	data.modifierPatch=overlay.clientVersion
+	return data
+end
+local function readData(name)
+	local root=GetScriptPath();local f=assert(io.open((root ~= "" and root.."/" or "").."Data/Crafting/"..name,"rb"))
+	local raw=f:read("*a");f:close();return raw
+end
 function A.data()
 	if not cached then
-		local root=GetScriptPath(); local f=assert(io.open((root ~= "" and root.."/" or "").."Data/Crafting/3.29.json","rb"))
-		local raw=f:read("*a"); f:close(); cached=assert(json.decode(raw))
+		local result=assert(json.decode(readData("3.29.json")))
+		local overlay=assert(json.decode(readData("3.30-modifier-overlay.json")))
+		cached=applyOverlay(result,overlay)
 	end
 	return cached
 end
@@ -15,8 +26,7 @@ end
 -- yield between frames. Publish it only after the whole document is valid.
 function A.prepare(checkpoint)
 	if cached then return end
-	local root=GetScriptPath();local f=assert(io.open((root ~= "" and root.."/" or "").."Data/Crafting/3.29.json","rb"))
-	local raw=f:read("*a");f:close();local pos=1;local started=os.clock()
+	local raw=readData("3.29.json");local pos=1;local started=os.clock()
 	local function space() pos=raw:find("%S",pos) or #raw+1 end
 	local function expect(char) space();assert(raw:sub(pos,pos)==char,"Invalid crafting data at "..pos);pos=pos+1 end
 	local function value()
@@ -40,14 +50,18 @@ function A.prepare(checkpoint)
 		end
 		return result
 	end
-	expect("{");local result=setmetatable({},{__jsontype="object"});space()
-	if raw:sub(pos,pos)~="}" then repeat
-		local key=value();assert(type(key)=="string","Invalid crafting data key");expect(":");result[key]=container();pause();space()
-		local char=raw:sub(pos,pos);pos=pos+1
-		if char=="}" then break end
-		assert(char==",","Invalid crafting data at "..(pos-1))
-	until false else pos=pos+1 end
-	space();assert(pos>#raw,"Trailing crafting data");cached=cached or result
+	local function document()
+		expect("{");local result=setmetatable({},{__jsontype="object"});space()
+		if raw:sub(pos,pos)~="}" then repeat
+			local key=value();assert(type(key)=="string","Invalid crafting data key");expect(":");result[key]=container();pause();space()
+			local char=raw:sub(pos,pos);pos=pos+1
+			if char=="}" then break end
+			assert(char==",","Invalid crafting data at "..(pos-1))
+		until false else pos=pos+1 end
+		space();assert(pos>#raw,"Trailing crafting data");return result
+	end
+	local result=document();raw=readData("3.30-modifier-overlay.json");pos=1
+	local overlay=document();applyOverlay(result,overlay,pause);cached=cached or result
 end
 local methods={
 	fossil="Fossil resonator",harvest_reforge="Harvest: reforge with a tagged modifier",harvest_augment="Harvest: add tagged / remove random",
@@ -78,7 +92,10 @@ end
 local function groups(model,id)
 	local meta=A.data().mods[id]
 	local result=meta and meta.groups or {model.byId[id].group}
-	if model.item.clusterJewel then local sim=require("Modules.CraftingSimulator");if sim.isClusterSpeedMod(model,id) then result=copyTable(result);result[#result+1]=sim.clusterSpeedGroup end end
+	if model.item.clusterJewel then local sim=require("Modules.CraftingSimulator");if sim.isClusterSpeedMod(model,id) then
+		local normalized={};for _,group in ipairs(result) do if group~="AfflictionJewelAttackOrCastSpeed" and group~=sim.clusterSpeedGroup then normalized[#normalized+1]=group end end
+		normalized[#normalized+1]=sim.clusterSpeedGroup;result=normalized
+	end end
 	return result
 end
 local function hasTag(model,id,tag)
@@ -136,7 +153,7 @@ function A.extend(M,api)
 	table.sort(M.methods)
 	local function cap(model,state) return M.capacities(model,state) end
 	function M.model(raw)
-		M.dataPatch=A.data().patch
+		M.dataPatch=A.data().patch;M.modifierPatch=A.data().modifierPatch
 		local model=originalModel(raw)
 		if not model.item.corrupted and not model.item.synthesised and #model.item.implicitModLines == 0 and type(model.item.base.implicit) == "string" then
 			for line in model.item.base.implicit:gmatch("[^\n]+") do local i=#model.item.implicitModLines+1;model.item.implicitModLines[i]={line=line,range=0.5,modTags=copyTable(model.item.base.implicitModTypes and model.item.base.implicitModTypes[i] or {})} end
@@ -930,7 +947,7 @@ function A.extend(M,api)
 		for _,entry in ipairs(model.influencePool) do if influenced(model,entry.id) and #result.potentialInfluenced < (limit or 50) and (entry.id.." "..table.concat(entry.mod," / ")):lower():find((query or ""):lower(),1,true) then
 			result.potentialInfluenced[#result.potentialInfluenced+1]={id=entry.id,text=table.concat(entry.mod," / "),influence=influenced(model,entry.id),level=entry.mod.level}
 		end end
-		result.dataPatch=A.data().patch
+		result.dataPatch=A.data().patch;result.modifierPatch=A.data().modifierPatch
 		result.benchCostSource=copyTable(A.data().source)
 		result.benchCostOverlays={{patch="3.30",description="Full prefix/suffix lock costs vary by item type",source="https://www.pathofexile.com/forum/view-thread/4013680"}}
 		result.initialState=copyTable(state)
@@ -1108,15 +1125,15 @@ function A.extend(M,api)
 		end
 		assert(total > 0,"No legal next modifier")
 		for _,entry in ipairs(outcomes) do entry.chance=entry.weight/total*100 end
-		return {exactFor="One weighted affix draw, conditional on the supplied state and native pool",successChance=success/total*100,totalWeight=total,matchingWeight=success,outcomes=outcomes,dataPatch=A.data().patch,limitations=copyTable(M.limits)}
+		return {exactFor="One weighted affix draw, conditional on the supplied state and native pool",successChance=success/total*100,totalWeight=total,matchingWeight=success,outcomes=outcomes,dataPatch=A.data().patch,modifierPatch=A.data().modifierPatch,limitations=copyTable(M.limits)}
 	end
-	M.limits={"Independent PoE 1 crafting model pinned to extracted 3.29.3.6 data; this is not complete Craft of Exile parity.",
+	M.limits={"Independent PoE 1 crafting model uses 3.29.3.6 supplemental data with a 3.30.0.1.4 modifier overlay; this is not complete Craft of Exile parity.",
 		"Light Radius accuracy modifiers use 3.30 crafting ranges; existing legacy values are retained until rerolled.",
 		"Abyss jewel crafting uses the 3.30 client weight changes, including the Assembled Eye pool and seven removed natural modifiers. Existing removed modifiers are retained until removed.",
 		"The 3.30 unveiled jewel modifiers can be imported, inspected and added to hypothetical items. Unveil offers and their acquisition are not simulated; native calculation support varies by modifier.",
 		"Current coverage includes core currencies, ordinary jewels/flasks/tinctures, bench crafts, essences, weighted fossils, Harvest tag crafts, influence slams, Awakener, fractures, veiled choices, Bestiary, Eldritch crafts, base implicit/defence rerolls and deterministic socket/link bench crafts.",
 		"Tangled Fossils require a revealed resonator outcome. Automatic predictable recombination odds, unique generation and many 3.30 rules are not implemented.",
-		"The standard Orb of Annulment uses the announced 3.30 attack/caster blocker rule. Supplemental modifier data remains pinned to 3.29.3.6 where not explicitly updated.",
+		"The standard Orb of Annulment uses the announced 3.30 attack/caster blocker rule. Modifier metadata uses a reviewed 3.30.0.1.4 client overlay; other supplemental sources remain pinned to 3.29.3.6 where not explicitly updated.",
 		"Partial locks use uniform random selection from all modifiers on the protected side, including fractures; group conflicts and other interactions are assumptions. Core affix actions, Harvest reforge/augment, and independent socket, quality, implicit and enchantment crafts are supported; other interactions are rejected.",
 		"Full prefix/suffix lock prices and the bench Chance-to-Alteration cost change use 3.30 rules; other bench costs remain pinned to 3.29.3.6.",
 		"Rare modifier counts and Eldritch Chaos counts are model assumptions. Numeric display rolls and sampling intervals do not establish exact in-game odds.",

@@ -56,7 +56,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 		end,function(results)
 			chartResults=results
 			local lines={"Same starting item and encounter-independent crafting model."}
-			if settings.treeVersion then lines[#lines+1]="Build tree: "..(treeVersions[settings.treeVersion] and treeVersions[settings.treeVersion].display or settings.treeVersion).." (context only) | crafting data: "..tostring(sim.dataPatch) end
+			if settings.treeVersion then lines[#lines+1]="Build tree: "..(treeVersions[settings.treeVersion] and treeVersions[settings.treeVersion].display or settings.treeVersion).." (context only) | crafting data: "..tostring(sim.dataPatch).."; modifiers: "..tostring(sim.modifierPatch) end
 			for _,route in ipairs(results) do
 				lines[#lines+1]="";lines[#lines+1]=route.label
 				if route.error then lines[#lines+1]=route.error else local r=route.result

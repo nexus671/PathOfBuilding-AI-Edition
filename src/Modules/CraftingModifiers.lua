@@ -15,6 +15,7 @@ function M.catalog(model)
 	local function add(id,mod,source,weight)
 		if seen[id] or not mod then return end;seen[id]=true
 		local meta=metadata.data().mods[id];local tags=meta and meta.implicit_tags or mod.modTags or mod.tags or {}
+		if model.unveiledJewels and model.unveiledJewels[id] and not has(tags,"unveiled_mod") then tags=copyTable(tags);tags[#tags+1]="unveiled_mod" end
 		rows[#rows+1]={id=id,mod=mod,text=table.concat(mod," / "),type=mod.type or "Special",level=mod.level or meta and meta.required_level or 0,groups=groups(model,id,mod),source=meta and meta.is_essence_only and "Essence" or source,baseWeight=weight,tags=tags}
 	end
 	for _,entry in ipairs(model.mods) do add(entry.id,entry.mod,"Natural",entry.weight) end

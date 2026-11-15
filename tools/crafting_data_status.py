@@ -79,7 +79,9 @@ def main():
     if detected == exported:
         hashes = {name: hashlib.sha256(fetch(base + "data/" + name)).hexdigest() for name in FILES}
     result = assess(pinned["patch"], detected, exported, pinned["hashes"], hashes)
-    result.update({"revision": revision, "pinned": pinned["patch"], "detected": detected, "exported": exported})
+    overlay = json.loads((ROOT / "src/Data/Crafting/3.30-modifier-overlay.json").read_text(encoding="utf-8"))
+    result.update({"revision": revision, "pinned": pinned["patch"], "modifierOverlay": overlay["clientVersion"],
+                   "detected": detected, "exported": exported})
     print(json.dumps(result, indent=2))
 
 

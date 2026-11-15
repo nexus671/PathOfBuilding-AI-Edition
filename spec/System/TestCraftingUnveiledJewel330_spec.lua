@@ -25,6 +25,7 @@ describe("3.30 unveiled jewel modifiers",function()
 		assert.is_false(require("Modules.CraftingAvailability").check("veiled_orb",model.initial,model))
 		local found;for _,row in ipairs(require("Modules.CraftingModifiers").catalog(model)) do if row.id==id then found=row end end
 		assert.equal("Special",assert(found).source)
+		assert.is_truthy(isValueInTable(found.tags,"unveiled_mod"))
 		local regen=model.byId.JunMasterVeiledJewelMineRegen
 		assert.equal(0.5,sim.rollRange(regen,function() return 0.51 end))
 	end)
