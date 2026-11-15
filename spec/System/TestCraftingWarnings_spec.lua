@@ -73,6 +73,24 @@ describe("Crafting result model notes",function()
 		local simulated=sim.simulate(raw,{steps={action},targets={},requirements={minAffixes=1}},{trials=1,maxActions=1});assert.equal("binding_legacy",simulated.warnings[1].code)
 		local odds=sim.calculate(raw,action,{},nil,{requirements={minAffixes=1},trials=2});assert.equal("binding_legacy",odds.warnings[1].code)
 	end)
+	it("warns when predictable recombination can remove a donor's Abyss socket",function()
+		local source=raw.."\nSockets: W-W-W";local model=sim.model(source);local input=copyTable(model.initial)
+		input.rarity="MAGIC";input.affixes={{id="IncreasedLife1",range=0.5}}
+		local fossil={method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingAbyss"}}
+		local donor=sim.perform(source,fossil,7).state;local hollow
+		for _,entry in ipairs(donor.affixes) do if entry.id=="DelveAbyssJewelSocket1" then hollow=entry end end
+		assert.is_truthy(hollow);donor.rarity="RARE";donor.affixes={hollow,{id="FireResist1",range=0.5}}
+		local craft={method="recombine_predictable",donorItem=sim.toItem(model,donor).raw,selectedMods={left={"IncreasedLife1"},right={"FireResist1"}},reportedSuccessChance=40}
+		local targets={{anyOf={"IncreasedLife1"}},{anyOf={"FireResist1"}}}
+		local odds=sim.calculate(source,craft,targets,input);assert.is_true(odds.outcomes[2].chance>0)
+		local warned=false;for _,warning in ipairs(odds.warnings) do if warning.code=="abyss_socket_layout" then warned=true end end;assert.is_true(warned)
+		local draw=(odds.outcomes[1].chance+odds.outcomes[2].chance/2)/100
+		local result=sim.action(model,input,craft,function() return draw end)
+		for _,socket in ipairs(result.sockets) do assert.are_not.equal("A",socket.color) end
+		assert.is_true(sim.perform(source,craft,1,input).warnings[1].code=="abyss_socket_layout")
+		local simulated=sim.simulate(source,{initialState=input,steps={craft},targets=targets},{trials=4,maxActions=1,forceFirstAction=true})
+		assert.equal("abyss_socket_layout",simulated.warnings[1].code)
+	end)
 	it("keeps notes with chart routes even when prices are missing",function()
 		local charts=require("Modules.CraftingChartData")
 		local route={label="Historical route",result={trials=1,actionDistribution={{actions=1,trials=1,successes=0}},warnings={{code="allflame_historical",message="Allflame is historical."}}}}

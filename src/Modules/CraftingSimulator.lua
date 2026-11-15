@@ -44,7 +44,7 @@ function M.actionWarnings(action,model)
 	local abyss=false
 	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingAbyss" then abyss=true end end
 	for _,entry in ipairs(model and model.initial and model.initial.affixes or {}) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true end end
-	if not abyss and action.method=="recombine" and type(action.donorItem)=="string" then
+	if not abyss and (action.method=="recombine" or action.method=="recombine_predictable") and type(action.donorItem)=="string" then
 		local ok,donor=pcall(M.model,action.donorItem)
 		if ok then for _,entry in ipairs(donor.initial.affixes) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true;break end end end
 	end
