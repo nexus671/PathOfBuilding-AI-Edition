@@ -30,6 +30,27 @@ describe("Corrupted jewel implicit import",function()
   local wrong=copyTable(a.initial);wrong.corrupted=true;wrong.corruptedImplicits={{id=abyss,range=0.5}};assert.is_false(pcall(sim.validateState,a,wrong))
   assert.is_false(require("Modules.CraftingAvailability").check("vaal",a.initial,a))
  end)
+ it("models Abyss jewel Vaal branches without treating special drops as ordinary rolls",function()
+  for _,base in ipairs({"Searching Eye Jewel","Assembled Eye Jewel"}) do
+   local model=sim.model("Rarity: NORMAL\n"..base.."\nItem Level: 86")
+   assert.is_true(require("Modules.CraftingAvailability").check("vaal",model.initial,model))
+   for _,value in ipairs({0.1,0.3,0.55,0.8}) do
+    local state=sim.action(model,model.initial,{method="vaal"},function() return value end)
+    assert.is_true(state.corrupted);sim.validateState(model,state)
+    if value==0.1 then assert.equal(1,#state.corruptedImplicits)
+    elseif value==0.55 then assert.equal("RARE",state.rarity);assert.equal(4,#state.affixes)
+    else assert.equal("NORMAL",state.rarity);assert.is_nil(state.corruptedImplicits) end
+    local reopened=sim.model(sim.toItem(model,state).raw);assert.is_true(reopened.initial.corrupted)
+    assert.equal(#state.affixes,#reopened.initial.affixes)
+   end
+   local recipe={steps={{method="vaal"}},targets={},requirements={minAffixes=4,corrupted=true}}
+   local result=sim.simulate(model.raw,recipe,{trials=12,maxActions=1,seed=3})
+   assert.equal("abyss_vaal_assumptions",result.warnings[1].code)
+   local odds=sim.calculate(model.raw,{method="vaal"},{},nil,{requirements=recipe.requirements,trials=12,seed=3})
+   assert.is_true(odds.sampled);assert.equal("abyss_vaal_assumptions",odds.warnings[1].code)
+   assert.matches("unverified",require("Modules.CraftingWorkbench").hint("vaal",model.initial,model))
+  end
+ end)
  it("preserves cluster jewel enchantments with a corrupted implicit",function()
   local text="Rarity: MAGIC\nLarge Cluster Jewel\nItem Level: 86\nCluster Jewel Skill: affliction_axe_and_sword_damage\nCluster Jewel Node Count: 8\nImplicits: 3\n{crafted}Adds 8 Passive Skills\n{crafted}Added Small Passive Skills grant: 12% increased Axe and Sword Damage\n{corrupted}Corrupted Blood cannot be inflicted on you\nCorrupted"
   local model=sim.model(text);assert.is_nil(model.unresolvedCorruption);assert.equal(regular,model.initial.corruptedImplicits[1].id)

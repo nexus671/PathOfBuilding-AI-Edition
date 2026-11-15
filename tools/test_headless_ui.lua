@@ -723,6 +723,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:text("trials","2");ui:text("budget","1");ui:click("runRecipe");finish();assert(summary("resultSummary"):find("Mean spent: 2.00 chaos",1,true));frame("crafting-bench-service-cost");ui:click("close")
 	end
 
+	do
+		local p={id="abyss-vaal-ui",title="Abyss jewel corruption",slot="Jewel 1",startingItem="Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86",goals={},steps={},preferredMethod="vaal"}
+		require("Classes.CraftingSimulatorControl").Open(build,p);local c=main.popups[1].controls
+		assert(c.apply:IsEnabled() and c.apply.tooltipText():find("unverified",1,true),"Abyss Vaal assumptions were not disclosed")
+		frame("crafting-abyss-vaal","apply");ui:click("apply");assert(c.intro.label:find("Applied Vaal Orb",1,true),"Abyss jewel Vaal action failed");ui:click("close")
+	end
 	local project={id="headless-ui",title="Headless crafting check",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: R-G-B",
 		goals={"Life and resistances"},steps={{action="Inspect native crafting"}}}
 	build.savers.CraftingProjects:Upsert(project)

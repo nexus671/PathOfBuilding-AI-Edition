@@ -227,6 +227,7 @@ end
 function M.hint(method,state,model)
 	local available,reason=M.available(method,state,model)
 	if available and method=="vaal" and model.item.type=="Flask" then return "Changes quality by -10 to +10. Equal outcome weights are assumed, not verified." end
+	if available and method=="vaal" and model.item.type=="Jewel" and model.item.base.subType=="Abyss" then return "Abyss jewel corruption: branch odds and the rare reroll of up to four modifiers are unverified assumptions." end
 	if available and method=="annul" then return "3.30: remove a random modifier. Attack/caster roll blockers do not protect it; fractures and prefix/suffix locks still apply." end
 	if available and method=="binding" then return "No longer generated in 3.30. Existing Orbs of Binding still work." end
 	if available and method=="recombine" then return "3.30 uses the chosen base's item level. Count odds for one-to-three modifiers still use older estimates." end

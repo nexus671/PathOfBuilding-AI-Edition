@@ -67,7 +67,8 @@ function M.check(method,state,model)
 		if not item.base.armour and not data.weaponTypeInfo[kind] and (tainted or kind~="Flask" and kind~="Tincture") then return false,"Quality currency requires eligible armour, a weapon, flask or tincture." end
 		if not tainted and (state.quality or 0)>=20 then return false,"Ordinary quality currency cannot exceed 20%." end
 	end
-	if method=="vaal" or method=="locus" then if kind=="Jewel" or kind=="Tincture" or kind=="Flask" and method=="locus" then return false,"This corruption model supports ordinary equipment and flask Vaal Orbs." end end
+	if method=="vaal" or method=="locus" then if kind=="Jewel" and (method=="locus" or item.base.subType~="Abyss") or kind=="Tincture" or kind=="Flask" and method=="locus" then return false,"This corruption model supports equipment, Abyss jewels and flask Vaal Orbs." end end
+	if method=="vaal" and kind=="Jewel" and #model.corruptions==0 then return false,"No eligible corruption implicit is available in the current model." end
 	if method=="blessed" and (#item.implicitModLines==0 or state.implicits) then return false,"This item has no supported base implicit to reroll." end
 	if method=="sacred" then
 		local variable=false
