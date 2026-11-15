@@ -320,6 +320,13 @@ async function main(){
   const oldAbyss='Rarity: MAGIC\nSearching Eye Jewel of Escape\nCrafted: true\nPrefix: None\nSuffix: {range:0.5}AbyssAvoidElementalAilmentsWhileElusiveJewel1\nItem Level: 86\nImplicits: 0\n{suffix}15% chance to Avoid Elemental Ailments while you have Elusive';
   const oldAbyssResult=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:oldAbyss,action:{method:'divine'},seed:1},'crafted');
   assert.equal(oldAbyssResult.nativeCrafting.state.affixes[0].id,'AbyssAvoidElementalAilmentsWhileElusiveJewel1');
+  const corruptedJewel='Rarity: MAGIC\nCobalt Jewel\nItem Level: 86\nImplicits: 1\nCorrupted Blood cannot be inflicted on you\nCorrupted';
+  const corruptedJewelInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:corruptedJewel,query:'Corrupted Blood',limit:100},'inspected');
+  assert.equal(corruptedJewelInspection.crafting.nativeEngine.initialState.corruptedImplicits[0].id,'V2CorruptedBloodImmunityCorrupted');
+  assert.equal(corruptedJewelInspection.crafting.nativeEngine.modifierTable.rows.find(row=>row.id==='V2CorruptedBloodImmunityCorrupted').source,'Special');
+  const ambiguousJewel='Rarity: MAGIC\nCobalt Jewel\nItem Level: 86\nImplicits: 1\nYou cannot be Cursed with Silence\nCorrupted';
+  const ambiguousJewelInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ambiguousJewel,limit:5},'inspected');
+  assert.match(ambiguousJewelInspection.crafting.nativeEngine.importWarning,/could not be identified uniquely/);
   const unveiledJewel='Rarity: MAGIC\nCobalt Jewel\nItem Level: 86\n4% increased Elusive Effect';
   const unveiledInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:unveiledJewel,query:'JunMasterVeiledJewelElusiveEffect',limit:10},'inspected');
   const unveiledRow=unveiledInspection.crafting.nativeEngine.modifierTable.rows.find(row=>row.id==='JunMasterVeiledJewelElusiveEffect');

@@ -77,7 +77,7 @@ def main():
             assert all(b"Covens pickup plan" in z.read(name) for name in z.namelist()), "ZIP lost the personal filter"
         archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1173, f"Expected 1173 UI frames, found {len(paths)}"
+    assert len(paths) == 1176, f"Expected 1176 UI frames, found {len(paths)}"
     flask_asset = json.loads((ROOT / "src/Assets/Crafting/items.json").read_text())["bases"]["Small Life Flask"]["path"]
     for width in (960, 1024, 1280):
         for name in ("crafting-flask-vaal-ready", "crafting-flask-inventory", "journey-flask-card"):

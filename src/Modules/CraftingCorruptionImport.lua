@@ -43,7 +43,7 @@ function I.resolve(M,model,metadata)
 		end
 		assign(1,0)
 	end
-	for _,entry in ipairs(model.corruptions) do
+	for _,entry in ipairs(model.corruptionImports or model.corruptions) do
 		consider(entry.id,model.byId[entry.id])
 		if model.corruptions330 and model.corruptions330[entry.id] then consider(entry.id,model.corruptions330[entry.id],true) end
 		if work>10000 then return nil,"unresolved" end

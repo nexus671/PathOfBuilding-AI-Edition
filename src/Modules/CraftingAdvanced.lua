@@ -948,7 +948,11 @@ function A.extend(M,api)
 			result.harvestOptions[#result.harvestOptions+1]={method=method,available=allowed,unavailableReason=not allowed and reason or nil,options=selected,total=#choices,
 				selectionNote=conditional and "A tag is offered if a modeled protection selection leaves a legal tagged modifier and removable original when required. Other selections or later rolls can fail." or nil}
 		end
-		if model.unresolvedEldritch then result.importWarning="At least one imported Eldritch implicit has an ambiguous tier; supply a structured implicit state before changing Eldritch implicits or using dominance." end
+		if model.unresolvedEldritch and not state.implicits then result.importWarning="At least one imported Eldritch implicit has an ambiguous tier; supply a structured implicit state before changing Eldritch implicits or using dominance." end
+		if model.unresolvedCorruption and not state.corruptedImplicits then
+			local warning="A corruption implicit could not be identified uniquely. It remains on the item, but implicit targets cannot be evaluated until it is identified."
+			result.importWarning=result.importWarning and (result.importWarning.." "..warning) or warning
+		end
 		return result
 	end
 	function M.actionOptions(model,state,method)

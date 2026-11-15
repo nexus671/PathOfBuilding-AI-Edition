@@ -47,13 +47,19 @@ function C.extend(M,A,api)
 			model.corruptions330[lifeGainOnHit330]=mod
 		end
 		model.initial.twiceCorrupted=model.item.twiceCorrupted or nil
-		model.corruptions={}
-		for id,mod in pairs(data.itemMods.Corrupted) do if mod.level <= model.item.itemLevel and weight(model,id) > 0 then
-			model.corruptions[#model.corruptions+1]={id=id,weight=weight(model,id)};model.special[id]=true
+		model.corruptions={};model.corruptionIds={};model.corruptionImports={};model.legacyCorruptionIds={}
+		local source=model.item.type=="Jewel" and model.item.affixes or data.itemMods.Corrupted
+		for id,mod in pairs(source) do if mod.type=="Corrupted" and A.data().mods[id] then
+			local current=mod.level <= model.item.itemLevel and weight(model,id)>0
+			if current then model.corruptions[#model.corruptions+1]={id=id,weight=weight(model,id)};model.corruptionIds[id]=true;model.special[id]=true;model.byId[id]=mod end
+			-- Legacy jewel modifiers are import candidates, never new roll outcomes.
+			if current or model.item.type=="Jewel" and model.item.corrupted then model.corruptionImports[#model.corruptionImports+1]={id=id} end
 		end end
 		table.sort(model.corruptions,function(a,b) return a.id < b.id end)
+		table.sort(model.corruptionImports,function(a,b) return a.id < b.id end)
 		local imported,reason=require("Modules.CraftingCorruptionImport").resolve(M,model,A.data().mods)
 		model.initial.corruptedImplicits=imported;model.unresolvedCorruption=reason
+		for _,entry in ipairs(imported or {}) do if not model.corruptionIds[entry.id] then model.legacyCorruptionIds[entry.id]=true;model.special[entry.id]=true end end
 		return model
 	end
 	function M.rollCorrupted(model,state,random,count,retained)
@@ -102,7 +108,7 @@ function C.extend(M,A,api)
 			assert(state.corrupted and #state.corruptedImplicits >= 1 and #state.corruptedImplicits <= 2 and not state.implicits,"Invalid corruption implicit state")
 			local groups={}
 			for _,entry in ipairs(state.corruptedImplicits) do
-				assert(data.itemMods.Corrupted[entry.id] and weight(model,entry.id) > 0,"Invalid corruption implicit for this base")
+				assert(model.corruptionIds[entry.id] or model.legacyCorruptionIds[entry.id],"Invalid corruption implicit for this base")
 				assert(entry.corruption330==nil or (entry.corruption330==true and model.corruptions330[entry.id]),"Invalid 3.30 corruption modifier")
 				for _,group in ipairs(A.data().mods[entry.id].groups) do assert(not groups[group],"Conflicting corrupted implicits");groups[group]=true end
 				local ranges=type(entry.range) == "table" and entry.range or {entry.range};assert(#ranges >= 1 and #ranges <= 20,"Invalid corruption range count")

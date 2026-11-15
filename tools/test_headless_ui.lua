@@ -208,6 +208,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("tab_settings");ui:click("manual");ui:choose("modifier","JunMasterVeiledJewelElusiveEffect","val");ui:text("roll","50");ui:choose("rarity","MAGIC");ui:click("properties");frame("crafting-unveiled-jewel-editor")
 	ui:click("offers");frame("crafting-jewel-unveil-choices");ui:choose("choice1","JunMasterVeiledJewelElusiveEffect","val");ui:choose("fractured","Fractured veil");ui:click("use");ui:click("offers");ui:click("clear")
 	ui:click("add");frame("crafting-unveiled-jewel-selected");ui:click("keep");ui:click("tab_craft");frame("crafting-unveiled-jewel-item");ui:click("close")
+	local corruptedJewel="Rarity: MAGIC\nCobalt Jewel\nItem Level: 86\nImplicits: 1\nCorrupted Blood cannot be inflicted on you\nCorrupted"
+	local corruptedControls=require("Classes.CraftingSimulatorControl").Open(build,{id="corrupted-jewel-ui",title="Corrupted jewel",slot="Jewel",startingItem=corruptedJewel,goals={},steps={}})
+	local implicitRows={};for _,row in ipairs(corruptedControls.itemMods.list) do implicitRows[#implicitRows+1]=StripEscapes(row[1] or "") end
+	assert(table.concat(implicitRows," "):gsub("%s+"," "):find("Corrupted Blood cannot be inflicted",1,true),"Jewel corruption implicit did not appear")
+	frame("crafting-corrupted-jewel");ui:click("close")
 	local jewelModel=require("Modules.CraftingSimulator").model(jewel);local jewelStart=copyTable(jewelModel.initial);jewelStart.rarity="MAGIC"
 	local jewelPending=require("Modules.CraftingSimulator").recordJewelOffers(jewelModel,jewelStart,{"JunMasterVeiledJewelElusiveEffect","JunMasterVeiledJewelLifeOnBlock"},true)
 	local resumedJewel={id="jewel-resume-ui",title="Saved jewel choices",slot="Jewel",startingItem=jewel,goals={},steps={},run=require("Modules.CraftingInventory").run(jewelPending)}

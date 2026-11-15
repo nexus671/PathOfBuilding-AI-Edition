@@ -55,6 +55,8 @@ Select an icon in the currency tray, then click the item card or **Apply to item
 
 **Undo currency** reverses an action; **Reset item** restores the starting state. Veiled Exalted Orbs leave an unfinished choice: select **Choose an unveil** and pick an offered modifier before previewing. For a magic or rare jewel, open the hypothetical item editor and select **Record jewel unveil choices** to enter observed or hypothetical options, including a fractured veil. Offer probabilities and acquisition are not simulated. An imprint belongs to this starting item and can be restored once.
 
+Existing current and legacy corrupted jewel implicits can be inspected, matched as implicit targets and saved when their identity is unambiguous. Identical current and legacy descriptions remain unresolved rather than guessed. Jewel Vaal outcomes and unique transformations are not yet simulated.
+
 Vaal Orbs can corrupt supported non-unique flasks and change quality by -10 to +10, up to 40%. The simulation assumes equal integer weights; those odds are not verified. Corrupted flasks cannot be modified with ordinary currency.
 
 The engine covers core currencies, bench modifiers, essences, fossils, Harvest tag crafts and resistance swaps, fractures, influence slams, Awakener, Dominance, veiled choices, Bestiary, Eldritch crafting, quality, catalysts, selected Ducats, corruption and selected tainted currencies. Jewels, flasks and tinctures have their own affix limits; flasks and tinctures remain magic. Cluster jewels need a known small-passive skill.
