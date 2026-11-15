@@ -1,3 +1,4 @@
+-- cspell:ignore Ukatoa
 -- Run from src: luajit ../tools/test_headless_ui.lua <existing-output-directory>
 local directory=assert(arg[1],"Supply an output directory")
 arg={}
@@ -331,6 +332,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("settings");ui:text("paletteSearch",sim.labels.ducat_rotmother);assert(main.popups[1].controls.paletteUse:IsEnabled());ui:click("paletteUse");ui:click("apply")
 		assert(main.popups[1].controls.intro.label:find("Applied Rotmother",1,true),"Rotmother did not apply to the rare belt")
 		frame("crafting-ducat-rarity-applied");ui:click("close")
+	end
+
+	do
+		local raw="Rarity: NORMAL\nGold Amulet\nItem Level: 86"
+		require("Classes.CraftingSimulatorControl").Open(build,{id="ukatoa-ui",title="Eldritch amulet",slot="Amulet",startingItem=raw,goals={},steps={}})
+		ui:click("settings");ui:text("paletteSearch",sim.labels.ducat_ukatoa);assert(main.popups[1].controls.paletteUse:IsEnabled());ui:click("paletteUse")
+		frame("crafting-ukatoa-ready");ui:click("apply")
+		assert(main.popups[1].controls.intro.label:find("Applied Ukatoa",1,true),"Ukatoa did not apply to an amulet")
+		frame("crafting-ukatoa-applied");ui:click("close")
 	end
 
 	do

@@ -1,3 +1,4 @@
+<!-- cspell:ignore Ukatoa -->
 <!-- cspell:ignore RRBG -->
 # Native crafting
 
@@ -54,6 +55,8 @@ In **Targets**, use **Find target modifiers** to browse tiers, item levels, weig
 Select an icon in the currency tray, then click the item card or **Apply to item**. The card shows the base artwork, rarity, sockets, defences and modifiers; applied currency counts appear on the tray. Other methods remain in the dropdown, with their choices below it. **Settings** opens recipe controls, donor/fossil configuration and the reproducible random seed. **Configure fossil combination / donor item** accepts up to four fossils or a second item for Awakener and recombination. A Tangled Fossil requires the effect already revealed by the socketed resonator.
 
 **Undo currency** reverses an action; **Reset item** restores the starting state. Veiled Exalted Orbs leave an unfinished choice: select **Choose an unveil** and pick an offered modifier before previewing. For a magic or rare jewel, open the hypothetical item editor and select **Record jewel unveil choices** to enter observed or hypothetical options, including a fractured veil. Offer probabilities and acquisition are not simulated. An imprint belongs to this starting item and can be restored once.
+
+**Ukatoa's Ducat** replaces the implicits on a supported non-unique amulet with a random Eldritch implicit. Synthesized amulets are supported; fixed-implicit and influenced bases are excluded. The side and tier 1-4 probabilities are assumed equal and are not verified. The modifier pool uses pinned weights verified against the local 3.30 client; review estimates accordingly.
 
 Existing current and legacy corrupted jewel implicits can be inspected, matched as implicit targets and saved when their identity is unambiguous. Identical current and legacy descriptions remain unresolved rather than guessed. Jewel Vaal outcomes and unique transformations are not yet simulated.
 

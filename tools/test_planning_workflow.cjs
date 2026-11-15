@@ -1,3 +1,4 @@
+// cspell:ignore Ukatoa
 // A real MCP stdio client drives an isolated native host and explicit UI review.
 // cspell:ignore GGGRRW craic
 'use strict';
@@ -55,6 +56,13 @@ async function main(){
   const inspected=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'maximum Life',limit:20},'inspected');assert.ok(inspected.crafting.nativeEngine.modifiers.length);
   assert.equal(inspected.crafting.nativeEngine.methodWarnings.binding[0].code,'binding_legacy');
   const binding=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,action:{method:'binding'},seed:1},'crafted');assert.equal(binding.nativeCrafting.warnings[0].code,'binding_legacy');assert.equal(binding.nativeCrafting.state.rarity,'RARE');
+  const ukatoaRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86';
+  const ukatoaInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ukatoaRaw,limit:10},'inspected');
+  assert.equal(ukatoaInspection.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='ducat_ukatoa').available,true);
+  const ukatoa=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:ukatoaRaw,action:{method:'ducat_ukatoa'},seed:1},'crafted');
+  assert.equal(ukatoa.nativeCrafting.state.implicits.length,1);assert.equal(ukatoa.nativeCrafting.warnings[0].code,'ukatoa_assumptions');
+  const ukatoaAfter=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ukatoaRaw,initialState:ukatoa.nativeCrafting.state,limit:5},'inspected');
+  assert.equal(ukatoaAfter.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='ducat_ukatoa').available,false);
   const talismanRaw='Rarity: NORMAL\nChieftain Talisman\nItem Level: 86';
   const rareTalisman=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:talismanRaw,action:{method:'alchemy'},seed:1},'crafted');
   const talismanImprint=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:talismanRaw,initialState:rareTalisman.nativeCrafting.state,action:{method:'beast_talisman_imprint'},seed:1},'crafted');

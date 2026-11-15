@@ -1,3 +1,4 @@
+-- cspell:ignore Ukatoa Ukatoas
 -- cspell:ignore RGBW
 -- Independent, bounded crafting model using PoB's game-data modifier tables.
 local encounter = require("Modules.CalcEncounter")
@@ -29,6 +30,7 @@ function M.actionWarnings(action,model)
 	local result={}
 	if action.method=="bench" and type(action.modId)=="string" and action.modId:match("^bench:partial%-") then result[#result+1]={code="partial_lock_model",message=partialWarningMessage} end
 	if action.method=="recombine" then result[#result+1]={code="recombination_count_odds",message="Recombination uses older count odds; 3.30 odds are not verified."} end
+	if action.method=="ducat_ukatoa" then result[#result+1]={code="ukatoa_assumptions",message="Ukatoa assumes equal Exarch/Eater and tier 1-4 chances; these odds are unverified. Modifier selection uses pinned spawn weights.",source="https://poedb.tw/us/Ukatoas_Ducat"} end
 	if action.method=="locus" then result[#result+1]={code="locus_assumptions",message="Locus assumes 25% implicit, 25% socket and 50% destruction outcomes; these are not verified 3.30 odds. Socket conversion and replacement selection are also assumptions.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
 	if action.method=="vaal" and model and model.item.type=="Flask" then result[#result+1]={code="flask_vaal_weights",message="Flask quality changes from -10 to +10; equal outcome weights are assumed and unverified.",source="https://www.pathofexile.com/forum/view-thread/3496784"} end
 	if action.method=="binding" then result[#result+1]={code="binding_legacy",message="Orbs of Binding are no longer generated in 3.30; existing orbs still work.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
@@ -823,7 +825,7 @@ do
 end
 -- Extensions register state prerequisites once for both execution and browsing.
 local partialLockActions={bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,beast_imprint=true,beast_talisman_imprint=true,
-	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,chromatic=true,beast_max_links=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
+	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,chromatic=true,beast_max_links=true,ducat_ukatoa=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
 	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,eldritch_implicit=true,conflict=true}
 function M.methodReason(model,state,method)
 	if M.hasPartialLock(M.context(model,state),state) and not partialLockActions[method] then

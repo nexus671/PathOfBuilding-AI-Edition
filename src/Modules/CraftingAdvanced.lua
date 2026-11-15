@@ -1,3 +1,4 @@
+-- cspell:ignore Ukatoa
 -- Independent rules layered on native PoB modifiers. No third-party engine code.
 -- cspell:ignore jsontype
 local json=require("dkjson")
@@ -56,7 +57,7 @@ local methods={
 	bench_reroll="Bench: reroll 1 or 3 modifiers",eldritch_implicit="Eldritch Ember / Ichor",eldritch_exalt="Eldritch Exalted Orb",eldritch_annul="Eldritch Orb of Annulment",
 	eldritch_chaos="Eldritch Chaos Orb",blessed="Blessed Orb",sacred="Sacred Orb",socket_bench="Bench: socket count / links",binding="Orb of Binding",
 	ducat_cyaxan="Cyaxan's Ducat",ducat_brinehook="Brinehook's Ducat",ducat_genteel="The Genteel's Ducat",ducat_merrick="Merrick's Ducat",
-	ducat_rotmother="Rotmother's Ducat",
+	ducat_rotmother="Rotmother's Ducat",ducat_ukatoa="Ukatoa's Ducat",
 	beast_meta="Bestiary: add a crafted meta modifier",beast_influence="Bestiary: add a modifier to an influenced item",
 }
 A.methods=methods
@@ -382,6 +383,31 @@ function A.extend(M,api)
 		if model.item.type~="Jewel" or model.item.base.subType~="Abyss" or state.rarity~="RARE" then return "Merrick requires a rare Abyssal Jewel" end
 	end
 	M.methodChecks.ducat_genteel=function(model,state) local _,_,reason=genteelCandidates(model,state);return reason end
+	local function ukatoaChoices(model,side,tier)
+		model.ukatoaPools=model.ukatoaPools or {}
+		local key=side..tier
+		if model.ukatoaPools[key] then return model.ukatoaPools[key] end
+		local choices={}
+		for id,mod in pairs(data.itemMods.Eldritch) do
+			if mod.type==side and tonumber(id:match("(%d+)$"))==tier then
+				local weight=model.item:GetModSpawnWeight(mod)
+				if weight>0 and model.byId[id] then choices[#choices+1]={id=id,weight=weight} end
+			end
+		end
+		table.sort(choices,function(a,b) return a.id<b.id end)
+		model.ukatoaPools[key]=choices
+		return choices
+	end
+	M.methodChecks.ducat_ukatoa=function(model,state)
+		if model.item.type~="Amulet" then return "Ukatoa requires an amulet." end
+		if state.implicits or model.unresolvedEldritch then return "The amulet already has an Eldritch implicit." end
+		if baseInfluences(state) then return "Influenced amulet interactions are not modeled." end
+		if model.item.baseName=="Simplex Amulet" or model.item.baseName=="Focused Amulet" then return "This amulet has a fixed implicit that cannot be replaced." end
+		if #model.item.implicitModLines==0 and not state.vendorImplicit then return "The amulet has no implicit modifier to replace." end
+		for _,side in ipairs({"Exarch","Eater"}) do for tier=1,4 do
+			if #ukatoaChoices(model,side,tier)==0 then return "The amulet has an incomplete Eldritch modifier pool." end
+		end end
+	end
 	M.methodChecks.dominance=function(model,state)
 		if not contains({"Helmet","Body Armour","Gloves","Boots"},model.item.type) or state.rarity~="RARE" then return "Dominance requires rare influenced armour" end
 		local count=0;for _,entry in ipairs(state.affixes) do if influenced(model,entry.id) then count=count+1 end end
@@ -731,6 +757,14 @@ function A.extend(M,api)
 			if M.hasPartialLock(model,state) then api.selectPartialLocks(model,state,random) end
 			for _=1,action.count do remove(model,state,random,{attackProtection=true}) end
 			for _=1,action.count do append(model,state,random) end
+		elseif method == "ducat_ukatoa" then
+			local reason=M.methodChecks.ducat_ukatoa(model,state);assert(not reason,reason)
+			-- The game does not publish side or tier odds; use an explicit assumption.
+			local side=random()<0.5 and "Exarch" or "Eater"
+			local tier=math.floor(random()*4)+1
+			local id=choose(ukatoaChoices(model,side,tier),random)
+			state.implicits={{id=id,side=side,tier=tier,range=M.rollRange(model.byId[id],random)}}
+			state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.vendorImplicit=nil
 		elseif method == "eldritch_implicit" then
 			assert(not model.unresolvedEldritch or state.implicits,"Imported Eldritch tiers could not be identified; provide their structured implicit state")
 			assert(model.item.type == "Helmet" or model.item.type == "Body Armour" or model.item.type == "Gloves" or model.item.type == "Boots","Eldritch currency requires helmet, body armour, gloves or boots")
