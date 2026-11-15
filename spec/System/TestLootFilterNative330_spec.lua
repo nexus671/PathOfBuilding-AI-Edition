@@ -28,6 +28,15 @@ describe("3.30 native filter update",function()
 		local sample=library.sample();sample.BaseType="Frayed Thread";sample.Class="Stackable Currency"
 		assert.equal("Hide",filters.simulate(updated,sample).action)
 	end)
+	it("includes the newer veiled jewel rule at every strictness",function()
+		for strictness=0,6 do
+			local profile=filters.profile("jewel","Jewel");profile.strictness=strictness
+			local base=filters.migratedBase(profile)
+			local block=assert(base:match('(Show #[^\n]*%$tier%->exoticveiled[^\n]*\n.-)\n%s*\n'))
+			local result=parser.simulate(parser.parse(block.."\nHide"),{Class="Abyss Jewels",Rarity="Rare",Identified=true,HasExplicitMod={"Veil"}})
+			assert.equal("Show",result.action,tostring(strictness))
+		end
+	end)
 	it("retains the safety layer for imported filters",function()
 		local profile=filters.profile("import","Imported");profile.template='Hide\n BaseType == "Chaos Orb"\nShow'
 		local output=filters.compile(profile);assert.is_truthy(output:find("# 3.30 new-item safety:",1,true))

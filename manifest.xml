@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview252" />
+	<Version number="2.67.2-ai.preview253" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1186,7 +1186,7 @@
 	<File name="Classes/LootFilterCampaignControl.lua" part="program" sha1="43a38aff5c872b88eddc4a27127a9aa541f1efb1" />
 	<File name="Classes/LootFilterCategoryControl.lua" part="program" sha1="c2305569737cb47ef545e0b5770b71dabfc4ed35" />
 	<File name="Classes/LootFilterCollectionControl.lua" part="program" sha1="0cf287605346cae27d7d5155a3429e9f635a28d9" />
-	<File name="Classes/LootFilterControl.lua" part="program" sha1="96e98c0f0d67bb5975edbcc30e1ae864fd61c329" />
+	<File name="Classes/LootFilterControl.lua" part="program" sha1="0c1df886195519e2888b4dfaf2b10c84630fcd0a" />
 	<File name="Classes/LootFilterDiffControl.lua" part="program" sha1="994e194583ccb50a6f50fe71876258d7b0bdd2f9" />
 	<File name="Classes/LootFilterEffectsControl.lua" part="program" sha1="1498f472a140cf7e546efe75a79d5c0527739982" />
 	<File name="Classes/LootFilterFileBrowser.lua" part="program" sha1="421a813665f5a2bfffb860c51b7dbe34ccbacf89" />
@@ -1304,17 +1304,17 @@
 	<File name="Data/Global.lua" part="program" sha1="72bff7e953555cf3045880b0ff0dc0c37f43056e" />
 	<File name="Data/HeadlessImageSizes.json" part="program" sha1="baacb6393be0e5527562220bd442c71d0e96afc4" />
 	<File name="Data/IncursionDropOnly.lua" part="program" sha1="1fa5c24b1bf897e781c54b3ce7a7fcd7d23fd645" />
-	<File name="Data/LootFilters/0.filter" part="program" sha1="ea18ad970088c95fa082d2e74d40eb4e3847a164" />
-	<File name="Data/LootFilters/1.filter" part="program" sha1="fc21981cfd703afed4fa7652ca859a56e9ffea7b" />
-	<File name="Data/LootFilters/2.filter" part="program" sha1="d31a45464239b00a0b7e72f515bf988576487e73" />
-	<File name="Data/LootFilters/3.filter" part="program" sha1="b8710c8bd0cf07f0e8ab6303d5eaaace1da0f97f" />
-	<File name="Data/LootFilters/4.filter" part="program" sha1="59adc75399c3337970dfb9a3cdc5c0a1e200b36f" />
-	<File name="Data/LootFilters/5.filter" part="program" sha1="cc7a003be8f72cd9d40d3b9bdb5f1fc22efa60fa" />
-	<File name="Data/LootFilters/6.filter" part="program" sha1="081e4b2792b454a8d4eea458b0db145174d9dad6" />
+	<File name="Data/LootFilters/0.filter" part="program" sha1="5689289ef48deb65a0f9341b83934c3de41c2aea" />
+	<File name="Data/LootFilters/1.filter" part="program" sha1="79d48486f9efcf1d2fecfa22de7cb6f15ac37aa6" />
+	<File name="Data/LootFilters/2.filter" part="program" sha1="ff99ba5f09c37e584ec2d8ccc0ff3875370160d5" />
+	<File name="Data/LootFilters/3.filter" part="program" sha1="6913aafc8bc931de2eae8fde8bda288a52dd3f00" />
+	<File name="Data/LootFilters/4.filter" part="program" sha1="d4bdf0531d4dd7be008118307afd150ebfdcb753" />
+	<File name="Data/LootFilters/5.filter" part="program" sha1="03d35dd768c5c69436fe3153322e34ce2c66d33f" />
+	<File name="Data/LootFilters/6.filter" part="program" sha1="7c1dd41de358577326c12a582ce4aa32191ee987" />
 	<File name="Data/LootFilters/LICENSE-NeverSink.txt" part="program" sha1="f6bd82c134a39fb235b8480b483f775dccfaf913" />
 	<File name="Data/LootFilters/base-metadata.json" part="program" sha1="7fe43f2a3a9324037c75e766aba21c5e4fc785d0" />
 	<File name="Data/LootFilters/patch-3.30.json" part="program" sha1="d1912b3b33fe0529e8e0e8f108b7dea4c972c83b" />
-	<File name="Data/LootFilters/source.json" part="program" sha1="b871d8f97b0e23383e68f5e2169e25e310e9975c" />
+	<File name="Data/LootFilters/source.json" part="program" sha1="b85812d0128c95364b84e2a251f2715a1e00d83d" />
 	<File name="Data/Minions.lua" part="program" sha1="96b00b39dded3f5459349665abc3d2e6c30a142f" />
 	<File name="Data/Misc.lua" part="program" sha1="ebc374ff410463a88fbd8ac1676f1bfcaeede7d0" />
 	<File name="Data/ModCache.lua" part="program" sha1="d6a7e32525620fd7d471ec2f20691acca0cc68ee" />

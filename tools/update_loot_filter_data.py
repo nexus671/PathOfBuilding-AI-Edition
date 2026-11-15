@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "src/Data/LootFilters"
 ANNOUNCEMENT = "https://www.pathofexile.com/forum/view-thread/4013923"
-REVIEWED_COMMIT = "9f94f4bd120574b4aa5a3366ceac461f8b733264"
+REVIEWED_COMMIT = "7c8f374b802564aa265a00061a0cd1d009afc0fb"
 
 
 def fetch(url):
