@@ -12,13 +12,17 @@ function M.Open(profile,keep)
 	ui.label(c,"textLabel",16,180,"Filter file contents",14)
 	c.text=new("EditControl"):EditControl(ui.anchor,{16,202,w-32,h-370},"",nil,"^%C\t\n",filters.limit,nil,14,true)
 	ui.label(c,"pathLabel",16,h-160,"Local file path",14)
-	c.path=new("EditControl"):EditControl(ui.anchor,{16,h-140,w-176,26},"",nil,nil,1024)
-	c.loadFile=new("ButtonControl"):ButtonControl(ui.anchor,{w-148,h-140,132,26},"Load file",function()
+	c.path=new("EditControl"):EditControl(ui.anchor,{16,h-140,w-284,26},"",nil,nil,1024)
+	local function loadFile()
 		local ok,contents=pcall(require("Modules.LootFilterImports").readFile,c.path.buf,filters.limit)
 		if not ok then main:OpenMessagePopup("Included filter",ui.errorText(contents));return end
 		if c.name.buf=="" then c.name:SetText(c.path.buf:match("([^/\\]+)$") or "") end
 		c.text:SetText(contents)
+	end
+	c.browseFile=new("ButtonControl"):ButtonControl(ui.anchor,{w-256,h-140,100,26},"Browse",function()
+		require("Classes.LootFilterFileBrowser").Open(c.path.buf,function(path) c.path:SetText(path);loadFile() end)
 	end)
+	c.loadFile=new("ButtonControl"):ButtonControl(ui.anchor,{w-148,h-140,132,26},"Load file",loadFile)
 	local function refresh(index)
 		selected=index or 0;suggested=nil;local list={{label="Add a file",val=0}}
 		for i,file in ipairs(draft.importFiles) do list[#list+1]={label=file.name,val=i} end

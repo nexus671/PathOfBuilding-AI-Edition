@@ -250,6 +250,35 @@ describe("Build-owned loot filters",function()
 		path=os.tmpname();file=assert(io.open(path,"wb"));file:write("12345");file:close()
 		assert.has_error(function() read(path,4) end);os.remove(path)
 	end)
+	it("browses to a local filter and loads the selected file",function()
+		local path=os.tmpname()..".filter";local file=assert(io.open(path,"wb"));file:write('Show\n BaseType "Iron Hat"');file:close()
+		local original=NewFileSearch;local name=path:match("([^/\\]+)$");local closed=0
+		_G.NewFileSearch=function(_,folders)
+			if folders then return nil end
+			return {GetFileName=function() return name end,NextFile=function() return false end,Close=function() closed=closed+1 end}
+		end
+		local ok,err=pcall(function()
+			local profile=filters.profile("browse-local","Browse local");local saved
+			require("Classes.LootFilterImportControl").Open(profile,function(files) saved=files end);local c=main.popups[1].controls
+			c.path:SetText(path);c.browseFile:Click();local browser=main.popups[1].controls
+			browser.search:SetText(name,true);browser.choose:Click();assert.equal(path,c.path.buf);assert.is_truthy(c.text.buf:find("Iron Hat",1,true))
+			c.keep:Click();assert.equal(name,saved[1].name);assert.equal(1,closed)
+		end)
+		_G.NewFileSearch=original;os.remove(path);assert(ok,err)
+	end)
+	it("lists folders and filter files with a parent navigation entry",function()
+		local original=NewFileSearch;local closed=0
+		_G.NewFileSearch=function(_,folders)
+			local names=folders and {"child"} or {"rules.filter","other.txt","EXTRA.FILTER"};local index=1
+			return {GetFileName=function() return names[index] end,NextFile=function() index=index+1;return names[index]~=nil end,Close=function() closed=closed+1 end}
+		end
+		local ok,err=pcall(function()
+			local rows=require("Classes.LootFilterFileBrowser").entries("C:/Users/test/")
+			assert.equal(4,#rows);assert.equal("C:/Users/",rows[1].id);assert.equal("C:/Users/test/child/",rows[2].id)
+			assert.equal("C:/Users/test/EXTRA.FILTER",rows[3].id);assert.equal("C:/Users/test/rules.filter",rows[4].id);assert.equal(2,closed)
+		end)
+		_G.NewFileSearch=original;assert(ok,err)
+	end)
 	it("retains attachment edits across selection and rejected saves",function()
 		local profile=filters.profile("included","Included");profile.importFiles={{name="one.filter",text="Show"},{name="two.filter",text="Hide"}};local saved
 		require("Classes.LootFilterImportControl").Open(profile,function(files) saved=files end);local c=main.popups[1].controls

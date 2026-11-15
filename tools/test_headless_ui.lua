@@ -1023,6 +1023,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:text("name","rules.filter");ui:text("text",'Hide\n BaseType "Iron Hat"');frame("filter-included-files");ui:click("keep")
 	assert(build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].importFiles[1].name=="rules.filter","Included filter file was not kept in the draft")
 	do
+		local path=os.tmpname()..".filter";local file=assert(io.open(path,"wb"));file:write('Show\n BaseType "Iron Hat"');file:close()
+		local name=path:match("([^/\\]+)$");local original=NewFileSearch
+		_G.NewFileSearch=function(_,folders) if folders then return nil end;return {GetFileName=function() return name end,NextFile=function() return false end,Close=function() end} end
+		local saved;require("Classes.LootFilterImportControl").Open(require("Modules.LootFilters").profile("browse-ui","Browse UI"),function(files) saved=files end)
+		ui:text("path",path);ui:click("browseFile");ui:text("search",name);frame("filter-browse-local");ui:click("choose");ui:click("keep")
+		_G.NewFileSearch=original;os.remove(path);assert(saved and saved[1].name==name and saved[1].text:find("Iron Hat",1,true),"Selected local filter was not loaded")
+	end
+	do
 		local profile=require("Modules.LootFilters").profile("import-picker-ui","Import picker")
 		profile.template='Import "outer.filter"\nShow';profile.importFiles={{name="outer.filter",text='Import "inner.filter"\nImport "outer.filter"\nHide'}}
 		local saved;require("Classes.LootFilterImportControl").Open(profile,function(files) saved=files end)
