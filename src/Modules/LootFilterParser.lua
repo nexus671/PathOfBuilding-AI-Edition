@@ -89,6 +89,9 @@ local function socketMatch(value,pattern,op)
 	local required={};local number=tonumber(pattern:match("^%d+"))
 	for color in pattern:gmatch("[RGBWAD]") do required[color]=(required[color] or 0)+1 end
 	local available={};local count=0;for color in value:gmatch("[RGBWAD]") do available[color]=(available[color] or 0)+1;count=count+1 end
+	-- Without an explicit count, exact colour matching also excludes extra
+	-- colours: == RRR describes a three-socket all-red group.
+	if op=="==" and not number then number=0;for _,n in pairs(required) do number=number+n end end
 	-- GGG defines strict comparisons as any specified count being greater or less.
 	if op=="<" or op==">" then
 		if number and compare(count,number,op) then return true end
