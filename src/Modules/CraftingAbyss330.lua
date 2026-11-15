@@ -1,6 +1,11 @@
 -- Apply client-verified Abyss weights only to this crafting model. Shared PoB
 -- item data remains unchanged, and legacy modifiers can still be imported.
 local M={}
+-- These seven previously rollable modifiers remain importable after the
+-- upstream 3.30 export has already set their native weights to zero.
+local removed={AbyssAvoidElementalAilmentsWhileElusiveJewel1=true,AbyssBlindedEnemiesCriticalStrikeChanceJewel1=true,
+	AbyssHinderedEnemiesLifeRegenerationRateJewel1=true,AbyssIntimidatedEnemiesStunDurationJewel1=true,
+	AbyssMaimedEnemiesDamageOverTimeJewel1=true,AbyssSelfCurseEffectOnConsecratedGroundJewel1__=true,AbyssWitheredEnemiesAllResistanceJewel1___=true}
 local cached
 local updated=setmetatable({},{__mode="k"})
 local function weights()
@@ -25,7 +30,7 @@ function M.prepare(item)
 				updated[old]=mod
 			end
 			copy[id]=mod
-			if before>0 and item:GetModSpawnWeight(mod)==0 then legacy[id]=true end
+			if (before>0 or removed[id]) and item:GetModSpawnWeight(mod)==0 then legacy[id]=true end
 		end
 	end
 	return legacy

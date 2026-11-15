@@ -859,6 +859,7 @@ local modNameList = {
 	-- Flask and Tincture modifiers
 	["effect"] = "LocalEffect",
 	["effect of flasks"] = "FlaskEffect",
+	["effect of iron flasks"] = "IronFlaskEffect",
 	["effect of tinctures"] = "TinctureEffect",
 	["amount recovered"] = "FlaskRecovery",
 	["life recovered"] = "FlaskRecovery",
@@ -2038,6 +2039,7 @@ end
 
 local gemIdLookup = {
 	["power charge on critical strike"] = "SupportPowerChargeOnCritical",
+	["snipe support"] = "ChannelledSnipeSupport",
 }
 local skillIds = {}
 for id in pairs(data.skills) do
@@ -2982,6 +2984,9 @@ local specialModList = {
 	["grant bonuses to non%-channelling skills you use by consuming (%d+) charges from a flask of each of the following types, if possible:"] = { },
 	["if diamond flask charges are consumed, (%d+)%% increased critical strike chance"] = function (num) return {
 		mod("CritChance", "INC", num, { type = "SkillType", skillType = SkillType.Triggered, neg = true }, { type = "SkillType", skillType = SkillType.Channel, neg = true }, { type = "Condition", var = "HaveDiamondFlask" })
+	} end,
+	["if diamond flask charges are consumed, %+(%d+)%% to critical strike multiplier"] = function (num) return {
+		mod("CritMultiplier", "BASE", num, { type = "SkillType", skillType = SkillType.Triggered, neg = true }, { type = "SkillType", skillType = SkillType.Channel, neg = true }, { type = "Condition", var = "HaveDiamondFlask" })
 	} end,
 	["if bismuth flask charges are consumed, penetrate (%d+)%% elemental resistances"] = function (num) return {
 		mod("ElementalPenetration", "BASE", num, { type = "SkillType", skillType = SkillType.Triggered, neg = true }, { type = "SkillType", skillType = SkillType.Channel, neg = true }, { type = "Condition", var = "HaveBismuthFlask" })
@@ -4639,6 +4644,7 @@ local specialModList = {
 	["modifiers to number of projectiles do not apply to fireball and rolling magma"] = { flag("NoAdditionalProjectiles", { type = "SkillName", skillNameList = { "Fireball", "Rolling Magma" } }) },
 	["attack skills fire an additional projectile while wielding a claw or dagger"] = { mod("ProjectileCount", "BASE", 1, nil, ModFlag.Attack, { type = "ModFlagOr", modFlags = bor(ModFlag.Claw, ModFlag.Dagger) }) },
 	["skills fire (%d+) additional projectiles for 4 seconds after you consume a total of 12 steel shards"] = function(num) return { mod("ProjectileCount", "BASE", num, { type = "Condition", var = "Consumed12SteelShardsRecently" }) } end,
+	["skills fire (%d+) additional projectiles for 4 seconds after you consume a total of 8 steel shards"] = function(num) return { mod("ProjectileCount", "BASE", num, { type = "Condition", var = "Consumed8SteelShardsRecently" }) } end,
 	["bow attacks sacrifice a random damageable minion to fire (%d+) additional arrows?"] = function(num) return {
 		mod("ProjectileCount", "BASE", num, nil, 0, KeywordFlag.Arrow, { type = "Condition", var = "SacrificeMinionOnAttack" }, { type = "Condition", var = "HaveDamageableMinion" }, { type = "SkillType", skillType = SkillType.Triggered, neg = true }, { type = "SkillType", skillType = SkillType.SummonsTotem, neg = true })
 	} end,

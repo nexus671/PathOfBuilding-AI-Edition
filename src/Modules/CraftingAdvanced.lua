@@ -1116,7 +1116,7 @@ function A.extend(M,api)
 		"The 3.30 unveiled jewel modifiers can be imported, inspected and added to hypothetical items. Unveil offers and their acquisition are not simulated; native calculation support varies by modifier.",
 		"Current coverage includes core currencies, ordinary jewels/flasks/tinctures, bench crafts, essences, weighted fossils, Harvest tag crafts, influence slams, Awakener, fractures, veiled choices, Bestiary, Eldritch crafts, base implicit/defence rerolls and deterministic socket/link bench crafts.",
 		"Tangled Fossils require a revealed resonator outcome. Automatic predictable recombination odds, unique generation and many 3.30 rules are not implemented.",
-		"The standard Orb of Annulment uses the announced 3.30 attack/caster blocker rule. Other modifier data and unsupported 3.30 crafting changes remain pinned to 3.29.3.6.",
+		"The standard Orb of Annulment uses the announced 3.30 attack/caster blocker rule. Supplemental modifier data remains pinned to 3.29.3.6 where not explicitly updated.",
 		"Partial locks use uniform random selection from all modifiers on the protected side, including fractures; group conflicts and other interactions are assumptions. Core affix actions, Harvest reforge/augment, and independent socket, quality, implicit and enchantment crafts are supported; other interactions are rejected.",
 		"Full prefix/suffix lock prices and the bench Chance-to-Alteration cost change use 3.30 rules; other bench costs remain pinned to 3.29.3.6.",
 		"Rare modifier counts and Eldritch Chaos counts are model assumptions. Numeric display rolls and sampling intervals do not establish exact in-game odds.",

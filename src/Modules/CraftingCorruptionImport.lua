@@ -46,6 +46,7 @@ function I.resolve(M,model,metadata)
 	for _,entry in ipairs(model.corruptionImports or model.corruptions) do
 		consider(entry.id,model.byId[entry.id])
 		if model.corruptions330 and model.corruptions330[entry.id] then consider(entry.id,model.corruptions330[entry.id],true) end
+		if model.corruptionImportAliases and model.corruptionImportAliases[entry.id] then consider(entry.id,model.corruptionImportAliases[entry.id],true) end
 		if work>10000 then return nil,"unresolved" end
 	end
 	local used,groups,chosen,seen={},{},{},{}

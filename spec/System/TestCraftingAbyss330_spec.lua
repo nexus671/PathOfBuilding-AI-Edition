@@ -11,7 +11,7 @@ describe("3.30 Abyss jewel modifier weights",function()
 			assert.equal(#weights,#mod.weightKey);count=count+1
 		end
 		assert.equal(446,count)
-		local id="AbyssAccuracyRatingJewel3";assert.equal(0,model.item:GetModSpawnWeight(data.itemMods.JewelAbyss[id]));assert.equal(750,model.item:GetModSpawnWeight(model.byId[id]))
+		local id="AbyssAccuracyRatingJewel3";assert.equal(750,model.item:GetModSpawnWeight(data.itemMods.JewelAbyss[id]));assert.equal(750,model.item:GetModSpawnWeight(model.byId[id]))
 		assert.is_true(#model.mods>100)
 	end)
 	it("makes the new shared pool available to ordinary crafting and inspection",function()
@@ -44,7 +44,7 @@ describe("3.30 Abyss jewel modifier weights",function()
 			local model=sim.model("Rarity: NORMAL\n"..base.."\nItem Level: 86");local pool={};for _,entry in ipairs(model.mods) do pool[entry.id]=true end
 			for _,id in ipairs(removed) do
 				assert.is_true(model.legacyAbyss[id]);assert.is_nil(pool[id]);assert.equal(0,model.item:GetModSpawnWeight(model.byId[id]))
-				assert.is_true(data.itemMods.JewelAbyss[id]~=model.byId[id]);assert.is_true(model.item:GetModSpawnWeight(data.itemMods.JewelAbyss[id])>0)
+				assert.is_true(data.itemMods.JewelAbyss[id]~=model.byId[id]);assert.equal(0,model.item:GetModSpawnWeight(data.itemMods.JewelAbyss[id]))
 			end
 		end
 	end)

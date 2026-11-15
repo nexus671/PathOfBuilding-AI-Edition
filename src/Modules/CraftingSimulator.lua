@@ -99,8 +99,8 @@ local function flags(model,state)
 		local mod=model.byId[entry.id]
 		if mod.partialLock then result[mod.partialLock.side]=mod.partialLock.count end
 		for _,line in ipairs(mod) do
-			if line == "Prefixes Cannot Be Changed" then result.prefixes=true end
-			if line == "Suffixes Cannot Be Changed" then result.suffixes=true end
+			if line == "Prefixes Cannot Be Changed" or line == "Prefix Modifiers cannot be changed" then result.prefixes=true end
+			if line == "Suffixes Cannot Be Changed" or line == "Suffix Modifiers cannot be changed" then result.suffixes=true end
 			if line == "Cannot roll Attack Modifiers" then result.explicitAttack=true end
 			if line == "Cannot roll Caster Modifiers" then result.explicitCaster=true end
 			rollBlock(line)
@@ -209,12 +209,7 @@ function M.model(raw)
 	end
 	require("Modules.CraftingLightRadius330").prepare(model)
 	table.sort(model.mods,function(a,b) return a.id < b.id end)
-	for index,mod in ipairs(data.masterMods) do
-		if mod.types and mod.types[item.type] and (mod.type == "Prefix" or mod.type == "Suffix") then
-			local id="bench:"..index
-			model.byId[id]=mod; model.bench[#model.bench+1]={id=id,mod=mod}
-		end
-	end
+	require("Modules.CraftingBenchMigration").prepare(model,item.type,data.masterMods)
 	-- The 3.30 lock texts and prices are published by GGG; the affix sides
 	-- follow the 3.30 client modifier records. Keep these separate from pinned
 	-- 3.29 master-mod rows so saved IDs do not shift on a data update.
@@ -380,6 +375,8 @@ local function benchReason(model,state,id,c,f)
 	local mod=model.byId[id]
 	if not mod then return "Unknown bench modifier" end
 	if not id:match("^bench:") then return "Select a bench modifier" end
+	if mod.benchImportOnly then return "This modifier is available for imported items only" end
+	if mod.legacyBenchUnavailable then return "This saved bench modifier is not available in current data" end
 	if c.crafted >= (f.multipleCrafts and 3 or 1) then return "Crafted modifier limit reached" end
 	if c.groups[mod.group] then return "A modifier from this group is already present" end
 	if c[mod.type] >= M.capacities(model,state)[mod.type] then return "No open affix for this bench craft" end

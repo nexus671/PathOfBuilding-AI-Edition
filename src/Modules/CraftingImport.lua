@@ -55,6 +55,7 @@ function I.resolve(M,model,state)
 	for _,entry in ipairs(model.essences) do consider(entry.modId,false) end
 	for _,entry in ipairs(model.essences) do if model.descriptions330[entry.modId] then consider(entry.modId,false,false,true) end end
 	for _,entry in ipairs(model.bench) do consider(entry.id,true) end
+	for _,id in ipairs(model.benchImportAliases or {}) do consider(id,true) end
 	for _,list in ipairs({data.veiledMods,data.beastCraft}) do for id,mod in pairs(list) do
 		if (mod.type == "Prefix" or mod.type == "Suffix") and mod.level <= model.item.itemLevel and model.item:GetModSpawnWeight(mod) > 0 then model.byId[id]=mod;consider(id,false) end
 	end end

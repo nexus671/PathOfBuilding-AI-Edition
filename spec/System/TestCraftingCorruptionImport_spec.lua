@@ -86,6 +86,8 @@ describe("Imported corruption identities",function()
 		local parsed,extra=modLib.parseMod("Socketed Gems are Supported by Level 15 Life Gain On Hit")
 		assert.is_nil(extra);assert.equal("ExtraSupport",parsed[1].name);assert.equal(15,parsed[1].value.level);assert.equal("SupportLifeGainOnHit",parsed[1].value.skillId)
 		local reopened=sim.model(text);assert.same(state.corruptedImplicits,reopened.initial.corruptedImplicits)
+		local currentText=text:gsub("Level 15 Life Gain On Hit","Level 15 Life Gain on Hit Support")
+		local current=sim.model(currentText);assert.same(state.corruptedImplicits,current.initial.corruptedImplicits)
 		local legacy=copyTable(state);legacy.corruptedImplicits[1].corruption330=nil
 		local oldText=sim.toItem(model,legacy).raw;assert.matches("Level 10 Life Gain On Hit",oldText)
 		local old=sim.model(oldText);assert.same(legacy.corruptedImplicits,old.initial.corruptedImplicits)

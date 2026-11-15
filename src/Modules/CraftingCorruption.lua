@@ -41,17 +41,19 @@ function C.extend(M,A,api)
 		model.corruptions330={}
 		local old=model.byId[lifeGainOnHit330]
 		if old then
-			local mod=copyTable(old)
-			assert(mod[1]=="Socketed Gems are Supported by Level 10 Life Gain On Hit","Unexpected Life Gain on Hit corruption data")
-			mod[1]="Socketed Gems are Supported by Level 15 Life Gain On Hit"
-			model.corruptions330[lifeGainOnHit330]=mod
+			local legacy,current=copyTable(old),copyTable(old)
+			assert(old[1]=="Socketed Gems are Supported by Level 10 Life Gain On Hit" or old[1]=="Socketed Gems are Supported by Level 15 Life Gain on Hit Support","Unexpected Life Gain on Hit corruption data")
+			legacy[1]="Socketed Gems are Supported by Level 10 Life Gain On Hit"
+			current[1]="Socketed Gems are Supported by Level 15 Life Gain On Hit"
+			model.corruptions330[lifeGainOnHit330]=current;model.legacyLifeGainOnHit=legacy
+			if old[1]~=legacy[1] then model.corruptionImportAliases={[lifeGainOnHit330]=copyTable(old)} end
 		end
 		model.initial.twiceCorrupted=model.item.twiceCorrupted or nil
 		model.corruptions={};model.corruptionIds={};model.corruptionImports={};model.legacyCorruptionIds={}
 		local source=model.item.type=="Jewel" and model.item.affixes or data.itemMods.Corrupted
 		for id,mod in pairs(source) do if mod.type=="Corrupted" and A.data().mods[id] then
 			local current=mod.level <= model.item.itemLevel and weight(model,id)>0
-			if current then model.corruptions[#model.corruptions+1]={id=id,weight=weight(model,id)};model.corruptionIds[id]=true;model.special[id]=true;model.byId[id]=mod end
+			if current then model.corruptions[#model.corruptions+1]={id=id,weight=weight(model,id)};model.corruptionIds[id]=true;model.special[id]=true;model.byId[id]=id==lifeGainOnHit330 and model.legacyLifeGainOnHit or mod end
 			-- Legacy jewel modifiers are import candidates, never new roll outcomes.
 			if current or model.item.type=="Jewel" and model.item.corrupted then model.corruptionImports[#model.corruptionImports+1]={id=id} end
 		end end

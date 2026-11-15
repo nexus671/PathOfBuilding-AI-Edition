@@ -32,7 +32,7 @@ describe("3.30 Light Radius modifier ranges",function()
 		for key,range in pairs(values) do
 			local model=key:match("^Local") and weapon or helmet;local current=assert(model.byId[key]);local legacy=assert(model.legacyLightRadius[key])
 			assert.equal("("..range..")% increased Light Radius",current[2]);assert.matches("^%d+%% increased Light Radius$",legacy[2])
-			assert.equal(legacy[2],data.itemMods.Explicit[key][2]);count=count+1
+			assert.equal(current[2],data.itemMods.Explicit[key][2]);count=count+1
 		end
 		assert.equal(10,count)
 	end)
