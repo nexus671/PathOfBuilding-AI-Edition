@@ -19,6 +19,12 @@ describe("Compiled filter structure",function()
 		assert.equal(2,#base)
 		for _,entry in ipairs(base) do for _,diagnostic in ipairs(structure.diagnostics(view,entry)) do assert.is_nil(diagnostic.shadowedBy) end end
 	end)
+	it("exposes proven threshold conflicts in the structure browser",function()
+		local p=filters.profile("levels","Levels");p.template='Show\n ItemLevel >= 70\nHide\n ItemLevel >= 80'
+		local view=structure.outline(p);local conflicts=structure.filter(view,"",nil,nil,"Priority conflicts")
+		assert.equal(1,#conflicts);local reason=structure.diagnostics(view,conflicts[1])[1]
+		assert.is_truthy(reason.shadowedBy);assert.matches("every item matched",reason.warning)
+	end)
 	it("maps every active block to its real source section and edit behavior",function()
 		local view=structure.outline(profile());assert.equal(view.report.rules,#view.entries);local sections={};for _,group in ipairs(view.sections) do sections[group.id]=true end
 		for _,id in ipairs({"personal","tiers","module-shared","campaign","safety","base"}) do assert.is_true(sections[id],id) end
