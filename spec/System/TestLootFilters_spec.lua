@@ -1,4 +1,4 @@
--- cspell:ignore RRAG GGGRRW GGGGR GGGRR GGRRRW
+-- cspell:ignore RRAG RRRG GGGRRW GGGGR GGGRR GGRRRW
 describe("Build-owned loot filters",function()
 	local filters=require("Modules.LootFilters")
 	local parser=require("Modules.LootFilterParser")
