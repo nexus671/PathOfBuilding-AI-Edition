@@ -258,7 +258,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	frame("crafting-weapon-enchanted")
 	local swordModel=sim.model(swordRaw);local swordState=sim.perform(swordRaw,{method="harvest_enchant",enchantId="WeaponCriticalEnchant"},1).state
 	require("Classes.CraftingItemComparisonControl").Open({title="Before enchantment",baseItem=swordRaw,state=swordModel.initial,slot="Weapon 1"},{title="After enchantment",baseItem=swordRaw,state=swordState,slot="Weapon 1"})
-	frame("crafting-weapon-comparison");ui:click("close");ui:click("close")
+	frame("crafting-weapon-comparison");ui:click("close")
+	ui:click("settings");ui:text("paletteSearch","remove enchantments");assert(main.popups[1].controls.paletteUse:IsEnabled(),"Enchantment removal is unavailable on an enchanted weapon")
+	frame("crafting-remove-enchant-selection");ui:click("paletteUse")
+	local removeHints={};for _,row in ipairs(main.popups[1].controls.actionHint.list) do removeHints[#removeHints+1]=StripEscapes(row[1]) end
+	assert(table.concat(removeHints," "):find("three Orbs of Scouring",1,true),"Enchantment removal did not explain its cost")
+	frame("crafting-remove-enchant-details");ui:click("apply")
+	assert(main.popups[1].controls.intro.label:find("Applied Bench: remove enchantments",1,true),"Enchantment removal did not apply")
+	frame("crafting-remove-enchant-applied");ui:click("undo");ui:click("close")
 	require("Classes.CraftingSimulatorControl").Open(build,{id="ward-ui",title="Ward properties",slot="Helmet",startingItem="Rarity: NORMAL\nRunic Helm\nItem Level: 86",goals={},steps={}})
 	assert(main.popups[1].controls.item.defences:find("Ward:",1,true),"Ward is missing from the item card")
 	frame("crafting-ward-properties");ui:click("close")
@@ -765,6 +772,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("failure","Step 1","label");ui:click("update");assert(main.popups[1].controls.graph.list[1].subtitle:find("Failure -> Step 1",1,true),"Choosing a failure route did not replace recovery")
 	ui:choose("failure","restart","val");ui:click("update");assert(main.popups[1].controls.graph.list[1].subtitle:find("Restart",1,true),"Choosing restart did not update the recipe")
 	ui:choose("failure","stop","val");ui:click("update");frame("crafting-recovery-route");ui:click("keep")
+	do
+		local model=sim.model("Rarity: NORMAL\nRusted Sword\nItem Level: 86");local saved
+		require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy"}},targets={},requirements={minAffixes=1}},{method="alchemy"},function(value) saved=value end,model)
+		ui:click("addCurrency");ui:text("search","remove enchantments");frame("crafting-recipe-remove-enchant");ui:click("choose");ui:click("keep")
+		assert(saved and saved.steps[2].method=="bench_remove_enchant","The recipe did not retain enchantment removal")
+	end
 	do
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86";local routeModel=sim.model(raw);local benchId=routeModel.bench[1].id
 		local saved;require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy"}},targets={},requirements={maxAffixes=0}},{method="alchemy"},function(value) saved=value end,routeModel)

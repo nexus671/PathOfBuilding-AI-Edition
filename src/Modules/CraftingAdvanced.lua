@@ -975,7 +975,7 @@ function A.extend(M,api)
 			end
 		end
 		result.benchServiceCosts={};local rerollAllowed,rerollReason,rerollPossible
-		for _,action in ipairs({{method="remove_crafted"},{method="bench_reroll",count=1},{method="bench_reroll",count=3}}) do
+		for _,action in ipairs({{method="remove_crafted"},{method="bench_remove_enchant"},{method="bench_reroll",count=1},{method="bench_reroll",count=3}}) do
 			local label=M.labels[action.method]..(action.count and " / "..action.count or "")
 			if #result.benchServiceCosts<(limit or 50) and (action.method.." "..label):lower():find((query or ""):lower(),1,true) then
 				local cost,sources=require("Modules.CraftingBenchCosts").service(M.context(model,state),action)
@@ -1136,7 +1136,7 @@ function A.extend(M,api)
 		"Tangled Fossils require a revealed resonator outcome. Automatic predictable recombination odds, unique generation and many 3.30 rules are not implemented.",
 		"The standard Orb of Annulment uses the announced 3.30 attack/caster blocker rule. Modifier metadata uses a reviewed 3.30.0.1.4 client overlay; other supplemental sources remain pinned to 3.29.3.6 where not explicitly updated.",
 		"Partial locks use uniform random selection from all modifiers on the protected side, including fractures; group conflicts and other interactions are assumptions. Core affix actions, Harvest reforge/augment, and independent socket, quality, implicit and enchantment crafts are supported; other interactions are rejected.",
-		"Full prefix/suffix lock prices and the bench Chance-to-Alteration cost change use 3.30 rules; other bench costs remain pinned to 3.29.3.6.",
+		"Bench ingredient prices use the 3.30.0.1.4 client catalogue; later client changes are not included.",
 		"Rare modifier counts and Eldritch Chaos counts are model assumptions. Numeric display rolls and sampling intervals do not establish exact in-game odds.",
 		"Every result is a separate hypothetical item. Costs use supplied prices; no game currency is spent."}
 	require("Modules.CraftingProperties").extend(M,A,api)

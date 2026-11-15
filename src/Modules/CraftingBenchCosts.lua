@@ -50,7 +50,7 @@ function B.index(data)
 				add(key,service.cost,id)
 			end
 		end
-		for _,operation in ipairs({"remove_crafted_mods","reroll_rare_mods"}) do
+		for _,operation in ipairs({"remove_crafted_mods","remove_enchantments","reroll_rare_mods"}) do
 			local value=service.actions[operation]
 			if value then for _,class in ipairs(service.item_classes) do
 				add(serviceKey(operation,value,class),service.cost,operation..":"..tostring(value))
@@ -85,9 +85,15 @@ end
 function B.service(model,action)
 	local operation,value
 	if action.method=="remove_crafted" then operation,value="remove_crafted_mods",true
+	elseif action.method=="bench_remove_enchant" then operation,value="remove_enchantments",true
 	elseif action.method=="bench_reroll" then operation,value="reroll_rare_mods",action.count
 	else return end
-	return lookupEntry(serviceKey(operation,value,B.class(model.item)))
+	local class=B.class(model.item)
+	if operation=="remove_enchantments" and model.item.type=="Flask" then
+		local subtype=model.item.base.subType
+		if subtype=="Life" or subtype=="Mana" or subtype=="Hybrid" or subtype=="Utility" then class=subtype.."Flask" end
+	end
+	return lookupEntry(serviceKey(operation,value,class))
 end
 function B.cost(model,id,lookup)
 	local mod=model.byId[id]

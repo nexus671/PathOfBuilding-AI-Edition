@@ -1,0 +1,60 @@
+describe("Crafting bench enchantment removal",function()
+	local sim=require("Modules.CraftingSimulator")
+	local action={method="bench_remove_enchant"}
+	local scour="Metadata/Items/Currency/CurrencyConvertToNormal"
+	it("removes an imported Harvest enchantment and persists that removal",function()
+		local raw="Rarity: NORMAL\nRusted Sword\nItem Level: 86\nQuality: 20"
+		local enchanted=sim.perform(raw,{method="harvest_enchant",enchantId="WeaponCriticalEnchant"},1)
+		local model=sim.model(enchanted.itemText)
+		assert.is_true(require("Modules.CraftingAvailability").check(action.method,model.initial,model))
+		assert.are.same({[scour]=3},sim.components(action,model.initial,model))
+		local catalog=sim.catalog(enchanted.itemText,"bench_remove_enchant",10)
+		assert.are.equal(1,#catalog.benchServiceCosts);assert.is_true(catalog.benchServiceCosts[1].available)
+		assert.are.same({[scour]=3},catalog.benchServiceCosts[1].components)
+		local removed=sim.perform(enchanted.itemText,action,1)
+		assert.is_true(removed.state.enchantCleared);assert.is_nil(removed.state.harvestEnchant)
+		assert.are.equal(0,#sim.toItem(model,removed.state).enchantModLines)
+		local saved=assert(require("dkjson").decode(require("dkjson").encode(removed.state)))
+		assert.is_nil(sim.validateState(model,saved).harvestEnchant)
+		assert.are.equal(0,#sim.model(removed.itemText).item.enchantModLines)
+		newBuild();local project={id="remove-enchant",title="Remove enchantment",slot="Weapon 1",startingItem=enchanted.itemText,goals={},steps={}}
+		project.inventory={require("Modules.CraftingInventory").capture(project,saved,"Unenchanted weapon")};build.savers.CraftingProjects:Upsert(project)
+		local xml=build:SaveDB("Enchantment removal");loadBuildFromXML(xml,"Enchantment removal")
+		local restored=build.savers.CraftingProjects.projects[1].inventory[1].state
+		assert.is_true(restored.enchantCleared);assert.are.equal(0,#sim.toItem(model,sim.validateState(model,restored)).enchantModLines)
+		local again=sim.perform(enchanted.itemText,{method="harvest_enchant",enchantId="WeaponAreaEnchant"},1,saved)
+		assert.is_nil(again.state.enchantCleared);assert.are.equal("WeaponAreaEnchant",again.state.harvestEnchant)
+	end)
+	it("removes socket enchantments without creating sockets and reports a deterministic outcome",function()
+		local raw="Rarity: NORMAL\nIron Gauntlets\nItem Level: 86\nSockets: R-R-R-R"
+		local model=sim.model(raw);local id="DeepwaterTattooEnchantDexMovementSpeed"
+		local enchanted=sim.setKatakohi(model,model.initial,{id})
+		local removed=sim.perform(raw,action,1,enchanted)
+		assert.are.equal(3,#removed.state.sockets);assert.are.equal(4,sim.socketLimit(model,removed.state))
+		assert.are.same({},removed.state.katakohiEnchants);assert.are.equal(0,#sim.toItem(model,removed.state).enchantModLines)
+		assert.matches("Enchantments removed",table.concat(require("Modules.CraftingInspection").diff(model,enchanted,removed.state)," "))
+		local targets={{scope="enchant",anyOf={id},negate=true}}
+		local result=sim.calculate(raw,action,targets,enchanted,{})
+		assert.is_false(result.sampled);assert.are.equal(100,result.successChance)
+		local recipe={initialState=enchanted,steps={action},targets=targets}
+		local simulated=sim.simulate(raw,recipe,{trials=2,maxActions=1,currency="chaos",prices={[scour]=2}})
+		assert.are.equal(2,simulated.successes);assert.are.equal(6,simulated.meanCost);assert.are.equal(6,simulated.currencySpent[scour])
+	end)
+	it("rejects unavailable items and preserves conflicting-state validation",function()
+		local raw="Rarity: NORMAL\nRusted Sword\nItem Level: 86";local model=sim.model(raw)
+		local ok,reason=require("Modules.CraftingAvailability").check(action.method,model.initial,model)
+		assert.is_false(ok);assert.matches("no enchantments",reason)
+		assert.is_false(pcall(sim.perform,raw,action,1))
+		local jewel=sim.model("Rarity: NORMAL\nCobalt Jewel\nItem Level: 86")
+		assert.are.same({bench_remove_enchant=1},sim.components(action,jewel.initial,jewel))
+		local state=copyTable(model.initial);state.enchantCleared=true;state.harvestEnchant="WeaponCriticalEnchant"
+		assert.is_false(pcall(sim.validateState,model,state))
+	end)
+	it("removes utility flask enchantments using the client bench service",function()
+		local raw="Rarity: NORMAL\nGranite Flask\nItem Level: 86\nImplicits: 1\n{enchant}Used when Charges reach full"
+		local model=sim.model(raw);assert.are.equal(1,#model.item.enchantModLines)
+		assert.is_true(require("Modules.CraftingAvailability").check(action.method,model.initial,model))
+		assert.are.same({[scour]=3},sim.components(action,model.initial,model))
+		local removed=sim.perform(raw,action,1);assert.are.equal(0,#sim.model(removed.itemText).item.enchantModLines)
+	end)
+end)

@@ -21,6 +21,7 @@ function E.label(id)
 end
 function E.extend(M,A,api)
 	M.methods[#M.methods+1]="harvest_enchant";M.labels.harvest_enchant="Harvest: replace quality enchantment";table.sort(M.methods)
+	M.methods[#M.methods+1]="bench_remove_enchant";M.labels.bench_remove_enchant="Bench: remove enchantments";table.sort(M.methods)
 	local action,options,decorate,validate,price,components=M.action,M.actionOptions,M.decorateItem,M.validateState,M.priceKey,M.components
 	local originalCatalog=M.catalog
 	function M.catalog(raw,query,limit,initialState)
@@ -47,10 +48,21 @@ function E.extend(M,A,api)
 		return model
 	end
 	function M.action(model,state,craft,random)
+		if craft.method=="bench_remove_enchant" then
+			local reason=M.methodChecks.bench_remove_enchant(model,state);assert(not reason,reason)
+			local next=copyTable(state);next.harvestEnchant=nil;next.enchantCleared=true
+			if model.item.type=="Gloves" then next.katakohiEnchants={} end
+			return next
+		end
 		if craft.method~="harvest_enchant" then return action(model,state,craft,random) end
 		assert(not state.destroyed and not state.corrupted and not state.mirrored and not state.veil,"Harvest enchanting requires an uncorrupted, usable item without a pending unveil")
 		assert(E.eligible(model,craft.enchantId),"Choose a Harvest enchantment available for this base")
-		local next=copyTable(state);next.harvestEnchant=craft.enchantId;return next
+		local next=copyTable(state);next.harvestEnchant=craft.enchantId;next.enchantCleared=nil;return next
+	end
+	M.methodChecks.bench_remove_enchant=function(model,state)
+		if state.destroyed or state.corrupted or state.mirrored or state.veil then return "Removing enchantments requires an uncorrupted, usable item without a pending unveil." end
+		if not require("Modules.CraftingBenchCosts").service(model,{method="bench_remove_enchant"}) then return "The bench service is unavailable for this item class." end
+		if #(M.toItem(model,state).enchantModLines or {})==0 then return "This item has no enchantments to remove." end
 	end
 	function M.actionOptions(model,state,method)
 		if method~="harvest_enchant" then return options(model,state,method) end
@@ -62,20 +74,27 @@ function E.extend(M,A,api)
 	end
 	function M.decorateItem(model,state,item)
 		decorate(model,state,item)
+		if state.enchantCleared then item.enchantModLines={} end
 		if state.harvestEnchant then
 			item.enchantModLines={}
 			for _,line in ipairs(assert(E.data().crafts[state.harvestEnchant],"Unknown Harvest enchantment").lines) do item.enchantModLines[#item.enchantModLines+1]={line=line,enchant=true} end
 		end
 	end
 	function M.validateState(model,state)
+		assert(state.enchantCleared==nil or type(state.enchantCleared)=="boolean","Invalid enchantment removal state")
+		assert(not state.enchantCleared or not state.harvestEnchant and (not state.katakohiEnchants or #state.katakohiEnchants==0),"Removed enchantments cannot also be present")
 		if state.harvestEnchant then assert(E.eligible(model,state.harvestEnchant),"Invalid Harvest enchantment for this base") end
 		local result=validate(model,state)
 		-- Older structured states inherit enchantments from their starting text.
-		if result.harvestEnchant==nil then result.harvestEnchant=model.initial.harvestEnchant end
+		if result.harvestEnchant==nil and not result.enchantCleared then result.harvestEnchant=model.initial.harvestEnchant end
 		return result
 	end
 	function M.priceKey(craft) if craft.method=="harvest_enchant" then return "harvest_enchant:"..tostring(craft.enchantId) end;return price(craft) end
 	function M.components(craft,state,model)
+		if craft.method=="bench_remove_enchant" and model then
+			local cost=require("Modules.CraftingBenchCosts").service(state and M.context(model,state) or model,craft)
+			if cost then return cost end
+		end
 		if craft.method=="harvest_enchant" then
 			local entry=assert(E.data().crafts[craft.enchantId],"Choose a known Harvest enchantment")
 			return {[({"wild_lifeforce","vivid_lifeforce","primal_lifeforce"})[entry.lifeforceType]]=entry.cost}

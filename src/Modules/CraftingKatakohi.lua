@@ -93,7 +93,7 @@ function K.extend(M)
  function M.setKatakohi(model,state,ids)
   assert(model.item.type=="Gloves" and not state.destroyed and not state.veil,"Socket enchantments require usable gloves")
   assert(type(ids)=="table" and #ids<=3,"Choose up to three socket enchantments")
-  local next=copyTable(state);next.katakohiEnchants=copyTable(ids);next.harvestEnchant=nil
+  local next=copyTable(state);next.katakohiEnchants=copyTable(ids);next.harvestEnchant=nil;next.enchantCleared=nil
   local limit=M.socketLimit(model,next)
   while #(next.sockets or {})>limit do table.remove(next.sockets) end
   return M.validateState(model,next)
