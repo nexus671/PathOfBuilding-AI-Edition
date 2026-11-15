@@ -15,11 +15,12 @@ function M.Open(build,plan,keep)
 	ui.label(c,"stageLabel",16,76,"Stage")
 	c.stage=new("DropDownControl"):DropDownControl(ui.anchor,{16,102,240,28},{{label="Starter",val="starter"},{label="Intermediate",val="intermediate"},{label="Final",val="final"}});c.stage:SelByValue(draft.progression and draft.progression.stage or "starter","val")
 	ui.label(c,"previousLabel",280,76,"Previous saved Atlas plan")
-	local previous={{label="No previous plan",val=""}};for _,p in ipairs(build.savers.AtlasPlans.plans) do if p.id~=plan.id and p.version==plan.version then previous[#previous+1]={label=p.title,val=p.id} end end
+	local previous={{label="No previous plan",val=""}};for _,p in ipairs(require("Modules.AtlasStrategy").previousCandidates(plan,build.savers.AtlasPlans.plans)) do previous[#previous+1]={label=p.title,val=p.id} end
 	c.previous=new("DropDownControl"):DropDownControl(ui.anchor,{280,102,w-296,28},previous);c.previous:SelByValue(draft.progression and draft.progression.previousId or "","val")
+	c.previous.tooltipText="Only saved plans from this tree that do not create a progression loop are offered."
 	c.transition=new("TextListControl"):TextListControl(ui.anchor,{16,156,w-32,h-230},nil,{})
 	local function refresh()
-		local lines={"Keep each stage as its own saved plan. Choose the prior stage to review the respec.","No prior stage selected."}
+		local lines={"Keep each stage as its own saved plan. Choose the prior stage to review the respec.","Later stages that depend on this plan cannot be selected as its previous stage.","No prior stage selected."}
 		for _,p in ipairs(build.savers.AtlasPlans.plans) do if p.id==c.previous:GetSelValueByKey("val") then lines=require("Modules.PlanningPerformance").measure(build,"Atlas respec route",require("Modules.AtlasStrategy").transition,p,draft).lines end end
 		c.transition.list=ui.rows(lines,w-56)
 	end

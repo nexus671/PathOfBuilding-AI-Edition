@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview245" />
+	<Version number="2.67.2-ai.preview246" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1121,7 +1121,7 @@
 	<File name="Assets/vestigialicon.png" part="program" sha1="ecb5dd4b9aed1cac0c1a677b18838ae9c62744d7" />
 	<File name="Assets/warlordicon.png" part="program" sha1="cca050c84884f5c0bb1380ece51d3c4b32be4900" />
 	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="d0c022a2f105043e7e094468af6e5946cf3eb0fd" />
-	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="18fba4bf0422846dfaf51f75bcf426b7c9d15aa1" />
+	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="d6723c77be6e3f4cc5f8603452212e46b88933f0" />
 	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="2f5e6945c19fe3f07430ae091072642479823927" />
 	<File name="Classes/BuildJourneyControl.lua" part="program" sha1="3429fb9b3ce4463a96838e127e3863814d47f976" />
 	<File name="Classes/BuildListControl.lua" part="program" sha1="f60f0d7f6aecbe851db896913cd1aa707c7fb304" />
@@ -1494,7 +1494,7 @@
 	<File name="Modules/AtlasArt.lua" part="program" sha1="d007b7632f8d2e284c7ed46d6a0d98c39d3e2576" />
 	<File name="Modules/AtlasExactRoute.lua" part="program" sha1="4468353ae36dc220916b985ce6de0e1403c7643c" />
 	<File name="Modules/AtlasPlanner.lua" part="program" sha1="31cbdb2601f08587cc12bd2ecde4c7ff726f7998" />
-	<File name="Modules/AtlasStrategy.lua" part="program" sha1="86fea514cdd7a315fbc3fdfc7a18982a07e17548" />
+	<File name="Modules/AtlasStrategy.lua" part="program" sha1="10093c44c863915c96529ef9e512c3902d08803c" />
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="7214595aad55542aaeefc549e1580efc0389c4e5" />
 	<File name="Modules/Build.lua" part="program" sha1="972e8291b2ac3360e6914e39ab7db209e78e97d8" />
 	<File name="Modules/BuildDisplayStats.lua" part="program" sha1="ffc4da3b13c3d50f3580b452622429f0bd7e70ab" />

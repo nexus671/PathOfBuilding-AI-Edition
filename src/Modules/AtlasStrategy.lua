@@ -72,6 +72,24 @@ function M.compare(before,after)
 	table.sort(result.stats)
 	return result
 end
+-- A previous stage cannot already depend on this draft. Check the complete
+-- saved chain, including missing or incompatible ancestors, before offering it.
+function M.previousCandidates(plan,plans)
+	local byId={};for _,entry in ipairs(plans) do byId[entry.id]=entry end
+	local result={}
+	for _,entry in ipairs(plans) do if entry.id~=plan.id and entry.version==plan.version then
+		local seen={[plan.id]=true};local current=entry;local valid=true
+		while current do
+			if seen[current.id] or current.version~=plan.version then valid=false;break end
+			seen[current.id]=true
+			local previous=current.progression and current.progression.previousId
+			if not previous or previous=="" then break end
+			current=byId[previous];if not current then valid=false;break end
+		end
+		if valid then result[#result+1]=entry end
+	end end
+	return result
+end
 function M.routes(plan,target,avoid,preferred)
 	local routes={};local seen={}
 	local function add(label,targets,blocked)
