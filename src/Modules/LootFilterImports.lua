@@ -22,4 +22,23 @@ function M.expand(raw,files,limit)
 	end
 	expand(raw,0);return table.concat(output,"\n")
 end
+-- Use the same expansion as preview/export so this list includes nested
+-- references and identifies cycles without consulting the local filesystem.
+function M.summarize(parsed,files)
+	local supplied={};for _,file in ipairs(files or {}) do supplied[file.name]=true end
+	local found,rows={},{}
+	for _,entry in ipairs(parsed.imports) do
+		local row=found[entry.file]
+		if not row then
+			row={name=entry.file,optional=entry.optional,cycle=supplied[entry.file] or false,count=0}
+			found[entry.file]=row;rows[#rows+1]=row
+		else row.optional=row.optional and entry.optional end
+		row.count=row.count+1
+	end
+	table.sort(rows,function(a,b) return a.name:lower()==b.name:lower() and a.name<b.name or a.name:lower()<b.name:lower() end)
+	return rows
+end
+function M.unresolved(raw,files,limit)
+	return M.summarize(parser.parse(M.expand(raw,files,limit)),files)
+end
 return M

@@ -215,6 +215,29 @@ describe("Build-owned loot filters",function()
 		local c=main.popups[1].controls;c.name:SetText("rules.filter");c.text:SetText('Hide\n BaseType "Iron Hat"');c.keep:Click()
 		assert.is_nil(profile.importFiles);assert.equal("rules.filter",saved[1].name);assert.is_truthy(saved[1].text:find("Iron Hat",1,true))
 	end)
+	it("discovers nested missing imports and circular references without reading disk",function()
+		local imports=require("Modules.LootFilterImports")
+		local raw='Import "outer.filter"\nImport "z.filter" Optional\nImport "z.filter"\nShow'
+		local files={{name="outer.filter",text='Import "inner.filter" Optional\nImport "outer.filter"'}}
+		local rows=imports.unresolved(raw,files)
+		assert.same({{name="inner.filter",optional=true,cycle=false,count=1},{name="outer.filter",optional=false,cycle=true,count=1},{name="z.filter",optional=false,cycle=false,count=2}},rows)
+		local profile=filters.profile("imports-report","Import report");profile.template=raw;profile.importFiles=files
+		local _,report=filters.compile(profile);assert.same(rows,report.unresolvedImports)
+		assert.same({},imports.unresolved('Import "empty.filter" Optional\nShow',{{name="empty.filter",text=""}}))
+	end)
+	it("helps attach nested references without silently creating empty files",function()
+		local profile=filters.profile("included-help","Included help");profile.template='Import "outer.filter"\nShow'
+		profile.importFiles={{name="outer.filter",text='Import "inner.filter"\nHide'}};local saved
+		require("Classes.LootFilterImportControl").Open(profile,function(files) saved=files end);local editor=main.popups[1].controls
+		editor.findImports:Click();local browser=main.popups[1].controls
+		assert.equal("inner.filter",browser.results.list[1].entry.id);browser.choose:Click()
+		assert.equal("inner.filter",editor.name.buf);editor.keep:Click()
+		assert.equal(1,#saved);assert.equal("outer.filter",saved[1].name)
+		require("Classes.LootFilterImportControl").Open(profile,function(files) saved=files end);editor=main.popups[1].controls
+		editor.findImports:Click();main.popups[1].controls.choose:Click();editor.text:SetText('Show\n BaseType "Iron Hat"');editor.keep:Click()
+		assert.equal(2,#saved);assert.equal("inner.filter",saved[2].name)
+		profile.importFiles=saved;assert.equal("matched",filters.simulate(profile,{BaseType="Iron Hat"}).status)
+	end)
 	it("retains attachment edits across selection and rejected saves",function()
 		local profile=filters.profile("included","Included");profile.importFiles={{name="one.filter",text="Show"},{name="two.filter",text="Hide"}};local saved
 		require("Classes.LootFilterImportControl").Open(profile,function(files) saved=files end);local c=main.popups[1].controls

@@ -1018,6 +1018,17 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("manage");ui:text("search","Included filter files");ui:click("choose")
 	ui:text("name","rules.filter");ui:text("text",'Hide\n BaseType "Iron Hat"');frame("filter-included-files");ui:click("keep")
 	assert(build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].importFiles[1].name=="rules.filter","Included filter file was not kept in the draft")
+	do
+		local profile=require("Modules.LootFilters").profile("import-picker-ui","Import picker")
+		profile.template='Import "outer.filter"\nShow';profile.importFiles={{name="outer.filter",text='Import "inner.filter"\nImport "outer.filter"\nHide'}}
+		local saved;require("Classes.LootFilterImportControl").Open(profile,function(files) saved=files end)
+		ui:click("findImports");frame("filter-unresolved-imports");ui:text("search","inner.filter");ui:click("choose")
+		assert(main.popups[1].controls.name.buf=="inner.filter","Missing import did not populate its exact filename");frame("filter-unresolved-selected");ui:click("keep")
+		assert(saved and #saved==1,"Selecting a missing name silently created an empty file")
+		require("Classes.LootFilterImportControl").Open(profile,function(files) saved=files end);ui:click("findImports");ui:text("search","outer.filter");ui:click("choose")
+		assert(main.popups[1].controls.name.buf=="outer.filter" and main.popups[1].controls.text.buf:find('Import "outer.filter"',1,true),"Circular import did not open its existing file")
+		frame("filter-circular-import-selected");ui:click("cancel")
+	end
 	ui:choose("mode","Ruthless");frame("filter-ruthless");ui:click("viewStyle");ui:click("globalStyle");ui:click("textColorPick");ui:text("a","0");assert(not main.popups[1].controls.keep:IsEnabled(),"Ruthless picker allowed invisible text");ui:text("a","80");frame("filter-colour-ruthless");ui:click("cancel");ui:click("close");ui:click("viewOverview");ui:choose("mode","Normal")
 	ui:click("generate");frame("filter-build-targets")
 	ui:click("viewCustomize");ui:choose("source","Base filter");frame("filter-base-catalog")

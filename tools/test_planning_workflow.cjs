@@ -500,6 +500,9 @@ async function main(){
   const mixedSocketUnknown=await queued('test_loot_filter',{baseRevision:context.revision,profile:mixedSocketProfile,sample:{BaseType:'Plate Vest',Rarity:'Normal',Sockets:3}},'tested');assert.equal(mixedSocketUnknown.result.status,'unknown');
   const exported=await queued('export_loot_filter',{baseRevision:context.revision,profile:generated.profile},'exported');assert.ok(exported.filter.includes('PoB rule:'));assert.ok(exported.filter.includes('Frayed Thread'));
   assert.ok(exported.filter.includes('# PoB rule: Campaign /'));assert.ok(exported.filter.includes('Crude Bow'));
+  const importProfile={...generated.profile,id:'imports-ai',template:'Import "outer.filter"\nImport "absent.filter" Optional\nShow',importFiles:[{name:'outer.filter',text:'Import "outer.filter"\nImport "inner.filter"\nHide'}]};
+  const importReport=await queued('export_loot_filter',{baseRevision:context.revision,profile:importProfile},'exported');
+  assert.deepEqual(importReport.report.unresolvedImports,[{name:'absent.filter',optional:true,cycle:false,count:1},{name:'inner.filter',optional:false,cycle:false,count:1},{name:'outer.filter',optional:false,cycle:true,count:1}]);
   await queued('propose_loot_filters',{title:'Keep pickup plan',baseRevision:context.revision,filters:{schemaVersion:1,activeId:'mapping',profiles:[generated.profile]}},'review');await host('apply');context=(await call('get_build_context')).context;
   const savedFilters=await call('get_loot_filters');assert.equal(savedFilters.filters.profiles.length,1);
   const savedPage=await queued('test_loot_filter_examples',{baseRevision:context.revision,profileId:'mapping',sampleSetId:'campaign-drop'},'tested');

@@ -226,7 +226,7 @@ function M.compile(profile,includeParsed)
 	for _,diagnostic in ipairs(require("Modules.LootFilterDiagnostics").shadowing(parsed)) do parsed.diagnostics[#parsed.diagnostics+1]=diagnostic end
 	if checked.mode=="Normal" then for _,rule in ipairs(parsed.rules) do if rule.action=="Minimal" then parsed.diagnostics[#parsed.diagnostics+1]={line=rule.line,error="Minimal blocks require Ruthless mode"} end end end
 	if checked.mode=="Ruthless" then for _,rule in ipairs(parsed.rules) do local text=rule.styles.SetTextColor;if text and tonumber(text[4]) and tonumber(text[4])<80 then parsed.diagnostics[#parsed.diagnostics+1]={line=rule.line,error="Ruthless text opacity must be at least 80"} end end end
-	local report={changes=changes,diagnostics=parsed.diagnostics,imports=parsed.imports,rules=#parsed.rules,baseCommit=checked.baseCommit,currentCommit=M.source().commit,imported=checked.template~=nil}
+	local report={changes=changes,diagnostics=parsed.diagnostics,imports=parsed.imports,unresolvedImports=require("Modules.LootFilterImports").summarize(parsed,checked.importFiles),rules=#parsed.rules,baseCommit=checked.baseCommit,currentCommit=M.source().commit,imported=checked.template~=nil}
 	if includeParsed then return raw,report,parsed end
 	return raw,report
 end
