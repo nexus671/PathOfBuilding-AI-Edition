@@ -33,7 +33,7 @@ def source_hashes():
     sources += list((ROOT / "src/TreeData/3_30").glob("*"))
     sources += list((ROOT / "src/TreeData/3_30_ruthless").glob("*"))
     sources += list((ROOT / "src/TreeData/3_30_preview").glob("*"))
-    sources += [ROOT / "src/_SimpleGraphic.def.lua", ROOT / "src/GameVersions.lua", ROOT / "src/Data/HeadlessImageSizes.json"]
+    sources += [ROOT / "src/_SimpleGraphic.def.lua", ROOT / "src/GameVersions.lua", ROOT / "src/Data/HeadlessImageSizes.json", ROOT / "tools/update_loot_filter_base_metadata.py", ROOT / "tools/test_update_loot_filter_data.py"]
     sources += [ROOT / "src/HeadlessWrapper.lua", ROOT / "src/Data/Global.lua", Path(__file__), ROOT / "tools/render_headless_ui.py", ROOT / "tools/test_headless_ui.lua", ROOT / "tools/update_crafting_currency_art.py", ROOT / "tools/update_colour_picker_art.py"]
     return {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(sources) if path.is_file()}
 

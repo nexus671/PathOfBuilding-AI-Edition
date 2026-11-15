@@ -142,18 +142,33 @@ function M.Account(profile,import)
 end
 function M.EditSample(item,save)
 	local c={};local w,h=math.min(820,main.screenW-40),math.min(560,main.screenH-60)
-	local fields={"BaseType","Class","Rarity","ItemLevel","AreaLevel","UnidentifiedItemTier","SocketGroup","Sockets","SocketColours","LinkedSockets","StackSize","GemLevel","MapTier","Quality","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence","HasExplicitMod"}
-	for i,key in ipairs(fields) do local x=16+((i-1)%3)*(w/3);local y=28+math.floor((i-1)/3)*56;ui.label(c,key.."Label",x,y,key:gsub("(%l)(%u)","%1 %2"),14)
+	local fields={"BaseType","Class","Rarity","ItemLevel","AreaLevel","DropLevel","Width","Height","UnidentifiedItemTier","SocketGroup","Sockets","SocketColours","LinkedSockets","StackSize","GemLevel","MapTier","Quality","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence","HasExplicitMod"}
+	local columns=h<520 and 4 or 3;local fieldWidth=w/columns
+	for i,key in ipairs(fields) do local x=16+((i-1)%columns)*fieldWidth;local y=28+math.floor((i-1)/columns)*56;ui.label(c,key.."Label",x,y,key:gsub("(%l)(%u)","%1 %2"),14)
 		local value=item[key];if type(value)=="table" then
 			if key=="HasExplicitMod" then local names={};for _,name in ipairs(value) do names[#names+1]=filters.quote(name) end;value=#names>0 and table.concat(names," ") or "[]"
 			else value=table.concat(value," ") end
 		end
 		if parser.booleans[key] then
-			c[key]=new("DropDownControl"):DropDownControl(ui.anchor,{x,y+18,w/3-32,24},{"Unknown","Yes","No"})
+			c[key]=new("DropDownControl"):DropDownControl(ui.anchor,{x,y+18,fieldWidth-32,24},{"Unknown","Yes","No"})
 			c[key]:SelByValue(value==nil and "Unknown" or value and "Yes" or "No")
-		else c[key]=new("EditControl"):EditControl(ui.anchor,{x,y+18,w/3-32,24},tostring(value==nil and "" or value),nil,nil,240) end
+		else c[key]=new("EditControl"):EditControl(ui.anchor,{x,y+18,fieldWidth-32,24},tostring(value==nil and "" or value),nil,nil,240) end
 		if key=="HasExplicitMod" then c[key].tooltipText='Enter quoted modifier names. Leave blank if unknown; enter [] for a known empty list.' end
 		if key=="SocketGroup" then c[key].tooltipText='Enter linked groups, 0 for no sockets, or leave blank if unknown.' end
+		if key=="DropLevel" or key=="Width" or key=="Height" then c[key].tooltipText="Leave blank if this base property is unknown." end
+	end
+	local previousBase=c.BaseType.buf
+	c.BaseType.tooltipText="Changing the base clears its class, dimensions, drop level, map tier and sockets. Enter values for the new item."
+	c.BaseType.changeFunc=function(value)
+		if value~=previousBase then
+			for _,key in ipairs({"Class","DropLevel","Width","Height","MapTier","SocketGroup","Sockets","SocketColours","LinkedSockets"}) do c[key]:SetText("") end
+			previousBase=value
+		end
+	end
+	local previousRarity=c.Rarity.buf
+	c.Rarity.changeFunc=function(value)
+		if value:lower()=="unique" and previousRarity:lower()~="unique" then c.DropLevel:SetText("") end
+		previousRarity=value
 	end
 	button(c,"useSample",16,h-48,140,"Test drop",function() attempt(function()
 		local nextItem=copyTable(item);for _,key in ipairs(fields) do local v=parser.booleans[key] and c[key]:GetSelValue() or c[key].buf

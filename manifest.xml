@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview241" />
+	<Version number="2.67.2-ai.preview242" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1186,7 +1186,7 @@
 	<File name="Classes/LootFilterCampaignControl.lua" part="program" sha1="43a38aff5c872b88eddc4a27127a9aa541f1efb1" />
 	<File name="Classes/LootFilterCategoryControl.lua" part="program" sha1="c2305569737cb47ef545e0b5770b71dabfc4ed35" />
 	<File name="Classes/LootFilterCollectionControl.lua" part="program" sha1="0cf287605346cae27d7d5155a3429e9f635a28d9" />
-	<File name="Classes/LootFilterControl.lua" part="program" sha1="d79af4721e78461c1ba4f247ed619b0d791a61d4" />
+	<File name="Classes/LootFilterControl.lua" part="program" sha1="96e98c0f0d67bb5975edbcc30e1ae864fd61c329" />
 	<File name="Classes/LootFilterDiffControl.lua" part="program" sha1="994e194583ccb50a6f50fe71876258d7b0bdd2f9" />
 	<File name="Classes/LootFilterEffectsControl.lua" part="program" sha1="1498f472a140cf7e546efe75a79d5c0527739982" />
 	<File name="Classes/LootFilterFileBrowser.lua" part="program" sha1="421a813665f5a2bfffb860c51b7dbe34ccbacf89" />
@@ -1312,6 +1312,7 @@
 	<File name="Data/LootFilters/5.filter" part="program" sha1="cc7a003be8f72cd9d40d3b9bdb5f1fc22efa60fa" />
 	<File name="Data/LootFilters/6.filter" part="program" sha1="081e4b2792b454a8d4eea458b0db145174d9dad6" />
 	<File name="Data/LootFilters/LICENSE-NeverSink.txt" part="program" sha1="f6bd82c134a39fb235b8480b483f775dccfaf913" />
+	<File name="Data/LootFilters/base-metadata.json" part="program" sha1="7fe43f2a3a9324037c75e766aba21c5e4fc785d0" />
 	<File name="Data/LootFilters/patch-3.30.json" part="program" sha1="d1912b3b33fe0529e8e0e8f108b7dea4c972c83b" />
 	<File name="Data/LootFilters/source.json" part="program" sha1="b871d8f97b0e23383e68f5e2169e25e310e9975c" />
 	<File name="Data/Minions.lua" part="program" sha1="96b00b39dded3f5459349665abc3d2e6c30a142f" />
@@ -1586,7 +1587,7 @@
 	<File name="Modules/LootFilterDiff.lua" part="program" sha1="6f117c8c4dac0273eec0a5b64ba31140c0bac7e6" />
 	<File name="Modules/LootFilterEditing.lua" part="program" sha1="dc5f40df61ab752c4d27e8069ca22b186c4330a2" />
 	<File name="Modules/LootFilterImports.lua" part="program" sha1="c141133c964885bc73f595adffbd6942d3b7973b" />
-	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="d07ce7fd9d61453a51de7ce6bee635b0cfa09c22" />
+	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="447050c0a6a92c925a93e57decdfa33dc1ce3256" />
 	<File name="Modules/LootFilterParser.lua" part="program" sha1="b68c29b5daf4b8aba478b5b7e00e7d4f12a1241f" />
 	<File name="Modules/LootFilterRuleOrder.lua" part="program" sha1="c9bd2dd5f27d9f701a4d82071e756c97db2ad101" />
 	<File name="Modules/LootFilterStructure.lua" part="program" sha1="46ae290a763a0ca60e400cd8b9b8d4ed7ea89f9e" />

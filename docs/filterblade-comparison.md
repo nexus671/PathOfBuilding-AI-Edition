@@ -25,10 +25,10 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Stacked currency tiering | Existing stack conditions are preserved and editable | Uniform/adjusted stacked-tier controls |
 | Economy-based tiers | Pinned NeverSink snapshot | Live pricing, outlier handling and recalculation |
 | Global search | Searches names and raw condition/action text | Cross-page command palette |
-| Loot generator | Deterministic example scenes, including maps, threads, flasks, tinctures, cards, essences and build targets | Representative drop distributions and more encounter presets |
+| Loot generator | Deterministic example scenes, including maps, threads, flasks, tinctures, cards, essences and build targets. Base drop levels and inventory sizes use the pinned 3.30.0.1.4 client export; ambiguous values, unique drop levels and unspecified gear sockets remain unknown | Representative drop distributions and more encounter presets |
 | Hidden-drop display | Simulator toggle and searchable scene review with shown, minimal, hidden and uncertain counts | Counts describe examples, not drop rates |
 | Click a simulated item | Explains results and opens matched blocks for editing | More unknown-property guidance |
-| Item configuration | Editable properties and native game-clipboard import | Hidden identities are never inferred |
+| Item configuration | Editable properties and native game-clipboard import, including drop level and inventory dimensions | Hidden identities are never inferred |
 | Item history | Session history plus persistent named sets of exact sample properties | More encounter sample presets |
 | Generator level settings | Shared area/item-level controls and a tiered-gear comparison scene | More encounter-specific samples |
 | Expensive-drop generation | Currency scene and exact custom samples | A separate expensive-item mode based on verified tiers |
@@ -53,6 +53,8 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Export all strictnesses | Seven files or one ZIP, including personal edits and appearance, with collision checks | Imported filters have no preset variants |
 | Validation | Native parser checks and account-server validation when authorised | Broader syntax coverage and live game validation |
 | Mobile layout | Desktop layouts tested at 960, 1024 and 1280 widths | Native PoB is not a mobile web app |
+
+Example base properties come from the pinned 3.30.0.1.4 client base-item export (SHA-256 `bcf0743a00d8db0f3ffb1dc8a15dad47d6469c884bee18bc6029494a8c81400b`). Rebuild with `python tools/update_loot_filter_base_metadata.py path/to/base_items.min.json`; use `--check` to verify. If same-named base records disagree, the affected property remains unknown. Unique drop levels and unspecified equipment sockets are also unknown.
 
 The remaining offline polish includes additional starter presets and encounter sample collections. Hosted economy updates remain separate service work. The release checklist tracks implementation and repeated workflow verification.
 

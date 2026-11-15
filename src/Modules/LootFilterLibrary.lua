@@ -4,6 +4,26 @@ local filters=require("Modules.LootFilters")
 local parser=require("Modules.LootFilterParser")
 local sha1=require("sha1")
 local M={categories={"All items","Build targets","Campaign","Currency","Special currency","Equipment","Unique items","Flasks","Tinctures","Jewels","Divination cards","Maps & fragments","Gems","Recipes","League items","Other"}}
+local baseMetadata
+local function applyBaseProperties(item,preserveSockets)
+	if not baseMetadata then
+		local file=assert(io.open("Data/LootFilters/base-metadata.json","rb"));local raw=file:read("*a");file:close()
+		baseMetadata=assert(require("dkjson").decode(raw)).bases
+	end
+	local base=baseMetadata[item.BaseType] or {}
+	-- A missing or ambiguous client record is unknown, rather than a generic 1.
+	item.DropLevel=base.DropLevel;item.Width=base.Width;item.Height=base.Height
+	-- A unique item's drop level can differ from its base, and the scene does
+	-- not identify the unique. Keep it unknown rather than using the base level.
+	if item.Rarity=="Unique" then item.DropLevel=nil end
+	local native=data and data.itemBases and data.itemBases[item.BaseType]
+	local noSockets={ ["Stackable Currency"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
+	local limit=native and (native.socketLimit or 0)
+	local coherent=preserveSockets and type(item.Sockets)=="number" and (native and item.Sockets<=limit or not native and noSockets[item.Class] and item.Sockets==0)
+	if not coherent and (native and limit>0 or not native and not noSockets[item.Class] or preserveSockets) then
+		item.Sockets=nil;item.SocketGroup=nil;item.SocketColours=nil;item.LinkedSockets=nil
+	end
+end
 function M.category(rule)
 	if rule.origin then return "Build targets" end
 	local text=(rule.text or ""):lower()
@@ -80,7 +100,8 @@ function M.sample(rule,block)
 		elseif #socketConditions>0 or item.LinkedSockets>=5 or type(item.SocketGroup)=="string" and item.SocketGroup~="" then item.BaseType="Vaal Regalia";item.Class="Body Armours"
 		elseif item.Rarity=="Unique" then item.BaseType="Leather Belt";item.Class="Belts"
 		elseif item.Rarity=="Rare" or item.Rarity=="Magic" then item.BaseType="Iron Hat";item.Class="Helmets" end
-	elseif not hasClass then item.Class=baseClass(item.BaseType) end
+	else item.Class=baseClass(item.BaseType) or (hasClass and item.Class or nil) end
+	applyBaseProperties(item,#socketConditions==1)
 	return item
 end
 function M.catalog(profile)
@@ -195,13 +216,14 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		-- These are comparison samples, not a model of drop probabilities.
 		for _,tier in ipairs({0,2,3,4,5}) do
 			local item=M.sample();item.BaseType="Iron Hat";item.Class="Helmets";item.Rarity="Rare";item.Identified=false;item.UnidentifiedItemTier=tier
-			item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86;list[#list+1]=item
+			item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86;applyBaseProperties(item);list[#list+1]=item
 		end
 		return list
 	end
 	if kind=="Build targets" then for _,rule in ipairs(targetRules or filters.generate(build,profile)) do list[#list+1]=M.sample(rule) end end
 	local source=({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
+		applyBaseProperties(item)
 		-- A map name alone does not establish its current Atlas tier. Let the
 		-- preview ask for that value rather than treating every map as tier zero.
 		if kind=="Maps & threads" and item.Class=="Maps" then item.MapTier=nil end
