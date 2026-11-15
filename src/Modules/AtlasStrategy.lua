@@ -1,9 +1,19 @@
+-- cspell:ignore Kalguuran Trarthan
 -- Presentation queries over the pinned graph; no character or map-odds simulation.
 local atlas=require("Modules.AtlasPlanner")
-local M={mechanics={"Maps","Essence","Harvest","Expedition","Breach","Legion","Blight","Delirium","Ritual","Beyond","Abyss","Strongboxes","Shrines","Heist","Delve","Bestiary","Incursion","Betrayal","Ultimatum","Bosses","Mirage","Wildwood","Sentinels","Torment","Rogue Exiles","Threads"}}
-local aliases={Maps={"map","kirac"},Bosses={"boss","shaper","elder","maven","eater","exarch"},Strongboxes={"strongbox"},Shrines={"shrine"},Bestiary={"beast","einhar"},Incursion={"incursion","alva"},Betrayal={"syndicate","jun"},Delve={"sulphite","niko"},Harvest={"harvest","sacred flora","sacred fauna","sacred specimen","lifeforce"},Wildwood={"viridian wildwood","wildwood chance"},Sentinels={"sentinel"},Torment={"tormented spirit","tormented procurator"},["Rogue Exiles"]={"rogue exile"},Threads={"thread"}}
+local M={mechanics={"Maps","Essence","Harvest","Expedition","Breach","Legion","Blight","Delirium","Ritual","Beyond","Abyss","Strongboxes","Shrines","Heist","Delve","Bestiary","Incursion","Betrayal","Ultimatum","Bosses","Mirage","Wildwood","Sentinels","Torment","Rogue Exiles","Mercenaries","Ore Deposits","Threads"}}
+local aliases={Maps={"map","kirac"},Bosses={"boss","shaper","elder","maven","eater","exarch"},Strongboxes={"strongbox"},Shrines={"shrine"},Heist={"heist","smuggler","blueprint"},Bestiary={"beast","einhar"},Incursion={"incursion","alva"},Betrayal={"syndicate","jun"},Delve={"sulphite","niko"},Harvest={"harvest","sacred grove","sacred flora","sacred fauna","sacred specimen","lifeforce"},Wildwood={"viridian wildwood","wildwood chance"},Sentinels={"sentinel"},Torment={"tormented spirit","tormented procurator"},["Rogue Exiles"]={"rogue exile"},Mercenaries={"mercenary","mercenaries","trarthan"},["Ore Deposits"]={"ore deposit","smelted bar","marking ore","kalguuran scarab"},Threads={"thread"}}
+local wholeWord={alva=true,jun=true,niko=true,kirac=true,einhar=true,shaper=true,elder=true,maven=true,eater=true,exarch=true}
+local function letter(byte) return byte and byte>=97 and byte<=122 end
 local function matches(text,name)
-	for _,word in ipairs(aliases[name] or {name:lower()}) do if text:find(word,1,true) then return true end end
+	for _,word in ipairs(aliases[name] or {name:lower()}) do
+		local position=1
+		while true do
+			local first,last=text:find(word,position,true);if not first then break end
+			if not letter(text:byte(first-1)) and (not wholeWord[word] or not letter(text:byte(last+1))) then return true end
+			position=first+1
+		end
+	end
 	return false
 end
 function M.mechanic(node)
@@ -17,6 +27,12 @@ function M.hasMechanic(node,name)
 	-- Keep generic map bonuses separate from mechanic-specific nodes.
 	if name=="Maps" then return M.mechanic(node)=="Maps" end
 	return matches((node.name.." "..table.concat(node.stats," ")):lower(),name)
+end
+function M.allMechanics(node)
+	local text=(node.name.." "..table.concat(node.stats," ")):lower();local result={}
+	for i=2,#M.mechanics do local name=M.mechanics[i];if matches(text,name) then result[#result+1]=name end end
+	if #result==0 and matches(text,"Maps") then result[1]="Maps" end
+	return result
 end
 function M.blocking(node)
 	local lines={};for _,stat in ipairs(node.stats or {}) do local text=stat:lower();if text:find("no chance to contain",1,true) or text:find("cannot contain",1,true) then lines[#lines+1]=stat end end

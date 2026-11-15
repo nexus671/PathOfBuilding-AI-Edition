@@ -427,6 +427,9 @@ async function main(){
   const ruthlessRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'ruthless',title:'Ruthless',version:ruthlessVersion,budget:150,nodes:[]},targets:[57123],optimize:true},'atlas');
   assert.equal(ruthlessRoute.atlas.plan.version,ruthlessVersion);assert.ok(ruthlessRoute.atlas.plan.nodes.includes(57123));
   assert.equal(ruthlessRoute.atlas.officialUrl,undefined);assert.match(ruthlessRoute.atlas.officialUrlWarning,/not verified/);
+  const mercenaryNodes=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Mercenary',limit:100},'atlas');
+  const oreNodes=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Ore Deposit',limit:100},'atlas');
+  assert.ok(mercenaryNodes.atlas.matches.some(node=>node.id===50374));assert.ok(oreNodes.atlas.matches.some(node=>node.id===65008));
   const atlasSearch=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.29.1',query:'Essence',limit:10},'atlas');
   const atlasTargets=atlasSearch.atlas.matches.slice(0,6).map(node=>node.id);assert.equal(atlasTargets.length,6);
   const atlasRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:starterAtlas,targets:atlasTargets,optimize:true},'atlas');

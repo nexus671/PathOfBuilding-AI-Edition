@@ -7,13 +7,41 @@ describe("Desired Atlas routes",function()
 	it("finds new Atlas mechanics and multi-mechanic notables",function()
 		local strategy=require("Modules.AtlasStrategy");local p=plan()
 		local function contains(list,id) for _,entry in ipairs(list) do if (type(entry)=="table" and entry.id or entry)==id then return true end end return false end
-		for name,id in pairs({Mirage=14203,Wildwood=3814,Sentinels=40046,Torment=875,["Rogue Exiles"]=33902,Threads=34352}) do
+		for name,id in pairs({Mirage=14203,Wildwood=3814,Sentinels=40046,Torment=875,["Rogue Exiles"]=33902,Mercenaries=50374,["Ore Deposits"]=65008,Threads=34352}) do
 			assert.is_true(contains(strategy.results(p,"",name),id));assert.is_true(contains(targets.mechanic(p,name).desired,id))
 		end
 		assert.is_true(contains(strategy.results(p,"","Rogue Exiles"),26414));assert.is_true(contains(strategy.results(p,"","Torment"),26414))
 		assert.is_true(contains(targets.mechanic(p,"Torment").desired,26414))
 		assert.is_true(contains(strategy.results(p,"","Harvest"),53175));assert.is_true(contains(targets.mechanic(p,"Harvest").desired,53175))
 		assert.is_false(contains(strategy.results(p,"","Wildwood"),53175));assert.is_false(contains(strategy.results(p,"","Wildwood"),52197))
+		local tree=atlas.tree(p.version);local blight=tree.nodes[64318]
+		assert.is_true(strategy.hasMechanic(blight,"Blight"));assert.is_false(strategy.hasMechanic(blight,"Incursion"))
+		assert.is_false(contains(strategy.results(p,"","Incursion"),64318));assert.is_false(contains(targets.mechanic(p,"Incursion").desired,64318))
+		local mixed=tree.nodes[4908];assert.is_true(strategy.hasMechanic(mixed,"Strongboxes"));assert.is_true(strategy.hasMechanic(mixed,"Mercenaries"))
+		local names={};for _,name in ipairs(strategy.allMechanics(mixed)) do names[name]=true end
+		assert.is_true(names.Strongboxes);assert.is_true(names.Mercenaries);assert.is_nil(names.Maps)
+		assert.is_false(strategy.hasMechanic({name="Greater Strongbox",stats={}},"Bosses"))
+		assert.is_true(strategy.hasMechanic({name="Alva's Workshop",stats={}},"Incursion"))
+		assert.is_true(strategy.hasMechanic({name="Unknown",stats={"Your Maps have no chance to contain the Sacred Grove"}},"Harvest"))
+		assert.is_true(strategy.hasMechanic({name="Unknown",stats={"Your Maps have no chance to contain Smuggler's Caches"}},"Heist"))
+	end)
+	it("classifies Mercenary and Ore investments without double-counting",function()
+		local p=atlas.connect(plan(),{50374,65008});local summary=targets.summary(p);local count,found=0,{}
+		for _,row in ipairs(summary.mechanics) do count=count+row.total;found[row.name]=true end
+		assert.equal(#p.nodes,count);assert.is_true(found.Mercenaries);assert.is_true(found["Ore Deposits"])
+	end)
+	it("warns when historical Mercenary investment includes its encounter blocker",function()
+		local version="3.29.3";local p=atlas.connect({id="blocked",title="Blocked",version=version,budget=atlas.tree(version).maxPoints,nodes={}}, {24930,50374})
+		local warnings=table.concat(targets.summary(p).warnings," ")
+		assert.matches("Mercenaries investment includes a blocking modifier",warnings);assert.matches("no chance to contain Mercenaries",warnings)
+	end)
+	it("detects an invested mechanic even when a node has another primary category",function()
+		local version="3.29.3";local tree=atlas.tree(version);local p=atlas.connect({id="secondary",title="Secondary",version=version,budget=tree.maxPoints,nodes={}}, {24930})
+		assert.equal(0,#targets.summary(p).warnings)
+		local node;for _,id in ipairs(p.nodes) do local candidate=tree.nodes[id];if require("Modules.AtlasStrategy").mechanic(candidate)=="Incursion" then node=candidate;break end end
+		assert.is_not_nil(node);local original=node.stats;node.stats=copyTable(original);node.stats[#node.stats+1]="Wild Mercenaries accompany this encounter"
+		local ok,result=pcall(targets.summary,p);node.stats=original
+		assert.is_true(ok,tostring(result));assert.matches("Mercenaries investment includes a blocking modifier",table.concat(result.warnings," "))
 	end)
 	it("keeps desired and avoided preferences exclusive and portable",function()
 		local p=plan();local id=atlas.search(p.version,"Bountiful Harvest",1).matches[1].id

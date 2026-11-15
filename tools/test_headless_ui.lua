@@ -78,6 +78,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	build.buildFlag=true;ui:frame();ui:click("nav_tools");frame("planning-tools");ui:click("choose");frame("performance-diagnostics");ui:click("copy");assert(ui.clipboard:find("ms",1,true));ui:click("refresh");ui:click("close")
 	local canvas=workspace.controls.canvas
 	ui:choose("mechanic","Essence");assert(next(canvas.matches),"Inline mechanic filter did not highlight its nodes");frame("atlas-mechanic-filter");ui:choose("mechanic","All mechanics")
+	ui:choose("mechanic","Mercenaries");assert(canvas.matches[50374],"Mercenary notable was not highlighted")
+	local blockFound=false;for _,row in ipairs(workspace.controls.results.list) do if row.val==24930 then blockFound=row.subtitle:find("Blocks natural spawns",1,true)~=nil end end
+	assert(blockFound,"Encounter-blocking nodes were not identified in results");frame("atlas-mercenary-filter")
+	ui:choose("mechanic","Ore Deposits");assert(canvas.matches[65008],"Ore Deposit notable was not highlighted");frame("atlas-ore-filter");ui:choose("mechanic","All mechanics")
 	ui:text("budget","120");assert(workspace.controls.status.label:find("120 points",1,true),"Point budget feedback is stale");ui:text("budget","138")
 	ui:text("search","Unwavering Vision");ui:click("find");frame("atlas-search")
 	assert(canvas.focus==65225 and workspace.controls.allocate.label:find("+",1,true),"The selected route should preview its point cost")

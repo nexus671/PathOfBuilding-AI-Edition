@@ -198,6 +198,7 @@ function Panel.Open(build,source,layout)
 		local lines={node and node.name or "Select a node on the tree or search.",node and node.kind:gsub("^%l",string.upper) or "Search a mechanic, or select a node."}
 		controls.canvas.preview={};routeAvailable=false
 		if node then
+			if #strategy.blocking(node)>0 then lines[#lines+1]="^xFFBF80Blocks natural encounters; forced encounters may differ." end
 			for _,stat in ipairs(node.stats) do lines[#lines+1]=stat end
 			local allocated={[controls.canvas.tree.start]=true};for _,other in ipairs(draft.nodes) do allocated[other]=true end
 			if not allocated[node.id] then
@@ -267,7 +268,9 @@ function Panel.Open(build,source,layout)
 	function controls.results:SetList(entries)
 		self.list={};for _,entry in ipairs(entries) do local row=copyTable(entry);local node=controls.canvas.tree.nodes[row.val]
 			local title=node and node.name or row.label;while #title>0 and DrawStringWidth(14,"VAR",title)>inspector-30 do title=title:sub(1,-2) end
-			row[1]="^7"..title;row.height=40;row.textSize=14;row.subtitle=node and strategy.mechanic(node).." | "..(row.label:match("%+%d+") or "blocked").." points" or "";self.list[#self.list+1]=row
+			row[1]="^7"..title;row.height=40;row.textSize=14
+			local category=node and (#strategy.blocking(node)>0 and "Blocks natural spawns" or strategy.mechanic(node)) or ""
+			row.subtitle=node and ui.fit(category.." | "..(row.label:match("%+%d+") or "blocked").." points",inspector-30,12) or "";self.list[#self.list+1]=row
 		end
 	end
 	function controls.results:SelByValue(value,key) for i,row in ipairs(self.list) do if row[key or "val"]==value then self.selIndex=i end end end

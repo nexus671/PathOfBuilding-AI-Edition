@@ -4,6 +4,16 @@ describe("Linked planning tools",function()
 	local function craft() return {id="helmet",title="Helmet",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}} end
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("adds linked loot targets for every mechanic on a multi-mechanic Atlas node",function()
+		local atlas=require("Modules.AtlasPlanner");local tree=atlas.tree("3.30.0-preview")
+		local plan=atlas.connect({id="multi",title="Multi mechanic",version="3.30.0-preview",budget=150,nodes={}}, {4908})
+		build.savers.AtlasPlans:Upsert(plan)
+		local node=tree.nodes[4908];local original=node.stats;node.stats=copyTable(original)
+		node.stats[#node.stats+1]="Your Maps contain a Blight Encounter and an Incursion"
+		local ok,rules=pcall(filters.generate,build,filters.profile("multi-filter","Multi mechanic"));node.stats=original
+		assert.is_true(ok,tostring(rules));local names={};for _,rule in ipairs(rules) do names[rule.title]=true end
+		assert.is_true(names["Blight Thread"]);assert.is_true(names["Incursion Thread"])
+	end)
 	it("lets an older saved filter review and keep the new base",function()
 		local profile=filters.profile("old-base","Old base");profile.baseCommit="3ab00dd016b00c6be7acfa989baf498842973d54"
 		profile.rules={{id="personal",title="My thread",text='Hide\n BaseType == "Frayed Thread"',enabled=true}}

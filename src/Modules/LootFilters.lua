@@ -156,7 +156,8 @@ function M.generate(build,profile,checkpoint)
 	end
 	for _,plan in ipairs(build.savers.AtlasPlans.plans) do
 		local keywords={};local graph=require("Modules.AtlasPlanner").tree(plan.version)
-		for _,id in ipairs(plan.nodes) do local node=graph.nodes[id];if node then keywords[require("Modules.AtlasStrategy").mechanic(node)]=true end end
+		local atlasStrategy=require("Modules.AtlasStrategy")
+		for _,id in ipairs(plan.nodes) do local node=graph.nodes[id];if node then for _,mechanic in ipairs(atlasStrategy.allMechanics(node)) do keywords[mechanic]=true end end end
 		for _,field in ipairs({"scarabs","maps"}) do for name in pairs(names) do if (plan.strategy and plan.strategy[field] or ""):lower():find(name:lower(),1,true) then add("atlas-item-"..plan.id.."-"..(#result+1),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end end
 		for _,name in ipairs(patch.added["Map Fragments"] or {}) do local mechanic=name:match("^(%a+) Thread$");if mechanic and keywords[mechanic] then add("atlas-"..plan.id.."-"..mechanic,name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
 	end
