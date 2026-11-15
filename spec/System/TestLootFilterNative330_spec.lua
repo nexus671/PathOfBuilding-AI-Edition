@@ -1,3 +1,4 @@
+-- cspell:ignore exoticveiled
 describe("3.30 native filter update",function()
 	local filters=require("Modules.LootFilters")
 	local parser=require("Modules.LootFilterParser")
@@ -40,5 +41,15 @@ describe("3.30 native filter update",function()
 	it("retains the safety layer for imported filters",function()
 		local profile=filters.profile("import","Imported");profile.template='Hide\n BaseType == "Chaos Orb"\nShow'
 		local output=filters.compile(profile);assert.is_truthy(output:find("# 3.30 new-item safety:",1,true))
+	end)
+	it("updates the base even while reviewing a diagnostic",function()
+		local profile=filters.profile("old","Old");profile.baseCommit="3ab00dd016b00c6be7acfa989baf498842973d54"
+		profile.rules={{id="personal",title="Personal",text="Show",enabled=true}}
+		local saved;require("Classes.LootFilterControl").Audit(profile,{diagnostics={{line=12,warning="Example warning"}}},function(value) saved=value end)
+		local controls=main.popups[1].controls
+		assert.equal("Update bundled NeverSink base",controls.results.list[1].entry.label)
+		controls.results.onClick({line=controls.results.list[3]})
+		controls.choose:Click()
+		assert.equal(filters.source().commit,saved.baseCommit);assert.same(profile.rules,saved.rules)
 	end)
 end)
