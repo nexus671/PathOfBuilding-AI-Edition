@@ -45,7 +45,7 @@ For socket conditions, enter linked groups separately in **SocketGroup** and all
 
 For strict `<` and `>` comparisons, a socket pattern matches when **any** specified count satisfies the comparison. For example, `SocketGroup < 4RG` matches a four-link with no red socket. This follows [GGG's explanation of socket matching](https://www.reddit.com/r/pathofexile/comments/f2t4tz/comment/g0xmhhp/?context=10).
 
-If the supplied socket count and colour list disagree, colour-dependent socket checks report unknown. A count-only alternative can still match independently.
+If the supplied socket count and colour list disagree, colour-dependent socket checks report unknown. A count-only alternative can still match independently. Negative socket-colour and linked-group comparisons also report unknown until their game behaviour is verified; numeric-only negative `Sockets` comparisons are supported.
 
 For modifier or enchantment counts, the game requires the operator and number together, such as `HasExplicitMod >=2 "of Haast" "of Ephij"`. The rule editor formats this automatically and flags a separated operator in imported rules.
 

@@ -119,6 +119,7 @@ function M.condition(c,item)
 			local number=tonumber(pattern);local pass
 			if number then
 				if count then pass=compare(count,number,op) else unknown="Invalid Sockets" end
+			elseif negative then unknown="Negative socket-colour comparisons are not verified"
 			elseif type(colours)~="string" then unknown="Supply socket colours for Sockets"
 			elseif colours:find("[^RGBWAD%s%-]") then unknown="Invalid socket colours for Sockets"
 			elseif count and select(2,colours:gsub("[RGBWAD]",""))~=count then unknown="Socket count does not match socket colours"
@@ -129,6 +130,7 @@ function M.condition(c,item)
 		return negative
 	end
 	if c.keyword=="SocketGroup" then
+		if op=="!" or op=="!=" then return nil,"Negative linked-socket comparisons are not verified" end
 		if type(value)~="string" then return nil,"Supply socket colours for "..c.keyword end
 		if value=="0" or value=="" then
 			for _,pattern in ipairs(values) do if socketMatch("",pattern,op) then return true end end
