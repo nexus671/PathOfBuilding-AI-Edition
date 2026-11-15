@@ -138,7 +138,7 @@ function C.extend(M,A,api)
 				state.quality=math.max(0,math.min(40,(state.quality or 0)+math.floor(random()*21)-10))
 				state.corrupted=true;state.imprint=nil;return state
 			end
-			if method=="vaal" and model.item.type=="Jewel" and model.item.base.subType=="Abyss" then
+			if method=="vaal" and model.item.type=="Jewel" and (model.item.base.subType=="Abyss" or model.item.clusterJewel) then
 				-- The four branches are equally weighted as an explicit, unverified model assumption.
 				local outcome=math.floor(random()*4)
 				if outcome==0 then M.rollCorrupted(model,state,random,1)
@@ -152,7 +152,7 @@ function C.extend(M,A,api)
 				end
 				state.corrupted=true;state.imprint=nil;return state
 			end
-			assert(model.item.type ~= "Jewel" and model.item.type ~= "Flask" and model.item.type ~= "Tincture","This corruption model supports equipment, Abyss jewels and flask Vaal Orbs")
+			assert(model.item.type ~= "Jewel" and model.item.type ~= "Flask" and model.item.type ~= "Tincture","This corruption model supports equipment, Abyss and cluster jewels, and flask Vaal Orbs")
 			if method == "locus" then
 				local reason=M.methodChecks.locus(model,state);assert(not reason,reason)
 			end
@@ -194,7 +194,7 @@ function C.extend(M,A,api)
 		return state
 	end
 	M.limits[#M.limits+1]="Flask Vaal quality changes by an integer from -10 to +10, clamped to 0-40; equal weights are assumed and unverified."
-	M.limits[#M.limits+1]="Abyss jewel Vaal outcomes use assumed equal weights; rare rerolls use the ordinary four-affix limit. Probabilities and rare-affix counts are unverified."
+	M.limits[#M.limits+1]="Abyss and cluster jewel Vaal outcomes use assumed equal weights; rare rerolls use the ordinary four-affix limit. Probabilities and rare-affix counts are unverified."
 	M.limits[#M.limits+1]="The equipment Vaal model includes the four outcome branches and current non-white socket conversion. Rare-brick socket/link rerolls are not modeled; tainted affix outcomes use a 50/50 assumption."
 	M.limits[#M.limits+1]="The 3.30 Locus model requires a Corrupted item and adds a second corruption. Outcome chances, socket conversion and selection of a replaced implicit are assumptions; uncorrupted altar use is not modeled. Fractured, synthesised, meta-modified and special transformation bases are excluded."
 end

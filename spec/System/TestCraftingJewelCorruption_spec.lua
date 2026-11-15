@@ -57,6 +57,22 @@ describe("Corrupted jewel implicit import",function()
   local recreated=sim.toItem(model,sim.validateState(model,model.initial)).raw;local reopened=sim.model(recreated)
   assert.equal(regular,reopened.initial.corruptedImplicits[1].id);assert.equal(model.item.clusterJewelSkill,reopened.item.clusterJewelSkill);assert.equal(model.item.clusterJewelNodeCount,reopened.item.clusterJewelNodeCount)
  end)
+ it("retains cluster enchantments through all modeled Vaal outcomes",function()
+  local raw="Rarity: NORMAL\nLarge Cluster Jewel\nItem Level: 86\nCluster Jewel Skill: affliction_axe_and_sword_damage\nCluster Jewel Node Count: 8\nImplicits: 2\n{crafted}Adds 8 Passive Skills\n{crafted}Added Small Passive Skills grant: 12% increased Axe and Sword Damage"
+  local model=sim.model(raw);assert.is_true(require("Modules.CraftingAvailability").check("vaal",model.initial,model))
+  for _,draw in ipairs({0.1,0.3,0.55,0.8}) do
+   local state=sim.action(model,model.initial,{method="vaal"},function() return draw end);sim.validateState(model,state)
+   local reopened=sim.model(sim.toItem(model,state).raw)
+   assert.equal(model.item.clusterJewelSkill,reopened.item.clusterJewelSkill);assert.equal(8,reopened.item.clusterJewelNodeCount);assert.is_true(reopened.initial.corrupted)
+   if draw==0.1 then assert.equal(1,#state.corruptedImplicits);assert.equal(state.corruptedImplicits[1].id,reopened.initial.corruptedImplicits[1].id)
+   elseif draw==0.55 then assert.equal("RARE",state.rarity);assert.is_true(#state.affixes<=4);assert.equal(#state.affixes,#reopened.initial.affixes) end
+  end
+  local warnings=sim.actionWarnings({method="vaal"},model);assert.equal("cluster_vaal_assumptions",warnings[1].code)
+  local result=sim.simulate(raw,{steps={{method="vaal"}},targets={},requirements={minAffixes=4,corrupted=true}},{trials=12,maxActions=1,seed=3})
+  assert.equal("cluster_vaal_assumptions",result.warnings[1].code)
+  local odds=sim.calculate(raw,{method="vaal"},{},nil,{requirements={minAffixes=4,corrupted=true},trials=12,seed=3})
+  assert.is_true(odds.sampled);assert.equal("cluster_vaal_assumptions",odds.warnings[1].code)
+ end)
  it("retains uniquely identifiable legacy implicits without generating them",function()
   local text="Rarity: MAGIC\nCobalt Jewel\nItem Level: 86\nImplicits: 1\n4% reduced Chill Duration on you\nCorrupted"
   local legacy="ReducedChillDurationJewelCorrupted";local model=sim.model(text);assert.is_nil(model.unresolvedCorruption)

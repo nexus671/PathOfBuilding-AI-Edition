@@ -729,6 +729,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(c.apply:IsEnabled() and c.apply.tooltipText():find("unverified",1,true),"Abyss Vaal assumptions were not disclosed")
 		frame("crafting-abyss-vaal","apply");ui:click("apply");assert(c.intro.label:find("Applied Vaal Orb",1,true),"Abyss jewel Vaal action failed");ui:click("close")
 	end
+	do
+		local p={id="cluster-vaal-ui",title="Cluster jewel corruption",slot="Jewel 1",startingItem="Rarity: NORMAL\nLarge Cluster Jewel\nItem Level: 86\nCluster Jewel Skill: affliction_axe_and_sword_damage\nCluster Jewel Node Count: 8\nImplicits: 2\n{crafted}Adds 8 Passive Skills\n{crafted}Added Small Passive Skills grant: 12% increased Axe and Sword Damage",goals={},steps={},preferredMethod="vaal"}
+		require("Classes.CraftingSimulatorControl").Open(build,p);local c=main.popups[1].controls
+		assert(c.apply:IsEnabled() and c.apply.tooltipText():find("unverified",1,true),"Cluster Vaal assumptions were not disclosed")
+		frame("crafting-cluster-vaal","apply");ui:click("apply");assert(c.intro.label:find("Applied Vaal Orb",1,true),"Cluster jewel Vaal action failed");ui:click("close")
+	end
 	local project={id="headless-ui",title="Headless crafting check",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: R-G-B",
 		goals={"Life and resistances"},steps={{action="Inspect native crafting"}}}
 	build.savers.CraftingProjects:Upsert(project)
