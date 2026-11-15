@@ -26,6 +26,8 @@ Planning tools support Tab / Shift+Tab, Enter and visible keyboard focus. Escape
 
 Recovery performance can also be tested without a desktop: `CalcsTab:BuildOutput(true)` queues the same background work used after desktop edits; `Modules.RecoveryTasks.tick` advances it. The ordinary headless calculation path stays synchronous for deterministic build and AI tests.
 
+`python tools/check_update_manifest.py` checks the content hashes of files listed in the updater manifest. It uses the updater's exact and LF-to-CRLF hash rules; it does not verify that every required file is listed or that remote URLs are reachable. CI runs this check and its regression tests.
+
 For a read-only passive-tree interaction benchmark, run from `src`:
 
 ```sh
