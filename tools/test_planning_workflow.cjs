@@ -50,6 +50,17 @@ async function main(){
   await host('request-test');await call('get_build_connection');await host('tick',1);
   const proof=await host('connection-proof');assert.equal(proof.client,'planning-workflow-test');assert.equal(proof.tested,true);assert.equal(proof.synced,true);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
+  const mixedCosts=await queued('simulate_crafting',{
+    baseRevision:context.revision,itemText:raw,
+    recipe:{steps:[{method:'alchemy'},{method:'chaos'}],targets:[],requirements:{minAffixes:5}},
+    options:{trials:100,maxActions:2,retainSuccesses:100,prices:{alchemy:3},baseCost:2,currency:'chaos',seed:3}
+  },'crafted');
+  const mixed=mixedCosts.nativeCrafting;
+  assert.equal(mixed.unpriced.chaos,true);assert.equal(mixed.meanCost,undefined);
+  const priced=mixed.retainedSuccesses.filter(item=>item.actions===1);
+  const unpriced=mixed.retainedSuccesses.filter(item=>item.actions===2);
+  assert.ok(priced.length>0 && unpriced.length>0,'Expected both successful routes');
+  assert.ok(priced.every(item=>item.cost===5));assert.ok(unpriced.every(item=>item.cost===undefined));
   const item=life=>`Rarity: RARE\nPlanned Hat\nIron Hat\nItem Level: 86\n+${life} to maximum Life`;
   await queued('propose_build',{mode:'edit',title:'Measured helmet',baseRevision:context.revision,operations:[{type:'equip_item',slot:'Helmet',text:item(100)}]},'review');
   assert.equal((await call('get_build_context')).context.stats.LifeUnreserved,baseLife,'Proposal changed the live fixture before UI apply');
