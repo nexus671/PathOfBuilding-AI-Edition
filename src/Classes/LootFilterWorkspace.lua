@@ -401,7 +401,7 @@ function M.Open(build,source,layout,controller)
 			if not present then table.insert(scene,1,item);extraTest=true end
 		else local targets=sceneKind=="Build targets" and targetPreview() or nil
 			scene=library.scene(profile,build,sceneKind,seed,settings.areaLevel,settings.itemLevel,targets and (targets.rules or {}));if sceneKind~="Tiered gear" then table.insert(scene,1,item) end end
-		if sceneKind=="Divination cards" or sceneKind=="Essences" then
+		if not savedSet and sceneKind~="Tiered gear" then
 			local encode=require("Modules.PlanningData").encode;local selected=encode(item)
 			for i=#scene,2,-1 do if encode(scene[i])==selected then table.remove(scene,1);break end end
 		end
