@@ -744,6 +744,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 
 	do
+		local p={id="tainted-quality-ui",title="Corrupted helmet quality",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86\nQuality: 29\nCorrupted",goals={},steps={},preferredMethod="tainted_quality"}
+		require("Classes.CraftingSimulatorControl").Open(build,p);local c=main.popups[1].controls
+		assert(c.apply:IsEnabled() and c.apply.tooltipText():find("Maximum 20%",1,true),"Tainted quality cap was not disclosed")
+		frame("crafting-tainted-quality-cap","apply");ui:click("apply");ui:click("keepWorking")
+		local kept;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==p.id then kept=entry end end
+		assert(kept and kept.run.state.quality>=1 and kept.run.state.quality<=20 and kept.run.initial.quality==29,"Tainted quality or its original item was not saved correctly")
+		ui:click("close")
+	end
+	do
 		local p={id="abyss-vaal-ui",title="Abyss jewel corruption",slot="Jewel 1",startingItem="Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86",goals={},steps={},preferredMethod="vaal"}
 		require("Classes.CraftingSimulatorControl").Open(build,p);local c=main.popups[1].controls
 		assert(c.apply:IsEnabled() and c.apply.tooltipText():find("Unique outcome treated as no change",1,true),"Abyss Vaal unique outcome assumption was not disclosed")

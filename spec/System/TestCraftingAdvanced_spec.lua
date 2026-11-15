@@ -357,9 +357,23 @@ describe("Advanced native crafting", function()
 		assert.are.equal(false,pcall(sim.perform,raw,{method="tainted_quality"},1))
 		local state=copyTable(sim.model(raw).initial);state.corrupted=true
 		local result=sim.perform(raw,{method="tainted_quality"},12,state)
-		assert.is_true(result.state.quality >= 0 and result.state.quality <= 29)
+		assert.is_true(result.state.quality >= 1 and result.state.quality <= 20)
 		assert.is_true(new("Item"):Item(result.itemText).corrupted)
 		assert.are.equal(false,pcall(sim.perform,raw,{method="quality"},1,state))
+	end)
+	it("caps tainted armour and weapon quality at the current 20 percent limit",function()
+		for _,item in ipairs({"Rarity: NORMAL\nIron Hat\nItem Level: 86","Rarity: NORMAL\nDriftwood Wand\nItem Level: 86"}) do
+			local model=sim.model(item);local state=copyTable(model.initial);state.corrupted=true;state.quality=29
+			local low=sim.action(model,state,{method="tainted_quality"},function() return 0 end)
+			local high=sim.action(model,state,{method="tainted_quality"},function() return 0.999999 end)
+			assert.equal(1,low.quality);assert.equal(20,high.quality);assert.equal(29,state.quality)
+			assert.equal(20,new("Item"):Item(sim.toItem(model,high).raw).quality)
+			state.quality=0
+			local recipe={steps={{method="tainted_quality"}},targets={},requirements={minQuality=21}}
+			local result=sim.simulate(item,recipe,{trials=30,maxActions=1,initialState=state,seed=123})
+			assert.equal(0,result.successes);assert.equal("tainted_quality_estimate",result.warnings[1].code)
+			assert.matches("minimum and distribution are unverified",result.warnings[1].message)
+		end
 	end)
 	it("raises and lowers adjacent Eldritch tiers through Conflict", function()
 		local left=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=4},123)

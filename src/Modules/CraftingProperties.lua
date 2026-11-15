@@ -33,7 +33,9 @@ function P.extend(M,A,api)
 		local state=copyTable(input)
 		if method == "quality" or method == "tainted_quality" then
 			assert(model.item.base.armour or data.weaponTypeInfo[model.item.type] or not tainted and (model.item.type == "Flask" or model.item.type == "Tincture"),"Quality currency requires armour, a weapon, flask or tincture")
-			if tainted then state.quality=math.floor(random()*30)
+			-- GGG capped these rolls at 20% in 3.25. The lower bound and
+			-- distribution are model assumptions, not published server odds.
+			if tainted then state.quality=1+math.floor(random()*20)
 			else assert((state.quality or 0) < 20,"Ordinary quality currency cannot exceed 20% quality");state.quality=math.min(20,(state.quality or 0)+qualityGain(model,random)) end
 		elseif method == "catalyst" or method == "tainted_catalyst" then
 			assert(model.item.type == "Ring" or model.item.type == "Amulet" or model.item.type == "Belt","Catalysts require a ring, amulet or belt")
@@ -69,5 +71,6 @@ function P.extend(M,A,api)
 	local originalPrice=M.priceKey
 	function M.priceKey(action) if action.method == "catalyst" then return "catalyst:"..tostring(action.catalyst) end;return originalPrice(action) end
 	M.limits[#M.limits+1]="Orb of Conflict uses the empirical 50% minus 11 percentage points per tier difference model. Its estimates are not published server odds."
+	M.limits[#M.limits+1]="Tainted armour and weapon quality rolls use an assumed uniform 1-20% range. GGG confirmed the 20% maximum; the minimum and distribution are unverified."
 end
 return P

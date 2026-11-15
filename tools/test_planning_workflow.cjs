@@ -50,6 +50,13 @@ async function main(){
   await host('request-test');await call('get_build_connection');await host('tick',1);
   const proof=await host('connection-proof');assert.equal(proof.client,'planning-workflow-test');assert.equal(proof.tested,true);assert.equal(proof.synced,true);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
+  const corruptedRaw='Rarity: NORMAL\nIron Hat\nItem Level: 86\nQuality: 29\nCorrupted';
+  const tainted=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:corruptedRaw,action:{method:'tainted_quality'},seed:5},'crafted');
+  assert.ok(tainted.nativeCrafting.state.quality>=1 && tainted.nativeCrafting.state.quality<=20);
+  assert.ok(tainted.nativeCrafting.warnings.some(entry=>entry.code==='tainted_quality_estimate'));
+  const impossible=await queued('simulate_crafting',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nIron Hat\nItem Level: 86\nCorrupted',recipe:{steps:[{method:'tainted_quality'}],targets:[],requirements:{minQuality:21}},options:{trials:20,maxActions:1,seed:5}},'crafted');
+  assert.equal(impossible.nativeCrafting.successes,0);
+  assert.ok(impossible.nativeCrafting.warnings.some(entry=>entry.code==='tainted_quality_estimate'));
   const mixedCosts=await queued('simulate_crafting',{
     baseRevision:context.revision,itemText:raw,
     recipe:{steps:[{method:'alchemy'},{method:'chaos'}],targets:[],requirements:{minAffixes:5}},
