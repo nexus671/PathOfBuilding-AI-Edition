@@ -554,9 +554,12 @@ async function main(){
   assert.equal(savedPage.examples.total,1);assert.equal(savedPage.examples.results[0].baseType,'Iron Hat');
   const missingSet=await queued('test_loot_filter_examples',{baseRevision:context.revision,profileId:'mapping',sampleSetId:'missing'},'failed');
   assert.match(missingSet.error,/Choose a saved example set/);
+  const keptTarget=await host('keep-sampled-target');
+  assert.equal((await call('get_crafting_projects')).projects.find(entry=>entry.id==='helmet').targetItem,keptTarget.target,'MCP did not receive the target kept in the native UI');
   await host('save-reopen');const reopened=await call('get_build_journey');assert.deepEqual(reopened.journey,saved.journey);
   assert.deepEqual((await call('get_loot_filters')).filters,savedFilters.filters);
   const projects=await call('get_crafting_projects');assert.equal(projects.projects[0].run.actions[0].method,'alchemy');assert.equal(projects.projects[0].nativeRecipe.steps[0].method,'alchemy');assert.equal(projects.projects[0].nativeRecipe.steps[0].onFailureAction,'stop');
+  assert.equal(projects.projects[0].targetItem,keptTarget.target,'Kept target did not survive build save and reopen');
   assert.deepEqual(projects.projects[0].priceBook.values,{});assert.equal(projects.projects[0].inventory[0].title,'Reusable helmet base');assert.equal(projects.projects[0].inventory[0].state.rarity,'NORMAL');
   assert.equal(projects.projects.length,2);const savedBody=projects.projects.find(entry=>entry.id==='body-enchant');
   assert.deepEqual(savedBody.priceBook,bodyPriceBook);assert.equal(savedBody.nativeRecipe.steps[1].method,'omen_connections');assert.equal(savedBody.nativeRecipe.requirements.links,6);assert.equal(savedBody.nativeRecipe.steps[0].enchantId,'LifeBodyEnchant');assert.equal(savedBody.nativeRecipe.requirements.harvestEnchant,'LifeBodyEnchant');

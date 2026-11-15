@@ -40,9 +40,25 @@ for line in io.lines() do
 		elseif command.kind=="undo-applied" then
 			build.viewMode="CONFIG";ui:bind(build);ui:click("aiBuild");ui:choose("page","Plan & review");ui:click("restore")
 			build=main.modes.BUILD;ui:bind(build);frame();bridge.refresh(build)
+		elseif command.kind=="keep-sampled-target" then
+			local project=build.savers.CraftingProjects.projects[1]
+			local result=require("Modules.CraftingSimulator").simulate(project.startingItem,
+				{steps={{method="alchemy"}},targets={},requirements={minAffixes=4}},
+				{trials=1,maxActions=1,retainSuccesses=1,seed=5})
+			local target=assert(result.retainedSuccesses[1]).itemText
+			local analysis=require("Modules.CraftingAnalysis").get(build,project)
+			analysis.results.simulation={result=result}
+			local equipped=build.itemsTab.slots[project.slot].selItemId
+			build.viewMode="CONFIG";ui:bind(build);ui:click("aiBuild");ui:click("nav_crafting");ui:click("native")
+			ui:click("tab_simulate");ui:click("distribution");ui:click("keepTarget")
+			assert(main.popups[1].title=="Replace crafting target");ui:click("confirm")
+			assert(build.savers.CraftingProjects.projects[1].targetItem==target,"UI did not keep the sampled target")
+			assert(build.itemsTab.slots[project.slot].selItemId==equipped,"Keeping a target equipped the item")
+			ui:click("close");ui:click("close");frame();bridge.poll(build,true)
+			return {target=target,revision=bridge.revision(build)}
 		elseif command.kind=="save-reopen" then
 			build.viewMode="CONFIG";ui:bind(build);ui:click("aiBuild");ui:click("nav_crafting");ui:click("native")
-			ui:click("currency_alchemy");ui:click("item");ui:click("keepWorking")
+			ui:click("tab_craft");ui:click("currency_alchemy");ui:click("item");ui:click("keepWorking")
 			assert(build.savers.CraftingProjects.projects[1].run,"Checkpoint was not kept")
 			build.dbFileName=directory.."journey.xml";build:SaveDBFile()
 			assert(require("Modules.PlanningUI").saveStatus(build)=="Build saved","Save status did not acknowledge the actual file save")
