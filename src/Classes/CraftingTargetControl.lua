@@ -20,8 +20,8 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
 	edit("roll",212,64,group and group.minRoll and group.minRoll*100 or nil,"Minimum roll % (0-100)")
 	controls.mode=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{408,80,200,24},{"Require group","Exclude group"})
 	controls.mode:SelByValue(group and group.negate and "Exclude group" or "Require group")
-	controls.scope=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,124,376,24},{"Explicit modifiers","Implicit modifiers"})
-	controls.scope:SelByValue(group and group.scope == "implicit" and "Implicit modifiers" or "Explicit modifiers")
+	controls.scope=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,124,376,24},{"Explicit modifiers","Implicit modifiers","Enchantments"})
+	controls.scope:SelByValue(group and group.scope == "enchant" and "Enchantments" or group and group.scope == "implicit" and "Implicit modifiers" or "Explicit modifiers")
 	edit("groups",408,108,requiredGroups,"Required groups (blank=all)")
 	for i,key in ipairs({"fractured","crafted"}) do
 		local title=key == "fractured" and "Fractured" or "Crafted"
@@ -44,7 +44,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
 		if group then
 			group.atLeast=assert(tonumber(controls.count.buf),"Enter a matching-mod count")
 			group.minRoll=controls.roll.buf ~= "" and assert(tonumber(controls.roll.buf),"Enter a minimum roll percent")/100 or nil
-			group.negate=controls.mode:GetSelValue() == "Exclude group";group.scope=controls.scope:GetSelValue() == "Implicit modifiers" and "implicit" or "explicit"
+			group.negate=controls.mode:GetSelValue() == "Exclude group";local scope=controls.scope:GetSelValue();group.scope=scope == "Enchantments" and "enchant" or scope == "Implicit modifiers" and "implicit" or "explicit"
 			for _,key in ipairs({"fractured","crafted"}) do local value=controls[key]:GetSelValue();group[key]=nil;if not value:match("^Any ") then group[key]=not value:match("^Not ") end end
 		end
 		local result={nativeStats=conditions.nativeStats and copyTable(conditions.nativeStats)};for _,entry in ipairs(properties) do local value=controls[entry[1]].buf;if value ~= "" then result[entry[1]]=assert(tonumber(value),"Enter a number for "..entry[2]:lower()) end end

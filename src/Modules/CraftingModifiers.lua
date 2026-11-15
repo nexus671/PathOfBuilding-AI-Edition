@@ -2,7 +2,7 @@
 local sim=require("Modules.CraftingSimulator")
 local metadata=require("Modules.CraftingAdvanced")
 local M={}
-function M.scope(mod) return (mod.type=="Corrupted" or mod.type=="Exarch" or mod.type=="Eater") and "implicit" or "explicit" end
+function M.scope(mod) return mod.type=="Enchant" and "enchant" or (mod.type=="Corrupted" or mod.type=="Exarch" or mod.type=="Eater") and "implicit" or "explicit" end
 local function has(list,value) for _,entry in ipairs(list or {}) do if entry==value then return true end end end
 local function groups(model,id,mod)
 	local entry=metadata.data().mods[id];local result=entry and entry.groups or {mod.group or id}

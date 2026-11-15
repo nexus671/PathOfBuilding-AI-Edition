@@ -46,6 +46,28 @@ function K.identify(item)
 end
 function K.extend(M)
  local catalog,decorate,validate=M.catalog,M.decorateItem,M.validateState
+ local targetReason=M.implicitTargetReason
+ function M.implicitTargetReason(model,state,targets)
+  local reason=targetReason(model,state,targets);if reason then return reason end
+  if model and model.item and model.item.type=="Gloves" and not state.destroyed and not state.veil and not state.katakohiEnchants and not state.harvestEnchant and not model.importedSocketEnchants then
+   for _,group in ipairs(targets) do if group.scope=="enchant" then return "The imported enchantments could not be identified. Set observed socket enchantments in the hypothetical item editor before using an enchantment target." end end
+  end
+ end
+ local originalModel=M.model
+ function M.model(raw)
+  local model=originalModel(raw)
+  if model.item.type=="Gloves" then
+   for id,entry in pairs(K.data().mods) do
+    if entry.required_level<=model.item.itemLevel then
+     local parts=entry.text:split("\n")
+     model.byId[id]={type="Enchant",level=entry.required_level,group=entry.groups[1],modTags={},parts[2]}
+     model.special[id]=true
+    end
+   end
+   model.importedSocketEnchants=K.identify(model.item)
+  end
+  return model
+ end
  function M.decorateItem(model,state,item)
   decorate(model,state,item)
   if state.katakohiEnchants then

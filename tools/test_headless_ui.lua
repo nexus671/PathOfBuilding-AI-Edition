@@ -430,7 +430,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		frame("crafting-etched-socket-options");ui:click("tab_settings");ui:click("manual");ui:click("katakohi")
 		assert(#main.popups[1].controls.choice1.list==25,"The socket enchantment catalogue is incomplete")
 		assert(main.popups[1].controls.choice1:GetSelValueByKey("val")=="DeepwaterTattooEnchantStrGlobalFireDamage","Imported socket enchantment was not selected")
-		ui:choose("choice1","DeepwaterTattooEnchantDexMovementSpeed","val");frame("crafting-katakohi-catalogue");ui:click("use");ui:click("keep");ui:click("tab_craft");frame("crafting-katakohi-hypothetical");ui:click("close")
+		ui:choose("choice1","DeepwaterTattooEnchantDexMovementSpeed","val");frame("crafting-katakohi-catalogue");ui:click("use");ui:click("keep");ui:click("tab_craft");frame("crafting-katakohi-hypothetical")
+		ui:click("tab_targets");ui:click("targetPicker");ui:choose("kind","Enchant");ui:text("search","Movement Speed");frame("crafting-enchantment-target-picker");ui:click("choose")
+		ui:click("targetGroups");ui:click("groupConditions");assert(main.popups[1].controls.scope:GetSelValue()=="Enchantments","Socket enchantment target scope was not retained");ui:click("keep");ui:click("keepGroups");ui:click("close")
 	end
 
 	do

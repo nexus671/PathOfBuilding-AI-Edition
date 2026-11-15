@@ -486,12 +486,21 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
  local matched=0
  for _,group in ipairs(targets) do
   local count=0
-  for _,entry in ipairs(group.scope == "implicit" and (state.corruptedImplicits or state.implicits or {}) or state.affixes) do
+  local unknown=false
+  local entries=group.scope == "implicit" and (state.corruptedImplicits or state.implicits or {}) or state.affixes
+  if group.scope == "enchant" then
+   assert(model,"A native item model is required for enchantment targets")
+   local ids=state.katakohiEnchants or (not state.harvestEnchant and model.importedSocketEnchants)
+   -- An unrecognized import cannot prove either a positive or negative target.
+   unknown=not ids
+   entries={};for _,id in ipairs(ids or {}) do entries[#entries+1]={id=id,range=1} end
+  end
+  for _,entry in ipairs(entries) do
    local roll=type(entry.range) == "table" and math.min(unpack(entry.range)) or entry.range or 0.5
    for _,id in ipairs(group.anyOf) do if entry.id == id and roll >= (group.minRoll or 0) and (group.fractured == nil or (entry.fractured or false) == group.fractured) and (group.crafted == nil or (entry.crafted or false) == group.crafted) then count=count+1; break end end
   end
   local hit=count >= (group.atLeast or 1)
-  if group.negate then hit=not hit end
+  if group.negate and not unknown then hit=not hit end
   if hit then matched=matched+1 end
  end
  if matched < (requiredGroups or #targets) then return false end
@@ -563,7 +572,7 @@ function M.validateRecipe(recipe)
 		for _,id in ipairs(group.anyOf) do assert(type(id) == "string" and #id <= 160,"Invalid target modifier ID") end
 		if group.atLeast then integer(group.atLeast,1,6,"matching modifiers") end
 		if group.minRoll then assert(type(group.minRoll) == "number" and group.minRoll >= 0 and group.minRoll <= 1,"Invalid minimum roll") end
-		assert(not group.scope or group.scope == "explicit" or group.scope == "implicit","Invalid target scope")
+		assert(not group.scope or group.scope == "explicit" or group.scope == "implicit" or group.scope == "enchant","Invalid target scope")
 		for _,key in ipairs({"fractured","crafted"}) do assert(group[key] == nil or type(group[key]) == "boolean","Invalid modifier condition") end
 		assert(group.negate == nil or type(group.negate) == "boolean","Invalid exclusion condition")
 	end

@@ -207,7 +207,7 @@ function Panel.Open(build,project,layout)
 	end
 	local function pickTarget(id)
 		assert(#targets<6,"Use up to six target groups")
-		local kind=simulator.context(model,state).byId[id].type;targets[#targets+1]={anyOf={id},scope=(kind=="Exarch" or kind=="Eater" or kind=="Corrupted") and "implicit" or "explicit"};changed();refresh()
+		local mod=simulator.context(model,state).byId[id];targets[#targets+1]={anyOf={id},scope=require("Modules.CraftingModifiers").scope(mod)};changed();refresh()
 	end
 	populateAffix=function(id)
 		local found;for _,entry in ipairs(state.affixes) do if entry.id==id then found=entry end end
@@ -345,7 +345,7 @@ function Panel.Open(build,project,layout)
 		local mods={}
 		for _,entry in ipairs(current.mods) do mods[#mods+1]={label=entry.mod.type.." | "..table.concat(entry.mod," / ").." | iLvl "..entry.mod.level,val=entry.id} end
 		for _,entry in ipairs(current.essences) do mods[#mods+1]={label=entry.name.." guaranteed mod",val=entry.modId} end
-		for id in pairs(current.special) do local mod=current.byId[id];if mod.type=="Prefix" or mod.type=="Suffix" or mod.type=="Corrupted" or mod.type=="Exarch" or mod.type=="Eater" then mods[#mods+1]={label=mod.type.." | "..table.concat(mod," / "),val=id} end end
+		for id in pairs(current.special) do local mod=current.byId[id];if mod.type=="Prefix" or mod.type=="Suffix" or mod.type=="Corrupted" or mod.type=="Exarch" or mod.type=="Eater" or mod.type=="Enchant" then mods[#mods+1]={label=mod.type.." | "..table.concat(mod," / "),val=id} end end
 		controls.target:SetList(mods);controls.target.selIndex=1;if selected then controls.target:SelByValue(selected,"val") end
 	end
 	refreshTargetOptions()
@@ -360,8 +360,8 @@ function Panel.Open(build,project,layout)
 	end)
 	button(controls,"addTarget",16,310,132,"Add target",function()
 		assert(#targets < 6,"Use up to six target groups")
-		local id=controls.target:GetSelValueByKey("val");local kind=simulator.context(model,state).byId[id].type
-		targets[#targets+1]={anyOf={id},scope=(kind == "Exarch" or kind == "Eater" or kind == "Corrupted") and "implicit" or "explicit"};changed();refresh()
+		local id=controls.target:GetSelValueByKey("val");local mod=simulator.context(model,state).byId[id]
+		targets[#targets+1]={anyOf={id},scope=require("Modules.CraftingModifiers").scope(mod)};changed();refresh()
 	end)
 	button(controls,"alternative",160,310,132,"Add alternative",function()
 		local group=assert(targets[#targets],"Add a target group first")

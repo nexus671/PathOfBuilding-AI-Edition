@@ -67,6 +67,8 @@ async function main(){
   const enchantPreview=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:etchedRaw,initialState:hypotheticalEnchant,action:{method:'socket_white_bench'},seed:1},'crafted');
   assert.deepEqual(enchantPreview.nativeCrafting.state.katakohiEnchants,hypotheticalEnchant.katakohiEnchants);
   assert.match(enchantPreview.nativeCrafting.itemText,/6% increased Movement Speed/);
+  const enchantPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:etchedRaw,recipe:{initialState:hypotheticalEnchant,steps:[{method:'alchemy'}],targets:[{scope:'enchant',anyOf:hypotheticalEnchant.katakohiEnchants}]},options:{trials:2,maxActions:1}},'crafted');
+  assert.equal(enchantPlan.nativeCrafting.successes,2);
   const ukatoaRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86';
   const ukatoaInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ukatoaRaw,limit:10},'inspected');
   assert.equal(ukatoaInspection.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='ducat_ukatoa').available,true);

@@ -20,7 +20,7 @@ function M.Open(model,state,input,requirements,count,onKeep)
 	local function refresh()
 		selected=math.max(1,math.min(selected,#groups));local list={}
 		for i,entry in ipairs(groups) do
-			local traits={entry.scope=="implicit" and "Implicit" or "Explicit"};if entry.minRoll then traits[#traits+1]="Roll >= "..math.floor(entry.minRoll*100).."%" end
+			local traits={entry.scope=="enchant" and "Enchantment" or entry.scope=="implicit" and "Implicit" or "Explicit"};if entry.minRoll then traits[#traits+1]="Roll >= "..math.floor(entry.minRoll*100).."%" end
 			for _,key in ipairs({"fractured","crafted"}) do if entry[key]~=nil then traits[#traits+1]=(entry[key] and "" or "Not ")..key end end
 			list[#list+1]={height=88,textSize=16,x=10,card=true,selected=i==selected,"^7Group "..i.." | "..(entry.negate and "Exclude" or "Require"),subtitle="Match "..(entry.atLeast or 1).." of "..#entry.anyOf.." alternative modifiers",detail=ui.fit(table.concat(traits," | "),left-30,14),index=i}
 		end
@@ -34,7 +34,7 @@ function M.Open(model,state,input,requirements,count,onKeep)
 	c.requiredGroups=new("DropDownControl"):DropDownControl(ui.anchor,{16,h-84,left,28},{},function(_,entry) required=entry.val~=false and entry.val or nil end)
 	button("newGroup",16,84,math.floor((left-12)/2),"+ Requirement",function()
 		require("Classes.CraftingModifierControl").Open(model,state,{action="Create group",choose=function(id)
-			assert(#groups<6,"Use up to six groups");local kind=model.byId[id].type;groups[#groups+1]={anyOf={id},scope=(kind=="Corrupted" or kind=="Exarch" or kind=="Eater") and "implicit" or "explicit"};selected=#groups;refresh()
+			assert(#groups<6,"Use up to six groups");groups[#groups+1]={anyOf={id},scope=require("Modules.CraftingModifiers").scope(model.byId[id])};selected=#groups;refresh()
 		end})
 	end);c.newGroup.enabled=function() return #groups<6 end
 	button("deleteGroup",28+math.floor((left-12)/2),84,math.floor((left-12)/2),"Remove group",function() assert(group(),"Choose a group");table.remove(groups,selected);refresh() end);c.deleteGroup.enabled=function() return group()~=nil end
