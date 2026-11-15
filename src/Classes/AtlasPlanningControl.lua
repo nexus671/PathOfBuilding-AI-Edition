@@ -3,7 +3,7 @@ local ui=require("Modules.PlanningUI")
 local atlas=require("Modules.AtlasPlanner")
 local M={}
 function M.Open(build,plan,keep)
-	local draft=copyTable(plan);local c={};local w,h=math.min(920,main.screenW-40),math.min(680,main.screenH-48)
+	local draft=copyTable(plan);local c={};local routeLines;local w,h=math.min(920,main.screenW-40),math.min(680,main.screenH-48)
 	local function button(key,x,y,width,label,run)
 		c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,function()
 			local ok,result=pcall(run)
@@ -20,8 +20,9 @@ function M.Open(build,plan,keep)
 	c.previous.tooltipText="Only saved plans from this tree that do not create a progression loop are offered."
 	c.transition=new("TextListControl"):TextListControl(ui.anchor,{16,156,w-32,h-230},nil,{})
 	local function refresh()
+		routeLines=nil
 		local lines={"Keep each stage as its own saved plan. Choose the prior stage to review the respec.","Later stages that depend on this plan cannot be selected as its previous stage.","No prior stage selected."}
-		for _,p in ipairs(build.savers.AtlasPlans.plans) do if p.id==c.previous:GetSelValueByKey("val") then lines=require("Modules.PlanningPerformance").measure(build,"Atlas respec route",require("Modules.AtlasStrategy").transition,p,draft).lines end end
+		for _,p in ipairs(build.savers.AtlasPlans.plans) do if p.id==c.previous:GetSelValueByKey("val") then lines=require("Modules.PlanningPerformance").measure(build,"Atlas respec route",require("Modules.AtlasStrategy").transition,p,draft).lines;routeLines=lines end end
 		c.transition.list=ui.rows(lines,w-56)
 	end
 	c.previous.selFunc=refresh
@@ -41,6 +42,10 @@ function M.Open(build,plan,keep)
 		if c.amount.buf~="" then local amount=assert(tonumber(c.amount.buf),"Enter a numeric setup cost");local old=s.setupCost;draft.strategy.setupCost={amount=amount,currency=c.currency.buf,source=c.source.buf,quotedAt=old and old.amount==amount and old.currency==c.currency.buf and old.source==c.source.buf and old.quotedAt or os.time()} else draft.strategy.setupCost=nil end
 		local validated=atlas.validate(draft);keep(validated);main:ClosePopup()
 	end)
+	button("copyRoute",228,h-48,150,"Copy route",function() if routeLines then Copy(table.concat(routeLines,"\n")) end end)
+	c.copyRoute.enabled=function() return routeLines~=nil end
+	c.copyRoute.shown=function() return c.page:GetSelValue()=="Progression" end
+	c.copyRoute.tooltipText="Copy the shown refund and allocation steps, including their budget assumptions."
 	button("close",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)
 	refresh();ui.style(c,{keep=true});main:OpenPopup(w,h,"Atlas stages and strategy",c,nil,nil,"close")
 end

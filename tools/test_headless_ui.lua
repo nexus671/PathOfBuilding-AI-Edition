@@ -132,7 +132,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(table.concat(lines," "):find("Temporary grant path",1,true),"Atlas stages did not show the temporary grant route");frame("atlas-temporary-grant-route");ui:click("close");build.savers.AtlasPlans:Remove("temp-start")
 	end
 	local starter=copyTable(build.savers.AtlasPlans.plans[1]);starter.id="starter-atlas";starter.title="Starter maps";starter.nodes={};starter.progression={stage="starter"};build.savers.AtlasPlans:Upsert(starter)
-	ui:click("progression");ui:choose("stage","final","val");ui:choose("previous","starter-atlas","val");frame("atlas-progression")
+	ui:click("progression");assert(not main.popups[1].controls.copyRoute:IsEnabled(),"Route copy should require a previous stage");ui:choose("stage","final","val");ui:choose("previous","starter-atlas","val");frame("atlas-progression");ui:click("copyRoute");assert(ui.clipboard:find("Starter maps",1,true) and ui.clipboard:find("Allocate:",1,true) and ui.clipboard:find("base points",1,true),"Copied Atlas route omitted steps or budget assumptions")
 	ui:click("strategyTab");ui:text("maps","T16 maps; avoid reflect");ui:text("scarabs","Record map supplies here");ui:text("requirements","Complete map unlocks");ui:text("avoid","Reflect");ui:text("amount","many");ui:text("source","Manual test quote");ui:click("keep")
 	assert(main.popups[1].title=="Atlas strategy" and main.popups[1].controls[1].label=="Enter a numeric setup cost","Invalid Atlas cost was not explained")
 	frame("atlas-strategy-invalid-cost");ui:click("close");assert(main.popups[1].controls.amount.buf=="many","Invalid Atlas input was lost")

@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview247" />
+	<Version number="2.67.2-ai.preview248" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1121,7 +1121,7 @@
 	<File name="Assets/vestigialicon.png" part="program" sha1="ecb5dd4b9aed1cac0c1a677b18838ae9c62744d7" />
 	<File name="Assets/warlordicon.png" part="program" sha1="cca050c84884f5c0bb1380ece51d3c4b32be4900" />
 	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="d0c022a2f105043e7e094468af6e5946cf3eb0fd" />
-	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="d6723c77be6e3f4cc5f8603452212e46b88933f0" />
+	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="4754dca9bf0446f00148b005b180636884b27319" />
 	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="2f5e6945c19fe3f07430ae091072642479823927" />
 	<File name="Classes/BuildJourneyControl.lua" part="program" sha1="3429fb9b3ce4463a96838e127e3863814d47f976" />
 	<File name="Classes/BuildListControl.lua" part="program" sha1="f60f0d7f6aecbe851db896913cd1aa707c7fb304" />
