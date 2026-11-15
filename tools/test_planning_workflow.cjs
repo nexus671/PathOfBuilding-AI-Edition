@@ -54,6 +54,8 @@ async function main(){
   assert.equal((await call('get_build_context')).context.stats.LifeUnreserved,baseLife,'Proposal changed the live fixture before UI apply');
   await host('apply');context=(await call('get_build_context')).context;assert.ok(context.stats.LifeUnreserved>baseLife);
   const inspected=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'maximum Life',limit:20},'inspected');assert.ok(inspected.crafting.nativeEngine.modifiers.length);
+  const gwennenReference=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'destroy',limit:20},'inspected');
+  assert.equal(gwennenReference.crafting.nativeEngine.gwennenReference.offers[0].id,1022);assert.match(gwennenReference.crafting.nativeEngine.gwennenReference.note,/not available crafting actions/);
   assert.equal(inspected.crafting.nativeEngine.methodWarnings.binding[0].code,'binding_legacy');
   const binding=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,action:{method:'binding'},seed:1},'crafted');assert.equal(binding.nativeCrafting.warnings[0].code,'binding_legacy');assert.equal(binding.nativeCrafting.state.rarity,'RARE');
   const etchedRaw='Rarity: NORMAL\nIron Gauntlets\nItem Level: 86\nSockets: W-W-W\nImplicits: 2\n{enchant}-1 to maximum Sockets\n{enchant}20% increased Fire Damage';

@@ -839,7 +839,9 @@ do
 	end
 	local catalog=M.catalog
 	function M.catalog(raw,query,limit,initialState,treeVersion)
-		return M.withTreeContext(catalog(raw,query,limit,initialState),treeVersion)
+		local result=catalog(raw,query,limit,initialState)
+		result.gwennenReference=require("Modules.CraftingGwennenReference").search(query,limit)
+		return M.withTreeContext(result,treeVersion)
 	end
 	local optimize=M.optimizeFossils
 	function M.optimizeFossils(raw,targets,options)
