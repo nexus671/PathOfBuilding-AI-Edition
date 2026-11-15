@@ -64,6 +64,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:frame();ui:click("nav_ai");frame("ai-applied");ui:click("restore")
 	assert(main.modes.BUILD==original,"Undo did not restore the original scratch build")
 	ui:click("nav_atlas");frame("atlas-new-default");assert(build.planningWorkspace.controls.canvas.tree.version=="3.30.0-preview","New Atlas plan did not default to 3.30")
+	ui:choose("version","3.28.0j");ui:click("confirm");assert(build.planningWorkspace.controls.canvas.tree.version=="3.28.0j","Mirage Atlas did not load");frame("atlas-mirage-tree")
+	ui:choose("version","3.28.0j-ruthless");ui:click("confirm");assert(build.planningWorkspace.controls.canvas.tree.mode=="ruthless","Ruthless Mirage Atlas did not load");frame("atlas-mirage-ruthless-tree")
 	ui:choose("version","3.29.3-ruthless");ui:click("confirm")
 	assert(build.planningWorkspace.controls.canvas.tree.nodes[27].stats[1]:find("5%% increased Merging Radius"),"Historical Ruthless Atlas displayed a Standard modifier")
 	frame("atlas-historic-ruthless-tree")

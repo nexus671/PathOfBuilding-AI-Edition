@@ -463,6 +463,13 @@ async function main(){
   assert.ok(secondCorruption.nativeCrafting.state.destroyed || secondCorruption.nativeCrafting.state.twiceCorrupted);
   if(!secondCorruption.nativeCrafting.state.destroyed) assert.match(secondCorruption.nativeCrafting.itemText,/Twice Corrupted/);
   const starterAtlas={id:'starter-atlas',title:'Starter Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'starter'}};
+  for(const version of ['3.28.0j','3.28.0j-ruthless']) {
+    const search=await queued('search_atlas_nodes',{baseRevision:context.revision,version,query:'Essence',limit:10},'atlas');
+    assert.ok(search.atlas.matches.length>0);
+    const target=search.atlas.matches[0].id;
+    const route=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'mirage',title:'Mirage',version,budget:138,nodes:[]},targets:[target]},'atlas');
+    assert.equal(route.atlas.plan.version,version);assert.ok(route.atlas.plan.nodes.includes(target));
+  }
   const ruthlessVersion='3.30.0-preview-ruthless';
   const historicalRuthless=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.29.3-ruthless',query:'Beyond Portals in your Maps have 5% increased Merging Radius',limit:10},'atlas');
   assert.ok(historicalRuthless.atlas.matches.some(node=>node.id===27));

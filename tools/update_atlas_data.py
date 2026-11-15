@@ -10,6 +10,8 @@ from urllib.request import urlopen
 VERSIONS = {
     "3.27.0": "dd12728df527cf96a93f91cbee7d5951285b8883",
     "3.27.0-ruthless": "dd12728df527cf96a93f91cbee7d5951285b8883",
+    "3.28.0j": "8e285ae4a24c73fbee563bfbf838287d26e9adfa",
+    "3.28.0j-ruthless": "8e285ae4a24c73fbee563bfbf838287d26e9adfa",
     "3.29.1": "0ae2e0f94f266fc21c86ee8dd561d7b559bf2db4",
     "3.29.1-ruthless": "0ae2e0f94f266fc21c86ee8dd561d7b559bf2db4",
     "3.29.3": "dcb2a006b68740f3ecbd317775c262fc6ed7b8af",
@@ -65,14 +67,16 @@ for version in selected:
         "groups": [{"x": group["x"], "y": group["y"], "background": group["background"]["image"]}
                    for group in data["groups"].values() if group.get("background")],
     }
-    if "-preview" in version:
-        result["preview"] = True
+    if "-preview" in version or version.startswith("3.28.0j"):
+        if "-preview" in version:
+            result["preview"] = True
         league_source = source.replace("/ruthless.json", "/ruthless-league.json") if ruthless else source.replace("/data.json", "/league.json")
         with urlopen(league_source, timeout=30) as response:
             league_raw = response.read()
         league = json.loads(league_raw)
         assert {k: v for k, v in data.items() if k != "tree"} == {k: v for k, v in league.items() if k != "tree"}
-        result["compatibleModes"] = ["Ruthless Standard", "Ruthless Covens of Umbra"] if ruthless else ["Standard", "Covens of Umbra"]
+        league_name = "Mirage" if version.startswith("3.28.0j") else "Covens of Umbra"
+        result["compatibleModes"] = ["Ruthless Standard", f"Ruthless {league_name}"] if ruthless else ["Standard", league_name]
         result["leagueSource"] = league_source
         result["leagueSha256"] = hashlib.sha256(league_raw).hexdigest()
     elif ruthless:
