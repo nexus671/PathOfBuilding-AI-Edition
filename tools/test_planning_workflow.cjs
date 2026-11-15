@@ -86,6 +86,14 @@ async function main(){
   const katakohiInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:etchedRaw,query:'Movement Speed',limit:20},'inspected');
   assert.equal(katakohiInspection.crafting.nativeEngine.katakohiEnchants[0].id,'DeepwaterTattooEnchantDexMovementSpeed');
   assert.match(katakohiInspection.crafting.nativeEngine.katakohiNote,/not probabilities/);
+  assert.equal(katakohiInspection.crafting.nativeEngine.katakohiEnchants[0].modeledEligible,false);
+  const tattooRaw='Rarity: NORMAL\nIron Gauntlets\nItem Level: 86\nSockets: R-R-R-R';
+  const tattooInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:tattooRaw,query:'ducat_katakohi',limit:20},'inspected');
+  assert.equal(tattooInspection.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='ducat_katakohi').available,true);
+  const tattoo=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:tattooRaw,action:{method:'ducat_katakohi'},seed:7},'crafted');
+  assert.equal(tattoo.nativeCrafting.choices.length,4);assert.ok(tattoo.nativeCrafting.warnings.some(entry=>entry.code==='katakohi_assumptions'));assert.ok(tattoo.nativeCrafting.warnings.some(entry=>entry.code==='allflame_historical'));
+  const tattooAfter=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:tattooRaw,initialState:tattoo.nativeCrafting.state,limit:5},'inspected');
+  assert.deepEqual(tattooAfter.crafting.nativeEngine.initialState.katakohiEnchants,tattoo.nativeCrafting.state.katakohiEnchants);
   const hypotheticalEnchant={...etchedInspection.crafting.nativeEngine.initialState,katakohiEnchants:['DeepwaterTattooEnchantDexMovementSpeed']};
   const enchantPreview=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:etchedRaw,initialState:hypotheticalEnchant,action:{method:'socket_white_bench'},seed:1},'crafted');
   assert.deepEqual(enchantPreview.nativeCrafting.state.katakohiEnchants,hypotheticalEnchant.katakohiEnchants);

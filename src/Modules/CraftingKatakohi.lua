@@ -1,4 +1,4 @@
--- cspell:ignore Katakohi ockets
+-- cspell:ignore Deepwater Katakohi ockets tatt
 -- Pinned modifier descriptions for reviewing socket enchantments. Random rolls
 -- are deliberately not inferred from the individual spawn-weight tags.
 local K={}
@@ -10,16 +10,28 @@ function K.data()
  end
  return cached
 end
-function K.catalog(query,limit)
- local rows={};query=(query or ""):lower()
+function K.catalog(query,limit,model)
+ local rows={};query=(query or ""):lower();local eligible
+ if model then eligible={};for _,entry in ipairs(K.pool(model)) do eligible[entry.id]=true end end
  for id,entry in pairs(K.data().mods) do
   if (id.." "..entry.text):lower():find(query,1,true) then
-   rows[#rows+1]={id=id,lines=copyTable(entry.text:split("\n")),requiredLevel=entry.required_level,groups=copyTable(entry.groups)}
+   local row={id=id,lines=copyTable(entry.text:split("\n")),requiredLevel=entry.required_level,groups=copyTable(entry.groups)}
+   if eligible then row.modeledEligible=eligible[id]==true end;rows[#rows+1]=row
   end
  end
  table.sort(rows,function(a,b) return a.id<b.id end)
  for i=#rows,(limit or 50)+1,-1 do rows[i]=nil end
  return rows
+end
+-- Candidate pools follow the base's attribute requirements. The client tags
+-- describe the pools, but do not establish server-side roll probabilities.
+function K.pool(model)
+ local req=model.item.base.req or {};local tags={deepwater_str_tatt=(req.str or 0)>0,deepwater_dex_tatt=(req.dex or 0)>0,deepwater_int_tatt=(req.int or 0)>0}
+ local result={}
+ for id,entry in pairs(K.data().mods) do if entry.required_level<=model.item.itemLevel then
+  for _,weight in ipairs(entry.spawn_weights) do if tags[weight.tag] and weight.weight>0 then result[#result+1]={id=id,weight=weight.weight};break end end
+ end end
+ table.sort(result,function(a,b) return a.id<b.id end);return result
 end
 -- Recognize only complete, unambiguous imports. Unknown enchantments must not
 -- be silently presented as an empty set in the hypothetical editor.
@@ -46,6 +58,41 @@ function K.identify(item)
 end
 function K.extend(M)
  local catalog,decorate,validate=M.catalog,M.decorateItem,M.validateState
+ local action=M.action
+ M.methods[#M.methods+1]="ducat_katakohi";M.labels.ducat_katakohi="Katakohi's Ducat";table.sort(M.methods)
+ M.methodChecks.ducat_katakohi=function(model,state)
+  if model.item.type~="Gloves" then return "Katakohi's Ducat requires gloves." end
+  if state.destroyed or state.corrupted or state.mirrored or state.veil then return "Katakohi's Ducat requires an uncorrupted, usable item without a pending unveil." end
+  if #(state.sockets or {})==0 then return "Add at least one ordinary socket before etching." end
+  for _,socket in ipairs(state.sockets) do if socket.color=="A" then return "Abyssal socket interactions are not modeled for this Ducat." end end
+  if #K.pool(model)==0 then return "No eligible socket enchantments were found for this base and item level." end
+ end
+ function M.action(model,state,craft,random)
+  if craft.method~="ducat_katakohi" then return action(model,state,craft,random) end
+  local reason=M.methodChecks.ducat_katakohi(model,state);assert(not reason,reason)
+  local next=copyTable(state);local pool=K.pool(model)
+  -- All distributions and retained socket/link rules are model assumptions.
+  local count=math.floor(random()*math.min(3,#next.sockets))+1;local removed={}
+  for _=1,count do
+   local choices={};for i in ipairs(next.sockets) do if not removed[i] then choices[#choices+1]=i end end
+   removed[choices[math.floor(random()*#choices)+1]]=true
+  end
+  local retained,previous,group={},nil,-1
+  for i,socket in ipairs(next.sockets) do if not removed[i] then
+   if not previous or previous.index~=i-1 or previous.group~=socket.group then group=group+1 end
+   retained[#retained+1]={color=socket.color,group=group};previous={index=i,group=socket.group}
+  end end
+  local ids={}
+  for _=1,count do
+   local total=0;for _,entry in ipairs(pool) do total=total+entry.weight end
+   assert(total>0,"Not enough modeled socket enchantments for this base")
+   local roll=random()*total;local chosen
+   for i,entry in ipairs(pool) do roll=roll-entry.weight;if roll<0 then chosen=i;break end end
+   local entry=table.remove(pool,assert(chosen,"Could not select a socket enchantment"));ids[#ids+1]=entry.id
+  end
+  next.sockets=retained;next.katakohiEnchants=ids;next.harvestEnchant=nil;next.enchantCleared=nil
+  return next
+ end
  local targetReason=M.implicitTargetReason
  function M.implicitTargetReason(model,state,targets)
   local reason=targetReason(model,state,targets);if reason then return reason end
@@ -102,8 +149,8 @@ function K.extend(M)
   local result=catalog(raw,query,limit,initialState,...)
   local item=new("Item"):Item(initialState and initialState.baseItem or raw)
   if item.type=="Gloves" then
-   result.katakohiEnchants=K.catalog(query,limit)
-   result.katakohiNote="These are possible socket enchantments, not probabilities or a simulated Ducat outcome. Socket and modifier selection rules remain unverified."
+   result.katakohiEnchants=K.catalog(query,limit,{item=item})
+   result.katakohiNote="These are possible socket enchantments, not probabilities. The experimental historical Ducat simulation assumes attribute pools, socket selection and modifier weights; those rules remain unverified."
   end
   return result
  end

@@ -101,6 +101,8 @@ function Panel.Open(recipe,currentAction,onKeep,model)
 			details={"Add this bench action to the recipe without changing the working item.","The item must have enough removable modifiers when this step runs."}} end
 		entries[#entries+1]={id="bench_remove_enchant",label=sim.labels.bench_remove_enchant,category="Bench",icon=workbench.icon("bench_remove_enchant"),action={method="bench_remove_enchant"},
 			details={"Remove the item's enchantments for three Orbs of Scouring.","The item must have an enchantment when this step runs."}}
+		entries[#entries+1]={id="ducat_katakohi",label=sim.labels.ducat_katakohi,category="Ducats",icon=workbench.icon("ducat_katakohi"),action={method="ducat_katakohi"},
+			details={"Historical Allflame craft for gloves; consumes a Ducat and Sulphur.","Socket selection and modifier probabilities are experimental assumptions."}}
 		entries[#entries+1]={id="beast_max_links",label=sim.labels.beast_max_links,category="Bestiary",icon=workbench.icon("beast_max_links"),action={method="beast_max_links"},details={"Link the item's existing sockets using the Black Morrigan and a Craicic Sand Spitter.","Add sockets first; this step does not increase their number."}}
 		entries[#entries+1]={id="beast_talisman_imprint",label=sim.labels.beast_talisman_imprint,category="Bestiary",icon=workbench.icon("beast_talisman_imprint"),action={method="beast_talisman_imprint"},details={"Create an imprint of an uncorrupted, non-fractured rare Talisman.","Enter a whole-action price for the Bestiary service."}}
 		if model then

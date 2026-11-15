@@ -472,6 +472,18 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("targetGroups");ui:click("groupConditions");assert(main.popups[1].controls.scope:GetSelValue()=="Enchantments","Socket enchantment target scope was not retained");ui:click("keep");ui:click("keepGroups");ui:click("close")
 	end
 	do
+		local raw="Rarity: NORMAL\nIron Gauntlets\nItem Level: 86\nSockets: R-R-R-R"
+		local model=sim.model(raw);require("Classes.CraftingSimulatorControl").Open(build,{id="katakohi-roll-ui",title="Socket enchantment roll",slot="Gloves",startingItem=raw,goals={},steps={}})
+		ui:click("settings");ui:text("paletteSearch",sim.labels.ducat_katakohi);assert(main.popups[1].controls.paletteUse:IsEnabled());ui:click("paletteUse")
+		local hints={};for _,row in ipairs(main.popups[1].controls.actionHint.list) do hints[#hints+1]=StripEscapes(row[1]) end
+		assert(table.concat(hints," "):find("experimental",1,true),"The Ducat assumptions were not shown");frame("crafting-katakohi-roll")
+		ui:click("apply");assert(main.popups[1].title=="Allflame outcomes" and #main.popups[1].controls.choice.list==4,"The Ducat did not show its historical ghost outcomes")
+		frame("crafting-katakohi-ghosts");ui:click("keep");ui:click("close")
+		local saved;require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy"}},targets={},requirements={minAffixes=1}},{method="alchemy"},function(value) saved=value end,model)
+		ui:click("addCurrency");ui:text("search","Katakohi");frame("crafting-katakohi-recipe");ui:click("choose");ui:click("keep")
+		assert(saved and saved.steps[2].method=="ducat_katakohi","The Ducat recipe step was not retained")
+	end
+	do
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20\nSockets: R-G W-W"
 		require("Classes.CraftingSimulatorControl").Open(build,{id="jeweller-ui",title="Experimental Jeweller",slot="Body Armour",startingItem=raw,goals={},steps={},nativeRecipe={steps={{method="jeweller"}},targets={},requirements={sockets=6}}})
 		ui:click("settings");ui:text("paletteSearch",sim.labels.jeweller);assert(main.popups[1].controls.paletteUse:IsEnabled());ui:click("paletteUse")

@@ -1,3 +1,4 @@
+-- cspell:ignore Katakohi
 -- Independent ghost outcomes using pinned client tables or an observed override.
 local F={}
 local catalog
@@ -6,7 +7,7 @@ function F.availability()
 		reason="Allflame did not return to core in 3.30; use this model for historical or hypothetical plans.",
 		source="https://www.pathofexile.com/forum/view-thread/4013527"}
 end
-local names={transmute="Orb of Transmutation",alteration="Orb of Alteration",augmentation="Orb of Augmentation",regal="Regal Orb",alchemy="Orb of Alchemy",chaos="Chaos Orb",exalt="Exalted Orb",annul="Orb of Annulment",scour="Orb of Scouring",divine="Divine Orb",blessed="Blessed Orb",sacred="Sacred Orb",binding="Orb of Binding",fracture="Fracturing Orb",dominance="Orb of Dominance",conflict="Orb of Conflict",veiled_orb="Veiled Exalted Orb",eldritch_exalt="Eldritch Exalted Orb",eldritch_annul="Eldritch Orb of Annulment",eldritch_chaos="Eldritch Chaos Orb",remembrance="Orb of Remembrance",unravelling="Orb of Unravelling",foulborn_augmentation="Foulborn Orb of Augmentation",foulborn_regal="Foulborn Regal Orb",foulborn_exalt="Foulborn Exalted Orb",ducat_cyaxan="Cyaxan's Ducat",ducat_merrick="Merrick's Ducat",ducat_brinehook="Brinehook's Ducat",ducat_genteel="The Genteel's Ducat",ducat_rotmother="Rotmother's Ducat",ducat_kishara="Kishara's Ducat",ducat_tzamoto="Tzamoto's Ducat"}
+local names={transmute="Orb of Transmutation",alteration="Orb of Alteration",augmentation="Orb of Augmentation",regal="Regal Orb",alchemy="Orb of Alchemy",chaos="Chaos Orb",exalt="Exalted Orb",annul="Orb of Annulment",scour="Orb of Scouring",divine="Divine Orb",blessed="Blessed Orb",sacred="Sacred Orb",binding="Orb of Binding",fracture="Fracturing Orb",dominance="Orb of Dominance",conflict="Orb of Conflict",veiled_orb="Veiled Exalted Orb",eldritch_exalt="Eldritch Exalted Orb",eldritch_annul="Eldritch Orb of Annulment",eldritch_chaos="Eldritch Chaos Orb",remembrance="Orb of Remembrance",unravelling="Orb of Unravelling",foulborn_augmentation="Foulborn Orb of Augmentation",foulborn_regal="Foulborn Regal Orb",foulborn_exalt="Foulborn Exalted Orb",ducat_cyaxan="Cyaxan's Ducat",ducat_merrick="Merrick's Ducat",ducat_brinehook="Brinehook's Ducat",ducat_genteel="The Genteel's Ducat",ducat_rotmother="Rotmother's Ducat",ducat_kishara="Kishara's Ducat",ducat_katakohi="Katakohi's Ducat",ducat_tzamoto="Tzamoto's Ducat"}
 function F.data()
 	if not catalog then
 		local root=GetScriptPath();local file=assert(io.open((root ~= "" and root.."/" or "").."Data/Crafting/Allflame.json","rb"))
@@ -21,7 +22,7 @@ function F.extend(M,A,api)
 	function M.catalog(...)
 		local result=catalog(...);result.allflameAvailability=F.availability();return result
 	end
-	local function settings(craft) return craft.allflame or craft.method == "ducat_kishara" and {auto=true,upgradeTier=2} end
+	local function settings(craft) return craft.allflame or (craft.method == "ducat_kishara" or craft.method == "ducat_katakohi") and {auto=true,upgradeTier=2} end
 	function M.supportsAllflame(method)
 		return names[method]~=nil or method=="fossil" or method=="essence" or method=="influence_exalt"
 	end

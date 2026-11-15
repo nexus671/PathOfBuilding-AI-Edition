@@ -44,6 +44,7 @@ function M.actionWarnings(action,model)
 	if action.method=="bench" and type(action.modId)=="string" and action.modId:match("^bench:partial%-") then result[#result+1]={code="partial_lock_model",message=partialWarningMessage} end
 	if action.method=="recombine" then result[#result+1]={code="recombination_count_odds",message="Recombination uses older count odds; 3.30 odds are not verified."} end
 	if action.method=="ducat_ukatoa" then result[#result+1]={code="ukatoa_assumptions",message="Ukatoa assumes equal Exarch/Eater and tier 1-4 chances; these odds are unverified. Modifier selection uses pinned spawn weights.",source="https://poedb.tw/us/Ukatoas_Ducat"} end
+	if action.method=="ducat_katakohi" then result[#result+1]={code="katakohi_assumptions",message="Experimental: base-attribute pools, uniform one-to-three socket counts and selection, weighted distinct modifiers, replacement of existing enchantments, and retained socket links are assumptions. Actual roll rules are unverified.",source="https://poedb.tw/us/Katakohis_Ducat"} end
 	if action.method=="locus" then result[#result+1]={code="locus_assumptions",message="Locus assumes 25% implicit, 25% socket and 50% destruction outcomes; these are not verified 3.30 odds. Socket conversion and replacement selection are also assumptions.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
 	if action.method=="vaal" and model and model.item.type=="Flask" then result[#result+1]={code="flask_vaal_weights",message="Flask quality changes from -10 to +10; equal outcome weights are assumed and unverified.",source="https://www.pathofexile.com/forum/view-thread/3496784"} end
 	if action.method=="binding" then result[#result+1]={code="binding_legacy",message="Orbs of Binding are no longer generated in 3.30; existing orbs still work.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
@@ -51,7 +52,7 @@ function M.actionWarnings(action,model)
 	if action.method=="fusing" then result[#result+1]={code="fusing_estimate",message="Experimental: link-group weights use historical 20% quality observations; applying them to shorter items, quality scaling and excluding the current layout are assumptions. Current game odds are unverified.",source="https://www.reddit.com/r/pathofexile/comments/75t1c9/i_used_100000_fusings_for_science_statistics/"} end
 	if action.method=="gwennen" then result[#result+1]={code="gwennen_estimate",message="Experimental: assumes a fair coin, uniform selection and removal counts, normalized maximum-roll checks and ordinary currency transitions. Offer generation, costs and special interactions are not verified.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
 	if action.method=="gwennen" and (action.firstOutcome==1012 or action.secondOutcome==1012) then result[#result+1]={code="gwennen_corruption",message="Corruption uses the existing Vaal model; rare-reroll socket and link changes are not modeled."} end
-	if action.allflame or action.method=="ducat_kishara" then result[#result+1]={code="allflame_historical",message="Allflame is historical and did not return to core in 3.30."} end
+	if action.allflame or action.method=="ducat_kishara" or action.method=="ducat_katakohi" then result[#result+1]={code="allflame_historical",message="Allflame is historical and did not return to core in 3.30."} end
 	return result
 end
 local function partialWarning(warnings)
@@ -677,7 +678,7 @@ function M.simulate(raw,recipe,options)
 	checkTargets(recipe.targets)
 	for _,step in ipairs(recipe.steps) do
 		if step.untilTargets then checkTargets(step.untilTargets) end
-		if step.method == "ducat_kishara" and not step.allflame then step.allflame={auto=true,upgradeTier=2} end
+		if (step.method == "ducat_kishara" or step.method == "ducat_katakohi") and not step.allflame then step.allflame={auto=true,upgradeTier=2} end
 		if step.allflame and not step.allflame.preferredTargets and #recipe.targets > 0 then step.allflame.preferredTargets=copyTable(step.untilTargets or recipe.targets) end
 	end
 	local successes,totalCost,totalActions,totalExecuted=0,0,0,0
@@ -850,7 +851,7 @@ do
 end
 -- Extensions register state prerequisites once for both execution and browsing.
 local partialLockActions={bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,beast_imprint=true,beast_talisman_imprint=true,
-	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,chromatic=true,beast_max_links=true,ducat_ukatoa=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
+	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,chromatic=true,beast_max_links=true,ducat_ukatoa=true,ducat_katakohi=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
 	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,bench_remove_enchant=true,eldritch_implicit=true,conflict=true}
 function M.methodReason(model,state,method)
 	if M.hasPartialLock(M.context(model,state),state) and not partialLockActions[method] then

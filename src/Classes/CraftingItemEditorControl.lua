@@ -117,15 +117,15 @@ function Panel.Open(model,input,onKeep)
 		main:OpenPopup(776,268,"Jewel unveil choices",popup,nil,nil,"close")
 	end) end
 	if hasKatakohi then button("katakohi",16,340,376,"Set socket enchantments",function()
-		local katakohi=require("Modules.CraftingKatakohi");local rows=katakohi.catalog("",100);local popup={};local options={{label="No enchantment",val=""}}
+		local katakohi=require("Modules.CraftingKatakohi");local rows=katakohi.catalog("",100,model);local popup={};local options={{label="No enchantment",val=""}}
 		local selected=state.katakohiEnchants or katakohi.identify(sim.toItem(model,state))
-		for _,row in ipairs(rows) do options[#options+1]={label=row.lines[2] or row.id,val=row.id} end
+		for _,row in ipairs(rows) do options[#options+1]={label=(row.lines[2] or row.id)..(row.modeledEligible and "" or " (outside modeled pool)"),val=row.id} end
 		popup.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,26,0,14},selected and "Choose observed or hypothetical enchantments; each removes one maximum socket." or "Existing enchantments could not be identified; choosing these will replace them.")
 		for i=1,3 do
 			popup["choice"..i]=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,58+(i-1)*34,744,26},options)
 			popup["choice"..i]:SelByValue(selected and selected[i] or "","val")
 		end
-		popup.note=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,171,0,14},"Replaces existing enchantments. Extra sockets are removed from the end. No odds are simulated.")
+		popup.note=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,171,0,14},"Manual preview replaces enchantments and removes extra sockets from the end.")
 		popup.use=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{16,208,230,28},"Use these enchantments",function()
 			local ok,result=pcall(function()
 				local ids={};for i=1,3 do local id=popup["choice"..i]:GetSelValueByKey("val");if id and id~="" then ids[#ids+1]=id end end
