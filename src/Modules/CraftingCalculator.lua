@@ -19,7 +19,7 @@ function C.extend(M)
 				if hit then hitWeight=hitWeight+probability end
 				outcomes[#outcomes+1]={id=tostring(count),text=count..(count==1 and " socket" or " sockets"),chance=100*probability,weight=probability,matches=hit,state=result}
 			end end
-			return {exactFor="One Jeweller's Orb under the historical socket-weight and quality assumptions",sampled=false,successChance=100*hitWeight,totalWeight=1,matchingWeight=hitWeight,
+			return {exactFor="One Jeweller's Orb under the historical socket-weight and quality assumptions",showAllOutcomes=true,sampled=false,successChance=100*hitWeight,totalWeight=1,matchingWeight=hitWeight,
 				outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 		end
 		if method=="fusing" and not craft.allflame then

@@ -443,6 +443,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("tab_settings");ui:click("exact");local jobs=require("Modules.CraftingTasks");for i=1,1000 do if not jobs.job then break end;jobs.tick(build) end
 		local odds=build.craftingAnalyses["jeweller-ui"].results.odds.result
 		assert(not jobs.job and not odds.sampled and odds.warnings[1].code=="jeweller_estimate","Jeweller exact model warning was not shown")
+		local lines={};for _,row in ipairs(main.popups[1].controls.resultSummary.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(lines," "):find("1 socket",1,true) and table.concat(lines," "):find("6 sockets | Target",1,true),"Jeweller outcome breakdown omitted a modeled count")
 		ui:click("tab_simulate");frame("crafting-jeweller-odds");ui:click("tab_craft");ui:click("item");assert(main.popups[1].controls.intro.label:find("Applied Jeweller",1,true),"Jeweller action failed");ui:click("close")
 	end
 	do

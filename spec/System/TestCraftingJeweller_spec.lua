@@ -32,7 +32,7 @@ describe("Experimental Jeweller socket model",function()
 	end)
 	it("enumerates the modeled socket counts and retains the uncertainty warning",function()
 		local result=sim.calculate(raw,{method="jeweller"},{},nil,{requirements={sockets=6}})
-		assert.is_false(result.sampled);assert.equal(5,#result.outcomes);assert.equal("jeweller_estimate",result.warnings[1].code)
+		assert.is_false(result.sampled);assert.is_true(result.showAllOutcomes);assert.equal(5,#result.outcomes);assert.equal("jeweller_estimate",result.warnings[1].code)
 		local total,matching=0,0
 		for _,entry in ipairs(result.outcomes) do
 			total=total+entry.chance;assert.equal(tonumber(entry.id),#entry.state.sockets)

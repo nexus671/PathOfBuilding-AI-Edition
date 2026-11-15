@@ -475,7 +475,8 @@ function Panel.Open(build,project,layout)
 		for i,warning in ipairs(result.warnings or {}) do table.insert(lines,1+i,"Model note: "..warning.message) end
 		if result.treeVersion then lines[#lines+1]="Build tree: "..(treeVersions[result.treeVersion] and treeVersions[result.treeVersion].display or result.treeVersion).." (context only) | crafting data: "..tostring(result.dataPatch) end
 		if result.sampled then lines[#lines+1]=string.format("%d trials | 95%% interval %.2f%% to %.2f%%",result.trials,result.confidenceLow,result.confidenceHigh) end
-		for _,entry in ipairs(result.outcomes) do if entry.matches then lines[#lines+1]=string.format("%.6f%% | %s",entry.chance,entry.text or "Finite item outcome") end end
+		if result.showAllOutcomes then lines[#lines+1]="All modeled outcomes (target matches marked):" end
+		for _,entry in ipairs(result.outcomes) do if entry.matches or result.showAllOutcomes then lines[#lines+1]=string.format("%.6f%% | %s%s",entry.chance,entry.text or "Finite item outcome",result.showAllOutcomes and entry.matches and " | Target" or "") end end
 		refresh(lines)
 	end
 	button(controls,"exact",232,574,200,"Calculate action odds",function()
