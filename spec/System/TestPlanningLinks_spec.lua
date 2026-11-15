@@ -95,6 +95,21 @@ describe("Linked planning tools",function()
 		local found=false;for _,rule in ipairs(rules) do if rule.title=="Omen of Connections" then found=true end end;assert.is_true(found)
 		report=dependencies.report(build,profile);assert.equal("Changed",report.entries[1].status)
 	end)
+	it("generates and refreshes broad donor-base pickups for crafting guides",function()
+		local project=craft();local donor="Rarity: NORMAL\nCone Helmet\nItem Level: 80"
+		project.nativeRecipe={steps={{method="recombine",donorItem=donor},{method="recombine",donorItem=donor}},targets={},requirements={minAffixes=1}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("donors","Donor bases");profile.rules=filters.generate(build,profile)
+		local found={};for _,rule in ipairs(profile.rules) do if rule.id:match("^craft%-donor%-") then found[#found+1]=rule end end
+		assert.equal(1,#found);assert.equal("Donor base: Cone Helmet",found[1].title);assert.matches('BaseType == "Cone Helmet"',found[1].text);assert.matches("ItemLevel >= 80",found[1].text)
+		assert.equal("Show",filters.simulate(profile,{BaseType="Cone Helmet",Rarity="Normal",ItemLevel=80}).action)
+		project.nativeRecipe.steps={{method="recombine",donorItem="Not a recognized item"}};build.savers.CraftingProjects:Upsert(project)
+		local preserved,warnings=filters.generate(build,profile);local kept=false
+		for _,rule in ipairs(preserved) do if rule.id==found[1].id then kept=true end end
+		assert.is_true(kept);assert.is_true(#warnings>0);assert.matches("donor base",warnings[1].message)
+		project.nativeRecipe.steps={{method="recombine",donorItem="Rarity: NORMAL\nIron Hat\nItem Level: 86"}};build.savers.CraftingProjects:Upsert(project)
+		assert.is_true(dependencies.report(build,profile).stale);profile.rules=filters.generate(build,profile)
+		for _,rule in ipairs(profile.rules) do assert.is_nil(rule.id:match("^craft%-donor%-")) end -- starting-base rule already covers this donor
+	end)
 	it("reports partial ingredient coverage while retaining known pickups",function()
 		local project=craft();project.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}}
 		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("partial-craft","Partial craft");profile.rules=filters.generate(build,profile)

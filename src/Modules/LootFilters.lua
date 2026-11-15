@@ -92,12 +92,29 @@ function M.generate(build,profile,checkpoint)
 	end
 	local function base(raw,id,title,origin)
 		local ok,item=pcall(require("Modules.CraftingProjects").item,raw or "")
-		if not ok then return end
+		if not ok then return false end
 		local conditions={"BaseType == "..quote(item.baseName),"Rarity <= Rare"}
 		local level=tonumber((raw or ""):match("Item Level: (%d+)"));if level then conditions[#conditions+1]="ItemLevel >= "..level end
+		if type(id)=="function" then id=id(item,level) end
+		if type(title)=="function" then title=title(item) end
 		add(id,title,conditions,origin)
+		return true
 	end
-	for _,p in ipairs(build.savers.CraftingProjects.projects) do base(p.startingItem,"craft-"..p.id,p.title.." base","craft:"..p.id);checkpointIfNeeded() end
+	for _,p in ipairs(build.savers.CraftingProjects.projects) do
+		local origin="craft:"..p.id;base(p.startingItem,"craft-"..p.id,p.title.." base",origin)
+		local invalidDonor=false
+		for _,step in ipairs(p.nativeRecipe and p.nativeRecipe.steps or {}) do
+			if (step.method=="awakener" or step.method=="recombine" or step.method=="recombine_predictable") and step.donorItem and step.donorItem~="" then
+				local ok=base(step.donorItem,function(item,level) return "craft-donor-"..p.id.."-"..require("sha1")(item.baseName..":"..tostring(level or 0)):sub(1,12) end,function(item) return "Donor base: "..item.baseName end,origin)
+				invalidDonor=invalidDonor or not ok
+			end
+		end
+		if invalidDonor then
+			warnings[#warnings+1]={origin=origin,title=p.title,message="Could not read a configured donor base. Previous donor pickups were kept; review the crafting guide."}
+			for _,rule in ipairs(profile.rules) do if rule.origin==origin and rule.id:match("^craft%-donor%-") and not ids[rule.id] then result[#result+1]=copyTable(rule);ids[rule.id]=true end end
+		end
+		checkpointIfNeeded()
+	end
 	for _,e in ipairs(build.savers.BuildJourney.data.wishlist) do if e.status=="planned" then base(e.targetItem,"gear-"..e.id,e.title.." base","gear:"..e.id) end;checkpointIfNeeded() end
 	for i,group in ipairs(build.skillsTab.socketGroupList) do
 		local slot=group.slot and build.itemsTab.slots[group.slot]
