@@ -1,4 +1,4 @@
-"""Extract the Gwennen reference from a saved 3.30 datamine HTML page.
+"""Extract the Gwennen reference from a saved 3.30 game-data HTML page.
 
 This is a discovery aid, not an authoritative implementation of server rules.
 Pass the saved page as the only argument; its hash is retained for review.
