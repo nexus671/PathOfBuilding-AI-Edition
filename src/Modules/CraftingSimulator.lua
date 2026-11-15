@@ -218,7 +218,7 @@ function M.model(raw)
 	local desolation=require("Modules.CraftingDesolation330")[item.type]
 	if desolation and model.byId[desolation] then model.essences[#model.essences+1]={id="Metadata/Items/Currency/CurrencyEssenceFaridun1",name="Essence of Desolation",modId=desolation,tier=0,canReforgeRare=true,maxModLevel=15} end
 	table.sort(model.essences,function(a,b) return a.id < b.id end)
-	local state={rarity=item.rarity,affixes={}}
+	local state={rarity=item.rarity,affixes={},corrupted=item.corrupted or false}
 	for _,list in ipairs({item.prefixes,item.suffixes}) do for _,entry in ipairs(list) do
 		if entry.modId ~= "None" then
 			assert(model.byId[entry.modId],"Starting item has an unknown modifier")

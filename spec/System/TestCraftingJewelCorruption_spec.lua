@@ -60,3 +60,28 @@ describe("Corrupted jewel implicit import",function()
   local state=build.savers.CraftingProjects.projects[1].inventory[1].state;assert.equal(regular,state.corruptedImplicits[1].id)
  end)
 end)
+
+describe("Corrupted Abyss jewel modifier limits", function()
+ local sim=require("Modules.CraftingSimulator")
+ it("reopens five and six modifiers while retaining ordinary limits", function()
+  local model=sim.model("Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86")
+  local state=copyTable(model.initial); state.rarity="RARE"; state.corrupted=true
+  for _,entry in ipairs(model.mods) do
+   local candidate=copyTable(state); candidate.affixes[#candidate.affixes+1]={id=entry.id,range=0.5}
+   if pcall(sim.validateState,model,candidate) then
+    state=candidate
+    if #state.affixes>=5 then
+     local raw=sim.toItem(model,state).raw
+     local reopened=sim.model(raw)
+     assert.equal(#state.affixes,#reopened.initial.affixes)
+     assert.is_true(reopened.initial.corrupted)
+     assert.is_truthy(sim.validateState(reopened,reopened.initial))
+     local ordinary=copyTable(state); ordinary.corrupted=false
+     assert.is_false(pcall(sim.validateState,model,ordinary))
+    end
+    if #state.affixes==6 then break end
+   end
+  end
+  assert.equal(6,#state.affixes)
+ end)
+end)
