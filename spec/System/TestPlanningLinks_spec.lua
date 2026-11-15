@@ -118,6 +118,14 @@ describe("Linked planning tools",function()
 		local names={};for _,rule in ipairs(rules) do names[rule.title]=true end;assert.is_true(names["Omen of Connections"]);assert.is_true(names["Orb of Fusing"])
 		assert.is_true(dependencies.report(build,profile).stale)
 	end)
+	it("shows every warning for a crafting guide in linked targets",function()
+		local project=craft();project.nativeRecipe={steps={{method="recombine",donorItem="Not a recognized item"},{method="locus"}},targets={},requirements={minAffixes=1}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("multiple-warnings","Multiple warnings");profile.rules=filters.generate(build,profile)
+		local report=dependencies.report(build,profile);local entry
+		for _,value in ipairs(report.entries) do if value.origin=="craft:helmet" then entry=value end end
+		assert.is_truthy(entry);assert.equal("Needs review",entry.status)
+		local details=table.concat(entry.details,"\n");assert.matches("configured donor base",details);assert.matches("ingredient breakdown",details)
+	end)
 	it("reuses incomplete recipe checks until the retained draft changes",function()
 		local project=craft();project.nativeRecipe={steps={{method="omen_connections"},{method="locus"}},targets={},requirements={links=4}}
 		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("partial-cache","Partial cache");profile.rules=filters.generate(build,profile)
