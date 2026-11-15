@@ -116,6 +116,23 @@ function M.Open(build,source,layout,controller)
 		raw,report,parsed=cached.raw,cached.report,cached.parsed;result=parser.simulate(parsed,item)
 		for _,d in ipairs(report.diagnostics) do if d.error then raw=nil;result={action="Unknown",status="invalid",styles={},reasons={d.error}} end end
 	end
+	local evaluationScope
+	local function evaluateDrop(drop)
+		if not parsed then return {action="Unknown",status="unknown",styles={},reasons={"Filter is unavailable."}} end
+		local encode=require("Modules.PlanningData").encodeExact
+		evaluationScope=evaluationScope or sceneKind.."\0"..(sampleSetId or "").."\0"..encode(settings)
+		local cache=transient.filterEvaluations
+		if not cache or cache.parsed~=parsed or cache.scope~=evaluationScope then cache={parsed=parsed,scope=evaluationScope,values={},count=0};transient.filterEvaluations=cache end
+		-- Use round-trip precision: distinct numeric thresholds must never share
+		-- a cached outcome. Bound both key length and retained entries.
+		local key=encode(drop);local cached=cache.values[key]
+		if cached then return cached end
+		local evaluated=parser.simulate(parsed,drop)
+		if cache.count<1024 and #key<=8192 and #(evaluated.matches or {})<=64 then
+			cache.values[key]=evaluated;cache.count=cache.count+1
+		end
+		return evaluated
+	end
 	local function selectedRule() return selectedEntry and selectedEntry.rule end
 	local function keepRule(rule)
 		local found=false;for i,r in ipairs(profile.rules) do if r.id==rule.id then profile.rules[i]=rule;found=true end end
@@ -154,7 +171,7 @@ function M.Open(build,source,layout,controller)
 		local canvas=new("Control"):Control(ui.anchor,{x,y,width,height});c[key]=canvas;backgrounds[key]=true
 		local columns=width>700 and 4 or width>460 and 3 or 2;local reserve=selectable and 98 or 46;local rows=math.max(2,math.floor((height-reserve)/70));local capacity=columns*rows;local cells={};local visible=0;local eligible={}
 		if selectable and sceneKind=="Essences" then columns=math.min(columns,3);capacity=columns*rows end
-		local function evaluate(drop) return parsed and parser.simulate(parsed,drop) or {action="Unknown",status="unknown",styles={}} end
+		local function evaluate(drop) return evaluateDrop(drop) end
 		for _,drop in ipairs(drops) do local evaluated=not showHidden and evaluate(drop) or nil;if showHidden or evaluated.action~="Hide" then eligible[#eligible+1]={item=drop,result=evaluated} end end
 		local pages=math.max(1,math.ceil(#eligible/capacity));if selectable then scenePage=math.max(1,math.min(scenePage,pages)) end
 		local first=selectable and (scenePage-1)*capacity+1 or 1;local encode=require("Modules.PlanningData").encode
@@ -393,7 +410,7 @@ function M.Open(build,source,layout,controller)
 		button(c,"sceneStats",124,362,100,"Drop review",function()
 			local counts={Show=0,Hide=0,Minimal=0,Unknown=0};local entries={}
 			for index,drop in ipairs(scene) do
-				local evaluated=parsed and parser.simulate(parsed,drop) or {action="Unknown",status="unknown",styles={},reasons={"Filter is unavailable."}}
+				local evaluated=evaluateDrop(drop)
 				local action=M.dropOutcome(evaluated)
 				counts[action]=counts[action]+1
 				local value=itemTier(drop);local tier=value~=nil and (value==0 and " (no tier)" or " (tier "..value..")") or ""

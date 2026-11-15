@@ -296,6 +296,51 @@ describe("Linked planning tools",function()
 		end)
 		filters.compile=original;assert.is_true(ok,err)
 	end)
+	it("reuses example evaluations while paging and invalidates them after a filter edit",function()
+		local parser=require("Modules.LootFilterParser");local original=parser.simulate;local calls=0
+		parser.simulate=function(...) calls=calls+1;return original(...) end
+		local ok,err=pcall(function()
+			local profile=filters.profile("scene-cache","Scene cache");local samples={}
+			for i=1,30 do samples[i]={BaseType="Example "..i,Rarity="Normal",ItemLevel=86} end
+			profile.sampleSets={{id="many",title="Many",samples=samples}}
+			profile.rules={{id="hide",title="Hide first",text='Hide\n BaseType == "Example 1"',enabled=true}}
+			local workspace=require("Modules.PlanningWorkspace").new(build)
+			workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate",sceneKind="Saved examples",sampleSetId="many",showHidden=false})
+			local first=calls;assert.is_true(first>=30)
+			local state=workspace.cache.filters.layout.snapshot();state.scenePage=2;workspace:Show("filters",state)
+			assert.is_true(calls-first<5,"Paging reevaluated cached examples")
+			local beforeReview=calls;workspace.controls.sceneStats:Click();assert.is_true(calls-beforeReview<5,"Review reevaluated cached examples");main:ClosePopup()
+			state=workspace.cache.filters.layout.snapshot();state.data.profiles[1].rules[1].text='Show\n BaseType == "Example 1"';local beforeEdit=calls;workspace:Show("filters",state)
+			assert.is_true(calls-beforeEdit>=30,"Changed filter reused old outcomes")
+		end)
+		parser.simulate=original;assert.is_true(ok,err)
+	end)
+	it("keeps nearby numeric sample values distinct in cached filter results",function()
+		local profile=filters.profile("precise-scene","Precise scene")
+		profile.template="Show"
+		profile.rules={{id="threshold",title="Threshold",text="Hide\n Quality > 1.0000000000000002",enabled=true}}
+		profile.sampleSets={{id="values",title="Values",samples={{BaseType="Iron Hat",Rarity="Normal",Quality=1},{BaseType="Iron Hat",Rarity="Normal",Quality=1.0000000000000004}}}}
+		local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate",sceneKind="Saved examples",sampleSetId="values",showHidden=false})
+		workspace.controls.sceneStats:Click();local seen={}
+		for _,row in ipairs(main.popups[1].controls.results.list) do if row.entry and row.entry.sample and row.entry.sample.BaseType=="Iron Hat" then seen[row.entry.sample.Quality]=row.entry.category end end
+		assert.equal("Show",seen[1]);assert.equal("Hide",seen[1.0000000000000004])
+	end)
+	it("retains bounded cache hits for example sets larger than the cache",function()
+		local parser=require("Modules.LootFilterParser");local original=parser.simulate;local calls=0
+		parser.simulate=function(...) calls=calls+1;return original(...) end
+		local ok,err=pcall(function()
+			local profile=filters.profile("large-scene","Large scene");profile.template="Show";local samples={}
+			for i=1,1100 do samples[i]={BaseType="Example "..i,Rarity="Normal",ItemLevel=86} end
+			profile.sampleSets={{id="many",title="Many",samples=samples}}
+			local workspace=require("Modules.PlanningWorkspace").new(build)
+			workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate",sceneKind="Saved examples",sampleSetId="many",showHidden=false})
+			local first=calls;local state=workspace.cache.filters.layout.snapshot();state.scenePage=2;workspace:Show("filters",state)
+			assert.is_true(calls-first<100,"Large example sets evicted their reusable results")
+			assert.equal(1024,workspace.transient.filterEvaluations.count)
+		end)
+		parser.simulate=original;assert.is_true(ok,err)
+	end)
 	it("keeps the source filter draft and previous working craft when following a link",function()
 		local project=craft();build.savers.CraftingProjects:Upsert(project);local workspace=require("Modules.PlanningWorkspace").new(build)
 		local profile=filters.profile("filter","Unsaved filter name");workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},dirty=true})
