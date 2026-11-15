@@ -58,6 +58,10 @@ async function main(){
   assert.equal(gwennenReference.crafting.nativeEngine.gwennenReference.offers[0].id,1022);assert.match(gwennenReference.crafting.nativeEngine.gwennenReference.note,/not available crafting actions/);
   assert.equal(inspected.crafting.nativeEngine.methodWarnings.binding[0].code,'binding_legacy');
   const binding=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,action:{method:'binding'},seed:1},'crafted');assert.equal(binding.nativeCrafting.warnings[0].code,'binding_legacy');assert.equal(binding.nativeCrafting.state.rarity,'RARE');
+  const gwennenAction={method:'gwennen',firstOutcome:1000,secondOutcome:1022,artifactCost:{grand:20}};
+  const gwennenCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:gwennenAction,seed:1},'crafted');
+  assert.equal(gwennenCraft.nativeCrafting.warnings[0].code,'gwennen_estimate');assert.ok([1000,1022].includes(gwennenCraft.nativeCrafting.gwennen.outcome));
+  const gwennenOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:gwennenAction,targets:[],options:{requirements:{minAffixes:1},trials:4}},'crafted');assert.equal(gwennenOdds.nativeCrafting.warnings[0].code,'gwennen_estimate');
   const etchedRaw='Rarity: NORMAL\nIron Gauntlets\nItem Level: 86\nSockets: W-W-W\nImplicits: 2\n{enchant}-1 to maximum Sockets\n{enchant}20% increased Fire Damage';
   const etchedInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:etchedRaw,query:'socket_bench',limit:50},'inspected');
   const etchedOptions=etchedInspection.crafting.nativeEngine.socketCrafts.filter(entry=>entry.method==='socket_bench');

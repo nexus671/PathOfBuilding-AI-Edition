@@ -236,7 +236,10 @@ function Panel.Open(build,project,layout)
 			history[#history+1]=copyTable(state);if #history > 40 then table.remove(history,1) end
 			if index then craft.allflame=craft.allflame or copyTable(result.allflame.settings);craft.allflame.choiceIndex=index end
 			local label=craft.method=="essence" and "Essence: "..workbench.actionLabel(craft,model) or simulator.labels[craft.method] or "craft"
-			state=nextState;actions[#actions+1]=craft;updateOptions();refresh({"Applied "..label..". Select another currency or undo."})
+			state=nextState;actions[#actions+1]=craft;updateOptions()
+			local message="Applied "..label..". Select another currency or undo."
+			if result.gwennen then for _,entry in ipairs(require("Modules.CraftingGwennenReference").search("",100).offers) do if entry.id==result.gwennen.outcome then message="Gwennen modeled outcome: "..entry.description;break end end end
+			refresh({message})
 		end
 		if result.choices and #result.choices > 1 then
 			local popup={};local choices={}
@@ -304,18 +307,29 @@ function Panel.Open(build,project,layout)
 		button(popup,"close",448,266,116,"Cancel",function() main:ClosePopup() end)
 		updateProfile();main:OpenPopup(660,318,"Allflame settings (3.29)",popup,nil,nil,"close")
 	end)
-	button(controls,"gwennen",232,378,200,"Record Gwennen pair",function()
+	local function openGwennen()
 		require("Classes.CraftingGwennenControl").Open(function(first,second,cost)
 			assert(#draft.steps<40,"This guide already has forty steps")
 			local price=cost~="" and " Artifact price: "..cost.."." or " Verify the artifact price in game."
 			draft.steps[#draft.steps+1]={action="Gwennen observed pair: "..first.description.." OR "..second.description.."."..price,stopWhen="Review both possible outcomes before choosing.",onFailure="The selected outcome is random; this pair is not simulated.",done=false}
 			changed();refresh({"Pair added to this guide. Keep working craft, then save the build."})
-		end)
-	end)
+		end,function(first,second,cost)
+			local craft={method="gwennen",firstOutcome=first.id,secondOutcome=second.id}
+			local amount,tier=cost:lower():match("^(%d+)%s+(%a+)%s+broken%s+circle%s+artifacts?$")
+			if amount and ({lesser=true,greater=true,grand=true,exceptional=true})[tier] and tonumber(amount)<=1000000000 then craft.artifactCost={[tier]=tonumber(amount)} end
+			if not craft.artifactCost and configured.gwennen and configured.gwennen.artifactCost then
+				local parts={};for _,key in ipairs({"lesser","greater","grand","exceptional"}) do local n=configured.gwennen.artifactCost[key];if n and n>0 then parts[#parts+1]=n.." "..key:gsub("^%l",string.upper).." Broken Circle Artifacts" end end
+				if cost==table.concat(parts," + ") and #parts>0 then craft.artifactCost=copyTable(configured.gwennen.artifactCost) end
+			end
+			configured.gwennen=craft;chooseMethod("gwennen");controls.page:SelByValue("Emulate item");changed();refresh({"Experimental Gwennen pair selected. Coin odds and ordinary currency transitions are assumptions."})
+		end,configured.gwennen)
+	end
+	button(controls,"gwennen",232,378,200,"Record Gwennen pair",openGwennen)
 	button(controls,"configure",16,231,416,"Configure fossil combination / donor item",function()
 		local method=controls.method:GetSelValueByKey("val")
 		local popup={}
-		if method == "fossil" then
+		if method == "gwennen" then openGwennen();return
+		elseif method == "fossil" then
 			require("Classes.CraftingFossilControl").Open(model,configured.fossil,function(craft) configured.fossil=craft;changed() end)
 			return
 		elseif method == "awakener" or method == "recombine" or method == "recombine_predictable" then
@@ -610,8 +624,9 @@ function Panel.Open(build,project,layout)
 		local current=recipe and (recipe.initialState or model.initial) or state
 		return simulator.implicitTargetReason(simulator.context(model,current),current,recipe and recipe.targets or targets)
 	end
-	controls.simulate.enabled=function() return not tasks.job and not targetReason() and (#targets>0 or requirements and next(requirements)~=nil) end
-	controls.simulate.tooltipText=function() return "Selected action: "..actionName().."\n"..(tasks.job and "Finish or cancel the running calculation first." or targetReason() or "Simulate from the working item using the chosen target modifiers or item conditions.") end
+	local function actionConfigured() return controls.method:GetSelValueByKey("val")~="gwennen" or configured.gwennen~=nil end
+	controls.simulate.enabled=function() return actionConfigured() and not tasks.job and not targetReason() and (#targets>0 or requirements and next(requirements)~=nil) end
+	controls.simulate.tooltipText=function() return "Selected action: "..actionName().."\n"..(not actionConfigured() and "Configure an observed Gwennen pair in Settings." or tasks.job and "Finish or cancel the running calculation first." or targetReason() or "Simulate from the working item using the chosen target modifiers or item conditions.") end
 	controls.resourcePrices.enabled=function() return require("Modules.CraftingTasks").job==nil end
 	controls.currency.enabled=function() return not draft.priceBook or not next(draft.priceBook.values) end
 	controls.currency.showDisabledValue=true
@@ -627,8 +642,9 @@ function Panel.Open(build,project,layout)
 	controls.price.tooltipText=function() return "Optional total price of "..actionName()..". It applies when that action executes, including inside saved recipes." end
 	controls.runRecipe.enabled=function() return not tasks.job and draft.nativeRecipe~=nil and not targetReason(true) end
 	controls.runRecipe.tooltipText=function() return tasks.job and "Finish or cancel the running calculation first." or draft.nativeRecipe and targetReason(true) or "Run the project's saved steps from the original starting item, with the saved recipe's targets." end
-	controls.exact.enabled=function() return not tasks.job and not targetReason() and (#targets>0 or requirements~=nil and next(requirements)~=nil) and workbench.available(controls.method:GetSelValueByKey("val"),state,model) end
+	controls.exact.enabled=function() return actionConfigured() and not tasks.job and not targetReason() and (#targets>0 or requirements~=nil and next(requirements)~=nil) and workbench.available(controls.method:GetSelValueByKey("val"),state,model) end
 	controls.exact.tooltipText=function()
+		if not actionConfigured() then return "Configure an observed Gwennen pair in Settings." end
 		if tasks.job then return "Finish or cancel the running calculation first." end
 		if #targets==0 and not (requirements and next(requirements)) then return "Choose a target modifier or item condition before calculating." end
 		if targetReason() then return targetReason() end
@@ -652,8 +668,8 @@ function Panel.Open(build,project,layout)
 	controls.cancelJob.enabled=function() return require("Modules.CraftingTasks").job~=nil end
 	controls.apply.enabled=function() return not state.destroyed end
 	controls.preview.enabled=function() return not state.destroyed and not state.veil end
-	controls.configure.label=function() return controls.method:GetSelValueByKey("val")=="fossil" and "Configure fossil combination" or "Configure donor item" end
-	controls.configure.enabled=function() local method=controls.method:GetSelValueByKey("val");return method=="fossil" or method=="awakener" or method=="recombine" or method=="recombine_predictable" end
+	controls.configure.label=function() local method=controls.method:GetSelValueByKey("val");return method=="fossil" and "Configure fossil combination" or method=="gwennen" and "Configure Gwennen pair" or "Configure donor item" end
+	controls.configure.enabled=function() local method=controls.method:GetSelValueByKey("val");return method=="gwennen" or method=="fossil" or method=="awakener" or method=="recombine" or method=="recombine_predictable" end
 	controls.page=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,18,416,28},{"Emulate item","Target conditions","Simulate recipe","Craft settings"})
 	controls.page.selFunc=function() refresh() end
 	button(controls,"settings",16,380,200,"Find currencies",palette)
@@ -679,7 +695,8 @@ function Panel.Open(build,project,layout)
 	controls.distribution.x=232;controls.distribution.width=200
 	controls.option.shown=function() return crafting() and #controls.option.list>0 end
 	controls.optionLabel.shown=controls.option.shown
-	controls.apply.enabled=function() return workbench.available(controls.method:GetSelValueByKey("val"),state,model) end
+	controls.apply.enabled=function() return actionConfigured() and workbench.available(controls.method:GetSelValueByKey("val"),state,model) end
+	controls.apply.tooltipText=function() return not actionConfigured() and "Configure an observed Gwennen pair in Settings." or workbench.hint(controls.method:GetSelValueByKey("val"),state,model) end
 	controls.apply.height=32;controls.undo.height=32
 	controls.apply.y=function() return #controls.option.list>0 and 370 or 320 end;controls.undo.y=controls.apply.y
 	controls.settings.y=function() return controls.apply:GetProperty("y")+44 end;controls.history.y=controls.settings.y

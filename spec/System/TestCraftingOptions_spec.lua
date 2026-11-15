@@ -151,7 +151,7 @@ describe("State-aware crafting choices",function()
 			if base~="Small Life Flask" then states[#states+1]=sim.perform(m.raw,{method="alchemy"},104729).state end
 			for _,input in ipairs(states) do for _,method in ipairs(sim.methods) do if check(method,input,m) then
 				local options=sim.actionOptions(m,input,method)
-				if method~="awakener" and method~="recombine" and method~="recombine_predictable" then local ok,message=pcall(sim.action,m,input,options[1] and options[1].action or {method=method},function() return 0.5 end);assert.is_true(ok,base.." / "..input.rarity.." / "..method..": "..tostring(message));attempted=attempted+1 end
+				if method~="awakener" and method~="recombine" and method~="recombine_predictable" and method~="gwennen" then local ok,message=pcall(sim.action,m,input,options[1] and options[1].action or {method=method},function() return 0.5 end);assert.is_true(ok,base.." / "..input.rarity.." / "..method..": "..tostring(message));attempted=attempted+1 end
 			end end end
 		end
 		assert.is_true(attempted>=300)

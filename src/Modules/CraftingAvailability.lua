@@ -3,7 +3,7 @@ local sim=require("Modules.CraftingSimulator")
 local M={}
 local normal={transmute=true,alchemy=true,binding=true}
 local magic={alteration=true,augmentation=true,regal=true,foulborn_augmentation=true,foulborn_regal=true}
-local rare={chaos=true,exalt=true,veiled_orb=true,fracture=true,influence_exalt=true,awakener=true,dominance=true,bench_reroll=true,eldritch_exalt=true,eldritch_annul=true,eldritch_chaos=true,foulborn_exalt=true,tainted_chaos=true,tainted_exalt=true,harvest_reforge=true,harvest_augment=true}
+local rare={chaos=true,exalt=true,veiled_orb=true,fracture=true,influence_exalt=true,awakener=true,dominance=true,bench_reroll=true,eldritch_exalt=true,eldritch_annul=true,eldritch_chaos=true,foulborn_exalt=true,tainted_chaos=true,tainted_exalt=true,harvest_reforge=true,harvest_augment=true,gwennen=true}
 local flask={transmute=true,alteration=true,augmentation=true,annul=true,scour=true,divine=true,blessed=true,quality=true}
 local socket={chromatic=true,beast_max_links=true,jeweller=true,fusing=true,tainted_chromatic=true,socket_colour_bench=true,socket_white_bench=true,tainted_jeweller=true,tainted_fusing=true}
 function M.check(method,state,model)
@@ -16,6 +16,7 @@ function M.check(method,state,model)
 	if state.corrupted and not tainted and method~="locus" and method~="socket_bench" and method~="socket_colour_bench" and method~="socket_white_bench" and method~="beast_talisman_fracture" and method~="ducat_tzamoto" then return false,"Requires an uncorrupted item." end
 	if method=="locus" and (not state.corrupted or state.twiceCorrupted) then return false,"Requires a Corrupted item that is not Twice Corrupted." end
 	model=sim.context(model,state);local item=model.item;local kind=item.type
+	if method=="gwennen" and (kind=="Jewel" or kind=="Flask" or kind=="Tincture") then return false,"Gwennen requires rare equipment." end
 	if method=="locus" and (state.implicits or model.unresolvedEldritch) then return false,"Second corruption of Eldritch implicits is not modeled." end
 	if method=="locus" and model.unresolvedCorruption and not state.corruptedImplicits then return false,"Identify the existing corruption implicits first." end
 	if (kind=="Flask" or kind=="Tincture") and not flask[method] and method~="ducat_tzamoto" and method~="ducat_kishara" and not (kind=="Flask" and method=="vaal") then return false,"This method is unavailable for flasks and tinctures." end

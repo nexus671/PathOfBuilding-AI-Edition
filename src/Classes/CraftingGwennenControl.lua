@@ -2,7 +2,7 @@
 local ui=require("Modules.PlanningUI")
 local reference=require("Modules.CraftingGwennenReference")
 local M={}
-function M.Open(keep)
+function M.Open(keep,simulate,initial)
 	local width=math.min(780,main.screenW-40);local height=440
 	local controls={};local entries=reference.search("",100).offers;local byId={};local choices={{label="Select an observed outcome",val=0}}
 	table.sort(entries,function(a,b) return a.description<b.description end)
@@ -23,7 +23,17 @@ function M.Open(keep)
 		control.selFunc=refresh;refresh()
 	end
 	note("firstNote",controls.first,134);note("secondNote",controls.second,224)
-	ui.description(controls,"limits",16,322,width-32,50,{"Guide only: these outcomes, odds and prices are not simulated. Revealing offers costs one Astragali; verify the pair and price in game."},14)
+	if initial then
+		controls.first:SelByValue(initial.firstOutcome,"val");controls.second:SelByValue(initial.secondOutcome,"val")
+		controls.first.selFunc();controls.second.selFunc()
+		if initial.artifactCost then
+			local parts={};for _,tier in ipairs({"lesser","greater","grand","exceptional"}) do
+				local amount=initial.artifactCost[tier];if amount and amount>0 then parts[#parts+1]=amount.." "..tier:gsub("^%l",string.upper).." Broken Circle Artifacts" end
+			end
+			controls.cost:SetText(#parts>0 and table.concat(parts," + ") or "0 Lesser Broken Circle Artifacts")
+		end
+	end
+	ui.description(controls,"limits",16,322,width-32,50,{"Seven outcomes have an experimental model. Coin odds and currency interactions are assumptions. Verify the pair and price in game."},14)
 	controls.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,height-48,220,28},"Add pair to guide",function()
 		local first=assert(byId[controls.first:GetSelValueByKey("val")],"Select the first observed outcome")
 		local second=assert(byId[controls.second:GetSelValueByKey("val")],"Select the second observed outcome")
@@ -33,6 +43,18 @@ function M.Open(keep)
 		main:ClosePopup()
 	end),"primary")
 	controls.keep.enabled=function() return byId[controls.first:GetSelValueByKey("val")]~=nil and byId[controls.second:GetSelValueByKey("val")]~=nil end
+	if simulate then
+		controls.simulate=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{252,height-48,220,28},"Use modeled pair",function()
+			local first=byId[controls.first:GetSelValueByKey("val")];local second=byId[controls.second:GetSelValueByKey("val")]
+			local cost=controls.cost.buf:match("^%s*(.-)%s*$")
+			simulate(first,second,cost);main:ClosePopup()
+		end))
+		controls.simulate.enabled=function()
+			local supported=require("Modules.CraftingGwennen").supports
+			return supported(controls.first:GetSelValueByKey("val")) and supported(controls.second:GetSelValueByKey("val"))
+		end
+		controls.simulate.tooltipText="Available for seven experimental outcomes. Unknown or unrecognized artifact prices remain unpriced."
+	end
 	controls.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{width-132,height-48,116,28},"Cancel",function() main:ClosePopup() end))
 	ui.style(controls,{keep=true});for _,control in pairs(controls) do control.layoutAudit="gwennen-pair" end
 	main:OpenPopup(width,height,"Gwennen: observed pair",controls,nil,nil,"close")
