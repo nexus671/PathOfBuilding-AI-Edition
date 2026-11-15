@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview263" />
+	<Version number="2.67.2-ai.preview264" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1209,7 +1209,7 @@
 	<File name="Classes/PassiveSpec.lua" part="program" sha1="2186af4673814e9f9e56a8b5f6235e293454a8ee" />
 	<File name="Classes/PassiveSpecListControl.lua" part="program" sha1="24bedd3c52a837bfd19143a6428fe3f88a4211a8" />
 	<File name="Classes/PassiveTree.lua" part="program" sha1="8404aecfad5bd10625f2438d12fc0f9f56726993" />
-	<File name="Classes/PassiveTreeView.lua" part="program" sha1="680a082b54962b4023ebda39a4bcc6520c946fd7" />
+	<File name="Classes/PassiveTreeView.lua" part="program" sha1="ef699ac7d4cdb72b6931588ca3b3c3774112c04f" />
 	<File name="Classes/PathControl.lua" part="program" sha1="868c38fd9095317b6721f6932cf06590bd616f13" />
 	<File name="Classes/PlanningBrowserControl.lua" part="program" sha1="c4eefac7c52ea06ee9deee55fd12a16b9f1f85ae" />
 	<File name="Classes/PlanningToolsControl.lua" part="program" sha1="b9e051fd9af5b48ae82e894cfe15546b2e4a9a81" />

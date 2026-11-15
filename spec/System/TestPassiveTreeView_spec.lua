@@ -27,6 +27,20 @@ describe("PassiveTreeView jewel comparison", function()
 		viewer = build.treeTab.viewer
 	end)
 
+	it("culls only connector quads entirely beyond a screen edge", function()
+		local outside = {
+			{ -10, 1, -1, 1, -1, 9, -10, 9 },
+			{ 101, 1, 110, 1, 110, 9, 101, 9 },
+			{ 1, -10, 9, -10, 9, -1, 1, -1 },
+			{ 1, 101, 9, 101, 9, 110, 1, 110 },
+		}
+		for _, quad in ipairs(outside) do assert.is_true(viewer:IsQuadOffscreen(quad, 100, 100)) end
+		-- Long and rotated connectors can cross the screen with every corner outside.
+		assert.is_false(viewer:IsQuadOffscreen({ -10, 40, 110, 40, 110, 60, -10, 60 }, 100, 100))
+		assert.is_false(viewer:IsQuadOffscreen({ -10, 50, 50, -10, 110, 50, 50, 110 }, 100, 100))
+		assert.is_false(viewer:IsQuadOffscreen({ -10, 1, 0, 1, 0, 9, -10, 9 }, 100, 100))
+	end)
+
 	it("matches jewels by their complete raw representation", function()
 		local primaryJewel = newJewel("Controller Metamorphosis", "Radius: Small")
 		local compareJewel = newJewel("Controller Metamorphosis", "Radius: Small")

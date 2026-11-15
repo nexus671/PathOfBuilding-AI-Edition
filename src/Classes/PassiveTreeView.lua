@@ -714,6 +714,7 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		connector.c[3], connector.c[4] = treeToScreen(vert[3], vert[4])
 		connector.c[5], connector.c[6] = treeToScreen(vert[5], vert[6])
 		connector.c[7], connector.c[8] = treeToScreen(vert[7], vert[8])
+		local c = connector.c
 
 		if hoverDep and hoverDep[node1] and hoverDep[node2] then
 			-- Both nodes depend on the node currently being hovered over, so color the line red
@@ -723,6 +724,11 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 			setConnectorColor(0.75, 0.75, 0.75)
 		end
 		SetDrawColor(unpack(connectorColor))
+		-- Check all corners: a line can cross the screen with both endpoints outside.
+		-- Keep the color update even for hidden connectors to preserve drawing state.
+		if self:IsQuadOffscreen(c, main.screenW, main.screenH) then
+			return
+		end
 		local assetName = connector.type .. state
 		-- The game uses Abyss connector art only when both connected nodes are conquered.
 		if isAbyssConquered(node1) and isAbyssConquered(node2) then
@@ -732,7 +738,6 @@ function PassiveTreeViewClass:Draw(build, viewPort, inputEvents)
 		-- Atlas assets provide bounds that map the usual connector coordinates into one sprite.
 		local left, top = asset[1] or 0, asset[2] or 0
 		local width, height = (asset[3] or 1) - left, (asset[4] or 1) - top
-		local c = connector.c
 		DrawImageQuad(asset.handle,
 			c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8],
 			left + c[9] * width, top + c[10] * height,
@@ -1280,6 +1285,14 @@ function PassiveTreeViewClass:DrawImageRotated(handle, x, y, width, height, angl
 	local y4 = y - hw * sinA + hh * cosA
 
 	DrawImageQuad(handle, x1, y1, x2, y2, x3, y3, x4, y4, ...)
+end
+
+-- Only cull quads separated from the entire screen by one edge.
+function PassiveTreeViewClass:IsQuadOffscreen(c, width, height)
+	return (c[1] < 0 and c[3] < 0 and c[5] < 0 and c[7] < 0)
+		or (c[1] > width and c[3] > width and c[5] > width and c[7] > width)
+		or (c[2] < 0 and c[4] < 0 and c[6] < 0 and c[8] < 0)
+		or (c[2] > height and c[4] > height and c[6] > height and c[8] > height)
 end
 
 -- Draws the given asset at the given position
