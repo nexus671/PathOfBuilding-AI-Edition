@@ -73,6 +73,22 @@ describe("Corrupted jewel implicit import",function()
   local odds=sim.calculate(raw,{method="vaal"},{},nil,{requirements={minAffixes=4,corrupted=true},trials=12,seed=3})
   assert.is_true(odds.sampled);assert.equal("cluster_vaal_assumptions",odds.warnings[1].code)
  end)
+ it("round-trips every current corruption across cluster jewel sizes",function()
+  local cases={{"Large Cluster Jewel",8,"affliction_axe_and_sword_damage","12% increased Axe and Sword Damage"},{"Medium Cluster Jewel",4,"affliction_fire_damage_over_time_multiplier","12% increased Burning Damage"},{"Small Cluster Jewel",2,"affliction_maximum_life","4% increased maximum Life"}}
+  for _,v in ipairs(cases) do
+   local raw="Rarity: NORMAL\n"..v[1].."\nItem Level: 86\nCluster Jewel Skill: "..v[3].."\nCluster Jewel Node Count: "..v[2].."\nImplicits: 2\n{crafted}Adds "..v[2].." Passive Skills\n{crafted}Added Small Passive Skills grant: "..v[4]
+   local model=sim.model(raw);local total=0;for _,entry in ipairs(model.corruptions) do total=total+entry.weight end;assert.is_true(total>0)
+   local before=0
+   for _,entry in ipairs(model.corruptions) do
+    local pick=(before+entry.weight/2)/total;before=before+entry.weight;local draws=0
+    local state=sim.action(model,model.initial,{method="vaal"},function() draws=draws+1;return draws==1 and 0.1 or draws==2 and pick or 0.5 end)
+    assert.equal(entry.id,state.corruptedImplicits[1].id)
+    local reopened=sim.model(sim.toItem(model,sim.validateState(model,state)).raw)
+    assert.equal(v[3],reopened.item.clusterJewelSkill);assert.equal(v[2],reopened.item.clusterJewelNodeCount)
+    if reopened.initial.corruptedImplicits then assert.equal(entry.id,reopened.initial.corruptedImplicits[1].id) else assert.equal("unresolved",reopened.unresolvedCorruption) end
+   end
+  end
+ end)
  it("retains uniquely identifiable legacy implicits without generating them",function()
   local text="Rarity: MAGIC\nCobalt Jewel\nItem Level: 86\nImplicits: 1\n4% reduced Chill Duration on you\nCorrupted"
   local legacy="ReducedChillDurationJewelCorrupted";local model=sim.model(text);assert.is_nil(model.unresolvedCorruption)
