@@ -3,6 +3,15 @@ describe("Build-owned filter collections",function()
 	local collections=require("Modules.LootFilterCollections")
 	local function profile() local p=filters.profile("test","Test");p.template='Show\n BaseType == "Iron Hat"';return p end
 	before_each(function() newBuild() end)
+	it("saves and reopens a mapping example set without inventing map tiers",function()
+		local scene=require("Modules.LootFilterLibrary").scene(profile(),build,"Maps & threads",0,76,81)
+		local p=collections.install(profile(),"sampleSets",{id="mapping",title="Mapping scene",samples=scene})
+		build.savers.LootFilters:Upsert(p)
+		local xml=build:SaveDB("Mapping scene");loadBuildFromXML(xml,"Mapping scene")
+		local saved=build.savers.LootFilters.data.profiles[1].sampleSets[1].samples
+		assert.equal(12,#saved);assert.equal("Beach Map",saved[1].BaseType);assert.is_nil(saved[1].MapTier)
+		assert.equal("Breach Thread",saved[7].BaseType);assert.equal(76,saved[7].AreaLevel)
+	end)
 	it("keeps exact sample properties without filling missing fields or sharing mutable values",function()
 		local item={BaseType="Iron Hat",AreaLevel=12,HasInfluence={"Shaper"},Corrupted=false}
 		local p=collections.install(profile(),"sampleSets",{id="early",title="Early drops",samples={item}});item.HasInfluence[1]="Elder"

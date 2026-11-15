@@ -1095,8 +1095,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("sceneSettings");ui:text("areaLevel","72");ui:text("itemLevel","75");ui:choose("background","Dark");frame("filter-scene-settings");ui:click("keepScene")
 	ui:click("sampleHistory");frame("filter-sample-history");ui:click("choose");ui:click("inspectMatch");frame("filter-matched-rules");ui:click("close")
 	local savedArea=build.planningWorkspace.cache.filters.layout.snapshot().sample.AreaLevel
-	ui:click("savedSamples");frame("filter-saved-examples-empty");ui:text("name","Mapping examples");ui:click("saveNew");frame("filter-saved-examples");ui:choose("source",3,"val");ui:text("name","Generated comparison set");ui:click("saveNew");ui:click("use");frame("filter-saved-scene")
+	ui:click("savedSamples");frame("filter-saved-examples-empty");ui:text("name","Mapping examples");ui:click("saveNew");frame("filter-saved-examples");ui:click("keep")
+	ui:choose("sceneKind","Maps & threads");ui:click("savedSamples");ui:choose("source",3,"val");ui:text("name","Generated comparison set");ui:click("saveNew");ui:click("use");frame("filter-saved-scene")
 	local savedDraft=build.planningWorkspace.cache.filters.layout.snapshot();assert(savedDraft.sceneKind=="Saved examples" and savedDraft.data.profiles[1].sampleSets[1].samples[1].AreaLevel==savedArea,"Saved examples changed their original properties")
+	local savedScene=savedDraft.data.profiles[1].sampleSets[2].samples;assert(#savedScene==12 and savedScene[1].Class=="Maps","Saved examples did not capture the selected mapping scene")
 	assert(not build.planningWorkspace.controls.regenerate:IsEnabled(),"Saved sets should not offer a no-op regeneration action")
 	ui.clipboard="Item Class: Stackable Currency\nRarity: Currency\nDivine Orb\n--------\nStack Size: 3/20";ui:click("pasteDrop");frame("filter-saved-extra-test")
 	local hoveredSample=build.planningWorkspace.controls.drop1;local hx,hy=hoveredSample:GetPos();ui.cursorX,ui.cursorY=hx+10,hy+10;ui:frame():write(directory.."/"..size[1].."-filter-sample-tooltip.json");frames=frames+1

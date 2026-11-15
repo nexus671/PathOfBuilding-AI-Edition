@@ -97,7 +97,9 @@ function M.Open(build,source,layout,controller)
 		for i,value in ipairs(data.profiles) do if value.id==next.id then data.profiles[i]=next end end;profile=next;draft();reopen()
 	end
 	local function collection(kind)
-		local sources={{title="Current item",samples={item}},{title="Tested item history",samples=samples},{title="Generated examples",samples=library.scene(profile,build,"Mixed drops",seed,settings.areaLevel,settings.itemLevel)}}
+		local activeScene=page=="Simulate" and #scene>0
+		local examples=activeScene and scene or library.scene(profile,build,"Mixed drops",seed,settings.areaLevel,settings.itemLevel)
+		local sources={{title="Current item",samples={item}},{title="Tested item history",samples=samples},{title=activeScene and "Current scene" or "Mixed examples",samples=examples}}
 		require("Classes.LootFilterCollectionControl").Open(profile,kind,sources,function(next,chosen)
 			if chosen then page="Simulate";sceneKind="Saved examples";sampleSetId=chosen.id;scenePage=1;item=copyTable(chosen.samples[1]) end;replaceProfile(next)
 		end)
