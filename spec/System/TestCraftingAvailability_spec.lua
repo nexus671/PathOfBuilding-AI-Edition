@@ -30,6 +30,20 @@ describe("Crafting action preconditions",function()
 		for seed=1,100 do local state=sim.perform(raw,{method="alchemy"},seed).state;local count=0;for _,entry in ipairs(state.affixes) do if model.byId[entry.id].type=="Suffix" then count=count+1 end end;if count==3 then full=state;break end end
 		assert.is_truthy(full);allowed,reason=check("beast_aspect",full,model);assert.is_false(allowed);assert.are.equal("Requires an open suffix.",reason)
 	end)
+	it("explains when an Annulment has no removable modifier",function()
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw);local state=copyTable(model.initial)
+		state.rarity="MAGIC";state.affixes={{id=model.mods[1].id,range=0.5,fractured=true}}
+		state=sim.validateState(model,state)
+		local allowed,reason=check("annul",state,model);assert.is_false(allowed);assert.matches("fractures or locks",reason)
+		local catalog=sim.catalog(raw,"",5,state);local annul;for _,entry in ipairs(catalog.methodAvailability) do if entry.method=="annul" then annul=entry end end
+		assert.is_false(annul.available);assert.matches("fractures or locks",annul.unavailableReason);assert.matches("further restrictions",catalog.methodAvailabilityNote)
+		assert.is_false(pcall(sim.action,model,state,{method="annul"},function() return 0.5 end))
+		main.popups={};local project={id="protected-annul",title="Fractured helmet",slot="Helmet",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(state)}
+		local controls=require("Classes.CraftingSimulatorControl").Open(build,project)
+		assert.is_false(controls.currency_annul:IsEnabled());assert.matches("fractures or locks",controls.currency_annul.tooltipText())
+		local candidate=copyTable(state);candidate.affixes[1].fractured=nil;assert.is_true(check("annul",candidate,model))
+		main.popups={}
+	end)
 	it("requires actual defence variance for Sacred Orbs",function()
 		local model=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
 		assert.is_true(check("sacred",model.initial,model))

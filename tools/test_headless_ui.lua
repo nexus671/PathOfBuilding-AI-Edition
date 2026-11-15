@@ -215,6 +215,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(jewelControls.method:GetSelValueByKey("val")=="unveil","Resumed unveil did not select the choice action")
 	local fracturedVisible=false;for _,row in ipairs(jewelControls.itemMods.list) do if tostring(row[1]):find("Fractured veiled modifier",1,true) then fracturedVisible=true end end
 	assert(fracturedVisible,"Fractured veil is not shown on the working item");frame("crafting-jewel-unveil-resumed");ui:click("close")
+	local protectedJewel=sim.perform(jewel,{method="unveil",modId="JunMasterVeiledJewelElusiveEffect"},7,jewelPending).state
+	local protectedProject={id="protected-jewel-ui",title="Protected jewel",slot="Jewel",startingItem=jewel,goals={},steps={},run=require("Modules.CraftingInventory").run(protectedJewel)}
+	local protectedControls=require("Classes.CraftingSimulatorControl").Open(build,protectedProject)
+	assert(not protectedControls.currency_annul:IsEnabled(),"Annulment should be unavailable when its only modifier is fractured")
+	assert(protectedControls.currency_annul.tooltipText():find("fractures or locks",1,true),"Annulment tooltip did not explain the restriction")
+	frame("crafting-protected-annul-tooltip","currency_annul");ui:click("close")
 	local enchantedProject={id="harvest-ui",title="Body armour quality enchant",slot="Body Armour",startingItem="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20",goals={},steps={}}
 	require("Classes.CraftingSimulatorControl").Open(build,enchantedProject)
 	ui:click("settings");ui:text("paletteSearch","replace quality");frame("crafting-harvest-service");ui:click("paletteUse")

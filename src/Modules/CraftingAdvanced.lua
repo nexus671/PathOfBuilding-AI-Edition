@@ -902,6 +902,11 @@ function A.extend(M,api)
 		result.initialState=copyTable(state)
 		result.nativeStats=require("Modules.CraftingItemStats").values(M,model,state)
 		local available=require("Modules.CraftingAvailability").check
+		result.methodAvailability={};for _,method in ipairs(M.methods) do
+			local allowed,reason=available(method,state,model)
+			result.methodAvailability[#result.methodAvailability+1]={method=method,label=M.labels[method],available=allowed,unavailableReason=not allowed and reason or nil}
+		end
+		result.methodAvailabilityNote="Availability checks general item prerequisites; individual options and outcomes may have further restrictions."
 		for _,catalog in ipairs({{method="bench",rows=result.bench},{method="essence",rows=result.essences}}) do
 			local allowed,reason=available(catalog.method,state,model)
 			for _,entry in ipairs(catalog.rows) do

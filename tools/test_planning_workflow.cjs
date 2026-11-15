@@ -62,6 +62,9 @@ async function main(){
   assert.equal(inspected.crafting.nativeEngine.harvestOptions.find(entry=>entry.method==='harvest_reforge').available,false);
   assert.ok(inspected.crafting.nativeEngine.bench.every(entry=>typeof entry.available==='boolean'));
   assert.ok(inspected.crafting.nativeEngine.modifierTable.rows.some(row=>row.tier && row.groups.length && row.chance>0));
+  const annulAvailability=inspected.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='annul');
+  assert.equal(annulAvailability.available,false);assert.match(annulAvailability.unavailableReason,/modifiers/);
+  assert.match(inspected.crafting.nativeEngine.methodAvailabilityNote,/further restrictions/);
   const modifier=inspected.crafting.nativeEngine.modifiers[0].id;
   const bodyRaw='Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20\nSockets: W W W W W W';
   const bodyInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'life',limit:20},'inspected');

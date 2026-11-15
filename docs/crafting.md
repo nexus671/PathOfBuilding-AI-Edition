@@ -193,7 +193,7 @@ fields also work in fossil optimization, whose initial state is in
 | `cancel_crafting_simulation` | Cancel using the job request ID. |
 | `propose_crafting_plan` | Propose a saved project and equipment preview for review. |
 
-`inspect_crafting_item` keeps the full queried bench and Essence catalogues and adds `available` and `unavailableReason` for the supplied state. `harvestOptions` gives current reforge, augment and resistance-swap choices. Pass the returned state when inspecting the next step. An unavailable choice may still be useful later in a recipe after an earlier step changes the item.
+`inspect_crafting_item` reports `methodAvailability` for the supplied state, with explanations for unavailable methods. These are general prerequisites; individual options and outcomes can have further restrictions. It also keeps the full queried bench and Essence catalogues and adds `available` and `unavailableReason`. `harvestOptions` gives current reforge, augment and resistance-swap choices. Pass the returned state when inspecting the next step. An unavailable choice may still be useful later in a recipe after an earlier step changes the item.
 
 Poll `get_proposal_status` for results. Requests allow at most 2,000 trials, 2,000 actions per trial and 20,000 budgeted actions overall. Results include seeds, versions and limitations. Simulation options accept `baseCost` and `retainSuccesses` (0-100); retained successes are the first successful trials. MCP never automatically equips an outcome or saves the build.
 
