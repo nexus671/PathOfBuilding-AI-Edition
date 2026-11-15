@@ -4,6 +4,8 @@ local C={}
 local ringChargeWeights330={V2MaxPowerChargesCorrupted=50,V2MaxFrenzyChargesCorrupted=50,V2MaximumEnduranceChargesCorruption=50}
 local lifeGainOnHit330="V2SupportedByLifeGainOnHitCorrupted"
 function C.extend(M,A,api)
+	local extra=require("Modules.CraftingCorruption330")
+	local metadata=setmetatable({}, {__index=function(_,id) return A.data().mods[id] or extra[id] end})
 	local labels={vaal="Vaal Orb",locus="Locus of Corruption",tainted_exalt="Tainted Exalted Orb",tainted_chaos="Tainted Chaos Orb"}
 	for method,label in pairs(labels) do M.methods[#M.methods+1]=method;M.labels[method]=label end;table.sort(M.methods)
 	local originalModel,originalAction,originalDecorate,originalValidate,originalItem=M.model,M.action,M.decorateItem,M.validateState,M.toItem
@@ -27,9 +29,9 @@ function C.extend(M,A,api)
 	end
 	function M.toItem(model,state) assert(not state.destroyed,"The hypothetical item was destroyed");return originalItem(model,state) end
 	local function weight(model,id)
-		local metadata=A.data().mods[id]
-		if not metadata then return 0 end
-		for _,entry in ipairs(metadata.spawn_weights) do
+		local mod=metadata[id]
+		if not mod then return 0 end
+		for _,entry in ipairs(mod.spawn_weights) do
 			if entry.tag == "default" or model.item.base.tags[entry.tag] then
 				return entry.tag == "ring" and ringChargeWeights330[id] or entry.weight
 			end
@@ -51,7 +53,7 @@ function C.extend(M,A,api)
 		model.initial.twiceCorrupted=model.item.twiceCorrupted or nil
 		model.corruptions={};model.corruptionIds={};model.corruptionImports={};model.legacyCorruptionIds={}
 		local source=model.item.type=="Jewel" and model.item.affixes or data.itemMods.Corrupted
-		for id,mod in pairs(source) do if mod.type=="Corrupted" and A.data().mods[id] then
+		for id,mod in pairs(source) do if mod.type=="Corrupted" and metadata[id] then
 			local current=mod.level <= model.item.itemLevel and weight(model,id)>0
 			if current then model.corruptions[#model.corruptions+1]={id=id,weight=weight(model,id)};model.corruptionIds[id]=true;model.special[id]=true;model.byId[id]=id==lifeGainOnHit330 and model.legacyLifeGainOnHit or mod end
 			-- Legacy jewel modifiers are import candidates, never new roll outcomes.
@@ -59,25 +61,25 @@ function C.extend(M,A,api)
 		end end
 		table.sort(model.corruptions,function(a,b) return a.id < b.id end)
 		table.sort(model.corruptionImports,function(a,b) return a.id < b.id end)
-		local imported,reason=require("Modules.CraftingCorruptionImport").resolve(M,model,A.data().mods)
+		local imported,reason=require("Modules.CraftingCorruptionImport").resolve(M,model,metadata)
 		model.initial.corruptedImplicits=imported;model.unresolvedCorruption=reason
 		for _,entry in ipairs(imported or {}) do if not model.corruptionIds[entry.id] then model.legacyCorruptionIds[entry.id]=true;model.special[entry.id]=true end end
 		return model
 	end
 	function M.rollCorrupted(model,state,random,count,retained)
 		local chosen,groups=copyTable(retained or {}),{}
-		for _,entry in ipairs(chosen) do for _,group in ipairs(A.data().mods[entry.id].groups) do groups[group]=true end end
+		for _,entry in ipairs(chosen) do for _,group in ipairs(metadata[entry.id].groups) do groups[group]=true end end
 		for _=1,(count or 1) do
 			local eligible,total={},0
 			for _,entry in ipairs(model.corruptions) do
-				local legal=true;for _,group in ipairs(A.data().mods[entry.id].groups) do if groups[group] then legal=false end end
+				local legal=true;for _,group in ipairs(metadata[entry.id].groups) do if groups[group] then legal=false end end
 				if legal then eligible[#eligible+1]=entry;total=total+entry.weight end
 			end
 			assert(total > 0,"No current corruption implicit is available for this base")
 			local pick=random()*total;local id
 			for _,entry in ipairs(eligible) do pick=pick-entry.weight;if pick < 0 then id=entry.id;break end end
 			chosen[#chosen+1]={id=assert(id),range=M.rollRange(model.byId[id],random),corruption330=model.corruptions330[id] and true or nil}
-			for _,group in ipairs(A.data().mods[id].groups) do groups[group]=true end
+			for _,group in ipairs(metadata[id].groups) do groups[group]=true end
 		end
 		state.corruptedImplicits=chosen
 		state.implicits=nil;state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.vendorImplicit=nil;state.corrupted=true
@@ -112,7 +114,7 @@ function C.extend(M,A,api)
 			for _,entry in ipairs(state.corruptedImplicits) do
 				assert(model.corruptionIds[entry.id] or model.legacyCorruptionIds[entry.id],"Invalid corruption implicit for this base")
 				assert(entry.corruption330==nil or (entry.corruption330==true and model.corruptions330[entry.id]),"Invalid 3.30 corruption modifier")
-				for _,group in ipairs(A.data().mods[entry.id].groups) do assert(not groups[group],"Conflicting corrupted implicits");groups[group]=true end
+				for _,group in ipairs(metadata[entry.id].groups) do assert(not groups[group],"Conflicting corrupted implicits");groups[group]=true end
 				local ranges=type(entry.range) == "table" and entry.range or {entry.range};assert(#ranges >= 1 and #ranges <= 20,"Invalid corruption range count")
 				for _,range in ipairs(ranges) do assert(type(range) == "number" and range >= 0 and range <= 1,"Invalid corruption roll") end
 			end

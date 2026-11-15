@@ -71,6 +71,35 @@ describe("Imported corruption identities",function()
 		local state=copyTable(model.initial);sim.rollCorrupted(model,state,random,2)
 		assert.equal(ids[1],state.corruptedImplicits[1].id);assert.equal(2,#state.corruptedImplicits)
 	end)
+	it("includes the 3.30 minimum power charge corruption on eligible bases",function()
+		local id="V2MinPowerChargesCorruptedNew"
+		for _,base in ipairs({"Gold Amulet","Goathide Buckler","Iron Ring"}) do
+			local model=sim.model("Rarity: NORMAL\n"..base.."\nItem Level: 86")
+			local found,before,total
+			before,total=0,0
+			for _,entry in ipairs(model.corruptions) do
+				if entry.id==id then found=entry;before=total end
+				total=total+entry.weight
+			end
+			if base=="Iron Ring" then assert.is_nil(found)
+			else
+				assert.equal(1000,assert(found).weight)
+				local catalog=require("Modules.CraftingModifiers").catalog(model);local row
+				for _,candidate in ipairs(catalog) do if candidate.id==id then row=candidate end end
+				assert.is_truthy(row);assert.equal("+1 to Minimum Power Charges",row.text)
+				local first=true
+				local function random() if first then first=false;return (before+1)/total end;return 0 end
+				local state=copyTable(model.initial);sim.rollCorrupted(model,state,random,1)
+				assert.equal(id,state.corruptedImplicits[1].id)
+				local text=sim.toItem(model,state).raw
+				assert.is_truthy(text:find("+1 to Minimum Power Charges",1,true))
+				local reopened=sim.model(text)
+				assert.equal(id,reopened.initial.corruptedImplicits[1].id)
+			end
+		end
+		local low=sim.model("Rarity: NORMAL\nGold Amulet\nItem Level: 39")
+		for _,entry in ipairs(low.corruptions) do assert.is_not.equal(id,entry.id) end
+	end)
 	it("rolls the 3.30 Life Gain on Hit support while preserving legacy corruptions",function()
 		local raw="Rarity: NORMAL\nEzomyte Axe\nItem Level: 86"
 		local id="V2SupportedByLifeGainOnHitCorrupted"
