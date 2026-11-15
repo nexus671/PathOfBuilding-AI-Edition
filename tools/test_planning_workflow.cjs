@@ -95,6 +95,10 @@ async function main(){
   assert.equal(jewelResult.nativeCrafting.warnings[0].code,'jeweller_estimate');assert.notEqual(jewelResult.nativeCrafting.state.sockets.length,3);
   const jewelPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:jewelRaw,recipe:{steps:[jewelAction.action],targets:[],requirements:{sockets:6}},options:{trials:4,maxActions:1}},'crafted');
   assert.equal(jewelPlan.nativeCrafting.warnings[0].code,'jeweller_estimate');
+  const fuseInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'fusing',limit:20},'inspected');
+  const fuseAction=fuseInspection.crafting.nativeEngine.socketCrafts.find(entry=>entry.method==='fusing');assert.equal(fuseAction.available,true);
+  const fuseResult=await queued('calculate_crafting',{baseRevision:context.revision,itemText:bodyRaw,action:fuseAction.action,targets:[],options:{requirements:{links:6}}},'crafted');
+  assert.equal(fuseResult.nativeCrafting.warnings[0].code,'fusing_estimate');assert.equal(fuseResult.nativeCrafting.sampled,false);assert.equal(fuseResult.nativeCrafting.outcomes.length,31);
   const bodyInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'life',limit:20},'inspected');
   const attributeInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'Attributes',limit:100},'inspected');
   const attributeBench=attributeInspection.crafting.nativeEngine.bench.find(entry=>entry.costSources?.includes('EinharMasterAllAttributes1'));

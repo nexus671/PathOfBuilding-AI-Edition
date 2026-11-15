@@ -6,6 +6,22 @@ function C.extend(M)
 	function M.calculate(raw,craft,targets,initialState,options)
 		options=options or {}
 		local method=M.baseCurrency(craft)
+		if method=="fusing" and not craft.allflame then
+			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
+			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
+			if M.context then model=M.context(model,state) end
+			local candidates=require("Modules.CraftingSockets").fusingOutcomes(state);local outcomes,hitWeight,offset={},0,0
+			for index,entry in ipairs(candidates) do
+				local draw=offset+entry.probability/2;offset=offset+entry.probability
+				local result=M.action(model,state,craft,function() return draw end)
+				local hit=M.matches(result,targets,nil,model,options.requirements,options.requiredGroups)
+				if hit then hitWeight=hitWeight+entry.probability end
+				local sizes={};for _,group in ipairs(entry.groups) do sizes[group+1]=(sizes[group+1] or 0)+1 end
+				outcomes[#outcomes+1]={id=tostring(index),text="Link groups: "..table.concat(sizes," + "),chance=100*entry.probability,weight=entry.probability,matches=hit,state=result}
+			end
+			return {exactFor="One Fusing under the historical link-group and quality assumptions",sampled=false,successChance=100*hitWeight,totalWeight=1,matchingWeight=hitWeight,
+				outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+		end
 		if craft.method=="vaal" and not craft.allflame then
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
 			if M.context then model=M.context(model,state) end

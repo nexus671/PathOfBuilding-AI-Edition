@@ -47,6 +47,7 @@ function M.actionWarnings(action,model)
 	if action.method=="vaal" and model and model.item.type=="Flask" then result[#result+1]={code="flask_vaal_weights",message="Flask quality changes from -10 to +10; equal outcome weights are assumed and unverified.",source="https://www.pathofexile.com/forum/view-thread/3496784"} end
 	if action.method=="binding" then result[#result+1]={code="binding_legacy",message="Orbs of Binding are no longer generated in 3.30; existing orbs still work.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
 	if action.method=="jeweller" then result[#result+1]={code="jeweller_estimate",message="Experimental: historical weapon socket weights are assumed for all bases. Quality increases only the maximum-count chance in this model; weights, quality and retained socket/link positions are unverified.",source="https://www.poewiki.net/wiki/Jeweller%27s_Orb"} end
+	if action.method=="fusing" then result[#result+1]={code="fusing_estimate",message="Experimental: link-group weights use historical 20% quality observations; applying them to shorter items, quality scaling and excluding the current layout are assumptions. Current game odds are unverified.",source="https://www.reddit.com/r/pathofexile/comments/75t1c9/i_used_100000_fusings_for_science_statistics/"} end
 	if action.allflame or action.method=="ducat_kishara" then result[#result+1]={code="allflame_historical",message="Allflame is historical and did not return to core in 3.30."} end
 	return result
 end
@@ -847,7 +848,7 @@ do
 end
 -- Extensions register state prerequisites once for both execution and browsing.
 local partialLockActions={bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,beast_imprint=true,beast_talisman_imprint=true,
-	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,chromatic=true,beast_max_links=true,ducat_ukatoa=true,jeweller=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
+	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,chromatic=true,beast_max_links=true,ducat_ukatoa=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
 	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,eldritch_implicit=true,conflict=true}
 function M.methodReason(model,state,method)
 	if M.hasPartialLock(M.context(model,state),state) and not partialLockActions[method] then

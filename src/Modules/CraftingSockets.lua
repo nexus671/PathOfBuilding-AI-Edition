@@ -3,7 +3,7 @@
 local S={}
 local colours={"R","G","B"}
 function S.extend(M,A,api)
-	local methods={beast_max_links="Bestiary: maximum links",jeweller="Jeweller's Orb (experimental)",omen_jeweller="Jeweller's Orb + Omen of the Jeweller",omen_trichromatism="Omen of Trichromatism (RGB)",omen_connections="Orb of Fusing + Omen of Connections",chromatic="Chromatic Orb",socket_colour_bench="Bench: non-white sockets",socket_white_bench="Bench: white sockets (3.30)",tainted_chromatic="Tainted Chromatic Orb",tainted_jeweller="Tainted Jeweller's Orb",tainted_fusing="Tainted Orb of Fusing"}
+	local methods={beast_max_links="Bestiary: maximum links",jeweller="Jeweller's Orb (experimental)",fusing="Orb of Fusing (experimental)",omen_jeweller="Jeweller's Orb + Omen of the Jeweller",omen_trichromatism="Omen of Trichromatism (RGB)",omen_connections="Orb of Fusing + Omen of Connections",chromatic="Chromatic Orb",socket_colour_bench="Bench: non-white sockets",socket_white_bench="Bench: white sockets (3.30)",tainted_chromatic="Tainted Chromatic Orb",tainted_jeweller="Tainted Jeweller's Orb",tainted_fusing="Tainted Orb of Fusing"}
 	for method,label in pairs(methods) do M.methods[#M.methods+1]=method;M.labels[method]=label end;table.sort(M.methods)
 	local originalAction,originalOptions,originalPrice,originalComponents=M.action,M.actionOptions,M.priceKey,M.components
 	local function naturalLimit(model,state)
@@ -42,6 +42,42 @@ function S.extend(M,A,api)
 			linked=linked and socket.group==sockets[1].group
 		end
 		if linked then return "The item is already fully linked." end
+	end
+	M.methodChecks.fusing=function(model,state)
+		local sockets=state.sockets or {};if #sockets<2 then return "Link crafting needs at least two sockets." end
+		local linked=true;for _,socket in ipairs(sockets) do
+			if socket.color=="A" then return "Abyssal sockets need a separate socket model." end
+			linked=linked and socket.group==sockets[1].group
+		end
+		if #sockets>=5 and linked then return "The item is already fully linked." end
+	end
+	-- Historical six-socket observations at 20% quality. The same group-size
+	-- weights for shorter remainders and the quality adjustment are assumptions.
+	function S.fusingOutcomes(state)
+		local sockets=state.sockets or {};local n=#sockets;assert(n>=2 and n<=6,"Link crafting needs two to six sockets")
+		local base={0.178184223,0.348177081,0.267663189,0.196718817,0.008256689,0.001}
+		local current={};for i=2,n do current[i-1]=sockets[i].group==sockets[i-1].group end
+		local candidates={};local groups={}
+		local function visit(start,group,probability)
+			if start>n then
+				local same=true;for i=2,n do if (groups[i]==groups[i-1])~=current[i-1] then same=false;break end end
+				if not same then candidates[#candidates+1]={groups=copyTable(groups),probability=probability} end
+				return
+			end
+			local remaining=n-start+1;local total=0;for length=1,remaining do total=total+base[length] end
+			local maximum=base[remaining]/total
+			local adjusted=math.min(1,maximum*(1+math.min(math.max(state.quality or 0,0),30)/100)/1.2)
+			local remainder=maximum<1 and (1-adjusted)/(1-maximum) or 0
+			for length=1,remaining do
+				local chance=remaining==1 and 1 or length==remaining and adjusted or base[length]/total*remainder
+				for i=start,start+length-1 do groups[i]=group end
+				visit(start+length,group+1,probability*chance)
+			end
+		end
+		visit(1,0,1);local total=0;for _,entry in ipairs(candidates) do total=total+entry.probability end
+		assert(total>0,"No different socket-link layout is available")
+		for _,entry in ipairs(candidates) do entry.probability=entry.probability/total end
+		return candidates
 	end
 	M.methodChecks.beast_max_links=M.methodChecks.omen_connections
 	M.methodChecks.tainted_fusing=function(model,state)
@@ -91,6 +127,10 @@ function S.extend(M,A,api)
 			while #sockets>count do table.remove(sockets) end
 			local free=0;for _,socket in ipairs(sockets) do free=math.max(free,socket.group+1) end
 			while #sockets<count do sockets[#sockets+1]={color="W",group=free};free=free+1 end
+		elseif method == "fusing" then
+			local outcomes=S.fusingOutcomes(state);local pick=random();local chosen=outcomes[#outcomes]
+			for _,entry in ipairs(outcomes) do pick=pick-entry.probability;if pick<0 then chosen=entry;break end end
+			for i,socket in ipairs(sockets) do socket.group=chosen.groups[i] end
 		elseif method == "omen_connections" or method == "beast_max_links" then
 			for _,socket in ipairs(sockets) do socket.group=0 end
 		elseif method == "tainted_jeweller" then
@@ -154,7 +194,7 @@ function S.extend(M,A,api)
 		local state=initialState and M.validateState(model,initialState) or model.initial
 		model=M.context(model,state);query=(query or ""):lower();result.socketCrafts={}
 		local available=require("Modules.CraftingAvailability").check
-		for _,method in ipairs({"socket_bench","socket_white_bench","socket_colour_bench","chromatic","beast_max_links","jeweller","omen_jeweller","omen_connections","omen_trichromatism","tainted_chromatic","tainted_jeweller","tainted_fusing"}) do
+		for _,method in ipairs({"socket_bench","socket_white_bench","socket_colour_bench","chromatic","beast_max_links","jeweller","fusing","omen_jeweller","omen_connections","omen_trichromatism","tainted_chromatic","tainted_jeweller","tainted_fusing"}) do
 			local choices=(method=="socket_bench" or method=="socket_colour_bench") and M.actionOptions(model,state,method) or {{label=M.labels[method],action={method=method}}}
 			local allowed,reason=available(method,state,model)
 			for _,choice in ipairs(choices) do
