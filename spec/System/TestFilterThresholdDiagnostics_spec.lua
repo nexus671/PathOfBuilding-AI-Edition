@@ -22,6 +22,22 @@ describe("Filter threshold conflict diagnostics",function()
   local lines={};for value=3000,1,-1 do lines[#lines+1]="Show";lines[#lines+1]=" ItemLevel >= "..value end
   assert.equal(0,#diagnostics.shadowing(parser.parse(table.concat(lines,"\n"))))
  end)
+ it("keeps mixed-rule conflict reports sound against the evaluator",function()
+  local seed=91373;local function random(n) seed=(seed*48271)%2147483647;return seed%n+1 end
+  for trial=1,120 do
+   local text={};for i=1,12 do text[#text+1]=(i%2==0 and "Hide" or "Show")
+    for _,name in ipairs({"ItemLevel","AreaLevel"}) do if random(100)<=65 then text[#text+1]=" "..name.." "..({">",">=","<","<="})[random(4)].." "..(random(6)-1) end end
+    if random(100)<=20 then text[#text+1]=" Continue" end
+   end
+   local parsed=parser.parse(table.concat(text,"\n"));local byLine={};for _,rule in ipairs(parsed.rules) do byLine[rule.line]=rule end
+   for _,warning in ipairs(diagnostics.shadowing(parsed)) do local prior,later=byLine[warning.shadowedBy],byLine[warning.line];assert.is_falsy(prior.continue)
+    for level=0,6 do for area=0,6 do local item={ItemLevel=level,AreaLevel=area}
+     local function matches(rule) for _,condition in ipairs(rule.conditions) do if not parser.condition(condition,item) then return false end end;return true end
+     assert.is_false(matches(later) and not matches(prior),"Unsound conflict in trial "..trial)
+    end end
+   end
+  end
+ end)
  it("proves reported numeric coverage against the evaluator",function()
   for _,prior in ipairs({"> 0",">= 0","< 5","<= 5"}) do for _,later in ipairs({"> -1",">= 0","> 1",">= 3","< 4","<= 5","< 6"}) do
    local parsed=parser.parse("Show\n ItemLevel "..prior.."\nHide\n ItemLevel "..later)
