@@ -556,7 +556,10 @@ function M.poll(build, force)
 			elseif request.kind=="generate_loot_filter" then
 				local rules,warnings=filters.generate(build,profile);profile.rules=rules;M.status={id=request.id,status="generated",profile=profile,warnings=warnings}
 			elseif request.kind=="test_loot_filter" then
-				assert(type(request.sample)=="table","Supply drop properties");M.status={id=request.id,status="tested",result=filters.simulate(profile,request.sample)}
+				assert((type(request.sample)=="table" and request.itemText==nil) or (request.sample==nil and type(request.itemText)=="string" and request.itemText:match("%S")),"Supply exactly one sample or copied item")
+				assert(request.areaLevel==nil or request.itemText and type(request.areaLevel)=="number" and request.areaLevel%1==0 and request.areaLevel>=1 and request.areaLevel<=100,"Invalid area level")
+				local sample=request.itemText and require("Modules.LootFilterClipboard").parse(request.itemText,request.areaLevel) or request.sample
+				M.status={id=request.id,status="tested",sample=sample,result=filters.simulate(profile,sample)}
 			else local raw,report=filters.compile(profile);M.status={id=request.id,status="exported",filter=raw,report=report} end
 			M.publishState();return
 		end

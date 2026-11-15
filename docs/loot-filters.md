@@ -69,7 +69,7 @@ On **Simulate**, **Paste item** reads visible properties from a game clipboard c
 
 - **get_loot_filters:** read kept profiles.
 - **generate_loot_filter:** derive a separate draft from build plans.
-- **test_loot_filter:** evaluate a supplied drop with exact filter property names.
+- **test_loot_filter:** evaluate either a drop with exact filter property names (`sample`) or copied game item text (`itemText`). For copied items, optionally provide `areaLevel`; the response includes the interpreted sample so known and missing properties can be checked.
 - **export_loot_filter:** return compiled text and diagnostics; never write files.
 - **propose_loot_filters:** submit profiles for native desktop review. Read and preserve existing profiles before replacing them.
 

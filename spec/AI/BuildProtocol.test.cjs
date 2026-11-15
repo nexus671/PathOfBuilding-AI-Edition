@@ -54,6 +54,14 @@ test('queues loot-filter generation, evaluation and reviewed profiles without wr
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.proposal.operations[0].type,'set_loot_filters');
   assert.throws(()=>f.call('test_loot_filter',{baseRevision:f.state.revision,profile,sample:{},path:'arbitrary'}),/arguments/);
 });
+test('queues copied items for filter evaluation with bounded optional area level', t => {
+  const f=fixture(t), args={baseRevision:f.state.revision,profileId:'maps',itemText:'Rarity: Normal\nIron Hat',areaLevel:12};
+  f.call('test_loot_filter',args);
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.itemText,args.itemText);assert.equal(request.areaLevel,12);
+  fs.rmSync(path.join(f.dir,'AI-build-request.json'));
+  for(const invalid of [{baseRevision:f.state.revision,profileId:'maps'}, {...args,sample:{}}, {...args,itemText:''}, {...args,itemText:'',sample:{}}, {...args,areaLevel:101}, {baseRevision:f.state.revision,profileId:'maps',sample:{},areaLevel:12}]) assert.throws(()=>f.call('test_loot_filter',invalid));
+});
 test('queues bounded pages of saved filter examples', t => {
   const f=fixture(t);const args={baseRevision:f.state.revision,profileId:'maps',sampleSetId:'examples',offset:50,limit:20};
   f.call('test_loot_filter_examples',args);
