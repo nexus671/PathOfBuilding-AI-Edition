@@ -25,6 +25,16 @@ describe("Compiled filter structure",function()
 		assert.equal(1,#conflicts);local reason=structure.diagnostics(view,conflicts[1])[1]
 		assert.is_truthy(reason.shadowedBy);assert.matches("every item matched",reason.warning)
 	end)
+	it("finds rules covered by a broader earlier condition set",function()
+		local p=filters.profile("subset","Subset")
+		p.template='Show\n Class == "Currency"\nHide\n Class == "Currency"\n BaseType == "Chaos Orb"\n ItemLevel >= 50\nShow\n Class == "Maps"\n BaseType == "Chaos Orb"'
+		local view=structure.outline(p);local entries=structure.filter(view,"","base")
+		assert.equal(3,#entries);assert.is_truthy(structure.diagnostics(view,entries[2])[1].shadowedBy)
+		for _,diagnostic in ipairs(structure.diagnostics(view,entries[3])) do assert.is_nil(diagnostic.shadowedBy) end
+		p.template='Show\n Class == "Currency"\n Continue\nHide\n Class == "Currency"\n BaseType == "Chaos Orb"'
+		view=structure.outline(p);entries=structure.filter(view,"","base")
+		for _,diagnostic in ipairs(structure.diagnostics(view,entries[2])) do assert.is_nil(diagnostic.shadowedBy) end
+	end)
 	it("maps every active block to its real source section and edit behavior",function()
 		local view=structure.outline(profile());assert.equal(view.report.rules,#view.entries);local sections={};for _,group in ipairs(view.sections) do sections[group.id]=true end
 		for _,id in ipairs({"personal","tiers","module-shared","campaign","safety","base"}) do assert.is_true(sections[id],id) end

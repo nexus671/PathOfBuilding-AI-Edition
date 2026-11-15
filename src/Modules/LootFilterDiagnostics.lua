@@ -27,6 +27,21 @@ function M.shadowing(parsed)
   table.sort(conditions);local parts={};for _,condition in ipairs(conditions) do parts[#parts+1]=field(condition) end
   local key=table.concat(parts);local prior=terminal or seen[key];local broader=false
   if not prior then
+   -- A terminating rule whose conditions are a subset of this rule also
+   -- covers it. Check removal of up to two conditions without an unbounded
+   -- pairwise comparison over large imported filters.
+   if #conditions<=16 then for first=1,#conditions do
+    for second=first,#conditions do
+     local other={}
+     for index,value in ipairs(conditions) do
+      if index~=first and (second==first or index~=second) then other[#other+1]=field(value) end
+     end
+     local candidate=seen[table.concat(other)]
+     if candidate and (not prior or candidate.line<prior.line) then prior=candidate;broader=true end
+    end
+   end end
+  end
+  if not prior then
    for _,condition in ipairs(rule.conditions) do
     local current=bound(condition)
     if current then

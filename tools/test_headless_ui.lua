@@ -989,6 +989,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(table.concat(details," "):gsub("%s+"," "):find("matches every item matched",1,true),"Threshold priority conflict was not explained")
 		frame("filter-threshold-conflict");ui:click("close")
 	end
+	do
+		local example=require("Modules.LootFilters").profile("subset-example","Subset example")
+		example.template='Show\n Class == "Currency"\nHide\n Class == "Currency"\n BaseType == "Chaos Orb"\n ItemLevel >= 50'
+		local structureControls=require("Classes.LootFilterStructureControl").Open(example)
+		ui:choose("mode","Priority conflicts");local details={};for _,row in ipairs(structureControls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(details," "):gsub("%s+"," "):find("matches every item matched",1,true),"Broader rule conflict was not explained")
+		ui:click("close")
+	end
 	ui:click("export");frame("filter-export")
 	ui:text("directory",directory);ui:text("filename","ui-"..size[1]..".filter");ui:click("write");ui:click("close")
 	local exportedPath=directory.."/ui-"..size[1]..".filter";local exportedFile=assert(io.open(exportedPath,"rb"));local exportedText=exportedFile:read("*a");exportedFile:close();assert(exportedText:find("Covens pickup plan",1,true),"Exported filter lost its title")

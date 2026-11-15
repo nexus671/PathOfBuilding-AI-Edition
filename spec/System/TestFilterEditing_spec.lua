@@ -87,9 +87,13 @@ describe("Local filter editing",function()
 			end
 			return result
 		end
+		local function retainsExisting(parsed)
+			local actual={};for _,entry in ipairs(diagnostic.shadowing(parsed)) do actual[entry.line]=entry end
+			for _,entry in ipairs(reference(parsed)) do assert.is_truthy(actual[entry.line],"Missing previously detected conflict at line "..entry.line) end
+		end
 		for strictness=0,6 do
 			local p=filters.profile("comparison","Comparison");p.strictness=strictness
-			local parsed=parser.parse(filters.migratedBase(p));assert.same(reference(parsed),diagnostic.shadowing(parsed))
+			local parsed=parser.parse(filters.migratedBase(p));retainsExisting(parsed)
 		end
 		local parsed=parser.parse('Show\n BaseType == "a:1" "b"\nHide\n BaseType == "b" "a:1"\nShow\n BaseType == "a" "1:b"\nShow\nHide\n BaseType == "x"')
 		assert.same(reference(parsed),diagnostic.shadowing(parsed))
