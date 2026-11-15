@@ -85,6 +85,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:text("budget","120");assert(workspace.controls.status.label:find("120 points",1,true),"Point budget feedback is stale");ui:text("budget","138")
 	ui:text("search","Unwavering Vision");ui:click("find");frame("atlas-search")
 	assert(canvas.focus==65225 and workspace.controls.allocate.label:find("+",1,true),"The selected route should preview its point cost")
+	local function atlasDetails() local text="";for _,row in ipairs(workspace.controls.details.list) do text=text..tostring(row[1] or "") end;return text end
+	ui:text("title","");assert(atlasDetails():find("plan name",1,true) and not workspace.controls.allocate:IsEnabled(),"A missing plan name should explain why the route is unavailable")
+	ui:text("title","Atlas strategy");assert(workspace.controls.allocate:IsEnabled(),"Restoring the name should restore the route preview")
+	ui:text("budget","");assert(atlasDetails():find("valid point budget",1,true) and not workspace.controls.allocate:IsEnabled(),"An invalid budget should explain why the route is unavailable")
+	ui:text("budget","138");assert(workspace.controls.allocate:IsEnabled(),"Restoring the budget should restore the route preview")
 	local x,y=canvas:GetPos();ui:clickAt(x+canvas.width/2,y+canvas.height/2,true)
 	frame("atlas-connected");assert(workspace.controls.status.label:find("20 granted",1,true))
 	do
@@ -95,7 +100,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("remove");assert(main.popups[1].controls.confirm,"Branch removal did not ask for review");frame("atlas-remove-branch-confirm")
 		main:ClosePopup();assert(workspace.controls.status.label:find("20 granted",1,true),"Cancelling branch removal changed the plan");canvas.focus=65225
 	end
-	ui:click("remove");frame("atlas-removed");ui:click("avoid");frame("atlas-avoided");ui:click("clearAvoid");ui:click("undo")
+	ui:click("remove");frame("atlas-removed");ui:click("avoid");assert(atlasDetails():find("node is avoided",1,true),"An avoided target should explain why it cannot be connected");frame("atlas-avoided");ui:click("clearAvoid");ui:click("undo")
 	ui:click("undo");assert(workspace.controls.avoid.label=="Avoid selected","Undo did not restore exclusions");ui:click("redo");ui:click("undo")
 	ui:click("undo");ui:click("undo");assert(workspace.controls.status.label:find("0 /",1,true),workspace.controls.status.label);ui:click("allocate")
 	ui:click("stats");frame("atlas-stats");ui:click("close")

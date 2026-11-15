@@ -202,12 +202,17 @@ function Panel.Open(build,source,layout)
 			for _,stat in ipairs(node.stats) do lines[#lines+1]=stat end
 			local allocated={[controls.canvas.tree.start]=true};for _,other in ipairs(draft.nodes) do allocated[other]=true end
 			if not allocated[node.id] then
-				local ok,plan=pcall(function() return atlas.connect(current(),{node.id},avoided) end)
+				local reason
+				if not controls.title.buf:match("%S") then reason="Enter a plan name to preview and connect a route."
+				elseif not pointUsage then reason="Enter a valid point budget to preview and connect a route."
+				elseif isValueInArray(avoided,node.id) then reason="This node is avoided. Remove its avoidance to connect it." end
+				local ok,plan
+				if not reason then ok,plan=pcall(function() return atlas.connect(current(),{node.id},avoided) end) end
 				if ok then
 					local cost=0;for _,other in ipairs(plan.nodes) do if not allocated[other] then controls.canvas.preview[other]=true;cost=cost+1 end end
 					routeAvailable=true;controls.allocate.label="Connect +"..cost
 					lines[#lines+1]="";lines[#lines+1]=cost.." new points to connect this node."
-				else controls.allocate.label="No route";lines[#lines+1]="";lines[#lines+1]="No route within the point budget and avoided nodes." end
+				else controls.allocate.label="No route";lines[#lines+1]="";lines[#lines+1]=reason or "No route within the point budget and avoided nodes." end
 			else controls.allocate.label="Allocated" end
 		else controls.allocate.label="Connect path" end
 		local detailRows=rows({lines[1]},inspector-30,18)
@@ -433,7 +438,7 @@ function Panel.Open(build,source,layout)
 		if pointUsage and pointUsage.used>0 then SetDrawColor("^xC8A569");DrawImage(nil,x,y,graphWidth*math.min(1,pointUsage.used/math.max(1,pointUsage.budget+pointUsage.bonus)),3) end
 	end
 	ui.tabs(controls,controls.page,{{"tab_tree","Tree","Tree"},{"tab_notes","Notes & sharing","Plan & notes"}},side,64,260)
-	controls.title.changeFunc=function() ui.draft(build,"atlas") end
+	controls.title.changeFunc=function() ui.draft(build,"atlas");refresh() end
 	controls.notes.changeFunc=function() ui.draft(build,"atlas") end
 	controls.budget.changeFunc=function() ui.draft(build,"atlas");refresh() end
 	controls.budget.enterFunc=function() safely(function() local nextPlan=current();if nextPlan.budget~=draft.budget then change(nextPlan) end end) end
