@@ -211,7 +211,14 @@ function M.Open(build,source,layout,controller)
 			main:ClosePopup()
 			if entry.id=="new" then profile=filters.profile(identifier(),"My loot filter");data.profiles[#data.profiles+1]=profile;data.activeId=profile.id;page="Overview";selected=nil;draft();reopen()
 			elseif entry.id=="duplicate" and profile then profile=copyTable(profile);profile.id=identifier();profile.title=profile.title.." copy";data.profiles[#data.profiles+1]=profile;draft();reopen()
-			elseif entry.id=="import" then controller.Import(function(text) if not profile then profile=filters.profile(identifier(),"Imported filter");data.profiles[#data.profiles+1]=profile end;profile.template=text;draft();reopen() end)
+			elseif entry.id=="import" then controller.Import(function(text,linked)
+				if not profile then profile=filters.profile(identifier(),"Imported filter");data.profiles[#data.profiles+1]=profile end
+				profile.template=text
+				if linked then
+					profile.importFiles=require("Modules.LootFilterImports").merge(profile.importFiles,linked)
+				end
+				draft();reopen()
+			end,profile and profile.importFiles)
 			elseif entry.id=="importFiles" and profile then require("Classes.LootFilterImportControl").Open(profile,function(files) profile.importFiles=files;draft();reopen() end)
 			elseif entry.id=="account" and profile then controller.Account(profile,function(text) profile.template=text;draft();reopen() end)
 			elseif entry.id=="audit" and profile then controller.Audit(profile,report,function(next) for i,p in ipairs(data.profiles) do if p.id==next.id then data.profiles[i]=next end end;profile=next;draft();reopen() end)

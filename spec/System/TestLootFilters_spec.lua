@@ -228,6 +228,30 @@ describe("Build-owned loot filters",function()
 		end)
 		_G.NewFileSearch=original;os.remove(path);assert(ok,err)
 	end)
+	it("loads nested sibling filters explicitly and reports missing, unsafe and circular references",function()
+		local first=os.tmpname()..".filter";local second=os.tmpname()..".filter";local mainPath=os.tmpname()..".filter"
+		local a=first:match("([^/\\]+)$");local b=second:match("([^/\\]+)$");local missing=a.."-missing.filter"
+		local f=assert(io.open(first,"wb"));f:write('Import "'..b..'"\nShow');f:close();f=assert(io.open(second,"wb"));f:write('Import "'..a..'"\nHide');f:close()
+		local raw='Import "'..a..'"\nImport "'..missing..'" Optional\nImport "'..missing..'"\nImport "../outside.filter"\nImport "CON.filter"\nImport "NUL .filter"\nImport "'..string.rep("x",235)..'.filter"'
+		local ok,err=pcall(function()
+			local imports=require("Modules.LootFilterImports");local result=imports.collectLocal(raw,mainPath)
+			assert.equal(2,#result.files);assert.equal(5,#result.issues);assert.is_false(result.issues[1].optional)
+			assert.matches("sibling",result.issues[2].reason);assert.matches("sibling",result.issues[3].reason)
+			local unresolved=imports.unresolved(raw,result.files);local cycle;for _,row in ipairs(unresolved) do if row.name==a then cycle=row.cycle end end;assert.is_true(cycle)
+			local saved,linked;require("Classes.LootFilterControl").Import(function(text,files) saved=text;linked=files end,{{name=a,text="old copy"}});local c=main.popups[1].controls
+			c.text:SetText(raw);c.path:SetText(mainPath);c.loadLinked:Click();assert.equal("Linked filter files",main.popups[1].title)
+			local lines={};for _,row in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=row[1] end;assert.matches("replaces the existing",StripEscapes(table.concat(lines," ")));main:ClosePopup()
+			c.text:SetText(raw.."\nShow");c.import:Click();assert.equal("Loot filter",main.popups[1].title);main:ClosePopup();assert.is_nil(saved)
+			c.text:SetText(raw);c.import:Click();assert.equal(raw,saved);assert.same(result.files,linked)
+		end)
+		os.remove(first);os.remove(second);os.remove(mainPath);assert(ok,err)
+	end)
+	it("replaces matching attached copies and retains unrelated files",function()
+		local imports=require("Modules.LootFilterImports");local original={{name="one.filter",text="old"},{name="other.filter",text="keep"}}
+		local loaded={{name="one.filter",text="new"},{name="three.filter",text="added"}};local merged=imports.merge(original,loaded)
+		assert.same({{name="one.filter",text="new"},{name="other.filter",text="keep"},{name="three.filter",text="added"}},merged)
+		assert.equal("old",original[1].text);loaded[1].text="changed";assert.equal("new",merged[1].text)
+	end)
 	it("discovers nested missing imports and circular references without reading disk",function()
 		local imports=require("Modules.LootFilterImports")
 		local raw='Import "outer.filter"\nImport "z.filter" Optional\nImport "z.filter"\nShow'

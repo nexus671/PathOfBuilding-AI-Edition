@@ -10,19 +10,31 @@ local function notify(title,message)
 	button(c,"close",w-156,h-48,140,"Close",function() main:ClosePopup() end);ui.style(c);main:OpenPopup(w,h,title,c,"close",nil,"close")
 end
 local function attempt(callback) local ok,why=pcall(callback);if not ok then notify("Loot filter",why) end end
-local function modal(title,raw,save)
-	local c={};local w,h=math.min(860,main.screenW-40),math.min(570,main.screenH-60)
+local function modal(title,raw,save,existing)
+	local c={};local pending,pendingText,pendingPath;local w,h=math.min(860,main.screenW-40),math.min(570,main.screenH-60)
+	local attached={};for _,file in ipairs(existing or {}) do attached[file.name]=true end
 	ui.description(c,"help",16,28,w-32,44,{save and "Paste a filter or load a local .filter file. Original text is preserved; personal rules stay separate." or "Ready to save as a UTF-8 .filter in your Path of Exile filter folder. Copy does not change any game files."},14)
 	c.text=new("EditControl"):EditControl(ui.anchor,{16,84,w-32,h-(save and 205 or 150)},raw,nil,"^%C\t\n",filters.limit,nil,14,true)
 	if save then
 		ui.label(c,"pathLabel",16,h-114,"Local file path",14)
 		c.path=new("EditControl"):EditControl(ui.anchor,{16,h-96,w-284,26},"",nil,nil,1024)
-		local function loadFile() attempt(function() c.text:SetText(require("Modules.LootFilterImports").readFile(c.path.buf,filters.limit)) end) end
+		local function loadFile() attempt(function() local text=require("Modules.LootFilterImports").readFile(c.path.buf,filters.limit);c.text:SetText(text);pending=nil end) end
 		button(c,"browseFile",w-256,h-96,100,"Browse",function() require("Classes.LootFilterFileBrowser").Open(c.path.buf,function(path) c.path:SetText(path);loadFile() end) end)
 		button(c,"loadFile",w-148,h-96,132,"Load file",loadFile)
+		button(c,"loadLinked",304,h-48,180,"Load linked files",function() attempt(function()
+			local imports=require("Modules.LootFilterImports");pending=imports.collectLocal(c.text.buf,c.path.buf,filters.limit);pendingText=c.text.buf;pendingPath=c.path.buf
+			local entries={};for _,file in ipairs(pending.files) do entries[#entries+1]={id=file.name,label=file.name,category="Loaded",details={"Loaded from the selected filter's folder.",attached[file.name] and "Using this import replaces the existing attached copy with this name." or "This copy will be kept with the imported filter."}} end
+			for _,issue in ipairs(pending.issues) do local status=issue.optional and "Optional file not loaded" or "File not loaded";entries[#entries+1]={id=issue.name,label=issue.name,category=status,details={status,issue.reason}} end
+			local ok,unresolved=pcall(imports.unresolved,c.text.buf,pending.files,filters.limit)
+			if ok then for _,row in ipairs(unresolved) do if row.cycle then entries[#entries+1]={id=row.name,label=row.name,category="Circular reference",details={"A circular reference remains unresolved. Edit the included files to break the cycle."}} end end
+			else entries[#entries+1]={id="preview",label="Expanded filter could not be checked",category="Review",details={tostring(unresolved)}} end
+			if #entries==0 then notify("Linked filter files","No linked filter files were found.") else require("Classes.PlanningBrowserControl").Open("Linked filter files",entries) end
+		end) end)
+		c.loadLinked.label=function() return pending and ("Linked: "..#pending.files.." loaded") or "Load linked files" end
+		c.loadLinked.tooltipText="Load referenced sibling .filter files, including nested references. Other paths remain unresolved."
 	end
 	button(c,"copy",16,h-48,124,"Copy filter",function() Copy(c.text.buf) end)
-	if save then button(c,"import",152,h-48,140,"Use import",function() attempt(function() save(c.text.buf);main:ClosePopup() end) end) end
+	if save then button(c,"import",152,h-48,140,"Use import",function() attempt(function() assert(not pending or c.text.buf==pendingText and c.path.buf==pendingPath,"The filter text or path changed; load linked files again.");save(c.text.buf,pending and pending.files);main:ClosePopup() end) end) end
 	button(c,"close",w-140,h-48,124,"Close",function() main:ClosePopup() end)
 	ui.style(c);main:OpenPopup(w,h,title,c,nil,"text","close")
 end
@@ -83,12 +95,12 @@ function M.EditRule(rule,save,mode)
   save(nextRule)
  end,M.Conditions,{mode=mode})
 end
-function M.Import(save)
- modal("Import loot filter","",function(raw)
+function M.Import(save,existing)
+ modal("Import loot filter","",function(raw,linked)
   local parsed=parser.parse(raw);assert(#parsed.rules>0 or #parsed.imports>0,"No filter rules or imports found")
   for _,d in ipairs(parsed.diagnostics) do assert(not d.error,d.error) end
-  save(raw)
- end)
+  save(raw,linked)
+ end,existing)
 end
 function M.Open(build,source,layout)
  return require("Classes.LootFilterWorkspace").Open(build,source,layout,M)

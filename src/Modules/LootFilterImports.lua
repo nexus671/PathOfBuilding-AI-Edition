@@ -14,6 +14,41 @@ function M.readFile(path,limit)
 	assert(not contents:find("\0",1,true),"Filter file contains binary data")
 	return contents
 end
+-- Load simple sibling .filter names only after an explicit user action.
+-- Keep path-like references unresolved instead of following them outside the chosen folder.
+function M.collectLocal(raw,sourcePath,limit)
+	assert(type(sourcePath)=="string" and sourcePath~="","Enter the main filter's local file path")
+	limit=limit or 2*1024*1024
+	local folder=sourcePath:match("^(.*[/\\])") or "./"
+	local queue,seen,files,issues={}, {}, {}, {};local total=0
+	local function enqueue(text) for _,entry in ipairs(parser.parse(text).imports) do queue[#queue+1]=entry end end
+	enqueue(raw);local cursor=1
+	while cursor<=#queue do
+		local entry=queue[cursor];cursor=cursor+1;local name=entry.file;local prior=seen[name]
+		if prior then if prior.issue then prior.issue.optional=prior.issue.optional and entry.optional end
+		else
+			local item={};seen[name]=item
+			local stem=(name:match("^([^%.]+)") or ""):gsub("%s+$",""):upper()
+			local reserved=stem=="CON" or stem=="PRN" or stem=="AUX" or stem=="NUL" or stem:match("^COM[1-9]$") or stem:match("^LPT[1-9]$")
+			local safe=#name<=240 and not reserved and not name:find('[%c/\\:*?"<>|]') and name:lower():match("%.filter$") and name~=".filter"
+			local ok,value
+			if safe then ok,value=pcall(M.readFile,folder..name,limit) else ok,value=false,"Only simple sibling .filter names up to 240 characters can be loaded automatically." end
+			if ok and total+#name+#value<=limit then
+				total=total+#name+#value;files[#files+1]={name=name,text=value};enqueue(value)
+			else
+				if ok then value="Included files exceed the 2 MiB combined limit." end
+				item.issue={name=name,optional=entry.optional and true or false,reason=tostring(value)};issues[#issues+1]=item.issue
+			end
+		end
+	end
+	return {files=files,issues=issues}
+end
+function M.merge(existing,loaded)
+	local result=copyTable(existing or {});local positions={}
+	for index,file in ipairs(result) do positions[file.name]=index end
+	for _,file in ipairs(loaded or {}) do local index=positions[file.name] or #result+1;result[index]=copyTable(file);positions[file.name]=index end
+	return result
+end
 function M.expand(raw,files,limit)
 	local sources={};for _,file in ipairs(files or {}) do sources[file.name]=file.text end
 	local size=0;local stack={};local output={};limit=limit or 2*1024*1024

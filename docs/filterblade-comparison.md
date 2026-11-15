@@ -42,7 +42,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Shared modules | Portable named snapshots, cross-profile copy and explicit updates | Public discovery and module dependency graphs |
 | Review changes | Rule/item review, file-level compiled/base comparisons, provable conflicts and undo/redo | Richer predicate overlap analysis |
 | Filter structure | Compiled section/family tree, priority conflicts, exact block text, editing and file comparison | More source-rule descriptions |
-| Test local filter | Main and included files can be pasted, browsed or loaded from a local path and saved with the build. Nested files expand for simulation and export, with missing and circular references listed | System-native file dialog |
+| Test local filter | Main and included files can be pasted, browsed or loaded from a local path and saved with the build. An explicit action loads nested sibling .filter references; missing, path-like and circular references are listed. Nested files expand for simulation and export | System-native file dialog |
 | Save/resume | Native Save/bundles, page drafts and two-slot local draft recovery | Further crash/restart field testing |
 | Cloud saved filters | Account list/import UI | FilterBlade cloud saves are not connected |
 | Share filters/modules | Build sharing and portable bundles | Dedicated public filter/module catalogue |
