@@ -76,16 +76,18 @@ end
 -- saved chain, including missing or incompatible ancestors, before offering it.
 function M.previousCandidates(plan,plans)
 	local byId={};for _,entry in ipairs(plans) do byId[entry.id]=entry end
-	local result={}
+	local result={};local resolved={[plan.id]=false}
 	for _,entry in ipairs(plans) do if entry.id~=plan.id and entry.version==plan.version then
-		local seen={[plan.id]=true};local current=entry;local valid=true
+		local seen,path={},{};local current=entry;local valid
 		while current do
+			if resolved[current.id]~=nil then valid=resolved[current.id];break end
 			if seen[current.id] or current.version~=plan.version then valid=false;break end
-			seen[current.id]=true
+			seen[current.id]=true;path[#path+1]=current.id
 			local previous=current.progression and current.progression.previousId
-			if not previous or previous=="" then break end
+			if not previous or previous=="" then valid=true;break end
 			current=byId[previous];if not current then valid=false;break end
 		end
+		for _,id in ipairs(path) do resolved[id]=valid end
 		if valid then result[#result+1]=entry end
 	end end
 	return result

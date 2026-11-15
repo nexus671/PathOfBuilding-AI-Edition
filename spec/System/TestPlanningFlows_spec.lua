@@ -91,6 +91,16 @@ describe("Connected planning workflows",function()
 		assert.equal(2,#c.previous.list);assert.equal("starter",c.previous.list[2].val)
 		main:ClosePopup()
 	end)
+	it("keeps long and branching Atlas stage chains valid without accepting cycles or missing ancestors",function()
+		local strategy=require("Modules.AtlasStrategy");local plans={}
+		for i=1,2000 do local p=plan(tostring(i));if i>1 then p.progression={stage="intermediate",previousId=tostring(i-1)} end;plans[i]=p end
+		local loop1=plan("loop1");loop1.progression={stage="intermediate",previousId="loop2"};plans[#plans+1]=loop1
+		local loop2=plan("loop2");loop2.progression={stage="intermediate",previousId="loop1"};plans[#plans+1]=loop2
+		local broken=plan("broken");broken.progression={stage="final",previousId="missing"};plans[#plans+1]=broken
+		local candidates=strategy.previousCandidates(plan("1000"),plans)
+		assert.equal(999,#candidates);assert.equal("1",candidates[1].id);assert.equal("999",candidates[#candidates].id)
+		assert.equal(2000,#strategy.previousCandidates(plan("new"),plans))
+	end)
 	it("exports native planning data and reviews an imported bundle without changing the source",function()
 		build.savers.AtlasPlans:Upsert(plan("starter"))
 		build.savers.CraftingProjects:Upsert({id="hat",title="Hat",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat",goals={},steps={}})
