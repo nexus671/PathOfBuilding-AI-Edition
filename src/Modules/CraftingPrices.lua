@@ -93,9 +93,17 @@ function M.resolve(book,currency,model,overrideKey,override)
 	end
 	return M.forSimulation(book,currency,model,overrides)
 end
-function M.describe(key,model)
+function M.describe(key,model,action)
 	local data=catalogue();local canonical=M.key(key,model);local entry=data.items[canonical]
 	if entry then return entry.name,entry.path,"Currency" end
+	local donor=canonical:match("^donor:([a-f0-9]+)$")
+	if donor then
+		local base
+		if action and type(action.donorItem)=="string" and require("sha1")(action.donorItem)==donor then
+			local ok,item=pcall(function() return new("Item"):Item(action.donorItem) end);if ok then base=item.baseName end
+		end
+		return (base and "Donor: "..base or "Donor item").." ("..donor:sub(1,8)..")",nil,"Resource"
+	end
 	if model then for _,essence in ipairs(model.essences or {}) do if essence.id==canonical then
 		return essence.name,require("Modules.CraftingWorkbench").icon("essence",{essenceId=canonical},model),"Currency"
 	end end end
@@ -113,10 +121,10 @@ function M.describe(key,model)
 end
 function M.entries(model,state,actions,book,recipeState)
 	local result,seen={},{};local aliases=M.aliases(model)
-	local function add(key,required)
+	local function add(key,required,action)
 		local canonical=aliases[key] or key
 		if seen[canonical] then seen[canonical].required=seen[canonical].required or required;return end
-		local name,path,kind=M.describe(canonical,model);local row={key=canonical,name=name,path=path,kind=kind,required=required or false};seen[canonical]=row;result[#result+1]=row
+		local name,path,kind=M.describe(canonical,model,action);local row={key=canonical,name=name,path=path,kind=kind,required=required or false};seen[canonical]=row;result[#result+1]=row
 	end
 	-- Routes can jump backwards or restart, so a corruption action anywhere in
 	-- the guide can precede another step on a later visit. Show possible
@@ -133,7 +141,7 @@ function M.entries(model,state,actions,book,recipeState)
 		end
 		for _,input in ipairs(inputs) do
 			local ok,components=pcall(sim.components,action,input or nil,model)
-			if ok then found=true;for key in pairs(components) do add(key,true) end end
+			if ok then found=true;for key in pairs(components) do add(key,true,action) end end
 		end
 		if not found then add(sim.priceKey(action),true) end
 	end

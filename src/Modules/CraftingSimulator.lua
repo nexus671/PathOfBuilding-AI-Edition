@@ -736,12 +736,15 @@ function M.simulate(raw,recipe,options)
 					local canonical=pricing.key(key,context)
 					local entry=resourceUsage[canonical]
 					if not entry then
-						local name,_,kind=pricing.describe(canonical,context)
+						local name,_,kind=pricing.describe(canonical,context,step)
 						entry={key=canonical,name=name,kind=kind=="Whole action" and "service" or "resource",amount=0};resourceUsage[canonical]=entry
 					end
 					entry.amount=entry.amount+amount
 				end
 				local components=(actionPrice~=nil or options.prices and options.prices[setupKey]~=nil) and {[setupKey]=1} or ingredients
+				-- Resource quotes for the service or currency do not include the
+				-- consumed donor. Only an explicit whole-action price includes it.
+				if actionPrice==nil and components~=ingredients then for key,amount in pairs(ingredients) do if key:match("^donor:") then components[key]=amount end end end
 				for key,amount in pairs(components) do
 					spent[key]=(spent[key] or 0)+amount
 					local price=actionPrice~=nil and actionPrice or options.prices and options.prices[key]

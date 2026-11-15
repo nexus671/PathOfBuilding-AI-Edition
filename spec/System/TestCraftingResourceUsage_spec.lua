@@ -65,6 +65,22 @@ describe("Crafting resource usage independent of pricing",function()
 		local r=sim.simulate(raw,{initialState=state,steps={{method="quality"}},targets={},requirements={minQuality=1}},{trials=2,maxActions=1})
 		local usage=entries(r);assert.are.equal(2,usage[scrap].amount);assert.are.equal(1,#r.resourceUsage)
 	end)
+	it("prices each consumed donor separately across repeated attempts and restarts",function()
+		local action={method="recombine",donorItem="Rarity: NORMAL\nGlorious Plate\nItem Level: 86"}
+		local donor="donor:"..require("sha1")(action.donorItem)
+		for _,method in ipairs({"recombine","recombine_predictable","awakener"}) do
+			local components=sim.components({method=method,donorItem=action.donorItem})
+			assert.equal(1,components[donor]);assert.equal(1,components[method])
+		end
+		local model=sim.model(raw);local rows=pricing.entries(model,model.initial,{action});local found
+		for _,row in ipairs(rows) do if row.key==donor then found=row end end
+		assert.is_truthy(found);assert.is_true(found.required);assert.matches("Donor: Glorious Plate",found.name)
+		local recipe={steps={{method="recombine",donorItem=action.donorItem,untilRequirements={minQuality=30},onFailureAction="restart"}},targets={},requirements={minQuality=30}}
+		local function run(prices,actionPrices) return sim.simulate(raw,recipe,{trials=1,maxActions=3,baseCost=5,currency="chaos",prices=prices,actionPrices=actionPrices}) end
+		local missing=run({recombine=2});assert.is_nil(missing.meanCost);assert.is_true(missing.unpriced[donor]);assert.equal(3,entries(missing)[donor].amount)
+		local priced=run({recombine=2,[donor]=10});assert.equal(51,priced.meanCost);assert.equal(3,priced.currencySpent[donor]);assert.equal(2,priced.recovery.restarts)
+		local override=run(nil,{recombine=7});assert.equal(36,override.meanCost);assert.equal(3,entries(override)[donor].amount);assert.is_nil(override.currencySpent[donor])
+	end)
 	it("shows ingredient quantities separately from overridden spending in the native summary",function()
 		local p={id="usage",title="Usage",slot="Body Armour",startingItem=raw,goals={},steps={},preferredMethod="quality",nativeRecipe={steps={{method="quality"}},targets={},requirements={minQuality=1}}}
 		local c=require("Classes.CraftingSimulatorControl").Open(build,p);c.page:SelByValue("Simulate recipe");c.page.selFunc();c.trials:SetText("2");c.budget:SetText("1");c.price:SetText("7")

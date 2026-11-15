@@ -1037,6 +1037,9 @@ function A.extend(M,api)
 		return action.method
 	end
 	function M.components(action,state,model)
+		if (action.method=="awakener" or action.method=="recombine" or action.method=="recombine_predictable") and type(action.donorItem)=="string" and action.donorItem~="" then
+			return {[M.priceKey(action)]=1,["donor:"..require("sha1")(action.donorItem)]=1}
+		end
 		if action.method == "harvest_reforge" or action.method == "harvest_augment" then
 			-- Influence is a separate reforge with no corresponding augment.
 			local entry=assert(harvestCosts[action.tag],"Select a supported Harvest tag")
