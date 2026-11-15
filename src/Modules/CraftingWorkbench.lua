@@ -39,6 +39,18 @@ function M.itemArt(item)
 	if entry and entry.path then return entry.path,entry.width,entry.height end
 	return "Assets/icon_"..(slots[item.type] or "weapon")..".png",84,84
 end
+function M.artDimensions(item,width,height,size)
+ local sprite=item.type=="Flask" and width==height*1.5
+ if sprite then width=width/3 end
+ local scale=size/math.max(width,height)
+ return width*scale,height*scale,sprite
+end
+function M.drawArt(handle,x,y,width,height,sprite)
+ if sprite then
+  DrawImage(handle,x,y,width,height,2/3,0,1,1)
+  DrawImage(handle,x,y,width,height,0,0,1/3,1)
+ else DrawImage(handle,x,y,width,height) end
+end
 function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 	options=options or {};local weaponItem=model.item.base.weapon~=nil;local header=(options.header or 180)+(weaponItem and 22 or 0);local artSize=options.artSize or 84;local propertyX=artSize+26
 	local art,artWidth,artHeight,artPath,flaskSprite
@@ -46,10 +58,7 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 		local path,width,height=M.itemArt(item)
 		if path ~= artPath then art=image(path);artPath=path end
 		-- Flask art contains bottle, shadow and liquid in three equal columns.
-		flaskSprite=item.type=="Flask" and width==height*1.5
-		if flaskSprite then width=width/3 end
-		local scale=artSize/math.max(width,height)
-		artWidth,artHeight=width*scale,height*scale
+		artWidth,artHeight,flaskSprite=M.artDimensions(item,width,height,artSize)
 	end
 	setArt(model.item)
 	local card=new("ButtonControl"):ButtonControl(anchor,{x,y,w,header},"",onClick or function() end)
@@ -73,10 +82,7 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 		else text(cx+16,cy+9,20,title,color,w-32);text(cx+16,cy+33,16,subtitle,color,w-32) end
 		SetDrawColor(1,1,1,state.destroyed and 0.2 or 1)
 		local ax,ay=cx+12+(artSize-artWidth)/2,cy+66+(artSize-artHeight)/2
-		if flaskSprite then
-			DrawImage(art,ax,ay,artWidth,artHeight,2/3,0,1,1)
-			DrawImage(art,ax,ay,artWidth,artHeight,0,0,1/3,1)
-		else DrawImage(art,ax,ay,artWidth,artHeight) end
+		M.drawArt(art,ax,ay,artWidth,artHeight,flaskSprite)
 		text(cx+propertyX,cy+67,16,"Item level "..item.itemLevel)
 		text(cx+propertyX,cy+89,16,"Quality: +"..(state.quality or item.quality or 0).."%")
 		text(cx+propertyX,cy+111,16,self.defences or "",nil,w-propertyX-16)

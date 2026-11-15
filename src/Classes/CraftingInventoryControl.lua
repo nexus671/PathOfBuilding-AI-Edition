@@ -57,8 +57,8 @@ function M.Open(build,options)
 				local color=entry.item.state.destroyed and "^xE07070" or entry.item.state.rarity=="RARE" and "^xD4BC72" or entry.item.state.rarity=="MAGIC" and "^x929BE0" or "^x8D9DB0"
 				visual.box(tx,ty,tile,120,active and "^xE1C586" or "^x3F566F");visual.box(tx+1,ty+1,tile-2,118,active and "^x293447" or "^x182331")
 				local key=entry.project.id.."/"..entry.item.id;local thumb=thumbs[key]
-				if not thumb then local item=projects.item(entry.item.state.baseItem or entry.item.baseItem);local path,iw,ih=art.itemArt(item);thumb={handle=visual.image(path),w=iw,h=ih};thumbs[key]=thumb end
-				local scale=64/math.max(thumb.w,thumb.h);SetDrawColor(1,1,1);DrawImage(thumb.handle,tx+(tile-thumb.w*scale)/2,ty+8,thumb.w*scale,thumb.h*scale)
+				if not thumb then local item=projects.item(entry.item.state.baseItem or entry.item.baseItem);local path,iw,ih=art.itemArt(item);local aw,ah,sprite=art.artDimensions(item,iw,ih,64);thumb={handle=visual.image(path),w=aw,h=ah,sprite=sprite};thumbs[key]=thumb end
+				SetDrawColor(1,1,1);art.drawArt(thumb.handle,tx+(tile-thumb.w)/2,ty+8,thumb.w,thumb.h,thumb.sprite)
 				visual.text(tx+6,ty+78,13,entry.item.title,color,tile-12);visual.text(tx+6,ty+100,12,entry.item.slot,"^xA6B3C6",tile-12)
 			end
 		end

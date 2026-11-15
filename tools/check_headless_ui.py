@@ -77,13 +77,17 @@ def main():
             assert all(b"Covens pickup plan" in z.read(name) for name in z.namelist()), "ZIP lost the personal filter"
         archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1167, f"Expected 1167 UI frames, found {len(paths)}"
+    assert len(paths) == 1173, f"Expected 1173 UI frames, found {len(paths)}"
     flask_asset = json.loads((ROOT / "src/Assets/Crafting/items.json").read_text())["bases"]["Small Life Flask"]["path"]
     for width in (960, 1024, 1280):
-        flask = json.loads((frames / f"{width}-crafting-flask-vaal-ready.json").read_text())
-        layers = [command for command in flask["commands"] if command.get("asset") == flask_asset]
-        assert len(layers) == 2 and all(len(layer.get("uv", [])) == 4 and all(abs(a-b) < 1e-9 for a, b in zip(layer["uv"], expected)) for layer, expected in zip(layers, ([2/3, 0, 1, 1], [0, 0, 1/3, 1]))), "Flask sprite layers were not composed"
-        assert all(layers[0][key] == layers[1][key] for key in ("x", "y", "width", "height")), "Flask sprite layers do not align"
+        for name in ("crafting-flask-vaal-ready", "crafting-flask-inventory", "journey-flask-card"):
+            flask = json.loads((frames / f"{width}-{name}.json").read_text())
+            layers = [command for command in flask["commands"] if command.get("asset") == flask_asset]
+            assert layers and len(layers) % 2 == 0, f"Flask sprite layers missing in {name}"
+            for index in range(0, len(layers), 2):
+                pair = layers[index:index+2]
+                assert all(len(layer.get("uv", [])) == 4 and all(abs(a-b) < 1e-9 for a, b in zip(layer["uv"], expected)) for layer, expected in zip(pair, ([2/3, 0, 1, 1], [0, 0, 1/3, 1]))), f"Flask sprite layers were not composed in {name}"
+                assert all(pair[0][key] == pair[1][key] for key in ("x", "y", "width", "height")), f"Flask sprite layers do not align in {name}"
     for width in (960, 1024, 1280):
         frame = json.loads((frames / f"{width}-filter-background-default-alpha.json").read_text())
         expected = (10 / 255, 20 / 255, 30 / 255, 240 / 255)

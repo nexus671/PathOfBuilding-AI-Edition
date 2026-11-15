@@ -226,7 +226,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(flaskControls.currency_vaal:IsEnabled(),"Vaal Orb should be available for a flask");ui:click("currency_vaal")
 	local flaskHints={};for _,row in ipairs(flaskControls.actionHint.list) do flaskHints[#flaskHints+1]=StripEscapes(row[1] or "") end
 	assert(table.concat(flaskHints," "):find("assumed",1,true),"Flask Vaal assumption was not shown");frame("crafting-flask-vaal-ready")
-	ui:click("item");assert(flaskControls.intro.label:find("Applied Vaal",1,true),"Flask Vaal was not applied");frame("crafting-flask-vaal-applied");ui:click("close")
+	ui:click("item");assert(flaskControls.intro.label:find("Applied Vaal",1,true),"Flask Vaal was not applied");frame("crafting-flask-vaal-applied")
+	local priorProjects=copyTable(build.savers.CraftingProjects.projects);ui:click("keepItem");ui:click("inventory");frame("crafting-flask-inventory");ui:click("close");ui:click("close")
+	build.savers.CraftingProjects.projects=priorProjects
+	do
+		local controls={};local show=require("Classes.JourneyItemControl").new(controls,"card",16,30,440,220,"TARGET")
+		show(require("Modules.CraftingProjects").item(flaskProject.startingItem));main:OpenPopup(472,270,"Flask comparison",controls)
+		frame("journey-flask-card");main:ClosePopup()
+	end
 	local enchantedProject={id="harvest-ui",title="Body armour quality enchant",slot="Body Armour",startingItem="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20",goals={},steps={}}
 	require("Classes.CraftingSimulatorControl").Open(build,enchantedProject)
 	ui:click("settings");ui:text("paletteSearch","replace quality");frame("crafting-harvest-service");ui:click("paletteUse")

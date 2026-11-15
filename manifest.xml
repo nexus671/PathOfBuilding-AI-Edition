@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview190" />
+	<Version number="2.67.2-ai.preview191" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1146,7 +1146,7 @@
 	<File name="Classes/CraftingFossilCompareControl.lua" part="program" sha1="2791c7feb50a472403ce87d25300a91f37289dac" />
 	<File name="Classes/CraftingFossilControl.lua" part="program" sha1="25a2de85dd46208a7771f659bc59ddb103649025" />
 	<File name="Classes/CraftingHistoryControl.lua" part="program" sha1="e5d93860b1f0b56531e3c581c95713d4ce1c9ad0" />
-	<File name="Classes/CraftingInventoryControl.lua" part="program" sha1="9531ba230d7a25447947dfc596ac9a28d429e712" />
+	<File name="Classes/CraftingInventoryControl.lua" part="program" sha1="1f308bb98c3492dd3625cee4ab412f52952ff5a8" />
 	<File name="Classes/CraftingItemComparisonControl.lua" part="program" sha1="e2a04459cde8751208135bfea6239dd98280bc81" />
 	<File name="Classes/CraftingItemEditorControl.lua" part="program" sha1="169dcd6305c56e04d419b7db400a04f0a9169a96" />
 	<File name="Classes/CraftingItemStatsControl.lua" part="program" sha1="615c8d786f5900e23b58681d30fdec750f41ee81" />
@@ -1176,7 +1176,7 @@
 	<File name="Classes/ItemSetListControl.lua" part="program" sha1="5ff494b708b1b633f0cf4157e30ad295c1044ed4" />
 	<File name="Classes/ItemSlotControl.lua" part="program" sha1="994edcab55ba363f6c82c497f7d5353927172020" />
 	<File name="Classes/ItemsTab.lua" part="program" sha1="6b350d0ac7810c67b26321284f79ee57268d006f" />
-	<File name="Classes/JourneyItemControl.lua" part="program" sha1="af49ceb3877c233ea8d40605751ca0d230f967cc" />
+	<File name="Classes/JourneyItemControl.lua" part="program" sha1="6586b109d2fb0d22f336df11e699d05013b41f19" />
 	<File name="Classes/JourneyPrerequisiteControl.lua" part="program" sha1="63db94f78c0055427ae4e35b6f2e76aba6c89476" />
 	<File name="Classes/JourneyViews.lua" part="program" sha1="b89da0fb5e79ca13c8b4c8111f46b4fbe348c6a8" />
 	<File name="Classes/LabelControl.lua" part="program" sha1="7a8f38d225087ba6941537444b0ea0ec0ac150cd" />
@@ -1518,7 +1518,7 @@
 	<File name="Modules/CraftingSockets.lua" part="program" sha1="2637a36da3f83e50d77a0fdc9ad1b3f132c28aaf" />
 	<File name="Modules/CraftingTasks.lua" part="program" sha1="5884e439905689280d65534ef8e78591341970d6" />
 	<File name="Modules/CraftingUnveiledJewel330.lua" part="program" sha1="5b05b7293ddad3c073f1cb82ab53932899f739c0" />
-	<File name="Modules/CraftingWorkbench.lua" part="program" sha1="8ab2d3665c88a1730b66954743bdff867e0b884a" />
+	<File name="Modules/CraftingWorkbench.lua" part="program" sha1="53f77ad6a3eb53f904279b269704caf641b75771" />
 	<File name="Modules/Data.lua" part="program" sha1="1870ccf660e6b4904fde88ba7c36fc42d841ec89" />
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />
