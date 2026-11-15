@@ -2,6 +2,10 @@
 local B={}
 local index
 local function normalise(text)
+	-- The client renamed these effects without changing their meaning. Saved
+	-- plans and the native bench catalogue still use the older wording.
+	if text=="Prefix Modifiers cannot be changed" then text="Prefixes Cannot Be Changed" end
+	if text=="Suffix Modifiers cannot be changed" then text="Suffixes Cannot Be Changed" end
 	return text:gsub("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)",function(a,b)
 		if tonumber(a)>tonumber(b) then a,b=b,a end
 		return "("..a.."-"..b..")"
@@ -60,7 +64,12 @@ function B.class(item)
 end
 local function lookupEntry(key,lookup)
 	if not lookup then
-		if not index then index=B.index(require("Modules.CraftingAdvanced").data()) end
+		if not index then
+			local root=GetScriptPath();local f=assert(io.open((root~="" and root.."/" or "").."Data/Crafting/3.30-bench.json","rb"))
+			local raw=f:read("*a");f:close();local catalogue=assert(require("dkjson").decode(raw))
+			assert(catalogue.schemaVersion==1 and catalogue.clientVersion=="3.30.0.1.4" and #catalogue.bench==782,"Invalid crafting bench catalogue")
+			index=B.index(catalogue)
+		end
 		lookup=index
 	end
 	local entry=lookup[key]

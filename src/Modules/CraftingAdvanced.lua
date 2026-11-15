@@ -949,6 +949,7 @@ function A.extend(M,api)
 		end end
 		result.dataPatch=A.data().patch;result.modifierPatch=A.data().modifierPatch
 		result.benchCostSource=copyTable(A.data().source)
+		result.benchCostClient={version="3.30.0.1.4",benchSha256="d664372c28784a65f9c10c1b8d36608d084ac698a6caaafbaf4be40be8b6f76a"}
 		result.benchCostOverlays={{patch="3.30",description="Full prefix/suffix lock costs vary by item type",source="https://www.pathofexile.com/forum/view-thread/4013680"}}
 		result.initialState=copyTable(state)
 		result.nativeStats=require("Modules.CraftingItemStats").values(M,model,state)

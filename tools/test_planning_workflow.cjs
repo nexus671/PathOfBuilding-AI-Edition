@@ -120,7 +120,7 @@ async function main(){
   const bodyInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'life',limit:20},'inspected');
   const attributeInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'Attributes',limit:100},'inspected');
   const attributeBench=attributeInspection.crafting.nativeEngine.bench.find(entry=>entry.costSources?.includes('EinharMasterAllAttributes1'));
-  assert.ok(attributeBench);assert.deepEqual(attributeBench.components,{'Metadata/Items/Currency/CurrencyRerollMagic':3});assert.ok(attributeBench.costSources.includes('GGG 3.30 patch notes'));
+  assert.ok(attributeBench);assert.deepEqual(attributeBench.components,{'Metadata/Items/Currency/CurrencyRerollMagic':3});assert.equal(attributeInspection.crafting.nativeEngine.benchCostClient.version,'3.30.0.1.4');
   const attributePlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:bodyRaw,recipe:{steps:[{method:'bench',modId:attributeBench.id}],targets:[],requirements:{minAffixes:1}},options:{trials:2,maxActions:1,currency:'chaos',prices:{'Metadata/Items/Currency/CurrencyRerollMagic':0.5}}},'crafted');
   assert.equal(attributePlan.nativeCrafting.meanCost,1.5);assert.equal(attributePlan.nativeCrafting.currencySpent['Metadata/Items/Currency/CurrencyRerollMagic'],6);
   const annulOddsRaw='Rarity: NORMAL\nDriftwood Wand\nItem Level: 86';

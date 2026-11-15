@@ -23,6 +23,7 @@ describe("Native crafting ingredient costs",function()
 		for _,entry in ipairs(catalog.bench) do if entry.id==action.modId then found=entry end end
 		assert.is_true(found.ingredientCostsKnown);assert.are.same(cost,found.components);assert.are.same(sources,found.costSources)
 		assert.are.equal("ae6d85a5c36857e08819852ab8732239294aba59",catalog.benchCostSource.commit)
+		assert.are.equal("3.30.0.1.4",catalog.benchCostClient.version)
 		local entries=require("Modules.CraftingPrices").entries(model,model.initial,{action})
 		local required={};for _,entry in ipairs(entries) do if entry.required then required[entry.key]=true end end
 		assert.is_true(required[alteration]);assert.is_nil(required[action.modId])
@@ -51,13 +52,13 @@ describe("Native crafting ingredient costs",function()
 			if origins and isValueInTable(origins,"EinharMasterAllAttributes1") then action={method="bench",modId=id};cost=candidate;sources=origins;break end
 		end
 		assert.is_not_nil(action);assert.are.same({[alteration]=3},cost)
-		assert.is_truthy(isValueInTable(sources,"GGG 3.30 patch notes"))
+		assert.is_truthy(isValueInTable(sources,"EinharMasterAllAttributes1"))
 		assert.are.same(cost,sim.components(action,model.initial,model))
 		local result=sim.simulate(raw,{steps={action},targets={},requirements={minAffixes=1}},{trials=2,maxActions=1,priceBook=book({[alteration]=0.5,[chance]=10})})
 		assert.are.equal(1.5,result.meanCost);assert.are.equal(6,result.currencySpent[alteration]);assert.is_nil(result.currencySpent[chance])
 		local catalog=sim.catalog(raw,"Attributes",100);local found
 		for _,entry in ipairs(catalog.bench) do if entry.id==action.modId then found=entry end end
-		assert.is_not_nil(found);assert.are.same(cost,found.components);assert.is_truthy(isValueInTable(found.costSources,"GGG 3.30 patch notes"))
+		assert.is_not_nil(found);assert.are.same(cost,found.components);assert.is_truthy(isValueInTable(found.costSources,"EinharMasterAllAttributes1"))
 	end)
 	it("rejects conflicting quote aliases before admitting a project",function()
 		local id=require("Modules.CraftingPrices").aliases(sim.model(raw)).exalt
