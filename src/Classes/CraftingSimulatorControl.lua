@@ -626,8 +626,11 @@ function Panel.Open(build,project,layout)
 		return simulator.implicitTargetReason(simulator.context(model,current),current,recipe and recipe.targets or targets)
 	end
 	local function actionConfigured() return controls.method:GetSelValueByKey("val")~="gwennen" or configured.gwennen~=nil end
+	local function missingTargets() return #targets==0 and not (requirements and next(requirements)) end
+	local noTargets="Choose a target modifier or item condition first."
+	local busy="Finish or cancel the running calculation first."
 	controls.simulate.enabled=function() return actionConfigured() and not tasks.job and not targetReason() and (#targets>0 or requirements and next(requirements)~=nil) end
-	controls.simulate.tooltipText=function() return "Selected action: "..actionName().."\n"..(not actionConfigured() and "Configure an observed Gwennen pair in Settings." or tasks.job and "Finish or cancel the running calculation first." or targetReason() or "Simulate from the working item using the chosen target modifiers or item conditions.") end
+	controls.simulate.tooltipText=function() return "Selected action: "..actionName().."\n"..(not actionConfigured() and "Configure an observed Gwennen pair in Settings." or tasks.job and busy or targetReason() or missingTargets() and noTargets or "Simulate from the working item using the chosen target modifiers or item conditions.") end
 	controls.resourcePrices.enabled=function() return require("Modules.CraftingTasks").job==nil end
 	controls.currency.enabled=function() return not draft.priceBook or not next(draft.priceBook.values) end
 	controls.currency.showDisabledValue=true
@@ -642,7 +645,7 @@ function Panel.Open(build,project,layout)
 	controls.currency.tooltipText="Saved resource quotes use this common unit. Change it through Resource prices. Changing units clears action overrides and base cost."
 	controls.price.tooltipText=function() return "Optional total price of "..actionName()..". It applies when that action executes, including inside saved recipes." end
 	controls.runRecipe.enabled=function() return not tasks.job and draft.nativeRecipe~=nil and not targetReason(true) end
-	controls.runRecipe.tooltipText=function() return tasks.job and "Finish or cancel the running calculation first." or draft.nativeRecipe and targetReason(true) or "Run the project's saved steps from the original starting item, with the saved recipe's targets." end
+	controls.runRecipe.tooltipText=function() return tasks.job and busy or not draft.nativeRecipe and "Save a recipe in this project first." or targetReason(true) or "Run the project's saved steps from the original starting item, with the saved recipe's targets." end
 	controls.exact.enabled=function() return actionConfigured() and not tasks.job and not targetReason() and (#targets>0 or requirements~=nil and next(requirements)~=nil) and workbench.available(controls.method:GetSelValueByKey("val"),state,model) end
 	controls.exact.tooltipText=function()
 		if not actionConfigured() then return "Configure an observed Gwennen pair in Settings." end
@@ -653,14 +656,21 @@ function Panel.Open(build,project,layout)
 		return available and "Calculate this action from the working item, with captured target conditions." or reason
 	end
 	controls.compareRecipes.enabled=function() return not tasks.job and not targetReason() and (#targets>0 or requirements and next(requirements)~=nil) end
-	controls.compareRecipes.tooltipText=function() return targetReason() or "Compare recipes using the current targets." end
+	controls.compareRecipes.tooltipText=function() return tasks.job and busy or targetReason() or missingTargets() and noTargets or "Compare recipes using the current targets." end
 	controls.keepRecipe.enabled=function() return #actions>0 and not state.destroyed and not state.veil end
 	controls.manual.enabled=function() return not state.destroyed and not state.veil end
 	controls.allflame.enabled=function() return simulator.supportsAllflame(controls.method:GetSelValueByKey("val")) end
 	controls.allflame.tooltipText=function() return controls.allflame:IsEnabled() and "Historical 3.29 Allflame model; Allflame is not core in 3.30." or "Allflame is not modeled for this action. Choose a supported itemised currency." end
 	controls.fossilResults.tooltipText="Reopen the captured comparison. Rerun after changing the item, targets or quotes."
 	controls.fossilResults.enabled=function() return lastFossilComparison~=nil and require("Modules.CraftingTasks").job==nil end
-	controls.optimize.tooltipText=function() return targetReason() or "Set targets or item properties, then select Fossil resonator. Settings / Configure chooses multiple candidates. Comparisons use ordinary fossil crafts." end
+	controls.optimize.tooltipText=function()
+		if targetReason() then return targetReason() end
+		if controls.method:GetSelValueByKey("val")~="fossil" then return "Select Fossil resonator first." end
+		if tasks.job then return busy end
+		if missingTargets() then return noTargets end
+		local craft=action();if not craft.fossils or #craft.fossils==0 then return "Configure at least one fossil first." end
+		return "Configure fossil candidates in Settings, then compare ordinary fossil crafts."
+	end
 	controls.optimize.enabled=function()
 		if controls.method:GetSelValueByKey("val")~="fossil" or not controls.simulate:IsEnabled() then return false end
 		local craft=action();return craft.fossils~=nil and #craft.fossils>0

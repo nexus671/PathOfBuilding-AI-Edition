@@ -729,6 +729,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	require("Classes.CraftingProjectControl").Open(build)
 	frame("projects");ui:choose("projects","Headless crafting check","label");ui:click("native")
 	frame("emulator");frame("currency-tooltip","currency_alchemy")
+	ui:click("tab_simulate");assert(main.popups[1].controls.simulate.tooltipText():find("Choose a target",1,true));frame("crafting-missing-target-tooltip","simulate");ui:click("tab_craft")
 	ui:click("currency_alchemy");ui:click("item")
 	frame("crafted")
 	assert(#main.popups[1].controls.itemMods.list>=4,"Clicking the item did not apply Alchemy")
