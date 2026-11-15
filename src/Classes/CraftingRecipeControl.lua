@@ -1,3 +1,4 @@
+-- cspell:ignore Katakohi
 -- Native recipe routing editor with emulator actions and future currency steps.
 local sim=require("Modules.CraftingSimulator")
 local Panel={}

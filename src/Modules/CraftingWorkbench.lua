@@ -1,4 +1,4 @@
--- cspell:ignore Ukatoa
+-- cspell:ignore Ukatoa Katakohi
 -- Presentation for the crafting workbench. All mutations stay in the simulator.
 local M = { }
 local anchor = {"TOPLEFT",nil,"TOPLEFT"}
