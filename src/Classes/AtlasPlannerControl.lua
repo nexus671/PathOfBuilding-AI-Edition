@@ -77,7 +77,7 @@ function Canvas:Draw()
 			if allocated[id] and allocated[other] then
 				if comparison and (not comparison.before[id] or not comparison.before[other]) then SetDrawColor(0.3,0.95,0.5) else SetDrawColor(0.75,0.61,0.25) end
 			elseif comparison and comparison.before[id] and comparison.before[other] then SetDrawColor(0.9,0.3,0.3)
-			elseif planned[id] and planned[other] then SetDrawColor(0.25,0.8,0.75) else SetDrawColor(0.18,0.22,0.29) end
+			elseif planned[id] and planned[other] then SetDrawColor(0.25,0.8,0.75) else SetDrawColor(0.30,0.37,0.47) end
 			local dx,dy=c-a,d-b; local length=math.max(1,math.sqrt(dx*dx+dy*dy)); local ox,oy=-dy/length,dx/length
 			if math.max(a,c)>=0 and math.min(a,c)<=self.width and math.max(b,d)>=0 and math.min(b,d)<=self.height then
 				DrawImageQuad(nil,a+ox,b+oy,c+ox,d+oy,c-ox,d-oy,a-ox,b-oy)
