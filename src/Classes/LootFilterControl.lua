@@ -12,8 +12,15 @@ end
 local function attempt(callback) local ok,why=pcall(callback);if not ok then notify("Loot filter",why) end end
 local function modal(title,raw,save)
 	local c={};local w,h=math.min(860,main.screenW-40),math.min(570,main.screenH-60)
-	ui.description(c,"help",16,28,w-32,44,{save and "Paste an exported .filter. Original text is preserved; personal rules stay separate." or "Ready to save as a UTF-8 .filter in your Path of Exile filter folder. Copy does not change any game files."},14)
-	c.text=new("EditControl"):EditControl(ui.anchor,{16,84,w-32,h-150},raw,nil,"^%C\t\n",filters.limit,nil,14,true)
+	ui.description(c,"help",16,28,w-32,44,{save and "Paste a filter or load a local .filter file. Original text is preserved; personal rules stay separate." or "Ready to save as a UTF-8 .filter in your Path of Exile filter folder. Copy does not change any game files."},14)
+	c.text=new("EditControl"):EditControl(ui.anchor,{16,84,w-32,h-(save and 205 or 150)},raw,nil,"^%C\t\n",filters.limit,nil,14,true)
+	if save then
+		ui.label(c,"pathLabel",16,h-114,"Local file path",14)
+		c.path=new("EditControl"):EditControl(ui.anchor,{16,h-96,w-284,26},"",nil,nil,1024)
+		local function loadFile() attempt(function() c.text:SetText(require("Modules.LootFilterImports").readFile(c.path.buf,filters.limit)) end) end
+		button(c,"browseFile",w-256,h-96,100,"Browse",function() require("Classes.LootFilterFileBrowser").Open(c.path.buf,function(path) c.path:SetText(path);loadFile() end) end)
+		button(c,"loadFile",w-148,h-96,132,"Load file",loadFile)
+	end
 	button(c,"copy",16,h-48,124,"Copy filter",function() Copy(c.text.buf) end)
 	if save then button(c,"import",152,h-48,140,"Use import",function() attempt(function() save(c.text.buf);main:ClosePopup() end) end) end
 	button(c,"close",w-140,h-48,124,"Close",function() main:ClosePopup() end)
