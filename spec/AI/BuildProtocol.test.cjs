@@ -358,6 +358,14 @@ test('queues advanced crafting states and rejects untyped execution data', t => 
   assert.throws(()=>f.call('apply_crafting_action',{...args,action:{method:'recombine',donorItem:'item',path:'elsewhere'}}),/arguments/);
 });
 
+test('accepts corrupted flask quality and quality targets up to forty', t => {
+  const f=fixture(t);const raw='Rarity: NORMAL\nSmall Life Flask\nItem Level: 86';
+  const args={baseRevision:f.state.revision,itemText:raw,action:{method:'vaal'},initialState:{rarity:'NORMAL',affixes:[],quality:40,corrupted:true}};
+  f.call('apply_crafting_action',args);fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  assert.throws(()=>f.call('apply_crafting_action',{...args,initialState:{...args.initialState,quality:41}}),/arguments/);
+  f.call('calculate_crafting',{baseRevision:f.state.revision,itemText:raw,action:{method:'vaal'},targets:[],options:{requirements:{minQuality:40}}});
+});
+
 test('preserves typed twice-corruption flags in crafting requests', t => {
   const f=fixture(t);
   const args={baseRevision:f.state.revision,itemText:craftingProject().startingItem,action:{method:'tainted_chromatic'},initialState:{rarity:'NORMAL',affixes:[],corrupted:true,twiceCorrupted:true}};

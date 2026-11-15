@@ -123,7 +123,12 @@ function C.extend(M,A,api)
 				assert(not model.unresolvedCorruption or input.corruptedImplicits,"The existing corruption implicits must be identified first")
 				assert(not input.implicits and not model.unresolvedEldritch,"Second corruption of Eldritch implicits is not modeled")
 			end
-			assert(model.item.type ~= "Jewel" and model.item.type ~= "Flask" and model.item.type ~= "Tincture","This Vaal model currently supports ordinary equipment")
+			if method=="vaal" and model.item.type=="Flask" then
+				-- The published range is known; equal weights are an explicit model assumption.
+				state.quality=math.max(0,math.min(40,(state.quality or 0)+math.floor(random()*21)-10))
+				state.corrupted=true;state.imprint=nil;return state
+			end
+			assert(model.item.type ~= "Jewel" and model.item.type ~= "Flask" and model.item.type ~= "Tincture","This corruption model currently supports ordinary equipment and flask Vaal Orbs")
 			if method == "locus" then
 				local reason=M.methodChecks.locus(model,state);assert(not reason,reason)
 			end
@@ -164,6 +169,7 @@ function C.extend(M,A,api)
 		end
 		return state
 	end
+	M.limits[#M.limits+1]="Flask Vaal quality changes by an integer from -10 to +10, clamped to 0-40; equal weights are assumed and unverified."
 	M.limits[#M.limits+1]="The equipment Vaal model includes the four outcome branches and current non-white socket conversion. Rare-brick socket/link rerolls are not modeled; tainted affix outcomes use a 50/50 assumption."
 	M.limits[#M.limits+1]="The 3.30 Locus model requires a Corrupted item and adds a second corruption. Outcome chances, socket conversion and selection of a replaced implicit are assumptions; uncorrupted altar use is not modeled. Fractured, synthesised, meta-modified and special transformation bases are excluded."
 end

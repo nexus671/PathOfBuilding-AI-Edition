@@ -18,7 +18,7 @@ function M.check(method,state,model)
 	model=sim.context(model,state);local item=model.item;local kind=item.type
 	if method=="locus" and (state.implicits or model.unresolvedEldritch) then return false,"Second corruption of Eldritch implicits is not modeled." end
 	if method=="locus" and model.unresolvedCorruption and not state.corruptedImplicits then return false,"Identify the existing corruption implicits first." end
-	if (kind=="Flask" or kind=="Tincture") and not flask[method] and method~="ducat_tzamoto" and method~="ducat_kishara" then return false,"This method is unavailable for flasks and tinctures." end
+	if (kind=="Flask" or kind=="Tincture") and not flask[method] and method~="ducat_tzamoto" and method~="ducat_kishara" and not (kind=="Flask" and method=="vaal") then return false,"This method is unavailable for flasks and tinctures." end
 	local reason=sim.methodReason(model,state,method);if reason then return false,reason end
 	if normal[method] and state.rarity~="NORMAL" then return false,"Requires a normal item." end
 	if magic[method] and state.rarity~="MAGIC" then return false,"Requires a magic item." end
@@ -66,7 +66,7 @@ function M.check(method,state,model)
 		if not item.base.armour and not data.weaponTypeInfo[kind] and (tainted or kind~="Flask" and kind~="Tincture") then return false,"Quality currency requires eligible armour, a weapon, flask or tincture." end
 		if not tainted and (state.quality or 0)>=20 then return false,"Ordinary quality currency cannot exceed 20%." end
 	end
-	if method=="vaal" or method=="locus" then if kind=="Jewel" or kind=="Flask" or kind=="Tincture" then return false,"This corruption model currently supports ordinary equipment." end end
+	if method=="vaal" or method=="locus" then if kind=="Jewel" or kind=="Tincture" or kind=="Flask" and method=="locus" then return false,"This corruption model supports ordinary equipment and flask Vaal Orbs." end end
 	if method=="blessed" and (#item.implicitModLines==0 or state.implicits) then return false,"This item has no supported base implicit to reroll." end
 	if method=="sacred" then
 		local variable=false

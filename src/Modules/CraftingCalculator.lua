@@ -6,6 +6,25 @@ function C.extend(M)
 	function M.calculate(raw,craft,targets,initialState,options)
 		options=options or {}
 		local method=M.baseCurrency(craft)
+		if craft.method=="vaal" and not craft.allflame then
+			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
+			if M.context then model=M.context(model,state) end
+			if model.item.type=="Flask" then
+				M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
+				local outcomes,byQuality,hits={},{},0
+				for draw=0,20 do
+					local result=M.action(model,state,craft,function() return (draw+0.5)/21 end)
+					local hit=M.matches(result,targets,nil,model,options.requirements,options.requiredGroups)
+					if hit then hits=hits+1 end
+					local entry=byQuality[result.quality]
+					if not entry then entry={id=tostring(result.quality),text="Quality: "..result.quality.."%",weight=0,matches=hit,state=result};byQuality[result.quality]=entry;outcomes[#outcomes+1]=entry end
+					entry.weight=entry.weight+1
+				end
+				for _,entry in ipairs(outcomes) do entry.chance=100*entry.weight/21 end
+				return {exactFor="Flask Vaal quality under the assumed equal-weight model",sampled=false,successChance=100*hits/21,totalWeight=21,matchingWeight=hits,
+					outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+			end
+		end
 		if craft.method=="annul" and not craft.allflame then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial

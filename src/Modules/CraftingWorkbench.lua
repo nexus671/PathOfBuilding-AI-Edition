@@ -41,10 +41,13 @@ function M.itemArt(item)
 end
 function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 	options=options or {};local weaponItem=model.item.base.weapon~=nil;local header=(options.header or 180)+(weaponItem and 22 or 0);local artSize=options.artSize or 84;local propertyX=artSize+26
-	local art,artWidth,artHeight,artPath
+	local art,artWidth,artHeight,artPath,flaskSprite
 	local function setArt(item)
 		local path,width,height=M.itemArt(item)
 		if path ~= artPath then art=image(path);artPath=path end
+		-- Flask art contains bottle, shadow and liquid in three equal columns.
+		flaskSprite=item.type=="Flask" and width==height*1.5
+		if flaskSprite then width=width/3 end
 		local scale=artSize/math.max(width,height)
 		artWidth,artHeight=width*scale,height*scale
 	end
@@ -68,7 +71,12 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 			SetDrawColor(color);DrawString(cx+w/2,cy+8,"CENTER_X",20,"VAR",title);DrawString(cx+w/2,cy+33,"CENTER_X",16,"VAR",subtitle)
 			box(cx+12,cy+56,w-24,1,"^x756647")
 		else text(cx+16,cy+9,20,title,color,w-32);text(cx+16,cy+33,16,subtitle,color,w-32) end
-		SetDrawColor(1,1,1,state.destroyed and 0.2 or 1);DrawImage(art,cx+12+(artSize-artWidth)/2,cy+66+(artSize-artHeight)/2,artWidth,artHeight)
+		SetDrawColor(1,1,1,state.destroyed and 0.2 or 1)
+		local ax,ay=cx+12+(artSize-artWidth)/2,cy+66+(artSize-artHeight)/2
+		if flaskSprite then
+			DrawImage(art,ax,ay,artWidth,artHeight,2/3,0,1,1)
+			DrawImage(art,ax,ay,artWidth,artHeight,0,0,1/3,1)
+		else DrawImage(art,ax,ay,artWidth,artHeight) end
 		text(cx+propertyX,cy+67,16,"Item level "..item.itemLevel)
 		text(cx+propertyX,cy+89,16,"Quality: +"..(state.quality or item.quality or 0).."%")
 		text(cx+propertyX,cy+111,16,self.defences or "",nil,w-propertyX-16)
@@ -210,6 +218,7 @@ function M.available(method,state,model)
 end
 function M.hint(method,state,model)
 	local available,reason=M.available(method,state,model)
+	if available and method=="vaal" and model.item.type=="Flask" then return "Changes quality by -10 to +10. Equal outcome weights are assumed, not verified." end
 	if available and method=="annul" then return "3.30: remove a random modifier. Attack/caster roll blockers do not protect it; fractures and prefix/suffix locks still apply." end
 	if available and method=="binding" then return "No longer generated in 3.30. Existing Orbs of Binding still work." end
 	if available and method=="recombine" then return "3.30 uses the chosen base's item level. Count odds for one-to-three modifiers still use older estimates." end

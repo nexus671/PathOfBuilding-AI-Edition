@@ -385,7 +385,7 @@ function Panel.Open(build,project,layout)
 			result.meanCost~=nil and string.format("Mean spent: %.2f %s",result.meanCost,result.costCurrency) or "Cost unavailable: some executed actions have no supplied price.",
 			captured.label,capturedSettings(captured),
 			string.format("95%% sampling interval: %.2f%% to %.2f%%",result.confidenceLow,result.confidenceHigh),string.format("Mean attempted actions: %.2f",result.meanActions)}
-		local warnings=result.warnings or simulator.recipeWarnings(captured.recipe)
+		local warnings=result.warnings or simulator.recipeWarnings(captured.recipe,model)
 		for i,warning in ipairs(warnings) do table.insert(lines,1+i,"Model note: "..warning.message) end
 		if result.treeVersion then table.insert(lines,2+#warnings,"Build tree: "..(treeVersions[result.treeVersion] and treeVersions[result.treeVersion].display or result.treeVersion).." (context only) | crafting data: "..tostring(result.dataPatch)) end
 		if result.priceSource then lines[#lines+1]="Quotes: "..result.priceSource.." | "..os.date("%Y-%m-%d",result.priceQuotedAt) end
@@ -489,7 +489,7 @@ function Panel.Open(build,project,layout)
 		local result=assert(lastSimulation,"Run a simulation first")
 		local request=lastSimulationRun and copyTable(lastSimulationRun)
 		local lines={{height=24,"Attempted actions per trial (all trials, including failures)"}}
-		for i,warning in ipairs(result.warnings or request and simulator.recipeWarnings(request.recipe) or {}) do table.insert(lines,i,{height=24,"Model note: "..warning.message}) end
+		for i,warning in ipairs(result.warnings or request and simulator.recipeWarnings(request.recipe,model) or {}) do table.insert(lines,i,{height=24,"Model note: "..warning.message}) end
 		for _,bucket in ipairs(result.actionDistribution) do
 			lines[#lines+1]={height=20,string.format("%4d | %s %d trials, %d successes",bucket.actions,string.rep("|",math.max(1,math.floor(bucket.trials/result.trials*50))),bucket.trials,bucket.successes)}
 		end

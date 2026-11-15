@@ -25,11 +25,12 @@ function M.withTreeContext(result,version)
 	return result
 end
 local partialWarningMessage="Partial locks assume uniform selection; bench rerolls select once, and Harvest augment selects before adding. Some selections fail and other interactions remain unsupported."
-function M.actionWarnings(action)
+function M.actionWarnings(action,model)
 	local result={}
 	if action.method=="bench" and type(action.modId)=="string" and action.modId:match("^bench:partial%-") then result[#result+1]={code="partial_lock_model",message=partialWarningMessage} end
 	if action.method=="recombine" then result[#result+1]={code="recombination_count_odds",message="Recombination uses older count odds; 3.30 odds are not verified."} end
 	if action.method=="locus" then result[#result+1]={code="locus_assumptions",message="Locus assumes 25% implicit, 25% socket and 50% destruction outcomes; these are not verified 3.30 odds. Socket conversion and replacement selection are also assumptions.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
+	if action.method=="vaal" and model and model.item.type=="Flask" then result[#result+1]={code="flask_vaal_weights",message="Flask quality changes from -10 to +10; equal outcome weights are assumed and unverified.",source="https://www.pathofexile.com/forum/view-thread/3496784"} end
 	if action.method=="binding" then result[#result+1]={code="binding_legacy",message="Orbs of Binding are no longer generated in 3.30; existing orbs still work.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
 	if action.allflame or action.method=="ducat_kishara" then result[#result+1]={code="allflame_historical",message="Allflame is historical and did not return to core in 3.30."} end
 	return result
@@ -39,9 +40,9 @@ local function partialWarning(warnings)
 	warnings[#warnings+1]={code="partial_lock_model",message=partialWarningMessage}
 	return warnings
 end
-function M.recipeWarnings(recipe)
+function M.recipeWarnings(recipe,model)
 	local result,seen={},{}
-	for _,action in ipairs(recipe and recipe.steps or {}) do for _,warning in ipairs(M.actionWarnings(action)) do
+	for _,action in ipairs(recipe and recipe.steps or {}) do for _,warning in ipairs(M.actionWarnings(action,model)) do
 		if not seen[warning.code] then result[#result+1]=warning;seen[warning.code]=true end
 	end end
 	return result
@@ -526,7 +527,7 @@ function M.validateRecipe(recipe)
 	local function validateRequirements(requirements)
 		if not requirements then return end
 		assert(type(requirements) == "table" and next(requirements),"Choose at least one property condition")
-		local limits={openPrefixes=3,openSuffixes=3,minAffixes=6,maxAffixes=6,minQuality=30,sockets=6,links=6,minMemoryStrands=100,maxMemoryStrands=100,minFractured=6,maxFractured=6,minIntangibility=100,maxIntangibility=100}
+		local limits={openPrefixes=3,openSuffixes=3,minAffixes=6,maxAffixes=6,minQuality=40,sockets=6,links=6,minMemoryStrands=100,maxMemoryStrands=100,minFractured=6,maxFractured=6,minIntangibility=100,maxIntangibility=100}
 		for key,value in pairs(requirements) do
 			if key == "nativeStats" then require("Modules.CraftingItemStats").validate(value)
 			elseif key == "harvestEnchant" then assert(type(value)=="string" and require("Modules.CraftingEnchants").data().crafts[value],"Choose a known Harvest enchantment")
@@ -749,7 +750,7 @@ function M.simulate(raw,recipe,options)
 	local usage={};for _,entry in pairs(resourceUsage) do entry.meanPerTrial=entry.amount/trials;usage[#usage+1]=entry end;table.sort(usage,function(a,b) return a.key<b.key end)
 	assert(totalExecuted > 0 or successes > 0,"Recipe could not execute a supported action; inspect its starting rarity and open affixes")
 	local result={trials=trials,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,seed=seed,maxActions=maxActions,
-		meanActions=totalActions/trials,currencySpent=spent,resourceUsage=usage,unpriced=missing,transitionErrors=errors,warnings=M.hasPartialLock(M.context(model,model.initial),model.initial) and partialWarning(M.recipeWarnings(recipe)) or M.recipeWarnings(recipe),limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=not sample.destroyed and not sample.veil and M.toItem(model,sample).raw or nil,sampleState=sample,
+		meanActions=totalActions/trials,currencySpent=spent,resourceUsage=usage,unpriced=missing,transitionErrors=errors,warnings=M.hasPartialLock(M.context(model,model.initial),model.initial) and partialWarning(M.recipeWarnings(recipe,model)) or M.recipeWarnings(recipe,model),limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=not sample.destroyed and not sample.veil and M.toItem(model,sample).raw or nil,sampleState=sample,
 		engineVersion=2,dataPatch=M.dataPatch,sourceVersion=launch.versionNumber,costCurrency=options.currency or "supplied price units",
 		baseCost=baseCost,retainedSuccesses=retained,retentionLimit=retain,affixDistribution=affixDistribution,propertyDistribution=propertyDistribution,actionDistribution=distribution,successfulActionQuantiles=quantiles(times),routeCounts=routes,budgetExhausted=budgetExhausted,destroyedTrials=destroyedTrials}
 	if not next(missing) then
@@ -770,7 +771,7 @@ function M.perform(raw,action,seed,initialState,treeVersion)
 	local model=M.model(raw)
 	if initialState then model.initial=M.validateState(model,initialState) end
 	local state,details=M.action(model,model.initial,action,rng(encounter.seed(integer(seed or 104729,1,2147483646,"seed"),1,31)))
-	local warnings=M.actionWarnings(action)
+	local warnings=M.actionWarnings(action,model)
 	if M.hasPartialLock(M.context(model,model.initial),model.initial) then partialWarning(warnings) end
 	return M.withTreeContext({priceKey=(M.priceKey or priceKey)(action),itemText=not state.veil and not state.destroyed and M.toItem(model,state).raw or nil,state=state,choices=details and details.choices,allflame=details and details.allflame,dataPatch=M.dataPatch,warnings=warnings,limitations=copyTable(M.limits)},treeVersion)
 end
@@ -779,7 +780,7 @@ function M.catalog(raw,query,limit)
 	local model=M.model(raw)
 	query=(query or ""):lower(); limit=limit or 50
 	local result={methods=copyTable(M.methods),methodWarnings={},modifiers={},bench={},essences={},limitations=copyTable(M.limits)}
-	for _,method in ipairs(M.methods) do local warnings=M.actionWarnings({method=method});if #warnings>0 then result.methodWarnings[method]=warnings end end
+	for _,method in ipairs(M.methods) do local warnings=M.actionWarnings({method=method},model);if #warnings>0 then result.methodWarnings[method]=warnings end end
 	for _,entry in ipairs(model.mods) do if #result.modifiers < limit and (entry.id.." "..table.concat(entry.mod," / ")):lower():find(query,1,true) then result.modifiers[#result.modifiers+1]={id=entry.id,text=table.concat(entry.mod," / "),level=entry.mod.level,type=entry.mod.type,weight=entry.weight,group=entry.mod.group} end end
 	for _,entry in ipairs(model.bench) do if #result.bench < limit and (entry.id.." "..table.concat(entry.mod," / ")):lower():find(query,1,true) then result.bench[#result.bench+1]={id=entry.id,text=table.concat(entry.mod," / "),type=entry.mod.type} end end
 	for _,entry in ipairs(model.essences) do if #result.essences < limit and entry.name:lower():find(query,1,true) then result.essences[#result.essences+1]=copyTable(entry) end end
@@ -806,7 +807,7 @@ require("Modules.CraftingCalculator").extend(M)
 do
 	local calculate=M.calculate
 	function M.calculate(raw,craft,targets,initialState,options)
-		local result=calculate(raw,craft,targets,initialState,options);result.warnings=result.warnings or M.actionWarnings(craft)
+		local result=calculate(raw,craft,targets,initialState,options);result.warnings=result.warnings or M.actionWarnings(craft,craft.method=="vaal" and M.model(raw) or nil)
 		if initialState then for _,entry in ipairs(initialState.affixes or {}) do if entry.id:match("^bench:partial%-") then partialWarning(result.warnings);break end end end
 		if raw:find("Modifier cannot be changed",1,true) or raw:find("Modifiers cannot be changed",1,true) then partialWarning(result.warnings) end
 		return M.withTreeContext(result,options and options.treeVersion)

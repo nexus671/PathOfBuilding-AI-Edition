@@ -819,7 +819,7 @@ function A.extend(M,api)
 			if veil.fractured then for _,entry in ipairs(state.affixes or {}) do assert(not entry.fractured,"An item cannot have another fractured modifier") end end
 		end
 		for _,key in ipairs({"corrupted","mirrored"}) do assert(state[key] == nil or type(state[key]) == "boolean","Invalid item flag") end
-		if state.quality then api.integer(state.quality,0,30,"item quality") end
+		if state.quality then api.integer(state.quality,0,model.item.type=="Flask" and state.corrupted and 40 or 30,"item quality") end
 		if state.baseImplicit330~=nil then assert(state.baseImplicit330==true and model.blessed330 and state.baseImplicitRanges,"Invalid updated base implicit") end
 		if state.baseImplicitRanges then
 			assert(type(state.baseImplicitRanges)=="table" and #state.baseImplicitRanges>0 and #state.baseImplicitRanges<=#model.item.implicitModLines,"Invalid base implicit range count")
