@@ -20,4 +20,16 @@ describe("Crafting budget and spending charts",function()
 		assert.same({{cost=5,trials=10,successes=10}},priced.costDistribution)
 		local missing=sim.simulate(raw,recipe,{trials=10,maxActions=1,retainSuccesses=2});assert.is_nil(missing.costDistribution);assert.is_nil(missing.retainedSuccesses[1].cost)
 	end)
+	it("retains individual costs when other successful trials used unpriced actions",function()
+		newBuild();local sim=require("Modules.CraftingSimulator");local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"
+		local recipe={steps={{method="alchemy"},{method="chaos"}},targets={},requirements={minAffixes=5}}
+		local result=sim.simulate(raw,recipe,{trials=100,maxActions=2,retainSuccesses=100,prices={alchemy=3},baseCost=2,currency="chaos",seed=3})
+		assert.is_true(result.unpriced.chaos);assert.is_nil(result.meanCost);assert.is_nil(result.costDistribution)
+		local priced,unpriced=0,0
+		for _,item in ipairs(result.retainedSuccesses) do
+			if item.actions==1 then assert.equal(5,item.cost);priced=priced+1
+			else assert.equal(2,item.actions);assert.is_nil(item.cost);unpriced=unpriced+1 end
+		end
+		assert.is_true(priced>0);assert.is_true(unpriced>0)
+	end)
 end)

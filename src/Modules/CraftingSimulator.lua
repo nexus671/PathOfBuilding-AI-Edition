@@ -712,6 +712,7 @@ function M.simulate(raw,recipe,options)
 		local state=copyState(model.initial)
 		local random=rng(encounter.seed(seed,trial,31))
 		local at,actions,cost,trialExecuted=1,0,baseCost,0
+		local trialUnpriced=false
 		while at <= #recipe.steps and actions < maxActions and not state.destroyed and (options.forceFirstAction and actions == 0 or not M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups)) do
 			local step=recipe.steps[at]
 			local route=routes[at] or {visits=0,success=0,failure=0,executed=0};routes[at]=route;route.visits=route.visits+1
@@ -748,7 +749,7 @@ function M.simulate(raw,recipe,options)
 				for key,amount in pairs(components) do
 					spent[key]=(spent[key] or 0)+amount
 					local price=actionPrice~=nil and actionPrice or options.prices and options.prices[key]
-					if price then cost=cost+price*amount else missing[key]=true end
+					if price then cost=cost+price*amount else missing[key]=true;trialUnpriced=true end
 				end
 				if state.destroyed then break end
 				if M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups) then success=true;break end
@@ -763,7 +764,7 @@ function M.simulate(raw,recipe,options)
 		end
 		local hit=(not options.forceFirstAction or trialExecuted>0) and M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups)
 		if hit then successes=successes+1; times[#times+1]=actions end
-		if hit and #retained < retain then retained[#retained+1]={trial=trial,actions=actions,cost=not next(missing) and cost or nil,state=copyTable(state),itemText=M.toItem(model,state).raw} end
+		if hit and #retained < retain then retained[#retained+1]={trial=trial,actions=actions,cost=not trialUnpriced and cost or nil,state=copyTable(state),itemText=M.toItem(model,state).raw} end
 		local fractures=0
 		for _,entry in ipairs(state.affixes) do
 			local bucket=affixDistribution[entry.id] or {trials=0,successes=0,fractured=0,crafted=0};affixDistribution[entry.id]=bucket
@@ -801,7 +802,7 @@ function M.simulate(raw,recipe,options)
 	if not next(missing) then
 		result.meanCost=totalCost/trials;result.costPerSuccess=successes>0 and totalCost/successes or nil;result.spendingQuantiles=quantiles(costSamples);result.successfulSpendingQuantiles=quantiles(successfulCosts)
 		result.costDistribution={};for _,bucket in pairs(costHistogram) do result.costDistribution[#result.costDistribution+1]=bucket end;table.sort(result.costDistribution,function(a,b) return a.cost<b.cost end)
-	else for _,entry in ipairs(retained) do entry.cost=nil end end
+	end
 	if options.priceBook then result.priceSource=options.priceBook.source;result.priceQuotedAt=options.priceBook.quotedAt end
 	result.stepPriceKeys={}
 	for i,step in ipairs(recipe.steps) do result.stepPriceKeys[#result.stepPriceKeys+1]={step=i,method=step.method,priceKey=(M.priceKey or priceKey)(step)} end

@@ -565,7 +565,10 @@ function Panel.Open(build,project,layout)
 			ui.card(popup,entry[1],16+(index-1)*282,174,264,entry[2],value,values and result.costCurrency or "Supply every action price")
 		end
 		popup.results=new("TextListControl"):TextListControl({"TOPLEFT",nil,"TOPLEFT"},{16,284,828,resultHeight-398},nil,lines)
-		local kept={};for i,entry in ipairs(result.retainedSuccesses or {}) do kept[#kept+1]={label="Successful item "..i.." (trial "..entry.trial..")",val=i} end
+		local kept={};for i,entry in ipairs(result.retainedSuccesses or {}) do
+			local cost=entry.cost~=nil and string.format("%.2f %s",entry.cost,result.costCurrency or "units") or "cost unavailable"
+			kept[#kept+1]={label=ui.fit("Item "..i.." (trial "..entry.trial..") | "..cost,320,14),val=i}
+		end
 		button(popup,"resources",16,resultHeight-84,176,"Resources used",function()
 			local entries={}
 			for _,entry in ipairs(result.resourceUsage) do
