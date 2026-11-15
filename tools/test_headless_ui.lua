@@ -208,6 +208,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("tab_settings");ui:click("manual");ui:choose("modifier","JunMasterVeiledJewelElusiveEffect","val");ui:text("roll","50");ui:choose("rarity","MAGIC");ui:click("properties");frame("crafting-unveiled-jewel-editor")
 	ui:click("offers");frame("crafting-jewel-unveil-choices");ui:choose("choice1","JunMasterVeiledJewelElusiveEffect","val");ui:choose("fractured","Fractured veil");ui:click("use");ui:click("offers");ui:click("clear")
 	ui:click("add");frame("crafting-unveiled-jewel-selected");ui:click("keep");ui:click("tab_craft");frame("crafting-unveiled-jewel-item");ui:click("close")
+	local jewelModel=require("Modules.CraftingSimulator").model(jewel);local jewelStart=copyTable(jewelModel.initial);jewelStart.rarity="MAGIC"
+	local jewelPending=require("Modules.CraftingSimulator").recordJewelOffers(jewelModel,jewelStart,{"JunMasterVeiledJewelElusiveEffect","JunMasterVeiledJewelLifeOnBlock"},true)
+	local resumedJewel={id="jewel-resume-ui",title="Saved jewel choices",slot="Jewel",startingItem=jewel,goals={},steps={},run=require("Modules.CraftingInventory").run(jewelPending)}
+	local jewelControls=require("Classes.CraftingSimulatorControl").Open(build,resumedJewel)
+	assert(jewelControls.method:GetSelValueByKey("val")=="unveil","Resumed unveil did not select the choice action");frame("crafting-jewel-unveil-resumed");ui:click("close")
 	local enchantedProject={id="harvest-ui",title="Body armour quality enchant",slot="Body Armour",startingItem="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20",goals={},steps={}}
 	require("Classes.CraftingSimulatorControl").Open(build,enchantedProject)
 	ui:click("settings");ui:text("paletteSearch","replace quality");frame("crafting-harvest-service");ui:click("paletteUse")

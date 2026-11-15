@@ -99,8 +99,8 @@ function Panel.Open(model,input,onKeep)
 			popup["choice"..i]=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,58+(i-1)*36,744,26},options)
 			popup["choice"..i]:SelByValue(state.veil and state.veil.choices[i] or "","val")
 		end
-		popup.fractured=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,174,360,26},{"Unfractured veil","Fractured veil"})
-		popup.fractured:SelByValue(state.veil and state.veil.fractured and "Fractured veil" or "Unfractured veil")
+		popup.fractured=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,174,360,26},{"Ordinary veil","Fractured veil"})
+		popup.fractured:SelByValue(state.veil and state.veil.fractured and "Fractured veil" or "Ordinary veil")
 		popup.use=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{16,222,200,28},"Use these choices",function()
 			local ok,result=pcall(function()
 				local choices={};for i=1,3 do local id=popup["choice"..i]:GetSelValueByKey("val");if id and id~="" then choices[#choices+1]=id end end
