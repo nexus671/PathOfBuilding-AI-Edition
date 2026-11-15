@@ -212,6 +212,24 @@ local flaskExamples={
 	{"Prismatic Tincture","Tinctures"},{"Oakbranch Tincture","Tinctures"},
 	{"Rosethorn Tincture","Tinctures"},{"Instilling Orb","Stackable Currency"},
 }
+-- Released base names and filter classes from the pinned client and RePoE
+-- class export. These examples do not model encounter or item probabilities.
+local craftingExamples={
+	{"Hollow Fossil","Stackable Currency"},{"Pristine Fossil","Stackable Currency"},
+	{"Fractured Fossil","Stackable Currency"},{"Faceted Fossil","Stackable Currency"},
+	{"Sanctified Fossil","Stackable Currency"},{"Dense Fossil","Stackable Currency"},
+	{"Primitive Chaotic Resonator","Delve Stackable Socketable Currency"},{"Powerful Chaotic Resonator","Delve Stackable Socketable Currency"},
+	{"Exceptional Eldritch Ember","Stackable Currency"},{"Exceptional Eldritch Ichor","Stackable Currency"},
+	{"Wild Crystallised Lifeforce","Stackable Currency"},{"Sacred Crystallised Lifeforce","Stackable Currency"},
+}
+local heistExpeditionExamples={
+	{"Blueprint: Underbelly","Blueprints"},{"Blueprint: Repository","Blueprints"},
+	{"Contract: Underbelly","Contracts"},{"Contract: Repository","Contracts"},
+	{"Expedition Logbook","Expedition Logbooks","Rare"},{"Rogue's Marker","Stackable Currency"},
+	{"Burial Medallion","Stackable Currency"},{"Astragali","Stackable Currency"},
+	{"Exotic Coinage","Stackable Currency"},{"Scrap Metal","Stackable Currency"},
+	{"Lesser Broken Circle Artifact","Stackable Currency"},{"Lesser Black Scythe Artifact","Stackable Currency"},
+}
 function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 	local list={}
 	if kind=="Tiered gear" then
@@ -224,7 +242,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		return list
 	end
 	if kind=="Build targets" then for _,rule in ipairs(targetRules or filters.generate(build,profile)) do list[#list+1]=M.sample(rule) end end
-	local source=({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples})[kind] or examples
+	local source=({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
 		applyBaseProperties(item)
 		-- A map name alone does not establish its current Atlas tier. Let the

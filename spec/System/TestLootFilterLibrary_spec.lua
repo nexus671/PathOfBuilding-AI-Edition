@@ -7,7 +7,9 @@ describe("Visual filter catalogue",function()
 	it("provides reproducible mapping and flask examples with their filter classes",function()
 		local profile=filters.profile("test","Test")
 		for _,case in ipairs({{kind="Maps & threads",base="Beach Map",class="Maps",other="Breach Thread",otherClass="Map Fragments"},
-			{kind="Flasks & tinctures",base="Sacred Life Flask",class="Life Flasks",other="Prismatic Tincture",otherClass="Tinctures"}}) do
+			{kind="Flasks & tinctures",base="Sacred Life Flask",class="Life Flasks",other="Prismatic Tincture",otherClass="Tinctures"},
+			{kind="Crafting materials",base="Hollow Fossil",class="Stackable Currency",other="Powerful Chaotic Resonator",otherClass="Delve Stackable Socketable Currency"},
+			{kind="Heist & Expedition",base="Blueprint: Underbelly",class="Blueprints",other="Expedition Logbook",otherClass="Expedition Logbooks"}}) do
 			local scene=library.scene(profile,build,case.kind,0,76,81);assert.equal(12,#scene)
 			assert.equal(case.base,scene[1].BaseType);assert.equal(case.class,scene[1].Class)
 			if case.kind=="Maps & threads" then
@@ -20,6 +22,7 @@ describe("Visual filter catalogue",function()
 				if item.BaseType==case.other then found=item end
 			end
 			assert.equal(case.otherClass,assert(found).Class)
+			if case.kind=="Crafting materials" then assert.is_nil(found.Sockets);assert.equal("unknown",parser.simulate(parser.parse('Hide\n Sockets >= 3\nShow'),found).status) end
 			local rule=parser.parse('Show\n Class == "'..case.otherClass..'"\n BaseType == "'..case.other..'"\nHide')
 			assert.equal("Show",parser.simulate(rule,found).action)
 			assert.equal("Hide",parser.simulate(rule,scene[1]).action)

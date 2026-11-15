@@ -25,7 +25,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Stacked currency tiering | Existing stack conditions are preserved and editable | Uniform/adjusted stacked-tier controls |
 | Economy-based tiers | Pinned NeverSink snapshot | Live pricing, outlier handling and recalculation |
 | Global search | Searches names and raw condition/action text | Cross-page command palette |
-| Loot generator | Deterministic example scenes, including maps, threads, flasks, tinctures, cards, essences and build targets. Base drop levels and inventory sizes use the pinned 3.30.0.1.4 client export; ambiguous values, unique drop levels and unspecified gear sockets remain unknown | Representative drop distributions and more encounter presets |
+| Loot generator | Deterministic example scenes, including maps, threads, flasks, tinctures, cards, essences, crafting materials, Heist, Expedition and build targets. Base drop levels and inventory sizes use the pinned 3.30.0.1.4 client export; ambiguous values, unique drop levels and unspecified gear sockets remain unknown | Representative drop distributions and more encounter presets |
 | Hidden-drop display | Simulator toggle and searchable scene review with shown, minimal, hidden and uncertain counts | Counts describe examples, not drop rates |
 | Click a simulated item | Explains results and opens matched blocks for editing | More unknown-property guidance |
 | Item configuration | Editable properties and game-clipboard import in the desktop and MCP filter tests. Known base drop level and dimensions come from pinned data; ambiguous values remain unknown | Hidden identities are never inferred |
