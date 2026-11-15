@@ -54,6 +54,17 @@ describe("Crafting result model notes",function()
 		local historical=sim.perform(raw,{method="alchemy",allflame={auto=true}},1)
 		assert.are.equal("allflame_historical",historical.warnings[1].code)
 	end)
+	it("retains Abyss socket assumptions for exact odds and recombination donors",function()
+		local fossil={method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingAbyss"}}
+		local source=raw.."\nSockets: W-W-W";local abyss=sim.perform(source,fossil,7)
+		local function hasWarning(result,code) for _,warning in ipairs(result.warnings or {}) do if warning.code==code then return true end end;return false end
+		local odds=sim.calculate(source,{method="annul"},{{anyOf={"DelveAbyssJewelSocket1"}}},abyss.state,{})
+		assert.is_false(odds.sampled);assert.is_true(hasWarning(odds,"abyss_socket_layout"))
+		local recombine={method="recombine",donorItem=abyss.itemText}
+		assert.is_true(hasWarning(sim.perform(source,recombine,1),"abyss_socket_layout"))
+		assert.is_true(hasWarning(sim.simulate(source,{steps={recombine},targets={},requirements={minAffixes=1}},{trials=2,maxActions=1}),"abyss_socket_layout"))
+		assert.is_true(hasWarning(sim.calculate(source,recombine,{},nil,{requirements={minAffixes=1},trials=2}),"abyss_socket_layout"))
+	end)
 	it("marks Binding as legacy supply without disabling the craft",function()
 		local action={method="binding"};local notes=sim.recipeWarnings({steps={action,action}})
 		assert.equal(1,#notes);assert.equal("binding_legacy",notes[1].code);assert.equal("3.30",notes[1].asOfPatch)

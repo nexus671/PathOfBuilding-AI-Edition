@@ -130,6 +130,8 @@ async function main(){
   const hollowAction={method:'fossil',fossils:['Metadata/Items/Currency/CurrencyDelveCraftingAbyss'],untilRequirements:{minAbyssSockets:1}};
   const hollowPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:bodyRaw,recipe:{steps:[hollowAction],targets:[],requirements:{minAbyssSockets:1}},options:{trials:4,maxActions:1}},'crafted');
   assert.equal(hollowPlan.nativeCrafting.successes,4);assert.equal(hollowPlan.nativeCrafting.warnings[0].code,'abyss_socket_layout');assert.equal(hollowPlan.nativeCrafting.sampleState.sockets.filter(s=>s.color==='A').length,1);
+  const hollowAnnul=await queued('calculate_crafting',{baseRevision:context.revision,itemText:bodyRaw,initialState:hollowPlan.nativeCrafting.sampleState,action:{method:'annul'},targets:[],options:{requirements:{minAbyssSockets:1}}},'crafted');
+  assert.equal(hollowAnnul.nativeCrafting.sampled,false);assert.ok(hollowAnnul.nativeCrafting.warnings.some(warning=>warning.code==='abyss_socket_layout'));
   const jewelRaw=bodyRaw.replace('Sockets: W W W W W W','Sockets: W-W W');
   const jewelInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:jewelRaw,query:'jeweller',limit:20},'inspected');
   const jewelAction=jewelInspection.crafting.nativeEngine.socketCrafts.find(entry=>entry.method==='jeweller');assert.equal(jewelAction.available,true);

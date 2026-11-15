@@ -44,6 +44,10 @@ function M.actionWarnings(action,model)
 	local abyss=false
 	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingAbyss" then abyss=true end end
 	for _,entry in ipairs(model and model.initial and model.initial.affixes or {}) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true end end
+	if not abyss and action.method=="recombine" and type(action.donorItem)=="string" then
+		local ok,donor=pcall(M.model,action.donorItem)
+		if ok then for _,entry in ipairs(donor.initial.affixes) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true;break end end end
+	end
 	if abyss then result[#result+1]={code="abyss_socket_layout",message="Experimental: adding the Abyssal socket modifier replaces the final socket; removing it restores an unlinked white socket. Placement, zero-socket behavior and removal are not verified.",source="https://www.poewiki.net/wiki/Abyssal_socket"} end
 	if action.method=="bench" and type(action.modId)=="string" and action.modId:match("^bench:partial%-") then result[#result+1]={code="partial_lock_model",message=partialWarningMessage} end
 	if action.method=="recombine" then result[#result+1]={code="recombination_count_odds",message="Recombination uses older count odds; 3.30 odds are not verified."} end
@@ -75,10 +79,10 @@ function M.recipeWarnings(recipe,model)
 end
 M.limits = {"Experimental PoE 1 model, not a complete game crafting implementation.",
 	"Supported: ordinary equipment, known modifier IDs, fractured modifiers, basic currencies, bench modifiers and essences. Meta modifiers protect/remap only the supported actions.",
-	"Unsupported actions fail explicitly: fossils, Harvest, recombination, influence orbs, corruption, sockets/links, veiled crafts and special league mechanics.",
+	"Supported crafts include fossils, Harvest, recombination, influence, corruption, sockets and veiled crafts; unsupported combinations fail explicitly. Review each action's model notes.",
 	"Rerolls model 4/5/6 rare modifiers with weights 8/3/1, and 1/2 magic modifiers equally. These distribution assumptions and PoB data coverage affect estimates.",
 	"Integer roll ranges use inclusive integer draws. Fractional display ranges use illustrative normalized rolls because the underlying stat precision is not present in this data export.",
-	"Targets match modifier IDs, not numeric roll thresholds. Wilson intervals measure sampling uncertainty only. Results describe the bounded recipe, not guaranteed in-game costs."}
+	"Modifier targets match IDs and optional normalized minimum rolls, not exact individual stat values. Wilson intervals measure sampling uncertainty only. Results describe the bounded recipe, not guaranteed in-game costs."}
 
 local function integer(value,low,high,label)
 	assert(type(value) == "number" and value == math.floor(value) and value >= low and value <= high,"Invalid "..label)
@@ -845,7 +849,11 @@ require("Modules.CraftingCalculator").extend(M)
 do
 	local calculate=M.calculate
 	function M.calculate(raw,craft,targets,initialState,options)
-		local result=calculate(raw,craft,targets,initialState,options);result.warnings=result.warnings or M.actionWarnings(craft,craft.method=="vaal" and M.model(raw) or nil)
+		local result=calculate(raw,craft,targets,initialState,options)
+		if not result.warnings then
+			local model=M.model(raw);if initialState then model.initial=M.validateState(model,initialState) end
+			result.warnings=M.actionWarnings(craft,model)
+		end
 		if initialState then for _,entry in ipairs(initialState.affixes or {}) do if entry.id:match("^bench:partial%-") then partialWarning(result.warnings);break end end end
 		if raw:find("Modifier cannot be changed",1,true) or raw:find("Modifiers cannot be changed",1,true) then partialWarning(result.warnings) end
 		return M.withTreeContext(result,options and options.treeVersion)
