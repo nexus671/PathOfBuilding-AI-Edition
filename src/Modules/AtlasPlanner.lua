@@ -170,13 +170,20 @@ function M.connect(plan,targets,avoid,checkpoint)
 	return result,additions
 end
 -- Retain existing allocations. Compare bounded orders, then solve up to four
--- targets exactly. An invalid baseline must not prevent a valid reorder.
+-- unallocated targets exactly. An invalid baseline must not prevent a valid reorder.
 function M.connectOptimized(plan,targets,avoid,options)
 	options=options or {};plan=M.validate(plan);array(targets,300,"Atlas targets")
 	local tree=M.tree(plan.version);local blocked=nodeSet(tree,M.exclusions(plan,avoid))
 	local allocated=nodeSet(tree,plan.nodes);allocated[tree.start]=true
 	for id in pairs(blocked) do assert(not allocated[id],"Cannot avoid an allocated Atlas node") end
-	for _,id in ipairs(targets) do integer(id,1,65535,"Atlas target");assert(tree.nodes[id] and not blocked[id],"Unknown or avoided Atlas target") end
+	local pending,requested={},{}
+	for _,id in ipairs(targets) do
+		integer(id,1,65535,"Atlas target");assert(tree.nodes[id] and not blocked[id],"Unknown or avoided Atlas target")
+		if not allocated[id] and not requested[id] then pending[#pending+1]=id;requested[id]=true end
+	end
+	-- Existing allocations and duplicate targets cannot affect the route. Drop
+	-- them before ordering and before applying the exact-solver target limit.
+	targets=pending
 	local best,additions,baseline;local attempts=0;local seen={}
 	local function try(order)
 		local signature=table.concat(order,",");if seen[signature] then return end;seen[signature]=true;attempts=attempts+1

@@ -385,6 +385,9 @@ async function main(){
   const atlasRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:starterAtlas,targets:atlasTargets,optimize:true},'atlas');
   assert.equal(atlasRoute.atlas.routing.heuristic,false);assert.ok(atlasRoute.atlas.routing.attempts>=1);
   assert.ok(atlasTargets.every(id=>atlasRoute.atlas.plan.nodes.includes(id)));assert.equal((await call('get_build_context')).context.revision,context.revision);
+  const nextAtlas=atlasSearch.atlas.matches.find(node=>!atlasRoute.atlas.plan.nodes.includes(node.id));assert.ok(nextAtlas);
+  const extended=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:atlasRoute.atlas.plan,targets:[...atlasRoute.atlas.plan.nodes.slice(0,4),nextAtlas.id,nextAtlas.id],optimize:true},'atlas');
+  assert.equal(extended.atlas.routing.heuristic,false);assert.ok(extended.atlas.plan.nodes.includes(nextAtlas.id));
   const unfundedAtlas=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{...starterAtlas,budget:0},targets:[65225]},'failed');assert.match(JSON.stringify(unfundedAtlas),/earned points.*Unwavering Vision/);
   await queued('propose_atlas_plan',{baseRevision:context.revision,plan:starterAtlas},'review');await host('apply');context=(await call('get_build_context')).context;
   const finalAtlas={id:'final-atlas',title:'Final Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'final',previousId:'starter-atlas'},strategy:{maps:'Chosen maps',scarabs:'Supplied consumables',requirements:'Unlocks complete',avoid:'Reflect',setupCost:{amount:25,currency:'chaos',source:'Workflow quote',quotedAt:1700000000}}};

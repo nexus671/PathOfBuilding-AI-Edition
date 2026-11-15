@@ -61,4 +61,17 @@ describe("Exact small Atlas routes",function()
 		assert.is_truthy(atlas.validate(original));assert.is_truthy(atlas.validate(route))
 		local _,_,quick=atlas.connectOptimized(p,ids,nil,{exact=false});assert.is_true(quick.heuristic)
 	end)
+	it("ignores allocated and repeated targets when choosing an exact route",function()
+		local p={id="existing",title="Existing",version="3.30.0-preview",budget=150,nodes={},notes=""}
+		p=atlas.connect(p,{53175});assert.is_true(#p.nodes>=4)
+		local wanted=34352;local present={};for _,id in ipairs(p.nodes) do present[id]=true end
+		assert.is_nil(present[wanted])
+		local requests={p.nodes[1],p.nodes[2],p.nodes[3],p.nodes[4],wanted,wanted}
+		local route,added,info=atlas.connectOptimized(p,requests)
+		local direct,directAdded,directInfo=atlas.connectOptimized(p,{wanted})
+		assert.is_false(info.heuristic);assert.is_false(directInfo.heuristic)
+		assert.same(direct.nodes,route.nodes);assert.same(directAdded,added);assert.equal(directInfo.attempts,info.attempts)
+		local unchanged,none,complete=atlas.connectOptimized(p,{p.nodes[1],p.nodes[2],p.nodes[1]})
+		assert.same(p.nodes,unchanged.nodes);assert.equal(0,#none);assert.is_false(complete.heuristic)
+	end)
 end)
