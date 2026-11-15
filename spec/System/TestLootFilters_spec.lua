@@ -189,6 +189,19 @@ describe("Build-owned loot filters",function()
 			assert.equal("invalid",parser.simulate(parser.parse('Hide\n '..key..' >= 2 "Haast"\nShow'),item).status)
 		end
 	end)
+	it("preserves a separate exact marker and reports its preview as uncertain",function()
+		for _,key in ipairs({"HasExplicitMod","HasEnchantment"}) do
+			local raw='Hide\n '..key..' >=2 == "Polar" "Shocking"';local item={Identified=true,[key]={"of the Polar Bear","Shocking"}}
+			local result=parser.simulate(parser.parse(raw.."\nShow"),item)
+			assert.equal("unknown",result.status);assert.matches("exact%-match operator",result.reasons[1])
+			local saved;require("Classes.LootFilterControl").Conditions({id="exact",title="Exact",text=raw},function(value) saved=value end)
+			main.popups[1].controls.keepRule:Click();assert.is_truthy(saved.text:find(key..' >=2 == "Polar" "Shocking"',1,true))
+			local styled=require("Modules.LootFilterLibrary").appearance({id="exact",text=raw},{SetFontSize={"40"}})
+			assert.is_truthy(styled.text:find(key..' >=2 == "Polar" "Shocking"',1,true))
+		end
+		local ordinary=parser.simulate(parser.parse('Hide\n HasExplicitMod >=2 "==" "Polar"\nShow'),{Identified=true,HasExplicitMod={"==","Polar"}})
+		assert.equal("Hide",ordinary.action)
+	end)
 	it("never treats incomplete or unsupported samples as a certain hide",function()
 		for _,raw in ipairs({'Hide\n Fated True','Hide\n TwiceCorrupted True','Hide\n UnidentifiedItemTier >= 3','Hide\n FutureKeyword True'}) do
 			assert.equal("unknown",parser.simulate(parser.parse(raw),{}).status)

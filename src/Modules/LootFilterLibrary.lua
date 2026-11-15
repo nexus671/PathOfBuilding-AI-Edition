@@ -93,6 +93,7 @@ function M.sample(rule,block)
 	end
 	if modifier then
 		local count=not (modifier.quoted and modifier.quoted[1]) and tonumber(modifier.values[1]);local start=count and 2 or 1
+		if parser.countExactMarker(modifier,start) then start=start+1 end
 		local needed=count and (modifier.operator==">" and count+1 or count) or 1
 		item.HasExplicitMod={};for i=start,math.min(#modifier.values,start+math.min(needed,6)-1) do item.HasExplicitMod[#item.HasExplicitMod+1]=modifier.values[i] end
 		if not hasIdentified then item.Identified=true end
@@ -152,7 +153,7 @@ end
 function M.appearance(rule,changes)
 	local block=assert(parser.parse(rule.text).rules[1]);local lines={block.action}
 	for _,condition in ipairs(block.conditions) do
-		local values={};for i,value in ipairs(condition.values) do values[#values+1]=((condition.quoted and condition.quoted[i]) or (parser.strings[condition.keyword] and not tonumber(value)) or value:find("%s")) and filters.quote(value) or value end
+		local values={};for i,value in ipairs(condition.values) do values[#values+1]=not parser.countExactMarker(condition,i) and ((condition.quoted and condition.quoted[i]) or (parser.strings[condition.keyword] and not tonumber(value)) or value:find("%s")) and filters.quote(value) or value end
 		local count=(condition.keyword=="HasExplicitMod" or condition.keyword=="HasEnchantment") and not (condition.quoted and condition.quoted[1]) and tonumber(condition.values[1])
 		lines[#lines+1]="    "..condition.keyword.." "..condition.operator..(count and "" or " ")..table.concat(values," ")
 	end

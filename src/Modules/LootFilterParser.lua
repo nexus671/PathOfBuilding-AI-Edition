@@ -13,6 +13,13 @@ M.booleans={Identified=true,Corrupted=true,TwiceCorrupted=true,Mirrored=true,Fra
 	BlightedMap=true,UberBlightedMap=true,Replica=true,Scourged=true,HasImplicitMod=true,AnyEnchantment=true,HasCruciblePassiveTree=true,Foulborn=true,Fated=true,Exceptional=true,TransfiguredGem=true,AlternateQuality=true,Imbued=true,Vestigial=true,ZanaMemory=true,MirageMap=true}
 M.strings={Class=true,BaseType=true,HasInfluence=true,HasExplicitMod=true,HasEnchantment=true,EnchantmentPassiveNode=true,Prophecy=true,ArchnemesisMod=true,GemQualityType=true}
 local rarity={Normal=0,Magic=1,Rare=2,Unique=3}
+-- Some filters put a second operator after a modifier count. Preserve it as
+-- syntax, not a quoted modifier name; its combined semantics need verification.
+function M.countExactMarker(condition,index)
+	return (condition.keyword=="HasExplicitMod" or condition.keyword=="HasEnchantment")
+		and index==2 and not (condition.quoted and (condition.quoted[1] or condition.quoted[2]))
+		and tonumber(condition.values[1])~=nil and condition.values[2]=="=="
+end
 function M.tokens(line)
 	local out,quoted={},{};local pos=1
 	while pos<=#line do
@@ -105,6 +112,7 @@ local function socketMatch(value,pattern,op)
 end
 function M.condition(c,item)
 	if not c.known then return nil,"Unsupported condition "..c.keyword end
+	if M.countExactMarker(c,2) then return nil,"Modifier count with a separate exact-match operator is not yet verified" end
 	if c.keyword=="HasExplicitMod" and item.Identified~=true then
 		return nil,item.Identified==false and "Explicit modifiers are hidden on unidentified items" or "Supply identification state for explicit modifiers"
 	end

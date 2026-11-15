@@ -70,7 +70,7 @@ function M.Conditions(rule,save)
 	button(c,"keepRule",16,h-48,140,"Keep rule",function() attempt(function()
 		local lines={c.action:GetSelValue()};for _,condition in ipairs(conditions) do
 			assert(not condition.invalid,"Close every quoted condition value")
-			local controlValues={};for i,value in ipairs(condition.values) do controlValues[#controlValues+1]=((condition.quoted and condition.quoted[i]) or (parser.strings[condition.keyword] and not tonumber(value)) or value:find("%s")) and filters.quote(value) or value end
+			local controlValues={};for i,value in ipairs(condition.values) do controlValues[#controlValues+1]=not parser.countExactMarker(condition,i) and ((condition.quoted and condition.quoted[i]) or (parser.strings[condition.keyword] and not tonumber(value)) or value:find("%s")) and filters.quote(value) or value end
 			assert(#controlValues>0,"Every condition needs a value")
 			local count=(condition.keyword=="HasExplicitMod" or condition.keyword=="HasEnchantment") and not (condition.quoted and condition.quoted[1]) and tonumber(condition.values[1])
 			if count then lines[#lines+1]="    "..condition.keyword.." "..condition.operator..table.concat(controlValues," ")

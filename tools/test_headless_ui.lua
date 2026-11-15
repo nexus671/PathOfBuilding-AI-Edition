@@ -1050,6 +1050,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(saved.text:find('HasExplicitMod >=2 "Haast" "Ephij"',1,true),"Rule editor separated the modifier count operator")
 	end
 	do
+		local saved;local raw='Hide\n HasExplicitMod >=2 == "Polar" "Shocking"'
+		require("Classes.LootFilterControl").Conditions({id="exact-count",title="Exact modifier count",text=raw},function(rule) saved=rule end)
+		frame("filter-exact-modifier-count-editor");ui:click("keepRule")
+		assert(saved.text:find('HasExplicitMod >=2 == "Polar" "Shocking"',1,true),"Rule editor changed the exact marker")
+		local parser=require("Modules.LootFilterParser");local result=parser.simulate(parser.parse(saved.text.."\nShow"),{Identified=true,HasExplicitMod={"of the Polar Bear","Shocking"}})
+		assert(result.status=="unknown" and result.reasons[1]:find("exact%-match operator"),"Exact modifier count preview must be uncertain")
+	end
+	do
 		local control=require("Classes.LootFilterControl");local original={id="silent",title="Silent",text='Show\n HasExplicitMod >=2 "Haast" "Ephij"'}
 		local function check(rule) assert(rule.text:find('HasExplicitMod >=2 "Haast" "Ephij"',1,true) and rule.text:find('PlayAlertSound None',1,true) and rule.text:find('CustomAlertSound "None"',1,true),"Silent rule lost its conditions or disable actions") end
 		local saved;control.EditRule(original,function(rule) saved=rule end);ui:choose("sound","Silent");ui:click("keepRule");check(saved)
