@@ -169,7 +169,7 @@ function M.connect(plan,targets,avoid,checkpoint)
 	local result=M.validate(plan);local reachable,why=budgetReachabilityChecked(result);assert(reachable~=false,why)
 	return result,additions
 end
--- Retain existing allocations. Compare bounded orders, then solve up to four
+-- Retain existing allocations. Compare bounded orders, then solve up to six
 -- unallocated targets exactly. An invalid baseline must not prevent a valid reorder.
 function M.connectOptimized(plan,targets,avoid,options)
 	options=options or {};plan=M.validate(plan);array(targets,300,"Atlas targets")
@@ -222,8 +222,9 @@ function M.connectOptimized(plan,targets,avoid,options)
 	-- A small target set can be solved exactly, including shared paths between
 	-- targets. Larger requests retain the bounded order search above.
 	local exact=false
-	if options.exact~=false and #targets<=4 then
-		local found=require("Modules.AtlasExactRoute").find(tree,allocated,blocked,targets,options.checkpoint)
+	local solver=require("Modules.AtlasExactRoute")
+	if options.exact~=false and #targets<=solver.maxTargets then
+		local found=solver.find(tree,allocated,blocked,targets,options.checkpoint)
 		if found then
 			local candidate=copyTable(plan);local set=copyTable(allocated)
 			for id in pairs(found) do set[id]=true end;set[tree.start]=nil;candidate.nodes=sorted(set)

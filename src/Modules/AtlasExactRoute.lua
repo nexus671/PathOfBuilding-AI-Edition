@@ -1,12 +1,12 @@
--- Minimum added-node Steiner route for at most four targets. Existing connected
+-- Minimum added-node Steiner route for at most six targets. Existing connected
 -- allocations have zero cost, and avoided nodes are excluded from the graph.
 local bit=require("bit")
-local M={}
+local M={maxTargets=6}
 
 function M.find(tree,allocated,blocked,targets,checkpoint)
 	local unique,seen={},{}
 	for _,id in ipairs(targets) do if not allocated[id] and not seen[id] then unique[#unique+1]=id;seen[id]=true end end
-	if #unique>4 then return nil end
+	if #unique>M.maxTargets then return nil end
 	if #unique==0 then return {} end
 	local nodes={};for id in pairs(tree.nodes) do if not blocked[id] then nodes[#nodes+1]=id end end;table.sort(nodes)
 	local distance,trace={},{};local full=2^#unique-1;local operations=0

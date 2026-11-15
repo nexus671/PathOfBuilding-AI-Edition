@@ -381,7 +381,7 @@ async function main(){
   assert.equal(ruthlessRoute.atlas.plan.version,ruthlessVersion);assert.ok(ruthlessRoute.atlas.plan.nodes.includes(57123));
   assert.equal(ruthlessRoute.atlas.officialUrl,undefined);assert.match(ruthlessRoute.atlas.officialUrlWarning,/not verified/);
   const atlasSearch=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.29.1',query:'Essence',limit:10},'atlas');
-  const atlasTargets=atlasSearch.atlas.matches.slice(0,3).map(node=>node.id);assert.equal(atlasTargets.length,3);
+  const atlasTargets=atlasSearch.atlas.matches.slice(0,6).map(node=>node.id);assert.equal(atlasTargets.length,6);
   const atlasRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:starterAtlas,targets:atlasTargets,optimize:true},'atlas');
   assert.equal(atlasRoute.atlas.routing.heuristic,false);assert.ok(atlasRoute.atlas.routing.attempts>=1);
   assert.ok(atlasTargets.every(id=>atlasRoute.atlas.plan.nodes.includes(id)));assert.equal((await call('get_build_context')).context.revision,context.revision);

@@ -36,11 +36,28 @@ describe("Exact small Atlas routes",function()
 	end
 	it("matches exhaustive graph search with shared paths, allocations and exclusions",function()
 		local tree=graph({{1,2},{2,3},{3,4},{1,5},{5,6},{6,4},{2,7},{7,8},{6,8},{3,9},{8,9}})
-		for _,case in ipairs({{{[1]=true},{},{4,8,9}},{{[1]=true,[2]=true},{},{4,6,9}},{{[1]=true},{[3]=true},{4,8}},{{[1]=true},{[2]=true,[6]=true},{4,9}},{{[1]=true},{},{4,6,8,9}}}) do
+		for _,case in ipairs({{{[1]=true},{},{4,8,9}},{{[1]=true,[2]=true},{},{4,6,9}},{{[1]=true},{[3]=true},{4,8}},{{[1]=true},{[2]=true,[6]=true},{4,9}},{{[1]=true},{},{4,6,8,9}},{{[1]=true},{},{4,5,6,7,8,9}},{{[1]=true},{[3]=true},{4,5,6,7,8,9}}}) do
 			local actual=exact.find(tree,case[1],case[2],case[3]);local expected=brute(tree,case[1],case[2],case[3]);local count=0
 			if actual then for _ in pairs(actual) do count=count+1 end end
 			assert.equal(expected,actual and count or nil);assertConnected(tree,case[1],case[2],case[3],actual)
 		end
+	end)
+	it("solves six distinct targets on the bundled tree and retains checkpoints",function()
+		local p={id="six",title="Six",version="3.30.0-preview",budget=150,nodes={},notes=""}
+		local ids={53175,34352,14203,63753,57123,55003};local checkpoints=0
+		local route,added,info=atlas.connectOptimized(p,ids,nil,{checkpoint=function(progress) if progress.phase=="exact" then checkpoints=checkpoints+1 end end})
+		assert.is_false(info.heuristic);assert.is_true(checkpoints>0)
+		local present={};for _,id in ipairs(route.nodes) do present[id]=true end;for _,id in ipairs(ids) do assert.is_true(present[id]) end
+		local _,greedy=atlas.connect(p,ids);assert.is_true(#added<=#greedy)
+		local tree=atlas.tree(p.version);assert.is_nil(exact.find(tree,{[tree.start]=true},{},{53175,34352,14203,63753,57123,55003,23827}))
+	end)
+	it("keeps six-target route calculation resumable",function()
+		local jobs=require("Modules.AtlasTargets");local owner={}
+		local p={id="sliced",title="Sliced",version="3.30.0-preview",budget=150,nodes={},notes="",desired={53175,34352,14203,63753,57123,55003}}
+		local job=jobs.start(owner,p,false);local ticks=0
+		while job.thread and ticks<5000 do jobs.tick(owner,true);ticks=ticks+1 end
+		assert.is_nil(job.error);assert.is_truthy(job.result);assert.is_false(job.result.routing.heuristic);assert.is_true(ticks>1)
+		jobs.reset(owner)
 	end)
 	it("matches exhaustive search across many small graph shapes",function()
 		for seed=1,48 do
