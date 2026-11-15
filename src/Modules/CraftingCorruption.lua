@@ -15,6 +15,17 @@ function C.extend(M,A,api)
 		if flags.prefixes or flags.suffixes or flags.attack or flags.caster then return "Locus meta-modifier interactions need additional validation" end
 		for _,entry in ipairs(state.affixes) do if entry.fractured then return "Locus influence outcomes on fractured bases need additional validation" end end
 		if model.item.synthesised or model.item.baseName=="Sacrificial Garb" then return "This special Locus transformation is not modeled" end
+		if model.item.type=="Jewel" then
+			local retained=state.corruptedImplicits or {}
+			for removed=1,(#retained==2 and 2 or 1) do
+				local groups={};for index,entry in ipairs(retained) do if #retained<2 or index~=removed then for _,group in ipairs(metadata[entry.id].groups) do groups[group]=true end end end
+				local possible=false;for _,entry in ipairs(model.corruptions) do
+					local legal=true;for _,group in ipairs(metadata[entry.id].groups) do if groups[group] then legal=false;break end end
+					if legal then possible=true;break end
+				end
+				if not possible then return "The current corruption pool has no compatible additional jewel implicit." end
+			end
+		end
 	end
 	function M.implicitTargetReason(model,state,targets)
 		if model and (model.unresolvedCorruption or model.unresolvedEldritch) and not state.destroyed and not state.veil and not state.corruptedImplicits and not state.implicits then
@@ -101,7 +112,7 @@ function C.extend(M,A,api)
 		-- Missing markers inherit the starting text; explicit false is a manual override.
 		if state.corrupted==nil and model.initial.corrupted then state=copyTable(state);state.corrupted=true end
 		if state.twiceCorrupted==nil and state.corrupted and model.initial.twiceCorrupted then state=copyTable(state);state.twiceCorrupted=true end
-		if state.corrupted and not state.corruptedImplicits and not state.implicits and not state.vendorImplicit and not state.baseImplicitRanges and model.initial.corruptedImplicits then
+		if not state.destroyed and state.corrupted and not state.corruptedImplicits and not state.implicits and not state.vendorImplicit and not state.baseImplicitRanges and model.initial.corruptedImplicits then
 			state=copyTable(state);state.corruptedImplicits=copyTable(model.initial.corruptedImplicits)
 		end
 		assert(state.twiceCorrupted==nil or type(state.twiceCorrupted)=="boolean","Invalid twice-corruption marker")
@@ -152,7 +163,7 @@ function C.extend(M,A,api)
 				end
 				state.corrupted=true;state.imprint=nil;return state
 			end
-			assert(model.item.type ~= "Jewel" and model.item.type ~= "Flask" and model.item.type ~= "Tincture","This corruption model supports equipment, Abyss and cluster jewels, and flask Vaal Orbs")
+			assert((model.item.type ~= "Jewel" or method=="locus") and model.item.type ~= "Flask" and model.item.type ~= "Tincture","This corruption model supports equipment, jewel Locus corruption, Abyss and cluster jewel Vaal Orbs, and flask Vaal Orbs")
 			if method == "locus" then
 				local reason=M.methodChecks.locus(model,state);assert(not reason,reason)
 			end

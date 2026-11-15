@@ -89,6 +89,37 @@ describe("Corrupted jewel implicit import",function()
    end
   end
  end)
+ it("models jewel Locus branches and preserves existing implicits",function()
+  local cases={"Rarity: NORMAL\nCobalt Jewel\nItem Level: 86","Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86","Rarity: NORMAL\nLarge Cluster Jewel\nItem Level: 86\nCluster Jewel Skill: affliction_axe_and_sword_damage\nCluster Jewel Node Count: 8\nImplicits: 2\n{crafted}Adds 8 Passive Skills\n{crafted}Added Small Passive Skills grant: 12% increased Axe and Sword Damage"}
+  for _,raw in ipairs(cases) do
+   local model=sim.model(raw);local input=copyTable(model.initial);sim.rollCorrupted(model,input,function() return 0.1 end,1)
+   local original=input.corruptedImplicits[1].id;assert.is_true(require("Modules.CraftingAvailability").check("locus",input,model))
+   for _,draw in ipairs({0.1,0.3,0.6,0.9}) do
+    local state=sim.action(model,input,{method="locus"},function() return draw end);sim.validateState(model,state)
+    if draw==0.1 then
+     assert.is_true(state.twiceCorrupted);assert.equal(2,#state.corruptedImplicits);assert.equal(original,state.corruptedImplicits[1].id);assert.is_not.equal(original,state.corruptedImplicits[2].id)
+     local reopened=sim.model(sim.toItem(model,state).raw);assert.is_true(reopened.initial.twiceCorrupted)
+     if model.item.clusterJewel then assert.equal(model.item.clusterJewelSkill,reopened.item.clusterJewelSkill);assert.equal(8,reopened.item.clusterJewelNodeCount) end
+    elseif draw==0.3 then assert.is_true(state.twiceCorrupted);assert.equal(original,state.corruptedImplicits[1].id)
+    else assert.is_true(state.destroyed) end
+   end
+   local warnings=sim.actionWarnings({method="locus"},model);assert.matches("25%% no change",warnings[1].message)
+   local trial=sim.simulate(raw,{steps={{method="locus"}},targets={{scope="implicit",anyOf={original}}}},{initialState=input,trials=8,maxActions=1,forceFirstAction=true,seed=5})
+   assert.matches("25%% no change",trial.warnings[1].message)
+   local isolated={};for key,value in pairs(model) do isolated[key]=value end;isolated.corruptions={{id=original,weight=1}}
+   assert.matches("no compatible",sim.methodChecks.locus(isolated,input))
+   local pair=copyTable(input);sim.rollCorrupted(model,pair,function() return 0.7 end,1,pair.corruptedImplicits)
+   for _,selection in ipairs({0.1,0.9}) do
+    local n=0;local replaced=sim.action(model,pair,{method="locus"},function() n=n+1;return n==1 and 0.1 or n==2 and selection or 0.5 end)
+    assert.equal(2,#replaced.corruptedImplicits);assert.equal(pair.corruptedImplicits[selection<0.5 and 2 or 1].id,replaced.corruptedImplicits[1].id)
+    sim.validateState(model,replaced)
+   end
+  end
+ end)
+ it("does not restore imported implicits onto a destroyed jewel",function()
+  local model=sim.model(raw("Searching Eye Jewel"));local destroyed=sim.action(model,model.initial,{method="locus"},function() return 0.9 end)
+  assert.is_true(destroyed.destroyed);local validated=sim.validateState(model,destroyed);assert.is_nil(validated.corruptedImplicits)
+ end)
  it("retains uniquely identifiable legacy implicits without generating them",function()
   local text="Rarity: MAGIC\nCobalt Jewel\nItem Level: 86\nImplicits: 1\n4% reduced Chill Duration on you\nCorrupted"
   local legacy="ReducedChillDurationJewelCorrupted";local model=sim.model(text);assert.is_nil(model.unresolvedCorruption)

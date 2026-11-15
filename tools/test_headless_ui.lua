@@ -735,6 +735,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(c.apply:IsEnabled() and c.apply.tooltipText():find("unverified",1,true),"Cluster Vaal assumptions were not disclosed")
 		frame("crafting-cluster-vaal","apply");ui:click("apply");assert(c.intro.label:find("Applied Vaal Orb",1,true),"Cluster jewel Vaal action failed");ui:click("close")
 	end
+	do
+		local p={id="jewel-locus-ui",title="Jewel second corruption",slot="Jewel 1",startingItem="Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86\nImplicits: 1\nCorrupted Blood cannot be inflicted on you\nCorrupted",goals={},steps={},preferredMethod="locus"}
+		require("Classes.CraftingSimulatorControl").Open(build,p);local c=main.popups[1].controls
+		assert(c.apply:IsEnabled() and c.apply.tooltipText():find("unverified",1,true),"Jewel Locus assumptions were not disclosed")
+		frame("crafting-jewel-locus","apply");ui:click("apply");assert(c.intro.label:find("Applied Locus of Corruption",1,true),"Jewel Locus action failed");ui:click("close")
+	end
 	local project={id="headless-ui",title="Headless crafting check",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: R-G-B",
 		goals={"Life and resistances"},steps={{action="Inspect native crafting"}}}
 	build.savers.CraftingProjects:Upsert(project)
