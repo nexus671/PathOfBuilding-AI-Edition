@@ -46,8 +46,10 @@ describe("Corrupted jewel implicit import",function()
    local recipe={steps={{method="vaal"}},targets={},requirements={minAffixes=4,corrupted=true}}
    local result=sim.simulate(model.raw,recipe,{trials=12,maxActions=1,seed=3})
    assert.equal("abyss_vaal_assumptions",result.warnings[1].code)
+   assert.matches("unique%-jewel outcome is modeled as no change",result.warnings[1].message)
    local odds=sim.calculate(model.raw,{method="vaal"},{},nil,{requirements=recipe.requirements,trials=12,seed=3})
    assert.is_true(odds.sampled);assert.equal("abyss_vaal_assumptions",odds.warnings[1].code)
+   assert.matches("unique%-jewel outcome is modeled as no change",odds.warnings[1].message)
    assert.matches("unverified",require("Modules.CraftingWorkbench").hint("vaal",model.initial,model))
   end
  end)
@@ -67,9 +69,10 @@ describe("Corrupted jewel implicit import",function()
    if draw==0.1 then assert.equal(1,#state.corruptedImplicits);assert.equal(state.corruptedImplicits[1].id,reopened.initial.corruptedImplicits[1].id)
    elseif draw==0.55 then assert.equal("RARE",state.rarity);assert.is_true(#state.affixes<=4);assert.equal(#state.affixes,#reopened.initial.affixes) end
   end
-  local warnings=sim.actionWarnings({method="vaal"},model);assert.equal("cluster_vaal_assumptions",warnings[1].code)
+  local warnings=sim.actionWarnings({method="vaal"},model);assert.equal("cluster_vaal_assumptions",warnings[1].code);assert.matches("unique%-jewel outcome is modeled as no change",warnings[1].message)
   local result=sim.simulate(raw,{steps={{method="vaal"}},targets={},requirements={minAffixes=4,corrupted=true}},{trials=12,maxActions=1,seed=3})
   assert.equal("cluster_vaal_assumptions",result.warnings[1].code)
+  assert.matches("unique%-jewel outcome is modeled as no change",result.warnings[1].message)
   local odds=sim.calculate(raw,{method="vaal"},{},nil,{requirements={minAffixes=4,corrupted=true},trials=12,seed=3})
   assert.is_true(odds.sampled);assert.equal("cluster_vaal_assumptions",odds.warnings[1].code)
  end)
