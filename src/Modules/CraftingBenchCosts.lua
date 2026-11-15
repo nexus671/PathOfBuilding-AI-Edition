@@ -2,14 +2,19 @@
 local B={}
 local index
 local function normalise(text)
+	-- Client descriptions include display links; native PoB modifiers contain
+	-- only their visible text. Ignore those links and capitalization when
+	-- comparing otherwise identical effects.
+	text=text:gsub("%[([^%[%]]+)%]",function(link) return link:match("|([^|]+)$") or link end)
 	-- The client renamed these effects without changing their meaning. Saved
 	-- plans and the native bench catalogue still use the older wording.
 	if text=="Prefix Modifiers cannot be changed" then text="Prefixes Cannot Be Changed" end
 	if text=="Suffix Modifiers cannot be changed" then text="Suffixes Cannot Be Changed" end
-	return text:gsub("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)",function(a,b)
+	text=text:gsub("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)",function(a,b)
 		if tonumber(a)>tonumber(b) then a,b=b,a end
 		return "("..a.."-"..b..")"
 	end)
+	return text:lower()
 end
 local function signature(text,level,kind,class)
 	return normalise(text).."\0"..tostring(level).."\0"..kind:lower().."\0"..class

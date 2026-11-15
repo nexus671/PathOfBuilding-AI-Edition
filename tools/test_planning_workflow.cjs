@@ -123,6 +123,9 @@ async function main(){
   assert.ok(attributeBench);assert.deepEqual(attributeBench.components,{'Metadata/Items/Currency/CurrencyRerollMagic':3});assert.equal(attributeInspection.crafting.nativeEngine.benchCostClient.version,'3.30.0.1.4');
   const attributePlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:bodyRaw,recipe:{steps:[{method:'bench',modId:attributeBench.id}],targets:[],requirements:{minAffixes:1}},options:{trials:2,maxActions:1,currency:'chaos',prices:{'Metadata/Items/Currency/CurrencyRerollMagic':0.5}}},'crafted');
   assert.equal(attributePlan.nativeCrafting.meanCost,1.5);assert.equal(attributePlan.nativeCrafting.currencySpent['Metadata/Items/Currency/CurrencyRerollMagic'],6);
+  const wolfInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nGold Amulet\nItem Level: 86',query:'Summon Spectral Wolf',limit:100},'inspected');
+  const wolfBench=wolfInspection.crafting.nativeEngine.bench.find(entry=>entry.costSources?.includes('JunMaster2WolfOnKill1'));
+  assert.ok(wolfBench);assert.deepEqual(wolfBench.components,{'Metadata/Items/Currency/CurrencyRerollRare':3});
   const annulOddsRaw='Rarity: NORMAL\nDriftwood Wand\nItem Level: 86';
   const annulOddsState={rarity:'RARE',affixes:[{id:'LocalAddedChaosDamage1',range:0.5},{id:'bench:731',range:0.5,crafted:true}]};
   const annulOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:annulOddsRaw,action:{method:'annul'},initialState:annulOddsState,targets:[{anyOf:['LocalAddedChaosDamage1']}]},'crafted');
