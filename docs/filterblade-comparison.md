@@ -28,7 +28,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Loot generator | Deterministic example scenes, including maps, threads, flasks, tinctures, cards, essences and build targets. Base drop levels and inventory sizes use the pinned 3.30.0.1.4 client export; ambiguous values, unique drop levels and unspecified gear sockets remain unknown | Representative drop distributions and more encounter presets |
 | Hidden-drop display | Simulator toggle and searchable scene review with shown, minimal, hidden and uncertain counts | Counts describe examples, not drop rates |
 | Click a simulated item | Explains results and opens matched blocks for editing | More unknown-property guidance |
-| Item configuration | Editable properties and native game-clipboard import, including drop level and inventory dimensions | Hidden identities are never inferred |
+| Item configuration | Editable properties and native game-clipboard import. Known base drop level and dimensions come from pinned data; ambiguous values remain unknown | Hidden identities are never inferred |
 | Item history | Session history plus persistent named sets of exact sample properties | More encounter sample presets |
 | Generator level settings | Shared area/item-level controls and a tiered-gear comparison scene | More encounter-specific samples |
 | Expensive-drop generation | Currency scene and exact custom samples | A separate expensive-item mode based on verified tiers |

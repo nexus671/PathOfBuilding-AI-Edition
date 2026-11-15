@@ -1171,7 +1171,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("sceneKind","Tiered gear");assert(not build.planningWorkspace.controls.regenerate:IsEnabled(),"Tier comparison should not offer no-op regeneration");assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.BaseType=="Iron Hat","Tier comparison did not select its own example");frame("filter-tiered-gear");ui:choose("sceneKind","Mixed drops");ui.clipboard="Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86\nShaper Item\nElder Item";ui:click("pasteDrop")
 	ui:click("sceneStats");assert(main.popups[#main.popups].controls.category,"Drop review did not open its result browser");frame("filter-drop-review");ui:click("choose")
 	local pasted=build.planningWorkspace.cache.filters.layout.snapshot().sample;assert(pasted.ShaperItem and pasted.ElderItem and #pasted.HasInfluence==2,"Pasted influences were not retained")
+	assert(pasted.DropLevel==1 and pasted.Width==2 and pasted.Height==2,"Pasted base properties were not populated")
 	ui.clipboard="Item Class: Stackable Currency\nRarity: Currency\nChaos Orb\n--------\nStack Size: 7/20";ui:click("pasteDrop");frame("filter-copied-item")
+	local currency=build.planningWorkspace.cache.filters.layout.snapshot().sample;assert(currency.DropLevel==12 and currency.Width==1 and currency.Height==1,"Pasted currency base properties were not populated")
+	ui:click("sampleEdit");assert(main.popups[1].controls.DropLevel.buf=="12" and main.popups[1].controls.Width.buf=="1", "Pasted base properties were not editable");frame("filter-copied-base-properties");ui:click("cancel")
 	ui:click("sceneSettings");ui:text("areaLevel","72");ui:text("itemLevel","75");ui:choose("background","Dark");frame("filter-scene-settings");ui:click("keepScene")
 	ui:click("sampleHistory");frame("filter-sample-history");ui:click("choose");ui:click("inspectMatch");frame("filter-matched-rules");ui:click("close")
 	local savedArea=build.planningWorkspace.cache.filters.layout.snapshot().sample.AreaLevel

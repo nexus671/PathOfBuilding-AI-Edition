@@ -5,17 +5,20 @@ local parser=require("Modules.LootFilterParser")
 local sha1=require("sha1")
 local M={categories={"All items","Build targets","Campaign","Currency","Special currency","Equipment","Unique items","Flasks","Tinctures","Jewels","Divination cards","Maps & fragments","Gems","Recipes","League items","Other"}}
 local baseMetadata
-local function applyBaseProperties(item,preserveSockets)
+function M.baseProperties(name,rarity)
 	if not baseMetadata then
 		local file=assert(io.open("Data/LootFilters/base-metadata.json","rb"));local raw=file:read("*a");file:close()
 		baseMetadata=assert(require("dkjson").decode(raw)).bases
 	end
-	local base=baseMetadata[item.BaseType] or {}
+	local base=baseMetadata[name] or {}
 	-- A missing or ambiguous client record is unknown, rather than a generic 1.
-	item.DropLevel=base.DropLevel;item.Width=base.Width;item.Height=base.Height
 	-- A unique item's drop level can differ from its base, and the scene does
 	-- not identify the unique. Keep it unknown rather than using the base level.
-	if item.Rarity=="Unique" then item.DropLevel=nil end
+	return {DropLevel=rarity~="Unique" and base.DropLevel or nil,Width=base.Width,Height=base.Height}
+end
+local function applyBaseProperties(item,preserveSockets)
+	local base=M.baseProperties(item.BaseType,item.Rarity)
+	item.DropLevel=base.DropLevel;item.Width=base.Width;item.Height=base.Height
 	local native=data and data.itemBases and data.itemBases[item.BaseType]
 	local noSockets={ ["Stackable Currency"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
 	local limit=native and (native.socketLimit or 0)

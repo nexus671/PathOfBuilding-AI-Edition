@@ -1,4 +1,5 @@
--- Read visible clipboard properties only. Hidden affix identities remain unknown.
+-- Read visible clipboard properties and unambiguous pinned base properties.
+-- Hidden affix identities remain unknown.
 -- cspell:ignore RGBWAD
 local M={}
 function M.parse(raw,area)
@@ -26,6 +27,8 @@ function M.parse(raw,area)
 	local item={BaseType=base,Class=class,Rarity=assert(mapped[rarity:lower()],"Unsupported clipboard rarity"),AreaLevel=area,
 		Identified=not markers.Unidentified and tier==nil,Corrupted=markers.Corrupted==true or markers["Twice Corrupted"]==true,
 		TwiceCorrupted=markers["Twice Corrupted"]==true,Mirrored=markers.Mirrored==true}
+	local properties=require("Modules.LootFilterLibrary").baseProperties(item.BaseType,item.Rarity)
+	item.DropLevel=properties.DropLevel;item.Width=properties.Width;item.Height=properties.Height
 	if tier and tier>=0 and tier<=5 then item.UnidentifiedItemTier=tier end
 	-- Ordinary equipment copies list each influence on a separate marker line.
 	-- Unique items and maps can carry special influence effects; do not infer
