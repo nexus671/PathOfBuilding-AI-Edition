@@ -25,6 +25,9 @@ function M.catalog(model)
 	for _,entry in ipairs(model.influencePool or {}) do add(entry.id,entry.mod,"Influence",entry.weight) end
 	for _,entry in ipairs(model.bench) do add(entry.id,entry.mod,"Bench") end
 	for _,entry in ipairs(model.essences) do add(entry.modId,model.descriptions330[entry.modId] or model.byId[entry.modId],"Essence") end
+	for _,id in ipairs(model.dropOnlyIds or {}) do
+		if not seen[id] then add(id,model.byId[id],"Special");rows[#rows].dropOnly=true end
+	end
 	for id in pairs(model.special or {}) do add(id,(model.corruptions330 or {})[id] or model.byId[id],"Special") end
 	local families={}
 	for _,row in ipairs(rows) do if row.source=="Natural" or row.source=="Influence" then local key=row.type..":"..table.concat(row.groups,":")..":"..row.source;row.family=key;families[key]=families[key] or {};families[key][row.level]=true end end
@@ -49,6 +52,7 @@ function M.inspect(model,state)
 		if row.source=="Natural" or row.source=="Influence" then
 			for _,tag in ipairs({"attack","caster"}) do if flags[tag] and has(row.tags,tag) then reasons[#reasons+1]="Cannot roll "..tag.." modifiers" end end
 		end
+		if row.dropOnly then reasons[#reasons+1]="Drop-only modifier; current availability is not verified" end
 		if weight==0 and #reasons==0 then reasons[1]=(row.source=="Natural" or row.source=="Influence") and "Not in the current base/influence pool" or row.source.." crafting source; outside the ordinary draw pool" end
 		-- A positive engine weight is authoritative for this pool, including its special rules.
 		if weight>0 then reasons={} end

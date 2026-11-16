@@ -36,4 +36,17 @@ describe("Drop-only Incursion modifier import",function()
 		local state=copyTable(model.initial);state.affixes[#state.affixes+1]={id=fire,range=0.5}
 		assert.has_error(function() sim.validateState(model,state) end)
 	end)
+	it("exposes drop-only identities in the hypothetical editor and special modifier browser",function()
+		newBuild();main.popups={}
+		local model=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86");local id="FireResistEnhancedLevel50ModPhys"
+		local found;for _,row in ipairs(require("Modules.CraftingModifiers").inspect(model,model.initial).rows) do if row.id==id then found=row end end
+		assert.equal("Special",assert(found).source);assert.is_false(found.eligible);assert.equal(0,found.weight)
+		assert.matches("current availability is not verified",table.concat(found.reasons," "),1,true)
+		local saved;local editor=require("Classes.CraftingItemEditorControl").Open(model,model.initial,function(state) saved=state end)
+		editor.modifier:SelByValue(id,"val");assert.equal(id,editor.modifier:GetSelValueByKey("val"))
+		local details={};editor.modifier.tooltipFunc({AddLine=function(_,_,line) details[#details+1]=line end})
+		assert.matches("Physical Damage from Hits taken as Fire Damage",table.concat(details," "),1,true)
+		editor.rarity:SelByValue("MAGIC");editor.properties:Click();editor.add:Click();editor.keep:Click()
+		assert.equal(id,assert(saved).affixes[1].id);main.popups={}
+	end)
 end)

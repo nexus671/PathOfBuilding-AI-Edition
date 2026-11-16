@@ -19,8 +19,9 @@ function Panel.Open(model,input,onKeep)
 	end
 	controls.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,28,0,14},"Manual edits establish a new recipe start. Cancel discards all edits.")
 	controls.current=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,62,744,24},{})
-	local candidates={};local seen={}
+	local candidates={};local seen={};local dropOnly={};for _,id in ipairs(model.dropOnlyIds or {}) do dropOnly[id]=true end
 	local function source(id)
+		if dropOnly[id] then return "Drop-only / may be legacy | " end
 		if model.legacyAbyss and model.legacyAbyss[id] then return "Legacy | " end
 		if model.unveiledJewels and model.unveiledJewels[id] then
 			local eye=id:match("^JunMasterVeiledAbyss(Murderous)ImpaleEffect$") or id:match("^JunMasterVeiledAbyss(Searching)ImpaleEffect$")
@@ -36,10 +37,18 @@ function Panel.Open(model,input,onKeep)
 	for _,entry in ipairs(model.mods) do add(entry.id) end
 	for _,entry in ipairs(model.bench) do add(entry.id) end
 	for _,entry in ipairs(model.essences) do add(entry.modId) end
+	for _,id in ipairs(model.dropOnlyIds or {}) do add(id) end
 	for id in pairs(model.unveiledJewels or {}) do add(id) end
 	for _,entry in ipairs(state.affixes) do add(entry.id) end
 	table.sort(candidates,function(a,b) return a.label < b.label end)
 	controls.modifier=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,108,744,24},candidates)
+	controls.modifier.tooltipFunc=function(tooltip)
+		local id=controls.modifier:GetSelValueByKey("val");local mod=id and model.byId[id]
+		if mod then
+			if dropOnly[id] then tooltip:AddLine(14,"Drop-only modifier; current availability is not verified.") end
+			for _,line in ipairs(mod) do tooltip:AddLine(14,line) end
+		end
+	end
 	edit("roll",16,154,180,50,"Roll % (0-100)")
 	controls.fractured=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{212,154,220,24},{"Not fractured","Fractured"})
 	local function refresh()

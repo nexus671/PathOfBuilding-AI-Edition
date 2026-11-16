@@ -55,6 +55,9 @@ async function main(){
   assert.equal(incursion.nativeCrafting.state.affixes[0].id,'FireResistEnhancedLevel50ModPhys');
   const incursionOptions=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:incursionRaw,query:'Fire Resistance',limit:100},'inspected');
   assert.ok(incursionOptions.crafting.nativeEngine.bench.some(entry=>!entry.available && /group is already present/.test(entry.unavailableReason || '')));
+  const dropInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'FireResistEnhancedLevel50ModPhys',limit:10},'inspected');
+  const dropRow=dropInspection.crafting.nativeEngine.modifierTable.rows.find(row=>row.id==='FireResistEnhancedLevel50ModPhys');
+  assert.equal(dropRow.source,'Special');assert.equal(dropRow.weight,0);assert.equal(dropRow.eligible,false);
   const incursionState={...incursion.nativeCrafting.state};delete incursionState.origin;
   const restoredIncursion=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:incursionState,action:{method:'divine'},seed:1},'crafted');
   assert.equal(restoredIncursion.nativeCrafting.state.affixes[0].id,'FireResistEnhancedLevel50ModPhys');
