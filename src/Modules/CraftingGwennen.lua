@@ -1,10 +1,11 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1012]=true,[1014]=true,[1015]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1029]=true,[1041]=true,[1042]=true}
+local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1012]=true,[1014]=true,[1015]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1029]=true,[1041]=true,[1042]=true}
 local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
 function G.supports(id) return supported[id]==true end
+function G.supportedCount() local count=0;for _ in pairs(supported) do count=count+1 end;return count end
 function G.deterministic(id) return deterministic[id] end
 function G.isDiscrete(id) return deterministic[id]~=nil or id==1004 or id==1006 or id==1007 or id==1023 or id==1026 or id==1041 end
 -- Enumerate removal sets without multiplying equivalent removal orders.
@@ -96,6 +97,23 @@ function G.extend(M,api)
 				for _,entry in ipairs(pool) do pick=pick-entry.weight;if pick<0 then result.affixes[#result.affixes+1]={id=entry.id,range=M.rollRange(model.byId[entry.id],draw)};return result end end
 				error("Could not select a modifier")
 			end
+			if id==1018 or id==1019 then
+				local result=copyTable(input);local side=id==1018 and "Prefix" or "Suffix";local count=0
+				for index=#result.affixes,1,-1 do if model.byId[result.affixes[index].id].type==side then table.remove(result.affixes,index);count=count+1 end end
+				assert(count>0,"No "..side:lower().." modifiers to reroll")
+				-- Rog's comparable reroll preserves the number on that side. Its
+				-- application to Gwennen and modifier weights are assumptions.
+				for _=1,count do
+					local pool,total={},0
+					for _,entry in ipairs(M.pool(model,result)) do if model.byId[entry.id].type==side then pool[#pool+1]=entry;total=total+entry.weight end end
+					assert(total>0,"No legal "..side:lower().." modifier can be added")
+					local pick=draw()*total;local selected
+					for _,entry in ipairs(pool) do pick=pick-entry.weight;if pick<0 then selected=entry;break end end
+					assert(selected,"Could not select a modifier")
+					result.affixes[#result.affixes+1]={id=selected.id,range=M.rollRange(model.byId[selected.id],draw)}
+				end
+				return result
+			end
 			if id==1023 then
 				assert(#input.affixes>0,"No modifier can be retained")
 				local result=copyTable(input);result.affixes={copyTable(input.affixes[math.floor(draw()*#input.affixes)+1])};return result
@@ -164,6 +182,6 @@ function G.extend(M,api)
 		else for key,amount in pairs(craft.artifactCost) do if amount>0 then result[currencies[key]]=amount end end end
 		return result
 	end
-	M.limits[#M.limits+1]="Experimental Gwennen pairs use only observed supported outcomes. A fair coin, uniform selection and removal counts, normalized maximum-roll checks and ordinary crafting transitions are assumptions; offer generation, prices and special modifier interactions are not verified. Unknown artifact prices remain unpriced."
+	M.limits[#M.limits+1]="Experimental Gwennen pairs use only observed supported outcomes. A fair coin, uniform selection and removal counts, side-reroll count preservation, normalized maximum-roll checks and ordinary crafting transitions are assumptions; offer generation, prices and special modifier interactions are not verified. Unknown artifact prices remain unpriced."
 end
 return G

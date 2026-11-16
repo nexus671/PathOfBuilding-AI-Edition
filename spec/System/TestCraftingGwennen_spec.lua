@@ -63,6 +63,30 @@ describe("Experimental Gwennen pair",function()
 		end
 		assert.same(before,state)
 	end)
+	it("rerolls only the selected side and preserves its modeled count",function()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE";state.affixes={}
+		local groups,counts={}, {Prefix=0,Suffix=0}
+		for _,candidate in ipairs(model.mods) do local mod=candidate.mod
+			if counts[mod.type] and counts[mod.type]<2 and not groups[mod.group] then
+				state.affixes[#state.affixes+1]={id=candidate.id,range=0.5};groups[mod.group]=true;counts[mod.type]=counts[mod.type]+1
+			end
+		end
+		assert.equal(4,#state.affixes);local before=copyTable(state)
+		for _,case in ipairs({{1018,"Prefix","Suffix"},{1019,"Suffix","Prefix"}}) do
+			local pair={method="gwennen",firstOutcome=case[1],secondOutcome=1000}
+			for _,draw in ipairs({0.1,0.3,0.49}) do
+				local result=sim.action(model,state,pair,function() return draw end);local actual={Prefix=0,Suffix=0};local untouched={}
+				for _,entry in ipairs(result.affixes) do local side=model.byId[entry.id].type;actual[side]=actual[side]+1;if side==case[3] then untouched[#untouched+1]=entry end end
+				local expected={};for _,entry in ipairs(before.affixes) do if model.byId[entry.id].type==case[3] then expected[#expected+1]=entry end end
+				assert.same(counts,actual);assert.same(expected,untouched);assert.same(before,state)
+				sim.validateState(model,result);assert.is_truthy(sim.toItem(model,result).raw)
+			end
+			local estimate=sim.calculate(raw,pair,{},state,{requirements={minQuality=20},trials=4})
+			assert.is_true(estimate.sampled);assert.equal("gwennen_side_reroll_assumptions",estimate.warnings[2].code)
+		end
+		local empty=copyTable(state);for i=#empty.affixes,1,-1 do if model.byId[empty.affixes[i].id].type=="Prefix" then table.remove(empty.affixes,i) end end
+		assert.has_error(function() sim.action(model,empty,{method="gwennen",firstOutcome=1018,secondOutcome=1000},function() return 0.1 end) end)
+	end)
 	it("models explicit removal, retained modifiers and filled slots",function()
 		local model,state=item();local before=copyTable(state)
 		local cleared=sim.action(model,state,{method="gwennen",firstOutcome=1001,secondOutcome=1000},function() return 0.1 end)

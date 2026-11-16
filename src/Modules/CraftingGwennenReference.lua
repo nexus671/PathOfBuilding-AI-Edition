@@ -20,6 +20,7 @@ function M.search(query,limit)
 			if #rows<limit then
 				local row={id=entry.id,description=description,functionName=entry["function"],arguments=entry.arguments,family=entry.family}
 				if entry.id==1030 then row.note="The displayed 100 rerolls conflict with the listed function argument of 50; behavior is unverified." end
+				if entry.id==1018 or entry.id==1019 then row.note="The model assumes the number of modifiers on this side stays the same; Gwennen's behavior is unverified." end
 				rows[#rows+1]=row
 			end
 		end

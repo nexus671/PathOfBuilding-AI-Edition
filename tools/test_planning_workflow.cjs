@@ -82,6 +82,9 @@ async function main(){
   assert.equal(gwennenReference.crafting.nativeEngine.gwennenReference.offers[0].id,1022);assert.match(gwennenReference.crafting.nativeEngine.gwennenReference.note,/not available crafting actions/);
   assert.equal(inspected.crafting.nativeEngine.methodWarnings.binding[0].code,'binding_legacy');
   const binding=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,action:{method:'binding'},seed:1},'crafted');assert.equal(binding.nativeCrafting.warnings[0].code,'binding_legacy');assert.equal(binding.nativeCrafting.state.rarity,'RARE');
+  const sideReroll=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1018,secondOutcome:1019},seed:7},'crafted');
+  assert.ok([1018,1019].includes(sideReroll.nativeCrafting.gwennen.outcome));assert.equal(sideReroll.nativeCrafting.state.affixes.length,binding.nativeCrafting.state.affixes.length);
+  assert.ok(sideReroll.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_side_reroll_assumptions'));
   const abyssRaw='Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86';
   const abyssFirst=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:abyssRaw,action:{method:'vaal'},seed:1},'crafted');
   assert.equal(abyssFirst.nativeCrafting.state.corrupted,true);assert.equal(abyssFirst.nativeCrafting.warnings[0].code,'abyss_vaal_assumptions');
