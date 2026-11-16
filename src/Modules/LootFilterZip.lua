@@ -16,10 +16,10 @@ local function u16(n) return string.char(band(n,255),band(rshift(n,8),255)) end
 local function u32(n) return u16(n)..u16(rshift(n,16)) end
 local M={}
 function M.variants(profile,filename)
-	assert(filename:match("^[%w_-]+%.filter$"),"Use a filename with letters, numbers, hyphens or underscores")
+	local names=require("Modules.LootFilterFileNames");names.stem(profile,filename)
 	local files=require("Modules.LootFilters").variants(profile);local output,central={},{};local offset=0
 	for _,file in ipairs(files) do
-		local name=filename:gsub("%.filter$","-"..file.strictness..".filter");local body=file.text
+		local name=names.variant(profile,filename,file.strictness);local body=file.text
 		local size=#body;local crc=crc32(body)
 		local metadata=u16(20)..u16(0)..u16(0)..u16(0)..u16(0)..u32(crc)..u32(size)..u32(size)..u16(#name)..u16(0)
 		local localHeader="PK\003\004"..metadata..name

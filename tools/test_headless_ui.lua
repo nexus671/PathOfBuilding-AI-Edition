@@ -1218,10 +1218,22 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("writeZip");ui:click("close");local zipFile=assert(io.open(zipPath,"rb"));local zip=zipFile:read("*a");zipFile:close()
 	for strictness=0,6 do local target=exportedPath:gsub("%.filter$","-"..strictness..".filter");local file=assert(io.open(target,"rb"));local text=file:read("*a");assert(text:find("Covens pickup plan",1,true) and zip:find(text,1,true),"ZIP did not contain the compiled variant");file:close();os.remove(target) end
 	ui:click("close")
+	do
+		local filters=require("Modules.LootFilters");local ruthless=filters.profile("ruthless-"..size[1],"Ruthless export");ruthless.mode="Ruthless"
+		local raw=filters.compile(ruthless);require("Classes.LootFilterControl").Export(ruthless,raw)
+		local controls=main.popups[1].controls;assert(controls.filename.buf==ruthless.id..".ruthlessfilter","Ruthless filename uses the wrong extension")
+		ui:text("directory",directory);ui:click("write");ui:click("close")
+		local path=directory.."/"..ruthless.id..".ruthlessfilter";local saved=assert(io.open(path,"rb"));assert(raw==saved:read("*a"),"Ruthless export changed the filter");saved:close();os.remove(path)
+		ui:click("writeAll");ui:click("close");ui:click("writeZip");ui:click("close")
+		local archivePath=directory.."/"..ruthless.id.."-strictnesses.zip";local archive=assert(io.open(archivePath,"rb"));local bytes=archive:read("*a");archive:close()
+		for strictness=0,6 do local name=ruthless.id.."-"..strictness..".ruthlessfilter";local f=assert(io.open(directory.."/"..name,"rb"));local content=f:read("*a");f:close();assert(bytes:find(name,1,true) and bytes:find(content,1,true),"Ruthless ZIP omitted its variant");os.remove(directory.."/"..name) end
+		ui:text("filename",ruthless.id..".filter");ui:click("write");ui:click("close");assert(not io.open(directory.."/"..ruthless.id..".filter","rb"),"Ruthless export accepted a normal extension")
+		ui:click("close")
+	end
 	filterTool("Audit and update");frame("filter-audit");ui:click("close")
 	ui:click("keep");assert(#build.savers.LootFilters.data.profiles==1,"Loot filter was not kept");assert(build.savers.LootFilters.data.profiles[1].appearance.alertVolume==0,"Global appearance was not kept")
 	ui:click("nav_journey");ui:click("nav_filters");frame("filter-kept-navigation")
-	filterTool("Import .filter");frame("filter-import")
+	filterTool("Import filter");frame("filter-import")
 	local linkedPath=os.tmpname()..".filter";local linkedName=linkedPath:match("([^/\\]+)$");local linkedFile=assert(io.open(linkedPath,"wb"));linkedFile:write('Hide\n BaseType "Iron Hat"');linkedFile:close()
 	local mainFilterPath=os.tmpname()..".filter";local mainFilterFile=assert(io.open(mainFilterPath,"wb"));mainFilterFile:write('Hide\n    BaseType == "Orb of Binding"\nShow\n    BaseType == "Chaos Orb"\nImport "'..linkedName..'"');mainFilterFile:close()
 	ui:text("path",mainFilterPath);ui:click("loadFile");frame("filter-main-file-loaded");ui:click("loadLinked");frame("filter-linked-file-report");ui:click("close");os.remove(mainFilterPath);os.remove(linkedPath);ui:click("import");ui:click("keep")
@@ -1229,7 +1241,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local attached=build.savers.LootFilters.data.profiles[1].importFiles;local found,previous=false,false;for _,file in ipairs(attached) do if file.name==linkedName then found=file.text:find("Iron Hat",1,true)~=nil elseif file.name=="rules.filter" then previous=true end end
 	assert(found and previous,"Linked filter was not saved alongside existing attachments")
 	local compiled=require("Modules.LootFilters").compile(build.savers.LootFilters.data.profiles[1]);assert(compiled:find("# Included filter: "..linkedName,1,true),"Saved linked filter was not expanded")
-	filterTool("Import .filter");ui:text("text",'Hide\n    BaseType == "Orb of Binding"\nShow\n    BaseType == "Chaos Orb"\n    SetFontSize 44');ui:click("import")
+	filterTool("Import filter");ui:text("text",'Hide\n    BaseType == "Orb of Binding"\nShow\n    BaseType == "Chaos Orb"\n    SetFontSize 44');ui:click("import")
 	filterTool("Full file changes");frame("filter-file-changes-compiled");ui:choose("content","Original base text");frame("filter-file-changes-source");ui:text("search","SetFontSize");frame("filter-file-changes-search")
 	ui:click("copyBefore");assert(not ui.clipboard:find("SetFontSize 44",1,true),"Before source used the working draft");ui:click("copyAfter");assert(ui.clipboard:find("SetFontSize 44",1,true),"After source omitted the working change");ui:click("close");ui:click("keep")
 	ui:click("viewTiers");ui:click("tierNew");ui:text("tierName","Chaos Orb");ui:click("tierAddItem");frame("filter-tiers")

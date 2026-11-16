@@ -324,13 +324,13 @@ describe("Build-owned loot filters",function()
 	it("lists folders and filter files with a parent navigation entry",function()
 		local original=NewFileSearch;local closed=0
 		_G.NewFileSearch=function(_,folders)
-			local names=folders and {"child"} or {"rules.filter","other.txt","EXTRA.FILTER"};local index=1
+			local names=folders and {"child"} or {"rules.filter","other.txt","EXTRA.FILTER","ruthless.RUTHLESSFILTER"};local index=1
 			return {GetFileName=function() return names[index] end,NextFile=function() index=index+1;return names[index]~=nil end,Close=function() closed=closed+1 end}
 		end
 		local ok,err=pcall(function()
 			local rows=require("Classes.LootFilterFileBrowser").entries("C:/Users/test/")
-			assert.equal(4,#rows);assert.equal("C:/Users/",rows[1].id);assert.equal("C:/Users/test/child/",rows[2].id)
-			assert.equal("C:/Users/test/EXTRA.FILTER",rows[3].id);assert.equal("C:/Users/test/rules.filter",rows[4].id);assert.equal(2,closed)
+			assert.equal(5,#rows);assert.equal("C:/Users/",rows[1].id);assert.equal("C:/Users/test/child/",rows[2].id)
+			assert.equal("C:/Users/test/EXTRA.FILTER",rows[3].id);assert.equal("C:/Users/test/rules.filter",rows[4].id);assert.equal("C:/Users/test/ruthless.RUTHLESSFILTER",rows[5].id);assert.equal(2,closed)
 		end)
 		_G.NewFileSearch=original;assert(ok,err)
 	end)

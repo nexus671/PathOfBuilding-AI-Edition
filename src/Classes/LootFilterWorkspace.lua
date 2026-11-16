@@ -212,7 +212,7 @@ function M.Open(build,source,layout,controller)
 		local choices={
 			{id="new",label="Create profile",details={"Start from a pinned NeverSink preset."}},
 			{id="duplicate",label="Duplicate profile",details={"Keep a separate version for another character or stage."}},
-			{id="import",label="Import .filter",details={"Preserve the original file and edit with personal overrides."}},
+			{id="import",label="Import filter",details={"Preserve the original file and edit with personal overrides."}},
 			{id="importFiles",label="Included filter files",details={"Attach copies of files referenced by Import for offline preview and export."}},
 			{id="account",label="Account filters",details={"Import or review an explicit account publication."}},
 			{id="audit",label="Audit and update",details={"Inspect patch migrations, diagnostics and base updates."}},

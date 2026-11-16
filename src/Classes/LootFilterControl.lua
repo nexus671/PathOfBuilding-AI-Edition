@@ -19,7 +19,7 @@ local function attempt(callback) local ok,why=pcall(callback);if not ok then not
 local function modal(title,raw,save,existing)
 	local c={};local pending,pendingText,pendingPath;local w,h=math.min(860,main.screenW-40),math.min(570,main.screenH-60)
 	local attached={};for _,file in ipairs(existing or {}) do attached[file.name]=true end
-	ui.description(c,"help",16,28,w-32,44,{save and "Paste a filter or load a local .filter file. Original text is preserved; personal rules stay separate." or "Ready to save as a UTF-8 .filter in your Path of Exile filter folder. Copy does not change any game files."},14)
+	ui.description(c,"help",16,28,w-32,44,{save and "Paste a filter or load a local filter file. Original text is preserved; personal rules stay separate." or "Copy the filter text, or export a file for your game mode. Copy does not change any game files."},14)
 	c.text=new("EditControl"):EditControl(ui.anchor,{16,84,w-32,h-(save and 205 or 150)},raw,nil,"^%C\t\n",filters.limit,nil,14,true)
 	if save then
 		ui.label(c,"pathLabel",16,h-114,"Local file path",14)
@@ -37,7 +37,7 @@ local function modal(title,raw,save,existing)
 			if #entries==0 then notify("Linked filter files","No linked filter files were found.") else require("Classes.PlanningBrowserControl").Open("Linked filter files",entries) end
 		end) end)
 		c.loadLinked.label=function() return pending and ("Linked: "..#pending.files.." loaded") or "Load linked files" end
-		c.loadLinked.tooltipText="Load referenced sibling .filter files, including nested references. Other paths remain unresolved."
+		c.loadLinked.tooltipText="Load referenced sibling filter files, including nested references. Other paths remain unresolved."
 	end
 	button(c,"copy",16,h-48,124,"Copy filter",function() Copy(c.text.buf) end)
 	if save then button(c,"import",152,h-48,140,"Use import",function() attempt(function() assert(not pending or c.text.buf==pendingText and c.path.buf==pendingPath,"The filter text or path changed; load linked files again.");save(c.text.buf,pending and pending.files);main:ClosePopup() end) end) end
@@ -238,13 +238,14 @@ function M.EditSample(item,save)
 end
 function M.Export(profile,raw)
 	local c={};local w,h=math.min(800,main.screenW-40),342
-	ui.description(c,"help",16,28,w-32,62,{"Save a .filter file, then select it in Path of Exile's item-filter settings. Exporting does not equip items or change the character."},16)
+	local names=require("Modules.LootFilterFileNames");local extension=names.extension(profile)
+	ui.description(c,"help",16,28,w-32,62,{"Save a "..extension.." file, then select it in Path of Exile's item-filter settings. Exporting does not equip items or change the character."},16)
 	ui.label(c,"directoryLabel",16,106,"Destination directory",14)
 	c.directory=new("EditControl"):EditControl(ui.anchor,{16,128,w-32,26},main.userPath.."LootFilters",nil,nil,1000)
-	c.filename=new("EditControl"):EditControl(ui.anchor,{16,170,w-32,26},profile.id..".filter",nil,nil,120)
-	button(c,"copy",16,236,140,"Copy .filter",function() Copy(raw) end)
+	c.filename=new("EditControl"):EditControl(ui.anchor,{16,170,w-32,26},profile.id..extension,nil,nil,120)
+	button(c,"copy",16,236,140,"Copy text",function() Copy(raw) end)
 	button(c,"write",168,236,140,"Save file",function() attempt(function()
-		assert(c.filename.buf:match("^[%w_-]+%.filter$"),"Use a filename with letters, numbers, hyphens or underscores")
+		names.stem(profile,c.filename.buf)
 		local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a directory")
 		local target=directory.."/"..c.filename.buf;local existing=io.open(target,"rb")
 		if existing then existing:close();notify("File exists","Choose another filename to preserve the existing filter.");return end
@@ -252,11 +253,11 @@ function M.Export(profile,raw)
 	end) end)
 	button(c,"raw",320,236,140,"Inspect text",function() modal("Compiled filter",raw) end)
 	button(c,"writeAll",16,282,280,"Save all seven strictnesses",function() attempt(function()
-		assert(c.filename.buf:match("^[%w_-]+%.filter$"),"Use a filename with letters, numbers, hyphens or underscores")
+		names.stem(profile,c.filename.buf)
 		local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a directory")
 		local variants=filters.variants(profile);local targets={}
 		for i,variant in ipairs(variants) do
-			local target=directory.."/"..c.filename.buf:gsub("%.filter$","-"..variant.strictness..".filter");local existing=io.open(target,"rb")
+			local target=directory.."/"..names.variant(profile,c.filename.buf,variant.strictness);local existing=io.open(target,"rb")
 			if existing then existing:close();error("Batch cancelled: file already exists: "..target) end;targets[i]=target
 		end
 		MakeDir(directory);local written=0
@@ -268,9 +269,9 @@ function M.Export(profile,raw)
 	end) end)
 	c.writeAll.enabled=not profile.template;c.writeAll.tooltipText="Keeps personal rules and global appearance in every variant. Imported filters have no preset variants."
 	button(c,"writeZip",308,282,196,"Save strictness ZIP",function() attempt(function()
-		assert(c.filename.buf:match("^[%w_-]+%.filter$"),"Use a filename with letters, numbers, hyphens or underscores")
+		local stem=names.stem(profile,c.filename.buf)
 		local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a directory")
-		local target=directory.."/"..c.filename.buf:gsub("%.filter$","-strictnesses.zip")
+		local target=directory.."/"..stem.."-strictnesses.zip"
 		local existing=io.open(target,"rb");if existing then existing:close();notify("File exists","Choose another filename to preserve the existing archive.");return end
 		local archive=require("Modules.LootFilterZip").variants(profile,c.filename.buf)
 		MakeDir(directory);local file=assert(io.open(target,"wb"),"Could not create archive");local ok=file:write(archive);local closed=file:close();assert(ok and closed,"Could not finish "..target)

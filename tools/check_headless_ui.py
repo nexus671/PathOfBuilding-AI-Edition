@@ -76,6 +76,12 @@ def main():
             assert z.testzip() is None, "ZIP failed CRC validation"
             assert all(b"Covens pickup plan" in z.read(name) for name in z.namelist()), "ZIP lost the personal filter"
         archive.unlink()
+        ruthless_archive = frames / f"ruthless-{width}-strictnesses.zip"
+        with zipfile.ZipFile(ruthless_archive) as z:
+            assert z.namelist() == [f"ruthless-{width}-{n}.ruthlessfilter" for n in range(7)], "Ruthless ZIP has incorrect filenames"
+            assert z.testzip() is None, "Ruthless ZIP failed CRC validation"
+            assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
+        ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
     assert len(paths) == 1338, f"Expected 1338 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):

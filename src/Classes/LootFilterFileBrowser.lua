@@ -22,7 +22,7 @@ function M.entries(path)
 		local handle=NewFileSearch(path.."*",folders)
 		while handle do
 			local name=handle:GetFileName()
-			if name~="." and name~=".." and (folders or name:lower():match("%.filter$")) then
+			if name~="." and name~=".." and (folders or require("Modules.LootFilterFileNames").isFilter(name)) then
 				local full=path..name..(folders and "/" or "")
 				entries[#entries+1]={id=full,label=(folders and "Folder: " or "Filter: ")..name,category=folders and "Folders" or "Filters",folder=folders,details={full}}
 			end
