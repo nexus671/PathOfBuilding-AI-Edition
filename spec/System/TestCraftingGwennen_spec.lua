@@ -87,6 +87,29 @@ describe("Experimental Gwennen pair",function()
 		local empty=copyTable(state);for i=#empty.affixes,1,-1 do if model.byId[empty.affixes[i].id].type=="Prefix" then table.remove(empty.affixes,i) end end
 		assert.has_error(function() sim.action(model,empty,{method="gwennen",firstOutcome=1018,secondOutcome=1000},function() return 0.1 end) end)
 	end)
+	it("models random influence and counts influence goals under stated assumptions",function()
+		local model,state=item();local before=copyTable(state);local pair={method="gwennen",firstOutcome=1031,secondOutcome=1031}
+		local kinds={"shaper","elder","adjudicator","basilisk","crusader","eyrie"}
+		for i,key in ipairs(kinds) do
+			local result=sim.action(model,state,pair,function() return (i-0.5)/#kinds end)
+			assert.same({key},result.influences);assert.same(before.affixes,result.affixes);assert.same(before,state)
+			assert.is_true(sim.matches(result,{},nil,model,{influence=key}));sim.validateState(model,result)
+			assert.is_truthy(sim.toItem(model,result).raw)
+		end
+		local odds=sim.calculate(raw,pair,{},state,{requirements={influence="shaper"}})
+		assert.is_false(odds.sampled);assert.are.near(100/6,odds.successChance,1e-8);assert.equal(12,#odds.outcomes)
+		assert.equal("gwennen_influence_assumptions",odds.warnings[2].code)
+		local existing=copyTable(state);existing.influences={"shaper"}
+		assert.has_error(function() sim.action(model,existing,pair,function() return 0.1 end) end)
+		assert.has_error(function() sim.validateRecipe({steps={pair},targets={},requirements={influence="unknown"}}) end)
+	end)
+	it("saves and reopens a guide with an influence target",function()
+		newBuild()
+		local recipe={steps={{method="gwennen",firstOutcome=1031,secondOutcome=1031}},targets={},requirements={influence="shaper"}}
+		build.savers.CraftingProjects:Upsert({id="influence",title="Influenced helmet",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe=recipe})
+		local xml=build:SaveDB("Influence guide");loadBuildFromXML(xml,"Influence guide")
+		assert.equal("shaper",build.savers.CraftingProjects.projects[1].nativeRecipe.requirements.influence)
+	end)
 	it("models explicit removal, retained modifiers and filled slots",function()
 		local model,state=item();local before=copyTable(state)
 		local cleared=sim.action(model,state,{method="gwennen",firstOutcome=1001,secondOutcome=1000},function() return 0.1 end)

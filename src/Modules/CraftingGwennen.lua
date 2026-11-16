@@ -1,16 +1,29 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1012]=true,[1014]=true,[1015]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1029]=true,[1041]=true,[1042]=true}
+local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1012]=true,[1014]=true,[1015]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1029]=true,[1031]=true,[1041]=true,[1042]=true}
 local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
 function G.supports(id) return supported[id]==true end
 function G.supportedCount() local count=0;for _ in pairs(supported) do count=count+1 end;return count end
 function G.deterministic(id) return deterministic[id] end
-function G.isDiscrete(id) return deterministic[id]~=nil or id==1004 or id==1006 or id==1007 or id==1023 or id==1026 or id==1041 end
+function G.isDiscrete(id) return deterministic[id]~=nil or id==1004 or id==1006 or id==1007 or id==1023 or id==1026 or id==1031 or id==1041 end
+local influenceTypes={"shaper","elder","adjudicator","basilisk","crusader","eyrie"}
+local function influenceChoices(model,state)
+	assert(#(state.influences or model.initial.influences or {})==0 and not model.item.synthesised,"Influence outcome requires an uninfluenced, non-synthesised item")
+	assert(#(state.implicits or {})==0 and not model.unresolvedEldritch,"Influence outcome does not support Eldritch implicits")
+	local choices={};for _,key in ipairs(influenceTypes) do if model.item.base.influenceTags and model.item.base.influenceTags[key] then choices[#choices+1]=key end end
+	assert(#choices>0,"This base cannot receive a supported influence")
+	return choices
+end
 -- Enumerate removal sets without multiplying equivalent removal orders.
 function G.discrete(model,state,id)
 	if deterministic[id] then return {{draws={},probability=1,text=deterministic[id]}} end
+	if id==1031 then
+		local choices=influenceChoices(model,state);local result={}
+		for index,key in ipairs(choices) do result[#result+1]={draws={(index-0.5)/#choices},probability=1/#choices,text="Add influence: "..key} end
+		return result
+	end
 	local choices={}
 	if id==1004 or id==1023 or id==1026 then for i=1,#state.affixes do choices[#choices+1]=i end
 	elseif id==1006 or id==1007 then
@@ -78,6 +91,10 @@ function G.extend(M,api)
 		for _,entry in ipairs(input.affixes) do assert(not entry.fractured,"Gwennen interactions with fractured modifiers are not modeled") end
 		local function branch(id,draw)
 			if id==1000 then return copyTable(input) end
+			if id==1031 then
+				local choices=influenceChoices(model,input);local result=copyTable(input)
+				result.influences={choices[math.floor(draw()*#choices)+1]};return result
+			end
 			if id==1022 then local result=copyTable(input);result.destroyed=true;result.affixes={};result.imprint=nil;result.implicits=nil;result.corruptedImplicits=nil;return result end
 			if id==1001 then
 				assert(#input.affixes>0,"No modifier can be removed")

@@ -29,20 +29,24 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
 		controls[key]:SelByValue(group and group[key] == true and title.." only" or group and group[key] == false and "Not "..key or "Any "..key.." state")
 	end
 	local properties={{"openPrefixes","Open prefixes"},{"openSuffixes","Open suffixes"},{"minAffixes","Minimum affixes"},{"maxAffixes","Maximum affixes"},{"minQuality","Minimum quality"},{"sockets","Minimum sockets"},{"links","Minimum linked sockets"},{"minMemoryStrands","Minimum memory strands"},{"maxMemoryStrands","Maximum memory strands"},{"minFractured","Minimum fractured mods"},{"maxFractured","Maximum fractured mods"},{"minIntangibility","Minimum Intangibility"},{"maxIntangibility","Maximum Intangibility"}}
-	for i,entry in ipairs(properties) do edit(entry[1],16+(i-1)%3*196,214+math.floor((i-1)/3)*48,conditions[entry[1]],entry[2]) end
-	edit("socketColours",212,406,conditions.socketColours,"Socket colours (e.g. RRBG)")
-	controls.linkedColours=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{408,422,180,24},{"Anywhere on item","In one linked group"})
+	for i,entry in ipairs(properties) do edit(entry[1],16+(i-1)%3*196,214+math.floor((i-1)/3)*42,conditions[entry[1]],entry[2]) end
+	edit("socketColours",212,382,conditions.socketColours,"Socket colours (e.g. RRBG)")
+	controls.linkedColours=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{408,398,180,24},{"Anywhere on item","In one linked group"})
 	controls.linkedColours:SelByValue(conditions.linkedColours and "In one linked group" or "Anywhere on item")
-	controls.corrupted=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,462,572,24},{"Any corruption state","Must be corrupted","Must be uncorrupted","Must be twice corrupted","Must be corrupted once","Must not be twice corrupted"})
+	controls.corrupted=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,438,572,24},{"Any corruption state","Must be corrupted","Must be uncorrupted","Must be twice corrupted","Must be corrupted once","Must not be twice corrupted"})
 	controls.corrupted:SelByValue(conditions.twiceCorrupted==true and "Must be twice corrupted" or conditions.corrupted==false and "Must be uncorrupted" or conditions.twiceCorrupted==false and (conditions.corrupted==true and "Must be corrupted once" or "Must not be twice corrupted") or conditions.corrupted==true and "Must be corrupted" or "Any corruption state")
 	local enchantments={{label="Any Harvest enchantment",val=false}}
 	for id,craft in pairs(require("Modules.CraftingEnchants").data().crafts) do enchantments[#enchantments+1]={label=(id:find("Body",1,true) and "Body: " or "Weapon: ")..craft.lines[#craft.lines],val=id} end
 	table.sort(enchantments,function(a,b) if not a.val then return not not b.val elseif not b.val then return false else return a.label<b.label end end)
-	controls.harvestEnchant=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,502,376,24},enchantments)
+	controls.harvestEnchant=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,478,376,24},enchantments)
 	controls.harvestEnchant:SelByValue(conditions.harvestEnchant or false,"val")
-	edit("minAbyssSockets",408,486,conditions.minAbyssSockets,"Minimum Abyss sockets")
+	edit("minAbyssSockets",408,462,conditions.minAbyssSockets,"Minimum Abyss sockets")
 	controls.minAbyssSockets.tooltipText="Counts actual Abyssal sockets, independently of modifier text. Modeled layout changes can be experimental."
-	button("keep",16,552,220,"Keep target conditions",function()
+	local influences={{label="Any influence",val=false}}
+	for _,info in ipairs(itemLib.influenceInfo.default) do influences[#influences+1]={label=info.display.." influence",val=info.key} end
+	controls.influence=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,518,376,24},influences)
+	controls.influence:SelByValue(conditions.influence or false,"val")
+	button("keep",16,568,220,"Keep target conditions",function()
 		if group then
 			group.atLeast=assert(tonumber(controls.count.buf),"Enter a matching-mod count")
 			group.minRoll=controls.roll.buf ~= "" and assert(tonumber(controls.roll.buf),"Enter a minimum roll percent")/100 or nil
@@ -55,14 +59,15 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
 		if corruption=="Must be corrupted" or corruption=="Must be corrupted once" then result.corrupted=true elseif corruption=="Must be uncorrupted" then result.corrupted=false end
 		if corruption=="Must be twice corrupted" then result.twiceCorrupted=true elseif corruption=="Must be corrupted once" or corruption=="Must not be twice corrupted" then result.twiceCorrupted=false end
 		result.harvestEnchant=controls.harvestEnchant:GetSelValueByKey("val") or nil
+		result.influence=controls.influence:GetSelValueByKey("val") or nil
 		if controls.socketColours.buf~="" then result.socketColours=controls.socketColours.buf:upper();result.linkedColours=controls.linkedColours:GetSelValue()=="In one linked group" end
 		local required=controls.groups.buf ~= "" and assert(tonumber(controls.groups.buf),"Invalid required group count") or nil
 		if not next(result) then result=nil end
 		sim.validateRecipe({steps={{method="chaos"}},targets=groups,requirements=result,requiredGroups=required})
 		onKeep(groups,result,required);main:ClosePopup()
 	end)
-	button("close",492,552,116,"Close",function() main:ClosePopup() end)
-	button("itemStats",250,552,224,"Weapon and defence goals",function()
+	button("close",492,568,116,"Close",function() main:ClosePopup() end)
+	button("itemStats",250,568,224,"Weapon and defence goals",function()
 		require("Classes.CraftingItemStatsControl").Open(conditions.nativeStats,function(value) conditions.nativeStats=value end)
 	end)
 	if not group then
@@ -71,7 +76,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
 		controls.keep.label="Keep item properties"
 	end
 	require("Modules.PlanningUI").style(controls,{keep=true})
-	main:OpenPopup(624,group and 600 or 450,group and "Crafting target conditions" or "Item properties",controls,nil,nil,"close")
+	main:OpenPopup(624,group and 616 or 466,group and "Crafting target conditions" or "Item properties",controls,nil,nil,"close")
 	return controls
 end
 return Panel

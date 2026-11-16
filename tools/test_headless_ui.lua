@@ -256,7 +256,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("settings");ui:text("paletteSearch","replace quality");frame("crafting-harvest-service");ui:click("paletteUse")
 	ui:choose("option",require("Modules.CraftingEnchants").label("LifeBodyEnchant"),"label");ui:click("apply");frame("crafting-harvest-enchanted")
 	assert(main.popups[1].controls.intro.label:find("Applied Harvest",1,true),"Harvest enchantment was not applied")
-	ui:choose("page","Target conditions");ui:click("targetConditions");ui:choose("harvestEnchant","LifeBodyEnchant","val");frame("crafting-harvest-goal");ui:click("keep")
+	ui:choose("page","Target conditions");ui:click("targetConditions");ui:choose("harvestEnchant","LifeBodyEnchant","val");frame("crafting-harvest-goal");ui:choose("influence","shaper","val");frame("crafting-influence-goal");ui:click("keep")
 	ui:choose("page","Emulate item");ui:click("undo");frame("crafting-harvest-undone");ui:click("close")
 	local swordRaw="Rarity: NORMAL\nRusted Sword\nItem Level: 86\nQuality: 20\nSockets: R-G-B"
 	local swordProject={id="weapon-ui",title="Local weapon properties",slot="Weapon 1",startingItem=swordRaw,goals={},steps={}}
@@ -442,6 +442,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("gwennen");ui:choose("first",1018,"val");ui:choose("second",1019,"val")
 		local notes={};for _,row in ipairs(main.popups[1].controls.firstNote.list) do notes[#notes+1]=StripEscapes(row[1]) end
 		assert(main.popups[1].controls.simulate:IsEnabled() and table.concat(notes," "):find("unverified",1,true),"Side rerolls or their assumption were not shown");frame("crafting-gwennen-side-rerolls")
+		ui:choose("first",1031,"val");ui:choose("second",1031,"val");assert(main.popups[1].controls.simulate:IsEnabled(),"Influence outcome is not available");frame("crafting-gwennen-influence")
 		ui:choose("first",1041,"val");ui:choose("second",1022,"val");assert(main.popups[1].controls.simulate:IsEnabled(),"Lowest-level removal is not available");ui:choose("first",1003,"val");ui:choose("second",1012,"val");assert(main.popups[1].controls.simulate:IsEnabled(),"Fracture and corruption are not available");ui:choose("first",1009,"val");ui:choose("second",1022,"val");ui:text("cost","20 Grand Broken Circle Artifacts");assert(main.popups[1].controls.simulate:IsEnabled());ui:click("simulate")
 		ui:click("tab_settings");ui:click("configure");assert(main.popups[1].controls.first:GetSelValueByKey("val")==1009 and main.popups[1].controls.second:GetSelValueByKey("val")==1022 and main.popups[1].controls.cost.buf=="20 Grand Broken Circle Artifacts","Gwennen configuration was not restored");ui:click("simulate")
 		ui:click("item");assert(main.popups[1].controls.intro.label:find("Gwennen modeled outcome",1,true),"Modeled outcome was not identified");frame("crafting-gwennen-modeled");ui:click("undo");ui:click("close")

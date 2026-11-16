@@ -499,6 +499,18 @@ test('queues bounded Abyss socket goals in recipes and step conditions', t => {
   for(const invalid of [-1,7,1.5]) assert.throws(()=>f.call('simulate_crafting',{...base,recipe:{...recipe,requirements:{minAbyssSockets:invalid}}}),/arguments/);
 });
 
+test('accepts supported influence goals in recipes and calculations', t => {
+  const f=fixture(t), base={baseRevision:f.state.revision,itemText:craftingProject().startingItem};
+  const action={method:'gwennen',firstOutcome:1031,secondOutcome:1031};
+  const recipe={steps:[{...action,untilRequirements:{influence:'shaper'}}],targets:[],requirements:{influence:'elder'}};
+  f.call('simulate_crafting',{...base,recipe,options:{trials:2,maxActions:1}});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe,recipe);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  f.call('calculate_crafting',{...base,action,targets:[],options:{requirements:{influence:'crusader'}}});
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  assert.throws(()=>f.call('calculate_crafting',{...base,action,targets:[],options:{requirements:{influence:'tangle'}}}),/arguments/);
+});
+
 test('queues native item stat goals with decimal thresholds and rejects unknown stats', t => {
   const f=fixture(t);const base={baseRevision:f.state.revision,itemText:craftingProject().startingItem};
   const recipe={steps:[{method:'quality',maxAttempts:20,untilRequirements:{nativeStats:{PhysicalDPS:12.4}}}],targets:[],requirements:{nativeStats:{PhysicalDPS:12.4,AttackRate:1.55}}};

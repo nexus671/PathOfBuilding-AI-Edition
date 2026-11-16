@@ -64,6 +64,7 @@ function M.actionWarnings(action,model)
 	if action.method=="fusing" then result[#result+1]={code="fusing_estimate",message="Experimental: link-group weights use historical 20% quality observations; applying them to shorter items, quality scaling and excluding the current layout are assumptions. Current game odds are unverified.",source="https://www.reddit.com/r/pathofexile/comments/75t1c9/i_used_100000_fusings_for_science_statistics/"} end
 	if action.method=="gwennen" then result[#result+1]={code="gwennen_estimate",message="Experimental: assumes a fair coin, uniform selection and removal counts, normalized maximum-roll checks and ordinary currency transitions. Offer generation, costs and special interactions are not verified.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
 	if action.method=="gwennen" and (action.firstOutcome==1018 or action.firstOutcome==1019 or action.secondOutcome==1018 or action.secondOutcome==1019) then result[#result+1]={code="gwennen_side_reroll_assumptions",message="Side rerolls preserve the original number of modifiers on that side, based on comparable Rog research. Applying that rule and the ordinary modifier weights to Gwennen is unverified; some modeled selections can fail.",source="https://www.sirgog.com/wp-content/uploads/2022/12/rog.pdf"} end
+	if action.method=="gwennen" and (action.firstOutcome==1031 or action.secondOutcome==1031) then result[#result+1]={code="gwennen_influence_assumptions",message="Influence types are assumed equally likely among supported types. Eligibility and interactions with influence, synthesis, fractures and Eldritch implicits are not verified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
 	if action.method=="gwennen" and (action.firstOutcome==1012 or action.secondOutcome==1012) then result[#result+1]={code="gwennen_corruption",message="Corruption uses the existing Vaal model; rare-reroll socket and link changes are not modeled."} end
 	if action.allflame or action.method=="ducat_kishara" or action.method=="ducat_katakohi" then result[#result+1]={code="allflame_historical",message="Allflame is historical and did not return to core in 3.30."} end
 	return result
@@ -536,6 +537,10 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   if requirements.maxMemoryStrands and (state.memoryStrands or 0) > requirements.maxMemoryStrands then return false end
   if requirements.corrupted ~= nil and (state.corrupted or false) ~= requirements.corrupted then return false end
   if requirements.twiceCorrupted ~= nil and (state.twiceCorrupted or false) ~= requirements.twiceCorrupted then return false end
+	  if requirements.influence then
+	   local found=false;for _,key in ipairs(state.influences or model.initial.influences or {}) do if key==requirements.influence then found=true;break end end
+	   if not found then return false end
+	  end
   if requirements.harvestEnchant and state.harvestEnchant~=requirements.harvestEnchant then return false end
   if requirements.nativeStats and not require("Modules.CraftingItemStats").matches(M,model,state,requirements.nativeStats) then return false end
   if requirements.sockets and #(state.sockets or model.item.sockets or {}) < requirements.sockets then return false end
@@ -576,6 +581,7 @@ function M.validateRecipe(recipe)
 			if key == "nativeStats" then require("Modules.CraftingItemStats").validate(value)
 			elseif key == "harvestEnchant" then assert(type(value)=="string" and require("Modules.CraftingEnchants").data().crafts[value],"Choose a known Harvest enchantment")
 			elseif key == "corrupted" or key == "twiceCorrupted" or key == "linkedColours" then assert(type(value) == "boolean","Invalid boolean property condition")
+			elseif key == "influence" then assert(({shaper=true,elder=true,adjudicator=true,basilisk=true,crusader=true,eyrie=true})[value],"Choose a supported influence")
 			elseif key == "socketColours" then assert(type(value)=="string" and #value>=1 and #value<=6 and not value:find("[^RGBW]"),"Use one to six socket colours: R, G, B or W")
 			else integer(value,0,assert(limits[key],"Unknown property condition"),key) end
 		end

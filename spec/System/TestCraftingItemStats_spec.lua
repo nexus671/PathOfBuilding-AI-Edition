@@ -43,13 +43,13 @@ describe("Native crafting item stat goals",function()
 		assert.is_true(pcall(sim.validateRecipe,{steps={{method="chaos"}},targets={},requirements={nativeStats={AttackRate=1.55}}}))
 	end)
 	it("stages child edits and preserves goals through the parent editor",function()
-		newBuild();local kept;local original={nativeStats={PhysicalDPS=12.4},minQuality=20}
+		newBuild();local kept;local original={nativeStats={PhysicalDPS=12.4},minQuality=20,influence="shaper"}
 		local c=require("Classes.CraftingTargetControl").Open({},original,nil,function(_,value) kept=value end)
 		c.itemStats:Click();local child=main.popups[1].controls;child.PhysicalDPS:SetText("invalid");child.keep:Click()
 		assert.are.equal("Item stat goals",main.popups[1].title);main.popups[1].controls.close:Click()
 		assert.are.equal("invalid",child.PhysicalDPS.buf);child.PhysicalDPS:SetText("13.5");child.keep:Click()
 		assert.are.same({PhysicalDPS=12.4},original.nativeStats);assert.is_nil(kept)
-		c.keep:Click();assert.are.equal(13.5,kept.nativeStats.PhysicalDPS);assert.are.equal(20,kept.minQuality)
+		c.keep:Click();assert.are.equal(13.5,kept.nativeStats.PhysicalDPS);assert.are.equal(20,kept.minQuality);assert.equal("shaper",kept.influence)
 		main.popups={}
 	end)
 end)

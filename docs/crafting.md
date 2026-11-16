@@ -22,6 +22,8 @@ Weapon cards show native local DPS, its damage-type breakdown, attacks per secon
 
 Search **Find currencies** for **replace quality** to apply a Harvest quality enchantment. The choices show the required Lifeforce amount and colour. The new enchantment replaces the previous one; affixes, socket colours and quality remain. **Targets → Item properties** can require a particular Harvest enchantment. These goals and enchanted inventory items also travel through MCP and saved projects.
 
+**Targets → Item properties** can also require a Shaper, Elder, Warlord, Hunter, Crusader or Redeemer influence. This target is available to saved recipes and MCP. Gwennen's modeled random-influence outcome assumes equal chances among eligible types; the odds and eligibility are unverified.
+
 **Set sockets and link them** is a combined bench preparation: it sets the requested socket count if necessary, then links those sockets. When the count already matches, estimates charge only the linking cost. Corrupted items include the corresponding Vaal Orb surcharge. Resource estimates use the state before each action.
 
 **Bestiary: maximum links** links the existing sockets without adding any. It uses one Black Mórrigan and one Craicic Sand Spitter; supply a price for each beast or a whole-action quote to estimate cost. The model currently supports non-unique, uncorrupted equipment with ordinary sockets.
@@ -151,7 +153,7 @@ between planning tabs. Background fossil comparisons stay available through
 **Fossil results** without opening a popup over another tool. Opening another build
 clears these temporary results and cancels work from the previous build.
 
-**Calculate action odds** enumerates supported finite outcomes, including next-affix draws, Talisman fractures and Allflame selection. Item properties, partial group counts, other supported actions and roll thresholds use bounded sampling with a confidence interval. Results state which method was used.
+**Calculate action odds** enumerates supported finite outcomes, including next-affix draws, Talisman fractures, Allflame selection and supported finite Gwennen outcomes. Other goals and actions may use bounded sampling with a confidence interval. Results state which method was used.
 
 ## Compare fossil subsets
 
