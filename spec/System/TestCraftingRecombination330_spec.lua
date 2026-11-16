@@ -5,18 +5,21 @@ describe("3.30 recombination base rules",function()
 	local function input(model,id)
 		return sim.validateState(model,{rarity="MAGIC",affixes={{id=id,range=0.5}}})
 	end
-	it("rejects partial locks on either input, including predictable calculations",function()
+	it("counts partial locks from both inputs as non-exclusive in unpredictable recombination",function()
 		local model=sim.model(armourRaw)
-		local source=input(model,"IncreasedLife0")
-		local donor=sim.validateState(model,{rarity="RARE",affixes={{id="FireResist1",range=0.5},{id="bench:partial-prefix-1",range=0.5,crafted=true}}})
+		local source=sim.validateState(model,{rarity="RARE",affixes={{id="IncreasedLife0",range=0.5},{id="bench:partial-suffix-1",range=0.5,crafted=true}}})
+		local donor=sim.validateState(model,{rarity="RARE",affixes={{id="LocalIncreasedPhysicalDamageReductionRating1",range=0.5},{id="bench:partial-suffix-1",range=0.5,crafted=true}}})
 		local donorText=sim.toItem(model,donor).raw
 		assert.is_true(sim.hasPartialLock(sim.model(donorText),sim.model(donorText).initial))
-		local random=function() return 0.5 end
-		local ordinary={method="recombine",donorItem=donorText}
-		local ok,err=pcall(sim.action,model,source,ordinary,random)
-		assert.is_false(ok);assert.matches("partial affix lock",err)
+		local calls=0;local result=sim.action(model,source,{method="recombine",donorItem=donorText},function()
+			calls=calls+1;return ({0.1,0.99,0.1,0.1,0.01,0.01,0.01})[calls] or 0.1
+		end)
+		assert.equal(3,#result.affixes)
+		local found={};for _,entry in ipairs(result.affixes) do found[entry.id]=true end
+		assert.is_true(found.IncreasedLife0);assert.is_true(found.LocalIncreasedPhysicalDamageReductionRating1);assert.is_true(found["bench:partial-suffix-1"])
+		assert.is_truthy(sim.validateState(model,result))
 		local predictable={method="recombine_predictable",donorItem=donorText,selectedMods={left={"IncreasedLife0"},right={"FireResist1"}},reportedSuccessChance=50}
-		ok,err=pcall(sim.calculate,armourRaw,predictable,{},source)
+		local ok,err=pcall(sim.calculate,armourRaw,predictable,{},source)
 		assert.is_false(ok);assert.matches("partial affix lock",err)
 		predictable.donorItem=sim.toItem(model,source).raw
 		ok,err=pcall(sim.calculate,armourRaw,predictable,{},donor)

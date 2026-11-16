@@ -38,7 +38,7 @@ function M.withTreeContext(result,version)
 	result.latestAvailableTreeVersion=latestTreeVersion
 	return result
 end
-local partialWarningMessage="Partial locks assume uniform selection; bench rerolls select once, Harvest augment selects before adding, and conversions select before changing a modifier. Some selections fail and are not charged in this model; actual behavior is unverified. Other interactions remain unsupported."
+local partialWarningMessage="Partial locks assume uniform selection; bench rerolls select once, Harvest augment selects before adding, and conversions select before changing a modifier. Unpredictable recombination treats locks as non-exclusive. Some selections fail and are not charged in this model; actual behavior is unverified. Other interactions remain unsupported."
 function M.actionWarnings(action,model)
 	local result={}
 	local abyss=false
@@ -50,7 +50,7 @@ function M.actionWarnings(action,model)
 	end
 	if abyss then result[#result+1]={code="abyss_socket_layout",message="Experimental: adding the Abyssal socket modifier replaces the final socket; removing it restores an unlinked white socket. Placement, zero-socket behavior and removal are not verified.",source="https://www.poewiki.net/wiki/Abyssal_socket"} end
 	if action.method=="bench" and type(action.modId)=="string" and action.modId:match("^bench:partial%-") then result[#result+1]={code="partial_lock_model",message=partialWarningMessage} end
-	if action.method=="recombine" then result[#result+1]={code="recombination_count_odds",message="Recombination uses preliminary 3.30 small-pool observations, older larger-pool estimates and assumed square-root modifier weights. Crafted and non-rollable modifiers default to 1000; special cases and weights are uncertain.",source="https://www.reddit.com/r/pathofexile/comments/1xxt2jr/330_recombinator_updated_oddsstrategies/",asOfPatch="3.30"} end
+	if action.method=="recombine" then result[#result+1]={code="recombination_count_odds",message="Recombination uses preliminary 3.30 small-pool observations, older larger-pool estimates and assumed square-root modifier weights. Crafted and non-rollable modifiers default to 1000; partial locks count as non-exclusive and do not protect other affixes. Special cases and weights are uncertain.",source="https://www.reddit.com/r/pathofexile/comments/1xxt2jr/330_recombinator_updated_oddsstrategies/",asOfPatch="3.30"} end
 	if action.method=="harvest_damage" then result[#result+1]={code="harvest_damage_assumptions",message="Experimental: matching elemental modifier IDs are treated as corresponding tiers, and eligible modifiers are selected uniformly. The game's tier mapping and selection odds are not verified; unsupported families are rejected."} end
 	if action.method=="harvest_resistance" then result[#result+1]={code="harvest_resistance_assumptions",message="Resistance conversion assumes matching elemental tiers and uniform selection among eligible modifiers. The game's tier mapping and selection odds are not verified; unsupported families are rejected."} end
 	if action.method=="tainted_exalt" then result[#result+1]={code="tainted_exalt_branch_limits",message="The model chooses add or remove equally. A branch can fail if no modifier can be added or removed; failed transitions are not charged. Behavior at these limits and branch odds are unverified in game."} end
@@ -942,7 +942,7 @@ do
 	end
 end
 -- Extensions register state prerequisites once for both execution and browsing.
-local partialLockActions={bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true,beast_imprint=true,beast_talisman_imprint=true,
+local partialLockActions={recombine=true,bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true,beast_imprint=true,beast_talisman_imprint=true,
 	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,chromatic=true,beast_max_links=true,ducat_ukatoa=true,ducat_katakohi=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
 	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,bench_remove_enchant=true,eldritch_implicit=true,conflict=true}
 function M.methodReason(model,state,method)

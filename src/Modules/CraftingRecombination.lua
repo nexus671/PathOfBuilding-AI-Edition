@@ -53,6 +53,7 @@ function R.extend(M,A,api)
 	end
 	local function exclusive(model,entry)
 		local mod=model.byId[entry.id];local meta=A.data().mods[entry.id]
+		if mod.partialLock then return false end
 		if entry.fractured then return false end
 		return entry.crafted and not naturalCraft(model,entry) or meta and meta.is_essence_only or data.veiledMods[entry.id] or data.beastCraft[entry.id] or data.itemMods.Delve[entry.id] or mod.affix:find("Elevated",1,true) or mod.affix:find("Incursion",1,true) or mod.affix:find("Chosen",1,true)
 	end
@@ -69,7 +70,6 @@ function R.extend(M,A,api)
 		assert(not input.corrupted and not input.mirrored and not input.veil,"Recombination requires an uncorrupted, non-mirrored item with no pending unveil")
 		assert(not current.item.synthesised and current.item.type ~= "Jewel" and current.item.type ~= "Flask" and current.item.type ~= "Tincture","This recombination model supports non-synthesised equipment")
 		local donor=M.model(assert(craft.donorItem,"Paste a donor item"));local other=donor.initial
-		assert(not M.hasPartialLock(donor,other),"Recombination with a partial affix lock on the donor is not yet modeled")
 		assert(not other.corrupted and not other.mirrored and not donor.item.synthesised,"Donor must be uncorrupted, non-mirrored and non-synthesised")
 		assert(M.sameRecombinationClass(current.item,donor.item),"Recombination requires the same item class")
 		local host=random() < 0.5 and 1 or 2
@@ -86,9 +86,9 @@ function R.extend(M,A,api)
 					local sourceMod=natural and from.model.byId[natural] or mod
 					local special=exclusive(from.model,entry)
 					-- Non-rollable modifiers remain transferable and share the exclusive limit.
-					if not special and not entry.fractured and (not sourceMod.weightKey or from.model.item:GetModSpawnWeight(sourceMod,from.model.extraTags)<=0) then special=true end
+					if not special and not mod.partialLock and not entry.fractured and (not sourceMod.weightKey or from.model.item:GetModSpawnWeight(sourceMod,from.model.extraTags)<=0) then special=true end
 					local target=base.byId[entry.id];local targetNatural=natural and base.byId[natural] or not natural and target
-					local eligible=special or entry.fractured or target and targetNatural and targetNatural.weightKey and base.item:GetModSpawnWeight(targetNatural,base.extraTags)>0
+					local eligible=special or entry.fractured or mod.partialLock and target or target and targetNatural and targetNatural.weightKey and base.item:GetModSpawnWeight(targetNatural,base.extraTags)>0
 					if eligible then pools[mod.type][#pools[mod.type]+1]={entry=entry,source=source,exclusive=special,natural=natural} end
 				end
 			end
@@ -115,7 +115,7 @@ function R.extend(M,A,api)
 					if legal then for _,group in ipairs(groups(base,entry.id)) do if used[group] then legal=false end end end
 					-- Native spawn tags enforce defence, attribute-base and influence restrictions.
 					local natural=candidate.natural and base.byId[candidate.natural] or not candidate.natural and mod
-					if legal and not candidate.exclusive and not entry.fractured and (not natural or not natural.weightKey or base.item:GetModSpawnWeight(natural,base.extraTags) <= 0) then legal=false end
+					if legal and not candidate.exclusive and not mod.partialLock and not entry.fractured and (not natural or not natural.weightKey or base.item:GetModSpawnWeight(natural,base.extraTags) <= 0) then legal=false end
 					if legal then eligible[#eligible+1]=candidate end
 				end
 				if #eligible == 0 then break end

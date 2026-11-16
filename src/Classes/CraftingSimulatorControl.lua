@@ -362,7 +362,7 @@ function Panel.Open(build,project,layout)
 					donor=simulator.model(popup.donor.buf)
 					assert(simulator.sameRecombinationClass(simulator.context(model,state).item,donor.item),"Recombination requires the same item class")
 					assert(not donor.initial.corrupted and not donor.initial.mirrored and not donor.item.synthesised,"Donor must be uncorrupted, non-mirrored and non-synthesised")
-					assert(not simulator.hasPartialLock(donor,donor.initial),"Recombination with a partial affix lock on the donor is not yet modeled")
+					if method=="recombine_predictable" then assert(not simulator.hasPartialLock(donor,donor.initial),"Predictable recombination with a partial affix lock on the donor is not yet modeled") end
 				end
 				if method == "recombine_predictable" then
 					local selected={left={},right={}}
