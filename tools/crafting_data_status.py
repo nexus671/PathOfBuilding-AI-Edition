@@ -69,6 +69,21 @@ def assess(pinned, detected, exported, old_hashes, new_hashes=None):
     return {"status": status, "changedFiles": changed}
 
 
+def component_matches(baseline, overlay, bench, exported_hashes):
+    """Compare each deployed source separately; a hash match is not mechanic parity."""
+    if exported_hashes is None:
+        return None
+    if any(name not in exported_hashes for name in FILES):
+        raise ValueError("All crafting source hashes are required")
+    return {
+        "modifierOverlay": overlay.get("sourceSha256") == exported_hashes.get("mods.json"),
+        "fossils": baseline["hashes"].get("fossils.json") == exported_hashes.get("fossils.json"),
+        "currencyMetadata": baseline["hashes"].get("base_items.json") == exported_hashes.get("base_items.json"),
+        "benchCatalogue": bench.get("benchSha256") == exported_hashes.get("crafting_bench_options.json"),
+        "baselineBench": baseline["hashes"].get("crafting_bench_options.json") == exported_hashes.get("crafting_bench_options.json"),
+    }
+
+
 def main():
     pinned = json.loads((ROOT / "src/Data/Crafting/3.29.json").read_text(encoding="utf-8"))
     revision = json.loads(fetch(f"https://api.github.com/repos/{REPO}/commits/master"))["sha"]
@@ -80,8 +95,10 @@ def main():
         hashes = {name: hashlib.sha256(fetch(base + "data/" + name)).hexdigest() for name in FILES}
     result = assess(pinned["patch"], detected, exported, pinned["hashes"], hashes)
     overlay = json.loads((ROOT / "src/Data/Crafting/3.30-modifier-overlay.json").read_text(encoding="utf-8"))
+    bench = json.loads((ROOT / "src/Data/Crafting/3.30-bench.json").read_text(encoding="utf-8"))
     result.update({"revision": revision, "pinned": pinned["patch"], "modifierOverlay": overlay["clientVersion"],
-                   "detected": detected, "exported": exported})
+                   "detected": detected, "exported": exported,
+                   "componentMatches": component_matches(pinned, overlay, bench, hashes)})
     print(json.dumps(result, indent=2))
 
 

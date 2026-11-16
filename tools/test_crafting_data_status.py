@@ -1,9 +1,20 @@
 import unittest
 
-from crafting_data_status import FILES, assess, require_changed_export, require_exported, require_supported_granted_effects, version
+from crafting_data_status import FILES, assess, component_matches, require_changed_export, require_exported, require_supported_granted_effects, version
 
 
 class CraftingDataStatusTest(unittest.TestCase):
+    def test_components_can_match_different_sources(self):
+        baseline = {"hashes": dict.fromkeys(FILES, "old")}
+        overlay = {"sourceSha256": "new-mods"}
+        bench = {"benchSha256": "new-bench"}
+        current = {"mods.json": "new-mods", "fossils.json": "old", "base_items.json": "new-bases",
+                   "crafting_bench_options.json": "new-bench"}
+        self.assertEqual({"modifierOverlay": True, "fossils": True, "currencyMetadata": False,
+                          "benchCatalogue": True, "baselineBench": False},
+                         component_matches(baseline, overlay, bench, current))
+        self.assertIsNone(component_matches(baseline, overlay, bench, None))
+
     def test_new_client_does_not_mean_export_is_ready(self):
         self.assertEqual("export_pending", assess("3.29.3.6", "3.30.0.1", "3.29.3.6", {})["status"])
         with self.assertRaisesRegex(ValueError, "wait for the export"):
