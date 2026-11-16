@@ -86,6 +86,17 @@ async function main(){
   const damageOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:damageRing,action:{method:'harvest_damage',from:'fire',to:'cold'},targets:[{anyOf:['AddedColdDamage1']}]},'crafted');
   assert.equal(damageOdds.nativeCrafting.successChance,50);assert.equal(damageOdds.nativeCrafting.sampled,false);
   assert.equal(damageOdds.nativeCrafting.outcomes.length,2);assert.match(damageOdds.nativeCrafting.exactFor,/assumed/);
+  const taintedJewelRaw='Rarity: NORMAL\nCobalt Jewel\nItem Level: 86';
+  const taintedJewel=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:taintedJewelRaw,action:{method:'alchemy'},seed:104729},'crafted');
+  const taintedJewelState={...taintedJewel.nativeCrafting.state,corrupted:true};
+  const taintedOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:taintedJewelRaw,initialState:taintedJewelState,action:{method:'tainted_exalt'},targets:[],options:{requirements:{minAffixes:3},trials:40,seed:1}},'crafted');
+  assert.equal(taintedOdds.nativeCrafting.sampled,true);assert.ok(Object.values(taintedOdds.nativeCrafting.transitionErrors).some(count=>count>0));
+  assert.ok(taintedOdds.nativeCrafting.warnings.some(entry=>entry.code==='tainted_exalt_branch_limits'));
+  const taintedAbyssRaw='Rarity: NORMAL\nMurderous Eye Jewel\nItem Level: 86';
+  const taintedAbyss=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:taintedAbyssRaw,action:{method:'alchemy'},seed:104729},'crafted');
+  const taintedAbyssState={...taintedAbyss.nativeCrafting.state,corrupted:true};
+  const taintedAdded=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:taintedAbyssRaw,initialState:taintedAbyssState,action:{method:'tainted_exalt'},seed:1},'crafted');
+  assert.equal(taintedAdded.nativeCrafting.state.corrupted,true);assert.equal(taintedAdded.nativeCrafting.state.affixes.length,5);
   const gwennenReference=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'destroy',limit:20},'inspected');
   assert.equal(gwennenReference.crafting.nativeEngine.gwennenReference.offers[0].id,1022);assert.match(gwennenReference.crafting.nativeEngine.gwennenReference.note,/not available crafting actions/);
   assert.equal(inspected.crafting.nativeEngine.methodWarnings.binding[0].code,'binding_legacy');
