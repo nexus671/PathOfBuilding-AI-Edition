@@ -229,9 +229,15 @@ function M.generate(build,profile,checkpoint)
 	end end
 	local aliases={chaos="Chaos Orb",divine="Divine Orb",divines="Divine Orb",alchemy="Orb of Alchemy",alteration="Orb of Alteration",exalt="Exalted Orb",annul="Orb of Annulment",fusing="Orb of Fusing",chromatic="Chromatic Orb",jeweller="Jeweller's Orb"}
 	for name in pairs(names) do aliases[name:lower()]=name;aliases[name:lower().."s"]=name end
+	-- Exact budget entries may name currencies outside the artwork catalogue.
+	-- Keep these out of free-text Atlas matching, where generic names could
+	-- accidentally match an unrelated strategy description.
+	local budgetNames={};for _,name in ipairs(assert(json.decode(read("budget-items-3.30.json"))).names) do
+		if not removed[name] then budgetNames[name]=true;aliases[name:lower()]=name;aliases[name:lower().."s"]=name end
+	end
 	for _,resource in ipairs(build.savers.BuildJourney.data.resources) do
 		local name=patch.renamed[resource.title] or aliases[resource.title:lower()] or resource.title
-		if names[name] and not removed[name] then add("resource-"..resource.id,name,{"BaseType == "..quote(name)},"budget:"..resource.id) end
+		if (names[name] or budgetNames[name]) and not removed[name] then add("resource-"..resource.id,name,{"BaseType == "..quote(name)},"budget:"..resource.id) end
 	end
 	local strategyNames={};for name in pairs(names) do strategyNames[#strategyNames+1]=name end
 	-- Older saved strategies may still use a renamed item's former name. Match

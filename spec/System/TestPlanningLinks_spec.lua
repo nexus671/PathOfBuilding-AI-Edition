@@ -208,6 +208,20 @@ describe("Linked planning tools",function()
 		profile.rules=filters.generate(build,profile);rules={};for _,rule in ipairs(profile.rules) do rules[rule.title]=true end
 		assert.is_true(rules["Dense Fossil"]);assert.is_nil(rules["Pristine Fossil"])
 	end)
+	it("recognizes additional exact currency budgets without guessing service names",function()
+		local data=copyTable(build.savers.BuildJourney.data)
+		data.resources={{id="oil",title="golden oils"},{id="tattoo",title="Tattoo of the Ramako Archer"},
+			{id="shard",title="Chaos Shard"},{id="gem",title="Gemcutter's Prism"},
+			{id="service",title="Golden Oil service"}}
+		build.savers.BuildJourney:Replace(data)
+		local profile=filters.profile("more-budget","More budget items");profile.rules=filters.generate(build,profile)
+		local origins={};for _,rule in ipairs(profile.rules) do origins[rule.origin]=rule end
+		for origin,name in pairs({["budget:oil"]="Golden Oil",["budget:tattoo"]="Tattoo of the Ramako Archer",["budget:shard"]="Chaos Shard",["budget:gem"]="Gemcutter's Prism"}) do
+			assert.is_truthy(origins[origin]);assert.is_truthy(origins[origin].text:find('BaseType == "'..name..'"',1,true))
+			assert.equal("Show",filters.simulate(profile,{BaseType=name}).action)
+		end
+		assert.is_nil(origins["budget:service"])
+	end)
 	it("preserves recipe pickups and reports inspection failures",function()
 		local project=craft();project.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}}
 		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("review-craft","Review craft");profile.rules=filters.generate(build,profile)

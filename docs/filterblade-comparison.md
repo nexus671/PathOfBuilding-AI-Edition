@@ -56,6 +56,8 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 
 Example base properties come from the pinned 3.30.0.1.4 client base-item export (SHA-256 `bcf0743a00d8db0f3ffb1dc8a15dad47d6469c884bee18bc6029494a8c81400b`). Rebuild with `python tools/update_loot_filter_base_metadata.py path/to/base_items.min.json`; use `--check` to verify. If same-named base records disagree, the affected property remains unknown. Unique drop levels and unspecified equipment sockets are also unknown.
 
+Exact budget titles also recognize selected oils, tattoos, currency shards, Ancient Orbs, Cartographer's Chisels and Gemcutter's Prisms from the pinned 3.30.0.2 export. These names identify items, not current drop availability. Rebuild the list with `python tools/update_filter_budget_items.py path/to/base_items.json`; use `--check` to verify it.
+
 The remaining offline polish includes additional starter presets and encounter sample collections. Hosted economy updates remain separate service work. The release checklist tracks implementation and repeated workflow verification.
 
 Reference screenshots were captured outside the repository during the review. Third-party advertising scripts logged browser errors; the main anonymous customizer and simulator remained usable. No login, publication, purchase or subscription was performed.
