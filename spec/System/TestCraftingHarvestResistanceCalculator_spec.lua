@@ -17,5 +17,9 @@ describe("Harvest resistance conversion calculator",function()
 		assert.same(before,model.initial)
 		local sampled=sim.calculate(item.raw,action,{{anyOf={"DelveArmourColdResistance1"},minRoll=0.9}},nil,{trials=10,seed=3})
 		assert.is_true(sampled.sampled);assert.equal(10,sampled.trials)
+		for _,target in ipairs({{anyOf={"NotARealModifier"}},{anyOf={"NotARealModifier"},minRoll=0.9}}) do
+			local ok,err=pcall(sim.calculate,item.raw,action,{target},nil,{trials=10,seed=3})
+			assert.is_false(ok);assert.matches("Target modifier ID is unavailable",err)
+		end
 	end)
 end)

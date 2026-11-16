@@ -703,6 +703,24 @@ function M.validateState(model,state)
 	return copyState(state)
 end
 
+function M.validateTargetAvailability(model,targets,steps)
+	local available={}
+	for _,entry in ipairs(model.mods) do available[entry.id]=true end
+	for _,entry in ipairs(model.bench) do available[entry.id]=true end
+	for _,entry in ipairs(model.essences) do available[entry.modId]=true end
+	for _,entry in ipairs(model.initial.affixes) do available[entry.id]=true end
+	for _,id in ipairs(model.legacyDelveResistance or {}) do available[id]=true end
+	for id in pairs(model.special or {}) do available[id]=true end
+	for _,step in ipairs(steps or {}) do if (step.method=="recombine" or step.method=="recombine_predictable") and step.donorItem then
+		local donor=M.model(step.donorItem)
+		for _,entry in ipairs(donor.mods) do available[entry.id]=true end
+		for _,entry in ipairs(donor.initial.affixes) do available[entry.id]=true end
+	end end
+	local function check(groups) for _,group in ipairs(groups) do for _,id in ipairs(group.anyOf) do assert(available[id],"Target modifier ID is unavailable for this base: "..id) end end end
+	check(targets)
+	for _,step in ipairs(steps or {}) do if step.untilTargets then check(step.untilTargets) end end
+end
+
 function M.simulate(raw,recipe,options)
 	options=options or { }
 	for _,key in ipairs({"prices","actionPrices"}) do if options[key]~=nil then assert(type(options[key])=="table","Invalid supplied prices") end end
@@ -736,22 +754,8 @@ function M.simulate(raw,recipe,options)
 	if options.priceBook or options.prices then
 		options.prices=require("Modules.CraftingPrices").forSimulation(options.priceBook,options.currency,M.context(model,model.initial),options.prices)
 	end
-	local available={ }
-	for _,entry in ipairs(model.mods) do available[entry.id]=true end
-	for _,entry in ipairs(model.bench) do available[entry.id]=true end
-	for _,entry in ipairs(model.essences) do available[entry.modId]=true end
-	for _,entry in ipairs(model.initial.affixes) do available[entry.id]=true end
-	for _,id in ipairs(model.legacyDelveResistance or {}) do available[id]=true end
-	for id in pairs(model.special or {}) do available[id]=true end
-	for _,step in ipairs(recipe.steps) do if (step.method == "recombine" or step.method == "recombine_predictable") and step.donorItem then
-		local donor=M.model(step.donorItem)
-		for _,entry in ipairs(donor.mods) do available[entry.id]=true end
-		for _,entry in ipairs(donor.initial.affixes) do available[entry.id]=true end
-	end end
-	local function checkTargets(targets) for _,group in ipairs(targets) do for _,id in ipairs(group.anyOf) do assert(available[id],"Target modifier ID is unavailable for this base: "..id) end end end
-	checkTargets(recipe.targets)
+	M.validateTargetAvailability(model,recipe.targets,recipe.steps)
 	for _,step in ipairs(recipe.steps) do
-		if step.untilTargets then checkTargets(step.untilTargets) end
 		if (step.method == "ducat_kishara" or step.method == "ducat_katakohi") and not step.allflame then step.allflame={auto=true,upgradeTier=2} end
 		if step.allflame and not step.allflame.preferredTargets and #recipe.targets > 0 then step.allflame.preferredTargets=copyTable(step.untilTargets or recipe.targets) end
 	end
