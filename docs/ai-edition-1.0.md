@@ -42,7 +42,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Preview/recalculate all desired targets, with explicit apply and pause controls.
 - [x] Summarise mechanic investment, small nodes, blocking and keystone tradeoffs.
 - [x] Compare saved plans visually and preserve exact tree versions.
-- [ ] Compare the 3.30 preview with the official release export when it becomes available, and verify Ruthless official-link sharing.
+- [ ] Compare the 3.30 preview with the official release export when it becomes available, including both Standard and Ruthless graphs.
 
 ## Shared experience
 

@@ -605,7 +605,7 @@ async function main(){
   assert.ok(ruthlessSearch.atlas.matches.some(node=>node.stats.some(stat=>stat.includes('Tier 1-15 Maps found have 3% chance'))));
   const ruthlessRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'ruthless',title:'Ruthless',version:ruthlessVersion,budget:150,nodes:[]},targets:[57123],optimize:true},'atlas');
   assert.equal(ruthlessRoute.atlas.plan.version,ruthlessVersion);assert.ok(ruthlessRoute.atlas.plan.nodes.includes(57123));
-  assert.equal(ruthlessRoute.atlas.officialUrl,undefined);assert.match(ruthlessRoute.atlas.officialUrlWarning,/not verified/);
+  assert.match(ruthlessRoute.atlas.officialUrl,/^https:\/\/www\.pathofexile\.com\/fullscreen-atlas-skill-tree\/ruthless\//);assert.equal(ruthlessRoute.atlas.officialUrlWarning,undefined);
   const refinedTargets=[39402,22270,60117,23416,23538,40832,52315];
   const refinedRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'refined',title:'Refined route',version:'3.30.0-preview',budget:50,nodes:[]},targets:refinedTargets,optimize:true},'atlas');
   const variantSearch=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Double-Veiled Item',limit:20},'atlas');

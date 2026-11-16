@@ -72,7 +72,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("version","3.30.0-preview-ruthless");ui:click("confirm")
 	assert(build.planningWorkspace.controls.canvas.tree.mode=="ruthless","Ruthless Atlas did not load")
 	assert(build.planningWorkspace.controls.canvas.tree.nodes[57123].stats[1]:find("3%% chance"),"Ruthless Atlas displayed a Standard modifier")
-	frame("atlas-ruthless-tree");ui:choose("page","Notes & sharing");assert(not build.planningWorkspace.controls.url:IsEnabled(),"Unverified Ruthless official links are enabled")
+	frame("atlas-ruthless-tree");ui:choose("page","Notes & sharing");assert(build.planningWorkspace.controls.url:IsEnabled(),"Ruthless official links are unavailable")
 	ui:click("copy");assert(json.decode(ui.clipboard).atlasPlan.version=="3.30.0-preview-ruthless","Ruthless plan export lost its mode")
 	frame("atlas-ruthless-sharing");ui:choose("page","Tree")
 	ui:choose("version","3.29.3");ui:click("confirm");frame("atlas-start");assert(not build.controls.statBox:IsShown(),"Build sidebar should be hidden while planning")

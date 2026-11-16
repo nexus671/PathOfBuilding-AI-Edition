@@ -16,8 +16,23 @@ describe("3.30 Ruthless Atlas preview",function()
 		local plan=atlas.connect({id="ruthless",title="Ruthless Atlas",version=version,budget=150,nodes={}}, {57123})
 		assert.equal("Ruthless",atlas.report(plan).mode)
 		local restored=atlas.import(atlas.export(plan),version);assert.same(plan.nodes,restored.nodes);assert.equal(version,restored.version)
-		assert.has_error(function() atlas.url(plan) end)
+		assert.same(plan.nodes,atlas.import(atlas.url(plan),version).nodes)
 		assert.has_error(function() atlas.import("https://www.pathofexile.com/fullscreen-atlas-skill-tree/AAAA",version) end)
+	end)
+	it("imports and exports official Ruthless links without adding the free start",function()
+		-- Captured from the official Ruthless tree after allocating two adjacent nodes.
+		-- cspell:ignore HYAAA
+		local token="AAAABgAAAh_EuHYAAA=="
+		local official="https://www.pathofexile.com/atlas-skill-tree/ruthless/"..token
+		local full="https://www.pathofexile.com/fullscreen-atlas-skill-tree/ruthless/"..token
+		local plan=atlas.import(official,version)
+		assert.same({8132,47222},plan.nodes)
+		assert.equal(full,atlas.url(plan))
+		assert.same(plan.nodes,atlas.import(full,version).nodes)
+		assert.has_error(function() atlas.import(official,"3.30.0-preview") end)
+		assert.has_error(function() atlas.import(full:gsub("/ruthless/","/"),version) end)
+		local empty={id="empty",title="Empty",version=version,budget=150,nodes={}}
+		assert.same({},atlas.import(atlas.url(empty),version).nodes)
 	end)
 	it("loads historical Ruthless Standard graphs and chooses matching defaults",function()
 		for _,case in ipairs({{"3.27.0-ruthless","3.27.0",132,"f3df4307bcb35ff807822173954b050c171ce8c63cf4c04ceb024cdfffa2ff68"},

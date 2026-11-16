@@ -335,12 +335,15 @@ function M.import(raw,version,id,title,budget)
 		local plan=M.validate(decoded.atlasPlan); plan.id=id or plan.id; plan.title=title or plan.title
 		return M.validate(plan)
 	end
-	assert(M.tree(version).mode~="ruthless","Official Ruthless Atlas links are not yet verified; import a saved plan JSON instead.")
 	local host,path=raw:match("^https://([^/]+)/(.+)$")
 	assert(host=="www.pathofexile.com" or host=="pathofexile.com","Paste plan JSON or an official pathofexile.com Atlas link. Other planners must export an official link first.")
 	path=path:match("^[^?#]+") or ""
-	local token=path:match("^fullscreen%-atlas%-skill%-tree/([%w_%-=]+)/?$")
+	local prefix,rest=path:match("^(fullscreen%-atlas%-skill%-tree)/(.+)$")
+	if not prefix then prefix,rest=path:match("^(atlas%-skill%-tree)/(.+)$") end
+	local ruthless=rest and rest:match("^ruthless/(.+)$")
+	local token=(ruthless or rest or ""):match("^([%w_%-=]+)/?$")
 	assert(token,"This is not a supported official Atlas tree link. Choose the matching bundled version before importing.")
+	assert((ruthless~=nil)==(M.tree(version).mode=="ruthless"),"Choose a matching Standard or Ruthless Atlas version before importing this link.")
 	local bytes=common.base64.decode(token:gsub("-","+"):gsub("_","/"))
 	assert(bytes and #bytes >= 9 and bytes:sub(1,5) == string.char(0,0,0,6,0),"Unsupported Atlas URL format or game mode")
 	local count=bytes:byte(6)*256+bytes:byte(7)
@@ -351,12 +354,12 @@ end
 function M.url(plan)
 	plan=M.validate(plan)
 	assert(#(plan.choices or {})==0,"Official links with Atlas effect choices are not yet verified; use Copy plan to preserve them.")
-	assert(M.tree(plan.version).mode~="ruthless","Official Ruthless Atlas links are not yet verified; use Copy plan instead.")
-	local ids=copyTable(plan.nodes); ids[#ids+1]=M.tree(plan.version).start; table.sort(ids)
+	local tree=M.tree(plan.version)
+	local ids=copyTable(plan.nodes); if tree.mode~="ruthless" then ids[#ids+1]=tree.start end; table.sort(ids)
 	local bytes={0,0,0,6,0,math.floor(#ids/256),#ids%256}
 	for _,id in ipairs(ids) do bytes[#bytes+1]=math.floor(id/256); bytes[#bytes+1]=id%256 end
 	bytes[#bytes+1]=0; bytes[#bytes+1]=0
-	return "https://www.pathofexile.com/fullscreen-atlas-skill-tree/"..common.base64.encode(string.char(unpack(bytes))):gsub("+","-"):gsub("/","_")
+	return "https://www.pathofexile.com/fullscreen-atlas-skill-tree/"..(tree.mode=="ruthless" and "ruthless/" or "")..common.base64.encode(string.char(unpack(bytes))):gsub("+","-"):gsub("/","_")
 end
 function M.new(build)
 	local self={plans={},build=build}
