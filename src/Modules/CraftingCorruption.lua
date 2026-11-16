@@ -10,6 +10,15 @@ function C.extend(M,A,api)
 	for method,label in pairs(labels) do M.methods[#M.methods+1]=method;M.labels[method]=label end;table.sort(M.methods)
 	local originalModel,originalAction,originalDecorate,originalValidate,originalItem=M.model,M.action,M.decorateItem,M.validateState,M.toItem
 	local originalMatches=M.matches
+	local function mixedImplicitReason(model,state)
+		if (model.unresolvedEldritch and not state.implicits) or (state.implicits and #state.implicits > 1) then
+			return "Corruption of multiple or unidentified Eldritch implicits is not modeled."
+		end
+		if model.item.synthesised and #(model.item.implicitModLines or {}) > 1 then
+			return "Corruption of multiple synthesised implicit lines is not modeled."
+		end
+	end
+	M.methodChecks.vaal=mixedImplicitReason
 	M.methodChecks.locus=function(model,state)
 		local flags=api.flags(model,state)
 		if flags.prefixes or flags.suffixes or flags.attack or flags.caster then return "Locus meta-modifier interactions need additional validation" end
@@ -78,6 +87,7 @@ function C.extend(M,A,api)
 		return model
 	end
 	function M.rollCorrupted(model,state,random,count,retained)
+		local reason=mixedImplicitReason(model,state);assert(not reason,reason)
 		local chosen,groups=copyTable(retained or {}),{}
 		for _,entry in ipairs(chosen) do for _,group in ipairs(metadata[entry.id].groups) do groups[group]=true end end
 		for _=1,(count or 1) do
@@ -206,6 +216,7 @@ function C.extend(M,A,api)
 	M.limits[#M.limits+1]="Flask Vaal quality changes by an integer from -10 to +10, clamped to 0-40; equal weights are assumed and unverified."
 	M.limits[#M.limits+1]="Abyss and cluster jewel Vaal outcomes use assumed equal weights; rare rerolls use the ordinary four-affix limit, and the unique-jewel outcome is modeled as no change. These outcomes and probabilities are unverified."
 	M.limits[#M.limits+1]="The equipment Vaal model includes the four outcome branches and current non-white socket conversion. Rare-brick socket/link rerolls are not modeled; tainted affix outcomes use a 50/50 assumption."
+	M.limits[#M.limits+1]="Corrupting multiple or unidentified Eldritch implicits or multiple synthesised implicit lines is not modeled."
 	M.limits[#M.limits+1]="The 3.30 Locus model requires a Corrupted item and adds a second corruption. Outcome chances, socket conversion and selection of a replaced implicit are assumptions; uncorrupted altar use is not modeled. Fractured, synthesised, meta-modified and special transformation bases are excluded."
 end
 return C

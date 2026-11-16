@@ -11,6 +11,23 @@ describe("Imported corruption identities",function()
 	end
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("does not erase surviving implicits when corruption is not yet modeled",function()
+		local model=sim.model(raw);local check=require("Modules.CraftingAvailability").check
+		local first=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state
+		assert.is_true(check("vaal",first,model))
+		local second=sim.perform(raw,{method="eldritch_implicit",side="Eater",tier=1},12,first).state
+		assert.equal(2,#second.implicits)
+		local available,reason=check("vaal",second,model)
+		assert.is_false(available);assert.is_truthy(reason:find("Eldritch",1,true))
+		local draws=0;assert.has_error(function() sim.action(model,second,{method="vaal"},function() draws=draws+1;return 0 end) end,reason)
+		assert.equal(0,draws);assert.equal(2,#second.implicits)
+		assert.has_error(function() sim.rollCorrupted(model,copyTable(second),function() return 0 end) end,reason)
+		model.unresolvedEldritch=true;assert.is_false(check("vaal",model.initial,model))
+		local synth=sim.model("Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\n+12 to Dexterity\nSynthesised Item")
+		available,reason=check("vaal",synth.initial,synth)
+		assert.is_false(available);assert.is_truthy(reason:find("synthesised",1,true))
+		assert.has_error(function() sim.action(synth,synth.initial,{method="vaal"},function() return 0 end) end,reason)
+	end)
 	it("models a second corruption while retaining or replacing an existing implicit",function()
 		local model=sim.model(raw);local first=copyTable(model.initial)
 		sim.rollCorrupted(model,first,function() return 0.1 end,1)

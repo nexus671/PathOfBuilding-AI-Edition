@@ -32,6 +32,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Report modeled ingredient and service quantities separately from spending, with an illustrated resource browser.
 - [x] Apply quality enchantments with native item state, recipe goals and resource costs.
 - [ ] Complete and validate current crafting coverage, including incomplete socket, corruption and league mechanics and their probabilities.
+- [ ] Preserve surviving Eldritch and synthesised implicits when corruption replaces one; those mixed-implicit cases are currently disabled.
 - [x] Keep empirical assumptions visible; never present unknown weights as facts.
 
 ## Atlas
