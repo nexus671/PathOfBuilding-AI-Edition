@@ -563,11 +563,14 @@ function M.poll(build, force)
 			else local raw,report=filters.compile(profile);M.status={id=request.id,status="exported",filter=raw,report=report} end
 			M.publishState();return
 		end
-		if request.kind == "atlasSearch" or request.kind == "atlasConnect" then
+		if request.kind == "atlasSearch" or request.kind == "atlasConnect" or request.kind == "atlasTransition" then
 			assert(request.baseRevision == M.revision(build),"Build changed. Refresh Atlas context.")
 			local planner=require("Modules.AtlasPlanner")
 			local result
 			if request.kind == "atlasSearch" then result=planner.search(request.version,request.query,request.limit)
+			elseif request.kind == "atlasTransition" then
+				local before,after=planner.validate(request.before),planner.validate(request.after)
+				result={before=before.id,after=after.id,transition=require("Modules.AtlasStrategy").transition(before,after)}
 			else
 				assert(request.optimize==nil or type(request.optimize)=="boolean","Invalid Atlas optimization setting")
 				local plan,added,routing=(request.optimize and planner.connectOptimized or planner.connect)(request.plan,request.targets,request.avoid)

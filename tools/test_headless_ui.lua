@@ -137,6 +137,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		require("Classes.AtlasPlanningControl").Open(build,goal,function() end);ui:choose("previous","temp-start","val")
 		local lines={};for _,row in ipairs(main.popups[1].controls.transition.list) do lines[#lines+1]=StripEscapes(row[1]) end
 		assert(table.concat(lines," "):find("Temporary grant path",1,true),"Atlas stages did not show the temporary grant route");frame("atlas-temporary-grant-route");ui:click("close");build.savers.AtlasPlans:Remove("temp-start")
+		local impossible=copyTable(shortest);impossible.id="legacy-start";impossible.title="Legacy start";impossible.budget=#shortest.nodes-1
+		build.savers.AtlasPlans.plans[#build.savers.AtlasPlans.plans+1]=impossible
+		local later=copyTable(impossible);later.id="legacy-later";later.title="Later stage";later.progression={stage="final",previousId=impossible.id}
+		require("Classes.AtlasPlanningControl").Open(build,later,function() end)
+		local warning={};for _,row in ipairs(main.popups[1].controls.transition.list) do warning[#warning+1]=StripEscapes(row[1]) end
+		assert(table.concat(warning," "):find("Starting plan cannot be reached",1,true),"Impossible Atlas start was presented as a valid route")
+		frame("atlas-impossible-start");ui:click("copyRoute");assert(ui.clipboard:find("Starting plan cannot be reached",1,true));ui:click("close")
+		table.remove(build.savers.AtlasPlans.plans)
 	end
 	local starter=copyTable(build.savers.AtlasPlans.plans[1]);starter.id="starter-atlas";starter.title="Starter maps";starter.nodes={};starter.progression={stage="starter"};build.savers.AtlasPlans:Upsert(starter)
 	ui:click("progression");assert(not main.popups[1].controls.copyRoute:IsEnabled(),"Route copy should require a previous stage");ui:choose("stage","final","val");ui:choose("previous","starter-atlas","val");frame("atlas-progression");ui:click("copyRoute");assert(ui.clipboard:find("Starter maps",1,true) and ui.clipboard:find("Allocate:",1,true) and ui.clipboard:find("base points",1,true),"Copied Atlas route omitted steps or budget assumptions")

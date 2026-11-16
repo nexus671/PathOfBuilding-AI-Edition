@@ -535,6 +535,8 @@ async function main(){
   const atlasRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:starterAtlas,targets:atlasTargets,optimize:true},'atlas');
   assert.equal(atlasRoute.atlas.routing.heuristic,false);assert.ok(atlasRoute.atlas.routing.attempts>=1);
   assert.ok(atlasTargets.every(id=>atlasRoute.atlas.plan.nodes.includes(id)));assert.equal((await call('get_build_context')).context.revision,context.revision);
+  const stageReview=await queued('compare_atlas_plans',{baseRevision:context.revision,before:starterAtlas,after:atlasRoute.atlas.plan},'atlas');
+  assert.equal(stageReview.atlas.transition.startingReachable,true);assert.equal(stageReview.atlas.transition.startingStatus,'reachable');assert.equal(stageReview.atlas.transition.steps.length,atlasRoute.atlas.plan.nodes.length);
   const nextAtlas=atlasSearch.atlas.matches.find(node=>!atlasRoute.atlas.plan.nodes.includes(node.id));assert.ok(nextAtlas);
   const extended=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:atlasRoute.atlas.plan,targets:[...atlasRoute.atlas.plan.nodes.slice(0,4),nextAtlas.id,nextAtlas.id],optimize:true},'atlas');
   assert.equal(extended.atlas.routing.heuristic,false);assert.ok(extended.atlas.plan.nodes.includes(nextAtlas.id));
@@ -543,6 +545,11 @@ async function main(){
   const grantSearch=await queued('search_atlas_nodes',{baseRevision:context.revision,version:grantPlan.version,query:'Unwavering Vision',limit:10},'atlas');
   const grantId=grantSearch.atlas.matches[0].id;
   const grantRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:grantPlan,targets:[grantId]},'atlas');
+  const impossibleStart={...grantRoute.atlas.plan,budget:grantRoute.atlas.plan.nodes.length-1};
+  const blockedStage=await queued('compare_atlas_plans',{baseRevision:context.revision,before:impossibleStart,after:impossibleStart},'atlas');
+  assert.equal(blockedStage.atlas.transition.startingReachable,false);assert.equal(blockedStage.atlas.transition.startingStatus,'unreachable');assert.equal(blockedStage.atlas.transition.steps,undefined);
+  assert.match(blockedStage.atlas.transition.startingWarning,/earned points.*Unwavering Vision/);
+  const otherVersion=await queued('compare_atlas_plans',{baseRevision:context.revision,before:starterAtlas,after:grantPlan},'failed');assert.match(otherVersion.error,/same Atlas version/);
   const avoidedGrant=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{...grantPlan,budget:grantRoute.atlas.plan.nodes.length},targets:[grantId],avoid:[17321]},'failed');
   assert.match(avoidedGrant.error,/earned points.*avoided nodes/i);
   await queued('propose_atlas_plan',{baseRevision:context.revision,plan:starterAtlas},'review');await host('apply');context=(await call('get_build_context')).context;

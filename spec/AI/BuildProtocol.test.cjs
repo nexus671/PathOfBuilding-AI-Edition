@@ -342,6 +342,16 @@ test('preserves Atlas effect choices in AI proposals', t => {
   assert.deepEqual(queued.proposal.operations[0].plan.choices,plan.choices);
 });
 
+test('queues a read-only Atlas stage comparison', t => {
+  const f=fixture(t);
+  const before={id:'before',title:'Before',version:'3.29.3',budget:20,nodes:[]};
+  const after={...before,id:'after',title:'After',nodes:[123]};
+  f.call('compare_atlas_plans',{baseRevision:f.state.revision,before,after});
+  const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(queued.kind,'atlasTransition');assert.deepEqual(queued.before,before);assert.deepEqual(queued.after,after);
+  assert.throws(()=>f.call('compare_atlas_plans',{baseRevision:'0'.repeat(40),before,after}),/revision/i);
+});
+
 test('keeps Atlas proposals in the desktop review flow and rejects unsupported versions', t => {
   const f=fixture(t);
   const plan={id:'atlas',title:'Essence maps',version:'3.27.0',budget:120,nodes:[]};

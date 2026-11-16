@@ -25,6 +25,8 @@ In 3.30, Harvest includes Sacred Flora and Fauna; the Wildwood filter focuses on
 
 **Routes** compares the shortest connection with available alternatives. In **Plan tools**, mark a selected node as a preferred waypoint, open editable mechanic starting routes, compare the draft with a saved plan, or restore an earlier history state. Starting routes compare target orders and connect up to three nearby notables from the bundled graph; they do not predict farming income. Route comparisons honor the current budget and exclusions. In **Stages & strategy**, choose a previous stage and use **Copy route** to copy its refund and allocation steps with their point-budget assumptions.
 
+For older trees with point-granting nodes, the stage comparison checks whether the starting allocation can be reached with the assumed earned points. An impossible legacy starting plan has no route offered; if reaching it may require a temporary path and refunds, the comparison says its starting state is unverified.
+
 If an imported stage references a missing, incompatible or cyclic previous stage, **Stages & strategy** shows the unavailable link and keeps it in the draft. Choose another saved stage or **No previous plan** to resolve the link before saving the plan.
 
 **Allocated stats** opens an investment overview, mechanic counts, keystone tradeoffs and searchable raw bonuses. Saved-plan comparison can overlay added paths in green and removed paths in red. Counts are not effective map odds: increased effect, conditions and keystone interactions are not simulated. Atlas allocations do not change character DPS or EHP.
@@ -43,6 +45,7 @@ Reconnect the MCP client after updating. Enable build proposals in **AI builds**
 
 - `get_atlas_plans`: read saved plans, bundled versions and the build revision.
 - `search_atlas_nodes`: search a selected official graph for native node IDs and text.
+- `compare_atlas_plans`: compare two plans on the same tree and review a budget-aware refund and allocation route, including starting-plan reachability warnings. It does not change either plan.
 - `plan_atlas_tree`: connect up to thirty desired IDs to a plan, optionally avoiding nodes. Returns a separate draft, added nodes, point accounting, stat text and an official link where supported. Plans may include `choices` entries with the allocated `node` ID and selected `effect` ID from search results.
 - `propose_atlas_plan`: submit that plan for normal desktop review. Only the desktop **Apply** button commits the candidate; build **Save** persists it.
 

@@ -146,6 +146,28 @@ describe("Connected planning workflows",function()
 		end
 		assert.is_true(refunds>0);assert.same(goal.nodes,state.nodes)
 	end)
+	it("does not present a transition from an impossible grant-funded starting plan",function()
+		local strategy=require("Modules.AtlasStrategy");local full=atlas.connect({id="grant-start",title="Grant start",version="3.29.3",budget=138,nodes={}},{65225})
+		local needed=#full.nodes;local impossible=copyTable(full);impossible.budget=needed-1
+		assert.is_false(atlas.budgetReachability(impossible))
+		local result=strategy.transition(impossible,impossible)
+		assert.is_false(result.startingReachable);assert.equal("unreachable",result.startingStatus);assert.is_nil(result.steps)
+		assert.matches("Starting plan cannot be reached",table.concat(result.lines," "))
+		assert.matches("Need "..needed.." earned points",table.concat(result.lines," "))
+		build.savers.AtlasPlans.plans={copyTable(impossible)}
+		local draft=copyTable(impossible);draft.id="next-stage";draft.progression={stage="final",previousId=impossible.id}
+		require("Classes.AtlasPlanningControl").Open(build,draft,function() end)
+		local lines={};for _,row in ipairs(main.popups[1].controls.transition.list) do lines[#lines+1]=StripEscapes(row[1]) end
+		assert.matches("Starting plan cannot be reached",table.concat(lines," "));main:ClosePopup()
+		local earned=copyTable(impossible);earned.budget=needed
+		local afterEarning=strategy.transition(impossible,earned)
+		assert.is_true(afterEarning.startingReachable);assert.equal("reachable",afterEarning.startingStatus);assert.equal(0,#afterEarning.steps)
+		local alternate=atlas.connect({id="alternate",title="Alternate",version="3.29.3",budget=138,nodes={}},{65225},{17321})
+		alternate.avoided=nil;alternate.budget=needed;assert.is_nil(atlas.budgetReachability(alternate))
+		local uncertain=strategy.transition(alternate,alternate)
+		assert.is_nil(uncertain.startingReachable);assert.equal("unknown",uncertain.startingStatus);assert.is_truthy(uncertain.steps)
+		assert.matches("reachability is unverified",table.concat(uncertain.lines," "))
+	end)
 	it("allows Atlas stage transitions to change saved node preferences",function()
 		local strategy=require("Modules.AtlasStrategy")
 		local before=plan("before-preferences")

@@ -83,7 +83,11 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1377, f"Expected 1377 UI frames, found {len(paths)}"
+    assert len(paths) == 1380, f"Expected 1380 UI frames, found {len(paths)}"
+    for width in (960, 1024, 1280):
+        route = json.loads((frames / f"{width}-atlas-impossible-start.json").read_text())
+        warning = next(command for command in route["commands"] if "Starting plan cannot be reached" in command.get("text", ""))
+        assert warning["y"] + warning["height"] <= warning["clip"][1] + warning["clip"][3], "Atlas starting-budget warning is clipped"
     for width in (960, 1024, 1280):
         sample = json.loads((frames / f"{width}-filter-tier-unknown.json").read_text())
         labels = " ".join(command.get("text", "") for command in sample["commands"] if command.get("kind") == "text")
