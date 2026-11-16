@@ -1324,8 +1324,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(pasted.DropLevel==1 and pasted.Width==2 and pasted.Height==2,"Pasted base properties were not populated")
 	ui:click("sampleEdit");local missing=main.popups[1].controls;assert(missing.Sockets.buf=="" and missing.LinkedSockets.buf=="" and missing.SocketGroup.buf=="","Unknown sockets were not shown as blank");frame("filter-pasted-sockets-unknown");ui:click("cancel")
 	ui.clipboard="Item Class: Stackable Currency\nRarity: Currency\nChaos Orb\n--------\nStack Size: 7/20";ui:click("pasteDrop");frame("filter-copied-item")
-	local currency=build.planningWorkspace.cache.filters.layout.snapshot().sample;assert(currency.DropLevel==12 and currency.Width==1 and currency.Height==1,"Pasted currency base properties were not populated")
-	ui:click("sampleEdit");assert(main.popups[1].controls.DropLevel.buf=="12" and main.popups[1].controls.Width.buf=="1", "Pasted base properties were not editable");ui:text("BaseDefencePercentile","0");ui:text("MemoryStrands","0");ui:choose("AlwaysShow","No");frame("filter-copied-base-properties")
+	local currency=build.planningWorkspace.cache.filters.layout.snapshot().sample;assert(currency.DropLevel==12 and currency.Width==1 and currency.Height==1 and currency.BaseDefencePercentile==0,"Pasted currency base properties were not populated")
+	ui:click("sampleEdit");assert(main.popups[1].controls.DropLevel.buf=="12" and main.popups[1].controls.Width.buf=="1" and main.popups[1].controls.BaseDefencePercentile.buf=="0", "Pasted base properties were not editable");ui:text("MemoryStrands","0");ui:choose("AlwaysShow","No");frame("filter-copied-base-properties")
 	ui:click("moreSample");ui:text("extra_BaseArmour","0");frame("filter-more-sample-properties");ui:click("keepExtra");ui:click("useSample")
 	local configured=build.planningWorkspace.cache.filters.layout.snapshot().sample
 	assert(configured.BaseDefencePercentile==0 and configured.MemoryStrands==0 and configured.AlwaysShow==false and configured.BaseArmour==0,"Configured properties were not retained in the test item")

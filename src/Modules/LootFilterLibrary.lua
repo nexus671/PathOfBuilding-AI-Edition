@@ -5,6 +5,20 @@ local parser=require("Modules.LootFilterParser")
 local sha1=require("sha1")
 local M={categories={"All items","Build targets","Campaign","Currency","Special currency","Equipment","Unique items","Flasks","Tinctures","Jewels","Divination cards","Maps & fragments","Gems","Recipes","League items","Other"}}
 local baseMetadata
+local noSockets={ ["Stackable Currency"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
+local equipment={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true,Quiver=true,Amulet=true,Ring=true,Belt=true}
+-- Unknown bases, unique equipment and random defence rolls remain unresolved.
+function M.baseDefencePercentile(name,class,rarity)
+	if noSockets[class] then return 0 end
+	local native=data and data.itemBases and data.itemBases[name]
+	if native and (equipment[native.type] or data.weaponTypeInfo[native.type]) and rarity~="Unique" then
+		for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
+			local armour=native.armour or {};local min,max=armour[kind.."BaseMin"],armour[kind.."BaseMax"]
+			if min and max and min~=max then return nil,true end
+		end
+		return 100
+	end
+end
 function M.baseProperties(name,rarity)
 	if not baseMetadata then
 		local file=assert(io.open("Data/LootFilters/base-metadata.json","rb"));local raw=file:read("*a");file:close()
@@ -20,17 +34,8 @@ local function applyBaseProperties(item,preserveSockets,preserveDefence)
 	local base=M.baseProperties(item.BaseType,item.Rarity)
 	item.DropLevel=base.DropLevel;item.Width=base.Width;item.Height=base.Height
 	local native=data and data.itemBases and data.itemBases[item.BaseType]
-	local noSockets={ ["Stackable Currency"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
-	local equipment={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true,Quiver=true,Amulet=true,Ring=true,Belt=true}
-	if noSockets[item.Class] then item.BaseDefencePercentile=0
-	elseif native and (equipment[native.type] or data.weaponTypeInfo[native.type]) and item.Rarity~="Unique" then
-		local random=false
-		for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
-			local armour=native.armour or {};local min,max=armour[kind.."BaseMin"],armour[kind.."BaseMax"]
-			if min and max and min~=max then random=true end
-		end
-		if not random then item.BaseDefencePercentile=100 elseif not preserveDefence then item.BaseDefencePercentile=nil end
-	else item.BaseDefencePercentile=nil end
+	local percentile,random=M.baseDefencePercentile(item.BaseType,item.Class,item.Rarity)
+	if not (random and preserveDefence) then item.BaseDefencePercentile=percentile end
 	local limit=native and (native.socketLimit or 0)
 	local coherent=preserveSockets and type(item.Sockets)=="number" and (native and item.Sockets<=limit or not native and noSockets[item.Class] and item.Sockets==0)
 	if not coherent and (native and limit>0 or not native and not noSockets[item.Class] or preserveSockets) then

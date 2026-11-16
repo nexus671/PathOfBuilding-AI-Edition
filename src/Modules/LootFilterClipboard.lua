@@ -35,8 +35,9 @@ function M.parse(raw,area)
 			item.MemoryStrands=strands
 		end
 	end
-	local properties=require("Modules.LootFilterLibrary").baseProperties(item.BaseType,item.Rarity)
+	local library=require("Modules.LootFilterLibrary");local properties=library.baseProperties(item.BaseType,item.Rarity)
 	item.DropLevel=properties.DropLevel;item.Width=properties.Width;item.Height=properties.Height
+	item.BaseDefencePercentile=library.baseDefencePercentile(item.BaseType,item.Class,item.Rarity)
 	if tier and tier>=0 and tier<=5 then item.UnidentifiedItemTier=tier end
 	-- Ordinary equipment copies list each influence on a separate marker line.
 	-- Unique items and maps can carry special influence effects; do not infer
