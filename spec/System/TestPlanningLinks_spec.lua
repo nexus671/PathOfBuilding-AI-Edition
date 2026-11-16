@@ -4,6 +4,44 @@ describe("Linked planning tools",function()
 	local function craft() return {id="helmet",title="Helmet",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}} end
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("keeps identical pickups linked to each crafting and gear source",function()
+		local first=craft();build.savers.CraftingProjects:Upsert(first)
+		local profile=filters.profile("shared","Shared pickups");profile.rules=filters.generate(build,profile)
+		local second=copyTable(first);second.id="second";second.title="Second helmet";build.savers.CraftingProjects:Upsert(second)
+		local function statuses()
+			local report=dependencies.report(build,profile);local result={}
+			for _,entry in ipairs(report.entries) do result[entry.origin]=entry.status end
+			return result,report.stale
+		end
+		local state,stale=statuses();assert.is_true(stale);assert.equal("Current",state["craft:helmet"]);assert.equal("New target",state["craft:second"])
+		profile.rules=filters.generate(build,profile);state,stale=statuses();assert.is_false(stale);assert.equal("Current",state["craft:second"])
+		local journey=require("Modules.BuildJourney").empty();journey.wishlist={{id="gearhat",title="Helmet goal",slot="Helmet",route="craft",targetItem=first.startingItem}};build.savers.BuildJourney:Replace(journey)
+		state,stale=statuses();assert.is_true(stale);assert.equal("New target",state["gear:gearhat"])
+		profile.rules=filters.generate(build,profile);local ids={};for _,rule in ipairs(profile.rules) do if rule.origin then ids[rule.origin]=rule.id end end
+		assert.is_truthy(ids["craft:helmet"]);assert.is_truthy(ids["craft:second"]);assert.is_truthy(ids["gear:gearhat"])
+		local opened;local layout={openWorkbench=function(project) opened=project.id end,navigate=function(_,entry) opened=entry.selected end}
+		assert.is_true(dependencies.open(build,layout,"craft:helmet"));assert.equal("helmet",opened)
+		assert.is_true(dependencies.open(build,layout,"craft:second"));assert.equal("second",opened)
+		assert.is_true(dependencies.open(build,layout,"gear:gearhat"));assert.equal("gearhat",opened)
+		second.startingItem=second.startingItem:gsub("86","84");build.savers.CraftingProjects:Upsert(second)
+		state,stale=statuses();assert.is_true(stale);assert.equal("Current",state["craft:helmet"]);assert.equal("Changed",state["craft:second"]);assert.equal("Current",state["gear:gearhat"])
+		profile.rules=filters.generate(build,profile);build.savers.CraftingProjects:Remove("helmet")
+		state,stale=statuses();assert.is_true(stale);assert.equal("Source removed / no longer needed",state["craft:helmet"]);assert.equal("Current",state["craft:second"]);assert.equal("Current",state["gear:gearhat"])
+		profile.rules=filters.generate(build,profile);local retained={};for _,rule in ipairs(profile.rules) do if rule.origin then retained[rule.origin]=rule.id end end
+		assert.equal(ids["craft:second"],retained["craft:second"]);assert.equal(ids["gear:gearhat"],retained["gear:gearhat"])
+		profile.template="Hide";assert.equal("Show",filters.simulate(profile,{BaseType="Iron Hat",Rarity="Rare",ItemLevel=86}).action)
+	end)
+	it("keeps shared recipe currencies linked to each guide",function()
+		local first=craft();first.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}}
+		local second=copyTable(first);second.id="second";second.title="Second helmet"
+		build.savers.CraftingProjects:Upsert(first);build.savers.CraftingProjects:Upsert(second)
+		local profile=filters.profile("shared-currency","Shared currency");profile.rules=filters.generate(build,profile)
+		local sources={};for _,rule in ipairs(profile.rules) do if rule.title=="Omen of Connections" then sources[rule.origin]=true end end
+		assert.is_true(sources["craft:helmet"]);assert.is_true(sources["craft:second"])
+		first.nativeRecipe.steps={{method="socket_white_bench"}};build.savers.CraftingProjects:Upsert(first)
+		profile.rules=filters.generate(build,profile);sources={};for _,rule in ipairs(profile.rules) do if rule.title=="Omen of Connections" then sources[rule.origin]=true end end
+		assert.is_nil(sources["craft:helmet"]);assert.is_true(sources["craft:second"])
+	end)
 	it("adds linked loot targets for every mechanic on a multi-mechanic Atlas node",function()
 		local atlas=require("Modules.AtlasPlanner");local tree=atlas.tree("3.30.0-preview")
 		local plan=atlas.connect({id="multi",title="Multi mechanic",version="3.30.0-preview",budget=150,nodes={}}, {4908})

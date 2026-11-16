@@ -537,6 +537,7 @@ async function main(){
   generated.profile.categoryStyles=[{category:'Currency',appearance:{minimumFontSize:40,alertVolume:0}}];
   generated.profile.palettes=[{id:'gold',title:'Gold highlights',appearance:generated.profile.appearance,theme:'default',categoryStyles:generated.profile.categoryStyles}];
   assert.ok(generated.profile.rules.some(rule=>rule.origin==='craft:helmet'));
+  assert.ok(generated.profile.rules.some(rule=>rule.origin==='gear:alternative' && rule.text.includes('BaseType == "Iron Hat"')),'Shared base lost its gear-source link');
   const tested=await queued('test_loot_filter',{baseRevision:context.revision,profile:generated.profile,sample:{BaseType:'Iron Hat',Rarity:'Rare',ItemLevel:86}},'tested');assert.equal(tested.result.action,'Show');
   const copiedProfile={...lootProfile,rules:[{id:'currency',title:'Currency dimensions',text:'Show\n BaseType == "Chaos Orb"\n DropLevel = 12\n Width = 1',enabled:true}]};
   const copied=await queued('test_loot_filter',{baseRevision:context.revision,profile:copiedProfile,itemText:'Item Class: Stackable Currency\nRarity: Currency\nChaos Orb\n--------\nStack Size: 7/20\n--------',areaLevel:83},'tested');

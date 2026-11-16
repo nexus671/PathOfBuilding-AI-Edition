@@ -114,7 +114,9 @@ function M.generate(build,profile,checkpoint)
 	end
 	for _,rule in ipairs(profile.rules) do if not rule.origin then ids[rule.id]=true end end
 	local function add(id,title,conditions,origin)
-		local signature=table.concat(conditions,"\n");if used[signature] then return end;used[signature]=true
+		-- Identical pickups can belong to different plans. Keep each source
+		-- linked, while collapsing repeated requirements within that source.
+		local signature=(origin or "").."\0"..table.concat(conditions,"\n");if used[signature] then return end;used[signature]=true
 		local base=id;local suffix=1;while ids[id] do suffix=suffix+1;id=base.."-"..suffix end;ids[id]=true
 		result[#result+1]=M.rule(id,title,conditions,origin,profile.theme)
 	end
