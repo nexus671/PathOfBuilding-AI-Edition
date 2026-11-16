@@ -54,7 +54,7 @@ function M.report(build,profile,checkpoint)
 		end
 		if not checkpoint then require("Modules.PlanningPerformance").record(build,"Filter target refresh",os.clock()-start) end
 	end
-	local old=collect(profile.rules);local result={stale=false,linked=0,entries={}}
+	local old=collect(profile.rules);local result={stale=false,needsReview=#new.warnings>0,linked=0,entries={}}
 	local origins,warningByOrigin={},{};for key in pairs(old) do origins[key]=true end;for key in pairs(new.groups) do origins[key]=true end
 	for _,warning in ipairs(new.warnings) do
 		origins[warning.origin]=true;local list=warningByOrigin[warning.origin] or {};warningByOrigin[warning.origin]=list;list[#list+1]=warning

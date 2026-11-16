@@ -277,9 +277,9 @@ function M.Open(build,source,layout,controller)
 		c.mode=new("DropDownControl"):DropDownControl(ui.anchor,{28+left/2-6,306,left/2-6,26},{"Normal","Ruthless"},function(_,value) profile.mode=value;draft();reopen() end);c.mode:SelByValue(profile.mode)
 		ui.label(c,"strictLabel",16,346,"Strictness",12);c.strictness=new("DropDownControl"):DropDownControl(ui.anchor,{16,364,left,26},filters.strictness,function(index) profile.strictness=index-1;draft();reopen() end);c.strictness.selIndex=profile.strictness+1
 		button(c,"generate",16,406,left,"Auto-adjust for this build",generatePickups)
-		c.generate.label=function() return generationJob and "Updating build pickups..." or dependencyJob and "Checking build pickups..." or dependencies and dependencies.stale and "Refresh build pickups *" or "Auto-adjust for this build" end
+		c.generate.label=function() return generationJob and "Updating build pickups..." or dependencyJob and "Checking build pickups..." or dependencies and dependencies.needsReview and "Build pickups need review *" or dependencies and dependencies.stale and "Refresh build pickups *" or "Auto-adjust for this build" end
 		c.generate.enabled=function() return not dependencyJob and not generationJob end
-		c.generate.tooltipText="* means linked targets changed. Profile tools > Linked build targets shows the sources. Refreshing preserves personal overrides."
+		c.generate.tooltipText="* means linked targets changed or need review. Profile tools > Linked build targets shows the sources. Refreshing preserves personal overrides."
 		button(c,"customize",16,448,left,"Customize pickups  >",function() page="Customize";reopen() end)
 		sceneControl("preview",left+32,214,right,h-288,library.scene(profile,build,"Mixed drops",0,83),true)
 		ui.description(c,"sceneHint",left+32,h-68,right,24,{"Live filter appearance. Open Simulate for drop inspection."},14)

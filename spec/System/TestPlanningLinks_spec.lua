@@ -363,6 +363,24 @@ describe("Linked planning tools",function()
 		for _=1,10 do if workspace.controls.generate:IsEnabled() then break end;workspace.cache.filters.layout.tick() end
 		assert.is_true(workspace.controls.generate:IsEnabled())
 	end)
+	it("shows target review warnings even before any pickup has been generated",function()
+		local project=craft();build.savers.CraftingProjects:Upsert(project)
+		local profile=filters.profile("unreadable-ui","Unreadable target")
+		local projects=require("Modules.CraftingProjects");local original=projects.item
+		projects.item=function(raw) if raw==project.startingItem then error("fixture item unavailable") end;return original(raw) end
+		local ok,err=pcall(function()
+			local report=dependencies.report(build,profile)
+			assert.equal(0,report.linked);assert.is_false(report.stale);assert.is_true(report.needsReview)
+			local workspace=require("Modules.PlanningWorkspace").new(build)
+			workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}}})
+			for _=1,10 do if workspace.controls.generate:IsEnabled() then break end;workspace.cache.filters.layout.tick() end
+			assert.equal("Build pickups need review *",workspace.controls.generate.label())
+			workspace.controls.generate:Click()
+			for _=1,10 do if main.popups[1] then break end;workspace.cache.filters.layout.tick() end
+			assert.is_truthy(main.popups[1].controls.results)
+		end)
+		projects.item=original;assert.is_true(ok,err)
+	end)
 	it("does not apply a pending pickup update after the build changes",function()
 		local profile=filters.profile("generation-ui","Generation UI");local workspace=require("Modules.PlanningWorkspace").new(build)
 		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}}})
