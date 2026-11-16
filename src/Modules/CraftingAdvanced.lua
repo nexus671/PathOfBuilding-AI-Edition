@@ -544,6 +544,9 @@ function A.extend(M,api)
 		return result,#result==0 and (unsupported or (api.flags(model,state).suffixes and "Suffixes are locked." or "No swappable single-element resistance is available.")) or nil
 	end
 	local damageData
+	-- Models finish building their modifier table before actions are exposed.
+	-- Keep the index weak so closing an item releases its catalogue too.
+	local damageIndexes=setmetatable({},{__mode="k"})
 	local function harvestDamageData()
 		if not damageData then
 			damageData=assert(json.decode(readData("3.30-harvest-damage.json")))
@@ -555,9 +558,23 @@ function A.extend(M,api)
 		local source=from:gsub("^%l",string.upper);local target=to:gsub("^%l",string.upper)
 		local wanted=id:gsub(source,target):gsub(from,to):gsub("_+$","")
 		if wanted==id:gsub("_+$","") then return end
+		local index=damageIndexes[model.byId]
+		if not index then
+			index={}
+			for candidate in pairs(model.byId) do
+				if candidate:find("Fire",1,true) or candidate:find("Cold",1,true) or candidate:find("Lightning",1,true)
+					or candidate:find("fire",1,true) or candidate:find("cold",1,true) or candidate:find("lightning",1,true) then
+					local key=candidate:gsub("_+$","");local list=index[key]
+					if not list then list={};index[key]=list end
+					list[#list+1]=candidate
+				end
+			end
+			damageIndexes[model.byId]=index
+		end
 		local found
-		for candidate,mod in pairs(model.byId) do
-			if candidate:gsub("_+$","")==wanted and mod.type==model.byId[id].type then
+		for _,candidate in ipairs(index[wanted] or {}) do
+			local mod=model.byId[candidate]
+			if mod and mod.type==model.byId[id].type then
 				local eligible=false;for _,group in ipairs(groups(model,candidate)) do if contains(harvestDamageData().groups[to],group) then eligible=true;break end end
 				if eligible then if found then return end;found=candidate end
 			end
@@ -590,7 +607,8 @@ function A.extend(M,api)
 		local result={};local reason
 		for _,from in ipairs({"fire","cold","lightning"}) do for _,to in ipairs({"fire","cold","lightning"}) do if from~=to then
 			local why=M.damageReason(model,state,from,to)
-			if not why then result[#result+1]={label=from.." to "..to,action={method="harvest_damage",from=from,to=to}} else reason=why end
+			if not why then result[#result+1]={label=from.." to "..to,action={method="harvest_damage",from=from,to=to}}
+			elseif why~="No swappable elemental damage modifier" then reason=why end
 		end end end
 		return result,#result==0 and (reason or "No swappable elemental damage modifier") or nil
 	end
