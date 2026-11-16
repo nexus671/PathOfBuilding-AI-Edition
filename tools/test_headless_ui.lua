@@ -472,8 +472,20 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(not jobs.job and not odds.sampled and odds.successChance==50,"Gwennen deterministic branches were not enumerated")
 		local lines={};for _,row in ipairs(main.popups[1].controls.resultSummary.list) do lines[#lines+1]=StripEscapes(row[1]) end
 		local summary=table.concat(lines," ");assert(summary:find("Destroy",1,true) and summary:find("Set quality to 20%",1,true),"Both Gwennen outcomes were not shown")
-		assert(summary:find("Destroy",1,true)<summary:find("Model note",1,true) and summary:find("assumed fair coin",1,true)<summary:find("Destroy",1,true),"The branch breakdown should follow the visible coin assumption")
+		assert(summary:find("Model note",1,true)<summary:find("Destroy",1,true) and summary:find("assumed fair coin",1,true)<summary:find("Destroy",1,true),"Model assumptions should precede the branch breakdown")
 		ui:click("tab_simulate");frame("crafting-gwennen-exact");ui:click("close")
+	end
+	do
+		local raw="Rarity: RARE\nExample\nPlate Vest\nItem Level: 86\nSockets: W W W W W W"
+		local recipe={steps={{method="gwennen",firstOutcome=1016,secondOutcome=1017}},targets={},requirements={links=6}}
+		require("Classes.CraftingSimulatorControl").Open(build,{id="gwennen-links-ui",title="Link odds",slot="Body Armour",startingItem=raw,goals={},steps={},nativeRecipe=recipe})
+		ui:click("tab_settings");ui:click("gwennen");ui:choose("first",1016,"val");ui:choose("second",1017,"val");ui:click("simulate");ui:click("tab_settings");ui:click("exact")
+		local jobs=require("Modules.CraftingTasks");for i=1,1000 do if not jobs.job then break end;jobs.tick(build) end
+		local odds=build.craftingAnalyses["gwennen-links-ui"].results.odds.result
+		assert(not jobs.job and not odds.sampled and #odds.outcomes>2,"Gwennen link layouts were not enumerated")
+		local lines={};for _,row in ipairs(main.popups[1].controls.resultSummary.list) do lines[#lines+1]=StripEscapes(row[1]) end
+		local summary=table.concat(lines," ");assert(summary:find("Experimental: Gwennen odds and rules are unverified.",1,true)<summary:find("All modeled outcomes",1,true),"Link assumptions should precede the outcome list")
+		ui:click("tab_simulate");frame("crafting-gwennen-link-odds");ui:click("close")
 	end
 	do
 		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 1";local model=sim.model(raw)

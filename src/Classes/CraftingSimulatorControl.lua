@@ -508,11 +508,13 @@ function Panel.Open(build,project,layout)
 	end)
 	local function showOddsResult(result)
 		local lines={string.format("Target chance under model: %.6f%%",result.successChance),result.exactFor or result.estimateFor}
-		if not result.showAllOutcomes then for i,warning in ipairs(result.warnings or {}) do table.insert(lines,1+i,"Model note: "..warning.message) end end
+		for _,warning in ipairs(result.warnings or {}) do
+			if warning.code=="gwennen_estimate" then lines[#lines+1]="Experimental: Gwennen odds and rules are unverified.";break end
+		end
+		for _,warning in ipairs(result.warnings or {}) do lines[#lines+1]="Model note: "..warning.message end
 		if result.sampled then lines[#lines+1]=string.format("%d trials | 95%% interval %.2f%% to %.2f%%",result.trials,result.confidenceLow,result.confidenceHigh) end
 		if result.showAllOutcomes then lines[#lines+1]="All modeled outcomes (target matches marked):" end
 		for _,entry in ipairs(result.outcomes) do if entry.matches or result.showAllOutcomes then lines[#lines+1]=string.format("%.6f%% | %s%s",entry.chance,entry.text or "Finite item outcome",result.showAllOutcomes and entry.matches and " | Target" or "") end end
-		if result.showAllOutcomes then for _,warning in ipairs(result.warnings or {}) do lines[#lines+1]="Model note: "..warning.message end end
 		if result.treeVersion then lines[#lines+1]="Build tree: "..(treeVersions[result.treeVersion] and treeVersions[result.treeVersion].display or result.treeVersion).." (context only) | crafting data: "..tostring(result.dataPatch).."; modifiers: "..tostring(result.modifierPatch or simulator.modifierPatch or "bundled") end
 		refresh(lines)
 	end
