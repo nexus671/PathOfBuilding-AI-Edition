@@ -61,6 +61,22 @@ describe("Saved crafting resource prices",function()
 		assert.is_true(visible)
 		controls.close:Click()
 	end)
+	it("prices both currencies for a corrupted socket colour craft",function()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.corrupted=true
+		local chromatic=prices.key("chromatic",model);local vaal=prices.key("vaal",model)
+		local recipe={steps={{method="socket_colour_bench",count=3}},targets={},requirements={corrupted=true}}
+		local result=sim.simulate(raw,recipe,{initialState=state,trials=3,maxActions=1,forceFirstAction=true,
+			priceBook=book({[chromatic]=0.5,[vaal]=1})})
+		assert.are.equal(3,result.successes);assert.are.equal(30,result.meanCost)
+		local used={};for _,entry in ipairs(result.resourceUsage) do used[entry.key]=entry.amount end
+		assert.are.equal(60,used[chromatic]);assert.are.equal(60,used[vaal])
+		local missing=sim.simulate(raw,recipe,{initialState=state,trials=1,maxActions=1,forceFirstAction=true,
+			priceBook=book({[chromatic]=0.5})})
+		assert.is_nil(missing.meanCost);assert.is_true(missing.unpriced[vaal])
+		local quoted=sim.simulate(raw,recipe,{initialState=state,trials=3,maxActions=1,forceFirstAction=true,currency="chaos",
+			actionPrices={[sim.priceKey(recipe.steps[1])]=7}})
+		assert.are.equal(7,quoted.meanCost);assert.are.same(result.resourceUsage,quoted.resourceUsage)
+	end)
 	it("resolves currency aliases and keeps explicit action overrides separate",function()
 		local m=sim.model(raw);local state=copyTable(m.initial);state.rarity="RARE"
 		local id=assert(prices.aliases(m).exalt);local quote=book({[id]=2})
