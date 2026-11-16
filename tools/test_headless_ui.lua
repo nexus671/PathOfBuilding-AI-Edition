@@ -755,6 +755,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("close")
 	end
 	do
+		local p={id="vaal-sockets-ui",title="Corrupt helmet",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W-W-W-W",goals={},steps={},preferredMethod="vaal"}
+		require("Classes.CraftingSimulatorControl").Open(build,p);local c=main.popups[1].controls
+		assert(c.apply:IsEnabled() and c.apply.tooltipText():find("reroll sockets and links",1,true),"Vaal socket limitation was not disclosed")
+		frame("crafting-vaal-socket-warning","apply");ui:click("close")
+	end
+	do
 		local p={id="abyss-vaal-ui",title="Abyss jewel corruption",slot="Jewel 1",startingItem="Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86",goals={},steps={},preferredMethod="vaal"}
 		require("Classes.CraftingSimulatorControl").Open(build,p);local c=main.popups[1].controls
 		assert(c.apply:IsEnabled() and c.apply.tooltipText():find("Unique outcome treated as no change",1,true),"Abyss Vaal unique outcome assumption was not disclosed")

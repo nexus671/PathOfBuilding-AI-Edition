@@ -57,6 +57,7 @@ function M.actionWarnings(action,model)
 	if action.method=="vaal" and model and model.item.type=="Flask" then result[#result+1]={code="flask_vaal_weights",message="Flask quality changes from -10 to +10; equal outcome weights are assumed and unverified.",source="https://www.pathofexile.com/forum/view-thread/3496784"} end
 	if action.method=="vaal" and model and model.item.type=="Jewel" and model.item.base.subType=="Abyss" then result[#result+1]={code="abyss_vaal_assumptions",message="Abyss jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
 	if action.method=="vaal" and model and model.item.clusterJewel then result[#result+1]={code="cluster_vaal_assumptions",message="Cluster jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
+	if action.method=="vaal" and model and M.socketLimit(model,model.initial)>0 then result[#result+1]={code="vaal_socket_reroll_unmodeled",message="The rare corruption outcome can reroll sockets and links in game; this model leaves them unchanged. Do not rely on the displayed socket layout after corruption.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
 	if action.method=="binding" then result[#result+1]={code="binding_legacy",message="Orbs of Binding are no longer generated in 3.30; existing orbs still work.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
 	if action.method=="jeweller" then result[#result+1]={code="jeweller_estimate",message="Experimental: historical weapon socket weights are assumed for all bases. Quality increases only the maximum-count chance in this model; weights, quality and retained socket/link positions are unverified.",source="https://www.poewiki.net/wiki/Jeweller%27s_Orb"} end
 	if action.method=="tainted_quality" then result[#result+1]={code="tainted_quality_estimate",message="Tainted armour and weapon quality uses an assumed uniform 1-20% range. GGG confirmed the 20% maximum; the minimum and distribution are unverified.",source="https://www.pathofexile.com/forum/view-thread/3531661",asOfPatch="3.25"} end
@@ -610,6 +611,19 @@ function M.validateRecipe(recipe)
 	end
 	return copyTable(recipe)
 end
+local function socketGoal(requirements)
+	return requirements and (requirements.sockets~=nil or requirements.links~=nil or requirements.minAbyssSockets~=nil or requirements.socketColours~=nil)
+end
+local function validateCorruptionSocketGoals(model,recipe)
+	if M.socketLimit(model,model.initial)==0 then return end
+	local socketTarget=socketGoal(recipe.requirements)
+	for _,step in ipairs(recipe.steps) do socketTarget=socketTarget or socketGoal(step.untilRequirements) end
+	if not socketTarget then return end
+	for _,step in ipairs(recipe.steps) do
+		assert(step.method~="vaal" and not (step.method=="gwennen" and (step.firstOutcome==1012 or step.secondOutcome==1012)),
+			"Cannot calculate socket or link goals with Vaal corruption: rare-reroll socket changes are not modeled.")
+	end
+end
 local function priceKey(action) return action.method == "bench" and action.modId or action.method == "essence" and action.essenceId or action.method end
 
 function M.validateState(model,state)
@@ -677,6 +691,7 @@ function M.simulate(raw,recipe,options)
 	assert(actionPriceCount<=100,"Use at most 100 action price overrides")
 	local model=M.model(raw)
 	if options.initialState or recipe.initialState then model.initial=M.validateState(model,options.initialState or recipe.initialState) end
+	validateCorruptionSocketGoals(model,recipe)
 	if options.priceBook or options.prices then
 		options.prices=require("Modules.CraftingPrices").forSimulation(options.priceBook,options.currency,M.context(model,model.initial),options.prices)
 	end
@@ -854,6 +869,10 @@ require("Modules.CraftingCalculator").extend(M)
 do
 	local calculate=M.calculate
 	function M.calculate(raw,craft,targets,initialState,options)
+		if socketGoal(options and options.requirements) and (craft.method=="vaal" or craft.method=="gwennen" and (craft.firstOutcome==1012 or craft.secondOutcome==1012)) then
+			local checkedModel=M.model(raw);if initialState then checkedModel.initial=M.validateState(checkedModel,initialState) end
+			validateCorruptionSocketGoals(checkedModel,{steps={craft},requirements=options.requirements})
+		end
 		local result=calculate(raw,craft,targets,initialState,options)
 		if not result.warnings then
 			local model=M.model(raw);if initialState then model.initial=M.validateState(model,initialState) end

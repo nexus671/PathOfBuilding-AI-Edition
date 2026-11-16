@@ -50,6 +50,11 @@ async function main(){
   await host('request-test');await call('get_build_connection');await host('tick',1);
   const proof=await host('connection-proof');assert.equal(proof.client,'planning-workflow-test');assert.equal(proof.tested,true);assert.equal(proof.synced,true);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
+  const socketedRaw='Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W-W-W-W';
+  const socketVaal=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,action:{method:'vaal'},seed:3},'crafted');
+  assert.ok(socketVaal.nativeCrafting.warnings.some(entry=>entry.code==='vaal_socket_reroll_unmodeled'));
+  const socketVaalPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:socketedRaw,recipe:{steps:[{method:'vaal'}],targets:[],requirements:{links:4}},options:{trials:4,maxActions:1}},'failed');
+  assert.match(socketVaalPlan.error,/socket or link goals.*not modeled/i);
   const corruptedRaw='Rarity: NORMAL\nIron Hat\nItem Level: 86\nQuality: 29\nCorrupted';
   const tainted=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:corruptedRaw,action:{method:'tainted_quality'},seed:5},'crafted');
   assert.ok(tainted.nativeCrafting.state.quality>=1 && tainted.nativeCrafting.state.quality<=20);
