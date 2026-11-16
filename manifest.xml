@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview366" />
+	<Version number="2.67.2-ai.preview368" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1214,7 +1214,7 @@
 	<File name="Classes/NotesTab.lua" part="program" sha1="d62f9ee51c906fcc06cdb08f80bb8f3224c9cce4" />
 	<File name="Classes/PartyTab.lua" part="program" sha1="7cb4377e06b52737cfd5d1757b0b7ef190bb45f1" />
 	<File name="Classes/PassiveMasteryControl.lua" part="program" sha1="5459a7be287c86050fb5176c3cad996e8434447b" />
-	<File name="Classes/PassiveSpec.lua" part="program" sha1="2186af4673814e9f9e56a8b5f6235e293454a8ee" />
+	<File name="Classes/PassiveSpec.lua" part="program" sha1="bb1f50865726bff2c0207c2878b4316e556893b1" />
 	<File name="Classes/PassiveSpecListControl.lua" part="program" sha1="24bedd3c52a837bfd19143a6428fe3f88a4211a8" />
 	<File name="Classes/PassiveTree.lua" part="program" sha1="8404aecfad5bd10625f2438d12fc0f9f56726993" />
 	<File name="Classes/PassiveTreeView.lua" part="program" sha1="a0a2b64f46f4042b13b786bad88f5e87531c0185" />

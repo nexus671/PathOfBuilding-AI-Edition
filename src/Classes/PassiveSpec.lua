@@ -1163,6 +1163,7 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 			})
 		end
 	end
+	local hasNodeOverrides = next(self.hashOverrides) ~= nil
 	-- Check all nodes for other nodes which depend on them (i.e. are only connected to the tree through that node)
 	for id, node in pairs(self.nodes) do
 		if self.build.planningCheckpoint then self.build.planningCheckpoint() end
@@ -1230,12 +1231,14 @@ function PassiveSpecClass:BuildAllDependsAndPaths()
 			end
 
 		end
+		if node.conqueredBy then hasNodeOverrides = true end
 		if node.alloc then
 			node.depends[1] = node -- All nodes depend on themselves
 		end
 	end
 	self.checkNodeLinks = false
-	for id, node in pairs(self.nodes) do
+	-- Avoid a full pass when no tattoo or jewel conquest needs applying.
+	for id, node in pairs(hasNodeOverrides and self.nodes or { }) do
 		if self.build.planningCheckpoint then self.build.planningCheckpoint() end
 		-- If node is tattooed, replace it
 		if self.hashOverrides[node.id] then
