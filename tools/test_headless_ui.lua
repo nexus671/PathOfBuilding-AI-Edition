@@ -1013,6 +1013,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("atlas");ui:text("search","Massing Forces");ui:click("find");ui:click("allocate");frame("covens-atlas-tree")
 	assert(build.planningWorkspace.controls.canvas.tree.maxPoints==150,"Atlas preview lost its 150 point budget")
 	ui:click("keep");assert(build.savers.AtlasPlans.plans[1].version=="3.30.0-preview","Atlas preview version not retained")
+	ui:click("nav_journey");ui:click("page4");ui:click("add");ui:text("title","Pristine Fossils");ui:click("keep")
 	local function filterTool(query)
 		ui:click("manage");ui:text("search",query);ui:click("choose")
 	end
@@ -1111,6 +1112,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 	ui:choose("mode","Ruthless");frame("filter-ruthless");ui:click("viewStyle");ui:click("globalStyle");ui:click("textColorPick");ui:text("a","0");assert(not main.popups[1].controls.keep:IsEnabled(),"Ruthless picker allowed invisible text");ui:text("a","80");frame("filter-colour-ruthless");ui:click("cancel");ui:click("close");ui:click("viewOverview");ui:choose("mode","Normal")
 	ui:click("generate");frame("filter-build-targets")
+	local foundBudget=false
+	for i=1,2000 do
+		ui:frame();local profile=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1]
+		for _,rule in ipairs(profile.rules) do if rule.title=="Pristine Fossil" and rule.origin and rule.origin:find("budget:",1,true) then foundBudget=true end end
+		if foundBudget then break end
+	end
+	assert(foundBudget,"Saved fossil budget did not generate a linked filter pickup")
+	frame("filter-budget-fossil-pickup")
 	ui:click("viewCustomize");ui:choose("source","Base filter");frame("filter-base-catalog")
 	ui:text("search","Chaos Orb");frame("filter-search")
 	ui:click("edit");frame("filter-appearance");ui:click("textHexPick");frame("filter-colour-wheel");frame("filter-colour-preset-hover","preset7")

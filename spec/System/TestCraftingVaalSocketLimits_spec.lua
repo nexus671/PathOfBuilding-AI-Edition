@@ -1,7 +1,8 @@
+-- cspell:ignore unmodeled
 describe("Vaal equipment socket limitations",function()
 	local sim=require("Modules.CraftingSimulator")
 	local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W-W-W-W"
-	it("warns before and after an equipment corruption, without affecting socketless items",function()
+	it("warns before and after equipment corruption without affecting items without sockets",function()
 		local model=sim.model(raw)
 		assert.matches("reroll sockets and links",require("Modules.CraftingWorkbench").hint("vaal",model.initial,model))
 		local result=sim.perform(raw,{method="vaal"},3)

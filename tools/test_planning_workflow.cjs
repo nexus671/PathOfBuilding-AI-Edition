@@ -1,4 +1,4 @@
-// cspell:ignore Ukatoa Katakohi
+// cspell:ignore Ukatoa Katakohi unmodeled
 // A real MCP stdio client drives an isolated native host and explicit UI review.
 // cspell:ignore GGGRRW craic
 'use strict';
@@ -513,12 +513,13 @@ async function main(){
   const bodyProject={priceBook:bodyPriceBook,id:'body-enchant',title:'Body armour quality guide',slot:'Body Armour',startingItem:bodyRaw,targetItem:bodySimulation.nativeCrafting.sampleItem,preferredMethod:'harvest_enchant',nativeRecipe:{...bodyRecipe,steps:[...bodyRecipe.steps,whiteService.action]},goals:['Quality grants maximum Life','Six linked sockets'],steps:[{action:'Apply the Harvest Life quality enchantment',stopWhen:'Life quality enchantment is present'},{action:'Use an Orb of Fusing with Omen of Connections',stopWhen:'All six sockets are linked'}],inventory:[{id:'enchanted-body',title:'Enchanted body armour',slot:'Body Armour',baseItem:bodyRaw,at:1700000000,state:enchanted.nativeCrafting.state}]};
   bodyProject.nativeRecipe.steps.push({method:'recombine',donorItem:'Rarity: NORMAL\nGlorious Plate\nItem Level: 86'});
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:bodyProject},'review');await host('apply');context=(await call('get_build_context')).context;
-  const journey={schemaVersion:1,resources:[{id:'chaos',title:'Chaos Orbs'}],ledger:[{id:'holdings',resourceId:'chaos',kind:'add',amount:100,at:1}],wishlist:[{id:'helmet',title:'Next helmet',slot:'Helmet',route:'craft',projectId:'helmet',resourceId:'chaos',estimate:40,reserve:true},{id:'alternative',title:'Alternative helmet',slot:'Helmet',route:'buy',targetItem:item(300),resourceId:'chaos',estimate:90}],milestones:[{id:'craft',title:'Craft the helmet',kind:'craft',projectId:'helmet',wishlistId:'helmet'}],stages:[{id:'maps',title:'Start mapping',level:68,gems:'Keep the main links',gear:'Acquire the planned helmet',transition:'After checking requirements'}]};
+  const journey={schemaVersion:1,resources:[{id:'chaos',title:'Chaos Orbs'},{id:'fossils',title:'Pristine Fossils'}],ledger:[{id:'holdings',resourceId:'chaos',kind:'add',amount:100,at:1}],wishlist:[{id:'helmet',title:'Next helmet',slot:'Helmet',route:'craft',projectId:'helmet',resourceId:'chaos',estimate:40,reserve:true},{id:'alternative',title:'Alternative helmet',slot:'Helmet',route:'buy',targetItem:item(300),resourceId:'chaos',estimate:90}],milestones:[{id:'craft',title:'Craft the helmet',kind:'craft',projectId:'helmet',wishlistId:'helmet'}],stages:[{id:'maps',title:'Start mapping',level:68,gems:'Keep the main links',gear:'Acquire the planned helmet',transition:'After checking requirements'}]};
   await queued('propose_journey_plan',{title:'Gear roadmap',baseRevision:context.revision,journey},'review');await host('apply');context=(await call('get_build_context')).context;
   const measured=await queued('measure_journey_upgrades',{baseRevision:context.revision},'measured');assert.ok(measured.upgrades.entries.helmet.delta.LifeUnreserved>0);assert.ok(measured.upgrades.entries.alternative.delta.LifeUnreserved>measured.upgrades.entries.helmet.delta.LifeUnreserved);
   const saved=await call('get_build_journey');assert.equal(saved.budget.chaos.available,60);assert.equal(saved.journey.milestones[0].wishlistId,'helmet');
   const lootProfile={id:'mapping',title:'Build pickups',preset:'early_maps',strictness:2,rules:[]};
   const generated=await queued('generate_loot_filter',{baseRevision:context.revision,profile:lootProfile},'generated');
+  const fossilPickup=generated.profile.rules.find(rule=>rule.title==='Pristine Fossil');assert.ok(fossilPickup);assert.equal(fossilPickup.origin,'budget:fossils');assert.match(fossilPickup.text,/BaseType == "Pristine Fossil"/);
   const donorPickup=generated.profile.rules.find(rule=>rule.title==='Donor base: Glorious Plate');assert.ok(donorPickup);assert.match(donorPickup.text,/ItemLevel >= 86/);
   generated.profile.appearance={minimumFontSize:36,textColor:[255,220,120,255],alertId:6,alertVolume:0,effectColor:'Purple'};
   generated.profile.tiers=[{id:'currency-tier',title:'Crafting currency',text:'Show\n BaseType == "Chromatic Orb"\n SetFontSize 42',items:['Chromatic Orb']}];

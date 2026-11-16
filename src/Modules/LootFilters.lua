@@ -5,6 +5,15 @@ local parser=require("Modules.LootFilterParser")
 local M={limit=2*1024*1024,strictness={"Soft","Regular","Semi-strict","Strict","Very strict","Uber strict","Uber plus strict"}}
 local cache={}
 local recipeResourceCache,recipeResourceOrder={},{}
+local craftingResourceNames
+local function craftingResources()
+	if not craftingResourceNames then
+		local file=assert(io.open("Assets/Crafting/currencies.json","rb"));local raw=file:read("*a");file:close()
+		local catalog=assert(json.decode(raw));craftingResourceNames={}
+		for _,item in pairs(catalog.items) do craftingResourceNames[item.name]=true end
+	end
+	return craftingResourceNames
+end
 local function read(name)
 	if not cache[name] then local f=assert(io.open("Data/LootFilters/"..name,"rb"));cache[name]=f:read("*a");f:close() end
 	return cache[name]
@@ -136,6 +145,10 @@ function M.generate(build,profile,checkpoint)
 	end
 	local patch=M.patch();local names={};for class,items in pairs(patch.added) do for _,name in ipairs(items) do names[name]=class end end
 	local removed={};for _,name in ipairs(patch.removed) do removed[name]=true end
+	-- The bundled crafting art catalogue contains item identities, unlike
+	-- service names or whole-action price quotes. User-entered budget titles
+	-- still need an exact name (or its simple plural) to become pickup rules.
+	for name in pairs(craftingResources()) do if not removed[name] then names[name]=names[name] or "Crafting resource" end end
 	for _,name in ipairs({"Orb of Alchemy","Chaos Orb","Divine Orb","Orb of Alteration","Orb of Augmentation","Regal Orb","Exalted Orb","Orb of Annulment","Chromatic Orb","Jeweller's Orb","Orb of Fusing","Vaal Orb"}) do names[name]="Stackable Currency" end
 	-- Only concrete currency items from modeled recipe components become drops.
 	-- Unknown prices, beasts and whole-service prices are not item identities.

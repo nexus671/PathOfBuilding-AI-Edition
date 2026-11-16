@@ -83,6 +83,24 @@ describe("Linked planning tools",function()
 		profile.rules=filters.generate(build,profile);names={};for _,rule in ipairs(profile.rules) do names[rule.title]=true end
 		assert.is_nil(names["Omen of Connections"]);assert.is_true(names["Orb of Scouring"])
 	end)
+	it("links exact saved crafting-resource budgets and refreshes them when the budget changes",function()
+		local data=copyTable(build.savers.BuildJourney.data)
+		data.resources={{id="fossil",title="pristine fossils"},{id="ichor",title="Greater Eldritch Ichor"},{id="omen",title="Omen of Connections"},
+			{id="service",title="The Black Morrigan"},{id="unknown",title="Pristine Fossil service"},{id="removed",title="Perfect Fossil"}}
+		build.savers.BuildJourney.data=data
+		local profile=filters.profile("budget-items","Budget items");profile.rules=filters.generate(build,profile)
+		local rules={};for _,rule in ipairs(profile.rules) do rules[rule.title]=rule end
+		for _,name in ipairs({"Pristine Fossil","Greater Eldritch Ichor","Omen of Connections"}) do
+			assert.is_truthy(rules[name],name);assert.matches('BaseType == "'..name..'"',rules[name].text)
+			assert.equal("Show",require("Modules.LootFilterParser").simulate(require("Modules.LootFilterParser").parse(rules[name].text.."\nHide"),{BaseType=name}).action)
+		end
+		assert.is_nil(rules["The Black Morrigan"]);assert.is_nil(rules["Pristine Fossil service"]);assert.is_nil(rules["Perfect Fossil"])
+		assert.is_false(dependencies.report(build,profile).stale)
+		data=copyTable(data);data.resources[1].title="Dense Fossil";build.savers.BuildJourney.data=data
+		assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);rules={};for _,rule in ipairs(profile.rules) do rules[rule.title]=true end
+		assert.is_true(rules["Dense Fossil"]);assert.is_nil(rules["Pristine Fossil"])
+	end)
 	it("preserves recipe pickups and reports inspection failures",function()
 		local project=craft();project.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}}
 		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("review-craft","Review craft");profile.rules=filters.generate(build,profile)

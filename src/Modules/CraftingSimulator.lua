@@ -1,4 +1,4 @@
--- cspell:ignore Ukatoa Ukatoas Katakohi
+-- cspell:ignore Ukatoa Ukatoas Katakohi unmodeled
 -- cspell:ignore RGBW
 -- Independent, bounded crafting model using PoB's game-data modifier tables.
 local encounter = require("Modules.CalcEncounter")
