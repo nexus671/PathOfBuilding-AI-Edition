@@ -222,6 +222,18 @@ describe("Linked planning tools",function()
 		end
 		assert.is_nil(origins["budget:service"])
 	end)
+	it("recognizes old budget names regardless of case and simple plurals",function()
+		local data=require("Modules.BuildJourney").empty()
+		data.resources={{id="orb",title="skittering delirium orbs"},{id="chisel",title="MAVEN'S CHISEL OF SCARABS"},
+			{id="coin",title="coin of knowledge"},{id="service",title="skittering delirium orb service"}}
+		build.savers.BuildJourney:Replace(data)
+		local profile=filters.profile("renamed-budget","Renamed budget");profile.rules=filters.generate(build,profile)
+		local found={};for _,rule in ipairs(profile.rules) do found[rule.origin]=rule.title end
+		assert.equal("Threaded Delirium Orb",found["budget:orb"])
+		assert.equal("Maven's Chisel of Threads",found["budget:chisel"])
+		assert.equal("Soul Core of Intellect",found["budget:coin"])
+		assert.is_nil(found["budget:service"])
+	end)
 	it("preserves recipe pickups and reports inspection failures",function()
 		local project=craft();project.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}}
 		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("review-craft","Review craft");profile.rules=filters.generate(build,profile)

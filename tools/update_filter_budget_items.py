@@ -12,6 +12,10 @@ EXACT = {
     "Metadata/Items/Currency/CurrencyGemQuality",
     "Metadata/Items/Currency/CurrencyMapQuality",
     "Metadata/Items/Currency/CurrencyRerollUnique",
+    "Metadata/Items/Currency/CurrencyWishSupportGem",
+    "Metadata/Items/Currency/CurrencyWishSupportGemBlue",
+    "Metadata/Items/Currency/CurrencyWishSupportGemGreen",
+    "Metadata/Items/Currency/CurrencyWishSupportGemRed",
 }
 
 

@@ -235,8 +235,11 @@ function M.generate(build,profile,checkpoint)
 	local budgetNames={};for _,name in ipairs(assert(json.decode(read("budget-items-3.30.json"))).names) do
 		if not removed[name] then budgetNames[name]=true;aliases[name:lower()]=name;aliases[name:lower().."s"]=name end
 	end
+	local renamedAliases={};for old,new in pairs(patch.renamed) do
+		if (names[new] or budgetNames[new]) and not removed[new] then renamedAliases[old:lower()]=new;renamedAliases[old:lower().."s"]=new end
+	end
 	for _,resource in ipairs(build.savers.BuildJourney.data.resources) do
-		local name=patch.renamed[resource.title] or aliases[resource.title:lower()] or resource.title
+		local name=renamedAliases[resource.title:lower()] or aliases[resource.title:lower()] or resource.title
 		if (names[name] or budgetNames[name]) and not removed[name] then add("resource-"..resource.id,name,{"BaseType == "..quote(name)},"budget:"..resource.id) end
 	end
 	local strategyNames={};for name in pairs(names) do strategyNames[#strategyNames+1]=name end
