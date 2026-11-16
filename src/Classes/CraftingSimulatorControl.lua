@@ -92,8 +92,8 @@ function Panel.Open(build,project,layout)
 	label(controls,"intro",16,64,"Select a currency, then click your item to craft.")
 	local refreshItem=workbench.item(controls,"item",itemX,112,itemWidth,height-184,model,function() return state end,function() controls.apply:Click() end,{header=196,artSize=96,compact=true,slot=draft.slot,selectedAffix=function() return inspectedId end,changedAffixes=function() return changedAffixes end})
 	controls.targetSummary=new("TextListControl"):TextListControl({"TOPLEFT",nil,"TOPLEFT"},{16,244,416,height-312},nil,{})
-	local targetReason,savedResultRows,warningActive
-	local function refresh(extra)
+	local targetReason,savedResultRows,warningActive,oddsContext
+	local function refresh(extra,capturedOdds)
 		if refreshTargetOptions then refreshTargetOptions() end
 		if action and controls.price then
 			local key=simulator.priceKey(action())
@@ -123,11 +123,14 @@ function Panel.Open(build,project,layout)
 		local workingWarning=targetReason and targetReason()
 		local savedWarning=targetReason and draft.nativeRecipe and targetReason(true)
 		if controls.resultSummary then
-			if extra then savedResultRows=rows(extra)
+			if extra then savedResultRows=rows(extra);oddsContext=capturedOdds
 			elseif not warningActive then savedResultRows=controls.resultSummary.list end
 			local notices={}
 			if workingWarning then notices[#notices+1]="Working item: "..workingWarning end
 			if savedWarning and not workingWarning then notices[#notices+1]="Saved recipe: "..savedWarning end
+			if oddsContext and action and not tableDeepEquals(oddsContext,{state=state,craft=action(),targets=targets,requirements=requirements,requiredGroups=requiredGroups}) then
+				notices[#notices+1]="Action odds use an earlier item, action or target setup. Recalculate for the current setup."
+			end
 			local wasWarning=warningActive;warningActive=#notices>0
 			if warningActive then
 				local combined=rows(notices,leftWidth-28);for _,row in ipairs(savedResultRows or {}) do combined[#combined+1]=row end
@@ -506,7 +509,7 @@ function Panel.Open(build,project,layout)
 		local captured=copyTable(targets)
 		analysis:start("fossils",nil,function(checkpoint) options.checkpoint=checkpoint;return simulator.optimizeFossils(draft.startingItem,captured,options) end)
 	end)
-	local function showOddsResult(result)
+	local function showOddsResult(result,context)
 		local lines={string.format("Target chance under model: %.6f%%",result.successChance),result.exactFor or result.estimateFor}
 		if result.outcomesFirst then
 			lines[#lines+1]="Modeled outcomes (assumptions below):"
@@ -521,12 +524,13 @@ function Panel.Open(build,project,layout)
 		if result.showAllOutcomes and not result.outcomesFirst then lines[#lines+1]="All modeled outcomes (target matches marked):" end
 		if not result.outcomesFirst then for _,entry in ipairs(result.outcomes) do if entry.matches or result.showAllOutcomes then lines[#lines+1]=string.format("%.6f%% | %s%s",entry.chance,entry.text or "Finite item outcome",result.showAllOutcomes and entry.matches and " | Target" or "") end end end
 		if result.treeVersion then lines[#lines+1]="Build tree: "..(treeVersions[result.treeVersion] and treeVersions[result.treeVersion].display or result.treeVersion).." (context only) | crafting data: "..tostring(result.dataPatch).."; modifiers: "..tostring(result.modifierPatch or simulator.modifierPatch or "bundled") end
-		refresh(lines)
+		refresh(lines,context)
 	end
 	button(controls,"exact",232,574,200,"Calculate action odds",function()
 		local craft=action();local captured=copyTable(state);local capturedTargets=copyTable(targets)
 		local options={trials=assert(tonumber(controls.trials.buf)),seed=assert(tonumber(controls.seed.buf)),treeVersion=build.spec.treeVersion,requirements=requirements and copyTable(requirements),requiredGroups=requiredGroups}
-		analysis:start("odds",nil,function(checkpoint)
+		local context={state=captured,craft=craft,targets=capturedTargets,requirements=options.requirements,requiredGroups=options.requiredGroups}
+		analysis:start("odds",context,function(checkpoint)
 			options.checkpoint=checkpoint;return simulator.calculate(draft.startingItem,craft,capturedTargets,captured,options)
 		end)
 		controls.page:SelByValue("Simulate recipe");refresh()
@@ -873,7 +877,7 @@ function Panel.Open(build,project,layout)
 			elseif p.trials then refresh({(event.kind=="simulation" and "Simulation running: trial " or "Calculating odds: trial ")..p.trial.." / "..p.trials})
 			else refresh({"Calculation queued. You can cancel it below."}) end
 		elseif event.kind=="simulation" then showSimulationResult(event.result,event.context)
-		elseif event.kind=="odds" then showOddsResult(event.result)
+		elseif event.kind=="odds" then showOddsResult(event.result,event.context)
 		else
 			refresh({"Compared "..#event.result.combinations.." ordinary fossil subsets. Open Fossil results to review captured chances and costs."})
 			if announce then showFossilComparison() end
