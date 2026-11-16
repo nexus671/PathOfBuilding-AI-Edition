@@ -12,7 +12,11 @@ describe("3.30 unveiled jewel modifiers",function()
 		local eye=sim.model(abyss)
 		-- The first matching tag must win even if a later equipment tag is present.
 		assert.equal(0,eye.item:GetModSpawnWeight(entry.mod,{ring=true}))
-		assert.is_true(eye.item:GetModSpawnWeight(native,{ring=true})>0)
+		assert.equal(0,eye.item:GetModSpawnWeight(native,{ring=true}))
+		-- Upstream now includes the exclusion. Simulate the earlier native data
+		-- to retain coverage for why the crafting overlay is necessary.
+		local legacy=copyTable(native);table.remove(legacy.weightKey,1);table.remove(legacy.weightVal,1)
+		assert.is_true(eye.item:GetModSpawnWeight(legacy,{ring=true})>0)
 		assert.equal(entry.mod,ring.byId[id]);assert.equal(1000,entry.weight)
 	end)
 	it("loads the eligible special modifiers without adding them to natural rolls",function()
