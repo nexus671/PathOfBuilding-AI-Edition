@@ -11,8 +11,8 @@ function C.extend(M,A,api)
 	local originalModel,originalAction,originalDecorate,originalValidate,originalItem=M.model,M.action,M.decorateItem,M.validateState,M.toItem
 	local originalMatches=M.matches
 	local function mixedImplicitReason(model,state)
-		if (model.unresolvedEldritch and not state.implicits) or (state.implicits and #state.implicits > 1) then
-			return "Corruption of multiple or unidentified Eldritch implicits is not modeled."
+		if model.unresolvedEldritch and not state.implicits then
+			return "Corruption of unidentified Eldritch implicits is not modeled."
 		end
 		if model.item.synthesised and #(model.item.implicitModLines or {}) > 1 then
 			return "Corruption of multiple synthesised implicit lines is not modeled."
@@ -37,7 +37,7 @@ function C.extend(M,A,api)
 		end
 	end
 	function M.implicitTargetReason(model,state,targets)
-		if model and (model.unresolvedCorruption or model.unresolvedEldritch) and not state.destroyed and not state.veil and not state.corruptedImplicits and not state.implicits then
+		if model and ((model.unresolvedCorruption and not state.corruptedImplicits and (not state.implicits or model.initial.implicits)) or (model.unresolvedEldritch and not state.implicits)) and not state.destroyed and not state.veil then
 			for _,group in ipairs(targets) do
 				if group.scope=="implicit" then return "The imported implicit modifiers could not be identified uniquely. Paste advanced item text with modifier ranges, or choose another starting item." end
 			end
@@ -103,7 +103,11 @@ function C.extend(M,A,api)
 			for _,group in ipairs(metadata[id].groups) do groups[group]=true end
 		end
 		state.corruptedImplicits=chosen
-		state.implicits=nil;state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.vendorImplicit=nil;state.corrupted=true
+		if state.implicits then
+			if #state.implicits > 1 then table.remove(state.implicits,math.floor(random()*#state.implicits)+1)
+			else state.implicits=nil end
+		end
+		state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.vendorImplicit=nil;state.corrupted=true
 	end
 	function M.decorateItem(model,state,item)
 		originalDecorate(model,state,item)
@@ -113,8 +117,8 @@ function C.extend(M,A,api)
 		end
 		item.twiceCorrupted=twice or nil
 		if state.corruptedImplicits then
-			item.implicitModLines={}
-			for _,entry in ipairs(state.corruptedImplicits) do for _,line in ipairs(M.rolledLines(M.entryMod(model,entry),entry.range)) do item.implicitModLines[#item.implicitModLines+1]={line=line} end end
+			if not state.implicits then item.implicitModLines={} end
+			for _,entry in ipairs(state.corruptedImplicits) do for _,line in ipairs(M.rolledLines(M.entryMod(model,entry),entry.range)) do item.implicitModLines[#item.implicitModLines+1]={line=line,modGroup="crafting_"..entry.id} end end
 		end
 	end
 	function M.validateState(model,state)
@@ -130,7 +134,7 @@ function C.extend(M,A,api)
 		assert(state.destroyed == nil or type(state.destroyed) == "boolean","Invalid destruction flag")
 		if state.destroyed then assert(type(state.affixes) == "table" and #state.affixes == 0,"Destroyed items cannot retain usable affixes") end
 		if state.corruptedImplicits then
-			assert(state.corrupted and #state.corruptedImplicits >= 1 and #state.corruptedImplicits <= 2 and not state.implicits,"Invalid corruption implicit state")
+			assert(state.corrupted and #state.corruptedImplicits >= 1 and #state.corruptedImplicits + #(state.implicits or {}) <= 2,"Invalid corruption implicit state")
 			local groups={}
 			for _,entry in ipairs(state.corruptedImplicits) do
 				assert(model.corruptionIds[entry.id] or model.legacyCorruptionIds[entry.id],"Invalid corruption implicit for this base")
@@ -216,7 +220,7 @@ function C.extend(M,A,api)
 	M.limits[#M.limits+1]="Flask Vaal quality changes by an integer from -10 to +10, clamped to 0-40; equal weights are assumed and unverified."
 	M.limits[#M.limits+1]="Abyss and cluster jewel Vaal outcomes use assumed equal weights; rare rerolls use the ordinary four-affix limit, and the unique-jewel outcome is modeled as no change. These outcomes and probabilities are unverified."
 	M.limits[#M.limits+1]="The equipment Vaal model includes the four outcome branches and current non-white socket conversion. Rare-brick socket/link rerolls are not modeled; tainted affix outcomes use a 50/50 assumption."
-	M.limits[#M.limits+1]="Corrupting multiple or unidentified Eldritch implicits or multiple synthesised implicit lines is not modeled."
+	M.limits[#M.limits+1]="Corrupting unidentified Eldritch implicits or multiple synthesised implicit lines is not modeled. With two Eldritch implicits, the replaced one is selected uniformly as an unverified assumption."
 	M.limits[#M.limits+1]="The 3.30 Locus model requires a Corrupted item and adds a second corruption. Outcome chances, socket conversion and selection of a replaced implicit are assumptions; uncorrupted altar use is not modeled. Fractured, synthesised, meta-modified and special transformation bases are excluded."
 end
 return C

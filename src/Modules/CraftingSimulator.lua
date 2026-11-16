@@ -63,6 +63,7 @@ function M.actionWarnings(action,model)
 	if action.method=="vaal" and model and model.item.type=="Jewel" and model.item.base.subType=="Abyss" then result[#result+1]={code="abyss_vaal_assumptions",message="Abyss jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
 	if action.method=="vaal" and model and model.item.clusterJewel then result[#result+1]={code="cluster_vaal_assumptions",message="Cluster jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
 	if action.method=="vaal" and model and M.socketLimit(model,model.initial)>0 then result[#result+1]={code="vaal_socket_reroll_unmodeled",message="The rare corruption outcome can reroll sockets and links in game; this model leaves them unchanged. Do not rely on the displayed socket layout after corruption.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
+	if action.method=="vaal" then result[#result+1]={code="vaal_implicit_selection",message="When replacing one of two Eldritch implicits, the model assumes each is equally likely; the game's selection odds are unverified.",source="https://www.poewiki.net/wiki/Corrupted"} end
 	if action.method=="binding" then result[#result+1]={code="binding_legacy",message="Orbs of Binding are no longer generated in 3.30; existing orbs still work.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
 	if action.method=="jeweller" then result[#result+1]={code="jeweller_estimate",message="Experimental: historical weapon socket weights are assumed for all bases. Quality increases only the maximum-count chance in this model; weights, quality and retained socket/link positions are unverified.",source="https://www.poewiki.net/wiki/Jeweller%27s_Orb"} end
 	if action.method=="tainted_quality" then result[#result+1]={code="tainted_quality_estimate",message="Tainted armour and weapon quality uses an assumed uniform 1-20% range. GGG confirmed the 20% maximum; the minimum and distribution are unverified.",source="https://www.pathofexile.com/forum/view-thread/3531661",asOfPatch="3.25"} end
@@ -138,7 +139,7 @@ local function flags(model,state)
 	-- Replaced implicits take precedence over the starting item's base implicit.
 	local replacement=state.corruptedImplicits or state.implicits
 	if replacement then
-		for _,entry in ipairs(replacement) do for _,line in ipairs(model.byId[entry.id] or {}) do rollBlock(line) end end
+		for _,entries in ipairs({state.corruptedImplicits or {},state.implicits or {}}) do for _,entry in ipairs(entries) do for _,line in ipairs(model.byId[entry.id] or {}) do rollBlock(line) end end end
 	else
 		for _,line in ipairs(model.item.implicitModLines or {}) do rollBlock(StripEscapes(line.line or "")) end
 		if state.vendorImplicit then for _,line in ipairs(model.byId[state.vendorImplicit] or {}) do rollBlock(line) end end
@@ -537,7 +538,10 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
  for _,group in ipairs(targets) do
   local count=0
   local unknown=false
-  local entries=group.scope == "implicit" and (state.corruptedImplicits or state.implicits or {}) or state.affixes
+  local entries=state.affixes
+  if group.scope == "implicit" then
+   entries={};for _,list in ipairs({state.corruptedImplicits or {},state.implicits or {}}) do for _,entry in ipairs(list) do entries[#entries+1]=entry end end
+  end
   if group.scope == "enchant" then
    assert(model,"A native item model is required for enchantment targets")
    local ids=state.katakohiEnchants or (not state.harvestEnchant and model.importedSocketEnchants)

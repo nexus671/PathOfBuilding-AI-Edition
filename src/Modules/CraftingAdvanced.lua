@@ -241,6 +241,8 @@ function A.extend(M,api)
 				for id,mod in pairs(data.itemMods.Eldritch) do if mod.type == side and #mod == #lines and model.item:GetModSpawnWeight(mod) > 0 then
 					local valid,ranges,exact=true,{},true
 					for i,template in ipairs(mod) do
+						local group=lines[i].modGroup
+						if group and group:sub(1,9)=="crafting_" and group~="crafting_"..id then valid=false;break end
 						if template ~= lines[i].line then exact=false end
 						local range=template == lines[i].line and (lines[i].range or 0.5) or inferRange(template,itemLib.applyRange(lines[i].line,lines[i].range or 0.5))
 						if range == nil then valid=false;break end
@@ -696,7 +698,7 @@ function A.extend(M,api)
 			item.implicitModLines={}
 			for _,entry in ipairs(state.implicits) do
 				local mod=model.byId[entry.id]
-				for _,line in ipairs(M.rolledLines(mod,entry.range)) do item.implicitModLines[#item.implicitModLines+1]={line=line,exarch=entry.side == "Exarch",eater=entry.side == "Eater"} end
+				for _,line in ipairs(M.rolledLines(mod,entry.range)) do item.implicitModLines[#item.implicitModLines+1]={line=line,modGroup="crafting_"..entry.id,exarch=entry.side == "Exarch",eater=entry.side == "Eater"} end
 			end
 		end
 	end
