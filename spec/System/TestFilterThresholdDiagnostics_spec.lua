@@ -47,4 +47,24 @@ describe("Filter threshold conflict diagnostics",function()
    end end
   end end
  end)
+ it("finds exact class and base lists that cover later lists",function()
+  for _,key in ipairs({"Class","BaseType"}) do
+   assert.equal(1,#warnings(key..' == "Iron Hat" "Wool Shoes"',key..' == "Wool Shoes"'))
+   assert.equal(0,#warnings(key..' == "Iron Hat"',key..' == "Iron Hat" "Wool Shoes"'))
+   assert.equal(0,#warnings(key..' == "Iron Hat" "Wool Shoes"',key..' == "Wool Shoes" "Other"'))
+   assert.equal(0,#warnings(key..' = "Iron Hat" "Wool Shoes"',key..' == "Wool Shoes"'))
+   assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n '..key..' == "Iron Hat" "Wool Shoes"\n Continue\nHide\n '..key..' == "Wool Shoes"')))
+   local lists={'"Iron Hat"','"Wool Shoes"','"Iron Hat" "Wool Shoes"','"Iron Hat" "Other"'}
+   for _,first in ipairs(lists) do for _,second in ipairs(lists) do
+    local parsed=parser.parse('Show\n '..key..' == '..first..'\n ItemLevel >= 10\nHide\n '..key..' == '..second..'\n ItemLevel >= 10')
+    for _,warning in ipairs(diagnostics.shadowing(parsed)) do
+     for _,name in ipairs({"Iron Hat","Wool Shoes","Other","Unrelated"}) do for _,level in ipairs({1,10,20}) do
+      local item={[key]=name,ItemLevel=level};local matches=function(rule) for _,condition in ipairs(rule.conditions) do if not parser.condition(condition,item) then return false end end;return true end
+      assert.is_false(matches(parsed.rules[2]) and not matches(parsed.rules[1]),warning.warning)
+     end end
+    end
+   end end
+  end
+  assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n BaseType == "Iron Hat" "Wool Shoes"\n ItemLevel >= 10\nHide\n BaseType == "Wool Shoes"\n ItemLevel >= 20')))
+ end)
 end)

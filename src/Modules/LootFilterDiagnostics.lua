@@ -20,7 +20,7 @@ local function covers(previous,current)
  return current.direction=="lower" and previous.value<current.value or current.direction=="upper" and previous.value>current.value
 end
 function M.shadowing(parsed)
- local seen,thresholds,diagnostics={},{},{};local terminal
+ local seen,thresholds,sets,diagnostics={},{},{},{};local terminal
  for _,rule in ipairs(parsed.rules) do
   local conditions,variants={},{}
   if not terminal then for _,condition in ipairs(rule.conditions) do conditions[#conditions+1]=encoded(condition) end end
@@ -40,6 +40,22 @@ function M.shadowing(parsed)
      if candidate and (not prior or candidate.line<prior.line) then prior=candidate;broader=true end
     end
    end end
+  end
+  if not prior then
+   -- Exact class and base-type lists are alternatives. If every value in the
+   -- later list occurs in the earlier list, the earlier rule covers it. Keep
+   -- candidate lists bounded for large imported filters.
+   for _,condition in ipairs(rule.conditions) do
+    if (condition.keyword=="BaseType" or condition.keyword=="Class") and condition.operator=="==" and #condition.values>0 and #condition.values<=256 and #conditions<=16 then
+     local other,removed={},false;local target=encoded(condition)
+     for _,value in ipairs(conditions) do if not removed and value==target then removed=true else other[#other+1]=field(value) end end
+     local group=field(condition.keyword)..table.concat(other)
+     for _,candidate in ipairs(sets[group] or {}) do
+      local covered=true;for _,value in ipairs(condition.values) do if not candidate.values[value] then covered=false;break end end
+      if covered and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
+     end
+    end
+   end
   end
   if not prior then
    for _,condition in ipairs(rule.conditions) do
@@ -74,6 +90,14 @@ function M.shadowing(parsed)
   elseif not rule.continue then
    seen[key]=rule;if #conditions==0 then terminal=rule end
    for _,variant in ipairs(variants) do local group=thresholds[variant.group] or {};thresholds[variant.group]=group;group[#group+1]={rule=rule,bound=variant} end
+   if #conditions<=16 then for _,condition in ipairs(rule.conditions) do
+    if (condition.keyword=="BaseType" or condition.keyword=="Class") and condition.operator=="==" and #condition.values>0 and #condition.values<=256 then
+     local other,removed={},false;local target=encoded(condition)
+     for _,value in ipairs(conditions) do if not removed and value==target then removed=true else other[#other+1]=field(value) end end
+     local group=field(condition.keyword)..table.concat(other);local candidates=sets[group] or {};sets[group]=candidates
+     if #candidates<32 then local values={};for _,value in ipairs(condition.values) do values[value]=true end;candidates[#candidates+1]={rule=rule,values=values} end
+    end
+   end end
   end
  end
  return diagnostics

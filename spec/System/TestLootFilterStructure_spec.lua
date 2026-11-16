@@ -25,6 +25,11 @@ describe("Compiled filter structure",function()
 		assert.equal(1,#conflicts);local reason=structure.diagnostics(view,conflicts[1])[1]
 		assert.is_truthy(reason.shadowedBy);assert.matches("every item matched",reason.warning)
 	end)
+	it("exposes a covered base-type list in the structure browser",function()
+		local p=filters.profile("base-list","Base list");p.template='Show\n BaseType == "Iron Hat" "Wool Shoes"\nHide\n BaseType == "Wool Shoes"'
+		local view=structure.outline(p);local conflicts=structure.filter(view,"",nil,nil,"Priority conflicts")
+		assert.equal(1,#conflicts);assert.matches("every item matched",structure.diagnostics(view,conflicts[1])[1].warning)
+	end)
 	it("finds exact numeric values covered by an earlier terminating range",function()
 		local parser=require("Modules.LootFilterParser")
 		local diagnostics=require("Modules.LootFilterDiagnostics")
