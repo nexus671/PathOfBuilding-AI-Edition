@@ -36,6 +36,18 @@ describe("Drop-only Incursion modifier import",function()
 		local state=copyTable(model.initial);state.affixes[#state.affixes+1]={id=fire,range=0.5}
 		assert.has_error(function() sim.validateState(model,state) end)
 	end)
+	it("does not offer a Harvest swap into a hybrid's underlying resistance group",function()
+		local model=sim.model(item("Iron Hat",86,"+47% to Cold Resistance\n4% of Physical Damage from Hits taken as Cold Damage"))
+		local fire;for _,entry in ipairs(model.mods) do if entry.mod.group=="FireResistance" then fire=entry.id;break end end
+		local state=copyTable(model.initial);state.affixes[#state.affixes+1]={id=assert(fire),range=0.5};state=sim.validateState(model,state)
+		assert.matches("already present",sim.resistanceReason(model,state,"fire","cold"))
+		assert.is_nil(sim.resistanceReason(model,state,"fire","lightning"))
+		for _,choice in ipairs(sim.actionOptions(model,state,"harvest_resistance")) do
+			assert.is_false(choice.action.from=="fire" and choice.action.to=="cold")
+		end
+		local result=sim.perform(model.raw,{method="harvest_resistance",from="fire",to="lightning"},1,state)
+		assert.is_truthy(result.itemText:find("Lightning Resistance",1,true))
+	end)
 	it("exposes drop-only identities in the hypothetical editor and special modifier browser",function()
 		newBuild();main.popups={}
 		local model=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86");local id="FireResistEnhancedLevel50ModPhys"

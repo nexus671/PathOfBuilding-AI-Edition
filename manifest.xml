@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview348" />
+	<Version number="2.67.2-ai.preview349" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1540,7 +1540,7 @@
 	<File name="Modules/ConfigOptions.lua" part="program" sha1="0c3f8f8691eda91a95d47e90a25944131eb31d92" />
 	<File name="Modules/ConfigVisibility.lua" part="program" sha1="ad4a825bfe36dc94dca1ac7033d815110fd46d3c" />
 	<File name="Modules/CraftingAbyss330.lua" part="program" sha1="6ca66c250e7c07b42ffc7c8939f15a2c678f1e85" />
-	<File name="Modules/CraftingAdvanced.lua" part="program" sha1="693565d6d7ba5f0535c20c3d05241aa9d337d071" />
+	<File name="Modules/CraftingAdvanced.lua" part="program" sha1="85c5d429d5792b1117748ca4e5db57f24a9168fb" />
 	<File name="Modules/CraftingAllflame.lua" part="program" sha1="19c5fdafed070650d4b997d5aa98f4dcb68b46df" />
 	<File name="Modules/CraftingAnalysis.lua" part="program" sha1="33e31717c40a26f1a2cb13b4ba8bb05bea8aa917" />
 	<File name="Modules/CraftingAvailability.lua" part="program" sha1="f89c8b7777719c7cc36ffb626cfbdfed5d0fa509" />

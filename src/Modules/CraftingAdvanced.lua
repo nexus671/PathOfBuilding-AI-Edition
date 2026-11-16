@@ -534,7 +534,11 @@ function A.extend(M,api)
 			local id=resistanceTarget(model,state.affixes[index].id,from,to)
 			if not model.byId[id] then return "No matching resistance tier on this base" end
 			if (model.item.type=="Jewel" or shieldResistanceTarget(model,state.affixes[index].id,from,to)) and model.item:GetModSpawnWeight(model.byId[id],model.extraTags or {})<=0 then return "The replacement modifier cannot occur on this base" end
-			for _,entry in ipairs(state.affixes) do if model.byId[entry.id].group==model.byId[id].group then return "That resistance group is already present" end end
+			for otherIndex,entry in ipairs(state.affixes) do if otherIndex~=index then
+				for _,group in ipairs(groups(model,entry.id)) do
+					if contains(groups(model,id),group) then return "That resistance group is already present" end
+				end
+			end end
 		end
 		return nil,matches
 	end
