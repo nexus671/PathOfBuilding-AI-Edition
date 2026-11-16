@@ -86,6 +86,7 @@ function M.sample(rule,block)
 		if c.keyword=="HasExplicitMod" and (c.operator=="=" or c.operator=="==" or c.operator==">=" or c.operator==">") then modifier=c end
 		if parser.numeric[c.keyword] then local n=tonumber(value);item[c.keyword]=n and (c.operator==">" and n+1 or c.operator=="<" and n-1 or n) or value
 		elseif c.keyword=="Rarity" then item.Rarity=value
+		elseif c.keyword=="TransfiguredGem" then if value=="True" then item[c.keyword]=true elseif value=="False" then item[c.keyword]=false else item[c.keyword]=value end
 		elseif parser.booleans[c.keyword] then item[c.keyword]=value=="True"
 		elseif c.keyword=="HasInfluence" then item[c.keyword]=copyTable(c.values)
 		elseif c.keyword=="BaseType" or c.keyword=="Class" or c.keyword=="SocketGroup" then item[c.keyword]=value end
@@ -116,7 +117,8 @@ function M.sample(rule,block)
 		if not hasRarity and not hasBase and not hasClass then item.Rarity="Rare" end
 	end
 	if not hasBase then
-		if hasClass then item.BaseType=classExamples[item.Class] or item.Class
+		if hasClass then if item.TransfiguredGem and item.Class=="Skill Gems" then item.BaseType=nil else item.BaseType=classExamples[item.Class] or item.Class end
+		elseif item.TransfiguredGem then item.BaseType=nil;item.Class="Skill Gems"
 		elseif #socketConditions>0 or item.LinkedSockets>=5 or type(item.SocketGroup)=="string" and item.SocketGroup~="" then item.BaseType="Vaal Regalia";item.Class="Body Armours"
 		elseif item.Rarity=="Unique" then item.BaseType="Leather Belt";item.Class="Belts"
 		elseif item.Rarity=="Rare" or item.Rarity=="Magic" then item.BaseType="Iron Hat";item.Class="Helmets" end
