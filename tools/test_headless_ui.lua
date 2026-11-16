@@ -615,6 +615,18 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		frame("crafting-partial-lock-harvest");ui:click("close")
 	end
 	do
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw)
+		local state=sim.validateState(model,{rarity="RARE",affixes={{id="FireResist1",range=0.5},{id="ChaosResist1",range=0.5}}})
+		state=sim.perform(raw,{method="bench",modId="bench:partial-suffix-1"},1,state).state
+		require("Classes.CraftingSimulatorControl").Open(build,{id="partial-conversion-ui",title="Partial lock conversion",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe={initialState=state,steps={},targets={}}})
+		ui:click("settings");ui:text("paletteSearch",sim.labels.harvest_resistance)
+		assert(main.popups[1].controls.paletteUse:IsEnabled(),"Partial-lock conversion was not offered")
+		ui:click("paletteUse");ui:choose("option","fire to cold","label")
+		local hints={};for _,row in ipairs(main.popups[1].controls.actionHint.list) do hints[#hints+1]=StripEscapes(row[1]) end
+		assert(table.concat(hints," "):gsub("%s+"," "):find("no legal Harvest outcome",1,true),"Conversion selection risk was not explained")
+		frame("crafting-partial-conversion");ui:click("close")
+	end
+	do
 		local raw="Rarity: NORMAL\nDriftwood Wand\nItem Level: 86";local model=sim.model(raw)
 		local state=sim.validateState(model,{rarity="RARE",affixes={{id="LocalAddedChaosDamage1",range=0.5}}})
 		state=sim.perform(raw,{method="bench",modId="bench:partial-prefix-1"},1,state).state
