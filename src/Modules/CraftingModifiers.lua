@@ -2,7 +2,7 @@
 local sim=require("Modules.CraftingSimulator")
 local metadata=require("Modules.CraftingAdvanced")
 local M={}
-function M.scope(mod) return mod.type=="Enchant" and "enchant" or (mod.type=="Corrupted" or mod.type=="Exarch" or mod.type=="Eater") and "implicit" or "explicit" end
+function M.scope(mod) return mod.type=="Enchant" and "enchant" or (mod.type=="Corrupted" or mod.type=="Exarch" or mod.type=="Eater" or mod.type=="Synthesis") and "implicit" or "explicit" end
 local function has(list,value) for _,entry in ipairs(list or {}) do if entry==value then return true end end end
 local function groups(model,id,mod)
 	local entry=metadata.data().mods[id];local result=entry and entry.groups or {mod.group or id}
@@ -53,10 +53,11 @@ function M.inspect(model,state)
 			for _,tag in ipairs({"attack","caster"}) do if flags[tag] and has(row.tags,tag) then reasons[#reasons+1]="Cannot roll "..tag.." modifiers" end end
 		end
 		if row.dropOnly then reasons[#reasons+1]="Drop-only modifier; current availability is not verified" end
+		if row.type=="Synthesis" then reasons[#reasons+1]=model.synthesisAmbiguous and model.synthesisAmbiguous[row.id] and "Possible starting synthesised implicit; identity is ambiguous" or "Starting synthesised implicit; not an ordinary affix draw" end
 		if weight==0 and #reasons==0 then reasons[1]=(row.source=="Natural" or row.source=="Influence") and "Not in the current base/influence pool" or row.source.." crafting source; outside the ordinary draw pool" end
 		-- A positive engine weight is authoritative for this pool, including its special rules.
 		if weight>0 then reasons={} end
-		result.rows[#result.rows+1]={id=row.id,text=row.text,type=row.type,level=row.level,tier=row.tier,groups=row.groups,source=row.source,baseWeight=row.baseWeight,weight=weight,chance=total>0 and row.type~="Enchant" and weight/total*100 or nil,reasons=reasons,tags=row.tags,eligible=weight>0,dropOnly=row.dropOnly or nil}
+		result.rows[#result.rows+1]={id=row.id,text=row.text,type=row.type,level=row.level,tier=row.tier,groups=row.groups,source=row.source,baseWeight=row.baseWeight,weight=weight,chance=total>0 and row.type~="Enchant" and row.type~="Synthesis" and weight/total*100 or nil,reasons=reasons,tags=row.tags,eligible=weight>0,dropOnly=row.dropOnly or nil}
 	end
 	return result
 end

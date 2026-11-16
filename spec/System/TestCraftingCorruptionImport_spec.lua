@@ -14,13 +14,22 @@ describe("Imported corruption identities",function()
 	it("replaces one identified synthesised modifier and reopens the survivors",function()
 		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item"
 		local model=sim.model(text);assert.equal(2,#model.synthesisGroups)
+		local id=model.synthesisGroups[1].candidates[1].id
+		assert.equal(1,#model.synthesisGroups[1].candidates)
+		local preservedTarget={{scope="implicit",anyOf={id}}}
+		assert.is_true(sim.matches(model.initial,preservedTarget,nil,model))
+		assert.equal("implicit",require("Modules.CraftingModifiers").scope(model.byId[id]))
+		local odds=sim.simulate(text,{steps={{method="vaal"}},targets=preservedTarget},{trials=40,maxActions=1,forceFirstAction=true})
+		assert.is_true(odds.successes>0 and odds.successes<40);assert.is_nil(next(odds.transitionErrors))
 		local catalogue=sim.catalog(text,"",5);assert.equal(2,#catalogue.synthesisGroups)
 		assert.same({"+10 to Strength"},catalogue.synthesisGroups[1].lines);assert.is_true(catalogue.synthesisGroups[1].retained)
+		assert.same({id},catalogue.synthesisGroups[1].candidates);assert.is_false(catalogue.synthesisGroups[1].ambiguous)
 		assert.is_true(require("Modules.CraftingAvailability").check("vaal",model.initial,model))
 		for _,draw in ipairs({0,0.999}) do
 			local state=copyTable(model.initial);sim.rollCorrupted(model,state,function() return draw end)
 			assert.equal(1,#state.synthRetained);assert.equal(draw==0 and 2 or 1,state.synthRetained[1])
 			state=sim.validateState(model,state)
+			assert.equal(draw~=0,sim.matches(state,preservedTarget,nil,model))
 			local inspected=sim.catalog(text,"",5,state)
 			assert.equal(draw~=0,inspected.synthesisGroups[1].retained)
 			local invalid=copyTable(state);invalid.synthRetained={3};assert.is_false(pcall(sim.validateState,model,invalid))
@@ -30,8 +39,14 @@ describe("Imported corruption identities",function()
 			assert.is_nil(reopened.unresolvedCorruption);assert.equal(1,#reopened.synthesisGroups)
 			assert.equal(model.synthesisGroups[state.synthRetained[1]][1].line,reopened.synthesisGroups[1][1].line)
 			assert.same(state.corruptedImplicits,reopened.initial.corruptedImplicits)
+			assert.equal(draw~=0,sim.matches(reopened.initial,preservedTarget,nil,reopened))
 			assert.is_true(sim.matches(reopened.initial,{{scope="implicit",anyOf={state.corruptedImplicits[1].id}}},nil,reopened))
 		end
+		local ambiguous=copyTable(model.synthesisGroups[1].candidates[1]);ambiguous.id="ambiguous-synthesis"
+		model.synthesisGroups[1].candidates[2]=ambiguous
+		for _,negate in ipairs({false,true}) do preservedTarget[1].negate=negate;assert.is_false(pcall(sim.matches,model.initial,preservedTarget,nil,model)) end
+		preservedTarget[1].negate=nil;preservedTarget[1].anyOf={id,ambiguous.id};assert.is_true(sim.matches(model.initial,preservedTarget,nil,model))
+		preservedTarget[1].anyOf={id};table.remove(model.synthesisGroups[1].candidates)
 		local applied=sim.action(model,model.initial,{method="vaal"},function() return 0 end)
 		assert.equal(1,#applied.synthRetained);assert.equal(1,#applied.corruptedImplicits)
 		local estimate=sim.simulate(text,{steps={{method="vaal"}},targets={{scope="implicit",anyOf={applied.corruptedImplicits[1].id}}}},{trials=10,maxActions=1,forceFirstAction=true})

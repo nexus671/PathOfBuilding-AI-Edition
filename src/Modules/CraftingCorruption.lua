@@ -37,6 +37,16 @@ function C.extend(M,A,api)
 		end
 	end
 	function M.implicitTargetReason(model,state,targets)
+		if model and model.synthesisGroups and not state.destroyed and not state.veil then
+			local active=state.synthRetained
+			if not active and not state.corruptedImplicits and not state.implicits then active={};for index in ipairs(model.synthesisGroups) do active[#active+1]=index end end
+			for _,index in ipairs(active or {}) do
+				local candidates=model.synthesisGroups[index].candidates
+				if #candidates>1 then for _,target in ipairs(targets) do if target.scope=="implicit" and require("Modules.CraftingSynthesisGroups").targetStatus(model.synthesisGroups[index],target)==nil then
+					return "A synthesised implicit matches multiple modifier identities; its target cannot be evaluated reliably."
+				end end end
+			end
+		end
 		if model and ((model.unresolvedCorruption and not state.corruptedImplicits and (not state.implicits or model.initial.implicits)) or (model.unresolvedEldritch and not state.implicits)) and not state.destroyed and not state.veil then
 			for _,group in ipairs(targets) do
 				if group.scope=="implicit" then return "The imported implicit modifiers could not be identified uniquely. Paste advanced item text with modifier ranges, or choose another starting item." end
@@ -67,6 +77,10 @@ function C.extend(M,A,api)
 				if group:sub(1,9)~="crafting_" and (not model.item.corrupted or group:sub(1,6)=="synth_") then lines[#lines+1]=line end
 			end
 			if #lines>0 then model.synthesisGroups=require("Modules.CraftingSynthesisGroups").resolve(lines,data.itemMods.Synthesis) end
+			for _,group in ipairs(model.synthesisGroups or {}) do for _,candidate in ipairs(group.candidates) do
+				model.byId[candidate.id]=data.itemMods.Synthesis[candidate.id];model.special[candidate.id]=true
+				if #group.candidates>1 then model.synthesisAmbiguous=model.synthesisAmbiguous or {};model.synthesisAmbiguous[candidate.id]=true end
+			end end
 		end
 		model.corruptions330={}
 		local old=model.byId[lifeGainOnHit330]

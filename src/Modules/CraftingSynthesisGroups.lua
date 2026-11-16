@@ -1,19 +1,35 @@
 -- Identify modifier boundaries without guessing between different partitions.
 local M={}
+function M.targetStatus(group,target)
+	local yes,no=false,false
+	for _,candidate in ipairs(group.candidates) do
+		local roll=type(candidate.range)=="table" and math.min(unpack(candidate.range)) or candidate.range or 0.5
+		local hit=false
+		for _,id in ipairs(target.anyOf) do if candidate.id==id and roll >= (target.minRoll or 0) and target.fractured~=true and target.crafted~=true then hit=true;break end end
+		yes=yes or hit;no=no or not hit
+	end
+	if yes and no then return nil end
+	return yes
+end
 function M.resolve(lines,modifiers)
 	if #lines==0 or #lines>12 then return nil end
 	local infer=require("Modules.CraftingImport").inferRange
 	local lengths={}
 	for start=1,#lines do lengths[start]={} end
-	for _,mod in pairs(modifiers) do
+	for id,mod in pairs(modifiers) do
 		if #mod>0 and #mod<=#lines then
 			for start=1,#lines-#mod+1 do
-				local valid=true
+				local valid,ranges=true,{}
 				for offset,template in ipairs(mod) do
 					local line=lines[start+offset-1]
-					if not infer(template,itemLib.applyRange(line.line,line.range or 0.5)) then valid=false;break end
+					local values=infer(template,itemLib.applyRange(line.line,line.range or 0.5))
+					if not values then valid=false;break end
+					for _,value in ipairs(values) do ranges[#ranges+1]=value end
 				end
-				if valid then lengths[start][#mod]=true end
+				if valid then
+					local matches=lengths[start][#mod] or {};lengths[start][#mod]=matches
+					matches[#matches+1]={id=id,range=#ranges==0 and 0.5 or #ranges==1 and ranges[1] or ranges}
+				end
 			end
 		end
 	end
@@ -38,6 +54,8 @@ function M.resolve(lines,modifiers)
 	local result,start={},1
 	for _,length in ipairs(solutions[1]) do
 		local group={};for index=start,start+length-1 do group[#group+1]=copyTable(lines[index]) end
+		group.candidates=lengths[start][length]
+		table.sort(group.candidates,function(a,b) return tostring(a.id)<tostring(b.id) end)
 		result[#result+1]=group;start=start+length
 	end
 	return result

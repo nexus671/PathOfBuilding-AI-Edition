@@ -6,7 +6,7 @@ function M.Open(model,state,options)
 	local result=modifiers.inspect(model,state);local selected;local rows
 	local function button(key,x,y,width,label,run) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,run) end
 	c.search=new("EditControl"):EditControl(ui.anchor,{16,28,tableW,28},"","Find a modifier, group or tag",nil,160)
-	c.kind=new("DropDownControl"):DropDownControl(ui.anchor,{16,68,tableW/2-6,28},{"All affixes","Prefix","Suffix","Corrupted","Exarch","Eater","Enchant"})
+	c.kind=new("DropDownControl"):DropDownControl(ui.anchor,{16,68,tableW/2-6,28},{"All affixes","Prefix","Suffix","Corrupted","Exarch","Eater","Synthesis","Enchant"})
 	c.source=new("DropDownControl"):DropDownControl(ui.anchor,{28+tableW/2-6,68,tableW/2-6,28},{"All sources","Natural","Influence","Bench","Essence","Special"})
 	c.availability=new("DropDownControl"):DropDownControl(ui.anchor,{detailX,28,detailW,28},{"All modifiers","Eligible draw","Blocked / special"})
 	c.sort=new("DropDownControl"):DropDownControl(ui.anchor,{detailX,68,detailW,28},{"Eligible first","Chance","Tier","Item level","Name"})

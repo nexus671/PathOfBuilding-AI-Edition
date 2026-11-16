@@ -29,6 +29,15 @@ describe("Crafting modifier explanations",function()
 		local found;for _,row in ipairs(catalog.modifierTable.rows) do if row.id==id then found=row end end
 		assert.is_truthy(found);assert.equal(0,found.weight);assert.is_true(#found.reasons>0)
 	end)
+	it("lets the native modifier browser select a synthesised implicit target",function()
+		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item"
+		local model=sim.model(text);local id=model.synthesisGroups[1].candidates[1].id;local selected
+		local row;for _,candidate in ipairs(modifiers.inspect(model,model.initial).rows) do if candidate.id==id then row=candidate end end
+		assert.is_nil(row.chance);assert.is_truthy(table.concat(row.reasons," "):find("Starting synthesised implicit",1,true))
+		local browser=require("Classes.CraftingModifierControl").Open(model,model.initial,{choose=function(value) selected=value end})
+		browser.search:SetText(id,true);assert.is_true(browser.choose:IsEnabled());browser.choose:Click()
+		assert.equal(id,selected);assert.equal("implicit",modifiers.scope(model.byId[selected]))
+	end)
 	it("stages an eligible drop-only identity without treating it as an ordinary draw",function()
 		local model=sim.model(raw);local id="FireResistEnhancedLevel50ModPhys";local staged
 		local browser=require("Classes.CraftingModifierControl").Open(model,model.initial,{choose=function() end,present=function(value) staged=value end})

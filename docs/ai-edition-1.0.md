@@ -23,6 +23,7 @@ The installed application and personal builds are outside this release workspace
 
 - [x] Browse modifiers with tiers, weights, groups and exclusion explanations.
 - [x] Edit target groups directly, with clear AND/OR and property requirements.
+- [x] Target identified starting synthesised implicits, with ambiguity checks for overlapping identities.
 - [x] Inspect recipe branches visually and edit routes without numeric guesswork.
 - [x] Keep experimental items in a named local inventory.
 - [x] Show native weapon DPS, attack rate, critical chance and Ward in item comparisons.

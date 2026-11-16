@@ -1133,7 +1133,8 @@ function A.extend(M,api)
 				local lines={};for _,line in ipairs(group) do lines[#lines+1]=itemLib.applyRange(line.line,line.range or 0.5) end
 				local retained=not state.corruptedImplicits
 				for _,value in ipairs(state.synthRetained or {}) do if value==index then retained=true end end
-				result.synthesisGroups[#result.synthesisGroups+1]={index=index,lines=lines,retained=retained}
+				local ids={};for _,candidate in ipairs(group.candidates) do ids[#ids+1]=candidate.id end
+				result.synthesisGroups[#result.synthesisGroups+1]={index=index,lines=lines,retained=retained,candidates=ids,ambiguous=#ids>1}
 			end
 		end
 		if model.unresolvedEldritch and not state.implicits then result.importWarning="At least one imported Eldritch implicit has an ambiguous tier; supply a structured implicit state before changing Eldritch implicits or using dominance." end

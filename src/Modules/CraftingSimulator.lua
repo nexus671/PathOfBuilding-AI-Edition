@@ -542,6 +542,10 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   local entries=state.affixes
   if group.scope == "implicit" then
    entries={};for _,list in ipairs({state.corruptedImplicits or {},state.implicits or {}}) do for _,entry in ipairs(list) do entries[#entries+1]=entry end end
+   local active=state.synthRetained
+   if active then assert(model and model.synthesisGroups,"A synthesised item model is required for implicit targets") end
+   if model and model.synthesisGroups and not active and not state.corruptedImplicits and not state.implicits then active={};for index in ipairs(model.synthesisGroups) do active[#active+1]=index end end
+   for _,index in ipairs(active or {}) do local item=model.synthesisGroups[index];if require("Modules.CraftingSynthesisGroups").targetStatus(item,group) then entries[#entries+1]=item.candidates[1] end end
   end
   if group.scope == "enchant" then
    assert(model,"A native item model is required for enchantment targets")
