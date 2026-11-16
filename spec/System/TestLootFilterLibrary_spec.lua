@@ -67,9 +67,28 @@ describe("Visual filter catalogue",function()
 		local height=main.screenH;main.screenH=500
 		local ok,err=pcall(function()
 			require("Classes.LootFilterControl").EditSample(library.sample(),function() end);local c=main.popups[1].controls
-			for _,key in ipairs({"DropLevel","Width","Height","HasExplicitMod"}) do assert.is_true(c[key].y+c[key].height<c.useSample.y,key) end
+			for _,key in ipairs({"DropLevel","Width","Height","BaseDefencePercentile","HasExplicitMod"}) do assert.is_true(c[key].y+c[key].height<c.useSample.y,key) end
 		end)
 		main.screenH=height;main.popups={};assert(ok,err)
+	end)
+	it("does not invent a defence roll for example drops",function()
+		local profile=filters.profile("test","Test");local scene=library.scene(profile,build,"All items",0,83,86);local examples={}
+		for _,item in ipairs(scene) do examples[item.BaseType]=item end
+		assert.equal(0,examples["Chaos Orb"].BaseDefencePercentile)
+		assert.is_nil(examples["Vaal Regalia"].BaseDefencePercentile)
+		assert.equal(100,examples["Iron Ring"].BaseDefencePercentile)
+		local rules=parser.parse("Hide\n BaseDefencePercentile >= 40\nShow")
+		assert.equal("Show",parser.simulate(rules,examples["Chaos Orb"]).action)
+		assert.equal("unknown",parser.simulate(rules,examples["Vaal Regalia"]).status)
+		assert.equal("Hide",parser.simulate(rules,examples["Iron Ring"]).action)
+		local sample=library.sample({text='Show\n BaseType == "Vaal Regalia"\n BaseDefencePercentile >= 80'})
+		assert.equal(80,sample.BaseDefencePercentile)
+		local saved;require("Classes.LootFilterControl").EditSample(examples["Vaal Regalia"],function(item) saved=item end)
+		local c=main.popups[1].controls;assert.equal("",c.BaseDefencePercentile.buf);c.BaseDefencePercentile:SetText("85");c.useSample:Click()
+		assert.equal(85,saved.BaseDefencePercentile);assert.equal("Hide",parser.simulate(rules,saved).action)
+		require("Classes.LootFilterControl").EditSample(saved,function(item) saved=item end);c=main.popups[1].controls
+		c.BaseType:SetText("Iron Hat",true);assert.equal("",c.BaseDefencePercentile.buf)
+		c.BaseDefencePercentile:SetText("100");c.Rarity:SetText("Unique",true);assert.equal("",c.BaseDefencePercentile.buf)
 	end)
 	it("offers reproducible card and essence examples for testing filter rules",function()
 		local profile=filters.profile("test","Test")

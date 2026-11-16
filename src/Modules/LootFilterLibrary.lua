@@ -16,11 +16,21 @@ function M.baseProperties(name,rarity)
 	-- not identify the unique. Keep it unknown rather than using the base level.
 	return {DropLevel=rarity~="Unique" and base.DropLevel or nil,Width=base.Width,Height=base.Height}
 end
-local function applyBaseProperties(item,preserveSockets)
+local function applyBaseProperties(item,preserveSockets,preserveDefence)
 	local base=M.baseProperties(item.BaseType,item.Rarity)
 	item.DropLevel=base.DropLevel;item.Width=base.Width;item.Height=base.Height
 	local native=data and data.itemBases and data.itemBases[item.BaseType]
 	local noSockets={ ["Stackable Currency"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
+	local equipment={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true,Quiver=true,Amulet=true,Ring=true,Belt=true}
+	if noSockets[item.Class] then item.BaseDefencePercentile=0
+	elseif native and (equipment[native.type] or data.weaponTypeInfo[native.type]) and item.Rarity~="Unique" then
+		local random=false
+		for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
+			local armour=native.armour or {};local min,max=armour[kind.."BaseMin"],armour[kind.."BaseMax"]
+			if min and max and min~=max then random=true end
+		end
+		if not random then item.BaseDefencePercentile=100 elseif not preserveDefence then item.BaseDefencePercentile=nil end
+	else item.BaseDefencePercentile=nil end
 	local limit=native and (native.socketLimit or 0)
 	local coherent=preserveSockets and type(item.Sockets)=="number" and (native and item.Sockets<=limit or not native and noSockets[item.Class] and item.Sockets==0)
 	if not coherent and (native and limit>0 or not native and not noSockets[item.Class] or preserveSockets) then
@@ -57,16 +67,17 @@ local function baseClass(name)
 	for class,example in pairs(classExamples) do if example==name then return class end end
 end
 function M.sample(rule,block)
-	local item={BaseType="Chaos Orb",Class="Stackable Currency",Rarity="Normal",ItemLevel=86,AreaLevel=83,DropLevel=1,Quality=0,StackSize=1,Sockets=0,SocketGroup="",LinkedSockets=0,Width=1,Height=1,UnidentifiedItemTier=0,HasInfluence={"None"},HasExplicitMod={},HasEnchantment={},EnchantmentPassiveNode="",BaseDefencePercentile=50}
+	local item={BaseType="Chaos Orb",Class="Stackable Currency",Rarity="Normal",ItemLevel=86,AreaLevel=83,DropLevel=1,Quality=0,StackSize=1,Sockets=0,SocketGroup="",LinkedSockets=0,Width=1,Height=1,UnidentifiedItemTier=0,HasInfluence={"None"},HasExplicitMod={},HasEnchantment={},EnchantmentPassiveNode=""}
 	for key in pairs(parser.booleans) do item[key]=false end
 	for key in pairs(parser.numeric) do if item[key]==nil then item[key]=0 end end
-	local hasBase,hasClass,hasRarity,hasIdentified,modifier=false,false,false,false,nil
+	local hasBase,hasClass,hasRarity,hasIdentified,hasDefence,modifier=false,false,false,false,false,nil
 	local socketConditions={}
 	if rule then block=block or parser.parse(rule.text).rules[1];if block then for _,c in ipairs(block.conditions) do
 		local value=c.values[1]
 		if c.keyword=="Sockets" or c.keyword=="SocketGroup" or c.keyword=="LinkedSockets" then socketConditions[#socketConditions+1]=c end
 		if c.keyword=="BaseType" then hasBase=true elseif c.keyword=="Class" then hasClass=true end
 		if c.keyword=="Rarity" then hasRarity=true elseif c.keyword=="Identified" then hasIdentified=true end
+		if c.keyword=="BaseDefencePercentile" then hasDefence=true end
 		if c.keyword=="HasExplicitMod" and (c.operator=="=" or c.operator=="==" or c.operator==">=" or c.operator==">") then modifier=c end
 		if parser.numeric[c.keyword] then local n=tonumber(value);item[c.keyword]=n and (c.operator==">" and n+1 or c.operator=="<" and n-1 or n) or value
 		elseif c.keyword=="Rarity" then item.Rarity=value
@@ -105,7 +116,7 @@ function M.sample(rule,block)
 		elseif item.Rarity=="Unique" then item.BaseType="Leather Belt";item.Class="Belts"
 		elseif item.Rarity=="Rare" or item.Rarity=="Magic" then item.BaseType="Iron Hat";item.Class="Helmets" end
 	else item.Class=baseClass(item.BaseType) or (hasClass and item.Class or nil) end
-	applyBaseProperties(item,#socketConditions==1)
+	applyBaseProperties(item,#socketConditions==1,hasDefence)
 	return item
 end
 function M.catalog(profile)

@@ -1247,7 +1247,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(pasted.DropLevel==1 and pasted.Width==2 and pasted.Height==2,"Pasted base properties were not populated")
 	ui.clipboard="Item Class: Stackable Currency\nRarity: Currency\nChaos Orb\n--------\nStack Size: 7/20";ui:click("pasteDrop");frame("filter-copied-item")
 	local currency=build.planningWorkspace.cache.filters.layout.snapshot().sample;assert(currency.DropLevel==12 and currency.Width==1 and currency.Height==1,"Pasted currency base properties were not populated")
-	ui:click("sampleEdit");assert(main.popups[1].controls.DropLevel.buf=="12" and main.popups[1].controls.Width.buf=="1", "Pasted base properties were not editable");frame("filter-copied-base-properties");ui:click("cancel")
+	ui:click("sampleEdit");assert(main.popups[1].controls.DropLevel.buf=="12" and main.popups[1].controls.Width.buf=="1", "Pasted base properties were not editable");ui:text("BaseDefencePercentile","0");frame("filter-copied-base-properties");ui:click("useSample")
+	assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.BaseDefencePercentile==0,"Defence percentile was not retained in the test item")
 	ui:click("sceneSettings");ui:text("areaLevel","72");ui:text("itemLevel","75");ui:choose("background","Dark");frame("filter-scene-settings");ui:click("keepScene")
 	ui:click("sampleHistory");frame("filter-sample-history");ui:click("choose");ui:click("inspectMatch");frame("filter-matched-rules");ui:click("close")
 	local savedArea=build.planningWorkspace.cache.filters.layout.snapshot().sample.AreaLevel
