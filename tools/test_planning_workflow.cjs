@@ -696,6 +696,9 @@ async function main(){
   const influenceProfile={...importsProfile,template:'Hide\n HasInfluence == Shaper Elder\nShow',importFiles:[]};
   const oneInfluence=await queued('test_loot_filter',{baseRevision:context.revision,profile:influenceProfile,sample:{BaseType:'Iron Hat',HasInfluence:['Shaper']}},'tested');assert.equal(oneInfluence.result.action,'Show');
   const twoInfluences=await queued('test_loot_filter',{baseRevision:context.revision,profile:influenceProfile,sample:{BaseType:'Iron Hat',HasInfluence:['Shaper','Elder']}},'tested');assert.equal(twoInfluences.result.action,'Hide');
+  const continuedSoundProfile={...importsProfile,template:'Show\n PlayAlertSound 4\n Continue\nShow\n PlayAlertSoundPositional None',importFiles:[]};
+  const continuedSound=await queued('test_loot_filter',{baseRevision:context.revision,profile:continuedSoundProfile,sample:{BaseType:'Iron Hat'}},'tested');
+  assert.equal(continuedSound.result.action,'Show');assert.equal(continuedSound.result.styles.PlayAlertSound,undefined);assert.deepEqual(continuedSound.result.styles.PlayAlertSoundPositional,['None']);
   const socketTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:socketProfile,sample:{BaseType:'Plate Vest',Rarity:'Normal',SocketGroup:'GGGRRW'}},'tested');assert.equal(socketTest.result.action,'Hide');assert.equal(socketTest.result.ruleTitle,'Socket rule');
   const zeroSocketProfile={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n SocketGroup 0'}]};
   const zeroSocketTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:zeroSocketProfile,sample:{BaseType:'Iron Ring',Sockets:0}},'tested');assert.equal(zeroSocketTest.result.action,'Hide');

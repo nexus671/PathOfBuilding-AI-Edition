@@ -223,6 +223,11 @@ function M.simulate(parsed,item)
 		if matched then
 			if #unknown>0 then result.status="unknown";result.action="Unknown";result.reasons=unknown;result.line=rule.line;return result end
 			result.action=rule.action;result.line=rule.line;result.ruleTitle=rule.title;result.matches[#result.matches+1]=rule.line
+			-- Both numbered alert commands address the alert sound. A later
+			-- matching block replaces its earlier numbered alert, including None.
+			if rule.styles.PlayAlertSound or rule.styles.PlayAlertSoundPositional then
+				result.styles.PlayAlertSound=nil;result.styles.PlayAlertSoundPositional=nil
+			end
 			for key,value in pairs(rule.styles) do result.styles[key]=value end
 			if not rule.continue then
 				if #parsed.imports>0 then result.reasons[#result.reasons+1]="Later included files are unresolved; this preview assumes they are valid and available when required." end

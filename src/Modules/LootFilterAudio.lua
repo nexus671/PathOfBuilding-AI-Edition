@@ -14,8 +14,10 @@ function M.alert(styles)
 		if tonumber(custom[2])==0 then return nil,"The custom alert volume is zero." end
 		return nil,"Custom audio overrides numbered alerts. Custom files are not previewed."
 	end
+	if styles.PlayAlertSound and styles.PlayAlertSoundPositional then return nil,"Both numbered alert modes are present in the same block; the effective sound is not verified." end
 	local values=styles.PlayAlertSound or styles.PlayAlertSoundPositional
 	if not values then return nil,"No numbered alert is configured. Custom sound files are preserved on export." end
+	if values[1]=="None" then return nil,"The numbered alert is disabled." end
 	local id=tonumber(values[1]);if not id or id<1 or id>16 or id~=math.floor(id) then return nil,"No reference tone for this alert." end
 	if tonumber(values[2])==0 then return nil,"The numbered alert volume is zero." end
 	return id
