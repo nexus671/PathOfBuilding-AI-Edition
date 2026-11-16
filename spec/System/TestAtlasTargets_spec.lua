@@ -1,3 +1,4 @@
+-- cspell:ignore Allflames
 describe("Desired Atlas routes",function()
 	local atlas=require("Modules.AtlasPlanner")
 	local targets=require("Modules.AtlasTargets")
@@ -29,6 +30,17 @@ describe("Desired Atlas routes",function()
 		local p=atlas.connect(plan(),{50374,65008});local summary=targets.summary(p);local count,found=0,{}
 		for _,row in ipairs(summary.mechanics) do count=count+row.total;found[row.name]=true end
 		assert.equal(#p.nodes,count);assert.is_true(found.Mercenaries);assert.is_true(found["Ore Deposits"])
+	end)
+	it("classifies both Secrets Unveiled choices as Betrayal",function()
+		local strategy=require("Modules.AtlasStrategy");local node=atlas.tree("3.30.0-preview").nodes[45404]
+		local p=atlas.connect(plan(),{node.id});local counts={}
+		for _,effect in ipairs(node.variantEffects) do
+			p=atlas.chooseEffect(p,node.id,effect.effect)
+			assert.equal("Betrayal",strategy.mechanic(strategy.selectedNode(p,node)))
+			for _,row in ipairs(targets.summary(p).mechanics) do if row.name=="Betrayal" then counts[#counts+1]=row.total end end
+		end
+		assert.equal(2,#counts);assert.equal(counts[1],counts[2])
+		assert.is_false(strategy.hasMechanic({name="Unknown",stats={"Allflames found in your Maps"}},"Betrayal"))
 	end)
 	it("warns when historical Mercenary investment includes its encounter blocker",function()
 		local version="3.29.3";local p=atlas.connect({id="blocked",title="Blocked",version=version,budget=atlas.tree(version).maxPoints,nodes={}}, {24930,50374})

@@ -434,6 +434,15 @@ describe("Build-owned loot filters",function()
 		assert.equal("Show",filters.simulate(profile,{BaseType="Iron Hat",Rarity="Rare",ItemLevel=86}).action)
 		local count=#profile.rules;profile.rules=filters.generate(build,profile);assert.equal(count,#profile.rules)
 	end)
+	it("generates Betrayal Thread pickups for either Secrets Unveiled choice",function()
+		local atlas=require("Modules.AtlasPlanner");local node=atlas.tree("3.30.0-preview").nodes[45404]
+		local profile=filters.profile("test","Test")
+		for _,effect in ipairs(node.variantEffects) do
+			build.savers.AtlasPlans.plans={{id="choice",version="3.30.0-preview",nodes={node.id},choices={{node=node.id,effect=effect.effect}}}}
+			local found=false;for _,rule in ipairs(filters.generate(build,profile)) do if rule.title=="Betrayal Thread" then found=true end end
+			assert.is_true(found)
+		end
+	end)
 	it("generates gem rules only for enabled groups in the active weapon set",function()
 		local original=build.skillsTab.socketGroupList
 		build.skillsTab.socketGroupList={
