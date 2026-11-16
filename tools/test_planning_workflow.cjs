@@ -50,6 +50,9 @@ async function main(){
   await host('request-test');await call('get_build_connection');await host('tick',1);
   const proof=await host('connection-proof');assert.equal(proof.client,'planning-workflow-test');assert.equal(proof.tested,true);assert.equal(proof.synced,true);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
+  const incursionRaw='Rarity: RARE\nDread Crest\nIron Hat\nItem Level: 86\n+47% to Fire Resistance\n4% of Physical Damage from Hits taken as Fire Damage';
+  const incursion=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:incursionRaw,action:{method:'divine'},seed:1},'crafted');
+  assert.equal(incursion.nativeCrafting.state.affixes[0].id,'FireResistEnhancedLevel50ModPhys');
   const socketedRaw='Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W-W-W-W';
   const socketVaal=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,action:{method:'vaal'},seed:3},'crafted');
   assert.ok(socketVaal.nativeCrafting.warnings.some(entry=>entry.code==='vaal_socket_reroll_unmodeled'));
