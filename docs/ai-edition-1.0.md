@@ -17,6 +17,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Page through saved examples and test separate items without overwriting the sets.
 - [x] Expand shared colour/sound styling and preview every supported icon shape.
 - [x] Choose colours visually with exact RGBA entry and Ruthless opacity validation.
+- [ ] Review remaining offline filter workflows against the current game and reference tools, including validation in the game client.
 
 ## Crafting
 
@@ -30,7 +31,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Save per-resource quotes, reuse them across gear guides and share them with native/MCP simulations.
 - [x] Report modeled ingredient and service quantities separately from spending, with an illustrated resource browser.
 - [x] Apply quality enchantments with native item state, recipe goals and resource costs.
-- [ ] Review incomplete socket, corruption and league mechanics against sources.
+- [ ] Complete and validate current crafting coverage, including incomplete socket, corruption and league mechanics and their probabilities.
 - [x] Keep empirical assumptions visible; never present unknown weights as facts.
 
 ## Atlas
@@ -39,6 +40,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Preview/recalculate all desired targets, with explicit apply and pause controls.
 - [x] Summarise mechanic investment, small nodes, blocking and keystone tradeoffs.
 - [x] Compare saved plans visually and preserve exact tree versions.
+- [ ] Compare the 3.30 preview with the official release export when it becomes available, and verify Ruthless official-link sharing.
 
 ## Shared experience
 
@@ -50,6 +52,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Complete repeated native navigation at 960, 1024 and 1280 widths.
 - [x] Verify save/reopen, undo, portable bundles and local MCP workflows.
 - [ ] Review final screenshots, run required CI and verify the updater manifest.
+- [ ] Verify the release candidate in the native desktop renderer without modifying the installed application or personal builds.
 
 Hosted economy feeds, community discovery/heatmaps, cloud sharing and automatic
 account uploads are separate service work. Their absence does not justify a
@@ -57,12 +60,21 @@ placeholder that pretends to provide those results offline.
 
 ## Remaining release work
 
-The latest verified checkpoint is `4d410c005d95f84adf7f19cdb76f8669ebdc775f`
-([Run Tests](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/43447147022),
-[Spell Checker](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/43447146999)).
-It passed 1,237 Lua tests, 48 Node tests, the real MCP save/reopen workflow and
-906 source-stable UI states without audit failures. All 2,426 updater file hashes
-and every CI artifact source hash were verified against that commit.
+As of November 15, the most recent checkpoint with both hosted checks complete
+was `b07b879d90ee4339ea083c2d42b38c973a7425ad`
+([Run Tests](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/43804547737),
+[Spell Checker](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/43804547752)).
+Its local review passed 71 focused filter tests, the MCP planning workflow and
+1,335 source-stable UI views; the updater manifest checked 2,500 entries. Later
+commits need their own checks. Inspect the current commit's hosted results before
+making a release decision; this checkpoint does not establish full 1.0 parity.
+
+An earlier checkpoint, `4d410c005d95f84adf7f19cdb76f8669ebdc775f`, passed
+[Run Tests](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/43447147022)
+and [Spell Checker](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/43447146999).
+It passed 1,237 Lua tests, 48 Node tests, the MCP save/reopen workflow and 906
+source-stable UI views. Its 2,426 updater entries and CI artifact source hashes
+were verified against that commit.
 
 Preview 31 preserves the Twice Corrupted marker through native item import,
 tainted crafting, manual edits, saved projects and MCP. This does not add second
