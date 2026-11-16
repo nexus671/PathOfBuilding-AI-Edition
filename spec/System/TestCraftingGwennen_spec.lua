@@ -110,6 +110,25 @@ describe("Experimental Gwennen pair",function()
 		local xml=build:SaveDB("Influence guide");loadBuildFromXML(xml,"Influence guide")
 		assert.equal("shaper",build.savers.CraftingProjects.projects[1].nativeRecipe.requirements.influence)
 	end)
+	it("continues crafting with the influence gained from a Gwennen pair",function()
+		local model,state=item()
+		local influenced=sim.action(model,state,{method="gwennen",firstOutcome=1031,secondOutcome=1031},function() return 0.01 end)
+		assert.same({"shaper"},influenced.influences)
+		local rebuilt=sim.toItem(model,influenced)
+		assert.is_true(rebuilt.shaper)
+		local shaperTag=model.item.base.influenceTags.shaper
+		local influencedMod
+		for _,entry in ipairs(sim.pool(model,influenced)) do
+			for _,tag in ipairs(model.byId[entry.id].weightKey or {}) do
+				if tag==shaperTag then influencedMod=true end
+			end
+		end
+		assert.is_true(influencedMod)
+		local nextState=sim.action(model,influenced,{method="beast_influence",influence="shaper"},function() return 0.1 end)
+		assert.equal(#influenced.affixes+1,#nextState.affixes)
+		assert.same({"shaper"},nextState.influences)
+		sim.validateState(model,nextState)
+	end)
 	it("models explicit removal, retained modifiers and filled slots",function()
 		local model,state=item();local before=copyTable(state)
 		local cleared=sim.action(model,state,{method="gwennen",firstOutcome=1001,secondOutcome=1000},function() return 0.1 end)
