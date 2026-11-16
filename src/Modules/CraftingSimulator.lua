@@ -406,6 +406,13 @@ local function benchReason(model,state,id,c,f)
 	if mod.legacyBenchUnavailable then return "This saved bench modifier is not available in current data" end
 	if c.crafted >= (f.multipleCrafts and 3 or 1) then return "Crafted modifier limit reached" end
 	if c.groups[mod.group] then return "A modifier from this group is already present" end
+	-- Native drop-only labels can differ from the underlying game groups used
+	-- by an ordinary bench modifier (for example, a resistance hybrid).
+	local metadata=require("Modules.CraftingAdvanced").data().mods
+	for _,entry in ipairs(state.affixes) do
+		local record=metadata[entry.id]
+		for _,group in ipairs(record and record.groups or {}) do if group==mod.group then return "A modifier from this group is already present" end end
+	end
 	if c[mod.type] >= M.capacities(model,state)[mod.type] then return "No open affix for this bench craft" end
 end
 function M.benchReason(model,state,id)

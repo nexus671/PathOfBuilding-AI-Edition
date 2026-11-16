@@ -53,6 +53,8 @@ async function main(){
   const incursionRaw='Rarity: RARE\nDread Crest\nIron Hat\nItem Level: 86\n+47% to Fire Resistance\n4% of Physical Damage from Hits taken as Fire Damage';
   const incursion=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:incursionRaw,action:{method:'divine'},seed:1},'crafted');
   assert.equal(incursion.nativeCrafting.state.affixes[0].id,'FireResistEnhancedLevel50ModPhys');
+  const incursionOptions=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:incursionRaw,query:'Fire Resistance',limit:100},'inspected');
+  assert.ok(incursionOptions.crafting.nativeEngine.bench.some(entry=>!entry.available && /group is already present/.test(entry.unavailableReason || '')));
   const incursionState={...incursion.nativeCrafting.state};delete incursionState.origin;
   const restoredIncursion=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:incursionState,action:{method:'divine'},seed:1},'crafted');
   assert.equal(restoredIncursion.nativeCrafting.state.affixes[0].id,'FireResistEnhancedLevel50ModPhys');

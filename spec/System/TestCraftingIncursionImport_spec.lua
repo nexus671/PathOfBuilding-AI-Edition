@@ -22,4 +22,18 @@ describe("Drop-only Incursion modifier import",function()
 		assert.has_error(function() sim.model(item("Gold Ring",86,lines)) end)
 		assert.has_error(function() sim.model(item("Iron Hat",40,lines)) end)
 	end)
+	it("prevents ordinary resistance rolls that conflict with an imported hybrid",function()
+		local model=sim.model(item("Iron Hat",86,"+47% to Fire Resistance\n4% of Physical Damage from Hits taken as Fire Damage"))
+		local fire;for _,entry in ipairs(model.mods) do if entry.mod.group=="FireResistance" then fire=entry.id;break end end
+		assert.is_truthy(fire)
+		for _,entry in ipairs(sim.pool(model,model.initial)) do assert.not_equal(fire,entry.id) end
+		local bench;for _,entry in ipairs(model.bench) do if entry.mod.group=="FireResistance" then bench=entry.id;break end end
+		assert.is_truthy(bench);assert.matches("already present",sim.benchReason(model,model.initial,bench))
+		assert.has_error(function() sim.action(model,model.initial,{method="bench",modId=bench},function() return 0.5 end) end)
+		for _,option in ipairs(sim.actionOptions(model,model.initial,"bench")) do assert.not_equal(bench,option.action.modId) end
+		local cold;for _,entry in ipairs(model.bench) do if entry.mod.group=="ColdResistance" then cold=entry.id;break end end
+		assert.is_truthy(cold);assert.is_nil(sim.benchReason(model,model.initial,cold))
+		local state=copyTable(model.initial);state.affixes[#state.affixes+1]={id=fire,range=0.5}
+		assert.has_error(function() sim.validateState(model,state) end)
+	end)
 end)
