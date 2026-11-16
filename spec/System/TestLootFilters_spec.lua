@@ -460,6 +460,15 @@ describe("Build-owned loot filters",function()
 		for _,name in ipairs({"Allflame Ember of Kulemak","Divine Vessel","Maven's Chisel of Divination","Threaded Delirium Orb"}) do assert.is_true(titles[name],name) end
 		assert.is_nil(titles["Feral Astrolabe"]);assert.is_nil(titles["Fruiting Astrolabe"])
 	end)
+	it("migrates renamed supplies in saved Atlas strategies and exclusions",function()
+		local profile=filters.profile("test","Test")
+		local strategy={scarabs="Skittering Delirium Orb, Maven's Chisel of Scarabs",avoid="Maven's Chisel of Threads"}
+		build.savers.AtlasPlans.plans={{id="renames",version="3.30.0-preview",nodes={},strategy=strategy}}
+		local function titles() local result={};for _,rule in ipairs(filters.generate(build,profile)) do result[rule.title]=true end;return result end
+		local found=titles();assert.is_true(found["Threaded Delirium Orb"]);assert.is_nil(found["Skittering Delirium Orb"]);assert.is_nil(found["Maven's Chisel of Threads"])
+		strategy.scarabs="Threaded Delirium Orb, Maven's Chisel of Threads";strategy.avoid="Skittering Delirium Orb"
+		found=titles();assert.is_nil(found["Threaded Delirium Orb"]);assert.is_true(found["Maven's Chisel of Threads"])
+	end)
 	it("generates gem rules only for enabled groups in the active weapon set",function()
 		local original=build.skillsTab.socketGroupList
 		build.skillsTab.socketGroupList={

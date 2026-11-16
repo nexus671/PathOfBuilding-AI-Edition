@@ -210,6 +210,9 @@ function M.generate(build,profile,checkpoint)
 		if names[name] and not removed[name] then add("resource-"..resource.id,name,{"BaseType == "..quote(name)},"budget:"..resource.id) end
 	end
 	local strategyNames={};for name in pairs(names) do strategyNames[#strategyNames+1]=name end
+	-- Older saved strategies may still use a renamed item's former name. Match
+	-- both spellings, but emit and compare exclusions using the current name.
+	local strategyRenames={};for old,new in pairs(patch.renamed) do if names[new] and not names[old] then strategyRenames[old]=new;strategyNames[#strategyNames+1]=old end end
 	table.sort(strategyNames,function(a,b) return #a==#b and a<b or #a>#b end)
 	for _,plan in ipairs(build.savers.AtlasPlans.plans) do
 		local atlas=require("Modules.AtlasPlanner");local keywords,excludedThreads={},{};local graph=atlas.tree(plan.version)
@@ -223,7 +226,8 @@ function M.generate(build,profile,checkpoint)
 		end end
 		local mentioned,avoided={},{};for _,field in ipairs({"scarabs","maps"}) do mentionedItems(plan.strategy and plan.strategy[field] or "",strategyNames,mentioned) end
 		mentionedItems(plan.strategy and plan.strategy.avoid or "",strategyNames,avoided)
-		for _,name in ipairs(strategyNames) do if mentioned[name] and not avoided[name] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
+		for old,new in pairs(strategyRenames) do if mentioned[old] then mentioned[new]=true end;if avoided[old] then avoided[new]=true end end
+		for _,name in ipairs(strategyNames) do if not strategyRenames[name] and mentioned[name] and not avoided[name] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
 		for _,name in ipairs(patch.added["Map Fragments"] or {}) do local mechanic=name:match("^(%a+) Thread$");if mechanic and keywords[mechanic] and not excludedThreads[mechanic] and not avoided[name] then add("atlas-"..plan.id.."-"..mechanic,name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
 	end
 	local rules={};for _,rule in ipairs(profile.rules) do if not rule.origin then rules[#rules+1]=copyTable(rule) end end
