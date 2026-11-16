@@ -13,6 +13,7 @@ M.booleans={AlwaysShow=true,Identified=true,Corrupted=true,TwiceCorrupted=true,M
 	BlightedMap=true,UberBlightedMap=true,Replica=true,Scourged=true,HasImplicitMod=true,AnyEnchantment=true,HasCruciblePassiveTree=true,Foulborn=true,Fated=true,Exceptional=true,TransfiguredGem=true,AlternateQuality=true,Imbued=true,Vestigial=true,ZanaMemory=true,MirageMap=true}
 M.strings={Class=true,BaseType=true,HasInfluence=true,HasExplicitMod=true,HasEnchantment=true,EnchantmentPassiveNode=true,Prophecy=true,ArchnemesisMod=true,GemQualityType=true}
 local rarity={Normal=0,Magic=1,Rare=2,Unique=3}
+local influences={shaper=true,elder=true,crusader=true,hunter=true,redeemer=true,warlord=true,none=true}
 -- Some filters put a second operator after a modifier count. Preserve it as
 -- syntax, not a quoted modifier name; its combined semantics need verification.
 function M.countExactMarker(condition,index)
@@ -120,7 +121,32 @@ function M.condition(c,item)
 	if c.keyword=="SocketGroup" and value==nil and tonumber(item.Sockets)==0 then value="0" end
 	if value==nil then return nil,"Missing "..c.keyword end
 	local op=c.operator;local values=c.values
-	if c.keyword=="Sockets" then
+	if c.keyword=="HasInfluence" then
+		if op~="=" and op~="==" and op~="!" and op~="!=" then return nil,"Unsupported HasInfluence operator" end
+		local entries=type(value)=="table" and value or {value};local present={};local count=0;local keys=0
+		for key in pairs(entries) do if type(key)~="number" or key<1 or key~=math.floor(key) then return nil,"Invalid HasInfluence sample" end;keys=keys+1 end
+		if keys~=#entries then return nil,"Invalid HasInfluence sample" end
+		for _,entry in ipairs(entries) do
+			if type(entry)~="string" or not influences[entry:lower()] then return nil,"Invalid HasInfluence sample" end
+			local name=entry:lower();if not present[name] then present[name]=true;count=count+1 end
+		end
+		for i=1,keys do if entries[i]==nil then return nil,"Invalid HasInfluence sample" end end
+		if count==0 then present.none=true;count=1 end
+		if present.none and count>1 then return nil,"An uninfluenced sample cannot have other influences" end
+		local wanted={};local wantedCount=0
+		for _,entry in ipairs(values) do
+			local name=entry:lower();if not influences[name] then return nil,"Unsupported influence name" end
+			if not wanted[name] then wanted[name]=true;wantedCount=wantedCount+1 end
+		end
+		if op=="==" then
+			for name in pairs(wanted) do if not present[name] then return false end end
+			if wantedCount<count then return nil,"Exact matching with additional influences is not verified" end
+			return true
+		end
+		local found=false;for name in pairs(wanted) do if present[name] then found=true;break end end
+		if op=="!" or op=="!=" then return not found end
+		return found
+	elseif c.keyword=="Sockets" then
 		local count=tonumber(value);local colours=item.SocketColours or (count==0 and "") or (not count and type(value)=="string" and value or nil);local unknown
 		local negative=op=="!" or op=="!="
 		for _,pattern in ipairs(values) do

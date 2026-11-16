@@ -693,6 +693,9 @@ async function main(){
   const quotedMod=await queued('test_loot_filter',{baseRevision:context.revision,profile:quotedModFilter,sample:{Identified:true,HasExplicitMod:['Tier 1']}},'tested');assert.equal(quotedMod.result.action,'Hide');
   const importsProfile={...socketProfile,rules:[],template:'\ufeffImport "rules.filter"\nShow',importFiles:[{name:'rules.filter',text:'\ufeffHide\n BaseType "Iron Hat"'}]};
   const importedMatch=await queued('test_loot_filter',{baseRevision:context.revision,profile:importsProfile,sample:{BaseType:'Iron Hat'}},'tested');assert.equal(importedMatch.result.action,'Hide');
+  const influenceProfile={...importsProfile,template:'Hide\n HasInfluence == Shaper Elder\nShow',importFiles:[]};
+  const oneInfluence=await queued('test_loot_filter',{baseRevision:context.revision,profile:influenceProfile,sample:{BaseType:'Iron Hat',HasInfluence:['Shaper']}},'tested');assert.equal(oneInfluence.result.action,'Show');
+  const twoInfluences=await queued('test_loot_filter',{baseRevision:context.revision,profile:influenceProfile,sample:{BaseType:'Iron Hat',HasInfluence:['Shaper','Elder']}},'tested');assert.equal(twoInfluences.result.action,'Hide');
   const socketTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:socketProfile,sample:{BaseType:'Plate Vest',Rarity:'Normal',SocketGroup:'GGGRRW'}},'tested');assert.equal(socketTest.result.action,'Hide');assert.equal(socketTest.result.ruleTitle,'Socket rule');
   const zeroSocketProfile={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n SocketGroup 0'}]};
   const zeroSocketTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:zeroSocketProfile,sample:{BaseType:'Iron Ring',Sockets:0}},'tested');assert.equal(zeroSocketTest.result.action,'Hide');

@@ -1249,7 +1249,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.HasExplicitMod==nil,"Unknown modifier names were not cleared")
 	ui:click("sampleEdit");ui:text("HasExplicitMod","[]");ui:click("useSample")
 	local emptyMods=build.planningWorkspace.cache.filters.layout.snapshot().sample.HasExplicitMod;assert(type(emptyMods)=="table" and #emptyMods==0,"Known empty modifier list was not retained")
-	ui:click("sampleEdit");ui:text("SocketGroup","0");ui:text("Sockets","0");ui:click("useSample")
+	local influenceRule=require("Modules.LootFilterParser").parse("Hide\n HasInfluence == Shaper Elder\nShow")
+	ui:click("sampleEdit");ui:text("HasInfluence","Shaper");ui:click("useSample")
+	assert(require("Modules.LootFilterParser").simulate(influenceRule,build.planningWorkspace.cache.filters.layout.snapshot().sample).action=="Show","Single influence matched a dual-influence rule")
+	ui:click("sampleEdit");ui:text("HasInfluence","Shaper Elder");ui:click("useSample")
+	assert(require("Modules.LootFilterParser").simulate(influenceRule,build.planningWorkspace.cache.filters.layout.snapshot().sample).action=="Hide","Dual influence did not match the exact influence rule")
+	ui:click("sampleEdit");ui:text("HasInfluence","");ui:text("SocketGroup","0");ui:text("Sockets","0");ui:click("useSample")
 	local noSockets=build.planningWorkspace.cache.filters.layout.snapshot().sample
 	assert(noSockets.SocketGroup=="0" and noSockets.Sockets==0,"Zero sockets were not retained in the sample")
 	assert(require("Modules.LootFilterParser").simulate(require("Modules.LootFilterParser").parse("Show\n SocketGroup 0\nHide"),noSockets).action=="Show","Zero-socket sample did not match")

@@ -212,6 +212,26 @@ describe("Build-owned loot filters",function()
 		assert.equal("invalid",parser.simulate(parser.parse('Hide\n ItemLevel'),{}).status)
 		assert.equal("invalid",parser.simulate(parser.parse('Hide\n TransfiguredGem >= True'),{TransfiguredGem=true}).status)
 	end)
+	it("matches either influence normally and both influences with the exact operator",function()
+		local either=parser.parse('Show\n HasInfluence Shaper Elder\nHide')
+		local both=parser.parse('Show\n HasInfluence == Shaper Elder\nHide')
+		for _,sample in ipairs({{HasInfluence={"Shaper"}},{HasInfluence={"Elder"}}}) do
+			assert.equal("Show",parser.simulate(either,sample).action)
+			assert.equal("Hide",parser.simulate(both,sample).action)
+		end
+		local dual={HasInfluence={"Elder","Shaper"}}
+		assert.equal("Show",parser.simulate(either,dual).action)
+		assert.equal("Show",parser.simulate(both,dual).action)
+		assert.equal("Hide",parser.simulate(either,{HasInfluence={}}).action)
+		assert.equal("Show",parser.simulate(parser.parse('Show\n HasInfluence None\nHide'),{HasInfluence={}}).action)
+		assert.equal("unknown",parser.simulate(parser.parse('Show\n HasInfluence == Shaper\nHide'),dual).status)
+		assert.equal("unknown",parser.simulate(either,{HasInfluence={"None","Shaper"}}).status)
+		assert.equal("unknown",parser.simulate(either,{HasInfluence={"Unknown"}}).status)
+		assert.equal("unknown",parser.simulate(either,{HasInfluence={[1]="Shaper",[3]="Elder"}}).status)
+		local imported=filters.profile("dual-influence","Dual influence");imported.template='Hide\n HasInfluence == Shaper Elder\nShow'
+		assert.equal("Show",filters.simulate(imported,{BaseType="Iron Hat",HasInfluence={"Shaper"}}).action)
+		assert.equal("Hide",filters.simulate(imported,{BaseType="Iron Hat",HasInfluence={"Shaper","Elder"}}).action)
+	end)
 	it("expands supplied filter files in order and leaves missing or cyclic imports unresolved",function()
 		local bom=string.char(239,187,191);local profile=filters.profile("included","Included");profile.template=bom..'Import "outer.filter"\nShow'
 		profile.importFiles={{name="outer.filter",text=bom..'Import "inner.filter"\nShow\n BaseType "Iron"'},{name="inner.filter",text=bom..'Hide\n BaseType "Iron Hat"'}}
