@@ -89,6 +89,8 @@ async function main(){
   const taintedJewelRaw='Rarity: NORMAL\nCobalt Jewel\nItem Level: 86';
   const taintedJewel=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:taintedJewelRaw,action:{method:'alchemy'},seed:104729},'crafted');
   const taintedJewelState={...taintedJewel.nativeCrafting.state,corrupted:true};
+  const taintedChaos=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:taintedJewelRaw,initialState:taintedJewelState,action:{method:'tainted_chaos'},seed:1},'crafted');
+  assert.ok(taintedChaos.nativeCrafting.warnings.some(entry=>entry.code==='tainted_chaos_branch_odds'));
   const taintedOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:taintedJewelRaw,initialState:taintedJewelState,action:{method:'tainted_exalt'},targets:[],options:{requirements:{minAffixes:3},trials:40,seed:1}},'crafted');
   assert.equal(taintedOdds.nativeCrafting.sampled,true);assert.ok(Object.values(taintedOdds.nativeCrafting.transitionErrors).some(count=>count>0));
   assert.ok(taintedOdds.nativeCrafting.warnings.some(entry=>entry.code==='tainted_exalt_branch_limits'));

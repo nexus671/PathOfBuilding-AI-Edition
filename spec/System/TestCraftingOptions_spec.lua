@@ -175,6 +175,13 @@ describe("State-aware crafting choices",function()
 		end
 		input.corrupted=false;assert.has_error(function() sim.calculate(m.raw,{method="tainted_exalt"},{},input,{requirements={minAffixes=3},trials=2}) end)
 	end)
+	it("reports the assumed Tainted Chaos branch odds",function()
+		local m=model("Cobalt Jewel");local input=sim.perform(m.raw,{method="alchemy"},104729).state;input.corrupted=true
+		local function hasWarning(result) for _,warning in ipairs(result.warnings) do if warning.code=="tainted_chaos_branch_odds" then return warning.message:find("unverified",1,true)~=nil end end return false end
+		assert.is_true(hasWarning(sim.perform(m.raw,{method="tainted_chaos"},1,input)))
+		assert.is_true(hasWarning(sim.calculate(m.raw,{method="tainted_chaos"},{},input,{requirements={minAffixes=1},trials=20,seed=1})))
+		assert.matches("branch odds are unverified",require("Modules.CraftingWorkbench").hint("tainted_chaos",input,m))
+	end)
 	it("shows failed modeled transitions in the action odds view",function()
 		newBuild();main.popups={};local m=model("Cobalt Jewel");local input=sim.perform(m.raw,{method="alchemy"},104729).state;input.corrupted=true
 		local p={id="tainted-odds",title="Tainted odds",slot="Jewel",startingItem=m.raw,goals={},steps={},preferredMethod="tainted_exalt",nativeRecipe={steps={{method="tainted_exalt"}},targets={},initialState=input,requirements={minAffixes=3}}}
@@ -197,7 +204,7 @@ describe("State-aware crafting choices",function()
 		local before=copyTable(input)
 		local perform=sim.perform(m.raw,{method="tainted_exalt"},1,input);local capacityWarning=false
 		for _,warning in ipairs(perform.warnings) do if warning.code=="abyss_capacity_assumption" then capacityWarning=warning.message:find("unverified",1,true)~=nil end end
-		assert.is_true(capacityWarning);assert.matches("source changes",require("Modules.CraftingWorkbench").hint("tainted_exalt",input,m))
+		assert.is_true(capacityWarning);assert.matches("unverified",require("Modules.CraftingWorkbench").hint("tainted_exalt",input,m))
 		local added=sim.action(m,input,{method="tainted_exalt"},function() return 0.1 end)
 		assert.equal(5,#added.affixes);assert.is_true(added.corrupted);sim.validateState(m,added);assert.same(before,input)
 		local removed=sim.action(m,added,{method="tainted_exalt"},function() return 0.9 end)
