@@ -262,7 +262,12 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		end
 		return list
 	end
-	if kind=="Build targets" then for _,rule in ipairs(targetRules or filters.generate(build,profile)) do list[#list+1]=M.sample(rule) end end
+	if kind=="Build targets" then
+		for _,rule in ipairs(targetRules or filters.generate(build,profile)) do if rule.origin then
+			local item=M.sample(rule);item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86;list[#list+1]=item
+		end end
+		return list
+	end
 	local source=({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
 		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end

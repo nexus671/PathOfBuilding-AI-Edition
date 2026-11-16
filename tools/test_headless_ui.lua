@@ -1357,6 +1357,13 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local configured=build.planningWorkspace.cache.filters.layout.snapshot().sample
 	assert(configured.BaseDefencePercentile==0 and configured.MemoryStrands==0 and configured.AlwaysShow==false and configured.BaseArmour==0,"Configured properties were not retained in the test item")
 	ui:click("sceneSettings");ui:text("areaLevel","72");ui:text("itemLevel","75");ui:choose("background","Dark");frame("filter-scene-settings");ui:click("keepScene")
+	ui:choose("sceneKind","Build targets")
+	local targetsReady=false
+	for i=1,2000 do ui:frame();local state=build.planningWorkspace.transient.filterSceneTargets
+		if state and state.rules then targetsReady=true;break end
+	end
+	assert(targetsReady,"Build-target scene did not finish generating")
+	frame("filter-build-target-scene");ui:choose("sceneKind","Mixed drops")
 	ui:click("sampleHistory");frame("filter-sample-history");ui:click("choose");ui:click("inspectMatch");frame("filter-matched-rules");ui:click("close")
 	local savedArea=build.planningWorkspace.cache.filters.layout.snapshot().sample.AreaLevel
 	ui:click("savedSamples");frame("filter-saved-examples-empty");ui:text("name","Mapping examples");ui:click("saveNew");frame("filter-saved-examples");ui:click("keep")
