@@ -138,8 +138,18 @@ function M.generate(build,profile,checkpoint)
 		add(id,title,conditions,origin)
 		return true
 	end
+	local function preserveBase(origin,id,title,description)
+		warnings[#warnings+1]={origin=origin,title=title,message="Could not read "..description..". Previous base pickups were kept; review the saved item."}
+		for _,rule in ipairs(profile.rules) do
+			local suffix=rule.id:sub(#id+1)
+			if rule.origin==origin and rule.id:sub(1,#id)==id and (suffix=="" or suffix:match("^%-%d+$")) and not ids[rule.id] then
+				result[#result+1]=copyTable(rule);ids[rule.id]=true
+			end
+		end
+	end
 	for _,p in ipairs(build.savers.CraftingProjects.projects) do
-		local origin="craft:"..p.id;base(p.startingItem,"craft-"..p.id,p.title.." base",origin)
+		local origin="craft:"..p.id;local id="craft-"..p.id
+		if not base(p.startingItem,id,p.title.." base",origin) then preserveBase(origin,id,p.title,"the crafting base") end
 		local invalidDonor=false
 		for _,step in ipairs(p.nativeRecipe and p.nativeRecipe.steps or {}) do
 			if (step.method=="awakener" or step.method=="recombine" or step.method=="recombine_predictable") and step.donorItem and step.donorItem~="" then
@@ -153,7 +163,13 @@ function M.generate(build,profile,checkpoint)
 		end
 		checkpointIfNeeded()
 	end
-	for _,e in ipairs(build.savers.BuildJourney.data.wishlist) do if e.status=="planned" then base(e.targetItem,"gear-"..e.id,e.title.." base","gear:"..e.id) end;checkpointIfNeeded() end
+	for _,e in ipairs(build.savers.BuildJourney.data.wishlist) do
+		if e.status=="planned" and e.targetItem and e.targetItem:match("%S") then
+			local origin="gear:"..e.id;local id="gear-"..e.id
+			if not base(e.targetItem,id,e.title.." base",origin) then preserveBase(origin,id,e.title,"the gear target") end
+		end
+		checkpointIfNeeded()
+	end
 	for i,group in ipairs(build.skillsTab.socketGroupList) do
 		local slot=group.slot and build.itemsTab.slots[group.slot]
 		local activeWeaponSet=build.itemsTab.activeItemSet.useSecondWeaponSet and 2 or 1

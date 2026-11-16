@@ -220,6 +220,27 @@ describe("Linked planning tools",function()
 		local found=false;for _,rule in ipairs(rules) do if rule.title=="Omen of Connections" then found=true end end;assert.is_true(found)
 		report=dependencies.report(build,profile);assert.equal("Changed",report.entries[1].status)
 	end)
+	it("retains unreadable base pickups and reports their sources for review",function()
+		local project=craft();build.savers.CraftingProjects:Upsert(project)
+		local journey=require("Modules.BuildJourney").empty()
+		journey.wishlist={{id="hat",title="Hat target",slot="Helmet",route="farm",targetItem=project.startingItem}}
+		build.savers.BuildJourney:Replace(journey)
+		local profile=filters.profile("base-review","Base review");profile.rules=filters.generate(build,profile)
+		local originalRules=copyTable(profile.rules)
+		local projects=require("Modules.CraftingProjects");local original=projects.item
+		projects.item=function(raw) if raw==project.startingItem then error("fixture item unavailable") end;return original(raw) end
+		local ok,rules,warnings=pcall(filters.generate,build,profile)
+		local reportOk,report=pcall(dependencies.report,build,profile)
+		projects.item=original
+		assert.is_true(ok);assert.is_true(reportOk,report);assert.equal(2,#warnings)
+		local retained={};for _,rule in ipairs(rules) do retained[rule.id]=rule end
+		for _,rule in ipairs(originalRules) do assert.same(rule,retained[rule.id]) end
+		local statuses={};for _,entry in ipairs(report.entries) do statuses[entry.origin]=entry.status end
+		assert.equal("Needs review",statuses["craft:helmet"]);assert.equal("Needs review",statuses["gear:hat"])
+		journey.wishlist[1].targetItem=nil;build.savers.BuildJourney:Replace(journey)
+		rules,warnings=filters.generate(build,profile);assert.equal(0,#warnings)
+		for _,rule in ipairs(rules) do assert.not_equal("gear:hat",rule.origin) end
+	end)
 	it("generates and refreshes broad donor-base pickups for crafting guides",function()
 		local project=craft();local donor="Rarity: NORMAL\nCone Helmet\nItem Level: 80"
 		project.nativeRecipe={steps={{method="recombine",donorItem=donor},{method="recombine",donorItem=donor}},targets={},requirements={minAffixes=1}}
