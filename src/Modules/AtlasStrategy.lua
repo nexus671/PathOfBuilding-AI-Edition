@@ -17,7 +17,7 @@ local function matches(text,name)
 	return false
 end
 function M.mechanic(node)
-	local text=(node.name.." "..table.concat(node.stats," ")):lower()
+	local text=atlas.searchText(node):lower()
 	-- Generic map text is common to every mechanic: classify it last.
 	for i=2,#M.mechanics do local name=M.mechanics[i];if matches(text,name) then return name end end
 	if matches(text,"Maps") then return "Maps" end
@@ -26,10 +26,10 @@ end
 function M.hasMechanic(node,name)
 	-- Keep generic map bonuses separate from mechanic-specific nodes.
 	if name=="Maps" then return M.mechanic(node)=="Maps" end
-	return matches((node.name.." "..table.concat(node.stats," ")):lower(),name)
+	return matches(atlas.searchText(node):lower(),name)
 end
 function M.allMechanics(node)
-	local text=(node.name.." "..table.concat(node.stats," ")):lower();local result={}
+	local text=atlas.searchText(node):lower();local result={}
 	for i=2,#M.mechanics do local name=M.mechanics[i];if matches(text,name) then result[#result+1]=name end end
 	if #result==0 and matches(text,"Maps") then result[1]="Maps" end
 	return result
@@ -52,7 +52,7 @@ end
 function M.results(plan,query,mechanic,avoid)
 	local costs=M.costs(plan,avoid);local tree=atlas.tree(plan.version);local entries={}
 	query=(query or ""):lower()
-	for id,node in pairs(tree.nodes) do if id~=tree.start and (mechanic==nil or mechanic=="All" or M.hasMechanic(node,mechanic)) and (node.name.." "..table.concat(node.stats," ")):lower():find(query,1,true) then
+	for id,node in pairs(tree.nodes) do if id~=tree.start and (mechanic==nil or mechanic=="All" or M.hasMechanic(node,mechanic)) and atlas.searchText(node):lower():find(query,1,true) then
 		entries[#entries+1]={id=id,node=node,cost=costs[id]}
 	end end
 	table.sort(entries,function(a,b) if a.cost~=b.cost then return (a.cost or math.huge)<(b.cost or math.huge) elseif a.node.name~=b.node.name then return a.node.name<b.node.name else return a.id<b.id end end)

@@ -65,6 +65,15 @@ describe("Desired Atlas routes",function()
 		local changed=copyTable(p);changed.notes="Changed";assert.is_false(pcall(targets.apply,build,changed))
 		targets.cancel(build);assert.is_nil(state.result);assert.equal("Cancelled",state.status)
 	end)
+	it("retains selected effects only when rebuilt routes retain their nodes",function()
+		local node=atlas.tree("3.30.0-preview").nodes[45404];local p=atlas.connect(plan(),{node.id})
+		p=atlas.chooseEffect(p,node.id,node.variantEffects[1].effect);p.desired={node.id}
+		local state=targets.start(build,p,true);for _=1,1000 do targets.tick(build,true);if not state.thread then break end end
+		assert.is_nil(state.error);assert.same(p.choices,state.result.plan.choices)
+		p.desired={atlas.tree(p.version).nodes[atlas.tree(p.version).start].links[1]}
+		state=targets.start(build,p,true);for _=1,1000 do targets.tick(build,true);if not state.thread then break end end
+		assert.is_nil(state.error);assert.same({},state.result.plan.choices)
+	end)
 	it("honors saved exclusions even when no extra exclusions are supplied",function()
 		local p=plan();local neighbour=atlas.tree(p.version).nodes[atlas.tree(p.version).start].links[1];p.avoided={neighbour}
 		assert.is_false(pcall(atlas.connect,p,{neighbour}));assert.is_false(pcall(atlas.connectOptimized,p,{neighbour}))

@@ -22,11 +22,15 @@ end
 function M.start(build,plan,fromStart)
 	plan=atlas.validate(plan);assert(#(plan.desired or {})>0,"Mark desired nodes first")
 	local state={status="Calculating",baseHash=identity.hash(plan),base=copyTable(plan),progress={},paused=false}
-	local input=copyTable(plan);if fromStart then input.nodes={} end
+	local input=copyTable(plan);if fromStart then input.nodes={};input.choices={} end
 	state.thread=coroutine.create(function()
 		local result,added,routing=atlas.connectOptimized(input,input.desired,input.avoided,{checkpoint=function(progress)
 			state.progress=progress;if os.clock()>=state.deadline then coroutine.yield() end
 		end})
+		if fromStart then
+			local retained={};for _,id in ipairs(result.nodes) do retained[id]=true end
+			for _,choice in ipairs(plan.choices or {}) do if retained[choice.node] then result=atlas.chooseEffect(result,choice.node,choice.effect) end end
+		end
 		return {plan=result,added=added,routing=routing}
 	end)
 	M.jobs[build]=state;return state
@@ -50,7 +54,8 @@ function M.summary(plan)
 	plan=atlas.validate(plan);local tree=atlas.tree(plan.version);local groups,blocks,investments={},{},{}
 	for _,id in ipairs(plan.nodes) do local node=tree.nodes[id];local mechanic=strategy.mechanic(node);local row=groups[mechanic] or {name=mechanic,small=0,notable=0,keystone=0,gateway=0,total=0,content=0};groups[mechanic]=row
 		row.total=row.total+1;row[node.kind]=row[node.kind]+1
-		local blocking=M.blocking(node);if #blocking==0 then row.content=row.content+1;for _,name in ipairs(strategy.allMechanics(node)) do investments[name]=true end else for _,stat in ipairs(blocking) do blocks[#blocks+1]={node=node.name,stat=stat,mechanic=mechanic} end end
+		local selectedNode={name=node.name,stats=atlas.nodeStats(plan,node)}
+		local blocking=M.blocking(selectedNode);if #blocking==0 then row.content=row.content+1;for _,name in ipairs(strategy.allMechanics(selectedNode)) do investments[name]=true end else for _,stat in ipairs(blocking) do blocks[#blocks+1]={node=node.name,stat=stat,mechanic=mechanic} end end
 	end
 	local result={mechanics={},blocking=blocks,warnings={},keystones={},desired=#(plan.desired or {}),avoided=#(plan.avoided or {}),connectedDesired=0}
 	local allocated={};for _,id in ipairs(plan.nodes) do allocated[id]=true;local node=tree.nodes[id];if node.kind=="keystone" then result.keystones[#result.keystones+1]={id=id,name=node.name,stats=copyTable(node.stats)} end end

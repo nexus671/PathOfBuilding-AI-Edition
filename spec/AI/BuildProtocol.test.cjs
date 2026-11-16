@@ -334,6 +334,14 @@ test('queues versioned Atlas searches and routing without changing build context
   assert.equal(f.call('get_build_context',{}).context.level,80);
 });
 
+test('preserves Atlas effect choices in AI proposals', t => {
+  const f=fixture(t);
+  const plan={id:'atlas',title:'Choice',version:'3.30.0-preview',budget:150,nodes:[45404],choices:[{node:45404,effect:55878}]};
+  f.call('propose_atlas_plan',{baseRevision:f.state.revision,plan});
+  const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.deepEqual(queued.proposal.operations[0].plan.choices,plan.choices);
+});
+
 test('keeps Atlas proposals in the desktop review flow and rejects unsupported versions', t => {
   const f=fixture(t);
   const plan={id:'atlas',title:'Essence maps',version:'3.27.0',budget:120,nodes:[]};

@@ -1,4 +1,5 @@
 -- Atlas planning is separate from the character tree and its calculations.
+-- cspell:ignore FFBF
 local atlas=require("Modules.AtlasPlanner")
 local strategy=require("Modules.AtlasStrategy")
 local browser=require("Classes.PlanningBrowserControl")
@@ -124,10 +125,11 @@ function Canvas:Draw()
 	SetViewport()
 	if self.hover then
 		local node=self.tree.nodes[self.hover];self.tooltip:Clear();self.tooltip:AddLine(18,node.name)
-		for _,stat in ipairs(node.stats) do self.tooltip:AddLine(14,stat) end
+		for _,stat in ipairs(atlas.nodeStats(self.selected(),node)) do self.tooltip:AddLine(14,stat) end
+		if node.variantEffects then self.tooltip:AddLine(14,"Multiple effects: select node to review") end
 		if desired[self.hover] then self.tooltip:AddLine(14,"Desired route target") end
 		self.tooltip:AddLine(14,"Shift-click: toggle desired target")
-		self.tooltip:AddLine(14,"Double click to connect this node")
+		self.tooltip:AddLine(14,allocated[self.hover] and "Double click to remove this branch" or "Double click to connect this node")
 		SetDrawLayer(nil,100);self.tooltip:Draw(cursorX,cursorY,1,1,main.viewPort);SetDrawLayer(nil,0)
 	end
 end
@@ -198,8 +200,14 @@ function Panel.Open(build,source,layout)
 		local lines={node and node.name or "Select a node on the tree or search.",node and node.kind:gsub("^%l",string.upper) or "Search a mechanic, or select a node."}
 		controls.canvas.preview={};routeAvailable=false
 		if node then
-			if #strategy.blocking(node)>0 then lines[#lines+1]="^xFFBF80Blocks natural encounters; forced encounters may differ." end
-			for _,stat in ipairs(node.stats) do lines[#lines+1]=stat end
+			local selectedStats=atlas.nodeStats(draft,node)
+			if #strategy.blocking({stats=selectedStats})>0 then lines[#lines+1]="^xFFBF80Blocks natural encounters; forced encounters may differ." end
+			for _,stat in ipairs(selectedStats) do lines[#lines+1]=stat end
+			if node.variantEffects then
+				local selected=false;for _,choice in ipairs(draft.choices or {}) do if choice.node==node.id then selected=true end end
+				lines[#lines+1]=selected and "Effect selected. Use Choose effect to change it." or "Choose an effect after connecting this node."
+				for i,effect in ipairs(node.variantEffects) do lines[#lines+1]="Option "..i..": "..table.concat(effect.stats," ") end
+			end
 			local allocated={[controls.canvas.tree.start]=true};for _,other in ipairs(draft.nodes) do allocated[other]=true end
 			if not allocated[node.id] then
 				local reason
@@ -213,7 +221,7 @@ function Panel.Open(build,source,layout)
 					routeAvailable=true;controls.allocate.label="Connect +"..cost
 					lines[#lines+1]="";lines[#lines+1]=cost.." new points to connect this node."
 				else controls.allocate.label="No route";lines[#lines+1]="";lines[#lines+1]=reason or "No route within the point budget and avoided nodes." end
-			else controls.allocate.label="Allocated" end
+			else controls.allocate.label=node.variantEffects and "Choose effect" or "Allocated" end
 		else controls.allocate.label="Connect path" end
 		local detailRows=rows({lines[1]},inspector-30,18)
 		for _,row in ipairs(rows({lines[2]},inspector-30,13)) do row[1]="^xA6B3C6"..StripEscapes(row[1]);detailRows[#detailRows+1]=row end
@@ -291,8 +299,19 @@ function Panel.Open(build,source,layout)
 	local function snapshot() return {plan=copyTable(draft),avoided=copyTable(avoided)} end
 	local function remember() undo[#undo+1]=snapshot();if #undo>40 then table.remove(undo,1) end;redo={} end
 	local function change(nextPlan) remember();draft=atlas.validate(nextPlan);avoided=copyTable(draft.avoided or {});controls.canvas.comparison=nil;ui.draft(build,"atlas");syncEditors();refresh() end
+	local function chooseEffect()
+		local node=assert(controls.canvas.tree.nodes[controls.canvas.focus],"Select a node first");local entries={}
+		for i,effect in ipairs(node.variantEffects or {}) do
+			local details={node.name};for _,stat in ipairs(effect.stats) do details[#details+1]=stat end
+			entries[#entries+1]={id=effect.effect,label="Option "..i.." | "..table.concat(effect.stats," "):gsub("\n"," "),details=details}
+		end
+		browser.Open("Choose "..node.name.." effect",entries,{action="Select effect",choose=function(entry) change(atlas.chooseEffect(current(),node.id,entry.id)) end})
+	end
 	controls.canvas.onIntent=function(id,kind) safely(function() change(require("Modules.AtlasTargets").toggle(current(),id,kind)) end) end
-	controls.allocate=button(side,height-188,124,"Connect path",function() assert(controls.canvas.focus,"Select a node first"); change(atlas.connect(current(),{controls.canvas.focus},avoided)) end)
+	controls.allocate=button(side,height-188,124,"Connect path",function()
+		local id=assert(controls.canvas.focus,"Select a node first");local node=controls.canvas.tree.nodes[id]
+		if node.variantEffects and isValueInArray(draft.nodes,id) then chooseEffect() else change(atlas.connect(current(),{id},avoided)) end
+	end)
 	controls.remove=button(side+136,height-188,124,"Remove branch",function()
 		local before=current();local id=assert(controls.canvas.focus,"Select a node first");local after=atlas.remove(before,id)
 		local count=#before.nodes-#after.nodes
@@ -319,15 +338,16 @@ function Panel.Open(build,source,layout)
 		local entries={{id="summary",label="Allocated investment overview",category="Overview",details=lines}}
 		for _,row in ipairs(summary.mechanics) do entries[#entries+1]={id="mechanic-"..row.name,label=row.name.." | "..row.total.." points",category=row.name,details={row.name,row.small.." small nodes",row.notable.." notables",row.keystone.." keystones",row.gateway.." gateways","Small nodes can carry valuable bonuses; they are not assumed to be wasted travel."}} end
 		for _,keystone in ipairs(summary.keystones) do local details={keystone.name,"Review the whole keystone, including restrictions and tradeoffs."};for _,stat in ipairs(keystone.stats) do details[#details+1]=stat end;entries[#entries+1]={id="keystone-"..keystone.id,label=keystone.name.." | Keystone tradeoffs",category="Keystones",details=details} end
-		for _,id in ipairs(plan.nodes) do local node=atlas.tree(plan.version).nodes[id];for i,stat in ipairs(node.stats) do entries[#entries+1]={id=id.."-"..i,label=stat,category=strategy.mechanic(node),details={node.name,stat,"Verbatim bonus; keystone interactions are not combined."}} end end
+		for _,missing in ipairs(report.missingChoices) do entries[#entries+1]={id="missing-"..missing.id,label=missing.name.." | Choose an effect",category="Needs a choice",details={"Select this node on the tree and choose one of its effects."}} end
+		for _,id in ipairs(plan.nodes) do local node=atlas.tree(plan.version).nodes[id];for i,stat in ipairs(atlas.nodeStats(plan,node)) do entries[#entries+1]={id=id.."-"..i,label=stat,category=strategy.mechanic(node),details={node.name,stat,"Verbatim bonus; keystone interactions are not combined."}} end end
 		browser.Open("Atlas bonuses by mechanic",entries)
 	end)
 	controls.browse=button(232,height-86,100,"Find nodes",function()
 		local costs=strategy.results(current(),"",nil,avoided);local entries={}
 		for _,entry in ipairs(costs) do
 			local node=entry.node
-			entries[#entries+1]={id=node.id,label=node.name..(entry.cost and " | +"..entry.cost or " | blocked"),category=strategy.mechanic(node),search=table.concat(node.stats," "),details=function()
-				local lines={node.name,node.kind,entry.cost and entry.cost.." new points (before any granted points)" or "Blocked by avoided nodes"};for _,stat in ipairs(node.stats) do lines[#lines+1]=stat end;return lines
+			entries[#entries+1]={id=node.id,label=node.name..(entry.cost and " | +"..entry.cost or " | blocked"),category=strategy.mechanic(node),search=atlas.searchText(node),details=function()
+				local lines={node.name,node.kind,entry.cost and entry.cost.." new points (before any granted points)" or "Blocked by avoided nodes"};for _,stat in ipairs(node.stats) do lines[#lines+1]=stat end;for i,effect in ipairs(node.variantEffects or {}) do lines[#lines+1]="Option "..i..": "..table.concat(effect.stats," ") end;return lines
 			end}
 		end
 		browser.Open("Find Atlas nodes",entries,{action="Show on tree",choose=function(entry)
@@ -388,8 +408,8 @@ function Panel.Open(build,source,layout)
 	controls.copy=button(16,height-104,120,"Copy plan",function() Copy(atlas.export(current())) end)
 	controls.import=button(148,height-104,120,"Paste plan",function() change(atlas.import(Paste(),draft.version,draft.id,controls.title.buf,tonumber(controls.budget.buf))); avoided={}; controls.avoid.label="Avoid selected"; controls.budget:SetText(tostring(draft.budget)); controls.version:SelByValue(draft.version); controls.canvas.tree=atlas.tree(draft.version);controls.canvas.art=require("Modules.AtlasArt").load(draft.version); controls.canvas:Fit() end)
 	controls.url=button(280,height-104,120,"Official link",function() Copy(atlas.url(current())); main:OpenMessagePopup("Atlas link copied","Official URLs do not carry patch versions. Use Copy plan to preserve the exact version.") end)
-	controls.url.enabled=function() return atlas.tree(draft.version).mode~="ruthless" end
-	controls.url.tooltipFunc=function(tooltip) tooltip:AddLine(14,atlas.tree(draft.version).mode=="ruthless" and "Ruthless official-link encoding is not verified. Use Copy plan for a versioned share." or "Copy an official Atlas link. Copy plan also preserves the exact version.") end
+	controls.url.enabled=function() return atlas.tree(draft.version).mode~="ruthless" and #(draft.choices or {})==0 end
+	controls.url.tooltipFunc=function(tooltip) tooltip:AddLine(14,atlas.tree(draft.version).mode=="ruthless" and "Ruthless official-link encoding is not verified. Use Copy plan for a versioned share." or #(draft.choices or {})>0 and "Official links with effect choices are not verified. Use Copy plan to preserve them." or "Copy an official Atlas link. Copy plan also preserves the exact version.") end
 	controls.keep=button(16,height-42,160,"Keep plan",function() store:Upsert(current());if layout then controls.status.label="^7Plan kept. Save the build to persist it." else main:ClosePopup() end end)
 	controls.library=button(188,height-42,120,"Saved plans",function() Panel.Library(build,layout) end)
 	controls.new=button(320,height-42,120,"New plan",function() if not layout then main:ClosePopup() end;Panel.Open(build,{id="atlas-"..require("sha1")(tostring({})..os.time()):sub(1,12),title="New Atlas plan",version=draft.version,budget=atlas.tree(draft.version).maxPoints,nodes={},notes=""},layout) end)
@@ -411,7 +431,7 @@ function Panel.Open(build,source,layout)
 		for _,id in ipairs(draft.nodes) do if id==controls.canvas.focus then return true end end
 		return false
 	end
-	controls.allocate.enabled=function() return routeAvailable end
+	controls.allocate.enabled=function() local node=controls.canvas.tree.nodes[controls.canvas.focus];return routeAvailable or (allocatedFocus() and node and node.variantEffects~=nil) end
 	controls.remove.enabled=allocatedFocus
 	controls.avoid.enabled=function() return controls.canvas.focus~=nil and controls.canvas.focus~=controls.canvas.tree.start and not allocatedFocus() end
 	controls.clearAvoid.enabled=function() return #avoided>0 end

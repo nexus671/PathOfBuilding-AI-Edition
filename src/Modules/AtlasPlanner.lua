@@ -81,6 +81,18 @@ function M.validate(plan)
 		end
 	end
 	local set=nodeSet(tree,plan.nodes); set[tree.start]=true
+	if plan.choices~=nil then
+		result.choices={};local seen={}
+		for _,choice in ipairs(array(plan.choices,300,"Atlas effect choices")) do
+			assert(type(choice)=="table","Invalid Atlas effect choice")
+			local id=integer(choice.node,1,65535,"Atlas choice node");local effect=integer(choice.effect,1,65535,"Atlas choice effect")
+			assert(set[id] and not seen[id],"Atlas effect choice requires a unique allocated node")
+			local found=false;for _,variant in ipairs(tree.nodes[id].variantEffects or {}) do if variant.effect==effect then found=true;break end end
+			assert(found,"Unknown Atlas effect for node "..id);seen[id]=true
+			result.choices[#result.choices+1]={node=id,effect=effect}
+		end
+		table.sort(result.choices,function(a,b) return a.node<b.node end)
+	end
 	local desired=nodeSet(tree,plan.desired or {});local avoided=nodeSet(tree,plan.avoided or {})
 	for id in pairs(desired) do assert(id~=tree.start,"The Atlas start is already free");assert(not avoided[id],"An Atlas node cannot be both desired and avoided") end
 	for id in pairs(avoided) do assert(id~=tree.start and not set[id],"Cannot avoid an allocated Atlas node") end
@@ -123,13 +135,31 @@ local function budgetReachabilityChecked(plan)
 	return nil,"Reaching "..tree.nodes[grants[1]].name.." may require a temporary path and refunds; review the transition.",direct
 end
 function M.budgetReachability(plan) return budgetReachabilityChecked(M.validate(plan)) end
+function M.searchText(node)
+	local lines={node.name,table.concat(node.stats," ")}
+	for _,effect in ipairs(node.variantEffects or {}) do for _,stat in ipairs(effect.stats) do lines[#lines+1]=stat end end
+	return table.concat(lines," ")
+end
+function M.nodeStats(plan,node)
+	local lines=copyTable(node.stats)
+	for _,choice in ipairs(plan.choices or {}) do if choice.node==node.id then
+		for _,effect in ipairs(node.variantEffects or {}) do if effect.effect==choice.effect then for _,stat in ipairs(effect.stats) do lines[#lines+1]=stat end;return lines end end
+	end end
+	return lines
+end
+function M.chooseEffect(plan,nodeId,effectId)
+	plan=M.validate(plan);local choices={}
+	for _,choice in ipairs(plan.choices or {}) do if choice.node~=nodeId then choices[#choices+1]=choice end end
+	if effectId then choices[#choices+1]={node=nodeId,effect=effectId} end
+	plan.choices=choices;return M.validate(plan)
+end
 function M.search(version,query,limit)
 	local tree=M.tree(version)
 	query=text(query or "",160,"Atlas search"):lower(); limit=integer(limit or 30,1,100,"search limit")
 	local all={}
 	for _,id in ipairs(sorted(tree.nodes)) do
 		local node=tree.nodes[id]
-		if id ~= tree.start and (node.name.." "..table.concat(node.stats," ")):lower():find(query,1,true) then all[#all+1]=node end
+		if id ~= tree.start and M.searchText(node):lower():find(query,1,true) then all[#all+1]=node end
 	end
 	local matches={}; for i=1,math.min(limit,#all) do matches[i]=copyTable(all[i]) end
 	return {version=version,total=#all,matches=matches,source=tree.source}
@@ -261,24 +291,28 @@ function M.remove(plan,id)
 	assert(id ~= tree.start and tree.nodes[id],"Cannot remove the Atlas start")
 	local set=nodeSet(tree,plan.nodes); set[id]=nil
 	local keep=reachable(tree,set); keep[tree.start]=nil; plan.nodes=sorted(keep)
+	if plan.choices then local choices={};for _,choice in ipairs(plan.choices) do if keep[choice.node] then choices[#choices+1]=choice end end;plan.choices=choices end
 	return M.validate(plan)
 end
 function M.report(plan)
 	plan=M.validate(plan); local tree=M.tree(plan.version)
 	local reachable,budgetWarning,pointsBeforeGrant=budgetReachabilityChecked(plan)
 	local counts,notables,keystones,stats,bonus={small=0,notable=0,keystone=0,gateway=0},{},{},{},0
+	local missingChoices={}
 	for _,id in ipairs(plan.nodes) do
 		local node=tree.nodes[id]; counts[node.kind]=counts[node.kind]+1
 		if node.kind == "notable" then notables[#notables+1]=node.name end
 		if node.kind == "keystone" then keystones[#keystones+1]=node.name end
 		bonus=bonus+node.grantedPoints
-		for _,stat in ipairs(node.stats) do stats[stat]=(stats[stat] or 0)+1 end
+		local selected=false;for _,choice in ipairs(plan.choices or {}) do if choice.node==id then selected=true;break end end
+		if node.variantEffects and not selected then missingChoices[#missingChoices+1]={id=id,name=node.name} end
+		for _,stat in ipairs(M.nodeStats(plan,node)) do stats[stat]=(stats[stat] or 0)+1 end
 	end
 	local lines={}
 	for stat,count in pairs(stats) do lines[#lines+1]={text=stat,count=count} end
 	table.sort(lines,function(a,b) return a.text < b.text end); table.sort(notables); table.sort(keystones)
 	return {version=plan.version,mode=tree.mode=="ruthless" and "Ruthless" or "Standard",preview=tree.preview,compatibleModes=tree.compatibleModes,used=#plan.nodes,budget=plan.budget,bonus=bonus,remaining=plan.budget+bonus-#plan.nodes,budgetReachable=reachable,budgetWarning=budgetWarning,pointsBeforeGrant=pointsBeforeGrant,
-		counts=counts,notables=notables,keystones=keystones,stats=lines,source=tree.source,sourceCommit=tree.commit,
+		counts=counts,notables=notables,keystones=keystones,stats=lines,missingChoices=missingChoices,source=tree.source,sourceCommit=tree.commit,
 		limitations={"Atlas plans do not modify character DPS or EHP.","Stat lines are grouped verbatim, not combined into effective map odds. Keystone interactions are not simulated.","Budget is supplied progression, not imported account completion. Small optimized routes can be exact; larger routes use a heuristic."}}
 end
 function M.export(plan)
@@ -308,6 +342,7 @@ function M.import(raw,version,id,title,budget)
 end
 function M.url(plan)
 	plan=M.validate(plan)
+	assert(#(plan.choices or {})==0,"Official links with Atlas effect choices are not yet verified; use Copy plan to preserve them.")
 	assert(M.tree(plan.version).mode~="ruthless","Official Ruthless Atlas links are not yet verified; use Copy plan instead.")
 	local ids=copyTable(plan.nodes); ids[#ids+1]=M.tree(plan.version).start; table.sort(ids)
 	local bytes={0,0,0,6,0,math.floor(#ids/256),#ids%256}

@@ -83,7 +83,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1350, f"Expected 1350 UI frames, found {len(paths)}"
+    assert len(paths) == 1356, f"Expected 1356 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         jewel = json.loads((frames / f"{width}-crafting-assembled-eye-crafted.json").read_text())
         assert not any(command.get("kind") == "text" and command.get("text", "").startswith("Quality:") for command in jewel["commands"]), "Jewel card shows an inapplicable zero-quality stat"

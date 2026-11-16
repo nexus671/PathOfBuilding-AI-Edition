@@ -55,6 +55,8 @@ for version in selected:
             "grantedPoints": node.get("grantedPassivePoints", 0),
             "icon": node.get("icon"),
         }
+        if node.get("isMultipleChoiceVariant"):
+            entry["variantEffects"] = node["variantEffects"]
         if node.get("isMastery"):
             decorations.append(entry)
         else:

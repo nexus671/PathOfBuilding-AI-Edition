@@ -502,6 +502,12 @@ async function main(){
   assert.equal(ruthlessRoute.atlas.officialUrl,undefined);assert.match(ruthlessRoute.atlas.officialUrlWarning,/not verified/);
   const refinedTargets=[39402,22270,60117,23416,23538,40832,52315];
   const refinedRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'refined',title:'Refined route',version:'3.30.0-preview',budget:50,nodes:[]},targets:refinedTargets,optimize:true},'atlas');
+  const variantSearch=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Double-Veiled Item',limit:20},'atlas');
+  const variantNode=variantSearch.atlas.matches.find(node=>node.id===45404);assert.ok(variantNode?.variantEffects?.length>1);
+  const variantRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'variant',title:'Variant',version:'3.30.0-preview',budget:150,nodes:[]},targets:[variantNode.id]},'atlas');
+  const variantPlan={...variantRoute.atlas.plan,choices:[{node:variantNode.id,effect:variantNode.variantEffects[0].effect}]};
+  const variantResult=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:variantPlan,targets:[]},'atlas');
+  assert.deepEqual(variantResult.atlas.plan.choices,variantPlan.choices);assert.ok(variantResult.atlas.officialUrlWarning);assert.equal(variantResult.atlas.officialUrl,undefined);assert.ok(variantResult.atlas.report.stats.some(row=>row.text===variantNode.variantEffects[0].stats[0]));
   assert.equal(refinedRoute.atlas.routing.cost,50);assert.equal(refinedRoute.atlas.routing.heuristic,true);assert.ok(refinedTargets.every(id=>refinedRoute.atlas.plan.nodes.includes(id)));
   const mercenaryNodes=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Mercenary',limit:100},'atlas');
   const oreNodes=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Ore Deposit',limit:100},'atlas');
