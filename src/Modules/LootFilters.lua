@@ -209,13 +209,22 @@ function M.generate(build,profile,checkpoint)
 	local strategyNames={};for name in pairs(names) do strategyNames[#strategyNames+1]=name end
 	table.sort(strategyNames,function(a,b) return #a==#b and a<b or #a>#b end)
 	for _,plan in ipairs(build.savers.AtlasPlans.plans) do
-		local atlas=require("Modules.AtlasPlanner");local keywords={};local graph=atlas.tree(plan.version)
+		local atlas=require("Modules.AtlasPlanner");local keywords,excludedThreads={},{};local graph=atlas.tree(plan.version)
 		local atlasStrategy=require("Modules.AtlasStrategy")
-		for _,id in ipairs(plan.nodes) do local node=graph.nodes[id];if node then for _,mechanic in ipairs(atlasStrategy.allMechanics({name=node.name,stats=atlas.nodeStats(plan,node)})) do keywords[mechanic]=true end end end
+		for _,id in ipairs(plan.nodes) do local node=graph.nodes[id];if node then
+			local excludesType=false;for _,stat in ipairs(node.stats) do if atlas.displayStat(stat):lower():find("threads found in your maps cannot be of type",1,true) then excludesType=true end end
+			local selected=atlas.nodeStats(plan,node)
+			if excludesType then
+				local chosen={};for i=#node.stats+1,#selected do chosen[#chosen+1]=selected[i] end
+				for _,mechanic in ipairs(atlasStrategy.allMechanics({name="",stats=chosen})) do excludedThreads[mechanic]=true end
+				selected=node.stats
+			end
+			for _,mechanic in ipairs(atlasStrategy.allMechanics({name=node.name,stats=selected})) do keywords[mechanic]=true end
+		end end
 		local mentioned,avoided={},{};for _,field in ipairs({"scarabs","maps"}) do mentionedItems(plan.strategy and plan.strategy[field] or "",strategyNames,mentioned) end
 		mentionedItems(plan.strategy and plan.strategy.avoid or "",strategyNames,avoided)
 		for _,name in ipairs(strategyNames) do if mentioned[name] and not avoided[name] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
-		for _,name in ipairs(patch.added["Map Fragments"] or {}) do local mechanic=name:match("^(%a+) Thread$");if mechanic and keywords[mechanic] and not avoided[name] then add("atlas-"..plan.id.."-"..mechanic,name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
+		for _,name in ipairs(patch.added["Map Fragments"] or {}) do local mechanic=name:match("^(%a+) Thread$");if mechanic and keywords[mechanic] and not excludedThreads[mechanic] and not avoided[name] then add("atlas-"..plan.id.."-"..mechanic,name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
 	end
 	local rules={};for _,rule in ipairs(profile.rules) do if not rule.origin then rules[#rules+1]=copyTable(rule) end end
 	for _,rule in ipairs(result) do rules[#rules+1]=rule end

@@ -53,7 +53,7 @@ describe("Linked planning tools",function()
 		assert.is_true(names["Blight Thread"]);assert.is_true(names["Incursion Thread"])
 	end)
 	it("uses only the selected Atlas effect for linked thread suggestions",function()
-		local atlas=require("Modules.AtlasPlanner");local node=atlas.tree("3.30.0-preview").nodes[64980]
+		local atlas=require("Modules.AtlasPlanner");local node=atlas.tree("3.30.0-preview").nodes[54685]
 		local plan={id="choice",title="Choice",version="3.30.0-preview",budget=150,nodes={node.id},choices={{node=node.id,effect=node.variantEffects[1].effect}}}
 		-- Isolate the chosen node so intermediate path nodes cannot add other mechanics.
 		build.savers.AtlasPlans.plans={plan}
@@ -63,6 +63,18 @@ describe("Linked planning tools",function()
 		plan.choices[1].effect=node.variantEffects[2].effect;names={}
 		for _,rule in ipairs(filters.generate(build,profile)) do if rule.origin=="atlas:choice" then names[rule.title]=true end end
 		assert.is_nil(names["Breach Thread"]);assert.is_true(names["Ritual Thread"])
+	end)
+	it("does not suggest a thread excluded by an Atlas effect",function()
+		local atlas=require("Modules.AtlasPlanner");local tree=atlas.tree("3.30.0-preview")
+		local positive,negative=tree.nodes[54685],tree.nodes[64980]
+		local plan={id="exclusion",title="Exclusion",version=tree.version,budget=150,nodes={positive.id,negative.id},choices={{node=positive.id,effect=positive.variantEffects[1].effect},{node=negative.id,effect=negative.variantEffects[1].effect}}}
+		build.savers.AtlasPlans.plans={plan};local profile=filters.profile("exclusion-filter","Exclusion filter")
+		local function names() local result={};for _,rule in ipairs(filters.generate(build,profile)) do if rule.origin=="atlas:exclusion" then result[rule.title]=true end end;return result end
+		assert.is_nil(names()["Breach Thread"])
+		plan.choices[2].effect=negative.variantEffects[2].effect;assert.is_true(names()["Breach Thread"])
+		plan.choices[2].effect=negative.variantEffects[1].effect;plan.strategy={scarabs="Breach Thread"};assert.is_true(names()["Breach Thread"])
+		positive,negative=tree.nodes[61484],tree.nodes[61620];plan.strategy=nil;plan.nodes={positive.id,negative.id};plan.choices={{node=positive.id,effect=positive.variantEffects[1].effect},{node=negative.id,effect=negative.variantEffects[1].effect}}
+		assert.is_nil(names()["Abyss Thread"]);plan.choices[2].effect=negative.variantEffects[2].effect;assert.is_true(names()["Abyss Thread"])
 	end)
 	it("generates stable map pickups from specific Atlas strategy names",function()
 		local plan={id="farming",title="Farming",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Run Shaped Strand Map and Beach Maps; avoid Toxic Sewer Mapmaker",scarabs="Use Omen of Connections"}}

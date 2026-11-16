@@ -135,15 +135,19 @@ local function budgetReachabilityChecked(plan)
 	return nil,"Reaching "..tree.nodes[grants[1]].name.." may require a temporary path and refunds; review the transition.",direct
 end
 function M.budgetReachability(plan) return budgetReachabilityChecked(M.validate(plan)) end
+-- GGG's bracketed links contain an internal key and optional visible label.
+function M.displayStat(value)
+	return (value:gsub("%[([^%[%]|]+)|([^%[%]]+)%]","%2"):gsub("%[([^%[%]]+)%]","%1"))
+end
 function M.searchText(node)
 	local lines={node.name,table.concat(node.stats," ")}
 	for _,effect in ipairs(node.variantEffects or {}) do for _,stat in ipairs(effect.stats) do lines[#lines+1]=stat end end
-	return table.concat(lines," ")
+	return M.displayStat(table.concat(lines," "))
 end
 function M.nodeStats(plan,node)
-	local lines=copyTable(node.stats)
+	local lines={};for _,stat in ipairs(node.stats) do lines[#lines+1]=M.displayStat(stat) end
 	for _,choice in ipairs(plan.choices or {}) do if choice.node==node.id then
-		for _,effect in ipairs(node.variantEffects or {}) do if effect.effect==choice.effect then for _,stat in ipairs(effect.stats) do lines[#lines+1]=stat end;return lines end end
+		for _,effect in ipairs(node.variantEffects or {}) do if effect.effect==choice.effect then for _,stat in ipairs(effect.stats) do lines[#lines+1]=M.displayStat(stat) end;return lines end end
 	end end
 	return lines
 end
@@ -161,7 +165,11 @@ function M.search(version,query,limit)
 		local node=tree.nodes[id]
 		if id ~= tree.start and M.searchText(node):lower():find(query,1,true) then all[#all+1]=node end
 	end
-	local matches={}; for i=1,math.min(limit,#all) do matches[i]=copyTable(all[i]) end
+	local matches={}; for i=1,math.min(limit,#all) do
+		local node=copyTable(all[i]);for j,stat in ipairs(node.stats) do node.stats[j]=M.displayStat(stat) end
+		for _,effect in ipairs(node.variantEffects or {}) do for j,stat in ipairs(effect.stats) do effect.stats[j]=M.displayStat(stat) end end
+		matches[i]=node
+	end
 	return {version=version,total=#all,matches=matches,source=tree.source}
 end
 -- Greedy shortest connections, deterministic in caller target order. Not a global optimizer.
@@ -313,7 +321,7 @@ function M.report(plan)
 	table.sort(lines,function(a,b) return a.text < b.text end); table.sort(notables); table.sort(keystones)
 	return {version=plan.version,mode=tree.mode=="ruthless" and "Ruthless" or "Standard",preview=tree.preview,compatibleModes=tree.compatibleModes,used=#plan.nodes,budget=plan.budget,bonus=bonus,remaining=plan.budget+bonus-#plan.nodes,budgetReachable=reachable,budgetWarning=budgetWarning,pointsBeforeGrant=pointsBeforeGrant,
 		counts=counts,notables=notables,keystones=keystones,stats=lines,missingChoices=missingChoices,source=tree.source,sourceCommit=tree.commit,
-		limitations={"Atlas plans do not modify character DPS or EHP.","Stat lines are grouped verbatim, not combined into effective map odds. Keystone interactions are not simulated.","Budget is supplied progression, not imported account completion. Small optimized routes can be exact; larger routes use a heuristic."}}
+		limitations={"Atlas plans do not modify character DPS or EHP.","Stat lines are grouped as displayed, not combined into effective map odds. Keystone interactions are not simulated.","Budget is supplied progression, not imported account completion. Small optimized routes can be exact; larger routes use a heuristic."}}
 end
 function M.export(plan)
 	return json.encode({schemaVersion=1,atlasPlan=M.validate(plan)})

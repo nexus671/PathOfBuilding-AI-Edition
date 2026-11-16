@@ -1047,8 +1047,16 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("allocate");frame("atlas-effect-picker");ui:click("choose");frame("atlas-effect-selected")
 	local selectedAtlas=build.planningWorkspace.cache.atlas.layout.snapshot();assert(#selectedAtlas.choices==1 and selectedAtlas.choices[1].node==45404,"Selected Atlas effect was not retained")
 	ui:click("undo");assert(#(build.planningWorkspace.cache.atlas.layout.snapshot().choices or {})==0,"Undo did not restore the unselected node");ui:click("redo")
+	ui:text("search","Threadbare");ui:click("find");ui:click("allocate");ui:click("allocate")
+	local picker={};for _,row in ipairs(main.popups[1].controls.results.list) do picker[#picker+1]=StripEscapes(row[1] or "") end
+	assert(table.concat(picker," "):find("Option 1 | Breach",1,true) and not table.concat(picker," "):find("BreachThread",1,true),"Atlas effect labels expose internal markup")
+	local choiceDetail={};for _,row in ipairs(main.popups[1].controls.details.list) do choiceDetail[#choiceDetail+1]=StripEscapes(row[1] or "") end
+	assert(table.concat(choiceDetail," "):find("Threads found in your Maps cannot be of type",1,true),"Atlas effect picker omitted the node's restriction")
+	frame("atlas-thread-choice");ui:click("choose");frame("atlas-thread-selected")
+	local detail={};for _,row in ipairs(build.planningWorkspace.controls.details.list) do detail[#detail+1]=StripEscapes(row[1] or "") end
+	assert(table.concat(detail," "):find("Threads found in your Maps cannot",1,true),"Atlas node text was not rendered readably")
 	ui:click("progression");ui:click("strategyTab");ui:text("maps","Run Strand Maps and Beach Maps");ui:text("avoid","Beach Map");ui:click("keep")
-	ui:click("keep");assert(build.savers.AtlasPlans.plans[1].version=="3.30.0-preview" and #build.savers.AtlasPlans.plans[1].choices==1,"Atlas preview version or effect not retained")
+	ui:click("keep");assert(build.savers.AtlasPlans.plans[1].version=="3.30.0-preview" and #build.savers.AtlasPlans.plans[1].choices==2,"Atlas preview version or effects not retained")
 	ui:click("nav_journey");ui:click("page4");ui:click("add");ui:text("title","Pristine Fossils");ui:click("keep")
 	local function filterTool(query)
 		ui:click("manage");ui:text("search",query);ui:click("choose")

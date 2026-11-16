@@ -25,6 +25,14 @@ describe("Native Atlas planner", function()
 		assert.is_true(#strategy.compare(chosen,other).stats>=2)
 		local ruthless=atlas.tree("3.30.0-preview-ruthless").nodes[node.id];assert.is_truthy(ruthless.variantEffects)
 	end)
+	it("renders official Atlas link markup as readable text",function()
+		assert.equal("Threads and Mirage",atlas.displayStat("[Thread|Threads] and [Mirage]"))
+		local node=atlas.tree("3.30.0-preview").nodes[64980]
+		local plan=atlas.chooseEffect(atlas.connect(plan("3.30.0-preview"),{node.id}),node.id,node.variantEffects[1].effect)
+		assert.same({"Threads found in your Maps cannot be of type","Breach"},atlas.nodeStats(plan,node))
+		local match=atlas.search(plan.version,"Threads found in your Maps cannot",100).matches
+		local found=false;for _,entry in ipairs(match) do if entry.id==node.id then found=true;assert.equal("Breach",entry.variantEffects[1].stats[1]);assert.is_truthy(entry.stats[1]:find("Threads",1,true)) end end;assert.is_true(found)
+	end)
 	it("reviews and routes effect changes and refunds between Atlas stages",function()
 		local version="3.30.0-preview";local node=atlas.tree(version).nodes[45404]
 		local base=atlas.connect(plan(version),{node.id});local first=atlas.chooseEffect(base,node.id,node.variantEffects[1].effect)

@@ -206,7 +206,7 @@ function Panel.Open(build,source,layout)
 			if node.variantEffects then
 				local selected=false;for _,choice in ipairs(draft.choices or {}) do if choice.node==node.id then selected=true end end
 				lines[#lines+1]=selected and "Effect selected. Use Choose effect to change it." or "Choose an effect after connecting this node."
-				for i,effect in ipairs(node.variantEffects) do lines[#lines+1]="Option "..i..": "..table.concat(effect.stats," ") end
+				for i,effect in ipairs(node.variantEffects) do lines[#lines+1]="Option "..i..": "..atlas.displayStat(table.concat(effect.stats," ")) end
 			end
 			local allocated={[controls.canvas.tree.start]=true};for _,other in ipairs(draft.nodes) do allocated[other]=true end
 			if not allocated[node.id] then
@@ -302,8 +302,8 @@ function Panel.Open(build,source,layout)
 	local function chooseEffect()
 		local node=assert(controls.canvas.tree.nodes[controls.canvas.focus],"Select a node first");local entries={}
 		for i,effect in ipairs(node.variantEffects or {}) do
-			local details={node.name};for _,stat in ipairs(effect.stats) do details[#details+1]=stat end
-			entries[#entries+1]={id=effect.effect,label="Option "..i.." | "..table.concat(effect.stats," "):gsub("\n"," "),details=details}
+			local details={node.name};for _,stat in ipairs(node.stats) do details[#details+1]=atlas.displayStat(stat) end;for _,stat in ipairs(effect.stats) do details[#details+1]=atlas.displayStat(stat) end
+			entries[#entries+1]={id=effect.effect,label="Option "..i.." | "..atlas.displayStat(table.concat(effect.stats," ")):gsub("\n"," "),details=details}
 		end
 		browser.Open("Choose "..node.name.." effect",entries,{action="Select effect",choose=function(entry) change(atlas.chooseEffect(current(),node.id,entry.id)) end})
 	end
@@ -339,7 +339,7 @@ function Panel.Open(build,source,layout)
 		for _,row in ipairs(summary.mechanics) do entries[#entries+1]={id="mechanic-"..row.name,label=row.name.." | "..row.total.." points",category=row.name,details={row.name,row.small.." small nodes",row.notable.." notables",row.keystone.." keystones",row.gateway.." gateways","Small nodes can carry valuable bonuses; they are not assumed to be wasted travel."}} end
 		for _,keystone in ipairs(summary.keystones) do local details={keystone.name,"Review the whole keystone, including restrictions and tradeoffs."};for _,stat in ipairs(keystone.stats) do details[#details+1]=stat end;entries[#entries+1]={id="keystone-"..keystone.id,label=keystone.name.." | Keystone tradeoffs",category="Keystones",details=details} end
 		for _,missing in ipairs(report.missingChoices) do entries[#entries+1]={id="missing-"..missing.id,label=missing.name.." | Choose an effect",category="Needs a choice",details={"Select this node on the tree and choose one of its effects."}} end
-		for _,id in ipairs(plan.nodes) do local node=atlas.tree(plan.version).nodes[id];for i,stat in ipairs(atlas.nodeStats(plan,node)) do entries[#entries+1]={id=id.."-"..i,label=stat,category=strategy.mechanic(node),details={node.name,stat,"Verbatim bonus; keystone interactions are not combined."}} end end
+		for _,id in ipairs(plan.nodes) do local node=atlas.tree(plan.version).nodes[id];for i,stat in ipairs(atlas.nodeStats(plan,node)) do entries[#entries+1]={id=id.."-"..i,label=stat,category=strategy.mechanic(node),details={node.name,stat,"Displayed bonus; keystone interactions are not combined."}} end end
 		browser.Open("Atlas bonuses by mechanic",entries)
 	end)
 	controls.browse=button(232,height-86,100,"Find nodes",function()
@@ -347,7 +347,7 @@ function Panel.Open(build,source,layout)
 		for _,entry in ipairs(costs) do
 			local node=entry.node
 			entries[#entries+1]={id=node.id,label=node.name..(entry.cost and " | +"..entry.cost or " | blocked"),category=strategy.mechanic(node),search=atlas.searchText(node),details=function()
-				local lines={node.name,node.kind,entry.cost and entry.cost.." new points (before any granted points)" or "Blocked by avoided nodes"};for _,stat in ipairs(node.stats) do lines[#lines+1]=stat end;for i,effect in ipairs(node.variantEffects or {}) do lines[#lines+1]="Option "..i..": "..table.concat(effect.stats," ") end;return lines
+				local lines={node.name,node.kind,entry.cost and entry.cost.." new points (before any granted points)" or "Blocked by avoided nodes"};for _,stat in ipairs(node.stats) do lines[#lines+1]=atlas.displayStat(stat) end;for i,effect in ipairs(node.variantEffects or {}) do lines[#lines+1]="Option "..i..": "..atlas.displayStat(table.concat(effect.stats," ")) end;return lines
 			end}
 		end
 		browser.Open("Find Atlas nodes",entries,{action="Show on tree",choose=function(entry)

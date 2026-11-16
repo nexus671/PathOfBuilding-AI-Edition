@@ -503,6 +503,8 @@ async function main(){
   const refinedTargets=[39402,22270,60117,23416,23538,40832,52315];
   const refinedRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'refined',title:'Refined route',version:'3.30.0-preview',budget:50,nodes:[]},targets:refinedTargets,optimize:true},'atlas');
   const variantSearch=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Double-Veiled Item',limit:20},'atlas');
+  const threadSearch=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Threadbare',limit:20},'atlas');
+  const threadNode=threadSearch.atlas.matches.find(node=>node.id===64980);assert.equal(threadNode.variantEffects[0].stats[0],'Breach');assert.match(threadNode.stats[0],/^Threads found/);
   const variantNode=variantSearch.atlas.matches.find(node=>node.id===45404);assert.ok(variantNode?.variantEffects?.length>1);
   const variantRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'variant',title:'Variant',version:'3.30.0-preview',budget:150,nodes:[]},targets:[variantNode.id]},'atlas');
   const variantPlan={...variantRoute.atlas.plan,choices:[{node:variantNode.id,effect:variantNode.variantEffects[0].effect}]};
