@@ -200,8 +200,6 @@ function M.icon(method,action,model)
 	if not currencyArt then
 		local file=assert(io.open("Assets/Crafting/currencies.json","rb"));currencyArt=assert(require("dkjson").decode(file:read("*a")));file:close();currencyNames={}
 		for _,entry in pairs(currencyArt.items) do currencyNames[entry.name]=entry.path end
-		-- The 3.30 client assigns Trickery the same inventory art as Delirium.
-		currencyNames["Essence of Trickery"]=currencyNames["Essence of Delirium"]
 	end
 	action=action or {};local id=currencyArt.methods[method];local name
 	if method=="socket_white_bench" then name="Orb of Scouring"

@@ -3,9 +3,9 @@
   "copyright": "Item artwork (c) Grinding Gear Games.",
   "source": {
     "repo": "repoe-fork/repoe-fork.github.io",
-    "commit": "ae6d85a5c36857e08819852ab8732239294aba59"
+    "commit": "0071545fba8d079f65cc9c6a415d8f525f3af07a"
   },
-  "baseItemsSha256": "48afb07a5f40eb51552f90c17d53186469db282a2e759dab7b46e7f9d2a0f58b",
+  "baseItemsSha256": "336cbd6c463249c862b8e47ab78392f7fbe03864044d5d8fcf5a7f3433de2ae4",
   "items": {
     "Metadata/Items/AtlasExiles/AddModToRareCrusader": {
       "name": "Crusader's Exalted Orb",
@@ -1142,6 +1142,14 @@
       "width": 78,
       "height": 78,
       "sha256": "7dc7830fe60a40b434c49108800bc5fdb93e1b6e5116b3fef2cf860e869d7b2a"
+    },
+    "Metadata/Items/Currency/CurrencyEssenceUber1": {
+      "name": "Essence of Trickery",
+      "path": "Assets/Crafting/Currency/f2953278b21d119de9e2.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/Essence/EssenceDelirium.png",
+      "width": 78,
+      "height": 78,
+      "sha256": "2346b7c7d2b391c8838bd3858d451408ff39599df56378458cd4031d7a1f21bc"
     },
     "Metadata/Items/Currency/CurrencyEssenceWoe1": {
       "name": "Whispering Essence of Woe",

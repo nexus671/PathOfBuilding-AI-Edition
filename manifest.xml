@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview308" />
+	<Version number="2.67.2-ai.preview309" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -410,6 +410,7 @@
 	<File name="Assets/Crafting/Currency/edf647a288da0aaa8d6f.png" part="program" sha1="3cce9df8cdb6c32936cc024db2e6da98235a509f" />
 	<File name="Assets/Crafting/Currency/f200d8604bff3a424ba3.png" part="program" sha1="d36c69e1826c463e2ddad7ee5f1c2c2dac4fff8d" />
 	<File name="Assets/Crafting/Currency/f228ff061753a0fd0af1.png" part="program" sha1="b2159b62beb1b0619411f07704c7f5a759b9a350" />
+	<File name="Assets/Crafting/Currency/f2953278b21d119de9e2.png" part="program" sha1="568f07bfeda8db6b4e088b1187b0354d12c34ce5" />
 	<File name="Assets/Crafting/Currency/f29d4438a5f4ef5a42d4.png" part="program" sha1="103ac9572d8f486b7d435d3a1e5856b1472bec08" />
 	<File name="Assets/Crafting/Currency/f2a1ab7adc8c68a229dc.png" part="program" sha1="103582977db2482dd11fcc466830caef4e2418be" />
 	<File name="Assets/Crafting/Currency/f3bee36504af7453ea82.png" part="program" sha1="a7dcd499a1abdc9cd5e69ec2e07d6abea5aff857" />
@@ -984,7 +985,7 @@
 	<File name="Assets/Crafting/augmentation.png" part="program" sha1="fad416087255184d9f22f2723bb7d45aee00dae7" />
 	<File name="Assets/Crafting/chaos.png" part="program" sha1="e7a21347961c7dce1a423a74872354c61a46be25" />
 	<File name="Assets/Crafting/chromatic.png" part="program" sha1="d5b9ad7b631880f9bb0476688e4792ace6f89486" />
-	<File name="Assets/Crafting/currencies.json" part="program" sha1="ca9ca53ce34ec8d0e4ce14bde5d31f09754421fd" />
+	<File name="Assets/Crafting/currencies.json" part="program" sha1="33ab5e9e924258a800c619a70f969bb059802591" />
 	<File name="Assets/Crafting/divine.png" part="program" sha1="fd658ddb8a7003ba6481863f018e0fbff1058d8e" />
 	<File name="Assets/Crafting/exalt.png" part="program" sha1="eab8a2c84b5b744fdca04c17f2e6b3eda08c53d7" />
 	<File name="Assets/Crafting/items.json" part="program" sha1="90074bb1d9669a26033f2e74a27b3f40f908baca" />
@@ -1572,7 +1573,7 @@
 	<File name="Modules/CraftingSockets.lua" part="program" sha1="b94fbc1bad61abad52ed53c4ae32b1f71081fab1" />
 	<File name="Modules/CraftingTasks.lua" part="program" sha1="5884e439905689280d65534ef8e78591341970d6" />
 	<File name="Modules/CraftingUnveiledJewel330.lua" part="program" sha1="5b05b7293ddad3c073f1cb82ab53932899f739c0" />
-	<File name="Modules/CraftingWorkbench.lua" part="program" sha1="5d12fa739149c69de6c444609c0ffae4819c9378" />
+	<File name="Modules/CraftingWorkbench.lua" part="program" sha1="293a656f21473d75dd86f791f561bf13e0eeb0fe" />
 	<File name="Modules/Data.lua" part="program" sha1="1870ccf660e6b4904fde88ba7c36fc42d841ec89" />
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />

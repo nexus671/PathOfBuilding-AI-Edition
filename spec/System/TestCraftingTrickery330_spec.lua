@@ -10,11 +10,17 @@ describe("3.30 Essence of Trickery",function()
 		for _,row in ipairs(model.mods) do assert.not_equal(id,row.id) end
 		local workbench=require("Modules.CraftingWorkbench")
 		assert.equal("Essence of Trickery",workbench.actionLabel({method="essence",essenceId=essence},model))
-		assert.equal(workbench.icon("essence",{essenceId="Metadata/Items/Currency/CurrencyEssenceDelirium1"},model),workbench.icon("essence",{essenceId=essence},model))
+		assert.not_equal(workbench.icon("essence",{essenceId="Metadata/Items/Currency/CurrencyEssenceDelirium1"},model),workbench.icon("essence",{essenceId=essence},model))
 		local name,art,kind=require("Modules.CraftingPrices").describe(essence,model)
 		assert.equal("Essence of Trickery",name);assert.is_truthy(art);assert.equal("Currency",kind)
 		local helmet=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
 		assert.is_truthy(sim.essenceReason(helmet,helmet.initial,essence))
+		local prices=require("Modules.CraftingPrices")
+		local resource,icon,resourceKind=prices.describe(essence,helmet)
+		assert.equal("Essence of Trickery",resource);assert.is_truthy(icon);assert.equal("Currency",resourceKind)
+		local foundResource=false
+		for _,entry in ipairs(prices.entries(helmet,helmet.initial,{},nil)) do if entry.key==essence then foundResource=true end end
+		assert.is_true(foundResource)
 	end)
 	it("forces the modifier and preserves it through item copies",function()
 		local result=sim.perform(belt,{method="essence",essenceId=essence},12)

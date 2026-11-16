@@ -1,4 +1,4 @@
-"""Bundle currency artwork from the same immutable export as the crafting model."""
+"""Bundle currency artwork from a reviewed immutable game export."""
 # cspell:ignore katakohi ukatoa
 import argparse
 import concurrent.futures
@@ -11,6 +11,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "src/Assets/Crafting/Currency"
+SOURCE = {"repo": "repoe-fork/repoe-fork.github.io", "commit": "0071545fba8d079f65cc9c6a415d8f525f3af07a"}
+BASE_ITEMS_HASH = "336cbd6c463249c862b8e47ab78392f7fbe03864044d5d8fcf5a7f3433de2ae4"
 METHODS = {
     "beast_max_links": "Imprinted Bestiary Orb",
     "beast_talisman_imprint": "Imprinted Bestiary Orb",
@@ -44,10 +46,9 @@ METHODS = {
 
 
 def check():
-    crafting = json.loads((ROOT / "src/Data/Crafting/3.29.json").read_text())
     manifest = json.loads((ROOT / "src/Assets/Crafting/currencies.json").read_text())
-    assert manifest["source"] == crafting["source"], "Currency artwork source differs from crafting data"
-    assert manifest["baseItemsSha256"] == crafting["hashes"]["base_items.json"], "Currency export checksum differs"
+    assert manifest["source"] == SOURCE, "Currency artwork source differs from reviewed export"
+    assert manifest["baseItemsSha256"] == BASE_ITEMS_HASH, "Currency export checksum differs"
     paths = set()
     for entry in manifest["items"].values():
         path = (ROOT / "src" / entry["path"]).resolve()
@@ -72,11 +73,10 @@ def main():
     if args.check:
         print(f"Verified {check()} bundled currency images")
         return
-    crafting = json.loads((ROOT / "src/Data/Crafting/3.29.json").read_text())
-    source = crafting["source"]
+    source = SOURCE
     url = f"https://raw.githubusercontent.com/{source['repo']}/{source['commit']}/data/base_items.json"
     raw = args.base_items.read_bytes() if args.base_items else urllib.request.urlopen(url, timeout=30).read()
-    assert hashlib.sha256(raw).hexdigest() == crafting["hashes"]["base_items.json"], "Pinned export changed"
+    assert hashlib.sha256(raw).hexdigest() == BASE_ITEMS_HASH, "Pinned export changed"
     bases = json.loads(raw)
     wanted = set(METHODS.values())
     wanted.update({"Potent Chaotic Resonator", "Powerful Chaotic Resonator", "Prime Chaotic Resonator", "Glassblower's Bauble", "Wild Crystallised Lifeforce", "Vivid Crystallised Lifeforce", "Sacred Crystallised Lifeforce", "Crystallised Rancour"})
@@ -88,8 +88,7 @@ def main():
     known = {}
     if previous.exists():
         old = json.loads(previous.read_text())
-        if old.get("source") == source and old.get("baseItemsSha256") == hashlib.sha256(raw).hexdigest():
-            known = {entry["url"]: entry for entry in old.get("items", {}).values()}
+        known = {entry["url"]: entry for entry in old.get("items", {}).values()}
 
     def download(art):
         name = hashlib.sha256(art.encode()).hexdigest()[:20] + ".png"
