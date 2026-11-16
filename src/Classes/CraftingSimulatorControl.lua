@@ -357,8 +357,15 @@ function Panel.Open(build,project,layout)
 			end
 			button(popup,"use",16,260,180,"Use donor",function()
 				local craft={method=method,donorItem=popup.donor.buf}
+				local donor
+				if method=="recombine" or method=="recombine_predictable" then
+					donor=simulator.model(popup.donor.buf)
+					assert(simulator.sameRecombinationClass(simulator.context(model,state).item,donor.item),"Recombination requires the same item class")
+					assert(not donor.initial.corrupted and not donor.initial.mirrored and not donor.item.synthesised,"Donor must be uncorrupted, non-mirrored and non-synthesised")
+					assert(not simulator.hasPartialLock(donor,donor.initial),"Recombination with a partial affix lock on the donor is not yet modeled")
+				end
 				if method == "recombine_predictable" then
-					local donor=simulator.model(popup.donor.buf);local selected={left={},right={}}
+					local selected={left={},right={}}
 					for _,group in ipairs(targets) do
 						assert(#group.anyOf == 1 and not group.negate and (group.atLeast or 1) == 1 and (group.scope or "explicit") == "explicit","Use exact explicit targets without alternatives for predictable selections")
 						local id=group.anyOf[1];local side
