@@ -118,7 +118,16 @@ function R.extend(M,A,api)
 					if legal then eligible[#eligible+1]=candidate end
 				end
 				if #eligible == 0 then break end
-				local selected=eligible[math.floor(random()*#eligible)+1]
+				-- Community research suggests square-root selection weights. Crafted
+				-- and non-rollable modifiers have unknown weights, so use 1000.
+				local weights,total={},0
+				for i,candidate in ipairs(eligible) do
+					local mod=base.byId[candidate.entry.id]
+					local weight=not candidate.entry.crafted and not candidate.exclusive and mod and mod.weightKey and base.item:GetModSpawnWeight(mod,base.extraTags) or 0
+					weights[i]=math.sqrt(weight>0 and weight or 1000);total=total+weights[i]
+				end
+				local draw=random()*total;local selected=eligible[#eligible]
+				for i,candidate in ipairs(eligible) do draw=draw-weights[i];if draw<0 then selected=candidate;break end end
 				local entry=copyTable(selected.entry);state.affixes[#state.affixes+1]=entry
 				for _,group in ipairs(groups(base,entry.id)) do used[group]=true end
 				hasExclusive=hasExclusive or selected.exclusive
@@ -130,6 +139,6 @@ function R.extend(M,A,api)
 		for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do if base.item.base.armour and base.item.base.armour[kind.."BaseMin"] then state.percentiles[kind]=random() end end
 		return state
 	end
-	M.limits[#M.limits+1]="Unpredictable recombination uses preliminary community 3.30 observations for one-to-three modifier pools and older observations for larger pools. The one-prefix/one-suffix exception, exclusive-only side ordering and modifier selection weights remain uncertain; outcomes are estimates."
+	M.limits[#M.limits+1]="Unpredictable recombination uses preliminary community 3.30 observations for one-to-three modifier pools and older observations for larger pools. Modifier selection assumes the square root of natural spawn weights; crafted and non-rollable weights default to 1000. Special cases, exclusive-only side ordering and these weights remain uncertain; outcomes are estimates."
 end
 return R

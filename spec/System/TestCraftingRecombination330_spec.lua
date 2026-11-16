@@ -19,6 +19,26 @@ describe("3.30 recombination base rules",function()
 			assert.equal(case[2],#result.affixes)
 		end
 	end)
+	it("weights competing natural modifiers using their spawn weights",function()
+		local model=sim.model("Rarity: NORMAL\nSacrificial Garb\nItem Level: 86")
+		local state=input(model,"IncreasedLife0")
+		local donor=input(model,"LocalIncreasedPhysicalDamageReductionRating1")
+		local craft={method="recombine",donorItem=sim.toItem(model,donor).raw}
+		local life=model.item:GetModSpawnWeight(model.byId.IncreasedLife0,model.extraTags)
+		local armour=model.item:GetModSpawnWeight(model.byId.LocalIncreasedPhysicalDamageReductionRating1,model.extraTags)
+		assert.is_true(life>armour and armour>0)
+		local threshold=math.sqrt(life)/(math.sqrt(life)+math.sqrt(armour))
+		local function selected(draw)
+			local calls=0
+			local result=sim.action(model,state,craft,function()
+				calls=calls+1
+				return ({0.1,0.5,0.5,0.1,draw})[calls] or 0.5
+			end)
+			return result.affixes[1].id
+		end
+		assert.equal("IncreasedLife0",selected(threshold-0.01))
+		assert.equal("LocalIncreasedPhysicalDamageReductionRating1",selected(threshold+0.01))
+	end)
 	it("retains the chosen base level and removes incompatible rollable entries before drawing counts",function()
 		local evasion,armour=sim.model(evasionRaw),sim.model(armourRaw)
 		local state=input(evasion,"IncreasedLife0");local donor=input(armour,"LocalIncreasedPhysicalDamageReductionRating1")
