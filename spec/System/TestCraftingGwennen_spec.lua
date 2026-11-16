@@ -93,6 +93,26 @@ describe("Experimental Gwennen pair",function()
 			end end
 		end
 	end)
+	it("keeps the first best link result from independent modeled Fusing rolls",function()
+		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: W W W W W W"
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE";state.quality=20;state.imprint=copyTable(model.initial)
+		local original=copyTable(state)
+		local function stream(seed) return function() seed=seed*48271%2147483647;return seed/2147483647 end end
+		local function largest(sockets) local counts,best={},0;for _,socket in ipairs(sockets) do counts[socket.group]=(counts[socket.group] or 0)+1;best=math.max(best,counts[socket.group]) end;return best end
+		for _,case in ipairs({{1016,100},{1017,50}}) do for seed=1,12 do
+			local draw=stream(seed);draw();local best,score=nil,-1
+			for _=1,case[2] do local candidate=sim.action(model,state,{method="fusing"},draw);local n=largest(candidate.sockets);if n>score then best,score=candidate,n end end
+			local actualDraw=stream(seed);local pair={method="gwennen",firstOutcome=case[1],secondOutcome=case[1]};local actual=sim.action(model,state,pair,actualDraw)
+			assert.same(best,actual);assert.equal(draw(),actualDraw());assert.same(original,state);sim.validateState(model,actual)
+		end end
+		local pair={method="gwennen",firstOutcome=1016,secondOutcome=1017}
+		local result=sim.calculate(raw,pair,{},state,{requirements={links=6},trials=12,seed=3})
+		assert.is_true(result.sampled);assert.equal("gwennen_socket_link_assumptions",result.warnings[2].code)
+		local full=copyTable(state);for _,socket in ipairs(full.sockets) do socket.group=0 end
+		assert.has_error(function() sim.action(model,full,pair,function() return 0.1 end) end)
+		local abyss=copyTable(state);abyss.sockets[1].color="A"
+		assert.has_error(function() sim.action(model,abyss,pair,function() return 0.1 end) end)
+	end)
 	it("charges observed artifacts and never treats an unknown price as free",function()
 		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022}
 		local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"

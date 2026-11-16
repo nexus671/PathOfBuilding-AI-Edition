@@ -187,6 +187,27 @@ function S.extend(M,A,api)
 		end
 		return best
 	end
+	function M.bestFusing(model,input,rolls,random)
+		local reason=M.methodReason(model,input,"fusing");assert(not reason,reason)
+		local best=socketAction(model,input,{method="fusing"},random)
+		local function largest(sockets)
+			local longest,current,previous=0,0,nil
+			for _,socket in ipairs(sockets) do current=socket.group==previous and current+1 or 1;previous=socket.group;longest=math.max(longest,current) end
+			return longest
+		end
+		local bestCount=largest(best.sockets)
+		if rolls>1 then
+			local outcomes=S.fusingOutcomes(input)
+			for _=2,rolls do
+				local pick=random();local selected=outcomes[#outcomes]
+				for _,entry in ipairs(outcomes) do pick=pick-entry.probability;if pick<0 then selected=entry;break end end
+				local longest,current,previous=0,0,nil
+				for _,group in ipairs(selected.groups) do current=group==previous and current+1 or 1;previous=group;longest=math.max(longest,current) end
+				if longest>bestCount then for i,group in ipairs(selected.groups) do best.sockets[i].group=group end;bestCount=longest end
+			end
+		end
+		return best
+	end
 	function M.actionOptions(model,state,method)
 		if method ~= "socket_colour_bench" then return originalOptions(model,state,method) end
 		local result={};for count=2,math.min(4,#(state.sockets or {})) do result[#result+1]={label="At least "..count.." non-white sockets",action={method=method,count=count}} end;return result

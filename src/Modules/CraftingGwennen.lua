@@ -1,6 +1,6 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1029]=true,[1031]=true,[1041]=true,[1042]=true}
+local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1016]=true,[1017]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1029]=true,[1031]=true,[1041]=true,[1042]=true}
 local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
@@ -93,6 +93,9 @@ function G.extend(M,api)
 			if id==1000 then return copyTable(input) end
 			if id==1010 or id==1011 then
 				return M.bestChromatic(model,input,probe and 1 or id==1010 and 50 or 20,draw)
+			end
+			if id==1016 or id==1017 then
+				return M.bestFusing(model,input,probe and 1 or id==1016 and 100 or 50,draw)
 			end
 			if id==1031 then
 				local choices=influenceChoices(model,input);local result=copyTable(input)
