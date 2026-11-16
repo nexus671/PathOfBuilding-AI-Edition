@@ -71,6 +71,34 @@ describe("Visual filter catalogue",function()
 		end)
 		main.screenH=height;main.popups={};assert(ok,err)
 	end)
+	it("offers all supported conditions in the graphical rule editor",function()
+		require("Classes.LootFilterControl").Conditions({id="all",title="All conditions",text='Show\n BaseType "Iron Hat"'},function() end)
+		local list=main.popups[1].controls.c1key.list;local found={};for _,key in ipairs(list) do assert.is_nil(found[key],key);found[key]=true end
+		for _,group in ipairs({parser.numeric,parser.booleans,parser.strings}) do for key in pairs(group) do assert.is_true(found[key],key) end end
+		assert.is_true(found.SocketGroup);assert.is_true(found.Rarity)
+	end)
+	it("edits additional sample properties across pages and preserves them on use",function()
+		local original=library.sample();local saved;local height=main.screenH;main.screenH=500
+		assert.is_nil(original.BaseArmour);assert.equal("unknown",parser.simulate(parser.parse("Hide\n BaseArmour >= 1\nShow"),original).status)
+		local ok,err=pcall(function()
+			local control=require("Classes.LootFilterControl");control.EditSample(original,function(value) saved=value end)
+			local parent=main.popups[1].controls;parent.moreSample:Click();local more=main.popups[1].controls
+			assert.is_false(more.extraPrevious:IsEnabled());assert.is_true(more.extraNext:IsEnabled())
+			local function find(key)
+				for _=1,4 do local value=more["extra_"..key];if value then return value end;more.extraNext:Click() end
+				error("Missing extra field "..key)
+			end
+			find("BaseArmour"):SetText("500");find("HasEnchantment"):SetText('"Fortified"');find("Mirrored"):SelByValue("Yes");find("TransfiguredGem"):SetText("Leap Slam");assert.is_false(more.extraNext:IsEnabled())
+			more.keepExtra:Click();assert.is_nil(original.BaseArmour);parent.useSample:Click()
+			assert.equal(500,saved.BaseArmour);assert.same({"Fortified"},saved.HasEnchantment);assert.is_true(saved.Mirrored);assert.equal("Leap Slam",saved.TransfiguredGem)
+			local rule=parser.parse('Hide\n BaseArmour >= 500\n HasEnchantment "Fortified"\n Mirrored True\n TransfiguredGem "Leap Slam"\nShow')
+			assert.equal("Hide",parser.simulate(rule,saved).action)
+			control.EditSample(saved,function(value) saved=value end);parent=main.popups[1].controls;parent.moreSample:Click();more=main.popups[1].controls
+			find("BaseArmour"):SetText("200");more.cancelExtra:Click();parent.useSample:Click();assert.equal(500,saved.BaseArmour)
+			control.EditSample(saved,function(value) saved=value end);parent=main.popups[1].controls;parent.BaseType:SetText("Iron Hat",true);parent.useSample:Click();assert.is_nil(saved.BaseArmour);assert.is_nil(saved.Mirrored)
+		end)
+		main.screenH=height;main.popups={};assert(ok,err)
+	end)
 	it("tests memory strands and always-shown status without inventing either",function()
 		local rules=parser.parse('Hide\n MemoryStrands >= 60\n AlwaysShow False\nShow')
 		local item=library.sample();assert.is_nil(item.MemoryStrands);assert.is_nil(item.AlwaysShow)

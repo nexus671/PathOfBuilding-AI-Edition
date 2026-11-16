@@ -69,7 +69,6 @@ end
 function M.sample(rule,block)
 	local item={BaseType="Chaos Orb",Class="Stackable Currency",Rarity="Normal",ItemLevel=86,AreaLevel=83,DropLevel=1,Quality=0,StackSize=1,Sockets=0,SocketGroup="",LinkedSockets=0,Width=1,Height=1,UnidentifiedItemTier=0,HasInfluence={"None"},HasExplicitMod={},HasEnchantment={},EnchantmentPassiveNode=""}
 	for key in pairs(parser.booleans) do if key~="AlwaysShow" then item[key]=false end end
-	for key in pairs(parser.numeric) do if item[key]==nil and key~="MemoryStrands" then item[key]=0 end end
 	local hasBase,hasClass,hasRarity,hasIdentified,hasDefence,modifier=false,false,false,false,false,nil
 	local socketConditions={}
 	if rule then block=block or parser.parse(rule.text).rules[1];if block then for _,c in ipairs(block.conditions) do

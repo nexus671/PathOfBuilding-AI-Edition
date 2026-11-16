@@ -3,6 +3,12 @@ local ui=require("Modules.PlanningUI")
 local filters=require("Modules.LootFilters")
 local parser=require("Modules.LootFilterParser")
 local M={}
+local sampleFields={"BaseType","Class","Rarity","ItemLevel","AreaLevel","DropLevel","Width","Height","UnidentifiedItemTier","SocketGroup","Sockets","SocketColours","LinkedSockets","StackSize","GemLevel","MapTier","Quality","BaseDefencePercentile","MemoryStrands","AlwaysShow","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence","HasExplicitMod"}
+local function additionalSampleFields()
+	local seen={};for _,key in ipairs(sampleFields) do seen[key]=true end
+	local fields={};for _,group in ipairs({parser.numeric,parser.booleans,parser.strings}) do for key in pairs(group) do if not seen[key] then fields[#fields+1]=key;seen[key]=true end end end
+	table.sort(fields);return fields
+end
 local function button(c,key,x,y,w,label,run) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,w,28},label,run);return c[key] end
 local function notify(title,message)
 	local c={};local w,h=math.min(760,main.screenW-40),math.min(360,main.screenH-60)
@@ -41,6 +47,9 @@ end
 function M.Conditions(rule,save)
 	local c={};local w,h=math.min(880,main.screenW-40),math.min(600,main.screenH-60);local parsed=parser.parse(rule.text);local block=parsed.rules[1]
 	local conditions=copyTable(block.conditions);local keywords={"BaseType","Class","Rarity","ItemLevel","AreaLevel","Quality","BaseDefencePercentile","MemoryStrands","AlwaysShow","LinkedSockets","Sockets","SocketGroup","GemLevel","MapTier","StackSize","UnidentifiedItemTier","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence"}
+	local known={};for _,key in ipairs(keywords) do known[key]=true end
+	local additional={};for _,group in ipairs({parser.numeric,parser.booleans,parser.strings}) do for key in pairs(group) do if not known[key] then additional[#additional+1]=key;known[key]=true end end end
+	table.sort(additional);for _,key in ipairs(additional) do keywords[#keywords+1]=key end
 	for _,condition in ipairs(conditions) do local known=false;for _,k in ipairs(keywords) do if k==condition.keyword then known=true end end;if not known then keywords[#keywords+1]=condition.keyword end end
 	ui.label(c,"nameLabel",16,28,"Rule name",14);c.title=new("EditControl"):EditControl(ui.anchor,{16,50,w-200,26},rule.title,nil,nil,160)
 	c.action=new("DropDownControl"):DropDownControl(ui.anchor,{w-168,50,152,26},{"Show","Hide","Minimal"});c.action:SelByValue(block.action)
@@ -140,9 +149,52 @@ function M.Account(profile,import)
 	action("close",5,"Close",function() main:ClosePopup() end)
 	ui.style(c);main:OpenPopup(w,h,"Account loot filters",c,nil,nil,"close")
 end
+function M.EditAdditionalSample(item,save)
+	local c={};local w,h=math.min(820,main.screenW-40),math.min(560,main.screenH-60)
+	local draft=copyTable(item);local fields=additionalSampleFields();local columns=4;local rowHeight=46
+	local rows=math.max(1,math.floor((h-120)/rowHeight));local perPage=columns*rows;local page=1;local pages=math.max(1,math.ceil(#fields/perPage));local visible={};local dialog
+	ui.description(c,"hint",16,26,w-32,36,{"Optional filter properties. Leave fields blank or choose Unknown when the value is unavailable."},14)
+	local function collect()
+		for _,key in ipairs(visible) do
+			local control=c["extra_"..key];local value=parser.booleans[key] and key~="TransfiguredGem" and control:GetSelValue() or control.buf
+			if parser.numeric[key] then local n=value~="" and tonumber(value);assert(value=="" or n and n==n and math.abs(n)<1e9,"Enter a finite number for "..key);draft[key]=n or nil
+			elseif key=="TransfiguredGem" then if value=="" then draft[key]=nil elseif value=="True" then draft[key]=true elseif value=="False" then draft[key]=false else draft[key]=value end
+			elseif parser.booleans[key] then if value=="Unknown" then draft[key]=nil else draft[key]=value=="Yes" end
+			elseif key=="HasEnchantment" or key=="ArchnemesisMod" or type(draft[key])=="table" then
+				if value=="" then draft[key]=nil elseif value=="[]" then draft[key]={} else draft[key]=parser.tokens(value) end
+			else draft[key]=value~="" and value or nil end
+		end
+	end
+	local function draw()
+		for _,key in ipairs(visible) do c["extra_"..key]=nil;c["extraLabel_"..key]=nil end;visible={}
+		local width=w/columns
+		for index=(page-1)*perPage+1,math.min(page*perPage,#fields) do
+			local key=fields[index];local slot=index-(page-1)*perPage-1;local x=16+(slot%columns)*width;local y=70+math.floor(slot/columns)*rowHeight
+			visible[#visible+1]=key;ui.label(c,"extraLabel_"..key,x,y,ui.fit(key:gsub("(%l)(%u)","%1 %2"),width-32,14),14)
+			local value=draft[key]
+			if parser.booleans[key] and key~="TransfiguredGem" then
+				c["extra_"..key]=new("DropDownControl"):DropDownControl(ui.anchor,{x,y+18,width-32,24},{"Unknown","Yes","No"})
+				c["extra_"..key]:SelByValue(value==nil and "Unknown" or value and "Yes" or "No")
+			else
+				if type(value)=="table" then local names={};for _,name in ipairs(value) do names[#names+1]=filters.quote(name) end;value=#names>0 and table.concat(names," ") or "[]"
+				elseif type(value)=="boolean" then value=value and "True" or "False" end
+				c["extra_"..key]=new("EditControl"):EditControl(ui.anchor,{x,y+18,width-32,24},tostring(value==nil and "" or value),nil,nil,1000)
+			end
+			c["extra_"..key].tooltipText=key=="TransfiguredGem" and "Enter True, False or the base gem name; leave blank if unknown." or (key=="HasEnchantment" or key=="ArchnemesisMod") and "Enter quoted names, [] for a known empty list, or leave blank if unknown." or key
+		end
+		if dialog then for _,control in pairs(c) do if not control.anchor.other then control.anchor.other=dialog end end;ui.style(c,{keepExtra=true}) end
+	end
+	button(c,"extraPrevious",16,h-48,76,"<",function() attempt(function() collect();page=math.max(1,page-1);draw() end) end)
+	button(c,"extraNext",104,h-48,76,">",function() attempt(function() collect();page=math.min(pages,page+1);draw() end) end)
+	c.extraPrevious.enabled=function() return page>1 end;c.extraNext.enabled=function() return page<pages end
+	c.extraPage=ui.label(c,"extraPage",194,h-42,"",14);c.extraPage.label=function() return "^7Page "..page.." / "..pages end
+	button(c,"keepExtra",w-318,h-48,150,"Use properties",function() attempt(function() collect();save(draft);main:ClosePopup() end) end)
+	button(c,"cancelExtra",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)
+	draw();ui.style(c,{keepExtra=true});main:OpenPopup(w,h,"More sample properties",c,nil,nil,"cancelExtra");dialog=main.popups[1]
+end
 function M.EditSample(item,save)
 	local c={};local w,h=math.min(820,main.screenW-40),math.min(560,main.screenH-60)
-	local fields={"BaseType","Class","Rarity","ItemLevel","AreaLevel","DropLevel","Width","Height","UnidentifiedItemTier","SocketGroup","Sockets","SocketColours","LinkedSockets","StackSize","GemLevel","MapTier","Quality","BaseDefencePercentile","MemoryStrands","AlwaysShow","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence","HasExplicitMod"}
+	local fields=sampleFields;local extra=copyTable(item)
 	local columns=4;local fieldWidth=w/columns;local rowHeight=h<520 and 48 or 56
 	for i,key in ipairs(fields) do local x=16+((i-1)%columns)*fieldWidth;local y=28+math.floor((i-1)/columns)*rowHeight;ui.label(c,key.."Label",x,y,key:gsub("(%l)(%u)","%1 %2"),14)
 		local value=item[key];if type(value)=="table" then
@@ -163,6 +215,7 @@ function M.EditSample(item,save)
 		if value~=previousBase then
 			for _,key in ipairs({"Class","DropLevel","Width","Height","BaseDefencePercentile","MemoryStrands","MapTier","SocketGroup","Sockets","SocketColours","LinkedSockets"}) do c[key]:SetText("") end
 			c.AlwaysShow:SelByValue("Unknown")
+			for _,key in ipairs(additionalSampleFields()) do extra[key]=nil end
 			previousBase=value
 		end
 	end
@@ -172,7 +225,7 @@ function M.EditSample(item,save)
 		previousRarity=value
 	end
 	button(c,"useSample",16,h-48,140,"Test drop",function() attempt(function()
-		local nextItem=copyTable(item);for _,key in ipairs(fields) do local v=parser.booleans[key] and c[key]:GetSelValue() or c[key].buf
+		local nextItem=copyTable(extra);for _,key in ipairs(fields) do local v=parser.booleans[key] and c[key]:GetSelValue() or c[key].buf
 			if parser.numeric[key] then local n=v~="" and tonumber(v);assert(v=="" or n and n==n and math.abs(n)<1e9,"Enter a finite number for "..key);if key=="BaseDefencePercentile" and n then assert(n>=0 and n<=100,"Defence percentile must be between 0 and 100") elseif key=="MemoryStrands" and n then assert(n>=0 and n<=100 and n==math.floor(n),"Memory strands must be a whole number between 0 and 100") end;nextItem[key]=n or nil
 			elseif parser.booleans[key] then if v=="Unknown" then nextItem[key]=nil else nextItem[key]=v=="Yes" end
 			elseif key=="HasInfluence" then nextItem[key]=parser.tokens(v)
@@ -180,6 +233,7 @@ function M.EditSample(item,save)
 			else nextItem[key]=v~="" and v or nil end
 		end;save(nextItem);main:ClosePopup()
 	end) end)
+	button(c,"moreSample",168,h-48,160,"More properties",function() M.EditAdditionalSample(extra,function(value) extra=value end) end)
 	button(c,"cancel",w-156,h-48,140,"Cancel",function() main:ClosePopup() end);ui.style(c,{useSample=true});main:OpenPopup(w,h,"Test a drop",c,nil,"BaseType","cancel")
 end
 function M.Export(profile,raw)
