@@ -10,6 +10,12 @@ local function applyOverlay(data,overlay,pause)
 	data.modifierPatch=overlay.clientVersion
 	return data
 end
+local function applyBench(data,catalogue)
+	assert(catalogue.schemaVersion==1 and catalogue.clientVersion=="3.30.0.1.4" and catalogue.benchSha256=="d664372c28784a65f9c10c1b8d36608d084ac698a6caaafbaf4be40be8b6f76a" and type(catalogue.bench)=="table" and #catalogue.bench==782 and type(catalogue.benchMods)=="table","Invalid crafting bench catalogue")
+	data.bench=catalogue.bench;data.benchMods=catalogue.benchMods
+	data.benchPatch="3.30.0.2"
+	return data
+end
 local function readData(name)
 	local root=GetScriptPath();local f=assert(io.open((root ~= "" and root.."/" or "").."Data/Crafting/"..name,"rb"))
 	local raw=f:read("*a");f:close();return raw
@@ -18,7 +24,8 @@ function A.data()
 	if not cached then
 		local result=assert(json.decode(readData("3.29.json")))
 		local overlay=assert(json.decode(readData("3.30-modifier-overlay.json")))
-		cached=applyOverlay(result,overlay)
+		applyOverlay(result,overlay)
+		cached=applyBench(result,assert(json.decode(readData("3.30-bench.json"))))
 	end
 	return cached
 end
@@ -61,7 +68,9 @@ function A.prepare(checkpoint)
 		space();assert(pos>#raw,"Trailing crafting data");return result
 	end
 	local result=document();raw=readData("3.30-modifier-overlay.json");pos=1
-	local overlay=document();applyOverlay(result,overlay,pause);cached=cached or result
+	local overlay=document();applyOverlay(result,overlay,pause)
+	raw=readData("3.30-bench.json");pos=1
+	local bench=document();applyBench(result,bench);cached=cached or result
 end
 local methods={
 	fossil="Fossil resonator",harvest_reforge="Harvest: reforge with a tagged modifier",harvest_augment="Harvest: add tagged / remove random",
