@@ -56,6 +56,10 @@ function M.Open(build,source,layout,controller)
 	local function draft(field) dirty=true;history:record(data,field);ui.draft(build,"filters") end
 	local function snapshot() return {data=data,selected=profile and profile.id,page=page,category=category,scope=scope,query=query,rule=selected,sample=item,dirty=dirty,seed=seed,sceneKind=sceneKind,showHidden=showHidden,history=history:snapshot(),tierState=tierView and tierView.snapshot() or tierState,sceneSettings=settings,sampleHistory=samples,sampleSetId=sampleSetId,scenePage=scenePage} end
 	local function reopen() layout.navigate("filters",snapshot()) end
+	local function openSource(origin)
+		local ok,reason=require("Modules.LootFilterDependencies").open(build,layout,origin)
+		if not ok then main:OpenMessagePopup("Linked source",reason) end
+	end
 	local function targetPreview()
 		local state=transient.filterSceneTargets;local dependency=require("Modules.LootFilterDependencies")
 		if state and (state.job.profile~=profile or not dependency.current(state.job)) then state=nil;transient.filterSceneTargets=nil end
@@ -242,7 +246,7 @@ function M.Open(build,source,layout,controller)
 			elseif entry.id=="changes" then require("Classes.PlanningBrowserControl").Open("Filter changes",require("Modules.LootFilterEditing").review(saver.data,data))
 			elseif entry.id=="links" and profile then
 				refreshDependencies();if not dependencies or dependencyJob then main:OpenMessagePopup("Linked filter targets",dependencyError or "Checking build pickups. Please try again shortly.");return end
-				require("Classes.PlanningBrowserControl").Open("Linked filter targets",dependencies.entries,{action="Open source",choose=function(entry) main:ClosePopup();require("Modules.LootFilterDependencies").open(build,layout,entry.origin) end,closeOnChoose=false,
+				require("Classes.PlanningBrowserControl").Open("Linked filter targets",dependencies.entries,{action="Open source",choose=function(entry) main:ClosePopup();openSource(entry.origin) end,closeOnChoose=false,
 					secondary={label="Refresh build pickups",run=function() main:ClosePopup();generatePickups() end}})
 			elseif entry.id=="campaign" and profile then require("Classes.LootFilterCampaignControl").Open(build,profile.campaign,function(value) profile.campaign=value;draft();reopen() end)
 			elseif entry.id=="structure" and profile then require("Classes.LootFilterStructureControl").Open(profile,function(rule) editRule(rule,keepRule) end)
@@ -379,7 +383,7 @@ function M.Open(build,source,layout,controller)
 		c.detail=new("TextListControl"):TextListControl(ui.anchor,{detailX,260,detailW,h-382},nil,{})
 		button(c,"appearance",detailX,h-110,detailW,"Colours, sound & size",edit)
 		c.appearance.width=math.floor((detailW-12)/2);c.appearance.label="Appearance"
-		button(c,"openSource",detailX+math.floor((detailW-12)/2)+12,h-110,math.floor((detailW-12)/2),"Open source",function() require("Modules.LootFilterDependencies").open(build,layout,assert(selectedRule().origin)) end)
+		button(c,"openSource",detailX+math.floor((detailW-12)/2)+12,h-110,math.floor((detailW-12)/2),"Open source",function() openSource(assert(selectedRule().origin)) end)
 		c.openSource.enabled=function() return selectedRule() and selectedRule().origin~=nil end;c.openSource.tooltipText="Open the craft, gear, resource, skill guide or Atlas plan that generated this pickup."
 		button(c,"sampleEdit",detailX,h-72,detailW,"Test sample properties",function() controller.EditSample(item,function(next) rememberSample(next);compile();updateDetail() end) end)
 		refreshList()

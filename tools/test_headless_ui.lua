@@ -1127,7 +1127,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(mapFound,"Saved Atlas map strategy did not produce a visible filter pickup")
 	local detail={};for _,row in ipairs(build.planningWorkspace.controls.detail.list) do detail[#detail+1]=row[1] or "" end
 	assert(table.concat(detail," "):find("Linked to Atlas: "..build.savers.AtlasPlans.plans[1].title,1,true),"Atlas source title was not shown")
-	frame("filter-atlas-map-pickup");ui:text("search","")
+	frame("filter-atlas-map-pickup")
+	local removedPlan=copyTable(build.savers.AtlasPlans.plans[1]);build.savers.AtlasPlans:Remove(removedPlan.id)
+	ui:click("openSource");assert(main.popups[1] and main.popups[1].title=="Linked source" and main.popups[1].controls[1].label:find("Refresh build pickups",1,true),"Missing source did not explain how to recover")
+	frame("filter-missing-source");ui:click("close");assert(build.planningWorkspace.page=="filters","Missing source lost the filter draft")
+	build.savers.AtlasPlans:Upsert(removedPlan);ui:text("search","")
 	ui:click("viewCustomize");ui:choose("source","Base filter");frame("filter-base-catalog")
 	ui:text("search","Chaos Orb");frame("filter-search")
 	ui:click("edit");frame("filter-appearance");ui:click("textHexPick");frame("filter-colour-wheel");frame("filter-colour-preset-hover","preset7")

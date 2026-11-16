@@ -97,14 +97,14 @@ function M.poll(job)
 	return false
 end
 function M.open(build,layout,origin)
-	local kind,id=origin:match("^([^:]+):(.+)$")
-	if kind=="craft" then for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id==id then layout.openWorkbench(project);return end end
-	elseif kind=="atlas" then for _,plan in ipairs(build.savers.AtlasPlans.plans) do if plan.id==id then layout.navigate("atlas",copyTable(plan));return end end
+	local kind,id=(origin or ""):match("^([^:]+):(.+)$")
+	if kind=="craft" then for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id==id then layout.openWorkbench(project);return true end end
+	elseif kind=="atlas" then for _,plan in ipairs(build.savers.AtlasPlans.plans) do if plan.id==id then layout.navigate("atlas",copyTable(plan));return true end end
 	elseif kind=="gear" or kind=="budget" then
-		local entries=build.savers.BuildJourney.data[kind=="gear" and "wishlist" or "resources"];for _,entry in ipairs(entries) do if entry.id==id then layout.navigate("journey",{page=kind=="gear" and "Gear" or "Budget",selected=id});return end end
+		local entries=build.savers.BuildJourney.data[kind=="gear" and "wishlist" or "resources"];for _,entry in ipairs(entries) do if entry.id==id then layout.navigate("journey",{page=kind=="gear" and "Gear" or "Budget",selected=id});return true end end
 	elseif origin=="gems" then
-		if build.planningWorkspace then build.planningWorkspace:Remember("filters") end;build:SelectControl(nil);build.viewMode="SKILLS";return
+		if build.planningWorkspace then build.planningWorkspace:Remember("filters") end;build:SelectControl(nil);build.viewMode="SKILLS";return true
 	end
-	error("The linked source is no longer available. Refresh pickups to remove its generated rules.")
+	return false,"The linked source is no longer available. Refresh build pickups to remove its generated rules."
 end
 return M

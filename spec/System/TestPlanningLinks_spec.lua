@@ -203,8 +203,10 @@ describe("Linked planning tools",function()
 	it("leaves entirely manual filters untracked and preserves personal overrides on refresh",function()
 		build.savers.CraftingProjects:Upsert(craft());local profile=filters.profile("filter","Filter");profile.rules={filters.rule("mine","Personal",{'BaseType == "Chaos Orb"'})}
 		assert.is_false(dependencies.report(build,profile).stale);local original=copyTable(profile.rules[1]);profile.rules=filters.generate(build,profile);assert.same(original,profile.rules[1])
-		local opened;dependencies.open(build,{openWorkbench=function(project) opened=project.id end},"craft:helmet");assert.equal("helmet",opened)
-		assert.has_error(function() dependencies.open(build,{},"craft:missing") end)
+		local opened;assert.is_true(dependencies.open(build,{openWorkbench=function(project) opened=project.id end},"craft:helmet"));assert.equal("helmet",opened)
+		for _,origin in ipairs({"craft:missing","atlas:missing","gear:missing","budget:missing","invalid"}) do
+			local ok,reason=dependencies.open(build,{},origin);assert.is_false(ok);assert.matches("Refresh build pickups",reason)
+		end
 	end)
 	it("reuses generated dependencies until native source state changes",function()
 		local project=craft();build.savers.CraftingProjects:Upsert(project);local p=filters.profile("filter","Filter");local original=filters.generate;local calls=0
