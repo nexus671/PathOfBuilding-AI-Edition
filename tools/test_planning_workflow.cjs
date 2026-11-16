@@ -80,10 +80,10 @@ async function main(){
   assert.match(socketVaalPlan.error,/socket or link goals.*not modeled/i);
   const exarch=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,action:{method:'eldritch_implicit',side:'Exarch',tier:2},seed:11},'crafted');
   const dualEldritch=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,initialState:exarch.nativeCrafting.state,action:{method:'eldritch_implicit',side:'Eater',tier:1},seed:12},'crafted');
-  let mixedImplicit;
+  let mixedImplicit,mixedSeed;
   for(let seed=1;seed<=20 && !mixedImplicit;seed++) {
     const result=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,initialState:dualEldritch.nativeCrafting.state,action:{method:'vaal'},seed},'crafted');
-    if(result.nativeCrafting.state.corruptedImplicits) mixedImplicit=result.nativeCrafting;
+    if(result.nativeCrafting.state.corruptedImplicits) {mixedImplicit=result.nativeCrafting;mixedSeed=seed;}
   }
   assert.ok(mixedImplicit,'Expected a corruption implicit within the fixed seed set');
   assert.equal(mixedImplicit.state.implicits.length,1);assert.equal(mixedImplicit.state.corruptedImplicits.length,1);
@@ -91,6 +91,12 @@ async function main(){
   const continuedMixed=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:mixedImplicit.itemText,action:{method:'socket_white_bench'},seed:1},'crafted');
   assert.deepEqual(continuedMixed.nativeCrafting.state.implicits,mixedImplicit.state.implicits);
   assert.deepEqual(continuedMixed.nativeCrafting.state.corruptedImplicits,mixedImplicit.state.corruptedImplicits);
+  const synthRaw=socketedRaw+'\nImplicits: 1\n+10 to Strength\nSynthesised Item';
+  const synthCorrupt=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthRaw,action:{method:'vaal'},seed:mixedSeed},'crafted');
+  assert.equal(synthCorrupt.nativeCrafting.state.corruptedImplicits.length,1);
+  assert.match(synthCorrupt.nativeCrafting.itemText,/Synthesised Item/);
+  const synthContinued=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthCorrupt.nativeCrafting.itemText,action:{method:'socket_white_bench'},seed:1},'crafted');
+  assert.deepEqual(synthContinued.nativeCrafting.state.corruptedImplicits,synthCorrupt.nativeCrafting.state.corruptedImplicits);
   const corruptedRaw='Rarity: NORMAL\nIron Hat\nItem Level: 86\nQuality: 29\nCorrupted';
   const tainted=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:corruptedRaw,action:{method:'tainted_quality'},seed:5},'crafted');
   assert.ok(tainted.nativeCrafting.state.quality>=1 && tainted.nativeCrafting.state.quality<=20);

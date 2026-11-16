@@ -2107,6 +2107,9 @@ function ItemClass:BuildRaw()
 	if self.fractured then
 		t_insert(rawLines, "Fractured Item")
 	end
+	if self.synthesised then
+		t_insert(rawLines, "Synthesised Item")
+	end
 	if self.corrupted or self.scourge then
 		t_insert(rawLines, self.corrupted and self.twiceCorrupted and "Twice Corrupted" or "Corrupted")
 	end

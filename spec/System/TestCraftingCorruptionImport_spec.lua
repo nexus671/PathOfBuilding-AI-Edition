@@ -11,6 +11,24 @@ describe("Imported corruption identities",function()
 	end
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("reopens a replaced single synthesised implicit without guessing untagged text",function()
+		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 1\n+10 to Strength\nSynthesised Item"
+		local model=sim.model(text);local changed=sim.action(model,model.initial,{method="vaal"},function() return 0 end)
+		local upgraded=sim.model(sim.perform(text,{method="alchemy"},1).itemText)
+		assert.is_true(upgraded.item.synthesised)
+		local available,reason=require("Modules.CraftingAvailability").check("fracture",upgraded.initial,upgraded)
+		assert.is_false(available);assert.is_truthy(reason:find("synthesised",1,true))
+		assert.equal(1,#changed.corruptedImplicits)
+		local result=sim.toItem(model,changed).raw;local reopened=sim.model(result)
+		assert.is_true(reopened.item.synthesised);assert.is_nil(reopened.unresolvedCorruption)
+		assert.same(changed.corruptedImplicits,reopened.initial.corruptedImplicits)
+		local target={{scope="implicit",anyOf={changed.corruptedImplicits[1].id}}}
+		assert.is_true(sim.matches(reopened.initial,target,nil,reopened))
+		local untagged=result:gsub("{modGroup:crafting_[^}]+}","")
+		assert.is_truthy(sim.model(untagged).unresolvedCorruption)
+		local forged=result:gsub("crafting_"..changed.corruptedImplicits[1].id,"crafting_InvalidModifier")
+		assert.is_truthy(sim.model(forged).unresolvedCorruption)
+	end)
 	it("retains and reopens either surviving Eldritch implicit after corruption",function()
 		local model=sim.model(raw);local check=require("Modules.CraftingAvailability").check
 		local first=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state

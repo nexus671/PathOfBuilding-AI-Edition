@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview370" />
+	<Version number="2.67.2-ai.preview371" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1179,7 +1179,7 @@
 	<File name="Classes/GemSelectControl.lua" part="program" sha1="8954e020052121d13122873b578b87e0bb7c60fc" />
 	<File name="Classes/GemTooltip.lua" part="program" sha1="aa0ce7d2eb619fc6b6e55aec9767320bee187343" />
 	<File name="Classes/ImportTab.lua" part="program" sha1="cf38f70101d41a7c6702994e77ab713213cbe1dd" />
-	<File name="Classes/Item.lua" part="program" sha1="ed39d29e3d8af2888646cf88989b1da2353a2d83" />
+	<File name="Classes/Item.lua" part="program" sha1="666a7741ee377e3bfdaa4ede320ef006aed0cde5" />
 	<File name="Classes/ItemDBControl.lua" part="program" sha1="d12523a3235ece0b3e43724b2da6ab18446bcc32" />
 	<File name="Classes/ItemListControl.lua" part="program" sha1="01546a91c647cb978ffb757cbe75a7afaa2d0cba" />
 	<File name="Classes/ItemSetListControl.lua" part="program" sha1="5ff494b708b1b633f0cf4157e30ad295c1044ed4" />
@@ -1552,7 +1552,7 @@
 	<File name="Modules/CraftingCheckpoint.lua" part="program" sha1="e4858e54dd718de8cc5d3be4f5f8e2872c93735e" />
 	<File name="Modules/CraftingCorruption.lua" part="program" sha1="8734a625b8a329c81381504b1fdcc8a170fbb528" />
 	<File name="Modules/CraftingCorruption330.lua" part="program" sha1="b016eae80805a14eaf99a073902e9d0312351dc4" />
-	<File name="Modules/CraftingCorruptionImport.lua" part="program" sha1="c6420d8984701a0b5f574d7c34c66e36ab199144" />
+	<File name="Modules/CraftingCorruptionImport.lua" part="program" sha1="d42f3faa0527da3da5057e525c3a53337462279e" />
 	<File name="Modules/CraftingDescriptions330.lua" part="program" sha1="8435ff0db71e938b1589b67adac1c9d4bbd44a83" />
 	<File name="Modules/CraftingDesolation330.lua" part="program" sha1="c5274eb90fccc51fbdae63894c11d9ff8a3598a1" />
 	<File name="Modules/CraftingEnchants.lua" part="program" sha1="abfabdf5af449d8fb9d0544efdabd77d3b25c4ee" />

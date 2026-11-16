@@ -3,10 +3,14 @@ local I={}
 function I.resolve(M,model,metadata)
 	local item=model.item
 	if not item.corrupted or #item.implicitModLines==0 then return end
-	if item.synthesised then return nil,"unresolved" end
 	local infer=require("Modules.CraftingImport").inferRange
 	local rows={};for _,line in ipairs(item.implicitModLines) do if not line.exarch and not line.eater then rows[#rows+1]={source=line.line,group=line.modGroup,text=itemLib.applyRange(line.line,line.range or 0.5)} end end
 	if #rows==0 then return end
+	-- Synthesised implicits can resemble corruption modifiers. Only interpret
+	-- generated, explicitly identified corruption lines; still validate their text.
+	if item.synthesised then
+		for _,row in ipairs(rows) do if not row.group or row.group:sub(1,9)~="crafting_" then return nil,"unresolved" end end
+	end
 	if #rows>12 then return nil,"unresolved" end
 	if item.base.implicit and type(item.base.implicit)~="string" then return nil,"unresolved" end
 	local base={};for line in (item.base.implicit or ""):gmatch("[^\n]+") do base[#base+1]=line end
