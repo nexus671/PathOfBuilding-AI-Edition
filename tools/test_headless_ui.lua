@@ -1012,6 +1012,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	frame("covens-passive-tree");assert(table.concat(build.controls.warnings.lines," "):find("preview",1,true),"Preview warning missing")
 	ui:click("atlas");ui:text("search","Massing Forces");ui:click("find");ui:click("allocate");frame("covens-atlas-tree")
 	assert(build.planningWorkspace.controls.canvas.tree.maxPoints==150,"Atlas preview lost its 150 point budget")
+	ui:click("progression");ui:click("strategyTab");ui:text("maps","Run Strand Maps");ui:click("keep")
 	ui:click("keep");assert(build.savers.AtlasPlans.plans[1].version=="3.30.0-preview","Atlas preview version not retained")
 	ui:click("nav_journey");ui:click("page4");ui:click("add");ui:text("title","Pristine Fossils");ui:click("keep")
 	local function filterTool(query)
@@ -1120,6 +1121,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 	assert(foundBudget,"Saved fossil budget did not generate a linked filter pickup")
 	frame("filter-budget-fossil-pickup")
+	ui:click("viewCustomize");ui:choose("source","My rules");ui:text("search","Strand Map")
+	local mapFound=false;for _,row in ipairs(build.planningWorkspace.controls.rules.list) do if row.entry and row.entry.rule.title=="Strand Map" then mapFound=true end end
+	assert(mapFound,"Saved Atlas map strategy did not produce a visible filter pickup");frame("filter-atlas-map-pickup");ui:text("search","")
 	ui:click("viewCustomize");ui:choose("source","Base filter");frame("filter-base-catalog")
 	ui:text("search","Chaos Orb");frame("filter-search")
 	ui:click("edit");frame("filter-appearance");ui:click("textHexPick");frame("filter-colour-wheel");frame("filter-colour-preset-hover","preset7")

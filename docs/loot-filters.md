@@ -33,6 +33,8 @@ Create campaign, early mapping and endgame profiles for Normal or Ruthless. In R
 
 For budget pickups, use an exact currency name such as `Pristine Fossil` or `Greater Eldritch Ichor`; simple plurals are recognised. The bundled crafting-item catalogue supplies the names, including fossils, catalysts, resonators and Eldritch currencies. Service descriptions and unrecognised budget labels do not become item rules.
 
+Atlas strategies can also name map bases, such as `Strand Map` or `Beach Maps`, in the maps or supplies fields. Auto-adjust creates linked exact-base pickups for recognised names, preferring longer names when they overlap. List wanted maps in those fields; the generator does not interpret negation in free text. The bundled 3.30.0.1.4 map-name list identifies item bases, not whether a map is currently obtainable or part of the active Atlas.
+
 Configured Awakener and recombination donors also add base pickups, using the donor's base type and minimum item level when provided. These broad rules do not identify the donor's required modifiers, influence or rolls; inspect an item before using it. If a configured donor cannot be read, its previous generated donor pickups are kept and the guide is flagged for review.
 
 If a saved recipe cannot be inspected, or an action has no item ingredient breakdown, its previous generated recipe pickups are kept and the affected guide is listed for review. Known ingredients are still added. MCP generation returns the same warnings.

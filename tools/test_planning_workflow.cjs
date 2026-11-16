@@ -496,7 +496,7 @@ async function main(){
   assert.equal(extended.atlas.routing.heuristic,false);assert.ok(extended.atlas.plan.nodes.includes(nextAtlas.id));
   const unfundedAtlas=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{...starterAtlas,budget:0},targets:[65225]},'failed');assert.match(JSON.stringify(unfundedAtlas),/earned points.*Unwavering Vision/);
   await queued('propose_atlas_plan',{baseRevision:context.revision,plan:starterAtlas},'review');await host('apply');context=(await call('get_build_context')).context;
-  const finalAtlas={id:'final-atlas',title:'Final Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'final',previousId:'starter-atlas'},strategy:{maps:'Chosen maps',scarabs:'Supplied consumables',requirements:'Unlocks complete',avoid:'Reflect',setupCost:{amount:25,currency:'chaos',source:'Workflow quote',quotedAt:1700000000}}};
+  const finalAtlas={id:'final-atlas',title:'Final Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'final',previousId:'starter-atlas'},strategy:{maps:'Run Strand Map and Beach Maps',scarabs:'Supplied consumables',requirements:'Unlocks complete',avoid:'Reflect',setupCost:{amount:25,currency:'chaos',source:'Workflow quote',quotedAt:1700000000}}};
   await queued('propose_atlas_plan',{baseRevision:context.revision,plan:finalAtlas},'review');await host('apply');context=(await call('get_build_context')).context;
   const recipe={steps:[{method:'alchemy',onFailureAction:'stop',recoveryNotes:'Stop at the recorded budget'}],targets:[{anyOf:[modifier]}]};
   const simulated=await queued('simulate_crafting',{baseRevision:context.revision,itemText:raw,recipe,options:{trials:4,maxActions:1,seed:104729}},'crafted');assert.ok(simulated.nativeCrafting);
@@ -519,6 +519,7 @@ async function main(){
   const saved=await call('get_build_journey');assert.equal(saved.budget.chaos.available,60);assert.equal(saved.journey.milestones[0].wishlistId,'helmet');
   const lootProfile={id:'mapping',title:'Build pickups',preset:'early_maps',strictness:2,rules:[]};
   const generated=await queued('generate_loot_filter',{baseRevision:context.revision,profile:lootProfile},'generated');
+  const mapPickup=generated.profile.rules.find(rule=>rule.title==='Strand Map');assert.ok(mapPickup);assert.equal(mapPickup.origin,'atlas:final-atlas');assert.match(mapPickup.text,/BaseType == "Strand Map"/);
   const fossilPickup=generated.profile.rules.find(rule=>rule.title==='Pristine Fossil');assert.ok(fossilPickup);assert.equal(fossilPickup.origin,'budget:fossils');assert.match(fossilPickup.text,/BaseType == "Pristine Fossil"/);
   const donorPickup=generated.profile.rules.find(rule=>rule.title==='Donor base: Glorious Plate');assert.ok(donorPickup);assert.match(donorPickup.text,/ItemLevel >= 86/);
   generated.profile.appearance={minimumFontSize:36,textColor:[255,220,120,255],alertId:6,alertVolume:0,effectColor:'Purple'};

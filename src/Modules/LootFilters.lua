@@ -14,6 +14,25 @@ local function craftingResources()
 	end
 	return craftingResourceNames
 end
+-- Prefer a longer known item name when names overlap, and do not match a
+-- word inside a larger word. Matches are collected before rules are created.
+local function mentionedItems(text,names,found)
+	local lower=text:lower();local occupied={}
+	local function word(char) return char~="" and char:match("[%w_]")~=nil end
+	for _,name in ipairs(names) do
+		local needle=name:lower();local offset=1
+		while true do
+			local first,last=lower:find(needle,offset,true);if not first then break end
+			local finish=last
+			if lower:sub(last+1,last+1)=="s" and not word(lower:sub(last+2,last+2)) then finish=last+1 end
+			local overlap=false;for i=first,finish do if occupied[i] then overlap=true;break end end
+			if not overlap and not word(lower:sub(first-1,first-1)) and not word(lower:sub(finish+1,finish+1)) then
+				found[name]=true;for i=first,finish do occupied[i]=true end
+			end
+			offset=first+1
+		end
+	end
+end
 local function read(name)
 	if not cache[name] then local f=assert(io.open("Data/LootFilters/"..name,"rb"));cache[name]=f:read("*a");f:close() end
 	return cache[name]
@@ -149,6 +168,7 @@ function M.generate(build,profile,checkpoint)
 	-- service names or whole-action price quotes. User-entered budget titles
 	-- still need an exact name (or its simple plural) to become pickup rules.
 	for name in pairs(craftingResources()) do if not removed[name] then names[name]=names[name] or "Crafting resource" end end
+	for _,name in ipairs(assert(json.decode(read("map-names.json"))).names) do if not removed[name] then names[name]=names[name] or "Map" end end
 	for _,name in ipairs({"Orb of Alchemy","Chaos Orb","Divine Orb","Orb of Alteration","Orb of Augmentation","Regal Orb","Exalted Orb","Orb of Annulment","Chromatic Orb","Jeweller's Orb","Orb of Fusing","Vaal Orb"}) do names[name]="Stackable Currency" end
 	-- Only concrete currency items from modeled recipe components become drops.
 	-- Unknown prices, beasts and whole-service prices are not item identities.
@@ -184,11 +204,14 @@ function M.generate(build,profile,checkpoint)
 		local name=patch.renamed[resource.title] or aliases[resource.title:lower()] or resource.title
 		if names[name] and not removed[name] then add("resource-"..resource.id,name,{"BaseType == "..quote(name)},"budget:"..resource.id) end
 	end
+	local strategyNames={};for name in pairs(names) do strategyNames[#strategyNames+1]=name end
+	table.sort(strategyNames,function(a,b) return #a==#b and a<b or #a>#b end)
 	for _,plan in ipairs(build.savers.AtlasPlans.plans) do
 		local keywords={};local graph=require("Modules.AtlasPlanner").tree(plan.version)
 		local atlasStrategy=require("Modules.AtlasStrategy")
 		for _,id in ipairs(plan.nodes) do local node=graph.nodes[id];if node then for _,mechanic in ipairs(atlasStrategy.allMechanics(node)) do keywords[mechanic]=true end end end
-		for _,field in ipairs({"scarabs","maps"}) do for name in pairs(names) do if (plan.strategy and plan.strategy[field] or ""):lower():find(name:lower(),1,true) then add("atlas-item-"..plan.id.."-"..(#result+1),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end end
+		local mentioned={};for _,field in ipairs({"scarabs","maps"}) do mentionedItems(plan.strategy and plan.strategy[field] or "",strategyNames,mentioned) end
+		for _,name in ipairs(strategyNames) do if mentioned[name] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
 		for _,name in ipairs(patch.added["Map Fragments"] or {}) do local mechanic=name:match("^(%a+) Thread$");if mechanic and keywords[mechanic] then add("atlas-"..plan.id.."-"..mechanic,name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
 	end
 	local rules={};for _,rule in ipairs(profile.rules) do if not rule.origin then rules[#rules+1]=copyTable(rule) end end

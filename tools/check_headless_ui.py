@@ -77,7 +77,7 @@ def main():
             assert all(b"Covens pickup plan" in z.read(name) for name in z.namelist()), "ZIP lost the personal filter"
         archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1317, f"Expected 1317 UI frames, found {len(paths)}"
+    assert len(paths) == 1320, f"Expected 1320 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         jewel = json.loads((frames / f"{width}-crafting-assembled-eye-crafted.json").read_text())
         assert not any(command.get("kind") == "text" and command.get("text", "").startswith("Quality:") for command in jewel["commands"]), "Jewel card shows an inapplicable zero-quality stat"

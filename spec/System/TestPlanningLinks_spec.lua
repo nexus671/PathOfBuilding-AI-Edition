@@ -14,6 +14,20 @@ describe("Linked planning tools",function()
 		assert.is_true(ok,tostring(rules));local names={};for _,rule in ipairs(rules) do names[rule.title]=true end
 		assert.is_true(names["Blight Thread"]);assert.is_true(names["Incursion Thread"])
 	end)
+	it("generates stable map pickups from specific Atlas strategy names",function()
+		local plan={id="farming",title="Farming",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Run Shaped Strand Map and Beach Maps; avoid Toxic Sewer Mapmaker",scarabs="Use Omen of Connections"}}
+		build.savers.AtlasPlans:Upsert(plan)
+		local profile=filters.profile("map-filter","Map filter");profile.rules=filters.generate(build,profile)
+		local found={};for _,rule in ipairs(profile.rules) do if rule.origin=="atlas:farming" then found[rule.title]=rule end end
+		assert.is_truthy(found["Shaped Strand Map"]);assert.is_truthy(found["Beach Map"]);assert.is_truthy(found["Omen of Connections"])
+		assert.is_nil(found["Strand Map"]);assert.is_nil(found["Toxic Sewer Map"])
+		local oldId=found["Beach Map"].id
+		plan.strategy.maps="Beach Map, then Shaped Strand Map";build.savers.AtlasPlans:Upsert(plan)
+		assert.is_true(dependencies.report(build,profile).stale==false)
+		profile.rules=filters.generate(build,profile);found={};for _,rule in ipairs(profile.rules) do found[rule.title]=rule end
+		assert.equal(oldId,found["Beach Map"].id)
+		plan.strategy.maps="Strand Map";build.savers.AtlasPlans:Upsert(plan);assert.is_true(dependencies.report(build,profile).stale)
+	end)
 	it("lets an older saved filter review and keep the new base",function()
 		local profile=filters.profile("old-base","Old base");profile.baseCommit="3ab00dd016b00c6be7acfa989baf498842973d54"
 		profile.rules={{id="personal",title="My thread",text='Hide\n BaseType == "Frayed Thread"',enabled=true}}
