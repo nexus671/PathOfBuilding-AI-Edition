@@ -31,7 +31,8 @@ function Panel.Open(model,input,onKeep)
 	end
 	local function add(id)
 		if not seen[id] then
-			local mod=assert(model.byId[id]);candidates[#candidates+1]={label=mod.type.." | "..source(id)..table.concat(mod," / "),val=id};seen[id]=true
+			local mod=assert(model.byId[id]);local label=mod.type.." | "..source(id)..table.concat(mod," / ")
+			candidates[#candidates+1]={label=label,searchFilter=label.." "..id,val=id};seen[id]=true
 		end
 	end
 	for _,entry in ipairs(model.mods) do add(entry.id) end
@@ -51,6 +52,7 @@ function Panel.Open(model,input,onKeep)
 	end
 	edit("roll",16,154,180,50,"Roll % (0-100)")
 	controls.fractured=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{212,154,220,24},{"Not fractured","Fractured"})
+	controls.searchHint=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{448,159,0,14},"Open the list and type to search")
 	local function refresh()
 		controls.info.label=state.veil and ("Recorded unveil choices: "..#state.veil.choices..". Use them as the recipe start.") or socketAdjusted and "Abyss socket layout is experimental. Cancel discards all edits." or "Manual edits establish a new recipe start. Cancel discards all edits."
 		local list={}

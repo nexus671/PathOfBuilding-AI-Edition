@@ -43,7 +43,13 @@ describe("Drop-only Incursion modifier import",function()
 		assert.equal("Special",assert(found).source);assert.is_false(found.eligible);assert.equal(0,found.weight)
 		assert.matches("current availability is not verified",table.concat(found.reasons," "),1,true)
 		local saved;local editor=require("Classes.CraftingItemEditorControl").Open(model,model.initial,function(state) saved=state end)
-		editor.modifier:SelByValue(id,"val");assert.equal(id,editor.modifier:GetSelValueByKey("val"))
+		assert.matches("type to search",editor.searchHint.label,1,true)
+		editor.modifier.dropped=true
+		for char in id:gmatch(".") do editor.modifier:OnChar(char) end
+		assert.is_true(editor.modifier:IsSearchActive());assert.equal(1,editor.modifier:GetMatchCount())
+		editor.modifier:SetSel(1);assert.equal(id,editor.modifier:GetSelValueByKey("val"))
+		editor.modifier:ResetSearch();editor.modifier.dropped=false
+		assert.equal(id,editor.modifier:GetSelValueByKey("val"))
 		local details={};editor.modifier.tooltipFunc({AddLine=function(_,_,line) details[#details+1]=line end})
 		assert.matches("Physical Damage from Hits taken as Fire Damage",table.concat(details," "),1,true)
 		editor.rarity:SelByValue("MAGIC");editor.properties:Click();editor.add:Click();editor.keep:Click()
