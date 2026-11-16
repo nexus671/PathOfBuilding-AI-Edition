@@ -1,6 +1,6 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1029]=true,[1031]=true,[1041]=true,[1042]=true}
+local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1029]=true,[1031]=true,[1041]=true,[1042]=true}
 local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
@@ -134,6 +134,13 @@ function G.extend(M,api)
 			if id==1023 then
 				assert(#input.affixes>0,"No modifier can be retained")
 				local result=copyTable(input);result.affixes={copyTable(input.affixes[math.floor(draw()*#input.affixes)+1])};return result
+			end
+			if id==1027 then
+				assert(#input.affixes>0,"No modifier can be retained")
+				local result=copyTable(input);result.affixes={copyTable(input.affixes[math.floor(draw()*#input.affixes)+1])}
+				local roll=draw();local target=math.min(M.capacities(model,result).total,roll<8/12 and 4 or roll<11/12 and 5 or 6)
+				while #result.affixes<target do api.add(model,result,draw) end
+				return result
 			end
 			if id==1041 then
 				local lowest,choices=nil,{}

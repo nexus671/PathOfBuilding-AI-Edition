@@ -42,6 +42,19 @@ describe("Experimental Gwennen pair",function()
 		assert.equal(3,#full.affixes)
 		assert.has_error(function() sim.action(model,full,pair,function() return 0.1 end) end)
 	end)
+	it("rerolls while retaining the selected original modifier and its values",function()
+		local model,state=item();local original=copyTable(state);local pair={method="gwennen",firstOutcome=1027,secondOutcome=1000}
+		for selected=1,#state.affixes do
+			local draws={0.1,(selected-0.5)/#state.affixes,0.1};local at=0
+			local result,detail=sim.action(model,state,pair,function() at=at+1;return draws[at] or 0.37 end)
+			assert.equal(1027,detail.gwennen.outcome);assert.same(state.affixes[selected],result.affixes[1]);assert.equal(4,#result.affixes)
+			sim.validateState(model,result);assert.is_truthy(sim.toItem(model,result).raw);assert.same(original,state)
+		end
+		local unchanged=sim.action(model,state,pair,function() return 0.9 end);assert.same(original,unchanged)
+		local empty=copyTable(state);empty.affixes={};assert.has_error(function() sim.action(model,empty,pair,function() return 0.1 end) end)
+		local odds=sim.calculate(raw,pair,{},state,{requirements={minAffixes=4},trials=4})
+		assert.is_true(odds.sampled);assert.equal("gwennen_preserve_assumptions",odds.warnings[2].code)
+	end)
 	it("charges observed artifacts and never treats an unknown price as free",function()
 		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022}
 		local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
