@@ -460,6 +460,15 @@ describe("Build-owned loot filters",function()
 		for _,name in ipairs({"Allflame Ember of Kulemak","Divine Vessel","Maven's Chisel of Divination","Threaded Delirium Orb"}) do assert.is_true(titles[name],name) end
 		assert.is_nil(titles["Feral Astrolabe"]);assert.is_nil(titles["Fruiting Astrolabe"])
 	end)
+	it("distinguishes a generic Delirium Orb from named variants in Atlas strategies",function()
+		local profile=filters.profile("test","Test")
+		local strategy={scarabs="Threaded Delirium Orb",avoid=""}
+		build.savers.AtlasPlans.plans={{id="orbs",version="3.30.0-preview",nodes={},strategy=strategy}}
+		local function titles() local result={};for _,rule in ipairs(filters.generate(build,profile)) do result[rule.title]=true end;return result end
+		local found=titles();assert.is_true(found["Threaded Delirium Orb"]);assert.is_nil(found["Delirium Orb"])
+		strategy.scarabs="Delirium Orbs, Threaded Delirium Orb";strategy.avoid="Threaded Delirium Orb"
+		found=titles();assert.is_true(found["Delirium Orb"]);assert.is_nil(found["Threaded Delirium Orb"])
+	end)
 	it("migrates renamed supplies in saved Atlas strategies and exclusions",function()
 		local profile=filters.profile("test","Test")
 		local strategy={scarabs="Skittering Delirium Orb, Maven's Chisel of Scarabs",avoid="Maven's Chisel of Threads"}

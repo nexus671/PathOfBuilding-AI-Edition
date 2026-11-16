@@ -15,10 +15,11 @@ class AtlasFilterSuppliesTest(unittest.TestCase):
             "Metadata/Items/Currency/New": entry("Feral Astrolabe"),
             "Metadata/Items/Currency/Hidden": entry("Hidden Astrolabe", release="unreleased"),
             "Metadata/Items/Currency/Orb": entry("Threaded Delirium Orb"),
+            "Metadata/Items/Currency/GenericOrb": entry("Delirium Orb"),
             "Metadata/Items/Currency/Chisel": entry("Maven's Chisel of Divination"),
             "Metadata/Items/Currency/Other": entry("Divine Orb"),
         }
-        self.assertEqual(["Allflame Ember of Flesh", "Feral Astrolabe", "Maven's Chisel of Divination", "Threaded Delirium Orb"],
+        self.assertEqual(["Allflame Ember of Flesh", "Delirium Orb", "Feral Astrolabe", "Maven's Chisel of Divination", "Threaded Delirium Orb"],
                          select_items(items, {"Fruiting Astrolabe"}))
 
     def test_rejects_unreviewed_source(self):
