@@ -377,6 +377,16 @@ async function main(){
   assert.match(recombined.nativeCrafting.itemText,/Zodiac Leather/);assert.match(recombined.nativeCrafting.itemText,/Item Level: 70/);
   const recombinedNext=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:evasionRaw,action:{method:'regal'},seed:1,initialState:recombined.nativeCrafting.state},'crafted');
   assert.match(recombinedNext.nativeCrafting.itemText,/Zodiac Leather/);assert.match(recombinedNext.nativeCrafting.itemText,/Item Level: 70/);
+  const lockedSource={rarity:'RARE',affixes:[{id:'IncreasedLife0',range:0.5},{id:'bench:partial-suffix-1',range:0.5,crafted:true}]};
+  const lockedDonor=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:bodyRaw,action:{method:'bench',modId:'bench:partial-suffix-1'},initialState:{rarity:'RARE',affixes:[{id:'LocalIncreasedPhysicalDamageReductionRating1',range:0.5}]}},'crafted');
+  const lockedAction={method:'recombine',donorItem:lockedDonor.nativeCrafting.itemText};
+  const lockedResult=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:bodyRaw,action:lockedAction,initialState:lockedSource,seed:1},'crafted');
+  assert.ok(lockedResult.nativeCrafting.warnings.some(entry=>entry.code==='recombination_count_odds' && /non-exclusive/.test(entry.message)));
+  const lockedTargets=[{anyOf:['IncreasedLife0']},{anyOf:['LocalIncreasedPhysicalDamageReductionRating1']}];
+  const lockedOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:bodyRaw,action:lockedAction,initialState:lockedSource,targets:lockedTargets,options:{trials:10,seed:1}},'crafted');
+  assert.equal(lockedOdds.nativeCrafting.sampled,true);assert.ok(lockedOdds.nativeCrafting.warnings.some(entry=>entry.code==='recombination_count_odds'));
+  const lockedPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:bodyRaw,recipe:{initialState:lockedSource,steps:[lockedAction],targets:lockedTargets},options:{trials:10,maxActions:1,seed:1}},'crafted');
+  assert.equal(lockedPlan.nativeCrafting.trials,10);assert.ok(lockedPlan.nativeCrafting.warnings.some(entry=>entry.code==='recombination_count_odds'));
   const rejectedClasses=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nRusted Sword\nItem Level: 86',action:{method:'recombine',donorItem:'Rarity: NORMAL\nRusted Spike\nItem Level: 86'}},'failed');assert.match(rejectedClasses.error,/same item class/);
   const annulRaw='Rarity: NORMAL\nDriftwood Wand\nItem Level: 86';
   for(const [id,blocker] of [['LocalAddedChaosDamage1','bench:731'],['GlobalChaosSpellGemsLevel1','bench:732']]) {
