@@ -152,6 +152,11 @@ describe("Native Atlas planner", function()
 		local payload=string.char(0,0,0,6,0,0,1,113,117,0,0)
 		local url="https://www.pathofexile.com/fullscreen-atlas-skill-tree/"..common.base64.encode(payload):gsub("+","-"):gsub("/","_")
 		assert.are.equal(0,#atlas.import(url,"3.27.0").nodes)
+		-- Captured from the current official league tree after one allocation.
+		local league="https://www.pathofexile.com/atlas-skill-tree/league/AAAABgAAAR_EAAA="
+		assert.same({8132},atlas.import(league,"3.30.0-preview").nodes)
+		assert.has_error(function() atlas.import(league,"3.30.0-preview-ruthless") end)
+		assert.has_error(function() atlas.import(league,"3.29.3") end)
 	end)
 	it("preserves unknown schemas and malformed XML metadata unchanged", function()
 		local store=atlas.new(build); local raw='{"schemaVersion":99,"plans":[]}'

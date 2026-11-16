@@ -29,6 +29,8 @@ describe("3.30 Ruthless Atlas preview",function()
 		assert.same({8132,47222},plan.nodes)
 		assert.equal(full,atlas.url(plan))
 		assert.same(plan.nodes,atlas.import(full,version).nodes)
+		assert.same(plan.nodes,atlas.import(full:gsub("/ruthless/","/ruthless-league/"),version).nodes)
+		assert.has_error(function() atlas.import(full:gsub("/ruthless/","/ruthless-league/"),"3.29.3-ruthless") end)
 		assert.has_error(function() atlas.import(official,"3.30.0-preview") end)
 		assert.has_error(function() atlas.import(full:gsub("/ruthless/","/"),version) end)
 		local empty={id="empty",title="Empty",version=version,budget=150,nodes={}}
