@@ -52,6 +52,7 @@ function M.actionWarnings(action,model)
 	if action.method=="bench" and type(action.modId)=="string" and action.modId:match("^bench:partial%-") then result[#result+1]={code="partial_lock_model",message=partialWarningMessage} end
 	if action.method=="recombine" then result[#result+1]={code="recombination_count_odds",message="Recombination uses older count odds; 3.30 odds are not verified."} end
 	if action.method=="harvest_damage" then result[#result+1]={code="harvest_damage_assumptions",message="Experimental: matching elemental modifier IDs are treated as corresponding tiers, and eligible modifiers are selected uniformly. The game's tier mapping and selection odds are not verified; unsupported families are rejected."} end
+	if action.method=="harvest_resistance" then result[#result+1]={code="harvest_resistance_assumptions",message="Resistance conversion assumes matching elemental tiers and uniform selection among eligible modifiers. The game's tier mapping and selection odds are not verified; unsupported families are rejected."} end
 	if action.method=="tainted_exalt" then result[#result+1]={code="tainted_exalt_branch_limits",message="The model chooses add or remove equally. A branch can fail if no modifier can be added or removed; failed transitions are not charged. Behavior at these limits and branch odds are unverified in game."} end
 	if action.method=="tainted_chaos" then result[#result+1]={code="tainted_chaos_branch_odds",message="The model assumes equal chances to reforge or remove modifiers. The game's branch odds are unverified; the reforge uses the ordinary rare-item modifier model."} end
 	if action.method=="ducat_ukatoa" then result[#result+1]={code="ukatoa_assumptions",message="Ukatoa assumes equal Exarch/Eater and tier 1-4 chances; these odds are unverified. Modifier selection uses pinned spawn weights.",source="https://poedb.tw/us/Ukatoas_Ducat"} end
@@ -740,6 +741,7 @@ function M.simulate(raw,recipe,options)
 	for _,entry in ipairs(model.bench) do available[entry.id]=true end
 	for _,entry in ipairs(model.essences) do available[entry.modId]=true end
 	for _,entry in ipairs(model.initial.affixes) do available[entry.id]=true end
+	for _,id in ipairs(model.legacyDelveResistance or {}) do available[id]=true end
 	for id in pairs(model.special or {}) do available[id]=true end
 	for _,step in ipairs(recipe.steps) do if (step.method == "recombine" or step.method == "recombine_predictable") and step.donorItem then
 		local donor=M.model(step.donorItem)
