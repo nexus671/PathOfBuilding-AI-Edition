@@ -7,7 +7,8 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_HASH = "a6814fdd00755eca4208b2d5bae7877795e5c91a2d0935daa6748b49f26ec0ce"
+SOURCE_HASH = "06f5c7c3fa55dc566efffd16d7a6d49ce95987e67c4571c3ca77fbd8312ccb10"
+JEWEL_SOURCE_HASH = "a6814fdd00755eca4208b2d5bae7877795e5c91a2d0935daa6748b49f26ec0ce"
 BASE_COMMIT = "ae6d85a5c36857e08819852ab8732239294aba59"
 BASE_HASH = "ff3119817742fcf26a3d96db21e276fb50eb158d23f287843a4a62978239b7a2"
 RECONSTRUCTED_LEVELS = 368
@@ -24,7 +25,7 @@ def build(baseline, raw, jewel_rows=None):
     if hashlib.sha256(normalized).hexdigest() != BASE_HASH:
         raise ValueError("The crafting baseline does not match the reviewed data")
     if hashlib.sha256(raw).hexdigest() != SOURCE_HASH:
-        raise ValueError("The client modifier export does not match the reviewed 3.30.0.1.4 source")
+        raise ValueError("The client modifier export does not match the reviewed 3.30.0.2 source")
     client = json.loads(raw)
     previous = baseline["mods"]
     jewel_rows = jewel_rows or {}
@@ -55,18 +56,18 @@ def build(baseline, raw, jewel_rows=None):
         raise ValueError(f"Expected {RECONSTRUCTED_LEVELS} reviewed granted-effect levels, found {repaired}")
     if len(result) != CHANGED_RECORDS:
         raise ValueError(f"Expected {CHANGED_RECORDS} changed modifiers, found {len(result)}")
-    return {"schemaVersion": 1, "basePatch": baseline["patch"], "baseCommit": BASE_COMMIT, "clientVersion": "3.30.0.1.4",
+    return {"schemaVersion": 1, "basePatch": baseline["patch"], "baseCommit": BASE_COMMIT, "clientVersion": "3.30.0.2",
             "sourceSha256": SOURCE_HASH, "reconstructedLevels": repaired, "mods": result}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mods", type=Path, help="Pinned local 3.30.0.1.4 mods.json")
+    parser.add_argument("mods", type=Path, help="Pinned local 3.30.0.2 mods.json")
     parser.add_argument("--check", action="store_true", help="Verify the committed output without writing it")
     args = parser.parse_args()
     baseline = json.loads((ROOT / "src/Data/Crafting/3.29.json").read_text(encoding="utf-8"))
     jewels = json.loads((ROOT / "src/Data/Crafting/3.30-unveiled-jewels.json").read_text(encoding="utf-8"))
-    if jewels["clientVersion"] != "3.30.0.1.4" or jewels["sourceSha256"] != SOURCE_HASH or len(jewels["mods"]) != 53:
+    if jewels["clientVersion"] != "3.30.0.1.4" or jewels["sourceSha256"] != JEWEL_SOURCE_HASH or len(jewels["mods"]) != 53:
         raise ValueError("The unveiled jewel fixture does not match the reviewed client export")
     output = ROOT / "src/Data/Crafting/3.30-modifier-overlay.json"
     encoded = json.dumps(build(baseline, args.mods.read_bytes(), jewels["mods"]), ensure_ascii=False, separators=(",", ":")) + "\n"

@@ -5,7 +5,7 @@ local json=require("dkjson")
 local A={}
 local cached
 local function applyOverlay(data,overlay,pause)
-	assert(overlay.schemaVersion==1 and overlay.basePatch==data.patch and data.source and overlay.baseCommit==data.source.commit and overlay.clientVersion=="3.30.0.1.4" and type(overlay.mods)=="table","Invalid crafting modifier overlay")
+	assert(overlay.schemaVersion==1 and overlay.basePatch==data.patch and data.source and overlay.baseCommit==data.source.commit and overlay.clientVersion=="3.30.0.2" and type(overlay.mods)=="table","Invalid crafting modifier overlay")
 	for id,mod in pairs(overlay.mods) do data.mods[id]=mod;if pause then pause() end end
 	data.modifierPatch=overlay.clientVersion
 	return data
@@ -1131,13 +1131,13 @@ function A.extend(M,api)
 		for _,entry in ipairs(outcomes) do entry.chance=entry.weight/total*100 end
 		return {exactFor="One weighted affix draw, conditional on the supplied state and native pool",successChance=success/total*100,totalWeight=total,matchingWeight=success,outcomes=outcomes,dataPatch=A.data().patch,modifierPatch=A.data().modifierPatch,limitations=copyTable(M.limits)}
 	end
-	M.limits={"Independent PoE 1 crafting model uses 3.29.3.6 supplemental data with a 3.30.0.1.4 modifier overlay; this is not complete Craft of Exile parity.",
+	M.limits={"Independent PoE 1 crafting model uses 3.29.3.6 supplemental data with a 3.30.0.2 modifier overlay; this is not complete Craft of Exile parity.",
 		"Light Radius accuracy modifiers use 3.30 crafting ranges; existing legacy values are retained until rerolled.",
 		"Abyss jewel crafting uses the 3.30 client weight changes, including the Assembled Eye pool and seven removed natural modifiers. Existing removed modifiers are retained until removed.",
 		"The 3.30 unveiled jewel modifiers can be imported, inspected and added to hypothetical items. Unveil offers and their acquisition are not simulated; native calculation support varies by modifier.",
 		"Current coverage includes core currencies, ordinary jewels/flasks/tinctures, bench crafts, essences, weighted fossils, Harvest tag crafts, influence slams, Awakener, fractures, veiled choices, Bestiary, Eldritch crafts, base implicit/defence rerolls and deterministic socket/link bench crafts.",
 		"Tangled Fossils require a revealed resonator outcome. Automatic predictable recombination odds, unique generation and many 3.30 rules are not implemented.",
-		"The standard Orb of Annulment uses the announced 3.30 attack/caster blocker rule. Modifier metadata uses a reviewed 3.30.0.1.4 client overlay; other supplemental sources remain pinned to 3.29.3.6 where not explicitly updated.",
+		"The standard Orb of Annulment uses the announced 3.30 attack/caster blocker rule. Modifier metadata uses a reviewed 3.30.0.2 client overlay; other supplemental sources remain pinned to 3.29.3.6 where not explicitly updated.",
 		"Partial locks use uniform random selection from all modifiers on the protected side, including fractures; group conflicts and other interactions are assumptions. Core affix actions, Harvest reforge/augment, and independent socket, quality, implicit and enchantment crafts are supported; other interactions are rejected.",
 		"Bench ingredient prices use the 3.30.0.1.4 client catalogue; later client changes are not included.",
 		"Rare modifier counts and Eldritch Chaos counts are model assumptions. Numeric display rolls and sampling intervals do not establish exact in-game odds.",
