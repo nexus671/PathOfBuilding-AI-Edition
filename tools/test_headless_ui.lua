@@ -207,10 +207,17 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(main.popups[1].controls.intro.label:find("Applied Divine",1,true),"Divine Orb was not applied to the legacy item")
 	frame("crafting-light-radius-current");ui:click("close")
 	local assembled="Rarity: NORMAL\nAssembled Eye Jewel\nItem Level: 86"
-	require("Classes.CraftingSimulatorControl").Open(build,{id="abyss-330-ui",title="Assembled Eye craft",slot="Jewel",startingItem=assembled,goals={},steps={}})
+	local assembledControls=require("Classes.CraftingSimulatorControl").Open(build,{id="abyss-330-ui",title="Assembled Eye craft",slot="Jewel",startingItem=assembled,goals={},steps={},nativeRecipe={steps={},targets={},requirements={minAffixes=1}}})
 	frame("crafting-assembled-eye-base");ui:click("currency_transmute");ui:click("item")
 	assert(main.popups[1].controls.intro.label:find("Applied",1,true),"Assembled Eye craft did not apply")
 	assert(not main.popups[1].controls.itemMods.list[1][1]:find("No explicit modifiers",1,true),"Assembled Eye craft has no modifiers")
+	ui:click("tab_simulate")
+	assert(assembledControls.simulate:IsEnabled(),"An already satisfied goal must still permit simulation")
+	assert(assembledControls.simulate.tooltipText():find("Requires a normal item",1,true) and assembledControls.simulate.tooltipText():find("already meets the goal",1,true),"Simulation did not explain the unavailable action and zero-action result")
+	ui:click("simulate");local jobs=require("Modules.CraftingTasks");for i=1,1000 do if not jobs.job then break end;jobs.tick(build) end
+	local result=build.craftingAnalyses["abyss-330-ui"].results.simulation.result
+	assert(not jobs.job and result.successChance==100 and result.meanActions==0,"An already satisfied goal should succeed without an action")
+	ui:click("tab_craft")
 	frame("crafting-assembled-eye-crafted");ui:click("close")
 	local oldAbyss="Rarity: MAGIC\nSearching Eye Jewel of Escape\nCrafted: true\nPrefix: None\nSuffix: {range:0.5}AbyssAvoidElementalAilmentsWhileElusiveJewel1\nItem Level: 86\nImplicits: 0\n{suffix}15% chance to Avoid Elemental Ailments while you have Elusive"
 	require("Classes.CraftingSimulatorControl").Open(build,{id="abyss-legacy-ui",title="Legacy Abyss jewel",slot="Jewel",startingItem=oldAbyss,goals={},steps={}})

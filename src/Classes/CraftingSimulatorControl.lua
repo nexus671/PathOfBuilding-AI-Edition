@@ -669,7 +669,12 @@ function Panel.Open(build,project,layout)
 	local noTargets="Choose a target modifier or item condition first."
 	local busy="Finish or cancel the running calculation first."
 	controls.simulate.enabled=function() return actionConfigured() and not tasks.job and not targetReason() and (#targets>0 or requirements and next(requirements)~=nil) end
-	controls.simulate.tooltipText=function() return "Selected action: "..actionName().."\n"..(not actionConfigured() and "Configure an observed Gwennen pair in Settings." or tasks.job and busy or targetReason() or missingTargets() and noTargets or "Simulate from the working item using the chosen target modifiers or item conditions.") end
+	controls.simulate.tooltipText=function()
+		local message=not actionConfigured() and "Configure an observed Gwennen pair in Settings." or tasks.job and busy or targetReason() or missingTargets() and noTargets
+		if message then return "Selected action: "..actionName().."\n"..message end
+		local available,reason=workbench.available(controls.method:GetSelValueByKey("val"),state,model)
+		return "Selected action: "..actionName().."\n"..(available and "Simulate from the working item using the chosen target modifiers or item conditions." or reason.." The simulation can still succeed without an action if the item already meets the goal.")
+	end
 	controls.resourcePrices.enabled=function() return require("Modules.CraftingTasks").job==nil end
 	controls.currency.enabled=function() return not draft.priceBook or not next(draft.priceBook.values) end
 	controls.currency.showDisabledValue=true
