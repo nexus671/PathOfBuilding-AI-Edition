@@ -37,8 +37,19 @@ function M.Open(model,state,options)
 	button("choose",16,h-42,200,options.action or "Require modifier",function() if selected then options.choose(selected.id);main:ClosePopup() end end)
 	c.choose.enabled=function() return selected~=nil end
 	if options.alternative then button("alternative",228,h-42,200,"Add alternative",function() if selected then options.alternative(selected.id);main:ClosePopup() end end);c.alternative.enabled=function() return selected and (not options.canAlternative or options.canAlternative()) end end
-	if options.present then button("present",440,h-42,200,"Set as present",function() if selected then options.present(selected.id);main:ClosePopup() end end);c.present.enabled=function() return selected and selected.eligible and not state.destroyed and not state.veil end;c.present.tooltipText="Stage this modifier on a hypothetical rare item. This sets a new recipe start and clears the working action sequence." end
+	if options.present then
+		button("present",440,h-42,200,"Set as present",function() if selected then options.present(selected.id);main:ClosePopup() end end)
+		c.present.enabled=function()
+			if not selected or state.destroyed or state.veil then return false end
+			if selected.eligible then return true end
+			if not selected.dropOnly then return false end
+			local candidate=copyTable(state);if candidate.rarity=="NORMAL" then candidate.rarity="RARE" end
+			candidate.affixes[#candidate.affixes+1]={id=selected.id,range=0.5,crafted=false}
+			return pcall(require("Modules.CraftingSimulator").validateState,model,candidate)
+		end
+		c.present.tooltipText="Stage this modifier on a hypothetical rare item. This sets a new recipe start and clears the working action sequence. Drop-only availability is not verified."
+	end
 	button("close",w-156,h-42,140,"Close",function() main:ClosePopup() end)
-	ui.style(c,{choose=true});refresh();main:OpenPopup(w,h,"Modifier tiers and weights",c,nil,"search","close")
+	ui.style(c,{choose=true});refresh();main:OpenPopup(w,h,"Modifier tiers and weights",c,nil,"search","close");return c
 end
 return M

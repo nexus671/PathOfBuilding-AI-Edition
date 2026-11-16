@@ -29,4 +29,13 @@ describe("Crafting modifier explanations",function()
 		local found;for _,row in ipairs(catalog.modifierTable.rows) do if row.id==id then found=row end end
 		assert.is_truthy(found);assert.equal(0,found.weight);assert.is_true(#found.reasons>0)
 	end)
+	it("stages an eligible drop-only identity without treating it as an ordinary draw",function()
+		local model=sim.model(raw);local id="FireResistEnhancedLevel50ModPhys";local staged
+		local browser=require("Classes.CraftingModifierControl").Open(model,model.initial,{choose=function() end,present=function(value) staged=value end})
+		browser.search:SetText(id,true)
+		assert.is_true(browser.present:IsEnabled());browser.present:Click();assert.equal(id,staged)
+		local state=copyTable(model.initial);state.rarity="RARE";state.affixes={{id=id,range=0.5}}
+		browser=require("Classes.CraftingModifierControl").Open(model,state,{choose=function() end,present=function() end})
+		browser.search:SetText(id,true);assert.is_false(browser.present:IsEnabled())
+	end)
 end)

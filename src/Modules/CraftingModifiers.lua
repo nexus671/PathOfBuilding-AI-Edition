@@ -56,7 +56,7 @@ function M.inspect(model,state)
 		if weight==0 and #reasons==0 then reasons[1]=(row.source=="Natural" or row.source=="Influence") and "Not in the current base/influence pool" or row.source.." crafting source; outside the ordinary draw pool" end
 		-- A positive engine weight is authoritative for this pool, including its special rules.
 		if weight>0 then reasons={} end
-		result.rows[#result.rows+1]={id=row.id,text=row.text,type=row.type,level=row.level,tier=row.tier,groups=row.groups,source=row.source,baseWeight=row.baseWeight,weight=weight,chance=total>0 and row.type~="Enchant" and weight/total*100 or nil,reasons=reasons,tags=row.tags,eligible=weight>0}
+		result.rows[#result.rows+1]={id=row.id,text=row.text,type=row.type,level=row.level,tier=row.tier,groups=row.groups,source=row.source,baseWeight=row.baseWeight,weight=weight,chance=total>0 and row.type~="Enchant" and weight/total*100 or nil,reasons=reasons,tags=row.tags,eligible=weight>0,dropOnly=row.dropOnly or nil}
 	end
 	return result
 end
