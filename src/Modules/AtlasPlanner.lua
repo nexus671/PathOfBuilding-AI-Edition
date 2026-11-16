@@ -106,19 +106,20 @@ local function budgetReachabilityChecked(plan)
 	local set=nodeSet(tree,plan.nodes);set[tree.start]=true
 	local grants={};for _,id in ipairs(plan.nodes) do if (tree.nodes[id].grantedPoints or 0)>0 then grants[#grants+1]=id end end
 	if #grants~=1 then return nil,"Cannot verify the allocation order for multiple point grants." end
-	local function distance(allowed)
+	local function distance(allowed,blocked)
 		local distances,queue={[tree.start]=0},{tree.start};local index=1
 		while index<=#queue do
 			local id=queue[index];index=index+1;if id==grants[1] then return distances[id] end
 			for _,other in ipairs(tree.nodes[id].links) do
-				if (not allowed or allowed[other]) and distances[other]==nil then distances[other]=distances[id]+1;queue[#queue+1]=other end
+				if (not allowed or allowed[other]) and not (blocked and blocked[other]) and distances[other]==nil then distances[other]=distances[id]+1;queue[#queue+1]=other end
 			end
 		end
 	end
 	local direct=assert(distance(set),"Disconnected grant node")
 	if direct<=available then return true,nil,direct end
-	local shortest=assert(distance(),"Unreachable grant node")
-	if shortest>available then return false,"Need "..shortest.." earned points to reach "..tree.nodes[grants[1]].name.." before its grant.",shortest end
+	local blocked=nodeSet(tree,plan.avoided or {})
+	local shortest=assert(distance(nil,blocked),"Unreachable grant node")
+	if shortest>available then return false,"Need "..shortest.." earned points to reach "..tree.nodes[grants[1]].name.." before its grant"..(next(blocked) and " while respecting avoided nodes." or "."),shortest end
 	return nil,"Reaching "..tree.nodes[grants[1]].name.." may require a temporary path and refunds; review the transition.",direct
 end
 function M.budgetReachability(plan) return budgetReachabilityChecked(M.validate(plan)) end

@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview296" />
+	<Version number="2.67.2-ai.preview297" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1503,7 +1503,7 @@
 	<File name="Modules/AddImplicitPopup.lua" part="program" sha1="f68d391d10b95c0feef70b7e8e82326a745dcb3b" />
 	<File name="Modules/AtlasArt.lua" part="program" sha1="d007b7632f8d2e284c7ed46d6a0d98c39d3e2576" />
 	<File name="Modules/AtlasExactRoute.lua" part="program" sha1="4468353ae36dc220916b985ce6de0e1403c7643c" />
-	<File name="Modules/AtlasPlanner.lua" part="program" sha1="868af67f86869678598bd6e153a78d0bb36fa30c" />
+	<File name="Modules/AtlasPlanner.lua" part="program" sha1="86f9e1785e6e47141421bcc80c26ac733f31216b" />
 	<File name="Modules/AtlasStrategy.lua" part="program" sha1="e6ad859b1fac40a1c22befd15f701c5aed7ebaa1" />
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="7214595aad55542aaeefc549e1580efc0389c4e5" />
 	<File name="Modules/Build.lua" part="program" sha1="972e8291b2ac3360e6914e39ab7db209e78e97d8" />

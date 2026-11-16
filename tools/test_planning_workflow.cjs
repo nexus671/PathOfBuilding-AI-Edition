@@ -508,6 +508,12 @@ async function main(){
   const extended=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:atlasRoute.atlas.plan,targets:[...atlasRoute.atlas.plan.nodes.slice(0,4),nextAtlas.id,nextAtlas.id],optimize:true},'atlas');
   assert.equal(extended.atlas.routing.heuristic,false);assert.ok(extended.atlas.plan.nodes.includes(nextAtlas.id));
   const unfundedAtlas=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{...starterAtlas,budget:0},targets:[65225]},'failed');assert.match(JSON.stringify(unfundedAtlas),/earned points.*Unwavering Vision/);
+  const grantPlan={id:'grant-check',title:'Grant check',version:'3.29.3',budget:138,nodes:[]};
+  const grantSearch=await queued('search_atlas_nodes',{baseRevision:context.revision,version:grantPlan.version,query:'Unwavering Vision',limit:10},'atlas');
+  const grantId=grantSearch.atlas.matches[0].id;
+  const grantRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:grantPlan,targets:[grantId]},'atlas');
+  const avoidedGrant=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{...grantPlan,budget:grantRoute.atlas.plan.nodes.length},targets:[grantId],avoid:[17321]},'failed');
+  assert.match(avoidedGrant.error,/earned points.*avoided nodes/i);
   await queued('propose_atlas_plan',{baseRevision:context.revision,plan:starterAtlas},'review');await host('apply');context=(await call('get_build_context')).context;
   const finalAtlas={id:'final-atlas',title:'Final Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'final',previousId:'starter-atlas'},strategy:{maps:'Run Strand Map and Beach Maps',scarabs:'Supplied consumables',requirements:'Unlocks complete',avoid:'Reflect, Beach Map',setupCost:{amount:25,currency:'chaos',source:'Workflow quote',quotedAt:1700000000}}};
   await queued('propose_atlas_plan',{baseRevision:context.revision,plan:finalAtlas},'review');await host('apply');context=(await call('get_build_context')).context;
