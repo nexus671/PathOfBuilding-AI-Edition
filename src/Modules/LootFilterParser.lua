@@ -161,7 +161,8 @@ function M.condition(c,item)
 		return negative
 	elseif M.booleans[c.keyword] then
 		if c.keyword=="TransfiguredGem" then
-			if values[1]=="True" or values[1]=="False" then return compare(value==true or type(value)=="string" and value~="",values[1]=="True",op) end
+			if type(value)~="boolean" and (type(value)~="string" or not value:match("%S")) then return nil,"Supply a transfigured gem state or base name" end
+			if values[1]=="True" or values[1]=="False" then return compare(value==true or type(value)=="string",values[1]=="True",op) end
 			if value==false then return op=="!" or op=="!=" end
 			if type(value)~="string" then return nil,"Supply the base name for TransfiguredGem" end
 			local found=false;for _,name in ipairs(values) do if value==name then found=true end end;return (op=="!" or op=="!=") and not found or op~="!" and op~="!=" and found

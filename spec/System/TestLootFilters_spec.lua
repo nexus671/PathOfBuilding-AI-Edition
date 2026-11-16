@@ -364,6 +364,15 @@ describe("Build-owned loot filters",function()
 		for _,keyword in ipairs({"Imbued","Vestigial","ZanaMemory","MirageMap"}) do assert.equal("Show",parser.simulate(parser.parse("Show\n "..keyword.." True\nHide"),{[keyword]=true}).action) end
 		assert.equal("Show",parser.simulate(parser.parse('Show\n TransfiguredGem "Leap Slam"\nHide'),{TransfiguredGem="Leap Slam"}).action)
 		assert.equal("Show",parser.simulate(parser.parse('Show\n TransfiguredGem True\nHide'),{TransfiguredGem="Leap Slam"}).action)
+		local anyGem=parser.parse('Show\n TransfiguredGem False\nHide')
+		for _,value in ipairs({0,{},"", "  "}) do
+			local preview=parser.simulate(anyGem,{TransfiguredGem=value})
+			assert.equal("unknown",preview.status)
+			assert.equal("Unknown",preview.action)
+		end
+		assert.equal("Show",parser.simulate(anyGem,{TransfiguredGem=false}).action)
+		assert.equal("Hide",parser.simulate(anyGem,{TransfiguredGem=true}).action)
+		assert.equal("Hide",parser.simulate(anyGem,{TransfiguredGem="Leap Slam"}).action)
 	end)
 	it("requests validated account writes without exposing tokens and distinguishes pending from success",function()
 		local account=require("Modules.LootFilterAccount");local original=launch.DownloadPage;local called=false
