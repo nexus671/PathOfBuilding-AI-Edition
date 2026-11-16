@@ -1277,7 +1277,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("targetMechanic","Harvest");ui:click("targetMechanicAdd");frame("atlas-desired-targets")
 	ui:click("targetCalculate");for i=1,500 do ui:frame();if not require("Modules.AtlasTargets").jobs[build].thread then break end end
 	assert(require("Modules.AtlasTargets").jobs[build].result,require("Modules.AtlasTargets").jobs[build].error)
-	frame("atlas-desired-preview");ui:click("targetApply");ui:click("keep");frame("atlas-desired-kept")
+	frame("atlas-desired-preview");local routeDetails={};for _,row in ipairs(main.popups[1].controls.details.list) do routeDetails[#routeDetails+1]=row[1] or "" end
+	assert(StripEscapes(table.concat(routeDetails," ")):find("Heuristic route:",1,true),"Larger Atlas route did not disclose its heuristic")
+	ui:click("targetApply");ui:click("keep");frame("atlas-desired-kept")
 	do
 		local p={id="analysis-lifecycle",title="Resumable calculation",slot="Body Armour",startingItem="Rarity: NORMAL\nPlate Vest\nItem Level: 86",goals={},steps={},preferredMethod="alchemy",nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}},priceBook={currency="chaos",source="Lifecycle quotes",quotedAt=1700000000,values={["Metadata/Items/Currency/CurrencyUpgradeToRare"]=3}}}
 		build.savers.CraftingProjects:Upsert(p)

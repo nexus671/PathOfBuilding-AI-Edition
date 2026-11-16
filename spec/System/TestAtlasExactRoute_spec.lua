@@ -78,6 +78,33 @@ describe("Exact small Atlas routes",function()
 		assert.is_truthy(atlas.validate(original));assert.is_truthy(atlas.validate(route))
 		local _,_,quick=atlas.connectOptimized(p,ids,nil,{exact=false});assert.is_true(quick.heuristic)
 	end)
+	it("improves a larger route without losing allocations or exclusions",function()
+		local p={id="refine",title="Refine",version="3.30.0-preview",budget=150,nodes={},notes=""}
+		local ids={39402,22270,60117,23416,23538,40832,52315};local checkpoints=0
+		local _,before,old=atlas.connectOptimized(p,ids,nil,{refine=false})
+		local route,after,info=atlas.connectOptimized(p,ids,nil,{checkpoint=function() checkpoints=checkpoints+1 end})
+		assert.equal(51,#before);assert.equal(50,#after);assert.is_true(old.heuristic);assert.is_true(info.heuristic);assert.is_true(checkpoints>0)
+		local tight=copyTable(p);tight.budget=50
+		assert.is_false(pcall(atlas.connectOptimized,tight,ids,nil,{refine=false}))
+		local valid,tightAdded=atlas.connectOptimized(tight,ids);assert.equal(50,#tightAdded);assert.is_truthy(atlas.validate(valid))
+		local present={};for _,id in ipairs(route.nodes) do present[id]=true end;for _,id in ipairs(ids) do assert.is_true(present[id]) end
+		assert.is_truthy(atlas.validate(route));assert.is_true(info.attempts<=old.attempts+24)
+		local start=atlas.tree(p.version).nodes[atlas.tree(p.version).start];local neighbour
+		for _,id in ipairs(start.links) do if not isValueInTable(ids,id) then neighbour=id;break end end
+		local retained=atlas.connect(p,{assert(neighbour)});local excluded
+		for id in pairs(atlas.tree(p.version).nodes) do if id~=atlas.tree(p.version).start and not isValueInTable(retained.nodes,id) and not isValueInTable(before,id) and not isValueInTable(ids,id) and (not excluded or id<excluded) then excluded=id end end
+		local _,unrefined=atlas.connectOptimized(retained,ids,{excluded},{refine=false})
+		local refined,improved=atlas.connectOptimized(retained,ids,{excluded})
+		assert.is_true(#improved<=#unrefined);assert.is_nil(isValueInTable(refined.nodes,excluded) and true or nil)
+		for _,id in ipairs(retained.nodes) do assert.is_truthy(isValueInTable(refined.nodes,id)) end
+	end)
+	it("keeps larger-route refinement resumable",function()
+		local jobs=require("Modules.AtlasTargets");local owner={}
+		local p={id="refined-slice",title="Refined slice",version="3.30.0-preview",budget=150,nodes={},notes="",desired={39402,22270,60117,23416,23538,40832,52315}}
+		local job=jobs.start(owner,p,false);local ticks=0
+		while job.thread and ticks<5000 do jobs.tick(owner,true);ticks=ticks+1 end
+		assert.is_nil(job.error);assert.is_truthy(job.result);assert.is_true(job.result.routing.heuristic);assert.is_true(ticks>1);jobs.reset(owner)
+	end)
 	it("ignores allocated and repeated targets when choosing an exact route",function()
 		local p={id="existing",title="Existing",version="3.30.0-preview",budget=150,nodes={},notes=""}
 		p=atlas.connect(p,{53175});assert.is_true(#p.nodes>=4)

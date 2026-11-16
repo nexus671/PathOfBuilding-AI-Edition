@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview288" />
+	<Version number="2.67.2-ai.preview289" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1129,7 +1129,7 @@
 	<File name="Assets/warlordicon.png" part="program" sha1="cca050c84884f5c0bb1380ece51d3c4b32be4900" />
 	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="cace3a4dee04a8664ec188084ebc034b6d011f6e" />
 	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="f6a510bce8a68a47b2d6847f41436bcd66458e5b" />
-	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="2f5e6945c19fe3f07430ae091072642479823927" />
+	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="71da7da4dd70d07c97bd325201b8534301cde555" />
 	<File name="Classes/BuildJourneyControl.lua" part="program" sha1="3429fb9b3ce4463a96838e127e3863814d47f976" />
 	<File name="Classes/BuildListControl.lua" part="program" sha1="f60f0d7f6aecbe851db896913cd1aa707c7fb304" />
 	<File name="Classes/BuildProposalControl.lua" part="program" sha1="561317a52ca3a02a51e0cd871ffa0236496bb9cc" />
@@ -1503,7 +1503,7 @@
 	<File name="Modules/AddImplicitPopup.lua" part="program" sha1="f68d391d10b95c0feef70b7e8e82326a745dcb3b" />
 	<File name="Modules/AtlasArt.lua" part="program" sha1="d007b7632f8d2e284c7ed46d6a0d98c39d3e2576" />
 	<File name="Modules/AtlasExactRoute.lua" part="program" sha1="4468353ae36dc220916b985ce6de0e1403c7643c" />
-	<File name="Modules/AtlasPlanner.lua" part="program" sha1="5438c53f18ff8851b89720ebc9c978bb60f8ef72" />
+	<File name="Modules/AtlasPlanner.lua" part="program" sha1="868af67f86869678598bd6e153a78d0bb36fa30c" />
 	<File name="Modules/AtlasStrategy.lua" part="program" sha1="e6ad859b1fac40a1c22befd15f701c5aed7ebaa1" />
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="7214595aad55542aaeefc549e1580efc0389c4e5" />
 	<File name="Modules/Build.lua" part="program" sha1="972e8291b2ac3360e6914e39ab7db209e78e97d8" />

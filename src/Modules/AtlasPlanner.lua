@@ -184,12 +184,16 @@ function M.connectOptimized(plan,targets,avoid,options)
 	-- Existing allocations and duplicate targets cannot affect the route. Drop
 	-- them before ordering and before applying the exact-solver target limit.
 	targets=pending
-	local best,additions,baseline;local attempts=0;local seen={}
+	local solver=require("Modules.AtlasExactRoute")
+	-- Bound added connection work as target sets grow.
+	local refineBudget=#targets>solver.maxTargets and options.refine~=false and math.min(24,math.max(1,math.floor(168/#targets)),#targets*(#targets-1)/2) or 0
+	local orderLimit=math.min(#targets+2,33)+refineBudget
+	local best,additions,baseline,bestOrder;local attempts=0;local seen={}
 	local function try(order)
 		local signature=table.concat(order,",");if seen[signature] then return end;seen[signature]=true;attempts=attempts+1
-		local ok,value,added=pcall(M.connect,plan,order,avoid,options.checkpoint and function(progress) progress.order=attempts;progress.orders=math.min(#targets+2,33);options.checkpoint(progress) end)
+		local ok,value,added=pcall(M.connect,plan,order,avoid,options.checkpoint and function(progress) progress.order=attempts;progress.orders=orderLimit;options.checkpoint(progress) end)
 		if attempts==1 and ok then baseline=#added end
-		if ok and (not best or #added<#additions) then best,additions=value,added end
+		if ok and (not best or #added<#additions) then best,additions,bestOrder=value,added,copyTable(order) end
 	end
 	try(targets)
 	local reversed={};for i=#targets,1,-1 do reversed[#reversed+1]=targets[i] end;try(reversed)
@@ -204,7 +208,7 @@ function M.connectOptimized(plan,targets,avoid,options)
 		for _,id in ipairs(queue) do previous[id]=false;if remaining[id] and not found then found=id end end
 		local index=1
 		while not found and index<=#queue do
-			if options.checkpoint and index%128==0 then options.checkpoint({order=attempts+1,orders=math.min(#targets+2,33),target=#nearest+1,targets=#targets}) end
+			if options.checkpoint and index%128==0 then options.checkpoint({order=attempts+1,orders=orderLimit,target=#nearest+1,targets=#targets}) end
 			local current=queue[index];index=index+1
 			for _,id in ipairs(tree.nodes[current].links) do
 				if previous[id]==nil and not blocked[id] then
@@ -216,13 +220,22 @@ function M.connectOptimized(plan,targets,avoid,options)
 		if not found then break end
 		nearest[#nearest+1]=found;remaining[found]=nil
 		local cursor=found;while not set[cursor] do set[cursor]=true;cursor=previous[cursor] end
-		if options.checkpoint then options.checkpoint({order=attempts+1,orders=math.min(#targets+2,33),target=#nearest,targets=#targets}) end
+		if options.checkpoint then options.checkpoint({order=attempts+1,orders=orderLimit,target=#nearest,targets=#targets}) end
 	end
 	if not next(remaining) then try(nearest) end
+	-- Try a bounded, evenly distributed set of pair swaps from the best order.
+	-- Keep the earlier candidates, so refinement cannot make a route worse.
+	if refineBudget>0 then
+		local seed=copyTable(bestOrder or targets);local total=#seed*(#seed-1)/2
+		for sample=0,refineBudget-1 do
+			local offset=math.floor(sample*total/refineBudget);local left=1
+			while offset>=#seed-left do offset=offset-(#seed-left);left=left+1 end
+			local right=left+1+offset;local order=copyTable(seed);order[left],order[right]=order[right],order[left];try(order)
+		end
+	end
 	-- A small target set can be solved exactly, including shared paths between
 	-- targets. Larger requests retain the bounded order search above.
 	local exact=false
-	local solver=require("Modules.AtlasExactRoute")
 	if options.exact~=false and #targets<=solver.maxTargets then
 		local found=solver.find(tree,allocated,blocked,targets,options.checkpoint)
 		if found then

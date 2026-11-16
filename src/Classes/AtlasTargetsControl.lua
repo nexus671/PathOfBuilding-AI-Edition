@@ -12,7 +12,10 @@ function M.Open(build,options)
 	local function showDetails(plan,preview)
 		local summary=targets.summary(plan);local lines={#(plan.desired or {}).." desired | "..#(plan.avoided or {}).." avoided",preview and "Preview investment" or "Current allocated investment"}
 		if preview then local diff=require("Modules.AtlasStrategy").compare(options.current(),plan);lines[#lines+1]=#diff.added.." points added | "..#diff.removed.." points refunded"
-			local job=targets.jobs[build];if job and job.result and job.result.routing and not job.result.routing.heuristic then lines[#lines+1]="Fewest added points for these targets and exclusions; existing allocations are retained." end
+			local job=targets.jobs[build]
+			if job and job.result and job.result.routing then
+				lines[#lines+1]=job.result.routing.heuristic and "Heuristic route: a shorter route may exist." or "Fewest added points for these targets and exclusions; existing allocations are retained."
+			end
 			for _,node in ipairs(diff.added) do if node.kind=="notable" or node.kind=="keystone" then lines[#lines+1]="+ "..node.name end end
 		end
 		for _,row in ipairs(summary.mechanics) do lines[#lines+1]=row.name..": "..row.total.." points | "..row.notable.." notables | "..row.small.." small | "..row.gateway.." gateways" end
