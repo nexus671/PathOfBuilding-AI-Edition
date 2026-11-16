@@ -154,7 +154,7 @@ function M.Open(build,source,layout,controller)
 		if c.detail then local lines={}
 			if selectedEntry then
 				local entry=selectedEntry
-				lines={entry.rule.title,entry.category.." / "..entry.tier,(entry.rule.enabled==false and "Disabled. The base preset still applies." or entry.base and "Base preset. Editing creates a personal override." or entry.rule.origin and "Linked to "..entry.rule.origin or "Personal rule"),tostring(#entry.block.conditions).." matching conditions",result and result.action=="Unknown" and (result.reasons[1] or "Resolve the sample properties to preview this drop.") or "Preview uses this profile's complete filter."}
+				lines={entry.rule.title,entry.category.." / "..entry.tier,(entry.rule.enabled==false and "Disabled. The base preset still applies." or entry.base and "Base preset. Editing creates a personal override." or entry.rule.origin and "Linked to "..require("Modules.LootFilterDependencies").sourceLabel(build,entry.rule.origin) or "Personal rule"),tostring(#entry.block.conditions).." matching conditions",result and result.action=="Unknown" and (result.reasons[1] or "Resolve the sample properties to preview this drop.") or "Preview uses this profile's complete filter."}
 			else lines={"Choose a rule or a drop to inspect it.","Personal rules take priority over the base preset."} end
 			c.detail.list=ui.rows(lines,c.detail.width-28,14)
 		end

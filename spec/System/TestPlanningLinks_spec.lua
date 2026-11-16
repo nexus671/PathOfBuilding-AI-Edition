@@ -28,6 +28,24 @@ describe("Linked planning tools",function()
 		assert.equal(oldId,found["Beach Map"].id)
 		plan.strategy.maps="Strand Map";build.savers.AtlasPlans:Upsert(plan);assert.is_true(dependencies.report(build,profile).stale)
 	end)
+	it("respects named Atlas exclusions without suppressing separate budget pickups",function()
+		local atlas=require("Modules.AtlasPlanner")
+		local plan=atlas.connect({id="avoid",title="Avoided maps",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Strand Map, Beach Map and Shaped Strand Map",scarabs="Breach Thread",avoid="Beach Maps and Breach Thread"}}, {4908})
+		build.savers.AtlasPlans:Upsert(plan)
+		local data=copyTable(build.savers.BuildJourney.data);data.resources={{id="budget-thread",title="Breach Thread"}};build.savers.BuildJourney.data=data
+		local profile=filters.profile("avoid-filter","Avoid filter");profile.rules=filters.generate(build,profile)
+		local found={};for _,rule in ipairs(profile.rules) do found[rule.title]=rule end
+		assert.is_truthy(found["Strand Map"]);assert.is_truthy(found["Shaped Strand Map"]);assert.is_nil(found["Beach Map"])
+		assert.equal("budget:budget-thread",found["Breach Thread"].origin)
+	end)
+	it("describes linked sources by name and handles removed sources",function()
+		build.savers.CraftingProjects:Upsert(craft())
+		build.savers.AtlasPlans:Upsert({id="maps",title="My maps",version="3.30.0-preview",budget=150,nodes={}})
+		local data=copyTable(build.savers.BuildJourney.data);data.resources={{id="fossil",title="Fossils"}};data.wishlist={{id="hat",title="Life helmet",slot="Helmet",route="craft"}};build.savers.BuildJourney.data=data
+		for origin,label in pairs({["craft:helmet"]="Crafting: Helmet",["atlas:maps"]="Atlas: My maps",["budget:fossil"]="Budget: Fossils",["gear:hat"]="Gear: Life helmet",gems="Active skill gems",["atlas:missing"]="Source no longer available"}) do
+			assert.equal(label,dependencies.sourceLabel(build,origin))
+		end
+	end)
 	it("lets an older saved filter review and keep the new base",function()
 		local profile=filters.profile("old-base","Old base");profile.baseCommit="3ab00dd016b00c6be7acfa989baf498842973d54"
 		profile.rules={{id="personal",title="My thread",text='Hide\n BaseType == "Frayed Thread"',enabled=true}}

@@ -210,9 +210,10 @@ function M.generate(build,profile,checkpoint)
 		local keywords={};local graph=require("Modules.AtlasPlanner").tree(plan.version)
 		local atlasStrategy=require("Modules.AtlasStrategy")
 		for _,id in ipairs(plan.nodes) do local node=graph.nodes[id];if node then for _,mechanic in ipairs(atlasStrategy.allMechanics(node)) do keywords[mechanic]=true end end end
-		local mentioned={};for _,field in ipairs({"scarabs","maps"}) do mentionedItems(plan.strategy and plan.strategy[field] or "",strategyNames,mentioned) end
-		for _,name in ipairs(strategyNames) do if mentioned[name] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
-		for _,name in ipairs(patch.added["Map Fragments"] or {}) do local mechanic=name:match("^(%a+) Thread$");if mechanic and keywords[mechanic] then add("atlas-"..plan.id.."-"..mechanic,name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
+		local mentioned,avoided={},{};for _,field in ipairs({"scarabs","maps"}) do mentionedItems(plan.strategy and plan.strategy[field] or "",strategyNames,mentioned) end
+		mentionedItems(plan.strategy and plan.strategy.avoid or "",strategyNames,avoided)
+		for _,name in ipairs(strategyNames) do if mentioned[name] and not avoided[name] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
+		for _,name in ipairs(patch.added["Map Fragments"] or {}) do local mechanic=name:match("^(%a+) Thread$");if mechanic and keywords[mechanic] and not avoided[name] then add("atlas-"..plan.id.."-"..mechanic,name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
 	end
 	local rules={};for _,rule in ipairs(profile.rules) do if not rule.origin then rules[#rules+1]=copyTable(rule) end end
 	for _,rule in ipairs(result) do rules[#rules+1]=rule end

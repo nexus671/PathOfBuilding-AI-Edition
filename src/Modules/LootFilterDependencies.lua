@@ -4,6 +4,15 @@ local parser=require("Modules.LootFilterParser")
 local stable=require("Modules.PlanningData")
 local M={}
 local generated=setmetatable({},{__mode="k"})
+function M.sourceLabel(build,origin)
+	if origin=="gems" then return "Active skill gems" end
+	local kind,id=(origin or ""):match("^([^:]+):(.+)$")
+	local sources={craft={"Crafting",build.savers.CraftingProjects.projects},atlas={"Atlas",build.savers.AtlasPlans.plans},
+		gear={"Gear",build.savers.BuildJourney.data.wishlist},budget={"Budget",build.savers.BuildJourney.data.resources}}
+	local source=sources[kind]
+	if source then for _,entry in ipairs(source[2]) do if entry.id==id then return source[1]..": "..entry.title end end end
+	return "Source no longer available"
+end
 local function skillInputs(build)
 	local result={weaponSet=build.itemsTab.activeItemSet.useSecondWeaponSet and 2 or 1,groups={}}
 	for _,group in ipairs(build.skillsTab.socketGroupList) do
@@ -54,7 +63,7 @@ function M.report(build,profile,checkpoint)
 		local before,after=old[origin],new.groups[origin];local warnings=warningByOrigin[origin];local status=warnings and "Needs review" or not before and "New target" or not after and "Source removed / no longer needed" or stable.encode(before.conditions)~=stable.encode(after.conditions) and "Changed" or "Current"
 		if before then result.linked=result.linked+#before.rules end
 		if status~="Current" then result.stale=true end
-		local lines={status,"Source: "..origin,"Refreshing replaces generated pickups and preserves personal overrides.","Existing pickups: "..table.concat(before and before.rules or {},", "),"Current targets: "..table.concat(after and after.rules or {},", ")}
+		local lines={status,"Source: "..M.sourceLabel(build,origin),"Refreshing replaces generated pickups and preserves personal overrides.","Existing pickups: "..table.concat(before and before.rules or {},", "),"Current targets: "..table.concat(after and after.rules or {},", ")}
 		for _,warning in ipairs(warnings or {}) do lines[#lines+1]=warning.message end
 		result.entries[#result.entries+1]={id=origin,label=(after and after.rules[1] or before and before.rules[1] or warnings[1].title).." | "..status,category=status,details=lines,origin=origin,status=status}
 	end
