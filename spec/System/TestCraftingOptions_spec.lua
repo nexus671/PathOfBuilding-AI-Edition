@@ -156,6 +156,15 @@ describe("State-aware crafting choices",function()
 		end
 		assert.is_true(attempted>=300)
 	end)
+	it("warns about modeled Tainted Exalted branches at affix limits",function()
+		local m=model("Cobalt Jewel");local input=sim.perform(m.raw,{method="alchemy"},104729).state;input.corrupted=true
+		assert.is_true(check("tainted_exalt",input,m))
+		assert.is_false(pcall(sim.action,m,input,{method="tainted_exalt"},function() return 0.1 end))
+		assert.is_true(pcall(sim.action,m,input,{method="tainted_exalt"},function() return 0.9 end))
+		local warnings=sim.actionWarnings({method="tainted_exalt"},m);local found=false
+		for _,warning in ipairs(warnings) do if warning.code=="tainted_exalt_branch_limits" then found=warning.message:find("failed transitions are not charged",1,true)~=nil end end
+		assert.is_true(found);assert.matches("can fail",require("Modules.CraftingWorkbench").hint("tainted_exalt",input,m))
+	end)
 	it("rejects missing state prerequisites before consuming randomness",function()
 		local m=model();local rare=sim.perform(m.raw,{method="alchemy"},104729).state
 		local cases={{"unravelling",m.initial},{"remembrance",rare},{"dominance",rare},{"beast_influence",rare},{"ducat_rotmother",rare},{"ducat_merrick",rare},{"ducat_genteel",m.initial},{"beast_prefix_suffix",m.initial},{"beast_suffix_prefix",m.initial},{"veiled_orb",state(m,"RARE")}}
