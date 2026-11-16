@@ -11,6 +11,18 @@ describe("Imported corruption identities",function()
 	end
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("preserves exact synthesised range identity through corruption",function()
+		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n{range:0}(8-10)% increased maximum Life\n+20 to Dexterity\nSynthesised Item"
+		local model=sim.model(text);local candidates=model.synthesisGroups[1].candidates
+		assert.equal(1,#candidates);assert.equal("SynthesisImplicitPercentLife3",candidates[1].id);assert.equal(0,candidates[1].range)
+		local target={{scope="implicit",anyOf={candidates[1].id}}};assert.is_true(sim.matches(model.initial,target,nil,model))
+		local state=copyTable(model.initial);sim.rollCorrupted(model,state,function() return 0.999 end)
+		local reopened=sim.model(sim.toItem(model,state).raw)
+		assert.equal(1,#reopened.synthesisGroups[1].candidates);assert.equal(candidates[1].id,reopened.synthesisGroups[1].candidates[1].id)
+		assert.equal(0,reopened.synthesisGroups[1].candidates[1].range);assert.is_true(sim.matches(reopened.initial,target,nil,reopened))
+		local plain=sim.model(text:gsub("{range:0}%(8%-10%)%% increased maximum Life","8%% increased maximum Life"))
+		assert.is_true(#plain.synthesisGroups[1].candidates>1);assert.is_false(pcall(sim.matches,plain.initial,target,nil,plain))
+	end)
 	it("replaces one identified synthesised modifier and reopens the survivors",function()
 		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item"
 		local model=sim.model(text);assert.equal(2,#model.synthesisGroups)

@@ -100,6 +100,11 @@ async function main(){
   const synthMultiRaw=socketedRaw+'\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item';
   const synthMultiInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:synthMultiRaw,limit:5},'inspected');
   assert.equal(synthMultiInspection.crafting.nativeEngine.synthesisGroups.length,2);
+  const synthRangeRaw=socketedRaw+'\nImplicits: 2\n{range:0}(8-10)% increased maximum Life\n+20 to Dexterity\nSynthesised Item';
+  const synthRange=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:synthRangeRaw,limit:5},'inspected');
+  assert.deepEqual(synthRange.crafting.nativeEngine.synthesisGroups[0].candidates,['SynthesisImplicitPercentLife3']);
+  const synthPlain=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:synthRangeRaw.replace('{range:0}(8-10)%','8%'),limit:5},'inspected');
+  assert.equal(synthPlain.crafting.nativeEngine.synthesisGroups[0].ambiguous,true);
   const synthTarget=synthMultiInspection.crafting.nativeEngine.synthesisGroups[0].candidates[0];
   assert.equal(synthMultiInspection.crafting.nativeEngine.synthesisGroups[0].ambiguous,false);
   const synthOdds=await queued('simulate_crafting',{baseRevision:context.revision,itemText:synthMultiRaw,recipe:{steps:[{method:'vaal'}],targets:[{scope:'implicit',anyOf:[synthTarget]}],requirements:{corrupted:true}},options:{trials:40,maxActions:1,seed:1}},'crafted');

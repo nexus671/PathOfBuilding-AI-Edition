@@ -19,16 +19,18 @@ function M.resolve(lines,modifiers)
 	for id,mod in pairs(modifiers) do
 		if #mod>0 and #mod<=#lines then
 			for start=1,#lines-#mod+1 do
-				local valid,ranges=true,{}
+				local valid,exact,hasRange,ranges=true,true,false,{}
 				for offset,template in ipairs(mod) do
 					local line=lines[start+offset-1]
+					if template~=line.line then exact=false end
 					local values=infer(template,itemLib.applyRange(line.line,line.range or 0.5))
 					if not values then valid=false;break end
-					for _,value in ipairs(values) do ranges[#ranges+1]=value end
+					if template==line.line and line.range~=nil and #values>0 then hasRange=true end
+					for _,value in ipairs(values) do ranges[#ranges+1]=template==line.line and line.range or value end
 				end
 				if valid then
 					local matches=lengths[start][#mod] or {};lengths[start][#mod]=matches
-					matches[#matches+1]={id=id,range=#ranges==0 and 0.5 or #ranges==1 and ranges[1] or ranges}
+					matches[#matches+1]={id=id,range=#ranges==0 and 0.5 or #ranges==1 and ranges[1] or ranges,exact=exact and hasRange}
 				end
 			end
 		end
@@ -54,7 +56,9 @@ function M.resolve(lines,modifiers)
 	local result,start={},1
 	for _,length in ipairs(solutions[1]) do
 		local group={};for index=start,start+length-1 do group[#group+1]=copyTable(lines[index]) end
-		group.candidates=lengths[start][length]
+		local candidates=lengths[start][length];local hasExact=false
+		for _,candidate in ipairs(candidates) do if candidate.exact then hasExact=true;break end end
+		group.candidates={};for _,candidate in ipairs(candidates) do if not hasExact or candidate.exact then candidate.exact=nil;group.candidates[#group.candidates+1]=candidate end end
 		table.sort(group.candidates,function(a,b) return tostring(a.id)<tostring(b.id) end)
 		result[#result+1]=group;start=start+length
 	end
