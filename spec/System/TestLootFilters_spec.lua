@@ -478,6 +478,15 @@ describe("Build-owned loot filters",function()
 		strategy.scarabs="Threaded Delirium Orb, Maven's Chisel of Threads";strategy.avoid="Skittering Delirium Orb"
 		found=titles();assert.is_nil(found["Threaded Delirium Orb"]);assert.is_true(found["Maven's Chisel of Threads"])
 	end)
+	it("explains Atlas strategy fields with no recognized pickup names",function()
+		local profile=filters.profile("test","Test")
+		local strategy={scarabs="Use the expensive ones",maps="Strand Map",avoid="dangerous things"}
+		build.savers.AtlasPlans.plans={{id="notes",title="Mapping notes",version="3.30.0-preview",nodes={},strategy=strategy}}
+		local _,warnings=filters.generate(build,profile);assert.equal(1,#warnings);assert.equal("atlas:notes",warnings[1].origin)
+		assert.matches("supplies, avoid",warnings[1].message,1,true)
+		strategy.scarabs="Skittering Delirium Orb";strategy.avoid="Threaded Delirium Orb"
+		_,warnings=filters.generate(build,profile);assert.equal(0,#warnings)
+	end)
 	it("generates gem rules only for enabled groups in the active weapon set",function()
 		local original=build.skillsTab.socketGroupList
 		build.skillsTab.socketGroupList={

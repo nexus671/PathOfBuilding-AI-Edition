@@ -224,8 +224,14 @@ function M.generate(build,profile,checkpoint)
 			-- request that mechanic's Thread as an automatic pickup.
 			if #atlasStrategy.blocking(selected)==0 then for _,mechanic in ipairs(atlasStrategy.allMechanics(selected)) do keywords[mechanic]=true end end
 		end end
-		local mentioned,avoided={},{};for _,field in ipairs({"scarabs","maps"}) do mentionedItems(plan.strategy and plan.strategy[field] or "",strategyNames,mentioned) end
-		mentionedItems(plan.strategy and plan.strategy.avoid or "",strategyNames,avoided)
+		local mentioned,avoided,unmatched={},{},{}
+		for _,field in ipairs({"scarabs","maps","avoid"}) do
+			local value=plan.strategy and plan.strategy[field] or "";local found={}
+			mentionedItems(value,strategyNames,found)
+			for name in pairs(found) do (field=="avoid" and avoided or mentioned)[name]=true end
+			if value:match("%S") and not next(found) then unmatched[#unmatched+1]=({scarabs="supplies",maps="maps",avoid="avoid"})[field] end
+		end
+		if #unmatched>0 then warnings[#warnings+1]={origin="atlas:"..plan.id,title=plan.title or "Atlas strategy",message="No known item name was found in the Atlas strategy's "..table.concat(unmatched,", ").." field(s). Notes are fine, but only recognized item names generate or exclude pickups."} end
 		for old,new in pairs(strategyRenames) do if mentioned[old] then mentioned[new]=true end;if avoided[old] then avoided[new]=true end end
 		for _,name in ipairs(strategyNames) do if not strategyRenames[name] and mentioned[name] and not avoided[name] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
 		for _,name in ipairs(patch.added["Map Fragments"] or {}) do local mechanic=name:match("^(%a+) Thread$");if mechanic and keywords[mechanic] and not excludedThreads[mechanic] and not avoided[name] then add("atlas-"..plan.id.."-"..mechanic,name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end

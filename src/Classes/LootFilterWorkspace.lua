@@ -439,7 +439,7 @@ function M.Open(build,source,layout,controller)
 		local targets=sceneKind=="Build targets" and transient.filterSceneTargets or nil
 		local caption=sceneKind=="Tiered gear" and (profile.mode=="Ruthless" and "RUTHLESS: NO ITEM TIERS" or "TIER COMPARISON") or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
 		sceneControl("preview",groundX,savedSet and 168 or 120,groundW,h-(savedSet and 230 or 182),scene,true,caption)
-		if targets then c.preview.tooltipText=targets.error or (#(targets.warnings or {})>0 and "Some crafting guides need review. Open linked build targets for details." or "Build target examples update as the build changes. The current test item is also shown.") end
+		if targets then c.preview.tooltipText=targets.error or (#(targets.warnings or {})>0 and "Some build targets need review. Open linked build targets for details." or "Build target examples update as the build changes. The current test item is also shown.") end
 		button(c,"inspectMatch",w-216,h-96,184,"Inspect matched rules",inspectMatches);c.inspectMatch.enabled=function() return parsed~=nil end
 	else
 		ui.label(c,"styleHeading",16,128,"A palette for your pickups",22)

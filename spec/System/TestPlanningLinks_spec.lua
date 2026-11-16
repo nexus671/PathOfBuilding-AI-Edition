@@ -364,6 +364,18 @@ describe("Linked planning tools",function()
 		assert.is_not.equal(previous,workspace.cache.filters.layout)
 		assert.is_true(#workspace.cache.filters.layout.snapshot().data.profiles[1].rules>0)
 	end)
+	it("shows unmatched Atlas strategy fields in the pickup review",function()
+		build.savers.AtlasPlans:Upsert({id="notes",title="Atlas notes",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Fast layouts"}})
+		local profile=filters.profile("warnings","Warnings");local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}}})
+		local browser=require("Classes.PlanningBrowserControl");local original=browser.Open;local captured
+		browser.Open=function(title,entries) captured={title=title,entries=entries} end
+		workspace.controls.generate:Click()
+		for _=1,20 do if not workspace.transient.filterGeneration then break end;workspace.cache.filters.layout.tick() end
+		browser.Open=original
+		assert.is_truthy(captured);assert.equal("Review build pickups",captured.title)
+		assert.equal("Atlas notes",captured.entries[1].label);assert.matches("maps",captured.entries[1].details[1],1,true)
+	end)
 	it("continues a pickup update after changing filter screens",function()
 		local profile=filters.profile("generation-nav","Generation navigation");local workspace=require("Modules.PlanningWorkspace").new(build)
 		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}}})
