@@ -443,6 +443,16 @@ describe("Build-owned loot filters",function()
 			assert.is_true(found)
 		end
 	end)
+	it("does not infer a Thread pickup from an encounter blocker",function()
+		local profile=filters.profile("test","Test")
+		local plan={id="blocked",version="3.29.3",nodes={39896}}
+		build.savers.AtlasPlans.plans={plan}
+		local function hasBreach() for _,rule in ipairs(filters.generate(build,profile)) do if rule.title=="Breach Thread" then return true end end return false end
+		assert.is_false(hasBreach())
+		plan.nodes={53006};assert.is_true(hasBreach())
+		plan.nodes={39896};plan.strategy={scarabs="Breach Thread"};assert.is_true(hasBreach())
+		plan.strategy.avoid="Breach Thread";assert.is_false(hasBreach())
+	end)
 	it("generates gem rules only for enabled groups in the active weapon set",function()
 		local original=build.skillsTab.socketGroupList
 		build.skillsTab.socketGroupList={

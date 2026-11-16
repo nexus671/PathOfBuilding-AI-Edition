@@ -213,7 +213,10 @@ function M.generate(build,profile,checkpoint)
 		local atlasStrategy=require("Modules.AtlasStrategy")
 		for _,id in ipairs(plan.nodes) do local node=graph.nodes[id];if node then
 			local rule=atlasStrategy.threadRule(plan,node);if rule and rule.kind=="exclude" then excludedThreads[rule.mechanic]=true end
-			for _,mechanic in ipairs(atlasStrategy.allMechanics(atlasStrategy.selectedNode(plan,node))) do keywords[mechanic]=true end
+			local selected=atlasStrategy.selectedNode(plan,node)
+			-- Encounter blockers mention a mechanic to turn it off, not to
+			-- request that mechanic's Thread as an automatic pickup.
+			if #atlasStrategy.blocking(selected)==0 then for _,mechanic in ipairs(atlasStrategy.allMechanics(selected)) do keywords[mechanic]=true end end
 		end end
 		local mentioned,avoided={},{};for _,field in ipairs({"scarabs","maps"}) do mentionedItems(plan.strategy and plan.strategy[field] or "",strategyNames,mentioned) end
 		mentionedItems(plan.strategy and plan.strategy.avoid or "",strategyNames,avoided)
