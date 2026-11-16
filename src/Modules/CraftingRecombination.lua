@@ -55,7 +55,7 @@ function R.extend(M,A,api)
 		local mod=model.byId[entry.id];local meta=A.data().mods[entry.id]
 		if mod.partialLock then return false end
 		if entry.fractured then return false end
-		return entry.crafted and not naturalCraft(model,entry) or meta and meta.is_essence_only or data.veiledMods[entry.id] or data.beastCraft[entry.id] or data.itemMods.Delve[entry.id] or mod.affix:find("Elevated",1,true) or mod.affix:find("Incursion",1,true) or mod.affix:find("Chosen",1,true)
+		return entry.crafted and (data.weaponTypeInfo[model.item.type] or not naturalCraft(model,entry)) or meta and meta.is_essence_only or data.veiledMods[entry.id] or data.beastCraft[entry.id] or data.itemMods.Delve[entry.id] or mod.affix:find("Elevated",1,true) or mod.affix:find("Incursion",1,true) or mod.affix:find("Chosen",1,true)
 	end
 	local function drawCount(count,random)
 		local row=assert(countWeights[count+1],"Recombination pool exceeds six affixes per side")
@@ -140,6 +140,6 @@ function R.extend(M,A,api)
 		for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do if base.item.base.armour and base.item.base.armour[kind.."BaseMin"] then state.percentiles[kind]=random() end end
 		return state
 	end
-	M.limits[#M.limits+1]="Unpredictable recombination uses preliminary community 3.30 observations for one-to-three modifier pools and older observations for larger pools. Modifier selection assumes the square root of natural spawn weights; crafted and non-rollable weights default to 1000. Special cases, exclusive-only side ordering and these weights remain uncertain; outcomes are estimates."
+	M.limits[#M.limits+1]="Unpredictable recombination uses preliminary community 3.30 observations for one-to-three modifier pools and older observations for larger pools. Crafted weapon modifiers are treated as exclusive except partial locks; this classification is experimental. Modifier selection assumes the square root of natural spawn weights; crafted and non-rollable weights default to 1000. Special cases, exclusive-only side ordering and these weights remain uncertain; outcomes are estimates."
 end
 return R

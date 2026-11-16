@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview363" />
+	<Version number="2.67.2-ai.preview364" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1573,9 +1573,9 @@
 	<File name="Modules/CraftingPrices.lua" part="program" sha1="ea48043d06b42c71364a7e265cf1dd61c6606314" />
 	<File name="Modules/CraftingProjects.lua" part="program" sha1="8bdd065d7fd362ba9c2c109ae2fd4730e4c9e09e" />
 	<File name="Modules/CraftingProperties.lua" part="program" sha1="8158a5624e99eca560b0095620ea967bf1952a84" />
-	<File name="Modules/CraftingRecombination.lua" part="program" sha1="e45b31f2bec9ab60575cdce136e45afd02afe0ef" />
+	<File name="Modules/CraftingRecombination.lua" part="program" sha1="5c8ef0bf96e7bf5dd2d882152bbe537ff511df68" />
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />
-	<File name="Modules/CraftingSimulator.lua" part="program" sha1="450457638342365aab15c7d07ba39b184bc2003d" />
+	<File name="Modules/CraftingSimulator.lua" part="program" sha1="4b2683e8c1cccba53cd0283c06d8a6ecdede9437" />
 	<File name="Modules/CraftingSockets.lua" part="program" sha1="b94fbc1bad61abad52ed53c4ae32b1f71081fab1" />
 	<File name="Modules/CraftingTasks.lua" part="program" sha1="5884e439905689280d65534ef8e78591341970d6" />
 	<File name="Modules/CraftingUnveiledJewel330.lua" part="program" sha1="5b05b7293ddad3c073f1cb82ab53932899f739c0" />
