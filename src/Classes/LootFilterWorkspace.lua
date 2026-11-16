@@ -457,6 +457,14 @@ function M.Open(build,source,layout,controller)
 		button(c,"undo",w-332,h-38,68,"Undo",function() local id=profile.id;data=history:step(true);profile=filters.find(data,id) or data.profiles[1];dirty=true;reopen() end);c.undo.enabled=#history.undo>0
 		button(c,"redo",w-256,h-38,68,"Redo",function() local id=profile.id;data=history:step(false);profile=filters.find(data,id) or data.profiles[1];dirty=true;reopen() end);c.redo.enabled=#history.redo>0
 		button(c,"export",w-172,h-38,156,"Export to PoE",function() if raw then controller.Export(profile,raw) end end)
+		c.export.enabled=function() return raw~=nil end
+		c.export.tooltipText=function()
+			if raw then return "Export or copy the compiled filter." end
+			local reason=report and report.error and ui.errorText(report.error)
+			if not reason then for _,entry in ipairs(report and report.diagnostics or {}) do if entry.error then reason="Line "..entry.line..": "..entry.error;break end end end
+			reason=reason or "The filter could not be compiled."
+			return reason..(reason:lower():find("audit",1,true) and "" or " Review Audit and update for details.")
+		end
 		ui.label(c,"saveHint",16,h-30,dirty and "Working draft / Keep in build, then Save" or "Kept profiles travel with your build",12)
 		c.saveHint.label=function() return "^7"..(dirty and "Working draft / Keep in build, then Save" or "Kept profiles travel with your build") end
 	end

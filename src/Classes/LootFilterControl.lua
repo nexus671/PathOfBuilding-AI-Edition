@@ -15,7 +15,7 @@ local function notify(title,message)
 	ui.description(c,"message",16,28,w-32,h-100,{tostring(message)},16)
 	button(c,"close",w-156,h-48,140,"Close",function() main:ClosePopup() end);ui.style(c);main:OpenPopup(w,h,title,c,"close",nil,"close")
 end
-local function attempt(callback) local ok,why=pcall(callback);if not ok then notify("Loot filter",why) end end
+local function attempt(callback) local ok,why=pcall(callback);if not ok then notify("Loot filter",ui.errorText(why)) end end
 local function modal(title,raw,save,existing)
 	local c={};local pending,pendingText,pendingPath;local w,h=math.min(860,main.screenW-40),math.min(570,main.screenH-60)
 	local attached={};for _,file in ipairs(existing or {}) do attached[file.name]=true end
@@ -282,6 +282,7 @@ function M.Export(profile,raw)
 end
 function M.Audit(profile,report,save)
 	local entries={{id="update",label="Update bundled NeverSink base",details={"Saved revision: "..profile.baseCommit,"Bundled revision: "..filters.source().commit,"Personal rules and original imported text are preserved. Templates refresh with fork releases; no live economy feed is implied.","Imported filters use safety rules for new 3.30 items; bundled presets use their own tiering."}}};for name,value in pairs(report and report.changes or {}) do entries[#entries+1]={id=name,label=name,details={value=="removed" and "Removed in 3.30. An empty BaseType list removes its entire rule." or "Renamed to "..value}} end
+	if report and report.error then entries[#entries+1]={id="compile-error",label="Compilation error",details={ui.errorText(report.error)}} end
 	for i,d in ipairs(report and report.diagnostics or {}) do entries[#entries+1]={id="diagnostic-"..i,label="Line "..d.line,details={d.error or d.warning}} end
 	require("Classes.PlanningBrowserControl").Open("Filter audit",entries,{action="Use current base",enterChooses=false,closeOnChoose=false,choose=function() save(filters.update(profile));main:ClosePopup() end})
 end

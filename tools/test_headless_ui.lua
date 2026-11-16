@@ -12,7 +12,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local ui=UI.install({width=size[1],height=size[2]})
 	local function frame(name,hover)
 		ui.cursorX,ui.cursorY=-100,-100
-		if hover then local x,y=main.popups[1].controls[hover]:GetPos();ui.cursorX,ui.cursorY=x+10,y+10 end
+		if hover then local control=main.popups[1] and main.popups[1].controls[hover] or build.planningWorkspace.controls[hover];local x,y=control:GetPos();ui.cursorX,ui.cursorY=x+10,y+10 end
 		ui:frame():write(directory.."/"..size[1].."-"..name..".json");frames=frames+1
 		assert(not __mainObject__.promptMsg,__mainObject__.promptMsg)
 	end
@@ -1241,7 +1241,17 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local attached=build.savers.LootFilters.data.profiles[1].importFiles;local found,previous=false,false;for _,file in ipairs(attached) do if file.name==linkedName then found=file.text:find("Iron Hat",1,true)~=nil elseif file.name=="rules.filter" then previous=true end end
 	assert(found and previous,"Linked filter was not saved alongside existing attachments")
 	local compiled=require("Modules.LootFilters").compile(build.savers.LootFilters.data.profiles[1]);assert(compiled:find("# Included filter: "..linkedName,1,true),"Saved linked filter was not expanded")
-	filterTool("Import filter");ui:text("text",'Hide\n    BaseType == "Orb of Binding"\nShow\n    BaseType == "Chaos Orb"\n    SetFontSize 44');ui:click("import")
+	filterTool("Import filter");ui:text("text",'Show\n SetFontSize 99');ui:click("import")
+	local importError=StripEscapes(main.popups[1].controls.message.list[1][1]);assert(importError:find("Invalid SetFontSize",1,true) and not importError:find(".lua:",1,true),"Import error exposed a source path")
+	ui:click("close");assert(main.popups[1].controls.text.buf:find("99",1,true),"Invalid import text was lost");ui:click("close")
+	local draft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];local priorTemplate,priorCommit=draft.template,draft.baseCommit
+	draft.template=nil;draft.baseCommit="outdated";ui:click("viewOverview");ui:frame()
+	assert(not build.planningWorkspace.controls.export:IsEnabled(),"An outdated base left export enabled")
+	assert(build.planningWorkspace.controls.export.tooltipText():find("bundled base changed",1,true),"Export did not explain the compilation error")
+	frame("filter-invalid-export","export")
+	draft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];draft.template=priorTemplate;draft.baseCommit=priorCommit;ui:click("viewOverview");ui:frame()
+	assert(build.planningWorkspace.controls.export:IsEnabled(),"Correcting the filter did not restore export")
+	filterTool("Import filter");ui:text("text",'Hide\n    BaseType == "Orb of Binding"\nShow\n    BaseType == "Chaos Orb"\n    SetFontSize 44');ui:click("import");ui:frame()
 	filterTool("Full file changes");frame("filter-file-changes-compiled");ui:choose("content","Original base text");frame("filter-file-changes-source");ui:text("search","SetFontSize");frame("filter-file-changes-search")
 	ui:click("copyBefore");assert(not ui.clipboard:find("SetFontSize 44",1,true),"Before source used the working draft");ui:click("copyAfter");assert(ui.clipboard:find("SetFontSize 44",1,true),"After source omitted the working change");ui:click("close");ui:click("keep")
 	ui:click("viewTiers");ui:click("tierNew");ui:text("tierName","Chaos Orb");ui:click("tierAddItem");frame("filter-tiers")
