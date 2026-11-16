@@ -140,7 +140,10 @@ function M.Account(profile,import)
 		if not target then payload.public=false end
 		if target then assert(selected.realm==payload.realm,"Choose the selected filter's realm before updating") end
 		local confirmation={};local cw,ch=math.min(760,main.screenW-40),320
-		ui.description(confirmation,"summary",16,28,cw-32,200,{target and "Replace account filter: "..(selected.filter_name or target).." ["..target.."]" or "Create a new private account filter: "..profile.title,"Realm: "..payload.realm.." | "..report.rules.." rules | "..#raw.." bytes","This publishes the current working profile, including personal rules and 3.30 migrations. Existing subscriptions are not changed. The server will validate against its current game version."},16)
+		local lines={target and "Replace account filter: "..(selected.filter_name or target).." ["..target.."]" or "Create a new private account filter: "..profile.title,"Realm: "..payload.realm.." | "..report.rules.." rules | "..#raw.." bytes"}
+		if #report.unresolvedImports>0 then lines[#lines+1]=#report.unresolvedImports.." linked filter names are unresolved. Review included files before publishing." end
+		lines[#lines+1]="This publishes the current working profile, including personal rules and 3.30 migrations. Existing subscriptions are not changed. The server will validate against its current game version."
+		ui.description(confirmation,"summary",16,28,cw-32,200,lines,16)
 		button(confirmation,"publish",16,ch-48,160,target and "Replace filter" or "Create filter",function() main:ClosePopup();request("POST",target,payload,function(value) show("Server confirmed valid filter "..value.filter.id..". Select it in game.") end) end)
 		button(confirmation,"cancel",cw-176,ch-48,160,"Cancel",function() main:ClosePopup() end);ui.style(confirmation,{publish=true});main:OpenPopup(cw,ch,"Review account publication",confirmation,nil,nil,"cancel")
 	end
@@ -236,13 +239,15 @@ function M.EditSample(item,save)
 	button(c,"moreSample",168,h-48,160,"More properties",function() M.EditAdditionalSample(extra,function(value) extra=value end) end)
 	button(c,"cancel",w-156,h-48,140,"Cancel",function() main:ClosePopup() end);ui.style(c,{useSample=true});main:OpenPopup(w,h,"Test a drop",c,nil,"BaseType","cancel")
 end
-function M.Export(profile,raw)
+function M.Export(profile,raw,report)
 	local c={};local w,h=math.min(800,main.screenW-40),342
 	local names=require("Modules.LootFilterFileNames");local extension=names.extension(profile)
+	local imports=report and report.unresolvedImports or require("Modules.LootFilterImports").summarize(parser.parse(raw),profile.importFiles)
 	ui.description(c,"help",16,28,w-32,62,{"Save a "..extension.." file, then select it in Path of Exile's item-filter settings. Exporting does not equip items or change the character."},16)
 	ui.label(c,"directoryLabel",16,106,"Destination directory",14)
 	c.directory=new("EditControl"):EditControl(ui.anchor,{16,128,w-32,26},main.userPath.."LootFilters",nil,nil,1000)
 	c.filename=new("EditControl"):EditControl(ui.anchor,{16,170,w-32,26},profile.id..extension,nil,nil,120)
+	ui.description(c,"importsStatus",16,200,w-32,30,{#imports>0 and (#imports.." linked filter names unresolved. Review them before saving.") or "All included filter files are resolved."},14)
 	button(c,"copy",16,236,140,"Copy text",function() Copy(raw) end)
 	button(c,"write",168,236,140,"Save file",function() attempt(function()
 		names.stem(profile,c.filename.buf)
@@ -252,6 +257,15 @@ function M.Export(profile,raw)
 		MakeDir(directory);local file=assert(io.open(target,"wb"),"Could not create filter file");assert(file:write(raw));assert(file:close());notify("Filter exported",target)
 	end) end)
 	button(c,"raw",320,236,140,"Inspect text",function() modal("Compiled filter",raw) end)
+	button(c,"reviewImports",472,236,160,"Review imports",function()
+		local entries={};for _,entry in ipairs(imports) do
+			local status=entry.cycle and "Circular reference" or entry.optional and "Optional file missing" or "Required file missing"
+			entries[#entries+1]={id=entry.name,label=entry.name,details={status,entry.count.." reference(s) in the compiled filter.",entry.cycle and "Resolve the cycle in Included filter files." or entry.optional and "The game may skip this optional file if it is absent." or "Attach the file in Included filter files, or supply it alongside the exported filter."}}
+		end
+		require("Classes.PlanningBrowserControl").Open("Unresolved filter imports",entries)
+	end)
+	c.reviewImports.enabled=#imports>0
+	c.reviewImports.tooltipText="Review missing and circular references retained in the exported text."
 	button(c,"writeAll",16,282,280,"Save all seven strictnesses",function() attempt(function()
 		names.stem(profile,c.filename.buf)
 		local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a directory")

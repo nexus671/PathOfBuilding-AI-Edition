@@ -456,7 +456,7 @@ function M.Open(build,source,layout,controller)
 	if profile then
 		button(c,"undo",w-332,h-38,68,"Undo",function() local id=profile.id;data=history:step(true);profile=filters.find(data,id) or data.profiles[1];dirty=true;reopen() end);c.undo.enabled=#history.undo>0
 		button(c,"redo",w-256,h-38,68,"Redo",function() local id=profile.id;data=history:step(false);profile=filters.find(data,id) or data.profiles[1];dirty=true;reopen() end);c.redo.enabled=#history.redo>0
-		button(c,"export",w-172,h-38,156,"Export to PoE",function() if raw then controller.Export(profile,raw) end end)
+		button(c,"export",w-172,h-38,156,"Export to PoE",function() if raw then controller.Export(profile,raw,report) end end)
 		c.export.enabled=function() return raw~=nil end
 		c.export.tooltipText=function()
 			if raw then return "Export or copy the compiled filter." end

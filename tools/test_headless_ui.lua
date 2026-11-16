@@ -1230,6 +1230,17 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:text("filename",ruthless.id..".filter");ui:click("write");ui:click("close");assert(not io.open(directory.."/"..ruthless.id..".filter","rb"),"Ruthless export accepted a normal extension")
 		ui:click("close")
 	end
+	do
+		local filters=require("Modules.LootFilters");local imported=filters.profile("unresolved","Unresolved imports")
+		imported.template='Import "outer.filter"\nImport "optional.filter" Optional\nShow';imported.importFiles={{name="outer.filter",text='Import "missing.filter"\nImport "outer.filter"'}}
+		local raw,report=filters.compile(imported);assert(#report.unresolvedImports==3,"Expected missing and circular imports")
+		local export=require("Classes.LootFilterControl");export.Export(imported,raw,report)
+		local panel=main.popups[1].controls;assert(panel.reviewImports:IsEnabled() and panel.importsStatus.list[1][1]:find("3 linked",1,true),"Export did not show unresolved imports")
+		frame("filter-export-unresolved");ui:click("reviewImports")
+		local browser=main.popups[1].controls;local statuses={};for _,row in ipairs(browser.results.list) do if row.entry then statuses[row.entry.label]=row.entry.details[1] end end
+		assert(statuses["missing.filter"]=="Required file missing" and statuses["optional.filter"]=="Optional file missing" and statuses["outer.filter"]=="Circular reference","Import statuses were not distinguished")
+		frame("filter-export-imports-review");ui:click("close");ui:click("close")
+	end
 	filterTool("Audit and update");frame("filter-audit");ui:click("close")
 	ui:click("keep");assert(#build.savers.LootFilters.data.profiles==1,"Loot filter was not kept");assert(build.savers.LootFilters.data.profiles[1].appearance.alertVolume==0,"Global appearance was not kept")
 	ui:click("nav_journey");ui:click("nav_filters");frame("filter-kept-navigation")
