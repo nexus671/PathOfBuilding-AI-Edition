@@ -5,6 +5,23 @@ describe("3.30 recombination base rules",function()
 	local function input(model,id)
 		return sim.validateState(model,{rarity="MAGIC",affixes={{id=id,range=0.5}}})
 	end
+	it("rejects partial locks on either input, including predictable calculations",function()
+		local model=sim.model(armourRaw)
+		local source=input(model,"IncreasedLife0")
+		local donor=sim.validateState(model,{rarity="RARE",affixes={{id="FireResist1",range=0.5},{id="bench:partial-prefix-1",range=0.5,crafted=true}}})
+		local donorText=sim.toItem(model,donor).raw
+		assert.is_true(sim.hasPartialLock(sim.model(donorText),sim.model(donorText).initial))
+		local random=function() return 0.5 end
+		local ordinary={method="recombine",donorItem=donorText}
+		local ok,err=pcall(sim.action,model,source,ordinary,random)
+		assert.is_false(ok);assert.matches("partial affix lock",err)
+		local predictable={method="recombine_predictable",donorItem=donorText,selectedMods={left={"IncreasedLife0"},right={"FireResist1"}},reportedSuccessChance=50}
+		ok,err=pcall(sim.calculate,armourRaw,predictable,{},source)
+		assert.is_false(ok);assert.matches("partial affix lock",err)
+		predictable.donorItem=sim.toItem(model,source).raw
+		ok,err=pcall(sim.calculate,armourRaw,predictable,{},donor)
+		assert.is_false(ok);assert.matches("partial affix lock",err)
+	end)
 	it("samples the observed 3.30 two-prefix pool across zero, one and two outputs",function()
 		local model=sim.model(armourRaw)
 		local state=input(model,"IncreasedLife0")

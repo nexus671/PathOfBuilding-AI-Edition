@@ -69,6 +69,7 @@ function R.extend(M,A,api)
 		assert(not input.corrupted and not input.mirrored and not input.veil,"Recombination requires an uncorrupted, non-mirrored item with no pending unveil")
 		assert(not current.item.synthesised and current.item.type ~= "Jewel" and current.item.type ~= "Flask" and current.item.type ~= "Tincture","This recombination model supports non-synthesised equipment")
 		local donor=M.model(assert(craft.donorItem,"Paste a donor item"));local other=donor.initial
+		assert(not M.hasPartialLock(donor,other),"Recombination with a partial affix lock on the donor is not yet modeled")
 		assert(not other.corrupted and not other.mirrored and not donor.item.synthesised,"Donor must be uncorrupted, non-mirrored and non-synthesised")
 		assert(M.sameRecombinationClass(current.item,donor.item),"Recombination requires the same item class")
 		local host=random() < 0.5 and 1 or 2

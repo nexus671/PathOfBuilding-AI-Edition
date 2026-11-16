@@ -231,7 +231,7 @@ function M.hint(method,state,model)
 	if available and method=="tainted_quality" then return "Maximum 20% quality. The modeled 1-20% range and equal odds are assumptions." end
 	if available and method=="annul" then return "3.30: remove a random modifier. Attack/caster roll blockers do not protect it; fractures and prefix/suffix locks still apply." end
 	if available and method=="binding" then return "No longer generated in 3.30. Existing Orbs of Binding still work." end
-	if available and method=="recombine" then return "3.30 uses the chosen base's item level. Count odds for one-to-three modifiers still use older estimates." end
+	if available and method=="recombine" then return "Uses the chosen base's item level and preliminary 3.30 small-pool estimates. Modifier weights and special cases are uncertain." end
 	if available and method=="ducat_ukatoa" then return "Replaces amulet implicits. Equal side and tier 1-4 chances are unverified assumptions." end
 	if available and method=="ducat_katakohi" then return "Historical Allflame craft. Socket counts, selection, attribute pools and modifier odds are experimental assumptions." end
 	if available and method=="locus" and model.item.type=="Jewel" then return "Jewel altar model assumes 25% implicit, 25% no change and 50% destruction; unverified." end
