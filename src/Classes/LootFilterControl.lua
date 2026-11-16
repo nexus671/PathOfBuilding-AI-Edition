@@ -40,7 +40,7 @@ local function modal(title,raw,save,existing)
 end
 function M.Conditions(rule,save)
 	local c={};local w,h=math.min(880,main.screenW-40),math.min(600,main.screenH-60);local parsed=parser.parse(rule.text);local block=parsed.rules[1]
-	local conditions=copyTable(block.conditions);local keywords={"BaseType","Class","Rarity","ItemLevel","AreaLevel","Quality","BaseDefencePercentile","LinkedSockets","Sockets","SocketGroup","GemLevel","MapTier","StackSize","UnidentifiedItemTier","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence"}
+	local conditions=copyTable(block.conditions);local keywords={"BaseType","Class","Rarity","ItemLevel","AreaLevel","Quality","BaseDefencePercentile","MemoryStrands","AlwaysShow","LinkedSockets","Sockets","SocketGroup","GemLevel","MapTier","StackSize","UnidentifiedItemTier","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence"}
 	for _,condition in ipairs(conditions) do local known=false;for _,k in ipairs(keywords) do if k==condition.keyword then known=true end end;if not known then keywords[#keywords+1]=condition.keyword end end
 	ui.label(c,"nameLabel",16,28,"Rule name",14);c.title=new("EditControl"):EditControl(ui.anchor,{16,50,w-200,26},rule.title,nil,nil,160)
 	c.action=new("DropDownControl"):DropDownControl(ui.anchor,{w-168,50,152,26},{"Show","Hide","Minimal"});c.action:SelByValue(block.action)
@@ -142,7 +142,7 @@ function M.Account(profile,import)
 end
 function M.EditSample(item,save)
 	local c={};local w,h=math.min(820,main.screenW-40),math.min(560,main.screenH-60)
-	local fields={"BaseType","Class","Rarity","ItemLevel","AreaLevel","DropLevel","Width","Height","UnidentifiedItemTier","SocketGroup","Sockets","SocketColours","LinkedSockets","StackSize","GemLevel","MapTier","Quality","BaseDefencePercentile","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence","HasExplicitMod"}
+	local fields={"BaseType","Class","Rarity","ItemLevel","AreaLevel","DropLevel","Width","Height","UnidentifiedItemTier","SocketGroup","Sockets","SocketColours","LinkedSockets","StackSize","GemLevel","MapTier","Quality","BaseDefencePercentile","MemoryStrands","AlwaysShow","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence","HasExplicitMod"}
 	local columns=4;local fieldWidth=w/columns;local rowHeight=h<520 and 48 or 56
 	for i,key in ipairs(fields) do local x=16+((i-1)%columns)*fieldWidth;local y=28+math.floor((i-1)/columns)*rowHeight;ui.label(c,key.."Label",x,y,key:gsub("(%l)(%u)","%1 %2"),14)
 		local value=item[key];if type(value)=="table" then
@@ -155,13 +155,14 @@ function M.EditSample(item,save)
 		else c[key]=new("EditControl"):EditControl(ui.anchor,{x,y+18,fieldWidth-32,24},tostring(value==nil and "" or value),nil,nil,240) end
 		if key=="HasExplicitMod" then c[key].tooltipText='Enter quoted modifier names. Leave blank if unknown; enter [] for a known empty list.' end
 		if key=="SocketGroup" then c[key].tooltipText='Enter linked groups, 0 for no sockets, or leave blank if unknown.' end
-		if key=="DropLevel" or key=="Width" or key=="Height" or key=="BaseDefencePercentile" then c[key].tooltipText="Leave blank if this base property is unknown." end
+		if key=="DropLevel" or key=="Width" or key=="Height" or key=="BaseDefencePercentile" or key=="MemoryStrands" then c[key].tooltipText="Leave blank if this property is unknown." end
 	end
 	local previousBase=c.BaseType.buf
-	c.BaseType.tooltipText="Changing the base clears its class, dimensions, drop level, defence percentile, map tier and sockets. Enter values for the new item."
+	c.BaseType.tooltipText="Changing the base clears its class, dimensions, drop level, defence percentile, memory strands, always-shown status, map tier and sockets. Enter values for the new item."
 	c.BaseType.changeFunc=function(value)
 		if value~=previousBase then
-			for _,key in ipairs({"Class","DropLevel","Width","Height","BaseDefencePercentile","MapTier","SocketGroup","Sockets","SocketColours","LinkedSockets"}) do c[key]:SetText("") end
+			for _,key in ipairs({"Class","DropLevel","Width","Height","BaseDefencePercentile","MemoryStrands","MapTier","SocketGroup","Sockets","SocketColours","LinkedSockets"}) do c[key]:SetText("") end
+			c.AlwaysShow:SelByValue("Unknown")
 			previousBase=value
 		end
 	end
@@ -172,7 +173,7 @@ function M.EditSample(item,save)
 	end
 	button(c,"useSample",16,h-48,140,"Test drop",function() attempt(function()
 		local nextItem=copyTable(item);for _,key in ipairs(fields) do local v=parser.booleans[key] and c[key]:GetSelValue() or c[key].buf
-			if parser.numeric[key] then local n=v~="" and tonumber(v);assert(v=="" or n and n==n and math.abs(n)<1e9,"Enter a finite number for "..key);if key=="BaseDefencePercentile" and n then assert(n>=0 and n<=100,"Defence percentile must be between 0 and 100") end;nextItem[key]=n or nil
+			if parser.numeric[key] then local n=v~="" and tonumber(v);assert(v=="" or n and n==n and math.abs(n)<1e9,"Enter a finite number for "..key);if key=="BaseDefencePercentile" and n then assert(n>=0 and n<=100,"Defence percentile must be between 0 and 100") elseif key=="MemoryStrands" and n then assert(n>=0 and n<=100 and n==math.floor(n),"Memory strands must be a whole number between 0 and 100") end;nextItem[key]=n or nil
 			elseif parser.booleans[key] then if v=="Unknown" then nextItem[key]=nil else nextItem[key]=v=="Yes" end
 			elseif key=="HasInfluence" then nextItem[key]=parser.tokens(v)
 			elseif key=="HasExplicitMod" then if v=="" then nextItem[key]=nil elseif v=="[]" then nextItem[key]={} else nextItem[key]=parser.tokens(v) end

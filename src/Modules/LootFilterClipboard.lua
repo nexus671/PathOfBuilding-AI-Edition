@@ -27,6 +27,14 @@ function M.parse(raw,area)
 	local item={BaseType=base,Class=class,Rarity=assert(mapped[rarity:lower()],"Unsupported clipboard rarity"),AreaLevel=area,
 		Identified=not markers.Unidentified and tier==nil,Corrupted=markers.Corrupted==true or markers["Twice Corrupted"]==true,
 		TwiceCorrupted=markers["Twice Corrupted"]==true,Mirrored=markers.Mirrored==true}
+	for line in raw:gmatch("[^\n]+") do
+		local strands=line:match("^Memory Strands: (%d+)$")
+		if strands then
+			strands=tonumber(strands);assert(strands<=100,"Invalid clipboard memory strands")
+			assert(item.MemoryStrands==nil or item.MemoryStrands==strands,"Conflicting clipboard memory strands")
+			item.MemoryStrands=strands
+		end
+	end
 	local properties=require("Modules.LootFilterLibrary").baseProperties(item.BaseType,item.Rarity)
 	item.DropLevel=properties.DropLevel;item.Width=properties.Width;item.Height=properties.Height
 	if tier and tier>=0 and tier<=5 then item.UnidentifiedItemTier=tier end

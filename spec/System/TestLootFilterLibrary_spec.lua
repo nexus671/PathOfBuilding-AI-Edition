@@ -67,9 +67,24 @@ describe("Visual filter catalogue",function()
 		local height=main.screenH;main.screenH=500
 		local ok,err=pcall(function()
 			require("Classes.LootFilterControl").EditSample(library.sample(),function() end);local c=main.popups[1].controls
-			for _,key in ipairs({"DropLevel","Width","Height","BaseDefencePercentile","HasExplicitMod"}) do assert.is_true(c[key].y+c[key].height<c.useSample.y,key) end
+			for _,key in ipairs({"DropLevel","Width","Height","BaseDefencePercentile","MemoryStrands","AlwaysShow","HasExplicitMod"}) do assert.is_true(c[key].y+c[key].height<c.useSample.y,key) end
 		end)
 		main.screenH=height;main.popups={};assert(ok,err)
+	end)
+	it("tests memory strands and always-shown status without inventing either",function()
+		local rules=parser.parse('Hide\n MemoryStrands >= 60\n AlwaysShow False\nShow')
+		local item=library.sample();assert.is_nil(item.MemoryStrands);assert.is_nil(item.AlwaysShow)
+		assert.equal("unknown",parser.simulate(rules,item).status)
+		local saved;require("Classes.LootFilterControl").EditSample(item,function(value) saved=value end)
+		local c=main.popups[1].controls;assert.equal("",c.MemoryStrands.buf);assert.equal("Unknown",c.AlwaysShow:GetSelValue())
+		c.MemoryStrands:SetText("75");c.AlwaysShow:SelByValue("No");c.useSample:Click()
+		assert.equal(75,saved.MemoryStrands);assert.is_false(saved.AlwaysShow);assert.equal("Hide",parser.simulate(rules,saved).action)
+		local stored=require("Modules.LootFilterCollections").sample(saved);assert.same(saved.MemoryStrands,stored.MemoryStrands);assert.is_false(stored.AlwaysShow)
+		stored.AlwaysShow=true;assert.equal("Show",parser.simulate(rules,stored).action)
+		require("Classes.LootFilterControl").EditSample(saved,function(value) saved=value end);c=main.popups[1].controls
+		c.BaseType:SetText("Iron Hat",true);assert.equal("",c.MemoryStrands.buf);assert.equal("Unknown",c.AlwaysShow:GetSelValue())
+		local generated=library.sample({text='Show\n BaseType == "Iron Hat"\n MemoryStrands >= 70\n AlwaysShow False'})
+		assert.equal(70,generated.MemoryStrands);assert.is_false(generated.AlwaysShow)
 	end)
 	it("does not invent a defence roll for example drops",function()
 		local profile=filters.profile("test","Test");local scene=library.scene(profile,build,"All items",0,83,86);local examples={}

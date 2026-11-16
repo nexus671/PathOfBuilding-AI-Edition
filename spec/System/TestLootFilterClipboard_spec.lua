@@ -2,6 +2,15 @@
 describe("Copied loot-filter items",function()
 	local clipboard=require("Modules.LootFilterClipboard")
 	local parser=require("Modules.LootFilterParser")
+	it("reads an explicit memory-strand value without assuming a missing one",function()
+		local raw="Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86"
+		local rules=parser.parse("Hide\n MemoryStrands >= 60\nShow")
+		local observed=clipboard.parse(raw.."\nMemory Strands: 75")
+		assert.equal(75,observed.MemoryStrands);assert.equal("Hide",parser.simulate(rules,observed).action)
+		local unknown=clipboard.parse(raw);assert.is_nil(unknown.MemoryStrands);assert.equal("unknown",parser.simulate(rules,unknown).status)
+		assert.has_error(function() clipboard.parse(raw.."\nMemory Strands: 101") end)
+		assert.has_error(function() clipboard.parse(raw.."\nMemory Strands: 5\nMemory Strands: 75") end)
+	end)
 	it("retains explicitly marked unidentified item tiers without inventing missing tiers",function()
 		local raw="Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86\n--------\n"
 		local item=clipboard.parse(raw.."Unidentified (Tier 4)")
