@@ -54,14 +54,16 @@ function I.resolve(M,model,state)
 	for _,entry in ipairs(model.mods) do if model.legacyLightRadius[entry.id] then consider(entry.id,false,true) end end
 	for _,entry in ipairs(model.essences) do consider(entry.modId,false) end
 	for _,entry in ipairs(model.essences) do if model.descriptions330[entry.modId] then consider(entry.modId,false,false,true) end end
-	-- Drop-only Incursion modifiers are absent from the ordinary spawn pool.
+	-- Drop-only modifiers are absent from the ordinary spawn pool.
 	-- Match their native definitions only on the documented item categories;
 	-- the normal ambiguity and affix-group checks still apply below.
 	local base=model.item.base;local subtype=base.subType and base.type..": "..base.subType
-	for id,entry in pairs(require("Data.IncursionDropOnly")) do
-		local mod=data.itemMods.Explicit[id]
-		if mod and mod.level<=model.item.itemLevel and (isValueInTable(entry.categories,base.type) or subtype and isValueInTable(entry.categories,subtype)) then
-			model.byId[id]=model.byId[id] or mod;consider(id,false)
+	for _,source in ipairs({{require("Data.IncursionDropOnly"),data.itemMods.Explicit},{require("Data.DelveDropOnly"),data.itemMods.Delve}}) do
+		for id,entry in pairs(source[1]) do
+			local mod=source[2][id]
+			if mod and mod.level<=model.item.itemLevel and (isValueInTable(entry.categories,base.type) or subtype and isValueInTable(entry.categories,subtype)) then
+				model.byId[id]=model.byId[id] or mod;consider(id,false)
+			end
 		end
 	end
 	for _,entry in ipairs(model.bench) do consider(entry.id,true) end

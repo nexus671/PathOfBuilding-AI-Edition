@@ -53,6 +53,9 @@ async function main(){
   const incursionRaw='Rarity: RARE\nDread Crest\nIron Hat\nItem Level: 86\n+47% to Fire Resistance\n4% of Physical Damage from Hits taken as Fire Damage';
   const incursion=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:incursionRaw,action:{method:'divine'},seed:1},'crafted');
   assert.equal(incursion.nativeCrafting.state.affixes[0].id,'FireResistEnhancedLevel50ModPhys');
+  const delveRaw='Rarity: RARE\nDread Grasp\nIron Gauntlets\nItem Level: 86\n40% increased Damage with Bleeding\nAttacks have 25% chance to cause Bleeding';
+  const delve=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:delveRaw,action:{method:'divine'},seed:1},'crafted');
+  assert.equal(delve.nativeCrafting.state.affixes[0].id,'BleedingDamageChanceDelve__');
   const socketedRaw='Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W-W-W-W';
   const socketVaal=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,action:{method:'vaal'},seed:3},'crafted');
   assert.ok(socketVaal.nativeCrafting.warnings.some(entry=>entry.code==='vaal_socket_reroll_unmodeled'));
