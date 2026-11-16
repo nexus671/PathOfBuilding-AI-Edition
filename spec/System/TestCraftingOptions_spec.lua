@@ -165,6 +165,19 @@ describe("State-aware crafting choices",function()
 		for _,warning in ipairs(warnings) do if warning.code=="tainted_exalt_branch_limits" then found=warning.message:find("failed transitions are not charged",1,true)~=nil end end
 		assert.is_true(found);assert.matches("can fail",require("Modules.CraftingWorkbench").hint("tainted_exalt",input,m))
 	end)
+	it("retains corrupted Abyss jewel capacity during tainted affix crafts",function()
+		local m=model("Murderous Eye Jewel");local input=sim.perform(m.raw,{method="alchemy"},104729).state
+		input.corrupted=true;assert.equal(4,#input.affixes);assert.equal(6,sim.capacities(m,input).total)
+		local before=copyTable(input)
+		local added=sim.action(m,input,{method="tainted_exalt"},function() return 0.1 end)
+		assert.equal(5,#added.affixes);assert.is_true(added.corrupted);sim.validateState(m,added);assert.same(before,input)
+		local removed=sim.action(m,added,{method="tainted_exalt"},function() return 0.9 end)
+		assert.equal(4,#removed.affixes);assert.is_true(removed.corrupted);sim.validateState(m,removed)
+		local draws=0;local rerolled=sim.action(m,input,{method="tainted_chaos"},function() draws=draws+1;return draws==1 and 0.1 or draws==2 and 0.99 or 0.37 end)
+		assert.equal(6,#rerolled.affixes);assert.is_true(rerolled.corrupted);sim.validateState(m,rerolled)
+		local restored=sim.model(sim.toItem(m,rerolled).raw);assert.is_true(restored.initial.corrupted);assert.equal(6,#restored.initial.affixes)
+		assert.has_error(function() sim.action(m,input,{method="exalt"},function() return 0.1 end) end)
+	end)
 	it("rejects missing state prerequisites before consuming randomness",function()
 		local m=model();local rare=sim.perform(m.raw,{method="alchemy"},104729).state
 		local cases={{"unravelling",m.initial},{"remembrance",rare},{"dominance",rare},{"beast_influence",rare},{"ducat_rotmother",rare},{"ducat_merrick",rare},{"ducat_genteel",m.initial},{"beast_prefix_suffix",m.initial},{"beast_suffix_prefix",m.initial},{"veiled_orb",state(m,"RARE")}}

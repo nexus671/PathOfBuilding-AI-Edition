@@ -196,10 +196,9 @@ function C.extend(M,A,api)
 			if method=="locus" and not state.destroyed then state.twiceCorrupted=true end
 		else
 			assert(input.corrupted and state.rarity == "RARE","Tainted affix currency requires a corrupted rare item")
-			state.corrupted=false
-			if method == "tainted_exalt" then state=originalAction(model,state,{method=random() < 0.5 and "exalt" or "annul"},random)
-			elseif random() < 0.5 then state=originalAction(model,state,{method="chaos"},random)
-			else state=originalAction(model,state,{method="scour"},random) end
+			if method == "tainted_exalt" then state=api.taintedAffixAction(model,state,{method=random() < 0.5 and "exalt" or "annul"},random)
+			elseif random() < 0.5 then state=api.taintedAffixAction(model,state,{method="chaos"},random)
+			else state=api.taintedAffixAction(model,state,{method="scour"},random) end
 			state.corrupted=true
 		end
 		return state

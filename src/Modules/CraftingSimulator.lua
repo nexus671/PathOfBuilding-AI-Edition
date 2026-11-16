@@ -451,7 +451,8 @@ function M.action(model,input,action,random)
 		while #state.affixes < target do add(model,state,random) end
 	elseif method == "augmentation" or method == "regal" or method == "exalt" then
 		assert(state.rarity == (method == "exalt" and "RARE" or "MAGIC"),"This currency cannot be used on the current rarity")
-		assert(c.total < (method == "augmentation" and 2 or M.capacities(model,{rarity="RARE"}).total),"The item has no open affix")
+		local capacityState=copyState(state);capacityState.rarity="RARE"
+		assert(c.total < (method == "augmentation" and 2 or M.capacities(model,capacityState).total),"The item has no open affix")
 		if method == "regal" then state.rarity="RARE" end
 		add(model,state,random)
 	elseif method == "annul" then

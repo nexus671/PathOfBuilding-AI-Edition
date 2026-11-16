@@ -146,6 +146,9 @@ local function inferRange(template,line)
 end
 function A.extend(M,api)
 	local originalModel,originalAction,originalPool,originalValidate=M.model,M.action,M.pool,M.validateState
+	-- Tainted affix currencies reuse the basic transitions without dropping the
+	-- corrupted state, which can affect the item's modifier capacity.
+	api.taintedAffixAction=originalAction
 	local originalCatalog=M.catalog
 	local originalRoll=M.rollRange
 	local identities=setmetatable({},{__mode="k"})
