@@ -66,14 +66,32 @@ describe("Experimental Gwennen pair",function()
 				for _,socket in ipairs(candidate.sockets) do if socket.color~="W" and socket.color~="A" then count=count+1 end end
 				if count>score then best,score=candidate,count end
 			end
-			local pair={method="gwennen",firstOutcome=case[1],secondOutcome=case[1]};local actual=sim.action(model,state,pair,stream())
-			assert.same(best,actual);assert.same(before,state);sim.validateState(model,actual)
+			local pair={method="gwennen",firstOutcome=case[1],secondOutcome=case[1]};local actualDraw=stream();local actual=sim.action(model,state,pair,actualDraw)
+			assert.same(best,actual);assert.equal(draw(),actualDraw());assert.same(before,state);sim.validateState(model,actual)
 			local result=sim.perform(socketRaw,pair,5,state);assert.equal("gwennen_socket_colour_assumptions",result.warnings[2].code)
 			local odds=sim.calculate(socketRaw,pair,{},state,{requirements={socketColours="RR"},trials=12,seed=3})
 			assert.is_true(odds.sampled);assert.equal("gwennen_socket_colour_assumptions",odds.warnings[2].code)
 		end
 		local noSockets=copyTable(state);noSockets.sockets={}
 		assert.has_error(function() sim.action(model,noSockets,{method="gwennen",firstOutcome=1010,secondOutcome=1000},function() return 0.1 end) end)
+	end)
+	it("keeps socket rerolls equivalent across seeds, quality and Abyssal layouts",function()
+		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: R-G B W-W W"
+		local model=sim.model(raw)
+		for _,sockets in ipairs({{{color="W",group=3}},{{color="A",group=0},{color="W",group=1},{color="G",group=1}},model.initial.sockets}) do
+			for _,quality in ipairs({0,20,30}) do for seed=1,24 do
+				local state=copyTable(model.initial);state.rarity="RARE";state.sockets=copyTable(sockets);state.quality=quality
+				state.intangibility=17;state.memoryStrands=3;state.imprint=copyTable(model.initial);local original=copyTable(state)
+				local function stream() local value=seed;return function() value=value*48271%2147483647;return value/2147483647 end end
+				local expectedDraw=stream();expectedDraw();local best,score=nil,-1
+				for _=1,20 do local candidate=sim.action(model,state,{method="chromatic"},expectedDraw);local count=0
+					for _,socket in ipairs(candidate.sockets) do if socket.color~="W" and socket.color~="A" then count=count+1 end end
+					if count>score then best,score=candidate,count end
+				end
+				local actualDraw=stream();local actual=sim.action(model,state,{method="gwennen",firstOutcome=1011,secondOutcome=1011},actualDraw)
+				assert.same(best,actual);assert.equal(expectedDraw(),actualDraw());assert.same(original,state)
+			end end
+		end
 	end)
 	it("charges observed artifacts and never treats an unknown price as free",function()
 		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022}

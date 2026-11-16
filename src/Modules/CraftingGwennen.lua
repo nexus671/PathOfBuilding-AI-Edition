@@ -92,13 +92,7 @@ function G.extend(M,api)
 		local function branch(id,draw,probe)
 			if id==1000 then return copyTable(input) end
 			if id==1010 or id==1011 then
-				local best,bestCount=nil,-1
-				for _=1,(probe and 1 or id==1010 and 50 or 20) do
-					local candidate=action(model,input,{method="chromatic"},draw);local count=0
-					for _,socket in ipairs(candidate.sockets or {}) do if socket.color~="A" and socket.color~="W" then count=count+1 end end
-					if count>bestCount then best,bestCount=candidate,count end
-				end
-				return best
+				return M.bestChromatic(model,input,probe and 1 or id==1010 and 50 or 20,draw)
 			end
 			if id==1031 then
 				local choices=influenceChoices(model,input);local result=copyTable(input)

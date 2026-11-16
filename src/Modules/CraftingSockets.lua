@@ -107,6 +107,19 @@ function S.extend(M,A,api)
 	local function colour(weights,random)
 		local pick=random();for i,value in ipairs(weights) do pick=pick-value;if pick < 0 then return colours[i] end end;return "B"
 	end
+	local function recolour(model,state,method,craft,tainted,random)
+		local sockets=state.sockets;local rgb=method == "omen_trichromatism"
+		local forced=rgb and 3 or method == "socket_colour_bench" and api.integer(craft.count,2,4,"minimum non-white sockets") or 1
+		local indices={};for i,socket in ipairs(sockets) do if socket.color~="A" then indices[#indices+1]=i end end
+		assert(forced <= #indices,"Not enough ordinary sockets for this colour craft")
+		for i=#indices,2,-1 do local j=math.floor(random()*i)+1;indices[i],indices[j]=indices[j],indices[i] end
+		local weights=colourWeights(model,tainted)
+		local chance=math.min(1,0.00375*math.max(model.item.itemLevel-14,1)*(1+math.min(state.quality or 0,30)/100))
+		for i,index in ipairs(indices) do
+			if rgb and i<=3 then sockets[index].color=colours[i]
+			else sockets[index].color=(i <= forced or random() < chance) and colour(weights,random) or "W" end
+		end
+	end
 	function M.action(model,input,craft,random)
 		local method=craft.method
 		if not methods[method] then return originalAction(model,input,craft,random) end
@@ -153,21 +166,26 @@ function S.extend(M,A,api)
 				sockets[biggest[#biggest]].group=free
 			end
 		else
-			local rgb=method == "omen_trichromatism"
-			local forced=rgb and 3 or method == "socket_colour_bench" and api.integer(craft.count,2,4,"minimum non-white sockets") or 1
-			local indices={};for i,socket in ipairs(sockets) do if socket.color~="A" then indices[#indices+1]=i end end
-			assert(forced <= #indices,"Not enough ordinary sockets for this colour craft")
-			for i=#indices,2,-1 do local j=math.floor(random()*i)+1;indices[i],indices[j]=indices[j],indices[i] end
-			local weights=colourWeights(model,tainted)
-			local chance=math.min(1,0.00375*math.max(model.item.itemLevel-14,1)*(1+math.min(state.quality or 0,30)/100))
-			for i,index in ipairs(indices) do
-				if rgb and i<=3 then sockets[index].color=colours[i]
-				else sockets[index].color=(i <= forced or random() < chance) and colour(weights,random) or "W" end
-			end
+			recolour(model,state,method,craft,tainted,random)
 		end
 		local previous,group=nil,-1
 		for _,socket in ipairs(sockets) do local old=socket.group;if old ~= previous then group=group+1;previous=old end;socket.group=group end
 		return state
+	end
+	-- Reuse one socket buffer while preserving the normal action's validation,
+	-- random draws, group normalization and first-on-tie selection.
+	local socketAction=M.action
+	function M.bestChromatic(model,input,rolls,random)
+		local best=socketAction(model,input,{method="chromatic"},random)
+		local work={sockets=copyTable(best.sockets),quality=input.quality};local bestCount=-1
+		local function count(sockets) local n=0;for _,socket in ipairs(sockets) do if socket.color~="A" and socket.color~="W" then n=n+1 end end;return n end
+		bestCount=count(best.sockets)
+		for _=2,rolls do
+			recolour(model,work,"chromatic",{},false,random)
+			local n=count(work.sockets)
+			if n>bestCount then for i,socket in ipairs(work.sockets) do best.sockets[i].color=socket.color end;bestCount=n end
+		end
+		return best
 	end
 	function M.actionOptions(model,state,method)
 		if method ~= "socket_colour_bench" then return originalOptions(model,state,method) end
