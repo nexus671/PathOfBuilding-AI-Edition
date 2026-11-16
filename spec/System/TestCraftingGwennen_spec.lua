@@ -107,11 +107,37 @@ describe("Experimental Gwennen pair",function()
 		end end
 		local pair={method="gwennen",firstOutcome=1016,secondOutcome=1017}
 		local result=sim.calculate(raw,pair,{},state,{requirements={links=6},trials=12,seed=3})
-		assert.is_true(result.sampled);assert.equal("gwennen_socket_link_assumptions",result.warnings[2].code)
+		local probability=0
+		for _,candidate in ipairs(require("Modules.CraftingSockets").fusingOutcomes(state)) do
+			local linked=true;for _,group in ipairs(candidate.groups) do linked=linked and group==candidate.groups[1] end
+			if linked then probability=probability+candidate.probability end
+		end
+		local expected=50*(2-(1-probability)^100-(1-probability)^50)
+		assert.is_false(result.sampled);assert.are.near(expected,result.successChance,1e-8)
+		local total=0;for _,outcome in ipairs(result.outcomes) do total=total+outcome.chance end
+		assert.are.near(100,total,1e-8);assert.equal("gwennen_socket_link_assumptions",result.warnings[2].code)
+		local mixed=sim.calculate(raw,{method="gwennen",firstOutcome=1000,secondOutcome=1017},{},state,{requirements={links=6}})
+		assert.is_false(mixed.sampled);assert.are.near(50*(1-(1-probability)^50),mixed.successChance,1e-8)
+		assert.same(original,state)
+		-- Distinct layouts tied at four links retain their relative Fusing weights.
+		local candidates=require("Modules.CraftingSockets").fusingOutcomes(state);local chanceByLayout={};local scoreMass=0
+		for _,candidate in ipairs(candidates) do
+			local counts,best={},0;for _,group in ipairs(candidate.groups) do counts[group]=(counts[group] or 0)+1;best=math.max(best,counts[group]) end
+			if best==4 then chanceByLayout[table.concat(candidate.groups,"-")]=candidate.probability;scoreMass=scoreMass+candidate.probability end
+		end
+		local distribution=require("Modules.CraftingGwennen").discrete(model,state,1017);local observed={}
+		for _,entry in ipairs(distribution) do
+			local layout=entry.text:match("layout ([%d%-]+)")
+			if chanceByLayout[layout] then observed[#observed+1]={probability=entry.probability,base=chanceByLayout[layout]} end
+		end
+		assert.is_true(#observed>1 and scoreMass>0)
+		assert.are.near(observed[1].probability/observed[1].base,observed[2].probability/observed[2].base,1e-10)
 		local full=copyTable(state);for _,socket in ipairs(full.sockets) do socket.group=0 end
 		assert.has_error(function() sim.action(model,full,pair,function() return 0.1 end) end)
+		assert.has_error(function() sim.calculate(raw,pair,{},full,{requirements={links=6}}) end)
 		local abyss=copyTable(state);abyss.sockets[1].color="A"
 		assert.has_error(function() sim.action(model,abyss,pair,function() return 0.1 end) end)
+		assert.has_error(function() sim.calculate(raw,pair,{},abyss,{requirements={links=6}}) end)
 	end)
 	it("charges observed artifacts and never treats an unknown price as free",function()
 		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022}

@@ -22,7 +22,7 @@ function C.extend(M)
 					outcomes[#outcomes+1]={id=tostring(side)..":"..#outcomes,text=branch.text,chance=100*probability,weight=probability,matches=hit,state=result}
 				end end
 				local sample=outcomes[1].state
-				return {exactFor="Gwennen branches under the assumed fair coin and uniform selections",showAllOutcomes=true,sampled=false,successChance=100*hits,totalWeight=1,matchingWeight=hits,
+				return {exactFor="Gwennen branches under the assumed fair coin and stated experimental outcome models",showAllOutcomes=true,sampled=false,successChance=100*hits,totalWeight=1,matchingWeight=hits,
 					outcomes=outcomes,sampleState=sample,sampleItem=not sample.destroyed and M.toItem(model,sample).raw or nil,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 			end
 		end

@@ -7,7 +7,7 @@ local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
 function G.supports(id) return supported[id]==true end
 function G.supportedCount() local count=0;for _ in pairs(supported) do count=count+1 end;return count end
 function G.deterministic(id) return deterministic[id] end
-function G.isDiscrete(id) return deterministic[id]~=nil or id==1004 or id==1006 or id==1007 or id==1023 or id==1026 or id==1031 or id==1041 end
+function G.isDiscrete(id) return deterministic[id]~=nil or id==1004 or id==1006 or id==1007 or id==1016 or id==1017 or id==1023 or id==1026 or id==1031 or id==1041 end
 local influenceTypes={"shaper","elder","adjudicator","basilisk","crusader","eyrie"}
 local function influenceChoices(model,state)
 	assert(#(state.influences or model.initial.influences or {})==0 and not model.item.synthesised,"Influence outcome requires an uninfluenced, non-synthesised item")
@@ -19,6 +19,34 @@ end
 -- Enumerate removal sets without multiplying equivalent removal orders.
 function G.discrete(model,state,id)
 	if deterministic[id] then return {{draws={},probability=1,text=deterministic[id]}} end
+	if id==1016 or id==1017 then
+		local sim=require("Modules.CraftingSimulator")
+		local reason=sim.methodReason(model,state,"fusing");assert(not reason,reason)
+		local candidates=require("Modules.CraftingSockets").fusingOutcomes(state)
+		local scores,totals={},{}
+		for i,candidate in ipairs(candidates) do
+			local counts,largest={},0
+			for _,group in ipairs(candidate.groups) do counts[group]=(counts[group] or 0)+1;largest=math.max(largest,counts[group]) end
+			scores[i]=largest;totals[largest]=(totals[largest] or 0)+candidate.probability
+		end
+		-- The maximum has score s with probability P(score <= s)^N - P(score < s)^N.
+		-- The first tied layout is distributed proportionally to its original weight.
+		local rolls=id==1016 and 100 or 50;local weights={};local cumulative=0
+		for score=1,6 do
+			local below=cumulative;cumulative=cumulative+(totals[score] or 0)
+			if totals[score] then weights[score]=(cumulative^rolls-below^rolls)/totals[score] end
+		end
+		local result,offset={},0
+		for i,candidate in ipairs(candidates) do
+			local probability=candidate.probability*weights[scores[i]]
+			if probability>0 then
+				local draws={};for n=1,rolls do draws[n]=offset+candidate.probability/2 end
+				result[#result+1]={draws=draws,probability=probability,text="Best link: "..scores[i].." (layout "..table.concat(candidate.groups,"-")..")"}
+			end
+			offset=offset+candidate.probability
+		end
+		return result
+	end
 	if id==1031 then
 		local choices=influenceChoices(model,state);local result={}
 		for index,key in ipairs(choices) do result[#result+1]={draws={(index-0.5)/#choices},probability=1/#choices,text="Add influence: "..key} end
