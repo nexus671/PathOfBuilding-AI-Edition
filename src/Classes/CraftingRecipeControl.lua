@@ -127,6 +127,10 @@ function Panel.Open(recipe,currentAction,onKeep,model)
 				entries[#entries+1]={id=method..":"..tag,label=label,category="Harvest",action=action,details={label,"A legal modifier and item state are required when this step runs."}}
 			end
 		end end
+		for _,from in ipairs({"fire","cold","lightning"}) do for _,to in ipairs({"fire","cold","lightning"}) do if from~=to then
+			local action={method="harvest_damage",from=from,to=to};local label="Harvest: "..from.." to "..to.." damage"
+			entries[#entries+1]={id="harvest_damage:"..from..":"..to,label=label,category="Harvest",action=action,details={label,"Experimental conversion; unsupported modifier families are rejected. Requires 300 of each element's Lifeforce and one Crystallised Rancour."}}
+		end end end
 		require("Classes.PlanningBrowserControl").Open("Add a recipe step",entries,{action="Add step",closeOnChoose=false,choose=function(entry)
 			main:ClosePopup()
 			local function append(action) draft=require("Modules.CraftingRoutes").append(draft,action);selected=#draft.steps;refresh() end

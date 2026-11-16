@@ -74,7 +74,7 @@ function A.prepare(checkpoint)
 end
 local methods={
 	fossil="Fossil resonator",harvest_reforge="Harvest: reforge with a tagged modifier",harvest_augment="Harvest: add tagged / remove random",
-	harvest_resistance="Harvest: change elemental resistance",fracture="Fracturing Orb",influence_exalt="Influenced Exalted Orb",awakener="Awakener's Orb",
+	harvest_resistance="Harvest: change elemental resistance",harvest_damage="Harvest: change elemental damage",fracture="Fracturing Orb",influence_exalt="Influenced Exalted Orb",awakener="Awakener's Orb",
 	veiled_orb="Veiled Exalted Orb",unveil="Choose an unveil",dominance="Orb of Dominance",beast_aspect="Bestiary: Aspect skill",beast_prefix_suffix="Bestiary: prefix to suffix",
 	beast_suffix_prefix="Bestiary: suffix to prefix",beast_imprint="Bestiary: create magic imprint",beast_talisman_imprint="Bestiary: imprint rare Talisman",restore_imprint="Restore imprint",
 	bench_reroll="Bench: reroll 1 or 3 modifiers",eldritch_implicit="Eldritch Ember / Ichor",eldritch_exalt="Eldritch Exalted Orb",eldritch_annul="Eldritch Orb of Annulment",
@@ -543,6 +543,57 @@ function A.extend(M,api)
 		end end
 		return result,#result==0 and (unsupported or (api.flags(model,state).suffixes and "Suffixes are locked." or "No swappable single-element resistance is available.")) or nil
 	end
+	local damageData
+	local function harvestDamageData()
+		if not damageData then
+			damageData=assert(json.decode(readData("3.30-harvest-damage.json")))
+			assert(damageData.schemaVersion==1 and damageData.clientVersion=="3.30.0.2" and type(damageData.groups)=="table" and type(damageData.costs)=="table","Invalid Harvest damage data")
+		end
+		return damageData
+	end
+	local function damageTarget(model,id,from,to)
+		local source=from:gsub("^%l",string.upper);local target=to:gsub("^%l",string.upper)
+		local wanted=id:gsub(source,target):gsub(from,to):gsub("_+$","")
+		if wanted==id:gsub("_+$","") then return end
+		local found
+		for candidate,mod in pairs(model.byId) do
+			if candidate:gsub("_+$","")==wanted and mod.type==model.byId[id].type then
+				local eligible=false;for _,group in ipairs(groups(model,candidate)) do if contains(harvestDamageData().groups[to],group) then eligible=true;break end end
+				if eligible then if found then return end;found=candidate end
+			end
+		end
+		return found
+	end
+	function M.damageReason(model,state,from,to)
+		local data=harvestDamageData();if not data.groups[from] or not data.groups[to] or from==to then return "Choose different elemental damage types" end
+		local flags=api.flags(model,state);local matches={}
+		for index,entry in ipairs(state.affixes) do
+			local eligible=false;for _,group in ipairs(groups(model,entry.id)) do
+				-- The 3.28 hotfix removed critical multiplier conversion, even
+				-- though this group remains in the client command parameters.
+				if group~=from:gsub("^%l",string.upper).."CritMultiplierForJewel" and contains(data.groups[from],group) then eligible=true;break end
+			end
+			if eligible and not api.protected(entry,model.byId[entry.id],flags) then
+				local target=damageTarget(model,entry.id,from,to)
+				if not target then return "An eligible damage modifier has no supported matching conversion" end
+				if model.item:GetModSpawnWeight(model.byId[target],model.extraTags or {})<=0 then return "The replacement damage modifier cannot occur on this base" end
+				for otherIndex,other in ipairs(state.affixes) do if otherIndex~=index then
+					for _,group in ipairs(groups(model,other.id)) do if contains(groups(model,target),group) then return "The replacement damage group is already present" end end
+				end end
+				matches[#matches+1]={index=index,id=target}
+			end
+		end
+		if #matches==0 then return "No swappable elemental damage modifier" end
+		return nil,matches
+	end
+	function M.damageOptions(model,state)
+		local result={};local reason
+		for _,from in ipairs({"fire","cold","lightning"}) do for _,to in ipairs({"fire","cold","lightning"}) do if from~=to then
+			local why=M.damageReason(model,state,from,to)
+			if not why then result[#result+1]={label=from.." to "..to,action={method="harvest_damage",from=from,to=to}} else reason=why end
+		end end end
+		return result,#result==0 and (reason or "No swappable elemental damage modifier") or nil
+	end
 	function M.harvestChoices(model,state,method)
 		if state.rarity~="RARE" then return {},"Requires a rare item." end
 		local augment=method=="harvest_augment"
@@ -843,6 +894,10 @@ function A.extend(M,api)
 			local index=matches[math.floor(random()*#matches)+1]; local old=state.affixes[index]
 			local id=resistanceTarget(model,old.id,action.from,action.to)
 			old.id=id;old.range=M.rollRange(model.byId[id],random)
+		elseif method == "harvest_damage" then
+			local reason,matches=M.damageReason(model,state,action.from,action.to);assert(not reason,reason)
+			local selected=matches[math.floor(random()*#matches)+1];local old=state.affixes[selected.index]
+			old.id=selected.id;old.range=M.rollRange(model.byId[selected.id],random)
 		elseif method == "blessed" then
 			assert(#model.item.implicitModLines > 0 and not state.implicits,"No base implicit to reroll")
 			state.baseImplicitRanges={}
@@ -1018,7 +1073,7 @@ function A.extend(M,api)
 			end
 		end
 		result.harvestOptions={}
-		for _,method in ipairs({"harvest_reforge","harvest_augment","harvest_resistance"}) do
+		for _,method in ipairs({"harvest_reforge","harvest_augment","harvest_resistance","harvest_damage"}) do
 			local allowed,reason=available(method,state,model);local choices=allowed and M.actionOptions(model,state,method) or {};local selected={}
 			for i=1,math.max(0,math.min(limit or 50,#choices)) do
 				selected[i]=copyTable(choices[i]);selected[i].priceKey=M.priceKey(selected[i].action)
@@ -1048,6 +1103,7 @@ function A.extend(M,api)
 		elseif method == "bench_reroll" then local possible=M.benchRerollChoices(model,state);if possible[1] then option("Reroll one random modifier",{count=1}) end;if possible[3] then option("Reroll three random modifiers",{count=3}) end
 		elseif method == "eldritch_implicit" then for _,side in ipairs({"Exarch","Eater"}) do for tier=1,4 do option(side.." | "..({"Lesser","Greater","Grand","Exceptional"})[tier],{side=side,tier=tier}) end end
 		elseif method == "harvest_resistance" then result=M.resistanceOptions(model,state)
+		elseif method == "harvest_damage" then result=M.damageOptions(model,state)
 		elseif method == "socket_bench" then for count=2,M.socketLimit(model,state) do option(count.." sockets (added sockets white)",{count=count}); option("Set "..count.." sockets and link them",{count=count,linked=true}) end
 		end
 		table.sort(result,function(a,b) return a.label < b.label end)
@@ -1058,6 +1114,7 @@ function A.extend(M,api)
 		if action.method == "essence" then return action.essenceId end
 		if action.method == "fossil" then local ids=copyTable(action.fossils or {});table.sort(ids);return "fossil:"..table.concat(ids,"+") end
 		if action.method == "harvest_reforge" or action.method == "harvest_augment" then return action.method..":"..tostring(action.tag) end
+		if action.method == "harvest_damage" then return action.method..":"..tostring(action.from)..":"..tostring(action.to) end
 		if action.method == "influence_exalt" then return action.method..":"..tostring(action.influence) end
 		if action.method == "eldritch_implicit" then return action.method..":"..tostring(action.side)..":"..tostring(action.tier) end
 		if action.method == "bench_reroll" then return action.method..":"..tostring(action.count) end
@@ -1085,6 +1142,9 @@ function A.extend(M,api)
 			local from,to=lifeforce[action.from],lifeforce[action.to]
 			assert(from and to and from~=to,"Choose two different elemental resistances")
 			return {[from]=300,[to]=300}
+		end
+		if action.method == "harvest_damage" then
+			return copyTable(assert(harvestDamageData().costs[tostring(action.from)..":"..tostring(action.to)],"Choose different elemental damage types"))
 		end
 		if model and (action.method=="bench" or action.method=="remove_crafted" or action.method=="bench_reroll") then
 			local context=state and M.context(model,state) or model;local bench=require("Modules.CraftingBenchCosts")
@@ -1160,6 +1220,7 @@ function A.extend(M,api)
 		return {exactFor="One weighted affix draw, conditional on the supplied state and native pool",successChance=success/total*100,totalWeight=total,matchingWeight=success,outcomes=outcomes,dataPatch=A.data().patch,modifierPatch=A.data().modifierPatch,limitations=copyTable(M.limits)}
 	end
 	M.limits={"Independent PoE 1 crafting model uses 3.29.3.6 supplemental data with a 3.30.0.2 modifier overlay; this is not complete Craft of Exile parity.",
+		"Harvest damage conversion uses client eligibility groups and ingredient costs, but assumes matching elemental modifier IDs correspond to tiers and chooses eligible modifiers uniformly. The mapping and selection odds are unverified; unmatched families are rejected.",
 		"Light Radius accuracy modifiers use 3.30 crafting ranges; existing legacy values are retained until rerolled.",
 		"Abyss jewel crafting uses the 3.30 client weight changes, including the Assembled Eye pool and seven removed natural modifiers. Existing removed modifiers are retained until removed.",
 		"The 3.30 unveiled jewel modifiers can be imported, inspected and added to hypothetical items. Unveil offers and their acquisition are not simulated; native calculation support varies by modifier.",

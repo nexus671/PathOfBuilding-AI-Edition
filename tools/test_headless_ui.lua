@@ -313,6 +313,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(#main.popups[1].controls.option.list>0,"The rare item has no Harvest choices");ui:choose("option","life","label");ui:click("apply")
 		assert(main.popups[1].controls.intro.label:find("Applied Harvest",1,true),"A valid Harvest reforge did not apply")
 		frame("crafting-harvest-options-applied");ui:click("close")
+		local damageRaw="Rarity: MAGIC\nRusted Sword\nItem Level: 86\nAdds 1 to 3 Fire Damage"
+		require("Classes.CraftingSimulatorControl").Open(build,{id="harvest-damage-ui",title="Harvest damage conversion",slot="Weapon 1",startingItem=damageRaw,goals={},steps={}})
+		ui:click("settings");ui:text("paletteSearch",sim.labels.harvest_damage);ui:click("paletteUse");ui:choose("option","fire to cold","label")
+		local damageHint={};for _,row in ipairs(main.popups[1].controls.actionHint.list) do damageHint[#damageHint+1]=row[1] end
+		assert(table.concat(damageHint," "):find("Experimental",1,true),"Damage conversion assumptions are not visible")
+		assert(#damageHint<=2 and table.concat(damageHint," "):find("Rancour",1,true),"Damage conversion ingredient hint does not fit")
+		frame("crafting-harvest-damage-selected");ui:click("apply")
+		local damageFound;for _,row in ipairs(main.popups[1].controls.itemMods.list) do if row.affixId=="LocalAddedColdDamage1" then damageFound=true end end
+		assert(damageFound,"Harvest did not convert the weapon damage");frame("crafting-harvest-damage-applied");ui:click("close")
 		local magic=sim.perform(menuRaw,{method="transmute"},7)
 		require("Classes.CraftingSimulatorControl").Open(build,{id="essence-menu-ui",title="Essence input requirements",slot="Helmet",startingItem=magic.itemText,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch",sim.labels.essence);panel=main.popups[1]

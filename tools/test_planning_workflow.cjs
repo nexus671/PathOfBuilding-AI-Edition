@@ -78,6 +78,10 @@ async function main(){
   assert.equal((await call('get_build_context')).context.stats.LifeUnreserved,baseLife,'Proposal changed the live fixture before UI apply');
   await host('apply');context=(await call('get_build_context')).context;assert.ok(context.stats.LifeUnreserved>baseLife);
   const inspected=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'maximum Life',limit:20},'inspected');assert.ok(inspected.crafting.nativeEngine.modifiers.length);
+  const damageRaw='Rarity: MAGIC\nRusted Sword\nItem Level: 86\nAdds 1 to 3 Fire Damage';
+  const damage=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:damageRaw,action:{method:'harvest_damage',from:'fire',to:'cold'},seed:1},'crafted');
+  assert.ok(damage.nativeCrafting.state.affixes.some(entry=>entry.id==='LocalAddedColdDamage1'));
+  assert.ok(damage.nativeCrafting.warnings.some(entry=>entry.code==='harvest_damage_assumptions'));
   const gwennenReference=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'destroy',limit:20},'inspected');
   assert.equal(gwennenReference.crafting.nativeEngine.gwennenReference.offers[0].id,1022);assert.match(gwennenReference.crafting.nativeEngine.gwennenReference.note,/not available crafting actions/);
   assert.equal(inspected.crafting.nativeEngine.methodWarnings.binding[0].code,'binding_legacy');

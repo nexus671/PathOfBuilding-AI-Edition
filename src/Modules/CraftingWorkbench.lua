@@ -194,6 +194,7 @@ function M.actionLabel(action,model)
 		if #names==#action.fossils and #names>0 then return "Fossils: "..table.concat(names,", ") end
 	end
 	if (action.method=="harvest_reforge" or action.method=="harvest_augment") and action.tag then return (simulator.labels[action.method] or action.method).." ("..action.tag..")" end
+	if action.method=="harvest_damage" and action.from and action.to then return "Harvest: "..action.from.." to "..action.to.." damage" end
 	return simulator.labels[action.method] or action.method
 end
 function M.icon(method,action,model)
@@ -243,6 +244,7 @@ function M.hint(method,state,model)
 	if available and method=="omen_jeweller" then return "Add white sockets up to the base and item-level limit. Uses one Omen and one Jeweller's Orb." end
 	if available and method=="harvest_enchant" then return "Replace the enchantment with a quality bonus. Options show the Lifeforce cost." end
 	if available and method=="harvest_resistance" then return "Change one elemental resistance to another. Costs 300 Lifeforce for each element." end
+	if available and method=="harvest_damage" then return "Experimental: tiers and odds are unverified. Costs 300 of each Lifeforce and 1 Crystallised Rancour." end
 	return available and (descriptions[method] or "Choose the craft options, then apply to the item.") or reason
 end
 function M.currencies(controls,selectMethod,currentMethod,isShown,usage,getState,model,leftWidth)

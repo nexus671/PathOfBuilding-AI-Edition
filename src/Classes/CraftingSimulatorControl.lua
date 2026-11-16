@@ -170,7 +170,7 @@ function Panel.Open(build,project,layout)
 	controls.method=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,84,416,24},methods)
 	label(controls,"optionLabel",16,124,"Action options (dropdown search is available)")
 	controls.option=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,144,416,24},{})
-	local stateAwareOptions={bench=true,essence=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true}
+	local stateAwareOptions={bench=true,essence=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true}
 	local function updateOptions()
 		if state.veil then controls.method:SelByValue("unveil","val") end
 		local method=controls.method:GetSelValueByKey("val")

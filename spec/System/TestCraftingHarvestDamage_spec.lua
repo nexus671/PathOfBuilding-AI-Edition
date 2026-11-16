@@ -1,0 +1,49 @@
+describe("Harvest elemental damage conversion",function()
+	local sim=require("Modules.CraftingSimulator")
+	local check=require("Modules.CraftingAvailability").check
+	local raw="Rarity: NORMAL\nRusted Sword\nItem Level: 86"
+	local function fixture()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="MAGIC"
+		state.affixes={{id="LocalAddedFireDamage1",range=0.5}}
+		return model,sim.validateState(model,state)
+	end
+	it("offers and applies a weapon damage swap with current ingredients",function()
+		local model,state=fixture();local action={method="harvest_damage",from="fire",to="cold"}
+		assert.is_true(check(action.method,state,model))
+		assert.same({wild_lifeforce=300,primal_lifeforce=300,crystallised_rancour=1},sim.components(action))
+		local result=sim.perform(raw,action,42,state)
+		assert.equal("LocalAddedColdDamage1",result.state.affixes[1].id)
+		assert.equal("LocalAddedFireDamage1",state.affixes[1].id)
+		local choices=sim.actionOptions(model,state,action.method);assert.equal(2,#choices)
+		local priced=sim.simulate(raw,{initialState=state,steps={action},targets={{anyOf={"LocalAddedColdDamage1"}}}},
+			{trials=2,maxActions=1,currency="chaos",prices={wild_lifeforce=0.01,primal_lifeforce=0.02,crystallised_rancour=4}})
+		assert.equal(13,priced.meanCost)
+	end)
+	it("refuses protected or conflicting damage modifiers",function()
+		local model,state=fixture();local action={method="harvest_damage",from="fire",to="cold"}
+		state.affixes[1].fractured=true;assert.is_false(check(action.method,state,model))
+		state.affixes[1].fractured=nil;state.rarity="RARE"
+		state.affixes[2]={id="LocalAddedColdDamage1",range=0.5}
+		assert.matches("already present",sim.damageReason(model,state,"fire","cold"))
+		assert.is_false(pcall(sim.action,model,state,action,function() return 0.5 end))
+	end)
+	it("converts each direction between ordinary weapon damage families",function()
+		local model,state=fixture();local elements={fire="Fire",cold="Cold",lightning="Lightning"}
+		for from,title in pairs(elements) do for to,target in pairs(elements) do if from~=to then
+			state.affixes={{id="LocalAdded"..title.."Damage1",range=0.5}}
+			local action={method="harvest_damage",from=from,to=to}
+			local converted=sim.action(model,state,action,function() return 0.5 end)
+			assert.equal("LocalAdded"..target.."Damage1",converted.affixes[1].id)
+			assert.equal(1,sim.components(action).crystallised_rancour)
+			assert.equal("harvest_damage_assumptions",sim.actionWarnings(action,model)[1].code)
+		end end end
+	end)
+	it("preserves a conversion in a saved crafting guide",function()
+		newBuild()
+		local action={method="harvest_damage",from="fire",to="cold"}
+		local project={id="damage-conversion",title="Damage conversion",slot="Weapon 1",startingItem=raw,goals={},steps={},preferredMethod="harvest_damage",nativeRecipe={steps={action},targets={},requirements={minAffixes=1}}}
+		build.savers.CraftingProjects:Upsert(project)
+		local xml=build:SaveDB("Damage conversion");loadBuildFromXML(xml,"Damage conversion")
+		assert.same(action,build.savers.CraftingProjects.projects[1].nativeRecipe.steps[1])
+	end)
+end)

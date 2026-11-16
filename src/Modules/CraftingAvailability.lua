@@ -31,6 +31,7 @@ function M.check(method,state,model)
 	if method=="essence" then return sim.essenceAvailable(model,state) end
 	if method=="harvest_reforge" or method=="harvest_augment" then local options,reason=sim.harvestChoices(model,state,method);return #options>0,reason end
 	if method=="harvest_resistance" then local options,reason=sim.resistanceOptions(model,state);return #options>0,reason end
+	if method=="harvest_damage" then local options,reason=sim.damageOptions(model,state);return #options>0,reason end
 	if method=="harvest_enchant" and #sim.actionOptions(model,state,method)==0 then return false,"Harvest quality enchantments require an eligible weapon or body armour." end
 	if method=="exalt" or method=="augmentation" or method=="foulborn_exalt" or method=="foulborn_augmentation" then if #state.affixes>=sim.capacities(model,state).total then return false,"There is no open modifier slot." end end
 	if method=="annul" and #sim.annulCandidates(model,state)==0 then return false,"No modifier can be removed; fractures or locks protect them." end

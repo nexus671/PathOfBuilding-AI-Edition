@@ -1,5 +1,5 @@
 """Bundle currency artwork from a reviewed immutable game export."""
-# cspell:ignore katakohi ukatoa
+# cspell:ignore katakohi ukatoa repoe
 import argparse
 import concurrent.futures
 import hashlib
