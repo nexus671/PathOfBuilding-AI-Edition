@@ -20,7 +20,8 @@ def select_items(items, removed):
         is_astrolabe = path.startswith("Metadata/Items/Currency/") and name.endswith(" Astrolabe")
         is_chisel = name.startswith("Maven's Chisel of ")
         is_orb = name == "Delirium Orb" or name.endswith(" Delirium Orb")
-        if is_ember or is_astrolabe or is_chisel or is_orb or name in {"Divine Vessel", "Royal Visage"}:
+        is_memory = path in {"Metadata/Items/Currency/FearMemoryThread", "Metadata/Items/Currency/BenevolenceMemoryThread", "Metadata/Items/Currency/IgnoranceMemoryThread"}
+        if is_ember or is_astrolabe or is_chisel or is_orb or is_memory or name in {"Divine Vessel", "Royal Visage"}:
             names.add(name)
     return sorted(names)
 

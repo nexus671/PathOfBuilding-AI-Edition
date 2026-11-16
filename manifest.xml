@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview332" />
+	<Version number="2.67.2-ai.preview333" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1323,7 +1323,7 @@
 	<File name="Data/LootFilters/5.filter" part="program" sha1="03d35dd768c5c69436fe3153322e34ce2c66d33f" />
 	<File name="Data/LootFilters/6.filter" part="program" sha1="7c1dd41de358577326c12a582ce4aa32191ee987" />
 	<File name="Data/LootFilters/LICENSE-NeverSink.txt" part="program" sha1="f6bd82c134a39fb235b8480b483f775dccfaf913" />
-	<File name="Data/LootFilters/atlas-supplies-3.30.json" part="program" sha1="21eb3c7d9fdc6d6b3cc61314eedce8ef28b07d04" />
+	<File name="Data/LootFilters/atlas-supplies-3.30.json" part="program" sha1="0c10d6ec9bfdcb080d2663f9f5f7e43b55c7f992" />
 	<File name="Data/LootFilters/base-metadata.json" part="program" sha1="7fe43f2a3a9324037c75e766aba21c5e4fc785d0" />
 	<File name="Data/LootFilters/map-names.json" part="program" sha1="95fb3deb8545f04a7dfc6f32e51dd684385488b0" />
 	<File name="Data/LootFilters/patch-3.30.json" part="program" sha1="d1912b3b33fe0529e8e0e8f108b7dea4c972c83b" />
