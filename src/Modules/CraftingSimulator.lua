@@ -709,6 +709,7 @@ function M.validateTargetAvailability(model,targets,steps)
 	for _,entry in ipairs(model.bench) do available[entry.id]=true end
 	for _,entry in ipairs(model.essences) do available[entry.modId]=true end
 	for _,entry in ipairs(model.initial.affixes) do available[entry.id]=true end
+	for _,id in ipairs(model.dropOnlyIds or {}) do available[id]=true end
 	for _,id in ipairs(model.legacyDelveResistance or {}) do available[id]=true end
 	for id in pairs(model.special or {}) do available[id]=true end
 	for _,step in ipairs(steps or {}) do if (step.method=="recombine" or step.method=="recombine_predictable") and step.donorItem then

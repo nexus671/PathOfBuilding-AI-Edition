@@ -505,8 +505,19 @@ function A.extend(M,api)
 		if model.item.type~="Shield" then return end
 		for tier,source in ipairs(shieldMaximum[from] or {}) do if source==id then return shieldMaximum[to][tier] end end
 	end
+	-- These drop-only counterparts share resistance tiers and equipment types;
+	-- the cross-element mapping is a model, not verified in-game behavior.
+	local incursionResistance={
+		{fire="FireResistEnhancedLevel50ModAilments_",cold="ColdResistEnhancedModAilments__",lightning="LightningResistEnhancedLevel50ModAilments"},
+		{fire="FireResistEnhancedLevel50ModPhys",cold="ColdResistEnhancedLevel50ModPhys_",lightning="LightningResistEnhancedLevel50ModPhys"},
+		{fire="FireResistEnhancedLevel50ModLeech",cold="ColdResistEnhancedModLeech",lightning="LightningResistEnhancedLevel50ModLeech"},
+		{fire="FireResistEnhancedLevel50ModLeechInverted",cold="ColdResistEnhancedLevel50ModLeechInverted",lightning="LightningResistEnhancedLevel50ModLeechInverted"},
+	}
+	local function incursionResistanceTarget(id,from,to)
+		for _,family in ipairs(incursionResistance) do if family[from]==id then return family[to] end end
+	end
 	local function resistanceTarget(model,id,from,to)
-		return clusterResistanceTarget(model,id,from,to) or shieldResistanceTarget(model,id,from,to) or id:gsub(from:gsub("^%l",string.upper),to:gsub("^%l",string.upper))
+		return incursionResistanceTarget(id,from,to) or clusterResistanceTarget(model,id,from,to) or shieldResistanceTarget(model,id,from,to) or id:gsub(from:gsub("^%l",string.upper),to:gsub("^%l",string.upper))
 	end
 	function M.resistanceReason(model,state,from,to)
 		if from==to or not contains({"fire","cold","lightning"},from) or not contains({"fire","cold","lightning"},to) then return "Choose different elemental resistance types" end
@@ -522,10 +533,11 @@ function A.extend(M,api)
 			local jewel=model.item.type=="Jewel" and (entry.id==element.."ResistanceJewel" or entry.id=="Maximum"..element.."ResistanceJewel" or entry.id=="Abyss"..element.."ResistanceJewel1")
 			local shield=shieldResistanceTarget(model,entry.id,from,to)
 			local cluster=clusterResistanceTarget(model,entry.id,from,to)
+			local incursion=incursionResistanceTarget(entry.id,from,to)
 			local delvePrefix=entry.id=="DelveArmour"..element.."Resistance1"
 			local eligible=false;for _,group in ipairs(groups(model,entry.id)) do if contains(sourceGroups,group) then eligible=true;break end end
 			if not api.protected(entry,model.byId[entry.id],f) and eligible then
-				if not (model.byId[entry.id].group==element.."Resistance" or jewel or shield or cluster or delvePrefix) then return "An eligible resistance modifier has an unsupported conversion family" end
+				if not (model.byId[entry.id].group==element.."Resistance" or jewel or shield or cluster or delvePrefix or incursion) then return "An eligible resistance modifier has an unsupported conversion family" end
 				matches[#matches+1]=i
 			end
 		end
@@ -533,6 +545,7 @@ function A.extend(M,api)
 		for _,index in ipairs(matches) do
 			local id=resistanceTarget(model,state.affixes[index].id,from,to)
 			if not model.byId[id] then return "No matching resistance tier on this base" end
+			if incursionResistanceTarget(state.affixes[index].id,from,to) and not contains(model.dropOnlyIds,id) then return "The replacement modifier is unavailable on this base or item level" end
 			if (model.item.type=="Jewel" or shieldResistanceTarget(model,state.affixes[index].id,from,to)) and model.item:GetModSpawnWeight(model.byId[id],model.extraTags or {})<=0 then return "The replacement modifier cannot occur on this base" end
 			for otherIndex,entry in ipairs(state.affixes) do if otherIndex~=index then
 				for _,group in ipairs(groups(model,entry.id)) do

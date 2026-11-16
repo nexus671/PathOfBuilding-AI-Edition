@@ -8,7 +8,7 @@ describe("Drop-only Incursion modifier import",function()
 		local model=sim.model(raw);assert.equal(1,#model.initial.affixes)
 		assert.equal("FireResistEnhancedLevel50ModPhys",model.initial.affixes[1].id)
 		for _,entry in ipairs(model.mods) do assert.not_equal("FireResistEnhancedLevel50ModPhys",entry.id) end
-		assert.matches("unsupported conversion family",sim.resistanceReason(model,model.initial,"fire","cold"))
+		assert.is_nil(sim.resistanceReason(model,model.initial,"fire","cold"))
 		local rebuilt=sim.toItem(model,model.initial);assert.is_truthy(rebuilt.raw:find("4%% of Physical Damage from Hits taken as Fire Damage"))
 		local starting=copyTable(model.initial);starting.origin=nil
 		local blank=item("Iron Hat",86,""):gsub("Rarity: RARE","Rarity: NORMAL")
