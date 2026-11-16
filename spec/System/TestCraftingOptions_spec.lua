@@ -175,6 +175,15 @@ describe("State-aware crafting choices",function()
 		end
 		input.corrupted=false;assert.has_error(function() sim.calculate(m.raw,{method="tainted_exalt"},{},input,{requirements={minAffixes=3},trials=2}) end)
 	end)
+	it("shows failed modeled transitions in the action odds view",function()
+		newBuild();main.popups={};local m=model("Cobalt Jewel");local input=sim.perform(m.raw,{method="alchemy"},104729).state;input.corrupted=true
+		local p={id="tainted-odds",title="Tainted odds",slot="Jewel",startingItem=m.raw,goals={},steps={},preferredMethod="tainted_exalt",nativeRecipe={steps={{method="tainted_exalt"}},targets={},initialState=input,requirements={minAffixes=3}}}
+		local c=require("Classes.CraftingSimulatorControl").Open(build,p);c.page:SelByValue("Craft settings");c.page.selFunc();c.trials:SetText("40");c.seed:SetText("1");assert.is_true(c.exact:IsEnabled(),c.exact:GetProperty("tooltipText"));c.exact:Click()
+		local tasks=require("Modules.CraftingTasks");assert.is_not_nil(tasks.job,main.popups[1] and main.popups[1].title or "No popup");for _=1,200 do if not tasks.job then break end;tasks.tick(build) end;assert.is_nil(tasks.job)
+		local lines={};for _,row in ipairs(c.resultSummary.list) do lines[#lines+1]=row[1] end
+		local result=table.concat(lines," ");assert.is_truthy(result:find("Failed modeled transitions:",1,true),result);assert.is_truthy(result:find("The item has no open affix",1,true),result)
+		main.popups={}
+	end)
 	it("retains corrupted Abyss jewel capacity during tainted affix crafts",function()
 		local m=model("Murderous Eye Jewel");local input=sim.perform(m.raw,{method="alchemy"},104729).state
 		input.corrupted=true;assert.equal(4,#input.affixes);assert.equal(6,sim.capacities(m,input).total)
