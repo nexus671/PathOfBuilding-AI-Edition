@@ -505,6 +505,12 @@ async function main(){
   const variantSearch=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Double-Veiled Item',limit:20},'atlas');
   const threadSearch=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Threadbare',limit:20},'atlas');
   const threadNode=threadSearch.atlas.matches.find(node=>node.id===64980);assert.equal(threadNode.variantEffects[0].stats[0],'Breach');assert.match(threadNode.stats[0],/^Threads found/);
+  const positiveSearch=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Dextral Threads',limit:20},'atlas');
+  const positiveNode=positiveSearch.atlas.matches.find(node=>node.id===54685);assert.equal(positiveNode.variantEffects[0].stats[0],'Breach');
+  const conflictRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'conflict',title:'Conflict',version:'3.30.0-preview',budget:150,nodes:[]},targets:[threadNode.id,positiveNode.id]},'atlas');
+  const conflictPlan={...conflictRoute.atlas.plan,choices:[{node:threadNode.id,effect:threadNode.variantEffects[0].effect},{node:positiveNode.id,effect:positiveNode.variantEffects[0].effect}]};
+  const conflictResult=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:conflictPlan,targets:[]},'atlas');
+  assert.match(conflictResult.atlas.strategySummary.warnings.join(' '),/does not block Breach encounters/);
   const variantNode=variantSearch.atlas.matches.find(node=>node.id===45404);assert.ok(variantNode?.variantEffects?.length>1);
   const variantRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'variant',title:'Variant',version:'3.30.0-preview',budget:150,nodes:[]},targets:[variantNode.id]},'atlas');
   const variantPlan={...variantRoute.atlas.plan,choices:[{node:variantNode.id,effect:variantNode.variantEffects[0].effect}]};

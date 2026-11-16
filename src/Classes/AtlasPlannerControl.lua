@@ -184,7 +184,7 @@ function Panel.Open(build,source,layout)
 		controls.version:SelByValue(draft.version)
 		local report=atlas.report(draft)
 		if controls.strategySummary then
-			local counts={};for _,id in ipairs(draft.nodes) do local mechanic=strategy.mechanic(controls.canvas.tree.nodes[id]);counts[mechanic]=(counts[mechanic] or 0)+1 end
+			local counts={};for _,id in ipairs(draft.nodes) do local mechanic=strategy.mechanic(strategy.selectedNode(draft,controls.canvas.tree.nodes[id]));counts[mechanic]=(counts[mechanic] or 0)+1 end
 			local parts={};for name,count in pairsSortByKey(counts) do parts[#parts+1]=name.." "..count end
 			local lines={#parts>0 and table.concat(parts," | ") or "Allocate nodes to build your strategy.",#(draft.desired or {}).." desired | "..#avoided.." avoided | "..report.counts.small.." small nodes | "..report.counts.gateway.." gateways"}
 			controls.strategySummary.list=ui.rows(lines,graphWidth-16,14)
@@ -335,11 +335,12 @@ function Panel.Open(build,source,layout)
 		local plan=current();local report=atlas.report(plan);local summary=require("Modules.AtlasTargets").summary(plan)
 		local lines={string.format("%d allocated | %d small | %d notables | %d keystones | %d gateways",report.used,report.counts.small,report.counts.notable,report.counts.keystone,report.counts.gateway),summary.connectedDesired.." / "..summary.desired.." desired nodes connected",report.remaining.." points available","Counts describe allocations, not effective map odds or farming income."}
 		for _,warning in ipairs(summary.warnings) do lines[#lines+1]=warning end
+		for _,restriction in ipairs(summary.threadRestrictions) do lines[#lines+1]=restriction.name..": excludes "..restriction.mechanic.." Threads found in your Maps." end
 		local entries={{id="summary",label="Allocated investment overview",category="Overview",details=lines}}
 		for _,row in ipairs(summary.mechanics) do entries[#entries+1]={id="mechanic-"..row.name,label=row.name.." | "..row.total.." points",category=row.name,details={row.name,row.small.." small nodes",row.notable.." notables",row.keystone.." keystones",row.gateway.." gateways","Small nodes can carry valuable bonuses; they are not assumed to be wasted travel."}} end
 		for _,keystone in ipairs(summary.keystones) do local details={keystone.name,"Review the whole keystone, including restrictions and tradeoffs."};for _,stat in ipairs(keystone.stats) do details[#details+1]=stat end;entries[#entries+1]={id="keystone-"..keystone.id,label=keystone.name.." | Keystone tradeoffs",category="Keystones",details=details} end
 		for _,missing in ipairs(report.missingChoices) do entries[#entries+1]={id="missing-"..missing.id,label=missing.name.." | Choose an effect",category="Needs a choice",details={"Select this node on the tree and choose one of its effects."}} end
-		for _,id in ipairs(plan.nodes) do local node=atlas.tree(plan.version).nodes[id];for i,stat in ipairs(atlas.nodeStats(plan,node)) do entries[#entries+1]={id=id.."-"..i,label=stat,category=strategy.mechanic(node),details={node.name,stat,"Displayed bonus; keystone interactions are not combined."}} end end
+		for _,id in ipairs(plan.nodes) do local node=atlas.tree(plan.version).nodes[id];for i,stat in ipairs(atlas.nodeStats(plan,node)) do entries[#entries+1]={id=id.."-"..i,label=stat,category=strategy.mechanic(strategy.selectedNode(plan,node)),details={node.name,stat,"Displayed bonus; keystone interactions are not combined."}} end end
 		browser.Open("Atlas bonuses by mechanic",entries)
 	end)
 	controls.browse=button(232,height-86,100,"Find nodes",function()

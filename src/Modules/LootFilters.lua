@@ -212,14 +212,8 @@ function M.generate(build,profile,checkpoint)
 		local atlas=require("Modules.AtlasPlanner");local keywords,excludedThreads={},{};local graph=atlas.tree(plan.version)
 		local atlasStrategy=require("Modules.AtlasStrategy")
 		for _,id in ipairs(plan.nodes) do local node=graph.nodes[id];if node then
-			local excludesType=false;for _,stat in ipairs(node.stats) do if atlas.displayStat(stat):lower():find("threads found in your maps cannot be of type",1,true) then excludesType=true end end
-			local selected=atlas.nodeStats(plan,node)
-			if excludesType then
-				local chosen={};for i=#node.stats+1,#selected do chosen[#chosen+1]=selected[i] end
-				for _,mechanic in ipairs(atlasStrategy.allMechanics({name="",stats=chosen})) do excludedThreads[mechanic]=true end
-				selected=node.stats
-			end
-			for _,mechanic in ipairs(atlasStrategy.allMechanics({name=node.name,stats=selected})) do keywords[mechanic]=true end
+			local rule=atlasStrategy.threadRule(plan,node);if rule and rule.kind=="exclude" then excludedThreads[rule.mechanic]=true end
+			for _,mechanic in ipairs(atlasStrategy.allMechanics(atlasStrategy.selectedNode(plan,node))) do keywords[mechanic]=true end
 		end end
 		local mentioned,avoided={},{};for _,field in ipairs({"scarabs","maps"}) do mentionedItems(plan.strategy and plan.strategy[field] or "",strategyNames,mentioned) end
 		mentionedItems(plan.strategy and plan.strategy.avoid or "",strategyNames,avoided)

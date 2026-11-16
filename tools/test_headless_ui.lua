@@ -1055,8 +1055,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	frame("atlas-thread-choice");ui:click("choose");frame("atlas-thread-selected")
 	local detail={};for _,row in ipairs(build.planningWorkspace.controls.details.list) do detail[#detail+1]=StripEscapes(row[1] or "") end
 	assert(table.concat(detail," "):find("Threads found in your Maps cannot",1,true),"Atlas node text was not rendered readably")
+	ui:text("search","Dextral Threads");ui:click("find");ui:click("allocate");ui:click("allocate");ui:click("choose");ui:click("targets")
+	local conflict={};for _,row in ipairs(main.popups[1].controls.details.list) do conflict[#conflict+1]=StripEscapes(row[1] or "") end
+	assert(table.concat(conflict," "):gsub("%s+"," "):find("conflicting with Dextral Threads",1,true),"Conflicting Atlas Thread effects were not explained")
+	frame("atlas-thread-conflict");ui:click("close")
 	ui:click("progression");ui:click("strategyTab");ui:text("maps","Run Strand Maps and Beach Maps");ui:text("avoid","Beach Map");ui:click("keep")
-	ui:click("keep");assert(build.savers.AtlasPlans.plans[1].version=="3.30.0-preview" and #build.savers.AtlasPlans.plans[1].choices==2,"Atlas preview version or effects not retained")
+	ui:click("keep");assert(build.savers.AtlasPlans.plans[1].version=="3.30.0-preview" and #build.savers.AtlasPlans.plans[1].choices==3,"Atlas preview version or effects not retained")
 	ui:click("nav_journey");ui:click("page4");ui:click("add");ui:text("title","Pristine Fossils");ui:click("keep")
 	local function filterTool(query)
 		ui:click("manage");ui:text("search",query);ui:click("choose")

@@ -18,10 +18,11 @@ function M.Open(build,options)
 			end
 			for _,node in ipairs(diff.added) do if node.kind=="notable" or node.kind=="keystone" then lines[#lines+1]="+ "..node.name end end
 		end
+		for _,warning in ipairs(summary.warnings) do lines[#lines+1]=warning end
+		for _,restriction in ipairs(summary.threadRestrictions) do lines[#lines+1]=restriction.name..": excludes "..restriction.mechanic.." Threads found in your Maps." end
 		for _,row in ipairs(summary.mechanics) do lines[#lines+1]=row.name..": "..row.total.." points | "..row.notable.." notables | "..row.small.." small | "..row.gateway.." gateways" end
 		lines[#lines+1]=summary.connectedDesired.." / "..summary.desired.." desired nodes connected"
 		for _,keystone in ipairs(summary.keystones) do lines[#lines+1]="Keystone: "..keystone.name;for _,stat in ipairs(keystone.stats) do lines[#lines+1]=stat end end
-		for _,warning in ipairs(summary.warnings) do lines[#lines+1]=warning end
 		lines[#lines+1]="Counts describe allocations, not effective map odds or farming income.";c.details.list=ui.rows(lines,detailW-28,14)
 	end
 	local function refresh()

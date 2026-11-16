@@ -13,6 +13,8 @@ The 3.30 preview includes multiple-choice nodes. Connect one, select it, and cho
 
 Stage routes call out new or changed effects, including effects that must be reselected after a refund. AI review shows the chosen effect, and linked loot-filter suggestions use the selected effect rather than the alternatives. An effect that excludes a Thread type suppresses inferred pickups for that type; explicitly named strategy items remain visible.
 
+The allocation summary lists selected Thread exclusions and warns if another selected effect increases the same Thread type. A Thread exclusion applies to Threads found in your Maps; it does not prevent the corresponding encounter from appearing.
+
 **Find nodes** opens a searchable list with mechanic filters and added point costs. Choosing a result highlights its mechanic on the tree. The minimap moves the camera without changing allocations. Drag the divider beside the inspector to resize it.
 
 Mechanic filters include Mirage, Wildwood, Sentinels, Torment, Rogue Exiles, Mercenaries, Ore Deposits and Threads. A node that mentions multiple mechanics appears in each applicable filter; the investment summary assigns one primary category per node so its totals do not double-count points. Categories are based on node text and are not a simulation of encounter interactions. Linked loot-filter suggestions consider all applicable categories.

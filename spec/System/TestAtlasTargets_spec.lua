@@ -74,6 +74,16 @@ describe("Desired Atlas routes",function()
 		state=targets.start(build,p,true);for _=1,1000 do targets.tick(build,true);if not state.thread then break end end
 		assert.is_nil(state.error);assert.same({},state.result.plan.choices)
 	end)
+	it("explains conflicting selected Thread types without claiming encounters are blocked",function()
+		local tree=atlas.tree("3.30.0-preview");local positive,negative=tree.nodes[54685],tree.nodes[64980]
+		local p=atlas.connect(plan(),{positive.id,negative.id})
+		p=atlas.chooseEffect(p,positive.id,positive.variantEffects[1].effect);p=atlas.chooseEffect(p,negative.id,negative.variantEffects[1].effect)
+		local summary=targets.summary(p);assert.equal(1,#summary.threadRestrictions);assert.equal("Breach",summary.threadRestrictions[1].mechanic)
+		local warning=table.concat(summary.warnings," ");assert.is_truthy(warning:find("conflicting with Dextral Threads",1,true));assert.is_truthy(warning:find("does not block Breach encounters",1,true))
+		p=atlas.chooseEffect(p,negative.id,negative.variantEffects[2].effect);summary=targets.summary(p)
+		assert.equal("Ritual",summary.threadRestrictions[1].mechanic);assert.is_nil(table.concat(summary.warnings," "):find("conflicting with Dextral Threads",1,true))
+		p=atlas.chooseEffect(p,negative.id,nil);assert.equal(0,#targets.summary(p).threadRestrictions)
+	end)
 	it("honors saved exclusions even when no extra exclusions are supplied",function()
 		local p=plan();local neighbour=atlas.tree(p.version).nodes[atlas.tree(p.version).start].links[1];p.avoided={neighbour}
 		assert.is_false(pcall(atlas.connect,p,{neighbour}));assert.is_false(pcall(atlas.connectOptimized,p,{neighbour}))

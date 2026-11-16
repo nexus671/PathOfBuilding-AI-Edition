@@ -34,6 +34,26 @@ function M.allMechanics(node)
 	if #result==0 and matches(text,"Maps") then result[1]="Maps" end
 	return result
 end
+-- The preview contains one selected Thread type on each of these node forms.
+-- A Thread exclusion is not a restriction on the corresponding encounter.
+function M.threadRule(plan,node)
+	local kind
+	for _,stat in ipairs(node.stats or {}) do
+		local text=atlas.displayStat(stat):lower()
+		if text:find("threads found in your maps cannot be of type",1,true) then kind="exclude"
+		elseif text:find("increased chance for threads in your maps to be of type",1,true) then kind="increase" end
+	end
+	if not kind then return nil end
+	for _,choice in ipairs(plan.choices or {}) do if choice.node==node.id then
+		for _,effect in ipairs(node.variantEffects or {}) do if effect.effect==choice.effect and #effect.stats==1 then
+			local mechanic=atlas.displayStat(effect.stats[1]);if isValueInArray(M.mechanics,mechanic) then return {kind=kind,mechanic=mechanic,id=node.id,name=node.name} end
+		end end
+	end end
+end
+function M.selectedNode(plan,node)
+	local rule=M.threadRule(plan,node)
+	return {name=node.name,stats=rule and rule.kind=="exclude" and node.stats or atlas.nodeStats(plan,node)}
+end
 function M.blocking(node)
 	local lines={};for _,stat in ipairs(node.stats or {}) do local text=stat:lower();if text:find("no chance to contain",1,true) or text:find("cannot contain",1,true) then lines[#lines+1]=stat end end
 	return lines

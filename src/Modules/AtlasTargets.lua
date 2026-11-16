@@ -52,17 +52,21 @@ function M.cancel(build) local state=M.jobs[build];if state then state.thread=ni
 function M.reset(build) M.cancel(build);M.jobs[build]=nil end
 function M.summary(plan)
 	plan=atlas.validate(plan);local tree=atlas.tree(plan.version);local groups,blocks,investments={},{},{}
-	for _,id in ipairs(plan.nodes) do local node=tree.nodes[id];local mechanic=strategy.mechanic(node);local row=groups[mechanic] or {name=mechanic,small=0,notable=0,keystone=0,gateway=0,total=0,content=0};groups[mechanic]=row
+	local excludedThreads,increasedThreads={},{}
+	for _,id in ipairs(plan.nodes) do local node=tree.nodes[id];local selectedNode=strategy.selectedNode(plan,node);local mechanic=strategy.mechanic(selectedNode);local row=groups[mechanic] or {name=mechanic,small=0,notable=0,keystone=0,gateway=0,total=0,content=0};groups[mechanic]=row
 		row.total=row.total+1;row[node.kind]=row[node.kind]+1
-		local selectedNode={name=node.name,stats=atlas.nodeStats(plan,node)}
+		local threadRule=strategy.threadRule(plan,node);if threadRule then local rules=threadRule.kind=="exclude" and excludedThreads or increasedThreads;rules[#rules+1]=threadRule end
 		local blocking=M.blocking(selectedNode);if #blocking==0 then row.content=row.content+1;for _,name in ipairs(strategy.allMechanics(selectedNode)) do investments[name]=true end else for _,stat in ipairs(blocking) do blocks[#blocks+1]={node=node.name,stat=stat,mechanic=mechanic} end end
 	end
-	local result={mechanics={},blocking=blocks,warnings={},keystones={},desired=#(plan.desired or {}),avoided=#(plan.avoided or {}),connectedDesired=0}
+	local result={mechanics={},blocking=blocks,threadRestrictions=excludedThreads,warnings={},keystones={},desired=#(plan.desired or {}),avoided=#(plan.avoided or {}),connectedDesired=0}
 	local allocated={};for _,id in ipairs(plan.nodes) do allocated[id]=true;local node=tree.nodes[id];if node.kind=="keystone" then result.keystones[#result.keystones+1]={id=id,name=node.name,stats=copyTable(node.stats)} end end
 	for _,id in ipairs(plan.desired or {}) do if allocated[id] then result.connectedDesired=result.connectedDesired+1 end end
 	table.sort(result.keystones,function(a,b) return a.name<b.name end)
 	for _,row in pairsSortByKey(groups) do result.mechanics[#result.mechanics+1]=row end
 	for _,block in ipairs(blocks) do if investments[block.mechanic] then result.warnings[#result.warnings+1]=block.mechanic.." investment includes a blocking modifier. Review natural-spawn restrictions and forced encounters: "..block.stat end end
+	for _,excluded in ipairs(excludedThreads) do for _,increased in ipairs(increasedThreads) do if excluded.mechanic==increased.mechanic then
+		result.warnings[#result.warnings+1]=excluded.name.." excludes "..excluded.mechanic.." Threads found in your Maps, conflicting with "..increased.name..". This does not block "..excluded.mechanic.." encounters."
+	end end end
 	return result
 end
 return M
