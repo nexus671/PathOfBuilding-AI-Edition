@@ -74,7 +74,7 @@ The engine covers core currencies, bench modifiers, essences, fossils, Harvest t
 
 Harvest resistance swaps include modeled elemental counterparts for supported Incursion glove, helmet and amulet hybrids. The modifier mapping and selection odds are not verified in game; the destination must match the item's base and level.
 
-Unpredictable recombination can choose either base, retains that base's item level, and later actions continue on that base. Its count table predates the 3.30 changes for pools of one to three modifiers, so those estimates are not current odds. See [coverage and assumptions](crafting-coverage.md) for missing or incomplete methods.
+Unpredictable recombination can choose either base, retains that base's item level, and later actions continue on that base. Small-pool counts use preliminary 3.30 community observations; larger pools and special cases still use older estimates. Modifier selection is modeled uniformly, so results are not verified game odds. See [coverage and assumptions](crafting-coverage.md) for missing or incomplete methods.
 
 Recombination and Awakener recipes consume a donor on each attempt. **Resource prices** lists the configured donor separately, identified by a short fingerprint of its exact item text. Enter its cost in the same unit as the other prices; until then, total spending is unpriced. A whole-action price override covers both the service or currency and the donor. Changing the donor text creates a new quote key, so review its price after editing it.
 

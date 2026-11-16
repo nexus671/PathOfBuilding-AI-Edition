@@ -5,6 +5,20 @@ describe("3.30 recombination base rules",function()
 	local function input(model,id)
 		return sim.validateState(model,{rarity="MAGIC",affixes={{id=id,range=0.5}}})
 	end
+	it("samples the observed 3.30 two-prefix pool across zero, one and two outputs",function()
+		local model=sim.model(armourRaw)
+		local state=input(model,"IncreasedLife0")
+		local donor=input(model,"LocalIncreasedPhysicalDamageReductionRating1")
+		local craft={method="recombine",donorItem=sim.toItem(model,donor).raw}
+		for _,case in ipairs({{0.18,0},{0.50,1},{0.99,2}}) do
+			local draws=0
+			local result=sim.action(model,state,craft,function()
+				draws=draws+1
+				return draws==2 and case[1] or 0.9
+			end)
+			assert.equal(case[2],#result.affixes)
+		end
+	end)
 	it("retains the chosen base level and removes incompatible rollable entries before drawing counts",function()
 		local evasion,armour=sim.model(evasionRaw),sim.model(armourRaw)
 		local state=input(evasion,"IncreasedLife0");local donor=input(armour,"LocalIncreasedPhysicalDamageReductionRating1")
@@ -12,10 +26,9 @@ describe("3.30 recombination base rules",function()
 		assert.is_true(sim.sameRecombinationClass(evasion.item,armour.item))
 		local left=sim.action(evasion,state,craft,function() return 0.1 end)
 		assert.are.equal("Zodiac Leather",sim.toItem(evasion,left).baseName);assert.are.equal(70,sim.toItem(evasion,left).itemLevel)
-		-- With the older count table, a single eligible prefix and this draw yield zero.
-		-- Counting the incompatible armour prefix would yield at least one instead.
+		-- Only the life prefix is eligible on the evasion base; this draw retains none.
 		assert.are.equal(0,#left.affixes);assert.is_truthy(sim.validateState(evasion,left))
-		local right=sim.action(evasion,state,craft,function() return 0.9 end)
+		local right=sim.action(evasion,state,craft,function() return 0.99 end)
 		assert.are.equal("Plate Vest",sim.toItem(evasion,right).baseName);assert.are.equal(86,sim.toItem(evasion,right).itemLevel)
 		assert.are.equal(2,#right.affixes);assert.is_truthy(sim.validateState(evasion,right))
 		local changes=table.concat(require("Modules.CraftingInspection").diff(evasion,state,right),"\n")

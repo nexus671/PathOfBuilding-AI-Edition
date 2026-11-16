@@ -1,7 +1,8 @@
 -- Independent implementation of the community's measured unpredictable model.
 -- Conditional counts: https://github.com/Maliffic/Resimbulator/blob/master/docs/guide.txt
+-- 3.30 small-pool observations: https://www.reddit.com/r/pathofexile/comments/1xvlxrn/330_new_recomb_13_mod_pool_odds_discovered/
 local R={}
-local countWeights={{100},{41,59},{0,67,33},{0,39,52,10},{0,11,59,31},{0,0,43,57},{0,0,28,72}}
+local countWeights={{100},{5267,4733},{1900,7667,433},{0,5133,4267,600},{0,11,59,31},{0,0,43,57},{0,0,28,72}}
 function R.extend(M,A,api)
 	M.methods[#M.methods+1]="recombine";M.labels.recombine="Unpredictable recombination (experimental)";table.sort(M.methods)
 	local action,toItem,validate,pool,capacities,matches,options=M.action,M.toItem,M.validateState,M.pool,M.capacities,M.matches,M.actionOptions
@@ -129,6 +130,6 @@ function R.extend(M,A,api)
 		for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do if base.item.base.armour and base.item.base.armour[kind.."BaseMin"] then state.percentiles[kind]=random() end end
 		return state
 	end
-	M.limits[#M.limits+1]="Unpredictable recombination uses the 3.30 chosen-base item level and excludes incompatible rollable modifiers before counts. Its older empirical count table is not updated for the 3.30 changes to one-to-three modifier pools; estimates for those pools are not current odds. Exclusive-only side ordering and hidden weights remain uncertain."
+	M.limits[#M.limits+1]="Unpredictable recombination uses preliminary community 3.30 observations for one-to-three modifier pools and older observations for larger pools. The one-prefix/one-suffix exception, exclusive-only side ordering and modifier selection weights remain uncertain; outcomes are estimates."
 end
 return R
