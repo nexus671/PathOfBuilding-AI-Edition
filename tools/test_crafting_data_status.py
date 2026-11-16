@@ -1,6 +1,6 @@
 import unittest
 
-from crafting_data_status import FILES, assess, component_matches, require_changed_export, require_exported, require_supported_granted_effects, version
+from crafting_data_status import FILES, assess, component_matches, reconstruct_granted_effect_levels, require_changed_export, require_exported, require_supported_granted_effects, version
 
 
 class CraftingDataStatusTest(unittest.TestCase):
@@ -53,6 +53,23 @@ class CraftingDataStatusTest(unittest.TestCase):
         candidate["mine"]["stats"][0] = dict(stat, min=0, max=0)
         candidate["mine"]["grants_effects"] = []
         require_supported_granted_effects(previous, candidate)
+
+    def test_reconstructs_only_unambiguous_granted_levels(self):
+        stat = {"id": "local_display_support_level", "min": 18, "max": 18}
+        previous = {"mine": {"stats": [stat]}}
+        candidate = {"mine": {"stats": [dict(stat, min=0, max=0)],
+                              "grants_effects": [{"level": 20}]}}
+        self.assertEqual(1, reconstruct_granted_effect_levels(previous, candidate))
+        self.assertEqual((20, 20), (candidate["mine"]["stats"][0]["min"], candidate["mine"]["stats"][0]["max"]))
+        require_supported_granted_effects(previous, candidate)
+        candidate["mine"]["stats"][0] = dict(stat, min=0, max=0)
+        candidate["mine"]["grants_effects"].append({"level": 19})
+        with self.assertRaisesRegex(ValueError, "Ambiguous"):
+            reconstruct_granted_effect_levels(previous, candidate)
+        for level in (0, None, True):
+            candidate["mine"]["grants_effects"] = [{"level": level}]
+            with self.assertRaisesRegex(ValueError, "Ambiguous"):
+                reconstruct_granted_effect_levels(previous, candidate)
 
 
 if __name__ == "__main__":

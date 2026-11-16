@@ -54,6 +54,29 @@ def require_supported_granted_effects(previous, exported):
         raise ValueError(f"{len(affected)} modifiers have zeroed display values and granted effects; update the importer before using this export (example: {sorted(affected)[0]})")
 
 
+def reconstruct_granted_effect_levels(previous, exported):
+    """Restore display levels moved into an unambiguous granted effect."""
+    repaired = 0
+    for identifier in previous.keys() & exported.keys():
+        current = exported[identifier]
+        effects = current.get("grants_effects") or []
+        if not effects:
+            continue
+        old_stats = {stat["id"]: stat for stat in previous[identifier]["stats"]}
+        for stat in current["stats"]:
+            old = old_stats.get(stat["id"])
+            if not (old and stat["id"].startswith("local_display_")
+                    and (old["min"], old["max"]) != (0, 0)
+                    and (stat["min"], stat["max"]) == (0, 0)):
+                continue
+            levels = {effect.get("level") for effect in effects}
+            if len(levels) != 1 or type(next(iter(levels))) is not int or next(iter(levels)) <= 0:
+                raise ValueError(f"Ambiguous granted effect level: {identifier}")
+            stat["min"] = stat["max"] = next(iter(levels))
+            repaired += 1
+    return repaired
+
+
 def assess(pinned, detected, exported, old_hashes, new_hashes=None):
     if detected != exported:
         return {"status": "export_pending", "changedFiles": []}

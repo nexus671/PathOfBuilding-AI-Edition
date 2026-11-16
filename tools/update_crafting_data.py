@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 from urllib.request import urlopen
-from crafting_data_status import require_changed_export, require_exported, require_supported_granted_effects, version
+from crafting_data_status import reconstruct_granted_effect_levels, require_changed_export, require_exported, require_supported_granted_effects, version
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = "repoe-fork/repoe-fork.github.io"
@@ -30,7 +30,9 @@ if destination.exists():
                            args.allow_identical_export)
 mods, fossils, bases, bench = (json.loads(raw[name]) for name in FILES)
 if destination.exists():
+    repaired = reconstruct_granted_effect_levels(previous["mods"], mods)
     require_supported_granted_effects(previous["mods"], mods)
+    print(f"Reconstructed {repaired} granted-effect display levels")
 identifiers = set()
 for source in (ROOT / "src" / "Data").glob("*.lua"):
     if source.name.startswith("Mod") or source.name in ["BeastCraft.lua", "Essence.lua"]:
