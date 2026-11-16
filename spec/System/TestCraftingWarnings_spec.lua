@@ -15,7 +15,9 @@ describe("Crafting result model notes",function()
 			lightning={fire={vivid_lifeforce=300,wild_lifeforce=300},cold={vivid_lifeforce=300,primal_lifeforce=300}}}
 		for from,choices in pairs(cases) do for to,cost in pairs(choices) do
 			local action={method="harvest_resistance",from=from,to=to}
-			assert.same(cost,sim.components(action));assert.equal(0,#sim.actionWarnings(action))
+			assert.same(cost,sim.components(action));local warnings=sim.actionWarnings(action)
+			assert.equal(1,#warnings);assert.equal("harvest_resistance_assumptions",warnings[1].code)
+			assert.matches("not verified",warnings[1].message)
 		end end
 		assert.has_error(function() sim.components({method="harvest_resistance",from="fire",to="fire"}) end)
 	end)

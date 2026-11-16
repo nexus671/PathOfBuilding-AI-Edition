@@ -36,7 +36,6 @@ function C.extend(M)
 				M.validateRecipe({steps={craft},targets=targets,requiredGroups=options.requiredGroups})
 				M.perform(raw,craft,options.seed,initialState)
 				local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
-				model.initial=state;M.validateTargetAvailability(model,targets,{craft})
 				if M.context then model=M.context(model,state) end
 				local reason,choices=M.damageReason(model,state,craft.from,craft.to);assert(not reason,reason)
 				local outcomes,hits={},0
@@ -61,7 +60,6 @@ function C.extend(M)
 				M.validateRecipe({steps={craft},targets=targets,requiredGroups=options.requiredGroups})
 				M.perform(raw,craft,options.seed,initialState)
 				local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
-				model.initial=state;M.validateTargetAvailability(model,targets,{craft})
 				if M.context then model=M.context(model,state) end
 				local reason,choices=M.resistanceReason(model,state,craft.from,craft.to);assert(not reason,reason)
 				local outcomes,hits={},0

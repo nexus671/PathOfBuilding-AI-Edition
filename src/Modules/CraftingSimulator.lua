@@ -920,9 +920,10 @@ do
 			validateCorruptionSocketGoals(checkedModel,{steps={craft},requirements=options.requirements})
 		end
 		local result=calculate(raw,craft,targets,initialState,options)
-		if not result.warnings then
+		if not result.warnings or not result.sampled and targets and #targets>0 then
 			local model=M.model(raw);if initialState then model.initial=M.validateState(model,initialState) end
-			result.warnings=M.actionWarnings(craft,model)
+			if not result.sampled and targets and #targets>0 then M.validateTargetAvailability(model,targets,{craft}) end
+			if not result.warnings then result.warnings=M.actionWarnings(craft,model) end
 		end
 		if initialState then for _,entry in ipairs(initialState.affixes or {}) do if entry.id:match("^bench:partial%-") then partialWarning(result.warnings);break end end end
 		if raw:find("Modifier cannot be changed",1,true) or raw:find("Modifiers cannot be changed",1,true) then partialWarning(result.warnings) end
