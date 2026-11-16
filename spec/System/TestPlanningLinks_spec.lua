@@ -139,6 +139,19 @@ describe("Linked planning tools",function()
 		for _,row in ipairs(workspace.controls.selection.list) do details[#details+1]=row[1] end
 		assert.matches("Unidentified item tier: 0",table.concat(details," "))
 	end)
+	it("shows unknown tier on generated rare examples and explains Ruthless comparisons",function()
+		local library=require("Modules.LootFilterLibrary");local profile=filters.profile("tier-preview","Tier preview")
+		local sample;for _,item in ipairs(library.scene(profile,build,"Mixed drops",0,83,86)) do if item.BaseType=="Iron Hat" then sample=item end end
+		local workspace=require("Modules.PlanningWorkspace").new(build)
+		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate",sample=sample})
+		local details={};for _,row in ipairs(workspace.controls.selection.list) do details[#details+1]=row[1] end
+		assert.matches("Unidentified item tier: unknown",table.concat(details," "))
+		workspace.controls.sceneStats:Click();main.popups[1].controls.search:SetText("Iron Hat",true)
+		local rows={};for _,row in ipairs(main.popups[1].controls.results.list) do rows[#rows+1]=row[1] end
+		assert.matches("tier unknown",table.concat(rows," "));main:ClosePopup()
+		profile.mode="Ruthless";workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Simulate",sceneKind="Tiered gear"})
+		assert.equal(0,workspace.cache.filters.layout.snapshot().sample.UnidentifiedItemTier)
+	end)
 	it("distinguishes quoted numeric modifier names from counts when checking linked targets",function()
 		build.savers.CraftingProjects:Upsert(craft());local profile=filters.profile("filter","Filter");profile.rules=filters.generate(build,profile)
 		profile.rules[1].text='Show\n HasExplicitMod "1" "foo"'

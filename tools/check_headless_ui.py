@@ -83,7 +83,13 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1374, f"Expected 1374 UI frames, found {len(paths)}"
+    assert len(paths) == 1377, f"Expected 1377 UI frames, found {len(paths)}"
+    for width in (960, 1024, 1280):
+        sample = json.loads((frames / f"{width}-filter-tier-unknown.json").read_text())
+        labels = " ".join(command.get("text", "") for command in sample["commands"] if command.get("kind") == "text")
+        assert "Unidentified item tier: unknown" in labels, "The unknown drop tier is not visible"
+        tier = next(command for command in sample["commands"] if "Unidentified item tier: unknown" in command.get("text", ""))
+        assert tier["y"] + tier["height"] <= tier["clip"][1] + tier["clip"][3], "The unknown tier is clipped"
     for width in (960, 1024, 1280):
         odds = json.loads((frames / f"{width}-crafting-harvest-damage-odds.json").read_text())
         labels = " ".join(command.get("text", "") for command in odds["commands"] if command.get("kind") == "text")

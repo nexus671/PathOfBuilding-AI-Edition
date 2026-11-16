@@ -606,6 +606,10 @@ async function main(){
   const unknownStrands=await queued('test_loot_filter',{baseRevision:context.revision,profile:strandFilter,sample:{BaseType:'Iron Hat'}},'tested');assert.equal(unknownStrands.result.status,'unknown');
   const copiedStrandFilter={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n MemoryStrands >= 60'}]};
   const copiedStrands=await queued('test_loot_filter',{baseRevision:context.revision,profile:copiedStrandFilter,itemText:'Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86\nMemory Strands: 75'},'tested');assert.equal(copiedStrands.sample.MemoryStrands,75);assert.equal(copiedStrands.result.action,'Hide');
+  const tierFilter={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n UnidentifiedItemTier >= 4'}]};
+  const tierItem='Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86\nUnidentified';
+  const unknownTier=await queued('test_loot_filter',{baseRevision:context.revision,profile:tierFilter,itemText:tierItem},'tested');assert.equal(unknownTier.result.status,'unknown');
+  const knownTier=await queued('test_loot_filter',{baseRevision:context.revision,profile:tierFilter,itemText:tierItem.replace('Unidentified','Unidentified (Tier 4)')},'tested');assert.equal(knownTier.result.action,'Hide');
   const modFilter={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n HasExplicitMod "of Haast"'}]};
   const hiddenMod=await queued('test_loot_filter',{baseRevision:context.revision,profile:modFilter,sample:{Identified:false,HasExplicitMod:['of Haast']}},'tested');assert.equal(hiddenMod.result.status,'unknown');
   const visibleMod=await queued('test_loot_filter',{baseRevision:context.revision,profile:modFilter,sample:{Identified:true,HasExplicitMod:['of Haast']}},'tested');assert.equal(visibleMod.result.action,'Hide');

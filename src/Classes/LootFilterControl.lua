@@ -210,13 +210,13 @@ function M.EditSample(item,save)
 		else c[key]=new("EditControl"):EditControl(ui.anchor,{x,y+18,fieldWidth-32,24},tostring(value==nil and "" or value),nil,nil,240) end
 		if key=="HasExplicitMod" then c[key].tooltipText='Enter quoted modifier names. Leave blank if unknown; enter [] for a known empty list.' end
 		if key=="SocketGroup" then c[key].tooltipText='Enter linked groups, 0 for no sockets, or leave blank if unknown.' end
-		if key=="DropLevel" or key=="Width" or key=="Height" or key=="BaseDefencePercentile" or key=="MemoryStrands" then c[key].tooltipText="Leave blank if this property is unknown." end
+		if key=="DropLevel" or key=="Width" or key=="Height" or key=="BaseDefencePercentile" or key=="MemoryStrands" or key=="UnidentifiedItemTier" then c[key].tooltipText="Leave blank if this property is unknown." end
 	end
 	local previousBase=c.BaseType.buf
-	c.BaseType.tooltipText="Changing the base clears its class, dimensions, drop level, defence percentile, memory strands, always-shown status, map tier and sockets. Enter values for the new item."
+	c.BaseType.tooltipText="Changing the base clears its class, dimensions, drop level, defence percentile, item tier, memory strands, always-shown status, map tier and sockets. Enter values for the new item."
 	c.BaseType.changeFunc=function(value)
 		if value~=previousBase then
-			for _,key in ipairs({"Class","DropLevel","Width","Height","BaseDefencePercentile","MemoryStrands","MapTier","SocketGroup","Sockets","SocketColours","LinkedSockets"}) do c[key]:SetText("") end
+			for _,key in ipairs({"Class","DropLevel","Width","Height","BaseDefencePercentile","UnidentifiedItemTier","MemoryStrands","MapTier","SocketGroup","Sockets","SocketColours","LinkedSockets"}) do c[key]:SetText("") end
 			c.AlwaysShow:SelByValue("Unknown")
 			for _,key in ipairs(additionalSampleFields()) do extra[key]=nil end
 			previousBase=value
@@ -224,6 +224,7 @@ function M.EditSample(item,save)
 	end
 	local previousRarity=c.Rarity.buf
 	c.Rarity.changeFunc=function(value)
+		if value:lower()~=previousRarity:lower() then c.UnidentifiedItemTier:SetText("") end
 		if value:lower()=="unique" and previousRarity:lower()~="unique" then c.DropLevel:SetText("");c.BaseDefencePercentile:SetText("") end
 		previousRarity=value
 	end

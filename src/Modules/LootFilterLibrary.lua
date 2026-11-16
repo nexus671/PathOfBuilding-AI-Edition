@@ -74,7 +74,7 @@ end
 function M.sample(rule,block)
 	local item={BaseType="Chaos Orb",Class="Stackable Currency",Rarity="Normal",ItemLevel=86,AreaLevel=83,DropLevel=1,Quality=0,StackSize=1,Sockets=0,SocketGroup="",LinkedSockets=0,Width=1,Height=1,UnidentifiedItemTier=0,HasInfluence={"None"},HasExplicitMod={},HasEnchantment={},EnchantmentPassiveNode=""}
 	for key in pairs(parser.booleans) do if key~="AlwaysShow" then item[key]=false end end
-	local hasBase,hasClass,hasRarity,hasIdentified,hasDefence,modifier=false,false,false,false,false,nil
+	local hasBase,hasClass,hasRarity,hasIdentified,hasDefence,hasTier,modifier=false,false,false,false,false,false,nil
 	local socketConditions={}
 	if rule then block=block or parser.parse(rule.text).rules[1];if block then for _,c in ipairs(block.conditions) do
 		local value=c.values[1]
@@ -82,6 +82,7 @@ function M.sample(rule,block)
 		if c.keyword=="BaseType" then hasBase=true elseif c.keyword=="Class" then hasClass=true end
 		if c.keyword=="Rarity" then hasRarity=true elseif c.keyword=="Identified" then hasIdentified=true end
 		if c.keyword=="BaseDefencePercentile" then hasDefence=true end
+		if c.keyword=="UnidentifiedItemTier" then hasTier=true end
 		if c.keyword=="HasExplicitMod" and (c.operator=="=" or c.operator=="==" or c.operator==">=" or c.operator==">") then modifier=c end
 		if parser.numeric[c.keyword] then local n=tonumber(value);item[c.keyword]=n and (c.operator==">" and n+1 or c.operator=="<" and n-1 or n) or value
 		elseif c.keyword=="Rarity" then item.Rarity=value
@@ -120,6 +121,9 @@ function M.sample(rule,block)
 		elseif item.Rarity=="Unique" then item.BaseType="Leather Belt";item.Class="Belts"
 		elseif item.Rarity=="Rare" or item.Rarity=="Magic" then item.BaseType="Iron Hat";item.Class="Helmets" end
 	else item.Class=baseClass(item.BaseType) or (hasClass and item.Class or nil) end
+	-- A generated unidentified magic or rare item can have any drop tier. A
+	-- rule-specific example retains an explicitly requested hypothetical tier.
+	if not hasTier and item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=nil end
 	applyBaseProperties(item,#socketConditions==1,hasDefence)
 	return item
 end
@@ -251,7 +255,8 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 	if kind=="Tiered gear" then
 		-- Identical base and rarity make the explicit tier the useful difference.
 		-- These are comparison samples, not a model of drop probabilities.
-		for _,tier in ipairs({0,2,3,4,5}) do
+		local tiers=profile and profile.mode=="Ruthless" and {0} or {0,2,3,4,5}
+		for _,tier in ipairs(tiers) do
 			local item=M.sample();item.BaseType="Iron Hat";item.Class="Helmets";item.Rarity="Rare";item.Identified=false;item.UnidentifiedItemTier=tier
 			item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86;applyBaseProperties(item);list[#list+1]=item
 		end
@@ -260,6 +265,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 	if kind=="Build targets" then for _,rule in ipairs(targetRules or filters.generate(build,profile)) do list[#list+1]=M.sample(rule) end end
 	local source=({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
+		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end
 		applyBaseProperties(item)
 		-- A map name alone does not establish its current Atlas tier. Let the
 		-- preview ask for that value rather than treating every map as tier zero.

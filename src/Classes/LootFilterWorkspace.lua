@@ -30,9 +30,10 @@ function M.Open(build,source,layout,controller)
 	local catalog,entries,parsed,raw,report,result={},{};local selectedEntry;local scene={}
 	local function sampleDetails(sample,evaluated)
 		local deciding=evaluated and (evaluated.ruleTitle or (evaluated.line and "Filter line "..evaluated.line or evaluated.status=="matched" and "No matching block: default Show" or "Resolve missing properties or filter errors.")) or "Select a drop to inspect the rule."
-		local lines={sample.BaseType or "Unknown base","iLvl "..tostring(sample.ItemLevel or "?").." / area "..tostring(sample.AreaLevel or "?"),evaluated and evaluated.action or "Choose a drop",deciding}
-		local tier=itemTier(sample);if tier~=nil then lines[#lines+1]="Unidentified item tier: "..tier end
-		for _,reason in ipairs(evaluated and evaluated.reasons or {}) do lines[#lines+1]=reason end;return lines
+		local lines={sample.BaseType or "Unknown base","iLvl "..tostring(sample.ItemLevel or "?").." / area "..tostring(sample.AreaLevel or "?"),evaluated and evaluated.action or "Choose a drop"}
+		local tier=itemTier(sample);if tier~=nil then lines[#lines+1]="Unidentified item tier: "..tier
+		elseif sample.Identified==false and (sample.Rarity=="Magic" or sample.Rarity=="Rare") then lines[#lines+1]="Unidentified item tier: unknown" end
+		lines[#lines+1]=deciding;for _,reason in ipairs(evaluated and evaluated.reasons or {}) do lines[#lines+1]=reason end;return lines
 	end
 	local history=require("Modules.PlanningHistory").new(data,state.history);local tierView;local tierState=state.tierState
 	local transient=layout.transient or {};local dependencies;local dependencyTime;local dependencyJob;local dependencyError;local generationJob=transient.filterGeneration
@@ -417,7 +418,7 @@ function M.Open(build,source,layout,controller)
 				local evaluated=evaluateDrop(drop)
 				local action=M.dropOutcome(evaluated)
 				counts[action]=counts[action]+1
-				local value=itemTier(drop);local tier=value~=nil and (value==0 and " (no tier)" or " (tier "..value..")") or ""
+				local value=itemTier(drop);local tier=value~=nil and (value==0 and " (no tier)" or " (tier "..value..")") or (drop.Identified==false and (drop.Rarity=="Magic" or drop.Rarity=="Rare") and " (tier unknown)" or "")
 				entries[#entries+1]={id=index,label=(drop.BaseType or "Unknown item")..tier.." - "..action,category=action,details=sampleDetails(drop,evaluated),sample=drop}
 			end
 			local title=string.format("Examples: %d shown, %d minimal, %d hidden, %d unknown",counts.Show,counts.Minimal,counts.Hide,counts.Unknown)
@@ -436,7 +437,7 @@ function M.Open(build,source,layout,controller)
 			for i=#scene,2,-1 do if encode(scene[i])==selected then table.remove(scene,1);break end end
 		end
 		local targets=sceneKind=="Build targets" and transient.filterSceneTargets or nil
-		local caption=sceneKind=="Tiered gear" and "TIER COMPARISON" or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
+		local caption=sceneKind=="Tiered gear" and (profile.mode=="Ruthless" and "RUTHLESS: NO ITEM TIERS" or "TIER COMPARISON") or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
 		sceneControl("preview",groundX,savedSet and 168 or 120,groundW,h-(savedSet and 230 or 182),scene,true,caption)
 		if targets then c.preview.tooltipText=targets.error or (#(targets.warnings or {})>0 and "Some crafting guides need review. Open linked build targets for details." or "Build target examples update as the build changes.") end
 		button(c,"inspectMatch",w-216,h-96,184,"Inspect matched rules",inspectMatches);c.inspectMatch.enabled=function() return parsed~=nil end

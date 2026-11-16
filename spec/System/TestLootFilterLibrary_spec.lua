@@ -4,6 +4,25 @@ describe("Visual filter catalogue",function()
 	local library=require("Modules.LootFilterLibrary")
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("does not invent an item tier for generated unidentified gear",function()
+		local profile=filters.profile("unknown-tier","Unknown tier")
+		local scene=library.scene(profile,build,"Mixed drops",0,83,86);local byName={}
+		for _,item in ipairs(scene) do byName[item.BaseType]=item end
+		local filter=parser.parse('Show\n UnidentifiedItemTier >= 4\nHide')
+		assert.is_nil(byName["Iron Hat"].UnidentifiedItemTier)
+		assert.equal("unknown",parser.simulate(filter,byName["Iron Hat"]).status)
+		assert.equal(0,byName["Chaos Orb"].UnidentifiedItemTier)
+		local sample=library.sample({text='Show\n Rarity Rare\n BaseType "Iron Hat"'})
+		assert.is_nil(sample.UnidentifiedItemTier);assert.equal("unknown",parser.simulate(filter,sample).status)
+		local explicit=library.sample({text='Show\n Rarity Rare\n BaseType "Iron Hat"\n UnidentifiedItemTier >= 4'})
+		assert.equal(4,explicit.UnidentifiedItemTier);assert.equal("Show",parser.simulate(filter,explicit).action)
+		require("Classes.LootFilterControl").EditSample(explicit,function() end);local editor=main.popups[1].controls
+		editor.Rarity:SetText("Magic",true);assert.equal("",editor.UnidentifiedItemTier.buf)
+		editor.UnidentifiedItemTier:SetText("4",true);editor.BaseType:SetText("Vaal Regalia",true);assert.equal("",editor.UnidentifiedItemTier.buf);main:ClosePopup()
+		profile.mode="Ruthless";local ruthless=library.scene(profile,build,"Mixed drops",0,83,86)
+		for _,item in ipairs(ruthless) do if item.BaseType=="Iron Hat" then assert.equal(0,item.UnidentifiedItemTier) end end
+		local tiers=library.scene(profile,build,"Tiered gear",0,83,86);assert.equal(1,#tiers);assert.equal(0,tiers[1].UnidentifiedItemTier)
+	end)
 	it("provides reproducible mapping and flask examples with their filter classes",function()
 		local profile=filters.profile("test","Test")
 		for _,case in ipairs({{kind="Maps & threads",base="Beach Map",class="Maps",other="Breach Thread",otherClass="Map Fragments"},
