@@ -191,8 +191,13 @@ describe("State-aware crafting choices",function()
 	end)
 	it("retains corrupted Abyss jewel capacity during tainted affix crafts",function()
 		local m=model("Murderous Eye Jewel");local input=sim.perform(m.raw,{method="alchemy"},104729).state
+		local future=sim.recipeWarnings({steps={{method="vaal"},{method="tainted_chaos"}}},m);local futureWarning=false
+		for _,warning in ipairs(future) do if warning.code=="abyss_capacity_assumption" then futureWarning=true end end;assert.is_true(futureWarning)
 		input.corrupted=true;assert.equal(4,#input.affixes);assert.equal(6,sim.capacities(m,input).total)
 		local before=copyTable(input)
+		local perform=sim.perform(m.raw,{method="tainted_exalt"},1,input);local capacityWarning=false
+		for _,warning in ipairs(perform.warnings) do if warning.code=="abyss_capacity_assumption" then capacityWarning=warning.message:find("unverified",1,true)~=nil end end
+		assert.is_true(capacityWarning);assert.matches("source changes",require("Modules.CraftingWorkbench").hint("tainted_exalt",input,m))
 		local added=sim.action(m,input,{method="tainted_exalt"},function() return 0.1 end)
 		assert.equal(5,#added.affixes);assert.is_true(added.corrupted);sim.validateState(m,added);assert.same(before,input)
 		local removed=sim.action(m,added,{method="tainted_exalt"},function() return 0.9 end)

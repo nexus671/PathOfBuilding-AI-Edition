@@ -97,6 +97,7 @@ async function main(){
   const taintedAbyssState={...taintedAbyss.nativeCrafting.state,corrupted:true};
   const taintedAdded=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:taintedAbyssRaw,initialState:taintedAbyssState,action:{method:'tainted_exalt'},seed:1},'crafted');
   assert.equal(taintedAdded.nativeCrafting.state.corrupted,true);assert.equal(taintedAdded.nativeCrafting.state.affixes.length,5);
+  assert.ok(taintedAdded.nativeCrafting.warnings.some(entry=>entry.code==='abyss_capacity_assumption'));
   const gwennenReference=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'destroy',limit:20},'inspected');
   assert.equal(gwennenReference.crafting.nativeEngine.gwennenReference.offers[0].id,1022);assert.match(gwennenReference.crafting.nativeEngine.gwennenReference.note,/not available crafting actions/);
   assert.equal(inspected.crafting.nativeEngine.methodWarnings.binding[0].code,'binding_legacy');

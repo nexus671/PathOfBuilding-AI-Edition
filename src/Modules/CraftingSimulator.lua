@@ -73,6 +73,9 @@ function M.actionWarnings(action,model)
 	if action.method=="gwennen" and (action.firstOutcome==1027 or action.secondOutcome==1027) then result[#result+1]={code="gwennen_preserve_assumptions",message="The retained modifier is selected uniformly; the resulting modifier count and new rolls use the ordinary rare-item model. Gwennen's selection, count distribution and interactions are unverified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
 	if action.method=="gwennen" and (action.firstOutcome==1012 or action.secondOutcome==1012) then result[#result+1]={code="gwennen_corruption",message="Corruption uses the existing Vaal model; rare-reroll socket and link changes are not modeled."} end
 	if action.allflame or action.method=="ducat_kishara" or action.method=="ducat_katakohi" then result[#result+1]={code="allflame_historical",message="Allflame is historical and did not return to core in 3.30."} end
+	if model and model.item.type=="Jewel" and model.item.base.subType=="Abyss" and (action.method=="tainted_exalt" or action.method=="tainted_chaos") then
+		result[#result+1]={code="abyss_capacity_assumption",message="This model assumes every corrupted Abyss jewel can have three prefixes and three suffixes. Whether that capacity depends on the jewel's corruption source is unverified."}
+	end
 	return result
 end
 local function partialWarning(warnings)
