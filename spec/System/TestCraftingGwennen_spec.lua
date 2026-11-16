@@ -55,6 +55,26 @@ describe("Experimental Gwennen pair",function()
 		local odds=sim.calculate(raw,pair,{},state,{requirements={minAffixes=4},trials=4})
 		assert.is_true(odds.sampled);assert.equal("gwennen_preserve_assumptions",odds.warnings[2].code)
 	end)
+	it("selects the first best of the stated socket-colour rerolls",function()
+		local socketRaw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: R-G B W-W W"
+		local model=sim.model(socketRaw);local state=copyTable(model.initial);state.rarity="RARE";local before=copyTable(state)
+		local function stream() local seed=91;return function() seed=(seed*48271)%2147483647;return seed/2147483647 end end
+		for _,case in ipairs({{1010,50},{1011,20}}) do
+			local draw=stream();draw();local best,score=nil,-1
+			for _=1,case[2] do
+				local candidate=sim.action(model,state,{method="chromatic"},draw);local count=0
+				for _,socket in ipairs(candidate.sockets) do if socket.color~="W" and socket.color~="A" then count=count+1 end end
+				if count>score then best,score=candidate,count end
+			end
+			local pair={method="gwennen",firstOutcome=case[1],secondOutcome=case[1]};local actual=sim.action(model,state,pair,stream())
+			assert.same(best,actual);assert.same(before,state);sim.validateState(model,actual)
+			local result=sim.perform(socketRaw,pair,5,state);assert.equal("gwennen_socket_colour_assumptions",result.warnings[2].code)
+			local odds=sim.calculate(socketRaw,pair,{},state,{requirements={socketColours="RR"},trials=12,seed=3})
+			assert.is_true(odds.sampled);assert.equal("gwennen_socket_colour_assumptions",odds.warnings[2].code)
+		end
+		local noSockets=copyTable(state);noSockets.sockets={}
+		assert.has_error(function() sim.action(model,noSockets,{method="gwennen",firstOutcome=1010,secondOutcome=1000},function() return 0.1 end) end)
+	end)
 	it("charges observed artifacts and never treats an unknown price as free",function()
 		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022}
 		local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"

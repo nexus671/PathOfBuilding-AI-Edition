@@ -1,6 +1,6 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1029]=true,[1031]=true,[1041]=true,[1042]=true}
+local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1029]=true,[1031]=true,[1041]=true,[1042]=true}
 local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
@@ -89,8 +89,17 @@ function G.extend(M,api)
 		local flags=api.flags(model,input)
 		assert(not (flags.prefixes or flags.suffixes or flags.attack or flags.caster or flags.explicitAttack or flags.explicitCaster or M.hasPartialLock(model,input)),"Gwennen interactions with meta modifiers are not modeled")
 		for _,entry in ipairs(input.affixes) do assert(not entry.fractured,"Gwennen interactions with fractured modifiers are not modeled") end
-		local function branch(id,draw)
+		local function branch(id,draw,probe)
 			if id==1000 then return copyTable(input) end
+			if id==1010 or id==1011 then
+				local best,bestCount=nil,-1
+				for _=1,(probe and 1 or id==1010 and 50 or 20) do
+					local candidate=action(model,input,{method="chromatic"},draw);local count=0
+					for _,socket in ipairs(candidate.sockets or {}) do if socket.color~="A" and socket.color~="W" then count=count+1 end end
+					if count>bestCount then best,bestCount=candidate,count end
+				end
+				return best
+			end
 			if id==1031 then
 				local choices=influenceChoices(model,input);local result=copyTable(input)
 				result.influences={choices[math.floor(draw()*#choices)+1]};return result
@@ -187,7 +196,7 @@ function G.extend(M,api)
 		-- An observed pair is valid only when both modeled branches are usable.
 		-- Dry runs do not consume the caller's random stream or mutate its input.
 		for _,id in ipairs({craft.firstOutcome,craft.secondOutcome}) do
-			local ok,err=pcall(branch,id,function() return 0.42 end)
+			local ok,err=pcall(branch,id,function() return 0.42 end,true)
 			assert(ok,"A modeled Gwennen outcome cannot apply: "..tostring(err))
 		end
 		local outcome=random()<0.5 and craft.firstOutcome or craft.secondOutcome
