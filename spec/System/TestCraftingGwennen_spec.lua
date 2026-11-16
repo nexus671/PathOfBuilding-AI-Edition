@@ -22,6 +22,26 @@ describe("Experimental Gwennen pair",function()
 		local result=sim.perform(raw,pair,7,state);assert.equal("gwennen_estimate",result.warnings[1].code);assert.is_not_nil(result.gwennen.outcome)
 		local odds=sim.calculate(raw,pair,{},state,{requirements={minAffixes=1},trials=4});assert.equal("gwennen_estimate",odds.warnings[1].code)
 	end)
+	it("models the Pantheon Aspect branch using the documented Brinehook assumptions",function()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE";state.affixes={}
+		local original=copyTable(state);local pair={method="gwennen",firstOutcome=1013,secondOutcome=1000}
+		local found={}
+		for _,choice in ipairs({0.01,0.26,0.51,0.76}) do
+			local draws={0.1,choice};local at=0
+			local result=sim.action(model,state,pair,function() at=at+1;return draws[at] or 0.5 end)
+			assert.equal(1,#result.affixes);local id=result.affixes[1].id
+			assert.is_truthy(id:find("AspectCrafted",1,true));assert.equal("Suffix",model.byId[id].type)
+			found[id]=true;sim.validateState(model,result);assert.is_truthy(sim.toItem(model,result).raw)
+		end
+		local count=0;for _ in pairs(found) do count=count+1 end;assert.equal(4,count);assert.same(original,state)
+		local result=sim.perform(raw,pair,7,state);assert.equal("gwennen_pantheon_assumptions",result.warnings[2].code)
+		local full=copyTable(state);local groups={}
+		for _,candidate in ipairs(model.mods) do local mod=candidate.mod
+			if mod.type=="Suffix" and not groups[mod.group] then full.affixes[#full.affixes+1]={id=candidate.id,range=0.5};groups[mod.group]=true;if #full.affixes==3 then break end end
+		end
+		assert.equal(3,#full.affixes)
+		assert.has_error(function() sim.action(model,full,pair,function() return 0.1 end) end)
+	end)
 	it("charges observed artifacts and never treats an unknown price as free",function()
 		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022}
 		local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"

@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview291" />
+	<Version number="2.67.2-ai.preview292" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1550,8 +1550,8 @@
 	<File name="Modules/CraftingDesolation330.lua" part="program" sha1="c5274eb90fccc51fbdae63894c11d9ff8a3598a1" />
 	<File name="Modules/CraftingEnchants.lua" part="program" sha1="abfabdf5af449d8fb9d0544efdabd77d3b25c4ee" />
 	<File name="Modules/CraftingFossilResults.lua" part="program" sha1="484afaf696ec7915f1dc175badfa7fa60d718b83" />
-	<File name="Modules/CraftingGwennen.lua" part="program" sha1="93c098fb774c121a85eb0c11e7019250fe5e5631" />
-	<File name="Modules/CraftingGwennenReference.lua" part="program" sha1="32b6e4b317684e3c52219dbd0d609066d8030d98" />
+	<File name="Modules/CraftingGwennen.lua" part="program" sha1="fd5c64470132dbbecaec5899b4ad38dd0c589430" />
+	<File name="Modules/CraftingGwennenReference.lua" part="program" sha1="45e46924a928a6d7ee7153f7027439f5bc9f5858" />
 	<File name="Modules/CraftingImport.lua" part="program" sha1="4f6f32d04d3e5433a73ecebb22ba7c3ad8e5fe9a" />
 	<File name="Modules/CraftingInspection.lua" part="program" sha1="6c1e357f5ba20bb6673e05c38298437c1c297c1a" />
 	<File name="Modules/CraftingInventory.lua" part="program" sha1="d273ecaae81f4d7a81d65a91ad8e6619a13c0795" />
@@ -1568,7 +1568,7 @@
 	<File name="Modules/CraftingProperties.lua" part="program" sha1="8158a5624e99eca560b0095620ea967bf1952a84" />
 	<File name="Modules/CraftingRecombination.lua" part="program" sha1="c311ee26dbe82f9dbfda0539fee985ff02b2dcd3" />
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />
-	<File name="Modules/CraftingSimulator.lua" part="program" sha1="b1567ca75c681a77a614d1ca387e41b6091f793b" />
+	<File name="Modules/CraftingSimulator.lua" part="program" sha1="7f7af10366e14070e1e7a0b06d8a7c13ad983cd6" />
 	<File name="Modules/CraftingSockets.lua" part="program" sha1="a7af269b61214fa09f2a4e536d36e73e6cc0531d" />
 	<File name="Modules/CraftingTasks.lua" part="program" sha1="5884e439905689280d65534ef8e78591341970d6" />
 	<File name="Modules/CraftingUnveiledJewel330.lua" part="program" sha1="5b05b7293ddad3c073f1cb82ab53932899f739c0" />

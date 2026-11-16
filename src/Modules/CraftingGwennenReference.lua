@@ -22,6 +22,7 @@ function M.search(query,limit)
 				if entry.id==1030 then row.note="The displayed 100 rerolls conflict with the listed function argument of 50; behavior is unverified." end
 				if entry.id==1018 or entry.id==1019 then row.note="The model assumes the number of modifiers on this side stays the same; Gwennen's behavior is unverified." end
 				if entry.id==1031 then row.note="The model assumes equal influence chances and accepts only uninfluenced, non-synthesised items without Eldritch implicits." end
+				if entry.id==1013 then row.note="The model uses Brinehook's four Pantheon Aspects, assumed equally likely, and requires an open suffix; Gwennen's rules are unverified." end
 				rows[#rows+1]=row
 			end
 		end

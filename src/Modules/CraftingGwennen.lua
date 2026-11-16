@@ -1,6 +1,6 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1012]=true,[1014]=true,[1015]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1029]=true,[1031]=true,[1041]=true,[1042]=true}
+local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1029]=true,[1031]=true,[1041]=true,[1042]=true}
 local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
@@ -174,7 +174,7 @@ function G.extend(M,api)
 				assert(model.item.base.armour or data.weaponTypeInfo[model.item.type],"This quality outcome requires a weapon or armour")
 				local result=copyTable(input);result.quality=20;return result
 			end
-			local method=({[1003]="fracture",[1004]="annul",[1005]="exalt",[1012]="vaal",[1014]="chaos",[1015]="divine"})[id]
+			local method=({[1003]="fracture",[1004]="annul",[1005]="exalt",[1012]="vaal",[1013]="ducat_brinehook",[1014]="chaos",[1015]="divine"})[id]
 			return action(model,input,{method=method},draw)
 		end
 		-- An observed pair is valid only when both modeled branches are usable.
