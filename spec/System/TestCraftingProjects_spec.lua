@@ -208,5 +208,22 @@ describe("Crafting projects", function()
 		local result=require("Modules.CraftingSimulator").simulate(saved.startingItem,saved.nativeRecipe,{trials=2,maxActions=1})
 		assert.is_nil(next(result.transitionErrors));assert.is_truthy(result.sampleItem:find("Cold Resistance",1,true))
 	end)
+	it("keeps an Incursion resistance conversion in a saved crafting guide",function()
+		local entry=project();entry.targetItem=nil
+		entry.startingItem="Rarity: RARE\nDread Crest\nIron Hat\nItem Level: 86\n+47% to Fire Resistance\n4% of Physical Damage from Hits taken as Fire Damage"
+		build.savers.CraftingProjects:Upsert(entry);require("Classes.CraftingSimulatorControl").Open(build,entry)
+		local workbench=main.popups[1];workbench.controls.method:SelByValue("harvest_resistance","val");workbench.controls.method.selFunc()
+		workbench.controls.option:SelByValue("fire to cold","label");workbench.controls.option.selFunc()
+		workbench.controls.page:SelByValue("Emulate item");assert.is_true(workbench.controls.apply:IsEnabled());workbench.controls.apply:Click()
+		assert.equal("Crafting workbench",main.popups[1].title)
+		workbench.controls.page:SelByValue("Target conditions");workbench.controls.addTarget:Click()
+		workbench.controls.page:SelByValue("Craft settings");workbench.controls.keepRecipe:Click()
+		local saved=build.savers.CraftingProjects.projects[1];assert.is_truthy(saved.nativeRecipe)
+		assert.is_truthy(saved.targetItem:find("Cold Resistance",1,true));assert.equal(0,build.itemsTab.slots.Helmet.selItemId)
+		local reopened=bridge.prepare(build,{mode="edit",title="Reopen guide",baseRevision=bridge.revision(build),operations={{type="set_character",level=80}}}).candidate
+		saved=reopened.savers.CraftingProjects.projects[1]
+		local result=require("Modules.CraftingSimulator").simulate(saved.startingItem,saved.nativeRecipe,{trials=2,maxActions=1})
+		assert.is_nil(next(result.transitionErrors));assert.is_truthy(result.sampleItem:find("Cold Resistance",1,true))
+	end)
 
 end)

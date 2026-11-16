@@ -53,6 +53,15 @@ async function main(){
   const incursionRaw='Rarity: RARE\nDread Crest\nIron Hat\nItem Level: 86\n+47% to Fire Resistance\n4% of Physical Damage from Hits taken as Fire Damage';
   const incursion=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:incursionRaw,action:{method:'divine'},seed:1},'crafted');
   assert.equal(incursion.nativeCrafting.state.affixes[0].id,'FireResistEnhancedLevel50ModPhys');
+  const swap={method:'harvest_resistance',from:'fire',to:'cold'};
+  const incursionSwapResult=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:incursionRaw,action:swap,seed:1},'crafted');
+  assert.equal(incursionSwapResult.nativeCrafting.state.affixes[0].id,'ColdResistEnhancedLevel50ModPhys_');
+  assert.ok(incursionSwapResult.nativeCrafting.warnings.some(entry=>entry.code==='harvest_resistance_assumptions'));
+  const target=[{anyOf:['ColdResistEnhancedLevel50ModPhys_']}];
+  const conversionOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:incursionRaw,action:swap,targets:target},'crafted');
+  assert.equal(conversionOdds.nativeCrafting.successChance,100);assert.equal(conversionOdds.nativeCrafting.sampled,false);
+  const conversionPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:incursionRaw,recipe:{steps:[swap],targets:target},options:{trials:2,maxActions:1,seed:1}},'crafted');
+  assert.equal(conversionPlan.nativeCrafting.successes,2);assert.ok(conversionPlan.nativeCrafting.sampleItem.includes('Cold Resistance'));
   const incursionOptions=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:incursionRaw,query:'Fire Resistance',limit:100},'inspected');
   assert.ok(incursionOptions.crafting.nativeEngine.bench.some(entry=>!entry.available && /group is already present/.test(entry.unavailableReason || '')));
   const dropInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'FireResistEnhancedLevel50ModPhys',limit:10},'inspected');
