@@ -27,10 +27,15 @@ function C.extend(M)
 			end
 		end
 		local method=M.baseCurrency(craft)
+		local partialConversion=false
+		if method=="harvest_damage" or method=="harvest_resistance" then
+			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
+			partialConversion=M.hasPartialLock(M.context(model,state),state)
+		end
 		-- Conversion picks one eligible modifier, then rerolls its values. When
 		-- targets only refer to modifier identities, the value roll cannot alter
 		-- whether a target matches, so enumerate the modeled choices exactly.
-		if method=="harvest_damage" and not craft.allflame and not options.requirements then
+		if method=="harvest_damage" and not partialConversion and not craft.allflame and not options.requirements then
 			local rollGoal=false;for _,group in ipairs(targets or {}) do if group.minRoll~=nil then rollGoal=true;break end end
 			if not rollGoal then
 				M.validateRecipe({steps={craft},targets=targets,requiredGroups=options.requiredGroups})
@@ -54,7 +59,7 @@ function C.extend(M)
 					sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 			end
 		end
-		if method=="harvest_resistance" and not craft.allflame and not options.requirements then
+		if method=="harvest_resistance" and not partialConversion and not craft.allflame and not options.requirements then
 			local rollGoal=false;for _,group in ipairs(targets or {}) do if group.minRoll~=nil then rollGoal=true;break end end
 			if not rollGoal then
 				M.validateRecipe({steps={craft},targets=targets,requiredGroups=options.requiredGroups})
@@ -199,7 +204,7 @@ function C.extend(M)
 		if not sampled then return calculate(raw,craft,targets,initialState) end
 		-- A calculator always applies its action, even when the input already matches.
 		local partialHarvest=false
-		if method=="harvest_reforge" or method=="harvest_augment" then
+		if method=="harvest_reforge" or method=="harvest_augment" or method=="harvest_resistance" or method=="harvest_damage" then
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
 			partialHarvest=M.hasPartialLock(M.context(model,state),state)
 		end

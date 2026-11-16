@@ -296,6 +296,14 @@ async function main(){
   const resistOptions=resistInspection.crafting.nativeEngine.harvestOptions.find(entry=>entry.method==='harvest_resistance');
   const fireToCold=resistOptions.options.find(entry=>entry.action.from==='fire' && entry.action.to==='cold');
   assert.deepEqual(fireToCold.components,{wild_lifeforce:300,primal_lifeforce:300});
+  const partialResistStart={rarity:'RARE',affixes:[{id:'FireResist1',range:0.5},{id:'ChaosResist1',range:0.5}]};
+  const partialResist=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:bodyRaw,action:{method:'bench',modId:'bench:partial-suffix-1'},initialState:partialResistStart},'crafted');
+  const partialResistInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,initialState:partialResist.nativeCrafting.state,limit:100},'inspected');
+  const partialResistOptions=partialResistInspection.crafting.nativeEngine.harvestOptions.find(entry=>entry.method==='harvest_resistance');
+  assert.match(partialResistOptions.selectionNote,/Other selections can fail/);
+  const partialResistOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:bodyRaw,initialState:partialResist.nativeCrafting.state,action:{method:'harvest_resistance',from:'fire',to:'cold'},targets:[{anyOf:['ColdResist1']}],options:{trials:30,seed:17}},'crafted');
+  assert.equal(partialResistOdds.nativeCrafting.sampled,true);assert.ok(Object.keys(partialResistOdds.nativeCrafting.transitionErrors).length>0);
+  assert.ok(partialResistOdds.nativeCrafting.warnings.some(entry=>entry.code==='partial_lock_model'));
   assert.match(harvestHatReforge.selectionNote,/Other selections or later rolls can fail/);const harvestHatOptions=harvestHatReforge.options;
   assert.deepEqual(harvestHatOptions.find(entry=>entry.action.tag==='life').components,{wild_lifeforce:75});
   const attributeReforge=harvestHatOptions.find(entry=>entry.action.tag==='attribute');

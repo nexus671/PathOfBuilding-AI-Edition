@@ -558,7 +558,13 @@ function A.extend(M,api)
 	function M.resistanceOptions(model,state)
 		local result={};local unsupported
 		for _,from in ipairs({"fire","cold","lightning"}) do for _,to in ipairs({"fire","cold","lightning"}) do
-			local reason=M.resistanceReason(model,state,from,to)
+			local reason
+			if M.hasPartialLock(model,state) then
+				local viable=false;M.eachPartialSelection(model,state,function(candidate)
+					reason=M.resistanceReason(model,candidate,from,to);if not reason then viable=true;return true end
+				end)
+				if viable then reason=nil end
+			else reason=M.resistanceReason(model,state,from,to) end
 			if not reason then result[#result+1]={label=from.." to "..to,action={method="harvest_resistance",from=from,to=to}}
 			elseif reason=="An eligible resistance modifier has an unsupported conversion family" then unsupported=reason end
 		end end
@@ -627,7 +633,13 @@ function A.extend(M,api)
 	function M.damageOptions(model,state)
 		local result={};local reason
 		for _,from in ipairs({"fire","cold","lightning"}) do for _,to in ipairs({"fire","cold","lightning"}) do if from~=to then
-			local why=M.damageReason(model,state,from,to)
+			local why
+			if M.hasPartialLock(model,state) then
+				local viable=false;M.eachPartialSelection(model,state,function(candidate)
+					why=M.damageReason(model,candidate,from,to);if not why then viable=true;return true end
+				end)
+				if viable then why=nil end
+			else why=M.damageReason(model,state,from,to) end
 			if not why then result[#result+1]={label=from.." to "..to,action={method="harvest_damage",from=from,to=to}}
 			elseif why~="No swappable elemental damage modifier" then reason=why end
 		end end end
@@ -929,11 +941,13 @@ function A.extend(M,api)
 				while api.counts(model,state)[kind] < target do append(model,state,random,{type=kind}) end
 			end
 		elseif method == "harvest_resistance" then
+			if M.hasPartialLock(model,state) then api.selectPartialLocks(model,state,random) end
 			local reason,matches=M.resistanceReason(model,state,action.from,action.to);assert(not reason,reason)
 			local index=matches[math.floor(random()*#matches)+1]; local old=state.affixes[index]
 			local id=resistanceTarget(model,old.id,action.from,action.to)
 			old.id=id;old.range=M.rollRange(model.byId[id],random)
 		elseif method == "harvest_damage" then
+			if M.hasPartialLock(model,state) then api.selectPartialLocks(model,state,random) end
 			local reason,matches=M.damageReason(model,state,action.from,action.to);assert(not reason,reason)
 			local selected=matches[math.floor(random()*#matches)+1];local old=state.affixes[selected.index]
 			old.id=selected.id;old.range=M.rollRange(model.byId[selected.id],random)
@@ -1118,9 +1132,11 @@ function A.extend(M,api)
 				selected[i]=copyTable(choices[i]);selected[i].priceKey=M.priceKey(selected[i].action)
 				selected[i].components=M.components(selected[i].action,state,model)
 			end
-			local conditional=allowed and (method=="harvest_reforge" or method=="harvest_augment") and M.hasPartialLock(M.context(model,state),state)
+			local conditional=allowed and M.hasPartialLock(M.context(model,state),state)
+			local conversion=method=="harvest_resistance" or method=="harvest_damage"
 			result.harvestOptions[#result.harvestOptions+1]={method=method,available=allowed,unavailableReason=not allowed and reason or nil,options=selected,total=#choices,
-				selectionNote=conditional and "A tag is offered if a modeled protection selection leaves a legal tagged modifier and removable original when required. Other selections or later rolls can fail." or nil}
+				selectionNote=conditional and (conversion and "A conversion is offered if a modeled protection selection leaves an eligible modifier. Other selections can fail."
+					or "A tag is offered if a modeled protection selection leaves a legal tagged modifier and removable original when required. Other selections or later rolls can fail.") or nil}
 		end
 		if model.unresolvedEldritch and not state.implicits then result.importWarning="At least one imported Eldritch implicit has an ambiguous tier; supply a structured implicit state before changing Eldritch implicits or using dominance." end
 		if model.unresolvedCorruption and not state.corruptedImplicits then
@@ -1266,7 +1282,7 @@ function A.extend(M,api)
 		"Current coverage includes core currencies, ordinary jewels/flasks/tinctures, bench crafts, essences, weighted fossils, Harvest tag crafts, influence slams, Awakener, fractures, veiled choices, Bestiary, Eldritch crafts, base implicit/defence rerolls and deterministic socket/link bench crafts.",
 		"Tangled Fossils require a revealed resonator outcome. Automatic predictable recombination odds, unique generation and many 3.30 rules are not implemented.",
 		"The standard Orb of Annulment uses the announced 3.30 attack/caster blocker rule. Modifier metadata uses a reviewed 3.30.0.2 client overlay; other supplemental sources remain pinned to 3.29.3.6 where not explicitly updated.",
-		"Partial locks use uniform random selection from all modifiers on the protected side, including fractures; group conflicts and other interactions are assumptions. Core affix actions, Harvest reforge/augment, and independent socket, quality, implicit and enchantment crafts are supported; other interactions are rejected.",
+		"Partial locks use uniform random selection from all modifiers on the protected side, including fractures; group conflicts and other interactions are assumptions. Core affix actions, Harvest reforge/augment and elemental conversions, and independent socket, quality, implicit and enchantment crafts are supported; other interactions are rejected.",
 		"Bench ingredient prices use the 3.30.0.1.4 client catalogue; later client changes are not included.",
 		"Rare modifier counts and Eldritch Chaos counts are model assumptions. Numeric display rolls and sampling intervals do not establish exact in-game odds.",
 		"Abyssal socket modifier changes use an experimental last-socket and unlinked-white restoration model; placement, zero-socket behavior and removal are unverified.",

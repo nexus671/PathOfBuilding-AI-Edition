@@ -38,7 +38,7 @@ function M.withTreeContext(result,version)
 	result.latestAvailableTreeVersion=latestTreeVersion
 	return result
 end
-local partialWarningMessage="Partial locks assume uniform selection; bench rerolls select once, and Harvest augment selects before adding. Some selections fail and other interactions remain unsupported."
+local partialWarningMessage="Partial locks assume uniform selection; bench rerolls select once, Harvest augment selects before adding, and conversions select before changing a modifier. Some selections fail and are not charged in this model; actual behavior is unverified. Other interactions remain unsupported."
 function M.actionWarnings(action,model)
 	local result={}
 	local abyss=false
@@ -942,7 +942,7 @@ do
 	end
 end
 -- Extensions register state prerequisites once for both execution and browsing.
-local partialLockActions={bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,beast_imprint=true,beast_talisman_imprint=true,
+local partialLockActions={bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true,beast_imprint=true,beast_talisman_imprint=true,
 	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,chromatic=true,beast_max_links=true,ducat_ukatoa=true,ducat_katakohi=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
 	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,bench_remove_enchant=true,eldritch_implicit=true,conflict=true}
 function M.methodReason(model,state,method)
