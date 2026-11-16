@@ -35,3 +35,5 @@ luajit ../tools/benchmark_tree_ui.lua /path/to/build.xml 5
 ```
 
 It loads the build into memory, focuses an adjacent ordinary passive, and sends mouse events to allocate and remove it. It checks that the build revision is restored. The reported CPU times include the headless drawing recorder and are not desktop frame times; compare like-for-like runs and validate responsiveness in the desktop separately. The optional cycle count is 1–20.
+
+Add `deferred-recovery` after the cycle count to enable 32 recovery trials over 60 seconds in memory and exercise the desktop's deferred recovery calculation through the same UI frames. The benchmark waits for results after allocation and removal and reports the number, total CPU time and worst CPU time of the allocation's recovery frames. Without that argument, the ordinary synchronous headless calculation path is used, including when recovery is enabled in the supplied build. The fixture is never saved.
