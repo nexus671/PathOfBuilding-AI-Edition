@@ -8,6 +8,10 @@ New builds open on **3.30**. To convert an existing build, choose it in **Tree >
 
 The tree warning and AI build analysis identify builds still using the earlier preview. Items, gems and new league mechanics still use the current calculation engine; adding the tree does not establish full 3.30 calculation support. Review unsupported modifiers before relying on a result.
 
+## Wickerman
+
+Paste Viscera item text into Items, or use character import with OAuth to bring in equipped Wickerman items. The four Wickerman slots can also be used in AI build proposals and Journey acquisition plans. Names and slot types are provisional; the catalogue does not invent modifier values. Enter or import the item's actual modifiers and review unsupported lines. Account-name import does not currently expose Wickerman data.
+
 ## Atlas
 
 Choose **3.30.0-preview** in Atlas. New Atlas plans on a preview character select that version automatically. The official base point limit is **150**, with granted points accounted for separately. Search, routing, strategy stages, native saving, bundles and MCP proposals preserve the exact preview version.

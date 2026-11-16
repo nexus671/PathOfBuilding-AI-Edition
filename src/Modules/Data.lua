@@ -1254,6 +1254,8 @@ for _, type in pairs(itemTypes) do
 	LoadModule("Data/Bases/" .. type)(data.itemBases)
 end
 LoadModule("Data/BaseImplicit330")(data.itemBases)
+-- Wickerman bases preserve supplied item modifiers; source variants are provisional.
+LoadModule("Data/Bases/wickerman")(data.itemBases)
 
 ---@class ItemBaseEntry
 ---@field label string

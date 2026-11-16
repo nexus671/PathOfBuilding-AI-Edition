@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview342" />
+	<Version number="2.67.2-ai.preview343" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1178,8 +1178,8 @@
 	<File name="Classes/FolderListControl.lua" part="program" sha1="2fec0874200a71563536324cfb1ea8f75984e53d" />
 	<File name="Classes/GemSelectControl.lua" part="program" sha1="8954e020052121d13122873b578b87e0bb7c60fc" />
 	<File name="Classes/GemTooltip.lua" part="program" sha1="aa0ce7d2eb619fc6b6e55aec9767320bee187343" />
-	<File name="Classes/ImportTab.lua" part="program" sha1="1a7cbb47f77f6eb500f2fa11d9f8ab42c7c4a46c" />
-	<File name="Classes/Item.lua" part="program" sha1="070f1b58ffa0ea3612b85e5dc80e61b910fd734a" />
+	<File name="Classes/ImportTab.lua" part="program" sha1="cf38f70101d41a7c6702994e77ab713213cbe1dd" />
+	<File name="Classes/Item.lua" part="program" sha1="ed39d29e3d8af2888646cf88989b1da2353a2d83" />
 	<File name="Classes/ItemDBControl.lua" part="program" sha1="d12523a3235ece0b3e43724b2da6ab18446bcc32" />
 	<File name="Classes/ItemListControl.lua" part="program" sha1="01546a91c647cb978ffb757cbe75a7afaa2d0cba" />
 	<File name="Classes/ItemSetListControl.lua" part="program" sha1="5ff494b708b1b633f0cf4157e30ad295c1044ed4" />
@@ -1282,6 +1282,7 @@
 	<File name="Data/Bases/sword.lua" part="program" sha1="192a8465ce43fe51663886a7bc6213e987b38265" />
 	<File name="Data/Bases/tincture.lua" part="program" sha1="7dbca9787c3cf90ecacd6efc270350fff564f03f" />
 	<File name="Data/Bases/wand.lua" part="program" sha1="f327243c46a1b349d22c5cd6fc3e4290cd31ec44" />
+	<File name="Data/Bases/wickerman.lua" part="program" sha1="e550cfb5889868c5772e5bbef2c6fd65892de529" />
 	<File name="Data/BeastCraft.lua" part="program" sha1="24edff8b935593b13b13b3c6197bf656700dac82" />
 	<File name="Data/BossSkills.lua" part="program" sha1="ec9e85c5f188063a61bf46b2dcc1ff1282db2aee" />
 	<File name="Data/Bosses.lua" part="program" sha1="296053cd7941be6a6c98d4852e3061bad67d15fb" />
@@ -1468,9 +1469,10 @@
 	<File name="Data/Uniques/tincture.lua" part="program" sha1="919e6f0c8a652c147573d1e6cda422dddcbe0e05" />
 	<File name="Data/Uniques/wand.lua" part="program" sha1="471bfe4822429c7b71d827640bc90e27db0d87ce" />
 	<File name="Data/Vestigial.lua" part="program" sha1="f22630f05c649c2305a277fe71577b4c62bd6489" />
+	<File name="Export/Bases/wickerman.txt" part="program" sha1="812685fd1c51edc56e04fa0b052b716aedb659ff" />
 	<File name="Export/Classes/GGPKData.lua" part="program" sha1="3d1f91d9bc8934ef977a14f653a76ea970a1665a" />
 	<File name="Export/Enemies/BossSkills.txt" part="program" sha1="75b429befd64c5a3ba1f7b38784c76e9f14cec9a" />
-	<File name="Export/Scripts/bases.lua" part="program" sha1="aec048b5deed3519b0005b38ed8f08aad00c1e95" />
+	<File name="Export/Scripts/bases.lua" part="program" sha1="31d85ae749c4568c825221cbb29b8b23c1a9f012" />
 	<File name="Export/Scripts/cluster.lua" part="program" sha1="a31abaa3d9b2e0d7c587d6abbf5a7d7ccc90aa84" />
 	<File name="Export/Scripts/crucible.lua" part="program" sha1="40b8834ab31f1bac53ac5682e866bede89bd6e26" />
 	<File name="Export/Scripts/enchant.lua" part="program" sha1="3137acf30a402dc419b90848eb63506d058f2096" />
@@ -1576,7 +1578,7 @@
 	<File name="Modules/CraftingTasks.lua" part="program" sha1="5884e439905689280d65534ef8e78591341970d6" />
 	<File name="Modules/CraftingUnveiledJewel330.lua" part="program" sha1="5b05b7293ddad3c073f1cb82ab53932899f739c0" />
 	<File name="Modules/CraftingWorkbench.lua" part="program" sha1="43540904b6ca4fe03d97ce4939c1a94beddcfc10" />
-	<File name="Modules/Data.lua" part="program" sha1="1870ccf660e6b4904fde88ba7c36fc42d841ec89" />
+	<File name="Modules/Data.lua" part="program" sha1="5ff1924bcee3ef69b069580c6b0d02738d6c13fa" />
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />
 	<File name="Modules/DataLegionLookUpTableHelper.lua" part="program" sha1="ece92c4b6062f627f98ba2454531366b4628abfc" />
@@ -1607,7 +1609,7 @@
 	<File name="Modules/LootFilterStructure.lua" part="program" sha1="46ae290a763a0ca60e400cd8b9b8d4ed7ea89f9e" />
 	<File name="Modules/LootFilterVisuals.lua" part="program" sha1="f036fc780db9567d6572d433b8842b9902b0f50a" />
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="240c5844884c630d675d5fe3d5a348bf8f2c91a8" />
-	<File name="Modules/LootFilters.lua" part="program" sha1="93da84c65c9ac7f5e55adbeb751e2eb3ea389e58" />
+	<File name="Modules/LootFilters.lua" part="program" sha1="5d0cf7c0a6976a25588ead1079aaea8ae5a39919" />
 	<File name="Modules/Main.lua" part="program" sha1="6a77993392e839506b9594e8e0802b13d6bed530" />
 	<File name="Modules/ModParser.lua" part="program" sha1="d69cf749fdde98378599b4ac26d89b83c4415c01" />
 	<File name="Modules/ModTools.lua" part="program" sha1="c987491da4021b5bdc4744b5eec84fb5995284cf" />

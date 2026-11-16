@@ -2,7 +2,7 @@ if not loadStatFile then
 	dofile("statdesc.lua")
 end
 local utils = LoadModule("../Modules/Utils")
-loadStatFile("tincture_stat_descriptions.csd")
+loadStatFile("tincture_stat_descriptions.txt")
 
 local s_format = string.format
 
@@ -443,6 +443,7 @@ local itemTypes = {
 for _, name in pairs(itemTypes) do
 	processTemplateFile(name, "Bases/", "../Data/Bases/", directiveTable)
 end
+processTemplateFile("wickerman", "Bases/", "../Data/Bases/", directiveTable)
 
 print("Item bases exported.")
 

@@ -91,6 +91,11 @@ async function main(){
   await queued('propose_build',{mode:'edit',title:'Measured helmet',baseRevision:context.revision,operations:[{type:'equip_item',slot:'Helmet',text:item(100)}]},'review');
   assert.equal((await call('get_build_context')).context.stats.LifeUnreserved,baseLife,'Proposal changed the live fixture before UI apply');
   await host('apply');context=(await call('get_build_context')).context;assert.ok(context.stats.LifeUnreserved>baseLife);
+  const viscera="Item Class: Viscera\nLesser Warden's Arm\n--------\nUpper Limb\n--------\nItem Level: 69\n--------\n{ Implicit Modifier }\n+43 to maximum Life\n--------\nTake this to the Wickerman in a town or hideout to attach it.";
+  const beforeViscera=context.stats.LifeUnreserved;
+  await queued('propose_build',{mode:'edit',title:'Wickerman arm',baseRevision:context.revision,operations:[{type:'equip_item',slot:'Wickerman Upper Limb',text:viscera}]},'review');
+  await host('apply');context=(await call('get_build_context')).context;assert.ok(context.stats.LifeUnreserved>beforeViscera);
+  assert.ok(context.items.some(item=>item.slot==='Wickerman Upper Limb' && item.text.includes("Warden's Arm")));
   const inspected=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'maximum Life',limit:20},'inspected');assert.ok(inspected.crafting.nativeEngine.modifiers.length);
   const damageRaw='Rarity: MAGIC\nRusted Sword\nItem Level: 86\nAdds 1 to 3 Fire Damage';
   const damage=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:damageRaw,action:{method:'harvest_damage',from:'fire',to:'cold'},seed:1},'crafted');
