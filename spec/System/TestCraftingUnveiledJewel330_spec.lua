@@ -2,6 +2,19 @@ describe("3.30 unveiled jewel modifiers",function()
 	local sim=require("Modules.CraftingSimulator")
 	local regular="Rarity: NORMAL\nCobalt Jewel\nItem Level: 86"
 	local abyss="Rarity: NORMAL\nSearching Eye Jewel\nItem Level: 86"
+	it("uses current veiled weights without changing the shared native modifiers",function()
+		local id="JunMasterVeiledAddedColdAndLightningDamage"
+		local native=data.veiledMods[id];local first=native.weightKey[1]
+		local ring=sim.model("Rarity: NORMAL\nIron Ring\nItem Level: 86")
+		local entry;for _,candidate in ipairs(ring.veiled) do if candidate.id==id then entry=candidate end end
+		assert.is_truthy(entry);assert.equal("abyss_jewel",entry.mod.weightKey[1]);assert.equal(0,entry.mod.weightVal[1])
+		assert.equal(first,native.weightKey[1]);assert.are_not.equal(native,entry.mod)
+		local eye=sim.model(abyss)
+		-- The first matching tag must win even if a later equipment tag is present.
+		assert.equal(0,eye.item:GetModSpawnWeight(entry.mod,{ring=true}))
+		assert.is_true(eye.item:GetModSpawnWeight(native,{ring=true})>0)
+		assert.equal(entry.mod,ring.byId[id]);assert.equal(1000,entry.weight)
+	end)
 	it("loads the eligible special modifiers without adding them to natural rolls",function()
 		local jewel=sim.model(regular);local eye=sim.model(abyss);local regularCount,abyssCount=0,0
 		for _ in pairs(jewel.unveiledJewels) do regularCount=regularCount+1 end

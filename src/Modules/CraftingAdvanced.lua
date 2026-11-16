@@ -140,6 +140,7 @@ function A.extend(M,api)
 	local originalCatalog=M.catalog
 	local originalRoll=M.rollRange
 	local identities=setmetatable({},{__mode="k"})
+	local veiledCache={}
 	function M.rollRange(mod,random)
 		local metadata=A.data().mods[identities[mod]] or mod.clientStats and {stats=mod.clientStats}
 		local varying={};for _,stat in ipairs(metadata and metadata.stats or {}) do if stat.max ~= stat.min then varying[#varying+1]=stat end end
@@ -196,8 +197,26 @@ function A.extend(M,api)
 		end
 		table.sort(model.influencePool,function(a,b) return a.id < b.id end)
 		for _,entry in ipairs(model.influencePool) do if influenced(model,entry.id) then model.special[entry.id]=true end end
-		for id,mod in pairs(data.veiledMods) do
-			if mod.level <= model.item.itemLevel and model.item:GetModSpawnWeight(mod) > 0 then model.veiled[#model.veiled+1]={id=id,mod=mod,weight=model.item:GetModSpawnWeight(mod)}; model.special[id]=true end
+		for id,native in pairs(data.veiledMods) do
+			local mod=native;local meta=A.data().mods[id]
+			if meta and meta.spawn_weights then
+				-- Keep native descriptions and tags, but use the reviewed client
+				-- ordering for eligibility and later dynamic weight recalculations.
+				mod=veiledCache[id]
+				if not mod then
+					mod={};for key,value in pairs(native) do mod[key]=value end;mod.weightKey={};mod.weightVal={}
+					for _,entry in ipairs(meta.spawn_weights) do mod.weightKey[#mod.weightKey+1]=entry.tag;mod.weightVal[#mod.weightVal+1]=entry.weight end
+					veiledCache[id]=mod
+				end
+				-- Jewel-specific imports may carry a newer client description for
+				-- the same ID; preserve that independent representation.
+				if not model.unveiledJewels[id] then model.byId[id]=mod end
+				identities[mod]=id
+			end
+			if mod.level <= model.item.itemLevel then
+				local weight=model.item:GetModSpawnWeight(mod)
+				if weight > 0 then model.veiled[#model.veiled+1]={id=id,mod=mod,weight=weight}; model.special[id]=true end
+			end
 		end
 		table.sort(model.veiled,function(a,b) return a.id < b.id end)
 		for id,mod in pairs(data.beastCraft) do if mod.type == "Suffix" then model.special[id]=true end end
