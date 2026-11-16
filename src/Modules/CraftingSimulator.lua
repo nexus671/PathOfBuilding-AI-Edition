@@ -266,6 +266,18 @@ function M.model(raw)
 			state.affixes[#state.affixes+1]={id=entry.modId,range=type(entry.range) == "table" and copyTable(entry.range) or entry.range,fractured=entry.fractured or false,legacyLightRadius=model.legacyLightRadius[entry.modId] and true or nil,description330=current and raw:find(current[1],1,true) and true or nil}
 		end
 	end end
+	-- A legacy Delve resistance prefix may be converted to its corresponding
+	-- elemental prefix, even though none of these modifiers currently rolls.
+	-- Permit those results only when this exact starting item had one already.
+	model.legacyDelveResistance={}
+	for _,entry in ipairs(state.affixes) do
+		if entry.id=="DelveArmourFireResistance1" or entry.id=="DelveArmourColdResistance1" or entry.id=="DelveArmourLightningResistance1" then
+			for _,element in ipairs({"Fire","Cold","Lightning"}) do
+				local id="DelveArmour"..element.."Resistance1";if model.byId[id] then model.legacyDelveResistance[#model.legacyDelveResistance+1]=id end
+			end
+			break
+		end
+	end
 	local reconstructed=M.toItem(model,state)
 	if renderLines(reconstructed) ~= renderLines(item) then
 		local indices={};for index,entry in ipairs(state.affixes) do if entry.legacyLightRadius then indices[#indices+1]=index end end
@@ -660,6 +672,7 @@ function M.validateState(model,state)
 	for _,entry in ipairs(model.bench) do allowed[entry.id]=true end
 	for _,entry in ipairs(model.essences) do allowed[entry.modId]=true end
 	for _,id in ipairs(model.dropOnlyIds) do allowed[id]=true end
+	for _,id in ipairs(model.legacyDelveResistance or {}) do allowed[id]=true end
 	for _,entry in ipairs(model.initial.affixes) do allowed[entry.id]=true; if entry.fractured then fractured[entry.id]=true end;if entry.legacyLightRadius then legacy[entry.id]=entry end end
 	for _,entry in ipairs(state.affixes) do
 		local mod=assert(model.byId[entry.id],"Unknown state modifier")

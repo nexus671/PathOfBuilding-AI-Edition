@@ -68,12 +68,12 @@ describe("State-aware crafting choices",function()
 		for _,entry in ipairs(catalogue.harvestOptions) do if entry.method=="harvest_resistance" then swap=entry end end
 		assert.is_true(swap.available);assert.equal(2,#swap.options)
 		for _,option in ipairs(swap.options) do assert.same(sim.components(option.action),option.components) end
-		-- The game may select a hybrid family as well as the plain suffix.
-		-- Refuse a deterministic result until both conversions are modeled.
+		-- Either a plain suffix or a Delve prefix can be selected.
 		local mixed=copyTable(input);assert.is_not_nil(m.byId.DelveArmourFireResistance1)
 		mixed.affixes[#mixed.affixes+1]={id="DelveArmourFireResistance1",range=0.5}
-		assert.matches("unsupported conversion family",sim.resistanceReason(m,mixed,"fire","cold"))
-		local blocked,reason=sim.resistanceOptions(m,mixed);assert.equal(0,#blocked);assert.matches("unsupported conversion family",reason)
+		assert.is_nil(sim.resistanceReason(m,mixed,"fire","cold"))
+		local prefix=sim.action(m,mixed,{method="harvest_resistance",from="fire",to="cold"},function() return 0.999999 end)
+		assert.equal("DelveArmourColdResistance1",prefix.affixes[2].id)
 		mixed.affixes[2].fractured=true;assert.is_nil(sim.resistanceReason(m,mixed,"fire","cold"))
 		local priced=sim.simulate(m.raw,{initialState=input,steps={{method="harvest_resistance",from="fire",to="cold"}},targets={},requirements={minAffixes=2}},
 			{trials=2,maxActions=1,currency="chaos",prices={wild_lifeforce=0.01,primal_lifeforce=0.02}})
@@ -91,6 +91,36 @@ describe("State-aware crafting choices",function()
 		local full=state(m,"RARE",{{id=fire,range=0.5},{id=natural(m,"ColdResistance"),range=0.5},{id=natural(m,"LightningResistance"),range=0.5}})
 		assert.is_false(check("harvest_resistance",full,m));assert.are.equal(0,#sim.actionOptions(m,full,"harvest_resistance"))
 		input.affixes[1].fractured=nil;assert.are.same(before,input)
+	end)
+	it("swaps Delve resistance prefixes across all elements and respects conflicts",function()
+		local elements={"fire","cold","lightning"}
+		for _,from in ipairs(elements) do for _,to in ipairs(elements) do if from~=to then
+			local source="DelveArmour"..from:gsub("^%l",string.upper).."Resistance1"
+			local target="DelveArmour"..to:gsub("^%l",string.upper).."Resistance1"
+			local item=new("Item"):Item("Rarity: RARE\nLegacy Hat\nIron Hat\nItem Level: 86\nCrafted: true\nPrefix: "..source);item:Craft()
+			local m=sim.model(item.raw)
+			local input=copyTable(m.initial);assert.equal(source,input.affixes[1].id)
+			local result=sim.perform(m.raw,{method="harvest_resistance",from=from,to=to},17,input)
+			assert.equal(target,result.state.affixes[1].id);assert.is_truthy(result.itemText:find(to:gsub("^%l",string.upper).." Resistance",1,true))
+			local reopened=sim.model(result.itemText);assert.equal(target,reopened.initial.affixes[1].id)
+			input.affixes[1].fractured=true;assert.is_truthy(sim.resistanceReason(m,input,from,to))
+			input.affixes[1].fractured=nil;input.rarity="RARE";input.affixes[2]={id=target,range=0.5}
+			assert.matches("already present",sim.resistanceReason(m,input,from,to))
+		end end end
+		local blank=model();local invalid=copyTable(blank.initial);invalid.rarity="MAGIC";invalid.affixes={{id="DelveArmourFireResistance1",range=0.5}}
+		assert.has_error(function() sim.validateState(blank,invalid) end)
+		local item=new("Item"):Item("Rarity: RARE\nLegacy Hat\nIron Hat\nItem Level: 86\nCrafted: true\nPrefix: DelveArmourFireResistance1");item:Craft()
+		local m=sim.model(item.raw);local prefixLock,suffixLock
+		for _,entry in ipairs(m.bench) do
+			if entry.mod[1]=="Prefixes Cannot Be Changed" then prefixLock=entry.id end
+			if entry.mod[1]=="Suffixes Cannot Be Changed" then suffixLock=entry.id end
+		end
+		assert.is_truthy(prefixLock);assert.is_truthy(suffixLock)
+		local protected=sim.perform(m.raw,{method="bench",modId=prefixLock},1,m.initial).state
+		assert.is_truthy(sim.resistanceReason(m,protected,"fire","cold"))
+		local unlocked=sim.perform(m.raw,{method="bench",modId=suffixLock},1,m.initial).state
+		local changed=sim.perform(m.raw,{method="harvest_resistance",from="fire",to="cold"},2,unlocked).state
+		assert.equal("DelveArmourColdResistance1",changed.affixes[1].id)
 	end)
 	it("swaps regular and maximum jewel resistances while respecting fractures and groups",function()
 		local m=model("Cobalt Jewel")

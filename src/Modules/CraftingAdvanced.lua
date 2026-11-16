@@ -510,7 +510,7 @@ function A.extend(M,api)
 	end
 	function M.resistanceReason(model,state,from,to)
 		if from==to or not contains({"fire","cold","lightning"},from) or not contains({"fire","cold","lightning"},to) then return "Choose different elemental resistance types" end
-		local f=api.flags(model,state);if f.suffixes then return "Suffixes are locked" end
+		local f=api.flags(model,state)
 		local matches={};local element=from:gsub("^%l",string.upper)
 		-- HarvestCraftOptions lists these families as eligible, including
 		-- hybrids we cannot convert yet. Never ignore an eligible modifier:
@@ -522,13 +522,14 @@ function A.extend(M,api)
 			local jewel=model.item.type=="Jewel" and (entry.id==element.."ResistanceJewel" or entry.id=="Maximum"..element.."ResistanceJewel" or entry.id=="Abyss"..element.."ResistanceJewel1")
 			local shield=shieldResistanceTarget(model,entry.id,from,to)
 			local cluster=clusterResistanceTarget(model,entry.id,from,to)
+			local delvePrefix=entry.id=="DelveArmour"..element.."Resistance1"
 			local eligible=false;for _,group in ipairs(groups(model,entry.id)) do if contains(sourceGroups,group) then eligible=true;break end end
 			if not api.protected(entry,model.byId[entry.id],f) and eligible then
-				if not (model.byId[entry.id].group==element.."Resistance" or jewel or shield or cluster) then return "An eligible resistance modifier has an unsupported conversion family" end
+				if not (model.byId[entry.id].group==element.."Resistance" or jewel or shield or cluster or delvePrefix) then return "An eligible resistance modifier has an unsupported conversion family" end
 				matches[#matches+1]=i
 			end
 		end
-		if #matches==0 then return "No swappable single-element resistance" end
+		if #matches==0 then return f.suffixes and "Suffixes are locked" or "No swappable single-element resistance" end
 		for _,index in ipairs(matches) do
 			local id=resistanceTarget(model,state.affixes[index].id,from,to)
 			if not model.byId[id] then return "No matching resistance tier on this base" end
