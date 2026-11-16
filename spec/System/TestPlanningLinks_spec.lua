@@ -1,3 +1,4 @@
+-- cspell:ignore Breachless
 describe("Linked planning tools",function()
 	local filters=require("Modules.LootFilters")
 	local dependencies=require("Modules.LootFilterDependencies")
@@ -110,6 +111,23 @@ describe("Linked planning tools",function()
 		local found={};for _,rule in ipairs(profile.rules) do found[rule.title]=rule end
 		assert.is_truthy(found["Strand Map"]);assert.is_truthy(found["Shaped Strand Map"]);assert.is_nil(found["Beach Map"])
 		assert.equal("budget:budget-thread",found["Breach Thread"].origin)
+	end)
+	it("treats avoided mechanic names as Thread exclusions for that Atlas plan",function()
+		local atlas=require("Modules.AtlasPlanner");local node=atlas.tree("3.30.0-preview").nodes[54685]
+		local plan=atlas.connect({id="mechanics",title="Mechanics",version="3.30.0-preview",budget=150,nodes={},strategy={scarabs="Breach Thread, Ritual Thread and Expedition Thread",avoid="breach and RITUAL"}},{node.id})
+		plan=atlas.chooseEffect(plan,node.id,node.variantEffects[1].effect);build.savers.AtlasPlans:Upsert(plan)
+		local journey=require("Modules.BuildJourney").empty();journey.resources={{id="breach",title="Breach Thread"}};build.savers.BuildJourney:Replace(journey)
+		local profile=filters.profile("mechanic-avoid","Mechanic avoidance");local rules,warnings=filters.generate(build,profile)
+		local names={};for _,rule in ipairs(rules) do names[rule.origin..":"..rule.title]=true end
+		assert.is_nil(names["atlas:mechanics:Breach Thread"]);assert.is_nil(names["atlas:mechanics:Ritual Thread"])
+		assert.is_true(names["atlas:mechanics:Expedition Thread"]);assert.is_true(names["budget:breach:Breach Thread"]);assert.equal(0,#warnings)
+		local bridge=require("Modules.DesktopBuildBridge")
+		local reopened=bridge.prepare(build,{mode="edit",title="Reopen strategy",baseRevision=bridge.revision(build),operations={{type="set_character",level=80}}}).candidate
+		for _,rule in ipairs(filters.generate(reopened,profile)) do assert.is_false(rule.origin=="atlas:mechanics" and rule.title=="Breach Thread") end
+		plan=build.savers.AtlasPlans.plans[1]
+		plan.strategy.avoid="Breachless";names={}
+		for _,rule in ipairs(filters.generate(build,profile)) do names[rule.origin..":"..rule.title]=true end
+		assert.is_true(names["atlas:mechanics:Breach Thread"])
 	end)
 	it("describes linked sources by name and handles removed sources",function()
 		build.savers.CraftingProjects:Upsert(craft())

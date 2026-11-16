@@ -13,6 +13,8 @@ The 3.30 preview includes multiple-choice nodes. Connect one, select it, and cho
 
 Stage routes call out new or changed effects, including effects that must be reselected after a refund. AI review shows the chosen effect, and linked loot-filter suggestions use the selected effect rather than the alternatives. An effect that excludes a Thread type suppresses inferred pickups for that type; explicitly named strategy items remain visible.
 
+In a strategy's **Avoid** field, a recognized mechanic name such as `Breach` suppresses that mechanic's Thread pickups from the same Atlas plan, including Threads named in its supplies. A separate budget or another plan can still request the item.
+
 The allocation summary lists selected Thread exclusions and warns if another selected effect increases the same Thread type. A Thread exclusion applies to Threads found in your Maps; it does not prevent the corresponding encounter from appearing.
 
 **Find nodes** opens a searchable list with mechanic filters and added point costs. Choosing a result highlights its mechanic on the tree. The minimap moves the camera without changing allocations. Drag the divider beside the inspector to resize it.
