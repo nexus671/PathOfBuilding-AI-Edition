@@ -82,6 +82,10 @@ async function main(){
   const damage=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:damageRaw,action:{method:'harvest_damage',from:'fire',to:'cold'},seed:1},'crafted');
   assert.ok(damage.nativeCrafting.state.affixes.some(entry=>entry.id==='LocalAddedColdDamage1'));
   assert.ok(damage.nativeCrafting.warnings.some(entry=>entry.code==='harvest_damage_assumptions'));
+  const damageRing='Rarity: RARE\nConversion Ring\nGold Ring\nItem Level: 86\nAdds 1 to 2 Fire Damage to Attacks\n10% increased Fire Damage';
+  const damageOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:damageRing,action:{method:'harvest_damage',from:'fire',to:'cold'},targets:[{anyOf:['AddedColdDamage1']}]},'crafted');
+  assert.equal(damageOdds.nativeCrafting.successChance,50);assert.equal(damageOdds.nativeCrafting.sampled,false);
+  assert.equal(damageOdds.nativeCrafting.outcomes.length,2);assert.match(damageOdds.nativeCrafting.exactFor,/assumed/);
   const gwennenReference=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'destroy',limit:20},'inspected');
   assert.equal(gwennenReference.crafting.nativeEngine.gwennenReference.offers[0].id,1022);assert.match(gwennenReference.crafting.nativeEngine.gwennenReference.note,/not available crafting actions/);
   assert.equal(inspected.crafting.nativeEngine.methodWarnings.binding[0].code,'binding_legacy');

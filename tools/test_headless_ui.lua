@@ -322,6 +322,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		frame("crafting-harvest-damage-selected");ui:click("apply")
 		local damageFound;for _,row in ipairs(main.popups[1].controls.itemMods.list) do if row.affixId=="LocalAddedColdDamage1" then damageFound=true end end
 		assert(damageFound,"Harvest did not convert the weapon damage");frame("crafting-harvest-damage-applied");ui:click("close")
+		local damageRing="Rarity: RARE\nConversion Ring\nGold Ring\nItem Level: 86\nAdds 1 to 2 Fire Damage to Attacks\n10% increased Fire Damage"
+		local damageAction={method="harvest_damage",from="fire",to="cold"}
+		require("Classes.CraftingSimulatorControl").Open(build,{id="harvest-damage-odds",title="Damage conversion outcomes",slot="Ring 1",startingItem=damageRing,goals={},steps={},nativeRecipe={steps={damageAction},targets={{anyOf={"AddedColdDamage1"}}}}})
+		ui:click("settings");ui:text("paletteSearch",sim.labels.harvest_damage);ui:click("paletteUse");ui:choose("option","fire to cold","label");ui:click("tab_settings");ui:click("exact")
+		local damageJobs=require("Modules.CraftingTasks");for i=1,1000 do if not damageJobs.job then break end;damageJobs.tick(build) end;assert(not damageJobs.job,"Damage conversion odds did not finish")
+		local damageOdds={};for _,row in ipairs(main.popups[1].controls.resultSummary.list) do damageOdds[#damageOdds+1]=row[1] end
+		local damageText=table.concat(damageOdds," ");assert(damageText:find("50.000000%%") and damageText:find("uniform selection",1,true),"Modeled damage outcomes are missing")
+		ui:click("tab_simulate");frame("crafting-harvest-damage-odds");ui:click("close")
 		local magic=sim.perform(menuRaw,{method="transmute"},7)
 		require("Classes.CraftingSimulatorControl").Open(build,{id="essence-menu-ui",title="Essence input requirements",slot="Helmet",startingItem=magic.itemText,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch",sim.labels.essence);panel=main.popups[1]

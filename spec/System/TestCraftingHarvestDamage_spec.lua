@@ -55,4 +55,23 @@ describe("Harvest elemental damage conversion",function()
 		local other,otherState=fixture()
 		assert.is_nil(sim.damageReason(other,otherState,"fire","cold"))
 	end)
+	it("enumerates eligible choices for identity goals and samples roll goals",function()
+		local ring="Rarity: NORMAL\nGold Ring\nItem Level: 86";local model=sim.model(ring)
+		local state=copyTable(model.initial);state.rarity="RARE"
+		state.affixes={{id="AddedFireDamage1",range=0.5},{id="FireDamagePercent1",range=0.5}}
+		state=sim.validateState(model,state)
+		local action={method="harvest_damage",from="fire",to="cold"}
+		local result=sim.calculate(ring,action,{{anyOf={"AddedColdDamage1"}}},state,{})
+		assert.is_false(result.sampled);assert.is_true(result.showAllOutcomes);assert.equal(50,result.successChance)
+		assert.equal(2,#result.outcomes);assert.matches("assumed",result.exactFor)
+		local bySource={};for _,entry in ipairs(result.outcomes) do bySource[entry.sourceId]=entry end
+		assert.equal("AddedColdDamage1",bySource.AddedFireDamage1.targetId);assert.equal(50,bySource.AddedFireDamage1.chance)
+		assert.is_true(bySource.AddedFireDamage1.matches);assert.is_false(bySource.FireDamagePercent1.matches)
+		assert.equal("harvest_damage_assumptions",result.warnings[1].code)
+		local either={{anyOf={"AddedColdDamage1"}},{anyOf={"ColdDamagePercent1"}}}
+		assert.equal(100,sim.calculate(ring,action,either,state,{requiredGroups=1}).successChance)
+		assert.equal(0,sim.calculate(ring,action,either,state,{requiredGroups=2}).successChance)
+		local sampled=sim.calculate(ring,action,{{anyOf={"AddedColdDamage1"},minRoll=0.9}},state,{trials=10,seed=3})
+		assert.is_true(sampled.sampled);assert.equal(10,sampled.trials)
+	end)
 end)

@@ -27,6 +27,33 @@ function C.extend(M)
 			end
 		end
 		local method=M.baseCurrency(craft)
+		-- Conversion picks one eligible modifier, then rerolls its values. When
+		-- targets only refer to modifier identities, the value roll cannot alter
+		-- whether a target matches, so enumerate the modeled choices exactly.
+		if method=="harvest_damage" and not craft.allflame and not options.requirements then
+			local rollGoal=false;for _,group in ipairs(targets or {}) do if group.minRoll~=nil then rollGoal=true;break end end
+			if not rollGoal then
+				M.validateRecipe({steps={craft},targets=targets,requiredGroups=options.requiredGroups})
+				M.perform(raw,craft,options.seed,initialState)
+				local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
+				if M.context then model=M.context(model,state) end
+				local reason,choices=M.damageReason(model,state,craft.from,craft.to);assert(not reason,reason)
+				local outcomes,hits={},0
+				for index,choice in ipairs(choices) do
+					local draws=0;local result=M.action(model,state,craft,function()
+						draws=draws+1;return draws==1 and (index-0.5)/#choices or 0.5
+					end)
+					local hit=M.matches(result,targets,nil,model,nil,options.requiredGroups);if hit then hits=hits+1 end
+					local source=state.affixes[choice.index].id
+					outcomes[#outcomes+1]={id=source..":"..choice.id,sourceId=source,targetId=choice.id,
+						text=table.concat(model.byId[source]," / ").." -> "..table.concat(model.byId[choice.id]," / "),
+						chance=100/#choices,weight=1,matches=hit,state=result}
+				end
+				return {exactFor="One conversion: assumed tiers and uniform selection",showAllOutcomes=true,outcomesFirst=true,
+					sampled=false,successChance=100*hits/#choices,totalWeight=#choices,matchingWeight=hits,outcomes=outcomes,
+					sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+			end
+		end
 		if method=="jeweller" and not craft.allflame then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
