@@ -165,6 +165,16 @@ describe("State-aware crafting choices",function()
 		for _,warning in ipairs(warnings) do if warning.code=="tainted_exalt_branch_limits" then found=warning.message:find("failed transitions are not charged",1,true)~=nil end end
 		assert.is_true(found);assert.matches("can fail",require("Modules.CraftingWorkbench").hint("tainted_exalt",input,m))
 	end)
+	it("samples Tainted Exalted branches instead of failing a random preflight",function()
+		local m=model("Cobalt Jewel");local input=sim.perform(m.raw,{method="alchemy"},104729).state;input.corrupted=true
+		for _,seed in ipairs({1,2,3}) do
+			local result=sim.calculate(m.raw,{method="tainted_exalt"},{},input,{requirements={minAffixes=3},trials=40,seed=seed})
+			local failed=0;for _,count in pairs(result.transitionErrors) do failed=failed+count end
+			assert.is_true(result.sampled);assert.is_true(failed>0);assert.is_true(result.successes>0)
+			local warned=false;for _,warning in ipairs(result.warnings) do if warning.code=="tainted_exalt_branch_limits" then warned=true end end;assert.is_true(warned)
+		end
+		input.corrupted=false;assert.has_error(function() sim.calculate(m.raw,{method="tainted_exalt"},{},input,{requirements={minAffixes=3},trials=2}) end)
+	end)
 	it("retains corrupted Abyss jewel capacity during tainted affix crafts",function()
 		local m=model("Murderous Eye Jewel");local input=sim.perform(m.raw,{method="alchemy"},104729).state
 		input.corrupted=true;assert.equal(4,#input.affixes);assert.equal(6,sim.capacities(m,input).total)

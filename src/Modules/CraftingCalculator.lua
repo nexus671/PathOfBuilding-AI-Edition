@@ -182,7 +182,13 @@ function C.extend(M)
 		-- Partial-lock selection can make only some attempts invalid. Let the
 		-- simulator report those transition errors instead of rejecting the
 		-- entire calculation based on one arbitrarily seeded preflight.
-		if not partialHarvest then M.perform(raw,craft,options.seed,initialState) end
+		if method=="tainted_exalt" then
+			-- Either modeled branch can fail at an affix limit. Check the item
+			-- prerequisites without letting one random preflight decide whether
+			-- the whole calculation is available.
+			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
+			local available,reason=require("Modules.CraftingAvailability").check(method,state,model);assert(available,reason)
+		elseif not partialHarvest then M.perform(raw,craft,options.seed,initialState) end
 		local result=M.simulate(raw,{steps={craft},targets=targets,initialState=initialState,requirements=options.requirements,requiredGroups=options.requiredGroups},
 			{trials=options.trials or 1000,maxActions=1,seed=options.seed,forceFirstAction=true,checkpoint=options.checkpoint})
 		result.sampled=true;result.outcomes={}
