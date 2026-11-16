@@ -40,6 +40,7 @@ jobs:
           python3 tools/check_loot_filter_data.py
           python3 tools/test_check_update_manifest.py
           python3 tools/check_update_manifest.py
+          python3 tools/test_render_headless_ui.py
           python3 tools/check_headless_ui.py
       - name: Upload headless UI evidence
         if: always()

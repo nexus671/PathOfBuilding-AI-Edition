@@ -147,17 +147,21 @@ def render(frame):
             if max(xs) <= box[0] or max(ys) <= box[1] or min(xs) >= box[2] or min(ys) >= box[3]:
                 continue
             box = (max(box[0], math.floor(min(xs))), max(box[1], math.floor(min(ys))), min(box[2], math.ceil(max(xs))), min(box[3], math.ceil(max(ys))))
-        layer = Image.new("RGBA", canvas.size)
+        # Fully visible rectangles use a small layer. Clipped rectangles keep
+        # absolute coordinates because fractional negative edges rasterise differently.
+        bounded = command["kind"] == "rect" and x >= box[0] and y >= box[1] and x+w <= box[2] and y+h <= box[3]
+        offset = box[:2] if bounded else (0, 0)
+        layer = Image.new("RGBA", (box[2]-box[0], box[3]-box[1]) if bounded else canvas.size)
         draw = ImageDraw.Draw(layer)
         if command["kind"] == "rect":
             rect = [command[k] for k in ("x", "y", "width", "height")]
-            draw.rectangle((rect[0], rect[1], rect[0] + rect[2] - 1, rect[1] + rect[3] - 1), fill=rgba(command["color"]))
+            draw.rectangle((rect[0]-offset[0], rect[1]-offset[1], rect[0] + rect[2] - 1-offset[0], rect[1] + rect[3] - 1-offset[1]), fill=rgba(command["color"]))
             if command.get("asset"):
                 asset = bundled_texture(command["asset"])
                 texture = rect_texture(asset, command.get("uv"), (max(1, round(rect[2])), max(1, round(rect[3]))))
                 texture = ImageChops.multiply(texture, Image.new("RGBA", texture.size, rgba(command["color"])))
-                layer = Image.new("RGBA", canvas.size)
-                layer.alpha_composite(texture, (round(rect[0] + (rect[2]-texture.width)/2), round(rect[1] + (rect[3]-texture.height)/2)))
+                layer = Image.new("RGBA", layer.size)
+                layer.alpha_composite(texture, (round(rect[0] + (rect[2]-texture.width)/2)-offset[0], round(rect[1] + (rect[3]-texture.height)/2)-offset[1]))
         elif command["kind"] == "polygon":
             points = command["points"]
             if command.get("asset"):
@@ -225,7 +229,7 @@ def render(frame):
                 x = math.ceil(x + (width + right) * scale)
         if command.get("textured") and not command.get("asset"):
             audit["texturedPlaceholders"] += 1
-        canvas.alpha_composite(layer.crop(box), box[:2])
+        canvas.alpha_composite(layer if bounded else layer.crop(box), box[:2])
     return canvas.convert("RGB"), audit
 
 
