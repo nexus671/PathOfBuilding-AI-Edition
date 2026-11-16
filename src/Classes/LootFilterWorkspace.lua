@@ -30,7 +30,7 @@ function M.Open(build,source,layout,controller)
 	local catalog,entries,parsed,raw,report,result={},{};local selectedEntry;local scene={}
 	local function sampleDetails(sample,evaluated)
 		local deciding=evaluated and (evaluated.ruleTitle or (evaluated.line and "Filter line "..evaluated.line or evaluated.status=="matched" and "No matching block: default Show" or "Resolve missing properties or filter errors.")) or "Select a drop to inspect the rule."
-		local lines={sample.BaseType or "Unknown base","iLvl "..tostring(sample.ItemLevel or "?").." / area "..tostring(sample.AreaLevel or "?"),evaluated and evaluated.action or "Choose a drop"}
+		local lines={visual.sampleName(sample),"iLvl "..tostring(sample.ItemLevel or "?").." / area "..tostring(sample.AreaLevel or "?"),evaluated and evaluated.action or "Choose a drop"}
 		local tier=itemTier(sample);if tier~=nil then lines[#lines+1]="Unidentified item tier: "..tier
 		elseif sample.Identified==false and (sample.Rarity=="Magic" or sample.Rarity=="Rare") then lines[#lines+1]="Unidentified item tier: unknown" end
 		lines[#lines+1]=deciding;for _,reason in ipairs(evaluated and evaluated.reasons or {}) do lines[#lines+1]=reason end;return lines
@@ -408,10 +408,10 @@ function M.Open(build,source,layout,controller)
 		button(c,"pasteDrop",124,282,100,"Paste item",function() rememberSample(require("Modules.LootFilterClipboard").parse(Paste(),settings.areaLevel));scenePage=1;compile();reopen() end)
 		button(c,"sceneSettings",16,322,100,"Scene",function() require("Classes.LootFilterSceneControl").Open(settings,function(next) settings=next;reopen() end) end)
 		if savedSet then c.sceneSettings.tooltipText="Background settings apply here. Saved examples retain their recorded item and area levels." end
-		button(c,"sampleHistory",124,322,100,"History",function() local entries={};for i=#samples,1,-1 do local sample=samples[i];entries[#entries+1]={id=i,label=sample.BaseType or "Unknown item",details={"Item level: "..tostring(sample.ItemLevel or "unknown"),"Area level: "..tostring(sample.AreaLevel or "unknown"),"Missing properties remain unknown."},sample=sample} end
+		button(c,"sampleHistory",124,322,100,"History",function() local entries={};for i=#samples,1,-1 do local sample=samples[i];entries[#entries+1]={id=i,label=visual.sampleName(sample),details={"Item level: "..tostring(sample.ItemLevel or "unknown"),"Area level: "..tostring(sample.AreaLevel or "unknown"),"Missing properties remain unknown."},sample=sample} end
 			require("Classes.PlanningBrowserControl").Open("Tested item history",entries,{action="Test again",choose=function(entry) rememberSample(entry.sample);scenePage=1;compile();reopen() end})
 		end)
-		button(c,"sound",16,362,100,"Play sound",function() local _,message=require("Modules.LootFilterAudio").play(result and result.styles or {});c.selection.list=ui.rows({item.BaseType,message},left-28,14) end)
+		button(c,"sound",16,362,100,"Play sound",function() local _,message=require("Modules.LootFilterAudio").play(result and result.styles or {});c.selection.list=ui.rows({visual.sampleName(item),message},left-28,14) end)
 		button(c,"sceneStats",124,362,100,"Drop review",function()
 			local counts={Show=0,Hide=0,Minimal=0,Unknown=0};local entries={}
 			for index,drop in ipairs(scene) do
@@ -419,7 +419,7 @@ function M.Open(build,source,layout,controller)
 				local action=M.dropOutcome(evaluated)
 				counts[action]=counts[action]+1
 				local value=itemTier(drop);local tier=value~=nil and (value==0 and " (no tier)" or " (tier "..value..")") or (drop.Identified==false and (drop.Rarity=="Magic" or drop.Rarity=="Rare") and " (tier unknown)" or "")
-				entries[#entries+1]={id=index,label=(drop.BaseType or "Unknown item")..tier.." - "..action,category=action,details=sampleDetails(drop,evaluated),sample=drop}
+				entries[#entries+1]={id=index,label=visual.sampleName(drop)..tier.." - "..action,category=action,details=sampleDetails(drop,evaluated),sample=drop}
 			end
 			local title=string.format("Examples: %d shown, %d minimal, %d hidden, %d unknown",counts.Show,counts.Minimal,counts.Hide,counts.Unknown)
 			require("Classes.PlanningBrowserControl").Open(title,entries,{action="Inspect item",choose=function(entry) rememberSample(entry.sample);scenePage=1;compile();reopen() end})

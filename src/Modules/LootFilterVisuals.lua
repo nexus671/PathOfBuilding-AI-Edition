@@ -7,6 +7,12 @@ local images={}
 -- Rarity and item-class colours match PoB's native colourCodes defaults.
 local rarityColors={Normal={200,200,200},Magic={136,136,255},Rare={255,255,119},Unique={175,96,37}}
 local classColors={["Stackable Currency"]={170,158,130},Currency={170,158,130},["Skill Gems"]={26,162,155},["Support Gems"]={26,162,155}}
+function M.sampleName(item)
+	if item.BaseType and item.BaseType~="" then return item.BaseType end
+	if type(item.TransfiguredGem)=="string" and item.TransfiguredGem~="" then return item.TransfiguredGem.." (transfigured example)" end
+	if item.TransfiguredGem==true then return "Transfigured gem example" end
+	return "Unknown item"
+end
 function M.defaultTextColor(item)
 	if item.Rarity=="Normal" and classColors[item.Class] then return classColors[item.Class] end
 	return rarityColors[item.Rarity] or {220,225,215}
@@ -53,7 +59,7 @@ end
 function M.chip(x,y,w,h,item,result,selected)
 	local styles=result and result.styles or {};local hidden=result and result.action=="Hide";local unknown=result and (result.status=="unknown" or result.status=="invalid")
 	local size=math.max(14,math.min(26,math.floor((tonumber(styles.SetFontSize and styles.SetFontSize[1]) or 28)*0.65)))
-	local name=item.BaseType or "Example item";while size>14 and DrawStringWidth(size,"VAR",name)>w-22 do size=size-1 end;name=ui.fit(name,w-22,size)
+	local name=M.sampleName(item);while size>14 and DrawStringWidth(size,"VAR",name)>w-22 do size=size-1 end;name=ui.fit(name,w-22,size)
 	local width=math.min(w-8,DrawStringWidth(size,"VAR",name)+18);local left=x+(w-width)/2;local top=y+(h-32)/2
 	local function color(key,fallback) local value=styles[key] or fallback;SetDrawColor((tonumber(value[1]) or 255)/255,(tonumber(value[2]) or 255)/255,(tonumber(value[3]) or 255)/255,hidden and 0.35 or appearance.alpha(key,value)/255) end
 	if styles.PlayEffect and styles.PlayEffect[1]~="None" and not hidden then local color=M.colors[styles.PlayEffect[1]] or M.colors.Cyan

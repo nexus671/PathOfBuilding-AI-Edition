@@ -27,7 +27,7 @@ function M.Open(profile,kind,sources,onAccept)
 			local source=sources[c.source:GetSelValueByKey("val")];example=entry and entry.samples[1] or source.samples[1];preview=example and parser.simulate(previewParsed,example)
 			lines[#lines+1]=entry and #entry.samples..(#entry.samples==1 and " exact example item; original levels are retained." or " exact example items; original levels are retained.") or "Choose a source above, name it, then Save new."
 			if preview then lines[#lines+1]="Preview: "..preview.action;for _,reason in ipairs(preview.reasons or {}) do lines[#lines+1]=reason end end
-			for _,sample in ipairs(entry and entry.samples or {}) do lines[#lines+1]=(sample.BaseType or "Unknown base").." | item level "..tostring(sample.ItemLevel or "unknown").." | area "..tostring(sample.AreaLevel or "unknown") end
+			for _,sample in ipairs(entry and entry.samples or {}) do lines[#lines+1]=visual.sampleName(sample).." | item level "..tostring(sample.ItemLevel or "unknown").." | area "..tostring(sample.AreaLevel or "unknown") end
 		else
 			example={BaseType="Crafting base"};local p=copyTable(draft);if entry then p.appearance=entry.appearance;p.theme=entry.theme;if entry.categoryStyles~=nil then p.categoryStyles=entry.categoryStyles end end
 			local raw=require("Modules.LootFilterCategoryStyles").apply(filters.rule("example","Example",{},nil,p.theme).text,p.categoryStyles,"Build targets")
