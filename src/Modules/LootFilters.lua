@@ -124,6 +124,7 @@ function M.generate(build,profile,checkpoint)
 		local ok,item=pcall(require("Modules.CraftingProjects").item,raw or "")
 		if not ok then return false end
 		local baseName=item.baseName;local conditions
+		local uniqueTarget=origin and origin:match("^gear:") and item.rarity=="UNIQUE"
 		if item.type and item.type:match("^Wickerman ") then
 			-- GGG's filter list names the underlying Viscera base without its
 			-- Lesser/Greater display prefix. Do not apply equipment rarity tests.
@@ -131,8 +132,11 @@ function M.generate(build,profile,checkpoint)
 			local known=false;for _,name in ipairs(M.patch().added.Viscera or {}) do if name==canonical then known=true;break end end
 			if not known then return false end
 			conditions={"Class == \"Viscera\"","BaseType == "..quote(canonical)}
-		else conditions={"BaseType == "..quote(baseName),"Rarity <= Rare"} end
-		local level=tonumber((raw or ""):match("Item Level: (%d+)"));if level then conditions[#conditions+1]="ItemLevel >= "..level end
+		else conditions={"BaseType == "..quote(baseName),uniqueTarget and "Rarity == Unique" or "Rarity <= Rare"} end
+		-- A copied unique's item level describes that particular copy, not the
+		-- minimum level of another drop of the same unique.
+		local level=not uniqueTarget and tonumber((raw or ""):match("Item Level: (%d+)")) or nil
+		if level then conditions[#conditions+1]="ItemLevel >= "..level end
 		if type(id)=="function" then id=id(item,level) end
 		if type(title)=="function" then title=title(item) end
 		add(id,title,conditions,origin)

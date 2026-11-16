@@ -65,7 +65,7 @@ for line in io.lines() do
 			local file=assert(io.open(directory.."journey.xml","rb"));local xml=file:read("*a");file:close()
 			bridge.disable(build);loadBuildFromXML(xml,"MCP workflow fixture");build=main.modes.BUILD;ui:bind(build)
 			assert(not main.popups[1],"Reload opened a popup: "..tostring(main.popups[1] and main.popups[1].title).." | "..tostring(main.popups[1] and main.popups[1].controls[1] and main.popups[1].controls[1].label))
-			assert(#build.savers.BuildJourney.data.wishlist==2 and #build.savers.CraftingProjects.projects==2,"Saved plans did not reload")
+			assert(#build.savers.BuildJourney.data.wishlist==3 and build.savers.BuildJourney.data.wishlist[3].id=="surrender" and #build.savers.CraftingProjects.projects==2,"Saved plans did not reload")
 			build.viewMode="CONFIG";ui:click("aiBuild");ui:click("nav_crafting");ui:click("native")
 			assert(build.planningWorkspace.controls.undo:IsEnabled(),"Saved checkpoint did not restore undo")
 			bridge.enable(build)

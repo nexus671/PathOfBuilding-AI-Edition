@@ -613,6 +613,7 @@ async function main(){
   bodyProject.nativeRecipe.steps.push({method:'recombine',donorItem:'Rarity: NORMAL\nGlorious Plate\nItem Level: 86'});
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:bodyProject},'review');await host('apply');context=(await call('get_build_context')).context;
   const journey={schemaVersion:1,resources:[{id:'chaos',title:'Chaos Orbs'},{id:'fossils',title:'Pristine Fossils'}],ledger:[{id:'holdings',resourceId:'chaos',kind:'add',amount:100,at:1}],wishlist:[{id:'helmet',title:'Next helmet',slot:'Helmet',route:'craft',projectId:'helmet',resourceId:'chaos',estimate:40,reserve:true},{id:'alternative',title:'Alternative helmet',slot:'Helmet',route:'buy',targetItem:item(300),resourceId:'chaos',estimate:90}],milestones:[{id:'craft',title:'Craft the helmet',kind:'craft',projectId:'helmet',wishlistId:'helmet'}],stages:[{id:'maps',title:'Start mapping',level:68,gems:'Keep the main links',gear:'Acquire the planned helmet',transition:'After checking requirements'}]};
+  journey.wishlist.push({id:'surrender',title:'The Surrender',slot:'Weapon 2',route:'farm',targetItem:'Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86'});
   await queued('propose_journey_plan',{title:'Gear roadmap',baseRevision:context.revision,journey},'review');await host('apply');context=(await call('get_build_context')).context;
   const measured=await queued('measure_journey_upgrades',{baseRevision:context.revision},'measured');assert.ok(measured.upgrades.entries.helmet.delta.LifeUnreserved>0);assert.ok(measured.upgrades.entries.alternative.delta.LifeUnreserved>measured.upgrades.entries.helmet.delta.LifeUnreserved);
   const saved=await call('get_build_journey');assert.equal(saved.budget.chaos.available,60);assert.equal(saved.journey.milestones[0].wishlistId,'helmet');
@@ -633,6 +634,8 @@ async function main(){
   generated.profile.palettes=[{id:'gold',title:'Gold highlights',appearance:generated.profile.appearance,theme:'default',categoryStyles:generated.profile.categoryStyles}];
   assert.ok(generated.profile.rules.some(rule=>rule.origin==='craft:helmet'));
   assert.ok(generated.profile.rules.some(rule=>rule.origin==='gear:alternative' && rule.text.includes('BaseType == "Iron Hat"')),'Shared base lost its gear-source link');
+  const surrenderPickup=generated.profile.rules.find(rule=>rule.origin==='gear:surrender');assert.ok(surrenderPickup);
+  assert.match(surrenderPickup.text,/BaseType == "Ezomyte Tower Shield"/);assert.match(surrenderPickup.text,/Rarity == Unique/);assert.doesNotMatch(surrenderPickup.text,/ItemLevel/);
   const tested=await queued('test_loot_filter',{baseRevision:context.revision,profile:generated.profile,sample:{BaseType:'Iron Hat',Rarity:'Rare',ItemLevel:86}},'tested');assert.equal(tested.result.action,'Show');
   const copiedProfile={...lootProfile,rules:[{id:'currency',title:'Currency dimensions',text:'Show\n BaseType == "Chaos Orb"\n DropLevel = 12\n Width = 1\n BaseDefencePercentile = 0',enabled:true}]};
   const copied=await queued('test_loot_filter',{baseRevision:context.revision,profile:copiedProfile,itemText:'Item Class: Stackable Currency\nRarity: Currency\nChaos Orb\n--------\nStack Size: 7/20\n--------',areaLevel:83},'tested');

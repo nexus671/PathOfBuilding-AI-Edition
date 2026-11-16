@@ -31,6 +31,17 @@ describe("Linked planning tools",function()
 		assert.equal(ids["craft:second"],retained["craft:second"]);assert.equal(ids["gear:gear-hat"],retained["gear:gear-hat"])
 		profile.template="Hide";assert.equal("Show",filters.simulate(profile,{BaseType="Iron Hat",Rarity="Rare",ItemLevel=86}).action)
 	end)
+	it("shows unique wishlist items without requiring the copied item's level",function()
+		local journey=require("Modules.BuildJourney").empty()
+		journey.wishlist={{id="surrender",title="The Surrender",slot="Weapon 2",route="farm",targetItem="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86"}}
+		build.savers.BuildJourney:Replace(journey)
+		local profile=filters.profile("unique-target","Unique target");profile.template="Hide";profile.rules=filters.generate(build,profile)
+		local pickup;for _,rule in ipairs(profile.rules) do if rule.origin=="gear:surrender" then pickup=rule end end
+		assert.is_truthy(pickup);assert.is_truthy(pickup.text:find('BaseType == "Ezomyte Tower Shield"',1,true))
+		assert.is_truthy(pickup.text:find("Rarity == Unique",1,true));assert.is_nil(pickup.text:find("ItemLevel",1,true))
+		assert.equal("Show",filters.simulate(profile,{BaseType="Ezomyte Tower Shield",Rarity="Unique",ItemLevel=70}).action)
+		assert.equal("Hide",filters.simulate(profile,{BaseType="Ezomyte Tower Shield",Rarity="Rare",ItemLevel=86}).action)
+	end)
 	it("keeps shared recipe currencies linked to each guide",function()
 		local first=craft();first.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}}
 		local second=copyTable(first);second.id="second";second.title="Second helmet"
