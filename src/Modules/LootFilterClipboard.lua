@@ -54,9 +54,18 @@ function M.parse(raw,area)
 		local value=tonumber(raw:match(field..":%s*([%+%-]?%d+)"));assert(not value or value==value and math.abs(value)<=1e9,"Invalid clipboard "..field);item[key]=value
 	end
 	if class and class:find("Gems",1,true) then item.GemLevel=tonumber(raw:match("\nLevel:%s*(%d+)")) end
-	local sockets=raw:match("Sockets: ([^\n]+)") or "";local groups={};local colours={};local linked=0
-	for group in sockets:gmatch("[^ ]+") do local colors=group:gsub("[^RGBWAD]","");if #colors>0 then groups[#groups+1]=colors;colours[#colours+1]=colors;linked=math.max(linked,#colors) end end
-	item.SocketColours=table.concat(colours);item.Sockets=#item.SocketColours;item.SocketGroup=table.concat(groups," ");item.LinkedSockets=linked
+	local sockets=raw:match("\nSockets:[ \t]*([^\n]*)")
+	local noSockets={ ["Stackable Currency"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
+	if sockets~=nil or noSockets[class] then
+		local groups,colours,linked={},{},0;sockets=sockets or ""
+		if sockets~="" and sockets~="0" then for group in sockets:gmatch("%S+") do
+			assert(group:match("^[RGBWAD%-]+$") and not group:find("^%-") and not group:find("%-$") and not group:find("%-%-"),"Invalid clipboard socket layout")
+			-- Abyss and Delve sockets cannot link adjacent ordinary sockets.
+			local separated=group:gsub("([AD])"," %1 "):gsub("%-","")
+			for colors in separated:gmatch("%S+") do groups[#groups+1]=colors;colours[#colours+1]=colors;linked=math.max(linked,#colors) end
+		end end
+		item.SocketColours=table.concat(colours);item.Sockets=#item.SocketColours;item.SocketGroup=table.concat(groups," ");item.LinkedSockets=linked
+	end
 	if raw:lower():find("(fractured)",1,true) then item.FracturedItem=true end
 	return item
 end

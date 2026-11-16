@@ -550,6 +550,10 @@ async function main(){
   const lastPage=await queued('test_loot_filter_examples',{baseRevision:context.revision,profile:sampleProfile,sampleSetId:'mixed',offset:firstPage.examples.nextOffset,limit:2},'tested');
   assert.deepEqual(lastPage.examples.results.map(entry=>entry.index),[2]);assert.equal(lastPage.examples.nextOffset,undefined);
   const socketProfile={id:'socket-rules',title:'Socket comparisons',preset:'early_maps',strictness:2,rules:[{id:'socket-rule',title:'Socket rule',enabled:true,text:'Hide\n SocketGroup > 5GGG'}]};
+  const missingSocketProfile={...socketProfile,template:'Show',rules:[{...socketProfile.rules[0],text:'Hide\n Sockets = 0'}]};
+  const copiedHelmet='Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86';
+  const missingSockets=await queued('test_loot_filter',{baseRevision:context.revision,profile:missingSocketProfile,itemText:copiedHelmet},'tested');assert.equal(missingSockets.result.status,'unknown');assert.equal(missingSockets.sample.Sockets,undefined);
+  const explicitSockets=await queued('test_loot_filter',{baseRevision:context.revision,profile:missingSocketProfile,itemText:copiedHelmet+'\nSockets: 0'},'tested');assert.equal(explicitSockets.result.action,'Hide');assert.equal(explicitSockets.sample.Sockets,0);
   const twiceFilter={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n TwiceCorrupted True'}]};
   const twiceDrop=await queued('test_loot_filter',{baseRevision:context.revision,profile:twiceFilter,sample:{BaseType:'Iron Hat',Rarity:'Rare',TwiceCorrupted:true}},'tested');assert.equal(twiceDrop.result.action,'Hide');
   const unknownTwice=await queued('test_loot_filter',{baseRevision:context.revision,profile:twiceFilter,sample:{BaseType:'Iron Hat',Rarity:'Rare'}},'tested');assert.equal(unknownTwice.result.status,'unknown');

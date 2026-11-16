@@ -2,6 +2,18 @@
 describe("Copied loot-filter items",function()
 	local clipboard=require("Modules.LootFilterClipboard")
 	local parser=require("Modules.LootFilterParser")
+	it("keeps missing equipment socket data unknown",function()
+		local raw="Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86"
+		local missing=clipboard.parse(raw);assert.is_nil(missing.Sockets);assert.is_nil(missing.SocketGroup);assert.is_nil(missing.SocketColours);assert.is_nil(missing.LinkedSockets)
+		for _,condition in ipairs({"Sockets = 0","SocketGroup RGB","LinkedSockets >= 1"}) do
+			assert.equal("unknown",parser.simulate(parser.parse("Hide\n "..condition.."\nShow"),missing).status,condition)
+		end
+		local empty=clipboard.parse(raw.."\nSockets: 0");assert.equal(0,empty.Sockets);assert.equal(0,empty.LinkedSockets)
+		assert.equal("Hide",parser.simulate(parser.parse("Hide\n Sockets = 0\nShow"),empty).action)
+		local special=clipboard.parse(raw.."\nSockets: A-R-G W");assert.equal(4,special.Sockets);assert.equal("A RG W",special.SocketGroup);assert.equal(2,special.LinkedSockets)
+		assert.has_error(function() clipboard.parse(raw.."\nSockets: unknown") end)
+		assert.has_error(function() clipboard.parse(raw.."\nSockets: R--G") end)
+	end)
 	it("reads an explicit memory-strand value without assuming a missing one",function()
 		local raw="Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86"
 		local rules=parser.parse("Hide\n MemoryStrands >= 60\nShow")
@@ -32,6 +44,7 @@ describe("Copied loot-filter items",function()
 	it("accepts currency stacks and rejects unrelated clipboard text",function()
 		local item=clipboard.parse("Item Class: Stackable Currency\nRarity: Currency\nChaos Orb\n--------\nStack Size: 7/20",83)
 		assert.equal("Chaos Orb",item.BaseType);assert.equal(7,item.StackSize);assert.equal("Normal",item.Rarity)
+		assert.equal(0,item.Sockets);assert.equal(0,item.LinkedSockets)
 		assert.equal(12,item.DropLevel);assert.equal(1,item.Width);assert.equal(1,item.Height)
 		assert.equal("Hide",parser.simulate(parser.parse("Hide\n DropLevel >= 10\nShow"),item).action)
 		assert.is_false(pcall(clipboard.parse,"some other clipboard text"));assert.is_false(pcall(clipboard.parse,"Rarity: Magic\nImaginary Unknown Base\n--------"))
