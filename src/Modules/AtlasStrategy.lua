@@ -61,7 +61,13 @@ end
 function M.compare(before,after)
 	assert(before.version==after.version,"Choose plans from the same Atlas version to compare")
 	local old,new={},{};for _,id in ipairs(before.nodes) do old[id]=true end;for _,id in ipairs(after.nodes) do new[id]=true end
-	local result={added={},removed={},stats={}};local tree=atlas.tree(after.version)
+	local result={added={},removed={},stats={},choiceChanges={}};local tree=atlas.tree(after.version)
+	local priorChoices,nextChoices={},{}
+	for _,choice in ipairs(before.choices or {}) do priorChoices[choice.node]=choice.effect end
+	for _,choice in ipairs(after.choices or {}) do nextChoices[choice.node]=choice.effect end
+	for _,id in ipairs(after.nodes) do if tree.nodes[id].variantEffects and (not old[id] or priorChoices[id]~=nextChoices[id]) then
+		result.choiceChanges[#result.choiceChanges+1]={id=id,name=tree.nodes[id].name,effect=nextChoices[id],stats=atlas.nodeStats(after,tree.nodes[id])}
+	end end
 	for id in pairs(new) do if not old[id] then result.added[#result.added+1]=tree.nodes[id] end end
 	for id in pairs(old) do if not new[id] then result.removed[#result.removed+1]=tree.nodes[id] end end
 	for _,list in ipairs({result.added,result.removed}) do table.sort(list,function(a,b) return a.id<b.id end) end
@@ -159,6 +165,7 @@ function M.transition(before,after)
 			local nextState,step
 			for index,id in ipairs(state.nodes) do if clearing or not goal[id] then
 				local candidate=copyTable(state);table.remove(candidate.nodes,index)
+				if candidate.choices then for i=#candidate.choices,1,-1 do if candidate.choices[i].node==id then table.remove(candidate.choices,i) end end end
 				local ok,validated=pcall(atlas.validate,candidate)
 				if ok then nextState=validated;step={action="Refund",id=id};break end
 			end end
@@ -189,12 +196,21 @@ function M.transition(before,after)
 			end
 		end
 	end
-	local result={added=diff.added,removed=diff.removed,stats=diff.stats,steps=steps,rebuild=rebuilt,temporary=temporary,lines={before.title.." -> "..after.title,#diff.removed.." changed nodes to refund; "..#diff.added.." changed nodes to allocate.","Route assumes "..budget.." base points are available. Each step preserves connectivity and the supplied budget plus granted points. Refund currency prices are not assumed."}}
+	local noted={};for _,change in ipairs(diff.choiceChanges) do noted[change.id]=true end
+	if steps then for _,step in ipairs(steps) do if step.action=="Refund" and goal[step.id] and not noted[step.id] then
+		for _,choice in ipairs(after.choices or {}) do if choice.node==step.id then
+			diff.choiceChanges[#diff.choiceChanges+1]={id=step.id,name=tree.nodes[step.id].name,effect=choice.effect,stats=atlas.nodeStats(after,tree.nodes[step.id])};noted[step.id]=true;break
+		end end
+	end end end
+	local result={added=diff.added,removed=diff.removed,stats=diff.stats,choiceChanges=diff.choiceChanges,steps=steps,rebuild=rebuilt,temporary=temporary,lines={before.title.." -> "..after.title,#diff.removed.." changed nodes to refund; "..#diff.added.." changed nodes to allocate.","Route assumes "..budget.." base points are available. Each step preserves connectivity and the supplied budget plus granted points. Refund currency prices are not assumed."}}
 	if steps then
 		local refunds=0;for _,step in ipairs(steps) do if step.action=="Refund" then refunds=refunds+1 end end
 		result.lines[#result.lines+1]=(temporary and "Temporary grant path; includes extra refunds. " or rebuilt and "Rebuild route; may require extra refunds. " or "Direct route. ")..refunds.." refunds, "..(#steps-refunds).." allocations. This is a valid route, not a minimum-refund optimizer."
 		for i,step in ipairs(steps) do result.lines[#result.lines+1]=i..". "..step.action..": "..tree.nodes[step.id].name.." ["..step.id.."]" end
 	else result.lines[#result.lines+1]="No sequential route found within this budget. Earn more points or plan a temporary route before applying these allocations." end
+	for _,change in ipairs(diff.choiceChanges) do
+		result.lines[#result.lines+1]=change.effect and ("Choose effect for "..change.name.." ["..change.id.."]: "..table.concat(change.stats," ")) or ("Choose an effect for "..change.name.." ["..change.id.."]; the destination has none selected.")
+	end
 	return result
 end
 return M

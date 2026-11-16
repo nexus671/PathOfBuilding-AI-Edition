@@ -209,9 +209,9 @@ function M.generate(build,profile,checkpoint)
 	local strategyNames={};for name in pairs(names) do strategyNames[#strategyNames+1]=name end
 	table.sort(strategyNames,function(a,b) return #a==#b and a<b or #a>#b end)
 	for _,plan in ipairs(build.savers.AtlasPlans.plans) do
-		local keywords={};local graph=require("Modules.AtlasPlanner").tree(plan.version)
+		local atlas=require("Modules.AtlasPlanner");local keywords={};local graph=atlas.tree(plan.version)
 		local atlasStrategy=require("Modules.AtlasStrategy")
-		for _,id in ipairs(plan.nodes) do local node=graph.nodes[id];if node then for _,mechanic in ipairs(atlasStrategy.allMechanics(node)) do keywords[mechanic]=true end end end
+		for _,id in ipairs(plan.nodes) do local node=graph.nodes[id];if node then for _,mechanic in ipairs(atlasStrategy.allMechanics({name=node.name,stats=atlas.nodeStats(plan,node)})) do keywords[mechanic]=true end end end
 		local mentioned,avoided={},{};for _,field in ipairs({"scarabs","maps"}) do mentionedItems(plan.strategy and plan.strategy[field] or "",strategyNames,mentioned) end
 		mentionedItems(plan.strategy and plan.strategy.avoid or "",strategyNames,avoided)
 		for _,name in ipairs(strategyNames) do if mentioned[name] and not avoided[name] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end

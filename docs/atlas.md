@@ -11,6 +11,8 @@ Open **Atlas** beside **AI builds**, or switch to **Atlas** in the full-width pl
 
 The 3.30 preview includes multiple-choice nodes. Connect one, select it, and choose **Choose effect**. The selected effect appears in the node details and allocated stats, and stays with the saved plan, undo history and versioned plan JSON. Unselected choice nodes are listed in **Allocated stats**. Search includes every available effect. Official links for plans with choices are disabled until their encoding is verified; use **Copy plan** to preserve the selections.
 
+Stage routes call out new or changed effects, including effects that must be reselected after a refund. AI review shows the chosen effect, and linked loot-filter suggestions use the selected effect rather than the alternatives.
+
 **Find nodes** opens a searchable list with mechanic filters and added point costs. Choosing a result highlights its mechanic on the tree. The minimap moves the camera without changing allocations. Drag the divider beside the inspector to resize it.
 
 Mechanic filters include Mirage, Wildwood, Sentinels, Torment, Rogue Exiles, Mercenaries, Ore Deposits and Threads. A node that mentions multiple mechanics appears in each applicable filter; the investment summary assigns one primary category per node so its totals do not double-count points. Categories are based on node text and are not a simulation of encounter interactions. Linked loot-filter suggestions consider all applicable categories.

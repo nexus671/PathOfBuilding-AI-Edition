@@ -52,6 +52,18 @@ describe("Linked planning tools",function()
 		assert.is_true(ok,tostring(rules));local names={};for _,rule in ipairs(rules) do names[rule.title]=true end
 		assert.is_true(names["Blight Thread"]);assert.is_true(names["Incursion Thread"])
 	end)
+	it("uses only the selected Atlas effect for linked thread suggestions",function()
+		local atlas=require("Modules.AtlasPlanner");local node=atlas.tree("3.30.0-preview").nodes[64980]
+		local plan={id="choice",title="Choice",version="3.30.0-preview",budget=150,nodes={node.id},choices={{node=node.id,effect=node.variantEffects[1].effect}}}
+		-- Isolate the chosen node so intermediate path nodes cannot add other mechanics.
+		build.savers.AtlasPlans.plans={plan}
+		local profile=filters.profile("choice-filter","Choice filter");local names={}
+		for _,rule in ipairs(filters.generate(build,profile)) do if rule.origin=="atlas:choice" then names[rule.title]=true end end
+		assert.is_true(names["Breach Thread"]);assert.is_nil(names["Ritual Thread"]);assert.is_nil(names["Ultimatum Thread"])
+		plan.choices[1].effect=node.variantEffects[2].effect;names={}
+		for _,rule in ipairs(filters.generate(build,profile)) do if rule.origin=="atlas:choice" then names[rule.title]=true end end
+		assert.is_nil(names["Breach Thread"]);assert.is_true(names["Ritual Thread"])
+	end)
 	it("generates stable map pickups from specific Atlas strategy names",function()
 		local plan={id="farming",title="Farming",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Run Shaped Strand Map and Beach Maps; avoid Toxic Sewer Mapmaker",scarabs="Use Omen of Connections"}}
 		build.savers.AtlasPlans:Upsert(plan)

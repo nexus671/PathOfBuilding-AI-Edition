@@ -88,6 +88,11 @@ function M.changes(before, after)
 			local report=require("Modules.AtlasPlanner").report(plan)
 			add(plan.title.." ["..plan.version.."] "..report.used.." points; budget "..report.budget.." + "..report.bonus)
 			for _,id in ipairs(plan.nodes) do add("  #"..id.." "..require("Modules.AtlasPlanner").tree(plan.version).nodes[id].name) end
+			for _,choice in ipairs(plan.choices or {}) do
+				local planner=require("Modules.AtlasPlanner");local node=planner.tree(plan.version).nodes[choice.node]
+				add("  Selected effect: "..node.name.." | "..table.concat(planner.nodeStats(plan,node)," "))
+			end
+			for _,missing in ipairs(report.missingChoices) do add("  Effect not selected: "..missing.name.." ["..missing.id.."]") end
 			if plan.notes ~= "" then add("  "..plan.notes) end
 		end
 	end

@@ -1,3 +1,4 @@
+-- cspell:ignore Allflames
 describe("Native Atlas planner", function()
 	local atlas=require("Modules.AtlasPlanner")
 	local bridge=require("Modules.DesktopBuildBridge")
@@ -23,6 +24,23 @@ describe("Native Atlas planner", function()
 		local strategy=require("Modules.AtlasStrategy");local other=atlas.chooseEffect(chosen,node.id,node.variantEffects[2].effect)
 		assert.is_true(#strategy.compare(chosen,other).stats>=2)
 		local ruthless=atlas.tree("3.30.0-preview-ruthless").nodes[node.id];assert.is_truthy(ruthless.variantEffects)
+	end)
+	it("reviews and routes effect changes and refunds between Atlas stages",function()
+		local version="3.30.0-preview";local node=atlas.tree(version).nodes[45404]
+		local base=atlas.connect(plan(version),{node.id});local first=atlas.chooseEffect(base,node.id,node.variantEffects[1].effect)
+		local second=atlas.chooseEffect(base,node.id,node.variantEffects[2].effect);local strategy=require("Modules.AtlasStrategy")
+		local changed=strategy.transition(first,second);assert.is_truthy(changed.steps);assert.equal(0,#changed.steps)
+		assert.equal(node.variantEffects[2].effect,changed.choiceChanges[1].effect);assert.is_truthy(table.concat(changed.lines," "):find("Allflames",1,true))
+		local removed=atlas.remove(first,node.id);local refunded=strategy.transition(first,removed);assert.is_truthy(refunded.steps)
+		local found=false;for _,step in ipairs(refunded.steps) do if step.action=="Refund" and step.id==node.id then found=true end end;assert.is_true(found)
+		local noChoice=strategy.transition(first,base);assert.is_truthy(table.concat(noChoice.lines," "):find("destination has none selected",1,true))
+		build.savers.AtlasPlans:Upsert(first);local revision=bridge.revision(build)
+		local prepared=bridge.prepare(build,{mode="edit",title=second.title,baseRevision=revision,operations={{type="set_atlas_plan",plan=second}}})
+		assert.is_truthy(table.concat(prepared.changes," "):find("Selected effect: Secrets Unveiled",1,true));assert.is_truthy(table.concat(prepared.changes," "):find("Allflames",1,true))
+		second.id="next-stage";second.progression={stage="final",previousId=first.id}
+		require("Classes.AtlasPlanningControl").Open(build,second,function() end)
+		local rows={};for _,row in ipairs(main.popups[1].controls.transition.list) do rows[#rows+1]=StripEscapes(row[1]) end
+		assert.is_truthy(table.concat(rows," "):find("Choose effect for Secrets Unveiled",1,true))
 	end)
 	it("loads pinned Standard graphs with symmetric edges and free starts", function()
 		for _,version in ipairs(atlas.versions) do
