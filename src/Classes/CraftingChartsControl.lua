@@ -41,7 +41,7 @@ function M.Open(routes)
 		for _,message in ipairs(data.omitted) do lines[#lines+1]=message end
 		self.list=ui.rows(lines,w-60,14);drawReadout(self,...)
 	end
-	ui.label(c,"assumption",16,h-76,"",12);c.assumption.label=function() return "^7"..ui.fit((#data.warnings>0 and "Model notes available. " or "")..data.note,w-32,12) end
+	ui.label(c,"assumption",16,h-76,"",12);c.assumption.label=function() return "^7"..ui.fit((data.hasTransitionErrors and "Failed transitions were not charged. " or #data.warnings>0 and "Model notes available. " or "")..data.note,w-32,12) end
 	c.copy=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-42,180,28},"Copy chart data (CSV)",function() Copy(charts.csv(data)) end)
 	c.notes=new("ButtonControl"):ButtonControl(ui.anchor,{208,h-42,160,28},"Model notes",function()
 		local popup={};local width,height=math.min(780,main.screenW-40),math.min(420,main.screenH-60)
