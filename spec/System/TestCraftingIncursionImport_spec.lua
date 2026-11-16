@@ -10,6 +10,12 @@ describe("Drop-only Incursion modifier import",function()
 		for _,entry in ipairs(model.mods) do assert.not_equal("FireResistEnhancedLevel50ModPhys",entry.id) end
 		assert.matches("unsupported conversion family",sim.resistanceReason(model,model.initial,"fire","cold"))
 		local rebuilt=sim.toItem(model,model.initial);assert.is_truthy(rebuilt.raw:find("4%% of Physical Damage from Hits taken as Fire Damage"))
+		local starting=copyTable(model.initial);starting.origin=nil
+		local blank=item("Iron Hat",86,""):gsub("Rarity: RARE","Rarity: NORMAL")
+		local restored=sim.perform(blank,{method="divine"},1,starting).state
+		assert.equal(model.initial.affixes[1].id,restored.affixes[1].id)
+		local wrong=item("Gold Ring",86,""):gsub("Rarity: RARE","Rarity: NORMAL")
+		assert.has_error(function() sim.perform(wrong,{method="divine"},1,starting) end)
 	end)
 	it("rejects modifiers outside their native category or minimum level",function()
 		local lines="+47% to Fire Resistance\n4% of Physical Damage from Hits taken as Fire Damage"

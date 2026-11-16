@@ -217,6 +217,7 @@ function M.model(raw)
 	local extraTags={}
 	if item.clusterJewel and item.clusterJewel.skills[item.clusterJewelSkill] then extraTags[item.clusterJewel.skills[item.clusterJewelSkill].tag]=true end
 	for id,mod in pairs(item.affixes or { }) do model.byId[id]=mod end
+	require("Modules.CraftingImport").prepareDropOnly(model)
 	require("Modules.CraftingDescriptions330").prepare(model)
 	require("Modules.CraftingUnveiledJewel330").prepare(model)
 	require("Modules.CraftingUnveiledJewel330").restoreIdentities(model,raw)
@@ -651,6 +652,7 @@ function M.validateState(model,state)
 	for _,entry in ipairs(model.mods) do allowed[entry.id]=true end
 	for _,entry in ipairs(model.bench) do allowed[entry.id]=true end
 	for _,entry in ipairs(model.essences) do allowed[entry.modId]=true end
+	for _,id in ipairs(model.dropOnlyIds) do allowed[id]=true end
 	for _,entry in ipairs(model.initial.affixes) do allowed[entry.id]=true; if entry.fractured then fractured[entry.id]=true end;if entry.legacyLightRadius then legacy[entry.id]=entry end end
 	for _,entry in ipairs(state.affixes) do
 		local mod=assert(model.byId[entry.id],"Unknown state modifier")

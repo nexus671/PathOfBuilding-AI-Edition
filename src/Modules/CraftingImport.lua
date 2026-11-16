@@ -1,5 +1,19 @@
 -- Resolve plain copied values only when the complete affix assignment is unique.
 local I={}
+function I.prepareDropOnly(model)
+	-- These identities may occur in imported or structured states, but they do
+	-- not belong to the ordinary modifier roll pool.
+	local base=model.item.base;local subtype=base.subType and base.type..": "..base.subType
+	model.dropOnlyIds={}
+	for _,source in ipairs({{require("Data.IncursionDropOnly"),data.itemMods.Explicit},{require("Data.DelveDropOnly"),data.itemMods.Delve}}) do
+		for id,entry in pairs(source[1]) do
+			local mod=source[2][id]
+			if mod and mod.level<=model.item.itemLevel and (isValueInTable(entry.categories,base.type) or subtype and isValueInTable(entry.categories,subtype)) then
+				model.byId[id]=model.byId[id] or mod;model.dropOnlyIds[#model.dropOnlyIds+1]=id
+			end
+		end
+	end
+end
 function I.inferRange(template,line)
 	local pattern,ranges,at="",{},1
 	local function escape(text) return text:gsub("([^%w])","%%%1") end
@@ -54,18 +68,7 @@ function I.resolve(M,model,state)
 	for _,entry in ipairs(model.mods) do if model.legacyLightRadius[entry.id] then consider(entry.id,false,true) end end
 	for _,entry in ipairs(model.essences) do consider(entry.modId,false) end
 	for _,entry in ipairs(model.essences) do if model.descriptions330[entry.modId] then consider(entry.modId,false,false,true) end end
-	-- Drop-only modifiers are absent from the ordinary spawn pool.
-	-- Match their native definitions only on the documented item categories;
-	-- the normal ambiguity and affix-group checks still apply below.
-	local base=model.item.base;local subtype=base.subType and base.type..": "..base.subType
-	for _,source in ipairs({{require("Data.IncursionDropOnly"),data.itemMods.Explicit},{require("Data.DelveDropOnly"),data.itemMods.Delve}}) do
-		for id,entry in pairs(source[1]) do
-			local mod=source[2][id]
-			if mod and mod.level<=model.item.itemLevel and (isValueInTable(entry.categories,base.type) or subtype and isValueInTable(entry.categories,subtype)) then
-				model.byId[id]=model.byId[id] or mod;consider(id,false)
-			end
-		end
-	end
+	for _,id in ipairs(model.dropOnlyIds) do consider(id,false) end
 	for _,entry in ipairs(model.bench) do consider(entry.id,true) end
 	for _,id in ipairs(model.benchImportAliases or {}) do consider(id,true) end
 	for _,list in ipairs({data.veiledMods,data.beastCraft}) do for id,mod in pairs(list) do
