@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview329" />
+	<Version number="2.67.2-ai.preview330" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1323,6 +1323,7 @@
 	<File name="Data/LootFilters/5.filter" part="program" sha1="03d35dd768c5c69436fe3153322e34ce2c66d33f" />
 	<File name="Data/LootFilters/6.filter" part="program" sha1="7c1dd41de358577326c12a582ce4aa32191ee987" />
 	<File name="Data/LootFilters/LICENSE-NeverSink.txt" part="program" sha1="f6bd82c134a39fb235b8480b483f775dccfaf913" />
+	<File name="Data/LootFilters/atlas-supplies-3.30.json" part="program" sha1="defae3652ca14b268a7278f57920d9f7c9d02c5a" />
 	<File name="Data/LootFilters/base-metadata.json" part="program" sha1="7fe43f2a3a9324037c75e766aba21c5e4fc785d0" />
 	<File name="Data/LootFilters/map-names.json" part="program" sha1="95fb3deb8545f04a7dfc6f32e51dd684385488b0" />
 	<File name="Data/LootFilters/patch-3.30.json" part="program" sha1="d1912b3b33fe0529e8e0e8f108b7dea4c972c83b" />
@@ -1606,7 +1607,7 @@
 	<File name="Modules/LootFilterStructure.lua" part="program" sha1="46ae290a763a0ca60e400cd8b9b8d4ed7ea89f9e" />
 	<File name="Modules/LootFilterVisuals.lua" part="program" sha1="f036fc780db9567d6572d433b8842b9902b0f50a" />
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="240c5844884c630d675d5fe3d5a348bf8f2c91a8" />
-	<File name="Modules/LootFilters.lua" part="program" sha1="c349d48b047ee068cd43a8a9628f1892d823dc00" />
+	<File name="Modules/LootFilters.lua" part="program" sha1="749bde9b1a9dd697761532d64d8f3b0fbfd6a8a1" />
 	<File name="Modules/Main.lua" part="program" sha1="6a77993392e839506b9594e8e0802b13d6bed530" />
 	<File name="Modules/ModParser.lua" part="program" sha1="42c69db0e7bdd52747ad3e6b16d1e82b556a70bb" />
 	<File name="Modules/ModTools.lua" part="program" sha1="c987491da4021b5bdc4744b5eec84fb5995284cf" />

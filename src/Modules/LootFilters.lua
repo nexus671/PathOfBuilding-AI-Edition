@@ -171,6 +171,9 @@ function M.generate(build,profile,checkpoint)
 	-- still need an exact name (or its simple plural) to become pickup rules.
 	for name in pairs(craftingResources()) do if not removed[name] then names[name]=names[name] or "Crafting resource" end end
 	for _,name in ipairs(assert(json.decode(read("map-names.json"))).names) do if not removed[name] then names[name]=names[name] or "Map" end end
+	-- Map-device supplies explicitly named in a strategy are pickups too. The
+	-- pinned client catalogue excludes removed and legacy non-currency variants.
+	for _,name in ipairs(assert(json.decode(read("atlas-supplies-3.30.json"))).names) do if not removed[name] then names[name]=names[name] or "Atlas supply" end end
 	for _,name in ipairs({"Orb of Alchemy","Chaos Orb","Divine Orb","Orb of Alteration","Orb of Augmentation","Regal Orb","Exalted Orb","Orb of Annulment","Chromatic Orb","Jeweller's Orb","Orb of Fusing","Vaal Orb"}) do names[name]="Stackable Currency" end
 	-- Only concrete currency items from modeled recipe components become drops.
 	-- Unknown prices, beasts and whole-service prices are not item identities.

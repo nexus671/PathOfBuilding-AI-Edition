@@ -453,6 +453,13 @@ describe("Build-owned loot filters",function()
 		plan.nodes={39896};plan.strategy={scarabs="Breach Thread"};assert.is_true(hasBreach())
 		plan.strategy.avoid="Breach Thread";assert.is_false(hasBreach())
 	end)
+	it("generates named current Atlas supplies and respects explicit exclusions",function()
+		local profile=filters.profile("test","Test")
+		build.savers.AtlasPlans.plans={{id="supplies",version="3.30.0-preview",nodes={},strategy={scarabs="Allflame Ember of Kulemak, Divine Vessels, Feral Astrolabe, Maven's Chisel of Divination, Threaded Delirium Orb, Fruiting Astrolabe",avoid="Feral Astrolabe"}}}
+		local titles={};for _,rule in ipairs(filters.generate(build,profile)) do titles[rule.title]=true end
+		for _,name in ipairs({"Allflame Ember of Kulemak","Divine Vessel","Maven's Chisel of Divination","Threaded Delirium Orb"}) do assert.is_true(titles[name],name) end
+		assert.is_nil(titles["Feral Astrolabe"]);assert.is_nil(titles["Fruiting Astrolabe"])
+	end)
 	it("generates gem rules only for enabled groups in the active weapon set",function()
 		local original=build.skillsTab.socketGroupList
 		build.skillsTab.socketGroupList={

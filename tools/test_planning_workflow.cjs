@@ -567,7 +567,7 @@ async function main(){
   const avoidedGrant=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{...grantPlan,budget:grantRoute.atlas.plan.nodes.length},targets:[grantId],avoid:[17321]},'failed');
   assert.match(avoidedGrant.error,/earned points.*avoided nodes/i);
   await queued('propose_atlas_plan',{baseRevision:context.revision,plan:starterAtlas},'review');await host('apply');context=(await call('get_build_context')).context;
-  const finalAtlas={id:'final-atlas',title:'Final Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'final',previousId:'starter-atlas'},strategy:{maps:'Run Strand Map and Beach Maps',scarabs:'Supplied consumables',requirements:'Unlocks complete',avoid:'Reflect, Beach Map',setupCost:{amount:25,currency:'chaos',source:'Workflow quote',quotedAt:1700000000}}};
+  const finalAtlas={id:'final-atlas',title:'Final Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'final',previousId:'starter-atlas'},strategy:{maps:'Run Strand Map and Beach Maps',scarabs:'Allflame Ember of Kulemak, Divine Vessel, Feral Astrolabe',requirements:'Unlocks complete',avoid:'Reflect, Beach Map, Feral Astrolabe',setupCost:{amount:25,currency:'chaos',source:'Workflow quote',quotedAt:1700000000}}};
   await queued('propose_atlas_plan',{baseRevision:context.revision,plan:finalAtlas},'review');await host('apply');context=(await call('get_build_context')).context;
   const recipe={steps:[{method:'alchemy',onFailureAction:'stop',recoveryNotes:'Stop at the recorded budget'}],targets:[{anyOf:[modifier]}]};
   const simulated=await queued('simulate_crafting',{baseRevision:context.revision,itemText:raw,recipe,options:{trials:4,maxActions:1,seed:104729}},'crafted');assert.ok(simulated.nativeCrafting);
@@ -591,6 +591,8 @@ async function main(){
   const lootProfile={id:'mapping',title:'Build pickups',preset:'early_maps',strictness:2,rules:[]};
   const generated=await queued('generate_loot_filter',{baseRevision:context.revision,profile:lootProfile},'generated');
   const mapPickup=generated.profile.rules.find(rule=>rule.title==='Strand Map');assert.ok(mapPickup);assert.equal(mapPickup.origin,'atlas:final-atlas');assert.match(mapPickup.text,/BaseType == "Strand Map"/);
+  for(const name of ['Allflame Ember of Kulemak','Divine Vessel']) assert.ok(generated.profile.rules.some(rule=>rule.title===name && rule.origin==='atlas:final-atlas'));
+  assert.ok(!generated.profile.rules.some(rule=>rule.title==='Feral Astrolabe' && rule.origin==='atlas:final-atlas'));
   assert.ok(!generated.profile.rules.some(rule=>rule.title==='Beach Map' && rule.origin==='atlas:final-atlas'));
   const fossilPickup=generated.profile.rules.find(rule=>rule.title==='Pristine Fossil');assert.ok(fossilPickup);assert.equal(fossilPickup.origin,'budget:fossils');assert.match(fossilPickup.text,/BaseType == "Pristine Fossil"/);
   const donorPickup=generated.profile.rules.find(rule=>rule.title==='Donor base: Glorious Plate');assert.ok(donorPickup);assert.match(donorPickup.text,/ItemLevel >= 86/);

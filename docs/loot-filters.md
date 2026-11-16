@@ -37,6 +37,8 @@ For budget pickups, use an exact currency name such as `Pristine Fossil` or `Gre
 
 Atlas strategies can also name map bases, such as `Strand Map` or `Beach Maps`, in the maps or supplies fields. Auto-adjust creates linked exact-base pickups for recognised names, preferring longer names when they overlap. Names in that plan's **avoid** field suppress its generated map or thread pickups; a separate budget can still request the same item. List wanted maps in the maps or supplies fields, because the generator does not interpret negation in free text. The bundled 3.30.0.1.4 map-name list identifies item bases, not whether a map is currently obtainable or part of the active Atlas.
 
+Named supplies also include the reviewed 3.30 Allflame Embers, Astrolabes, Maven's Chisels, Delirium Orbs, Divine Vessel and Royal Visage. Removed names are excluded, and the same **avoid** field applies. The name catalogue is rebuilt with `python tools/update_atlas_filter_supplies.py path/to/base_items.min.json`; the pinned client hash and reviewed removal list are recorded with it.
+
 Configured Awakener and recombination donors also add base pickups, using the donor's base type and minimum item level when provided. These broad rules do not identify the donor's required modifiers, influence or rolls; inspect an item before using it. If a configured donor cannot be read, its previous generated donor pickups are kept and the guide is flagged for review.
 
 If a saved recipe cannot be inspected, or an action has no item ingredient breakdown, its previous generated recipe pickups are kept and the affected guide is listed for review. Known ingredients are still added. MCP generation returns the same warnings.
