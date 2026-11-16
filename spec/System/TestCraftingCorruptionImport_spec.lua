@@ -11,6 +11,54 @@ describe("Imported corruption identities",function()
 	end
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("replaces one identified synthesised modifier and reopens the survivors",function()
+		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item"
+		local model=sim.model(text);assert.equal(2,#model.synthesisGroups)
+		local catalogue=sim.catalog(text,"",5);assert.equal(2,#catalogue.synthesisGroups)
+		assert.same({"+10 to Strength"},catalogue.synthesisGroups[1].lines);assert.is_true(catalogue.synthesisGroups[1].retained)
+		assert.is_true(require("Modules.CraftingAvailability").check("vaal",model.initial,model))
+		for _,draw in ipairs({0,0.999}) do
+			local state=copyTable(model.initial);sim.rollCorrupted(model,state,function() return draw end)
+			assert.equal(1,#state.synthRetained);assert.equal(draw==0 and 2 or 1,state.synthRetained[1])
+			state=sim.validateState(model,state)
+			local inspected=sim.catalog(text,"",5,state)
+			assert.equal(draw~=0,inspected.synthesisGroups[1].retained)
+			local invalid=copyTable(state);invalid.synthRetained={3};assert.is_false(pcall(sim.validateState,model,invalid))
+			invalid.synthRetained={1,2};assert.is_false(pcall(sim.validateState,model,invalid))
+			invalid.synthRetained=nil;assert.is_false(pcall(sim.validateState,model,invalid))
+			local reopened=sim.model(sim.toItem(model,state).raw)
+			assert.is_nil(reopened.unresolvedCorruption);assert.equal(1,#reopened.synthesisGroups)
+			assert.equal(model.synthesisGroups[state.synthRetained[1]][1].line,reopened.synthesisGroups[1][1].line)
+			assert.same(state.corruptedImplicits,reopened.initial.corruptedImplicits)
+			assert.is_true(sim.matches(reopened.initial,{{scope="implicit",anyOf={state.corruptedImplicits[1].id}}},nil,reopened))
+		end
+		local applied=sim.action(model,model.initial,{method="vaal"},function() return 0 end)
+		assert.equal(1,#applied.synthRetained);assert.equal(1,#applied.corruptedImplicits)
+		local estimate=sim.simulate(text,{steps={{method="vaal"}},targets={{scope="implicit",anyOf={applied.corruptedImplicits[1].id}}}},{trials=10,maxActions=1,forceFirstAction=true})
+		assert.is_nil(next(estimate.transitionErrors))
+		local three=sim.model(text:gsub("Implicits: 2","Implicits: 3"):gsub("Synthesised Item","+12 to Intelligence\nSynthesised Item"))
+		assert.equal(3,#three.synthesisGroups)
+		for _,draw in ipairs({0,0.4,0.999}) do
+			local state=copyTable(three.initial);sim.rollCorrupted(three,state,function() return draw end)
+			assert.equal(2,#state.synthRetained);state=sim.validateState(three,state)
+			local invalid=copyTable(state);invalid.synthRetained={1,1};assert.is_false(pcall(sim.validateState,three,invalid))
+			invalid.synthRetained={1};assert.is_false(pcall(sim.validateState,three,invalid))
+			local reopened=sim.model(sim.toItem(three,state).raw)
+			assert.equal(2,#reopened.synthesisGroups);assert.same(state.corruptedImplicits,reopened.initial.corruptedImplicits)
+		end
+	end)
+	it("keeps retained synthesised modifiers in a saved crafting guide",function()
+		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item"
+		local model=sim.model(text);local state=copyTable(model.initial);sim.rollCorrupted(model,state,function() return 0 end)
+		local project={id="synth-amulet",title="Synthesised amulet",slot="Amulet",startingItem=text,goals={},steps={},
+			nativeRecipe={steps={{method="tainted_exalt"}},targets={},requirements={corrupted=true},initialState=state}}
+		build.savers.CraftingProjects:Upsert(project)
+		local xml=build:SaveDB("Synthesised guide");loadBuildFromXML(xml,"Synthesised guide")
+		local restored=build.savers.CraftingProjects.projects[1].nativeRecipe.initialState
+		assert.same(state.synthRetained,restored.synthRetained)
+		assert.same(state.corruptedImplicits,restored.corruptedImplicits)
+		assert.is_true(sim.validateState(sim.model(text),restored).corrupted)
+	end)
 	it("reopens a replaced single synthesised implicit without guessing untagged text",function()
 		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 1\n+10 to Strength\nSynthesised Item"
 		local model=sim.model(text);local changed=sim.action(model,model.initial,{method="vaal"},function() return 0 end)
@@ -58,7 +106,7 @@ describe("Imported corruption identities",function()
 			assert.is_false(pcall(sim.matches,unresolved.initial,targets,nil,unresolved))
 		end
 		model.unresolvedEldritch=true;assert.is_false(check("vaal",model.initial,model))
-		local synth=sim.model("Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\n+12 to Dexterity\nSynthesised Item")
+		local synth=sim.model("Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\nUnknown synthesised modifier\nSynthesised Item")
 		local available,reason=check("vaal",synth.initial,synth)
 		assert.is_false(available);assert.is_truthy(reason:find("synthesised",1,true))
 		assert.has_error(function() sim.action(synth,synth.initial,{method="vaal"},function() return 0 end) end,reason)

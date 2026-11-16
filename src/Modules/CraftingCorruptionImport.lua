@@ -3,8 +3,11 @@ local I={}
 function I.resolve(M,model,metadata)
 	local item=model.item
 	if not item.corrupted or #item.implicitModLines==0 then return end
+	if item.synthesised then for _,line in ipairs(item.implicitModLines) do
+		if line.modGroup and line.modGroup:sub(1,6)=="synth_" and not model.synthesisGroups then return nil,"unresolved" end
+	end end
 	local infer=require("Modules.CraftingImport").inferRange
-	local rows={};for _,line in ipairs(item.implicitModLines) do if not line.exarch and not line.eater then rows[#rows+1]={source=line.line,group=line.modGroup,text=itemLib.applyRange(line.line,line.range or 0.5)} end end
+	local rows={};for _,line in ipairs(item.implicitModLines) do if not line.exarch and not line.eater and not (item.synthesised and line.modGroup and line.modGroup:sub(1,6)=="synth_") then rows[#rows+1]={source=line.line,group=line.modGroup,text=itemLib.applyRange(line.line,line.range or 0.5)} end end
 	if #rows==0 then return end
 	-- Synthesised implicits can resemble corruption modifiers. Only interpret
 	-- generated, explicitly identified corruption lines; still validate their text.

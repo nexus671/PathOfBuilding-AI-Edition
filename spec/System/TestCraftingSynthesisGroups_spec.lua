@@ -1,0 +1,15 @@
+describe("Synthesised implicit grouping",function()
+	local groups=require("Modules.CraftingSynthesisGroups")
+	it("groups real modifiers without requiring a unique tier identity",function()
+		local result=groups.resolve({{line="+10 to Strength"},{line="+20 to Dexterity"}},data.itemMods.Synthesis)
+		assert.equal(2,#result);assert.equal("+10 to Strength",result[1][1].line);assert.equal("+20 to Dexterity",result[2][1].line)
+	end)
+	it("rejects ambiguous or unknown line boundaries",function()
+		local lines={{line="A"},{line="B"}}
+		assert.is_nil(groups.resolve(lines,{{"A"},{"B"},{"A","B"}}))
+		assert.is_nil(groups.resolve(lines,{{"A"}}))
+		lines[1].modGroup="one";lines[2].modGroup="one"
+		local result=groups.resolve(lines,{{"A"},{"B"},{"A","B"}})
+		assert.equal(1,#result);assert.equal(2,#result[1])
+	end)
+end)

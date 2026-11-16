@@ -97,6 +97,16 @@ async function main(){
   assert.match(synthCorrupt.nativeCrafting.itemText,/Synthesised Item/);
   const synthContinued=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthCorrupt.nativeCrafting.itemText,action:{method:'socket_white_bench'},seed:1},'crafted');
   assert.deepEqual(synthContinued.nativeCrafting.state.corruptedImplicits,synthCorrupt.nativeCrafting.state.corruptedImplicits);
+  const synthMultiRaw=socketedRaw+'\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item';
+  const synthMultiInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:synthMultiRaw,limit:5},'inspected');
+  assert.equal(synthMultiInspection.crafting.nativeEngine.synthesisGroups.length,2);
+  const synthMulti=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthMultiRaw,action:{method:'vaal'},seed:mixedSeed},'crafted');
+  assert.equal(synthMulti.nativeCrafting.state.synthRetained.length,1);
+  const synthMultiState=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthMultiRaw,initialState:synthMulti.nativeCrafting.state,action:{method:'socket_white_bench'},seed:1},'crafted');
+  assert.deepEqual(synthMultiState.nativeCrafting.state.synthRetained,synthMulti.nativeCrafting.state.synthRetained);
+  const synthMultiContinued=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthMulti.nativeCrafting.itemText,action:{method:'socket_white_bench'},seed:1},'crafted');
+  assert.equal(synthMultiContinued.nativeCrafting.state.synthRetained.length,1);
+  assert.deepEqual(synthMultiContinued.nativeCrafting.state.corruptedImplicits,synthMulti.nativeCrafting.state.corruptedImplicits);
   const corruptedRaw='Rarity: NORMAL\nIron Hat\nItem Level: 86\nQuality: 29\nCorrupted';
   const tainted=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:corruptedRaw,action:{method:'tainted_quality'},seed:5},'crafted');
   assert.ok(tainted.nativeCrafting.state.quality>=1 && tainted.nativeCrafting.state.quality<=20);

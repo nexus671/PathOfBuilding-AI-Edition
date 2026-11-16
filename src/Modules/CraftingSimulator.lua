@@ -63,7 +63,7 @@ function M.actionWarnings(action,model)
 	if action.method=="vaal" and model and model.item.type=="Jewel" and model.item.base.subType=="Abyss" then result[#result+1]={code="abyss_vaal_assumptions",message="Abyss jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
 	if action.method=="vaal" and model and model.item.clusterJewel then result[#result+1]={code="cluster_vaal_assumptions",message="Cluster jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
 	if action.method=="vaal" and model and M.socketLimit(model,model.initial)>0 then result[#result+1]={code="vaal_socket_reroll_unmodeled",message="The rare corruption outcome can reroll sockets and links in game; this model leaves them unchanged. Do not rely on the displayed socket layout after corruption.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
-	if action.method=="vaal" then result[#result+1]={code="vaal_implicit_selection",message="When replacing one of two Eldritch implicits, the model assumes each is equally likely; the game's selection odds are unverified.",source="https://www.poewiki.net/wiki/Corrupted"} end
+	if action.method=="vaal" then result[#result+1]={code="vaal_implicit_selection",message="When replacing one of several Eldritch or synthesised implicits, the model assumes each is equally likely. Synthesised modifier boundaries use the bundled catalogue; its coverage and the game's selection odds are unverified.",source="https://www.poewiki.net/wiki/Corrupted"} end
 	if action.method=="binding" then result[#result+1]={code="binding_legacy",message="Orbs of Binding are no longer generated in 3.30; existing orbs still work.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
 	if action.method=="jeweller" then result[#result+1]={code="jeweller_estimate",message="Experimental: historical weapon socket weights are assumed for all bases. Quality increases only the maximum-count chance in this model; weights, quality and retained socket/link positions are unverified.",source="https://www.poewiki.net/wiki/Jeweller%27s_Orb"} end
 	if action.method=="tainted_quality" then result[#result+1]={code="tainted_quality_estimate",message="Tainted armour and weapon quality uses an assumed uniform 1-20% range. GGG confirmed the 20% maximum; the minimum and distribution are unverified.",source="https://www.pathofexile.com/forum/view-thread/3531661",asOfPatch="3.25"} end
@@ -140,6 +140,7 @@ local function flags(model,state)
 	local replacement=state.corruptedImplicits or state.implicits
 	if replacement then
 		for _,entries in ipairs({state.corruptedImplicits or {},state.implicits or {}}) do for _,entry in ipairs(entries) do for _,line in ipairs(model.byId[entry.id] or {}) do rollBlock(line) end end end
+		for _,index in ipairs(state.synthRetained or {}) do for _,line in ipairs(model.synthesisGroups[index]) do rollBlock(StripEscapes(line.line or "")) end end
 	else
 		for _,line in ipairs(model.item.implicitModLines or {}) do rollBlock(StripEscapes(line.line or "")) end
 		if state.vendorImplicit then for _,line in ipairs(model.byId[state.vendorImplicit] or {}) do rollBlock(line) end end
@@ -907,7 +908,14 @@ function M.capacities(model,state)
  if model.item.type == "Jewel" and model.item.base.subType == "Abyss" and state.corrupted then prefix,suffix=3,3 end
  if model.item.type == "Flask" or model.item.type == "Tincture" then prefix,suffix=1,1 end
  if state.rarity == "MAGIC" then prefix,suffix=1,1 end
- for _,line in ipairs(model.item.implicitModLines or {}) do
+ local active={}
+ if state.corruptedImplicits or state.implicits then
+  for _,index in ipairs(state.synthRetained or {}) do for _,line in ipairs(model.synthesisGroups[index]) do active[#active+1]=line end end
+  for _,list in ipairs({state.corruptedImplicits or {},state.implicits or {}}) do for _,entry in ipairs(list) do
+   for _,line in ipairs(M.rolledLines(M.entryMod(model,entry),entry.range)) do active[#active+1]={line=line} end
+  end end
+ else active=model.item.implicitModLines or {} end
+ for _,line in ipairs(active) do
   local value=tonumber(line.line:match("(%d+) additional Prefix"));if value then prefix=prefix+value end
   value=tonumber(line.line:match("(%d+) fewer Prefix"));if value then prefix=prefix-value end
   value=tonumber(line.line:match("(%d+) additional Suffix"));if value then suffix=suffix+value end

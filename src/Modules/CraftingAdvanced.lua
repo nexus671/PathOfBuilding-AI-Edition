@@ -1127,6 +1127,15 @@ function A.extend(M,api)
 				selectionNote=conditional and (conversion and "A conversion is offered if a modeled protection selection leaves an eligible modifier. Other selections can fail."
 					or "A tag is offered if a modeled protection selection leaves a legal tagged modifier and removable original when required. Other selections or later rolls can fail.") or nil}
 		end
+		if model.synthesisGroups then
+			result.synthesisGroups={}
+			for index,group in ipairs(model.synthesisGroups) do
+				local lines={};for _,line in ipairs(group) do lines[#lines+1]=itemLib.applyRange(line.line,line.range or 0.5) end
+				local retained=not state.corruptedImplicits
+				for _,value in ipairs(state.synthRetained or {}) do if value==index then retained=true end end
+				result.synthesisGroups[#result.synthesisGroups+1]={index=index,lines=lines,retained=retained}
+			end
+		end
 		if model.unresolvedEldritch and not state.implicits then result.importWarning="At least one imported Eldritch implicit has an ambiguous tier; supply a structured implicit state before changing Eldritch implicits or using dominance." end
 		if model.unresolvedCorruption and not state.corruptedImplicits then
 			local warning="A corruption implicit could not be identified uniquely. It remains on the item, but implicit targets cannot be evaluated until it is identified."
