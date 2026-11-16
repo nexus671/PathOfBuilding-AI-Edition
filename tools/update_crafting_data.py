@@ -10,8 +10,8 @@ from crafting_data_status import reconstruct_granted_effect_levels, require_chan
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = "repoe-fork/repoe-fork.github.io"
-COMMIT = "ae6d85a5c36857e08819852ab8732239294aba59"
-PATCH = "3.29.3.6"
+COMMIT = "f49a9a43f5b06cac7f7125093cfd7ef2f0137650"
+PATCH = "3.30.0.2.2"
 FILES = ["mods.json", "fossils.json", "base_items.json", "crafting_bench_options.json"]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--allow-identical-export", action="store_true", help="Allow a reviewed new patch whose crafting source files are unchanged")
@@ -22,14 +22,15 @@ raw = {}
 for name in FILES:
     with urlopen(f"https://raw.githubusercontent.com/{REPOSITORY}/{COMMIT}/data/{name}", timeout=60) as response:
         raw[name] = response.read()
-destination = ROOT / "src" / "Data" / "Crafting" / "3.29.json"
-if destination.exists():
-    previous = json.loads(destination.read_text(encoding="utf-8"))
+destination = ROOT / "src" / "Data" / "Crafting" / "3.30.json"
+previous_path = destination if destination.exists() else destination.with_name("3.29.json")
+if previous_path.exists():
+    previous = json.loads(previous_path.read_text(encoding="utf-8"))
     require_changed_export(PATCH, previous["patch"], previous["hashes"],
                            {name: hashlib.sha256(content).hexdigest() for name, content in raw.items()},
                            args.allow_identical_export)
 mods, fossils, bases, bench = (json.loads(raw[name]) for name in FILES)
-if destination.exists():
+if previous_path.exists():
     repaired = reconstruct_granted_effect_levels(previous["mods"], mods)
     require_supported_granted_effects(previous["mods"], mods)
     print(f"Reconstructed {repaired} granted-effect display levels")

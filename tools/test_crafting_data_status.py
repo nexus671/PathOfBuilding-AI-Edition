@@ -1,16 +1,30 @@
 import unittest
+import json
+from pathlib import Path
 
 from crafting_data_status import FILES, assess, component_matches, reconstruct_granted_effect_levels, require_changed_export, require_exported, require_supported_granted_effects, version
 
 
 class CraftingDataStatusTest(unittest.TestCase):
+    def test_current_export_preserves_reviewed_modifier_and_bench_records(self):
+        root = Path(__file__).resolve().parents[1] / "src/Data/Crafting"
+        def load(name):
+            return json.loads((root / name).read_text(encoding="utf-8"))
+        previous = load("3.29.json")
+        overlay = load("3.30-modifier-overlay.json")
+        bench = load("3.30-bench.json")
+        current = load("3.30.json")
+        self.assertEqual({**previous["mods"], **overlay["mods"]}, current["mods"])
+        self.assertEqual(bench["bench"], current["bench"])
+        self.assertEqual(bench["benchMods"], current["benchMods"])
+
     def test_components_can_match_different_sources(self):
         baseline = {"hashes": dict.fromkeys(FILES, "old")}
         overlay = {"sourceSha256": "new-mods"}
         bench = {"benchSha256": "new-bench"}
         current = {"mods.json": "new-mods", "fossils.json": "old", "base_items.json": "new-bases",
                    "crafting_bench_options.json": "new-bench"}
-        self.assertEqual({"modifierOverlay": True, "fossils": True, "currencyMetadata": False,
+        self.assertEqual({"modifiers": False, "referenceModifierOverlay": True, "fossils": True, "currencyMetadata": False,
                           "benchCatalogue": True, "baselineBench": False},
                          component_matches(baseline, overlay, bench, current))
         self.assertIsNone(component_matches(baseline, overlay, bench, None))

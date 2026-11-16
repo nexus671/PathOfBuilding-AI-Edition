@@ -99,7 +99,8 @@ def component_matches(baseline, overlay, bench, exported_hashes):
     if any(name not in exported_hashes for name in FILES):
         raise ValueError("All crafting source hashes are required")
     return {
-        "modifierOverlay": overlay.get("sourceSha256") == exported_hashes.get("mods.json"),
+        "modifiers": baseline["hashes"].get("mods.json") == exported_hashes.get("mods.json"),
+        "referenceModifierOverlay": overlay.get("sourceSha256") == exported_hashes.get("mods.json"),
         "fossils": baseline["hashes"].get("fossils.json") == exported_hashes.get("fossils.json"),
         "currencyMetadata": baseline["hashes"].get("base_items.json") == exported_hashes.get("base_items.json"),
         "benchCatalogue": bench.get("benchSha256") == exported_hashes.get("crafting_bench_options.json"),
@@ -108,7 +109,7 @@ def component_matches(baseline, overlay, bench, exported_hashes):
 
 
 def main():
-    pinned = json.loads((ROOT / "src/Data/Crafting/3.29.json").read_text(encoding="utf-8"))
+    pinned = json.loads((ROOT / "src/Data/Crafting/3.30.json").read_text(encoding="utf-8"))
     revision = json.loads(fetch(f"https://api.github.com/repos/{REPO}/commits/master"))["sha"]
     base = f"https://raw.githubusercontent.com/{REPO}/{revision}/"
     detected = version(fetch(base + "version.txt"))
@@ -119,7 +120,7 @@ def main():
     result = assess(pinned["patch"], detected, exported, pinned["hashes"], hashes)
     overlay = json.loads((ROOT / "src/Data/Crafting/3.30-modifier-overlay.json").read_text(encoding="utf-8"))
     bench = json.loads((ROOT / "src/Data/Crafting/3.30-bench.json").read_text(encoding="utf-8"))
-    result.update({"revision": revision, "pinned": pinned["patch"], "modifierOverlay": overlay["clientVersion"],
+    result.update({"revision": revision, "pinned": pinned["patch"], "referenceModifierOverlay": overlay["clientVersion"],
                    "detected": detected, "exported": exported,
                    "componentMatches": component_matches(pinned, overlay, bench, hashes)})
     print(json.dumps(result, indent=2))

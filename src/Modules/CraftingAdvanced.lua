@@ -4,16 +4,9 @@
 local json=require("dkjson")
 local A={}
 local cached
-local function applyOverlay(data,overlay,pause)
-	assert(overlay.schemaVersion==1 and overlay.basePatch==data.patch and data.source and overlay.baseCommit==data.source.commit and overlay.clientVersion=="3.30.0.2" and type(overlay.mods)=="table","Invalid crafting modifier overlay")
-	for id,mod in pairs(overlay.mods) do data.mods[id]=mod;if pause then pause() end end
-	data.modifierPatch=overlay.clientVersion
-	return data
-end
-local function applyBench(data,catalogue)
-	assert(catalogue.schemaVersion==1 and catalogue.clientVersion=="3.30.0.1.4" and catalogue.benchSha256=="d664372c28784a65f9c10c1b8d36608d084ac698a6caaafbaf4be40be8b6f76a" and type(catalogue.bench)=="table" and #catalogue.bench==782 and type(catalogue.benchMods)=="table","Invalid crafting bench catalogue")
-	data.bench=catalogue.bench;data.benchMods=catalogue.benchMods
-	data.benchPatch="3.30.0.2"
+local function finishData(data)
+	assert(data.patch=="3.30.0.2.2" and type(data.mods)=="table" and type(data.bench)=="table" and #data.bench==782 and type(data.benchMods)=="table","Invalid crafting data")
+	data.modifierPatch=data.patch;data.benchPatch=data.patch
 	return data
 end
 local function readData(name)
@@ -22,10 +15,7 @@ local function readData(name)
 end
 function A.data()
 	if not cached then
-		local result=assert(json.decode(readData("3.29.json")))
-		local overlay=assert(json.decode(readData("3.30-modifier-overlay.json")))
-		applyOverlay(result,overlay)
-		cached=applyBench(result,assert(json.decode(readData("3.30-bench.json"))))
+		cached=finishData(assert(json.decode(readData("3.30.json"))))
 	end
 	return cached
 end
@@ -33,7 +23,7 @@ end
 -- yield between frames. Publish it only after the whole document is valid.
 function A.prepare(checkpoint)
 	if cached then return end
-	local raw=readData("3.29.json");local pos=1;local started=os.clock()
+	local raw=readData("3.30.json");local pos=1;local started=os.clock()
 	local function space() pos=raw:find("%S",pos) or #raw+1 end
 	local function expect(char) space();assert(raw:sub(pos,pos)==char,"Invalid crafting data at "..pos);pos=pos+1 end
 	local function value()
@@ -67,10 +57,7 @@ function A.prepare(checkpoint)
 		until false else pos=pos+1 end
 		space();assert(pos>#raw,"Trailing crafting data");return result
 	end
-	local result=document();raw=readData("3.30-modifier-overlay.json");pos=1
-	local overlay=document();applyOverlay(result,overlay,pause)
-	raw=readData("3.30-bench.json");pos=1
-	local bench=document();applyBench(result,bench);cached=cached or result
+	local result=document();cached=cached or finishData(result)
 end
 local methods={
 	fossil="Fossil resonator",harvest_reforge="Harvest: reforge with a tagged modifier",harvest_augment="Harvest: add tagged / remove random",
@@ -1274,16 +1261,16 @@ function A.extend(M,api)
 		for _,entry in ipairs(outcomes) do entry.chance=entry.weight/total*100 end
 		return {exactFor="One weighted affix draw, conditional on the supplied state and native pool",successChance=success/total*100,totalWeight=total,matchingWeight=success,outcomes=outcomes,dataPatch=A.data().patch,modifierPatch=A.data().modifierPatch,limitations=copyTable(M.limits)}
 	end
-	M.limits={"Independent PoE 1 crafting model uses 3.29.3.6 supplemental data with a 3.30.0.2 modifier overlay; this is not complete Craft of Exile parity.",
+	M.limits={"Independent PoE 1 crafting model uses 3.30.0.2.2 supplemental data; this is not complete Craft of Exile parity.",
 		"Harvest damage conversion uses client eligibility groups and ingredient costs, but assumes matching elemental modifier IDs correspond to tiers and chooses eligible modifiers uniformly. The mapping and selection odds are unverified; unmatched families are rejected.",
 		"Light Radius accuracy modifiers use 3.30 crafting ranges; existing legacy values are retained until rerolled.",
 		"Abyss jewel crafting uses the 3.30 client weight changes, including the Assembled Eye pool and seven removed natural modifiers. Existing removed modifiers are retained until removed.",
 		"The 3.30 unveiled jewel modifiers can be imported, inspected and added to hypothetical items. Unveil offers and their acquisition are not simulated; native calculation support varies by modifier.",
 		"Current coverage includes core currencies, ordinary jewels/flasks/tinctures, bench crafts, essences, weighted fossils, Harvest tag crafts, influence slams, Awakener, fractures, veiled choices, Bestiary, Eldritch crafts, base implicit/defence rerolls and deterministic socket/link bench crafts.",
 		"Tangled Fossils require a revealed resonator outcome. Automatic predictable recombination odds, unique generation and many 3.30 rules are not implemented.",
-		"The standard Orb of Annulment uses the announced 3.30 attack/caster blocker rule. Modifier metadata uses a reviewed 3.30.0.2 client overlay; other supplemental sources remain pinned to 3.29.3.6 where not explicitly updated.",
+		"The standard Orb of Annulment uses the announced 3.30 attack/caster blocker rule. Some specialized supplemental sources remain pinned to 3.29.3.6 where not explicitly updated.",
 		"Partial locks use uniform random selection from all modifiers on the protected side, including fractures; group conflicts and other interactions are assumptions. Core affix actions, Harvest reforge/augment and elemental conversions, and independent socket, quality, implicit and enchantment crafts are supported; other interactions are rejected.",
-		"Bench ingredient prices use the 3.30.0.1.4 client catalogue; later client changes are not included.",
+		"Bench ingredient prices use the 3.30.0.1.4 client catalogue, which matches the 3.30.0.2.2 export.",
 		"Rare modifier counts and Eldritch Chaos counts are model assumptions. Numeric display rolls and sampling intervals do not establish exact in-game odds.",
 		"Abyssal socket modifier changes use an experimental last-socket and unlinked-white restoration model; placement, zero-socket behavior and removal are unverified.",
 		"Every result is a separate hypothetical item. Costs use supplied prices; no game currency is spent."}

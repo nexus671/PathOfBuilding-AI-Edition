@@ -1,10 +1,10 @@
 describe("Crafting data loading",function()
-	it("uses the reviewed 3.30 modifier metadata without relabeling older supplemental sources",function()
+	it("loads the reviewed 3.30 crafting export and reconstructed modifiers",function()
 		local data=require("Modules.CraftingAdvanced").data()
-		assert.equal("3.29.3.6",data.patch);assert.equal("3.30.0.2",data.modifierPatch)
-		assert.equal("3.30.0.2",data.benchPatch);assert.equal(782,#data.bench)
+		assert.equal("3.30.0.2.2",data.patch);assert.equal("3.30.0.2.2",data.modifierPatch)
+		assert.equal("3.30.0.2.2",data.benchPatch);assert.equal(782,#data.bench)
 		assert.is_truthy(data.benchMods.StrMasterItemGenerationCannotChangeOnePrefixes)
-		assert.equal("ae6d85a5c36857e08819852ab8732239294aba59",data.source.commit)
+		assert.equal("f49a9a43f5b06cac7f7125093cfd7ef2f0137650",data.source.commit)
 		local support=data.mods.V2SupportedByLifeGainOnHitCorrupted.stats[1]
 		assert.equal(15,support.min);assert.equal(15,support.max)
 		local speed=data.mods.AfflictionJewelSmallPassivesGrantAttackSpeed.groups
