@@ -39,6 +39,9 @@ function M.parse(raw,area)
 		Identified=not markers.Unidentified and tier==nil,Corrupted=markers.Corrupted==true or markers["Twice Corrupted"]==true,
 		TwiceCorrupted=markers["Twice Corrupted"]==true,Mirrored=markers.Mirrored==true}
 	for line in raw:gmatch("[^\n]+") do
+		-- A marked implicit proves its presence; an absent marker may mean the
+		-- clipboard text is incomplete and cannot prove the opposite.
+		if line:match("%S.+ %(implicit%)%s*$") then item.HasImplicitMod=true end
 		local strands=line:match("^Memory Strands: (%d+)$")
 		if strands then
 			strands=tonumber(strands);assert(strands<=100,"Invalid clipboard memory strands")
