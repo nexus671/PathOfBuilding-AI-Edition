@@ -54,9 +54,6 @@ function Panel.Open(build,project,layout)
 		if ready then ui.draft(build,"workingCraft",draft.id) end
 	end
 	local configured={}
-	-- The in-game percentage belongs to the exact recipient used when entered.
-	-- Restored workbenches require reconfirmation because older checkpoints do not record it.
-	local predictableRecipient
 	local sequence=0
 	local lastSimulation,lastSimulationRun,lastFossilComparison
 	local changedAffixes={}
@@ -383,7 +380,6 @@ function Panel.Open(build,project,layout)
 					craft.selectedMods=selected;craft.reportedSuccessChance=assert(tonumber(popup.chance.buf),"Enter the game's displayed success percentage")
 					assert(craft.reportedSuccessChance >= 0 and craft.reportedSuccessChance <= 100,"Success percentage must be between 0 and 100")
 					craft.observedRecipientState=copyTable(state)
-					predictableRecipient=copyTable(state)
 				end
 				configured[method]=craft;changed();main:ClosePopup();refresh()
 			end)
@@ -696,8 +692,9 @@ function Panel.Open(build,project,layout)
 		if controls.method:GetSelValueByKey("val")=="gwennen" and not configured.gwennen then return "Configure an observed Gwennen pair in Settings." end
 		local reason=simulator.configurationReason(model,state,action())
 		if reason then return reason end
-		if controls.method:GetSelValueByKey("val")=="recombine_predictable" and (not predictableRecipient or not tableDeepEquals(predictableRecipient,state) or not tableDeepEquals(state,predictableRecipient)) then
-			return "Recipient changed or was reopened. Reconfirm the in-game success percentage in Craft settings."
+		local observed=configured.recombine_predictable and configured.recombine_predictable.observedRecipientState
+		if controls.method:GetSelValueByKey("val")=="recombine_predictable" and (type(observed)~="table" or observed.origin~=model.initial.origin or not tableDeepEquals(observed,state) or not tableDeepEquals(state,observed)) then
+			return "Recipient changed or the observation is missing. Reconfirm the in-game success percentage in Craft settings."
 		end
 	end
 	local function actionConfigured() return actionConfigurationReason()==nil end
