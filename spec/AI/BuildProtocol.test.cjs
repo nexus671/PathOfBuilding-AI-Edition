@@ -92,6 +92,14 @@ test('queues bounded map modifier inspection', t => {
   const bases=fixture(t);bases.call('search_map_bases',{baseRevision:bases.state.revision,query:'Beach',limit:5});
   assert.equal(JSON.parse(fs.readFileSync(path.join(bases.dir,'AI-build-request.json'))).kind,'search_map_bases');
 });
+test('queues a seeded hypothetical map currency action', t => {
+  const f=fixture(t), state={baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'normal',selected:[]};
+  const args={baseRevision:f.state.revision,state,action:'alchemy',seed:42};
+  f.call('simulate_map_currency',args);
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.kind,'simulate_map_currency');assert.deepEqual(request.state,state);assert.equal(request.seed,42);
+  for(const invalid of [{...args,seed:0},{...args,action:'vaal'},{...args,state:{...state,rarity:'unique'}},{...args,state:{...state,selected:Array(7).fill('x')}}]) assert.throws(()=>f.call('simulate_map_currency',invalid),/arguments/);
+});
 test('accepts typed Atlas stages, strategy inputs and explicit failure recovery branches', t => {
   const f=fixture(t);
   const plan={id:'final',title:'Final maps',version:'3.29.1',budget:138,nodes:[],progression:{stage:'final',previousId:'starter'},strategy:{maps:'T16 maps',scarabs:'Supplied scarabs',requirements:'Unlocks complete',avoid:'Reflect',setupCost:{amount:25,currency:'chaos',source:'Manual quote',quotedAt:1700000000}}};

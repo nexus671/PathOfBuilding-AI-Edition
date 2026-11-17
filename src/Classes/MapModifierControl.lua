@@ -1,4 +1,4 @@
--- Interactive inspection of pinned map modifiers; this does not roll currency.
+-- Inspect pinned map modifiers and estimate currency outcomes without using an item.
 local ui=require("Modules.PlanningUI")
 local map=require("Modules.MapCraftingData")
 local browser=require("Classes.PlanningBrowserControl")
@@ -12,6 +12,7 @@ function M.Open()
 	local width=math.min(900,main.screenW-40);local height=math.min(600,main.screenH-60)
 	local left=math.floor(width*0.38);local right=left+32;local rightWidth=width-right-16
 	local controls={};local selected={};local candidate;local baseId="Metadata/Items/Maps/MapWorldsStrand";local refresh;local offset,nextOffset=0,nil
+	local rollSeed=os.time()%2147483646+1
 	local artManifest;do local f=assert(io.open("Assets/MapCrafting/art.json","rb"));artManifest=assert(require("dkjson").decode(f:read("*a")));f:close() end
 	local artCache={}
 	local function art()
@@ -24,7 +25,7 @@ function M.Open()
 	local function button(key,x,y,w,label,fn)
 		controls[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{x,y,w,28},label,fn))
 	end
-	ui.description(controls,"intro",16,28,width-32,34,{"Inspect a hypothetical map; availability is unverified. No currency or item is used.","Changing map, rarity, tier or item level clears selected modifiers."},14)
+	ui.description(controls,"intro",16,28,width-32,34,{"Hypothetical map: currency results are estimates; numerical values are not rolled.","Changing map, rarity, tier or item level clears selected modifiers."},14)
 	button("base",16,66,left,"Choose map",function()
 		local rows={};local baseOffset=0
 		repeat
@@ -45,7 +46,7 @@ function M.Open()
 	function card:Draw()
 		local x,y=self:GetPos();local w,h=self:GetSize();SetDrawColor("^x716046");DrawImage(nil,x,y,w,h)
 		SetDrawColor("^x15141A");DrawImage(nil,x+1,y+1,w-2,h-2)
-		local base=map.source().bases[baseId];SetDrawColor(controls.rarity:GetSelValueByKey("val")=="magic" and "^x8888FF" or "^xE0C586");DrawString(x+w/2,y+12,"CENTER_X",18,"VAR",ui.fit(base.name,w-20,18))
+		local rarity=controls.rarity:GetSelValueByKey("val");local base=map.source().bases[baseId];SetDrawColor(rarity=="magic" and "^x8888FF" or rarity=="normal" and "^7" or "^xE0C586");DrawString(x+w/2,y+12,"CENTER_X",18,"VAR",ui.fit(base.name,w-20,18))
 		local handle,entry=art();if handle then
 			local bounds=entry.bounds or {0,0,entry.width,entry.height};local bw,bh=bounds[3]-bounds[1],bounds[4]-bounds[2]
 			local scale=math.min(95/bw,95/bh);local aw,ah=bw*scale,bh*scale
@@ -58,7 +59,7 @@ function M.Open()
 	controls.remove.enabled=function() return #selected>0 end
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
 	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
-	controls.rarity=new("DropDownControl"):DropDownControl(ui.anchor,{right+235,64,100,26},{{label="Magic",val="magic"},{label="Rare",val="rare"}});controls.rarity:SelByValue("rare","val")
+	controls.rarity=new("DropDownControl"):DropDownControl(ui.anchor,{right+235,64,100,26},{{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"}});controls.rarity:SelByValue("rare","val")
 	controls.search=new("EditControl"):EditControl(ui.anchor,{right,96,rightWidth,26},"","Search modifiers",nil,160)
 	controls.list=new("TextListControl"):TextListControl(ui.anchor,{right,132,rightWidth,height-410},nil,{})
 	button("previous",right,height-270,100,"Previous",function() offset=math.max(0,offset-30);refresh() end)
@@ -69,6 +70,17 @@ function M.Open()
 	ui.label(controls,"status",right,height-118,"",14)
 	button("add",right,height-88,math.floor(rightWidth/2)-6,"Add modifier",function() if candidate then selected[#selected+1]=candidate.id;candidate=nil;offset=0;controls.search:SetText("");refresh() end end)
 	controls.add.enabled=function() return candidate~=nil end
+	button("currency",right+math.floor(rightWidth/2)+6,height-88,math.floor(rightWidth/2)-6,"Use currency",function()
+		local actions={{"transmute","Orb of Transmutation"},{"alchemy","Orb of Alchemy"},{"alteration","Orb of Alteration"},{"chaos","Chaos Orb"},{"augmentation","Orb of Augmentation"},{"regal","Regal Orb"},{"exalt","Exalted Orb"},{"annul","Orb of Annulment"},{"scour","Orb of Scouring"}}
+		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry[1],label=entry[2],icon="Assets/Crafting/"..entry[1]..".png",details={"Experimental map modifier identities; no real currency is consumed.","Count distribution and weighted selection are estimates. Numerical values are not rolled.","Base availability and some map restrictions are unverified."}} end
+		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",choose=function(entry)
+			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=controls.rarity:GetSelValueByKey("val"),selected=selected}
+			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,rollSeed)
+			if not ok then main:OpenMessagePopup("Currency unavailable",ui.errorText(result));return end
+			rollSeed=rollSeed*16807%2147483647;selected=result.state.selected;controls.rarity:SelByValue(result.state.rarity,"val");candidate=nil;offset=0
+			main:ClosePopup();controls.search:SetText("");refresh()
+		end,closeOnChoose=false})
+	end)
 	button("close",width-132,height-48,116,"Close",function() main:ClosePopup() end)
 	local function show(entry)
 		candidate=entry
@@ -77,14 +89,16 @@ function M.Open()
 	end
 	refresh=function()
 		local tier=controls.tier:GetSelValueByKey("val");local level=tonumber(controls.level.buf)
-		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,controls.rarity:GetSelValueByKey("val"))
+		local rarity=controls.rarity:GetSelValueByKey("val")
+		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,rarity=="normal" and "rare" or rarity)
 		if not ok then nextOffset=nil;controls.list.list={};controls.status.label="^xE9BE7B"..ui.fit(ui.errorText(result),rightWidth,14);show(nil);return end
+		if rarity=="normal" then result.candidates={};result.total=0;result.nextOffset=nil end
 		nextOffset=result.nextOffset
 		local lines={};for _,entry in ipairs(result.candidates) do
 			local rows=ui.rows({entry.name.." | "..entry.side},rightWidth-30,14)
 			for _,row in ipairs(rows) do row.entry=entry;lines[#lines+1]=row end
 		end
-		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label="^7"..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
+		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and "^7Normal map | Use currency to add modifiers" or "^7"..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
 		local affixes={};for _,id in ipairs(selected) do local mod=map.source().mods[id];affixes[#affixes+1]=readable(type(mod.text)=="string" and mod.text or "") end
 		if #affixes==0 then affixes={"No hypothetical modifiers selected."} end
 		controls.affixes.list=ui.rows(affixes,left-48,14);show(nil)

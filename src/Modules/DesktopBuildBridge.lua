@@ -564,7 +564,7 @@ function M.poll(build, force)
 			else local raw,report=filters.compile(profile);for _,diagnostic in ipairs(report.diagnostics) do if diagnostic.error then error("Line "..diagnostic.line..": "..tostring(diagnostic.error),0) end end;M.status={id=request.id,status="exported",filter=raw,report=report} end
 			M.publishState();return
 		end
-		if request.kind == "search_map_bases" or request.kind == "inspect_map_modifiers" then
+		if request.kind == "search_map_bases" or request.kind == "inspect_map_modifiers" or request.kind == "simulate_map_currency" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh map context.")
 			local session=M.session
 			local function publish(status,values)
@@ -573,6 +573,7 @@ function M.poll(build, force)
 				for key,value in pairs(values) do M.status[key]=value end;M.publishState()
 			end
 			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+				if request.kind=="simulate_map_currency" then return require("Modules.MapCurrency").perform(request.state,request.action,request.seed,checkpoint) end
 				local map=require("Modules.MapCraftingData")
 				return request.kind=="search_map_bases" and map.searchBases(request.query,request.offset,request.limit,checkpoint)
 					or map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint,request.rarity)

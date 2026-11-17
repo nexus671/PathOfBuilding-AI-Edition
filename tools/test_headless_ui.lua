@@ -83,7 +83,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	do local mapList=main.popups[1].controls.list;local lx,ly=mapList:GetPos();ui:clickAt(lx+12,ly+10) end
 	assert(main.popups[1].controls.add:IsEnabled(),"Map modifier selection did not enable Add")
 	ui:click("add");assert(main.popups[1].controls.remove:IsEnabled(),"Map modifier was not staged");frame("map-modifier-staged")
-	ui:click("remove");ui:click("close")
+	ui:click("remove");ui:choose("rarity","normal","val");ui:click("currency");ui:text("search","Orb of Alchemy");frame("map-currency-picker");ui:click("choose")
+	assert(main.popups[1].controls.rarity:GetSelValueByKey("val")=="rare","Map Alchemy did not produce a rare map");assert(main.popups[1].controls.remove:IsEnabled(),"Map Alchemy did not add modifiers");frame("map-currency-result");ui:click("close")
 	local workspace=build.planningWorkspace
 	build.buildFlag=true;ui:frame();ui:click("nav_tools");frame("planning-tools");ui:click("choose");frame("performance-diagnostics");ui:click("copy");assert(ui.clipboard:find("ms",1,true));ui:click("refresh");ui:click("close")
 	local canvas=workspace.controls.canvas
