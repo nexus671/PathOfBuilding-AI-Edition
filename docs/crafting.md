@@ -141,7 +141,7 @@ retains its costing buckets for compatibility.
 
 Crafted-mod removal uses one Orb of Scouring. The supported one-mod and three-mod bench reforges use eight and three Chaos Orbs respectively, following the pinned recipe data. Their normal item prerequisites still apply.
 
-**Explore charts** shows cumulative success by actions or supplied spending, and distributions of completed-trial actions/spending. Hover to inspect, click to pin, or copy the data as CSV. The CSV includes the chart mode, unit, model notes, omitted routes and any recorded failed-transition count. **Compare recipes → Compare charts** overlays captured routes. Failed and capped trials stay in the denominator; unpriced routes are omitted from spending charts.
+**Explore charts** shows cumulative success and completed-trial distributions by attempts, executed actions or supplied spending. Attempts include failed modeled transitions; executed actions exclude them. Older results without executed-action counts must be rerun for those charts. Hover to inspect, click to pin, or copy the data as CSV. The CSV includes the chart mode, unit, model notes, omitted routes and any recorded failed-transition count. **Compare recipes → Compare charts** overlays captured routes. Failed and capped trials stay in the denominator; unpriced routes are omitted from spending charts.
 
 **Run more trials** repeats that result's captured recipe, starting item, targets,
 seed and quotes. Only the trial count increases. Later edits to the working item,

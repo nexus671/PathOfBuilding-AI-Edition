@@ -26,7 +26,7 @@ function M.Open(routes)
 			for _,point in ipairs(series.points) do local ax,ay=gx+gw*previous.x/maximum,gy+gh*(1-previous.y/100);local bx,by=gx+gw*point.x/maximum,gy+gh*(1-point.y/100);line(ax,ay,bx,ay,color);line(bx,ay,bx,by,color);previous=point end
 			line(gx+gw*previous.x/maximum,gy+gh*(1-previous.y/100),gx+gw,gy+gh*(1-previous.y/100),color)
 		end
-		if #data.series==0 then visual.text(gx+16,gy+24,16,"No fully priced routes to chart.","^xD5DEE8",gw-32) end
+		if #data.series==0 then visual.text(gx+16,gy+24,16,"No routes available to chart.","^xD5DEE8",gw-32) end
 		local selected=value();local px=gx+gw*selected/maximum;line(px,gy,px,gy+gh,"^xD5DEE8")
 		visual.text(gx,gy+gh+30,12,data.unit.." | Hover to inspect; click to pin / unpin.","^xA6B3C6",gw)
 		SetViewport()

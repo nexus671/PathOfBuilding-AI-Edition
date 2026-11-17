@@ -83,7 +83,11 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1401, f"Expected 1401 UI frames, found {len(paths)}"
+    assert len(paths) == 1404, f"Expected 1404 UI frames, found {len(paths)}"
+    for width in (960, 1024, 1280):
+        chart = json.loads((frames / f"{width}-crafting-executed-chart.json").read_text())
+        labels = " ".join(command.get("text", "") for command in chart["commands"] if command.get("kind") == "text")
+        assert "executed actions" in labels.lower(), "Executed-action chart label is missing"
     for width in (960, 1024, 1280):
         route = json.loads((frames / f"{width}-atlas-impossible-start.json").read_text())
         warning = next(command for command in route["commands"] if "Starting plan cannot be reached" in command.get("text", ""))

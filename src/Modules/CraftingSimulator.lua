@@ -783,7 +783,7 @@ function M.simulate(raw,recipe,options)
 	local resourceUsage={}
 	local pricing=require("Modules.CraftingPrices")
 	local actionPriceUses=0
-	local actionHistogram,costHistogram,costSamples,successfulCosts,routes={},{},{},{},{}
+	local actionHistogram,executedHistogram,costHistogram,costSamples,successfulCosts,routes={},{},{},{},{},{}
 	local budgetExhausted,destroyedTrials=0,0
 	local recovery={restarts=0,stopped=0,salvaged=0}
 	local sample,sampleSuccess
@@ -861,6 +861,7 @@ function M.simulate(raw,recipe,options)
 		if state.destroyed then destroyedTrials=destroyedTrials+1 end
 		if not hit and not state.destroyed and at <= #recipe.steps and actions >= maxActions then budgetExhausted=budgetExhausted+1 end
 		local bucket=actionHistogram[actions] or {actions=actions,trials=0,successes=0};actionHistogram[actions]=bucket;bucket.trials=bucket.trials+1;if hit then bucket.successes=bucket.successes+1 end
+		local executed=executedHistogram[trialExecuted] or {actions=trialExecuted,trials=0,successes=0};executedHistogram[trialExecuted]=executed;executed.trials=executed.trials+1;if hit then executed.successes=executed.successes+1 end
 		costSamples[#costSamples+1]=cost;if hit then successfulCosts[#successfulCosts+1]=cost end
 		local costBucket=costHistogram[cost] or {cost=cost,trials=0,successes=0};costHistogram[cost]=costBucket;costBucket.trials=costBucket.trials+1;if hit then costBucket.successes=costBucket.successes+1 end
 		if not sample or hit and not sampleSuccess then sample,sampleSuccess=state,hit end
@@ -874,10 +875,11 @@ function M.simulate(raw,recipe,options)
 		return result
 	end
 	local distribution={};for _,bucket in pairs(actionHistogram) do distribution[#distribution+1]=bucket end;table.sort(distribution,function(a,b) return a.actions < b.actions end)
+	local executedDistribution={};for _,bucket in pairs(executedHistogram) do executedDistribution[#executedDistribution+1]=bucket end;table.sort(executedDistribution,function(a,b) return a.actions < b.actions end)
 	local usage={};for _,entry in pairs(resourceUsage) do entry.meanPerTrial=entry.amount/trials;usage[#usage+1]=entry end;table.sort(usage,function(a,b) return a.key<b.key end)
 	assert(totalExecuted > 0 or successes > 0,next(errors) or "Recipe could not execute a supported action; inspect its starting rarity and open affixes")
 	local result={trials=trials,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,seed=seed,maxActions=maxActions,
-		meanActions=totalActions/trials,meanExecutedActions=totalExecuted/trials,failedAttempts=totalActions-totalExecuted,currencySpent=spent,resourceUsage=usage,unpriced=missing,transitionErrors=errors,warnings=M.hasPartialLock(M.context(model,model.initial),model.initial) and partialWarning(M.recipeWarnings(recipe,model)) or M.recipeWarnings(recipe,model),limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=not sample.destroyed and not sample.veil and M.toItem(model,sample).raw or nil,sampleState=sample,
+		meanActions=totalActions/trials,meanExecutedActions=totalExecuted/trials,failedAttempts=totalActions-totalExecuted,executedActionDistribution=executedDistribution,currencySpent=spent,resourceUsage=usage,unpriced=missing,transitionErrors=errors,warnings=M.hasPartialLock(M.context(model,model.initial),model.initial) and partialWarning(M.recipeWarnings(recipe,model)) or M.recipeWarnings(recipe,model),limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=not sample.destroyed and not sample.veil and M.toItem(model,sample).raw or nil,sampleState=sample,
 		engineVersion=2,dataPatch=M.dataPatch,sourceVersion=launch.versionNumber,costCurrency=options.currency or "supplied price units",
 		baseCost=baseCost,retainedSuccesses=retained,retentionLimit=retain,affixDistribution=affixDistribution,propertyDistribution=propertyDistribution,actionDistribution=distribution,successfulActionQuantiles=quantiles(times),routeCounts=routes,budgetExhausted=budgetExhausted,destroyedTrials=destroyedTrials}
 	if not next(missing) then

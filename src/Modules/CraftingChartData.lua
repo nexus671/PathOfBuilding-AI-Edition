@@ -1,7 +1,8 @@
 -- Empirical cumulative curves; failed/capped trials remain in the denominator.
-local M={modes={"Success by action count","Actions used per trial","Success by spending","Spending per trial"}}
+local M={modes={"Success by attempts","Attempts per trial","Success by spending","Spending per trial","Success by executed actions","Executed actions per trial"}}
 function M.series(routes,mode)
-	local spending=mode==M.modes[3] or mode==M.modes[4];local success=mode==M.modes[1] or mode==M.modes[3]
+	local spending=mode==M.modes[3] or mode==M.modes[4];local executed=mode==M.modes[5] or mode==M.modes[6]
+	local success=mode==M.modes[1] or mode==M.modes[3] or mode==M.modes[5] or mode=="Success by action count"
 	local series={};local currency;local omitted={};local maximum=0;local warnings={};local hasTransitionErrors=false
 	for _,route in ipairs(routes) do local result=route.result
 		if result then
@@ -11,8 +12,9 @@ function M.series(routes,mode)
 				hasTransitionErrors=true;local note=failed.." failed modeled transitions were not charged. The curves include the affected trials."
 				notes[#notes+1]=note;warnings[#warnings+1]=route.label..": "..note
 			end
-			local buckets=spending and result.costDistribution or result.actionDistribution
+			local buckets=spending and result.costDistribution or executed and result.executedActionDistribution or result.actionDistribution
 			if spending and not result.costDistribution then omitted[#omitted+1]=route.label..": missing prices"
+			elseif executed and not result.executedActionDistribution then omitted[#omitted+1]=route.label..": executed-action counts unavailable; rerun the simulation"
 			elseif spending and currency and currency~=result.costCurrency then omitted[#omitted+1]=route.label..": different price unit"
 			else
 				if spending then currency=result.costCurrency end
@@ -22,7 +24,7 @@ function M.series(routes,mode)
 			end
 		end
 	end
-	return {series=series,mode=mode,maximum=maximum,unit=spending and (currency or "supplied price units") or "actions",omitted=omitted,warnings=warnings,hasTransitionErrors=hasTransitionErrors,success=success,
+	return {series=series,mode=mode,maximum=maximum,unit=spending and (currency or "supplied price units") or executed and "executed actions" or "attempts",omitted=omitted,warnings=warnings,hasTransitionErrors=hasTransitionErrors,success=success,
 		note=success and "Successes within the captured trial budget / all trials. No extrapolation or guaranteed success." or "Completed trials at or below each value, including failures and capped trials. Not a cost of guaranteed success."}
 end
 function M.at(points,x)

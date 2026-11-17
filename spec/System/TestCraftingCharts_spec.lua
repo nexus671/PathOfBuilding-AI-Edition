@@ -20,6 +20,13 @@ describe("Crafting budget and spending charts",function()
 		local input=sim.perform(raw,{method="alchemy"},104729).state;input.corrupted=true
 		local run=sim.simulate(raw,{initialState=input,steps={{method="tainted_exalt"}},targets={},requirements={minAffixes=3}},{trials=40,maxActions=1,seed=1,forceFirstAction=true,prices={tainted_exalt=1},currency="chaos"})
 		local failed=0;for _,count in pairs(run.transitionErrors) do failed=failed+count end;assert.is_true(failed>0)
+		local attempted=charts.series({{label="Tainted jewel",result=run}},charts.modes[2]);local executed=charts.series({{label="Tainted jewel",result=run}},charts.modes[6])
+		assert.equal("attempts",attempted.unit);assert.equal("executed actions",executed.unit)
+		assert.equal(0,charts.at(attempted.series[1].points,0).count);assert.equal(failed,charts.at(executed.series[1].points,0).count)
+		assert.equal(40,charts.at(executed.series[1].points,1).count)
+		local success=charts.series({{label="Tainted jewel",result=run}},charts.modes[5]);assert.equal(run.successes,charts.at(success.series[1].points,1).count)
+		assert.is_truthy(charts.csv(executed):find('"Executed actions per trial","executed actions"',1,true))
+		local old=copyTable(run);old.executedActionDistribution=nil;local missing=charts.series({{label="Earlier result",result=old}},charts.modes[6]);assert.equal(0,#missing.series);assert.matches("rerun the simulation",missing.omitted[1])
 		local routes={{label="Tainted jewel",result=run}};local data=charts.series(routes,charts.modes[3]);local notice="Tainted jewel: "..failed.." failed modeled transitions were not charged."
 		local found=false;for _,warning in ipairs(data.warnings) do if warning:find(notice,1,true) then found=true end end;assert.is_true(found)
 		local csv=charts.csv(data);assert.is_truthy(csv:find('"Success by spending","chaos",'..failed..',',1,true));assert.is_truthy(csv:find("failed modeled transitions were not charged",1,true))
