@@ -197,6 +197,9 @@ async function main(){
   const tierStart={...binding.nativeCrafting.state,affixes:[{id:'IncreasedLife2',range:0.5},{id:'FireResist2',range:0.5}]};
   const tierChange=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:{method:'gwennen',firstOutcome:1020,secondOutcome:1020},seed:7},'crafted');
   assert.ok(tierChange.nativeCrafting.state.affixes.some(entry=>['IncreasedLife3','FireResist3'].includes(entry.id)));assert.ok(tierChange.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_tier_assumptions'));
+  const threeTierStart={...tierStart,affixes:[...tierStart.affixes,{id:'ColdResist2',range:0.5}]};
+  const multiTier=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:threeTierStart,action:{method:'gwennen',firstOutcome:1044,secondOutcome:1044},seed:7},'crafted');
+  assert.deepEqual(multiTier.nativeCrafting.state.affixes.map(entry=>entry.id),['IncreasedLife3','FireResist3','ColdResist3']);assert.ok(multiTier.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_tier_assumptions'));
   const sideReroll=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1018,secondOutcome:1019},seed:7},'crafted');
   assert.ok([1018,1019].includes(sideReroll.nativeCrafting.gwennen.outcome));assert.equal(sideReroll.nativeCrafting.state.affixes.length,binding.nativeCrafting.state.affixes.length);
   assert.ok(sideReroll.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_side_reroll_assumptions'));

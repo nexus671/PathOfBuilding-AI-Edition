@@ -1,6 +1,6 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1016]=true,[1017]=true,[1018]=true,[1019]=true,[1020]=true,[1021]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1028]=true,[1029]=true,[1030]=true,[1031]=true,[1041]=true,[1042]=true}
+local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1016]=true,[1017]=true,[1018]=true,[1019]=true,[1020]=true,[1021]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1028]=true,[1029]=true,[1030]=true,[1031]=true,[1041]=true,[1042]=true,[1043]=true,[1044]=true}
 local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
@@ -46,6 +46,8 @@ local function tierChoices(model,state,upgrade)
 		end
 		assert(current,"Tier changes require a currently rollable modifier family")
 		assert(bestId and ties==1,"Every modifier needs one unambiguous adjacent tier for this experimental outcome")
+		local function addedTags(value) local tags=copyTable(value.adds_tags or {});table.sort(tags);return table.concat(tags,"\0") end
+		assert(addedTags(meta)==addedTags(metadata[bestId]),"Adjacent tiers with different granted tags are not modeled")
 		choices[#choices+1]={index=index,id=bestId}
 	end
 	return choices
@@ -207,11 +209,15 @@ function G.extend(M,api)
 				for _,entry in ipairs(pool) do pick=pick-entry.weight;if pick<0 then result.affixes[#result.affixes+1]={id=entry.id,range=M.rollRange(model.byId[entry.id],draw)};return result end end
 				error("Could not select a modifier")
 			end
-			if id==1020 or id==1021 then
-				local choices=tierCache[id] or tierChoices(model,input,id==1020);tierCache[id]=choices
-				local selected=choices[math.floor(draw()*#choices)+1]
-				local result=copyTable(input);local entry=result.affixes[selected.index]
-				entry.id=selected.id;entry.range=M.rollRange(model.byId[selected.id],draw)
+			if id==1020 or id==1021 or id==1043 or id==1044 then
+				local count=id==1043 and 2 or id==1044 and 3 or 1
+				assert(#input.affixes>=count,"This tier outcome requires at least "..count.." modifiers")
+				local choices=tierCache[id] or tierChoices(model,input,id~=1021);tierCache[id]=choices
+				local remaining=copyTable(choices);local result=copyTable(input)
+				for _=1,count do
+					local selected=table.remove(remaining,math.floor(draw()*#remaining)+1)
+					local entry=result.affixes[selected.index];entry.id=selected.id;entry.range=M.rollRange(model.byId[selected.id],draw)
+				end
 				return result
 			end
 			if id==1018 or id==1019 then

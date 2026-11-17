@@ -223,7 +223,7 @@ describe("Experimental Gwennen pair",function()
 		assert.equal(2,usage[astragali]);assert.equal(40,usage[grand]);assert.is_nil(result.meanCost)
 		assert.has_error(function() sim.components({method="gwennen",firstOutcome=1000,secondOutcome=1022,artifactCost={grand=-1}}) end)
 		assert.has_error(function() sim.validateRecipe({steps={{method="unsupported_method",firstOutcome=1000,secondOutcome=1022}},targets={},requirements={minAffixes=1}}) end)
-		assert.has_error(function() sim.validateRecipe({steps={{method="gwennen",firstOutcome=1000,secondOutcome=1044}},targets={},requirements={minAffixes=1}}) end)
+		assert.has_error(function() sim.validateRecipe({steps={{method="gwennen",firstOutcome=1000,secondOutcome=1045}},targets={},requirements={minAffixes=1}}) end)
 	end)
 	it("models the quality and modifier reroll branches",function()
 		local model,state=item();local before=copyTable(state)
@@ -295,6 +295,29 @@ describe("Experimental Gwennen pair",function()
 		assert.has_error(function() sim.action(model,boundary,{method="gwennen",firstOutcome=1021,secondOutcome=1000},function() return 0.1 end) end)
 		local crafted=copyTable(state);crafted.affixes[1].crafted=true
 		assert.has_error(function() sim.action(model,crafted,{method="gwennen",firstOutcome=1020,secondOutcome=1000},function() return 0.1 end) end)
+	end)
+	it("models two or three distinct tier upgrades under explicit assumptions",function()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
+		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5},{id="ColdResist2",range=0.5}}
+		local before=copyTable(state)
+		for _,case in ipairs({{1043,2},{1044,3}}) do
+			local pair={method="gwennen",firstOutcome=case[1],secondOutcome=case[1]}
+			for _,draw in ipairs({0.1,0.5,0.9}) do
+				local result=sim.action(model,state,pair,function() return draw end);local changed=0
+				for i,entry in ipairs(result.affixes) do if entry.id~=state.affixes[i].id then
+					changed=changed+1;assert.equal(state.affixes[i].id:gsub("2$","3"),entry.id)
+				end end
+				assert.equal(case[2],changed);sim.validateState(model,result);assert.same(before,state)
+			end
+			local estimate=sim.calculate(raw,pair,{},state,{requirements={minAffixes=1},trials=4})
+			assert.is_true(estimate.sampled);assert.equal("gwennen_tier_assumptions",estimate.warnings[2].code)
+		end
+		local two=copyTable(state);table.remove(two.affixes,3);local draws=0
+		assert.has_error(function() sim.action(model,two,{method="gwennen",firstOutcome=1044,secondOutcome=1000},function() draws=draws+1;return 0.1 end) end);assert.equal(0,draws)
+		local metadata=require("Modules.CraftingAdvanced").data().mods.IncreasedLife3
+		local tags=metadata.adds_tags;metadata.adds_tags={"test_tier_tag"}
+		local ok=pcall(sim.action,model,state,{method="gwennen",firstOutcome=1043,secondOutcome=1000},function() return 0.1 end)
+		metadata.adds_tags=tags;assert.is_false(ok)
 	end)
 	it("models random influence and counts influence goals under stated assumptions",function()
 		local model,state=item();local before=copyTable(state);local pair={method="gwennen",firstOutcome=1031,secondOutcome=1031}
