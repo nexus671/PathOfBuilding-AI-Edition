@@ -280,6 +280,25 @@ local heistExpeditionExamples={
 	{"Exotic Coinage","Stackable Currency"},{"Scrap Metal","Stackable Currency"},
 	{"Lesser Broken Circle Artifact","Stackable Currency"},{"Lesser Black Scythe Artifact","Stackable Currency"},
 }
+-- Use exact names from NeverSink's pinned high-emphasis currency blocks. This
+-- is a snapshot of filter styling, not a price feed or a drop distribution.
+local presetHighlights
+local function highlights()
+	if presetHighlights then return presetHighlights end
+	local found,rows={},{}
+	local raw=filters.base(filters.profile("highlight-snapshot","Highlight snapshot"))
+	for _,block in ipairs(parser.parse(raw).rules) do
+		local heading=block.rawLines[1] or ""
+		if block.action=="Show" and heading:find("$type->currency",1,true) and heading:find("!apex_scurr",1,true) then
+			for _,condition in ipairs(block.conditions) do if condition.keyword=="BaseType" and condition.operator=="==" then
+				for _,name in ipairs(condition.values) do local class=baseClass(name)
+					if class and not found[name] then found[name]=true;rows[#rows+1]={name,class} end
+				end
+			end end
+		end
+	end
+	presetHighlights=rows;return rows
+end
 function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 	local list={}
 	if kind=="Tiered gear" then
@@ -298,7 +317,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		end end
 		return list
 	end
-	local source=({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples})[kind] or examples
+	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
 		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end
 		applyBaseProperties(item)

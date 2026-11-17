@@ -31,7 +31,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Item configuration | Editable properties and game-clipboard import in the desktop and MCP filter tests. Known base drop level and dimensions come from pinned data; ambiguous values remain unknown | Hidden identities are never inferred |
 | Item history | Session history plus persistent named sets of exact sample properties | More encounter sample presets |
 | Generator level settings | Shared area/item-level controls and a tiered-gear comparison scene | More encounter-specific samples |
-| Expensive-drop generation | Currency scene and exact custom samples | A separate expensive-item mode based on verified tiers |
+| Expensive-drop generation | Currency scene, exact custom samples and pinned high-emphasis currency highlights | Live economic valuation and representative drop distributions |
 | Preview background | Stone, dark and light scenes | Additional environments |
 | Individual colours | Colour wheel, brightness and opacity controls, swatches, exact RGBA input and live preview | More built-in palette presets |
 | Font size | Live size slider | Additional typography presets |

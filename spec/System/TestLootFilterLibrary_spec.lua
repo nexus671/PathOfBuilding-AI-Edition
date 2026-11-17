@@ -254,6 +254,19 @@ describe("Visual filter catalogue",function()
 			assert.same(rotated,library.scene(profile,build,case.kind,1,76,81))
 		end
 	end)
+	it("builds pinned currency highlights without guessing item classes or live prices",function()
+		local profile=filters.profile("test","Test");local scene=library.scene(profile,build,"Preset highlights",0,76,81)
+		assert.is_true(#scene>0);local seen={}
+		for _,item in ipairs(scene) do
+			assert.is_nil(seen[item.BaseType]);seen[item.BaseType]=true
+			assert.equal(library.baseClass(item.BaseType),item.Class)
+			assert.equal(76,item.AreaLevel);assert.equal(81,item.ItemLevel)
+		end
+		assert.is_true(seen["Hollow Fossil"])
+		local rotated=library.scene(profile,build,"Preset highlights",1,76,81)
+		assert.equal(scene[2].BaseType,rotated[1].BaseType)
+		assert.same(rotated,library.scene(profile,build,"Preset highlights",1,76,81))
+	end)
 	it("builds a reproducible 3.30 league-item example scene from published item classes",function()
 		local profile=filters.profile("test","Test");local scene=library.scene(profile,build,"Covens & Threads",0,76,81)
 		local file=assert(io.open("Data/LootFilters/patch-3.30.json","rb"));local patch=assert(require("dkjson").decode(file:read("*a")));file:close()

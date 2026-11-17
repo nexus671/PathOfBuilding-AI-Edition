@@ -2,6 +2,8 @@
 
 The simulator's **Covens & Threads** scene provides varied 3.30 league-item examples, including Threads, Enshrouded items and Viscera. The examples test filter behavior; they are not a prediction of encounter drops.
 
+**Preset highlights** samples exact currency names from high-emphasis blocks in the pinned NeverSink Regular preset when their item class is known. It is a snapshot of that preset's styling, not a list of live prices, trade recommendations or drop rates. Your active filter still determines each preview result.
+
 Generated unidentified magic and rare examples have an unknown item tier unless a rule or sample explicitly supplies one. A tier-dependent filter therefore reports an unknown result until the tier is set. **Tiered gear** compares explicit example tiers; in Ruthless it shows only the example without a tier because items there do not have tiers.
 
 Open **AI builds**, **Atlas**, or **Crafting**, then choose **Loot filter**. **Alt+5** opens it from any planning page.
