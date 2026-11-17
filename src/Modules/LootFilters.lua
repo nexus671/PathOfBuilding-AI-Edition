@@ -372,6 +372,16 @@ function M.simulate(profile,item)
 	return parser.simulate(parsed,item)
 end
 -- Reuse one compiled filter for a page. Offsets are zero-based.
+local function truncateUTF8(value,limit)
+	if #value<=limit then return value end
+	local last=limit
+	while last>0 do
+		local nextByte=value:byte(last+1)
+		if not nextByte or nextByte<128 or nextByte>=192 then break end
+		last=last-1
+	end
+	return value:sub(1,last)
+end
 local function simulatePage(profile,selected,offset,limit,checkpoint,includeSample)
 	offset=offset or 0;limit=limit or 20
 	assert(type(offset)=="number" and offset==math.floor(offset) and offset>=0 and offset<=#selected.samples,"Invalid example offset")
@@ -385,13 +395,13 @@ local function simulatePage(profile,selected,offset,limit,checkpoint,includeSamp
 		-- Keep a page bounded even when an imported filter has thousands of
 		-- Continue blocks or unusually long custom sound paths. The single-item
 		-- evaluator remains available for complete style details.
-		local summary={status=evaluated.status,action=evaluated.action,line=evaluated.line,ruleTitle=evaluated.ruleTitle and evaluated.ruleTitle:sub(1,160),matches={},reasons={}}
+		local summary={status=evaluated.status,action=evaluated.action,line=evaluated.line,ruleTitle=evaluated.ruleTitle and truncateUTF8(evaluated.ruleTitle,160),matches={},reasons={}}
 		if evaluated.ruleTitle and #evaluated.ruleTitle>160 then summary.ruleTitleTruncated=true end
 		for n=1,math.min(#(evaluated.matches or {}),30) do summary.matches[n]=evaluated.matches[n] end
 		if #(evaluated.matches or {})>30 then summary.matchesTruncated=true end
-		for n=1,math.min(#(evaluated.reasons or {}),10) do local reason=tostring(evaluated.reasons[n]);summary.reasons[n]=reason:sub(1,240);if #reason>240 then summary.reasonsTruncated=true end end
+		for n=1,math.min(#(evaluated.reasons or {}),10) do local reason=tostring(evaluated.reasons[n]);summary.reasons[n]=truncateUTF8(reason,240);if #reason>240 then summary.reasonsTruncated=true end end
 		if #(evaluated.reasons or {})>10 then summary.reasonsTruncated=true end
-		local baseType=type(sample.BaseType)=="string" and sample.BaseType:sub(1,240) or nil
+		local baseType=type(sample.BaseType)=="string" and truncateUTF8(sample.BaseType,240) or nil
 		results[#results+1]={index=i-1,baseType=baseType,baseTypeTruncated=baseType and #sample.BaseType>240 or nil,sample=includeSample and copyTable(sample) or nil,result=summary}
 		if checkpoint then checkpoint({completed=i-offset,total=last-offset}) end
 	end
@@ -422,7 +432,7 @@ function M.simulateScene(profile,kind,seed,areaLevel,itemLevel,offset,limit,chec
 		for i=1,math.min(#warnings,20) do
 			local warning=warnings[i];local entry={retry=warning.retry}
 			for _,key in ipairs({"origin","title","message"}) do
-				if type(warning[key])=="string" then entry[key]=warning[key]:sub(1,240);if #warning[key]>240 then entry.truncated=true end end
+				if type(warning[key])=="string" then entry[key]=truncateUTF8(warning[key],240);if #warning[key]>240 then entry.truncated=true end end
 			end
 			result.warnings[i]=entry
 		end
