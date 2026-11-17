@@ -405,7 +405,11 @@ function M.Open(build,source,layout,controller)
 		end
 		button(c,"hidden",16,242,left,showHidden and "Hidden drops: visible" or "Hidden drops: off",function() showHidden=not showHidden;scenePage=1;reopen() end)
 		button(c,"sampleEdit",16,282,100,"Configure",function() controller.EditSample(item,function(next) rememberSample(next);scenePage=1;compile();reopen() end) end)
-		button(c,"pasteDrop",124,282,100,"Paste item",function() rememberSample(require("Modules.LootFilterClipboard").parse(Paste(),settings.areaLevel));scenePage=1;compile();reopen() end)
+		button(c,"pasteDrop",124,282,100,"Paste item",function()
+			local ok,sample=pcall(function() return require("Modules.LootFilterClipboard").parse(Paste(),settings.areaLevel) end)
+			if not ok then main:OpenMessagePopup("Paste item",ui.errorText(sample));return end
+			rememberSample(sample);scenePage=1;compile();reopen()
+		end)
 		button(c,"sceneSettings",16,322,100,"Scene",function() require("Classes.LootFilterSceneControl").Open(settings,function(next) settings=next;reopen() end) end)
 		if savedSet then c.sceneSettings.tooltipText="Background settings apply here. Saved examples retain their recorded item and area levels." end
 		button(c,"sampleHistory",124,322,100,"History",function() local entries={};for i=#samples,1,-1 do local sample=samples[i];entries[#entries+1]={id=i,label=visual.sampleName(sample),details={"Item level: "..tostring(sample.ItemLevel or "unknown"),"Area level: "..tostring(sample.AreaLevel or "unknown"),"Missing properties remain unknown."},sample=sample} end
