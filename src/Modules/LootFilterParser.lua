@@ -149,6 +149,8 @@ function M.condition(c,item)
 		return nil,item.Identified==false and "Explicit modifiers are hidden on unidentified items" or "Supply identification state for explicit modifiers"
 	end
 	local value=item[c.keyword]
+	local partialExplicit=c.keyword=="HasExplicitMod" and value==nil and type(item.KnownExplicitMods)=="table"
+	if partialExplicit then value=item.KnownExplicitMods end
 	if c.keyword=="SocketGroup" and value==nil and tonumber(item.Sockets)==0 then value="0" end
 	if c.keyword=="LinkedSockets" then
 		local count=tonumber(item.Sockets);local groups=item.SocketGroup;local derived
@@ -268,6 +270,13 @@ function M.condition(c,item)
 			local found=op=="==" and tostring(entry)==values[i] or op~="==" and tostring(entry):lower():find(values[i]:lower(),1,true)~=nil
 			if found then count=count+1;break end
 		end end
+		if partialExplicit then
+			if minimum then
+				local first=compare(count,minimum,op);local atThreshold=compare(math.max(count,minimum),minimum,op);local above=compare(math.max(count,minimum)+1,minimum,op)
+				if first~=nil and first==atThreshold and first==above then return first end
+			elseif count>0 then return not negative end
+			return nil,"Copied modifier names may be incomplete"
+		end
 		if minimum then return compare(count,minimum,op) end
 		return negative and count==0 or not negative and count>0
 	end

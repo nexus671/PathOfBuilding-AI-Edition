@@ -12,6 +12,16 @@ describe("Build-owned filter collections",function()
 		assert.equal(12,#saved);assert.equal("Beach Map",saved[1].BaseType);assert.is_nil(saved[1].MapTier)
 		assert.equal("Breach Thread",saved[7].BaseType);assert.equal(76,saved[7].AreaLevel)
 	end)
+	it("preserves partial copied modifier evidence in saved examples",function()
+		local sample=require("Modules.LootFilterClipboard").parse('Item Class: Belts\nRarity: Rare\nTest Belt\nCord Belt\n--------\n{ Prefix Modifier "Hale" }\n+100 to maximum Life')
+		local p=collections.install(profile(),"sampleSets",{id="mods",title="Copied item",samples={sample}});build.savers.LootFilters:Upsert(p)
+		local xml=build:SaveDB("Copied item");loadBuildFromXML(xml,"Copied item")
+		local saved=build.savers.LootFilters.data.profiles[1].sampleSets[1].samples[1]
+		assert.same({"Hale"},saved.KnownExplicitMods);assert.is_nil(saved.HasExplicitMod)
+		local parser=require("Modules.LootFilterParser")
+		assert.equal("Hide",parser.simulate(parser.parse('Hide\n HasExplicitMod "Hale"\nShow'),saved).action)
+		assert.equal("unknown",parser.simulate(parser.parse('Hide\n HasExplicitMod "Absent"\nShow'),saved).status)
+	end)
 	it("keeps exact sample properties without filling missing fields or sharing mutable values",function()
 		local item={BaseType="Iron Hat",AreaLevel=12,HasInfluence={"Shaper"},Corrupted=false}
 		local p=collections.install(profile(),"sampleSets",{id="early",title="Early drops",samples={item}});item.HasInfluence[1]="Elder"

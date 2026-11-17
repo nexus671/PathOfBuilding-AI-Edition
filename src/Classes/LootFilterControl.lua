@@ -218,12 +218,14 @@ function M.EditSample(item,save)
 		if value~=previousBase then
 			for _,key in ipairs({"Class","DropLevel","Width","Height","BaseDefencePercentile","UnidentifiedItemTier","MemoryStrands","MapTier","SocketGroup","Sockets","SocketColours","LinkedSockets"}) do c[key]:SetText("") end
 			c.AlwaysShow:SelByValue("Unknown")
+			extra.KnownExplicitMods=nil
 			for _,key in ipairs(additionalSampleFields()) do extra[key]=nil end
 			previousBase=value
 		end
 	end
 	local previousRarity=c.Rarity.buf
 	c.Rarity.changeFunc=function(value)
+		if value:lower()~=previousRarity:lower() then extra.KnownExplicitMods=nil end
 		if value:lower()~=previousRarity:lower() then c.UnidentifiedItemTier:SetText("") end
 		if value:lower()=="unique" and previousRarity:lower()~="unique" then c.DropLevel:SetText("");c.BaseDefencePercentile:SetText("") end
 		previousRarity=value

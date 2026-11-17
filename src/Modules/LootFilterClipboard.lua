@@ -42,6 +42,16 @@ function M.parse(raw,area)
 		-- A marked implicit proves its presence; an absent marker may mean the
 		-- clipboard text is incomplete and cannot prove the opposite.
 		if line:match("%S.+ %(implicit%)%s*$") then item.HasImplicitMod=true end
+		-- Advanced item descriptions can identify some explicit modifier names.
+		-- Keep them separate from a complete list: the copy may be truncated.
+		if item.Identified and line:match("^%{%s*.-%}%s*$") then
+			local name=line:match('Modifier%s+"([^"]+)"')
+			if name and (line:find("Prefix Modifier",1,true) or line:find("Suffix Modifier",1,true)) then
+				assert(#name<=240,"Invalid clipboard modifier name")
+				item.KnownExplicitMods=item.KnownExplicitMods or {};item.KnownExplicitMods[#item.KnownExplicitMods+1]=name
+				assert(#item.KnownExplicitMods<=40,"Too many clipboard modifier names")
+			end
+		end
 		local strands=line:match("^Memory Strands: (%d+)$")
 		if strands then
 			strands=tonumber(strands);assert(strands<=100,"Invalid clipboard memory strands")
