@@ -67,6 +67,8 @@ describe("Linked planning tools",function()
 	it("uses only the selected Atlas effect for linked thread suggestions",function()
 		local atlas=require("Modules.AtlasPlanner");local node=atlas.tree("3.30.0-preview").nodes[54685]
 		local plan={id="choice",title="Choice",version="3.30.0-preview",budget=150,nodes={node.id},choices={{node=node.id,effect=node.variantEffects[1].effect}}}
+		local strategy=require("Modules.AtlasStrategy")
+		assert.equal("Threads",strategy.mechanic(strategy.selectedNode(plan,node)))
 		-- Isolate the chosen node so intermediate path nodes cannot add other mechanics.
 		build.savers.AtlasPlans.plans={plan}
 		local profile=filters.profile("choice-filter","Choice filter");local names={}
