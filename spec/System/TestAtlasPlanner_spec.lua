@@ -202,12 +202,19 @@ describe("Native Atlas planner", function()
 		assert.is_truthy(main.popups[1].controls.canvas)
 		controls=main.popups[1].controls
 		local imported=plan("3.29.1"); imported.notes="Imported strategy notes"
+		imported.avoided={atlas.tree(imported.version).nodes[atlas.tree(imported.version).start].links[1]}
 		local environment=getfenv(panel.Open); local paste=environment.Paste
 		environment.Paste=function() return atlas.export(imported) end
-		controls.page:SelByValue("Notes & sharing");controls.import:Click(); environment.Paste=paste
+		controls.page:SelByValue("Notes & sharing");assert.is_false(controls.targets.shown());controls.import:Click(); environment.Paste=paste
 		assert.are.equal(imported.notes,controls.notes.buf)
 		assert.are.equal("3.29.1",controls.canvas.tree.version)
-		controls.page:SelByValue("Tree");controls.undo:Click(); controls.canvas:Draw()
+		assert.same(imported.avoided,controls.canvas.avoided())
+		local copied;local copy=environment.Copy;environment.Copy=function(text) copied=text end;controls.copy:Click();environment.Copy=copy
+		assert.same(imported.avoided,atlas.import(copied).avoided)
+		controls.page:SelByValue("Tree");assert.is_true(controls.targets.shown());controls.undo:Click(); controls.canvas:Draw()
+		assert.same({},controls.canvas.avoided())
+		controls.redo:Click();assert.are.equal("3.29.1",controls.canvas.tree.version);assert.same(imported.avoided,controls.canvas.avoided())
+		controls.undo:Click();assert.are.equal("3.27.0",controls.canvas.tree.version);assert.same({},controls.canvas.avoided())
 		assert.are.equal("3.27.0",controls.canvas.tree.version)
 		assert.are.equal("Map sustain first",controls.notes.buf)
 	end)

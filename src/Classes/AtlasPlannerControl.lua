@@ -176,7 +176,7 @@ function Panel.Open(build,source,layout)
 	local function refresh(id)
 		if draft.avoided~=nil or #avoided>0 then draft.avoided=copyTable(avoided) end
 		if controls.canvas.tree.version ~= draft.version then
-			controls.canvas.tree=atlas.tree(draft.version);controls.canvas.art=require("Modules.AtlasArt").load(draft.version); controls.canvas:Fit(); avoided={}
+			controls.canvas.tree=atlas.tree(draft.version);controls.canvas.art=require("Modules.AtlasArt").load(draft.version); controls.canvas:Fit(); preferred=nil;controls.canvas.comparison=nil
 			controls.results:SetList({}); controls.matchCount.label="Search names and modifiers"
 			controls.avoid.label="Avoid selected"
 		end
@@ -407,7 +407,7 @@ function Panel.Open(build,source,layout)
 		end})
 	end)
 	controls.copy=button(16,height-104,120,"Copy plan",function() Copy(atlas.export(current())) end)
-	controls.import=button(148,height-104,120,"Paste plan",function() change(atlas.import(Paste(),draft.version,draft.id,controls.title.buf,tonumber(controls.budget.buf))); avoided={}; controls.avoid.label="Avoid selected"; controls.budget:SetText(tostring(draft.budget)); controls.version:SelByValue(draft.version); controls.canvas.tree=atlas.tree(draft.version);controls.canvas.art=require("Modules.AtlasArt").load(draft.version); controls.canvas:Fit() end)
+	controls.import=button(148,height-104,120,"Paste plan",function() change(atlas.import(Paste(),draft.version,draft.id,controls.title.buf,tonumber(controls.budget.buf))) end)
 	controls.url=button(280,height-104,120,"Official link",function() Copy(atlas.url(current())); main:OpenMessagePopup("Atlas link copied","Official URLs do not carry patch versions. Use Copy plan to preserve the exact version.") end)
 	controls.url.enabled=function() return #(draft.choices or {})==0 end
 	controls.url.tooltipFunc=function(tooltip) tooltip:AddLine(14,#(draft.choices or {})>0 and "Official links with effect choices are not verified. Use Copy plan to preserve them." or "Copy an official Atlas link. Copy plan also preserves the exact version.") end
@@ -418,7 +418,7 @@ function Panel.Open(build,source,layout)
 	controls.close=button(width-132,height-42,116,"Close",function() main:ClosePopup() end)
 	controls.page=new("DropDownControl"):DropDownControl(ui.anchor,{side,64,260,24},{"Tree","Notes & sharing"})
 	ui.label(controls,"notesLabel",16,88,"Farming goals, maps, supplies and strategy notes")
-	for _,key in ipairs({"canvas","strategySummary","search","find","results","mechanic","matchCount","details","allocate","remove","undo","redo","fit","help","avoid","clearAvoid","stats","browse","routes","tools"}) do
+	for _,key in ipairs({"canvas","strategySummary","search","find","results","mechanic","matchCount","details","allocate","remove","undo","redo","fit","help","avoid","clearAvoid","stats","browse","routes","targets","tools"}) do
 		controls[key].shown=function() return controls.page:GetSelValue()=="Tree" end
 	end
 	for _,key in ipairs({"notes","notesLabel","copy","import","url"}) do controls[key].shown=function() return controls.page:GetSelValue()=="Notes & sharing" end end
