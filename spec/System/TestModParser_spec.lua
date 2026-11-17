@@ -15,4 +15,13 @@ describe("TestModParser", function()
 		assert.are.equal(0, getMasterDistillerCritMultiplier(100, { [SkillType.Triggered] = true }, true))
 		assert.are.equal(0, getMasterDistillerCritMultiplier(100, { [SkillType.Channel] = true }, true))
 	end)
+	it("applies the shrine buff from Screams of the Desiccated only without flask effects", function()
+		local mods, extra = modLib.parseMod("Players have Diamond Shrine Buff while affected by no Flasks")
+		assert.is_nil(extra)
+		local modDB = new("ModDB"):ModDB(); modDB:AddList(mods)
+		assert.is_true(modDB:Flag(nil, "Condition:DiamondShrine"))
+		modDB.conditions.UsingFlask = true
+		local flag = modDB:Flag(nil, "Condition:DiamondShrine"); assert.is_falsy(flag)
+	end)
+
 end)

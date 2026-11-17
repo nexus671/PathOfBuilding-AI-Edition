@@ -18768,42 +18768,29 @@ c["Physical Damage of Enemies Hitting you is Unlucky"]={nil,"Physical Damage of 
 c["Physical Damage taken bypasses Energy Shield"]={{[1]={flags=0,keywordFlags=0,name="PhysicalEnergyShieldBypass",type="BASE",value=100}},nil}
 c["Physical Skills have 1% increased Duration per 12 Intelligence"]={{[1]={[1]={div=12,stat="Int",type="PerStat"},flags=0,keywordFlags=16,name="Duration",type="INC",value=1}},nil}
 c["Plague Bearer has 20% increased Maximum Plague Value"]={{}," Maximum Plague Value "}
-c["Players have +12% to all Elemental Resistances for each Empty White Socket"]={nil,"Players have +12% to all Elemental Resistances for each Empty White Socket "}
-c["Players have +12% to all Elemental Resistances for each Empty White Socket on any Equipped Item"]={nil,"Players have +12% to all Elemental Resistances for each Empty White Socket on any Equipped Item "}
-c["Players have +18% to all Elemental Resistances for each Empty White Socket"]={nil,"Players have +18% to all Elemental Resistances for each Empty White Socket "}
-c["Players have +18% to all Elemental Resistances for each Empty White Socket on any Equipped Item"]={nil,"Players have +18% to all Elemental Resistances for each Empty White Socket on any Equipped Item "}
-c["Players have +225 to Accuracy Rating for each Empty Green Socket on any Equipped Item"]={nil,"Players have +225 to Accuracy Rating for each Empty Green Socket on any Equipped Item "}
-c["Players have +225 to Accuracy Rating for each Empty Green Socket on any Equipped Item Players have +40 to maximum Mana for each Empty Blue Socket on any Equipped Item"]={nil,"Players have +225 to Accuracy Rating for each Empty Green Socket on any Equipped Item Players have +40 to maximum Mana for each Empty Blue Socket on any Equipped Item "}
-c["Players have +40 to maximum Life for each Empty Red Socket on any Equipped Item"]={nil,"Players have +40 to maximum Life for each Empty Red Socket on any Equipped Item "}
-c["Players have +40 to maximum Life for each Empty Red Socket on any Equipped Item Players have +225 to Accuracy Rating for each Empty Green Socket on any Equipped Item"]={nil,"Players have +40 to maximum Life for each Empty Red Socket on any Equipped Item Players have +225 to Accuracy Rating for each Empty Green Socket on any Equipped Item "}
-c["Players have +40 to maximum Mana for each Empty Blue Socket on any Equipped Item"]={nil,"Players have +40 to maximum Mana for each Empty Blue Socket on any Equipped Item "}
-c["Players have +40 to maximum Mana for each Empty Blue Socket on any Equipped Item Players have +18% to all Elemental Resistances for each Empty White Socket"]={nil,"Players have +40 to maximum Mana for each Empty Blue Socket on any Equipped Item Players have +18% to all Elemental Resistances for each Empty White Socket "}
-c["Players have Acceleration Shrine Buff while affected by no Flasks"]={nil,"Players have Acceleration Shrine Buff while affected by no Flasks "}
-c["Players have Acceleration Shrine Buff while affected by no Flasks Players have Brutal Shrine Buff while affected by no Flasks"]={nil,"Players have Acceleration Shrine Buff while affected by no Flasks Players have Brutal Shrine Buff while affected by no Flasks "}
-c["Players have Brutal Shrine Buff while affected by no Flasks"]={nil,"Players have Brutal Shrine Buff while affected by no Flasks "}
-c["Players have Brutal Shrine Buff while affected by no Flasks Players have Greater Freezing Shrine Buff while affected by no Flasks"]={nil,"Players have Brutal Shrine Buff while affected by no Flasks Players have Greater Freezing Shrine Buff while affected by no Flasks "}
-c["Players have Diamond Shrine Buff while affected by no Flasks"]={nil,"Players have Diamond Shrine Buff while affected by no Flasks "}
-c["Players have Diamond Shrine Buff while affected by no Flasks Players have Echoing Shrine Buff while affected by no Flasks"]={nil,"Players have Diamond Shrine Buff while affected by no Flasks Players have Echoing Shrine Buff while affected by no Flasks "}
-c["Players have Echoing Shrine Buff while affected by no Flasks"]={nil,"Players have Echoing Shrine Buff while affected by no Flasks "}
-c["Players have Echoing Shrine Buff while affected by no Flasks Players have Gloom Shrine Buff while affected by no Flasks"]={nil,"Players have Echoing Shrine Buff while affected by no Flasks Players have Gloom Shrine Buff while affected by no Flasks "}
-c["Players have Gloom Shrine Buff while affected by no Flasks"]={nil,"Players have Gloom Shrine Buff while affected by no Flasks "}
-c["Players have Gloom Shrine Buff while affected by no Flasks Players have Impenetrable Shrine Buff while affected by no Flasks"]={nil,"Players have Gloom Shrine Buff while affected by no Flasks Players have Impenetrable Shrine Buff while affected by no Flasks "}
-c["Players have Greater Freezing Shrine Buff while affected by no Flasks"]={nil,"Players have Greater Freezing Shrine Buff while affected by no Flasks "}
-c["Players have Greater Freezing Shrine Buff while affected by no Flasks 20% increased Effect of Shrine Buffs on you"]={nil,"Players have Greater Freezing Shrine Buff while affected by no Flasks 20% increased Effect of Shrine Buffs on you "}
-c["Players have Greater Shocking Shrine Buff while affected by no Flasks"]={nil,"Players have Greater Shocking Shrine Buff while affected by no Flasks "}
-c["Players have Greater Shocking Shrine Buff while affected by no Flasks 20% increased Effect of Shrine Buffs on you"]={nil,"Players have Greater Shocking Shrine Buff while affected by no Flasks 20% increased Effect of Shrine Buffs on you "}
-c["Players have Greater Skeletal Shrine Buff while affected by no Flasks"]={nil,"Players have Greater Skeletal Shrine Buff while affected by no Flasks "}
-c["Players have Greater Skeletal Shrine Buff while affected by no Flasks 20% increased Effect of Shrine Buffs on you"]={nil,"Players have Greater Skeletal Shrine Buff while affected by no Flasks 20% increased Effect of Shrine Buffs on you "}
-c["Players have Impenetrable Shrine Buff while affected by no Flasks"]={nil,"Players have Impenetrable Shrine Buff while affected by no Flasks "}
-c["Players have Impenetrable Shrine Buff while affected by no Flasks Players have Massive Shrine Buff while affected by no Flasks"]={nil,"Players have Impenetrable Shrine Buff while affected by no Flasks Players have Massive Shrine Buff while affected by no Flasks "}
-c["Players have Massive Shrine Buff while affected by no Flasks"]={nil,"Players have Massive Shrine Buff while affected by no Flasks "}
-c["Players have Massive Shrine Buff while affected by no Flasks Players have Replenishing Shrine Buff while affected by no Flasks"]={nil,"Players have Massive Shrine Buff while affected by no Flasks Players have Replenishing Shrine Buff while affected by no Flasks "}
-c["Players have Replenishing Shrine Buff while affected by no Flasks"]={nil,"Players have Replenishing Shrine Buff while affected by no Flasks "}
-c["Players have Replenishing Shrine Buff while affected by no Flasks Players have Resistance Shrine Buff while affected by no Flasks"]={nil,"Players have Replenishing Shrine Buff while affected by no Flasks Players have Resistance Shrine Buff while affected by no Flasks "}
-c["Players have Resistance Shrine Buff while affected by no Flasks"]={nil,"Players have Resistance Shrine Buff while affected by no Flasks "}
-c["Players have Resistance Shrine Buff while affected by no Flasks Players have Resonating Shrine Buff while affected by no Flasks"]={nil,"Players have Resistance Shrine Buff while affected by no Flasks Players have Resonating Shrine Buff while affected by no Flasks "}
-c["Players have Resonating Shrine Buff while affected by no Flasks"]={nil,"Players have Resonating Shrine Buff while affected by no Flasks "}
-c["Players have Resonating Shrine Buff while affected by no Flasks Players have Greater Shocking Shrine Buff while affected by no Flasks"]={nil,"Players have Resonating Shrine Buff while affected by no Flasks Players have Greater Shocking Shrine Buff while affected by no Flasks "}
+c["Players have +12% to all Elemental Resistances for each Empty White Socket"]={nil,"+12% to all Elemental Resistances for each Empty White Socket "}
+c["Players have +12% to all Elemental Resistances for each Empty White Socket on any Equipped Item"]={nil,"+12% to all Elemental Resistances  "}
+c["Players have +18% to all Elemental Resistances for each Empty White Socket"]={nil,"+18% to all Elemental Resistances for each Empty White Socket "}
+c["Players have +18% to all Elemental Resistances for each Empty White Socket on any Equipped Item"]={nil,"+18% to all Elemental Resistances  "}
+c["Players have +225 to Accuracy Rating for each Empty Green Socket on any Equipped Item"]={nil,"+225 to Accuracy Rating  "}
+c["Players have +225 to Accuracy Rating for each Empty Green Socket on any Equipped Item Players have +40 to maximum Mana for each Empty Blue Socket on any Equipped Item"]={nil,"+225 to Accuracy Rating  Players have +40 to maximum Mana  "}
+c["Players have +40 to maximum Life for each Empty Red Socket on any Equipped Item"]={nil,"+40 to maximum Life  "}
+c["Players have +40 to maximum Life for each Empty Red Socket on any Equipped Item Players have +225 to Accuracy Rating for each Empty Green Socket on any Equipped Item"]={nil,"+40 to maximum Life  Players have +225 to Accuracy Rating  "}
+c["Players have +40 to maximum Mana for each Empty Blue Socket on any Equipped Item"]={nil,"+40 to maximum Mana  "}
+c["Players have +40 to maximum Mana for each Empty Blue Socket on any Equipped Item Players have +18% to all Elemental Resistances for each Empty White Socket"]={nil,"+40 to maximum Mana  Players have +18% to all Elemental Resistances for each Empty White Socket "}
+c["Players have Acceleration Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:AccelerationShrine",type="FLAG",value=true}},nil}
+c["Players have Brutal Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:BrutalShrine",type="FLAG",value=true}},nil}
+c["Players have Diamond Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:DiamondShrine",type="FLAG",value=true}},nil}
+c["Players have Echoing Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:EchoingShrine",type="FLAG",value=true}},nil}
+c["Players have Gloom Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:GloomShrine",type="FLAG",value=true}},nil}
+c["Players have Greater Freezing Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:GreaterFreezingShrine",type="FLAG",value=true}},nil}
+c["Players have Greater Shocking Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:GreaterShockingShrine",type="FLAG",value=true}},nil}
+c["Players have Greater Skeletal Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:GreaterSkeletalShrine",type="FLAG",value=true}},nil}
+c["Players have Impenetrable Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:ImpenetrableShrine",type="FLAG",value=true}},nil}
+c["Players have Massive Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:MassiveShrine",type="FLAG",value=true}},nil}
+c["Players have Replenishing Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:ReplenishingShrine",type="FLAG",value=true}},nil}
+c["Players have Resistance Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:ResistanceShrine",type="FLAG",value=true}},nil}
+c["Players have Resonating Shrine Buff while affected by no Flasks"]={{[1]={[1]={neg=true,type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Condition:ResonatingShrine",type="FLAG",value=true}},nil}
 c["Point Blank"]={{[1]={flags=0,keywordFlags=0,name="Keystone",type="LIST",value="Point Blank"},[2]={flags=0,keywordFlags=0,name="Condition:HavePointBlank",type="FLAG",value=true}},nil}
 c["Poison Cursed Enemies on hit"]={{[1]={[1]={actor="enemy",type="ActorCondition",var="Cursed"},flags=0,keywordFlags=0,name="PoisonChance",type="BASE",value=100}},nil}
 c["Poison you inflict is Reflected to you if you have fewer than 100 Poisons on you"]={nil,"Poison you inflict is Reflected to you if you have fewer than 100 Poisons on you "}
@@ -20007,7 +19994,6 @@ c["Restores Ward on use 10% reduced Charges per use"]={nil,"Restores Ward on use
 c["Restores Ward on use 30% increased Charge Recovery"]={nil,"Restores Ward on use 30% increased Charge Recovery "}
 c["Restores Ward on use 40% increased Charges per use"]={nil,"Restores Ward on use 40% increased Charges per use "}
 c["Restores Ward on use 40% increased Duration"]={nil,"Restores Ward on use 40% increased Duration "}
-end)();(function()
 c["Retaliation Skills Debilitate Enemies for 3 seconds on Hit"]={{[1]={flags=0,keywordFlags=0,name="DebilitateChance",type="BASE",value=100}},nil}
 c["Retaliation Skills Fortify on Melee Hit"]={nil,"Retaliation Skills Fortify on Melee Hit "}
 c["Retaliation Skills become Usable for 100% longer"]={nil,"Retaliation Skills become Usable for 100% longer "}
@@ -20021,6 +20007,7 @@ c["Retaliation Skills deal 12% increased Damage"]={{[1]={[1]={skillType=121,type
 c["Retaliation Skills deal 15% increased Damage"]={{[1]={[1]={skillType=121,type="SkillType"},flags=0,keywordFlags=0,name="Damage",type="INC",value=15}},nil}
 c["Retaliation Skills deal 16% increased Damage"]={{[1]={[1]={skillType=121,type="SkillType"},flags=0,keywordFlags=0,name="Damage",type="INC",value=16}},nil}
 c["Retaliation Skills deal 20% increased Damage"]={{[1]={[1]={skillType=121,type="SkillType"},flags=0,keywordFlags=0,name="Damage",type="INC",value=20}},nil}
+end)();(function()
 c["Retaliation Skills deal 30% increased Damage"]={{[1]={[1]={skillType=121,type="SkillType"},flags=0,keywordFlags=0,name="Damage",type="INC",value=30}},nil}
 c["Retaliation Skills deal 75% increased Damage"]={{[1]={[1]={skillType=121,type="SkillType"},flags=0,keywordFlags=0,name="Damage",type="INC",value=75}},nil}
 c["Retaliation Skills have 10% reduced Enemy Stun Threshold"]={{[1]={[1]={skillType=121,type="SkillType"},flags=0,keywordFlags=0,name="EnemyStunThreshold",type="INC",value=-10}},nil}

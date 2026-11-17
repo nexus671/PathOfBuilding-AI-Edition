@@ -935,4 +935,18 @@ describe("TestSkills", function()
 			assert.is_nil(build.calcsTab.mainEnv.player.modDB.multipliers["Cruelty"])
 		end
 	end)
+	it("makes Excommunicate available when supporting a melee attack", function()
+		build.itemsTab:CreateDisplayItemFromRaw("Rarity: NORMAL\nRusted Sword\nItem Level: 86")
+		build.itemsTab:AddDisplayItem()
+		build.skillsTab:PasteSocketGroup("Heavy Strike 20/0  1\nExcommunicate 20/0  1\n")
+		runCallback("OnFrame")
+		local skill = build.calcsTab.mainEnv.player.mainSkill
+		assert.is_truthy(skill.skillFlags["Condition:CanExcommunicate"] or skill.skillModList:Flag(nil, "Condition:CanExcommunicate"))
+		build.skillsTab.socketGroupList[1].gemList[2].enabled = false
+		build.buildFlag = true;runCallback("OnFrame")
+		skill = build.calcsTab.mainEnv.player.mainSkill
+		local flag = skill.skillFlags["Condition:CanExcommunicate"] or skill.skillModList:Flag(nil, "Condition:CanExcommunicate")
+		assert.is_falsy(flag)
+	end)
+
 end)
