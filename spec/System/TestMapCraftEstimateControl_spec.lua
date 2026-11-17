@@ -19,4 +19,12 @@ describe("Map reroll estimate control",function()
 		local controls=require("Classes.MapCraftEstimateControl").Open(build,{state=state,avoid={"MapMonsterAreaOfEffectMapWorlds"},apply=function() error("unexpected apply") end})
 		controls.run:Click();assert.is_truthy(tasks.job);controls.close:Click();assert.is_nil(tasks.job)
 	end)
+	it("adds and removes a user-chosen wanted alternative",function()
+		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
+		local controls=require("Classes.MapCraftEstimateControl").Open(build,{state=state,wanted={"MapContainsMirageWorlds","MapContainsWildwoodWorlds"},apply=function() end})
+		controls.targetGroup:SelByValue(2,"val");controls.addAlternative:Click();local picker=main.popups[1].controls;picker.search:SetText("MapContainsDeliriumMirrorWorlds",true);assert.is_true(picker.choose:IsEnabled());picker.choose:Click()
+		local text="";for _,line in ipairs(controls.wanted.list) do text=text..StripEscapes(line[1] or "").."\n" end
+		assert.matches("Mirror of Delirium",text);assert.matches("Viridian Wildwood",text);assert.is_true(controls.removeAlternative:IsEnabled());controls.removeAlternative:Click()
+		text="";for _,line in ipairs(controls.wanted.list) do text=text..StripEscapes(line[1] or "").."\n" end;assert.is_nil(text:find("Mirror of Delirium",1,true));assert.matches("Viridian Wildwood",text)
+	end)
 end)

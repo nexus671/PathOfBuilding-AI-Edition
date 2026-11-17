@@ -16,7 +16,15 @@ function M.run(state,options,checkpoint)
 	assert(type(state)=="table" and type(options)=="table","Invalid map estimate")
 	local rarity=state.rarity;assert(rarity=="magic" or rarity=="rare","Choose a magic or rare map to reroll")
 	local wanted=options.wanted or {};local avoid=options.avoid or {};local must=ids(wanted,6,"wanted modifier");local forbidden=ids(avoid,100,"avoided modifier")
-	assert(#wanted+#avoid>0,"Choose at least one wanted or avoided modifier")
+	local alternatives=options.wantedGroups or {};assert(type(alternatives)=="table" and #alternatives+#wanted<=6,"Use at most six wanted groups")
+	for key in pairs(alternatives) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=#alternatives,"Invalid wanted groups") end
+	local groups,total={},#wanted;for _,id in ipairs(wanted) do groups[#groups+1]={id} end
+	for _,group in ipairs(alternatives) do
+		local members=ids(group,100,"wanted alternative");assert(#group>0,"Wanted groups cannot be empty");total=total+#group;assert(total<=200,"Use at most 200 wanted alternatives")
+		for id in pairs(members) do assert(not must[id],"Wanted groups cannot share a modifier");must[id]=true end
+		groups[#groups+1]=copyTable(group)
+	end
+	assert(#groups+#avoid>0,"Choose at least one wanted or avoided modifier")
 	for id in pairs(must) do assert(not forbidden[id],"A modifier cannot be both wanted and avoided") end
 	local trials=integer(options.trials,1,1000,"trial count");local maxAttempts=integer(options.maxAttempts,1,1000,"attempt limit")
 	assert(trials*maxAttempts<=20000,"Use at most 20,000 total simulated attempts")
@@ -26,13 +34,18 @@ function M.run(state,options,checkpoint)
 	local function slice() if checkpoint then checkpoint(progress) end end
 	-- The ordered wanted list must itself be a supported ordinary-map state.
 	local test=copyTable(base);test.selected=copyTable(wanted);currency.perform(test,action,seed,slice,true)
+	if #alternatives>0 then
+		local eligible,offset={},0
+		repeat local page=map.inspect(base.baseId,base.tier,base.itemLevel,{},"",offset,100,slice,rarity);for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
+		for _,group in ipairs(alternatives) do for _,id in ipairs(group) do assert(eligible[id],"A wanted alternative is not eligible for this modeled map") end end
+	end
 	local successes,totalAttempts=0,0;local sample,successfulAttempts;local histogram={}
 	for trial=1,trials do
 		for attempt=1,maxAttempts do
 			totalAttempts=totalAttempts+1;progress.trial=trial;progress.attempt=attempt;progress.attempts=totalAttempts;local attemptSeed=encounter.seed(seed,totalAttempts,43)
 			local result=currency.perform(base,action,attemptSeed,slice,true);local found={}
 			for _,id in ipairs(result.state.selected) do found[id]=true end
-			local match=true;for id in pairs(must) do if not found[id] then match=false;break end end
+			local match=true;for _,group in ipairs(groups) do local any=false;for _,id in ipairs(group) do if found[id] then any=true;break end end;if not any then match=false;break end end
 			if match then for id in pairs(forbidden) do if found[id] then match=false;break end end end
 			if match then
 				successes=successes+1;histogram[attempt]=(histogram[attempt] or 0)+1
@@ -47,8 +60,8 @@ function M.run(state,options,checkpoint)
 	for attempt,count in pairs(histogram) do distribution[#distribution+1]={attempt=attempt,count=count} end
 	table.sort(distribution,function(a,b) return a.attempt<b.attempt end)
 	return {trials=trials,maxAttempts=maxAttempts,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,
-		attempts=totalAttempts,meanAttempts=totalAttempts/trials,action=action,seed=seed,wanted=copyTable(wanted),avoid=copyTable(avoid),
+		attempts=totalAttempts,meanAttempts=totalAttempts/trials,action=action,seed=seed,wanted=copyTable(wanted),wantedGroups=copyTable(alternatives),avoid=copyTable(avoid),
 		successDistribution=distribution,sampleSuccess=sample and sample.state or nil,sampleSummary=sample and sample.summary or nil,sampleAttempts=successfulAttempts,
-		note="Chance of meeting all wanted and no avoided modifiers within the attempt limit. Wilson interval measures sampling uncertainty only. Map roll counts, weights, stat distributions and some restrictions are unverified estimates; no prices or game odds are inferred."}
+		note="Chance of meeting every wanted group (at least one alternative per group) and no avoided modifiers within the attempt limit. Wilson interval measures sampling uncertainty only. Map roll counts, weights, stat distributions and some restrictions are unverified estimates; no prices or game odds are inferred."}
 end
 return M

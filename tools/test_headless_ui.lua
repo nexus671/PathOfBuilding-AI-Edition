@@ -83,7 +83,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	do local mapList=main.popups[1].controls.list;local lx,ly=mapList:GetPos();ui:clickAt(lx+12,ly+10) end
 	assert(main.popups[1].controls.add:IsEnabled(),"Map modifier selection did not enable Add")
 	ui:click("add");assert(main.popups[1].controls.remove:IsEnabled(),"Map modifier was not staged");frame("map-modifier-staged")
-	ui:click("estimate");frame("map-reroll-estimate");ui:click("addAvoid");ui:text("search","MapMonsterColdDamageMapWorlds");frame("map-reroll-avoid");ui:click("choose")
+	ui:click("estimate");frame("map-reroll-estimate");ui:click("addAlternative");ui:text("search","MapMonsterFireDamageMapWorlds");frame("map-reroll-alternative");ui:click("choose")
+	ui:click("addAvoid");ui:text("search","MapMonsterColdDamageMapWorlds");frame("map-reroll-avoid");ui:click("choose")
 	ui:text("trials","1");ui:text("attempts","1");assert(main.popups[1].controls.trials.buf=="1" and main.popups[1].controls.attempts.buf=="1","Map estimate fields did not accept numeric input");ui:click("run")
 	do local tasks=require("Modules.CraftingTasks");for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end;assert(not tasks.job,"Map reroll estimate did not finish") end
 	assert((main.popups[1].controls.report.list[1][1] or ""):find("succeeded",1,true),"Map reroll estimate did not report results");frame("map-reroll-result");ui:click("close")

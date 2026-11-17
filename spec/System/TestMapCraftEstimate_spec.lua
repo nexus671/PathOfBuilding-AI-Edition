@@ -21,12 +21,29 @@ describe("Map reroll estimates",function()
 		assert.is_truthy(result.sampleSuccess);local seen={};for _,id in ipairs(result.sampleSuccess.selected) do seen[id]=true end
 		assert.is_true(seen[wanted]);assert.is_nil(seen[avoid]);assert.is_true(result.sampleAttempts<=4)
 	end)
+	it("accepts any explicit alternative within a wanted group",function()
+		local a,b="MapContainsMirageWorlds","MapContainsWildwoodWorlds"
+		local result=estimate.run(state,{wantedGroups={{a,b}},trials=5,maxAttempts=4,seed=77})
+		assert.same({{a,b}},result.wantedGroups);assert.is_truthy(result.sampleSuccess)
+		local found={};for _,id in ipairs(result.sampleSuccess.selected) do found[id]=true end
+		assert.is_true((found[a] and not found[b]) or (found[b] and not found[a]))
+	end)
+	it("requires every wanted group rather than any group",function()
+		local low=copyTable(state);low.tier=5;low.itemLevel=68
+		local fire,cold="MapMonsterFireDamageMapWorlds","MapMonsterColdDamageMapWorlds"
+		local one=estimate.run(low,{wantedGroups={{fire}},trials=10,maxAttempts=4,seed=77})
+		local both=estimate.run(low,{wantedGroups={{fire},{cold}},trials=10,maxAttempts=4,seed=77})
+		assert.is_true(one.successes>0);assert.equal(0,both.successes)
+	end)
 	it("rejects contradictory, ineligible and unbounded requests",function()
 		local options={wanted={"MapMonsterAreaOfEffectMapWorlds"},avoid={},trials=1,maxAttempts=1,seed=42}
 		assert.has_error(function() estimate.run(state,options) end)
 		assert.has_error(function() estimate.run(state,{wanted={},avoid={},trials=1,maxAttempts=1,seed=1}) end)
 		assert.has_error(function() estimate.run(state,{wanted={},avoid={"unknown"},trials=1,maxAttempts=1,seed=1}) end)
 		assert.has_error(function() estimate.run(state,{wanted={"MapContainsMirageWorlds"},avoid={"MapContainsMirageWorlds"},trials=1,maxAttempts=1,seed=1}) end)
+		assert.has_error(function() estimate.run(state,{wanted={},wantedGroups={{}},avoid={},trials=1,maxAttempts=1,seed=1}) end)
+		assert.has_error(function() estimate.run(state,{wanted={"MapContainsMirageWorlds"},wantedGroups={{"MapContainsMirageWorlds"}},avoid={},trials=1,maxAttempts=1,seed=1}) end)
+		assert.has_error(function() estimate.run(state,{wanted={},wantedGroups={{"MapContainsMirageWorlds"}},avoid={"MapContainsMirageWorlds"},trials=1,maxAttempts=1,seed=1}) end)
 		assert.has_error(function() estimate.run(state,{wanted={},avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1000,maxAttempts=21,seed=1}) end)
 	end)
 end)
