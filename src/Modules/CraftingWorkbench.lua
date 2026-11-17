@@ -223,8 +223,12 @@ end
 function M.available(method,state,model)
 	return require("Modules.CraftingAvailability").check(method,state,model)
 end
-function M.hint(method,state,model)
+function M.hint(method,state,model,craft)
 	local available,reason=M.available(method,state,model)
+	if available and method=="ducat_kishara" then
+		local configuration=simulator.configurationReason(model,state,craft or {method=method})
+		if configuration then return configuration end
+	end
 	if available and method=="vaal" and model.item.type=="Flask" then return "Changes quality by -10 to +10. Equal outcome weights are assumed, not verified." end
 	if available and method=="vaal" and (model.item.type=="Jewel" and model.item.base.subType=="Abyss" or model.item.clusterJewel) then return "Unique outcome treated as no change. Branch odds and rare modifier counts are unverified." end
 	if available and method=="vaal" and require("Modules.CraftingSimulator").socketLimit(model,state)>0 then return "Rare corruption can reroll sockets and links in game; this model leaves them unchanged." end

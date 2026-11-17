@@ -144,7 +144,7 @@ function Panel.Open(build,project,layout)
 		if workingWarning or savedWarning then message=controls.page and controls.page:GetSelValue()=="Simulate recipe" and "Implicit target unavailable; details below." or "Implicit target unavailable; see Simulate tab." end
 		controls.intro.label="^7"..ui.fit(message,leftWidth,14)
 		if controls.actionHint and controls.actionHint.list then
-			local hint=workbench.hint(controls.method:GetSelValueByKey("val"),state,model)
+			local hint=workbench.hint(controls.method:GetSelValueByKey("val"),state,model,action and action())
 			local selected=controls.option and controls.option:GetSelValue()
 			local id=selected and selected.action and selected.action.modId
 			if selected and selected.action and selected.action.essenceId then
@@ -683,13 +683,17 @@ function Panel.Open(build,project,layout)
 		local current=recipe and (recipe.initialState or model.initial) or state
 		return simulator.implicitTargetReason(simulator.context(model,current),current,recipe and recipe.targets or targets)
 	end
-	local function actionConfigured() return controls.method:GetSelValueByKey("val")~="gwennen" or configured.gwennen~=nil end
+	local function actionConfigurationReason()
+		if controls.method:GetSelValueByKey("val")=="gwennen" and not configured.gwennen then return "Configure an observed Gwennen pair in Settings." end
+		return simulator.configurationReason(model,state,action())
+	end
+	local function actionConfigured() return actionConfigurationReason()==nil end
 	local function missingTargets() return #targets==0 and not (requirements and next(requirements)) end
 	local noTargets="Choose a target modifier or item condition first."
 	local busy="Finish or cancel the running calculation first."
 	controls.simulate.enabled=function() return actionConfigured() and not tasks.job and not targetReason() and (#targets>0 or requirements and next(requirements)~=nil) end
 	controls.simulate.tooltipText=function()
-		local message=not actionConfigured() and "Configure an observed Gwennen pair in Settings." or tasks.job and busy or targetReason() or missingTargets() and noTargets
+		local message=actionConfigurationReason() or tasks.job and busy or targetReason() or missingTargets() and noTargets
 		if message then return "Selected action: "..actionName().."\n"..message end
 		local available,reason=workbench.available(controls.method:GetSelValueByKey("val"),state,model)
 		return "Selected action: "..actionName().."\n"..(available and "Simulate from the working item using the chosen target modifiers or item conditions." or reason.." The simulation can still succeed without an action if the item already meets the goal.")
@@ -711,7 +715,7 @@ function Panel.Open(build,project,layout)
 	controls.runRecipe.tooltipText=function() return tasks.job and busy or not draft.nativeRecipe and "Save a recipe in this project first." or targetReason(true) or "Run the project's saved steps from the original starting item, with the saved recipe's targets." end
 	controls.exact.enabled=function() return actionConfigured() and not tasks.job and not targetReason() and (#targets>0 or requirements~=nil and next(requirements)~=nil) and workbench.available(controls.method:GetSelValueByKey("val"),state,model) end
 	controls.exact.tooltipText=function()
-		if not actionConfigured() then return "Configure an observed Gwennen pair in Settings." end
+		local configuration=actionConfigurationReason();if configuration then return configuration end
 		if tasks.job then return "Finish or cancel the running calculation first." end
 		if #targets==0 and not (requirements and next(requirements)) then return "Choose a target modifier or item condition before calculating." end
 		if targetReason() then return targetReason() end
@@ -770,7 +774,7 @@ function Panel.Open(build,project,layout)
 	controls.option.shown=function() return crafting() and #controls.option.list>0 end
 	controls.optionLabel.shown=controls.option.shown
 	controls.apply.enabled=function() return actionConfigured() and workbench.available(controls.method:GetSelValueByKey("val"),state,model) end
-	controls.apply.tooltipText=function() return not actionConfigured() and "Configure an observed Gwennen pair in Settings." or workbench.hint(controls.method:GetSelValueByKey("val"),state,model) end
+	controls.apply.tooltipText=function() return actionConfigurationReason() or workbench.hint(controls.method:GetSelValueByKey("val"),state,model,action()) end
 	controls.apply.height=32;controls.undo.height=32
 	controls.apply.y=function() return #controls.option.list>0 and 370 or 320 end;controls.undo.y=controls.apply.y
 	controls.settings.y=function() return controls.apply:GetProperty("y")+44 end;controls.history.y=controls.settings.y
@@ -838,7 +842,7 @@ function Panel.Open(build,project,layout)
 	controls.keepWorking.shown=function() return require("Modules.CraftingTasks").job==nil end
 	ui.styleButton(controls.keepWorking,"primary")
 	paletteView=require("Modules.CraftingPalette").new(controls,leftWidth,height,{current=function() return controls.method:GetSelValueByKey("val") end,favorites=favorites,restore=restored and restored.palette,
-		shown=function() return controls.page:GetSelValue()=="Emulate item" and paletteOpen end,available=function(method) return workbench.available(method,state,model) end,hint=function(method) return workbench.hint(method,state,model) end,
+		shown=function() return controls.page:GetSelValue()=="Emulate item" and paletteOpen end,available=function(method) return workbench.available(method,state,model) end,hint=function(method) return workbench.hint(method,state,model,configured[method]) end,
 		choose=chooseMethod,close=function() paletteOpen=false;refresh() end})
 	ui.label(controls,"affixHeading",16,96,"Modifier details",20)
 	controls.affixFacts=new("TextListControl"):TextListControl(ui.anchor,{16,128,leftWidth,height-290},nil,{})

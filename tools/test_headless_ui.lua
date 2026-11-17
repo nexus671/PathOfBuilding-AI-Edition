@@ -459,6 +459,16 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("paletteUse");ui:click("item");assert(main.popups[1].controls.intro.label:find("Applied Bestiary: maximum links",1,true));frame("crafting-beast-linked");ui:click("close")
 	end
 	do
+		local raw="Rarity: NORMAL\nPrismatic Tincture\nItem Level: 86";local sim=require("Modules.CraftingSimulator")
+		local state=sim.perform(raw,{method="transmute"},1).state
+		require("Classes.CraftingSimulatorControl").Open(build,{id="kishara-profile-ui",title="Tincture",slot="Tincture 1",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(state)})
+		ui:click("settings");ui:text("paletteSearch","Kishara");ui:click("paletteUse")
+		assert(not main.popups[1].controls.apply:IsEnabled(),"Kishara allowed without its missing profile")
+		assert(main.popups[1].controls.apply:GetProperty("tooltipText"):find("observed override",1,true),"Missing profile lacks an explanation");frame("crafting-kishara-profile-required")
+		ui:click("tab_settings");ui:click("allflame");ui:choose("mode","Observed override");ui:text("outcomes","1");ui:text("gainMin","0");ui:text("gainMax","0");ui:text("sulphur","0");ui:click("use")
+		assert(main.popups[1].controls.apply:IsEnabled(),"Observed profile did not enable Kishara");ui:click("close")
+	end
+	do
 		local raw="Rarity: RARE\nExample\nIron Hat\nItem Level: 86"
 		require("Classes.CraftingSimulatorControl").Open(build,{id="gwennen-ui",title="Gwennen pair",slot="Helmet",startingItem=raw,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch","Gwennen");ui:click("paletteUse");assert(not main.popups[1].controls.apply:IsEnabled(),"An unconfigured Gwennen pair could be applied")

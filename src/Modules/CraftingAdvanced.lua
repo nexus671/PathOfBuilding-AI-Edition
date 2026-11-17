@@ -1081,7 +1081,8 @@ function A.extend(M,api)
 		local available=require("Modules.CraftingAvailability").check
 		result.methodAvailability={};for _,method in ipairs(M.methods) do
 			local allowed,reason=available(method,state,model)
-			result.methodAvailability[#result.methodAvailability+1]={method=method,label=M.labels[method],available=allowed,unavailableReason=not allowed and reason or nil}
+			local configuration=allowed and M.configurationReason and M.configurationReason(model,state,{method=method})
+			result.methodAvailability[#result.methodAvailability+1]={method=method,label=M.labels[method],available=allowed,unavailableReason=not allowed and reason or nil,configurationRequired=configuration}
 		end
 		result.methodAvailabilityNote="Availability checks general item prerequisites; individual options and outcomes may have further restrictions."
 		for _,catalog in ipairs({{method="bench",rows=result.bench},{method="essence",rows=result.essences}}) do

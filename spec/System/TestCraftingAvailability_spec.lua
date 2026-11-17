@@ -79,4 +79,23 @@ describe("Crafting action preconditions",function()
 		local art=require("Modules.CraftingWorkbench");local path=art.icon("quality",{},model);local file=assert(io.open("Assets/Crafting/currencies.json"));local manifest=assert(require("dkjson").decode(file:read("*a")));file:close();local expected
 		for _,entry in pairs(manifest.items) do if entry.name=="Glassblower's Bauble" then expected=entry.path end end;assert.is_truthy(expected);assert.equal(expected,path)
 	end)
+	it("explains missing automatic Allflame data and accepts an observed override",function()
+		local raw="Rarity: NORMAL\nPrismatic Tincture\nItem Level: 86";local model=sim.model(raw)
+		local state=sim.perform(raw,{method="transmute"},1).state
+		local action={method="ducat_kishara"};local reason=sim.configurationReason(model,state,action)
+		assert.matches("observed override",reason)
+		local catalog=sim.catalog(raw,"",5,state);local entry
+		for _,row in ipairs(catalog.methodAvailability) do if row.method==action.method then entry=row end end
+		assert.is_true(entry.available);assert.equal(reason,entry.configurationRequired)
+		local project={id="kishara-tincture",title="Tincture",slot="Tincture 1",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(state)}
+		local controls=require("Classes.CraftingSimulatorControl").Open(build,project)
+		controls.method:SelByValue(action.method,"val");controls.method.selFunc()
+		assert.is_false(controls.apply:IsEnabled());assert.matches("observed override",controls.apply.tooltipText())
+		controls.page:SelByValue("Craft settings");controls.page.selFunc();controls.allflame:Click()
+		local settings=main.popups[1].controls;settings.mode:SelByValue("Observed override")
+		settings.outcomes:SetText("1");settings.gainMin:SetText("0");settings.gainMax:SetText("0");settings.sulphur:SetText("0");settings.use:Click()
+		assert.is_true(controls.apply:IsEnabled());assert.not_matches("observed override",controls.apply.tooltipText())
+		controls.page:SelByValue("Emulate item");controls.page.selFunc();controls.apply:Click();assert.is_true(controls.undo:IsEnabled());main.popups={}
+	end)
+
 end)

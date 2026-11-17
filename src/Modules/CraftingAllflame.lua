@@ -50,6 +50,12 @@ function F.extend(M,A,api)
 		result.currency=id;result.itemClass=class;result.upgradeTier=selected.tier;result.dataPatch=data.patch
 		return result
 	end
+	function M.configurationReason(model,state,craft)
+		if craft.method=="ducat_kishara" or craft.method=="ducat_katakohi" or craft.allflame then
+			local ok=pcall(M.allflameProfile,model,state,craft)
+			if not ok then return "No automatic Allflame profile is available for this action and item. Configure an observed override in Allflame settings." end
+		end
+	end
 	function M.model(raw)
 		assert(type(raw) == "string" and #raw <= 24000,"Invalid starting item")
 		local value=tonumber(raw:match("\nIntangibility: (%d+)%%?"))

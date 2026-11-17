@@ -244,6 +244,13 @@ async function main(){
   assert.equal(ukatoa.nativeCrafting.state.implicits.length,1);assert.equal(ukatoa.nativeCrafting.warnings[0].code,'ukatoa_assumptions');
   const ukatoaAfter=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ukatoaRaw,initialState:ukatoa.nativeCrafting.state,limit:5},'inspected');
   assert.equal(ukatoaAfter.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='ducat_ukatoa').available,false);
+  const tinctureRaw='Rarity: NORMAL\nPrismatic Tincture\nItem Level: 86';
+  const tincture=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:tinctureRaw,action:{method:'transmute'},seed:1},'crafted');
+  const tinctureInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:tinctureRaw,initialState:tincture.nativeCrafting.state,limit:5},'inspected');
+  const kishara=tinctureInspection.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='ducat_kishara');
+  assert.equal(kishara.available,true);assert.match(kishara.configurationRequired,/observed override/);
+  const overrideKishara=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:tinctureRaw,initialState:tincture.nativeCrafting.state,action:{method:'ducat_kishara',allflame:{outcomes:1,gainMin:0,gainMax:0,sulphur:0}},seed:1},'crafted');
+  assert.equal(overrideKishara.nativeCrafting.state.affixes.length,1);
   const talismanRaw='Rarity: NORMAL\nChieftain Talisman\nItem Level: 86';
   const rareTalisman=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:talismanRaw,action:{method:'alchemy'},seed:1},'crafted');
   const talismanImprint=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:talismanRaw,initialState:rareTalisman.nativeCrafting.state,action:{method:'beast_talisman_imprint'},seed:1},'crafted');
