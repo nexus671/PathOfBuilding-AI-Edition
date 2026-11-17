@@ -208,10 +208,11 @@ function M.EditSample(item,save)
 			c[key]=new("DropDownControl"):DropDownControl(ui.anchor,{x,y+18,fieldWidth-32,24},{"Unknown","Yes","No"})
 			c[key]:SelByValue(value==nil and "Unknown" or value and "Yes" or "No")
 		else c[key]=new("EditControl"):EditControl(ui.anchor,{x,y+18,fieldWidth-32,24},tostring(value==nil and "" or value),nil,nil,240) end
-		if key=="HasExplicitMod" then c[key].tooltipText='Enter quoted modifier names. Leave blank if unknown; enter [] for a known empty list.' end
+		if key=="HasExplicitMod" then c[key].tooltipText='Enter quoted modifier names, or [] for a known empty list. Editing this field clears names inferred from pasted text.' end
 		if key=="SocketGroup" then c[key].tooltipText='Enter linked groups, 0 for no sockets, or leave blank if unknown.' end
 		if key=="DropLevel" or key=="Width" or key=="Height" or key=="BaseDefencePercentile" or key=="MemoryStrands" or key=="UnidentifiedItemTier" then c[key].tooltipText="Leave blank if this property is unknown." end
 	end
+	c.HasExplicitMod.changeFunc=function() extra.KnownExplicitMods=nil end
 	local previousBase=c.BaseType.buf
 	c.BaseType.tooltipText="Changing the base clears its class, dimensions, drop level, defence percentile, item tier, memory strands, always-shown status, map tier and sockets. Enter values for the new item."
 	c.BaseType.changeFunc=function(value)

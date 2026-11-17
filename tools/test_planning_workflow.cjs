@@ -780,6 +780,12 @@ async function main(){
   const gemProfile={...lootProfile,template:'Show',rules:[{id:'gem',title:'Transfigured gem',text:'Hide\n TransfiguredGem "Fireball"',enabled:true}]};
   const copiedGem=await queued('test_loot_filter',{baseRevision:context.revision,profile:gemProfile,itemText:'Item Class: Active Skill Gems\nRarity: Gem\nFireball of Radiation\n--------\nLevel: 20'},'tested');
   assert.equal(copiedGem.sample.TransfiguredGem,'Fireball');assert.equal(copiedGem.result.action,'Hide');
+  const namedProfile={...lootProfile,template:'Show',rules:[{id:'mod',title:'Named modifier',text:'Hide\n HasExplicitMod "Hale"',enabled:true}]};
+  const namedItem='Item Class: Belts\nRarity: Rare\nTest Belt\nCord Belt\n--------\n{ Prefix Modifier "Hale" }\n+100 to maximum Life';
+  const knownMod=await queued('test_loot_filter',{baseRevision:context.revision,profile:namedProfile,itemText:namedItem},'tested');
+  assert.deepEqual(knownMod.sample.KnownExplicitMods,['Hale']);assert.equal(knownMod.result.action,'Hide');
+  const unknownMod=await queued('test_loot_filter',{baseRevision:context.revision,profile:namedProfile,itemText:namedItem.replace('"Hale"','"Other"')},'tested');
+  assert.equal(unknownMod.result.status,'unknown');assert.match(unknownMod.result.reasons[0],/incomplete/);
   const page=await queued('test_loot_filter_examples',{baseRevision:context.revision,profile:generated.profile,sampleSetId:'campaign-drop',offset:0,limit:1},'tested');
   assert.equal(page.examples.total,1);assert.equal(page.examples.results[0].index,0);assert.equal(page.examples.results[0].baseType,'Iron Hat');assert.equal(page.examples.nextOffset,undefined);
   const sampleProfile={...generated.profile,sampleSets:[{id:'mixed',title:'Mixed',samples:[{BaseType:'Iron Hat'},{BaseType:'Iron Ring'},{BaseType:'Iron Hat'}]}]};
