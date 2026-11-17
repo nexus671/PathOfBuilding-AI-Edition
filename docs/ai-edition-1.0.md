@@ -267,3 +267,9 @@ settings keep their working-draft marker when quotes are saved.
 Repeat cross-tool performance and recovery checks. Close source-verified socket, corruption and league gaps without
 inventing missing weights. The [coverage guide](crafting-coverage.md) identifies
 incomplete mechanics and model assumptions; this is not a full-parity release.
+
+An Atlas starting-route pass shares distance calculations and classifies only
+eligible notables. Five paired runs on both empty and progressed 3.29.3 and 3.30
+preview plans produced identical routes. After warm-up, the measured generation
+time ranged from 33-62 ms, compared with 111-154 ms before the change. These are
+bounded headless measurements, not proof of sustained desktop responsiveness.

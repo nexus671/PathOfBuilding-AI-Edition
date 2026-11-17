@@ -148,10 +148,19 @@ function M.presets(plan)
 		candidate.avoided=plan.avoided and copyTable(plan.avoided) or nil
 		return atlas.validate(candidate)
 	end
-	local result={}
+	local result={};local costs=M.costs(plan,blocked);local candidates={}
+	for _,mechanic in ipairs(M.mechanics) do candidates[mechanic]={} end
+	for id,node in pairs(tree.nodes) do if costs[id] and not allocated[id] and node.kind=="notable" and #M.blocking(node)==0 then
+		local text=atlas.searchText(node):lower()
+		for _,mechanic in ipairs(M.mechanics) do
+			local matched=mechanic=="Maps" and M.mechanic(node)=="Maps" or mechanic~="Maps" and matches(text,mechanic)
+			if matched then local bucket=candidates[mechanic];bucket[#bucket+1]={id=id,node=node,cost=costs[id]} end
+		end
+	end end
 	for _,mechanic in ipairs(M.mechanics) do
-		local targets={};local matches=M.results(plan,"",mechanic,blocked)
-		for _,entry in ipairs(matches) do if entry.cost and not allocated[entry.id] and entry.node.kind=="notable" and #M.blocking(entry.node)==0 then targets[#targets+1]=entry.id;if #targets==3 then break end end end
+		local targets={};local entries=candidates[mechanic]
+		table.sort(entries,function(a,b) if a.cost~=b.cost then return a.cost<b.cost elseif a.node.name~=b.node.name then return a.node.name<b.node.name else return a.id<b.id end end)
+		for i=1,math.min(3,#entries) do targets[i]=entries[i].id end
 		if #targets>0 then
 			local nextPlan=copyTable(working);local kept={}
 			for _,target in ipairs(targets) do local ok,value=pcall(atlas.connect,nextPlan,{target},blocked);if ok then nextPlan=value;kept[#kept+1]=target end end
