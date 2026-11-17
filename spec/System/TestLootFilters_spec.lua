@@ -116,6 +116,23 @@ describe("Build-owned loot filters",function()
 		assert.equal("Show",test("LinkedSockets = 2",{Sockets=4,SocketGroup="R-G B A",LinkedSockets=2}).action)
 	end)
 
+	it("rejects inconsistent socket colours across sample fields",function()
+		local function test(condition,item) return parser.simulate(parser.parse("Show\n "..condition.."\nHide"),item) end
+		local cases={
+			{Sockets=2,SocketColours="RR",SocketGroup="R-G",LinkedSockets=2},
+			{Sockets=3,SocketColours="RG",SocketGroup="R-G B",LinkedSockets=2},
+			{Sockets=3,SocketColours="RGB",SocketGroup="R-G",LinkedSockets=2},
+		}
+		for _,item in ipairs(cases) do for _,condition in ipairs({"Sockets >= 2","Sockets R","SocketGroup RG","LinkedSockets >= 1"}) do
+			local result=test(condition,item);assert.equal("unknown",result.status,condition);assert.is_truthy(result.reasons[1])
+		end end
+		local consistent={Sockets=3,SocketColours="BRG",SocketGroup="R-G B",LinkedSockets=2}
+		assert.equal("Show",test("Sockets >= 3",consistent).action)
+		assert.equal("Show",test("SocketGroup RG",consistent).action)
+		assert.equal("Show",test("LinkedSockets = 2",consistent).action)
+		assert.equal("Show",test("Sockets >= 2",{Sockets=2}).action)
+	end)
+
 	it("does not decide linked group matches from an incomplete socket layout",function()
 		local function test(item) return parser.simulate(parser.parse("Show\n SocketGroup RGB\nHide"),item) end
 		for _,item in ipairs({{Sockets=6,SocketGroup="RG"},{Sockets=4,SocketGroup="RGB"},{Sockets=3,SocketGroup="0"},{Sockets=1,SocketGroup=""},{SocketGroup="RRRRRRR"},{SocketGroup="---"}}) do
@@ -183,7 +200,7 @@ describe("Build-owned loot filters",function()
 		local inconsistent={Sockets=4,SocketColours="RGB"}
 		assert.equal("unknown",result("Sockets RGB",inconsistent).status)
 		assert.matches("Socket count does not match",result("Sockets RGB",inconsistent).reasons[1])
-		assert.equal("Hide",result("Sockets 4 RGB",inconsistent).action)
+		assert.equal("unknown",result("Sockets 4 RGB",inconsistent).status)
 		assert.equal("unknown",result("Sockets 6 RGB",inconsistent).status)
 		assert.equal("unknown",result("Sockets RGB",{Sockets=0,SocketColours="RGB"}).status)
 		assert.equal("Show",result("Sockets != 3 6",{Sockets=3}).action)

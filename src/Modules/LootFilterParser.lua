@@ -111,7 +111,38 @@ local function socketMatch(value,pattern,op)
 	for color,n in pairs(required) do if not compare(available[color] or 0,n,colorOp) then return false end end
 	return true
 end
+-- SocketColours and SocketGroup both describe the complete set when supplied.
+-- Compare counts rather than order: link groups can list the colours differently.
+local function socketConsistency(item)
+	local function colours(value,group)
+		if type(value)~="string" then return nil,nil,"Invalid socket colours" end
+		if group and (value=="" or value=="0") then return {},0 end
+		if not group and value=="" then return nil,nil end
+		if value:find("[^RGBWAD%s%-]") then return nil,nil,"Invalid socket colours" end
+		local counts,total={},0
+		for colour in value:gmatch("[RGBWAD]") do counts[colour]=(counts[colour] or 0)+1;total=total+1 end
+		if total==0 or total>6 then return nil,nil,"Invalid socket colours" end
+		return counts,total
+	end
+	local a,na,err
+	if item.SocketColours~=nil then a,na,err=colours(item.SocketColours,false);if err then return err end end
+	local b,nb
+	if item.SocketGroup~=nil then b,nb,err=colours(item.SocketGroup,true);if err then return err end end
+	local count=tonumber(item.Sockets)
+	if count and na and count~=na then return "Socket count does not match socket colours" end
+	if count and nb and count~=nb then return "Socket group layout does not account for the stated socket count" end
+	if a and b then
+		for _,colour in ipairs({"R","G","B","W","A","D"}) do
+			if (a[colour] or 0)~=(b[colour] or 0) then return "Socket colours conflict with socket group layout" end
+		end
+	end
+	local linked=tonumber(item.LinkedSockets)
+	if linked and na and linked>na then return "Linked socket count exceeds total socket colours" end
+end
 function M.condition(c,item)
+	if c.keyword=="Sockets" or c.keyword=="SocketGroup" or c.keyword=="LinkedSockets" then
+		local reason=socketConsistency(item);if reason then return nil,reason end
+	end
 	if not c.known then return nil,"Unsupported condition "..c.keyword end
 	if M.countExactMarker(c,2) then return nil,"Modifier count with a separate exact-match operator is not yet verified" end
 	if c.keyword=="HasExplicitMod" and item.Identified~=true then
