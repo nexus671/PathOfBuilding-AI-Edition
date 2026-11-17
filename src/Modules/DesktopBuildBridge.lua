@@ -560,7 +560,7 @@ function M.poll(build, force)
 				assert(request.areaLevel==nil or request.itemText and type(request.areaLevel)=="number" and request.areaLevel%1==0 and request.areaLevel>=1 and request.areaLevel<=100,"Invalid area level")
 				local sample=request.itemText and require("Modules.LootFilterClipboard").parse(request.itemText,request.areaLevel) or request.sample
 				M.status={id=request.id,status="tested",sample=sample,result=filters.simulate(profile,sample)}
-			else local raw,report=filters.compile(profile);M.status={id=request.id,status="exported",filter=raw,report=report} end
+			else local raw,report=filters.compile(profile);for _,diagnostic in ipairs(report.diagnostics) do assert(not diagnostic.error,"Line "..diagnostic.line..": "..tostring(diagnostic.error)) end;M.status={id=request.id,status="exported",filter=raw,report=report} end
 			M.publishState();return
 		end
 		if request.kind == "atlasSearch" or request.kind == "atlasConnect" or request.kind == "atlasTransition" then

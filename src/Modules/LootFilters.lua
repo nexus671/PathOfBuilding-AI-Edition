@@ -345,6 +345,9 @@ function M.compile(profile,includeParsed)
 	local raw=require("Modules.LootFilterDecorators").apply(table.concat(output,"\n"),checked.appearance);assert(#raw<=M.limit,"Compiled filter exceeds 2 MiB")
 	if checked.mode=="Ruthless" then raw=raw:gsub("\n([ \t]*)Hide(%f[%W])","\n%1Minimal%2") end
 	local parsed=parser.parse(raw)
+	for _,rule in ipairs(parsed.rules) do for _,condition in ipairs(rule.conditions) do
+		if parser.poe2Only[condition.keyword] then parsed.diagnostics[#parsed.diagnostics+1]={line=condition.line,error=condition.keyword.." is a Path of Exile 2-only condition; remove it for Path of Exile 1."} end
+	end end
 	for _,diagnostic in ipairs(require("Modules.LootFilterDiagnostics").shadowing(parsed)) do parsed.diagnostics[#parsed.diagnostics+1]=diagnostic end
 	if checked.mode=="Normal" then for _,rule in ipairs(parsed.rules) do if rule.action=="Minimal" then parsed.diagnostics[#parsed.diagnostics+1]={line=rule.line,error="Minimal blocks require Ruthless mode"} end end end
 	if checked.mode=="Ruthless" then for _,rule in ipairs(parsed.rules) do local text=rule.styles.SetTextColor;if text and tonumber(text[4]) and tonumber(text[4])<80 then parsed.diagnostics[#parsed.diagnostics+1]={line=rule.line,error="Ruthless text opacity must be at least 80"} end end end
@@ -376,10 +379,12 @@ function M.simulateExamples(profile,setId,offset,limit,checkpoint)
 	offset=offset or 0;limit=limit or 20
 	assert(type(offset)=="number" and offset==math.floor(offset) and offset>=0 and offset<=#selected.samples,"Invalid example offset")
 	assert(type(limit)=="number" and limit==math.floor(limit) and limit>=1 and limit<=50,"Use 1 to 50 examples per page")
-	local _,_,parsed=M.compile(profile,true);local results={};local last=math.min(#selected.samples,offset+limit)
+	local _,report,parsed=M.compile(profile,true);local invalid
+	for _,diagnostic in ipairs(report.diagnostics) do if diagnostic.error then invalid=diagnostic.error;break end end
+	local results={};local last=math.min(#selected.samples,offset+limit)
 	for i=offset+1,last do
 		local sample=selected.samples[i]
-		local evaluated=parser.simulate(parsed,sample)
+		local evaluated=invalid and {status="invalid",action="Unknown",styles={},matches={},reasons={invalid}} or parser.simulate(parsed,sample)
 		-- Keep a page bounded even when an imported filter has thousands of
 		-- Continue blocks or unusually long custom sound paths. The single-item
 		-- evaluator remains available for complete style details.

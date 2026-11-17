@@ -1463,6 +1463,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	frame("filter-invalid-export","export")
 	draft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];draft.template=priorTemplate;draft.baseCommit=priorCommit;ui:click("viewOverview");ui:frame()
 	assert(build.planningWorkspace.controls.export:IsEnabled(),"Correcting the filter did not restore export")
+	draft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];draft.rules[#draft.rules+1]={id="poe2-condition",title="Unsupported condition",text="Show\n AlwaysShow True",enabled=true}
+	ui:click("viewSimulate");ui:frame();local invalidDrop=build.planningWorkspace.controls.drop1
+	assert(invalidDrop and invalidDrop.tooltipText:find("Path of Exile 2%-only"),"Invalid filter was shown as a valid scene result");frame("filter-poe2-condition")
+	ui:click("viewOverview");ui:frame();assert(not build.planningWorkspace.controls.export:IsEnabled());assert(build.planningWorkspace.controls.export.tooltipText():find("AlwaysShow",1,true))
+	draft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];for i=#draft.rules,1,-1 do if draft.rules[i].id=="poe2-condition" then table.remove(draft.rules,i) end end;ui:click("viewOverview");ui:frame();assert(build.planningWorkspace.controls.export:IsEnabled())
 	filterTool("Import filter");ui:text("text",'Hide\n    BaseType == "Orb of Binding"\nShow\n    BaseType == "Chaos Orb"\n    SetFontSize 44');ui:click("import");ui:frame()
 	filterTool("Full file changes");frame("filter-file-changes-compiled");ui:choose("content","Original base text");frame("filter-file-changes-source");ui:text("search","SetFontSize");frame("filter-file-changes-search")
 	ui:click("copyBefore");assert(not ui.clipboard:find("SetFontSize 44",1,true),"Before source used the working draft");ui:click("copyAfter");assert(ui.clipboard:find("SetFontSize 44",1,true),"After source omitted the working change");ui:click("close");ui:click("keep")
@@ -1514,10 +1519,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("sampleEdit");ui:text("BaseType","Iron Hat");ui:click("useSample");assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.KnownExplicitMods==nil,"Changing base retained copied modifier names")
 	ui.clipboard="Item Class: Stackable Currency\nRarity: Currency\nChaos Orb\n--------\nStack Size: 7/20";ui:click("pasteDrop");frame("filter-copied-item")
 	local currency=build.planningWorkspace.cache.filters.layout.snapshot().sample;assert(currency.DropLevel==12 and currency.Width==1 and currency.Height==1 and currency.BaseDefencePercentile==0,"Pasted currency base properties were not populated")
-	ui:click("sampleEdit");assert(main.popups[1].controls.DropLevel.buf=="12" and main.popups[1].controls.Width.buf=="1" and main.popups[1].controls.BaseDefencePercentile.buf=="0", "Pasted base properties were not editable");ui:text("MemoryStrands","0");ui:choose("AlwaysShow","No");frame("filter-copied-base-properties")
+	ui:click("sampleEdit");assert(main.popups[1].controls.DropLevel.buf=="12" and main.popups[1].controls.Width.buf=="1" and main.popups[1].controls.BaseDefencePercentile.buf=="0", "Pasted base properties were not editable");ui:text("MemoryStrands","0");assert(main.popups[1].controls.AlwaysShow==nil,"PoE 2-only sample field was offered");frame("filter-copied-base-properties")
 	ui:click("moreSample");ui:text("extra_BaseArmour","0");frame("filter-more-sample-properties");ui:click("keepExtra");ui:click("useSample")
 	local configured=build.planningWorkspace.cache.filters.layout.snapshot().sample
-	assert(configured.BaseDefencePercentile==0 and configured.MemoryStrands==0 and configured.AlwaysShow==false and configured.BaseArmour==0,"Configured properties were not retained in the test item")
+	assert(configured.BaseDefencePercentile==0 and configured.MemoryStrands==0 and configured.AlwaysShow==nil and configured.BaseArmour==0,"Configured properties were not retained in the test item")
 	ui:click("sceneSettings");ui:text("areaLevel","72");ui:text("itemLevel","75");ui:choose("background","Dark");frame("filter-scene-settings");ui:click("keepScene")
 	ui:choose("sceneKind","Build targets")
 	local targetsReady=false

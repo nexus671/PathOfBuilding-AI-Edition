@@ -3,9 +3,9 @@ local ui=require("Modules.PlanningUI")
 local filters=require("Modules.LootFilters")
 local parser=require("Modules.LootFilterParser")
 local M={}
-local sampleFields={"BaseType","Class","Rarity","ItemLevel","AreaLevel","DropLevel","Width","Height","UnidentifiedItemTier","SocketGroup","Sockets","SocketColours","LinkedSockets","StackSize","GemLevel","MapTier","Quality","BaseDefencePercentile","MemoryStrands","AlwaysShow","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence","HasExplicitMod"}
+local sampleFields={"BaseType","Class","Rarity","ItemLevel","AreaLevel","DropLevel","Width","Height","UnidentifiedItemTier","SocketGroup","Sockets","SocketColours","LinkedSockets","StackSize","GemLevel","MapTier","Quality","BaseDefencePercentile","MemoryStrands","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence","HasExplicitMod"}
 local function additionalSampleFields()
-	local seen={};for _,key in ipairs(sampleFields) do seen[key]=true end
+	local seen=copyTable(parser.poe2Only);for _,key in ipairs(sampleFields) do seen[key]=true end
 	local fields={};for _,group in ipairs({parser.numeric,parser.booleans,parser.strings}) do for key in pairs(group) do if not seen[key] then fields[#fields+1]=key;seen[key]=true end end end
 	table.sort(fields);return fields
 end
@@ -46,8 +46,8 @@ local function modal(title,raw,save,existing)
 end
 function M.Conditions(rule,save)
 	local c={};local w,h=math.min(880,main.screenW-40),math.min(600,main.screenH-60);local parsed=parser.parse(rule.text);local block=parsed.rules[1]
-	local conditions=copyTable(block.conditions);local keywords={"BaseType","Class","Rarity","ItemLevel","AreaLevel","Quality","BaseDefencePercentile","MemoryStrands","AlwaysShow","LinkedSockets","Sockets","SocketGroup","GemLevel","MapTier","StackSize","UnidentifiedItemTier","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence"}
-	local known={};for _,key in ipairs(keywords) do known[key]=true end
+	local conditions=copyTable(block.conditions);local keywords={"BaseType","Class","Rarity","ItemLevel","AreaLevel","Quality","BaseDefencePercentile","MemoryStrands","LinkedSockets","Sockets","SocketGroup","GemLevel","MapTier","StackSize","UnidentifiedItemTier","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence"}
+	local known=copyTable(parser.poe2Only);for _,key in ipairs(keywords) do known[key]=true end
 	local additional={};for _,group in ipairs({parser.numeric,parser.booleans,parser.strings}) do for key in pairs(group) do if not known[key] then additional[#additional+1]=key;known[key]=true end end end
 	table.sort(additional);for _,key in ipairs(additional) do keywords[#keywords+1]=key end
 	for _,condition in ipairs(conditions) do local known=false;for _,k in ipairs(keywords) do if k==condition.keyword then known=true end end;if not known then keywords[#keywords+1]=condition.keyword end end
@@ -214,11 +214,11 @@ function M.EditSample(item,save)
 	end
 	c.HasExplicitMod.changeFunc=function() extra.KnownExplicitMods=nil end
 	local previousBase=c.BaseType.buf
-	c.BaseType.tooltipText="Changing the base clears its class, dimensions, drop level, defence percentile, item tier, memory strands, always-shown status, map tier and sockets. Enter values for the new item."
+	c.BaseType.tooltipText="Changing the base clears its class, dimensions, drop level, defence percentile, item tier, memory strands, map tier and sockets. Enter values for the new item."
 	c.BaseType.changeFunc=function(value)
 		if value~=previousBase then
 			for _,key in ipairs({"Class","DropLevel","Width","Height","BaseDefencePercentile","UnidentifiedItemTier","MemoryStrands","MapTier","SocketGroup","Sockets","SocketColours","LinkedSockets"}) do c[key]:SetText("") end
-			c.AlwaysShow:SelByValue("Unknown")
+			extra.AlwaysShow=nil
 			extra.KnownExplicitMods=nil
 			for _,key in ipairs(additionalSampleFields()) do extra[key]=nil end
 			previousBase=value

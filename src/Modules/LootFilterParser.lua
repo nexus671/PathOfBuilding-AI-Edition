@@ -2,6 +2,8 @@
 -- Data-only PoE filter parsing. Unknown conditions produce an explained unknown,
 -- never a falsely certain hidden/shown result. Imports are not read from disk.
 local M={}
+-- GGG's item-filter reference marks these conditions as PoE 2-only.
+M.poe2Only={AlwaysShow=true,HasVaalUniqueMod=true,IsVaalUnique=true,WaystoneTier=true}
 local styleOptions=require("Modules.LootFilterAppearanceSettings");local colors,shapes={},{}
 for _,value in ipairs(styleOptions.colors) do colors[value]=true end;for _,value in ipairs(styleOptions.shapes) do shapes[value]=true end
 M.actions={SetTextColor=true,SetBorderColor=true,SetBackgroundColor=true,SetFontSize=true,PlayAlertSound=true,PlayAlertSoundPositional=true,

@@ -167,14 +167,14 @@ describe("Visual filter catalogue",function()
 		local height=main.screenH;main.screenH=500
 		local ok,err=pcall(function()
 			require("Classes.LootFilterControl").EditSample(library.sample(),function() end);local c=main.popups[1].controls
-			for _,key in ipairs({"DropLevel","Width","Height","BaseDefencePercentile","MemoryStrands","AlwaysShow","HasExplicitMod"}) do assert.is_true(c[key].y+c[key].height<c.useSample.y,key) end
+			for _,key in ipairs({"DropLevel","Width","Height","BaseDefencePercentile","MemoryStrands","HasExplicitMod"}) do assert.is_true(c[key].y+c[key].height<c.useSample.y,key) end
 		end)
 		main.screenH=height;main.popups={};assert(ok,err)
 	end)
 	it("offers all supported conditions in the graphical rule editor",function()
 		require("Classes.LootFilterControl").Conditions({id="all",title="All conditions",text='Show\n BaseType "Iron Hat"'},function() end)
 		local list=main.popups[1].controls.c1key.list;local found={};for _,key in ipairs(list) do assert.is_nil(found[key],key);found[key]=true end
-		for _,group in ipairs({parser.numeric,parser.booleans,parser.strings}) do for key in pairs(group) do assert.is_true(found[key],key) end end
+		for _,group in ipairs({parser.numeric,parser.booleans,parser.strings}) do for key in pairs(group) do if parser.poe2Only[key] then assert.is_nil(found[key],key) else assert.is_true(found[key],key) end end end
 		assert.is_true(found.SocketGroup);assert.is_true(found.Rarity)
 	end)
 	it("edits additional sample properties across pages and preserves them on use",function()
@@ -199,20 +199,18 @@ describe("Visual filter catalogue",function()
 		end)
 		main.screenH=height;main.popups={};assert(ok,err)
 	end)
-	it("tests memory strands and always-shown status without inventing either",function()
-		local rules=parser.parse('Hide\n MemoryStrands >= 60\n AlwaysShow False\nShow')
+	it("tests memory strands and preserves legacy sample fields",function()
+		local rules=parser.parse('Hide\n MemoryStrands >= 60\nShow')
 		local item=library.sample();assert.is_nil(item.MemoryStrands);assert.is_nil(item.AlwaysShow)
 		assert.equal("unknown",parser.simulate(rules,item).status)
+		item.AlwaysShow=false
 		local saved;require("Classes.LootFilterControl").EditSample(item,function(value) saved=value end)
-		local c=main.popups[1].controls;assert.equal("",c.MemoryStrands.buf);assert.equal("Unknown",c.AlwaysShow:GetSelValue())
-		c.MemoryStrands:SetText("75");c.AlwaysShow:SelByValue("No");c.useSample:Click()
+		local c=main.popups[1].controls;assert.equal("",c.MemoryStrands.buf);assert.is_nil(c.AlwaysShow)
+		c.MemoryStrands:SetText("75");c.useSample:Click()
 		assert.equal(75,saved.MemoryStrands);assert.is_false(saved.AlwaysShow);assert.equal("Hide",parser.simulate(rules,saved).action)
-		local stored=require("Modules.LootFilterCollections").sample(saved);assert.same(saved.MemoryStrands,stored.MemoryStrands);assert.is_false(stored.AlwaysShow)
-		stored.AlwaysShow=true;assert.equal("Show",parser.simulate(rules,stored).action)
+		local stored=require("Modules.LootFilterCollections").sample(saved);assert.equal(75,stored.MemoryStrands);assert.is_false(stored.AlwaysShow)
 		require("Classes.LootFilterControl").EditSample(saved,function(value) saved=value end);c=main.popups[1].controls
-		c.BaseType:SetText("Iron Hat",true);assert.equal("",c.MemoryStrands.buf);assert.equal("Unknown",c.AlwaysShow:GetSelValue())
-		local generated=library.sample({text='Show\n BaseType == "Iron Hat"\n MemoryStrands >= 70\n AlwaysShow False'})
-		assert.equal(70,generated.MemoryStrands);assert.is_false(generated.AlwaysShow)
+		c.BaseType:SetText("Iron Hat",true);assert.equal("",c.MemoryStrands.buf);c.useSample:Click();assert.is_nil(saved.AlwaysShow)
 	end)
 	it("does not invent a defence roll for example drops",function()
 		local profile=filters.profile("test","Test");local scene=library.scene(profile,build,"All items",0,83,86);local examples={}
