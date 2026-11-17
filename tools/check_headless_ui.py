@@ -85,6 +85,9 @@ def main():
     paths = sorted(frames.glob("*.json"))
     assert len(paths) == 1464, f"Expected 1464 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
+        stack = json.loads((frames / f"{width}-filter-stack-styles.json").read_text())
+        labels = " ".join(command.get("text", "") for command in stack["commands"] if command.get("kind") == "text")
+        assert "Tier preview" in labels and "Example stack" in labels, "Stack style preview is missing"
         welcome = json.loads((frames / f"{width}-crafting-empty-workspace.json").read_text())
         labels = " ".join(command.get("text", "") for command in welcome["commands"] if command.get("kind") == "text")
         assert "Plan your next item" in labels and "Start a project" in labels, "Crafting welcome action is missing"

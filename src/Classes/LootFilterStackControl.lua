@@ -1,6 +1,9 @@
 -- Edit optional stack thresholds on a private profile copy before keeping it.
 local ui=require("Modules.PlanningUI")
 local editing=require("Modules.LootFilterEditing")
+local parser=require("Modules.LootFilterParser")
+local visual=require("Modules.LootFilterVisuals")
+local library=require("Modules.LootFilterLibrary")
 local M={}
 function M.Open(profile,id,keep)
 	local draft=copyTable(profile);local tier
@@ -25,7 +28,31 @@ function M.Open(profile,id,keep)
 		if not replaced then current.stackRules[#current.stackRules+1]={minimum=minimum,styleTierId=style} end
 		next.tiers=editing.validateTiers(next.tiers);draft=next;for _,entry in ipairs(draft.tiers) do if entry.id==id then tier=entry end end;selected=nil;refresh()
 	end)
-	controls.stackList=new("TextListControl"):TextListControl(ui.anchor,{16,132,608,116},nil,{})
+	local previewCache={}
+	local function previewBlock(target)
+		if previewCache[target.id] then return previewCache[target.id] end
+		local source=#tier.items>0 and editing.withItems(tier.text,tier.items) or tier.text
+		local ok,raw=pcall(require("Modules.LootFilterStackTiers").rule,source,target.text,2)
+		if ok then
+			raw=require("Modules.LootFilterCategoryStyles").apply(raw,draft.categoryStyles)
+			raw=require("Modules.LootFilterDecorators").apply(raw,draft.appearance)
+		else raw=target.text end
+		local result={block=parser.parse(raw).rules[1],fallback=not ok};previewCache[target.id]=result;return result
+	end
+	controls.stackPreview=new("Control"):Control(ui.anchor,{16,132,608,60})
+	function controls.stackPreview:Draw()
+		local x,y=self:GetPos();local width,height=self:GetSize();visual.floor(x,y,width,height)
+		local selectedId=controls.stackStyle:GetSelValueByKey("val");local target
+		for _,entry in ipairs(draft.tiers) do if entry.id==selectedId then target=entry;break end end
+		if target then
+			local item=library.sample({text=tier.text});item.BaseType=tier.items[1] or "Example stack"
+			local preview=previewBlock(target);local block=preview.block
+			visual.text(x+8,y+8,12,preview.fallback and "Style preview" or "Tier preview","^xB7C5D4")
+			visual.text(x+width-60,y+8,12,block.action=="Hide" and "Hidden" or block.action=="Minimal" and "Minimal" or "Shown","^xB7C5D4")
+			visual.chip(x+80,y+8,width-160,height-12,item,{action=block.action,styles=block.styles})
+		end
+	end
+	controls.stackList=new("TextListControl"):TextListControl(ui.anchor,{16,204,608,92},nil,{})
 	refresh=function()
 		local names={};for _,entry in ipairs(draft.tiers) do names[entry.id]=entry.title end
 		local rules=copyTable(tier.stackRules or {});table.sort(rules,function(a,b) return a.minimum>b.minimum end)
@@ -33,14 +60,14 @@ function M.Open(profile,id,keep)
 		controls.stackList.list=#rows>0 and rows or ui.rows({"No stack styles. Items use this tier's normal visibility and appearance."},580,14)
 	end
 	ui.selectable(controls.stackList,function(row) return row.minimum end,function(row) selected=row.minimum end)
-	button("stackRemove",16,266,164,"Remove selected",function()
+	button("stackRemove",16,312,164,"Remove selected",function()
 		assert(selected,"Choose a stack style to remove")
 		for i=#(tier.stackRules or {}),1,-1 do if tier.stackRules[i].minimum==selected then table.remove(tier.stackRules,i) end end
 		selected=nil;refresh()
 	end)
 	controls.stackRemove.enabled=function() return selected~=nil end
-	button("stackKeep",300,266,160,"Keep changes",function() draft.tiers=editing.validateTiers(draft.tiers);main:ClosePopup();keep(draft) end)
-	button("stackCancel",464,266,160,"Cancel",function() main:ClosePopup() end)
-	refresh();main:OpenPopup(640,310,"Stack styles",controls,nil,nil,"stackCancel")
+	button("stackKeep",300,312,160,"Keep changes",function() draft.tiers=editing.validateTiers(draft.tiers);main:ClosePopup();keep(draft) end)
+	button("stackCancel",464,312,160,"Cancel",function() main:ClosePopup() end)
+	refresh();ui.style(controls,{stackKeep=true});visual.layers(controls,{stackPreview=true});main:OpenPopup(640,356,"Stack styles",controls,nil,nil,"stackCancel")
 end
 return M
