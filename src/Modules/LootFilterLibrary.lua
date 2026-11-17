@@ -1,5 +1,5 @@
 -- Searchable base-filter catalogue and deterministic example drops. No drop-rate model.
--- cspell:ignore RGBW WRGB
+-- cspell:ignore RGBW WRGB scurr
 local filters=require("Modules.LootFilters")
 local parser=require("Modules.LootFilterParser")
 local sha1=require("sha1")
