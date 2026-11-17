@@ -373,6 +373,15 @@ test('preserves Atlas effect choices in AI proposals', t => {
   assert.deepEqual(queued.proposal.operations[0].plan.choices,plan.choices);
 });
 
+test('preserves multiple map drafts in Atlas proposals', t => {
+  const f=fixture(t), mapDrafts=Array.from({length:12},(_,i)=>({id:`map-${i}`,title:`Map ${i}`,patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'normal',selected:[]}));
+  const plan={id:'atlas',title:'Mapping',version:'3.30.0-preview',budget:150,nodes:[],mapDrafts};
+  f.call('propose_atlas_plan',{baseRevision:f.state.revision,plan});
+  const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.deepEqual(queued.proposal.operations[0].plan.mapDrafts,mapDrafts);
+  assert.throws(()=>f.call('propose_atlas_plan',{baseRevision:f.state.revision,plan:{...plan,mapDrafts:[{...mapDrafts[0],rarity:'unique'}]}}),/arguments/);
+});
+
 test('queues a read-only Atlas stage comparison', t => {
   const f=fixture(t);
   const before={id:'before',title:'Before',version:'3.29.3',budget:20,nodes:[]};

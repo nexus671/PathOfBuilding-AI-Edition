@@ -682,7 +682,7 @@ async function main(){
   assert.equal(secondCorruption.nativeCrafting.warnings[0].code,'locus_assumptions');
   assert.ok(secondCorruption.nativeCrafting.state.destroyed || secondCorruption.nativeCrafting.state.twiceCorrupted);
   if(!secondCorruption.nativeCrafting.state.destroyed) assert.match(secondCorruption.nativeCrafting.itemText,/Twice Corrupted/);
-  const starterAtlas={id:'starter-atlas',title:'Starter Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'starter'}};
+  const starterAtlas={id:'starter-atlas',title:'Starter Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'starter'},mapDrafts:[{id:'my-map',title:'My map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:5,itemLevel:68,rarity:'rare',selected:['MapMonsterAreaOfEffectMapWorlds']}]};
   for(const version of ['3.28.0j','3.28.0j-ruthless']) {
     const search=await queued('search_atlas_nodes',{baseRevision:context.revision,version,query:'Essence',limit:10},'atlas');
     assert.ok(search.atlas.matches.length>0);
@@ -901,7 +901,8 @@ async function main(){
   assert.deepEqual(savedBody.priceBook,bodyPriceBook);assert.equal(savedBody.nativeRecipe.steps[1].method,'omen_connections');assert.equal(savedBody.nativeRecipe.requirements.links,6);assert.equal(savedBody.nativeRecipe.steps[0].enchantId,'LifeBodyEnchant');assert.equal(savedBody.nativeRecipe.requirements.harvestEnchant,'LifeBodyEnchant');
   assert.equal(savedBody.nativeRecipe.steps[2].method,'socket_white_bench');
   assert.equal(savedBody.inventory[0].state.harvestEnchant,'LifeBodyEnchant');assert.equal(savedBody.targetItem,bodySimulation.nativeCrafting.sampleItem);
-  const atlasPlans=await call('get_atlas_plans');assert.equal(atlasPlans.plans[1].strategy.setupCost.amount,25);assert.equal(atlasPlans.plans[1].progression.previousId,'starter-atlas');await host('bundle-roundtrip');
+  const atlasPlans=await call('get_atlas_plans');assert.equal(atlasPlans.plans[1].strategy.setupCost.amount,25);assert.equal(atlasPlans.plans[1].progression.previousId,'starter-atlas');assert.deepEqual(atlasPlans.plans[0].mapDrafts,starterAtlas.mapDrafts);await host('bundle-roundtrip');
+  assert.deepEqual((await call('get_atlas_plans')).plans[0].mapDrafts,starterAtlas.mapDrafts);
   assert.deepEqual((await call('get_crafting_projects')).projects.find(entry=>entry.id==='body-enchant').priceBook,bodyPriceBook);
   context=(await call('get_build_context')).context;
   const removal=await queued('propose_build',{mode:'edit',title:'Remove body guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:'body-enchant'}]},'review');

@@ -8,10 +8,16 @@ local function readable(text)
 	return (text or ""):gsub("%[[^%]|]+|([^%]]+)%]","%1")
 end
 
-function M.Open()
+function M.Open(options)
+	options=options or {};local initial=options.initial
+	if initial then
+		assert(initial.patch==map.source().patch,"This map draft uses a different data version")
+		map.inspect(initial.baseId,initial.tier,initial.itemLevel,initial.selected,"",0,1,nil,initial.rarity=="normal" and "rare" or initial.rarity)
+	end
 	local width=math.min(900,main.screenW-40);local height=math.min(600,main.screenH-60)
 	local left=math.floor(width*0.38);local right=left+32;local rightWidth=width-right-16
-	local controls={};local selected={};local candidate;local baseId="Metadata/Items/Maps/MapWorldsStrand";local refresh;local offset,nextOffset=0,nil
+	local controls={};local selected=initial and copyTable(initial.selected) or {};local candidate;local baseId=initial and initial.baseId or "Metadata/Items/Maps/MapWorldsStrand";local refresh;local offset,nextOffset=0,nil
+	local draftId=initial and initial.id
 	local rollSeed=os.time()%2147483646+1
 	local artManifest;do local f=assert(io.open("Assets/MapCrafting/art.json","rb"));artManifest=assert(require("dkjson").decode(f:read("*a")));f:close() end
 	local artCache={}
@@ -39,9 +45,9 @@ function M.Open()
 	end)
 	ui.label(controls,"tierLabel",16,108,"Map tier",14)
 	local tiers={};for i=1,16 do tiers[#tiers+1]={label=tostring(i),val=i} end
-	controls.tier=new("DropDownControl"):DropDownControl(ui.anchor,{90,103,80,26},tiers);controls.tier:SelByValue(16,"val")
+	controls.tier=new("DropDownControl"):DropDownControl(ui.anchor,{90,103,80,26},tiers);controls.tier:SelByValue(initial and initial.tier or 16,"val")
 	ui.label(controls,"levelLabel",182,108,"Item level",14)
-	controls.level=new("EditControl"):EditControl(ui.anchor,{254,103,left-238,26},"83",nil,"%D",3)
+	controls.level=new("EditControl"):EditControl(ui.anchor,{254,103,left-238,26},tostring(initial and initial.itemLevel or 83),nil,"%D",3)
 	local card=new("Control"):Control(ui.anchor,{16,144,left,height-216});controls.card=card
 	function card:Draw()
 		local x,y=self:GetPos();local w,h=self:GetSize();SetDrawColor("^x716046");DrawImage(nil,x,y,w,h)
@@ -59,7 +65,7 @@ function M.Open()
 	controls.remove.enabled=function() return #selected>0 end
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
 	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
-	controls.rarity=new("DropDownControl"):DropDownControl(ui.anchor,{right+235,64,100,26},{{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"}});controls.rarity:SelByValue("rare","val")
+	controls.rarity=new("DropDownControl"):DropDownControl(ui.anchor,{right+235,64,100,26},{{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"}});controls.rarity:SelByValue(initial and initial.rarity or "rare","val")
 	controls.search=new("EditControl"):EditControl(ui.anchor,{right,96,rightWidth,26},"","Search modifiers",nil,160)
 	controls.list=new("TextListControl"):TextListControl(ui.anchor,{right,132,rightWidth,height-410},nil,{})
 	button("previous",right,height-270,100,"Previous",function() offset=math.max(0,offset-30);refresh() end)
@@ -82,6 +88,17 @@ function M.Open()
 		end,closeOnChoose=false})
 	end)
 	button("close",width-132,height-48,116,"Close",function() main:ClosePopup() end)
+	if options.keep then
+		ui.label(controls,"draftNameLabel",right,height-42,"Name",14)
+		controls.draftName=new("EditControl"):EditControl(ui.anchor,{right+46,height-48,160,26},initial and initial.title or "Map draft",nil,nil,120)
+		button("keep",right+218,height-48,150,"Keep map draft",function()
+			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=controls.rarity:GetSelValueByKey("val"),selected=copyTable(selected)}
+			local ok,result=pcall(options.keep,entry)
+			if not ok then main:OpenMessagePopup("Map draft",ui.errorText(result));return end
+			draftId=result;controls.status.label="^7Draft kept. Keep the plan and save the build."
+		end)
+		controls.keep.tooltipText="Keep this draft in the Atlas plan; keep the plan and save the build to persist it."
+	end
 	local function show(entry)
 		candidate=entry
 		local lines=entry and {entry.name.." | "..entry.side,"Spawn weight "..entry.spawnWeight.." (not a probability)",readable(entry.text)} or {"Choose a modifier to inspect it."}
@@ -108,6 +125,7 @@ function M.Open()
 	controls.level.changeFunc=function() selected={};offset=0;refresh() end
 	controls.tier.selFunc=function() selected={};offset=0;refresh() end
 	controls.rarity.selFunc=function() selected={};offset=0;refresh() end
+	if controls.draftName then controls.draftName.changeFunc=function() if draftId then controls.status.label="^7Name changed. Keep the map draft again." end end end
 	ui.style(controls,{add=true});refresh()
 	main:OpenPopup(width,height,"Map modifier explorer",controls,nil,"search","close")
 	return controls

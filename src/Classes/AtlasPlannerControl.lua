@@ -421,10 +421,37 @@ function Panel.Open(build,source,layout)
 			return controls.canvas.intentMode or "Select nodes"
 		end})
 	end)
+	local function openMapDraft(entry)
+		local ok,err=pcall(require("Classes.MapModifierControl").Open,{initial=entry,keep=function(value)
+			local plan=current();plan.mapDrafts=plan.mapDrafts or {}
+			if not value.id then
+				local used,serial={},0;for _,old in ipairs(plan.mapDrafts) do used[old.id]=true end
+				repeat serial=serial+1;value.id="map-"..require("sha1")(tostring({})..os.time()..serial):sub(1,12) until not used[value.id]
+			end
+			value=atlas.validateMapDraft(value);local found=false
+			for i,old in ipairs(plan.mapDrafts) do if old.id==value.id then plan.mapDrafts[i]=value;found=true;break end end
+			if not found then plan.mapDrafts[#plan.mapDrafts+1]=value end
+			change(plan);return value.id
+		end})
+		if not ok then main:OpenMessagePopup("Map draft unavailable",ui.errorText(err)) end
+	end
+	local showMapDrafts
+	showMapDrafts=function()
+		local choices={};for _,entry in ipairs(current().mapDrafts or {}) do
+			local base=require("Modules.MapCraftingData").source().bases[entry.baseId]
+			choices[#choices+1]={id=entry.id,label=entry.title,details={base and base.name or entry.baseId,"Tier "..entry.tier.." | "..entry.rarity.." | item level "..entry.itemLevel,#entry.selected.." hypothetical modifiers", "Data version "..entry.patch,"Keep the Atlas plan and save the build to persist changes."},draft=entry}
+		end
+		browser.Open("Map drafts in this Atlas plan",choices,{action="Open draft",closeOnChoose=false,choose=function(choice) main:ClosePopup();openMapDraft(choice.draft) end,
+			secondary={label="Remove draft",run=function(choice)
+				local plan=current();for i,entry in ipairs(plan.mapDrafts or {}) do if entry.id==choice.id then table.remove(plan.mapDrafts,i);break end end
+				change(plan);main:ClosePopup();showMapDrafts()
+			end}})
+	end
 	controls.tools=button(430,height-86,86,"Plan tools",function()
 		clearRouteOverlay();exitGrantRoute()
 		local entries={
 			{id="mapModifiers",label="Map modifier explorer",details={"Inspect hypothetical modifiers on an ordinary map.","Uses pinned 3.30 source data; does not roll an item or calculate odds."}},
+			{id="mapDrafts",label="Saved map drafts",details={"Open or remove map drafts kept in this Atlas plan.","Keep the plan and save the build to persist changes."}},
 			{id="presets",label="Strategy starting points",details={"Connect up to three nearby unallocated notables for a mechanic.","Generated from this version's bundled tree, within your budget.","Editable starting routes, not recommendations for farming profit."}},
 			{id="compare",label="Compare with a saved plan",details={"Review added nodes, removed nodes and changed bonus lines.","Both plans must use the same Atlas version."}},
 			{id="history",label="Change history",details={#undo.." earlier states | "..#redo.." redo states","History includes routes, node exclusions, imports and budget changes."}},
@@ -433,7 +460,8 @@ function Panel.Open(build,source,layout)
 		}
 		browser.Open("Atlas plan tools",entries,{closeOnChoose=false,action="Open",choose=function(entry)
 			main:ClosePopup()
-			if entry.id=="mapModifiers" then require("Classes.MapModifierControl").Open()
+			if entry.id=="mapModifiers" then openMapDraft()
+			elseif entry.id=="mapDrafts" then showMapDrafts()
 			elseif entry.id=="presets" then
 				local choices={};for i,preset in ipairs(strategy.presets(current())) do local lines={preset.mechanic,"Adds "..(#preset.plan.nodes-#draft.nodes).." points to the current draft.","Compares target orders; keeps existing allocations.",preset.routing and preset.routing.saved and "Order comparison saved "..preset.routing.saved.." points." or "No global optimum is assumed."};for _,id in ipairs(preset.targets) do lines[#lines+1]=controls.canvas.tree.nodes[id].name end;choices[#choices+1]={id=i,label=preset.label,category=preset.mechanic,details=lines,plan=preset.plan} end
 				browser.Open("Atlas starting routes",choices,{action="Use starting route",choose=function(choice) change(choice.plan) end})

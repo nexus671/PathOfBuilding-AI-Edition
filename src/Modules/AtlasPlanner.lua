@@ -24,6 +24,21 @@ local function array(value,limit,label)
 	for key in pairs(value) do assert(type(key) == "number" and key == math.floor(key) and key >= 1 and key <= #value,"Invalid array for "..label) end
 	return value
 end
+-- Preserve hypothetical map drafts even when a later data export no longer
+-- contains the base or modifier; opening them requires a compatible export.
+function M.validateMapDraft(entry)
+	assert(type(entry)=="table","Invalid map draft")
+	local result={id=text(entry.id,64,"map draft ID"),title=text(entry.title,120,"map draft title"),patch=text(entry.patch,40,"map data version"),
+		baseId=text(entry.baseId,240,"map base ID"),tier=integer(entry.tier,1,16,"map tier"),itemLevel=integer(entry.itemLevel,1,100,"map item level"),rarity=entry.rarity,selected={}}
+	assert(result.id:match("^[%w_-]+$") and result.title:match("%S") and result.patch:match("%S") and result.baseId:match("%S"),"Invalid map draft details")
+	assert(result.rarity=="normal" or result.rarity=="magic" or result.rarity=="rare","Invalid map draft rarity")
+	local seen={};for _,id in ipairs(array(entry.selected,6,"map modifiers")) do
+		text(id,160,"map modifier ID");assert(id:match("%S") and not seen[id],"Invalid or duplicate map modifier");seen[id]=true;result.selected[#result.selected+1]=id
+	end
+	assert(result.rarity~="normal" or #result.selected==0,"Normal maps cannot have explicit modifiers")
+	assert(result.rarity~="magic" or #result.selected<=2,"Magic maps have at most two explicit modifiers")
+	return result
+end
 function M.tree(version)
 	assert(isValueInTable(M.versions,version),"Unsupported Atlas version; choose a bundled tree")
 	if not M.cache[version] then
@@ -78,6 +93,12 @@ function M.validate(plan)
 		if plan.strategy.setupCost then
 			local cost=plan.strategy.setupCost;assert(type(cost)=="table" and type(cost.amount)=="number" and cost.amount>=0 and cost.amount<=1e12,"Invalid Atlas setup cost")
 			s.setupCost={amount=cost.amount,currency=text(cost.currency,40,"setup currency"),source=text(cost.source or "",240,"cost source"),quotedAt=integer(cost.quotedAt,0,4102444800,"cost date")}
+		end
+	end
+	if plan.mapDrafts~=nil then
+		result.mapDrafts={};local seen={}
+		for _,entry in ipairs(array(plan.mapDrafts,math.huge,"map drafts")) do
+			local draft=M.validateMapDraft(entry);assert(not seen[draft.id],"Duplicate map draft ID");seen[draft.id]=true;result.mapDrafts[#result.mapDrafts+1]=draft
 		end
 	end
 	local set=nodeSet(tree,plan.nodes); set[tree.start]=true
@@ -339,7 +360,7 @@ function M.export(plan)
 	return json.encode({schemaVersion=1,atlasPlan=M.validate(plan)})
 end
 function M.import(raw,version,id,title,budget)
-	text(raw,64000,"Atlas import")
+	text(raw,2*1024*1024,"Atlas import")
 	raw=raw:match("^%s*(.-)%s*$")
 	if raw:match("^%s*{") then
 		local decoded=assert(json.decode(raw),"Invalid Atlas JSON")
