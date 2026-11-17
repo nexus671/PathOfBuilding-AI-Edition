@@ -23,4 +23,25 @@ describe("Prefix and suffix catalyst scaling",function()
 		local life;for _,mod in ipairs(item.slotModList[1]) do if mod.name=="Life" then life=mod.value end end
 		assert.equal(120,life)
 	end)
+	it("does not apply catalyst quality twice to a recognized fixed advanced-copy value",function()
+		local raw=[[Rarity: Rare
+Test Ring
+Sapphire Ring
+--------
+Quality (Prefix Modifiers): +20% (augmented)
+--------
+Item Level: 86
+--------
+{ Prefix Modifier "Unknown" }
++120(100) to maximum Life]]
+		local item=new("Item"):Item(raw);item:BuildModList()
+		local life;for _,mod in ipairs(item.slotModList[1]) do if mod.name=="Life" then life=mod.value end end
+		assert.equal(120,life)
+		item.catalystQuality=0;item:BuildAndParseRaw();item:BuildModList()
+		for _,mod in ipairs(item.slotModList[1]) do if mod.name=="Life" then life=mod.value end end
+		assert.equal(100,life)
+		local unchanged=new("Item"):Item((raw:gsub("%+20%%","+0%%")));unchanged:BuildModList()
+		for _,mod in ipairs(unchanged.slotModList[1]) do if mod.name=="Life" then life=mod.value end end
+		assert.equal(120,life)
+	end)
 end)

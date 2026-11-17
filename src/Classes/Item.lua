@@ -1183,7 +1183,19 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 				end
 				-- Advanced copy uses current(base) for fixed-value modifiers,
 				-- in addition to the current(min-max) form handled below.
-				line = line:gsub("(%-?%d+%.?%d*)%((%-?%d+%.?%d*)%)", "%1")
+				local displayed = line:gsub("(%-?%d+%.?%d*)%((%-?%d+%.?%d*)%)", "%1")
+				if hasModifierHeaders and catalystScalar > 1 then
+					local baseLine, count = line:gsub("(%-?%d+%.?%d*)%((%-?%d+%.?%d*)%)", "%2")
+					-- Recover a fixed base only when the native scaler reproduces the
+					-- entire displayed line, including unscalable and decimal values.
+					if count > 0 and itemLib.applyRange(baseLine, 1, catalystScalar, modLine.corruptedRange) == displayed then
+						line = baseLine
+					else
+						line = displayed
+					end
+				else
+					line = displayed
+				end
 				if self.pendingAffixList and #self.pendingAffixList > 0 then
 					if #self.pendingAffixList > 1 then
 						-- Probably a conqueror or essence mod since the mod name is the same for all of them
