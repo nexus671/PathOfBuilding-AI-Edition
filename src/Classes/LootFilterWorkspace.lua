@@ -31,11 +31,13 @@ function M.Open(build,source,layout,controller)
 	local function sampleDetails(sample,evaluated)
 		local deciding=evaluated and (evaluated.ruleTitle or (evaluated.line and "Filter line "..evaluated.line or evaluated.status=="matched" and "No matching block: default Show" or "Resolve missing properties or filter errors.")) or "Select a drop to inspect the rule."
 		local lines={visual.sampleName(sample),"iLvl "..tostring(sample.ItemLevel or "?").." / area "..tostring(sample.AreaLevel or "?"),evaluated and evaluated.action or "Choose a drop"}
+		local firstError=evaluated and evaluated.status=="invalid" and evaluated.reasons and evaluated.reasons[1]
+		if firstError then table.insert(lines,1,"Filter error: "..firstError) end
 		local copied=not sample.HasExplicitMod and sample.KnownExplicitMods
 		if copied and copied[1] then lines[#lines+1]="Copied: "..copied[1] end
 		local tier=itemTier(sample);if tier~=nil then lines[#lines+1]="Unidentified item tier: "..tier
 		elseif sample.Identified==false and (sample.Rarity=="Magic" or sample.Rarity=="Rare") then lines[#lines+1]="Unidentified item tier: unknown" end
-		lines[#lines+1]=deciding;for _,reason in ipairs(evaluated and evaluated.reasons or {}) do lines[#lines+1]=reason end
+		lines[#lines+1]=deciding;for index,reason in ipairs(evaluated and evaluated.reasons or {}) do if not firstError or index>1 then lines[#lines+1]=reason end end
 		if copied then
 			for index=2,#copied do lines[#lines+1]="Copied: "..copied[index] end
 			lines[#lines+1]="Copied names may be incomplete."

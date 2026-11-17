@@ -1099,7 +1099,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	frame("simulation-refined")
 	ui:click("simulate");ui:click("cancelJob");assert(not jobs.job);frame("simulation-cancelled")
 	ui:click("compareRecipes");frame("crafting-recipe-comparison");ui:click("run")
-	for i=1,200 do if not jobs.job then break end;jobs.tick(build) end
+	-- The cooperative job yields on a CPU-time deadline, so a fixed 200 slices
+	-- can be too short on slower hosts even when comparison is still advancing.
+	for i=1,2000 do if not jobs.job then break end;jobs.tick(build) end
 	assert(not jobs.job,"Recipe comparison did not finish");frame("crafting-comparison-result");ui:click("charts");frame("crafting-comparison-chart");ui:click("close");ui:click("close")
 	assert(main.popups[1].controls.trials.buf=="48","Native character events did not reach the edit control")
 	ui:click("close");main.popups={}
