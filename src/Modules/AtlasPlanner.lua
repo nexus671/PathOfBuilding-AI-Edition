@@ -109,6 +109,7 @@ function M.validate(plan)
 	table.sort(result.nodes)
 	return result
 end
+local grantProofCache,grantProofOrder={},{}
 -- A grant cannot pay for the path that must be allocated before receiving it.
 -- Keep legacy plans readable; callers can report or reject unattainable budgets.
 local function budgetReachabilityChecked(plan)
@@ -132,6 +133,17 @@ local function budgetReachabilityChecked(plan)
 	local blocked=nodeSet(tree,plan.avoided or {})
 	local shortest=assert(distance(nil,blocked),"Unreachable grant node")
 	if shortest>available then return false,"Need "..shortest.." earned points to reach "..tree.nodes[grants[1]].name.." before its grant"..(next(blocked) and " while respecting avoided nodes." or "."),shortest end
+	local key=plan.version..":"..available..":"..table.concat(plan.nodes,",")..":"..table.concat(plan.avoided or {},",")
+	local proof=grantProofCache[key]
+	if proof==nil then
+		proof=require("Modules.AtlasGrantRoute").find(tree,set,blocked,available,grants[1]) or false
+		grantProofCache[key]=proof;grantProofOrder[#grantProofOrder+1]=key
+		if #grantProofOrder>32 then grantProofCache[table.remove(grantProofOrder,1)]=nil end
+	end
+	if proof then
+		local refunds=0;for _,step in ipairs(proof) do if step.action=="Refund" then refunds=refunds+1 end end
+		return true,"A simulated temporary route requires "..refunds.." node refunds. Review its steps before allocating.",shortest,copyTable(proof)
+	end
 	return nil,"Reaching "..tree.nodes[grants[1]].name.." may require a temporary path and refunds; review the transition.",direct
 end
 function M.budgetReachability(plan) return budgetReachabilityChecked(M.validate(plan)) end
@@ -304,7 +316,7 @@ function M.remove(plan,id)
 end
 function M.report(plan)
 	plan=M.validate(plan); local tree=M.tree(plan.version)
-	local reachable,budgetWarning,pointsBeforeGrant=budgetReachabilityChecked(plan)
+	local reachable,budgetWarning,pointsBeforeGrant,grantRoute=budgetReachabilityChecked(plan)
 	local counts,notables,keystones,stats,bonus={small=0,notable=0,keystone=0,gateway=0},{},{},{},0
 	local missingChoices={}
 	for _,id in ipairs(plan.nodes) do
@@ -319,7 +331,7 @@ function M.report(plan)
 	local lines={}
 	for stat,count in pairs(stats) do lines[#lines+1]={text=stat,count=count} end
 	table.sort(lines,function(a,b) return a.text < b.text end); table.sort(notables); table.sort(keystones)
-	return {version=plan.version,mode=tree.mode=="ruthless" and "Ruthless" or "Standard",preview=tree.preview,compatibleModes=tree.compatibleModes,used=#plan.nodes,budget=plan.budget,bonus=bonus,remaining=plan.budget+bonus-#plan.nodes,budgetReachable=reachable,budgetWarning=budgetWarning,pointsBeforeGrant=pointsBeforeGrant,
+	return {version=plan.version,mode=tree.mode=="ruthless" and "Ruthless" or "Standard",preview=tree.preview,compatibleModes=tree.compatibleModes,used=#plan.nodes,budget=plan.budget,bonus=bonus,remaining=plan.budget+bonus-#plan.nodes,budgetReachable=reachable,budgetWarning=budgetWarning,pointsBeforeGrant=pointsBeforeGrant,grantRoute=grantRoute,
 		counts=counts,notables=notables,keystones=keystones,stats=lines,missingChoices=missingChoices,source=tree.source,sourceCommit=tree.commit,
 		limitations={"Atlas plans do not modify character DPS or EHP.","Stat lines are grouped as displayed, not combined into effective map odds. Keystone interactions are not simulated.","Budget is supplied progression, not imported account completion. Small optimized routes can be exact; larger routes use a heuristic."}}
 end

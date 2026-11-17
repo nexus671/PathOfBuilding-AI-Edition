@@ -724,6 +724,10 @@ async function main(){
   const grantSearch=await queued('search_atlas_nodes',{baseRevision:context.revision,version:grantPlan.version,query:'Unwavering Vision',limit:10},'atlas');
   const grantId=grantSearch.atlas.matches[0].id;
   const grantRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:grantPlan,targets:[grantId]},'atlas');
+  const longerGrant=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:grantPlan,targets:[grantId],avoid:[17321]},'atlas');
+  const temporaryGrant={...longerGrant.atlas.plan,budget:grantRoute.atlas.plan.nodes.length,avoided:[]};
+  const grantProof=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:temporaryGrant,targets:[]},'atlas');
+  assert.equal(grantProof.atlas.report.budgetReachable,true);assert.ok(grantProof.atlas.report.grantRoute.some(step=>step.action==='Refund'));
   const impossibleStart={...grantRoute.atlas.plan,budget:grantRoute.atlas.plan.nodes.length-1};
   const blockedStage=await queued('compare_atlas_plans',{baseRevision:context.revision,before:impossibleStart,after:impossibleStart},'atlas');
   assert.equal(blockedStage.atlas.transition.startingReachable,false);assert.equal(blockedStage.atlas.transition.startingStatus,'unreachable');assert.equal(blockedStage.atlas.transition.steps,undefined);

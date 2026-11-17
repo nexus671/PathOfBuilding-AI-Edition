@@ -193,7 +193,7 @@ function Panel.Open(build,source,layout)
 		if budget and budget==math.floor(budget) and budget>=0 and budget<=controls.canvas.tree.maxPoints then
 			report.budget=budget;report.remaining=budget+report.bonus-report.used;pointUsage=report
 			local warning;controls.status.tooltipText=nil
-			if report.remaining>=0 then local candidate=copyTable(draft);candidate.budget=budget;local reachable,why,needed=atlas.budgetReachability(candidate);if reachable~=true then warning=reachable==false and ("Need "..needed.." points before grant") or "Grant path needs review";controls.status.tooltipText=why end end
+			if report.remaining>=0 then local candidate=copyTable(draft);candidate.budget=budget;local reachable,why,needed=atlas.budgetReachability(candidate);if reachable~=true then warning=reachable==false and ("Need "..needed.." points before grant") or "Grant path needs review";controls.status.tooltipText=why elseif why then warning="Temporary grant route";controls.status.tooltipText=why.." Open Allocated stats to see the route." end end
 			controls.status.label=string.format("%s%d / %d points%s | %s",(report.remaining<0 or warning) and "^xE58F8F" or "^7",report.used,report.budget,report.bonus>0 and " + "..report.bonus.." granted" or "",warning or (report.remaining<0 and (-report.remaining).." over budget" or report.remaining.." left"))
 		else pointUsage=nil;controls.status.label="^xE58F8FEnter a budget from 0 to "..controls.canvas.tree.maxPoints end
 		local node=atlas.tree(draft.version).nodes[id or controls.canvas.focus]
@@ -337,6 +337,11 @@ function Panel.Open(build,source,layout)
 		for _,warning in ipairs(summary.warnings) do lines[#lines+1]=warning end
 		for _,restriction in ipairs(summary.threadRestrictions) do lines[#lines+1]=restriction.name..": excludes "..restriction.mechanic.." Threads found in your Maps." end
 		local entries={{id="summary",label="Allocated investment overview",category="Overview",details=lines}}
+		if report.grantRoute then
+			local details={report.budgetWarning,"Start from an empty Atlas with the entered earned points. Refunds consume refund currency.","Choose effects when allocating choice nodes; temporary choices will be refunded."}
+			for i,step in ipairs(report.grantRoute) do details[#details+1]=i..". "..step.action..": "..controls.canvas.tree.nodes[step.id].name.." ["..step.id.."]" end
+			entries[#entries+1]={id="grant-route",label="Temporary grant route",category="Overview",details=details}
+		end
 		for _,row in ipairs(summary.mechanics) do entries[#entries+1]={id="mechanic-"..row.name,label=row.name.." | "..row.total.." points",category=row.name,details={row.name,row.small.." small nodes",row.notable.." notables",row.keystone.." keystones",row.gateway.." gateways","Small nodes can carry valuable bonuses; they are not assumed to be wasted travel."}} end
 		for _,keystone in ipairs(summary.keystones) do local details={keystone.name,"Review the whole keystone, including restrictions and tradeoffs."};for _,stat in ipairs(keystone.stats) do details[#details+1]=stat end;entries[#entries+1]={id="keystone-"..keystone.id,label=keystone.name.." | Keystone tradeoffs",category="Keystones",details=details} end
 		for _,missing in ipairs(report.missingChoices) do entries[#entries+1]={id="missing-"..missing.id,label=missing.name.." | Choose an effect",category="Needs a choice",details={"Select this node on the tree and choose one of its effects."}} end

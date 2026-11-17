@@ -141,6 +141,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		local atlas=require("Modules.AtlasPlanner");local start={id="temp-start",title="Temporary start",version="3.29.3",budget=138,nodes={}}
 		local shortest=atlas.connect(start,{65225});local goal=atlas.connect(start,{65225},{17321});goal.avoided=nil;goal.id="temp-goal";goal.title="Temporary goal"
 		start.budget=#shortest.nodes;goal.budget=start.budget;build.savers.AtlasPlans:Upsert(start)
+		local grantPanel=require("Classes.AtlasPlannerControl").Open(build,goal);assert(grantPanel.status.label:find("Temporary grant route",1,true),"Constructed grant route was not shown")
+		ui:click("stats");ui:text("search","Temporary grant route");local grantBrowser=main.popups[1].controls;local grantRows={};for _,row in ipairs(grantBrowser.details.list) do grantRows[#grantRows+1]=StripEscapes(row[1]) end
+		assert(table.concat(grantRows," "):find("refund",1,true),"Grant route details did not explain refunds");frame("atlas-grant-proof");ui:click("close");ui:click("close")
 		require("Classes.AtlasPlanningControl").Open(build,goal,function() end);ui:choose("previous","temp-start","val")
 		local lines={};for _,row in ipairs(main.popups[1].controls.transition.list) do lines[#lines+1]=StripEscapes(row[1]) end
 		assert(table.concat(lines," "):find("Temporary grant path",1,true),"Atlas stages did not show the temporary grant route");frame("atlas-temporary-grant-route");ui:click("close");build.savers.AtlasPlans:Remove("temp-start")

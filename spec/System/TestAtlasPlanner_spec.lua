@@ -128,8 +128,14 @@ describe("Native Atlas planner", function()
 		local attainable=copyTable(full);attainable.budget=needed;assert.is_true(atlas.budgetReachability(attainable))
 		assert.is_true(atlas.budgetReachability(atlas.connect(plan("3.29.3",needed),{target})))
 		local alternate=atlas.connect(plan("3.29.3"),{target},{17321});alternate.avoided=nil;assert.is_true(#alternate.nodes>needed)
-		alternate.budget=needed;local direct,warning=atlas.budgetReachability(alternate)
-		assert.is_nil(direct);assert.is_truthy(warning:find("temporary path",1,true));assert.equal(alternate.id,atlas.new(build):Upsert(alternate).id)
+		alternate.budget=needed;local direct,warning,_,proof=atlas.budgetReachability(alternate)
+		assert.is_true(direct);assert.is_truthy(warning:find("temporary route",1,true));assert.is_true(#proof>0);assert.equal(alternate.id,atlas.new(build):Upsert(alternate).id)
+		assert.same(proof,atlas.report(alternate).grantRoute)
+		local originalId=proof[1].id;proof[1].id=0;assert.equal(originalId,atlas.report(alternate).grantRoute[1].id)
+		local controls=require("Classes.AtlasPlannerControl").Open(build,alternate);assert.matches("Temporary grant route",controls.status.label)
+		controls.stats:Click();local browser=main.popups[1].controls;local found=false
+		for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="grant-route" then found=true end end
+		assert.is_true(found);main.popups={}
 		alternate.avoided={17321}
 		local reachable,reason,required=atlas.budgetReachability(alternate)
 		assert.is_false(reachable);assert.is_true(required>needed);assert.matches("avoided",reason)
