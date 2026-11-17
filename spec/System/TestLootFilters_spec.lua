@@ -102,6 +102,15 @@ describe("Build-owned loot filters",function()
 		assert.equal("unknown",test("LinkedSockets >= 2",{SocketGroup="RG"}).status)
 		assert.equal("unknown",test("LinkedSockets >= 2",{Sockets=2,SocketGroup="RX"}).status)
 	end)
+	it("does not decide linked group matches from an incomplete socket layout",function()
+		local function test(item) return parser.simulate(parser.parse("Show\n SocketGroup RGB\nHide"),item) end
+		for _,item in ipairs({{Sockets=6,SocketGroup="RG"},{Sockets=4,SocketGroup="RGB"},{Sockets=3,SocketGroup="0"},{Sockets=1,SocketGroup=""},{SocketGroup="RRRRRRR"},{SocketGroup="---"}}) do
+			local result=test(item);assert.equal("unknown",result.status);assert.equal("Unknown",result.action);assert.is_truthy(result.reasons[1])
+		end
+		assert.equal("Hide",test({Sockets=2,SocketGroup="RG"}).action)
+		assert.equal("Show",test({Sockets=3,SocketGroup="RGB"}).action)
+		assert.equal("Show",test({SocketGroup="RGB"}).action)
+	end)
 	it("never treats Abyss or Delve sockets as links in simulated drops",function()
 		local function action(condition,item)
 			return parser.simulate(parser.parse("Show\n "..condition.."\nHide"),item).action

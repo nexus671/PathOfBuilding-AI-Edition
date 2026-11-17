@@ -186,6 +186,10 @@ function M.condition(c,item)
 	if c.keyword=="SocketGroup" then
 		if op=="!" or op=="!=" then return nil,"Negative linked-socket comparisons are not verified" end
 		if type(value)~="string" then return nil,"Supply socket colours for "..c.keyword end
+		local total=select(2,value:gsub("[RGBWAD]",""))
+		local count=item.Sockets~=nil and tonumber(item.Sockets) or nil
+		if item.Sockets~=nil and (not count or count~=total) then return nil,"Socket group layout does not account for the stated socket count" end
+		if total>6 or total==0 and value~="" and value~="0" then return nil,"Invalid socket colours for SocketGroup" end
 		if value=="0" or value=="" then
 			for _,pattern in ipairs(values) do if socketMatch("",pattern,op) then return true end end
 			return false
