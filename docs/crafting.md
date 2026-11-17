@@ -88,7 +88,7 @@ Use a blank base or item text PoB can identify. Unresolved explicit modifiers ar
 
 Item-property goals can require a minimum number of actual Abyssal sockets. This checks the socket layout rather than the modifier text. Hollow Fossil socket placement and restoration use the experimental assumptions described in **Rules & sources**.
 
-If an equipment Vaal reroll produces the rare outcome, the model marks its socket layout unknown because that reroll is not simulated. The unknown marker survives working-state saves; socket-dependent actions and build previews stay unavailable until you use **Edit hypothetical item → Set socket layout** to enter an observed or hypothetical result. Simulated item text is omitted while sockets are unknown.
+If an equipment Vaal reroll produces the rare outcome, the model marks its socket layout unknown because that reroll is not simulated. The unknown marker survives working-state saves; socket-dependent actions and build previews stay unavailable until you use **Set socket layout** on the Craft page to enter an observed or hypothetical result. Accepting the edit sets a new recipe starting state. Simulated item text is omitted while sockets are unknown.
 
 **Locus of Corruption** can destroy the hypothetical item. Destruction stops that trial, retains its currency spending and prevents previewing a nonexistent item. **Undo currency** still restores the prior emulated state.
 

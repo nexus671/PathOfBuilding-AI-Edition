@@ -539,8 +539,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W-W-W-W";local model=sim.model(raw)
 		local unknown=sim.action(model,model.initial,{method="vaal"},function() return 0.6 end)
 		require("Classes.CraftingSimulatorControl").Open(build,{id="unknown-sockets-ui",title="Corrupted helmet",slot="Helmet",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(unknown)})
-		assert(not main.popups[1].controls.preview:IsEnabled(),"Unknown sockets must block build preview");frame("crafting-unknown-sockets")
-		ui:click("tab_settings");ui:click("manual");ui:click("editSockets");frame("crafting-confirm-sockets");ui:click("use");ui:click("keep")
+		assert(not main.popups[1].controls.preview:IsEnabled(),"Unknown sockets must block build preview");assert(main.popups[1].controls.resolveSockets:IsShown(),"Unknown sockets need a direct correction action");frame("crafting-unknown-sockets")
+		ui:click("resolveSockets");frame("crafting-confirm-sockets");ui:click("use");ui:click("keep")
 		assert(main.popups[1].controls.preview:IsEnabled(),"Confirming a socket layout should restore preview");ui:click("close")
 	end
 	do

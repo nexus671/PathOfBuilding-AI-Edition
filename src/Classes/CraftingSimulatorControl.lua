@@ -642,7 +642,7 @@ function Panel.Open(build,project,layout)
 		end
 		popup.keepTarget.tooltipText="Keep this sampled item as the guide's target. Use build Save to persist it."
 		popup.item.enabled=#kept>0;popup.preview.enabled=#kept>0;popup.keepTarget.enabled=#kept>0
-		if #kept==0 then popup.item:SetList({{label=#(result.retainedSuccesses or {})>0 and "No previewable items retained" or "No successful items retained",val=0}}) end
+		if #kept==0 then popup.item:SetList({{label=#(result.retainedSuccesses or {})>0 and "No items available to preview" or "No successful items retained",val=0}}) end
 		button(popup,"close",728,resultHeight-42,116,"Close",function() main:ClosePopup() end)
 		button(popup,"sample",252,resultHeight-42,220,"Inspect sampled outcome",function()
 			local c={};local w,h=math.min(660,main.screenW-40),math.min(560,main.screenH-48)
@@ -662,12 +662,14 @@ function Panel.Open(build,project,layout)
 		ui.style(popup,{moreTrials=true})
 		main:OpenPopup(860,resultHeight,"Crafting simulation results",popup,nil,nil,"close")
 	end)
-	button(controls,"manual",16,448,416,"Edit hypothetical item",function()
-		require("Classes.CraftingItemEditorControl").Open(model,state,function(edited)
+	local function openManual(directSockets)
+		local editor=require("Classes.CraftingItemEditorControl").Open(model,state,function(edited)
 			state=edited;initial=copyTable(edited);history={};actions={};analysis:clearSimulation();syncAnalysis();changedAffixes={};ui.draft(build,"workingCraft",draft.id)
 			updateOptions();refresh({"Manual edits set a new recipe starting state."})
 		end)
-	end)
+		if directSockets then editor.editSockets:Click() end
+	end
+	button(controls,"manual",16,448,416,"Edit hypothetical item",function() openManual(false) end)
 	button(controls,"reset",232,530,200,"Reset item",function() state=copyTable(initial);history={};actions={};changedAffixes={};ui.draft(build,"workingCraft",draft.id);updateOptions();refresh() end)
 	button(controls,"preview",16,height-48,200,"Preview in build",function()
 		assert(not state.veil and not state.destroyed,"A pending unveil or destroyed item cannot be previewed")
@@ -762,6 +764,7 @@ function Panel.Open(build,project,layout)
 	controls.cancelJob.enabled=function() return require("Modules.CraftingTasks").job~=nil end
 	controls.apply.enabled=function() return not state.destroyed end
 	controls.preview.enabled=function() return not state.destroyed and not state.veil and not state.socketLayoutUnknown end
+	controls.preview.tooltipText=function() return state.socketLayoutUnknown and "Set the unknown socket layout before previewing this item in a build." or "Preview this item against the current build." end
 	controls.configure.label=function() local method=controls.method:GetSelValueByKey("val");return method=="fossil" and "Configure fossil combination" or method=="gwennen" and "Configure Gwennen pair" or "Configure donor item" end
 	controls.configure.enabled=function() local method=controls.method:GetSelValueByKey("val");return method=="gwennen" or method=="fossil" or method=="awakener" or method=="recombine" or method=="recombine_predictable" end
 	controls.page=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,18,416,28},{"Emulate item","Target conditions","Simulate recipe","Craft settings"})
@@ -794,6 +797,10 @@ function Panel.Open(build,project,layout)
 	controls.apply.height=32;controls.undo.height=32
 	controls.apply.y=function() return #controls.option.list>0 and 370 or 320 end;controls.undo.y=controls.apply.y
 	controls.settings.y=function() return controls.apply:GetProperty("y")+44 end;controls.history.y=controls.settings.y
+	button(controls,"resolveSockets",16,458,200,"Set socket layout",function() openManual(true) end)
+	controls.resolveSockets.y=function() return controls.settings:GetProperty("y")+44 end
+	controls.resolveSockets.shown=function() return crafting() and state.socketLayoutUnknown and not state.destroyed and not state.veil end
+	controls.resolveSockets.tooltipText="Enter an observed or hypothetical layout; accepting the edit starts a new recipe state."
 	controls.targetSummary.height=height-338
 	controls.history.enabled=function() return #history>0 end
 	controls.settings.label="Find currencies"
