@@ -30,16 +30,29 @@ local function primaryMechanic(text)
 	if matches(text,"Maps") then return "Maps" end
 	return "Other"
 end
+-- These choices name Thread types, not the associated encounter mechanics.
+-- Keep all variant text searchable, but exclude it when classifying the node.
+local function threadKind(node)
+	for _,stat in ipairs(node.stats or {}) do
+		local text=atlas.displayStat(stat):lower()
+		if text:find("threads found in your maps cannot be of type",1,true) then return "exclude" end
+		if text:find("increased chance for threads in your maps to be of type",1,true) then return "increase" end
+	end
+end
+local function mechanicText(node)
+	if threadKind(node) then return atlas.displayStat(node.name.." "..table.concat(node.stats," ")):lower() end
+	return searchText(node)
+end
 function M.mechanic(node)
-	return primaryMechanic(atlas.searchText(node):lower())
+	return primaryMechanic(mechanicText(node))
 end
 function M.hasMechanic(node,name)
 	-- Keep generic map bonuses separate from mechanic-specific nodes.
 	if name=="Maps" then return M.mechanic(node)=="Maps" end
-	return matches(atlas.searchText(node):lower(),name)
+	return matches(mechanicText(node),name)
 end
 function M.allMechanics(node)
-	local text=atlas.searchText(node):lower();local result={}
+	local text=mechanicText(node);local result={}
 	for i=2,#M.mechanics do local name=M.mechanics[i];if matches(text,name) then result[#result+1]=name end end
 	if #result==0 and matches(text,"Maps") then result[1]="Maps" end
 	return result
@@ -47,12 +60,7 @@ end
 -- The preview contains one selected Thread type on each of these node forms.
 -- A Thread exclusion is not a restriction on the corresponding encounter.
 function M.threadRule(plan,node)
-	local kind
-	for _,stat in ipairs(node.stats or {}) do
-		local text=atlas.displayStat(stat):lower()
-		if text:find("threads found in your maps cannot be of type",1,true) then kind="exclude"
-		elseif text:find("increased chance for threads in your maps to be of type",1,true) then kind="increase" end
-	end
+	local kind=threadKind(node)
 	if not kind then return nil end
 	for _,choice in ipairs(plan.choices or {}) do if choice.node==node.id then
 		for _,effect in ipairs(node.variantEffects or {}) do if effect.effect==choice.effect and #effect.stats==1 then
@@ -85,8 +93,8 @@ function M.results(plan,query,mechanic,avoid)
 	local costs=M.costs(plan,avoid);local tree=atlas.tree(plan.version);local entries={}
 	query=(query or ""):lower()
 	for id,node in pairs(tree.nodes) do if id~=tree.start then
-		local text=searchText(node)
-		if (mechanic==nil or mechanic=="All" or mechanic=="Maps" and primaryMechanic(text)=="Maps" or mechanic~="Maps" and matches(text,mechanic)) and text:find(query,1,true) then
+		local text=searchText(node);local classification=mechanicText(node)
+		if (mechanic==nil or mechanic=="All" or mechanic=="Maps" and primaryMechanic(classification)=="Maps" or mechanic~="Maps" and matches(classification,mechanic)) and text:find(query,1,true) then
 			entries[#entries+1]={id=id,node=node,cost=costs[id]}
 		end
 	end end
@@ -166,7 +174,7 @@ function M.presets(plan)
 	local result={};local costs=M.costs(plan,blocked);local candidates={}
 	for _,mechanic in ipairs(M.mechanics) do candidates[mechanic]={} end
 	for id,node in pairs(tree.nodes) do if costs[id] and not allocated[id] and node.kind=="notable" and #M.blocking(node)==0 then
-		local text=atlas.searchText(node):lower()
+		local text=mechanicText(node)
 		for _,mechanic in ipairs(M.mechanics) do
 			local matched=mechanic=="Maps" and M.mechanic(node)=="Maps" or mechanic~="Maps" and matches(text,mechanic)
 			if matched then local bucket=candidates[mechanic];bucket[#bucket+1]={id=id,node=node,cost=costs[id]} end

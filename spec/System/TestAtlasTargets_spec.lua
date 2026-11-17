@@ -31,6 +31,28 @@ describe("Desired Atlas routes",function()
 		for _,row in ipairs(summary.mechanics) do count=count+row.total;found[row.name]=true end
 		assert.equal(#p.nodes,count);assert.is_true(found.Mercenaries);assert.is_true(found["Ore Deposits"])
 	end)
+	it("classifies Thread choices as Threads while keeping their names searchable",function()
+		local strategy=require("Modules.AtlasStrategy")
+		local function contains(rows,id) for _,entry in ipairs(rows) do if (type(entry)=="table" and entry.id or entry)==id then return true end end;return false end
+		for _,version in ipairs({"3.30.0-preview","3.30.0-preview-ruthless"}) do
+			local p=plan();p.version=version;local tree=atlas.tree(version)
+			local threadResults=strategy.results(p,"Breach","Threads")
+			local breachResults=strategy.results(p,"","Breach")
+			local threadTargets=targets.mechanic(p,"Threads").desired
+			local breachTargets=targets.mechanic(p,"Breach").desired
+			for _,id in ipairs({64980,54685}) do
+				local node=tree.nodes[id];assert.equal("Threads",strategy.mechanic(node))
+				assert.same({"Threads"},strategy.allMechanics(node));assert.is_false(strategy.hasMechanic(node,"Breach"))
+				assert.is_true(contains(threadResults,id));assert.is_false(contains(breachResults,id))
+				assert.is_true(contains(threadTargets,id));assert.is_false(contains(breachTargets,id))
+			end
+			local breachRoute=false;for _,route in ipairs(strategy.presets(p)) do if route.mechanic=="Breach" then
+				breachRoute=true
+				assert.is_false(contains(route.targets,64980));assert.is_false(contains(route.targets,54685))
+			end end
+			assert.is_true(breachRoute)
+		end
+	end)
 	it("classifies both Secrets Unveiled choices as Betrayal",function()
 		local strategy=require("Modules.AtlasStrategy");local node=atlas.tree("3.30.0-preview").nodes[45404]
 		local p=atlas.connect(plan(),{node.id});local counts={}
