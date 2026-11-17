@@ -384,13 +384,14 @@ local function truncateUTF8(value,limit)
 end
 local function simulatePage(profile,selected,offset,limit,checkpoint,includeSample)
 	offset=offset or 0;limit=limit or 20
-	assert(type(offset)=="number" and offset==math.floor(offset) and offset>=0 and offset<=#selected.samples,"Invalid example offset")
+	local total=selected.total or #selected.samples
+	assert(type(offset)=="number" and offset==math.floor(offset) and offset>=0 and offset<=total,"Invalid example offset")
 	assert(type(limit)=="number" and limit==math.floor(limit) and limit>=1 and limit<=50,"Use 1 to 50 examples per page")
 	local _,report,parsed=M.compile(profile,true);local invalid
 	for _,diagnostic in ipairs(report.diagnostics) do if diagnostic.error then invalid=diagnostic.error;break end end
-	local results={};local last=math.min(#selected.samples,offset+limit)
+	local results={};local last=math.min(total,offset+limit)
 	for i=offset+1,last do
-		local sample=selected.samples[i]
+		local sample=selected.sampleAt and selected.sampleAt(i) or selected.samples[i]
 		local evaluated=invalid and {status="invalid",action="Unknown",styles={},matches={},reasons={invalid}} or parser.simulate(parsed,sample)
 		-- Keep a page bounded even when an imported filter has thousands of
 		-- Continue blocks or unusually long custom sound paths. The single-item
@@ -405,7 +406,7 @@ local function simulatePage(profile,selected,offset,limit,checkpoint,includeSamp
 		results[#results+1]={index=i-1,baseType=baseType,baseTypeTruncated=baseType and #sample.BaseType>240 or nil,sample=includeSample and copyTable(sample) or nil,result=summary}
 		if checkpoint then checkpoint({completed=i-offset,total=last-offset}) end
 	end
-	return {setId=selected.id,title=selected.title,total=#selected.samples,offset=offset,nextOffset=last<#selected.samples and last or nil,results=results}
+	return {setId=selected.id,title=selected.title,total=total,offset=offset,nextOffset=last<total and last or nil,results=results}
 end
 -- Saved sets retain their existing compact result format.
 function M.simulateExamples(profile,setId,offset,limit,checkpoint)
@@ -420,13 +421,20 @@ function M.simulateScene(profile,kind,seed,areaLevel,itemLevel,offset,limit,chec
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=0 and seed<=1000000,"Invalid scene seed")
 	assert(type(areaLevel)=="number" and areaLevel==math.floor(areaLevel) and areaLevel>=1 and areaLevel<=100,"Invalid area level")
 	assert(type(itemLevel)=="number" and itemLevel==math.floor(itemLevel) and itemLevel>=1 and itemLevel<=100,"Invalid item level")
-	local targets,warnings
+	local selected={id="builtin",title=kind};local warnings
+	local library=require("Modules.LootFilterLibrary")
 	if kind=="Build targets" then
 		assert(build,"Build targets require an open build")
-		targets,warnings=M.generate(build,profile,checkpoint)
+		local targets;targets,warnings=M.generate(build,profile,checkpoint)
+		local rules={};for _,rule in ipairs(targets) do if rule.origin then rules[#rules+1]=rule end end
+		selected.total=#rules
+		selected.sampleAt=function(index)
+			local item=library.sample(rules[index]);item.AreaLevel=areaLevel;item.ItemLevel=itemLevel;return item
+		end
+	else
+		selected.samples=library.scene(profile,build,kind,seed,areaLevel,itemLevel)
 	end
-	local samples=require("Modules.LootFilterLibrary").scene(profile,build,kind,seed,areaLevel,itemLevel,targets)
-	local result=simulatePage(profile,{id="builtin",title=kind,samples=samples},offset,limit,checkpoint,true)
+	local result=simulatePage(profile,selected,offset,limit,checkpoint,true)
 	if warnings then
 		result.warningCount=#warnings;result.warnings={}
 		for i=1,math.min(#warnings,20) do

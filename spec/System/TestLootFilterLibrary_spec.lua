@@ -281,10 +281,16 @@ describe("Visual filter catalogue",function()
 		assert.equal("invalid",filters.simulateScene(invalid,"Currency",0,76,81,0,1).results[1].result.status)
 		assert.has_error(function() filters.simulateScene(profile,"Build targets") end)
 		build.savers.CraftingProjects:Upsert({id="hat",title="Craft helmet",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}})
+		build.savers.CraftingProjects:Upsert({id="ring",title="Craft ring",slot="Ring 1",startingItem="Rarity: NORMAL\nIron Ring\nItem Level: 86",goals={},steps={}})
 		local expectedTargets=library.scene(profile,build,"Build targets",0,76,86)
-		local targets=filters.simulateScene(profile,"Build targets",0,76,86,0,1,nil,build)
-		assert.is_true(#expectedTargets>0);assert.equal(#expectedTargets,targets.total)
+		local originalSample=library.sample;local sampleCalls=0
+		library.sample=function(...) sampleCalls=sampleCalls+1;return originalSample(...) end
+		local ok,targets=pcall(filters.simulateScene,profile,"Build targets",0,76,86,0,1,nil,build)
+		library.sample=originalSample;assert.is_true(ok,targets)
+		assert.equal(1,sampleCalls);assert.is_true(#expectedTargets>=2);assert.equal(#expectedTargets,targets.total)
 		assert.same(expectedTargets[1],targets.results[1].sample);assert.same(before,profile)
+		local nextTarget=filters.simulateScene(profile,"Build targets",0,76,86,targets.nextOffset,1,nil,build)
+		assert.same(expectedTargets[2],nextTarget.results[1].sample);assert.equal(1,nextTarget.results[1].index)
 		assert.equal(0,targets.warningCount)
 		build.savers.CraftingProjects.projects[1].startingItem="Not an item"
 		local incomplete=filters.simulateScene(profile,"Build targets",0,76,86,0,1,nil,build)
