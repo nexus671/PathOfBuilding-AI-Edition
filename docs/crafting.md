@@ -26,7 +26,7 @@ Search **Find currencies** for **replace quality** to apply a Harvest quality en
 
 **Set sockets and link them** is a combined bench preparation: it sets the requested socket count if necessary, then links those sockets. When the count already matches, estimates charge only the linking cost. Corrupted items include the corresponding Vaal Orb surcharge. Resource estimates use the state before each action.
 
-For Bestiary prefix/suffix swaps, use **Craft settings** to enter the red beast's level. The simulator uses that level for the added modifier and keeps the item's level unchanged. If no beast level is set, it uses item level and shows a warning. This rule is based on [community research](https://www.poewiki.net/wiki/Beastcrafting) and has not been verified in the current game.
+For Bestiary prefix/suffix swaps, use **Craft settings** to enter the red beast's level. The simulator uses that level for the added modifier and keeps the item's level unchanged. If no beast level is set, it uses item level and shows a warning. This rule is based on [community research](https://www.poewiki.net/wiki/Beastcrafting) and has not been verified in the current game. AI inspection can supply the same action and page through its potential modifiers using `beastOffset`. The list reflects current influence and tags before removal; it is not a probability or a guarantee that a modifier can be added. Use simulation for the full action.
 
 **Bestiary: maximum links** links the existing sockets without adding any. It uses one Black Mórrigan and one Craicic Sand Spitter; supply a price for each beast or a whole-action quote to estimate cost. The model currently supports non-unique, uncorrupted equipment with ordinary sockets.
 
@@ -212,7 +212,7 @@ fields also work in fossil optimization, whose initial state is in
 | Tool | Purpose |
 | --- | --- |
 | `get_crafting_projects` | Read saved projects. |
-| `inspect_crafting_item` | Read native IDs, initial state and coverage; supply an action to inspect its Allflame profile. |
+| `inspect_crafting_item` | Read native IDs, initial state and coverage; supply an action to inspect its Allflame profile or a paged Bestiary modifier pool. |
 | `apply_crafting_action` | Emulate an action; continue with the original text and returned state. |
 | `simulate_crafting` | Run a background recipe with targets, routes and prices. |
 | `calculate_crafting` | Enumerate finite outcomes or sample other actions in a cancellable job. |

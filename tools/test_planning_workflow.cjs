@@ -168,6 +168,12 @@ async function main(){
   await host('apply');context=(await call('get_build_context')).context;assert.ok(context.stats.LifeUnreserved>beforeViscera);
   assert.ok(context.items.some(item=>item.slot==='Wickerman Upper Limb' && item.text.includes("Warden's Arm")));
   const inspected=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'maximum Life',limit:20},'inspected');assert.ok(inspected.crafting.nativeEngine.modifiers.length);
+  const beastRaw='Rarity: NORMAL\nIron Hat\nItem Level: 20';const beastAction={method:'beast_prefix_suffix',beastLevel:86};
+  const beastFirst=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:beastRaw,action:beastAction,query:'resistance',limit:3},'inspected');
+  const beastPool=beastFirst.crafting.nativeEngine.beastPool;assert.equal(beastPool.beastLevel,86);assert.equal(beastPool.side,'Suffix');assert.equal(beastPool.rows.length,3);assert.equal(beastPool.hasMore,true);assert.match(beastPool.note,/not probabilities/);
+  const beastNext=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:beastRaw,action:beastAction,query:'resistance',limit:3,beastOffset:3},'inspected');
+  assert.equal(beastNext.crafting.nativeEngine.beastPool.offset,3);assert.notEqual(beastPool.rows[0].id,beastNext.crafting.nativeEngine.beastPool.rows[0].id);
+
   const damageRaw='Rarity: MAGIC\nRusted Sword\nItem Level: 86\nAdds 1 to 3 Fire Damage';
   const damage=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:damageRaw,action:{method:'harvest_damage',from:'fire',to:'cold'},seed:1},'crafted');
   assert.ok(damage.nativeCrafting.state.affixes.some(entry=>entry.id==='LocalAddedColdDamage1'));

@@ -619,7 +619,12 @@ function M.poll(build, force)
 				if request.action then
 					local simulator=require("Modules.CraftingSimulator");local model=simulator.model(raw)
 					local state=request.initialState and simulator.validateState(model,request.initialState) or model.initial
-					local action=copyTable(request.action);action.allflame=action.allflame or {auto=true}
+					local action=copyTable(request.action)
+					if action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix" then
+						local valid,pool=pcall(simulator.beastCatalog,model,state,action,request.query,request.limit,request.beastOffset)
+						if valid then catalog.beastPool=pool else catalog.beastPoolUnavailable=tostring(pool):match("^[^\n]+") end
+					end
+					action.allflame=action.allflame or {auto=true}
 					local valid,profile=pcall(simulator.allflameProfile,model,state,action)
 					if valid then catalog.allflameProfile=profile else catalog.allflameUnavailable=tostring(profile):match("^[^\n]+") end
 				end

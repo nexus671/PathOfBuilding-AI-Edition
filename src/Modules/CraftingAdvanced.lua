@@ -209,6 +209,24 @@ function A.extend(M,api)
 		for _,entry in ipairs(beastSource(model,state,level)) do if item:GetModSpawnWeight(entry.mod,tags)>0 then result[#result+1]=entry end end
 		return result
 	end
+	function M.beastCatalog(model,state,action,query,limit,offset)
+		assert(type(action)=="table" and (action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix"),"Select a Bestiary modifier swap")
+		limit=api.integer(limit or 50,1,100,"catalogue limit");offset=api.integer(offset or 0,0,1000000000,"catalogue offset")
+		assert(query==nil or type(query)=="string" and #query<=160,"Invalid catalogue query")
+		if M.context then model=M.context(model,state) end
+		local level=api.integer(action.beastLevel or model.item.itemLevel,1,100,"beast level")
+		local side=action.method=="beast_prefix_suffix" and "Suffix" or "Prefix";local matches={};query=(query or ""):lower()
+		for _,entry in ipairs(M.beastTargetSource(model,state,level)) do
+			local mod=entry.mod;local text=table.concat(mod," / ")
+			if mod.type==side and (entry.id.." "..text):lower():find(query,1,true) then
+				local metadata=A.data().mods[entry.id]
+				matches[#matches+1]={id=entry.id,text=text,type=mod.type,level=mod.level,groups=copyTable(metadata and metadata.groups or {mod.group or entry.id})}
+			end
+		end
+		local rows={};for i=offset+1,math.min(offset+limit,#matches) do rows[#rows+1]=matches[i] end
+		return {beastLevel=level,usesItemLevel=action.beastLevel==nil,side=side,total=#matches,offset=offset,hasMore=offset+#rows<#matches,rows=rows,
+			note="Potential base modifiers matching the current influence and tags before removal. Slot limits, locks and conflicting groups are not applied; removal may change tags and the resulting pool. These are not probabilities. Use calculation or simulation for the complete action.",warnings=M.actionWarnings(action,model)}
+	end
 	-- Tainted affix currencies reuse the basic transitions without dropping the
 	-- corrupted state, which can affect the item's modifier capacity.
 	api.taintedAffixAction=originalAction
