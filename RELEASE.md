@@ -1,4 +1,17 @@
-# How to release Path of Building Community
+# Releasing Path of Building AI Edition
+
+AI Edition is developed on `dev`; `main` is the published branch. Validate the
+exact commit and updater manifest before moving a published branch or creating a
+release. A green check on `dev` does not itself publish a release.
+
+The release and installer workflows below are inherited from Community Edition.
+The installer workflow uses the Community project's private installer and is
+guarded against running on this fork. AI Edition does not yet have a verified
+fork-owned installer or a documented 1.0 release procedure. Do not use the
+inherited workflow to create AI Edition installer assets. The upstream notes
+below are retained for data-maintenance reference, not fork release steps.
+
+## Community Edition reference
 
 ## Prerequisites
 
