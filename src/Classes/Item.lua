@@ -33,9 +33,10 @@ local function getCatalystScalar(catalystId, mod, quality)
 		return 1
 	end
 	local tags = mod.modTags
-	if not catalystId or type(catalystId) ~= "number" or not catalystTags[catalystId] or not tags or type(tags) ~= "table" or #tags == 0 then
+	if not catalystId or type(catalystId) ~= "number" or not catalystTags[catalystId] or tags ~= nil and type(tags) ~= "table" then
 		return 1
 	end
+	tags = tags or { }
 	if not quality then
 		quality = 20
 	end
