@@ -548,7 +548,7 @@ function M.poll(build, force)
 					for key,value in pairs(values) do M.status[key]=value end;M.publishState()
 				end
 				local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
-					if request.kind=="test_loot_filter_scene" then return filters.simulateScene(profile,request.scene,request.seed,request.areaLevel,request.itemLevel,request.offset,request.limit,checkpoint) end
+					if request.kind=="test_loot_filter_scene" then return filters.simulateScene(profile,request.scene,request.seed,request.areaLevel,request.itemLevel,request.offset,request.limit,checkpoint,build) end
 					return filters.simulateExamples(profile,request.sampleSetId,request.offset,request.limit,checkpoint)
 				end,function(result)
 					if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh loot-filter context."}) else publish("tested",{examples=result}) end

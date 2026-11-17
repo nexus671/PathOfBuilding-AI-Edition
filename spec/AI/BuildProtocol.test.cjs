@@ -78,7 +78,10 @@ test('queues bounded built-in filter scenes', t => {
   f.call('test_loot_filter_scene',args);
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
   assert.equal(request.kind,'test_loot_filter_scene');assert.equal(request.scene,args.scene);assert.equal(request.seed,3);
-  for(const invalid of [{...args,scene:'Build targets'},{...args,seed:-1},{...args,areaLevel:101},{...args,limit:51},{...args,offset:-1},{...args,unknown:true}]) assert.throws(()=>f.call('test_loot_filter_scene',invalid),/arguments/);
+  const targetFixture=fixture(t);
+  targetFixture.call('test_loot_filter_scene',{...args,baseRevision:targetFixture.state.revision,scene:'Build targets'});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(targetFixture.dir,'AI-build-request.json'))).scene,'Build targets');
+  for(const invalid of [{...args,scene:'Unknown'},{...args,seed:-1},{...args,areaLevel:101},{...args,limit:51},{...args,offset:-1},{...args,unknown:true}]) assert.throws(()=>f.call('test_loot_filter_scene',invalid),/arguments/);
 });
 test('accepts typed Atlas stages, strategy inputs and explicit failure recovery branches', t => {
   const f=fixture(t);

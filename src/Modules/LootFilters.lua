@@ -403,14 +403,19 @@ function M.simulateExamples(profile,setId,offset,limit,checkpoint)
 	assert(selected,"Choose a saved example set")
 	return simulatePage(profile,selected,offset,limit,checkpoint,false)
 end
-local sceneKinds={ ["Mixed drops"]=true,Currency=true,["Preset highlights"]=true,["Tiered gear"]=true,["Covens & Threads"]=true,["Maps & threads"]=true,["Flasks & tinctures"]=true,["Divination cards"]=true,Essences=true,["Crafting materials"]=true,["Heist & Expedition"]=true }
-function M.simulateScene(profile,kind,seed,areaLevel,itemLevel,offset,limit,checkpoint)
+local sceneKinds={ ["Mixed drops"]=true,["Build targets"]=true,Currency=true,["Preset highlights"]=true,["Tiered gear"]=true,["Covens & Threads"]=true,["Maps & threads"]=true,["Flasks & tinctures"]=true,["Divination cards"]=true,Essences=true,["Crafting materials"]=true,["Heist & Expedition"]=true }
+function M.simulateScene(profile,kind,seed,areaLevel,itemLevel,offset,limit,checkpoint,build)
 	assert(sceneKinds[kind],"Choose a supported built-in filter scene")
 	seed=seed or 0;areaLevel=areaLevel or 83;itemLevel=itemLevel or 86
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=0 and seed<=1000000,"Invalid scene seed")
 	assert(type(areaLevel)=="number" and areaLevel==math.floor(areaLevel) and areaLevel>=1 and areaLevel<=100,"Invalid area level")
 	assert(type(itemLevel)=="number" and itemLevel==math.floor(itemLevel) and itemLevel>=1 and itemLevel<=100,"Invalid item level")
-	local samples=require("Modules.LootFilterLibrary").scene(profile,nil,kind,seed,areaLevel,itemLevel)
+	local targets
+	if kind=="Build targets" then
+		assert(build,"Build targets require an open build")
+		targets=M.generate(build,profile,checkpoint)
+	end
+	local samples=require("Modules.LootFilterLibrary").scene(profile,build,kind,seed,areaLevel,itemLevel,targets)
 	local result=simulatePage(profile,{id="builtin",title=kind,samples=samples},offset,limit,checkpoint,true)
 	result.seed=seed;result.areaLevel=areaLevel;result.itemLevel=itemLevel
 	result.note="Deterministic examples, not live prices, drop rates or encounter probabilities."
