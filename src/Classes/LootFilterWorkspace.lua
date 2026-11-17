@@ -5,6 +5,21 @@ local parser=require("Modules.LootFilterParser")
 local library=require("Modules.LootFilterLibrary")
 local visual=require("Modules.LootFilterVisuals")
 local M={}
+-- The generation job owns its immutable rules; discard this cache whenever a
+-- new job or scene level is selected. Return a fresh list because the caller
+-- inserts the current test item into it.
+function M.targetScene(state,profile,build,settings)
+	if not state or not state.rules then return {},{} end
+	local cached=state.sceneCache
+	if not cached or cached.rules~=state.rules or cached.area~=settings.areaLevel or cached.level~=settings.itemLevel then
+		local samples=library.scene(profile,build,"Build targets",0,settings.areaLevel,settings.itemLevel,state.rules)
+		local keys={};local encode=require("Modules.PlanningData").encode
+		for _,sample in ipairs(samples) do keys[encode(sample)]=true end
+		cached={rules=state.rules,area=settings.areaLevel,level=settings.itemLevel,samples=samples,keys=keys};state.sceneCache=cached
+	end
+	local samples={};for i,sample in ipairs(cached.samples) do samples[i]=sample end
+	return samples,cached.keys
+end
 function M.dropOutcome(result)
 	local action=result and result.action
 	return (action=="Show" or action=="Hide" or action=="Minimal") and action or "Unknown"
@@ -447,10 +462,16 @@ function M.Open(build,source,layout,controller)
 			scene=copyTable(savedSet.samples);local encode=require("Modules.PlanningData").encode;local present=false;local current=encode(item);for _,sample in ipairs(scene) do if encode(sample)==current then present=true;break end end
 			if not present then table.insert(scene,1,item);extraTest=true end
 		else local targets=sceneKind=="Build targets" and targetPreview() or nil
-			scene=library.scene(profile,build,sceneKind,seed,settings.areaLevel,settings.itemLevel,targets and (targets.rules or {}));if sceneKind~="Tiered gear" then table.insert(scene,1,item) end end
+			local targetKeys
+			if targets then scene,targetKeys=M.targetScene(targets,profile,build,settings)
+			else scene=library.scene(profile,build,sceneKind,seed,settings.areaLevel,settings.itemLevel) end
+			if sceneKind~="Tiered gear" and (not targetKeys or not targetKeys[require("Modules.PlanningData").encode(item)]) then table.insert(scene,1,item) end
+		end
 		if not savedSet and sceneKind~="Tiered gear" then
-			local encode=require("Modules.PlanningData").encode;local selected=encode(item)
-			for i=#scene,2,-1 do if encode(scene[i])==selected then table.remove(scene,1);break end end
+			if sceneKind~="Build targets" then
+				local encode=require("Modules.PlanningData").encode;local selected=encode(item)
+				for i=#scene,2,-1 do if encode(scene[i])==selected then table.remove(scene,1);break end end
+			end
 		end
 		local targets=sceneKind=="Build targets" and transient.filterSceneTargets or nil
 		local caption=invalidFilterReason and "FILTER INVALID - SEE DETAILS" or sceneKind=="Preset highlights" and "PINNED SNAPSHOT - NOT LIVE PRICES" or sceneKind=="Tiered gear" and (profile.mode=="Ruthless" and "RUTHLESS: NO ITEM TIERS" or "TIER COMPARISON") or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
