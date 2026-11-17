@@ -575,7 +575,7 @@ function M.poll(build, force)
 				assert(request.optimize==nil or type(request.optimize)=="boolean","Invalid Atlas optimization setting")
 				local plan,added,routing=(request.optimize and planner.connectOptimized or planner.connect)(request.plan,request.targets,request.avoid)
 				result={plan=plan,added=added,routing=routing,report=planner.report(plan),strategySummary=require("Modules.AtlasTargets").summary(plan)}
-				if #(plan.choices or {})>0 then result.officialUrlWarning="Official links with Atlas effect choices are not verified; use the versioned plan JSON."
+				if #result.report.missingChoices>0 then result.officialUrlWarning="Choose an effect for every allocated choice node before sharing an official link."
 				else result.officialUrl=planner.url(plan) end
 			end
 			M.status={id=request.id,status="atlas",atlas=result}; M.publishState(); return

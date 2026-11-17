@@ -621,7 +621,7 @@ async function main(){
   const variantRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'variant',title:'Variant',version:'3.30.0-preview',budget:150,nodes:[]},targets:[variantNode.id]},'atlas');
   const variantPlan={...variantRoute.atlas.plan,choices:[{node:variantNode.id,effect:variantNode.variantEffects[0].effect}]};
   const variantResult=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:variantPlan,targets:[]},'atlas');
-  assert.deepEqual(variantResult.atlas.plan.choices,variantPlan.choices);assert.ok(variantResult.atlas.officialUrlWarning);assert.equal(variantResult.atlas.officialUrl,undefined);assert.ok(variantResult.atlas.report.stats.some(row=>row.text===variantNode.variantEffects[0].stats[0]));
+  assert.deepEqual(variantResult.atlas.plan.choices,variantPlan.choices);assert.equal(variantResult.atlas.officialUrlWarning,undefined);assert.ok(variantResult.atlas.officialUrl);assert.ok(variantResult.atlas.report.stats.some(row=>row.text===variantNode.variantEffects[0].stats[0]));
   const variantReview=await queued('propose_atlas_plan',{baseRevision:context.revision,plan:variantPlan},'review');
   assert.match(JSON.stringify(variantReview),/Selected effect: Secrets Unveiled/);await host('apply');await host('undo-applied');context=(await call('get_build_context')).context;
   assert.equal(refinedRoute.atlas.routing.cost,50);assert.equal(refinedRoute.atlas.routing.heuristic,true);assert.ok(refinedTargets.every(id=>refinedRoute.atlas.plan.nodes.includes(id)));

@@ -350,18 +350,31 @@ function M.import(raw,version,id,title,budget)
 	local bytes=common.base64.decode(token:gsub("-","+"):gsub("_","/"))
 	assert(bytes and #bytes >= 9 and bytes:sub(1,5) == string.char(0,0,0,6,0),"Unsupported Atlas URL format or game mode")
 	local count=bytes:byte(6)*256+bytes:byte(7)
-	assert(count <= 300 and #bytes == 9+count*2 and bytes:sub(-2) == string.char(0,0),"Unsupported or truncated Atlas URL")
-	local ids={}; for i=1,count do ids[i]=bytes:byte(6+i*2)*256+bytes:byte(7+i*2) end
-	return M.validate({id=id or "atlas-import",title=title or "Imported Atlas",version=version,budget=budget or M.tree(version).maxPoints,nodes=ids})
+	local offset=8+count*2
+	assert(count<=300 and #bytes>=offset+1,"Unsupported or truncated Atlas URL")
+	local choiceCount=bytes:byte(offset)*256+bytes:byte(offset+1)
+	assert(choiceCount<=300 and #bytes==offset+1+choiceCount*4,"Unsupported or truncated Atlas URL")
+	local ids={};for i=1,count do ids[i]=bytes:byte(6+i*2)*256+bytes:byte(7+i*2) end
+	local choices={};for i=1,choiceCount do
+		local pos=offset+2+(i-1)*4
+		choices[i]={effect=bytes:byte(pos)*256+bytes:byte(pos+1),node=bytes:byte(pos+2)*256+bytes:byte(pos+3)}
+	end
+	local plan=M.validate({id=id or "atlas-import",title=title or "Imported Atlas",version=version,budget=budget or tree.maxPoints,nodes=ids,choices=choiceCount>0 and choices or nil})
+	assert(#M.report(plan).missingChoices==0,"Choose an effect for every allocated choice node before sharing an official link.")
+	return plan
 end
 function M.url(plan)
 	plan=M.validate(plan)
-	assert(#(plan.choices or {})==0,"Official links with Atlas effect choices are not yet verified; use Copy plan to preserve them.")
+	assert(#M.report(plan).missingChoices==0,"Choose an effect for every allocated choice node before sharing an official link.")
 	local tree=M.tree(plan.version)
-	local ids=copyTable(plan.nodes); if tree.mode~="ruthless" then ids[#ids+1]=tree.start end; table.sort(ids)
+	local ids=copyTable(plan.nodes);table.sort(ids)
 	local bytes={0,0,0,6,0,math.floor(#ids/256),#ids%256}
 	for _,id in ipairs(ids) do bytes[#bytes+1]=math.floor(id/256); bytes[#bytes+1]=id%256 end
-	bytes[#bytes+1]=0; bytes[#bytes+1]=0
+	local choices=plan.choices or {};bytes[#bytes+1]=math.floor(#choices/256);bytes[#bytes+1]=#choices%256
+	for _,choice in ipairs(choices) do
+		bytes[#bytes+1]=math.floor(choice.effect/256);bytes[#bytes+1]=choice.effect%256
+		bytes[#bytes+1]=math.floor(choice.node/256);bytes[#bytes+1]=choice.node%256
+	end
 	return "https://www.pathofexile.com/fullscreen-atlas-skill-tree/"..(tree.mode=="ruthless" and "ruthless/" or "")..common.base64.encode(string.char(unpack(bytes))):gsub("+","-"):gsub("/","_")
 end
 function M.new(build)

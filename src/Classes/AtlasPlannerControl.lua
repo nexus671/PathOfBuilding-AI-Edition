@@ -167,7 +167,7 @@ function Panel.Open(build,source,layout)
 	local graphWidth=width-inspector-48; local graphHeight=height-262; local side=graphWidth+32
 	local controls,undo,avoided,redo={},{},copyTable(draft.avoided or {}),{}
 	local preferred
-	local pointUsage,routeAvailable
+	local pointUsage,routeAvailable,hasMissingChoices
 	local function current()
 		local result=copyTable(draft); result.title=controls.title.buf; result.budget=assert(tonumber(controls.budget.buf),"Enter a point budget"); result.notes=controls.notes.buf
 		if result.avoided~=nil or #avoided>0 then result.avoided=copyTable(avoided) end
@@ -182,7 +182,7 @@ function Panel.Open(build,source,layout)
 		end
 		if not controls.canvas.tree.nodes[controls.canvas.focus] then controls.canvas.focus=nil end
 		controls.version:SelByValue(draft.version)
-		local report=atlas.report(draft)
+		local report=atlas.report(draft);hasMissingChoices=#report.missingChoices>0
 		if controls.strategySummary then
 			local counts={};for _,id in ipairs(draft.nodes) do local mechanic=strategy.mechanic(strategy.selectedNode(draft,controls.canvas.tree.nodes[id]));counts[mechanic]=(counts[mechanic] or 0)+1 end
 			local parts={};for name,count in pairsSortByKey(counts) do parts[#parts+1]=name.." "..count end
@@ -409,8 +409,8 @@ function Panel.Open(build,source,layout)
 	controls.copy=button(16,height-104,120,"Copy plan",function() Copy(atlas.export(current())) end)
 	controls.import=button(148,height-104,120,"Paste plan",function() change(atlas.import(Paste(),draft.version,draft.id,controls.title.buf,tonumber(controls.budget.buf))) end)
 	controls.url=button(280,height-104,120,"Official link",function() Copy(atlas.url(current())); main:OpenMessagePopup("Atlas link copied","Official URLs do not carry patch versions. Use Copy plan to preserve the exact version.") end)
-	controls.url.enabled=function() return #(draft.choices or {})==0 end
-	controls.url.tooltipFunc=function(tooltip) tooltip:AddLine(14,#(draft.choices or {})>0 and "Official links with effect choices are not verified. Use Copy plan to preserve them." or "Copy an official Atlas link. Copy plan also preserves the exact version.") end
+	controls.url.enabled=function() return not hasMissingChoices end
+	controls.url.tooltipFunc=function(tooltip) tooltip:AddLine(14,hasMissingChoices and "Choose an effect for each allocated choice node before sharing an official link." or "Copy an official Atlas link. Copy plan also preserves the exact version.") end
 	controls.keep=button(16,height-42,160,"Keep plan",function() store:Upsert(current());if layout then controls.status.label="^7Plan kept. Save the build to persist it." else main:ClosePopup() end end)
 	controls.library=button(188,height-42,120,"Saved plans",function() Panel.Library(build,layout) end)
 	controls.new=button(320,height-42,120,"New plan",function() if not layout then main:ClosePopup() end;Panel.Open(build,{id="atlas-"..require("sha1")(tostring({})..os.time()):sub(1,12),title="New Atlas plan",version=draft.version,budget=atlas.tree(draft.version).maxPoints,nodes={},notes=""},layout) end)
