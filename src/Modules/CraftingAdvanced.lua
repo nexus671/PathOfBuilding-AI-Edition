@@ -213,14 +213,22 @@ function A.extend(M,api)
 				local visible=StripEscapes(line.line)
 				if line.exarch or line.eater or line.corrupted then ordinary=false end
 				if not templates[i] then recognized=false
-				elseif visible~=templates[i] and inferRange(templates[i],visible)==nil then
+				elseif visible~=templates[i] then
 					local ranged=visible:match("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)")~=nil
 					local displayed=ranged and StripEscapes(itemLib.applyRange(visible,line.range or 0.5)) or visible
-					local rolls=(not ranged or matchesScaledBounds(model,templates[i],visible,i)) and matchesScaledBase(model,templates[i],displayed,i)
-					if not rolls then recognized=false elseif ranged then normalized[i]=rolls end
+					-- PoB serializes unscaled rolls with explicit tags; game copies
+					-- instead show the already scaled value.
+					local nativeTagged=false
+					for rawLine in raw:gmatch("[^\r\n]+") do
+						local tagged=rawLine:match("^{tags:[^}]*}(.+)$")
+						if tagged and StripEscapes(tagged)==visible then nativeTagged=true;break end
+					end
+					local scaled=not nativeTagged and (not ranged or matchesScaledBounds(model,templates[i],visible,i)) and matchesScaledBase(model,templates[i],displayed,i)
+					local rolls=scaled or (not ranged and inferRange(templates[i],visible))
+					if not rolls then recognized=false else normalized[i]=rolls end
 				end
 			end
-			if recognized and ordinary then model.baseImplicitTemplates=templates;if next(normalized) then model.scaledBaseImplicitRanges=normalized end
+			if recognized and ordinary then model.baseImplicitTemplates=templates;if next(normalized) then model.normalizedBaseImplicitRanges=normalized end
 			elseif ordinary then for _,template in ipairs(templates) do if template:match("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)") then model.baseImplicitUnresolved=true;break end end end
 		end
 		if model.item.type == "Flask" or model.item.type == "Tincture" then assert(model.initial.rarity ~= "RARE","Flasks and tinctures cannot be rare") end
@@ -761,7 +769,7 @@ function A.extend(M,api)
 			assert(model.blessed330 and item.implicitModLines[1],"Invalid updated base implicit")
 			item.implicitModLines[1].line=model.blessed330;item.implicitModLines[1].modTags=copyTable(item.base.implicitModTypes and item.base.implicitModTypes[1] or {})
 		end
-		if model.scaledBaseImplicitRanges and not state.baseImplicitRanges then for i,range in pairs(model.scaledBaseImplicitRanges) do
+		if model.normalizedBaseImplicitRanges and not state.baseImplicitRanges then for i,range in pairs(model.normalizedBaseImplicitRanges) do
 			if item.implicitModLines[i] then item.implicitModLines[i].line=itemLib.applyRange(model.baseImplicitTemplates[i],range);item.implicitModLines[i].range=nil;item.implicitModLines[i].modTags=copyTable(item.base.implicitModTypes and item.base.implicitModTypes[i] or {}) end
 		end end
 		if state.baseImplicitRanges then for i,range in ipairs(state.baseImplicitRanges) do if item.implicitModLines[i] then

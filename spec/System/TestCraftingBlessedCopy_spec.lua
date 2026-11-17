@@ -68,4 +68,28 @@ describe("Blessed Orb on copied base implicits",function()
 		local item=sim.toItem(model,state)
 		assert.equal("Adds 3 to 16 Physical Damage to Attacks",StripEscapes(itemLib.formatModLine(item.implicitModLines[1],false)))
 	end)
+	it("updates copied implicit values when catalyst quality changes",function()
+		local raw="Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life"
+		local model=sim.model(raw)
+		local state=model.initial; for i=1,20 do if (state.catalystQuality or 0)<20 then state=sim.action(model,state,{method="catalyst",catalyst=4},function() return 0 end) end end
+		local item=sim.toItem(model,state)
+		assert.equal("+30 to maximum Life",StripEscapes(itemLib.formatModLine(item.implicitModLines[1],false)))
+		local changed=sim.action(model,state,{method="catalyst",catalyst=8},function() return 0 end)
+		item=sim.toItem(model,changed)
+		assert.equal("+25 to maximum Life",StripEscapes(itemLib.formatModLine(item.implicitModLines[1],false)))
+	end)
+
+	it("preserves the underlying roll for scaled copies and native save text",function()
+		local raw="Rarity: NORMAL\nCoral Ring\nItem Level: 86\nCatalyst: Fertile\nCatalystQuality: 20\nImplicits: 1\n+25 to maximum Life"
+		local model=sim.model(raw)
+		local item=sim.toItem(model,model.initial)
+		assert.equal("+25 to maximum Life",StripEscapes(itemLib.formatModLine(item.implicitModLines[1],false)))
+		local reopened=sim.model(item.raw)
+		item=sim.toItem(reopened,reopened.initial)
+		assert.equal("+25 to maximum Life",StripEscapes(itemLib.formatModLine(item.implicitModLines[1],false)))
+		local changed=sim.action(reopened,reopened.initial,{method="catalyst",catalyst=8},function() return 0 end)
+		item=sim.toItem(reopened,changed)
+		assert.equal("+21 to maximum Life",StripEscapes(itemLib.formatModLine(item.implicitModLines[1],false)))
+	end)
+
 end)
