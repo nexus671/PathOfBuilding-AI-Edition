@@ -432,11 +432,12 @@ test('queues crafting cancellation with an explicit request identifier', t => {
 
 test('queues observed predictable selections with bounded typed odds', t => {
   const f=fixture(t);
-  const args={baseRevision:f.state.revision,itemText:craftingProject().startingItem,action:{method:'recombine_predictable',donorItem:'donor',selectedMods:{left:['IncreasedLife1'],right:['FireResist1']},reportedSuccessChance:40}};
+  const args={baseRevision:f.state.revision,itemText:craftingProject().startingItem,action:{method:'recombine_predictable',donorItem:'donor',selectedMods:{left:['IncreasedLife1'],right:['FireResist1']},reportedSuccessChance:40,observedRecipientState:{rarity:'MAGIC',affixes:[{id:'IncreasedLife1',range:0.75}],origin:'a'.repeat(40)}}};
   f.call('apply_crafting_action',args);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).action,args.action);
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   assert.throws(()=>f.call('apply_crafting_action',{...args,action:{...args.action,reportedSuccessChance:101}}),/arguments/);
+	assert.throws(()=>f.call('apply_crafting_action',{...args,action:{...args.action,observedRecipientState:{rarity:'MAGIC',affixes:'invalid'}}}),/arguments/);
   assert.throws(()=>f.call('apply_crafting_action',{...args,action:{...args.action,selectedMods:{left:[],right:['FireResist1']}}}),/arguments/);
 });
 

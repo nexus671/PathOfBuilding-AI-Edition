@@ -6,6 +6,9 @@ function P.extend(M,A,api)
 	M.methods[#M.methods+1]="recombine_predictable";M.labels.recombine_predictable="Predictable recombination (observed odds)";table.sort(M.methods)
 	local originalAction,originalCalculate=M.action,M.calculate
 	local function prepare(model,input,craft)
+		if craft.observedRecipientState then
+			assert(type(craft.observedRecipientState)=="table" and craft.observedRecipientState.origin==require("sha1")(model.raw) and tableDeepEquals(input,craft.observedRecipientState) and tableDeepEquals(craft.observedRecipientState,input),"Recipient differs from the item used for the observed success percentage; obtain a new observation")
+		end
 		model=M.context(model,input)
 		local donor=M.model(assert(craft.donorItem,"Paste a donor item"))
 		assert(not M.hasPartialLock(model,input) and not M.hasPartialLock(donor,donor.initial),"Recombination with a partial affix lock is not yet modeled")

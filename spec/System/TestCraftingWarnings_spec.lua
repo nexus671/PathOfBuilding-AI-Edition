@@ -82,7 +82,7 @@ describe("Crafting result model notes",function()
 		local donor=sim.perform(source,fossil,7).state;local hollow
 		for _,entry in ipairs(donor.affixes) do if entry.id=="DelveAbyssJewelSocket1" then hollow=entry end end
 		assert.is_truthy(hollow);donor.rarity="RARE";donor.affixes={hollow,{id="FireResist1",range=0.5}}
-		local craft={method="recombine_predictable",donorItem=sim.toItem(model,donor).raw,selectedMods={left={"IncreasedLife1"},right={"FireResist1"}},reportedSuccessChance=40}
+		local craft={method="recombine_predictable",donorItem=sim.toItem(model,donor).raw,selectedMods={left={"IncreasedLife1"},right={"FireResist1"}},reportedSuccessChance=40,observedRecipientState=copyTable(input)}
 		local targets={{anyOf={"IncreasedLife1"}},{anyOf={"FireResist1"}}}
 		local odds=sim.calculate(source,craft,targets,input);assert.is_true(odds.outcomes[2].chance>0)
 		local warned=false;for _,warning in ipairs(odds.warnings) do if warning.code=="abyss_socket_layout" then warned=true end end;assert.is_true(warned)

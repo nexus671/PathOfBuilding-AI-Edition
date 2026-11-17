@@ -745,6 +745,11 @@ function M.simulate(raw,recipe,options)
 		options.currency=options.currency or options.priceBook.currency
 	end
 	recipe=M.validateRecipe(recipe)
+	for _,step in ipairs(recipe.steps) do
+		if step.method=="recombine_predictable" then
+			assert(type(step.observedRecipientState)=="table","Predictable recombination recipes require the recipient state used for the observed success percentage")
+		end
+	end
 	local trials=integer(options.trials or 200,1,2000,"trial count")
 	local baseCost=options.baseCost or 0
 	assert(type(baseCost) == "number" and baseCost == baseCost and baseCost >= 0 and baseCost <= 1e12,"Invalid starting item cost")
@@ -869,7 +874,7 @@ function M.simulate(raw,recipe,options)
 	end
 	local distribution={};for _,bucket in pairs(actionHistogram) do distribution[#distribution+1]=bucket end;table.sort(distribution,function(a,b) return a.actions < b.actions end)
 	local usage={};for _,entry in pairs(resourceUsage) do entry.meanPerTrial=entry.amount/trials;usage[#usage+1]=entry end;table.sort(usage,function(a,b) return a.key<b.key end)
-	assert(totalExecuted > 0 or successes > 0,"Recipe could not execute a supported action; inspect its starting rarity and open affixes")
+	assert(totalExecuted > 0 or successes > 0,next(errors) or "Recipe could not execute a supported action; inspect its starting rarity and open affixes")
 	local result={trials=trials,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,seed=seed,maxActions=maxActions,
 		meanActions=totalActions/trials,currencySpent=spent,resourceUsage=usage,unpriced=missing,transitionErrors=errors,warnings=M.hasPartialLock(M.context(model,model.initial),model.initial) and partialWarning(M.recipeWarnings(recipe,model)) or M.recipeWarnings(recipe,model),limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=not sample.destroyed and not sample.veil and M.toItem(model,sample).raw or nil,sampleState=sample,
 		engineVersion=2,dataPatch=M.dataPatch,sourceVersion=launch.versionNumber,costCurrency=options.currency or "supplied price units",

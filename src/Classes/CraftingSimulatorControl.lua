@@ -382,6 +382,7 @@ function Panel.Open(build,project,layout)
 					assert(#selected.left > 0 and #selected.right > 0,"Select at least one exact target from each input")
 					craft.selectedMods=selected;craft.reportedSuccessChance=assert(tonumber(popup.chance.buf),"Enter the game's displayed success percentage")
 					assert(craft.reportedSuccessChance >= 0 and craft.reportedSuccessChance <= 100,"Success percentage must be between 0 and 100")
+					craft.observedRecipientState=copyTable(state)
 					predictableRecipient=copyTable(state)
 				end
 				configured[method]=craft;changed();main:ClosePopup();refresh()
@@ -695,7 +696,7 @@ function Panel.Open(build,project,layout)
 		if controls.method:GetSelValueByKey("val")=="gwennen" and not configured.gwennen then return "Configure an observed Gwennen pair in Settings." end
 		local reason=simulator.configurationReason(model,state,action())
 		if reason then return reason end
-		if controls.method:GetSelValueByKey("val")=="recombine_predictable" and (not predictableRecipient or not tableDeepEquals(predictableRecipient,state)) then
+		if controls.method:GetSelValueByKey("val")=="recombine_predictable" and (not predictableRecipient or not tableDeepEquals(predictableRecipient,state) or not tableDeepEquals(state,predictableRecipient)) then
 			return "Recipient changed or was reopened. Reconfirm the in-game success percentage in Craft settings."
 		end
 	end
