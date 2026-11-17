@@ -230,7 +230,7 @@ function M.hint(method,state,model,craft)
 		if configuration then return configuration end
 	end
 	if available and method=="vaal" and model.item.type=="Flask" then return "Changes quality by -10 to +10. Equal outcome weights are assumed, not verified." end
-	if available and method=="vaal" and (model.item.type=="Jewel" and model.item.base.subType=="Abyss" or model.item.clusterJewel) then return "Unique outcome treated as no change. Branch odds and rare modifier counts are unverified." end
+	if available and method=="vaal" and model.item.type=="Jewel" and (model.item.base.subType=="Abyss" or model.item.clusterJewel or model.item.baseName=="Prismatic Jewel") then return "Unique outcome treated as no change. Branch odds and rare modifier counts are unverified." end
 	if available and method=="vaal" and require("Modules.CraftingSimulator").socketLimit(model,state)>0 then return "Rare corruption can reroll sockets and links in game; this model leaves them unchanged." end
 	if available and method=="tainted_quality" then return "Maximum 20% quality. The modeled 1-20% range and equal odds are assumptions." end
 	if available and method=="annul" then return "3.30: remove a random modifier. Attack/caster roll blockers do not protect it; fractures and prefix/suffix locks still apply." end
