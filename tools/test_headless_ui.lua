@@ -1565,6 +1565,18 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	frame("atlas-route-tree-preview");local previousTitle=build.planningWorkspace.controls.title.buf
 	ui:text("title","Temporary route title");assert(not build.planningWorkspace.controls.canvas.routeOverlay,"Editing the plan retained a stale route overlay")
 	ui:text("title",previousTitle);ui:click("targets");ui:frame()
+	do (function()
+	ui:choose("routeMode","Rebuild from start");ui:click("targetCalculate")
+	for i=1,500 do ui:frame();if not require("Modules.AtlasTargets").jobs[build].thread then break end end
+	local rebuilt=require("Modules.AtlasTargets").jobs[build].result;assert(rebuilt,"Rebuilt Atlas route did not complete");ui:frame()
+	local after={};for _,id in ipairs(rebuilt.plan.nodes) do after[id]=true end
+	local expectedRefunds={};for _,id in ipairs(beforeRoute.nodes) do if not after[id] then expectedRefunds[id]=true end end
+	assert(next(expectedRefunds),"Refund preview fixture did not refund any nodes")
+	ui:click("targetShowTree");ui:frame();local refundOverlay=build.planningWorkspace.controls.canvas.routeOverlay
+	assert(refundOverlay and tableDeepEquals(expectedRefunds,refundOverlay.removed),"Refund overlay did not match the rebuilt route")
+	assert(tableDeepEquals(beforeRoute,build.planningWorkspace.cache.atlas.layout.snapshot()),"Showing refunds changed the draft")
+	frame("atlas-route-refund-preview");ui:click("targets");ui:frame()
+	end)() end
 	ui:click("targetApply");ui:click("keep");frame("atlas-desired-kept")
 	do
 		local p={id="analysis-lifecycle",title="Resumable calculation",slot="Body Armour",startingItem="Rarity: NORMAL\nPlate Vest\nItem Level: 86",goals={},steps={},preferredMethod="alchemy",nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}},priceBook={currency="chaos",source="Lifecycle quotes",quotedAt=1700000000,values={["Metadata/Items/Currency/CurrencyUpgradeToRare"]=3}}}
