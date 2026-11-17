@@ -25,7 +25,15 @@ describe("Map reroll estimate control",function()
 		controls.targetGroup:SelByValue(2,"val");controls.addAlternative:Click();local picker=main.popups[1].controls;picker.search:SetText("MapContainsDeliriumMirrorWorlds",true);assert.is_true(picker.choose:IsEnabled());picker.choose:Click()
 		local text="";for _,line in ipairs(controls.wanted.list) do text=text..StripEscapes(line[1] or "").."\n" end
 		assert.matches("Mirror of Delirium",text);assert.matches("Viridian Wildwood",text);assert.is_true(controls.removeAlternative:IsEnabled());controls.removeAlternative:Click()
-		text="";for _,line in ipairs(controls.wanted.list) do text=text..StripEscapes(line[1] or "").."\n" end;assert.is_nil(text:find("Mirror of Delirium",1,true));assert.matches("Viridian Wildwood",text)
+		picker=main.popups[1].controls;picker.search:SetText("MapContainsWildwoodWorlds",true);picker.choose:Click()
+		text="";for _,line in ipairs(controls.wanted.list) do text=text..StripEscapes(line[1] or "").."\n" end;assert.is_nil(text:find("Viridian Wildwood",1,true));assert.matches("Mirror of Delirium",text)
+	end)
+	it("removes a chosen exclusion without changing the other saved targets",function()
+		local saved;local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
+		local settings={wantedGroups={{"MapContainsMirageWorlds"}},avoid={"MapMonsterAreaOfEffectMapWorlds","MapContainsWildwoodWorlds"},trials=3,maxAttempts=2}
+		local controls=require("Classes.MapCraftEstimateControl").Open(build,{state=state,settings=settings,saveSettings=function(value) saved=value end,apply=function() end})
+		controls.removeAvoid:Click();local picker=main.popups[1].controls;picker.search:SetText("MapMonsterAreaOfEffectMapWorlds",true);picker.choose:Click()
+		controls.keepSettings:Click();assert.same({"MapContainsWildwoodWorlds"},saved.avoid);assert.same(settings.wantedGroups,saved.wantedGroups)
 	end)
 	it("keeps, reopens and edits target settings",function()
 		local saved;local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}

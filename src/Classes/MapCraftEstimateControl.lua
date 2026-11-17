@@ -56,6 +56,15 @@ function M.Open(build,options)
 		return false
 	end
 	local function optionCount() local count=0;for _,group in ipairs(groups) do count=count+#group end;return count end
+	local function removePicker(ids,title,action)
+		local choices={}
+		for index,id in ipairs(ids) do
+			local mod=map.source().mods[id];local label=mod and mod.name.." | "..mod.generation_type or id
+			local details={label};if mod then for _,line in ipairs(map.summarize({id}).effects[1].lines) do details[#details+1]=line end end
+			choices[#choices+1]={id=id,index=index,label=label,search=id,details=details}
+		end
+		browser.Open(title,choices,{action=action,choose=function(entry) table.remove(ids,entry.index);invalidate();refresh() end})
+	end
 	local groupChoices={};for i=1,#groups do groupChoices[#groupChoices+1]={label="Target "..i,val=i} end
 	if #groupChoices==0 then groupChoices={{label="No targets",val=0}} end
 	controls.targetGroup=new("DropDownControl"):DropDownControl(ui.anchor,{16,260,85,28},groupChoices)
@@ -71,7 +80,7 @@ function M.Open(build,options)
 			return #groups[index]<100 and optionCount()<200 and not alreadyUsed(entry.id)
 		end,choose=function(entry) groups[index][#groups[index]+1]=entry.id;invalidate();refresh() end})
 	end)
-	button("removeAlternative",257,260,column-241,"Remove last option",function() local index=controls.targetGroup:GetSelValueByKey("val");table.remove(groups[index]);invalidate();refresh() end)
+	button("removeAlternative",257,260,column-241,"Remove option",function() local index=controls.targetGroup:GetSelValueByKey("val");removePicker(groups[index],"Remove an option","Remove option") end)
 	controls.addAlternative.enabled=function() return not active and #groups>0 end
 	controls.removeAlternative.enabled=function() local index=controls.targetGroup:GetSelValueByKey("val");return not active and index>0 and #groups[index]>1 end
 	button("addAvoid",right,260,190,"Add avoided modifier",function()
@@ -80,7 +89,7 @@ function M.Open(build,options)
 			return not alreadyUsed(entry.id)
 		end,choose=function(entry) avoid[#avoid+1]=entry.id;invalidate();refresh() end})
 	end)
-	button("removeAvoid",right+198,260,column-198,"Remove last",function() table.remove(avoid);invalidate();refresh() end)
+	button("removeAvoid",right+198,260,column-198,"Remove avoided",function() removePicker(avoid,"Remove an avoided modifier","Remove modifier") end)
 	controls.addAvoid.enabled=function() return not active end;controls.removeAvoid.enabled=function() return not active and #avoid>0 end
 	button("addTarget",16,294,190,"Add wanted target",function()
 		browser.Open("Choose a wanted target",entries(),{action="Add target",canChoose=function(entry) return #groups<6 and optionCount()<200 and not alreadyUsed(entry.id) end,
