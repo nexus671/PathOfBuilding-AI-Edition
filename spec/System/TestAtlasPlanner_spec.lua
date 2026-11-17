@@ -12,12 +12,15 @@ describe("Native Atlas planner", function()
 		local source=plan("3.30.0-preview");source.mapDrafts={}
 		for i=1,12 do source.mapDrafts[i]={id="map-"..i,title="Map "..i,patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="normal",selected={}} end
 		source.mapDrafts[1].rarity="rare";source.mapDrafts[1].selected={"MapMonsterCriticalStrikesAndDamageMapWorlds"};source.mapDrafts[1].rolls={{id="MapMonsterCriticalStrikesAndDamageMapWorlds",values={16,9,6,183,32}}}
+		source.mapDrafts[1].estimate={wantedGroups={{"MapContainsMirageWorlds","MapContainsWildwoodWorlds"}},avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=25,maxAttempts=10}
 		local store=atlas.new(build);store:Upsert(source);local xml={};store:Save(xml)
 		local reopened=atlas.new(build);reopened:Load(xml);assert.same(source.mapDrafts,reopened.plans[1].mapDrafts)
 		assert.same(source.mapDrafts,atlas.import(atlas.export(source)).mapDrafts)
 		local unsupported=copyTable(source);unsupported.mapDrafts[1].baseId="Metadata/UnknownFutureMap";assert.same(unsupported.mapDrafts,atlas.validate(unsupported).mapDrafts)
 		local duplicate=copyTable(source);duplicate.mapDrafts[2].id=duplicate.mapDrafts[1].id;assert.has_error(function() atlas.validate(duplicate) end)
 		local badRoll=copyTable(source);badRoll.mapDrafts[1].rolls[1].id="unknown";assert.has_error(function() atlas.validate(badRoll) end)
+		local badTarget=copyTable(source);badTarget.mapDrafts[1].estimate.avoid={"MapContainsMirageWorlds"};assert.has_error(function() atlas.validate(badTarget) end)
+		local badBudget=copyTable(source);badBudget.mapDrafts[1].estimate.trials=1000;badBudget.mapDrafts[1].estimate.maxAttempts=21;assert.has_error(function() atlas.validate(badBudget) end)
 	end)
 	it("keeps, opens and removes map drafts from the Atlas planner",function()
 		local panel=require("Classes.AtlasPlannerControl");local controls=panel.Open(build,plan("3.30.0-preview"))

@@ -20,6 +20,7 @@ function M.Open(options)
 	local width=math.min(900,main.screenW-40);local height=math.min(600,main.screenH-60)
 	local left=math.floor(width*0.38);local right=left+32;local rightWidth=width-right-16
 	local controls={};local selected=initial and copyTable(initial.selected) or {};local rolls=initial and copyTable(initial.rolls or {}) or {};local candidate;local baseId=initial and initial.baseId or "Metadata/Items/Maps/MapWorldsStrand";local refresh;local offset,nextOffset=0,nil
+	local estimateSettings=initial and initial.estimate and copyTable(initial.estimate) or nil
 	local draftId=initial and initial.id
 	local rollSeed=os.time()%2147483646+1
 	local artManifest;do local f=assert(io.open("Assets/MapCrafting/art.json","rb"));artManifest=assert(require("dkjson").decode(f:read("*a")));f:close() end
@@ -34,7 +35,7 @@ function M.Open(options)
 	local function button(key,x,y,w,label,fn)
 		controls[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{x,y,w,28},label,fn))
 	end
-	ui.description(controls,"intro",16,28,width-32,34,{"Hypothetical map: rolls are estimates; some values remain ranges.","Changing map, rarity, tier or item level clears selected modifiers."},14)
+	ui.description(controls,"intro",16,28,width-32,34,{"Hypothetical map: rolls are estimates; some values remain ranges.","Changing map, rarity, tier or item level clears modifiers and targets."},14)
 	button("base",16,66,left,"Choose map",function()
 		local rows={};local baseOffset=0
 		repeat
@@ -43,7 +44,7 @@ function M.Open(options)
 			baseOffset=page.nextOffset
 		until not baseOffset
 		browser.Open("Choose map base",rows,{action="Use map",choose=function(entry)
-			baseId=entry.id;selected={};rolls={};candidate=nil;offset=0;main:ClosePopup();refresh()
+			baseId=entry.id;selected={};rolls={};estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
 		end,closeOnChoose=false})
 	end)
 	ui.label(controls,"tierLabel",16,108,"Map tier",14)
@@ -68,7 +69,7 @@ function M.Open(options)
 	controls.remove.enabled=function() return #selected>0 end
 	button("estimate",24+math.floor((left-8)/2),height-62,math.floor((left-8)/2),"Estimate rerolls",function()
 		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=controls.rarity:GetSelValueByKey("val"),selected=copyTable(selected),rolls=copyTable(rolls)}
-		require("Classes.MapCraftEstimateControl").Open(options.build,{state=state,wanted=selected,apply=function(sample)
+		require("Classes.MapCraftEstimateControl").Open(options.build,{state=state,wanted=selected,settings=estimateSettings,saveSettings=function(settings) estimateSettings=copyTable(settings) end,apply=function(sample)
 			selected=copyTable(sample.selected);rolls=copyTable(sample.rolls);offset=0;candidate=nil;controls.search:SetText("");refresh()
 		end})
 	end)
@@ -107,6 +108,7 @@ function M.Open(options)
 		controls.draftName=new("EditControl"):EditControl(ui.anchor,{right+46,height-48,160,26},initial and initial.title or "Map draft",nil,nil,120)
 		button("keep",right+218,height-48,150,"Keep map draft",function()
 			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=controls.rarity:GetSelValueByKey("val"),selected=copyTable(selected),rolls=copyTable(rolls)}
+			if estimateSettings then entry.estimate=copyTable(estimateSettings) end
 			local ok,result=pcall(options.keep,entry)
 			if not ok then main:OpenMessagePopup("Map draft",ui.errorText(result));return end
 			draftId=result;controls.status.label="^7Draft kept. Keep the plan and save the build."
@@ -142,9 +144,9 @@ function M.Open(options)
 	end
 	controls.list.onClick=function(hit) if hit and hit.line then show(hit.line.entry) end end
 	controls.search.changeFunc=function() offset=0;refresh() end
-	controls.level.changeFunc=function() selected={};rolls={};offset=0;refresh() end
-	controls.tier.selFunc=function() selected={};rolls={};offset=0;refresh() end
-	controls.rarity.selFunc=function() selected={};rolls={};offset=0;refresh() end
+	controls.level.changeFunc=function() selected={};rolls={};estimateSettings=nil;offset=0;refresh() end
+	controls.tier.selFunc=function() selected={};rolls={};estimateSettings=nil;offset=0;refresh() end
+	controls.rarity.selFunc=function() selected={};rolls={};estimateSettings=nil;offset=0;refresh() end
 	if controls.draftName then controls.draftName.changeFunc=function() if draftId then controls.status.label="^7Name changed. Keep the map draft again." end end end
 	ui.style(controls,{add=true});refresh()
 	main:OpenPopup(width,height,"Map modifier explorer",controls,nil,"search","close")

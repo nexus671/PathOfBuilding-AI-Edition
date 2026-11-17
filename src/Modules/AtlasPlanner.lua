@@ -24,6 +24,22 @@ local function array(value,limit,label)
 	for key in pairs(value) do assert(type(key) == "number" and key == math.floor(key) and key >= 1 and key <= #value,"Invalid array for "..label) end
 	return value
 end
+function M.validateMapEstimate(settings)
+	assert(type(settings)=="table","Invalid map estimate settings")
+	local result={wantedGroups={},avoid={},trials=integer(settings.trials,1,1000,"estimate trials"),maxAttempts=integer(settings.maxAttempts,1,1000,"estimate attempt limit")}
+	assert(result.trials*result.maxAttempts<=20000,"Use at most 20,000 total simulated attempts")
+	local seen,total={},0
+	for _,group in ipairs(array(settings.wantedGroups,6,"wanted groups")) do
+		local clean={};for _,id in ipairs(array(group,100,"wanted alternatives")) do
+			text(id,160,"map modifier ID");assert(id:match("%S") and not seen[id],"Invalid or repeated target modifier");seen[id]=true;clean[#clean+1]=id;total=total+1
+		end
+		assert(#clean>0 and total<=200,"Invalid wanted alternatives");result.wantedGroups[#result.wantedGroups+1]=clean
+	end
+	for _,id in ipairs(array(settings.avoid,100,"avoided modifiers")) do
+		text(id,160,"map modifier ID");assert(id:match("%S") and not seen[id],"Invalid or repeated target modifier");seen[id]=true;result.avoid[#result.avoid+1]=id
+	end
+	return result
+end
 -- Preserve hypothetical map drafts even when a later data export no longer
 -- contains the base or modifier; opening them requires a compatible export.
 function M.validateMapDraft(entry)
@@ -45,6 +61,7 @@ function M.validateMapDraft(entry)
 			result.rolls[#result.rolls+1]={id=roll.id,values=values}
 		end
 	end
+	if entry.estimate~=nil then result.estimate=M.validateMapEstimate(entry.estimate) end
 	return result
 end
 function M.tree(version)

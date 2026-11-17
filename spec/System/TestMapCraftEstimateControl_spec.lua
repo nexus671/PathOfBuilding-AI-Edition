@@ -27,4 +27,17 @@ describe("Map reroll estimate control",function()
 		assert.matches("Mirror of Delirium",text);assert.matches("Viridian Wildwood",text);assert.is_true(controls.removeAlternative:IsEnabled());controls.removeAlternative:Click()
 		text="";for _,line in ipairs(controls.wanted.list) do text=text..StripEscapes(line[1] or "").."\n" end;assert.is_nil(text:find("Mirror of Delirium",1,true));assert.matches("Viridian Wildwood",text)
 	end)
+	it("keeps, reopens and edits target settings",function()
+		local saved;local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
+		local settings={wantedGroups={{"MapContainsMirageWorlds","MapContainsWildwoodWorlds"}},avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=3,maxAttempts=2}
+		local options={state=state,wanted={"MapContainsMirageWorlds"},settings=settings,saveSettings=function(value) saved=copyTable(value) end,apply=function() end}
+		local controls=require("Classes.MapCraftEstimateControl").Open(build,options)
+		controls.addTarget:Click();local picker=main.popups[1].controls;picker.search:SetText("MapContainsDeliriumMirrorWorlds",true);picker.choose:Click()
+		controls.keepSettings:Click();assert.equal(2,#saved.wantedGroups);assert.same(settings.avoid,saved.avoid)
+		controls.trials:SetText("4",true);assert.matches("Keep targets again",controls.report.list[1][1]);assert.equal(3,saved.trials)
+		controls.keepSettings:Click();assert.equal(4,saved.trials);controls.close:Click()
+		options.settings=saved;controls=require("Classes.MapCraftEstimateControl").Open(build,options);assert.equal("4",controls.trials.buf)
+		controls.targetGroup:SelByValue(2,"val");controls.removeTarget:Click();controls.keepSettings:Click();assert.equal(1,#saved.wantedGroups)
+		controls.fromMap:Click();controls.keepSettings:Click();assert.same({{"MapContainsMirageWorlds"}},saved.wantedGroups)
+	end)
 end)
