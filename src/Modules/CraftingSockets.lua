@@ -3,7 +3,7 @@
 local S={}
 local colours={"R","G","B"}
 function S.extend(M,A,api)
-	local methods={beast_max_links="Bestiary: maximum links",jeweller="Jeweller's Orb (experimental)",fusing="Orb of Fusing (experimental)",omen_jeweller="Jeweller's Orb + Omen of the Jeweller",omen_trichromatism="Omen of Trichromatism (RGB)",omen_connections="Orb of Fusing + Omen of Connections",chromatic="Chromatic Orb",socket_colour_bench="Bench: non-white sockets",socket_white_bench="Bench: white sockets (3.30)",tainted_chromatic="Tainted Chromatic Orb",tainted_jeweller="Tainted Jeweller's Orb",tainted_fusing="Tainted Orb of Fusing"}
+	local methods={vorici_socket_colours="Vorici: best of 25 socket colours",beast_max_links="Bestiary: maximum links",jeweller="Jeweller's Orb (experimental)",fusing="Orb of Fusing (experimental)",omen_jeweller="Jeweller's Orb + Omen of the Jeweller",omen_trichromatism="Omen of Trichromatism (RGB)",omen_connections="Orb of Fusing + Omen of Connections",chromatic="Chromatic Orb",socket_colour_bench="Bench: non-white sockets",socket_white_bench="Bench: white sockets (3.30)",tainted_chromatic="Tainted Chromatic Orb",tainted_jeweller="Tainted Jeweller's Orb",tainted_fusing="Tainted Orb of Fusing"}
 	for method,label in pairs(methods) do M.methods[#M.methods+1]=method;M.labels[method]=label end;table.sort(M.methods)
 	local originalAction,originalOptions,originalPrice,originalComponents=M.action,M.actionOptions,M.priceKey,M.components
 	local function naturalLimit(model,state)
@@ -17,6 +17,10 @@ function S.extend(M,A,api)
 		if #sockets>=naturalLimit(model,state) then return "The item already has its maximum natural socket count." end
 	end
 	M.methodChecks.jeweller=M.methodChecks.omen_jeweller
+	M.methodChecks.vorici_socket_colours=function(model,state)
+		if #(state.sockets or {})==0 then return "Add sockets before using Vorici's bench." end
+		for _,socket in ipairs(state.sockets) do if socket.color=="A" then return "Abyssal sockets need a separate socket model." end end
+	end
 	-- Historical community estimates for zero-quality weapons. Applying these
 	-- weights to other bases, and the quality adjustment, are model assumptions.
 	function S.jewellerProbabilities(model,state)
@@ -123,6 +127,11 @@ function S.extend(M,A,api)
 	function M.action(model,input,craft,random)
 		local method=craft.method
 		if not methods[method] then return originalAction(model,input,craft,random) end
+		if method=="vorici_socket_colours" then
+			assert(not input.destroyed,"Cannot craft a destroyed item")
+			local reason=M.methodChecks.vorici_socket_colours(model,input);assert(not reason,reason)
+			return M.bestChromatic(model,input,25,random)
+		end
 		assert(not input.mirrored and not input.veil,"Cannot modify a mirrored item or unfinished unveil")
 		local tainted=method:find("tainted_",1,true) ~= nil
 		assert(method == "socket_colour_bench" or method == "socket_white_bench" or (input.corrupted or false) == tainted,tainted and "Tainted socket currency requires corruption" or "Use tainted currency or the bench on corrupted items")
@@ -233,7 +242,7 @@ function S.extend(M,A,api)
 		local state=initialState and M.validateState(model,initialState) or model.initial
 		model=M.context(model,state);query=(query or ""):lower();result.socketCrafts={}
 		local available=require("Modules.CraftingAvailability").check
-		for _,method in ipairs({"socket_bench","socket_white_bench","socket_colour_bench","chromatic","beast_max_links","jeweller","fusing","omen_jeweller","omen_connections","omen_trichromatism","tainted_chromatic","tainted_jeweller","tainted_fusing"}) do
+		for _,method in ipairs({"socket_bench","socket_white_bench","socket_colour_bench","chromatic","vorici_socket_colours","beast_max_links","jeweller","fusing","omen_jeweller","omen_connections","omen_trichromatism","tainted_chromatic","tainted_jeweller","tainted_fusing"}) do
 			local choices=(method=="socket_bench" or method=="socket_colour_bench") and M.actionOptions(model,state,method) or {{label=M.labels[method],action={method=method}}}
 			local allowed,reason=available(method,state,model)
 			for _,choice in ipairs(choices) do

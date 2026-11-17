@@ -238,6 +238,7 @@ function M.hint(method,state,model)
 	if available and method=="locus" then return "Assumes 25% implicit, 25% sockets, 50% destruction; not verified." end
 	if available and method=="socket_white_bench" then return "3.30 bench: turn sockets white for one Scouring Orb, plus one Vaal Orb on corrupted items." end
 	if available and method=="bench_remove_enchant" then return "Remove all enchantments for three Orbs of Scouring. Socket capacity can increase, but existing sockets do not change." end
+	if available and method=="vorici_socket_colours" then return "25 estimated colour rolls; keeps the first with the most non-white sockets. Enter a whole-service price." end
 	if available and method=="jeweller" then return "Experimental socket-count odds and quality model; retained socket and link positions are assumed." end
 	if available and method=="fusing" then return "Experimental link odds based on historical observations; quality and layout rules are assumptions." end
 	if available and method=="gwennen" then return "Experimental: choose a pair in Settings. Coin odds, removal counts and currency transitions are assumptions." end

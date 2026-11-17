@@ -393,6 +393,11 @@ async function main(){
   assert.equal(beastLinked.nativeCrafting.state.sockets.length,6);assert.ok(beastLinked.nativeCrafting.state.sockets.every(socket=>socket.group===0));
   assert.ok(linksService.available && linksService.deterministic);assert.deepEqual(linksService.components,{'Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks':1,'Metadata/Items/Currency/CurrencyRerollSocketLinks':1});
   const linkAction=linksService.action;
+  const voriciInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'vorici',limit:5},'inspected');
+  const vorici=voriciInspection.crafting.nativeEngine.socketCrafts.find(entry=>entry.method==='vorici_socket_colours');
+  assert.ok(vorici.available && !vorici.deterministic);assert.deepEqual(vorici.components,{vorici_socket_colours:1});
+  const voriciAction=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:bodyRaw,action:vorici.action,seed:104729},'crafted');
+  assert.equal(voriciAction.nativeCrafting.state.sockets.length,6);assert.equal(voriciAction.nativeCrafting.warnings[0].code,'vorici_colour_assumptions');
   const rgbInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'RGB',limit:5},'inspected');
   const rgbService=rgbInspection.crafting.nativeEngine.socketCrafts.find(entry=>entry.method==='omen_trichromatism');
   assert.ok(rgbService.available && !rgbService.deterministic);assert.equal(rgbService.guaranteedColours,'RGB');

@@ -968,6 +968,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(socketRecipe.steps[2].method=="beast_max_links","Bestiary recipe step was not retained")
 		local socketRun=sim.simulate(socketRaw,socketRecipe,{trials=1,maxActions=2,forceFirstAction=true})
 		assert(socketRun.successes==1 and not next(socketRun.transitionErrors),"The saved Bestiary recipe did not link the item")
+		local voriciRecipe;require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy"}},targets={},requirements={minQuality=30}},{method="alchemy"},function(value) voriciRecipe=value end,sim.model(socketRaw))
+		ui:click("addCurrency");ui:text("search","Vorici: best of 25");frame("crafting-recipe-vorici-picker");ui:click("choose");ui:click("keep")
+		assert(voriciRecipe.steps[2].method=="vorici_socket_colours","Vorici service was not retained")
+		local voriciRun=sim.simulate(socketRaw,voriciRecipe,{trials=1,maxActions=2,forceFirstAction=true})
+		assert(not next(voriciRun.transitionErrors) and voriciRun.meanActions==2,"The saved Vorici recipe did not execute")
+
 		local talismanRaw="Rarity: NORMAL\nChieftain Talisman\nItem Level: 86";local talismanRecipe
 		require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy"}},targets={},requirements={minAffixes=4}},{method="alchemy"},function(value) talismanRecipe=value end,sim.model(talismanRaw))
 		ui:click("addCurrency");ui:text("search","imprint rare Talisman");frame("crafting-recipe-talisman-imprint");ui:click("choose");ui:click("keep")

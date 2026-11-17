@@ -41,6 +41,7 @@ end
 local partialWarningMessage="Partial locks assume uniform selection; bench rerolls select once, Harvest augment selects before adding, and conversions select before changing a modifier. Unpredictable recombination treats locks as non-exclusive. Some selections fail and are not charged in this model; actual behavior is unverified. Other interactions remain unsupported."
 function M.actionWarnings(action,model)
 	local result={}
+	if action.method=="vorici_socket_colours" then result[#result+1]={code="vorici_colour_assumptions",message="Vorici samples 25 independent rolls using the experimental Chromatic model and keeps the first tied result with the most non-white sockets. Colour probabilities and tie behavior are unverified.",source="https://www.pathofexile.com/forum/view-thread/3985332"} end
 	local abyss=false
 	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingAbyss" then abyss=true end end
 	for _,entry in ipairs(model and model.initial and model.initial.affixes or {}) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true end end
@@ -960,7 +961,7 @@ do
 end
 -- Extensions register state prerequisites once for both execution and browsing.
 local partialLockActions={recombine=true,bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true,beast_imprint=true,beast_talisman_imprint=true,
-	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,chromatic=true,beast_max_links=true,ducat_ukatoa=true,ducat_katakohi=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
+	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,ducat_ukatoa=true,ducat_katakohi=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
 	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,bench_remove_enchant=true,eldritch_implicit=true,conflict=true}
 function M.methodReason(model,state,method)
 	if M.hasPartialLock(M.context(model,state),state) and not partialLockActions[method] then
