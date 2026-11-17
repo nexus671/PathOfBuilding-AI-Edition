@@ -1439,7 +1439,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui.cursorX,ui.cursorY=tx+40,ty+22;ui:frame();ui:dispatch(build,{{type="KeyUp",key="LEFTBUTTON"}});frame("filter-tier-move")
 	local tierDraft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1]
 	assert(#tierDraft.tiers[1].items==1 and #tierDraft.tiers[2].items==0,"Dragging did not move the item between custom tiers")
-	ui:click("undo");ui:click("redo");ui:click("viewModules");ui:click("moduleCreate");frame("filter-modules");ui:click("moduleCopy");ui:click("modulePaste")
+	ui:click("undo");ui:click("redo");ui:click("viewModules");ui:click("moduleCreate");frame("filter-modules")
+	ui.clipboard="not a pickup module";ui:click("modulePaste");assert(#main.popups>0,"Invalid module did not show an explanation");assert(#build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].modules==1,"Invalid module changed the profile");main.popups={}
+	ui:click("moduleCopy");ui:click("modulePaste")
 	filterTool("Review changes");frame("filter-change-review");ui:click("close");ui:click("keep")
 	assert(#build.savers.LootFilters.data.profiles[1].modules==1,"Rule modules were not kept")
 	ui:click("viewSimulate");ui:choose("sceneKind","Covens & Threads");assert(build.planningWorkspace.cache.filters.layout.snapshot().sceneKind=="Covens & Threads","League example scene was not selected");assert(build.planningWorkspace.controls.regenerate:IsEnabled(),"League examples should be reorderable");frame("filter-covens-examples")

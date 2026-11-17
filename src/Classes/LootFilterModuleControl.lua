@@ -3,7 +3,11 @@ local editing=require("Modules.LootFilterEditing")
 local M={}
 function M.Mount(c,data,profile,w,h,options)
 	local selected;local selectedRule
-	local function button(key,x,y,width,title,run) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},title,run) end
+	local function button(key,x,y,width,title,run)
+		c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},title,function()
+			local ok,err=pcall(run);if not ok then main:OpenMessagePopup("Pickup modules",ui.errorText(err)) end
+		end)
+	end
 	ui.label(c,"moduleHeading",16,124,"Reusable pickup modules",20)
 	ui.description(c,"moduleHelp",16,158,w-32,44,{"Keep a named set of pickup rules in multiple profiles. Copies are portable snapshots; Update copies deliberately synchronises profiles in this build."},14)
 	c.modules=new("TextListControl"):TextListControl(ui.anchor,{16,220,300,h-366},nil,{})
