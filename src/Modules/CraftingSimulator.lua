@@ -936,13 +936,21 @@ local cachedDonorText,cachedDonorModel
 function M.configurationReason(model,state,craft)
 	if craft.method=="awakener" or craft.method=="recombine" or craft.method=="recombine_predictable" then
 		if type(craft.donorItem)~="string" or not craft.donorItem:match("%S") then return "Configure a donor item in Craft settings." end
+		if cachedDonorText~=craft.donorItem then
+			cachedDonorText=craft.donorItem;local ok,donor=pcall(M.model,craft.donorItem);cachedDonorModel=ok and donor or nil
+		end
+		if not cachedDonorModel then return "The donor item could not be read. Choose a valid donor in Craft settings." end
 		if craft.method=="awakener" then
-			if cachedDonorText~=craft.donorItem then
-				cachedDonorText=craft.donorItem;local ok,donor=pcall(M.model,craft.donorItem);cachedDonorModel=ok and donor or nil
-			end
-			if not cachedDonorModel then return "The donor item could not be read. Choose a valid donor in Craft settings." end
 			local reason=M.awakenerDonorReason(M.context(model,state),state,cachedDonorModel)
 			if reason then return reason..". Update the donor in Craft settings." end
+		else
+			local donor=cachedDonorModel
+			if not M.sameRecombinationClass(M.context(model,state).item,donor.item) then return "Recombination requires the same item class. Update the donor in Craft settings." end
+			if donor.initial.corrupted or donor.initial.mirrored or donor.item.synthesised then return "Donor must be uncorrupted, non-mirrored and non-synthesised. Update the donor in Craft settings." end
+			if craft.method=="recombine_predictable" then
+				if donor.initial.destroyed or donor.initial.veil then return "Use a donor without a pending unveil. Update the donor in Craft settings." end
+				if M.hasPartialLock(donor,donor.initial) then return "Predictable recombination with a partial affix lock on the donor is not yet modeled. Update the donor in Craft settings." end
+			end
 		end
 	end
 	return allflameConfigurationReason(model,state,craft)

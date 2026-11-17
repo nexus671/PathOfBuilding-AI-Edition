@@ -126,4 +126,19 @@ describe("Crafting action preconditions",function()
 		assert.matches("donor",sim.configurationReason(model,rare,{method="recombine"}))
 	end)
 
+	it("rechecks recombination donors when the target changes",function()
+		local armour="Rarity: NORMAL\nGlorious Plate\nItem Level: 86"
+		local weapon="Rarity: NORMAL\nCorsair Sword\nItem Level: 86"
+		local model=sim.model(armour);local other=sim.model(weapon)
+		for _,method in ipairs({"recombine","recombine_predictable"}) do
+			local craft={method=method,donorItem=armour}
+			assert.is_nil(sim.configurationReason(model,model.initial,craft))
+			assert.matches("same item class",sim.configurationReason(other,other.initial,craft))
+			craft.donorItem="invalid item"
+			assert.matches("could not be read",sim.configurationReason(model,model.initial,craft))
+			craft.donorItem=armour.."\nCorrupted"
+			assert.matches("uncorrupted",sim.configurationReason(model,model.initial,craft))
+		end
+	end)
+
 end)
