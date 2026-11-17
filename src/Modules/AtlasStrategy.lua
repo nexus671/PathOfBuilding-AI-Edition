@@ -62,7 +62,9 @@ function M.threadRule(plan,node)
 end
 function M.selectedNode(plan,node)
 	local rule=M.threadRule(plan,node)
-	return {name=node.name,stats=rule and rule.kind=="exclude" and node.stats or atlas.nodeStats(plan,node)}
+	-- The selected type changes Thread drops, not encounter spawn or rewards.
+	-- Keep it in threadRule rather than classifying it as encounter investment.
+	return {name=node.name,stats=rule and node.stats or atlas.nodeStats(plan,node)}
 end
 function M.blocking(node)
 	local lines={};for _,stat in ipairs(node.stats or {}) do local text=stat:lower();if text:find("no chance to contain",1,true) or text:find("cannot contain",1,true) then lines[#lines+1]=stat end end

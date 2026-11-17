@@ -90,7 +90,15 @@ describe("Desired Atlas routes",function()
 		local tree=atlas.tree("3.30.0-preview");local positive,negative=tree.nodes[54685],tree.nodes[64980]
 		local p=atlas.connect(plan(),{positive.id,negative.id})
 		p=atlas.chooseEffect(p,positive.id,positive.variantEffects[1].effect);p=atlas.chooseEffect(p,negative.id,negative.variantEffects[1].effect)
+		local strategy=require("Modules.AtlasStrategy")
+		for _,node in ipairs({positive,negative}) do
+			local selected=strategy.selectedNode(p,node)
+			assert.equal("Threads",strategy.mechanic(selected));assert.is_false(strategy.hasMechanic(selected,"Breach"))
+			assert.same({"Threads"},strategy.allMechanics(selected))
+		end
 		local summary=targets.summary(p);assert.equal(1,#summary.threadRestrictions);assert.equal("Breach",summary.threadRestrictions[1].mechanic)
+		local threads;for _,row in ipairs(summary.mechanics) do if row.name=="Threads" then threads=row end end
+		assert.is_truthy(threads);assert.is_true(threads.total>=2)
 		local warning=table.concat(summary.warnings," ");assert.is_truthy(warning:find("conflicting with Dextral Threads",1,true));assert.is_truthy(warning:find("does not block Breach encounters",1,true))
 		p=atlas.chooseEffect(p,negative.id,negative.variantEffects[2].effect);summary=targets.summary(p)
 		assert.equal("Ritual",summary.threadRestrictions[1].mechanic);assert.is_nil(table.concat(summary.warnings," "):find("conflicting with Dextral Threads",1,true))
