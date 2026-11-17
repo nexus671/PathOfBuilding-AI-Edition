@@ -6,7 +6,9 @@ function M.parse(raw,area)
 	assert(type(raw)=="string" and #raw>0 and #raw<=24000 and not raw:find("\0"),"Paste a copied game item (up to 24 KiB)")
 	raw=raw:gsub("\r\n","\n");local rarity=assert(raw:match("Rarity: (%a+)"),"The clipboard has no item rarity")
 	local header=raw:match("Rarity: [^\n]+\n(.-)\n%-%-%-%-%-%-%-%-") or raw:match("Rarity: [^\n]+\n(.*)")
-	local names={};for line in (header or ""):gmatch("[^\n]+") do if line=="--------" or line:match("^[%w ]+: ") then break end;names[#names+1]=line end
+	-- Base names such as "Contract: Bunker" also contain a colon.
+	local fields={["Item Level"]=true,Quality=true,Sockets=true,["Stack Size"]=true,Level=true,["Map Tier"]=true}
+	local names={};for line in (header or ""):gmatch("[^\n]+") do if line=="--------" or fields[line:match("^([%w ]+): ") or ""] then break end;names[#names+1]=line end
 	assert(#names>0,"The clipboard has no item name")
 	local ok,native=pcall(function() return new("Item"):Item(raw) end)
 	local base=ok and native.base and native.baseName or nil
@@ -17,6 +19,11 @@ function M.parse(raw,area)
 	local class=raw:match("Item Class: ([^\n]+)")
 	-- The clipboard's gem labels differ from the filter language's class names.
 	class=({["Active Skill Gems"]="Skill Gems",["Support Skill Gems"]="Support Gems"})[class] or class
+	local library=require("Modules.LootFilterLibrary")
+	-- An explicit clipboard class wins. Infer only when the item base itself is
+	-- known, or the visible normal/currency/gem name is the base name.
+	local baseRarity=rarity:lower()
+	if not class and (ok and native.base or baseRarity=="normal" or baseRarity=="currency" or baseRarity=="gem") then class=library.baseClass(base) end
 	local markers={};for line in raw:gmatch("[^\n]+") do markers[line]=true end
 	local tier
 	for line in pairs(markers) do
@@ -35,7 +42,7 @@ function M.parse(raw,area)
 			item.MemoryStrands=strands
 		end
 	end
-	local library=require("Modules.LootFilterLibrary");local properties=library.baseProperties(item.BaseType,item.Rarity)
+	local properties=library.baseProperties(item.BaseType,item.Rarity)
 	item.DropLevel=properties.DropLevel;item.Width=properties.Width;item.Height=properties.Height
 	item.BaseDefencePercentile=library.baseDefencePercentile(item.BaseType,item.Class,item.Rarity)
 	if tier and tier>=0 and tier<=5 then item.UnidentifiedItemTier=tier end
@@ -72,8 +79,7 @@ function M.parse(raw,area)
 		end
 	end
 	local sockets=raw:match("\nSockets:[ \t]*([^\n]*)")
-	local noSockets={ ["Stackable Currency"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
-	if sockets~=nil or noSockets[class] then
+	if sockets~=nil or library.isSocketlessClass(class) then
 		local groups,colours,linked={},{},0;sockets=sockets or ""
 		if sockets~="" and sockets~="0" then for group in sockets:gmatch("%S+") do
 			assert(group:match("^[RGBWAD%-]+$") and not group:find("^%-") and not group:find("%-$") and not group:find("%-%-"),"Invalid clipboard socket layout")

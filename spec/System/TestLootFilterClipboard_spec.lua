@@ -50,6 +50,23 @@ describe("Copied loot-filter items",function()
 		assert.equal("Hide",parser.simulate(parser.parse("Hide\n DropLevel >= 10\nShow"),item).action)
 		assert.is_false(pcall(clipboard.parse,"some other clipboard text"));assert.is_false(pcall(clipboard.parse,"Rarity: Magic\nImaginary Unknown Base\n--------"))
 	end)
+	it("uses known clipboard and base classes for socketless items",function()
+		local cases={{"Gold","Gold"},{"Contracts","Contract: Bunker"},{"Blueprints","Blueprint: Bunker"},{"Expedition Logbooks","Expedition Logbook"}}
+		local rule=parser.parse("Hide\n Sockets = 0\n BaseDefencePercentile = 0\nShow")
+		for _,case in ipairs(cases) do
+			local item=clipboard.parse("Item Class: "..case[1].."\nRarity: Normal\n"..case[2].."\n--------")
+			assert.equal(case[1],item.Class);assert.equal(0,item.Sockets);assert.equal(0,item.LinkedSockets);assert.equal(0,item.BaseDefencePercentile)
+			assert.equal("Hide",parser.simulate(rule,item).action)
+		end
+		for _,case in ipairs({{"Gold","Gold"},{"Expedition Logbook","Expedition Logbooks"},{"Ancient Wombgift","Wombgifts"}}) do
+			local item=clipboard.parse("Rarity: Normal\n"..case[1].."\n--------")
+			assert.equal(case[2],item.Class,case[1])
+		end
+		local rare=clipboard.parse("Rarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86");assert.equal("Helmets",rare.Class)
+		local ambiguous=clipboard.parse("Rarity: Normal\nPrimitive Chaotic Resonator\n--------");assert.is_nil(ambiguous.Class);assert.is_nil(ambiguous.Sockets)
+		local explicit=clipboard.parse("Item Class: Delve Socketable Currency\nRarity: Normal\nPrimitive Chaotic Resonator\n--------");assert.equal("Delve Socketable Currency",explicit.Class)
+		local unknownUnique=clipboard.parse("Rarity: Unique\nThe Fortunate\n--------");assert.is_nil(unknownUnique.Class)
+	end)
 	it("derives only known base-defence percentiles for copied items",function()
 		local rules=parser.parse("Hide\n BaseDefencePercentile >= 40\nShow")
 		local ring=clipboard.parse("Item Class: Rings\nRarity: Normal\nIron Ring\n--------\nItem Level: 10")

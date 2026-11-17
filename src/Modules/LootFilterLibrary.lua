@@ -6,6 +6,7 @@ local sha1=require("sha1")
 local M={categories={"All items","Build targets","Campaign","Currency","Special currency","Equipment","Unique items","Flasks","Tinctures","Jewels","Divination cards","Maps & fragments","Gems","Recipes","League items","Other"}}
 local baseMetadata,baseClasses
 local noSockets={ ["Stackable Currency"]=true,Gold=true,Contracts=true,Blueprints=true,["Expedition Logbooks"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
+function M.isSocketlessClass(class) return noSockets[class]==true end
 local equipment={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true,Quiver=true,Amulet=true,Ring=true,Belt=true}
 -- Unknown bases, unique equipment and random defence rolls remain unresolved.
 function M.baseDefencePercentile(name,class,rarity)
@@ -96,6 +97,7 @@ local function baseClass(name)
 	end
 	for class,example in pairs(classExamples) do if example==name then return class end end
 end
+M.baseClass=baseClass
 function M.sample(rule,block)
 	local item={BaseType="Chaos Orb",Class="Stackable Currency",Rarity="Normal",ItemLevel=86,AreaLevel=83,DropLevel=1,Quality=0,StackSize=1,Sockets=0,SocketGroup="",LinkedSockets=0,Width=1,Height=1,UnidentifiedItemTier=0,HasInfluence={"None"},HasExplicitMod={},HasEnchantment={},EnchantmentPassiveNode=""}
 	for key in pairs(parser.booleans) do if key~="AlwaysShow" then item[key]=false end end
