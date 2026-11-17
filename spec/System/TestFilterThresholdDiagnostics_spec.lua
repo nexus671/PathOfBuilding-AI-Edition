@@ -65,6 +65,26 @@ describe("Filter threshold conflict diagnostics",function()
     end
    end end
   end
-  assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n BaseType == "Iron Hat" "Wool Shoes"\n ItemLevel >= 10\nHide\n BaseType == "Wool Shoes"\n ItemLevel >= 20')))
+  assert.equal(1,#diagnostics.shadowing(parser.parse('Show\n BaseType == "Iron Hat" "Wool Shoes"\n ItemLevel >= 10\nHide\n BaseType == "Wool Shoes"\n ItemLevel >= 20')))
+ end)
+ it("keeps combined list and threshold conflicts sound",function()
+  local lists={'"Iron Hat"','"Wool Shoes"','"Iron Hat" "Wool Shoes"'}
+  local limits={"> 10",">= 10",">= 20","< 20","<= 20"}
+  for _,first in ipairs(lists) do for _,second in ipairs(lists) do
+   for _,a in ipairs(limits) do for _,b in ipairs(limits) do
+    local parsed=parser.parse('Show\n BaseType == '..first..'\n ItemLevel '..a..'\nHide\n BaseType == '..second..'\n ItemLevel '..b)
+    for _,warning in ipairs(diagnostics.shadowing(parsed)) do
+     for _,name in ipairs({"Iron Hat","Wool Shoes","Other"}) do for _,level in ipairs({0,10,11,19,20,21}) do
+      local item={BaseType=name,ItemLevel=level};local matches=function(rule) for _,condition in ipairs(rule.conditions) do if not parser.condition(condition,item) then return false end end;return true end
+      assert.is_false(matches(parsed.rules[2]) and not matches(parsed.rules[1]),warning.warning)
+     end end
+    end
+   end end
+  end end
+  assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n BaseType == "Iron Hat" "Wool Shoes"\n ItemLevel >= 10\n Continue\nHide\n BaseType == "Wool Shoes"\n ItemLevel >= 20')))
+  assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n BaseType == "Iron Hat"\n ItemLevel >= 10\nHide\n BaseType == "Wool Shoes"\n ItemLevel >= 20')))
+  assert.equal(1,#diagnostics.shadowing(parser.parse('Show\n Class == "Boots" "Helmets"\n AreaLevel < 80\nHide\n Class == "Boots"\n AreaLevel <= 70')))
+  assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n Class == "Boots" "Helmets"\n AreaLevel < 80\nHide\n Class == "Boots"\n AreaLevel <= 80')))
+  assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n Class == "Boots" "Helmets"\n AreaLevel < 80\n Rarity Rare\nHide\n Class == "Boots"\n AreaLevel <= 70\n Rarity Magic')))
  end)
 end)

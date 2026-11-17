@@ -20,7 +20,7 @@ local function covers(previous,current)
  return current.direction=="lower" and previous.value<current.value or current.direction=="upper" and previous.value>current.value
 end
 function M.shadowing(parsed)
- local seen,thresholds,sets,diagnostics={},{},{},{};local terminal
+ local seen,thresholds,sets,combined,diagnostics={},{},{},{},{};local terminal
  for _,rule in ipairs(parsed.rules) do
   local conditions,variants={},{}
   if not terminal then for _,condition in ipairs(rule.conditions) do conditions[#conditions+1]=encoded(condition) end end
@@ -58,6 +58,34 @@ function M.shadowing(parsed)
    end
   end
   if not prior then
+   -- Combine one exact item-list comparison with one numeric bound. Index by
+   -- all remaining conditions and cap candidates to bound imported-filter work.
+   if #conditions<=16 then
+    for _,list in ipairs(rule.conditions) do
+     if (list.keyword=="BaseType" or list.keyword=="Class") and list.operator=="==" and #list.values>0 and #list.values<=256 then
+      for _,limit in ipairs(rule.conditions) do
+       local current=bound(limit)
+       if current then
+        local other,removedList,removedLimit={},false,false
+        local listKey,limitKey=encoded(list),encoded(limit)
+        for _,value in ipairs(conditions) do
+         if not removedList and value==listKey then removedList=true
+         elseif not removedLimit and value==limitKey then removedLimit=true
+         else other[#other+1]=field(value) end
+        end
+        local group=field(list.keyword)..field(limit.keyword)..field(current.direction)..table.concat(other)
+        for _,candidate in ipairs(combined[group] or {}) do
+         local covered=covers(candidate.bound,current)
+         if covered then for _,value in ipairs(list.values) do if not candidate.values[value] then covered=false;break end end end
+         if covered and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
+        end
+       end
+      end
+     end
+    end
+   end
+  end
+  if not prior then
    for _,condition in ipairs(rule.conditions) do
     local current=bound(condition)
     local exact=(condition.operator=="=" or condition.operator=="==") and numeric[condition.keyword]
@@ -89,6 +117,25 @@ function M.shadowing(parsed)
    diagnostics[#diagnostics+1]={line=rule.line,shadowedBy=prior.line,warning="This block cannot be reached: a preceding terminating block at line "..prior.line.." "..explanation}
   elseif not rule.continue then
    seen[key]=rule;if #conditions==0 then terminal=rule end
+   if #conditions<=16 then for _,list in ipairs(rule.conditions) do
+    if (list.keyword=="BaseType" or list.keyword=="Class") and list.operator=="==" and #list.values>0 and #list.values<=256 then
+     for _,limit in ipairs(rule.conditions) do
+      local current=bound(limit)
+      if current then
+       local other,removedList,removedLimit={},false,false
+       local listKey,limitKey=encoded(list),encoded(limit)
+       for _,value in ipairs(conditions) do
+        if not removedList and value==listKey then removedList=true
+        elseif not removedLimit and value==limitKey then removedLimit=true
+        else other[#other+1]=field(value) end
+       end
+       local group=field(list.keyword)..field(limit.keyword)..field(current.direction)..table.concat(other)
+       local candidates=combined[group] or {};combined[group]=candidates
+       if #candidates<32 then local values={};for _,value in ipairs(list.values) do values[value]=true end;candidates[#candidates+1]={rule=rule,bound=current,values=values} end
+      end
+     end
+    end
+   end end
    for _,variant in ipairs(variants) do local group=thresholds[variant.group] or {};thresholds[variant.group]=group;group[#group+1]={rule=rule,bound=variant} end
    if #conditions<=16 then for _,condition in ipairs(rule.conditions) do
     if (condition.keyword=="BaseType" or condition.keyword=="Class") and condition.operator=="==" and #condition.values>0 and #condition.values<=256 then
