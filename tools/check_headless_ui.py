@@ -24,10 +24,11 @@ def source_hashes():
     sources += list((ROOT / "runtime/SimpleGraphic/Fonts").glob("*"))
     sources += list((ROOT / "runtime/lua").rglob("*.lua"))
     sources += list((ROOT / "src/Assets/Crafting").rglob("*"))
+    sources += list((ROOT / "src/Assets/MapCrafting").rglob("*"))
     sources += list((ROOT / "src/Assets/Atlas").rglob("*"))
     sources += list((ROOT / "src/Data/Atlas").glob("*.json"))
     sources += list((ROOT / "src/Data/Crafting").glob("*.json"))
-    sources += [ROOT / "tools/update_harvest_enchants.py", ROOT / "tools/update_harvest_damage_330.py", ROOT / "tools/update_crafting_data.py", ROOT / "tools/crafting_data_status.py", ROOT / "tools/test_crafting_data_status.py", ROOT / "tools/update_modifier_overlay_330.py", ROOT / "tools/test_modifier_overlay_330.py", ROOT / "tools/update_allflame_data.py"]
+    sources += [ROOT / "tools/update_harvest_enchants.py", ROOT / "tools/update_harvest_damage_330.py", ROOT / "tools/update_crafting_data.py", ROOT / "tools/crafting_data_status.py", ROOT / "tools/test_crafting_data_status.py", ROOT / "tools/update_modifier_overlay_330.py", ROOT / "tools/test_modifier_overlay_330.py", ROOT / "tools/update_allflame_data.py", ROOT / "tools/update_map_crafting_art.py", ROOT / "tools/check_map_crafting_art.py"]
     sources += list((ROOT / "src/Data/LootFilters").glob("*"))
     sources += list((ROOT / "src/Assets/LootFilters").glob("*"))
     sources += list((ROOT / "src/TreeData/3_30").glob("*"))
@@ -83,7 +84,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1476, f"Expected 1476 UI frames, found {len(paths)}"
+    assert len(paths) == 1482, f"Expected 1482 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         stack = json.loads((frames / f"{width}-filter-stack-styles.json").read_text())
         labels = " ".join(command.get("text", "") for command in stack["commands"] if command.get("kind") == "text")

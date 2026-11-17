@@ -424,6 +424,7 @@ function Panel.Open(build,source,layout)
 	controls.tools=button(430,height-86,86,"Plan tools",function()
 		clearRouteOverlay();exitGrantRoute()
 		local entries={
+			{id="mapModifiers",label="Map modifier explorer",details={"Inspect hypothetical modifiers on an ordinary map.","Uses pinned 3.30 source data; does not roll an item or calculate odds."}},
 			{id="presets",label="Strategy starting points",details={"Connect up to three nearby unallocated notables for a mechanic.","Generated from this version's bundled tree, within your budget.","Editable starting routes, not recommendations for farming profit."}},
 			{id="compare",label="Compare with a saved plan",details={"Review added nodes, removed nodes and changed bonus lines.","Both plans must use the same Atlas version."}},
 			{id="history",label="Change history",details={#undo.." earlier states | "..#redo.." redo states","History includes routes, node exclusions, imports and budget changes."}},
@@ -432,7 +433,8 @@ function Panel.Open(build,source,layout)
 		}
 		browser.Open("Atlas plan tools",entries,{closeOnChoose=false,action="Open",choose=function(entry)
 			main:ClosePopup()
-			if entry.id=="presets" then
+			if entry.id=="mapModifiers" then require("Classes.MapModifierControl").Open()
+			elseif entry.id=="presets" then
 				local choices={};for i,preset in ipairs(strategy.presets(current())) do local lines={preset.mechanic,"Adds "..(#preset.plan.nodes-#draft.nodes).." points to the current draft.","Compares target orders; keeps existing allocations.",preset.routing and preset.routing.saved and "Order comparison saved "..preset.routing.saved.." points." or "No global optimum is assumed."};for _,id in ipairs(preset.targets) do lines[#lines+1]=controls.canvas.tree.nodes[id].name end;choices[#choices+1]={id=i,label=preset.label,category=preset.mechanic,details=lines,plan=preset.plan} end
 				browser.Open("Atlas starting routes",choices,{action="Use starting route",choose=function(choice) change(choice.plan) end})
 			elseif entry.id=="compare" then

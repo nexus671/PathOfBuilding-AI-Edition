@@ -76,6 +76,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("copy");assert(json.decode(ui.clipboard).atlasPlan.version=="3.30.0-preview-ruthless","Ruthless plan export lost its mode")
 	frame("atlas-ruthless-sharing");ui:choose("page","Tree")
 	ui:choose("version","3.29.3");ui:click("confirm");frame("atlas-start");assert(not build.controls.statBox:IsShown(),"Build sidebar should be hidden while planning")
+	ui:click("tools");ui:text("search","Map modifier explorer");ui:click("choose");frame("map-modifier-explorer")
+	ui:choose("tier",5,"val");ui:text("level","68");assert(main.popups[1].controls.level.buf=="68","Map item level did not accept numeric input");ui:text("search","Giants")
+	do local mapList=main.popups[1].controls.list;local lx,ly=mapList:GetPos();ui:clickAt(lx+12,ly+10) end
+	assert(main.popups[1].controls.add:IsEnabled(),"Map modifier selection did not enable Add")
+	ui:click("add");assert(main.popups[1].controls.remove:IsEnabled(),"Map modifier was not staged");frame("map-modifier-staged")
+	ui:click("remove");ui:click("close")
 	local workspace=build.planningWorkspace
 	build.buildFlag=true;ui:frame();ui:click("nav_tools");frame("planning-tools");ui:click("choose");frame("performance-diagnostics");ui:click("copy");assert(ui.clipboard:find("ms",1,true));ui:click("refresh");ui:click("close")
 	local canvas=workspace.controls.canvas
