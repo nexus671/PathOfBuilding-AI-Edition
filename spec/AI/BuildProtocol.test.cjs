@@ -100,6 +100,13 @@ test('queues a seeded hypothetical map currency action', t => {
   assert.equal(request.kind,'simulate_map_currency');assert.deepEqual(request.state,state);assert.equal(request.seed,42);
   for(const invalid of [{...args,seed:0},{...args,action:'vaal'},{...args,state:{...state,rarity:'unique'}},{...args,state:{...state,selected:Array(7).fill('x')}}]) assert.throws(()=>f.call('simulate_map_currency',invalid),/arguments/);
 });
+test('queues bounded map reroll estimates', t => {
+  const f=fixture(t), state={baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'}, options={wanted:[],avoid:['MapMonsterAreaOfEffectMapWorlds'],trials:10,maxAttempts:5,seed:42};
+  f.call('estimate_map_rerolls',{baseRevision:f.state.revision,state,options});
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.kind,'estimate_map_rerolls');assert.deepEqual(request.options,options);
+  assert.throws(()=>f.call('estimate_map_rerolls',{baseRevision:f.state.revision,state,options:{...options,trials:1001}}),/arguments/);
+});
 test('accepts typed Atlas stages, strategy inputs and explicit failure recovery branches', t => {
   const f=fixture(t);
   const plan={id:'final',title:'Final maps',version:'3.29.1',budget:138,nodes:[],progression:{stage:'final',previousId:'starter'},strategy:{maps:'T16 maps',scarabs:'Supplied scarabs',requirements:'Unlocks complete',avoid:'Reflect',setupCost:{amount:25,currency:'chaos',source:'Manual quote',quotedAt:1700000000}}};

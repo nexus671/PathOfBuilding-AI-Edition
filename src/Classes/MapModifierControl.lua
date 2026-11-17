@@ -64,8 +64,19 @@ function M.Open(options)
 		SetDrawColor("^xAABBD0");DrawString(x+w/2,y+142,"CENTER_X",14,"VAR","Tier "..tostring(controls.tier:GetSelValueByKey("val")))
 	end
 	controls.affixes=new("TextListControl"):TextListControl(ui.anchor,{28,310,left-24,height-390},nil,{})
-	button("remove",16,height-62,left,"Remove last modifier",function() local id=table.remove(selected);for i=#rolls,1,-1 do if rolls[i].id==id then table.remove(rolls,i) end end;candidate=nil;offset=0;refresh() end)
+	button("remove",16,height-62,math.floor((left-8)/2),"Remove last",function() local id=table.remove(selected);for i=#rolls,1,-1 do if rolls[i].id==id then table.remove(rolls,i) end end;candidate=nil;offset=0;refresh() end)
 	controls.remove.enabled=function() return #selected>0 end
+	button("estimate",24+math.floor((left-8)/2),height-62,math.floor((left-8)/2),"Estimate rerolls",function()
+		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=controls.rarity:GetSelValueByKey("val"),selected=copyTable(selected),rolls=copyTable(rolls)}
+		require("Classes.MapCraftEstimateControl").Open(options.build,{state=state,wanted=selected,apply=function(sample)
+			selected=copyTable(sample.selected);rolls=copyTable(sample.rolls);offset=0;candidate=nil;controls.search:SetText("");refresh()
+		end})
+	end)
+	controls.estimate.enabled=function()
+		local level=tonumber(controls.level.buf)
+		return options.build~=nil and controls.rarity:GetSelValueByKey("val")~="normal" and level~=nil and level==math.floor(level) and level>=1 and level<=100
+	end
+	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets."
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
 	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
 	controls.rarity=new("DropDownControl"):DropDownControl(ui.anchor,{right+235,64,100,26},{{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"}});controls.rarity:SelByValue(initial and initial.rarity or "rare","val")

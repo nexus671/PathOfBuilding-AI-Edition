@@ -28,7 +28,7 @@ local function add(state,random,checkpoint)
 	end
 	error("Could not select a map modifier")
 end
-function M.perform(input,action,seed,checkpoint)
+function M.perform(input,action,seed,checkpoint,identitiesOnly)
 	assert(type(input)=="table" and type(input.selected)=="table","Invalid map state")
 	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,selected={},rolls={}}
 	for _,id in ipairs(input.selected) do state.selected[#state.selected+1]=id end
@@ -65,9 +65,9 @@ function M.perform(input,action,seed,checkpoint)
 		for _=1,count do add(state,random,checkpoint) end
 	end
 	for _,id in ipairs(state.selected) do
-		local roll=existing[id] or (not priorIds[id] and values.sample(map.source().mods[id],random))
+		local roll=existing[id] or (not identitiesOnly and not priorIds[id] and values.sample(map.source().mods[id],random))
 		if roll then state.rolls[#state.rolls+1]={id=id,values=roll} end
 	end
-	return {state=state,seed=seed,action=action,summary=map.summarize(state.selected,state.rolls),note="Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified."}
+	return {state=state,seed=seed,action=action,summary=not identitiesOnly and map.summarize(state.selected,state.rolls) or nil,note="Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified."}
 end
 return M

@@ -422,7 +422,7 @@ function Panel.Open(build,source,layout)
 		end})
 	end)
 	local function openMapDraft(entry)
-		local ok,err=pcall(require("Classes.MapModifierControl").Open,{initial=entry,keep=function(value)
+		local ok,err=pcall(require("Classes.MapModifierControl").Open,{build=build,initial=entry,keep=function(value)
 			local plan=current();plan.mapDrafts=plan.mapDrafts or {}
 			if not value.id then
 				local used,serial={},0;for _,old in ipairs(plan.mapDrafts) do used[old.id]=true end

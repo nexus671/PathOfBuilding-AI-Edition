@@ -679,6 +679,8 @@ async function main(){
   assert.equal(mapRoll.mapData.state.rarity,'rare');assert.ok(mapRoll.mapData.state.selected.length>=4);assert.equal(mapRoll.mapData.state.rolls.length,mapRoll.mapData.state.selected.length);assert.match(mapRoll.mapData.note,/estimates/);assert.ok(mapRoll.mapData.summary.totals.atlasDrops.min>0);assert.match(mapRoll.mapData.summary.note,/excludes quality/);
   const rollState=mapRoll.mapData.state;const inspectedRoll=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:rollState.baseId,tier:rollState.tier,itemLevel:rollState.itemLevel,rarity:rollState.rarity,selected:rollState.selected,rolls:rollState.rolls},'mapData');
   assert.deepEqual(inspectedRoll.mapData.summary,mapRoll.mapData.summary);
+  const mapEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'},options:{wanted:[],avoid:['MapMonsterAreaOfEffectMapWorlds'],trials:2,maxAttempts:1,seed:42}},'mapData');
+  assert.equal(mapEstimate.mapData.successes,2);assert.equal(mapEstimate.mapData.attempts,2);assert.match(mapEstimate.mapData.note,/sampling uncertainty only/);
   const altarItem='Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W W W\nCorrupted';
   const secondCorruption=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:altarItem,action:{method:'locus'},seed:1},'crafted');
   assert.equal(secondCorruption.nativeCrafting.warnings[0].code,'locus_assumptions');
