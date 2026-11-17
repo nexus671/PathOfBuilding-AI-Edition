@@ -436,6 +436,7 @@ function Panel.Open(build,project,layout)
 			result.meanCost~=nil and string.format("Mean spent: %.2f %s",result.meanCost,result.costCurrency) or "Cost unavailable: some executed actions have no supplied price.",
 			captured.label,capturedSettings(captured),
 			string.format("95%% sampling interval: %.2f%% to %.2f%%",result.confidenceLow,result.confidenceHigh),string.format("Mean attempted actions: %.2f",result.meanActions)}
+		if result.meanExecutedActions then lines[#lines+1]=string.format("Mean executed actions: %.2f | failed attempts: %d",result.meanExecutedActions,result.failedAttempts) end
 		local warnings=result.warnings or simulator.recipeWarnings(captured.recipe,model)
 		for i,warning in ipairs(warnings) do table.insert(lines,1+i,"Model note: "..warning.message) end
 		if result.treeVersion then table.insert(lines,2+#warnings,"Build tree: "..(treeVersions[result.treeVersion] and treeVersions[result.treeVersion].display or result.treeVersion).." (context only) | crafting data: "..tostring(result.dataPatch).."; modifiers: "..tostring(result.modifierPatch or simulator.modifierPatch or "bundled")) end
@@ -577,7 +578,7 @@ function Panel.Open(build,project,layout)
 		local display={};for _,line in ipairs(lines) do for _,row in ipairs(require("Modules.PlanningUI").rows({line[1]},798)) do display[#display+1]=row end end;lines=display
 		local cardWidth=195
 		ui.card(popup,"successCard",16,28,cardWidth,"SUCCESS",string.format("%.1f%%",result.successChance),result.successes.." / "..result.trials.." trials")
-		ui.card(popup,"attemptCard",227,28,cardWidth,"MEAN ACTIONS",string.format("%.1f",result.meanActions),"All trials, including failures")
+		ui.card(popup,"attemptCard",227,28,cardWidth,"MEAN ATTEMPTS",string.format("%.1f",result.meanActions),"All trials, including failures")
 		ui.card(popup,"costCard",438,28,cardWidth,"MEAN SPENDING",result.meanCost and string.format("%.2f",result.meanCost) or "Not priced",result.meanCost and result.costCurrency or "Unpriced actions")
 		ui.card(popup,"intervalCard",649,28,195,"95% INTERVAL",string.format("%.1f-%.1f%%",result.confidenceLow,result.confidenceHigh),"Sampling uncertainty")
 		local precision={}
