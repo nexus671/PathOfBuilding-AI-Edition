@@ -2,7 +2,7 @@
 local ui=require("Modules.PlanningUI")
 local reference=require("Modules.CraftingGwennenReference")
 local M={}
-function M.Open(keep,simulate,initial)
+function M.Open(keep,simulate,initial,checkPair)
 	local width=math.min(780,main.screenW-40);local height=440
 	local controls={};local entries=reference.search("",100).offers;local byId={};local choices={{label="Select an observed outcome",val=0}}
 	table.sort(entries,function(a,b) return a.description<b.description end)
@@ -34,7 +34,25 @@ function M.Open(keep,simulate,initial)
 		end
 	end
 	local supportedCount=require("Modules.CraftingGwennen").supportedCount()
-	ui.description(controls,"limits",16,322,width-32,50,{supportedCount.." outcomes have an experimental model. Coin odds and crafting interactions are assumptions. Verify the pair and price in game."},14)
+	local defaultNote=supportedCount.." outcomes have an experimental model. Coin odds and crafting interactions are assumptions. Verify the pair and price in game."
+	local limits=ui.description(controls,"limits",16,322,width-32,50,{defaultNote},14)
+	local function refreshReadiness()
+		local first=controls.first:GetSelValueByKey("val");local second=controls.second:GetSelValueByKey("val")
+		local supported=require("Modules.CraftingGwennen").supports
+		local message
+		if checkPair and supported(first) and supported(second) then
+			local ok,reason=checkPair(first,second)
+			if not ok then
+				reason=ui.errorText(reason)
+				local detail=reason:match("^A modeled Gwennen outcome cannot apply:%s*(.+)$")
+				if detail then reason=ui.errorText(detail) end
+				message="Example preview cannot run on the current item: "..reason.." You can still plan this pair for a later step."
+			end
+		end
+		limits.list=ui.rows({message or defaultNote},width-32,14)
+	end
+	for _,control in ipairs({controls.first,controls.second}) do local refresh=control.selFunc;control.selFunc=function(...) refresh(...);refreshReadiness() end end
+	refreshReadiness()
 	controls.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,height-48,220,28},"Add pair to guide",function()
 		local first=assert(byId[controls.first:GetSelValueByKey("val")],"Select the first observed outcome")
 		local second=assert(byId[controls.second:GetSelValueByKey("val")],"Select the second observed outcome")

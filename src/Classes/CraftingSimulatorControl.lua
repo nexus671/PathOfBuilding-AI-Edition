@@ -340,7 +340,11 @@ function Panel.Open(build,project,layout)
 				if cost==table.concat(parts," + ") and #parts>0 then craft.artifactCost=copyTable(configured.gwennen.artifactCost) end
 			end
 			configured.gwennen=craft;chooseMethod("gwennen");controls.page:SelByValue("Emulate item");changed();refresh({"Experimental Gwennen pair selected. Coin odds and ordinary currency transitions are assumptions."})
-		end,configured.gwennen)
+		end,configured.gwennen,function(first,second)
+			-- A single deterministic preview does not prove every random branch
+			-- succeeds; report only failures and preserve future-step planning.
+			return pcall(simulator.action,model,state,{method="gwennen",firstOutcome=first,secondOutcome=second},function() return 0.42 end)
+		end)
 	end
 	button(controls,"gwennen",232,378,200,"Record Gwennen pair",openGwennen)
 	button(controls,"configure",16,231,416,"Configure fossil combination / donor item",function()

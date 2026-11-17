@@ -155,6 +155,8 @@ between planning tabs. Background fossil comparisons stay available through
 **Fossil results** without opening a popup over another tool. Opening another build
 clears these temporary results and cancels work from the previous build.
 
+When configuring a modeled Gwennen pair, the selector warns if one example cannot run on the current item. You can still record or configure the pair for a later step; a successful example does not prove every random outcome will succeed.
+
 **Calculate action odds** enumerates supported finite outcomes, including next-affix draws, Talisman fractures, Allflame selection and supported finite Gwennen outcomes. Other goals and actions may use bounded sampling with a confidence interval. Results state which method was used.
 
 ## Compare fossil subsets
