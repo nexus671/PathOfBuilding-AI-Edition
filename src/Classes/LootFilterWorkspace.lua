@@ -208,7 +208,7 @@ function M.Open(build,source,layout,controller)
 				if sceneKind=="Tiered gear" and cell.item.Identified==false and cell.item.UnidentifiedItemTier~=nil then visual.text(cx+5,cy+2,12,cell.item.UnidentifiedItemTier==0 and "No tier" or "Tier "..cell.item.UnidentifiedItemTier,"^xEED49C",cell.w-10) end
 			end
 			if #cells==0 then visual.text(px+14,py+height/2,14,"No visible examples. Show hidden drops or choose another scene.","^xAABBBE",width-28) end
-			visual.text(px+14,py+height-26,12,(caption or "EXAMPLE DROPS").."  /  "..visible.." displayed  /  click an item to inspect","^xAABBBE",page=="Simulate" and width-224 or width-28)
+			visual.text(px+14,py+height-26,12,(caption or "EXAMPLE DROPS").."  /  "..visible.." displayed  /  click an item to inspect",caption=="FILTER INVALID - SEE DETAILS" and "^xFFC477" or "^xAABBBE",page=="Simulate" and width-224 or width-28)
 		end
 	end
 	compile()
@@ -450,7 +450,7 @@ function M.Open(build,source,layout,controller)
 			for i=#scene,2,-1 do if encode(scene[i])==selected then table.remove(scene,1);break end end
 		end
 		local targets=sceneKind=="Build targets" and transient.filterSceneTargets or nil
-		local caption=sceneKind=="Tiered gear" and (profile.mode=="Ruthless" and "RUTHLESS: NO ITEM TIERS" or "TIER COMPARISON") or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
+		local caption=invalidFilterReason and "FILTER INVALID - SEE DETAILS" or sceneKind=="Tiered gear" and (profile.mode=="Ruthless" and "RUTHLESS: NO ITEM TIERS" or "TIER COMPARISON") or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
 		sceneControl("preview",groundX,savedSet and 168 or 120,groundW,h-(savedSet and 230 or 182),scene,true,caption)
 		if targets then c.preview.tooltipText=targets.error or (#(targets.warnings or {})>0 and "Some build targets need review. Open linked build targets for details." or "Build target examples update as the build changes. The current test item is also shown.") end
 		button(c,"inspectMatch",w-216,h-96,184,"Inspect matched rules",inspectMatches);c.inspectMatch.enabled=function() return parsed~=nil end
