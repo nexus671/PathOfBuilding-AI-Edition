@@ -148,9 +148,14 @@ function Panel.Open(model,input,onKeep)
 		popup.close=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{644,208,116,28},"Cancel",function() main:ClosePopup() end)
 		main:OpenPopup(776,254,"Socket enchantments",popup,nil,nil,"close")
 	end) end
-	button("keep",16,368+extra,260,"Use as recipe starting item",function() applyProperties();onKeep(sim.validateState(model,state));main:ClosePopup() end)
-	button("close",644,368+extra,116,"Cancel",function() main:ClosePopup() end)
-	refresh();main:OpenPopup(776,416+extra,"Edit hypothetical item",controls,nil,nil,"close")
+	button("editSockets",16,368+extra,260,"Set socket layout",function()
+		require("Classes.CraftingSocketControl").Open(model,state,function(candidate) commit(candidate) end)
+	end)
+	controls.editSockets.enabled=function() return math.max(sim.socketLimit(model,state),#(state.sockets or {}))>0 end
+	controls.editSockets.tooltipText="Set observed colours and links without consuming currency."
+	button("keep",16,402+extra,260,"Use as recipe starting item",function() applyProperties();onKeep(sim.validateState(model,state));main:ClosePopup() end)
+	button("close",644,402+extra,116,"Cancel",function() main:ClosePopup() end)
+	refresh();main:OpenPopup(776,450+extra,"Edit hypothetical item",controls,nil,nil,"close")
 	return controls
 end
 return Panel

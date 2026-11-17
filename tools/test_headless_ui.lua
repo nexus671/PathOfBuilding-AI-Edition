@@ -902,7 +902,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(#main.popups[1].controls.choice.list==4)
 	frame("ghosts");ui:choose("choice",3,"val");ui:click("keep")
 	frame("kept");ui:choose("page","Craft settings");ui:click("manual")
-	frame("editor");ui:click("close")
+	frame("editor");ui:click("editSockets");ui:choose("count",4,"val");ui:choose("color1","R","val");ui:click("link1");frame("crafting-manual-sockets");ui:click("use");ui:click("close")
 	ui:choose("page","Target conditions")
 	ui:click("targetPicker");ui:text("search","maximum Life");frame("crafting-target-picker");ui:click("choose")
 	assert(#main.popups[1].controls.targetSummary.list>2,"Target picker did not add a target")
