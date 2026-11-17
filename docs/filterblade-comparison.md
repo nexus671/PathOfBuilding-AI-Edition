@@ -56,6 +56,8 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 
 Example base properties come from the pinned 3.30.0.1.4 client base-item export (SHA-256 `bcf0743a00d8db0f3ffb1dc8a15dad47d6469c884bee18bc6029494a8c81400b`). Rebuild with `python tools/update_loot_filter_base_metadata.py path/to/base_items.min.json`; use `--check` to verify. If same-named base records disagree, the affected property remains unknown. Unique drop levels and unspecified equipment sockets are also unknown.
 
+Example item classes use the pinned [3.30.0.2.2 RePoE export](https://github.com/repoe-fork/repoe-fork.github.io/tree/f49a9a43f5b06cac7f7125093cfd7ef2f0137650). Names with conflicting or missing classes, hidden records and trade proxies remain unresolved unless the rule supplies a class. Rebuild or verify with `python tools/update_loot_filter_base_classes.py path/to/base_items.json path/to/item_classes.json` and optionally `--check`; both inputs are hash-checked.
+
 Exact budget titles also recognize selected oils, tattoos, currency shards, Soul Cores, Ancient Orbs, Cartographer's Chisels and Gemcutter's Prisms from the pinned 3.30.0.2 export. These names identify items, not current drop availability. Rebuild the list with `python tools/update_filter_budget_items.py path/to/base_items.json`; use `--check` to verify it.
 
 A unique item in the gear wishlist adds a pickup for unique items of its base type. This can include other uniques sharing that base; the copied item's item level is not used as a minimum.

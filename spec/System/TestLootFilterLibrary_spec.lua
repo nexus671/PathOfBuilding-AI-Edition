@@ -16,6 +16,21 @@ describe("Visual filter catalogue",function()
 		for _,entry in ipairs(library.catalog(profile)) do if entry.rule.title=="Gold" then count=count+1;assert.equal("Currency",entry.category);assert.equal("Gold",entry.sample.Class) end end
 		assert.is_true(count>0)
 	end)
+	it("uses unambiguous client classes for examples without guessing duplicate names",function()
+		for _,case in ipairs({{"Contract: Laboratory","Contracts"},{"Ancient Wombgift","Wombgifts"},{"The Fortunate","Divination Cards"},{"Allflame Ember of Kulemak","Stackable Currency"}}) do
+			local sample=library.sample({text='Show\n BaseType == "'..case[1]..'"'})
+			assert.equal(case[2],sample.Class,case[1])
+			assert.equal("Show",parser.simulate(parser.parse('Show\n Class == "'..case[2]..'"\nHide'),sample).action)
+		end
+		local name="Primitive Chaotic Resonator"
+		local unknown=library.sample({text='Show\n BaseType == "'..name..'"'})
+		assert.is_nil(unknown.Class)
+		assert.equal("unknown",parser.simulate(parser.parse('Show\n Class == "Delve Stackable Socketable Currency"\nHide'),unknown).status)
+		local explicit=library.sample({text='Show\n BaseType == "'..name..'"\n Class == "Delve Stackable Socketable Currency"'})
+		assert.equal("Delve Stackable Socketable Currency",explicit.Class)
+		assert.is_nil(library.sample({text='Show\n BaseType == "Map"'}).Class)
+		assert.is_nil(library.sample({text='Show\n BaseType == "Unfamiliar Base"'}).Class)
+	end)
 	it("groups Expedition and Heist encounter items without reclassifying Heist gear",function()
 		local logbook={text='Show\n BaseType == "Expedition Logbook"'}
 		assert.equal("League items",library.category(logbook))

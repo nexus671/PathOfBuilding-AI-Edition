@@ -4,7 +4,7 @@ local filters=require("Modules.LootFilters")
 local parser=require("Modules.LootFilterParser")
 local sha1=require("sha1")
 local M={categories={"All items","Build targets","Campaign","Currency","Special currency","Equipment","Unique items","Flasks","Tinctures","Jewels","Divination cards","Maps & fragments","Gems","Recipes","League items","Other"}}
-local baseMetadata
+local baseMetadata,baseClasses
 local noSockets={ ["Stackable Currency"]=true,Gold=true,Contracts=true,Blueprints=true,["Expedition Logbooks"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
 local equipment={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true,Quiver=true,Amulet=true,Ring=true,Belt=true}
 -- Unknown bases, unique equipment and random defence rolls remain unresolved.
@@ -81,6 +81,14 @@ local classExamples={["Body Armours"]="Vaal Regalia",Helmets="Iron Hat",Gloves="
 -- Native base types use different names for several weapon families.
 local nativeClasses={Helmet="Helmets",["Body Armour"]="Body Armours",Gloves="Gloves",Boots="Boots",Shield="Shields",Ring="Rings",Amulet="Amulets",Belt="Belts",Quiver="Quivers",Bow="Bows",Claw="Claws",Dagger="Daggers",["Rune Dagger"]="Rune Daggers",Wand="Wands",Sceptre="Sceptres",Staff="Staves",Warstaff="Warstaves",["Thrusting Sword"]="Thrusting One Hand Swords",["One Handed Sword"]="One Hand Swords",["One Handed Axe"]="One Hand Axes",["One Handed Mace"]="One Hand Maces",["Two Handed Sword"]="Two Hand Swords",["Two Handed Axe"]="Two Hand Axes",["Two Handed Mace"]="Two Hand Maces",Tincture="Tinctures"}
 local function baseClass(name)
+	if not baseClasses then
+		local file=assert(io.open("Data/LootFilters/base-classes.json","rb"));local raw=file:read("*a");file:close()
+		baseClasses=assert(require("dkjson").decode(raw))
+	end
+	-- Some names, such as resonators, exist in more than one class. A named
+	-- base cannot resolve those cases; retain a separately supplied class.
+	if baseClasses.ambiguous[name] then return nil end
+	if baseClasses.classes[name] then return baseClasses.classes[name] end
 	local base=data and data.itemBases and data.itemBases[name]
 	if base then
 		local kind=base.subType=="Thrusting" and "Thrusting Sword" or (base.subType=="Rune Dagger" or base.subType=="Warstaff") and base.subType or base.type
