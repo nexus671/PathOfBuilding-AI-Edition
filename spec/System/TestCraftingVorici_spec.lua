@@ -19,6 +19,21 @@ describe("Vorici socket colour service",function()
 			assert.same(actual.sockets,new("Item"):Item(sim.toItem(model,actual).raw).sockets)
 		end
 	end)
+	it("keeps the greatest of 100 independent socket-count rolls",function()
+		local model=sim.model(raw);local before=copyTable(model.initial);before.sockets={before.sockets[1],before.sockets[2],before.sockets[3]}
+		local method={method="vorici_socket_count"}
+		for seed=1,8 do
+			local random=rng(seed);local expected
+			for _=1,100 do local candidate=sim.action(model,before,{method="jeweller"},random);if not expected or #candidate.sockets>#expected.sockets then expected=candidate end end
+			local actual=sim.action(model,before,method,rng(seed));assert.same(expected,actual)
+			assert.same(actual.sockets,new("Item"):Item(sim.toItem(model,actual).raw).sockets)
+		end
+		assert.equal("vorici_socket_assumptions",sim.actionWarnings(method)[1].code)
+		assert.same({vorici_socket_count=1},sim.components(method))
+		local catalog=sim.catalog(raw,"best of 100",5,before);assert.is_true(catalog.socketCrafts[1].available);assert.is_false(catalog.socketCrafts[1].deterministic)
+		assert.is_false(check(method.method,model.initial,model))
+		local draws=0;assert.is_false(pcall(sim.action,model,model.initial,method,function() draws=draws+1;return 0.5 end));assert.equal(0,draws)
+	end)
 	it("explains unavailable items before consuming randomness",function()
 		local model=sim.model(raw)
 		for _,change in ipairs({{key="sockets",value={}},{key="mirrored",value=true},{key="destroyed",value=true},{key="corrupted",value=true}}) do

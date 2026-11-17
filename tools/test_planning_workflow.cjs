@@ -393,6 +393,12 @@ async function main(){
   assert.equal(beastLinked.nativeCrafting.state.sockets.length,6);assert.ok(beastLinked.nativeCrafting.state.sockets.every(socket=>socket.group===0));
   assert.ok(linksService.available && linksService.deterministic);assert.deepEqual(linksService.components,{'Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks':1,'Metadata/Items/Currency/CurrencyRerollSocketLinks':1});
   const linkAction=linksService.action;
+  const voriciCountInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'best of 100',limit:5},'inspected');
+  const voriciCount=voriciCountInspection.crafting.nativeEngine.socketCrafts.find(entry=>entry.method==='vorici_socket_count');
+  assert.equal(voriciCount.available,false);assert.match(voriciCount.unavailableReason,/maximum/);
+  const countRaw=bodyRaw.replace(/Sockets: [^\n]+/,'Sockets: R-G B');
+  const countCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:countRaw,action:{method:'vorici_socket_count'},seed:104729},'crafted');
+  assert.ok(countCraft.nativeCrafting.state.sockets.length>=3);assert.equal(countCraft.nativeCrafting.warnings[0].code,'vorici_socket_assumptions');
   const voriciInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'vorici',limit:5},'inspected');
   const vorici=voriciInspection.crafting.nativeEngine.socketCrafts.find(entry=>entry.method==='vorici_socket_colours');
   assert.ok(vorici.available && !vorici.deterministic);assert.deepEqual(vorici.components,{vorici_socket_colours:1});

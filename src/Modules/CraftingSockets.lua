@@ -3,7 +3,7 @@
 local S={}
 local colours={"R","G","B"}
 function S.extend(M,A,api)
-	local methods={vorici_socket_colours="Vorici: best of 25 socket colours",beast_max_links="Bestiary: maximum links",jeweller="Jeweller's Orb (experimental)",fusing="Orb of Fusing (experimental)",omen_jeweller="Jeweller's Orb + Omen of the Jeweller",omen_trichromatism="Omen of Trichromatism (RGB)",omen_connections="Orb of Fusing + Omen of Connections",chromatic="Chromatic Orb",socket_colour_bench="Bench: non-white sockets",socket_white_bench="Bench: white sockets (3.30)",tainted_chromatic="Tainted Chromatic Orb",tainted_jeweller="Tainted Jeweller's Orb",tainted_fusing="Tainted Orb of Fusing"}
+	local methods={vorici_socket_count="Vorici: best of 100 socket counts",vorici_socket_colours="Vorici: best of 25 socket colours",beast_max_links="Bestiary: maximum links",jeweller="Jeweller's Orb (experimental)",fusing="Orb of Fusing (experimental)",omen_jeweller="Jeweller's Orb + Omen of the Jeweller",omen_trichromatism="Omen of Trichromatism (RGB)",omen_connections="Orb of Fusing + Omen of Connections",chromatic="Chromatic Orb",socket_colour_bench="Bench: non-white sockets",socket_white_bench="Bench: white sockets (3.30)",tainted_chromatic="Tainted Chromatic Orb",tainted_jeweller="Tainted Jeweller's Orb",tainted_fusing="Tainted Orb of Fusing"}
 	for method,label in pairs(methods) do M.methods[#M.methods+1]=method;M.labels[method]=label end;table.sort(M.methods)
 	local originalAction,originalOptions,originalPrice,originalComponents=M.action,M.actionOptions,M.priceKey,M.components
 	local function naturalLimit(model,state)
@@ -17,6 +17,7 @@ function S.extend(M,A,api)
 		if #sockets>=naturalLimit(model,state) then return "The item already has its maximum natural socket count." end
 	end
 	M.methodChecks.jeweller=M.methodChecks.omen_jeweller
+	M.methodChecks.vorici_socket_count=M.methodChecks.omen_jeweller
 	M.methodChecks.vorici_socket_colours=function(model,state)
 		if #(state.sockets or {})==0 then return "Add sockets before using Vorici's bench." end
 		for _,socket in ipairs(state.sockets) do if socket.color=="A" then return "Abyssal sockets need a separate socket model." end end
@@ -127,6 +128,11 @@ function S.extend(M,A,api)
 	function M.action(model,input,craft,random)
 		local method=craft.method
 		if not methods[method] then return originalAction(model,input,craft,random) end
+		if method=="vorici_socket_count" then
+			assert(not input.destroyed and not input.mirrored and not input.veil and not input.corrupted,"Vorici requires an uncorrupted, craftable item")
+			local reason=M.methodChecks.vorici_socket_count(model,input);assert(not reason,reason)
+			return M.bestJeweller(model,input,100,random)
+		end
 		if method=="vorici_socket_colours" then
 			assert(not input.destroyed,"Cannot craft a destroyed item")
 			local reason=M.methodChecks.vorici_socket_colours(model,input);assert(not reason,reason)
@@ -184,6 +190,17 @@ function S.extend(M,A,api)
 	-- Reuse one socket buffer while preserving the normal action's validation,
 	-- random draws, group normalization and first-on-tie selection.
 	local socketAction=M.action
+	function M.bestJeweller(model,input,rolls,random)
+		local probabilities=S.jewellerProbabilities(model,input);local best=0
+		for _=1,rolls do
+			local pick=random();local count=naturalLimit(model,input)
+			for i,chance in ipairs(probabilities) do pick=pick-chance;if pick<0 then count=i;break end end
+			best=math.max(best,count)
+		end
+		local offset=0;for i=1,best-1 do offset=offset+probabilities[i] end
+		local chosen=offset+probabilities[best]/2
+		return socketAction(model,input,{method="jeweller"},function() return chosen end)
+	end
 	function M.bestChromatic(model,input,rolls,random)
 		local best=socketAction(model,input,{method="chromatic"},random)
 		local work={sockets=copyTable(best.sockets),quality=input.quality};local bestCount=-1
@@ -242,7 +259,7 @@ function S.extend(M,A,api)
 		local state=initialState and M.validateState(model,initialState) or model.initial
 		model=M.context(model,state);query=(query or ""):lower();result.socketCrafts={}
 		local available=require("Modules.CraftingAvailability").check
-		for _,method in ipairs({"socket_bench","socket_white_bench","socket_colour_bench","chromatic","vorici_socket_colours","beast_max_links","jeweller","fusing","omen_jeweller","omen_connections","omen_trichromatism","tainted_chromatic","tainted_jeweller","tainted_fusing"}) do
+		for _,method in ipairs({"socket_bench","socket_white_bench","socket_colour_bench","chromatic","vorici_socket_colours","vorici_socket_count","beast_max_links","jeweller","fusing","omen_jeweller","omen_connections","omen_trichromatism","tainted_chromatic","tainted_jeweller","tainted_fusing"}) do
 			local choices=(method=="socket_bench" or method=="socket_colour_bench") and M.actionOptions(model,state,method) or {{label=M.labels[method],action={method=method}}}
 			local allowed,reason=available(method,state,model)
 			for _,choice in ipairs(choices) do

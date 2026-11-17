@@ -973,6 +973,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(voriciRecipe.steps[2].method=="vorici_socket_colours","Vorici service was not retained")
 		local voriciRun=sim.simulate(socketRaw,voriciRecipe,{trials=1,maxActions=2,forceFirstAction=true})
 		assert(not next(voriciRun.transitionErrors) and voriciRun.meanActions==2,"The saved Vorici recipe did not execute")
+		local countRecipe;require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy"}},targets={},requirements={sockets=6}},{method="alchemy"},function(value) countRecipe=value end,sim.model(socketRaw))
+		ui:click("addCurrency");ui:text("search","Vorici: best of 100");frame("crafting-recipe-vorici-count");ui:click("choose");ui:click("keep")
+		assert(countRecipe.steps[2].method=="vorici_socket_count","Vorici socket service was not retained")
+
 
 		local talismanRaw="Rarity: NORMAL\nChieftain Talisman\nItem Level: 86";local talismanRecipe
 		require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy"}},targets={},requirements={minAffixes=4}},{method="alchemy"},function(value) talismanRecipe=value end,sim.model(talismanRaw))
