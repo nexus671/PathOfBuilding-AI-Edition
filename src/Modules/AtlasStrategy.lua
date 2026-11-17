@@ -150,8 +150,8 @@ function M.presets(plan)
 	end
 	local result={}
 	for _,mechanic in ipairs(M.mechanics) do
-		local targets={};local matches=M.results(plan,"",mechanic)
-		for _,entry in ipairs(matches) do if entry.node.kind=="notable" and #M.blocking(entry.node)==0 then targets[#targets+1]=entry.id;if #targets==3 then break end end end
+		local targets={};local matches=M.results(plan,"",mechanic,blocked)
+		for _,entry in ipairs(matches) do if entry.cost and not allocated[entry.id] and entry.node.kind=="notable" and #M.blocking(entry.node)==0 then targets[#targets+1]=entry.id;if #targets==3 then break end end end
 		if #targets>0 then
 			local nextPlan=copyTable(working);local kept={}
 			for _,target in ipairs(targets) do local ok,value=pcall(atlas.connect,nextPlan,{target},blocked);if ok then nextPlan=value;kept[#kept+1]=target end end

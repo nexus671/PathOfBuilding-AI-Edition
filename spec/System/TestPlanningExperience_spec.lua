@@ -42,6 +42,24 @@ describe("Planning experience queries",function()
 			end
 		end
 	end)
+	it("extends an existing strategy with reachable unallocated notables",function()
+		local version="3.29.3";local previousTree=atlas.tree(version);local previousMechanics=strategy.mechanics
+		local function node(id,kind,links,stats) return {id=id,name="Node "..id,kind=kind,links=links,stats=stats or {"Breach"},grantedPoints=0} end
+		atlas.cache[version]={version=version,start=1,maxPoints=12,nodes={
+			[1]=node(1,"small",{2,7,8}),[2]=node(2,"notable",{1,3}),[3]=node(3,"notable",{2,4}),
+			[4]=node(4,"notable",{3,5}),[5]=node(5,"notable",{4}),
+			[7]=node(7,"notable",{1,6},{"Your Maps have no chance to contain Breaches"}),[6]=node(6,"notable",{7}),
+			[8]=node(8,"small",{1,9}),[9]=node(9,"small",{8,10}),[10]=node(10,"notable",{9}),
+		}}
+		strategy.mechanics={"Breach"}
+		local ok,err=pcall(function()
+			local plan={id="test",title="In progress",version=version,budget=12,nodes={2,3,4},avoided={}}
+			local routes=strategy.presets(plan);assert.equal(1,#routes)
+			assert.same({5,10},routes[1].targets);assert.same({2,3,4,5,8,9,10},routes[1].plan.nodes)
+			assert.same({2,3,4},plan.nodes)
+		end)
+		atlas.cache[version]=previousTree;strategy.mechanics=previousMechanics;assert.is_true(ok,err)
+	end)
 	it("preserves allocated blockers and saved preferences when suggesting routes",function()
 		local original=atlas.connect(empty("3.29.3"),{24930})
 		original.desired={24930};original.avoided={39896};original=atlas.validate(original)
