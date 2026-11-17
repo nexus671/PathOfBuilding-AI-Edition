@@ -78,6 +78,18 @@ describe("Build-owned loot filters",function()
 		assert.equal("unknown",test("SocketGroup 0",{}).status)
 		assert.equal("Hide",test("Sockets R",{Sockets=0}).action)
 	end)
+	it("uses complete socket colours when the separate count is omitted",function()
+		local function test(condition,item) return parser.simulate(parser.parse("Show\n "..condition.."\nHide"),item) end
+		local item={SocketColours="R-G B A"}
+		assert.equal("Show",test("Sockets >= 4",item).action)
+		assert.equal("Hide",test("Sockets >= 5",item).action)
+		assert.equal("Show",test("Sockets RGA",item).action)
+		assert.equal("unknown",test("Sockets R",{}).status)
+		assert.equal("unknown",test("Sockets >= 1",{SocketColours="R-X"}).status)
+		assert.equal("unknown",test("Sockets >= 1",{SocketColours="-------"}).status)
+		assert.equal("unknown",test("Sockets >= 1",{SocketColours="RRRRRRR"}).status)
+		assert.equal("unknown",test("SocketGroup RG",item).status)
+	end)
 	it("never treats Abyss or Delve sockets as links in simulated drops",function()
 		local function action(condition,item)
 			return parser.simulate(parser.parse("Show\n "..condition.."\nHide"),item).action

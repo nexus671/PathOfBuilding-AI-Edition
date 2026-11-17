@@ -119,6 +119,12 @@ function M.condition(c,item)
 	end
 	local value=item[c.keyword]
 	if c.keyword=="SocketGroup" and value==nil and tonumber(item.Sockets)==0 then value="0" end
+	if c.keyword=="Sockets" and value==nil and type(item.SocketColours)=="string" and item.SocketColours:match("%S") then
+		if item.SocketColours:find("[^RGBWAD%s%-]") then return nil,"Invalid socket colours for Sockets" end
+		local count=select(2,item.SocketColours:gsub("[RGBWAD]",""))
+		if count<1 or count>6 then return nil,"Invalid socket colours for Sockets" end
+		value=count
+	end
 	if value==nil then return nil,"Missing "..c.keyword end
 	local op=c.operator;local values=c.values
 	if c.keyword=="HasInfluence" then

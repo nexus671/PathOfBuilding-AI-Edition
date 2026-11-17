@@ -749,6 +749,11 @@ async function main(){
   const lastPage=await queued('test_loot_filter_examples',{baseRevision:context.revision,profile:sampleProfile,sampleSetId:'mixed',offset:firstPage.examples.nextOffset,limit:2},'tested');
   assert.deepEqual(lastPage.examples.results.map(entry=>entry.index),[2]);assert.equal(lastPage.examples.nextOffset,undefined);
   const socketProfile={id:'socket-rules',title:'Socket comparisons',preset:'early_maps',strictness:2,rules:[{id:'socket-rule',title:'Socket rule',enabled:true,text:'Hide\n SocketGroup > 5GGG'}]};
+  const colourOnlyProfile={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n Sockets >= 4'}]};
+  const colourOnly=await queued('test_loot_filter',{baseRevision:context.revision,profile:colourOnlyProfile,sample:{BaseType:'Iron Hat',SocketColours:'R-G B A'}},'tested');
+  assert.equal(colourOnly.result.action,'Hide');assert.equal(colourOnly.sample.Sockets,undefined);
+  const unknownColours=await queued('test_loot_filter',{baseRevision:context.revision,profile:colourOnlyProfile,sample:{BaseType:'Iron Hat'}},'tested');
+  assert.equal(unknownColours.result.status,'unknown');
   const missingSocketProfile={...socketProfile,template:'Show',rules:[{...socketProfile.rules[0],text:'Hide\n Sockets = 0'}]};
   const copiedHelmet='Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86';
   const missingSockets=await queued('test_loot_filter',{baseRevision:context.revision,profile:missingSocketProfile,itemText:copiedHelmet},'tested');assert.equal(missingSockets.result.status,'unknown');assert.equal(missingSockets.sample.Sockets,undefined);
