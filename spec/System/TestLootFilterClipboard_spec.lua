@@ -112,4 +112,15 @@ describe("Copied loot-filter items",function()
 		local vaal=gem("Vaal Fireball");assert.is_nil(vaal.TransfiguredGem)
 	end)
 
+	it("recognizes fractured and synthesised item markers without guessing absent flags",function()
+		local raw="Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86\nUnidentified"
+		local fracture=clipboard.parse(raw.."\nFractured Item");assert.is_true(fracture.FracturedItem);assert.is_false(fracture.Identified)
+		assert.equal("Hide",parser.simulate(parser.parse("Hide\n FracturedItem True\nShow"),fracture).action)
+		local synth=clipboard.parse(raw.."\nSynthesised Item");assert.is_true(synth.SynthesisedItem)
+		assert.equal("Hide",parser.simulate(parser.parse("Hide\n SynthesisedItem True\nShow"),synth).action)
+		local plain=clipboard.parse(raw.."\nFractured Item text\nSynthesised Item text");assert.is_nil(plain.FracturedItem);assert.is_nil(plain.SynthesisedItem)
+		assert.equal("unknown",parser.simulate(parser.parse("Hide\n FracturedItem True\nShow"),plain).status)
+		assert.equal("unknown",parser.simulate(parser.parse("Hide\n SynthesisedItem True\nShow"),plain).status)
+	end)
+
 end)

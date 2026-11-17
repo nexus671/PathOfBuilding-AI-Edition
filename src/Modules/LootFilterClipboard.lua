@@ -83,7 +83,8 @@ function M.parse(raw,area)
 		end end
 		item.SocketColours=table.concat(colours);item.Sockets=#item.SocketColours;item.SocketGroup=table.concat(groups," ");item.LinkedSockets=linked
 	end
-	if raw:lower():find("(fractured)",1,true) then item.FracturedItem=true end
+	if markers["Fractured Item"] or raw:lower():find("(fractured)",1,true) then item.FracturedItem=true end
+	if markers["Synthesised Item"] then item.SynthesisedItem=true end
 	return item
 end
 return M

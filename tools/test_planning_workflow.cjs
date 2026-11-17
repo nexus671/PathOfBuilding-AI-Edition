@@ -721,6 +721,12 @@ async function main(){
   const missingSocketProfile={...socketProfile,template:'Show',rules:[{...socketProfile.rules[0],text:'Hide\n Sockets = 0'}]};
   const copiedHelmet='Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86';
   const missingSockets=await queued('test_loot_filter',{baseRevision:context.revision,profile:missingSocketProfile,itemText:copiedHelmet},'tested');assert.equal(missingSockets.result.status,'unknown');assert.equal(missingSockets.sample.Sockets,undefined);
+  const markerProfile={...socketProfile,template:'Show',rules:[{...socketProfile.rules[0],text:'Hide\n FracturedItem True'}]};
+  const markers=await queued('test_loot_filter',{baseRevision:context.revision,profile:markerProfile,itemText:copiedHelmet+'\nUnidentified\nFractured Item'},'tested');
+  assert.equal(markers.sample.FracturedItem,true);assert.equal(markers.result.action,'Hide');
+  const synthProfile={...markerProfile,rules:[{...markerProfile.rules[0],text:'Hide\n SynthesisedItem True'}]};
+  const synthMarker=await queued('test_loot_filter',{baseRevision:context.revision,profile:synthProfile,itemText:copiedHelmet+'\nSynthesised Item'},'tested');
+  assert.equal(synthMarker.sample.SynthesisedItem,true);assert.equal(synthMarker.result.action,'Hide');
   const explicitSockets=await queued('test_loot_filter',{baseRevision:context.revision,profile:missingSocketProfile,itemText:copiedHelmet+'\nSockets: 0'},'tested');assert.equal(explicitSockets.result.action,'Hide');assert.equal(explicitSockets.sample.Sockets,0);
   const twiceFilter={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n TwiceCorrupted True'}]};
   const twiceDrop=await queued('test_loot_filter',{baseRevision:context.revision,profile:twiceFilter,sample:{BaseType:'Iron Hat',Rarity:'Rare',TwiceCorrupted:true}},'tested');assert.equal(twiceDrop.result.action,'Hide');
