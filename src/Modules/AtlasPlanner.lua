@@ -37,6 +37,14 @@ function M.validateMapDraft(entry)
 	end
 	assert(result.rarity~="normal" or #result.selected==0,"Normal maps cannot have explicit modifiers")
 	assert(result.rarity~="magic" or #result.selected<=2,"Magic maps have at most two explicit modifiers")
+	if entry.rolls~=nil then
+		result.rolls={};local rolled={}
+		for _,roll in ipairs(array(entry.rolls,6,"map rolls")) do
+			assert(type(roll)=="table" and seen[roll.id] and not rolled[roll.id],"Invalid map roll modifier");rolled[roll.id]=true
+			local values={};for _,value in ipairs(array(roll.values,20,"map roll values")) do values[#values+1]=integer(value,-1000000000,1000000000,"map roll value") end
+			result.rolls[#result.rolls+1]={id=roll.id,values=values}
+		end
+	end
 	return result
 end
 function M.tree(version)

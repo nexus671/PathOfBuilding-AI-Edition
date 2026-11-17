@@ -95,28 +95,31 @@ local function readable(text)
 end
 -- Sum only explicit modifier contributions, preserving ranges and leaving
 -- quality, implicit effects and any other map bonuses outside these totals.
-function M.summarize(selected)
+function M.summarize(selected,rolls)
 	local totals={atlasDrops={min=0,max=0},rarity={min=0,max=0},packSize={min=0,max=0}}
-	local effects={}
+	local effects={};local rollValues=require("Modules.MapRollValues");local byId=rollValues.validate(selected,rolls,M.source())
 	for _,id in ipairs(selected or {}) do
-		local mod=assert(M.source().mods[id],"Unknown selected area modifier");local fixed={}
-		for _,stat in ipairs(mod.stats or {}) do local kind=summaryStats[stat.id];if kind then
-			local total=totals[kind.key];total.min=total.min+stat.min;total.max=total.max+stat.max
+		local mod=assert(M.source().mods[id],"Unknown selected area modifier");local fixed={};local values=byId[id]
+		for i,stat in ipairs(mod.stats or {}) do local kind=summaryStats[stat.id];if kind then
+			local low,high=values and values[i] or stat.min,values and values[i] or stat.max
+			local total=totals[kind.key];total.min=total.min+low;total.max=total.max+high
 			if stat.min==stat.max then fixed[kind.key]=stat.min end
 		end end
-		local lines={};for line in readable(type(mod.text)=="string" and mod.text or ""):gmatch("[^\r\n]+") do
+		local replacements=rollValues.render(mod,values);local sourceLines,counts={},{}
+		for line in readable(type(mod.text)=="string" and mod.text or ""):gmatch("[^\r\n]+") do sourceLines[#sourceLines+1]=line;counts[line]=(counts[line] or 0)+1 end
+		local lines={};for _,line in ipairs(sourceLines) do
 			local combined=false
 			for _,kind in pairs(summaryStats) do local n=line:match(kind.pattern);if n and fixed[kind.key]==tonumber(n) then combined=true;break end end
-			if not combined then lines[#lines+1]=line end
+			if not combined then lines[#lines+1]=counts[line]==1 and replacements[line] or line end
 		end
-		effects[#effects+1]={id=id,name=mod.name,lines=lines}
+		effects[#effects+1]={id=id,name=mod.name,lines=lines,hasValues=values~=nil}
 	end
-	return {totals=totals,effects=effects,note="Only selected modifier contributions; excludes quality, implicit effects and other map bonuses. Ranges are not rolled values."}
+	return {totals=totals,effects=effects,note="Only selected modifier contributions; excludes quality, implicit effects and other map bonuses. Unmatched or unsampled lines remain ranges."}
 end
 
 -- White, yellow and red ordinary maps use the established tier bands. This
 -- inspection deliberately does not simulate rolling or claim outcome odds.
-function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity)
+function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity,rolls)
 	assert(type(tier)=="number" and tier==math.floor(tier) and tier>=1 and tier<=16,"Use an ordinary map tier from 1 to 16")
 	rarity=rarity or "rare";assert(rarity=="magic" or rarity=="rare","Use magic or rare map rarity")
 	assert(type(selected or {})=="table","Selected modifiers must be a list")
@@ -138,7 +141,7 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 		if counts[entry.side]<(rarity=="magic" and 1 or 3) and (rarity=="rare" or not rareOnly[entry.id]) and (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true) then result[#result+1]=entry end
 	end
 	local results,total,nextOffset=page(result,offset,limit)
-	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected),
+	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected,rolls),
 		source=M.source().source,patch=M.source().patch,
 		note="Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification."}
 end

@@ -1,4 +1,4 @@
--- Experimental ordinary-map modifier identity rolls. Probabilities are estimates.
+-- Experimental ordinary-map modifier and stat rolls. Probabilities are estimates.
 local map=require("Modules.MapCraftingData")
 local M={}
 local function rng(seed)
@@ -30,8 +30,10 @@ local function add(state,random,checkpoint)
 end
 function M.perform(input,action,seed,checkpoint)
 	assert(type(input)=="table" and type(input.selected)=="table","Invalid map state")
-	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,selected={}}
+	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,selected={},rolls={}}
 	for _,id in ipairs(input.selected) do state.selected[#state.selected+1]=id end
+	local values=require("Modules.MapRollValues");local existing=values.validate(state.selected,input.rolls,map.source());local priorIds={}
+	for _,id in ipairs(state.selected) do priorIds[id]=true end
 	assert(state.rarity=="normal" or state.rarity=="magic" or state.rarity=="rare","Invalid map rarity")
 	if state.rarity=="normal" then
 		assert(#state.selected==0,"A normal map cannot have explicit modifiers")
@@ -50,8 +52,8 @@ function M.perform(input,action,seed,checkpoint)
 	if action=="transmute" or action=="alchemy" then
 		assert(state.rarity=="normal","Requires a normal map")
 		state.rarity=action=="transmute" and "magic" or "rare"
-	elseif action=="alteration" then assert(state.rarity=="magic","Requires a magic map");state.selected={}
-	elseif action=="chaos" then assert(state.rarity=="rare","Requires a rare map");state.selected={}
+	elseif action=="alteration" then assert(state.rarity=="magic","Requires a magic map");state.selected={};existing={};priorIds={}
+	elseif action=="chaos" then assert(state.rarity=="rare","Requires a rare map");state.selected={};existing={};priorIds={}
 	elseif action=="augmentation" then assert(state.rarity=="magic","Requires a magic map");add(state,random,checkpoint)
 	elseif action=="regal" then assert(state.rarity=="magic","Requires a magic map");state.rarity="rare";add(state,random,checkpoint)
 	elseif action=="exalt" then assert(state.rarity=="rare","Requires a rare map");add(state,random,checkpoint)
@@ -62,6 +64,10 @@ function M.perform(input,action,seed,checkpoint)
 		local value=random();local count=state.rarity=="magic" and (value<0.5 and 1 or 2) or (value<8/12 and 4 or value<11/12 and 5 or 6)
 		for _=1,count do add(state,random,checkpoint) end
 	end
-	return {state=state,seed=seed,action=action,summary=map.summarize(state.selected),note="Experimental modifier identities only: count distribution, spawn-weight selection and interactions are estimates. Numerical modifier values are not rolled; base availability and some map restrictions are unverified."}
+	for _,id in ipairs(state.selected) do
+		local roll=existing[id] or (not priorIds[id] and values.sample(map.source().mods[id],random))
+		if roll then state.rolls[#state.rolls+1]={id=id,values=roll} end
+	end
+	return {state=state,seed=seed,action=action,summary=map.summarize(state.selected,state.rolls),note="Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified."}
 end
 return M

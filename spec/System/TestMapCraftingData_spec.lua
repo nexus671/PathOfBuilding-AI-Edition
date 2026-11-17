@@ -80,4 +80,32 @@ describe("Map crafting source data",function()
 		local ranged=data.summarize({"MapCorruptedSideAreaPackSize"});assert.same({min=30,max=60},ranged.totals.packSize)
 		assert.has_error(function() data.summarize({"unknown"}) end)
 	end)
+	it("renders only source-matched sampled lines and validates their values",function()
+		local id="MapMonsterCriticalStrikesAndDamageMapWorlds"
+		local rolls={{id=id,values={16,9,6,183,32}}}
+		local sampled=data.summarize({id},rolls)
+		assert.same({"Monsters have 183% increased Critical Strike Chance","+32% to Monster Critical Strike Multiplier"},sampled.effects[1].lines)
+		assert.is_true(sampled.effects[1].hasValues);assert.same({min=16,max=16},sampled.totals.atlasDrops)
+		local unknown=data.summarize({id});assert.matches("160%-200",unknown.effects[1].lines[1]);assert.is_false(unknown.effects[1].hasValues)
+		local negative="MapPlayerMaxResists1MapWorlds";local negativeRoll=data.summarize({negative},{{id=negative,values={19,11,7,-6}}})
+		assert.equal("Players have -6% to all maximum Resistances",negativeRoll.effects[1].lines[1])
+		local mods=data.source().mods;mods.TestUnmatched=copyTable(mods[id]);mods.TestUnmatched.text="Unmatched (160-200) source text"
+		local ok,fallback=pcall(data.summarize,{"TestUnmatched"},{{id="TestUnmatched",values={16,9,6,183,32}}});mods.TestUnmatched=nil
+		assert.is_true(ok);assert.equal("Unmatched (160-200) source text",fallback.effects[1].lines[1])
+		mods.TestDuplicate=copyTable(mods[id]);mods.TestDuplicate.text="Monsters have (160-200)% increased Critical Strike Chance\nMonsters have (160-200)% increased Critical Strike Chance"
+		local ok2,duplicate=pcall(data.summarize,{"TestDuplicate"},{{id="TestDuplicate",values={16,9,6,183,32}}});mods.TestDuplicate=nil
+		assert.is_true(ok2);assert.same({"Monsters have (160-200)% increased Critical Strike Chance","Monsters have (160-200)% increased Critical Strike Chance"},duplicate.effects[1].lines)
+		assert.has_error(function() data.summarize({id},{{id=id,values={16,9,6,201,32}}}) end)
+		assert.has_error(function() data.summarize({},rolls) end)
+	end)
+	it("renders the pinned ordinary-map variable lines at their midpoint",function()
+		local rangeCount=0
+		for id,mod in pairs(data.source().mods) do if id:match("Worlds$") then
+			local values={};for i,stat in ipairs(mod.stats) do values[i]=math.floor((stat.min+stat.max)/2) end
+			for line in (mod.text or ""):gmatch("[^\r\n]+") do if line:find("%(%-?%d+%-%-?%d+%)") then rangeCount=rangeCount+1 end end
+			local result=data.summarize({id},{{id=id,values=values}})
+			for _,line in ipairs(result.effects[1].lines) do assert.is_nil(line:find("%(%-?%d+%-%-?%d+%)"),id..": "..line) end
+		end end
+		assert.equal(39,rangeCount)
+	end)
 end)

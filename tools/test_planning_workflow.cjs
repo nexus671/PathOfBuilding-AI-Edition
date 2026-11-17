@@ -676,13 +676,15 @@ async function main(){
   const magicMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',query:'MapContainsMirageWorlds'},'mapData');
   assert.equal(magicMap.mapData.rarity,'magic');assert.equal(magicMap.mapData.total,0);
   const mapRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'normal',selected:[]},action:'alchemy',seed:42},'mapData');
-  assert.equal(mapRoll.mapData.state.rarity,'rare');assert.ok(mapRoll.mapData.state.selected.length>=4);assert.match(mapRoll.mapData.note,/estimates/);assert.ok(mapRoll.mapData.summary.totals.atlasDrops.min>0);assert.match(mapRoll.mapData.summary.note,/excludes quality/);
+  assert.equal(mapRoll.mapData.state.rarity,'rare');assert.ok(mapRoll.mapData.state.selected.length>=4);assert.equal(mapRoll.mapData.state.rolls.length,mapRoll.mapData.state.selected.length);assert.match(mapRoll.mapData.note,/estimates/);assert.ok(mapRoll.mapData.summary.totals.atlasDrops.min>0);assert.match(mapRoll.mapData.summary.note,/excludes quality/);
+  const rollState=mapRoll.mapData.state;const inspectedRoll=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:rollState.baseId,tier:rollState.tier,itemLevel:rollState.itemLevel,rarity:rollState.rarity,selected:rollState.selected,rolls:rollState.rolls},'mapData');
+  assert.deepEqual(inspectedRoll.mapData.summary,mapRoll.mapData.summary);
   const altarItem='Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W W W\nCorrupted';
   const secondCorruption=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:altarItem,action:{method:'locus'},seed:1},'crafted');
   assert.equal(secondCorruption.nativeCrafting.warnings[0].code,'locus_assumptions');
   assert.ok(secondCorruption.nativeCrafting.state.destroyed || secondCorruption.nativeCrafting.state.twiceCorrupted);
   if(!secondCorruption.nativeCrafting.state.destroyed) assert.match(secondCorruption.nativeCrafting.itemText,/Twice Corrupted/);
-  const starterAtlas={id:'starter-atlas',title:'Starter Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'starter'},mapDrafts:[{id:'my-map',title:'My map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:5,itemLevel:68,rarity:'rare',selected:['MapMonsterAreaOfEffectMapWorlds']}]};
+  const starterAtlas={id:'starter-atlas',title:'Starter Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'starter'},mapDrafts:[{id:'my-map',title:'My map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:5,itemLevel:68,rarity:'rare',selected:['MapMonsterAreaOfEffectMapWorlds'],rolls:[{id:'MapMonsterAreaOfEffectMapWorlds',values:[13,8,5,45]}]}]};
   for(const version of ['3.28.0j','3.28.0j-ruthless']) {
     const search=await queued('search_atlas_nodes',{baseRevision:context.revision,version,query:'Essence',limit:10},'atlas');
     assert.ok(search.atlas.matches.length>0);
