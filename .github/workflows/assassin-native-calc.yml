@@ -1,0 +1,52 @@
+name: Assassin native calculation runtime
+on:
+  push:
+    branches: [analysis/assassin-native-calc-20261117]
+    paths: [.github/workflows/assassin-native-calc.yml]
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: ghcr.io/pathofbuildingcommunity/pathofbuilding-tests:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prepare portable native calculator
+        shell: sh
+        run: |
+          set -eu
+          apk add --no-cache python3 git
+          mkdir -p /tmp/native-pob/runtime/bin /tmp/native-pob/runtime/lib /tmp/native-pob/runtime/share
+          git rev-parse HEAD > /tmp/native-pob/SOURCE_COMMIT.txt
+          cp -a src /tmp/native-pob/src
+          cp -a runtime/lua /tmp/native-pob/runtime/lua
+          cp manifest.xml /tmp/native-pob/manifest.xml
+          [ ! -f manifest.cfg ] || cp manifest.cfg /tmp/native-pob/manifest.cfg
+          cp -L "$(command -v luajit)" /tmp/native-pob/runtime/bin/luajit
+          for p in /lib/ld-musl-*.so.1 /lib/libc.musl-*.so.1 /lib/libz.so* /usr/lib/libgcc_s.so* /usr/lib/libstdc++.so* /usr/local/lib/libluajit*; do
+            [ ! -f "$p" ] || cp -L "$p" /tmp/native-pob/runtime/lib/
+          done
+          [ ! -d /usr/local/lib/lua ] || cp -a /usr/local/lib/lua /tmp/native-pob/runtime/lib/lua
+          [ ! -d /usr/lib/lua ] || cp -a /usr/lib/lua /tmp/native-pob/runtime/lib/system-lua
+          [ ! -d /usr/local/share/lua ] || cp -a /usr/local/share/lua /tmp/native-pob/runtime/share/lua
+          [ ! -d /usr/share/lua ] || cp -a /usr/share/lua /tmp/native-pob/runtime/share/system-lua
+          find /tmp/native-pob/src -type f \( -name '*.dds' -o -name '*.png' -o -name '*.jpg' -o -name '*.webp' -o -name '*.ttf' -o -name '*.otf' \) -delete
+          du -sh /tmp/native-pob
+          ldd "$(command -v luajit)" || true
+          tar -C /tmp -czf native-pob-engine.tar.gz native-pob
+      - name: Native startup smoke test
+        continue-on-error: true
+        env:
+          LUA_PATH: ../runtime/lua/?.lua;../runtime/lua/?/init.lua;;
+          CI: 'true'
+        run: cd src && luajit HeadlessWrapper.lua
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-pob-engine-20261117
+          path: native-pob-engine.tar.gz
+          retention-days: 3
+          if-no-files-found: error
