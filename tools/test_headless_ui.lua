@@ -77,6 +77,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	frame("atlas-ruthless-sharing");ui:choose("page","Tree")
 	ui:choose("version","3.29.3");ui:click("confirm");frame("atlas-start");assert(not build.controls.statBox:IsShown(),"Build sidebar should be hidden while planning")
 	ui:click("tools");ui:text("search","Map modifier explorer");ui:click("choose");frame("map-modifier-explorer")
+	ui:choose("rarity","magic","val");ui:text("search","MapContainsMirageWorlds");assert(main.popups[1].controls.status.label:find("0 candidates",1,true),"Rare-only suffix appeared on a magic map")
+	ui:choose("rarity","rare","val");assert(main.popups[1].controls.status.label:find("1 candidates",1,true),"Rare map did not offer its encounter suffix")
 	ui:choose("tier",5,"val");ui:text("level","68");assert(main.popups[1].controls.level.buf=="68","Map item level did not accept numeric input");ui:text("search","Giants")
 	do local mapList=main.popups[1].controls.list;local lx,ly=mapList:GetPos();ui:clickAt(lx+12,ly+10) end
 	assert(main.popups[1].controls.add:IsEnabled(),"Map modifier selection did not enable Add")

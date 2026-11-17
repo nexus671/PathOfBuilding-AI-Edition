@@ -57,4 +57,19 @@ describe("Map crafting source data",function()
 		assert.not_equal(firstMods.candidates[1].id,secondMods.candidates[1].id)
 		assert.has_error(function() data.searchBases("",0,101) end)
 	end)
+	it("applies magic-map limits and the 3.30 rare-only suffix restriction",function()
+		local base="Metadata/Items/Maps/MapWorldsStrand"
+		local ids={"MapContainsBeyondDemonFactionWorlds","MapContainsBeyondFleshFactionWorlds","MapContainsBeyondPaleFactionWorlds","MapContainsDeliriumMirrorWorlds","MapContainsMirageWorlds","MapContainsWildwoodWorlds","MapContainsSentinelApexWorlds","MapContainsSentinelPandemoniumWorlds","MapContainsSentinelStalkerWorlds"}
+		for _,id in ipairs(ids) do
+			assert.equal(1,data.inspect(base,16,83,{},id,0,30,nil,"rare").total)
+			assert.equal(0,data.inspect(base,16,83,{},id,0,30,nil,"magic").total)
+			assert.has_error(function() data.inspect(base,16,83,{id},"",0,30,nil,"magic") end)
+		end
+		local magic=data.inspect(base,16,83,{},"",0,100,nil,"magic");assert.equal("magic",magic.rarity)
+		local prefix,suffix
+		for _,entry in ipairs(magic.candidates) do if entry.side=="prefix" then prefix=prefix or entry.id else suffix=suffix or entry.id end end
+		assert.is_truthy(prefix);assert.is_truthy(suffix)
+		assert.equal(0,data.inspect(base,16,83,{prefix,suffix},"",0,30,nil,"magic").total)
+		assert.has_error(function() data.inspect(base,16,83,{prefix,suffix},"",0,30,nil,"normal") end)
+	end)
 end)

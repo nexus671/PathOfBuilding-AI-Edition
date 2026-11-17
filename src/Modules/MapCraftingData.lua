@@ -3,6 +3,13 @@ local json=require("dkjson")
 local M={}
 local data
 
+-- The 3.30 patch notes restrict these nine ordinary-map suffixes to rare maps.
+local rareOnly={
+	MapContainsBeyondDemonFactionWorlds=true,MapContainsBeyondFleshFactionWorlds=true,MapContainsBeyondPaleFactionWorlds=true,
+	MapContainsDeliriumMirrorWorlds=true,MapContainsMirageWorlds=true,MapContainsWildwoodWorlds=true,
+	MapContainsSentinelApexWorlds=true,MapContainsSentinelPandemoniumWorlds=true,MapContainsSentinelStalkerWorlds=true,
+}
+
 function M.source()
 	if not data then
 		local file=assert(io.open("Data/Crafting/Map330.json","rb"))
@@ -80,8 +87,9 @@ end
 
 -- White, yellow and red ordinary maps use the established tier bands. This
 -- inspection deliberately does not simulate rolling or claim outcome odds.
-function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint)
+function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity)
 	assert(type(tier)=="number" and tier==math.floor(tier) and tier>=1 and tier<=16,"Use an ordinary map tier from 1 to 16")
+	rarity=rarity or "rare";assert(rarity=="magic" or rarity=="rare","Use magic or rare map rarity")
 	assert(type(selected or {})=="table","Selected modifiers must be a list")
 	query=query or "";assert(type(query)=="string" and #query<=160,"Invalid modifier search")
 	local base=assert(M.source().bases[baseId],"Unknown map base")
@@ -92,15 +100,16 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint)
 	local counts={prefix=0,suffix=0};local groups={}
 	for _,id in ipairs(selected or {}) do
 		local mod=assert(M.source().mods[id],"Unknown selected area modifier")
+		assert(rarity=="rare" or not rareOnly[id],"This modifier can only roll on rare maps")
 		counts[mod.generation_type]=counts[mod.generation_type]+1
-		assert(counts[mod.generation_type]<=3,"Ordinary maps support at most three prefixes and three suffixes")
+		assert(counts[mod.generation_type]<=(rarity=="magic" and 1 or 3),"Too many modifiers for this map rarity")
 		for _,group in ipairs(mod.groups or {}) do assert(not groups[group],"Selected modifiers share a group");groups[group]=true end
 	end
 	local result={};for _,entry in ipairs(M.candidates(tags,itemLevel,selected,checkpoint)) do
-		if counts[entry.side]<3 and (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true) then result[#result+1]=entry end
+		if counts[entry.side]<(rarity=="magic" and 1 or 3) and (rarity=="rare" or not rareOnly[entry.id]) and (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true) then result[#result+1]=entry end
 	end
 	local results,total,nextOffset=page(result,offset,limit)
-	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,
+	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,
 		source=M.source().source,patch=M.source().patch,
 		note="Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification."}
 end

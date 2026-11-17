@@ -575,7 +575,7 @@ function M.poll(build, force)
 			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
 				local map=require("Modules.MapCraftingData")
 				return request.kind=="search_map_bases" and map.searchBases(request.query,request.offset,request.limit,checkpoint)
-					or map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint)
+					or map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint,request.rarity)
 			end,function(result)
 				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh map context."}) else publish("mapData",{mapData=result}) end
 			end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Map modifier inspection slice")

@@ -673,6 +673,8 @@ async function main(){
   assert.ok(mapBases.mapData.results.some(base=>base.id==='Metadata/Items/Maps/MapWorldsBeach'));
   const mapMods=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:2},'mapData');
   assert.equal(mapMods.mapData.candidates.length,2);assert.equal(mapMods.mapData.nextOffset,2);assert.match(mapMods.mapData.note,/not outcome probabilities/);
+  const magicMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',query:'MapContainsMirageWorlds'},'mapData');
+  assert.equal(magicMap.mapData.rarity,'magic');assert.equal(magicMap.mapData.total,0);
   const altarItem='Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W W W\nCorrupted';
   const secondCorruption=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:altarItem,action:{method:'locus'},seed:1},'crafted');
   assert.equal(secondCorruption.nativeCrafting.warnings[0].code,'locus_assumptions');

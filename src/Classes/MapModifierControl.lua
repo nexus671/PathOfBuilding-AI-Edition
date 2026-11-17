@@ -24,7 +24,7 @@ function M.Open()
 	local function button(key,x,y,w,label,fn)
 		controls[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{x,y,w,28},label,fn))
 	end
-	ui.description(controls,"intro",16,28,width-32,34,{"Inspect a hypothetical map; availability is unverified. No currency or item is used.","Changing map, tier or item level clears selected modifiers."},14)
+	ui.description(controls,"intro",16,28,width-32,34,{"Inspect a hypothetical map; availability is unverified. No currency or item is used.","Changing map, rarity, tier or item level clears selected modifiers."},14)
 	button("base",16,66,left,"Choose map",function()
 		local rows={};local baseOffset=0
 		repeat
@@ -45,7 +45,7 @@ function M.Open()
 	function card:Draw()
 		local x,y=self:GetPos();local w,h=self:GetSize();SetDrawColor("^x716046");DrawImage(nil,x,y,w,h)
 		SetDrawColor("^x15141A");DrawImage(nil,x+1,y+1,w-2,h-2)
-		local base=map.source().bases[baseId];SetDrawColor("^xE0C586");DrawString(x+w/2,y+12,"CENTER_X",18,"VAR",ui.fit(base.name,w-20,18))
+		local base=map.source().bases[baseId];SetDrawColor(controls.rarity:GetSelValueByKey("val")=="magic" and "^x8888FF" or "^xE0C586");DrawString(x+w/2,y+12,"CENTER_X",18,"VAR",ui.fit(base.name,w-20,18))
 		local handle,entry=art();if handle then
 			local bounds=entry.bounds or {0,0,entry.width,entry.height};local bw,bh=bounds[3]-bounds[1],bounds[4]-bounds[2]
 			local scale=math.min(95/bw,95/bh);local aw,ah=bw*scale,bh*scale
@@ -57,6 +57,8 @@ function M.Open()
 	button("remove",16,height-62,left,"Remove last modifier",function() table.remove(selected);candidate=nil;offset=0;refresh() end)
 	controls.remove.enabled=function() return #selected>0 end
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
+	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
+	controls.rarity=new("DropDownControl"):DropDownControl(ui.anchor,{right+235,64,100,26},{{label="Magic",val="magic"},{label="Rare",val="rare"}});controls.rarity:SelByValue("rare","val")
 	controls.search=new("EditControl"):EditControl(ui.anchor,{right,96,rightWidth,26},"","Search modifiers",nil,160)
 	controls.list=new("TextListControl"):TextListControl(ui.anchor,{right,132,rightWidth,height-410},nil,{})
 	button("previous",right,height-270,100,"Previous",function() offset=math.max(0,offset-30);refresh() end)
@@ -75,7 +77,7 @@ function M.Open()
 	end
 	refresh=function()
 		local tier=controls.tier:GetSelValueByKey("val");local level=tonumber(controls.level.buf)
-		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30)
+		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,controls.rarity:GetSelValueByKey("val"))
 		if not ok then nextOffset=nil;controls.list.list={};controls.status.label="^xE9BE7B"..ui.fit(ui.errorText(result),rightWidth,14);show(nil);return end
 		nextOffset=result.nextOffset
 		local lines={};for _,entry in ipairs(result.candidates) do
@@ -91,6 +93,7 @@ function M.Open()
 	controls.search.changeFunc=function() offset=0;refresh() end
 	controls.level.changeFunc=function() selected={};offset=0;refresh() end
 	controls.tier.selFunc=function() selected={};offset=0;refresh() end
+	controls.rarity.selFunc=function() selected={};offset=0;refresh() end
 	ui.style(controls,{add=true});refresh()
 	main:OpenPopup(width,height,"Map modifier explorer",controls,nil,"search","close")
 	return controls
