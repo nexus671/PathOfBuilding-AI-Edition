@@ -355,6 +355,18 @@ function Panel.Open(build,project,layout)
 		elseif method == "fossil" then
 			require("Classes.CraftingFossilControl").Open(model,configured.fossil,function(craft) configured.fossil=craft;updateOptions();changed();refresh() end)
 			return
+		elseif method == "beast_prefix_suffix" or method == "beast_suffix_prefix" then
+			label(popup,"beastHint",16,40,"Enter the level of the red beast used for this craft (1-100).")
+			label(popup,"beastCaveat",16,70,"Community-researched interaction; current game behavior is unverified.")
+			edit(popup,"beastLevel",16,105,180,24,configured[method] and tostring(configured[method].beastLevel or "") or "","Beast level",3)
+			button(popup,"use",16,260,180,"Use beast level",function()
+				local value=tonumber(popup.beastLevel.buf)
+				assert(value and value==math.floor(value) and value>=1 and value<=100,"Enter a whole beast level from 1 to 100")
+				local craft=action();craft.beastLevel=value;configured[method]=craft;changed();main:ClosePopup();refresh()
+			end)
+			button(popup,"clearBeast",216,260,180,"Use item level",function()
+				local craft=action();craft.beastLevel=nil;configured[method]=craft;changed();main:ClosePopup();refresh()
+			end)
 		elseif method == "awakener" or method == "recombine" or method == "recombine_predictable" then
 			edit(popup,"donor",16,36,608,170,"","Paste the donor item",24000)
 			if method == "recombine_predictable" then
@@ -394,12 +406,22 @@ function Panel.Open(build,project,layout)
 	end)
 	label(controls,"targetLabel",16,262,"Target modifier (add several for AND conditions)")
 	controls.target=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,282,416,24},{})
-	local targetModel
+	local targetModel,targetState,targetBeastKey
 	refreshTargetOptions=function()
-		local current=simulator.context(model,state);if current==targetModel then return end;targetModel=current
+		local current=simulator.context(model,state)
+		local first=configured.beast_prefix_suffix and configured.beast_prefix_suffix.beastLevel
+		local second=configured.beast_suffix_prefix and configured.beast_suffix_prefix.beastLevel
+		local beastKey=tostring(first)..":"..tostring(second)
+		local observedState=(first or second) and state or nil
+		if current==targetModel and observedState==targetState and beastKey==targetBeastKey then return end;targetModel=current;targetState=observedState;targetBeastKey=beastKey
 		local selected=controls.target:GetSelValue();selected=selected and selected.val
-		local mods={}
-		for _,entry in ipairs(current.mods) do mods[#mods+1]={label=entry.mod.type.." | "..table.concat(entry.mod," / ").." | iLvl "..entry.mod.level,val=entry.id} end
+		local mods,seen={},{}
+		for _,entry in ipairs(current.mods) do seen[entry.id]=true;mods[#mods+1]={label=entry.mod.type.." | "..table.concat(entry.mod," / ").." | iLvl "..entry.mod.level,val=entry.id} end
+		for _,config in ipairs({{level=first,side="Suffix"},{level=second,side="Prefix"}}) do if config.level then
+			for _,entry in ipairs(simulator.beastTargetSource(current,state,config.level)) do if entry.mod.type==config.side and not seen[entry.id] then
+				seen[entry.id]=true;mods[#mods+1]={label=entry.mod.type.." | "..table.concat(entry.mod," / ").." | beast level "..config.level,val=entry.id}
+			end end
+		end end
 		for _,entry in ipairs(current.essences) do mods[#mods+1]={label=entry.name.." guaranteed mod",val=entry.modId} end
 		for id in pairs(current.special) do local mod=current.byId[id];if mod.type=="Prefix" or mod.type=="Suffix" or mod.type=="Corrupted" or mod.type=="Exarch" or mod.type=="Eater" or mod.type=="Enchant" then mods[#mods+1]={label=mod.type.." | "..table.concat(mod," / "),val=id} end end
 		controls.target:SetList(mods);controls.target.selIndex=1;if selected then controls.target:SelByValue(selected,"val") end
@@ -765,8 +787,8 @@ function Panel.Open(build,project,layout)
 	controls.apply.enabled=function() return not state.destroyed end
 	controls.preview.enabled=function() return not state.destroyed and not state.veil and not state.socketLayoutUnknown end
 	controls.preview.tooltipText=function() return state.socketLayoutUnknown and "Set the unknown socket layout before previewing this item in a build." or "Preview this item against the current build." end
-	controls.configure.label=function() local method=controls.method:GetSelValueByKey("val");return method=="fossil" and "Configure fossil combination" or method=="gwennen" and "Configure Gwennen pair" or "Configure donor item" end
-	controls.configure.enabled=function() local method=controls.method:GetSelValueByKey("val");return method=="gwennen" or method=="fossil" or method=="awakener" or method=="recombine" or method=="recombine_predictable" end
+	controls.configure.label=function() local method=controls.method:GetSelValueByKey("val");return method=="fossil" and "Configure fossil combination" or method=="gwennen" and "Configure Gwennen pair" or (method=="beast_prefix_suffix" or method=="beast_suffix_prefix") and "Set beast level" or "Configure donor item" end
+	controls.configure.enabled=function() local method=controls.method:GetSelValueByKey("val");return method=="beast_prefix_suffix" or method=="beast_suffix_prefix" or method=="gwennen" or method=="fossil" or method=="awakener" or method=="recombine" or method=="recombine_predictable" end
 	controls.page=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,18,416,28},{"Emulate item","Target conditions","Simulate recipe","Craft settings"})
 	controls.page.selFunc=function() refresh() end
 	button(controls,"settings",16,380,200,"Find currencies",palette)
@@ -775,7 +797,8 @@ function Panel.Open(build,project,layout)
 	controls.apply.x=16;controls.apply.width=200;controls.undo.x=232;controls.undo.width=200
 	ui.label(controls,"selectedAction",16,230,"",20)
 	controls.selectedAction.label=function()
-		local name=simulator.labels[controls.method:GetSelValueByKey("val")];local suffix=""
+		local selected=action();local name=simulator.labels[selected.method];local suffix=""
+		if selected.beastLevel then name="beast level "..selected.beastLevel.." | "..name end
 		while #name>0 and DrawStringWidth(20,"VAR",name..suffix)>leftWidth do name=name:sub(1,-2);suffix="..." end
 		return "^xE2C28C"..name..suffix
 	end

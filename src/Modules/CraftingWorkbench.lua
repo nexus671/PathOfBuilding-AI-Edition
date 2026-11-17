@@ -192,6 +192,7 @@ local currencies={
 local descriptions={beast_max_links="Link existing sockets using the Black Morrigan and a Craicic Sand Spitter.",omen_trichromatism="Guarantee one red, green and blue socket. Uses one Omen and one Chromatic Orb.",omen_connections="Fully link existing sockets. Uses one Omen of Connections and one Orb of Fusing.",transmute="Add magic modifiers to a normal item.",alteration="Reroll the modifiers on a magic item.",augmentation="Add a modifier to a magic item.",regal="Upgrade a magic item and add a modifier.",alchemy="Turn a normal item into a rare item.",chaos="Reroll the modifiers on a rare item.",exalt="Add a modifier to a rare item.",annul="Remove a random modifier.",scour="Remove the item's modifiers.",divine="Reroll the values of existing modifiers.",vaal="Corrupt the item. Outcomes can be destructive.",chromatic="Reroll socket colours."}
 local currencyArt,currencyNames
 function M.actionLabel(action,model)
+	if (action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix") and action.beastLevel then return (simulator.labels[action.method] or action.method).." (beast level "..action.beastLevel..")" end
 	if action.method=="bench_reroll" and (action.count==1 or action.count==3) then return "Bench: reroll "..action.count.." modifier"..(action.count==1 and "" or "s") end
 	if model and action.method=="bench" and model.byId[action.modId] then return "Bench: "..table.concat(model.byId[action.modId]," / ") end
 	if model and action.method=="essence" then for _,entry in ipairs(model.essences or {}) do if entry.id==action.essenceId then return entry.name end end end
@@ -253,7 +254,7 @@ function M.hint(method,state,model,craft)
 	if available and method=="jeweller" then return "Experimental socket-count odds and quality model; retained socket and link positions are assumed." end
 	if available and method=="fusing" then return "Experimental link odds based on historical observations; quality and layout rules are assumptions." end
 	if available and method=="gwennen" then return "Experimental: choose a pair in Settings. Coin odds, removal counts and currency transitions are assumptions." end
-	if available and (method=="beast_prefix_suffix" or method=="beast_suffix_prefix") then return "Uses item level for the added modifier; actual Bestiary crafts may use the beast's level. Pool and odds may differ." end
+	if available and (method=="beast_prefix_suffix" or method=="beast_suffix_prefix") then return craft and craft.beastLevel and ("Uses beast level "..craft.beastLevel.." for the added modifier. Current game behavior is unverified.") or "Set the red beast's level in Settings; otherwise the item level is used. Current game behavior is unverified." end
 	if available and method=="omen_jeweller" then return "Add white sockets up to the base and item-level limit. Uses one Omen and one Jeweller's Orb." end
 	if available and method=="harvest_enchant" then return "Replace the enchantment with a quality bonus. Options show the Lifeforce cost." end
 	if available and method=="harvest_resistance" then return "Change one elemental resistance to another. Costs 300 Lifeforce for each element." end

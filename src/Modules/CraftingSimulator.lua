@@ -41,7 +41,7 @@ end
 local partialWarningMessage="Partial locks assume uniform selection; bench rerolls select once, Harvest augment selects before adding, and conversions select before changing a modifier. Unpredictable recombination treats locks as non-exclusive. Some selections fail and are not charged in this model; actual behavior is unverified. Other interactions remain unsupported."
 function M.actionWarnings(action,model)
 	local result={}
-	if action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix" then result[#result+1]={code="beast_level_pool",message="This model uses the item level for the added modifier. Community research reports that these Bestiary crafts use the beast's level instead, so the eligible pool and odds can differ.",source="https://www.poewiki.net/wiki/Beastcrafting"} end
+	if action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix" then result[#result+1]={code="beast_level_pool",message=action.beastLevel and ("Uses the supplied beast level "..action.beastLevel.." for the added modifier. This interaction is based on community research and is not verified in the current game.") or "This model uses the item level for the added modifier. Community research reports that these Bestiary crafts use the beast's level instead, so the eligible pool and odds can differ.",source="https://www.poewiki.net/wiki/Beastcrafting"} end
 	if action.method=="vorici_socket_count" then result[#result+1]={code="vorici_socket_assumptions",message="Vorici samples 100 independent rolls using the experimental Jeweller model and keeps the greatest socket count. Odds, retained socket positions and eligibility are unverified.",source="https://www.pathofexile.com/forum/view-thread/3985332"} end
 	if action.method=="vorici_socket_colours" then result[#result+1]={code="vorici_colour_assumptions",message="Vorici samples 25 independent rolls using the experimental Chromatic model and keeps the first tied result with the most non-white sockets. Colour probabilities and tie behavior are unverified.",source="https://www.pathofexile.com/forum/view-thread/3985332"} end
 	local abyss=false
@@ -668,6 +668,7 @@ function M.validateRecipe(recipe)
 	if #recipe.targets > 0 then validateTargets(recipe.targets) end
 	for _,step in ipairs(recipe.steps) do
 		assert(methods[step.method],"Unsupported crafting action: "..tostring(step.method))
+		if step.beastLevel~=nil then assert(step.method=="beast_prefix_suffix" or step.method=="beast_suffix_prefix","Beast level only applies to Bestiary modifier swaps");integer(step.beastLevel,1,100,"beast level") end
 		assert(step.onFailureAction==nil or ({route=true,stop=true,restart=true,salvage=true})[step.onFailureAction],"Unknown failure recovery action")
 		assert(step.recoveryNotes==nil or type(step.recoveryNotes)=="string" and #step.recoveryNotes<=1000,"Recovery notes are too long")
 		integer(step.maxAttempts or 1,1,200,"step attempt limit")
@@ -742,6 +743,10 @@ function M.validateTargetAvailability(model,targets,steps)
 	for _,id in ipairs(model.dropOnlyIds or {}) do available[id]=true end
 	for _,id in ipairs(model.legacyDelveResistance or {}) do available[id]=true end
 	for id in pairs(model.special or {}) do available[id]=true end
+	for _,step in ipairs(steps or {}) do if step.beastLevel and (step.method=="beast_prefix_suffix" or step.method=="beast_suffix_prefix") then
+		local side=step.method=="beast_prefix_suffix" and "Suffix" or "Prefix"
+		for _,state in ipairs({model.initial,{influences={"shaper"}}}) do for _,entry in ipairs(M.beastSource(model,state,step.beastLevel)) do if entry.mod.type==side then available[entry.id]=true end end end
+	end end
 	for _,step in ipairs(steps or {}) do if (step.method=="recombine" or step.method=="recombine_predictable") and step.donorItem then
 		local donor=M.model(step.donorItem)
 		for _,entry in ipairs(donor.mods) do available[entry.id]=true end

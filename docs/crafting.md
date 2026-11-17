@@ -26,6 +26,8 @@ Search **Find currencies** for **replace quality** to apply a Harvest quality en
 
 **Set sockets and link them** is a combined bench preparation: it sets the requested socket count if necessary, then links those sockets. When the count already matches, estimates charge only the linking cost. Corrupted items include the corresponding Vaal Orb surcharge. Resource estimates use the state before each action.
 
+For Bestiary prefix/suffix swaps, use **Craft settings** to enter the red beast's level. The simulator uses that level for the added modifier and keeps the item's level unchanged. If no beast level is set, it uses item level and shows a warning. This rule is based on [community research](https://www.poewiki.net/wiki/Beastcrafting) and has not been verified in the current game.
+
 **Bestiary: maximum links** links the existing sockets without adding any. It uses one Black Mórrigan and one Craicic Sand Spitter; supply a price for each beast or a whole-action quote to estimate cost. The model currently supports non-unique, uncorrupted equipment with ordinary sockets.
 
 Search **Find currencies** for **white sockets** to use the 3.30 bench craft. It turns supported sockets white without changing their links, for one Orb of Scouring and, on corrupted items, one Vaal Orb. Published 3.30 base implicit changes are also included. Supplemental crafting data remains pinned to 3.29.3.6 where not explicitly updated; see **Coverage** for its limits.

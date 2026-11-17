@@ -480,6 +480,34 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("paletteUse");ui:click("item");assert(main.popups[1].controls.intro.label:find("Applied Bestiary: maximum links",1,true));frame("crafting-beast-linked");ui:click("close")
 	end
 	do
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 20";local sim=require("Modules.CraftingSimulator");local model=sim.model(raw);local rare=copyTable(model.initial);rare.rarity="RARE"
+		for _,entry in ipairs(model.mods) do if entry.mod.type=="Prefix" and entry.mod.level<=1 then rare.affixes={{id=entry.id,range=0.5}};break end end
+		local controls=require("Classes.CraftingSimulatorControl").Open(build,{id="beast-level-ui",title="Beast level",slot="Helmet",startingItem=raw,goals={},steps={},preferredMethod="beast_prefix_suffix",run=require("Modules.CraftingInventory").run(rare)})
+		ui:choose("page","Craft settings");ui:choose("method","beast_prefix_suffix","val");assert(controls.configure:IsEnabled());ui:click("configure");frame("crafting-beast-level-settings")
+		ui:text("beastLevel","86");ui:click("use");ui:choose("page","Target conditions")
+		local high;for _,entry in ipairs(controls.target.list) do if entry.label:find("beast level 86",1,true) then assert(entry.label:find("Suffix",1,true)==1,"Wrong side offered by Bestiary target list");high=entry.val end end
+		assert(high,"Beast-level targets were not offered");ui:choose("target",high,"val");ui:click("addTarget");frame("crafting-beast-level-target")
+		ui:choose("page","Emulate item");assert(controls.selectedAction:GetProperty("label"):find("beast level 86",1,true),"Beast level was lost from the selected action");ui:click("item")
+		assert(main.popups[1].controls.intro.label:find("Applied",1,true),"Configured Bestiary craft did not apply");frame("crafting-beast-level-applied")
+		ui:choose("page","Craft settings");ui:click("configure");ui:click("clearBeast");ui:choose("page","Emulate item")
+		assert(not controls.selectedAction:GetProperty("label"):find("beast level",1,true),"Item-level fallback did not clear the configured beast level");ui:click("close")
+	end
+	do
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 68";local sim=require("Modules.CraftingSimulator");local model=sim.model(raw);local rare=copyTable(model.initial);rare.rarity="RARE"
+		for _,entry in ipairs(model.mods) do if entry.mod.type=="Prefix" and entry.mod.level<=1 then rare.affixes={{id=entry.id,range=0.5}};break end end
+		local influenced=sim.action(model,rare,{method="influence_exalt",influence="shaper"},function() return 0.5 end)
+		local controls=require("Classes.CraftingSimulatorControl").Open(build,{id="beast-influence-ui",title="Influenced beast craft",slot="Helmet",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(influenced)})
+		ui:choose("page","Craft settings");ui:choose("method","beast_prefix_suffix","val");ui:click("configure");ui:text("beastLevel","86");ui:click("use");ui:choose("page","Target conditions")
+		local allowed={};for _,entry in ipairs(sim.beastTargetSource(model,influenced,86)) do allowed[entry.id]=true end
+		local shown=0;for _,entry in ipairs(controls.target.list) do if entry.label:find("beast level 86",1,true) then assert(allowed[entry.val],"Target from a different influence was displayed");shown=shown+1 end end
+		assert(shown>0,"No high-level influenced targets were offered")
+		local crafted=sim.perform(raw,{method="beast_prefix_suffix",beastLevel=86},104729,influenced).state
+		ui:choose("page","Emulate item");ui:click("item");assert(main.popups[1].controls.intro.label:find("Applied",1,true));ui:choose("page","Target conditions")
+		local after={};for _,entry in ipairs(sim.beastTargetSource(model,crafted,86)) do after[entry.id]=true end
+		for _,entry in ipairs(controls.target.list) do if entry.label:find("beast level 86",1,true) then assert(after[entry.val],"Targets were not refreshed after crafting") end end
+		ui:click("close")
+	end
+	do
 		local raw="Rarity: NORMAL\nGlorious Plate\nItem Level: 86";local sim=require("Modules.CraftingSimulator");local model=sim.model(raw);local rare=copyTable(model.initial);rare.rarity="RARE"
 		local target=sim.perform(raw,{method="influence_exalt",influence="shaper"},43,rare).state
 		local donor=sim.perform(raw,{method="influence_exalt",influence="elder"},44,rare).itemText

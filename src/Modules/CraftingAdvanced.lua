@@ -179,6 +179,36 @@ local function hasNativeTaggedLine(raw,visible)
 end
 function A.extend(M,api)
 	local originalModel,originalAction,originalPool,originalValidate=M.model,M.action,M.pool,M.validateState
+	local beastModels=setmetatable({},{__mode="k"})
+	local function beastModel(model,level)
+		api.integer(level,1,100,"beast level")
+		if level==model.item.itemLevel then return model end
+		local cache=beastModels[model];if not cache then cache={};beastModels[model]=cache end
+		if not cache[level] then
+			local raw,count=model.raw:gsub("(\nItem Level:%s*)%d+",function(prefix) return prefix..level end,1)
+			assert(count==1,"Cannot construct the beast-level modifier pool for this item")
+			local alternate=M.model(raw);assert(alternate.item.baseName==model.item.baseName,"Beast-level pool changed the base")
+			cache[level]=alternate
+		end
+		return cache[level]
+	end
+	local function beastSource(model,state,level)
+		local alternate=beastModel(model,level)
+		local source=state.influences and #state.influences>0 and alternate.influencePool or alternate.mods
+		for _,entry in ipairs(source) do if not model.byId[entry.id] then model.byId[entry.id]=alternate.byId[entry.id] or entry.mod end end
+		return source
+	end
+	M.beastSource=beastSource
+	-- Target choices should include only modifiers whose spawn tags match the
+	-- current item. The broader influenced source is still needed by the draw
+	-- engine, which applies its normal slot, group and lock rules separately.
+	function M.beastTargetSource(model,state,level)
+		local item=shadowItem(model,state);local tags=copyTable(model.extraTags or {})
+		for _,entry in ipairs(state.affixes or {}) do local metadata=A.data().mods[entry.id];for _,tag in ipairs(metadata and metadata.adds_tags or {}) do tags[tag]=true end end
+		local result={}
+		for _,entry in ipairs(beastSource(model,state,level)) do if item:GetModSpawnWeight(entry.mod,tags)>0 then result[#result+1]=entry end end
+		return result
+	end
 	-- Tainted affix currencies reuse the basic transitions without dropping the
 	-- corrupted state, which can affect the item's modifier capacity.
 	api.taintedAffixAction=originalAction
@@ -814,6 +844,7 @@ function A.extend(M,api)
 	end
 	function M.action(model,input,action,random)
 		assert(type(action) == "table" and type(action.method) == "string","Select a crafting method")
+		if action.beastLevel~=nil then assert(action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix","Beast level only applies to Bestiary modifier swaps");api.integer(action.beastLevel,1,100,"beast level") end
 		assert(not input.mirrored,"Mirrored items cannot be crafted")
 		assert(not input.corrupted or action.method == "socket_bench","This method cannot modify a corrupted item")
 		assert(not input.veil or action.method == "unveil","Choose the pending unveil first")
@@ -984,7 +1015,8 @@ function A.extend(M,api)
 			local from=method == "beast_prefix_suffix" and "Prefix" or "Suffix"; local to=from == "Prefix" and "Suffix" or "Prefix"
 			assert(api.counts(model,state)[to] < cap(model,state)[to],"No open affix for this conversion")
 			if not (from == "Prefix" and f.prefixes or from == "Suffix" and f.suffixes) then remove(model,state,random,{type=from}) end
-			append(model,state,random,{type=to})
+			local source=action.beastLevel and beastSource(model,state,action.beastLevel) or nil
+			append(model,state,random,{type=to,source=source,recompute=source~=nil})
 		elseif method == "beast_imprint" then
 			assert(state.rarity == "MAGIC" and not fractured(state),"Imprinting requires a non-fractured magic item")
 			state.imprint=nil; state.imprint=copyTable(state)
@@ -1149,13 +1181,18 @@ function A.extend(M,api)
 		local permitted=copyTable(model.initial)
 		local seenGroups={};local legacySpeed={};local allLegacySpeed=true
 		for _,entry in ipairs(model.initial.affixes or {}) do if M.isClusterSpeedMod(model,entry.id) then legacySpeed[entry.id]=(legacySpeed[entry.id] or 0)+1 end end
+		local beastAllowed
 		for _,entry in ipairs(state.affixes or {}) do
+			local existing=model.byId[entry.id]
+			if not existing or (existing.level or 0)>model.item.itemLevel then
+				if not beastAllowed then beastAllowed={};for _,candidate in ipairs(beastSource(model,state,100)) do beastAllowed[candidate.id]=true end end
+			end
 			if M.isClusterSpeedMod(model,entry.id) then
 				if (legacySpeed[entry.id] or 0)>0 then legacySpeed[entry.id]=legacySpeed[entry.id]-1 else allLegacySpeed=false end
 			end
 			for _,group in ipairs(groups(model,entry.id)) do assert(not seenGroups[group] or group==M.clusterSpeedGroup and allLegacySpeed,"State has conflicting modifier groups");seenGroups[group]=true end
 			local mod=model.byId[entry.id]
-			if model.special[entry.id] or influenced(model,entry.id) or entry.fractured or state.baseItem and mod.weightKey and model.item:GetModSpawnWeight(mod,model.extraTags) > 0 then permitted.affixes[#permitted.affixes+1]=copyTable(entry) end
+			if model.special[entry.id] or influenced(model,entry.id) or entry.fractured or beastAllowed and beastAllowed[entry.id] or state.baseItem and mod.weightKey and model.item:GetModSpawnWeight(mod,model.extraTags) > 0 then permitted.affixes[#permitted.affixes+1]=copyTable(entry) end
 		end
 		local old=model.initial; model.initial=permitted
 		local ok,result=pcall(originalValidate,model,state); model.initial=old; assert(ok,result)

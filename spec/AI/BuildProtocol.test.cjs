@@ -574,3 +574,19 @@ test('queues exact action totals independently of resource quotes',t=>{
     assert.throws(()=>f.call(name,{...args,options:unquoted}),/price currency/);
   }
 });
+
+
+test('queues bounded beast levels for actions and saved recipes', t => {
+  const f=fixture(t), itemText=craftingProject().startingItem;
+  const action={method:'beast_prefix_suffix',beastLevel:86};
+  f.call('apply_crafting_action',{baseRevision:f.state.revision,itemText,action});
+  let request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.deepEqual(request.action,action);
+  fs.rmSync(path.join(f.dir,'AI-build-request.json'));
+  const recipe={steps:[action],targets:[]};
+  f.call('simulate_crafting',{baseRevision:f.state.revision,itemText,recipe});
+  request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.deepEqual(request.recipe,recipe);
+  fs.rmSync(path.join(f.dir,'AI-build-request.json'));
+  for (const beastLevel of [0,101,1.5,'86']) assert.throws(()=>f.call('apply_crafting_action',{baseRevision:f.state.revision,itemText,action:{...action,beastLevel}}),/arguments/);
+});
