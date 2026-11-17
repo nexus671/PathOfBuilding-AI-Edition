@@ -85,6 +85,10 @@ def main():
     paths = sorted(frames.glob("*.json"))
     assert len(paths) == 1404, f"Expected 1404 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
+        welcome = json.loads((frames / f"{width}-crafting-empty-workspace.json").read_text())
+        labels = " ".join(command.get("text", "") for command in welcome["commands"] if command.get("kind") == "text")
+        assert "Plan your next item" in labels and "Start a project" in labels, "Crafting welcome action is missing"
+    for width in (960, 1024, 1280):
         chart = json.loads((frames / f"{width}-crafting-executed-chart.json").read_text())
         labels = " ".join(command.get("text", "") for command in chart["commands"] if command.get("kind") == "text")
         assert "executed actions" in labels.lower(), "Executed-action chart label is missing"

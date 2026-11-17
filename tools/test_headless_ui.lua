@@ -169,7 +169,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(workspace.controls.canvas.tree.version=="3.27.0")
 	frame("atlas-legacy")
 	ui:click("nav_crafting");frame("crafting-empty-workspace")
-	ui:click("new");frame("crafting-project-editor")
+	ui:click("startProject");frame("crafting-project-editor")
 	ui:text("title","Life helmet");ui:text("starting","Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: R-G-B")
 	ui:click("next");frame("crafting-wizard-target");ui:text("goals","Life\nResistances");ui:click("next");frame("crafting-wizard-plan");ui:text("steps","Roll life\nCheck resistances");ui:click("next");frame("crafting-wizard-review");ui:click("save")
 	assert(#build.savers.CraftingProjects.projects==1 and #build.savers.CraftingProjects.projects[1].goals==2,"Project editor lost pasted line breaks")

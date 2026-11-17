@@ -169,10 +169,11 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 		controls.details.shown=function() return controls.libraryPage:GetSelValue()=="Plan" end
 		controls.native.x=16;controls.native.y=404;controls.native.width=260;controls.native.height=32;controls.native.label="Open workbench"
 		controls.preview.x=16;controls.preview.y=448;controls.preview.width=260;controls.preview.height=32;controls.preview.label="Compare target with build"
-		for _,key in ipairs({"native","preview"}) do controls[key].shown=function() return controls.libraryPage:GetSelValue()=="Item" end end
+		for _,key in ipairs({"native","preview"}) do controls[key].shown=function() return #list>0 and controls.libraryPage:GetSelValue()=="Item" end end
 		controls.remove.x=16;controls.remove.y=height-56;controls.remove.width=126
 		controls.undoRemove.x=154;controls.undoRemove.y=height-56;controls.undoRemove.width=122
-		for _,key in ipairs({"remove","undoRemove"}) do controls[key].shown=function() return controls.libraryPage:GetSelValue()=="Item" end end
+		controls.remove.shown=function() return #list>0 and controls.libraryPage:GetSelValue()=="Item" end
+		controls.undoRemove.shown=function() return (#list>0 or store.lastRemoved~=nil) and controls.libraryPage:GetSelValue()=="Item" end
 		controls.preview.enabled=function() return #list>0 and selected().targetItem and selected().targetItem:match("%S")~=nil end
 		for index,key in ipairs({"done","undoStep"}) do
 			controls[key].x=16+(index-1)*224;controls[key].y=height-56;controls[key].width=212
@@ -197,9 +198,19 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 			else summary[#summary+1]="Edit the starting item to open a native preview." end
 		end
 		controls.summary=new("TextListControl"):TextListControl(ui.anchor,{16,148,260,math.min(240,height-276)},nil,ui.rows(summary,230))
-		controls.summary.shown=function() return controls.libraryPage:GetSelValue()=="Item" end
+		controls.summary.shown=function() return #list>0 and controls.libraryPage:GetSelValue()=="Item" end
+		if #list==0 then
+			local cardWidth=math.min(540,width-336)
+			local cardX=304+math.floor((width-320-cardWidth)/2)
+			local function showWelcome() return controls.libraryPage:GetSelValue()=="Item" end
+			ui.card(controls,"welcome",cardX,148,cardWidth,"CRAFTING PROJECT","Plan your next item","Keep your targets, guide and experiments together.")
+			ui.description(controls,"welcomeSteps",cardX+12,256,cardWidth-24,100,{"1. Paste an item or use an equipped item.","2. Add your goals and crafting steps.","3. Try currencies in the workbench and keep your results."},15)
+			controls.startProject=button(cardX+12,350,180,"Start a project",function() Panel.Edit(build,nil,displayItem and displayItem.raw,displaySlot,layout) end)
+			controls.startProject.height=32
+			for _,key in ipairs({"welcome","welcomeSteps","startProject"}) do controls[key].shown=showWelcome end
+		end
 		controls.close.shown=false
-		ui.style(controls,{native=true},{projectItem=true})
+		ui.style(controls,{native=true,startProject=true},{projectItem=true})
 		if #list>0 then layout.selectedProject=selected().id end
 		layout.mount(width,height,"Crafting projects",controls)
 	else ui.style(controls,{native=true});main:OpenPopup(880,height,"Crafting projects",controls,nil,nil,"close") end
