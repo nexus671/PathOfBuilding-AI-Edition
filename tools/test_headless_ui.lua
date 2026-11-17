@@ -1561,6 +1561,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local beforeRoute=build.planningWorkspace.cache.atlas.layout.snapshot()
 	ui:click("targetShowTree");ui:frame();local overlay=build.planningWorkspace.controls.canvas.routeOverlay
 	assert(overlay and next(overlay.added),"Route preview did not show added nodes")
+	assert(build.planningWorkspace.controls.keep.label()=="Keep current plan" and build.planningWorkspace.controls.keep.tooltipText():find("not the route preview",1,true),"Preview did not distinguish keeping the current plan")
+	assert(build.planningWorkspace.controls.help.label:find("Preview +",1,true),"Route preview point changes are not visible")
 	assert(tableDeepEquals(beforeRoute,build.planningWorkspace.cache.atlas.layout.snapshot()),"Showing a route changed the draft")
 	frame("atlas-route-tree-preview");local previousTitle=build.planningWorkspace.controls.title.buf
 	ui:text("title","Temporary route title");assert(not build.planningWorkspace.controls.canvas.routeOverlay,"Editing the plan retained a stale route overlay")

@@ -411,9 +411,11 @@ function Panel.Open(build,source,layout)
 		clearRouteOverlay();exitGrantRoute()
 		require("Classes.AtlasTargetsControl").Open(build,{current=current,change=change,selected=function() return controls.canvas.focus end,showTree=function(plan)
 			local before,after={},{};for _,id in ipairs(current().nodes) do before[id]=true end;for _,id in ipairs(plan.nodes) do after[id]=true end
-			local added,removed={},{};for id in pairs(after) do if not before[id] then added[id]=true end end;for id in pairs(before) do if not after[id] then removed[id]=true end end
+			local added,removed={},{};local addedCount,removedCount=0,0
+			for id in pairs(after) do if not before[id] then added[id]=true;addedCount=addedCount+1 end end
+			for id in pairs(before) do if not after[id] then removed[id]=true;removedCount=removedCount+1 end end
 			controls.canvas.comparison=nil;controls.canvas.routeOverlay={added=added,removed=removed}
-			controls.help.label="^7"..ui.fit("Preview: teal adds | red refunds or avoided | Targets to apply",graphWidth,14)
+			controls.help.label="^7"..ui.fit("Preview +"..addedCount.." / -"..removedCount.." | teal adds, red refunds or avoided | Targets to apply",graphWidth,14)
 		end,mode=function(value)
 			if value then controls.canvas.intentMode=value;controls.help.label="^7"..ui.fit(value=="Select nodes" and "Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect" or "Click nodes to "..value:lower().." | Targets: return to selection",graphWidth,14) end
 			return controls.canvas.intentMode or "Select nodes"
@@ -455,6 +457,8 @@ function Panel.Open(build,source,layout)
 	controls.url.enabled=function() return not hasMissingChoices end
 	controls.url.tooltipFunc=function(tooltip) tooltip:AddLine(14,hasMissingChoices and "Choose an effect for each allocated choice node before sharing an official link." or "Copy an official Atlas link. Copy plan also preserves the exact version.") end
 	controls.keep=button(16,height-42,160,"Keep plan",function() store:Upsert(current());if layout then controls.status.label="^7Plan kept. Save the build to persist it." else main:ClosePopup() end end)
+	controls.keep.label=function() return controls.canvas.routeOverlay and "Keep current plan" or "Keep plan" end
+	controls.keep.tooltipText=function() return controls.canvas.routeOverlay and "Keeps the current draft, not the route preview. Open Targets to apply the preview first." or "Keep this plan in the build. Save the build to persist it." end
 	controls.library=button(188,height-42,120,"Saved plans",function() Panel.Library(build,layout) end)
 	controls.new=button(320,height-42,120,"New plan",function() if not layout then main:ClosePopup() end;Panel.Open(build,{id="atlas-"..require("sha1")(tostring({})..os.time()):sub(1,12),title="New Atlas plan",version=draft.version,budget=atlas.tree(draft.version).maxPoints,nodes={},notes=""},layout) end)
 	controls.progression=button(452,height-42,180,"Stages & strategy",function() require("Classes.AtlasPlanningControl").Open(build,current(),function(plan) change(plan) end) end)
