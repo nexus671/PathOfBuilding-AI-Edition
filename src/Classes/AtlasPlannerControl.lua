@@ -168,6 +168,7 @@ function Panel.Open(build,source,layout)
 	local controls,undo,avoided,redo={},{},copyTable(draft.avoided or {}),{}
 	local preferred
 	local pointUsage,routeAvailable,hasMissingChoices
+	local grantSteps,grantIndex
 	local function current()
 		local result=copyTable(draft); result.title=controls.title.buf; result.budget=assert(tonumber(controls.budget.buf),"Enter a point budget"); result.notes=controls.notes.buf
 		if result.avoided~=nil or #avoided>0 then result.avoided=copyTable(avoided) end
@@ -230,6 +231,14 @@ function Panel.Open(build,source,layout)
 		controls.avoid.label=#avoided>0 and "Avoid ("..#avoided..")" or "Avoid selected"
 		local costs=strategy.costs(draft,avoided)
 		for _,entry in ipairs(controls.results.list) do local resultNode=controls.canvas.tree.nodes[entry.val];if resultNode then entry.label=resultNode.name..(costs[entry.val] and " | +"..costs[entry.val] or " | blocked") end end
+	end
+	local function showGrantStep(index)
+		grantIndex=index;local step=grantSteps[index];local node=controls.canvas.tree.nodes[step.id]
+		controls.canvas.focus=step.id;controls.canvas.centerX,controls.canvas.centerY=node.x,node.y;controls.canvas.scale=math.max(0.2,controls.canvas.scale)
+		refresh(step.id);controls.canvas.preview={};controls.help.label="^7"..ui.fit("Route step "..index.." / "..#grantSteps..": "..step.action.." | Showing node on final plan",graphWidth,14)
+	end
+	local function exitGrantRoute()
+		grantSteps=nil;grantIndex=nil;controls.help.label="^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect"
 	end
 	controls.title=edit(16,30,graphWidth-130,24,draft.title,nil,120)
 	ui.label(controls,"planLabel",16,10,"Plan name",13)
@@ -298,7 +307,7 @@ function Panel.Open(build,source,layout)
 	end
 	local function snapshot() return {plan=copyTable(draft),avoided=copyTable(avoided)} end
 	local function remember() undo[#undo+1]=snapshot();if #undo>40 then table.remove(undo,1) end;redo={} end
-	local function change(nextPlan) remember();draft=atlas.validate(nextPlan);avoided=copyTable(draft.avoided or {});controls.canvas.comparison=nil;ui.draft(build,"atlas");syncEditors();refresh() end
+	local function change(nextPlan) exitGrantRoute();remember();draft=atlas.validate(nextPlan);avoided=copyTable(draft.avoided or {});controls.canvas.comparison=nil;ui.draft(build,"atlas");syncEditors();refresh() end
 	local function chooseEffect()
 		local node=assert(controls.canvas.tree.nodes[controls.canvas.focus],"Select a node first");local entries={}
 		for i,effect in ipairs(node.variantEffects or {}) do
@@ -321,6 +330,9 @@ function Panel.Open(build,source,layout)
 	end)
 	controls.undo=button(16,height-86,64,"Undo",function() assert(#undo>0,"No changes to undo");redo[#redo+1]=snapshot();local saved=table.remove(undo);draft=saved.plan;avoided=saved.avoided;syncEditors();refresh() end)
 	controls.redo=button(86,height-86,64,"Redo",function() assert(#redo>0,"No changes to redo");undo[#undo+1]=snapshot();local saved=table.remove(redo);draft=saved.plan;avoided=saved.avoided;syncEditors();refresh() end)
+	controls.grantPrevious=button(16,height-86,64,"Prev",function() showGrantStep(grantIndex-1) end)
+	controls.grantNext=button(86,height-86,64,"Next",function() showGrantStep(grantIndex+1) end)
+	controls.grantExit=button(338,height-86,86,"Exit route",function() exitGrantRoute();refresh() end)
 	controls.fit=button(156,height-86,70,"Fit tree",function() controls.canvas:Fit() end)
 	controls.help=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,height-106,0,14},"^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect")
 	controls.avoid=button(side,height-156,124,"Avoid selected",function()
@@ -354,9 +366,7 @@ function Panel.Open(build,source,layout)
 				steps[#steps+1]={id=index,label=index..". "..step.action..": "..node.name,category=step.action,details={"Step "..index.." of "..#report.grantRoute,step.action.." "..node.name.." ["..step.id.."]","Show this node on the final-plan tree. The planner does not track your in-game allocations."},node=step.id,index=index,action=step.action}
 			end
 			browser.Open("Temporary grant route",steps,{action="Show on tree",closeOnChoose=false,choose=function(step)
-				main:ClosePopup();local node=controls.canvas.tree.nodes[step.node]
-				controls.canvas.focus=step.node;controls.canvas.centerX,controls.canvas.centerY=node.x,node.y;controls.canvas.scale=math.max(0.2,controls.canvas.scale)
-				refresh(step.node);controls.canvas.preview={};controls.help.label="^7"..ui.fit("Route step "..step.index..": "..step.action.." | Showing node on final plan",graphWidth,14)
+				main:ClosePopup();grantSteps=copyTable(report.grantRoute);showGrantStep(step.index)
 			end})
 		end} or nil
 		browser.Open("Atlas bonuses by mechanic",entries,routeOptions)
@@ -439,6 +449,10 @@ function Panel.Open(build,source,layout)
 	for _,key in ipairs({"canvas","strategySummary","search","find","results","mechanic","matchCount","details","allocate","remove","undo","redo","fit","help","avoid","clearAvoid","stats","browse","routes","targets","tools"}) do
 		controls[key].shown=function() return controls.page:GetSelValue()=="Tree" end
 	end
+	for _,key in ipairs({"undo","redo","routes"}) do controls[key].shown=function() return controls.page:GetSelValue()=="Tree" and not grantSteps end end
+	for _,key in ipairs({"grantPrevious","grantNext","grantExit"}) do controls[key].shown=function() return controls.page:GetSelValue()=="Tree" and grantSteps~=nil end end
+	controls.grantPrevious.enabled=function() return grantSteps and grantIndex>1 end
+	controls.grantNext.enabled=function() return grantSteps and grantIndex<#grantSteps end
 	for _,key in ipairs({"notes","notesLabel","copy","import","url"}) do controls[key].shown=function() return controls.page:GetSelValue()=="Notes & sharing" end end
 	controls.canvas.onActivate=function() if controls.remove:IsEnabled() then controls.remove:Click() else controls.allocate:Click() end end
 	controls.undo.enabled=function() return #undo>0 end
@@ -477,7 +491,7 @@ function Panel.Open(build,source,layout)
 	ui.tabs(controls,controls.page,{{"tab_tree","Tree","Tree"},{"tab_notes","Notes & sharing","Plan & notes"}},side,64,260)
 	controls.title.changeFunc=function() ui.draft(build,"atlas");refresh() end
 	controls.notes.changeFunc=function() ui.draft(build,"atlas") end
-	controls.budget.changeFunc=function() ui.draft(build,"atlas");refresh() end
+	controls.budget.changeFunc=function() exitGrantRoute();ui.draft(build,"atlas");refresh() end
 	controls.budget.enterFunc=function() safely(function() local nextPlan=current();if nextPlan.budget~=draft.budget then change(nextPlan) end end) end
 	controls.budget.tooltipText="Press Enter to keep this budget in change history."
 	if layout then

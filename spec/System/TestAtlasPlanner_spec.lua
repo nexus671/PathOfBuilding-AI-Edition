@@ -138,7 +138,12 @@ describe("Native Atlas planner", function()
 		assert.is_true(found);browser.search:SetText("Temporary grant route",true);browser.choose:Click()
 		local routeBrowser=main.popups[1].controls;assert.equal("Show on tree",routeBrowser.choose.label);routeBrowser.choose:Click()
 		assert.equal(originalId,controls.canvas.focus);assert.equal(atlas.tree(alternate.version).nodes[originalId].x,controls.canvas.centerX)
-		assert.matches("Route step 1",controls.help.label);assert.is_nil(next(controls.canvas.preview));assert.same(alternate.nodes,controls.canvas.selected().nodes);main.popups={}
+		assert.matches("Route step 1",controls.help.label);assert.is_nil(next(controls.canvas.preview));assert.is_false(controls.grantPrevious:IsEnabled());assert.is_true(controls.grantNext:IsEnabled())
+		controls.grantNext:Click();assert.equal(atlas.report(alternate).grantRoute[2].id,controls.canvas.focus);assert.matches("Route step 2",controls.help.label)
+		controls.grantPrevious:Click();assert.equal(originalId,controls.canvas.focus);assert.same(alternate.nodes,controls.canvas.selected().nodes)
+		controls.grantExit:Click();assert.is_false(controls.grantNext:IsShown());assert.is_true(controls.undo:IsShown())
+		controls.stats:Click();browser=main.popups[1].controls;browser.search:SetText("Temporary grant route",true);browser.choose:Click();main.popups[1].controls.choose:Click()
+		controls.budget:SetText(tostring(needed+1),true);assert.is_false(controls.grantNext:IsShown());main.popups={}
 		alternate.avoided={17321}
 		local reachable,reason,required=atlas.budgetReachability(alternate)
 		assert.is_false(reachable);assert.is_true(required>needed);assert.matches("avoided",reason)
