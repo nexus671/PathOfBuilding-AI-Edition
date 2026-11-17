@@ -4140,6 +4140,8 @@ function calcs.recoveryOverTime(env, actor)
 				local ok, projected = xpcall(function()
 					local projection = calcs.initEnv(build, env.mode == "CALCS" and "CALCS" or "CALCULATOR", env.override, { noBreakdown = true })
 					projection.recoveryProjection = true
+					projection.recoveryCheckpoint = env.recoveryCheckpoint
+					if projection.recoveryCheckpoint then projection.recoveryCheckpoint() end
 					projection.recoveryGuardSuppressed = not guardActive
 					projection.recoveryManualFlasks = true
 					projection.recoveryCrabBarriers = crabCount

@@ -395,6 +395,25 @@ describe("Encounter reporting and comparisons",function()
 		assert.are.same(expected,tab.calcsEnv.player.recoverySimulationResults)
 		assert.are.same(expectedTrace,tab.calcsEnv.player.recoverySimulationTrace.points)
 	end)
+	it("preserves timed tincture trials when projected calculations yield",function()
+		local tincture=new("Item"):Item("Rarity: Normal\nPrismatic Tincture")
+		build.itemsTab:AddItem(tincture);build.itemsTab.slots["Flask 1"].selItemId=tincture.id;build.itemsTab.slots["Flask 1"].active=true
+		calculate()
+		local tab=build.calcsTab;local tasks=require("Modules.RecoveryTasks")
+		local expected=copyTable(tab.calcsEnv.player.recoverySimulationResults)
+		local expectedTrace=copyTable(tab.calcsEnv.player.recoverySimulationTrace.points)
+		assert.is_truthy(expected)
+		tab:BuildOutput(true);local originalCache=GlobalCache;local calculator=GlobalCache.cachedData.CALCULATOR
+		local perform=tab.calcs.perform;local projections=0
+		tab.calcs.perform=function(env,...) if env.recoveryProjection and env.recoveryCheckpoint then projections=projections+1 end;return perform(env,...) end
+		local ok,message=pcall(function()
+			local steps=0;while tab.recoveryJob do tasks.tick(tab,0);steps=steps+1;assert.is_true(steps<5000);assert.are.equal(originalCache,GlobalCache);assert.are.equal(calculator,GlobalCache.cachedData.CALCULATOR) end
+			assert.is_true(steps>2);assert.is_true(projections>0);assert.is_falsy(tab.calcsOutput.RecoverySimulationUnsupported)
+		end)
+		tab.calcs.perform=perform;assert.is_true(ok,message)
+		assert.are.same(expected,tab.calcsEnv.player.recoverySimulationResults)
+		assert.are.same(expectedTrace,tab.calcsEnv.player.recoverySimulationTrace.points)
+	end)
 	it("replaces pending recovery on edits and keeps captured level and configuration",function()
 		calculate()
 		local tab=build.calcsTab;local tasks=require("Modules.RecoveryTasks")
@@ -407,6 +426,22 @@ describe("Encounter reporting and comparisons",function()
 		assert.are.same(expected,tab.calcsEnv.player.recoverySimulationResults)
 		assert.is_nil(previous.current.player.recoverySimulationResults)
 		build.characterLevel=level
+	end)
+	it("can replace a recovery job while a tincture projection is suspended",function()
+		local tincture=new("Item"):Item("Rarity: Normal\nPrismatic Tincture")
+		build.itemsTab:AddItem(tincture);build.itemsTab.slots["Flask 1"].selItemId=tincture.id;build.itemsTab.slots["Flask 1"].active=true
+		calculate();local tab=build.calcsTab;local tasks=require("Modules.RecoveryTasks")
+		local expected=copyTable(tab.calcsEnv.player.recoverySimulationResults);local perform=tab.calcs.perform;local entered=false
+		tab:BuildOutput(true);local cancelled=tab.recoveryJob;local cache=GlobalCache
+		tab.calcs.perform=function(env,...) if env.recoveryProjection and env.recoveryCheckpoint then entered=true;env.recoveryCheckpoint() end;return perform(env,...) end
+		local ok,message=pcall(function()
+			local steps=0;while not entered and tab.recoveryJob do tasks.tick(tab,0);steps=steps+1;assert.is_true(steps<5000);assert.are.equal(cache,GlobalCache) end
+			assert.is_true(entered);assert.are.equal(cancelled,tab.recoveryJob)
+		end)
+		tab.calcs.perform=perform;assert.is_true(ok,message)
+		tab:BuildOutput(true);assert.are_not.equal(cancelled,tab.recoveryJob)
+		local steps=0;while tab.recoveryJob do tasks.tick(tab,0);steps=steps+1;assert.is_true(steps<5000);assert.are.equal(cache,GlobalCache) end
+		assert.are.same(expected,tab.calcsEnv.player.recoverySimulationResults)
 	end)
 
 	it("keeps paired configuration comparisons identical when recovery yields",function()

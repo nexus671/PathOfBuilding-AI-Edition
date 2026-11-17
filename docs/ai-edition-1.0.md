@@ -279,3 +279,10 @@ and choice text. In paired headless runs, batches of 50 identical-result searche
 on 3.29.3 and the 3.30 preview took 48-329 ms, compared with 155-450 ms before
 the change across All, Maps and Breach filters. Individual search latency and
 native desktop responsiveness still need interactive measurement.
+
+Timed flask and tincture projections now use the recovery worker's checkpoints
+during their native calculation. A read-only two-cycle saved-build comparison
+preserved the recovery outputs, individual trials, trace and original revision.
+Its longest slices were 8.9-10.6 ms after the change and 11.4-12.2 ms before;
+other runs have had larger, variable pauses. These bounded results do not prove
+that all long slices or desktop stalls are eliminated.
