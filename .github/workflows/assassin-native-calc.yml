@@ -20,13 +20,13 @@ jobs:
           set -eu
           apk add --no-cache python3 git
           mkdir -p /tmp/native-pob/runtime/bin /tmp/native-pob/runtime/lib /tmp/native-pob/runtime/share
-          git rev-parse HEAD > /tmp/native-pob/SOURCE_COMMIT.txt
+          printf '%s\n' "$GITHUB_SHA" > /tmp/native-pob/SOURCE_COMMIT.txt
           cp -a src /tmp/native-pob/src
           cp -a runtime/lua /tmp/native-pob/runtime/lua
-          cp manifest.xml /tmp/native-pob/manifest.xml
+          [ ! -f manifest.xml ] || cp manifest.xml /tmp/native-pob/manifest.xml
           [ ! -f manifest.cfg ] || cp manifest.cfg /tmp/native-pob/manifest.cfg
           cp -L "$(command -v luajit)" /tmp/native-pob/runtime/bin/luajit
-          for p in /lib/ld-musl-*.so.1 /lib/libc.musl-*.so.1 /lib/libz.so* /usr/lib/libgcc_s.so* /usr/lib/libstdc++.so* /usr/local/lib/libluajit*; do
+          for p in /lib/ld-musl-*.so.1 /lib/libc.musl-*.so.1 /lib/libz.so* /usr/lib/libz.so* /usr/lib/libgcc_s.so* /usr/lib/libstdc++.so* /usr/local/lib/libluajit*; do
             [ ! -f "$p" ] || cp -L "$p" /tmp/native-pob/runtime/lib/
           done
           [ ! -d /usr/local/lib/lua ] || cp -a /usr/local/lib/lua /tmp/native-pob/runtime/lib/lua
