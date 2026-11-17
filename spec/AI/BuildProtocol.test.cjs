@@ -83,6 +83,15 @@ test('queues bounded built-in filter scenes', t => {
   assert.equal(JSON.parse(fs.readFileSync(path.join(targetFixture.dir,'AI-build-request.json'))).scene,'Build targets');
   for(const invalid of [{...args,scene:'Unknown'},{...args,seed:-1},{...args,areaLevel:101},{...args,limit:51},{...args,offset:-1},{...args,unknown:true}]) assert.throws(()=>f.call('test_loot_filter_scene',invalid),/arguments/);
 });
+test('queues bounded map modifier inspection', t => {
+  const f=fixture(t), args={baseRevision:f.state.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,selected:[],limit:5};
+  f.call('inspect_map_modifiers',args);
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.kind,'inspect_map_modifiers');assert.equal(request.tier,5);
+  for(const invalid of [{...args,tier:17},{...args,itemLevel:0},{...args,selected:Array(7).fill('x')},{...args,limit:101},{...args,unknown:true}]) assert.throws(()=>f.call('inspect_map_modifiers',invalid),/arguments/);
+  const bases=fixture(t);bases.call('search_map_bases',{baseRevision:bases.state.revision,query:'Beach',limit:5});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(bases.dir,'AI-build-request.json'))).kind,'search_map_bases');
+});
 test('accepts typed Atlas stages, strategy inputs and explicit failure recovery branches', t => {
   const f=fixture(t);
   const plan={id:'final',title:'Final maps',version:'3.29.1',budget:138,nodes:[],progression:{stage:'final',previousId:'starter'},strategy:{maps:'T16 maps',scarabs:'Supplied scarabs',requirements:'Unlocks complete',avoid:'Reflect',setupCost:{amount:25,currency:'chaos',source:'Manual quote',quotedAt:1700000000}}};

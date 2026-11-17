@@ -564,6 +564,23 @@ function M.poll(build, force)
 			else local raw,report=filters.compile(profile);for _,diagnostic in ipairs(report.diagnostics) do if diagnostic.error then error("Line "..diagnostic.line..": "..tostring(diagnostic.error),0) end end;M.status={id=request.id,status="exported",filter=raw,report=report} end
 			M.publishState();return
 		end
+		if request.kind == "search_map_bases" or request.kind == "inspect_map_modifiers" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh map context.")
+			local session=M.session
+			local function publish(status,values)
+				if not M.enabled or M.session~=session then return end
+				M.status={id=request.id,status=status,baseRevision=request.baseRevision}
+				for key,value in pairs(values) do M.status[key]=value end;M.publishState()
+			end
+			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+				local map=require("Modules.MapCraftingData")
+				return request.kind=="search_map_bases" and map.searchBases(request.query,request.offset,request.limit,checkpoint)
+					or map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint)
+			end,function(result)
+				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh map context."}) else publish("mapData",{mapData=result}) end
+			end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Map modifier inspection slice")
+			job.requestId=request.id;publish("calculating",{});return
+		end
 		if request.kind == "atlasSearch" or request.kind == "atlasConnect" or request.kind == "atlasTransition" then
 			assert(request.baseRevision == M.revision(build),"Build changed. Refresh Atlas context.")
 			local planner=require("Modules.AtlasPlanner")

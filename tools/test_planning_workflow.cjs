@@ -669,6 +669,10 @@ async function main(){
   assert.equal(flaskVaal.nativeCrafting.state.corrupted,true);assert.equal(flaskVaal.nativeCrafting.warnings[0].code,'flask_vaal_weights');
   const flask40=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:flaskRaw,initialState:{rarity:'NORMAL',affixes:[],quality:40,corrupted:true},limit:5},'inspected');
   assert.equal(flask40.crafting.nativeEngine.initialState.quality,40);
+  const mapBases=await queued('search_map_bases',{baseRevision:context.revision,query:'MapWorldsBeach',limit:5},'mapData');
+  assert.ok(mapBases.mapData.results.some(base=>base.id==='Metadata/Items/Maps/MapWorldsBeach'));
+  const mapMods=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:2},'mapData');
+  assert.equal(mapMods.mapData.candidates.length,2);assert.equal(mapMods.mapData.nextOffset,2);assert.match(mapMods.mapData.note,/not outcome probabilities/);
   const altarItem='Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W W W\nCorrupted';
   const secondCorruption=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:altarItem,action:{method:'locus'},seed:1},'crafted');
   assert.equal(secondCorruption.nativeCrafting.warnings[0].code,'locus_assumptions');
