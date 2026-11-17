@@ -11,7 +11,7 @@ Open **Atlas** beside **AI builds**, or switch to **Atlas** in the full-width pl
 
 The 3.30 preview includes multiple-choice nodes. Connect one, select it, and choose **Choose effect**. The selected effect appears in the node details and allocated stats, and stays with the saved plan, undo history and versioned plan JSON. Unselected choice nodes are listed in **Allocated stats**. Search includes every available effect. Official links carry selected effects once every allocated choice node has one. Use **Copy plan** to preserve the exact tree version and planning notes as well.
 
-Stage routes call out new or changed effects, including effects that must be reselected after a refund. AI review shows the chosen effect, and linked loot-filter suggestions use the selected effect rather than the alternatives. An effect that excludes a Thread type suppresses inferred pickups for that type; explicitly named strategy items remain visible.
+Stage routes call out new or changed effects, including effects that must be reselected after a refund. For a retained node whose selected effect changes, the review flags that the in-game reselection procedure and its cost are unverified; those possible costs are not included in the node-refund count. AI review shows the chosen effect, and linked loot-filter suggestions use the selected effect rather than the alternatives. An effect that excludes a Thread type suppresses inferred pickups for that type; explicitly named strategy items remain visible.
 
 In a strategy's **Avoid** field, a recognized mechanic name such as `Breach` suppresses that mechanic's Thread pickups from the same Atlas plan, including Threads named in its supplies. A separate budget or another plan can still request the item.
 

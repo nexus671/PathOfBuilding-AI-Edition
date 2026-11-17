@@ -145,6 +145,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(table.concat(warning," "):find("Starting plan cannot be reached",1,true),"Impossible Atlas start was presented as a valid route")
 		frame("atlas-impossible-start");ui:click("copyRoute");assert(ui.clipboard:find("Starting plan cannot be reached",1,true));ui:click("close")
 		table.remove(build.savers.AtlasPlans.plans)
+		local choiceNode=atlas.tree("3.30.0-preview").nodes[45404]
+		local choiceStart=atlas.connect({id="choice-start",title="Choice start",version="3.30.0-preview",budget=150,nodes={}},{choiceNode.id})
+		choiceStart=atlas.chooseEffect(choiceStart,choiceNode.id,choiceNode.variantEffects[1].effect);build.savers.AtlasPlans:Upsert(choiceStart)
+		local choiceGoal=atlas.chooseEffect(choiceStart,choiceNode.id,choiceNode.variantEffects[2].effect);choiceGoal.id="choice-goal";choiceGoal.title="Choice goal";choiceGoal.progression={stage="final",previousId="choice-start"}
+		require("Classes.AtlasPlanningControl").Open(build,choiceGoal,function() end)
+		local choiceWarning={};for _,row in ipairs(main.popups[1].controls.transition.list) do choiceWarning[#choiceWarning+1]=StripEscapes(row[1]) end
+		assert(table.concat(choiceWarning," "):find("additional refund",1,true),"Choice cost uncertainty was not shown")
+		frame("atlas-choice-reselection");ui:click("copyRoute");assert(ui.clipboard:find("additional refund",1,true));ui:click("close");build.savers.AtlasPlans:Remove("choice-start")
 	end
 	local starter=copyTable(build.savers.AtlasPlans.plans[1]);starter.id="starter-atlas";starter.title="Starter maps";starter.nodes={};starter.progression={stage="starter"};build.savers.AtlasPlans:Upsert(starter)
 	ui:click("progression");assert(not main.popups[1].controls.copyRoute:IsEnabled(),"Route copy should require a previous stage");ui:choose("stage","final","val");ui:choose("previous","starter-atlas","val");frame("atlas-progression");ui:click("copyRoute");assert(ui.clipboard:find("Starter maps",1,true) and ui.clipboard:find("Allocate:",1,true) and ui.clipboard:find("base points",1,true),"Copied Atlas route omitted steps or budget assumptions")
