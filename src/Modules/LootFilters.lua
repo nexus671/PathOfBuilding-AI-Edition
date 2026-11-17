@@ -410,13 +410,24 @@ function M.simulateScene(profile,kind,seed,areaLevel,itemLevel,offset,limit,chec
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=0 and seed<=1000000,"Invalid scene seed")
 	assert(type(areaLevel)=="number" and areaLevel==math.floor(areaLevel) and areaLevel>=1 and areaLevel<=100,"Invalid area level")
 	assert(type(itemLevel)=="number" and itemLevel==math.floor(itemLevel) and itemLevel>=1 and itemLevel<=100,"Invalid item level")
-	local targets
+	local targets,warnings
 	if kind=="Build targets" then
 		assert(build,"Build targets require an open build")
-		targets=M.generate(build,profile,checkpoint)
+		targets,warnings=M.generate(build,profile,checkpoint)
 	end
 	local samples=require("Modules.LootFilterLibrary").scene(profile,build,kind,seed,areaLevel,itemLevel,targets)
 	local result=simulatePage(profile,{id="builtin",title=kind,samples=samples},offset,limit,checkpoint,true)
+	if warnings then
+		result.warningCount=#warnings;result.warnings={}
+		for i=1,math.min(#warnings,20) do
+			local warning=warnings[i];local entry={retry=warning.retry}
+			for _,key in ipairs({"origin","title","message"}) do
+				if type(warning[key])=="string" then entry[key]=warning[key]:sub(1,240);if #warning[key]>240 then entry.truncated=true end end
+			end
+			result.warnings[i]=entry
+		end
+		if #warnings>20 then result.warningsTruncated=true end
+	end
 	result.seed=seed;result.areaLevel=areaLevel;result.itemLevel=itemLevel
 	result.note="Deterministic examples, not live prices, drop rates or encounter probabilities."
 	return result
