@@ -180,7 +180,37 @@ describe("Experimental Gwennen pair",function()
 		local draws=0;assert.has_error(function() sim.action(model,full,pair,function() draws=draws+1;return 0.1 end) end);assert.equal(0,draws)
 		local abyss=copyTable(state);abyss.sockets[1].color="A"
 		assert.has_error(function() sim.calculate(socketRaw,pair,{},abyss,{requirements={sockets=6}}) end)
-		assert.is_false(require("Modules.CraftingGwennen").supports(1030))
+		assert.is_true(require("Modules.CraftingGwennen").supports(1030))
+	end)
+	it("requires and compares explicit scenarios for the disputed socket offer",function()
+		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: R-G B"
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
+		local craft={method="gwennen",firstOutcome=1030,secondOutcome=1000}
+		assert.has_error(function() sim.action(model,state,craft,function() return 0.1 end) end)
+		craft.gwennenSocketRerolls=75;assert.has_error(function() sim.validateRecipe({steps={craft},targets={}}) end)
+		local probability=require("Modules.CraftingSockets").jewellerProbabilities(model,state)[6]
+		local odds={}
+		for _,rolls in ipairs({50,100}) do
+			craft.gwennenSocketRerolls=rolls
+			local result=sim.calculate(raw,craft,{},state,{requirements={sockets=6}})
+			assert.is_false(result.sampled);assert.are.near(50*(1-(1-probability)^rolls),result.successChance,1e-8)
+			assert.equal("gwennen_socket_count_disputed",result.warnings[2].code);assert.matches(tostring(rolls),result.warnings[2].message)
+			odds[rolls]=result.successChance
+			local calls=0;sim.action(model,state,craft,function() calls=calls+1;return 0.1 end);assert.equal(rolls+1,calls)
+		end
+		assert.is_true(odds[100]>odds[50])
+		local recipe=sim.validateRecipe({steps={craft},targets={},requirements={sockets=6}});assert.equal(100,recipe.steps[1].gwennenSocketRerolls)
+		local invalid={method="gwennen",firstOutcome=1028,secondOutcome=1000,gwennenSocketRerolls=50}
+		assert.has_error(function() sim.validateRecipe({steps={invalid},targets={},requirements={sockets=6}}) end)
+	end)
+	it("requires the socket scenario in the crafting dialog and restores it",function()
+		newBuild();local picked
+		local controls=require("Classes.CraftingGwennenControl").Open(function() end,function(first,second,cost,rolls) picked=rolls end)
+		controls.first:SelByValue(1030,"val");controls.first.selFunc();controls.second:SelByValue(1000,"val");controls.second.selFunc()
+		assert.is_false(controls.simulate:IsEnabled());controls.rerolls:SelByValue(100,"val");controls.rerolls.selFunc()
+		assert.is_true(controls.simulate:IsEnabled());controls.simulate:Click();assert.equal(100,picked)
+		controls=require("Classes.CraftingGwennenControl").Open(function() end,function() end,{firstOutcome=1030,secondOutcome=1000,gwennenSocketRerolls=50})
+		assert.equal(50,controls.rerolls:GetSelValueByKey("val"));assert.is_true(controls.simulate:IsEnabled());main.popups={}
 	end)
 	it("charges observed artifacts and never treats an unknown price as free",function()
 		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022}

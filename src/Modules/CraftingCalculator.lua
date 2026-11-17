@@ -9,7 +9,7 @@ function C.extend(M)
 		if craft.method=="gwennen" and gwennen.isDiscrete(craft.firstOutcome) and gwennen.isDiscrete(craft.secondOutcome) then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
-			model=M.context(model,state);local first=gwennen.discrete(model,state,craft.firstOutcome);local second=gwennen.discrete(model,state,craft.secondOutcome)
+			model=M.context(model,state);local first=gwennen.discrete(model,state,craft.firstOutcome,craft);local second=gwennen.discrete(model,state,craft.secondOutcome,craft)
 			if first and second then
 				local outcomes,hits={},0
 				for side,branches in ipairs({first,second}) do for _,branch in ipairs(branches) do

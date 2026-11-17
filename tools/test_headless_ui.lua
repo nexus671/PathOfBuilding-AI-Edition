@@ -492,6 +492,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("tab_settings");ui:click("gwennen");assert(not main.popups[1].controls.keep:IsEnabled());frame("crafting-gwennen-empty")
 		ui:choose("first",1030,"val");local warning={};for _,row in ipairs(main.popups[1].controls.firstNote.list) do warning[#warning+1]=StripEscapes(row[1]) end
 		assert(table.concat(warning," "):find("conflict",1,true),"Disputed outcome did not show its warning");frame("crafting-gwennen-conflict")
+		ui:choose("second",1000,"val");assert(not main.popups[1].controls.simulate:IsEnabled(),"Disputed offer needs an explicit scenario")
+		ui:choose("rerolls",50,"val");assert(main.popups[1].controls.simulate:IsEnabled(),"Selected socket scenario did not enable modeling");frame("crafting-gwennen-socket-scenario")
 		ui:choose("first",1005,"val");ui:choose("second",1022,"val");ui:text("cost","20 Grand Broken Circle Artifacts")
 		assert(main.popups[1].controls.keep:IsEnabled());frame("crafting-gwennen-pair");ui:click("keep");ui:click("keepWorking")
 		local saved;for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id=="gwennen-ui" then saved=project end end

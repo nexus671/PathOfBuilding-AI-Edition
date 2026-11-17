@@ -1,13 +1,13 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1016]=true,[1017]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1028]=true,[1029]=true,[1031]=true,[1041]=true,[1042]=true}
+local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1016]=true,[1017]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1028]=true,[1029]=true,[1030]=true,[1031]=true,[1041]=true,[1042]=true}
 local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
 function G.supports(id) return supported[id]==true end
 function G.supportedCount() local count=0;for _ in pairs(supported) do count=count+1 end;return count end
 function G.deterministic(id) return deterministic[id] end
-function G.isDiscrete(id) return deterministic[id]~=nil or id==1004 or id==1006 or id==1007 or id==1016 or id==1017 or id==1023 or id==1026 or id==1028 or id==1031 or id==1041 end
+function G.isDiscrete(id) return deterministic[id]~=nil or id==1004 or id==1006 or id==1007 or id==1016 or id==1017 or id==1023 or id==1026 or id==1028 or id==1030 or id==1031 or id==1041 end
 local influenceTypes={"shaper","elder","adjudicator","basilisk","crusader","eyrie"}
 local function influenceChoices(model,state)
 	assert(#(state.influences or model.initial.influences or {})==0 and not model.item.synthesised,"Influence outcome requires an uninfluenced, non-synthesised item")
@@ -17,18 +17,19 @@ local function influenceChoices(model,state)
 	return choices
 end
 -- Enumerate removal sets without multiplying equivalent removal orders.
-function G.discrete(model,state,id)
+function G.discrete(model,state,id,craft)
 	if deterministic[id] then return {{draws={},probability=1,text=deterministic[id]}} end
-	if id==1028 then
+	if id==1028 or id==1030 then
+		local rolls=id==1028 and 50 or assert(craft and craft.gwennenSocketRerolls,"Choose 50 or 100 socket rerolls for this disputed offer")
 		local sim=require("Modules.CraftingSimulator")
 		local reason=sim.methodReason(model,state,"jeweller");assert(not reason,reason)
 		local probabilities=require("Modules.CraftingSockets").jewellerProbabilities(model,state)
 		local result,cumulative={},0
 		for count,chance in ipairs(probabilities) do
 			local below=cumulative;cumulative=math.min(1,cumulative+chance)
-			local probability=cumulative^50-below^50
+			local probability=cumulative^rolls-below^rolls
 			if probability>0 then
-				local draws={};for i=1,50 do draws[i]=below+chance/2 end
+				local draws={};for i=1,rolls do draws[i]=below+chance/2 end
 				result[#result+1]={draws=draws,probability=probability,text="Best socket count: "..count}
 			end
 		end
@@ -111,6 +112,9 @@ end
 function G.validate(craft)
 	assert(supported[craft.firstOutcome] and supported[craft.secondOutcome],"Choose two supported, observed Gwennen outcomes")
 	assert(not craft.allflame,"Allflame cannot be used with Gwennen")
+	if craft.firstOutcome==1030 or craft.secondOutcome==1030 then
+		assert(craft.gwennenSocketRerolls==50 or craft.gwennenSocketRerolls==100,"Choose 50 or 100 socket rerolls for this disputed offer")
+	else assert(craft.gwennenSocketRerolls==nil,"Socket reroll scenario applies only to the disputed offer") end
 	if craft.artifactCost~=nil then
 		assert(type(craft.artifactCost)=="table","Invalid observed artifact cost")
 		for key,value in pairs(craft.artifactCost) do assert(currencies[key] and type(value)=="number" and value==math.floor(value) and value>=0 and value<=1000000000,"Invalid observed artifact cost") end
@@ -140,9 +144,10 @@ function G.extend(M,api)
 			if id==1016 or id==1017 then
 				return M.bestFusing(model,input,probe and 1 or id==1016 and 100 or 50,draw)
 			end
-			if id==1028 then
+			if id==1028 or id==1030 then
 				local reason=M.methodReason(model,input,"jeweller");assert(not reason,reason)
-				return M.bestJeweller(model,input,probe and 1 or 50,draw)
+				local rolls=id==1028 and 50 or craft.gwennenSocketRerolls
+				return M.bestJeweller(model,input,probe and 1 or rolls,draw)
 			end
 			if id==1031 then
 				local choices=influenceChoices(model,input);local result=copyTable(input)

@@ -222,6 +222,14 @@ async function main(){
   assert.ok(linkGamble.nativeCrafting.state.sockets.some((socket,index,sockets)=>index>0 && socket.group===sockets[index-1].group));assert.ok(linkGamble.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_socket_link_assumptions'));
   const linkOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:raw,initialState:unlinked,action:{method:'gwennen',firstOutcome:1016,secondOutcome:1017},targets:[],options:{requirements:{links:4}}},'crafted');
   assert.equal(linkOdds.nativeCrafting.sampled,false);assert.ok(linkOdds.nativeCrafting.successChance>0 && linkOdds.nativeCrafting.successChance<=100);assert.ok(linkOdds.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_socket_link_assumptions'));
+  const fewerSockets={...binding.nativeCrafting.state,sockets:binding.nativeCrafting.state.sockets.slice(0,2)};
+  const socketScenarios=[];
+  for(const rolls of [50,100]) {
+    const offer={method:'gwennen',firstOutcome:1030,secondOutcome:1000,gwennenSocketRerolls:rolls};
+    const compared=await queued('calculate_crafting',{baseRevision:context.revision,itemText:raw,initialState:fewerSockets,action:offer,targets:[],options:{requirements:{sockets:4}}},'crafted');
+    assert.equal(compared.nativeCrafting.sampled,false);assert.ok(compared.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_socket_count_disputed' && entry.message.includes(String(rolls))));socketScenarios.push(compared.nativeCrafting.successChance);
+  }
+  assert.ok(socketScenarios[1]>socketScenarios[0]);
   const gwennenOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:gwennenAction,targets:[],options:{requirements:{minAffixes:1},trials:4}},'crafted');assert.equal(gwennenOdds.nativeCrafting.warnings[0].code,'gwennen_estimate');assert.equal(gwennenOdds.nativeCrafting.sampled,false);assert.equal(gwennenOdds.nativeCrafting.successChance,50);
   const sideRemoval=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1006,secondOutcome:1007},seed:1},'crafted');
   assert.equal(sideRemoval.nativeCrafting.state.affixes.length,binding.nativeCrafting.state.affixes.length-1);assert.ok([1006,1007].includes(sideRemoval.nativeCrafting.gwennen.outcome));

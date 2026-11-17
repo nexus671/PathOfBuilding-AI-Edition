@@ -3,7 +3,7 @@ local ui=require("Modules.PlanningUI")
 local reference=require("Modules.CraftingGwennenReference")
 local M={}
 function M.Open(keep,simulate,initial,checkPair)
-	local width=math.min(780,main.screenW-40);local height=440
+	local width=math.min(780,main.screenW-40);local height=500
 	local controls={};local entries=reference.search("",100).offers;local byId={};local choices={{label="Select an observed outcome",val=0}}
 	table.sort(entries,function(a,b) return a.description<b.description end)
 	for _,entry in ipairs(entries) do byId[entry.id]=entry;choices[#choices+1]={label=entry.description,val=entry.id} end
@@ -14,6 +14,10 @@ function M.Open(keep,simulate,initial,checkPair)
 	controls.second=new("DropDownControl"):DropDownControl(ui.anchor,{16,194,width-32,26},choices)
 	ui.label(controls,"costLabel",16,262,"Observed artifact price (optional; for example, 20 Grand Broken Circle Artifacts)",16)
 	controls.cost=new("EditControl"):EditControl(ui.anchor,{16,284,width-32,26},"",nil,nil,150)
+	ui.label(controls,"rerollsLabel",16,322,"Disputed socket offer: choose a scenario",16)
+	controls.rerolls=new("DropDownControl"):DropDownControl(ui.anchor,{16,344,width-32,26},{{label="Choose 50 or 100 rerolls",val=0},{label="50 rerolls (listed function)",val=50},{label="100 rerolls (displayed offer)",val=100}})
+	local function needsRerolls() return controls.first:GetSelValueByKey("val")==1030 or controls.second:GetSelValueByKey("val")==1030 end
+	controls.rerolls.shown=needsRerolls;controls.rerollsLabel.shown=needsRerolls
 	local function note(key,control,y)
 		local display=ui.description(controls,key,16,y,width-32,32,{},14)
 		local function refresh()
@@ -26,6 +30,7 @@ function M.Open(keep,simulate,initial,checkPair)
 	if initial then
 		controls.first:SelByValue(initial.firstOutcome,"val");controls.second:SelByValue(initial.secondOutcome,"val")
 		controls.first.selFunc();controls.second.selFunc()
+		controls.rerolls:SelByValue(initial.gwennenSocketRerolls or 0,"val")
 		if initial.artifactCost then
 			local parts={};for _,tier in ipairs({"lesser","greater","grand","exceptional"}) do
 				local amount=initial.artifactCost[tier];if amount and amount>0 then parts[#parts+1]=amount.." "..tier:gsub("^%l",string.upper).." Broken Circle Artifacts" end
@@ -35,13 +40,13 @@ function M.Open(keep,simulate,initial,checkPair)
 	end
 	local supportedCount=require("Modules.CraftingGwennen").supportedCount()
 	local defaultNote=supportedCount.." outcomes have an experimental model. Coin odds and crafting interactions are assumptions. Verify the pair and price in game."
-	local limits=ui.description(controls,"limits",16,322,width-32,50,{defaultNote},14)
+	local limits=ui.description(controls,"limits",16,382,width-32,50,{defaultNote},14)
 	local function refreshReadiness()
 		local first=controls.first:GetSelValueByKey("val");local second=controls.second:GetSelValueByKey("val")
 		local supported=require("Modules.CraftingGwennen").supports
 		local message
 		if checkPair and supported(first) and supported(second) then
-			local ok,reason=checkPair(first,second)
+			local ok,reason=checkPair(first,second,needsRerolls() and controls.rerolls:GetSelValueByKey("val") or nil)
 			if not ok then
 				reason=ui.errorText(reason)
 				local detail=reason:match("^A modeled Gwennen outcome cannot apply:%s*(.+)$")
@@ -52,6 +57,7 @@ function M.Open(keep,simulate,initial,checkPair)
 		limits.list=ui.rows({message or defaultNote},width-32,14)
 	end
 	for _,control in ipairs({controls.first,controls.second}) do local refresh=control.selFunc;control.selFunc=function(...) refresh(...);refreshReadiness() end end
+	controls.rerolls.selFunc=refreshReadiness
 	refreshReadiness()
 	controls.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,height-48,220,28},"Add pair to guide",function()
 		local first=assert(byId[controls.first:GetSelValueByKey("val")],"Select the first observed outcome")
@@ -66,11 +72,11 @@ function M.Open(keep,simulate,initial,checkPair)
 		controls.simulate=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{252,height-48,220,28},"Use modeled pair",function()
 			local first=byId[controls.first:GetSelValueByKey("val")];local second=byId[controls.second:GetSelValueByKey("val")]
 			local cost=controls.cost.buf:match("^%s*(.-)%s*$")
-			simulate(first,second,cost);main:ClosePopup()
+			simulate(first,second,cost,needsRerolls() and controls.rerolls:GetSelValueByKey("val") or nil);main:ClosePopup()
 		end))
 		controls.simulate.enabled=function()
 			local supported=require("Modules.CraftingGwennen").supports
-			return supported(controls.first:GetSelValueByKey("val")) and supported(controls.second:GetSelValueByKey("val"))
+			return supported(controls.first:GetSelValueByKey("val")) and supported(controls.second:GetSelValueByKey("val")) and (not needsRerolls() or controls.rerolls:GetSelValueByKey("val")~=0)
 		end
 		controls.simulate.tooltipText="Available for "..supportedCount.." experimental outcomes. Unknown or unrecognized artifact prices remain unpriced."
 	end

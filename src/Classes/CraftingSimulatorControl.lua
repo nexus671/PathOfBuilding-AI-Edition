@@ -332,8 +332,8 @@ function Panel.Open(build,project,layout)
 			local price=cost~="" and " Artifact price: "..cost.."." or " Verify the artifact price in game."
 			draft.steps[#draft.steps+1]={action="Gwennen observed pair: "..first.description.." OR "..second.description.."."..price,stopWhen="Review both possible outcomes before choosing.",onFailure="The selected outcome is random; this pair is not simulated.",done=false}
 			changed();refresh({"Pair added to this guide. Keep working craft, then save the build."})
-		end,function(first,second,cost)
-			local craft={method="gwennen",firstOutcome=first.id,secondOutcome=second.id}
+		end,function(first,second,cost,rerolls)
+			local craft={method="gwennen",firstOutcome=first.id,secondOutcome=second.id,gwennenSocketRerolls=rerolls}
 			local amount,tier=cost:lower():match("^(%d+)%s+(%a+)%s+broken%s+circle%s+artifacts?$")
 			if amount and ({lesser=true,greater=true,grand=true,exceptional=true})[tier] and tonumber(amount)<=1000000000 then craft.artifactCost={[tier]=tonumber(amount)} end
 			if not craft.artifactCost and configured.gwennen and configured.gwennen.artifactCost then
@@ -341,10 +341,10 @@ function Panel.Open(build,project,layout)
 				if cost==table.concat(parts," + ") and #parts>0 then craft.artifactCost=copyTable(configured.gwennen.artifactCost) end
 			end
 			configured.gwennen=craft;chooseMethod("gwennen");controls.page:SelByValue("Emulate item");changed();refresh({"Experimental Gwennen pair selected. Coin odds and ordinary currency transitions are assumptions."})
-		end,configured.gwennen,function(first,second)
+		end,configured.gwennen,function(first,second,rerolls)
 			-- A single deterministic preview does not prove every random branch
 			-- succeeds; report only failures and preserve future-step planning.
-			return pcall(simulator.action,model,state,{method="gwennen",firstOutcome=first,secondOutcome=second},function() return 0.42 end)
+			return pcall(simulator.action,model,state,{method="gwennen",firstOutcome=first,secondOutcome=second,gwennenSocketRerolls=rerolls},function() return 0.42 end)
 		end)
 	end
 	button(controls,"gwennen",232,378,200,"Record Gwennen pair",openGwennen)
