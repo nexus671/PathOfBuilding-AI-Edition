@@ -6,7 +6,7 @@ local sha1=require("sha1")
 local M={categories={"All items","Build targets","Campaign","Currency","Special currency","Equipment","Unique items","Flasks","Tinctures","Jewels","Divination cards","Maps & fragments","Gems","Recipes","League items","Other"}}
 local baseMetadata,baseClasses
 local noSockets={ ["Stackable Currency"]=true,Gold=true,Contracts=true,Blueprints=true,["Expedition Logbooks"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
-function M.isSocketlessClass(class) return noSockets[class]==true end
+function M.hasNoSockets(class) return noSockets[class]==true end
 local equipment={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true,Quiver=true,Amulet=true,Ring=true,Belt=true}
 -- Unknown bases, unique equipment and random defence rolls remain unresolved.
 function M.baseDefencePercentile(name,class,rarity)

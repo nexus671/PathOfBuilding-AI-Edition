@@ -50,7 +50,21 @@ describe("Copied loot-filter items",function()
 		assert.equal("Hide",parser.simulate(parser.parse("Hide\n DropLevel >= 10\nShow"),item).action)
 		assert.is_false(pcall(clipboard.parse,"some other clipboard text"));assert.is_false(pcall(clipboard.parse,"Rarity: Magic\nImaginary Unknown Base\n--------"))
 	end)
-	it("uses known clipboard and base classes for socketless items",function()
+	it("leaves an incomplete identified item's base unknown",function()
+		local rule=parser.parse('Hide\n BaseType "Leather Belt"\nShow')
+		for _,rarity in ipairs({"Rare","Unique","Relic"}) do
+			local item=clipboard.parse("Rarity: "..rarity.."\nAn Unknown Name\n--------")
+			assert.is_nil(item.BaseType);assert.is_nil(item.Class)
+			assert.equal("unknown",parser.simulate(rule,item).status)
+		end
+		local explicit=clipboard.parse("Item Class: Skill Gems\nRarity: Unique\nAn Unknown Name\n--------")
+		assert.is_nil(explicit.BaseType);assert.equal("Skill Gems",explicit.Class)
+		local unidentified=clipboard.parse("Rarity: Rare\nUnknown Base\n--------\nUnidentified")
+		assert.equal("Unknown Base",unidentified.BaseType)
+		local complete=clipboard.parse("Rarity: Unique\nExample Name\nUnknown Base\n--------")
+		assert.equal("Unknown Base",complete.BaseType)
+	end)
+	it("uses known clipboard and base classes for items without sockets",function()
 		local cases={{"Gold","Gold"},{"Contracts","Contract: Bunker"},{"Blueprints","Blueprint: Bunker"},{"Expedition Logbooks","Expedition Logbook"}}
 		local rule=parser.parse("Hide\n Sockets = 0\n BaseDefencePercentile = 0\nShow")
 		for _,case in ipairs(cases) do

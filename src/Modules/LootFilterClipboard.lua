@@ -10,11 +10,16 @@ function M.parse(raw,area)
 	local fields={["Item Level"]=true,Quality=true,Sockets=true,["Stack Size"]=true,Level=true,["Map Tier"]=true}
 	local names={};for line in (header or ""):gmatch("[^\n]+") do if line=="--------" or fields[line:match("^([%w ]+): ") or ""] then break end;names[#names+1]=line end
 	assert(#names>0,"The clipboard has no item name")
+	local markers={};for line in raw:gmatch("[^\n]+") do markers[line]=true end
 	local ok,native=pcall(function() return new("Item"):Item(raw) end)
 	local base=ok and native.base and native.baseName or nil
 	if not base then
 		assert(rarity:lower()~="magic","The magic item's base could not be identified; configure it explicitly")
-		base=names[#names]
+		-- An identified rare or unique normally has a separate name and base.
+		-- A truncated single-line copy cannot establish which one it contains.
+		local unidentified=markers.Unidentified
+		for line in pairs(markers) do if line:match("^Unidentified %(Tier %d+%)$") then unidentified=true;break end end
+		if #names>1 or (rarity:lower()~="rare" and rarity:lower()~="unique" and rarity:lower()~="relic") or unidentified then base=names[#names] end
 	end
 	local class=raw:match("Item Class: ([^\n]+)")
 	-- The clipboard's gem labels differ from the filter language's class names.
@@ -24,7 +29,6 @@ function M.parse(raw,area)
 	-- known, or the visible normal/currency/gem name is the base name.
 	local baseRarity=rarity:lower()
 	if not class and (ok and native.base or baseRarity=="normal" or baseRarity=="currency" or baseRarity=="gem") then class=library.baseClass(base) end
-	local markers={};for line in raw:gmatch("[^\n]+") do markers[line]=true end
 	local tier
 	for line in pairs(markers) do
 		local value=line:match("^Unidentified %(Tier (%d+)%)$")
@@ -65,7 +69,7 @@ function M.parse(raw,area)
 		item.GemLevel=tonumber(raw:match("\nLevel:%s*(%d+)"))
 		-- Only infer a transfigured base when the bundled gem data identifies
 		-- one unambiguous ordinary gem with a matching displayed-name prefix.
-		local id=data.gemForBaseName[item.BaseType:lower()];local gem=id and data.gems[id]
+		local id=item.BaseType and data.gemForBaseName[item.BaseType:lower()];local gem=id and data.gems[id]
 		if gem and not gem.vaalGem then
 			if id:match("Alt[XYZ]$") then
 				local found,ambiguous
@@ -79,7 +83,7 @@ function M.parse(raw,area)
 		end
 	end
 	local sockets=raw:match("\nSockets:[ \t]*([^\n]*)")
-	if sockets~=nil or library.isSocketlessClass(class) then
+	if sockets~=nil or library.hasNoSockets(class) then
 		local groups,colours,linked={},{},0;sockets=sockets or ""
 		if sockets~="" and sockets~="0" then for group in sockets:gmatch("%S+") do
 			assert(group:match("^[RGBWAD%-]+$") and not group:find("^%-") and not group:find("%-$") and not group:find("%-%-"),"Invalid clipboard socket layout")
