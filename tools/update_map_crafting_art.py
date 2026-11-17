@@ -1,4 +1,5 @@
 """Bundle map base images from a local extracted GGG artwork directory."""
+# cspell:ignore getbbox
 import argparse
 import hashlib
 import io

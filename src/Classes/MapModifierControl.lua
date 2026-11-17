@@ -24,14 +24,14 @@ function M.Open()
 	local function button(key,x,y,w,label,fn)
 		controls[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{x,y,w,28},label,fn))
 	end
-	ui.description(controls,"intro",16,28,width-32,34,{"Inspect a hypothetical ordinary map. No currency is used or item saved."},14)
+	ui.description(controls,"intro",16,28,width-32,34,{"Inspect a hypothetical map; availability is unverified. No currency or item is used.","Changing map, tier or item level clears selected modifiers."},14)
 	button("base",16,66,left,"Choose map",function()
-		local rows={};local offset=0
+		local rows={};local baseOffset=0
 		repeat
-			local page=map.searchBases("MapWorlds",offset,100)
+			local page=map.searchBases("MapWorlds",baseOffset,100)
 			for _,entry in ipairs(page.results) do if not entry.special then rows[#rows+1]={id=entry.id,label=entry.name,search=entry.id,details={entry.id,"Availability in the current Atlas is not verified."}} end end
-			offset=page.nextOffset
-		until not offset
+			baseOffset=page.nextOffset
+		until not baseOffset
 		browser.Open("Choose map base",rows,{action="Use map",choose=function(entry)
 			baseId=entry.id;selected={};candidate=nil;offset=0;main:ClosePopup();refresh()
 		end,closeOnChoose=false})
@@ -89,7 +89,7 @@ function M.Open()
 	end
 	controls.list.onClick=function(hit) if hit and hit.line then show(hit.line.entry) end end
 	controls.search.changeFunc=function() offset=0;refresh() end
-	controls.level.changeFunc=function() offset=0;refresh() end
+	controls.level.changeFunc=function() selected={};offset=0;refresh() end
 	controls.tier.selFunc=function() selected={};offset=0;refresh() end
 	ui.style(controls,{add=true});refresh()
 	main:OpenPopup(width,height,"Map modifier explorer",controls,nil,"search","close")

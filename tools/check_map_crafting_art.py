@@ -1,4 +1,5 @@
 """Verify the bundled map images against their recorded source and hashes."""
+# cspell:ignore getbbox
 import hashlib
 import io
 import json
