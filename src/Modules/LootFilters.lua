@@ -330,7 +330,7 @@ function M.compile(profile,includeParsed)
 	local output={"# Path of Building AI Edition | "..checked.title,"# PoE 3.30 | NeverSink base "..checked.baseCommit,"# NeverSink templates: MIT. Personal rules precede the base filter."}
 	output[#output+1]="# "..read("LICENSE-NeverSink.txt"):gsub("\r\n","\n"):gsub("\n","\n# ")
 	for _,r in ipairs(checked.rules) do if r.enabled then output[#output+1]="\n# PoB rule: "..r.title..(r.origin and " ["..r.origin.."]" or "");output[#output+1]=styled(r.text,r.origin and "Build targets") end end
-	for _,tier in ipairs(checked.tiers or {}) do local rule=require("Modules.LootFilterEditing").rule(tier);if rule then output[#output+1]="\n# PoB rule: Tier / "..rule.title;output[#output+1]=styled(rule.text) end end
+	for _,rule in ipairs(require("Modules.LootFilterEditing").tierRules(checked.tiers)) do output[#output+1]="\n# PoB rule: Tier / "..rule.title;output[#output+1]=styled(rule.text) end
 	for _,module in ipairs(checked.modules or {}) do if module.enabled then for _,rule in ipairs(module.rules) do if rule.enabled then output[#output+1]="\n# PoB rule: "..module.title.." / "..rule.title;output[#output+1]=styled(rule.text,rule.origin and "Build targets") end end end end
 	for _,rule in ipairs(require("Modules.LootFilterCampaign").rules(checked.campaign,checked.theme)) do output[#output+1]="\n# PoB rule: Campaign / "..rule.title;output[#output+1]=styled(rule.text,"Campaign") end
 	-- New league items are shown until a later pinned base can tier them.

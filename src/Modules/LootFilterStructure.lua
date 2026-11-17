@@ -11,7 +11,7 @@ function M.outline(profile,raw,report,parsed)
 		sources[#sources+1]={section=section,sectionTitle=title,rule=rule,category=category or library.category(rule),editable=editable,overrideId=id}
 	end
 	for _,rule in ipairs(profile.rules) do if rule.enabled then add("personal","Personal pickups",rule,nil,true) end end
-	for _,tier in ipairs(profile.tiers or {}) do local rule=require("Modules.LootFilterEditing").rule(tier);if rule then add("tiers","Custom tiers",rule) end end
+	for _,rule in ipairs(require("Modules.LootFilterEditing").tierRules(profile.tiers)) do add("tiers","Custom tiers",rule) end
 	for _,module in ipairs(profile.modules or {}) do if module.enabled then for _,rule in ipairs(module.rules) do if rule.enabled then add("module-"..module.id,"Module: "..module.title,rule) end end end end
 	for _,rule in ipairs(require("Modules.LootFilterCampaign").rules(profile.campaign,profile.theme)) do add("campaign","Campaign policies",rule,"Campaign") end
 	if filters.needsSafety(profile) then for class in pairsSortByKey(filters.patch().added) do add("safety","3.30 item safety",{title=class,text=""},library.category({text='Class == "'..class..'"'})) end end

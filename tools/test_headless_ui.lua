@@ -1466,13 +1466,16 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	filterTool("Import filter");ui:text("text",'Hide\n    BaseType == "Orb of Binding"\nShow\n    BaseType == "Chaos Orb"\n    SetFontSize 44');ui:click("import");ui:frame()
 	filterTool("Full file changes");frame("filter-file-changes-compiled");ui:choose("content","Original base text");frame("filter-file-changes-source");ui:text("search","SetFontSize");frame("filter-file-changes-search")
 	ui:click("copyBefore");assert(not ui.clipboard:find("SetFontSize 44",1,true),"Before source used the working draft");ui:click("copyAfter");assert(ui.clipboard:find("SetFontSize 44",1,true),"After source omitted the working change");ui:click("close");ui:click("keep")
-	ui:click("viewTiers");ui:click("tierNew");ui:text("tierName","Chaos Orb");ui:click("tierAddItem");frame("filter-tiers")
+	ui:click("viewTiers");ui:click("tierNew");assert(not build.planningWorkspace.controls.tierStack:IsEnabled());assert(build.planningWorkspace.controls.tierStack.tooltipText():find("Create another custom tier",1,true));ui:text("tierName","Chaos Orb");ui:click("tierAddItem");frame("filter-tiers")
 	ui:choose("tierScope","Preset tiers");frame("filter-tier-preset");ui:click("tierCopy")
 	local tierControls=build.planningWorkspace.controls;local ix,iy=tierControls.tierItems:GetPos();local tx,ty=tierControls.tiers:GetPos()
 	ui.cursorX,ui.cursorY=ix+40,iy+22;ui:frame();ui:dispatch(build,{{type="KeyDown",key="LEFTBUTTON"}})
 	ui.cursorX,ui.cursorY=tx+40,ty+22;ui:frame();ui:dispatch(build,{{type="KeyUp",key="LEFTBUTTON"}});frame("filter-tier-move")
 	local tierDraft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1]
 	assert(#tierDraft.tiers[1].items==1 and #tierDraft.tiers[2].items==0,"Dragging did not move the item between custom tiers")
+	ui:click("tierNew");tierDraft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1]
+	ui:click("tierStack");frame("filter-stack-styles");ui:choose("stackStyle",tierDraft.tiers[1].id,"val");ui:text("stackSize","5");ui:click("stackAdd");frame("filter-stack-added");ui:click("stackKeep")
+	tierDraft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];assert(tierDraft.tiers[3].stackRules[1].minimum==5,"Stack style was not saved")
 	ui:click("undo");ui:click("redo");ui:click("viewModules");ui:click("moduleCreate");frame("filter-modules")
 	ui.clipboard="not a pickup module";ui:click("modulePaste");assert(#main.popups>0,"Invalid module did not show an explanation");assert(#build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].modules==1,"Invalid module changed the profile");main.popups={}
 	ui:click("moduleCopy");ui:click("modulePaste")

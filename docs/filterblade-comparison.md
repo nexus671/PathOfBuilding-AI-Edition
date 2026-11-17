@@ -22,7 +22,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Show/hide toggles | Personal enable/disable; action editor | Per-category inclusion policies |
 | Rule order | Select with one click, edit with a double-click, and drag personal rules or use arrows or Alt+Up/Down relative to visible rules | Base-filter rule order remains pinned |
 | Currency tier lists | Custom/preset tier browsing, exact item movement, drag/drop, tier creation/removal/order | Economy-driven automatic reassignment |
-| Stacked currency tiering | Existing stack conditions are preserved and editable | Uniform/adjusted stacked-tier controls |
+| Stacked currency tiering | Custom stack thresholds can reuse another custom tier's visibility and appearance while preserving item conditions | Automatic economy-based promotion and preset-wide stack controls |
 | Economy-based tiers | Pinned NeverSink snapshot | Live pricing, outlier handling and recalculation |
 | Global search | Searches names and raw condition/action text | Cross-page command palette |
 | Loot generator | Deterministic example scenes, including maps, threads, flasks, tinctures, cards, essences, crafting materials, Heist, Expedition and build targets. Base drop levels and inventory sizes use the pinned 3.30.0.1.4 client export; ambiguous values, unique drop levels and unspecified gear sockets remain unknown | Representative drop distributions and more encounter presets |

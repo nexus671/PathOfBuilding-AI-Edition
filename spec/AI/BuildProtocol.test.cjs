@@ -590,3 +590,19 @@ test('queues bounded beast levels for actions and saved recipes', t => {
   fs.rmSync(path.join(f.dir,'AI-build-request.json'));
   for (const beastLevel of [0,101,1.5,'86']) assert.throws(()=>f.call('apply_crafting_action',{baseRevision:f.state.revision,itemText,action:{...action,beastLevel}}),/arguments/);
 });
+
+
+test('preserves bounded stack tier settings in filter proposals', t => {
+  const f=fixture(t), text='Show\n BaseType == "Chaos Orb"';
+  const tiers=[{id:'low',title:'Low',text,items:['Chaos Orb'],stackRules:Array.from({length:19},(_,i)=>({minimum:i+2,styleTierId:'high'}))},{id:'high',title:'High',text,items:[]}];
+  const profile={id:'stacks',title:'Stacks',preset:'endgame',strictness:2,rules:[],tiers};
+  const args={title:'Stacked currency',baseRevision:f.state.revision,filters:{schemaVersion:1,activeId:'stacks',profiles:[profile]}};
+  f.call('propose_loot_filters',args);
+  const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.deepEqual(queued.proposal.operations[0].filters.profiles[0].tiers,tiers);
+  fs.rmSync(path.join(f.dir,'AI-build-request.json'));
+  for (const minimum of [1,0,2.5,1000000001]) {
+    const invalid=structuredClone(args);invalid.filters.profiles[0].tiers[0].stackRules[0].minimum=minimum;
+    assert.throws(()=>f.call('propose_loot_filters',invalid),/arguments/);
+  }
+});

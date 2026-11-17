@@ -13,7 +13,17 @@ function M.Mount(c,profile,w,h,view,options)
 	local function custom() assert(chosen().custom,"Copy a preset tier before editing it");return selected end
 	c.tierSearch=new("EditControl"):EditControl(ui.anchor,{16,120,300,26},view.query or "","Find a tier or item",nil,160)
 	c.tierScope=new("DropDownControl"):DropDownControl(ui.anchor,{332,120,200,26},{"My tiers","Preset tiers"},function(_,value) source=value;view.scope=value;view.selected=nil;options.reopen() end);c.tierScope:SelByValue(source)
-	ui.label(c,"tierPriority",548,128,"Personal pickups precede tiers",12)
+	button("tierStack",548,120,160,"Stack styles",function()
+		local entry=custom();require("Classes.LootFilterStackControl").Open(profile,entry.id,function(next) change(next,entry.id) end)
+	end)
+	c.tierStack.enabled=function() return selected and selected.custom and #(profile.tiers or {})>1 end
+	c.tierStack.tooltipText=function()
+		if not selected then return "Choose a tier first." end
+		if not selected.custom then return "Copy this preset tier before adding stack styles." end
+		if #(profile.tiers or {})<2 then return "Create another custom tier to use its visibility and appearance." end
+		return "Set stack thresholds that use another custom tier's visibility and appearance."
+	end
+
 	c.tiers=new("TextListControl"):TextListControl(ui.anchor,{16,164,300,h-318},nil,{})
 	c.tierItems=new("TextListControl"):TextListControl(ui.anchor,{332,200,w-348,h-354},nil,{})
 	ui.label(c,"tierTitle",332,166,"Choose a tier",18)
@@ -29,7 +39,7 @@ function M.Mount(c,profile,w,h,view,options)
 		else for _,entry in ipairs(library.catalog(profile)) do local ok,items=pcall(edit.items,entry.rule.text);if ok then entries[#entries+1]={id=entry.rule.id,title=entry.rule.title,items=items,text=entry.rule.text,enabled=true} end end end
 		local query=c.tierSearch.buf:lower();local rows={};local keep
 		for _,entry in ipairs(entries) do if (entry.title.." "..table.concat(entry.items," ").." "..entry.text):lower():find(query,1,true) then
-			rows[#rows+1]={height=48,textSize=14,"^7"..ui.fit(entry.title,270,14),subtitle=(entry.enabled==false and "Disabled | " or "")..#entry.items..(#entry.items==1 and " item" or " items"),entry=entry}
+			rows[#rows+1]={height=48,textSize=14,"^7"..ui.fit(entry.title,270,14),subtitle=(entry.enabled==false and "Disabled | " or "")..#entry.items..(#entry.items==1 and " item" or " items")..((entry.stackRules and #entry.stackRules>0) and (" | "..#entry.stackRules..(#entry.stackRules==1 and " stack style" or " stack styles")) or ""),entry=entry}
 			if entry.id==view.selected then keep=entry end
 		end end
 		c.tiers.list=#rows>0 and rows or ui.rows({"No tiers found.","Create a tier, or browse the preset."},268,14);show(keep or rows[1] and rows[1].entry)
@@ -53,9 +63,14 @@ function M.Mount(c,profile,w,h,view,options)
 	c.tierAddItem.enabled=function() return selected and selected.custom end
 	button("tierNew",16,h-136,92,"New tier",function() local next=copyTable(profile);next.tiers=next.tiers or {};local tier=edit.newTier(options.id(),"New tier");next.tiers[#next.tiers+1]=tier;view.scope="My tiers";change(next,tier.id) end)
 	button("tierEdit",116,h-136,92,"Edit",function() local entry=custom();local rule={id=entry.id,title=entry.title,text=#entry.items>0 and edit.withItems(entry.text,entry.items) or entry.text,enabled=entry.enabled}
-		options.edit(rule,function(rule) local next=copyTable(profile);for _,tier in ipairs(next.tiers) do if tier.id==entry.id then tier.title=rule.title;tier.text=rule.text;tier.enabled=rule.enabled;if #tier.items>0 then tier.items=edit.items(rule.text) end end end;change(next) end)
+		options.edit(rule,function(rule) local next=copyTable(profile);for _,tier in ipairs(next.tiers) do if tier.id==entry.id then tier.title=rule.title;tier.text=rule.text;tier.enabled=rule.enabled;if #tier.items>0 then tier.items=edit.items(rule.text) end end end;next.tiers=edit.validateTiers(next.tiers);change(next) end)
 	end);c.tierEdit.enabled=function() return selected and selected.custom end
-	button("tierDelete",216,h-136,100,"Delete",function() local entry=custom();local next=copyTable(profile);for i,tier in ipairs(next.tiers) do if tier.id==entry.id then table.remove(next.tiers,i);break end end;view.selected=nil;change(next) end);c.tierDelete.enabled=c.tierEdit.enabled
+	local function stackReference(id)
+		for _,tier in ipairs(profile.tiers or {}) do for _,rule in ipairs(tier.stackRules or {}) do if rule.styleTierId==id then return tier.title end end end
+	end
+	button("tierDelete",216,h-136,100,"Delete",function() local entry=custom();assert(not stackReference(entry.id),"Remove stack styles that use this tier first");local next=copyTable(profile);for i,tier in ipairs(next.tiers) do if tier.id==entry.id then table.remove(next.tiers,i);break end end;view.selected=nil;change(next) end)
+	c.tierDelete.enabled=function() return selected and selected.custom and not stackReference(selected.id) end
+	c.tierDelete.tooltipFunc=function(tooltip) local referenced=selected and stackReference(selected.id);if referenced then tooltip:AddLine(14,"Remove the stack style in "..referenced.." first.") end end
 	local function move(delta) local entry=custom();local next=copyTable(profile);for i,tier in ipairs(next.tiers) do if tier.id==entry.id and next.tiers[i+delta] then next.tiers[i],next.tiers[i+delta]=next.tiers[i+delta],next.tiers[i];break end end;change(next) end
 	button("tierUp",16,h-94,64,"Up",function() move(-1) end);c.tierUp.enabled=c.tierEdit.enabled
 	button("tierDown",88,h-94,64,"Down",function() move(1) end);c.tierDown.enabled=c.tierEdit.enabled

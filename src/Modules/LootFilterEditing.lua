@@ -44,13 +44,46 @@ function M.validateTiers(tiers)
 		local parsed=parser.parse(next.text);assert(#parsed.rules==1 and #parsed.imports==0,"Use one block per tier")
 		for _,d in ipairs(parsed.diagnostics) do assert(not d.error,d.error) end;M.items(next.text)
 		local names={};for _,name in ipairs(list(tier.items)) do name=label(name,240);require("Modules.LootFilters").quote(name);assert(not names[name],"Duplicate item in tier");names[name]=true;next.items[#next.items+1]=name end
+		if tier.stackRules~=nil then
+			next.stackRules={};local thresholds={}
+			for _,rule in ipairs(list(tier.stackRules)) do
+				assert(type(rule)=="table","Invalid stack rule")
+				local minimum=rule.minimum;assert(type(minimum)=="number" and minimum==math.floor(minimum) and minimum>=2 and minimum<=1000000000,"Invalid stack size")
+				assert(not thresholds[minimum],"Duplicate stack threshold");thresholds[minimum]=true
+				next.stackRules[#next.stackRules+1]={minimum=minimum,styleTierId=identity(rule.styleTierId)}
+			end
+		end
 		result[#result+1]=next
 	end
+	local byId={};for _,tier in ipairs(result) do byId[tier.id]=tier end
+	for _,tier in ipairs(result) do for _,rule in ipairs(tier.stackRules or {}) do
+		local target=assert(byId[rule.styleTierId],"Stack style tier is missing")
+		assert(target.id~=tier.id,"Choose a different tier for a stack style")
+		require("Modules.LootFilterStackTiers").rule(tier.text,target.text,rule.minimum)
+	end end
 	return result
 end
 function M.rule(tier)
 	if #tier.items==0 or tier.enabled==false then return end
 	return {id=tier.id,title=tier.title,text=M.withItems(tier.text,tier.items),enabled=true}
+end
+-- Emit largest stacks first so that thresholds are never shadowed by smaller ones.
+function M.tierRules(tiers)
+	local byId={};for _,tier in ipairs(tiers or {}) do byId[tier.id]=tier end
+	local result={}
+	for _,tier in ipairs(tiers or {}) do
+		local base=M.rule(tier)
+		if base then
+			local rules=copyTable(tier.stackRules or {});table.sort(rules,function(a,b) return a.minimum>b.minimum end)
+			for _,rule in ipairs(rules) do
+				local target=assert(byId[rule.styleTierId],"Stack style tier is missing")
+				local text=require("Modules.LootFilterStackTiers").rule(base.text,target.text,rule.minimum)
+				result[#result+1]={id="stack-"..require("sha1")(tier.id..":"..rule.minimum):sub(1,20),title=tier.title.." / "..rule.minimum.."+ stack",text=text,enabled=true}
+			end
+			result[#result+1]=base
+		end
+	end
+	return result
 end
 function M.newTier(id,title,source)
 	local text=source or require("Modules.LootFilters").rule(id,title,{'Class == "Stackable Currency"','BaseType == "Chaos Orb"'}).text
@@ -90,7 +123,7 @@ function M.validateModules(modules)
 end
 function M.module(profile,id,title)
 	local rules=copyTable(profile.rules)
-	for _,tier in ipairs(profile.tiers or {}) do local rule=M.rule(tier);if rule then rule.id="tier-"..require("sha1")(tier.id):sub(1,20);rules[#rules+1]=rule end end
+	for _,rule in ipairs(M.tierRules(profile.tiers)) do rule.id="tier-"..require("sha1")(rule.id):sub(1,20);rules[#rules+1]=rule end
 	return M.validateModules({{id=id,title=title,rules=rules}})[1]
 end
 function M.install(profile,module)
@@ -103,6 +136,11 @@ function M.import(raw)
 	assert(type(raw)=="string" and #raw<=require("Modules.LootFilters").limit,"Module exceeds 2 MiB")
 	local data=assert(json.decode(raw));assert(data.schemaVersion==1 and data.lootFilterModule,"Use an AI Edition rule module")
 	return M.validateModules({data.lootFilterModule})[1]
+end
+local function stackSummary(rules,tiers)
+	local names={};for _,tier in ipairs(tiers or {}) do names[tier.id]=tier.title end
+	local rows={};for _,rule in ipairs(rules or {}) do rows[#rows+1]=rule.minimum.."+ uses "..(names[rule.styleTierId] or rule.styleTierId) end
+	return #rows>0 and table.concat(rows,", ") or "None"
 end
 function M.review(before,after)
 	local entries={};local old={};for _,p in ipairs(before.profiles) do old[p.id]=p end
@@ -120,7 +158,7 @@ function M.review(before,after)
 					if not prior or encode(prior)~=encode(v) then
 						lines[#lines+1]=(prior and "Changed " or "Added ")..key..": "..v.title
 						if prior and prior.text then lines[#lines+1]="Before:\n"..prior.text end;if v.text then lines[#lines+1]="After:\n"..v.text end
-						if key=="tiers" then lines[#lines+1]="Items before: "..table.concat(prior and prior.items or {},", ");lines[#lines+1]="Items after: "..table.concat(v.items,", ") end
+						if key=="tiers" then lines[#lines+1]="Items before: "..table.concat(prior and prior.items or {},", ");lines[#lines+1]="Items after: "..table.concat(v.items,", ");if encode(prior and prior.stackRules)~=encode(v.stackRules) then lines[#lines+1]="Stack styles before: "..stackSummary(prior and prior.stackRules,previous.tiers);lines[#lines+1]="Stack styles after: "..stackSummary(v.stackRules,p.tiers) end end
 						if key=="modules" then lines[#lines+1]="Module before: "..(prior and encode(prior) or "not installed");lines[#lines+1]="Module after: "..encode(v) end
 						if key=="sampleSets" or key=="palettes" then lines[#lines+1]="Before: "..(prior and encode(prior) or "not saved");lines[#lines+1]="After: "..encode(v) end
 					end
