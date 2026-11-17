@@ -939,6 +939,10 @@ require("Modules.CraftingAdvanced").extend(M,{counts=counts,flags=flags,clear=cl
 local allflameConfigurationReason=M.configurationReason
 local cachedDonorText,cachedDonorModel
 function M.configurationReason(model,state,craft)
+	if craft.method=="gwennen" then
+		local valid=pcall(require("Modules.CraftingGwennen").validate,craft)
+		if not valid then return "Configure a supported Gwennen pair and valid artifact cost in Craft settings." end
+	end
 	if craft.method=="awakener" or craft.method=="recombine" or craft.method=="recombine_predictable" then
 		if type(craft.donorItem)~="string" or not craft.donorItem:match("%S") then return "Configure a donor item in Craft settings." end
 		if cachedDonorText~=craft.donorItem then

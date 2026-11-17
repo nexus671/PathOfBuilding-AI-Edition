@@ -689,7 +689,6 @@ function Panel.Open(build,project,layout)
 		return simulator.implicitTargetReason(simulator.context(model,current),current,recipe and recipe.targets or targets)
 	end
 	actionConfigurationReason=function()
-		if controls.method:GetSelValueByKey("val")=="gwennen" and not configured.gwennen then return "Configure an observed Gwennen pair in Settings." end
 		local reason=simulator.configurationReason(model,state,action())
 		if reason then return reason end
 		local observed=configured.recombine_predictable and configured.recombine_predictable.observedRecipientState

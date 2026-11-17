@@ -6,6 +6,25 @@ describe("Experimental Gwennen pair",function()
 		while #state.affixes>3 do state=sim.action(model,state,{method="annul"},function() return 0.3 end) end
 		return model,state
 	end
+	it("reports an incomplete pair to the catalog and workbench",function()
+		newBuild()
+		local model,state=item()
+		local reason=sim.configurationReason(model,state,{method="gwennen"})
+		assert.matches("Configure a supported Gwennen pair",reason)
+		local catalog=sim.catalog(raw,"",5,state);local row
+		for _,entry in ipairs(catalog.methodAvailability) do if entry.method=="gwennen" then row=entry end end
+		assert.is_true(row.available);assert.equal(reason,row.configurationRequired)
+		local invalid={method="gwennen",firstOutcome=1000,secondOutcome=1022,artifactCost={grand=-1}}
+		assert.equal(reason,sim.configurationReason(model,state,invalid))
+		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022,artifactCost={grand=20}}
+		assert.is_nil(sim.configurationReason(model,state,pair))
+		assert.is_not_nil(sim.perform(raw,pair,1,state).gwennen)
+		local project={id="gwennen-configuration",title="Helmet",slot="Helmet",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(state)}
+		local controls=require("Classes.CraftingSimulatorControl").Open(build,project)
+		controls.method:SelByValue("gwennen","val");controls.method.selFunc()
+		assert.is_false(controls.apply:IsEnabled());assert.matches("Configure a supported Gwennen pair",controls.apply.tooltipText())
+		main.popups={}
+	end)
 	it("selects either observed branch without changing the input",function()
 		local model,state=item();local original=copyTable(state)
 		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022}
