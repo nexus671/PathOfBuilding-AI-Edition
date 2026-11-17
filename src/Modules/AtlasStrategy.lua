@@ -4,6 +4,14 @@ local atlas=require("Modules.AtlasPlanner")
 local M={mechanics={"Maps","Essence","Harvest","Expedition","Breach","Legion","Blight","Delirium","Ritual","Beyond","Abyss","Strongboxes","Shrines","Heist","Delve","Bestiary","Incursion","Betrayal","Ultimatum","Bosses","Mirage","Wildwood","Sentinels","Torment","Rogue Exiles","Mercenaries","Ore Deposits","Threads"}}
 local aliases={Maps={"map","kirac"},Bosses={"boss","shaper","elder","maven","eater","exarch"},Strongboxes={"strongbox"},Shrines={"shrine"},Heist={"heist","smuggler","blueprint"},Bestiary={"beast","einhar"},Incursion={"incursion","alva"},Betrayal={"syndicate","jun","veiled item"},Delve={"sulphite","niko"},Harvest={"harvest","sacred grove","sacred flora","sacred fauna","sacred specimen","lifeforce"},Wildwood={"viridian wildwood","wildwood chance"},Sentinels={"sentinel"},Torment={"tormented spirit","tormented procurator"},["Rogue Exiles"]={"rogue exile"},Mercenaries={"mercenary","mercenaries","trarthan"},["Ore Deposits"]={"ore deposit","smelted bar","marking ore","kalguuran scarab"},Threads={"thread"}}
 local wholeWord={alva=true,jun=true,niko=true,kirac=true,einhar=true,shaper=true,elder=true,maven=true,eater=true,exarch=true}
+local searchTextCache=setmetatable({},{__mode="k"})
+local function searchText(node)
+	local parts={node.name,table.concat(node.stats," ")}
+	for _,effect in ipairs(node.variantEffects or {}) do for _,stat in ipairs(effect.stats) do parts[#parts+1]=stat end end
+	local raw=table.concat(parts," ");local cached=searchTextCache[node]
+	if not cached or cached.raw~=raw then cached={raw=raw,lower=atlas.displayStat(raw):lower()};searchTextCache[node]=cached end
+	return cached.lower
+end
 local function letter(byte) return byte and byte>=97 and byte<=122 end
 local function matches(text,name)
 	for _,word in ipairs(aliases[name] or {name:lower()}) do
@@ -16,12 +24,14 @@ local function matches(text,name)
 	end
 	return false
 end
-function M.mechanic(node)
-	local text=atlas.searchText(node):lower()
+local function primaryMechanic(text)
 	-- Generic map text is common to every mechanic: classify it last.
 	for i=2,#M.mechanics do local name=M.mechanics[i];if matches(text,name) then return name end end
 	if matches(text,"Maps") then return "Maps" end
 	return "Other"
+end
+function M.mechanic(node)
+	return primaryMechanic(atlas.searchText(node):lower())
 end
 function M.hasMechanic(node,name)
 	-- Keep generic map bonuses separate from mechanic-specific nodes.
@@ -72,8 +82,11 @@ end
 function M.results(plan,query,mechanic,avoid)
 	local costs=M.costs(plan,avoid);local tree=atlas.tree(plan.version);local entries={}
 	query=(query or ""):lower()
-	for id,node in pairs(tree.nodes) do if id~=tree.start and (mechanic==nil or mechanic=="All" or M.hasMechanic(node,mechanic)) and atlas.searchText(node):lower():find(query,1,true) then
-		entries[#entries+1]={id=id,node=node,cost=costs[id]}
+	for id,node in pairs(tree.nodes) do if id~=tree.start then
+		local text=searchText(node)
+		if (mechanic==nil or mechanic=="All" or mechanic=="Maps" and primaryMechanic(text)=="Maps" or mechanic~="Maps" and matches(text,mechanic)) and text:find(query,1,true) then
+			entries[#entries+1]={id=id,node=node,cost=costs[id]}
+		end
 	end end
 	table.sort(entries,function(a,b) if a.cost~=b.cost then return (a.cost or math.huge)<(b.cost or math.huge) elseif a.node.name~=b.node.name then return a.node.name<b.node.name else return a.id<b.id end end)
 	return entries

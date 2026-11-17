@@ -273,3 +273,9 @@ eligible notables. Five paired runs on both empty and progressed 3.29.3 and 3.30
 preview plans produced identical routes. After warm-up, the measured generation
 time ranged from 33-62 ms, compared with 111-154 ms before the change. These are
 bounded headless measurements, not proof of sustained desktop responsiveness.
+
+Repeated Atlas searches reuse decoded node text while checking for changed node
+and choice text. In paired headless runs, batches of 50 identical-result searches
+on 3.29.3 and the 3.30 preview took 48-329 ms, compared with 155-450 ms before
+the change across All, Maps and Breach filters. Individual search latency and
+native desktop responsiveness still need interactive measurement.

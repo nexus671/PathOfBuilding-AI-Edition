@@ -42,6 +42,21 @@ describe("Planning experience queries",function()
 			end
 		end
 	end)
+	it("refreshes cached Atlas search text when node or choice text changes",function()
+		local version="3.29.3";local previous=atlas.tree(version)
+		local node={id=2,name="First node",kind="notable",links={1},stats={"Breach effect"},grantedPoints=0,variantEffects={{effect=1,stats={"Original choice"}}}}
+		atlas.cache[version]={version=version,start=1,maxPoints=10,nodes={[1]={id=1,name="Start",kind="small",links={2},stats={},grantedPoints=0},[2]=node}}
+		local ok,err=pcall(function()
+			local plan=empty(version)
+			assert.equal(2,strategy.results(plan,"original choice","Breach")[1].id)
+			node.stats[1]="Harvest effect";node.variantEffects[1].stats[1]="Changed choice"
+			assert.equal(0,#strategy.results(plan,"original choice","Breach"))
+			assert.equal(2,strategy.results(plan,"changed choice","Harvest")[1].id)
+			node.name="Renamed node"
+			assert.equal(2,strategy.results(plan,"renamed","Harvest")[1].id)
+		end)
+		atlas.cache[version]=previous;assert.is_true(ok,err)
+	end)
 	it("extends an existing strategy with reachable unallocated notables",function()
 		local version="3.29.3";local previousTree=atlas.tree(version);local previousMechanics=strategy.mechanics
 		local function node(id,kind,links,stats) return {id=id,name="Node "..id,kind=kind,links=links,stats=stats or {"Breach"},grantedPoints=0} end
