@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview405" />
+	<Version number="2.67.2-ai.preview406" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1149,7 +1149,7 @@
 	<File name="Classes/ConfigTab.lua" part="program" sha1="e1f33a4eaccc47f92d3b30baec5c0f6af16c7572" />
 	<File name="Classes/Control.lua" part="program" sha1="00217659e9d711d7c3d8e97d42a19ae9c78c6f8f" />
 	<File name="Classes/ControlHost.lua" part="program" sha1="e2bbba0d34995d363dd11ab0e989c8e84fd1717c" />
-	<File name="Classes/CraftingChartsControl.lua" part="program" sha1="a94723080194656bd2d0b9b75a44849b154b76e6" />
+	<File name="Classes/CraftingChartsControl.lua" part="program" sha1="640cd95083cedac90f4ff86fd9800405e150718d" />
 	<File name="Classes/CraftingCompareControl.lua" part="program" sha1="35b28590facf0436762e8c124279374832eaa123" />
 	<File name="Classes/CraftingFossilCompareControl.lua" part="program" sha1="2791c7feb50a472403ce87d25300a91f37289dac" />
 	<File name="Classes/CraftingFossilControl.lua" part="program" sha1="25a2de85dd46208a7771f659bc59ddb103649025" />

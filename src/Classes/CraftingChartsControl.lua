@@ -22,12 +22,14 @@ function M.Open(routes)
 		local gx,gy,gw,gh=54,18,self.width-80,self.height-64;local maximum=math.max(1,data.maximum)
 		for percent=0,100,25 do local py=gy+gh*(1-percent/100);line(gx,py,gx+gw,py,"^x344253");visual.text(8,py-7,12,percent.."%","^xD5DEE8") end
 		for i=0,4 do local px=gx+gw*i/4;visual.text(math.max(8,math.min(self.width-72,px-12)),gy+gh+10,12,string.format("%.3g",maximum*i/4),"^xD5DEE8") end
+		-- Draw the selection behind the data so a jump at the selected value
+		-- remains visible, including at the default right-edge selection.
+		local selected=value();local px=gx+gw*selected/maximum;line(px,gy,px,gy+gh,"^xD5DEE8")
 		for i,series in ipairs(data.series) do local previous={x=0,y=0};local color=colors[(i-1)%#colors+1]
 			for _,point in ipairs(series.points) do local ax,ay=gx+gw*previous.x/maximum,gy+gh*(1-previous.y/100);local bx,by=gx+gw*point.x/maximum,gy+gh*(1-point.y/100);line(ax,ay,bx,ay,color);line(bx,ay,bx,by,color);previous=point end
 			line(gx+gw*previous.x/maximum,gy+gh*(1-previous.y/100),gx+gw,gy+gh*(1-previous.y/100),color)
 		end
 		if #data.series==0 then visual.text(gx+16,gy+24,16,"No routes available to chart.","^xD5DEE8",gw-32) end
-		local selected=value();local px=gx+gw*selected/maximum;line(px,gy,px,gy+gh,"^xD5DEE8")
 		visual.text(gx,gy+gh+30,12,data.unit.." | Hover to inspect; click to pin / unpin.","^xA6B3C6",gw)
 		SetViewport()
 	end

@@ -88,6 +88,12 @@ def main():
         chart = json.loads((frames / f"{width}-crafting-executed-chart.json").read_text())
         labels = " ".join(command.get("text", "") for command in chart["commands"] if command.get("kind") == "text")
         assert "executed actions" in labels.lower(), "Executed-action chart label is missing"
+        polygons = [command for command in chart["commands"] if command.get("kind") == "polygon"]
+        def is_color(command, rgb):
+            return all(abs(component * 255 - expected) < 0.01 for component, expected in zip(command["color"], rgb))
+        marker = next(index for index, command in enumerate(polygons) if is_color(command, (213, 222, 232)))
+        curve = next(index for index, command in enumerate(polygons) if is_color(command, (121, 216, 160)))
+        assert marker < curve, "Selection marker hides the crafting chart curve"
     for width in (960, 1024, 1280):
         route = json.loads((frames / f"{width}-atlas-impossible-start.json").read_text())
         warning = next(command for command in route["commands"] if "Starting plan cannot be reached" in command.get("text", ""))
