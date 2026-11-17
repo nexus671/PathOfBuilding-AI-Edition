@@ -7,13 +7,18 @@ describe("Wickerman planning",function()
 		upgrades.cancel();upgrades.result=nil
 		bridge.prepared=nil;bridge.history={};main.popups={}
 	end)
+	it("keeps compatible slot IDs with compact visible labels",function()
+		for slot,label in pairs({["Wickerman Head"]="Head",["Wickerman Torso"]="Torso",["Wickerman Upper Limb"]="Upper Limb",["Wickerman Lower Limb"]="Lower Limb"}) do
+			assert.equal(label,build.itemsTab.slots[slot].label)
+		end
+	end)
 	it("previews a Viscera proposal and preserves the original build",function()
 		local revision=bridge.revision(build);local before=build.calcsTab.mainOutput.Life
 		local proposal={mode="edit",title="Wickerman preview",baseRevision=revision,operations={{type="equip_item",slot="Wickerman Upper Limb",text=raw}}}
 		local result=bridge.prepare(build,proposal);local candidate=result.candidate
 		assert.equal(0,build.itemsTab.slots["Wickerman Upper Limb"].selItemId);assert.equal(revision,bridge.revision(build))
 		local item=candidate.itemsTab.items[candidate.itemsTab.slots["Wickerman Upper Limb"].selItemId]
-		assert.equal("Wickerman Upper Limb",assert(item).type);assert.is_true(result.after.LifeUnreserved>before)
+		assert.equal("Viscera",assert(item).type);assert.is_true(result.after.LifeUnreserved>before)
 	end)
 	it("saves Viscera acquisition targets with the correct slot",function()
 		local journey=require("Modules.BuildJourney").empty()

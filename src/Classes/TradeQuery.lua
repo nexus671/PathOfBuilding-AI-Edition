@@ -960,6 +960,64 @@ function TradeQueryClass:ReduceOutput(output)
 	return smallOutput
 end
 
+local function getTradeStatValue(output, statTable, useFullDpsFallback)
+	if useFullDpsFallback then
+		return data.powerStatList.GetFromOutput(output, { stat = "TotalDPS" }, true) +
+			data.powerStatList.GetFromOutput(output, { stat = "TotalDotDPS" }, true) +
+			data.powerStatList.GetFromOutput(output, { stat = "CombinedDPS" }, true)
+	end
+	return data.powerStatList.GetFromOutput(output, statTable, true)
+end
+
+local function getTradeStatRatio(baseOutput, newOutput, statTable)
+	local useFullDpsFallback = statTable.stat == "FullDPS" and not (baseOutput.FullDPS and newOutput.FullDPS)
+	local baseStat = getTradeStatValue(baseOutput, statTable, useFullDpsFallback)
+	local newStat = getTradeStatValue(newOutput, statTable, useFullDpsFallback)
+	if baseStat == math.huge then
+		return newStat == math.huge and 1 or 0
+	elseif newStat == math.huge then
+		return data.misc.maxStatIncrease
+	elseif baseStat == 0 then
+		if newStat == 0 then
+			return 1
+		end
+		return newStat > 0 and data.misc.maxStatIncrease or 0
+	end
+	return m_min(newStat / ((baseStat ~= 0) and baseStat or 1), data.misc.maxStatIncrease)
+end
+
+function TradeQueryClass:ComputeStatDetails(baseOutput, newOutput)
+	local details = {}
+	for _, statTable in ipairs(self.statSortSelectionList) do
+		local statRatio = getTradeStatRatio(baseOutput, newOutput, statTable)
+		local percentChange = (statRatio - 1) * 100
+		if statTable.transform then
+			percentChange = (statTable.transform(statRatio) - statTable.transform(1)) * 100
+		end
+		t_insert(details, {
+			label = statTable.label,
+			stat = statTable.stat,
+			percentChange = percentChange,
+			weightMult = statTable.weightMult or 0,
+		})
+	end
+	return details
+end
+
+function TradeQueryClass:GetResultScorePercent(evaluation)
+	if not evaluation or not evaluation.statDetails then
+		return nil
+	end
+	local totalWeight = 0
+	local scorePercent = 0
+	for _, detail in ipairs(evaluation.statDetails) do
+		local weightMult = detail.weightMult or 0
+		totalWeight = totalWeight + weightMult
+		scorePercent = scorePercent + (detail.percentChange or 0) * weightMult
+	end
+	return totalWeight > 0 and scorePercent / totalWeight or nil
+end
+
 local function getDefaultAffixSideLimit(item)
 	if item.rarity == "MAGIC" then
 		return 1
@@ -1162,7 +1220,7 @@ function TradeQueryClass:GetBenchCraftsToEvaluate(item, available, evaluationPla
 	return candidates
 end
 
-function TradeQueryClass:GetBestBenchCraftEvaluation(item, slotName, calcFunc, baseOutput, output, weight, evaluationPlan, yieldFunc)
+function TradeQueryClass:GetBestBenchCraftEvaluation(item, slotName, calcFunc, baseOutput, output, weight, evaluationPlan, yieldFunc, fullOutput)
 	local available, craftState = self:GetBenchCraftAvailability(item)
 	local evaluationItem = item
 	local replacedCraft
@@ -1174,7 +1232,7 @@ function TradeQueryClass:GetBestBenchCraftEvaluation(item, slotName, calcFunc, b
 		end
 	end
 	if not available or (available.Prefix == 0 and available.Suffix == 0) then
-		return output, weight
+		return output, weight, nil, nil, nil, nil, fullOutput
 	end
 	local bestCraft
 	local bestCraftItemString
@@ -1202,13 +1260,15 @@ function TradeQueryClass:GetBestBenchCraftEvaluation(item, slotName, calcFunc, b
 			})
 		end
 		craftedItem:BuildModList()
-		local craftOutput = self:ReduceOutput(calcFunc({ repSlotName = slotName, repItem = craftedItem }))
+		local craftFullOutput = calcFunc({ repSlotName = slotName, repItem = craftedItem })
+		local craftOutput = self:ReduceOutput(craftFullOutput)
 		if yieldFunc then
 			yieldFunc()
 		end
 		local craftWeight = self.tradeQueryGenerator.WeightedRatioOutputs(baseOutput, craftOutput, self.statSortSelectionList)
 		if craftWeight > weight then
 			output = craftOutput
+			fullOutput = craftFullOutput
 			weight = craftWeight
 			bestCraft = table.concat(craft, "\n") .. " ^8(" .. craft.type .. ")"
 			bestCraftItemString = craftedItem:BuildRaw()
@@ -1222,7 +1282,7 @@ function TradeQueryClass:GetBestBenchCraftEvaluation(item, slotName, calcFunc, b
 			t_remove(craftedItem.explicitModLines, #craftedItem.explicitModLines)
 		end
 	end
-	return output, weight, bestCraft, bestCraftItemString, bestCraftLineIndexes, bestReplacedCraft
+	return output, weight, bestCraft, bestCraftItemString, bestCraftLineIndexes, bestReplacedCraft, fullOutput
 end
 
 -- Method to evaluate a result by getting it's output and weight
@@ -1256,26 +1316,24 @@ function TradeQueryClass:GetResultEvaluation(row_idx, result_index, calcFunc, ba
 			t_insert(addedNodes, self.itemsTab.build.spec.tree.clusterNodeMap[nodeName])
 		end
 		local function calculateNodes(nodes)
-			local output = calcFunc({ addNodes = nodes })
-			if yieldFunc then
-				yieldFunc()
-			end
-			return self:ReduceOutput(output)
+			local full = calcFunc({ addNodes = nodes })
+			if yieldFunc then yieldFunc() end
+			return self:ReduceOutput(full), full
 		end
-		local output12  = calculateNodes({ [addedNodes[1]] = true, [addedNodes[2]] = true })
-		local output13  = calculateNodes({ [addedNodes[1]] = true, [addedNodes[3]] = true })
-		local output23  = calculateNodes({ [addedNodes[2]] = true, [addedNodes[3]] = true })
-		local output123 = calculateNodes({ [addedNodes[1]] = true, [addedNodes[2]] = true, [addedNodes[3]] = true })
+		local output12, fullOutput12 = calculateNodes({ [addedNodes[1]] = true, [addedNodes[2]] = true })
+		local output13, fullOutput13 = calculateNodes({ [addedNodes[1]] = true, [addedNodes[3]] = true })
+		local output23, fullOutput23 = calculateNodes({ [addedNodes[2]] = true, [addedNodes[3]] = true })
+		local output123, fullOutput123 = calculateNodes({ [addedNodes[1]] = true, [addedNodes[2]] = true, [addedNodes[3]] = true })
 		-- Sometimes the third node is as powerful as a wet noodle, so use weight per point spent, including the jewel socket
 		local weight12  = self.tradeQueryGenerator.WeightedRatioOutputs(baseOutput, output12,  self.statSortSelectionList) / 4
 		local weight13  = self.tradeQueryGenerator.WeightedRatioOutputs(baseOutput, output13,  self.statSortSelectionList) / 4
 		local weight23  = self.tradeQueryGenerator.WeightedRatioOutputs(baseOutput, output23,  self.statSortSelectionList) / 4
 		local weight123 = self.tradeQueryGenerator.WeightedRatioOutputs(baseOutput, output123, self.statSortSelectionList) / 5
 		result.evaluation = {
-			{ output = output12,  weight = weight12,  DNs = { addedNodes[1].dn, addedNodes[2].dn } },
-			{ output = output13,  weight = weight13,  DNs = { addedNodes[1].dn, addedNodes[3].dn } },
-			{ output = output23,  weight = weight23,  DNs = { addedNodes[2].dn, addedNodes[3].dn } },
-			{ output = output123, weight = weight123, DNs = { addedNodes[1].dn, addedNodes[2].dn, addedNodes[3].dn } },
+			{ output = output12,  weight = weight12,  DNs = { addedNodes[1].dn, addedNodes[2].dn }, statDetails = self:ComputeStatDetails(baseOutput, fullOutput12) },
+			{ output = output13,  weight = weight13,  DNs = { addedNodes[1].dn, addedNodes[3].dn }, statDetails = self:ComputeStatDetails(baseOutput, fullOutput13) },
+			{ output = output23,  weight = weight23,  DNs = { addedNodes[2].dn, addedNodes[3].dn }, statDetails = self:ComputeStatDetails(baseOutput, fullOutput23) },
+			{ output = output123, weight = weight123, DNs = { addedNodes[1].dn, addedNodes[2].dn, addedNodes[3].dn }, statDetails = self:ComputeStatDetails(baseOutput, fullOutput123) },
 		}
 		table.sort(result.evaluation, function(a, b) return a.weight > b.weight end)
 	else
@@ -1291,26 +1349,20 @@ function TradeQueryClass:GetResultEvaluation(row_idx, result_index, calcFunc, ba
 		local slotName = jewelNodeId and "Jewel " .. tostring(jewelNodeId) or slotTbl.selectedSlotName or slotTbl.slotName
 		local item = new("Item"):Item(result.item_string)
 
-		local output = self:ReduceOutput(calcFunc({ repSlotName = slotName, repItem = item }))
-		if yieldFunc then
-			yieldFunc()
-		end
+		local fullNewOutput = calcFunc({ repSlotName = slotName, repItem = item })
+		local output = self:ReduceOutput(fullNewOutput)
+		if yieldFunc then yieldFunc() end
 		local weight = self.tradeQueryGenerator.WeightedRatioOutputs(baseOutput, output, self.statSortSelectionList)
 		local benchCraft, benchCraftItemString, benchCraftLineIndexes, benchCraftReplaced
 		if slotTbl.considerBenchCraft then
 			local evaluationPlan = resultRow.benchCraftEvaluationPlan
-			if evaluationPlan and not tableDeepEquals(self.statSortSelectionList, evaluationPlan.statWeights) then
-				evaluationPlan = nil
-			end
-			output, weight, benchCraft, benchCraftItemString, benchCraftLineIndexes, benchCraftReplaced = self:GetBestBenchCraftEvaluation(item, slotName, calcFunc, baseOutput, output, weight, evaluationPlan, yieldFunc)
+			if evaluationPlan and not tableDeepEquals(self.statSortSelectionList, evaluationPlan.statWeights) then evaluationPlan = nil end
+			output, weight, benchCraft, benchCraftItemString, benchCraftLineIndexes, benchCraftReplaced, fullNewOutput = self:GetBestBenchCraftEvaluation(item, slotName, calcFunc, baseOutput, output, weight, evaluationPlan, yieldFunc, fullNewOutput)
 		end
 		result.evaluation = {{
-			output = output,
-			weight = weight,
-			benchCraft = benchCraft,
-			benchCraftItemString = benchCraftItemString,
-			benchCraftLineIndexes = benchCraftLineIndexes,
-			benchCraftReplaced = benchCraftReplaced,
+			output = output, weight = weight, statDetails = self:ComputeStatDetails(baseOutput, fullNewOutput),
+			benchCraft = benchCraft, benchCraftItemString = benchCraftItemString,
+			benchCraftLineIndexes = benchCraftLineIndexes, benchCraftReplaced = benchCraftReplaced,
 		}}
 	end
 	return result.evaluation
@@ -1319,19 +1371,30 @@ end
 -- Method to update controls after a search is completed
 function TradeQueryClass:UpdateDropdownList(row_idx)
 	local dropdownLabels = {}
+	local dropdown = self.controls["resultDropdown".. row_idx]
 
-	if not self.resultTbl[row_idx] then return end
+	if not dropdown or not self.resultTbl[row_idx] or not self.sortedResultTbl[row_idx] then return end
 
-	for result_index = 1, #self.resultTbl[row_idx] do
-
+	for result_index = 1, #self.sortedResultTbl[row_idx] do
 		local pb_index = self.sortedResultTbl[row_idx][result_index].index
 		local result = self.resultTbl[row_idx][pb_index]
-		local price = string.format(" %s(%d %s)", colorCodes["CURRENCY"], result.amount, result.currency)
-		local item = new("Item"):Item(result.item_string)
-		table.insert(dropdownLabels, colorCodes[item.rarity] .. item.name .. price)
+		if result then
+			local price = s_format(" %s(%s %s)", colorCodes["CURRENCY"], tostring(result.amount), result.currency)
+			local item = new("Item"):Item(result.item_string)
+			-- Results are calculated in the cooperative sort worker, not while
+			-- constructing the dropdown on the UI thread.
+			local eval = result.evaluation
+			local scorePercent = eval and self:GetResultScorePercent(eval[1])
+			local scoreDetail = scorePercent and s_format("%s%+.1f%%", scorePercent >= 0 and colorCodes.POSITIVE or colorCodes.NEGATIVE, scorePercent)
+			t_insert(dropdownLabels, {
+				label = colorCodes[item.rarity] .. item.name .. price,
+				detail = scoreDetail,
+				strikethrough = scorePercent and scorePercent < 0,
+			})
+		end
 	end
-	self.controls["resultDropdown".. row_idx].selIndex = 1
-	self.controls["resultDropdown".. row_idx]:SetList(dropdownLabels)
+	dropdown.selIndex = 1
+	dropdown:SetList(dropdownLabels)
 end
 function TradeQueryClass:ResetResultRow(rowIdx)
 	self:CancelResultFetch(rowIdx)
@@ -1355,6 +1418,15 @@ function TradeQueryClass:UpdateControlsWithItems(row_idx, yieldFunc)
 		self:SetNotice(self.controls.pbNotice, "")
 	end
 
+	-- Price and original-order sorts do not need a calculation for ordering,
+	-- but score labels do. Evaluate through the same yielding worker so the
+	-- dropdown never performs an unbounded set of calculations synchronously.
+	if yieldFunc and self.itemsTab.build then
+		local calcFunc, baseOutput = self.itemsTab.build.calcsTab:GetMiscCalculator()
+		for index, sorted in ipairs(sortedItems) do
+			self:GetResultEvaluation(row_idx, sorted.index, calcFunc, baseOutput, function() yieldFunc(index, #sortedItems) end)
+		end
+	end
 	self.sortedResultTbl[row_idx] = sortedItems
 	if not sortedItems[1] then
 		self:ResetResultRow(row_idx)
@@ -1682,6 +1754,8 @@ you can add them, copy the link here, and press "Price Item" to evaluate the ite
 		self.itemIndexTbl[row_idx] = self.sortedResultTbl[row_idx][index].index
 		self:SetFetchResultReturn(row_idx, self.itemIndexTbl[row_idx])
 	end)
+	controls["resultDropdown"..row_idx].enableDroppedWidth = true
+	controls["resultDropdown"..row_idx].maxDroppedWidth = 600
 	self:UpdateDropdownList(row_idx)
 	local function addMegalomaniacCompareToTooltipIfApplicable(tooltip, result_index)
 		if slotTbl.slotName ~= "Megalomaniac" then
@@ -1826,6 +1900,20 @@ you can add them, copy the link here, and press "Price Item" to evaluate the ite
 		local benchCraftEvaluation = addBenchCraftToTooltipIfApplicable(tooltip, result)
 		addBenchCraftPreviewIfApplicable(tooltip, benchCraftEvaluation, tooltipSlot, item)
 		tooltip:AddSeparator(10)
+		local eval = result.evaluation
+		if eval and eval[1] and eval[1].statDetails then
+			local scorePercent = self:GetResultScorePercent(eval[1])
+			local scoreColor = scorePercent and scorePercent >= 0 and colorCodes.POSITIVE or colorCodes.NEGATIVE
+			tooltip:AddLine(16, "^7Score Breakdown:")
+			for _, detail in ipairs(eval[1].statDetails) do
+				local color = detail.percentChange >= 0 and colorCodes.POSITIVE or colorCodes.NEGATIVE
+				tooltip:AddLine(16, s_format("  %s%s: %+.1f%%^7 (weight: %.2f)", color, detail.label, detail.percentChange, detail.weightMult))
+			end
+			if scorePercent then
+				tooltip:AddLine(16, s_format("  %sOverall: %+.1f%%", scoreColor, scorePercent))
+			end
+			tooltip:AddSeparator(10)
+		end
 		tooltip:AddLine(16, string.format("^7Price: %s %s", result.amount, result.currency))
 	end
 	local function getSelectedResult()

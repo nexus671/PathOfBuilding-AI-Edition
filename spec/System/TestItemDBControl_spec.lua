@@ -127,7 +127,7 @@ describe("ItemDBControl", function()
 			control.controls.slot:SelByValue("Graft 2")
 			assert.are.equal("Graft 2", control.slotList[control.controls.slot.selIndex])
 			local lastIndex = control.controls.slot.selIndex
-			for _, slotName in ipairs({ "Wickerman Head", "Wickerman Torso", "Wickerman Upper Limb", "Wickerman Lower Limb" }) do
+			for _, slotName in ipairs({ "Head", "Body", "Arm", "Leg" }) do
 				control.controls.slot:SelByValue(slotName)
 				assert.are.equal(lastIndex + 1, control.controls.slot.selIndex)
 				assert.is_false(control:DoesItemMatchFilters(item))
@@ -137,4 +137,13 @@ describe("ItemDBControl", function()
 			end
 		end
 	end)
+	it("filters upstream Viscera using the fork's compatible Wickerman slots", function()
+		local item = new("Item"):Item("Rarity: NORMAL\nScorched Arm")
+		assert.are.equal("Viscera", item.type)
+		assert.are.equal("Wickerman Upper Limb", item:GetPrimarySlot())
+		local control = new("ItemDBControl"):ItemDBControl(nil, { 0, 0, 100, 100 }, { }, { list = { item } }, "RARE")
+		control.controls.slot:SelByValue("Arm");assert.is_true(control:DoesItemMatchFilters(item))
+		control.controls.slot:SelByValue("Head");assert.is_false(control:DoesItemMatchFilters(item))
+	end)
+
 end)

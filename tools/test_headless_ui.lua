@@ -128,7 +128,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local savedTitle=workspace.controls.title.buf;ui:text("title","");ui:text("budget","-1");ui:resize(alternate[1],alternate[2]);ui:frame()
 	assert(workspace.controls.title.buf=="" and workspace.controls.budget.buf=="-1","Unfinished Atlas edits were lost on resize")
 	ui:resize(size[1],size[2]);ui:frame();ui:text("title",savedTitle);ui:text("budget","138")
-	ui:click("nav_build");ui:click("modeItems");ui:click("modeSkills");ui:click("atlas");assert(workspace.controls.notes.buf:find("Essence",1,true),"Switching tools lost the Atlas draft")
+	ui:click("nav_build");ui:click("modeItems")
+	local visceraDB=build.itemsTab.controls.visceraDB;build.itemsTab.controls.selectDB:SelByValue("Viscera")
+	ui:frame();assert(visceraDB:IsShown(),"Viscera database did not open")
+	visceraDB.controls.slot:SelByValue("Arm");visceraDB.listBuildFlag=true;ui:frame()
+	assert(#visceraDB.list>0,"Viscera arm filter returned no items")
+	for _,item in ipairs(visceraDB.list) do assert(item:GetPrimarySlot()=="Wickerman Upper Limb","Viscera arm filter returned another slot") end
+	frame("wickerman-viscera-database");build.itemsTab.controls.selectDB:SelByValue("Uniques")
+	ui:click("modeSkills");ui:click("atlas");assert(workspace.controls.notes.buf:find("Essence",1,true),"Switching tools lost the Atlas draft")
 	ui:click("keep");assert(#build.savers.AtlasPlans.plans==1)
 	do
 		local atlas=require("Modules.AtlasPlanner");local start={id="temp-start",title="Temporary start",version="3.29.3",budget=138,nodes={}}

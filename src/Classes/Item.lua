@@ -1055,14 +1055,14 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 					if self.name:match("Energy Blade") and itemClass then -- Special handling for energy blade base.
 						self.name = itemClass:match("One Hand") and "Energy Blade One Handed" or "Energy Blade Two Handed"
 					end
-					if data.itemBases[self.name] then
+					if data.itemBases[self.name] and (itemClass ~= "Viscera" or data.itemBases[self.name].type == "Viscera") then
 						baseName = self.name
 					else
 						local bestMatch = {length = -1}
 						-- Partial match (magic items with affixes)
 						for itemBaseName, baseData in pairs(data.itemBases) do
 							local s, e = self.name:find(itemBaseName, 1, true)
-							if s and e and (e-s > bestMatch.length) then
+							if s and e and (itemClass ~= "Viscera" or baseData.type == "Viscera") and (e-s > bestMatch.length) then
 								bestMatch.match = itemBaseName
 								bestMatch.length = e-s
 								bestMatch.e = e
@@ -1093,6 +1093,7 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 					baseName = "Two-Toned Boots (Armour/Energy Shield)"
 				end
 				local base = data.itemBases[baseName]
+				if itemClass == "Viscera" and base and base.type ~= "Viscera" then base = nil end
 				if base then
 					-- Items with variants can have multiple bases
 					self.baseLines[baseName] = {
@@ -1696,6 +1697,13 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 			enchantIndex = enchantIndex + 1
 		end
 	end
+	if self.base and self.base.subType == "Blightcore" then
+		-- Anointing a Putrid Seed grows four passives
+		self.canBeAnointed = true
+		self.canHaveTwoEnchants = true
+		self.canHaveThreeEnchants = true
+		self.canHaveFourEnchants = true
+	end
 	self:BuildModList()
 	if deferJewelRadiusIndexAssignment then
 		self.jewelRadiusIndex = self.jewelData.radiusIndex
@@ -2248,6 +2256,12 @@ function ItemClass:GetPrimarySlot()
 		return "Flask 1"
 	elseif self.type == "Graft" then
 		return "Graft 1"
+	elseif self.type == "Viscera" then
+		for tag, _ in pairs(self.base.tags) do
+			if tag:match("^viscera_") then
+				return ({viscera_head="Wickerman Head",viscera_body="Wickerman Torso",viscera_arm="Wickerman Upper Limb",viscera_leg="Wickerman Lower Limb"})[tag]
+			end
+		end
 	else
 		return self.type
 	end
@@ -2550,6 +2564,10 @@ function ItemClass:BuildModListForSlotNum(baseList, slotNum)
 		end
 		for _, value in ipairs(modList:List(nil, "JewelData")) do
 			jewelData[value.key] = value.value
+		end
+		if self.base.subType == "Blightcore" then
+			-- In order of the jewel's granted passive stats
+			jewelData.blightcoreNotables = modList:List(nil, "BlightcoreNotable")
 		end
 		if modList:List(nil, "ImpossibleEscapeKeystones") then
 			jewelData.impossibleEscapeKeystones = { }

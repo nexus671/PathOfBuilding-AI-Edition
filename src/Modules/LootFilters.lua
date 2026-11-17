@@ -125,7 +125,7 @@ function M.generate(build,profile,checkpoint)
 		if not ok then return false end
 		local baseName=item.baseName;local conditions
 		local uniqueTarget=origin and origin:match("^gear:") and item.rarity=="UNIQUE"
-		if item.type and item.type:match("^Wickerman ") then
+		if item.type == "Viscera" or item.type and item.type:match("^Wickerman ") then
 			-- GGG's filter list names the underlying Viscera base without its
 			-- Lesser/Greater display prefix. Do not apply equipment rarity tests.
 			local canonical=baseName:gsub("^Lesser ",""):gsub("^Greater ","")

@@ -1254,7 +1254,7 @@ for _, type in pairs(itemTypes) do
 	LoadModule("Data/Bases/" .. type)(data.itemBases)
 end
 LoadModule("Data/BaseImplicit330")(data.itemBases)
--- Wickerman bases preserve supplied item modifiers; source variants are provisional.
+-- Wickerman has base data only; no unique rarity or modifier ownership is assumed.
 LoadModule("Data/Bases/wickerman")(data.itemBases)
 
 ---@class ItemBaseEntry
@@ -1317,6 +1317,7 @@ table.sort(data.itemBaseTypeList)
 
 -- Rare templates
 data.rares = LoadModule("Data/Rares")
+data.viscera = LoadModule("Data/Viscera")
 
 data.casterTagCrucibleUniques = {
 	["Atziri's Rule"] = true,

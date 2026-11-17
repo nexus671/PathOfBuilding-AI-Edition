@@ -626,6 +626,14 @@ describe("TradeQuery", function()
 			end
 		end)
 
+		it("reports score details for the chosen bench-craft preview", function()
+			local evaluation = evaluate(makeRareRing(3, 2), { suffixCraft }, function(args)
+				return craftOutput(args, { ["to Strength"] = 150 })
+			end)
+			assert.is_truthy(evaluation.benchCraft)
+			assert.are.equal(50, evaluation.statDetails[1].percentChange)
+		end)
+
 		it("reuses cached craft evaluations when a shared calculator is provided", function()
 			local calls = 0
 			local _, tradeQuery, calcFunc, baseOutput = evaluate(makeRareRing(3, 2), { suffixCraft }, function(args)
@@ -950,5 +958,117 @@ describe("TradeQuery", function()
 			assert.is_truthy(previewText:find("9% increased Effect of Flasks on you", 1, true))
 		end)
 
+	end)
+
+	it("does not calculate item scores while drawing the result dropdown", function()
+		local query = newResultQuery({ })
+		buildResultDropdown(query)
+		query.itemsTab.build = { }
+		query.GetResultEvaluation = function() error("Unexpected synchronous calculation") end
+		query:UpdateDropdownList(1)
+		assert.are.equal(1, #query.controls.resultDropdown1.list)
+	end)
+
+	it("calculates uncached score labels in the cooperative result worker", function()
+		local query = newResultQuery({ })
+		buildResultDropdown(query)
+		query.itemsTab.build = { calcsTab = { GetMiscCalculator = function() return function() end, { Life = 100 } end } }
+		query.itemSortSelectionList = { "Price" };query.pbItemSortSelectionIndex = 1
+		query.SortFetchResults = function() return { { index = 1 } } end
+		query.controls.priceButton1 = { };query.controls.fullPrice = { };query.controls.pbNotice = { }
+		query.GetTotalPriceString = function() return "1 chaos" end
+		local calculated, yielded = 0, 0
+		query.GetResultEvaluation = function(self, row, index, calc, base, yieldFunc)
+			calculated = calculated + 1;yieldFunc()
+			self.resultTbl[row][index].evaluation = { { statDetails = { { percentChange = 10, weightMult = 1 } } } }
+			return self.resultTbl[row][index].evaluation
+		end
+		query:UpdateControlsWithItems(1, function() yielded = yielded + 1 end)
+		assert.are.equal(1, calculated);assert.are.equal(1, yielded)
+		assert.is_truthy(query.controls.resultDropdown1.list[1].detail:find("+10.0%%"))
+	end)
+
+	describe("ComputeStatDetails", function()
+		it("uses Trader's FullDPS fallback inputs", function()
+			mock_tradeQuery.statSortSelectionList = { { label = "Full DPS", stat = "FullDPS", weightMult = 1 } }
+
+			local result = mock_tradeQuery:ComputeStatDetails({
+				CombinedDPS = 100,
+				TotalDPS = 100,
+				TotalDotDPS = 0,
+			}, {
+				CombinedDPS = 100,
+				TotalDPS = 200,
+				TotalDotDPS = 0,
+			})
+
+			assert.are.equals(50, result[1].percentChange)
+		end)
+
+		it("reports lower-is-better stat improvements as positive", function()
+			mock_tradeQuery.statSortSelectionList = {
+				{
+					label = "Taken Phys dmg",
+					stat = "PhysicalTakenHit",
+					weightMult = 1,
+					transform = function(value) return -value end,
+				},
+			}
+
+			local result = mock_tradeQuery:ComputeStatDetails({ PhysicalTakenHit = 100 }, { PhysicalTakenHit = 80 })
+
+			assert.is_true(math.abs(result[1].percentChange - 20) < 0.0001)
+		end)
+
+		it("caps displayed increases to Trader's scoring maximum", function()
+			mock_tradeQuery.statSortSelectionList = { { label = "Life", stat = "Life", weightMult = 1 } }
+			local maxStatIncrease = data.misc.maxStatIncrease
+
+			local result = mock_tradeQuery:ComputeStatDetails({ Life = 1 }, { Life = maxStatIncrease + 1 })
+
+			assert.are.equals((maxStatIncrease - 1) * 100, result[1].percentChange)
+		end)
+
+		it("reports unchanged zero-value stats as unchanged", function()
+			mock_tradeQuery.statSortSelectionList = { { label = "Block Chance", stat = "BlockChance", weightMult = 1 } }
+
+			local result = mock_tradeQuery:ComputeStatDetails({ BlockChance = 0 }, { BlockChance = 0 })
+
+			assert.are.equals(0, result[1].percentChange)
+		end)
+
+		it("reports improvements from zero as positive", function()
+			mock_tradeQuery.statSortSelectionList = { { label = "Block Chance", stat = "BlockChance", weightMult = 1 } }
+			local maxStatIncrease = data.misc.maxStatIncrease
+
+			local result = mock_tradeQuery:ComputeStatDetails({ BlockChance = 0 }, { BlockChance = 0.5 })
+
+			assert.are.equals((maxStatIncrease - 1) * 100, result[1].percentChange)
+		end)
+	end)
+
+	describe("GetResultScorePercent", function()
+		it("returns the weighted average stat delta", function()
+			local result = mock_tradeQuery:GetResultScorePercent({
+				statDetails = {
+					{ percentChange = 10, weightMult = 1 },
+					{ percentChange = -10, weightMult = 0.5 },
+				},
+			})
+
+			assert.is_true(math.abs(result - (10 / 3)) < 0.0001)
+		end)
+	end)
+
+	describe("result dropdown sizing", function()
+		it("reserves space between labels and score details", function()
+			local entry = { label = "A result item label", detail = "+123.4%" }
+			local dropdown = new("DropDownControl"):DropDownControl(nil, { 0, 0, 100, 20 }, { entry })
+			dropdown.maxDroppedWidth = 1000
+			dropdown:CheckDroppedWidth(true)
+
+			local textWidth = DrawStringWidth(16, "VAR", entry.label) + DrawStringWidth(16, "VAR", entry.detail)
+			assert.is_true(dropdown.droppedWidth >= textWidth + 36)
+		end)
 	end)
 end)
