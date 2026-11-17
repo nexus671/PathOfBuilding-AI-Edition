@@ -119,19 +119,26 @@ function M.condition(c,item)
 	end
 	local value=item[c.keyword]
 	if c.keyword=="SocketGroup" and value==nil and tonumber(item.Sockets)==0 then value="0" end
-	if c.keyword=="LinkedSockets" and value==nil then
-		local count=tonumber(item.Sockets);local groups=item.SocketGroup
+	if c.keyword=="LinkedSockets" then
+		local count=tonumber(item.Sockets);local groups=item.SocketGroup;local derived
+		local supplied=value~=nil and tonumber(value) or nil
+		if value~=nil and (not supplied or supplied<0 or supplied>6 or supplied~=math.floor(supplied)) then return nil,"Invalid LinkedSockets" end
+		if item.Sockets~=nil and (not count or count<0 or count>6 or count~=math.floor(count)) then return nil,"Invalid Sockets" end
+		if supplied and count and supplied>count then return nil,"Linked socket count exceeds total sockets" end
 		if type(groups)=="string" then
 			if groups=="" or groups=="0" then
-				if count==nil or count==0 then value=0 end
+				if count==nil or count==0 then derived=0 elseif supplied then return nil,"Socket group layout does not account for the stated socket count" end
 			elseif groups:find("[^RGBWAD%s%-]") then return nil,"Invalid socket colours for SocketGroup"
 			else
 				local total=select(2,groups:gsub("[RGBWAD]",""));local largest=0
 				local separated=groups:gsub("([AD])"," %1 "):gsub("%-","")
 				for group in separated:gmatch("%S+") do largest=math.max(largest,#group) end
-				if count and count==total and total>0 and total<=6 then value=largest end
+				if count and count==total and total>0 and total<=6 then derived=largest
+				elseif count and supplied then return nil,"Socket group layout does not account for the stated socket count" end
 			end
-		elseif count==0 then value=0 end
+		elseif count==0 then derived=0 end
+		if supplied and derived and supplied~=derived then return nil,"Linked socket count conflicts with socket group layout" end
+		if value==nil then value=derived end
 	end
 	if c.keyword=="Sockets" and value==nil and type(item.SocketColours)=="string" and item.SocketColours:match("%S") then
 		if item.SocketColours:find("[^RGBWAD%s%-]") then return nil,"Invalid socket colours for Sockets" end
@@ -184,6 +191,10 @@ function M.condition(c,item)
 		return negative
 	end
 	if c.keyword=="SocketGroup" then
+		if item.LinkedSockets~=nil then
+			local valid,reason=M.condition({keyword="LinkedSockets",known=true,operator="=",values={tostring(item.LinkedSockets)}},item)
+			if valid==nil then return nil,reason end
+		end
 		if op=="!" or op=="!=" then return nil,"Negative linked-socket comparisons are not verified" end
 		if type(value)~="string" then return nil,"Supply socket colours for "..c.keyword end
 		local total=select(2,value:gsub("[RGBWAD]",""))
@@ -199,7 +210,7 @@ function M.condition(c,item)
 			-- Abyss and Delve sockets cannot link to other sockets, even when
 			-- a manually entered sample places them inside a group.
 			local separated=value:gsub("([AD])"," %1 ")
-			for group in separated:gmatch("[^ ]+") do if socketMatch(group,pattern,op) then return true end end
+			for group in separated:gmatch("%S+") do if socketMatch(group,pattern,op) then return true end end
 		end;return false
 	elseif M.numeric[c.keyword] or c.keyword=="Rarity" then
 		value=c.keyword=="Rarity" and rarity[value] or tonumber(value)

@@ -102,6 +102,20 @@ describe("Build-owned loot filters",function()
 		assert.equal("unknown",test("LinkedSockets >= 2",{SocketGroup="RG"}).status)
 		assert.equal("unknown",test("LinkedSockets >= 2",{Sockets=2,SocketGroup="RX"}).status)
 	end)
+	it("keeps whitespace-separated groups and link counts consistent",function()
+		local function test(condition,item) return parser.simulate(parser.parse("Show\n "..condition.."\nHide"),item) end
+		local separated={Sockets=2,SocketGroup="R\tG"}
+		assert.equal("Hide",test("SocketGroup RG",separated).action)
+		assert.equal("Show",test("LinkedSockets = 1",separated).action)
+		local contradiction={Sockets=4,SocketGroup="R-G B A",LinkedSockets=4}
+		local result=test("LinkedSockets >= 4",contradiction)
+		assert.equal("unknown",result.status);assert.is_truthy(result.reasons[1])
+		assert.equal("unknown",test("SocketGroup RG",contradiction).status)
+		assert.equal("unknown",test("LinkedSockets >= 4",{Sockets=2,LinkedSockets=4}).status)
+		assert.equal("unknown",test("LinkedSockets >= 4",{LinkedSockets=7}).status)
+		assert.equal("Show",test("LinkedSockets = 2",{Sockets=4,SocketGroup="R-G B A",LinkedSockets=2}).action)
+	end)
+
 	it("does not decide linked group matches from an incomplete socket layout",function()
 		local function test(item) return parser.simulate(parser.parse("Show\n SocketGroup RGB\nHide"),item) end
 		for _,item in ipairs({{Sockets=6,SocketGroup="RG"},{Sockets=4,SocketGroup="RGB"},{Sockets=3,SocketGroup="0"},{Sockets=1,SocketGroup=""},{SocketGroup="RRRRRRR"},{SocketGroup="---"}}) do
