@@ -2,8 +2,9 @@
 local fixture = assert(arg[1], "Supply a build XML path")
 local cycles = tonumber(arg[2]) or 5
 assert(cycles >= 1 and cycles <= 20 and cycles == math.floor(cycles))
-local deferredRecovery = arg[3] == "deferred-recovery"
-assert(not arg[3] or deferredRecovery, "Third argument must be deferred-recovery")
+local forcedRecovery = arg[3] == "deferred-recovery"
+local desktopRecovery = forcedRecovery or arg[3] == "desktop-recovery"
+assert(not arg[3] or desktopRecovery, "Third argument must be deferred-recovery or desktop-recovery")
 arg = {}
 dofile("HeadlessWrapper.lua")
 main.disableDevAutoSave = true
@@ -12,18 +13,21 @@ local raw = file:read("*a")
 file:close()
 loadBuildFromXML(raw, "Read-only tree UI benchmark")
 assert(not main.popups[1], "The supplied build requires conversion")
-if deferredRecovery then
+if forcedRecovery then
 	build.configTab.input.simulateRecovery = true
 	build.configTab.input.recoverySimulationTrials = 32
 	build.configTab.input.recoverySimulationWindow = 60
-	-- Ordinary headless calculations are synchronous. Override only this build's
-	-- recalculation to exercise the desktop's deferred worker through UI frames.
-	local buildOutput = build.calcsTab.BuildOutput
-	build.calcsTab.BuildOutput = function(self) return buildOutput(self, true) end
 end
 local bridge = require("Modules.DesktopBuildBridge")
 local revision = bridge.revision(build)
-local ui = require("Modules.HeadlessUI").install({width=1280,height=720})
+local ui = require("Modules.HeadlessUI").install({width=1280,height=720,interactiveRecovery=desktopRecovery})
+local recoveryStarted=false
+if desktopRecovery then
+	local buildOutput=build.calcsTab.BuildOutput
+	build.calcsTab.BuildOutput=function(self,...)
+		local result=buildOutput(self,...);recoveryStarted=recoveryStarted or self.recoveryJob~=nil;return result
+	end
+end
 build.viewMode = "TREE"
 ui:bind(build)
 local viewer = build.treeTab.viewer
@@ -48,7 +52,7 @@ ui:frame()
 local x, y = viewport.x + viewport.width / 2, viewport.y + viewport.height / 2
 local rows = {}
 local function finishRecovery()
-	if not deferredRecovery then return nil end
+	if not desktopRecovery or not build.configTab.input.simulateRecovery then return nil end
 	local count, total, worst = 0, 0, 0
 	while build.calcsTab.recoveryJob do
 		assert(count < 10000, "Recovery worker did not complete")
@@ -65,6 +69,7 @@ local function finishRecovery()
 	return { frames=count, totalFrameMs=total, worstFrameMs=worst }
 end
 for _ = 1, cycles do
+	recoveryStarted=false
 	local start = os.clock()
 	ui.cursorX, ui.cursorY = x, y
 	ui:frame()
@@ -76,17 +81,18 @@ for _ = 1, cycles do
 	assert(selected.alloc, "Click did not allocate the intended passive")
 	ui:frame()
 	local updated = os.clock()
-	if deferredRecovery then assert(build.calcsTab.recoveryJob, "Tree update did not start deferred recovery") end
+	if desktopRecovery and build.configTab.input.simulateRecovery then assert(recoveryStarted, "Tree update did not start deferred recovery") end
 	local recovery = finishRecovery()
+	recoveryStarted=false
 	ui:clickAt(x,y)
 	assert(not selected.alloc, "Second click did not remove the passive")
 	ui:frame()
-	if deferredRecovery then assert(build.calcsTab.recoveryJob, "Tree removal did not start deferred recovery") end
+	if desktopRecovery and build.configTab.input.simulateRecovery then assert(recoveryStarted, "Tree removal did not start deferred recovery") end
 	finishRecovery()
 	rows[#rows+1] = { hoverMs=(hovered-start)*1000, pressMs=(pressed-hovered)*1000,
 		releaseMs=(clicked-pressed)*1000, updateFrameMs=(updated-clicked)*1000, recovery=recovery }
 end
 assert(bridge.revision(build) == revision, "The benchmark did not restore the build revision")
 print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,restored=true,
-	recoveryMode=deferredRecovery and "deferred" or "build configuration",
+	recoveryMode=forcedRecovery and "deferred" or desktopRecovery and "desktop with saved settings" or "build configuration",
 	limitations="Headless CPU timings include draw-command capture, not desktop rendering or frame rate."}))

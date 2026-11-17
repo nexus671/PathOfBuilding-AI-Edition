@@ -1316,6 +1316,10 @@ function buildMode:OnFrame(inputEvents)
 
 	if self.buildFlag then
 		local calculationStart=os.clock()
+		-- A passive edit can change the automatic level. Resolve it before
+		-- capturing the inputs used by the main and deferred calculations.
+		if self.characterLevelAutoMode then self:EstimatePlayerProgress() end
+		local calculatedLevel=self.characterLevel
 		-- Wipe Global Cache
 		wipeGlobalCache()
 
@@ -1323,12 +1327,24 @@ function buildMode:OnFrame(inputEvents)
 		self.outputRevision = self.outputRevision + 1
 		self.buildFlag = false
 		self.skillsTab:UpdateSocketGroups()
-		self.calcsTab:BuildOutput(not launch.headless)
+		self.calcsTab:BuildOutput(not launch.headless or launch.headlessInteractiveRecovery == true)
 		if self.controls.breakdown.pinned and self.breakdownInputs then
 			self.controls.breakdown:SetBreakdownData()
 			self.controls.breakdown:SetBreakdownData(unpack(self.breakdownInputs))
 		end
 		self:RefreshStatList()
+		-- Extra passive points can themselves change the estimated level. If
+		-- the new output changed that estimate, recalculate with the new level.
+		if self.characterLevel~=calculatedLevel then
+			calculatedLevel=self.characterLevel;wipeGlobalCache()
+			self.calcsTab:BuildOutput(not launch.headless or launch.headlessInteractiveRecovery == true)
+			if self.controls.breakdown.pinned and self.breakdownInputs then
+				self.controls.breakdown:SetBreakdownData()
+				self.controls.breakdown:SetBreakdownData(unpack(self.breakdownInputs))
+			end
+			self:RefreshStatList()
+			if self.characterLevel~=calculatedLevel then self.buildFlag=true end
+		end
 		self.configTab.calcFunc, self.configTab.calcBase = self.calcsTab:GetMiscCalculator()
 		require("Modules.PlanningPerformance").record(self,"Build recalculation",os.clock()-calculationStart)
 	end

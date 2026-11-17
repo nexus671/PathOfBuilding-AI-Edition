@@ -286,3 +286,9 @@ preserved the recovery outputs, individual trials, trace and original revision.
 Its longest slices were 8.9-10.6 ms after the change and 11.4-12.2 ms before;
 other runs have had larger, variable pauses. These bounded results do not prove
 that all long slices or desktop stalls are eliminated.
+
+The headless UI adapter can opt into desktop-style deferred recovery. A real
+passive-node input test exposed an automatic-level ordering issue: the displayed
+level could advance after the calculation captured the prior level. Recalculation
+now resolves the estimate first and rechecks it if the output changes extra
+passive points. Tests compare deferred and synchronous results after a click.

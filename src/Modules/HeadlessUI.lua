@@ -17,6 +17,8 @@ function M.install(options)
 	local originals, fonts = { }, { }
 	local images = setmetatable({},{__mode="k"})
 	local previousWidth, previousHeight, previousViewport = main.screenW, main.screenH, main.viewPort
+	local previousInteractiveRecovery=launch.headlessInteractiveRecovery
+	if options.interactiveRecovery~=nil then launch.headlessInteractiveRecovery=options.interactiveRecovery end
 	local function replace(name, value) originals[name]=_G[name];_G[name]=value end
 	local function font(height, name)
 		local family = assert(fontNames[name],"Unknown headless font: "..tostring(name))
@@ -212,6 +214,7 @@ function M.install(options)
 	function ui:restore()
 		for name,value in pairs(originals) do _G[name]=value end
 		main.screenW,main.screenH,main.viewPort=previousWidth,previousHeight,previousViewport
+		launch.headlessInteractiveRecovery=previousInteractiveRecovery
 	end
 	return ui
 end

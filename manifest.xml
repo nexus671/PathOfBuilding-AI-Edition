@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.67.2-ai.preview395" />
+	<Version number="2.67.2-ai.preview396" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1515,7 +1515,7 @@
 	<File name="Modules/AtlasPlanner.lua" part="program" sha1="3115238dc08a8f8c4ad58ffc3e0e8fc63ecf54e5" />
 	<File name="Modules/AtlasStrategy.lua" part="program" sha1="fd90f32d81aba6707e3cadcf41a2c90a9fc8832f" />
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="650adaf8761d03a87383f3d4a3b14c1ffb5a6aca" />
-	<File name="Modules/Build.lua" part="program" sha1="972e8291b2ac3360e6914e39ab7db209e78e97d8" />
+	<File name="Modules/Build.lua" part="program" sha1="12fbc0fe204cd1f241ad26ccd4cefbda4f5027b5" />
 	<File name="Modules/BuildDisplayStats.lua" part="program" sha1="ffc4da3b13c3d50f3580b452622429f0bd7e70ab" />
 	<File name="Modules/BuildInsights.lua" part="program" sha1="fb3442e30d084e5ee919a53b709cce35c1bc2a11" />
 	<File name="Modules/BuildJourney.lua" part="program" sha1="f1894a9bb542ecbea77c1d9b1b344975287d3cb7" />
@@ -1590,7 +1590,7 @@
 	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="189fdb6014039106f2dc97e605c8c29e8a9650ec" />
 	<File name="Modules/EncounterReport.lua" part="program" sha1="710dc78939bfbc8282f295cf626bcde9c9b7d8e5" />
 	<File name="Modules/HeadlessCompression.lua" part="program" sha1="16a42bf407eb777602f9b03b5c8466188a04ee58" />
-	<File name="Modules/HeadlessUI.lua" part="program" sha1="62a302392792431a8e1ceeb24208272e294b490c" />
+	<File name="Modules/HeadlessUI.lua" part="program" sha1="0321564d6273fc01522e3bcaa356dcc8cb9fe0e1" />
 	<File name="Modules/ItemSlotHelper.lua" part="program" sha1="4b7d441f9ade5d57c413aa1f8f8067b654cfb927" />
 	<File name="Modules/ItemTools.lua" part="program" sha1="7dec4fb56cbfa848967ae082e604f9a3de45fd7a" />
 	<File name="Modules/JourneyUpgrades.lua" part="program" sha1="bb121d8115f693518ae9431fefff305fdb46878f" />
