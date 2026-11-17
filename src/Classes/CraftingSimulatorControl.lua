@@ -257,6 +257,7 @@ function Panel.Open(build,project,layout)
 			local message="Applied "..label..". Select another currency or undo."
 			for _,warning in ipairs(result.warnings or {}) do if warning.code=="abyss_socket_layout" then message="Applied "..label..". Abyss socket layout is experimental.";break end end
 			if result.gwennen then for _,entry in ipairs(require("Modules.CraftingGwennenReference").search("",100).offers) do if entry.id==result.gwennen.outcome then message="Gwennen modeled outcome: "..entry.description;break end end end
+			if state.socketLayoutUnknown then message="Socket layout is unknown after corruption. Set it in Edit hypothetical item before socket crafts or build preview." end
 			refresh({message})
 		end
 		if result.choices and #result.choices > 1 then
@@ -497,9 +498,9 @@ function Panel.Open(build,project,layout)
 	button(controls,"keepRecipe",16,530,200,"Keep actions as recipe",function()
 		assert(#actions > 0,"Apply a crafting action first")
 		draft.nativeRecipe=simulator.validateRecipe({steps=copyTable(actions),targets=copyTable(targets),requirements=(requirements and copyTable(requirements) or nil),requiredGroups=requiredGroups,initialState=copyTable(initial),rarity=state.rarity})
-		draft.targetItem=simulator.toItem(model,state).raw
+		if not state.socketLayoutUnknown then draft.targetItem=simulator.toItem(model,state).raw end
 		build.savers.CraftingProjects:Upsert(draft)
-		refresh({"Native recipe and target kept in this build. Use build Save to persist."})
+		refresh({state.socketLayoutUnknown and "Recipe kept. Set the unknown socket layout before keeping a target item." or "Native recipe and target kept in this build. Use build Save to persist."})
 	end)
 	button(controls,"editRecipe",16,574,200,"Recipe routes",function()
 		local recipe=draft.nativeRecipe or {steps=copyTable(actions),targets=copyTable(targets),requirements=(requirements and copyTable(requirements) or nil),requiredGroups=requiredGroups,initialState=copyTable(initial)}
@@ -595,10 +596,10 @@ function Panel.Open(build,project,layout)
 			ui.card(popup,entry[1],16+(index-1)*282,174,264,entry[2],value,values and result.costCurrency or "Supply every action price")
 		end
 		popup.results=new("TextListControl"):TextListControl({"TOPLEFT",nil,"TOPLEFT"},{16,284,828,resultHeight-398},nil,lines)
-		local kept={};for i,entry in ipairs(result.retainedSuccesses or {}) do
+		local kept={};for i,entry in ipairs(result.retainedSuccesses or {}) do if entry.itemText then
 			local cost=entry.cost~=nil and string.format("%.2f %s",entry.cost,result.costCurrency or "units") or "cost unavailable"
 			kept[#kept+1]={label=ui.fit("Item "..i.." (trial "..entry.trial..") | "..cost,320,14),val=i}
-		end
+		end end
 		button(popup,"resources",16,resultHeight-84,176,"Resources used",function()
 			local entries={}
 			for _,entry in ipairs(result.resourceUsage) do
@@ -641,7 +642,7 @@ function Panel.Open(build,project,layout)
 		end
 		popup.keepTarget.tooltipText="Keep this sampled item as the guide's target. Use build Save to persist it."
 		popup.item.enabled=#kept>0;popup.preview.enabled=#kept>0;popup.keepTarget.enabled=#kept>0
-		if #kept==0 then popup.item:SetList({{label="No successful items retained",val=0}}) end
+		if #kept==0 then popup.item:SetList({{label=#(result.retainedSuccesses or {})>0 and "No previewable items retained" or "No successful items retained",val=0}}) end
 		button(popup,"close",728,resultHeight-42,116,"Close",function() main:ClosePopup() end)
 		button(popup,"sample",252,resultHeight-42,220,"Inspect sampled outcome",function()
 			local c={};local w,h=math.min(660,main.screenW-40),math.min(560,main.screenH-48)
@@ -670,6 +671,7 @@ function Panel.Open(build,project,layout)
 	button(controls,"reset",232,530,200,"Reset item",function() state=copyTable(initial);history={};actions={};changedAffixes={};ui.draft(build,"workingCraft",draft.id);updateOptions();refresh() end)
 	button(controls,"preview",16,height-48,200,"Preview in build",function()
 		assert(not state.veil and not state.destroyed,"A pending unveil or destroyed item cannot be previewed")
+		assert(not state.socketLayoutUnknown,"Set the unknown socket layout before previewing this item in a build.")
 		local entry=copyTable(draft); entry.targetItem=simulator.toItem(model,state).raw
 		require("Classes.CraftingProjectControl").Preview(build,entry)
 	end)
@@ -759,7 +761,7 @@ function Panel.Open(build,project,layout)
 	controls.distribution.enabled=function() return not tasks.job and lastSimulation~=nil end
 	controls.cancelJob.enabled=function() return require("Modules.CraftingTasks").job~=nil end
 	controls.apply.enabled=function() return not state.destroyed end
-	controls.preview.enabled=function() return not state.destroyed and not state.veil end
+	controls.preview.enabled=function() return not state.destroyed and not state.veil and not state.socketLayoutUnknown end
 	controls.configure.label=function() local method=controls.method:GetSelValueByKey("val");return method=="fossil" and "Configure fossil combination" or method=="gwennen" and "Configure Gwennen pair" or "Configure donor item" end
 	controls.configure.enabled=function() local method=controls.method:GetSelValueByKey("val");return method=="gwennen" or method=="fossil" or method=="awakener" or method=="recombine" or method=="recombine_predictable" end
 	controls.page=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,18,416,28},{"Emulate item","Target conditions","Simulate recipe","Craft settings"})

@@ -89,7 +89,7 @@ function F.extend(M,A,api)
 			state.imprint=nil
 			local gain=count > 1 and low+math.floor(random()*(high-low+1)) or 0
 			state.intangibility=math.min(100,(state.intangibility or input.intangibility or 0)+gain)
-			choices[i]={state=state,itemText=not state.veil and not state.destroyed and M.toItem(model,state).raw or nil}
+			choices[i]={state=state,itemText=M.itemText(model,state)}
 			local score=0
 			if not state.destroyed then for _,target in ipairs(profile.preferredTargets or {}) do if M.matches(state,{target},nil,model) then score=score+1 end end end
 			if score > bestScore then best,bestScore=i,score end

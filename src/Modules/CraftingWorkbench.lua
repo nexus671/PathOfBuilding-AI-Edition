@@ -97,13 +97,14 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 		end
 		local extra=weaponItem and 22 or 0
 		local sockets=state.sockets or item.sockets or {}
-		for i,socket in ipairs(sockets) do
+		if state.socketLayoutUnknown then text(cx+propertyX,cy+133+extra,14,"Sockets unknown","^xE9BE7B",w-propertyX-16)
+		else for i,socket in ipairs(sockets) do
 			local sx=cx+propertyX+(i-1)*24
 			if i>1 and socket.color~="A" and sockets[i-1].color~="A" and socket.group == sockets[i-1].group then box(sx-9,cy+139+extra,12,3,"^xA68B59") end
 			box(sx,cy+133+extra,14,14,"^xA68B59")
 			box(sx+2,cy+135+extra,10,10,({R="^xE07070",G="^x70BB70",B="^x7070EE",W="^xEEEEEE",A="^x205B42"})[socket.color] or "^xC8C8C8")
 			if socket.color=="A" then text(sx+3,cy+133+extra,12,"A","^xFFFFFF",8) end
-		end
+		end end
 		if (header>=212 or options.compact) and self.slotSummary then text(cx+propertyX,cy+158+extra,14,self.slotSummary,"^xA6B3C6",w-propertyX-16) end
 		if (header>=212 or options.compact) and self.influenceSummary then text(cx+propertyX,cy+176+extra,12,self.influenceSummary,"^xD3B987",w-propertyX-16) end
 		if not options.compact then text(cx+16,cy+header-21,14,state.destroyed and "Undo or reset to continue" or onClick and self:IsEnabled() and "Click the item to apply the selected currency" or "Item preview","^xD3B987") end
@@ -231,7 +232,7 @@ function M.hint(method,state,model,craft)
 	end
 	if available and method=="vaal" and model.item.type=="Flask" then return "Changes quality by -10 to +10. Equal outcome weights are assumed, not verified." end
 	if available and method=="vaal" and model.item.type=="Jewel" and (model.item.base.subType=="Abyss" or model.item.clusterJewel or model.item.baseName=="Prismatic Jewel") then return "Unique outcome treated as no change. Branch odds and rare modifier counts are unverified." end
-	if available and method=="vaal" and require("Modules.CraftingSimulator").socketLimit(model,state)>0 then return "Rare corruption can reroll sockets and links in game; this model leaves them unchanged." end
+	if available and method=="vaal" and require("Modules.CraftingSimulator").socketLimit(model,state)>0 then return "Rare corruption can reroll sockets and links; its resulting layout will be unknown." end
 	if available and method=="tainted_quality" then return "Maximum 20% quality. The modeled 1-20% range and equal odds are assumptions." end
 	if available and method=="annul" then return "3.30: remove a random modifier. Attack/caster roll blockers do not protect it; fractures and prefix/suffix locks still apply." end
 	if available and method=="binding" then return "No longer generated in 3.30. Existing Orbs of Binding still work." end

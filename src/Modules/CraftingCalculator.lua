@@ -23,7 +23,7 @@ function C.extend(M)
 				end end
 				local sample=outcomes[1].state
 				return {exactFor="Gwennen branches under the assumed fair coin and stated experimental outcome models",showAllOutcomes=true,sampled=false,successChance=100*hits,totalWeight=1,matchingWeight=hits,
-					outcomes=outcomes,sampleState=sample,sampleItem=not sample.destroyed and M.toItem(model,sample).raw or nil,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+					outcomes=outcomes,sampleState=sample,sampleItem=M.itemText(model,sample),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 			end
 		end
 		local method=M.baseCurrency(craft)
@@ -56,7 +56,7 @@ function C.extend(M)
 				end
 				return {exactFor="One conversion: assumed tiers and uniform selection",showAllOutcomes=true,outcomesFirst=true,
 					sampled=false,successChance=100*hits/#choices,totalWeight=#choices,matchingWeight=hits,outcomes=outcomes,
-					sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+					sampleState=outcomes[1].state,sampleItem=M.itemText(model,outcomes[1].state),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 			end
 		end
 		if method=="harvest_resistance" and not partialConversion and not craft.allflame and not options.requirements then
@@ -80,7 +80,7 @@ function C.extend(M)
 				end
 				return {exactFor="One conversion under assumed tier mapping and uniform selection",showAllOutcomes=true,outcomesFirst=true,
 					sampled=false,successChance=100*hits/#choices,totalWeight=#choices,matchingWeight=hits,outcomes=outcomes,
-					sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+					sampleState=outcomes[1].state,sampleItem=M.itemText(model,outcomes[1].state),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 			end
 		end
 		if method=="jeweller" and not craft.allflame then
@@ -97,7 +97,7 @@ function C.extend(M)
 				outcomes[#outcomes+1]={id=tostring(count),text=count..(count==1 and " socket" or " sockets"),chance=100*probability,weight=probability,matches=hit,state=result}
 			end end
 			return {exactFor="One Jeweller's Orb under the historical socket-weight and quality assumptions",showAllOutcomes=true,sampled=false,successChance=100*hitWeight,totalWeight=1,matchingWeight=hitWeight,
-				outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+				outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.itemText(model,outcomes[1].state),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 		end
 		if method=="fusing" and not craft.allflame then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
@@ -113,7 +113,7 @@ function C.extend(M)
 				outcomes[#outcomes+1]={id=tostring(index),text="Link groups: "..table.concat(sizes," + "),chance=100*entry.probability,weight=entry.probability,matches=hit,state=result}
 			end
 			return {exactFor="One Fusing under the historical link-group and quality assumptions",sampled=false,successChance=100*hitWeight,totalWeight=1,matchingWeight=hitWeight,
-				outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+				outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.itemText(model,outcomes[1].state),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 		end
 		if craft.method=="vaal" and not craft.allflame then
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
@@ -131,7 +131,7 @@ function C.extend(M)
 				end
 				for _,entry in ipairs(outcomes) do entry.chance=100*entry.weight/21 end
 				return {exactFor="Flask Vaal quality under the assumed equal-weight model",sampled=false,successChance=100*hits/21,totalWeight=21,matchingWeight=hits,
-					outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+					outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.itemText(model,outcomes[1].state),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 			end
 		end
 		if craft.method=="annul" and not craft.allflame then
@@ -153,7 +153,7 @@ function C.extend(M)
 						outcomes[#outcomes+1]={id=entry.id,chance=100*branch.probability,weight=branch.probability,matches=hit,text="Remove: "..table.concat(mod," / "),state=result}
 					end
 					return {exactFor="One Annulment under the model's uniform lock-selection and removal assumptions",sampled=false,successChance=100*success,totalWeight=1,matchingWeight=success,
-						outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+						outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.itemText(model,outcomes[1].state),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 				end
 			end
 			if not M.hasPartialLock(model,state) then
@@ -169,7 +169,7 @@ function C.extend(M)
 				outcomes[#outcomes+1]={id=entry.id,chance=100/count,weight=1,matches=hit,text="Remove: "..table.concat(mod," / "),state=result}
 			end
 			return {exactFor="One Annulment under the model's uniform removable-modifier assumption",sampled=false,successChance=100*hits/count,totalWeight=count,matchingWeight=hits,
-				outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+				outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.itemText(model,outcomes[1].state),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 			end
 		end
 		if method=="omen_trichromatism" and not craft.allflame then
@@ -185,7 +185,7 @@ function C.extend(M)
 					outcomes[#outcomes+1]={chance=100/6,weight=1,matches=hit,text="RGB placement "..(#outcomes+1),state=result}
 				end end
 				return {exactFor="Six socket placements under the stated uniform-position model",sampled=false,successChance=100*hits/6,totalWeight=6,matchingWeight=hits,
-					outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.toItem(model,outcomes[1].state).raw,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+					outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.itemText(model,outcomes[1].state),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 			end
 		end
 		if (method=="socket_bench" or method=="socket_white_bench" or method=="omen_jeweller" or method=="omen_connections" or method=="beast_max_links" or method=="beast_imprint" or method=="beast_talisman_imprint" or method=="restore_imprint" or method=="bench_remove_enchant") and not craft.allflame then

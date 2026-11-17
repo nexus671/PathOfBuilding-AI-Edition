@@ -248,6 +248,9 @@ function C.extend(M,A,api)
 				end
 			elseif outcome == 2 and method ~= "locus" then
 				-- Keep fractures and metamod-protected affixes on the rare reroll.
+				-- Its socket and link outcome is not modeled. Preserve the prior
+				-- layout only as an editable placeholder, never as a known result.
+				if M.socketLimit(model,state)>0 then state.socketLayoutUnknown=true end
 				state.corrupted=false;local flags=api.flags(model,state);api.clear(model,state);state.rollBlock={attack=flags.attack,caster=flags.caster}
 				state.rarity="RARE"
 				while #state.affixes < M.capacities(model,state).total do

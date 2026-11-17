@@ -65,7 +65,7 @@ function M.actionWarnings(action,model)
 	if action.method=="vaal" and model and model.item.type=="Jewel" and model.item.base.subType=="Abyss" then result[#result+1]={code="abyss_vaal_assumptions",message="Abyss jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
 	if action.method=="vaal" and model and model.item.clusterJewel then result[#result+1]={code="cluster_vaal_assumptions",message="Cluster jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
 	if action.method=="vaal" and model and model.item.baseName=="Prismatic Jewel" then result[#result+1]={code="prismatic_vaal_assumptions",message="Prismatic jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Jewel"} end
-	if action.method=="vaal" and model and M.socketLimit(model,model.initial)>0 then result[#result+1]={code="vaal_socket_reroll_unmodeled",message="The rare corruption outcome can reroll sockets and links in game; this model leaves them unchanged. Do not rely on the displayed socket layout after corruption.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
+	if action.method=="vaal" and model and M.socketLimit(model,model.initial)>0 then result[#result+1]={code="vaal_socket_reroll_unmodeled",message="The rare corruption outcome can reroll sockets and links in game; the resulting layout is unknown in this model. Set an observed or hypothetical layout before socket crafts or exporting the item.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
 	if action.method=="vaal" then result[#result+1]={code="vaal_implicit_selection",message="When replacing one of several Eldritch or synthesised implicits, the model assumes each is equally likely. Synthesised modifier boundaries use the bundled catalogue; its coverage and the game's selection odds are unverified.",source="https://www.poewiki.net/wiki/Corrupted"} end
 	if action.method=="binding" then result[#result+1]={code="binding_legacy",message="Orbs of Binding are no longer generated in 3.30; existing orbs still work.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
 	if action.method=="jeweller" then result[#result+1]={code="jeweller_estimate",message="Experimental: historical weapon socket weights are assumed for all bases. Quality increases only the maximum-count chance in this model; weights, quality and retained socket/link positions are unverified.",source="https://www.poewiki.net/wiki/Jeweller%27s_Orb"} end
@@ -207,6 +207,16 @@ function M.toItem(model,state)
 		item:BuildAndParseRaw()
 	end
 	return item
+end
+
+-- Item text has no representation for an unknown socket layout. Keep the
+-- structured state available, but do not export a guessed layout as fact.
+function M.itemText(model,state)
+	if state.destroyed or state.veil or state.socketLayoutUnknown then return nil end
+	return M.toItem(model,state).raw
+end
+local function unknownSocketWarning(warnings)
+	warnings[#warnings+1]={code="socket_layout_unknown",message="The starting item's socket layout is unknown. Set an observed or hypothetical layout before socket actions, socket goals or exporting item text."}
 end
 
 function M.model(raw)
@@ -538,6 +548,7 @@ end
 
 function M.matches(state,targets,rarity,model,requirements,requiredGroups)
  if state.veil or state.destroyed then return false end
+ if state.socketLayoutUnknown and requirements and (requirements.sockets~=nil or requirements.links~=nil or requirements.minAbyssSockets~=nil or requirements.socketColours~=nil) then error("Set the unknown socket layout before checking socket or link goals.") end
  if rarity and state.rarity ~= rarity then return false end
  local matched=0
  for _,group in ipairs(targets) do
@@ -672,6 +683,7 @@ local function validateCorruptionSocketGoals(model,recipe)
 	local socketTarget=socketGoal(recipe.requirements)
 	for _,step in ipairs(recipe.steps) do socketTarget=socketTarget or socketGoal(step.untilRequirements) end
 	if not socketTarget then return end
+	assert(not model.initial.socketLayoutUnknown,"Set the unknown socket layout before checking socket or link goals.")
 	for _,step in ipairs(recipe.steps) do
 		assert(step.method~="vaal" and not (step.method=="gwennen" and (step.firstOutcome==1012 or step.secondOutcome==1012)),
 			"Cannot calculate socket or link goals with Vaal corruption: rare-reroll socket changes are not modeled.")
@@ -681,6 +693,7 @@ local function priceKey(action) return action.method == "bench" and action.modId
 
 function M.validateState(model,state)
 	assert(type(state) == "table" and type(state.affixes) == "table" and #state.affixes <= 6,"Invalid crafting state")
+	assert(state.socketLayoutUnknown==nil or type(state.socketLayoutUnknown)=="boolean","Invalid unknown socket layout marker")
 	assert(state.rarity == "NORMAL" or state.rarity == "MAGIC" or state.rarity == "RARE","Invalid state rarity")
 	local groups,allowed,fractured,legacy={},{},{},{}
 	for _,entry in ipairs(model.mods) do allowed[entry.id]=true end
@@ -846,7 +859,7 @@ function M.simulate(raw,recipe,options)
 		end
 		local hit=(not options.forceFirstAction or trialExecuted>0) and M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups)
 		if hit then successes=successes+1; times[#times+1]=actions end
-		if hit and #retained < retain then retained[#retained+1]={trial=trial,actions=actions,cost=not trialUnpriced and cost or nil,state=copyTable(state),itemText=M.toItem(model,state).raw} end
+		if hit and #retained < retain then retained[#retained+1]={trial=trial,actions=actions,cost=not trialUnpriced and cost or nil,state=copyTable(state),itemText=M.itemText(model,state)} end
 		local fractures=0
 		for _,entry in ipairs(state.affixes) do
 			local bucket=affixDistribution[entry.id] or {trials=0,successes=0,fractured=0,crafted=0};affixDistribution[entry.id]=bucket
@@ -880,9 +893,10 @@ function M.simulate(raw,recipe,options)
 	local usage={};for _,entry in pairs(resourceUsage) do entry.meanPerTrial=entry.amount/trials;usage[#usage+1]=entry end;table.sort(usage,function(a,b) return a.key<b.key end)
 	assert(totalExecuted > 0 or successes > 0,next(errors) or "Recipe could not execute a supported action; inspect its starting rarity and open affixes")
 	local result={trials=trials,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,seed=seed,maxActions=maxActions,
-		meanActions=totalActions/trials,meanExecutedActions=totalExecuted/trials,failedAttempts=totalActions-totalExecuted,executedActionDistribution=executedDistribution,currencySpent=spent,resourceUsage=usage,unpriced=missing,transitionErrors=errors,warnings=M.hasPartialLock(M.context(model,model.initial),model.initial) and partialWarning(M.recipeWarnings(recipe,model)) or M.recipeWarnings(recipe,model),limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=not sample.destroyed and not sample.veil and M.toItem(model,sample).raw or nil,sampleState=sample,
+		meanActions=totalActions/trials,meanExecutedActions=totalExecuted/trials,failedAttempts=totalActions-totalExecuted,executedActionDistribution=executedDistribution,currencySpent=spent,resourceUsage=usage,unpriced=missing,transitionErrors=errors,warnings=M.hasPartialLock(M.context(model,model.initial),model.initial) and partialWarning(M.recipeWarnings(recipe,model)) or M.recipeWarnings(recipe,model),limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=M.itemText(model,sample),sampleState=sample,
 		engineVersion=2,dataPatch=M.dataPatch,sourceVersion=launch.versionNumber,costCurrency=options.currency or "supplied price units",
 		baseCost=baseCost,retainedSuccesses=retained,retentionLimit=retain,affixDistribution=affixDistribution,propertyDistribution=propertyDistribution,actionDistribution=distribution,successfulActionQuantiles=quantiles(times),routeCounts=routes,budgetExhausted=budgetExhausted,destroyedTrials=destroyedTrials}
+	if model.initial.socketLayoutUnknown then unknownSocketWarning(result.warnings) end
 	if not next(missing) then
 		result.meanCost=totalCost/trials;result.costPerSuccess=successes>0 and totalCost/successes or nil;result.spendingQuantiles=quantiles(costSamples);result.successfulSpendingQuantiles=quantiles(successfulCosts)
 		result.costDistribution={};for _,bucket in pairs(costHistogram) do result.costDistribution[#result.costDistribution+1]=bucket end;table.sort(result.costDistribution,function(a,b) return a.cost<b.cost end)
@@ -902,8 +916,9 @@ function M.perform(raw,action,seed,initialState,treeVersion)
 	if initialState then model.initial=M.validateState(model,initialState) end
 	local state,details=M.action(model,model.initial,action,rng(encounter.seed(integer(seed or 104729,1,2147483646,"seed"),1,31)))
 	local warnings=M.actionWarnings(action,model)
+	if state.socketLayoutUnknown then unknownSocketWarning(warnings) end
 	if M.hasPartialLock(M.context(model,model.initial),model.initial) then partialWarning(warnings) end
-	return M.withTreeContext({priceKey=(M.priceKey or priceKey)(action),itemText=not state.veil and not state.destroyed and M.toItem(model,state).raw or nil,state=state,choices=details and details.choices,allflame=details and details.allflame,gwennen=details and details.gwennen,dataPatch=M.dataPatch,warnings=warnings,limitations=copyTable(M.limits)},treeVersion)
+	return M.withTreeContext({priceKey=(M.priceKey or priceKey)(action),itemText=M.itemText(model,state),state=state,choices=details and details.choices,allflame=details and details.allflame,gwennen=details and details.gwennen,dataPatch=M.dataPatch,warnings=warnings,limitations=copyTable(M.limits)},treeVersion)
 end
 
 function M.catalog(raw,query,limit)
@@ -983,6 +998,7 @@ do
 			if not result.warnings then result.warnings=M.actionWarnings(craft,model) end
 		end
 		if initialState then for _,entry in ipairs(initialState.affixes or {}) do if entry.id:match("^bench:partial%-") then partialWarning(result.warnings);break end end end
+		if initialState and initialState.socketLayoutUnknown then unknownSocketWarning(result.warnings) end
 		if raw:find("Modifier cannot be changed",1,true) or raw:find("Modifiers cannot be changed",1,true) then partialWarning(result.warnings) end
 		return M.withTreeContext(result,options and options.treeVersion)
 	end
@@ -1001,7 +1017,9 @@ end
 local partialLockActions={recombine=true,bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true,beast_imprint=true,beast_talisman_imprint=true,
 	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,ducat_ukatoa=true,ducat_katakohi=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
 	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,bench_remove_enchant=true,eldritch_implicit=true,conflict=true}
+local socketDependent={socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,vaal=true,locus=true,binding=true,gwennen=true,fossil=true,ducat_katakohi=true,recombine=true,recombine_predictable=true}
 function M.methodReason(model,state,method)
+	if state.socketLayoutUnknown and socketDependent[method] then return "Set the unknown socket layout before using this action." end
 	if M.hasPartialLock(M.context(model,state),state) and not partialLockActions[method] then
 		return "This action is not yet modeled with partial affix locks."
 	end
@@ -1042,7 +1060,7 @@ function M.action(model,state,craft,random)
 	end
 	local updated=M.syncAbyssSocket(startingState(result),result)
 	if details and details.choices then for _,choice in ipairs(details.choices) do
-		if choice.state and (M.syncAbyssSocket(startingState(choice.state),choice.state) or updated and choice.state==result) then choice.itemText=not choice.state.veil and not choice.state.destroyed and M.toItem(model,choice.state).raw or nil end
+		if choice.state and (M.syncAbyssSocket(startingState(choice.state),choice.state) or updated and choice.state==result) then choice.itemText=M.itemText(model,choice.state) end
 	end end
 	return result,details
 end

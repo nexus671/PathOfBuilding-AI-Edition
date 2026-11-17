@@ -88,6 +88,8 @@ Use a blank base or item text PoB can identify. Unresolved explicit modifiers ar
 
 Item-property goals can require a minimum number of actual Abyssal sockets. This checks the socket layout rather than the modifier text. Hollow Fossil socket placement and restoration use the experimental assumptions described in **Rules & sources**.
 
+If an equipment Vaal reroll produces the rare outcome, the model marks its socket layout unknown because that reroll is not simulated. The unknown marker survives working-state saves; socket-dependent actions and build previews stay unavailable until you use **Edit hypothetical item → Set socket layout** to enter an observed or hypothetical result. Simulated item text is omitted while sockets are unknown.
+
 **Locus of Corruption** can destroy the hypothetical item. Destruction stops that trial, retains its currency spending and prevents previewing a nonexistent item. **Undo currency** still restores the prior emulated state.
 
 **Predictable recombination (observed odds)** needs the game's displayed success percentage for the exact inputs and selected modifiers. Add one exact target for each selected modifier, with at least one from each input, then configure the donor and percentage. MCP accepts explicit `selectedMods.left` and `selectedMods.right` ID lists. For recipe simulations, include the exact recipient as `observedRecipientState`, including its `origin` from the crafting state; the simulator checks it at execution and reports mismatches. Older recipes need a new observation. The model preserves the chosen base's item level and treats failure as destruction. It fits a shared constant to your observation; its base shares remain estimates. It cannot independently calculate the game's displayed percentage.

@@ -90,6 +90,16 @@ async function main(){
   const socketedRaw='Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W-W-W-W';
   const socketVaal=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,action:{method:'vaal'},seed:3},'crafted');
   assert.ok(socketVaal.nativeCrafting.warnings.some(entry=>entry.code==='vaal_socket_reroll_unmodeled'));
+  const unknownCraftSockets=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,action:{method:'vaal'},seed:9},'crafted');
+  assert.equal(unknownCraftSockets.nativeCrafting.state.socketLayoutUnknown,true);assert.equal(unknownCraftSockets.nativeCrafting.itemText,undefined);
+  const blockedSockets=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,initialState:unknownCraftSockets.nativeCrafting.state,action:{method:'tainted_chromatic'},seed:1},'failed');
+  assert.match(blockedSockets.error,/unknown socket layout/i);
+  const continuedUnknown=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,initialState:unknownCraftSockets.nativeCrafting.state,action:{method:'tainted_chaos'},seed:1},'crafted');
+  assert.equal(continuedUnknown.nativeCrafting.state.socketLayoutUnknown,true);assert.equal(continuedUnknown.nativeCrafting.itemText,undefined);
+  assert.ok(continuedUnknown.nativeCrafting.warnings.some(entry=>entry.code==='socket_layout_unknown'));
+  const observedSockets={...unknownCraftSockets.nativeCrafting.state,socketLayoutUnknown:false,sockets:[{color:'R',group:0},{color:'G',group:0}]};
+  const resolvedSockets=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,initialState:observedSockets,action:{method:'tainted_chromatic'},seed:1},'crafted');
+  assert.equal(resolvedSockets.nativeCrafting.state.socketLayoutUnknown,false);assert.ok(resolvedSockets.nativeCrafting.itemText);
   const socketVaalPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:socketedRaw,recipe:{steps:[{method:'vaal'}],targets:[],requirements:{links:4}},options:{trials:4,maxActions:1}},'failed');
   assert.match(socketVaalPlan.error,/socket or link goals.*not modeled/i);
   const exarch=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,action:{method:'eldritch_implicit',side:'Exarch',tier:2},seed:11},'crafted');

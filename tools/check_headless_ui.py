@@ -83,11 +83,14 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1410, f"Expected 1410 UI frames, found {len(paths)}"
+    assert len(paths) == 1416, f"Expected 1416 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         welcome = json.loads((frames / f"{width}-crafting-empty-workspace.json").read_text())
         labels = " ".join(command.get("text", "") for command in welcome["commands"] if command.get("kind") == "text")
         assert "Plan your next item" in labels and "Start a project" in labels, "Crafting welcome action is missing"
+        unknown = json.loads((frames / f"{width}-crafting-unknown-sockets.json").read_text())
+        labels = " ".join(command.get("text", "") for command in unknown["commands"] if command.get("kind") == "text")
+        assert "Sockets unknown" in labels, "Unknown socket layout is not visible"
     for width in (960, 1024, 1280):
         chart = json.loads((frames / f"{width}-crafting-executed-chart.json").read_text())
         labels = " ".join(command.get("text", "") for command in chart["commands"] if command.get("kind") == "text")

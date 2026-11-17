@@ -10,7 +10,7 @@ function M.Open(model,input,keep)
 	if abyss>0 then colors[#colors+1]={label="Abyss",val="A"} end
 	local controls={};local links={};local choices={}
 	for count=0,max do choices[#choices+1]={label=tostring(count),val=count} end
-	ui.description(controls,"intro",16,28,712,40,{"Choose the observed or hypothetical sockets and links. No currency is used."},14)
+	ui.description(controls,"intro",16,28,712,40,{state.socketLayoutUnknown and "The shown layout is a placeholder. Set the observed or desired sockets and links." or "Choose the observed or hypothetical sockets and links. No currency is used."},14)
 	ui.label(controls,"countLabel",16,78,"Socket count",14)
 	controls.count=new("DropDownControl"):DropDownControl(ui.anchor,{112,74,90,26},choices)
 	controls.count:SelByValue(#original,"val")
@@ -32,7 +32,7 @@ function M.Open(model,input,keep)
 	ui.description(controls,"hint",16,223,712,40,{"Each link button connects its socket to the next. Abyss sockets cannot be linked or added here."},14)
 	controls.use=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,270,200,28},"Use socket layout",function()
 		local ok,result=pcall(function()
-			local candidate=copyTable(state);candidate.sockets={};local group,abyssCount=0,0
+			local candidate=copyTable(state);candidate.sockets={};candidate.socketLayoutUnknown=nil;local group,abyssCount=0,0
 			for index=1,count() do
 				if index>1 and not links[index-1] then group=group+1 end
 				local color=controls["color"..index]:GetSelValueByKey("val")
