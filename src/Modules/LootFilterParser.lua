@@ -119,6 +119,20 @@ function M.condition(c,item)
 	end
 	local value=item[c.keyword]
 	if c.keyword=="SocketGroup" and value==nil and tonumber(item.Sockets)==0 then value="0" end
+	if c.keyword=="LinkedSockets" and value==nil then
+		local count=tonumber(item.Sockets);local groups=item.SocketGroup
+		if type(groups)=="string" then
+			if groups=="" or groups=="0" then
+				if count==nil or count==0 then value=0 end
+			elseif groups:find("[^RGBWAD%s%-]") then return nil,"Invalid socket colours for SocketGroup"
+			else
+				local total=select(2,groups:gsub("[RGBWAD]",""));local largest=0
+				local separated=groups:gsub("([AD])"," %1 "):gsub("%-","")
+				for group in separated:gmatch("%S+") do largest=math.max(largest,#group) end
+				if count and count==total and total>0 and total<=6 then value=largest end
+			end
+		elseif count==0 then value=0 end
+	end
 	if c.keyword=="Sockets" and value==nil and type(item.SocketColours)=="string" and item.SocketColours:match("%S") then
 		if item.SocketColours:find("[^RGBWAD%s%-]") then return nil,"Invalid socket colours for Sockets" end
 		local count=select(2,item.SocketColours:gsub("[RGBWAD]",""))

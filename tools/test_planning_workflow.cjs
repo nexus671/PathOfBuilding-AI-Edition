@@ -754,6 +754,11 @@ async function main(){
   assert.equal(colourOnly.result.action,'Hide');assert.equal(colourOnly.sample.Sockets,undefined);
   const unknownColours=await queued('test_loot_filter',{baseRevision:context.revision,profile:colourOnlyProfile,sample:{BaseType:'Iron Hat'}},'tested');
   assert.equal(unknownColours.result.status,'unknown');
+  const linkedProfile={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n LinkedSockets = 2'}]};
+  const linkedLayout=await queued('test_loot_filter',{baseRevision:context.revision,profile:linkedProfile,sample:{BaseType:'Iron Hat',Sockets:4,SocketGroup:'R-G B A'}},'tested');
+  assert.equal(linkedLayout.result.action,'Hide');assert.equal(linkedLayout.sample.LinkedSockets,undefined);
+  const partialLayout=await queued('test_loot_filter',{baseRevision:context.revision,profile:linkedProfile,sample:{BaseType:'Iron Hat',Sockets:4,SocketGroup:'RG'}},'tested');
+  assert.equal(partialLayout.result.status,'unknown');
   const missingSocketProfile={...socketProfile,template:'Show',rules:[{...socketProfile.rules[0],text:'Hide\n Sockets = 0'}]};
   const copiedHelmet='Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86';
   const missingSockets=await queued('test_loot_filter',{baseRevision:context.revision,profile:missingSocketProfile,itemText:copiedHelmet},'tested');assert.equal(missingSockets.result.status,'unknown');assert.equal(missingSockets.sample.Sockets,undefined);
