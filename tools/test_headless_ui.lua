@@ -1470,6 +1470,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui.clipboard="Item Class: Rings\nRarity: Normal\nIron Ring\n--------\nAdds 1 to 4 Physical Damage to Attacks (implicit)";ui:click("pasteDrop");assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.HasImplicitMod==true,"Pasted implicit was not retained in the workspace")
 	ui.clipboard='Item Class: Belts\nRarity: Rare\nTest Belt\nCord Belt\n--------\n{ Prefix Modifier "Hale" }\n+100 to maximum Life';ui:click("pasteDrop")
 	local copiedMods=build.planningWorkspace.cache.filters.layout.snapshot().sample;assert(copiedMods.KnownExplicitMods[1]=="Hale" and copiedMods.HasExplicitMod==nil,"Partial modifier evidence was not retained")
+	local copiedDetails={};for _,row in ipairs(build.planningWorkspace.controls.selection.list) do copiedDetails[#copiedDetails+1]=row[1] end
+	assert(table.concat(copiedDetails," "):find("Hale",1,true),"Copied modifier name was not shown in the item details");frame("filter-copied-modifiers")
 	ui:click("sampleEdit");ui:text("HasExplicitMod",'"Other"');ui:click("useSample");local editedMods=build.planningWorkspace.cache.filters.layout.snapshot().sample;assert(editedMods.KnownExplicitMods==nil and editedMods.HasExplicitMod[1]=="Other","Editing modifier names retained partial copied evidence")
 	ui.clipboard='Item Class: Belts\nRarity: Rare\nTest Belt\nCord Belt\n--------\n{ Prefix Modifier "Hale" }\n+100 to maximum Life';ui:click("pasteDrop")
 	ui:click("sampleEdit");ui:text("BaseType","Iron Hat");ui:click("useSample");assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.KnownExplicitMods==nil,"Changing base retained copied modifier names")
