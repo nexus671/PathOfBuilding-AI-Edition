@@ -54,6 +54,9 @@ function Panel.Open(build,project,layout)
 		if ready then ui.draft(build,"workingCraft",draft.id) end
 	end
 	local configured={}
+	-- The in-game percentage belongs to the exact recipient used when entered.
+	-- Restored workbenches require reconfirmation because older checkpoints do not record it.
+	local predictableRecipient
 	local sequence=0
 	local lastSimulation,lastSimulationRun,lastFossilComparison
 	local changedAffixes={}
@@ -78,7 +81,7 @@ function Panel.Open(build,project,layout)
 	local paletteView
 	local populateAffix
 	local refreshTargetOptions
-	local action,overrideKey,updateCurrency
+	local action,overrideKey,updateCurrency,actionConfigurationReason
 	local function actionName()
 		local selected=action()
 		return (selected.allflame and "Allflame " or "")..simulator.labels[selected.method]
@@ -145,6 +148,7 @@ function Panel.Open(build,project,layout)
 		controls.intro.label="^7"..ui.fit(message,leftWidth,14)
 		if controls.actionHint and controls.actionHint.list then
 			local hint=workbench.hint(controls.method:GetSelValueByKey("val"),state,model,action and action())
+			if actionConfigurationReason then hint=actionConfigurationReason() or hint end
 			local selected=controls.option and controls.option:GetSelValue()
 			local id=selected and selected.action and selected.action.modId
 			if selected and selected.action and selected.action.essenceId then
@@ -378,6 +382,7 @@ function Panel.Open(build,project,layout)
 					assert(#selected.left > 0 and #selected.right > 0,"Select at least one exact target from each input")
 					craft.selectedMods=selected;craft.reportedSuccessChance=assert(tonumber(popup.chance.buf),"Enter the game's displayed success percentage")
 					assert(craft.reportedSuccessChance >= 0 and craft.reportedSuccessChance <= 100,"Success percentage must be between 0 and 100")
+					predictableRecipient=copyTable(state)
 				end
 				configured[method]=craft;changed();main:ClosePopup();refresh()
 			end)
@@ -686,9 +691,13 @@ function Panel.Open(build,project,layout)
 		local current=recipe and (recipe.initialState or model.initial) or state
 		return simulator.implicitTargetReason(simulator.context(model,current),current,recipe and recipe.targets or targets)
 	end
-	local function actionConfigurationReason()
+	actionConfigurationReason=function()
 		if controls.method:GetSelValueByKey("val")=="gwennen" and not configured.gwennen then return "Configure an observed Gwennen pair in Settings." end
-		return simulator.configurationReason(model,state,action())
+		local reason=simulator.configurationReason(model,state,action())
+		if reason then return reason end
+		if controls.method:GetSelValueByKey("val")=="recombine_predictable" and (not predictableRecipient or not tableDeepEquals(predictableRecipient,state)) then
+			return "Recipient changed or was reopened. Reconfirm the in-game success percentage in Craft settings."
+		end
 	end
 	local function actionConfigured() return actionConfigurationReason()==nil end
 	local function missingTargets() return #targets==0 and not (requirements and next(requirements)) end

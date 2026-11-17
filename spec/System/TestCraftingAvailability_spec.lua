@@ -141,4 +141,22 @@ describe("Crafting action preconditions",function()
 		end
 	end)
 
+	it("requires predictable recombination odds to be reconfirmed after recipient edits",function()
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw)
+		local recipient=copyTable(model.initial);recipient.rarity="MAGIC";recipient.affixes={{id="IncreasedLife1",range=0.75}}
+		local donor=copyTable(model.initial);donor.rarity="MAGIC";donor.affixes={{id="FireResist1",range=0.25}}
+		local run=require("Modules.CraftingInventory").run(recipient)
+		run.targets={{anyOf={"IncreasedLife1"}},{anyOf={"FireResist1"}}}
+		local project={id="predictable-check",title="Helmet",slot="Helmet",startingItem=raw,goals={},steps={},run=run}
+		local controls=require("Classes.CraftingSimulatorControl").Open(build,project)
+		controls.method:SelByValue("recombine_predictable","val");controls.method.selFunc()
+		controls.page:SelByValue("Craft settings");controls.page.selFunc();controls.configure:Click()
+		local popup=main.popups[1].controls;popup.donor:SetText(sim.toItem(model,donor).raw);popup.chance:SetText("40");popup.use:Click()
+		assert.is_true(controls.apply:IsEnabled())
+		controls.method:SelByValue("alteration","val");controls.method.selFunc();controls.page:SelByValue("Emulate item");controls.page.selFunc();controls.apply:Click()
+		controls.method:SelByValue("recombine_predictable","val");controls.method.selFunc()
+		assert.is_false(controls.apply:IsEnabled());assert.matches("Reconfirm",controls.apply.tooltipText())
+		controls.undo:Click();assert.is_true(controls.apply:IsEnabled());main.popups={}
+	end)
+
 end)
