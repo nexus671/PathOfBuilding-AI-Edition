@@ -158,6 +158,30 @@ describe("Experimental Gwennen pair",function()
 		assert.has_error(function() sim.action(model,abyss,pair,function() return 0.1 end) end)
 		assert.has_error(function() sim.calculate(raw,pair,{},abyss,{requirements={links=6}}) end)
 	end)
+	it("models the best of 50 socket counts and enumerates the assumed odds",function()
+		local socketRaw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: R-G B"
+		local model=sim.model(socketRaw);local state=copyTable(model.initial);state.rarity="RARE";state.quality=20
+		local before=copyTable(state);local pair={method="gwennen",firstOutcome=1028,secondOutcome=1000}
+		local function stream(seed) return function() seed=seed*48271%2147483647;return seed/2147483647 end end
+		for seed=1,12 do
+			local expectedDraw=stream(seed);expectedDraw();local best=0
+			for _=1,50 do local candidate=sim.action(model,state,{method="jeweller"},expectedDraw);best=math.max(best,#candidate.sockets) end
+			-- Force the first branch while retaining the same subsequent stream.
+			local actualDraw=stream(seed);local first=true
+			local actual=sim.action(model,state,pair,function() local value=actualDraw();if first then first=false;return 0.1 end;return value end)
+			assert.equal(best,#actual.sockets);assert.equal(expectedDraw(),actualDraw());assert.same(before,state)
+		end
+		local probability=require("Modules.CraftingSockets").jewellerProbabilities(model,state)[6]
+		local result=sim.calculate(socketRaw,pair,{},state,{requirements={sockets=6}})
+		assert.is_false(result.sampled);assert.are.near(50*(1-(1-probability)^50),result.successChance,1e-8)
+		local total=0;for _,outcome in ipairs(result.outcomes) do total=total+outcome.chance end
+		assert.are.near(100,total,1e-8);assert.equal("gwennen_socket_count_assumptions",result.warnings[2].code)
+		local full=copyTable(state);while #full.sockets<6 do full.sockets[#full.sockets+1]={color="W",group=#full.sockets} end
+		local draws=0;assert.has_error(function() sim.action(model,full,pair,function() draws=draws+1;return 0.1 end) end);assert.equal(0,draws)
+		local abyss=copyTable(state);abyss.sockets[1].color="A"
+		assert.has_error(function() sim.calculate(socketRaw,pair,{},abyss,{requirements={sockets=6}}) end)
+		assert.is_false(require("Modules.CraftingGwennen").supports(1030))
+	end)
 	it("charges observed artifacts and never treats an unknown price as free",function()
 		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022}
 		local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"

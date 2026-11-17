@@ -25,6 +25,7 @@ function M.search(query,limit)
 				if entry.id==1013 then row.note="The model uses Brinehook's four Pantheon Aspects, assumed equally likely, and requires an open suffix; Gwennen's rules are unverified." end
 				if entry.id==1010 or entry.id==1011 then row.note="Uses estimated Chromatic Orb rolls and keeps the first result tied for most non-white ordinary sockets. Gwennen's tie rule and odds are unverified." end
 				if entry.id==1016 or entry.id==1017 then row.note="Uses the experimental Fusing model with independent rolls from the starting item and first-on-tie selection. Gwennen's rules and odds are unverified." end
+				if entry.id==1028 then row.note="Uses 50 independent experimental Jeweller-model rolls and keeps the greatest count. Gwennen's rules, retained sockets and odds are unverified." end
 				if entry.id==1027 then row.note="The retained modifier is assumed uniformly selected; modifier count and new rolls use the ordinary rare-item model. Gwennen's rules are unverified." end
 				rows[#rows+1]=row
 			end
