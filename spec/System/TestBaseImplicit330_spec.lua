@@ -89,4 +89,45 @@ describe("3.30 base implicits",function()
 		local rerolled=sim.action(model,recombined,{method="blessed"},random)
 		assert.is_truthy(sim.validateState(model,rerolled))
 	end)
+	it("recognizes catalyst-scaled legacy and current jewelry implicits",function()
+		local function value(item) return StripEscapes(itemLib.formatModLine(item.implicitModLines[1],false)) end
+		for _,example in ipairs({
+			{"Amethyst Ring","Prismatic","+27% to Chaos Resistance","+23% to Chaos Resistance","+15% to Chaos Resistance"},
+			{"Crystal Belt","Tempering","+120 to maximum Energy Shield","+100 to maximum Energy Shield","+72 to maximum Energy Shield"},
+		}) do
+			local raw="Rarity: NORMAL\n"..example[1].."\nItem Level: 86\nCatalyst: "..example[2].."\nCatalystQuality: 20\nImplicits: 1\n"..example[3]
+			local model=sim.model(raw)
+			assert.is_true(require("Modules.CraftingAvailability").check("blessed",model.initial,model),example[1])
+			assert.equal(example[3],value(sim.toItem(model,model.initial)))
+			local changed=sim.action(model,model.initial,{method="catalyst",catalyst=4},function() return 0 end)
+			assert.equal(example[4],value(sim.toItem(model,changed)))
+			local blessed=sim.action(model,model.initial,{method="blessed"},function() return 0 end)
+			assert.equal(example[5],value(sim.toItem(model,blessed)))
+		end
+	end)
+
+	it("retains copied advanced legacy ranges through catalyst and save changes",function()
+		local raw="Item Class: Rings\nRarity: Normal\nAmethyst Ring\n--------\nQuality (Resistance Modifiers): +20% (augmented)\n--------\nItem Level: 86\n--------\n{ Implicit Modifier — Resistance }\n+27(20-27)% to Chaos Resistance"
+		local function value(item) return StripEscapes(itemLib.formatModLine(item.implicitModLines[1],false)) end
+		local model=sim.model(raw);assert.is_true(require("Modules.CraftingAvailability").check("blessed",model.initial,model))
+		local item=sim.toItem(model,model.initial);assert.equal("+27% to Chaos Resistance",value(item))
+		local reopened=sim.model(item.raw);assert.equal("+27% to Chaos Resistance",value(sim.toItem(reopened,reopened.initial)))
+		local changed=sim.action(reopened,reopened.initial,{method="catalyst",catalyst=4},function() return 0 end)
+		assert.equal("+23% to Chaos Resistance",value(sim.toItem(reopened,changed)))
+		local bad=sim.model(raw:gsub("20%-27","20-28"));assert.is_false(require("Modules.CraftingAvailability").check("blessed",bad.initial,bad))
+	end)
+
+	it("applies catalysts to copied ordinary and changed base ranges",function()
+		for _,base in ipairs({"Coral Ring","Amethyst Ring"}) do
+			local raw="Rarity: NORMAL\n"..base.."\nItem Level: 1\nImplicits: 1\n"..data.itemBases[base].implicit
+			local model=sim.model(raw);local before=sim.toItem(model,model.initial)
+			local catalyst=base=="Coral Ring" and 4 or 8
+			local state=sim.action(model,model.initial,{method="catalyst",catalyst=catalyst},function() return 0 end)
+			local item=sim.toItem(model,state);local line=item.implicitModLines[1]
+			assert.equal(1.2,item:GetModLineValueScalar(line,"IMPLICIT"),base)
+			assert.equal(StripEscapes(itemLib.applyRange(line.line,line.range,1.2)),StripEscapes(itemLib.formatModLine(line,false)),base)
+			assert.equal(before.implicitModLines[1].line,line.line,base)
+		end
+	end)
+
 end)
