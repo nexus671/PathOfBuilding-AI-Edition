@@ -5,7 +5,7 @@ local parser=require("Modules.LootFilterParser")
 local sha1=require("sha1")
 local M={categories={"All items","Build targets","Campaign","Currency","Special currency","Equipment","Unique items","Flasks","Tinctures","Jewels","Divination cards","Maps & fragments","Gems","Recipes","League items","Other"}}
 local baseMetadata
-local noSockets={ ["Stackable Currency"]=true,Gold=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
+local noSockets={ ["Stackable Currency"]=true,Gold=true,Contracts=true,Blueprints=true,["Expedition Logbooks"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
 local equipment={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true,Quiver=true,Amulet=true,Ring=true,Belt=true}
 -- Unknown bases, unique equipment and random defence rolls remain unresolved.
 function M.baseDefencePercentile(name,class,rarity)
@@ -63,11 +63,20 @@ function M.category(rule)
 	if text:find("%$type%-%>currency") or text:find("stackable currency",1,true) then return "Currency" end
 	if text:find("%$type%-%>maps") or text:find("%$type%-%>fragments") or text:find("%$type%-%>scarab") or text:find('"maps"',1,true) or text:find("map fragments",1,true) then return "Maps & fragments" end
 	if text:find("%$type%-%>gems") or text:find("skill gems",1,true) or text:find("support gems",1,true) then return "Gems" end
+	if text:find("contract",1,true) or text:find("blueprint",1,true) or text:find("expedition logbook",1,true) then
+		local block=parser.parse(rule.text).rules[1];local classes={contracts=true,blueprints=true,["expedition logbooks"]=true}
+		for _,condition in ipairs(block and block.conditions or {}) do
+			if condition.operator=="==" and condition.keyword=="Class" and #condition.values>0 then
+				local all=true;for _,value in ipairs(condition.values) do if not classes[value:lower()] then all=false;break end end
+				if all then return "League items" end
+			elseif condition.operator=="==" and condition.keyword=="BaseType" and #condition.values==1 and condition.values[1]:lower()=="expedition logbook" then return "League items" end
+		end
+	end
 	if text:find("viscera",1,true) or text:find("enshrouded",1,true) or text:find("%$type%-%>league") then return "League items" end
 	if text:find("rarity",1,true) or text:find("%$type%-%>rares") or text:find("%$type%-%>uniques") or text:find("sockets",1,true) then return "Equipment" end
 	return "Other"
 end
-local classExamples={["Body Armours"]="Vaal Regalia",Helmets="Iron Hat",Gloves="Wool Gloves",Boots="Wool Shoes",Wands="Driftwood Wand",Shields="Splintered Tower Shield",Rings="Iron Ring",Amulets="Amber Amulet",Belts="Leather Belt",Jewels="Cobalt Jewel",Maps="Strand Map",["Map Fragments"]="Breach Thread",["Skill Gems"]="Arcane Link",["Support Gems"]="Added Fire Damage Support",["Stackable Currency"]="Chaos Orb",Gold="Gold",Tinctures="Prismatic Tincture"}
+local classExamples={["Body Armours"]="Vaal Regalia",Helmets="Iron Hat",Gloves="Wool Gloves",Boots="Wool Shoes",Wands="Driftwood Wand",Shields="Splintered Tower Shield",Rings="Iron Ring",Amulets="Amber Amulet",Belts="Leather Belt",Jewels="Cobalt Jewel",Maps="Strand Map",["Map Fragments"]="Breach Thread",["Skill Gems"]="Arcane Link",["Support Gems"]="Added Fire Damage Support",["Stackable Currency"]="Chaos Orb",Gold="Gold",Contracts="Contract: Bunker",Blueprints="Blueprint: Bunker",["Expedition Logbooks"]="Expedition Logbook",Tinctures="Prismatic Tincture"}
 -- Filter class names from the pinned RePoE item_classes.json (ae6d85a5).
 -- Native base types use different names for several weapon families.
 local nativeClasses={Helmet="Helmets",["Body Armour"]="Body Armours",Gloves="Gloves",Boots="Boots",Shield="Shields",Ring="Rings",Amulet="Amulets",Belt="Belts",Quiver="Quivers",Bow="Bows",Claw="Claws",Dagger="Daggers",["Rune Dagger"]="Rune Daggers",Wand="Wands",Sceptre="Sceptres",Staff="Staves",Warstaff="Warstaves",["Thrusting Sword"]="Thrusting One Hand Swords",["One Handed Sword"]="One Hand Swords",["One Handed Axe"]="One Hand Axes",["One Handed Mace"]="One Hand Maces",["Two Handed Sword"]="Two Hand Swords",["Two Handed Axe"]="Two Hand Axes",["Two Handed Mace"]="Two Hand Maces",Tincture="Tinctures"}

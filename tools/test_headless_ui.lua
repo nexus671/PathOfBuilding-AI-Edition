@@ -1258,6 +1258,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(row.entry.category=="Currency" and row.entry.sample.Class=="Gold","Gold catalogue entry has the wrong category or sample class");goldFound=true
 	end end
 	assert(goldFound,"Gold was not found in the base filter catalogue")
+	ui:text("search","Expedition Logbook");local logbookFound=false
+	for _,row in ipairs(build.planningWorkspace.controls.rules.list) do if row.entry and row.entry.rule.title=="Expedition Logbook" then
+		assert(row.entry.category=="League items" and row.entry.sample.Class=="Expedition Logbooks","Logbook catalogue entry has the wrong category or sample class");logbookFound=true
+	end end
+	assert(logbookFound,"Expedition Logbook was not found in the base filter catalogue")
 	ui:text("search","Chaos Orb");frame("filter-search")
 	ui:click("edit");frame("filter-appearance");ui:click("textHexPick");frame("filter-colour-wheel");frame("filter-colour-preset-hover","preset7")
 	local colourWheel=main.popups[1].controls.wheel;local wx,wy=colourWheel:GetPos();ui:dragAt(wx+192,wy+128,-64,64,"LEFTBUTTON");frame("filter-colour-dragged");ui:text("hex","FFE0A0FF");ui:click("keep");assert(main.popups[1].controls.textHex.buf=="FFE0A0FF","Rule picker did not return the selected colour")

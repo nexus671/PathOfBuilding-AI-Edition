@@ -16,6 +16,27 @@ describe("Visual filter catalogue",function()
 		for _,entry in ipairs(library.catalog(profile)) do if entry.rule.title=="Gold" then count=count+1;assert.equal("Currency",entry.category);assert.equal("Gold",entry.sample.Class) end end
 		assert.is_true(count>0)
 	end)
+	it("groups Expedition and Heist encounter items without reclassifying Heist gear",function()
+		local logbook={text='Show\n BaseType == "Expedition Logbook"'}
+		assert.equal("League items",library.category(logbook))
+		local example=library.sample(logbook);assert.equal("Expedition Logbooks",example.Class);assert.equal(0,example.Sockets)
+		assert.equal("Show",parser.simulate(parser.parse('Show\n Class == "Expedition Logbooks"\nHide'),example).action)
+		for _,class in ipairs({"Contracts","Blueprints"}) do
+			local rule={text='Show\n Class == "'..class..'"\n Rarity Normal Magic Rare'}
+			assert.equal("League items",library.category(rule));local sample=library.sample(rule)
+			assert.equal(class,sample.Class);assert.equal(0,sample.Sockets)
+			assert.equal("Show",parser.simulate(parser.parse(rule.text),sample).action)
+		end
+		assert.equal("League items",library.category({text='Show\n Class == "Contracts" "Blueprints"'}))
+		assert.not_equal("League items",library.category({text='Show\n Class == "Heist Cloaks"\n Rarity Rare'}))
+		assert.not_equal("League items",library.category({text='Show\n Class == "Contracts" "Heist Cloaks"'}))
+		local found={};for _,entry in ipairs(library.catalog(filters.profile("league-test","League test"))) do
+			local tag=entry.rule.text:match('%$type%-%>([%w_%-]+)%-%>([%w_%-]+)')
+			if entry.rule.title=="Expedition Logbook" then assert.equal("League items",entry.category);assert.equal("Expedition Logbooks",entry.sample.Class);found.logbook=true end
+			if tag=="heist" and (entry.rule.text:find('Class == "Contracts"',1,true) or entry.rule.text:find('Class == "Blueprints"',1,true)) then assert.equal("League items",entry.category);found.heist=true end
+		end
+		assert.is_true(found.logbook);assert.is_true(found.heist)
+	end)
 	it("tests complete socket colours entered without a separate count",function()
 		local saved;require("Classes.LootFilterControl").EditSample({BaseType="Iron Hat"},function(item) saved=item end)
 		local editor=main.popups[1].controls;editor.SocketColours:SetText("R-G B A");editor.useSample:Click()
