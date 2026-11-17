@@ -20,6 +20,13 @@ describe("Crafting action preconditions",function()
 		local custom=shallow(model);custom.byId=shallow(model.byId);custom.byId[mod.id]=shallow(model.byId[mod.id]);custom.byId[mod.id][1]="Prefixes Cannot Be Changed"
 		allowed,reason=check("locus",locked,custom);assert.is_false(allowed);assert.matches("meta%-modifier",reason)
 		ok,errorText=pcall(sim.action,custom,locked,{method="locus"},function() return 0 end);assert.is_false(ok);assert.is_truthy(errorText:find(reason,1,true))
+		local empty=shallow(model);empty.corruptions={}
+		allowed,reason=check("locus",state,empty);assert.is_false(allowed);assert.matches("no compatible",reason)
+		ok,errorText=pcall(sim.action,empty,state,{method="locus"},function() return 0.9 end);assert.is_false(ok);assert.is_truthy(errorText:find(reason,1,true))
+		local existing=copyTable(state);sim.rollCorrupted(model,existing,function() return 0 end,1)
+		local isolated=shallow(model);isolated.corruptions={{id=existing.corruptedImplicits[1].id,weight=1}}
+		allowed,reason=check("locus",existing,isolated);assert.is_false(allowed);assert.matches("no compatible",reason)
+		ok,errorText=pcall(sim.action,isolated,existing,{method="locus"},function() return 0 end);assert.is_false(ok);assert.is_truthy(errorText:find(reason,1,true))
 	end)
 	it("explains Aspect crafts without equipment or a free suffix",function()
 		local jewel=sim.model("Rarity: NORMAL\nCobalt Jewel\nItem Level: 86")

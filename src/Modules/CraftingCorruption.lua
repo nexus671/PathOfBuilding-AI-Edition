@@ -24,7 +24,7 @@ function C.extend(M,A,api)
 		if flags.prefixes or flags.suffixes or flags.attack or flags.caster then return "Locus meta-modifier interactions need additional validation" end
 		for _,entry in ipairs(state.affixes) do if entry.fractured then return "Locus influence outcomes on fractured bases need additional validation" end end
 		if model.item.synthesised or model.item.baseName=="Sacrificial Garb" then return "This special Locus transformation is not modeled" end
-		if model.item.type=="Jewel" then
+		do
 			local retained=state.corruptedImplicits or {}
 			for removed=1,(#retained==2 and 2 or 1) do
 				local groups={};for index,entry in ipairs(retained) do if #retained<2 or index~=removed then for _,group in ipairs(metadata[entry.id].groups) do groups[group]=true end end end
@@ -32,7 +32,7 @@ function C.extend(M,A,api)
 					local legal=true;for _,group in ipairs(metadata[entry.id].groups) do if groups[group] then legal=false;break end end
 					if legal then possible=true;break end
 				end
-				if not possible then return "The current corruption pool has no compatible additional jewel implicit." end
+				if not possible then return "The current corruption pool has no compatible additional implicit." end
 			end
 		end
 	end
