@@ -503,6 +503,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("gwennen");ui:choose("first",1018,"val");ui:choose("second",1019,"val")
 		local notes={};for _,row in ipairs(main.popups[1].controls.firstNote.list) do notes[#notes+1]=StripEscapes(row[1]) end
 		assert(main.popups[1].controls.simulate:IsEnabled() and table.concat(notes," "):find("unverified",1,true),"Side rerolls or their assumption were not shown");frame("crafting-gwennen-side-rerolls")
+		ui:choose("first",1020,"val");ui:choose("second",1021,"val");local tierNotes={};for _,row in ipairs(main.popups[1].controls.firstNote.list) do tierNotes[#tierNotes+1]=StripEscapes(row[1]) end
+		assert(main.popups[1].controls.simulate:IsEnabled() and table.concat(tierNotes," "):find("unverified",1,true),"Tier outcomes or their assumptions were not shown");frame("crafting-gwennen-tier")
 		ui:choose("first",1031,"val");ui:choose("second",1031,"val");assert(main.popups[1].controls.simulate:IsEnabled(),"Influence outcome is not available");frame("crafting-gwennen-influence")
 		ui:choose("first",1013,"val");local aspectNotes={};for _,row in ipairs(main.popups[1].controls.firstNote.list) do aspectNotes[#aspectNotes+1]=StripEscapes(row[1]) end
 		assert(main.popups[1].controls.simulate:IsEnabled() and table.concat(aspectNotes," "):find("unverified",1,true),"Pantheon outcome or its assumptions were not shown")

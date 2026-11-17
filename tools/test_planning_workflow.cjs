@@ -194,6 +194,9 @@ async function main(){
   assert.equal(gwennenReference.crafting.nativeEngine.gwennenReference.offers[0].id,1022);assert.match(gwennenReference.crafting.nativeEngine.gwennenReference.note,/not available crafting actions/);
   assert.equal(inspected.crafting.nativeEngine.methodWarnings.binding[0].code,'binding_legacy');
   const binding=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,action:{method:'binding'},seed:1},'crafted');assert.equal(binding.nativeCrafting.warnings[0].code,'binding_legacy');assert.equal(binding.nativeCrafting.state.rarity,'RARE');
+  const tierStart={...binding.nativeCrafting.state,affixes:[{id:'IncreasedLife2',range:0.5},{id:'FireResist2',range:0.5}]};
+  const tierChange=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:{method:'gwennen',firstOutcome:1020,secondOutcome:1020},seed:7},'crafted');
+  assert.ok(tierChange.nativeCrafting.state.affixes.some(entry=>['IncreasedLife3','FireResist3'].includes(entry.id)));assert.ok(tierChange.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_tier_assumptions'));
   const sideReroll=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1018,secondOutcome:1019},seed:7},'crafted');
   assert.ok([1018,1019].includes(sideReroll.nativeCrafting.gwennen.outcome));assert.equal(sideReroll.nativeCrafting.state.affixes.length,binding.nativeCrafting.state.affixes.length);
   assert.ok(sideReroll.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_side_reroll_assumptions'));

@@ -1,6 +1,6 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1016]=true,[1017]=true,[1018]=true,[1019]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1028]=true,[1029]=true,[1030]=true,[1031]=true,[1041]=true,[1042]=true}
+local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1016]=true,[1017]=true,[1018]=true,[1019]=true,[1020]=true,[1021]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1028]=true,[1029]=true,[1030]=true,[1031]=true,[1041]=true,[1042]=true}
 local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
@@ -14,6 +14,40 @@ local function influenceChoices(model,state)
 	assert(#(state.implicits or {})==0 and not model.unresolvedEldritch,"Influence outcome does not support Eldritch implicits")
 	local choices={};for _,key in ipairs(influenceTypes) do if model.item.base.influenceTags and model.item.base.influenceTags[key] then choices[#choices+1]=key end end
 	assert(#choices>0,"This base cannot receive a supported influence")
+	return choices
+end
+-- Restrict tier changes to ordinary families whose adjacent tier is unique
+-- in the current item's legal pool. Selection and Gwennen's tier rules remain
+-- assumptions; special or ambiguous families must not be guessed.
+local function tierChoices(model,state,upgrade)
+	local sim=require("Modules.CraftingSimulator");local metadata=require("Modules.CraftingAdvanced").data().mods
+	assert(#state.affixes>0,"No modifier can change tier")
+	local choices={}
+	local function signature(meta)
+		local groups={};for _,group in ipairs(meta.groups or {}) do groups[#groups+1]=group end;table.sort(groups)
+		local stats={};for _,stat in ipairs(meta.stats or {}) do stats[#stats+1]=stat.id end;table.sort(stats)
+		return table.concat(groups,"\0").."\1"..table.concat(stats,"\0")
+	end
+	for index,entry in ipairs(state.affixes) do
+		local meta=metadata[entry.id];local stem=entry.id:match("^(.-)%d+$")
+		assert(meta and stem and meta.groups and #meta.groups>0 and meta.stats and #meta.stats>0 and not entry.crafted and not entry.fractured and not entry.legacyLightRadius and not entry.description330,"Tier changes require recognized ordinary modifiers")
+		local input=copyTable(state);table.remove(input.affixes,index)
+		local pool=sim.pool(model,input);local current=false;local bestLevel,bestId,ties
+		for _,candidate in ipairs(pool) do
+			if candidate.id==entry.id then current=true end
+			local other=metadata[candidate.id]
+			if other and candidate.id:match("^(.-)%d+$")==stem and other.domain==meta.domain and other.generation_type==meta.generation_type and signature(other)==signature(meta) then
+				local level=other.required_level
+				if upgrade and level>meta.required_level or not upgrade and level<meta.required_level then
+					if not bestLevel or upgrade and level<bestLevel or not upgrade and level>bestLevel then bestLevel,bestId,ties=level,candidate.id,1
+					elseif level==bestLevel then ties=ties+1 end
+				end
+			end
+		end
+		assert(current,"Tier changes require a currently rollable modifier family")
+		assert(bestId and ties==1,"Every modifier needs one unambiguous adjacent tier for this experimental outcome")
+		choices[#choices+1]={index=index,id=bestId}
+	end
 	return choices
 end
 -- Enumerate removal sets without multiplying equivalent removal orders.
@@ -136,6 +170,7 @@ function G.extend(M,api)
 		local flags=api.flags(model,input)
 		assert(not (flags.prefixes or flags.suffixes or flags.attack or flags.caster or flags.explicitAttack or flags.explicitCaster or M.hasPartialLock(model,input)),"Gwennen interactions with meta modifiers are not modeled")
 		for _,entry in ipairs(input.affixes) do assert(not entry.fractured,"Gwennen interactions with fractured modifiers are not modeled") end
+		local tierCache={}
 		local function branch(id,draw,probe)
 			if id==1000 then return copyTable(input) end
 			if id==1010 or id==1011 then
@@ -171,6 +206,13 @@ function G.extend(M,api)
 				local pick=draw()*total
 				for _,entry in ipairs(pool) do pick=pick-entry.weight;if pick<0 then result.affixes[#result.affixes+1]={id=entry.id,range=M.rollRange(model.byId[entry.id],draw)};return result end end
 				error("Could not select a modifier")
+			end
+			if id==1020 or id==1021 then
+				local choices=tierCache[id] or tierChoices(model,input,id==1020);tierCache[id]=choices
+				local selected=choices[math.floor(draw()*#choices)+1]
+				local result=copyTable(input);local entry=result.affixes[selected.index]
+				entry.id=selected.id;entry.range=M.rollRange(model.byId[selected.id],draw)
+				return result
 			end
 			if id==1018 or id==1019 then
 				local result=copyTable(input);local side=id==1018 and "Prefix" or "Suffix";local count=0

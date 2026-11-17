@@ -277,6 +277,25 @@ describe("Experimental Gwennen pair",function()
 		local empty=copyTable(state);for i=#empty.affixes,1,-1 do if model.byId[empty.affixes[i].id].type=="Prefix" then table.remove(empty.affixes,i) end end
 		assert.has_error(function() sim.action(model,empty,{method="gwennen",firstOutcome=1018,secondOutcome=1000},function() return 0.1 end) end)
 	end)
+	it("models one-tier changes only for uniquely identified ordinary families",function()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
+		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}}
+		local original=copyTable(state)
+		for _,case in ipairs({{1020,"IncreasedLife3","FireResist3"},{1021,"IncreasedLife1","FireResist1"}}) do
+			local pair={method="gwennen",firstOutcome=case[1],secondOutcome=case[1]}
+			local first=sim.action(model,state,pair,function() return 0.1 end)
+			local second=sim.action(model,state,pair,function() return 0.9 end)
+			assert.equal(case[2],first.affixes[1].id);assert.equal("FireResist2",first.affixes[2].id)
+			assert.equal("IncreasedLife2",second.affixes[1].id);assert.equal(case[3],second.affixes[2].id)
+			assert.same(original,state);sim.validateState(model,first);sim.validateState(model,second)
+			local estimate=sim.calculate(raw,pair,{},state,{requirements={minAffixes=1},trials=4})
+			assert.is_true(estimate.sampled);assert.equal("gwennen_tier_assumptions",estimate.warnings[2].code)
+		end
+		local boundary=copyTable(state);boundary.affixes[1].id="IncreasedLife0"
+		assert.has_error(function() sim.action(model,boundary,{method="gwennen",firstOutcome=1021,secondOutcome=1000},function() return 0.1 end) end)
+		local crafted=copyTable(state);crafted.affixes[1].crafted=true
+		assert.has_error(function() sim.action(model,crafted,{method="gwennen",firstOutcome=1020,secondOutcome=1000},function() return 0.1 end) end)
+	end)
 	it("models random influence and counts influence goals under stated assumptions",function()
 		local model,state=item();local before=copyTable(state);local pair={method="gwennen",firstOutcome=1031,secondOutcome=1031}
 		local kinds={"shaper","elder","adjudicator","basilisk","crusader","eyrie"}
