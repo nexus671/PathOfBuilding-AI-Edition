@@ -7,10 +7,20 @@ local wholeWord={alva=true,jun=true,niko=true,kirac=true,einhar=true,shaper=true
 local searchTextCache=setmetatable({},{__mode="k"})
 local function searchText(node)
 	local parts={node.name,table.concat(node.stats," ")}
+	local base=table.concat(parts," ")
 	for _,effect in ipairs(node.variantEffects or {}) do for _,stat in ipairs(effect.stats) do parts[#parts+1]=stat end end
 	local raw=table.concat(parts," ");local cached=searchTextCache[node]
-	if not cached or cached.raw~=raw then cached={raw=raw,lower=atlas.displayStat(raw):lower()};searchTextCache[node]=cached end
-	return cached.lower
+	if not cached or cached.raw~=raw or cached.base~=base then
+		local kind
+		for _,stat in ipairs(node.stats) do
+			local line=atlas.displayStat(stat):lower()
+			if line:find("threads found in your maps cannot be of type",1,true) then kind="exclude";break end
+			if line:find("increased chance for threads in your maps to be of type",1,true) then kind="increase";break end
+		end
+		local lower=atlas.displayStat(raw):lower()
+		cached={raw=raw,base=base,lower=lower,classification=kind and atlas.displayStat(base):lower() or lower,threadKind=kind};searchTextCache[node]=cached
+	end
+	return cached.lower,cached.classification,cached.threadKind
 end
 local function letter(byte) return byte and byte>=97 and byte<=122 end
 local function matches(text,name)
@@ -33,15 +43,10 @@ end
 -- These choices name Thread types, not the associated encounter mechanics.
 -- Keep all variant text searchable, but exclude it when classifying the node.
 local function threadKind(node)
-	for _,stat in ipairs(node.stats or {}) do
-		local text=atlas.displayStat(stat):lower()
-		if text:find("threads found in your maps cannot be of type",1,true) then return "exclude" end
-		if text:find("increased chance for threads in your maps to be of type",1,true) then return "increase" end
-	end
+	local _,_,kind=searchText(node);return kind
 end
 local function mechanicText(node)
-	if threadKind(node) then return atlas.displayStat(node.name.." "..table.concat(node.stats," ")):lower() end
-	return searchText(node)
+	local _,classification=searchText(node);return classification
 end
 function M.mechanic(node)
 	return primaryMechanic(mechanicText(node))
@@ -93,7 +98,7 @@ function M.results(plan,query,mechanic,avoid)
 	local costs=M.costs(plan,avoid);local tree=atlas.tree(plan.version);local entries={}
 	query=(query or ""):lower()
 	for id,node in pairs(tree.nodes) do if id~=tree.start then
-		local text=searchText(node);local classification=mechanicText(node)
+		local text,classification=searchText(node)
 		if (mechanic==nil or mechanic=="All" or mechanic=="Maps" and primaryMechanic(classification)=="Maps" or mechanic~="Maps" and matches(classification,mechanic)) and text:find(query,1,true) then
 			entries[#entries+1]={id=id,node=node,cost=costs[id]}
 		end

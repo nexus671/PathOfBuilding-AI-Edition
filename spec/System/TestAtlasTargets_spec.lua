@@ -53,6 +53,16 @@ describe("Desired Atlas routes",function()
 			assert.is_true(breachRoute)
 		end
 	end)
+	it("invalidates Thread classification when base and choice text change",function()
+		local strategy=require("Modules.AtlasStrategy")
+		local node={name="Test",stats={"Threads found in your Maps cannot be of type"},variantEffects={{stats={"Breach"}}}}
+		assert.equal("Threads",strategy.mechanic(node));assert.is_false(strategy.hasMechanic(node,"Breach"))
+		-- The combined search text is unchanged, but the semantic boundary moved.
+		node.stats={"Threads found in your Maps"};node.variantEffects[1].stats={"cannot be of type Breach"}
+		assert.is_true(strategy.hasMechanic(node,"Breach"))
+		node.variantEffects[1].stats={"cannot be of type Ritual"}
+		assert.is_false(strategy.hasMechanic(node,"Breach"));assert.is_true(strategy.hasMechanic(node,"Ritual"))
+	end)
 	it("classifies both Secrets Unveiled choices as Betrayal",function()
 		local strategy=require("Modules.AtlasStrategy");local node=atlas.tree("3.30.0-preview").nodes[45404]
 		local p=atlas.connect(plan(),{node.id});local counts={}

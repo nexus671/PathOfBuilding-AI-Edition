@@ -292,3 +292,9 @@ passive-node input test exposed an automatic-level ordering issue: the displayed
 level could advance after the calculation captured the prior level. Recalculation
 now resolves the estimate first and rechecks it if the output changes extra
 passive points. Tests compare deferred and synchronous results after a click.
+
+Atlas search now reuses its cached mechanic classification as well as decoded
+text. In paired headless batches of 50 searches across All, Breach and Threads
+on the 3.29.3 and 3.30 preview trees, result IDs and ordering matched. Four
+timed batches per case took 52-108 ms after the change and 130-190 ms before.
+These bounded measurements do not establish native desktop responsiveness.
