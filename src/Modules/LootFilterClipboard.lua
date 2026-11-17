@@ -54,7 +54,23 @@ function M.parse(raw,area)
 	for key,field in pairs({ItemLevel="Item Level",Quality="Quality",StackSize="Stack Size",MapTier="Map Tier"}) do
 		local value=tonumber(raw:match(field..":%s*([%+%-]?%d+)"));assert(not value or value==value and math.abs(value)<=1e9,"Invalid clipboard "..field);item[key]=value
 	end
-	if class and class:find("Gems",1,true) then item.GemLevel=tonumber(raw:match("\nLevel:%s*(%d+)")) end
+	if class and class:find("Gems",1,true) then
+		item.GemLevel=tonumber(raw:match("\nLevel:%s*(%d+)"))
+		-- Only infer a transfigured base when the bundled gem data identifies
+		-- one unambiguous ordinary gem with a matching displayed-name prefix.
+		local id=data.gemForBaseName[item.BaseType:lower()];local gem=id and data.gems[id]
+		if gem and not gem.vaalGem then
+			if id:match("Alt[XYZ]$") then
+				local found,ambiguous
+				for _,candidate in pairs(data.gemsByGameId[gem.gameId] or {}) do
+					if not candidate.vaalGem and not candidate.id:match("Alt[XYZ]$") and gem.name:sub(1,#candidate.name+4)==candidate.name.." of " then
+						if found and found~=candidate.name then ambiguous=true else found=candidate.name end
+					end
+				end
+				if found and not ambiguous then item.TransfiguredGem=found end
+			elseif id==gem.gameId then item.TransfiguredGem=false end
+		end
+	end
 	local sockets=raw:match("\nSockets:[ \t]*([^\n]*)")
 	local noSockets={ ["Stackable Currency"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
 	if sockets~=nil or noSockets[class] then

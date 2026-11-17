@@ -100,4 +100,16 @@ describe("Copied loot-filter items",function()
 			assert.equal("matched",parser.simulate(parser.parse('Show\n Class == "'..class..'"\n Quality >= 1'),item).status)
 		end
 	end)
+	it("recognizes known copied transfigured gems while leaving unknown variants uncertain",function()
+		local function gem(name) return clipboard.parse("Item Class: Active Skill Gems\nRarity: Gem\n"..name.."\n--------\nLevel: 20") end
+		local transfigured=gem("Fireball of Radiation");assert.equal("Fireball",transfigured.TransfiguredGem)
+		assert.equal("Hide",parser.simulate(parser.parse('Hide\n TransfiguredGem "Fireball"\nShow'),transfigured).action)
+		assert.equal("Hide",parser.simulate(parser.parse("Hide\n TransfiguredGem True\nShow"),transfigured).action)
+		local ordinary=gem("Fireball");assert.is_false(ordinary.TransfiguredGem)
+		assert.equal("Show",parser.simulate(parser.parse("Hide\n TransfiguredGem True\nShow"),ordinary).action)
+		local unknown=gem("Fireball of an Unknown Future Variant");assert.is_nil(unknown.TransfiguredGem)
+		assert.equal("unknown",parser.simulate(parser.parse("Hide\n TransfiguredGem True\nShow"),unknown).status)
+		local vaal=gem("Vaal Fireball");assert.is_nil(vaal.TransfiguredGem)
+	end)
+
 end)

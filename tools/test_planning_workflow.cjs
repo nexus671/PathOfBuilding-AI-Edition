@@ -707,6 +707,9 @@ async function main(){
   const copiedProfile={...lootProfile,rules:[{id:'currency',title:'Currency dimensions',text:'Show\n BaseType == "Chaos Orb"\n DropLevel = 12\n Width = 1\n BaseDefencePercentile = 0',enabled:true}]};
   const copied=await queued('test_loot_filter',{baseRevision:context.revision,profile:copiedProfile,itemText:'Item Class: Stackable Currency\nRarity: Currency\nChaos Orb\n--------\nStack Size: 7/20\n--------',areaLevel:83},'tested');
   assert.equal(copied.result.action,'Show');assert.equal(copied.sample.DropLevel,12);assert.equal(copied.sample.Width,1);assert.equal(copied.sample.AreaLevel,83);assert.equal(copied.sample.BaseDefencePercentile,0);
+  const gemProfile={...lootProfile,template:'Show',rules:[{id:'gem',title:'Transfigured gem',text:'Hide\n TransfiguredGem "Fireball"',enabled:true}]};
+  const copiedGem=await queued('test_loot_filter',{baseRevision:context.revision,profile:gemProfile,itemText:'Item Class: Active Skill Gems\nRarity: Gem\nFireball of Radiation\n--------\nLevel: 20'},'tested');
+  assert.equal(copiedGem.sample.TransfiguredGem,'Fireball');assert.equal(copiedGem.result.action,'Hide');
   const page=await queued('test_loot_filter_examples',{baseRevision:context.revision,profile:generated.profile,sampleSetId:'campaign-drop',offset:0,limit:1},'tested');
   assert.equal(page.examples.total,1);assert.equal(page.examples.results[0].index,0);assert.equal(page.examples.results[0].baseType,'Iron Hat');assert.equal(page.examples.nextOffset,undefined);
   const sampleProfile={...generated.profile,sampleSets:[{id:'mixed',title:'Mixed',samples:[{BaseType:'Iron Hat'},{BaseType:'Iron Ring'},{BaseType:'Iron Hat'}]}]};
