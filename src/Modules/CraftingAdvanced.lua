@@ -445,6 +445,18 @@ function A.extend(M,api)
 			if #ukatoaChoices(model,side,tier)==0 then return "The amulet has an incomplete Eldritch modifier pool." end
 		end end
 	end
+	M.methodChecks.awakener=function(model,state)
+		if state.rarity~="RARE" or #(state.influences or {})~=1 or fractured(state) then return "Awakener requires a rare item with one influence and no fractured modifiers." end
+		for _,entry in ipairs(state.affixes) do if influenced(model,entry.id) then return end end
+		return "The target needs at least one influenced modifier."
+	end
+	function M.awakenerDonorReason(model,state,donor)
+		local other=donor.initial
+		if model.item.type~=donor.item.type or state.rarity~="RARE" or other.rarity~="RARE" then return "Awakener inputs must be rare items of the same item class" end
+		if #(state.influences or {})~=1 or #(other.influences or {})~=1 or state.influences[1]==other.influences[1] or fractured(state) or fractured(other) then return "Awakener requires different single influences and no fractured mods" end
+		local found=false;for _,entry in ipairs(other.affixes) do if influenced(donor,entry.id) then found=true;break end end
+		if not found then return "Each item needs an influenced modifier" end
+	end
 	M.methodChecks.dominance=function(model,state)
 		if not contains({"Helmet","Body Armour","Gloves","Boots"},model.item.type) or state.rarity~="RARE" then return "Dominance requires rare influenced armour" end
 		local count=0;for _,entry in ipairs(state.affixes) do if influenced(model,entry.id) then count=count+1 end end
@@ -802,8 +814,7 @@ function A.extend(M,api)
 		elseif method == "awakener" then
 			assert(type(action.donorItem) == "string" and #action.donorItem <= 24000,"Paste an influenced donor item")
 			local donor=M.model(action.donorItem); local other=donor.initial
-			assert(model.item.type == donor.item.type and state.rarity == "RARE" and other.rarity == "RARE","Awakener inputs must be rare items of the same item class")
-			assert(#state.influences == 1 and #other.influences == 1 and state.influences[1] ~= other.influences[1] and not fractured(state) and not fractured(other),"Awakener requires different single influences and no fractured mods")
+			local reason=M.awakenerDonorReason(model,state,donor);assert(not reason,reason)
 			local function select(from,source)
 				local entries={}; for _,entry in ipairs(source.affixes) do if influenced(from,entry.id) then entries[#entries+1]=entry end end
 				assert(#entries > 0,"Each item needs an influenced modifier"); return copyTable(entries[math.floor(random()*#entries)+1])

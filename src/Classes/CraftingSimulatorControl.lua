@@ -358,7 +358,10 @@ function Panel.Open(build,project,layout)
 			button(popup,"use",16,260,180,"Use donor",function()
 				local craft={method=method,donorItem=popup.donor.buf}
 				local donor
-				if method=="recombine" or method=="recombine_predictable" then
+				if method=="awakener" then
+					donor=simulator.model(popup.donor.buf)
+					local reason=simulator.awakenerDonorReason(simulator.context(model,state),state,donor);assert(not reason,reason)
+				elseif method=="recombine" or method=="recombine_predictable" then
 					donor=simulator.model(popup.donor.buf)
 					assert(simulator.sameRecombinationClass(simulator.context(model,state).item,donor.item),"Recombination requires the same item class")
 					assert(not donor.initial.corrupted and not donor.initial.mirrored and not donor.item.synthesised,"Donor must be uncorrupted, non-mirrored and non-synthesised")
@@ -376,7 +379,7 @@ function Panel.Open(build,project,layout)
 					craft.selectedMods=selected;craft.reportedSuccessChance=assert(tonumber(popup.chance.buf),"Enter the game's displayed success percentage")
 					assert(craft.reportedSuccessChance >= 0 and craft.reportedSuccessChance <= 100,"Success percentage must be between 0 and 100")
 				end
-				configured[method]=craft;changed();main:ClosePopup()
+				configured[method]=craft;changed();main:ClosePopup();refresh()
 			end)
 		else error("Select a fossil, Awakener's Orb or recombination first") end
 		button(popup,"close",508,260,116,"Cancel",function() main:ClosePopup() end)

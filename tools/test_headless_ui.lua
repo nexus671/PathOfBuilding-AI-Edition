@@ -459,6 +459,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("paletteUse");ui:click("item");assert(main.popups[1].controls.intro.label:find("Applied Bestiary: maximum links",1,true));frame("crafting-beast-linked");ui:click("close")
 	end
 	do
+		local raw="Rarity: NORMAL\nGlorious Plate\nItem Level: 86";local sim=require("Modules.CraftingSimulator");local model=sim.model(raw);local rare=copyTable(model.initial);rare.rarity="RARE"
+		local target=sim.perform(raw,{method="influence_exalt",influence="shaper"},43,rare).state
+		local donor=sim.perform(raw,{method="influence_exalt",influence="elder"},44,rare).itemText
+		require("Classes.CraftingSimulatorControl").Open(build,{id="awakener-donor-ui",title="Influenced armour",slot="Body Armour",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(target)})
+		ui:click("settings");ui:text("paletteSearch","Awakener");ui:click("paletteUse");assert(not main.popups[1].controls.apply:IsEnabled(),"Awakener allowed without a donor")
+		assert(main.popups[1].controls.apply:GetProperty("tooltipText"):find("donor",1,true),"Missing donor lacks an explanation");frame("crafting-awakener-donor-required")
+		ui:click("tab_settings");ui:click("configure");ui:text("donor",donor);ui:click("use");assert(main.popups[1].controls.apply:IsEnabled(),"Compatible donor did not enable Awakener");ui:click("close")
+	end
+	do
 		local raw="Rarity: NORMAL\nPrismatic Tincture\nItem Level: 86";local sim=require("Modules.CraftingSimulator")
 		local state=sim.perform(raw,{method="transmute"},1).state
 		require("Classes.CraftingSimulatorControl").Open(build,{id="kishara-profile-ui",title="Tincture",slot="Tincture 1",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(state)})

@@ -225,7 +225,7 @@ function M.available(method,state,model)
 end
 function M.hint(method,state,model,craft)
 	local available,reason=M.available(method,state,model)
-	if available and method=="ducat_kishara" then
+	if available then
 		local configuration=simulator.configurationReason(model,state,craft or {method=method})
 		if configuration then return configuration end
 	end

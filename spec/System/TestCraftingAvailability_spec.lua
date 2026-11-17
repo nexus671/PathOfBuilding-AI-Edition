@@ -98,4 +98,32 @@ describe("Crafting action preconditions",function()
 		controls.page:SelByValue("Emulate item");controls.page.selFunc();controls.apply:Click();assert.is_true(controls.undo:IsEnabled());main.popups={}
 	end)
 
+	it("checks Awakener targets and asks for a donor before execution",function()
+		local raw="Rarity: NORMAL\nGlorious Plate\nItem Level: 86";local model=sim.model(raw)
+		local rare=copyTable(model.initial);rare.rarity="RARE"
+		local allowed,reason=check("awakener",rare,model);assert.is_false(allowed);assert.matches("one influence",reason)
+		local target=sim.perform(raw,{method="influence_exalt",influence="shaper"},43,rare).state
+		local donorState=sim.perform(raw,{method="influence_exalt",influence="elder"},44,rare).state
+		assert.is_true(check("awakener",target,model))
+		local empty=copyTable(target);empty.affixes={};allowed,reason=check("awakener",empty,model);assert.is_false(allowed);assert.matches("influenced modifier",reason)
+		local fractured=copyTable(target);fractured.affixes[1].fractured=true;allowed,reason=check("awakener",fractured,model);assert.is_false(allowed);assert.matches("fractured",reason)
+		assert.matches("donor",sim.configurationReason(model,target,{method="awakener"}))
+		local catalog=sim.catalog(raw,"",5,target);local row
+		for _,entry in ipairs(catalog.methodAvailability) do if entry.method=="awakener" then row=entry end end
+		assert.is_true(row.available);assert.matches("donor",row.configurationRequired)
+		local sameText=sim.toItem(model,target).raw;local same=sim.model(sameText);assert.matches("different single influences",sim.awakenerDonorReason(model,target,same))
+		assert.matches("different single influences",sim.configurationReason(model,target,{method="awakener",donorItem=sameText}))
+		assert.matches("could not be read",sim.configurationReason(model,target,{method="awakener",donorItem="invalid item"}))
+		local donor=sim.toItem(model,donorState).raw;local donorModel=sim.model(donor);assert.is_nil(sim.awakenerDonorReason(model,target,donorModel))
+		local craft={method="awakener",donorItem=donor}
+		assert.is_nil(sim.configurationReason(model,target,craft));local result=sim.perform(raw,craft,1,target);assert.equal(2,#result.state.influences)
+		local project={id="awakener-target",title="Influenced armour",slot="Body Armour",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(target)}
+		local controls=require("Classes.CraftingSimulatorControl").Open(build,project)
+		controls.method:SelByValue("awakener","val");controls.method.selFunc();assert.is_false(controls.apply:IsEnabled());assert.matches("donor",controls.apply.tooltipText())
+		controls.page:SelByValue("Craft settings");controls.page.selFunc();controls.configure:Click();local popup=main.popups[1].controls;popup.donor:SetText(donor);popup.use:Click()
+		assert.is_true(controls.apply:IsEnabled());local hint={};for _,line in ipairs(controls.actionHint.list) do hint[#hint+1]=line[1] end;assert.not_matches("Configure a donor",table.concat(hint," "))
+		controls.page:SelByValue("Emulate item");controls.page.selFunc();controls.apply:Click();assert.is_true(controls.undo:IsEnabled());main.popups={}
+		assert.matches("donor",sim.configurationReason(model,rare,{method="recombine"}))
+	end)
+
 end)

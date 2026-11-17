@@ -931,6 +931,22 @@ function M.capacities(model,state)
  return {Prefix=prefix,Suffix=suffix,total=prefix+suffix}
 end
 require("Modules.CraftingAdvanced").extend(M,{counts=counts,flags=flags,clear=clear,protected=protected,selectPartialLocks=selectPartialLocks,clearPartialLocks=clearPartialLocks,add=add,integer=integer,priceKey=priceKey})
+local allflameConfigurationReason=M.configurationReason
+local cachedDonorText,cachedDonorModel
+function M.configurationReason(model,state,craft)
+	if craft.method=="awakener" or craft.method=="recombine" or craft.method=="recombine_predictable" then
+		if type(craft.donorItem)~="string" or not craft.donorItem:match("%S") then return "Configure a donor item in Craft settings." end
+		if craft.method=="awakener" then
+			if cachedDonorText~=craft.donorItem then
+				cachedDonorText=craft.donorItem;local ok,donor=pcall(M.model,craft.donorItem);cachedDonorModel=ok and donor or nil
+			end
+			if not cachedDonorModel then return "The donor item could not be read. Choose a valid donor in Craft settings." end
+			local reason=M.awakenerDonorReason(M.context(model,state),state,cachedDonorModel)
+			if reason then return reason..". Update the donor in Craft settings." end
+		end
+	end
+	return allflameConfigurationReason(model,state,craft)
+end
 require("Modules.CraftingCalculator").extend(M)
 do
 	local calculate=M.calculate

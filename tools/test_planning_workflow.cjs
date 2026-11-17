@@ -263,6 +263,16 @@ async function main(){
   assert.match(inspected.crafting.nativeEngine.methodAvailabilityNote,/further restrictions/);
   const modifier=inspected.crafting.nativeEngine.modifiers[0].id;
   const bodyRaw='Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20\nSockets: W W W W W W';
+  const rareBase={rarity:'RARE',affixes:[],influences:[]};
+  const plainInfluence=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,initialState:rareBase,limit:5},'inspected');
+  const plainAwakener=plainInfluence.crafting.nativeEngine.methodAvailability.find(row=>row.method==='awakener');
+  assert.equal(plainAwakener.available,false);assert.match(plainAwakener.unavailableReason,/one influence/);
+  const shaperTarget=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:bodyRaw,initialState:rareBase,action:{method:'influence_exalt',influence:'shaper'},seed:43},'crafted');
+  const elderDonor=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:bodyRaw,initialState:rareBase,action:{method:'influence_exalt',influence:'elder'},seed:44},'crafted');
+  const targetInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,initialState:shaperTarget.nativeCrafting.state,limit:5},'inspected');
+  const targetAwakener=targetInspection.crafting.nativeEngine.methodAvailability.find(row=>row.method==='awakener');assert.equal(targetAwakener.available,true);assert.match(targetAwakener.configurationRequired,/donor/);
+  const awakened=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:bodyRaw,initialState:shaperTarget.nativeCrafting.state,action:{method:'awakener',donorItem:elderDonor.nativeCrafting.itemText},seed:1},'crafted');
+  assert.equal(awakened.nativeCrafting.state.influences.length,2);
   const hollowAction={method:'fossil',fossils:['Metadata/Items/Currency/CurrencyDelveCraftingAbyss'],untilRequirements:{minAbyssSockets:1}};
   const hollowPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:bodyRaw,recipe:{steps:[hollowAction],targets:[],requirements:{minAbyssSockets:1}},options:{trials:4,maxActions:1}},'crafted');
   assert.equal(hollowPlan.nativeCrafting.successes,4);assert.equal(hollowPlan.nativeCrafting.warnings[0].code,'abyss_socket_layout');assert.equal(hollowPlan.nativeCrafting.sampleState.sockets.filter(s=>s.color==='A').length,1);
