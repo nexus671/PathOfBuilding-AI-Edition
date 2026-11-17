@@ -1558,6 +1558,13 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(require("Modules.AtlasTargets").jobs[build].result,require("Modules.AtlasTargets").jobs[build].error)
 	frame("atlas-desired-preview");local routeDetails={};for _,row in ipairs(main.popups[1].controls.details.list) do routeDetails[#routeDetails+1]=row[1] or "" end
 	assert(StripEscapes(table.concat(routeDetails," ")):find("Heuristic route:",1,true),"Larger Atlas route did not disclose its heuristic")
+	local beforeRoute=build.planningWorkspace.cache.atlas.layout.snapshot()
+	ui:click("targetShowTree");ui:frame();local overlay=build.planningWorkspace.controls.canvas.routeOverlay
+	assert(overlay and next(overlay.added),"Route preview did not show added nodes")
+	assert(tableDeepEquals(beforeRoute,build.planningWorkspace.cache.atlas.layout.snapshot()),"Showing a route changed the draft")
+	frame("atlas-route-tree-preview");local previousTitle=build.planningWorkspace.controls.title.buf
+	ui:text("title","Temporary route title");assert(not build.planningWorkspace.controls.canvas.routeOverlay,"Editing the plan retained a stale route overlay")
+	ui:text("title",previousTitle);ui:click("targets");ui:frame()
 	ui:click("targetApply");ui:click("keep");frame("atlas-desired-kept")
 	do
 		local p={id="analysis-lifecycle",title="Resumable calculation",slot="Body Armour",startingItem="Rarity: NORMAL\nPlate Vest\nItem Level: 86",goals={},steps={},preferredMethod="alchemy",nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}},priceBook={currency="chaos",source="Lifecycle quotes",quotedAt=1700000000,values={["Metadata/Items/Currency/CurrencyUpgradeToRare"]=3}}}

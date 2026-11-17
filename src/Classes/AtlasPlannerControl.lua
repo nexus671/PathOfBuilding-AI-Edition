@@ -70,12 +70,15 @@ function Canvas:Draw()
 	local comparison=self.comparison
 	local avoided={}; for _,id in ipairs(self.avoided and self.avoided() or {}) do avoided[id]=true end
 	for _,id in ipairs(self.selected().nodes) do allocated[id]=true end
-	local planned=copyTable(allocated);for id in pairs(self.preview or {}) do planned[id]=true end
+	local routeOverlay=self.routeOverlay
+	local planned=copyTable(allocated);if routeOverlay then for id in pairs(routeOverlay.removed) do planned[id]=nil end end
+	for id in pairs(routeOverlay and routeOverlay.added or self.preview or {}) do planned[id]=true end
 	for id,node in pairs(self.tree.nodes) do
 		local a,b=self:Position(node)
 		for _,other in ipairs(node.links) do if id < other then
 			local c,d=self:Position(self.tree.nodes[other])
-			if allocated[id] and allocated[other] then
+			if routeOverlay and (routeOverlay.removed[id] or routeOverlay.removed[other]) and allocated[id] and allocated[other] then SetDrawColor(0.9,0.3,0.3)
+			elseif allocated[id] and allocated[other] then
 				if comparison and (not comparison.before[id] or not comparison.before[other]) then SetDrawColor(0.3,0.95,0.5) else SetDrawColor(0.75,0.61,0.25) end
 			elseif comparison and comparison.before[id] and comparison.before[other] then SetDrawColor(0.9,0.3,0.3)
 			elseif planned[id] and planned[other] then SetDrawColor(0.25,0.8,0.75) else SetDrawColor(0.30,0.37,0.47) end
@@ -98,10 +101,10 @@ function Canvas:Draw()
 			local active=allocated[id]
 			SetDrawColor(1,1,1);self.art:draw(kind..(active and "Active" or "Inactive"),node.icon or "Wormhole",a,b,self.scale*2)
 			if node.kind == "small" then frame=active and "PSSkillFrameActive" or "PSSkillFrame" else frame=frame..(active and "Allocated" or "Unallocated") end
-			if avoided[id] or comparison and comparison.before[id] and not allocated[id] then SetDrawColor(1,0.25,0.25)
-			elseif desired[id] then SetDrawColor(0.2,1,0.85) else SetDrawColor(0.9,0.9,0.9) end
+			if avoided[id] or routeOverlay and routeOverlay.removed[id] or comparison and comparison.before[id] and not allocated[id] then SetDrawColor(1,0.25,0.25)
+			elseif desired[id] or routeOverlay and routeOverlay.added[id] then SetDrawColor(0.2,1,0.85) else SetDrawColor(0.9,0.9,0.9) end
 			local highlight=node.kind=="keystone" and "KeystoneFrameCanAllocate" or node.kind=="notable" and "NotableFrameCanAllocate" or node.kind=="gateway" and "WormholeFrameHighlight" or "PSSkillFrameHighlighted"
-			self.art:draw("frame",(self.focus == id or desired[id] or self.preview and self.preview[id] or self.matches and self.matches[id]) and highlight or frame,a,b,self.scale*2)
+			self.art:draw("frame",(self.focus == id or desired[id] or routeOverlay and (routeOverlay.added[id] or routeOverlay.removed[id]) or not routeOverlay and self.preview and self.preview[id] or self.matches and self.matches[id]) and highlight or frame,a,b,self.scale*2)
 			if id==self.tree.start then self.art:draw("startNode","AtlasPassiveSkillScreenStart",a,b,self.scale*2) end
 		end
 		local dist=(cursorX-x-a)^2+(cursorY-y-b)^2
@@ -128,6 +131,7 @@ function Canvas:Draw()
 		for _,stat in ipairs(atlas.nodeStats(self.selected(),node)) do self.tooltip:AddLine(14,stat) end
 		if node.variantEffects then self.tooltip:AddLine(14,"Multiple effects: select node to review") end
 		if desired[self.hover] then self.tooltip:AddLine(14,"Desired route target") end
+		if routeOverlay and routeOverlay.added[self.hover] then self.tooltip:AddLine(14,"Preview: allocate this node") elseif routeOverlay and routeOverlay.removed[self.hover] then self.tooltip:AddLine(14,"Preview: refund this node") end
 		self.tooltip:AddLine(14,"Shift-click: toggle desired target")
 		self.tooltip:AddLine(14,allocated[self.hover] and "Double click to remove this branch" or "Double click to connect this node")
 		SetDrawLayer(nil,100);self.tooltip:Draw(cursorX,cursorY,1,1,main.viewPort);SetDrawLayer(nil,0)
@@ -307,7 +311,11 @@ function Panel.Open(build,source,layout)
 	end
 	local function snapshot() return {plan=copyTable(draft),avoided=copyTable(avoided)} end
 	local function remember() undo[#undo+1]=snapshot();if #undo>40 then table.remove(undo,1) end;redo={} end
-	local function change(nextPlan) exitGrantRoute();remember();draft=atlas.validate(nextPlan);avoided=copyTable(draft.avoided or {});controls.canvas.comparison=nil;ui.draft(build,"atlas");syncEditors();refresh() end
+	local function clearRouteOverlay()
+		if controls.canvas.routeOverlay and controls.help then controls.help.label="^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect" end
+		controls.canvas.routeOverlay=nil
+	end
+	local function change(nextPlan) clearRouteOverlay();exitGrantRoute();remember();draft=atlas.validate(nextPlan);avoided=copyTable(draft.avoided or {});controls.canvas.comparison=nil;ui.draft(build,"atlas");syncEditors();refresh() end
 	local function chooseEffect()
 		local node=assert(controls.canvas.tree.nodes[controls.canvas.focus],"Select a node first");local entries={}
 		for i,effect in ipairs(node.variantEffects or {}) do
@@ -328,8 +336,8 @@ function Panel.Open(build,source,layout)
 			main:OpenConfirmPopup("Remove Atlas branch",string.format("Removing this node also removes %d disconnected nodes.\n%d nodes will be unallocated. You can undo this change.",count-1,count),"Remove",function() change(after) end)
 		else change(after) end
 	end)
-	controls.undo=button(16,height-86,64,"Undo",function() assert(#undo>0,"No changes to undo");redo[#redo+1]=snapshot();local saved=table.remove(undo);draft=saved.plan;avoided=saved.avoided;syncEditors();refresh() end)
-	controls.redo=button(86,height-86,64,"Redo",function() assert(#redo>0,"No changes to redo");undo[#undo+1]=snapshot();local saved=table.remove(redo);draft=saved.plan;avoided=saved.avoided;syncEditors();refresh() end)
+	controls.undo=button(16,height-86,64,"Undo",function() clearRouteOverlay();exitGrantRoute();assert(#undo>0,"No changes to undo");redo[#redo+1]=snapshot();local saved=table.remove(undo);draft=saved.plan;avoided=saved.avoided;syncEditors();refresh() end)
+	controls.redo=button(86,height-86,64,"Redo",function() clearRouteOverlay();exitGrantRoute();assert(#redo>0,"No changes to redo");undo[#undo+1]=snapshot();local saved=table.remove(redo);draft=saved.plan;avoided=saved.avoided;syncEditors();refresh() end)
 	controls.grantPrevious=button(16,height-86,64,"Prev",function() showGrantStep(grantIndex-1) end)
 	controls.grantNext=button(86,height-86,64,"Next",function() showGrantStep(grantIndex+1) end)
 	controls.grantExit=button(338,height-86,86,"Exit route",function() exitGrantRoute();refresh() end)
@@ -400,12 +408,19 @@ function Panel.Open(build,source,layout)
 		browser.Open("Compare Atlas routes",entries,{action="Use route",choose=function(entry) change(entry.plan) end})
 	end)
 	controls.targets=button(522,height-86,100,"Targets",function()
-		require("Classes.AtlasTargetsControl").Open(build,{current=current,change=change,selected=function() return controls.canvas.focus end,mode=function(value)
+		clearRouteOverlay();exitGrantRoute()
+		require("Classes.AtlasTargetsControl").Open(build,{current=current,change=change,selected=function() return controls.canvas.focus end,showTree=function(plan)
+			local before,after={},{};for _,id in ipairs(current().nodes) do before[id]=true end;for _,id in ipairs(plan.nodes) do after[id]=true end
+			local added,removed={},{};for id in pairs(after) do if not before[id] then added[id]=true end end;for id in pairs(before) do if not after[id] then removed[id]=true end end
+			controls.canvas.comparison=nil;controls.canvas.routeOverlay={added=added,removed=removed}
+			controls.help.label="^7"..ui.fit("Preview: teal adds | red refunds or avoided | Targets to apply",graphWidth,14)
+		end,mode=function(value)
 			if value then controls.canvas.intentMode=value;controls.help.label="^7"..ui.fit(value=="Select nodes" and "Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect" or "Click nodes to "..value:lower().." | Targets: return to selection",graphWidth,14) end
 			return controls.canvas.intentMode or "Select nodes"
 		end})
 	end)
 	controls.tools=button(430,height-86,86,"Plan tools",function()
+		clearRouteOverlay();exitGrantRoute()
 		local entries={
 			{id="presets",label="Strategy starting points",details={"Connect up to three nearby unallocated notables for a mechanic.","Generated from this version's bundled tree, within your budget.","Editable starting routes, not recommendations for farming profit."}},
 			{id="compare",label="Compare with a saved plan",details={"Review added nodes, removed nodes and changed bonus lines.","Both plans must use the same Atlas version."}},
@@ -489,9 +504,9 @@ function Panel.Open(build,source,layout)
 		if pointUsage and pointUsage.used>0 then SetDrawColor("^xC8A569");DrawImage(nil,x,y,graphWidth*math.min(1,pointUsage.used/math.max(1,pointUsage.budget+pointUsage.bonus)),3) end
 	end
 	ui.tabs(controls,controls.page,{{"tab_tree","Tree","Tree"},{"tab_notes","Notes & sharing","Plan & notes"}},side,64,260)
-	controls.title.changeFunc=function() ui.draft(build,"atlas");refresh() end
-	controls.notes.changeFunc=function() ui.draft(build,"atlas") end
-	controls.budget.changeFunc=function() exitGrantRoute();ui.draft(build,"atlas");refresh() end
+	controls.title.changeFunc=function() clearRouteOverlay();ui.draft(build,"atlas");refresh() end
+	controls.notes.changeFunc=function() clearRouteOverlay();ui.draft(build,"atlas") end
+	controls.budget.changeFunc=function() clearRouteOverlay();exitGrantRoute();ui.draft(build,"atlas");refresh() end
 	controls.budget.enterFunc=function() safely(function() local nextPlan=current();if nextPlan.budget~=draft.budget then change(nextPlan) end end) end
 	controls.budget.tooltipText="Press Enter to keep this budget in change history."
 	if layout then

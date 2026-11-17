@@ -60,6 +60,9 @@ function M.Open(build,options)
 	end
 	button("targetApply",16,h-42,220,"Use preview",function() local plan=targets.apply(build,options.current());options.change(plan);targets.jobs[build]=nil;main:ClosePopup() end)
 	c.targetApply.enabled=function() return targets.jobs[build] and targets.jobs[build].result~=nil and previewCurrent end
+	button("targetShowTree",248,h-42,180,"Show on tree",function() local plan=targets.apply(build,options.current());options.showTree(plan);main:ClosePopup() end)
+	c.targetShowTree.enabled=c.targetApply.enabled
+	c.targetShowTree.tooltipText="Review added and refunded paths on the tree. The draft is unchanged."
 	button("close",w-156,h-42,140,"Back to tree",function() main:ClosePopup() end)
 	ui.style(c,{targetApply=true});refresh();main:OpenPopup(w,h,"Atlas desired nodes and routes",c,nil,nil,"close")
 end

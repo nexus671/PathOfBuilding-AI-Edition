@@ -37,6 +37,8 @@ If an imported stage references a missing, incompatible or cyclic previous stage
 
 **Copy plan** exports JSON with the exact patch version, point budget, allocations and notes. **Paste plan** imports that JSON into the current draft. Review it before keeping it.
 
+In **Targets**, calculate a route and choose **Show on tree** to review its additions in teal and refunds in red. Avoided nodes are also red. The draft stays unchanged. Open **Targets** again to apply the preview or return to the current tree; editing the plan clears the overlay.
+
 **Official link** copies a version-six `pathofexile.com/fullscreen-atlas-skill-tree/` URL. These URLs do not contain a patch version. For an official URL import, first select its original patch and budget, then use **Paste plan**. The importer rejects unknown, disconnected and over-budget nodes. Node IDs can survive between patches while changing meaning, so a successful import is not proof that the selected patch is correct. Use our JSON format for reliable versioned sharing.
 
 Other planners' proprietary links, old URL formats and shortened links are not imported. Export an official Atlas URL from that planner first. The official website may display a different patch from an older saved plan.
