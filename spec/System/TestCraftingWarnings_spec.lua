@@ -2,6 +2,18 @@ describe("Crafting result model notes",function()
 	local sim=require("Modules.CraftingSimulator")
 	local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"
 	local donor="Rarity: NORMAL\nCone Helmet\nItem Level: 70"
+	it("discloses the beast-level limitation for both Bestiary swaps",function()
+		local model=sim.model(raw);local availability=require("Modules.CraftingAvailability").check
+		for _,method in ipairs({"beast_prefix_suffix","beast_suffix_prefix"}) do
+			local notes=sim.actionWarnings({method=method});assert.equal("beast_level_pool",notes[1].code);assert.matches("beast's level",notes[1].message)
+			assert.equal("beast_level_pool",sim.catalog(raw,"",5).methodWarnings[method][1].code)
+			local recipeNotes=sim.recipeWarnings({steps={{method=method},{method=method}}});assert.equal(1,#recipeNotes);assert.equal("beast_level_pool",recipeNotes[1].code)
+			local starting;for seed=1,100 do local candidate=sim.perform(raw,{method="alchemy"},seed).state;if availability(method,candidate,model) then starting=candidate;break end end
+			assert.is_truthy(starting);assert.matches("beast's level",require("Modules.CraftingWorkbench").hint(method,starting,model))
+			local result=sim.perform(raw,{method=method},1,starting);assert.equal("beast_level_pool",result.warnings[1].code)
+			local simulated=sim.simulate(raw,{initialState=starting,steps={{method=method}},targets={},requirements={minAffixes=1}},{trials=1,maxActions=1,forceFirstAction=true});assert.equal("beast_level_pool",simulated.warnings[1].code)
+		end
+	end)
 	it("shows the 3.30 Light Radius range in modifier inspection",function()
 		local model=sim.model(raw);local details=require("Modules.CraftingInspection").modDetails(model,"LightRadiusAndAccuracy3")
 		local joined=table.concat(details,"\n")

@@ -41,6 +41,7 @@ end
 local partialWarningMessage="Partial locks assume uniform selection; bench rerolls select once, Harvest augment selects before adding, and conversions select before changing a modifier. Unpredictable recombination treats locks as non-exclusive. Some selections fail and are not charged in this model; actual behavior is unverified. Other interactions remain unsupported."
 function M.actionWarnings(action,model)
 	local result={}
+	if action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix" then result[#result+1]={code="beast_level_pool",message="This model uses the item level for the added modifier. Community research reports that these Bestiary crafts use the beast's level instead, so the eligible pool and odds can differ.",source="https://www.poewiki.net/wiki/Beastcrafting"} end
 	if action.method=="vorici_socket_count" then result[#result+1]={code="vorici_socket_assumptions",message="Vorici samples 100 independent rolls using the experimental Jeweller model and keeps the greatest socket count. Odds, retained socket positions and eligibility are unverified.",source="https://www.pathofexile.com/forum/view-thread/3985332"} end
 	if action.method=="vorici_socket_colours" then result[#result+1]={code="vorici_colour_assumptions",message="Vorici samples 25 independent rolls using the experimental Chromatic model and keeps the first tied result with the most non-white sockets. Colour probabilities and tie behavior are unverified.",source="https://www.pathofexile.com/forum/view-thread/3985332"} end
 	local abyss=false

@@ -253,6 +253,7 @@ function M.hint(method,state,model,craft)
 	if available and method=="jeweller" then return "Experimental socket-count odds and quality model; retained socket and link positions are assumed." end
 	if available and method=="fusing" then return "Experimental link odds based on historical observations; quality and layout rules are assumptions." end
 	if available and method=="gwennen" then return "Experimental: choose a pair in Settings. Coin odds, removal counts and currency transitions are assumptions." end
+	if available and (method=="beast_prefix_suffix" or method=="beast_suffix_prefix") then return "Uses item level for the added modifier; actual Bestiary crafts may use the beast's level. Pool and odds may differ." end
 	if available and method=="omen_jeweller" then return "Add white sockets up to the base and item-level limit. Uses one Omen and one Jeweller's Orb." end
 	if available and method=="harvest_enchant" then return "Replace the enchantment with a quality bonus. Options show the Lifeforce cost." end
 	if available and method=="harvest_resistance" then return "Change one elemental resistance to another. Costs 300 Lifeforce for each element." end
