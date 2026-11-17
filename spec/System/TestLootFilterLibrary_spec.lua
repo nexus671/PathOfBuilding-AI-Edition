@@ -218,6 +218,12 @@ describe("Visual filter catalogue",function()
 		assert.equal(0,examples["Chaos Orb"].BaseDefencePercentile)
 		assert.is_nil(examples["Vaal Regalia"].BaseDefencePercentile)
 		assert.equal(100,examples["Iron Ring"].BaseDefencePercentile)
+		local resonators=0
+		for _,item in ipairs(library.scene(profile,build,"Crafting materials",0,83,86)) do
+			if item.Class=="Delve Stackable Socketable Currency" then resonators=resonators+1;assert.equal(0,item.BaseDefencePercentile);assert.is_nil(item.Sockets) end
+		end
+		assert.equal(2,resonators)
+		assert.equal(0,library.baseDefencePercentile("Primitive Chaotic Resonator","Delve Socketable Currency","Normal"))
 		local rules=parser.parse("Hide\n BaseDefencePercentile >= 40\nShow")
 		assert.equal("Show",parser.simulate(rules,examples["Chaos Orb"]).action)
 		assert.equal("unknown",parser.simulate(rules,examples["Vaal Regalia"]).status)

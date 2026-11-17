@@ -10,7 +10,8 @@ function M.hasNoSockets(class) return noSockets[class]==true end
 local equipment={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true,Quiver=true,Amulet=true,Ring=true,Belt=true}
 -- Unknown bases, unique equipment and random defence rolls remain unresolved.
 function M.baseDefencePercentile(name,class,rarity)
-	if noSockets[class] then return 0 end
+	-- Resonators have fossil sockets, but are currency rather than equipment.
+	if noSockets[class] or class=="Delve Socketable Currency" or class=="Delve Stackable Socketable Currency" then return 0 end
 	local native=data and data.itemBases and data.itemBases[name]
 	if native and (equipment[native.type] or data.weaponTypeInfo[native.type]) and rarity~="Unique" then
 		for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
