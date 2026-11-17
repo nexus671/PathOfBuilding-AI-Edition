@@ -131,6 +131,45 @@ local function inferRange(template,line)
 	end
 	return #result == 1 and result[1] or result
 end
+-- A game copy may show catalyst-scaled values. Check that a bounded set of
+-- integer base rolls actually renders to the observed line using native scaling.
+local function matchesScaledBase(model,template,line,index)
+	local item=model.item
+	if not item.catalyst or not item.catalystQuality or item.catalystQuality<=0 then return false end
+	local ranges,total={},1
+	for candidate in template:gmatch("%b()") do
+		local low,high=candidate:match("^%((%-?%d+)%-(%-?%d+)%)$")
+		if not low then if candidate:match("%d%-%d") then return false end
+		else
+			low,high=tonumber(low),tonumber(high);if high<low then return false end
+			total=total*(high-low+1);if total>4096 then return false end
+			ranges[#ranges+1]={low,high}
+		end
+	end
+	if #ranges==0 or #ranges>4 then return false end
+	local mod={line=template,modTags=copyTable(item.base.implicitModTypes and item.base.implicitModTypes[index] or {})}
+	local scalar=item:GetModLineValueScalar(mod,"IMPLICIT")
+	if math.abs(scalar-(1+item.catalystQuality/100))>1e-9 then return false end
+	local rolls={}
+	local function match(index)
+		if index>#ranges then if StripEscapes(itemLib.applyRange(template,rolls,scalar))==line then return copyTable(rolls) end;return nil end
+		local low,high=unpack(ranges[index])
+		for value=low,high do rolls[index]=high==low and 0.5 or (value-low)/(high-low);local found=match(index+1);if found then return found end end
+		return nil
+	end
+	return match(1)
+end
+local function matchesScaledBounds(model,template,line,index)
+	local item=model.item
+	if not item.catalyst or not item.catalystQuality or item.catalystQuality<=0 then return false end
+	local mod={line=template,modTags=copyTable(item.base.implicitModTypes and item.base.implicitModTypes[index] or {})}
+	local scalar=item:GetModLineValueScalar(mod,"IMPLICIT")
+	if math.abs(scalar-(1+item.catalystQuality/100))>1e-9 then return false end
+	for _,roll in ipairs({0,1}) do
+		if StripEscapes(itemLib.applyRange(template,roll,scalar))~=StripEscapes(itemLib.applyRange(line,roll)) then return false end
+	end
+	return true
+end
 function A.extend(M,api)
 	local originalModel,originalAction,originalPool,originalValidate=M.model,M.action,M.pool,M.validateState
 	-- Tainted affix currencies reuse the basic transitions without dropping the
@@ -169,13 +208,19 @@ function A.extend(M,api)
 		-- native templates; keep the imported value until a reroll is applied.
 		if not changed and not model.item.synthesised and not model.item.corrupted and type(model.item.base.implicit)=="string" then
 			local templates={};for line in model.item.base.implicit:gmatch("[^\n]+") do templates[#templates+1]=line end
-			local recognized=#templates==#model.item.implicitModLines and #templates>0;local ordinary=true
+			local recognized=#templates==#model.item.implicitModLines and #templates>0;local ordinary=true;local normalized={}
 			for i,line in ipairs(model.item.implicitModLines) do
 				local visible=StripEscapes(line.line)
 				if line.exarch or line.eater or line.corrupted then ordinary=false end
-				if not templates[i] or visible~=templates[i] and inferRange(templates[i],visible)==nil then recognized=false end
+				if not templates[i] then recognized=false
+				elseif visible~=templates[i] and inferRange(templates[i],visible)==nil then
+					local ranged=visible:match("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)")~=nil
+					local displayed=ranged and StripEscapes(itemLib.applyRange(visible,line.range or 0.5)) or visible
+					local rolls=(not ranged or matchesScaledBounds(model,templates[i],visible,i)) and matchesScaledBase(model,templates[i],displayed,i)
+					if not rolls then recognized=false elseif ranged then normalized[i]=rolls end
+				end
 			end
-			if recognized and ordinary then model.baseImplicitTemplates=templates
+			if recognized and ordinary then model.baseImplicitTemplates=templates;if next(normalized) then model.scaledBaseImplicitRanges=normalized end
 			elseif ordinary then for _,template in ipairs(templates) do if template:match("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)") then model.baseImplicitUnresolved=true;break end end end
 		end
 		if model.item.type == "Flask" or model.item.type == "Tincture" then assert(model.initial.rarity ~= "RARE","Flasks and tinctures cannot be rare") end
@@ -716,8 +761,12 @@ function A.extend(M,api)
 			assert(model.blessed330 and item.implicitModLines[1],"Invalid updated base implicit")
 			item.implicitModLines[1].line=model.blessed330;item.implicitModLines[1].modTags=copyTable(item.base.implicitModTypes and item.base.implicitModTypes[1] or {})
 		end
+		if model.scaledBaseImplicitRanges and not state.baseImplicitRanges then for i,range in pairs(model.scaledBaseImplicitRanges) do
+			if item.implicitModLines[i] then item.implicitModLines[i].line=itemLib.applyRange(model.baseImplicitTemplates[i],range);item.implicitModLines[i].range=nil;item.implicitModLines[i].modTags=copyTable(item.base.implicitModTypes and item.base.implicitModTypes[i] or {}) end
+		end end
 		if state.baseImplicitRanges then for i,range in ipairs(state.baseImplicitRanges) do if item.implicitModLines[i] then
 			local template=state.baseImplicitReconstructed and model.baseImplicitTemplates[i] or item.implicitModLines[i].line
+			if state.baseImplicitReconstructed then item.implicitModLines[i].modTags=copyTable(item.base.implicitModTypes and item.base.implicitModTypes[i] or {}) end
 			item.implicitModLines[i].line=itemLib.applyRange(template,range);item.implicitModLines[i].range=nil
 		end end end
 		if state.vendorImplicit then

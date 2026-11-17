@@ -584,6 +584,12 @@ async function main(){
   assert.equal(blessedCopiedCoral.nativeCrafting.state.baseImplicitReconstructed,true);assert.match(blessedCopiedCoral.nativeCrafting.itemText,/\+20 to maximum Life/);
   const continuedCopiedCoral=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:copiedCoral,initialState:blessedCopiedCoral.nativeCrafting.state,action:{method:'blessed'},seed:2},'crafted');
   assert.equal(continuedCopiedCoral.nativeCrafting.state.baseImplicitReconstructed,true);assert.match(continuedCopiedCoral.nativeCrafting.itemText,/\+\d+ to maximum Life/);
+  const qualityCoral='Item Class: Rings\nRarity: Normal\nCoral Ring\n--------\nQuality (Life and Mana Modifiers): +20% (augmented)\n--------\nItem Level: 86\n--------\n+36 to maximum Life (implicit)';
+  const blessedQualityCoral=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:qualityCoral,action:{method:'blessed'},seed:1},'crafted');
+  assert.equal(blessedQualityCoral.nativeCrafting.state.baseImplicitReconstructed,true);assert.equal(blessedQualityCoral.nativeCrafting.state.catalystQuality,20);assert.match(blessedQualityCoral.nativeCrafting.itemText,/Catalyst: Fertile/);
+  const advancedQualityCoral=qualityCoral.replace('+36 to maximum Life (implicit)','{ Implicit Modifier — Life }\n+36(24-36) to maximum Life');
+  const blessedAdvancedCoral=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:advancedQualityCoral,action:{method:'blessed'},seed:1},'crafted');
+  assert.equal(blessedAdvancedCoral.nativeCrafting.state.baseImplicitReconstructed,true);assert.equal(blessedAdvancedCoral.nativeCrafting.state.catalystQuality,20);
   await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:steelRaw,initialState:blessedRing.nativeCrafting.state,limit:1},'inspected');
   const legacyGloves='Rarity: NORMAL\nFingerless Silk Gloves\nItem Level: 86\nImplicits: 1\n12% increased Spell Damage';
   const updatedGloves=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:legacyGloves,action:{method:'blessed'},seed:1},'crafted');

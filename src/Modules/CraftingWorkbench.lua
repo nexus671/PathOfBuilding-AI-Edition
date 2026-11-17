@@ -3,6 +3,7 @@
 local M = { }
 local anchor = {"TOPLEFT",nil,"TOPLEFT"}
 local simulator = require("Modules.CraftingSimulator")
+local catalystNames={"Abrasive","Accelerating","Dextral","Fertile","Imbued","Intrinsic","Noxious","Prismatic","Sinistral","Tempering","Turbulent","Unstable"}
 local artwork
 local function image(path)
 	local handle = NewImageHandle();handle:Load(path);return handle
@@ -86,7 +87,11 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 		M.drawArt(art,ax,ay,artWidth,artHeight,flaskSprite)
 		text(cx+propertyX,cy+67,16,"Item level "..item.itemLevel)
 		local quality=state.quality or item.quality or 0
-		if item.type~="Jewel" or quality~=0 then text(cx+propertyX,cy+89,16,"Quality: +"..quality.."%") end
+		local catalyst=state.catalyst or item.catalyst
+		if catalyst then
+			local label=(catalystNames[catalyst] or "Catalyst").." quality: +"..(state.catalystQuality or item.catalystQuality or 0).."%"
+			text(cx+propertyX,cy+89,16,label,nil,w-propertyX-16)
+		elseif item.type~="Jewel" or quality~=0 then text(cx+propertyX,cy+89,16,"Quality: +"..quality.."%") end
 		text(cx+propertyX,cy+111,16,self.defences or "",nil,w-propertyX-16)
 		if self.weaponStats then
 			local weapon=self.weaponStats

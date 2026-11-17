@@ -551,6 +551,13 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(table.concat(lines," "):find("+20 to maximum Life",1,true),"Blessed Orb did not reroll the copied implicit");frame("crafting-blessed-copied");ui:click("close")
 	end
 	do
+		local raw="Item Class: Rings\nRarity: Normal\nCoral Ring\n--------\nQuality (Life and Mana Modifiers): +20% (augmented)\n--------\nItem Level: 86\n--------\n{ Implicit Modifier — Life }\n+36(24-36) to maximum Life"
+		require("Classes.CraftingSimulatorControl").Open(build,{id="blessed-quality-ui",title="Quality ring",slot="Ring",startingItem=raw,goals={},steps={}})
+		ui:click("settings");ui:text("paletteSearch","Blessed Orb");ui:click("paletteUse");ui:click("tab_settings");ui:text("seed","1");ui:click("tab_craft");ui:click("item")
+		local lines={};for _,row in ipairs(main.popups[1].controls.itemMods.list) do lines[#lines+1]=StripEscapes(row[1]) end
+		assert(table.concat(lines," "):find("+24 to maximum Life",1,true),"Catalyst quality was lost after the Blessed Orb");frame("crafting-blessed-quality");ui:click("close")
+	end
+	do
 		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 1";local model=sim.model(raw)
 		require("Classes.CraftingSimulatorControl").Open(build,{id="binding-legacy-ui",title="Legacy Binding",slot="Helmet",startingItem=raw,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch","Orb of Binding")

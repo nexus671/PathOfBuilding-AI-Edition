@@ -83,7 +83,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1419, f"Expected 1419 UI frames, found {len(paths)}"
+    assert len(paths) == 1422, f"Expected 1422 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         welcome = json.loads((frames / f"{width}-crafting-empty-workspace.json").read_text())
         labels = " ".join(command.get("text", "") for command in welcome["commands"] if command.get("kind") == "text")
@@ -91,6 +91,9 @@ def main():
         unknown = json.loads((frames / f"{width}-crafting-unknown-sockets.json").read_text())
         labels = " ".join(command.get("text", "") for command in unknown["commands"] if command.get("kind") == "text")
         assert "Sockets unknown" in labels, "Unknown socket layout is not visible"
+        quality = json.loads((frames / f"{width}-crafting-blessed-quality.json").read_text())
+        labels = " ".join(command.get("text", "") for command in quality["commands"] if command.get("kind") == "text")
+        assert "Fertile quality: +20%" in labels, "Catalyst quality is missing from the item card"
     for width in (960, 1024, 1280):
         chart = json.loads((frames / f"{width}-crafting-executed-chart.json").read_text())
         labels = " ".join(command.get("text", "") for command in chart["commands"] if command.get("kind") == "text")
