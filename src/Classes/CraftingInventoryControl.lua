@@ -62,7 +62,7 @@ function M.Open(build,options)
 				visual.text(tx+6,ty+78,13,entry.item.title,color,tile-12);visual.text(tx+6,ty+100,12,entry.item.slot,"^xA6B3C6",tile-12)
 			end
 		end
-		if #entries==0 then visual.text(12,16,14,"No saved items match.","^xD5DEE8",self.width-24);visual.text(12,44,13,"Use Keep item in the workbench.","^xA6B3C6",self.width-24) end
+		if #entries==0 then visual.text(12,16,14,"No saved items match.","^xD5DEE8",self.width-24);visual.text(12,44,13,"Use Keep item snapshot in the workbench.","^xA6B3C6",self.width-24) end
 		SetViewport()
 	end
 	function grid:OnKeyUp(key)

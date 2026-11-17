@@ -851,11 +851,12 @@ function Panel.Open(build,project,layout)
 			if layout then layout.openWorkbench(project) else Panel.Open(build,project) end
 		end})
 	end)
-	button(controls,"keepItem",leftWidth+44+math.floor((width-leftWidth-60)/2),54,math.floor((width-leftWidth-60)/2),"Keep item",function()
+	button(controls,"keepItem",leftWidth+44+math.floor((width-leftWidth-60)/2),54,math.floor((width-leftWidth-60)/2),"Keep item snapshot",function()
 		local project=copyTable(draft);for _,saved in ipairs(build.savers.CraftingProjects.projects) do if saved.id==draft.id then project=copyTable(saved);break end end
 		project.inventory=project.inventory or {};project.inventory[#project.inventory+1]=require("Modules.CraftingInventory").capture(draft,state,draft.title:sub(1,104).." / "..(#project.inventory+1))
 		inventoryChanged(build.savers.CraftingProjects:Upsert(project));refresh({"Item snapshot kept in this build. Open Item inventory to compare or resume it; use build Save to persist."})
 	end)
+	controls.keepItem.tooltipText="Keep a snapshot in Item inventory to compare or resume later. Save the build to persist it."
 	controls.stage=new("Control"):Control(ui.anchor,{leftWidth+32,84,width-leftWidth-48,height-148})
 	function controls.stage:Draw()
 		local x,y=self:GetPos();local w,h=self:GetSize()
@@ -886,6 +887,7 @@ function Panel.Open(build,project,layout)
 		refresh({"Working item, history and settings kept. Use build Save to resume after restarting. No budget was spent."})
 	end)
 	controls.keepWorking.shown=function() return require("Modules.CraftingTasks").job==nil end
+	controls.keepWorking.tooltipText="Keep the working item, history and settings in this project. Save the build to resume them later."
 	ui.styleButton(controls.keepWorking,"primary")
 	paletteView=require("Modules.CraftingPalette").new(controls,leftWidth,height,{current=function() return controls.method:GetSelValueByKey("val") end,favorites=favorites,restore=restored and restored.palette,
 		shown=function() return controls.page:GetSelValue()=="Emulate item" and paletteOpen end,available=function(method) return workbench.available(method,state,model) end,hint=function(method) return workbench.hint(method,state,model,configured[method]) end,

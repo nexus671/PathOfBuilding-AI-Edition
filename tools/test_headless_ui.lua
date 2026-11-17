@@ -196,6 +196,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(#build.savers.CraftingProjects.projects==1 and #build.savers.CraftingProjects.projects[1].goals==2,"Project editor lost pasted line breaks")
 	frame("crafting-workspace")
 	ui:click("native");frame("crafting-workspace-item")
+	assert(build.planningWorkspace.controls.keepItem.label=="Keep item snapshot" and build.planningWorkspace.controls.keepItem.tooltipText:find("Item inventory",1,true),"Snapshot action is not clearly labelled")
+	assert(build.planningWorkspace.controls.keepWorking.tooltipText:find("history and settings",1,true),"Working craft action does not explain what it keeps")
 	assert(not main.popups[1],"Workbench should be embedded in the planning workspace")
 	ui:click("currency_alchemy");ui:click("item");frame("workspace-crafted")
 	assert(require("Modules.PlanningUI").saveStatus(build):find("Working draft",1,true),"Working item was incorrectly presented as saved")
