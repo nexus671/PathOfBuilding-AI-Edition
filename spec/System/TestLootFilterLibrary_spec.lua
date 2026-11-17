@@ -4,6 +4,18 @@ describe("Visual filter catalogue",function()
 	local library=require("Modules.LootFilterLibrary")
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("finds Gold with currencies and generates its actual item class",function()
+		local rule={text='Show\n BaseType == "Gold"\n StackSize >= 500'}
+		assert.equal("Currency",library.category(rule));assert.equal("Currency",library.category({text='Show\n Class == "Gold"'}))
+		assert.not_equal("Currency",library.category({text='Show\n BaseType == "Gold Ring"\n Rarity Rare'}))
+		assert.not_equal("Currency",library.category({text='Show\n BaseType "Gold"'}))
+		local sample=library.sample(rule);assert.equal("Gold",sample.BaseType);assert.equal("Gold",sample.Class);assert.equal(0,sample.Sockets)
+		assert.equal("Hide",parser.simulate(parser.parse('Hide\n Class == "Gold"\nShow'),sample).action)
+		local byClass=library.sample({text='Show\n Class == "Gold"'});assert.equal("Gold",byClass.BaseType);assert.equal("Gold",byClass.Class)
+		local profile=filters.profile("gold-test","Gold test");local count=0
+		for _,entry in ipairs(library.catalog(profile)) do if entry.rule.title=="Gold" then count=count+1;assert.equal("Currency",entry.category);assert.equal("Gold",entry.sample.Class) end end
+		assert.is_true(count>0)
+	end)
 	it("tests complete socket colours entered without a separate count",function()
 		local saved;require("Classes.LootFilterControl").EditSample({BaseType="Iron Hat"},function(item) saved=item end)
 		local editor=main.popups[1].controls;editor.SocketColours:SetText("R-G B A");editor.useSample:Click()
