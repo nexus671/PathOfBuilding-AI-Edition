@@ -534,13 +534,13 @@ function M.poll(build, force)
 			end)
 			M.status={id=request.id,status="calculating",kind="journeyUpgrades"};M.publishState();return
 		end
-		if request.kind=="generate_loot_filter" or request.kind=="test_loot_filter" or request.kind=="test_loot_filter_examples" or request.kind=="export_loot_filter" then
+		if request.kind=="generate_loot_filter" or request.kind=="test_loot_filter" or request.kind=="test_loot_filter_examples" or request.kind=="test_loot_filter_scene" or request.kind=="export_loot_filter" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh loot-filter context.")
 			local filters=require("Modules.LootFilters")
 			local profile=request.profile or filters.find(build.savers.LootFilters.data,request.profileId)
 			assert(profile,"Choose a loot-filter profile")
 			profile=filters.validate({schemaVersion=1,activeId=profile.id,profiles={profile}}).profiles[1]
-			if request.kind=="test_loot_filter_examples" then
+			if request.kind=="test_loot_filter_examples" or request.kind=="test_loot_filter_scene" then
 				local session=M.session
 				local function publish(status,values)
 					if not M.enabled or M.session~=session then return end
@@ -548,6 +548,7 @@ function M.poll(build, force)
 					for key,value in pairs(values) do M.status[key]=value end;M.publishState()
 				end
 				local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+					if request.kind=="test_loot_filter_scene" then return filters.simulateScene(profile,request.scene,request.seed,request.areaLevel,request.itemLevel,request.offset,request.limit,checkpoint) end
 					return filters.simulateExamples(profile,request.sampleSetId,request.offset,request.limit,checkpoint)
 				end,function(result)
 					if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh loot-filter context."}) else publish("tested",{examples=result}) end

@@ -73,6 +73,13 @@ test('queues bounded pages of saved filter examples', t => {
   assert.equal(request.kind,'test_loot_filter_examples');assert.equal(request.offset,50);assert.equal(request.sampleSetId,'examples');
   for(const invalid of [{...args,limit:51},{...args,offset:-1},{...args,sampleSetId:'../outside'},{...args,unknown:true}]) assert.throws(()=>f.call('test_loot_filter_examples',invalid),/arguments/);
 });
+test('queues bounded built-in filter scenes', t => {
+  const f=fixture(t), args={baseRevision:f.state.revision,profileId:'maps',scene:'Preset highlights',seed:3,areaLevel:76,itemLevel:81,offset:2,limit:5};
+  f.call('test_loot_filter_scene',args);
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.kind,'test_loot_filter_scene');assert.equal(request.scene,args.scene);assert.equal(request.seed,3);
+  for(const invalid of [{...args,scene:'Build targets'},{...args,seed:-1},{...args,areaLevel:101},{...args,limit:51},{...args,offset:-1},{...args,unknown:true}]) assert.throws(()=>f.call('test_loot_filter_scene',invalid),/arguments/);
+});
 test('accepts typed Atlas stages, strategy inputs and explicit failure recovery branches', t => {
   const f=fixture(t);
   const plan={id:'final',title:'Final maps',version:'3.29.1',budget:138,nodes:[],progression:{stage:'final',previousId:'starter'},strategy:{maps:'T16 maps',scarabs:'Supplied scarabs',requirements:'Unlocks complete',avoid:'Reflect',setupCost:{amount:25,currency:'chaos',source:'Manual quote',quotedAt:1700000000}}};

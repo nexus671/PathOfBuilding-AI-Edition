@@ -371,11 +371,8 @@ function M.simulate(profile,item)
 	for _,d in ipairs(report.diagnostics) do if d.error then return {status="invalid",action="Unknown",styles={},matches={},reasons={d.error}} end end
 	return parser.simulate(parsed,item)
 end
--- Reuse one compiled filter for a page of saved examples. Offsets are zero-based
--- so clients can page through a set without limiting the size of the saved set.
-function M.simulateExamples(profile,setId,offset,limit,checkpoint)
-	local selected;for _,entry in ipairs(profile.sampleSets or {}) do if entry.id==setId then selected=entry;break end end
-	assert(selected,"Choose a saved example set")
+-- Reuse one compiled filter for a page. Offsets are zero-based.
+local function simulatePage(profile,selected,offset,limit,checkpoint,includeSample)
 	offset=offset or 0;limit=limit or 20
 	assert(type(offset)=="number" and offset==math.floor(offset) and offset>=0 and offset<=#selected.samples,"Invalid example offset")
 	assert(type(limit)=="number" and limit==math.floor(limit) and limit>=1 and limit<=50,"Use 1 to 50 examples per page")
@@ -395,10 +392,29 @@ function M.simulateExamples(profile,setId,offset,limit,checkpoint)
 		for n=1,math.min(#(evaluated.reasons or {}),10) do local reason=tostring(evaluated.reasons[n]);summary.reasons[n]=reason:sub(1,240);if #reason>240 then summary.reasonsTruncated=true end end
 		if #(evaluated.reasons or {})>10 then summary.reasonsTruncated=true end
 		local baseType=type(sample.BaseType)=="string" and sample.BaseType:sub(1,240) or nil
-		results[#results+1]={index=i-1,baseType=baseType,baseTypeTruncated=baseType and #sample.BaseType>240 or nil,result=summary}
+		results[#results+1]={index=i-1,baseType=baseType,baseTypeTruncated=baseType and #sample.BaseType>240 or nil,sample=includeSample and copyTable(sample) or nil,result=summary}
 		if checkpoint then checkpoint({completed=i-offset,total=last-offset}) end
 	end
 	return {setId=selected.id,title=selected.title,total=#selected.samples,offset=offset,nextOffset=last<#selected.samples and last or nil,results=results}
+end
+-- Saved sets retain their existing compact result format.
+function M.simulateExamples(profile,setId,offset,limit,checkpoint)
+	local selected;for _,entry in ipairs(profile.sampleSets or {}) do if entry.id==setId then selected=entry;break end end
+	assert(selected,"Choose a saved example set")
+	return simulatePage(profile,selected,offset,limit,checkpoint,false)
+end
+local sceneKinds={ ["Mixed drops"]=true,Currency=true,["Preset highlights"]=true,["Tiered gear"]=true,["Covens & Threads"]=true,["Maps & threads"]=true,["Flasks & tinctures"]=true,["Divination cards"]=true,Essences=true,["Crafting materials"]=true,["Heist & Expedition"]=true }
+function M.simulateScene(profile,kind,seed,areaLevel,itemLevel,offset,limit,checkpoint)
+	assert(sceneKinds[kind],"Choose a supported built-in filter scene")
+	seed=seed or 0;areaLevel=areaLevel or 83;itemLevel=itemLevel or 86
+	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=0 and seed<=1000000,"Invalid scene seed")
+	assert(type(areaLevel)=="number" and areaLevel==math.floor(areaLevel) and areaLevel>=1 and areaLevel<=100,"Invalid area level")
+	assert(type(itemLevel)=="number" and itemLevel==math.floor(itemLevel) and itemLevel>=1 and itemLevel<=100,"Invalid item level")
+	local samples=require("Modules.LootFilterLibrary").scene(profile,nil,kind,seed,areaLevel,itemLevel)
+	local result=simulatePage(profile,{id="builtin",title=kind,samples=samples},offset,limit,checkpoint,true)
+	result.seed=seed;result.areaLevel=areaLevel;result.itemLevel=itemLevel
+	result.note="Deterministic examples, not live prices, drop rates or encounter probabilities."
+	return result
 end
 function M.update(profile)
 	local nextProfile=copyTable(profile);nextProfile.baseCommit=M.source().commit
