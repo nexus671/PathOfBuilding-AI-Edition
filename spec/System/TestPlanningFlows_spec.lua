@@ -136,7 +136,7 @@ describe("Connected planning workflows",function()
 	it("finds and verifies a temporary route to an Atlas point grant",function()
 		local strategy=require("Modules.AtlasStrategy");local start={id="start",title="Start",version="3.29.3",budget=138,nodes={}}
 		local shortest=atlas.connect(start,{65225});local goal=atlas.connect(start,{65225},{17321});goal.avoided=nil
-		start.budget=#shortest.nodes;goal.budget=start.budget;assert.is_nil(atlas.budgetReachability(goal))
+		start.budget=#shortest.nodes;goal.budget=start.budget;local reachable,_,_,proof=atlas.budgetReachability(goal);assert.is_true(reachable);assert.is_truthy(proof)
 		local result=strategy.transition(start,goal);assert.is_true(result.temporary);assert.is_truthy(result.steps)
 		local state=copyTable(start);local refunds=0
 		for _,step in ipairs(result.steps) do
@@ -163,10 +163,9 @@ describe("Connected planning workflows",function()
 		local afterEarning=strategy.transition(impossible,earned)
 		assert.is_true(afterEarning.startingReachable);assert.equal("reachable",afterEarning.startingStatus);assert.equal(0,#afterEarning.steps)
 		local alternate=atlas.connect({id="alternate",title="Alternate",version="3.29.3",budget=138,nodes={}},{65225},{17321})
-		alternate.avoided=nil;alternate.budget=needed;assert.is_nil(atlas.budgetReachability(alternate))
-		local uncertain=strategy.transition(alternate,alternate)
-		assert.is_nil(uncertain.startingReachable);assert.equal("unknown",uncertain.startingStatus);assert.is_truthy(uncertain.steps)
-		assert.matches("reachability is unverified",table.concat(uncertain.lines," "))
+		alternate.avoided=nil;alternate.budget=needed;local reachable,_,_,proof=atlas.budgetReachability(alternate);assert.is_true(reachable);assert.is_truthy(proof)
+		local verified=strategy.transition(alternate,alternate)
+		assert.is_true(verified.startingReachable);assert.equal("reachable",verified.startingStatus);assert.equal(0,#verified.steps)
 	end)
 	it("allows Atlas stage transitions to change saved node preferences",function()
 		local strategy=require("Modules.AtlasStrategy")

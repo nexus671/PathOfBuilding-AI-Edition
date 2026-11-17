@@ -346,7 +346,20 @@ function Panel.Open(build,source,layout)
 		for _,keystone in ipairs(summary.keystones) do local details={keystone.name,"Review the whole keystone, including restrictions and tradeoffs."};for _,stat in ipairs(keystone.stats) do details[#details+1]=stat end;entries[#entries+1]={id="keystone-"..keystone.id,label=keystone.name.." | Keystone tradeoffs",category="Keystones",details=details} end
 		for _,missing in ipairs(report.missingChoices) do entries[#entries+1]={id="missing-"..missing.id,label=missing.name.." | Choose an effect",category="Needs a choice",details={"Select this node on the tree and choose one of its effects."}} end
 		for _,id in ipairs(plan.nodes) do local node=atlas.tree(plan.version).nodes[id];for i,stat in ipairs(atlas.nodeStats(plan,node)) do entries[#entries+1]={id=id.."-"..i,label=stat,category=strategy.mechanic(strategy.selectedNode(plan,node)),details={node.name,stat,"Displayed bonus; keystone interactions are not combined."}} end end
-		browser.Open("Atlas bonuses by mechanic",entries)
+		local routeOptions=report.grantRoute and {action="Inspect route",canChoose=function(entry) return entry.id=="grant-route" end,closeOnChoose=false,choose=function(entry)
+			if entry.id~="grant-route" then return end
+			main:ClosePopup();local steps={}
+			for index,step in ipairs(report.grantRoute) do
+				local node=controls.canvas.tree.nodes[step.id]
+				steps[#steps+1]={id=index,label=index..". "..step.action..": "..node.name,category=step.action,details={"Step "..index.." of "..#report.grantRoute,step.action.." "..node.name.." ["..step.id.."]","Show this node on the final-plan tree. The planner does not track your in-game allocations."},node=step.id,index=index,action=step.action}
+			end
+			browser.Open("Temporary grant route",steps,{action="Show on tree",closeOnChoose=false,choose=function(step)
+				main:ClosePopup();local node=controls.canvas.tree.nodes[step.node]
+				controls.canvas.focus=step.node;controls.canvas.centerX,controls.canvas.centerY=node.x,node.y;controls.canvas.scale=math.max(0.2,controls.canvas.scale)
+				refresh(step.node);controls.canvas.preview={};controls.help.label="^7"..ui.fit("Route step "..step.index..": "..step.action.." | Showing node on final plan",graphWidth,14)
+			end})
+		end} or nil
+		browser.Open("Atlas bonuses by mechanic",entries,routeOptions)
 	end)
 	controls.browse=button(232,height-86,100,"Find nodes",function()
 		local costs=strategy.results(current(),"",nil,avoided);local entries={}

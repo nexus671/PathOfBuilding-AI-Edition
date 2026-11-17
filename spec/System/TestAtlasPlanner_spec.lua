@@ -135,7 +135,10 @@ describe("Native Atlas planner", function()
 		local controls=require("Classes.AtlasPlannerControl").Open(build,alternate);assert.matches("Temporary grant route",controls.status.label)
 		controls.stats:Click();local browser=main.popups[1].controls;local found=false
 		for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="grant-route" then found=true end end
-		assert.is_true(found);main.popups={}
+		assert.is_true(found);browser.search:SetText("Temporary grant route",true);browser.choose:Click()
+		local routeBrowser=main.popups[1].controls;assert.equal("Show on tree",routeBrowser.choose.label);routeBrowser.choose:Click()
+		assert.equal(originalId,controls.canvas.focus);assert.equal(atlas.tree(alternate.version).nodes[originalId].x,controls.canvas.centerX)
+		assert.matches("Route step 1",controls.help.label);assert.is_nil(next(controls.canvas.preview));assert.same(alternate.nodes,controls.canvas.selected().nodes);main.popups={}
 		alternate.avoided={17321}
 		local reachable,reason,required=atlas.budgetReachability(alternate)
 		assert.is_false(reachable);assert.is_true(required>needed);assert.matches("avoided",reason)

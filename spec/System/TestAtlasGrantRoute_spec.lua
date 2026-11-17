@@ -43,6 +43,10 @@ describe("Atlas point-grant route proofs",function()
 		assert.is_nil(route.find(tree,final,{[2]=true},2,5))
 		local noGrant=copyTable(tree);noGrant.nodes[5].grantedPoints=0
 		assert.is_nil(route.find(noGrant,final,{},2,5))
+		local tight=copyTable(tree);tight.nodes[5].grantedPoints=1
+		-- The final tree fits three points, but building its replacement path
+		-- needs an extra point before the temporary shortcut can be refunded.
+		assert.is_nil(route.find(tight,final,{},2,5))
 	end)
 	it("never returns an invalid proof across varied directed graphs",function()
 		local seed=17;local function random(n) seed=(seed*16807)%2147483647;return seed%n end

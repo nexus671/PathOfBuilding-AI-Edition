@@ -83,7 +83,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1443, f"Expected 1443 UI frames, found {len(paths)}"
+    assert len(paths) == 1449, f"Expected 1449 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         welcome = json.loads((frames / f"{width}-crafting-empty-workspace.json").read_text())
         labels = " ".join(command.get("text", "") for command in welcome["commands"] if command.get("kind") == "text")
