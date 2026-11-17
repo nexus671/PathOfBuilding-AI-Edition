@@ -63,7 +63,14 @@ function M.parse(raw,area)
 		item.ShaperItem=markers["Shaper Item"]==true;item.ElderItem=markers["Elder Item"]==true
 	end
 	for key,field in pairs({ItemLevel="Item Level",Quality="Quality",StackSize="Stack Size",MapTier="Map Tier"}) do
-		local value=tonumber(raw:match(field..":%s*([%+%-]?%d+)"));assert(not value or value==value and math.abs(value)<=1e9,"Invalid clipboard "..field);item[key]=value
+		for line in raw:gmatch("[^\n]+") do
+			local text=line:match("^"..field..":%s*([%+%-]?%d+)")
+			if text then
+				local value=tonumber(text);assert(value and value==value and math.abs(value)<=1e9,"Invalid clipboard "..field)
+				assert(item[key]==nil or item[key]==value,"Conflicting clipboard "..field)
+				item[key]=value
+			end
+		end
 	end
 	if class and class:find("Gems",1,true) then
 		item.GemLevel=tonumber(raw:match("\nLevel:%s*(%d+)"))
