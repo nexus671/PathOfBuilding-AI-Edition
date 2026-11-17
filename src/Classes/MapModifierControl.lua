@@ -5,7 +5,10 @@ local browser=require("Classes.PlanningBrowserControl")
 local M={}
 
 local function readable(text)
-	return (text or ""):gsub("%[[^%]|]+|([^%]]+)%]","%1")
+	return ((text or ""):gsub("%[[^%]|]+|([^%]]+)%]","%1"):gsub("%[([^%]]+)%]","%1"))
+end
+local function range(value)
+	return value.min==value.max and string.format("%+g%%",value.min) or string.format("(%+g to %+g)%%",value.min,value.max)
 end
 
 function M.Open(options)
@@ -116,8 +119,14 @@ function M.Open(options)
 			for _,row in ipairs(rows) do row.entry=entry;lines[#lines+1]=row end
 		end
 		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and "^7Normal map | Use currency to add modifiers" or "^7"..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
-		local affixes={};for _,id in ipairs(selected) do local mod=map.source().mods[id];affixes[#affixes+1]=readable(type(mod.text)=="string" and mod.text or "") end
-		if #affixes==0 then affixes={"No hypothetical modifiers selected."} end
+		local affixes={}
+		if #selected==0 then affixes={"No hypothetical modifiers selected."} else
+			local summary=result.summary;local totals=summary.totals
+			affixes={"^xAABBD0Modifier bonuses (excludes quality):","^7Atlas Drops "..range(totals.atlasDrops),"Rarity "..range(totals.rarity).." | Pack size "..range(totals.packSize)}
+			for _,effect in ipairs(summary.effects) do
+				if #effect.lines==0 then affixes[#affixes+1]=effect.name else for _,line in ipairs(effect.lines) do affixes[#affixes+1]=line end end
+			end
+		end
 		controls.affixes.list=ui.rows(affixes,left-48,14);show(nil)
 	end
 	controls.list.onClick=function(hit) if hit and hit.line then show(hit.line.entry) end end

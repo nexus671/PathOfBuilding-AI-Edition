@@ -39,5 +39,7 @@ describe("Map modifier explorer",function()
 		picker.search:SetText("Orb of Alchemy",true);picker.choose:Click()
 		assert.equal("rare",controls.rarity:GetSelValueByKey("val"));assert.is_true(controls.remove:IsEnabled())
 		assert.is_true(#controls.affixes.list>=4)
+		local text="";for _,row in ipairs(controls.affixes.list) do text=text..StripEscapes(row[1] or "").."\n" end
+		assert.matches("Modifier bonuses %(excludes quality%):",text);assert.matches("Atlas Drops",text);assert.matches("Pack size",text)
 	end)
 end)

@@ -85,6 +85,35 @@ function M.candidates(tags,itemLevel,selected,checkpoint)
 	return result
 end
 
+local summaryStats={
+	["map_drop_scaling_+%"]={key="atlasDrops",pattern="^([%-]?%d+)%% increased Atlas Drops in this Area$"},
+	["map_item_drop_rarity_+%"]={key="rarity",pattern="^([%-]?%d+)%% increased Rarity of Items found in this Area$"},
+	["map_pack_size_+%"]={key="packSize",pattern="^([%-]?%d+)%% increased Pack size$"},
+}
+local function readable(text)
+	return (text:gsub("%[[^%]|]+|([^%]]+)%]","%1"):gsub("%[([^%]]+)%]","%1"))
+end
+-- Sum only explicit modifier contributions, preserving ranges and leaving
+-- quality, implicit effects and any other map bonuses outside these totals.
+function M.summarize(selected)
+	local totals={atlasDrops={min=0,max=0},rarity={min=0,max=0},packSize={min=0,max=0}}
+	local effects={}
+	for _,id in ipairs(selected or {}) do
+		local mod=assert(M.source().mods[id],"Unknown selected area modifier");local fixed={}
+		for _,stat in ipairs(mod.stats or {}) do local kind=summaryStats[stat.id];if kind then
+			local total=totals[kind.key];total.min=total.min+stat.min;total.max=total.max+stat.max
+			if stat.min==stat.max then fixed[kind.key]=stat.min end
+		end end
+		local lines={};for line in readable(type(mod.text)=="string" and mod.text or ""):gmatch("[^\r\n]+") do
+			local combined=false
+			for _,kind in pairs(summaryStats) do local n=line:match(kind.pattern);if n and fixed[kind.key]==tonumber(n) then combined=true;break end end
+			if not combined then lines[#lines+1]=line end
+		end
+		effects[#effects+1]={id=id,name=mod.name,lines=lines}
+	end
+	return {totals=totals,effects=effects,note="Only selected modifier contributions; excludes quality, implicit effects and other map bonuses. Ranges are not rolled values."}
+end
+
 -- White, yellow and red ordinary maps use the established tier bands. This
 -- inspection deliberately does not simulate rolling or claim outcome odds.
 function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity)
@@ -109,7 +138,7 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 		if counts[entry.side]<(rarity=="magic" and 1 or 3) and (rarity=="rare" or not rareOnly[entry.id]) and (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true) then result[#result+1]=entry end
 	end
 	local results,total,nextOffset=page(result,offset,limit)
-	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,
+	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected),
 		source=M.source().source,patch=M.source().patch,
 		note="Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification."}
 end

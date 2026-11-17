@@ -676,7 +676,7 @@ async function main(){
   const magicMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',query:'MapContainsMirageWorlds'},'mapData');
   assert.equal(magicMap.mapData.rarity,'magic');assert.equal(magicMap.mapData.total,0);
   const mapRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'normal',selected:[]},action:'alchemy',seed:42},'mapData');
-  assert.equal(mapRoll.mapData.state.rarity,'rare');assert.ok(mapRoll.mapData.state.selected.length>=4);assert.match(mapRoll.mapData.note,/estimates/);
+  assert.equal(mapRoll.mapData.state.rarity,'rare');assert.ok(mapRoll.mapData.state.selected.length>=4);assert.match(mapRoll.mapData.note,/estimates/);assert.ok(mapRoll.mapData.summary.totals.atlasDrops.min>0);assert.match(mapRoll.mapData.summary.note,/excludes quality/);
   const altarItem='Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W W W\nCorrupted';
   const secondCorruption=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:altarItem,action:{method:'locus'},seed:1},'crafted');
   assert.equal(secondCorruption.nativeCrafting.warnings[0].code,'locus_assumptions');

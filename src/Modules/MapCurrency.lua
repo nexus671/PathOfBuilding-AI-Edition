@@ -62,6 +62,6 @@ function M.perform(input,action,seed,checkpoint)
 		local value=random();local count=state.rarity=="magic" and (value<0.5 and 1 or 2) or (value<8/12 and 4 or value<11/12 and 5 or 6)
 		for _=1,count do add(state,random,checkpoint) end
 	end
-	return {state=state,seed=seed,action=action,note="Experimental modifier identities only: count distribution, spawn-weight selection and interactions are estimates. Numerical modifier values are not rolled; base availability and some map restrictions are unverified."}
+	return {state=state,seed=seed,action=action,summary=map.summarize(state.selected),note="Experimental modifier identities only: count distribution, spawn-weight selection and interactions are estimates. Numerical modifier values are not rolled; base availability and some map restrictions are unverified."}
 end
 return M
