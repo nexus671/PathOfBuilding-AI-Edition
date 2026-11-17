@@ -139,7 +139,7 @@ function C.extend(M,A,api)
 			if #state.implicits > 1 then table.remove(state.implicits,math.floor(random()*#state.implicits)+1)
 			else state.implicits=nil end
 		end
-		state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.vendorImplicit=nil;state.corrupted=true
+		state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil;state.vendorImplicit=nil;state.corrupted=true
 	end
 	function M.decorateItem(model,state,item)
 		originalDecorate(model,state,item)

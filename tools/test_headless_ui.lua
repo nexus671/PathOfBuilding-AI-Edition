@@ -544,6 +544,13 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(main.popups[1].controls.preview:IsEnabled(),"Confirming a socket layout should restore preview");ui:click("close")
 	end
 	do
+		local raw="Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life"
+		require("Classes.CraftingSimulatorControl").Open(build,{id="blessed-copy-ui",title="Copied ring",slot="Ring",startingItem=raw,goals={},steps={}})
+		ui:click("settings");ui:text("paletteSearch","Blessed Orb");ui:click("paletteUse");ui:click("tab_settings");ui:text("seed","1");ui:click("tab_craft");ui:click("item")
+		local lines={};for _,row in ipairs(main.popups[1].controls.itemMods.list) do lines[#lines+1]=StripEscapes(row[1]) end
+		assert(table.concat(lines," "):find("+20 to maximum Life",1,true),"Blessed Orb did not reroll the copied implicit");frame("crafting-blessed-copied");ui:click("close")
+	end
+	do
 		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 1";local model=sim.model(raw)
 		require("Classes.CraftingSimulatorControl").Open(build,{id="binding-legacy-ui",title="Legacy Binding",slot="Helmet",startingItem=raw,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch","Orb of Binding")

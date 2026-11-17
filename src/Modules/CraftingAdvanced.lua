@@ -164,6 +164,20 @@ function A.extend(M,api)
 			if line==changed.old or line==changed.current or inferRange(changed.old,line)~=nil or inferRange(changed.current,line)~=nil then model.blessed330=changed.current
 			else model.blessed330Unresolved=true end
 		end
+		-- A game copy normally contains a rolled number, not the base range.
+		-- Reconstruct only complete ordinary base implicits that match the
+		-- native templates; keep the imported value until a reroll is applied.
+		if not changed and not model.item.synthesised and not model.item.corrupted and type(model.item.base.implicit)=="string" then
+			local templates={};for line in model.item.base.implicit:gmatch("[^\n]+") do templates[#templates+1]=line end
+			local recognized=#templates==#model.item.implicitModLines and #templates>0;local ordinary=true
+			for i,line in ipairs(model.item.implicitModLines) do
+				local visible=StripEscapes(line.line)
+				if line.exarch or line.eater or line.corrupted then ordinary=false end
+				if not templates[i] or visible~=templates[i] and inferRange(templates[i],visible)==nil then recognized=false end
+			end
+			if recognized and ordinary then model.baseImplicitTemplates=templates
+			elseif ordinary then for _,template in ipairs(templates) do if template:match("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)") then model.baseImplicitUnresolved=true;break end end end
+		end
 		if model.item.type == "Flask" or model.item.type == "Tincture" then assert(model.initial.rarity ~= "RARE","Flasks and tinctures cannot be rare") end
 		model.extraTags={}
 		if model.item.clusterJewel then
@@ -475,7 +489,7 @@ function A.extend(M,api)
 			end
 		end
 	end
-	M.methodChecks.blessed=function(model,state) if model.blessed330Unresolved and not state.implicits then return "This base implicit could not be identified. Supply a recognized original or current implicit before using a Blessed Orb." end end
+	M.methodChecks.blessed=function(model,state) if (model.blessed330Unresolved or model.baseImplicitUnresolved) and not state.implicits then return "This base implicit could not be identified. Supply a recognized original or current implicit before using a Blessed Orb." end end
 	M.methodChecks.binding=function(model,state) if M.socketLimit(model,state)==0 then return "This base cannot have equipment sockets" end end
 	M.methodChecks.veiled_orb=function(model,state)
 		if #model.veiled==0 then return "This base has no supported veiled modifiers" end
@@ -702,7 +716,10 @@ function A.extend(M,api)
 			assert(model.blessed330 and item.implicitModLines[1],"Invalid updated base implicit")
 			item.implicitModLines[1].line=model.blessed330;item.implicitModLines[1].modTags=copyTable(item.base.implicitModTypes and item.base.implicitModTypes[1] or {})
 		end
-		if state.baseImplicitRanges then for i,range in ipairs(state.baseImplicitRanges) do if item.implicitModLines[i] then item.implicitModLines[i].line=itemLib.applyRange(item.implicitModLines[i].line,range);item.implicitModLines[i].range=nil end end end
+		if state.baseImplicitRanges then for i,range in ipairs(state.baseImplicitRanges) do if item.implicitModLines[i] then
+			local template=state.baseImplicitReconstructed and model.baseImplicitTemplates[i] or item.implicitModLines[i].line
+			item.implicitModLines[i].line=itemLib.applyRange(template,range);item.implicitModLines[i].range=nil
+		end end end
 		if state.vendorImplicit then
 			for _,line in ipairs(assert(model.byId[state.vendorImplicit],"Unknown vendor implicit")) do item.implicitModLines[#item.implicitModLines+1]={line=line} end
 		end
@@ -911,7 +928,7 @@ function A.extend(M,api)
 			local tier=math.floor(random()*4)+1
 			local id=choose(ukatoaChoices(model,side,tier),random)
 			state.implicits={{id=id,side=side,tier=tier,range=M.rollRange(model.byId[id],random)}}
-			state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.vendorImplicit=nil
+			state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil;state.vendorImplicit=nil
 		elseif method == "eldritch_implicit" then
 			assert(not model.unresolvedEldritch or state.implicits,"Imported Eldritch tiers could not be identified; provide their structured implicit state")
 			assert(model.item.type == "Helmet" or model.item.type == "Body Armour" or model.item.type == "Gloves" or model.item.type == "Boots","Eldritch currency requires helmet, body armour, gloves or boots")
@@ -925,7 +942,7 @@ function A.extend(M,api)
 			table.sort(choices,function(a,b) return a.id < b.id end)
 			local id=choose(choices,random); local kept={}
 			for _,entry in ipairs(state.implicits or {}) do if entry.side ~= action.side then kept[#kept+1]=entry end end
-			kept[#kept+1]={id=id,side=action.side,tier=action.tier,range=M.rollRange(model.byId[id],random)}; state.implicits=kept;state.baseImplicitRanges=nil;state.baseImplicit330=nil
+			kept[#kept+1]={id=id,side=action.side,tier=action.tier,range=M.rollRange(model.byId[id],random)}; state.implicits=kept;state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil
 		elseif method == "eldritch_exalt" or method == "eldritch_annul" or method == "eldritch_chaos" then
 			assert(not model.unresolvedEldritch or state.implicits,"Imported Eldritch tiers could not be identified; provide their structured implicit state")
 			assert(state.rarity == "RARE","Eldritch affix currency requires a rare item")
@@ -955,7 +972,10 @@ function A.extend(M,api)
 			assert(#model.item.implicitModLines > 0 and not state.implicits,"No base implicit to reroll")
 			state.baseImplicitRanges={}
 			if model.blessed330 then state.baseImplicit330=true;state.baseImplicitRanges[1]=M.rollRange({model.blessed330},random)
-			else state.baseImplicit330=nil;for i,line in ipairs(model.item.implicitModLines) do state.baseImplicitRanges[i]=M.rollRange({line.line},random) end end
+			else
+				state.baseImplicit330=nil;state.baseImplicitReconstructed=model.baseImplicitTemplates and true or nil
+				for i,line in ipairs(model.item.implicitModLines) do state.baseImplicitRanges[i]=M.rollRange({model.baseImplicitTemplates and model.baseImplicitTemplates[i] or line.line},random) end
+			end
 		elseif method == "sacred" then
 			assert(model.item.base.armour,"Sacred Orbs require armour")
 			state.percentiles={}; for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
@@ -1008,6 +1028,7 @@ function A.extend(M,api)
 		for _,key in ipairs({"corrupted","mirrored"}) do assert(state[key] == nil or type(state[key]) == "boolean","Invalid item flag") end
 		if state.quality then api.integer(state.quality,0,model.item.type=="Flask" and state.corrupted and 40 or 30,"item quality") end
 		if state.baseImplicit330~=nil then assert(state.baseImplicit330==true and model.blessed330 and state.baseImplicitRanges,"Invalid updated base implicit") end
+		if state.baseImplicitReconstructed~=nil then assert(state.baseImplicitReconstructed==true and model.baseImplicitTemplates and state.baseImplicitRanges and not state.baseImplicit330,"Invalid reconstructed base implicit") end
 		if state.baseImplicitRanges then
 			assert(type(state.baseImplicitRanges)=="table" and #state.baseImplicitRanges>0 and #state.baseImplicitRanges<=#model.item.implicitModLines,"Invalid base implicit range count")
 			for _,value in ipairs(state.baseImplicitRanges) do

@@ -1,0 +1,36 @@
+describe("Blessed Orb on copied base implicits",function()
+	local sim=require("Modules.CraftingSimulator")
+	it("rerolls a copied value within its known base range",function()
+		local raw="Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life"
+		local model=sim.model(raw)
+		local low=sim.action(model,model.initial,{method="blessed"},function() return 0 end)
+		local high=sim.action(model,model.initial,{method="blessed"},function() return 0.999999 end)
+		assert.is_truthy(sim.toItem(model,low).raw:find("+20 to maximum Life",1,true))
+		assert.is_truthy(sim.toItem(model,high).raw:find("+30 to maximum Life",1,true))
+	end)
+	it("retains independent multi-stat rolls and saved state",function()
+		local raw="Rarity: NORMAL\nSteel Ring\nItem Level: 86\nImplicits: 1\nAdds 4 to 12 Physical Damage to Attacks"
+		local model=sim.model(raw);assert.is_truthy(sim.toItem(model,model.initial).raw:find("Adds 4 to 12 Physical Damage",1,true))
+		local calls=0;local state=sim.action(model,model.initial,{method="blessed"},function() calls=calls+1;return calls==1 and 0 or 0.999999 end)
+		assert.is_true(state.baseImplicitReconstructed);assert.same({0,1},state.baseImplicitRanges[1])
+		assert.is_truthy(sim.toItem(model,state).raw:find("Adds 3 to 14 Physical Damage",1,true))
+		local saved=require("Modules.CraftingCheckpoint").validate(raw,require("Modules.CraftingInventory").run(state)).state
+		assert.is_truthy(sim.toItem(model,saved).raw:find("Adds 3 to 14 Physical Damage",1,true))
+		local legacy=copyTable(state);legacy.baseImplicitReconstructed=nil
+		assert.is_truthy(sim.toItem(model,legacy).raw:find("Adds 4 to 12 Physical Damage",1,true))
+	end)
+	it("recognizes an ordinary implicit in a game-style item copy",function()
+		local raw="Item Class: Rings\nRarity: Normal\nCoral Ring\n--------\nItem Level: 86\n--------\n+25 to maximum Life (implicit)"
+		local model=sim.model(raw)
+		local result=sim.action(model,model.initial,{method="blessed"},function() return 0 end)
+		assert.is_true(result.baseImplicitReconstructed)
+		assert.is_truthy(sim.toItem(model,result).raw:find("+20 to maximum Life",1,true))
+	end)
+	it("does not replace an unrecognized implicit with the base template",function()
+		local raw="Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+99 to maximum Life"
+		local model=sim.model(raw);assert.is_nil(model.baseImplicitTemplates)
+		assert.is_false(require("Modules.CraftingAvailability").check("blessed",model.initial,model))
+		assert.has_error(function() sim.action(model,model.initial,{method="blessed"},function() return 0 end) end)
+		assert.is_truthy(sim.toItem(model,model.initial).raw:find("+99 to maximum Life",1,true))
+	end)
+end)

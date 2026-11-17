@@ -578,6 +578,12 @@ async function main(){
   const steelRaw='Rarity: NORMAL\nSteel Ring\nItem Level: 86';
   const blessedRing=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:steelRaw,action:{method:'blessed'},seed:1},'crafted');
   assert.ok(Array.isArray(blessedRing.nativeCrafting.state.baseImplicitRanges[0]));
+
+  const copiedCoral='Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life';
+  const blessedCopiedCoral=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:copiedCoral,action:{method:'blessed'},seed:1},'crafted');
+  assert.equal(blessedCopiedCoral.nativeCrafting.state.baseImplicitReconstructed,true);assert.match(blessedCopiedCoral.nativeCrafting.itemText,/\+20 to maximum Life/);
+  const continuedCopiedCoral=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:copiedCoral,initialState:blessedCopiedCoral.nativeCrafting.state,action:{method:'blessed'},seed:2},'crafted');
+  assert.equal(continuedCopiedCoral.nativeCrafting.state.baseImplicitReconstructed,true);assert.match(continuedCopiedCoral.nativeCrafting.itemText,/\+\d+ to maximum Life/);
   await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:steelRaw,initialState:blessedRing.nativeCrafting.state,limit:1},'inspected');
   const legacyGloves='Rarity: NORMAL\nFingerless Silk Gloves\nItem Level: 86\nImplicits: 1\n12% increased Spell Damage';
   const updatedGloves=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:legacyGloves,action:{method:'blessed'},seed:1},'crafted');
