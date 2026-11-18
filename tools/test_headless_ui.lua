@@ -746,7 +746,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		frame("crafting-annul-330-rule");ui:click("item");assert(main.popups[1].controls.intro.label:find("Applied Orb of Annulment",1,true));frame("crafting-annul-330-applied");ui:click("close")
 	end
 	do
-		local raw="Rarity: NORMAL\nDriftwood Wand\nItem Level: 86";local model=sim.model(raw)
+		local raw="Rarity: NORMAL\nDriftwood Wand\nItem Level: 86\nSockets: R G B";local model=sim.model(raw)
 		local state=sim.validateState(model,{rarity="RARE",affixes={{id="LocalAddedChaosDamage1",range=0.5}}})
 		require("Classes.CraftingSimulatorControl").Open(build,{id="partial-lock-ui",title="Partial prefix lock",slot="Weapon 1",startingItem=sim.toItem(model,state).raw,goals={},steps={},nativeRecipe={steps={},targets={{anyOf={"LocalAddedChaosDamage1"}}}}})
 		ui:click("settings");ui:text("paletteSearch","Crafting bench");assert(main.popups[1].controls.paletteUse:IsEnabled(),"Crafting bench not offered")
