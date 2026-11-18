@@ -1528,6 +1528,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("tierNew");tierDraft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1]
 	ui:click("tierStack");frame("filter-stack-styles");ui:choose("stackStyle",tierDraft.tiers[1].id,"val");ui:text("stackSize","5");ui:click("stackAdd");frame("filter-stack-added");ui:click("stackKeep")
 	tierDraft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];assert(tierDraft.tiers[3].stackRules[1].minimum==5,"Stack style was not saved")
+	do
+		local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing");local profile=filters.profile("continue-stacks","Continue stacks")
+		local source=editing.newTier("source","Source",'Show\n BaseType == "Chaos Orb"\n SetFontSize 20\n Continue');source.items={"Chaos Orb"}
+		local style=editing.newTier("style","Style",'Show\n BaseType == "Divine Orb"\n SetFontSize 40\n Continue');style.items={"Divine Orb"};profile.tiers={source,style}
+		local kept;require("Classes.LootFilterStackControl").Open(profile,"source",function(value) kept=value end)
+		ui:choose("stackStyle","style","val");ui:text("stackSize","5");ui:click("stackAdd");frame("filter-continuing-stack-style");ui:click("stackKeep")
+		assert(kept and kept.tiers[1].stackRules[1].minimum==5,"Continuing tier did not keep its stack style")
+		local rules=editing.tierRules(kept.tiers);assert(require("Modules.LootFilterParser").parse(rules[1].text).rules[1].continue,"Stack style lost Continue")
+	end
 	ui:click("undo");ui:click("redo");ui:click("viewModules");ui:click("moduleCreate");frame("filter-modules")
 	ui.clipboard="not a pickup module";ui:click("modulePaste");assert(#main.popups>0,"Invalid module did not show an explanation");assert(#build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].modules==1,"Invalid module changed the profile");main.popups={}
 	ui:click("moduleCopy");ui:click("modulePaste")

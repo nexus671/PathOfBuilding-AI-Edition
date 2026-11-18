@@ -75,11 +75,14 @@ function M.tierRules(tiers)
 		local base=M.rule(tier)
 		if base then
 			local rules=copyTable(tier.stackRules or {});table.sort(rules,function(a,b) return a.minimum>b.minimum end)
-			for _,rule in ipairs(rules) do
+			local continuing=parser.parse(base.text).rules[1].continue
+			for index,rule in ipairs(rules) do
 				local target=assert(byId[rule.styleTierId],"Stack style tier is missing")
-				local text=require("Modules.LootFilterStackTiers").rule(base.text,target.text,rule.minimum)
+				local upper=continuing and index>1 and rules[index-1].minimum or nil
+				local text=require("Modules.LootFilterStackTiers").rule(base.text,target.text,rule.minimum,upper)
 				result[#result+1]={id="stack-"..require("sha1")(tier.id..":"..rule.minimum):sub(1,20),title=tier.title.." / "..rule.minimum.."+ stack",text=text,enabled=true}
 			end
+			if continuing and #rules>0 then base.text=base.text.."\n    StackSize < "..rules[#rules].minimum end
 			result[#result+1]=base
 		end
 	end

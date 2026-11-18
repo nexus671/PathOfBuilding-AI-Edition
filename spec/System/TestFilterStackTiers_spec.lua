@@ -14,10 +14,11 @@ describe("Stack tier rule generation",function()
   local hidden=stack.rule(source,target:gsub("^Show","Hide"),5)
   assert.equal("Hide",parser.simulate(parser.parse(hidden.."\n"..source),{BaseType="Chaos Orb",Class="Stackable Currency",AreaLevel=75,StackSize=5}).action)
  end)
- it("rejects invalid thresholds, continuation and unknown target directives",function()
+ it("rejects invalid thresholds and unknown target directives",function()
   local source='Show\n BaseType == "Chaos Orb"';local target='Show\n BaseType == "Divine Orb"'
   for _,n in ipairs({0,1,2.5,1000000001}) do assert.has_error(function() stack.rule(source,target,n) end) end
-  assert.has_error(function() stack.rule(source.."\n Continue",target,3) end)
+  assert.is_true(parser.parse(stack.rule(source.."\n Continue",target,3)).rules[1].continue)
+  assert.is_falsy(parser.parse(stack.rule(source,target.."\n Continue",3)).rules[1].continue)
   assert.has_error(function() stack.rule(source,target.."\n FutureDirective 1",3) end)
   assert.has_error(function() stack.rule(source.."\n StackSize < 5",target,5) end)
   assert.has_no.errors(function() stack.rule(source.."\n StackSize <= 5",target,5) end)
@@ -51,7 +52,25 @@ describe("Stack tier rule generation",function()
   end
   a.stackRules={};for n=2,20 do a.stackRules[#a.stackRules+1]={minimum=n,styleTierId="b"} end
   assert.equal(19,#editing.validateTiers({a,b})[1].stackRules)
-  a.stackRules={{minimum=5,styleTierId="b"}};b.text=b.text.."\n Continue";assert.has_error(function() editing.validateTiers({a,b}) end)
+  a.stackRules={{minimum=5,styleTierId="b"}};b.text=b.text.."\n Continue";assert.has_no.errors(function() editing.validateTiers({a,b}) end)
+ end)
+
+ it("preserves continuing source flow with mutually exclusive stack ranges",function()
+  local editing=require("Modules.LootFilterEditing")
+  local low=editing.newTier("low","Low",'Show\n BaseType == "Chaos Orb"\n SetFontSize 20\n Continue')
+  local mid=editing.newTier("mid","Mid",'Hide\n BaseType == "Divine Orb"\n SetFontSize 30\n Continue')
+  local high=editing.newTier("high","High",'Show\n BaseType == "Mirror of Kalandra"\n SetFontSize 45')
+  low.items={"Chaos Orb"};mid.items={"Divine Orb"};high.items={"Mirror of Kalandra"}
+  low.stackRules={{minimum=5,styleTierId="mid"},{minimum=10,styleTierId="high"}}
+  local rules=editing.tierRules(editing.validateTiers({low,mid,high}));local lines={}
+  for _,rule in ipairs(rules) do lines[#lines+1]=rule.text end
+  lines[#lines+1]='Show\n BaseType == "Chaos Orb"\n SetBorderColor 1 2 3'
+  local parsed=parser.parse(table.concat(lines,"\n"))
+  for _,case in ipairs({{1,"20"},{4,"20"},{5,"30"},{9,"30"},{10,"45"},{20,"45"}}) do
+   local result=parser.simulate(parsed,{BaseType="Chaos Orb",StackSize=case[1]})
+   assert.equal("Show",result.action);assert.same({case[2]},result.styles.SetFontSize);assert.same({"1","2","3"},result.styles.SetBorderColor)
+   assert.equal(2,#result.matches,"Only one tier and the later rule should match")
+  end
  end)
 
  it("retains stack rules across all bundled strictness exports",function()

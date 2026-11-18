@@ -808,6 +808,12 @@ async function main(){
   const surrenderPickup=generated.profile.rules.find(rule=>rule.origin==='gear:surrender');assert.ok(surrenderPickup);
   assert.match(surrenderPickup.text,/BaseType == "Ezomyte Tower Shield"/);assert.match(surrenderPickup.text,/Rarity == Unique/);assert.doesNotMatch(surrenderPickup.text,/ItemLevel/);
   const tested=await queued('test_loot_filter',{baseRevision:context.revision,profile:generated.profile,sample:{BaseType:'Iron Hat',Rarity:'Rare',ItemLevel:86}},'tested');assert.equal(tested.result.action,'Show');
+  const continuingStacks={...lootProfile,template:'Show\n BaseType == "Chaos Orb"\n SetBorderColor 1 2 3',tiers:[
+    {id:'low',title:'Low',text:'Show\n BaseType == "Chaos Orb"\n SetFontSize 20\n Continue',items:['Chaos Orb'],stackRules:[{minimum:5,styleTierId:'mid'},{minimum:10,styleTierId:'high'}]},
+    {id:'mid',title:'Mid',text:'Show\n BaseType == "Divine Orb"\n SetFontSize 30\n Continue',items:['Divine Orb']},
+    {id:'high',title:'High',text:'Show\n BaseType == "Mirror of Kalandra"\n SetFontSize 45',items:['Mirror of Kalandra']} ]};
+  const continuedStack=await queued('test_loot_filter',{baseRevision:context.revision,profile:continuingStacks,sample:{BaseType:'Chaos Orb',StackSize:10}},'tested');
+  assert.deepEqual(continuedStack.result.styles.SetFontSize,['45']);assert.deepEqual(continuedStack.result.styles.SetBorderColor,['1','2','3']);
   const copiedProfile={...lootProfile,rules:[{id:'currency',title:'Currency dimensions',text:'Show\n BaseType == "Chaos Orb"\n DropLevel = 12\n Width = 1\n BaseDefencePercentile = 0',enabled:true}]};
   const copied=await queued('test_loot_filter',{baseRevision:context.revision,profile:copiedProfile,itemText:'Item Class: Stackable Currency\nRarity: Currency\nChaos Orb\n--------\nStack Size: 7/20\n--------',areaLevel:83},'tested');
   assert.equal(copied.result.action,'Show');assert.equal(copied.sample.DropLevel,12);assert.equal(copied.sample.Width,1);assert.equal(copied.sample.AreaLevel,83);assert.equal(copied.sample.BaseDefencePercentile,0);
