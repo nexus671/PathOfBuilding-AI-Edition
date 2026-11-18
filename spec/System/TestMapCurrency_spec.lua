@@ -43,6 +43,13 @@ describe("Experimental map currency",function()
 			assert.same(expected,currency.perform(previous,"chaos",42).state)
 		end
 	end)
+	it("keeps cached reroll samples identical to uncached samples",function()
+		for _,input in ipairs({state("rare"),{baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}}) do
+			local cache={};for seed=1,12 do
+				assert.same(currency.perform(input,"chaos",seed),currency.perform(input,"chaos",seed,nil,false,cache))
+			end
+		end
+	end)
 	it("models Nightmare Chaos rerolls with at least one exclusive modifier per side",function()
 		local map=require("Modules.MapCraftingData")
 		local input={baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}

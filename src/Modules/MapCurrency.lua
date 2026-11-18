@@ -56,9 +56,11 @@ local function validate(input,checkpoint,cache)
 		-- Validate the base, tier and level before changing state.
 		local probe={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity="rare",selected={}};inspect(probe,0,checkpoint)
 	else
-		inspect(state,0,checkpoint)
+		-- Estimate trials start from the same empty state. The candidate cache
+		-- already validates that base, tier, item level and rarity on first use.
+		if #state.selected==0 and cache then candidates(state,checkpoint,cache) else inspect(state,0,checkpoint) end
 		local prior={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity=state.rarity,selected={}}
-		if map.isNightmare(state.baseId) then
+		if map.isNightmare(state.baseId) and #state.selected>0 then
 			-- Copied modifiers need not be listed in generation order. Check
 			-- each against the union of the initial and unlocked pools.
 			local eligible,offset={},0

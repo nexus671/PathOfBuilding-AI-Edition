@@ -1,11 +1,12 @@
--- Run from src: luajit ../tools/benchmark_map_rerolls.lua [stress]
+-- Run from src: luajit ../tools/benchmark_map_rerolls.lua [stress] [nightmare]
 -- CPU-time measurements vary by machine; they are not a frame-time guarantee.
-local stress=arg[1]=="stress";arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true;newBuild()
+local stress,nightmare=false,false;for _,value in ipairs(arg) do if value=="stress" then stress=true elseif value=="nightmare" then nightmare=true end end
+arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true;newBuild()
 local tasks=require("Modules.CraftingTasks")
 local estimate=require("Modules.MapCraftEstimate")
 local map=require("Modules.MapCraftingData")
 local coldStart=os.clock();map.source();local loadMs=(os.clock()-coldStart)*1000
-local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=5,itemLevel=68,rarity="rare",selected={}}
+local state=nightmare and {baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}} or {baseId="Metadata/Items/Maps/MapWorldsStrand",tier=5,itemLevel=68,rarity="rare",selected={}}
 -- Avoid every currently eligible modifier, forcing every attempt.
 local page=map.inspect(state.baseId,state.tier,state.itemLevel,{},"",0,100,nil,state.rarity)
 assert(not page.nextOffset,"Update the benchmark for a larger modifier pool")
@@ -21,4 +22,4 @@ local cancelled,unexpected;local job=tasks.start(build,function(checkpoint) retu
 while tasks.job and (job.current.attempts or 0)<100 do tasks.tick(build) end
 assert(tasks.job and job.current.attempts>=100);local cancelAt=job.current.attempts;tasks.cancel()
 assert(not tasks.job and cancelled and not unexpected)
-print("MAP_REROLL_BENCHMARK "..require("dkjson").encode({attempts=done.attempts,successes=done.successes,cpuMs=elapsed,coldDataLoadMs=loadMs,slices=#times,p95SliceMs=times[math.ceil(#times*0.95)],maxSliceMs=times[#times],cancelledAfter=cancelAt}))
+print("MAP_REROLL_BENCHMARK "..require("dkjson").encode({scenario=nightmare and "nightmare" or "ordinary",attempts=done.attempts,successes=done.successes,cpuMs=elapsed,coldDataLoadMs=loadMs,slices=#times,p95SliceMs=times[math.ceil(#times*0.95)],maxSliceMs=times[#times],cancelledAfter=cancelAt}))
