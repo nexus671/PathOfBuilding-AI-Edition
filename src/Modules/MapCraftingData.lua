@@ -137,7 +137,9 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 		assert(counts[mod.generation_type]<=(rarity=="magic" and 1 or 3),"Too many modifiers for this map rarity")
 		for _,group in ipairs(mod.groups or {}) do assert(not groups[group],"Selected modifiers share a group");groups[group]=true end
 	end
-	local result={};for _,entry in ipairs(M.candidates(tags,itemLevel,selected,checkpoint)) do
+	local eligible=M.candidates(tags,itemLevel,selected,checkpoint)
+	if checkpoint then checkpoint() end
+	local result={};for _,entry in ipairs(eligible) do
 		if counts[entry.side]<(rarity=="magic" and 1 or 3) and (rarity=="rare" or not rareOnly[entry.id]) and (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true) then result[#result+1]=entry end
 	end
 	local results,total,nextOffset=page(result,offset,limit)

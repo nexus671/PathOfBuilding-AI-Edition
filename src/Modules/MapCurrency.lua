@@ -6,11 +6,13 @@ local function rng(seed)
 	return function() seed=seed*16807%2147483647;return seed/2147483647 end
 end
 local function inspect(state,offset,checkpoint)
+	if checkpoint then checkpoint() end
 	return map.inspect(state.baseId,state.tier,state.itemLevel,state.selected,"",offset,100,checkpoint,state.rarity)
 end
 local function candidates(state,checkpoint,cache)
 	-- Reroll trials repeatedly visit the same empty and one-modifier pools.
 	-- Keep this cache local to one estimate and bound it to those small states.
+	if checkpoint then checkpoint() end
 	local key
 	if cache and #state.selected<=1 then
 		key=table.concat({state.baseId,state.tier,state.itemLevel,state.rarity,state.selected[1] or ""},"|")
