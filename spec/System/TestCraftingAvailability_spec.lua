@@ -15,7 +15,7 @@ describe("Crafting action preconditions",function()
 		allowed,reason=check("locus",specialState,special);assert.is_false(allowed);assert.matches("special Locus",reason)
 		ok,errorText=pcall(sim.action,special,specialState,{method="locus"},function() return 0 end);assert.is_false(ok);assert.is_truthy(errorText:find(reason,1,true))
 		local synthesised=shallow(model);synthesised.item=shallow(model.item);synthesised.item.synthesised=true
-		allowed,reason=check("locus",state,synthesised);assert.is_false(allowed);assert.matches("special Locus",reason)
+		allowed,reason=check("locus",state,synthesised);assert.is_false(allowed);assert.matches("Synthesised implicits",reason)
 		local locked=copyTable(state);locked.rarity="RARE";locked.affixes={{id=mod.id,range=0.5}}
 		local custom=shallow(model);custom.byId=shallow(model.byId);custom.byId[mod.id]=shallow(model.byId[mod.id]);custom.byId[mod.id][1]="Prefixes Cannot Be Changed"
 		allowed,reason=check("locus",locked,custom);assert.is_false(allowed);assert.matches("meta%-modifier",reason)

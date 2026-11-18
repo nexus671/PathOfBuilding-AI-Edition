@@ -138,6 +138,50 @@ describe("Imported corruption identities",function()
 		assert.is_false(available);assert.is_truthy(reason:find("synthesised",1,true))
 		assert.has_error(function() sim.action(synth,synth.initial,{method="vaal"},function() return 0 end) end,reason)
 	end)
+	it("preserves synthesised survivors across second corruption and reopening",function()
+		local lines={"+10 to Strength","+20 to Dexterity","+12 to Intelligence"}
+		for count=1,3 do
+			local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: "..count.."\n"..table.concat(lines,"\n",1,count).."\nSynthesised Item"
+			local model=sim.model(text);local first=sim.action(model,model.initial,{method="vaal"},function() return 0 end)
+			assert.is_true(require("Modules.CraftingAvailability").check("locus",first,model))
+			local final=sim.action(model,first,{method="locus"},function() return 0 end)
+			assert.is_true(final.twiceCorrupted);assert.equal(2,#final.corruptedImplicits);assert.equal(math.max(0,count-2),#(final.synthRetained or {}))
+			assert.is_true(sim.validateState(model,final).twiceCorrupted)
+			local reopened=sim.model(sim.toItem(model,final).raw);assert.is_true(reopened.initial.twiceCorrupted);assert.equal(2,#reopened.initial.corruptedImplicits)
+			assert.equal(math.max(0,count-2),#(reopened.synthesisGroups or {}))
+			if count==2 then
+				local malformed=sim.toItem(model,final).raw:gsub("\nTwice Corrupted",""):gsub("\nCorrupted","")
+				local unknown=sim.model(malformed);assert.is_false(require("Modules.CraftingAvailability").check("vaal",unknown.initial,unknown))
+			end
+			local intermediate=sim.model(sim.toItem(model,first).raw)
+			assert.is_true(require("Modules.CraftingAvailability").check("locus",intermediate.initial,intermediate))
+			local again=sim.action(intermediate,intermediate.initial,{method="locus"},function() return 0 end)
+			assert.is_true(sim.validateState(intermediate,again).twiceCorrupted)
+			local destroyed=sim.action(model,first,{method="locus"},function() return 0.6 end);assert.is_true(sim.validateState(model,destroyed).destroyed)
+		end
+	end)
+	it("retains synthesised groups when replacing one of two existing corruptions",function()
+		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 3\n+10 to Strength\n+20 to Dexterity\n+12 to Intelligence\nSynthesised Item"
+		local model=sim.model(text);local once=sim.action(model,model.initial,{method="vaal"},function() return 0 end)
+		local twice=sim.action(model,once,{method="locus"},function() return 0 end)
+		local item=sim.toItem(model,twice).raw:gsub("Twice Corrupted","Corrupted")
+		local reopened=sim.model(item);assert.equal(1,#reopened.initial.synthRetained);assert.equal(2,#reopened.initial.corruptedImplicits)
+		local replaced=sim.action(reopened,reopened.initial,{method="locus"},function() return 0 end)
+		assert.same(reopened.initial.synthRetained,replaced.synthRetained);assert.equal(2,#replaced.corruptedImplicits);assert.is_true(sim.validateState(reopened,replaced).twiceCorrupted)
+	end)
+	it("saves an exhausted synthesised state and simulates a second corruption",function()
+		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item"
+		local model=sim.model(text);local first=sim.action(model,model.initial,{method="vaal"},function() return 0 end)
+		local final=sim.action(model,first,{method="locus"},function() return 0 end);assert.is_true(final.synthExhausted)
+		local invalid=copyTable(final);invalid.synthExhausted=false;assert.is_false(pcall(sim.validateState,model,invalid))
+		local legacy=copyTable(final);legacy.intangibility=50;local destroyed=sim.action(model,legacy,{method="ducat_tzamoto"},function() return 0.9 end);assert.is_true(sim.validateState(model,destroyed).destroyed)
+
+		local project={id="synth-second",title="Synthesised second corruption",slot="Amulet",startingItem=text,goals={},steps={},nativeRecipe={steps={{method="locus"}},targets={},requirements={twiceCorrupted=true},initialState=final}}
+		build.savers.CraftingProjects:Upsert(project);local xml=build:SaveDB("Synthesised second corruption");loadBuildFromXML(xml,"Synthesised second corruption")
+		local restored=build.savers.CraftingProjects.projects[1].nativeRecipe.initialState;assert.is_true(restored.synthExhausted);assert.same(final.corruptedImplicits,restored.corruptedImplicits);assert.is_true(sim.validateState(sim.model(text),restored).twiceCorrupted)
+		local result=sim.simulate(text,{steps={{method="locus"}},targets={},requirements={twiceCorrupted=true}},{initialState=first,trials=20,maxActions=1,forceFirstAction=true})
+		assert.is_nil(next(result.transitionErrors))
+	end)
 	it("models second corruption of identified Eldritch implicits as an explicit assumption",function()
 		local model=sim.model(raw);local check=require("Modules.CraftingAvailability").check
 		local first=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state

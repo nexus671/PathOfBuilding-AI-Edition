@@ -33,7 +33,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Report modeled ingredient and service quantities separately from spending, with an illustrated resource browser.
 - [x] Apply quality enchantments with native item state, recipe goals and resource costs.
 - [ ] Complete and validate current crafting coverage, including incomplete socket, corruption and league mechanics and their probabilities.
-- [ ] Support mixed synthesised implicits in the Locus; these cases remain disabled. Identified Eldritch implicits use an experimental replacement model. Vaal Orb replacement of an identified Eldritch or synthesised implicit uses an assumed uniform choice; ambiguous synthesised groups remain unavailable.
+- [ ] Validate mixed Eldritch and synthesised implicits in the Locus against the live game; both use experimental replacement models. Vaal Orb replacement of an identified Eldritch or synthesised implicit uses an assumed uniform choice; ambiguous synthesised groups remain unavailable.
 - [x] Keep empirical assumptions visible; never present unknown weights as facts.
 
 ## Atlas

@@ -259,6 +259,7 @@ function M.hint(method,state,model,craft)
 	if available and method=="ducat_ukatoa" then return "Replaces amulet implicits. Equal side and tier 1-4 chances are unverified assumptions." end
 	if available and method=="ducat_katakohi" then return "Historical Allflame craft. Socket counts, selection, attribute pools and modifier odds are experimental assumptions." end
 	if available and method=="locus" and model.item.type=="Jewel" then return "Jewel altar model assumes 25% implicit, 25% no change and 50% destruction; unverified." end
+	if available and method=="locus" and model.item.synthesised then return "Assumes 25% implicit, 25% sockets, 50% destruction. Synthesised replacement is unverified." end
 	if available and method=="locus" and state.implicits then return "Assumes 25% implicit, 25% sockets, 50% destruction. Eldritch replacement is unverified." end
 	if available and method=="locus" then return "Assumes 25% implicit, 25% sockets, 50% destruction; not verified." end
 	if available and method=="socket_white_bench" then return "3.30 bench: turn sockets white for one Scouring Orb, plus one Vaal Orb on corrupted items." end

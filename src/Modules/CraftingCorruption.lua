@@ -15,7 +15,10 @@ function C.extend(M,A,api)
 			return "Corruption of unidentified Eldritch implicits is not modeled."
 		end
 		if model.item.synthesised and #(model.item.implicitModLines or {}) > 1 and not model.synthesisGroups then
-			return "The synthesised implicit modifiers could not be grouped unambiguously."
+			if not model.item.corrupted or model.unresolvedCorruption then return "The synthesised implicit modifiers could not be grouped unambiguously." end
+			for _,line in ipairs(model.item.implicitModLines) do
+				if (line.modGroup or ""):sub(1,9)~="crafting_" then return "The synthesised implicit modifiers could not be grouped unambiguously." end
+			end
 		end
 	end
 	M.methodChecks.vaal=mixedImplicitReason
@@ -24,7 +27,8 @@ function C.extend(M,A,api)
 		local flags=api.flags(model,state)
 		if flags.prefixes or flags.suffixes or flags.attack or flags.caster then return "Locus meta-modifier interactions need additional validation" end
 		for _,entry in ipairs(state.affixes) do if entry.fractured then return "Locus influence outcomes on fractured bases need additional validation" end end
-		if model.item.synthesised or model.item.baseName=="Sacrificial Garb" then return "This special Locus transformation is not modeled" end
+		if model.item.baseName=="Sacrificial Garb" then return "This special Locus transformation is not modeled" end
+		if model.item.synthesised and not model.synthesisGroups and (not state.corruptedImplicits or model.unresolvedCorruption) then return "Synthesised implicits must be identified before using the Locus." end
 		do
 			local retained=state.corruptedImplicits or {}
 			for removed=1,(#retained==2 and 2 or 1) do
@@ -128,13 +132,20 @@ function C.extend(M,A,api)
 			chosen[#chosen+1]={id=assert(id),range=M.rollRange(model.byId[id],random),corruption330=model.corruptions330[id] and true or nil}
 			for _,group in ipairs(metadata[id].groups) do groups[group]=true end
 		end
+		local previousCount=#(state.corruptedImplicits or {})
 		state.corruptedImplicits=chosen
-		if model.synthesisGroups then
+		if model.synthesisGroups and #chosen>previousCount then
 			local retained=copyTable(state.synthRetained or {})
-			if #retained==0 then for index in ipairs(model.synthesisGroups) do retained[#retained+1]=index end end
-			local removed=#retained==1 and 1 or math.floor(random()*#retained)+1
-			table.remove(retained,removed)
+			if not state.synthRetained and not state.synthExhausted then
+				-- An old single-implicit state may omit the exhausted marker.
+				if previousCount==0 or model.item.corrupted then for index in ipairs(model.synthesisGroups) do retained[#retained+1]=index end end
+			end
+			for _=1,math.min(#chosen-previousCount,#retained) do
+				local removed=#retained==1 and 1 or math.floor(random()*#retained)+1
+				table.remove(retained,removed)
+			end
 			state.synthRetained=#retained>0 and retained or nil
+			state.synthExhausted=#retained==0 and true or nil
 		end
 		if state.implicits then
 			if #state.implicits > 1 then table.remove(state.implicits,math.floor(random()*#state.implicits)+1)
@@ -170,7 +181,7 @@ function C.extend(M,A,api)
 		if not state.destroyed and state.corrupted and not state.corruptedImplicits and not state.implicits and not state.vendorImplicit and not state.baseImplicitRanges and model.initial.corruptedImplicits then
 			state=copyTable(state);state.corruptedImplicits=copyTable(model.initial.corruptedImplicits)
 		end
-		if not state.destroyed and state.corruptedImplicits and not state.synthRetained and model.item.corrupted and model.synthesisGroups then
+		if not state.destroyed and state.corruptedImplicits and not state.synthRetained and not state.synthExhausted and model.item.corrupted and model.synthesisGroups then
 			state=copyTable(state);state.synthRetained={};for index in ipairs(model.synthesisGroups) do state.synthRetained[index]=index end
 		end
 		assert(state.twiceCorrupted==nil or type(state.twiceCorrupted)=="boolean","Invalid twice-corruption marker")
@@ -193,16 +204,23 @@ function C.extend(M,A,api)
 		if state.destroyed then assert(type(state.affixes) == "table" and #state.affixes == 0,"Destroyed items cannot retain usable affixes") end
 		if state.corruptedImplicits and model.item.synthesised and not model.item.corrupted then
 			assert(model.synthesisGroups or #(model.item.implicitModLines or {})<=1,"Synthesised implicit grouping is unresolved")
-			assert(not model.synthesisGroups or #model.synthesisGroups<=1 or state.synthRetained,"Missing retained synthesised modifiers")
+			assert(not model.synthesisGroups or #model.synthesisGroups<=1 or state.synthRetained or state.synthExhausted,"Missing retained synthesised modifiers")
 		end
 		if state.synthRetained then
 			assert(type(state.synthRetained)=="table" and model.item.synthesised and model.synthesisGroups and state.corruptedImplicits,"Invalid retained synthesised implicit state")
 			local seen={};for _,index in ipairs(state.synthRetained) do assert(type(index)=="number" and index==math.floor(index) and model.synthesisGroups[index] and not seen[index],"Invalid retained synthesised implicit");seen[index]=true end
 			assert(#state.synthRetained>=1 and #state.synthRetained<=2,"Invalid retained synthesised implicit count")
-			assert(#state.synthRetained==#model.synthesisGroups-(model.item.corrupted and 0 or 1),"Retained synthesised modifiers do not match the corruption outcome")
+			local added=#state.corruptedImplicits-(model.item.corrupted and #(model.initial.corruptedImplicits or {}) or 0)
+			assert(#state.synthRetained==math.max(0,#model.synthesisGroups-math.max(0,added)),"Retained synthesised modifiers do not match the corruption outcome")
+		end
+		assert(state.synthExhausted==nil or state.synthExhausted==true,"Invalid exhausted synthesised implicit marker")
+		if state.synthExhausted then
+			assert(state.synthExhausted==true and not state.destroyed and model.item.synthesised and model.synthesisGroups and state.corruptedImplicits and not state.synthRetained,"Invalid exhausted synthesised implicit state")
+			local added=#state.corruptedImplicits-(model.item.corrupted and #(model.initial.corruptedImplicits or {}) or 0)
+			assert(added>=#model.synthesisGroups,"Invalid exhausted synthesised implicit count")
 		end
 		if state.corruptedImplicits then
-			assert(state.corrupted and #state.corruptedImplicits >= 1 and #state.corruptedImplicits + #(state.implicits or {}) <= 2 and (not state.synthRetained or #state.corruptedImplicits==1 and not state.implicits),"Invalid corruption implicit state")
+			assert(state.corrupted and #state.corruptedImplicits >= 1 and #state.corruptedImplicits + #(state.implicits or {}) <= 2 and (not state.synthRetained or not state.implicits),"Invalid corruption implicit state")
 			local groups={}
 			for _,entry in ipairs(state.corruptedImplicits) do
 				assert(model.corruptionIds[entry.id] or model.legacyCorruptionIds[entry.id],"Invalid corruption implicit for this base")
@@ -279,7 +297,7 @@ function C.extend(M,A,api)
 					local ok=pcall(api.add,model,state,random);if not ok then break end
 				end
 				state.rollBlock=nil
-			elseif method == "locus" then state.destroyed=true;state.affixes={};state.implicits=nil;state.corruptedImplicits=nil;state.synthRolls=nil
+			elseif method == "locus" then state.destroyed=true;state.affixes={};state.implicits=nil;state.corruptedImplicits=nil;state.synthRolls=nil;state.synthRetained=nil;state.synthExhausted=nil
 			end
 			state.corrupted=true;state.imprint=nil
 			if method=="locus" and not state.destroyed then state.twiceCorrupted=true end
@@ -297,6 +315,6 @@ function C.extend(M,A,api)
 	M.limits[#M.limits+1]="Ordinary jewel Vaal outcomes assume equal branch and unique-selection weights. The bundled candidate pool, individual rolls and rare modifier counts are unverified. Further crafting of transformed uniques is not modeled."
 	M.limits[#M.limits+1]="The equipment Vaal model includes the four outcome branches and current non-white socket conversion. Rare-brick socket/link rerolls are not modeled; tainted affix outcomes use a 50/50 assumption."
 	M.limits[#M.limits+1]="Corrupting unidentified Eldritch implicits or ambiguously grouped synthesised implicits is not modeled. Replacement is selected uniformly as an unverified assumption."
-	M.limits[#M.limits+1]="The 3.30 Locus model requires a Corrupted item and adds a second corruption. Outcome chances, socket conversion and selection of a replaced implicit, including Eldritch replacement, are assumptions; uncorrupted altar use is not modeled. Fractured, synthesised, meta-modified and special transformation bases are excluded."
+	M.limits[#M.limits+1]="The 3.30 Locus model requires a Corrupted item and adds a second corruption. Outcome chances, socket conversion and selection of a replaced implicit, including Eldritch replacement, are assumptions; uncorrupted altar use is not modeled. Fractured, meta-modified and special transformation bases are excluded. Synthesised replacement selection is an unverified assumption."
 end
 return C

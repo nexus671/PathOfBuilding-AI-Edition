@@ -575,6 +575,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 
 	do
+		local sim=require("Modules.CraftingSimulator");local raw="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item"
+		local model=sim.model(raw);local first=sim.action(model,model.initial,{method="vaal"},function() return 0 end)
+		local copy=sim.toItem(model,first).raw
+		require("Classes.CraftingSimulatorControl").Open(build,{id="locus-synth-ui",title="Synthesised second corruption",slot="Amulet",startingItem=copy,goals={},steps={},preferredMethod="locus"})
+		assert(main.popups[1].controls.apply:IsEnabled(),"Identified synthesised implicit prevented the altar")
+		frame("crafting-locus-synth");ui:click("apply");assert(main.popups[1].controls.intro.label:find("Applied Locus",1,true));ui:click("close")
+	end
+
+	do
 		local rgbRaw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: W-W-W"
 		local p={id="omen-rgb-ui",title="Guaranteed RGB colours",slot="Body Armour",startingItem=rgbRaw,goals={},steps={},nativeRecipe={steps={{method="omen_trichromatism"}},targets={},requirements={socketColours="RGB",linkedColours=true}},priceBook={currency="chaos",source="Omen quotes",quotedAt=1700000000,values={["Metadata/Items/Currency/AncestralOmenOnChromaticAddWhiteSockets"]=2,["Metadata/Items/Currency/CurrencyRerollSocketColours"]=0.25}}}
 		require("Classes.CraftingSimulatorControl").Open(build,p);ui:click("settings");ui:text("paletteSearch","Trichromatism");assert(main.popups[1].controls.paletteUse:IsEnabled());frame("crafting-omen-rgb-selection")

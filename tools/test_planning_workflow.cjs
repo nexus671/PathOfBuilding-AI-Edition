@@ -127,9 +127,9 @@ async function main(){
   }
   assert.ok(mixedImplicit,'Expected a corruption implicit within the fixed seed set');
   assert.equal(mixedImplicit.state.implicits.length,1);assert.equal(mixedImplicit.state.corruptedImplicits.length,1);
-  const secondCorruption=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:mixedImplicit.itemText,action:{method:'locus'},seed:1},'crafted');
-  assert.ok(secondCorruption.nativeCrafting.state.destroyed || secondCorruption.nativeCrafting.state.twiceCorrupted);
-  assert.ok(secondCorruption.nativeCrafting.warnings.some(entry=>entry.code==='locus_assumptions' && entry.message.includes('Eldritch')));
+  const eldritchSecondCorruption=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:mixedImplicit.itemText,action:{method:'locus'},seed:1},'crafted');
+  assert.ok(eldritchSecondCorruption.nativeCrafting.state.destroyed || eldritchSecondCorruption.nativeCrafting.state.twiceCorrupted);
+  assert.ok(eldritchSecondCorruption.nativeCrafting.warnings.some(entry=>entry.code==='locus_assumptions' && entry.message.includes('Eldritch')));
   const partialMixed=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:mixedImplicit.itemText,initialState:{rarity:mixedImplicit.state.rarity,affixes:mixedImplicit.state.affixes},limit:5},'inspected');
   assert.deepEqual(partialMixed.crafting.nativeEngine.initialState.implicits,mixedImplicit.state.implicits);assert.deepEqual(partialMixed.crafting.nativeEngine.initialState.corruptedImplicits,mixedImplicit.state.corruptedImplicits);
   assert.ok(mixedImplicit.warnings.some(entry=>entry.code==='vaal_implicit_selection'));
@@ -143,6 +143,12 @@ async function main(){
   const synthContinued=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthCorrupt.nativeCrafting.itemText,action:{method:'socket_white_bench'},seed:1},'crafted');
   assert.deepEqual(synthContinued.nativeCrafting.state.corruptedImplicits,synthCorrupt.nativeCrafting.state.corruptedImplicits);
   const synthMultiRaw=socketedRaw+'\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item';
+  const synthMultiFirst=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthMultiRaw,action:{method:'vaal'},seed:mixedSeed},'crafted');
+  const synthMultiSecond=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthMultiRaw,initialState:synthMultiFirst.nativeCrafting.state,action:{method:'locus'},seed:mixedSeed},'crafted');
+  assert.equal(synthMultiSecond.nativeCrafting.state.synthExhausted,true);assert.equal(synthMultiSecond.nativeCrafting.state.corruptedImplicits.length,2);
+  assert.ok(synthMultiSecond.nativeCrafting.warnings.some(entry=>entry.code==='locus_assumptions' && entry.message.includes('synthesised')));
+  const synthSaved=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:synthMultiRaw,initialState:synthMultiSecond.nativeCrafting.state,limit:5},'inspected');
+  assert.equal(synthSaved.crafting.nativeEngine.initialState.synthExhausted,true);
   const synthMultiInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:synthMultiRaw,limit:5},'inspected');
   assert.equal(synthMultiInspection.crafting.nativeEngine.synthesisGroups.length,2);
   const synthRangeRaw=socketedRaw+'\nImplicits: 2\n{range:0}(8-10)% increased maximum Life\n+20 to Dexterity\nSynthesised Item';
