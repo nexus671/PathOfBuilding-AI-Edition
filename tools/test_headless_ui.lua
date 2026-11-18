@@ -1445,6 +1445,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(require("Modules.LootFilterParser").simulate(influenceRule,build.planningWorkspace.cache.filters.layout.snapshot().sample).action=="Hide","Dual influence did not match the exact influence rule")
 	ui:click("sampleEdit");ui:text("HasInfluence","");ui:text("SocketGroup","0");ui:text("Sockets","0");ui:click("useSample")
 	local noSockets=build.planningWorkspace.cache.filters.layout.snapshot().sample
+	assert(noSockets.HasInfluence==nil and require("Modules.LootFilterParser").simulate(influenceRule,noSockets).status=="unknown","Blank influence must remain unknown")
 	assert(noSockets.SocketGroup=="0" and noSockets.Sockets==0,"Zero sockets were not retained in the sample")
 	assert(require("Modules.LootFilterParser").simulate(require("Modules.LootFilterParser").parse("Show\n SocketGroup 0\nHide"),noSockets).action=="Show","Zero-socket sample did not match")
 	detail={};for _,row in ipairs(build.planningWorkspace.controls.detail.list) do detail[#detail+1]=row[1] or "" end;assert(not table.concat(detail," "):find("Invalid socket colours",1,true),"Corrected sample left a stale explanation")

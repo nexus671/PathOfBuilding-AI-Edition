@@ -202,6 +202,7 @@ function M.EditSample(item,save)
 	for i,key in ipairs(fields) do local x=16+((i-1)%columns)*fieldWidth;local y=28+math.floor((i-1)/columns)*rowHeight;ui.label(c,key.."Label",x,y,key:gsub("(%l)(%u)","%1 %2"),14)
 		local value=item[key];if type(value)=="table" then
 			if key=="HasExplicitMod" then local names={};for _,name in ipairs(value) do names[#names+1]=filters.quote(name) end;value=#names>0 and table.concat(names," ") or "[]"
+			elseif key=="HasInfluence" and #value==0 then value="None"
 			else value=table.concat(value," ") end
 		end
 		if parser.booleans[key] then
@@ -209,15 +210,16 @@ function M.EditSample(item,save)
 			c[key]:SelByValue(value==nil and "Unknown" or value and "Yes" or "No")
 		else c[key]=new("EditControl"):EditControl(ui.anchor,{x,y+18,fieldWidth-32,24},tostring(value==nil and "" or value),nil,nil,240) end
 		if key=="HasExplicitMod" then c[key].tooltipText='Enter quoted modifier names, or [] for a known empty list. Editing this field clears names inferred from pasted text.' end
+		if key=="HasInfluence" then c[key].tooltipText='Leave blank if unknown; enter None for an uninfluenced item, or names such as Shaper Elder.' end
 		if key=="SocketGroup" then c[key].tooltipText='Enter linked groups, 0 for no sockets, or leave blank if unknown.' end
 		if key=="DropLevel" or key=="Width" or key=="Height" or key=="BaseDefencePercentile" or key=="MemoryStrands" or key=="UnidentifiedItemTier" then c[key].tooltipText="Leave blank if this property is unknown." end
 	end
 	c.HasExplicitMod.changeFunc=function() extra.KnownExplicitMods=nil end
 	local previousBase=c.BaseType.buf
-	c.BaseType.tooltipText="Changing the base clears its class, dimensions, drop level, defence percentile, item tier, memory strands, map tier and sockets. Enter values for the new item."
+	c.BaseType.tooltipText="Changing the base clears its class, dimensions, drop level, defence percentile, item tier, memory strands, map tier, influence and sockets. Enter values for the new item."
 	c.BaseType.changeFunc=function(value)
 		if value~=previousBase then
-			for _,key in ipairs({"Class","DropLevel","Width","Height","BaseDefencePercentile","UnidentifiedItemTier","MemoryStrands","MapTier","SocketGroup","Sockets","SocketColours","LinkedSockets"}) do c[key]:SetText("") end
+			for _,key in ipairs({"Class","DropLevel","Width","Height","BaseDefencePercentile","UnidentifiedItemTier","MemoryStrands","MapTier","SocketGroup","Sockets","SocketColours","LinkedSockets","HasInfluence"}) do c[key]:SetText("") end
 			extra.AlwaysShow=nil
 			extra.KnownExplicitMods=nil
 			for _,key in ipairs(additionalSampleFields()) do extra[key]=nil end
@@ -235,7 +237,7 @@ function M.EditSample(item,save)
 		local nextItem=copyTable(extra);for _,key in ipairs(fields) do local v=parser.booleans[key] and c[key]:GetSelValue() or c[key].buf
 			if parser.numeric[key] then local n=v~="" and tonumber(v);assert(v=="" or n and n==n and math.abs(n)<1e9,"Enter a finite number for "..key);if key=="BaseDefencePercentile" and n then assert(n>=0 and n<=100,"Defence percentile must be between 0 and 100") elseif key=="MemoryStrands" and n then assert(n>=0 and n<=100 and n==math.floor(n),"Memory strands must be a whole number between 0 and 100") end;nextItem[key]=n or nil
 			elseif parser.booleans[key] then if v=="Unknown" then nextItem[key]=nil else nextItem[key]=v=="Yes" end
-			elseif key=="HasInfluence" then nextItem[key]=parser.tokens(v)
+			elseif key=="HasInfluence" then nextItem[key]=v:match("%S") and parser.tokens(v) or nil
 			elseif key=="HasExplicitMod" then if v=="" then nextItem[key]=nil elseif v=="[]" then nextItem[key]={} else nextItem[key]=parser.tokens(v) end
 			else nextItem[key]=v~="" and v or nil end
 		end;save(nextItem);main:ClosePopup()
