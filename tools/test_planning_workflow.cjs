@@ -271,6 +271,11 @@ async function main(){
   const etchedInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:etchedRaw,query:'socket_bench',limit:50},'inspected');
   const etchedOptions=etchedInspection.crafting.nativeEngine.socketCrafts.filter(entry=>entry.method==='socket_bench');
   assert.ok(etchedOptions.some(entry=>entry.action.count===3));assert.ok(etchedOptions.every(entry=>entry.action.count<=3));
+  const partialCleared={rarity:'NORMAL',affixes:[],enchantCleared:true};
+  const clearedPartialInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:etchedRaw,initialState:partialCleared,query:'socket_bench',limit:50},'inspected');
+  assert.ok(clearedPartialInspection.crafting.nativeEngine.socketCrafts.some(entry=>entry.method==='socket_bench' && entry.action.count===4));
+  const expandedCleared=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:etchedRaw,initialState:partialCleared,action:{method:'socket_bench',count:4},seed:1},'crafted');
+  assert.equal(expandedCleared.nativeCrafting.state.sockets.length,4);assert.doesNotMatch(expandedCleared.nativeCrafting.itemText,/maximum Sockets/);
   const removalInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:etchedRaw,query:'bench_remove_enchant',limit:10},'inspected');
   const removalService=removalInspection.crafting.nativeEngine.benchServiceCosts[0];
   assert.equal(removalService.available,true);assert.deepEqual(removalService.components,{'Metadata/Items/Currency/CurrencyConvertToNormal':3});

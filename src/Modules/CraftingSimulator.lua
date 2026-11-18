@@ -7,6 +7,7 @@ local M = {methodChecks={}}
 -- Socket-reducing enchantments occupy a glove socket even after later crafts.
 function M.socketLimit(model,state)
 	local item=model.item;local limit=item.base.socketLimit or 0
+	if state and state.enchantCleared then return limit end
 	if state and state.katakohiEnchants then return math.max(0,limit-#state.katakohiEnchants) end
 	if item.type=="Gloves" then
 		for _,line in ipairs(item.enchantModLines or {}) do
@@ -569,7 +570,7 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   end
   if group.scope == "enchant" then
    assert(model,"A native item model is required for enchantment targets")
-   local ids=state.katakohiEnchants or (not state.harvestEnchant and model.importedSocketEnchants)
+   local ids=state.enchantCleared and {} or state.katakohiEnchants or (not state.harvestEnchant and model.importedSocketEnchants)
    -- An unrecognized import cannot prove either a positive or negative target.
    unknown=not ids
    entries={};for _,id in ipairs(ids or {}) do entries[#entries+1]={id=id,range=1} end

@@ -24,6 +24,8 @@ Weapon cards show native local DPS, its damage-type breakdown, attacks per secon
 
 **Settings** contains advanced method configuration, **Allflame settings**, and **Edit hypothetical item**. The Craft tab keeps the currency tray, selected action, apply/undo and history controls together. In the hypothetical item editor, **Set socket layout** lets you choose observed or planned colours and links without consuming currency. Existing Abyss sockets must be retained and cannot be linked.
 
+Removing glove socket enchantments restores their socket capacity without adding sockets. A structured state marked `enchantCleared` likewise treats those enchantments as absent for socket limits and targets.
+
 Search **Find currencies** for **replace quality** to apply a Harvest quality enchantment. The choices show the required Lifeforce amount and colour. The new enchantment replaces the previous one; affixes, socket colours and quality remain. **Targets → Item properties** can require a particular Harvest enchantment. These goals and enchanted inventory items also travel through MCP and saved projects.
 
 **Targets → Item properties** can also require a Shaper, Elder, Warlord, Hunter, Crusader or Redeemer influence. This target is available to saved recipes and MCP. Gwennen's modeled random-influence outcome assumes equal chances among eligible types; the odds and eligibility are unverified.

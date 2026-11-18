@@ -96,7 +96,7 @@ function K.extend(M)
  local targetReason=M.implicitTargetReason
  function M.implicitTargetReason(model,state,targets)
   local reason=targetReason(model,state,targets);if reason then return reason end
-  if model and model.item and model.item.type=="Gloves" and not state.destroyed and not state.veil and not state.katakohiEnchants and not state.harvestEnchant and not model.importedSocketEnchants then
+  if model and model.item and model.item.type=="Gloves" and not state.destroyed and not state.veil and not state.enchantCleared and not state.katakohiEnchants and not state.harvestEnchant and not model.importedSocketEnchants then
    for _,group in ipairs(targets) do if group.scope=="enchant" then return "The imported enchantments could not be identified. Set observed socket enchantments in the hypothetical item editor before using an enchantment target." end end
   end
  end
