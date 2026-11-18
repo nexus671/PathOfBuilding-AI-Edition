@@ -588,11 +588,12 @@ function M.poll(build, force)
 			end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Map modifier inspection slice")
 			job.requestId=request.id;publish("calculating",{});return
 		end
-		if request.kind == "atlasSearch" or request.kind == "atlasConnect" or request.kind == "atlasTransition" then
+		if request.kind == "atlasSearch" or request.kind == "atlasConnect" or request.kind == "atlasTransition" or request.kind == "atlasThreads" then
 			assert(request.baseRevision == M.revision(build),"Build changed. Refresh Atlas context.")
 			local planner=require("Modules.AtlasPlanner")
 			local result
 			if request.kind == "atlasSearch" then result=planner.search(request.version,request.query,request.limit)
+			elseif request.kind == "atlasThreads" then result=require("Modules.AtlasStrategy").threadRestrictions(request.areaLevel,request.threads)
 			elseif request.kind == "atlasTransition" then
 				local before,after=planner.validate(request.before),planner.validate(request.after)
 				result={before=before.id,after=after.id,transition=require("Modules.AtlasStrategy").transition(before,after)}

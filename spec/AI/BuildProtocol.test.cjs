@@ -405,6 +405,16 @@ test('queues versioned Atlas searches and routing without changing build context
   assert.equal(f.call('get_build_context',{}).context.level,80);
 });
 
+test('queues bounded Thread restriction checks', t => {
+  const f=fixture(t),baseRevision=f.state.revision;
+  f.call('check_thread_restrictions',{baseRevision,areaLevel:73,threads:2});
+  const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(queued.kind,'atlasThreads');assert.equal(queued.areaLevel,73);assert.equal(queued.threads,2);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  assert.throws(()=>f.call('check_thread_restrictions',{baseRevision,areaLevel:101,threads:2}),/arguments/);
+  assert.throws(()=>f.call('check_thread_restrictions',{baseRevision,areaLevel:73,threads:1.5}),/arguments/);
+});
+
 test('preserves Atlas effect choices in AI proposals', t => {
   const f=fixture(t);
   const plan={id:'atlas',title:'Choice',version:'3.30.0-preview',budget:150,nodes:[45404],choices:[{node:45404,effect:55878}]};

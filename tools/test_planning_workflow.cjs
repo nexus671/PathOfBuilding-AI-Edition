@@ -778,6 +778,8 @@ async function main(){
   assert.equal(secondCorruption.nativeCrafting.warnings[0].code,'locus_assumptions');
   assert.ok(secondCorruption.nativeCrafting.state.destroyed || secondCorruption.nativeCrafting.state.twiceCorrupted);
   if(!secondCorruption.nativeCrafting.state.destroyed) assert.match(secondCorruption.nativeCrafting.itemText,/Twice Corrupted/);
+  const threadCheck=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:73,threads:2},'atlas');
+  assert.equal(threadCheck.atlas.modifiers.filter(row=>row.restrictionsMet).length,3);assert.match(threadCheck.atlas.note,/not modeled/);
   const starterAtlas={id:'starter-atlas',title:'Starter Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'starter'},mapDrafts:[{id:'my-map',title:'My map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:5,itemLevel:68,rarity:'rare',selected:['MapMonsterAreaOfEffectMapWorlds'],rolls:[{id:'MapMonsterAreaOfEffectMapWorlds',values:[13,8,5,45]}],estimate:{wantedGroups:[['MapMonsterAreaOfEffectMapWorlds']],avoid:['MapMonsterColdDamageMapWorlds'],trials:20,maxAttempts:5}}]};
   starterAtlas.mapDrafts.push({id:'corrupt-map',title:'Corrupted map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',corrupted:true,selected:corruptedIds,implicit:{id:'MapCorruptionItemRarity',value:15}});
   for(const version of ['3.28.0j','3.28.0j-ruthless']) {
