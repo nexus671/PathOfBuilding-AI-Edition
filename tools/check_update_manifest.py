@@ -1,6 +1,7 @@
 """Check listed updater files against the content available in this checkout.
 
 Like the updater, accept either the exact content hash or its LF-to-CRLF form.
+For source text, also check the form produced by a Windows CRLF checkout.
 This does not check whether every required file is listed or a URL is reachable.
 """
 import hashlib
@@ -11,6 +12,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 PARTS = {"default": "", "runtime": "runtime", "program": "src", "tree": "src"}
+SOURCE_TEXT_SUFFIXES = {".lua", ".js", ".cjs", ".json", ".xml", ".txt", ".md"}
 
 
 def check(root):
@@ -39,6 +41,10 @@ def check(root):
         digest = hashlib.sha1(content).hexdigest()
         if digest != expected and hashlib.sha1(content.replace(b"\n", b"\r\n")).hexdigest() != expected:
             errors.append(f"Hash mismatch: {part}/{name}")
+        elif part in {"program", "tree"} and path.suffix.lower() in SOURCE_TEXT_SUFFIXES and b"\0" not in content:
+            windows_content = content.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+            if hashlib.sha1(windows_content).hexdigest() != expected:
+                errors.append(f"Windows newline mismatch: {part}/{name}")
     return len(entries), errors
 
 

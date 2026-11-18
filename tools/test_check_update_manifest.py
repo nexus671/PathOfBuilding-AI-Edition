@@ -7,6 +7,24 @@ from check_update_manifest import check
 
 
 class ManifestCheckTest(unittest.TestCase):
+    def test_rejects_lf_only_source_hash_that_would_fail_on_windows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "src").mkdir()
+            content = b"first\nsecond\n"
+            (root / "src" / "bridge.cjs").write_bytes(content)
+            manifest = root / "manifest.xml"
+            def write_hash(data):
+                digest = hashlib.sha1(data).hexdigest()
+                manifest.write_text('<PoBVersion><File part="program" name="bridge.cjs" sha1="' + digest + '"/></PoBVersion>', encoding="utf-8")
+            write_hash(content)
+            self.assertTrue(any("Windows newline mismatch" in error for error in check(root)[1]))
+            windows = content.replace(b"\n", b"\r\n")
+            write_hash(windows)
+            self.assertEqual([], check(root)[1])
+            (root / "src" / "bridge.cjs").write_bytes(windows)
+            self.assertEqual([], check(root)[1])
+
     def test_accepts_updater_newlines_and_reports_real_problems(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
