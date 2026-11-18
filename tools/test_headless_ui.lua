@@ -1598,6 +1598,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(campaignDraft.weapons[1]=="Bow" and #campaignDraft.defences==1 and #campaignDraft.recipes==3 and campaignDraft.recipes[2]=="Unidentified rare set pieces" and campaignDraft.recipes[3]=="Low-level unidentified rare set pieces","Campaign pickup choices were not kept in the draft")
 	assert(#campaignDraft.rareSetSlots==1 and campaignDraft.rareSetSlots[1]=="Jewellery","Rare-set slot groups were not kept in the draft")
 	assert(campaignDraft.minAreaLevel==10 and campaignDraft.maxAreaLevel==60 and campaignDraft.minDropLevel==10 and campaignDraft.minLinks==2 and campaignDraft.upgradeWindow==20,"Campaign numeric edits were ignored")
+	ui:click("viewCustomize");ui:choose("source","Policies");ui:text("search","Bow / areas 45-49")
+	do
+		local entry=assert(build.planningWorkspace.controls.rules.list[1].entry,"Campaign band preview missing")
+		assert(entry.sample.DropLevel and entry.sample.DropLevel>=25 and entry.sample.DropLevel<=entry.sample.AreaLevel,"Campaign preview base does not fit the displayed area")
+		local parser=require("Modules.LootFilterParser");local result=parser.simulate(parser.parse(entry.rule.text),entry.sample)
+		assert(result.status=="matched" and result.action=="Show","Campaign preview does not match its rule")
+	end
+	frame("filter-campaign-band-preview");ui:click("viewOverview")
 	filterTool("Filter structure and priority");frame("filter-structure-all");ui:choose("mode","Priority conflicts");frame("filter-structure-conflicts");ui:click("close")
 	do
 		local example=require("Modules.LootFilters").profile("threshold-example","Threshold example")

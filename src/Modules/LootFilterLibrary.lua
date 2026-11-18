@@ -156,14 +156,16 @@ function M.sample(rule,block)
 		-- Family policies list many exact bases. Pick one that actually meets
 		-- the requested base drop-level band instead of always using the first.
 		if baseCondition and baseCondition.operator=="==" and #dropConditions>0 and item.Rarity~="Unique" then
+			local chosen
 			for _,name in ipairs(baseCondition.values) do
-				local class=baseClass(name);local level=M.baseProperties(name,item.Rarity).DropLevel
-				local valid=level~=nil and (not classCondition or class and parser.condition(classCondition,{Class=class})==true)
+				local class=baseClass(name);local level=M.baseProperties(name,item.Rarity).DropLevel;local area=tonumber(item.AreaLevel)
+				local valid=level~=nil and (not area or level<=area) and (not classCondition or class and parser.condition(classCondition,{Class=class})==true)
 				local native=data and data.itemBases and data.itemBases[name]
-				if valid and #socketConditions==1 and native and item.Sockets and item.Sockets>(native.socketLimit or 0) then valid=false end
+				if valid and #socketConditions==1 and native and type(item.Sockets)=="number" and item.Sockets>(native.socketLimit or 0) then valid=false end
 				if valid then for _,condition in ipairs(dropConditions) do if parser.condition(condition,{DropLevel=level})~=true then valid=false;break end end end
-				if valid then item.BaseType=name;break end
+				if valid then chosen=name;break end
 			end
+			item.BaseType=chosen
 		end
 		item.Class=baseClass(item.BaseType) or (hasClass and item.Class or nil)
 	end
