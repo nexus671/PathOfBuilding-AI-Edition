@@ -726,8 +726,9 @@ async function main(){
   const unknownMap=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:copiedMapText.replace('Monsters have 45% increased Area of Effect','Unknown map modifier')},'failed');assert.match(unknownMap.error,/Unrecognized map modifier/);
   const mapBases=await queued('search_map_bases',{baseRevision:context.revision,query:'MapWorldsBeach',limit:5},'mapData');
   assert.ok(mapBases.mapData.results.some(base=>base.id==='Metadata/Items/Maps/MapWorldsBeach'));
-  const mapMods=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:2},'mapData');
+  const mapMods=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:2,quality:{kind:'Pack Size',value:20}},'mapData');
   assert.equal(mapMods.mapData.candidates.length,2);assert.equal(mapMods.mapData.nextOffset,2);assert.match(mapMods.mapData.note,/not outcome probabilities/);
+  assert.equal(mapMods.mapData.summary.estimatedTotals.packSize.min,10);
   assert.equal(mapMods.mapData.currencyOptions.find(entry=>entry.id==='chaos').available,true);
   assert.equal(mapMods.mapData.currencyOptions.find(entry=>entry.id==='transmute').available,false);assert.match(mapMods.mapData.currencyOptions.find(entry=>entry.id==='transmute').reason,/normal map/);
   const mapPool=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,limit:100},'mapData');

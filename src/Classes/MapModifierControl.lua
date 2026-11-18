@@ -75,7 +75,7 @@ function M.Open(options)
 	end)
 	button("quality",16+left-96,66,96,"Quality...",function()
 		local popup={}
-		ui.description(popup,"help",16,28,608,48,{"Record map quality as shown on the item.","Quality is saved but excluded from estimated totals."},14)
+		ui.description(popup,"help",16,28,608,48,{"Record map quality as shown on the item.","Known 20% effects are shown; other effects remain unmodeled."},14)
 		ui.label(popup,"kindLabel",16,92,"Quality type",14)
 		popup.kind=new("EditControl"):EditControl(ui.anchor,{16,116,300,26},quality and quality.kind or "Pack Size",nil,nil,80)
 		ui.label(popup,"valueLabel",340,92,"Quality %",14)
@@ -107,6 +107,12 @@ function M.Open(options)
 		SetDrawColor(isCorrupted() and "^xE07070" or "^xAABBD0");DrawString(x+w/2,y+142,"CENTER_X",14,"VAR","Tier "..tostring(controls.tier:GetSelValueByKey("val"))..(isCorrupted() and " | Corrupted" or ""))
 	end
 	controls.affixes=new("TextListControl"):TextListControl(ui.anchor,{28,310,left-24,height-390},nil,{})
+	-- Controls are visited in hash order, so draw the list above the card even
+	-- when the card happens to be drawn later.
+	local drawAffixes=controls.affixes.Draw
+	function controls.affixes:Draw(viewPort)
+		SetDrawLayer(nil,1);drawAffixes(self,viewPort);SetDrawLayer(nil,0)
+	end
 	button("remove",16,height-62,math.floor((left-8)/2),"Remove last",function() local id=table.remove(selected);for i=#rolls,1,-1 do if rolls[i].id==id then table.remove(rolls,i) end end;candidate=nil;offset=0;refresh() end)
 	controls.remove.enabled=function() return #selected>0 end
 	button("estimate",24+math.floor((left-8)/2),height-62,math.floor((left-8)/2),"Estimate rerolls",function()
@@ -192,7 +198,7 @@ function M.Open(options)
 	refresh=function()
 		local tier=controls.tier:GetSelValueByKey("val");local level=tonumber(controls.level.buf)
 		local rarity=getRarity()
-		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,rarity=="normal" and "rare" or rarity,rolls,isCorrupted(),implicit)
+		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,rarity=="normal" and "rare" or rarity,rolls,isCorrupted(),implicit,quality)
 		if not ok then nextOffset=nil;controls.list.list={};controls.status.label="^xE9BE7B"..ui.fit(ui.errorText(result),rightWidth,14);show(nil);return end
 		if rarity=="normal" then result.candidates={};result.total=0;result.nextOffset=nil end
 		nextOffset=result.nextOffset
@@ -202,17 +208,21 @@ function M.Open(options)
 		end
 		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and "^7Normal map | Use currency to add modifiers" or (isCorrupted() and "^xE07070Corrupted "..#selected.."/9 | " or "^7")..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
 		local affixes={}
-		if #selected==0 and not result.implicit then affixes={"No hypothetical modifiers selected."} else
+		if #selected==0 and not result.implicit and not (result.summary.qualityEffect and result.summary.qualityEffect.supported) then affixes={"No hypothetical modifiers selected."} else
 			local summary=result.summary;local totals=summary.estimatedTotals or summary.totals
-			affixes={summary.estimatedTotals and "^xAABBD0Estimated bonuses (no quality):" or "^xAABBD0Modifier bonuses (excludes quality):","^7Atlas Drops "..range(totals.atlasDrops),"Rarity "..range(totals.rarity).." | Pack size "..range(totals.packSize)}
-			if summary.estimatedTotals then affixes[#affixes+1]="^xA6B3C6Excludes quality, Atlas and other effects." end
+			affixes={summary.estimatedTotals and "^xAABBD0Estimated bonuses:" or "^xAABBD0Modifier bonuses (excludes quality):","^7Atlas Drops "..range(totals.atlasDrops),"Rarity "..range(totals.rarity).." | Pack size "..range(totals.packSize)}
+			if summary.estimatedTotals then affixes[#affixes+1]="^xA6B3C6Excludes Atlas and other effects." end
 			if result.implicit then affixes[#affixes+1]="^xB4B4FFImplicit: "..result.implicit.text end
 			if result.implicit and result.implicit.id=="MapCorruptionModEffect" then affixes[#affixes+1]="^xE9BE7BMagnitude rounding is estimated; effect lines are unscaled." end
 			for _,effect in ipairs(summary.effects) do
 				if #effect.lines==0 then affixes[#affixes+1]=effect.name else for _,line in ipairs(effect.lines) do affixes[#affixes+1]=line end end
 			end
 		end
-		if quality then table.insert(affixes,1,"^xAABBD0Quality ("..quality.kind.."): +"..quality.value.."% (excluded)") end
+		if quality then
+			local effect=result.summary.qualityEffect
+			table.insert(affixes,1,"^xAABBD0Quality ("..quality.kind.."): +"..quality.value.."%")
+			table.insert(affixes,2,effect.supported and "^xAABBD0"..effect.text or "^xE9BE7BQuality effect unmodeled")
+		end
 		controls.affixes.list=ui.rows(affixes,left-48,14);show(nil)
 	end
 	controls.list.onClick=function(hit) if hit and hit.line then show(hit.line.entry) end end

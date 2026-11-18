@@ -95,9 +95,11 @@ local function readable(text)
 end
 -- Sum only explicit modifier contributions, preserving ranges and leaving
 -- quality, implicit effects and any other map bonuses outside these totals.
-function M.summarize(selected,rolls,implicit)
+function M.summarize(selected,rolls,implicit,quality)
 	local totals={atlasDrops={min=0,max=0},rarity={min=0,max=0},packSize={min=0,max=0}}
-	local estimate=implicit and {atlasDrops={min=0,max=0},rarity={min=0,max=0},packSize={min=0,max=0}} or nil
+	local qualityEffect=require("Modules.MapQuality").effect(quality)
+	local qualityTotal=qualityEffect and qualityEffect.supported and (qualityEffect.stat=="rarity" or qualityEffect.stat=="packSize")
+	local estimate=(implicit or qualityTotal) and {atlasDrops={min=0,max=0},rarity={min=0,max=0},packSize={min=0,max=0}} or nil
 	local rateLow,rateHigh=0,0
 	if implicit and implicit.id=="MapCorruptionModEffect" then rateLow=implicit.value or implicit.min;rateHigh=implicit.value or implicit.max end
 	local effects={};local rollValues=require("Modules.MapRollValues");local byId=rollValues.validate(selected,rolls,M.source())
@@ -123,17 +125,18 @@ function M.summarize(selected,rolls,implicit)
 		end
 		effects[#effects+1]={id=id,name=mod.name,lines=lines,hasValues=values~=nil}
 	end
-	if estimate then
+	if implicit then
 		local key=implicit.id=="MapCorruptionItemRarity" and "rarity" or implicit.id=="MapCorruptionPackSize" and "packSize"
 		if key then local low,high=implicit.value or implicit.min,implicit.value or implicit.max;estimate[key].min=estimate[key].min+low;estimate[key].max=estimate[key].max+high end
 	end
-	return {totals=totals,estimatedTotals=estimate,effects=effects,note="Only selected explicit modifier contributions; excludes quality, implicit effects and other map bonuses. Unmatched or unsampled lines remain ranges.",
-		estimateNote=estimate and "Estimated explicit and supported recorded implicit bonuses; excludes quality, Atlas passives and other effects. Modifier magnitude uses per-stat rounding down, an unverified assumption. Other implicit effects and legacy Item Quantity are not included." or nil}
+	if qualityTotal then local total=estimate[qualityEffect.stat];total.min=total.min+qualityEffect.value;total.max=total.max+qualityEffect.value end
+	return {totals=totals,estimatedTotals=estimate,effects=effects,qualityEffect=qualityEffect,note="Only selected explicit modifier contributions; excludes quality, implicit effects and other map bonuses. Unmatched or unsampled lines remain ranges.",
+		estimateNote=estimate and ("Estimated explicit and supported recorded implicit and quality bonuses; excludes Atlas passives and other effects. Modifier magnitude uses per-stat rounding down, an unverified assumption. Other implicit effects and legacy Item Quantity are not included."..(qualityEffect and not qualityEffect.supported and " The recorded quality effect is not included." or "")) or nil}
 end
 
 -- White, yellow and red ordinary maps use the established tier bands. This
 -- inspection deliberately does not simulate rolling or claim outcome odds.
-function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity,rolls,corrupted,implicit)
+function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity,rolls,corrupted,implicit,quality)
 	assert(type(tier)=="number" and tier==math.floor(tier) and tier>=1 and tier<=16,"Use an ordinary map tier from 1 to 16")
 	rarity=rarity or "rare";assert(rarity=="magic" or rarity=="rare","Use magic or rare map rarity")
 	assert(corrupted==nil or type(corrupted)=="boolean","Invalid map corruption state")
@@ -164,7 +167,7 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 		if (corrupted and #selected<9 or not corrupted and counts[entry.side]<(rarity=="magic" and 1 or 3)) and (rarity=="rare" or not rareOnly[entry.id]) and (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true) then result[#result+1]=entry end
 	end
 	local results,total,nextOffset=page(result,offset,limit)
-	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,corrupted=corrupted or nil,implicit=implicitInfo,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected,rolls,implicitInfo),
+	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,corrupted=corrupted or nil,implicit=implicitInfo,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected,rolls,implicitInfo,quality),
 		source=M.source().source,patch=M.source().patch,
 		note=corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification."}
 end

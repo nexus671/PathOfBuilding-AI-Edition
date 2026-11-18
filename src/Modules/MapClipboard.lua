@@ -169,6 +169,7 @@ function M.parse(raw,checkpoint)
  assert(#solutions==1,"The copied modifiers match multiple identities; select them manually instead")
  local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,implicit=implicit,quality=quality}
  if rarity~="normal" then map.inspect(state.baseId,tier,level,state.selected,"",0,1,checkpoint,rarity,nil,corrupted,implicit) end
- return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality recorded: "..quality.kind.." +"..quality.value.."%. Totals exclude quality. Enchanted maps are unsupported.") or "No quality recorded. Totals exclude quality. Enchanted maps are unsupported.",itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately."}}
+ local qualityEffect=require("Modules.MapQuality").effect(quality)
+ return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality: "..quality.kind.." +"..quality.value.."%. "..(qualityEffect.supported and qualityEffect.text or "Effect unmodeled")..". Enchants are unsupported.") or "No quality recorded. Enchanted maps are unsupported.",itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately."}}
 end
 return M

@@ -86,6 +86,11 @@ def main():
     paths = sorted(frames.glob("*.json"))
     assert len(paths) == 1584, f"Expected 1584 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
+        frame = json.loads((frames / f"{width}-map-clipboard-imported.json").read_text())
+        quality = next(c for c in frame["commands"] if c["kind"] == "text" and "Quality (Pack Size): +20%" in c.get("text", ""))
+        card = next(c for c in frame["commands"] if c["kind"] == "rect" and c.get("color") == [0.082352941176471, 0.07843137254902, 0.10196078431373, 1])
+        assert (quality["layer"], quality["sublayer"]) > (card["layer"], card["sublayer"]), "Map card obscures quality and modifier details"
+    for width in (960, 1024, 1280):
         stack = json.loads((frames / f"{width}-filter-stack-styles.json").read_text())
         labels = " ".join(command.get("text", "") for command in stack["commands"] if command.get("kind") == "text")
         assert "Tier preview" in labels and "Example stack" in labels, "Stack style preview is missing"

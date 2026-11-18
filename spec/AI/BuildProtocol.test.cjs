@@ -103,10 +103,11 @@ test('queues copied map inspection without changing the build', t => {
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'inspect_copied_map');assert.match(request.itemText,/Strand Map/);
 });
 test('queues bounded map modifier inspection', t => {
-  const f=fixture(t), args={baseRevision:f.state.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',selected:[],limit:5};
+  const f=fixture(t), args={baseRevision:f.state.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',selected:[],limit:5,quality:{kind:'Pack Size',value:20}};
   f.call('inspect_map_modifiers',args);
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
   assert.equal(request.kind,'inspect_map_modifiers');assert.equal(request.tier,5);assert.equal(request.rarity,'magic');
+  assert.deepEqual(request.quality,args.quality);
   for(const invalid of [{...args,tier:17},{...args,itemLevel:0},{...args,rarity:'normal'},{...args,selected:Array(10).fill('x')},{...args,limit:101},{...args,unknown:true}]) assert.throws(()=>f.call('inspect_map_modifiers',invalid),/arguments/);
   const bases=fixture(t);bases.call('search_map_bases',{baseRevision:bases.state.revision,query:'Beach',limit:5});
   assert.equal(JSON.parse(fs.readFileSync(path.join(bases.dir,'AI-build-request.json'))).kind,'search_map_bases');
