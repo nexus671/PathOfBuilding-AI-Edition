@@ -605,18 +605,22 @@ function Panel.Open(build,source,layout)
 	return controls
 end
 function Panel.Library(build,layout)
-	local store=build.savers.AtlasPlans; local controls,list={},{}
-	for _,plan in ipairs(store.plans) do list[#list+1]={label=plan.title.." ["..atlas.versionLabel(plan.version).."]",val=plan.id} end
+	local store=build.savers.AtlasPlans; local controls,list,savedIds={},{},{}
+	for _,plan in ipairs(store.plans) do savedIds[plan.id]=true;list[#list+1]={label=plan.title.." ["..atlas.versionLabel(plan.version).."]",val=plan.id,plan=plan} end
+	if layout and layout.atlasDrafts then for _,entry in ipairs(layout.atlasDrafts()) do local plan=entry.plan
+		if not savedIds[plan.id] then local title=entry.view and entry.view.title or plan.title;if not title:match("%S") then title="Untitled draft" end;list[#list+1]={label=ui.fit(title,420,14).." [Session draft]",val=plan.id,plan=plan,draft=true} end
+	end end
 	controls.plans=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,32,568,24},list)
-	controls.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,76,0,14},"^7"..(store.warning or "Keep farming strategies in this build. Save the build to persist them."))
-	local function selected() local choice=controls.plans:GetSelValue(); for _,plan in ipairs(store.plans) do if choice and plan.id == choice.val then return plan end end; error("Choose a saved plan") end
+	controls.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,76,0,14},"^7"..(store.warning or "Session drafts are temporary. Keep a plan and save the build to persist it."))
+	local function selected() local choice=controls.plans:GetSelValue();return assert(choice and choice.plan,"Choose an Atlas plan") end
 	controls.open=button(16,112,160,"Open plan",function() local plan=selected();main:ClosePopup();if layout and layout.navigate then layout.navigate("atlas",plan) else if not layout then main:ClosePopup() end;Panel.Open(build,plan,layout) end end)
 	controls.delete=button(188,112,160,"Delete plan",function()
 		local ok,err=pcall(function() local plan=selected(); store:Remove(plan.id) end)
 		if not ok then main:OpenMessagePopup("Saved Atlas plans",ui.errorText(err)); return end
 		main:ClosePopup(); Panel.Library(build,layout)
 	end)
-	controls.open.enabled=#list>0;controls.delete.enabled=#list>0
+	controls.open.enabled=#list>0;controls.delete.enabled=function() local choice=controls.plans:GetSelValue();return choice~=nil and not choice.draft end
+	controls.delete.tooltipText="Only saved plans can be deleted. Session drafts remain available until the app closes."
 	controls.close=button(468,160,116,"Close",function() main:ClosePopup() end)
 	main:OpenPopup(600,204,"Saved Atlas plans",controls,nil,nil,"close")
 end

@@ -109,6 +109,7 @@ function ButtonClass:OnKeyDown(key)
 		return
 	end
 	if key == "LEFTBUTTON" then
+		if not self:IsMouseOver() then return end
 		self.clicked = true
 	elseif self.enterFunc then
 		self.enterFunc()

@@ -113,6 +113,10 @@ function M:Show(page,source)
 		layout.replaceAtlas=function(plan)
 			self.cache.atlas=nil;self.drafts.atlas=nil;self.atlasDrafts[plan.id]=nil;self:Show("atlas",plan)
 		end
+		layout.atlasDrafts=function()
+			local result={};for _,entry in pairs(self.atlasDrafts) do if entry.plan and entry.plan.id then result[#result+1]=entry end end
+			table.sort(result,function(a,b) return a.plan.id<b.plan.id end);return result
+		end
 		layout.openProjects=function()
 			local current=self.cache.crafting
 			if current and current.layout.snapshot then

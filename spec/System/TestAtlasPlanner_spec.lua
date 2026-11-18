@@ -6,7 +6,7 @@ describe("Native Atlas planner", function()
 		version=version or "3.27.0"
 		return {id="mapping",title="Mapping strategy",version=version,budget=budget or atlas.tree(version).maxPoints,nodes={},notes="Map sustain first"}
 	end
-	before_each(function() newBuild(); bridge.prepared=nil end)
+	before_each(function() newBuild(); bridge.prepared=nil;main.popups={} end)
 	after_each(function() bridge.prepared=nil; main.popups={} end)
 	it("replaces the standalone planner when opening a saved plan",function()
 		local first=plan("3.30.0-preview");first.id="first";first.title="First"
