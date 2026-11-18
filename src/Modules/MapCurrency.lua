@@ -47,6 +47,7 @@ local function validate(input,checkpoint,cache)
 	assert(input.vaalPreview==nil or type(input.vaalPreview)=="boolean","Invalid conditional Vaal preview marker")
 	assert(not input.vaalPreview or input.corrupted and input.rarity=="rare","A conditional Vaal preview requires a corrupted rare map")
 	assert(not input.corrupted,"Corrupted maps cannot be modified with these currencies")
+	assert(input.implicit==nil,"A map corruption implicit requires a corrupted map")
 	assert(not input.mirrored,"Mirrored maps cannot be modified with these currencies")
 	assert(not input.unidentified,"Identify the map before simulating currency")
 	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,selected={},rolls={},quality=require("Modules.MapQuality").validate(input.quality),observedEffects=require("Modules.MapObservedEffects").validate(input.observedEffects)}
