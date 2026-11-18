@@ -72,6 +72,12 @@ describe("Native Atlas planner", function()
 		local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
 		local text=table.concat(details," ");assert.matches("modifiers and totals unknown",text,1,true);assert.matches("Mirrored",text,1,true);assert.is_nil(text:find("0 hypothetical modifiers",1,true))
 	end)
+	it("shows Delirium reward counts in the saved-plan browser",function()
+		local source=plan("3.30.0-preview");source.mapDrafts={{id="delirium-map",title="Delirium map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",selected={},observedEffects={{kind="explicit",text="Players in Area are 40% Delirious"},{kind="explicit",text="Delirium Reward Type: Currency"}}}}
+		local controls=require("Classes.AtlasPlannerControl").Open(build,source);controls.tools:Click();local tools=main.popups[1].controls;tools.search:SetText("Saved map drafts",true);tools.choose:Click()
+		local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
+		assert.matches("Delirium: 40% | 3 base Currency rewards",table.concat(details," "),1,true)
+	end)
 	it("labels conditional Vaal map drafts in the saved-plan browser",function()
 		local source=plan("3.30.0-preview");source.mapDrafts={{id="vaal-map",title="Vaal map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",selected={},corrupted=true,vaalPreview=true}}
 		local controls=require("Classes.AtlasPlannerControl").Open(build,source);controls.tools:Click();local tools=main.popups[1].controls;tools.search:SetText("Saved map drafts",true);tools.choose:Click()

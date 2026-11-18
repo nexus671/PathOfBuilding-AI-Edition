@@ -19,6 +19,23 @@ function M.hasExplicit(effects)
  for _,effect in ipairs(effects or {}) do if effect.kind=="explicit" then return true end end
  return false
 end
+-- Only a unique, complete pair of copied explicit lines is interpreted.
+function M.delirium(effects)
+ local percent,reward
+ for _,effect in ipairs(effects or {}) do if effect.kind=="explicit" then
+  local depth=effect.text:match("^Players in Area are (%d+)%% Delirious$")
+  local kind=effect.text:match("^Delirium Reward Type: (.+)$")
+  if depth then
+   if percent then return nil end
+   percent=tonumber(depth);if percent<1 or percent>100 then return nil end
+  elseif kind then
+   if reward or not kind:match("%S") then return nil end
+   reward=kind
+  end
+ end end
+ if not percent or not reward then return nil end
+ return {percent=percent,rewardType=reward,baseRewardCount=1+math.floor(percent/20)}
+end
 -- This visible implicit identifies a Blighted or Blight-ravaged map. Do not
 -- infer the variant merely from a map's name or an ordinary Blight encounter.
 function M.isBlighted(effects)
@@ -30,6 +47,7 @@ end
 function M.note(effects)
  if not effects then return "" end
  if M.isBlighted(effects) then return " Blighted rare-only encounter modifiers are excluded; other mechanics of observed effects are not modeled and can change results." end
+ if M.delirium(effects) then return " Base Delirium reward count follows the 3.30 notes; other observed effects and modifier interactions are not modeled and can change results." end
  return " Observed effects are not modeled and can change results."
 end
 return M

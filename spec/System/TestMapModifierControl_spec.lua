@@ -10,6 +10,14 @@ describe("Map modifier explorer",function()
 		controls.keep:Click();assert.same(observed,captured.observedEffects)
 		controls.tier:SelByValue(6,"val");controls.tier.selFunc();controls.keep:Click();assert.is_nil(captured.observedEffects)
 	end)
+	it("shows documented Delirium rewards while retaining unsupported crafting restrictions",function()
+		local observed={{kind="explicit",text="Players in Area are 35% Delirious"},{kind="explicit",text="Delirium Reward Type: Currency"}}
+		local initial={id="delirium-map",title="Delirium map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",selected={"MapMonsterAreaOfEffectMapWorlds"},observedEffects=observed}
+		local controls=require("Classes.MapModifierControl").Open({build=build,initial=initial})
+		local lines,selectable={},nil;for _,row in ipairs(controls.affixes.list) do lines[#lines+1]=StripEscapes(row[1] or "");if row.modifierId then selectable=row end end
+		assert.matches("Base Delirium rewards: 2 | Currency",table.concat(lines," "),1,true);assert.is_false(controls.currency:IsEnabled());assert.is_false(controls.estimate:IsEnabled())
+		assert.is_not_nil(selectable);assert.equal("MapMonsterAreaOfEffectMapWorlds",selectable.modifierId);controls.affixes.onClick({line=selectable});assert.equal("Remove selected",controls.remove.label)
+	end)
 	it("explains the recognized Blighted modifier restriction",function()
 		local observed={{kind="implicit",text="Area is infested with Fungal Growths"}}
 		local initial={id="blight-map",title="Blighted map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",selected={},observedEffects=observed}

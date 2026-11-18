@@ -112,6 +112,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui.clipboard=ui.clipboard:gsub("Monsters have 45%% increased Area of Effect","Players in Area are 35%% Delirious\nDelirium Reward Type: Currency\nMonsters have 45%% increased Area of Effect")
 		ui:click("pasteMap");ui:click("keep")
 		local c=main.popups[1].controls;assert(not c.currency:IsEnabled() and not c.estimate:IsEnabled(),"Unsupported explicit modifiers should block map rerolls")
+		local lines={};for _,row in ipairs(c.affixes.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(lines," "):find("Base Delirium rewards: 2 | Currency",1,true),"Delirium reward count was not displayed")
 		frame("map-delirium-imported");ui:choose("tier",16,"val")
 	end
 	ui:choose("tier",17,"val");ui:text("search","MapUberModCurses")

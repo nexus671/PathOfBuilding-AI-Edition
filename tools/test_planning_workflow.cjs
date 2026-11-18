@@ -749,9 +749,12 @@ async function main(){
   const deliriousText=copiedMapText.replace('Monsters have 45% increased Area of Effect','Players in Area are 35% Delirious\nDelirium Reward Type: Currency\nMonsters have 45% increased Area of Effect');
   const delirious=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:deliriousText},'mapData');
   assert.equal(delirious.mapData.state.observedEffects.filter(effect=>effect.kind==='explicit').length,2);
+  assert.deepEqual(delirious.mapData.delirium,{percent:35,rewardType:'Currency',baseRewardCount:2});
   const deliriousState=delirious.mapData.state;
   const deliriousInspection=await queued('inspect_map_modifiers',{baseRevision:context.revision,...deliriousState,limit:5},'mapData');
-  assert.match(deliriousInspection.mapData.currencyOptionsWarning,/unsupported explicit/);
+  assert.deepEqual(deliriousInspection.mapData.delirium,delirious.mapData.delirium);assert.match(deliriousInspection.mapData.currencyOptionsWarning,/unsupported explicit/);
+  const invalidDelirium=await queued('inspect_map_modifiers',{baseRevision:context.revision,...deliriousState,rarity:'magic',selected:[],rolls:[],limit:5},'failed');
+  assert.match(invalidDelirium.error,/explicit map modifiers require a rare map/);
   const deliriousRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:deliriousState,action:'chaos',seed:42},'failed');
   assert.match(deliriousRoll.error,/unsupported explicit/);
   const unknownMap=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:copiedMapText.replace('Monsters have 45% increased Area of Effect','Unknown map modifier')},'failed');assert.match(unknownMap.error,/Unrecognized map modifier/);
