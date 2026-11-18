@@ -23,6 +23,7 @@ describe("Experimental Gwennen pair",function()
 		local controls=require("Classes.CraftingSimulatorControl").Open(build,project)
 		controls.method:SelByValue("gwennen","val");controls.method.selFunc()
 		assert.is_false(controls.apply:IsEnabled());assert.matches("Configure a supported Gwennen pair",controls.apply.tooltipText())
+		local hints={};for _,row in ipairs(controls.actionHint.list) do hints[#hints+1]=StripEscapes(row[1] or "") end;assert.matches("Configure a supported Gwennen pair",table.concat(hints," "))
 		main.popups={}
 	end)
 	it("selects either observed branch without changing the input",function()
@@ -45,6 +46,8 @@ describe("Experimental Gwennen pair",function()
 		local calculation=sim.calculate(source,pair,{},state,{requirements={minAffixes=0},trials=8,seed=7});assert.is_true(calculation.sampled);assert.equal("gwennen_implicit_assumptions",calculation.warnings[2].code)
 		local maximum=sim.model(source:gsub("%+25","+30"));local full=copyTable(maximum.initial);full.rarity="RARE"
 		local allowed,why=pcall(sim.action,maximum,full,pair,function() return 0 end);assert.is_false(allowed);assert.matches("No supported implicit",why);assert.is_nil(why:match("cannot apply:.-%.lua:"))
+		local beforeFull=copyTable(full);assert.matches("below its maximum",require("Modules.CraftingGwennen").implicitReason(maximum,full));assert.same(beforeFull,full)
+		assert.is_nil(require("Modules.CraftingGwennen").implicitReason(model,state));assert.same(original,state)
 		local helm=sim.model(raw);local eldritch=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state
 		eldritch=sim.perform(raw,{method="eldritch_implicit",side="Eater",tier=1},12,eldritch).state;eldritch.rarity="RARE"
 		eldritch.implicits[1].id="SpellCriticalStrikeChanceEldritchImplicit2";eldritch.implicits[1].range=1;eldritch.implicits[2].id="EnergyShieldFromGlovesBootsEldritchImplicit1";eldritch.implicits[2].range=0;local before=copyTable(eldritch)

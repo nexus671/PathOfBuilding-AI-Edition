@@ -591,6 +591,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		require("Classes.CraftingSimulatorControl").Open(build,{id="gwennen-synthesis-ui",title="Synthesised reroll",slot="Amulet",startingItem=raw,goals={},steps={}})
 		ui:click("tab_settings");ui:click("gwennen");ui:choose("first",1032,"val");ui:choose("second",1032,"val");ui:click("simulate");ui:click("item")
 		assert(main.popups[1].controls.intro.label:find("Gwennen modeled outcome",1,true),"Synthesised reroll did not apply")
+		assert(not main.popups[1].controls.apply:IsEnabled() and main.popups[1].controls.apply.tooltipText():find("below its maximum",1,true),"A maximum implicit should explain why another application is unavailable")
+		frame("crafting-gwennen-max-implicit")
+		assert(not main.popups[1].controls.item:IsEnabled(),"The item should not accept an unavailable currency")
+		ui:click("undo");assert(main.popups[1].controls.apply:IsEnabled(),"Undo should restore implicit reroll availability");ui:click("item")
 		frame("crafting-gwennen-synthesis");ui:click("keepWorking")
 		local saved;for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id=="gwennen-synthesis-ui" then saved=project end end
 		assert(saved and saved.run.state.synthRolls and #saved.run.state.synthRolls==2,"Synthesised implicit rolls were not kept in the build")

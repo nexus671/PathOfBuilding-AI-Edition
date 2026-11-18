@@ -78,7 +78,7 @@ function Panel.Open(build,project,layout)
 	local paletteView
 	local populateAffix
 	local refreshTargetOptions
-	local action,overrideKey,updateCurrency,actionConfigurationReason
+	local action,overrideKey,updateCurrency,actionConfigurationReason,implicitApplyReason
 	local function actionName()
 		local selected=action()
 		return (selected.allflame and "Allflame " or "")..simulator.labels[selected.method]
@@ -146,7 +146,8 @@ function Panel.Open(build,project,layout)
 		controls.intro.label="^7"..ui.fit(message,leftWidth,14)
 		if controls.actionHint and controls.actionHint.list then
 			local hint=workbench.hint(controls.method:GetSelValueByKey("val"),state,model,action and action())
-			if actionConfigurationReason then hint=actionConfigurationReason() or hint end
+			local configuration=actionConfigurationReason and actionConfigurationReason()
+			hint=configuration or (implicitApplyReason and implicitApplyReason()) or hint
 			local selected=controls.option and controls.option:GetSelValue()
 			local id=selected and selected.action and selected.action.modId
 			if selected and selected.action and selected.action.essenceId then
@@ -733,6 +734,14 @@ function Panel.Open(build,project,layout)
 			return "Recipient changed or the observation is missing. Reconfirm the in-game success percentage in Craft settings."
 		end
 	end
+	local implicitState,implicitReason
+	implicitApplyReason=function()
+		local craft=action()
+		if craft.method~="gwennen" or craft.firstOutcome~=1032 and craft.secondOutcome~=1032 then return end
+		if not workbench.available("gwennen",state,model) then return end
+		if implicitState~=state then implicitState=state;implicitReason=require("Modules.CraftingGwennen").implicitReason(model,state) end
+		return implicitReason
+	end
 	local function actionConfigured() return actionConfigurationReason()==nil end
 	local function missingTargets() return #targets==0 and not (requirements and next(requirements)) end
 	local noTargets="Choose a target modifier or item condition first."
@@ -821,8 +830,8 @@ function Panel.Open(build,project,layout)
 	controls.distribution.x=232;controls.distribution.width=200
 	controls.option.shown=function() return crafting() and #controls.option.list>0 end
 	controls.optionLabel.shown=controls.option.shown
-	controls.apply.enabled=function() return actionConfigured() and workbench.available(controls.method:GetSelValueByKey("val"),state,model) end
-	controls.apply.tooltipText=function() return actionConfigurationReason() or workbench.hint(controls.method:GetSelValueByKey("val"),state,model,action()) end
+	controls.apply.enabled=function() return actionConfigured() and workbench.available(controls.method:GetSelValueByKey("val"),state,model) and not implicitApplyReason() end
+	controls.apply.tooltipText=function() return actionConfigurationReason() or implicitApplyReason() or workbench.hint(controls.method:GetSelValueByKey("val"),state,model,action()) end
 	controls.apply.height=32;controls.undo.height=32
 	controls.apply.y=function() return #controls.option.list>0 and 370 or 320 end;controls.undo.y=controls.apply.y
 	controls.settings.y=function() return controls.apply:GetProperty("y")+44 end;controls.history.y=controls.settings.y

@@ -15,6 +15,42 @@ local function belowMaximum(mod,range)
 	end end
 	return below
 end
+local function rerollImplicits(M,model,input,draw)
+	local result=copyTable(input);local changed=false
+	assert(not model.unresolvedEldritch or result.implicits,"Identify the Eldritch implicits before rerolling them")
+	if result.implicits and #result.implicits>0 then
+		for _,entry in ipairs(result.implicits) do
+			local mod=assert(model.byId[entry.id],"The Eldritch implicit is not recognized")
+			if belowMaximum(mod,entry.range) then entry.range=M.rollRange(mod,draw);changed=true end
+		end
+	elseif model.item.synthesised then
+		assert(model.synthesisGroups,"Identify the synthesised implicits before rerolling them")
+		result.synthRolls=result.synthRolls or {}
+		for index,group in ipairs(model.synthesisGroups) do
+			assert(#group.candidates==1,"Synthesised implicit identities must be unambiguous before rerolling")
+			local entry=result.synthRolls[index] or copyTable(group.candidates[1]);result.synthRolls[index]=entry
+			local mod=assert(model.byId[entry.id],"The synthesised implicit is not recognized")
+			if belowMaximum(mod,entry.range) then entry.range=M.rollRange(mod,draw);changed=true end
+		end
+	else
+		assert(not model.blessed330 and not model.blessed330Unresolved and not model.baseImplicitUnresolved,"This special implicit reroll is not modeled")
+		assert(#model.item.implicitModLines>0,"This item has no supported implicit to reroll")
+		assert(#model.item.implicitModLines==1 and model.baseImplicitTemplates and model.baseImplicitTemplates[1],"Rerolling multiple or unidentified base implicits is not modeled")
+		local line=model.item.implicitModLines[1];local range=result.baseImplicitRanges and result.baseImplicitRanges[1] or model.normalizedBaseImplicitRanges and model.normalizedBaseImplicitRanges[1] or line.range
+		local template=model.baseImplicitTemplates[1]
+		assert(not result.baseImplicitRanges or result.baseImplicitReconstructed or line.line==template,"The legacy implicit roll cannot be identified; reset or update the working item")
+		if belowMaximum({template},range) then result.baseImplicitRanges={M.rollRange({template},draw)};result.baseImplicitReconstructed=true;changed=true end
+	end
+	assert(changed,"No supported implicit has a value below its maximum")
+	return result
+end
+-- This preflight checks only the implicit branch, without consuming the real
+-- random stream or claiming that the other observed outcome will succeed.
+function G.implicitReason(model,state)
+	local M=require("Modules.CraftingSimulator")
+	local ok,result=pcall(function() return rerollImplicits(M,M.context(model,state),state,function() return 0.42 end) end)
+	if not ok then return require("Modules.PlanningUI").errorText(result) end
+end
 function G.supports(id) return supported[id]==true end
 function G.supportedCount() local count=0;for _ in pairs(supported) do count=count+1 end;return count end
 function G.deterministic(id) return deterministic[id] end
@@ -201,35 +237,7 @@ function G.extend(M,api)
 				local choices=influenceChoices(model,input);local result=copyTable(input)
 				result.influences={choices[math.floor(draw()*#choices)+1]};return result
 			end
-			if id==1032 then
-				local result=copyTable(input);local changed=false
-				assert(not model.unresolvedEldritch or result.implicits,"Identify the Eldritch implicits before rerolling them")
-				if result.implicits and #result.implicits>0 then
-					for _,entry in ipairs(result.implicits) do
-						local mod=assert(model.byId[entry.id],"The Eldritch implicit is not recognized")
-						if belowMaximum(mod,entry.range) then entry.range=M.rollRange(mod,draw);changed=true end
-					end
-				elseif model.item.synthesised then
-					assert(model.synthesisGroups,"Identify the synthesised implicits before rerolling them")
-					result.synthRolls=result.synthRolls or {}
-					for index,group in ipairs(model.synthesisGroups) do
-						assert(#group.candidates==1,"Synthesised implicit identities must be unambiguous before rerolling")
-						local entry=result.synthRolls[index] or copyTable(group.candidates[1]);result.synthRolls[index]=entry
-						local mod=assert(model.byId[entry.id],"The synthesised implicit is not recognized")
-						if belowMaximum(mod,entry.range) then entry.range=M.rollRange(mod,draw);changed=true end
-					end
-				else
-					assert(not model.blessed330 and not model.blessed330Unresolved and not model.baseImplicitUnresolved,"This special implicit reroll is not modeled")
-					assert(#model.item.implicitModLines>0,"This item has no supported implicit to reroll")
-					assert(#model.item.implicitModLines==1 and model.baseImplicitTemplates and model.baseImplicitTemplates[1],"Rerolling multiple or unidentified base implicits is not modeled")
-					local line=model.item.implicitModLines[1];local range=result.baseImplicitRanges and result.baseImplicitRanges[1] or model.normalizedBaseImplicitRanges and model.normalizedBaseImplicitRanges[1] or line.range
-					local template=model.baseImplicitTemplates[1]
-					assert(not result.baseImplicitRanges or result.baseImplicitReconstructed or line.line==template,"The legacy implicit roll cannot be identified; reset or update the working item")
-					if belowMaximum({template},range) then result.baseImplicitRanges={M.rollRange({template},draw)};result.baseImplicitReconstructed=true;changed=true end
-				end
-				assert(changed,"No supported implicit has a value below its maximum")
-				return result
-			end
+			if id==1032 then return rerollImplicits(M,model,input,draw) end
 			if id==1022 then local result=copyTable(input);result.destroyed=true;result.affixes={};result.imprint=nil;result.implicits=nil;result.corruptedImplicits=nil;result.synthRolls=nil;return result end
 			if id==1001 then
 				assert(#input.affixes>0,"No modifier can be removed")
