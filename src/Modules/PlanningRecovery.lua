@@ -104,6 +104,21 @@ function M.forgetCraftingProject(build,id)
 	if cache then cache.digest=nil;cache.checked=nil;if not M.load(build,"crafting") then cache.pending=false end end
 	return removed
 end
+-- Discard only copies written by this session; older recovery records may
+-- contain work the user has not reviewed yet, even for the same plan ID.
+function M.forgetAtlasSessionDraft(build,id)
+	for slot=1,2 do
+		local record=readRecord(build,"atlas",slot)
+		if record and record.session==M.session and record.entry.plan.id==id then local ok,why,code=os.remove(record.path);assert(ok or code==2,why) end
+	end
+	local _,directory=path(build,"atlas",1);if not directory then return end
+	local cache=M.cache[directory..":"..(build.dbFileName or build.buildName or "")..":atlas"]
+	if cache then
+		cache.digest=nil;cache.checked=nil;local remaining=M.load(build,"atlas")
+		if remaining and remaining.session~=M.session and not M.isCurrent(build,"atlas",remaining.entry) then cache.pending=true;cache.acknowledged=false
+		elseif not remaining then cache.pending=false end
+	end
+end
 function M.save(build,kind,entry,force)
 	local _,directory=path(build,kind,1);if not directory then return end
 	local key=directory..":"..(build.dbFileName or build.buildName or "")..":"..kind;local cache=M.cache[key] or {build=build};M.cache[key]=cache

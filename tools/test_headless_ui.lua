@@ -311,7 +311,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("new");local sessionAtlas=workspace.cache.atlas.layout.snapshot().id;ui:text("title","Unkept mapping strategy");ui:choose("page","Notes & sharing");ui:text("notes","Remember this draft")
 	ui:click("library");ui:choose("plans",originalAtlas,"val");ui:click("open")
 	assert(workspace.controls.library:IsEnabled(),"Saved plan retained a stale route or stage editor after reopening")
-	ui:click("library");assert(main.popups[1],"Library did not open on the first click after returning to the saved plan");ui:choose("plans",sessionAtlas,"val");assert(not main.popups[1].controls.delete:IsEnabled(),"A session draft was offered as a saved plan for deletion");frame("atlas-library")
+	ui:click("library");assert(main.popups[1],"Library did not open on the first click after returning to the saved plan");ui:choose("plans",sessionAtlas,"val");assert(main.popups[1].controls.delete.label()=="Discard draft","A session draft did not offer discard");frame("atlas-library")
+	ui:click("delete");assert(main.popups[1].title=="Discard session draft","Discard did not request confirmation");ui:key("ESCAPE")
 	end
 	ui:choose("plans","starter-atlas","val");ui:click("delete")
 	assert(main.popups[1].title=="Saved Atlas plans" and main.popups[1].controls[1].label:find("follows this plan",1,true),"Atlas dependency was not explained")

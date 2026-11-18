@@ -51,6 +51,16 @@ describe("Local planning draft recovery",function()
 		local view={title="Test",notes="",budgetText="150",search="",scale=0.16,stageResume={page="Strategy",stage="starter",previous="",fields={maps=string.rep("x",4001),scarabs="",requirements="",avoid=""},amount="",currency="chaos",source=""}}
 		assert.is_false(recovery.save(build,"atlas",{plan=plan,view=view},true));assert.is_nil(recovery.load(build,"atlas"))
 	end)
+	it("discards only current-session copies of an Atlas draft",function()
+		local plan={id="draft",title="Earlier draft",version="3.30.0-preview",budget=150,nodes={}}
+		assert.is_true(recovery.save(build,"atlas",{plan=plan},true));local earlier=recovery.session
+		recovery.session="later-session";recovery.cache={};recovery.acknowledge(build,"atlas")
+		plan.title="Current draft";assert.is_true(recovery.save(build,"atlas",{plan=plan},true))
+		recovery.forgetAtlasSessionDraft(build,"draft");local remaining=recovery.load(build,"atlas")
+		assert.equal(earlier,remaining.session);assert.equal("Earlier draft",remaining.entry.plan.title);assert.is_true(recovery.hasPending(build))
+		assert.is_true(recovery.save(build,"atlas",{plan={id="other",title="Other",version=plan.version,budget=150,nodes={}}},true))
+		assert.equal("Earlier draft",recovery.load(build,"atlas").entry.plan.title)
+	end)
 	it("captures open stage edits and restores them into the editor",function()
 		local plan={id="test",title="Test",version="3.30.0-preview",budget=150,nodes={},notes=""};build.savers.AtlasPlans:Upsert(plan)
 		local layout={width=1100,height=750,mount=function() end}

@@ -615,12 +615,20 @@ function Panel.Library(build,layout)
 	local function selected() local choice=controls.plans:GetSelValue();return assert(choice and choice.plan,"Choose an Atlas plan") end
 	controls.open=button(16,112,160,"Open plan",function() local plan=selected();main:ClosePopup();if layout and layout.navigate then layout.navigate("atlas",plan) else if not layout then main:ClosePopup() end;Panel.Open(build,plan,layout) end end)
 	controls.delete=button(188,112,160,"Delete plan",function()
+		local choice=controls.plans:GetSelValue()
+		if choice and choice.draft then
+			main:OpenConfirmPopup("Discard session draft","Discard this draft and its current-session recovery copies?","Discard",function()
+				local ok,err=pcall(layout.discardAtlasDraft,choice.val);if not ok then main:OpenMessagePopup("Atlas draft",ui.errorText(err));return end
+				main:ClosePopup();Panel.Library(build,layout)
+			end);return
+		end
 		local ok,err=pcall(function() local plan=selected(); store:Remove(plan.id) end)
 		if not ok then main:OpenMessagePopup("Saved Atlas plans",ui.errorText(err)); return end
 		main:ClosePopup(); Panel.Library(build,layout)
 	end)
-	controls.open.enabled=#list>0;controls.delete.enabled=function() local choice=controls.plans:GetSelValue();return choice~=nil and not choice.draft end
-	controls.delete.tooltipText="Only saved plans can be deleted. Session drafts remain available until the app closes."
+	controls.open.enabled=#list>0;controls.delete.enabled=#list>0
+	controls.delete.label=function() local choice=controls.plans:GetSelValue();return choice and choice.draft and "Discard draft" or "Delete plan" end
+	controls.delete.tooltipText="Discard a session draft or delete a saved plan. Older recovery records are preserved."
 	controls.close=button(468,160,116,"Close",function() main:ClosePopup() end)
 	main:OpenPopup(600,204,"Saved Atlas plans",controls,nil,nil,"close")
 end

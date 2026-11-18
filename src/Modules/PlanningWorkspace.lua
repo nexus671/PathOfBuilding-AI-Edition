@@ -117,6 +117,14 @@ function M:Show(page,source)
 			local result={};for _,entry in pairs(self.atlasDrafts) do if entry.plan and entry.plan.id then result[#result+1]=entry end end
 			table.sort(result,function(a,b) return a.plan.id<b.plan.id end);return result
 		end
+		layout.discardAtlasDraft=function(id)
+			for _,plan in ipairs(self.build.savers.AtlasPlans.plans) do assert(plan.id~=id,"This plan is saved; delete it from the saved plans instead") end
+			assert(self.atlasDrafts[id],"That session draft is no longer available")
+			require("Modules.PlanningRecovery").forgetAtlasSessionDraft(self.build,id)
+			local active=self.cache.atlas;local current=active and active.layout.snapshot and active.layout.snapshot()
+			self.atlasDrafts[id]=nil;if self.drafts.atlas and self.drafts.atlas.plan and self.drafts.atlas.plan.id==id then self.drafts.atlas=nil end
+			if current and current.id==id then self.cache.atlas=nil;self.drafts.atlas=nil;self:Show("atlas",self.build.savers.AtlasPlans.plans[1]) end
+		end
 		layout.openProjects=function()
 			local current=self.cache.crafting
 			if current and current.layout.snapshot then
