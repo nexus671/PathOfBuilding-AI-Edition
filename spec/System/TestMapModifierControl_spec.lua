@@ -1,6 +1,16 @@
 describe("Map modifier explorer",function()
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("selects current map items and keeps their tier synchronized",function()
+		local captured
+		local controls=require("Classes.MapModifierControl").Open({keep=function(entry) captured=copyTable(entry);return "map-test" end})
+		controls.keep:Click();assert.equal("Metadata/Items/Maps/MapKeyTier16",captured.baseId)
+		controls.tier:SelByValue(5,"val");controls.tier.selFunc()
+		controls.keep:Click();assert.equal("Metadata/Items/Maps/MapKeyTier5",captured.baseId);assert.equal(5,captured.tier)
+		controls.base:Click();local picker=main.popups[1].controls
+		picker.search:SetText("MapKeyTier11",true);assert.is_true(picker.choose:IsEnabled());picker.choose:Click()
+		controls.keep:Click();assert.equal("Metadata/Items/Maps/MapKeyTier11",captured.baseId);assert.equal(11,captured.tier)
+	end)
 	it("browses and stages hypothetical modifiers without changing the build",function()
 		local controls=require("Classes.MapModifierControl").Open()
 		assert.is_true(#controls.list.list>0);assert.matches("not odds",controls.status.label)

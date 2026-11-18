@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview508" />
+	<Version number="2.68.1-ai.preview509" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1077,6 +1077,7 @@
 	<File name="Assets/MapCrafting/Items/21d166a01d01ee5520b8.png" part="program" sha1="f52a5dc52b9c9f2955ece67e8dd5f7366be1acd7" />
 	<File name="Assets/MapCrafting/Items/225745ef9676687f26fa.png" part="program" sha1="0f2de25fbc26e9ed4c58035436513a82c56eab35" />
 	<File name="Assets/MapCrafting/Items/231d5b7881cdfb1549ec.png" part="program" sha1="10df36f17b6861963f155f75ad57bde8b0025131" />
+	<File name="Assets/MapCrafting/Items/2427f785d8caadb220b7.png" part="program" sha1="d96f636f3b7c92ebaea6be6d8f6ae79403acce69" />
 	<File name="Assets/MapCrafting/Items/25cd4763f9013babf06c.png" part="program" sha1="1a899bc94cd2c1b1ed1541e7b9ef2147f9eb7fa5" />
 	<File name="Assets/MapCrafting/Items/26941f0aa56d4d974c80.png" part="program" sha1="e75a84947119ede5fd7e83e8321ca82fc3be5264" />
 	<File name="Assets/MapCrafting/Items/269a55dab0bff7faf368.png" part="program" sha1="3aff5ec2ed84eaf8df511d840f667ae1adaf2898" />
@@ -1089,6 +1090,7 @@
 	<File name="Assets/MapCrafting/Items/29dda68f7cfff2aad6a1.png" part="program" sha1="f7ee9cbf09b0e791152ba01057400af4eae3a3fd" />
 	<File name="Assets/MapCrafting/Items/2a2bd601b7a93757bb66.png" part="program" sha1="41eff34d99cb300ba21ef043e074517a827aef19" />
 	<File name="Assets/MapCrafting/Items/2a6ca8a301e301c88074.png" part="program" sha1="afcccefba200b925d27192add6d8b50f4a10ae0d" />
+	<File name="Assets/MapCrafting/Items/2b2b9e3d9690de867f9b.png" part="program" sha1="b156e9da65c0a62f0d1f47c1848b66abcf0e3e78" />
 	<File name="Assets/MapCrafting/Items/2b5d0b8b9cc40da84da9.png" part="program" sha1="76954c4567fcd3c9cf790ee698a5e943ba50c97d" />
 	<File name="Assets/MapCrafting/Items/2c195e7cb1de4aaf4bc4.png" part="program" sha1="16e75cd889a54b8e45b489a1bb65c375345968a2" />
 	<File name="Assets/MapCrafting/Items/2c4242c8374ff081f4e6.png" part="program" sha1="a62794539e7c8950e775a5b19d1d2f0526e743f5" />
@@ -1136,6 +1138,7 @@
 	<File name="Assets/MapCrafting/Items/3e63ad69f62c0415b59a.png" part="program" sha1="9215a723d2c3d3ab2310785e7d7895666a44bbab" />
 	<File name="Assets/MapCrafting/Items/3e8fed3716345acd399b.png" part="program" sha1="968b88fe2ba57d9f0e4a236b9c4df9df7035170a" />
 	<File name="Assets/MapCrafting/Items/3ea0c3684f15941033b8.png" part="program" sha1="656a01575dc2d3e24e888b3956bfc557d37529d3" />
+	<File name="Assets/MapCrafting/Items/3ef5a09ec7c8f45fc5f0.png" part="program" sha1="02f9090ff92a477534f9b819296abd69d59d1987" />
 	<File name="Assets/MapCrafting/Items/3eff22839369b730858f.png" part="program" sha1="112ddf9ba7eda6071a4c0546210e07fc5a53477e" />
 	<File name="Assets/MapCrafting/Items/3f0e3d09a639ddba31ab.png" part="program" sha1="c6a76eefb0e83689bb3d8596d806c6c9315d81af" />
 	<File name="Assets/MapCrafting/Items/40a44f8b6dab751d0ccf.png" part="program" sha1="c408ba6e77dff9c5402e156a269387d81e4ac573" />
@@ -1193,6 +1196,7 @@
 	<File name="Assets/MapCrafting/Items/5a78850ac2efd14098ce.png" part="program" sha1="07899141dd375419d19254aaafd69854ac8f13fd" />
 	<File name="Assets/MapCrafting/Items/5b96f01a644fdc891e07.png" part="program" sha1="9f5b37057ae4ee7ba9299b5c02813f7dfbe7576b" />
 	<File name="Assets/MapCrafting/Items/5c451ef225de4cf692ed.png" part="program" sha1="2b8b92658d6a73af3446e5af2ac692baf7ee88dd" />
+	<File name="Assets/MapCrafting/Items/5cb75f9d0ba226aaf380.png" part="program" sha1="92b731493bc44ec87da33cc047cde5d9498f0a41" />
 	<File name="Assets/MapCrafting/Items/5d1bccf8e09363bd2260.png" part="program" sha1="8e861729cdd56f688cce6fadbd844df437477672" />
 	<File name="Assets/MapCrafting/Items/5ea45bc8cc74061491de.png" part="program" sha1="03a3fd47bd2c67105df716e3e4a2e6b3e044844a" />
 	<File name="Assets/MapCrafting/Items/5efd7df7c2fcc47d25de.png" part="program" sha1="3560da890f01de130dffb95f3986962dba52e1fc" />
@@ -1210,6 +1214,8 @@
 	<File name="Assets/MapCrafting/Items/67114cd3bfd09176bc97.png" part="program" sha1="1d3f797d781fff74a5dd1cdb63bad6a9002c2afb" />
 	<File name="Assets/MapCrafting/Items/6723f32151332ea77a4b.png" part="program" sha1="439089a04fb2942a92133c6d84d65b1941292e54" />
 	<File name="Assets/MapCrafting/Items/67796e79573c7b1547dd.png" part="program" sha1="13e8748f8a833e708c768b28abf6e46c0341eef1" />
+	<File name="Assets/MapCrafting/Items/68563540e50920755987.png" part="program" sha1="6d8893798d370ec48479fce65f269ffa2b4f990f" />
+	<File name="Assets/MapCrafting/Items/6862409ffd4e1a9857f5.png" part="program" sha1="85ab7cf894f5a648955c551ab9c34c32f79166e7" />
 	<File name="Assets/MapCrafting/Items/688f83d3ca9fc40fb9c7.png" part="program" sha1="f9eeec1f518ce7c94a169a821579e24823480d47" />
 	<File name="Assets/MapCrafting/Items/68bf51e720b4622a05ec.png" part="program" sha1="2957522a800cec4c990445bc091bf0ef9cc00d54" />
 	<File name="Assets/MapCrafting/Items/68cbb4410c50191abede.png" part="program" sha1="91112b10ea19365dc5a090458c5356dd6060bd9b" />
@@ -1265,10 +1271,12 @@
 	<File name="Assets/MapCrafting/Items/826514a696be15d01050.png" part="program" sha1="91c3ad5beb089d5ec88ebf5c99fb8037e4f89227" />
 	<File name="Assets/MapCrafting/Items/82bfc3252fb210db814d.png" part="program" sha1="b6ca6aec01f107c9897d57eb390f353dcf29a053" />
 	<File name="Assets/MapCrafting/Items/83180141c0b196a8776f.png" part="program" sha1="c8487ae90c9e05b692628465ef1b7755c48084e1" />
+	<File name="Assets/MapCrafting/Items/8358cebd95cfa247e002.png" part="program" sha1="4bc17e6fb7e5bba896f282c05a62a69a43c237cc" />
 	<File name="Assets/MapCrafting/Items/837c7b82ef2b606c2eca.png" part="program" sha1="814ca0c7c21561289fd023a71dccf1af8945c287" />
 	<File name="Assets/MapCrafting/Items/83903f36a7b28e33a322.png" part="program" sha1="3343213ed3fb7d065787a94709c324c2193fe3bc" />
 	<File name="Assets/MapCrafting/Items/83bd2d0a648244b23241.png" part="program" sha1="3dbb2f089dc235248588e46d1a1de56b7e17f864" />
 	<File name="Assets/MapCrafting/Items/83faf118094ec364593b.png" part="program" sha1="7a9d02768687e7926991afa3d24b26d2e7fd82ae" />
+	<File name="Assets/MapCrafting/Items/844ec5f27c558402f22e.png" part="program" sha1="397a42dc2110fdc4f69b39d214170b9d32443661" />
 	<File name="Assets/MapCrafting/Items/85055df36693feb06a5f.png" part="program" sha1="b18c010e74fdf13f525ea5aa3b8b2604ad73155a" />
 	<File name="Assets/MapCrafting/Items/857ed0d57aaeed90b2bb.png" part="program" sha1="aa997920d24694f93b6a1bb0ca56bbeccfef0728" />
 	<File name="Assets/MapCrafting/Items/867fbb0af455c892210f.png" part="program" sha1="0035b2e7d59ccee5b35abd5e8fd1c864c858db92" />
@@ -1276,6 +1284,7 @@
 	<File name="Assets/MapCrafting/Items/86c15fa6685561270a38.png" part="program" sha1="35c57a0b2de64b12014a06bec79f2298678994c6" />
 	<File name="Assets/MapCrafting/Items/86c27fd905e84d745062.png" part="program" sha1="fc4fbde4e80bec33c0c8978b631dafe39d42f18d" />
 	<File name="Assets/MapCrafting/Items/876130ce0778bf47f3b3.png" part="program" sha1="6d785c992db8422be5991a35489762b183ac8055" />
+	<File name="Assets/MapCrafting/Items/876bba1598b3e8372126.png" part="program" sha1="ac0ecc056bcf94bca512729ce90cfd62fc675ad8" />
 	<File name="Assets/MapCrafting/Items/8774916b27782c21b162.png" part="program" sha1="36b0c342a2aeff34512993bbe2250c27c96d66ba" />
 	<File name="Assets/MapCrafting/Items/87751891149806730f53.png" part="program" sha1="7dd1cdb60419f9551f39ad327cef8d073bf91b01" />
 	<File name="Assets/MapCrafting/Items/880ea58434b6ed42c253.png" part="program" sha1="a8300a1acea649931fbb9da096245c4eba412d4a" />
@@ -1303,11 +1312,13 @@
 	<File name="Assets/MapCrafting/Items/923baf244ce7fe0ea96f.png" part="program" sha1="58bf4f18cf41c1e374eab810fee385efde25b004" />
 	<File name="Assets/MapCrafting/Items/92716b7f42a09eb2c26d.png" part="program" sha1="e69bf1205bd084b9fec7aab0529e7647b147ee9c" />
 	<File name="Assets/MapCrafting/Items/930e9a36176ffdfcce43.png" part="program" sha1="ab9dcf1b39244285f0d8faa932f5f80b35f86697" />
+	<File name="Assets/MapCrafting/Items/936faee4e8d108ac5a41.png" part="program" sha1="d3bed5ccc8805e61b86c876022ccd279b0c88dbc" />
 	<File name="Assets/MapCrafting/Items/943d11820e274922e7c8.png" part="program" sha1="6e76f5e364998f9012a000a9c47e46ef6b14fa6b" />
 	<File name="Assets/MapCrafting/Items/95a00ed87bb0fb823982.png" part="program" sha1="28bc1c2be3b65a43bb63de8448daa515ab536543" />
 	<File name="Assets/MapCrafting/Items/964b3377454529048139.png" part="program" sha1="69e97a6c2bd2e93a55efa677492905f27778c712" />
 	<File name="Assets/MapCrafting/Items/96732fbf888acf2af29d.png" part="program" sha1="a10a23d17323edfd7960b70c8930de6cc1f8703d" />
 	<File name="Assets/MapCrafting/Items/96fc5a03be4d424c49de.png" part="program" sha1="4bd8c4ef88861d08e062d24f0ccfae7692b0a033" />
+	<File name="Assets/MapCrafting/Items/970736758b1c3e0ac91f.png" part="program" sha1="97448e7b7afe9983bf0d8b2766b4c7f143171fa9" />
 	<File name="Assets/MapCrafting/Items/97a296387a8830c9524c.png" part="program" sha1="499c2d5096faa8088cbe8d095f357c3565cb443a" />
 	<File name="Assets/MapCrafting/Items/97c796b329673843cdc5.png" part="program" sha1="1388b46387e1cb68a126b8f479f456e453295554" />
 	<File name="Assets/MapCrafting/Items/981322d38a4ca7ae7a8d.png" part="program" sha1="f196b55e34f7a57349e25cebc16ec95ffa2c988f" />
@@ -1336,12 +1347,15 @@
 	<File name="Assets/MapCrafting/Items/a29e9a7b8cd67efbdbc0.png" part="program" sha1="49548e2b8bd0dbb8c7a8430143489905ac539dfb" />
 	<File name="Assets/MapCrafting/Items/a2b9cf7955b3999bf095.png" part="program" sha1="0a31add536c4881345561cca0aa273691b4ae56a" />
 	<File name="Assets/MapCrafting/Items/a2c3f8e37faa37090d41.png" part="program" sha1="4023526a65b8a6c9c33fd2f30dd08725d2d44e77" />
+	<File name="Assets/MapCrafting/Items/a341380652305fef60bd.png" part="program" sha1="b21478382cddb70bf95f0a918e7c5c1d7918bde2" />
 	<File name="Assets/MapCrafting/Items/a39acf1e2940fc731624.png" part="program" sha1="7dc386aa9d7a37bbda0e7b04149ebcc40b308ef3" />
 	<File name="Assets/MapCrafting/Items/a4af456df7f298ab6a72.png" part="program" sha1="bb160e5ccfae03263d5c1f5187bfa6cc16767b59" />
 	<File name="Assets/MapCrafting/Items/a4c1d415e8c52ca31b48.png" part="program" sha1="c4018f46d09596ddda5f89fcac2d7a915796278c" />
 	<File name="Assets/MapCrafting/Items/a50017cdcf6d63aac02e.png" part="program" sha1="ea15db413ab8d29ad1ee5cc01b457558e463f3dd" />
 	<File name="Assets/MapCrafting/Items/a57b74d49a9494e7fcae.png" part="program" sha1="c16e83217b33bd69b543a10699faff6ec117d60f" />
+	<File name="Assets/MapCrafting/Items/a7d73ae71347ba91b1b8.png" part="program" sha1="da8a19c268d1447f6e55f974a795d5d9a75ad196" />
 	<File name="Assets/MapCrafting/Items/a81c93fc22a569ac9651.png" part="program" sha1="23c7304bd2bf6eb844c90aeea79b41744093355e" />
+	<File name="Assets/MapCrafting/Items/a88b8c2a2a6cddad577c.png" part="program" sha1="663d2df973df9e9a724c77b93b2a374d59d25f12" />
 	<File name="Assets/MapCrafting/Items/a8a5e9a4dc0d0a5123b9.png" part="program" sha1="c2713c2064ca1781137675bb7435c8afd1d5e24c" />
 	<File name="Assets/MapCrafting/Items/a8ea6c4c93d02da75dfc.png" part="program" sha1="caf24003e55b263bf0c5fef9e6c82b27ed456df5" />
 	<File name="Assets/MapCrafting/Items/a9c8fc7b01e3a2547ce4.png" part="program" sha1="78ea7a8d88bf29d9d795f4db41b3c12a6aaa2542" />
@@ -1364,6 +1378,7 @@
 	<File name="Assets/MapCrafting/Items/b8af433a27dd6d67d370.png" part="program" sha1="23e26ff239ed79b5bf680d8f7b40acec93c6839c" />
 	<File name="Assets/MapCrafting/Items/b8d50e95e6da10b5cfb5.png" part="program" sha1="3837035a7a44a5b1c0a977ad2203821c382723b3" />
 	<File name="Assets/MapCrafting/Items/b93c6b31c8a369365afe.png" part="program" sha1="441c90943e10fee67d26e557f06371a9850fb833" />
+	<File name="Assets/MapCrafting/Items/b954a684f5aface4fe81.png" part="program" sha1="6d0fc451b5710daaa9b4dda9447fe7c55d4f6858" />
 	<File name="Assets/MapCrafting/Items/b9d5b605fa344e4bda09.png" part="program" sha1="9c4350ceb1a2c3a27ad3c7483a5c4c7e15bef899" />
 	<File name="Assets/MapCrafting/Items/b9f5dd7162356684ddd3.png" part="program" sha1="9f434bdfe926e4e7c9a4543938693e0ebf11e4c1" />
 	<File name="Assets/MapCrafting/Items/bba2562695c1dfd55703.png" part="program" sha1="fdb78a1d240fe7542e97e5e7c1b3905592af7ab3" />
@@ -1447,6 +1462,7 @@
 	<File name="Assets/MapCrafting/Items/e313bdc9390b60139da7.png" part="program" sha1="c7de9724a61baf8ac0d3ca96f431199aa5d4bd41" />
 	<File name="Assets/MapCrafting/Items/e33520f56f14cc2d10e2.png" part="program" sha1="54483b1205de90f6fa4704046872b0466ffa2dea" />
 	<File name="Assets/MapCrafting/Items/e352d423b2804bd15691.png" part="program" sha1="01f35ce89e5852cb9426a12ecd3255d438b9208e" />
+	<File name="Assets/MapCrafting/Items/e3b0fbe2fea1f8b9869f.png" part="program" sha1="2e1b3796b1df665ab6c4af4271edcda28236db33" />
 	<File name="Assets/MapCrafting/Items/e4fba90ea7f807db71a6.png" part="program" sha1="e62abaae1af981c9deb7dbf5511db7a3fb34b275" />
 	<File name="Assets/MapCrafting/Items/e50f0bb4eee7182a4089.png" part="program" sha1="f212872efc2e378ebd1f8da0b9511dd62b870932" />
 	<File name="Assets/MapCrafting/Items/e580778dbb99c88dbd2e.png" part="program" sha1="e328dfdd5962a2511232ce273e3893498b10f9be" />
@@ -1499,7 +1515,7 @@
 	<File name="Assets/MapCrafting/Items/fe67a5e4f462dcade8c1.png" part="program" sha1="cdcbe9a6ec51981709d2d85585422ecfc7215c49" />
 	<File name="Assets/MapCrafting/Items/fe9057804f643e5cac67.png" part="program" sha1="265e477e74b4fe9e367f42d4b5ec49dbcc8e7d50" />
 	<File name="Assets/MapCrafting/Items/feb1e22c2a978f629ea3.png" part="program" sha1="fdfb325a159372cc0ae86c6e44d9301a8b3743f9" />
-	<File name="Assets/MapCrafting/art.json" part="program" sha1="2122d5400c6d03978796ff4648a15d6e2be52a11" />
+	<File name="Assets/MapCrafting/art.json" part="program" sha1="18ec0cb9f6bfb2bfbbfd281d355377c4846cdb16" />
 	<File name="Assets/ShadedInnerRing.png" part="program" sha1="6ad9088ebaed6646dbd3d231d563dc9611ba4bc6" />
 	<File name="Assets/ShadedInnerRingFlipped.png" part="program" sha1="c13f41ef7cbfc14017a10776d21b121f0e558667" />
 	<File name="Assets/ShadedOuterRing.png" part="program" sha1="988dee6e0cf9906d78015bc1762b1d95983e89cb" />
@@ -1693,7 +1709,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="b5b757c324f38b8031de0957e4c8b3ef1351be61" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="7178f8d6d5db5647052e1fa8b66d3b9619fea016" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="43a57a826df539cb7f43a1681723ba36d6f5189a" />
-	<File name="Classes/MapModifierControl.lua" part="program" sha1="a109c648afe8dc6f05b4ff92de00c1ed9e878930" />
+	<File name="Classes/MapModifierControl.lua" part="program" sha1="1b971bd089a250fde052ecb3b5ecca7b1b6e6590" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
 	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="cfff5d76e380c7bdcbdac229325cefb1599af36c" />
 	<File name="Classes/ModDB.lua" part="program" sha1="1327beebeba14dc8320d137a3dede673b74942af" />
@@ -1789,7 +1805,7 @@
 	<File name="Data/Crafting/HarvestEnchants.json" part="program" sha1="03fef9d0e14feb62dab0fc0192aaf7e51211a25d" />
 	<File name="Data/Crafting/Katakohi.json" part="program" sha1="bfcf1e258c32205abb6cd757f13bedeaa42c6213" />
 	<File name="Data/Crafting/LegacyBench329.lua" part="program" sha1="840251c6ac1b35444a88357f1228e5feb69df905" />
-	<File name="Data/Crafting/Map330.json" part="program" sha1="e572fe5947222dcbebd0979d71a4051701dcc07b" />
+	<File name="Data/Crafting/Map330.json" part="program" sha1="290cf014ef6185fd6653296baff5e8bdaa00ed5c" />
 	<File name="Data/Crafting/MapCorruption330.json" part="program" sha1="18e6c74e545a42aef08651f908603a8d86cd5298" />
 	<File name="Data/Crafting/MemoryStrands.json" part="program" sha1="ed32b21ad297a09f0875c51d982659af2788e6df" />
 	<File name="Data/Crucible.lua" part="program" sha1="efc0f7dca72b476bbffa10f687a270abb89050b2" />
@@ -2125,10 +2141,10 @@
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="240c5844884c630d675d5fe3d5a348bf8f2c91a8" />
 	<File name="Modules/LootFilters.lua" part="program" sha1="d336506126450e29f6abf7d4b8e3445d71df8705" />
 	<File name="Modules/Main.lua" part="program" sha1="6178b9a43a5bffa6facf16629e039ff4839b3192" />
-	<File name="Modules/MapClipboard.lua" part="program" sha1="c3f38f1f2456bfcb62aff901f12abb7469aa8afb" />
+	<File name="Modules/MapClipboard.lua" part="program" sha1="20d975af949df6a728ec47a545362b370812fffb" />
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="c03ef32eee4a6eec184aac726605d6104d068af9" />
 	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="24eb68cd5ce2402e50d2b623e5e30ea11bc3dfff" />
-	<File name="Modules/MapCraftingData.lua" part="program" sha1="2b3f273ea23f850fcfc8e0cc32053aa965148163" />
+	<File name="Modules/MapCraftingData.lua" part="program" sha1="436d83bbfbf7b705b92bc77696814898a14a11a4" />
 	<File name="Modules/MapCurrency.lua" part="program" sha1="85c753852b5342dade90bdcc7277a9d0de8ccefc" />
 	<File name="Modules/MapRollValues.lua" part="program" sha1="738d8da00d86027c40d51555476d7c2a947a72c8" />
 	<File name="Modules/ModParser.lua" part="program" sha1="0a8101464bb1ec7f6fb701e06fce15162f80371d" />

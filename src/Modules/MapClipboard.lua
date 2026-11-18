@@ -43,13 +43,24 @@ function M.parse(raw,checkpoint)
  assert(rarity=="normal" or rarity=="magic" or rarity=="rare","Only normal, magic and rare maps are supported")
  assert(not raw:find("\nUnidentified",1,true),"Identify the map before importing it")
  assert(not raw:find("\nMirrored",1,true),"Mirrored maps are not supported")
- local tier=tonumber(raw:match("\nMap Tier:%s*(%d+)"));local level=tonumber(raw:match("\nItem Level:%s*(%d+)"))
+ local itemTier=tonumber(raw:match("Rarity: [^\n]+\n[^\n]*Map %(Tier (%d+)%)") or raw:match("Rarity: [^\n]+\n[^\n]+\nMap %(Tier (%d+)%)"))
+ local displayedTier=tonumber(raw:match("\nMap Tier:%s*(%d+)"))
+ assert(not itemTier or not displayedTier or itemTier==displayedTier,"The map item's tier does not match its displayed tier")
+ local tier=displayedTier or itemTier;local level=tonumber(raw:match("\nItem Level:%s*(%d+)"))
  assert(tier and tier>=1 and tier<=16,"Use an ordinary map with tier 1 to 16")
  assert(level and level>=1 and level<=100,"The copied map needs its item level")
  local header=assert(raw:match("Rarity: [^\n]+\n(.-)\n%-%-%-%-%-%-%-%-"),"The copied map has no item header")
  local matches,exact,longest={},false,0
+ if itemTier then
+  local id="Metadata/Items/Maps/MapKeyTier"..itemTier
+  assert(map.source().bases[id],"The tier-based map item is not in the current catalogue")
+  if rarity~="magic" then
+   assert(header:match("([^\n]+)$")=="Map (Tier "..itemTier..")","The map item header is not supported")
+  end
+  matches={id}
+ end
  for id,base in pairs(map.source().bases) do
-  if id:match("^Metadata/Items/Maps/MapWorlds") and base.name then
+  if not itemTier and id:match("^Metadata/Items/Maps/MapWorlds") and base.name then
    local whole=false;for line in header:gmatch("[^\n]+") do if line==base.name then whole=true;break end end
    local hit=header:find(base.name,1,true)~=nil
    if whole and not exact then matches={};exact=true;longest=0 end
@@ -148,6 +159,6 @@ function M.parse(raw,checkpoint)
  assert(#solutions==1,"The copied modifiers match multiple identities; select them manually instead")
  local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,implicit=implicit}
  if rarity~="normal" then map.inspect(state.baseId,tier,level,state.selected,"",0,1,checkpoint,rarity,nil,corrupted,implicit) end
- return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.","Map quality is not imported; displayed totals exclude quality. Enchanted maps are unsupported.","The current ordinary-map base was selected by name; verify older maps separately."}}
+ return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.","Map quality is not imported; displayed totals exclude quality. Enchanted maps are unsupported.",itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately."}}
 end
 return M

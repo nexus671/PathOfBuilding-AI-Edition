@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DESTINATION = ROOT / "src/Data/Crafting/Map330.json"
 FIELDS = ("name", "generation_type", "required_level", "groups", "spawn_weights",
           "generation_weights", "adds_tags", "stats", "text")
+ORDINARY_MAP_KEYS = {f"Metadata/Items/Maps/MapKeyTier{tier}" for tier in range(1, 17)}
 
 
 def extract(raw, expected_hash, base_raw, expected_base_hash, source):
@@ -27,7 +28,8 @@ def extract(raw, expected_hash, base_raw, expected_base_hash, source):
         raise ValueError("No area modifiers found")
     map_bases = {key: {field: value[field] for field in
                        ("name", "tags", "release_state", "drop_level", "visual_identity")}
-                 for key, value in bases.items() if value.get("item_class") == "Map"}
+                 for key, value in bases.items() if value.get("item_class") == "Map" or
+                 (value.get("item_class") == "MapKey" and key in ORDINARY_MAP_KEYS)}
     if not map_bases:
         raise ValueError("No map bases found")
     return {"_comment": "Generated GGG game data from RePoE; cspell:disable",

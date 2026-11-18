@@ -2,6 +2,20 @@ describe("Map clipboard import",function()
  local parser=require("Modules.MapClipboard")
  local header="Item Class: Maps\nRarity: Rare\nDreary Strand\nStrand Map\n--------\nMap Tier: 5\nItem Level: 68\n--------\nMonster Level: 72\n--------\n"
  local trailer="\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
+ it("imports a current tier-based map without a separate Map Tier line",function()
+  local raw="Item Class: Maps\nRarity: Rare\nVortex Artifice\nMap (Tier 5)\n--------\nQuality (Pack Size): +20% (augmented)\n--------\nItem Level: 68\n--------\nMonsters have 45% increased Area of Effect"..trailer
+  local result=parser.parse(raw)
+  assert.equal("Metadata/Items/Maps/MapKeyTier5",result.state.baseId)
+  assert.equal(5,result.state.tier)
+  assert.same({"MapMonsterAreaOfEffectMapWorlds"},result.state.selected)
+  assert.has_error(function() parser.parse(raw:gsub("Item Level: 68","Map Tier: 6\nItem Level: 68")) end)
+ end)
+ it("accepts normal and magic tier-based map item headers",function()
+  local normal="Item Class: Maps\nRarity: Normal\nMap (Tier 1)\n--------\nItem Level: 68\n--------\n"
+  assert.equal("Metadata/Items/Maps/MapKeyTier1",parser.parse(normal..trailer).state.baseId)
+  local magic="Item Class: Maps\nRarity: Magic\nEnlarged Map (Tier 5)\n--------\nItem Level: 68\n--------\nMonsters have 45% increased Area of Effect"
+  assert.equal("Metadata/Items/Maps/MapKeyTier5",parser.parse(magic..trailer).state.baseId)
+ end)
  it("resolves a complete copied ordinary map and verifies exact roll values",function()
   local raw=header.."Monsters have 45% increased Area of Effect\nMonsters deal 55% extra Physical Damage as Fire"..trailer
   local result=parser.parse(raw);assert.equal("Metadata/Items/Maps/MapWorldsStrand",result.state.baseId)

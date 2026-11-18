@@ -143,6 +143,8 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 	assert(type(selected or {})=="table","Selected modifiers must be a list");selected=selected or {}
 	query=query or "";assert(type(query)=="string" and #query<=160,"Invalid modifier search")
 	local base=assert(M.source().bases[baseId],"Unknown map base")
+	local baseTier=baseId:match("^Metadata/Items/Maps/MapKeyTier(%d+)$")
+	assert(not baseTier or tonumber(baseTier)==tier,"The map item's tier must match the selected tier")
 	local tags=M.baseTags(baseId)
 	assert(not tags.map_force_6_mods,"Special maps need their own crafting rules")
 	for _,tag in ipairs({"low_tier_map","mid_tier_map","top_tier_map","uber_tier_map"}) do tags[tag]=nil end

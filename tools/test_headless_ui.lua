@@ -78,7 +78,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("version","3.29.3");ui:click("confirm");frame("atlas-start");assert(not build.controls.statBox:IsShown(),"Build sidebar should be hidden while planning")
 	ui:click("tools");ui:text("search","Map modifier explorer");ui:click("choose");frame("map-modifier-explorer")
 	do
-		ui.clipboard="Item Class: Maps\nRarity: Rare\nDreary Strand\nStrand Map\n--------\nMap Tier: 5\nItem Level: 68\n--------\nMonster Level: 72\n--------\nMonsters have 45% increased Area of Effect\nMonsters deal 55% extra Physical Damage as Fire\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
+		ui.clipboard="Item Class: Maps\nRarity: Rare\nVortex Artifice\nMap (Tier 5)\n--------\nQuality (Pack Size): +20% (augmented)\n--------\nItem Level: 68\n--------\nMonster Level: 72\n--------\nMonsters have 45% increased Area of Effect\nMonsters deal 55% extra Physical Damage as Fire\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
 		ui:click("pasteMap");frame("map-clipboard-review");ui:click("close")
 		assert(main.popups[1].controls.tier:GetSelValueByKey("val")==16 and not main.popups[1].controls.remove:IsEnabled(),"Cancelling map review changed the draft")
 		ui:click("pasteMap");ui:click("keep")

@@ -22,7 +22,7 @@ function M.Open(options)
 	local controls={};local function isCorrupted() return controls.rarity and controls.rarity:GetSelValueByKey("val")=="corrupted_rare" or false end
 	local function getRarity() local value=controls.rarity:GetSelValueByKey("val");return value=="corrupted_rare" and "rare" or value end
 	local implicit=initial and initial.implicit and copyTable(initial.implicit) or nil
-	local selected=initial and copyTable(initial.selected) or {};local rolls=initial and copyTable(initial.rolls or {}) or {};local candidate;local previousRarity;local baseId=initial and initial.baseId or "Metadata/Items/Maps/MapWorldsStrand";local refresh;local offset,nextOffset=0,nil
+	local selected=initial and copyTable(initial.selected) or {};local rolls=initial and copyTable(initial.rolls or {}) or {};local candidate;local previousRarity;local baseId=initial and initial.baseId or "Metadata/Items/Maps/MapKeyTier16";local refresh;local offset,nextOffset=0,nil
 	local estimateSettings=initial and initial.estimate and copyTable(initial.estimate) or nil
 	local draftId=initial and initial.id
 	local rollSeed=os.time()%2147483646+1
@@ -42,12 +42,19 @@ function M.Open(options)
 	button("base",16,66,left-104,"Choose map",function()
 		local rows={};local baseOffset=0
 		repeat
-			local page=map.searchBases("MapWorlds",baseOffset,100)
-			for _,entry in ipairs(page.results) do if not entry.special then rows[#rows+1]={id=entry.id,label=entry.name,search=entry.id,details={entry.id,"Availability in the current Atlas is not verified."}} end end
+			local page=map.searchBases("",baseOffset,100)
+			for _,entry in ipairs(page.results) do
+				local tier=entry.id:match("^Metadata/Items/Maps/MapKeyTier(%d+)$")
+				local historical=entry.id:match("^Metadata/Items/Maps/MapWorlds")
+				if not entry.special and (tier or historical) then
+					rows[#rows+1]={id=entry.id,label=entry.name..(historical and " (legacy)" or ""),search=entry.id,details={entry.id,tier and "Current tier-based map item." or "Historical named map; availability is not verified."}}
+				end
+			end
 			baseOffset=page.nextOffset
 		until not baseOffset
 		browser.Open("Choose map base",rows,{action="Use map",choose=function(entry)
-			baseId=entry.id;selected={};rolls={};implicit=nil;estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
+			baseId=entry.id;local tier=baseId:match("^Metadata/Items/Maps/MapKeyTier(%d+)$");if tier then controls.tier:SelByValue(tonumber(tier),"val") end
+			selected={};rolls={};implicit=nil;estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
 		end,closeOnChoose=false})
 	end)
 	button("pasteMap",16+left-96,66,96,"Paste map",function()
@@ -193,7 +200,10 @@ function M.Open(options)
 	controls.list.onClick=function(hit) if hit and hit.line then show(hit.line.entry) end end
 	controls.search.changeFunc=function() offset=0;refresh() end
 	controls.level.changeFunc=function() selected={};rolls={};implicit=nil;estimateSettings=nil;offset=0;refresh() end
-	controls.tier.selFunc=function() selected={};rolls={};implicit=nil;estimateSettings=nil;offset=0;refresh() end
+	controls.tier.selFunc=function()
+		if baseId:match("^Metadata/Items/Maps/MapKeyTier%d+$") then baseId="Metadata/Items/Maps/MapKeyTier"..controls.tier:GetSelValueByKey("val") end
+		selected={};rolls={};implicit=nil;estimateSettings=nil;offset=0;refresh()
+	end
 	controls.rarity.selFunc=function()
 		local current=controls.rarity:GetSelValueByKey("val")
 		if not (previousRarity=="rare" and current=="corrupted_rare") then selected={};rolls={};implicit=nil end
