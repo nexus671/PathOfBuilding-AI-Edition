@@ -52,6 +52,25 @@ function M.Open(build,value,onKeep,mode)
 			c["recipe"..i].tooltipText=mode=="Ruthless" and "Not emitted in Ruthless: recipe availability has not been verified." or "Shows unidentified rare equipment at item level 60+. Gold marks 60-74; blue marks 75+. A full set needs at least one 60-74 item for Chaos Orbs."
 		end
 	end
+	c.recipe5.width=column-106
+	button("rareSetSlots",right+column-98,508,98,"Slots...",function()
+		local chosen={};for _,name in ipairs(current.rareSetSlots) do chosen[name]=true end
+		local popup={};ui.description(popup,"help",16,30,428,44,{"Choose which rare-set pieces to highlight. A complete set still needs every required slot."},14)
+		for i,name in ipairs(policy.rareSetSlots) do
+			local key="slot"..i
+			popup[key]=new("ButtonControl"):ButtonControl(ui.anchor,{16,88+(i-1)*36,428,28},name,function() chosen[name]=not chosen[name] or nil end)
+			popup[key].locked=function() return chosen[name] end
+		end
+		popup.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,210,200,28},"Keep slot groups",function()
+			local values={};for _,name in ipairs(policy.rareSetSlots) do if chosen[name] then values[#values+1]=name end end
+			if #values==0 then main:OpenMessagePopup("Rare-set slots","Choose at least one slot group, or turn off rare-set pickups.");return end
+			current.rareSetSlots=values;main:ClosePopup()
+		end)
+		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{328,210,116,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(popup,{keep=true});main:OpenPopup(460,256,"Rare-set slot groups",popup,nil,nil,"close")
+	end)
+	c.rareSetSlots.height=22;c.rareSetSlots.label=function() return #current.rareSetSlots.."/3 slots" end;c.rareSetSlots.enabled=function() return mode~="Ruthless" and selected.recipes["Unidentified rare set pieces"] end
+	c.rareSetSlots.tooltipText="Choose jewellery, armour, and weapon/shield groups independently."
 	local function read()
 		local next=copyTable(current)
 		for key,values in pairs(selected) do next[key]={};for name in pairs(values) do next[key][#next[key]+1]=name end end

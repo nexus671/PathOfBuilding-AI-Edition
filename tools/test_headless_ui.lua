@@ -1431,9 +1431,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("categoryStyles");frame("filter-category-browser");ui:text("search","Currency");ui:click("choose");ui:text("textColor","00FF00FF");frame("filter-category-preview");ui:click("keep");frame("filter-category-applied")
 	assert(build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].categoryStyles[1].category=="Currency","Category style was not kept in the draft");ui:click("viewOverview")
 	filterTool("Account filters");frame("filter-account");ui:click("createAccount");frame("filter-account-review");ui:click("cancel");ui:click("close")
-	filterTool("Campaign and base-family");frame("filter-campaign-empty");ui:click("weapons1");ui:click("defences3");ui:click("recipe1");ui:click("recipe5");ui:text("minAreaLevel","10");ui:text("maxAreaLevel","60");ui:text("minDropLevel","10");ui:text("minLinks","2");ui:text("upgradeWindow","20");frame("filter-campaign-selected");ui:click("keep")
+	filterTool("Campaign and base-family");frame("filter-campaign-empty");ui:click("weapons1");ui:click("defences3");ui:click("recipe1");ui:click("recipe5");ui:click("rareSetSlots");ui:click("slot2");ui:click("slot3");frame("filter-rare-set-slots");ui:click("keep");ui:text("minAreaLevel","10");ui:text("maxAreaLevel","60");ui:text("minDropLevel","10");ui:text("minLinks","2");ui:text("upgradeWindow","20");frame("filter-campaign-selected");ui:click("keep")
 	local campaignDraft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].campaign
 	assert(campaignDraft.weapons[1]=="Bow" and #campaignDraft.defences==1 and #campaignDraft.recipes==2 and campaignDraft.recipes[2]=="Unidentified rare set pieces","Campaign pickup choices were not kept in the draft")
+	assert(#campaignDraft.rareSetSlots==1 and campaignDraft.rareSetSlots[1]=="Jewellery","Rare-set slot groups were not kept in the draft")
 	assert(campaignDraft.minAreaLevel==10 and campaignDraft.maxAreaLevel==60 and campaignDraft.minDropLevel==10 and campaignDraft.minLinks==2 and campaignDraft.upgradeWindow==20,"Campaign numeric edits were ignored")
 	filterTool("Filter structure and priority");frame("filter-structure-all");ui:choose("mode","Priority conflicts");frame("filter-structure-conflicts");ui:click("close")
 	do

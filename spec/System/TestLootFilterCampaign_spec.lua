@@ -38,6 +38,17 @@ describe("Offline campaign pickup policies",function()
 		p.mode="Ruthless";item.ItemLevel=60;assert.equal("Minimal",filters.simulate(p,item).action)
 		assert.equal(0,#campaign.rules(p.campaign,nil,"Ruthless"));assert.equal(2,#campaign.rules(p.campaign,nil,"Normal"))
 	end)
+	it("filters rare-set pickups to the selected slot groups and restores old defaults",function()
+		local old=campaign.validate({recipes={"Unidentified rare set pieces"}});assert.same(campaign.rareSetSlots,old.rareSetSlots)
+		local p=profile();p.campaign.recipes={"Unidentified rare set pieces"};p.campaign.rareSetSlots={"Jewellery"};p.campaign.maxAreaLevel=100
+		local item={Class="Rings",BaseType="Iron Ring",AreaLevel=75,ItemLevel=70,Rarity="Rare",Identified=false}
+		assert.equal("Show",filters.simulate(p,item).action);item.Class="Helmets";item.BaseType="Iron Hat";assert.equal("Hide",filters.simulate(p,item).action)
+		item.Class="One Hand Swords";item.BaseType="Rusted Sword";assert.equal("Hide",filters.simulate(p,item).action)
+		p.campaign.rareSetSlots={"Weapons and shields"};assert.equal("Show",filters.simulate(p,item).action)
+		item.Class="Rings";item.BaseType="Iron Ring";assert.equal("Hide",filters.simulate(p,item).action)
+		assert.has_error(function() campaign.validate({rareSetSlots={}}) end)
+		assert.has_error(function() campaign.validate({rareSetSlots={"Jewellery","Jewellery"}}) end)
+	end)
 	it("uses the active weapon set and skips inactive equipment",function()
 		local fake={itemsTab={activeItemSet={useSecondWeaponSet=true},items={
 			[1]={base={type="Bow",weapon={}}},[2]={base={type="Wand",weapon={}}},
@@ -67,6 +78,12 @@ describe("Offline campaign pickup policies",function()
 		local controls=require("Classes.LootFilterCampaignControl").Open(build,nil,function() end,"Normal")
 		controls.recipe5:Click();local summary="";for _,row in ipairs(controls.summary.list) do summary=summary..StripEscapes(row[1] or "").." " end
 		assert.matches("60%-74",summary);assert.matches("gold",summary);controls.close:Click()
+	end)
+	it("keeps selected rare-set slot groups through the dialog",function()
+		local kept;local controls=require("Classes.LootFilterCampaignControl").Open(build,nil,function(value) kept=value end,"Normal")
+		controls.recipe5:Click();controls.rareSetSlots:Click();local popup=main.popups[1].controls
+		popup.slot2:Click();popup.slot3:Click();popup.keep:Click();controls.keep:Click()
+		assert.same({"Jewellery"},kept.rareSetSlots);assert.same({"Unidentified rare set pieces"},kept.recipes)
 	end)
 	it("keeps every selectable family within the export budget and round-trips policy metadata",function()
 		local p=profile();p.campaign.weapons=copyTable(campaign.weapons);p.campaign.defences=copyTable(campaign.defences);p.campaign.recipes=copyTable(campaign.recipes)

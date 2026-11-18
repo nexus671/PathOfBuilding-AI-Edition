@@ -3,6 +3,12 @@
 local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces"}}
 local knownWeapons={"Bow","Claw","Dagger","Rune Dagger","Fishing Rod","One Handed Axe","One Handed Mace","One Handed Sword","Thrusting Sword","Sceptre","Staff","Warstaff","Two Handed Axe","Two Handed Mace","Two Handed Sword","Wand","Shield","Quiver"}
 M.weapons=knownWeapons
+M.rareSetSlots={"Jewellery","Armour","Weapons and shields"}
+local rareSetClasses={
+	["Jewellery"]={"Amulets","Belts","Rings"},
+	["Armour"]={"Body Armours","Boots","Gloves","Helmets"},
+	["Weapons and shields"]={"Bows","Claws","Daggers","Fishing Rods","One Hand Axes","One Hand Maces","One Hand Swords","Rune Daggers","Sceptres","Shields","Staves","Thrusting One Hand Swords","Two Hand Axes","Two Hand Maces","Two Hand Swords","Wands","Warstaves"},
+}
 local armourTypes={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true}
 function M.weapon(base)
 	if base.subType=="Rune Dagger" or base.subType=="Warstaff" then return base.subType elseif base.subType=="Thrusting" then return "Thrusting Sword" end
@@ -15,7 +21,7 @@ function M.defence(base)
 	local mask=(has("Armour") and 1 or 0)+(has("Evasion") and 2 or 0)+(has("EnergyShield") and 4 or 0)
 	return ({[1]="Armour",[2]="Evasion",[4]="Energy shield",[3]="Armour / Evasion",[5]="Armour / Energy shield",[6]="Evasion / Energy shield",[7]="All three defences"})[mask]
 end
-function M.defaults() return {enabled=true,weapons={},defences={},recipes={},minAreaLevel=1,maxAreaLevel=70,minDropLevel=0,minLinks=0,upgradeWindow=15} end
+function M.defaults() return {enabled=true,weapons={},defences={},recipes={},rareSetSlots=copyTable(M.rareSetSlots),minAreaLevel=1,maxAreaLevel=70,minDropLevel=0,minLinks=0,upgradeWindow=15} end
 function M.validate(value)
 	assert(type(value)=="table" and value~=require("dkjson").null,"Invalid campaign policy")
 	local result=M.defaults();assert(value.enabled==nil or type(value.enabled)=="boolean","Invalid campaign enable setting");result.enabled=value.enabled~=false
@@ -24,6 +30,14 @@ function M.validate(value)
 		for index in pairs(input) do assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=#input,"Campaign families must be arrays") end
 		local seen={};for _,name in ipairs(input) do local valid=false;for _,choice in ipairs(choices) do if choice==name then valid=true end end;assert(valid and not seen[name],"Invalid or duplicate campaign family");seen[name]=true end
 		result[key]={};for _,name in ipairs(choices) do if seen[name] then result[key][#result[key]+1]=name end end
+	end
+	if value.rareSetSlots~=nil then
+		local input=value.rareSetSlots;assert(type(input)=="table" and input~=require("dkjson").null,"Invalid rare-set slots")
+		local meta=getmetatable(input);assert(not meta or meta.__jsontype~="object","Rare-set slots must be an array")
+		for index in pairs(input) do assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=#input,"Rare-set slots must be an array") end
+		local seen={};for _,name in ipairs(input) do assert(rareSetClasses[name] and not seen[name],"Invalid or duplicate rare-set slot group");seen[name]=true end
+		assert(next(seen),"Choose at least one rare-set slot group");result.rareSetSlots={}
+		for _,name in ipairs(M.rareSetSlots) do if seen[name] then result.rareSetSlots[#result.rareSetSlots+1]=name end end
 	end
 	for key,bounds in pairs({minAreaLevel={1,100},maxAreaLevel={1,100},minDropLevel={0,100},minLinks={0,6},upgradeWindow={0,100}}) do
 		local n=value[key];if n~=nil then assert(type(n)=="number" and n==math.floor(n) and n>=bounds[1] and n<=bounds[2],"Invalid campaign "..key);result[key]=n end
@@ -78,7 +92,8 @@ function M.rules(value,theme,mode)
 	for i,name in ipairs(M.recipes) do for _,chosen in ipairs(policy.recipes) do if name==chosen then
 		if name=="Unidentified rare set pieces" then
 			if mode~="Ruthless" then
-				local classes='Class == "Amulets" "Belts" "Body Armours" "Boots" "Bows" "Claws" "Daggers" "Fishing Rods" "Gloves" "Helmets" "One Hand Axes" "One Hand Maces" "One Hand Swords" "Rings" "Rune Daggers" "Sceptres" "Shields" "Staves" "Thrusting One Hand Swords" "Two Hand Axes" "Two Hand Maces" "Two Hand Swords" "Wands" "Warstaves"'
+				local names={};for _,group in ipairs(policy.rareSetSlots) do for _,name in ipairs(rareSetClasses[group]) do names[#names+1]=filters.quote(name) end end
+				local classes="Class == "..table.concat(names," ")
 				local common={classes,"Rarity == Rare","Identified False","ItemLevel >= 60","AreaLevel >= "..policy.minAreaLevel,"AreaLevel <= "..policy.maxAreaLevel}
 				local anchor=copyTable(common);anchor[#anchor+1]="ItemLevel <= 74";rule("recipe-"..i.."-anchor","Rare set / level 60-74",anchor,"245 190 65 255")
 				local higher=copyTable(common);higher[#higher+1]="ItemLevel >= 75";rule("recipe-"..i.."-higher","Rare set / level 75+",higher,"100 160 230 255")
