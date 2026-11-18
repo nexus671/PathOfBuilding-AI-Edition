@@ -307,10 +307,10 @@ function M.simulate(parsed,item)
 	end
 	for _,rule in ipairs(parsed.rules) do
 		if parsed.imports[importIndex] and parsed.imports[importIndex].line<rule.line then return unresolvedImport() end
-		local matched,unknown=true,{}
-		for _,condition in ipairs(rule.conditions) do local pass,why=M.condition(condition,item);if pass==false then matched=false;break elseif pass==nil then unknown[#unknown+1]=why end end
+		local matched,unknown,missing=true,{},{}
+		for _,condition in ipairs(rule.conditions) do local pass,why=M.condition(condition,item);if pass==false then matched=false;break elseif pass==nil then unknown[#unknown+1]=why;if why=="Missing "..condition.keyword then missing[#missing+1]=condition.keyword end end end
 		if matched then
-			if #unknown>0 then result.status="unknown";result.action="Unknown";result.reasons=unknown;result.line=rule.line;return result end
+			if #unknown>0 then result.status="unknown";result.action="Unknown";result.reasons=unknown;result.missingProperties=missing;result.line=rule.line;return result end
 			result.action=rule.action;result.line=rule.line;result.ruleTitle=rule.title;result.matches[#result.matches+1]=rule.line
 			-- Both numbered alert commands address the alert sound. A later
 			-- matching block replaces its earlier numbered alert, including None.

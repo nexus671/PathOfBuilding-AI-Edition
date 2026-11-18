@@ -152,10 +152,11 @@ function M.Account(profile,import)
 	action("close",5,"Close",function() main:ClosePopup() end)
 	ui.style(c);main:OpenPopup(w,h,"Account loot filters",c,nil,nil,"close")
 end
-function M.EditAdditionalSample(item,save)
+function M.EditAdditionalSample(item,save,focusKey)
 	local c={};local w,h=math.min(820,main.screenW-40),math.min(560,main.screenH-60)
 	local draft=copyTable(item);local fields=additionalSampleFields();local columns=4;local rowHeight=46
 	local rows=math.max(1,math.floor((h-120)/rowHeight));local perPage=columns*rows;local page=1;local pages=math.max(1,math.ceil(#fields/perPage));local visible={};local dialog
+	for index,key in ipairs(fields) do if key==focusKey then page=math.ceil(index/perPage);break end end
 	ui.description(c,"hint",16,26,w-32,36,{"Optional filter properties. Leave fields blank or choose Unknown when the value is unavailable."},14)
 	local function collect()
 		for _,key in ipairs(visible) do
@@ -193,9 +194,9 @@ function M.EditAdditionalSample(item,save)
 	c.extraPage=ui.label(c,"extraPage",194,h-42,"",14);c.extraPage.label=function() return "^7Page "..page.." / "..pages end
 	button(c,"keepExtra",w-318,h-48,150,"Use properties",function() attempt(function() collect();save(draft);main:ClosePopup() end) end)
 	button(c,"cancelExtra",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)
-	draw();ui.style(c,{keepExtra=true});main:OpenPopup(w,h,"More sample properties",c,nil,nil,"cancelExtra");dialog=main.popups[1]
+	draw();ui.style(c,{keepExtra=true});main:OpenPopup(w,h,"More sample properties",c,nil,focusKey and c["extra_"..focusKey] and "extra_"..focusKey or nil,"cancelExtra");dialog=main.popups[1]
 end
-function M.EditSample(item,save)
+function M.EditSample(item,save,focusKey)
 	local c={};local w,h=math.min(820,main.screenW-40),math.min(560,main.screenH-60)
 	local fields=sampleFields;local extra=copyTable(item)
 	local columns=4;local fieldWidth=w/columns;local rowHeight=h<520 and 48 or 56
@@ -244,7 +245,8 @@ function M.EditSample(item,save)
 		end;save(nextItem);main:ClosePopup()
 	end) end)
 	button(c,"moreSample",168,h-48,160,"More properties",function() M.EditAdditionalSample(extra,function(value) extra=value end) end)
-	button(c,"cancel",w-156,h-48,140,"Cancel",function() main:ClosePopup() end);ui.style(c,{useSample=true});main:OpenPopup(w,h,"Test a drop",c,nil,"BaseType","cancel")
+	button(c,"cancel",w-156,h-48,140,"Cancel",function() main:ClosePopup() end);ui.style(c,{useSample=true});main:OpenPopup(w,h,"Test a drop",c,nil,c[focusKey or ""] and focusKey or "BaseType","cancel")
+	for _,key in ipairs(additionalSampleFields()) do if key==focusKey then M.EditAdditionalSample(extra,function(value) extra=value end,key);break end end
 end
 function M.Export(profile,raw,report)
 	local c={};local w,h=math.min(800,main.screenW-40),342

@@ -216,6 +216,24 @@ describe("Visual filter catalogue",function()
 		assert.equal("Hide",parser.simulate(parser.parse("Hide\n ElderItem True\nShow"),saved).action)
 		assert.is_true(item.ShaperItem);assert.is_false(item.ElderItem)
 	end)
+	it("opens the requested additional sample property and preserves edits",function()
+		local saved;local height=main.screenH;main.screenH=500
+		local ok,err=pcall(function()
+			local control=require("Classes.LootFilterControl");control.EditSample({BaseType="Iron Hat"},function(value) saved=value end,"Mirrored")
+			assert.equal(2,#main.popups);local more=main.popups[1].controls;assert.is_truthy(more.extra_Mirrored);more.extra_Mirrored:SelByValue("Yes");more.keepExtra:Click()
+			main.popups[1].controls.useSample:Click();assert.is_true(saved.Mirrored)
+			control.EditSample(saved,function(value) saved=value end,"ItemLevel");assert.equal(1,#main.popups);assert.is_truthy(main.popups[1].controls.ItemLevel);main.popups[1].controls.cancel:Click()
+		end)
+		main.screenH=height;main.popups={};assert(ok,err)
+	end)
+	it("routes Configure to the property blocking the selected drop preview",function()
+		local profile=filters.profile("missing","Missing");profile.template="Hide\n BaseArmour >= 10\nShow"
+		local mounted,focus;local layout={width=1280,height=720,navigate=function() end,mount=function(_,_,_,controls) mounted=controls end}
+		local controller={EditSample=function(_,_,key) focus=key end}
+		require("Classes.LootFilterWorkspace").Open(build,{data={schemaVersion=1,activeId=profile.id,profiles={profile}},selected=profile.id,page="Simulate",sample={BaseType="Iron Hat"}},layout,controller)
+		local lines={};for _,row in ipairs(mounted.selection.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		assert.is_truthy(table.concat(lines," "):find("Configure opens BaseArmour",1,true));mounted.sampleEdit:Click();assert.equal("BaseArmour",focus)
+	end)
 	it("tests memory strands and preserves legacy sample fields",function()
 		local rules=parser.parse('Hide\n MemoryStrands >= 60\nShow')
 		local item=library.sample();assert.is_nil(item.MemoryStrands);assert.is_nil(item.AlwaysShow)

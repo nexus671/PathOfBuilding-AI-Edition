@@ -321,6 +321,12 @@ describe("Build-owned loot filters",function()
 		assert.equal("unknown",parser.simulate(shaper,{HasInfluence={"None","Shaper"}}).status)
 		assert.equal("Hide",parser.simulate(shaper,{ShaperItem=true}).action)
 	end)
+	it("identifies missing properties only on a possibly matching rule",function()
+		local rule=parser.parse('Hide\n BaseType "Iron Hat"\n BaseArmour >= 10\n Mirrored True\nShow')
+		local missing=parser.simulate(rule,{BaseType="Iron Hat"});assert.equal("unknown",missing.status);assert.same({"BaseArmour","Mirrored"},missing.missingProperties)
+		local other=parser.simulate(rule,{BaseType="Iron Ring"});assert.equal("Show",other.action);assert.is_nil(other.missingProperties)
+		local imported=parser.simulate(parser.parse('Import "other.filter"\nShow'),{});assert.equal("unknown",imported.status);assert.is_nil(imported.missingProperties)
+	end)
 	it("expands supplied filter files in order and leaves missing or cyclic imports unresolved",function()
 		local bom=string.char(239,187,191);local profile=filters.profile("included","Included");profile.template=bom..'Import "outer.filter"\nShow'
 		profile.importFiles={{name="outer.filter",text=bom..'Import "inner.filter"\nShow\n BaseType "Iron"'},{name="inner.filter",text=bom..'Hide\n BaseType "Iron Hat"'}}

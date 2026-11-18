@@ -53,6 +53,7 @@ function M.Open(build,source,layout,controller)
 		local tier=itemTier(sample);if tier~=nil then lines[#lines+1]="Unidentified item tier: "..tier
 		elseif sample.Identified==false and (sample.Rarity=="Magic" or sample.Rarity=="Rare") then lines[#lines+1]="Unidentified item tier: unknown" end
 		lines[#lines+1]=deciding;for index,reason in ipairs(evaluated and evaluated.reasons or {}) do if not firstError or index>1 then lines[#lines+1]=reason end end
+		if evaluated and evaluated.missingProperties and evaluated.missingProperties[1] then lines[#lines+1]="Configure opens "..evaluated.missingProperties[1].."." end
 		if copied then
 			for index=2,#copied do lines[#lines+1]="Copied: "..copied[index] end
 			lines[#lines+1]="Copied names may be incomplete."
@@ -431,7 +432,7 @@ function M.Open(build,source,layout,controller)
 			c.sceneSet=new("DropDownControl"):DropDownControl(ui.anchor,{groundX+16,130,groundW-32,26},choices,function(_,entry) sampleSetId=entry.val;scenePage=1;for _,value in ipairs(savedSets) do if value.id==sampleSetId then item=copyTable(value.samples[1]) end end;reopen() end);c.sceneSet:SelByValue(sampleSetId,"val")
 		end
 		button(c,"hidden",16,242,left,showHidden and "Hidden drops: visible" or "Hidden drops: off",function() showHidden=not showHidden;scenePage=1;reopen() end)
-		button(c,"sampleEdit",16,282,100,"Configure",function() controller.EditSample(item,function(next) rememberSample(next);scenePage=1;compile();reopen() end) end)
+		button(c,"sampleEdit",16,282,100,"Configure",function() controller.EditSample(item,function(next) rememberSample(next);scenePage=1;compile();reopen() end,result and result.missingProperties and result.missingProperties[1]) end)
 		button(c,"pasteDrop",124,282,100,"Paste item",function()
 			local ok,sample=pcall(function() return require("Modules.LootFilterClipboard").parse(Paste(),settings.areaLevel) end)
 			if not ok then main:OpenMessagePopup("Paste item",ui.errorText(sample));return end
