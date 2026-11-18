@@ -22,7 +22,22 @@ local bridge = require("Modules.DesktopBuildBridge")
 local revision = bridge.revision(build)
 local ui = require("Modules.HeadlessUI").install({width=1280,height=720,interactiveRecovery=desktopRecovery})
 local recoveryStarted=false
+local recoverySlices
 if desktopRecovery then
+	local tasks = require("Modules.RecoveryTasks")
+	local tick = tasks.tick
+	tasks.tick = function(tab, ...)
+		local active = tab.recoveryJob ~= nil
+		local start = os.clock()
+		local result = tick(tab, ...)
+		if active and recoverySlices then
+			local elapsed = (os.clock() - start) * 1000
+			recoverySlices.count = recoverySlices.count + 1
+			recoverySlices.totalMs = recoverySlices.totalMs + elapsed
+			recoverySlices.worstMs = math.max(recoverySlices.worstMs, elapsed)
+		end
+		return result
+	end
 	local buildOutput=build.calcsTab.BuildOutput
 	build.calcsTab.BuildOutput=function(self,...)
 		local result=buildOutput(self,...);recoveryStarted=recoveryStarted or self.recoveryJob~=nil;return result
@@ -66,10 +81,11 @@ local function finishRecovery()
 		assert(not env.player.output.RecoverySimulationUnsupported, "Recovery simulation failed or is unsupported")
 		assert(env.player.recoverySimulationResults, "Recovery worker completed without results")
 	end
-	return { frames=count, totalFrameMs=total, worstFrameMs=worst }
+	return { frames=count, totalFrameMs=total, worstFrameMs=worst, workerSlices=recoverySlices }
 end
 for _ = 1, cycles do
 	recoveryStarted=false
+	recoverySlices={count=0,totalMs=0,worstMs=0}
 	local start = os.clock()
 	ui.cursorX, ui.cursorY = x, y
 	ui:frame()
@@ -84,6 +100,7 @@ for _ = 1, cycles do
 	if desktopRecovery and build.configTab.input.simulateRecovery then assert(recoveryStarted, "Tree update did not start deferred recovery") end
 	local recovery = finishRecovery()
 	recoveryStarted=false
+	recoverySlices={count=0,totalMs=0,worstMs=0}
 	ui:clickAt(x,y)
 	assert(not selected.alloc, "Second click did not remove the passive")
 	ui:frame()
