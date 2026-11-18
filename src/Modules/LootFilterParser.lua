@@ -141,6 +141,24 @@ local function socketConsistency(item)
 	local linked=tonumber(item.LinkedSockets)
 	if linked and na and linked>na then return "Linked socket count exceeds total socket colours" end
 end
+local function influenceState(item)
+	local value=item.HasInfluence;if value==nil then return nil end
+	local entries=type(value)=="table" and value or {value};local present={};local count=0;local keys=0
+	for key in pairs(entries) do if type(key)~="number" or key<1 or key~=math.floor(key) then return nil,nil,"Invalid HasInfluence sample" end;keys=keys+1 end
+	if keys~=#entries then return nil,nil,"Invalid HasInfluence sample" end
+	for _,entry in ipairs(entries) do
+		if type(entry)~="string" or not influences[entry:lower()] then return nil,nil,"Invalid HasInfluence sample" end
+		local name=entry:lower();if not present[name] then present[name]=true;count=count+1 end
+	end
+	for i=1,keys do if entries[i]==nil then return nil,nil,"Invalid HasInfluence sample" end end
+	if count==0 then present.none=true;count=1 end
+	if present.none and count>1 then return nil,nil,"An uninfluenced sample cannot have other influences" end
+	for _,name in ipairs({"Shaper","Elder"}) do
+		local flag=item[name.."Item"]
+		if flag~=nil and (type(flag)~="boolean" or flag~=(present[name:lower()]==true)) then return nil,nil,name.." item flag conflicts with influence list" end
+	end
+	return present,count
+end
 function M.condition(c,item)
 	if c.keyword=="Sockets" or c.keyword=="SocketGroup" or c.keyword=="LinkedSockets" then
 		local reason=socketConsistency(item);if reason then return nil,reason end
@@ -150,7 +168,11 @@ function M.condition(c,item)
 	if c.keyword=="HasExplicitMod" and item.Identified~=true then
 		return nil,item.Identified==false and "Explicit modifiers are hidden on unidentified items" or "Supply identification state for explicit modifiers"
 	end
-	local value=item[c.keyword]
+	local value=item[c.keyword];local present,influenceCount
+	if (c.keyword=="HasInfluence" or c.keyword=="ShaperItem" or c.keyword=="ElderItem") and item.HasInfluence~=nil then
+		local reason;present,influenceCount,reason=influenceState(item);if reason then return nil,reason end
+		if c.keyword~="HasInfluence" and value==nil then value=present[c.keyword=="ShaperItem" and "shaper" or "elder"]==true end
+	end
 	local partialExplicit=c.keyword=="HasExplicitMod" and value==nil and type(item.KnownExplicitMods)=="table"
 	if partialExplicit then value=item.KnownExplicitMods end
 	if c.keyword=="SocketGroup" and value==nil and tonumber(item.Sockets)==0 then value="0" end
@@ -185,16 +207,6 @@ function M.condition(c,item)
 	local op=c.operator;local values=c.values
 	if c.keyword=="HasInfluence" then
 		if op~="=" and op~="==" and op~="!" and op~="!=" then return nil,"Unsupported HasInfluence operator" end
-		local entries=type(value)=="table" and value or {value};local present={};local count=0;local keys=0
-		for key in pairs(entries) do if type(key)~="number" or key<1 or key~=math.floor(key) then return nil,"Invalid HasInfluence sample" end;keys=keys+1 end
-		if keys~=#entries then return nil,"Invalid HasInfluence sample" end
-		for _,entry in ipairs(entries) do
-			if type(entry)~="string" or not influences[entry:lower()] then return nil,"Invalid HasInfluence sample" end
-			local name=entry:lower();if not present[name] then present[name]=true;count=count+1 end
-		end
-		for i=1,keys do if entries[i]==nil then return nil,"Invalid HasInfluence sample" end end
-		if count==0 then present.none=true;count=1 end
-		if present.none and count>1 then return nil,"An uninfluenced sample cannot have other influences" end
 		local wanted={};local wantedCount=0
 		for _,entry in ipairs(values) do
 			local name=entry:lower();if not influences[name] then return nil,"Unsupported influence name" end
@@ -202,7 +214,7 @@ function M.condition(c,item)
 		end
 		if op=="==" then
 			for name in pairs(wanted) do if not present[name] then return false end end
-			if wantedCount<count then return nil,"Exact matching with additional influences is not verified" end
+			if wantedCount<influenceCount then return nil,"Exact matching with additional influences is not verified" end
 			return true
 		end
 		local found=false;for name in pairs(wanted) do if present[name] then found=true;break end end

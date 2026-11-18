@@ -309,6 +309,18 @@ describe("Build-owned loot filters",function()
 		assert.equal("Show",filters.simulate(imported,{BaseType="Iron Hat",HasInfluence={"Shaper"}}).action)
 		assert.equal("Hide",filters.simulate(imported,{BaseType="Iron Hat",HasInfluence={"Shaper","Elder"}}).action)
 	end)
+	it("derives Shaper and Elder flags from a known influence list and reports conflicts",function()
+		local shaper=parser.parse('Hide\n ShaperItem True\nShow');local elder=parser.parse('Hide\n ElderItem True\nShow')
+		local influence=parser.parse('Hide\n HasInfluence Shaper\nShow')
+		assert.equal("Hide",parser.simulate(shaper,{HasInfluence={"Shaper"}}).action)
+		assert.equal("Show",parser.simulate(elder,{HasInfluence={"Shaper"}}).action)
+		assert.equal("Show",parser.simulate(shaper,{HasInfluence={"None"}}).action)
+		assert.equal("unknown",parser.simulate(shaper,{}).status)
+		local contradictory={HasInfluence={"Shaper"},ShaperItem=false}
+		for _,rule in ipairs({shaper,elder,influence}) do local result=parser.simulate(rule,contradictory);assert.equal("unknown",result.status);assert.matches("conflicts",result.reasons[1]) end
+		assert.equal("unknown",parser.simulate(shaper,{HasInfluence={"None","Shaper"}}).status)
+		assert.equal("Hide",parser.simulate(shaper,{ShaperItem=true}).action)
+	end)
 	it("expands supplied filter files in order and leaves missing or cyclic imports unresolved",function()
 		local bom=string.char(239,187,191);local profile=filters.profile("included","Included");profile.template=bom..'Import "outer.filter"\nShow'
 		profile.importFiles={{name="outer.filter",text=bom..'Import "inner.filter"\nShow\n BaseType "Iron"'},{name="inner.filter",text=bom..'Hide\n BaseType "Iron Hat"'}}

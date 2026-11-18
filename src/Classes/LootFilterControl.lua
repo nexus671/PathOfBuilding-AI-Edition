@@ -215,6 +215,7 @@ function M.EditSample(item,save)
 		if key=="DropLevel" or key=="Width" or key=="Height" or key=="BaseDefencePercentile" or key=="MemoryStrands" or key=="UnidentifiedItemTier" then c[key].tooltipText="Leave blank if this property is unknown." end
 	end
 	c.HasExplicitMod.changeFunc=function() extra.KnownExplicitMods=nil end
+	c.HasInfluence.changeFunc=function() extra.ShaperItem=nil;extra.ElderItem=nil end
 	local previousBase=c.BaseType.buf
 	c.BaseType.tooltipText="Changing the base clears its class, dimensions, drop level, defence percentile, item tier, memory strands, map tier, influence and sockets. Enter values for the new item."
 	c.BaseType.changeFunc=function(value)
