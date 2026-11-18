@@ -24,6 +24,16 @@ describe("Offline campaign pickup policies",function()
 		assert.has_error(function() campaign.validate({weapons={"Imaginary"}}) end);assert.has_error(function() campaign.validate({minAreaLevel=70,maxAreaLevel=1}) end)
 		assert.has_error(function() campaign.validate({weapons={"Bow","Bow"}}) end)
 	end)
+	it("shows socket vendor recipes for every rarity and prioritizes the highest socket recipe",function()
+		local p=profile();p.campaign.recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment"}
+		for _,rarity in ipairs({"Normal","Magic","Rare","Unique"}) do
+			local item={BaseType="Iron Hat",AreaLevel=40,Rarity=rarity,Sockets=6,LinkedSockets=6,SocketGroup="RGBRRR"}
+			local result=filters.simulate(p,item);assert.equal("Show",result.action);assert.matches("Six%-link equipment",result.ruleTitle)
+			item.LinkedSockets=3;item.SocketGroup="RGB R R R";result=filters.simulate(p,item);assert.matches("Six%-socket equipment",result.ruleTitle)
+			item.Sockets=3;item.SocketGroup="RGB";result=filters.simulate(p,item);assert.matches("Three%-colour linked equipment",result.ruleTitle)
+		end
+		local rules=campaign.rules(p.campaign);assert.equal("campaign-recipe-3",rules[1].id);assert.equal("campaign-recipe-2",rules[2].id);assert.equal("campaign-recipe-1",rules[3].id)
+	end)
 	it("shows unidentified full-set candidates with distinct item-level bands in normal mode",function()
 		local p=profile();p.campaign.recipes={"Unidentified rare set pieces"};p.campaign.maxAreaLevel=100
 		local item={Class="Rings",BaseType="Iron Ring",AreaLevel=75,ItemLevel=60,Rarity="Rare",Identified=false}

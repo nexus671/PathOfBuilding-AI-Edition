@@ -84,12 +84,15 @@ function M.rules(value,theme,mode)
 		end
 	end end
 	local recipes={
-		["Three-colour linked equipment"]={"SocketGroup RGB","Rarity <= Rare"},
-		["Six-socket equipment"]={"Sockets 6","Rarity <= Rare"},
-		["Six-link equipment"]={"LinkedSockets 6","Rarity <= Rare"},
+		["Three-colour linked equipment"]={"SocketGroup RGB"},
+		["Six-socket equipment"]={"Sockets 6"},
+		["Six-link equipment"]={"LinkedSockets 6"},
 		["Quality gems"]={'Class == "Skill Gems" "Support Gems"',"Quality >= 1"},
 	}
-	for i,name in ipairs(M.recipes) do for _,chosen in ipairs(policy.recipes) do if name==chosen then
+	-- Vendor recipes resolve six links before six sockets, then linked colours.
+	-- Keep the original indices for stable rule IDs and saved overrides.
+	local recipeOrder={3,2,1,4,5}
+	for _,i in ipairs(recipeOrder) do local name=M.recipes[i];for _,chosen in ipairs(policy.recipes) do if name==chosen then
 		if name=="Unidentified rare set pieces" then
 			if mode~="Ruthless" then
 				local names={};for _,group in ipairs(policy.rareSetSlots) do for _,name in ipairs(rareSetClasses[group]) do names[#names+1]=filters.quote(name) end end
