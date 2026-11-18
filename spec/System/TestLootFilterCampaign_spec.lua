@@ -35,6 +35,14 @@ describe("Offline campaign pickup policies",function()
 		end
 		local rules=campaign.rules(p.campaign);assert.equal("campaign-recipe-3",rules[1].id);assert.equal("campaign-recipe-2",rules[2].id);assert.equal("campaign-recipe-1",rules[3].id)
 	end)
+	it("prioritizes recipe pickups over matching equipment families",function()
+		local p=profile();p.campaign.weapons={"Bow"};p.campaign.recipes={"Six-link equipment"}
+		local item={BaseType=campaign.families().weapons.Bow[1],AreaLevel=40,DropLevel=35,Rarity="Rare",Sockets=6,LinkedSockets=6}
+		local result=filters.simulate(p,item);assert.equal("Show",result.action);assert.matches("Six%-link equipment",result.ruleTitle)
+		item.LinkedSockets=5;result=filters.simulate(p,item);assert.matches("Bow / areas",result.ruleTitle,1,true)
+		p.rules={{id="mine",title="Personal exception",text='Hide\n BaseType == '..filters.quote(item.BaseType)}}
+		item.LinkedSockets=6;assert.equal("Hide",filters.simulate(p,item).action)
+	end)
 	it("shows unidentified full-set candidates with distinct item-level bands in normal mode",function()
 		local p=profile();p.campaign.recipes={"Unidentified rare set pieces"};p.campaign.maxAreaLevel=100
 		local item={Class="Rings",BaseType="Iron Ring",AreaLevel=75,ItemLevel=60,Rarity="Rare",Identified=false}

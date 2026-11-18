@@ -83,6 +83,8 @@ function M.rules(value,theme,mode)
 			end
 		end
 	end end
+	-- A matching family should not hide a more specific recipe highlight.
+	local familyRules=result;result={}
 	local recipes={
 		["Three-colour linked equipment"]={"SocketGroup RGB"},
 		["Six-socket equipment"]={"Sockets 6"},
@@ -110,6 +112,7 @@ function M.rules(value,theme,mode)
 			local conditions=copyTable(recipes[name]);conditions[#conditions+1]="AreaLevel >= "..policy.minAreaLevel;conditions[#conditions+1]="AreaLevel <= "..policy.maxAreaLevel;rule("recipe-"..i,name,conditions)
 		end
 	end end end
+	for _,entry in ipairs(familyRules) do result[#result+1]=entry end
 	return result
 end
 return M

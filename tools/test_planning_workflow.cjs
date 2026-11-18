@@ -940,6 +940,9 @@ async function main(){
   const socketRecipeProfile={...lootProfile,template:'Hide',campaign:{recipes:['Three-colour linked equipment','Six-socket equipment','Six-link equipment'],minAreaLevel:1,maxAreaLevel:100}};
   const uniqueSixLink=await queued('test_loot_filter',{baseRevision:context.revision,profile:socketRecipeProfile,sample:{BaseType:'Iron Hat',Rarity:'Unique',AreaLevel:75,Sockets:6,LinkedSockets:6,SocketGroup:'RGBRRR'}},'tested');
   assert.equal(uniqueSixLink.result.action,'Show');assert.match(uniqueSixLink.result.ruleTitle,/Six-link equipment/);
+  const familyRecipeProfile={...lootProfile,template:'Hide',campaign:{weapons:['Bow'],recipes:['Six-link equipment'],minAreaLevel:1,maxAreaLevel:70}};
+  const familyRecipe=await queued('test_loot_filter',{baseRevision:context.revision,profile:familyRecipeProfile,sample:{BaseType:'Crude Bow',Rarity:'Rare',AreaLevel:12,Sockets:6,LinkedSockets:6}},'tested');
+  assert.match(familyRecipe.result.ruleTitle,/Six-link equipment/);
   const continuingStacks={...lootProfile,template:'Show\n BaseType == "Chaos Orb"\n SetBorderColor 1 2 3',tiers:[
     {id:'low',title:'Low',text:'Show\n BaseType == "Chaos Orb"\n SetFontSize 20\n Continue',items:['Chaos Orb'],stackRules:[{minimum:5,styleTierId:'mid'},{minimum:10,styleTierId:'high'}]},
     {id:'mid',title:'Mid',text:'Show\n BaseType == "Divine Orb"\n SetFontSize 30\n Continue',items:['Divine Orb']},
