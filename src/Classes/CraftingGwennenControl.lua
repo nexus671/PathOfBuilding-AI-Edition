@@ -7,7 +7,7 @@ function M.Open(keep,simulate,initial,checkPair)
 	local controls={};local entries=reference.search("",100).offers;local byId={};local choices={{label="Select an observed outcome",val=0}}
 	table.sort(entries,function(a,b) return a.description<b.description end)
 	for _,entry in ipairs(entries) do byId[entry.id]=entry;choices[#choices+1]={label=entry.description,val=entry.id} end
-	ui.description(controls,"intro",16,28,width-32,42,{"Enter one pair shown in game. The coin chooses one outcome; both can affect or destroy the item."},16)
+	ui.description(controls,"intro",16,28,width-32,42,{"Enter one pair shown in game. Either outcome can destroy the item. Remove socketed gems before giving it to Gwennen."},16)
 	ui.label(controls,"firstLabel",16,82,"First outcome",16)
 	controls.first=new("DropDownControl"):DropDownControl(ui.anchor,{16,104,width-32,26},choices)
 	ui.label(controls,"secondLabel",16,172,"Second outcome",16)
