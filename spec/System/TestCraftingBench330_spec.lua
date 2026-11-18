@@ -16,6 +16,28 @@ describe("3.30 full meta-craft costs",function()
 			assert.are.equal(2,found,case[1])
 		end
 	end)
+	it("lists only supported metacraft recipe locations for players and AI",function()
+		local text=raw("Plate Vest");local model=sim.model(text);local expected={
+			["Prefixes Cannot Be Changed"]="Sanctuary Map",["Suffixes Cannot Be Changed"]="Citadel Map",
+			["Cannot roll Attack Modifiers"]="Abomination Map",["Cannot roll Caster Modifiers"]="Ziggurat Map",
+			["Can have up to 3 Crafted Modifiers"]="Fortress Map",
+			["1 Prefix Modifier cannot be changed"]="Sanctuary Map",["2 Prefix Modifiers cannot be changed"]="Sanctuary Map",
+			["1 Suffix Modifier cannot be changed"]="Citadel Map",["2 Suffix Modifiers cannot be changed"]="Citadel Map"}
+		local found={};for _,entry in ipairs(model.bench) do
+			local unlock=bench.unlock(model,entry.id);local map=expected[entry.mod[1]]
+			if map then assert.equal(map,unlock.map);assert.matches("not checked",unlock.note,1,true);found[entry.mod[1]]=true
+			elseif #entry.mod==1 then assert.is_nil(unlock) end
+		end
+		for text in pairs(expected) do assert.is_true(found[text],text) end
+		local catalog=sim.catalog(text,"1 Prefix Modifier cannot be changed",30);local selected
+		for _,entry in ipairs(catalog.bench) do if entry.id=="bench:partial-prefix-1" then selected=entry end end
+		assert.equal("Sanctuary Map",selected.unlock.map);assert.equal("https://poedb.tw/us/Crafting_Bench",selected.unlock.source)
+	end)
+	it("shows the recipe source on a saved bench step",function()
+		newBuild();main.popups={};local model=sim.model(raw("Plate Vest"));local action={method="bench",modId="bench:partial-prefix-1"}
+		local controls=require("Classes.CraftingRecipeControl").Open({steps={action},targets={}},action,function() end,model)
+		assert.matches("Recipe listed in Sanctuary Map",controls.graph.list[1].detail,1,true);main:ClosePopup()
+	end)
 	it("uses the updated ingredients in estimates, provenance and resource quotes",function()
 		local text=raw("Plate Vest");local model=sim.model(text);local action={method="bench",modId="bench:728"}
 		local prefix;for _,entry in ipairs(model.mods) do if entry.mod.type=="Prefix" then prefix=entry.id;break end end;assert.is_truthy(prefix)

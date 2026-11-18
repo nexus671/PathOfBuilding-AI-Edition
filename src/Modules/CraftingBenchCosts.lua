@@ -95,6 +95,20 @@ function B.service(model,action)
 	end
 	return lookupEntry(serviceKey(operation,value,class))
 end
+-- PoEDB's 3.30 bench listing associates these recipes with Nightmare Maps.
+-- This is guidance, not an account unlock check or a guarantee of availability.
+function B.unlock(model,id)
+	if type(id)~="string" or not id:match("^bench:") or not model or not model.byId then return end
+	local mod=model.byId[id];if not mod then return end
+	local map
+	if mod.partialLock then map=({Prefix="Sanctuary Map",Suffix="Citadel Map"})[mod.partialLock.side]
+	elseif #mod==1 then map=({
+		["prefixes cannot be changed"]="Sanctuary Map",["suffixes cannot be changed"]="Citadel Map",
+		["cannot roll attack modifiers"]="Abomination Map",["cannot roll caster modifiers"]="Ziggurat Map",
+		["can have up to 3 crafted modifiers"]="Fortress Map",
+	})[normalise(mod[1])] end
+	if map then return {map=map,patch="3.30",source="https://poedb.tw/us/Crafting_Bench",note="Listed recipe location; account unlocks and Ruthless availability are not checked."} end
+end
 function B.cost(model,id,lookup)
 	local mod=model.byId[id]
 	if not mod or not id:match("^bench:") then return end

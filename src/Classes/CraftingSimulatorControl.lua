@@ -167,7 +167,16 @@ function Panel.Open(build,project,layout)
 			if selected and selected.action then for _,warning in ipairs(simulator.actionWarnings(selected.action,{item=model.item,initial=state})) do
 				if warning.code=="abyss_socket_layout" then hint=hint.." Abyss socket placement and removal are unverified.";break end
 			end end
-			controls.actionHint.list=ui.rows({hint},leftWidth-30,14)
+			local unlock=id and require("Modules.CraftingBenchCosts").unlock(simulator.context(model,state),id)
+			local lines={}
+			if unlock then
+				lines[#lines+1]="Recipe listed in "..unlock.map.."; check your unlocks."
+				local brief=hint
+				if hint=="Experimental partial lock: random protection is modeled with assumed equal weights." then brief="Experimental partial lock: equal odds assumed." end
+				lines[#lines+1]=ui.fit(brief,leftWidth-38,14)
+				controls.option.tooltipText=hint.." Recipe location is listed by PoEDB; account unlocks and Ruthless availability are not checked."
+			else lines[1]=hint;controls.option.tooltipText=nil end
+			controls.actionHint.list=ui.rows(lines,leftWidth-30,14)
 		end
 	end
 	label(controls,"methodLabel",16,64,"Crafting action")

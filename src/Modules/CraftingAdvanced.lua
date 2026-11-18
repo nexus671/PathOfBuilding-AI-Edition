@@ -1331,8 +1331,9 @@ function A.extend(M,api)
 				entry.available=not why;entry.unavailableReason=why or nil
 				entry.priceKey=entry.id
 				if catalog.method=="bench" then
-					local cost,sources=require("Modules.CraftingBenchCosts").cost(M.context(model,state),entry.id)
-					entry.components=cost or {[entry.id]=1};entry.ingredientCostsKnown=cost~=nil;entry.costSources=sources
+					local costs=require("Modules.CraftingBenchCosts");local context=M.context(model,state)
+					local cost,sources=costs.cost(context,entry.id)
+					entry.components=cost or {[entry.id]=1};entry.ingredientCostsKnown=cost~=nil;entry.costSources=sources;entry.unlock=costs.unlock(context,entry.id)
 				end
 			end
 		end

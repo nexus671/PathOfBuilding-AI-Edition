@@ -200,6 +200,8 @@ async function main(){
   await host('apply');context=(await call('get_build_context')).context;assert.ok(context.stats.LifeUnreserved>beforeViscera);
   assert.ok(context.items.some(item=>item.slot==='Wickerman Upper Limb' && item.text.includes("Warden's Arm")));
   const inspected=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'maximum Life',limit:20},'inspected');assert.ok(inspected.crafting.nativeEngine.modifiers.length);
+  const benchUnlock=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'1 Prefix Modifier cannot be changed',limit:20},'inspected');
+  const unlock=benchUnlock.crafting.nativeEngine.bench.find(entry=>entry.id==='bench:partial-prefix-1').unlock;assert.equal(unlock.map,'Sanctuary Map');assert.match(unlock.note,/not checked/);
   const beastRaw='Rarity: NORMAL\nIron Hat\nItem Level: 20';const beastAction={method:'beast_prefix_suffix',beastLevel:86};
   const beastFirst=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:beastRaw,action:beastAction,query:'resistance',limit:3},'inspected');
   const beastPool=beastFirst.crafting.nativeEngine.beastPool;assert.equal(beastPool.beastLevel,86);assert.equal(beastPool.side,'Suffix');assert.equal(beastPool.rows.length,3);assert.equal(beastPool.hasMore,true);assert.match(beastPool.note,/not probabilities/);

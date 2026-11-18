@@ -817,6 +817,17 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 
 	do
+		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86"
+		require("Classes.CraftingSimulatorControl").Open(build,{id="bench-unlock-ui",title="Bench unlock",slot="Body Armour",startingItem=raw,goals={},steps={}})
+		ui:click("settings");ui:text("paletteSearch","Crafting bench");ui:click("paletteUse");ui:choose("option","1 Prefix Modifier cannot be changed","label")
+		local hints={};for _,row in ipairs(main.popups[1].controls.actionHint.list) do hints[#hints+1]=StripEscapes(row[1]) end
+		local description=table.concat(hints," ");assert(description:find("Sanctuary Map",1,true),"Bench recipe location was not shown")
+		assert(description:find("equal odds assumed",1,true),"Partial-lock assumption was not shown with the recipe location")
+		frame("crafting-bench-unlock");ui:click("tab_simulate");ui:click("editRecipe");ui:click("add")
+		assert(main.popups[1].controls.graph.list[1].detail:find("Sanctuary Map",1,true),"Recipe card omitted the bench location")
+		frame("crafting-bench-unlock-recipe");ui:click("close");ui:click("close")
+	end
+	do
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: R-G B W-W R"
 		require("Classes.CraftingSimulatorControl").Open(build,{id="white-socket-bench-ui",title="White sockets",slot="Body Armour",startingItem=raw,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch","white sockets (3.30)");assert(main.popups[1].controls.paletteUse:IsEnabled());frame("crafting-white-socket-bench-selection")

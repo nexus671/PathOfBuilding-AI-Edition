@@ -38,9 +38,10 @@ function Panel.Open(recipe,currentAction,onKeep,model)
 			list[#list+1]={label=i..". "..require("Modules.CraftingWorkbench").actionLabel(step,model),val=i}
 			routes[#routes+1]={label="Step "..i,val=i}
 			local function route(target) return target>#draft.steps and "Finish" or "Step "..target end
+			local unlock=step.method=="bench" and model and require("Modules.CraftingBenchCosts").unlock(model,step.modId)
 			lines[#lines+1]={height=92,textSize=16,x=44,card=true,step=i,selected=i==selected,iconPath=require("Modules.CraftingWorkbench").icon(step.method,step,model),
 				subtitle=string.format("Success -> %s | Failure -> %s",route(step.onSuccess or i+1),step.onFailureAction and step.onFailureAction~="route" and require("Classes.CraftingRecoveryControl").labels[step.onFailureAction] or route(step.onFailure or i+1)),
-				detail=(step.untilTargets or step.untilRequirements) and "Repeat until target conditions match" or "Continue after one successful action",
+				detail=ui.fit((unlock and "Recipe listed in "..unlock.map.." | " or "")..((step.untilTargets or step.untilRequirements) and "Repeat until target conditions match" or "Continue after one successful action"),740,14),
 				"^7"..string.format("%d. %s | up to %d attempts",i,require("Modules.CraftingWorkbench").actionLabel(step,model),step.maxAttempts or 1)}
 		end
 		routes[#routes+1]={label="End recipe",val=#draft.steps+1}
