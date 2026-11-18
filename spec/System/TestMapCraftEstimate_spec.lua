@@ -14,6 +14,11 @@ describe("Map reroll estimates",function()
 		local full=currency.perform(state,"chaos",123);local fast=currency.perform(state,"chaos",123,nil,true)
 		assert.same(full.state.selected,fast.state.selected);assert.same({},fast.state.rolls);assert.is_nil(fast.summary)
 	end)
+	it("preserves observed effects and explains their limits in reroll estimates",function()
+		local input=copyTable(state);input.observedEffects={{kind="enchant",text="Players are Delirious"}}
+		local result=estimate.run(input,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})
+		assert.same(input.observedEffects,result.sampleSuccess.observedEffects);assert.matches("not modeled",result.note)
+	end)
 	it("preserves seeded outcomes and values when modifier pools are reused",function()
 		local cache={}
 		for _,seed in ipairs({1,42,123,777,42}) do

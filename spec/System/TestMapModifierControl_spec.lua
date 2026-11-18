@@ -1,6 +1,15 @@
 describe("Map modifier explorer",function()
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("shows and retains observed effects, then clears them on tier changes",function()
+		local observed={{kind="implicit",text="Area is Influenced by the Originator's Memories"},{kind="enchant",text="Players are Delirious"}}
+		local initial={id="map-test",title="Map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",selected={},observedEffects=observed}
+		local captured;local controls=require("Classes.MapModifierControl").Open({initial=initial,keep=function(entry) captured=copyTable(entry);return "map-test" end})
+		local text="";for _,row in ipairs(controls.affixes.list) do text=text..StripEscapes(row[1] or "").." " end
+		assert.matches("Observed effects are not modeled",text);assert.matches("Players are Delirious",text)
+		controls.keep:Click();assert.same(observed,captured.observedEffects)
+		controls.tier:SelByValue(6,"val");controls.tier.selFunc();controls.keep:Click();assert.is_nil(captured.observedEffects)
+	end)
 	it("records and reopens map quality with documented effects",function()
 		local captured;local controls=require("Classes.MapModifierControl").Open({keep=function(entry) captured=copyTable(entry);return "map-test" end})
 		controls.quality:Click();local popup=main.popups[1].controls

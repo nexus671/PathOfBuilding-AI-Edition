@@ -1,4 +1,5 @@
 -- Review a bounded estimate before optionally using an example result.
+-- cspell:ignore AABBD
 local ui=require("Modules.PlanningUI")
 local map=require("Modules.MapCraftingData")
 local browser=require("Classes.PlanningBrowserControl")
@@ -106,7 +107,7 @@ function M.Open(build,options)
 	button("run",16,333,180,"Estimate rerolls",function()
 		local request={wanted={},wantedGroups=copyTable(groups),avoid=copyTable(avoid),trials=tonumber(controls.trials.buf),maxAttempts=tonumber(controls.attempts.buf),seed=os.time()%2147483646+1}
 		local ok,job=pcall(tasks.start,build,function(checkpoint) return require("Modules.MapCraftEstimate").run(state,request,checkpoint) end,
-			function(value) if not alive then return end;active=nil;result=value;report({string.format("%.1f%% succeeded within %d rolls (%d / %d trials)",value.successChance,value.maxAttempts,value.successes,value.trials),string.format("95%% sampling interval %.1f%% to %.1f%% | mean %.2f %s per trial",value.confidenceLow,value.confidenceHigh,value.meanAttempts,value.action=="chaos" and "Chaos Orbs" or "Alteration Orbs"),"Model estimates only; interval does not measure uncertainty in game rules or prices."}) end,
+			function(value) if not alive then return end;active=nil;result=value;report({string.format("%.1f%% succeeded within %d rolls (%d / %d trials)",value.successChance,value.maxAttempts,value.successes,value.trials),string.format("95%% sampling interval %.1f%% to %.1f%% | mean %.2f %s per trial",value.confidenceLow,value.confidenceHigh,value.meanAttempts,value.action=="chaos" and "Chaos Orbs" or "Alteration Orbs"),"Model estimates only; interval does not measure uncertainty in game rules or prices.",state.observedEffects and "Observed effects are not modeled and can change results." or ""}) end,
 			function(err) if not alive then return end;active=nil;result=nil;report({"Estimate stopped: "..ui.errorText(err)}) end,
 			function(progress) if alive and progress and progress.trial then report({"Estimating trial "..progress.trial.." / "..progress.trials.."..."}) end end,"Map reroll estimate slice")
 		if not ok then result=nil;report({ui.errorText(job)});return end

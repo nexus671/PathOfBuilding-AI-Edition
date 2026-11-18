@@ -32,7 +32,7 @@ local function implicitFrom(line,level)
    matches[#matches+1]={id=entry.id,value=value}
   end
  end
- assert(#matches==1,#matches==0 and "The map implicit is not supported by the pinned data" or "The map implicit matches multiple identities")
+ assert(#matches<=1,"The map implicit matches multiple identities")
  return matches[1]
 end
 function M.parse(raw,checkpoint)
@@ -84,18 +84,20 @@ function M.parse(raw,checkpoint)
  local corrupted=raw:match("\nCorrupted\n")~=nil or raw:match("\nCorrupted$")~=nil
  assert(not corrupted or rarity=="rare","Corrupted magic and normal maps are not yet supported")
  local _,levelEnd=raw:find("\nItem Level:%s*%d+");local tail=raw:sub(assert(levelEnd,"The copied map needs its item level")+1)
- local lines,implicit={},nil
+ local lines,implicit,observed={},nil,{}
  for rawLine in tail:gmatch("[^\n]+") do
   local line=clean(rawLine)
-  if line:find(" (enchant)",1,true) then error("Map enchantments are not yet supported; the existing draft was not changed")
-  elseif line:find(" (implicit)",1,true) then
-   assert(not implicit,"Only one map corruption implicit is supported")
-   assert(corrupted,"An implicit was found on a map not marked corrupted")
-   implicit=implicitFrom(line:gsub(" %(implicit%)$",""),level)
+  if line:match(" %(enchant%)$") then
+   observed[#observed+1]={kind="enchant",text=line:gsub(" %(enchant%)$","")}
+  elseif line:match(" %(implicit%)$") then
+   local value=line:gsub(" %(implicit%)$","")
+   local known=corrupted and implicitFrom(value,level) or nil
+   if known and not implicit then implicit=known else observed[#observed+1]={kind="implicit",text=value} end
   elseif line~="" and not line:match("^%-+$") and not line:match("^%b{}$") and not line:match("^Monster Level:") and line~="Corrupted" and not line:match("^Travel to this Map") then
    lines[#lines+1]=line
   end
  end
+ observed=require("Modules.MapObservedEffects").validate(observed)
  assert(#lines<=60,"The copied map has too many modifier lines")
  assert(rarity=="normal" or #lines>0,"The copied magic or rare map has no supported visible modifiers")
  local candidates,offset={},0
@@ -167,9 +169,9 @@ function M.parse(raw,checkpoint)
  search(1)
  assert(#solutions>0,"Some copied modifier lines could not be matched to the current map data; the existing draft was not changed")
  assert(#solutions==1,"The copied modifiers match multiple identities; select them manually instead")
- local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,implicit=implicit,quality=quality}
+ local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,implicit=implicit,quality=quality,observedEffects=observed}
  if rarity~="normal" then map.inspect(state.baseId,tier,level,state.selected,"",0,1,checkpoint,rarity,nil,corrupted,implicit) end
  local qualityEffect=require("Modules.MapQuality").effect(quality)
- return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality: "..quality.kind.." +"..quality.value.."%. "..(qualityEffect.supported and qualityEffect.text or "Effect unmodeled")..". Enchants are unsupported.") or "No quality recorded. Enchanted maps are unsupported.",itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately."}}
+ return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality: "..quality.kind.." +"..quality.value.."%. "..(qualityEffect.supported and qualityEffect.text or "Effect not modeled")..".") or "No quality recorded.",observed and (#observed.." additional effect lines are recorded but not modeled; they can change results.") or (itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately.")}}
 end
 return M

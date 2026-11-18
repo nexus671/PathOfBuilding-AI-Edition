@@ -578,7 +578,7 @@ function M.poll(build, force)
 				if request.kind=="simulate_map_currency" then return require("Modules.MapCurrency").perform(request.state,request.action,request.seed,checkpoint) end
 				local map=require("Modules.MapCraftingData")
 				if request.kind=="search_map_bases" then return map.searchBases(request.query,request.offset,request.limit,checkpoint) end
-				local result=map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint,request.rarity,request.rolls,request.corrupted,request.implicit,request.quality)
+				local result=map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint,request.rarity,request.rolls,request.corrupted,request.implicit,request.quality,request.observedEffects)
 				local state={baseId=request.baseId,tier=request.tier,itemLevel=request.itemLevel,rarity=request.rarity or "rare",selected=request.selected or {},rolls=request.rolls,corrupted=request.corrupted}
 				local ok,options=pcall(require("Modules.MapCurrency").options,state,checkpoint)
 				if ok then result.currencyOptions=options else result.currencyOptionsWarning=require("Modules.PlanningUI").errorText(options) end

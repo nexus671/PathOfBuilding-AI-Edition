@@ -30,7 +30,7 @@ function M.run(state,options,checkpoint)
 	local trials=integer(options.trials,1,1000,"trial count");local maxAttempts=integer(options.maxAttempts,1,1000,"attempt limit")
 	assert(trials*maxAttempts<=20000,"Use at most 20,000 total simulated attempts")
 	local seed=integer(options.seed,1,2147483646,"estimate seed");local action=rarity=="magic" and "alteration" or "chaos"
-	local base={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity=rarity,selected={},quality=require("Modules.MapQuality").validate(state.quality)}
+	local base={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity=rarity,selected={},quality=require("Modules.MapQuality").validate(state.quality),observedEffects=require("Modules.MapObservedEffects").validate(state.observedEffects)}
 	local progress={trial=1,trials=trials,attempts=0}
 	local function slice() if checkpoint then checkpoint(progress) end end
 	-- The ordered wanted list must itself be a supported ordinary-map state.
@@ -107,6 +107,6 @@ function M.run(state,options,checkpoint)
 	return {trials=trials,maxAttempts=maxAttempts,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,
 		attempts=totalAttempts,meanAttempts=totalAttempts/trials,action=action,seed=seed,wanted=copyTable(wanted),wantedGroups=copyTable(alternatives),avoid=copyTable(avoid),
 		successDistribution=distribution,sampleSuccess=sample and sample.state or nil,sampleSummary=sample and sample.summary or nil,sampleAttempts=successfulAttempts,
-		note="Chance of meeting every wanted group (at least one alternative per group) and no avoided modifiers within the attempt limit. Wilson interval measures sampling uncertainty only. Map roll counts, weights, stat distributions and some restrictions are unverified estimates; no prices or game odds are inferred."}
+		note="Chance of meeting every wanted group (at least one alternative per group) and no avoided modifiers within the attempt limit. Wilson interval measures sampling uncertainty only. Map roll counts, weights, stat distributions and some restrictions are unverified estimates; no prices or game odds are inferred."..(base.observedEffects and " Observed implicit and enchantment effects are not modeled and can change results." or "")}
 end
 return M

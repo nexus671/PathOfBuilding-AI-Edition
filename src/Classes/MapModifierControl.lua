@@ -1,4 +1,5 @@
 -- Inspect pinned map modifiers and estimate currency outcomes without using an item.
+-- cspell:ignore AABBD
 local ui=require("Modules.PlanningUI")
 local map=require("Modules.MapCraftingData")
 local browser=require("Classes.PlanningBrowserControl")
@@ -23,6 +24,7 @@ function M.Open(options)
 	local function getRarity() local value=controls.rarity:GetSelValueByKey("val");return value=="corrupted_rare" and "rare" or value end
 	local implicit=initial and initial.implicit and copyTable(initial.implicit) or nil
 	local quality=initial and require("Modules.MapQuality").validate(initial.quality) or nil
+	local observedEffects=initial and require("Modules.MapObservedEffects").validate(initial.observedEffects) or nil
 	local selected=initial and copyTable(initial.selected) or {};local rolls=initial and copyTable(initial.rolls or {}) or {};local candidate;local previousRarity;local baseId=initial and initial.baseId or "Metadata/Items/Maps/MapKeyTier16";local refresh;local offset,nextOffset=0,nil
 	local estimateSettings=initial and initial.estimate and copyTable(initial.estimate) or nil
 	local draftId=initial and initial.id
@@ -55,7 +57,7 @@ function M.Open(options)
 		until not baseOffset
 		browser.Open("Choose map base",rows,{action="Use map",choose=function(entry)
 			baseId=entry.id;local tier=baseId:match("^Metadata/Items/Maps/MapKeyTier(%d+)$");if tier then controls.tier:SelByValue(tonumber(tier),"val") end
-			selected={};rolls={};implicit=nil;quality=nil;estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
+			selected={};rolls={};implicit=nil;quality=nil;observedEffects=nil;estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
 		end,closeOnChoose=false})
 	end)
 	button("pasteMap",16+left-196,66,96,"Paste map",function()
@@ -65,7 +67,7 @@ function M.Open(options)
 		local label=map.source().bases[state.baseId].name.." | Tier "..state.tier.." | "..#state.selected.." modifiers"..(state.corrupted and " | Corrupted" or "")
 		ui.description(popup,"review",16,28,608,108,{label,result.notes[1],result.notes[2],result.notes[3],"Using this map replaces the current draft's working modifiers and targets."},14)
 		popup.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,154,200,28},"Use copied map",function()
-			baseId=state.baseId;selected=copyTable(state.selected);rolls=copyTable(state.rolls);implicit=state.implicit and copyTable(state.implicit) or nil;quality=state.quality and copyTable(state.quality) or nil
+			baseId=state.baseId;selected=copyTable(state.selected);rolls=copyTable(state.rolls);implicit=state.implicit and copyTable(state.implicit) or nil;quality=state.quality and copyTable(state.quality) or nil;observedEffects=state.observedEffects and copyTable(state.observedEffects) or nil
 			controls.tier:SelByValue(state.tier,"val");controls.level:SetText(tostring(state.itemLevel))
 			previousRarity=state.corrupted and "corrupted_rare" or state.rarity;controls.rarity:SelByValue(previousRarity,"val")
 			estimateSettings=nil;candidate=nil;offset=0;controls.search:SetText("");main:ClosePopup();refresh()
@@ -75,7 +77,7 @@ function M.Open(options)
 	end)
 	button("quality",16+left-96,66,96,"Quality...",function()
 		local popup={}
-		ui.description(popup,"help",16,28,608,48,{"Record map quality as shown on the item.","Known 20% effects are shown; other effects remain unmodeled."},14)
+		ui.description(popup,"help",16,28,608,48,{"Record map quality as shown on the item.","Known 20% effects are shown; other effects are not modeled."},14)
 		ui.label(popup,"kindLabel",16,92,"Quality type",14)
 		popup.kind=new("EditControl"):EditControl(ui.anchor,{16,116,300,26},quality and quality.kind or "Pack Size",nil,nil,80)
 		ui.label(popup,"valueLabel",340,92,"Quality %",14)
@@ -116,7 +118,7 @@ function M.Open(options)
 	button("remove",16,height-62,math.floor((left-8)/2),"Remove last",function() local id=table.remove(selected);for i=#rolls,1,-1 do if rolls[i].id==id then table.remove(rolls,i) end end;candidate=nil;offset=0;refresh() end)
 	controls.remove.enabled=function() return #selected>0 end
 	button("estimate",24+math.floor((left-8)/2),height-62,math.floor((left-8)/2),"Estimate rerolls",function()
-		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),quality=quality and copyTable(quality) or nil}
+		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
 		require("Classes.MapCraftEstimateControl").Open(options.build,{state=state,wanted=selected,settings=estimateSettings,saveSettings=function(settings) estimateSettings=copyTable(settings) end,apply=function(sample)
 			selected=copyTable(sample.selected);rolls=copyTable(sample.rolls);offset=0;candidate=nil;controls.search:SetText("");refresh()
 		end})
@@ -163,12 +165,12 @@ function M.Open(options)
 	button("add",right,height-88,math.floor(rightWidth/2)-6,"Add modifier",function() if candidate then selected[#selected+1]=candidate.id;candidate=nil;offset=0;controls.search:SetText("");refresh() end end)
 	controls.add.enabled=function() return candidate~=nil end
 	button("currency",right+math.floor(rightWidth/2)+6,height-88,math.floor(rightWidth/2)-6,"Use currency",function()
-		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=selected,rolls=rolls,quality=quality}
+		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
 		local ok,actions=pcall(require("Modules.MapCurrency").options,current)
 		if not ok then main:OpenMessagePopup("Map currency",ui.errorText(actions));return end
-		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon="Assets/Crafting/"..entry.id..".png",details={entry.reason or "Available for this modeled map.","Experimental map crafting; no real currency is consumed.","Counts, selection and independent uniform stat rolls are estimates.","Unmatched translations remain ranges; base availability and some restrictions are unverified."}} end
+		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon="Assets/Crafting/"..entry.id..".png",details={entry.reason or "Available for this modeled map.","Experimental map crafting; no real currency is consumed.","Counts, selection and independent uniform stat rolls are estimates.",observedEffects and "Observed effects are not modeled and can change results." or "Unmatched translations remain ranges; some restrictions are unverified."}} end
 		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",canChoose=function(entry) return entry.available end,choose=function(entry)
-			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=selected,rolls=rolls,quality=quality}
+			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
 			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,rollSeed)
 			if not ok then main:OpenMessagePopup("Currency unavailable",ui.errorText(result));return end
 			rollSeed=rollSeed*16807%2147483647;selected=result.state.selected;rolls=result.state.rolls;controls.rarity:SelByValue(result.state.rarity,"val");previousRarity=result.state.rarity;candidate=nil;offset=0
@@ -182,7 +184,7 @@ function M.Open(options)
 		ui.label(controls,"draftNameLabel",right,height-42,"Name",14)
 		controls.draftName=new("EditControl"):EditControl(ui.anchor,{right+46,height-48,160,26},initial and initial.title or "Map draft",nil,nil,120)
 		button("keep",right+218,height-48,150,"Keep map draft",function()
-			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil,implicit=implicit and copyTable(implicit) or nil,quality=quality and copyTable(quality) or nil}
+			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil,implicit=implicit and copyTable(implicit) or nil,quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
 			if estimateSettings then entry.estimate=copyTable(estimateSettings) end
 			local ok,result=pcall(options.keep,entry)
 			if not ok then main:OpenMessagePopup("Map draft",ui.errorText(result));return end
@@ -198,7 +200,7 @@ function M.Open(options)
 	refresh=function()
 		local tier=controls.tier:GetSelValueByKey("val");local level=tonumber(controls.level.buf)
 		local rarity=getRarity()
-		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,rarity=="normal" and "rare" or rarity,rolls,isCorrupted(),implicit,quality)
+		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,rarity=="normal" and "rare" or rarity,rolls,isCorrupted(),implicit,quality,observedEffects)
 		if not ok then nextOffset=nil;controls.list.list={};controls.status.label="^xE9BE7B"..ui.fit(ui.errorText(result),rightWidth,14);show(nil);return end
 		if rarity=="normal" then result.candidates={};result.total=0;result.nextOffset=nil end
 		nextOffset=result.nextOffset
@@ -221,16 +223,20 @@ function M.Open(options)
 		if quality then
 			local effect=result.summary.qualityEffect
 			table.insert(affixes,1,"^xAABBD0Quality ("..quality.kind.."): +"..quality.value.."%")
-			table.insert(affixes,2,effect.supported and "^xAABBD0"..effect.text or "^xE9BE7BQuality effect unmodeled")
+			table.insert(affixes,2,effect.supported and "^xAABBD0"..effect.text or "^xE9BE7BQuality effect not modeled")
+		end
+		if observedEffects then
+			table.insert(affixes,1,"^xE9BE7BObserved effects are not modeled:")
+			for i=#observedEffects,1,-1 do local effect=observedEffects[i];table.insert(affixes,2,"^xB4B4FF"..effect.text.." ("..effect.kind..")") end
 		end
 		controls.affixes.list=ui.rows(affixes,left-48,14);show(nil)
 	end
 	controls.list.onClick=function(hit) if hit and hit.line then show(hit.line.entry) end end
 	controls.search.changeFunc=function() offset=0;refresh() end
-	controls.level.changeFunc=function() selected={};rolls={};implicit=nil;estimateSettings=nil;offset=0;refresh() end
+	controls.level.changeFunc=function() selected={};rolls={};implicit=nil;observedEffects=nil;estimateSettings=nil;offset=0;refresh() end
 	controls.tier.selFunc=function()
 		if baseId:match("^Metadata/Items/Maps/MapKeyTier%d+$") then baseId="Metadata/Items/Maps/MapKeyTier"..controls.tier:GetSelValueByKey("val") end
-		selected={};rolls={};implicit=nil;estimateSettings=nil;offset=0;refresh()
+		selected={};rolls={};implicit=nil;observedEffects=nil;estimateSettings=nil;offset=0;refresh()
 	end
 	controls.rarity.selFunc=function()
 		local current=controls.rarity:GetSelValueByKey("val")

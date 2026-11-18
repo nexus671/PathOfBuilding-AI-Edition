@@ -103,11 +103,12 @@ test('queues copied map inspection without changing the build', t => {
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'inspect_copied_map');assert.match(request.itemText,/Strand Map/);
 });
 test('queues bounded map modifier inspection', t => {
-  const f=fixture(t), args={baseRevision:f.state.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',selected:[],limit:5,quality:{kind:'Pack Size',value:20}};
+  const f=fixture(t), args={baseRevision:f.state.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',selected:[],limit:5,quality:{kind:'Pack Size',value:20},observedEffects:[{kind:'enchant',text:'Players are Delirious'}]};
   f.call('inspect_map_modifiers',args);
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
   assert.equal(request.kind,'inspect_map_modifiers');assert.equal(request.tier,5);assert.equal(request.rarity,'magic');
   assert.deepEqual(request.quality,args.quality);
+  assert.deepEqual(request.observedEffects,args.observedEffects);
   for(const invalid of [{...args,tier:17},{...args,itemLevel:0},{...args,rarity:'normal'},{...args,selected:Array(10).fill('x')},{...args,limit:101},{...args,unknown:true}]) assert.throws(()=>f.call('inspect_map_modifiers',invalid),/arguments/);
   const bases=fixture(t);bases.call('search_map_bases',{baseRevision:bases.state.revision,query:'Beach',limit:5});
   assert.equal(JSON.parse(fs.readFileSync(path.join(bases.dir,'AI-build-request.json'))).kind,'search_map_bases');
@@ -404,6 +405,7 @@ test('preserves Atlas effect choices in AI proposals', t => {
 test('preserves multiple map drafts in Atlas proposals', t => {
   const f=fixture(t), mapDrafts=Array.from({length:12},(_,i)=>({id:`map-${i}`,title:`Map ${i}`,patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'normal',selected:[]}));
   mapDrafts[0].quality={kind:'Pack Size',value:20};
+  mapDrafts[0].observedEffects=[{kind:'implicit',text:"Area is Influenced by the Originator's Memories"}];
   mapDrafts[0]={...mapDrafts[0],rarity:'rare',selected:['MapMonsterAreaOfEffectMapWorlds'],rolls:[{id:'MapMonsterAreaOfEffectMapWorlds',values:[13,8,5,45]}],estimate:{wantedGroups:[['MapMonsterAreaOfEffectMapWorlds']],avoid:['MapContainsMirageWorlds'],trials:20,maxAttempts:5}};
   mapDrafts[1]={...mapDrafts[1],rarity:'rare',corrupted:true,implicit:{id:'MapCorruptionItemRarity',value:15}};
   const plan={id:'atlas',title:'Mapping',version:'3.30.0-preview',budget:150,nodes:[],mapDrafts};
