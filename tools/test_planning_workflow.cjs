@@ -322,6 +322,10 @@ async function main(){
   const plainAwakener=plainInfluence.crafting.nativeEngine.methodAvailability.find(row=>row.method==='awakener');
   assert.equal(plainAwakener.available,false);assert.match(plainAwakener.unavailableReason,/one influence/);
   const shaperTarget=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:bodyRaw,initialState:rareBase,action:{method:'influence_exalt',influence:'shaper'},seed:43},'crafted');
+  const partialInfluence=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:shaperTarget.nativeCrafting.itemText,initialState:{rarity:'RARE',affixes:shaperTarget.nativeCrafting.state.affixes},limit:5},'inspected');
+  assert.deepEqual(partialInfluence.crafting.nativeEngine.initialState.influences,['shaper']);
+  const partialMemory=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw+'\nMemory Strands: 82',initialState:{rarity:'NORMAL',affixes:[]},limit:5},'inspected');
+  assert.equal(partialMemory.crafting.nativeEngine.initialState.memoryStrands,82);
   const elderDonor=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:bodyRaw,initialState:rareBase,action:{method:'influence_exalt',influence:'elder'},seed:44},'crafted');
   const targetInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,initialState:shaperTarget.nativeCrafting.state,limit:5},'inspected');
   const targetAwakener=targetInspection.crafting.nativeEngine.methodAvailability.find(row=>row.method==='awakener');assert.equal(targetAwakener.available,true);assert.match(targetAwakener.configurationRequired,/donor/);
@@ -627,6 +631,8 @@ async function main(){
   const continuedGloves=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:legacyGloves,action:{method:'quality'},initialState:updatedGloves.nativeCrafting.state,seed:1},'crafted');
   assert.match(continuedGloves.nativeCrafting.itemText,/(?:2[0-6])% increased Spell Damage/);
   const legacyRing='Rarity: NORMAL\nAmethyst Ring\nItem Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20\nImplicits: 1\n+23% to Chaos Resistance';
+  const partialCatalyst=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:legacyRing,initialState:{rarity:'NORMAL',affixes:[]},limit:5},'inspected');
+  assert.equal(partialCatalyst.crafting.nativeEngine.initialState.catalystQuality,20);assert.ok(partialCatalyst.crafting.nativeEngine.initialState.catalyst);
   const blessedLegacyRing=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:legacyRing,action:{method:'blessed'},seed:1},'crafted');
   assert.match(blessedLegacyRing.nativeCrafting.itemText,/\{tags:chaos,resistance\}\+\d+% to Chaos Resistance/);
   assert.equal(blessedLegacyRing.nativeCrafting.state.catalystQuality,20);

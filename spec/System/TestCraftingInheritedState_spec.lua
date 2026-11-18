@@ -1,0 +1,31 @@
+describe("Crafting starting-item property inheritance",function()
+	local sim=require("Modules.CraftingSimulator")
+	before_each(function() newBuild() end)
+	it("keeps copied influence unless explicitly cleared",function()
+		local base="Rarity: NORMAL\nGlorious Plate\nItem Level: 86";local model=sim.model(base)
+		local rare=copyTable(model.initial);rare.rarity="RARE"
+		local influenced=sim.perform(base,{method="influence_exalt",influence="shaper"},43,rare)
+		local imported=sim.model(influenced.itemText);assert.same({"shaper"},imported.initial.influences)
+		local partial={rarity="RARE",affixes=copyTable(imported.initial.affixes)}
+		local state=sim.validateState(imported,partial);assert.same({"shaper"},state.influences);assert.is_nil(partial.influences)
+		assert.has_error(function() sim.perform(influenced.itemText,{method="influence_exalt",influence="elder"},1,partial) end)
+		partial.influences={};partial.affixes={};assert.same({},sim.validateState(imported,partial).influences)
+	end)
+	it("keeps memory strands and honours an explicit zero",function()
+		local raw="Rarity: NORMAL\nGlorious Plate\nItem Level: 86\nMemory Strands: 82";local model=sim.model(raw)
+		local partial={rarity="NORMAL",affixes={}};assert.equal(82,sim.validateState(model,partial).memoryStrands)
+		local complete=sim.perform(raw,{method="alchemy"},77);local supplied=sim.perform(raw,{method="alchemy"},77,partial)
+		assert.equal(complete.state.memoryStrands,supplied.state.memoryStrands);assert.same(complete.state.affixes,supplied.state.affixes)
+		partial.memoryStrands=0;assert.equal(0,sim.validateState(model,partial).memoryStrands)
+	end)
+	it("preserves copied catalyst quality unless explicitly replaced",function()
+		local raw="Rarity: NORMAL\nCoral Ring\nItem Level: 86\nCatalyst: Fertile\nCatalystQuality: 20\nImplicits: 1\n+36 to maximum Life"
+		local model=sim.model(raw);local partial={rarity="NORMAL",affixes={}};local state=sim.validateState(model,partial)
+		assert.equal(model.initial.catalyst,state.catalyst);assert.equal(20,state.catalystQuality)
+		assert.has_error(function() sim.perform(raw,{method="catalyst",catalyst=model.initial.catalyst},1,partial) end)
+		partial.catalyst=model.initial.catalyst;partial.catalystQuality=0
+		assert.equal(0,sim.validateState(model,partial).catalystQuality)
+		partial.catalyst=5;partial.catalystQuality=nil
+		local changed=sim.validateState(model,partial);assert.equal(5,changed.catalyst);assert.is_nil(changed.catalystQuality)
+	end)
+end)

@@ -1112,11 +1112,16 @@ function M.validateState(model,state)
 	-- Omitted properties inherit the starting item; explicit empty sockets,
 	-- zero quality and false mirrored state remain deliberate overrides.
 	-- Never infer a layout after an outcome that marked it unknown.
-	if type(state)=="table" and (state.sockets==nil and not state.socketLayoutUnknown or state.quality==nil or state.mirrored==nil and model.initial.mirrored) then
+	if type(state)=="table" and (state.sockets==nil and not state.socketLayoutUnknown or state.quality==nil or state.mirrored==nil and model.initial.mirrored
+		or state.influences==nil and #(model.initial.influences or {})>0 or state.memoryStrands==nil and (model.initial.memoryStrands or 0)>0
+		or state.catalyst==nil and state.catalystQuality==nil and model.initial.catalyst) then
 		state=copyTable(state)
 		if state.sockets==nil and not state.socketLayoutUnknown then state.sockets=copyTable(model.initial.sockets or {}) end
 		if state.quality==nil then state.quality=model.initial.quality end
 		if state.mirrored==nil and model.initial.mirrored then state.mirrored=true end
+		if state.influences==nil and #(model.initial.influences or {})>0 then state.influences=copyTable(model.initial.influences) end
+		if state.memoryStrands==nil and (model.initial.memoryStrands or 0)>0 then state.memoryStrands=model.initial.memoryStrands end
+		if state.catalyst==nil and state.catalystQuality==nil and model.initial.catalyst then state.catalyst=model.initial.catalyst;state.catalystQuality=model.initial.catalystQuality end
 	end
 	return validateOrdinaryState(model,state)
 end
