@@ -39,17 +39,17 @@ function M.run(state,options,checkpoint)
 		repeat local page=map.inspect(base.baseId,base.tier,base.itemLevel,{},"",offset,100,slice,rarity);for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
 		for _,group in ipairs(alternatives) do for _,id in ipairs(group) do assert(eligible[id],"A wanted alternative is not eligible for this modeled map") end end
 	end
-	local successes,totalAttempts=0,0;local sample,successfulAttempts;local histogram={}
+	local successes,totalAttempts=0,0;local sample,successfulAttempts;local histogram={};local poolCache={}
 	for trial=1,trials do
 		for attempt=1,maxAttempts do
 			totalAttempts=totalAttempts+1;progress.trial=trial;progress.attempt=attempt;progress.attempts=totalAttempts;local attemptSeed=encounter.seed(seed,totalAttempts,43)
-			local result=currency.perform(base,action,attemptSeed,slice,true);local found={}
+			local result=currency.perform(base,action,attemptSeed,slice,true,poolCache);local found={}
 			for _,id in ipairs(result.state.selected) do found[id]=true end
 			local match=true;for _,group in ipairs(groups) do local any=false;for _,id in ipairs(group) do if found[id] then any=true;break end end;if not any then match=false;break end end
 			if match then for id in pairs(forbidden) do if found[id] then match=false;break end end end
 			if match then
 				successes=successes+1;histogram[attempt]=(histogram[attempt] or 0)+1
-				if not sample then sample=currency.perform(base,action,attemptSeed,slice);successfulAttempts=attempt end
+				if not sample then sample=currency.perform(base,action,attemptSeed,slice,false,poolCache);successfulAttempts=attempt end
 				break
 			end
 			slice()

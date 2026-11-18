@@ -14,6 +14,17 @@ describe("Map reroll estimates",function()
 		local full=currency.perform(state,"chaos",123);local fast=currency.perform(state,"chaos",123,nil,true)
 		assert.same(full.state.selected,fast.state.selected);assert.same({},fast.state.rolls);assert.is_nil(fast.summary)
 	end)
+	it("preserves seeded outcomes and values when modifier pools are reused",function()
+		local cache={}
+		for _,seed in ipairs({1,42,123,777,42}) do
+			assert.same(currency.perform(state,"chaos",seed),currency.perform(state,"chaos",seed,nil,false,cache))
+		end
+		local magic=copyTable(state);magic.rarity="magic"
+		assert.same(currency.perform(magic,"alteration",42),currency.perform(magic,"alteration",42,nil,false,cache))
+		local low=copyTable(state);low.tier=5;low.itemLevel=68
+		assert.same(currency.perform(low,"chaos",42),currency.perform(low,"chaos",42,nil,false,cache))
+		assert.is_true(cache._count<=128)
+	end)
 	it("requires wanted modifiers and excludes avoided ones from retained successes",function()
 		local wanted="MapContainsMirageWorlds";local avoid="MapContainsWildwoodWorlds"
 		local result=estimate.run(state,{wanted={wanted},avoid={avoid},trials=5,maxAttempts=4,seed=77})
