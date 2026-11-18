@@ -66,10 +66,10 @@ function Canvas:Draw()
 		local a,b=self:Position(node);SetDrawColor(0.85,0.85,0.85);self.art:draw("mastery",node.icon,a,b,self.scale*2)
 	end
 	local allocated={[self.tree.start]=true}
-	local desired={};for _,id in ipairs(self.selected().desired or {}) do desired[id]=true end
+	local desired={};if not self.routeState then for _,id in ipairs(self.selected().desired or {}) do desired[id]=true end end
 	local comparison=self.comparison
-	local avoided={}; for _,id in ipairs(self.avoided and self.avoided() or {}) do avoided[id]=true end
-	for _,id in ipairs(self.selected().nodes) do allocated[id]=true end
+	local avoided={};if not self.routeState then for _,id in ipairs(self.avoided and self.avoided() or {}) do avoided[id]=true end end
+	if self.routeState then for id in pairs(self.routeState) do allocated[id]=true end else for _,id in ipairs(self.selected().nodes) do allocated[id]=true end end
 	local routeOverlay=self.routeOverlay
 	local planned=copyTable(allocated);if routeOverlay then for id in pairs(routeOverlay.removed) do planned[id]=nil end end
 	for id in pairs(routeOverlay and routeOverlay.added or self.preview or {}) do planned[id]=true end
@@ -104,7 +104,7 @@ function Canvas:Draw()
 			if avoided[id] or routeOverlay and routeOverlay.removed[id] or comparison and comparison.before[id] and not allocated[id] then SetDrawColor(1,0.25,0.25)
 			elseif desired[id] or routeOverlay and routeOverlay.added[id] then SetDrawColor(0.2,1,0.85) else SetDrawColor(0.9,0.9,0.9) end
 			local highlight=node.kind=="keystone" and "KeystoneFrameCanAllocate" or node.kind=="notable" and "NotableFrameCanAllocate" or node.kind=="gateway" and "WormholeFrameHighlight" or "PSSkillFrameHighlighted"
-			self.art:draw("frame",(self.focus == id or desired[id] or routeOverlay and (routeOverlay.added[id] or routeOverlay.removed[id]) or not routeOverlay and self.preview and self.preview[id] or self.matches and self.matches[id]) and highlight or frame,a,b,self.scale*2)
+			self.art:draw("frame",(self.focus == id or desired[id] or routeOverlay and (routeOverlay.added[id] or routeOverlay.removed[id]) or not routeOverlay and self.preview and self.preview[id] or not self.routeState and self.matches and self.matches[id]) and highlight or frame,a,b,self.scale*2)
 			if id==self.tree.start then self.art:draw("startNode","AtlasPassiveSkillScreenStart",a,b,self.scale*2) end
 		end
 		local dist=(cursorX-x-a)^2+(cursorY-y-b)^2
@@ -118,7 +118,7 @@ function Canvas:Draw()
 	local sx,sy=(mw-8)/(bounds[3]-bounds[1]),(mh-8)/(bounds[4]-bounds[2])
 	for id,node in pairs(self.tree.nodes) do
 		local px,py=mx+4+(node.x-bounds[1])*sx,my+4+(node.y-bounds[2])*sy
-		SetDrawColor(allocated[id] and "^xD3B987" or self.matches and self.matches[id] and "^x64DBCE" or "^x42516A");DrawImage(nil,px,py,2,2)
+		SetDrawColor(allocated[id] and "^xD3B987" or not self.routeState and self.matches and self.matches[id] and "^x64DBCE" or "^x42516A");DrawImage(nil,px,py,2,2)
 	end
 	local vx=math.max(mx+1,mx+4+(self.centerX-self.width/(2*self.scale)-bounds[1])*sx)
 	local vy=math.max(my+1,my+4+(self.centerY-self.height/(2*self.scale)-bounds[2])*sy)
@@ -128,12 +128,12 @@ function Canvas:Draw()
 	SetViewport()
 	if self.hover then
 		local node=self.tree.nodes[self.hover];self.tooltip:Clear();self.tooltip:AddLine(18,node.name)
-		for _,stat in ipairs(atlas.nodeStats(self.selected(),node)) do self.tooltip:AddLine(14,stat) end
-		if node.variantEffects then self.tooltip:AddLine(14,"Multiple effects: select node to review") end
+		for _,stat in ipairs(self.routeState and node.stats or atlas.nodeStats(self.selected(),node)) do self.tooltip:AddLine(14,atlas.displayStat(stat)) end
+		if node.variantEffects then self.tooltip:AddLine(14,self.routeState and "Review choice effects in the stage route." or "Multiple effects: select node to review") end
 		if desired[self.hover] then self.tooltip:AddLine(14,"Desired route target") end
 		if routeOverlay and routeOverlay.added[self.hover] then self.tooltip:AddLine(14,"Preview: allocate this node") elseif routeOverlay and routeOverlay.removed[self.hover] then self.tooltip:AddLine(14,"Preview: refund this node") end
-		self.tooltip:AddLine(14,"Shift-click: toggle desired target")
-		self.tooltip:AddLine(14,allocated[self.hover] and "Double click to remove this branch" or "Double click to connect this node")
+		if not self.routeState then self.tooltip:AddLine(14,"Shift-click: toggle desired target") end
+		self.tooltip:AddLine(14,self.routeState and "Route preview; exit the route to edit." or allocated[self.hover] and "Double click to remove this branch" or "Double click to connect this node")
 		SetDrawLayer(nil,100);self.tooltip:Draw(cursorX,cursorY,1,1,main.viewPort);SetDrawLayer(nil,0)
 	end
 end
@@ -144,6 +144,7 @@ function Canvas:OnKeyDown(key,doubleClick)
 		local b=self.mapBounds;self.centerX=b[1]+(px-self.width+128)/112*(b[3]-b[1]);self.centerY=b[2]+(py-self.height+100)/84*(b[4]-b[2]);return
 	end
 	if key == "LEFTBUTTON" and self.hover then
+		if self.routeState then return end
 		self.focus=self.hover
 		if self.onIntent and (IsKeyDown("SHIFT") or self.intentMode and self.intentMode~="Select nodes") then self.onIntent(self.hover,IsKeyDown("SHIFT") and "desired" or self.intentMode=="Mark desired" and "desired" or "avoided")
 		else self.onSelect(self.hover);if doubleClick and self.onActivate then self.onActivate(self.hover) end end
@@ -172,7 +173,7 @@ function Panel.Open(build,source,layout)
 	local controls,undo,avoided,redo={},{},copyTable(draft.avoided or {}),{}
 	local preferred
 	local pointUsage,routeAvailable,hasMissingChoices
-	local grantSteps,grantIndex,stageResume,openStages
+	local grantSteps,grantIndex,grantInitial,grantBudget,grantWarning,grantMatchLabel,stageResume,openStages
 	local function current()
 		local result=copyTable(draft); result.title=controls.title.buf; result.budget=assert(tonumber(controls.budget.buf),"Enter a point budget"); result.notes=controls.notes.buf
 		if result.avoided~=nil or #avoided>0 then result.avoided=copyTable(avoided) end
@@ -237,12 +238,26 @@ function Panel.Open(build,source,layout)
 		for _,entry in ipairs(controls.results.list) do local resultNode=controls.canvas.tree.nodes[entry.val];if resultNode then entry.label=resultNode.name..(costs[entry.val] and " | +"..costs[entry.val] or " | blocked") end end
 	end
 	local function showGrantStep(index)
-		grantIndex=index;local step=grantSteps[index];local node=controls.canvas.tree.nodes[step.id]
-		controls.canvas.focus=step.id;controls.canvas.centerX,controls.canvas.centerY=node.x,node.y;controls.canvas.scale=math.max(0.2,controls.canvas.scale)
-		refresh(step.id);controls.canvas.preview={};controls.help.label="^7"..ui.fit("Route step "..index.." / "..#grantSteps..": "..step.action.." | Showing node on final plan",graphWidth,14)
+		grantIndex=index;local step=grantSteps[index];local tree=controls.canvas.tree;local node=tree.nodes[step.id]
+		local allocated={};for _,id in ipairs(grantInitial or {}) do allocated[id]=true end
+		for i=1,index do local part=grantSteps[i];if part.action=="Allocate" then allocated[part.id]=true else allocated[part.id]=nil end end
+		controls.canvas.routeState=allocated;controls.canvas.focus=step.id;controls.canvas.centerX,controls.canvas.centerY=node.x,node.y;controls.canvas.scale=math.max(0.2,controls.canvas.scale)
+		refresh(step.id);controls.canvas.preview={}
+		local count,granted=0,tree.nodes[tree.start].grantedPoints or 0
+		for id in pairs(allocated) do count=count+1;granted=granted+(tree.nodes[id].grantedPoints or 0) end
+		controls.status.label=string.format("^7Preview: %d / %d points%s",count,grantBudget or draft.budget,granted>0 and " + "..granted.." granted" or "")
+		controls.status.tooltipText="Preview after this step. The saved plan is unchanged."
+		local summary={"Route preview after step "..index..". The destination plan is unchanged."};if grantWarning then summary[#summary+1]=grantWarning end
+		controls.strategySummary.list=ui.rows(summary,graphWidth-16,14)
+		grantMatchLabel=grantMatchLabel or controls.matchCount.label;controls.matchCount.label="^7Route preview | exit to search";controls.allocate.label="Preview only"
+		local details={node.name,node.kind:gsub("^%l",string.upper),step.action.." this node at step "..index.." of "..#grantSteps..".","Preview after this step; exit the route to edit the plan."}
+		for _,stat in ipairs(node.stats) do details[#details+1]=atlas.displayStat(stat) end
+		if node.variantEffects then details[#details+1]="Review choice effects in the stage route details." end
+		controls.details.list=rows(details,inspector-30,14)
+		controls.help.label="^7"..ui.fit("Route step "..index.." / "..#grantSteps..": "..step.action.." | Preview after step; plan unchanged",graphWidth,14)
 	end
 	local function exitGrantRoute()
-		grantSteps=nil;grantIndex=nil;controls.help.label="^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect"
+		grantSteps=nil;grantIndex=nil;grantInitial=nil;grantBudget=nil;grantWarning=nil;controls.canvas.routeState=nil;if grantMatchLabel then controls.matchCount.label=grantMatchLabel;grantMatchLabel=nil end;controls.help.label="^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect"
 	end
 	controls.title=edit(16,30,graphWidth-130,24,draft.title,nil,120)
 	ui.label(controls,"planLabel",16,10,"Plan name",13)
@@ -282,7 +297,7 @@ function Panel.Open(build,source,layout)
 		controls.matchCount.label="^7"..#matches..(#matches==1 and " match" or " matches").." | costs show new points"
 	end
 	controls.find=button(side+188,96,72,"Go",function() findNodes(true) end)
-	controls.find.enabled=function() return #controls.results.list>0 end
+	controls.find.enabled=function() return not grantSteps and #controls.results.list>0 end
 	controls.search.changeFunc=function() findNodes(false) end
 	controls.search.enterFunc=function() findNodes(true) end
 	controls.search.disableCol="^x8797A8"
@@ -326,7 +341,7 @@ function Panel.Open(build,source,layout)
 		end
 		browser.Open("Choose "..node.name.." effect",entries,{action="Select effect",choose=function(entry) change(atlas.chooseEffect(current(),node.id,entry.id)) end})
 	end
-	controls.canvas.onIntent=function(id,kind) safely(function() change(require("Modules.AtlasTargets").toggle(current(),id,kind)) end) end
+	controls.canvas.onIntent=function(id,kind) if grantSteps then return end;safely(function() change(require("Modules.AtlasTargets").toggle(current(),id,kind)) end) end
 	controls.allocate=button(side,height-188,124,"Connect path",function()
 		local id=assert(controls.canvas.focus,"Select a node first");local node=controls.canvas.tree.nodes[id]
 		if node.variantEffects and isValueInArray(draft.nodes,id) then chooseEffect() else change(atlas.connect(current(),{id},avoided)) end
@@ -376,7 +391,7 @@ function Panel.Open(build,source,layout)
 				steps[#steps+1]={id=index,label=index..". "..step.action..": "..node.name,category=step.action,details={"Step "..index.." of "..#report.grantRoute,step.action.." "..node.name.." ["..step.id.."]","Show this node on the final-plan tree. The planner does not track your in-game allocations."},node=step.id,index=index,action=step.action}
 			end
 			browser.Open("Temporary grant route",steps,{action="Show on tree",closeOnChoose=false,choose=function(step)
-				main:ClosePopup();grantSteps=copyTable(report.grantRoute);showGrantStep(step.index)
+				main:ClosePopup();clearRouteOverlay();controls.canvas.comparison=nil;grantSteps=copyTable(report.grantRoute);grantInitial={};grantBudget=plan.budget;showGrantStep(step.index)
 			end})
 		end} or nil
 		browser.Open("Atlas bonuses by mechanic",entries,routeOptions)
@@ -500,13 +515,13 @@ function Panel.Open(build,source,layout)
 	controls.url.enabled=function() return not hasMissingChoices end
 	controls.url.tooltipFunc=function(tooltip) tooltip:AddLine(14,hasMissingChoices and "Choose an effect for each allocated choice node before sharing an official link." or "Copy an official Atlas link. Copy plan also preserves the exact version.") end
 	controls.keep=button(16,height-42,160,"Keep plan",function() store:Upsert(current());if layout then controls.status.label="^7Plan kept. Save the build to persist it." else main:ClosePopup() end end)
-	controls.keep.label=function() return controls.canvas.routeOverlay and "Keep current plan" or "Keep plan" end
-	controls.keep.tooltipText=function() return controls.canvas.routeOverlay and "Keeps the current draft, not the route preview. Open Targets to apply the preview first." or "Keep this plan in the build. Save the build to persist it." end
+	controls.keep.label=function() return (controls.canvas.routeOverlay or grantSteps) and "Keep current plan" or "Keep plan" end
+	controls.keep.tooltipText=function() return grantSteps and "Keeps the destination draft, not the step preview." or controls.canvas.routeOverlay and "Keeps the current draft, not the route preview. Open Targets to apply the preview first." or "Keep this plan in the build. Save the build to persist it." end
 	controls.library=button(188,height-42,120,"Saved plans",function() Panel.Library(build,layout) end)
 	controls.new=button(320,height-42,120,"New plan",function() if not layout then main:ClosePopup() end;Panel.Open(build,{id="atlas-"..require("sha1")(tostring({})..os.time()):sub(1,12),title="New Atlas plan",version=draft.version,budget=atlas.tree(draft.version).maxPoints,nodes={},notes=""},layout) end)
 	openStages=function(view)
-		require("Classes.AtlasPlanningControl").Open(build,current(),function(plan) stageResume=nil;change(plan) end,function(steps,saved)
-			stageResume=saved;clearRouteOverlay();controls.canvas.comparison=nil;controls.page:SelByValue("Tree");grantSteps=copyTable(steps);showGrantStep(1)
+		require("Classes.AtlasPlanningControl").Open(build,current(),function(plan) stageResume=nil;change(plan) end,function(steps,saved,initial,budget,warning)
+			stageResume=saved;grantWarning=warning;clearRouteOverlay();controls.canvas.comparison=nil;controls.page:SelByValue("Tree");grantSteps=copyTable(steps);grantInitial=copyTable(initial);grantBudget=budget;showGrantStep(1)
 		end,view)
 	end
 	controls.progression=button(452,height-42,180,"Stages & strategy",function()
@@ -524,7 +539,7 @@ function Panel.Open(build,source,layout)
 	controls.grantPrevious.enabled=function() return grantSteps and grantIndex>1 end
 	controls.grantNext.enabled=function() return grantSteps and grantIndex<#grantSteps end
 	for _,key in ipairs({"notes","notesLabel","copy","import","url"}) do controls[key].shown=function() return controls.page:GetSelValue()=="Notes & sharing" end end
-	controls.canvas.onActivate=function() if controls.remove:IsEnabled() then controls.remove:Click() else controls.allocate:Click() end end
+	controls.canvas.onActivate=function() if grantSteps then return end;if controls.remove:IsEnabled() then controls.remove:Click() else controls.allocate:Click() end end
 	controls.undo.enabled=function() return #undo>0 end
 	controls.redo.enabled=function() return #redo>0 end
 	controls.routes.enabled=function() return controls.canvas.focus~=nil end
@@ -532,15 +547,17 @@ function Panel.Open(build,source,layout)
 		for _,id in ipairs(draft.nodes) do if id==controls.canvas.focus then return true end end
 		return false
 	end
-	controls.allocate.enabled=function() local node=controls.canvas.tree.nodes[controls.canvas.focus];return routeAvailable or (allocatedFocus() and node and node.variantEffects~=nil) end
-	controls.remove.enabled=allocatedFocus
-	controls.avoid.enabled=function() return controls.canvas.focus~=nil and controls.canvas.focus~=controls.canvas.tree.start and not allocatedFocus() end
-	controls.clearAvoid.enabled=function() return #avoided>0 end
+	controls.allocate.enabled=function() local node=controls.canvas.tree.nodes[controls.canvas.focus];return not grantSteps and (routeAvailable or (allocatedFocus() and node and node.variantEffects~=nil)) end
+	controls.remove.enabled=function() return not grantSteps and allocatedFocus() end
+	controls.avoid.enabled=function() return not grantSteps and controls.canvas.focus~=nil and controls.canvas.focus~=controls.canvas.tree.start and not allocatedFocus() end
+	controls.clearAvoid.enabled=function() return not grantSteps and #avoided>0 end
+	for _,key in ipairs({"search","results","mechanic","stats","browse","targets","tools"}) do controls[key].enabled=function() return not grantSteps end end
+	for _,key in ipairs({"version","library","new"}) do controls[key].enabled=function() return not grantSteps and not stageResume end end
 	if layout then
 		controls.close.shown=false
 		layout.tick=function() require("Modules.AtlasTargets").tick(build) end
 		layout.inspectorWidth=inspector
-		layout.viewState=function() return {centerX=controls.canvas.centerX,centerY=controls.canvas.centerY,scale=controls.canvas.scale,focus=controls.canvas.focus,page=controls.page:GetSelValue(),avoided=copyTable(avoided),undo=copyTable(undo),redo=copyTable(redo),preferred=preferred,inspectorWidth=inspector,search=controls.search.buf,mechanic=controls.mechanic:GetSelValue(),title=controls.title.buf,budgetText=controls.budget.buf,notes=controls.notes.buf,grantSteps=grantSteps and copyTable(grantSteps),grantIndex=grantIndex,stageResume=stageResume and copyTable(stageResume)} end
+		layout.viewState=function() return {centerX=controls.canvas.centerX,centerY=controls.canvas.centerY,scale=controls.canvas.scale,focus=controls.canvas.focus,page=controls.page:GetSelValue(),avoided=copyTable(avoided),undo=copyTable(undo),redo=copyTable(redo),preferred=preferred,inspectorWidth=inspector,search=controls.search.buf,mechanic=controls.mechanic:GetSelValue(),title=controls.title.buf,budgetText=controls.budget.buf,notes=controls.notes.buf,grantSteps=grantSteps and copyTable(grantSteps),grantIndex=grantIndex,grantInitial=grantInitial and copyTable(grantInitial),grantBudget=grantBudget,grantWarning=grantWarning,grantMatchLabel=grantMatchLabel,stageResume=stageResume and copyTable(stageResume)} end
 		-- Keep unfinished editor text separate from the validated graph draft.
 		layout.snapshot=function() return copyTable(draft) end
 	end
@@ -551,7 +568,7 @@ function Panel.Open(build,source,layout)
 		stageResume=view.stageResume and copyTable(view.stageResume) or nil
 		if type(view.grantSteps)=="table" and type(view.grantIndex)=="number" and view.grantIndex==math.floor(view.grantIndex) and view.grantSteps[view.grantIndex] then
 			local valid=true;for _,step in ipairs(view.grantSteps) do if type(step)~="table" or not controls.canvas.tree.nodes[step.id] or (step.action~="Allocate" and step.action~="Refund") then valid=false;break end end
-			if valid then grantSteps=copyTable(view.grantSteps);grantIndex=view.grantIndex end
+			if valid then grantSteps=copyTable(view.grantSteps);grantIndex=view.grantIndex;grantInitial=copyTable(view.grantInitial or {});grantBudget=view.grantBudget;grantWarning=view.grantWarning;grantMatchLabel=view.grantMatchLabel end
 		end
 		if view.title~=nil then controls.title:SetText(view.title) end
 		if view.notes~=nil then controls.notes:SetText(view.notes) end
@@ -564,7 +581,7 @@ function Panel.Open(build,source,layout)
 		if pointUsage and pointUsage.used>0 then SetDrawColor("^xC8A569");DrawImage(nil,x,y,graphWidth*math.min(1,pointUsage.used/math.max(1,pointUsage.budget+pointUsage.bonus)),3) end
 	end
 	ui.tabs(controls,controls.page,{{"tab_tree","Tree","Tree"},{"tab_notes","Notes & sharing","Plan & notes"}},side,64,260)
-	controls.title.changeFunc=function() clearRouteOverlay();ui.draft(build,"atlas");refresh() end
+	controls.title.changeFunc=function() clearRouteOverlay();exitGrantRoute();ui.draft(build,"atlas");refresh() end
 	controls.notes.changeFunc=function() clearRouteOverlay();ui.draft(build,"atlas") end
 	controls.budget.changeFunc=function() clearRouteOverlay();exitGrantRoute();ui.draft(build,"atlas");refresh() end
 	controls.budget.enterFunc=function() safely(function() local nextPlan=current();if nextPlan.budget~=draft.budget then change(nextPlan) end end) end

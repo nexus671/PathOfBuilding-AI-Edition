@@ -3,7 +3,7 @@ local ui=require("Modules.PlanningUI")
 local atlas=require("Modules.AtlasPlanner")
 local M={}
 function M.Open(build,plan,keep,inspectRoute,view)
-	local draft=copyTable(plan);local c={};local routeLines,routeReport;local w,h=math.min(920,main.screenW-40),math.min(680,main.screenH-48)
+	local draft=copyTable(plan);local c={};local routeLines,routeReport,routeSource;local w,h=math.min(920,main.screenW-40),math.min(680,main.screenH-48)
 	local function button(key,x,y,width,label,run)
 		c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,function()
 			local ok,result=pcall(run)
@@ -23,13 +23,13 @@ function M.Open(build,plan,keep,inspectRoute,view)
 	c.previous.tooltipText="Only saved plans from this tree that do not create a progression loop are offered."
 	c.transition=new("TextListControl"):TextListControl(ui.anchor,{16,156,w-32,h-230},nil,{})
 	local function refresh()
-		routeLines=nil;routeReport=nil
+		routeLines=nil;routeReport=nil;routeSource=nil
 		local lines={"Keep each stage as its own saved plan. Choose the prior stage to review the respec.","Later stages that depend on this plan cannot be selected as its previous stage.","No prior stage selected."}
 		local selected=c.previous:GetSelValueByKey("val")
 		if unavailable and selected==unavailable then
 			lines={"Previous plan is unavailable or would make an invalid progression chain.","Saved plan ID: "..unavailable,"Choose another saved stage or No previous plan to resolve it. The original link stays in the draft until you choose."}
 		else
-			for _,p in ipairs(build.savers.AtlasPlans.plans) do if p.id==selected then routeReport=require("Modules.PlanningPerformance").measure(build,"Atlas respec route",require("Modules.AtlasStrategy").transition,p,draft);lines=routeReport.lines;routeLines=lines end end
+			for _,p in ipairs(build.savers.AtlasPlans.plans) do if p.id==selected then routeReport=require("Modules.PlanningPerformance").measure(build,"Atlas respec route",require("Modules.AtlasStrategy").transition,p,draft);routeSource=copyTable(p);lines=routeReport.lines;routeLines=lines end end
 		end
 		c.transition.list=ui.rows(lines,w-56)
 	end
@@ -74,7 +74,11 @@ function M.Open(build,plan,keep,inspectRoute,view)
 		if not inspectRoute or not routeReport or not routeReport.steps or #routeReport.steps==0 then return end
 		local fields={};for _,field in ipairs({"maps","scarabs","requirements","avoid"}) do fields[field]=c[field].buf end
 		local saved={page=c.page:GetSelValue(),stage=c.stage:GetSelValueByKey("val"),previous=c.previous:GetSelValueByKey("val"),fields=fields,amount=c.amount.buf,currency=c.currency.buf,source=c.source.buf}
-		local steps=copyTable(routeReport.steps);main:ClosePopup();inspectRoute(steps,saved)
+		local steps=copyTable(routeReport.steps);local initial=copyTable(routeSource.nodes);local budget=math.max(routeSource.budget,draft.budget)
+		local warnings={};if routeReport.startingReachable==nil then warnings[#warnings+1]="Starting allocation unverified" end
+		if routeReport.choiceReselectionCostUnknown then warnings[#warnings+1]="Choice cost unverified" elseif #routeReport.choiceChanges>0 then warnings[#warnings+1]="Review choice effects" end
+		local warning=#warnings>0 and table.concat(warnings," | ").."; see stages." or nil
+		main:ClosePopup();inspectRoute(steps,saved,initial,budget,warning)
 	end)
 	c.inspectRoute.shown=function() return inspectRoute~=nil and c.page:GetSelValue()=="Progression" end
 	c.inspectRoute.enabled=function() return inspectRoute~=nil and routeReport~=nil and routeReport.steps~=nil and #routeReport.steps>0 end

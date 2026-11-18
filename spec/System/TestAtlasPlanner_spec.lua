@@ -18,6 +18,34 @@ describe("Native Atlas planner", function()
 		assert.equal("3.30.0",controls.version:GetSelValueByKey("label"))
 		assert.equal("3.30.0-preview",controls.version:GetSelValueByKey("val"))
 	end)
+	it("passes the previous allocation and earned-point budget to stage route previews",function()
+		local tree=atlas.tree("3.30.0-preview");local first=tree.nodes[tree.start].links[1]
+		local before=atlas.connect(plan("3.30.0-preview",10),{first});before.id="stage-before";before.title="Before";build.savers.AtlasPlans:Upsert(before)
+		local target;for _,id in ipairs(tree.nodes[first].links) do if id~=tree.start then target=id;break end end;assert.is_not_nil(target)
+		local after=atlas.connect(before,{target});after.id="stage-after";after.title="After";after.budget=20
+		local captured;require("Classes.AtlasPlanningControl").Open(build,after,function() end,function(steps,view,initial,budget) captured={steps=steps,view=view,initial=initial,budget=budget} end)
+		local c=main.popups[1].controls;c.previous:SelByValue(before.id,"val");c.previous.selFunc();assert.is_true(c.inspectRoute:IsEnabled());c.inspectRoute:Click()
+		assert.same(before.nodes,captured.initial);assert.equal(20,captured.budget);assert.is_true(#captured.steps>0);assert.equal(before.id,captured.view.previous)
+		local panel=require("Classes.AtlasPlannerControl").Open(build,after);panel.progression:Click()
+		local stage=main.popups[1].controls;stage.previous:SelByValue(before.id,"val");stage.previous.selFunc();stage.inspectRoute:Click()
+		local expected={};for _,id in ipairs(before.nodes) do expected[id]=true end
+		for index,step in ipairs(captured.steps) do
+			if step.action=="Allocate" then expected[step.id]=true else expected[step.id]=nil end
+			assert.same(expected,panel.canvas.routeState);assert.same(after.nodes,panel.canvas.selected().nodes)
+			if index<#captured.steps then panel.grantNext:Click() end
+		end
+		panel.grantExit:Click();assert.is_nil(panel.canvas.routeState);assert.same(after.nodes,panel.canvas.selected().nodes);main.popups[1].controls.close:Click();panel.close:Click()
+	end)
+	it("shows a refunded node as removed in the intermediate route preview",function()
+		local base=plan("3.30.0-preview");local tree=atlas.tree(base.version);local first=tree.nodes[tree.start].links[1]
+		local before=atlas.connect(base,{first});before.id="refund-before";before.title="Before";build.savers.AtlasPlans:Upsert(before)
+		local after=copyTable(base);after.id="refund-after";after.title="After";after.progression={stage="final",previousId=before.id}
+		local panel=require("Classes.AtlasPlannerControl").Open(build,after);panel.progression:Click();local stage=main.popups[1].controls
+		assert.is_true(stage.inspectRoute:IsEnabled());stage.inspectRoute:Click()
+		assert.equal(first,panel.canvas.focus);assert.same({},panel.canvas.routeState);assert.matches("Refund",panel.help.label);assert.matches("Preview: 0",panel.status.label)
+		assert.same({},panel.canvas.selected().nodes);assert.same({first},build.savers.AtlasPlans.plans[1].nodes)
+		panel.grantExit:Click();main.popups[1].controls.close:Click();panel.close:Click()
+	end)
 	it("persists a tier 17 Nightmare map draft",function()
 		local source=plan("3.30.0-preview")
 		source.mapDrafts={{id="nightmare",title="Abomination",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={"MapUberModCurses"}}}
@@ -133,6 +161,13 @@ describe("Native Atlas planner", function()
 		require("Classes.AtlasPlanningControl").Open(build,second,function() end)
 		local rows={};for _,row in ipairs(main.popups[1].controls.transition.list) do rows[#rows+1]=StripEscapes(row[1]) end
 		assert.is_truthy(table.concat(rows," "):find("Choose effect for Secrets Unveiled",1,true));assert.is_truthy(table.concat(rows," "):find("additional refund",1,true))
+		main:ClosePopup();local allocated={[atlas.tree(version).start]=true};for _,id in ipairs(second.nodes) do allocated[id]=true end
+		local extra;for _,id in ipairs(second.nodes) do for _,other in ipairs(atlas.tree(version).nodes[id].links) do if not allocated[other] then extra=other;break end end;if extra then break end end
+		assert.is_not_nil(extra);local extended=atlas.connect(second,{extra});extended.progression={stage="final",previousId=first.id}
+		assert.is_true(strategy.transition(first,extended).choiceReselectionCostUnknown)
+		local panel=require("Classes.AtlasPlannerControl").Open(build,extended);panel.progression:Click();main.popups[1].controls.inspectRoute:Click()
+		local summary={};for _,row in ipairs(panel.strategySummary.list) do summary[#summary+1]=StripEscapes(row[1] or "") end
+		assert.is_truthy(table.concat(summary," "):find("Choice cost unverified",1,true));panel.grantExit:Click();main.popups[1].controls.close:Click();panel.close:Click()
 	end)
 	it("loads pinned Standard graphs with symmetric edges and free starts", function()
 		for _,version in ipairs(atlas.versions) do
@@ -209,15 +244,16 @@ describe("Native Atlas planner", function()
 		assert.same(proof,atlas.report(alternate).grantRoute)
 		local originalId=proof[1].id;proof[1].id=0;assert.equal(originalId,atlas.report(alternate).grantRoute[1].id)
 		local controls=require("Classes.AtlasPlannerControl").Open(build,alternate);assert.matches("Temporary grant route",controls.status.label)
+		controls.canvas.routeOverlay={added={[originalId]=true},removed={}};controls.canvas.comparison={before={}}
 		controls.stats:Click();local browser=main.popups[1].controls;local found=false
 		for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="grant-route" then found=true end end
 		assert.is_true(found);browser.search:SetText("Temporary grant route",true);browser.choose:Click()
 		local routeBrowser=main.popups[1].controls;assert.equal("Show on tree",routeBrowser.choose.label);routeBrowser.choose:Click()
 		assert.equal(originalId,controls.canvas.focus);assert.equal(atlas.tree(alternate.version).nodes[originalId].x,controls.canvas.centerX)
-		assert.matches("Route step 1",controls.help.label);assert.is_nil(next(controls.canvas.preview));assert.is_false(controls.grantPrevious:IsEnabled());assert.is_true(controls.grantNext:IsEnabled())
+		assert.matches("Route step 1",controls.help.label);assert.is_true(controls.canvas.routeState[originalId]);assert.is_nil(controls.canvas.routeOverlay);assert.is_nil(controls.canvas.comparison);assert.is_false(controls.remove:IsEnabled());assert.is_false(controls.version:IsEnabled());assert.is_nil(next(controls.canvas.preview));assert.is_false(controls.grantPrevious:IsEnabled());assert.is_true(controls.grantNext:IsEnabled())
 		controls.grantNext:Click();assert.equal(atlas.report(alternate).grantRoute[2].id,controls.canvas.focus);assert.matches("Route step 2",controls.help.label)
 		controls.grantPrevious:Click();assert.equal(originalId,controls.canvas.focus);assert.same(alternate.nodes,controls.canvas.selected().nodes)
-		controls.grantExit:Click();assert.is_false(controls.grantNext:IsShown());assert.is_true(controls.undo:IsShown())
+		controls.grantExit:Click();assert.is_nil(controls.canvas.routeState);assert.is_false(controls.grantNext:IsShown());assert.is_true(controls.undo:IsShown())
 		controls.stats:Click();browser=main.popups[1].controls;browser.search:SetText("Temporary grant route",true);browser.choose:Click();main.popups[1].controls.choose:Click()
 		controls.budget:SetText(tostring(needed+1),true);assert.is_false(controls.grantNext:IsShown());main.popups={}
 		alternate.avoided={17321}

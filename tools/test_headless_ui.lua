@@ -280,12 +280,16 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	do
 	ui:click("strategyTab");ui:text("requirements","Unfinished unlock note");ui:text("amount","many");ui:click("progressionTab")
 	assert(main.popups[1].controls.inspectRoute:IsEnabled(),"Stage route could not be opened on the tree")
+	local destination=copyTable(workspace.cache.atlas.layout.snapshot().nodes)
 	ui:click("inspectRoute");assert(workspace.controls.canvas.focus and workspace.controls.grantExit:IsShown(),"Stage route did not focus the tree")
+	local previewCount=0;for _ in pairs(workspace.controls.canvas.routeState or {}) do previewCount=previewCount+1 end
+	assert(previewCount==1 and workspace.controls.status.label:find("Preview:",1,true),"Route did not show the first intermediate allocation")
+	assert(#workspace.cache.atlas.layout.snapshot().nodes==#destination and not workspace.controls.remove:IsEnabled(),"Route preview changed or allowed editing the destination")
 	local routeFocus=workspace.controls.canvas.focus;local routeSplit=workspace.controls.splitter;local rx,ry=routeSplit:GetPos()
 	ui.cursorX,ui.cursorY=rx+5,ry+50;ui:dispatch(build,{{type="KeyDown",key="LEFTBUTTON"}});ui.cursorX=ui.cursorX-20;ui:dispatch(build,{{type="KeyUp",key="LEFTBUTTON"}})
 	assert(workspace.controls.grantExit:IsShown() and workspace.controls.canvas.focus==routeFocus,"Resizing lost the stage route")
-	frame("atlas-stage-route-on-tree");if workspace.controls.grantNext:IsEnabled() then local first=workspace.controls.canvas.focus;ui:click("grantNext");assert(workspace.controls.canvas.focus~=first,"Stage route did not advance") end
-	ui:click("grantExit");local resumed=main.popups[1].controls;assert(resumed.previous:GetSelValueByKey("val")=="starter-atlas" and resumed.stage:GetSelValueByKey("val")=="final","Stage selection was lost")
+	frame("atlas-stage-route-on-tree");if workspace.controls.grantNext:IsEnabled() then local first=workspace.controls.canvas.focus;ui:click("grantNext");assert(workspace.controls.canvas.focus~=first,"Stage route did not advance");local count=0;for _ in pairs(workspace.controls.canvas.routeState or {}) do count=count+1 end;assert(count==2,"Route preview did not update after advancing") end
+	ui:click("grantExit");assert(workspace.controls.canvas.routeState==nil and #workspace.cache.atlas.layout.snapshot().nodes==#destination,"Exiting changed the destination plan");local resumed=main.popups[1].controls;assert(resumed.previous:GetSelValueByKey("val")=="starter-atlas" and resumed.stage:GetSelValueByKey("val")=="final","Stage selection was lost")
 	ui:click("strategyTab");assert(resumed.requirements.buf=="Unfinished unlock note" and resumed.amount.buf=="many","Unfinished strategy edits were lost");frame("atlas-stage-route-resumed");ui:click("progressionTab")
 	ui:click("inspectRoute");local sameBudget=workspace.controls.budget.buf;ui:text("budget","")
 	assert(not workspace.controls.grantExit:IsShown(),"Editing the budget did not exit the route");ui:click("progression")
