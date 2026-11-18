@@ -278,7 +278,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local starter=copyTable(build.savers.AtlasPlans.plans[1]);starter.id="starter-atlas";starter.title="Starter maps";starter.nodes={};starter.progression={stage="starter"};build.savers.AtlasPlans:Upsert(starter)
 	ui:click("progression");assert(not main.popups[1].controls.copyRoute:IsEnabled(),"Route copy should require a previous stage");ui:choose("stage","final","val");ui:choose("previous","starter-atlas","val");frame("atlas-progression");ui:click("copyRoute");assert(ui.clipboard:find("Starter maps",1,true) and ui.clipboard:find("Allocate:",1,true) and ui.clipboard:find("base points",1,true),"Copied Atlas route omitted steps or budget assumptions")
 	do
+	local originalBody=workspace.body
+	ui:resize(alternate[1],alternate[2]);ui:frame(build);assert(workspace.body==originalBody,"Resizing replaced the parent of an open stage dialog")
 	ui:click("strategyTab");ui:text("requirements","Unfinished unlock note");ui:text("amount","many");ui:click("progressionTab")
+	ui:resize(size[1],size[2]);ui:frame(build);assert(workspace.body==originalBody,"Returning to the original size replaced the parent of an open stage dialog")
 	assert(main.popups[1].controls.inspectRoute:IsEnabled(),"Stage route could not be opened on the tree")
 	local destination=copyTable(workspace.cache.atlas.layout.snapshot().nodes)
 	ui:click("inspectRoute");assert(workspace.controls.canvas.focus and workspace.controls.grantExit:IsShown(),"Stage route did not focus the tree")

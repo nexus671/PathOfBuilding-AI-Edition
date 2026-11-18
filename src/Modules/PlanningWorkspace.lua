@@ -169,7 +169,11 @@ end
 function M:Draw(viewport,events)
 	local resized=self.viewport.width~=viewport.width or self.viewport.height~=viewport.height
 	self.viewport=viewport
-	if resized then
+	-- Dialog callbacks refer to their parent panel. Remount only after the
+	-- dialog closes, so a resize cannot apply edits to an abandoned panel.
+	if resized and main.popups[1] then self.pendingResize=true end
+	if (resized or self.pendingResize) and not main.popups[1] then
+		self.pendingResize=nil
 		for page in pairs(self.cache) do self:Remember(page) end
 		self.cache={};self.body=nil
 		self:Show(self.page)
