@@ -181,10 +181,14 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 				entries[#entries+1]={id=method..":"..tag,label=label,category="Harvest",icon=icon,action=action,details=details}
 			end
 		end end
-		for _,from in ipairs({"fire","cold","lightning"}) do for _,to in ipairs({"fire","cold","lightning"}) do if from~=to then
-			local action={method="harvest_damage",from=from,to=to};local label="Harvest: "..from.." to "..to.." damage"
-			entries[#entries+1]={id="harvest_damage:"..from..":"..to,label=label,category="Harvest",action=action,details={label,"Experimental conversion; unsupported modifier families are rejected. Requires 300 of each element's Lifeforce and one Crystallised Rancour."}}
-		end end end
+		for _,method in ipairs({"harvest_damage","harvest_resistance"}) do for _,from in ipairs({"fire","cold","lightning"}) do for _,to in ipairs({"fire","cold","lightning"}) do if from~=to then
+			local action={method=method,from=from,to=to};local label=workbench.actionLabel(action,model)
+			local details={label,"A compatible modifier and item state are required when this step runs."};local costs=sim.components(action,nil,model);local keys={};local icon
+			for _,warning in ipairs(sim.actionWarnings(action,model)) do details[#details+1]=warning.message end
+			for key in pairs(costs) do keys[#keys+1]=key end;table.sort(keys)
+			for _,key in ipairs(keys) do local resource=workbench.resourceInfo(key,model);details[#details+1]="Cost: "..costs[key].." "..(resource and resource.name or key);if not icon and key:find("lifeforce",1,true) then icon=resource and resource.path end end
+			entries[#entries+1]={id=method..":"..from..":"..to,label=label,category="Harvest",icon=icon,action=action,details=details}
+		end end end end
 		require("Classes.PlanningBrowserControl").Open("Add a recipe step",entries,{action="Add step",closeOnChoose=false,choose=function(entry)
 			main:ClosePopup()
 			local function append(action) draft=require("Modules.CraftingRoutes").append(draft,action);selected=#draft.steps;refresh() end
