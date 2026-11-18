@@ -37,6 +37,36 @@ def contains(rect, x, y):
     return rect[0] <= x < rect[0] + rect[2] and rect[1] <= y < rect[1] + rect[3]
 
 
+def hidden_text(commands, width, height):
+    """Find text almost entirely covered by a later opaque, untextured rectangle."""
+    ordered = sorted(commands, key=lambda c: (c["layer"], c["sublayer"], c["order"]))
+    covers, hidden = [], []
+
+    def bounds(command):
+        x, y, w, h = (command.get(key, 0) for key in ("x", "y", "width", "height"))
+        cx, cy, cw, ch = command["clip"]
+        return max(0, x, cx), max(0, y, cy), min(width, x + w, cx + cw), min(height, y + h, cy + ch)
+
+    for command in reversed(ordered):
+        # Native tooltips intentionally cover other controls. Keep the check
+        # on ordinary controls, where a later solid background can hide text.
+        if command["sublayer"] >= 100:
+            continue
+        if command["kind"] == "rect" and not command.get("asset") and not command.get("textured") and command["color"][3] >= 0.98:
+            covers.append(bounds(command))
+        elif command["kind"] == "text" and ESCAPE.sub("", command.get("text", "")).strip():
+            left, top, right, bottom = bounds(command)
+            area = (right - left) * (bottom - top)
+            if right - left < 5 or bottom - top < 5:
+                continue
+            for x1, y1, x2, y2 in covers:
+                overlap = max(0, min(right, x2) - max(left, x1)) * max(0, min(bottom, y2) - max(top, y1))
+                if overlap >= area * 0.95:
+                    hidden.append(command["text"])
+                    break
+    return list(reversed(hidden))
+
+
 def contrast(first, second):
     def luminance(rgb):
         values = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb[:3]]
@@ -112,8 +142,9 @@ def textured_quad(layer, command):
 
 def render(frame):
     canvas = Image.new("RGBA", (frame["width"], frame["height"]), (18, 18, 18, 255))
-    audit = {"lowContrast": [], "horizontalClipping": [], "controlClipping": [], "controlOverlaps": [], "texturedPlaceholders": 0,
-             "limitations": frame.get("limitations", [])}
+    audit = {"lowContrast": [], "horizontalClipping": [], "controlClipping": [], "controlOverlaps": [],
+             "hiddenText": hidden_text(frame["commands"], frame["width"], frame["height"]), "texturedPlaceholders": 0,
+             "limitations": frame.get("limitations", []) + ["Hidden-text detection checks individual opaque solid rectangles; textures, translucent overlays and tooltips are not assessed."]}
     controls = frame.get("controls", [])
     dialog = frame.get("dialog")
     if dialog and (dialog["x"] < 0 or dialog["y"] < 0 or dialog["x"] + dialog["width"] > frame["width"] or dialog["y"] + dialog["height"] > frame["height"]):
@@ -250,8 +281,8 @@ def main():
         image, audit = render(frame)
         image.save(args.output / (path.stem + ".png"))
         (args.output / (path.stem + ".audit.json")).write_text(json.dumps(audit, indent=2))
-        failures += len(audit["lowContrast"]) + len(audit["horizontalClipping"]) + len(audit["controlClipping"]) + len(audit["controlOverlaps"])
-        print(path.name, "draws", len(frame["commands"]), "contrast", len(audit["lowContrast"]), "clipping", len(audit["horizontalClipping"]), "controls", len(audit["controlClipping"]) + len(audit["controlOverlaps"]))
+        failures += len(audit["lowContrast"]) + len(audit["horizontalClipping"]) + len(audit["controlClipping"]) + len(audit["controlOverlaps"]) + len(audit["hiddenText"])
+        print(path.name, "draws", len(frame["commands"]), "contrast", len(audit["lowContrast"]), "clipping", len(audit["horizontalClipping"]), "controls", len(audit["controlClipping"]) + len(audit["controlOverlaps"]), "hidden", len(audit["hiddenText"]))
     if args.check and failures:
         raise SystemExit(1)
 

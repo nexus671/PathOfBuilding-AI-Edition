@@ -43,7 +43,7 @@ def render_frame(path):
     image, audit = render(json.loads(path.read_text()))
     image.save(path.parent.parent / (path.stem + ".png"))
     (path.parent.parent / (path.stem + ".audit.json")).write_text(json.dumps(audit, indent=2))
-    if any(audit[key] for key in ("lowContrast", "horizontalClipping", "controlClipping", "controlOverlaps")):
+    if any(audit[key] for key in ("lowContrast", "horizontalClipping", "controlClipping", "controlOverlaps", "hiddenText")):
         return {"frame": path.name, "audit": audit}
 
 
@@ -160,7 +160,7 @@ def main():
     assert any(c["kind"] == "text" and c["sublayer"] == 100 and "Alt+3" in c["text"] for c in tooltip["commands"]), "Native tooltip fixture did not draw its overlay"
     image, audit = render(tooltip)
     image.save(directory / "expected-audit-tooltip.png")
-    assert not any(audit[key] for key in ("lowContrast", "horizontalClipping", "controlClipping", "controlOverlaps")), "Native tooltip was incorrectly treated as control content"
+    assert not any(audit[key] for key in ("lowContrast", "horizontalClipping", "controlClipping", "controlOverlaps", "hiddenText")), "Native tooltip was incorrectly treated as control content"
     negative = json.loads((directory / "expected-audit-failures.json").read_text())
     image, audit = render(negative)
     image.save(directory / "expected-audit-failures.png")

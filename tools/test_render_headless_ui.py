@@ -3,13 +3,34 @@
 import hashlib
 import unittest
 
-from render_headless_ui import render
+from render_headless_ui import hidden_text, render
 
 
 def rectangle(x, y, width, height, clip, color, order):
     return {"kind": "rect", "x": x, "y": y, "width": width, "height": height,
             "clip": clip, "color": color, "layer": 0, "sublayer": 0,
             "order": order, "asset": False}
+
+
+def text_command(order=1, sublayer=0):
+    return {"kind": "text", "x": 10, "y": 10, "width": 40, "height": 12,
+            "clip": [0, 0, 80, 80], "text": "^7Visible label",
+            "layer": 0, "sublayer": sublayer, "order": order}
+
+
+class HiddenTextTests(unittest.TestCase):
+    def test_detects_a_card_background_drawn_over_a_label(self):
+        background = rectangle(5, 5, 55, 25, [0, 0, 80, 80], [.1, .1, .1, 1], 2)
+        self.assertEqual(["^7Visible label"], hidden_text([text_command(), background], 80, 80))
+        self.assertEqual([], hidden_text([text_command(sublayer=1), background], 80, 80))
+
+    def test_respects_transparency_clipping_textures_and_tooltips(self):
+        background = rectangle(5, 5, 55, 25, [0, 0, 80, 80], [.1, .1, .1, 1], 2)
+        self.assertEqual([], hidden_text([text_command(), {**background, "color": [.1, .1, .1, .5]}], 80, 80))
+        self.assertEqual([], hidden_text([text_command(), {**background, "clip": [5, 5, 10, 10]}], 80, 80))
+        self.assertEqual([], hidden_text([text_command(), {**background, "asset": "background.png"}], 80, 80))
+        self.assertEqual([], hidden_text([text_command(), {**background, "sublayer": 100}], 80, 80))
+        self.assertEqual([], hidden_text([text_command(), {**background, "width": 42}], 80, 80))
 
 
 class RectangleRenderingTests(unittest.TestCase):
@@ -26,7 +47,7 @@ class RectangleRenderingTests(unittest.TestCase):
         # Reference pixels were produced by the original full-window layers.
         self.assertEqual("928a3ff2b23423b647d8aadfad381cd1fe8133882ed5b226576a9df0175b002f",
                          hashlib.sha256(image.tobytes()).hexdigest())
-        self.assertFalse(any(audit[key] for key in ("lowContrast", "horizontalClipping", "controlClipping", "controlOverlaps")))
+        self.assertFalse(any(audit[key] for key in ("lowContrast", "horizontalClipping", "controlClipping", "controlOverlaps", "hiddenText")))
 
 
 if __name__ == "__main__":
