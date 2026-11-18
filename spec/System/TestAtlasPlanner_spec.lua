@@ -12,6 +12,7 @@ describe("Native Atlas planner", function()
 		local source=plan("3.30.0-preview");source.mapDrafts={}
 		for i=1,12 do source.mapDrafts[i]={id="map-"..i,title="Map "..i,patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="normal",selected={}} end
 		source.mapDrafts[1].rarity="rare";source.mapDrafts[1].selected={"MapMonsterCriticalStrikesAndDamageMapWorlds"};source.mapDrafts[1].rolls={{id="MapMonsterCriticalStrikesAndDamageMapWorlds",values={16,9,6,183,32}}}
+		source.mapDrafts[1].quality={kind="Pack Size",value=20}
 		local map=require("Modules.MapCraftingData");local ids={}
 		for _=1,9 do local page=map.inspect("Metadata/Items/Maps/MapWorldsStrand",16,83,ids,"",0,100,nil,"rare",nil,true);ids[#ids+1]=page.candidates[1].id end
 		source.mapDrafts[2].rarity="rare";source.mapDrafts[2].corrupted=true;source.mapDrafts[2].selected=ids;source.mapDrafts[2].implicit={id="MapCorruptionItemRarity",value=15}
@@ -21,6 +22,7 @@ describe("Native Atlas planner", function()
 		assert.same(source.mapDrafts,atlas.import(atlas.export(source)).mapDrafts)
 		local unsupported=copyTable(source);unsupported.mapDrafts[1].baseId="Metadata/UnknownFutureMap";assert.same(unsupported.mapDrafts,atlas.validate(unsupported).mapDrafts)
 		local duplicate=copyTable(source);duplicate.mapDrafts[2].id=duplicate.mapDrafts[1].id;assert.has_error(function() atlas.validate(duplicate) end)
+		local badQuality=copyTable(source);badQuality.mapDrafts[1].quality.value=101;assert.has_error(function() atlas.validate(badQuality) end)
 		local badRoll=copyTable(source);badRoll.mapDrafts[1].rolls[1].id="unknown";assert.has_error(function() atlas.validate(badRoll) end)
 		local badTarget=copyTable(source);badTarget.mapDrafts[1].estimate.avoid={"MapContainsMirageWorlds"};assert.has_error(function() atlas.validate(badTarget) end)
 		local badBudget=copyTable(source);badBudget.mapDrafts[1].estimate.trials=1000;badBudget.mapDrafts[1].estimate.maxAttempts=21;assert.has_error(function() atlas.validate(badBudget) end)

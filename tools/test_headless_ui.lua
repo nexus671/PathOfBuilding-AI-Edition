@@ -85,7 +85,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(main.popups[1].controls.tier:GetSelValueByKey("val")==5 and main.popups[1].controls.remove:IsEnabled(),"Copied map was not applied")
 		local lines={};for _,row in ipairs(main.popups[1].controls.affixes.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
 		assert(table.concat(lines," "):find("55%% extra Physical Damage"),"Verified copied map roll was not displayed")
-		frame("map-clipboard-imported");ui:choose("tier",16,"val")
+		assert(table.concat(lines," "):find("Quality %(Pack Size%): %+20%%"),"Copied map quality was not shown")
+		frame("map-clipboard-imported");ui:click("quality");frame("map-quality-editor");ui:click("keep");ui:choose("tier",16,"val")
 	end
 	do
 		local initial=main.popups[1].controls;initial.list.onClick({line=initial.list.list[1]});ui:click("add")

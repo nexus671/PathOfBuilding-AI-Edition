@@ -1,6 +1,17 @@
 describe("Map modifier explorer",function()
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("records and reopens map quality without adding it to estimates",function()
+		local captured;local controls=require("Classes.MapModifierControl").Open({keep=function(entry) captured=copyTable(entry);return "map-test" end})
+		controls.quality:Click();local popup=main.popups[1].controls
+		popup.kind:SetText("Pack Size");popup.value:SetText("20");popup.keep:Click()
+		controls.keep:Click();assert.same({kind="Pack Size",value=20},captured.quality)
+		captured.id="map-test";controls.close:Click()
+		controls=require("Classes.MapModifierControl").Open({initial=captured,keep=function(entry) captured=copyTable(entry);return "map-test" end})
+		local text="";for _,row in ipairs(controls.affixes.list) do text=text..StripEscapes(row[1] or "") end
+		assert.matches("Quality %(Pack Size%): %+20%% %(excluded%)",text)
+		controls.quality:Click();popup=main.popups[1].controls;popup.clear:Click();controls.keep:Click();assert.is_nil(captured.quality)
+	end)
 	it("selects current map items and keeps their tier synchronized",function()
 		local captured
 		local controls=require("Classes.MapModifierControl").Open({keep=function(entry) captured=copyTable(entry);return "map-test" end})

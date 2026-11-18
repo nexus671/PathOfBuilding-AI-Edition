@@ -49,6 +49,16 @@ function M.parse(raw,checkpoint)
  local tier=displayedTier or itemTier;local level=tonumber(raw:match("\nItem Level:%s*(%d+)"))
  assert(tier and tier>=1 and tier<=16,"Use an ordinary map with tier 1 to 16")
  assert(level and level>=1 and level<=100,"The copied map needs its item level")
+ local quality
+ for line in raw:gmatch("[^\n]+") do
+  if line:match("^Quality[%s:(]") then
+   assert(not quality,"The copied map has multiple quality lines")
+   local kind,value=line:match("^Quality %(([%w '%-]+)%)%s*:%s*%+?(%d+)%%")
+   if not kind then value=line:match("^Quality%s*:%s*%+?(%d+)%%");kind=value and "Unspecified" or nil end
+   assert(kind and value,"The map quality line is not supported")
+   quality=require("Modules.MapQuality").validate({kind=kind,value=tonumber(value)})
+  end
+ end
  local header=assert(raw:match("Rarity: [^\n]+\n(.-)\n%-%-%-%-%-%-%-%-"),"The copied map has no item header")
  local matches,exact,longest={},false,0
  if itemTier then
@@ -157,8 +167,8 @@ function M.parse(raw,checkpoint)
  search(1)
  assert(#solutions>0,"Some copied modifier lines could not be matched to the current map data; the existing draft was not changed")
  assert(#solutions==1,"The copied modifiers match multiple identities; select them manually instead")
- local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,implicit=implicit}
+ local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,implicit=implicit,quality=quality}
  if rarity~="normal" then map.inspect(state.baseId,tier,level,state.selected,"",0,1,checkpoint,rarity,nil,corrupted,implicit) end
- return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.","Map quality is not imported; displayed totals exclude quality. Enchanted maps are unsupported.",itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately."}}
+ return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality recorded: "..quality.kind.." +"..quality.value.."%. Totals exclude quality. Enchanted maps are unsupported.") or "No quality recorded. Totals exclude quality. Enchanted maps are unsupported.",itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately."}}
 end
 return M

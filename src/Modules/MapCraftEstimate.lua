@@ -30,7 +30,7 @@ function M.run(state,options,checkpoint)
 	local trials=integer(options.trials,1,1000,"trial count");local maxAttempts=integer(options.maxAttempts,1,1000,"attempt limit")
 	assert(trials*maxAttempts<=20000,"Use at most 20,000 total simulated attempts")
 	local seed=integer(options.seed,1,2147483646,"estimate seed");local action=rarity=="magic" and "alteration" or "chaos"
-	local base={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity=rarity,selected={}}
+	local base={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity=rarity,selected={},quality=require("Modules.MapQuality").validate(state.quality)}
 	local progress={trial=1,trials=trials,attempts=0}
 	local function slice() if checkpoint then checkpoint(progress) end end
 	-- The ordered wanted list must itself be a supported ordinary-map state.

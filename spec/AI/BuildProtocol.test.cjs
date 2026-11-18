@@ -112,7 +112,7 @@ test('queues bounded map modifier inspection', t => {
   assert.equal(JSON.parse(fs.readFileSync(path.join(bases.dir,'AI-build-request.json'))).kind,'search_map_bases');
 });
 test('queues a seeded hypothetical map currency action', t => {
-  const f=fixture(t), state={baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'normal',selected:[]};
+  const f=fixture(t), state={baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'normal',selected:[],quality:{kind:'Pack Size',value:20}};
   const args={baseRevision:f.state.revision,state,action:'alchemy',seed:42};
   f.call('simulate_map_currency',args);
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
@@ -402,6 +402,7 @@ test('preserves Atlas effect choices in AI proposals', t => {
 
 test('preserves multiple map drafts in Atlas proposals', t => {
   const f=fixture(t), mapDrafts=Array.from({length:12},(_,i)=>({id:`map-${i}`,title:`Map ${i}`,patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'normal',selected:[]}));
+  mapDrafts[0].quality={kind:'Pack Size',value:20};
   mapDrafts[0]={...mapDrafts[0],rarity:'rare',selected:['MapMonsterAreaOfEffectMapWorlds'],rolls:[{id:'MapMonsterAreaOfEffectMapWorlds',values:[13,8,5,45]}],estimate:{wantedGroups:[['MapMonsterAreaOfEffectMapWorlds']],avoid:['MapContainsMirageWorlds'],trials:20,maxAttempts:5}};
   mapDrafts[1]={...mapDrafts[1],rarity:'rare',corrupted:true,implicit:{id:'MapCorruptionItemRarity',value:15}};
   const plan={id:'atlas',title:'Mapping',version:'3.30.0-preview',budget:150,nodes:[],mapDrafts};
