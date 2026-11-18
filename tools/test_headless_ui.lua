@@ -120,12 +120,13 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("add");assert(main.popups[1].controls.remove:IsEnabled(),"Map modifier was not staged");frame("map-modifier-staged")
 	ui:click("estimate");frame("map-reroll-estimate");ui:click("addAlternative");ui:text("search","MapMonsterFireDamageMapWorlds");frame("map-reroll-alternative");ui:click("choose")
 	ui:click("addAvoid");ui:text("search","MapMonsterColdDamageMapWorlds");frame("map-reroll-avoid");ui:click("choose")
+	ui:click("price");frame("map-orb-price");ui:text("amount","0.5");ui:text("currency","chaos");ui:click("keep")
 	ui:text("trials","1");ui:text("attempts","1");assert(main.popups[1].controls.trials.buf=="1" and main.popups[1].controls.attempts.buf=="1","Map estimate fields did not accept numeric input");ui:click("run")
 	do local tasks=require("Modules.CraftingTasks");for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end;assert(not tasks.job,"Map reroll estimate did not finish") end
 	assert((main.popups[1].controls.report.list[1][1] or ""):find("succeeded",1,true),"Map reroll estimate did not report results");frame("map-reroll-result");ui:click("keepSettings");ui:click("close")
 	ui:text("draftName","Targets");ui:click("keep");ui:click("close");ui:click("tools");ui:text("search","Saved map drafts");ui:click("choose");ui:click("choose");ui:click("estimate")
 	do local c=main.popups[1].controls;local t="";for _,row in ipairs(c.wanted.list) do t=t..StripEscapes(row[1] or "") end;local a="";for _,row in ipairs(c.avoid.list) do a=a..StripEscapes(row[1] or "") end;assert(t:find("Burning",1,true) and a:find("Freezing",1,true) and c.trials.buf=="1","Map estimate settings did not reopen") end
-	frame("map-estimate-restored");ui:click("removeAvoid");frame("map-remove-avoided");ui:click("close");ui:click("removeAlternative");frame("map-remove-option");ui:click("close");ui:click("close")
+	frame("map-estimate-restored");ui:click("price");assert(main.popups[1].controls.amount.buf=="0.5","Map orb price did not reopen");ui:click("close");ui:click("removeAvoid");frame("map-remove-avoided");ui:click("close");ui:click("removeAlternative");frame("map-remove-option");ui:click("close");ui:click("close")
 	ui:click("remove");ui:choose("rarity","normal","val");ui:click("currency");ui:text("search","Chaos Orb")
 	do local c=main.popups[1].controls;local detail={};for _,row in ipairs(c.details.list) do detail[#detail+1]=StripEscapes(row[1] or "") end;assert(not c.choose:IsEnabled() and table.concat(detail," "):find("Requires a rare map",1,true),"Incompatible currency did not explain why it is unavailable") end
 	frame("map-currency-unavailable");ui:text("search","Orb of Alchemy");frame("map-currency-picker");ui:click("choose")

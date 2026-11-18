@@ -17,6 +17,19 @@ describe("Map reroll estimate control",function()
 		assert.is_true(controls.use:IsEnabled());controls.use:Click()
 		assert.is_truthy(sample);assert.equal("rare",sample.rarity);assert.equal(#sample.selected,#sample.rolls)
 	end)
+	it("saves a manual orb price and displays bounded estimated costs",function()
+		local saved;local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
+		local options={state=state,avoid={"MapMonsterAreaOfEffectMapWorlds"},saveSettings=function(value) saved=copyTable(value) end,apply=function() end}
+		local controls=require("Classes.MapCraftEstimateControl").Open(build,options)
+		controls.price:Click();local popup=main.popups[1].controls;popup.amount:SetText("0.5",true);popup.currency:SetText("chaos",true);popup.keep:Click()
+		assert.matches("Keep targets again",StripEscapes(controls.report.list[2][1]))
+		controls.trials:SetText("2",true);controls.attempts:SetText("1",true);controls.keepSettings:Click();assert.same({amount=0.5,currency="chaos"},saved.price)
+		controls.run:Click();for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
+		local report="";for _,row in ipairs(controls.report.list) do report=report..StripEscapes(row[1] or "").." " end
+		assert.matches("Mean orb cost per trial: 0.5 chaos",report);assert.matches("excludes the map",report)
+		controls.close:Click();options.settings=saved;controls=require("Classes.MapCraftEstimateControl").Open(build,options)
+		controls.price:Click();popup=main.popups[1].controls;assert.equal("0.5",popup.amount.buf);popup.clear:Click();controls.keepSettings:Click();assert.is_nil(saved.price)
+	end)
 	it("offers unlocked Nightmare modifiers and explains the estimate assumptions",function()
 		local state={baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}
 		local settings={wantedGroups={{"MapUberWeakContainsDeliriumMirror"}},avoid={},trials=2,maxAttempts=2}

@@ -132,11 +132,12 @@ test('queues a seeded hypothetical map currency action', t => {
   for(const invalid of [{...args,seed:0},{...args,action:'vaal'},{...args,state:{...state,rarity:'unique'}},{...args,state:{...state,selected:Array(10).fill('x')}}]) assert.throws(()=>f.call('simulate_map_currency',invalid),/arguments/);
 });
 test('queues bounded map reroll estimates', t => {
-  const f=fixture(t), state={baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'}, options={wanted:[],wantedGroups:[['MapContainsMirageWorlds','MapContainsWildwoodWorlds']],avoid:['MapMonsterAreaOfEffectMapWorlds'],trials:10,maxAttempts:5,seed:42};
+  const f=fixture(t), state={baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'}, options={wanted:[],wantedGroups:[['MapContainsMirageWorlds','MapContainsWildwoodWorlds']],avoid:['MapMonsterAreaOfEffectMapWorlds'],trials:10,maxAttempts:5,seed:42,price:{amount:0.5,currency:'chaos'}};
   f.call('estimate_map_rerolls',{baseRevision:f.state.revision,state,options});
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
   assert.equal(request.kind,'estimate_map_rerolls');assert.deepEqual(request.options,options);
   assert.throws(()=>f.call('estimate_map_rerolls',{baseRevision:f.state.revision,state,options:{...options,trials:1001}}),/arguments/);
+  assert.throws(()=>f.call('estimate_map_rerolls',{baseRevision:f.state.revision,state,options:{...options,price:{amount:-1,currency:'chaos'}}}),/arguments/);
   const grouped=fixture(t);grouped.call('estimate_map_rerolls',{baseRevision:grouped.state.revision,state,options:{wantedGroups:options.wantedGroups,trials:1,maxAttempts:1,seed:42}});
 });
 test('accepts typed Atlas stages, strategy inputs and explicit failure recovery branches', t => {

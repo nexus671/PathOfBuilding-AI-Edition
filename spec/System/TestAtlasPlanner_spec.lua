@@ -21,7 +21,7 @@ describe("Native Atlas planner", function()
 	it("persists a tier 17 Nightmare map draft",function()
 		local source=plan("3.30.0-preview")
 		source.mapDrafts={{id="nightmare",title="Abomination",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={"MapUberModCurses"}}}
-		source.mapDrafts[1].estimate={wantedGroups={{"MapUberWeakContainsDeliriumMirror"}},avoid={},trials=3,maxAttempts=5}
+		source.mapDrafts[1].estimate={wantedGroups={{"MapUberWeakContainsDeliriumMirror"}},avoid={},trials=3,maxAttempts=5,price={amount=0.5,currency="chaos"}}
 		local store=atlas.new(build);store:Upsert(source);local xml={};store:Save(xml)
 		local reopened=atlas.new(build);reopened:Load(xml);assert.same(source.mapDrafts,reopened.plans[1].mapDrafts)
 		assert.same(source.mapDrafts,atlas.import(atlas.export(source)).mapDrafts)

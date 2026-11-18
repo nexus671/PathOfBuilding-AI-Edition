@@ -10,6 +10,18 @@ describe("Map reroll estimates",function()
 		assert.is_truthy(result.sampleSuccess);assert.equal(#result.sampleSuccess.selected,#result.sampleSuccess.rolls)
 		assert.same({},state.selected);assert.matches("sampling uncertainty only",result.note)
 	end)
+	it("prices the actual attempts, including unsuccessful trials, from a supplied quote",function()
+		local input={baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}
+		local page=require("Modules.MapCraftingData").inspect(input.baseId,17,84,{},"",0,100,nil,"rare")
+		local avoid={};for _,entry in ipairs(page.candidates) do avoid[#avoid+1]=entry.id end
+		local options={avoid=avoid,trials=3,maxAttempts=2,seed=42,price={amount=0.25,currency="chaos"}}
+		local result=estimate.run(input,options)
+		assert.equal(0,result.successes);assert.equal(6,result.attempts)
+		assert.same({currency="chaos",unitPrice=0.25,totalSpent=1.5,meanSpent=0.5,maxPerTrial=0.5},result.cost)
+		assert.matches("exclude the map",result.note)
+		options.price={amount=-1,currency="chaos"};assert.has_error(function() estimate.run(input,options) end)
+		options.price={amount=1,currency="chaos\nunsafe"};assert.has_error(function() estimate.run(input,options) end)
+	end)
 	it("uses the same modifier identities in fast and full rolls",function()
 		local full=currency.perform(state,"chaos",123);local fast=currency.perform(state,"chaos",123,nil,true)
 		assert.same(full.state.selected,fast.state.selected);assert.same({},fast.state.rolls);assert.is_nil(fast.summary)

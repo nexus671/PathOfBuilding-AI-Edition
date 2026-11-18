@@ -3,6 +3,14 @@ local map=require("Modules.MapCraftingData")
 local currency=require("Modules.MapCurrency")
 local encounter=require("Modules.CalcEncounter")
 local M={}
+function M.validatePrice(price)
+	if price==nil then return nil end
+	assert(type(price)=="table","Invalid orb price")
+	local amount,currency=price.amount,price.currency
+	assert(type(amount)=="number" and amount==amount and amount>=0 and amount<=1e12,"Invalid orb price")
+	assert(type(currency)=="string" and #currency<=24 and currency:match("^[A-Za-z][A-Za-z0-9 _%-]*$"),"Invalid price currency")
+	return {amount=amount,currency=currency}
+end
 local function integer(value,low,high,label)
 	assert(type(value)=="number" and value==math.floor(value) and value>=low and value<=high,"Invalid "..label);return value
 end
@@ -28,6 +36,7 @@ function M.run(state,options,checkpoint)
 	assert(#groups+#avoid>0,"Choose at least one wanted or avoided modifier")
 	for id in pairs(must) do assert(not forbidden[id],"A modifier cannot be both wanted and avoided") end
 	local trials=integer(options.trials,1,1000,"trial count");local maxAttempts=integer(options.maxAttempts,1,1000,"attempt limit")
+	local price=M.validatePrice(options.price)
 	assert(trials*maxAttempts<=20000,"Use at most 20,000 total simulated attempts")
 	local seed=integer(options.seed,1,2147483646,"estimate seed");local action=rarity=="magic" and "alteration" or "chaos"
 	local base={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity=rarity,selected={},quality=require("Modules.MapQuality").validate(state.quality),observedEffects=require("Modules.MapObservedEffects").validate(state.observedEffects)}
@@ -110,9 +119,10 @@ function M.run(state,options,checkpoint)
 	local low,high=encounter.wilson(successes,trials);local distribution={}
 	for attempt,count in pairs(histogram) do distribution[#distribution+1]={attempt=attempt,count=count} end
 	table.sort(distribution,function(a,b) return a.attempt<b.attempt end)
-	return {trials=trials,maxAttempts=maxAttempts,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,
+	local cost=price and {currency=price.currency,unitPrice=price.amount,totalSpent=totalAttempts*price.amount,meanSpent=totalAttempts/trials*price.amount,maxPerTrial=maxAttempts*price.amount} or nil
+	return {trials=trials,maxAttempts=maxAttempts,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,cost=cost,
 		attempts=totalAttempts,meanAttempts=totalAttempts/trials,action=action,seed=seed,wanted=copyTable(wanted),wantedGroups=copyTable(alternatives),avoid=copyTable(avoid),unavailableAvoid=unavailableAvoid,
 		successDistribution=distribution,sampleSuccess=sample and sample.state or nil,sampleSummary=sample and sample.summary or nil,sampleAttempts=successfulAttempts,
-		note="Chance of meeting every wanted group (at least one alternative per group) and no avoided modifiers within the attempt limit. Wilson interval measures sampling uncertainty only. Map roll counts, weights, stat distributions and some restrictions are unverified estimates; no prices or game odds are inferred."..(map.isNightmare(base.baseId) and " Nightmare estimates assume one exclusive prefix and suffix drawn first, followed by four weighted draws; generation order is unverified." or "")..(#unavailableAvoid>0 and " Some avoided modifiers cannot appear in the modeled pool for this map." or "")..(base.observedEffects and " Observed implicit and enchantment effects are not modeled and can change results." or "")}
+		note="Chance of meeting every wanted group (at least one alternative per group) and no avoided modifiers within the attempt limit. Wilson interval measures sampling uncertainty only. Map roll counts, weights, stat distributions and some restrictions are unverified estimates; no prices or game odds are inferred."..(price and " Costs use the supplied per-orb price and exclude the map and other resources." or "")..(map.isNightmare(base.baseId) and " Nightmare estimates assume one exclusive prefix and suffix drawn first, followed by four weighted draws; generation order is unverified." or "")..(#unavailableAvoid>0 and " Some avoided modifiers cannot appear in the modeled pool for this map." or "")..(base.observedEffects and " Observed implicit and enchantment effects are not modeled and can change results." or "")}
 end
 return M

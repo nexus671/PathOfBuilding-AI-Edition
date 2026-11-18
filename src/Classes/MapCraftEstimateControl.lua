@@ -8,7 +8,7 @@ local M={}
 function M.Open(build,options)
 	local state=copyTable(options.state);local wanted=copyTable(options.wanted or {});local groups={}
 	if options.settings then groups=copyTable(options.settings.wantedGroups) else for _,id in ipairs(wanted) do groups[#groups+1]={id} end end
-	local avoid=copyTable(options.settings and options.settings.avoid or options.avoid or {});local result;local active;local alive=true;local settingsKept=options.settings~=nil
+	local avoid=copyTable(options.settings and options.settings.avoid or options.avoid or {});local price=options.settings and options.settings.price and copyTable(options.settings.price) or nil;local result;local active;local alive=true;local settingsKept=options.settings~=nil
 	local width=math.min(840,main.screenW-40);local height=math.min(590,main.screenH-60);local column=math.floor((width-48)/2);local right=column+32
 	local controls={};local report
 	local function invalidate()
@@ -106,12 +106,13 @@ function M.Open(build,options)
 	controls.trials.enabled=function() return not active end;controls.attempts.enabled=function() return not active end
 	controls.trials.changeFunc=invalidate;controls.attempts.changeFunc=invalidate
 	button("run",16,333,180,"Estimate rerolls",function()
-		local request={wanted={},wantedGroups=copyTable(groups),avoid=copyTable(avoid),trials=tonumber(controls.trials.buf),maxAttempts=tonumber(controls.attempts.buf),seed=os.time()%2147483646+1}
+		local request={wanted={},wantedGroups=copyTable(groups),avoid=copyTable(avoid),price=price and copyTable(price) or nil,trials=tonumber(controls.trials.buf),maxAttempts=tonumber(controls.attempts.buf),seed=os.time()%2147483646+1}
 		local ok,job=pcall(tasks.start,build,function(checkpoint) return require("Modules.MapCraftEstimate").run(state,request,checkpoint) end,
 			function(value)
 				if not alive then return end
 				active=nil;result=value
 				local lines={string.format("%.1f%% succeeded within %d rolls (%d / %d trials)",value.successChance,value.maxAttempts,value.successes,value.trials),string.format("95%% sampling interval %.1f%% to %.1f%% | mean %.2f %s per trial",value.confidenceLow,value.confidenceHigh,value.meanAttempts,value.action=="chaos" and "Chaos Orbs" or "Alteration Orbs"),"Model estimates only; interval does not measure uncertainty in game rules or prices."}
+				if value.cost then lines[#lines+1]=string.format("Mean orb cost per trial: %.6g %s | maximum: %.6g %s",value.cost.meanSpent,value.cost.currency,value.cost.maxPerTrial,value.cost.currency);lines[#lines+1]="Uses your per-orb price; excludes the map and other resources." end
 				for _,id in ipairs(value.unavailableAvoid or {}) do
 					local effect=map.summarize({id}).effects[1]
 					lines[#lines+1]="Cannot appear in modeled pool: "..effect.name
@@ -129,6 +130,24 @@ function M.Open(build,options)
 	controls.run.enabled=function() return not active and #groups+#avoid>0 end
 	controls.run.tooltipText="Select at least one wanted or avoided modifier before estimating."
 	button("cancel",204,333,120,"Cancel",function() if active and tasks.job==active then tasks.cancel() end end);controls.cancel.enabled=function() return active~=nil end
+	button("price",332,333,150,"Orb price...",function()
+		local popup={};local action=state.rarity=="rare" and "Chaos Orb" or "Orb of Alteration"
+		ui.description(popup,"help",16,28,608,40,{"Enter your price per "..action..". This is a manual quote, not a live market price."},14)
+		ui.label(popup,"amountLabel",16,88,"Price per orb",14)
+		popup.amount=new("EditControl"):EditControl(ui.anchor,{16,112,180,26},price and tostring(price.amount) or "",nil,"[^%d%.]",18)
+		ui.label(popup,"currencyLabel",212,88,"Currency",14)
+		popup.currency=new("EditControl"):EditControl(ui.anchor,{212,112,180,26},price and price.currency or "chaos",nil,nil,24)
+		popup.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,160,150,28},"Keep price",function()
+			local ok,value=pcall(require("Modules.MapCraftEstimate").validatePrice,{amount=tonumber(popup.amount.buf),currency=popup.currency.buf})
+			if not ok then main:OpenMessagePopup("Check orb price",ui.errorText(value));return end
+			price=value;invalidate();main:ClosePopup();report({"Manual price set: "..tostring(price.amount).." "..price.currency.." per "..action..". Run an estimate to calculate costs.",options.saveSettings and "Keep targets again to save the price in this map draft." or ""})
+		end)
+		popup.clear=new("ButtonControl"):ButtonControl(ui.anchor,{174,160,150,28},"Clear price",function() price=nil;invalidate();main:ClosePopup();report({"Orb price cleared. Run an estimate to see currency counts.",options.saveSettings and "Keep targets again to save the change in this map draft." or ""}) end)
+		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{524,160,100,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(popup,{keep=true});main:OpenPopup(640,206,"Price per orb",popup,nil,"amount","close")
+	end)
+	controls.price.label=function() return price and "Edit orb price" or "Set orb price" end
+	controls.price.enabled=function() return not active end;controls.price.tooltipText="Set an optional manual price per orb. No market prices are fetched."
 	button("fromMap",16,height-48,150,"Use map modifiers",function()
 		for _,id in ipairs(wanted) do for _,blocked in ipairs(avoid) do if id==blocked then main:OpenMessagePopup("Wanted targets","Remove the matching avoided modifier first.");return end end end
 		groups={};for _,id in ipairs(wanted) do groups[#groups+1]={id} end;selectGroup(1);invalidate();refresh()
@@ -136,7 +155,7 @@ function M.Open(build,options)
 	controls.fromMap.enabled=function() return not active and #wanted>0 end
 	controls.fromMap.tooltipText="Replace wanted targets with the modifiers currently on the map."
 	button("keepSettings",174,height-48,170,"Keep targets",function()
-		local settings={wantedGroups=copyTable(groups),avoid=copyTable(avoid),trials=tonumber(controls.trials.buf),maxAttempts=tonumber(controls.attempts.buf)}
+		local settings={wantedGroups=copyTable(groups),avoid=copyTable(avoid),price=price and copyTable(price) or nil,trials=tonumber(controls.trials.buf),maxAttempts=tonumber(controls.attempts.buf)}
 		local ok,value=pcall(require("Modules.AtlasPlanner").validateMapEstimate,settings)
 		if not ok then main:OpenMessagePopup("Map targets",ui.errorText(value));return end
 		options.saveSettings(value);settingsKept=true;report({"Targets ready. Keep the map draft, keep the Atlas plan, then save the build."})

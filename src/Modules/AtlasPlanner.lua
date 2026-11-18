@@ -34,6 +34,7 @@ end
 function M.validateMapEstimate(settings)
 	assert(type(settings)=="table","Invalid map estimate settings")
 	local result={wantedGroups={},avoid={},trials=integer(settings.trials,1,1000,"estimate trials"),maxAttempts=integer(settings.maxAttempts,1,1000,"estimate attempt limit")}
+	result.price=require("Modules.MapCraftEstimate").validatePrice(settings.price)
 	assert(result.trials*result.maxAttempts<=20000,"Use at most 20,000 total simulated attempts")
 	local seen,total={},0
 	for _,group in ipairs(array(settings.wantedGroups,6,"wanted groups")) do
