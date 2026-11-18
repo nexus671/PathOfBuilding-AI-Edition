@@ -859,9 +859,9 @@ function M.simulate(raw,recipe,options)
 				route.executed=route.executed+1
 				totalExecuted=totalExecuted+1
 				local setupKey=(M.priceKey or priceKey)(step)
-				-- Older plans used one generic resistance-conversion override.
-				-- Prefer a directional quote, but continue honoring the old key.
-				local legacyKey=step.method=="harvest_resistance" and "harvest_resistance" or nil
+				-- Prefer a specific quote while retaining older generic service prices.
+				local legacyKey=step.method=="harvest_resistance" and step.method or
+					step.beastLevel and (step.method=="beast_prefix_suffix" or step.method=="beast_suffix_prefix") and step.method or nil
 				local actionKey=setupKey
 				local actionPrice=options.actionPrices and options.actionPrices[setupKey]
 				if actionPrice==nil and legacyKey and options.actionPrices then actionPrice=options.actionPrices[legacyKey];if actionPrice~=nil then actionKey=legacyKey end end

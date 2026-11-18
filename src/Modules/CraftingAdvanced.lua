@@ -1409,6 +1409,7 @@ function A.extend(M,api)
 		if action.method == "harvest_damage" or action.method == "harvest_resistance" then return action.method..":"..tostring(action.from)..":"..tostring(action.to) end
 		if action.method == "influence_exalt" then return action.method..":"..tostring(action.influence) end
 		if action.method == "eldritch_implicit" then return action.method..":"..tostring(action.side)..":"..tostring(action.tier) end
+		if (action.method == "beast_prefix_suffix" or action.method == "beast_suffix_prefix") and action.beastLevel then return action.method..":beast level "..tostring(action.beastLevel) end
 		if action.method == "bench_reroll" then return action.method..":"..tostring(action.count) end
 		if action.method == "socket_bench" then return action.method..":"..tostring(action.count)..":"..tostring(action.linked or false) end
 		return action.method

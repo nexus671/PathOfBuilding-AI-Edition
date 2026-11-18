@@ -43,6 +43,27 @@ describe("Bestiary modifier level",function()
   assert.has_no.errors(function() sim.validateState(sim.model(raw),result) end)
  end)
 
+ it("prices each specified beast level separately while honoring generic saved quotes",function()
+  local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw);local initial=copyTable(model.initial);initial.rarity="RARE"
+  for _,entry in ipairs(model.mods) do if entry.mod.type=="Prefix" and entry.mod.level<=1 then initial.affixes={{id=entry.id,range=0.5}};break end end
+  assert.is_truthy(initial.affixes[1])
+  local first={method="beast_prefix_suffix",beastLevel=1};local middle={method="beast_suffix_prefix"};local last={method="beast_prefix_suffix",beastLevel=86}
+  local key1,key86=sim.priceKey(first),sim.priceKey(last)
+  assert.equal("beast_prefix_suffix:beast level 1",key1);assert.equal("beast_prefix_suffix:beast level 86",key86)
+  assert.equal("beast_prefix_suffix",sim.priceKey({method="beast_prefix_suffix"}))
+  local recipe={initialState=initial,steps={first,middle,last},targets={},requirements={minAffixes=6}}
+  local function run(prices,actions,book) return sim.simulate(raw,recipe,{trials=1,maxActions=3,seed=3,forceFirstAction=true,currency="chaos",prices=prices,actionPrices=actions,priceBook=book}) end
+  local generic={beast_prefix_suffix=2,beast_suffix_prefix=0}
+  local split=run(nil,{[key1]=2,[key86]=7,beast_suffix_prefix=0});assert.equal(9,split.meanCost);assert.equal(3,split.actionPriceOverridesApplied)
+  local mixed=run(nil,{beast_prefix_suffix=2,[key86]=7,beast_suffix_prefix=0});assert.equal(9,mixed.meanCost)
+  assert.equal(4,run(nil,generic).meanCost);assert.equal(4,run(generic).meanCost)
+  local book={currency="chaos",source="manual",quotedAt=0,values={beast_prefix_suffix=2,beast_suffix_prefix=0,[key86]=7}}
+  assert.equal(9,run(nil,nil,book).meanCost)
+  local entries=require("Modules.CraftingPrices").entries(model,initial,{first,last},book)
+  local labels={};for _,entry in ipairs(entries) do labels[entry.key]=entry.name end
+  assert.is_truthy(labels[key1]:find("beast level 1",1,true));assert.is_truthy(labels[key86]:find("beast level 86",1,true))
+ end)
+
  it("preserves beast-level configuration and actions in saved working crafts",function()
   local raw="Rarity: NORMAL\nIron Hat\nItem Level: 20";local model=sim.model(raw)
   local run=require("Modules.CraftingInventory").run(model.initial)
