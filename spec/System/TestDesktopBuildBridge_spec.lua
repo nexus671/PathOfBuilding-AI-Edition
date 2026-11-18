@@ -321,6 +321,20 @@ describe("Desktop build proposals", function()
 		assert.are.equal(revision,bridge.revision(build))
 		assert.are.equal(0,#build.savers.CraftingProjects.projects)
 	end)
+	it("reviews saved crafting unlocks without changing the build",function()
+		fakeFiles();local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86";local recipe={steps={{method="bench",modId="bench:partial-prefix-1"}},targets={},requirements={minAffixes=1}}
+		build.savers.CraftingProjects:Upsert({id="body",title="Body",slot="Body Armour",startingItem=raw,goals={},steps={},nativeRecipe=recipe})
+		bridge.enable(build);local revision=bridge.revision(build)
+		files.request=json.encode({id="unlock-review",kind="craftUnlockReview",session=bridge.session,baseRevision=revision,projectId="body"})
+		bridge.poll(build,true);local jobs=require("Modules.CraftingTasks")
+		for _=1,2000 do if not jobs.job then break end;jobs.tick(build) end
+		assert.is_nil(jobs.job);assert.equal("craftUnlocks",bridge.status.status);assert.equal("Sanctuary Map",bridge.status.craftUnlocks.entries[1].unlock.map)
+		assert.equal("untracked",bridge.status.craftUnlocks.entries[1].taskStatus);assert.equal(0,#build.savers.BuildJourney.data.milestones);assert.equal(revision,bridge.revision(build))
+		files.request=json.encode({id="stale-unlock-review",kind="craftUnlockReview",session=bridge.session,baseRevision=revision,projectId="body"});bridge.poll(build,true)
+		build.savers.BuildJourney:Put("milestones",{id="new-task",title="Changed while reviewing",kind="task",priority=3})
+		for _=1,2000 do if not jobs.job then break end;jobs.tick(build) end
+		assert.is_nil(jobs.job);assert.equal("failed",bridge.status.status);assert.matches("Build changed",bridge.status.error,1,true)
+	end)
 	it("previews an overlapping Shaped Region run without saving it",function()
 		fakeFiles();bridge.enable(build);local revision=bridge.revision(build)
 		local plan={id="regions",title="Regions",version="3.30.0-preview",budget=150,nodes={},shapedRegions={

@@ -415,6 +415,15 @@ test('queues bounded Thread restriction checks', t => {
   assert.throws(()=>f.call('check_thread_restrictions',{baseRevision,areaLevel:73,threads:1.5}),/arguments/);
 });
 
+test('queues review of a saved crafting project without applying changes', t => {
+  const f=fixture(t), args={baseRevision:f.state.revision,projectId:'body'};
+  f.call('review_crafting_unlocks',args);
+  const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(queued.kind,'craftUnlockReview');assert.equal(queued.projectId,'body');
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  assert.throws(()=>f.call('review_crafting_unlocks',{...args,projectId:'../invalid'}),/arguments/);
+});
+
 test('queues a bounded reported region run for Atlas preview', t => {
   const f=fixture(t), plan={id:'atlas',title:'Regions',version:'3.30.0-preview',budget:150,nodes:[],shapedRegions:[{mechanic:'Blight',maps:[{name:'Beach Map',freeThreads:2}]}]};
   const args={baseRevision:f.state.revision,plan,map:'Beach Map',completed:['Blight']};

@@ -827,7 +827,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(description:find("equal odds assumed",1,true),"Partial-lock assumption was not shown with the recipe location")
 		frame("crafting-bench-unlock");ui:click("tab_simulate");ui:click("editRecipe");ui:click("add")
 		assert(main.popups[1].controls.graph.list[1].detail:find("Sanctuary Map",1,true),"Recipe card omitted the bench location")
-		frame("crafting-bench-unlock-recipe");ui:click("trackUnlock")
+		frame("crafting-bench-unlock-recipe");ui:click("reviewUnlocks");frame("crafting-unlock-checklist")
+		assert(main.popups[1].controls.choose:IsEnabled(),"Untracked recipe unlock was not offered");ui:click("choose")
+		assert(not main.popups[1].controls.choose:IsEnabled(),"Tracked unlock was offered twice");frame("crafting-unlock-checklist-tracked");ui:click("close");ui:click("trackUnlock")
 		assert(main.popups[1].title=="Recipe unlock" and #build.savers.BuildJourney.data.milestones==#oldJourney.milestones+1,"Tracking did not add a linked Roadmap task")
 		frame("crafting-unlock-roadmap-confirm");ui:click("close");ui:click("close");ui:click("close")
 		build.savers.CraftingProjects.projects=oldProjects;build.savers.BuildJourney.data=oldJourney

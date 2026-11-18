@@ -635,6 +635,24 @@ function M.poll(build, force)
 			end
 			return
 		end
+		if request.kind == "craftUnlockReview" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh crafting context.")
+			assert(not build.savers.CraftingProjects.unreadable,build.savers.CraftingProjects.warning)
+			local project;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==request.projectId then project=copyTable(entry);break end end
+			assert(project,"Unknown crafting project");local session=M.session
+			local function publish(status,values)
+				if not M.enabled or M.session~=session then return end
+				M.status={id=request.id,status=status,baseRevision=request.baseRevision};for key,value in pairs(values) do M.status[key]=value end;M.publishState()
+			end
+			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+				require("Modules.CraftingAdvanced").prepare(checkpoint);local sim=require("Modules.CraftingSimulator");local model=sim.model(project.startingItem)
+				local initial=project.nativeRecipe and project.nativeRecipe.initialState;local state=initial and sim.validateState(model,initial) or model.initial
+				return require("Modules.CraftingUnlockTasks").review(build,project.id,sim.context(model,state),project.nativeRecipe and project.nativeRecipe.steps or {})
+			end,function(result)
+				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh crafting context."}) else publish("craftUnlocks",{craftUnlocks=result}) end
+			end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Craft unlock review slice")
+			job.requestId=request.id;publish("calculating",{});return
+		end
 		if request.kind == "craftInspect" then
 			assert(request.baseRevision == M.revision(build),"Build changed. Refresh crafting context.")
 			local raw = request.itemText

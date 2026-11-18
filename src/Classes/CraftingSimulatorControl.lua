@@ -537,7 +537,7 @@ function Panel.Open(build,project,layout)
 	end)
 	button(controls,"editRecipe",16,574,200,"Recipe routes",function()
 		local recipe=draft.nativeRecipe or {steps=copyTable(actions),targets=copyTable(targets),requirements=(requirements and copyTable(requirements) or nil),requiredGroups=requiredGroups,initialState=copyTable(initial)}
-		require("Classes.CraftingRecipeControl").Open(recipe,action(),function(result) draft.nativeRecipe=result;build.savers.CraftingProjects:Upsert(draft);refresh({"Recipe kept. Use build Save to persist."}) end,simulator.context(model,state),{trackUnlock=function(step,context) return require("Modules.CraftingUnlockTasks").track(build,draft.id,context,step) end})
+		require("Classes.CraftingRecipeControl").Open(recipe,action(),function(result) draft.nativeRecipe=result;build.savers.CraftingProjects:Upsert(draft);refresh({"Recipe kept. Use build Save to persist."}) end,simulator.context(model,state),{trackUnlock=function(step,context) return require("Modules.CraftingUnlockTasks").track(build,draft.id,context,step) end,reviewUnlocks=function(steps,context) return require("Modules.CraftingUnlockTasks").review(build,draft.id,context,steps) end})
 	end)
 	button(controls,"targetConditions",16,650,416,"Target counts, rolls and item properties",function()
 		require("Classes.CraftingTargetControl").Open(targets,requirements,requiredGroups,function(groups,properties,count) targets=groups;requirements=properties;requiredGroups=count;changed();refresh() end,0,simulator.context(model,state).item.baseName)
