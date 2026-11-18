@@ -27,6 +27,22 @@ describe("Experimental map currency",function()
 		assert.has_error(function() currency.perform(input,"chaos",1) end)
 		assert.has_error(function() currency.options(input) end)
 	end)
+	it("rerolls values even when Chaos selects the same modifier again",function()
+		local map=require("Modules.MapCraftingData")
+		local inputs={state("rare"),{baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}}
+		for _,input in ipairs(inputs) do
+			local expected=currency.perform(input,"chaos",42).state
+			local previous=copyTable(expected);local changed=false
+			for _,roll in ipairs(previous.rolls) do
+				for index,stat in ipairs(map.source().mods[roll.id].stats) do
+					if stat.min<stat.max then roll.values[index]=roll.values[index]==stat.min and stat.max or stat.min;changed=true;break end
+				end
+				if changed then break end
+			end
+			assert.is_true(changed)
+			assert.same(expected,currency.perform(previous,"chaos",42).state)
+		end
+	end)
 	it("models Nightmare Chaos rerolls with at least one exclusive modifier per side",function()
 		local map=require("Modules.MapCraftingData")
 		local input={baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}
