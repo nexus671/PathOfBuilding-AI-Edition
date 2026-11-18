@@ -113,6 +113,17 @@ describe("Map clipboard import",function()
   assert.is_nil(observed.delirium({{kind="explicit",text="Players in Area are 101% Delirious"},{kind="explicit",text="Delirium Reward Type: Maps"}}))
   assert.is_nil(observed.delirium({{kind="explicit",text="Players in Area are 20% Delirious"},{kind="explicit",text="Delirium Reward Type: Maps"},{kind="explicit",text="Delirium Reward Type: Currency"}}))
  end)
+ it("projects Delirium stacking, switching and the cap without guessing probabilities",function()
+  local project=require("Modules.MapObservedEffects").projectDelirium
+  local same=project(35,"Currency","currency",10)
+  assert.is_true(same.sameType);assert.same({percent=40,baseRewardCount=3},same.minimum);assert.same({percent=85,baseRewardCount=5},same.maximum);assert.same({percent=45,baseRewardCount=3},same.example)
+  local switched=project(35,"Currency","Maps",10);assert.is_false(switched.sameType);assert.same({percent=10,baseRewardCount=1},switched.example)
+  assert.same({percent=100,baseRewardCount=6},project(90,"Currency","Currency",50).example)
+  assert.same({percent=20,baseRewardCount=2},project(0,nil,"Maps",20).example)
+  assert.has_error(function() project(35,nil,"Maps",10) end)
+  for _,gain in ipairs({4,51,5.5}) do assert.has_error(function() project(0,nil,"Maps",gain) end) end
+  assert.has_error(function() project(101,"Currency","Maps",10) end)
+ end)
  it("retains an observed implicit alongside one modeled corruption implicit",function()
   local raw=header.."+15% Item Rarity (implicit)\nArea is Influenced by the Originator's Memories (implicit)\n--------\nMonsters have 45% increased Area of Effect"..trailer.."\n--------\nCorrupted"
   local result=parser.parse(raw)

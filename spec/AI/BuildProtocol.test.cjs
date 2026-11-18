@@ -110,6 +110,13 @@ test('explains unidentified saved map drafts without changing them', t => {
   f.captured.context.atlasPlans=[{id:'atlas',mapDrafts:[{id:'known',selected:[]}]}];f.write('context',f.captured);
   assert.ok(!f.call('get_atlas_plans',{}).limitations.some(note=>note.includes('Unidentified map drafts')));
 });
+test('queues a bounded Delirium projection', t => {
+  const f=fixture(t), args={baseRevision:f.state.revision,currentPercent:35,currentType:'Currency',nextType:'Maps',gain:10};
+  f.call('project_map_delirium',args);
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.kind,'project_map_delirium');assert.equal(request.gain,10);
+  for(const invalid of [{...args,gain:4},{...args,gain:51},{...args,currentPercent:101},{...args,unknown:true}]) assert.throws(()=>f.call('project_map_delirium',invalid),/arguments/);
+});
 test('queues copied map inspection without changing the build', t => {
   const f=fixture(t);f.call('inspect_copied_map',{baseRevision:f.state.revision,itemText:'Item Class: Maps\nRarity: Normal\nStrand Map'});
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'inspect_copied_map');assert.match(request.itemText,/Strand Map/);

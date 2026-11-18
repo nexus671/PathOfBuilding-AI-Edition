@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview578" />
+	<Version number="2.68.1-ai.preview579" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="46d6c1b54ac27a92c9eae0595af0835320e6baeb" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="cdfc067668402531001f6610d64049dc21acb684" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -1729,7 +1729,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="b5b757c324f38b8031de0957e4c8b3ef1351be61" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="6e9c588ced62513007e12653330c5916cb8d05b7" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="8788e0fdf6ff7e368774a367e11e9c4e305791c6" />
-	<File name="Classes/MapModifierControl.lua" part="program" sha1="a90d67fe9815d96ede58a73424607e5d48f2bc9f" />
+	<File name="Classes/MapModifierControl.lua" part="program" sha1="67787149f52922e0359988ac4deb9ee820526476" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
 	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="cfff5d76e380c7bdcbdac229325cefb1599af36c" />
 	<File name="Classes/ModDB.lua" part="program" sha1="1327beebeba14dc8320d137a3dede673b74942af" />
@@ -2133,7 +2133,7 @@
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />
 	<File name="Modules/DataLegionLookUpTableHelper.lua" part="program" sha1="ece92c4b6062f627f98ba2454531366b4628abfc" />
-	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="4e26496893fdd5603732bb04d7ec5b4849ffbbbe" />
+	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="98d2baad65e25960e2785e02df96a2d658556347" />
 	<File name="Modules/EncounterReport.lua" part="program" sha1="710dc78939bfbc8282f295cf626bcde9c9b7d8e5" />
 	<File name="Modules/HeadlessCompression.lua" part="program" sha1="16a42bf407eb777602f9b03b5c8466188a04ee58" />
 	<File name="Modules/HeadlessUI.lua" part="program" sha1="0321564d6273fc01522e3bcaa356dcc8cb9fe0e1" />
@@ -2168,7 +2168,7 @@
 	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="bb534a171c6b05dad2a42ba28f2c60368a304732" />
 	<File name="Modules/MapCraftingData.lua" part="program" sha1="bae8422311967ebc8d280a772fed7048becbd33b" />
 	<File name="Modules/MapCurrency.lua" part="program" sha1="f99b3a619d776172f48c2817bc98c246fd01048b" />
-	<File name="Modules/MapObservedEffects.lua" part="program" sha1="ee10fab29e69b82e167a5da71b6f9c42cc9cb43c" />
+	<File name="Modules/MapObservedEffects.lua" part="program" sha1="50112f3d1678c2261a1635ab92d1d0f8f732d1e7" />
 	<File name="Modules/MapQuality.lua" part="program" sha1="c7f308aa75c1ab907d8c864fe878bc8afcf4c429" />
 	<File name="Modules/MapRollValues.lua" part="program" sha1="738d8da00d86027c40d51555476d7c2a947a72c8" />
 	<File name="Modules/ModParser.lua" part="program" sha1="0a8101464bb1ec7f6fb701e06fce15162f80371d" />

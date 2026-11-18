@@ -135,14 +135,15 @@ function M.Open(options)
 	function controls.affixes:Draw(viewPort)
 		SetDrawLayer(nil,1);drawAffixes(self,viewPort);SetDrawLayer(nil,0)
 	end
-	button("remove",16,height-62,math.floor((left-8)/2),"Remove last",function()
+	local cardButtonWidth=math.floor((left-16)/3)
+	button("remove",16,height-62,cardButtonWidth,"Remove last",function()
 		local index=#selected;for i,id in ipairs(selected) do if id==selectedAffix then index=i;break end end
 		local id=table.remove(selected,index);for i=#rolls,1,-1 do if rolls[i].id==id then table.remove(rolls,i) end end
 		selectedAffix=nil;candidate=nil;offset=0;refresh()
 	end)
 	controls.remove.enabled=function() return not unidentified and #selected>0 end
 	controls.remove.tooltipText="Select a modifier on the item to remove it, or remove the last one."
-	button("estimate",24+math.floor((left-8)/2),height-62,math.floor((left-8)/2),"Estimate rerolls",function()
+	button("estimate",24+cardButtonWidth,height-62,cardButtonWidth,"Estimate rerolls",function()
 		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=copyTable(selected),rolls=copyTable(rolls),quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
 		require("Classes.MapCraftEstimateControl").Open(options.build,{state=state,wanted=selected,settings=estimateSettings,saveSettings=function(settings) estimateSettings=copyTable(settings) end,apply=function(sample)
 			selected=copyTable(sample.selected);rolls=copyTable(sample.rolls);offset=0;candidate=nil;controls.search:SetText("");refresh()
@@ -153,6 +154,33 @@ function M.Open(options)
 		return options.build~=nil and getRarity()~="normal" and not isCorrupted() and not mirrored and not unidentified and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and level~=nil and not levelProblem()
 	end
 	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. The item level must support those modifiers. Corrupted or mirrored maps and unsupported explicit modifiers cannot be rerolled here. Nightmare estimates use unverified draw-order assumptions."
+	button("delirium",32+2*cardButtonWidth,height-62,cardButtonWidth,"Delirium...",function()
+		local module=require("Modules.MapObservedEffects");local known=module.delirium(observedEffects)
+		local uncertain=unidentified or module.hasExplicit(observedEffects) and not known
+		for _,effect in ipairs(observedEffects or {}) do if effect.kind=="enchant" and effect.text:lower():find("deliri",1,true) then uncertain=true end end
+		local c={};local w,h=math.min(640,main.screenW-40),300
+		ui.description(c,"intro",16,24,w-32,40,{"Project a Delirium Orb's percentage and base rewards. This does not modify the map or model rerolls."},14)
+		ui.label(c,"currentLabel",16,76,"Current %",14);ui.label(c,"currentTypeLabel",128,76,"Current reward type",14)
+		ui.label(c,"nextTypeLabel",344,76,"Next reward type",14)
+		c.current=new("EditControl"):EditControl(ui.anchor,{16,100,96,26},known and tostring(known.percent) or uncertain and "" or "0",nil,"%D",3)
+		c.currentType=new("EditControl"):EditControl(ui.anchor,{128,100,200,26},known and known.rewardType or "",nil,nil,80)
+		c.nextType=new("EditControl"):EditControl(ui.anchor,{344,100,w-360,26},known and known.rewardType or "Currency",nil,nil,80)
+		ui.label(c,"gainLabel",16,142,"Example gain (5-50%)",14)
+		c.gain=new("EditControl"):EditControl(ui.anchor,{16,166,120,26},"10",nil,"%D",2)
+		c.results=new("TextListControl"):TextListControl(ui.anchor,{152,142,w-168,96},nil,{})
+		local function update()
+			local ok,result=pcall(module.projectDelirium,tonumber(c.current.buf),c.currentType.buf,c.nextType.buf,tonumber(c.gain.buf))
+			if not ok then c.results.list=ui.rows({ui.errorText(result)},w-190,14);return end
+			local function line(label,value) return label..": "..value.percent.."% | "..value.baseRewardCount..(value.baseRewardCount==1 and " base reward" or " base rewards") end
+			c.results.list=ui.rows({line("Example",result.example),"Possible: "..result.minimum.percent.."-"..result.maximum.percent.."% | "..result.minimum.baseRewardCount.."-"..result.maximum.baseRewardCount.." base rewards",result.sameType and "Same type: percentage accumulates." or "Different or new type: percentage starts over."},w-190,14)
+		end
+		for _,key in ipairs({"current","currentType","nextType","gain"}) do c[key].changeFunc=update end
+		ui.description(c,"scope",16,242,w-168,42,{"No map is changed. Eligibility, rerolled modifiers, other rewards and roll odds are not modeled."},12)
+		c.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-132,h-42,116,28},"Close",function() main:ClosePopup() end))
+		ui.style(c);for _,control in pairs(c) do control.layoutAudit="map-delirium-projection" end
+		update();main:OpenPopup(w,h,"Delirium projection",c,nil,"gain","close")
+	end)
+	controls.delirium.tooltipText="Project same-type stacking or a reward-type switch using a chosen example gain. Does not modify the map."
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
 	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
 	local allRarities={{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"},{label="Corrupted normal",val="corrupted_normal"},{label="Corrupted magic",val="corrupted_magic"},{label="Corrupted rare",val="corrupted_rare"}}

@@ -36,6 +36,31 @@ function M.delirium(effects)
  if not percent or not reward then return nil end
  return {percent=percent,rewardType=reward,baseRewardCount=1+math.floor(percent/20)}
 end
+-- Project the published stacking rule using a user-supplied example gain.
+-- This does not model map reforging, eligibility or the gain distribution.
+function M.projectDelirium(currentPercent,currentType,nextType,gain)
+ local function number(value,low,high,label)
+  assert(type(value)=="number" and value==math.floor(value) and value>=low and value<=high,"Invalid "..label);return value
+ end
+ local function name(value,label,optional)
+  if optional and (value==nil or value=="") then return nil end
+  assert(type(value)=="string" and #value<=80 and not value:find("[%c%^]"),"Invalid "..label)
+  value=value:match("^%s*(.-)%s*$");assert(value~="","Invalid "..label);return value
+ end
+ currentPercent=number(currentPercent,0,100,"current Delirium percentage")
+ gain=number(gain,5,50,"example Delirium gain")
+ currentType=name(currentType,"current reward type",currentPercent==0)
+ nextType=name(nextType,"next reward type")
+ local same=currentPercent>0 and currentType:lower()==nextType:lower()
+ local start=same and currentPercent or 0
+ local function outcome(add)
+  local percent=math.min(100,start+add)
+  return {percent=percent,baseRewardCount=1+math.floor(percent/20)}
+ end
+ return {currentPercent=currentPercent,currentType=currentType,nextType=nextType,exampleGain=gain,sameType=same,
+  minimum=outcome(5),maximum=outcome(50),example=outcome(gain),
+  note="Projection only. No map is modified. Reward names, eligibility, reforged modifiers, other reward effects and gain probabilities are not verified."}
+end
 -- This visible implicit identifies a Blighted or Blight-ravaged map. Do not
 -- infer the variant merely from a map's name or an ordinary Blight encounter.
 function M.isBlighted(effects)
