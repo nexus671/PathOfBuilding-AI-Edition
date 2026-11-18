@@ -461,9 +461,13 @@ function Panel.Open(build,source,layout)
 			{id="preferred",label="Prefer selected node in routes",details={"Use the selected node as a waypoint when comparing routes.",preferred and "Current: "..controls.canvas.tree.nodes[preferred].name or "No preferred waypoint."}},
 			{id="clearComparison",label="Clear comparison overlay",details={"Return to the current plan without saved-plan difference colours."}},
 		}
+		if draft.version=="3.30.0-preview" or draft.version=="3.30.0-preview-ruthless" then
+			entries[#entries+1]={id="shapedRegions",label="Shaped Regions",details={"Track observed maps and free Threads by region.","Manual observations; no game account is accessed."}}
+		end
 		browser.Open("Atlas plan tools",entries,{closeOnChoose=false,action="Open",choose=function(entry)
 			main:ClosePopup()
-			if entry.id=="mapModifiers" then openMapDraft()
+			if entry.id=="shapedRegions" then require("Classes.AtlasRegionsControl").Open(current(),function(items) local nextPlan=copyTable(current());nextPlan.shapedRegions=items;change(nextPlan) end)
+			elseif entry.id=="mapModifiers" then openMapDraft()
 			elseif entry.id=="threadRestrictions" then require("Classes.AtlasThreadControl").Open()
 			elseif entry.id=="mapDrafts" then showMapDrafts()
 			elseif entry.id=="presets" then

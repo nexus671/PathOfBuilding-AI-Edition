@@ -141,6 +141,10 @@ function M.validate(plan)
 			s.setupCost={amount=cost.amount,currency=text(cost.currency,40,"setup currency"),source=text(cost.source or "",240,"cost source"),quotedAt=integer(cost.quotedAt,0,4102444800,"cost date")}
 		end
 	end
+	if plan.shapedRegions~=nil then
+		assert(plan.version=="3.30.0-preview" or plan.version=="3.30.0-preview-ruthless","Shaped Region tracking requires the 3.30 Atlas")
+		result.shapedRegions=require("Modules.AtlasRegions").validate(plan.shapedRegions)
+	end
 	if plan.mapDrafts~=nil then
 		result.mapDrafts={};local seen={}
 		for _,entry in ipairs(array(plan.mapDrafts,math.huge,"map drafts")) do

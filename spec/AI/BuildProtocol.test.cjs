@@ -423,6 +423,15 @@ test('preserves Atlas effect choices in AI proposals', t => {
   assert.deepEqual(queued.proposal.operations[0].plan.choices,plan.choices);
 });
 
+test('preserves and validates shaped region observations in Atlas proposals', t => {
+  const f=fixture(t), shapedRegions=[{mechanic:'Blight',maps:[{name:'Beach Map',freeThreads:2}]}];
+  const plan={id:'atlas',title:'Mapping',version:'3.30.0-preview',budget:150,nodes:[],shapedRegions};
+  f.call('propose_atlas_plan',{baseRevision:f.state.revision,plan});
+  const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.deepEqual(queued.proposal.operations[0].plan.shapedRegions,shapedRegions);
+  assert.throws(()=>f.call('propose_atlas_plan',{baseRevision:f.state.revision,plan:{...plan,shapedRegions:[{mechanic:'Invented',maps:[]}]}}),/arguments/);
+});
+
 test('preserves multiple map drafts in Atlas proposals', t => {
   const f=fixture(t), mapDrafts=Array.from({length:12},(_,i)=>({id:`map-${i}`,title:`Map ${i}`,patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'normal',selected:[]}));
   mapDrafts[0].quality={kind:'Pack Size',value:20};

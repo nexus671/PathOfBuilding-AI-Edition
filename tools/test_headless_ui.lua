@@ -65,6 +65,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(main.modes.BUILD==original,"Undo did not restore the original scratch build")
 	ui:click("nav_atlas");frame("atlas-new-default");assert(build.planningWorkspace.controls.canvas.tree.version=="3.30.0-preview","New Atlas plan did not default to 3.30")
 	assert(build.planningWorkspace.controls.version:GetSelValueByKey("label")=="3.30.0","Released Atlas version was not displayed")
+	ui:click("tools");ui:text("search","Shaped Regions");ui:click("choose")
+	ui:text("map","Beach Map");ui:text("count","2");ui:click("upsert");frame("atlas-shaped-regions")
+	do local c=main.popups[1].controls;c.list.onClick({line=c.list.list[1]}) end
+	ui:click("run");frame("atlas-shaped-region-run");ui:click("objective1");ui:click("apply");ui:click("keep")
+
 	ui:choose("version","3.28.0j","val");ui:click("confirm");assert(build.planningWorkspace.controls.canvas.tree.version=="3.28.0j","Mirage Atlas did not load");frame("atlas-mirage-tree")
 	ui:choose("version","3.28.0j-ruthless","val");ui:click("confirm");assert(build.planningWorkspace.controls.canvas.tree.mode=="ruthless","Ruthless Mirage Atlas did not load");frame("atlas-mirage-ruthless-tree")
 	ui:choose("version","3.29.3-ruthless","val");ui:click("confirm")
