@@ -41,8 +41,8 @@ function C.extend(M,A,api)
 			local active=state.synthRetained
 			if not active and not state.corruptedImplicits and not state.implicits then active={};for index in ipairs(model.synthesisGroups) do active[#active+1]=index end end
 			for _,index in ipairs(active or {}) do
-				local candidates=model.synthesisGroups[index].candidates
-				if #candidates>1 then for _,target in ipairs(targets) do if target.scope=="implicit" and require("Modules.CraftingSynthesisGroups").targetStatus(model.synthesisGroups[index],target)==nil then
+				local candidates=require("Modules.CraftingSynthesisGroups").candidates(model.synthesisGroups[index],state,index)
+				if #candidates>1 then for _,target in ipairs(targets) do if target.scope=="implicit" and require("Modules.CraftingSynthesisGroups").targetStatus({candidates=candidates},target)==nil then
 					return "A synthesised implicit matches multiple modifier identities; its target cannot be evaluated reliably."
 				end end end
 			end
@@ -148,11 +148,14 @@ function C.extend(M,A,api)
 			if model.initial then twice=model.initial.twiceCorrupted else twice=model.item.twiceCorrupted end
 		end
 		item.twiceCorrupted=twice or nil
+		if state.synthRolls and not state.corruptedImplicits then
+			item.implicitModLines={};for index in ipairs(model.synthesisGroups) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do item.implicitModLines[#item.implicitModLines+1]=line end end
+		end
 		if state.corruptedImplicits then
 			if not state.implicits then item.implicitModLines={} end
 			for _,index in ipairs(state.synthRetained or {}) do
-				for _,source in ipairs(model.synthesisGroups[index]) do
-					local line=copyTable(source);line.modGroup="synth_"..index;item.implicitModLines[#item.implicitModLines+1]=line
+				for _,source in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do
+					local line=copyTable(source);if not state.synthRolls then line.modGroup="synth_"..index end;item.implicitModLines[#item.implicitModLines+1]=line
 				end
 			end
 			for _,entry in ipairs(state.corruptedImplicits) do for _,line in ipairs(M.rolledLines(M.entryMod(model,entry),entry.range)) do item.implicitModLines[#item.implicitModLines+1]={line=line,modGroup="crafting_"..entry.id} end end
@@ -172,6 +175,20 @@ function C.extend(M,A,api)
 		assert(state.twiceCorrupted==nil or type(state.twiceCorrupted)=="boolean","Invalid twice-corruption marker")
 		assert(not state.twiceCorrupted or state.corrupted==true,"Twice Corrupted items must also be Corrupted")
 		assert(state.destroyed == nil or type(state.destroyed) == "boolean","Invalid destruction flag")
+		if state.synthRolls then
+			assert(not state.destroyed and not state.implicits and not state.vendorImplicit and model.item.synthesised and model.synthesisGroups and type(state.synthRolls)=="table" and #state.synthRolls==#model.synthesisGroups,"Invalid synthesised implicit rolls")
+			for key in pairs(state.synthRolls) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=#state.synthRolls,"Invalid synthesised implicit rolls") end
+			for index,entry in ipairs(state.synthRolls) do
+				local candidates=model.synthesisGroups[index].candidates
+				assert(type(entry)=="table" and #candidates==1 and entry.id==candidates[1].id,"Synthesised implicit identity is ambiguous")
+				for key in pairs(entry) do assert(key=="id" or key=="range","Invalid synthesised implicit property") end
+				local ranges=type(entry.range)=="table" and entry.range or {entry.range};assert(#ranges>=1 and #ranges<=20,"Invalid synthesised implicit roll")
+				if type(entry.range)=="table" then for key in pairs(entry.range) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=#ranges,"Invalid synthesised implicit roll") end end
+				local count=0;for _,line in ipairs(model.byId[entry.id]) do for _ in line:gmatch("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)") do count=count+1 end end
+				assert(#ranges==1 or #ranges==count,"Synthesised implicit roll count does not match its ranges")
+				for _,value in ipairs(ranges) do assert(type(value)=="number" and value>=0 and value<=1,"Invalid synthesised implicit roll") end
+			end
+		end
 		if state.destroyed then assert(type(state.affixes) == "table" and #state.affixes == 0,"Destroyed items cannot retain usable affixes") end
 		if state.corruptedImplicits and model.item.synthesised and not model.item.corrupted then
 			assert(model.synthesisGroups or #(model.item.implicitModLines or {})<=1,"Synthesised implicit grouping is unresolved")
@@ -261,7 +278,7 @@ function C.extend(M,A,api)
 					local ok=pcall(api.add,model,state,random);if not ok then break end
 				end
 				state.rollBlock=nil
-			elseif method == "locus" then state.destroyed=true;state.affixes={};state.implicits=nil;state.corruptedImplicits=nil
+			elseif method == "locus" then state.destroyed=true;state.affixes={};state.implicits=nil;state.corruptedImplicits=nil;state.synthRolls=nil
 			end
 			state.corrupted=true;state.imprint=nil
 			if method=="locus" and not state.destroyed then state.twiceCorrupted=true end

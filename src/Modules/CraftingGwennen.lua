@@ -209,8 +209,17 @@ function G.extend(M,api)
 						local mod=assert(model.byId[entry.id],"The Eldritch implicit is not recognized")
 						if belowMaximum(mod,entry.range) then entry.range=M.rollRange(mod,draw);changed=true end
 					end
+				elseif model.item.synthesised then
+					assert(model.synthesisGroups,"Identify the synthesised implicits before rerolling them")
+					result.synthRolls=result.synthRolls or {}
+					for index,group in ipairs(model.synthesisGroups) do
+						assert(#group.candidates==1,"Synthesised implicit identities must be unambiguous before rerolling")
+						local entry=result.synthRolls[index] or copyTable(group.candidates[1]);result.synthRolls[index]=entry
+						local mod=assert(model.byId[entry.id],"The synthesised implicit is not recognized")
+						if belowMaximum(mod,entry.range) then entry.range=M.rollRange(mod,draw);changed=true end
+					end
 				else
-					assert(not model.item.synthesised and not model.blessed330 and not model.blessed330Unresolved and not model.baseImplicitUnresolved,"This special implicit reroll is not modeled")
+					assert(not model.blessed330 and not model.blessed330Unresolved and not model.baseImplicitUnresolved,"This special implicit reroll is not modeled")
 					assert(#model.item.implicitModLines>0,"This item has no supported implicit to reroll")
 					assert(#model.item.implicitModLines==1 and model.baseImplicitTemplates and model.baseImplicitTemplates[1],"Rerolling multiple or unidentified base implicits is not modeled")
 					local line=model.item.implicitModLines[1];local range=result.baseImplicitRanges and result.baseImplicitRanges[1] or model.normalizedBaseImplicitRanges and model.normalizedBaseImplicitRanges[1] or line.range
@@ -221,7 +230,7 @@ function G.extend(M,api)
 				assert(changed,"No supported implicit has a value below its maximum")
 				return result
 			end
-			if id==1022 then local result=copyTable(input);result.destroyed=true;result.affixes={};result.imprint=nil;result.implicits=nil;result.corruptedImplicits=nil;return result end
+			if id==1022 then local result=copyTable(input);result.destroyed=true;result.affixes={};result.imprint=nil;result.implicits=nil;result.corruptedImplicits=nil;result.synthRolls=nil;return result end
 			if id==1001 then
 				assert(#input.affixes>0,"No modifier can be removed")
 				local result=copyTable(input);result.affixes={};result.rarity="NORMAL";return result
@@ -325,7 +334,7 @@ function G.extend(M,api)
 		-- Dry runs do not consume the caller's random stream or mutate its input.
 		for _,id in ipairs({craft.firstOutcome,craft.secondOutcome}) do
 			local ok,err=pcall(branch,id,function() return 0.42 end,true)
-			assert(ok,"A modeled Gwennen outcome cannot apply: "..tostring(err))
+			if not ok then error("A modeled Gwennen outcome cannot apply: "..require("Modules.PlanningUI").errorText(err),0) end
 		end
 		local outcome=random()<0.5 and craft.firstOutcome or craft.secondOutcome
 		return branch(outcome,random),{gwennen={outcome=outcome}}

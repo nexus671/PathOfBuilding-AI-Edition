@@ -51,7 +51,7 @@ function M.diff(model,before,after)
 	for _,key in ipairs({"rarity","quality","corrupted","destroyed","intangibility","memoryStrands","baseName"}) do if before[key]~=after[key] then result[#result+1]=key..": "..tostring(before[key] or "none").." -> "..tostring(after[key] or "none") end end
 	if (before.twiceCorrupted or false)~=(after.twiceCorrupted or false) then result[#result+1]="Twice Corrupted: "..(before.twiceCorrupted and "yes" or "no").." -> "..(after.twiceCorrupted and "yes" or "no") end
 	local json=require("dkjson");if json.encode(before.sockets or {})~=json.encode(after.sockets or {}) then result[#result+1]="Socket colours, count or links changed." end
-	for _,key in ipairs({"implicits","influences","enchants","harvestEnchant","catalyst","catalystQuality","veil"}) do if json.encode(before[key])~=json.encode(after[key]) then result[#result+1]=key=="harvestEnchant" and "Harvest quality enchantment changed." or key.." changed." end end
+	for _,key in ipairs({"implicits","synthRolls","influences","enchants","harvestEnchant","catalyst","catalystQuality","veil"}) do if json.encode(before[key])~=json.encode(after[key]) then result[#result+1]=key=="harvestEnchant" and "Harvest quality enchantment changed." or key=="synthRolls" and "Synthesised implicits changed." or key.." changed." end end
 	if after.enchantCleared and not before.enchantCleared then result[#result+1]="Enchantments removed." end
 	table.sort(result);if #result==0 then result[1]="No displayed modifier or item-property changes." end
 	return result

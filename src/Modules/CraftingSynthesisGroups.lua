@@ -1,5 +1,17 @@
 -- Identify modifier boundaries without guessing between different partitions.
 local M={}
+function M.candidates(group,state,index)
+	return state.synthRolls and {state.synthRolls[index]} or group.candidates
+end
+function M.lines(model,state,index)
+	local group=model.synthesisGroups[index];local entry=state.synthRolls and state.synthRolls[index]
+	if not entry then return copyTable(group) end
+	local ranges=type(entry.range)=="table" and entry.range or {entry.range};local encoded={};for _,value in ipairs(ranges) do encoded[#encoded+1]=string.format("%.17g",value) end
+	local mod=assert(model.byId[entry.id]);local result={};for index,line in ipairs(itemLib.applyModRanges(mod,entry.range)) do
+		local value=copyTable(group[index] or {});value.line=line;value.range=nil;value.modTags=copyTable(mod.modTags or {});value.modGroup="synth_id_"..entry.id.."~"..table.concat(encoded,",");result[#result+1]=value
+	end
+	return result
+end
 function M.targetStatus(group,target)
 	local yes,no=false,false
 	for _,candidate in ipairs(group.candidates) do
@@ -19,7 +31,9 @@ function M.resolve(lines,modifiers)
 	for id,mod in pairs(modifiers) do
 		if #mod>0 and #mod<=#lines then
 			for start=1,#lines-#mod+1 do
-				local valid,exact,hasRange,ranges=true,true,false,{}
+				local tag=lines[start].modGroup;local tagged,encoded;if tag then tagged,encoded=tag:match("^synth_id_([^~]+)~(.+)$") end
+				if tag and not tagged then tagged=tag:match("^synth_id_(.+)$") end
+				local valid,exact,hasRange,ranges=not tagged or tagged==id,true,false,{}
 				for offset,template in ipairs(mod) do
 					local line=lines[start+offset-1]
 					if template~=line.line then exact=false end
@@ -27,6 +41,15 @@ function M.resolve(lines,modifiers)
 					if not values then valid=false;break end
 					if template==line.line and line.range~=nil and #values>0 then hasRange=true end
 					for _,value in ipairs(values) do ranges[#ranges+1]=template==line.line and line.range or value end
+				end
+				if valid and encoded then
+					local decoded={};for part in (encoded..","):gmatch("(.-),") do local value=tonumber(part);if not value or value~=value or value<0 or value>1 then valid=false;break end;decoded[#decoded+1]=value end
+					if #decoded<1 or #decoded>20 or (#ranges>0 and #decoded~=1 and #decoded~=#ranges) then valid=false end
+					if valid then
+						local roll=#decoded==1 and decoded[1] or decoded;local displayed=itemLib.applyModRanges(mod,roll)
+						for offset,line in ipairs(displayed) do if StripEscapes(line)~=StripEscapes(itemLib.applyRange(lines[start+offset-1].line,lines[start+offset-1].range or 0.5)) then valid=false;break end end
+						if valid then ranges=decoded end
+					end
 				end
 				if valid then
 					local matches=lengths[start][#mod] or {};lengths[start][#mod]=matches

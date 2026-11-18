@@ -78,7 +78,7 @@ function M.actionWarnings(action,model)
 	if action.method=="gwennen" and (action.firstOutcome==1020 or action.firstOutcome==1021 or action.firstOutcome==1043 or action.firstOutcome==1044 or action.secondOutcome==1020 or action.secondOutcome==1021 or action.secondOutcome==1043 or action.secondOutcome==1044) then result[#result+1]={code="gwennen_tier_assumptions",message="Tier changes assume uniform selection without replacement among all modifiers, and use the nearest uniquely identified legal tier in the same ordinary family. Gwennen's selection, item-level restrictions and tier rules are unverified; ambiguous, crafted and boundary-tier modifiers are excluded.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
 	if action.method=="gwennen" and (action.firstOutcome==1018 or action.firstOutcome==1019 or action.secondOutcome==1018 or action.secondOutcome==1019) then result[#result+1]={code="gwennen_side_reroll_assumptions",message="Side rerolls preserve the original number of modifiers on that side, based on comparable Rog research. Applying that rule and the ordinary modifier weights to Gwennen is unverified; some modeled selections can fail.",source="https://www.sirgog.com/wp-content/uploads/2022/12/rog.pdf"} end
 	if action.method=="gwennen" and (action.firstOutcome==1031 or action.secondOutcome==1031) then result[#result+1]={code="gwennen_influence_assumptions",message="Influence types are assumed equally likely among supported types. Eligibility and interactions with influence, synthesis, fractures and Eldritch implicits are not verified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
-	if action.method=="gwennen" and (action.firstOutcome==1032 or action.secondOutcome==1032) then result[#result+1]={code="gwennen_implicit_assumptions",message="Recognized ordinary and Eldritch implicit modifiers are rerolled only when a varying normalized value is below its maximum. Eligibility, maximum checks and roll distributions are unverified; special or ambiguous base implicits are excluded.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
+	if action.method=="gwennen" and (action.firstOutcome==1032 or action.secondOutcome==1032) then result[#result+1]={code="gwennen_implicit_assumptions",message="Recognized ordinary, Eldritch and synthesised implicit modifiers are rerolled only when a varying normalized value is below its maximum. Eligibility, maximum checks and roll distributions are unverified; special or ambiguous base implicits are excluded.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
 	if action.method=="gwennen" and (action.firstOutcome==1013 or action.secondOutcome==1013) then result[#result+1]={code="gwennen_pantheon_assumptions",message="Pantheon Aspect uses the Brinehook model: four eligible modifiers are assumed equally likely and an open suffix is required. Gwennen eligibility, weights and interactions are unverified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
 	if action.method=="gwennen" and (action.firstOutcome==1010 or action.firstOutcome==1011 or action.secondOutcome==1010 or action.secondOutcome==1011) then result[#result+1]={code="gwennen_socket_colour_assumptions",message="Socket colour rerolls use the estimated Chromatic Orb model. The first result tied for the most non-white ordinary sockets is kept; Gwennen's tie rule, eligibility and probabilities are unverified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
 	if action.method=="gwennen" and (action.firstOutcome==1016 or action.firstOutcome==1017 or action.secondOutcome==1016 or action.secondOutcome==1017) then result[#result+1]={code="gwennen_socket_link_assumptions",message="Link rerolls use the experimental Fusing model, drawing independent layouts from the starting item and keeping the first tied result with the longest link. Gwennen's repeat rule, tie rule, eligibility and odds are unverified.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
@@ -150,9 +150,10 @@ local function flags(model,state)
 	local replacement=state.corruptedImplicits or state.implicits
 	if replacement then
 		for _,entries in ipairs({state.corruptedImplicits or {},state.implicits or {}}) do for _,entry in ipairs(entries) do for _,line in ipairs(model.byId[entry.id] or {}) do rollBlock(line) end end end
-		for _,index in ipairs(state.synthRetained or {}) do for _,line in ipairs(model.synthesisGroups[index]) do rollBlock(StripEscapes(line.line or "")) end end
+		for _,index in ipairs(state.synthRetained or {}) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do rollBlock(StripEscapes(line.line or "")) end end
 	else
-		for _,line in ipairs(model.item.implicitModLines or {}) do rollBlock(StripEscapes(line.line or "")) end
+		if state.synthRolls then for index in ipairs(model.synthesisGroups) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do rollBlock(StripEscapes(line.line or "")) end end
+		else for _,line in ipairs(model.item.implicitModLines or {}) do rollBlock(StripEscapes(line.line or "")) end end
 		if state.vendorImplicit then for _,line in ipairs(model.byId[state.vendorImplicit] or {}) do rollBlock(line) end end
 	end
 	return result
@@ -567,7 +568,7 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
    local active=state.synthRetained
    if active then assert(model and model.synthesisGroups,"A synthesised item model is required for implicit targets") end
    if model and model.synthesisGroups and not active and not state.corruptedImplicits and not state.implicits then active={};for index in ipairs(model.synthesisGroups) do active[#active+1]=index end end
-   for _,index in ipairs(active or {}) do local item=model.synthesisGroups[index];if require("Modules.CraftingSynthesisGroups").targetStatus(item,group) then entries[#entries+1]=item.candidates[1] end end
+   for _,index in ipairs(active or {}) do local item=model.synthesisGroups[index];local candidates=require("Modules.CraftingSynthesisGroups").candidates(item,state,index);if require("Modules.CraftingSynthesisGroups").targetStatus({candidates=candidates},group) then entries[#entries+1]=candidates[1] end end
   end
   if group.scope == "enchant" then
    assert(model,"A native item model is required for enchantment targets")
@@ -980,10 +981,11 @@ function M.capacities(model,state)
  if state.rarity == "MAGIC" then prefix,suffix=1,1 end
  local active={}
  if state.corruptedImplicits or state.implicits then
-  for _,index in ipairs(state.synthRetained or {}) do for _,line in ipairs(model.synthesisGroups[index]) do active[#active+1]=line end end
+  for _,index in ipairs(state.synthRetained or {}) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do active[#active+1]=line end end
   for _,list in ipairs({state.corruptedImplicits or {},state.implicits or {}}) do for _,entry in ipairs(list) do
    for _,line in ipairs(M.rolledLines(M.entryMod(model,entry),entry.range)) do active[#active+1]={line=line} end
   end end
+ elseif state.synthRolls then for index in ipairs(model.synthesisGroups) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do active[#active+1]=line end end
  else active=model.item.implicitModLines or {} end
  for _,line in ipairs(active) do
   local value=tonumber(line.line:match("(%d+) additional Prefix"));if value then prefix=prefix+value end

@@ -22,7 +22,7 @@ function L.extend(M,A,api)
 		else
 			assert((state.intangibility or 0) > 0,"The item has no Intangibility to remove")
 			if random() < 0.5 then state.intangibility=0
-			else state.destroyed=true;state.affixes={};state.imprint=nil;state.implicits=nil;state.corruptedImplicits=nil end
+			else state.destroyed=true;state.affixes={};state.imprint=nil;state.implicits=nil;state.corruptedImplicits=nil;state.synthRolls=nil end
 		end
 		return state
 	end

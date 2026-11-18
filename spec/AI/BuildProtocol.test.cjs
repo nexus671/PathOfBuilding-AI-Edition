@@ -30,7 +30,7 @@ test('queues reviewed crafting removals with closed project-ID validation', t =>
 
 test('accepts 3.30 crafting state markers without opening the schema', t => {
   const f=fixture(t), itemText='Rarity: NORMAL\nIron Hat\nItem Level: 86';
-  const initialState={rarity:'RARE',affixes:[{id:'AttackCastSpeedPerNearbyEnemyEssence1',range:0.5,description330:true}],corrupted:true,corruptedImplicits:[{id:'V2SupportedByLifeGainOnHitCorrupted',range:0.5,corruption330:true}],synthRetained:[1,3],socketLayoutUnknown:true};
+  const initialState={rarity:'RARE',affixes:[{id:'AttackCastSpeedPerNearbyEnemyEssence1',range:0.5,description330:true}],corrupted:true,corruptedImplicits:[{id:'V2SupportedByLifeGainOnHitCorrupted',range:0.5,corruption330:true}],synthRetained:[1,3],synthRolls:[{id:'SynthesisImplicitPercentLife3',range:0.5}],socketLayoutUnknown:true};
   const args={baseRevision:f.state.revision,itemText,initialState,action:{method:'tainted_chromatic'}};
   f.call('apply_crafting_action',args);
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.deepEqual(request.initialState,initialState);
@@ -40,6 +40,8 @@ test('accepts 3.30 crafting state markers without opening the schema', t => {
     {...initialState,synthRetained:[0]},
     {...initialState,synthRetained:[]},
     {...initialState,synthRetained:[1,2,3]},
+    {...initialState,synthRolls:[]},
+    {...initialState,synthRolls:[{id:'SynthesisImplicitPercentLife3',range:1.5}]},
     {...initialState,corruptedImplicits:[{...initialState.corruptedImplicits[0],corruption330:false}]},
     {...initialState,corruptedImplicits:[{...initialState.corruptedImplicits[0],unexpected:true}]}
   ]) assert.throws(()=>f.call('apply_crafting_action',{...args,initialState:invalid}),/arguments/);

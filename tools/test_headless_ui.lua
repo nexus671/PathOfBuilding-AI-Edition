@@ -587,6 +587,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(main.popups[1].controls.apply:IsEnabled(),"Observed profile did not enable Kishara");ui:click("close")
 	end
 	do
+		local raw="Rarity: RARE\nExample\nGold Amulet\nItem Level: 86\nImplicits: 2\n{range:0}(8-10)% increased maximum Life\n+20 to Dexterity\nSynthesised Item"
+		require("Classes.CraftingSimulatorControl").Open(build,{id="gwennen-synthesis-ui",title="Synthesised reroll",slot="Amulet",startingItem=raw,goals={},steps={}})
+		ui:click("tab_settings");ui:click("gwennen");ui:choose("first",1032,"val");ui:choose("second",1032,"val");ui:click("simulate");ui:click("item")
+		assert(main.popups[1].controls.intro.label:find("Gwennen modeled outcome",1,true),"Synthesised reroll did not apply")
+		frame("crafting-gwennen-synthesis");ui:click("keepWorking")
+		local saved;for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id=="gwennen-synthesis-ui" then saved=project end end
+		assert(saved and saved.run.state.synthRolls and #saved.run.state.synthRolls==2,"Synthesised implicit rolls were not kept in the build")
+	end
+	do
 		local raw="Rarity: RARE\nExample\nIron Hat\nItem Level: 86"
 		require("Classes.CraftingSimulatorControl").Open(build,{id="gwennen-ui",title="Gwennen pair",slot="Helmet",startingItem=raw,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch","Gwennen");ui:click("paletteUse");assert(not main.popups[1].controls.apply:IsEnabled(),"An unconfigured Gwennen pair could be applied")

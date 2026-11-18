@@ -23,7 +23,7 @@ function M.search(query,limit)
 				if entry.id==1020 or entry.id==1021 or entry.id==1043 or entry.id==1044 then row.note="Experimental: distinct random ordinary modifiers change to uniquely identified adjacent legal tiers. Selection and tier rules are unverified." end
 				if entry.id==1018 or entry.id==1019 then row.note="The model assumes the number of modifiers on this side stays the same; Gwennen's behavior is unverified." end
 				if entry.id==1031 then row.note="The model assumes equal influence chances and accepts only uninfluenced, non-synthesised items without Eldritch implicits." end
-				if entry.id==1032 then row.note="Experimental: rerolls recognized non-maximum ordinary or Eldritch implicits. Maximum checks, eligibility and roll odds are unverified." end
+				if entry.id==1032 then row.note="Experimental: rerolls recognized non-maximum ordinary, Eldritch or synthesised implicits. Maximum checks, eligibility and roll odds are unverified." end
 				if entry.id==1013 then row.note="The model uses Brinehook's four Pantheon Aspects, assumed equally likely, and requires an open suffix; Gwennen's rules are unverified." end
 				if entry.id==1010 or entry.id==1011 then row.note="Uses estimated Chromatic Orb rolls and keeps the first result tied for most non-white ordinary sockets. Gwennen's tie rule and odds are unverified." end
 				if entry.id==1016 or entry.id==1017 then row.note="Uses the experimental Fusing model with independent rolls from the starting item and first-on-tie selection. Gwennen's rules and odds are unverified." end

@@ -143,6 +143,11 @@ async function main(){
   assert.deepEqual(synthRange.crafting.nativeEngine.synthesisGroups[0].candidates,['SynthesisImplicitPercentLife3']);
   const synthPlain=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:synthRangeRaw.replace('{range:0}(8-10)%','8%'),limit:5},'inspected');
   assert.equal(synthPlain.crafting.nativeEngine.synthesisGroups[0].ambiguous,true);
+  const synthRare=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthRangeRaw,action:{method:'alchemy'},seed:7},'crafted');
+  const synthReroll=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthRangeRaw,initialState:synthRare.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1032,secondOutcome:1032},seed:7},'crafted');
+  assert.equal(synthReroll.nativeCrafting.state.synthRolls[0].id,'SynthesisImplicitPercentLife3');assert.ok(synthReroll.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_implicit_assumptions'));
+  const synthRerollContinued=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthRangeRaw,initialState:synthReroll.nativeCrafting.state,action:{method:'scour'},seed:7},'crafted');
+  assert.deepEqual(synthRerollContinued.nativeCrafting.state.synthRolls,synthReroll.nativeCrafting.state.synthRolls);
   const synthTarget=synthMultiInspection.crafting.nativeEngine.synthesisGroups[0].candidates[0];
   assert.equal(synthMultiInspection.crafting.nativeEngine.synthesisGroups[0].ambiguous,false);
   const synthOdds=await queued('simulate_crafting',{baseRevision:context.revision,itemText:synthMultiRaw,recipe:{steps:[{method:'vaal'}],targets:[{scope:'implicit',anyOf:[synthTarget]}],requirements:{corrupted:true}},options:{trials:40,maxActions:1,seed:1}},'crafted');

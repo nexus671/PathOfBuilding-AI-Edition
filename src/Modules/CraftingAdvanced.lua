@@ -1299,10 +1299,10 @@ function A.extend(M,api)
 		if model.synthesisGroups then
 			result.synthesisGroups={}
 			for index,group in ipairs(model.synthesisGroups) do
-				local lines={};for _,line in ipairs(group) do lines[#lines+1]=itemLib.applyRange(line.line,line.range or 0.5) end
+				local lines={};for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do lines[#lines+1]=itemLib.applyRange(line.line,line.range or 0.5) end
 				local retained=not state.corruptedImplicits
 				for _,value in ipairs(state.synthRetained or {}) do if value==index then retained=true end end
-				local ids={};for _,candidate in ipairs(group.candidates) do ids[#ids+1]=candidate.id end
+				local ids={};for _,candidate in ipairs(require("Modules.CraftingSynthesisGroups").candidates(group,state,index)) do ids[#ids+1]=candidate.id end
 				result.synthesisGroups[#result.synthesisGroups+1]={index=index,lines=lines,retained=retained,candidates=ids,ambiguous=#ids>1}
 			end
 		end

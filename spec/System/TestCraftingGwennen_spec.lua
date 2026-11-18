@@ -44,7 +44,7 @@ describe("Experimental Gwennen pair",function()
 		local legacy=copyTable(rerolled);legacy.baseImplicitReconstructed=nil;local legacyOK,legacyReason=pcall(sim.action,model,legacy,pair,function() return 0 end);assert.is_false(legacyOK);assert.matches("legacy implicit roll",legacyReason)
 		local calculation=sim.calculate(source,pair,{},state,{requirements={minAffixes=0},trials=8,seed=7});assert.is_true(calculation.sampled);assert.equal("gwennen_implicit_assumptions",calculation.warnings[2].code)
 		local maximum=sim.model(source:gsub("%+25","+30"));local full=copyTable(maximum.initial);full.rarity="RARE"
-		assert.has_error(function() sim.action(maximum,full,pair,function() return 0 end) end)
+		local allowed,why=pcall(sim.action,maximum,full,pair,function() return 0 end);assert.is_false(allowed);assert.matches("No supported implicit",why);assert.is_nil(why:match("cannot apply:.-%.lua:"))
 		local helm=sim.model(raw);local eldritch=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state
 		eldritch=sim.perform(raw,{method="eldritch_implicit",side="Eater",tier=1},12,eldritch).state;eldritch.rarity="RARE"
 		eldritch.implicits[1].id="SpellCriticalStrikeChanceEldritchImplicit2";eldritch.implicits[1].range=1;eldritch.implicits[2].id="EnergyShieldFromGlovesBootsEldritchImplicit1";eldritch.implicits[2].range=0;local before=copyTable(eldritch)
@@ -58,6 +58,51 @@ describe("Experimental Gwennen pair",function()
 		local steel=sim.model("Rarity: NORMAL\nSteel Ring\nItem Level: 86\nImplicits: 1\nAdds 3 to 14 Physical Damage to Attacks")
 		local split=copyTable(steel.initial);split.rarity="RARE";local reroll=sim.action(steel,split,pair,function() return 0 end)
 		assert.same({0,0},reroll.baseImplicitRanges[1]);sim.validateState(steel,reroll)
+	end)
+	it("retains synthesised implicit identities and rolls through saving and corruption",function()
+		local source="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n{range:0}(8-10)% increased maximum Life\n+20 to Dexterity\nSynthesised Item"
+		local model=sim.model(source);local state=copyTable(model.initial);state.rarity="RARE";local original=copyTable(state)
+		assert.equal(1,#model.synthesisGroups[1].candidates);assert.equal(1,#model.synthesisGroups[2].candidates)
+		local calls=0;local changed=sim.action(model,state,{method="gwennen",firstOutcome=1032,secondOutcome=1000},function() calls=calls+1;return calls==1 and 0.1 or 0.999999 end)
+		assert.same(original,state);assert.equal(1,changed.synthRolls[1].range);assert.equal(model.synthesisGroups[2].candidates[1].range,changed.synthRolls[2].range)
+		local target={{scope="implicit",anyOf={changed.synthRolls[1].id},minRoll=0.9}};assert.is_true(sim.matches(changed,target,nil,model))
+		local saved=require("Modules.CraftingCheckpoint").validate(source,require("Modules.CraftingInventory").run(changed)).state;assert.same(changed.synthRolls,saved.synthRolls)
+		newBuild();build.savers.CraftingProjects:Upsert({id="synth-reroll",title="Synthesised amulet",slot="Amulet",startingItem=source,goals={},steps={},run=require("Modules.CraftingInventory").run(changed)})
+		local xml=build:SaveDB("Synthesised reroll");loadBuildFromXML(xml,"Synthesised reroll");assert.same(changed.synthRolls,build.savers.CraftingProjects.projects[1].run.state.synthRolls)
+		local item=sim.toItem(model,saved);local reopened=sim.model(item.raw);assert.equal(changed.synthRolls[1].id,reopened.synthesisGroups[1].candidates[1].id);assert.is_true(sim.matches(reopened.initial,target,nil,reopened))
+		local copied=copyTable(changed);sim.rollCorrupted(model,copied,function() return 0.999999 end);copied=sim.validateState(model,copied)
+		assert.same({1},copied.synthRetained);assert.is_true(sim.matches(copied,target,nil,model));local reopenedCorrupted=sim.model(sim.toItem(model,copied).raw)
+		assert.equal(changed.synthRolls[1].id,reopenedCorrupted.synthesisGroups[1].candidates[1].id);assert.is_true(sim.matches(reopenedCorrupted.initial,target,nil,reopenedCorrupted))
+		local invalid=copyTable(changed);invalid.synthRolls[1].id="forged";assert.has_error(function() sim.validateState(model,invalid) end)
+		invalid=copyTable(changed);invalid.synthRolls[1].range={0,1};assert.has_error(function() sim.validateState(model,invalid) end)
+		invalid=copyTable(changed);invalid.synthRolls[1].extra=true;assert.has_error(function() sim.validateState(model,invalid) end)
+		local ambiguous=sim.model(source:gsub("{range:0}%(8%-10%)%% increased maximum Life","8%% increased maximum Life"));local unknown=copyTable(ambiguous.initial);unknown.rarity="RARE"
+		assert.has_error(function() sim.action(ambiguous,unknown,{method="gwennen",firstOutcome=1032,secondOutcome=1000},function() return 0 end) end)
+	end)
+	it("keeps independent synthesised values and refuses forged identities",function()
+		local source="Rarity: NORMAL\nCopper Sword\nItem Level: 86\nImplicits: 1\nAdds 4 to 9 Fire Damage\nSynthesised Item"
+		local model=sim.model(source);assert.equal(1,#model.synthesisGroups[1].candidates);local state=copyTable(model.initial);state.rarity="RARE"
+		local calls=0;local changed=sim.action(model,state,{method="gwennen",firstOutcome=1032,secondOutcome=1000},function() calls=calls+1;return calls==1 and 0.1 or calls==2 and 0 or 0.999999 end)
+		assert.same({0,1},changed.synthRolls[1].range);local item=sim.toItem(model,changed);assert.is_truthy(item.raw:find("Adds 4 to 15 Fire Damage",1,true))
+		local reopened=sim.model(item.raw);assert.equal(changed.synthRolls[1].id,reopened.synthesisGroups[1].candidates[1].id);assert.same({0,1},reopened.synthesisGroups[1].candidates[1].range)
+		local forged=item.raw:gsub("synth_id_"..changed.synthRolls[1].id,"synth_id_NotARealImplicit");assert.is_nil(sim.model(forged).synthesisGroups)
+		local inconsistent=item.raw:gsub("Adds 4 to 15 Fire Damage","Adds 5 to 15 Fire Damage");assert.is_nil(sim.model(inconsistent).synthesisGroups)
+	end)
+	it("preserves fractional synthesised rolls in exported item text",function()
+		local source="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 1\n{range:0}Regenerate (11.7-18.3) Life per second\nSynthesised Item"
+		local model=sim.model(source);assert.is_truthy(model.synthesisGroups);local state=copyTable(model.initial);state.rarity="RARE"
+		local calls=0;local changed=sim.action(model,state,{method="gwennen",firstOutcome=1032,secondOutcome=1000},function() calls=calls+1;return calls==1 and 0.1 or 0.37 end)
+		local reopened=sim.model(sim.toItem(model,changed).raw);assert.are.near(changed.synthRolls[1].range,reopened.synthesisGroups[1].candidates[1].range,0.000001)
+	end)
+	it("retains catalyst scaling on rerolled synthesised implicits",function()
+		local source="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nCatalyst: Fertile\nCatalystQuality: 20\nImplicits: 1\n{tags:resource,life}{range:0}(8-10)% increased maximum Life\nSynthesised Item"
+		local model=sim.model(source);local state=copyTable(model.initial);state.rarity="RARE";local calls=0
+		local changed=sim.action(model,state,{method="gwennen",firstOutcome=1032,secondOutcome=1000},function() calls=calls+1;return calls==1 and 0.1 or 0.999999 end)
+		local item=sim.toItem(model,changed);assert.is_truthy(item.raw:find("{tags:resource,life}",1,true));assert.equal("12% increased maximum Life",StripEscapes(itemLib.formatModLine(item.implicitModLines[1],false)))
+		local reopened=sim.model(item.raw);local restored=sim.toItem(reopened,reopened.initial);assert.equal("12% increased maximum Life",StripEscapes(itemLib.formatModLine(restored.implicitModLines[1],false)))
+		local unscaled=sim.model(source:gsub("{tags:resource,life}","{unscalable}{tags:resource,life}"));local unscaledState=copyTable(unscaled.initial);unscaledState.rarity="RARE";calls=0
+		local unscaledResult=sim.action(unscaled,unscaledState,{method="gwennen",firstOutcome=1032,secondOutcome=1000},function() calls=calls+1;return calls==1 and 0.1 or 0.999999 end)
+		local unscaledItem=sim.toItem(unscaled,unscaledResult);assert.is_true(unscaledItem.implicitModLines[1].unscalable);assert.equal("10% increased maximum Life",StripEscapes(itemLib.formatModLine(unscaledItem.implicitModLines[1],false)))
 	end)
 	it("runs add and remove branches and reports estimates on calculations",function()
 		local model,state=item();local pair={method="gwennen",firstOutcome=1004,secondOutcome=1005}

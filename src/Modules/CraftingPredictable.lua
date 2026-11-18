@@ -70,7 +70,7 @@ function P.extend(M,A,api)
 		if craft.method ~= "recombine_predictable" then return originalAction(model,input,craft,random) end
 		local result=prepare(model,input,craft);local pick=random();local state
 		if pick < result.left then state=result.states[1] elseif pick < result.left+result.right then state=result.states[2]
-		else state=copyTable(input);state.destroyed=true;state.affixes={};state.imprint=nil end
+		else state=copyTable(input);state.destroyed=true;state.affixes={};state.imprint=nil;state.synthRolls=nil end
 		state.origin=model.initial.origin;return state
 	end
 	function M.calculate(raw,craft,targets,initialState)
