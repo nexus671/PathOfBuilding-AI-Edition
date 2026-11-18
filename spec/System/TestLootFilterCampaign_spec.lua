@@ -35,6 +35,15 @@ describe("Offline campaign pickup policies",function()
 		end
 		local rules=campaign.rules(p.campaign);assert.equal("campaign-recipe-3",rules[1].id);assert.equal("campaign-recipe-2",rules[2].id);assert.equal("campaign-recipe-1",rules[3].id)
 	end)
+	it("chooses a policy preview base that satisfies the displayed drop-level band",function()
+		local p=profile();p.campaign.weapons={"Bow"};p.campaign.minAreaLevel=50;p.campaign.maxAreaLevel=54;p.campaign.upgradeWindow=15
+		local entries=require("Modules.LootFilterLibrary").campaign(p);assert.equal(1,#entries)
+		local entry=entries[1];assert.is_true(entry.sample.DropLevel>=35)
+		local result=require("Modules.LootFilterParser").simulate(require("Modules.LootFilterParser").parse(entry.rule.text),entry.sample)
+		assert.equal("matched",result.status);assert.equal("Show",result.action)
+		local sample=require("Modules.LootFilterLibrary").sample({text='Show\n BaseType == "Crude Bow" "Assassin Bow"\n DropLevel >= 35'})
+		assert.equal("Assassin Bow",sample.BaseType);assert.equal(62,sample.DropLevel)
+	end)
 	it("prioritizes recipe pickups over matching equipment families",function()
 		local p=profile();p.campaign.weapons={"Bow"};p.campaign.recipes={"Six-link equipment"}
 		local item={BaseType=campaign.families().weapons.Bow[1],AreaLevel=40,DropLevel=35,Rarity="Rare",Sockets=6,LinkedSockets=6}

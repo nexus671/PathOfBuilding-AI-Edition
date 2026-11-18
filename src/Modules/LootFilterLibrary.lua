@@ -103,11 +103,13 @@ function M.sample(rule,block)
 	local item={BaseType="Chaos Orb",Class="Stackable Currency",Rarity="Normal",ItemLevel=86,AreaLevel=83,DropLevel=1,Quality=0,StackSize=1,Sockets=0,SocketGroup="",LinkedSockets=0,Width=1,Height=1,UnidentifiedItemTier=0,HasInfluence={"None"},HasExplicitMod={},HasEnchantment={},EnchantmentPassiveNode=""}
 	for key in pairs(parser.booleans) do if key~="AlwaysShow" then item[key]=false end end
 	local hasBase,hasClass,hasRarity,hasIdentified,hasDefence,hasTier,modifier=false,false,false,false,false,false,nil
+	local baseCondition,dropConditions,classCondition=nil,{},nil
 	local socketConditions={}
 	if rule then block=block or parser.parse(rule.text).rules[1];if block then for _,c in ipairs(block.conditions) do
 		local value=c.values[1]
 		if c.keyword=="Sockets" or c.keyword=="SocketGroup" or c.keyword=="LinkedSockets" then socketConditions[#socketConditions+1]=c end
-		if c.keyword=="BaseType" then hasBase=true elseif c.keyword=="Class" then hasClass=true end
+		if c.keyword=="BaseType" then hasBase=true;baseCondition=c elseif c.keyword=="Class" then hasClass=true;classCondition=c end
+		if c.keyword=="DropLevel" then dropConditions[#dropConditions+1]=c end
 		if c.keyword=="Rarity" then hasRarity=true elseif c.keyword=="Identified" then hasIdentified=true end
 		if c.keyword=="BaseDefencePercentile" then hasDefence=true end
 		if c.keyword=="UnidentifiedItemTier" then hasTier=true end
@@ -150,7 +152,21 @@ function M.sample(rule,block)
 		elseif #socketConditions>0 or item.LinkedSockets>=5 or type(item.SocketGroup)=="string" and item.SocketGroup~="" then item.BaseType="Vaal Regalia";item.Class="Body Armours"
 		elseif item.Rarity=="Unique" then item.BaseType="Leather Belt";item.Class="Belts"
 		elseif item.Rarity=="Rare" or item.Rarity=="Magic" then item.BaseType="Iron Hat";item.Class="Helmets" end
-	else item.Class=baseClass(item.BaseType) or (hasClass and item.Class or nil) end
+	else
+		-- Family policies list many exact bases. Pick one that actually meets
+		-- the requested base drop-level band instead of always using the first.
+		if baseCondition and baseCondition.operator=="==" and #dropConditions>0 and item.Rarity~="Unique" then
+			for _,name in ipairs(baseCondition.values) do
+				local class=baseClass(name);local level=M.baseProperties(name,item.Rarity).DropLevel
+				local valid=level~=nil and (not classCondition or class and parser.condition(classCondition,{Class=class})==true)
+				local native=data and data.itemBases and data.itemBases[name]
+				if valid and #socketConditions==1 and native and item.Sockets and item.Sockets>(native.socketLimit or 0) then valid=false end
+				if valid then for _,condition in ipairs(dropConditions) do if parser.condition(condition,{DropLevel=level})~=true then valid=false;break end end end
+				if valid then item.BaseType=name;break end
+			end
+		end
+		item.Class=baseClass(item.BaseType) or (hasClass and item.Class or nil)
+	end
 	-- A generated unidentified magic or rare item can have any drop tier. A
 	-- rule-specific example retains an explicitly requested hypothetical tier.
 	if not hasTier and item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=nil end
