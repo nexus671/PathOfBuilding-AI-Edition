@@ -24,6 +24,11 @@ describe("Map clipboard import",function()
   local a,b=parser.parse(normal).state,parser.parse(magic).state
   assert.equal("normal",a.rarity);assert.is_true(a.corrupted);assert.equal(0,#a.selected)
   assert.equal("magic",b.rarity);assert.is_true(b.corrupted);assert.same({"MapMonsterAreaOfEffectMapWorlds"},b.selected)
+  local withImplicit=normal:gsub("Item Level: 68\n--------\n","Item Level: 68\n--------\n+15%% Item Rarity (implicit)\nArea is Influenced by the Originator's Memories (implicit)\n--------\n")
+  local parsed=parser.parse(withImplicit).state;assert.same({id="MapCorruptionItemRarity",value=15},parsed.implicit)
+  assert.same({{kind="implicit",text="Area is Influenced by the Originator's Memories"}},parsed.observedEffects)
+  local draft={id="normal-corrupt",title="Copied map",patch=require("Modules.MapCraftingData").source().patch,baseId=parsed.baseId,tier=parsed.tier,itemLevel=parsed.itemLevel,rarity=parsed.rarity,selected=parsed.selected,corrupted=parsed.corrupted,implicit=parsed.implicit,observedEffects=parsed.observedEffects}
+  assert.same(draft,require("Modules.AtlasPlanner").validateMapDraft(draft))
  end)
  it("recognizes the Blighted implicit on copied tier-based maps",function()
   local raw="Item Class: Maps\nRarity: Rare\nBlighted Example\nBlighted Map (Tier 5)\n--------\nItem Level: 68\n--------\nArea is infested with Fungal Growths (implicit)\n--------\nMonsters have 45% increased Area of Effect"..trailer
