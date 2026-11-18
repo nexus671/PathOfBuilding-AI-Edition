@@ -1,0 +1,166 @@
+{
+  "entries": {
+    "MapCorruptionAtlasEffect": {
+      "legacy": false,
+      "requiredLevel": 1,
+      "spawnWeights": [
+        {
+          "tag": "infected_map",
+          "weight": 0
+        },
+        {
+          "tag": "default",
+          "weight": 10
+        }
+      ],
+      "stat": {
+        "id": "map_percent_increased_effect_of_atlas_passives",
+        "max": 15,
+        "min": 10
+      },
+      "text": "Atlas Passives have (10-15)% increased Effect on Area"
+    },
+    "MapCorruptionBossCorruption": {
+      "legacy": false,
+      "requiredLevel": 1,
+      "spawnWeights": [
+        {
+          "tag": "infected_map",
+          "weight": 0
+        },
+        {
+          "tag": "default",
+          "weight": 40
+        }
+      ],
+      "stat": {
+        "id": "map_unique_monsters_drop_corrupted_items",
+        "max": 1,
+        "min": 1
+      },
+      "text": "Unique Monsters drop Corrupted Items"
+    },
+    "MapCorruptionItemQuantity": {
+      "legacy": true,
+      "requiredLevel": 1,
+      "spawnWeights": [
+        {
+          "tag": "default",
+          "weight": 0
+        }
+      ],
+      "stat": {
+        "id": "map_implicit_item_drop_quantity_+%",
+        "max": 20,
+        "min": 10
+      },
+      "text": "+(10-20)% Item Quantity (legacy)"
+    },
+    "MapCorruptionItemRarity": {
+      "legacy": false,
+      "requiredLevel": 1,
+      "spawnWeights": [
+        {
+          "tag": "default",
+          "weight": 120
+        }
+      ],
+      "stat": {
+        "id": "map_implicit_item_drop_rarity_+%",
+        "max": 20,
+        "min": 10
+      },
+      "text": "+(10-20)% Item Rarity"
+    },
+    "MapCorruptionModEffect": {
+      "legacy": false,
+      "requiredLevel": 1,
+      "spawnWeights": [
+        {
+          "tag": "default",
+          "weight": 10
+        }
+      ],
+      "stat": {
+        "id": "local_explicit_mod_effect_+%",
+        "max": 20,
+        "min": 10
+      },
+      "text": "(10-20)% increased Explicit Modifier magnitudes"
+    },
+    "MapCorruptionPackSize": {
+      "legacy": false,
+      "requiredLevel": 1,
+      "spawnWeights": [
+        {
+          "tag": "default",
+          "weight": 55
+        }
+      ],
+      "stat": {
+        "id": "map_implicit_pack_size_+%",
+        "max": 10,
+        "min": 5
+      },
+      "text": "+(5-10)% Pack Size"
+    },
+    "MapCorruptionRandomAtlasNotables": {
+      "legacy": false,
+      "requiredLevel": 1,
+      "spawnWeights": [
+        {
+          "tag": "infected_map",
+          "weight": 0
+        },
+        {
+          "tag": "default",
+          "weight": 15
+        }
+      ],
+      "stat": {
+        "id": "map_X_additional_random_unallocated_notables",
+        "max": 15,
+        "min": 5
+      },
+      "text": "Area is affected by (5-15) additional random Unallocated Notable Atlas Passives"
+    },
+    "MapCorruptionSoulGainPrevention": {
+      "legacy": false,
+      "requiredLevel": 1,
+      "spawnWeights": [
+        {
+          "tag": "default",
+          "weight": 20
+        }
+      ],
+      "stat": {
+        "id": "map_player_disable_soul_gain_prevention",
+        "max": 1,
+        "min": 1
+      },
+      "text": "Players' Vaal Skills do not apply Soul Gain Prevention"
+    },
+    "MapCorruptionVaalVessel": {
+      "legacy": false,
+      "requiredLevel": 78,
+      "spawnWeights": [
+        {
+          "tag": "infected_map",
+          "weight": 0
+        },
+        {
+          "tag": "default",
+          "weight": 10
+        }
+      ],
+      "stat": {
+        "id": "map_spawn_additional_empowered_vaal_chests",
+        "max": 1,
+        "min": 1
+      },
+      "text": "Area contains an additional guarded Exquisite Vaal Vessel"
+    }
+  },
+  "patch": "3.30.0.2",
+  "sourceSha256": "06f5c7c3fa55dc566efffd16d7a6d49ce95987e67c4571c3ca77fbd8312ccb10"
+}

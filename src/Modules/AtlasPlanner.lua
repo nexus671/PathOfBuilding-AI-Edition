@@ -51,6 +51,12 @@ function M.validateMapDraft(entry)
 	assert(entry.corrupted==nil or type(entry.corrupted)=="boolean","Invalid map corruption state")
 	assert(not entry.corrupted or result.rarity=="rare","Corrupted map drafts currently require rare maps")
 	result.corrupted=entry.corrupted or nil
+	if entry.implicit~=nil then
+		assert(result.corrupted and type(entry.implicit)=="table","A map corruption implicit requires a corrupted draft")
+		result.implicit={id=text(entry.implicit.id,160,"map corruption implicit")}
+		assert(result.implicit.id:match("%S"),"Invalid map corruption implicit")
+		if entry.implicit.value~=nil then result.implicit.value=integer(entry.implicit.value,-1000000000,1000000000,"map implicit value") end
+	end
 	local seen={};for _,id in ipairs(array(entry.selected,result.corrupted and 9 or 6,"map modifiers")) do
 		text(id,160,"map modifier ID");assert(id:match("%S") and not seen[id],"Invalid or duplicate map modifier");seen[id]=true;result.selected[#result.selected+1]=id
 	end

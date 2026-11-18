@@ -15,12 +15,13 @@ function M.Open(options)
 	options=options or {};local initial=options.initial
 	if initial then
 		assert(initial.patch==map.source().patch,"This map draft uses a different data version")
-		map.inspect(initial.baseId,initial.tier,initial.itemLevel,initial.selected,"",0,1,nil,initial.rarity=="normal" and "rare" or initial.rarity,initial.rolls,initial.corrupted)
+		map.inspect(initial.baseId,initial.tier,initial.itemLevel,initial.selected,"",0,1,nil,initial.rarity=="normal" and "rare" or initial.rarity,initial.rolls,initial.corrupted,initial.implicit)
 	end
 	local width=math.min(900,main.screenW-40);local height=math.min(600,main.screenH-60)
 	local left=math.floor(width*0.38);local right=left+32;local rightWidth=width-right-16
 	local controls={};local function isCorrupted() return controls.rarity and controls.rarity:GetSelValueByKey("val")=="corrupted_rare" or false end
 	local function getRarity() local value=controls.rarity:GetSelValueByKey("val");return value=="corrupted_rare" and "rare" or value end
+	local implicit=initial and initial.implicit and copyTable(initial.implicit) or nil
 	local selected=initial and copyTable(initial.selected) or {};local rolls=initial and copyTable(initial.rolls or {}) or {};local candidate;local baseId=initial and initial.baseId or "Metadata/Items/Maps/MapWorldsStrand";local refresh;local offset,nextOffset=0,nil
 	local estimateSettings=initial and initial.estimate and copyTable(initial.estimate) or nil
 	local draftId=initial and initial.id
@@ -46,7 +47,7 @@ function M.Open(options)
 			baseOffset=page.nextOffset
 		until not baseOffset
 		browser.Open("Choose map base",rows,{action="Use map",choose=function(entry)
-			baseId=entry.id;selected={};rolls={};estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
+			baseId=entry.id;selected={};rolls={};implicit=nil;estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
 		end,closeOnChoose=false})
 	end)
 	ui.label(controls,"tierLabel",16,108,"Map tier",14)
@@ -83,6 +84,28 @@ function M.Open(options)
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
 	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
 	controls.rarity=new("DropDownControl"):DropDownControl(ui.anchor,{right+235,64,150,26},{{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"},{label="Corrupted rare",val="corrupted_rare"}});controls.rarity:SelByValue(initial and (initial.corrupted and "corrupted_rare" or initial.rarity) or "rare","val")
+	button("implicit",right+393,64,rightWidth-393,"Implicit...",function()
+		local module=require("Modules.MapCorruptionImplicits");local entries={{label="No implicit recorded",val=""}}
+		for _,entry in ipairs(module.list()) do entries[#entries+1]={label=entry.label,val=entry.id} end
+		local popup={};ui.description(popup,"help",16,28,608,40,{"Record an observed or hypothetical corruption implicit. Its effects are not included in the displayed totals."},14)
+		popup.choice=new("DropDownControl"):DropDownControl(ui.anchor,{16,76,608,26},entries)
+		popup.choice:SelByValue(implicit and implicit.id or "","val")
+		ui.label(popup,"valueLabel",16,120,"Exact value (optional; leave blank for the range)",14)
+		popup.value=new("EditControl"):EditControl(ui.anchor,{16,144,180,26},implicit and implicit.value and tostring(implicit.value) or "",nil,"%D",8)
+		popup.choice.selFunc=function() popup.value:SetText("") end
+		popup.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,194,200,28},"Keep implicit",function()
+			local id=popup.choice:GetSelValueByKey("val");local next
+			if id~="" then
+				next={id=id};if popup.value.buf~="" then next.value=tonumber(popup.value.buf) end
+				local ok,reason=pcall(module.describe,next,tonumber(controls.level.buf));if not ok then main:OpenMessagePopup("Check implicit",ui.errorText(reason));return end
+			end
+			implicit=next;main:ClosePopup();refresh()
+		end)
+		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{524,194,100,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(popup,{keep=true});main:OpenPopup(640,240,"Map corruption implicit",popup,nil,nil,"close")
+	end)
+	controls.implicit.enabled=function() return isCorrupted() end
+	controls.implicit.tooltipText="Record a corruption implicit. Its effects are not included in modifier totals."
 	local previousRarity=controls.rarity:GetSelValueByKey("val")
 	controls.search=new("EditControl"):EditControl(ui.anchor,{right,96,rightWidth,26},"","Search modifiers",nil,160)
 	controls.list=new("TextListControl"):TextListControl(ui.anchor,{right,132,rightWidth,height-410},nil,{})
@@ -114,7 +137,7 @@ function M.Open(options)
 		ui.label(controls,"draftNameLabel",right,height-42,"Name",14)
 		controls.draftName=new("EditControl"):EditControl(ui.anchor,{right+46,height-48,160,26},initial and initial.title or "Map draft",nil,nil,120)
 		button("keep",right+218,height-48,150,"Keep map draft",function()
-			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil}
+			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil,implicit=implicit and copyTable(implicit) or nil}
 			if estimateSettings then entry.estimate=copyTable(estimateSettings) end
 			local ok,result=pcall(options.keep,entry)
 			if not ok then main:OpenMessagePopup("Map draft",ui.errorText(result));return end
@@ -130,7 +153,7 @@ function M.Open(options)
 	refresh=function()
 		local tier=controls.tier:GetSelValueByKey("val");local level=tonumber(controls.level.buf)
 		local rarity=getRarity()
-		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,rarity=="normal" and "rare" or rarity,rolls,isCorrupted())
+		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,rarity=="normal" and "rare" or rarity,rolls,isCorrupted(),implicit)
 		if not ok then nextOffset=nil;controls.list.list={};controls.status.label="^xE9BE7B"..ui.fit(ui.errorText(result),rightWidth,14);show(nil);return end
 		if rarity=="normal" then result.candidates={};result.total=0;result.nextOffset=nil end
 		nextOffset=result.nextOffset
@@ -140,9 +163,10 @@ function M.Open(options)
 		end
 		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and "^7Normal map | Use currency to add modifiers" or (isCorrupted() and "^xE07070Corrupted "..#selected.."/9 | " or "^7")..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
 		local affixes={}
-		if #selected==0 then affixes={"No hypothetical modifiers selected."} else
+		if #selected==0 then affixes={result.implicit and ("^xB4B4FFImplicit (excluded from totals): "..result.implicit.text) or "No hypothetical modifiers selected."} else
 			local summary=result.summary;local totals=summary.totals
 			affixes={"^xAABBD0Modifier bonuses (excludes quality):","^7Atlas Drops "..range(totals.atlasDrops),"Rarity "..range(totals.rarity).." | Pack size "..range(totals.packSize)}
+			if result.implicit then affixes[#affixes+1]="^xB4B4FFImplicit (excluded from totals): "..result.implicit.text end
 			for _,effect in ipairs(summary.effects) do
 				if #effect.lines==0 then affixes[#affixes+1]=effect.name else for _,line in ipairs(effect.lines) do affixes[#affixes+1]=line end end
 			end
@@ -151,11 +175,11 @@ function M.Open(options)
 	end
 	controls.list.onClick=function(hit) if hit and hit.line then show(hit.line.entry) end end
 	controls.search.changeFunc=function() offset=0;refresh() end
-	controls.level.changeFunc=function() selected={};rolls={};estimateSettings=nil;offset=0;refresh() end
-	controls.tier.selFunc=function() selected={};rolls={};estimateSettings=nil;offset=0;refresh() end
+	controls.level.changeFunc=function() selected={};rolls={};implicit=nil;estimateSettings=nil;offset=0;refresh() end
+	controls.tier.selFunc=function() selected={};rolls={};implicit=nil;estimateSettings=nil;offset=0;refresh() end
 	controls.rarity.selFunc=function()
 		local current=controls.rarity:GetSelValueByKey("val")
-		if not (previousRarity=="rare" and current=="corrupted_rare") then selected={};rolls={} end
+		if not (previousRarity=="rare" and current=="corrupted_rare") then selected={};rolls={};implicit=nil end
 		previousRarity=current;estimateSettings=nil;candidate=nil;offset=0;refresh()
 	end
 	if controls.draftName then controls.draftName.changeFunc=function() if draftId then controls.status.label="^7Name changed. Keep the map draft again." end end end

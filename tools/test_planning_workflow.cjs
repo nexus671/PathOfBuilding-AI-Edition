@@ -729,8 +729,8 @@ async function main(){
   const mapPool=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,limit:100},'mapData');
   const corruptedIds=[],occupied=new Set();for(const entry of mapPool.mapData.candidates){if(entry.groups.every(group=>!occupied.has(group))){corruptedIds.push(entry.id);for(const group of entry.groups)occupied.add(group);if(corruptedIds.length===9)break;}}
   assert.equal(corruptedIds.length,9);
-  const corruptedMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',corrupted:true,selected:corruptedIds},'mapData');
-  assert.equal(corruptedMap.mapData.corrupted,true);assert.equal(corruptedMap.mapData.counts.prefix+corruptedMap.mapData.counts.suffix,9);assert.match(corruptedMap.mapData.currencyOptionsWarning,/Corrupted maps/);
+  const corruptedMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',corrupted:true,selected:corruptedIds,implicit:{id:'MapCorruptionItemRarity',value:15}},'mapData');
+  assert.equal(corruptedMap.mapData.implicit.text,'+15% Item Rarity');assert.equal(corruptedMap.mapData.corrupted,true);assert.equal(corruptedMap.mapData.counts.prefix+corruptedMap.mapData.counts.suffix,9);assert.match(corruptedMap.mapData.currencyOptionsWarning,/Corrupted maps/);
   const rejectedMap=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',corrupted:true,selected:corruptedIds},action:'chaos',seed:42},'failed');assert.match(rejectedMap.error,/Corrupted maps/);
   const magicMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',query:'MapContainsMirageWorlds'},'mapData');
   assert.equal(magicMap.mapData.rarity,'magic');assert.equal(magicMap.mapData.total,0);
@@ -752,6 +752,7 @@ async function main(){
   assert.ok(secondCorruption.nativeCrafting.state.destroyed || secondCorruption.nativeCrafting.state.twiceCorrupted);
   if(!secondCorruption.nativeCrafting.state.destroyed) assert.match(secondCorruption.nativeCrafting.itemText,/Twice Corrupted/);
   const starterAtlas={id:'starter-atlas',title:'Starter Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'starter'},mapDrafts:[{id:'my-map',title:'My map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:5,itemLevel:68,rarity:'rare',selected:['MapMonsterAreaOfEffectMapWorlds'],rolls:[{id:'MapMonsterAreaOfEffectMapWorlds',values:[13,8,5,45]}],estimate:{wantedGroups:[['MapMonsterAreaOfEffectMapWorlds']],avoid:['MapMonsterColdDamageMapWorlds'],trials:20,maxAttempts:5}}]};
+  starterAtlas.mapDrafts.push({id:'corrupt-map',title:'Corrupted map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',corrupted:true,selected:corruptedIds,implicit:{id:'MapCorruptionItemRarity',value:15}});
   for(const version of ['3.28.0j','3.28.0j-ruthless']) {
     const search=await queued('search_atlas_nodes',{baseRevision:context.revision,version,query:'Essence',limit:10},'atlas');
     assert.ok(search.atlas.matches.length>0);

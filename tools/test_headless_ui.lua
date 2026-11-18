@@ -82,6 +82,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:choose("rarity","corrupted_rare","val");assert(main.popups[1].controls.remove:IsEnabled(),"Marking a map corrupted cleared its modifiers");ui:click("remove")
 		for _=1,9 do local c=main.popups[1].controls;assert(c.list.list[1].entry,"Expected a compatible map modifier");c.list.onClick({line=c.list.list[1]});ui:click("add") end
 		local c=main.popups[1].controls;assert(not c.currency:IsEnabled() and not c.estimate:IsEnabled(),"Corrupted maps should not be rerolled");frame("map-corrupted-nine-modifiers")
+		ui:click("implicit");ui:choose("choice","MapCorruptionItemRarity","val");ui:text("value","15");frame("map-corruption-implicit-editor");ui:click("keep")
+		local text={};for _,row in ipairs(main.popups[1].controls.affixes.list) do text[#text+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(text," "):find("+15%% Item Rarity"),"Recorded implicit not shown on the map")
 	end
 	ui:choose("rarity","magic","val");ui:text("search","MapContainsMirageWorlds");assert(main.popups[1].controls.status.label:find("0 candidates",1,true),"Rare-only suffix appeared on a magic map")
 	ui:choose("rarity","rare","val");assert(main.popups[1].controls.status.label:find("1 candidates",1,true),"Rare map did not offer its encounter suffix")
