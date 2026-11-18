@@ -44,7 +44,7 @@ function M.searchBases(query,offset,limit,checkpoint)
 			local tags=M.baseTags(id)
 			entries[#entries+1]={id=id,name=base.name,release=base.release_state,legacy=tags.old_map or false,special=tags.map_force_6_mods or false}
 		end
-		if checkpoint and os.clock()-slice>=0.008 then checkpoint();slice=os.clock() end
+		if checkpoint and os.clock()-slice>=0.002 then checkpoint();slice=os.clock() end
 	end
 	table.sort(entries,function(a,b) return a.name==b.name and a.id<b.id or a.name<b.name end)
 	local results,total,nextOffset=page(entries,offset,limit)
@@ -79,7 +79,7 @@ function M.candidates(tags,itemLevel,selected,checkpoint)
 			result[#result+1]={id=id,name=mod.name,side=mod.generation_type,level=mod.required_level,
 				groups=copyTable(mod.groups),stats=copyTable(mod.stats),text=type(mod.text)=="string" and mod.text or "",spawnWeight=weight,matchedTag=tag}
 		end
-		if checkpoint and os.clock()-slice>=0.008 then checkpoint();slice=os.clock() end
+		if checkpoint and os.clock()-slice>=0.002 then checkpoint();slice=os.clock() end
 	end
 	table.sort(result,function(a,b) return a.id<b.id end)
 	return result

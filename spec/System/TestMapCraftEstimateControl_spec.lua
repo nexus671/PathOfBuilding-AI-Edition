@@ -15,9 +15,13 @@ describe("Map reroll estimate control",function()
 		assert.is_truthy(sample);assert.equal("rare",sample.rarity);assert.equal(#sample.selected,#sample.rolls)
 	end)
 	it("cancels its own job when closed",function()
-		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
-		local controls=require("Classes.MapCraftEstimateControl").Open(build,{state=state,avoid={"MapMonsterAreaOfEffectMapWorlds"},apply=function() error("unexpected apply") end})
-		controls.run:Click();assert.is_truthy(tasks.job);controls.close:Click();assert.is_nil(tasks.job)
+		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=5,itemLevel=68,rarity="rare",selected={}}
+		local settings={wantedGroups={{"MapMonsterFireDamageMapWorlds"},{"MapMonsterColdDamageMapWorlds"}},avoid={},trials=1000,maxAttempts=20}
+		local controls=require("Classes.MapCraftEstimateControl").Open(build,{state=state,settings=settings,apply=function() error("unexpected apply") end})
+		controls.run:Click();local job=tasks.job;assert.is_truthy(job)
+		for _=1,10000 do if not tasks.job or (job.current.attempts or 0)>=10 then break end;tasks.tick(build) end
+		assert.equal(job,tasks.job);assert.is_true(job.current.attempts>=10)
+		controls.close:Click();assert.is_nil(tasks.job)
 	end)
 	it("adds and removes a user-chosen wanted alternative",function()
 		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}

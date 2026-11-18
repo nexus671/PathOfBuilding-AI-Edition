@@ -26,6 +26,8 @@ Planning tools support Tab / Shift+Tab, Enter and visible keyboard focus. Escape
 
 Recovery performance can also be tested without a desktop: `CalcsTab:BuildOutput(true)` queues the same background work used after desktop edits; `Modules.RecoveryTasks.tick` advances it. `HeadlessUI.install({interactiveRecovery=true})` opts UI frames into the desktop's deferred recovery path; `ui:restore()` restores the prior setting. The ordinary headless calculation path stays synchronous for deterministic build and AI tests.
 
+From `src`, run `luajit ../tools/benchmark_map_rerolls.lua` to measure the Atlas map reroll estimator with 500 unsuccessful rolls, or add `stress` for 20,000. It reports CPU time, cold data loading, the 95th percentile and maximum background-slice CPU time, and checks cancellation after at least 100 rolls. The benchmark uses conflicting modeled targets to force the full attempt count; these timings are machine-specific and do not prove desktop frame times.
+
 `python tools/check_update_manifest.py` checks the content hashes of files listed in the updater manifest. It uses the updater's exact and LF-to-CRLF hash rules; it does not verify that every required file is listed or that remote URLs are reachable. CI runs this check and its regression tests.
 
 For a read-only passive-tree interaction benchmark, run from `src`:
