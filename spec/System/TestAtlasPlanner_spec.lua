@@ -38,7 +38,7 @@ describe("Native Atlas planner", function()
 		source.mapDrafts[2].rarity="rare";source.mapDrafts[2].corrupted=true;source.mapDrafts[2].selected=ids;source.mapDrafts[2].implicit={id="MapCorruptionItemRarity",value=15}
 		source.mapDrafts[2].observedEffects={{kind="explicit",text="Players in Area are 35% Delirious"},{kind="explicit",text="Delirium Reward Type: Currency"}}
 		source.mapDrafts[3].corrupted=true;source.mapDrafts[3].implicit={id="MapCorruptionItemRarity",value=15}
-		source.mapDrafts[4].rarity="magic";source.mapDrafts[4].corrupted=true;source.mapDrafts[4].selected={"MapMonsterAreaOfEffectMapWorlds"}
+		source.mapDrafts[4].mirrored=true;source.mapDrafts[4].rarity="magic";source.mapDrafts[4].corrupted=true;source.mapDrafts[4].selected={"MapMonsterAreaOfEffectMapWorlds"}
 		source.mapDrafts[1].estimate={wantedGroups={{"MapContainsMirageWorlds","MapContainsWildwoodWorlds"}},avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=25,maxAttempts=10}
 		local store=atlas.new(build);store:Upsert(source);local xml={};store:Save(xml)
 		local reopened=atlas.new(build);reopened:Load(xml);assert.same(source.mapDrafts,reopened.plans[1].mapDrafts)

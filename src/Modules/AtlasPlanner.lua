@@ -59,6 +59,7 @@ function M.validateMapDraft(entry)
 	assert(result.tier~=17 or result.rarity=="rare","Tier 17 map drafts require rare rarity")
 	assert(entry.corrupted==nil or type(entry.corrupted)=="boolean","Invalid map corruption state")
 	result.corrupted=entry.corrupted or nil
+	assert(entry.mirrored==nil or type(entry.mirrored)=="boolean","Invalid map mirrored state");result.mirrored=entry.mirrored or nil
 	result.quality=require("Modules.MapQuality").validate(entry.quality)
 	result.observedEffects=require("Modules.MapObservedEffects").validate(entry.observedEffects)
 	assert(result.rarity=="rare" or not require("Modules.MapObservedEffects").hasExplicit(result.observedEffects),"Observed explicit map modifiers require a rare map")

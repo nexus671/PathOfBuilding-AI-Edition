@@ -22,6 +22,7 @@ function M.Open(options)
 	local left=math.floor(width*0.38);local right=left+32;local rightWidth=width-right-16
 	local controls={};local function isCorrupted() return controls.rarity and (controls.rarity:GetSelValueByKey("val") or ""):match("^corrupted_")~=nil or false end
 	local function getRarity() local value=controls.rarity:GetSelValueByKey("val");return value and value:gsub("^corrupted_","") end
+	local mirrored=initial and initial.mirrored or nil
 	local implicit=initial and initial.implicit and copyTable(initial.implicit) or nil
 	local quality=initial and require("Modules.MapQuality").validate(initial.quality) or nil
 	local observedEffects=initial and require("Modules.MapObservedEffects").validate(initial.observedEffects) or nil
@@ -62,17 +63,17 @@ function M.Open(options)
 			local wasNightmare=map.isNightmare(baseId);baseId=entry.id;local tier=baseId:match("^Metadata/Items/Maps/MapKeyTier(%d+)$")
 			if tier or map.isNightmare(baseId) or wasNightmare then controls.tier:SelByValue(tier and tonumber(tier) or map.isNightmare(baseId) and 17 or 16,"val") end;syncRarity()
 			if map.isNightmare(baseId) and not wasNightmare then controls.level:SetText("84") end
-			selected={};rolls={};implicit=nil;quality=nil;observedEffects=nil;estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
+			selected={};rolls={};implicit=nil;mirrored=nil;quality=nil;observedEffects=nil;estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
 		end,closeOnChoose=false})
 	end)
 	button("pasteMap",16+left-196,66,96,"Paste map",function()
 		local ok,result=pcall(require("Modules.MapClipboard").parse,Paste())
 		if not ok then main:OpenMessagePopup("Paste map",ui.errorText(result));return end
 		local state=result.state;local popup={}
-		local label=map.source().bases[state.baseId].name.." | Tier "..state.tier.." | "..#state.selected.." modifiers"..(state.corrupted and " | Corrupted" or "")
+		local label=map.source().bases[state.baseId].name.." | Tier "..state.tier.." | "..#state.selected.." modifiers"..(state.corrupted and " | Corrupted" or "")..(state.mirrored and " | Mirrored" or "")
 		ui.description(popup,"review",16,28,608,108,{label,result.notes[1],result.notes[2],result.notes[3],"Using this map replaces the current draft's working modifiers and targets."},14)
 		popup.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,154,200,28},"Use copied map",function()
-			baseId=state.baseId;syncRarity();selected=copyTable(state.selected);rolls=copyTable(state.rolls);implicit=state.implicit and copyTable(state.implicit) or nil;quality=state.quality and copyTable(state.quality) or nil;observedEffects=state.observedEffects and copyTable(state.observedEffects) or nil
+			baseId=state.baseId;syncRarity();mirrored=state.mirrored or nil;selected=copyTable(state.selected);rolls=copyTable(state.rolls);implicit=state.implicit and copyTable(state.implicit) or nil;quality=state.quality and copyTable(state.quality) or nil;observedEffects=state.observedEffects and copyTable(state.observedEffects) or nil
 			controls.tier:SelByValue(state.tier,"val");controls.level:SetText(tostring(state.itemLevel))
 			previousRarity=state.corrupted and "corrupted_"..state.rarity or state.rarity;controls.rarity:SelByValue(previousRarity,"val")
 			estimateSettings=nil;candidate=nil;offset=0;controls.search:SetText("");main:ClosePopup();refresh()
@@ -123,7 +124,7 @@ function M.Open(options)
 			local scale=math.min(95/bw,95/bh);local aw,ah=bw*scale,bh*scale
 			SetDrawColor(1,1,1);DrawImage(handle,x+(w-aw)/2,y+40,aw,ah,bounds[1]/entry.width,bounds[2]/entry.height,bounds[3]/entry.width,bounds[4]/entry.height)
 		end
-		SetDrawColor(isCorrupted() and "^xE07070" or "^xAABBD0");DrawString(x+w/2,y+142,"CENTER_X",14,"VAR","Tier "..tostring(controls.tier:GetSelValueByKey("val"))..(isCorrupted() and " | Corrupted" or ""))
+		SetDrawColor(isCorrupted() and "^xE07070" or "^xAABBD0");DrawString(x+w/2,y+142,"CENTER_X",14,"VAR","Tier "..tostring(controls.tier:GetSelValueByKey("val"))..(isCorrupted() and " | Corrupted" or "")..(mirrored and " | Mirrored" or ""))
 	end
 	controls.affixes=new("TextListControl"):TextListControl(ui.anchor,{28,310,left-24,height-390},nil,{})
 	-- Controls are visited in hash order, so draw the list above the card even
@@ -140,16 +141,16 @@ function M.Open(options)
 	controls.remove.enabled=function() return #selected>0 end
 	controls.remove.tooltipText="Select a modifier on the item to remove it, or remove the last one."
 	button("estimate",24+math.floor((left-8)/2),height-62,math.floor((left-8)/2),"Estimate rerolls",function()
-		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
+		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,selected=copyTable(selected),rolls=copyTable(rolls),quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
 		require("Classes.MapCraftEstimateControl").Open(options.build,{state=state,wanted=selected,settings=estimateSettings,saveSettings=function(settings) estimateSettings=copyTable(settings) end,apply=function(sample)
 			selected=copyTable(sample.selected);rolls=copyTable(sample.rolls);offset=0;candidate=nil;controls.search:SetText("");refresh()
 		end})
 	end)
 	controls.estimate.enabled=function()
 		local level=tonumber(controls.level.buf)
-		return options.build~=nil and getRarity()~="normal" and not isCorrupted() and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and level~=nil and not levelProblem()
+		return options.build~=nil and getRarity()~="normal" and not isCorrupted() and not mirrored and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and level~=nil and not levelProblem()
 	end
-	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. The item level must support those modifiers. Corrupted maps and unsupported explicit modifiers cannot be rerolled here. Nightmare estimates use unverified draw-order assumptions."
+	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. The item level must support those modifiers. Corrupted or mirrored maps and unsupported explicit modifiers cannot be rerolled here. Nightmare estimates use unverified draw-order assumptions."
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
 	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
 	local allRarities={{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"},{label="Corrupted normal",val="corrupted_normal"},{label="Corrupted magic",val="corrupted_magic"},{label="Corrupted rare",val="corrupted_rare"}}
@@ -195,26 +196,26 @@ function M.Open(options)
 	button("add",right,height-88,math.floor(rightWidth/2)-6,"Add modifier",function() if candidate then selected[#selected+1]=candidate.id;candidate=nil;offset=0;controls.search:SetText("");refresh() end end)
 	controls.add.enabled=function() return candidate~=nil end
 	button("currency",right+math.floor(rightWidth/2)+6,height-88,math.floor(rightWidth/2)-6,"Use currency",function()
-		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
+		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
 		local ok,actions=pcall(require("Modules.MapCurrency").options,current)
 		if not ok then main:OpenMessagePopup("Map currency",ui.errorText(actions));return end
 		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon="Assets/Crafting/"..entry.id..".png",details={entry.reason or "Available for this modeled map.","Experimental map crafting; no real currency is consumed.",map.isNightmare(baseId) and "Six modifiers: exclusive prefix and suffix first, then four weighted draws; order is unverified." or "Counts, selection and independent uniform stat rolls are estimates.",observedEffects and "Observed effects are not modeled and can change results." or "Unmatched translations remain ranges; some restrictions are unverified."}} end
 		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",canChoose=function(entry) return entry.available end,choose=function(entry)
-			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
+			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
 			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,rollSeed)
 			if not ok then main:OpenMessagePopup("Currency unavailable",ui.errorText(result));return end
 			rollSeed=rollSeed*16807%2147483647;selected=result.state.selected;rolls=result.state.rolls;controls.rarity:SelByValue(result.state.rarity,"val");previousRarity=result.state.rarity;candidate=nil;offset=0
 			main:ClosePopup();controls.search:SetText("");refresh()
 		end,closeOnChoose=false})
 	end)
-	controls.currency.enabled=function() return not isCorrupted() and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and not levelProblem() end
-	controls.currency.tooltipText="Currency simulation requires a valid item level for the selected modifiers and is unavailable for corrupted maps or unsupported explicit modifiers. Nightmare Chaos rerolls use unverified draw-order assumptions."
+	controls.currency.enabled=function() return not isCorrupted() and not mirrored and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and not levelProblem() end
+	controls.currency.tooltipText="Currency simulation requires a valid item level for the selected modifiers and is unavailable for corrupted or mirrored maps or unsupported explicit modifiers. Nightmare Chaos rerolls use unverified draw-order assumptions."
 	button("close",width-132,height-48,116,"Close",function() main:ClosePopup() end)
 	if options.keep then
 		ui.label(controls,"draftNameLabel",right,height-42,"Name",14)
 		controls.draftName=new("EditControl"):EditControl(ui.anchor,{right+46,height-48,160,26},initial and initial.title or "Map draft",nil,nil,120)
 		button("keep",right+218,height-48,150,"Keep map draft",function()
-			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil,implicit=implicit and copyTable(implicit) or nil,quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
+			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil,mirrored=mirrored or nil,implicit=implicit and copyTable(implicit) or nil,quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
 			if estimateSettings then entry.estimate=copyTable(estimateSettings) end
 			local ok,result=pcall(options.keep,entry)
 			if not ok then main:OpenMessagePopup("Map draft",ui.errorText(result));return end
@@ -288,7 +289,7 @@ function M.Open(options)
 		if tier==17 and not map.isNightmare(baseId) then baseId="Metadata/Items/Maps/MapWorldsAbomination";controls.level:SetText("84")
 		elseif tier<17 and (map.isNightmare(baseId) or baseId:match("^Metadata/Items/Maps/MapKeyTier%d+$")) then baseId="Metadata/Items/Maps/MapKeyTier"..tier end
 		syncRarity()
-		selected={};rolls={};implicit=nil;observedEffects=nil;estimateSettings=nil;offset=0;refresh()
+		selected={};rolls={};implicit=nil;mirrored=nil;observedEffects=nil;estimateSettings=nil;offset=0;refresh()
 	end
 	controls.rarity.selFunc=function()
 		local current=controls.rarity:GetSelValueByKey("val")

@@ -114,7 +114,8 @@ test('queues bounded map modifier inspection', t => {
   const delirium=fixture(t), effects=[{kind:'explicit',text:'Players in Area are 35% Delirious'},{kind:'explicit',text:'Delirium Reward Type: Currency'}];
   delirium.call('inspect_map_modifiers',{...args,baseRevision:delirium.state.revision,rarity:'rare',observedEffects:effects});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(delirium.dir,'AI-build-request.json'))).observedEffects,effects);
-  const normal=fixture(t);normal.call('inspect_map_modifiers',{...args,baseRevision:normal.state.revision,rarity:'normal',corrupted:true});
+  const normal=fixture(t);normal.call('inspect_map_modifiers',{...args,baseRevision:normal.state.revision,rarity:'normal',corrupted:true,mirrored:true});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(normal.dir,'AI-build-request.json'))).mirrored,true);
   const nightmare=fixture(t);nightmare.call('inspect_map_modifiers',{...args,baseRevision:nightmare.state.revision,baseId:'Metadata/Items/Maps/MapWorldsAbomination',tier:17,itemLevel:84,rarity:'rare'});
   assert.equal(JSON.parse(fs.readFileSync(path.join(nightmare.dir,'AI-build-request.json'))).tier,17);
   for(const invalid of [{...args,tier:18},{...args,itemLevel:0},{...args,selected:Array(10).fill('x')},{...args,limit:101},{...args,unknown:true}]) assert.throws(()=>f.call('inspect_map_modifiers',invalid),/arguments/);
