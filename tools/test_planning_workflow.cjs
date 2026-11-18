@@ -728,9 +728,9 @@ async function main(){
   assert.equal(delirious.mapData.state.observedEffects.filter(effect=>effect.kind==='explicit').length,2);
   const deliriousState=delirious.mapData.state;
   const deliriousInspection=await queued('inspect_map_modifiers',{baseRevision:context.revision,...deliriousState,limit:5},'mapData');
-  assert.match(deliriousInspection.mapData.currencyOptionsWarning,/unmodeled explicit/);
+  assert.match(deliriousInspection.mapData.currencyOptionsWarning,/unsupported explicit/);
   const deliriousRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:deliriousState,action:'chaos',seed:42},'failed');
-  assert.match(deliriousRoll.error,/unmodeled explicit/);
+  assert.match(deliriousRoll.error,/unsupported explicit/);
   const unknownMap=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:copiedMapText.replace('Monsters have 45% increased Area of Effect','Unknown map modifier')},'failed');assert.match(unknownMap.error,/Unrecognized map modifier/);
   const mapBases=await queued('search_map_bases',{baseRevision:context.revision,query:'MapWorldsBeach',limit:5},'mapData');
   assert.ok(mapBases.mapData.results.some(base=>base.id==='Metadata/Items/Maps/MapWorldsBeach'));
@@ -944,6 +944,9 @@ async function main(){
   const unknownStrands=await queued('test_loot_filter',{baseRevision:context.revision,profile:strandFilter,sample:{BaseType:'Iron Hat'}},'tested');assert.equal(unknownStrands.result.status,'unknown');
   const copiedStrandFilter={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n MemoryStrands >= 60'}]};
   const copiedStrands=await queued('test_loot_filter',{baseRevision:context.revision,profile:copiedStrandFilter,itemText:'Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86\nMemory Strands: 75'},'tested');assert.equal(copiedStrands.sample.MemoryStrands,75);assert.equal(copiedStrands.result.action,'Hide');
+  const mapFilter={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n MapTier >= 5\n Quality >= 20'}]};
+  const copiedCurrentMap=await queued('test_loot_filter',{baseRevision:context.revision,profile:mapFilter,itemText:'Item Class: Maps\nRarity: Rare\nVortex Artifice\nMap (Tier 5)\n--------\nQuality (Pack Size): +20% (augmented)\n--------\nItem Level: 68'},'tested');
+  assert.equal(copiedCurrentMap.sample.MapTier,5);assert.equal(copiedCurrentMap.sample.Quality,20);assert.equal(copiedCurrentMap.result.action,'Hide');
   const tierFilter={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n UnidentifiedItemTier >= 4'}]};
   const tierItem='Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86\nUnidentified';
   const unknownTier=await queued('test_loot_filter',{baseRevision:context.revision,profile:tierFilter,itemText:tierItem},'tested');assert.equal(unknownTier.result.status,'unknown');

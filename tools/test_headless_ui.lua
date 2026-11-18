@@ -91,7 +91,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		frame("map-clipboard-imported");ui:click("quality");frame("map-quality-editor");ui:click("keep")
 		ui.clipboard=ui.clipboard:gsub("Monsters have 45%% increased Area of Effect","Players in Area are 35%% Delirious\nDelirium Reward Type: Currency\nMonsters have 45%% increased Area of Effect")
 		ui:click("pasteMap");ui:click("keep")
-		local c=main.popups[1].controls;assert(not c.currency:IsEnabled() and not c.estimate:IsEnabled(),"Unmodeled explicit modifiers should block map rerolls")
+		local c=main.popups[1].controls;assert(not c.currency:IsEnabled() and not c.estimate:IsEnabled(),"Unsupported explicit modifiers should block map rerolls")
 		frame("map-delirium-imported");ui:choose("tier",16,"val")
 	end
 	do
@@ -1652,6 +1652,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui.clipboard="Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86\nUnidentified\nFractured Item";ui:click("pasteDrop");assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.FracturedItem,"Pasted fracture marker was not retained")
 	ui.clipboard="Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86\nSynthesised Item";ui:click("pasteDrop");assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.SynthesisedItem,"Pasted synthesis marker was not retained")
 	ui.clipboard="Item Class: Active Skill Gems\nRarity: Gem\nFireball of Radiation\n--------\nLevel: 20";ui:click("pasteDrop");assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.TransfiguredGem=="Fireball","Pasted transfigured gem lost its base skill")
+	ui.clipboard="Item Class: Maps\nRarity: Rare\nVortex Artifice\nMap (Tier 5)\n--------\nQuality (Pack Size): +20% (augmented)\n--------\nItem Level: 68";ui:click("pasteDrop")
+	do local sample=build.planningWorkspace.cache.filters.layout.snapshot().sample;assert(sample.MapTier==5 and sample.Quality==20,"Pasted map tier and quality were not retained") end
+	frame("filter-copied-current-map")
 	ui.clipboard="Rarity: Unique\nAn Unknown Name\n--------";ui:click("pasteDrop");assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.BaseType==nil,"Incomplete copied item invented a base");assert(require("Modules.LootFilterVisuals").sampleName(build.planningWorkspace.cache.filters.layout.snapshot().sample)=="Unknown item","Incomplete copied item should be labelled unknown")
 	ui.clipboard="not an item";ui:click("pasteDrop");assert(#main.popups>0,"Invalid clipboard did not show an explanation");assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.BaseType==nil,"Invalid paste changed the current item");main.popups={}
 	ui.clipboard="Item Class: Rings\nRarity: Normal\nIron Ring\n--------\nAdds 1 to 4 Physical Damage to Attacks (implicit)";ui:click("pasteDrop");assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.HasImplicitMod==true,"Pasted implicit was not retained in the workspace")

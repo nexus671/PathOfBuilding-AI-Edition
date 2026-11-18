@@ -128,7 +128,7 @@ function M.Open(options)
 		local level=tonumber(controls.level.buf)
 		return options.build~=nil and getRarity()~="normal" and not isCorrupted() and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and level~=nil and level==math.floor(level) and level>=1 and level<=100
 	end
-	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. Corrupted maps and unmodeled explicit modifiers cannot be rerolled here."
+	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. Corrupted maps and unsupported explicit modifiers cannot be rerolled here."
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
 	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
 	controls.rarity=new("DropDownControl"):DropDownControl(ui.anchor,{right+235,64,150,26},{{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"},{label="Corrupted rare",val="corrupted_rare"}});controls.rarity:SelByValue(initial and (initial.corrupted and "corrupted_rare" or initial.rarity) or "rare","val")
@@ -179,7 +179,7 @@ function M.Open(options)
 		end,closeOnChoose=false})
 	end)
 	controls.currency.enabled=function() return not isCorrupted() and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) end
-	controls.currency.tooltipText="Currency simulation is unavailable for corrupted maps or unmodeled explicit modifiers."
+	controls.currency.tooltipText="Currency simulation is unavailable for corrupted maps or unsupported explicit modifiers."
 	button("close",width-132,height-48,116,"Close",function() main:ClosePopup() end)
 	if options.keep then
 		ui.label(controls,"draftNameLabel",right,height-42,"Name",14)

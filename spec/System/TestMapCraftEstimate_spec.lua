@@ -27,10 +27,10 @@ describe("Map reroll estimates",function()
 		local result=estimate.run(input,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})
 		assert.same(input.observedEffects,result.sampleSuccess.observedEffects);assert.matches("not modeled",result.note)
 	end)
-	it("rejects rerolls when an unmodeled explicit modifier is present",function()
+	it("rejects rerolls when an unsupported explicit modifier is present",function()
 		local input=copyTable(state);input.observedEffects={{kind="explicit",text="Players in Area are 35% Delirious"}}
 		local ok,err=pcall(estimate.run,input,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})
-		assert.is_false(ok);assert.matches("unmodeled explicit",err)
+		assert.is_false(ok);assert.matches("unsupported explicit",err)
 	end)
 	it("preserves seeded outcomes and values when modifier pools are reused",function()
 		local cache={}

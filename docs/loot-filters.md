@@ -95,6 +95,8 @@ On **Simulate**, **Paste item** reads visible properties from a game clipboard c
 
 Catalogue examples use the bundled client data to infer an item class when the exact base name has one unambiguous class. Some names, including resonators, can represent multiple classes; those examples keep the class unknown unless the rule specifies it.
 
+For current tier-based ordinary maps, pasted item names supply the map tier even when there is no separate tier line. Named quality lines such as `Quality (Pack Size)` also supply the quality value. Conflicting copied values are rejected; this has been tested with synthetic copies, not verified in game.
+
 Modifier-count conditions with a separate `==` operator are preserved when edited, but their preview is uncertain until the combined syntax is verified in game.
 
 - **get_loot_filters:** read kept profiles.

@@ -5,6 +5,7 @@ local M={}
 function M.parse(raw,area)
 	assert(type(raw)=="string" and #raw>0 and #raw<=24000 and not raw:find("\0"),"Paste a copied game item (up to 24 KiB)")
 	raw=raw:gsub("\r\n","\n");local rarity=assert(raw:match("Rarity: (%a+)"),"The clipboard has no item rarity")
+	local class=raw:match("Item Class: ([^\n]+)")
 	local header=raw:match("Rarity: [^\n]+\n(.-)\n%-%-%-%-%-%-%-%-") or raw:match("Rarity: [^\n]+\n(.*)")
 	-- Base names such as "Contract: Bunker" also contain a colon.
 	local fields={["Item Level"]=true,Quality=true,Sockets=true,["Stack Size"]=true,Level=true,["Map Tier"]=true}
@@ -13,6 +14,18 @@ function M.parse(raw,area)
 	local markers={};for line in raw:gmatch("[^\n]+") do markers[line]=true end
 	local ok,native=pcall(function() return new("Item"):Item(raw) end)
 	local base=ok and native.base and native.baseName or nil
+	-- Current ordinary map items encode their tier in the base name. Magic map
+	-- names may have affixes around that base, even when native data is older.
+	local tierInName
+	if class=="Maps" and (rarity=="Normal" or rarity=="Magic" or rarity=="Rare") then
+		local name=names[#names]
+		if rarity=="Magic" then tierInName=name and (name:match("^Map %(Tier (%d+)%)$") or name:match("^Map %(Tier (%d+)%) .+$") or name:match("^.+ Map %(Tier (%d+)%)$") or name:match("^.+ Map %(Tier (%d+)%) .+$"))
+		else tierInName=name and name:match("^Map %(Tier (%d+)%)$") end
+		if tierInName then
+			tierInName=tonumber(tierInName);assert(tierInName>=1 and tierInName<=16,"Invalid copied map tier")
+			base="Map (Tier "..tierInName..")"
+		end
+	end
 	if not base then
 		assert(rarity:lower()~="magic","The magic item's base could not be identified; configure it explicitly")
 		-- An identified rare or unique normally has a separate name and base.
@@ -21,7 +34,6 @@ function M.parse(raw,area)
 		for line in pairs(markers) do if line:match("^Unidentified %(Tier %d+%)$") then unidentified=true;break end end
 		if #names>1 or (rarity:lower()~="rare" and rarity:lower()~="unique" and rarity:lower()~="relic") or unidentified then base=names[#names] end
 	end
-	local class=raw:match("Item Class: ([^\n]+)")
 	-- The clipboard's gem labels differ from the filter language's class names.
 	class=({["Active Skill Gems"]="Skill Gems",["Support Skill Gems"]="Support Gems"})[class] or class
 	local library=require("Modules.LootFilterLibrary")
@@ -78,12 +90,17 @@ function M.parse(raw,area)
 	for key,field in pairs({ItemLevel="Item Level",Quality="Quality",StackSize="Stack Size",MapTier="Map Tier"}) do
 		for line in raw:gmatch("[^\n]+") do
 			local text=line:match("^"..field..":%s*([%+%-]?%d+)")
+			if key=="Quality" and not text then text=line:match("^Quality %([%w '%-]+%)%s*:%s*([%+%-]?%d+)") end
 			if text then
 				local value=tonumber(text);assert(value and value==value and math.abs(value)<=1e9,"Invalid clipboard "..field)
 				assert(item[key]==nil or item[key]==value,"Conflicting clipboard "..field)
 				item[key]=value
 			end
 		end
+	end
+	if tierInName then
+		assert(item.MapTier==nil or item.MapTier==tierInName,"Conflicting clipboard map tier")
+		item.MapTier=tierInName
 	end
 	if class and class:find("Gems",1,true) then
 		item.GemLevel=tonumber(raw:match("\nLevel:%s*(%d+)"))

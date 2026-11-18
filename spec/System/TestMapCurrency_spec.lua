@@ -22,7 +22,7 @@ describe("Experimental map currency",function()
 		assert.has_error(function() currency.perform(state("magic",{"MapContainsMirageWorlds"}),"regal",1) end)
 		assert.has_error(function() currency.perform(state("normal"),"alchemy",0) end)
 	end)
-	it("rejects unmodeled explicit modifiers rather than silently retaining them",function()
+	it("rejects unsupported explicit modifiers rather than silently retaining them",function()
 		local input=state("rare");input.observedEffects={{kind="explicit",text="Players in Area are 35% Delirious"}}
 		assert.has_error(function() currency.perform(input,"chaos",1) end)
 		assert.has_error(function() currency.options(input) end)

@@ -109,6 +109,21 @@ describe("Copied loot-filter items",function()
 		assert.equal(20,observed.Quality);assert.equal(86,observed.ItemLevel)
 		assert.has_error(function() clipboard.parse(raw.."\nItem Level: 86\nItem Level: 50") end)
 	end)
+	it("reads tier and named quality from current ordinary map items",function()
+		local rules=parser.parse("Hide\n MapTier >= 5\n Quality >= 20\nShow")
+		for _,header in ipairs({"Rarity: Normal\nMap (Tier 5)","Rarity: Magic\nEnlarged Map (Tier 5) of Flames","Rarity: Rare\nVortex Artifice\nMap (Tier 5)"}) do
+			local raw="Item Class: Maps\n"..header.."\n--------\nQuality (Pack Size): +20% (augmented)\n--------\nItem Level: 68"
+			local item=clipboard.parse(raw);assert.equal("Map (Tier 5)",item.BaseType);assert.equal(5,item.MapTier);assert.equal(20,item.Quality)
+			assert.equal("Hide",parser.simulate(rules,item).action)
+			assert.has_error(function() clipboard.parse(raw.."\nMap Tier: 6") end)
+			assert.has_error(function() clipboard.parse(raw.."\nQuality: +15%") end)
+		end
+		local old=clipboard.parse("Item Class: Maps\nRarity: Normal\nStrand Map\n--------\nMap Tier: 5")
+		assert.equal(5,old.MapTier);assert.is_nil(old.Quality)
+		local unknown=clipboard.parse("Item Class: Maps\nRarity: Normal\nStrand Map\n--------")
+		assert.is_nil(unknown.MapTier)
+		assert.equal("unknown",parser.simulate(rules,unknown).status)
+	end)
 	it("uses explicitly marked implicit modifiers without assuming missing ones",function()
 		local raw="Item Class: Rings\nRarity: Normal\nIron Ring\n--------\nItem Level: 10"
 		local rule=parser.parse("Hide\n HasImplicitMod True\nShow")

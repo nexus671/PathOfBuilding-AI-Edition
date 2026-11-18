@@ -31,7 +31,7 @@ function M.run(state,options,checkpoint)
 	assert(trials*maxAttempts<=20000,"Use at most 20,000 total simulated attempts")
 	local seed=integer(options.seed,1,2147483646,"estimate seed");local action=rarity=="magic" and "alteration" or "chaos"
 	local base={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity=rarity,selected={},quality=require("Modules.MapQuality").validate(state.quality),observedEffects=require("Modules.MapObservedEffects").validate(state.observedEffects)}
-	assert(not require("Modules.MapObservedEffects").hasExplicit(base.observedEffects),"Reroll estimates are unavailable while unmodeled explicit map modifiers are recorded")
+	assert(not require("Modules.MapObservedEffects").hasExplicit(base.observedEffects),"Reroll estimates are unavailable while unsupported explicit map modifiers are recorded")
 	local progress={trial=1,trials=trials,attempts=0}
 	local function slice() if checkpoint then checkpoint(progress) end end
 	-- The ordered wanted list must itself be a supported ordinary-map state.
