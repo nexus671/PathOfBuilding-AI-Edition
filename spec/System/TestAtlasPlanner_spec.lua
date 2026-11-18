@@ -12,6 +12,9 @@ describe("Native Atlas planner", function()
 		local source=plan("3.30.0-preview");source.mapDrafts={}
 		for i=1,12 do source.mapDrafts[i]={id="map-"..i,title="Map "..i,patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="normal",selected={}} end
 		source.mapDrafts[1].rarity="rare";source.mapDrafts[1].selected={"MapMonsterCriticalStrikesAndDamageMapWorlds"};source.mapDrafts[1].rolls={{id="MapMonsterCriticalStrikesAndDamageMapWorlds",values={16,9,6,183,32}}}
+		local map=require("Modules.MapCraftingData");local ids={}
+		for _=1,9 do local page=map.inspect("Metadata/Items/Maps/MapWorldsStrand",16,83,ids,"",0,100,nil,"rare",nil,true);ids[#ids+1]=page.candidates[1].id end
+		source.mapDrafts[2].rarity="rare";source.mapDrafts[2].corrupted=true;source.mapDrafts[2].selected=ids
 		source.mapDrafts[1].estimate={wantedGroups={{"MapContainsMirageWorlds","MapContainsWildwoodWorlds"}},avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=25,maxAttempts=10}
 		local store=atlas.new(build);store:Upsert(source);local xml={};store:Save(xml)
 		local reopened=atlas.new(build);reopened:Load(xml);assert.same(source.mapDrafts,reopened.plans[1].mapDrafts)

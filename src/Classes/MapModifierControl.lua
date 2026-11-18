@@ -15,11 +15,13 @@ function M.Open(options)
 	options=options or {};local initial=options.initial
 	if initial then
 		assert(initial.patch==map.source().patch,"This map draft uses a different data version")
-		map.inspect(initial.baseId,initial.tier,initial.itemLevel,initial.selected,"",0,1,nil,initial.rarity=="normal" and "rare" or initial.rarity,initial.rolls)
+		map.inspect(initial.baseId,initial.tier,initial.itemLevel,initial.selected,"",0,1,nil,initial.rarity=="normal" and "rare" or initial.rarity,initial.rolls,initial.corrupted)
 	end
 	local width=math.min(900,main.screenW-40);local height=math.min(600,main.screenH-60)
 	local left=math.floor(width*0.38);local right=left+32;local rightWidth=width-right-16
-	local controls={};local selected=initial and copyTable(initial.selected) or {};local rolls=initial and copyTable(initial.rolls or {}) or {};local candidate;local baseId=initial and initial.baseId or "Metadata/Items/Maps/MapWorldsStrand";local refresh;local offset,nextOffset=0,nil
+	local controls={};local function isCorrupted() return controls.rarity and controls.rarity:GetSelValueByKey("val")=="corrupted_rare" or false end
+	local function getRarity() local value=controls.rarity:GetSelValueByKey("val");return value=="corrupted_rare" and "rare" or value end
+	local selected=initial and copyTable(initial.selected) or {};local rolls=initial and copyTable(initial.rolls or {}) or {};local candidate;local baseId=initial and initial.baseId or "Metadata/Items/Maps/MapWorldsStrand";local refresh;local offset,nextOffset=0,nil
 	local estimateSettings=initial and initial.estimate and copyTable(initial.estimate) or nil
 	local draftId=initial and initial.id
 	local rollSeed=os.time()%2147483646+1
@@ -35,7 +37,7 @@ function M.Open(options)
 	local function button(key,x,y,w,label,fn)
 		controls[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{x,y,w,28},label,fn))
 	end
-	ui.description(controls,"intro",16,28,width-32,34,{"Hypothetical map: rolls are estimates; some values remain ranges.","Changing map, rarity, tier or item level clears modifiers and targets."},14)
+	ui.description(controls,"intro",16,28,width-32,34,{"Hypothetical map: rolls are estimates; some values remain ranges.","Corrupted side limits are unverified. Marking a rare map corrupted keeps its modifiers."},14)
 	button("base",16,66,left,"Choose map",function()
 		local rows={};local baseOffset=0
 		repeat
@@ -56,31 +58,32 @@ function M.Open(options)
 	function card:Draw()
 		local x,y=self:GetPos();local w,h=self:GetSize();SetDrawColor("^x716046");DrawImage(nil,x,y,w,h)
 		SetDrawColor("^x15141A");DrawImage(nil,x+1,y+1,w-2,h-2)
-		local rarity=controls.rarity:GetSelValueByKey("val");local base=map.source().bases[baseId];SetDrawColor(rarity=="magic" and "^x8888FF" or rarity=="normal" and "^7" or "^xE0C586");DrawString(x+w/2,y+12,"CENTER_X",18,"VAR",ui.fit(base.name,w-20,18))
+		local rarity=getRarity();local base=map.source().bases[baseId];SetDrawColor(rarity=="magic" and "^x8888FF" or rarity=="normal" and "^7" or "^xE0C586");DrawString(x+w/2,y+12,"CENTER_X",18,"VAR",ui.fit(base.name,w-20,18))
 		local handle,entry=art();if handle then
 			local bounds=entry.bounds or {0,0,entry.width,entry.height};local bw,bh=bounds[3]-bounds[1],bounds[4]-bounds[2]
 			local scale=math.min(95/bw,95/bh);local aw,ah=bw*scale,bh*scale
 			SetDrawColor(1,1,1);DrawImage(handle,x+(w-aw)/2,y+40,aw,ah,bounds[1]/entry.width,bounds[2]/entry.height,bounds[3]/entry.width,bounds[4]/entry.height)
 		end
-		SetDrawColor("^xAABBD0");DrawString(x+w/2,y+142,"CENTER_X",14,"VAR","Tier "..tostring(controls.tier:GetSelValueByKey("val")))
+		SetDrawColor(isCorrupted() and "^xE07070" or "^xAABBD0");DrawString(x+w/2,y+142,"CENTER_X",14,"VAR","Tier "..tostring(controls.tier:GetSelValueByKey("val"))..(isCorrupted() and " | Corrupted" or ""))
 	end
 	controls.affixes=new("TextListControl"):TextListControl(ui.anchor,{28,310,left-24,height-390},nil,{})
 	button("remove",16,height-62,math.floor((left-8)/2),"Remove last",function() local id=table.remove(selected);for i=#rolls,1,-1 do if rolls[i].id==id then table.remove(rolls,i) end end;candidate=nil;offset=0;refresh() end)
 	controls.remove.enabled=function() return #selected>0 end
 	button("estimate",24+math.floor((left-8)/2),height-62,math.floor((left-8)/2),"Estimate rerolls",function()
-		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=controls.rarity:GetSelValueByKey("val"),selected=copyTable(selected),rolls=copyTable(rolls)}
+		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls)}
 		require("Classes.MapCraftEstimateControl").Open(options.build,{state=state,wanted=selected,settings=estimateSettings,saveSettings=function(settings) estimateSettings=copyTable(settings) end,apply=function(sample)
 			selected=copyTable(sample.selected);rolls=copyTable(sample.rolls);offset=0;candidate=nil;controls.search:SetText("");refresh()
 		end})
 	end)
 	controls.estimate.enabled=function()
 		local level=tonumber(controls.level.buf)
-		return options.build~=nil and controls.rarity:GetSelValueByKey("val")~="normal" and level~=nil and level==math.floor(level) and level>=1 and level<=100
+		return options.build~=nil and getRarity()~="normal" and not isCorrupted() and level~=nil and level==math.floor(level) and level>=1 and level<=100
 	end
-	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets."
+	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. Corrupted maps cannot be rerolled."
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
 	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
-	controls.rarity=new("DropDownControl"):DropDownControl(ui.anchor,{right+235,64,100,26},{{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"}});controls.rarity:SelByValue(initial and initial.rarity or "rare","val")
+	controls.rarity=new("DropDownControl"):DropDownControl(ui.anchor,{right+235,64,150,26},{{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"},{label="Corrupted rare",val="corrupted_rare"}});controls.rarity:SelByValue(initial and (initial.corrupted and "corrupted_rare" or initial.rarity) or "rare","val")
+	local previousRarity=controls.rarity:GetSelValueByKey("val")
 	controls.search=new("EditControl"):EditControl(ui.anchor,{right,96,rightWidth,26},"","Search modifiers",nil,160)
 	controls.list=new("TextListControl"):TextListControl(ui.anchor,{right,132,rightWidth,height-410},nil,{})
 	button("previous",right,height-270,100,"Previous",function() offset=math.max(0,offset-30);refresh() end)
@@ -92,24 +95,26 @@ function M.Open(options)
 	button("add",right,height-88,math.floor(rightWidth/2)-6,"Add modifier",function() if candidate then selected[#selected+1]=candidate.id;candidate=nil;offset=0;controls.search:SetText("");refresh() end end)
 	controls.add.enabled=function() return candidate~=nil end
 	button("currency",right+math.floor(rightWidth/2)+6,height-88,math.floor(rightWidth/2)-6,"Use currency",function()
-		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=controls.rarity:GetSelValueByKey("val"),selected=selected,rolls=rolls}
+		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=selected,rolls=rolls}
 		local ok,actions=pcall(require("Modules.MapCurrency").options,current)
 		if not ok then main:OpenMessagePopup("Map currency",ui.errorText(actions));return end
 		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon="Assets/Crafting/"..entry.id..".png",details={entry.reason or "Available for this modeled map.","Experimental map crafting; no real currency is consumed.","Counts, selection and independent uniform stat rolls are estimates.","Unmatched translations remain ranges; base availability and some restrictions are unverified."}} end
 		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",canChoose=function(entry) return entry.available end,choose=function(entry)
-			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=controls.rarity:GetSelValueByKey("val"),selected=selected,rolls=rolls}
+			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=selected,rolls=rolls}
 			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,rollSeed)
 			if not ok then main:OpenMessagePopup("Currency unavailable",ui.errorText(result));return end
-			rollSeed=rollSeed*16807%2147483647;selected=result.state.selected;rolls=result.state.rolls;controls.rarity:SelByValue(result.state.rarity,"val");candidate=nil;offset=0
+			rollSeed=rollSeed*16807%2147483647;selected=result.state.selected;rolls=result.state.rolls;controls.rarity:SelByValue(result.state.rarity,"val");previousRarity=result.state.rarity;candidate=nil;offset=0
 			main:ClosePopup();controls.search:SetText("");refresh()
 		end,closeOnChoose=false})
 	end)
+	controls.currency.enabled=function() return not isCorrupted() end
+	controls.currency.tooltipText="Currency simulation is unavailable for corrupted maps."
 	button("close",width-132,height-48,116,"Close",function() main:ClosePopup() end)
 	if options.keep then
 		ui.label(controls,"draftNameLabel",right,height-42,"Name",14)
 		controls.draftName=new("EditControl"):EditControl(ui.anchor,{right+46,height-48,160,26},initial and initial.title or "Map draft",nil,nil,120)
 		button("keep",right+218,height-48,150,"Keep map draft",function()
-			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=controls.rarity:GetSelValueByKey("val"),selected=copyTable(selected),rolls=copyTable(rolls)}
+			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil}
 			if estimateSettings then entry.estimate=copyTable(estimateSettings) end
 			local ok,result=pcall(options.keep,entry)
 			if not ok then main:OpenMessagePopup("Map draft",ui.errorText(result));return end
@@ -124,8 +129,8 @@ function M.Open(options)
 	end
 	refresh=function()
 		local tier=controls.tier:GetSelValueByKey("val");local level=tonumber(controls.level.buf)
-		local rarity=controls.rarity:GetSelValueByKey("val")
-		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,rarity=="normal" and "rare" or rarity,rolls)
+		local rarity=getRarity()
+		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,rarity=="normal" and "rare" or rarity,rolls,isCorrupted())
 		if not ok then nextOffset=nil;controls.list.list={};controls.status.label="^xE9BE7B"..ui.fit(ui.errorText(result),rightWidth,14);show(nil);return end
 		if rarity=="normal" then result.candidates={};result.total=0;result.nextOffset=nil end
 		nextOffset=result.nextOffset
@@ -133,7 +138,7 @@ function M.Open(options)
 			local rows=ui.rows({entry.name.." | "..entry.side},rightWidth-30,14)
 			for _,row in ipairs(rows) do row.entry=entry;lines[#lines+1]=row end
 		end
-		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and "^7Normal map | Use currency to add modifiers" or "^7"..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
+		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and "^7Normal map | Use currency to add modifiers" or (isCorrupted() and "^xE07070Corrupted "..#selected.."/9 | " or "^7")..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
 		local affixes={}
 		if #selected==0 then affixes={"No hypothetical modifiers selected."} else
 			local summary=result.summary;local totals=summary.totals
@@ -148,7 +153,11 @@ function M.Open(options)
 	controls.search.changeFunc=function() offset=0;refresh() end
 	controls.level.changeFunc=function() selected={};rolls={};estimateSettings=nil;offset=0;refresh() end
 	controls.tier.selFunc=function() selected={};rolls={};estimateSettings=nil;offset=0;refresh() end
-	controls.rarity.selFunc=function() selected={};rolls={};estimateSettings=nil;offset=0;refresh() end
+	controls.rarity.selFunc=function()
+		local current=controls.rarity:GetSelValueByKey("val")
+		if not (previousRarity=="rare" and current=="corrupted_rare") then selected={};rolls={} end
+		previousRarity=current;estimateSettings=nil;candidate=nil;offset=0;refresh()
+	end
 	if controls.draftName then controls.draftName.changeFunc=function() if draftId then controls.status.label="^7Name changed. Keep the map draft again." end end end
 	ui.style(controls,{add=true});refresh()
 	main:OpenPopup(width,height,"Map modifier explorer",controls,nil,"search","close")

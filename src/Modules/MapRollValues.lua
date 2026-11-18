@@ -7,7 +7,7 @@ local function array(value,limit,label)
 end
 function M.validate(selected,rolls,source)
 	local byId,allowed={},{};for _,id in ipairs(selected or {}) do allowed[id]=true end
-	for _,entry in ipairs(array(rolls or {},6,"map rolls")) do
+	for _,entry in ipairs(array(rolls or {},9,"map rolls")) do
 		assert(type(entry)=="table" and type(entry.id)=="string" and allowed[entry.id] and not byId[entry.id],"Invalid map roll modifier")
 		local mod=assert(source.mods[entry.id],"Unknown rolled map modifier");local values=array(entry.values,20,"map roll values")
 		assert(#values==#mod.stats,"Map roll does not match the modifier stats")

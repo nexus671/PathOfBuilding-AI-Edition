@@ -726,6 +726,12 @@ async function main(){
   assert.equal(mapMods.mapData.candidates.length,2);assert.equal(mapMods.mapData.nextOffset,2);assert.match(mapMods.mapData.note,/not outcome probabilities/);
   assert.equal(mapMods.mapData.currencyOptions.find(entry=>entry.id==='chaos').available,true);
   assert.equal(mapMods.mapData.currencyOptions.find(entry=>entry.id==='transmute').available,false);assert.match(mapMods.mapData.currencyOptions.find(entry=>entry.id==='transmute').reason,/normal map/);
+  const mapPool=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,limit:100},'mapData');
+  const corruptedIds=[],occupied=new Set();for(const entry of mapPool.mapData.candidates){if(entry.groups.every(group=>!occupied.has(group))){corruptedIds.push(entry.id);for(const group of entry.groups)occupied.add(group);if(corruptedIds.length===9)break;}}
+  assert.equal(corruptedIds.length,9);
+  const corruptedMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',corrupted:true,selected:corruptedIds},'mapData');
+  assert.equal(corruptedMap.mapData.corrupted,true);assert.equal(corruptedMap.mapData.counts.prefix+corruptedMap.mapData.counts.suffix,9);assert.match(corruptedMap.mapData.currencyOptionsWarning,/Corrupted maps/);
+  const rejectedMap=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',corrupted:true,selected:corruptedIds},action:'chaos',seed:42},'failed');assert.match(rejectedMap.error,/Corrupted maps/);
   const magicMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',query:'MapContainsMirageWorlds'},'mapData');
   assert.equal(magicMap.mapData.rarity,'magic');assert.equal(magicMap.mapData.total,0);
   const mapRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'normal',selected:[]},action:'alchemy',seed:42},'mapData');

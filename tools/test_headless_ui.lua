@@ -77,6 +77,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	frame("atlas-ruthless-sharing");ui:choose("page","Tree")
 	ui:choose("version","3.29.3");ui:click("confirm");frame("atlas-start");assert(not build.controls.statBox:IsShown(),"Build sidebar should be hidden while planning")
 	ui:click("tools");ui:text("search","Map modifier explorer");ui:click("choose");frame("map-modifier-explorer")
+	do
+		local initial=main.popups[1].controls;initial.list.onClick({line=initial.list.list[1]});ui:click("add")
+		ui:choose("rarity","corrupted_rare","val");assert(main.popups[1].controls.remove:IsEnabled(),"Marking a map corrupted cleared its modifiers");ui:click("remove")
+		for _=1,9 do local c=main.popups[1].controls;assert(c.list.list[1].entry,"Expected a compatible map modifier");c.list.onClick({line=c.list.list[1]});ui:click("add") end
+		local c=main.popups[1].controls;assert(not c.currency:IsEnabled() and not c.estimate:IsEnabled(),"Corrupted maps should not be rerolled");frame("map-corrupted-nine-modifiers")
+	end
 	ui:choose("rarity","magic","val");ui:text("search","MapContainsMirageWorlds");assert(main.popups[1].controls.status.label:find("0 candidates",1,true),"Rare-only suffix appeared on a magic map")
 	ui:choose("rarity","rare","val");assert(main.popups[1].controls.status.label:find("1 candidates",1,true),"Rare map did not offer its encounter suffix")
 	ui:choose("tier",5,"val");ui:text("level","68");assert(main.popups[1].controls.level.buf=="68","Map item level did not accept numeric input");ui:text("search","Giants")

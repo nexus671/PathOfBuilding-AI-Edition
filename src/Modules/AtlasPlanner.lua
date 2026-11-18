@@ -48,20 +48,23 @@ function M.validateMapDraft(entry)
 		baseId=text(entry.baseId,240,"map base ID"),tier=integer(entry.tier,1,16,"map tier"),itemLevel=integer(entry.itemLevel,1,100,"map item level"),rarity=entry.rarity,selected={}}
 	assert(result.id:match("^[%w_-]+$") and result.title:match("%S") and result.patch:match("%S") and result.baseId:match("%S"),"Invalid map draft details")
 	assert(result.rarity=="normal" or result.rarity=="magic" or result.rarity=="rare","Invalid map draft rarity")
-	local seen={};for _,id in ipairs(array(entry.selected,6,"map modifiers")) do
+	assert(entry.corrupted==nil or type(entry.corrupted)=="boolean","Invalid map corruption state")
+	assert(not entry.corrupted or result.rarity=="rare","Corrupted map drafts currently require rare maps")
+	result.corrupted=entry.corrupted or nil
+	local seen={};for _,id in ipairs(array(entry.selected,result.corrupted and 9 or 6,"map modifiers")) do
 		text(id,160,"map modifier ID");assert(id:match("%S") and not seen[id],"Invalid or duplicate map modifier");seen[id]=true;result.selected[#result.selected+1]=id
 	end
 	assert(result.rarity~="normal" or #result.selected==0,"Normal maps cannot have explicit modifiers")
 	assert(result.rarity~="magic" or #result.selected<=2,"Magic maps have at most two explicit modifiers")
 	if entry.rolls~=nil then
 		result.rolls={};local rolled={}
-		for _,roll in ipairs(array(entry.rolls,6,"map rolls")) do
+		for _,roll in ipairs(array(entry.rolls,result.corrupted and 9 or 6,"map rolls")) do
 			assert(type(roll)=="table" and seen[roll.id] and not rolled[roll.id],"Invalid map roll modifier");rolled[roll.id]=true
 			local values={};for _,value in ipairs(array(roll.values,20,"map roll values")) do values[#values+1]=integer(value,-1000000000,1000000000,"map roll value") end
 			result.rolls[#result.rolls+1]={id=roll.id,values=values}
 		end
 	end
-	if entry.estimate~=nil then result.estimate=M.validateMapEstimate(entry.estimate) end
+	if entry.estimate~=nil then assert(not result.corrupted,"Corrupted maps cannot be rerolled");result.estimate=M.validateMapEstimate(entry.estimate) end
 	return result
 end
 function M.tree(version)

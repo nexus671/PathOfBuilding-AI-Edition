@@ -14,6 +14,7 @@ local function ids(list,limit,label)
 end
 function M.run(state,options,checkpoint)
 	assert(type(state)=="table" and type(options)=="table","Invalid map estimate")
+	assert(not state.corrupted,"Corrupted maps cannot be rerolled")
 	local rarity=state.rarity;assert(rarity=="magic" or rarity=="rare","Choose a magic or rare map to reroll")
 	local wanted=options.wanted or {};local avoid=options.avoid or {};local must=ids(wanted,6,"wanted modifier");local forbidden=ids(avoid,100,"avoided modifier")
 	local alternatives=options.wantedGroups or {};assert(type(alternatives)=="table" and #alternatives+#wanted<=6,"Use at most six wanted groups")

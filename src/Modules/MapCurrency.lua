@@ -41,6 +41,7 @@ local function add(state,random,checkpoint,cache)
 end
 local function validate(input,checkpoint,cache)
 	assert(type(input)=="table" and type(input.selected)=="table","Invalid map state")
+	assert(not input.corrupted,"Corrupted maps cannot be modified with these currencies")
 	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,selected={},rolls={}}
 	for _,id in ipairs(input.selected) do state.selected[#state.selected+1]=id end
 	local values=require("Modules.MapRollValues");local existing=values.validate(state.selected,input.rolls,map.source());local priorIds={}

@@ -119,10 +119,12 @@ end
 
 -- White, yellow and red ordinary maps use the established tier bands. This
 -- inspection deliberately does not simulate rolling or claim outcome odds.
-function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity,rolls)
+function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity,rolls,corrupted)
 	assert(type(tier)=="number" and tier==math.floor(tier) and tier>=1 and tier<=16,"Use an ordinary map tier from 1 to 16")
 	rarity=rarity or "rare";assert(rarity=="magic" or rarity=="rare","Use magic or rare map rarity")
-	assert(type(selected or {})=="table","Selected modifiers must be a list")
+	assert(corrupted==nil or type(corrupted)=="boolean","Invalid map corruption state")
+	assert(not corrupted or rarity=="rare","Corrupted map inspection currently requires a rare map")
+	assert(type(selected or {})=="table","Selected modifiers must be a list");selected=selected or {}
 	query=query or "";assert(type(query)=="string" and #query<=160,"Invalid modifier search")
 	local base=assert(M.source().bases[baseId],"Unknown map base")
 	local tags=M.baseTags(baseId)
@@ -130,21 +132,22 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 	for _,tag in ipairs({"low_tier_map","mid_tier_map","top_tier_map","uber_tier_map"}) do tags[tag]=nil end
 	tags[tier<=5 and "low_tier_map" or tier<=10 and "mid_tier_map" or "top_tier_map"]=true
 	local counts={prefix=0,suffix=0};local groups={}
+	assert(#(selected or {})<=(corrupted and 9 or rarity=="magic" and 2 or 6),"Too many modifiers for this map state")
 	for _,id in ipairs(selected or {}) do
 		local mod=assert(M.source().mods[id],"Unknown selected area modifier")
 		assert(rarity=="rare" or not rareOnly[id],"This modifier can only roll on rare maps")
 		counts[mod.generation_type]=counts[mod.generation_type]+1
-		assert(counts[mod.generation_type]<=(rarity=="magic" and 1 or 3),"Too many modifiers for this map rarity")
+		if not corrupted then assert(counts[mod.generation_type]<=(rarity=="magic" and 1 or 3),"Too many modifiers for this map rarity") end
 		for _,group in ipairs(mod.groups or {}) do assert(not groups[group],"Selected modifiers share a group");groups[group]=true end
 	end
 	local eligible=M.candidates(tags,itemLevel,selected,checkpoint)
 	if checkpoint then checkpoint() end
 	local result={};for _,entry in ipairs(eligible) do
-		if counts[entry.side]<(rarity=="magic" and 1 or 3) and (rarity=="rare" or not rareOnly[entry.id]) and (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true) then result[#result+1]=entry end
+		if (corrupted and #selected<9 or not corrupted and counts[entry.side]<(rarity=="magic" and 1 or 3)) and (rarity=="rare" or not rareOnly[entry.id]) and (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true) then result[#result+1]=entry end
 	end
 	local results,total,nextOffset=page(result,offset,limit)
-	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected,rolls),
+	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,corrupted=corrupted or nil,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected,rolls),
 		source=M.source().source,patch=M.source().patch,
-		note="Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification."}
+		note=corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification."}
 end
 return M

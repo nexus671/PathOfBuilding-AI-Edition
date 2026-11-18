@@ -103,7 +103,7 @@ test('queues bounded map modifier inspection', t => {
   f.call('inspect_map_modifiers',args);
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
   assert.equal(request.kind,'inspect_map_modifiers');assert.equal(request.tier,5);assert.equal(request.rarity,'magic');
-  for(const invalid of [{...args,tier:17},{...args,itemLevel:0},{...args,rarity:'normal'},{...args,selected:Array(7).fill('x')},{...args,limit:101},{...args,unknown:true}]) assert.throws(()=>f.call('inspect_map_modifiers',invalid),/arguments/);
+  for(const invalid of [{...args,tier:17},{...args,itemLevel:0},{...args,rarity:'normal'},{...args,selected:Array(10).fill('x')},{...args,limit:101},{...args,unknown:true}]) assert.throws(()=>f.call('inspect_map_modifiers',invalid),/arguments/);
   const bases=fixture(t);bases.call('search_map_bases',{baseRevision:bases.state.revision,query:'Beach',limit:5});
   assert.equal(JSON.parse(fs.readFileSync(path.join(bases.dir,'AI-build-request.json'))).kind,'search_map_bases');
 });
@@ -113,7 +113,7 @@ test('queues a seeded hypothetical map currency action', t => {
   f.call('simulate_map_currency',args);
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
   assert.equal(request.kind,'simulate_map_currency');assert.deepEqual(request.state,state);assert.equal(request.seed,42);
-  for(const invalid of [{...args,seed:0},{...args,action:'vaal'},{...args,state:{...state,rarity:'unique'}},{...args,state:{...state,selected:Array(7).fill('x')}}]) assert.throws(()=>f.call('simulate_map_currency',invalid),/arguments/);
+  for(const invalid of [{...args,seed:0},{...args,action:'vaal'},{...args,state:{...state,rarity:'unique'}},{...args,state:{...state,selected:Array(10).fill('x')}}]) assert.throws(()=>f.call('simulate_map_currency',invalid),/arguments/);
 });
 test('queues bounded map reroll estimates', t => {
   const f=fixture(t), state={baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'}, options={wanted:[],wantedGroups:[['MapContainsMirageWorlds','MapContainsWildwoodWorlds']],avoid:['MapMonsterAreaOfEffectMapWorlds'],trials:10,maxAttempts:5,seed:42};
