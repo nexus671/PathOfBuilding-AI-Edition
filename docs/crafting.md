@@ -22,7 +22,7 @@ The item card groups prefixes and suffixes, shows slot usage, and marks fracture
 
 Weapon cards show native local DPS, its damage-type breakdown, attacks per second and critical chance. Armour cards include Ward. These properties also appear in saved-item comparisons; **Preview in build** calculates their character effects.
 
-**Settings** contains advanced method configuration, **Allflame settings**, and **Edit hypothetical item**. The Craft tab keeps the currency tray, selected action, apply/undo and history controls together. In the hypothetical item editor, **Set socket layout** lets you choose observed or planned colours and links without consuming currency. Existing Abyss sockets must be retained and cannot be linked.
+**Settings** contains advanced method configuration, **Allflame settings**, and **Edit hypothetical item**. The Craft tab keeps the currency tray, selected action, apply/undo and history controls together. Item history and results identify added and removed implicit modifier lines when the item changes. In the hypothetical item editor, **Set socket layout** lets you choose observed or planned colours and links without consuming currency. Existing Abyss sockets must be retained and cannot be linked.
 
 Removing glove socket enchantments restores their socket capacity without adding sockets. A structured state marked `enchantCleared` likewise treats those enchantments as absent for socket limits and targets.
 

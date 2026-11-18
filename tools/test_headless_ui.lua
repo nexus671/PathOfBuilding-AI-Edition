@@ -584,6 +584,16 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 
 	do
+		local sim=require("Modules.CraftingSimulator");local raw="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item"
+		local model=sim.model(raw);local first=sim.action(model,model.initial,{method="vaal"},function() return 0 end)
+		local final=sim.action(model,first,{method="locus"},function() return 0 end)
+		local c=require("Classes.CraftingHistoryControl").Open(model,final,{first},{{method="locus"}},function() end)
+		local lines={};for _,row in ipairs(c.changes.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		local joined=table.concat(lines," ");assert(joined:find("- Implicit:",1,true) and joined:find("+ Implicit:",1,true),"Crafting history omitted implicit changes")
+		frame("crafting-history-implicits");ui:click("close")
+	end
+
+	do
 		local rgbRaw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: W-W-W"
 		local p={id="omen-rgb-ui",title="Guaranteed RGB colours",slot="Body Armour",startingItem=rgbRaw,goals={},steps={},nativeRecipe={steps={{method="omen_trichromatism"}},targets={},requirements={socketColours="RGB",linkedColours=true}},priceBook={currency="chaos",source="Omen quotes",quotedAt=1700000000,values={["Metadata/Items/Currency/AncestralOmenOnChromaticAddWhiteSockets"]=2,["Metadata/Items/Currency/CurrencyRerollSocketColours"]=0.25}}}
 		require("Classes.CraftingSimulatorControl").Open(build,p);ui:click("settings");ui:text("paletteSearch","Trichromatism");assert(main.popups[1].controls.paletteUse:IsEnabled());frame("crafting-omen-rgb-selection")

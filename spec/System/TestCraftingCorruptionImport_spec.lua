@@ -169,6 +169,17 @@ describe("Imported corruption identities",function()
 		local replaced=sim.action(reopened,reopened.initial,{method="locus"},function() return 0 end)
 		assert.same(reopened.initial.synthRetained,replaced.synthRetained);assert.equal(2,#replaced.corruptedImplicits);assert.is_true(sim.validateState(reopened,replaced).twiceCorrupted)
 	end)
+	it("explains implicit additions and removals in crafting history",function()
+		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item"
+		local model=sim.model(text);local first=sim.action(model,model.initial,{method="vaal"},function() return 0 end)
+		local final=sim.action(model,first,{method="locus"},function() return 0 end)
+		local diff=require("Modules.CraftingInspection").diff(model,first,final);local joined=table.concat(diff,"\n")
+		local surviving=model.synthesisGroups[first.synthRetained[1]][1].line
+		assert.is_truthy(joined:find("- Implicit: "..surviving,1,true));assert.matches("%+ Implicit:",joined);assert.matches("Twice Corrupted",joined)
+		local unchanged=require("Modules.CraftingInspection").diff(model,first,first);assert.same({"No displayed modifier or item-property changes."},unchanged)
+		local destroyed=sim.action(model,first,{method="locus"},function() return 0.6 end)
+		assert.matches("destroyed",table.concat(require("Modules.CraftingInspection").diff(model,first,destroyed)," "))
+	end)
 	it("saves an exhausted synthesised state and simulates a second corruption",function()
 		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+10 to Strength\n+20 to Dexterity\nSynthesised Item"
 		local model=sim.model(text);local first=sim.action(model,model.initial,{method="vaal"},function() return 0 end)

@@ -42,17 +42,39 @@ local function values(model,state)
 	end
 	return result
 end
+-- Resolve actual item text only when implicit-bearing state changed. This keeps
+-- ordinary affix comparisons cheap and uses the same renderer as the item card.
+local function implicitChanges(model,before,after)
+	if before.destroyed or after.destroyed then return {} end
+	local json=require("dkjson");local changed=sim.context(model,before).item.baseName~=sim.context(model,after).item.baseName
+	for _,key in ipairs({"uniqueTitle","corruptedImplicits","implicits","synthRetained","synthExhausted","synthRolls","baseImplicitRanges","baseImplicit330","baseImplicitReconstructed","vendorImplicit"}) do
+		if json.encode(before[key])~=json.encode(after[key]) then changed=true;break end
+	end
+	if not changed then return {} end
+	local function lines(state)
+		local item=sim.toItem(sim.context(model,state),state);local counts={}
+		for _,entry in ipairs(item.implicitModLines or {}) do local text=StripEscapes(entry.line or "");if text~="" then counts[text]=(counts[text] or 0)+1 end end
+		return counts
+	end
+	local ok,old,new=pcall(function() return lines(before),lines(after) end)
+	if not ok then return {"Implicit modifiers changed; inspect the item for details."} end
+	local result={}
+	for line,count in pairs(old) do for _=1,math.max(0,count-(new[line] or 0)) do result[#result+1]="- Implicit: "..line end end
+	for line,count in pairs(new) do for _=1,math.max(0,count-(old[line] or 0)) do result[#result+1]="+ Implicit: "..line end end
+	return result
+end
 function M.diff(model,before,after)
-	local old,new=values(model,before),values(model,after);local result={}
+	local old,new=values(model,before),values(model,after);local result=implicitChanges(model,before,after)
 	local oldItem,newItem=sim.context(model,before).item,sim.context(model,after).item
 	if oldItem.baseName~=newItem.baseName then result[#result+1]="Base: "..oldItem.baseName.." -> "..newItem.baseName end
 	if oldItem.itemLevel~=newItem.itemLevel then result[#result+1]="Item level: "..oldItem.itemLevel.." -> "..newItem.itemLevel end
+	if before.uniqueTitle~=after.uniqueTitle then result[#result+1]="Unique item: "..(before.uniqueTitle or "none").." -> "..(after.uniqueTitle or "none") end
 	for id,text in pairs(old) do if not new[id] then result[#result+1]="- "..text elseif new[id]~=text then result[#result+1]="Changed: "..text.." -> "..new[id] end end
 	for id,text in pairs(new) do if not old[id] then result[#result+1]="+ "..text end end
 	for _,key in ipairs({"rarity","quality","corrupted","destroyed","intangibility","memoryStrands","baseName"}) do if before[key]~=after[key] then result[#result+1]=key..": "..tostring(before[key] or "none").." -> "..tostring(after[key] or "none") end end
 	if (before.twiceCorrupted or false)~=(after.twiceCorrupted or false) then result[#result+1]="Twice Corrupted: "..(before.twiceCorrupted and "yes" or "no").." -> "..(after.twiceCorrupted and "yes" or "no") end
 	local json=require("dkjson");if json.encode(before.sockets or {})~=json.encode(after.sockets or {}) then result[#result+1]="Socket colours, count or links changed." end
-	for _,key in ipairs({"implicits","synthRolls","influences","enchants","harvestEnchant","catalyst","catalystQuality","veil"}) do if json.encode(before[key])~=json.encode(after[key]) then result[#result+1]=key=="harvestEnchant" and "Harvest quality enchantment changed." or key=="synthRolls" and "Synthesised implicits changed." or key.." changed." end end
+	for _,key in ipairs({"influences","enchants","harvestEnchant","catalyst","catalystQuality","veil"}) do if json.encode(before[key])~=json.encode(after[key]) then result[#result+1]=key=="harvestEnchant" and "Harvest quality enchantment changed." or key=="synthRolls" and "Synthesised implicits changed." or key.." changed." end end
 	if after.enchantCleared and not before.enchantCleared then result[#result+1]="Enchantments removed." end
 	table.sort(result);if #result==0 then result[1]="No displayed modifier or item-property changes." end
 	return result
