@@ -25,7 +25,7 @@ function M.Open(options)
 	local implicit=initial and initial.implicit and copyTable(initial.implicit) or nil
 	local quality=initial and require("Modules.MapQuality").validate(initial.quality) or nil
 	local observedEffects=initial and require("Modules.MapObservedEffects").validate(initial.observedEffects) or nil
-	local selected=initial and copyTable(initial.selected) or {};local rolls=initial and copyTable(initial.rolls or {}) or {};local candidate;local previousRarity;local baseId=initial and initial.baseId or "Metadata/Items/Maps/MapKeyTier16";local refresh,syncRarity;local offset,nextOffset=0,nil
+	local selected=initial and copyTable(initial.selected) or {};local rolls=initial and copyTable(initial.rolls or {}) or {};local candidate,selectedAffix;local previousRarity;local baseId=initial and initial.baseId or "Metadata/Items/Maps/MapKeyTier16";local refresh,syncRarity;local offset,nextOffset=0,nil
 	local estimateSettings=initial and initial.estimate and copyTable(initial.estimate) or nil
 	local draftId=initial and initial.id
 	local rollSeed=os.time()%2147483646+1
@@ -126,8 +126,13 @@ function M.Open(options)
 	function controls.affixes:Draw(viewPort)
 		SetDrawLayer(nil,1);drawAffixes(self,viewPort);SetDrawLayer(nil,0)
 	end
-	button("remove",16,height-62,math.floor((left-8)/2),"Remove last",function() local id=table.remove(selected);for i=#rolls,1,-1 do if rolls[i].id==id then table.remove(rolls,i) end end;candidate=nil;offset=0;refresh() end)
+	button("remove",16,height-62,math.floor((left-8)/2),"Remove last",function()
+		local index=#selected;for i,id in ipairs(selected) do if id==selectedAffix then index=i;break end end
+		local id=table.remove(selected,index);for i=#rolls,1,-1 do if rolls[i].id==id then table.remove(rolls,i) end end
+		selectedAffix=nil;candidate=nil;offset=0;refresh()
+	end)
 	controls.remove.enabled=function() return #selected>0 end
+	controls.remove.tooltipText="Select a modifier on the item to remove it, or remove the last one."
 	button("estimate",24+math.floor((left-8)/2),height-62,math.floor((left-8)/2),"Estimate rerolls",function()
 		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
 		require("Classes.MapCraftEstimateControl").Open(options.build,{state=state,wanted=selected,settings=estimateSettings,saveSettings=function(settings) estimateSettings=copyTable(settings) end,apply=function(sample)
@@ -228,7 +233,10 @@ function M.Open(options)
 			for _,row in ipairs(rows) do row.entry=entry;lines[#lines+1]=row end
 		end
 		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and "^7Normal map | Use currency to add modifiers" or map.isNightmare(baseId) and "^xE9BE7BNightmare | Experimental | "..result.total.." candidates | Page "..(math.floor(offset/30)+1) or (isCorrupted() and "^xE07070Corrupted "..#selected.."/9 | " or "^7")..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
-		local affixes={}
+		local found=false;for _,id in ipairs(selected) do if id==selectedAffix then found=true;break end end
+		if not found then selectedAffix=nil end
+		controls.remove.label=selectedAffix and "Remove selected" or "Remove last"
+		local affixes,affixIds={},{};local prefixLines=0
 		if #selected==0 and not result.implicit and not (result.summary.qualityEffect and result.summary.qualityEffect.supported) then affixes={"No hypothetical modifiers selected."} else
 			local summary=result.summary;local totals=summary.estimatedTotals or summary.totals
 			affixes={summary.estimatedTotals and "^xAABBD0Estimated bonuses:" or "^xAABBD0Modifier bonuses (excludes quality):","^7Atlas Drops "..range(totals.atlasDrops),"Rarity "..range(totals.rarity).." | Pack size "..range(totals.packSize)}
@@ -236,19 +244,29 @@ function M.Open(options)
 			if result.implicit then affixes[#affixes+1]="^xB4B4FFImplicit: "..result.implicit.text end
 			if result.implicit and result.implicit.id=="MapCorruptionModEffect" then affixes[#affixes+1]="^xE9BE7BMagnitude rounding is estimated; effect lines are unscaled." end
 			for _,effect in ipairs(summary.effects) do
-				if #effect.lines==0 then affixes[#affixes+1]=effect.name else for _,line in ipairs(effect.lines) do affixes[#affixes+1]=line end end
+				local lines=#effect.lines==0 and {effect.name} or effect.lines
+				for _,line in ipairs(lines) do affixes[#affixes+1]=line;affixIds[#affixes]=effect.id end
 			end
 		end
 		if quality then
 			local effect=result.summary.qualityEffect
 			table.insert(affixes,1,"^xAABBD0Quality ("..quality.kind.."): +"..quality.value.."%")
 			table.insert(affixes,2,effect.supported and "^xAABBD0"..effect.text or "^xE9BE7BQuality effect not modeled")
+			prefixLines=prefixLines+2
 		end
 		if observedEffects then
 			table.insert(affixes,1,"^xE9BE7BObserved effects are not modeled:")
 			for i=#observedEffects,1,-1 do local effect=observedEffects[i];table.insert(affixes,2,"^xB4B4FF"..effect.text.." ("..effect.kind..")") end
+			prefixLines=prefixLines+1+#observedEffects
 		end
-		controls.affixes.list=ui.rows(affixes,left-48,14);show(nil)
+		local rows={};for index,line in ipairs(affixes) do for _,row in ipairs(ui.rows({line},left-48,14)) do
+			row.modifierId=affixIds[index-prefixLines];row.selected=row.modifierId~=nil and row.modifierId==selectedAffix;rows[#rows+1]=row
+		end end
+		controls.affixes.list=rows;show(nil)
+	end
+	controls.affixes.onClick=function(hit)
+		local id=hit and hit.line and hit.line.modifierId
+		if id then if selectedAffix==id then selectedAffix=nil else selectedAffix=id end;refresh() end
 	end
 	controls.list.onClick=function(hit) if hit and hit.line then show(hit.line.entry) end end
 	controls.search.changeFunc=function() offset=0;refresh() end

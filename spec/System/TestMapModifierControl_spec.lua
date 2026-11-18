@@ -119,6 +119,18 @@ describe("Map modifier explorer",function()
 		controls=require("Classes.MapModifierControl").Open({initial=captured,keep=function(entry) captured=copyTable(entry);return "map-test" end})
 		controls.remove:Click();controls.keep:Click();assert.equal(#captured.selected,#captured.rolls)
 	end)
+	it("selects and removes a particular modifier while preserving other rolls",function()
+		local captured;local controls=require("Classes.MapModifierControl").Open({keep=function(entry) captured=copyTable(entry);return "map-test" end})
+		controls.rarity:SelByValue("normal","val");controls.rarity.selFunc();controls.currency:Click()
+		local picker=main.popups[1].controls;picker.search:SetText("Orb of Alchemy",true);picker.choose:Click()
+		controls.quality:Click();local quality=main.popups[1].controls;quality.keep:Click();controls.keep:Click()
+		local before=copyTable(captured);local target=before.selected[1];local row
+		for _,entry in ipairs(controls.affixes.list) do if entry.modifierId==target then row=entry;break end end
+		assert.is_truthy(row);controls.affixes.onClick({line=row});assert.equal("Remove selected",controls.remove.label)
+		controls.remove:Click();controls.keep:Click();assert.equal(#before.selected-1,#captured.selected)
+		for _,id in ipairs(captured.selected) do assert.is_not.equal(target,id) end
+		for _,roll in ipairs(captured.rolls) do for _,old in ipairs(before.rolls) do if roll.id==old.id then assert.same(old.values,roll.values) end end end
+	end)
 	it("keeps and reopens estimate targets with the map draft",function()
 		local captured;local controls=require("Classes.MapModifierControl").Open({build=build,keep=function(entry) captured=copyTable(entry);return "map-test" end})
 		controls.estimate:Click();local estimate=main.popups[1].controls;estimate.addAvoid:Click()
