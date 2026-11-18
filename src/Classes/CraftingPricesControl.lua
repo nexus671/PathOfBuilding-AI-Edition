@@ -45,7 +45,8 @@ function Panel.Open(model,state,actions,book,currency,onKeep,books,recipeState)
 		stash();visible={};local kept;local query=controls.search.buf:lower();local mode=controls.mode:GetSelValue()
 		for _,entry in ipairs(entries) do
 			local quoted=buffers[entry.key] and buffers[entry.key]~=""
-			if (mode=="All resources" or mode=="Recipe resources" and (entry.required or quoted) or mode=="Quoted resources" and quoted) and (entry.name.." "..entry.key.." "..entry.kind):lower():find(query,1,true) then
+			local inherited=entry.fallbackKey and buffers[entry.fallbackKey] and buffers[entry.fallbackKey]~=""
+			if (mode=="All resources" or mode=="Recipe resources" and (entry.required or quoted) or mode=="Quoted resources" and (quoted or inherited)) and (entry.name.." "..entry.key.." "..entry.kind):lower():find(query,1,true) then
 				visible[#visible+1]=entry;if selected and selected.key==entry.key then kept=entry end
 			end
 		end
