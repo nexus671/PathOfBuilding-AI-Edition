@@ -40,6 +40,11 @@ function M.withTreeContext(result,version)
 	return result
 end
 local partialWarningMessage="Partial locks assume uniform selection; bench rerolls select once, Harvest augment selects before adding, and conversions select before changing a modifier. Unpredictable recombination treats locks as non-exclusive. Some selections fail and are not charged in this model; actual behavior is unverified. Other interactions remain unsupported."
+-- Legacy whole-action quotes remain valid when no more specific quote exists.
+function M.genericPriceKey(action)
+	if action.method=="harvest_resistance" then return action.method end
+	if action.beastLevel and (action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix") then return action.method end
+end
 function M.actionWarnings(action,model)
 	local result={}
 	if action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix" then result[#result+1]={code="beast_level_pool",message=action.beastLevel and ("Uses the supplied beast level "..action.beastLevel.." for the added modifier. This interaction is based on community research and is not verified in the current game.") or "This model uses the item level for the added modifier. Community research reports that these Bestiary crafts use the beast's level instead, so the eligible pool and odds can differ.",source="https://www.poewiki.net/wiki/Beastcrafting"} end
@@ -860,8 +865,7 @@ function M.simulate(raw,recipe,options)
 				totalExecuted=totalExecuted+1
 				local setupKey=(M.priceKey or priceKey)(step)
 				-- Prefer a specific quote while retaining older generic service prices.
-				local legacyKey=step.method=="harvest_resistance" and step.method or
-					step.beastLevel and (step.method=="beast_prefix_suffix" or step.method=="beast_suffix_prefix") and step.method or nil
+				local legacyKey=M.genericPriceKey(step)
 				local actionKey=setupKey
 				local actionPrice=options.actionPrices and options.actionPrices[setupKey]
 				if actionPrice==nil and legacyKey and options.actionPrices then actionPrice=options.actionPrices[legacyKey];if actionPrice~=nil then actionKey=legacyKey end end

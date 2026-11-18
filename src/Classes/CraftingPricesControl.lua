@@ -26,7 +26,9 @@ function Panel.Open(model,state,actions,book,currency,onKeep,books,recipeState)
 	local function renderRows()
 		local rows={}
 		for _,entry in ipairs(visible or {}) do
-			local value=buffers[entry.key] or "";local number=tonumber(value);local quote=value=="" and "Unknown price" or number and number>=0 and number<=1e12 and value.." "..controls.currency.buf or "Invalid price"
+			local value=buffers[entry.key] or "";local number=tonumber(value)
+			local fallback=entry.fallbackKey and buffers[entry.fallbackKey]
+			local quote=value=="" and (fallback and fallback~="" and "Generic quote: "..fallback.." "..controls.currency.buf or "Unknown price") or number and number>=0 and number<=1e12 and value.." "..controls.currency.buf or "Invalid price"
 			rows[#rows+1]={height=24,textSize=16,x=48,"^xE2C28C"..ui.fit(entry.name,listWidth-78,16),key=entry.key,path=entry.path,selected=selected and selected.key==entry.key}
 			rows[#rows+1]={height=24,textSize=13,x=48,(quote=="Invalid price" and "^xE07070" or "^xA6B3C6")..ui.fit(quote.." | "..entry.kind,listWidth-78,13),key=entry.key,selected=selected and selected.key==entry.key}
 		end
@@ -36,7 +38,7 @@ function Panel.Open(model,state,actions,book,currency,onKeep,books,recipeState)
 	local function choose(entry)
 		stash();selected=entry;controls.resources.selectedKey=entry and entry.key;controls.price:SetText(entry and buffers[entry.key] or "")
 		controls.selected.list=ui.rows({entry and entry.name or "No resource selected"},sideWidth,16)
-		controls.hint.list=ui.rows(entry and {entry.kind=="Whole action" and "Price of the complete craft." or "Quote one unit of this resource.","0 means free; blank stays unknown.","Recipe resources include possible costs."} or {"Select a resource from the list.","Recipe resources include possible costs."},sideWidth,14)
+		controls.hint.list=ui.rows(entry and {entry.kind=="Whole action" and "Price of the complete craft." or "Quote one unit of this resource.",entry.fallbackKey and "Blank uses a saved generic quote, if available." or "0 means free; blank stays unknown.","Recipe resources include possible costs."} or {"Select a resource from the list.","Recipe resources include possible costs."},sideWidth,14)
 		renderRows()
 	end
 	local function refresh()

@@ -1009,6 +1009,17 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 
 	do
+		local model=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local quote={currency="chaos",source="Manual quotes",quotedAt=1700000000,values={beast_prefix_suffix=2}}
+		require("Classes.CraftingPricesControl").Open(model,model.initial,{{method="beast_prefix_suffix",beastLevel=86}},quote,"chaos",function() end)
+		ui:text("search","beast level 86")
+		assert(StripEscapes(main.popups[1].controls.resources.list[2][1]):find("Generic quote: 2 chaos",1,true),"Missing generic Bestiary price")
+		frame("crafting-beast-generic-price");ui:text("price","7")
+		assert(StripEscapes(main.popups[1].controls.resources.list[2][1]):find("7 chaos",1,true),"Specific Bestiary price not shown")
+		ui:click("close")
+	end
+
+	do
 		local model=sim.model("Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: W W W W W W")
 		require("Classes.CraftingPricesControl").Open(model,model.initial,{{method="gwennen",firstOutcome=1000,secondOutcome=1012},{method="socket_colour_bench",count=3}},nil,"chaos",function() end)
 		ui:text("search","Vaal Orb");assert(StripEscapes(main.popups[1].controls.resources.list[1][1]):find("Vaal Orb",1,true),"Possible Gwennen corruption surcharge was omitted")

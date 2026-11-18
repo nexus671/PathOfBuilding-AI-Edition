@@ -124,7 +124,9 @@ function M.entries(model,state,actions,book,recipeState)
 	local function add(key,required,action)
 		local canonical=aliases[key] or key
 		if seen[canonical] then seen[canonical].required=seen[canonical].required or required;return end
-		local name,path,kind=M.describe(canonical,model,action);local row={key=canonical,name=name,path=path,kind=kind,required=required or false};seen[canonical]=row;result[#result+1]=row
+		local name,path,kind=M.describe(canonical,model,action)
+		local fallback=action and canonical==sim.priceKey(action) and sim.genericPriceKey(action) or nil
+		local row={key=canonical,name=name,path=path,kind=kind,required=required or false,fallbackKey=fallback};seen[canonical]=row;result[#result+1]=row
 	end
 	-- Routes can jump backwards or restart, so a corruption action anywhere in
 	-- the guide can precede another step on a later visit. Show possible
