@@ -95,14 +95,23 @@ local function readable(text)
 end
 -- Sum only explicit modifier contributions, preserving ranges and leaving
 -- quality, implicit effects and any other map bonuses outside these totals.
-function M.summarize(selected,rolls)
+function M.summarize(selected,rolls,implicit)
 	local totals={atlasDrops={min=0,max=0},rarity={min=0,max=0},packSize={min=0,max=0}}
+	local estimate=implicit and {atlasDrops={min=0,max=0},rarity={min=0,max=0},packSize={min=0,max=0}} or nil
+	local rateLow,rateHigh=0,0
+	if implicit and implicit.id=="MapCorruptionModEffect" then rateLow=implicit.value or implicit.min;rateHigh=implicit.value or implicit.max end
 	local effects={};local rollValues=require("Modules.MapRollValues");local byId=rollValues.validate(selected,rolls,M.source())
 	for _,id in ipairs(selected or {}) do
 		local mod=assert(M.source().mods[id],"Unknown selected area modifier");local fixed={};local values=byId[id]
 		for i,stat in ipairs(mod.stats or {}) do local kind=summaryStats[stat.id];if kind then
 			local low,high=values and values[i] or stat.min,values and values[i] or stat.max
 			local total=totals[kind.key];total.min=total.min+low;total.max=total.max+high
+			if estimate then
+				-- The game rounding is unverified. Apply the recorded map implicit
+				-- to each explicit stat separately and round down in this estimate.
+				local values={low*(100+rateLow)/100,low*(100+rateHigh)/100,high*(100+rateLow)/100,high*(100+rateHigh)/100}
+				local target=estimate[kind.key];target.min=target.min+math.floor(math.min(unpack(values)));target.max=target.max+math.floor(math.max(unpack(values)))
+			end
 			if stat.min==stat.max then fixed[kind.key]=stat.min end
 		end end
 		local replacements=rollValues.render(mod,values);local sourceLines,counts={},{}
@@ -114,7 +123,12 @@ function M.summarize(selected,rolls)
 		end
 		effects[#effects+1]={id=id,name=mod.name,lines=lines,hasValues=values~=nil}
 	end
-	return {totals=totals,effects=effects,note="Only selected modifier contributions; excludes quality, implicit effects and other map bonuses. Unmatched or unsampled lines remain ranges."}
+	if estimate then
+		local key=implicit.id=="MapCorruptionItemRarity" and "rarity" or implicit.id=="MapCorruptionPackSize" and "packSize"
+		if key then local low,high=implicit.value or implicit.min,implicit.value or implicit.max;estimate[key].min=estimate[key].min+low;estimate[key].max=estimate[key].max+high end
+	end
+	return {totals=totals,estimatedTotals=estimate,effects=effects,note="Only selected explicit modifier contributions; excludes quality, implicit effects and other map bonuses. Unmatched or unsampled lines remain ranges.",
+		estimateNote=estimate and "Estimated explicit and supported recorded implicit bonuses; excludes quality, Atlas passives and other effects. Modifier magnitude uses per-stat rounding down, an unverified assumption. Other implicit effects and legacy Item Quantity are not included." or nil}
 end
 
 -- White, yellow and red ordinary maps use the established tier bands. This
@@ -148,7 +162,7 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 		if (corrupted and #selected<9 or not corrupted and counts[entry.side]<(rarity=="magic" and 1 or 3)) and (rarity=="rare" or not rareOnly[entry.id]) and (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true) then result[#result+1]=entry end
 	end
 	local results,total,nextOffset=page(result,offset,limit)
-	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,corrupted=corrupted or nil,implicit=implicitInfo,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected,rolls),
+	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,corrupted=corrupted or nil,implicit=implicitInfo,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected,rolls,implicitInfo),
 		source=M.source().source,patch=M.source().patch,
 		note=corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification."}
 end

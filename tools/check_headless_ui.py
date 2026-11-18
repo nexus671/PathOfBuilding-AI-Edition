@@ -84,7 +84,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1572, f"Expected 1572 UI frames, found {len(paths)}"
+    assert len(paths) == 1575, f"Expected 1575 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         stack = json.loads((frames / f"{width}-filter-stack-styles.json").read_text())
         labels = " ".join(command.get("text", "") for command in stack["commands"] if command.get("kind") == "text")

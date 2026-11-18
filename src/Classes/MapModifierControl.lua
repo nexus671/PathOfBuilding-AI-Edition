@@ -87,7 +87,7 @@ function M.Open(options)
 	button("implicit",right+393,64,rightWidth-393,"Implicit...",function()
 		local module=require("Modules.MapCorruptionImplicits");local entries={{label="No implicit recorded",val=""}}
 		for _,entry in ipairs(module.list()) do entries[#entries+1]={label=entry.label,val=entry.id} end
-		local popup={};ui.description(popup,"help",16,28,608,40,{"Record an observed or hypothetical corruption implicit. Its effects are not included in the displayed totals."},14)
+		local popup={};ui.description(popup,"help",16,28,608,40,{"Record an observed or hypothetical corruption implicit. Totals are estimates and omit unsupported effects."},14)
 		popup.choice=new("DropDownControl"):DropDownControl(ui.anchor,{16,76,608,26},entries)
 		popup.choice:SelByValue(implicit and implicit.id or "","val")
 		ui.label(popup,"valueLabel",16,120,"Exact value (optional; leave blank for the range)",14)
@@ -105,7 +105,7 @@ function M.Open(options)
 		ui.style(popup,{keep=true});main:OpenPopup(640,240,"Map corruption implicit",popup,nil,nil,"close")
 	end)
 	controls.implicit.enabled=function() return isCorrupted() end
-	controls.implicit.tooltipText="Record a corruption implicit. Its effects are not included in modifier totals."
+	controls.implicit.tooltipText="Record a corruption implicit. Estimated totals exclude unsupported effects."
 	local previousRarity=controls.rarity:GetSelValueByKey("val")
 	controls.search=new("EditControl"):EditControl(ui.anchor,{right,96,rightWidth,26},"","Search modifiers",nil,160)
 	controls.list=new("TextListControl"):TextListControl(ui.anchor,{right,132,rightWidth,height-410},nil,{})
@@ -163,10 +163,12 @@ function M.Open(options)
 		end
 		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and "^7Normal map | Use currency to add modifiers" or (isCorrupted() and "^xE07070Corrupted "..#selected.."/9 | " or "^7")..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
 		local affixes={}
-		if #selected==0 then affixes={result.implicit and ("^xB4B4FFImplicit (excluded from totals): "..result.implicit.text) or "No hypothetical modifiers selected."} else
-			local summary=result.summary;local totals=summary.totals
-			affixes={"^xAABBD0Modifier bonuses (excludes quality):","^7Atlas Drops "..range(totals.atlasDrops),"Rarity "..range(totals.rarity).." | Pack size "..range(totals.packSize)}
-			if result.implicit then affixes[#affixes+1]="^xB4B4FFImplicit (excluded from totals): "..result.implicit.text end
+		if #selected==0 and not result.implicit then affixes={"No hypothetical modifiers selected."} else
+			local summary=result.summary;local totals=summary.estimatedTotals or summary.totals
+			affixes={summary.estimatedTotals and "^xAABBD0Estimated bonuses (no quality):" or "^xAABBD0Modifier bonuses (excludes quality):","^7Atlas Drops "..range(totals.atlasDrops),"Rarity "..range(totals.rarity).." | Pack size "..range(totals.packSize)}
+			if summary.estimatedTotals then affixes[#affixes+1]="^xA6B3C6Excludes quality, Atlas and other effects." end
+			if result.implicit then affixes[#affixes+1]="^xB4B4FFImplicit: "..result.implicit.text end
+			if result.implicit and result.implicit.id=="MapCorruptionModEffect" then affixes[#affixes+1]="^xE9BE7BMagnitude rounding is estimated; effect lines are unscaled." end
 			for _,effect in ipairs(summary.effects) do
 				if #effect.lines==0 then affixes[#affixes+1]=effect.name else for _,line in ipairs(effect.lines) do affixes[#affixes+1]=line end end
 			end
