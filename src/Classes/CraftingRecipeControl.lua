@@ -125,9 +125,11 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 	button(controls,"addCurrency",288,642,272,"Add recipe step",function()
 		assert(#draft.steps < 20,"Use up to twenty steps")
 		local entries={};local workbench=require("Modules.CraftingWorkbench")
-		for _,method in ipairs({"transmute","alteration","augmentation","regal","alchemy","binding","chaos","exalt","annul","scour","divine","vaal","blessed","sacred","chromatic","quality"}) do
+		for _,method in ipairs({"transmute","alteration","augmentation","regal","alchemy","binding","chaos","exalt","annul","scour","divine","vaal","blessed","sacred","chromatic","jeweller","fusing","tainted_chromatic","tainted_jeweller","tainted_fusing","quality"}) do
 			local details={"Add this action to the recipe without changing the working item.","The item must meet its requirements when this step runs."}
 			if method=="binding" then details[#details+1]="No longer generated in 3.30; existing Orbs of Binding still work." end
+			if method=="jeweller" or method=="fusing" then details[#details+1]="Experimental probabilities; current game odds and some socket behavior are unverified." end
+			if method:find("tainted_",1,true) then details[#details+1]="Requires a corrupted item. Outcome probabilities and edge cases are unverified." end
 			entries[#entries+1]={id=method,label=sim.labels[method],category="Currency",icon=workbench.icon(method),action={method=method},
 				details=details}
 		end
