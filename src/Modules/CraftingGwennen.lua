@@ -1,6 +1,6 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1016]=true,[1017]=true,[1018]=true,[1019]=true,[1020]=true,[1021]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1028]=true,[1029]=true,[1030]=true,[1031]=true,[1032]=true,[1041]=true,[1042]=true,[1043]=true,[1044]=true}
+local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1016]=true,[1017]=true,[1018]=true,[1019]=true,[1020]=true,[1021]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1028]=true,[1029]=true,[1030]=true,[1031]=true,[1032]=true,[1033]=true,[1034]=true,[1035]=true,[1036]=true,[1037]=true,[1038]=true,[1039]=true,[1040]=true,[1041]=true,[1042]=true,[1043]=true,[1044]=true}
 local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
@@ -222,6 +222,22 @@ function G.extend(M,api)
 		local tierCache={}
 		local function branch(id,draw,probe)
 			if id==1000 then return copyTable(input) end
+			if id>=1033 and id<=1040 then
+				local single=({[1033]=1009,[1034]=1009,[1035]=1008,[1036]=1008,[1037]=1018,[1038]=1018,[1039]=1019,[1040]=1019})[id]
+				local count=({[1033]=3,[1034]=5,[1035]=3,[1036]=5,[1037]=3,[1038]=6,[1039]=3,[1040]=6})[id]
+				local side=(id==1033 or id==1034 or id==1037 or id==1038) and "Prefix" or "Suffix"
+				local best,bestScore
+				for _=1,probe and 1 or count do
+					local candidate=branch(single,draw,probe);local total,num=0,0
+					for _,entry in ipairs(candidate.affixes) do local mod=model.byId[entry.id]
+						if mod.type==side then total=total+assert(mod.level,"Modifier level is unavailable");num=num+1 end
+					end
+					assert(num>0,"No modifier to score")
+					local score=total/num
+					if not bestScore or score>bestScore then best,bestScore=candidate,score end
+				end
+				return best
+			end
 			if id==1010 or id==1011 then
 				return M.bestChromatic(model,input,probe and 1 or id==1010 and 50 or 20,draw)
 			end

@@ -22,6 +22,7 @@ function M.search(query,limit)
 				if entry.id==1030 then row.note="The displayed 100 rerolls conflict with the listed function argument of 50. Choose a scenario; actual behavior is unverified." end
 				if entry.id==1020 or entry.id==1021 or entry.id==1043 or entry.id==1044 then row.note="Experimental: distinct random ordinary modifiers change to uniquely identified adjacent legal tiers. Selection and tier rules are unverified." end
 				if entry.id==1018 or entry.id==1019 then row.note="The model assumes the number of modifiers on this side stays the same; Gwennen's behavior is unverified." end
+				if entry.id>=1033 and entry.id<=1040 then row.note="Experimental: independent rolls, highest average modifier level and first tie; Gwennen's rules are unverified." end
 				if entry.id==1031 then row.note="The model assumes equal influence chances and accepts only uninfluenced, non-synthesised items without Eldritch implicits." end
 				if entry.id==1032 then row.note="Experimental: rerolls recognized non-maximum ordinary, Eldritch or synthesised implicits. Maximum checks, eligibility and roll odds are unverified." end
 				if entry.id==1013 then row.note="The model uses Brinehook's four Pantheon Aspects, assumed equally likely, and requires an open suffix; Gwennen's rules are unverified." end

@@ -34,6 +34,26 @@ describe("Experimental Gwennen pair",function()
 		assert.same(original,state);assert.same(original,intact);assert.is_true(destroyed.destroyed);assert.equal(0,#destroyed.affixes)
 		assert.equal(1000,first.gwennen.outcome);assert.equal(1022,second.gwennen.outcome)
 	end)
+	it("models best-of prefix and suffix outcomes using independent candidate rolls",function()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
+		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}};local original=copyTable(state)
+		local cases={{1033,1009,3,"Prefix"},{1034,1009,5,"Prefix"},{1035,1008,3,"Suffix"},{1036,1008,5,"Suffix"},{1037,1018,3,"Prefix"},{1038,1018,6,"Prefix"},{1039,1019,3,"Suffix"},{1040,1019,6,"Suffix"}}
+		local function stream(seed) return function() seed=seed*48271%2147483647;return seed/2147483647 end end
+		local function run(id,random)
+			local first=true;return sim.action(model,state,{method="gwennen",firstOutcome=id,secondOutcome=1000},function() if first then first=false;return 0.1 end;return random() end)
+		end
+		local function score(item,side)
+			local total,count=0,0;for _,entry in ipairs(item.affixes) do local mod=model.byId[entry.id];if mod.type==side then total=total+mod.level;count=count+1 end end;return total/count
+		end
+		for _,case in ipairs(cases) do for _,seed in ipairs({11,47,91}) do
+			local actual=run(case[1],stream(seed));local random=stream(seed);local expected,best
+			for _=1,case[3] do local candidate=run(case[2],random);local value=score(candidate,case[4]);if not best or value>best then best=value;expected=candidate end end
+			assert.same(expected,actual);assert.same(original,state);sim.validateState(model,actual)
+		end end
+		local pair={method="gwennen",firstOutcome=1038,secondOutcome=1000}
+		local warnings=sim.actionWarnings(pair,model);assert.equal("gwennen_best_assumptions",warnings[2].code)
+		local result=sim.calculate(raw,pair,{},state,{requirements={minAffixes=1},trials=3,seed=7});assert.is_true(result.sampled);assert.equal("gwennen_best_assumptions",result.warnings[2].code)
+	end)
 	it("rerolls identifiable non-maximum ordinary and Eldritch implicits",function()
 		local pair={method="gwennen",firstOutcome=1032,secondOutcome=1000}
 		local source="Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life"
