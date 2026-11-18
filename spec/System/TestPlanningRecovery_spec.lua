@@ -6,7 +6,7 @@ describe("Local planning draft recovery",function()
 	before_each(function()
 		newBuild();directory=os.tmpname();os.remove(directory);assert(require("lfs").mkdir(directory));session=recovery.session;recovery.testDirectory=directory;recovery.cache={}
 	end)
-	after_each(function() for _,kind in ipairs({"filters","atlas","crafting"}) do recovery.clear(build,kind) end;os.remove(directory);recovery.testDirectory=nil;recovery.cache={};recovery.session=session;recovery.lastError=nil end)
+	after_each(function() for _,kind in ipairs({"filters","atlas","crafting"}) do recovery.clear(build,kind) end;os.remove(directory);recovery.testDirectory=nil;recovery.cache={};recovery.session=session;recovery.lastError=nil;main.popups={} end)
 	it("recovers the older complete slot after an interrupted write",function()
 		assert.is_true(recovery.save(build,"filters",entry("First"),true));assert.is_true(recovery.save(build,"filters",entry("Second"),true))
 		local latest=recovery.load(build,"filters");assert.equal("Second",latest.entry.plan.data.profiles[1].title)
@@ -30,6 +30,40 @@ describe("Local planning draft recovery",function()
 		local plan={id="test",title="Saved Atlas",version="3.30.0-preview",budget=150,nodes={}};build.savers.AtlasPlans:Upsert(plan)
 		assert.is_true(recovery.isCurrent(build,"atlas",{plan=require("Modules.AtlasPlanner").validate(plan)}))
 		assert.is_false(recovery.isCurrent(build,"atlas",{plan=plan,view={title="",budgetText="-1",notes="Unfinished"}}))
+	end)
+	it("recovers unfinished Atlas stage inputs without applying them",function()
+		local plan={id="test",title="Saved Atlas",version="3.30.0-preview",budget=150,nodes={},notes=""};build.savers.AtlasPlans:Upsert(plan)
+		local stage={page="Strategy",stage="starter",previous="",fields={maps="",scarabs="",requirements="",avoid=""},amount="",currency="chaos",source=""}
+		local view={title=plan.title,notes="",budgetText="150",search="",centerX=0,centerY=0,scale=0.16,stageResume=stage,grantSteps={{node=1}}}
+		assert.is_true(recovery.isCurrent(build,"atlas",recovery.clean("atlas",{plan=plan,view=view})))
+		stage.fields.requirements="Unfinished requirement";stage.amount="many"
+		assert.is_true(recovery.save(build,"atlas",{plan=plan,view=view},true))
+		local recovered=recovery.load(build,"atlas").entry
+		assert.same(stage,recovered.view.stageResume);assert.is_nil(recovered.view.grantSteps)
+		assert.is_false(recovery.isCurrent(build,"atlas",recovered))
+		recovery.session="new-session";recovery.cache={};view.stageResume=nil
+		assert.is_true(recovery.save(build,"atlas",{plan=plan,view=view},true))
+		assert.same(stage,recovery.load(build,"atlas").entry.view.stageResume);assert.is_true(recovery.hasPending(build))
+		assert.is_nil(build.savers.AtlasPlans.plans[1].strategy)
+	end)
+	it("rejects malformed Atlas stage recovery inputs",function()
+		local plan={id="test",title="Test",version="3.30.0-preview",budget=150,nodes={}}
+		local view={title="Test",notes="",budgetText="150",search="",scale=0.16,stageResume={page="Strategy",stage="starter",previous="",fields={maps=string.rep("x",4001),scarabs="",requirements="",avoid=""},amount="",currency="chaos",source=""}}
+		assert.is_false(recovery.save(build,"atlas",{plan=plan,view=view},true));assert.is_nil(recovery.load(build,"atlas"))
+	end)
+	it("captures open stage edits and restores them into the editor",function()
+		local plan={id="test",title="Test",version="3.30.0-preview",budget=150,nodes={},notes=""};build.savers.AtlasPlans:Upsert(plan)
+		local layout={width=1100,height=750,mount=function() end}
+		local panel=require("Classes.AtlasPlannerControl").Open(build,plan,layout);panel.progression:Click()
+		local stage=main.popups[1].controls;stage.requirements:SetText("Unfinished",true);stage.amount:SetText("many",true)
+		assert.is_true(recovery.save(build,"atlas",{plan=layout.snapshot(),view=layout.viewState()},true))
+		local recovered=recovery.load(build,"atlas").entry;assert.is_false(recovery.isCurrent(build,"atlas",recovered))
+		stage.close:Click();assert.is_nil(layout.viewState().stageResume)
+		local restored={width=1100,height=750,mount=function() end,restore=recovered.view}
+		local reopened=require("Classes.AtlasPlannerControl").Open(build,recovered.plan,restored)
+		assert.equal("Resume stages",reopened.progression.label());reopened.progression:Click()
+		stage=main.popups[1].controls;assert.equal("Unfinished",stage.requirements.buf);assert.equal("many",stage.amount.buf)
+		assert.equal("Unfinished",restored.viewState().stageResume.fields.requirements);stage.close:Click()
 	end)
 	it("removes only the requested project's valid recovery slots and returns its working draft",function()
 		local function craft(id)

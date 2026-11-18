@@ -40,7 +40,7 @@ end
 function M.Recovery(build)
 	local recovery=require("Modules.PlanningRecovery");local entries={}
 	for _,kind in ipairs({"filters","atlas","crafting"}) do local record=recovery.load(build,kind)
-		if record and not recovery.isCurrent(build,kind,record.entry) then entries[#entries+1]={id=kind,label=({filters="Loot-filter draft",atlas="Atlas draft",crafting="Working craft"})[kind],details={"Saved locally: "..os.date("%Y-%m-%d %H:%M",record.at),"Restore opens a working draft. Review it, then Keep and Save.","An earlier-session draft is preserved until you restore or discard it."},record=record} end
+		if record and not recovery.isCurrent(build,kind,record.entry) then local details={"Saved locally: "..os.date("%Y-%m-%d %H:%M",record.at),"Restore opens a working draft. Review it, then Keep and Save.","An earlier-session draft is preserved until you restore or discard it."};if kind=="atlas" and record.entry.view and record.entry.view.stageResume then details[#details+1]="Choose Resume stages to recover unfinished stage inputs." end;entries[#entries+1]={id=kind,label=({filters="Loot-filter draft",atlas="Atlas draft",crafting="Working craft"})[kind],details=details,record=record} end
 	end
 	if recovery.lastError then entries[#entries+1]={id="error",label="Draft recovery needs attention",details={recovery.lastError,"Keep your working project and save the build."}} end
 	require("Classes.PlanningBrowserControl").Open("Recover local drafts",entries,{action="Restore draft",closeOnChoose=false,choose=function(entry)

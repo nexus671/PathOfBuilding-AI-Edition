@@ -2,7 +2,7 @@
 local ui=require("Modules.PlanningUI")
 local atlas=require("Modules.AtlasPlanner")
 local M={}
-function M.Open(build,plan,keep,inspectRoute,view)
+function M.Open(build,plan,keep,inspectRoute,view,onEdit,onCancel)
 	local draft=copyTable(plan);local c={};local routeLines,routeReport,routeSource;local w,h=math.min(920,main.screenW-40),math.min(680,main.screenH-48)
 	local function button(key,x,y,width,label,run)
 		c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,function()
@@ -42,6 +42,14 @@ function M.Open(build,plan,keep,inspectRoute,view)
 	ui.label(c,"costLabel",16,378,"Setup estimate / currency / source",15)
 	for _,entry in ipairs({{"amount",16,120,s.setupCost and tostring(s.setupCost.amount) or ""},{"currency",148,140,s.setupCost and s.setupCost.currency or "chaos"},{"source",300,w-316,s.setupCost and s.setupCost.source or ""}}) do c[entry[1]]=new("EditControl"):EditControl(ui.anchor,{entry[2],404,entry[3],28},entry[4],nil,nil,240) end
 	if view then c.amount:SetText(view.amount);c.currency:SetText(view.currency);c.source:SetText(view.source);c.page:SelByValue(view.page) end
+	local function snapshot()
+		local values={};for _,field in ipairs(fields) do values[field[1]]=c[field[1]].buf end
+		return {page=c.page:GetSelValue(),stage=c.stage:GetSelValueByKey("val"),previous=c.previous:GetSelValueByKey("val"),fields=values,amount=c.amount.buf,currency=c.currency.buf,source=c.source.buf}
+	end
+	local function changed() if onEdit then onEdit(snapshot()) end end
+	c.previous.selFunc=function() refresh();changed() end
+	c.stage.selFunc=changed;c.page.selFunc=changed
+	for _,key in ipairs({"maps","scarabs","requirements","avoid","amount","currency","source"}) do c[key].changeFunc=changed end
 	ui.description(c,"costHint",16,448,w-32,48,{"Costs use your supplied currency and source, dated when edited. They do not reserve or spend Journey resources automatically."},14)
 	button("mapTier",16,510,180,"Add map tier",function()
 		local choices={};for tier=1,16 do local name="Map (Tier "..tier..")";choices[#choices+1]={id=name,label=name,details={"Adds a tiered map item to the strategy.","Filter build pickups can highlight this tier; the Atlas area is chosen separately."}} end
@@ -72,8 +80,7 @@ function M.Open(build,plan,keep,inspectRoute,view)
 	c.copyRoute.tooltipText="Copy the shown refund and allocation steps, including their budget assumptions."
 	button("inspectRoute",390,h-48,160,"Show on tree",function()
 		if not inspectRoute or not routeReport or not routeReport.steps or #routeReport.steps==0 then return end
-		local fields={};for _,field in ipairs({"maps","scarabs","requirements","avoid"}) do fields[field]=c[field].buf end
-		local saved={page=c.page:GetSelValue(),stage=c.stage:GetSelValueByKey("val"),previous=c.previous:GetSelValueByKey("val"),fields=fields,amount=c.amount.buf,currency=c.currency.buf,source=c.source.buf}
+		local saved=snapshot()
 		local steps=copyTable(routeReport.steps);local initial=copyTable(routeSource.nodes);local budget=math.max(routeSource.budget,draft.budget)
 		local warnings={};if routeReport.startingReachable==nil then warnings[#warnings+1]="Starting allocation unverified" end
 		if routeReport.choiceReselectionCostUnknown then warnings[#warnings+1]="Choice cost unverified" elseif #routeReport.choiceChanges>0 then warnings[#warnings+1]="Review choice effects" end
@@ -84,7 +91,7 @@ function M.Open(build,plan,keep,inspectRoute,view)
 	c.inspectRoute.enabled=function() return inspectRoute~=nil and routeReport~=nil and routeReport.steps~=nil and #routeReport.steps>0 end
 	c.inspectRoute.tooltipText="Step through a found route with allocation or refund steps; return to resume these edits."
 
-	button("close",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)
+	button("close",w-156,h-48,140,"Cancel",function() if onCancel then onCancel() end;main:ClosePopup() end)
 	refresh();ui.style(c,{keep=true});main:OpenPopup(w,h,"Atlas stages and strategy",c,nil,nil,"close")
 end
 return M

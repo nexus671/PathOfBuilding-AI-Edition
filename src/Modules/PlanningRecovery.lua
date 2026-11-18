@@ -10,6 +10,29 @@ local function path(build,kind,slot)
 	local id=require("sha1")((build.dbFileName or "untitled:"..(build.buildName or ""))..":"..GetScriptPath())
 	return directory.."/"..id.."-"..kind.."-"..slot..".json",directory
 end
+-- The stage editor is temporarily closed while its route is shown on the tree.
+-- Preserve its raw inputs, including values that are not yet valid for saving.
+local function cleanAtlasStage(stage)
+	if stage==nil then return nil end
+	assert(type(stage)=="table" and (stage.page=="Progression" or stage.page=="Strategy"),"Invalid Atlas stage view")
+	assert(({starter=true,intermediate=true,final=true})[stage.stage],"Invalid Atlas stage")
+	local function text(value,limit)
+		assert(type(value)=="string" and #value<=limit,"Invalid Atlas stage input");return value
+	end
+	assert(type(stage.fields)=="table","Invalid Atlas strategy inputs")
+	local result={page=stage.page,stage=stage.stage,previous=text(stage.previous,64),fields={}}
+	for _,key in ipairs({"maps","scarabs","requirements","avoid"}) do result.fields[key]=text(stage.fields[key],4000) end
+	for _,key in ipairs({"amount","currency","source"}) do result[key]=text(stage[key],240) end
+	return result
+end
+local function atlasStageIsCurrent(saved,stage)
+	local progression=saved.progression or {};local strategy=saved.strategy or {}
+	if stage.stage~=(progression.stage or "starter") or stage.previous~=(progression.previousId or "") then return false end
+	for _,key in ipairs({"maps","scarabs","requirements","avoid"}) do if stage.fields[key]~=(strategy[key] or "") then return false end end
+	local cost=strategy.setupCost
+	if not cost then return stage.amount=="" and stage.currency=="chaos" and stage.source=="" end
+	return tonumber(stage.amount)==cost.amount and stage.currency==cost.currency and stage.source==(cost.source or "")
+end
 function M.clean(kind,entry)
 	local value=assert(entry.plan,"Missing draft")
 	if kind=="filters" then return {plan={data=require("Modules.LootFilters").validate(value.data),selected=value.selected,page=value.page,dirty=true}}
@@ -20,6 +43,7 @@ function M.clean(kind,entry)
 			for _,key in ipairs({"centerX","centerY","scale","focus","inspectorWidth"}) do local v=view[key];assert(v==nil or type(v)=="number" and v==v and math.abs(v)<1e7,"Invalid Atlas view");savedView[key]=v end
 			assert(savedView.scale and savedView.scale>0,"Invalid Atlas scale")
 			savedView.page=view.page=="Notes & sharing" and view.page or "Tree";savedView.mechanic=view.mechanic;savedView.avoided=copyTable(value.avoided or {});savedView.undo={};savedView.redo={}
+			savedView.stageResume=cleanAtlasStage(view.stageResume)
 		end
 		return {plan=require("Modules.AtlasPlanner").validate(value),view=savedView}
 	elseif kind=="crafting" then
@@ -37,7 +61,7 @@ function M.isCurrent(build,kind,entry)
 			local plan=copyTable(entry.plan);local view=entry.view
 			if view then plan.title=view.title;plan.notes=view.notes;plan.budget=tonumber(view.budgetText) end
 			plan=require("Modules.AtlasPlanner").validate(plan)
-			for _,saved in ipairs(build.savers.AtlasPlans.plans) do if saved.id==plan.id then return data.hash(saved)==data.hash(plan) end end
+			for _,saved in ipairs(build.savers.AtlasPlans.plans) do if saved.id==plan.id then return data.hash(saved)==data.hash(plan) and (not view or not view.stageResume or atlasStageIsCurrent(saved,view.stageResume)) end end
 		elseif kind=="crafting" then
 			local working=entry.plan;local run=copyTable(working);run.project=nil;run.kind=nil
 			for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id==working.project.id and project.startingItem==working.project.startingItem and project.run then
