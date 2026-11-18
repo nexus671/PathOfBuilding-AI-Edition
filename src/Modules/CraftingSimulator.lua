@@ -952,6 +952,11 @@ function M.catalog(raw,query,limit)
 	local model=M.model(raw)
 	query=(query or ""):lower(); limit=limit or 50
 	local result={methods=copyTable(M.methods),methodWarnings={},modifiers={},bench={},essences={},limitations=copyTable(M.limits)}
+	local uniqueCandidates=require("Modules.CraftingJewelCorruption").candidates(model.item.baseName)
+	if #uniqueCandidates>0 then
+		result.uniqueCorruption={names={},note="Bundled modeled candidates; actual eligibility and selection weights are unverified."}
+		for _,candidate in ipairs(uniqueCandidates) do result.uniqueCorruption.names[#result.uniqueCorruption.names+1]=candidate.title end
+	end
 	for _,method in ipairs(M.methods) do local warnings=M.actionWarnings({method=method},model);if #warnings>0 then result.methodWarnings[method]=warnings end end
 	for _,entry in ipairs(model.mods) do if #result.modifiers < limit and (entry.id.." "..table.concat(entry.mod," / ")):lower():find(query,1,true) then result.modifiers[#result.modifiers+1]={id=entry.id,text=table.concat(entry.mod," / "),level=entry.mod.level,type=entry.mod.type,weight=entry.weight,group=entry.mod.group} end end
 	for _,entry in ipairs(model.bench) do if #result.bench < limit and (entry.id.." "..table.concat(entry.mod," / ")):lower():find(query,1,true) then result.bench[#result.bench+1]={id=entry.id,text=table.concat(entry.mod," / "),type=entry.mod.type} end end

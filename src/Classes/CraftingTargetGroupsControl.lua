@@ -48,7 +48,7 @@ function M.Open(model,state,input,requirements,count,onKeep)
 		assert(member,"Choose an alternative");local chosen=assert(group());for i=#chosen.anyOf,1,-1 do if chosen.anyOf[i]==member then table.remove(chosen.anyOf,i) end end;if #chosen.anyOf==0 then table.remove(groups,selected) end;refresh()
 	end);c.deleteAlternative.enabled=function() return member~=nil end
 	button("groupConditions",right,h-84,rightW,"Group conditions & item properties",function()
-		require("Classes.CraftingTargetControl").Open(groups,properties,required,function(next,conditions,matching) groups=next;properties=conditions;required=matching;refresh() end,selected)
+		require("Classes.CraftingTargetControl").Open(groups,properties,required,function(next,conditions,matching) groups=next;properties=conditions;required=matching;refresh() end,selected,model.item.baseName)
 	end)
 	button("keepGroups",16,h-42,220,"Keep targets",function() sim.validateRecipe({steps={{method="alchemy"}},targets=groups,requirements=properties,requiredGroups=required});onKeep(groups,properties,required);main:ClosePopup() end)
 	c.keepGroups.enabled=function() return #groups>0 or properties and next(properties)~=nil end

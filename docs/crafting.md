@@ -10,7 +10,7 @@ The **Rules** button shows the crafting rules version. Click it to review suppor
 
 Plain item copies can be imported when their complete modifier identities and rolls resolve uniquely. Advanced copy text helps preserve identities. Missing item levels, overlapping modifier tiers and values the engine cannot reconstruct require an explicit choice; the importer does not guess. For a structured starting state through MCP, use the corresponding blank base as the starting text.
 
-Vaal Orbs on ordinary Cobalt, Crimson and Viridian jewels can produce a hypothetical corruption-exclusive unique. The workbench shows and preserves the resulting item, and item-property targets can specify an exact unique name. This model assumes equal branch and unique-selection weights and independent normalized rolls; the candidate pool and actual odds are unverified. Further crafting of the unique outcome is not modeled. Property targets other than corruption state and unique name cannot currently be evaluated for this outcome.
+Vaal Orbs on ordinary Cobalt, Crimson and Viridian jewels can produce a hypothetical corruption-exclusive unique. The workbench shows and preserves the resulting item. In item-property targets, enter an exact unique name or use **Pick** to choose a modeled outcome for the current base. MCP `inspect_crafting_item` also returns these candidate names. This model assumes equal branch and unique-selection weights and independent normalized rolls; the candidate pool and actual odds are unverified. Further crafting of the unique outcome is not modeled. Property targets other than corruption state and unique name cannot currently be evaluated for this outcome.
 
 ## Emulate an item
 

@@ -1,7 +1,7 @@
 -- cspell:ignore RRBG
 local sim=require("Modules.CraftingSimulator")
 local Panel={}
-function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
+function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseName)
 	local groups=copyTable(targets);local conditions=copyTable(requirements or {});local controls={}
 	local function edit(key,x,y,value,prompt)
 		controls[key.."Label"]=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,0,14},prompt)
@@ -47,7 +47,21 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
 	controls.influence=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,518,376,24},influences)
 	controls.influence:SelByValue(conditions.influence or false,"val")
 	controls.uniqueNameLabel=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{408,502,0,14},"Unique jewel name (exact)")
-	controls.uniqueName=new("EditControl"):EditControl({"TOPLEFT",nil,"TOPLEFT"},{408,518,180,24},conditions.uniqueName or "",nil,nil,160)
+	local uniqueCandidates=require("Modules.CraftingJewelCorruption").candidates(baseName)
+	controls.uniqueName=new("EditControl"):EditControl({"TOPLEFT",nil,"TOPLEFT"},{408,518,#uniqueCandidates>0 and 120 or 180,24},conditions.uniqueName or "",nil,nil,160)
+	if #uniqueCandidates>0 then
+		button("chooseUnique",536,518,52,"Pick",function()
+			local entries={};for _,candidate in ipairs(uniqueCandidates) do
+				entries[#entries+1]={id=candidate.title,label=candidate.title,details=function()
+					local item=require("Modules.CraftingJewelCorruption").item(baseName,candidate.title,83,104729)
+					local lines={candidate.title,baseName,"Example rolls; eligibility and odds are unverified.",""}
+					for _,line in ipairs(item.explicitModLines or {}) do lines[#lines+1]=itemLib.formatModLine(line,false) or line.line end
+					return lines
+				end}
+			end
+			require("Classes.PlanningBrowserControl").Open("Choose a unique jewel",entries,{action="Use name",choose=function(entry) controls.uniqueName:SetText(entry.id,true) end})
+		end)
+	end
 	button("keep",16,568,220,"Keep target conditions",function()
 		if group then
 			group.atLeast=assert(tonumber(controls.count.buf),"Enter a matching-mod count")

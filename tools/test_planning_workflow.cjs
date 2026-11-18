@@ -52,6 +52,8 @@ async function main(){
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
   const origin=createHash('sha1').update(raw).digest('hex');
   const corruptJewelRaw='Rarity: NORMAL\nCobalt Jewel\nItem Level: 83';
+  const corruptJewelInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:corruptJewelRaw,query:'',limit:5},'inspected');
+  assert.ok(corruptJewelInspection.crafting.nativeEngine.uniqueCorruption.names.includes('Powerlessness'));
   const corruptJewel=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:corruptJewelRaw,action:{method:'vaal'},seed:3},'crafted');
   assert.equal(corruptJewel.nativeCrafting.state.rarity,'UNIQUE');assert.ok(corruptJewel.nativeCrafting.state.uniqueTitle);assert.match(corruptJewel.nativeCrafting.itemText,/Corrupted/);
   const corruptJewelRecipe={steps:[{method:'vaal'}],targets:[],rarity:'UNIQUE',requirements:{uniqueName:corruptJewel.nativeCrafting.state.uniqueTitle}};

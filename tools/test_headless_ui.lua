@@ -283,7 +283,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("currency_vaal");ui:click("item");assert(not jewelControls.apply:IsEnabled(),"Transformed unique should not accept ordinary crafting");frame("crafting-corrupted-unique-jewel")
 		ui:click("keepWorking");local project;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id=="unique-jewel-ui" then project=entry end end
 		if not (project and project.run and project.run.state.uniqueTitle) then frame("unique-keep-error");error("Unique jewel checkpoint was not kept") end;ui:click("close")
-		local reopened=require("Classes.CraftingSimulatorControl").Open(build,project);assert(not reopened.apply:IsEnabled(),"Reopened unique accepted ordinary crafting");frame("crafting-corrupted-unique-reopened");ui:click("close")
+		local reopened=require("Classes.CraftingSimulatorControl").Open(build,project);assert(not reopened.apply:IsEnabled(),"Reopened unique accepted ordinary crafting");frame("crafting-corrupted-unique-reopened")
+		ui:click("tab_targets");ui:click("targetConditions");ui:click("chooseUnique");ui:text("search","Powerlessness");frame("crafting-unique-target-picker");ui:click("choose")
+		assert(main.popups[1].controls.uniqueName.buf=="Powerlessness","Unique target selection was lost");frame("crafting-unique-target-selected");ui:click("keep");ui:click("close")
 	end
 	require("Classes.CraftingSimulatorControl").Open(build,{id="unveiled-jewel-ui",title="Unveiled jewel",slot="Jewel",startingItem=jewel,goals={},steps={}})
 	ui:click("tab_settings");ui:click("manual");ui:choose("modifier","JunMasterVeiledJewelElusiveEffect","val");ui:text("roll","50");ui:choose("rarity","MAGIC");ui:click("properties");frame("crafting-unveiled-jewel-editor")
