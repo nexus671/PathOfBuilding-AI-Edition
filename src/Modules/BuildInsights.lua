@@ -86,7 +86,7 @@ function M.changes(before, after)
 		add("Atlas plans updated (planning only; character stats are unchanged by Atlas nodes)")
 		for _,plan in ipairs(after.atlasPlans or {}) do
 			local report=require("Modules.AtlasPlanner").report(plan)
-			add(plan.title.." ["..plan.version.."] "..report.used.." points; budget "..report.budget.." + "..report.bonus)
+			add(plan.title.." ["..require("Modules.AtlasPlanner").versionLabel(plan.version).."] "..report.used.." points; budget "..report.budget.." + "..report.bonus)
 			for _,id in ipairs(plan.nodes) do add("  #"..id.." "..require("Modules.AtlasPlanner").tree(plan.version).nodes[id].name) end
 			for _,choice in ipairs(plan.choices or {}) do
 				local planner=require("Modules.AtlasPlanner");local node=planner.tree(plan.version).nodes[choice.node]

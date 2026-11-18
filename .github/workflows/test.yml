@@ -41,6 +41,7 @@ jobs:
           python3 tools/test_bench_330.py
           python3 tools/test_update_loot_filter_data.py
           python3 tools/test_update_atlas_filter_supplies.py
+          python3 tools/test_check_atlas_release.py
           python3 tools/check_loot_filter_data.py
           python3 tools/test_check_update_manifest.py
           python3 tools/check_update_manifest.py

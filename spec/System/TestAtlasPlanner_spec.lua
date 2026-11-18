@@ -8,6 +8,16 @@ describe("Native Atlas planner", function()
 	end
 	before_each(function() newBuild(); bridge.prepared=nil end)
 	after_each(function() bridge.prepared=nil; main.popups={} end)
+	it("presents the released 3.30 name without changing saved identifiers",function()
+		assert.equal("3.30.0",atlas.versionLabel("3.30.0-preview"))
+		assert.equal("3.30.0 Ruthless",atlas.versionLabel("3.30.0-preview-ruthless"))
+		local source=plan("3.30.0-preview");local validated=atlas.validate(source)
+		assert.equal("3.30.0-preview",validated.version)
+		local report=atlas.report(validated);assert.equal("3.30.0",report.displayVersion);assert.equal("3.30.0",report.releaseTag);assert.equal("2026-11-18",report.releaseCheckedAt)
+		local controls=require("Classes.AtlasPlannerControl").Open(build,validated)
+		assert.equal("3.30.0",controls.version:GetSelValueByKey("label"))
+		assert.equal("3.30.0-preview",controls.version:GetSelValueByKey("val"))
+	end)
 	it("keeps multiple map drafts through Atlas save, export and reopen",function()
 		local source=plan("3.30.0-preview");source.mapDrafts={}
 		for i=1,12 do source.mapDrafts[i]={id="map-"..i,title="Map "..i,patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="normal",selected={}} end

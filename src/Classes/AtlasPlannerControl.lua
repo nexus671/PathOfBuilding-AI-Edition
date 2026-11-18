@@ -186,7 +186,7 @@ function Panel.Open(build,source,layout)
 			controls.avoid.label="Avoid selected"
 		end
 		if not controls.canvas.tree.nodes[controls.canvas.focus] then controls.canvas.focus=nil end
-		controls.version:SelByValue(draft.version)
+		controls.version:SelByValue(draft.version,"val")
 		local report=atlas.report(draft);hasMissingChoices=#report.missingChoices>0
 		if controls.strategySummary then
 			local counts={};for _,id in ipairs(draft.nodes) do local mechanic=strategy.mechanic(strategy.selectedNode(draft,controls.canvas.tree.nodes[id]));counts[mechanic]=(counts[mechanic] or 0)+1 end
@@ -248,14 +248,16 @@ function Panel.Open(build,source,layout)
 	ui.label(controls,"planLabel",16,10,"Plan name",13)
 	ui.label(controls,"budgetLabel",graphWidth-100,10,"Point budget",13)
 	controls.budget=edit(graphWidth-100,30,116,24,tostring(draft.budget),nil,3)
-	controls.version=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{side,30,260,24},atlas.versions,function(_,value)
+	local versions={};for _,id in ipairs(atlas.versions) do versions[#versions+1]={label=atlas.versionLabel(id),val=id} end
+	controls.version=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{side,30,260,24},versions,function(_,selected)
+		local value=selected.val
 		if value ~= draft.version then
-			controls.version:SelByValue(draft.version)
+			controls.version:SelByValue(draft.version,"val")
 			local replacement={id=draft.id,title=controls.title.buf,version=value,budget=atlas.tree(value).maxPoints,nodes={},notes=controls.notes.buf}
 			main:OpenConfirmPopup("Change Atlas version","Changing versions starts an empty draft. Saved plans are kept.","Change",function() if not layout then main:ClosePopup() end;Panel.Open(build,replacement,layout) end)
 		end
 	end)
-	controls.version:SelByValue(draft.version)
+	controls.version:SelByValue(draft.version,"val")
 	controls.canvas=new("AtlasTreeCanvas"):AtlasTreeCanvas({16,96,graphWidth,graphHeight},atlas.tree(draft.version),function() return draft end,function(id) refresh(id) end)
 	controls.canvas.avoided=function() return avoided end
 	controls.status=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,70,0,14},"")
@@ -562,7 +564,7 @@ function Panel.Open(build,source,layout)
 end
 function Panel.Library(build,layout)
 	local store=build.savers.AtlasPlans; local controls,list={},{}
-	for _,plan in ipairs(store.plans) do list[#list+1]={label=plan.title.." ["..plan.version.."]",val=plan.id} end
+	for _,plan in ipairs(store.plans) do list[#list+1]={label=plan.title.." ["..atlas.versionLabel(plan.version).."]",val=plan.id} end
 	controls.plans=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,32,568,24},list)
 	controls.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,76,0,14},"^7"..(store.warning or "Keep farming strategies in this build. Save the build to persist them."))
 	local function selected() local choice=controls.plans:GetSelValue(); for _,plan in ipairs(store.plans) do if choice and plan.id == choice.val then return plan end end; error("Choose a saved plan") end

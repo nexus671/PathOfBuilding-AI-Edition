@@ -2,6 +2,13 @@
 -- cspell:ignore jsontype
 local json = require("dkjson")
 local M = {versions={"3.27.0","3.27.0-ruthless","3.28.0j","3.28.0j-ruthless","3.29.1","3.29.1-ruthless","3.29.3","3.29.3-ruthless","3.30.0-preview","3.30.0-preview-ruthless"},cache={}}
+-- The pinned preview snapshot is byte-identical to GGG's 3.30.0 release
+-- export. Keep its saved identifier stable while presenting the released name.
+function M.versionLabel(version)
+	if version=="3.30.0-preview" then return "3.30.0" end
+	if version=="3.30.0-preview-ruthless" then return "3.30.0 Ruthless" end
+	return version
+end
 function M.defaultVersion(treeVersion)
 	treeVersion=treeVersion or ""
 	if treeVersion:find("ruthless",1,true) then
@@ -388,7 +395,8 @@ function M.report(plan)
 	local lines={}
 	for stat,count in pairs(stats) do lines[#lines+1]={text=stat,count=count} end
 	table.sort(lines,function(a,b) return a.text < b.text end); table.sort(notables); table.sort(keystones)
-	return {version=plan.version,mode=tree.mode=="ruthless" and "Ruthless" or "Standard",preview=tree.preview,compatibleModes=tree.compatibleModes,used=#plan.nodes,budget=plan.budget,bonus=bonus,remaining=plan.budget+bonus-#plan.nodes,budgetReachable=reachable,budgetWarning=budgetWarning,pointsBeforeGrant=pointsBeforeGrant,grantRoute=grantRoute,
+	local releaseMatch=plan.version=="3.30.0-preview" or plan.version=="3.30.0-preview-ruthless"
+	return {version=plan.version,displayVersion=M.versionLabel(plan.version),releaseTag=releaseMatch and "3.30.0" or nil,releaseCheckedAt=releaseMatch and "2026-11-18" or nil,mode=tree.mode=="ruthless" and "Ruthless" or "Standard",preview=tree.preview,compatibleModes=tree.compatibleModes,used=#plan.nodes,budget=plan.budget,bonus=bonus,remaining=plan.budget+bonus-#plan.nodes,budgetReachable=reachable,budgetWarning=budgetWarning,pointsBeforeGrant=pointsBeforeGrant,grantRoute=grantRoute,
 		counts=counts,notables=notables,keystones=keystones,stats=lines,missingChoices=missingChoices,source=tree.source,sourceCommit=tree.commit,
 		limitations={"Atlas plans do not modify character DPS or EHP.","Stat lines are grouped as displayed, not combined into effective map odds. Keystone interactions are not simulated.","Budget is supplied progression, not imported account completion. Small optimized routes can be exact; larger routes use a heuristic."}}
 end

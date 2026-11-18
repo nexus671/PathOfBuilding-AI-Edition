@@ -42,7 +42,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Preview/recalculate all desired targets, with explicit apply and pause controls.
 - [x] Summarise mechanic investment, small nodes, blocking and keystone tradeoffs.
 - [x] Compare saved plans visually and preserve exact tree versions.
-- [ ] Compare the 3.30 preview with any later official release export and the live game, including both Standard and Ruthless graphs. On November 17, GGG's `3.30.0` tag pointed to preview 2; the four Standard, Covens and Ruthless source files matched the bundled source hashes. `tools/check_atlas_release.py` repeats that comparison; it does not independently validate generated nodes or the live game.
+- [ ] Compare the 3.30 preview with any later official release export and the live game, including both Standard and Ruthless graphs. On November 18, GGG's `3.30.0` tag still matched the four bundled source files, and `tools/check_atlas_release.py` verified generated node contents, connections and layout. The live game has not been checked.
 
 ## Shared experience
 
