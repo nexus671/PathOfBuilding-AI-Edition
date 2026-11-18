@@ -788,6 +788,9 @@ async function main(){
   assert.equal(magicMap.mapData.rarity,'magic');assert.equal(magicMap.mapData.total,0);
   const mapRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'normal',selected:[]},action:'alchemy',seed:42},'mapData');
   assert.equal(mapRoll.mapData.state.rarity,'rare');assert.ok(mapRoll.mapData.state.selected.length>=4);assert.equal(mapRoll.mapData.state.rolls.length,mapRoll.mapData.state.selected.length);assert.match(mapRoll.mapData.note,/estimates/);assert.ok(mapRoll.mapData.summary.totals.atlasDrops.min>0);assert.match(mapRoll.mapData.summary.note,/excludes quality/);
+  const vaalMap=await queued('simulate_map_currency',{baseRevision:context.revision,state:mapRoll.mapData.state,action:'vaal_add',seed:42},'mapData');
+  assert.equal(vaalMap.mapData.state.corrupted,true);assert.equal(vaalMap.mapData.state.selected.length,mapRoll.mapData.state.selected.length+2);assert.match(vaalMap.mapData.note,/not a full Vaal Orb simulation/);
+  const afterVaal=await queued('simulate_map_currency',{baseRevision:context.revision,state:vaalMap.mapData.state,action:'chaos',seed:42},'failed');assert.match(afterVaal.error,/Corrupted maps/);
   const rollState=mapRoll.mapData.state;const inspectedRoll=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:rollState.baseId,tier:rollState.tier,itemLevel:rollState.itemLevel,rarity:rollState.rarity,selected:rollState.selected,rolls:rollState.rolls},'mapData');
   assert.deepEqual(inspectedRoll.mapData.summary,mapRoll.mapData.summary);
   const mapEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'},options:{wanted:[],avoid:['MapMonsterAreaOfEffectMapWorlds'],trials:2,maxAttempts:1,seed:42,price:{amount:0.5,currency:'chaos'}}},'mapData');

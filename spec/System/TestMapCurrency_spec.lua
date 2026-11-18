@@ -47,6 +47,23 @@ describe("Experimental map currency",function()
 		assert.has_error(function() currency.perform(input,"chaos",1) end)
 		assert.has_error(function() currency.options(input) end)
 	end)
+	it("previews only the conditional two-modifier Vaal outcome on ordinary rare maps",function()
+		local map=require("Modules.MapCraftingData");local input
+		for seed=1,100 do local candidate=currency.perform(state("normal"),"alchemy",seed*104729).state;if #candidate.selected==6 then input=candidate;break end end
+		assert.is_not_nil(input);local before=copyTable(input)
+		local options={};for _,entry in ipairs(currency.options(input)) do options[entry.id]=entry end;assert.is_true(options.vaal_add.available)
+		for seed=1,20 do
+			local result=currency.perform(input,"vaal_add",seed);assert.is_true(result.state.corrupted);assert.equal(8,#result.state.selected)
+			assert.equal(8,#result.state.rolls);assert.same(input.quality,result.state.quality)
+			for i,id in ipairs(input.selected) do assert.equal(id,result.state.selected[i]);assert.same(input.rolls[i],result.state.rolls[i]) end
+			assert.matches("Conditional Vaal outcome only",result.note,1,true);assert.matches("not a full Vaal",result.note,1,true)
+			assert.has_no.errors(function() map.inspect(result.state.baseId,result.state.tier,result.state.itemLevel,result.state.selected,"",0,50,nil,"rare",result.state.rolls,true) end)
+			assert.has_error(function() currency.perform(result.state,"chaos",seed) end)
+		end
+		assert.same(before,input);assert.has_error(function() currency.perform(state("magic"),"vaal_add",1) end)
+		local nightmare={baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}
+		assert.has_error(function() currency.perform(nightmare,"vaal_add",1) end)
+	end)
 	it("rerolls values even when Chaos selects the same modifier again",function()
 		local map=require("Modules.MapCraftingData")
 		local inputs={state("rare"),{baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}}

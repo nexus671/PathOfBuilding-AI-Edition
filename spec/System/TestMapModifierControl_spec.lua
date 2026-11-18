@@ -130,6 +130,21 @@ describe("Map modifier explorer",function()
 		assert.matches("Requires a rare map",text)
 		picker.search:SetText("Orb of Alchemy",true);assert.is_true(picker.choose:IsEnabled())
 	end)
+	it("keeps a conditional Vaal preview as a corrupted map draft",function()
+		local base={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=5,itemLevel=68,rarity="normal",selected={}}
+		local initial=require("Modules.MapCurrency").perform(base,"alchemy",123).state
+		initial.id="vaal-map";initial.title="Vaal map";initial.patch=require("Modules.MapCraftingData").source().patch
+		initial.estimate={wantedGroups={},avoid={},trials=2,maxAttempts=2}
+		local captured;local controls=require("Classes.MapModifierControl").Open({initial=initial,keep=function(entry) captured=require("Modules.AtlasPlanner").validateMapDraft(entry);return "vaal-map" end})
+		controls.currency:Click();local picker=main.popups[1].controls;picker.search:SetText("Vaal: +2 modifier",true)
+		assert.is_true(picker.choose:IsEnabled());local detail="";for _,row in ipairs(picker.details.list) do detail=detail..StripEscapes(row[1] or "").." " end
+		assert.matches("Conditional outcome only",detail,1,true);picker.choose:Click()
+		assert.equal("corrupted_rare",controls.rarity:GetSelValueByKey("val"));assert.is_false(controls.currency:IsEnabled())
+		assert.matches("Conditional Vaal outcome",controls.status.label,1,true);assert.matches("reroll settings cleared",controls.status.label,1,true);controls.keep:Click()
+		assert.is_true(captured.corrupted);assert.is_nil(captured.estimate);assert.equal(#captured.selected,#captured.rolls);assert.equal(#initial.selected+2,#captured.selected)
+		captured.id="vaal-map";controls.close:Click();controls=require("Classes.MapModifierControl").Open({initial=captured})
+		assert.equal("corrupted_rare",controls.rarity:GetSelValueByKey("val"));assert.is_false(controls.currency:IsEnabled())
+	end)
 	it("keeps and reopens sampled values and removes them with their modifier",function()
 		local captured;local controls=require("Classes.MapModifierControl").Open({keep=function(entry) captured=copyTable(entry);return "map-test" end})
 		controls.rarity:SelByValue("normal","val");controls.rarity.selFunc();controls.currency:Click()

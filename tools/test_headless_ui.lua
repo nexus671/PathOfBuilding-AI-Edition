@@ -157,6 +157,18 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:text("draftName","My map draft");ui:click("keep");ui:click("close");ui:click("tools");ui:text("search","Saved map drafts");ui:click("choose");frame("saved-map-drafts");ui:click("choose")
 	assert(main.popups[1].controls.draftName.buf=="My map draft" and main.popups[1].controls.remove:IsEnabled(),"Saved map draft did not reopen");frame("reopened-map-draft");ui:click("close")
 	do
+		local currency=require("Modules.MapCurrency")
+		local base={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=5,itemLevel=68,rarity="normal",selected={}}
+		local initial=currency.perform(base,"alchemy",123).state;initial.id="vaal-preview";initial.title="Vaal preview";initial.patch=require("Modules.MapCraftingData").source().patch;initial.estimate={wantedGroups={},avoid={},trials=2,maxAttempts=2}
+		local saved;local c=require("Classes.MapModifierControl").Open({initial=initial,keep=function(value) saved=require("Modules.AtlasPlanner").validateMapDraft(value);return value.id end})
+		ui:click("currency");ui:text("search","Vaal: +2 modifier");frame("map-vaal-conditional-picker")
+		local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(details," "):gsub("%s+"," "):find("Conditional outcome only",1,true),"Vaal preview must explain that it is conditional")
+		ui:click("choose");assert(c.rarity:GetSelValueByKey("val")=="corrupted_rare" and not c.currency:IsEnabled(),"Vaal preview did not corrupt the map")
+		assert(c.status.label:find("Conditional Vaal outcome",1,true),"Vaal preview lost its conditional label")
+		frame("map-vaal-conditional-result");ui:click("keep");assert(saved.corrupted and not saved.estimate and #saved.selected==#initial.selected+2,"Conditional Vaal draft was not kept");ui:click("close")
+	end
+	do
 		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=5,itemLevel=68,rarity="rare",selected={}}
 		local settings={wantedGroups={{"MapMonsterFireDamageMapWorlds"},{"MapMonsterColdDamageMapWorlds"}},avoid={},trials=1000,maxAttempts=20}
 		local c=require("Classes.MapCraftEstimateControl").Open(build,{state=state,settings=settings,apply=function() error("unexpected map result") end})

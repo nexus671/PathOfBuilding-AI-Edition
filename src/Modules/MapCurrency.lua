@@ -1,7 +1,7 @@
 -- Experimental ordinary-map modifier and stat rolls. Probabilities are estimates.
 local map=require("Modules.MapCraftingData")
 local M={}
-M.actions={{id="transmute",label="Orb of Transmutation"},{id="alchemy",label="Orb of Alchemy"},{id="alteration",label="Orb of Alteration"},{id="chaos",label="Chaos Orb"},{id="augmentation",label="Orb of Augmentation"},{id="regal",label="Regal Orb"},{id="exalt",label="Exalted Orb"},{id="annul",label="Orb of Annulment"},{id="scour",label="Orb of Scouring"}}
+M.actions={{id="transmute",label="Orb of Transmutation"},{id="alchemy",label="Orb of Alchemy"},{id="alteration",label="Orb of Alteration"},{id="chaos",label="Chaos Orb"},{id="augmentation",label="Orb of Augmentation"},{id="regal",label="Regal Orb"},{id="exalt",label="Exalted Orb"},{id="annul",label="Orb of Annulment"},{id="scour",label="Orb of Scouring"},{id="vaal_add",label="Vaal: +2 modifier outcome (conditional)"}}
 local function rng(seed)
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid map roll seed")
 	return function() seed=seed*16807%2147483647;return seed/2147483647 end
@@ -9,7 +9,7 @@ end
 local function inspect(state,offset,checkpoint)
 	if checkpoint then checkpoint() end
 	-- Selection does not need the item-card summary or rendered stat text.
-	return map.inspect(state.baseId,state.tier,state.itemLevel,state.selected,"",offset,100,checkpoint,state.rarity,nil,nil,nil,nil,state.observedEffects,nil,true)
+	return map.inspect(state.baseId,state.tier,state.itemLevel,state.selected,"",offset,100,checkpoint,state.rarity,nil,state.corrupted,nil,nil,state.observedEffects,nil,true)
 end
 local function candidates(state,checkpoint,cache)
 	-- Reroll trials repeatedly visit the same empty and one-modifier pools.
@@ -98,6 +98,7 @@ function M.reason(state,action)
 		if action=="exalt" and count>=6 then return "A rare map already has its maximum of six modifiers." end
 	elseif action=="annul" then if rarity=="normal" or count==0 then return "Requires a magic or rare map with a modifier." end
 	elseif action=="scour" then if rarity=="normal" then return "Requires a magic or rare map." end
+	elseif action=="vaal_add" then if rarity~="rare" then return "Only the rare-map outcome is modeled." end
 	else return "Unsupported map currency." end
 end
 function M.options(input,checkpoint)
@@ -127,6 +128,10 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
 	elseif action=="exalt" then assert(state.rarity=="rare","Requires a rare map");add(state,random,checkpoint,cache)
 	elseif action=="annul" then assert(state.rarity~="normal" and #state.selected>0,"Requires a magic or rare map with a modifier");table.remove(state.selected,math.floor(random()*#state.selected)+1)
 	elseif action=="scour" then assert(state.rarity~="normal","Requires a magic or rare map");state.rarity="normal";state.selected={}
+	elseif action=="vaal_add" then
+		-- Preview only this outcome; no Vaal outcome probability is implied.
+		state.corrupted=true
+		for _=1,math.min(2,9-#state.selected) do add(state,random,checkpoint,cache) end
 	else error("Unsupported map currency") end
 	if action=="chaos" and map.isNightmare(state.baseId) then
 		-- Historical Tier 17 notes require one exclusive prefix and suffix;
@@ -141,6 +146,6 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
 		local roll=existing[id] or (not identitiesOnly and not priorIds[id] and values.sample(map.source().mods[id],random))
 		if roll then state.rolls[#state.rolls+1]={id=id,values=roll} end
 	end
-	return {state=state,seed=seed,action=action,summary=not identitiesOnly and map.summarize(state.selected,state.rolls,nil,state.quality) or nil,note=(map.isNightmare(state.baseId) and "Experimental Nightmare model: six modifiers, one exclusive prefix and suffix drawn first, then four weighted draws. Draw order, weights, independent uniform values and interactions are unverified assumptions." or "Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified.")..require("Modules.MapObservedEffects").note(state.observedEffects)..(map.hasBlightedLegacy(state.selected,state.observedEffects) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")}
+	return {state=state,seed=seed,action=action,summary=not identitiesOnly and map.summarize(state.selected,state.rolls,nil,state.quality) or nil,note=(action=="vaal_add" and "Conditional Vaal outcome only: two modifiers are added and the map is corrupted. This is not a full Vaal Orb simulation or an outcome probability. Weighted selection, stat rolls, side limits and interactions are unverified assumptions." or map.isNightmare(state.baseId) and "Experimental Nightmare model: six modifiers, one exclusive prefix and suffix drawn first, then four weighted draws. Draw order, weights, independent uniform values and interactions are unverified assumptions." or "Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified.")..require("Modules.MapObservedEffects").note(state.observedEffects)..(map.hasBlightedLegacy(state.selected,state.observedEffects) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")}
 end
 return M
