@@ -30,6 +30,8 @@ From `src`, run `luajit ../tools/benchmark_map_rerolls.lua` to measure the Atlas
 
 `python tools/check_update_manifest.py` checks the content hashes of files listed in the updater manifest. It uses the updater's exact and LF-to-CRLF hash rules; it does not verify that every required file is listed or that remote URLs are reachable. CI runs this check and its regression tests.
 
+`python update_manifest.py` generates `manifest-updated.xml` for review. It preserves the current manifest's download sources and previously published files, and stops if an existing file is missing. Review additions and removals explicitly before using `--in-place`; generation does not verify that remote files are available. `python tools/test_update_manifest.py` checks source, file-retention and platform behavior.
+
 For a read-only passive-tree interaction benchmark, run from `src`:
 
 ```sh
