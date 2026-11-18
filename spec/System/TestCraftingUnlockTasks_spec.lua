@@ -74,6 +74,17 @@ describe("Crafting recipe unlock tasks",function()
 		controls.keep:Click();assert.is_truthy(kept);local methods={};for _,step in ipairs(kept.steps) do methods[#methods+1]=step.method end
 		assert.same({"fracture","veiled_orb","eldritch_chaos","tainted_exalt","remembrance"},methods)
 	end)
+	it("offers all supported Harvest reforge tags without inventing augments",function()
+		local kept;local controls=require("Classes.CraftingRecipeControl").Open({steps={},targets={},requirements={minAffixes=4}},{method="alchemy"},function(recipe) kept=recipe end)
+		for _,tag in ipairs({"minion","elemental","attribute","mana","drop"}) do
+			controls.addCurrency:Click();local browser=main.popups[1].controls;browser.search:SetText("reforge with a tagged modifier ("..tag..")");browser.search.changeFunc()
+			if tag=="minion" then local details={};for _,row in ipairs(browser.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;local text=table.concat(details," ");assert.matches("200 Primal Crystallised Lifeforce",text,1,true);assert.matches("3 Crystallised Rancour",text,1,true) end
+			assert.is_true(browser.choose:IsEnabled());browser.choose:Click()
+		end
+		controls.addCurrency:Click();local browser=main.popups[1].controls;browser.search:SetText("add tagged / remove random (minion)");browser.search.changeFunc();assert.is_false(browser.choose:IsEnabled());browser.close:Click()
+		controls.keep:Click();assert.is_truthy(kept);local tags={};for _,step in ipairs(kept.steps) do assert.equal("harvest_reforge",step.method);tags[#tags+1]=step.tag end
+		assert.same({"minion","elemental","attribute","mana","drop"},tags)
+	end)
 	it("offers tracking from the selected recipe step without keeping the recipe",function()
 		local model=require("Modules.CraftingSimulator").model(raw);build.savers.CraftingProjects:Upsert(project())
 		local step=action();local controls=require("Classes.CraftingRecipeControl").Open({steps={step},targets={}},step,function() error("Recipe should not be kept") end,model,

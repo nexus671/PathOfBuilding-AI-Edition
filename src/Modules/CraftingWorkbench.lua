@@ -229,6 +229,12 @@ function M.icon(method,action,model)
 	elseif method:find("harvest",1,true) then return end
 	return name and currencyNames[name] or id and currencyArt.items[id].path or descriptions[method] and "Assets/Crafting/"..method..".png" or nil
 end
+-- Resolve the same canonical resource used by recipe pricing and pickup rules.
+function M.resourceInfo(key,model)
+	M.icon("harvest_reforge")
+	local id=require("Modules.CraftingPrices").key(key,model)
+	return currencyArt.items[id]
+end
 function M.available(method,state,model)
 	return require("Modules.CraftingAvailability").check(method,state,model)
 end

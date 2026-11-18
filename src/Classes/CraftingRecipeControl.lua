@@ -172,9 +172,13 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 					details=details}
 			end
 		end
-		for _,method in ipairs({"harvest_reforge","harvest_augment"}) do for _,tag in ipairs({"attack","caster","physical","fire","cold","lightning","chaos","life","defences","speed","critical","influence"}) do
-			if method~="harvest_augment" or tag~="influence" then local action={method=method,tag=tag};local label=workbench.actionLabel(action,model)
-				entries[#entries+1]={id=method..":"..tag,label=label,category="Harvest",action=action,details={label,"A legal modifier and item state are required when this step runs."}}
+		local reforgeOnly={influence=true,minion=true,elemental=true,attribute=true,mana=true,drop=true}
+		for _,method in ipairs({"harvest_reforge","harvest_augment"}) do for _,tag in ipairs({"attack","caster","physical","fire","cold","lightning","chaos","life","defences","speed","critical","influence","minion","elemental","attribute","mana","drop"}) do
+			if method~="harvest_augment" or not reforgeOnly[tag] then local action={method=method,tag=tag};local label=workbench.actionLabel(action,model)
+				local details={label,"A legal modifier and item state are required when this step runs."};local costs=sim.components(action,nil,model);local keys={};local icon
+				for key in pairs(costs) do keys[#keys+1]=key end;table.sort(keys)
+				for _,key in ipairs(keys) do local resource=workbench.resourceInfo(key,model);details[#details+1]="Cost: "..costs[key].." "..(resource and resource.name or key);if key:find("lifeforce",1,true) and key~="sacred_lifeforce" then icon=resource and resource.path end end
+				entries[#entries+1]={id=method..":"..tag,label=label,category="Harvest",icon=icon,action=action,details=details}
 			end
 		end end
 		for _,from in ipairs({"fire","cold","lightning"}) do for _,to in ipairs({"fire","cold","lightning"}) do if from~=to then
