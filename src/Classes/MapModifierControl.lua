@@ -101,6 +101,12 @@ function M.Open(options)
 	controls.tier=new("DropDownControl"):DropDownControl(ui.anchor,{90,103,80,26},tiers);controls.tier:SelByValue(initial and initial.tier or 16,"val")
 	ui.label(controls,"levelLabel",182,108,"Item level",14)
 	controls.level=new("EditControl"):EditControl(ui.anchor,{254,103,left-238,26},tostring(initial and initial.itemLevel or 83),nil,"%D",3)
+	local function levelProblem()
+		local level=tonumber(controls.level.buf)
+		if not level or level~=math.floor(level) or level<1 or level>100 then return "Enter an item level from 1 to 100." end
+		local required=0;for _,id in ipairs(selected) do local mod=map.source().mods[id];if mod then required=math.max(required,mod.required_level or 0) end end
+		if required>level then return "A selected modifier requires item level "..required.." in the pinned data." end
+	end
 	local card=new("Control"):Control(ui.anchor,{16,144,left,height-216});controls.card=card
 	function card:Draw()
 		local x,y=self:GetPos();local w,h=self:GetSize();SetDrawColor("^x716046");DrawImage(nil,x,y,w,h)
@@ -141,9 +147,9 @@ function M.Open(options)
 	end)
 	controls.estimate.enabled=function()
 		local level=tonumber(controls.level.buf)
-		return options.build~=nil and getRarity()~="normal" and not isCorrupted() and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and level~=nil and level==math.floor(level) and level>=1 and level<=100
+		return options.build~=nil and getRarity()~="normal" and not isCorrupted() and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and level~=nil and not levelProblem()
 	end
-	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. Corrupted maps and unsupported explicit modifiers cannot be rerolled here. Nightmare estimates use unverified draw-order assumptions."
+	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. The item level must support those modifiers. Corrupted maps and unsupported explicit modifiers cannot be rerolled here. Nightmare estimates use unverified draw-order assumptions."
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
 	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
 	local allRarities={{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"},{label="Corrupted rare",val="corrupted_rare"}}
@@ -201,8 +207,8 @@ function M.Open(options)
 			main:ClosePopup();controls.search:SetText("");refresh()
 		end,closeOnChoose=false})
 	end)
-	controls.currency.enabled=function() return not isCorrupted() and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) end
-	controls.currency.tooltipText="Currency simulation is unavailable for corrupted maps or unsupported explicit modifiers. Nightmare Chaos rerolls use unverified draw-order assumptions."
+	controls.currency.enabled=function() return not isCorrupted() and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and not levelProblem() end
+	controls.currency.tooltipText="Currency simulation requires a valid item level for the selected modifiers and is unavailable for corrupted maps or unsupported explicit modifiers. Nightmare Chaos rerolls use unverified draw-order assumptions."
 	button("close",width-132,height-48,116,"Close",function() main:ClosePopup() end)
 	if options.keep then
 		ui.label(controls,"draftNameLabel",right,height-42,"Name",14)
@@ -233,6 +239,7 @@ function M.Open(options)
 			for _,row in ipairs(rows) do row.entry=entry;lines[#lines+1]=row end
 		end
 		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and "^7Normal map | Use currency to add modifiers" or map.isNightmare(baseId) and "^xE9BE7BNightmare | Experimental | "..result.total.." candidates | Page "..(math.floor(offset/30)+1) or (isCorrupted() and "^xE07070Corrupted "..#selected.."/9 | " or "^7")..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
+		local problem=levelProblem();if problem then controls.status.label="^xE9BE7B"..ui.fit(problem,rightWidth,14) end
 		local found=false;for _,id in ipairs(selected) do if id==selectedAffix then found=true;break end end
 		if not found then selectedAffix=nil end
 		controls.remove.label=selectedAffix and "Remove selected" or "Remove last"
@@ -270,7 +277,7 @@ function M.Open(options)
 	end
 	controls.list.onClick=function(hit) if hit and hit.line then show(hit.line.entry) end end
 	controls.search.changeFunc=function() offset=0;refresh() end
-	controls.level.changeFunc=function() selected={};rolls={};implicit=nil;observedEffects=nil;estimateSettings=nil;offset=0;refresh() end
+	controls.level.changeFunc=function() candidate=nil;offset=0;refresh() end
 	controls.tier.selFunc=function()
 		local tier=controls.tier:GetSelValueByKey("val")
 		if tier==17 and not map.isNightmare(baseId) then baseId="Metadata/Items/Maps/MapWorldsAbomination";controls.level:SetText("84")

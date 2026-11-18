@@ -112,6 +112,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 	ui:choose("rarity","magic","val");ui:text("search","MapContainsMirageWorlds");assert(main.popups[1].controls.status.label:find("0 candidates",1,true),"Rare-only suffix appeared on a magic map")
 	ui:choose("rarity","rare","val");assert(main.popups[1].controls.status.label:find("1 candidates",1,true),"Rare map did not offer its encounter suffix")
+	do local c=main.popups[1].controls;c.list.onClick({line=c.list.list[1]});ui:click("add");ui:text("level","1")
+		assert(c.remove:IsEnabled() and not c.currency:IsEnabled() and c.status.label:find("requires item level 68",1,true),"Item level edit discarded or failed to flag the modifier");frame("map-level-conflict");ui:text("level","83");ui:click("remove") end
 	ui:choose("tier",5,"val");ui:text("level","68");assert(main.popups[1].controls.level.buf=="68","Map item level did not accept numeric input");ui:text("search","Giants")
 	do local mapList=main.popups[1].controls.list;local lx,ly=mapList:GetPos();ui:clickAt(lx+12,ly+10) end
 	assert(main.popups[1].controls.add:IsEnabled(),"Map modifier selection did not enable Add")
