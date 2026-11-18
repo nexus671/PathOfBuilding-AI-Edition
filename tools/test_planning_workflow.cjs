@@ -113,6 +113,8 @@ async function main(){
   const socketVaalPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:socketedRaw,recipe:{steps:[{method:'vaal'}],targets:[],requirements:{links:4}},options:{trials:4,maxActions:1}},'failed');
   assert.match(socketVaalPlan.error,/socket or link goals.*not modeled/i);
   const exarch=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,action:{method:'eldritch_implicit',side:'Exarch',tier:2},seed:11},'crafted');
+  const partialEldritch=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:exarch.nativeCrafting.itemText,initialState:{rarity:'NORMAL',affixes:[]},action:{method:'eldritch_implicit',side:'Eater',tier:1},seed:12},'crafted');
+  assert.equal(partialEldritch.nativeCrafting.state.implicits.length,2);assert.equal(partialEldritch.nativeCrafting.state.implicits[0].id,exarch.nativeCrafting.state.implicits[0].id);
   const dualEldritch=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketedRaw,initialState:exarch.nativeCrafting.state,action:{method:'eldritch_implicit',side:'Eater',tier:1},seed:12},'crafted');
   let mixedImplicit,mixedSeed;
   for(let seed=1;seed<=20 && !mixedImplicit;seed++) {
@@ -121,6 +123,8 @@ async function main(){
   }
   assert.ok(mixedImplicit,'Expected a corruption implicit within the fixed seed set');
   assert.equal(mixedImplicit.state.implicits.length,1);assert.equal(mixedImplicit.state.corruptedImplicits.length,1);
+  const partialMixed=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:mixedImplicit.itemText,initialState:{rarity:mixedImplicit.state.rarity,affixes:mixedImplicit.state.affixes},limit:5},'inspected');
+  assert.deepEqual(partialMixed.crafting.nativeEngine.initialState.implicits,mixedImplicit.state.implicits);assert.deepEqual(partialMixed.crafting.nativeEngine.initialState.corruptedImplicits,mixedImplicit.state.corruptedImplicits);
   assert.ok(mixedImplicit.warnings.some(entry=>entry.code==='vaal_implicit_selection'));
   const continuedMixed=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:mixedImplicit.itemText,action:{method:'socket_white_bench'},seed:1},'crafted');
   assert.deepEqual(continuedMixed.nativeCrafting.state.implicits,mixedImplicit.state.implicits);
