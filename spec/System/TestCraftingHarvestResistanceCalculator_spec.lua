@@ -36,5 +36,8 @@ describe("Harvest resistance conversion calculator",function()
 		local mixed=run(nil,{harvest_resistance=2,[sim.priceKey(second)]=7});assert.equal(9,mixed.meanCost)
 		local oldResource=run({harvest_resistance=2},nil);assert.equal(4,oldResource.meanCost)
 		local mixedResource=run({harvest_resistance=2,[sim.priceKey(second)]=7},nil);assert.equal(9,mixedResource.meanCost)
+		local saved=sim.simulate(item.raw,recipe,{trials=1,maxActions=2,seed=3,forceFirstAction=true,currency="chaos",priceBook={currency="chaos",source="Manual",quotedAt=1700000000,values={harvest_resistance=2,[sim.priceKey(second)]=7}}})
+		assert.equal(9,saved.meanCost);assert.equal("Manual",saved.priceSource)
+
 	end)
 end)
