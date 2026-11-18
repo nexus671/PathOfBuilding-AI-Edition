@@ -111,6 +111,8 @@ describe("Map crafting source data",function()
 	it("excludes current rare-only encounter modifiers from recognized Blighted maps",function()
 		local base="Metadata/Items/Maps/MapWorldsStrand"
 		local effect={{kind="implicit",text="Area is infested with Fungal Growths"}}
+		local note=data.inspect(base,16,83,{},"",0,30,nil,"rare",nil,nil,nil,nil,effect).note
+		assert.matches("Blighted rare%-only",note);assert.matches("not modeled",note)
 		for _,id in ipairs({"MapContainsBeyondDemonFactionWorlds","MapContainsBeyondFleshFactionWorlds","MapContainsBeyondPaleFactionWorlds","MapContainsDeliriumMirrorWorlds","MapContainsMirageWorlds","MapContainsWildwoodWorlds","MapContainsSentinelApexWorlds","MapContainsSentinelPandemoniumWorlds","MapContainsSentinelStalkerWorlds"}) do
 			assert.equal(1,data.inspect(base,16,83,{},id,0,30,nil,"rare").total)
 			assert.equal(0,data.inspect(base,16,83,{},id,0,30,nil,"rare",nil,nil,nil,nil,effect).total)

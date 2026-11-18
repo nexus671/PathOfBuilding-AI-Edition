@@ -27,4 +27,9 @@ function M.isBlighted(effects)
  end
  return false
 end
+function M.note(effects)
+ if not effects then return "" end
+ if M.isBlighted(effects) then return " Blighted rare-only encounter modifiers are excluded; other mechanics of observed effects are not modeled and can change results." end
+ return " Observed effects are not modeled and can change results."
+end
 return M

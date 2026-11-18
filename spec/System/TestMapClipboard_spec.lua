@@ -23,6 +23,7 @@ describe("Map clipboard import",function()
   local result=parser.parse(raw)
   assert.equal("Metadata/Items/Maps/MapKeyTier5",result.state.baseId)
   assert.is_true(require("Modules.MapObservedEffects").isBlighted(result.state.observedEffects))
+  assert.matches("Blighted rare%-only",result.notes[3]);assert.matches("not modeled",result.notes[3])
   assert.has_error(function() parser.parse(raw:gsub("Area is infested with Fungal Growths %(implicit%)\n--------\n","")) end)
   local magic="Item Class: Maps\nRarity: Magic\nEnlarged Blighted Map (Tier 5)\n--------\nItem Level: 68\n--------\nMonsters have 45% increased Area of Effect"..trailer
   assert.has_error(function() parser.parse(magic) end)

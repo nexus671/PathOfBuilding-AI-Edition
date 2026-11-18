@@ -5,15 +5,17 @@ describe("Experimental map currency",function()
 		local input=state("rare");input.observedEffects={{kind="implicit",text="Area is infested with Fungal Growths"}}
 		local forbidden={MapContainsBeyondDemonFactionWorlds=true,MapContainsBeyondFleshFactionWorlds=true,MapContainsBeyondPaleFactionWorlds=true,MapContainsDeliriumMirrorWorlds=true,MapContainsMirageWorlds=true,MapContainsWildwoodWorlds=true,MapContainsSentinelApexWorlds=true,MapContainsSentinelPandemoniumWorlds=true,MapContainsSentinelStalkerWorlds=true}
 		local cache={};for seed=1,30 do
-			local result=currency.perform(input,"chaos",seed,nil,false,cache).state
-			assert.same(input.observedEffects,result.observedEffects)
-			for _,id in ipairs(result.selected) do assert.is_nil(forbidden[id],id) end
+			local result=currency.perform(input,"chaos",seed,nil,false,cache)
+			assert.same(input.observedEffects,result.state.observedEffects);assert.matches("Blighted rare%-only",result.note);assert.matches("not modeled",result.note)
+			for _,id in ipairs(result.state.selected) do assert.is_nil(forbidden[id],id) end
 		end
 		local ordinary=state("rare")
 		for seed=1,5 do assert.same(currency.perform(ordinary,"chaos",seed),currency.perform(ordinary,"chaos",seed,nil,false,cache)) end
 		local target=copyTable(input);target.selected={"MapContainsMirageWorlds"}
 		assert.has_error(function() currency.perform(target,"chaos",42) end)
 		assert.has_error(function() require("Modules.MapCraftEstimate").run(input,{wanted={"MapContainsMirageWorlds"},trials=1,maxAttempts=1,seed=1}) end)
+		local estimate=require("Modules.MapCraftEstimate").run(input,{avoid={"MapContainsMirageWorlds"},trials=1,maxAttempts=1,seed=1})
+		assert.matches("Blighted rare%-only",estimate.note);assert.matches("not modeled",estimate.note)
 	end)
 	it("rolls deterministic rare modifiers without changing the input",function()
 		local initial=state("normal");initial.quality={kind="Pack Size",value=20};initial.observedEffects={{kind="enchant",text="Players are Delirious"}};local first=currency.perform(initial,"alchemy",123)
