@@ -46,9 +46,18 @@ describe("Stack style preview",function()
  it("marks an unsupported target as a style-only preview",function()
   local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
   local p=filters.profile("preview","Preview");local source=editing.newTier("low","Low");source.items={"Chaos Orb"}
-  local target=editing.newTier("other","Other",'Show\n BaseType == "Divine Orb"\n Continue');p.tiers={source,target}
+  local target=editing.newTier("other","Other",'Show\n BaseType == "Divine Orb"\n FutureDirective 1');p.tiers={source,target}
   require("Classes.LootFilterStackControl").Open(p,"low",function() end);ui:frame()
   local found;for _,command in ipairs(ui.commands) do if command.kind=="text" and command.text=="Style preview" then found=true end end
+  assert.is_true(found)
+ end)
+
+ it("uses the full tier preview for a continuing target",function()
+  local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
+  local p=filters.profile("preview","Preview");local source=editing.newTier("low","Low");source.items={"Chaos Orb"}
+  local target=editing.newTier("other","Other",'Show\n BaseType == "Divine Orb"\n Continue');p.tiers={source,target}
+  require("Classes.LootFilterStackControl").Open(p,"low",function() end);ui:frame()
+  local found;for _,command in ipairs(ui.commands) do if command.kind=="text" and command.text=="Tier preview" then found=true end end
   assert.is_true(found)
  end)
 
