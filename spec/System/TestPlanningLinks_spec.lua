@@ -90,28 +90,28 @@ describe("Linked planning tools",function()
 		positive,negative=tree.nodes[61484],tree.nodes[61620];plan.strategy=nil;plan.nodes={positive.id,negative.id};plan.choices={{node=positive.id,effect=positive.variantEffects[1].effect},{node=negative.id,effect=negative.variantEffects[1].effect}}
 		assert.is_nil(names()["Abyss Thread"]);plan.choices[2].effect=negative.variantEffects[2].effect;assert.is_true(names()["Abyss Thread"])
 	end)
-	it("generates stable map pickups from specific Atlas strategy names",function()
-		local plan={id="farming",title="Farming",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Run Shaped Strand Map and Beach Maps; avoid Toxic Sewer Mapmaker",scarabs="Use Omen of Connections"}}
+	it("links explicit map item tiers and flags changed or unfilterable Atlas layouts",function()
+		local plan={id="farming",title="Farming",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Map (Tier 16), Abomination Map",scarabs="Use Omen of Connections"}}
 		build.savers.AtlasPlans:Upsert(plan)
 		local profile=filters.profile("map-filter","Map filter");profile.rules=filters.generate(build,profile)
 		local found={};for _,rule in ipairs(profile.rules) do if rule.origin=="atlas:farming" then found[rule.title]=rule end end
-		assert.is_truthy(found["Shaped Strand Map"]);assert.is_truthy(found["Beach Map"]);assert.is_truthy(found["Omen of Connections"])
-		assert.is_nil(found["Strand Map"]);assert.is_nil(found["Toxic Sewer Map"])
-		local oldId=found["Beach Map"].id
-		plan.strategy.maps="Beach Map, then Shaped Strand Map";build.savers.AtlasPlans:Upsert(plan)
-		assert.is_true(dependencies.report(build,profile).stale==false)
+		assert.is_truthy(found["Map (Tier 16)"]);assert.is_truthy(found["Abomination Map"]);assert.is_truthy(found["Omen of Connections"])
+		local oldId=found["Map (Tier 16)"].id
+		plan.strategy.maps="Abomination Map, Map (Tier 16)";build.savers.AtlasPlans:Upsert(plan)
+		assert.is_false(dependencies.report(build,profile).stale)
 		profile.rules=filters.generate(build,profile);found={};for _,rule in ipairs(profile.rules) do found[rule.title]=rule end
-		assert.equal(oldId,found["Beach Map"].id)
-		plan.strategy.maps="Strand Map";build.savers.AtlasPlans:Upsert(plan);assert.is_true(dependencies.report(build,profile).stale)
+		assert.equal(oldId,found["Map (Tier 16)"].id)
+		plan.strategy.maps="Map (Tier 5), Beach Map";build.savers.AtlasPlans:Upsert(plan)
+		local report=dependencies.report(build,profile);assert.is_true(report.stale);assert.is_true(report.needsReview)
 	end)
-	it("respects named Atlas exclusions without suppressing separate budget pickups",function()
+	it("respects map tier and Thread exclusions without suppressing separate budget pickups",function()
 		local atlas=require("Modules.AtlasPlanner")
-		local plan=atlas.connect({id="avoid",title="Avoided maps",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Strand Map, Beach Map and Shaped Strand Map",scarabs="Breach Thread",avoid="Beach Maps and Breach Thread"}}, {4908})
+		local plan=atlas.connect({id="avoid",title="Avoided maps",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Map (Tier 5), Map (Tier 16), Beach Map",scarabs="Breach Thread",avoid="Map (Tier 5) and Breach Thread"}}, {4908})
 		build.savers.AtlasPlans:Upsert(plan)
 		local data=copyTable(build.savers.BuildJourney.data);data.resources={{id="budget-thread",title="Breach Thread"}};build.savers.BuildJourney.data=data
 		local profile=filters.profile("avoid-filter","Avoid filter");profile.rules=filters.generate(build,profile)
 		local found={};for _,rule in ipairs(profile.rules) do found[rule.title]=rule end
-		assert.is_truthy(found["Strand Map"]);assert.is_truthy(found["Shaped Strand Map"]);assert.is_nil(found["Beach Map"])
+		assert.is_truthy(found["Map (Tier 16)"]);assert.is_nil(found["Map (Tier 5)"]);assert.is_nil(found["Beach Map"])
 		assert.equal("budget:budget-thread",found["Breach Thread"].origin)
 	end)
 	it("treats avoided mechanic names as Thread exclusions for that Atlas plan",function()

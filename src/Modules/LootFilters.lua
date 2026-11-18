@@ -198,7 +198,15 @@ function M.generate(build,profile,checkpoint)
 	-- service names or whole-action price quotes. User-entered budget titles
 	-- still need an exact name (or its simple plural) to become pickup rules.
 	for name in pairs(craftingResources()) do if not removed[name] then names[name]=names[name] or "Crafting resource" end end
-	for _,name in ipairs(assert(json.decode(read("map-names.json"))).names) do if not removed[name] then names[name]=names[name] or "Map" end end
+	-- Ordinary Atlas areas are no longer item bases in current gameplay. Keep
+	-- their names for recognizing strategy text, but never create exact-base
+	-- pickups from them. Special maps still have their own items.
+	local specialMaps={["Abomination Map"]=true,["Citadel Map"]=true,["Fortress Map"]=true,["Sanctuary Map"]=true,["Ziggurat Map"]=true,["Vaal Temple Map"]=true,["Synthesised Map"]=true}
+	local layoutNames={}
+	for _,name in ipairs(assert(json.decode(read("map-names.json"))).names) do if not removed[name] then
+		names[name]=names[name] or "Map";if not specialMaps[name] then layoutNames[name]=true end
+	end end
+	for tier=1,16 do names["Map (Tier "..tier..")"]="Map" end
 	-- Map-device supplies explicitly named in a strategy are pickups too. The
 	-- pinned client catalogue excludes removed and legacy non-currency variants.
 	for _,name in ipairs(assert(json.decode(read("atlas-supplies-3.30.json"))).names) do if not removed[name] then names[name]=names[name] or "Atlas supply" end end
@@ -279,7 +287,11 @@ function M.generate(build,profile,checkpoint)
 		end
 		if #unmatched>0 then warnings[#warnings+1]={origin="atlas:"..plan.id,title=plan.title or "Atlas strategy",message="No known item name was found in the Atlas strategy's "..table.concat(unmatched,", ").." field(s). Notes are fine, but only recognized item names generate or exclude pickups."} end
 		for old,new in pairs(strategyRenames) do if mentioned[old] then mentioned[new]=true end;if avoided[old] then avoided[new]=true end end
-		for _,name in ipairs(strategyNames) do if not strategyRenames[name] and mentioned[name] and not avoided[name] and not avoidedMechanics[name:match("^(%a+) Thread$")] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
+		local hasLayouts=false
+		for name in pairs(layoutNames) do if mentioned[name] and not avoided[name] then hasLayouts=true;break end end
+		for _,region in ipairs(plan.shapedRegions or {}) do if #(region.maps or {})>0 then hasLayouts=true;break end end
+		if hasLayouts then warnings[#warnings+1]={origin="atlas:"..plan.id,title=plan.title or "Atlas strategy",message="Named Atlas layouts and Shaped Regions do not identify ordinary map drops. To highlight a specific tier, add an item such as Map (Tier 16) to the strategy; layout names do not create pickups."} end
+		for _,name in ipairs(strategyNames) do if not strategyRenames[name] and not layoutNames[name] and mentioned[name] and not avoided[name] and not avoidedMechanics[name:match("^(%a+) Thread$")] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
 		for _,name in ipairs(patch.added["Map Fragments"] or {}) do local mechanic=name:match("^(%a+) Thread$");if mechanic and keywords[mechanic] and not excludedThreads[mechanic] and not avoided[name] and not avoidedMechanics[mechanic] then add("atlas-"..plan.id.."-"..mechanic,name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
 	end
 	local rules={};for _,rule in ipairs(profile.rules) do if not rule.origin then rules[#rules+1]=copyTable(rule) end end

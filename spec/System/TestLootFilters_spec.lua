@@ -602,14 +602,30 @@ describe("Build-owned loot filters",function()
 		strategy.scarabs="Threaded Delirium Orb, Maven's Chisel of Threads";strategy.avoid="Skittering Delirium Orb"
 		found=titles();assert.is_nil(found["Threaded Delirium Orb"]);assert.is_true(found["Maven's Chisel of Threads"])
 	end)
+	it("uses explicit map tiers instead of treating Atlas layouts as dropped item bases",function()
+		local profile=filters.profile("test","Test")
+		local strategy={maps="Beach Map, Map (Tier 16), Abomination Map",avoid=""}
+		local plan={id="mapping",title="Mapping",version="3.30.0-preview",nodes={},strategy=strategy,shapedRegions={{mechanic="Blight",maps={{name="Strand Map",freeThreads=3}}}}}
+		build.savers.AtlasPlans.plans={plan}
+		local rules,warnings=filters.generate(build,profile);local titles={};for _,rule in ipairs(rules) do titles[rule.title]=rule end
+		assert.is_nil(titles["Beach Map"]);assert.is_nil(titles["Strand Map"])
+		assert.is_truthy(titles["Map (Tier 16)"]);assert.is_truthy(titles["Abomination Map"])
+		assert.matches('BaseType == "Map %(Tier 16%)"',titles["Map (Tier 16)"].text)
+		assert.equal(1,#warnings);assert.matches("do not identify ordinary map drops",warnings[1].message,1,true)
+		profile.rules=rules;local again=filters.generate(build,profile);assert.same(rules,again)
+		strategy.avoid="Map (Tier 16)";local excluded=filters.generate(build,profile);for _,rule in ipairs(excluded) do assert.is_not.equal("Map (Tier 16)",rule.title) end
+		plan.strategy={maps="Map (Tier 5)"};plan.shapedRegions=nil
+		local explicit,notes=filters.generate(build,profile);assert.equal(0,#notes)
+		local found=false;for _,rule in ipairs(explicit) do if rule.title=="Map (Tier 5)" then found=true end end;assert.is_true(found)
+	end)
 	it("explains Atlas strategy fields with no recognized pickup names",function()
 		local profile=filters.profile("test","Test")
 		local strategy={scarabs="Use the expensive ones",maps="Strand Map",avoid="dangerous things"}
 		build.savers.AtlasPlans.plans={{id="notes",title="Mapping notes",version="3.30.0-preview",nodes={},strategy=strategy}}
-		local _,warnings=filters.generate(build,profile);assert.equal(1,#warnings);assert.equal("atlas:notes",warnings[1].origin)
+		local _,warnings=filters.generate(build,profile);assert.equal(2,#warnings);assert.equal("atlas:notes",warnings[1].origin)
 		assert.matches("supplies, avoid",warnings[1].message,1,true)
 		strategy.scarabs="Skittering Delirium Orb";strategy.avoid="Threaded Delirium Orb"
-		_,warnings=filters.generate(build,profile);assert.equal(0,#warnings)
+		_,warnings=filters.generate(build,profile);assert.equal(1,#warnings);assert.matches("do not identify ordinary map drops",warnings[1].message,1,true)
 	end)
 	it("generates gem rules only for enabled groups in the active weapon set",function()
 		local original=build.skillsTab.socketGroupList

@@ -1364,7 +1364,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local conflict={};for _,row in ipairs(main.popups[1].controls.details.list) do conflict[#conflict+1]=StripEscapes(row[1] or "") end
 	assert(table.concat(conflict," "):gsub("%s+"," "):find("conflicting with Dextral Threads",1,true),"Conflicting Atlas Thread effects were not explained")
 	frame("atlas-thread-conflict");ui:click("close")
-	ui:click("progression");ui:click("strategyTab");ui:text("maps","Run Strand Maps and Beach Maps");ui:text("avoid","Beach Map");ui:click("keep")
+	ui:click("progression");ui:click("strategyTab");ui:text("maps","Run Strand Maps with Map (Tier 16)");ui:text("avoid","Beach Map");ui:click("keep")
 	ui:click("keep");assert(build.savers.AtlasPlans.plans[1].version=="3.30.0-preview" and #build.savers.AtlasPlans.plans[1].choices==3,"Atlas preview version or effects not retained")
 	ui:click("nav_journey");ui:click("page4");ui:click("add");ui:text("title","Pristine Fossils");ui:click("keep")
 	local function filterTool(query)
@@ -1472,11 +1472,13 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		if foundBudget then break end
 	end
 	assert(foundBudget,"Saved fossil budget did not generate a linked filter pickup")
+	assert(main.popups[1] and main.popups[1].title=="Review build pickups","Layout warning was not shown after generation")
+	frame("filter-map-layout-warning");ui:click("close")
 	local profile=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];for _,rule in ipairs(profile.rules) do assert(rule.title~="Beach Map","Avoided Atlas map became a pickup") end
 	frame("filter-budget-fossil-pickup")
-	ui:click("viewCustomize");ui:choose("source","My rules");ui:text("search","Strand Map")
-	local mapFound=false;for _,row in ipairs(build.planningWorkspace.controls.rules.list) do if row.entry and row.entry.rule.title=="Strand Map" then mapFound=true end end
-	assert(mapFound,"Saved Atlas map strategy did not produce a visible filter pickup")
+	ui:click("viewCustomize");ui:choose("source","My rules");ui:text("search","Map (Tier 16)")
+	local mapFound=false;for _,row in ipairs(build.planningWorkspace.controls.rules.list) do if row.entry and row.entry.rule.title=="Map (Tier 16)" then mapFound=true end end
+	assert(mapFound,"Explicit Atlas map tier did not produce a visible filter pickup")
 	local detail={};for _,row in ipairs(build.planningWorkspace.controls.detail.list) do detail[#detail+1]=row[1] or "" end
 	assert(table.concat(detail," "):find("Linked to Atlas: "..build.savers.AtlasPlans.plans[1].title,1,true),"Atlas source title was not shown")
 	frame("filter-atlas-map-pickup")
