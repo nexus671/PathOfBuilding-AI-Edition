@@ -252,7 +252,9 @@ function M.generate(build,profile,checkpoint)
 	end
 	for _,resource in ipairs(build.savers.BuildJourney.data.resources) do
 		local name=renamedAliases[resource.title:lower()] or aliases[resource.title:lower()] or resource.title
-		if (names[name] or budgetNames[name]) and not removed[name] then add("resource-"..resource.id,name,{"BaseType == "..quote(name)},"budget:"..resource.id) end
+		if layoutNames[name] then
+			warnings[#warnings+1]={origin="budget:"..resource.id,title=resource.title,message="This is an Atlas layout, not a current ordinary map item. Use an explicit item such as Map (Tier 16) for a tiered map pickup."}
+		elseif (names[name] or budgetNames[name]) and not removed[name] then add("resource-"..resource.id,name,{"BaseType == "..quote(name)},"budget:"..resource.id) end
 	end
 	local strategyNames={};for name in pairs(names) do strategyNames[#strategyNames+1]=name end
 	-- Older saved strategies may still use a renamed item's former name. Match

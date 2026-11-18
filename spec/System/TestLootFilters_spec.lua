@@ -620,6 +620,13 @@ describe("Build-owned loot filters",function()
 		local explicit,notes=filters.generate(build,profile);assert.equal(0,#notes)
 		local found=false;for _,rule in ipairs(explicit) do if rule.title=="Map (Tier 5)" then found=true end end;assert.is_true(found)
 	end)
+	it("does not treat budgeted Atlas layouts as current map item bases",function()
+		local journey=require("Modules.BuildJourney").empty();journey.resources={{id="layout",title="Beach Maps"},{id="tier",title="Map (Tier 16)"}}
+		build.savers.BuildJourney:Replace(journey);local profile=filters.profile("test","Test")
+		local rules,warnings=filters.generate(build,profile);local found={};for _,rule in ipairs(rules) do found[rule.title]=rule end
+		assert.is_nil(found["Beach Map"]);assert.is_truthy(found["Map (Tier 16)"]);assert.equal("budget:tier",found["Map (Tier 16)"].origin)
+		assert.equal(1,#warnings);assert.equal("budget:layout",warnings[1].origin)
+	end)
 	it("explains Atlas strategy fields with no recognized pickup names",function()
 		local profile=filters.profile("test","Test")
 		local strategy={scarabs="Use the expensive ones",maps="Strand Map",avoid="dangerous things"}
