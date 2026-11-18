@@ -103,7 +103,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("pasteMap");frame("map-unidentified-review");ui:click("keep")
 		do local c=main.popups[1].controls;assert(c.status.label:find("unknown",1,true) and not c.currency:IsEnabled() and not c.estimate:IsEnabled(),"Unidentified copied maps must keep modifiers unknown") end;frame("map-unidentified-imported")
 		ui:text("draftName","Unknown map");ui:click("keep");ui:click("close");ui:click("tools");ui:text("search","Saved map drafts");ui:click("choose")
-		do local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;assert(table.concat(details," "):find("modifiers and totals unknown",1,true),"Saved unidentified map should not claim zero modifiers") end;frame("saved-unidentified-map")
+		do local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;assert(table.concat(details," "):find("modifiers and totals unknown",1,true),"Saved unidentified map should not claim zero modifiers");assert(table.concat(details," "):find("+30% Atlas Drops",1,true) and table.concat(details," "):find("opened",1,true),"Saved unidentified map opening bonus missing") end;frame("saved-unidentified-map")
 		ui:click("secondary");ui:click("close");ui:click("tools");ui:text("search","Map modifier explorer");ui:click("choose")
 		ui.clipboard=savedCopy;ui:click("pasteMap");ui:click("keep")
 		local ordinaryCopy=ui.clipboard;ui.clipboard=ordinaryCopy.."\n--------\nMirrored";ui:click("pasteMap");ui:click("keep")

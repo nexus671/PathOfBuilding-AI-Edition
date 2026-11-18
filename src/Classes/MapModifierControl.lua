@@ -247,7 +247,7 @@ function M.Open(options)
 		if not found then selectedAffix=nil end
 		controls.remove.label=selectedAffix and "Remove selected" or "Remove last"
 		local affixes,affixIds={},{};local prefixLines=0
-		if unidentified then affixes={"^xE9BE7BUnidentified: explicit modifiers and totals are unknown."}
+		if unidentified then affixes={"^xE9BE7BUnidentified: explicit modifiers and totals are unknown.","^xAABBD0Opening unidentified: +30% Atlas Drops."}
 		elseif #selected==0 and not result.implicit and not (result.summary.qualityEffect and result.summary.qualityEffect.supported) then affixes={"No hypothetical modifiers selected."} else
 			local summary=result.summary;local totals=summary.estimatedTotals or summary.totals
 			affixes={summary.estimatedTotals and "^xAABBD0Estimated bonuses:" or "^xAABBD0Modifier bonuses (excludes quality):","^7Atlas Drops "..range(totals.atlasDrops),"Rarity "..range(totals.rarity).." | Pack size "..range(totals.packSize)}

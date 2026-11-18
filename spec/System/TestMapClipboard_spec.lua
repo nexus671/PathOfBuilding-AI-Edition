@@ -32,7 +32,7 @@ describe("Map clipboard import",function()
  end)
  it("imports unidentified maps without inventing their hidden modifiers",function()
   local raw="Item Class: Maps\nRarity: Rare\nMap (Tier 5)\n--------\nItem Level: 68\n--------\nUnidentified"..trailer
-  local result=parser.parse(raw);local state=result.state;assert.is_true(state.unidentified);assert.equal(0,#state.selected);assert.matches("unknown",result.notes[1],1,true)
+  local result=parser.parse(raw);local state=result.state;assert.is_true(state.unidentified);assert.equal(0,#state.selected);assert.matches("unknown",result.notes[1],1,true);assert.equal(30,result.unidentifiedOpeningBonus.atlasDrops)
   assert.has_error(function() require("Modules.MapCurrency").perform(state,"chaos",1) end)
   assert.has_error(function() require("Modules.MapCraftEstimate").run(state,{wanted={},avoid={},trials=1,maxAttempts=1,seed=1}) end)
  end)
