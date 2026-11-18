@@ -441,7 +441,7 @@ function Panel.Open(build,source,layout)
 	showMapDrafts=function()
 		local choices={};for _,entry in ipairs(current().mapDrafts or {}) do
 			local base=require("Modules.MapCraftingData").source().bases[entry.baseId]
-			choices[#choices+1]={id=entry.id,label=entry.title,details={base and base.name or entry.baseId,"Tier "..entry.tier.." | "..entry.rarity.." | item level "..entry.itemLevel,#entry.selected.." hypothetical modifiers", "Data version "..entry.patch,"Keep the Atlas plan and save the build to persist changes."},draft=entry}
+			choices[#choices+1]={id=entry.id,label=entry.title,details={base and base.name or entry.baseId,"Tier "..entry.tier.." | "..entry.rarity.." | item level "..entry.itemLevel,(entry.unidentified and "Unidentified: modifiers and totals unknown" or #entry.selected.." hypothetical modifiers")..(entry.corrupted and " | Corrupted" or "")..(entry.mirrored and " | Mirrored" or ""), "Data version "..entry.patch,"Keep the Atlas plan and save the build to persist changes."},draft=entry}
 		end
 		browser.Open("Map drafts in this Atlas plan",choices,{action="Open draft",closeOnChoose=false,choose=function(choice) main:ClosePopup();openMapDraft(choice.draft) end,
 			secondary={label="Remove draft",run=function(choice)
