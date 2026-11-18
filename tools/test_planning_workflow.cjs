@@ -1063,6 +1063,9 @@ async function main(){
   const mixedSocketTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:mixedSocketProfile,sample:{BaseType:'Plate Vest',Rarity:'Normal',Sockets:3,SocketColours:'RGB'}},'tested');assert.equal(mixedSocketTest.result.action,'Hide');
   const conflictingSocketSample=await queued('test_loot_filter',{baseRevision:context.revision,profile:mixedSocketProfile,sample:{BaseType:'Plate Vest',Rarity:'Normal',Sockets:3,SocketColours:'RGB',SocketGroup:'RRR'}},'tested');assert.equal(conflictingSocketSample.result.status,'unknown');assert.match(conflictingSocketSample.result.reasons[0],/conflict/);
   const mixedSocketUnknown=await queued('test_loot_filter',{baseRevision:context.revision,profile:mixedSocketProfile,sample:{BaseType:'Plate Vest',Rarity:'Normal',Sockets:3}},'tested');assert.equal(mixedSocketUnknown.result.status,'unknown');
+  const rarityConflictProfile={id:'rarity-conflict',title:'Rarity conflict',preset:'early_maps',strictness:2,rules:[],template:'Show\n Rarity >= Rare\nHide\n Rarity > Magic'};
+  const rarityConflictExport=await queued('export_loot_filter',{baseRevision:context.revision,profile:rarityConflictProfile},'exported');
+  assert.ok(rarityConflictExport.report.diagnostics.some(entry=>entry.shadowedBy && entry.warning.includes('cannot be reached')));
   const exported=await queued('export_loot_filter',{baseRevision:context.revision,profile:generated.profile},'exported');assert.ok(exported.filter.includes('PoB rule:'));assert.ok(exported.filter.includes('Frayed Thread'));
   assert.ok(exported.filter.includes('# PoB rule: Campaign /'));assert.ok(exported.filter.includes('Crude Bow'));
   const importProfile={...generated.profile,id:'imports-ai',template:'Import "outer.filter"\nImport "absent.filter" Optional\nShow',importFiles:[{name:'outer.filter',text:'Import "outer.filter"\nImport "inner.filter"\nHide'}]};

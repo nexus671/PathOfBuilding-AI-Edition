@@ -1,6 +1,12 @@
 -- Report provable priority conflicts. Do not guess overlap for different predicates.
 local M={}
 local numeric=require("Modules.LootFilterParser").numeric
+local rarity={Normal=0,Magic=1,Rare=2,Unique=3}
+local function number(condition)
+ if #condition.values~=1 then return end
+ if condition.keyword=="Rarity" then return rarity[condition.values[1]] end
+ if numeric[condition.keyword] and condition.keyword~="Sockets" then return tonumber(condition.values[1]) end
+end
 -- Length prefixes keep arbitrary quoted values distinct without JSON-encoding
 -- a new table for every value in every rule.
 local function field(value) value=tostring(value);return #value..":"..value end
@@ -11,8 +17,13 @@ local function encoded(condition)
 end
 local function bound(condition)
  local op=condition.operator;local direction=(op==">" or op==">=") and "lower" or (op=="<" or op=="<=") and "upper"
- if not direction or not numeric[condition.keyword] or condition.keyword=="Sockets" or #condition.values~=1 then return end
- local value=tonumber(condition.values[1]);if not value or value~=value or math.abs(value)==math.huge then return end
+ if not direction then return end
+ local value=number(condition);if not value or value~=value or math.abs(value)==math.huge then return end
+ -- Rarity has four discrete tiers. Strict comparisons at adjacent tiers are
+ -- equivalent to inclusive comparisons at the next tier.
+ if condition.keyword=="Rarity" and (op==">" or op=="<") then
+  value=value+(op==">" and 1 or -1);return {direction=direction,value=value,inclusive=true}
+ end
  return {direction=direction,value=value,inclusive=op==">=" or op=="<="}
 end
 local function covers(previous,current)
@@ -114,8 +125,7 @@ function M.shadowing(parsed)
   if not prior then
    for _,condition in ipairs(rule.conditions) do
     local current=bound(condition)
-    local exact=(condition.operator=="=" or condition.operator=="==") and numeric[condition.keyword]
-     and condition.keyword~="Sockets" and #condition.values==1 and tonumber(condition.values[1])
+    local exact=(condition.operator=="=" or condition.operator=="==") and number(condition)
     if exact and (exact~=exact or math.abs(exact)==math.huge) then exact=nil end
     if current or exact then
      local removed=false;local other={};local target=encoded(condition)
