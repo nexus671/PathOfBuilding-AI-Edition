@@ -67,7 +67,7 @@ function M.spawnWeight(mod,tags)
 	return 0
 end
 
-function M.candidates(tags,itemLevel,selected,checkpoint)
+function M.candidates(tags,itemLevel,selected,checkpoint,lightweight)
 	assert(type(tags)=="table" and tags.default==true,"Supply the complete tag set, including default")
 	assert(type(itemLevel)=="number" and itemLevel==math.floor(itemLevel) and itemLevel>=1 and itemLevel<=100,"Invalid item level")
 	local effectiveTags=copyTable(tags);local blocked={};local used={}
@@ -82,8 +82,9 @@ function M.candidates(tags,itemLevel,selected,checkpoint)
 		local weight,tag=M.spawnWeight(mod,effectiveTags);local conflict=used[id]
 		for _,group in ipairs(mod.groups or {}) do if blocked[group] then conflict=true;break end end
 		if not conflict and weight>0 and mod.required_level<=itemLevel then
-			result[#result+1]={id=id,name=mod.name,side=mod.generation_type,level=mod.required_level,
-				groups=copyTable(mod.groups),stats=copyTable(mod.stats),text=type(mod.text)=="string" and mod.text or "",spawnWeight=weight,matchedTag=tag}
+			local entry={id=id,name=mod.name,side=mod.generation_type,text=type(mod.text)=="string" and mod.text or "",spawnWeight=weight,matchedTag=tag}
+			if not lightweight then entry.level=mod.required_level;entry.groups=copyTable(mod.groups);entry.stats=copyTable(mod.stats) end
+			result[#result+1]=entry
 		end
 		if checkpoint and os.clock()-slice>=0.002 then checkpoint();slice=os.clock() end
 	end
@@ -142,7 +143,7 @@ end
 
 -- White, yellow and red ordinary maps use the established tier bands. This
 -- inspection deliberately does not simulate rolling or claim outcome odds.
-function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity,rolls,corrupted,implicit,quality,observedEffects,potentialNightmare)
+function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity,rolls,corrupted,implicit,quality,observedEffects,potentialNightmare,candidatesOnly)
 	assert(type(tier)=="number" and tier==math.floor(tier) and tier>=1 and tier<=17,"Use a map tier from 1 to 17")
 	rarity=rarity or "rare";assert(rarity=="magic" or rarity=="rare","Use magic or rare map rarity")
 	assert(corrupted==nil or type(corrupted)=="boolean","Invalid map corruption state")
@@ -175,13 +176,13 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 		if not corrupted then assert(counts[mod.generation_type]<=(rarity=="magic" and 1 or 3),"Too many modifiers for this map rarity") end
 		for _,group in ipairs(mod.groups or {}) do assert(not groups[group],"Selected modifiers share a group");groups[group]=true end
 	end
-	local eligible=M.candidates(tags,itemLevel,selected,checkpoint)
+	local eligible=M.candidates(tags,itemLevel,selected,checkpoint,candidatesOnly)
 	if checkpoint then checkpoint() end
 	local result={};for _,entry in ipairs(eligible) do
-		if (corrupted and #selected<9 or not corrupted and counts[entry.side]<(rarity=="magic" and 1 or 3)) and (rarity=="rare" or not rareOnly[entry.id]) and (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true) then result[#result+1]=entry end
+		if (corrupted and #selected<9 or not corrupted and counts[entry.side]<(rarity=="magic" and 1 or 3)) and (rarity=="rare" or not rareOnly[entry.id]) and (query=="" or (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true)) then result[#result+1]=entry end
 	end
 	local results,total,nextOffset=page(result,offset,limit)
-	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,nightmare=nightmare or nil,corrupted=corrupted or nil,implicit=implicitInfo,observedEffects=observedEffects,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected,rolls,implicitInfo,quality),
+	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,nightmare=nightmare or nil,corrupted=corrupted or nil,implicit=implicitInfo,observedEffects=observedEffects,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=not candidatesOnly and M.summarize(selected,rolls,implicitInfo,quality) or nil,
 		source=M.source().source,patch=M.source().patch,
 		note=(nightmare and "Nightmare modifiers can unlock other candidates. Draw order and game restrictions are unverified; simulated Chaos outcomes are experimental. Spawn weights are not probabilities." or corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification.")..(observedEffects and " Observed effects are not modeled and can change results." or "")}
 end

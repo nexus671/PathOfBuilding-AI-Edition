@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview524" />
+	<Version number="2.68.1-ai.preview525" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2162,8 +2162,8 @@
 	<File name="Modules/MapClipboard.lua" part="program" sha1="0249badbaaefd5fdaf2c313f22e4b736207426ab" />
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="c03ef32eee4a6eec184aac726605d6104d068af9" />
 	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="0d29ccad68a2522d17af320a2b05672d04f5c529" />
-	<File name="Modules/MapCraftingData.lua" part="program" sha1="38ff92a60f0ad592ee1635f742849a046633583b" />
-	<File name="Modules/MapCurrency.lua" part="program" sha1="187e0ecc7af86042b55ad116c53b44ee4dcaa0e0" />
+	<File name="Modules/MapCraftingData.lua" part="program" sha1="8ecabe0579e1944ecf17748cfdfe789a9056deaf" />
+	<File name="Modules/MapCurrency.lua" part="program" sha1="ba40a797ab824c1e6b3f86df17b8334eda61738f" />
 	<File name="Modules/MapObservedEffects.lua" part="program" sha1="3aecfc7b4c2b8266f159d47ad09ca6102ed8c769" />
 	<File name="Modules/MapQuality.lua" part="program" sha1="c7f308aa75c1ab907d8c864fe878bc8afcf4c429" />
 	<File name="Modules/MapRollValues.lua" part="program" sha1="738d8da00d86027c40d51555476d7c2a947a72c8" />

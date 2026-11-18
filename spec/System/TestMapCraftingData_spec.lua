@@ -11,6 +11,19 @@ describe("Map crafting source data",function()
 		assert.same(effect,result.observedEffects);assert.matches("not modeled",result.note)
 	end)
 	local data=require("Modules.MapCraftingData")
+	it("keeps lightweight candidate selection equivalent to full inspection",function()
+		for _,case in ipairs({
+			{base="Metadata/Items/Maps/MapKeyTier5",tier=5,level=68,selected={}},
+			{base="Metadata/Items/Maps/MapWorldsAbomination",tier=17,level=84,selected={"MapUberModCurses"}},
+		}) do
+			local full=data.inspect(case.base,case.tier,case.level,case.selected,"",0,100,nil,"rare")
+			local light=data.inspect(case.base,case.tier,case.level,case.selected,"",0,100,nil,"rare",nil,nil,nil,nil,nil,nil,true)
+			assert.equal(full.total,light.total);assert.equal(full.nextOffset,light.nextOffset);assert.is_nil(light.summary)
+			for i,entry in ipairs(full.candidates) do local other=light.candidates[i]
+				assert.equal(entry.id,other.id);assert.equal(entry.side,other.side);assert.equal(entry.spawnWeight,other.spawnWeight);assert.equal(entry.matchedTag,other.matchedTag)
+			end
+		end
+	end)
 	it("inspects Nightmare pools and their unlocked candidates",function()
 		local base="Metadata/Items/Maps/MapWorldsAbomination"
 		for _,name in ipairs({"Abomination","Citadel","Fortress","Sanctuary","Ziggurat"}) do

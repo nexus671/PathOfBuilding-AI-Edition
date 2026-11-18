@@ -8,7 +8,8 @@ local function rng(seed)
 end
 local function inspect(state,offset,checkpoint)
 	if checkpoint then checkpoint() end
-	return map.inspect(state.baseId,state.tier,state.itemLevel,state.selected,"",offset,100,checkpoint,state.rarity)
+	-- Selection does not need the item-card summary or rendered stat text.
+	return map.inspect(state.baseId,state.tier,state.itemLevel,state.selected,"",offset,100,checkpoint,state.rarity,nil,nil,nil,nil,nil,nil,true)
 end
 local function candidates(state,checkpoint,cache)
 	-- Reroll trials repeatedly visit the same empty and one-modifier pools.
@@ -64,7 +65,7 @@ local function validate(input,checkpoint,cache)
 			-- Copied modifiers need not be listed in generation order. Check
 			-- each against the union of the initial and unlocked pools.
 			local eligible,offset={},0
-			repeat local page=map.inspect(state.baseId,state.tier,state.itemLevel,{},"",offset,100,checkpoint,"rare",nil,nil,nil,nil,nil,true);for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
+			repeat local page=map.inspect(state.baseId,state.tier,state.itemLevel,{},"",offset,100,checkpoint,"rare",nil,nil,nil,nil,nil,true,true);for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
 			for _,id in ipairs(state.selected) do assert(eligible[id],"A selected modifier is not eligible for this modeled Nightmare map") end
 		else
 			for _,id in ipairs(state.selected) do
