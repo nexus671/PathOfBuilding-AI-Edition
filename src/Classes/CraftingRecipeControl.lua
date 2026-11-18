@@ -56,10 +56,11 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 	button(controls,"reviewUnlocks",232,24,200,"Review unlocks",function()
 		local function show()
 			local report=assert(options.reviewUnlocks,"Review is unavailable")(draft.steps,model);local entries={}
-			local labels={untracked="Not tracked",tracked="Task tracked",complete="Task complete",unknown="Task status unknown"}
+			local labels={untracked="Not tracked",tracked="Task tracked",complete="Task complete",unknown="Task status unknown",conflict="Task link changed"}
 			for _,entry in ipairs(report.entries) do
 				local steps={};for _,index in ipairs(entry.steps) do steps[#steps+1]=tostring(index) end
-				entries[#entries+1]={id=entry.modId,label=entry.title,category=labels[entry.taskStatus],entry=entry,details={labels[entry.taskStatus],"Recipe steps: "..table.concat(steps,", "),"Listed location: "..entry.unlock.map,entry.unlock.note,report.warning or "Only supported bench recipes are listed; later base changes need review."}}
+				local note=entry.taskStatus=="conflict" and "The existing task was relinked. Review it in Roadmap; it will not be replaced." or report.warning or "Only supported bench recipes are listed; later base changes need review."
+				entries[#entries+1]={id=entry.modId,label=entry.title,category=labels[entry.taskStatus],entry=entry,details={labels[entry.taskStatus],"Recipe steps: "..table.concat(steps,", "),"Listed location: "..entry.unlock.map,entry.unlock.note,note}}
 			end
 			for _,entry in ipairs(report.unresolved) do entries[#entries+1]={id="unknown-"..entry.step,label="Step "..entry.step.." | "..entry.modId,category="Review",details={entry.reason,report.note}} end
 			if #entries==0 then entries[1]={id="none",label="No listed unlocks",category="Review",details={"No supported bench unlocks were found in this recipe.",report.note}} end
@@ -78,7 +79,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 	button(controls,"trackUnlock",448,24,200,"Track unlock",function()
 		local step=assert(draft.steps[selected],"Select a bench recipe step")
 		local result=assert(options.trackUnlock,"Tracking is unavailable")(step,model)
-		main:OpenMessagePopup("Recipe unlock",result.created and "Added to Roadmap. Keep this recipe separately and save the build to persist both." or "This unlock is already in Roadmap. Its existing notes and completion are unchanged.")
+		main:OpenMessagePopup("Recipe unlock",result.created and "Added to Roadmap. Keep this recipe separately and save the build to persist both." or result.conflict and "The existing task was relinked. Review it in Roadmap; nothing was changed." or "This unlock is already in Roadmap. Its existing notes and completion are unchanged.")
 	end)
 	controls.trackUnlock.shown=function() return options.trackUnlock~=nil end
 	controls.trackUnlock.enabled=function() local step=draft.steps[selected];return step and step.method=="bench" and model and require("Modules.CraftingBenchCosts").unlock(model,step.modId)~=nil end
