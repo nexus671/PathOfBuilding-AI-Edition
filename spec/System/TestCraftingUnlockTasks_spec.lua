@@ -42,6 +42,19 @@ describe("Crafting recipe unlock tasks",function()
 		build.savers.BuildJourney.unreadable="future data";assert.has_error(function() tracker.track(build,"body",model,action()) end)
 		assert.equal(0,#build.savers.BuildJourney.data.milestones)
 	end)
+	it("disables checklist tracking for relinked and unreadable Roadmap tasks",function()
+		local model=require("Modules.CraftingSimulator").model(raw);local tracker=require("Modules.CraftingUnlockTasks")
+		build.savers.CraftingProjects:Upsert(project());tracker.track(build,"body",model,action())
+		local changed=copyTable(build.savers.BuildJourney.data.milestones[1]);changed.projectId="other";build.savers.BuildJourney:Put("milestones",changed)
+		local controls=require("Classes.CraftingRecipeControl").Open({steps={action()},targets={}},action(),function() end,model,
+			{trackUnlock=function(step,context) return tracker.track(build,"body",context,step) end,reviewUnlocks=function(steps,context) return tracker.review(build,"body",context,steps) end})
+		controls.reviewUnlocks:Click();local browser=main.popups[1].controls;assert.is_false(browser.choose:IsEnabled())
+		local lines={};for _,row in ipairs(browser.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		assert.matches("relinked",table.concat(lines," "),1,true);main:ClosePopup()
+		build.savers.BuildJourney.unreadable="future data";controls.reviewUnlocks:Click();browser=main.popups[1].controls;assert.is_false(browser.choose:IsEnabled())
+		lines={};for _,row in ipairs(browser.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		assert.matches("unknown",table.concat(lines," "),1,true);main:ClosePopup();controls.close:Click()
+	end)
 	it("offers tracking from the selected recipe step without keeping the recipe",function()
 		local model=require("Modules.CraftingSimulator").model(raw);build.savers.CraftingProjects:Upsert(project())
 		local step=action();local controls=require("Classes.CraftingRecipeControl").Open({steps={step},targets={}},step,function() error("Recipe should not be kept") end,model,
