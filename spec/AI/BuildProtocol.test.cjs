@@ -100,6 +100,15 @@ test('queues bounded built-in filter scenes', t => {
   assert.equal(JSON.parse(fs.readFileSync(path.join(mapFixture.dir,'AI-build-request.json'))).scene,'Map tiers');
   for(const invalid of [{...args,scene:'Unknown'},{...args,seed:-1},{...args,areaLevel:101},{...args,limit:51},{...args,offset:-1},{...args,unknown:true}]) assert.throws(()=>f.call('test_loot_filter_scene',invalid),/arguments/);
 });
+test('explains unidentified saved map drafts without changing them', t => {
+  const f=fixture(t), draft={id:'unknown',unidentified:true,selected:[]};
+  f.captured.context.atlasPlans=[{id:'atlas',mapDrafts:[draft]}];f.write('context',f.captured);
+  const response=f.call('get_atlas_plans',{});
+  assert.deepEqual(response.plans[0].mapDrafts,[draft]);
+  assert.ok(response.limitations.some(note=>note.includes('unknown explicit modifiers') && note.includes('+30% Atlas Drops')));
+  f.captured.context.atlasPlans=[{id:'atlas',mapDrafts:[{id:'known',selected:[]}]}];f.write('context',f.captured);
+  assert.ok(!f.call('get_atlas_plans',{}).limitations.some(note=>note.includes('Unidentified map drafts')));
+});
 test('queues copied map inspection without changing the build', t => {
   const f=fixture(t);f.call('inspect_copied_map',{baseRevision:f.state.revision,itemText:'Item Class: Maps\nRarity: Normal\nStrand Map'});
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'inspect_copied_map');assert.match(request.itemText,/Strand Map/);
