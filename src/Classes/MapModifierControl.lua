@@ -32,6 +32,7 @@ function M.Open(options)
 	local artManifest;do local f=assert(io.open("Assets/MapCrafting/art.json","rb"));artManifest=assert(require("dkjson").decode(f:read("*a")));f:close() end
 	local itemArt;do local f=assert(io.open("Assets/MapCrafting/items.json","rb"));itemArt=assert(require("dkjson").decode(f:read("*a")));f:close() end
 	local artCache={}
+	local nightmareFrame
 	local function art()
 		local base=map.source().bases[baseId];local identity=base and base.visual_identity
 		local entry=itemArt.images[baseId] or (type(identity)=="table" and artManifest.images[identity.dds_file])
@@ -105,7 +106,13 @@ function M.Open(options)
 		local x,y=self:GetPos();local w,h=self:GetSize();SetDrawColor("^x716046");DrawImage(nil,x,y,w,h)
 		SetDrawColor("^x15141A");DrawImage(nil,x+1,y+1,w-2,h-2)
 		local rarity=getRarity();local base=map.source().bases[baseId];SetDrawColor(rarity=="magic" and "^x8888FF" or rarity=="normal" and "^7" or "^xE0C586");DrawString(x+w/2,y+12,"CENTER_X",18,"VAR",ui.fit(base.name,w-20,18))
-		local handle,entry=art();if handle then
+		local handle,entry=art();if handle and map.isNightmare(baseId) then
+			if not nightmareFrame then nightmareFrame=NewImageHandle();nightmareFrame:Load("Assets/MapCrafting/Items/NightmareFrame.png") end
+			-- Nightmare artwork is a transparent symbol rendered on the map frame.
+			-- Keep both full canvases aligned instead of enlarging the symbol's bounds.
+			local size=95;local ax=x+(w-size)/2;local ay=y+40
+			SetDrawColor(1,1,1);DrawImage(nightmareFrame,ax,ay,size,size);DrawImage(handle,ax,ay,size,size)
+		elseif handle then
 			local bounds=entry.bounds or {0,0,entry.width,entry.height};local bw,bh=bounds[3]-bounds[1],bounds[4]-bounds[2]
 			local scale=math.min(95/bw,95/bh);local aw,ah=bw*scale,bh*scale
 			SetDrawColor(1,1,1);DrawImage(handle,x+(w-aw)/2,y+40,aw,ah,bounds[1]/entry.width,bounds[2]/entry.height,bounds[3]/entry.width,bounds[4]/entry.height)

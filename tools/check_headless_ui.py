@@ -93,6 +93,11 @@ def main():
         quality = next(c for c in frame["commands"] if c["kind"] == "text" and "Quality (Pack Size): +20%" in c.get("text", ""))
         card = next(c for c in frame["commands"] if c["kind"] == "rect" and c.get("color") == [0.082352941176471, 0.07843137254902, 0.10196078431373, 1])
         assert (quality["layer"], quality["sublayer"]) > (card["layer"], card["sublayer"]), "Map card obscures quality and modifier details"
+        nightmare = json.loads((frames / f"{width}-map-nightmare-inspection.json").read_text())
+        images = [c.get("asset") for c in nightmare["commands"]]
+        background = images.index("Assets/MapCrafting/Items/NightmareFrame.png")
+        symbol = images.index("Assets/MapCrafting/Items/99ff7e3f83852f127cb3.png")
+        assert background < symbol, "Nightmare map frame must be drawn beneath its symbol"
     for width in (960, 1024, 1280):
         stack = json.loads((frames / f"{width}-filter-stack-styles.json").read_text())
         labels = " ".join(command.get("text", "") for command in stack["commands"] if command.get("kind") == "text")

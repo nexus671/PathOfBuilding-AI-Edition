@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview519" />
+	<Version number="2.68.1-ai.preview520" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1336,6 +1336,7 @@
 	<File name="Assets/MapCrafting/Items/9d3c9b43eaf4324872df.png" part="program" sha1="c120a2e7ca4f378447a44e1ab5ac2579591370b2" />
 	<File name="Assets/MapCrafting/Items/9d8ed48b218e7722ed20.png" part="program" sha1="a1bac6cf15c0b65fa2fa050aa2b70c0db3969fc3" />
 	<File name="Assets/MapCrafting/Items/9f3ea1d59a85d1f4f20d.png" part="program" sha1="6bc0e2027184a437434b688a5dbd1a050ed296ab" />
+	<File name="Assets/MapCrafting/Items/NightmareFrame.png" part="program" sha1="7e4ec20ce39fc8dfd39f3e88ed3b9b0759b2a007" />
 	<File name="Assets/MapCrafting/Items/MapTier1.png" part="program" sha1="907c67023858ecbdff10f1b44be814d3ed5d8ee9" />
 	<File name="Assets/MapCrafting/Items/MapTier10.png" part="program" sha1="f70142a3a5fad53d4f752a4d347126afbb12b162" />
 	<File name="Assets/MapCrafting/Items/MapTier11.png" part="program" sha1="1599accc09307358b80f6dd27b04e3cd1bc5a081" />
@@ -1726,7 +1727,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="b5b757c324f38b8031de0957e4c8b3ef1351be61" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="7178f8d6d5db5647052e1fa8b66d3b9619fea016" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="fb7b401de242b828fcad2897614ac5571ec8d466" />
-	<File name="Classes/MapModifierControl.lua" part="program" sha1="11eccbc956843dfbd5b45f687c43be37c16629cd" />
+	<File name="Classes/MapModifierControl.lua" part="program" sha1="397451fac5834fba44bfadcee326668b318f0b53" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
 	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="cfff5d76e380c7bdcbdac229325cefb1599af36c" />
 	<File name="Classes/ModDB.lua" part="program" sha1="1327beebeba14dc8320d137a3dede673b74942af" />

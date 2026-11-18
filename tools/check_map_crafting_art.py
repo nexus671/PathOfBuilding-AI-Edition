@@ -27,6 +27,14 @@ def main():
             assert list(decoded.convert("RGBA").getbbox() or (0, 0, *decoded.size)) == entry["bounds"]
         left, top, right, bottom = entry["bounds"]
         assert 0 <= left < right <= entry["width"] and 0 <= top < bottom <= entry["height"]
+    # GGG's Base26 image supplies the frame beneath the five transparent
+    # Nightmare symbols. It is bundled unchanged for offline use.
+    frame = (ROOT / "src/Assets/MapCrafting/Items/NightmareFrame.png").read_bytes()
+    assert hashlib.sha256(frame).hexdigest() == "238bf2bf059d0d2cdcdf453e6c2689a463092d47b87b407d5a0feab904c9dae0"
+    with Image.open(io.BytesIO(frame)) as decoded:
+        assert decoded.format == "PNG" and decoded.size == (78, 78)
+    for name in ("UberMalformation", "UberPrimordialBlocks", "UberSilo", "UberRelicChambers", "UberMausoleum"):
+        assert f"Art/2DItems/Maps/Atlas2Maps/New/{name}.dds" in art["images"]
     print(f"Verified {len(expected)} map images")
 
 
