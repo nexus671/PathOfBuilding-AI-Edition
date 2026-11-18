@@ -42,8 +42,23 @@ function M.Open(build,plan,keep)
 	ui.label(c,"costLabel",16,378,"Setup estimate / currency / source",15)
 	for _,entry in ipairs({{"amount",16,120,s.setupCost and tostring(s.setupCost.amount) or ""},{"currency",148,140,s.setupCost and s.setupCost.currency or "chaos"},{"source",300,w-316,s.setupCost and s.setupCost.source or ""}}) do c[entry[1]]=new("EditControl"):EditControl(ui.anchor,{entry[2],404,entry[3],28},entry[4],nil,nil,240) end
 	ui.description(c,"costHint",16,448,w-32,48,{"Costs use your supplied currency and source, dated when edited. They do not reserve or spend Journey resources automatically."},14)
+	button("mapTier",16,510,180,"Add map tier",function()
+		local choices={};for tier=1,16 do local name="Map (Tier "..tier..")";choices[#choices+1]={id=name,label=name,details={"Adds a tiered map item to the strategy.","Filter build pickups can highlight this tier; the Atlas area is chosen separately."}} end
+		require("Classes.PlanningBrowserControl").Open("Choose a map tier",choices,{action="Add tier",closeOnChoose=false,choose=function(entry)
+			local existing=c.maps.buf
+			if not existing:lower():find(entry.id:lower(),1,true) then
+				local updated=existing..(existing:match("%S") and ", " or "")..entry.id
+				if #updated>4000 then main:OpenMessagePopup("Atlas strategy","There is not enough room in the maps field. Shorten it and try again.");return end
+				c.maps:SetText(updated,true)
+			end
+			main:ClosePopup()
+		end})
+	end)
+	c.mapTier.tooltipText="Add a current tiered map item for filter build pickups."
+	ui.label(c,"mapTierHint",210,516,"Add a tier for linked filter pickups.",14)
+
 	for _,key in ipairs({"stageLabel","stage","previousLabel","previous","transition"}) do c[key].shown=function() return c.page:GetSelValue()=="Progression" end end
-	for _,key in ipairs({"maps","scarabs","requirements","avoid","mapsLabel","scarabsLabel","requirementsLabel","avoidLabel","costLabel","amount","currency","source","costHint"}) do c[key].shown=function() return c.page:GetSelValue()=="Strategy" end end
+	for _,key in ipairs({"maps","scarabs","requirements","avoid","mapsLabel","scarabsLabel","requirementsLabel","avoidLabel","costLabel","amount","currency","source","costHint","mapTier","mapTierHint"}) do c[key].shown=function() return c.page:GetSelValue()=="Strategy" end end
 	button("keep",16,h-48,200,"Use in Atlas draft",function()
 		draft.progression={stage=c.stage:GetSelValueByKey("val"),previousId=c.previous:GetSelValueByKey("val")};draft.strategy=copyTable(s)
 		for _,field in ipairs(fields) do draft.strategy[field[1]]=c[field[1]].buf end

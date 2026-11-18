@@ -101,6 +101,22 @@ describe("Connected planning workflows",function()
 		assert.equal(999,#candidates);assert.equal("1",candidates[1].id);assert.equal("999",candidates[#candidates].id)
 		assert.equal(2000,#strategy.previousCandidates(plan("new"),plans))
 	end)
+	it("adds map tiers to an Atlas strategy without duplicating or truncating it",function()
+		local draft=plan("tier-picker");draft.strategy={maps="Beach Map"};local saved
+		require("Classes.AtlasPlanningControl").Open(build,draft,function(value) saved=value end)
+		local c=main.popups[1].controls;c.page:SelByValue("Strategy")
+		local function addTier(tier)
+			c.mapTier:Click();local picker=main.popups[1].controls
+			picker.search:SetText("Map (Tier "..tier..")",true);picker.choose:Click()
+		end
+		addTier(16);assert.equal("Beach Map, Map (Tier 16)",c.maps.buf)
+		addTier(16);assert.equal("Beach Map, Map (Tier 16)",c.maps.buf)
+		addTier(5);assert.equal("Beach Map, Map (Tier 16), Map (Tier 5)",c.maps.buf)
+		local previous=c.maps.buf;c.maps:SetText(string.rep("x",3999),true);addTier(1)
+		assert.equal("Atlas strategy",main.popups[1].title);assert.equal(3999,#c.maps.buf)
+		main:ClosePopup();main:ClosePopup();c.maps:SetText(previous,true)
+		c.keep:Click();assert.equal("Beach Map, Map (Tier 16), Map (Tier 5)",saved.strategy.maps)
+	end)
 	it("preserves and explains unavailable imported previous stages until explicitly changed",function()
 		local store=build.savers.AtlasPlans;local other=plan("other");other.version="3.29.3";store:Upsert(other)
 		for _,id in ipairs({"missing","other"}) do

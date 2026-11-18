@@ -1364,7 +1364,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local conflict={};for _,row in ipairs(main.popups[1].controls.details.list) do conflict[#conflict+1]=StripEscapes(row[1] or "") end
 	assert(table.concat(conflict," "):gsub("%s+"," "):find("conflicting with Dextral Threads",1,true),"Conflicting Atlas Thread effects were not explained")
 	frame("atlas-thread-conflict");ui:click("close")
-	ui:click("progression");ui:click("strategyTab");ui:text("maps","Run Strand Maps with Map (Tier 16)");ui:text("avoid","Beach Map");ui:click("keep")
+	ui:click("progression");ui:click("strategyTab");ui:text("maps","Run Strand Maps");ui:click("mapTier");ui:text("search","Map (Tier 16)");frame("atlas-map-tier-picker");ui:click("choose");assert(main.popups[1].controls.maps.buf:find("Map (Tier 16)",1,true),"Map tier picker did not update strategy");frame("atlas-map-tier-selected");ui:text("avoid","Beach Map");ui:click("keep")
 	ui:click("keep");assert(build.savers.AtlasPlans.plans[1].version=="3.30.0-preview" and #build.savers.AtlasPlans.plans[1].choices==3,"Atlas preview version or effects not retained")
 	ui:click("nav_journey");ui:click("page4");ui:click("add");ui:text("title","Pristine Fossils");ui:click("keep")
 	local function filterTool(query)
