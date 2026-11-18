@@ -35,10 +35,12 @@ function M.run(state,options,checkpoint)
 	local function slice() if checkpoint then checkpoint(progress) end end
 	-- The ordered wanted list must itself be a supported ordinary-map state.
 	local test=copyTable(base);test.selected=copyTable(wanted);currency.perform(test,action,seed,slice,true)
-	if #alternatives>0 then
+	local unavailableAvoid={}
+	if #alternatives>0 or #avoid>0 then
 		local eligible,offset={},0
 		repeat local page=map.inspect(base.baseId,base.tier,base.itemLevel,{},"",offset,100,slice,rarity);for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
 		for _,group in ipairs(alternatives) do for _,id in ipairs(group) do assert(eligible[id],"A wanted alternative is not eligible for this modeled map") end end
+		for _,id in ipairs(avoid) do if not eligible[id] then unavailableAvoid[#unavailableAvoid+1]=id end end
 	end
 	-- Reject only contradictions proven by modeled modifier groups and
 	-- prefix/suffix limits; a bounded search can leave harder cases unresolved.
@@ -105,8 +107,8 @@ function M.run(state,options,checkpoint)
 	for attempt,count in pairs(histogram) do distribution[#distribution+1]={attempt=attempt,count=count} end
 	table.sort(distribution,function(a,b) return a.attempt<b.attempt end)
 	return {trials=trials,maxAttempts=maxAttempts,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,
-		attempts=totalAttempts,meanAttempts=totalAttempts/trials,action=action,seed=seed,wanted=copyTable(wanted),wantedGroups=copyTable(alternatives),avoid=copyTable(avoid),
+		attempts=totalAttempts,meanAttempts=totalAttempts/trials,action=action,seed=seed,wanted=copyTable(wanted),wantedGroups=copyTable(alternatives),avoid=copyTable(avoid),unavailableAvoid=unavailableAvoid,
 		successDistribution=distribution,sampleSuccess=sample and sample.state or nil,sampleSummary=sample and sample.summary or nil,sampleAttempts=successfulAttempts,
-		note="Chance of meeting every wanted group (at least one alternative per group) and no avoided modifiers within the attempt limit. Wilson interval measures sampling uncertainty only. Map roll counts, weights, stat distributions and some restrictions are unverified estimates; no prices or game odds are inferred."..(base.observedEffects and " Observed implicit and enchantment effects are not modeled and can change results." or "")}
+		note="Chance of meeting every wanted group (at least one alternative per group) and no avoided modifiers within the attempt limit. Wilson interval measures sampling uncertainty only. Map roll counts, weights, stat distributions and some restrictions are unverified estimates; no prices or game odds are inferred."..(#unavailableAvoid>0 and " Some avoided modifiers cannot appear in the modeled pool for this map." or "")..(base.observedEffects and " Observed implicit and enchantment effects are not modeled and can change results." or "")}
 end
 return M

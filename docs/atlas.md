@@ -77,6 +77,8 @@ For a magic or rare map, select wanted modifiers on the card and choose **Estima
 
 Use **Keep targets** in the estimator to attach its wanted groups, exclusions and trial settings to the current map draft. Then keep the map draft, keep the Atlas plan and save the build. Reopen the draft to edit or rerun those targets; **Remove option** and **Remove avoided** let you select a specific modifier to remove. **Use map modifiers** replaces wanted targets with the current map's modifiers. Changing the map base, rarity, tier or item level clears the current modifiers and targets.
 
+The estimate identifies avoided modifiers that cannot appear in the modeled pool for the current map. They remain in the saved targets, but do not affect that estimate. AI clients receive their IDs in `unavailableAvoid`; this is a model eligibility check, not a guarantee about the game.
+
 Give a setup a name and choose **Keep map draft** to add it to the current Atlas plan. **Plan tools → Saved map drafts** opens or removes those drafts. Keep the Atlas plan and save the build to persist them; plan JSON and portable bundles carry them too. Drafts store hypothetical modifier identities, sampled values when present, and their data version, not an in-game item. If a later version cannot open a draft, its saved data remains intact. The Atlas metadata has a total size limit, but no fixed number of map drafts.
 
 `python tools/update_atlas_data.py` regenerates the graphs from pinned official exports. Updating versions also requires changing the native and MCP version allowlists, testing changed rules and budgets, and publishing the new files in the updater manifest. There is no silent network update of saved plans.

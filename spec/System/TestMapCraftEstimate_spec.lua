@@ -14,6 +14,14 @@ describe("Map reroll estimates",function()
 		local full=currency.perform(state,"chaos",123);local fast=currency.perform(state,"chaos",123,nil,true)
 		assert.same(full.state.selected,fast.state.selected);assert.same({},fast.state.rolls);assert.is_nil(fast.summary)
 	end)
+	it("identifies avoided modifiers outside the modeled pool without discarding targets",function()
+		local inactive="MapMonsterAreaOfEffectMapWorlds";local active="MapContainsMirageWorlds"
+		local options={avoid={inactive,active},trials=1,maxAttempts=1,seed=42}
+		local result=estimate.run(state,options)
+		assert.same({inactive},result.unavailableAvoid);assert.same({inactive,active},result.avoid)
+		assert.matches("cannot appear in the modeled pool",result.note)
+		assert.same({inactive,active},options.avoid)
+	end)
 	it("preserves observed effects and explains their limits in reroll estimates",function()
 		local input=copyTable(state);input.observedEffects={{kind="enchant",text="Players are Delirious"}}
 		local result=estimate.run(input,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})
@@ -33,6 +41,7 @@ describe("Map reroll estimates",function()
 	it("requires wanted modifiers and excludes avoided ones from retained successes",function()
 		local wanted="MapContainsMirageWorlds";local avoid="MapContainsWildwoodWorlds"
 		local result=estimate.run(state,{wanted={wanted},avoid={avoid},trials=5,maxAttempts=4,seed=77})
+		assert.same({},result.unavailableAvoid)
 		assert.is_true(result.attempts>=5 and result.attempts<=20);assert.is_true(result.successes>=0 and result.successes<=5)
 		assert.is_truthy(result.sampleSuccess);local seen={};for _,id in ipairs(result.sampleSuccess.selected) do seen[id]=true end
 		assert.is_true(seen[wanted]);assert.is_nil(seen[avoid]);assert.is_true(result.sampleAttempts<=4)

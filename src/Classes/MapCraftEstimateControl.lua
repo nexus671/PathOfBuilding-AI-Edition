@@ -107,7 +107,18 @@ function M.Open(build,options)
 	button("run",16,333,180,"Estimate rerolls",function()
 		local request={wanted={},wantedGroups=copyTable(groups),avoid=copyTable(avoid),trials=tonumber(controls.trials.buf),maxAttempts=tonumber(controls.attempts.buf),seed=os.time()%2147483646+1}
 		local ok,job=pcall(tasks.start,build,function(checkpoint) return require("Modules.MapCraftEstimate").run(state,request,checkpoint) end,
-			function(value) if not alive then return end;active=nil;result=value;report({string.format("%.1f%% succeeded within %d rolls (%d / %d trials)",value.successChance,value.maxAttempts,value.successes,value.trials),string.format("95%% sampling interval %.1f%% to %.1f%% | mean %.2f %s per trial",value.confidenceLow,value.confidenceHigh,value.meanAttempts,value.action=="chaos" and "Chaos Orbs" or "Alteration Orbs"),"Model estimates only; interval does not measure uncertainty in game rules or prices.",state.observedEffects and "Observed effects are not modeled and can change results." or ""}) end,
+			function(value)
+				if not alive then return end
+				active=nil;result=value
+				local lines={string.format("%.1f%% succeeded within %d rolls (%d / %d trials)",value.successChance,value.maxAttempts,value.successes,value.trials),string.format("95%% sampling interval %.1f%% to %.1f%% | mean %.2f %s per trial",value.confidenceLow,value.confidenceHigh,value.meanAttempts,value.action=="chaos" and "Chaos Orbs" or "Alteration Orbs"),"Model estimates only; interval does not measure uncertainty in game rules or prices."}
+				for _,id in ipairs(value.unavailableAvoid or {}) do
+					local effect=map.summarize({id}).effects[1]
+					lines[#lines+1]="Cannot appear in modeled pool: "..effect.name
+					for _,line in ipairs(effect.lines) do lines[#lines+1]=line end
+				end
+				if state.observedEffects then lines[#lines+1]="Observed effects are not modeled and can change results." end
+				report(lines)
+			end,
 			function(err) if not alive then return end;active=nil;result=nil;report({"Estimate stopped: "..ui.errorText(err)}) end,
 			function(progress) if alive and progress and progress.trial then report({"Estimating trial "..progress.trial.." / "..progress.trials.."..."}) end end,"Map reroll estimate slice")
 		if not ok then result=nil;report({ui.errorText(job)});return end

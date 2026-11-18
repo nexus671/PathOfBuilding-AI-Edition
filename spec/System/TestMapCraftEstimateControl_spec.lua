@@ -9,7 +9,10 @@ describe("Map reroll estimate control",function()
 		controls.trials:SetText("2",true);controls.attempts:SetText("1",true);controls.run:Click()
 		assert.is_falsy(controls.trials:IsEnabled())
 		for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
-		assert.is_nil(tasks.job);assert.is_true(controls.use:IsEnabled());controls.attempts:SetText("2",true);assert.is_falsy(controls.use:IsEnabled())
+		assert.is_nil(tasks.job);assert.is_true(controls.use:IsEnabled())
+		local report="";for _,row in ipairs(controls.report.list) do report=report..StripEscapes(row[1] or "") end
+		assert.matches("Cannot appear in modeled pool",report);assert.matches("Area of Effect",report)
+		controls.attempts:SetText("2",true);assert.is_falsy(controls.use:IsEnabled())
 		controls.attempts:SetText("1",true);controls.run:Click();for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
 		assert.is_true(controls.use:IsEnabled());controls.use:Click()
 		assert.is_truthy(sample);assert.equal("rare",sample.rarity);assert.equal(#sample.selected,#sample.rolls)
