@@ -579,14 +579,18 @@ function Panel.Open(build,project,layout)
 	button(controls,"distribution",448,height-48,140,"Results / distribution",function()
 		local result=assert(lastSimulation,"Run a simulation first")
 		local request=lastSimulationRun and copyTable(lastSimulationRun)
-		local lines={{height=24,"Attempted actions per trial (all trials, including failures)"}}
-		for i,warning in ipairs(result.warnings or request and simulator.recipeWarnings(request.recipe,model) or {}) do table.insert(lines,i,{height=24,"Model note: "..warning.message}) end
+		local lines={}
+		if result.uniqueTrials and result.uniqueTrials>0 then
+			lines[#lines+1]={height=24,"Trials ending with unique jewels: "..result.uniqueTrials.." (modeled outcomes)"}
+			for _,entry in ipairs(result.uniqueDistribution or {}) do lines[#lines+1]={height=22,string.format("%d %s, %d %s | %s",entry.trials,entry.trials==1 and "trial" or "trials",entry.successes,entry.successes==1 and "success" or "successes",entry.name)} end
+		end
+		for _,warning in ipairs(result.warnings or request and simulator.recipeWarnings(request.recipe,model) or {}) do lines[#lines+1]={height=24,"Model note: "..warning.message} end
+		lines[#lines+1]={height=24,"Attempted actions per trial (all trials, including failures)"}
 		for _,bucket in ipairs(result.actionDistribution) do
 			lines[#lines+1]={height=20,string.format("%4d | %s %d trials, %d successes",bucket.actions,string.rep("|",math.max(1,math.floor(bucket.trials/result.trials*50))),bucket.trials,bucket.successes)}
 		end
 		lines[#lines+1]={height=26,"Trials stopped at the action budget: "..result.budgetExhausted}
 		lines[#lines+1]={height=24,"Hypothetical items destroyed: "..result.destroyedTrials}
-		if result.uniqueTrials and result.uniqueTrials>0 then lines[#lines+1]={height=24,"Trials ending with unique jewels: "..result.uniqueTrials} end
 		lines[#lines+1]={height=24,"Spending percentiles include capped failures. They are not the cost of guaranteed success."}
 		local function show(title,values)
 			if not values then return end

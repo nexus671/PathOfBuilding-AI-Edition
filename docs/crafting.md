@@ -12,6 +12,8 @@ Plain item copies can be imported when their complete modifier identities and ro
 
 Vaal Orbs on ordinary Cobalt, Crimson and Viridian jewels can produce a hypothetical corruption-exclusive unique. The workbench shows and preserves the resulting item. In item-property targets, enter an exact unique name or use **Pick** to choose a modeled outcome for the current base. MCP `inspect_crafting_item` also returns these candidate names. This model assumes equal branch and unique-selection weights and independent normalized rolls; the candidate pool and actual odds are unverified. Further crafting of the unique outcome is not modeled. Property targets other than corruption state and unique name cannot currently be evaluated for this outcome.
 
+When a recipe simulation ends with unique jewels, **Results / distribution** lists the modeled final outcomes and how many trials met the selected goal for each. MCP simulation results include the same `uniqueDistribution`; these are sampled results under the model's assumptions, not verified game odds.
+
 ## Emulate an item
 
 **Find currencies** opens search beside the working item. Filter by category, favorite actions, and select one to return to the tray. Search takes keyboard focus; arrow keys browse results and Enter selects an available action. Escape clears focus first, then returns to the tray. Hover a currency for its purpose and current prerequisites. Bench, Essence and Harvest choices follow the working item's slots, modifiers and rarity. The selected choice is retained while valid; a changed item cannot leave the dropdown pointing at a removed choice.

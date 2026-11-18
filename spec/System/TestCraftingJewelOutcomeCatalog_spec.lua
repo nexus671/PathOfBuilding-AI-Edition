@@ -52,8 +52,15 @@ describe("Corruption-exclusive jewel outcome catalogue",function()
 		local recipe={steps={{method="vaal"}},targets={},requirements={corrupted=true}}
 		local result=simulator.simulate(raw,recipe,{trials=32,maxActions=1,seed=123})
 		assert.equal(32,result.successes);assert.is_true(result.uniqueTrials>0);assert.is_true(result.uniqueTrials<32)
+		local count,previous=0,"";for _,entry in ipairs(result.uniqueDistribution) do
+			assert.is_true(entry.name>previous);assert.equal(entry.trials,entry.successes);count=count+entry.trials;previous=entry.name
+		end;assert.equal(result.uniqueTrials,count)
 		local unique=simulator.simulate(raw,{steps={{method="vaal"}},targets={},rarity="UNIQUE",requirements={corrupted=true}},{trials=32,maxActions=1,seed=123})
 		assert.equal(unique.uniqueTrials,unique.successes)
+		local target=unique.uniqueDistribution[1].name
+		local named=simulator.simulate(raw,{steps={{method="vaal"}},targets={},rarity="UNIQUE",requirements={uniqueName=target}},{trials=32,maxActions=1,seed=123})
+		local matched=0;for _,entry in ipairs(named.uniqueDistribution) do if entry.name==target then matched=entry.successes else assert.equal(0,entry.successes) end end
+		assert.equal(named.successes,matched)
 		assert.has_error(function() simulator.simulate(raw,{steps={{method="vaal"}},targets={},requirements={minAffixes=2}},{trials=1,maxActions=1,seed=123}) end)
 	end)
 	it("keeps and reopens an exact unique-name target",function()

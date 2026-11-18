@@ -287,6 +287,16 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("tab_targets");ui:click("targetConditions");ui:click("chooseUnique");ui:text("search","Powerlessness");frame("crafting-unique-target-picker");ui:click("choose")
 		assert(main.popups[1].controls.uniqueName.buf=="Powerlessness","Unique target selection was lost");frame("crafting-unique-target-selected");ui:click("keep");ui:click("close")
 	end
+	do
+		local recipe={steps={{method="vaal"}},targets={},requirements={corrupted=true}}
+		local distControls=require("Classes.CraftingSimulatorControl").Open(build,{id="unique-dist-ui",title="Jewel outcomes",slot="Jewel",startingItem=jewel,goals={},steps={},nativeRecipe=recipe})
+		distControls.seed:SetText("123",true);ui:click("tab_simulate");ui:text("trials","32");ui:text("budget","1");ui:click("runRecipe")
+		local jobs=require("Modules.CraftingTasks");for _=1,10000 do if not jobs.job then break end;jobs.tick(build) end
+		local result=build.craftingAnalyses["unique-dist-ui"].results.simulation.result;assert(not jobs.job and #result.uniqueDistribution>0,"Unique outcome distribution is missing")
+		ui:click("distribution");local list=main.popups[1].controls.results
+		assert((list.list[1][1] or ""):find("Trials ending with unique jewels",1,true),"Unique outcome distribution was not displayed first")
+		frame("crafting-unique-distribution");ui:click("close");ui:click("close")
+	end
 	require("Classes.CraftingSimulatorControl").Open(build,{id="unveiled-jewel-ui",title="Unveiled jewel",slot="Jewel",startingItem=jewel,goals={},steps={}})
 	ui:click("tab_settings");ui:click("manual");ui:choose("modifier","JunMasterVeiledJewelElusiveEffect","val");ui:text("roll","50");ui:choose("rarity","MAGIC");ui:click("properties");frame("crafting-unveiled-jewel-editor")
 	ui:click("offers");frame("crafting-jewel-unveil-choices");ui:choose("choice1","JunMasterVeiledJewelElusiveEffect","val");ui:choose("fractured","Fractured veil");ui:click("use");ui:click("offers");ui:click("clear")

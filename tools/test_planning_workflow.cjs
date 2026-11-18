@@ -59,6 +59,8 @@ async function main(){
   const corruptJewelRecipe={steps:[{method:'vaal'}],targets:[],rarity:'UNIQUE',requirements:{uniqueName:corruptJewel.nativeCrafting.state.uniqueTitle}};
   const corruptJewelPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:corruptJewelRaw,recipe:corruptJewelRecipe,options:{trials:8,maxActions:1,seed:3}},'crafted');
   assert.ok(corruptJewelPlan.nativeCrafting.uniqueTrials>0);assert.ok(corruptJewelPlan.nativeCrafting.warnings.some(entry=>entry.code==='ordinary_jewel_corruption_assumptions'));
+  assert.equal(corruptJewelPlan.nativeCrafting.uniqueDistribution.reduce((sum,entry)=>sum+entry.trials,0),corruptJewelPlan.nativeCrafting.uniqueTrials);
+  assert.equal(corruptJewelPlan.nativeCrafting.uniqueDistribution.reduce((sum,entry)=>sum+entry.successes,0),corruptJewelPlan.nativeCrafting.successes);
   const recipientInput={rarity:'MAGIC',affixes:[{id:'IncreasedLife1',range:0.75}],origin};
   const donorInput={rarity:'MAGIC',affixes:[{id:'FireResist1',range:0.25}],origin};
   const recipient=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:recipientInput,action:{method:'divine'},seed:1},'crafted');

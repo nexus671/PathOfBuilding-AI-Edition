@@ -821,6 +821,7 @@ function M.simulate(raw,recipe,options)
 	local actionPriceUses=0
 	local actionHistogram,executedHistogram,costHistogram,costSamples,successfulCosts,routes={},{},{},{},{},{}
 	local budgetExhausted,destroyedTrials,uniqueTrials=0,0,0
+	local uniqueOutcomes={}
 	local recovery={restarts=0,stopped=0,salvaged=0}
 	local sample,sampleSuccess
 	local retained,affixDistribution,propertyDistribution={},{},{affixes={},fractured={},intangibility={},memoryStrands={}}
@@ -899,7 +900,11 @@ function M.simulate(raw,recipe,options)
 			end
 		end
 		if state.destroyed then destroyedTrials=destroyedTrials+1 end
-		if state.uniqueTitle then uniqueTrials=uniqueTrials+1 end
+		if state.uniqueTitle then
+			uniqueTrials=uniqueTrials+1
+			local bucket=uniqueOutcomes[state.uniqueTitle] or {name=state.uniqueTitle,trials=0,successes=0};uniqueOutcomes[state.uniqueTitle]=bucket
+			bucket.trials=bucket.trials+1;if hit then bucket.successes=bucket.successes+1 end
+		end
 		if not hit and not state.destroyed and not state.uniqueTitle and at <= #recipe.steps and actions >= maxActions then budgetExhausted=budgetExhausted+1 end
 		local bucket=actionHistogram[actions] or {actions=actions,trials=0,successes=0};actionHistogram[actions]=bucket;bucket.trials=bucket.trials+1;if hit then bucket.successes=bucket.successes+1 end
 		local executed=executedHistogram[trialExecuted] or {actions=trialExecuted,trials=0,successes=0};executedHistogram[trialExecuted]=executed;executed.trials=executed.trials+1;if hit then executed.successes=executed.successes+1 end
@@ -917,12 +922,13 @@ function M.simulate(raw,recipe,options)
 	end
 	local distribution={};for _,bucket in pairs(actionHistogram) do distribution[#distribution+1]=bucket end;table.sort(distribution,function(a,b) return a.actions < b.actions end)
 	local executedDistribution={};for _,bucket in pairs(executedHistogram) do executedDistribution[#executedDistribution+1]=bucket end;table.sort(executedDistribution,function(a,b) return a.actions < b.actions end)
+	local uniqueDistribution={};for _,bucket in pairs(uniqueOutcomes) do uniqueDistribution[#uniqueDistribution+1]=bucket end;table.sort(uniqueDistribution,function(a,b) return a.name<b.name end)
 	local usage={};for _,entry in pairs(resourceUsage) do entry.meanPerTrial=entry.amount/trials;usage[#usage+1]=entry end;table.sort(usage,function(a,b) return a.key<b.key end)
 	assert(totalExecuted > 0 or successes > 0,next(errors) or "Recipe could not execute a supported action; inspect its starting rarity and open affixes")
 	local result={trials=trials,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,seed=seed,maxActions=maxActions,
 		meanActions=totalActions/trials,meanExecutedActions=totalExecuted/trials,failedAttempts=totalActions-totalExecuted,executedActionDistribution=executedDistribution,currencySpent=spent,resourceUsage=usage,unpriced=missing,transitionErrors=errors,warnings=M.hasPartialLock(M.context(model,model.initial),model.initial) and partialWarning(M.recipeWarnings(recipe,model)) or M.recipeWarnings(recipe,model),limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=M.itemText(model,sample),sampleState=sample,
 		engineVersion=2,dataPatch=M.dataPatch,sourceVersion=launch.versionNumber,costCurrency=options.currency or "supplied price units",
-		baseCost=baseCost,retainedSuccesses=retained,retentionLimit=retain,affixDistribution=affixDistribution,propertyDistribution=propertyDistribution,actionDistribution=distribution,successfulActionQuantiles=quantiles(times),routeCounts=routes,budgetExhausted=budgetExhausted,destroyedTrials=destroyedTrials,uniqueTrials=uniqueTrials}
+		baseCost=baseCost,retainedSuccesses=retained,retentionLimit=retain,affixDistribution=affixDistribution,propertyDistribution=propertyDistribution,actionDistribution=distribution,successfulActionQuantiles=quantiles(times),routeCounts=routes,budgetExhausted=budgetExhausted,destroyedTrials=destroyedTrials,uniqueTrials=uniqueTrials,uniqueDistribution=uniqueDistribution}
 	if model.initial.socketLayoutUnknown then unknownSocketWarning(result.warnings) end
 	if not next(missing) then
 		result.meanCost=totalCost/trials;result.costPerSuccess=successes>0 and totalCost/successes or nil;result.spendingQuantiles=quantiles(costSamples);result.successfulSpendingQuantiles=quantiles(successfulCosts)
