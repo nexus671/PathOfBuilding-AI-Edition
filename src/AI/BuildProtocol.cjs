@@ -4,6 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
+const { isDeepStrictEqual } = require('node:util');
 const string = maxLength => ({type:'string',maxLength});
 const integer = (minimum,maximum) => ({type:'integer',minimum,maximum});
 const object = (properties,required = []) => ({type:'object',properties,required,additionalProperties:false});
@@ -89,6 +90,7 @@ function validate(value,schema) {
   if (type === 'number' && (!Number.isFinite(value) || value < (schema.minimum ?? -Infinity) || value > (schema.maximum ?? Infinity))) return false;
   if (type === 'string' && (value.length > (schema.maxLength ?? Infinity) || schema.pattern && !new RegExp(schema.pattern).test(value))) return false;
   if (type === 'array' && (value.length < (schema.minItems ?? 0) || value.length > (schema.maxItems ?? Infinity) || value.some(v => !validate(v,schema.items)))) return false;
+  if (type === 'array' && schema.uniqueItems && value.some((item,index) => value.slice(0,index).some(previous => isDeepStrictEqual(item,previous)))) return false;
   if (type === 'object') {
     if (Object.keys(value).length > (schema.maxProperties ?? Infinity) || (schema.required ?? []).some(k => !Object.hasOwn(value,k))) return false;
     for (const [key,entry] of Object.entries(value)) {
