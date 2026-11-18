@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview517" />
+	<Version number="2.68.1-ai.preview518" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1531,7 +1531,7 @@
 	<File name="Assets/MapCrafting/Items/fe67a5e4f462dcade8c1.png" part="program" sha1="cdcbe9a6ec51981709d2d85585422ecfc7215c49" />
 	<File name="Assets/MapCrafting/Items/fe9057804f643e5cac67.png" part="program" sha1="265e477e74b4fe9e367f42d4b5ec49dbcc8e7d50" />
 	<File name="Assets/MapCrafting/Items/feb1e22c2a978f629ea3.png" part="program" sha1="fdfb325a159372cc0ae86c6e44d9301a8b3743f9" />
-	<File name="Assets/MapCrafting/art.json" part="program" sha1="18ec0cb9f6bfb2bfbbfd281d355377c4846cdb16" />
+	<File name="Assets/MapCrafting/art.json" part="program" sha1="081c34e32e4f6707ab312cdccace9f8bc29fbef9" />
 	<File name="Assets/MapCrafting/items.json" part="program" sha1="e2551261cbd5bb465979e99c42472fc4d9c4a413" />
 	<File name="Assets/ShadedInnerRing.png" part="program" sha1="6ad9088ebaed6646dbd3d231d563dc9611ba4bc6" />
 	<File name="Assets/ShadedInnerRingFlipped.png" part="program" sha1="c13f41ef7cbfc14017a10776d21b121f0e558667" />
@@ -1816,13 +1816,13 @@
 	<File name="Data/Crafting/3.30-harvest-damage.json" part="program" sha1="2c3925fed8cc1e53896c452eaeaf22164e326a1d" />
 	<File name="Data/Crafting/3.30-modifier-overlay.json" part="program" sha1="f59b065e1dd47919e79dc62e0904cca031e8f824" />
 	<File name="Data/Crafting/3.30-unveiled-jewels.json" part="program" sha1="726ee1460440393b9b02b33bba65b00e7cd04862" />
-	<File name="Data/Crafting/3.30.json" part="program" sha1="e7abde06182b0dd3bfc2d2d5ae9bfb7aef6dcb86" />
+	<File name="Data/Crafting/3.30.json" part="program" sha1="270ce124dfb6c80d608ab29ce77f0de77171b776" />
 	<File name="Data/Crafting/Allflame.json" part="program" sha1="b2063d95ad59fae8baf6bee166e3f2f9393c0349" />
 	<File name="Data/Crafting/GwennenReference.json" part="program" sha1="76a38ac343f9a96cbb76ea52b2cda1335a39f663" />
 	<File name="Data/Crafting/HarvestEnchants.json" part="program" sha1="03fef9d0e14feb62dab0fc0192aaf7e51211a25d" />
 	<File name="Data/Crafting/Katakohi.json" part="program" sha1="bfcf1e258c32205abb6cd757f13bedeaa42c6213" />
 	<File name="Data/Crafting/LegacyBench329.lua" part="program" sha1="840251c6ac1b35444a88357f1228e5feb69df905" />
-	<File name="Data/Crafting/Map330.json" part="program" sha1="290cf014ef6185fd6653296baff5e8bdaa00ed5c" />
+	<File name="Data/Crafting/Map330.json" part="program" sha1="06d06208b38eaa201901bd9288559429315c7bba" />
 	<File name="Data/Crafting/MapCorruption330.json" part="program" sha1="18e6c74e545a42aef08651f908603a8d86cd5298" />
 	<File name="Data/Crafting/MemoryStrands.json" part="program" sha1="ed32b21ad297a09f0875c51d982659af2788e6df" />
 	<File name="Data/Crucible.lua" part="program" sha1="efc0f7dca72b476bbffa10f687a270abb89050b2" />

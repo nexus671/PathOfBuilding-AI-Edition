@@ -14,7 +14,15 @@ class CraftingDataStatusTest(unittest.TestCase):
         overlay = load("3.30-modifier-overlay.json")
         bench = load("3.30-bench.json")
         current = load("3.30.json")
-        self.assertEqual({**previous["mods"], **overlay["mods"]}, current["mods"])
+        expected = {**previous["mods"], **overlay["mods"]}
+        corrected = 0
+        for identifier, mod in expected.items():
+            actual = current["mods"][identifier]
+            if mod.get("domain") == "misc" and actual.get("domain") == "jewel":
+                mod["domain"] = "jewel"
+                corrected += 1
+        self.assertEqual(253, corrected)
+        self.assertEqual(expected, current["mods"])
         self.assertEqual(bench["bench"], current["bench"])
         self.assertEqual(bench["benchMods"], current["benchMods"])
 

@@ -4,7 +4,9 @@ describe("Crafting data loading",function()
 		assert.equal("3.30.0.2.2",data.patch);assert.equal("3.30.0.2.2",data.modifierPatch)
 		assert.equal("3.30.0.2.2",data.benchPatch);assert.equal(782,#data.bench)
 		assert.is_truthy(data.benchMods.StrMasterItemGenerationCannotChangeOnePrefixes)
-		assert.equal("f49a9a43f5b06cac7f7125093cfd7ef2f0137650",data.source.commit)
+		assert.equal("585b4b8433079e514bbd6095c7a5af0480c9d824",data.source.commit)
+		assert.equal("jewel",data.mods.AccuracyAndCritsJewel.domain)
+		assert.equal("jewel",data.mods.AddedChaosDamageJewelCorrupted.domain)
 		local support=data.mods.V2SupportedByLifeGainOnHitCorrupted.stats[1]
 		assert.equal(15,support.min);assert.equal(15,support.max)
 		local speed=data.mods.AfflictionJewelSmallPassivesGrantAttackSpeed.groups

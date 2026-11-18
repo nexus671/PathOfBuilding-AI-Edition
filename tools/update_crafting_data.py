@@ -10,7 +10,7 @@ from crafting_data_status import reconstruct_granted_effect_levels, require_chan
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = "repoe-fork/repoe-fork.github.io"
-COMMIT = "f49a9a43f5b06cac7f7125093cfd7ef2f0137650"
+COMMIT = "585b4b8433079e514bbd6095c7a5af0480c9d824"
 PATCH = "3.30.0.2.2"
 FILES = ["mods.json", "fossils.json", "base_items.json", "crafting_bench_options.json"]
 parser = argparse.ArgumentParser(description=__doc__)

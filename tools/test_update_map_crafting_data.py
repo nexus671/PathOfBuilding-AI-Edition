@@ -16,6 +16,8 @@ class MapDataExtractionTest(unittest.TestCase):
         self.assertEqual(baseline["hashes"]["mods.json"], maps["modsSha256"])
         self.assertEqual(baseline["hashes"]["base_items.json"], maps["basesSha256"])
         self.assertIn("MapMonsterAreaOfEffectMapWorlds", maps["mods"])
+        self.assertIn("35% more [Thread|Threads]", maps["mods"]["MapUberModCurses"]["text"])
+        self.assertIn("47% more Currency", maps["mods"]["MapUberModJuggernaut"]["text"])
         self.assertIn("Metadata/Items/Maps/MapWorldsBeach", maps["bases"])
         for tier in range(1, 17):
             self.assertEqual(f"Map (Tier {tier})", maps["bases"][f"Metadata/Items/Maps/MapKeyTier{tier}"]["name"])
