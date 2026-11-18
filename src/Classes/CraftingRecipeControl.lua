@@ -133,6 +133,13 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 			entries[#entries+1]={id=method,label=sim.labels[method],category="Currency",icon=workbench.icon(method),action={method=method},
 				details=details}
 		end
+		for _,entry in ipairs({
+			{method="omen_jeweller",note="Consumes an Omen of the Jeweller and a Jeweller's Orb to maximize sockets."},
+			{method="omen_connections",note="Consumes an Omen of Connections and an Orb of Fusing to link existing sockets."},
+			{method="omen_trichromatism",note="Consumes an Omen of Trichromatism and a Chromatic Orb to guarantee red, green and blue sockets. Extra-colour probabilities are estimated."},
+		}) do
+			entries[#entries+1]={id=entry.method,label=sim.labels[entry.method],category="Socket Omens",icon=workbench.icon(entry.method),action={method=entry.method},details={entry.note,"The item must meet its requirements when this step runs."}}
+		end
 		for _,count in ipairs({1,3}) do entries[#entries+1]={id="bench-reroll-"..count,label="Bench: reroll "..count.." modifier"..(count==1 and "" or "s"),category="Bench",icon=workbench.icon("bench_reroll"),action={method="bench_reroll",count=count},
 			details={"Add this bench action to the recipe without changing the working item.","The item must have enough removable modifiers when this step runs."}} end
 		entries[#entries+1]={id="bench_remove_enchant",label=sim.labels.bench_remove_enchant,category="Bench",icon=workbench.icon("bench_remove_enchant"),action={method="bench_remove_enchant"},
