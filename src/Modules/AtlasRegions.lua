@@ -1,3 +1,4 @@
+-- cspell:ignore jsontype
 -- Manually maintained 3.30 Shaped Region observations, not account state.
 local M={types={"Abyss","Bestiary","Betrayal","Blight","Breach","Expedition","Incursion","Legion","Ritual","Ultimatum"}}
 local known={};for _,name in ipairs(M.types) do known[name]=true end
