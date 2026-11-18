@@ -269,7 +269,7 @@ function Panel.Open(build,source,layout)
 		if value ~= draft.version then
 			controls.version:SelByValue(draft.version,"val")
 			local replacement={id=draft.id,title=controls.title.buf,version=value,budget=atlas.tree(value).maxPoints,nodes={},notes=controls.notes.buf}
-			main:OpenConfirmPopup("Change Atlas version","Changing versions starts an empty draft. Saved plans are kept.","Change",function() if not layout then main:ClosePopup() end;Panel.Open(build,replacement,layout) end)
+			main:OpenConfirmPopup("Change Atlas version","Changing versions starts an empty draft. Saved plans are kept.","Change",function() if layout and layout.replaceAtlas then layout.replaceAtlas(replacement) else if not layout then main:ClosePopup() end;Panel.Open(build,replacement,layout) end end)
 		end
 	end)
 	controls.version:SelByValue(draft.version,"val")
@@ -518,7 +518,7 @@ function Panel.Open(build,source,layout)
 	controls.keep.label=function() return (controls.canvas.routeOverlay or grantSteps) and "Keep current plan" or "Keep plan" end
 	controls.keep.tooltipText=function() return grantSteps and "Keeps the destination draft, not the step preview." or controls.canvas.routeOverlay and "Keeps the current draft, not the route preview. Open Targets to apply the preview first." or "Keep this plan in the build. Save the build to persist it." end
 	controls.library=button(188,height-42,120,"Saved plans",function() Panel.Library(build,layout) end)
-	controls.new=button(320,height-42,120,"New plan",function() if not layout then main:ClosePopup() end;Panel.Open(build,{id="atlas-"..require("sha1")(tostring({})..os.time()):sub(1,12),title="New Atlas plan",version=draft.version,budget=atlas.tree(draft.version).maxPoints,nodes={},notes=""},layout) end)
+	controls.new=button(320,height-42,120,"New plan",function() local plan={id="atlas-"..require("sha1")(tostring({})..os.time()):sub(1,12),title="New Atlas plan",version=draft.version,budget=atlas.tree(draft.version).maxPoints,nodes={},notes=""};if layout and layout.navigate then layout.navigate("atlas",plan) else if not layout then main:ClosePopup() end;Panel.Open(build,plan,layout) end end)
 	openStages=function(view)
 		require("Classes.AtlasPlanningControl").Open(build,current(),function(plan) stageResume=nil;change(plan) end,function(steps,saved,initial,budget,warning)
 			stageResume=saved;grantWarning=warning;clearRouteOverlay();controls.canvas.comparison=nil;controls.page:SelByValue("Tree");grantSteps=copyTable(steps);grantInitial=copyTable(initial);grantBudget=budget;showGrantStep(1)
@@ -610,7 +610,7 @@ function Panel.Library(build,layout)
 	controls.plans=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,32,568,24},list)
 	controls.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,76,0,14},"^7"..(store.warning or "Keep farming strategies in this build. Save the build to persist them."))
 	local function selected() local choice=controls.plans:GetSelValue(); for _,plan in ipairs(store.plans) do if choice and plan.id == choice.val then return plan end end; error("Choose a saved plan") end
-	controls.open=button(16,112,160,"Open plan",function() local plan=selected(); main:ClosePopup(); Panel.Open(build,plan,layout) end)
+	controls.open=button(16,112,160,"Open plan",function() local plan=selected();main:ClosePopup();if layout and layout.navigate then layout.navigate("atlas",plan) else if not layout then main:ClosePopup() end;Panel.Open(build,plan,layout) end end)
 	controls.delete=button(188,112,160,"Delete plan",function()
 		local ok,err=pcall(function() local plan=selected(); store:Remove(plan.id) end)
 		if not ok then main:OpenMessagePopup("Saved Atlas plans",ui.errorText(err)); return end

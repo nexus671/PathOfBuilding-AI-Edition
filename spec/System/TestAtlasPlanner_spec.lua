@@ -8,6 +8,15 @@ describe("Native Atlas planner", function()
 	end
 	before_each(function() newBuild(); bridge.prepared=nil end)
 	after_each(function() bridge.prepared=nil; main.popups={} end)
+	it("replaces the standalone planner when opening a saved plan",function()
+		local first=plan("3.30.0-preview");first.id="first";first.title="First"
+		local second=plan("3.30.0-preview");second.id="second";second.title="Second"
+		build.savers.AtlasPlans:Upsert(first);build.savers.AtlasPlans:Upsert(second)
+		local panel=require("Classes.AtlasPlannerControl").Open(build,first);panel.library:Click()
+		local library=main.popups[1].controls;library.plans:SelByValue("second","val");library.open:Click()
+		assert.equal(1,#main.popups);assert.equal("Second",main.popups[1].controls.title.buf)
+		main.popups[1].controls.close:Click();assert.equal(0,#main.popups)
+	end)
 	it("presents the released 3.30 name without changing saved identifiers",function()
 		assert.equal("3.30.0",atlas.versionLabel("3.30.0-preview"))
 		assert.equal("3.30.0 Ruthless",atlas.versionLabel("3.30.0-preview-ruthless"))
