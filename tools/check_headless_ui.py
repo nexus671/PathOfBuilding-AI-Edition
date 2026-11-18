@@ -13,6 +13,7 @@ from pathlib import Path
 from render_headless_ui import render
 from update_crafting_currency_art import check as check_currency_art
 from update_colour_picker_art import check as check_colour_art
+from update_map_item_art import check as check_map_item_art
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,7 +29,7 @@ def source_hashes():
     sources += list((ROOT / "src/Assets/Atlas").rglob("*"))
     sources += list((ROOT / "src/Data/Atlas").glob("*.json"))
     sources += list((ROOT / "src/Data/Crafting").glob("*.json"))
-    sources += [ROOT / "tools/update_harvest_enchants.py", ROOT / "tools/update_harvest_damage_330.py", ROOT / "tools/update_crafting_data.py", ROOT / "tools/crafting_data_status.py", ROOT / "tools/test_crafting_data_status.py", ROOT / "tools/update_modifier_overlay_330.py", ROOT / "tools/test_modifier_overlay_330.py", ROOT / "tools/update_allflame_data.py", ROOT / "tools/update_map_crafting_art.py", ROOT / "tools/check_map_crafting_art.py"]
+    sources += [ROOT / "tools/update_harvest_enchants.py", ROOT / "tools/update_harvest_damage_330.py", ROOT / "tools/update_crafting_data.py", ROOT / "tools/crafting_data_status.py", ROOT / "tools/test_crafting_data_status.py", ROOT / "tools/update_modifier_overlay_330.py", ROOT / "tools/test_modifier_overlay_330.py", ROOT / "tools/update_allflame_data.py", ROOT / "tools/update_map_crafting_art.py", ROOT / "tools/check_map_crafting_art.py", ROOT / "tools/update_map_item_art.py"]
     sources += list((ROOT / "src/Data/LootFilters").glob("*"))
     sources += list((ROOT / "src/Assets/LootFilters").glob("*"))
     sources += list((ROOT / "src/TreeData/3_30").glob("*"))
@@ -56,6 +57,7 @@ def main():
     assert 1 <= args.workers <= 4, "Use 1 to 4 render workers"
     check_currency_art()
     check_colour_art()
+    check_map_item_art()
     hashes = source_hashes()
     args.output.mkdir(parents=True, exist_ok=True)
     directory = Path(tempfile.mkdtemp(prefix="run-", dir=args.output.resolve()))
@@ -87,6 +89,7 @@ def main():
     assert len(paths) == 1584, f"Expected 1584 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         frame = json.loads((frames / f"{width}-map-clipboard-imported.json").read_text())
+        assert any(c.get("asset") == "Assets/MapCrafting/Items/MapTier5.png" for c in frame["commands"]), "Current map item artwork is missing"
         quality = next(c for c in frame["commands"] if c["kind"] == "text" and "Quality (Pack Size): +20%" in c.get("text", ""))
         card = next(c for c in frame["commands"] if c["kind"] == "rect" and c.get("color") == [0.082352941176471, 0.07843137254902, 0.10196078431373, 1])
         assert (quality["layer"], quality["sublayer"]) > (card["layer"], card["sublayer"]), "Map card obscures quality and modifier details"

@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview512" />
+	<Version number="2.68.1-ai.preview513" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1336,6 +1336,22 @@
 	<File name="Assets/MapCrafting/Items/9d3c9b43eaf4324872df.png" part="program" sha1="c120a2e7ca4f378447a44e1ab5ac2579591370b2" />
 	<File name="Assets/MapCrafting/Items/9d8ed48b218e7722ed20.png" part="program" sha1="a1bac6cf15c0b65fa2fa050aa2b70c0db3969fc3" />
 	<File name="Assets/MapCrafting/Items/9f3ea1d59a85d1f4f20d.png" part="program" sha1="6bc0e2027184a437434b688a5dbd1a050ed296ab" />
+	<File name="Assets/MapCrafting/Items/MapTier1.png" part="program" sha1="907c67023858ecbdff10f1b44be814d3ed5d8ee9" />
+	<File name="Assets/MapCrafting/Items/MapTier10.png" part="program" sha1="f70142a3a5fad53d4f752a4d347126afbb12b162" />
+	<File name="Assets/MapCrafting/Items/MapTier11.png" part="program" sha1="1599accc09307358b80f6dd27b04e3cd1bc5a081" />
+	<File name="Assets/MapCrafting/Items/MapTier12.png" part="program" sha1="599e7537c05f1b3eeb2d79d40e7f2be8c07125e9" />
+	<File name="Assets/MapCrafting/Items/MapTier13.png" part="program" sha1="29a1cc2d324bf3a66e3e03accd4db506021595f0" />
+	<File name="Assets/MapCrafting/Items/MapTier14.png" part="program" sha1="78fe5cf58cfa0906e3f904694ede9a17bb9f9bd7" />
+	<File name="Assets/MapCrafting/Items/MapTier15.png" part="program" sha1="db9b112d7bdcac308f86823f70035c6ab13ffaad" />
+	<File name="Assets/MapCrafting/Items/MapTier16.png" part="program" sha1="9b9dc24039de2d667c8c7322213e8a997c7682c2" />
+	<File name="Assets/MapCrafting/Items/MapTier2.png" part="program" sha1="5f985928762d1c41d52ef407890f3702d2e5a729" />
+	<File name="Assets/MapCrafting/Items/MapTier3.png" part="program" sha1="45c1786739205f2498830ae27017a4d13b764276" />
+	<File name="Assets/MapCrafting/Items/MapTier4.png" part="program" sha1="5bee7763d4193ab7532534a4b0590e708bf306f3" />
+	<File name="Assets/MapCrafting/Items/MapTier5.png" part="program" sha1="9ea78662f8935276ae1fec6dcc7962c6f0811c91" />
+	<File name="Assets/MapCrafting/Items/MapTier6.png" part="program" sha1="ffaf84c469306ee822a549ef12251d931597830e" />
+	<File name="Assets/MapCrafting/Items/MapTier7.png" part="program" sha1="e3c174280fa9845506fb6ff77023e6a20a666b47" />
+	<File name="Assets/MapCrafting/Items/MapTier8.png" part="program" sha1="56574b7b769296ec4ac1d325e86feaf7399bac3c" />
+	<File name="Assets/MapCrafting/Items/MapTier9.png" part="program" sha1="480d729077eb3686d06f7513cdaffbf077ad08a6" />
 	<File name="Assets/MapCrafting/Items/a0262d0a79b77ac1b416.png" part="program" sha1="3872df913e789d7d462963377c1f2beea285ed18" />
 	<File name="Assets/MapCrafting/Items/a0308fce29e2ad8408fa.png" part="program" sha1="77fabeac0c9b0b997f99d7975ebca4b5cde60fac" />
 	<File name="Assets/MapCrafting/Items/a03d893cfb1daa7b2c9f.png" part="program" sha1="06bd291d65f8866ead9d6233754f0d034437e936" />
@@ -1516,6 +1532,7 @@
 	<File name="Assets/MapCrafting/Items/fe9057804f643e5cac67.png" part="program" sha1="265e477e74b4fe9e367f42d4b5ec49dbcc8e7d50" />
 	<File name="Assets/MapCrafting/Items/feb1e22c2a978f629ea3.png" part="program" sha1="fdfb325a159372cc0ae86c6e44d9301a8b3743f9" />
 	<File name="Assets/MapCrafting/art.json" part="program" sha1="18ec0cb9f6bfb2bfbbfd281d355377c4846cdb16" />
+	<File name="Assets/MapCrafting/items.json" part="program" sha1="e2551261cbd5bb465979e99c42472fc4d9c4a413" />
 	<File name="Assets/ShadedInnerRing.png" part="program" sha1="6ad9088ebaed6646dbd3d231d563dc9611ba4bc6" />
 	<File name="Assets/ShadedInnerRingFlipped.png" part="program" sha1="c13f41ef7cbfc14017a10776d21b121f0e558667" />
 	<File name="Assets/ShadedOuterRing.png" part="program" sha1="988dee6e0cf9906d78015bc1762b1d95983e89cb" />
@@ -1709,7 +1726,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="b5b757c324f38b8031de0957e4c8b3ef1351be61" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="7178f8d6d5db5647052e1fa8b66d3b9619fea016" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="28b259800924ed93e257ea8cc10de21b53927b99" />
-	<File name="Classes/MapModifierControl.lua" part="program" sha1="b50777c93dd1536f1e4a19ba83e98cee183df44e" />
+	<File name="Classes/MapModifierControl.lua" part="program" sha1="907eb3bbf1ff57260d4b13303c0a9a7ef6bcbdb7" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
 	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="cfff5d76e380c7bdcbdac229325cefb1599af36c" />
 	<File name="Classes/ModDB.lua" part="program" sha1="1327beebeba14dc8320d137a3dede673b74942af" />

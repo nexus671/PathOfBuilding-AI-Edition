@@ -30,10 +30,11 @@ function M.Open(options)
 	local draftId=initial and initial.id
 	local rollSeed=os.time()%2147483646+1
 	local artManifest;do local f=assert(io.open("Assets/MapCrafting/art.json","rb"));artManifest=assert(require("dkjson").decode(f:read("*a")));f:close() end
+	local itemArt;do local f=assert(io.open("Assets/MapCrafting/items.json","rb"));itemArt=assert(require("dkjson").decode(f:read("*a")));f:close() end
 	local artCache={}
 	local function art()
 		local base=map.source().bases[baseId];local identity=base and base.visual_identity
-		local entry=type(identity)=="table" and artManifest.images[identity.dds_file]
+		local entry=itemArt.images[baseId] or (type(identity)=="table" and artManifest.images[identity.dds_file])
 		if not entry then return nil end
 		if not artCache[entry.path] then local handle=NewImageHandle();handle:Load(entry.path);artCache[entry.path]=handle end
 		return artCache[entry.path],entry
