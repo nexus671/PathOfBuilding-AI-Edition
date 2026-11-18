@@ -704,6 +704,8 @@ async function main(){
   assert.ok(mapBases.mapData.results.some(base=>base.id==='Metadata/Items/Maps/MapWorldsBeach'));
   const mapMods=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:2},'mapData');
   assert.equal(mapMods.mapData.candidates.length,2);assert.equal(mapMods.mapData.nextOffset,2);assert.match(mapMods.mapData.note,/not outcome probabilities/);
+  assert.equal(mapMods.mapData.currencyOptions.find(entry=>entry.id==='chaos').available,true);
+  assert.equal(mapMods.mapData.currencyOptions.find(entry=>entry.id==='transmute').available,false);assert.match(mapMods.mapData.currencyOptions.find(entry=>entry.id==='transmute').reason,/normal map/);
   const magicMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',query:'MapContainsMirageWorlds'},'mapData');
   assert.equal(magicMap.mapData.rarity,'magic');assert.equal(magicMap.mapData.total,0);
   const mapRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'normal',selected:[]},action:'alchemy',seed:42},'mapData');

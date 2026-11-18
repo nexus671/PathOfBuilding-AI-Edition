@@ -19,6 +19,19 @@ describe("Experimental map currency",function()
 		assert.has_error(function() currency.perform(state("magic",{"MapContainsMirageWorlds"}),"regal",1) end)
 		assert.has_error(function() currency.perform(state("normal"),"alchemy",0) end)
 	end)
+	it("explains unavailable currency actions without changing the map",function()
+		local function options(input)
+			local copy=copyTable(input);local result={};for _,entry in ipairs(currency.options(input)) do result[entry.id]=entry end
+			assert.same(copy,input);return result
+		end
+		local normal=options(state("normal"));assert.is_true(normal.alchemy.available);assert.is_false(normal.chaos.available);assert.matches("magic map",normal.alteration.reason)
+		assert.is_false(normal.annul.available);assert.matches("modifier",normal.annul.reason)
+		local magic=currency.perform(state("normal"),"transmute",1).state
+		magic=currency.perform(magic,"augmentation",2).state
+		local m=options(magic);assert.is_false(m.augmentation.available);assert.matches("maximum of two",m.augmentation.reason);assert.is_true(m.regal.available)
+		local rare;for seed=1,100 do local candidate=currency.perform(state("normal"),"alchemy",seed*104729).state;if #candidate.selected==6 then rare=candidate;break end end
+		assert.is_not_nil(rare);local r=options(rare);assert.is_false(r.exalt.available);assert.matches("maximum of six",r.exalt.reason);assert.is_true(r.chaos.available)
+	end)
 	it("adds and removes only one modifier when eligible",function()
 		local rare=currency.perform(state("normal"),"alchemy",123).state
 		local removed=currency.perform(rare,"annul",17).state

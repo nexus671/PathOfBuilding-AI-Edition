@@ -576,8 +576,12 @@ function M.poll(build, force)
 				if request.kind=="estimate_map_rerolls" then return require("Modules.MapCraftEstimate").run(request.state,request.options,checkpoint) end
 				if request.kind=="simulate_map_currency" then return require("Modules.MapCurrency").perform(request.state,request.action,request.seed,checkpoint) end
 				local map=require("Modules.MapCraftingData")
-				return request.kind=="search_map_bases" and map.searchBases(request.query,request.offset,request.limit,checkpoint)
-					or map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint,request.rarity,request.rolls)
+				if request.kind=="search_map_bases" then return map.searchBases(request.query,request.offset,request.limit,checkpoint) end
+				local result=map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint,request.rarity,request.rolls)
+				local state={baseId=request.baseId,tier=request.tier,itemLevel=request.itemLevel,rarity=request.rarity or "rare",selected=request.selected or {},rolls=request.rolls}
+				local ok,options=pcall(require("Modules.MapCurrency").options,state,checkpoint)
+				if ok then result.currencyOptions=options else result.currencyOptionsWarning=require("Modules.PlanningUI").errorText(options) end
+				return result
 			end,function(result)
 				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh map context."}) else publish("mapData",{mapData=result}) end
 			end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Map modifier inspection slice")

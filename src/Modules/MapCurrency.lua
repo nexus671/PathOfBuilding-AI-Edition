@@ -1,6 +1,7 @@
 -- Experimental ordinary-map modifier and stat rolls. Probabilities are estimates.
 local map=require("Modules.MapCraftingData")
 local M={}
+M.actions={{id="transmute",label="Orb of Transmutation"},{id="alchemy",label="Orb of Alchemy"},{id="alteration",label="Orb of Alteration"},{id="chaos",label="Chaos Orb"},{id="augmentation",label="Orb of Augmentation"},{id="regal",label="Regal Orb"},{id="exalt",label="Exalted Orb"},{id="annul",label="Orb of Annulment"},{id="scour",label="Orb of Scouring"}}
 local function rng(seed)
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid map roll seed")
 	return function() seed=seed*16807%2147483647;return seed/2147483647 end
@@ -38,7 +39,7 @@ local function add(state,random,checkpoint,cache)
 	end
 	error("Could not select a map modifier")
 end
-function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
+local function validate(input,checkpoint,cache)
 	assert(type(input)=="table" and type(input.selected)=="table","Invalid map state")
 	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,selected={},rolls={}}
 	for _,id in ipairs(input.selected) do state.selected[#state.selected+1]=id end
@@ -58,6 +59,37 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
 			prior.selected[#prior.selected+1]=id
 		end
 	end
+	return state,existing,priorIds
+end
+function M.reason(state,action)
+	local rarity=state.rarity;local count=#state.selected
+	if action=="transmute" or action=="alchemy" then if rarity~="normal" then return "Requires a normal map." end
+	elseif action=="alteration" or action=="augmentation" or action=="regal" then
+		if rarity~="magic" then return "Requires a magic map." end
+		if action=="augmentation" and count>=2 then return "A magic map already has its maximum of two modifiers." end
+	elseif action=="chaos" or action=="exalt" then
+		if rarity~="rare" then return "Requires a rare map." end
+		if action=="exalt" and count>=6 then return "A rare map already has its maximum of six modifiers." end
+	elseif action=="annul" then if rarity=="normal" or count==0 then return "Requires a magic or rare map with a modifier." end
+	elseif action=="scour" then if rarity=="normal" then return "Requires a magic or rare map." end
+	else return "Unsupported map currency." end
+end
+function M.options(input,checkpoint)
+	local state=validate(input,checkpoint);local result={};local cache={}
+	for _,action in ipairs(M.actions) do
+		local reason=M.reason(state,action.id)
+		if not reason and (action.id=="augmentation" or action.id=="regal" or action.id=="exalt") then
+			local candidateState=copyTable(state);if action.id=="regal" then candidateState.rarity="rare" end
+			if #candidates(candidateState,checkpoint,cache)==0 then reason="No modeled eligible modifier remains." end
+		end
+		result[#result+1]={id=action.id,label=action.label,available=not reason,reason=reason}
+	end
+	return result
+end
+function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
+	local state,existing,priorIds=validate(input,checkpoint,cache)
+	local reason=M.reason(state,action);assert(not reason,reason)
+	local values=require("Modules.MapRollValues")
 	local random=rng(seed)
 	if action=="transmute" or action=="alchemy" then
 		assert(state.rarity=="normal","Requires a normal map")

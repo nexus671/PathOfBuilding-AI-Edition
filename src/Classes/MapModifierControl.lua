@@ -92,9 +92,11 @@ function M.Open(options)
 	button("add",right,height-88,math.floor(rightWidth/2)-6,"Add modifier",function() if candidate then selected[#selected+1]=candidate.id;candidate=nil;offset=0;controls.search:SetText("");refresh() end end)
 	controls.add.enabled=function() return candidate~=nil end
 	button("currency",right+math.floor(rightWidth/2)+6,height-88,math.floor(rightWidth/2)-6,"Use currency",function()
-		local actions={{"transmute","Orb of Transmutation"},{"alchemy","Orb of Alchemy"},{"alteration","Orb of Alteration"},{"chaos","Chaos Orb"},{"augmentation","Orb of Augmentation"},{"regal","Regal Orb"},{"exalt","Exalted Orb"},{"annul","Orb of Annulment"},{"scour","Orb of Scouring"}}
-		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry[1],label=entry[2],icon="Assets/Crafting/"..entry[1]..".png",details={"Experimental map crafting; no real currency is consumed.","Counts, selection and independent uniform stat rolls are estimates.","Unmatched translations remain ranges; base availability and some restrictions are unverified."}} end
-		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",choose=function(entry)
+		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=controls.rarity:GetSelValueByKey("val"),selected=selected,rolls=rolls}
+		local ok,actions=pcall(require("Modules.MapCurrency").options,current)
+		if not ok then main:OpenMessagePopup("Map currency",ui.errorText(actions));return end
+		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon="Assets/Crafting/"..entry.id..".png",details={entry.reason or "Available for this modeled map.","Experimental map crafting; no real currency is consumed.","Counts, selection and independent uniform stat rolls are estimates.","Unmatched translations remain ranges; base availability and some restrictions are unverified."}} end
+		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",canChoose=function(entry) return entry.available end,choose=function(entry)
 			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=controls.rarity:GetSelValueByKey("val"),selected=selected,rolls=rolls}
 			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,rollSeed)
 			if not ok then main:OpenMessagePopup("Currency unavailable",ui.errorText(result));return end
