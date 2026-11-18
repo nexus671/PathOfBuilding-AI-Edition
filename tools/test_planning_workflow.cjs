@@ -86,6 +86,10 @@ async function main(){
   assert.equal(conversionOdds.nativeCrafting.successChance,100);assert.equal(conversionOdds.nativeCrafting.sampled,false);
   const conversionPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:incursionRaw,recipe:{steps:[swap],targets:target},options:{trials:2,maxActions:1,seed:1}},'crafted');
   assert.equal(conversionPlan.nativeCrafting.successes,2);assert.ok(conversionPlan.nativeCrafting.sampleItem.includes('Cold Resistance'));
+  const pricedConversion=await queued('simulate_crafting',{baseRevision:context.revision,itemText:incursionRaw,recipe:{steps:[swap],targets:target},options:{trials:2,maxActions:1,seed:1,priceBook:{currency:'chaos',source:'Manual',quotedAt:1700000000,values:{harvest_resistance:2,'harvest_resistance:fire:cold':7}}}},'crafted');
+  assert.equal(pricedConversion.nativeCrafting.stepPriceKeys[0].priceKey,'harvest_resistance:fire:cold');assert.equal(pricedConversion.nativeCrafting.meanCost,7);
+  const legacyConversion=await queued('simulate_crafting',{baseRevision:context.revision,itemText:incursionRaw,recipe:{steps:[swap],targets:target},options:{trials:2,maxActions:1,seed:1,currency:'chaos',actionPrices:{harvest_resistance:2}}},'crafted');
+  assert.equal(legacyConversion.nativeCrafting.meanCost,2);assert.equal(legacyConversion.nativeCrafting.actionPriceOverridesApplied,2);
   const incursionOptions=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:incursionRaw,query:'Fire Resistance',limit:100},'inspected');
   assert.ok(incursionOptions.crafting.nativeEngine.bench.some(entry=>!entry.available && /group is already present/.test(entry.unavailableReason || '')));
   const dropInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'FireResistEnhancedLevel50ModPhys',limit:10},'inspected');
