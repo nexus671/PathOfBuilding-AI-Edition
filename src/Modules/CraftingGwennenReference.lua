@@ -10,7 +10,7 @@ local function data()
 	return cache
 end
 function M.search(query,limit)
-	local source=data();local rows={};query=(query or ""):lower();limit=math.max(0,math.min(limit or 50,100))
+	local source=data();local model=require("Modules.CraftingGwennen");local rows={};query=(query or ""):lower();limit=math.max(0,math.min(limit or 50,100))
 	local count=0
 	for _,entry in ipairs(source.offers) do
 		local description=entry.description:gsub("%[([^|%]]+)|([^%]]+)%]","%2")
@@ -18,7 +18,7 @@ function M.search(query,limit)
 		if haystack:find(query,1,true) then
 			count=count+1
 			if #rows<limit then
-				local row={id=entry.id,description=description,functionName=entry["function"],arguments=entry.arguments,family=entry.family}
+				local row={id=entry.id,description=description,functionName=entry["function"],arguments=entry.arguments,family=entry.family,modeled=model.supports(entry.id)}
 				if entry.id==1030 then row.note="The displayed 100 rerolls conflict with the listed function argument of 50. Choose a scenario; actual behavior is unverified." end
 				if entry.id==1020 or entry.id==1021 or entry.id==1043 or entry.id==1044 then row.note="Experimental: distinct random ordinary modifiers change to uniquely identified adjacent legal tiers. Selection and tier rules are unverified." end
 				if entry.id==1018 or entry.id==1019 then row.note="The model assumes the number of modifiers on this side stays the same; Gwennen's behavior is unverified." end
@@ -34,7 +34,7 @@ function M.search(query,limit)
 			end
 		end
 	end
-	return {offers=rows,total=count,source=source.source,sourceSha256=source.sourceSha256,reportedPatch=source.reportedPatch,
-		note="Reference only: not available crafting actions. Item eligibility, pair generation, coin odds, costs and modifier interactions are not modeled or verified."}
+	return {offers=rows,total=count,catalogModeledCount=model.supportedCount(),source=source.source,sourceSha256=source.sourceSha256,reportedPatch=source.reportedPatch,
+		note="Modeled identifies experimental observed-pair branches, not item eligibility or offer probabilities. Check the current item and both branches before applying; the disputed socket outcome requires a scenario. Pair generation, coin odds, costs and modifier interactions are not verified."}
 end
 return M
