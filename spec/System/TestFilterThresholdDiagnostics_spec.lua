@@ -87,4 +87,20 @@ describe("Filter threshold conflict diagnostics",function()
   assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n Class == "Boots" "Helmets"\n AreaLevel < 80\nHide\n Class == "Boots"\n AreaLevel <= 80')))
   assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n Class == "Boots" "Helmets"\n AreaLevel < 80\n Rarity Rare\nHide\n Class == "Boots"\n AreaLevel <= 70\n Rarity Magic')))
  end)
+ it("finds two simultaneously narrower bounds without inventing conflicts",function()
+  local limits={"> 10",">= 10",">= 20","< 20","<= 20"}
+  for _,a in ipairs(limits) do for _,b in ipairs(limits) do for _,c in ipairs(limits) do for _,d in ipairs(limits) do
+   local parsed=parser.parse('Show\n ItemLevel '..a..'\n AreaLevel '..b..'\nHide\n AreaLevel '..d..'\n ItemLevel '..c)
+   for _,warning in ipairs(diagnostics.shadowing(parsed)) do
+    for _,itemLevel in ipairs({0,10,11,19,20,21}) do for _,areaLevel in ipairs({0,10,11,19,20,21}) do
+     local item={ItemLevel=itemLevel,AreaLevel=areaLevel};local function matches(rule) for _,condition in ipairs(rule.conditions) do if not parser.condition(condition,item) then return false end end;return true end
+     assert.is_false(matches(parsed.rules[2]) and not matches(parsed.rules[1]),warning.warning)
+    end end
+   end
+  end end end end
+  local text='Show\n ItemLevel >= 70\n AreaLevel >= 70\nHide\n AreaLevel >= 80\n ItemLevel >= 80'
+  assert.equal(1,#diagnostics.shadowing(parser.parse(text)))
+  assert.equal(0,#diagnostics.shadowing(parser.parse(text:gsub('Hide',' Continue\nHide'))))
+  assert.equal(0,#diagnostics.shadowing(parser.parse(text:gsub('AreaLevel >= 80','AreaLevel >= 60'))))
+ end)
 end)

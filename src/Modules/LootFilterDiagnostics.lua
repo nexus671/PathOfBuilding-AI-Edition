@@ -20,9 +20,9 @@ local function covers(previous,current)
  return current.direction=="lower" and previous.value<current.value or current.direction=="upper" and previous.value>current.value
 end
 function M.shadowing(parsed)
- local seen,thresholds,sets,combined,diagnostics={},{},{},{},{};local terminal
+ local seen,thresholds,sets,combined,paired,diagnostics={},{},{},{},{},{};local terminal
  for _,rule in ipairs(parsed.rules) do
-  local conditions,variants={},{}
+  local conditions,variants,pairsToIndex={},{},{}
   if not terminal then for _,condition in ipairs(rule.conditions) do conditions[#conditions+1]=encoded(condition) end end
   table.sort(conditions);local parts={};for _,condition in ipairs(conditions) do parts[#parts+1]=field(condition) end
   local key=table.concat(parts);local prior=terminal or seen[key];local broader=false
@@ -86,6 +86,32 @@ function M.shadowing(parsed)
    end
   end
   if not prior then
+   -- Two numeric bounds may both narrow while all other conditions stay the
+   -- same. Bound the index and skip repeated signatures to avoid ambiguity.
+   local limits={}
+   if #conditions<=16 then for _,condition in ipairs(rule.conditions) do
+    local value=bound(condition)
+    if value then limits[#limits+1]={condition=condition,bound=value,signature=field(condition.keyword)..field(value.direction)} end
+   end end
+   table.sort(limits,function(a,b) return a.signature<b.signature end)
+   for first=1,#limits do for second=first+1,#limits do
+    local a,b=limits[first],limits[second]
+    if a.signature~=b.signature then
+     local other,removedA,removedB={},false,false;local keyA,keyB=encoded(a.condition),encoded(b.condition)
+     for _,value in ipairs(conditions) do
+      if not removedA and value==keyA then removedA=true
+      elseif not removedB and value==keyB then removedB=true
+      else other[#other+1]=field(value) end
+     end
+     local group=field(a.signature)..field(b.signature)..table.concat(other)
+     for _,candidate in ipairs(paired[group] or {}) do
+      if covers(candidate.a,a.bound) and covers(candidate.b,b.bound) and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
+     end
+     pairsToIndex[#pairsToIndex+1]={group=group,a=a.bound,b=b.bound}
+    end
+   end end
+  end
+  if not prior then
    for _,condition in ipairs(rule.conditions) do
     local current=bound(condition)
     local exact=(condition.operator=="=" or condition.operator=="==") and numeric[condition.keyword]
@@ -117,6 +143,10 @@ function M.shadowing(parsed)
    diagnostics[#diagnostics+1]={line=rule.line,shadowedBy=prior.line,warning="This block cannot be reached: a preceding terminating block at line "..prior.line.." "..explanation}
   elseif not rule.continue then
    seen[key]=rule;if #conditions==0 then terminal=rule end
+   for _,pair in ipairs(pairsToIndex) do
+    local candidates=paired[pair.group] or {};paired[pair.group]=candidates
+    if #candidates<32 then candidates[#candidates+1]={rule=rule,a=pair.a,b=pair.b} end
+   end
    if #conditions<=16 then for _,list in ipairs(rule.conditions) do
     if (list.keyword=="BaseType" or list.keyword=="Class") and list.operator=="==" and #list.values>0 and #list.values<=256 then
      for _,limit in ipairs(rule.conditions) do
