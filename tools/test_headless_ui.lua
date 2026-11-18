@@ -77,6 +77,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("copy");assert(json.decode(ui.clipboard).atlasPlan.version=="3.30.0-preview-ruthless","Ruthless plan export lost its mode")
 	frame("atlas-ruthless-sharing");ui:choose("page","Tree")
 	ui:choose("version","3.29.3","val");ui:click("confirm");frame("atlas-start");assert(not build.controls.statBox:IsShown(),"Build sidebar should be hidden while planning")
+	ui:click("tools");ui:text("search","Thread restrictions");ui:click("choose");ui:text("level","73");ui:text("threads","2");frame("atlas-thread-restrictions")
+	do local lines={};for _,row in ipairs(main.popups[1].controls.results.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;local text=table.concat(lines," ");assert(text:find("Conditions met",1,true) and text:find("Restricted",1,true),"Thread thresholds were not displayed") end
+	ui:click("close")
 	ui:click("tools");ui:text("search","Map modifier explorer");ui:click("choose");frame("map-modifier-explorer")
 	do
 		ui.clipboard="Item Class: Maps\nRarity: Rare\nVortex Artifice\nMap (Tier 5)\n--------\nQuality (Pack Size): +20% (augmented)\n--------\nItem Level: 68\n--------\nMonster Level: 72\n--------\nArea is Influenced by the Originator's Memories (implicit)\nPlayers are Delirious (enchant)\n--------\nMonsters have 45% increased Area of Effect\nMonsters deal 55% extra Physical Damage as Fire\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."

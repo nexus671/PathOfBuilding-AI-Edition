@@ -400,7 +400,7 @@ function M.report(plan)
 	table.sort(lines,function(a,b) return a.text < b.text end); table.sort(notables); table.sort(keystones)
 	local releaseMatch=plan.version=="3.30.0-preview" or plan.version=="3.30.0-preview-ruthless"
 	return {version=plan.version,displayVersion=M.versionLabel(plan.version),releaseTag=releaseMatch and "3.30.0" or nil,releaseCheckedAt=releaseMatch and "2026-11-18" or nil,mode=tree.mode=="ruthless" and "Ruthless" or "Standard",preview=tree.preview,compatibleModes=tree.compatibleModes,used=#plan.nodes,budget=plan.budget,bonus=bonus,remaining=plan.budget+bonus-#plan.nodes,budgetReachable=reachable,budgetWarning=budgetWarning,pointsBeforeGrant=pointsBeforeGrant,grantRoute=grantRoute,
-		counts=counts,notables=notables,keystones=keystones,stats=lines,missingChoices=missingChoices,source=tree.source,sourceCommit=tree.commit,
+		counts=counts,notables=notables,keystones=keystones,stats=lines,missingChoices=missingChoices,source=tree.source,sourceCommit=tree.commit,threadRestrictions=releaseMatch and require("Modules.AtlasStrategy").threadRestrictionReference() or nil,
 		limitations={"Atlas plans do not modify character DPS or EHP.","Stat lines are grouped as displayed, not combined into effective map odds. Keystone interactions are not simulated.","Budget is supplied progression, not imported account completion. Small optimized routes can be exact; larger routes use a heuristic."}}
 end
 function M.export(plan)

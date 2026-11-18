@@ -453,6 +453,7 @@ function Panel.Open(build,source,layout)
 		clearRouteOverlay();exitGrantRoute()
 		local entries={
 			{id="mapModifiers",label="Map modifier explorer",details={"Inspect hypothetical modifiers on an ordinary map.","Uses pinned 3.30 source data; does not roll an item or calculate odds."}},
+			{id="threadRestrictions",label="Thread restrictions",details={"Check minimum area levels and Thread counts for seven dangerous modifiers.","Based on 3.30.0b Hotfix 3; offer odds are not modeled."}},
 			{id="mapDrafts",label="Saved map drafts",details={"Open or remove map drafts kept in this Atlas plan.","Keep the plan and save the build to persist changes."}},
 			{id="presets",label="Strategy starting points",details={"Connect up to three nearby unallocated notables for a mechanic.","Generated from this version's bundled tree, within your budget.","Editable starting routes, not recommendations for farming profit."}},
 			{id="compare",label="Compare with a saved plan",details={"Review added nodes, removed nodes and changed bonus lines.","Both plans must use the same Atlas version."}},
@@ -463,6 +464,7 @@ function Panel.Open(build,source,layout)
 		browser.Open("Atlas plan tools",entries,{closeOnChoose=false,action="Open",choose=function(entry)
 			main:ClosePopup()
 			if entry.id=="mapModifiers" then openMapDraft()
+			elseif entry.id=="threadRestrictions" then require("Classes.AtlasThreadControl").Open()
 			elseif entry.id=="mapDrafts" then showMapDrafts()
 			elseif entry.id=="presets" then
 				local choices={};for i,preset in ipairs(strategy.presets(current())) do local lines={preset.mechanic,"Adds "..(#preset.plan.nodes-#draft.nodes).." points to the current draft.","Compares target orders; keeps existing allocations.",preset.routing and preset.routing.saved and "Order comparison saved "..preset.routing.saved.." points." or "No global optimum is assumed."};for _,id in ipairs(preset.targets) do lines[#lines+1]=controls.canvas.tree.nodes[id].name end;choices[#choices+1]={id=i,label=preset.label,category=preset.mechanic,details=lines,plan=preset.plan} end

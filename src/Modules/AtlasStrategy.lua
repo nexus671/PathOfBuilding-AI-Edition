@@ -2,6 +2,27 @@
 -- Presentation queries over the pinned graph; no character or map-odds simulation.
 local atlas=require("Modules.AtlasPlanner")
 local M={mechanics={"Maps","Essence","Harvest","Expedition","Breach","Legion","Blight","Delirium","Ritual","Beyond","Abyss","Strongboxes","Shrines","Heist","Delve","Bestiary","Incursion","Betrayal","Ultimatum","Bosses","Mirage","Wildwood","Sentinels","Torment","Rogue Exiles","Mercenaries","Ore Deposits","Threads"}}
+local threadRestrictions={
+	{mechanic="Blight",effect="Sleeping Pantheon god replaces the pump",areaLevel=73},
+	{mechanic="Abyss",effect="Rare monsters have an additional Abyssal modifier",areaLevel=80},
+	{mechanic="Ultimatum",effect="Double Down encounters",areaLevel=73},
+	{mechanic="Bestiary",effect="Monsters empowered with wisps",areaLevel=80},
+	{mechanic="Betrayal",effect="Catarina accompanies encounters",areaLevel=80},
+	{mechanic="Betrayal",effect="Syndicate members gain Rare Monster modifiers",areaLevel=80},
+	{mechanic="Breach",effect="Rare monsters gain an additional Breach modifier",areaLevel=73},
+}
+-- The patch describes necessary conditions, not an exhaustive offer pool or odds.
+function M.threadRestrictionReference()
+	local rows=copyTable(threadRestrictions);for _,row in ipairs(rows) do row.minimumThreads=2 end
+	return {modifiers=rows,patch="3.30.0b Hotfix 3",source="https://www.pathofexile.com/forum/view-thread/4015683",note="These seven published restrictions are necessary conditions only. Other requirements, offer availability and probabilities are not modeled."}
+end
+function M.threadRestrictions(areaLevel,threads)
+	assert(type(areaLevel)=="number" and areaLevel==math.floor(areaLevel) and areaLevel>=1 and areaLevel<=100,"Use an area level from 1 to 100")
+	assert(type(threads)=="number" and threads==math.floor(threads) and threads>=0 and threads<=100,"Use a non-negative whole Thread count up to 100")
+	local result=M.threadRestrictionReference();result.areaLevel=areaLevel;result.threads=threads
+	for _,row in ipairs(result.modifiers) do row.restrictionsMet=threads>=row.minimumThreads and areaLevel>=row.areaLevel end
+	return result
+end
 local aliases={Maps={"map","kirac"},Bosses={"boss","shaper","elder","maven","eater","exarch"},Strongboxes={"strongbox"},Shrines={"shrine"},Heist={"heist","smuggler","blueprint"},Bestiary={"beast","einhar"},Incursion={"incursion","alva"},Betrayal={"syndicate","jun","veiled item"},Delve={"sulphite","niko"},Harvest={"harvest","sacred grove","sacred flora","sacred fauna","sacred specimen","lifeforce"},Wildwood={"viridian wildwood","wildwood chance"},Sentinels={"sentinel"},Torment={"tormented spirit","tormented procurator"},["Rogue Exiles"]={"rogue exile"},Mercenaries={"mercenary","mercenaries","trarthan"},["Ore Deposits"]={"ore deposit","smelted bar","marking ore","kalguuran scarab"},Threads={"thread"}}
 local wholeWord={alva=true,jun=true,niko=true,kirac=true,einhar=true,shaper=true,elder=true,maven=true,eater=true,exarch=true}
 local searchTextCache=setmetatable({},{__mode="k"})
