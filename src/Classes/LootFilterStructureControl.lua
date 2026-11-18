@@ -4,7 +4,7 @@ local M={}
 function M.Open(profile,edit)
 	local outline=structure.outline(profile);local c={};local w,h=math.min(1080,main.screenW-40),math.min(720,main.screenH-60)
 	local left=200;local middle=math.floor((w-left-64)*0.48);local listX=left+32;local detailX=listX+middle+16;local detailW=w-detailX-16
-	local selected,section,category;local collapsed={};for _,entry in ipairs(outline.sections) do collapsed[entry.id]=true end
+	local selected,section,category,blocking,returnView;local collapsed={};for _,entry in ipairs(outline.sections) do collapsed[entry.id]=true end
 	local function button(key,x,y,width,label,run) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,run) end
 	c.search=new("EditControl"):EditControl(ui.anchor,{16,28,w-276,28},"","Search names, properties or source text",nil,160)
 	c.mode=new("DropDownControl"):DropDownControl(ui.anchor,{w-244,28,228,28},{"All blocks","Priority conflicts","Warnings / errors","Continue blocks","Hidden blocks"})
@@ -14,7 +14,7 @@ function M.Open(profile,edit)
 	c.blocks=new("TextListControl"):TextListControl(ui.anchor,{listX,142,middle,h-250},nil,{})
 	c.details=new("TextListControl"):TextListControl(ui.anchor,{detailX,142,detailW,h-250},nil,{})
 	local function show(entry)
-		selected=entry;local lines={entry and entry.title or "No matching blocks"}
+		selected=entry;blocking=structure.blockingEntry(outline,entry);local lines={entry and entry.title or "No matching blocks"}
 		if entry then
 			lines[#lines+1]=entry.sectionTitle.." / "..entry.category;lines[#lines+1]="Compiled line "..entry.line.." | "..entry.block.action..(entry.block.continue and " + Continue" or " + stop")
 			lines[#lines+1]=entry.editable and "Editing updates this personal rule." or "Editing creates a higher-priority personal override."
@@ -40,6 +40,28 @@ function M.Open(profile,edit)
 	end
 	ui.selectable(c.sections,function(row) return row.id end,function(row) section=row.section;category=row.category;c.blocks.controls.scrollBar.offset=0;refreshBlocks() end,function(row) if row.branch then collapsed[row.section]=not collapsed[row.section];refreshSections() end end)
 	ui.selectable(c.blocks,function(row) return row.entry and row.entry.id end,function(row) show(row.entry) end)
+	local actionWidth=math.floor((detailW-8)/2)
+	local function reveal(entry)
+		for index,row in ipairs(c.blocks.list) do if row.entry and row.entry.id==entry.id then
+			local _,height=c.blocks:GetSize();local maximum=math.max(0,#c.blocks.list*58-(height-4))
+			c.blocks.controls.scrollBar.offset=math.min(maximum,math.max(0,(index-1)*58-20));return
+		end end
+	end
+	button("blocking",detailX,h-98,actionWidth,"View earlier rule",function()
+		if not blocking then return end
+		returnView={entry=selected,section=section,category=category,sectionKey=c.sections.selectedKey,query=c.search.buf,mode=c.mode:GetSelValue(),offset=c.blocks.controls.scrollBar.offset}
+		local target=blocking;section=nil;category=nil;c.sections.selectedKey="all";c.search:SetText("");c.mode:SelByValue("All blocks");selected=target
+		refreshSections();refreshBlocks();reveal(target)
+	end)
+	c.blocking.enabled=function() return blocking~=nil end
+	c.blocking.tooltipText="Open the earlier terminating rule that makes this block unreachable."
+	button("backConflict",detailX+actionWidth+8,h-98,detailW-actionWidth-8,"Back to conflict",function()
+		if not returnView then return end
+		local saved=returnView;returnView=nil;section=saved.section;category=saved.category;c.sections.selectedKey=saved.sectionKey
+		c.search:SetText(saved.query);c.mode:SelByValue(saved.mode);selected=saved.entry;refreshSections();refreshBlocks();c.blocks.controls.scrollBar.offset=saved.offset
+	end)
+	c.backConflict.enabled=function() return returnView~=nil end
+	c.backConflict.tooltipText="Return to the previous conflict, search and section."
 	ui.label(c,"count",16,h-90,"",13)
 	ui.label(c,"imports",16,h-66,#outline.report.imports>0 and "External Import files are unresolved. The structure shows only this file's active blocks." or "Only active compiled blocks appear. Disabled personal rules remain in Customize.",12)
 	button("edit",16,h-42,220,"Edit selected block",function() assert(selected,"Choose a block");local rule=selected.rule;main:ClosePopup();edit(rule) end);c.edit.enabled=function() return selected~=nil and edit~=nil end

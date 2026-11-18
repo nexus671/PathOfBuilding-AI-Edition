@@ -24,6 +24,21 @@ describe("Compiled filter structure",function()
 		local view=structure.outline(p);local conflicts=structure.filter(view,"",nil,nil,"Priority conflicts")
 		assert.equal(1,#conflicts);local reason=structure.diagnostics(view,conflicts[1])[1]
 		assert.is_truthy(reason.shadowedBy);assert.matches("every item matched",reason.warning)
+		local blocker=structure.blockingEntry(view,conflicts[1]);assert.is_not_nil(blocker);assert.equal(reason.shadowedBy,blocker.line);assert.matches("ItemLevel >= 70",blocker.text,1,true);assert.is_nil(structure.blockingEntry(view,blocker))
+	end)
+	it("opens a blocking rule and restores the prior filtered view",function()
+		main.popups={};local p=filters.profile("navigation","Navigation");local lines={}
+		for index=1,35 do lines[#lines+1]='Show\n BaseType == "Example '..index..'"' end
+		lines[#lines+1]='Show\n ItemLevel >= 70';lines[#lines+1]='Hide\n ItemLevel >= 80';p.template=table.concat(lines,"\n")
+		local c=require("Classes.LootFilterStructureControl").Open(p)
+		local section;for _,row in ipairs(c.sections.list) do if row.id=="base" then section=row end end;assert.is_not_nil(section)
+		c.sections.planningSelect(section,false);c.mode:SelByValue("Priority conflicts");c.mode.selFunc();c.search:SetText("ItemLevel >= 80",true)
+		assert.is_true(c.blocking:IsEnabled());assert.is_false(c.backConflict:IsEnabled());c.blocking:Click()
+		assert.equal("All blocks",c.mode:GetSelValue());assert.equal("",c.search.buf);assert.equal("all",c.sections.selectedKey);assert.is_true(c.blocks.controls.scrollBar.offset>0)
+		local lines={};for _,row in ipairs(c.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;assert.matches("ItemLevel >= 70",table.concat(lines," "),1,true)
+		c.backConflict:Click();assert.equal("Priority conflicts",c.mode:GetSelValue());assert.equal("ItemLevel >= 80",c.search.buf);assert.equal("base",c.sections.selectedKey)
+		lines={};for _,row in ipairs(c.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;assert.matches("ItemLevel >= 80",table.concat(lines," "),1,true);assert.is_false(c.backConflict:IsEnabled())
+		main:ClosePopup()
 	end)
 	it("exposes a covered base-type list in the structure browser",function()
 		local p=filters.profile("base-list","Base list");p.template='Show\n BaseType == "Iron Hat" "Wool Shoes"\nHide\n BaseType == "Wool Shoes"'

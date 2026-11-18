@@ -17,7 +17,7 @@ function M.outline(profile,raw,report,parsed)
 	if filters.needsSafety(profile) then for class in pairsSortByKey(filters.patch().added) do add("safety","3.30 item safety",{title=class,text=""},library.category({text='Class == "'..class..'"'})) end end
 	for _,entry in ipairs(library.catalog(profile)) do add("base","Base preset",entry.rule,entry.category) end
 	assert(#sources==#parsed.rules,"Compiled filter structure does not match its sources")
-	local entries,sections,bySection={},{},{}
+	local entries,sections,bySection,byLine={},{},{},{}
 	for i,block in ipairs(parsed.rules) do
 		local source=sources[i];local section=bySection[source.section]
 		if not section then section={id=source.section,title=source.sectionTitle,count=0,categories={}};bySection[section.id]=section;sections[#sections+1]=section end
@@ -25,11 +25,18 @@ function M.outline(profile,raw,report,parsed)
 		local text=table.concat(block.rawLines,"\n");local rule=copyTable(source.rule);rule.id=source.overrideId;rule.text=text;rule.enabled=true
 		entries[#entries+1]={id=i,title=source.rule.title or block.title or "Filter block",section=section.id,sectionTitle=section.title,category=source.category,line=block.line,
 			lastLine=parsed.rules[i+1] and parsed.rules[i+1].line-1 or parsed.lineCount,block=block,text=text,rule=rule,editable=source.editable}
+		byLine[block.line]=entries[#entries]
 	end
-	return {entries=entries,sections=sections,report=report,raw=raw}
+	return {entries=entries,sections=sections,byLine=byLine,report=report,raw=raw}
 end
 function M.diagnostics(outline,entry)
 	local result={};for _,d in ipairs(outline.report.diagnostics) do if d.line>=entry.line and d.line<=entry.lastLine then result[#result+1]=d end end;return result
+end
+function M.blockingEntry(outline,entry)
+	if not entry then return nil end
+	for _,diagnostic in ipairs(M.diagnostics(outline,entry)) do
+		if diagnostic.shadowedBy then return (outline.byLine or {})[diagnostic.shadowedBy] end
+	end
 end
 function M.filter(outline,query,section,category,mode)
 	query=(query or ""):lower();local result={}

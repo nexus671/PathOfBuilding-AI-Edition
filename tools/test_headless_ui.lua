@@ -1666,7 +1666,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		local c=require("Classes.LootFilterStructureControl").Open(example)
 		ui:choose("mode","Priority conflicts");local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
 		assert(table.concat(details," "):gsub("%s+"," "):find("matches every item matched",1,true),"Rarity priority conflict was not explained")
-		frame("filter-rarity-conflict");ui:click("close")
+		frame("filter-rarity-conflict");ui:text("search","Rarity > Rare")
+		assert(c.blocking:IsEnabled() and not c.backConflict:IsEnabled(),"Blocking rule navigation is unavailable")
+		ui:click("blocking");assert(c.mode:GetSelValue()=="All blocks" and c.search.buf=="", "Blocking rule did not clear the active filters")
+		local earlier={};for _,row in ipairs(c.details.list) do earlier[#earlier+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(earlier," "):find("Rarity == Unique",1,true),"The wrong blocking rule was selected")
+		frame("filter-priority-blocker");ui:click("backConflict");assert(c.mode:GetSelValue()=="Priority conflicts" and c.search.buf=="Rarity > Rare", "Returning lost the previous view")
+		local returned={};for _,row in ipairs(c.details.list) do returned[#returned+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(returned," "):find("Rarity > Rare",1,true),"Returning lost the selected conflict")
+		frame("filter-priority-return");ui:click("close")
 	end
 	do
 		local example=require("Modules.LootFilters").profile("subset-example","Subset example")
