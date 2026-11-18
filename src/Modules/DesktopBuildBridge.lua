@@ -580,9 +580,11 @@ function M.poll(build, force)
 				if request.kind=="search_map_bases" then return map.searchBases(request.query,request.offset,request.limit,checkpoint) end
 				assert(not request.unidentified or request.rarity~="normal","Normal maps cannot be unidentified")
 				assert(not request.unidentified or not request.selected or #request.selected==0,"Unidentified map modifiers are unknown")
+				assert(not request.vaalPreview or request.corrupted and (request.rarity or "rare")=="rare","A conditional Vaal preview requires a corrupted rare map")
 				local result=map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint,request.rarity,request.rolls,request.corrupted,request.implicit,request.quality,request.observedEffects)
-				result.mirrored=request.mirrored or nil;result.unidentified=request.unidentified or nil
+				result.mirrored=request.mirrored or nil;result.unidentified=request.unidentified or nil;result.vaalPreview=request.vaalPreview or nil
 				if request.unidentified then result.summary=nil;result.counts=nil;result.candidates={};result.total=nil;result.nextOffset=nil;result.note="Unidentified map: explicit modifiers and their totals are unknown.";result.unidentifiedOpeningBonus={atlasDrops=30,condition="When opened unidentified"} end
+				if request.vaalPreview then result.note=result.note.." Based on a conditional Vaal preview; outcome odds are not modeled." end
 				local state={baseId=request.baseId,tier=request.tier,itemLevel=request.itemLevel,rarity=request.rarity or "rare",selected=request.selected or {},rolls=request.rolls,corrupted=request.corrupted,mirrored=request.mirrored,unidentified=request.unidentified,quality=request.quality,observedEffects=request.observedEffects}
 				local ok,options=pcall(require("Modules.MapCurrency").options,state,checkpoint)
 				if ok then result.currencyOptions=options else result.currencyOptionsWarning=require("Modules.PlanningUI").errorText(options) end

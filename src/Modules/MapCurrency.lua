@@ -44,6 +44,8 @@ local function add(state,random,checkpoint,cache,requiredSide,exclusive)
 end
 local function validate(input,checkpoint,cache)
 	assert(type(input)=="table" and type(input.selected)=="table","Invalid map state")
+	assert(input.vaalPreview==nil or type(input.vaalPreview)=="boolean","Invalid conditional Vaal preview marker")
+	assert(not input.vaalPreview or input.corrupted and input.rarity=="rare","A conditional Vaal preview requires a corrupted rare map")
 	assert(not input.corrupted,"Corrupted maps cannot be modified with these currencies")
 	assert(not input.mirrored,"Mirrored maps cannot be modified with these currencies")
 	assert(not input.unidentified,"Identify the map before simulating currency")
@@ -130,7 +132,7 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
 	elseif action=="scour" then assert(state.rarity~="normal","Requires a magic or rare map");state.rarity="normal";state.selected={}
 	elseif action=="vaal_add" then
 		-- Preview only this outcome; no Vaal outcome probability is implied.
-		state.corrupted=true
+		state.corrupted=true;state.vaalPreview=true
 		for _=1,math.min(2,9-#state.selected) do add(state,random,checkpoint,cache) end
 	else error("Unsupported map currency") end
 	if action=="chaos" and map.isNightmare(state.baseId) then

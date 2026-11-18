@@ -166,7 +166,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(table.concat(details," "):gsub("%s+"," "):find("Conditional outcome only",1,true),"Vaal preview must explain that it is conditional")
 		ui:click("choose");assert(c.rarity:GetSelValueByKey("val")=="corrupted_rare" and not c.currency:IsEnabled(),"Vaal preview did not corrupt the map")
 		assert(c.status.label:find("Conditional Vaal outcome",1,true),"Vaal preview lost its conditional label")
-		frame("map-vaal-conditional-result");ui:click("keep");assert(saved.corrupted and not saved.estimate and #saved.selected==#initial.selected+2,"Conditional Vaal draft was not kept");ui:click("close")
+		frame("map-vaal-conditional-result");ui:click("keep");assert(saved.corrupted and saved.vaalPreview and not saved.estimate and #saved.selected==#initial.selected+2,"Conditional Vaal draft was not kept");ui:click("close")
+		c=require("Classes.MapModifierControl").Open({initial=saved});assert(c.status.label:find("conditional Vaal preview",1,true),"Reopened Vaal draft lost its conditional label");frame("map-vaal-conditional-reopened");ui:click("close")
 	end
 	do
 		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=5,itemLevel=68,rarity="rare",selected={}}

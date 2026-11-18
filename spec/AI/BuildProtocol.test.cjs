@@ -101,10 +101,11 @@ test('queues bounded built-in filter scenes', t => {
   for(const invalid of [{...args,scene:'Unknown'},{...args,seed:-1},{...args,areaLevel:101},{...args,limit:51},{...args,offset:-1},{...args,unknown:true}]) assert.throws(()=>f.call('test_loot_filter_scene',invalid),/arguments/);
 });
 test('explains unidentified saved map drafts without changing them', t => {
-  const f=fixture(t), draft={id:'unknown',unidentified:true,selected:[]};
-  f.captured.context.atlasPlans=[{id:'atlas',mapDrafts:[draft]}];f.write('context',f.captured);
+  const f=fixture(t), draft={id:'unknown',unidentified:true,selected:[]}, vaal={id:'vaal',corrupted:true,vaalPreview:true,selected:[]};
+  f.captured.context.atlasPlans=[{id:'atlas',mapDrafts:[draft,vaal]}];f.write('context',f.captured);
   const response=f.call('get_atlas_plans',{});
-  assert.deepEqual(response.plans[0].mapDrafts,[draft]);
+  assert.deepEqual(response.plans[0].mapDrafts,[draft,vaal]);
+  assert.ok(response.limitations.some(note=>note.includes('one conditional modeled outcome')));
   assert.ok(response.limitations.some(note=>note.includes('unknown explicit modifiers') && note.includes('+30% Atlas Drops')));
   f.captured.context.atlasPlans=[{id:'atlas',mapDrafts:[{id:'known',selected:[]}]}];f.write('context',f.captured);
   assert.ok(!f.call('get_atlas_plans',{}).limitations.some(note=>note.includes('Unidentified map drafts')));
@@ -470,7 +471,7 @@ test('preserves multiple map drafts in Atlas proposals', t => {
   mapDrafts[0].quality={kind:'Pack Size',value:20};
   mapDrafts[0].observedEffects=[{kind:'implicit',text:"Area is Influenced by the Originator's Memories"}];
   mapDrafts[0]={...mapDrafts[0],rarity:'rare',selected:['MapMonsterAreaOfEffectMapWorlds'],rolls:[{id:'MapMonsterAreaOfEffectMapWorlds',values:[13,8,5,45]}],estimate:{wantedGroups:[['MapMonsterAreaOfEffectMapWorlds']],avoid:['MapContainsMirageWorlds'],trials:20,maxAttempts:5}};
-  mapDrafts[1]={...mapDrafts[1],rarity:'rare',corrupted:true,implicit:{id:'MapCorruptionItemRarity',value:15}};
+  mapDrafts[1]={...mapDrafts[1],rarity:'rare',corrupted:true,vaalPreview:true,implicit:{id:'MapCorruptionItemRarity',value:15}};
   mapDrafts[2]={...mapDrafts[2],baseId:'Metadata/Items/Maps/MapWorldsAbomination',tier:17,itemLevel:84,rarity:'rare',selected:['MapUberModCurses']};
   const plan={id:'atlas',title:'Mapping',version:'3.30.0-preview',budget:150,nodes:[],mapDrafts};
   f.call('propose_atlas_plan',{baseRevision:f.state.revision,plan});

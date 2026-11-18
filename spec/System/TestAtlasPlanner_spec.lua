@@ -35,7 +35,7 @@ describe("Native Atlas planner", function()
 		source.mapDrafts[1].observedEffects={{kind="implicit",text="Area is Influenced by the Originator's Memories"},{kind="enchant",text="Players are Delirious"}}
 		local map=require("Modules.MapCraftingData");local ids={}
 		for _=1,9 do local page=map.inspect("Metadata/Items/Maps/MapWorldsStrand",16,83,ids,"",0,100,nil,"rare",nil,true);ids[#ids+1]=page.candidates[1].id end
-		source.mapDrafts[2].rarity="rare";source.mapDrafts[2].corrupted=true;source.mapDrafts[2].selected=ids;source.mapDrafts[2].implicit={id="MapCorruptionItemRarity",value=15}
+		source.mapDrafts[2].rarity="rare";source.mapDrafts[2].corrupted=true;source.mapDrafts[2].vaalPreview=true;source.mapDrafts[2].selected=ids;source.mapDrafts[2].implicit={id="MapCorruptionItemRarity",value=15}
 		source.mapDrafts[2].observedEffects={{kind="explicit",text="Players in Area are 35% Delirious"},{kind="explicit",text="Delirium Reward Type: Currency"}}
 		source.mapDrafts[3].corrupted=true;source.mapDrafts[3].implicit={id="MapCorruptionItemRarity",value=15}
 		source.mapDrafts[4].mirrored=true;source.mapDrafts[4].rarity="magic";source.mapDrafts[4].corrupted=true;source.mapDrafts[4].unidentified=true
@@ -45,6 +45,8 @@ describe("Native Atlas planner", function()
 		assert.same(source.mapDrafts,atlas.import(atlas.export(source)).mapDrafts)
 		local unsupported=copyTable(source);unsupported.mapDrafts[1].baseId="Metadata/UnknownFutureMap";assert.same(unsupported.mapDrafts,atlas.validate(unsupported).mapDrafts)
 		local duplicate=copyTable(source);duplicate.mapDrafts[2].id=duplicate.mapDrafts[1].id;assert.has_error(function() atlas.validate(duplicate) end)
+		local badPreview=copyTable(source);badPreview.mapDrafts[2].corrupted=nil;assert.has_error(function() atlas.validate(badPreview) end)
+		badPreview=copyTable(source);badPreview.mapDrafts[2].vaalPreview="yes";assert.has_error(function() atlas.validate(badPreview) end)
 		local badQuality=copyTable(source);badQuality.mapDrafts[1].quality.value=101;assert.has_error(function() atlas.validate(badQuality) end)
 		local badObserved=copyTable(source);badObserved.mapDrafts[1].observedEffects[1].text="^1unsafe";assert.has_error(function() atlas.validate(badObserved) end)
 		local badRarity=copyTable(source);badRarity.mapDrafts[3].observedEffects=copyTable(source.mapDrafts[2].observedEffects);assert.has_error(function() atlas.validate(badRarity) end)
@@ -69,6 +71,12 @@ describe("Native Atlas planner", function()
 		local controls=require("Classes.AtlasPlannerControl").Open(build,source);controls.tools:Click();local tools=main.popups[1].controls;tools.search:SetText("Saved map drafts",true);tools.choose:Click()
 		local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
 		local text=table.concat(details," ");assert.matches("modifiers and totals unknown",text,1,true);assert.matches("Mirrored",text,1,true);assert.is_nil(text:find("0 hypothetical modifiers",1,true))
+	end)
+	it("labels conditional Vaal map drafts in the saved-plan browser",function()
+		local source=plan("3.30.0-preview");source.mapDrafts={{id="vaal-map",title="Vaal map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",selected={},corrupted=true,vaalPreview=true}}
+		local controls=require("Classes.AtlasPlannerControl").Open(build,source);controls.tools:Click();local tools=main.popups[1].controls;tools.search:SetText("Saved map drafts",true);tools.choose:Click()
+		local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
+		assert.matches("conditional Vaal preview",table.concat(details," "),1,true);assert.matches("outcome odds",table.concat(details," "),1,true)
 	end)
 	it("preserves, searches and reports 3.30 multiple-choice effects",function()
 		local version="3.30.0-preview";local node=atlas.tree(version).nodes[45404]

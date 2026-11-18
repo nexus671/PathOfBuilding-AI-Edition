@@ -441,7 +441,10 @@ function Panel.Open(build,source,layout)
 	showMapDrafts=function()
 		local choices={};for _,entry in ipairs(current().mapDrafts or {}) do
 			local base=require("Modules.MapCraftingData").source().bases[entry.baseId]
-			choices[#choices+1]={id=entry.id,label=entry.title,details={base and base.name or entry.baseId,"Tier "..entry.tier.." | "..entry.rarity.." | item level "..entry.itemLevel,(entry.unidentified and "Unidentified: modifiers and totals unknown; +30% Atlas Drops when opened" or #entry.selected.." hypothetical modifiers")..(entry.corrupted and " | Corrupted" or "")..(entry.mirrored and " | Mirrored" or ""), "Data version "..entry.patch,"Keep the Atlas plan and save the build to persist changes."},draft=entry}
+			local details={base and base.name or entry.baseId,"Tier "..entry.tier.." | "..entry.rarity.." | item level "..entry.itemLevel,(entry.unidentified and "Unidentified: modifiers and totals unknown; +30% Atlas Drops when opened" or #entry.selected.." hypothetical modifiers")..(entry.corrupted and " | Corrupted" or "")..(entry.mirrored and " | Mirrored" or "")}
+			if entry.vaalPreview then details[#details+1]="Based on a conditional Vaal preview; outcome odds are not modeled." end
+			details[#details+1]="Data version "..entry.patch;details[#details+1]="Keep the Atlas plan and save the build to persist changes."
+			choices[#choices+1]={id=entry.id,label=entry.title,details=details,draft=entry}
 		end
 		browser.Open("Map drafts in this Atlas plan",choices,{action="Open draft",closeOnChoose=false,choose=function(choice) main:ClosePopup();openMapDraft(choice.draft) end,
 			secondary={label="Remove draft",run=function(choice)

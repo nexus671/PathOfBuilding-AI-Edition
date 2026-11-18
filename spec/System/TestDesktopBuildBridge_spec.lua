@@ -343,6 +343,13 @@ describe("Desktop build proposals", function()
 		assert.is_true(data.unidentified);assert.is_nil(data.summary);assert.is_nil(data.counts);assert.is_nil(data.total);assert.matches("unknown",data.note,1,true);assert.equal(30,data.unidentifiedOpeningBonus.atlasDrops);assert.matches("opened unidentified",data.unidentifiedOpeningBonus.condition,1,true)
 		assert.matches("Identify",data.currencyOptionsWarning,1,true);assert.equal(revision,bridge.revision(build))
 	end)
+	it("preserves conditional Vaal context in map inspection",function()
+		fakeFiles();bridge.enable(build);local revision=bridge.revision(build)
+		files.request=json.encode({id="vaal-map",kind="inspect_map_modifiers",session=bridge.session,baseRevision=revision,baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",corrupted=true,vaalPreview=true,selected={}})
+		bridge.poll(build,true);local jobs=require("Modules.CraftingTasks");for _=1,2000 do if not jobs.job then break end;jobs.tick(build) end
+		assert.is_nil(jobs.job);assert.equal("mapData",bridge.status.status);assert.is_true(bridge.status.mapData.vaalPreview)
+		assert.matches("conditional Vaal preview",bridge.status.mapData.note,1,true);assert.matches("Corrupted",bridge.status.mapData.currencyOptionsWarning,1,true)
+	end)
 	it("previews an overlapping Shaped Region run without saving it",function()
 		fakeFiles();bridge.enable(build);local revision=bridge.revision(build)
 		local plan={id="regions",title="Regions",version="3.30.0-preview",budget=150,nodes={},shapedRegions={
