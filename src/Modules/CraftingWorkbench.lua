@@ -202,6 +202,8 @@ function M.actionLabel(action,model)
 		local names={};for _,id in ipairs(action.fossils) do for _,entry in ipairs(model.fossils or {}) do if entry.id==id then names[#names+1]=entry.name;break end end end
 		if #names==#action.fossils and #names>0 then return "Fossils: "..table.concat(names,", ") end
 	end
+	if action.method=="beast_talisman_fracture" then return "Bestiary: fracture "..tostring(action.count or 1).." Talisman modifier"..((action.count or 1)==1 and "" or "s") end
+	if (action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix") and action.beastLevel then return (simulator.labels[action.method] or action.method).." | beast level "..action.beastLevel end
 	if action.method=="harvest_resistance" and action.from and action.to then return "Harvest: "..action.from.." to "..action.to.." resistance" end
 	if (action.method=="harvest_reforge" or action.method=="harvest_augment") and action.tag then return (simulator.labels[action.method] or action.method).." ("..action.tag..")" end
 	if action.method=="harvest_damage" and action.from and action.to then return "Harvest: "..action.from.." to "..action.to.." damage" end

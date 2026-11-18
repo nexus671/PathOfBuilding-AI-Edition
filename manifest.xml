@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview563" />
+	<Version number="2.68.1-ai.preview564" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1684,7 +1684,7 @@
 	<File name="Classes/CraftingPricesControl.lua" part="program" sha1="99d7a4a770e74c0a8b966cab180452787bd55722" />
 	<File name="Classes/CraftingProjectControl.lua" part="program" sha1="c3a53b0157ef4b883529d35af7b0202e6327198b" />
 	<File name="Classes/CraftingProjectWizard.lua" part="program" sha1="4ce02a7213b08e05fea2b59c9438e12d480a9d70" />
-	<File name="Classes/CraftingRecipeControl.lua" part="program" sha1="b93dd6b7ed05337fcc2af53415a8cd243151db6c" />
+	<File name="Classes/CraftingRecipeControl.lua" part="program" sha1="f77fef9cf509909ad245bb1721cfc0355a73bdf1" />
 	<File name="Classes/CraftingRecipeGraphControl.lua" part="program" sha1="a3f12c0823b83e552a19e597750352622b070aa2" />
 	<File name="Classes/CraftingRecoveryControl.lua" part="program" sha1="6bdf797c867f14c6a1b5338bfc6f6dcea18cd1f1" />
 	<File name="Classes/CraftingSimulatorControl.lua" part="program" sha1="c00068818a71d0816ecf94471c979401e8ff9038" />
@@ -2128,7 +2128,7 @@
 	<File name="Modules/CraftingSynthesisGroups.lua" part="program" sha1="058e5d8e2e20c77edf4db6f0acf9326486a4e3f0" />
 	<File name="Modules/CraftingTasks.lua" part="program" sha1="5884e439905689280d65534ef8e78591341970d6" />
 	<File name="Modules/CraftingUnveiledJewel330.lua" part="program" sha1="5b05b7293ddad3c073f1cb82ab53932899f739c0" />
-	<File name="Modules/CraftingWorkbench.lua" part="program" sha1="9163162107eef31f6c718b43754f4bc0c1ef39f2" />
+	<File name="Modules/CraftingWorkbench.lua" part="program" sha1="e001ffccaff7d30318545564c615c412f568e7a1" />
 	<File name="Modules/Data.lua" part="program" sha1="c2a7145ef1d740840a47e17dbfa67f70831dfb4e" />
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />

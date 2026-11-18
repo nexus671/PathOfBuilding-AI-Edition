@@ -52,6 +52,17 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		for _,policy in ipairs({"stop","restart","salvage"}) do failureRoutes[#failureRoutes+1]={label=recovery.labels[policy],val=policy} end
 		controls.failure:SetList(failureRoutes);loadStep()
 	end
+	local function openBeastSwap(initial,onUse,label)
+		local popup={};ui.description(popup,"help",16,28,488,50,{"Enter the red beast's level, or leave blank to use item level.","The beast-level interaction is not verified in the current game."},14)
+		popup.level=edit(16,92,180,initial.beastLevel or "","Beast level (optional)",3)
+		button(popup,"use",16,132,200,label,function()
+			local action=copyTable(initial);action.beastLevel=nil
+			if popup.level.buf~="" then local level=assert(tonumber(popup.level.buf),"Enter a beast level from 1 to 100");assert(level==math.floor(level) and level>=1 and level<=100,"Enter a beast level from 1 to 100");action.beastLevel=level end
+			onUse(action);main:ClosePopup()
+		end)
+		button(popup,"cancel",388,132,116,"Cancel",function() main:ClosePopup() end)
+		ui.style(popup,{use=true});main:OpenPopup(520,176,"Bestiary swap",popup,nil,"level","cancel")
+	end
 	controls.step.selFunc=function(_,entry) selected=entry.val;loadStep() end
 	button(controls,"reviewUnlocks",232,24,200,"Review unlocks",function()
 		local function show()
@@ -155,6 +166,16 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		entries[#entries+1]={id="vorici_socket_count",label=sim.labels.vorici_socket_count,category="Betrayal",action={method="vorici_socket_count"},details={"Vorici rerolls socket counts 100 times and keeps the greatest result.","Experimental Jeweller odds and socket retention; enter a whole-service price."}}
 		entries[#entries+1]={id="vorici_socket_colours",label=sim.labels.vorici_socket_colours,category="Betrayal",action={method="vorici_socket_colours"},details={"Vorici rerolls socket colours 25 times and keeps an outcome with the most non-white sockets.","Estimated colour odds and first-on-tie selection; enter a whole-service price."}}
 		entries[#entries+1]={id="beast_max_links",label=sim.labels.beast_max_links,category="Bestiary",icon=workbench.icon("beast_max_links"),action={method="beast_max_links"},details={"Link the item's existing sockets using the Black Morrigan and a Craicic Sand Spitter.","Add sockets first; this step does not increase their number."}}
+		for _,method in ipairs({"beast_imprint","restore_imprint"}) do
+			local details={sim.labels[method],method=="beast_imprint" and "Create an imprint of an eligible magic item. Enter a whole-service price if needed." or "Restore the captured imprint when one exists; this step consumes the imprint."}
+			entries[#entries+1]={id=method,label=sim.labels[method],category="Bestiary",icon=workbench.icon(method),action={method=method},details=details}
+		end
+		for _,count in ipairs({1,2}) do local action={method="beast_talisman_fracture",count=count}
+			entries[#entries+1]={id="talisman-fracture-"..count,label=workbench.actionLabel(action,model),category="Bestiary",icon=workbench.icon(action.method),action=action,details={"Fracture "..count.." modifier"..(count==1 and "" or "s").." on an eligible rare Talisman.",count==1 and "Requires at least four modifiers." or "Requires six modifiers.","Enter a whole-service price if needed."}}
+		end
+		for _,method in ipairs({"beast_prefix_suffix","beast_suffix_prefix"}) do
+			entries[#entries+1]={id=method,label=sim.labels[method],category="Bestiary",icon=workbench.icon(method),configure="beast_swap",action={method=method},details={"Choose the red beast's level, or use the item level if unknown.","Beast-level behavior is based on community research and is not verified in the current game."}}
+		end
 		entries[#entries+1]={id="beast_talisman_imprint",label=sim.labels.beast_talisman_imprint,category="Bestiary",icon=workbench.icon("beast_talisman_imprint"),action={method="beast_talisman_imprint"},details={"Create an imprint of an uncorrupted, non-fractured rare Talisman.","Enter a whole-action price for the Bestiary service."}}
 		if model then
 			entries[#entries+1]={id="fossil-combination",label="Fossil combination",category="Fossils",configure="fossil",details={"Choose up to four fossils for this recipe step.","The item must meet the fossil requirements when this step runs."}}
@@ -192,7 +213,9 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		require("Classes.PlanningBrowserControl").Open("Add a recipe step",entries,{action="Add step",closeOnChoose=false,choose=function(entry)
 			main:ClosePopup()
 			local function append(action) draft=require("Modules.CraftingRoutes").append(draft,action);selected=#draft.steps;refresh() end
-			if entry.configure=="fossil" then require("Classes.CraftingFossilControl").Open(model,nil,append) else append(entry.action) end
+			if entry.configure=="fossil" then require("Classes.CraftingFossilControl").Open(model,nil,append)
+			elseif entry.configure=="beast_swap" then openBeastSwap(entry.action,append,"Add step")
+			else append(entry.action) end
 		end})
 	end)
 	button(controls,"editFossils",576,642,136,"Edit fossils",function()
@@ -204,6 +227,14 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		end)
 	end)
 	controls.editFossils.enabled=function() return model~=nil and draft.steps[selected]~=nil and draft.steps[selected].method=="fossil" end
+	local function selectedBeast() local step=draft.steps[selected];return step and (step.method=="beast_prefix_suffix" or step.method=="beast_suffix_prefix") end
+	controls.editFossils.shown=function() return not selectedBeast() end
+	button(controls,"editBeast",576,642,136,"Edit beast level",function()
+		local index=selected;local step=assert(draft.steps[index],"Select a Bestiary swap")
+		openBeastSwap(step,function(action) draft.steps[index]=action;refresh() end,"Update step")
+	end)
+	controls.editBeast.shown=selectedBeast
+
 	button(controls,"close",728,642,116,"Close",function() main:ClosePopup() end)
 	local height=math.max(520,math.min(690,main.screenH-60));local offset=690-height
 	controls.graph.height=264-offset
