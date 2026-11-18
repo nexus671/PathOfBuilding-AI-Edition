@@ -214,6 +214,10 @@ async function main(){
   assert.equal(gwennenReference.crafting.nativeEngine.gwennenReference.offers[0].id,1022);assert.match(gwennenReference.crafting.nativeEngine.gwennenReference.note,/not available crafting actions/);
   assert.equal(inspected.crafting.nativeEngine.methodWarnings.binding[0].code,'binding_legacy');
   const binding=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,action:{method:'binding'},seed:1},'crafted');assert.equal(binding.nativeCrafting.warnings[0].code,'binding_legacy');assert.equal(binding.nativeCrafting.state.rarity,'RARE');
+  const gwennenImplicitRaw='Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life';
+  const gwennenImplicitStart=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gwennenImplicitRaw,action:{method:'alchemy'},seed:1},'crafted');
+  const gwennenImplicitPair=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gwennenImplicitRaw,initialState:gwennenImplicitStart.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1032,secondOutcome:1032},seed:7},'crafted');
+  assert.equal(gwennenImplicitPair.nativeCrafting.gwennen.outcome,1032);assert.ok(gwennenImplicitPair.nativeCrafting.state.baseImplicitRanges);assert.ok(gwennenImplicitPair.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_implicit_assumptions'));
   const tierStart={...binding.nativeCrafting.state,affixes:[{id:'IncreasedLife2',range:0.5},{id:'FireResist2',range:0.5}]};
   const tierChange=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:{method:'gwennen',firstOutcome:1020,secondOutcome:1020},seed:7},'crafted');
   assert.ok(tierChange.nativeCrafting.state.affixes.some(entry=>['IncreasedLife3','FireResist3'].includes(entry.id)));assert.ok(tierChange.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_tier_assumptions'));

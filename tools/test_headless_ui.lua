@@ -609,6 +609,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:choose("first",1043,"val");ui:choose("second",1044,"val");local multiTierNotes={};for _,row in ipairs(main.popups[1].controls.firstNote.list) do multiTierNotes[#multiTierNotes+1]=StripEscapes(row[1]) end
 		assert(main.popups[1].controls.simulate:IsEnabled() and table.concat(multiTierNotes," "):find("unverified",1,true),"Multi-tier outcomes or their assumptions were not shown");frame("crafting-gwennen-multi-tier")
 		ui:choose("first",1031,"val");ui:choose("second",1031,"val");assert(main.popups[1].controls.simulate:IsEnabled(),"Influence outcome is not available");frame("crafting-gwennen-influence")
+		do ui:choose("first",1032,"val");local notes={};for _,row in ipairs(main.popups[1].controls.firstNote.list) do notes[#notes+1]=StripEscapes(row[1]) end;assert(main.popups[1].controls.simulate:IsEnabled() and table.concat(notes," "):find("unverified",1,true),"Implicit reroll or its assumptions were not shown");frame("crafting-gwennen-implicit") end
 		ui:choose("first",1013,"val");local aspectNotes={};for _,row in ipairs(main.popups[1].controls.firstNote.list) do aspectNotes[#aspectNotes+1]=StripEscapes(row[1]) end
 		assert(main.popups[1].controls.simulate:IsEnabled() and table.concat(aspectNotes," "):find("unverified",1,true),"Pantheon outcome or its assumptions were not shown")
 		ui:choose("first",1027,"val");local keepNotes={};for _,row in ipairs(main.popups[1].controls.firstNote.list) do keepNotes[#keepNotes+1]=StripEscapes(row[1]) end

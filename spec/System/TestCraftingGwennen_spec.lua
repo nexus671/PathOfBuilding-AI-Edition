@@ -33,6 +33,32 @@ describe("Experimental Gwennen pair",function()
 		assert.same(original,state);assert.same(original,intact);assert.is_true(destroyed.destroyed);assert.equal(0,#destroyed.affixes)
 		assert.equal(1000,first.gwennen.outcome);assert.equal(1022,second.gwennen.outcome)
 	end)
+	it("rerolls identifiable non-maximum ordinary and Eldritch implicits",function()
+		local pair={method="gwennen",firstOutcome=1032,secondOutcome=1000}
+		local source="Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life"
+		local model=sim.model(source);local state=copyTable(model.initial);state.rarity="RARE";local original=copyTable(state)
+		local rerolled=sim.action(model,state,pair,function() return 0 end)
+		assert.same(original,state);assert.is_truthy(sim.toItem(model,rerolled).raw:find("+20 to maximum Life",1,true));sim.validateState(model,rerolled)
+		local saved=require("Modules.CraftingCheckpoint").validate(source,require("Modules.CraftingInventory").run(rerolled)).state
+		assert.is_truthy(sim.toItem(model,saved).raw:find("+20 to maximum Life",1,true))
+		local legacy=copyTable(rerolled);legacy.baseImplicitReconstructed=nil;local legacyOK,legacyReason=pcall(sim.action,model,legacy,pair,function() return 0 end);assert.is_false(legacyOK);assert.matches("legacy implicit roll",legacyReason)
+		local calculation=sim.calculate(source,pair,{},state,{requirements={minAffixes=0},trials=8,seed=7});assert.is_true(calculation.sampled);assert.equal("gwennen_implicit_assumptions",calculation.warnings[2].code)
+		local maximum=sim.model(source:gsub("%+25","+30"));local full=copyTable(maximum.initial);full.rarity="RARE"
+		assert.has_error(function() sim.action(maximum,full,pair,function() return 0 end) end)
+		local helm=sim.model(raw);local eldritch=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state
+		eldritch=sim.perform(raw,{method="eldritch_implicit",side="Eater",tier=1},12,eldritch).state;eldritch.rarity="RARE"
+		eldritch.implicits[1].id="SpellCriticalStrikeChanceEldritchImplicit2";eldritch.implicits[1].range=1;eldritch.implicits[2].id="EnergyShieldFromGlovesBootsEldritchImplicit1";eldritch.implicits[2].range=0;local before=copyTable(eldritch)
+		local calls=0;local changed=sim.action(helm,eldritch,pair,function() calls=calls+1;return calls==1 and 0.1 or 0.5 end)
+		assert.same(before,eldritch);assert.same(before.implicits[1],changed.implicits[1]);assert.not_same(before.implicits[2].range,changed.implicits[2].range)
+		sim.validateState(helm,changed);local reopened=sim.model(sim.toItem(helm,changed).raw);assert.same(changed.implicits,reopened.initial.implicits)
+		local warnings=sim.actionWarnings(pair,helm);assert.equal("gwennen_implicit_assumptions",warnings[2].code)
+		local empty=copyTable(helm.initial);empty.rarity="RARE";local ok,reason=pcall(sim.action,helm,empty,pair,function() return 0 end);assert.is_false(ok);assert.matches("no supported implicit",reason)
+		local invalid=sim.model(source:gsub("%+25","+99"));local unknown=copyTable(invalid.initial);unknown.rarity="RARE"
+		assert.has_error(function() sim.action(invalid,unknown,pair,function() return 0 end) end)
+		local steel=sim.model("Rarity: NORMAL\nSteel Ring\nItem Level: 86\nImplicits: 1\nAdds 3 to 14 Physical Damage to Attacks")
+		local split=copyTable(steel.initial);split.rarity="RARE";local reroll=sim.action(steel,split,pair,function() return 0 end)
+		assert.same({0,0},reroll.baseImplicitRanges[1]);sim.validateState(steel,reroll)
+	end)
 	it("runs add and remove branches and reports estimates on calculations",function()
 		local model,state=item();local pair={method="gwennen",firstOutcome=1004,secondOutcome=1005}
 		local removed=sim.action(model,state,pair,function() return 0.1 end)
@@ -211,6 +237,12 @@ describe("Experimental Gwennen pair",function()
 		assert.is_true(controls.simulate:IsEnabled());controls.simulate:Click();assert.equal(100,picked)
 		controls=require("Classes.CraftingGwennenControl").Open(function() end,function() end,{firstOutcome=1030,secondOutcome=1000,gwennenSocketRerolls=50})
 		assert.equal(50,controls.rerolls:GetSelValueByKey("val"));assert.is_true(controls.simulate:IsEnabled());main.popups={}
+	end)
+	it("offers implicit rerolls in the modeled pair dialog",function()
+		newBuild();local selected
+		local controls=require("Classes.CraftingGwennenControl").Open(function() end,function(first,second) selected={first.id,second.id} end)
+		controls.first:SelByValue(1032,"val");controls.first.selFunc();controls.second:SelByValue(1000,"val");controls.second.selFunc()
+		assert.is_true(controls.simulate:IsEnabled());controls.simulate:Click();assert.same({1032,1000},selected)
 	end)
 	it("charges observed artifacts and never treats an unknown price as free",function()
 		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022}
