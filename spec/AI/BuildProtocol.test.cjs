@@ -45,6 +45,19 @@ test('accepts 3.30 crafting state markers without opening the schema', t => {
   ]) assert.throws(()=>f.call('apply_crafting_action',{...args,initialState:invalid}),/arguments/);
 });
 
+test('accepts transformed jewel states and exact unique targets', t => {
+  const f=fixture(t);
+  const initialState={rarity:'UNIQUE',affixes:[],origin:'a'.repeat(40),corrupted:true,uniqueTitle:'Powerlessness',uniqueSeed:123};
+  const args={baseRevision:f.state.revision,itemText:'Rarity: NORMAL\nCobalt Jewel\nItem Level: 83',initialState,action:{method:'vaal'}};
+  f.call('apply_crafting_action',args);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).initialState,initialState);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  const recipe={steps:[{method:'vaal'}],targets:[],rarity:'UNIQUE',requirements:{uniqueName:'Powerlessness'}};
+  f.call('simulate_crafting',{baseRevision:f.state.revision,itemText:args.itemText,recipe});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe,recipe);
+  assert.throws(()=>f.call('apply_crafting_action',{...args,initialState:{...initialState,uniqueSeed:0}}),/arguments/);
+});
+
 test('queues loot-filter generation, evaluation and reviewed profiles without writing exports', t => {
   const f=fixture(t);const profile={id:'maps',title:'Map pickups',preset:'early_maps',strictness:2,rules:[{id:'base',title:'Craft base',text:'Show\n BaseType == "Iron Hat"',enabled:true}]};
   const filters={schemaVersion:1,activeId:'maps',profiles:[profile]};f.captured.context.lootFilters=filters;f.write('context',f.captured);

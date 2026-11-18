@@ -67,6 +67,7 @@ function M.actionWarnings(action,model)
 	if action.method=="vaal" and model and model.item.clusterJewel then result[#result+1]={code="cluster_vaal_assumptions",message="Cluster jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
 	if action.method=="vaal" and model and model.item.baseName=="Prismatic Jewel" then result[#result+1]={code="prismatic_vaal_assumptions",message="Prismatic jewel corruption assumes equal branch weights and a rare reroll of up to four modifiers. The unique-jewel outcome is modeled as no change; actual outcomes and odds are unverified.",source="https://www.poewiki.net/wiki/Jewel"} end
 	if action.method=="vaal" and model and M.socketLimit(model,model.initial)>0 then result[#result+1]={code="vaal_socket_reroll_unmodeled",message="The rare corruption outcome can reroll sockets and links in game; the resulting layout is unknown in this model. Set an observed or hypothetical layout before socket crafts or exporting the item.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
+	if action.method=="vaal" and model and #require("Modules.CraftingJewelCorruption").candidates(model.item.baseName)>0 then result[#result+1]={code="ordinary_jewel_corruption_assumptions",message="Experimental: assumes equal branch and unique-selection weights, independent normalized unique rolls and a four-modifier rare reroll. The bundled unique pool, eligibility and actual odds are unverified; transformed uniques cannot be crafted further in this model.",source="https://www.poewiki.net/wiki/Vaal_Orb"} end
 	if action.method=="vaal" then result[#result+1]={code="vaal_implicit_selection",message="When replacing one of several Eldritch or synthesised implicits, the model assumes each is equally likely. Synthesised modifier boundaries use the bundled catalogue; its coverage and the game's selection odds are unverified.",source="https://www.poewiki.net/wiki/Corrupted"} end
 	if action.method=="binding" then result[#result+1]={code="binding_legacy",message="Orbs of Binding are no longer generated in 3.30; existing orbs still work.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
 	if action.method=="jeweller" then result[#result+1]={code="jeweller_estimate",message="Experimental: historical weapon socket weights are assumed for all bases. Quality increases only the maximum-count chance in this model; weights, quality and retained socket/link positions are unverified.",source="https://www.poewiki.net/wiki/Jeweller%27s_Orb"} end
@@ -551,6 +552,7 @@ end
 
 function M.matches(state,targets,rarity,model,requirements,requiredGroups)
  if state.veil or state.destroyed then return false end
+ if requirements and requirements.uniqueName and not state.uniqueTitle then return false end
  if state.socketLayoutUnknown and requirements and (requirements.sockets~=nil or requirements.links~=nil or requirements.minAbyssSockets~=nil or requirements.socketColours~=nil) then error("Set the unknown socket layout before checking socket or link goals.") end
  if rarity and state.rarity ~= rarity then return false end
  local matched=0
@@ -630,7 +632,7 @@ function M.validateRecipe(recipe)
 	assert(type(recipe) == "table" and type(recipe.steps) == "table" and #recipe.steps >= 1 and #recipe.steps <= 20,"Use one to twenty recipe steps")
 	assert(type(recipe.targets) == "table" and #recipe.targets <= 6,"Choose up to six target groups")
 	assert(#recipe.targets > 0 or recipe.requirements,"Choose targets or item property conditions")
-	assert(not recipe.rarity or recipe.rarity == "MAGIC" or recipe.rarity == "RARE","Invalid target rarity")
+	assert(not recipe.rarity or recipe.rarity == "MAGIC" or recipe.rarity == "RARE" or recipe.rarity == "UNIQUE","Invalid target rarity")
 	local methods={ }
 	for _,method in ipairs(M.methods) do methods[method]=true end
 	local function validateRequirements(requirements)
@@ -638,7 +640,8 @@ function M.validateRecipe(recipe)
 		assert(type(requirements) == "table" and next(requirements),"Choose at least one property condition")
 		local limits={openPrefixes=3,openSuffixes=3,minAffixes=6,maxAffixes=6,minQuality=40,sockets=6,links=6,minAbyssSockets=6,minMemoryStrands=100,maxMemoryStrands=100,minFractured=6,maxFractured=6,minIntangibility=100,maxIntangibility=100}
 		for key,value in pairs(requirements) do
-			if key == "nativeStats" then require("Modules.CraftingItemStats").validate(value)
+			if key == "uniqueName" then assert(type(value)=="string" and #value<=160 and value:match("%S"),"Enter a unique item name")
+			elseif key == "nativeStats" then require("Modules.CraftingItemStats").validate(value)
 			elseif key == "harvestEnchant" then assert(type(value)=="string" and require("Modules.CraftingEnchants").data().crafts[value],"Choose a known Harvest enchantment")
 			elseif key == "corrupted" or key == "twiceCorrupted" or key == "linkedColours" then assert(type(value) == "boolean","Invalid boolean property condition")
 			elseif key == "influence" then assert(({shaper=true,elder=true,adjudicator=true,basilisk=true,crusader=true,eyrie=true})[value],"Choose a supported influence")
@@ -791,6 +794,17 @@ function M.simulate(raw,recipe,options)
 	assert(actionPriceCount<=100,"Use at most 100 action price overrides")
 	local model=M.model(raw)
 	if options.initialState or recipe.initialState then model.initial=M.validateState(model,options.initialState or recipe.initialState) end
+	local mayTransform=false
+	if #require("Modules.CraftingJewelCorruption").candidates(model.item.baseName)>0 then
+		for _,step in ipairs(recipe.steps) do if step.method=="vaal" then mayTransform=true;break end end
+	end
+	if mayTransform then
+		local function checkUniqueRequirements(requirements)
+			for key in pairs(requirements or {}) do assert(key=="corrupted" or key=="twiceCorrupted" or key=="uniqueName","This property target cannot yet be checked for a transformed unique jewel: "..key) end
+		end
+		if recipe.rarity~="RARE" and recipe.rarity~="MAGIC" then checkUniqueRequirements(recipe.requirements) end
+		for _,step in ipairs(recipe.steps) do checkUniqueRequirements(step.untilRequirements) end
+	end
 	validateCorruptionSocketGoals(model,recipe)
 	if options.priceBook or options.prices then
 		options.prices=require("Modules.CraftingPrices").forSimulation(options.priceBook,options.currency,M.context(model,model.initial),options.prices)
@@ -806,7 +820,7 @@ function M.simulate(raw,recipe,options)
 	local pricing=require("Modules.CraftingPrices")
 	local actionPriceUses=0
 	local actionHistogram,executedHistogram,costHistogram,costSamples,successfulCosts,routes={},{},{},{},{},{}
-	local budgetExhausted,destroyedTrials=0,0
+	local budgetExhausted,destroyedTrials,uniqueTrials=0,0,0
 	local recovery={restarts=0,stopped=0,salvaged=0}
 	local sample,sampleSuccess
 	local retained,affixDistribution,propertyDistribution={},{},{affixes={},fractured={},intangibility={},memoryStrands={}}
@@ -816,7 +830,7 @@ function M.simulate(raw,recipe,options)
 		local random=rng(encounter.seed(seed,trial,31))
 		local at,actions,cost,trialExecuted=1,0,baseCost,0
 		local trialUnpriced=false
-		while at <= #recipe.steps and actions < maxActions and not state.destroyed and (options.forceFirstAction and actions == 0 or not M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups)) do
+		while at <= #recipe.steps and actions < maxActions and not state.destroyed and not state.uniqueTitle and (options.forceFirstAction and actions == 0 or not M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups)) do
 			local step=recipe.steps[at]
 			local route=routes[at] or {visits=0,success=0,failure=0,executed=0};routes[at]=route;route.visits=route.visits+1
 			local success=false
@@ -855,6 +869,10 @@ function M.simulate(raw,recipe,options)
 					if price then cost=cost+price*amount else missing[key]=true;trialUnpriced=true end
 				end
 				if state.destroyed then break end
+				if state.uniqueTitle then
+					success=M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups) or not (step.untilTargets or step.untilRequirements) or M.matches(state,step.untilTargets or {},nil,model,step.untilRequirements)
+					break
+				end
 				if M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups) then success=true;break end
 				if not (step.untilTargets or step.untilRequirements) or M.matches(state,step.untilTargets or {},nil,model,step.untilRequirements) then success=true; break end
 			end
@@ -875,13 +893,14 @@ function M.simulate(raw,recipe,options)
 			if entry.fractured then bucket.fractured=bucket.fractured+1;fractures=fractures+1 end
 			if entry.crafted then bucket.crafted=bucket.crafted+1 end
 		end
-		if not state.destroyed then
+		if not state.destroyed and not state.uniqueTitle then
 			for key,value in pairs({affixes=#state.affixes,fractured=fractures,intangibility=state.intangibility or 0,memoryStrands=state.memoryStrands or 0}) do
 				local histogram=propertyDistribution[key];histogram[value]=(histogram[value] or 0)+1
 			end
 		end
 		if state.destroyed then destroyedTrials=destroyedTrials+1 end
-		if not hit and not state.destroyed and at <= #recipe.steps and actions >= maxActions then budgetExhausted=budgetExhausted+1 end
+		if state.uniqueTitle then uniqueTrials=uniqueTrials+1 end
+		if not hit and not state.destroyed and not state.uniqueTitle and at <= #recipe.steps and actions >= maxActions then budgetExhausted=budgetExhausted+1 end
 		local bucket=actionHistogram[actions] or {actions=actions,trials=0,successes=0};actionHistogram[actions]=bucket;bucket.trials=bucket.trials+1;if hit then bucket.successes=bucket.successes+1 end
 		local executed=executedHistogram[trialExecuted] or {actions=trialExecuted,trials=0,successes=0};executedHistogram[trialExecuted]=executed;executed.trials=executed.trials+1;if hit then executed.successes=executed.successes+1 end
 		costSamples[#costSamples+1]=cost;if hit then successfulCosts[#successfulCosts+1]=cost end
@@ -903,7 +922,7 @@ function M.simulate(raw,recipe,options)
 	local result={trials=trials,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,seed=seed,maxActions=maxActions,
 		meanActions=totalActions/trials,meanExecutedActions=totalExecuted/trials,failedAttempts=totalActions-totalExecuted,executedActionDistribution=executedDistribution,currencySpent=spent,resourceUsage=usage,unpriced=missing,transitionErrors=errors,warnings=M.hasPartialLock(M.context(model,model.initial),model.initial) and partialWarning(M.recipeWarnings(recipe,model)) or M.recipeWarnings(recipe,model),limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=M.itemText(model,sample),sampleState=sample,
 		engineVersion=2,dataPatch=M.dataPatch,sourceVersion=launch.versionNumber,costCurrency=options.currency or "supplied price units",
-		baseCost=baseCost,retainedSuccesses=retained,retentionLimit=retain,affixDistribution=affixDistribution,propertyDistribution=propertyDistribution,actionDistribution=distribution,successfulActionQuantiles=quantiles(times),routeCounts=routes,budgetExhausted=budgetExhausted,destroyedTrials=destroyedTrials}
+		baseCost=baseCost,retainedSuccesses=retained,retentionLimit=retain,affixDistribution=affixDistribution,propertyDistribution=propertyDistribution,actionDistribution=distribution,successfulActionQuantiles=quantiles(times),routeCounts=routes,budgetExhausted=budgetExhausted,destroyedTrials=destroyedTrials,uniqueTrials=uniqueTrials}
 	if model.initial.socketLayoutUnknown then unknownSocketWarning(result.warnings) end
 	if not next(missing) then
 		result.meanCost=totalCost/trials;result.costPerSuccess=successes>0 and totalCost/successes or nil;result.spendingQuantiles=quantiles(costSamples);result.successfulSpendingQuantiles=quantiles(successfulCosts)
@@ -1027,6 +1046,7 @@ local partialLockActions={recombine=true,bench=true,bench_reroll=true,remove_cra
 	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,bench_remove_enchant=true,eldritch_implicit=true,conflict=true}
 local socketDependent={socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,vaal=true,locus=true,binding=true,gwennen=true,fossil=true,ducat_katakohi=true,recombine=true,recombine_predictable=true}
 function M.methodReason(model,state,method)
+	if state.uniqueTitle then return "Further crafting of transformed unique jewels is not yet modeled. Undo or reset to continue." end
 	if state.socketLayoutUnknown and socketDependent[method] then return "Set the unknown socket layout before using this action." end
 	if M.hasPartialLock(M.context(model,state),state) and not partialLockActions[method] then
 		return "This action is not yet modeled with partial affix locks."
@@ -1071,5 +1091,35 @@ function M.action(model,state,craft,random)
 		if choice.state and (M.syncAbyssSocket(startingState(choice.state),choice.state) or updated and choice.state==result) then choice.itemText=M.itemText(model,choice.state) end
 	end end
 	return result,details
+end
+
+-- Unique corruption outcomes have their own identity and rolls; ordinary
+-- jewel modifier IDs cannot be used to reconstruct them.
+local validateOrdinaryState,toOrdinaryItem,ordinaryMatches=M.validateState,M.toItem,M.matches
+function M.validateState(model,state)
+	if type(state)=="table" and state.uniqueTitle then return require("Modules.CraftingJewelCorruption").validateState(model,state) end
+	return validateOrdinaryState(model,state)
+end
+function M.toItem(model,state)
+	if state.uniqueTitle then
+		local valid=require("Modules.CraftingJewelCorruption").validateState(model,state)
+		return require("Modules.CraftingJewelCorruption").item(model.item.baseName,valid.uniqueTitle,model.item.itemLevel,valid.uniqueSeed)
+	end
+	return toOrdinaryItem(model,state)
+end
+function M.matches(state,targets,rarity,model,requirements,requiredGroups)
+	if not state.uniqueTitle then return ordinaryMatches(state,targets,rarity,model,requirements,requiredGroups) end
+	if rarity and rarity~="UNIQUE" then return false end
+	local matched=0;for _,group in ipairs(targets or {}) do if group.negate then matched=matched+1 end end
+	if matched<(requiredGroups or #(targets or {})) then return false end
+	if requirements then
+		for key,value in pairs(requirements) do
+			if key=="uniqueName" then if value~=state.uniqueTitle then return false end
+			elseif key=="corrupted" then if value~=true then return false end
+			elseif key=="twiceCorrupted" then if value~=false then return false end
+			else error("This property target cannot yet be checked for a transformed unique jewel: "..key) end
+		end
+	end
+	return true
 end
 return M

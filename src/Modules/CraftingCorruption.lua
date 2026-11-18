@@ -213,7 +213,8 @@ function C.extend(M,A,api)
 				state.quality=math.max(0,math.min(40,(state.quality or 0)+math.floor(random()*21)-10))
 				state.corrupted=true;state.imprint=nil;return state
 			end
-			if method=="vaal" and model.item.type=="Jewel" and (model.item.base.subType=="Abyss" or model.item.clusterJewel or model.item.baseName=="Prismatic Jewel") then
+			local uniqueJewels=method=="vaal" and model.item.type=="Jewel" and require("Modules.CraftingJewelCorruption").candidates(model.item.baseName) or {}
+			if method=="vaal" and model.item.type=="Jewel" and (model.item.base.subType=="Abyss" or model.item.clusterJewel or model.item.baseName=="Prismatic Jewel" or #uniqueJewels>0) then
 				-- The four branches are equally weighted as an explicit, unverified model assumption.
 				local outcome=math.floor(random()*4)
 				if outcome==0 then M.rollCorrupted(model,state,random,1)
@@ -224,6 +225,9 @@ function C.extend(M,A,api)
 						local ok=pcall(api.add,model,state,random);if not ok then break end
 					end
 					state.rollBlock=nil
+				elseif outcome==3 and #uniqueJewels>0 then
+					local selected=uniqueJewels[math.floor(random()*#uniqueJewels)+1]
+					return {origin=input.origin,rarity="UNIQUE",corrupted=true,affixes={},uniqueTitle=selected.title,uniqueSeed=math.floor(random()*2147483646)+1}
 				end
 				state.corrupted=true;state.imprint=nil;return state
 			end
@@ -272,6 +276,7 @@ function C.extend(M,A,api)
 	end
 	M.limits[#M.limits+1]="Flask Vaal quality changes by an integer from -10 to +10, clamped to 0-40; equal weights are assumed and unverified."
 	M.limits[#M.limits+1]="Abyss, cluster and Prismatic jewel Vaal outcomes use assumed equal weights; rare rerolls use the ordinary four-affix limit, and the unique-jewel outcome is modeled as no change. These outcomes and probabilities are unverified."
+	M.limits[#M.limits+1]="Ordinary jewel Vaal outcomes assume equal branch and unique-selection weights. The bundled candidate pool, individual rolls and rare modifier counts are unverified. Further crafting of transformed uniques is not modeled."
 	M.limits[#M.limits+1]="The equipment Vaal model includes the four outcome branches and current non-white socket conversion. Rare-brick socket/link rerolls are not modeled; tainted affix outcomes use a 50/50 assumption."
 	M.limits[#M.limits+1]="Corrupting unidentified Eldritch implicits or ambiguously grouped synthesised implicits is not modeled. Replacement is selected uniformly as an unverified assumption."
 	M.limits[#M.limits+1]="The 3.30 Locus model requires a Corrupted item and adds a second corruption. Outcome chances, socket conversion and selection of a replaced implicit are assumptions; uncorrupted altar use is not modeled. Fractured, synthesised, meta-modified and special transformation bases are excluded."

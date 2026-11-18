@@ -273,6 +273,18 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	require("Classes.CraftingSimulatorControl").Open(build,{id="abyss-legacy-ui",title="Legacy Abyss jewel",slot="Jewel",startingItem=oldAbyss,goals={},steps={}})
 	frame("crafting-abyss-legacy");ui:click("close")
 	local jewel="Rarity: NORMAL\nCobalt Jewel\nItem Level: 86"
+	do
+		local jewelSlot;local jewelItem=new("Item"):Item(jewel)
+		for name in pairs(build.itemsTab.slots) do if name:match("^Jewel ") and build.itemsTab:IsItemValidForSlot(jewelItem,name) then jewelSlot=name;break end end
+		assert(jewelSlot,"A jewel slot is required for checkpoint testing")
+		local jewelControls=require("Classes.CraftingSimulatorControl").Open(build,{id="unique-jewel-ui",title="Jewel corruption",slot=jewelSlot,startingItem=jewel,goals={},steps={}})
+		local uniqueSeed;for seed=1,100 do local derived=require("Modules.CalcEncounter").seed(seed,1,31);if (derived*16807%2147483647)/2147483647>=0.75 then uniqueSeed=seed;break end end
+		assert(uniqueSeed,"Could not choose a deterministic unique outcome");jewelControls.seed:SetText(tostring(uniqueSeed),true)
+		ui:click("currency_vaal");ui:click("item");assert(not jewelControls.apply:IsEnabled(),"Transformed unique should not accept ordinary crafting");frame("crafting-corrupted-unique-jewel")
+		ui:click("keepWorking");local project;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id=="unique-jewel-ui" then project=entry end end
+		if not (project and project.run and project.run.state.uniqueTitle) then frame("unique-keep-error");error("Unique jewel checkpoint was not kept") end;ui:click("close")
+		local reopened=require("Classes.CraftingSimulatorControl").Open(build,project);assert(not reopened.apply:IsEnabled(),"Reopened unique accepted ordinary crafting");frame("crafting-corrupted-unique-reopened");ui:click("close")
+	end
 	require("Classes.CraftingSimulatorControl").Open(build,{id="unveiled-jewel-ui",title="Unveiled jewel",slot="Jewel",startingItem=jewel,goals={},steps={}})
 	ui:click("tab_settings");ui:click("manual");ui:choose("modifier","JunMasterVeiledJewelElusiveEffect","val");ui:text("roll","50");ui:choose("rarity","MAGIC");ui:click("properties");frame("crafting-unveiled-jewel-editor")
 	ui:click("offers");frame("crafting-jewel-unveil-choices");ui:choose("choice1","JunMasterVeiledJewelElusiveEffect","val");ui:choose("fractured","Fractured veil");ui:click("use");ui:click("offers");ui:click("clear")

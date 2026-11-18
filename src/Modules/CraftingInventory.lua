@@ -2,7 +2,7 @@
 -- cspell:ignore jsontype
 local M={}
 function M.run(state)
-	return {schemaVersion=1,state=copyTable(state),initial=copyTable(state),history={},actions={},configured={},sequence=0,targets={},requirements={minAffixes=0}}
+	return {schemaVersion=1,state=copyTable(state),initial=copyTable(state),history={},actions={},configured={},sequence=0,targets={},requirements=state.uniqueTitle and {corrupted=true} or {minAffixes=0}}
 end
 function M.validate(entries)
 	assert(type(entries)=="table" and entries~=require("dkjson").null,"Item inventory must be an array")

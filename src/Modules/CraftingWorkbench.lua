@@ -71,11 +71,11 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 	function card:Draw()
 		local cx,cy=self:GetPos();local state=getState();local item=self.preview or model.item
 		local rarity=state.rarity or "NORMAL"
-		local color=state.destroyed and "^xE07070" or rarity == "RARE" and "^xFFFF77" or rarity == "MAGIC" and "^x8888FF" or "^xC8C8C8"
+		local color=state.destroyed and "^xE07070" or rarity == "UNIQUE" and "^xAF6025" or rarity == "RARE" and "^xFFFF77" or rarity == "MAGIC" and "^x8888FF" or "^xC8C8C8"
 		box(cx,cy,w,header,options.compact and "^x756647" or color);box(cx+1,cy+1,w-2,header-2,"^x101016")
 		box(cx+2,cy+2,w-4,53,rarity == "RARE" and "^x302B18" or rarity == "MAGIC" and "^x1B1B30" or "^x232326")
-		local title=state.destroyed and "Item destroyed" or rarity == "RARE" and (item.title or "Crafted item") or item.baseName
-		local subtitle=rarity == "RARE" and item.baseName or rarity:sub(1,1)..rarity:sub(2):lower().." item"
+		local title=state.destroyed and "Item destroyed" or (rarity == "RARE" or rarity=="UNIQUE") and (item.title or "Crafted item") or item.baseName
+		local subtitle=(rarity == "RARE" or rarity=="UNIQUE") and item.baseName or rarity:sub(1,1)..rarity:sub(2):lower().." item"
 		if options.compact then
 			while #title>1 and DrawStringWidth(20,"VAR",title)>w-32 do title=title:sub(1,-2) end
 			while #subtitle>1 and DrawStringWidth(16,"VAR",subtitle)>w-32 do subtitle=subtitle:sub(1,-2) end
@@ -132,8 +132,8 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 		if state.destroyed then wrap(lines,"This item was destroyed.","^xE07070",w-30)
 		else
 			local context=simulator.context(model,state)
-			card.preview=context.item;setArt(context.item)
 			local item=simulator.toItem(model,state)
+			card.preview=state.uniqueTitle and item or context.item;setArt(card.preview)
 			local defences={}
 			for _,property in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
 				local value=item.armourData and item.armourData[property]
@@ -169,7 +169,9 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 				end
 				if options.compact and lines[firstMod] then lines[firstMod][2]=(lines[firstMod].changed and "^x92D39C+" or entry.fractured and "^xD6B677" or "^x8D9DB0")..(entry.fractured and "F " or entry.crafted and "C " or "")..mod.type:sub(1,1)..groupIndex end
 			end
-			if #state.affixes == 0 then wrap(lines,"No explicit modifiers","^xAAAAAA",w-30) end
+			if state.uniqueTitle then
+				for _,line in ipairs(item.explicitModLines or {}) do wrap(lines,itemLib.formatModLine(line,false) or line.line,"^x8888FF",w-30) end
+			elseif #state.affixes == 0 then wrap(lines,"No explicit modifiers","^xAAAAAA",w-30) end
 			if state.veil then wrap(lines,(state.veil.fractured and "Fractured veiled modifier" or "Veiled modifier").." - choose an offered modifier","^xD3B987",w-30) end
 			if state.corrupted then wrap(lines,state.twiceCorrupted and "Twice Corrupted" or "Corrupted","^xE07070",w-30) end
 			if (state.intangibility or 0)>0 then wrap(lines,"Intangibility: "..state.intangibility.."%","^xD3B987",w-30) end
@@ -238,6 +240,7 @@ function M.hint(method,state,model,craft)
 	end
 	if available and method=="vaal" and model.item.type=="Flask" then return "Changes quality by -10 to +10. Equal outcome weights are assumed, not verified." end
 	if available and method=="vaal" and model.item.type=="Jewel" and (model.item.base.subType=="Abyss" or model.item.clusterJewel or model.item.baseName=="Prismatic Jewel") then return "Unique outcome treated as no change. Branch odds and rare modifier counts are unverified." end
+	if available and method=="vaal" and #require("Modules.CraftingJewelCorruption").candidates(model.item.baseName)>0 then return "Experimental: equal branch and unique-selection weights are assumed. The unique pool and item rolls are unverified." end
 	if available and method=="vaal" and require("Modules.CraftingSimulator").socketLimit(model,state)>0 then return "Rare corruption can reroll sockets and links; its resulting layout will be unknown." end
 	if available and method=="tainted_quality" then return "Maximum 20% quality. The modeled 1-20% range and equal odds are assumptions." end
 	if available and method=="annul" then return "3.30: remove a random modifier. Attack/caster roll blockers do not protect it; fractures and prefix/suffix locks still apply." end

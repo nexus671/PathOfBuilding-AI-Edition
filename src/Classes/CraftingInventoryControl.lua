@@ -54,7 +54,7 @@ function M.Open(build,options)
 		for i,entry in ipairs(entries) do local tx,ty=6+(i-1)%cols*(tile+8),6+math.floor((i-1)/cols)*128-self.scroll
 			if ty+120>0 and ty<self.height then
 				local active=selected and selected.project.id==entry.project.id and selected.item.id==entry.item.id
-				local color=entry.item.state.destroyed and "^xE07070" or entry.item.state.rarity=="RARE" and "^xD4BC72" or entry.item.state.rarity=="MAGIC" and "^x929BE0" or "^x8D9DB0"
+				local color=entry.item.state.destroyed and "^xE07070" or entry.item.state.rarity=="UNIQUE" and "^xAF6025" or entry.item.state.rarity=="RARE" and "^xD4BC72" or entry.item.state.rarity=="MAGIC" and "^x929BE0" or "^x8D9DB0"
 				visual.box(tx,ty,tile,120,active and "^xE1C586" or "^x3F566F");visual.box(tx+1,ty+1,tile-2,118,active and "^x293447" or "^x182331")
 				local key=entry.project.id.."/"..entry.item.id;local thumb=thumbs[key]
 				if not thumb then local item=projects.item(entry.item.state.baseItem or entry.item.baseItem);local path,iw,ih=art.itemArt(item);local aw,ah,sprite=art.artDimensions(item,iw,ih,64);thumb={handle=visual.image(path),w=aw,h=ah,sprite=sprite};thumbs[key]=thumb end

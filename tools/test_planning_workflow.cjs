@@ -51,6 +51,12 @@ async function main(){
   const proof=await host('connection-proof');assert.equal(proof.client,'planning-workflow-test');assert.equal(proof.tested,true);assert.equal(proof.synced,true);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
   const origin=createHash('sha1').update(raw).digest('hex');
+  const corruptJewelRaw='Rarity: NORMAL\nCobalt Jewel\nItem Level: 83';
+  const corruptJewel=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:corruptJewelRaw,action:{method:'vaal'},seed:3},'crafted');
+  assert.equal(corruptJewel.nativeCrafting.state.rarity,'UNIQUE');assert.ok(corruptJewel.nativeCrafting.state.uniqueTitle);assert.match(corruptJewel.nativeCrafting.itemText,/Corrupted/);
+  const corruptJewelRecipe={steps:[{method:'vaal'}],targets:[],rarity:'UNIQUE',requirements:{uniqueName:corruptJewel.nativeCrafting.state.uniqueTitle}};
+  const corruptJewelPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:corruptJewelRaw,recipe:corruptJewelRecipe,options:{trials:8,maxActions:1,seed:3}},'crafted');
+  assert.ok(corruptJewelPlan.nativeCrafting.uniqueTrials>0);assert.ok(corruptJewelPlan.nativeCrafting.warnings.some(entry=>entry.code==='ordinary_jewel_corruption_assumptions'));
   const recipientInput={rarity:'MAGIC',affixes:[{id:'IncreasedLife1',range:0.75}],origin};
   const donorInput={rarity:'MAGIC',affixes:[{id:'FireResist1',range:0.25}],origin};
   const recipient=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:recipientInput,action:{method:'divine'},seed:1},'crafted');

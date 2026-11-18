@@ -26,6 +26,7 @@ function M.modDetails(model,id,entry)
 	return lines
 end
 function M.slots(model,state)
+	if state.uniqueTitle then return "Unique jewel | ordinary affix slots do not apply" end
 	model=sim.context(model,state)
 	local caps=sim.capacities(model,state);local prefixes,suffixes=0,0
 	for _,entry in ipairs(state.affixes) do local mod=model.byId[entry.id];if mod.type=="Prefix" then prefixes=prefixes+1 elseif mod.type=="Suffix" then suffixes=suffixes+1 end end

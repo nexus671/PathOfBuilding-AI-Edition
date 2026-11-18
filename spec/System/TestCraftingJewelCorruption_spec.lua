@@ -28,7 +28,7 @@ describe("Corrupted jewel implicit import",function()
   assert.is_true(a.corruptionIds[regular]);assert.is_nil(a.corruptionIds[abyss]);assert.is_true(b.corruptionIds[abyss]);assert.is_nil(b.corruptionIds[regular])
   local low=sim.model("Rarity: NORMAL\nCobalt Jewel\nItem Level: 10");assert.is_nil(low.corruptionIds[regular])
   local wrong=copyTable(a.initial);wrong.corrupted=true;wrong.corruptedImplicits={{id=abyss,range=0.5}};assert.is_false(pcall(sim.validateState,a,wrong))
-  assert.is_false(require("Modules.CraftingAvailability").check("vaal",a.initial,a))
+  assert.is_true(require("Modules.CraftingAvailability").check("vaal",a.initial,a))
  end)
  it("models Abyss jewel Vaal branches without treating special drops as ordinary rolls",function()
   for _,base in ipairs({"Searching Eye Jewel","Assembled Eye Jewel"}) do

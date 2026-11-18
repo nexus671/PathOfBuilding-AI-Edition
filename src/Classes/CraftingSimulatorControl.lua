@@ -140,6 +140,7 @@ function Panel.Open(build,project,layout)
 		end
 		local craftingPage=not controls.page or controls.page:GetSelValue()=="Emulate item"
 		local message=craftingPage and inspectedId and "Modifier details. Your working item stays in view." or craftingPage and paletteOpen and "Find an action without leaving your working item." or extra and extra[1] or controls.page and pageHints[controls.page:GetSelValue()] or "Select a currency, then click your item to craft."
+		if craftingPage and state.uniqueTitle and not (extra and extra[1]) then message="Unique outcome. Undo or keep this item." end
 		if controls.page and controls.page:GetSelValue()=="Simulate recipe" then message="Selected action: "..actionName() end
 		if workingWarning or savedWarning then message=controls.page and controls.page:GetSelValue()=="Simulate recipe" and "Implicit target unavailable; details below." or "Implicit target unavailable; see Simulate tab." end
 		controls.intro.label="^7"..ui.fit(message,leftWidth,14)
@@ -254,7 +255,7 @@ function Panel.Open(build,project,layout)
 			if index then craft.allflame=craft.allflame or copyTable(result.allflame.settings);craft.allflame.choiceIndex=index end
 			local label=craft.method=="essence" and "Essence: "..workbench.actionLabel(craft,model) or simulator.labels[craft.method] or "craft"
 			state=nextState;actions[#actions+1]=craft;updateOptions()
-			local message="Applied "..label..". Select another currency or undo."
+			local message=state.uniqueTitle and ("Applied "..label..". Unique outcome; undo or keep this item.") or ("Applied "..label..". Select another currency or undo.")
 			for _,warning in ipairs(result.warnings or {}) do if warning.code=="abyss_socket_layout" then message="Applied "..label..". Abyss socket layout is experimental.";break end end
 			if result.gwennen then for _,entry in ipairs(require("Modules.CraftingGwennenReference").search("",100).offers) do if entry.id==result.gwennen.outcome then message="Gwennen modeled outcome: "..entry.description;break end end end
 			if state.socketLayoutUnknown then message="Socket layout is unknown after corruption. Set it in Edit hypothetical item before socket crafts or build preview." end
@@ -585,6 +586,7 @@ function Panel.Open(build,project,layout)
 		end
 		lines[#lines+1]={height=26,"Trials stopped at the action budget: "..result.budgetExhausted}
 		lines[#lines+1]={height=24,"Hypothetical items destroyed: "..result.destroyedTrials}
+		if result.uniqueTrials and result.uniqueTrials>0 then lines[#lines+1]={height=24,"Trials ending with unique jewels: "..result.uniqueTrials} end
 		lines[#lines+1]={height=24,"Spending percentiles include capped failures. They are not the cost of guaranteed success."}
 		local function show(title,values)
 			if not values then return end
@@ -765,7 +767,7 @@ function Panel.Open(build,project,layout)
 	controls.compareRecipes.enabled=function() return not tasks.job and not targetReason() and (#targets>0 or requirements and next(requirements)~=nil) end
 	controls.compareRecipes.tooltipText=function() return tasks.job and busy or targetReason() or missingTargets() and noTargets or "Compare recipes using the current targets." end
 	controls.keepRecipe.enabled=function() return #actions>0 and not state.destroyed and not state.veil end
-	controls.manual.enabled=function() return not state.destroyed and not state.veil end
+	controls.manual.enabled=function() return not state.destroyed and not state.veil and not state.uniqueTitle end
 	controls.allflame.enabled=function() return simulator.supportsAllflame(controls.method:GetSelValueByKey("val")) end
 	controls.allflame.tooltipText=function() return controls.allflame:IsEnabled() and "Historical 3.29 Allflame model; Allflame is not core in 3.30." or "Allflame is not modeled for this action. Choose a supported itemised currency." end
 	controls.fossilResults.tooltipText="Reopen the captured comparison. Rerun after changing the item, targets or quotes."
@@ -784,7 +786,7 @@ function Panel.Open(build,project,layout)
 	end
 	controls.distribution.enabled=function() return not tasks.job and lastSimulation~=nil end
 	controls.cancelJob.enabled=function() return require("Modules.CraftingTasks").job~=nil end
-	controls.apply.enabled=function() return not state.destroyed end
+	controls.apply.enabled=function() return not state.destroyed and not state.uniqueTitle end
 	controls.preview.enabled=function() return not state.destroyed and not state.veil and not state.socketLayoutUnknown end
 	controls.preview.tooltipText=function() return state.socketLayoutUnknown and "Set the unknown socket layout before previewing this item in a build." or "Preview this item against the current build." end
 	controls.configure.label=function() local method=controls.method:GetSelValueByKey("val");return method=="fossil" and "Configure fossil combination" or method=="gwennen" and "Configure Gwennen pair" or (method=="beast_prefix_suffix" or method=="beast_suffix_prefix") and "Set beast level" or "Configure donor item" end

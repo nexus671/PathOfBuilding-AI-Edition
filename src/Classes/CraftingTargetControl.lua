@@ -46,6 +46,8 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
 	for _,info in ipairs(itemLib.influenceInfo.default) do influences[#influences+1]={label=info.display.." influence",val=info.key} end
 	controls.influence=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,518,376,24},influences)
 	controls.influence:SelByValue(conditions.influence or false,"val")
+	controls.uniqueNameLabel=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{408,502,0,14},"Unique jewel name (exact)")
+	controls.uniqueName=new("EditControl"):EditControl({"TOPLEFT",nil,"TOPLEFT"},{408,518,180,24},conditions.uniqueName or "",nil,nil,160)
 	button("keep",16,568,220,"Keep target conditions",function()
 		if group then
 			group.atLeast=assert(tonumber(controls.count.buf),"Enter a matching-mod count")
@@ -54,6 +56,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex)
 			for _,key in ipairs({"fractured","crafted"}) do local value=controls[key]:GetSelValue();group[key]=nil;if not value:match("^Any ") then group[key]=not value:match("^Not ") end end
 		end
 		local result={nativeStats=conditions.nativeStats and copyTable(conditions.nativeStats)};for _,entry in ipairs(properties) do local value=controls[entry[1]].buf;if value ~= "" then result[entry[1]]=assert(tonumber(value),"Enter a number for "..entry[2]:lower()) end end
+		if controls.uniqueName.buf:match("%S") then result.uniqueName=controls.uniqueName.buf end
 		if controls.minAbyssSockets.buf~="" then result.minAbyssSockets=assert(tonumber(controls.minAbyssSockets.buf),"Enter a number for Abyss sockets") end
 		local corruption=controls.corrupted:GetSelValue()
 		if corruption=="Must be corrupted" or corruption=="Must be corrupted once" then result.corrupted=true elseif corruption=="Must be uncorrupted" then result.corrupted=false end
