@@ -1,6 +1,6 @@
 // cspell:ignore Ukatoa Katakohi unmodeled
 // A real MCP stdio client drives an isolated native host and explicit UI review.
-// cspell:ignore GGGRRW craic
+// cspell:ignore GGGRRW RGBRRR craic
 'use strict';
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -932,6 +932,10 @@ async function main(){
   const rareSet=await queued('test_loot_filter',{baseRevision:context.revision,profile:rareSetProfile,sample:rareSetSample},'tested');
   const excludedSlot=await queued('test_loot_filter',{baseRevision:context.revision,profile:rareSetProfile,sample:{...rareSetSample,BaseType:'Iron Hat',Class:'Helmets'}},'tested');assert.equal(excludedSlot.result.action,'Hide');
   assert.equal(rareSet.result.action,'Show');assert.deepEqual(rareSet.result.styles.SetBorderColor,['245','190','65','255']);
+  const lowSetProfile={...rareSetProfile,campaign:{...rareSetProfile.campaign,recipes:['Low-level unidentified rare set pieces']}};
+  const lowSet=await queued('test_loot_filter',{baseRevision:context.revision,profile:lowSetProfile,sample:{...rareSetSample,ItemLevel:59}},'tested');
+  assert.equal(lowSet.result.action,'Show');assert.deepEqual(lowSet.result.styles.SetBorderColor,['180','130','245','255']);
+  const lowSetBoundary=await queued('test_loot_filter',{baseRevision:context.revision,profile:lowSetProfile,sample:{...rareSetSample,ItemLevel:60}},'tested');assert.equal(lowSetBoundary.result.action,'Hide');
   const ruthlessSet=await queued('test_loot_filter',{baseRevision:context.revision,profile:{...rareSetProfile,mode:'Ruthless'},sample:rareSetSample},'tested');assert.equal(ruthlessSet.result.action,'Minimal');
   const socketRecipeProfile={...lootProfile,template:'Hide',campaign:{recipes:['Three-colour linked equipment','Six-socket equipment','Six-link equipment'],minAreaLevel:1,maxAreaLevel:100}};
   const uniqueSixLink=await queued('test_loot_filter',{baseRevision:context.revision,profile:socketRecipeProfile,sample:{BaseType:'Iron Hat',Rarity:'Unique',AreaLevel:75,Sockets:6,LinkedSockets:6,SocketGroup:'RGBRRR'}},'tested');

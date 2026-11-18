@@ -1,6 +1,6 @@
 -- Offline family policies derived from the bundled native bases, never prices.
 -- cspell:ignore jsontype
-local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces"}}
+local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces","Low-level unidentified rare set pieces"}}
 local knownWeapons={"Bow","Claw","Dagger","Rune Dagger","Fishing Rod","One Handed Axe","One Handed Mace","One Handed Sword","Thrusting Sword","Sceptre","Staff","Warstaff","Two Handed Axe","Two Handed Mace","Two Handed Sword","Wand","Shield","Quiver"}
 M.weapons=knownWeapons
 M.rareSetSlots={"Jewellery","Armour","Weapons and shields"}
@@ -91,15 +91,20 @@ function M.rules(value,theme,mode)
 	}
 	-- Vendor recipes resolve six links before six sockets, then linked colours.
 	-- Keep the original indices for stable rule IDs and saved overrides.
-	local recipeOrder={3,2,1,4,5}
+	local recipeOrder={3,2,1,4,5,6}
 	for _,i in ipairs(recipeOrder) do local name=M.recipes[i];for _,chosen in ipairs(policy.recipes) do if name==chosen then
-		if name=="Unidentified rare set pieces" then
+		if name=="Unidentified rare set pieces" or name=="Low-level unidentified rare set pieces" then
 			if mode~="Ruthless" then
-				local names={};for _,group in ipairs(policy.rareSetSlots) do for _,name in ipairs(rareSetClasses[group]) do names[#names+1]=filters.quote(name) end end
+				local names={};for _,group in ipairs(policy.rareSetSlots) do for _,class in ipairs(rareSetClasses[group]) do names[#names+1]=filters.quote(class) end end
 				local classes="Class == "..table.concat(names," ")
-				local common={classes,"Rarity == Rare","Identified False","ItemLevel >= 60","AreaLevel >= "..policy.minAreaLevel,"AreaLevel <= "..policy.maxAreaLevel}
-				local anchor=copyTable(common);anchor[#anchor+1]="ItemLevel <= 74";rule("recipe-"..i.."-anchor","Rare set / level 60-74",anchor,"245 190 65 255")
-				local higher=copyTable(common);higher[#higher+1]="ItemLevel >= 75";rule("recipe-"..i.."-higher","Rare set / level 75+",higher,"100 160 230 255")
+				local common={classes,"Rarity == Rare","Identified False","AreaLevel >= "..policy.minAreaLevel,"AreaLevel <= "..policy.maxAreaLevel}
+				if name=="Low-level unidentified rare set pieces" then
+					common[#common+1]="ItemLevel < 60";rule("recipe-"..i.."-low","Rare set / below level 60",common,"180 130 245 255")
+				else
+					common[#common+1]="ItemLevel >= 60"
+					local anchor=copyTable(common);anchor[#anchor+1]="ItemLevel <= 74";rule("recipe-"..i.."-anchor","Rare set / level 60-74",anchor,"245 190 65 255")
+					local higher=copyTable(common);higher[#higher+1]="ItemLevel >= 75";rule("recipe-"..i.."-higher","Rare set / level 75+",higher,"100 160 230 255")
+				end
 			end
 		else
 			local conditions=copyTable(recipes[name]);conditions[#conditions+1]="AreaLevel >= "..policy.minAreaLevel;conditions[#conditions+1]="AreaLevel <= "..policy.maxAreaLevel;rule("recipe-"..i,name,conditions)

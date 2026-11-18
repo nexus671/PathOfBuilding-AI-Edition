@@ -42,18 +42,21 @@ function M.Open(build,value,onKeep,mode)
 	ui.label(c,"recipesLabel",right,378,"Recipe and socket pickups",14)
 	local function updateSummary()
 		if not c.summary then return end
-		local lines=selected.recipes["Unidentified rare set pieces"] and mode~="Ruthless" and {"Rare sets: gold = item level 60-74; blue = 75+. For Chaos, at least one piece must be 60-74. Area range applies."} or {"Upgrade windows use five-area bands. Recipe pickups follow only the area range. No vendor proceeds, hidden modifiers or economy value are assumed."}
+		local lines={}
+		if mode~="Ruthless" and selected.recipes["Low-level unidentified rare set pieces"] then lines[#lines+1]="Purple: item level below 60. One low-level piece makes a rare set an Alchemy recipe." end
+		if mode~="Ruthless" and selected.recipes["Unidentified rare set pieces"] then lines[#lines+1]="Gold: 60-74; blue: 75+. For Chaos, at least one piece must be 60-74." end
+		if #lines==0 then lines={"Upgrade windows use five-area bands. Recipe pickups follow only the area range. No vendor proceeds, hidden modifiers or economy value are assumed."} end
 		c.summary.list=ui.rows(lines,column,13)
 	end
 	for i,name in ipairs(policy.recipes) do
-		button("recipe"..i,right,404+(i-1)*26,column,name,function() selected.recipes[name]=not selected.recipes[name] or nil;updateSummary() end);c["recipe"..i].height=22;c["recipe"..i].locked=function() return selected.recipes[name] end
-		if name=="Unidentified rare set pieces" then
+		button("recipe"..i,right,396+(i-1)*22,column,name,function() selected.recipes[name]=not selected.recipes[name] or nil;updateSummary() end);c["recipe"..i].height=20;c["recipe"..i].locked=function() return selected.recipes[name] end
+		if name=="Unidentified rare set pieces" or name=="Low-level unidentified rare set pieces" then
 			c["recipe"..i].enabled=function() return mode~="Ruthless" end
-			c["recipe"..i].tooltipText=mode=="Ruthless" and "Not emitted in Ruthless: recipe availability has not been verified." or "Shows unidentified rare equipment at item level 60+. Gold marks 60-74; blue marks 75+. A full set needs at least one 60-74 item for Chaos Orbs."
+			c["recipe"..i].tooltipText=mode=="Ruthless" and "Not emitted in Ruthless: recipe availability has not been verified." or name=="Low-level unidentified rare set pieces" and "Shows unidentified rare equipment below item level 60. A complete rare set with at least one such piece yields Alchemy Orbs." or "Shows unidentified rare equipment at item level 60+. Gold marks 60-74; blue marks 75+. A full set needs at least one 60-74 item for Chaos Orbs."
 		end
 	end
-	c.recipe5.width=column-106
-	button("rareSetSlots",right+column-98,508,98,"Slots...",function()
+	c.recipe5.width=column-106;c.recipe6.width=column-106
+	button("rareSetSlots",right+column-98,484,98,"Slots...",function()
 		local chosen={};for _,name in ipairs(current.rareSetSlots) do chosen[name]=true end
 		local popup={};ui.description(popup,"help",16,30,428,44,{"Choose which rare-set pieces to highlight. A complete set still needs every required slot."},14)
 		for i,name in ipairs(policy.rareSetSlots) do
@@ -69,7 +72,7 @@ function M.Open(build,value,onKeep,mode)
 		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{328,210,116,28},"Cancel",function() main:ClosePopup() end)
 		ui.style(popup,{keep=true});main:OpenPopup(460,256,"Rare-set slot groups",popup,nil,nil,"close")
 	end)
-	c.rareSetSlots.height=22;c.rareSetSlots.label=function() return #current.rareSetSlots.."/3 slots" end;c.rareSetSlots.enabled=function() return mode~="Ruthless" and selected.recipes["Unidentified rare set pieces"] end
+	c.rareSetSlots.height=42;c.rareSetSlots.label=function() return #current.rareSetSlots.."/3 slots" end;c.rareSetSlots.enabled=function() return mode~="Ruthless" and (selected.recipes["Unidentified rare set pieces"] or selected.recipes["Low-level unidentified rare set pieces"]) end
 	c.rareSetSlots.tooltipText="Choose jewellery, armour, and weapon/shield groups independently."
 	local function read()
 		local next=copyTable(current)

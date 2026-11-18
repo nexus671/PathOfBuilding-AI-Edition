@@ -1,3 +1,4 @@
+-- cspell:ignore RGBRRR
 describe("Offline campaign pickup policies",function()
 	local campaign=require("Modules.LootFilterCampaign")
 	local filters=require("Modules.LootFilters")
@@ -48,6 +49,18 @@ describe("Offline campaign pickup policies",function()
 		p.mode="Ruthless";item.ItemLevel=60;assert.equal("Minimal",filters.simulate(p,item).action)
 		assert.equal(0,#campaign.rules(p.campaign,nil,"Ruthless"));assert.equal(2,#campaign.rules(p.campaign,nil,"Normal"))
 	end)
+	it("offers optional low-level rare-set pickups without changing existing policies",function()
+		local p=profile();p.campaign.recipes={"Low-level unidentified rare set pieces"};p.campaign.maxAreaLevel=100;p.campaign.rareSetSlots={"Jewellery"}
+		local item={Class="Rings",BaseType="Iron Ring",AreaLevel=50,ItemLevel=59,Rarity="Rare",Identified=false}
+		local result=filters.simulate(p,item);assert.equal("Show",result.action);assert.same({"180","130","245","255"},result.styles.SetBorderColor)
+		item.ItemLevel=60;assert.equal("Hide",filters.simulate(p,item).action)
+		item.ItemLevel=59;item.Identified=true;assert.equal("Hide",filters.simulate(p,item).action)
+		item.Identified=false;item.Class="Helmets";assert.equal("Hide",filters.simulate(p,item).action)
+		item.Class="Rings";p.mode="Ruthless";assert.equal("Minimal",filters.simulate(p,item).action)
+		local kept;local c=require("Classes.LootFilterCampaignControl").Open(build,p.campaign,function(value) kept=value end,"Normal")
+		assert.is_true(c.rareSetSlots:IsEnabled());c.keep:Click();assert.same({"Low-level unidentified rare set pieces"},kept.recipes)
+		c=require("Classes.LootFilterCampaignControl").Open(build,p.campaign,function() end,"Ruthless");assert.is_false(c.recipe6:IsEnabled());assert.is_false(c.rareSetSlots:IsEnabled());c.close:Click()
+	end)
 	it("filters rare-set pickups to the selected slot groups and restores old defaults",function()
 		local old=campaign.validate({recipes={"Unidentified rare set pieces"}});assert.same(campaign.rareSetSlots,old.rareSetSlots)
 		local p=profile();p.campaign.recipes={"Unidentified rare set pieces"};p.campaign.rareSetSlots={"Jewellery"};p.campaign.maxAreaLevel=100
@@ -87,7 +100,7 @@ describe("Offline campaign pickup policies",function()
 	it("explains the rare-set color bands when selected",function()
 		local controls=require("Classes.LootFilterCampaignControl").Open(build,nil,function() end,"Normal")
 		controls.recipe5:Click();local summary="";for _,row in ipairs(controls.summary.list) do summary=summary..StripEscapes(row[1] or "").." " end
-		assert.matches("60%-74",summary);assert.matches("gold",summary);controls.close:Click()
+		assert.matches("60%-74",summary);assert.matches("Gold",summary);controls.close:Click()
 	end)
 	it("keeps selected rare-set slot groups through the dialog",function()
 		local kept;local controls=require("Classes.LootFilterCampaignControl").Open(build,nil,function(value) kept=value end,"Normal")
