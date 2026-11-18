@@ -1270,6 +1270,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy"}},targets={},requirements={minAffixes=4}},{method="alchemy"},function(value) talismanRecipe=value end,sim.model(talismanRaw))
 		ui:click("addCurrency");ui:text("search","imprint rare Talisman");frame("crafting-recipe-talisman-imprint");ui:click("choose");ui:click("keep")
 		assert(talismanRecipe.steps[2].method=="beast_talisman_imprint","Rare Talisman imprint was not kept in the recipe")
+		local beastRecipe;require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy"}},targets={},requirements={minAffixes=4}},{method="alchemy"},function(value) beastRecipe=value end,routeModel)
+		ui:click("addCurrency");ui:text("search","Bestiary: prefix to suffix");ui:click("choose");ui:text("level","78");ui:click("use")
+		assert(main.popups[1].controls.editBeast:IsShown(),"Added Bestiary swap should offer level editing");ui:click("editBeast");ui:text("level","76");ui:click("use");frame("crafting-recipe-beast-edited");ui:click("keep")
+		assert(beastRecipe.steps[2].method=="beast_prefix_suffix" and beastRecipe.steps[2].beastLevel==76,"Edited beast level should be retained")
 		local replaced;require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy",maxAttempts=2,onSuccess=1,onFailure=2,onFailureAction="stop",recoveryNotes="Keep this note",untilRequirements={minAffixes=5}}},targets={},requirements={minAffixes=6}},{method="chaos"},function(value) replaced=value end,routeModel)
 		ui:click("replace");ui:click("keep");local step=replaced.steps[1]
 		assert(step.method=="chaos" and step.maxAttempts==2 and step.onSuccess==1 and step.onFailure==2 and step.onFailureAction=="stop" and step.recoveryNotes=="Keep this note" and step.untilRequirements.minAffixes==5,"Replacing action lost routes or conditions")
