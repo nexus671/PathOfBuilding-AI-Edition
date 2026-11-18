@@ -108,6 +108,14 @@ describe("Map crafting source data",function()
 		assert.equal(0,data.inspect(base,16,83,{prefix,suffix},"",0,30,nil,"magic").total)
 		assert.has_error(function() data.inspect(base,16,83,{prefix,suffix},"",0,30,nil,"normal") end)
 	end)
+	it("excludes current rare-only encounter modifiers from recognized Blighted maps",function()
+		local base="Metadata/Items/Maps/MapWorldsStrand"
+		local effect={{kind="implicit",text="Area is infested with Fungal Growths"}}
+		for _,id in ipairs({"MapContainsBeyondDemonFactionWorlds","MapContainsBeyondFleshFactionWorlds","MapContainsBeyondPaleFactionWorlds","MapContainsDeliriumMirrorWorlds","MapContainsMirageWorlds","MapContainsWildwoodWorlds","MapContainsSentinelApexWorlds","MapContainsSentinelPandemoniumWorlds","MapContainsSentinelStalkerWorlds"}) do
+			assert.equal(1,data.inspect(base,16,83,{},id,0,30,nil,"rare").total)
+			assert.equal(0,data.inspect(base,16,83,{},id,0,30,nil,"rare",nil,nil,nil,nil,effect).total)
+		end
+	end)
 	it("combines known modifier bonuses without treating ranges as rolled values",function()
 		local result=data.summarize({"MapMonsterAreaOfEffectMapWorlds","MapContainsMirageWorlds"})
 		assert.same({min=26,max=26},result.totals.atlasDrops);assert.same({min=16,max=16},result.totals.rarity);assert.same({min=10,max=10},result.totals.packSize)

@@ -48,7 +48,7 @@ function M.run(state,options,checkpoint)
 	local unavailableAvoid={}
 	if #alternatives>0 or #avoid>0 then
 		local eligible,offset={},0
-		repeat local page=map.inspect(base.baseId,base.tier,base.itemLevel,{},"",offset,100,slice,rarity,nil,nil,nil,nil,nil,map.isNightmare(base.baseId));for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
+		repeat local page=map.inspect(base.baseId,base.tier,base.itemLevel,{},"",offset,100,slice,rarity,nil,nil,nil,nil,base.observedEffects,map.isNightmare(base.baseId));for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
 		for _,group in ipairs(alternatives) do for _,id in ipairs(group) do assert(eligible[id],"A wanted alternative is not eligible for this modeled map") end end
 		for _,id in ipairs(avoid) do if not eligible[id] then unavailableAvoid[#unavailableAvoid+1]=id end end
 	end

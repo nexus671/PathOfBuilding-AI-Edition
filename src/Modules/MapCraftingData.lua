@@ -151,6 +151,7 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 	assert(not implicit or corrupted,"A map corruption implicit requires a corrupted map")
 	local implicitInfo=implicit and require("Modules.MapCorruptionImplicits").describe(implicit,itemLevel) or nil
 	observedEffects=require("Modules.MapObservedEffects").validate(observedEffects)
+	local blighted=require("Modules.MapObservedEffects").isBlighted(observedEffects)
 	assert(type(selected or {})=="table","Selected modifiers must be a list");selected=selected or {}
 	query=query or "";assert(type(query)=="string" and #query<=160,"Invalid modifier search")
 	local base=assert(M.source().bases[baseId],"Unknown map base")
@@ -179,7 +180,7 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 	local eligible=M.candidates(tags,itemLevel,selected,checkpoint,candidatesOnly)
 	if checkpoint then checkpoint() end
 	local result={};for _,entry in ipairs(eligible) do
-		if (corrupted and #selected<9 or not corrupted and counts[entry.side]<(rarity=="magic" and 1 or 3)) and (rarity=="rare" or not rareOnly[entry.id]) and (query=="" or (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true)) then result[#result+1]=entry end
+		if (corrupted and #selected<9 or not corrupted and counts[entry.side]<(rarity=="magic" and 1 or 3)) and (rarity=="rare" and not blighted or not rareOnly[entry.id]) and (query=="" or (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true)) then result[#result+1]=entry end
 	end
 	local results,total,nextOffset=page(result,offset,limit)
 	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,nightmare=nightmare or nil,corrupted=corrupted or nil,implicit=implicitInfo,observedEffects=observedEffects,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=not candidatesOnly and M.summarize(selected,rolls,implicitInfo,quality) or nil,

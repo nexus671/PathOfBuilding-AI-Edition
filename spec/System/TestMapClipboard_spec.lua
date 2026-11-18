@@ -18,6 +18,15 @@ describe("Map clipboard import",function()
   local magic="Item Class: Maps\nRarity: Magic\nEnlarged Map (Tier 5)\n--------\nItem Level: 68\n--------\nMonsters have 45% increased Area of Effect"
   assert.equal("Metadata/Items/Maps/MapKeyTier5",parser.parse(magic..trailer).state.baseId)
  end)
+ it("recognizes the Blighted implicit on copied tier-based maps",function()
+  local raw="Item Class: Maps\nRarity: Rare\nBlighted Example\nBlighted Map (Tier 5)\n--------\nItem Level: 68\n--------\nArea is infested with Fungal Growths (implicit)\n--------\nMonsters have 45% increased Area of Effect"..trailer
+  local result=parser.parse(raw)
+  assert.equal("Metadata/Items/Maps/MapKeyTier5",result.state.baseId)
+  assert.is_true(require("Modules.MapObservedEffects").isBlighted(result.state.observedEffects))
+  assert.has_error(function() parser.parse(raw:gsub("Area is infested with Fungal Growths %(implicit%)\n--------\n","")) end)
+  local magic="Item Class: Maps\nRarity: Magic\nEnlarged Blighted Map (Tier 5)\n--------\nItem Level: 68\n--------\nMonsters have 45% increased Area of Effect"..trailer
+  assert.has_error(function() parser.parse(magic) end)
+ end)
  it("imports a named Nightmare map with its complete visible modifier",function()
   local raw="Item Class: Maps\nRarity: Rare\nDread Tower\nAbomination Map\n--------\nMap Tier: 17\nItem Level: 84\n--------\nPlayers are Cursed with Vulnerability\nPlayers are Cursed with Temporal Chains\nPlayers are Cursed with Elemental Weakness\n35% more Threads found in Area"..trailer
   local result=parser.parse(raw)

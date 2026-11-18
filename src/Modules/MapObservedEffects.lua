@@ -19,4 +19,12 @@ function M.hasExplicit(effects)
  for _,effect in ipairs(effects or {}) do if effect.kind=="explicit" then return true end end
  return false
 end
+-- This visible implicit identifies a Blighted or Blight-ravaged map. Do not
+-- infer the variant merely from a map's name or an ordinary Blight encounter.
+function M.isBlighted(effects)
+ for _,effect in ipairs(effects or {}) do
+  if effect.kind=="implicit" and effect.text=="Area is infested with Fungal Growths" then return true end
+ end
+ return false
+end
 return M

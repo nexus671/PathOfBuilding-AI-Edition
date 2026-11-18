@@ -43,7 +43,7 @@ function M.parse(raw,checkpoint)
  assert(rarity=="normal" or rarity=="magic" or rarity=="rare","Only normal, magic and rare maps are supported")
  assert(not raw:find("\nUnidentified",1,true),"Identify the map before importing it")
  assert(not raw:find("\nMirrored",1,true),"Mirrored maps are not supported")
- local itemTier=tonumber(raw:match("Rarity: [^\n]+\n[^\n]*Map %(Tier (%d+)%)") or raw:match("Rarity: [^\n]+\n[^\n]+\nMap %(Tier (%d+)%)"))
+ local itemTier=tonumber(raw:match("Rarity: [^\n]+\n[^\n]*Map %(Tier (%d+)%)") or raw:match("Rarity: [^\n]+\n[^\n]+\n[^\n]*Map %(Tier (%d+)%)"))
  local displayedTier=tonumber(raw:match("\nMap Tier:%s*(%d+)"))
  assert(not itemTier or not displayedTier or itemTier==displayedTier,"The map item's tier does not match its displayed tier")
  local tier=displayedTier or itemTier;local level=tonumber(raw:match("\nItem Level:%s*(%d+)"))
@@ -60,12 +60,19 @@ function M.parse(raw,checkpoint)
   end
  end
  local header=assert(raw:match("Rarity: [^\n]+\n(.-)\n%-%-%-%-%-%-%-%-"),"The copied map has no item header")
+ if itemTier and header:find("Blighted Map (Tier ",1,true) then
+  local marked=false
+  for line in raw:gmatch("[^\n]+") do if line=="Area is infested with Fungal Growths (implicit)" then marked=true;break end end
+  assert(marked,"A copied Blighted map needs its visible Blight implicit; paste the complete item text")
+ end
  local matches,exact,longest={},false,0
  if itemTier then
   local id="Metadata/Items/Maps/MapKeyTier"..itemTier
   assert(map.source().bases[id],"The tier-based map item is not in the current catalogue")
   if rarity~="magic" then
-   assert(header:match("([^\n]+)$")=="Map (Tier "..itemTier..")","The map item header is not supported")
+   local name=header:match("([^\n]+)$")
+   local blighted=raw:find("\nArea is infested with Fungal Growths (implicit)",1,true)
+   assert(name=="Map (Tier "..itemTier..")" or blighted and name=="Blighted Map (Tier "..itemTier..")","The map item header is not supported")
   end
   matches={id}
  end
@@ -127,7 +134,7 @@ function M.parse(raw,checkpoint)
    if #tests>0 then candidates[#candidates+1]={id=entry.id,side=entry.side,groups=entry.groups,tests=tests} end
   end
  elseif rarity~="normal" then repeat
-  local page=map.inspect(matches[1],tier,level,{},"",offset,100,checkpoint,rarity,nil,corrupted)
+  local page=map.inspect(matches[1],tier,level,{},"",offset,100,checkpoint,rarity,nil,corrupted,nil,nil,observed)
   for _,entry in ipairs(page.candidates) do
    local effect=map.summarize({entry.id}).effects[1];local tests={}
    for _,line in ipairs(effect.lines) do local template=clean(line);tests[#tests+1]={match=matcher(template),template=template,variable=template:find("%((%-?%d+)%-(%-?%d+)%)")~=nil} end
@@ -195,7 +202,7 @@ function M.parse(raw,checkpoint)
  assert(#solutions>0,"Some copied modifier lines could not be matched to the current map data; the existing draft was not changed")
  assert(#solutions==1,"The copied modifiers match multiple identities; select them manually instead")
  local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,implicit=implicit,quality=quality,observedEffects=observed}
- if rarity~="normal" then map.inspect(state.baseId,tier,level,state.selected,"",0,1,checkpoint,rarity,nil,corrupted,implicit) end
+ if rarity~="normal" then map.inspect(state.baseId,tier,level,state.selected,"",0,1,checkpoint,rarity,nil,corrupted,implicit,nil,observed) end
  local qualityEffect=require("Modules.MapQuality").effect(quality)
  return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality: "..quality.kind.." +"..quality.value.."%. "..(qualityEffect.supported and qualityEffect.text or "Effect not modeled")..".") or "No quality recorded.",observed and (#observed.." additional effect lines are recorded but not modeled; they can change results.") or (nightmare and "Nightmare Chaos estimates use an experimental draw order and unverified odds." or itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately.")}}
 end

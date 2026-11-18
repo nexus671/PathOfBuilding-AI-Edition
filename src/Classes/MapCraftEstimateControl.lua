@@ -41,7 +41,7 @@ function M.Open(build,options)
 	local function entries()
 		local entries,offset={},0
 		repeat
-			local page=map.inspect(state.baseId,state.tier,state.itemLevel,{},"",offset,100,nil,state.rarity,nil,nil,nil,nil,nil,map.isNightmare(state.baseId))
+			local page=map.inspect(state.baseId,state.tier,state.itemLevel,{},"",offset,100,nil,state.rarity,nil,nil,nil,nil,state.observedEffects,map.isNightmare(state.baseId))
 			for _,entry in ipairs(page.candidates) do
 				local details={entry.name.." | "..entry.side};for _,line in ipairs(map.summarize({entry.id}).effects[1].lines) do details[#details+1]=line end
 				if map.isNightmare(state.baseId) then details[#details+1]="Includes modifiers unlocked later in the experimental roll." end

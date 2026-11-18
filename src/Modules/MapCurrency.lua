@@ -9,7 +9,7 @@ end
 local function inspect(state,offset,checkpoint)
 	if checkpoint then checkpoint() end
 	-- Selection does not need the item-card summary or rendered stat text.
-	return map.inspect(state.baseId,state.tier,state.itemLevel,state.selected,"",offset,100,checkpoint,state.rarity,nil,nil,nil,nil,nil,nil,true)
+	return map.inspect(state.baseId,state.tier,state.itemLevel,state.selected,"",offset,100,checkpoint,state.rarity,nil,nil,nil,nil,state.observedEffects,nil,true)
 end
 local function candidates(state,checkpoint,cache)
 	-- Reroll trials repeatedly visit the same empty and one-modifier pools.
@@ -17,7 +17,7 @@ local function candidates(state,checkpoint,cache)
 	if checkpoint then checkpoint() end
 	local key
 	if cache and #state.selected<=1 then
-		key=table.concat({state.baseId,state.tier,state.itemLevel,state.rarity,state.selected[1] or ""},"|")
+		key=table.concat({state.baseId,state.tier,state.itemLevel,state.rarity,tostring(require("Modules.MapObservedEffects").isBlighted(state.observedEffects)),state.selected[1] or ""},"|")
 		if cache[key] then return cache[key] end
 	end
 	local all,offset={},0
@@ -55,12 +55,12 @@ local function validate(input,checkpoint,cache)
 	if state.rarity=="normal" then
 		assert(#state.selected==0,"A normal map cannot have explicit modifiers")
 		-- Validate the base, tier and level before changing state.
-		local probe={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity="rare",selected={}};inspect(probe,0,checkpoint)
+		local probe={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity="rare",selected={},observedEffects=state.observedEffects};inspect(probe,0,checkpoint)
 	else
 		-- Estimate trials start from the same empty state. The candidate cache
 		-- already validates that base, tier, item level and rarity on first use.
 		if #state.selected==0 and cache then candidates(state,checkpoint,cache) else inspect(state,0,checkpoint) end
-		local prior={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity=state.rarity,selected={}}
+		local prior={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity=state.rarity,selected={},observedEffects=state.observedEffects}
 		if map.isNightmare(state.baseId) and #state.selected>0 then
 			-- Copied modifiers need not be listed in generation order. Check
 			-- each against the union of the initial and unlocked pools.

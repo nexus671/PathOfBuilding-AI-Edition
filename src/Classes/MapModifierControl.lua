@@ -16,7 +16,7 @@ function M.Open(options)
 	options=options or {};local initial=options.initial
 	if initial then
 		assert(initial.patch==map.source().patch,"This map draft uses a different data version")
-		map.inspect(initial.baseId,initial.tier,initial.itemLevel,initial.selected,"",0,1,nil,initial.rarity=="normal" and "rare" or initial.rarity,initial.rolls,initial.corrupted,initial.implicit)
+		map.inspect(initial.baseId,initial.tier,initial.itemLevel,initial.selected,"",0,1,nil,initial.rarity=="normal" and "rare" or initial.rarity,initial.rolls,initial.corrupted,initial.implicit,initial.quality,initial.observedEffects)
 	end
 	local width=math.min(900,main.screenW-40);local height=math.min(600,main.screenH-60)
 	local left=math.floor(width*0.38);local right=left+32;local rightWidth=width-right-16
