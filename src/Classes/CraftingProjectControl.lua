@@ -147,7 +147,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 	controls.remove.tooltipText=function()
 		if #list==0 then return "Select a project to remove." end
 		local p=selected();local items=#(p.inventory or {});local links=#store:References(p.id)
-		return "Remove "..p.title..", its saved working craft and "..items.." inventory "..(items==1 and "item" or "items")..".\n"..links.." linked gear "..(links==1 and "goal remains" or "goals remain")..". Undo removal restores the project."
+		return "Remove "..p.title..", its saved working craft and "..items.." inventory "..(items==1 and "item" or "items")..".\n"..links.." linked "..(links==1 and "plan remains" or "plans remain")..". Undo removal restores the project."
 	end
 	controls.undoRemove=button(600,height-48,132,"Undo removal",function()
 		local entry,draft=store:UndoRemove()

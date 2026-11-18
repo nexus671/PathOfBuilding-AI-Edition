@@ -118,7 +118,7 @@ function M.new(build)
 	end
 	function self:References(id)
 		local result={}
-		for _,entry in ipairs(build.savers.BuildJourney.data.wishlist) do if entry.projectId==id then result[#result+1]={id=entry.id,title=entry.title} end end
+		for _,collection in ipairs({"wishlist","milestones"}) do for _,entry in ipairs(build.savers.BuildJourney.data[collection]) do if entry.projectId==id then result[#result+1]={id=entry.id,title=entry.title} end end end
 		return result
 	end
 	function self:Remove(id)

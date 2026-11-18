@@ -10,7 +10,8 @@ end
 local function edit(x,y,w,value,prompt,limit)
 	return new("EditControl"):EditControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,w,24},tostring(value or ""),prompt,nil,limit)
 end
-function Panel.Open(recipe,currentAction,onKeep,model)
+function Panel.Open(recipe,currentAction,onKeep,model,options)
+	options=options or {}
 	local draft=copyTable(recipe or {steps={},targets={}})
 	local controls={};local selected=1
 	local ui=require("Modules.PlanningUI")
@@ -52,6 +53,14 @@ function Panel.Open(recipe,currentAction,onKeep,model)
 		controls.failure:SetList(failureRoutes);loadStep()
 	end
 	controls.step.selFunc=function(_,entry) selected=entry.val;loadStep() end
+	button(controls,"trackUnlock",448,24,200,"Track unlock",function()
+		local step=assert(draft.steps[selected],"Select a bench recipe step")
+		local result=assert(options.trackUnlock,"Tracking is unavailable")(step,model)
+		main:OpenMessagePopup("Recipe unlock",result.created and "Added to Roadmap. Keep this recipe separately and save the build to persist both." or "This unlock is already in Roadmap. Its existing notes and completion are unchanged.")
+	end)
+	controls.trackUnlock.shown=function() return options.trackUnlock~=nil end
+	controls.trackUnlock.enabled=function() local step=draft.steps[selected];return step and step.method=="bench" and model and require("Modules.CraftingBenchCosts").unlock(model,step.modId)~=nil end
+	controls.trackUnlock.tooltipText="Add this listed recipe unlock to Roadmap. Keep the project first; this does not check your account or keep the recipe."
 	button(controls,"flowGraph",664,24,180,"Flow graph",function()
 		require("Classes.CraftingRecipeGraphControl").Open(draft,{model=model,change=function(next) draft=next;refresh() end,edit=function(index) selected=index;refresh();main:ClosePopup();main.popups[1]:SelectControl(controls.attempts) end})
 	end)

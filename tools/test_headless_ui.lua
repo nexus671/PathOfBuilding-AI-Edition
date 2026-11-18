@@ -818,14 +818,19 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 
 	do
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86"
-		require("Classes.CraftingSimulatorControl").Open(build,{id="bench-unlock-ui",title="Bench unlock",slot="Body Armour",startingItem=raw,goals={},steps={}})
+		local oldProjects=copyTable(build.savers.CraftingProjects.projects);local oldJourney=copyTable(build.savers.BuildJourney.data)
+		local project={id="bench-unlock-ui",title="Bench unlock",slot="Body Armour",startingItem=raw,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project);require("Classes.CraftingSimulatorControl").Open(build,project)
 		ui:click("settings");ui:text("paletteSearch","Crafting bench");ui:click("paletteUse");ui:choose("option","1 Prefix Modifier cannot be changed","label")
 		local hints={};for _,row in ipairs(main.popups[1].controls.actionHint.list) do hints[#hints+1]=StripEscapes(row[1]) end
 		local description=table.concat(hints," ");assert(description:find("Sanctuary Map",1,true),"Bench recipe location was not shown")
 		assert(description:find("equal odds assumed",1,true),"Partial-lock assumption was not shown with the recipe location")
 		frame("crafting-bench-unlock");ui:click("tab_simulate");ui:click("editRecipe");ui:click("add")
 		assert(main.popups[1].controls.graph.list[1].detail:find("Sanctuary Map",1,true),"Recipe card omitted the bench location")
-		frame("crafting-bench-unlock-recipe");ui:click("close");ui:click("close")
+		frame("crafting-bench-unlock-recipe");ui:click("trackUnlock")
+		assert(main.popups[1].title=="Recipe unlock" and #build.savers.BuildJourney.data.milestones==#oldJourney.milestones+1,"Tracking did not add a linked Roadmap task")
+		frame("crafting-unlock-roadmap-confirm");ui:click("close");ui:click("close");ui:click("close")
+		build.savers.CraftingProjects.projects=oldProjects;build.savers.BuildJourney.data=oldJourney
 	end
 	do
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: R-G B W-W R"
