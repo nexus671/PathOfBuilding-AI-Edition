@@ -212,7 +212,7 @@ function M.EditSample(item,save,focusKey)
 		else c[key]=new("EditControl"):EditControl(ui.anchor,{x,y+18,fieldWidth-32,24},tostring(value==nil and "" or value),nil,nil,240) end
 		if key=="HasExplicitMod" then c[key].tooltipText='Enter quoted modifier names, or [] for a known empty list. Editing this field clears names inferred from pasted text.' end
 		if key=="HasInfluence" then c[key].tooltipText='Leave blank if unknown; enter None for an uninfluenced item, or names such as Shaper Elder.' end
-		if key=="SocketGroup" then c[key].tooltipText='Enter linked groups, 0 for no sockets, or leave blank if unknown.' end
+		if key=="SocketGroup" then c[key].tooltipText='Enter linked groups and the total in Sockets to calculate links. Use 0 for no sockets; leave blank if unknown.' end
 		if key=="DropLevel" or key=="Width" or key=="Height" or key=="BaseDefencePercentile" or key=="MemoryStrands" or key=="UnidentifiedItemTier" then c[key].tooltipText="Leave blank if this property is unknown." end
 	end
 	c.HasExplicitMod.changeFunc=function() extra.KnownExplicitMods=nil end
