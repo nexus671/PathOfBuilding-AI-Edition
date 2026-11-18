@@ -41,6 +41,7 @@ function M.track(build,projectId,model,action)
 	local mod=assert(model.byId[action.modId]);local title="Unlock "..table.concat(mod," / ")
 	local key=taskKey(projectId,action.modId)
 	local journey=build.savers.BuildJourney
+	assert(not journey.unreadable,journey.warning or "Roadmap data could not be read; its original data is preserved.")
 	for _,entry in ipairs(journey.data.milestones) do if entry.id==key then return {created=false,conflict=entry.projectId~=projectId,task=copyTable(entry),unlock=unlock} end end
 	local task={id=key,title=title,kind="craft",priority=3,done=false,dependencies={},projectId=projectId,
 		notes="PoEDB lists "..unlock.map.." as the 3.30 recipe location. Verify the unlock in game; account and Ruthless availability are not checked. Source: "..unlock.source}
