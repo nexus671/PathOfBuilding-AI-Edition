@@ -43,8 +43,19 @@ describe("Map reroll estimates",function()
 		local low=copyTable(state);low.tier=5;low.itemLevel=68
 		local fire,cold="MapMonsterFireDamageMapWorlds","MapMonsterColdDamageMapWorlds"
 		local one=estimate.run(low,{wantedGroups={{fire}},trials=10,maxAttempts=4,seed=77})
-		local both=estimate.run(low,{wantedGroups={{fire},{cold}},trials=10,maxAttempts=4,seed=77})
-		assert.is_true(one.successes>0);assert.equal(0,both.successes)
+		assert.is_true(one.successes>0)
+		local ok,err=pcall(estimate.run,low,{wantedGroups={{fire},{cold}},trials=10,maxAttempts=4,seed=77})
+		assert.is_false(ok);assert.matches("Wanted groups 1 and 2 cannot coexist",err)
+		local valid=estimate.run(low,{wantedGroups={{fire,cold},{"MapMonsterAreaOfEffectMapWorlds"}},trials=1,maxAttempts=1,seed=77});assert.equal(1,valid.trials)
+	end)
+	it("allows a compatible alternative and rejects two magic modifiers on one side",function()
+		local low=copyTable(state);low.tier=5;low.itemLevel=68
+		local fire,cold="MapMonsterFireDamageMapWorlds","MapMonsterColdDamageMapWorlds"
+		local result=estimate.run(low,{wantedGroups={{fire,"MapContainsMirageWorlds"},{cold}},trials=1,maxAttempts=1,seed=77})
+		assert.equal(1,result.trials)
+		local magic=copyTable(low);magic.rarity="magic"
+		local ok,err=pcall(estimate.run,magic,{wantedGroups={{"MapMonsterAreaOfEffectMapWorlds"},{"MapMonsterCriticalStrikesAndDamageMapWorlds"}},trials=1,maxAttempts=1,seed=77})
+		assert.is_false(ok);assert.matches("Wanted groups 1 and 2 cannot coexist",err)
 	end)
 	it("rejects contradictory, ineligible and unbounded requests",function()
 		local options={wanted={"MapMonsterAreaOfEffectMapWorlds"},avoid={},trials=1,maxAttempts=1,seed=42}

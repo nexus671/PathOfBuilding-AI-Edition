@@ -6,8 +6,11 @@ local estimate=require("Modules.MapCraftEstimate")
 local map=require("Modules.MapCraftingData")
 local coldStart=os.clock();map.source();local loadMs=(os.clock()-coldStart)*1000
 local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=5,itemLevel=68,rarity="rare",selected={}}
--- These alternatives conflict in the modeled pool, forcing every attempt.
-local options={wantedGroups={{"MapMonsterFireDamageMapWorlds"},{"MapMonsterColdDamageMapWorlds"}},trials=stress and 1000 or 100,maxAttempts=stress and 20 or 5,seed=77}
+-- Avoid every currently eligible modifier, forcing every attempt.
+local page=map.inspect(state.baseId,state.tier,state.itemLevel,{},"",0,100,nil,state.rarity)
+assert(not page.nextOffset,"Update the benchmark for a larger modifier pool")
+local avoid={};for _,entry in ipairs(page.candidates) do avoid[#avoid+1]=entry.id end
+local options={avoid=avoid,trials=stress and 1000 or 100,maxAttempts=stress and 20 or 5,seed=77}
 local done,failed;local times={};local started=os.clock()
 tasks.start(build,function(checkpoint) return estimate.run(state,options,checkpoint) end,function(value) done=value end,function(err) failed=err end)
 while tasks.job do local t=os.clock();tasks.tick(build);times[#times+1]=(os.clock()-t)*1000 end

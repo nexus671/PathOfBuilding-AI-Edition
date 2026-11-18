@@ -693,6 +693,8 @@ async function main(){
   assert.equal(mapEstimate.mapData.successes,2);assert.equal(mapEstimate.mapData.attempts,2);assert.match(mapEstimate.mapData.note,/sampling uncertainty only/);
   const mapAlternatives=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'},options:{wantedGroups:[['MapContainsMirageWorlds','MapContainsWildwoodWorlds']],trials:1,maxAttempts:1,seed:42}},'mapData');
   assert.deepEqual(mapAlternatives.mapData.wantedGroups,[['MapContainsMirageWorlds','MapContainsWildwoodWorlds']]);
+  const impossibleMap=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:5,itemLevel:68,rarity:'rare'},options:{wantedGroups:[['MapMonsterFireDamageMapWorlds'],['MapMonsterColdDamageMapWorlds']],trials:1000,maxAttempts:20,seed:42}},'failed');
+  assert.match(impossibleMap.error,/Wanted groups 1 and 2 cannot coexist/);
   const altarItem='Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W W W\nCorrupted';
   const secondCorruption=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:altarItem,action:{method:'locus'},seed:1},'crafted');
   assert.equal(secondCorruption.nativeCrafting.warnings[0].code,'locus_assumptions');

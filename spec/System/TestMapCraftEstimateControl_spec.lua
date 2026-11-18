@@ -15,13 +15,21 @@ describe("Map reroll estimate control",function()
 		assert.is_truthy(sample);assert.equal("rare",sample.rarity);assert.equal(#sample.selected,#sample.rolls)
 	end)
 	it("cancels its own job when closed",function()
-		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=5,itemLevel=68,rarity="rare",selected={}}
-		local settings={wantedGroups={{"MapMonsterFireDamageMapWorlds"},{"MapMonsterColdDamageMapWorlds"}},avoid={},trials=1000,maxAttempts=20}
+		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
+		local settings={wantedGroups={{"MapContainsMirageWorlds"}},avoid={},trials=1000,maxAttempts=20}
 		local controls=require("Classes.MapCraftEstimateControl").Open(build,{state=state,settings=settings,apply=function() error("unexpected apply") end})
 		controls.run:Click();local job=tasks.job;assert.is_truthy(job)
 		for _=1,10000 do if not tasks.job or (job.current.attempts or 0)>=10 then break end;tasks.tick(build) end
 		assert.equal(job,tasks.job);assert.is_true(job.current.attempts>=10)
 		controls.close:Click();assert.is_nil(tasks.job)
+	end)
+	it("explains incompatible targets before rolling",function()
+		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=5,itemLevel=68,rarity="rare",selected={}}
+		local settings={wantedGroups={{"MapMonsterFireDamageMapWorlds"},{"MapMonsterColdDamageMapWorlds"}},avoid={},trials=1000,maxAttempts=20}
+		local controls=require("Classes.MapCraftEstimateControl").Open(build,{state=state,settings=settings,apply=function() error("unexpected apply") end})
+		controls.run:Click();for _=1,1000 do if not tasks.job then break end;tasks.tick(build) end
+		assert.is_nil(tasks.job);local text="";for _,row in ipairs(controls.report.list) do text=text..StripEscapes(row[1] or "").." " end
+		assert.matches("Wanted groups 1 and 2 cannot coexist",text);assert.is_falsy(controls.use:IsEnabled())
 	end)
 	it("adds and removes a user-chosen wanted alternative",function()
 		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}

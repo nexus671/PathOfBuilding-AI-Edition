@@ -95,6 +95,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(main.popups[1].controls.rarity:GetSelValueByKey("val")=="rare","Map Alchemy did not produce a rare map");assert(main.popups[1].controls.remove:IsEnabled(),"Map Alchemy did not add modifiers");frame("map-currency-result")
 	ui:text("draftName","My map draft");ui:click("keep");ui:click("close");ui:click("tools");ui:text("search","Saved map drafts");ui:click("choose");frame("saved-map-drafts");ui:click("choose")
 	assert(main.popups[1].controls.draftName.buf=="My map draft" and main.popups[1].controls.remove:IsEnabled(),"Saved map draft did not reopen");frame("reopened-map-draft");ui:click("close")
+	do
+		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=5,itemLevel=68,rarity="rare",selected={}}
+		local settings={wantedGroups={{"MapMonsterFireDamageMapWorlds"},{"MapMonsterColdDamageMapWorlds"}},avoid={},trials=1000,maxAttempts=20}
+		local c=require("Classes.MapCraftEstimateControl").Open(build,{state=state,settings=settings,apply=function() error("unexpected map result") end})
+		ui:click("run");local tasks=require("Modules.CraftingTasks");for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
+		assert(not tasks.job,"Conflicting map targets did not finish");local message="";for _,row in ipairs(c.report.list) do message=message..StripEscapes(row[1] or "").." " end
+		assert(message:find("Wanted groups 1 and 2 cannot coexist",1,true),"Conflicting map targets were not explained");frame("map-impossible-targets");ui:click("close")
+	end
 	local workspace=build.planningWorkspace
 	build.buildFlag=true;ui:frame();ui:click("nav_tools");frame("planning-tools");ui:click("choose");frame("performance-diagnostics");ui:click("copy");assert(ui.clipboard:find("ms",1,true));ui:click("refresh");ui:click("close")
 	local canvas=workspace.controls.canvas

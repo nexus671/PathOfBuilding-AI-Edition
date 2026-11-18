@@ -39,6 +39,27 @@ function M.run(state,options,checkpoint)
 		repeat local page=map.inspect(base.baseId,base.tier,base.itemLevel,{},"",offset,100,slice,rarity);for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
 		for _,group in ipairs(alternatives) do for _,id in ipairs(group) do assert(eligible[id],"A wanted alternative is not eligible for this modeled map") end end
 	end
+	-- Reject only pairwise contradictions we can prove from the modeled
+	-- modifier groups and magic-map prefix/suffix limits. More complex
+	-- incompatibilities can still produce zero sampled successes.
+	local mods=map.source().mods
+	local function compatible(left,right)
+		local a,b=mods[left],mods[right]
+		if rarity=="magic" and a.generation_type==b.generation_type then return false end
+		for _,one in ipairs(a.groups or {}) do for _,two in ipairs(b.groups or {}) do if one==two then return false end end end
+		return true
+	end
+	for i=1,#groups do for j=i+1,#groups do
+		local possible=false;local examined=0
+		for _,left in ipairs(groups[i]) do
+			for _,right in ipairs(groups[j]) do
+				examined=examined+1;if examined%32==0 then slice() end
+				if compatible(left,right) then possible=true;break end
+			end
+			if possible then break end
+		end
+		assert(possible,"Wanted groups "..i.." and "..j.." cannot coexist under the modeled map modifier rules. Change or remove a target.")
+	end end
 	local successes,totalAttempts=0,0;local sample,successfulAttempts;local histogram={};local poolCache={}
 	for trial=1,trials do
 		for attempt=1,maxAttempts do
