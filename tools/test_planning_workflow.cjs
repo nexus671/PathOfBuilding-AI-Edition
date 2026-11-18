@@ -736,6 +736,13 @@ async function main(){
   const deliriousRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:deliriousState,action:'chaos',seed:42},'failed');
   assert.match(deliriousRoll.error,/unsupported explicit/);
   const unknownMap=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:copiedMapText.replace('Monsters have 45% increased Area of Effect','Unknown map modifier')},'failed');assert.match(unknownMap.error,/Unrecognized map modifier/);
+  const blightedText='Item Class: Maps\nRarity: Rare\nAncient Example\nBlighted Map (Tier 16)\n--------\nItem Level: 83\n--------\nArea is infested with Fungal Growths (implicit)\n--------\nArea contains a Mirage\n--------\nTravel to this Map by using it in a personal Map Device.';
+  const blightedCopy=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:blightedText},'mapData');
+  assert.deepEqual(blightedCopy.mapData.state.selected,['MapContainsMirageWorlds']);
+  const blightedReroll=await queued('simulate_map_currency',{baseRevision:context.revision,state:blightedCopy.mapData.state,action:'chaos',seed:42},'mapData');
+  assert.ok(!blightedReroll.mapData.state.selected.includes('MapContainsMirageWorlds'));assert.match(blightedReroll.mapData.note,/Blighted rare-only/);
+  const blightedTarget=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:blightedCopy.mapData.state,options:{wanted:['MapContainsMirageWorlds'],trials:1,maxAttempts:1,seed:42}},'failed');
+  assert.match(blightedTarget.error,/not eligible/);
   const mapBases=await queued('search_map_bases',{baseRevision:context.revision,query:'MapWorldsBeach',limit:5},'mapData');
   assert.ok(mapBases.mapData.results.some(base=>base.id==='Metadata/Items/Maps/MapWorldsBeach'));
   const nightmareMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsAbomination',tier:17,itemLevel:84,rarity:'rare',query:'MapUberModCurses'},'mapData');

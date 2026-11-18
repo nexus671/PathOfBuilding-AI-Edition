@@ -46,9 +46,10 @@ function M.run(state,options,checkpoint)
 	-- The ordered wanted list must itself be a supported ordinary-map state.
 	local test=copyTable(base);test.selected=copyTable(wanted);currency.perform(test,action,seed,slice,true)
 	local unavailableAvoid={}
-	if #alternatives>0 or #avoid>0 then
+	if #wanted>0 or #alternatives>0 or #avoid>0 then
 		local eligible,offset={},0
 		repeat local page=map.inspect(base.baseId,base.tier,base.itemLevel,{},"",offset,100,slice,rarity,nil,nil,nil,nil,base.observedEffects,map.isNightmare(base.baseId));for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
+		for _,id in ipairs(wanted) do assert(eligible[id],"A wanted modifier is not eligible for this modeled map") end
 		for _,group in ipairs(alternatives) do for _,id in ipairs(group) do assert(eligible[id],"A wanted alternative is not eligible for this modeled map") end end
 		for _,id in ipairs(avoid) do if not eligible[id] then unavailableAvoid[#unavailableAvoid+1]=id end end
 	end

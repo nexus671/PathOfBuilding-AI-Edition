@@ -12,7 +12,11 @@ describe("Experimental map currency",function()
 		local ordinary=state("rare")
 		for seed=1,5 do assert.same(currency.perform(ordinary,"chaos",seed),currency.perform(ordinary,"chaos",seed,nil,false,cache)) end
 		local target=copyTable(input);target.selected={"MapContainsMirageWorlds"}
-		assert.has_error(function() currency.perform(target,"chaos",42) end)
+		local exalted=currency.perform(target,"exalt",42)
+		assert.is_truthy(isValueInArray(exalted.state.selected,"MapContainsMirageWorlds"));assert.matches("pre%-hotfix",exalted.note)
+		local rerolled=currency.perform(target,"chaos",42).state
+		for _,id in ipairs(rerolled.selected) do assert.is_nil(forbidden[id],id) end
+		assert.equal("normal",currency.perform(target,"scour",42).state.rarity)
 		assert.has_error(function() require("Modules.MapCraftEstimate").run(input,{wanted={"MapContainsMirageWorlds"},trials=1,maxAttempts=1,seed=1}) end)
 		local estimate=require("Modules.MapCraftEstimate").run(input,{avoid={"MapContainsMirageWorlds"},trials=1,maxAttempts=1,seed=1})
 		assert.matches("Blighted rare%-only",estimate.note);assert.matches("not modeled",estimate.note)

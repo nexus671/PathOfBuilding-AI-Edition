@@ -15,6 +15,11 @@ local rareOnly={
 	MapContainsDeliriumMirrorWorlds=true,MapContainsMirageWorlds=true,MapContainsWildwoodWorlds=true,
 	MapContainsSentinelApexWorlds=true,MapContainsSentinelPandemoniumWorlds=true,MapContainsSentinelStalkerWorlds=true,
 }
+function M.isRareOnly(id) return rareOnly[id]==true end
+function M.hasBlightedLegacy(selected,effects)
+	if require("Modules.MapObservedEffects").isBlighted(effects) then for _,id in ipairs(selected or {}) do if rareOnly[id] then return true end end end
+	return false
+end
 
 function M.source()
 	if not data then
@@ -185,6 +190,6 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 	local results,total,nextOffset=page(result,offset,limit)
 	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,nightmare=nightmare or nil,corrupted=corrupted or nil,implicit=implicitInfo,observedEffects=observedEffects,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=not candidatesOnly and M.summarize(selected,rolls,implicitInfo,quality) or nil,
 		source=M.source().source,patch=M.source().patch,
-		note=(nightmare and "Nightmare modifiers can unlock other candidates. Draw order and game restrictions are unverified; simulated Chaos outcomes are experimental. Spawn weights are not probabilities." or corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification.")..require("Modules.MapObservedEffects").note(observedEffects)}
+		note=(nightmare and "Nightmare modifiers can unlock other candidates. Draw order and game restrictions are unverified; simulated Chaos outcomes are experimental. Spawn weights are not probabilities." or corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification.")..require("Modules.MapObservedEffects").note(observedEffects)..(M.hasBlightedLegacy(selected,observedEffects) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")}
 end
 return M

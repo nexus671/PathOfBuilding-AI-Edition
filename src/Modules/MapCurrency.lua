@@ -70,6 +70,13 @@ local function validate(input,checkpoint,cache)
 		else
 			for _,id in ipairs(state.selected) do
 				local found=false;for _,entry in ipairs(candidates(prior,checkpoint,cache)) do if entry.id==id then found=true;break end end
+				-- Existing Blighted maps can retain these pre-hotfix modifiers.
+				-- Check their ordinary pool eligibility without adding them back to
+				-- the pool used for future currency rolls.
+				if not found and state.rarity=="rare" and map.isRareOnly(id) and require("Modules.MapObservedEffects").isBlighted(state.observedEffects) then
+					local legacy=copyTable(prior);legacy.observedEffects=nil
+					for _,entry in ipairs(candidates(legacy,checkpoint,cache)) do if entry.id==id then found=true;break end end
+				end
 				assert(found,"A selected modifier is not eligible for this modeled map state")
 				prior.selected[#prior.selected+1]=id
 			end
@@ -132,6 +139,6 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
 		local roll=existing[id] or (not identitiesOnly and not priorIds[id] and values.sample(map.source().mods[id],random))
 		if roll then state.rolls[#state.rolls+1]={id=id,values=roll} end
 	end
-	return {state=state,seed=seed,action=action,summary=not identitiesOnly and map.summarize(state.selected,state.rolls,nil,state.quality) or nil,note=(map.isNightmare(state.baseId) and "Experimental Nightmare model: six modifiers, one exclusive prefix and suffix drawn first, then four weighted draws. Draw order, weights, independent uniform values and interactions are unverified assumptions." or "Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified.")..require("Modules.MapObservedEffects").note(state.observedEffects)}
+	return {state=state,seed=seed,action=action,summary=not identitiesOnly and map.summarize(state.selected,state.rolls,nil,state.quality) or nil,note=(map.isNightmare(state.baseId) and "Experimental Nightmare model: six modifiers, one exclusive prefix and suffix drawn first, then four weighted draws. Draw order, weights, independent uniform values and interactions are unverified assumptions." or "Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified.")..require("Modules.MapObservedEffects").note(state.observedEffects)..(map.hasBlightedLegacy(state.selected,state.observedEffects) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")}
 end
 return M

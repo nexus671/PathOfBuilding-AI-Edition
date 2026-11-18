@@ -27,6 +27,9 @@ describe("Map clipboard import",function()
   assert.has_error(function() parser.parse(raw:gsub("Area is infested with Fungal Growths %(implicit%)\n--------\n","")) end)
   local magic="Item Class: Maps\nRarity: Magic\nEnlarged Blighted Map (Tier 5)\n--------\nItem Level: 68\n--------\nMonsters have 45% increased Area of Effect"..trailer
   assert.has_error(function() parser.parse(magic) end)
+  local legacy="Item Class: Maps\nRarity: Rare\nAncient Example\nBlighted Map (Tier 16)\n--------\nItem Level: 83\n--------\nArea is infested with Fungal Growths (implicit)\n--------\nArea contains a Mirage"..trailer
+  local imported=parser.parse(legacy);local existing=imported.state;assert.same({"MapContainsMirageWorlds"},existing.selected);assert.matches("pre%-hotfix",imported.notes[3])
+  assert.is_true(require("Modules.MapCurrency").options(existing)[4].available)
  end)
  it("imports a named Nightmare map with its complete visible modifier",function()
   local raw="Item Class: Maps\nRarity: Rare\nDread Tower\nAbomination Map\n--------\nMap Tier: 17\nItem Level: 84\n--------\nPlayers are Cursed with Vulnerability\nPlayers are Cursed with Temporal Chains\nPlayers are Cursed with Elemental Weakness\n35% more Threads found in Area"..trailer

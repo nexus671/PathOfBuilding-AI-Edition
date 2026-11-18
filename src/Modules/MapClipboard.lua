@@ -134,7 +134,11 @@ function M.parse(raw,checkpoint)
    if #tests>0 then candidates[#candidates+1]={id=entry.id,side=entry.side,groups=entry.groups,tests=tests} end
   end
  elseif rarity~="normal" then repeat
-  local page=map.inspect(matches[1],tier,level,{},"",offset,100,checkpoint,rarity,nil,corrupted,nil,nil,observed)
+  -- Existing Blighted maps may contain pre-hotfix rare-only modifiers. Use
+  -- the ordinary pool to identify those copies; rerolls still use the current pool.
+  local searchEffects=observed
+  if rarity=="rare" and require("Modules.MapObservedEffects").isBlighted(observed) then searchEffects=nil end
+  local page=map.inspect(matches[1],tier,level,{},"",offset,100,checkpoint,rarity,nil,corrupted,nil,nil,searchEffects)
   for _,entry in ipairs(page.candidates) do
    local effect=map.summarize({entry.id}).effects[1];local tests={}
    for _,line in ipairs(effect.lines) do local template=clean(line);tests[#tests+1]={match=matcher(template),template=template,variable=template:find("%((%-?%d+)%-(%-?%d+)%)")~=nil} end
@@ -204,6 +208,6 @@ function M.parse(raw,checkpoint)
  local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,implicit=implicit,quality=quality,observedEffects=observed}
  if rarity~="normal" then map.inspect(state.baseId,tier,level,state.selected,"",0,1,checkpoint,rarity,nil,corrupted,implicit,nil,observed) end
  local qualityEffect=require("Modules.MapQuality").effect(quality)
- return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality: "..quality.kind.." +"..quality.value.."%. "..(qualityEffect.supported and qualityEffect.text or "Effect not modeled")..".") or "No quality recorded.",observed and (#observed.." additional effect lines recorded."..require("Modules.MapObservedEffects").note(observed)) or (nightmare and "Nightmare Chaos estimates use an experimental draw order and unverified odds." or itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately.")}}
+ return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality: "..quality.kind.." +"..quality.value.."%. "..(qualityEffect.supported and qualityEffect.text or "Effect not modeled")..".") or "No quality recorded.",observed and (#observed.." additional effect lines recorded."..require("Modules.MapObservedEffects").note(observed)..(map.hasBlightedLegacy(state.selected,observed) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")) or (nightmare and "Nightmare Chaos estimates use an experimental draw order and unverified odds." or itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately.")}}
 end
 return M
