@@ -150,9 +150,8 @@ end
 -- inspection deliberately does not simulate rolling or claim outcome odds.
 function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity,rolls,corrupted,implicit,quality,observedEffects,potentialNightmare,candidatesOnly)
 	assert(type(tier)=="number" and tier==math.floor(tier) and tier>=1 and tier<=17,"Use a map tier from 1 to 17")
-	rarity=rarity or "rare";assert(rarity=="magic" or rarity=="rare","Use magic or rare map rarity")
+	rarity=rarity or "rare";assert(rarity=="normal" or rarity=="magic" or rarity=="rare","Use normal, magic or rare map rarity")
 	assert(corrupted==nil or type(corrupted)=="boolean","Invalid map corruption state")
-	assert(not corrupted or rarity=="rare","Corrupted map inspection currently requires a rare map")
 	assert(not implicit or corrupted,"A map corruption implicit requires a corrupted map")
 	local implicitInfo=implicit and require("Modules.MapCorruptionImplicits").describe(implicit,itemLevel) or nil
 	observedEffects=require("Modules.MapObservedEffects").validate(observedEffects)
@@ -174,22 +173,22 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 		for _,mod in pairs(M.source().mods) do for _,tag in ipairs(mod.adds_tags or {}) do if tag:match("^has_uber_map_") then tags[tag]=true end end end
 	end
 	local counts={prefix=0,suffix=0};local groups={}
-	assert(#(selected or {})<=(corrupted and 9 or rarity=="magic" and 2 or 6),"Too many modifiers for this map state")
+	assert(#(selected or {})<=(rarity=="normal" and 0 or rarity=="magic" and 2 or corrupted and 9 or 6),"Too many modifiers for this map state")
 	for _,id in ipairs(selected or {}) do
 		local mod=assert(M.source().mods[id],"Unknown selected area modifier")
 		assert(rarity=="rare" or not rareOnly[id],"This modifier can only roll on rare maps")
 		counts[mod.generation_type]=counts[mod.generation_type]+1
-		if not corrupted then assert(counts[mod.generation_type]<=(rarity=="magic" and 1 or 3),"Too many modifiers for this map rarity") end
+		if not corrupted or rarity=="magic" then assert(counts[mod.generation_type]<=(rarity=="magic" and 1 or 3),"Too many modifiers for this map rarity") end
 		for _,group in ipairs(mod.groups or {}) do assert(not groups[group],"Selected modifiers share a group");groups[group]=true end
 	end
 	local eligible=M.candidates(tags,itemLevel,selected,checkpoint,candidatesOnly)
 	if checkpoint then checkpoint() end
 	local result={};for _,entry in ipairs(eligible) do
-		if (corrupted and #selected<9 or not corrupted and counts[entry.side]<(rarity=="magic" and 1 or 3)) and (rarity=="rare" and not blighted or not rareOnly[entry.id]) and (query=="" or (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true)) then result[#result+1]=entry end
+		if rarity~="normal" and (rarity=="rare" and corrupted and #selected<9 or (not corrupted or rarity=="magic") and counts[entry.side]<(rarity=="magic" and 1 or 3)) and (rarity=="rare" and not blighted or not rareOnly[entry.id]) and (query=="" or (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true)) then result[#result+1]=entry end
 	end
 	local results,total,nextOffset=page(result,offset,limit)
 	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,nightmare=nightmare or nil,corrupted=corrupted or nil,implicit=implicitInfo,observedEffects=observedEffects,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=not candidatesOnly and M.summarize(selected,rolls,implicitInfo,quality) or nil,
 		source=M.source().source,patch=M.source().patch,
-		note=(nightmare and "Nightmare modifiers can unlock other candidates. Draw order and game restrictions are unverified; simulated Chaos outcomes are experimental. Spawn weights are not probabilities." or corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification.")..require("Modules.MapObservedEffects").note(observedEffects)..(M.hasBlightedLegacy(selected,observedEffects) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")}
+		note=(nightmare and "Nightmare modifiers can unlock other candidates. Draw order and game restrictions are unverified; simulated Chaos outcomes are experimental. Spawn weights are not probabilities." or corrupted and rarity=="rare" and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification.")..require("Modules.MapObservedEffects").note(observedEffects)..(M.hasBlightedLegacy(selected,observedEffects) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")}
 end
 return M

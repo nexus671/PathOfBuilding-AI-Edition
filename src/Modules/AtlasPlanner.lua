@@ -58,7 +58,6 @@ function M.validateMapDraft(entry)
 	assert(result.rarity=="normal" or result.rarity=="magic" or result.rarity=="rare","Invalid map draft rarity")
 	assert(result.tier~=17 or result.rarity=="rare","Tier 17 map drafts require rare rarity")
 	assert(entry.corrupted==nil or type(entry.corrupted)=="boolean","Invalid map corruption state")
-	assert(not entry.corrupted or result.rarity=="rare","Corrupted map drafts currently require rare maps")
 	result.corrupted=entry.corrupted or nil
 	result.quality=require("Modules.MapQuality").validate(entry.quality)
 	result.observedEffects=require("Modules.MapObservedEffects").validate(entry.observedEffects)

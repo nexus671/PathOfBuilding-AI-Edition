@@ -19,9 +19,9 @@ describe("Corrupted map inspection",function()
   assert.has_error(function() currency.perform(state,"chaos",1) end)
   assert.has_error(function() estimate.run(state,{wanted={},avoid={},trials=1,maxAttempts=1,seed=1}) end)
  end)
- it("does not permit ten modifiers or corrupted normal drafts",function()
+ it("permits corrupted normal drafts but not ten modifiers",function()
   local draft={id="x",title="Map",patch=map.source().patch,baseId=base,tier=16,itemLevel=83,rarity="normal",selected={},corrupted=true}
-  assert.has_error(function() atlas.validateMapDraft(draft) end)
+  assert.is_true(atlas.validateMapDraft(draft).corrupted);assert.equal(0,map.inspect(base,16,83,{},"",0,10,nil,"normal",nil,true).total)
   local selected={};for _=1,9 do local page=inspect(selected,true);selected[#selected+1]=page.candidates[1].id end
   selected[10]=selected[1];assert.has_error(function() inspect(selected,true) end)
  end)

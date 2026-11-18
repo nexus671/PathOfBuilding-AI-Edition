@@ -18,6 +18,13 @@ describe("Map clipboard import",function()
   local magic="Item Class: Maps\nRarity: Magic\nEnlarged Map (Tier 5)\n--------\nItem Level: 68\n--------\nMonsters have 45% increased Area of Effect"
   assert.equal("Metadata/Items/Maps/MapKeyTier5",parser.parse(magic..trailer).state.baseId)
  end)
+ it("imports corrupted normal and magic maps without changing rarity",function()
+  local normal="Item Class: Maps\nRarity: Normal\nMap (Tier 1)\n--------\nItem Level: 68\n--------\n"..trailer.."\n--------\nCorrupted"
+  local magic="Item Class: Maps\nRarity: Magic\nEnlarged Map (Tier 5)\n--------\nItem Level: 68\n--------\nMonsters have 45% increased Area of Effect"..trailer.."\n--------\nCorrupted"
+  local a,b=parser.parse(normal).state,parser.parse(magic).state
+  assert.equal("normal",a.rarity);assert.is_true(a.corrupted);assert.equal(0,#a.selected)
+  assert.equal("magic",b.rarity);assert.is_true(b.corrupted);assert.same({"MapMonsterAreaOfEffectMapWorlds"},b.selected)
+ end)
  it("recognizes the Blighted implicit on copied tier-based maps",function()
   local raw="Item Class: Maps\nRarity: Rare\nBlighted Example\nBlighted Map (Tier 5)\n--------\nItem Level: 68\n--------\nArea is infested with Fungal Growths (implicit)\n--------\nMonsters have 45% increased Area of Effect"..trailer
   local result=parser.parse(raw)

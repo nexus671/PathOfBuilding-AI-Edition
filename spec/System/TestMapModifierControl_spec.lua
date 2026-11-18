@@ -172,6 +172,16 @@ describe("Map modifier explorer",function()
 		assert.equal("corrupted_rare",controls.rarity:GetSelValueByKey("val"));assert.is_false(controls.currency:IsEnabled());controls.keep:Click();assert.equal(9,#captured.selected)
 	end)
 
+	it("keeps and reopens corrupted normal and magic maps",function()
+		local captured;local options={keep=function(entry) captured=copyTable(entry);return "corrupted-map" end}
+		local controls=require("Classes.MapModifierControl").Open(options)
+		controls.rarity:SelByValue("magic","val");controls.rarity.selFunc();controls.list.onClick({line=controls.list.list[1]});controls.add:Click()
+		controls.rarity:SelByValue("corrupted_magic","val");controls.rarity.selFunc();assert.is_true(controls.remove:IsEnabled());assert.is_false(controls.currency:IsEnabled());assert.matches("1/2",controls.status.label,1,true)
+		controls.keep:Click();assert.is_true(captured.corrupted);assert.equal("magic",captured.rarity);assert.equal(1,#captured.selected);captured.id="corrupted-map";controls.close:Click()
+		controls=require("Classes.MapModifierControl").Open({initial=captured,keep=options.keep});assert.equal("corrupted_magic",controls.rarity:GetSelValueByKey("val"));controls.rarity:SelByValue("corrupted_normal","val");controls.rarity.selFunc()
+		assert.matches("No explicit modifiers",controls.status.label,1,true);controls.keep:Click();assert.equal("normal",captured.rarity);assert.is_true(captured.corrupted);assert.equal(0,#captured.selected);controls.close:Click()
+	end)
+
 	it("records and reopens a corruption implicit and exact value",function()
 		local captured;local controls=require("Classes.MapModifierControl").Open({keep=function(entry) captured=copyTable(entry);return "map-implicit" end})
 		controls.rarity:SelByValue("corrupted_rare","val");controls.rarity.selFunc();controls.implicit:Click()

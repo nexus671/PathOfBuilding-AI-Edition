@@ -120,6 +120,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(table.concat(text," "):find("+15%% Item Rarity"),"Recorded implicit not shown on the map")
 		assert(table.concat(text," "):find("Estimated bonuses",1,true),"Combined implicit estimate was not shown");frame("map-corruption-implicit-estimate")
 	end
+	ui:choose("rarity","magic","val");ui:text("search","")
+	do local c=main.popups[1].controls;assert(c.list.list[1].entry,"Magic map modifiers should be offered");c.list.onClick({line=c.list.list[1]});ui:click("add") end
+	ui:choose("rarity","corrupted_magic","val");assert(main.popups[1].controls.remove:IsEnabled() and not main.popups[1].controls.currency:IsEnabled(),"Corrupted magic should keep modifiers and block currency");frame("map-corrupted-magic")
 	ui:choose("rarity","magic","val");ui:text("search","MapContainsMirageWorlds");assert(main.popups[1].controls.status.label:find("0 candidates",1,true),"Rare-only suffix appeared on a magic map")
 	ui:choose("rarity","rare","val");assert(main.popups[1].controls.status.label:find("1 candidates",1,true),"Rare map did not offer its encounter suffix")
 	do local c=main.popups[1].controls;c.list.onClick({line=c.list.list[1]});ui:click("add");ui:text("level","1")

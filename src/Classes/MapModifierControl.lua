@@ -16,12 +16,12 @@ function M.Open(options)
 	options=options or {};local initial=options.initial
 	if initial then
 		assert(initial.patch==map.source().patch,"This map draft uses a different data version")
-		map.inspect(initial.baseId,initial.tier,initial.itemLevel,initial.selected,"",0,1,nil,initial.rarity=="normal" and "rare" or initial.rarity,initial.rolls,initial.corrupted,initial.implicit,initial.quality,initial.observedEffects)
+		map.inspect(initial.baseId,initial.tier,initial.itemLevel,initial.selected,"",0,1,nil,initial.rarity,initial.rolls,initial.corrupted,initial.implicit,initial.quality,initial.observedEffects)
 	end
 	local width=math.min(900,main.screenW-40);local height=math.min(600,main.screenH-60)
 	local left=math.floor(width*0.38);local right=left+32;local rightWidth=width-right-16
-	local controls={};local function isCorrupted() return controls.rarity and controls.rarity:GetSelValueByKey("val")=="corrupted_rare" or false end
-	local function getRarity() local value=controls.rarity:GetSelValueByKey("val");return value=="corrupted_rare" and "rare" or value end
+	local controls={};local function isCorrupted() return controls.rarity and (controls.rarity:GetSelValueByKey("val") or ""):match("^corrupted_")~=nil or false end
+	local function getRarity() local value=controls.rarity:GetSelValueByKey("val");return value and value:gsub("^corrupted_","") end
 	local implicit=initial and initial.implicit and copyTable(initial.implicit) or nil
 	local quality=initial and require("Modules.MapQuality").validate(initial.quality) or nil
 	local observedEffects=initial and require("Modules.MapObservedEffects").validate(initial.observedEffects) or nil
@@ -43,7 +43,7 @@ function M.Open(options)
 	local function button(key,x,y,w,label,fn)
 		controls[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{x,y,w,28},label,fn))
 	end
-	ui.description(controls,"intro",16,28,width-32,34,{"Hypothetical map: rolls are estimates; some values remain ranges.","Corrupted side limits are unverified. Marking a rare map corrupted keeps its modifiers."},14)
+	ui.description(controls,"intro",16,28,width-32,34,{"Hypothetical map: rolls are estimates; some values remain ranges.","Corrupted side limits are unverified. Marking a map corrupted keeps its modifiers."},14)
 	button("base",16,66,left-204,"Choose map",function()
 		local rows={};local baseOffset=0
 		repeat
@@ -74,7 +74,7 @@ function M.Open(options)
 		popup.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,154,200,28},"Use copied map",function()
 			baseId=state.baseId;syncRarity();selected=copyTable(state.selected);rolls=copyTable(state.rolls);implicit=state.implicit and copyTable(state.implicit) or nil;quality=state.quality and copyTable(state.quality) or nil;observedEffects=state.observedEffects and copyTable(state.observedEffects) or nil
 			controls.tier:SelByValue(state.tier,"val");controls.level:SetText(tostring(state.itemLevel))
-			previousRarity=state.corrupted and "corrupted_rare" or state.rarity;controls.rarity:SelByValue(previousRarity,"val")
+			previousRarity=state.corrupted and "corrupted_"..state.rarity or state.rarity;controls.rarity:SelByValue(previousRarity,"val")
 			estimateSettings=nil;candidate=nil;offset=0;controls.search:SetText("");main:ClosePopup();refresh()
 		end)
 		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{524,154,100,28},"Cancel",function() main:ClosePopup() end)
@@ -152,9 +152,9 @@ function M.Open(options)
 	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. The item level must support those modifiers. Corrupted maps and unsupported explicit modifiers cannot be rerolled here. Nightmare estimates use unverified draw-order assumptions."
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
 	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
-	local allRarities={{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"},{label="Corrupted rare",val="corrupted_rare"}}
+	local allRarities={{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"},{label="Corrupted normal",val="corrupted_normal"},{label="Corrupted magic",val="corrupted_magic"},{label="Corrupted rare",val="corrupted_rare"}}
 	local nightmareRarities={{label="Rare",val="rare"},{label="Corrupted rare",val="corrupted_rare"}}
-	controls.rarity=new("DropDownControl"):DropDownControl(ui.anchor,{right+235,64,150,26},copyTable(allRarities));controls.rarity:SelByValue(initial and (initial.corrupted and "corrupted_rare" or initial.rarity) or "rare","val")
+	controls.rarity=new("DropDownControl"):DropDownControl(ui.anchor,{right+235,64,150,26},copyTable(allRarities));controls.rarity:SelByValue(initial and (initial.corrupted and "corrupted_"..initial.rarity or initial.rarity) or "rare","val")
 	syncRarity=function()
 		local value=controls.rarity:GetSelValueByKey("val")
 		if map.isNightmare(baseId) and value~="corrupted_rare" then value="rare" end
@@ -230,7 +230,7 @@ function M.Open(options)
 	refresh=function()
 		local tier=controls.tier:GetSelValueByKey("val");local level=tonumber(controls.level.buf)
 		local rarity=getRarity()
-		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,rarity=="normal" and "rare" or rarity,rolls,isCorrupted(),implicit,quality,observedEffects)
+		local ok,result=pcall(map.inspect,baseId,tier,level,selected,controls.search.buf,offset,30,nil,rarity,rolls,isCorrupted(),implicit,quality,observedEffects)
 		if not ok then nextOffset=nil;controls.list.list={};controls.status.label="^xE9BE7B"..ui.fit(ui.errorText(result),rightWidth,14);show(nil);return end
 		if rarity=="normal" then result.candidates={};result.total=0;result.nextOffset=nil end
 		nextOffset=result.nextOffset
@@ -238,7 +238,7 @@ function M.Open(options)
 			local rows=ui.rows({entry.name.." | "..entry.side},rightWidth-30,14)
 			for _,row in ipairs(rows) do row.entry=entry;lines[#lines+1]=row end
 		end
-		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and "^7Normal map | Use currency to add modifiers" or map.isNightmare(baseId) and "^xE9BE7BNightmare | Experimental | "..result.total.." candidates | Page "..(math.floor(offset/30)+1) or (isCorrupted() and "^xE07070Corrupted "..#selected.."/9 | " or "^7")..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
+		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and (isCorrupted() and "^xE07070Corrupted normal map | No explicit modifiers" or "^7Normal map | Use currency to add modifiers") or map.isNightmare(baseId) and "^xE9BE7BNightmare | Experimental | "..result.total.." candidates | Page "..(math.floor(offset/30)+1) or (isCorrupted() and "^xE07070Corrupted "..#selected.."/"..(rarity=="magic" and 2 or 9).." | " or "^7")..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
 		local problem=levelProblem();if problem then controls.status.label="^xE9BE7B"..ui.fit(problem,rightWidth,14) end
 		local found=false;for _,id in ipairs(selected) do if id==selectedAffix then found=true;break end end
 		if not found then selectedAffix=nil end
@@ -292,7 +292,7 @@ function M.Open(options)
 	end
 	controls.rarity.selFunc=function()
 		local current=controls.rarity:GetSelValueByKey("val")
-		if not (previousRarity=="rare" and current=="corrupted_rare") then selected={};rolls={};implicit=nil end
+		if current~="corrupted_"..previousRarity then selected={};rolls={};implicit=nil end
 		if current~="rare" and current~="corrupted_rare" and observedEffects then
 			local kept={};for _,effect in ipairs(observedEffects) do if effect.kind~="explicit" then kept[#kept+1]=effect end end
 			observedEffects=require("Modules.MapObservedEffects").validate(kept)

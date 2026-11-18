@@ -91,7 +91,6 @@ function M.parse(raw,checkpoint)
  local nightmare=map.isNightmare(matches[1]);assert(nightmare == (tier==17),"Nightmare maps require tier 17; ordinary maps require tier 1 to 16")
  assert(not nightmare or rarity=="rare","Nightmare maps require rare rarity")
  local corrupted=raw:match("\nCorrupted\n")~=nil or raw:match("\nCorrupted$")~=nil
- assert(not corrupted or rarity=="rare","Corrupted magic and normal maps are not yet supported")
  local _,levelEnd=raw:find("\nItem Level:%s*%d+");local tail=raw:sub(assert(levelEnd,"The copied map needs its item level")+1)
  local lines,implicit,observed={},nil,{}
  local deliriumDepth,deliriumReward
@@ -192,7 +191,7 @@ function M.parse(raw,checkpoint)
    solutions[#solutions+1]={ids=ids,rolls=rolls};return #solutions>=2
   end
   for _,entry in ipairs(starts[pos]) do
-   local legal=not used[entry.id] and #chosen<(corrupted and 9 or rarity=="magic" and 2 or 6) and (corrupted or counts[entry.side]<(rarity=="magic" and 1 or 3))
+   local legal=not used[entry.id] and #chosen<(rarity=="magic" and 2 or corrupted and 9 or 6) and (corrupted and rarity=="rare" or counts[entry.side]<(rarity=="magic" and 1 or 3))
    for _,group in ipairs(entry.groups or {}) do if groups[group] then legal=false end end
    if legal then
     used[entry.id]=true;counts[entry.side]=counts[entry.side]+1;for _,group in ipairs(entry.groups or {}) do groups[group]=true end;chosen[#chosen+1]=entry
