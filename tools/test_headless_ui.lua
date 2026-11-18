@@ -669,6 +669,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(main.popups[1].controls.keep:IsEnabled());frame("crafting-gwennen-pair");ui:click("keep");ui:click("keepWorking")
 		local saved;for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id=="gwennen-ui" then saved=project end end
 		assert(saved and #saved.steps==1 and saved.steps[1].action=="Gwennen observed pair: Add a random Modifier OR Destroy. Artifact price: 20 Grand Broken Circle Artifacts.","Observed pair was not saved in the guide")
+		assert(saved.steps[1].stopWhen:find("keeps the item",1,true),"Gwennen commitment was not saved in the guide")
 		assert(build:SaveDB("Gwennen test"):find("20 Grand Broken Circle Artifacts",1,true),"Observed pair was not serialized in the build")
 		assert(not saved.nativeRecipe,"Observed pair was incorrectly added to simulated actions")
 		ui:click("gwennen");ui:choose("first",1018,"val");ui:choose("second",1019,"val")

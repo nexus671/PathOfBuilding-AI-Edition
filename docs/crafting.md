@@ -167,6 +167,8 @@ clears these temporary results and cancels work from the previous build.
 
 When configuring a modeled Gwennen pair, the selector warns if one example cannot run on the current item. You can still record or configure the pair for a later step; a successful example does not prove every random outcome will succeed.
 
+In game, Gwennen keeps the item until you choose a Take a Chance outcome. Review both outcomes and the artifact cost before committing. Remove any socketed gems first. The planner does not hold or modify your in-game item. [GGG's 3.30.0b notes](https://www.pathofexile.com/forum/view-thread/4014963) describe the commitment.
+
 **Calculate action odds** enumerates supported finite outcomes, including next-affix draws, Talisman fractures, Allflame selection and supported finite Gwennen outcomes. Other goals and actions may use bounded sampling with a confidence interval. Results state which method was used.
 
 ## Compare fossil subsets

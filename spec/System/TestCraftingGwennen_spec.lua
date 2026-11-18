@@ -6,6 +6,13 @@ describe("Experimental Gwennen pair",function()
 		while #state.affixes>3 do state=sim.action(model,state,{method="annul"},function() return 0.3 end) end
 		return model,state
 	end
+	it("shows the commitment before a pair is recorded",function()
+		newBuild()
+		local controls=require("Classes.CraftingGwennenControl").Open(function() end)
+		local rows={};for _,row in ipairs(controls.intro.list) do rows[#rows+1]=StripEscapes(row[1] or "") end
+		assert.matches("keeps the item",table.concat(rows," "));assert.is_true(#rows<=2)
+		main.popups={}
+	end)
 	it("reports an incomplete pair to the catalog and workbench",function()
 		newBuild()
 		local model,state=item()
@@ -134,6 +141,11 @@ describe("Experimental Gwennen pair",function()
 		assert.equal(#state.affixes-1,#removed.affixes);assert.equal(#state.affixes+1,#added.affixes)
 		local result=sim.perform(raw,pair,7,state);assert.equal("gwennen_estimate",result.warnings[1].code);assert.equal("gwennen_empty_sockets",result.warnings[2].code);assert.matches("socketed gems",result.warnings[2].message);assert.is_not_nil(result.gwennen.outcome)
 		local odds=sim.calculate(raw,pair,{},state,{requirements={minAffixes=1},trials=4});assert.equal("gwennen_estimate",odds.warnings[1].code);assert.equal("gwennen_empty_sockets",odds.warnings[2].code)
+		for _,response in ipairs({result,odds}) do
+			local commitment
+			for _,warning in ipairs(response.warnings) do if warning.code=="gwennen_item_commitment" then commitment=warning end end
+			assert.is_not_nil(commitment);assert.matches("keeps the item",commitment.message);assert.equal("https://www.pathofexile.com/forum/view-thread/4014963",commitment.source)
+		end
 	end)
 	it("models the Pantheon Aspect branch using the documented Brinehook assumptions",function()
 		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE";state.affixes={}
