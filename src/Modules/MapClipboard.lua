@@ -1,0 +1,153 @@
+-- Import only uniquely resolved ordinary-map clipboard text. No guessing.
+local map=require("Modules.MapCraftingData")
+local M={}
+local function readable(s)
+ return (s:gsub("%[[^%]|]+|([^%]]+)%]","%1"):gsub("%[([^%]]+)%]","%1"))
+end
+local function clean(s)
+ return readable(s):gsub("(%-?%d+)%(%-?%d+%-%-?%d+%)","%1"):gsub("^%s+",""):gsub("%s+$","")
+end
+local function matcher(template)
+ local parts,ranges={},{};local at=1
+ local function escaped(value) return (value:gsub("([^%w])","%%%1")) end
+ while true do
+  local first,last,low,high=template:find("%((%-?%d+)%-(%-?%d+)%)",at)
+  if not first then parts[#parts+1]=escaped(template:sub(at));break end
+  parts[#parts+1]=escaped(template:sub(at,first-1));parts[#parts+1]="(%-?%d+)"
+  ranges[#ranges+1]={tonumber(low),tonumber(high)};at=last+1
+ end
+ local pattern="^"..table.concat(parts).."$"
+ return function(line)
+  local captures={line:match(pattern)};if #captures==0 then return false end
+  local values={};for i,range in ipairs(ranges) do local value=tonumber(captures[i]);if not value or value<range[1] or value>range[2] then return false end;values[#values+1]=value end
+  return true,values
+ end
+end
+local function implicitFrom(line,level)
+ local module=require("Modules.MapCorruptionImplicits");local matches={}
+ for _,entry in ipairs(module.list()) do
+  local display=module.describe({id=entry.id},level);local template=display.text:gsub(" %(legacy%)$","")
+  if matcher(template)(line) then
+   local value=display.min~=display.max and tonumber(line:match("%-?%d+")) or nil
+   matches[#matches+1]={id=entry.id,value=value}
+  end
+ end
+ assert(#matches==1,#matches==0 and "The map implicit is not supported by the pinned data" or "The map implicit matches multiple identities")
+ return matches[1]
+end
+function M.parse(raw,checkpoint)
+ assert(type(raw)=="string" and #raw>0 and #raw<=24000 and not raw:find("\0"),"Paste a copied map up to 24 KiB")
+ raw=raw:gsub("\r\n","\n"):gsub("\r","\n")
+ local class=raw:match("Item Class: ([^\n]+)");assert(not class or class=="Maps","Only ordinary maps are supported")
+ local rarity=assert(raw:match("Rarity: (%a+)"),"The copied map has no rarity"):lower()
+ assert(rarity=="normal" or rarity=="magic" or rarity=="rare","Only normal, magic and rare maps are supported")
+ assert(not raw:find("\nUnidentified",1,true),"Identify the map before importing it")
+ assert(not raw:find("\nMirrored",1,true),"Mirrored maps are not supported")
+ local tier=tonumber(raw:match("\nMap Tier:%s*(%d+)"));local level=tonumber(raw:match("\nItem Level:%s*(%d+)"))
+ assert(tier and tier>=1 and tier<=16,"Use an ordinary map with tier 1 to 16")
+ assert(level and level>=1 and level<=100,"The copied map needs its item level")
+ local header=assert(raw:match("Rarity: [^\n]+\n(.-)\n%-%-%-%-%-%-%-%-"),"The copied map has no item header")
+ local matches,exact,longest={},false,0
+ for id,base in pairs(map.source().bases) do
+  if id:match("^Metadata/Items/Maps/MapWorlds") and base.name then
+   local whole=false;for line in header:gmatch("[^\n]+") do if line==base.name then whole=true;break end end
+   local hit=header:find(base.name,1,true)~=nil
+   if whole and not exact then matches={};exact=true;longest=0 end
+   if (whole or hit and not exact) and #base.name>=longest then
+    if #base.name>longest then matches={};longest=#base.name end
+    matches[#matches+1]=id
+   end
+  end
+ end
+ assert(#matches==1,#matches==0 and "The map base is not in the current ordinary-map catalogue" or "The copied map base is ambiguous")
+ local corrupted=raw:match("\nCorrupted\n")~=nil or raw:match("\nCorrupted$")~=nil
+ assert(not corrupted or rarity=="rare","Corrupted magic and normal maps are not yet supported")
+ local _,levelEnd=raw:find("\nItem Level:%s*%d+");local tail=raw:sub(assert(levelEnd,"The copied map needs its item level")+1)
+ local lines,implicit={},nil
+ for rawLine in tail:gmatch("[^\n]+") do
+  local line=clean(rawLine)
+  if line:find(" (enchant)",1,true) then error("Map enchantments are not yet supported; the existing draft was not changed")
+  elseif line:find(" (implicit)",1,true) then
+   assert(not implicit,"Only one map corruption implicit is supported")
+   assert(corrupted,"An implicit was found on a map not marked corrupted")
+   implicit=implicitFrom(line:gsub(" %(implicit%)$",""),level)
+  elseif line~="" and not line:match("^%-+$") and not line:match("^%b{}$") and not line:match("^Monster Level:") and line~="Corrupted" and not line:match("^Travel to this Map") then
+   lines[#lines+1]=line
+  end
+ end
+ assert(#lines<=60,"The copied map has too many modifier lines")
+ assert(rarity=="normal" or #lines>0,"The copied magic or rare map has no supported visible modifiers")
+ local candidates,offset={},0
+ if rarity~="normal" then repeat
+  local page=map.inspect(matches[1],tier,level,{},"",offset,100,checkpoint,rarity,nil,corrupted)
+  for _,entry in ipairs(page.candidates) do
+   local effect=map.summarize({entry.id}).effects[1];local tests={}
+   for _,line in ipairs(effect.lines) do local template=clean(line);tests[#tests+1]={match=matcher(template),template=template,variable=template:find("%((%-?%d+)%-(%-?%d+)%)")~=nil} end
+   if #tests>0 then candidates[#candidates+1]={id=entry.id,side=entry.side,groups=entry.groups,tests=tests} end
+  end
+  offset=page.nextOffset
+ until not offset end
+ local starts,covered={},{};for pos=1,#lines do starts[pos]={};for _,entry in ipairs(candidates) do
+  local ok=pos+#entry.tests-1<=#lines;local captures={}
+  if ok then for i,test in ipairs(entry.tests) do
+   local matched,values=test.match(lines[pos+i-1]);if not matched then ok=false;break end
+   for _,value in ipairs(values) do captures[#captures+1]=value end
+  end end
+  if ok then
+   local mod=map.source().mods[entry.id];local values,variables={},{}
+   for i,stat in ipairs(mod.stats or {}) do values[i]=stat.min;if stat.min~=stat.max then variables[#variables+1]=i end end
+   local known=#variables==0
+   if #variables>0 and #variables==#captures and #variables<=4 then
+    -- Try only range-compatible assignments, then require the native stat
+    -- renderer to reproduce every variable line. Multiple distinct valid
+    -- assignments remain unknown rather than guessing a stat ordering.
+    local assigned,solutions={},{};local seen={}
+    local function assign(index)
+     if #solutions>1 then return end
+     if index>#variables then
+      local replacements=require("Modules.MapRollValues").render(mod,values)
+      for i,test in ipairs(entry.tests) do if test.variable then
+       local matched=false;for source,rendered in pairs(replacements) do if clean(source)==test.template and clean(rendered)==lines[pos+i-1] then matched=true;break end end
+       if not matched then return end
+      end end
+      local key=table.concat(values,":");if not seen[key] then seen[key]=true;solutions[#solutions+1]=copyTable(values) end
+      return
+     end
+     local statIndex=variables[index];local stat=mod.stats[statIndex]
+     for i,value in ipairs(captures) do if not assigned[i] and value>=stat.min and value<=stat.max then
+      assigned[i]=true;values[statIndex]=value;assign(index+1);assigned[i]=nil
+     end end
+    end
+    assign(1);if #solutions==1 then values=solutions[1];known=true end
+   end
+   starts[pos][#starts[pos]+1]={id=entry.id,side=entry.side,groups=entry.groups,tests=entry.tests,values=known and values or nil}
+   for i=pos,pos+#entry.tests-1 do covered[i]=true end
+  end
+ end;if checkpoint and pos%4==0 then checkpoint() end end
+ for index,line in ipairs(lines) do if not covered[index] then error("Unrecognized map modifier: "..line:sub(1,180),0) end end
+ local solutions,used,groups,chosen={}, {},{},{};local counts={prefix=0,suffix=0};local visited=0
+ local function search(pos)
+  visited=visited+1;assert(visited<=20000,"Map modifier matching exceeded its safety limit")
+  if pos>#lines then
+   local ids,rolls={},{};for _,entry in ipairs(chosen) do ids[#ids+1]=entry.id;if entry.values then rolls[#rolls+1]={id=entry.id,values=copyTable(entry.values)} end end
+   solutions[#solutions+1]={ids=ids,rolls=rolls};return #solutions>=2
+  end
+  for _,entry in ipairs(starts[pos]) do
+   local legal=not used[entry.id] and #chosen<(corrupted and 9 or rarity=="magic" and 2 or 6) and (corrupted or counts[entry.side]<(rarity=="magic" and 1 or 3))
+   for _,group in ipairs(entry.groups or {}) do if groups[group] then legal=false end end
+   if legal then
+    used[entry.id]=true;counts[entry.side]=counts[entry.side]+1;for _,group in ipairs(entry.groups or {}) do groups[group]=true end;chosen[#chosen+1]=entry
+    local stop=search(pos+#entry.tests)
+    chosen[#chosen]=nil;used[entry.id]=nil;counts[entry.side]=counts[entry.side]-1;for _,group in ipairs(entry.groups or {}) do groups[group]=nil end
+    if stop then return true end
+   end
+  end
+ end
+ search(1)
+ assert(#solutions>0,"Some copied modifier lines could not be matched to the current map data; the existing draft was not changed")
+ assert(#solutions==1,"The copied modifiers match multiple identities; select them manually instead")
+ local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,implicit=implicit}
+ if rarity~="normal" then map.inspect(state.baseId,tier,level,state.selected,"",0,1,checkpoint,rarity,nil,corrupted,implicit) end
+ return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.","Map quality is not imported; displayed totals exclude quality. Enchanted maps are unsupported.","The current ordinary-map base was selected by name; verify older maps separately."}}
+end
+return M

@@ -22,7 +22,7 @@ function M.Open(options)
 	local controls={};local function isCorrupted() return controls.rarity and controls.rarity:GetSelValueByKey("val")=="corrupted_rare" or false end
 	local function getRarity() local value=controls.rarity:GetSelValueByKey("val");return value=="corrupted_rare" and "rare" or value end
 	local implicit=initial and initial.implicit and copyTable(initial.implicit) or nil
-	local selected=initial and copyTable(initial.selected) or {};local rolls=initial and copyTable(initial.rolls or {}) or {};local candidate;local baseId=initial and initial.baseId or "Metadata/Items/Maps/MapWorldsStrand";local refresh;local offset,nextOffset=0,nil
+	local selected=initial and copyTable(initial.selected) or {};local rolls=initial and copyTable(initial.rolls or {}) or {};local candidate;local previousRarity;local baseId=initial and initial.baseId or "Metadata/Items/Maps/MapWorldsStrand";local refresh;local offset,nextOffset=0,nil
 	local estimateSettings=initial and initial.estimate and copyTable(initial.estimate) or nil
 	local draftId=initial and initial.id
 	local rollSeed=os.time()%2147483646+1
@@ -39,7 +39,7 @@ function M.Open(options)
 		controls[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{x,y,w,28},label,fn))
 	end
 	ui.description(controls,"intro",16,28,width-32,34,{"Hypothetical map: rolls are estimates; some values remain ranges.","Corrupted side limits are unverified. Marking a rare map corrupted keeps its modifiers."},14)
-	button("base",16,66,left,"Choose map",function()
+	button("base",16,66,left-104,"Choose map",function()
 		local rows={};local baseOffset=0
 		repeat
 			local page=map.searchBases("MapWorlds",baseOffset,100)
@@ -49,6 +49,21 @@ function M.Open(options)
 		browser.Open("Choose map base",rows,{action="Use map",choose=function(entry)
 			baseId=entry.id;selected={};rolls={};implicit=nil;estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
 		end,closeOnChoose=false})
+	end)
+	button("pasteMap",16+left-96,66,96,"Paste map",function()
+		local ok,result=pcall(require("Modules.MapClipboard").parse,Paste())
+		if not ok then main:OpenMessagePopup("Paste map",ui.errorText(result));return end
+		local state=result.state;local popup={}
+		local label=map.source().bases[state.baseId].name.." | Tier "..state.tier.." | "..#state.selected.." modifiers"..(state.corrupted and " | Corrupted" or "")
+		ui.description(popup,"review",16,28,608,108,{label,result.notes[1],result.notes[2],result.notes[3],"Using this map replaces the current draft's working modifiers and targets."},14)
+		popup.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,154,200,28},"Use copied map",function()
+			baseId=state.baseId;selected=copyTable(state.selected);rolls=copyTable(state.rolls);implicit=state.implicit and copyTable(state.implicit) or nil
+			controls.tier:SelByValue(state.tier,"val");controls.level:SetText(tostring(state.itemLevel))
+			previousRarity=state.corrupted and "corrupted_rare" or state.rarity;controls.rarity:SelByValue(previousRarity,"val")
+			estimateSettings=nil;candidate=nil;offset=0;controls.search:SetText("");main:ClosePopup();refresh()
+		end)
+		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{524,154,100,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(popup,{keep=true});main:OpenPopup(640,200,"Review copied map",popup,nil,nil,"close")
 	end)
 	ui.label(controls,"tierLabel",16,108,"Map tier",14)
 	local tiers={};for i=1,16 do tiers[#tiers+1]={label=tostring(i),val=i} end
@@ -106,7 +121,7 @@ function M.Open(options)
 	end)
 	controls.implicit.enabled=function() return isCorrupted() end
 	controls.implicit.tooltipText="Record a corruption implicit. Estimated totals exclude unsupported effects."
-	local previousRarity=controls.rarity:GetSelValueByKey("val")
+	previousRarity=controls.rarity:GetSelValueByKey("val")
 	controls.search=new("EditControl"):EditControl(ui.anchor,{right,96,rightWidth,26},"","Search modifiers",nil,160)
 	controls.list=new("TextListControl"):TextListControl(ui.anchor,{right,132,rightWidth,height-410},nil,{})
 	button("previous",right,height-270,100,"Previous",function() offset=math.max(0,offset-30);refresh() end)

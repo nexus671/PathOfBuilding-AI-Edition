@@ -98,6 +98,10 @@ test('queues bounded built-in filter scenes', t => {
   assert.equal(JSON.parse(fs.readFileSync(path.join(targetFixture.dir,'AI-build-request.json'))).scene,'Build targets');
   for(const invalid of [{...args,scene:'Unknown'},{...args,seed:-1},{...args,areaLevel:101},{...args,limit:51},{...args,offset:-1},{...args,unknown:true}]) assert.throws(()=>f.call('test_loot_filter_scene',invalid),/arguments/);
 });
+test('queues copied map inspection without changing the build', t => {
+  const f=fixture(t);f.call('inspect_copied_map',{baseRevision:f.state.revision,itemText:'Item Class: Maps\nRarity: Normal\nStrand Map'});
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'inspect_copied_map');assert.match(request.itemText,/Strand Map/);
+});
 test('queues bounded map modifier inspection', t => {
   const f=fixture(t), args={baseRevision:f.state.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',selected:[],limit:5};
   f.call('inspect_map_modifiers',args);
