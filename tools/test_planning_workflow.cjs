@@ -738,6 +738,14 @@ async function main(){
   const copiedMapText='Item Class: Maps\nRarity: Rare\nVortex Artifice\nMap (Tier 5)\n--------\nQuality (Pack Size): +20% (augmented)\n--------\nItem Level: 68\n--------\nMonster Level: 72\n--------\nArea is Influenced by the Originator\'s Memories (implicit)\nPlayers are Delirious (enchant)\n--------\nMonsters have 45% increased Area of Effect\nMonsters deal 55% extra Physical Damage as Fire\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once.';
   const copiedMap=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:copiedMapText},'mapData');
   assert.equal(copiedMap.mapData.state.observedEffects.length,2);assert.match(copiedMap.mapData.notes[2],/not modeled/);assert.deepEqual(copiedMap.mapData.state.quality,{kind:'Pack Size',value:20});assert.equal(copiedMap.mapData.state.baseId,'Metadata/Items/Maps/MapKeyTier5');assert.deepEqual(copiedMap.mapData.state.selected,['MapMonsterAreaOfEffectMapWorlds','MapMonsterFireDamageMapWorlds']);assert.equal(copiedMap.mapData.state.tier,5);assert.deepEqual(copiedMap.mapData.state.rolls[1].values,[16,9,6,55]);
+  const unidentifiedText='Item Class: Maps\nRarity: Rare\nMap (Tier 5)\n--------\nItem Level: 68\n--------\nUnidentified\n--------\nTravel to this Map by using it in a personal Map Device.';
+  const unidentifiedCopy=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:unidentifiedText},'mapData');
+  assert.equal(unidentifiedCopy.mapData.state.unidentified,true);assert.deepEqual(unidentifiedCopy.mapData.state.selected,[]);
+  assert.deepEqual(unidentifiedCopy.mapData.unidentifiedOpeningBonus,{atlasDrops:30,condition:'When opened unidentified'});
+  const unidentifiedInspection=await queued('inspect_map_modifiers',{baseRevision:context.revision,...unidentifiedCopy.mapData.state,limit:5},'mapData');
+  assert.deepEqual(unidentifiedInspection.mapData.unidentifiedOpeningBonus,unidentifiedCopy.mapData.unidentifiedOpeningBonus);
+  assert.equal(unidentifiedInspection.mapData.summary,undefined);assert.equal(unidentifiedInspection.mapData.counts,undefined);assert.equal(unidentifiedInspection.mapData.total,undefined);
+  assert.match(unidentifiedInspection.mapData.currencyOptionsWarning,/Identify/);
   const deliriousText=copiedMapText.replace('Monsters have 45% increased Area of Effect','Players in Area are 35% Delirious\nDelirium Reward Type: Currency\nMonsters have 45% increased Area of Effect');
   const delirious=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:deliriousText},'mapData');
   assert.equal(delirious.mapData.state.observedEffects.filter(effect=>effect.kind==='explicit').length,2);
