@@ -224,6 +224,7 @@ function M.Open(build,source,layout,controller)
 			local selectedKey=encode(item);for _,cell in ipairs(cells) do
 				local cx,cy=px+cell.x-x,py+cell.y-y;visual.chip(cx,cy,cell.w,cell.h,cell.item,cell.result,selectedKey==cell.key)
 				if sceneKind=="Tiered gear" and cell.item.Identified==false and cell.item.UnidentifiedItemTier~=nil then visual.text(cx+5,cy+2,12,cell.item.UnidentifiedItemTier==0 and "No tier" or "Tier "..cell.item.UnidentifiedItemTier,"^xEED49C",cell.w-10) end
+				if sceneKind=="Map tiers" then visual.text(cx+5,cy+2,12,"Tier "..cell.item.MapTier,"^xEED49C",cell.w-10) end
 			end
 			if #cells==0 then visual.text(px+14,py+height/2,14,"No visible examples. Show hidden drops or choose another scene.","^xAABBBE",width-28) end
 			visual.text(px+14,py+height-26,12,(caption or "EXAMPLE DROPS").."  /  "..visible.." displayed  /  click an item to inspect",caption=="FILTER INVALID - SEE DETAILS" and "^xFFC477" or "^xAABBBE",page=="Simulate" and width-224 or width-28)
@@ -418,13 +419,13 @@ function M.Open(build,source,layout,controller)
 	elseif page=="Simulate" then
 		local left=208;local groundX=240;local groundW=w-256
 		ui.label(c,"sceneTitle",16,124,"Loot simulator",20)
-		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Covens & Threads","Maps & threads","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
+		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Covens & Threads","Maps & threads","Map tiers","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
 		c.sceneKind=new("DropDownControl"):DropDownControl(ui.anchor,{16,162,left,26},kinds,function(_,value)
 			sceneKind=value;scenePage=1;if value=="Saved examples" then local chosen=savedSets[1];for _,entry in ipairs(savedSets) do if entry.id==sampleSetId then chosen=entry end end;item=copyTable(chosen.samples[1]) elseif value~="Build targets" then item=library.scene(profile,build,value,seed,settings.areaLevel,settings.itemLevel)[1] or item end;reopen()
 		end);c.sceneKind:SelByValue(sceneKind)
 		c.sceneKind.tooltipText="Preset highlights use exact names from the pinned NeverSink currency snapshot. They are not live prices or drop rates."
 		button(c,"regenerate",16,202,100,"Regenerate",function() seed=seed+1;scenePage=1;if sceneKind=="Build targets" then transient.filterSceneTargets=nil end;reopen() end)
-		c.regenerate.enabled=sceneKind~="Saved examples" and sceneKind~="Tiered gear";c.regenerate.tooltipText="Reorder generated examples. Saved and tier-comparison examples keep their exact properties; examples are not drop-rate estimates."
+		c.regenerate.enabled=sceneKind~="Saved examples" and sceneKind~="Tiered gear" and sceneKind~="Map tiers";c.regenerate.tooltipText="Reorder generated examples. Saved and tier-comparison examples keep their exact properties; examples are not drop-rate estimates."
 		button(c,"savedSamples",124,202,100,"Saved sets",function() collection("sampleSets") end)
 		local savedSet
 		if sceneKind=="Saved examples" then
@@ -466,16 +467,16 @@ function M.Open(build,source,layout,controller)
 			local targetKeys
 			if targets then scene,targetKeys=M.targetScene(targets,profile,build,settings)
 			else scene=library.scene(profile,build,sceneKind,seed,settings.areaLevel,settings.itemLevel) end
-			if sceneKind~="Tiered gear" and (not targetKeys or not targetKeys[require("Modules.PlanningData").encode(item)]) then table.insert(scene,1,item) end
+			if sceneKind~="Tiered gear" and sceneKind~="Map tiers" and (not targetKeys or not targetKeys[require("Modules.PlanningData").encode(item)]) then table.insert(scene,1,item) end
 		end
-		if not savedSet and sceneKind~="Tiered gear" then
+		if not savedSet and sceneKind~="Tiered gear" and sceneKind~="Map tiers" then
 			if sceneKind~="Build targets" then
 				local encode=require("Modules.PlanningData").encode;local selected=encode(item)
 				for i=#scene,2,-1 do if encode(scene[i])==selected then table.remove(scene,1);break end end
 			end
 		end
 		local targets=sceneKind=="Build targets" and transient.filterSceneTargets or nil
-		local caption=invalidFilterReason and "FILTER INVALID - SEE DETAILS" or sceneKind=="Preset highlights" and "PINNED SNAPSHOT - NOT LIVE PRICES" or sceneKind=="Tiered gear" and (profile.mode=="Ruthless" and "RUTHLESS: NO ITEM TIERS" or "TIER COMPARISON") or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
+		local caption=invalidFilterReason and "FILTER INVALID - SEE DETAILS" or sceneKind=="Preset highlights" and "PINNED SNAPSHOT - NOT LIVE PRICES" or sceneKind=="Map tiers" and "MAP TIER COMPARISON" or sceneKind=="Tiered gear" and (profile.mode=="Ruthless" and "RUTHLESS: NO ITEM TIERS" or "TIER COMPARISON") or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
 		sceneControl("preview",groundX,savedSet and 168 or 120,groundW,h-(savedSet and 230 or 182),scene,true,caption)
 		if targets then c.preview.tooltipText=targets.error or (#(targets.warnings or {})>0 and "Some build targets need review. Open linked build targets for details." or "Build target examples update as the build changes. The current test item is also shown.") end
 		button(c,"inspectMatch",w-216,h-96,184,"Inspect matched rules",inspectMatches);c.inspectMatch.enabled=function() return parsed~=nil end

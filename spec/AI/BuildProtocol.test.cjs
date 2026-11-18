@@ -96,6 +96,8 @@ test('queues bounded built-in filter scenes', t => {
   const targetFixture=fixture(t);
   targetFixture.call('test_loot_filter_scene',{...args,baseRevision:targetFixture.state.revision,scene:'Build targets'});
   assert.equal(JSON.parse(fs.readFileSync(path.join(targetFixture.dir,'AI-build-request.json'))).scene,'Build targets');
+  const mapFixture=fixture(t);mapFixture.call('test_loot_filter_scene',{...args,baseRevision:mapFixture.state.revision,scene:'Map tiers'});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(mapFixture.dir,'AI-build-request.json'))).scene,'Map tiers');
   for(const invalid of [{...args,scene:'Unknown'},{...args,seed:-1},{...args,areaLevel:101},{...args,limit:51},{...args,offset:-1},{...args,unknown:true}]) assert.throws(()=>f.call('test_loot_filter_scene',invalid),/arguments/);
 });
 test('queues copied map inspection without changing the build', t => {

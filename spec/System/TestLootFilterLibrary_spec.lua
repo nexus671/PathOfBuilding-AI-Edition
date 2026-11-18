@@ -419,6 +419,18 @@ describe("Visual filter catalogue",function()
 			assert.equal(tier>=4 and "Show" or "Hide",result.action)
 		end
 	end)
+	it("compares explicit map tiers with a Nightmare example",function()
+		local profile=filters.profile("maps","Maps");local scene=library.scene(profile,build,"Map tiers",9,72,75)
+		assert.equal(17,#scene);assert.same(scene,library.scene(profile,build,"Map tiers",3,72,75))
+		for tier,item in ipairs(scene) do
+			assert.equal(tier,item.MapTier);assert.equal("Maps",item.Class);assert.equal(72,item.AreaLevel);assert.equal(75,item.ItemLevel)
+			assert.equal(tier==17 and "Abomination Map" or "Map (Tier "..tier..")",item.BaseType)
+			local result=parser.simulate(parser.parse("Show\n MapTier >= 16\nHide"),item)
+			assert.equal(tier>=16 and "Show" or "Hide",result.action)
+		end
+		local page=filters.simulateScene(profile,"Map tiers",0,72,75,15,2)
+		assert.equal(17,page.total);assert.equal(16,page.results[1].sample.MapTier);assert.equal(17,page.results[2].sample.MapTier)
+	end)
 	it("builds example properties only when requested and reuses the parsed block",function()
 		local p=filters.profile("test","Test");p.template='Show\n BaseType == "Iron Hat"\n ItemLevel >= 83'
 		local entry=library.catalog(p)[1];assert.is_nil(rawget(entry,"sample"));local sample=entry.sample;assert.equal("Iron Hat",sample.BaseType);assert.equal(83,sample.ItemLevel)

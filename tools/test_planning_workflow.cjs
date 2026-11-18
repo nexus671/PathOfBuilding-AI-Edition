@@ -921,6 +921,8 @@ async function main(){
   assert.equal(nextScenePage.examples.results[0].index,2);assert.notEqual(nextScenePage.examples.results[0].sample.BaseType,scenePage.examples.results[0].sample.BaseType);
   const targetScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene:'Build targets',areaLevel:76,itemLevel:86,limit:2},'tested');
   assert.ok(targetScene.examples.total>0);assert.equal(targetScene.examples.results[0].sample.AreaLevel,76);assert.equal(targetScene.examples.results[0].sample.ItemLevel,86);
+  const mapTierScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene:'Map tiers',areaLevel:76,itemLevel:86,offset:15,limit:2},'tested');
+  assert.equal(mapTierScene.examples.total,17);assert.equal(mapTierScene.examples.results[0].sample.MapTier,16);assert.equal(mapTierScene.examples.results[1].sample.MapTier,17);
   const socketProfile={id:'socket-rules',title:'Socket comparisons',preset:'early_maps',strictness:2,rules:[{id:'socket-rule',title:'Socket rule',enabled:true,text:'Hide\n SocketGroup > 5GGG'}]};
   const colourOnlyProfile={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n Sockets >= 4'}]};
   const colourOnly=await queued('test_loot_filter',{baseRevision:context.revision,profile:colourOnlyProfile,sample:{BaseType:'Iron Hat',SocketColours:'R-G B A'}},'tested');
