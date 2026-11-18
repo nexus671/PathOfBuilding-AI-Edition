@@ -39,9 +39,8 @@ function M.run(state,options,checkpoint)
 		repeat local page=map.inspect(base.baseId,base.tier,base.itemLevel,{},"",offset,100,slice,rarity);for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
 		for _,group in ipairs(alternatives) do for _,id in ipairs(group) do assert(eligible[id],"A wanted alternative is not eligible for this modeled map") end end
 	end
-	-- Reject only pairwise contradictions we can prove from the modeled
-	-- modifier groups and magic-map prefix/suffix limits. More complex
-	-- incompatibilities can still produce zero sampled successes.
+	-- Reject only contradictions proven by modeled modifier groups and
+	-- prefix/suffix limits; a bounded search can leave harder cases unresolved.
 	local mods=map.source().mods
 	local function compatible(left,right)
 		local a,b=mods[left],mods[right]
@@ -60,6 +59,30 @@ function M.run(state,options,checkpoint)
 		end
 		assert(possible,"Wanted groups "..i.." and "..j.." cannot coexist under the modeled map modifier rules. Change or remove a target.")
 	end end
+	if #groups>2 then
+		local ordered={};for index,group in ipairs(groups) do ordered[#ordered+1]={index=index,choices=group} end
+		table.sort(ordered,function(a,b) return #a.choices==#b.choices and a.index<b.index or #a.choices<#b.choices end)
+		local occupied={};local counts={prefix=0,suffix=0};local limit=rarity=="magic" and 1 or 3
+		local examined,exhausted=0,false
+		local function search(index)
+			if index>#ordered then return true end
+			for _,id in ipairs(ordered[index].choices) do
+				if examined>=20000 then exhausted=true;return false end
+				examined=examined+1;if examined%32==0 then slice() end
+				local mod=mods[id];local side=mod.generation_type;local legal=counts[side]<limit
+				for _,group in ipairs(mod.groups or {}) do if occupied[group] then legal=false;break end end
+				if legal then
+					counts[side]=counts[side]+1;for _,group in ipairs(mod.groups or {}) do occupied[group]=true end
+					local found=search(index+1)
+					counts[side]=counts[side]-1;for _,group in ipairs(mod.groups or {}) do occupied[group]=nil end
+					if found then return true end;if exhausted then return false end
+				end
+			end
+			return false
+		end
+		local possible=search(1)
+		assert(possible or exhausted,"Wanted targets cannot all coexist under the modeled map modifier rules. Change or remove a target.")
+	end
 	local successes,totalAttempts=0,0;local sample,successfulAttempts;local histogram={};local poolCache={}
 	for trial=1,trials do
 		for attempt=1,maxAttempts do

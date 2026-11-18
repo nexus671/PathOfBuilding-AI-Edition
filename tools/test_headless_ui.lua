@@ -102,6 +102,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("run");local tasks=require("Modules.CraftingTasks");for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
 		assert(not tasks.job,"Conflicting map targets did not finish");local message="";for _,row in ipairs(c.report.list) do message=message..StripEscapes(row[1] or "").." " end
 		assert(message:find("Wanted groups 1 and 2 cannot coexist",1,true),"Conflicting map targets were not explained");frame("map-impossible-targets");ui:click("close")
+		settings.wantedGroups={{"MapBossPossessedMapWorlds"},{"MapDangerousBoss1MapWorlds"},{"MapMonsterCannotBeStunnedMapWorlds_"},{"MapMonsterChainMapWorlds"}}
+		c=require("Classes.MapCraftEstimateControl").Open(build,{state=state,settings=settings,apply=function() error("unexpected map result") end})
+		ui:click("run");for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
+		assert(not tasks.job,"Collectively incompatible targets did not finish");message="";for _,row in ipairs(c.report.list) do message=message..StripEscapes(row[1] or "").." " end
+		assert(message:find("Wanted targets cannot all coexist",1,true),"Collectively incompatible targets were not explained");frame("map-multi-target-conflict");ui:click("close")
 	end
 	local workspace=build.planningWorkspace
 	build.buildFlag=true;ui:frame();ui:click("nav_tools");frame("planning-tools");ui:click("choose");frame("performance-diagnostics");ui:click("copy");assert(ui.clipboard:find("ms",1,true));ui:click("refresh");ui:click("close")

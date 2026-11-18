@@ -57,6 +57,27 @@ describe("Map reroll estimates",function()
 		local ok,err=pcall(estimate.run,magic,{wantedGroups={{"MapMonsterAreaOfEffectMapWorlds"},{"MapMonsterCriticalStrikesAndDamageMapWorlds"}},trials=1,maxAttempts=1,seed=77})
 		assert.is_false(ok);assert.matches("Wanted groups 1 and 2 cannot coexist",err)
 	end)
+	it("rejects collectively impossible targets while accepting a compatible alternative",function()
+		local low=copyTable(state);low.tier=5;low.itemLevel=68
+		local a,b,c,d="MapBossPossessedMapWorlds","MapDangerousBoss1MapWorlds","MapMonsterCannotBeStunnedMapWorlds_","MapMonsterChainMapWorlds"
+		local options={wantedGroups={{a},{b},{c},{d}},trials=1,maxAttempts=1,seed=77}
+		local ok,err=pcall(estimate.run,low,options);assert.is_false(ok);assert.matches("Wanted targets cannot all coexist",err)
+		options.wantedGroups[4]={d,"MapMonsterAreaOfEffectMapWorlds"}
+		assert.equal(1,estimate.run(low,options).trials)
+	end)
+	it("rejects three magic targets even when every pair has compatible alternatives",function()
+		local magic=copyTable(state);magic.rarity="magic";magic.tier=5;magic.itemLevel=68
+		local candidates=require("Modules.MapCraftingData").inspect(magic.baseId,magic.tier,magic.itemLevel,{},"",0,100,nil,"magic").candidates
+		local picked={prefix={},suffix={}};local seen={}
+		for _,entry in ipairs(candidates) do
+			local distinct=true;for _,group in ipairs(entry.groups) do if seen[group] then distinct=false end end
+			if distinct and #picked[entry.side]<3 then picked[entry.side][#picked[entry.side]+1]=entry.id;for _,group in ipairs(entry.groups) do seen[group]=true end end
+		end
+		assert.equal(3,#picked.prefix);assert.equal(3,#picked.suffix)
+		local groups={};for i=1,3 do groups[i]={picked.prefix[i],picked.suffix[i]} end
+		local ok,err=pcall(estimate.run,magic,{wantedGroups=groups,trials=1,maxAttempts=1,seed=77})
+		assert.is_false(ok);assert.matches("Wanted targets cannot all coexist",err)
+	end)
 	it("rejects contradictory, ineligible and unbounded requests",function()
 		local options={wanted={"MapMonsterAreaOfEffectMapWorlds"},avoid={},trials=1,maxAttempts=1,seed=42}
 		assert.has_error(function() estimate.run(state,options) end)
