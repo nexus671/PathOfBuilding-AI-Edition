@@ -52,9 +52,10 @@ end
 function M.validateMapDraft(entry)
 	assert(type(entry)=="table","Invalid map draft")
 	local result={id=text(entry.id,64,"map draft ID"),title=text(entry.title,120,"map draft title"),patch=text(entry.patch,40,"map data version"),
-		baseId=text(entry.baseId,240,"map base ID"),tier=integer(entry.tier,1,16,"map tier"),itemLevel=integer(entry.itemLevel,1,100,"map item level"),rarity=entry.rarity,selected={}}
+		baseId=text(entry.baseId,240,"map base ID"),tier=integer(entry.tier,1,17,"map tier"),itemLevel=integer(entry.itemLevel,1,100,"map item level"),rarity=entry.rarity,selected={}}
 	assert(result.id:match("^[%w_-]+$") and result.title:match("%S") and result.patch:match("%S") and result.baseId:match("%S"),"Invalid map draft details")
 	assert(result.rarity=="normal" or result.rarity=="magic" or result.rarity=="rare","Invalid map draft rarity")
+	assert(result.tier~=17 or result.rarity=="rare","Tier 17 map drafts require rare rarity")
 	assert(entry.corrupted==nil or type(entry.corrupted)=="boolean","Invalid map corruption state")
 	assert(not entry.corrupted or result.rarity=="rare","Corrupted map drafts currently require rare maps")
 	result.corrupted=entry.corrupted or nil
@@ -80,7 +81,7 @@ function M.validateMapDraft(entry)
 			result.rolls[#result.rolls+1]={id=roll.id,values=values}
 		end
 	end
-	if entry.estimate~=nil then assert(not result.corrupted,"Corrupted maps cannot be rerolled");result.estimate=M.validateMapEstimate(entry.estimate) end
+	if entry.estimate~=nil then assert(not result.corrupted and result.tier~=17,"Reroll targets are unavailable for corrupted or Nightmare maps");result.estimate=M.validateMapEstimate(entry.estimate) end
 	return result
 end
 function M.tree(version)

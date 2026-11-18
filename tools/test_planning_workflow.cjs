@@ -734,6 +734,11 @@ async function main(){
   const unknownMap=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:copiedMapText.replace('Monsters have 45% increased Area of Effect','Unknown map modifier')},'failed');assert.match(unknownMap.error,/Unrecognized map modifier/);
   const mapBases=await queued('search_map_bases',{baseRevision:context.revision,query:'MapWorldsBeach',limit:5},'mapData');
   assert.ok(mapBases.mapData.results.some(base=>base.id==='Metadata/Items/Maps/MapWorldsBeach'));
+  const nightmareMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsAbomination',tier:17,itemLevel:84,rarity:'rare',query:'MapUberModCurses'},'mapData');
+  assert.equal(nightmareMap.mapData.nightmare,true);assert.equal(nightmareMap.mapData.total,1);assert.match(nightmareMap.mapData.currencyOptionsWarning,/Nightmare map/);
+  const nightmareText='Item Class: Maps\nRarity: Rare\nDread Tower\nAbomination Map\n--------\nMap Tier: 17\nItem Level: 84\n--------\nPlayers are Cursed with Vulnerability\nPlayers are Cursed with Temporal Chains\nPlayers are Cursed with Elemental Weakness\n35% more Threads found in Area\n--------\nTravel to this Map by using it in a personal Map Device.';
+  const nightmareCopy=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:nightmareText},'mapData');
+  assert.equal(nightmareCopy.mapData.state.tier,17);assert.deepEqual(nightmareCopy.mapData.state.selected,['MapUberModCurses']);
   const mapMods=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:2,quality:{kind:'Pack Size',value:20}},'mapData');
   assert.equal(mapMods.mapData.candidates.length,2);assert.equal(mapMods.mapData.nextOffset,2);assert.match(mapMods.mapData.note,/not outcome probabilities/);
   assert.equal(mapMods.mapData.summary.estimatedTotals.packSize.min,10);

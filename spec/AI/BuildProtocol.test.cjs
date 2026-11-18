@@ -112,7 +112,9 @@ test('queues bounded map modifier inspection', t => {
   const delirium=fixture(t), effects=[{kind:'explicit',text:'Players in Area are 35% Delirious'},{kind:'explicit',text:'Delirium Reward Type: Currency'}];
   delirium.call('inspect_map_modifiers',{...args,baseRevision:delirium.state.revision,rarity:'rare',observedEffects:effects});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(delirium.dir,'AI-build-request.json'))).observedEffects,effects);
-  for(const invalid of [{...args,tier:17},{...args,itemLevel:0},{...args,rarity:'normal'},{...args,selected:Array(10).fill('x')},{...args,limit:101},{...args,unknown:true}]) assert.throws(()=>f.call('inspect_map_modifiers',invalid),/arguments/);
+  const nightmare=fixture(t);nightmare.call('inspect_map_modifiers',{...args,baseRevision:nightmare.state.revision,baseId:'Metadata/Items/Maps/MapWorldsAbomination',tier:17,itemLevel:84,rarity:'rare'});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(nightmare.dir,'AI-build-request.json'))).tier,17);
+  for(const invalid of [{...args,tier:18},{...args,itemLevel:0},{...args,rarity:'normal'},{...args,selected:Array(10).fill('x')},{...args,limit:101},{...args,unknown:true}]) assert.throws(()=>f.call('inspect_map_modifiers',invalid),/arguments/);
   const bases=fixture(t);bases.call('search_map_bases',{baseRevision:bases.state.revision,query:'Beach',limit:5});
   assert.equal(JSON.parse(fs.readFileSync(path.join(bases.dir,'AI-build-request.json'))).kind,'search_map_bases');
 });
@@ -411,6 +413,7 @@ test('preserves multiple map drafts in Atlas proposals', t => {
   mapDrafts[0].observedEffects=[{kind:'implicit',text:"Area is Influenced by the Originator's Memories"}];
   mapDrafts[0]={...mapDrafts[0],rarity:'rare',selected:['MapMonsterAreaOfEffectMapWorlds'],rolls:[{id:'MapMonsterAreaOfEffectMapWorlds',values:[13,8,5,45]}],estimate:{wantedGroups:[['MapMonsterAreaOfEffectMapWorlds']],avoid:['MapContainsMirageWorlds'],trials:20,maxAttempts:5}};
   mapDrafts[1]={...mapDrafts[1],rarity:'rare',corrupted:true,implicit:{id:'MapCorruptionItemRarity',value:15}};
+  mapDrafts[2]={...mapDrafts[2],baseId:'Metadata/Items/Maps/MapWorldsAbomination',tier:17,itemLevel:84,rarity:'rare',selected:['MapUberModCurses']};
   const plan={id:'atlas',title:'Mapping',version:'3.30.0-preview',budget:150,nodes:[],mapDrafts};
   f.call('propose_atlas_plan',{baseRevision:f.state.revision,plan});
   const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));

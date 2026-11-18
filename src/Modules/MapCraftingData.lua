@@ -2,6 +2,12 @@
 local json=require("dkjson")
 local M={}
 local data
+local nightmareBases={
+	["Metadata/Items/Maps/MapWorldsAbomination"]=true,["Metadata/Items/Maps/MapWorldsCitadel"]=true,
+	["Metadata/Items/Maps/MapWorldsFortress"]=true,["Metadata/Items/Maps/MapWorldsSanctuary"]=true,
+	["Metadata/Items/Maps/MapWorldsZiggurat"]=true,
+}
+function M.isNightmare(id) return nightmareBases[id] == true end
 
 -- The 3.30 patch notes restrict these nine ordinary-map suffixes to rare maps.
 local rareOnly={
@@ -137,7 +143,7 @@ end
 -- White, yellow and red ordinary maps use the established tier bands. This
 -- inspection deliberately does not simulate rolling or claim outcome odds.
 function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity,rolls,corrupted,implicit,quality,observedEffects)
-	assert(type(tier)=="number" and tier==math.floor(tier) and tier>=1 and tier<=16,"Use an ordinary map tier from 1 to 16")
+	assert(type(tier)=="number" and tier==math.floor(tier) and tier>=1 and tier<=17,"Use a map tier from 1 to 17")
 	rarity=rarity or "rare";assert(rarity=="magic" or rarity=="rare","Use magic or rare map rarity")
 	assert(corrupted==nil or type(corrupted)=="boolean","Invalid map corruption state")
 	assert(not corrupted or rarity=="rare","Corrupted map inspection currently requires a rare map")
@@ -150,9 +156,12 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 	local baseTier=baseId:match("^Metadata/Items/Maps/MapKeyTier(%d+)$")
 	assert(not baseTier or tonumber(baseTier)==tier,"The map item's tier must match the selected tier")
 	local tags=M.baseTags(baseId)
-	assert(not tags.map_force_6_mods,"Special maps need their own crafting rules")
+	local nightmare=M.isNightmare(baseId)
+	assert(not tags.map_force_6_mods or nightmare,"Special maps need their own crafting rules")
+	assert(nightmare == (tier==17),"Nightmare maps require tier 17; ordinary maps require tier 1 to 16")
+	assert(not nightmare or rarity=="rare","Nightmare maps require rare rarity")
 	for _,tag in ipairs({"low_tier_map","mid_tier_map","top_tier_map","uber_tier_map"}) do tags[tag]=nil end
-	tags[tier<=5 and "low_tier_map" or tier<=10 and "mid_tier_map" or "top_tier_map"]=true
+	tags[nightmare and "uber_tier_map" or tier<=5 and "low_tier_map" or tier<=10 and "mid_tier_map" or "top_tier_map"]=true
 	local counts={prefix=0,suffix=0};local groups={}
 	assert(#(selected or {})<=(corrupted and 9 or rarity=="magic" and 2 or 6),"Too many modifiers for this map state")
 	for _,id in ipairs(selected or {}) do
@@ -168,8 +177,8 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 		if (corrupted and #selected<9 or not corrupted and counts[entry.side]<(rarity=="magic" and 1 or 3)) and (rarity=="rare" or not rareOnly[entry.id]) and (entry.name.." "..entry.text.." "..entry.id):lower():find(query:lower(),1,true) then result[#result+1]=entry end
 	end
 	local results,total,nextOffset=page(result,offset,limit)
-	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,corrupted=corrupted or nil,implicit=implicitInfo,observedEffects=observedEffects,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected,rolls,implicitInfo,quality),
+	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,nightmare=nightmare or nil,corrupted=corrupted or nil,implicit=implicitInfo,observedEffects=observedEffects,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected,rolls,implicitInfo,quality),
 		source=M.source().source,patch=M.source().patch,
-		note=(corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification.")..(observedEffects and " Observed effects are not modeled and can change results." or "")}
+		note=(nightmare and "Nightmare map inspection only. Modifiers can unlock other candidates; order and game restrictions are unverified. Currency and reroll simulations are unavailable. Spawn weights are not probabilities." or corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification.")..(observedEffects and " Observed effects are not modeled and can change results." or "")}
 end
 return M

@@ -47,7 +47,7 @@ function M.parse(raw,checkpoint)
  local displayedTier=tonumber(raw:match("\nMap Tier:%s*(%d+)"))
  assert(not itemTier or not displayedTier or itemTier==displayedTier,"The map item's tier does not match its displayed tier")
  local tier=displayedTier or itemTier;local level=tonumber(raw:match("\nItem Level:%s*(%d+)"))
- assert(tier and tier>=1 and tier<=16,"Use an ordinary map with tier 1 to 16")
+ assert(tier and tier>=1 and tier<=17,"Use a map with tier 1 to 17")
  assert(level and level>=1 and level<=100,"The copied map needs its item level")
  local quality
  for line in raw:gmatch("[^\n]+") do
@@ -80,7 +80,9 @@ function M.parse(raw,checkpoint)
    end
   end
  end
- assert(#matches==1,#matches==0 and "The map base is not in the current ordinary-map catalogue" or "The copied map base is ambiguous")
+ assert(#matches==1,#matches==0 and "The map base is not in the supported map catalogue" or "The copied map base is ambiguous")
+ local nightmare=map.isNightmare(matches[1]);assert(nightmare == (tier==17),"Nightmare maps require tier 17; ordinary maps require tier 1 to 16")
+ assert(not nightmare or rarity=="rare","Nightmare maps require rare rarity")
  local corrupted=raw:match("\nCorrupted\n")~=nil or raw:match("\nCorrupted$")~=nil
  assert(not corrupted or rarity=="rare","Corrupted magic and normal maps are not yet supported")
  local _,levelEnd=raw:find("\nItem Level:%s*%d+");local tail=raw:sub(assert(levelEnd,"The copied map needs its item level")+1)
@@ -100,7 +102,7 @@ function M.parse(raw,checkpoint)
    deliriumDepth=line
   elseif line:match("^Delirium Reward Type: .+$") then
    assert(not deliriumReward,"The copied map has multiple Delirium reward types");deliriumReward=line
-  elseif line~="" and not line:match("^%-+$") and not line:match("^%b{}$") and not line:match("^Monster Level:") and line~="Corrupted" and not line:match("^Travel to this Map") then
+  elseif line~="" and not line:match("^%-+$") and not line:match("^%b{}$") and not line:match("^Monster Level:") and not line:match("^Modifiable only with ") and line~="Corrupted" and not line:match("^Travel to this Map") then
    lines[#lines+1]=line
   end
  end
@@ -112,7 +114,19 @@ function M.parse(raw,checkpoint)
  assert(#lines<=60,"The copied map has too many modifier lines")
  assert(rarity=="normal" or #lines>0,"The copied magic or rare map has no supported visible modifiers")
  local candidates,offset={},0
- if rarity~="normal" then repeat
+ if nightmare then
+  -- Client spawn tags split Nightmare modifiers into initial and unlocked
+  -- pools. A copied item is already rolled, so search both pools without
+  -- assuming the order in which its modifiers were generated.
+  local tags=map.baseTags(matches[1]);tags.uber_tier_map=true
+  for _,mod in pairs(map.source().mods) do for _,tag in ipairs(mod.adds_tags or {}) do if tag:match("^has_uber_map_") then tags[tag]=true end end end
+  local entries=map.candidates(tags,level,{},checkpoint)
+  for _,entry in ipairs(entries) do
+   local effect=map.summarize({entry.id}).effects[1];local tests={}
+   for _,line in ipairs(effect.lines) do local template=clean(line);tests[#tests+1]={match=matcher(template),template=template,variable=template:find("%((%-?%d+)%-(%-?%d+)%)")~=nil} end
+   if #tests>0 then candidates[#candidates+1]={id=entry.id,side=entry.side,groups=entry.groups,tests=tests} end
+  end
+ elseif rarity~="normal" then repeat
   local page=map.inspect(matches[1],tier,level,{},"",offset,100,checkpoint,rarity,nil,corrupted)
   for _,entry in ipairs(page.candidates) do
    local effect=map.summarize({entry.id}).effects[1];local tests={}
@@ -183,6 +197,6 @@ function M.parse(raw,checkpoint)
  local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,implicit=implicit,quality=quality,observedEffects=observed}
  if rarity~="normal" then map.inspect(state.baseId,tier,level,state.selected,"",0,1,checkpoint,rarity,nil,corrupted,implicit) end
  local qualityEffect=require("Modules.MapQuality").effect(quality)
- return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality: "..quality.kind.." +"..quality.value.."%. "..(qualityEffect.supported and qualityEffect.text or "Effect not modeled")..".") or "No quality recorded.",observed and (#observed.." additional effect lines are recorded but not modeled; they can change results.") or (itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately.")}}
+ return {state=state,notes={"Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality: "..quality.kind.." +"..quality.value.."%. "..(qualityEffect.supported and qualityEffect.text or "Effect not modeled")..".") or "No quality recorded.",observed and (#observed.." additional effect lines are recorded but not modeled; they can change results.") or (nightmare and "Nightmare map inspection only; currency and reroll estimates are unavailable." or itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately.")}}
 end
 return M

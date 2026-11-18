@@ -41,6 +41,7 @@ local function add(state,random,checkpoint,cache)
 end
 local function validate(input,checkpoint,cache)
 	assert(type(input)=="table" and type(input.selected)=="table","Invalid map state")
+	assert(not map.isNightmare(input.baseId),"Nightmare map currency simulation is not yet supported")
 	assert(not input.corrupted,"Corrupted maps cannot be modified with these currencies")
 	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,selected={},rolls={},quality=require("Modules.MapQuality").validate(input.quality),observedEffects=require("Modules.MapObservedEffects").validate(input.observedEffects)}
 	assert(not require("Modules.MapObservedEffects").hasExplicit(state.observedEffects),"Currency simulation is unavailable while unsupported explicit map modifiers are recorded")

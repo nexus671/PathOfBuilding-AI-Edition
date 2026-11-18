@@ -18,6 +18,14 @@ describe("Native Atlas planner", function()
 		assert.equal("3.30.0",controls.version:GetSelValueByKey("label"))
 		assert.equal("3.30.0-preview",controls.version:GetSelValueByKey("val"))
 	end)
+	it("persists a tier 17 Nightmare map draft",function()
+		local source=plan("3.30.0-preview")
+		source.mapDrafts={{id="nightmare",title="Abomination",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={"MapUberModCurses"}}}
+		local store=atlas.new(build);store:Upsert(source);local xml={};store:Save(xml)
+		local reopened=atlas.new(build);reopened:Load(xml);assert.same(source.mapDrafts,reopened.plans[1].mapDrafts)
+		assert.same(source.mapDrafts,atlas.import(atlas.export(source)).mapDrafts)
+		local invalid=copyTable(source);invalid.mapDrafts[1].rarity="magic";assert.has_error(function() atlas.validate(invalid) end)
+	end)
 	it("keeps multiple map drafts through Atlas save, export and reopen",function()
 		local source=plan("3.30.0-preview");source.mapDrafts={}
 		for i=1,12 do source.mapDrafts[i]={id="map-"..i,title="Map "..i,patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="normal",selected={}} end

@@ -18,6 +18,13 @@ describe("Map clipboard import",function()
   local magic="Item Class: Maps\nRarity: Magic\nEnlarged Map (Tier 5)\n--------\nItem Level: 68\n--------\nMonsters have 45% increased Area of Effect"
   assert.equal("Metadata/Items/Maps/MapKeyTier5",parser.parse(magic..trailer).state.baseId)
  end)
+ it("imports a named Nightmare map with its complete visible modifier",function()
+  local raw="Item Class: Maps\nRarity: Rare\nDread Tower\nAbomination Map\n--------\nMap Tier: 17\nItem Level: 84\n--------\nPlayers are Cursed with Vulnerability\nPlayers are Cursed with Temporal Chains\nPlayers are Cursed with Elemental Weakness\n35% more Threads found in Area"..trailer
+  local result=parser.parse(raw)
+  assert.equal("Metadata/Items/Maps/MapWorldsAbomination",result.state.baseId);assert.equal(17,result.state.tier)
+  assert.same({"MapUberModCurses"},result.state.selected);assert.matches("inspection only",result.notes[3])
+  assert.has_error(function() parser.parse(raw:gsub("Map Tier: 17","Map Tier: 16")) end)
+ end)
  it("resolves a complete copied ordinary map and verifies exact roll values",function()
   local raw=header.."Monsters have 45% increased Area of Effect\nMonsters deal 55% extra Physical Damage as Fire"..trailer
   local result=parser.parse(raw);assert.equal("Metadata/Items/Maps/MapWorldsStrand",result.state.baseId)
