@@ -610,6 +610,17 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(saved and saved.run.state.veil,"Pending Veiled Chaos result was not saved")
 	end
 	do
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local sim=require("Modules.CraftingSimulator")
+		local rare=sim.perform(raw,{method="alchemy"},12).state;local pending=sim.perform(raw,{method="veiled_chaos"},19,rare).state;pending.affixes={}
+		require("Classes.CraftingSimulatorControl").Open(build,{id="veiled-bench-ui",title="Block an unveil",slot="Helmet",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(pending)})
+		ui:click("settings");ui:text("paletteSearch","Crafting bench");ui:click("paletteUse")
+		assert(main.popups[1].controls.apply:IsEnabled(),"Bench was not available before unveiling")
+		local hint={};for _,row in ipairs(main.popups[1].controls.actionHint.list) do hint[#hint+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(hint," "):find("modeled assumptions",1,true),"The unveil offer assumption was not shown");ui:click("item")
+		assert(main.popups[1].controls.intro.label:find("Applied Crafting bench",1,true),"The selected bench craft was not applied")
+		frame("crafting-veiled-bench");ui:click("close")
+	end
+	do
 		local raw="Rarity: RARE\nExample\nIron Hat\nItem Level: 86"
 		require("Classes.CraftingSimulatorControl").Open(build,{id="gwennen-ui",title="Gwennen pair",slot="Helmet",startingItem=raw,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch","Gwennen");ui:click("paletteUse");assert(not main.popups[1].controls.apply:IsEnabled(),"An unconfigured Gwennen pair could be applied")

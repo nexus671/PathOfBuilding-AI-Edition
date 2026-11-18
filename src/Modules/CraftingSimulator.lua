@@ -99,11 +99,16 @@ local function partialWarning(warnings)
 	warnings[#warnings+1]={code="partial_lock_model",message=partialWarningMessage}
 	return warnings
 end
+local function veilBenchWarning(warnings)
+	warnings[#warnings+1]={code="veil_bench_assumptions",message="When bench crafting before an unveil, the planner recomputes compatible offers from retained random draws. The actual game's offer generation and reopening behavior are unverified; observed or older saved choices cannot be recomputed."}
+end
 function M.recipeWarnings(recipe,model)
-	local result,seen={},{}
-	for _,action in ipairs(recipe and recipe.steps or {}) do for _,warning in ipairs(M.actionWarnings(action,model)) do
-		if not seen[warning.code] then result[#result+1]=warning;seen[warning.code]=true end
-	end end
+	local result,seen={},{};local pending=model and model.initial and model.initial.veil~=nil
+	for _,action in ipairs(recipe and recipe.steps or {}) do
+		for _,warning in ipairs(M.actionWarnings(action,model)) do if not seen[warning.code] then result[#result+1]=warning;seen[warning.code]=true end end
+		if pending and (action.method=="bench" or action.method=="remove_crafted") and not seen.veil_bench_assumptions then veilBenchWarning(result);seen.veil_bench_assumptions=true end
+		if action.method=="veiled_orb" or action.method=="veiled_chaos" then pending=true elseif action.method=="unveil" then pending=false end
+	end
 	return result
 end
 M.limits = {"Experimental PoE 1 model, not a complete game crafting implementation.",
@@ -452,7 +457,7 @@ local function benchReason(model,state,id,c,f)
 		local record=metadata[entry.id]
 		for _,group in ipairs(record and record.groups or {}) do if group==mod.group then return "A modifier from this group is already present" end end
 	end
-	if c[mod.type] >= M.capacities(model,state)[mod.type] then return "No open affix for this bench craft" end
+	if c[mod.type]+(state.veil and state.veil.type==mod.type and 1 or 0) >= M.capacities(model,state)[mod.type] then return "No open affix for this bench craft" end
 end
 function M.benchReason(model,state,id)
 	return benchReason(model,state,id,counts(model,state),flags(model,state))
@@ -460,7 +465,7 @@ end
 function M.benchAvailable(model,state)
 	local c,f=counts(model,state),flags(model,state)
 	if c.crafted >= (f.multipleCrafts and 3 or 1) then return false,"Remove a crafted modifier or allow more crafted modifiers first." end
-	if c.total >= M.capacities(model,state).total then return false,"There is no open modifier slot." end
+	if c.total+(state.veil and 1 or 0) >= M.capacities(model,state).total then return false,"There is no open modifier slot." end
 	for _,entry in ipairs(model.bench) do if not benchReason(model,state,entry.id,c,f) then return true end end
 	return false,"No legal bench modifier is available for this item."
 end
@@ -954,6 +959,7 @@ function M.perform(raw,action,seed,initialState,treeVersion)
 	if initialState then model.initial=M.validateState(model,initialState) end
 	local state,details=M.action(model,model.initial,action,rng(encounter.seed(integer(seed or 104729,1,2147483646,"seed"),1,31)))
 	local warnings=M.actionWarnings(action,model)
+	if model.initial.veil and (action.method=="bench" or action.method=="remove_crafted") then veilBenchWarning(warnings) end
 	if state.socketLayoutUnknown then unknownSocketWarning(warnings) end
 	if M.hasPartialLock(M.context(model,model.initial),model.initial) then partialWarning(warnings) end
 	return M.withTreeContext({priceKey=(M.priceKey or priceKey)(action),itemText=M.itemText(model,state),state=state,choices=details and details.choices,allflame=details and details.allflame,gwennen=details and details.gwennen,dataPatch=M.dataPatch,warnings=warnings,limitations=copyTable(M.limits)},treeVersion)

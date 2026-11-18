@@ -151,6 +151,12 @@ async function main(){
   assert.ok(veilFirst.nativeCrafting.state.veil);assert.ok(veilFirst.nativeCrafting.warnings.some(entry=>entry.code==='veiled_chaos_assumptions'));
   const veilAgain=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:veilFirst.nativeCrafting.state,action:{method:'veiled_chaos'},seed:20},'crafted');
   assert.ok(veilAgain.nativeCrafting.state.veil);
+  const veilEmpty={...veilFirst.nativeCrafting.state,affixes:[]};
+  const veilBlocked=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:veilEmpty,action:{method:'bench',modId:'bench:partial-prefix-1'},seed:21},'crafted');
+  assert.deepEqual(veilBlocked.nativeCrafting.state.veil.offerRolls,veilFirst.nativeCrafting.state.veil.offerRolls);
+  const veilUnblocked=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:veilBlocked.nativeCrafting.state,action:{method:'remove_crafted'},seed:22},'crafted');
+  assert.deepEqual(veilUnblocked.nativeCrafting.state.veil.offerRolls,veilFirst.nativeCrafting.state.veil.offerRolls);
+
   const synthRerollContinued=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthRangeRaw,initialState:synthReroll.nativeCrafting.state,action:{method:'scour'},seed:7},'crafted');
   assert.deepEqual(synthRerollContinued.nativeCrafting.state.synthRolls,synthReroll.nativeCrafting.state.synthRolls);
   const synthTarget=synthMultiInspection.crafting.nativeEngine.synthesisGroups[0].candidates[0];

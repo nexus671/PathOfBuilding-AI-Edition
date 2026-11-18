@@ -30,6 +30,7 @@ function M.slots(model,state)
 	model=sim.context(model,state)
 	local caps=sim.capacities(model,state);local prefixes,suffixes=0,0
 	for _,entry in ipairs(state.affixes) do local mod=model.byId[entry.id];if mod.type=="Prefix" then prefixes=prefixes+1 elseif mod.type=="Suffix" then suffixes=suffixes+1 end end
+	if state.veil then if state.veil.type=="Prefix" then prefixes=prefixes+1 else suffixes=suffixes+1 end end
 	return string.format("Prefixes %d/%d | Suffixes %d/%d",prefixes,caps.Prefix,suffixes,caps.Suffix)
 end
 local function values(model,state)

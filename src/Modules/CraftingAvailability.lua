@@ -10,7 +10,8 @@ function M.check(method,state,model)
 	if state.destroyed then return false,"Undo or reset the destroyed item." end
 	if state.uniqueTitle then return false,"Further crafting of transformed unique jewels is not yet modeled. Undo or reset to continue." end
 	if state.mirrored then return false,"Mirrored items cannot be crafted." end
-	if state.veil and method~="unveil" and method~="veiled_chaos" then return false,"Finish the pending unveil first." end
+	if state.veil and method~="unveil" and method~="veiled_chaos" and method~="bench" and method~="remove_crafted" then return false,"Finish the pending unveil first." end
+	if state.veil and (method=="bench" or method=="remove_crafted") and not state.veil.offerRolls then return false,"This saved veil has observed choices; unveil it before bench crafting." end
 	if method=="unveil" then return state.veil~=nil,state.veil and "Choose one of the offered modifiers." or "This item has no pending unveil." end
 	local tainted=method:find("tainted_",1,true)~=nil
 	if tainted and not state.corrupted then return false,"Requires a corrupted item." end

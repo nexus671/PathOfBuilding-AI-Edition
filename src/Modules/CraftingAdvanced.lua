@@ -430,6 +430,39 @@ function A.extend(M,api)
 		if M.adjustPool then result=M.adjustPool(model,state,result,options,source,item,counts.tags) end
 		return result
 	end
+	-- Offer draws are retained so changing a blocking bench craft cannot be
+	-- used to repeatedly reroll the same pending veil in the planner.
+	local function veilOffers(model,state,kind,rolls)
+		local candidates=pool(model,state,{source=model.veiled,ignoreBlocks=true});local choices={}
+		for index=1,3 do
+			local options={};for _,entry in ipairs(candidates) do
+				local valid=model.byId[entry.id].type==kind
+				for _,id in ipairs(choices) do for _,a in ipairs(groups(model,id)) do for _,b in ipairs(groups(model,entry.id)) do if a==b then valid=false end end end end
+				if valid then options[#options+1]=entry end
+			end
+			if #options==0 then break end
+			choices[#choices+1]=choose(options,function() return rolls[index] end)
+		end
+		assert(#choices>0,"No compatible unveil choices remain")
+		return choices
+	end
+	local function newVeil(model,state,kind,random)
+		local rolls={random(),random(),random()}
+		return {type=kind,offerRolls=rolls,choices=veilOffers(model,state,kind,rolls)}
+	end
+	local originalBenchReason,originalBenchAvailable=M.benchReason,M.benchAvailable
+	function M.benchReason(model,state,id)
+		local reason=originalBenchReason(model,state,id);if reason or not state.veil then return reason end
+		if not state.veil.offerRolls then return "This saved veil has observed choices; unveil it before bench crafting" end
+		local shadow=copyTable(state);shadow.affixes[#shadow.affixes+1]={id=id,range=0.5,crafted=true}
+		local ok=pcall(veilOffers,model,shadow,shadow.veil.type,shadow.veil.offerRolls)
+		if not ok then return "This craft leaves no compatible unveil choices" end
+	end
+	function M.benchAvailable(model,state)
+		if not state.veil then return originalBenchAvailable(model,state) end
+		for _,entry in ipairs(model.bench) do if not M.benchReason(model,state,entry.id) then return true end end
+		return false,"No legal bench modifier is available for this veiled item."
+	end
 	function M.pool(model,state)
 		if not model.influencePool then return originalPool(model,state) end
 		local result=pool(model,state,state.poolOptions); local total=0
@@ -875,7 +908,7 @@ function A.extend(M,api)
 		if action.beastLevel~=nil then assert(action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix","Beast level only applies to Bestiary modifier swaps");api.integer(action.beastLevel,1,100,"beast level") end
 		assert(not input.mirrored,"Mirrored items cannot be crafted")
 		assert(not input.corrupted or action.method == "socket_bench","This method cannot modify a corrupted item")
-		assert(not input.veil or action.method == "unveil" or action.method == "veiled_chaos","Choose the pending unveil first")
+		assert(not input.veil or action.method == "unveil" or action.method == "veiled_chaos" or action.method=="bench" or action.method=="remove_crafted","Choose the pending unveil first")
 		local state=copyTable(input); local method=action.method; local f=api.flags(model,state)
 		if model.item.type == "Flask" or model.item.type == "Tincture" then
 			assert(contains({"transmute","alteration","augmentation","annul","scour","divine","blessed"},method),"This method is unavailable for flasks and tinctures")
@@ -883,7 +916,15 @@ function A.extend(M,api)
 		-- In 3.30, attack/caster roll blockers no longer protect those modifiers
 		-- from an Orb of Annulment. Prefix/suffix locks and fractures still apply.
 		if method == "annul" then return originalAction(model,state,action,random) end
-		if not methods[method] then return originalAction(model,state,action,random) end
+		if not methods[method] then
+			if state.veil and (method=="bench" or method=="remove_crafted") then
+				assert(state.veil.offerRolls,"This saved veil has observed choices; unveil it before bench crafting")
+				local result=originalAction(model,state,action,random)
+				result.veil.choices=veilOffers(model,result,result.veil.type,result.veil.offerRolls)
+				return result
+			end
+			return originalAction(model,state,action,random)
+		end
 		if method == "beast_meta" then
 			local candidates,reason=metaCandidates(model,state)
 			assert(not reason,reason)
@@ -1003,38 +1044,16 @@ function A.extend(M,api)
 			assert(types.Prefix or types.Suffix,"No legal veiled modifier can be added")
 			local kind=types.Prefix and types.Suffix and (random()<0.5 and "Prefix" or "Suffix") or types.Prefix and "Prefix" or "Suffix"
 			fill(model,state,random,{reservedVeilType=kind},targetCount(model,state,random)-1)
-			local candidates=pool(model,state,{source=model.veiled,ignoreBlocks=true})
-			local choices={}
-			while #choices<3 do
-				local options={};for _,entry in ipairs(candidates) do
-					local valid=model.byId[entry.id].type==kind
-					for _,id in ipairs(choices) do for _,a in ipairs(groups(model,id)) do for _,b in ipairs(groups(model,entry.id)) do if a==b then valid=false end end end end
-					if valid then options[#options+1]=entry end
-				end
-				if #options==0 then break end
-				choices[#choices+1]=choose(options,random)
-			end
-			assert(#choices>0,"No legal veiled modifier remains after the reforge")
-			state.veil={type=kind,choices=choices}
+			state.veil=newVeil(model,state,kind,random)
 		elseif method == "veiled_orb" then
 			assert(state.rarity == "RARE" and #state.affixes > 0,"Veiled Exalted Orb requires a rare item with modifiers")
 			for _,entry in ipairs(state.affixes) do assert(not contains(model.byId[entry.id].modTags,"unveiled_mod"),"The item already has an unveiled modifier") end
 			remove(model,state,random)
-			local choices={}; local candidates=pool(model,state,{source=model.veiled,ignoreBlocks=true})
-			local types={}; for _,entry in ipairs(candidates) do types[model.byId[entry.id].type]=true end
-			local kind=types.Prefix and types.Suffix and (random() < 0.5 and "Prefix" or "Suffix") or types.Prefix and "Prefix" or "Suffix"
-			local first={}; for _,entry in ipairs(candidates) do if model.byId[entry.id].type == kind then first[#first+1]=entry end end
-			local selected=choose(first,random)
-			while #choices < 3 do
-				local options={}; for _,entry in ipairs(candidates) do
-					local valid=model.byId[entry.id].type == kind
-					for _,id in ipairs(choices) do for _,a in ipairs(groups(model,id)) do for _,b in ipairs(groups(model,entry.id)) do if a == b then valid=false end end end end
-					if valid then options[#options+1]=entry end
-				end
-				if #options == 0 then break end
-				choices[#choices+1]=#choices == 0 and selected or choose(options,random)
-			end
-			state.veil={type=kind,choices=choices}
+			local candidates=pool(model,state,{source=model.veiled,ignoreBlocks=true})
+			local types={};for _,entry in ipairs(candidates) do types[model.byId[entry.id].type]=true end
+			assert(types.Prefix or types.Suffix,"No legal veiled modifier can be added")
+			local kind=types.Prefix and types.Suffix and (random()<0.5 and "Prefix" or "Suffix") or types.Prefix and "Prefix" or "Suffix"
+			state.veil=newVeil(model,state,kind,random)
 		elseif method == "dominance" then
 			assert(contains({"Helmet","Body Armour","Gloves","Boots"},model.item.type) and state.rarity == "RARE","Dominance requires rare influenced armour")
 			local eligible={};for i,entry in ipairs(state.affixes) do if influenced(model,entry.id) then eligible[#eligible+1]=i end end
@@ -1190,6 +1209,10 @@ function A.extend(M,api)
 			assert(not state.corrupted and not state.mirrored and state.rarity~="NORMAL","A pending unveil requires an uncorrupted magic or rare item")
 			assert(veil.type=="Prefix" or veil.type=="Suffix","Invalid unveil side")
 			assert(veil.fractured==nil or type(veil.fractured)=="boolean","Invalid fractured unveil marker")
+			if veil.offerRolls~=nil then
+				assert(type(veil.offerRolls)=="table" and #veil.offerRolls==3,"Invalid unveil offer draws")
+				for key,value in pairs(veil.offerRolls) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=3 and type(value)=="number" and value>=0 and value<1,"Invalid unveil offer draw") end
+			end
 			assert(type(veil.choices)=="table" and #veil.choices>=1 and #veil.choices<=3,"Invalid unveil choices")
 			local seen={};for _,id in ipairs(veil.choices) do
 				local mod=model.byId[id]

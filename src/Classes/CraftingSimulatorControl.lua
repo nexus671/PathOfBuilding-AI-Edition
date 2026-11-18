@@ -177,8 +177,8 @@ function Panel.Open(build,project,layout)
 	label(controls,"optionLabel",16,124,"Action options (dropdown search is available)")
 	controls.option=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,144,416,24},{})
 	local stateAwareOptions={bench=true,essence=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true}
-	local function updateOptions()
-		if state.veil then controls.method:SelByValue("unveil","val") end
+	local function updateOptions(preferUnveil)
+		if state.veil and preferUnveil then controls.method:SelByValue("unveil","val") end
 		local method=controls.method:GetSelValueByKey("val")
 		local previous=controls.option:GetSelValue()
 		local reference=stateAwareOptions[method] and configured[method] or previous and previous.action
@@ -255,7 +255,7 @@ function Panel.Open(build,project,layout)
 			history[#history+1]=copyTable(state);if #history > 40 then table.remove(history,1) end
 			if index then craft.allflame=craft.allflame or copyTable(result.allflame.settings);craft.allflame.choiceIndex=index end
 			local label=craft.method=="essence" and "Essence: "..workbench.actionLabel(craft,model) or simulator.labels[craft.method] or "craft"
-			state=nextState;actions[#actions+1]=craft;updateOptions()
+			state=nextState;actions[#actions+1]=craft;updateOptions(craft.method=="veiled_chaos" or craft.method=="veiled_orb")
 			local message=state.uniqueTitle and ("Applied "..label..". Unique outcome; undo or keep this item.") or ("Applied "..label..". Select another currency or undo.")
 			for _,warning in ipairs(result.warnings or {}) do if warning.code=="abyss_socket_layout" then message="Applied "..label..". Abyss socket layout is experimental.";break end end
 			if result.gwennen then for _,entry in ipairs(require("Modules.CraftingGwennenReference").search("",100).offers) do if entry.id==result.gwennen.outcome then message="Gwennen modeled outcome: "..entry.description;break end end end
@@ -928,7 +928,7 @@ function Panel.Open(build,project,layout)
 	end);controls.splitter.enabled=function() return not tasks.job end end
 	if restored then controls.method:SelByValue(restored.method or "alchemy","val");controls.resultSummary.list=restored.resultRows or controls.resultSummary.list
 	elseif draft.preferredMethod then controls.method:SelByValue(draft.preferredMethod,"val") end
-	updateOptions();refresh()
+	updateOptions(true);refresh()
 	-- Hook edits after restoring controls so viewing a saved craft stays clean.
 	for _,key in ipairs({"trials","budget","price","currency","baseCost","seed"}) do
 		local control=controls[key];local previous=control.changeFunc

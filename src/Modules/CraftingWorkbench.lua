@@ -238,6 +238,7 @@ function M.hint(method,state,model,craft)
 		local configuration=simulator.configurationReason(model,state,craft or {method=method})
 		if configuration then return configuration end
 	end
+	if available and state.veil and (method=="bench" or method=="remove_crafted") then return "Bench blockers change compatible unveil offers. The offer selection and reopening behavior are modeled assumptions." end
 	if available and method=="vaal" and model.item.type=="Flask" then return "Changes quality by -10 to +10. Equal outcome weights are assumed, not verified." end
 	if available and method=="vaal" and model.item.type=="Jewel" and (model.item.base.subType=="Abyss" or model.item.clusterJewel or model.item.baseName=="Prismatic Jewel") then return "Unique outcome treated as no change. Branch odds and rare modifier counts are unverified." end
 	if available and method=="vaal" and #require("Modules.CraftingJewelCorruption").candidates(model.item.baseName)>0 then return "Experimental: equal branch and unique-selection weights are assumed. The unique pool and item rolls are unverified." end
