@@ -40,7 +40,25 @@ describe("Vorici socket colour service",function()
 			local state=copyTable(model.initial);state[change.key]=change.value;assert.is_false(check(action.method,state,model))
 			local draws=0;assert.is_false(pcall(sim.action,model,state,action,function() draws=draws+1;return 0.5 end));assert.equal(0,draws)
 		end
-		local state=copyTable(model.initial);state.sockets[1].color="A";assert.is_false(check(action.method,state,model))
+		local state=copyTable(model.initial);state.sockets={{color="A",group=0}}
+		local allowed,reason=check(action.method,state,model);assert.is_false(allowed);assert.matches("ordinary socket",reason)
+		local draws=0;assert.is_false(pcall(sim.action,model,state,action,function() draws=draws+1;return 0.5 end));assert.equal(0,draws)
+	end)
+	it("compares ordinary colours while retaining an Abyssal socket and links",function()
+		local model=sim.model(raw);local before=copyTable(model.initial)
+		before.sockets={{color="W",group=0},{color="W",group=0},{color="A",group=1},{color="W",group=2}}
+		assert.is_true(check(action.method,before,model))
+		local catalog=sim.catalog(raw,"vorici",20,before);local service
+		for _,row in ipairs(catalog.socketCrafts) do if row.method==action.method then service=row end end
+		assert.is_true(assert(service).available)
+		for seed=1,8 do
+			local random=rng(seed);local expected
+			for _=1,25 do local candidate=sim.action(model,before,{method="chromatic"},random);if not expected or score(candidate)>score(expected) then expected=candidate end end
+			local actual=sim.action(model,before,action,rng(seed));assert.same(expected,actual);assert.equal("A",actual.sockets[3].color)
+			for index=1,#before.sockets do assert.equal(before.sockets[index].group,actual.sockets[index].group) end
+			assert.same(actual.sockets,new("Item"):Item(sim.toItem(model,actual).raw).sockets)
+		end
+		assert.matches("eligibility",sim.actionWarnings(action)[1].message)
 	end)
 	it("exposes the service, assumptions and whole-action price",function()
 		local catalog=sim.catalog(raw,"vorici",20);assert.equal(action.method,catalog.socketCrafts[1].method)

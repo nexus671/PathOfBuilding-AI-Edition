@@ -20,7 +20,8 @@ function S.extend(M,A,api)
 	M.methodChecks.vorici_socket_count=M.methodChecks.omen_jeweller
 	M.methodChecks.vorici_socket_colours=function(model,state)
 		if #(state.sockets or {})==0 then return "Add sockets before using Vorici's bench." end
-		for _,socket in ipairs(state.sockets) do if socket.color=="A" then return "Abyssal sockets need a separate socket model." end end
+		for _,socket in ipairs(state.sockets) do if socket.color~="A" then return end end
+		return "Requires at least one ordinary socket."
 	end
 	-- Historical community estimates for zero-quality weapons. Applying these
 	-- weights to other bases, and the quality adjustment, are model assumptions.

@@ -512,6 +512,11 @@ async function main(){
   assert.ok(vorici.available && !vorici.deterministic);assert.deepEqual(vorici.components,{vorici_socket_colours:1});
   const voriciAction=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:bodyRaw,action:vorici.action,seed:104729},'crafted');
   assert.equal(voriciAction.nativeCrafting.state.sockets.length,6);assert.equal(voriciAction.nativeCrafting.warnings[0].code,'vorici_colour_assumptions');
+  const abyssSocketRaw=bodyRaw.replace(/Sockets: [^\n]+/,'Sockets: R-G A');
+  const abyssVorici=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:abyssSocketRaw,query:'vorici',limit:5},'inspected');
+  assert.equal(abyssVorici.crafting.nativeEngine.socketCrafts.find(entry=>entry.method==='vorici_socket_colours').available,true);
+  const abyssVoriciResult=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:abyssSocketRaw,action:vorici.action,seed:104729},'crafted');
+  assert.equal(abyssVoriciResult.nativeCrafting.state.sockets[2].color,'A');assert.match(abyssVoriciResult.nativeCrafting.warnings[0].message,/eligibility/);
   const rgbInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'RGB',limit:5},'inspected');
   const rgbService=rgbInspection.crafting.nativeEngine.socketCrafts.find(entry=>entry.method==='omen_trichromatism');
   assert.ok(rgbService.available && !rgbService.deterministic);assert.equal(rgbService.guaranteedColours,'RGB');
