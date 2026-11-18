@@ -183,8 +183,8 @@ describe("Map modifier explorer",function()
 	end)
 
 	it("shows unidentified map modifiers as unknown",function()
-		local captured;local initial={id="unid",title="Unidentified",patch=require("Modules.MapCraftingData").source().patch,baseId="Metadata/Items/Maps/MapKeyTier16",tier=16,itemLevel=83,rarity="rare",selected={},unidentified=true}
-		local controls=require("Classes.MapModifierControl").Open({build=build,initial=initial,keep=function(entry) captured=copyTable(entry);return "unid" end})
+		local captured;local initial={id="unknown-map",title="Unidentified",patch=require("Modules.MapCraftingData").source().patch,baseId="Metadata/Items/Maps/MapKeyTier16",tier=16,itemLevel=83,rarity="rare",selected={},unidentified=true}
+		local controls=require("Classes.MapModifierControl").Open({build=build,initial=initial,keep=function(entry) captured=copyTable(entry);return "unknown-map" end})
 		assert.matches("unknown",controls.status.label,1,true);assert.is_false(controls.currency:IsEnabled());assert.is_false(controls.estimate:IsEnabled());assert.is_false(controls.add:IsEnabled())
 		local text="";for _,row in ipairs(controls.affixes.list) do text=text..StripEscapes(row[1] or "") end;assert.matches("unknown",text,1,true)
 		controls.keep:Click();assert.is_true(captured.unidentified)

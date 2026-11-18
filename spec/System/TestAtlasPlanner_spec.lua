@@ -65,7 +65,7 @@ describe("Native Atlas planner", function()
 		controls.keep:Click();assert.equal(0,#build.savers.AtlasPlans.plans[1].mapDrafts)
 	end)
 	it("labels unidentified saved map modifiers as unknown",function()
-		local source=plan("3.30.0-preview");source.mapDrafts={{id="unid",title="Unknown map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",selected={},unidentified=true,mirrored=true}}
+		local source=plan("3.30.0-preview");source.mapDrafts={{id="unknown-map",title="Unknown map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",selected={},unidentified=true,mirrored=true}}
 		local controls=require("Classes.AtlasPlannerControl").Open(build,source);controls.tools:Click();local tools=main.popups[1].controls;tools.search:SetText("Saved map drafts",true);tools.choose:Click()
 		local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
 		local text=table.concat(details," ");assert.matches("modifiers and totals unknown",text,1,true);assert.matches("Mirrored",text,1,true);assert.is_nil(text:find("0 hypothetical modifiers",1,true))
