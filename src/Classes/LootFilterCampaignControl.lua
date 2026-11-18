@@ -14,7 +14,7 @@ function M.Open(build,value,onKeep,mode)
 	local function button(key,x,y,width,label,run) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,run) end
 	ui.description(c,"help",16,28,w-212,48,{"Choose the base families and recipe pickups you want. These Show rules supplement your preset; personal rules and tiers keep priority. Nothing is automatically hidden."},14)
 	button("enabled",w-180,28,164,"",function() current.enabled=not current.enabled end);c.enabled.label=function() return current.enabled and "Policy enabled" or "Policy disabled" end;c.enabled.locked=function() return current.enabled end
-	local fields={{"minAreaLevel","From area",1},{"maxAreaLevel","Through area",70},{"minDropLevel","Minimum base level",0},{"minLinks","Minimum links",0},{"upgradeWindow","Upgrade window",15}}
+	local fields={{"minAreaLevel","From area",1,100},{"maxAreaLevel","Through area",1,100},{"minDropLevel","Minimum base level",0,100},{"minLinks","Minimum links",0,6},{"upgradeWindow","Upgrade window",0,100}}
 	local fieldWidth=math.floor((w-48)/6)
 	for i,field in ipairs(fields) do local key,title=field[1],field[2];local x=16+(i-1)*(fieldWidth+4);ui.label(c,key.."Label",x,96,title,12)
 		c[key]=new("EditControl"):EditControl(ui.anchor,{x,120,fieldWidth-4,28},tostring(current[key]),nil,"%D",3)
@@ -74,11 +74,21 @@ function M.Open(build,value,onKeep,mode)
 	local function read()
 		local next=copyTable(current)
 		for key,values in pairs(selected) do next[key]={};for name in pairs(values) do next[key][#next[key]+1]=name end end
-		for _,field in ipairs(fields) do next[field[1]]=assert(tonumber(c[field[1]].buf),"Enter every level/link setting") end;return policy.validate(next)
+		for _,field in ipairs(fields) do
+			local n=tonumber(c[field[1]].buf)
+			assert(n and n==math.floor(n) and n>=field[3] and n<=field[4],field[2].." must be between "..field[3].." and "..field[4]..".")
+			next[field[1]]=n
+		end
+		assert(next.minAreaLevel<=next.maxAreaLevel,"From area cannot exceed Through area.")
+		return policy.validate(next)
 	end
 	ui.description(c,"summary",16,h-112,column,64,{"Upgrade windows use five-area bands. Recipe pickups follow only the area range. No vendor proceeds, hidden modifiers or economy value are assumed."},13)
 	updateSummary()
-	button("keep",16,h-42,220,"Keep pickup policy",function() local next=read();policy.rules(next,nil,mode);onKeep(next);main:ClosePopup() end)
+	button("keep",16,h-42,220,"Keep pickup policy",function()
+		local ok,next=pcall(function() local value=read();policy.rules(value,nil,mode);return value end)
+		if not ok then main:OpenMessagePopup("Check pickup policy",ui.errorText(next));return end
+		onKeep(next);main:ClosePopup()
+	end)
 	button("reset",252,h-42,180,"Remove policy",function() onKeep(nil);main:ClosePopup() end)
 	button("close",w-156,h-42,140,"Cancel",function() main:ClosePopup() end)
 	ui.style(c,{keep=true},custom);for _,control in pairs(c) do control.layoutAudit="filter-campaign-policy" end;main:OpenPopup(w,h,"Campaign and base-family pickups",c,nil,nil,"close");return c
