@@ -111,7 +111,7 @@ function M.Open(options)
 	function card:Draw()
 		local x,y=self:GetPos();local w,h=self:GetSize();SetDrawColor("^x716046");DrawImage(nil,x,y,w,h)
 		SetDrawColor("^x15141A");DrawImage(nil,x+1,y+1,w-2,h-2)
-		local rarity=getRarity();local base=map.source().bases[baseId];SetDrawColor(rarity=="magic" and "^x8888FF" or rarity=="normal" and "^7" or "^xE0C586");DrawString(x+w/2,y+12,"CENTER_X",18,"VAR",ui.fit(base.name,w-20,18))
+		local rarity=getRarity();local base=map.source().bases[baseId];local name=(require("Modules.MapObservedEffects").isBlighted(observedEffects) and "Blighted: " or "")..base.name;SetDrawColor(rarity=="magic" and "^x8888FF" or rarity=="normal" and "^7" or "^xE0C586");DrawString(x+w/2,y+12,"CENTER_X",18,"VAR",ui.fit(name,w-20,18))
 		local handle,entry=art();if handle and map.isNightmare(baseId) then
 			if not nightmareFrame then nightmareFrame=NewImageHandle();nightmareFrame:Load("Assets/MapCrafting/Items/NightmareFrame.png") end
 			-- Nightmare artwork is a transparent symbol rendered on the map frame.
@@ -262,9 +262,14 @@ function M.Open(options)
 			prefixLines=prefixLines+2
 		end
 		if observedEffects then
-			table.insert(affixes,1,"^xE9BE7BObserved effects are not modeled:")
+			local blighted=require("Modules.MapObservedEffects").isBlighted(observedEffects)
+			table.insert(affixes,1,blighted and "^xE9BE7BObserved effects are not fully modeled:" or "^xE9BE7BObserved effects are not modeled:")
 			for i=#observedEffects,1,-1 do local effect=observedEffects[i];table.insert(affixes,2,"^xB4B4FF"..effect.text.." ("..effect.kind..")") end
 			prefixLines=prefixLines+1+#observedEffects
+			if blighted then
+				table.insert(affixes,1,"^xE9BE7BBlighted: rare-only encounter modifiers are excluded.")
+				prefixLines=prefixLines+1
+			end
 		end
 		local rows={};for index,line in ipairs(affixes) do for _,row in ipairs(ui.rows({line},left-48,14)) do
 			row.modifierId=affixIds[index-prefixLines];row.selected=row.modifierId~=nil and row.modifierId==selectedAffix;rows[#rows+1]=row

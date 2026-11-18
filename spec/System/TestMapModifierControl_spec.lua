@@ -10,6 +10,15 @@ describe("Map modifier explorer",function()
 		controls.keep:Click();assert.same(observed,captured.observedEffects)
 		controls.tier:SelByValue(6,"val");controls.tier.selFunc();controls.keep:Click();assert.is_nil(captured.observedEffects)
 	end)
+	it("explains the recognized Blighted modifier restriction",function()
+		local observed={{kind="implicit",text="Area is infested with Fungal Growths"}}
+		local initial={id="blight-map",title="Blighted map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",selected={},observedEffects=observed}
+		local captured;local controls=require("Classes.MapModifierControl").Open({initial=initial,keep=function(entry) captured=copyTable(entry);return entry.id end})
+		local text="";for _,row in ipairs(controls.affixes.list) do text=text..StripEscapes(row[1] or "").." " end
+		assert.matches("Blighted: rare%-only encounter modifiers are excluded",text);assert.matches("not fully modeled",text)
+		controls.search:SetText("MapContainsMirageWorlds",true);assert.matches("0 candidates",controls.status.label)
+		controls.keep:Click();assert.same(observed,captured.observedEffects)
+	end)
 	it("records and reopens map quality with documented effects",function()
 		local captured;local controls=require("Classes.MapModifierControl").Open({keep=function(entry) captured=copyTable(entry);return "map-test" end})
 		controls.quality:Click();local popup=main.popups[1].controls
