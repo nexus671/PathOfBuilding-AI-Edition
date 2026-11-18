@@ -859,7 +859,13 @@ function M.simulate(raw,recipe,options)
 				route.executed=route.executed+1
 				totalExecuted=totalExecuted+1
 				local setupKey=(M.priceKey or priceKey)(step)
+				-- Older plans used one generic resistance-conversion override.
+				-- Prefer a directional quote, but continue honoring the old key.
+				local legacyKey=step.method=="harvest_resistance" and "harvest_resistance" or nil
+				local actionKey=setupKey
 				local actionPrice=options.actionPrices and options.actionPrices[setupKey]
+				if actionPrice==nil and legacyKey and options.actionPrices then actionPrice=options.actionPrices[legacyKey];if actionPrice~=nil then actionKey=legacyKey end end
+				local serviceKey=options.prices and options.prices[setupKey]~=nil and setupKey or legacyKey and options.prices and options.prices[legacyKey]~=nil and legacyKey or nil
 				if actionPrice~=nil then actionPriceUses=actionPriceUses+1 end
 				local ingredients=M.components and M.components(step,before,model) or {[setupKey]=1}
 				local context=M.context(model,before)
@@ -872,7 +878,7 @@ function M.simulate(raw,recipe,options)
 					end
 					entry.amount=entry.amount+amount
 				end
-				local components=(actionPrice~=nil or options.prices and options.prices[setupKey]~=nil) and {[setupKey]=1} or ingredients
+				local components=(actionPrice~=nil or serviceKey) and {[actionPrice~=nil and actionKey or serviceKey]=1} or ingredients
 				-- Resource quotes for the service or currency do not include the
 				-- consumed donor. Only an explicit whole-action price includes it.
 				if actionPrice==nil and components~=ingredients then for key,amount in pairs(ingredients) do if key:match("^donor:") then components[key]=amount end end end

@@ -136,7 +136,7 @@ Jobs run in the background. **Cancel crafting job** stops them. Results include 
 
 Recipe resources include possible state-dependent costs across branches and loops. This can list a resource that a particular run never spends; the simulation reports actual usage for each run.
 
-Verified bench recipes use their actual ingredients. Unmatched services keep a whole-action price. **Action override** replaces the total for the selected action only; other recipe steps retain their resource quotes. The result says when an override was unused. **Base cost** adds the starting-item cost to every trial. Spending divided by observed successes is a model estimate, not a guaranteed game cost. Zero observed successes does not establish impossibility.
+Verified bench recipes use their actual ingredients. Unmatched services keep a whole-action price. **Action override** replaces the total for the selected action only; other recipe steps retain their resource quotes. Resistance-conversion overrides apply to their specific direction; older generic overrides still apply when no directional override is supplied. The result says when an override was unused. **Base cost** adds the starting-item cost to every trial. Spending divided by observed successes is a model estimate, not a guaranteed game cost. Zero observed successes does not establish impossibility.
 
 Results list modeled ingredients and service uses separately from spending, with
 totals and averages across all trials. A total-price override changes spending,

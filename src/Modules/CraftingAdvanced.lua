@@ -1406,7 +1406,7 @@ function A.extend(M,api)
 		if action.method == "essence" then return action.essenceId end
 		if action.method == "fossil" then local ids=copyTable(action.fossils or {});table.sort(ids);return "fossil:"..table.concat(ids,"+") end
 		if action.method == "harvest_reforge" or action.method == "harvest_augment" then return action.method..":"..tostring(action.tag) end
-		if action.method == "harvest_damage" then return action.method..":"..tostring(action.from)..":"..tostring(action.to) end
+		if action.method == "harvest_damage" or action.method == "harvest_resistance" then return action.method..":"..tostring(action.from)..":"..tostring(action.to) end
 		if action.method == "influence_exalt" then return action.method..":"..tostring(action.influence) end
 		if action.method == "eldritch_implicit" then return action.method..":"..tostring(action.side)..":"..tostring(action.tier) end
 		if action.method == "bench_reroll" then return action.method..":"..tostring(action.count) end
