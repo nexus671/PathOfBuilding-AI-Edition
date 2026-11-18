@@ -23,7 +23,7 @@ describe("Filter threshold conflict diagnostics",function()
   assert.equal(0,#diagnostics.shadowing(parser.parse(table.concat(lines,"\n"))))
  end)
  it("recognizes rarity priority conflicts without hiding reachable rules",function()
-  local values={"Normal","Magic","Rare","Unique"};local ops={">",">=","<","<=","=","=="}
+  local values={"Normal","Magic","Rare","Unique"};local ops={">",">=","<","<=","=","==","!","!="}
   for _,a in ipairs(ops) do for _,b in ipairs(ops) do for _,first in ipairs(values) do for _,second in ipairs(values) do
    local parsed=parser.parse("Show\n Rarity "..a.." "..first.."\nHide\n Rarity "..b.." "..second)
    for _,warning in ipairs(diagnostics.shadowing(parsed)) do for _,value in ipairs(values) do
@@ -31,6 +31,13 @@ describe("Filter threshold conflict diagnostics",function()
     assert.is_false(current and not previous,warning.warning.." ("..value..")")
    end end
   end end end end
+  assert.equal(1,#warnings("Rarity == Unique","Rarity > Rare"))
+  assert.equal(1,#warnings("Rarity != Normal","Rarity >= Magic"))
+  assert.equal(0,#warnings("Rarity = Rare Unique","Rarity > Magic"))
+  assert.equal(0,#warnings("Rarity == Rare","Rarity >= Rare"))
+  assert.equal(0,#warnings("Rarity ?? Rare","Rarity == Unique"))
+  assert.equal(1,#diagnostics.shadowing(parser.parse('Show\n Class == "Helmets" "Boots"\n Rarity == Unique\nHide\n Class == "Helmets"\n Rarity > Rare')))
+  assert.equal(1,#diagnostics.shadowing(parser.parse('Show\n ItemLevel >= 50\n Rarity == Unique\nHide\n ItemLevel >= 60\n Rarity > Rare')))
   assert.equal(1,#warnings("Rarity >= Magic","Rarity >= Rare"))
   assert.equal(1,#warnings("Rarity >= Rare","Rarity > Magic"))
   assert.equal(1,#warnings("Rarity <= Magic","Rarity < Rare"))
@@ -47,6 +54,23 @@ describe("Filter threshold conflict diagnostics",function()
     assert.is_false(matches(parsed.rules[2]) and not matches(parsed.rules[1]),warning.warning)
    end end end
   end end end end
+ end)
+ it("keeps mixed rarity, class and numeric comparisons sound",function()
+  local names={"Normal","Magic","Rare","Unique"};local ops={">",">=","<","<=","=","==","!","!="}
+  local lists={'"Helmets"','"Boots"','"Helmets" "Boots"'};local levels={">= 10","> 10","< 20","<= 20"}
+  local seed=7193;local function pick(values) seed=seed*48271%2147483647;return values[seed%#values+1] end
+  for trial=1,400 do
+   local prefix=trial%2==0 and " Class == " or " ItemLevel "
+   local previous=trial%2==0 and pick(lists) or pick(levels);local current=trial%2==0 and pick(lists) or pick(levels)
+   local text="Show\n"..prefix..previous.."\n Rarity "..pick(ops).." "..pick(names).."\nHide\n"..prefix..current.."\n Rarity "..pick(ops).." "..pick(names)
+   local parsed=parser.parse(text)
+   for _,warning in ipairs(diagnostics.shadowing(parsed)) do
+    for _,name in ipairs(names) do for _,class in ipairs({"Helmets","Boots","Gloves"}) do for _,level in ipairs({0,10,11,20,21}) do
+     local item={Rarity=name,Class=class,ItemLevel=level};local function matches(rule) for _,condition in ipairs(rule.conditions) do if not parser.condition(condition,item) then return false end end;return true end
+     assert.is_false(matches(parsed.rules[2]) and not matches(parsed.rules[1]),warning.warning)
+    end end end
+   end
+  end
  end)
  it("keeps mixed-rule conflict reports sound against the evaluator",function()
   local seed=91373;local function random(n) seed=(seed*48271)%2147483647;return seed%n+1 end

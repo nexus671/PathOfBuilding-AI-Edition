@@ -1662,7 +1662,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 	do
 		local example=require("Modules.LootFilters").profile("rarity-example","Rarity example")
-		example.template='Show\n Rarity >= Magic\nHide\n Rarity >= Rare'
+		example.template='Show\n Class == "Helmets" "Boots"\n Rarity == Unique\nHide\n Class == "Helmets"\n Rarity > Rare'
 		local c=require("Classes.LootFilterStructureControl").Open(example)
 		ui:choose("mode","Priority conflicts");local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
 		assert(table.concat(details," "):gsub("%s+"," "):find("matches every item matched",1,true),"Rarity priority conflict was not explained")

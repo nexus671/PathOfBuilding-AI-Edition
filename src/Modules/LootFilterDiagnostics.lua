@@ -1,6 +1,7 @@
 -- Report provable priority conflicts. Do not guess overlap for different predicates.
 local M={}
-local numeric=require("Modules.LootFilterParser").numeric
+local parser=require("Modules.LootFilterParser")
+local numeric=parser.numeric
 local rarity={Normal=0,Magic=1,Rare=2,Unique=3}
 local function number(condition)
  if #condition.values~=1 then return end
@@ -30,10 +31,29 @@ local function covers(previous,current)
  if previous.value==current.value then return previous.inclusive or not current.inclusive end
  return current.direction=="lower" and previous.value<current.value or current.direction=="upper" and previous.value>current.value
 end
+-- Rarity is a finite domain, so compare its actual matching tiers instead of
+-- guessing from the spelling of equality, exclusion or range expressions.
+local function rarityChoices(condition)
+ if condition.keyword~="Rarity" or #condition.values~=1 then return end
+ local allowed={["="]=true,["=="]=true,["!"]=true,["!="]=true,[">"]=true,[">="]=true,["<"]=true,["<="]=true}
+ if not allowed[condition.operator] then return end
+ for _,value in ipairs(condition.values) do if rarity[value]==nil then return end end
+ local values={};local count=0
+ for _,name in ipairs({"Normal","Magic","Rare","Unique"}) do
+  local result=parser.condition(condition,{Rarity=name})
+  if result==nil then return end
+  if result then values[name]=true;count=count+1 end
+ end
+ if count>0 then return values end
+end
+local function containsAll(earlier,later)
+ for value in pairs(later) do if not earlier[value] then return false end end
+ return true
+end
 function M.shadowing(parsed)
- local seen,thresholds,sets,combined,paired,diagnostics={},{},{},{},{},{};local terminal
+ local seen,thresholds,sets,combined,paired,diagnostics={},{},{},{},{},{};local rarityIndex={};local terminal
  for _,rule in ipairs(parsed.rules) do
-  local conditions,variants,pairsToIndex={},{},{}
+  local conditions,variants,pairsToIndex,rarityVariants={},{},{},{}
   if not terminal then for _,condition in ipairs(rule.conditions) do conditions[#conditions+1]=encoded(condition) end end
   table.sort(conditions);local parts={};for _,condition in ipairs(conditions) do parts[#parts+1]=field(condition) end
   local key=table.concat(parts);local prior=terminal or seen[key];local broader=false
@@ -51,6 +71,37 @@ function M.shadowing(parsed)
      if candidate and (not prior or candidate.line<prior.line) then prior=candidate;broader=true end
     end
    end end
+  end
+  if not prior and #conditions<=16 then
+   -- Match the finite rarity set on its own, with a class/base list, or with
+   -- one numeric bound. Cap each bucket just like the other conflict indexes.
+   for _,condition in ipairs(rule.conditions) do
+    local choices=rarityChoices(condition)
+    if choices then
+     local function variant(other,kind,extra,bounds)
+      local remaining,removedA,removedB={},false,not other
+      local keyA,keyB=encoded(condition),other and encoded(other)
+      for _,value in ipairs(conditions) do
+       if not removedA and value==keyA then removedA=true
+       elseif not removedB and value==keyB then removedB=true
+       else remaining[#remaining+1]=field(value) end
+      end
+      local group=field(kind)..field(other and other.keyword)..field(bounds and bounds.direction)..table.concat(remaining)
+      local entry={group=group,choices=choices,extra=extra,bound=bounds}
+      for _,candidate in ipairs(rarityIndex[group] or {}) do
+       if containsAll(candidate.choices,choices) and (not extra or containsAll(candidate.extra,extra)) and (not bounds or covers(candidate.bound,bounds))
+        and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
+      end
+      rarityVariants[#rarityVariants+1]=entry
+     end
+     variant(nil,"rarity")
+     for _,other in ipairs(rule.conditions) do if other~=condition then
+      if (other.keyword=="BaseType" or other.keyword=="Class") and other.operator=="==" and #other.values>0 and #other.values<=256 then
+       local values={};for _,value in ipairs(other.values) do values[value]=true end;variant(other,"rarity-list",values)
+      elseif other.keyword~="Rarity" then local limit=bound(other);if limit then variant(other,"rarity-bound",nil,limit) end end
+     end end
+    end
+   end
   end
   if not prior then
    -- Exact class and base-type lists are alternatives. If every value in the
@@ -153,6 +204,10 @@ function M.shadowing(parsed)
    diagnostics[#diagnostics+1]={line=rule.line,shadowedBy=prior.line,warning="This block cannot be reached: a preceding terminating block at line "..prior.line.." "..explanation}
   elseif not rule.continue then
    seen[key]=rule;if #conditions==0 then terminal=rule end
+   for _,entry in ipairs(rarityVariants) do
+    local candidates=rarityIndex[entry.group] or {};rarityIndex[entry.group]=candidates
+    if #candidates<32 then entry.rule=rule;candidates[#candidates+1]=entry end
+   end
    for _,pair in ipairs(pairsToIndex) do
     local candidates=paired[pair.group] or {};paired[pair.group]=candidates
     if #candidates<32 then candidates[#candidates+1]={rule=rule,a=pair.a,b=pair.b} end
