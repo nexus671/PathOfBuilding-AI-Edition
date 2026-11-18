@@ -27,6 +27,7 @@ describe("Map reroll estimate control",function()
 		controls.run:Click();for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
 		local report="";for _,row in ipairs(controls.report.list) do report=report..StripEscapes(row[1] or "").." " end
 		assert.matches("Mean orb cost per trial: 0.5 chaos",report);assert.matches("excludes the map",report)
+		assert.matches("Spending percentiles: median 0.5",report);assert.matches("Includes failed trials",report)
 		controls.close:Click();options.settings=saved;controls=require("Classes.MapCraftEstimateControl").Open(build,options)
 		controls.price:Click();popup=main.popups[1].controls;assert.equal("0.5",popup.amount.buf);popup.clear:Click();controls.keepSettings:Click();assert.is_nil(saved.price)
 	end)

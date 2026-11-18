@@ -762,7 +762,7 @@ async function main(){
   assert.deepEqual(inspectedRoll.mapData.summary,mapRoll.mapData.summary);
   const mapEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'},options:{wanted:[],avoid:['MapMonsterAreaOfEffectMapWorlds'],trials:2,maxAttempts:1,seed:42,price:{amount:0.5,currency:'chaos'}}},'mapData');
   assert.equal(mapEstimate.mapData.successes,2);assert.equal(mapEstimate.mapData.attempts,2);assert.match(mapEstimate.mapData.note,/sampling uncertainty only/);
-  assert.deepEqual(mapEstimate.mapData.cost,{currency:'chaos',unitPrice:0.5,totalSpent:1,meanSpent:0.5,maxPerTrial:0.5});
+  assert.deepEqual(mapEstimate.mapData.cost,{currency:'chaos',unitPrice:0.5,totalSpent:1,meanSpent:0.5,maxPerTrial:0.5,p50:0.5,p90:0.5,p99:0.5});
   const mapAlternatives=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'},options:{wantedGroups:[['MapContainsMirageWorlds','MapContainsWildwoodWorlds']],trials:1,maxAttempts:1,seed:42}},'mapData');
   assert.deepEqual(mapAlternatives.mapData.wantedGroups,[['MapContainsMirageWorlds','MapContainsWildwoodWorlds']]);
   const impossibleMap=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:5,itemLevel:68,rarity:'rare'},options:{wantedGroups:[['MapMonsterFireDamageMapWorlds'],['MapMonsterColdDamageMapWorlds']],trials:1000,maxAttempts:20,seed:42}},'failed');

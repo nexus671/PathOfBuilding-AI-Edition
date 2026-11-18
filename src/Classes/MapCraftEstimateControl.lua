@@ -112,7 +112,11 @@ function M.Open(build,options)
 				if not alive then return end
 				active=nil;result=value
 				local lines={string.format("%.1f%% succeeded within %d rolls (%d / %d trials)",value.successChance,value.maxAttempts,value.successes,value.trials),string.format("95%% sampling interval %.1f%% to %.1f%% | mean %.2f %s per trial",value.confidenceLow,value.confidenceHigh,value.meanAttempts,value.action=="chaos" and "Chaos Orbs" or "Alteration Orbs"),"Model estimates only; interval does not measure uncertainty in game rules or prices."}
-				if value.cost then lines[#lines+1]=string.format("Mean orb cost per trial: %.6g %s | maximum: %.6g %s",value.cost.meanSpent,value.cost.currency,value.cost.maxPerTrial,value.cost.currency);lines[#lines+1]="Uses your per-orb price; excludes the map and other resources." end
+				if value.cost then
+					lines[#lines+1]=string.format("Mean orb cost per trial: %.6g %s | maximum: %.6g %s",value.cost.meanSpent,value.cost.currency,value.cost.maxPerTrial,value.cost.currency)
+					lines[#lines+1]=string.format("Spending percentiles: median %.6g | 90%% %.6g | 99%% %.6g %s",value.cost.p50,value.cost.p90,value.cost.p99,value.cost.currency)
+					lines[#lines+1]="Includes failed trials stopped at the limit; excludes the map and other resources."
+				end
 				for _,id in ipairs(value.unavailableAvoid or {}) do
 					local effect=map.summarize({id}).effects[1]
 					lines[#lines+1]="Cannot appear in modeled pool: "..effect.name
