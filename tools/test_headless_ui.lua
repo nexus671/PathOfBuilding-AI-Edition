@@ -95,8 +95,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		frame("map-delirium-imported");ui:choose("tier",16,"val")
 	end
 	ui:choose("tier",17,"val");ui:text("search","MapUberModCurses")
-	do local c=main.popups[1].controls;assert(not c.currency:IsEnabled() and not c.estimate:IsEnabled(),"Nightmare maps should not offer unsupported rerolls");assert(c.list.list[1].entry,"Nightmare modifier was not offered");c.list.onClick({line=c.list.list[1]}) end
-	ui:click("add");frame("map-nightmare-inspection");ui:choose("tier",16,"val");ui:text("search","")
+	do local c=main.popups[1].controls;assert(c.currency:IsEnabled() and c.estimate:IsEnabled(),"Nightmare Chaos estimates should be available");assert(c.list.list[1].entry,"Nightmare modifier was not offered");c.list.onClick({line=c.list.list[1]}) end
+	ui:click("add");frame("map-nightmare-inspection");ui:click("currency");ui:text("search","Chaos Orb");ui:click("choose");frame("map-nightmare-rolled");ui:choose("tier",16,"val");ui:text("search","")
 	do
 		local initial=main.popups[1].controls;initial.list.onClick({line=initial.list.list[1]});ui:click("add")
 		ui:choose("rarity","corrupted_rare","val");assert(main.popups[1].controls.remove:IsEnabled(),"Marking a map corrupted cleared its modifiers");ui:click("remove")

@@ -17,6 +17,15 @@ describe("Map reroll estimate control",function()
 		assert.is_true(controls.use:IsEnabled());controls.use:Click()
 		assert.is_truthy(sample);assert.equal("rare",sample.rarity);assert.equal(#sample.selected,#sample.rolls)
 	end)
+	it("offers unlocked Nightmare modifiers and explains the estimate assumptions",function()
+		local state={baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}
+		local settings={wantedGroups={{"MapUberWeakContainsDeliriumMirror"}},avoid={},trials=2,maxAttempts=2}
+		local controls=require("Classes.MapCraftEstimateControl").Open(build,{state=state,settings=settings,apply=function() end})
+		controls.addAvoid:Click();local picker=main.popups[1].controls;picker.search:SetText("MapUberWeakPlayersLessCooldownRecovery",true);assert.is_true(picker.choose:IsEnabled());picker.choose:Click()
+		controls.run:Click();for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
+		assert.is_nil(tasks.job);local text="";for _,row in ipairs(controls.report.list) do text=text..StripEscapes(row[1] or "").." " end
+		assert.matches("Nightmare model",text);assert.matches("unverified",text)
+	end)
 	it("cancels its own job when closed",function()
 		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
 		local settings={wantedGroups={{"MapContainsMirageWorlds"}},avoid={},trials=1000,maxAttempts=20}

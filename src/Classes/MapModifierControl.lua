@@ -53,7 +53,7 @@ function M.Open(options)
 				local historical=entry.id:match("^Metadata/Items/Maps/MapWorlds")
 				local nightmare=map.isNightmare(entry.id)
 				if nightmare or not entry.special and (tier or historical) then
-					rows[#rows+1]={id=entry.id,label=entry.name..(nightmare and " (Nightmare)" or historical and " (legacy)" or ""),search=entry.id,details={entry.id,nightmare and "Nightmare map: inspect only; currency and reroll estimates are unavailable." or tier and "Current tier-based map item." or "Historical named map; availability is not verified."}}
+					rows[#rows+1]={id=entry.id,label=entry.name..(nightmare and " (Nightmare)" or historical and " (legacy)" or ""),search=entry.id,details={entry.id,nightmare and "Nightmare map: Chaos rerolls use an experimental model." or tier and "Current tier-based map item." or "Historical named map; availability is not verified."}}
 				end
 			end
 			baseOffset=page.nextOffset
@@ -136,9 +136,9 @@ function M.Open(options)
 	end)
 	controls.estimate.enabled=function()
 		local level=tonumber(controls.level.buf)
-		return options.build~=nil and getRarity()~="normal" and not isCorrupted() and not map.isNightmare(baseId) and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and level~=nil and level==math.floor(level) and level>=1 and level<=100
+		return options.build~=nil and getRarity()~="normal" and not isCorrupted() and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and level~=nil and level==math.floor(level) and level>=1 and level<=100
 	end
-	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. Corrupted maps, Nightmare maps and unsupported explicit modifiers cannot be rerolled here."
+	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. Corrupted maps and unsupported explicit modifiers cannot be rerolled here. Nightmare estimates use unverified draw-order assumptions."
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
 	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
 	local allRarities={{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"},{label="Corrupted rare",val="corrupted_rare"}}
@@ -187,7 +187,7 @@ function M.Open(options)
 		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
 		local ok,actions=pcall(require("Modules.MapCurrency").options,current)
 		if not ok then main:OpenMessagePopup("Map currency",ui.errorText(actions));return end
-		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon="Assets/Crafting/"..entry.id..".png",details={entry.reason or "Available for this modeled map.","Experimental map crafting; no real currency is consumed.","Counts, selection and independent uniform stat rolls are estimates.",observedEffects and "Observed effects are not modeled and can change results." or "Unmatched translations remain ranges; some restrictions are unverified."}} end
+		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon="Assets/Crafting/"..entry.id..".png",details={entry.reason or "Available for this modeled map.","Experimental map crafting; no real currency is consumed.",map.isNightmare(baseId) and "Six modifiers: exclusive prefix and suffix first, then four weighted draws; order is unverified." or "Counts, selection and independent uniform stat rolls are estimates.",observedEffects and "Observed effects are not modeled and can change results." or "Unmatched translations remain ranges; some restrictions are unverified."}} end
 		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",canChoose=function(entry) return entry.available end,choose=function(entry)
 			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
 			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,rollSeed)
@@ -196,8 +196,8 @@ function M.Open(options)
 			main:ClosePopup();controls.search:SetText("");refresh()
 		end,closeOnChoose=false})
 	end)
-	controls.currency.enabled=function() return not isCorrupted() and not map.isNightmare(baseId) and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) end
-	controls.currency.tooltipText="Currency simulation is unavailable for corrupted maps, Nightmare maps or unsupported explicit modifiers."
+	controls.currency.enabled=function() return not isCorrupted() and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) end
+	controls.currency.tooltipText="Currency simulation is unavailable for corrupted maps or unsupported explicit modifiers. Nightmare Chaos rerolls use unverified draw-order assumptions."
 	button("close",width-132,height-48,116,"Close",function() main:ClosePopup() end)
 	if options.keep then
 		ui.label(controls,"draftNameLabel",right,height-42,"Name",14)
@@ -227,7 +227,7 @@ function M.Open(options)
 			local rows=ui.rows({entry.name.." | "..entry.side},rightWidth-30,14)
 			for _,row in ipairs(rows) do row.entry=entry;lines[#lines+1]=row end
 		end
-		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and "^7Normal map | Use currency to add modifiers" or map.isNightmare(baseId) and "^xE9BE7BNightmare | Inspection only | "..result.total.." candidates | Page "..(math.floor(offset/30)+1) or (isCorrupted() and "^xE07070Corrupted "..#selected.."/9 | " or "^7")..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
+		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and "^7Normal map | Use currency to add modifiers" or map.isNightmare(baseId) and "^xE9BE7BNightmare | Experimental | "..result.total.." candidates | Page "..(math.floor(offset/30)+1) or (isCorrupted() and "^xE07070Corrupted "..#selected.."/9 | " or "^7")..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
 		local affixes={}
 		if #selected==0 and not result.implicit and not (result.summary.qualityEffect and result.summary.qualityEffect.supported) then affixes={"No hypothetical modifiers selected."} else
 			local summary=result.summary;local totals=summary.estimatedTotals or summary.totals

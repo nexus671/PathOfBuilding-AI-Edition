@@ -27,6 +27,24 @@ describe("Experimental map currency",function()
 		assert.has_error(function() currency.perform(input,"chaos",1) end)
 		assert.has_error(function() currency.options(input) end)
 	end)
+	it("models Nightmare Chaos rerolls with at least one exclusive modifier per side",function()
+		local map=require("Modules.MapCraftingData")
+		local input={baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}
+		local before=copyTable(input);local choices={};for _,entry in ipairs(currency.options(input)) do choices[entry.id]=entry end
+		assert.is_true(choices.chaos.available);assert.is_false(choices.alchemy.available);assert.matches("Only Chaos",choices.scour.reason)
+		for seed=1,50 do
+			local result=currency.perform(input,"chaos",seed);assert.equal(6,#result.state.selected);assert.equal(6,#result.state.rolls)
+			local sides={prefix=0,suffix=0};local exclusive={prefix=0,suffix=0}
+			for _,id in ipairs(result.state.selected) do
+				local mod=map.source().mods[id];sides[mod.generation_type]=sides[mod.generation_type]+1
+				for _,tag in ipairs(mod.adds_tags or {}) do if tag:match("^has_uber_map_") then exclusive[mod.generation_type]=exclusive[mod.generation_type]+1 end end
+			end
+			assert.same({prefix=3,suffix=3},sides);assert.is_true(exclusive.prefix>=1);assert.is_true(exclusive.suffix>=1);assert.matches("unverified",result.note)
+			assert.same(result,currency.perform(input,"chaos",seed))
+		end
+		assert.same(before,input);assert.has_error(function() currency.perform(input,"scour",1) end)
+		local bad=copyTable(input);bad.rarity="magic";assert.has_error(function() currency.perform(bad,"chaos",1) end)
+	end)
 	it("explains unavailable currency actions without changing the map",function()
 		local function options(input)
 			local copy=copyTable(input);local result={};for _,entry in ipairs(currency.options(input)) do result[entry.id]=entry end

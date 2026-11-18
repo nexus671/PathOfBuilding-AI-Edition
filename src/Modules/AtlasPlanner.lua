@@ -81,7 +81,7 @@ function M.validateMapDraft(entry)
 			result.rolls[#result.rolls+1]={id=roll.id,values=values}
 		end
 	end
-	if entry.estimate~=nil then assert(not result.corrupted and result.tier~=17,"Reroll targets are unavailable for corrupted or Nightmare maps");result.estimate=M.validateMapEstimate(entry.estimate) end
+	if entry.estimate~=nil then assert(not result.corrupted,"Corrupted maps cannot be rerolled");result.estimate=M.validateMapEstimate(entry.estimate) end
 	return result
 end
 function M.tree(version)

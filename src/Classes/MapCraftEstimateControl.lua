@@ -41,9 +41,10 @@ function M.Open(build,options)
 	local function entries()
 		local entries,offset={},0
 		repeat
-			local page=map.inspect(state.baseId,state.tier,state.itemLevel,{},"",offset,100,nil,state.rarity)
+			local page=map.inspect(state.baseId,state.tier,state.itemLevel,{},"",offset,100,nil,state.rarity,nil,nil,nil,nil,nil,map.isNightmare(state.baseId))
 			for _,entry in ipairs(page.candidates) do
 				local details={entry.name.." | "..entry.side};for _,line in ipairs(map.summarize({entry.id}).effects[1].lines) do details[#details+1]=line end
+				if map.isNightmare(state.baseId) then details[#details+1]="Includes modifiers unlocked later in the experimental roll." end
 				details[#details+1]="This selection matches this exact modifier, not other tiers."
 				entries[#entries+1]={id=entry.id,label=entry.name.." | "..entry.side,search=entry.id,details=details}
 			end
@@ -116,6 +117,7 @@ function M.Open(build,options)
 					lines[#lines+1]="Cannot appear in modeled pool: "..effect.name
 					for _,line in ipairs(effect.lines) do lines[#lines+1]=line end
 				end
+				if map.isNightmare(state.baseId) then lines[#lines+1]="Nightmare model: exclusive prefix and suffix first, then four weighted draws; order and odds are unverified." end
 				if state.observedEffects then lines[#lines+1]="Observed effects are not modeled and can change results." end
 				report(lines)
 			end,

@@ -28,20 +28,21 @@ local function candidates(state,checkpoint,cache)
 	if key and (cache._count or 0)<128 then cache[key]=all;cache._count=(cache._count or 0)+1 end
 	return all
 end
-local function add(state,random,checkpoint,cache)
+local function add(state,random,checkpoint,cache,requiredSide,exclusive)
 	local options=candidates(state,checkpoint,cache);local total=0
-	for _,entry in ipairs(options) do total=total+entry.spawnWeight end
+	for _,entry in ipairs(options) do if (not requiredSide or entry.side==requiredSide) and (not exclusive or entry.matchedTag=="uber_tier_map") then total=total+entry.spawnWeight end end
 	assert(total>0,"No modeled eligible map modifier remains")
 	local target=random()*total
 	for _,entry in ipairs(options) do
-		target=target-entry.spawnWeight
-		if target<0 then state.selected[#state.selected+1]=entry.id;return end
+		if (not requiredSide or entry.side==requiredSide) and (not exclusive or entry.matchedTag=="uber_tier_map") then
+			target=target-entry.spawnWeight
+			if target<0 then state.selected[#state.selected+1]=entry.id;return end
+		end
 	end
 	error("Could not select a map modifier")
 end
 local function validate(input,checkpoint,cache)
 	assert(type(input)=="table" and type(input.selected)=="table","Invalid map state")
-	assert(not map.isNightmare(input.baseId),"Nightmare map currency simulation is not yet supported")
 	assert(not input.corrupted,"Corrupted maps cannot be modified with these currencies")
 	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,selected={},rolls={},quality=require("Modules.MapQuality").validate(input.quality),observedEffects=require("Modules.MapObservedEffects").validate(input.observedEffects)}
 	assert(not require("Modules.MapObservedEffects").hasExplicit(state.observedEffects),"Currency simulation is unavailable while unsupported explicit map modifiers are recorded")
@@ -49,6 +50,7 @@ local function validate(input,checkpoint,cache)
 	local values=require("Modules.MapRollValues");local existing=values.validate(state.selected,input.rolls,map.source());local priorIds={}
 	for _,id in ipairs(state.selected) do priorIds[id]=true end
 	assert(state.rarity=="normal" or state.rarity=="magic" or state.rarity=="rare","Invalid map rarity")
+	assert(not map.isNightmare(state.baseId) or state.rarity=="rare","Nightmare maps require rare rarity")
 	if state.rarity=="normal" then
 		assert(#state.selected==0,"A normal map cannot have explicit modifiers")
 		-- Validate the base, tier and level before changing state.
@@ -56,16 +58,25 @@ local function validate(input,checkpoint,cache)
 	else
 		inspect(state,0,checkpoint)
 		local prior={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity=state.rarity,selected={}}
-		for _,id in ipairs(state.selected) do
-			local found=false;for _,entry in ipairs(candidates(prior,checkpoint,cache)) do if entry.id==id then found=true;break end end
-			assert(found,"A selected modifier is not eligible for this modeled map state")
-			prior.selected[#prior.selected+1]=id
+		if map.isNightmare(state.baseId) then
+			-- Copied modifiers need not be listed in generation order. Check
+			-- each against the union of the initial and unlocked pools.
+			local eligible,offset={},0
+			repeat local page=map.inspect(state.baseId,state.tier,state.itemLevel,{},"",offset,100,checkpoint,"rare",nil,nil,nil,nil,nil,true);for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
+			for _,id in ipairs(state.selected) do assert(eligible[id],"A selected modifier is not eligible for this modeled Nightmare map") end
+		else
+			for _,id in ipairs(state.selected) do
+				local found=false;for _,entry in ipairs(candidates(prior,checkpoint,cache)) do if entry.id==id then found=true;break end end
+				assert(found,"A selected modifier is not eligible for this modeled map state")
+				prior.selected[#prior.selected+1]=id
+			end
 		end
 	end
 	return state,existing,priorIds
 end
 function M.reason(state,action)
 	local rarity=state.rarity;local count=#state.selected
+	if map.isNightmare(state.baseId) and action~="chaos" then return "Only Chaos Orb rerolls are modeled for Nightmare maps." end
 	if action=="transmute" or action=="alchemy" then if rarity~="normal" then return "Requires a normal map." end
 	elseif action=="alteration" or action=="augmentation" or action=="regal" then
 		if rarity~="magic" then return "Requires a magic map." end
@@ -105,7 +116,12 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
 	elseif action=="annul" then assert(state.rarity~="normal" and #state.selected>0,"Requires a magic or rare map with a modifier");table.remove(state.selected,math.floor(random()*#state.selected)+1)
 	elseif action=="scour" then assert(state.rarity~="normal","Requires a magic or rare map");state.rarity="normal";state.selected={}
 	else error("Unsupported map currency") end
-	if action=="transmute" or action=="alteration" or action=="alchemy" or action=="chaos" then
+	if action=="chaos" and map.isNightmare(state.baseId) then
+		-- Historical Tier 17 notes require one exclusive prefix and suffix;
+		-- selecting them first and then filling by weight is an assumption.
+		add(state,random,checkpoint,cache,"prefix",true);add(state,random,checkpoint,cache,"suffix",true)
+		for _=1,4 do add(state,random,checkpoint,cache) end
+	elseif action=="transmute" or action=="alteration" or action=="alchemy" or action=="chaos" then
 		local value=random();local count=state.rarity=="magic" and (value<0.5 and 1 or 2) or (value<8/12 and 4 or value<11/12 and 5 or 6)
 		for _=1,count do add(state,random,checkpoint,cache) end
 	end
@@ -113,6 +129,6 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
 		local roll=existing[id] or (not identitiesOnly and not priorIds[id] and values.sample(map.source().mods[id],random))
 		if roll then state.rolls[#state.rolls+1]={id=id,values=roll} end
 	end
-	return {state=state,seed=seed,action=action,summary=not identitiesOnly and map.summarize(state.selected,state.rolls,nil,state.quality) or nil,note="Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified."..(state.observedEffects and " Observed implicit and enchantment effects are not modeled and can change results." or "")}
+	return {state=state,seed=seed,action=action,summary=not identitiesOnly and map.summarize(state.selected,state.rolls,nil,state.quality) or nil,note=(map.isNightmare(state.baseId) and "Experimental Nightmare model: six modifiers, one exclusive prefix and suffix drawn first, then four weighted draws. Draw order, weights, independent uniform values and interactions are unverified assumptions." or "Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified.")..(state.observedEffects and " Observed implicit and enchantment effects are not modeled and can change results." or "")}
 end
 return M

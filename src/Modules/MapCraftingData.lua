@@ -142,7 +142,7 @@ end
 
 -- White, yellow and red ordinary maps use the established tier bands. This
 -- inspection deliberately does not simulate rolling or claim outcome odds.
-function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity,rolls,corrupted,implicit,quality,observedEffects)
+function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,rarity,rolls,corrupted,implicit,quality,observedEffects,potentialNightmare)
 	assert(type(tier)=="number" and tier==math.floor(tier) and tier>=1 and tier<=17,"Use a map tier from 1 to 17")
 	rarity=rarity or "rare";assert(rarity=="magic" or rarity=="rare","Use magic or rare map rarity")
 	assert(corrupted==nil or type(corrupted)=="boolean","Invalid map corruption state")
@@ -162,6 +162,10 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 	assert(not nightmare or rarity=="rare","Nightmare maps require rare rarity")
 	for _,tag in ipairs({"low_tier_map","mid_tier_map","top_tier_map","uber_tier_map"}) do tags[tag]=nil end
 	tags[nightmare and "uber_tier_map" or tier<=5 and "low_tier_map" or tier<=10 and "mid_tier_map" or "top_tier_map"]=true
+	if nightmare and potentialNightmare then
+		-- A target picker needs both the initial and subsequently unlocked pools.
+		for _,mod in pairs(M.source().mods) do for _,tag in ipairs(mod.adds_tags or {}) do if tag:match("^has_uber_map_") then tags[tag]=true end end end
+	end
 	local counts={prefix=0,suffix=0};local groups={}
 	assert(#(selected or {})<=(corrupted and 9 or rarity=="magic" and 2 or 6),"Too many modifiers for this map state")
 	for _,id in ipairs(selected or {}) do
@@ -179,6 +183,6 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 	local results,total,nextOffset=page(result,offset,limit)
 	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,nightmare=nightmare or nil,corrupted=corrupted or nil,implicit=implicitInfo,observedEffects=observedEffects,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected,rolls,implicitInfo,quality),
 		source=M.source().source,patch=M.source().patch,
-		note=(nightmare and "Nightmare map inspection only. Modifiers can unlock other candidates; order and game restrictions are unverified. Currency and reroll simulations are unavailable. Spawn weights are not probabilities." or corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification.")..(observedEffects and " Observed effects are not modeled and can change results." or "")}
+		note=(nightmare and "Nightmare modifiers can unlock other candidates. Draw order and game restrictions are unverified; simulated Chaos outcomes are experimental. Spawn weights are not probabilities." or corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification.")..(observedEffects and " Observed effects are not modeled and can change results." or "")}
 end
 return M

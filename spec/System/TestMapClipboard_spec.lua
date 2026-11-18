@@ -22,7 +22,7 @@ describe("Map clipboard import",function()
   local raw="Item Class: Maps\nRarity: Rare\nDread Tower\nAbomination Map\n--------\nMap Tier: 17\nItem Level: 84\n--------\nPlayers are Cursed with Vulnerability\nPlayers are Cursed with Temporal Chains\nPlayers are Cursed with Elemental Weakness\n35% more Threads found in Area"..trailer
   local result=parser.parse(raw)
   assert.equal("Metadata/Items/Maps/MapWorldsAbomination",result.state.baseId);assert.equal(17,result.state.tier)
-  assert.same({"MapUberModCurses"},result.state.selected);assert.matches("inspection only",result.notes[3])
+  assert.same({"MapUberModCurses"},result.state.selected);assert.matches("experimental",result.notes[3])
   assert.has_error(function() parser.parse(raw:gsub("Map Tier: 17","Map Tier: 16")) end)
  end)
  it("resolves a complete copied ordinary map and verifies exact roll values",function()

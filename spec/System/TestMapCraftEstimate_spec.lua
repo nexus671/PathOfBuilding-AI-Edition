@@ -27,6 +27,29 @@ describe("Map reroll estimates",function()
 		local result=estimate.run(input,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})
 		assert.same(input.observedEffects,result.sampleSuccess.observedEffects);assert.matches("not modeled",result.note)
 	end)
+	it("estimates Nightmare targets from both initial and unlocked pools",function()
+		local input={baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}
+		local wanted="MapUberWeakContainsDeliriumMirror";local avoid="MapUberWeakPlayersLessCooldownRecovery"
+		local options={wantedGroups={{wanted}},avoid={avoid},trials=3,maxAttempts=5,seed=42}
+		local result=estimate.run(input,options)
+		assert.same({},result.unavailableAvoid);assert.same(options.wantedGroups,result.wantedGroups);assert.matches("drawn first",result.note)
+		assert.same(result,estimate.run(input,options));assert.equal("chaos",result.action)
+		if result.sampleSuccess then assert.equal(6,#result.sampleSuccess.selected) end
+	end)
+	it("rejects three ordinary Nightmare suffix targets with no room for an exclusive suffix",function()
+		local map=require("Modules.MapCraftingData");local input={baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}
+		local entries,offset={},0;repeat local page=map.inspect(input.baseId,17,84,{},"",offset,100,nil,"rare",nil,nil,nil,nil,nil,true);for _,entry in ipairs(page.candidates) do entries[#entries+1]=entry end;offset=page.nextOffset until not offset
+		local picked,used={},{}
+		for _,entry in ipairs(entries) do
+			local mod=map.source().mods[entry.id];local conflict=entry.side~="suffix" or #(mod.adds_tags or {})>0
+			for _,group in ipairs(entry.groups) do if used[group] then conflict=true end end
+			if not conflict then picked[#picked+1]={entry.id};for _,group in ipairs(entry.groups) do used[group]=true end end
+			if #picked==3 then break end
+		end
+		assert.equal(3,#picked)
+		local ok,err=pcall(estimate.run,input,{wantedGroups=picked,trials=1,maxAttempts=1,seed=42})
+		assert.is_false(ok);assert.matches("required Nightmare modifiers",err)
+	end)
 	it("rejects rerolls when an unsupported explicit modifier is present",function()
 		local input=copyTable(state);input.observedEffects={{kind="explicit",text="Players in Area are 35% Delirious"}}
 		local ok,err=pcall(estimate.run,input,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})

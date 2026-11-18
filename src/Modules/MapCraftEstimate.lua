@@ -14,7 +14,6 @@ local function ids(list,limit,label)
 end
 function M.run(state,options,checkpoint)
 	assert(type(state)=="table" and type(options)=="table","Invalid map estimate")
-	assert(not map.isNightmare(state.baseId),"Nightmare map reroll estimates are not yet supported")
 	assert(not state.corrupted,"Corrupted maps cannot be rerolled")
 	local rarity=state.rarity;assert(rarity=="magic" or rarity=="rare","Choose a magic or rare map to reroll")
 	local wanted=options.wanted or {};local avoid=options.avoid or {};local must=ids(wanted,6,"wanted modifier");local forbidden=ids(avoid,100,"avoided modifier")
@@ -40,7 +39,7 @@ function M.run(state,options,checkpoint)
 	local unavailableAvoid={}
 	if #alternatives>0 or #avoid>0 then
 		local eligible,offset={},0
-		repeat local page=map.inspect(base.baseId,base.tier,base.itemLevel,{},"",offset,100,slice,rarity);for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
+		repeat local page=map.inspect(base.baseId,base.tier,base.itemLevel,{},"",offset,100,slice,rarity,nil,nil,nil,nil,nil,map.isNightmare(base.baseId));for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset until not offset
 		for _,group in ipairs(alternatives) do for _,id in ipairs(group) do assert(eligible[id],"A wanted alternative is not eligible for this modeled map") end end
 		for _,id in ipairs(avoid) do if not eligible[id] then unavailableAvoid[#unavailableAvoid+1]=id end end
 	end
@@ -67,26 +66,29 @@ function M.run(state,options,checkpoint)
 	if #groups>2 then
 		local ordered={};for index,group in ipairs(groups) do ordered[#ordered+1]={index=index,choices=group} end
 		table.sort(ordered,function(a,b) return #a.choices==#b.choices and a.index<b.index or #a.choices<#b.choices end)
-		local occupied={};local counts={prefix=0,suffix=0};local limit=rarity=="magic" and 1 or 3
+		local occupied={};local counts={prefix=0,suffix=0};local exclusive={prefix=0,suffix=0};local limit=rarity=="magic" and 1 or 3
 		local examined,exhausted=0,false
 		local function search(index)
-			if index>#ordered then return true end
+			if index>#ordered then
+				return not map.isNightmare(base.baseId) or (counts.prefix<3 or exclusive.prefix>0) and (counts.suffix<3 or exclusive.suffix>0)
+			end
 			for _,id in ipairs(ordered[index].choices) do
 				if examined>=20000 then exhausted=true;return false end
 				examined=examined+1;if examined%32==0 then slice() end
 				local mod=mods[id];local side=mod.generation_type;local legal=counts[side]<limit
 				for _,group in ipairs(mod.groups or {}) do if occupied[group] then legal=false;break end end
 				if legal then
-					counts[side]=counts[side]+1;for _,group in ipairs(mod.groups or {}) do occupied[group]=true end
+					local isExclusive=false;for _,tag in ipairs(mod.adds_tags or {}) do if tag:match("^has_uber_map_") then isExclusive=true;break end end
+					counts[side]=counts[side]+1;if isExclusive then exclusive[side]=exclusive[side]+1 end;for _,group in ipairs(mod.groups or {}) do occupied[group]=true end
 					local found=search(index+1)
-					counts[side]=counts[side]-1;for _,group in ipairs(mod.groups or {}) do occupied[group]=nil end
+					counts[side]=counts[side]-1;if isExclusive then exclusive[side]=exclusive[side]-1 end;for _,group in ipairs(mod.groups or {}) do occupied[group]=nil end
 					if found then return true end;if exhausted then return false end
 				end
 			end
 			return false
 		end
 		local possible=search(1)
-		assert(possible or exhausted,"Wanted targets cannot all coexist under the modeled map modifier rules. Change or remove a target.")
+		assert(possible or exhausted,"Wanted targets cannot all coexist under the modeled map modifier rules"..(map.isNightmare(base.baseId) and ", including required Nightmare modifiers" or "")..". Change or remove a target.")
 	end
 	local successes,totalAttempts=0,0;local sample,successfulAttempts;local histogram={};local poolCache={}
 	for trial=1,trials do
@@ -111,6 +113,6 @@ function M.run(state,options,checkpoint)
 	return {trials=trials,maxAttempts=maxAttempts,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,
 		attempts=totalAttempts,meanAttempts=totalAttempts/trials,action=action,seed=seed,wanted=copyTable(wanted),wantedGroups=copyTable(alternatives),avoid=copyTable(avoid),unavailableAvoid=unavailableAvoid,
 		successDistribution=distribution,sampleSuccess=sample and sample.state or nil,sampleSummary=sample and sample.summary or nil,sampleAttempts=successfulAttempts,
-		note="Chance of meeting every wanted group (at least one alternative per group) and no avoided modifiers within the attempt limit. Wilson interval measures sampling uncertainty only. Map roll counts, weights, stat distributions and some restrictions are unverified estimates; no prices or game odds are inferred."..(#unavailableAvoid>0 and " Some avoided modifiers cannot appear in the modeled pool for this map." or "")..(base.observedEffects and " Observed implicit and enchantment effects are not modeled and can change results." or "")}
+		note="Chance of meeting every wanted group (at least one alternative per group) and no avoided modifiers within the attempt limit. Wilson interval measures sampling uncertainty only. Map roll counts, weights, stat distributions and some restrictions are unverified estimates; no prices or game odds are inferred."..(map.isNightmare(base.baseId) and " Nightmare estimates assume one exclusive prefix and suffix drawn first, followed by four weighted draws; generation order is unverified." or "")..(#unavailableAvoid>0 and " Some avoided modifiers cannot appear in the modeled pool for this map." or "")..(base.observedEffects and " Observed implicit and enchantment effects are not modeled and can change results." or "")}
 end
 return M
