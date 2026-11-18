@@ -277,6 +277,21 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 	local starter=copyTable(build.savers.AtlasPlans.plans[1]);starter.id="starter-atlas";starter.title="Starter maps";starter.nodes={};starter.progression={stage="starter"};build.savers.AtlasPlans:Upsert(starter)
 	ui:click("progression");assert(not main.popups[1].controls.copyRoute:IsEnabled(),"Route copy should require a previous stage");ui:choose("stage","final","val");ui:choose("previous","starter-atlas","val");frame("atlas-progression");ui:click("copyRoute");assert(ui.clipboard:find("Starter maps",1,true) and ui.clipboard:find("Allocate:",1,true) and ui.clipboard:find("base points",1,true),"Copied Atlas route omitted steps or budget assumptions")
+	do
+	ui:click("strategyTab");ui:text("requirements","Unfinished unlock note");ui:text("amount","many");ui:click("progressionTab")
+	assert(main.popups[1].controls.inspectRoute:IsEnabled(),"Stage route could not be opened on the tree")
+	ui:click("inspectRoute");assert(workspace.controls.canvas.focus and workspace.controls.grantExit:IsShown(),"Stage route did not focus the tree")
+	local routeFocus=workspace.controls.canvas.focus;local routeSplit=workspace.controls.splitter;local rx,ry=routeSplit:GetPos()
+	ui.cursorX,ui.cursorY=rx+5,ry+50;ui:dispatch(build,{{type="KeyDown",key="LEFTBUTTON"}});ui.cursorX=ui.cursorX-20;ui:dispatch(build,{{type="KeyUp",key="LEFTBUTTON"}})
+	assert(workspace.controls.grantExit:IsShown() and workspace.controls.canvas.focus==routeFocus,"Resizing lost the stage route")
+	frame("atlas-stage-route-on-tree");if workspace.controls.grantNext:IsEnabled() then local first=workspace.controls.canvas.focus;ui:click("grantNext");assert(workspace.controls.canvas.focus~=first,"Stage route did not advance") end
+	ui:click("grantExit");local resumed=main.popups[1].controls;assert(resumed.previous:GetSelValueByKey("val")=="starter-atlas" and resumed.stage:GetSelValueByKey("val")=="final","Stage selection was lost")
+	ui:click("strategyTab");assert(resumed.requirements.buf=="Unfinished unlock note" and resumed.amount.buf=="many","Unfinished strategy edits were lost");frame("atlas-stage-route-resumed");ui:click("progressionTab")
+	ui:click("inspectRoute");local sameBudget=workspace.controls.budget.buf;ui:text("budget","")
+	assert(not workspace.controls.grantExit:IsShown(),"Editing the budget did not exit the route");ui:click("progression")
+	assert(main.popups[1].title=="Atlas planner","Invalid budget was not explained");ui:click("close");ui:text("budget",sameBudget);ui:click("progression")
+	assert(main.popups[1].controls.previous:GetSelValueByKey("val")=="starter-atlas" and main.popups[1].controls.requirements.buf=="Unfinished unlock note","Resuming after an invalid budget lost stage inputs")
+	end
 	ui:click("strategyTab");ui:text("maps","T16 maps; avoid reflect");ui:text("scarabs","Record map supplies here");ui:text("requirements","Complete map unlocks");ui:text("avoid","Reflect");ui:text("amount","many");ui:text("source","Manual test quote");ui:click("keep")
 	assert(main.popups[1].title=="Atlas strategy" and main.popups[1].controls[1].label=="Enter a numeric setup cost","Invalid Atlas cost was not explained")
 	frame("atlas-strategy-invalid-cost");ui:click("close");assert(main.popups[1].controls.amount.buf=="many","Invalid Atlas input was lost")

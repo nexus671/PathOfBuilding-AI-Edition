@@ -172,7 +172,7 @@ function Panel.Open(build,source,layout)
 	local controls,undo,avoided,redo={},{},copyTable(draft.avoided or {}),{}
 	local preferred
 	local pointUsage,routeAvailable,hasMissingChoices
-	local grantSteps,grantIndex
+	local grantSteps,grantIndex,stageResume,openStages
 	local function current()
 		local result=copyTable(draft); result.title=controls.title.buf; result.budget=assert(tonumber(controls.budget.buf),"Enter a point budget"); result.notes=controls.notes.buf
 		if result.avoided~=nil or #avoided>0 then result.avoided=copyTable(avoided) end
@@ -342,7 +342,7 @@ function Panel.Open(build,source,layout)
 	controls.redo=button(86,height-86,64,"Redo",function() clearRouteOverlay();exitGrantRoute();assert(#redo>0,"No changes to redo");undo[#undo+1]=snapshot();local saved=table.remove(redo);draft=saved.plan;avoided=saved.avoided;syncEditors();refresh() end)
 	controls.grantPrevious=button(16,height-86,64,"Prev",function() showGrantStep(grantIndex-1) end)
 	controls.grantNext=button(86,height-86,64,"Next",function() showGrantStep(grantIndex+1) end)
-	controls.grantExit=button(338,height-86,86,"Exit route",function() exitGrantRoute();refresh() end)
+	controls.grantExit=button(338,height-86,86,"Exit route",function() local view=stageResume;exitGrantRoute();refresh();if view then openStages(view);stageResume=nil end end)
 	controls.fit=button(156,height-86,70,"Fit tree",function() controls.canvas:Fit() end)
 	controls.help=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,height-106,0,14},"^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect")
 	controls.avoid=button(side,height-156,124,"Avoid selected",function()
@@ -504,7 +504,15 @@ function Panel.Open(build,source,layout)
 	controls.keep.tooltipText=function() return controls.canvas.routeOverlay and "Keeps the current draft, not the route preview. Open Targets to apply the preview first." or "Keep this plan in the build. Save the build to persist it." end
 	controls.library=button(188,height-42,120,"Saved plans",function() Panel.Library(build,layout) end)
 	controls.new=button(320,height-42,120,"New plan",function() if not layout then main:ClosePopup() end;Panel.Open(build,{id="atlas-"..require("sha1")(tostring({})..os.time()):sub(1,12),title="New Atlas plan",version=draft.version,budget=atlas.tree(draft.version).maxPoints,nodes={},notes=""},layout) end)
-	controls.progression=button(452,height-42,180,"Stages & strategy",function() require("Classes.AtlasPlanningControl").Open(build,current(),function(plan) change(plan) end) end)
+	openStages=function(view)
+		require("Classes.AtlasPlanningControl").Open(build,current(),function(plan) stageResume=nil;change(plan) end,function(steps,saved)
+			stageResume=saved;clearRouteOverlay();controls.canvas.comparison=nil;controls.page:SelByValue("Tree");grantSteps=copyTable(steps);showGrantStep(1)
+		end,view)
+	end
+	controls.progression=button(452,height-42,180,"Stages & strategy",function()
+		local view=stageResume;if grantSteps then exitGrantRoute();refresh() end;openStages(view);stageResume=nil
+	end)
+	controls.progression.label=function() return stageResume and "Resume stages" or "Stages & strategy" end
 	controls.close=button(width-132,height-42,116,"Close",function() main:ClosePopup() end)
 	controls.page=new("DropDownControl"):DropDownControl(ui.anchor,{side,64,260,24},{"Tree","Notes & sharing"})
 	ui.label(controls,"notesLabel",16,88,"Farming goals, maps, supplies and strategy notes")
@@ -532,7 +540,7 @@ function Panel.Open(build,source,layout)
 		controls.close.shown=false
 		layout.tick=function() require("Modules.AtlasTargets").tick(build) end
 		layout.inspectorWidth=inspector
-		layout.viewState=function() return {centerX=controls.canvas.centerX,centerY=controls.canvas.centerY,scale=controls.canvas.scale,focus=controls.canvas.focus,page=controls.page:GetSelValue(),avoided=copyTable(avoided),undo=copyTable(undo),redo=copyTable(redo),preferred=preferred,inspectorWidth=inspector,search=controls.search.buf,mechanic=controls.mechanic:GetSelValue(),title=controls.title.buf,budgetText=controls.budget.buf,notes=controls.notes.buf} end
+		layout.viewState=function() return {centerX=controls.canvas.centerX,centerY=controls.canvas.centerY,scale=controls.canvas.scale,focus=controls.canvas.focus,page=controls.page:GetSelValue(),avoided=copyTable(avoided),undo=copyTable(undo),redo=copyTable(redo),preferred=preferred,inspectorWidth=inspector,search=controls.search.buf,mechanic=controls.mechanic:GetSelValue(),title=controls.title.buf,budgetText=controls.budget.buf,notes=controls.notes.buf,grantSteps=grantSteps and copyTable(grantSteps),grantIndex=grantIndex,stageResume=stageResume and copyTable(stageResume)} end
 		-- Keep unfinished editor text separate from the validated graph draft.
 		layout.snapshot=function() return copyTable(draft) end
 	end
@@ -540,6 +548,11 @@ function Panel.Open(build,source,layout)
 		local view=layout.restore;layout.restore=nil
 		controls.canvas.centerX,controls.canvas.centerY,controls.canvas.scale,controls.canvas.focus=view.centerX,view.centerY,view.scale,view.focus
 		controls.page:SelByValue(view.page);avoided=view.avoided;undo=view.undo;redo=view.redo or {};preferred=view.preferred
+		stageResume=view.stageResume and copyTable(view.stageResume) or nil
+		if type(view.grantSteps)=="table" and type(view.grantIndex)=="number" and view.grantIndex==math.floor(view.grantIndex) and view.grantSteps[view.grantIndex] then
+			local valid=true;for _,step in ipairs(view.grantSteps) do if type(step)~="table" or not controls.canvas.tree.nodes[step.id] or (step.action~="Allocate" and step.action~="Refund") then valid=false;break end end
+			if valid then grantSteps=copyTable(view.grantSteps);grantIndex=view.grantIndex end
+		end
 		if view.title~=nil then controls.title:SetText(view.title) end
 		if view.notes~=nil then controls.notes:SetText(view.notes) end
 		if view.budgetText~=nil then controls.budget:SetText(view.budgetText) end
@@ -570,6 +583,7 @@ function Panel.Open(build,source,layout)
 	ui.style(controls,{allocate=true,keep=true})
 	for _,control in pairs(controls) do control.layoutAudit="atlas" end
 	refresh()
+	if grantSteps then showGrantStep(grantIndex) end
 	if layout then layout.mount(width,height,"Atlas planner",controls) else main:OpenPopup(width,height,"Atlas planner",controls,nil,nil,"close") end
 	return controls
 end

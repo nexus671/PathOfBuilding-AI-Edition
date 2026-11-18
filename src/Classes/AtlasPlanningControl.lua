@@ -2,8 +2,8 @@
 local ui=require("Modules.PlanningUI")
 local atlas=require("Modules.AtlasPlanner")
 local M={}
-function M.Open(build,plan,keep)
-	local draft=copyTable(plan);local c={};local routeLines;local w,h=math.min(920,main.screenW-40),math.min(680,main.screenH-48)
+function M.Open(build,plan,keep,inspectRoute,view)
+	local draft=copyTable(plan);local c={};local routeLines,routeReport;local w,h=math.min(920,main.screenW-40),math.min(680,main.screenH-48)
 	local function button(key,x,y,width,label,run)
 		c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,function()
 			local ok,result=pcall(run)
@@ -13,9 +13,9 @@ function M.Open(build,plan,keep)
 	c.page=new("DropDownControl"):DropDownControl(ui.anchor,{16,24,220,28},{"Progression","Strategy"})
 	ui.tabs(c,c.page,{{"progressionTab","Progression","Progression"},{"strategyTab","Strategy","Strategy requirements"}},16,24,w-32)
 	ui.label(c,"stageLabel",16,76,"Stage")
-	c.stage=new("DropDownControl"):DropDownControl(ui.anchor,{16,102,240,28},{{label="Starter",val="starter"},{label="Intermediate",val="intermediate"},{label="Final",val="final"}});c.stage:SelByValue(draft.progression and draft.progression.stage or "starter","val")
+	c.stage=new("DropDownControl"):DropDownControl(ui.anchor,{16,102,240,28},{{label="Starter",val="starter"},{label="Intermediate",val="intermediate"},{label="Final",val="final"}});c.stage:SelByValue(view and view.stage or draft.progression and draft.progression.stage or "starter","val")
 	ui.label(c,"previousLabel",280,76,"Previous saved Atlas plan")
-	local previous={{label="No previous plan",val=""}};local savedPrevious=draft.progression and draft.progression.previousId or "";local found=savedPrevious==""
+	local previous={{label="No previous plan",val=""}};local savedPrevious=view and view.previous or draft.progression and draft.progression.previousId or "";local found=savedPrevious==""
 	for _,p in ipairs(require("Modules.AtlasStrategy").previousCandidates(plan,build.savers.AtlasPlans.plans)) do previous[#previous+1]={label=p.title,val=p.id};if p.id==savedPrevious then found=true end end
 	local unavailable=not found and savedPrevious or nil
 	if unavailable then previous[#previous+1]={label="Unavailable previous plan (review)",val=unavailable} end
@@ -23,13 +23,13 @@ function M.Open(build,plan,keep)
 	c.previous.tooltipText="Only saved plans from this tree that do not create a progression loop are offered."
 	c.transition=new("TextListControl"):TextListControl(ui.anchor,{16,156,w-32,h-230},nil,{})
 	local function refresh()
-		routeLines=nil
+		routeLines=nil;routeReport=nil
 		local lines={"Keep each stage as its own saved plan. Choose the prior stage to review the respec.","Later stages that depend on this plan cannot be selected as its previous stage.","No prior stage selected."}
 		local selected=c.previous:GetSelValueByKey("val")
 		if unavailable and selected==unavailable then
 			lines={"Previous plan is unavailable or would make an invalid progression chain.","Saved plan ID: "..unavailable,"Choose another saved stage or No previous plan to resolve it. The original link stays in the draft until you choose."}
 		else
-			for _,p in ipairs(build.savers.AtlasPlans.plans) do if p.id==selected then lines=require("Modules.PlanningPerformance").measure(build,"Atlas respec route",require("Modules.AtlasStrategy").transition,p,draft).lines;routeLines=lines end end
+			for _,p in ipairs(build.savers.AtlasPlans.plans) do if p.id==selected then routeReport=require("Modules.PlanningPerformance").measure(build,"Atlas respec route",require("Modules.AtlasStrategy").transition,p,draft);lines=routeReport.lines;routeLines=lines end end
 		end
 		c.transition.list=ui.rows(lines,w-56)
 	end
@@ -37,10 +37,11 @@ function M.Open(build,plan,keep)
 	local s=draft.strategy or {};local fields={{"maps","Maps and rolling requirements"},{"scarabs","Map supplies and consumables"},{"requirements","Character / unlock requirements"},{"avoid","Mechanics or map modifiers to avoid"}}
 	local col=math.floor((w-48)/2)
 	for i,field in ipairs(fields) do local x=16+(i-1)%2*(col+16);local y=78+math.floor((i-1)/2)*144
-		ui.label(c,field[1].."Label",x,y,field[2],15);c[field[1]]=new("EditControl"):EditControl(ui.anchor,{x,y+26,col,100},s[field[1]] or "",nil,"^%C\t\n",4000,nil,16)
+		ui.label(c,field[1].."Label",x,y,field[2],15);c[field[1]]=new("EditControl"):EditControl(ui.anchor,{x,y+26,col,100},view and view.fields[field[1]] or s[field[1]] or "",nil,"^%C\t\n",4000,nil,16)
 	end
 	ui.label(c,"costLabel",16,378,"Setup estimate / currency / source",15)
 	for _,entry in ipairs({{"amount",16,120,s.setupCost and tostring(s.setupCost.amount) or ""},{"currency",148,140,s.setupCost and s.setupCost.currency or "chaos"},{"source",300,w-316,s.setupCost and s.setupCost.source or ""}}) do c[entry[1]]=new("EditControl"):EditControl(ui.anchor,{entry[2],404,entry[3],28},entry[4],nil,nil,240) end
+	if view then c.amount:SetText(view.amount);c.currency:SetText(view.currency);c.source:SetText(view.source);c.page:SelByValue(view.page) end
 	ui.description(c,"costHint",16,448,w-32,48,{"Costs use your supplied currency and source, dated when edited. They do not reserve or spend Journey resources automatically."},14)
 	button("mapTier",16,510,180,"Add map tier",function()
 		local choices={};for tier=1,16 do local name="Map (Tier "..tier..")";choices[#choices+1]={id=name,label=name,details={"Adds a tiered map item to the strategy.","Filter build pickups can highlight this tier; the Atlas area is chosen separately."}} end
@@ -69,6 +70,16 @@ function M.Open(build,plan,keep)
 	c.copyRoute.enabled=function() return routeLines~=nil end
 	c.copyRoute.shown=function() return c.page:GetSelValue()=="Progression" end
 	c.copyRoute.tooltipText="Copy the shown refund and allocation steps, including their budget assumptions."
+	button("inspectRoute",390,h-48,160,"Show on tree",function()
+		if not inspectRoute or not routeReport or not routeReport.steps or #routeReport.steps==0 then return end
+		local fields={};for _,field in ipairs({"maps","scarabs","requirements","avoid"}) do fields[field]=c[field].buf end
+		local saved={page=c.page:GetSelValue(),stage=c.stage:GetSelValueByKey("val"),previous=c.previous:GetSelValueByKey("val"),fields=fields,amount=c.amount.buf,currency=c.currency.buf,source=c.source.buf}
+		local steps=copyTable(routeReport.steps);main:ClosePopup();inspectRoute(steps,saved)
+	end)
+	c.inspectRoute.shown=function() return inspectRoute~=nil and c.page:GetSelValue()=="Progression" end
+	c.inspectRoute.enabled=function() return inspectRoute~=nil and routeReport~=nil and routeReport.steps~=nil and #routeReport.steps>0 end
+	c.inspectRoute.tooltipText="Step through a found route with allocation or refund steps; return to resume these edits."
+
 	button("close",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)
 	refresh();ui.style(c,{keep=true});main:OpenPopup(w,h,"Atlas stages and strategy",c,nil,nil,"close")
 end
