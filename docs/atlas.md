@@ -111,6 +111,8 @@ When copied text includes the implicit `Area is infested with Fungal Growths`, t
 
 ## Shaped Regions
 
-In a 3.30 Atlas plan, open **Plan tools → Shaped Regions** to record the maps and free Threads you observe for each Thread type. Select a map and choose **Record map run**, then check the region objectives you completed. The map is removed from every recorded region containing it; each checked region adds one free Thread to its other recorded maps. Leave an objective unchecked if it was not completed.
+In a 3.30 Atlas plan, open **Plan tools → Shaped Regions** to record the maps and free Threads you observe for each Thread type. Select a map and choose **Record map run**, or choose **All recorded maps** to compare overlaps across regions and record a run from there. Then check the region objectives you completed. The map is removed from every recorded region containing it; each checked region adds one free Thread to its other recorded maps. Leave an objective unchecked if it was not completed.
 
 These are manual observations, not a game or account import. Unlisted maps, Thread limits and other in-game restrictions are not predicted. Keep the tracker in the Atlas draft, keep the Atlas plan and save the build to persist it. Plan JSON and AI Atlas proposals also carry these observations. Changing Atlas versions starts a separate empty draft.
+
+AI clients can call `preview_shaped_region_run` with an Atlas plan, map name and explicitly completed region objectives. It returns a separate proposed plan and the remaining recorded maps; it does not access the game or save the build. Use `propose_atlas_plan`, review in PoB, then save to keep the result.

@@ -28,6 +28,18 @@ function M.validate(regions)
 	end
 	return result
 end
+-- Group manually observed maps without assuming that all regions are known.
+function M.overview(regions)
+	local byName,entries={},{}
+	for _,region in ipairs(M.validate(regions)) do for _,map in ipairs(region.maps) do
+		local key=map.name:lower();local entry=byName[key]
+		if not entry then entry={name=map.name,regions={}};byName[key]=entry;entries[#entries+1]=entry end
+		entry.regions[#entry.regions+1]={mechanic=region.mechanic,freeThreads=map.freeThreads}
+	end end
+	for _,entry in ipairs(entries) do table.sort(entry.regions,function(a,b) return a.mechanic<b.mechanic end) end
+	table.sort(entries,function(a,b) return a.name:lower()<b.name:lower() end)
+	return entries
+end
 -- A run removes that map from every tracked overlapping region. Only regions
 -- whose objective was completed add one free Thread to their other maps.
 function M.complete(regions,name,completed)

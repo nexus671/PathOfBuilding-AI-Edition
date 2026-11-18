@@ -51,8 +51,8 @@ function M.Open(plan,keep)
 		assert(found,"Select a map to remove");selected=nil;refresh()
 	end)
 	c.remove.enabled=function() return selected~=nil end
-	button("run",370,h-126,180,"Record map run",function()
-		local name=assert(selected,"Select a map first");local involved={}
+	local function recordRun(name)
+		local involved={}
 		for _,region in ipairs(draft) do for _,map in ipairs(region.maps) do if map.name:lower()==name:lower() then involved[#involved+1]=region.mechanic;break end end end
 		local pw,ph=math.min(600,main.screenW-40),math.min(500,main.screenH-60);local confirm={}
 		ui.description(confirm,"intro",16,26,pw-32,66,{"Select every region objective completed in "..name..". The map leaves all tracked regions; unchecked objectives do not add Threads."},16)
@@ -68,8 +68,18 @@ function M.Open(plan,keep)
 		confirm.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{pw-156,ph-48,140,28},"Cancel",function() main:ClosePopup() end))
 		ui.style(confirm,{apply=true});for _,control in pairs(confirm) do control.layoutAudit="shaped-region-run" end
 		main:OpenPopup(pw,ph,"Record map run",confirm,nil,nil,"close")
-	end)
+	end
+	button("run",370,h-126,180,"Record map run",function() recordRun(assert(selected,"Select a map first")) end)
 	c.run.enabled=function() return selected~=nil end
+	button("overview",16,h-88,180,"All recorded maps",function()
+		local entries={};for _,map in ipairs(regions.overview(draft)) do
+			local details={"Recorded regions for "..map.name..":", "Unlisted regions are unknown; counts are observations, not guaranteed totals."}
+			for _,region in ipairs(map.regions) do details[#details+1]=region.mechanic..": "..region.freeThreads.." free Threads" end
+			entries[#entries+1]={id=map.name,label=map.name.." | "..#map.regions..(#map.regions==1 and " region" or " regions"),details=details}
+		end
+		require("Classes.PlanningBrowserControl").Open("Recorded region maps",entries,{action="Record run",closeOnChoose=false,choose=function(entry) main:ClosePopup();recordRun(entry.id) end})
+	end)
+	c.overview.tooltipText="Compare recorded region overlaps by map and record a run."
 	button("removeRegion",w-176,h-126,160,"Remove region",function()
 		local mechanic=c.region:GetSelValue();for i=#draft,1,-1 do if draft[i].mechanic==mechanic then table.remove(draft,i);break end end
 		selected=nil;refresh()

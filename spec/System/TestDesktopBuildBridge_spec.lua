@@ -321,6 +321,17 @@ describe("Desktop build proposals", function()
 		assert.are.equal(revision,bridge.revision(build))
 		assert.are.equal(0,#build.savers.CraftingProjects.projects)
 	end)
+	it("previews an overlapping Shaped Region run without saving it",function()
+		fakeFiles();bridge.enable(build);local revision=bridge.revision(build)
+		local plan={id="regions",title="Regions",version="3.30.0-preview",budget=150,nodes={},shapedRegions={
+			{mechanic="Blight",maps={{name="Beach Map",freeThreads=2},{name="Strand Map",freeThreads=3}}},
+			{mechanic="Breach",maps={{name="beach map",freeThreads=4},{name="Dunes Map",freeThreads=1}}}}}
+		files.request=json.encode({id="region-run",kind="atlasRegionRun",session=bridge.session,baseRevision=revision,plan=plan,map="Beach Map",completed={"Blight"}})
+		bridge.poll(build,true);assert.equal("atlas",bridge.status.status)
+		assert.same({{name="Strand Map",freeThreads=4}},bridge.status.atlas.plan.shapedRegions[1].maps)
+		assert.same({{name="Dunes Map",freeThreads=1}},bridge.status.atlas.plan.shapedRegions[2].maps)
+		assert.equal("Dunes Map",bridge.status.atlas.maps[1].name);assert.equal(revision,bridge.revision(build));assert.equal(0,#build.savers.AtlasPlans.plans)
+	end)
 	it("checks Thread restrictions through the desktop bridge without changing the build",function()
 		fakeFiles();bridge.enable(build);local revision=bridge.revision(build)
 		files.request=json.encode({id="threads",kind="atlasThreads",session=bridge.session,baseRevision=revision,areaLevel=73,threads=2})

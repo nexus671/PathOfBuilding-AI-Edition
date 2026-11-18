@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview545" />
+	<Version number="2.68.1-ai.preview546" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="dad9c12cfe87a61c88cb8531fd10f858a565c732" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="9ab0f2c95cca73560753c50dd3417980610dc260" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -1648,7 +1648,7 @@
 	<File name="Assets/vestigialicon.png" part="program" sha1="ecb5dd4b9aed1cac0c1a677b18838ae9c62744d7" />
 	<File name="Assets/warlordicon.png" part="program" sha1="cca050c84884f5c0bb1380ece51d3c4b32be4900" />
 	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="b6f6a84df443b27dc7acb9112acc649f04d141d8" />
-	<File name="Classes/AtlasRegionsControl.lua" part="program" sha1="55208d75f1cd3717ab1dfed118d7fc9cb156acb4" />
+	<File name="Classes/AtlasRegionsControl.lua" part="program" sha1="e66712299a07131a5c7a8b9a990a863339762948" />
 	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="dba954a818295e3b385bebacbe4d78575de54387" />
 	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="88a5c79581c7096eb7d895395c54535befeb5061" />
 	<File name="Classes/AtlasThreadControl.lua" part="program" sha1="908f7de52f1d702f3933e52a0fa825bae6cdd1bc" />
@@ -2056,7 +2056,7 @@
 	<File name="Modules/AtlasExactRoute.lua" part="program" sha1="4468353ae36dc220916b985ce6de0e1403c7643c" />
 	<File name="Modules/AtlasGrantRoute.lua" part="program" sha1="c9b1be59c1d2c9c6359d5546b3b41e1cfc3bdf12" />
 	<File name="Modules/AtlasPlanner.lua" part="program" sha1="1b6344ceb50a66ae2211806033a9f42ba88c11d6" />
-	<File name="Modules/AtlasRegions.lua" part="program" sha1="310832ceb29b3afbf584a0d42da812e08ce70f61" />
+	<File name="Modules/AtlasRegions.lua" part="program" sha1="e418859ff34df69202221e4d46f5c3f1275afc3b" />
 	<File name="Modules/AtlasStrategy.lua" part="program" sha1="0ff014c413bbf807f52fdf94a1a55ca2af942a03" />
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="650adaf8761d03a87383f3d4a3b14c1ffb5a6aca" />
 	<File name="Modules/Build.lua" part="program" sha1="12fbc0fe204cd1f241ad26ccd4cefbda4f5027b5" />
@@ -2132,7 +2132,7 @@
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />
 	<File name="Modules/DataLegionLookUpTableHelper.lua" part="program" sha1="ece92c4b6062f627f98ba2454531366b4628abfc" />
-	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="d22a38a05e622d0883cdc14d644d13240f207365" />
+	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="f2a3d5e1a8d354e80ad30aaea581cbd835271490" />
 	<File name="Modules/EncounterReport.lua" part="program" sha1="710dc78939bfbc8282f295cf626bcde9c9b7d8e5" />
 	<File name="Modules/HeadlessCompression.lua" part="program" sha1="16a42bf407eb777602f9b03b5c8466188a04ee58" />
 	<File name="Modules/HeadlessUI.lua" part="program" sha1="0321564d6273fc01522e3bcaa356dcc8cb9fe0e1" />

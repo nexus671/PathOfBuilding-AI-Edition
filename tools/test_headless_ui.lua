@@ -67,8 +67,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(build.planningWorkspace.controls.version:GetSelValueByKey("label")=="3.30.0","Released Atlas version was not displayed")
 	ui:click("tools");ui:text("search","Shaped Regions");ui:click("choose")
 	ui:text("map","Beach Map");ui:text("count","2");ui:click("upsert");frame("atlas-shaped-regions")
-	do local c=main.popups[1].controls;c.list.onClick({line=c.list.list[1]}) end
-	ui:click("run");frame("atlas-shaped-region-run");ui:click("objective1");ui:click("apply");ui:click("keep")
+	ui:choose("region","Blight");ui:text("count","3");ui:click("upsert");ui:text("map","Strand Map");ui:text("count","5");ui:click("upsert")
+	ui:click("overview");ui:text("search","Beach Map");frame("atlas-shaped-map-overview")
+	do local lines={};for _,row in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;local detail=table.concat(lines," ");assert(detail:find("Abyss: 2",1,true) and detail:find("Blight: 3",1,true),"Overlapping region counts were not shown") end
+	ui:click("choose");assert(main.popups[1].controls.objective1 and main.popups[1].controls.objective2,"Overlapping region objectives were not offered");frame("atlas-shaped-region-run");ui:click("objective1");ui:click("apply");ui:click("keep")
 
 	ui:choose("version","3.28.0j","val");ui:click("confirm");assert(build.planningWorkspace.controls.canvas.tree.version=="3.28.0j","Mirage Atlas did not load");frame("atlas-mirage-tree")
 	ui:choose("version","3.28.0j-ruthless","val");ui:click("confirm");assert(build.planningWorkspace.controls.canvas.tree.mode=="ruthless","Ruthless Mirage Atlas did not load");frame("atlas-mirage-ruthless-tree")

@@ -801,6 +801,10 @@ async function main(){
     const route=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'mirage',title:'Mirage',version,budget:138,nodes:[]},targets:[target]},'atlas');
     assert.equal(route.atlas.plan.version,version);assert.ok(route.atlas.plan.nodes.includes(target));
   }
+  const regionsPlan={id:'region-preview',title:'Regions',version:'3.30.0-preview',budget:150,nodes:[],shapedRegions:[{mechanic:'Blight',maps:[{name:'Beach Map',freeThreads:2},{name:'Strand Map',freeThreads:3}]},{mechanic:'Breach',maps:[{name:'beach map',freeThreads:4},{name:'Dunes Map',freeThreads:1}]}]};
+  const regionPreview=await queued('preview_shaped_region_run',{baseRevision:context.revision,plan:regionsPlan,map:'Beach Map',completed:['Blight']},'atlas');
+  assert.deepEqual(regionPreview.atlas.plan.shapedRegions[0].maps,[{name:'Strand Map',freeThreads:4}]);assert.deepEqual(regionPreview.atlas.plan.shapedRegions[1].maps,[{name:'Dunes Map',freeThreads:1}]);
+  assert.equal((await call('get_build_context')).context.revision,context.revision);
   const ruthlessVersion='3.30.0-preview-ruthless';
   const historicalRuthless=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.29.3-ruthless',query:'Beyond Portals in your Maps have 5% increased Merging Radius',limit:10},'atlas');
   assert.ok(historicalRuthless.atlas.matches.some(node=>node.id===27));

@@ -415,6 +415,17 @@ test('queues bounded Thread restriction checks', t => {
   assert.throws(()=>f.call('check_thread_restrictions',{baseRevision,areaLevel:73,threads:1.5}),/arguments/);
 });
 
+test('queues a bounded reported region run for Atlas preview', t => {
+  const f=fixture(t), plan={id:'atlas',title:'Regions',version:'3.30.0-preview',budget:150,nodes:[],shapedRegions:[{mechanic:'Blight',maps:[{name:'Beach Map',freeThreads:2}]}]};
+  const args={baseRevision:f.state.revision,plan,map:'Beach Map',completed:['Blight']};
+  f.call('preview_shaped_region_run',args);
+  const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(queued.kind,'atlasRegionRun');assert.deepEqual(queued.plan,plan);assert.deepEqual(queued.completed,['Blight']);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  assert.throws(()=>f.call('preview_shaped_region_run',{...args,completed:['Unknown']}),/arguments/);
+  assert.throws(()=>f.call('preview_shaped_region_run',{...args,completed:['Blight','Blight']}),/arguments/);
+});
+
 test('preserves Atlas effect choices in AI proposals', t => {
   const f=fixture(t);
   const plan={id:'atlas',title:'Choice',version:'3.30.0-preview',budget:150,nodes:[45404],choices:[{node:45404,effect:55878}]};

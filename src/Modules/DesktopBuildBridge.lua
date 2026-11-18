@@ -588,12 +588,16 @@ function M.poll(build, force)
 			end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Map modifier inspection slice")
 			job.requestId=request.id;publish("calculating",{});return
 		end
-		if request.kind == "atlasSearch" or request.kind == "atlasConnect" or request.kind == "atlasTransition" or request.kind == "atlasThreads" then
+		if request.kind == "atlasSearch" or request.kind == "atlasConnect" or request.kind == "atlasTransition" or request.kind == "atlasThreads" or request.kind == "atlasRegionRun" then
 			assert(request.baseRevision == M.revision(build),"Build changed. Refresh Atlas context.")
 			local planner=require("Modules.AtlasPlanner")
 			local result
 			if request.kind == "atlasSearch" then result=planner.search(request.version,request.query,request.limit)
 			elseif request.kind == "atlasThreads" then result=require("Modules.AtlasStrategy").threadRestrictions(request.areaLevel,request.threads)
+			elseif request.kind == "atlasRegionRun" then
+				local plan=planner.validate(request.plan);assert(plan.shapedRegions,"This Atlas plan has no recorded Shaped Regions")
+				local regions=require("Modules.AtlasRegions");plan.shapedRegions=regions.complete(plan.shapedRegions,request.map,request.completed)
+				result={plan=planner.validate(plan),maps=regions.overview(plan.shapedRegions),note="Manual observations only; no game or saved build changes. Unrecorded regions and Thread limits are not inferred."}
 			elseif request.kind == "atlasTransition" then
 				local before,after=planner.validate(request.before),planner.validate(request.after)
 				result={before=before.id,after=after.id,transition=require("Modules.AtlasStrategy").transition(before,after)}
