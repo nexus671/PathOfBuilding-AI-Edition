@@ -85,6 +85,7 @@ function M.parse(raw,checkpoint)
  assert(not corrupted or rarity=="rare","Corrupted magic and normal maps are not yet supported")
  local _,levelEnd=raw:find("\nItem Level:%s*%d+");local tail=raw:sub(assert(levelEnd,"The copied map needs its item level")+1)
  local lines,implicit,observed={},nil,{}
+ local deliriumDepth,deliriumReward
  for rawLine in tail:gmatch("[^\n]+") do
   local line=clean(rawLine)
   if line:match(" %(enchant%)$") then
@@ -93,9 +94,19 @@ function M.parse(raw,checkpoint)
    local value=line:gsub(" %(implicit%)$","")
    local known=corrupted and implicitFrom(value,level) or nil
    if known and not implicit then implicit=known else observed[#observed+1]={kind="implicit",text=value} end
+  elseif line:match("^Players in Area are %d+%% Delirious$") then
+   assert(not deliriumDepth,"The copied map has multiple Delirious percentages")
+   local depth=tonumber(line:match("(%d+)%%"));assert(depth>=1 and depth<=100,"The copied Delirious percentage is out of range")
+   deliriumDepth=line
+  elseif line:match("^Delirium Reward Type: .+$") then
+   assert(not deliriumReward,"The copied map has multiple Delirium reward types");deliriumReward=line
   elseif line~="" and not line:match("^%-+$") and not line:match("^%b{}$") and not line:match("^Monster Level:") and line~="Corrupted" and not line:match("^Travel to this Map") then
    lines[#lines+1]=line
   end
+ end
+ if deliriumDepth or deliriumReward then
+  assert(rarity=="rare" and deliriumDepth and deliriumReward,"A Delirious map needs both its percentage and reward type")
+  observed[#observed+1]={kind="explicit",text=deliriumDepth};observed[#observed+1]={kind="explicit",text=deliriumReward}
  end
  observed=require("Modules.MapObservedEffects").validate(observed)
  assert(#lines<=60,"The copied map has too many modifier lines")

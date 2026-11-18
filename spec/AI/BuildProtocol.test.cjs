@@ -109,6 +109,9 @@ test('queues bounded map modifier inspection', t => {
   assert.equal(request.kind,'inspect_map_modifiers');assert.equal(request.tier,5);assert.equal(request.rarity,'magic');
   assert.deepEqual(request.quality,args.quality);
   assert.deepEqual(request.observedEffects,args.observedEffects);
+  const delirium=fixture(t), effects=[{kind:'explicit',text:'Players in Area are 35% Delirious'},{kind:'explicit',text:'Delirium Reward Type: Currency'}];
+  delirium.call('inspect_map_modifiers',{...args,baseRevision:delirium.state.revision,rarity:'rare',observedEffects:effects});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(delirium.dir,'AI-build-request.json'))).observedEffects,effects);
   for(const invalid of [{...args,tier:17},{...args,itemLevel:0},{...args,rarity:'normal'},{...args,selected:Array(10).fill('x')},{...args,limit:101},{...args,unknown:true}]) assert.throws(()=>f.call('inspect_map_modifiers',invalid),/arguments/);
   const bases=fixture(t);bases.call('search_map_bases',{baseRevision:bases.state.revision,query:'Beach',limit:5});
   assert.equal(JSON.parse(fs.readFileSync(path.join(bases.dir,'AI-build-request.json'))).kind,'search_map_bases');

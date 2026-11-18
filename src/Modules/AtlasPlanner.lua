@@ -60,6 +60,7 @@ function M.validateMapDraft(entry)
 	result.corrupted=entry.corrupted or nil
 	result.quality=require("Modules.MapQuality").validate(entry.quality)
 	result.observedEffects=require("Modules.MapObservedEffects").validate(entry.observedEffects)
+	assert(result.rarity=="rare" or not require("Modules.MapObservedEffects").hasExplicit(result.observedEffects),"Observed explicit map modifiers require a rare map")
 	if entry.implicit~=nil then
 		assert(result.corrupted and type(entry.implicit)=="table","A map corruption implicit requires a corrupted draft")
 		result.implicit={id=text(entry.implicit.id,160,"map corruption implicit")}

@@ -21,6 +21,14 @@ describe("Map modifier explorer",function()
 		assert.matches("Quality %(Pack Size%): %+20%%",text);assert.matches("%+10%% Monster Pack Size",text)
 		controls.quality:Click();popup=main.popups[1].controls;popup.clear:Click();controls.keep:Click();assert.is_nil(captured.quality)
 	end)
+	it("keeps Delirium observations and disables unsupported currency and rerolls",function()
+		local observed={{kind="explicit",text="Players in Area are 35% Delirious"},{kind="explicit",text="Delirium Reward Type: Currency"}}
+		local initial={id="map-test",title="Map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",selected={},observedEffects=observed}
+		local captured;local controls=require("Classes.MapModifierControl").Open({build=build,initial=initial,keep=function(entry) captured=copyTable(entry);return "map-test" end})
+		assert.is_false(controls.currency:IsEnabled());assert.is_false(controls.estimate:IsEnabled())
+		controls.keep:Click();assert.same(observed,captured.observedEffects)
+		controls.rarity:SelByValue("magic","val");controls.rarity.selFunc();assert.is_true(controls.currency:IsEnabled());controls.keep:Click();assert.is_nil(captured.observedEffects)
+	end)
 	it("selects current map items and keeps their tier synchronized",function()
 		local captured
 		local controls=require("Classes.MapModifierControl").Open({keep=function(entry) captured=copyTable(entry);return "map-test" end})

@@ -8,11 +8,15 @@ function M.validate(effects)
  end
  local result={}
  for _,effect in ipairs(effects) do
-  assert(type(effect)=="table" and (effect.kind=="implicit" or effect.kind=="enchant"),"Invalid observed map effect kind")
+  assert(type(effect)=="table" and (effect.kind=="implicit" or effect.kind=="enchant" or effect.kind=="explicit"),"Invalid observed map effect kind")
   assert(type(effect.text)=="string" and #effect.text>=1 and #effect.text<=400 and effect.text:match("%S")
    and not effect.text:find("[%c%^]"),"Invalid observed map effect text")
   result[#result+1]={kind=effect.kind,text=effect.text}
  end
  return #result>0 and result or nil
+end
+function M.hasExplicit(effects)
+ for _,effect in ipairs(effects or {}) do if effect.kind=="explicit" then return true end end
+ return false
 end
 return M

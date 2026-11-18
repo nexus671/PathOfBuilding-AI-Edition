@@ -170,6 +170,6 @@ function M.inspect(baseId,tier,itemLevel,selected,query,offset,limit,checkpoint,
 	local results,total,nextOffset=page(result,offset,limit)
 	return {baseId=baseId,baseName=base.name,tier=tier,itemLevel=itemLevel,rarity=rarity,corrupted=corrupted or nil,implicit=implicitInfo,observedEffects=observedEffects,counts=counts,candidates=results,total=total,offset=offset or 0,nextOffset=nextOffset,summary=M.summarize(selected,rolls,implicitInfo,quality),
 		source=M.source().source,patch=M.source().patch,
-		note=(corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification.")..(observedEffects and " Observed implicit and enchantment effects are not modeled and can change results." or "")}
+		note=(corrupted and "Manual inspection only: up to nine explicit modifiers are accepted; per-side corruption limits, base availability and map-specific restrictions are unverified. Spawn weights are not probabilities." or "Spawn weights are not outcome probabilities. Base availability, map-specific restrictions and game behavior require verification.")..(observedEffects and " Observed effects are not modeled and can change results." or "")}
 end
 return M
