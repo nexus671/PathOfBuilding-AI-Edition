@@ -2,7 +2,7 @@
 local M={}
 local pages={ai="AI builds",atlas="Atlas",crafting="Crafting",journey="Journey",filters="Loot filter"}
 function M.new(build)
-	local self=setmetatable({build=build,page="ai",cache={},drafts={},transient={},selections={},craftDrafts=build.planningCraftDrafts or {},controls={},viewport={x=0,y=32,width=main.screenW,height=main.screenH-32}},{__index=M})
+	local self=setmetatable({build=build,page="ai",cache={},drafts={},atlasDrafts={},transient={},selections={},craftDrafts=build.planningCraftDrafts or {},controls={},viewport={x=0,y=32,width=main.screenW,height=main.screenH-32}},{__index=M})
 	build.planningCraftDrafts=nil
 	self.nav=new("ControlHost"):ControlHost()
 	local anchor=new("Control"):Control(nil,{0,0,0,0})
@@ -51,6 +51,7 @@ end
 function M:Remember(page)
 	local entry=self.cache[page];if not entry then return end
 	self.drafts[page]={plan=entry.layout.snapshot and entry.layout.snapshot(),view=entry.layout.viewState and entry.layout.viewState(),controls=require("Modules.PlanningUI").capture(entry.body.controls)}
+	if page=="atlas" and self.drafts[page].plan and self.drafts[page].plan.id then self.atlasDrafts[self.drafts[page].plan.id]=self.drafts[page] end
 	local plan=self.drafts[page].plan;if page=="crafting" and plan and plan.kind=="workbench" then self.craftDrafts[plan.project.id]=plan end
 	if self.drafts[page].plan and (page=="filters" or page=="atlas" or page=="crafting" and self.drafts[page].plan.kind=="workbench") then require("Modules.PlanningRecovery").save(self.build,page,self.drafts[page]) end
 end
@@ -97,10 +98,15 @@ end
 function M:Show(page,source)
 	assert(pages[page],"Unknown planning page")
 	if self.page~=page then self:Remember(self.page) end
+	if page=="atlas" and source and self.page==page then self:Remember(page) end
 	self.page=page
 	if source or page=="journey" then self.cache[page]=nil end
 	local cached=self.cache[page]
 	local saved=self.drafts[page]
+	if page=="atlas" and source and source.id then
+		if not saved or not saved.plan or saved.plan.id~=source.id then saved=self.atlasDrafts[source.id] end
+		if saved and saved.plan then source=saved.plan end
+	end
 	source=source or saved and saved.plan
 	if not cached then
 		local layout={selectedProject=self.selections[page],restore=saved and saved.view,restorePage=saved and saved.plan and saved.plan.page,transient=self.transient,width=self.viewport.width,height=self.viewport.height-52,navigate=function(target,value) self:Show(target,value) end}

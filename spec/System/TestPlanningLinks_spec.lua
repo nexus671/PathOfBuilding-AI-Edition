@@ -5,6 +5,24 @@ describe("Linked planning tools",function()
 	local function craft() return {id="helmet",title="Helmet",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}} end
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("keeps Atlas drafts attached to their own linked plans",function()
+		local first={id="first",title="First plan",version="3.30.0-preview",budget=100,nodes={},notes="First notes"}
+		local second={id="second",title="Second plan",version="3.30.0-preview",budget=120,nodes={},notes="Second notes"}
+		build.savers.AtlasPlans:Upsert(first);build.savers.AtlasPlans:Upsert(second)
+		local workspace=require("Modules.PlanningWorkspace").new(build);workspace:Show("atlas",first)
+		workspace.controls.title:SetText("Unfinished first",true);workspace.controls.notes:SetText("Unfinished notes",true)
+		workspace.controls.progression:Click();local stage=main.popups[1].controls;stage.requirements:SetText("First-only stage",true)
+		-- Simulate leaving the editor to inspect a route while keeping its form.
+		main:ClosePopup();workspace:Show("journey")
+		local layout={navigate=function(page,plan) workspace:Show(page,plan) end}
+		assert.is_true(dependencies.open(build,layout,"atlas:second"))
+		assert.equal("Second plan",workspace.controls.title.buf);assert.equal("Second notes",workspace.controls.notes.buf)
+		assert.equal("Stages & strategy",workspace.controls.progression.label())
+		assert.is_true(dependencies.open(build,layout,"atlas:first"))
+		assert.equal("Unfinished first",workspace.controls.title.buf);assert.equal("Unfinished notes",workspace.controls.notes.buf)
+		assert.equal("Resume stages",workspace.controls.progression.label());workspace.controls.progression:Click()
+		assert.equal("First-only stage",main.popups[1].controls.requirements.buf);main.popups[1].controls.close:Click()
+	end)
 	it("keeps identical pickups linked to each crafting and gear source",function()
 		local first=craft();build.savers.CraftingProjects:Upsert(first)
 		local profile=filters.profile("shared","Shared pickups");profile.rules=filters.generate(build,profile)
