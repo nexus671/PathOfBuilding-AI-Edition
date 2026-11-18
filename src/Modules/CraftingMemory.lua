@@ -1,7 +1,7 @@
 -- Empirical 3.29 model: linked research and measured Remembrance observations
 -- are retained in Data/Crafting/MemoryStrands.json.
 local Memory={}
-local costs={transmute=8,augmentation=8,alteration=8,regal=16,alchemy=50,exalt=16,chaos=50,binding=50,influence_exalt=16,awakener=100,tainted_chaos=60,tainted_exalt=16,eldritch_chaos=60,eldritch_exalt=16,veiled_orb=80,essence=80,ducat_cyaxan=80}
+local costs={transmute=8,augmentation=8,alteration=8,regal=16,alchemy=50,exalt=16,chaos=50,binding=50,influence_exalt=16,awakener=100,tainted_chaos=60,tainted_exalt=16,eldritch_chaos=60,eldritch_exalt=16,veiled_orb=80,veiled_chaos=80,essence=80,ducat_cyaxan=80}
 local foulborn={foulborn_augmentation="augmentation",foulborn_regal="regal",foulborn_exalt="exalt"}
 local function family(id) return id:gsub("_+$",""):gsub("Maven.*$",""):gsub("%d+$","") end
 function Memory.extend(M,A,api)

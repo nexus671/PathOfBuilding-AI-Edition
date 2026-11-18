@@ -146,6 +146,11 @@ async function main(){
   const synthRare=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthRangeRaw,action:{method:'alchemy'},seed:7},'crafted');
   const synthReroll=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthRangeRaw,initialState:synthRare.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1032,secondOutcome:1032},seed:7},'crafted');
   assert.equal(synthReroll.nativeCrafting.state.synthRolls[0].id,'SynthesisImplicitPercentLife3');assert.ok(synthReroll.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_empty_sockets' && /socketed gems/.test(entry.message)));assert.ok(synthReroll.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_implicit_assumptions'));
+  const veilStart=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,action:{method:'alchemy'},seed:12},'crafted');
+  const veilFirst=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:veilStart.nativeCrafting.state,action:{method:'veiled_chaos'},seed:19},'crafted');
+  assert.ok(veilFirst.nativeCrafting.state.veil);assert.ok(veilFirst.nativeCrafting.warnings.some(entry=>entry.code==='veiled_chaos_assumptions'));
+  const veilAgain=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:veilFirst.nativeCrafting.state,action:{method:'veiled_chaos'},seed:20},'crafted');
+  assert.ok(veilAgain.nativeCrafting.state.veil);
   const synthRerollContinued=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:synthRangeRaw,initialState:synthReroll.nativeCrafting.state,action:{method:'scour'},seed:7},'crafted');
   assert.deepEqual(synthRerollContinued.nativeCrafting.state.synthRolls,synthReroll.nativeCrafting.state.synthRolls);
   const synthTarget=synthMultiInspection.crafting.nativeEngine.synthesisGroups[0].candidates[0];

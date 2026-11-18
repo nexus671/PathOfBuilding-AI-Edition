@@ -62,7 +62,7 @@ end
 local methods={
 	fossil="Fossil resonator",harvest_reforge="Harvest: reforge with a tagged modifier",harvest_augment="Harvest: add tagged / remove random",
 	harvest_resistance="Harvest: change elemental resistance",harvest_damage="Harvest: change elemental damage",fracture="Fracturing Orb",influence_exalt="Influenced Exalted Orb",awakener="Awakener's Orb",
-	veiled_orb="Veiled Exalted Orb",unveil="Choose an unveil",dominance="Orb of Dominance",beast_aspect="Bestiary: Aspect skill",beast_prefix_suffix="Bestiary: prefix to suffix",
+	veiled_orb="Veiled Exalted Orb",veiled_chaos="Veiled Chaos Orb",unveil="Choose an unveil",dominance="Orb of Dominance",beast_aspect="Bestiary: Aspect skill",beast_prefix_suffix="Bestiary: prefix to suffix",
 	beast_suffix_prefix="Bestiary: suffix to prefix",beast_imprint="Bestiary: create magic imprint",beast_talisman_imprint="Bestiary: imprint rare Talisman",restore_imprint="Restore imprint",
 	bench_reroll="Bench: reroll 1 or 3 modifiers",eldritch_implicit="Eldritch Ember / Ichor",eldritch_exalt="Eldritch Exalted Orb",eldritch_annul="Eldritch Orb of Annulment",
 	eldritch_chaos="Eldritch Chaos Orb",blessed="Blessed Orb",sacred="Sacred Orb",socket_bench="Bench: socket count / links",binding="Orb of Binding",
@@ -405,7 +405,8 @@ function A.extend(M,api)
 		local source=options.source or (state.influences and #state.influences > 0 and model.influencePool or model.mods)
 		for _,entry in ipairs(source) do
 			local id,mod=entry.id,entry.mod or model.byId[entry.id]
-			local legal=counts[mod.type] < cap(model,state)[mod.type] and (not options.type or mod.type == options.type)
+			local occupied=counts[mod.type]+(options.reservedVeilType==mod.type and 1 or 0)
+			local legal=occupied < cap(model,state)[mod.type] and (not options.type or mod.type == options.type)
 			if state.maxEssenceModLevel and mod.level>state.maxEssenceModLevel then legal=false end
 			for _,group in ipairs(groups(model,id)) do if used[group] then legal=false end end
 			if options.tag and not hasTag(model,id,options.tag) then legal=false end
@@ -613,6 +614,15 @@ function A.extend(M,api)
 	end
 	M.methodChecks.blessed=function(model,state) if (model.blessed330Unresolved or model.baseImplicitUnresolved) and not state.implicits then return "This base implicit could not be identified. Supply a recognized original or current implicit before using a Blessed Orb." end end
 	M.methodChecks.binding=function(model,state) if M.socketLimit(model,state)==0 then return "This base cannot have equipment sockets" end end
+	M.methodChecks.veiled_chaos=function(model,state)
+		if model.item.type=="Jewel" then return "Veiled Chaos requires rare equipment, not a jewel" end
+		if #model.veiled==0 then return "This base has no supported veiled modifiers" end
+		local f=api.flags(model,state)
+		if state.veil and (state.veil.fractured or state.veil.type=="Prefix" and f.prefixes or state.veil.type=="Suffix" and f.suffixes) then return "The existing veiled modifier is protected" end
+		for _,entry in ipairs(state.affixes) do
+			if contains(model.byId[entry.id].modTags,"unveiled_mod") and api.protected(entry,model.byId[entry.id],f) then return "The existing unveiled modifier is protected" end
+		end
+	end
 	M.methodChecks.veiled_orb=function(model,state)
 		if #model.veiled==0 then return "This base has no supported veiled modifiers" end
 		local f=api.flags(model,state);local removable=false
@@ -865,7 +875,7 @@ function A.extend(M,api)
 		if action.beastLevel~=nil then assert(action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix","Beast level only applies to Bestiary modifier swaps");api.integer(action.beastLevel,1,100,"beast level") end
 		assert(not input.mirrored,"Mirrored items cannot be crafted")
 		assert(not input.corrupted or action.method == "socket_bench","This method cannot modify a corrupted item")
-		assert(not input.veil or action.method == "unveil","Choose the pending unveil first")
+		assert(not input.veil or action.method == "unveil" or action.method == "veiled_chaos","Choose the pending unveil first")
 		local state=copyTable(input); local method=action.method; local f=api.flags(model,state)
 		if model.item.type == "Flask" or model.item.type == "Tincture" then
 			assert(contains({"transmute","alteration","augmentation","annul","scour","divine","blessed"},method),"This method is unavailable for flasks and tinctures")
@@ -971,6 +981,41 @@ function A.extend(M,api)
 			local conflict=false; for _,a in ipairs(groups(model,left.id)) do for _,b in ipairs(groups(model,right.id)) do if a == b then conflict=true end end end
 			if not conflict then state.affixes[#state.affixes+1]=right elseif random() < 0.5 then state.affixes={right} end
 			fill(model,state,random)
+		elseif method == "veiled_chaos" then
+			assert(state.rarity=="RARE" and model.item.type~="Jewel","Veiled Chaos requires rare equipment")
+			local pending=state.veil
+			-- A pending veil occupies a real affix slot. Temporarily represent it
+			-- during partial-lock selection, then remove the marker before reforge.
+			local marker
+			if pending then marker={id=pending.choices[1],fractured=pending.fractured};state.affixes[#state.affixes+1]=marker end
+			if M.hasPartialLock(model,state) then api.selectPartialLocks(model,state,random) end
+			for _,entry in ipairs(state.affixes) do
+				if entry==marker or contains(model.byId[entry.id].modTags,"unveiled_mod") then
+					assert(not api.protected(entry,model.byId[entry.id],f),"The existing veiled modifier is protected")
+				end
+			end
+			if marker then table.remove(state.affixes,#state.affixes);state.veil=nil end
+			api.clear(model,state);state.rollBlock={attack=f.attack,caster=f.caster}
+			-- Choose the veil side first and reserve that slot while rolling the
+			-- ordinary affixes. Offer generation follows after those rolls.
+			local possible=pool(model,state,{source=model.veiled,ignoreBlocks=true})
+			local types={};for _,entry in ipairs(possible) do types[model.byId[entry.id].type]=true end
+			assert(types.Prefix or types.Suffix,"No legal veiled modifier can be added")
+			local kind=types.Prefix and types.Suffix and (random()<0.5 and "Prefix" or "Suffix") or types.Prefix and "Prefix" or "Suffix"
+			fill(model,state,random,{reservedVeilType=kind},targetCount(model,state,random)-1)
+			local candidates=pool(model,state,{source=model.veiled,ignoreBlocks=true})
+			local choices={}
+			while #choices<3 do
+				local options={};for _,entry in ipairs(candidates) do
+					local valid=model.byId[entry.id].type==kind
+					for _,id in ipairs(choices) do for _,a in ipairs(groups(model,id)) do for _,b in ipairs(groups(model,entry.id)) do if a==b then valid=false end end end end
+					if valid then options[#options+1]=entry end
+				end
+				if #options==0 then break end
+				choices[#choices+1]=choose(options,random)
+			end
+			assert(#choices>0,"No legal veiled modifier remains after the reforge")
+			state.veil={type=kind,choices=choices}
 		elseif method == "veiled_orb" then
 			assert(state.rarity == "RARE" and #state.affixes > 0,"Veiled Exalted Orb requires a rare item with modifiers")
 			for _,entry in ipairs(state.affixes) do assert(not contains(model.byId[entry.id].modTags,"unveiled_mod"),"The item already has an unveiled modifier") end

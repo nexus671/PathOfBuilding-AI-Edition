@@ -600,6 +600,16 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(saved and saved.run.state.synthRolls and #saved.run.state.synthRolls==2,"Synthesised implicit rolls were not kept in the build")
 	end
 	do
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local sim=require("Modules.CraftingSimulator")
+		local state=sim.perform(raw,{method="alchemy"},12).state
+		require("Classes.CraftingSimulatorControl").Open(build,{id="veiled-chaos-ui",title="Veiled reforge",slot="Helmet",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(state)})
+		ui:click("settings");ui:text("paletteSearch","Veiled Chaos");ui:click("paletteUse")
+		assert(main.popups[1].controls.apply:IsEnabled(),"Veiled Chaos action was not available");ui:click("item")
+		assert(main.popups[1].controls.intro.label:find("Applied",1,true),"Veiled Chaos did not apply");frame("crafting-veiled-chaos")
+		ui:click("keepWorking");local saved;for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id=="veiled-chaos-ui" then saved=project end end
+		assert(saved and saved.run.state.veil,"Pending Veiled Chaos result was not saved")
+	end
+	do
 		local raw="Rarity: RARE\nExample\nIron Hat\nItem Level: 86"
 		require("Classes.CraftingSimulatorControl").Open(build,{id="gwennen-ui",title="Gwennen pair",slot="Helmet",startingItem=raw,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch","Gwennen");ui:click("paletteUse");assert(not main.popups[1].controls.apply:IsEnabled(),"An unconfigured Gwennen pair could be applied")

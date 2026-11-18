@@ -3,14 +3,14 @@ local sim=require("Modules.CraftingSimulator")
 local M={}
 local normal={transmute=true,alchemy=true,binding=true}
 local magic={alteration=true,augmentation=true,regal=true,foulborn_augmentation=true,foulborn_regal=true}
-local rare={chaos=true,exalt=true,veiled_orb=true,fracture=true,influence_exalt=true,awakener=true,dominance=true,bench_reroll=true,eldritch_exalt=true,eldritch_annul=true,eldritch_chaos=true,foulborn_exalt=true,tainted_chaos=true,tainted_exalt=true,harvest_reforge=true,harvest_augment=true,gwennen=true}
+local rare={chaos=true,exalt=true,veiled_orb=true,veiled_chaos=true,fracture=true,influence_exalt=true,awakener=true,dominance=true,bench_reroll=true,eldritch_exalt=true,eldritch_annul=true,eldritch_chaos=true,foulborn_exalt=true,tainted_chaos=true,tainted_exalt=true,harvest_reforge=true,harvest_augment=true,gwennen=true}
 local flask={transmute=true,alteration=true,augmentation=true,annul=true,scour=true,divine=true,blessed=true,quality=true,bench_remove_enchant=true}
 local socket={vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,jeweller=true,fusing=true,tainted_chromatic=true,socket_colour_bench=true,socket_white_bench=true,tainted_jeweller=true,tainted_fusing=true}
 function M.check(method,state,model)
 	if state.destroyed then return false,"Undo or reset the destroyed item." end
 	if state.uniqueTitle then return false,"Further crafting of transformed unique jewels is not yet modeled. Undo or reset to continue." end
 	if state.mirrored then return false,"Mirrored items cannot be crafted." end
-	if state.veil and method~="unveil" then return false,"Finish the pending unveil first." end
+	if state.veil and method~="unveil" and method~="veiled_chaos" then return false,"Finish the pending unveil first." end
 	if method=="unveil" then return state.veil~=nil,state.veil and "Choose one of the offered modifiers." or "This item has no pending unveil." end
 	local tainted=method:find("tainted_",1,true)~=nil
 	if tainted and not state.corrupted then return false,"Requires a corrupted item." end
