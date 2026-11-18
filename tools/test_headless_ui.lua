@@ -887,6 +887,13 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 
 	do
+		local model=sim.model("Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: W W W W W W")
+		require("Classes.CraftingPricesControl").Open(model,model.initial,{{method="gwennen",firstOutcome=1000,secondOutcome=1012},{method="socket_colour_bench",count=3}},nil,"chaos",function() end)
+		ui:text("search","Vaal Orb");assert(StripEscapes(main.popups[1].controls.resources.list[1][1]):find("Vaal Orb",1,true),"Possible Gwennen corruption surcharge was omitted")
+		frame("crafting-gwennen-price");ui:click("close")
+	end
+
+	do
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86"
 		local benchProject={id="bench-price-ui",title="Bench ingredient budget",slot="Body Armour",startingItem=raw,goals={},steps={},preferredMethod="bench",nativeRecipe={steps={{method="bench",modId="bench:1"}},targets={},requirements={minAffixes=1}}}
 		require("Classes.CraftingSimulatorControl").Open(build,benchProject)

@@ -11,6 +11,18 @@ describe("Saved crafting resource prices",function()
 	local function project() return {id="priced-body",title="Priced body armour",slot="Body Armour",startingItem=raw,goals={},steps={},preferredMethod="omen_connections",nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=6}},priceBook=book()} end
 	before_each(function() newBuild() end)
 	after_each(function() require("Modules.CraftingTasks").cancel();main.popups={} end)
+	it("includes possible corrupted-item surcharges after either Gwennen outcome",function()
+		local model=sim.model(raw);local vaal=prices.key("vaal",model)
+		local function required(action)
+			local entries=prices.entries(model,model.initial,{action,{method="socket_colour_bench",count=3}})
+			for _,entry in ipairs(entries) do if entry.key==vaal then return entry.required end end
+		end
+		assert.is_true(required({method="gwennen",firstOutcome=1012,secondOutcome=1000}))
+		assert.is_true(required({method="gwennen",firstOutcome=1000,secondOutcome=1012}))
+		assert.is_false(required({method="gwennen",firstOutcome=1000,secondOutcome=1000}))
+		local controls=require("Classes.CraftingPricesControl").Open(model,model.initial,{{method="gwennen",firstOutcome=1000,secondOutcome=1012},{method="socket_colour_bench",count=3}},nil,"chaos",function() end)
+		controls.search:SetText("Vaal Orb",true);assert.matches("Vaal Orb",StripEscapes(controls.resources.list[1][1]));controls.close:Click()
+	end)
 	it("retains quote metadata, zero and unknown values across build save and reopen",function()
 		local saved=project();saved.priceBook.values[fusing]=0;build.savers.CraftingProjects:Upsert(saved)
 		local empty=project();empty.id="empty-quotes";empty.priceBook=book({});build.savers.CraftingProjects:Upsert(empty)

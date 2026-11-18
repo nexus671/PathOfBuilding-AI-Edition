@@ -130,7 +130,9 @@ function M.entries(model,state,actions,book,recipeState)
 	-- the guide can precede another step on a later visit. Show possible
 	-- ingredients conservatively rather than assuming linear execution.
 	local mayCorrupt=false
-	for _,action in ipairs(actions or {}) do if action.method=="vaal" or action.method=="locus" then mayCorrupt=true;break end end
+	for _,action in ipairs(actions or {}) do
+		if action.method=="vaal" or action.method=="locus" or action.method=="gwennen" and (action.firstOutcome==1012 or action.secondOutcome==1012) then mayCorrupt=true;break end
+	end
 	for _,action in ipairs(actions or {}) do
 		local found=false
 		-- Include both general recipe ingredients and the current item's
