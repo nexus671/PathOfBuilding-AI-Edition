@@ -31,6 +31,25 @@ describe("Crafting resource usage independent of pricing",function()
 		local usage=entries(r);assert.are.equal(700,usage[numbers].amount);assert.are.equal(3000,usage[links].amount);assert.are.equal(3700,usage[vaal].amount)
 		assert.is_nil(r.meanCost);assert.is_truthy(next(r.unpriced))
 	end)
+	it("retains copied sockets when a structured starting state omits them",function()
+		local item="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20\nSockets: R G B R G B"
+		local model=sim.model(item);local input={rarity="NORMAL",affixes={}}
+		local validated=sim.validateState(model,input)
+		assert.equal(6,#validated.sockets);assert.equal(20,validated.quality);assert.is_nil(input.sockets);assert.is_nil(input.quality)
+		local action={method="socket_bench",count=6,linked=true}
+		local result=sim.simulate(item,{initialState=input,steps={action},targets={},requirements={links=6}},{trials=1,maxActions=1})
+		local usage=entries(result);assert.is_nil(usage[numbers]);assert.equal(1500,usage[links].amount)
+		local empty=sim.validateState(model,{rarity="NORMAL",affixes={},sockets={},quality=0});assert.equal(0,#empty.sockets);assert.equal(0,empty.quality)
+		local unknown=sim.validateState(model,{rarity="NORMAL",affixes={},corrupted=true,socketLayoutUnknown=true});assert.is_nil(unknown.sockets)
+		assert.has_error(function() sim.matches(unknown,{},nil,model,{links=6}) end)
+	end)
+	it("does not allow an omitted mirrored flag to bypass crafting restrictions",function()
+		local item="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nMirrored"
+		local model=sim.model(item);assert.is_true(model.initial.mirrored)
+		local input={rarity="NORMAL",affixes={}};assert.is_true(sim.validateState(model,input).mirrored)
+		assert.has_error(function() sim.perform(item,{method="alchemy"},1,input) end)
+		input.mirrored=false;assert.is_false(sim.validateState(model,input).mirrored)
+	end)
 	it("charges Allflame currency and Sulphur once per executed craft under an override",function()
 		local state=sim.model(raw).initial;state.rarity="RARE";state.affixes={{id="IncreasedLife1",range=0.5}}
 		local action={method="exalt",allflame={outcomes=4,gainMin=5,gainMax=5,sulphur=100}}

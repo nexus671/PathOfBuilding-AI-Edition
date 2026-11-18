@@ -679,6 +679,12 @@ async function main(){
   assert.equal(flaskVaal.nativeCrafting.state.corrupted,true);assert.equal(flaskVaal.nativeCrafting.warnings[0].code,'flask_vaal_weights');
   const flask40=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:flaskRaw,initialState:{rarity:'NORMAL',affixes:[],quality:40,corrupted:true},limit:5},'inspected');
   assert.equal(flask40.crafting.nativeEngine.initialState.quality,40);
+  const socketRaw='Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20\nSockets: R G B R G B';
+  const structuredSockets=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:socketRaw,initialState:{rarity:'NORMAL',affixes:[]},limit:5},'inspected');
+  assert.equal(structuredSockets.crafting.nativeEngine.initialState.sockets.length,6);assert.equal(structuredSockets.crafting.nativeEngine.initialState.quality,20);
+  const linkedSockets=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketRaw,initialState:{rarity:'NORMAL',affixes:[]},action:{method:'socket_bench',count:6,linked:true},seed:7},'crafted');
+  assert.equal(linkedSockets.nativeCrafting.state.sockets.length,6);assert.ok(linkedSockets.nativeCrafting.state.sockets.every(socket=>socket.group===linkedSockets.nativeCrafting.state.sockets[0].group));
+  const mirroredSocket=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketRaw+'\nMirrored',initialState:{rarity:'NORMAL',affixes:[]},action:{method:'alchemy'},seed:7},'failed');assert.match(mirroredSocket.error,/Mirrored items cannot be crafted/);
   const mapBases=await queued('search_map_bases',{baseRevision:context.revision,query:'MapWorldsBeach',limit:5},'mapData');
   assert.ok(mapBases.mapData.results.some(base=>base.id==='Metadata/Items/Maps/MapWorldsBeach'));
   const mapMods=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:2},'mapData');

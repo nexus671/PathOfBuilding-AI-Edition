@@ -1109,6 +1109,15 @@ end
 local validateOrdinaryState,toOrdinaryItem,ordinaryMatches=M.validateState,M.toItem,M.matches
 function M.validateState(model,state)
 	if type(state)=="table" and state.uniqueTitle then return require("Modules.CraftingJewelCorruption").validateState(model,state) end
+	-- Omitted properties inherit the starting item; explicit empty sockets,
+	-- zero quality and false mirrored state remain deliberate overrides.
+	-- Never infer a layout after an outcome that marked it unknown.
+	if type(state)=="table" and (state.sockets==nil and not state.socketLayoutUnknown or state.quality==nil or state.mirrored==nil and model.initial.mirrored) then
+		state=copyTable(state)
+		if state.sockets==nil and not state.socketLayoutUnknown then state.sockets=copyTable(model.initial.sockets or {}) end
+		if state.quality==nil then state.quality=model.initial.quality end
+		if state.mirrored==nil and model.initial.mirrored then state.mirrored=true end
+	end
 	return validateOrdinaryState(model,state)
 end
 function M.toItem(model,state)
