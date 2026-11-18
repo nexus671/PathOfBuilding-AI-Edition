@@ -130,8 +130,14 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 			if method=="binding" then details[#details+1]="No longer generated in 3.30; existing Orbs of Binding still work." end
 			if method=="jeweller" or method=="fusing" then details[#details+1]="Experimental probabilities; current game odds and some socket behavior are unverified." end
 			if method:find("tainted_",1,true) then details[#details+1]="Requires a corrupted item. Outcome probabilities and edge cases are unverified." end
+			for _,warning in ipairs(sim.actionWarnings({method=method},model)) do details[#details+1]=warning.message end
 			entries[#entries+1]={id=method,label=sim.labels[method],category="Currency",icon=workbench.icon(method),action={method=method},
 				details=details}
+		end
+		for _,method in ipairs({"fracture","dominance","veiled_orb","veiled_chaos","eldritch_exalt","eldritch_annul","eldritch_chaos","tainted_exalt","tainted_chaos","remembrance","unravelling","foulborn_augmentation","foulborn_regal","foulborn_exalt"}) do
+			local action={method=method};local details={"Add this action to the recipe without changing the working item.","The item must meet its requirements when this step runs."}
+			for _,warning in ipairs(sim.actionWarnings(action,model)) do details[#details+1]=warning.message end
+			entries[#entries+1]={id=method,label=sim.labels[method],category="Currency",icon=workbench.icon(method),action=action,details=details}
 		end
 		for _,entry in ipairs({
 			{method="omen_jeweller",note="Consumes an Omen of the Jeweller and a Jeweller's Orb to maximize sockets."},

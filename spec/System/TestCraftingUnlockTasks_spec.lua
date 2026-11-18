@@ -64,6 +64,16 @@ describe("Crafting recipe unlock tasks",function()
 		controls.keep:Click();assert.is_truthy(kept);local methods={};for _,step in ipairs(kept.steps) do methods[#methods+1]=step.method end
 		assert.same({"jeweller","fusing","tainted_chromatic","tainted_jeweller","tainted_fusing","omen_jeweller","omen_connections","omen_trichromatism"},methods)
 	end)
+	it("adds advanced currencies from the recipe picker",function()
+		local kept;local controls=require("Classes.CraftingRecipeControl").Open({steps={},targets={},requirements={minAffixes=4}},{method="alchemy"},function(recipe) kept=recipe end)
+		for _,name in ipairs({"Fracturing Orb","Veiled Exalted Orb","Eldritch Chaos Orb","Tainted Exalted Orb","Orb of Remembrance (measured distribution)"}) do
+			controls.addCurrency:Click();local browser=main.popups[1].controls;browser.search:SetText(name);browser.search.changeFunc()
+			if name=="Tainted Exalted Orb" then local text={};for _,row in ipairs(browser.details.list) do text[#text+1]=StripEscapes(row[1] or "") end;assert.matches("unverified",table.concat(text," "),1,true) end
+			assert.is_true(browser.choose:IsEnabled());browser.choose:Click()
+		end
+		controls.keep:Click();assert.is_truthy(kept);local methods={};for _,step in ipairs(kept.steps) do methods[#methods+1]=step.method end
+		assert.same({"fracture","veiled_orb","eldritch_chaos","tainted_exalt","remembrance"},methods)
+	end)
 	it("offers tracking from the selected recipe step without keeping the recipe",function()
 		local model=require("Modules.CraftingSimulator").model(raw);build.savers.CraftingProjects:Upsert(project())
 		local step=action();local controls=require("Classes.CraftingRecipeControl").Open({steps={step},targets={}},step,function() error("Recipe should not be kept") end,model,
