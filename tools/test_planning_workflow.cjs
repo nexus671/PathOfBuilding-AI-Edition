@@ -127,6 +127,9 @@ async function main(){
   }
   assert.ok(mixedImplicit,'Expected a corruption implicit within the fixed seed set');
   assert.equal(mixedImplicit.state.implicits.length,1);assert.equal(mixedImplicit.state.corruptedImplicits.length,1);
+  const secondCorruption=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:mixedImplicit.itemText,action:{method:'locus'},seed:1},'crafted');
+  assert.ok(secondCorruption.nativeCrafting.state.destroyed || secondCorruption.nativeCrafting.state.twiceCorrupted);
+  assert.ok(secondCorruption.nativeCrafting.warnings.some(entry=>entry.code==='locus_assumptions' && entry.message.includes('Eldritch')));
   const partialMixed=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:mixedImplicit.itemText,initialState:{rarity:mixedImplicit.state.rarity,affixes:mixedImplicit.state.affixes},limit:5},'inspected');
   assert.deepEqual(partialMixed.crafting.nativeEngine.initialState.implicits,mixedImplicit.state.implicits);assert.deepEqual(partialMixed.crafting.nativeEngine.initialState.corruptedImplicits,mixedImplicit.state.corruptedImplicits);
   assert.ok(mixedImplicit.warnings.some(entry=>entry.code==='vaal_implicit_selection'));

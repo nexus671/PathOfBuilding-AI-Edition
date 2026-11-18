@@ -19,7 +19,7 @@ function M.check(method,state,model)
 	if method=="locus" and (not state.corrupted or state.twiceCorrupted) then return false,"Requires a Corrupted item that is not Twice Corrupted." end
 	model=sim.context(model,state);local item=model.item;local kind=item.type
 	if method=="gwennen" and (kind=="Jewel" or kind=="Flask" or kind=="Tincture") then return false,"Gwennen requires rare equipment." end
-	if method=="locus" and (state.implicits or model.unresolvedEldritch) then return false,"Second corruption of Eldritch implicits is not modeled." end
+	if method=="locus" and model.unresolvedEldritch and not state.implicits then return false,"Identify the existing Eldritch implicits first." end
 	if method=="locus" and model.unresolvedCorruption and not state.corruptedImplicits then return false,"Identify the existing corruption implicits first." end
 	if (kind=="Flask" or kind=="Tincture") and not flask[method] and method~="ducat_tzamoto" and method~="ducat_kishara" and not (kind=="Flask" and method=="vaal") then return false,"This method is unavailable for flasks and tinctures." end
 	local reason=sim.methodReason(model,state,method);if reason then return false,reason end

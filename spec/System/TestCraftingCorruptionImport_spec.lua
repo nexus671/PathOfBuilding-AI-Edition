@@ -138,6 +138,29 @@ describe("Imported corruption identities",function()
 		assert.is_false(available);assert.is_truthy(reason:find("synthesised",1,true))
 		assert.has_error(function() sim.action(synth,synth.initial,{method="vaal"},function() return 0 end) end,reason)
 	end)
+	it("models second corruption of identified Eldritch implicits as an explicit assumption",function()
+		local model=sim.model(raw);local check=require("Modules.CraftingAvailability").check
+		local first=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state
+		local second=sim.perform(raw,{method="eldritch_implicit",side="Eater",tier=1},12,first).state
+		local mixed=sim.action(model,second,{method="vaal"},function() return 0 end)
+		assert.equal(1,#mixed.implicits);assert.equal(1,#mixed.corruptedImplicits);assert.is_true(check("locus",mixed,model))
+		local result=sim.action(model,mixed,{method="locus"},function() return 0 end)
+		assert.is_nil(result.implicits);assert.equal(2,#result.corruptedImplicits);assert.is_true(result.twiceCorrupted)
+		assert.is_true(sim.validateState(model,result).twiceCorrupted)
+		local reopened=sim.model(sim.toItem(model,result).raw);assert.equal(2,#reopened.initial.corruptedImplicits);assert.is_true(reopened.initial.twiceCorrupted)
+		local corrupted=copyTable(second);corrupted.corrupted=true
+		for _,choice in ipairs({0,0.999}) do
+			local count=0;local outcome=sim.action(model,corrupted,{method="locus"},function() count=count+1;if count==1 then return 0 elseif count==2 then return 0.5 else return choice end end)
+			assert.equal(1,#outcome.implicits);assert.equal(1,#outcome.corruptedImplicits);assert.is_true(sim.validateState(model,outcome).twiceCorrupted)
+		end
+		local estimate=sim.simulate(raw,{steps={{method="locus"}},targets={},requirements={twiceCorrupted=true}},{initialState=mixed,trials=20,maxActions=1,forceFirstAction=true})
+		assert.is_nil(next(estimate.transitionErrors))
+		local unchanged=sim.action(model,mixed,{method="locus"},function() return 0.3 end)
+		assert.same(mixed.implicits,unchanged.implicits);assert.same(mixed.corruptedImplicits,unchanged.corruptedImplicits)
+		local destroyed=sim.action(model,mixed,{method="locus"},function() return 0.6 end);assert.is_true(destroyed.destroyed)
+		local state=copyTable(mixed);state.implicits=nil;model.unresolvedEldritch=true
+		assert.is_false(check("locus",state,model));assert.has_error(function() sim.action(model,state,{method="locus"},function() return 0 end) end)
+	end)
 	it("models a second corruption while retaining or replacing an existing implicit",function()
 		local model=sim.model(raw);local first=copyTable(model.initial)
 		sim.rollCorrupted(model,first,function() return 0.1 end,1)

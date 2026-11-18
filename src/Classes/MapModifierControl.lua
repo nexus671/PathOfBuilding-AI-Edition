@@ -157,7 +157,7 @@ function M.Open(options)
 	button("delirium",32+2*cardButtonWidth,height-62,cardButtonWidth,"Delirium...",function()
 		local module=require("Modules.MapObservedEffects");local known=module.delirium(observedEffects)
 		local uncertain=unidentified or module.hasExplicit(observedEffects) and not known
-		for _,effect in ipairs(observedEffects or {}) do if effect.kind=="enchant" and effect.text:lower():find("deliri",1,true) then uncertain=true end end
+		for _,effect in ipairs(observedEffects or {}) do if effect.kind=="enchant" and (effect.text:lower():find("delirious",1,true) or effect.text:lower():find("delirium",1,true)) then uncertain=true end end
 		local c={};local w,h=math.min(640,main.screenW-40),300
 		ui.description(c,"intro",16,24,w-32,40,{"Project a Delirium Orb's percentage and base rewards. This does not modify the map or model rerolls."},14)
 		ui.label(c,"currentLabel",16,76,"Current %",14);ui.label(c,"currentTypeLabel",128,76,"Current reward type",14)

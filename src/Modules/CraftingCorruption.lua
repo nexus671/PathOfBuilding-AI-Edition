@@ -20,6 +20,7 @@ function C.extend(M,A,api)
 	end
 	M.methodChecks.vaal=mixedImplicitReason
 	M.methodChecks.locus=function(model,state)
+		local reason=mixedImplicitReason(model,state);if reason then return reason end
 		local flags=api.flags(model,state)
 		if flags.prefixes or flags.suffixes or flags.attack or flags.caster then return "Locus meta-modifier interactions need additional validation" end
 		for _,entry in ipairs(state.affixes) do if entry.fractured then return "Locus influence outcomes on fractured bases need additional validation" end end
@@ -223,7 +224,7 @@ function C.extend(M,A,api)
 			else
 				assert(input.corrupted and not input.twiceCorrupted,"The 3.30 altar model requires a Corrupted item that is not Twice Corrupted")
 				assert(not model.unresolvedCorruption or input.corruptedImplicits,"The existing corruption implicits must be identified first")
-				assert(not input.implicits and not model.unresolvedEldritch,"Second corruption of Eldritch implicits is not modeled")
+				assert(not model.unresolvedEldritch or input.implicits,"Corruption of unidentified Eldritch implicits is not modeled.")
 			end
 			if method=="vaal" and model.item.type=="Flask" then
 				-- The published range is known; equal weights are an explicit model assumption.
@@ -296,6 +297,6 @@ function C.extend(M,A,api)
 	M.limits[#M.limits+1]="Ordinary jewel Vaal outcomes assume equal branch and unique-selection weights. The bundled candidate pool, individual rolls and rare modifier counts are unverified. Further crafting of transformed uniques is not modeled."
 	M.limits[#M.limits+1]="The equipment Vaal model includes the four outcome branches and current non-white socket conversion. Rare-brick socket/link rerolls are not modeled; tainted affix outcomes use a 50/50 assumption."
 	M.limits[#M.limits+1]="Corrupting unidentified Eldritch implicits or ambiguously grouped synthesised implicits is not modeled. Replacement is selected uniformly as an unverified assumption."
-	M.limits[#M.limits+1]="The 3.30 Locus model requires a Corrupted item and adds a second corruption. Outcome chances, socket conversion and selection of a replaced implicit are assumptions; uncorrupted altar use is not modeled. Fractured, synthesised, meta-modified and special transformation bases are excluded."
+	M.limits[#M.limits+1]="The 3.30 Locus model requires a Corrupted item and adds a second corruption. Outcome chances, socket conversion and selection of a replaced implicit, including Eldritch replacement, are assumptions; uncorrupted altar use is not modeled. Fractured, synthesised, meta-modified and special transformation bases are excluded."
 end
 return C

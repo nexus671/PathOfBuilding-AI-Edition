@@ -564,6 +564,17 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 
 	do
+		local sim=require("Modules.CraftingSimulator");local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W W W"
+		local model=sim.model(raw);local first=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state
+		local both=sim.perform(raw,{method="eldritch_implicit",side="Eater",tier=1},12,first).state
+		local mixed=sim.action(model,both,{method="vaal"},function() return 0 end)
+		local copy=sim.toItem(model,mixed).raw
+		require("Classes.CraftingSimulatorControl").Open(build,{id="locus-eldritch-ui",title="Eldritch second corruption",slot="Helmet",startingItem=copy,goals={},steps={},preferredMethod="locus"})
+		assert(main.popups[1].controls.apply:IsEnabled(),"Identified Eldritch implicit prevented the altar")
+		frame("crafting-locus-eldritch");ui:click("apply");assert(main.popups[1].controls.intro.label:find("Applied Locus",1,true));ui:click("close")
+	end
+
+	do
 		local rgbRaw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: W-W-W"
 		local p={id="omen-rgb-ui",title="Guaranteed RGB colours",slot="Body Armour",startingItem=rgbRaw,goals={},steps={},nativeRecipe={steps={{method="omen_trichromatism"}},targets={},requirements={socketColours="RGB",linkedColours=true}},priceBook={currency="chaos",source="Omen quotes",quotedAt=1700000000,values={["Metadata/Items/Currency/AncestralOmenOnChromaticAddWhiteSockets"]=2,["Metadata/Items/Currency/CurrencyRerollSocketColours"]=0.25}}}
 		require("Classes.CraftingSimulatorControl").Open(build,p);ui:click("settings");ui:text("paletteSearch","Trichromatism");assert(main.popups[1].controls.paletteUse:IsEnabled());frame("crafting-omen-rgb-selection")
@@ -1065,7 +1076,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(main.popups[1].controls.fossil1:GetSelValueByKey("id")==life and main.popups[1].controls.fossil2:GetSelValueByKey("id")==cold,"Reopening configuration lost its selection")
 		frame("crafting-fossil-reopened");ui:click("close");ui:click("tab_simulate");ui:text("trials","4");ui:click("optimize")
 		for i=1,400 do if not jobs.job then break end;jobs.tick(build) end;assert(not jobs.job)
-		assert(main.popups[1].title=="Fossil comparison");frame("crafting-fossil-comparison")
+		assert(main.popups[1].title=="Fossil comparison","Expected Fossil comparison, got "..tostring(main.popups[1].title).."; "..tostring(main.popups[1].controls.intro and main.popups[1].controls.intro.label));frame("crafting-fossil-comparison")
 		local list=main.popups[1].controls.results;local x,y=list:GetPos();ui:clickAt(x+180,y+12);ui:key("DOWN")
 		lines={};for _,row in ipairs(main.popups[1].controls.stats.list) do lines[#lines+1]=row[1] end
 		assert(table.concat(lines," "):find("Cost unknown",1,true));frame("crafting-fossil-unknown-cost")
