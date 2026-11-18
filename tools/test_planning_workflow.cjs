@@ -808,6 +808,11 @@ async function main(){
   const surrenderPickup=generated.profile.rules.find(rule=>rule.origin==='gear:surrender');assert.ok(surrenderPickup);
   assert.match(surrenderPickup.text,/BaseType == "Ezomyte Tower Shield"/);assert.match(surrenderPickup.text,/Rarity == Unique/);assert.doesNotMatch(surrenderPickup.text,/ItemLevel/);
   const tested=await queued('test_loot_filter',{baseRevision:context.revision,profile:generated.profile,sample:{BaseType:'Iron Hat',Rarity:'Rare',ItemLevel:86}},'tested');assert.equal(tested.result.action,'Show');
+  const rareSetProfile={...lootProfile,template:'Hide',campaign:{recipes:['Unidentified rare set pieces'],minAreaLevel:1,maxAreaLevel:100}};
+  const rareSetSample={BaseType:'Iron Ring',Class:'Rings',Rarity:'Rare',Identified:false,ItemLevel:74,AreaLevel:75};
+  const rareSet=await queued('test_loot_filter',{baseRevision:context.revision,profile:rareSetProfile,sample:rareSetSample},'tested');
+  assert.equal(rareSet.result.action,'Show');assert.deepEqual(rareSet.result.styles.SetBorderColor,['245','190','65','255']);
+  const ruthlessSet=await queued('test_loot_filter',{baseRevision:context.revision,profile:{...rareSetProfile,mode:'Ruthless'},sample:rareSetSample},'tested');assert.equal(ruthlessSet.result.action,'Minimal');
   const continuingStacks={...lootProfile,template:'Show\n BaseType == "Chaos Orb"\n SetBorderColor 1 2 3',tiers:[
     {id:'low',title:'Low',text:'Show\n BaseType == "Chaos Orb"\n SetFontSize 20\n Continue',items:['Chaos Orb'],stackRules:[{minimum:5,styleTierId:'mid'},{minimum:10,styleTierId:'high'}]},
     {id:'mid',title:'Mid',text:'Show\n BaseType == "Divine Orb"\n SetFontSize 30\n Continue',items:['Divine Orb']},

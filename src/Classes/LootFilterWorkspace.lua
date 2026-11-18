@@ -275,7 +275,7 @@ function M.Open(build,source,layout,controller)
 				refreshDependencies();if not dependencies or dependencyJob then main:OpenMessagePopup("Linked filter targets",dependencyError or "Checking build pickups. Please try again shortly.");return end
 				require("Classes.PlanningBrowserControl").Open("Linked filter targets",dependencies.entries,{action="Open source",choose=function(entry) main:ClosePopup();openSource(entry.origin) end,closeOnChoose=false,
 					secondary={label="Refresh build pickups",run=function() main:ClosePopup();generatePickups() end}})
-			elseif entry.id=="campaign" and profile then require("Classes.LootFilterCampaignControl").Open(build,profile.campaign,function(value) profile.campaign=value;draft();reopen() end)
+			elseif entry.id=="campaign" and profile then require("Classes.LootFilterCampaignControl").Open(build,profile.campaign,function(value) profile.campaign=value;draft();reopen() end,profile.mode)
 			elseif entry.id=="structure" and profile then require("Classes.LootFilterStructureControl").Open(profile,function(rule) editRule(rule,keepRule) end)
 			elseif (entry.id=="sampleSets" or entry.id=="palettes") and profile then collection(entry.id)
 			elseif entry.id=="categoryStyles" and profile then require("Classes.LootFilterCategoryControl").Open(profile,replaceProfile)
@@ -381,7 +381,7 @@ function M.Open(build,source,layout,controller)
 		c.search.changeFunc=function(value) query=value;refreshList() end
 		local bw=math.floor((listW-24)/4)
 		button(c,"add",listX,h-94,bw,scope=="Policies" and "Set policy" or "+ Rule",function()
-			if scope=="Policies" then require("Classes.LootFilterCampaignControl").Open(build,profile.campaign,function(value) profile.campaign=value;draft();reopen() end)
+			if scope=="Policies" then require("Classes.LootFilterCampaignControl").Open(build,profile.campaign,function(value) profile.campaign=value;draft();reopen() end,profile.mode)
 			else editRule(filters.rule("rule-"..identifier(),"New pickup",{'BaseType == "Iron Hat"'}),keepRule) end
 		end)
 		button(c,"edit",listX+bw+8,h-94,bw,"Edit",edit)

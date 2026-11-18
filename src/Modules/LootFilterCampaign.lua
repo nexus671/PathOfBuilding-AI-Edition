@@ -1,6 +1,6 @@
 -- Offline family policies derived from the bundled native bases, never prices.
 -- cspell:ignore jsontype
-local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems"}}
+local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces"}}
 local knownWeapons={"Bow","Claw","Dagger","Rune Dagger","Fishing Rod","One Handed Axe","One Handed Mace","One Handed Sword","Thrusting Sword","Sceptre","Staff","Warstaff","Two Handed Axe","Two Handed Mace","Two Handed Sword","Wand","Shield","Quiver"}
 M.weapons=knownWeapons
 local armourTypes={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true}
@@ -48,12 +48,13 @@ function M.equipped(build)
 	for _,name in ipairs(M.weapons) do if weapons[name] then result.weapons[#result.weapons+1]=name end end
 	for _,name in ipairs(M.defences) do if defences[name] then result.defences[#result.defences+1]=name end end;return result
 end
-function M.rules(value,theme)
+function M.rules(value,theme,mode)
 	if not value then return {} end;local policy=M.validate(value);if not policy.enabled then return {} end
 	local filters=require("Modules.LootFilters");local result={};local families=M.families()
-	local function rule(id,title,conditions)
+	local function rule(id,title,conditions,border)
 		local entry=filters.rule("campaign-"..id,title,conditions,nil,theme)
 		entry.text=entry.text:gsub("\n%s*PlayAlertSound[^\n]*",""):gsub("\n%s*MinimapIcon[^\n]*",""):gsub("\n%s*PlayEffect[^\n]*",""):gsub("SetFontSize 42","SetFontSize 32")
+		if border then entry.text=entry.text:gsub("SetBorderColor [^\n]+","SetBorderColor "..border) end
 		result[#result+1]=entry
 	end
 	for _,key in ipairs({"weapons","defences"}) do for _,family in ipairs(policy[key]) do
@@ -74,7 +75,18 @@ function M.rules(value,theme)
 		["Six-link equipment"]={"LinkedSockets 6","Rarity <= Rare"},
 		["Quality gems"]={'Class == "Skill Gems" "Support Gems"',"Quality >= 1"},
 	}
-	for i,name in ipairs(M.recipes) do for _,chosen in ipairs(policy.recipes) do if name==chosen then local conditions=copyTable(recipes[name]);conditions[#conditions+1]="AreaLevel >= "..policy.minAreaLevel;conditions[#conditions+1]="AreaLevel <= "..policy.maxAreaLevel;rule("recipe-"..i,name,conditions) end end end
+	for i,name in ipairs(M.recipes) do for _,chosen in ipairs(policy.recipes) do if name==chosen then
+		if name=="Unidentified rare set pieces" then
+			if mode~="Ruthless" then
+				local classes='Class == "Amulets" "Belts" "Body Armours" "Boots" "Bows" "Claws" "Daggers" "Fishing Rods" "Gloves" "Helmets" "One Hand Axes" "One Hand Maces" "One Hand Swords" "Rings" "Rune Daggers" "Sceptres" "Shields" "Staves" "Thrusting One Hand Swords" "Two Hand Axes" "Two Hand Maces" "Two Hand Swords" "Wands" "Warstaves"'
+				local common={classes,"Rarity == Rare","Identified False","ItemLevel >= 60","AreaLevel >= "..policy.minAreaLevel,"AreaLevel <= "..policy.maxAreaLevel}
+				local anchor=copyTable(common);anchor[#anchor+1]="ItemLevel <= 74";rule("recipe-"..i.."-anchor","Rare set / level 60-74",anchor,"245 190 65 255")
+				local higher=copyTable(common);higher[#higher+1]="ItemLevel >= 75";rule("recipe-"..i.."-higher","Rare set / level 75+",higher,"100 160 230 255")
+			end
+		else
+			local conditions=copyTable(recipes[name]);conditions[#conditions+1]="AreaLevel >= "..policy.minAreaLevel;conditions[#conditions+1]="AreaLevel <= "..policy.maxAreaLevel;rule("recipe-"..i,name,conditions)
+		end
+	end end end
 	return result
 end
 return M

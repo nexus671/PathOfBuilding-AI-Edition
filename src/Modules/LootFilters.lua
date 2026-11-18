@@ -332,7 +332,7 @@ function M.compile(profile,includeParsed)
 	for _,r in ipairs(checked.rules) do if r.enabled then output[#output+1]="\n# PoB rule: "..r.title..(r.origin and " ["..r.origin.."]" or "");output[#output+1]=styled(r.text,r.origin and "Build targets") end end
 	for _,rule in ipairs(require("Modules.LootFilterEditing").tierRules(checked.tiers)) do output[#output+1]="\n# PoB rule: Tier / "..rule.title;output[#output+1]=styled(rule.text) end
 	for _,module in ipairs(checked.modules or {}) do if module.enabled then for _,rule in ipairs(module.rules) do if rule.enabled then output[#output+1]="\n# PoB rule: "..module.title.." / "..rule.title;output[#output+1]=styled(rule.text,rule.origin and "Build targets") end end end end
-	for _,rule in ipairs(require("Modules.LootFilterCampaign").rules(checked.campaign,checked.theme)) do output[#output+1]="\n# PoB rule: Campaign / "..rule.title;output[#output+1]=styled(rule.text,"Campaign") end
+	for _,rule in ipairs(require("Modules.LootFilterCampaign").rules(checked.campaign,checked.theme,checked.mode)) do output[#output+1]="\n# PoB rule: Campaign / "..rule.title;output[#output+1]=styled(rule.text,"Campaign") end
 	-- New league items are shown until a later pinned base can tier them.
 	if M.needsSafety(checked) then
 		local patch=M.patch();local classes={};for class in pairs(patch.added) do classes[#classes+1]=class end;table.sort(classes)

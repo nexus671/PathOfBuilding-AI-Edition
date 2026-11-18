@@ -7,7 +7,7 @@ local names={
 	["One Handed Axe"]="1H axes",["One Handed Mace"]="1H maces",["One Handed Sword"]="1H swords",["Two Handed Axe"]="2H axes",["Two Handed Mace"]="2H maces",["Two Handed Sword"]="2H swords",
 	["Thrusting Sword"]="Thrusting swords",["Rune Dagger"]="Rune daggers",["Fishing Rod"]="Fishing rods",["Energy shield"]="Energy shield",["Armour / Energy shield"]="Armour / ES",["Evasion / Energy shield"]="Evasion / ES",["All three defences"]="Armour / Evasion / ES",
 }
-function M.Open(build,value,onKeep)
+function M.Open(build,value,onKeep,mode)
 	local current=policy.validate(value or policy.defaults());local selected={weapons={},defences={},recipes={}};local c={};local custom={}
 	local w,h=math.min(1080,main.screenW-40),math.min(700,main.screenH-60);local column=math.floor((w-48)/2);local right=column+32
 	local function selections(next) for key in pairs(selected) do selected[key]={};for _,name in ipairs(next[key]) do selected[key][name]=true end end end;selections(current)
@@ -40,8 +40,17 @@ function M.Open(build,value,onKeep)
 		end
 	end
 	ui.label(c,"recipesLabel",right,378,"Recipe and socket pickups",14)
+	local function updateSummary()
+		if not c.summary then return end
+		local lines=selected.recipes["Unidentified rare set pieces"] and mode~="Ruthless" and {"Rare sets: gold = item level 60-74; blue = 75+. For Chaos, at least one piece must be 60-74. Area range applies."} or {"Upgrade windows use five-area bands. Recipe pickups follow only the area range. No vendor proceeds, hidden modifiers or economy value are assumed."}
+		c.summary.list=ui.rows(lines,column,13)
+	end
 	for i,name in ipairs(policy.recipes) do
-		button("recipe"..i,right,404+(i-1)*26,column,name,function() selected.recipes[name]=not selected.recipes[name] or nil end);c["recipe"..i].height=22;c["recipe"..i].locked=function() return selected.recipes[name] end
+		button("recipe"..i,right,404+(i-1)*26,column,name,function() selected.recipes[name]=not selected.recipes[name] or nil;updateSummary() end);c["recipe"..i].height=22;c["recipe"..i].locked=function() return selected.recipes[name] end
+		if name=="Unidentified rare set pieces" then
+			c["recipe"..i].enabled=function() return mode~="Ruthless" end
+			c["recipe"..i].tooltipText=mode=="Ruthless" and "Not emitted in Ruthless: recipe availability has not been verified." or "Shows unidentified rare equipment at item level 60+. Gold marks 60-74; blue marks 75+. A full set needs at least one 60-74 item for Chaos Orbs."
+		end
 	end
 	local function read()
 		local next=copyTable(current)
@@ -49,7 +58,8 @@ function M.Open(build,value,onKeep)
 		for _,field in ipairs(fields) do next[field[1]]=assert(tonumber(c[field[1]].buf),"Enter every level/link setting") end;return policy.validate(next)
 	end
 	ui.description(c,"summary",16,h-112,column,64,{"Upgrade windows use five-area bands. Recipe pickups follow only the area range. No vendor proceeds, hidden modifiers or economy value are assumed."},13)
-	button("keep",16,h-42,220,"Keep pickup policy",function() local next=read();policy.rules(next);onKeep(next);main:ClosePopup() end)
+	updateSummary()
+	button("keep",16,h-42,220,"Keep pickup policy",function() local next=read();policy.rules(next,nil,mode);onKeep(next);main:ClosePopup() end)
 	button("reset",252,h-42,180,"Remove policy",function() onKeep(nil);main:ClosePopup() end)
 	button("close",w-156,h-42,140,"Cancel",function() main:ClosePopup() end)
 	ui.style(c,{keep=true},custom);for _,control in pairs(c) do control.layoutAudit="filter-campaign-policy" end;main:OpenPopup(w,h,"Campaign and base-family pickups",c,nil,nil,"close");return c

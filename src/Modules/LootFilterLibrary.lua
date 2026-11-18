@@ -192,7 +192,7 @@ function M.personal(profile)
 	local entries={};for _,rule in ipairs(profile.rules) do entries[#entries+1]={rule=rule,category=M.category(rule),tier=rule.origin and "Build target" or "Personal rule",sample=M.sample(rule),block=parser.parse(rule.text).rules[1]} end;return entries
 end
 function M.campaign(profile)
-	local entries={};for _,rule in ipairs(require("Modules.LootFilterCampaign").rules(profile.campaign,profile.theme)) do entries[#entries+1]={rule=rule,category="Campaign",tier="Pickup policy",sample=M.sample(rule),block=parser.parse(rule.text).rules[1],base=true} end;return entries
+	local entries={};for _,rule in ipairs(require("Modules.LootFilterCampaign").rules(profile.campaign,profile.theme,profile.mode)) do entries[#entries+1]={rule=rule,category="Campaign",tier="Pickup policy",sample=M.sample(rule),block=parser.parse(rule.text).rules[1],base=true} end;return entries
 end
 function M.entries(profile,source,category,query)
 	local result={};for _,entry in ipairs(source or {}) do
