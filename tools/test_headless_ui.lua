@@ -99,6 +99,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(table.concat(lines," "):find("Quality %(Pack Size%): %+20%%"),"Copied map quality was not shown")
 		assert(table.concat(lines," "):find("Observed effects are not modeled",1,true) and table.concat(lines," "):find("Players are Delirious",1,true),"Observed map effects were not shown")
 		frame("map-clipboard-imported");ui:click("quality");frame("map-quality-editor");ui:click("keep")
+		local savedCopy=ui.clipboard;ui.clipboard="Item Class: Maps\nRarity: Rare\nMap (Tier 5)\n--------\nItem Level: 68\n--------\nUnidentified\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
+		ui:click("pasteMap");frame("map-unidentified-review");ui:click("keep")
+		do local c=main.popups[1].controls;assert(c.status.label:find("unknown",1,true) and not c.currency:IsEnabled() and not c.estimate:IsEnabled(),"Unidentified copied maps must keep modifiers unknown") end;frame("map-unidentified-imported")
+		ui.clipboard=savedCopy;ui:click("pasteMap");ui:click("keep")
 		local ordinaryCopy=ui.clipboard;ui.clipboard=ordinaryCopy.."\n--------\nMirrored";ui:click("pasteMap");ui:click("keep")
 		do local c=main.popups[1].controls;assert(not c.currency:IsEnabled() and not c.estimate:IsEnabled(),"Mirrored copied maps must block currency and estimates") end;frame("map-mirrored-imported")
 		ui.clipboard=ordinaryCopy;ui:click("pasteMap");ui:click("keep");assert(main.popups[1].controls.currency:IsEnabled(),"Pasting an ordinary map should clear the mirrored marker")

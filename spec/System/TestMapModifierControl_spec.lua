@@ -182,6 +182,14 @@ describe("Map modifier explorer",function()
 		assert.matches("No explicit modifiers",controls.status.label,1,true);controls.keep:Click();assert.equal("normal",captured.rarity);assert.is_true(captured.corrupted);assert.equal(0,#captured.selected);controls.close:Click()
 	end)
 
+	it("shows unidentified map modifiers as unknown",function()
+		local captured;local initial={id="unid",title="Unidentified",patch=require("Modules.MapCraftingData").source().patch,baseId="Metadata/Items/Maps/MapKeyTier16",tier=16,itemLevel=83,rarity="rare",selected={},unidentified=true}
+		local controls=require("Classes.MapModifierControl").Open({build=build,initial=initial,keep=function(entry) captured=copyTable(entry);return "unid" end})
+		assert.matches("unknown",controls.status.label,1,true);assert.is_false(controls.currency:IsEnabled());assert.is_false(controls.estimate:IsEnabled());assert.is_false(controls.add:IsEnabled())
+		local text="";for _,row in ipairs(controls.affixes.list) do text=text..StripEscapes(row[1] or "") end;assert.matches("unknown",text,1,true)
+		controls.keep:Click();assert.is_true(captured.unidentified)
+	end)
+
 	it("preserves mirrored maps and disables simulated currency",function()
 		local captured;local initial={id="mirror",title="Mirrored",patch=require("Modules.MapCraftingData").source().patch,baseId="Metadata/Items/Maps/MapKeyTier16",tier=16,itemLevel=83,rarity="rare",selected={},mirrored=true}
 		local controls=require("Classes.MapModifierControl").Open({build=build,initial=initial,keep=function(entry) captured=copyTable(entry);return "mirror" end})

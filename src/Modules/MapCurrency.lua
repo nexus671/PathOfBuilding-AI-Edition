@@ -46,6 +46,7 @@ local function validate(input,checkpoint,cache)
 	assert(type(input)=="table" and type(input.selected)=="table","Invalid map state")
 	assert(not input.corrupted,"Corrupted maps cannot be modified with these currencies")
 	assert(not input.mirrored,"Mirrored maps cannot be modified with these currencies")
+	assert(not input.unidentified,"Identify the map before simulating currency")
 	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,selected={},rolls={},quality=require("Modules.MapQuality").validate(input.quality),observedEffects=require("Modules.MapObservedEffects").validate(input.observedEffects)}
 	assert(not require("Modules.MapObservedEffects").hasExplicit(state.observedEffects),"Currency simulation is unavailable while unsupported explicit map modifiers are recorded")
 	for _,id in ipairs(input.selected) do state.selected[#state.selected+1]=id end

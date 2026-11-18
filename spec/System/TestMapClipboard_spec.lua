@@ -30,6 +30,12 @@ describe("Map clipboard import",function()
   local draft={id="normal-corrupt",title="Copied map",patch=require("Modules.MapCraftingData").source().patch,baseId=parsed.baseId,tier=parsed.tier,itemLevel=parsed.itemLevel,rarity=parsed.rarity,selected=parsed.selected,corrupted=parsed.corrupted,implicit=parsed.implicit,observedEffects=parsed.observedEffects}
   assert.same(draft,require("Modules.AtlasPlanner").validateMapDraft(draft))
  end)
+ it("imports unidentified maps without inventing their hidden modifiers",function()
+  local raw="Item Class: Maps\nRarity: Rare\nMap (Tier 5)\n--------\nItem Level: 68\n--------\nUnidentified"..trailer
+  local result=parser.parse(raw);local state=result.state;assert.is_true(state.unidentified);assert.equal(0,#state.selected);assert.matches("unknown",result.notes[1],1,true)
+  assert.has_error(function() require("Modules.MapCurrency").perform(state,"chaos",1) end)
+  assert.has_error(function() require("Modules.MapCraftEstimate").run(state,{wanted={},avoid={},trials=1,maxAttempts=1,seed=1}) end)
+ end)
  it("imports mirrored maps and preserves their marker",function()
   local raw=header.."Monsters have 45% increased Area of Effect"..trailer.."\n--------\nMirrored"
   local state=parser.parse(raw).state;assert.is_true(state.mirrored);assert.equal("rare",state.rarity)

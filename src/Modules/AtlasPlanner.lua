@@ -60,6 +60,8 @@ function M.validateMapDraft(entry)
 	assert(entry.corrupted==nil or type(entry.corrupted)=="boolean","Invalid map corruption state")
 	result.corrupted=entry.corrupted or nil
 	assert(entry.mirrored==nil or type(entry.mirrored)=="boolean","Invalid map mirrored state");result.mirrored=entry.mirrored or nil
+	assert(entry.unidentified==nil or type(entry.unidentified)=="boolean","Invalid map identification state");result.unidentified=entry.unidentified or nil
+	assert(not result.unidentified or result.rarity~="normal","Normal maps cannot be unidentified")
 	result.quality=require("Modules.MapQuality").validate(entry.quality)
 	result.observedEffects=require("Modules.MapObservedEffects").validate(entry.observedEffects)
 	assert(result.rarity=="rare" or not require("Modules.MapObservedEffects").hasExplicit(result.observedEffects),"Observed explicit map modifiers require a rare map")
@@ -72,6 +74,7 @@ function M.validateMapDraft(entry)
 	local seen={};for _,id in ipairs(array(entry.selected,result.corrupted and 9 or 6,"map modifiers")) do
 		text(id,160,"map modifier ID");assert(id:match("%S") and not seen[id],"Invalid or duplicate map modifier");seen[id]=true;result.selected[#result.selected+1]=id
 	end
+	assert(not result.unidentified or #result.selected==0,"Unidentified map modifiers are unknown")
 	assert(result.rarity~="normal" or #result.selected==0,"Normal maps cannot have explicit modifiers")
 	assert(result.rarity~="magic" or #result.selected<=2,"Magic maps have at most two explicit modifiers")
 	if entry.rolls~=nil then
