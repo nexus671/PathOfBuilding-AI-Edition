@@ -90,7 +90,7 @@ describe("Linked planning tools",function()
 		positive,negative=tree.nodes[61484],tree.nodes[61620];plan.strategy=nil;plan.nodes={positive.id,negative.id};plan.choices={{node=positive.id,effect=positive.variantEffects[1].effect},{node=negative.id,effect=negative.variantEffects[1].effect}}
 		assert.is_nil(names()["Abyss Thread"]);plan.choices[2].effect=negative.variantEffects[2].effect;assert.is_true(names()["Abyss Thread"])
 	end)
-	it("links explicit map item tiers and flags changed or unfilterable Atlas layouts",function()
+	it("links explicit map item tiers and flags changed Atlas layouts",function()
 		local plan={id="farming",title="Farming",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Map (Tier 16), Abomination Map",scarabs="Use Omen of Connections"}}
 		build.savers.AtlasPlans:Upsert(plan)
 		local profile=filters.profile("map-filter","Map filter");profile.rules=filters.generate(build,profile)

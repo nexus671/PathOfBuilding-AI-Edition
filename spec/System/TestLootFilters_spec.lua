@@ -612,7 +612,9 @@ describe("Build-owned loot filters",function()
 		assert.is_truthy(titles["Map (Tier 16)"]);assert.is_truthy(titles["Abomination Map"])
 		assert.matches('BaseType == "Map %(Tier 16%)"',titles["Map (Tier 16)"].text)
 		assert.equal(1,#warnings);assert.matches("do not identify ordinary map drops",warnings[1].message,1,true)
-		profile.rules=rules;local again=filters.generate(build,profile);assert.same(rules,again)
+		profile.rules=rules;local sample=filters.simulate(profile,{BaseType="Map (Tier 16)",Class="Maps",Rarity="Normal",MapTier=16})
+		assert.equal("Show",sample.action);assert.equal("Map (Tier 16) [atlas:mapping]",sample.ruleTitle)
+		local again=filters.generate(build,profile);assert.same(rules,again)
 		strategy.avoid="Map (Tier 16)";local excluded=filters.generate(build,profile);for _,rule in ipairs(excluded) do assert.is_not.equal("Map (Tier 16)",rule.title) end
 		plan.strategy={maps="Map (Tier 5)"};plan.shapedRegions=nil
 		local explicit,notes=filters.generate(build,profile);assert.equal(0,#notes)
