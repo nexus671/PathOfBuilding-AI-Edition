@@ -247,9 +247,9 @@ local essenceExamples={
 -- Released 3.30 client base names and filter classes. These are independent
 -- comparison examples, not a prediction of what an encounter will drop.
 local mapExamples={
-	{"Beach Map","Maps","Normal"},{"Strand Map","Maps","Magic"},
-	{"Mausoleum Map","Maps","Rare"},{"Crimson Temple Map","Maps","Rare"},
-	{"Toxic Sewer Map","Maps","Rare"},{"Frayed Thread","Stackable Currency"},
+	{"Map (Tier 1)","Maps","Normal"},{"Map (Tier 5)","Maps","Magic"},
+	{"Map (Tier 10)","Maps","Rare"},{"Map (Tier 14)","Maps","Rare"},
+	{"Map (Tier 16)","Maps","Rare"},{"Frayed Thread","Stackable Currency"},
 	{"Breach Thread","Map Fragments"},{"Expedition Thread","Map Fragments"},
 	{"Abyss Thread","Map Fragments"},{"Ritual Thread","Map Fragments"},
 	{"Timeless Maraketh Emblem","Map Fragments"},{"Chaos Orb","Stackable Currency"},
@@ -330,9 +330,8 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
 		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end
 		applyBaseProperties(item)
-		-- A map name alone does not establish its current Atlas tier. Let the
-		-- preview ask for that value rather than treating every map as tier zero.
-		if kind=="Maps & threads" and item.Class=="Maps" then item.MapTier=nil end
+		-- Current ordinary map bases explicitly name their tier.
+		if kind=="Maps & threads" and item.Class=="Maps" then item.MapTier=tonumber(item.BaseType:match("^Map %(Tier (%d+)%)$")) end
 		if kind~="Currency" or item.Class=="Stackable Currency" then list[#list+1]=item end
 	end
 	for _,item in ipairs(list) do item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86 end

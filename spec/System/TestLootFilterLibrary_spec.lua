@@ -106,15 +106,17 @@ describe("Visual filter catalogue",function()
 	end)
 	it("provides reproducible mapping and flask examples with their filter classes",function()
 		local profile=filters.profile("test","Test")
-		for _,case in ipairs({{kind="Maps & threads",base="Beach Map",class="Maps",other="Breach Thread",otherClass="Map Fragments"},
+		for _,case in ipairs({{kind="Maps & threads",base="Map (Tier 1)",class="Maps",other="Breach Thread",otherClass="Map Fragments"},
 			{kind="Flasks & tinctures",base="Sacred Life Flask",class="Life Flasks",other="Prismatic Tincture",otherClass="Tinctures"},
 			{kind="Crafting materials",base="Hollow Fossil",class="Stackable Currency",other="Powerful Chaotic Resonator",otherClass="Delve Stackable Socketable Currency"},
 			{kind="Heist & Expedition",base="Blueprint: Underbelly",class="Blueprints",other="Expedition Logbook",otherClass="Expedition Logbooks"}}) do
 			local scene=library.scene(profile,build,case.kind,0,76,81);assert.equal(12,#scene)
 			assert.equal(case.base,scene[1].BaseType);assert.equal(case.class,scene[1].Class)
 			if case.kind=="Maps & threads" then
-				assert.is_nil(scene[1].MapTier)
-				assert.equal("unknown",parser.simulate(parser.parse('Hide\n MapTier >= 10\nShow'),scene[1]).status)
+				assert.equal(1,scene[1].MapTier)
+				assert.equal("Show",parser.simulate(parser.parse('Hide\n MapTier >= 10\nShow'),scene[1]).action)
+				assert.equal(10,scene[3].MapTier)
+				assert.equal("Hide",parser.simulate(parser.parse('Hide\n MapTier >= 10\nShow'),scene[3]).action)
 			end
 			local found
 			for _,item in ipairs(scene) do
@@ -139,8 +141,8 @@ describe("Visual filter catalogue",function()
 		local rules=parser.parse('Hide\n DropLevel >= 65\nShow');assert.equal("Hide",parser.simulate(rules,byName["Vaal Regalia"]).action);assert.equal("Show",parser.simulate(rules,byName["Chaos Orb"]).action)
 		assert.equal("unknown",parser.simulate(rules,byName["Leather Belt"]).status)
 		assert.equal("unknown",parser.simulate(parser.parse('Hide\n Sockets >= 4\nShow'),byName["Vaal Regalia"]).status)
-		local maps=library.scene(profile,build,"Maps & threads",0,83,86);assert.equal("Beach Map",maps[1].BaseType);assert.is_nil(maps[1].DropLevel)
-		assert.equal("unknown",parser.simulate(rules,maps[1]).status);assert.equal(1,maps[1].Width);assert.equal(1,maps[1].Height)
+		local maps=library.scene(profile,build,"Maps & threads",0,83,86);assert.equal("Map (Tier 1)",maps[1].BaseType);assert.equal(58,maps[1].DropLevel)
+		assert.equal("Show",parser.simulate(rules,maps[1]).action);assert.equal(1,maps[1].Width);assert.equal(1,maps[1].Height)
 		local flasks=library.scene(profile,build,"Flasks & tinctures",0,83,86);assert.equal(36,flasks[1].DropLevel);assert.equal(2,flasks[1].Height)
 		local gear=library.scene(profile,build,"Tiered gear",0,83,86);assert.equal(2,gear[1].Width);assert.equal(2,gear[1].Height)
 		local saved;require("Classes.LootFilterControl").EditSample(byName["Vaal Regalia"],function(item) saved=item end);local editor=main.popups[1].controls
@@ -309,7 +311,7 @@ describe("Visual filter catalogue",function()
 		assert.equal(#expected,first.total);assert.equal(2,first.nextOffset)
 		assert.same(expected[1],first.results[1].sample);assert.same(expected[2],first.results[2].sample)
 		local maps=copyTable(profile);maps.rules={{id="map",title="Map tier",text='Show\n Class == "Maps"\n MapTier >= 1'}}
-		assert.equal("unknown",filters.simulateScene(maps,"Maps & threads",0,76,81,0,1).results[1].result.status)
+		assert.equal("Show",filters.simulateScene(maps,"Maps & threads",0,76,81,0,1).results[1].result.action)
 		local last=filters.simulateScene(profile,"Preset highlights",3,76,81,first.nextOffset,50)
 		assert.equal(expected[3].BaseType,last.results[1].sample.BaseType);assert.is_nil(last.nextOffset);assert.same(before,profile)
 		local invalid=copyTable(profile);invalid.rules={{id="bad",title="Unsupported",text="Show\n AlwaysShow False"}}
