@@ -117,6 +117,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		local lines={};for _,row in ipairs(c.affixes.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
 		assert(table.concat(lines," "):find("Base Delirium rewards: 2 | Currency",1,true),"Delirium reward count was not displayed")
 		frame("map-delirium-imported");ui:click("delirium");assert(main.popups[1].controls.current.buf=="35");frame("map-delirium-projection");ui:text("nextType","Maps");ui:click("close");ui:choose("tier",16,"val")
+		ui.clipboard="Item Class: Maps\nRarity: Rare\nBlighted Example\nBlighted Map (Tier 16)\n--------\nItem Level: 83\n--------\nArea is infested with Fungal Growths (implicit)\n--------\nUnique Bosses are Possessed\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
+		ui:click("pasteMap");ui:click("keep");frame("map-blighted-imported")
 		ui.clipboard="Item Class: Maps\nRarity: Rare\nBlighted Example\nBlight-ravaged Map (Tier 16)\n--------\nItem Level: 83\n--------\nArea is infested with Fungal Growths (implicit)\nCan be Anointed up to 9 times (implicit)\n--------\nUnique Bosses are Possessed\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
 		ui:click("pasteMap");ui:click("keep");frame("map-ravaged-imported");ui:choose("tier",5,"val");ui:choose("tier",16,"val");ui.clipboard=ordinaryCopy
 	end
