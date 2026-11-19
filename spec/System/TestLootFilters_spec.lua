@@ -30,6 +30,13 @@ describe("Build-owned loot filters",function()
 		local parsed=parser.parse("Show\n DisableDropSound True")
 		assert.equal(0,#parsed.diagnostics);assert.equal("matched",parser.simulate(parsed,{}).status)
 	end)
+	it("parses every bundled filter preset without errors",function()
+		for index=0,6 do
+			local path="Data/LootFilters/"..index..".filter";local file=assert(io.open(path,"rb"));local raw=file:read("*a");file:close()
+			local parsed=parser.parse(raw);assert.is_true(#parsed.rules>0,path)
+			for _,diagnostic in ipairs(parsed.diagnostics) do assert.is_nil(diagnostic.error,path..":"..diagnostic.line.." "..tostring(diagnostic.error)) end
+		end
+	end)
 	it("rejects malformed imports even when other imports are unresolved",function()
 		for _,line in ipairs({"Import",'Import ""','Import "file.filter" Invalid','Import "file.filter" Optional extra'}) do
 			local parsed=parser.parse('Import "valid.filter" Optional\n'..line..'\nShow')
