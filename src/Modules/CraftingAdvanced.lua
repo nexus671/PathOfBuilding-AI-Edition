@@ -251,8 +251,12 @@ function A.extend(M,api)
 		local model=originalModel(raw)
 		-- All Gilded outcomes have the same visible line; copied item text
 		-- proves the implicit exists but does not reveal its vendor outcome.
-		for _,line in ipairs(model.item.implicitModLines) do
-			if StripEscapes(line.line)=="Item sells for much more to vendors" then model.importedVendorImplicit=true;model.initial.vendorImplicit="unknown";break end
+		for i=#model.item.implicitModLines,1,-1 do
+			local line=model.item.implicitModLines[i]
+			if StripEscapes(line.line)=="Item sells for much more to vendors" then
+				assert(not model.importedVendorImplicit,"Duplicate Gilded Fossil implicit")
+				model.importedVendorImplicit=true;model.initial.vendorImplicit="unknown";table.remove(model.item.implicitModLines,i)
+			end
 		end
 		if not model.item.corrupted and not model.item.synthesised and #model.item.implicitModLines == 0 and type(model.item.base.implicit) == "string" then
 			for line in model.item.base.implicit:gmatch("[^\n]+") do local i=#model.item.implicitModLines+1;model.item.implicitModLines[i]={line=line,range=0.5,modTags=copyTable(model.item.base.implicitModTypes and model.item.base.implicitModTypes[i] or {})} end
@@ -870,6 +874,12 @@ function A.extend(M,api)
 		return result,#result==0 and "No legal modifier is available for this craft." or nil
 	end
 	function M.decorateItem(model,state,item)
+		-- Imported Gilded lines are tracked separately from the base implicit.
+		-- Remove the copied line before applying indexed base rolls; the outer
+		-- decorator restores it when it remains present in the state.
+		if model.importedVendorImplicit then for i=#item.implicitModLines,1,-1 do
+			if StripEscapes(item.implicitModLines[i].line)=="Item sells for much more to vendors" then table.remove(item.implicitModLines,i) end
+		end end
 		if #item.implicitModLines == 0 and not item.corrupted and not item.synthesised and type(item.base.implicit) == "string" then
 			for line in item.base.implicit:gmatch("[^\n]+") do local i=#item.implicitModLines+1;item.implicitModLines[i]={line=line,range=0.5,modTags=copyTable(item.base.implicitModTypes and item.base.implicitModTypes[i] or {})} end
 		end

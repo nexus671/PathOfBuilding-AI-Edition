@@ -11,6 +11,11 @@ describe("Imported corruption identities",function()
 	end
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("keeps a Gilded line separate from imported synthesised modifier groups",function()
+		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 3\n+10 to Strength\n+20 to Dexterity\nItem sells for much more to vendors\nSynthesised Item"
+		local model=sim.model(text);assert.equal("unknown",model.initial.vendorImplicit);assert.equal(2,#model.synthesisGroups)
+		local output=sim.itemText(model,model.initial);assert.is_truthy(output:find("Item sells for much more to vendors",1,true));assert.is_truthy(output:find("+10 to Strength",1,true));assert.is_truthy(output:find("+20 to Dexterity",1,true))
+	end)
 	it("preserves exact synthesised range identity through corruption",function()
 		local text="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n{range:0}(8-10)% increased maximum Life\n+20 to Dexterity\nSynthesised Item"
 		local model=sim.model(text);local candidates=model.synthesisGroups[1].candidates
