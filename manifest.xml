@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview673" />
+	<Version number="2.68.1-ai.preview674" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1683,7 +1683,7 @@
 	<File name="Classes/CraftingModifierControl.lua" part="program" sha1="5c4efe0378e26aa6412c960c7c18024a17b8f087" />
 	<File name="Classes/CraftingPricesControl.lua" part="program" sha1="0e4d45d1f630b424617a8f5f8a97773383ed8f00" />
 	<File name="Classes/CraftingProjectControl.lua" part="program" sha1="24968e3a63d0697af661d78b28b1cd452b0bcc9b" />
-	<File name="Classes/CraftingUniqueQualityControl.lua" part="program" sha1="8b8ea3ee3d94d82af5766af7f4c6797555be994b" />
+	<File name="Classes/CraftingUniqueQualityControl.lua" part="program" sha1="877960d1b8b01682839331c4d5d21bec1da4dd38" />
 	<File name="Classes/CraftingProjectWizard.lua" part="program" sha1="21682c9be36cd1fbfcd34a898c4afd98485ecf59" />
 	<File name="Classes/CraftingRecipeControl.lua" part="program" sha1="9857161ccb2f957925990bc99b167068384de6d8" />
 	<File name="Classes/CraftingRecipeGraphControl.lua" part="program" sha1="a3f12c0823b83e552a19e597750352622b070aa2" />
@@ -1708,7 +1708,7 @@
 	<File name="Classes/ItemSetListControl.lua" part="program" sha1="5ff494b708b1b633f0cf4157e30ad295c1044ed4" />
 	<File name="Classes/ItemSlotControl.lua" part="program" sha1="994edcab55ba363f6c82c497f7d5353927172020" />
 	<File name="Classes/ItemsTab.lua" part="program" sha1="9db468f9228b95ca951acc4999f240a02fc5866d" />
-	<File name="Classes/JourneyItemControl.lua" part="program" sha1="4612345621cf071f2ba7c74bd573b8fc8426dfe1" />
+	<File name="Classes/JourneyItemControl.lua" part="program" sha1="8720a190110b5593ed6a6329dc55776e9929e72b" />
 	<File name="Classes/JourneyPrerequisiteControl.lua" part="program" sha1="63db94f78c0055427ae4e35b6f2e76aba6c89476" />
 	<File name="Classes/JourneyViews.lua" part="program" sha1="b89da0fb5e79ca13c8b4c8111f46b4fbe348c6a8" />
 	<File name="Classes/LabelControl.lua" part="program" sha1="7a8f38d225087ba6941537444b0ea0ec0ac150cd" />

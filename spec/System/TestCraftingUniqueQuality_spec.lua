@@ -7,6 +7,7 @@ describe("Unique item quality",function()
 		local project={id="unique-preview-recipe",title="Recipe",slot="Weapon 2",startingItem=shield,goals={},steps={}}
 		local store=build.savers.CraftingProjects;store:Upsert(project)
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		assert.equal(152,select(2,control.item:GetSize()));assert.is_truthy(control.apply.planningIcon);assert.is_truthy(control.omen.planningIcon);assert.is_truthy(control.white.planningIcon)
 		assert.is_false(control.recipe:IsEnabled());control.apply:Click();control.apply:Click();control.omen:Click();control.white:Click()
 		assert.is_true(control.recipe:IsEnabled());control.recipe:Click()
 		local recipe=store.projects[1].nativeRecipe;assert.equal(3,#recipe.steps);assert.equal(2,recipe.steps[1].maxAttempts)

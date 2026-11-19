@@ -101,6 +101,7 @@ def main():
         before = json.loads((frames / f"{width}-crafting-unique-quality.json").read_text())
         unique_art = {c.get("asset") for c in before["commands"]}
         assert {"Assets/Crafting/Currency/f3bee36504af7453ea82.png", "Assets/Crafting/Currency/93c6d800e09f89a9a227.png", "Assets/Crafting/Currency/141b8801937fdb05c570.png"} <= unique_art, "Unique crafting actions are missing their currency art"
+        assert any("Quality: +0%" in c.get("text", "") for c in before["commands"]), "Unique item card does not show its quality"
         linked = json.loads((frames / f"{width}-crafting-unique-linked.json").read_text())
         recipe = json.loads((frames / f"{width}-crafting-unique-recipe-result.json").read_text())
         save_recipe = json.loads((frames / f"{width}-crafting-unique-save-recipe.json").read_text())
@@ -118,7 +119,7 @@ def main():
         def socket_links(frame):
             title = next(c for c in frame["commands"] if c.get("kind") == "text" and c.get("text") == "WORKING ITEM")
             return [c for c in frame["commands"] if c.get("kind") == "rect" and c.get("width") == 7 and c.get("height") == 3
-                    and c.get("y") == title["y"] + 76 and c.get("x", 0) > title["x"]]
+                    and c.get("y") == title["y"] + 124 and c.get("x", 0) > title["x"]]
         assert len(socket_links(before)) == 1 and len(socket_links(linked)) == 2, "Socket connectors did not reflect the link action"
         guide_review = json.loads((frames / f"{width}-crafting-unique-guide-review.json").read_text())
         guide_text = [c.get("text", "") for c in guide_review["commands"] if c.get("kind") == "text"]
