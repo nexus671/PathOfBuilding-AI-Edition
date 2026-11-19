@@ -2064,6 +2064,21 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("choose");assert(w.page=="crafting" and w.controls.status.label:find("1%%"),"Unique recovery did not restore its preview")
 		ui:click("undo");assert(w.controls.status.label:find("0%%"),"Recovered unique preview lost undo history")
 		recovery.clear(build,"uniqueQuality",project.id);assert(require("lfs").rmdir(temp));recovery.testDirectory=nil;recovery.cache={};recovery.session=oldSession
+		do
+			local start="Rarity: NORMAL\nZodiac Leather\nItem Level: 70";local derived="Rarity: NORMAL\nPlate Vest\nItem Level: 86"
+			local model=sim.model(start);local state=sim.validateState(model,{rarity="RARE",affixes={},baseItem=derived})
+			build.savers.CraftingProjects:Upsert({id="recombined-filter-ui",title="Recombined armour",slot="Body Armour",startingItem=start,goals={},steps={},nativeRecipe={steps={{method="chaos"}},targets={},requirements={minAffixes=0},initialState=state}})
+			ui:click("nav_filters");if build.planningWorkspace.controls.create1 then ui:click("create1") end;ui:click("viewOverview")
+			for _=1,2000 do if build.planningWorkspace.controls.generate and build.planningWorkspace.controls.generate:IsEnabled() then break end;ui:frame() end
+			assert(build.planningWorkspace.controls.generate:IsEnabled(),"Filter pickup refresh did not become available")
+			ui:click("generate");local found
+			for _=1,2000 do
+				ui:frame();local current=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1]
+				for _,rule in ipairs(current.rules) do if rule.id=="craft-working-recombined-filter-ui" then found=rule end end
+				if found then break end
+			end
+			assert(found and found.text:find('BaseType == "Plate Vest"',1,true) and found.text:find("ItemLevel >= 86",1,true),"Filter UI did not generate the recombined recipe base")
+		end
 	end
 	uniqueProjectScenario()
 	ui:restore()
