@@ -44,7 +44,10 @@ function M.parse(raw,area)
 	local tier
 	for line in pairs(markers) do
 		local value=line:match("^Unidentified %(Tier (%d+)%)$")
-		if value then tier=tonumber(value);break end
+		if value then
+			value=tonumber(value);assert(value and value<=1e9,"Invalid clipboard unidentified tier")
+			assert(tier==nil or tier==value,"Conflicting clipboard unidentified tier");tier=value
+		end
 	end
 	local mapped={normal="Normal",magic="Magic",rare="Rare",unique="Unique",relic="Unique",currency="Normal",gem="Normal",quest="Normal"}
 	local item={BaseType=base,Class=class,Rarity=assert(mapped[rarity:lower()],"Unsupported clipboard rarity"),AreaLevel=area,
@@ -103,7 +106,14 @@ function M.parse(raw,area)
 		item.MapTier=tierInName
 	end
 	if class and class:find("Gems",1,true) then
-		item.GemLevel=tonumber(raw:match("\nLevel:%s*(%d+)"))
+		for line in raw:gmatch("[^\n]+") do
+			local level=line:match("^Level:%s*(%d+)")
+			if level then
+				level=tonumber(level);assert(level and level<=1e9,"Invalid clipboard gem level")
+				assert(item.GemLevel==nil or item.GemLevel==level,"Conflicting clipboard gem level")
+				item.GemLevel=level
+			end
+		end
 		-- Only infer a transfigured base when the bundled gem data identifies
 		-- one unambiguous ordinary gem with a matching displayed-name prefix.
 		local id=item.BaseType and data.gemForBaseName[item.BaseType:lower()];local gem=id and data.gems[id]
@@ -119,7 +129,15 @@ function M.parse(raw,area)
 			elseif id==gem.gameId then item.TransfiguredGem=false end
 		end
 	end
-	local sockets=raw:match("\nSockets:[ \t]*([^\n]*)")
+	local sockets
+	for line in raw:gmatch("[^\n]+") do
+		local value=line:match("^Sockets:[ \t]*(.*)$")
+		if value~=nil then
+			value=value:gsub("%s+$",""):gsub("%s+"," ")
+			assert(sockets==nil or sockets==value,"Conflicting clipboard socket layouts")
+			sockets=value
+		end
+	end
 	if sockets~=nil or library.hasNoSockets(class) then
 		local groups,colours,linked={},{},0;sockets=sockets or ""
 		if sockets~="" and sockets~="0" then for group in sockets:gmatch("%S+") do

@@ -1844,6 +1844,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("sampleEdit");ui:text("BaseType","Iron Hat");ui:click("useSample");assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.KnownExplicitMods==nil,"Changing base retained copied modifier names")
 	ui.clipboard="Item Class: Stackable Currency\nRarity: Currency\nChaos Orb\n--------\nStack Size: 7/20";ui:click("pasteDrop");frame("filter-copied-item")
 	local currency=build.planningWorkspace.cache.filters.layout.snapshot().sample;assert(currency.DropLevel==12 and currency.Width==1 and currency.Height==1 and currency.BaseDefencePercentile==0,"Pasted currency base properties were not populated")
+	ui.clipboard="Item Class: Helmets\nRarity: Normal\nIron Hat\n--------\nSockets: R-G\nSockets: R G";ui:click("pasteDrop")
+	assert(main.popups[1].title=="Paste item" and main.popups[1].controls[1].label:find("Conflicting clipboard socket layouts",1,true),"Conflicting copied sockets were not explained")
+	assert(build.planningWorkspace.cache.filters.layout.snapshot().sample.BaseType=="Chaos Orb","Invalid pasted item replaced the previous sample");frame("filter-conflicting-clipboard");ui:click("close")
 	ui:click("sampleEdit");assert(main.popups[1].controls.DropLevel.buf=="12" and main.popups[1].controls.Width.buf=="1" and main.popups[1].controls.BaseDefencePercentile.buf=="0", "Pasted base properties were not editable");ui:text("MemoryStrands","0");assert(main.popups[1].controls.AlwaysShow==nil,"PoE 2-only sample field was offered");frame("filter-copied-base-properties")
 	ui:click("moreSample");ui:text("extra_BaseArmour","0");frame("filter-more-sample-properties");ui:click("keepExtra");ui:click("useSample")
 	local configured=build.planningWorkspace.cache.filters.layout.snapshot().sample
