@@ -261,6 +261,16 @@ describe("Encounter reporting and comparisons",function()
 		assert.is_true(speed("Item Class: Tinctures\n"..raw,"Tinctures applied to you have 20% increased effect") > final)
 	end)
 
+	it("retains copied tincture local-effect baseline when editing the item",function()
+		local claw=new("Item"):Item("Rarity: Normal\nImperial Claw");build.itemsTab:AddItem(claw);build.itemsTab.slots["Weapon 1"].selItemId=claw.id
+		build.skillsTab:PasteSocketGroup("Viper Strike 20/0  1");build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1])
+		local raw="Item Class: Tinctures\nRarity: MAGIC\nHorticultural Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 86\nQuality: 20\nImplicits: 0\n20% increased effect\n29% increased Attack Speed"
+		local function speed(text) local item=new("Item"):Item(text);build.itemsTab:AddItem(item);build.itemsTab.slots["Flask 1"].selItemId=item.id;build.itemsTab.slots["Flask 1"].active=true;build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg);return build.calcsTab.calcsOutput.Speed end
+		local original=new("Item"):Item(raw);assert.equal(20,original.tinctureImportedEffect);local saved=original:BuildRaw();assert.matches("Tincture Imported Effect: 20",saved,1,true)
+		local changed=(saved:gsub("20%% increased effect","40%% increased effect"));local restored=new("Item"):Item(changed)
+		assert.equal(20,restored.tinctureImportedEffect);assert.equal(40,restored.tinctureData.effectInc);assert.is_true(speed(changed)>speed(raw))
+		local negative=new("Item"):Item((raw:gsub("20%% increased effect","20%% reduced effect")));assert.equal(-20,negative.tinctureImportedEffect);assert.equal(-20,new("Item"):Item(negative:BuildRaw()).tinctureImportedEffect)
+	end)
 	it("applies quality changes to copied unique tincture effects",function()
 		local claw=new("Item"):Item("Rarity: Normal\nImperial Claw");build.itemsTab:AddItem(claw);build.itemsTab.slots["Weapon 1"].selItemId=claw.id
 		build.skillsTab:PasteSocketGroup("Viper Strike 20/0  1");build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1])

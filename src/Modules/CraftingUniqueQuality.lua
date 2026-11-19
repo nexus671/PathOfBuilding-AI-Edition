@@ -105,8 +105,12 @@ function M.apply(raw)
 		local newline=raw:find("\r\n",1,true) and "\r\n" or "\n"
 		output=output..(output:sub(-1)=="\n" and "" or newline).."Tincture Imported Quality: "..item.tinctureImportedQuality
 	end
+	if item.type=="Tincture" and item.tinctureValues=="Final" and item.tinctureImportedEffect~=nil and not ("\n"..raw):find("\nTincture Imported Effect:",1,true) then
+		local newline=raw:find("\r\n",1,true) and "\r\n" or "\n"
+		output=output..(output:sub(-1)=="\n" and "" or newline).."Tincture Imported Effect: "..item.tinctureImportedEffect
+	end
 	local checked,after=M.inspect(output)
-	if item.type=="Tincture" and item.tinctureValues=="Final" then assert(checked.tinctureValues=="Final" and checked.tinctureImportedQuality==item.tinctureImportedQuality,"Tincture quality baseline changed unexpectedly") end
+	if item.type=="Tincture" and item.tinctureValues=="Final" then assert(checked.tinctureValues=="Final" and checked.tinctureImportedQuality==item.tinctureImportedQuality and checked.tinctureImportedEffect==item.tinctureImportedEffect,"Tincture baseline changed unexpectedly") end
 	assert(after.quality==info.quality+1 and checked.title==item.title and checked.baseName==item.baseName,"Unique item did not round-trip after applying quality")
 	return {itemText=output,beforeQuality=info.quality,quality=after.quality,resource=info.resource,resourceKey=info.resourceKey}
 end

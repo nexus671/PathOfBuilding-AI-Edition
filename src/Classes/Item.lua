@@ -499,6 +499,7 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 	self.quality = nil
 	self.tinctureValues = nil
 	self.tinctureImportedQuality = nil
+	self.tinctureImportedEffect = nil
 	self.twiceCorrupted = nil
 	self.unidentifiedMarker = nil
 	self.rawLines = { }
@@ -757,6 +758,8 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 					self.tinctureValues = specVal == "Final" and "Final" or nil
 				elseif specName == "Tincture Imported Quality" then
 					self.tinctureImportedQuality = specToNumber(specVal)
+				elseif specName == "Tincture Imported Effect" then
+					self.tinctureImportedEffect = specToNumber(specVal)
 				elseif specName == "Item Level" then
 					self.itemLevel = specToNumber(specVal)
 				elseif specName == "Memory Strands" then
@@ -1718,6 +1721,9 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 		self.canHaveFourEnchants = true
 	end
 	self:BuildModList()
+	if self.type == "Tincture" and self.tinctureValues == "Final" and self.tinctureImportedEffect == nil then
+		self.tinctureImportedEffect = self.tinctureData.effectInc or 0
+	end
 	if deferJewelRadiusIndexAssignment then
 		self.jewelRadiusIndex = self.jewelData.radiusIndex
 	end
@@ -1881,6 +1887,7 @@ function ItemClass:BuildRaw()
 	if self.type == "Tincture" and self.tinctureValues == "Final" then
 		t_insert(rawLines, "Tincture Values: Final")
 		t_insert(rawLines, "Tincture Imported Quality: "..tostring(self.tinctureImportedQuality or self.quality or 0))
+		t_insert(rawLines, "Tincture Imported Effect: "..tostring(self.tinctureImportedEffect or self.tinctureData and self.tinctureData.effectInc or 0))
 	end
 	if self.league then
 		t_insert(rawLines, "League: " .. self.league)

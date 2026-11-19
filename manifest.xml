@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview710" />
+	<Version number="2.68.1-ai.preview711" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1723,7 +1723,7 @@
 	<File name="Classes/GemSelectControl.lua" part="program" sha1="8954e020052121d13122873b578b87e0bb7c60fc" />
 	<File name="Classes/GemTooltip.lua" part="program" sha1="aa0ce7d2eb619fc6b6e55aec9767320bee187343" />
 	<File name="Classes/ImportTab.lua" part="program" sha1="6b81f9ee1e6858b353c8f8a35ac84f937e85a1f3" />
-	<File name="Classes/Item.lua" part="program" sha1="a3d0a685542ff13e4f9e971416e872ff8a4907fb" />
+	<File name="Classes/Item.lua" part="program" sha1="496b9fd33c2c024b7412e8631831967f88e04829" />
 	<File name="Classes/ItemDBControl.lua" part="program" sha1="4fa25eded7334e82a79437fe6c881933c920d6b8" />
 	<File name="Classes/ItemListControl.lua" part="program" sha1="01546a91c647cb978ffb757cbe75a7afaa2d0cba" />
 	<File name="Classes/ItemSetListControl.lua" part="program" sha1="5ff494b708b1b633f0cf4157e30ad295c1044ed4" />
@@ -2096,7 +2096,7 @@
 	<File name="Modules/CalcFormat.lua" part="program" sha1="f51fa1f166b830c6bc30b83e9de3b312097132e6" />
 	<File name="Modules/CalcMirages.lua" part="program" sha1="779ea9b6d2905c5a08fb6fc781ce4631e8247a70" />
 	<File name="Modules/CalcOffence.lua" part="program" sha1="446c5dfa03a2d0d048e0eb1ebc6d8e33d4a4ba10" />
-	<File name="Modules/CalcPerform.lua" part="program" sha1="427a7fb8867b183dd1f867bbca573ab46815e427" />
+	<File name="Modules/CalcPerform.lua" part="program" sha1="e4cfc0a2aec1ac350b1bd1c80facf1c8672ba86e" />
 	<File name="Modules/CalcSections.lua" part="program" sha1="166c5ae3dd50b3c96871f281a145789cf72d2c14" />
 	<File name="Modules/CalcSetup.lua" part="program" sha1="d42a549725b331f6ed9bfa47d441e2c4b8c581b9" />
 	<File name="Modules/CalcTime.lua" part="program" sha1="961767bb5c4d11391243b30a35ffc5820896c352" />
@@ -2145,7 +2145,7 @@
 	<File name="Modules/CraftingRecombination.lua" part="program" sha1="5c8ef0bf96e7bf5dd2d882152bbe537ff511df68" />
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />
 	<File name="Modules/CraftingSimulator.lua" part="program" sha1="1c8a297c3ba416e4ddf4732db0e6e4bd2569f745" />
-	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="5a60a9d52523b81803bdd83893cb625ea5f2f10c" />
+	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="87650b8fc7dbcb13ae29db8a3e6edba4f311d84b" />
 	<File name="Modules/CraftingUniqueSimulation.lua" part="program" sha1="7ea059f1ae19a2f148bf468d520d1f51a7a8596b" />
 	<File name="Modules/CraftingUnlockTasks.lua" part="program" sha1="b1ab9cc44e5f7411715f74fff720379d44c65d21" />
 	<File name="Modules/CraftingSockets.lua" part="program" sha1="315149ad5253dd8e6ddf1ebea782fb22b7990401" />
