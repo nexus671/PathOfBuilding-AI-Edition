@@ -71,6 +71,16 @@ function M.Open(plan,keep)
 	end
 	button("run",370,h-126,180,"Record map run",function() recordRun(assert(selected,"Select a map first")) end)
 	c.run.enabled=function() return selected~=nil end
+	button("threadCheck",562,h-126,150,"Check Threads",function()
+		local region=assert(findRegion(c.region:GetSelValue()),"No region is recorded")
+		for _,map in ipairs(region.maps) do if map.name==selected then
+			assert(map.freeThreads<=100,"The Thread checker supports up to 100; review the recorded count")
+			require("Classes.AtlasThreadControl").Open({mechanic=region.mechanic,threads=map.freeThreads});return
+		end end
+		error("Select a map first")
+	end)
+	c.threadCheck.enabled=function() return selected~=nil end
+	c.threadCheck.tooltipText="Start with this map's recorded free Threads; add spent or bonus Threads and check the area level."
 	button("overview",16,h-88,180,"All recorded maps",function()
 		local entries={};for _,map in ipairs(regions.overview(draft)) do
 			local details={"Recorded regions for "..map.name..":", "Unlisted regions are unknown; counts are observations, not guaranteed totals."}

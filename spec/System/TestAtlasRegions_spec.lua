@@ -32,6 +32,21 @@ describe("Manually tracked Shaped Regions",function()
 		confirm.close:Click();chooseMap();confirm=main.popups[1].controls;confirm.objective1.state=true;confirm.apply:Click();controls.keep:Click()
 		assert.same({{name="Strand Map",freeThreads=4}},kept[1].maps);assert.same({{name="Dunes Map",freeThreads=1}},kept[2].maps)
 	end)
+	it("opens the Thread checker with the selected region's observed count",function()
+		newBuild();main.popups={};local controls=require("Classes.AtlasRegionsControl").Open({shapedRegions=fixture()},function() end)
+		controls.region:SelByValue("Blight");controls.region.selFunc();controls.list.onClick({line=controls.list.list[2]})
+		assert.is_true(controls.threadCheck:IsEnabled());controls.threadCheck:Click()
+		local checker=main.popups[1].controls;assert.equal("3",checker.threads.buf);assert.equal("83",checker.level.buf)
+		local result={};for _,row in ipairs(checker.results.list) do result[#result+1]=StripEscapes(row[1] or "") end
+		local text=table.concat(result," ");assert.matches("Blight: %+40%%",text);assert.not_matches("Abyss:",text)
+		checker.close:Click();assert.equal("Strand Map",controls.map.buf);assert.equal("3",controls.count.buf);main.popups={}
+	end)
+	it("explains when an observed count exceeds the Thread checker's range",function()
+		newBuild();main.popups={};local input=fixture();input[1].maps[1].freeThreads=101
+		local controls=require("Classes.AtlasRegionsControl").Open({shapedRegions=input},function() end)
+		controls.region:SelByValue("Blight");controls.region.selFunc();controls.list.onClick({line=controls.list.list[1]});controls.threadCheck:Click()
+		assert.matches("supports up to 100",controls.status.label);assert.equal("Shaped Regions",main.popups[1].title);main.popups={}
+	end)
 	it("validates observations without silently dropping duplicates or invalid counts",function()
 		local bad=fixture();bad[1].maps[2].name="beach MAP";assert.has_error(function() regions.validate(bad) end)
 		bad=fixture();bad[2].mechanic="Blight";assert.has_error(function() regions.validate(bad) end)

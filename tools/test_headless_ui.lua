@@ -67,6 +67,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(build.planningWorkspace.controls.version:GetSelValueByKey("label")=="3.30.0c","Current Atlas version was not displayed")
 	ui:click("tools");ui:text("search","Shaped Regions");ui:click("choose")
 	ui:text("map","Beach Map");ui:text("count","2");ui:click("upsert");frame("atlas-shaped-regions")
+	ui:click("threadCheck");assert(main.popups[1].controls.threads.buf=="2","Thread checker lost the recorded free count");ui:click("close")
 	ui:choose("region","Blight");ui:text("count","3");ui:click("upsert");ui:text("map","Strand Map");ui:text("count","5");ui:click("upsert")
 	ui:click("overview");ui:text("search","Beach Map");frame("atlas-shaped-map-overview")
 	do local lines={};for _,row in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;local detail=table.concat(lines," ");assert(detail:find("Abyss: 2",1,true) and detail:find("Blight: 3",1,true),"Overlapping region counts were not shown") end
