@@ -98,6 +98,31 @@ function M.white(raw)
 	return {itemText=output,components=components}
 end
 
+function M.catalog(raw,query,limit)
+	local item,info=M.inspect(raw)
+	query=(query or ""):lower();limit=limit or 50
+	local linkReason=M.linkReason(raw);local whiteReason=M.whiteReason(raw)
+	local qualityReason=item.corrupted and "Ordinary quality currency cannot modify a corrupted item" or not info.available and "Ordinary quality currency cannot exceed 20%" or nil
+	local whiteComponents={["Metadata/Items/Currency/CurrencyConvertToNormal"]=1}
+	if item.corrupted then whiteComponents["Metadata/Items/Currency/CurrencyCorrupt"]=1 end
+	local definitions={
+		{method="quality",label="Ordinary quality",reason=qualityReason,components={[info.resourceKey]=1}},
+		{method="beast_max_links",label="Bestiary: maximum links",reason=linkReason,components={beast_black_morrigan=1,beast_craicic_sand_spitter=1}},
+		{method="omen_connections",label="Omen of Connections + Orb of Fusing",reason=linkReason,components={["Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks"]=1,["Metadata/Items/Currency/CurrencyRerollSocketLinks"]=1}},
+		{method="socket_white_bench",label="Bench: white sockets",reason=whiteReason,components=whiteComponents},
+	}
+	local result={uniqueCrafting=true,methods={},uniqueActions={},socketCrafts={},quality={value=info.quality,available=info.available,resource=info.resource},limitations={"Only the listed unique actions are modeled. Continue by passing the returned item text, not an ordinary affix state."}}
+	for _,entry in ipairs(definitions) do
+		result.methods[#result.methods+1]=entry.method
+		if #result.uniqueActions<limit and (entry.method.." "..entry.label):lower():find(query,1,true) then
+			local action={method=entry.method,label=entry.label,action={method=entry.method},priceKey=entry.method,available=entry.reason==nil,unavailableReason=entry.reason,deterministic=true,components=entry.components}
+			result.uniqueActions[#result.uniqueActions+1]=action
+			if entry.method~="quality" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
+		end
+	end
+	return result
+end
+
 function M.link(raw,method)
 	method=method or "beast_max_links"
 	assert(method=="beast_max_links" or method=="omen_connections","Unsupported unique linking method")

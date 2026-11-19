@@ -674,7 +674,10 @@ function M.poll(build, force)
 			local ok,catalog=pcall(require("Modules.CraftingSimulator").catalog,raw,request.query,request.limit,request.initialState,build.spec.treeVersion)
 			if ok then
 				M.status.crafting.nativeEngine=catalog
-				if request.action then
+				if request.action and catalog.uniqueCrafting then
+					catalog.allflameUnavailable="Allflame craft analysis is not modeled for unique items."
+					if request.action.method=="beast_prefix_suffix" or request.action.method=="beast_suffix_prefix" then catalog.beastPoolUnavailable="This Bestiary modifier craft is not modeled for unique items." end
+				elseif request.action then
 					local simulator=require("Modules.CraftingSimulator");local model=simulator.model(raw)
 					local state=request.initialState and simulator.validateState(model,request.initialState) or model.initial
 					local action=copyTable(request.action)

@@ -87,6 +87,13 @@ async function main(){
   assert.equal(partialGroupResult.nativeCrafting.routeCounts[0].success,1);assert.equal(partialGroupResult.nativeCrafting.routeCounts[1].visits,1);
   const origin=createHash('sha1').update(raw).digest('hex');
   const uniqueShield='Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\n+100 to maximum Life';
+  const uniqueInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},limit:20},'inspected');
+  assert.equal(uniqueInspection.crafting.nativeEngine.uniqueCrafting,true);
+  assert.ok(uniqueInspection.crafting.nativeEngine.uniqueActions.some(entry=>entry.method==='omen_connections' && entry.available));
+  assert.match(uniqueInspection.crafting.nativeEngine.allflameUnavailable,/not modeled for unique/);
+  const corruptedUniqueInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueShield+'\nCorrupted',limit:20},'inspected');
+  const uniqueWhiteOption=corruptedUniqueInspection.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='socket_white_bench');
+  assert.equal(uniqueWhiteOption.available,true);assert.equal(uniqueWhiteOption.components['Metadata/Items/Currency/CurrencyCorrupt'],1);
   const uniqueQuality=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},seed:1},'crafted');
   assert.equal(uniqueQuality.nativeCrafting.uniqueQuality.quality,13);assert.equal(uniqueQuality.nativeCrafting.uniqueQuality.resource,"Armourer's Scrap");
   const uniqueQualityNext=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueQuality.nativeCrafting.itemText,action:{method:'quality'},seed:2},'crafted');

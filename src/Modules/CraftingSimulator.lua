@@ -1222,6 +1222,16 @@ end
 -- cannot represent unique modifiers. Continue by passing the returned text.
 do
 	local ordinaryPerform=M.perform
+	local ordinaryCatalog=M.catalog
+	function M.catalog(raw,query,limit,initialState,treeVersion)
+		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
+		if rarity and rarity:upper()=="UNIQUE" then
+			assert(initialState==nil,"Inspect unique crafts using the item text, not an ordinary crafting state")
+			local result=require("Modules.CraftingUniqueQuality").catalog(raw,query,limit);result.dataPatch=M.dataPatch
+			return M.withTreeContext(result,treeVersion)
+		end
+		return ordinaryCatalog(raw,query,limit,initialState,treeVersion)
+	end
 	function M.perform(raw,action,seed,initialState,treeVersion)
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
 		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="quality" or action.method=="beast_max_links" or action.method=="omen_connections" or action.method=="socket_white_bench") then
