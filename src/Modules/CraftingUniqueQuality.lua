@@ -123,6 +123,45 @@ function M.catalog(raw,query,limit)
 	return result
 end
 
+function M.matches(raw,requirements)
+	local item,info=M.inspect(raw);requirements=requirements or {}
+	local supported={uniqueName=true,minQuality=true,corrupted=true,twiceCorrupted=true,sockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true}
+	for key in pairs(requirements) do assert(supported[key],"This unique item property is not supported: "..tostring(key)) end
+	if requirements.uniqueName and item.title~=requirements.uniqueName then return false end
+	if requirements.minQuality and info.quality<requirements.minQuality then return false end
+	if requirements.corrupted~=nil and (not not item.corrupted)~=requirements.corrupted then return false end
+	if requirements.twiceCorrupted~=nil and (not not item.twiceCorrupted)~=requirements.twiceCorrupted then return false end
+	local socketGoal=requirements.sockets~=nil or requirements.links~=nil or requirements.socketColours~=nil or requirements.minAbyssSockets~=nil
+	if socketGoal then
+		local line,count=raw:match("\nSockets: ([^\r\n]*)"),0
+		for _ in ("\n"..raw):gmatch("\nSockets:") do count=count+1 end
+		assert(count==1 and line and line:match("^[RGBWA][RGBWA%-%s]*$"),"An explicit socket layout is required for unique socket goals")
+	end
+	local sockets=item.sockets or {}
+	if requirements.sockets and #sockets<requirements.sockets then return false end
+	local groups,previous={},nil;local abyss=0
+	for _,socket in ipairs(sockets) do
+		if socket.color=="A" then abyss=abyss+1;previous=nil
+		else
+			if previous~=socket.group then groups[#groups+1]={};previous=socket.group end
+			groups[#groups][#groups[#groups]+1]=socket
+		end
+	end
+	if requirements.minAbyssSockets and abyss<requirements.minAbyssSockets then return false end
+	if requirements.links then local best=0;for _,group in ipairs(groups) do best=math.max(best,#group) end;if best<requirements.links then return false end end
+	if requirements.socketColours then
+		local needed={};for color in requirements.socketColours:gmatch(".") do needed[color]=(needed[color] or 0)+1 end
+		local candidates=requirements.linkedColours and groups or {sockets};local found=false
+		for _,group in ipairs(candidates) do
+			local colors={};for _,socket in ipairs(group) do colors[socket.color]=(colors[socket.color] or 0)+1 end
+			local enough=true;for color,count in pairs(needed) do if (colors[color] or 0)<count then enough=false end end
+			if enough then found=true;break end
+		end
+		if not found then return false end
+	end
+	return true
+end
+
 function M.link(raw,method)
 	method=method or "beast_max_links"
 	assert(method=="beast_max_links" or method=="omen_connections","Unsupported unique linking method")

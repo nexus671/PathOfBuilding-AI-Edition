@@ -1223,6 +1223,7 @@ end
 do
 	local ordinaryPerform=M.perform
 	local ordinaryCatalog=M.catalog
+	local ordinaryCalculate=M.calculate
 	function M.catalog(raw,query,limit,initialState,treeVersion)
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
 		if rarity and rarity:upper()=="UNIQUE" then
@@ -1231,6 +1232,20 @@ do
 			return M.withTreeContext(result,treeVersion)
 		end
 		return ordinaryCatalog(raw,query,limit,initialState,treeVersion)
+	end
+	function M.calculate(raw,action,targets,initialState,options)
+		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
+		if rarity and rarity:upper()=="UNIQUE" then
+			options=options or {};assert(initialState==nil,"Calculate unique crafts using the item text, not an ordinary crafting state")
+			assert(type(targets)=="table" and #targets==0,"Modifier-identity targets are not yet supported for unique items")
+			M.validateRecipe({steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
+			local result=M.perform(raw,action,options.seed,nil,options.treeVersion)
+			local hit=require("Modules.CraftingUniqueQuality").matches(result.itemText,options.requirements)
+			return M.withTreeContext({uniqueCrafting=true,exactFor="One deterministic supported unique craft",sampled=false,successChance=hit and 100 or 0,
+				totalWeight=1,matchingWeight=hit and 1 or 0,sampleItem=result.itemText,components=result.components,
+				outcomes={{chance=100,weight=1,matches=hit,itemText=result.itemText}},warnings=result.warnings,limitations=result.limitations},options.treeVersion)
+		end
+		return ordinaryCalculate(raw,action,targets,initialState,options)
 	end
 	function M.perform(raw,action,seed,initialState,treeVersion)
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
