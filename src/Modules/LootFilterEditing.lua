@@ -100,13 +100,23 @@ function M.assignmentIssue(profile,id,name,sourceText)
 		for _,condition in ipairs(parser.parse(text).rules[1].conditions) do if condition.keyword=="Class" and condition.operator=="==" then return condition.values end end
 	end
 	if not sourceText then for _,tier in ipairs(profile.tiers or {}) do for _,item in ipairs(tier.items) do if item==name then sourceText=tier.text;break end end;if sourceText then break end end end
+	-- Check the actual known item class against every destination class predicate.
+	-- A shared class in two multi-class tiers does not prove this item matches.
+	local knownClass=require("Modules.LootFilterLibrary").baseClass(name)
+	if knownClass then
+		for _,condition in ipairs(parser.parse(destination.text).rules[1].conditions) do
+			if condition.keyword=="Class" and parser.condition(condition,{Class=knownClass})==false then
+				return "This item's class ("..knownClass..") does not match the destination tier. Edit its class conditions or choose another tier."
+			end
+		end
+	end
 	local from,to=classes(sourceText),classes(destination.text)
 	if from and to then local overlap=false;for _,a in ipairs(from) do for _,b in ipairs(to) do if a==b then overlap=true end end end
 		if not overlap then return "These tiers require different item classes. Edit the destination conditions or use a compatible tier." end
 	end
 end
 function M.assign(profile,id,name,sourceText)
-	label(name,240);assert(not M.assignmentIssue(profile,id,name,sourceText),M.assignmentIssue(profile,id,name,sourceText))
+	label(name,240);local issue=M.assignmentIssue(profile,id,name,sourceText);assert(not issue,issue)
 	local next=copyTable(profile);local destination;for _,tier in ipairs(next.tiers or {}) do if tier.id==id then destination=tier end end
 	for _,tier in ipairs(next.tiers) do for i=#tier.items,1,-1 do if tier.items[i]==name then table.remove(tier.items,i) end end end
 	destination.items[#destination.items+1]=name

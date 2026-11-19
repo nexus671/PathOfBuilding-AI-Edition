@@ -46,6 +46,21 @@ describe("Local filter editing",function()
 		assert.is_truthy(editing.assignmentIssue(p,"equipment","Chaos Orb"));assert.has_error(function() editing.assign(p,"equipment","Chaos Orb") end);assert.same({"Chaos Orb"},p.tiers[1].items)
 		assert.is_nil(editing.assignmentIssue(p,"currency","Chaos Orb"));assert.equal(1,#editing.assign(p,"currency","Chaos Orb").tiers[1].items)
 	end)
+	it("checks a moved item's known class against all destination class conditions",function()
+		local p=profile();p.tiers={
+			editing.newTier("source","Source",'Show\n Class == "Stackable Currency" "Helmets"\n BaseType == "Chaos Orb"'),
+			editing.newTier("target","Target",'Show\n Class == "Helmets" "Body Armours"\n BaseType == "Iron Hat"'),
+			editing.newTier("excluded","Excluded",'Show\n Class != "Currency"\n BaseType == "Iron Hat"'),
+			editing.newTier("compatible","Compatible",'Show\n Class "Currency"\n BaseType == "Divine Orb"')}
+		p.tiers[1].items={"Chaos Orb"}
+		assert.matches("Stackable Currency",editing.assignmentIssue(p,"target","Chaos Orb"))
+		assert.is_truthy(editing.assignmentIssue(p,"excluded","Chaos Orb"))
+		assert.has_error(function() editing.assign(p,"target","Chaos Orb") end)
+		assert.same({"Chaos Orb"},p.tiers[1].items)
+		assert.is_nil(editing.assignmentIssue(p,"compatible","Chaos Orb"))
+		assert.is_nil(editing.assignmentIssue(p,"target","Unknown custom item",'Show\n BaseType == "Unknown custom item"'))
+		assert.same({"Chaos Orb"},editing.assign(p,"compatible","Chaos Orb").tiers[4].items)
+	end)
 	it("decorates declared styles without adding inherited styles or changing conditions",function()
 		local raw='Show\n BaseType == "Iron Hat"\n SetTextColor 100 120 140\n CustomAlertSoundOptional "folder/my tone.wav"\n MinimapIcon 1 Cyan Diamond\n PlayEffect Green Temp\n Continue\nShow\n Rarity Rare'
 		local transformed=require("Modules.LootFilterDecorators").apply(raw,{textColor={255,210,120,200},alertId=6,alertVolume=0,effectColor="Purple",disableIcons=true})
