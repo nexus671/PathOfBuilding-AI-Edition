@@ -25,6 +25,16 @@ function M.dropOutcome(result)
 	local action=result and result.action
 	return (action=="Show" or action=="Hide" or action=="Minimal") and action or "Unknown"
 end
+function M.vendorLabel(sample)
+	local linked,sockets,quality=tonumber(sample.LinkedSockets),tonumber(sample.Sockets),tonumber(sample.Quality)
+	if linked and linked>=6 then return "6 linked" end
+	if sockets and sockets>=6 then return "6 sockets" end
+	if type(sample.SocketGroup)=="string" then for group in sample.SocketGroup:gmatch("%S+") do
+		if group:find("R",1,true) and group:find("G",1,true) and group:find("B",1,true) then return "3 linked colours" end
+	end end
+	if (sample.Class=="Skill Gems" or sample.Class=="Support Gems") and quality and quality>0 then return "Quality gem" end
+	if sample.Rarity=="Rare" and sample.Identified==false then return "Rare piece" end
+end
 local function itemTier(sample)
 	if sample.Identified==false and (sample.Rarity=="Magic" or sample.Rarity=="Rare") then return sample.UnidentifiedItemTier end
 end
@@ -232,6 +242,7 @@ function M.Open(build,source,layout,controller)
 				local cx,cy=px+cell.x-x,py+cell.y-y;visual.chip(cx,cy,cell.w,cell.h,cell.item,cell.result,selectedKey==cell.key)
 				if sceneKind=="Tiered gear" and cell.item.Identified==false and cell.item.UnidentifiedItemTier~=nil then visual.text(cx+5,cy+2,12,cell.item.UnidentifiedItemTier==0 and "No tier" or "Tier "..cell.item.UnidentifiedItemTier,"^xEED49C",cell.w-10) end
 				if sceneKind=="Map tiers" then visual.text(cx+5,cy+2,12,"Tier "..cell.item.MapTier,"^xEED49C",cell.w-10) end
+				if sceneKind=="Vendor recipes" then local note=M.vendorLabel(cell.item);if note then visual.text(cx+5,cy+2,12,note,"^xEED49C",cell.w-10) end end
 			end
 			if #cells==0 then visual.text(px+14,py+height/2,14,"No visible examples. Show hidden drops or choose another scene.","^xAABBBE",width-28) end
 			visual.text(px+14,py+height-26,12,(caption or "EXAMPLE DROPS").."  /  "..visible.." displayed  /  click an item to inspect",caption=="FILTER INVALID - SEE DETAILS" and "^xFFC477" or "^xAABBBE",page=="Simulate" and width-224 or width-28)

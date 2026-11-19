@@ -91,6 +91,9 @@ def main():
         audit = json.loads((frames / f"{width}-filter-error-audit.json").read_text())
         audit_text = " ".join(c.get("text", "") for c in audit["commands"] if c.get("kind") == "text")
         assert "AlwaysShow" in audit_text and ("PoE 2" in audit_text or "Path of Exile 2" in audit_text), "Filter audit does not show the selected error"
+        vendor = json.loads((frames / f"{width}-filter-vendor-examples.json").read_text())
+        vendor_text = " ".join(c.get("text", "") for c in vendor["commands"] if c.get("kind") == "text")
+        assert all(label in vendor_text for label in ("6 sockets", "6 linked", "Quality gem", "Rare piece")), "Vendor examples lack their identifying labels"
         atlas_totals = json.loads((frames / f"{width}-atlas-added-modifiers.json").read_text())
         assert any("increased effect of Explicit" in c.get("text", "") for c in atlas_totals["commands"]), "Atlas modifier summary is missing"
         atlas_comparison = json.loads((frames / f"{width}-atlas-modifier-comparison.json").read_text())

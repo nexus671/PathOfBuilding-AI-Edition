@@ -12,6 +12,9 @@ describe("Visual filter catalogue",function()
 		assert.equal("Hide",matches("Quality >= 1",scene[4]));assert.equal("Hide",matches("Rarity Rare\n Identified False\n ItemLevel >= 60",scene[5]))
 		local rotated=library.scene(profile,build,"Vendor recipes",1,65,72);assert.equal(scene[2].BaseType,rotated[1].BaseType)
 		local page=filters.simulateScene(profile,"Vendor recipes",0,65,72,0,10);assert.equal(10,page.total);assert.equal("Iron Hat",page.results[1].sample.BaseType)
+		local label=require("Classes.LootFilterWorkspace").vendorLabel
+		for i,value in ipairs({"3 linked colours","6 sockets","6 linked","Quality gem","Rare piece"}) do assert.equal(value,label(scene[i])) end
+		assert.is_nil(label({SocketGroup="R G B"}))
 	end)
 	it("shows the identifying properties of a vendor-recipe sample",function()
 		local profile=filters.profile("vendor-ui","Vendor UI");local scene=library.scene(profile,build,"Vendor recipes",0,65,72)
