@@ -394,6 +394,13 @@ describe("Linked planning tools",function()
 		assert.is_false(warning({{method="socket_bench",count=4},{method="socket_bench",count=4,linked=true}}))
 		assert.is_false(warning({{method="quality",onSuccess=3,onFailureAction="stop"},{method="socket_bench",count=4,linked=true},{method="socket_bench",count=4,onSuccess=2}}))
 	end)
+	it("warns when a unique recipe cannot change a fixed socket count",function()
+		local project={id="fixed-unique",title="Fixed sockets",slot="Body Armour",startingItem="Rarity: UNIQUE\nTabula Rasa\nSimple Robe\nItem Level: 86\nSockets: W-W-W-W-W-W",goals={},steps={},nativeRecipe={steps={{method="socket_bench",count=4},{method="socket_bench",count=4,linked=true}},targets={},requirements={links=4}}}
+		build.savers.CraftingProjects:Upsert(project);local rules,warnings=filters.generate(build,filters.profile("fixed-sockets","Fixed sockets"));local found=false
+		for _,warning in ipairs(warnings) do if warning.origin=="craft:fixed-unique" and warning.message:find("fixes its socket count",1,true) then found=true end end;assert.is_true(found)
+		local names={};for _,rule in ipairs(rules) do if rule.origin=="craft:fixed-unique" then names[rule.title]=true end end
+		assert.is_true(names["Jeweller's Orb"]);assert.is_true(names["Orb of Fusing"])
+	end)
 	it("warns and preserves recipe pickups when a unique action has an unsupported option",function()
 		local project={id="unique-unsupported-filter",title="Unique recipe",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={},nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={socketColours="WWW"}}}
 		build.savers.CraftingProjects:Upsert(project)
