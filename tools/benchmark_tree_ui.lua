@@ -5,6 +5,8 @@ assert(cycles >= 1 and cycles <= 20 and cycles == math.floor(cycles))
 local forcedRecovery = arg[3] == "deferred-recovery"
 local desktopRecovery = forcedRecovery or arg[3] == "desktop-recovery"
 assert(not arg[3] or desktopRecovery, "Third argument must be deferred-recovery or desktop-recovery")
+local profileSkills = arg[4] == "skill-profile"
+assert(not arg[4] or profileSkills, "Fourth argument must be skill-profile")
 arg = {}
 dofile("HeadlessWrapper.lua")
 main.disableDevAutoSave = true
@@ -83,6 +85,16 @@ local function finishRecovery()
 	end
 	return { frames=count, totalFrameMs=total, worstFrameMs=worst, workerSlices=recoverySlices }
 end
+local skillProfile
+if profileSkills then
+	skillProfile={count=0,totalMs=0,worstMs=0}
+	local calcs=build.calcsTab.calcs;local previous=calcs.buildActiveSkill
+	calcs.buildActiveSkill=function(...)
+		local start=os.clock();local result=previous(...);local elapsed=(os.clock()-start)*1000
+		skillProfile.count=skillProfile.count+1;skillProfile.totalMs=skillProfile.totalMs+elapsed;skillProfile.worstMs=math.max(skillProfile.worstMs,elapsed)
+		return result
+	end
+end
 local performance=require("Modules.PlanningPerformance")
 performance.clear(build)
 for _ = 1, cycles do
@@ -112,6 +124,6 @@ for _ = 1, cycles do
 		releaseMs=(clicked-pressed)*1000, updateFrameMs=(updated-clicked)*1000, recovery=recovery }
 end
 assert(bridge.revision(build) == revision, "The benchmark did not restore the build revision")
-print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,components=performance.rows(build),restored=true,
+print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,components=performance.rows(build),skillProfile=skillProfile,restored=true,
 	recoveryMode=forcedRecovery and "deferred" or desktopRecovery and "desktop with saved settings" or "build configuration",
 	limitations="Headless CPU timings include draw-command capture, not desktop rendering or frame rate."}))
