@@ -50,6 +50,11 @@ async function main(){
   await host('request-test');await call('get_build_connection');await host('tick',1);
   const proof=await host('connection-proof');assert.equal(proof.client,'planning-workflow-test');assert.equal(proof.tested,true);assert.equal(proof.synced,true);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
+  const gildedSynthRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 4\n+10 to Strength\n+20 to Dexterity\n+12 to Intelligence\nItem sells for much more to vendors\nSynthesised Item';
+  const gildedSynth=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedSynthRaw,action:{method:'vaal'},seed:1},'crafted');
+  assert.equal(gildedSynth.nativeCrafting.state.gildedCorruptionReplaced,true);assert.equal(gildedSynth.nativeCrafting.state.synthRetained.length,3);
+  const gildedSynthReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:gildedSynthRaw,initialState:gildedSynth.nativeCrafting.state,limit:5},'inspected');
+  assert.equal(gildedSynthReview.crafting.nativeEngine.initialState.gildedCorruptionReplaced,true);assert.equal(gildedSynthReview.crafting.nativeEngine.initialState.synthRetained.length,3);
   const partialGroupStart=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,action:{method:'alchemy'},seed:12},'crafted');
   const partialGroupInitial=partialGroupStart.nativeCrafting.state;const partialGroupPresent=new Set(partialGroupInitial.affixes.map(entry=>entry.id));
   const partialGroupAbsent=['FireResist1','ColdResist1','LightningResist1'].find(id=>!partialGroupPresent.has(id));assert.ok(partialGroupAbsent);

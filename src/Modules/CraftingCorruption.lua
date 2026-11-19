@@ -144,6 +144,15 @@ function C.extend(M,A,api)
 			state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil;state.corrupted=true
 			return
 		end
+		if not state.corrupted and previousCount==0 and #chosen==1 and state.vendorImplicit and model.synthesisGroups and #model.synthesisGroups>0 then
+			local retained={};for index in ipairs(model.synthesisGroups) do retained[#retained+1]=index end
+			local index=math.floor(random()*(#retained+1))+1
+			if index>#retained then state.vendorImplicit=nil;state.gildedCorruptionReplaced=true
+			else table.remove(retained,index) end
+			state.synthRetained=#retained>0 and retained or nil;state.synthExhausted=#retained==0 and true or nil
+			state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil;state.corrupted=true
+			return
+		end
 		if model.synthesisGroups and #chosen>previousCount then
 			local retained=copyTable(state.synthRetained or {})
 			if not state.synthRetained and not state.synthExhausted then
@@ -208,6 +217,8 @@ function C.extend(M,A,api)
 			state=copyTable(state);state.synthRetained={};for index in ipairs(model.synthesisGroups) do state.synthRetained[index]=index end
 		end
 		assert(state.twiceCorrupted==nil or type(state.twiceCorrupted)=="boolean","Invalid twice-corruption marker")
+		assert(state.gildedCorruptionReplaced==nil or state.gildedCorruptionReplaced==true and state.corrupted and state.corruptedImplicits and not state.vendorImplicit and model.item.synthesised and not model.item.corrupted and model.synthesisGroups,"Invalid Gilded corruption replacement")
+		if state.gildedCorruptionReplaced then assert(state.synthRetained or state.synthExhausted,"Missing retained synthesised modifiers after Gilded replacement") end
 		assert(not state.twiceCorrupted or state.corrupted==true,"Twice Corrupted items must also be Corrupted")
 		assert(state.destroyed == nil or type(state.destroyed) == "boolean","Invalid destruction flag")
 		if state.synthRolls then
@@ -232,15 +243,16 @@ function C.extend(M,A,api)
 		if state.synthRetained then
 			assert(type(state.synthRetained)=="table" and model.item.synthesised and model.synthesisGroups and state.corruptedImplicits,"Invalid retained synthesised implicit state")
 			local seen={};for _,index in ipairs(state.synthRetained) do assert(type(index)=="number" and index==math.floor(index) and model.synthesisGroups[index] and not seen[index],"Invalid retained synthesised implicit");seen[index]=true end
-			assert(#state.synthRetained>=1 and #state.synthRetained<=2,"Invalid retained synthesised implicit count")
+			assert(#state.synthRetained>=1 and #state.synthRetained<=3,"Invalid retained synthesised implicit count")
 			local added=#state.corruptedImplicits-(model.item.corrupted and #(model.initial.corruptedImplicits or {}) or 0)
-			assert(#state.synthRetained==math.max(0,#model.synthesisGroups-math.max(0,added)),"Retained synthesised modifiers do not match the corruption outcome")
+			local replaced=math.max(0,added-(state.gildedCorruptionReplaced and 1 or 0))
+			assert(#state.synthRetained==math.max(0,#model.synthesisGroups-replaced),"Retained synthesised modifiers do not match the corruption outcome")
 		end
 		assert(state.synthExhausted==nil or state.synthExhausted==true,"Invalid exhausted synthesised implicit marker")
 		if state.synthExhausted then
 			assert(state.synthExhausted==true and not state.destroyed and model.item.synthesised and model.synthesisGroups and state.corruptedImplicits and not state.synthRetained,"Invalid exhausted synthesised implicit state")
 			local added=#state.corruptedImplicits-(model.item.corrupted and #(model.initial.corruptedImplicits or {}) or 0)
-			assert(added>=#model.synthesisGroups,"Invalid exhausted synthesised implicit count")
+			assert(added-(state.gildedCorruptionReplaced and 1 or 0)>=#model.synthesisGroups,"Invalid exhausted synthesised implicit count")
 		end
 		if state.corruptedImplicits then
 			assert(state.corrupted and #state.corruptedImplicits >= 1 and #state.corruptedImplicits<=2 and #state.corruptedImplicits + #(state.implicits or {}) <= 3 and (not state.synthRetained or not state.implicits),"Invalid corruption implicit state")
@@ -320,7 +332,7 @@ function C.extend(M,A,api)
 					local ok=pcall(api.add,model,state,random);if not ok then break end
 				end
 				state.rollBlock=nil
-			elseif method == "locus" then state.destroyed=true;state.affixes={};state.implicits=nil;state.corruptedImplicits=nil;state.synthRolls=nil;state.synthRetained=nil;state.synthExhausted=nil
+			elseif method == "locus" then state.destroyed=true;state.affixes={};state.implicits=nil;state.corruptedImplicits=nil;state.synthRolls=nil;state.synthRetained=nil;state.synthExhausted=nil;state.gildedCorruptionReplaced=nil
 			end
 			state.corrupted=true;state.imprint=nil
 			if method=="locus" and not state.destroyed then state.twiceCorrupted=true end

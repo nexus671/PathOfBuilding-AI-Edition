@@ -162,6 +162,30 @@ describe("Imported corruption identities",function()
 		local result=sim.simulate(raw,{initialState=gilded,steps={{method="vaal"}},targets=targets,requirements={corrupted=true}},{trials=100,maxActions=1,seed=73,forceFirstAction=true})
 		assert.is_nil(next(result.transitionErrors));assert.is_true(result.successes>0);assert.is_true(result.successes<100)
 	end)
+	it("models first corruption replacing either a Gilded or synthesised implicit",function()
+		local lines={"+10 to Strength","+20 to Dexterity","+12 to Intelligence"}
+		for count=1,3 do
+			local source="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: "..(count+1).."\n"..table.concat(lines,"\n",1,count).."\nItem sells for much more to vendors\nSynthesised Item"
+			local model=sim.model(source);assert.equal(count,#model.synthesisGroups);assert.equal("unknown",model.initial.vendorImplicit)
+			for _,draw in ipairs({0,0.999}) do
+				local result=copyTable(model.initial);sim.rollCorrupted(model,result,function() return draw end)
+				assert.equal(1,#result.corruptedImplicits)
+				if draw==0 then assert.equal("unknown",result.vendorImplicit);assert.equal(count-1,#(result.synthRetained or {}))
+				else assert.is_nil(result.vendorImplicit);assert.equal(count,#result.synthRetained) end
+				if draw==0 then local invalid=copyTable(result);invalid.gildedCorruptionReplaced=true;assert.has_error(function() sim.validateState(model,invalid) end) end
+				if draw~=0 then local invalid=copyTable(result);invalid.synthRetained=nil;invalid.synthExhausted=nil;assert.has_error(function() sim.validateState(model,invalid) end) end
+				local saved=require("Modules.CraftingCheckpoint").validate(source,require("Modules.CraftingInventory").run(result)).state
+				local reopened=sim.model(sim.itemText(model,saved));assert.equal(count-(draw==0 and 1 or 0),#(reopened.synthesisGroups or {}));assert.same(saved.corruptedImplicits,reopened.initial.corruptedImplicits)
+				if draw==0 then assert.equal("unknown",reopened.initial.vendorImplicit) else assert.is_nil(reopened.initial.vendorImplicit) end
+				if draw~=0 then
+					local twice=sim.action(model,saved,{method="locus"},function() return 0 end);assert.is_true(twice.twiceCorrupted);assert.equal(2,#twice.corruptedImplicits)
+					assert.equal(count-1,#(twice.synthRetained or {}));sim.validateState(model,twice)
+					local twiceReopened=sim.model(sim.itemText(model,twice));assert.equal(count-1,#(twiceReopened.synthesisGroups or {}))
+					local expected=copyTable(twice.corruptedImplicits);table.sort(expected,function(a,b) return a.id<b.id end);assert.same(expected,twiceReopened.initial.corruptedImplicits)
+				end
+			end
+		end
+	end)
 	it("preserves synthesised survivors across second corruption and reopening",function()
 		local lines={"+10 to Strength","+20 to Dexterity","+12 to Intelligence"}
 		for count=1,3 do
