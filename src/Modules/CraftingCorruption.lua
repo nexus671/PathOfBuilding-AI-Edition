@@ -172,6 +172,14 @@ function C.extend(M,A,api)
 			end
 			for _,entry in ipairs(state.corruptedImplicits) do for _,line in ipairs(M.rolledLines(M.entryMod(model,entry),entry.range)) do item.implicitModLines[#item.implicitModLines+1]={line=line,modGroup="crafting_"..entry.id} end end
 		end
+		-- The Gilded Fossil modifier is additional to the item's other
+		-- implicits; add it after reconstructed Eldritch or corruption lines.
+		if state.vendorImplicit then
+			for _,line in ipairs(assert(model.byId[state.vendorImplicit],"Unknown vendor implicit")) do
+				for i=#item.implicitModLines,1,-1 do if item.implicitModLines[i].line==line then table.remove(item.implicitModLines,i) end end
+				item.implicitModLines[#item.implicitModLines+1]={line=line}
+			end
+		end
 	end
 	function M.validateState(model,state)
 		assert(type(state)=="table","Invalid crafting state")

@@ -892,9 +892,6 @@ function A.extend(M,api)
 			if state.baseImplicitReconstructed then item.implicitModLines[i].modTags=copyTable(item.base.implicitModTypes and item.base.implicitModTypes[i] or {}) end
 			item.implicitModLines[i].line=itemLib.applyRange(template,range);item.implicitModLines[i].range=nil
 		end end end
-		if state.vendorImplicit then
-			for _,line in ipairs(assert(model.byId[state.vendorImplicit],"Unknown vendor implicit")) do item.implicitModLines[#item.implicitModLines+1]={line=line} end
-		end
 		if state.implicits then
 			item.implicitModLines={}
 			for _,entry in ipairs(state.implicits) do

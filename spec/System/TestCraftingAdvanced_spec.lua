@@ -4,6 +4,18 @@ describe("Advanced native crafting", function()
 	local random=function() return 0.42 end
 	local function rare() return sim.perform(raw,{method="alchemy"},12).state end
 	local function tag(model,id,wanted) for _,value in ipairs(model.byId[id].modTags or {}) do if value == wanted then return true end end;return nil end
+	it("retains a Gilded Fossil implicit on an item with Eldritch implicits",function()
+		local model=sim.model(raw)
+		local eldritch=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=1},11)
+		local gilded=sim.perform(raw,{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingSellPrice"}},12,eldritch.state)
+		assert.is_truthy(gilded.state.vendorImplicit);assert.equal(1,#gilded.state.implicits)
+		assert.is_truthy(gilded.itemText:find("Item sells for much more to vendors",1,true))
+		assert.is_truthy(gilded.itemText:find("{exarch}",1,true));assert.is_truthy(sim.validateState(model,gilded.state))
+		local again=sim.toItem(model,gilded.state);local _,count=again.raw:gsub("Item sells for much more to vendors","");assert.equal(1,count)
+		local nextCraft=sim.perform(raw,{method="divine"},13,gilded.state);assert.is_truthy(nextCraft.itemText:find("Item sells for much more to vendors",1,true));assert.is_truthy(nextCraft.itemText:find("{exarch}",1,true))
+		local plain=sim.perform(raw,{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingSellPrice"}},12)
+		assert.is_truthy(plain.itemText:find("Item sells for much more to vendors",1,true))
+	end)
 	it("updates socket state and breaks links when a Hollow Fossil adds its modifier",function()
 		local item=raw.."\nSockets: R-R-R-R";local hollow={method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingAbyss"}}
 		local result=sim.perform(item,hollow,7)
