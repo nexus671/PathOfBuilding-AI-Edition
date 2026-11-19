@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { createBridge } = require('../../src/AI/BuildProtocol.cjs');
+const { createBridge, tools } = require('../../src/AI/BuildProtocol.cjs');
 function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(),'pob-build-'));
   t.after(() => fs.rmSync(dir,{recursive:true,force:true}));
@@ -356,6 +356,13 @@ test('retries a brief incomplete desktop refresh without reporting a disconnecte
 
 
 function craftingProject() {return {id:'life-helmet',title:'Life helmet',slot:'Helmet',startingItem:'Rarity: NORMAL\nIron Hat\nItem Level: 86',targetItem:'Rarity: RARE\nPlanned Hat\nIron Hat\n+100 to maximum Life',goals:['100 Life'],steps:[{action:'Choose a suitable method in Craft of Exile',stopWhen:'Target modifiers present',onFailure:'Stop at the budget limit'}]};}
+
+test('describes unique crafting continuation and simulation limits to AI clients', () => {
+  const descriptions=Object.fromEntries(tools.map(tool=>[tool.name,tool.description]));
+  assert.match(descriptions.apply_crafting_action,/unique items, pass the returned itemText and omit initialState/);
+  assert.match(descriptions.calculate_crafting,/Supported unique actions.*intrinsic item stats/);
+  assert.match(descriptions.simulate_crafting,/Multi-step unique recipes are not modeled/);
+});
 
 test('queues crafting inspection with exactly one item source and current revision', t => {
   const f=fixture(t);
