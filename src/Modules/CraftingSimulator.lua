@@ -803,20 +803,26 @@ end
 function M.requiresRollSource(entry)
 	return entry.legacyLightRadius==true or M.rollOutsideTier(entry)
 end
-local function sameAffixRoll(left,right)
+local function sameAffixRoll(left,right,leftModel,rightModel)
 	if left.id~=right.id or not not left.legacyLightRadius~=not not right.legacyLightRadius or not not left.description330~=not not right.description330 then return false end
+	if M.rollOutsideTier(left)~=M.rollOutsideTier(right) then return false end
 	local a=type(left.range)=="table" and left.range or {left.range or 0.5}
 	local b=type(right.range)=="table" and right.range or {right.range or 0.5}
 	if #a~=#b then return false end
-	for i,value in ipairs(a) do if type(value)~="number" or type(b[i])~="number" or math.abs(value-b[i])>0.00051 then return false end end
-	return true
+	for i,value in ipairs(a) do
+		local other=b[i]
+		if type(value)~="number" or type(other)~="number" or (value<0)~=(other<0) or (value>1)~=(other>1) or math.abs(value-other)>0.00051 then return false end
+	end
+	local leftLines=M.rolledLines(M.entryMod(leftModel,left),left.range)
+	local rightLines=M.rolledLines(M.entryMod(rightModel,right),right.range)
+	return tableDeepEquals(leftLines,rightLines)
 end
 function M.validateLegacyRolls(model,state)
 	for _,entry in ipairs(state.affixes or {}) do
 		assert(entry.legacySource==nil or type(entry.legacySource)=="string" and #entry.legacySource<=24000,"Invalid legacy roll source")
 		if M.requiresRollSource(entry) then
 			local found=false
-			for _,original in ipairs(model.initial.affixes or {}) do if sameAffixRoll(entry,original) then found=true;break end end
+			for _,original in ipairs(model.initial.affixes or {}) do if sameAffixRoll(entry,original,model,model) then found=true;break end end
 			if not found and entry.legacySource then
 				model.legacyRollModels=model.legacyRollModels or {}
 				local source=model.legacyRollModels[entry.legacySource]
@@ -828,7 +834,7 @@ function M.validateLegacyRolls(model,state)
 					source=value;model.legacyRollModels[entry.legacySource]=source
 				end
 				assert(model.item.type==source.item.type,"Legacy roll source must use the same item class")
-				for _,original in ipairs(source.initial.affixes or {}) do if sameAffixRoll(entry,original) then found=true;break end end
+				for _,original in ipairs(source.initial.affixes or {}) do if sameAffixRoll(entry,original,model,source) then found=true;break end end
 			end
 			assert(found,"A legacy or out-of-range roll must be retained from a matching source item")
 		end

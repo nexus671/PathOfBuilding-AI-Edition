@@ -17,6 +17,27 @@
   local _,_,wrong=legacy("Plate Vest");local mismatch=copyTable(state);mismatch.affixes[1].legacySource=wrong
   assert.has_error(function() sim.validateState(model,mismatch) end)
  end)
+ it("does not use an in-range roll to justify an out-of-range roll",function()
+  local model=sim.model(raw);local valid=copyTable(model.initial);valid.rarity="MAGIC";valid.affixes={{id="IncreasedLife2",range=1}}
+  local source=sim.toItem(model,valid).raw;local changed=copyTable(valid);changed.affixes[1].range=1.0004;changed.affixes[1].legacySource=source
+  assert.has_error(function() sim.validateState(model,changed) end)
+  for _,range in ipairs({1.0004,-0.0004}) do
+   local old=copyTable(valid);old.affixes[1].range=range
+   local saved=require("Modules.CraftingCheckpoint").validate(raw,require("Modules.CraftingInventory").run(old)).state
+   assert.equal(range,saved.affixes[1].range);assert.is_truthy(sim.validateState(model,saved))
+  end
+ end)
+ it("checks each component of a multi-value legacy roll",function()
+  local model=sim.model("Rarity: NORMAL\nRusted Sword\nItem Level: 86")
+  local state=copyTable(model.initial);state.rarity="MAGIC";state.affixes={{id="LocalAddedChaosDamage1",range={1,1.5}}}
+  local source=sim.toItem(model,state).raw;state.affixes[1].legacySource=source
+  assert.is_truthy(sim.validateState(model,state))
+  local changed=copyTable(state);changed.affixes[1].range={1.0004,1.5}
+  assert.has_error(function() sim.validateState(model,changed) end)
+  changed.affixes[1].legacySource=nil
+  local saved=require("Modules.CraftingCheckpoint").validate("Rarity: NORMAL\nRusted Sword\nItem Level: 86",require("Modules.CraftingInventory").run(changed)).state
+  assert.is_truthy(sim.validateState(model,saved));assert.same({1.0004,1.5},saved.affixes[1].range)
+ end)
  it("checks legacy rolls inside an imprint before they can be restored",function()
   local model,state,source=legacy("Iron Hat");local imprint=copyTable(state);imprint.origin=model.initial.origin
   local current=copyTable(model.initial);current.rarity="MAGIC";current.imprint=imprint
