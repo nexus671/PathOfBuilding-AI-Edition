@@ -22,7 +22,18 @@ class CraftingDataStatusTest(unittest.TestCase):
                 mod["domain"] = "jewel"
                 corrected += 1
         self.assertEqual(253, corrected)
-        self.assertEqual(expected, current["mods"])
+        vendor_weights = {"DoubleModSellPrice1": 6000, "DoubleModSellPrice2": 1000,
+                          "DoubleModSellPrice3_": 6000, "DoubleModSellPrice4": 1000,
+                          "DoubleModSellPrice5_": 6000, "DoubleModSellPrice6": 10,
+                          "DoubleModSellPrice7": 2000, "DoubleModSellPrice8": 1,
+                          "DoubleModSellPrice9": 1000}
+        self.assertEqual(set(vendor_weights), set(current["mods"]) - set(expected))
+        for identifier, weight in vendor_weights.items():
+            mod = current["mods"][identifier]
+            self.assertEqual("delve", mod["domain"])
+            self.assertEqual("unique", mod["generation_type"])
+            self.assertEqual([{"tag": "default", "weight": weight}], mod["spawn_weights"])
+        self.assertEqual(expected, {key: current["mods"][key] for key in expected})
         self.assertEqual(bench["bench"], current["bench"])
         self.assertEqual(bench["benchMods"], current["benchMods"])
 

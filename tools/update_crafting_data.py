@@ -45,8 +45,9 @@ ducat_mods = {key: mod for key, mod in mods.items()
               if mod["domain"] == "ducat_crafted" and mod["generation_type"] in {"prefix", "suffix"}
               and key.startswith("DeepwaterHazard")}
 identifiers.update(ducat_mods)
+vendor_mods = {identifier for fossil in fossils.values() for identifier in fossil.get("sell_price_mods", [])}
 compiled = {identifier: {key: mod[key] for key in fields} for identifier, mod in mods.items()
-            if identifier in identifiers and mod["generation_type"] in generation}
+            if (identifier in identifiers and mod["generation_type"] in generation) or identifier in vendor_mods}
 result = {
     "patch": PATCH, "source": {"repo": REPOSITORY, "commit": COMMIT},
     "hashes": {name: hashlib.sha256(content).hexdigest() for name, content in raw.items()},

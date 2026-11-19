@@ -4,6 +4,14 @@ describe("Advanced native crafting", function()
 	local random=function() return 0.42 end
 	local function rare() return sim.perform(raw,{method="alchemy"},12).state end
 	local function tag(model,id,wanted) for _,value in ipairs(model.byId[id].modTags or {}) do if value == wanted then return true end end;return nil end
+	it("samples Gilded vendor outcomes using pinned 3.30 weights",function()
+		local data=require("Modules.CraftingAdvanced");local id="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice";local choices=data.vendorChoices(data.data().fossils[id]);local total=0
+		assert.equal(9,#choices);for _,entry in ipairs(choices) do total=total+entry.weight end
+		assert.equal(23011,total);assert.equal("DoubleModSellPrice1",choices[1].id);assert.equal(6000,choices[1].weight);assert.equal(1,choices[8].weight)
+		local model=sim.model(raw);local result=sim.action(model,model.initial,{method="fossil",fossils={id}},function() return 0.2 end)
+		assert.equal("DoubleModSellPrice1",result.vendorImplicit)
+		local warnings=sim.actionWarnings({method="fossil",fossils={id}},model);local found=false;for _,warning in ipairs(warnings) do if warning.code=="gilded_vendor_weights" then found=true end end;assert.is_true(found)
+	end)
 	it("retains a Gilded Fossil implicit on an item with Eldritch implicits",function()
 		local model=sim.model(raw)
 		local eldritch=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=1},11)

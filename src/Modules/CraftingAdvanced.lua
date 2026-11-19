@@ -114,6 +114,18 @@ local function choose(list,random)
 	for _,entry in ipairs(list) do pick=pick-entry.weight; if pick < 0 then return entry.id end end
 	error("Modifier selection failed")
 end
+-- The pinned client export gives each Gilded outcome one default spawn weight.
+-- Its hidden identity cannot be recovered from copied item text.
+function A.vendorChoices(fossil)
+	local result={}
+	for _,id in ipairs(fossil.sell_price_mods or {}) do
+		local mod=assert(A.data().mods[id],"Gilded vendor outcome is missing from crafting data")
+		local weights=mod.spawn_weights
+		assert(type(weights)=="table" and #weights==1 and weights[1].tag=="default" and type(weights[1].weight)=="number" and weights[1].weight>0,"Unsupported Gilded vendor weights")
+		result[#result+1]={id=id,weight=weights[1].weight}
+	end
+	return result
+end
 local function inferRange(template,line)
 	local pattern,ranges,at="",{},1
 	local function escape(text) return text:gsub("([^%w])","%%%1") end
@@ -1004,7 +1016,7 @@ function A.extend(M,api)
 					local candidates={}; for _,essence in ipairs(model.essences) do if essence.type > 0 then candidates[#candidates+1]={id=essence.modId,mod=model.byId[essence.modId],weight=1} end end
 					append(model,state,random,{source=candidates,fossils=fossils,fixedWeights=true})
 				end
-				if #fossil.sell_price_mods > 0 then state.vendorImplicit=fossil.sell_price_mods[math.floor(random()*#fossil.sell_price_mods)+1] end
+				if #fossil.sell_price_mods > 0 then state.vendorImplicit=choose(A.vendorChoices(fossil),random) end
 			end
 			fill(model,state,random,options)
 			for _,id in ipairs(action.fossils) do
