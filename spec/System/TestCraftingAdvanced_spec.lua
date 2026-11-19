@@ -90,6 +90,17 @@ describe("Advanced native crafting", function()
 		local impossible=tincture:gsub("29%% increased Melee Weapon Attack Speed","999% increased Melee Weapon Attack Speed")
 		assert.are.equal(false,pcall(sim.model,impossible))
 	end)
+	it("warns when game-copied tincture values can mix with base rolls",function()
+		local raw="Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed"
+		local function warned(entries) for _,warning in ipairs(entries or {}) do if warning.code=="tincture_imported_values" then return true end end return false end
+		local model=sim.model(raw);assert.is_true(warned(sim.actionWarnings({method="alteration"},model)))
+		local result=sim.perform(raw,{method="alteration"},3);assert.is_true(warned(result.warnings))
+		local catalog=sim.catalog(raw,"",20);assert.is_true(warned(catalog.methodWarnings.alteration))
+		local project={id="tincture-warning",title="Tincture",slot="Flask 1",startingItem=raw,goals={},steps={},preferredMethod="alteration"};build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingSimulatorControl").Open(build,project);local lines={};for _,row in ipairs(control.actionHint.list) do lines[#lines+1]=row[1] end
+		assert.matches("Copied tincture values",table.concat(lines," "),1,true);main.popups={}
+		assert.is_false(warned(sim.actionWarnings({method="alteration"},sim.model(raw:gsub("Item Class: Tinctures\n","")))))
+	end)
 	it("offers independent Allflame outcomes and charges currency and Sulphur once", function()
 		local state=copyTable(sim.model(raw).initial);state.rarity="RARE";state.affixes={{id="IncreasedLife1",range=0.5}}
 		local craft={method="exalt",allflame={outcomes=4,gainMin=5,gainMax=5,sulphur=100}}
