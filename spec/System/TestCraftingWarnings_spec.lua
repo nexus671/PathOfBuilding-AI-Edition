@@ -3,12 +3,14 @@ describe("Crafting result model notes",function()
 	local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"
 	local donor="Rarity: NORMAL\nCone Helmet\nItem Level: 70"
 	it("reports Bloodstained implicit uncertainty once per recipe",function()
-		local blood="Metadata/Items/Currency/CurrencyDelveCraftingCorrupt";local action={method="fossil",fossils={blood}}
-		local notes=sim.actionWarnings(action);assert.equal("bloodstained_implicit_assumptions",notes[1].code);assert.matches("replacing all existing implicits",notes[1].message)
+		local blood="Metadata/Items/Currency/CurrencyDelveCraftingVaal";local gilded="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice";local action={method="fossil",fossils={blood,gilded}}
+		local notes=sim.actionWarnings(action);assert.equal("bloodstained_implicit_assumptions",notes[1].code);assert.matches("combination replacing existing implicits",notes[1].message)
+		for _,note in ipairs(sim.actionWarnings({method="fossil",fossils={blood}})) do assert.not_equal("bloodstained_implicit_assumptions",note.code) end
 		local recipe=sim.recipeWarnings({steps={action,action}});local count=0;for _,note in ipairs(recipe) do if note.code==notes[1].code then count=count+1 end end;assert.equal(1,count)
+		local performed=sim.perform(raw,action,17);local found=false;for _,note in ipairs(performed.warnings) do if note.code==notes[1].code then found=true end end;assert.is_true(found)
 	end)
 	it("discloses the incomplete Gilded corruption interaction",function()
-		local gilded="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice";local blood="Metadata/Items/Currency/CurrencyDelveCraftingCorrupt"
+		local gilded="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice";local blood="Metadata/Items/Currency/CurrencyDelveCraftingVaal"
 		local function has(notes) local count=0;for _,note in ipairs(notes) do if note.code=="gilded_corruption_incomplete" then count=count+1;assert.matches("Other Gilded corruption combinations remain incomplete",note.message) end end;return count end
 		local model=sim.model(raw);local state=sim.perform(raw,{method="fossil",fossils={gilded}},12).state
 		assert.equal(1,has(sim.actionWarnings({method="vaal"},{item=model.item,initial=state})))

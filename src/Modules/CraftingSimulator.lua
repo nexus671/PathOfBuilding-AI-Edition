@@ -48,7 +48,7 @@ end
 local function gildedCorruption(action)
 	if action.method=="vaal" or action.method=="locus" then return true end
 	if action.method=="gwennen" and (action.firstOutcome==1012 or action.secondOutcome==1012) then return true end
-	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingCorrupt" then return true end end
+	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingVaal" then return true end end
 	return false
 end
 local function gildedFossil(action)
@@ -67,8 +67,8 @@ function M.hasProtectedImplicit(model,state)
 end
 function M.actionWarnings(action,model)
 	local result={}
-	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingCorrupt" then
-		result[#result+1]={code="bloodstained_implicit_assumptions",message="Bloodstained Fossil uses the ordinary corruption implicit model here. Community documentation describes it replacing all existing implicits; that difference and current-patch behavior are not verified. Check the item in game before relying on retained implicits.",source="https://www.poewiki.net/wiki/Bloodstained_Fossil"};break
+	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingVaal" and gildedFossil(action) then
+		result[#result+1]={code="bloodstained_implicit_assumptions",message="This model uses ordinary corruption replacement for Bloodstained and Gilded together. Community documentation describes that combination replacing existing implicits and adding both corruption and vendor implicits; current-patch behavior is unverified. Check the item in game before relying on retained implicits.",source="https://www.poewiki.net/wiki/Bloodstained_Fossil"};break
 	end end
 	if gildedCorruption(action) and M.hasProtectedImplicit(model,model and model.initial) then
 		result[#result+1]={code="protected_implicit_corruption",message="The model treats an implicit-change corruption outcome as no change to protected implicits, including a Gilded modifier. The 3.30 second-corruption interaction is unverified.",source="https://www.poewiki.net/wiki/Composite_Ring"}
