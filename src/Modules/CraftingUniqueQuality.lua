@@ -1,6 +1,8 @@
 -- cspell:ignore RGBW RGBWA
 -- A deliberately bounded unique-item quality operation. It never edits a build.
 local M={}
+-- Some unique socket restrictions are hidden or absent from partial item text.
+local fixedSocketCounts={ ["Tabula Rasa"]=true,["Oni-Goroshi"]=true,["Loreweave"]=true,["Replica Loreweave"]=true,["The Squire"]=true,["Crest of Desire"]=true,["Crown of the Tyrant"]=true,["The Geomantic Gyre"]=true }
 function M.guideAction(method,count,resource,corrupted,socketCount)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
@@ -102,8 +104,9 @@ end
 function M.socketCountReason(raw,count)
 	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
 	if raw:lower():find("sockets cannot be modified",1,true) then return "This item's sockets cannot be modified" end
-	if item.title=="Tabula Rasa" or item.title=="Oni-Goroshi" then return "This unique fixes its socket count" end
-	if raw:lower():find("has %d+ sockets") or raw:lower():find("has %d+ linked sockets") then return "This unique fixes its socket count" end
+	if fixedSocketCounts[item.title] then return "This unique fixes its socket count" end
+	if raw:lower():find("has %d+ sockets?%f[^%a]") or raw:lower():find("has %d+ linked sockets?%f[^%a]") then return "This unique fixes its socket count" end
+	if (item.abyssalSocketCount or 0)>0 or raw:lower():find("has %d+ abyssal sockets?%f[^%a]") then return "Abyssal sockets need a separate socket model" end
 	local line,lines=raw:match("\nSockets: ([^\r\n]*)"),0
 	for _ in ("\n"..raw):gmatch("\nSockets:") do lines=lines+1 end
 	if lines~=1 or not line or not line:match("^[RGBWA][RGBWA%-%s]*$") then return "A single explicit ordinary socket layout is required" end

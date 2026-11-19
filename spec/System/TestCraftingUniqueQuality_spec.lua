@@ -165,6 +165,17 @@ describe("Unique item quality",function()
 		local source="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"
 		local tabula="Rarity: UNIQUE\nTabula Rasa\nSimple Robe\nItem Level: 86\nSockets: W-W-W-W-W-W"
 		assert.matches("fixes its socket count",unique.socketCountReason(tabula,2))
+		for _,item in ipairs({{"Crest of Desire","Fluted Bascinet"},{"Crown of the Tyrant","Magistrate Crown"},{"The Squire","Elegant Round Shield"},{"Loreweave","Elegant Ringmail"},{"The Geomantic Gyre","Highborn Staff"}}) do
+			local partial="Rarity: UNIQUE\n"..item[1].."\n"..item[2].."\nItem Level: 86\nSockets: W"
+			assert.matches("fixes its socket count",unique.socketCountReason(partial,2))
+		end
+		assert.matches("fixes its socket count",unique.socketCountReason(source.."\nHas 1 Socket",2))
+		assert.matches("Abyssal sockets",unique.socketCountReason(source.."\nHas 1 Abyssal Socket",2))
+		assert.is_nil(unique.socketCountReason(source.."\nHas 1 Socketed Gem",2))
+		local crown="Rarity: UNIQUE\nCrown of the Tyrant\nMagistrate Crown\nItem Level: 86\nSockets: W"
+		local options=sim.catalog(crown,"",50).uniqueActions;for _,entry in ipairs(options) do if entry.guideStep.uniqueCraft.method=="socket_count_bench" then assert.is_false(entry.available);assert.matches("fixes its socket count",entry.unavailableReason) end end
+		local locked={id="fixed-socket-ui",title="Fixed socket",slot="Helmet",startingItem=crown,goals={},steps={}};build.savers.CraftingProjects:Upsert(locked)
+		local lockedControl=require("Classes.CraftingUniqueQualityControl").Open(build,locked);assert.is_false(lockedControl.socketCount:IsEnabled());assert.matches("fixes its socket count",lockedControl.socketCount.tooltipText());main.popups={}
 		for _,corrupted in ipairs({false,true}) do
 			local raw=source..(corrupted and "\nCorrupted" or "");local action={method="socket_bench",count=4}
 			local changed=sim.perform(raw,action,1);assert.matches("Sockets: R%-G B W",changed.itemText)
