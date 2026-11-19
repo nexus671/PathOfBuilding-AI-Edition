@@ -312,6 +312,8 @@ function M.Audit(profile,report,save,focusErrors)
 		if not id then for i,d in ipairs(report and report.diagnostics or {}) do if d.error then id="diagnostic-"..i;break end end end
 		if id then for i,entry in ipairs(entries) do if entry.id==id then table.insert(entries,1,table.remove(entries,i));break end end end
 	end
-	require("Classes.PlanningBrowserControl").Open("Filter audit",entries,{action="Use current base",enterChooses=false,closeOnChoose=false,choose=function() save(filters.update(profile));main:ClosePopup() end})
+	local controls=require("Classes.PlanningBrowserControl").Open("Filter audit",entries,{action="Use current base",enterChooses=false,closeOnChoose=false,
+		canChoose=function(entry) return entry.id=="update" end,choose=function() save(filters.update(profile));main:ClosePopup() end})
+	controls.choose.tooltipText="Select Update bundled NeverSink base to use this action. Filter errors require a separate edit."
 end
 return M
