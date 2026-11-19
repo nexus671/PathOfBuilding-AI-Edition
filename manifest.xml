@@ -2155,7 +2155,7 @@
 	<File name="Modules/LootFilterFileNames.lua" part="program" sha1="5f26edc8dfc72aa9fbe03be2bb1cbf0c93094e20" />
 	<File name="Modules/LootFilterImports.lua" part="program" sha1="14c2904c7ecbaed9a44146b21fffe1c341d8bb14" />
 	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="d82e35b51efe2e40d3bf145fa8ce3a459d3970d3" />
-	<File name="Modules/LootFilterParser.lua" part="program" sha1="beaea511c892fae8edf1f69d03ca440c383283e6" />
+	<File name="Modules/LootFilterParser.lua" part="program" sha1="47827a4f094bdaca9a1f3b97fd21002d750b5c80" />
 	<File name="Modules/LootFilterRuleOrder.lua" part="program" sha1="c9bd2dd5f27d9f701a4d82071e756c97db2ad101" />
 	<File name="Modules/LootFilterStackTiers.lua" part="program" sha1="41793d1a2d3cb914990a79609f809c068c0fcc1b" />
 	<File name="Modules/LootFilterStructure.lua" part="program" sha1="f6139db0371b3931a0ffabf1d7be04b52ad8533d" />

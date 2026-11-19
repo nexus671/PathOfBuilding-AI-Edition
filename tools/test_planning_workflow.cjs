@@ -1013,6 +1013,10 @@ async function main(){
   const linkedProfile={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n LinkedSockets = 2'}]};
   const linkedLayout=await queued('test_loot_filter',{baseRevision:context.revision,profile:linkedProfile,sample:{BaseType:'Iron Hat',Sockets:4,SocketGroup:'R-G B A'}},'tested');
   assert.equal(linkedLayout.result.action,'Hide');assert.equal(linkedLayout.sample.LinkedSockets,undefined);
+  const linkedColours=await queued('test_loot_filter',{baseRevision:context.revision,profile:linkedProfile,sample:{BaseType:'Iron Hat',SocketColours:'BRG',SocketGroup:'R-G B'}},'tested');
+  assert.equal(linkedColours.result.action,'Hide');assert.equal(linkedColours.sample.Sockets,undefined);
+  const contradictoryLinks=await queued('test_loot_filter',{baseRevision:context.revision,profile:linkedProfile,sample:{BaseType:'Iron Hat',SocketColours:'BRG',SocketGroup:'R-G B',LinkedSockets:3}},'tested');
+  assert.equal(contradictoryLinks.result.status,'unknown');assert.match(contradictoryLinks.result.reasons[0],/conflicts/);
   const partialLayout=await queued('test_loot_filter',{baseRevision:context.revision,profile:linkedProfile,sample:{BaseType:'Iron Hat',Sockets:4,SocketGroup:'RG'}},'tested');
   assert.equal(partialLayout.result.status,'unknown');
   const missingSocketProfile={...socketProfile,template:'Show',rules:[{...socketProfile.rules[0],text:'Hide\n Sockets = 0'}]};

@@ -178,6 +178,9 @@ function M.condition(c,item)
 	if c.keyword=="SocketGroup" and value==nil and tonumber(item.Sockets)==0 then value="0" end
 	if c.keyword=="LinkedSockets" then
 		local count=tonumber(item.Sockets);local groups=item.SocketGroup;local derived
+		-- A complete colour list establishes the total even when the separate
+		-- socket-count field was left blank. socketConsistency checked its shape.
+		if item.Sockets==nil and type(item.SocketColours)=="string" and item.SocketColours:match("%S") then count=select(2,item.SocketColours:gsub("[RGBWAD]","")) end
 		local supplied=value~=nil and tonumber(value) or nil
 		if value~=nil and (not supplied or supplied<0 or supplied>6 or supplied~=math.floor(supplied)) then return nil,"Invalid LinkedSockets" end
 		if item.Sockets~=nil and (not count or count<0 or count>6 or count~=math.floor(count)) then return nil,"Invalid Sockets" end

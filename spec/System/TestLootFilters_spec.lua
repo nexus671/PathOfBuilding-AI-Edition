@@ -115,6 +115,15 @@ describe("Build-owned loot filters",function()
 		assert.equal("unknown",test("LinkedSockets >= 4",{LinkedSockets=7}).status)
 		assert.equal("Show",test("LinkedSockets = 2",{Sockets=4,SocketGroup="R-G B A",LinkedSockets=2}).action)
 	end)
+	it("uses complete colours to verify a group layout without a separate socket count",function()
+		local function test(condition,item) return parser.simulate(parser.parse("Show\n "..condition.."\nHide"),item) end
+		local complete={SocketColours="BRG",SocketGroup="R-G B"}
+		assert.equal("Show",test("LinkedSockets = 2",complete).action);assert.equal("Hide",test("LinkedSockets >= 3",complete).action)
+		assert.equal("Show",test("SocketGroup RG",complete).action)
+		local contradictory={SocketColours="BRG",SocketGroup="R-G B",LinkedSockets=3}
+		assert.equal("unknown",test("LinkedSockets = 3",contradictory).status);assert.equal("unknown",test("SocketGroup RG",contradictory).status)
+		assert.equal("unknown",test("LinkedSockets >= 2",{SocketGroup="R-G"}).status)
+	end)
 
 	it("rejects inconsistent socket colours across sample fields",function()
 		local function test(condition,item) return parser.simulate(parser.parse("Show\n "..condition.."\nHide"),item) end
