@@ -1,3 +1,4 @@
+-- cspell:ignore RGBWAD
 -- A visual catalogue and loot scene, backed by the same native filter compiler.
 local ui=require("Modules.PlanningUI")
 local filters=require("Modules.LootFilters")
