@@ -395,6 +395,7 @@ function M.report(plan)
 	plan=M.validate(plan); local tree=M.tree(plan.version)
 	local reachable,budgetWarning,pointsBeforeGrant,grantRoute=budgetReachabilityChecked(plan)
 	local counts,notables,keystones,stats,bonus={small=0,notable=0,keystone=0,gateway=0},{},{},{},0
+	local additive={}
 	local missingChoices={}
 	for _,id in ipairs(plan.nodes) do
 		local node=tree.nodes[id]; counts[node.kind]=counts[node.kind]+1
@@ -403,14 +404,30 @@ function M.report(plan)
 		bonus=bonus+node.grantedPoints
 		local selected=false;for _,choice in ipairs(plan.choices or {}) do if choice.node==id then selected=true;break end end
 		if node.variantEffects and not selected then missingChoices[#missingChoices+1]={id=id,name=node.name} end
-		for _,stat in ipairs(M.nodeStats(plan,node)) do stats[stat]=(stats[stat] or 0)+1 end
+		for _,stat in ipairs(M.nodeStats(plan,node)) do
+			stats[stat]=(stats[stat] or 0)+1
+			-- Sum only simple, identically worded increased/reduced modifiers.
+			-- Conditions, scaling and keystones need their own interaction model.
+			if node.kind~="keystone" and not stat:find("[\r\n]") then
+				local lower=stat:lower();local prefix,value,suffix=stat:match("^(.-)(%d+)%% increased (.+)$");local sign=1
+				if not value then prefix,value,suffix=stat:match("^(.-)(%d+)%% reduced (.+)$");sign=-1 end
+				if value and not prefix:find("%d") and not prefix:find("[+%-]$") and not suffix:find("%d") and not (" "..lower.." "):find(" if ",1,true) and not (" "..lower.." "):find(" when ",1,true) and not (" "..lower.." "):find(" while ",1,true) and not (" "..lower.." "):find(" per ",1,true) and not (" "..lower.." "):find(" each ",1,true) then
+					local key=prefix.."% "..suffix;local entry=additive[key] or {prefix=prefix,suffix=suffix,value=0,nodes={}}
+					entry.value=entry.value+sign*tonumber(value);entry.nodes[#entry.nodes+1]={id=id,name=node.name,stat=stat};additive[key]=entry
+				end
+			end
+		end
 	end
 	local lines={}
 	for stat,count in pairs(stats) do lines[#lines+1]={text=stat,count=count} end
+	local additiveTotals={};for _,entry in pairs(additive) do if #entry.nodes>1 and entry.value~=0 then
+		table.sort(entry.nodes,function(a,b) return a.id<b.id end)
+		entry.text=entry.prefix..math.abs(entry.value).."% "..(entry.value>0 and "increased " or "reduced ")..entry.suffix;additiveTotals[#additiveTotals+1]=entry
+	end end;table.sort(additiveTotals,function(a,b) return a.text<b.text end)
 	table.sort(lines,function(a,b) return a.text < b.text end); table.sort(notables); table.sort(keystones)
 	local releaseMatch=plan.version=="3.30.0-preview" or plan.version=="3.30.0-preview-ruthless"
 	return {version=plan.version,displayVersion=M.versionLabel(plan.version),releaseTag=releaseMatch and "3.30.0" or nil,releaseCheckedAt=releaseMatch and "2026-11-18" or nil,mode=tree.mode=="ruthless" and "Ruthless" or "Standard",preview=tree.preview,compatibleModes=tree.compatibleModes,used=#plan.nodes,budget=plan.budget,bonus=bonus,remaining=plan.budget+bonus-#plan.nodes,budgetReachable=reachable,budgetWarning=budgetWarning,pointsBeforeGrant=pointsBeforeGrant,grantRoute=grantRoute,
-		counts=counts,notables=notables,keystones=keystones,stats=lines,missingChoices=missingChoices,source=tree.source,sourceCommit=tree.commit,threadRestrictions=M.is330(plan.version) and require("Modules.AtlasStrategy").threadRestrictionReference() or nil,
+		counts=counts,notables=notables,keystones=keystones,stats=lines,additiveTotals=additiveTotals,missingChoices=missingChoices,source=tree.source,sourceCommit=tree.commit,threadRestrictions=M.is330(plan.version) and require("Modules.AtlasStrategy").threadRestrictionReference() or nil,
 		limitations={"Atlas plans do not modify character DPS or EHP.","Stat lines are grouped as displayed, not combined into effective map odds. Keystone interactions are not simulated.","Budget is supplied progression, not imported account completion. Small optimized routes can be exact; larger routes use a heuristic."}}
 end
 function M.export(plan)

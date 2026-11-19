@@ -248,6 +248,13 @@ describe("Native Atlas planner", function()
 		assert.are.equal("Unwavering Vision",report.keystones[1])
 		assert.is_truthy(report.limitations[2]:find("not combined",1,true))
 	end)
+	it("summarizes matching allocated modifiers without treating them as map odds",function()
+		local p=atlas.connect(plan("3.30.0c"),{57123,2929});local report=atlas.report(p);local found
+		for _,entry in ipairs(report.additiveTotals) do if entry.text:find("increased effect of Explicit Modifiers on your Maps",1,true) then found=entry;break end end
+		assert.is_truthy(found);local seen={};for _,source in ipairs(found.nodes) do seen[source.id]=true end
+		assert.is_true(seen[57123]);assert.is_true(seen[2929]);assert.is_true(found.value>=4)
+		assert.is_truthy(report.limitations[2]:find("not combined",1,true))
+	end)
 	it("requires enough earned points to reach a point-granting node before spending its grant",function()
 		local target=atlas.search("3.29.3","Unwavering Vision",10).matches[1].id
 		local full=atlas.connect(plan("3.29.3"),{target});local needed=#full.nodes
