@@ -46,4 +46,13 @@ describe("Independent modifier ranges",function()
 		local ok,err=pcall(require("Modules.CraftingImport").resolve,sim,m,{rarity="RARE",affixes={}})
 		assert.is_false(ok);assert.matches("several modifier identities",err,1,true)
 	end)
+	it("resolves an overlapping life roll on actual life and armour-life modifiers",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local life,hybrid="IncreasedLife1","LocalBaseArmourAndLife1"
+		m.mods={{id=life},{id=hybrid}};m.essences={};m.bench={}
+		m.item.explicitModLines={{line="+21 to maximum Life"},{line="+26 to Armour"},{line="+21 to maximum Life"}}
+		local resolved=require("Modules.CraftingImport").resolve(sim,m,{rarity="RARE",affixes={}})
+		local ids={};for _,entry in ipairs(resolved.affixes) do ids[entry.id]=true end
+		assert.is_true(ids[life]);assert.is_true(ids[hybrid])
+	end)
 end)
