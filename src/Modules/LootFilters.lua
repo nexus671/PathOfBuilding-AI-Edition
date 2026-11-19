@@ -230,7 +230,8 @@ function M.generate(build,profile,checkpoint)
 	-- Ordinary Atlas areas are no longer item bases in current gameplay. Keep
 	-- their names for recognizing strategy text, but never create exact-base
 	-- pickups from them. Special maps still have their own items.
-	local specialMaps={["Abomination Map"]=true,["Citadel Map"]=true,["Fortress Map"]=true,["Sanctuary Map"]=true,["Ziggurat Map"]=true,["Vaal Temple Map"]=true,["Synthesised Map"]=true}
+	local specialMaps={["Vaal Temple Map"]=true,["Synthesised Map"]=true}
+	local nightmareLocations={["Abomination Map"]=true,["Citadel Map"]=true,["Fortress Map"]=true,["Sanctuary Map"]=true,["Ziggurat Map"]=true}
 	local layoutNames={}
 	for _,name in ipairs(assert(json.decode(read("map-names.json"))).names) do if not removed[name] then
 		names[name]=names[name] or "Map";if not specialMaps[name] then layoutNames[name]=true end
@@ -369,8 +370,10 @@ function M.generate(build,profile,checkpoint)
 	local renamedAliases={};for old,new in pairs(patch.renamed) do
 		if (names[new] or budgetNames[new]) and not removed[new] then renamedAliases[old:lower()]=new;renamedAliases[old:lower().."s"]=new end
 	end
+	for name in pairs(nightmareLocations) do renamedAliases[name:lower()]="Nightmare Map";renamedAliases[name:lower().."s"]="Nightmare Map" end
 	for _,resource in ipairs(build.savers.BuildJourney.data.resources) do
 		local name=renamedAliases[resource.title:lower()] or aliases[resource.title:lower()] or resource.title
+		if name=="Nightmare Map" and resource.title:lower()~="nightmare map" and resource.title:lower()~="nightmare maps" then warnings[#warnings+1]={origin="budget:"..resource.id,title=resource.title,message="Nightmare destinations share the Nightmare Map item; a filter cannot distinguish where it will be used."} end
 		if layoutNames[name] then
 			warnings[#warnings+1]={origin="budget:"..resource.id,title=resource.title,message="This is an Atlas layout, not a current ordinary map item. Use an explicit item such as Map (Tier 16) for a tiered map pickup."}
 		elseif (names[name] or budgetNames[name]) and not removed[name] then add("resource-"..resource.id,name,pickupConditions(name),"budget:"..resource.id) end
@@ -379,6 +382,7 @@ function M.generate(build,profile,checkpoint)
 	-- Older saved strategies may still use a renamed item's former name. Match
 	-- both spellings, but emit and compare exclusions using the current name.
 	local strategyRenames={};for old,new in pairs(patch.renamed) do if names[new] and not names[old] then strategyRenames[old]=new;strategyNames[#strategyNames+1]=old end end
+	for old in pairs(nightmareLocations) do strategyRenames[old]="Nightmare Map";if not names[old] then strategyNames[#strategyNames+1]=old end end
 	table.sort(strategyNames,function(a,b) return #a==#b and a<b or #a>#b end)
 	local threadMechanics={};for _,name in ipairs(patch.added["Map Fragments"] or {}) do
 		local mechanic=name:match("^(%a+) Thread$");if mechanic then threadMechanics[#threadMechanics+1]=mechanic end
@@ -407,9 +411,11 @@ function M.generate(build,profile,checkpoint)
 			if value:match("%S") and not next(found) and not (field=="avoid" and next(avoidedMechanics)) then unmatched[#unmatched+1]=({scarabs="supplies",maps="maps",avoid="avoid"})[field] end
 		end
 		if #unmatched>0 then warnings[#warnings+1]={origin="atlas:"..plan.id,title=plan.title or "Atlas strategy",message="No known item name was found in the Atlas strategy's "..table.concat(unmatched,", ").." field(s). Notes are fine, but only recognized item names generate or exclude pickups."} end
+		local namesNightmare=false;for old in pairs(nightmareLocations) do if mentioned[old] or avoided[old] then namesNightmare=true;break end end
+		if namesNightmare then warnings[#warnings+1]={origin="atlas:"..plan.id,title=plan.title or "Atlas strategy",message="Nightmare destinations share the Nightmare Map item; a filter cannot distinguish where it will be used."} end
 		for old,new in pairs(strategyRenames) do if mentioned[old] then mentioned[new]=true end;if avoided[old] then avoided[new]=true end end
 		local hasLayouts=false
-		for name in pairs(layoutNames) do if mentioned[name] and not avoided[name] then hasLayouts=true;break end end
+		for name in pairs(layoutNames) do if not nightmareLocations[name] and mentioned[name] and not avoided[name] then hasLayouts=true;break end end
 		for _,region in ipairs(plan.shapedRegions or {}) do if #(region.maps or {})>0 then hasLayouts=true;break end end
 		if hasLayouts then warnings[#warnings+1]={origin="atlas:"..plan.id,title=plan.title or "Atlas strategy",message="Named Atlas layouts and Shaped Regions do not identify ordinary map drops. To highlight a specific tier, add an item such as Map (Tier 16) to the strategy; layout names do not create pickups."} end
 		for _,name in ipairs(strategyNames) do if not strategyRenames[name] and not layoutNames[name] and mentioned[name] and not avoided[name] and not avoidedMechanics[name:match("^(%a+) Thread$")] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,pickupConditions(name),"atlas:"..plan.id) end end

@@ -706,9 +706,9 @@ describe("Build-owned loot filters",function()
 		build.savers.AtlasPlans.plans={plan}
 		local rules,warnings=filters.generate(build,profile);local titles={};for _,rule in ipairs(rules) do titles[rule.title]=rule end
 		assert.is_nil(titles["Beach Map"]);assert.is_nil(titles["Strand Map"])
-		assert.is_truthy(titles["Map (Tier 16)"]);assert.is_truthy(titles["Abomination Map"])
+		assert.is_truthy(titles["Map (Tier 16)"]);assert.is_truthy(titles["Nightmare Map"])
 		assert.matches('BaseType == "Map %(Tier 16%)"',titles["Map (Tier 16)"].text)
-		assert.equal(1,#warnings);assert.matches("do not identify ordinary map drops",warnings[1].message,1,true)
+		assert.equal(2,#warnings);local messages=warnings[1].message..warnings[2].message;assert.matches("do not identify ordinary map drops",messages,1,true);assert.matches("share the Nightmare Map item",messages,1,true)
 		profile.rules=rules;local sample=filters.simulate(profile,{BaseType="Map (Tier 16)",Class="Maps",Rarity="Normal",MapTier=16})
 		assert.equal("Show",sample.action);assert.equal("Map (Tier 16) [atlas:mapping]",sample.ruleTitle)
 		local again=filters.generate(build,profile);assert.same(rules,again)

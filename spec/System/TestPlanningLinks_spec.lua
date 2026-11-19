@@ -152,7 +152,7 @@ describe("Linked planning tools",function()
 		build.savers.AtlasPlans:Upsert(plan)
 		local profile=filters.profile("map-filter","Map filter");profile.rules=filters.generate(build,profile)
 		local found={};for _,rule in ipairs(profile.rules) do if rule.origin=="atlas:farming" then found[rule.title]=rule end end
-		assert.is_truthy(found["Map (Tier 16)"]);assert.is_truthy(found["Abomination Map"]);assert.is_truthy(found["Omen of Connections"])
+		assert.is_truthy(found["Map (Tier 16)"]);assert.is_truthy(found["Nightmare Map"]);assert.is_truthy(found["Omen of Connections"])
 		local oldId=found["Map (Tier 16)"].id
 		plan.strategy.maps="Abomination Map, Map (Tier 16)";build.savers.AtlasPlans:Upsert(plan)
 		assert.is_false(dependencies.report(build,profile).stale)
@@ -160,6 +160,18 @@ describe("Linked planning tools",function()
 		assert.equal(oldId,found["Map (Tier 16)"].id)
 		plan.strategy.maps="Map (Tier 5), Beach Map";build.savers.AtlasPlans:Upsert(plan)
 		local report=dependencies.report(build,profile);assert.is_true(report.stale);assert.is_true(report.needsReview)
+	end)
+	it("uses shared Nightmare Map pickups for destinations and explains exclusions",function()
+		local plan={id="nightmare",title="Nightmare",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Abomination Map, Fortress Map"}}
+		build.savers.AtlasPlans:Upsert(plan)
+		local journey=require("Modules.BuildJourney").empty();journey.resources={{id="destination",title="Ziggurat Map"}};build.savers.BuildJourney:Replace(journey)
+		local profile=filters.profile("nightmare-filter","Nightmare");local rules,warnings=filters.generate(build,profile);local found={}
+		for _,rule in ipairs(rules) do found[(rule.origin or "")..":"..rule.title]=rule end
+		assert.is_truthy(found["atlas:nightmare:Nightmare Map"]);assert.is_truthy(found["budget:destination:Nightmare Map"])
+		assert.is_nil(found["atlas:nightmare:Abomination Map"]);assert.equal(2,#warnings)
+		for _,warning in ipairs(warnings) do assert.matches("share the Nightmare Map item",warning.message,1,true) end
+		plan.strategy.avoid="Fortress Map";build.savers.AtlasPlans:Upsert(plan);rules=filters.generate(build,profile)
+		for _,rule in ipairs(rules) do assert.is_false(rule.origin=="atlas:nightmare" and rule.title=="Nightmare Map") end
 	end)
 	it("links current special map items from Atlas plans and budgets",function()
 		local plan={id="special-maps",title="Special maps",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Nightmare Map, Shaper Guardian Map, Valdo Map",avoid="Valdo Map"}}

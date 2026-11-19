@@ -333,7 +333,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 	if kind=="Map tiers" then
 		-- Explicit synthetic tiers allow direct comparison of MapTier rules.
 		for tier=1,17 do
-			local item=M.sample();item.BaseType=tier==17 and "Abomination Map" or "Map (Tier "..tier..")"
+			local item=M.sample();item.BaseType=tier==17 and "Nightmare Map" or "Map (Tier "..tier..")"
 			item.Class="Maps";item.Rarity=tier==17 and "Rare" or "Normal";item.MapTier=tier;item.UnidentifiedItemTier=nil
 			item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86;applyBaseProperties(item);list[#list+1]=item
 		end

@@ -458,7 +458,7 @@ describe("Visual filter catalogue",function()
 		assert.equal(17,#scene);assert.same(scene,library.scene(profile,build,"Map tiers",3,72,75))
 		for tier,item in ipairs(scene) do
 			assert.equal(tier,item.MapTier);assert.equal("Maps",item.Class);assert.equal(72,item.AreaLevel);assert.equal(75,item.ItemLevel)
-			assert.equal(tier==17 and "Abomination Map" or "Map (Tier "..tier..")",item.BaseType)
+			assert.equal(tier==17 and "Nightmare Map" or "Map (Tier "..tier..")",item.BaseType)
 			local result=parser.simulate(parser.parse("Show\n MapTier >= 16\nHide"),item)
 			assert.equal(tier>=16 and "Show" or "Hide",result.action)
 		end
