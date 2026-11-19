@@ -86,11 +86,16 @@ async function main(){
   const partialGroupResult=await queued('simulate_crafting',{baseRevision:context.revision,itemText:raw,recipe:partialGroupRecipe,options:{trials:1,maxActions:2}},'crafted');
   assert.equal(partialGroupResult.nativeCrafting.routeCounts[0].success,1);assert.equal(partialGroupResult.nativeCrafting.routeCounts[1].visits,1);
   const origin=createHash('sha1').update(raw).digest('hex');
-  const uniqueShield='Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\n+100 to maximum Life';
+  const uniqueShield='Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\n+100 to maximum Life';
   const uniqueQuality=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},seed:1},'crafted');
   assert.equal(uniqueQuality.nativeCrafting.uniqueQuality.quality,13);assert.equal(uniqueQuality.nativeCrafting.uniqueQuality.resource,"Armourer's Scrap");
   const uniqueQualityNext=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueQuality.nativeCrafting.itemText,action:{method:'quality'},seed:2},'crafted');
   assert.equal(uniqueQualityNext.nativeCrafting.uniqueQuality.quality,14);assert.match(uniqueQualityNext.nativeCrafting.itemText,/\+100 to maximum Life/);
+  const uniqueLinked=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueQualityNext.nativeCrafting.itemText,action:{method:'beast_max_links'},seed:3},'crafted');
+  assert.equal(uniqueLinked.nativeCrafting.itemText,uniqueShield.replace('Quality: 12','Quality: 14').replace('Sockets: R-G B','Sockets: R-G-B'));
+  assert.equal(uniqueLinked.nativeCrafting.components.beast_black_morrigan,1);assert.equal(uniqueLinked.nativeCrafting.components.beast_craicic_sand_spitter,1);
+  const uniqueLinkedQuality=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueLinked.nativeCrafting.itemText,action:{method:'quality'},seed:4},'crafted');
+  assert.equal(uniqueLinkedQuality.nativeCrafting.uniqueQuality.quality,15);assert.match(uniqueLinkedQuality.nativeCrafting.itemText,/Sockets: R-G-B/);
   const corruptJewelRaw='Rarity: NORMAL\nCobalt Jewel\nItem Level: 83';
   const corruptJewelInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:corruptJewelRaw,query:'',limit:5},'inspected');
   assert.ok(corruptJewelInspection.crafting.nativeEngine.uniqueCorruption.names.includes('Powerlessness'));
