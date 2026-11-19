@@ -28,6 +28,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 	end
 	local function loadStep()
 		local step=draft.steps[selected];if not step then return end
+		controls.graph.selectedKey=selected
 		for _,row in ipairs(controls.graph.list) do row.selected=row.step==selected end
 		local scroll=controls.graph.controls.scrollBar;local _,height=controls.graph:GetSize()
 		scroll:SetContentDimension(#draft.steps*92,height-4);scroll:ScrollIntoView((selected-1)*92,92)

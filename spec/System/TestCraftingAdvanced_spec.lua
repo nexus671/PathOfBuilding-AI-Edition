@@ -664,6 +664,13 @@ describe("Advanced native crafting", function()
 		controls.success:SelByValue(3,"val");controls.step.selFunc(2,{val=2});controls.step.selFunc(1,{val=1})
 		assert.equal(3,controls.success:GetSelValueByKey("val"));main.popups={}
 	end)
+	it("moves from the dropdown-selected recipe card with the keyboard", function()
+		local panel=require("Classes.CraftingRecipeControl")
+		local controls=panel.Open({steps={{method="alchemy"},{method="scour"},{method="chaos"}},targets={}},{method="scour"},function() end)
+		controls.step.selFunc(3,{val=3});controls.graph.planningMove(-1)
+		assert.equal(2,controls.step:GetSelValueByKey("val"));assert.is_true(controls.graph.list[2].selected)
+		main.popups={}
+	end)
 	it("does not discard invalid route edits when changing steps", function()
 		local panel=require("Classes.CraftingRecipeControl");local kept
 		local controls=panel.Open({steps={{method="alchemy"},{method="scour"}},targets={},requirements={minQuality=0}},{method="scour"},function(value) kept=value end)
