@@ -375,6 +375,17 @@ test('proposes crafting metadata and optional target gear through desktop review
   assert.equal(f.call('get_crafting_projects',{}).projects.length,0);
 });
 
+test('round-trips structured unique guide actions through desktop review', t => {
+  const f=fixture(t);const project=craftingProject();
+  project.steps=[{action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},{action:'Link sockets with an Omen',uniqueCraft:{method:'omen_connections',count:1}}];
+  f.call('propose_crafting_plan',{baseRevision:f.state.revision,project});
+  const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.deepEqual(queued.proposal.operations[0].project.steps,project.steps);
+  for (const invalid of [{method:'quality',count:21},{method:'omen_connections',count:2},{method:'unknown',count:1}]) {
+    assert.throws(()=>f.call('propose_crafting_plan',{baseRevision:f.state.revision,project:{...project,steps:[{action:'Invalid',uniqueCraft:invalid}]}}),/arguments/);
+  }
+});
+
 test('preserves typed Harvest enchant actions, goals and inventory states', t => {
   const f=fixture(t);const project=craftingProject();
   project.preferredMethod='harvest_enchant';
