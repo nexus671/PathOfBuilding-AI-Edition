@@ -55,4 +55,12 @@ describe("Independent modifier ranges",function()
 		local ids={};for _,entry in ipairs(resolved.affixes) do ids[entry.id]=true end
 		assert.is_true(ids[life]);assert.is_true(ids[hybrid])
 	end)
+	it("honours prefix and suffix labels when matching a known modifier",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local prefix,suffix="LocalIncreasedPhysicalDamageReductionRatingPercentAndStunRecovery4","StunRecovery1"
+		m.mods={{id=suffix}};m.essences={};m.bench={}
+		m.item.explicitModLines={{line="12% increased Stun and Block Recovery",suffix=true},{line="27% increased Armour",prefix=true},{line="12% increased Stun and Block Recovery",prefix=true}}
+		local resolved=require("Modules.CraftingImport").resolve(sim,m,{rarity="RARE",affixes={{id=prefix,range={0,0}}}})
+		assert.are.equal(2,#resolved.affixes);assert.are.equal(suffix,resolved.affixes[2].id)
+	end)
 end)

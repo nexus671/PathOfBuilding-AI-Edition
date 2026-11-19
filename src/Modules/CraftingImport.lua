@@ -35,9 +35,15 @@ function I.resolve(M,model,state)
 	local rows={}
 	for _,line in ipairs(model.item.explicitModLines) do rows[#rows+1]={text=itemLib.applyRange(line.line,line.range or 0.5),crafted=line.crafted or false,fractured=line.fractured or false,prefix=line.prefix,suffix=line.suffix} end
 	local used={}
-	for _,entry in ipairs(state.affixes) do for _,text in ipairs(M.rolledLines(M.entryMod(model,entry),entry.range)) do
+	for _,entry in ipairs(state.affixes) do local mod=M.entryMod(model,entry);for _,text in ipairs(M.rolledLines(mod,entry.range)) do
 		local found
-		for i,row in ipairs(rows) do if not used[i] and row.text == text and row.crafted == (entry.crafted or false) and row.fractured == (entry.fractured or false) then found=i;break end end
+		-- Preserve explicitly labelled prefix/suffix rows for the matching side;
+		-- prefer a labelled row over an otherwise equivalent unlabelled row.
+		for _,labelled in ipairs({true,false}) do
+			for i,row in ipairs(rows) do if not used[i] and row.text == text and row.crafted == (entry.crafted or false) and row.fractured == (entry.fractured or false)
+				and (not row.prefix or mod.type == "Prefix") and (not row.suffix or mod.type == "Suffix") and (not not (row.prefix or row.suffix)) == labelled then found=i;break end end
+			if found then break end
+		end
 		assert(found,"A native modifier identity does not match the imported values")
 		used[found]=true
 	end end
