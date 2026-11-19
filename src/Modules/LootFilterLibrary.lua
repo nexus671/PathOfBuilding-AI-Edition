@@ -3,6 +3,7 @@
 local filters=require("Modules.LootFilters")
 local parser=require("Modules.LootFilterParser")
 local sha1=require("sha1")
+-- cspell:ignore RRGGBB RRRRGB
 local M={categories={"All items","Build targets","Campaign","Currency","Special currency","Equipment","Unique items","Flasks","Tinctures","Jewels","Divination cards","Maps & fragments","Gems","Recipes","League items","Other"}}
 local baseMetadata,baseClasses
 local noSockets={ ["Stackable Currency"]=true,Gold=true,Contracts=true,Blueprints=true,["Expedition Logbooks"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
