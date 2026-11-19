@@ -89,6 +89,22 @@ describe("Experimental Gwennen pair",function()
 		local split=copyTable(steel.initial);split.rarity="RARE";local reroll=sim.action(steel,split,pair,function() return 0 end)
 		assert.same({0,0},reroll.baseImplicitRanges[1]);sim.validateState(steel,reroll)
 	end)
+	it("rerolls a single varying line on multi-line ordinary base implicits",function()
+		local pair={method="gwennen",firstOutcome=1032,secondOutcome=1000}
+		for _,case in ipairs({
+			{raw="Rarity: NORMAL\nGale Crown\nItem Level: 86\nImplicits: 2\nAdds 4 to 5 Cold Damage\nYour Hits treat Cold Resistance as 10% higher than actual value",expected="Adds 3 to 5 Cold Damage",fixed="Your Hits treat Cold Resistance as 10% higher than actual value"},
+			{raw="Rarity: NORMAL\nDuskwalk Slippers\nItem Level: 86\nImplicits: 2\n10% reduced Movement Speed\n47% increased Cooldown Recovery Rate of Movement Skills",expected="45% increased Cooldown Recovery Rate of Movement Skills",fixed="10% reduced Movement Speed"},
+		}) do
+			local model=sim.model(case.raw);local state=copyTable(model.initial);state.rarity="RARE";local original=copyTable(state)
+			local result=sim.action(model,state,pair,function() return 0 end)
+			assert.same(original,state);sim.validateState(model,result)
+			local text=sim.toItem(model,result).raw
+			assert.is_truthy(text:find(case.expected,1,true));assert.is_truthy(text:find(case.fixed,1,true))
+			local restored=require("Modules.CraftingCheckpoint").validate(case.raw,require("Modules.CraftingInventory").run(result)).state
+			assert.same(result.baseImplicitRanges,restored.baseImplicitRanges)
+			assert.is_truthy(sim.toItem(model,restored).raw:find(case.expected,1,true))
+		end
+	end)
 	it("retains synthesised implicit identities and rolls through saving and corruption",function()
 		local source="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n{range:0}(8-10)% increased maximum Life\n+20 to Dexterity\nSynthesised Item"
 		local model=sim.model(source);local state=copyTable(model.initial);state.rarity="RARE";local original=copyTable(state)

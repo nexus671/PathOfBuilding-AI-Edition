@@ -35,11 +35,24 @@ local function rerollImplicits(M,model,input,draw)
 	else
 		assert(not model.blessed330 and not model.blessed330Unresolved and not model.baseImplicitUnresolved,"This special implicit reroll is not modeled")
 		assert(#model.item.implicitModLines>0,"This item has no supported implicit to reroll")
-		assert(#model.item.implicitModLines==1 and model.baseImplicitTemplates and model.baseImplicitTemplates[1],"Rerolling multiple or unidentified base implicits is not modeled")
-		local line=model.item.implicitModLines[1];local range=result.baseImplicitRanges and result.baseImplicitRanges[1] or model.normalizedBaseImplicitRanges and model.normalizedBaseImplicitRanges[1] or line.range
-		local template=model.baseImplicitTemplates[1]
-		assert(not result.baseImplicitRanges or result.baseImplicitReconstructed or line.line==template,"The legacy implicit roll cannot be identified; reset or update the working item")
-		if belowMaximum({template},range) then result.baseImplicitRanges={M.rollRange({template},draw)};result.baseImplicitReconstructed=true;changed=true end
+		assert(model.baseImplicitTemplates and #model.baseImplicitTemplates==#model.item.implicitModLines,"Rerolling unidentified base implicits is not modeled")
+		local ranges={};local varyingLine
+		for i,line in ipairs(model.item.implicitModLines) do
+			local template=model.baseImplicitTemplates[i]
+			assert(not result.baseImplicitRanges or result.baseImplicitReconstructed or line.line==template,"The legacy implicit roll cannot be identified; reset or update the working item")
+			ranges[i]=result.baseImplicitRanges and result.baseImplicitRanges[i] or model.normalizedBaseImplicitRanges and model.normalizedBaseImplicitRanges[i] or line.range
+			local varying=false
+			for low,high in template:gmatch("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)") do if tonumber(low)~=tonumber(high) then varying=true end end
+			if varying then
+				assert(ranges[i]~=nil,"An implicit roll could not be identified")
+				assert(not varyingLine,"Rerolling multiple varying base implicit lines is not modeled")
+				varyingLine=i
+			else ranges[i]=ranges[i] or 0.5 end
+		end
+		if varyingLine and belowMaximum({model.baseImplicitTemplates[varyingLine]},ranges[varyingLine]) then
+			ranges[varyingLine]=M.rollRange({model.baseImplicitTemplates[varyingLine]},draw)
+			result.baseImplicitRanges=ranges;result.baseImplicitReconstructed=true;changed=true
+		end
 	end
 	assert(changed,"No supported implicit has a value below its maximum")
 	return result

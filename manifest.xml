@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview730" />
+	<Version number="2.68.1-ai.preview731" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2125,7 +2125,7 @@
 	<File name="Modules/CraftingDesolation330.lua" part="program" sha1="c5274eb90fccc51fbdae63894c11d9ff8a3598a1" />
 	<File name="Modules/CraftingEnchants.lua" part="program" sha1="abfabdf5af449d8fb9d0544efdabd77d3b25c4ee" />
 	<File name="Modules/CraftingFossilResults.lua" part="program" sha1="484afaf696ec7915f1dc175badfa7fa60d718b83" />
-	<File name="Modules/CraftingGwennen.lua" part="program" sha1="ac902677c300248921c7a712bd1cc2997547a132" />
+	<File name="Modules/CraftingGwennen.lua" part="program" sha1="d33a1a4bcaa6183f1ae5aa403b7f1939c2280adf" />
 	<File name="Modules/CraftingGwennenReference.lua" part="program" sha1="5d00ee5909b1a86dddf52351247604d2a2ba1995" />
 	<File name="Modules/CraftingImport.lua" part="program" sha1="14692e0e8e6728ad93a7cd905ff4fb337012ce3c" />
 	<File name="Modules/CraftingInspection.lua" part="program" sha1="446b9fe6762881a70769e34c8eb0b1b1adcafce1" />
