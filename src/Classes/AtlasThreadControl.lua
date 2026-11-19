@@ -6,19 +6,19 @@ function M.Open(options)
 	options=options or {}
 	local w,h=math.min(800,main.screenW-40),math.min(600,main.screenH-60)
 	local c={}
-	local intro=options.mechanic and {"Starting with recorded free "..options.mechanic.." Threads. Add spent or bonus Threads; review area level.","Other conditions and odds are not modeled."} or {"Enter one Thread type's applied count, including free or bonus Threads. Other conditions and odds are not modeled."}
+	local intro=options.mechanic and {"Starting with recorded free "..options.mechanic.." Threads. Add spent or bonus Threads; review area level.","Other Thread types and odds are not modeled."} or {"Enter applied and spent counts for one Thread type; each listed type uses the same inputs separately.","Applied includes free Threads; interactions with other types are unverified."}
 	ui.description(c,"intro",16,28,w-32,42,intro,16)
 	ui.label(c,"levelLabel",16,82,"Area level",15)
 	c.level=new("EditControl"):EditControl(ui.anchor,{16,106,140,28},"83",nil,"^%d",3)
 	ui.label(c,"threadsLabel",180,82,"Threads per type",15)
 	c.threads=new("EditControl"):EditControl(ui.anchor,{180,106,140,28},tostring(options.threads or 2),nil,"^%d",3)
-	ui.label(c,"spentLabel",344,82,"Abyss Threads spent (optional)",15)
+	ui.label(c,"spentLabel",344,82,"Threads spent per type (optional)",15)
 	c.spent=new("EditControl"):EditControl(ui.anchor,{344,106,140,28},"",nil,"^%d",3)
-	if options.mechanic and options.mechanic~="Abyss" then c.spentLabel.shown=false;c.spent.shown=false end
 	c.status=ui.label(c,"status",16,146,"",14)
 	c.results=new("TextListControl"):TextListControl(ui.anchor,{16,176,w-32,h-250},nil,{})
 	local function refresh()
-		local ok,result=pcall(strategy.threadRestrictions,tonumber(c.level.buf),tonumber(c.threads.buf),c.spent.buf~="" and tonumber(c.spent.buf) or nil)
+		local spent=c.spent.buf~="" and tonumber(c.spent.buf) or nil
+		local ok,result=pcall(strategy.threadRestrictions,tonumber(c.level.buf),tonumber(c.threads.buf),(not options.mechanic or options.mechanic=="Abyss") and spent or nil,spent)
 		if not ok then c.status.label="^xE9BE7B"..ui.fit(ui.errorText(result),w-32,14);c.results.list={};return end
 		local lines={result.threads==0 and "No Threads applied; no modifier guarantee modeled." or "When spending Threads: "..result.guaranteedModifiers.." guaranteed modifiers | 3.30.0c", "Free-only guarantees are not established."}
 		if result.milestones.threshold then
@@ -32,8 +32,9 @@ function M.Open(options)
 		lines[#lines+1]="Modifier restrictions:"
 		local shown=0;for _,row in ipairs(result.modifiers) do if not options.mechanic or row.mechanic==options.mechanic then
 			shown=shown+1
-			lines[#lines+1]=(row.restrictionsMet and "^x85D6A6Conditions met" or "^xE9BE7BRestricted").."^7 | "..row.mechanic..": "..row.effect
-			lines[#lines+1]="    Requires area level "..row.areaLevel.."+ and at least 2 Threads."
+			local status=row.conditionStatus=="conditions_met" and "^x85D6A6Conditions met" or row.conditionStatus=="restricted" and "^xE9BE7BRestricted" or "^xE9BE7BSpend unresolved"
+			lines[#lines+1]=status.."^7 | "..row.mechanic..": "..row.effect
+			lines[#lines+1]="    Area level "..row.areaLevel.."+; cannot occur with exactly one spent Thread."
 		end end
 		if shown==0 then lines[#lines+1]="No listed restrictions for "..options.mechanic.."; other conditions may apply." end
 		c.status.label="^7Conditions met does not guarantee an offer."

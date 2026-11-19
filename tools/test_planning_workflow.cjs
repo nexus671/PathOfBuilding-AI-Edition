@@ -827,7 +827,7 @@ async function main(){
   assert.equal(secondCorruption.nativeCrafting.warnings[0].code,'locus_assumptions');
   assert.ok(secondCorruption.nativeCrafting.state.destroyed || secondCorruption.nativeCrafting.state.twiceCorrupted);
   if(!secondCorruption.nativeCrafting.state.destroyed) assert.match(secondCorruption.nativeCrafting.itemText,/Twice Corrupted/);
-  const threadCheck=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:73,threads:2},'atlas');
+  const threadCheck=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:73,threads:2,spentThreads:2},'atlas');
   assert.equal(threadCheck.atlas.modifiers.filter(row=>row.restrictionsMet).length,3);assert.match(threadCheck.atlas.note,/not modeled/);
   const starterAtlas={id:'starter-atlas',title:'Starter Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'starter'},mapDrafts:[{id:'my-map',title:'My map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:5,itemLevel:68,rarity:'rare',selected:['MapMonsterAreaOfEffectMapWorlds'],rolls:[{id:'MapMonsterAreaOfEffectMapWorlds',values:[13,8,5,45]}],estimate:{wantedGroups:[['MapMonsterAreaOfEffectMapWorlds']],avoid:['MapMonsterColdDamageMapWorlds'],trials:20,maxAttempts:5}}]};
   starterAtlas.mapDrafts.push({id:'corrupt-map',title:'Corrupted map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',corrupted:true,selected:corruptedIds,implicit:{id:'MapCorruptionItemRarity',value:15}});
@@ -845,10 +845,11 @@ async function main(){
     const current=await queued('search_atlas_nodes',{baseRevision:context.revision,version,query:'Celestial Presence',limit:10},'atlas');
     assert.ok(current.atlas.matches.some(node=>node.id===27261 && node.variantEffects.length===3));
   }
-  const milestones=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:83,threads:8,spentAbyssThreads:1},'atlas');
+  const milestones=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:83,threads:8,spentThreads:1,spentAbyssThreads:1},'atlas');
   assert.equal(milestones.atlas.guaranteedModifiers,3);assert.equal(milestones.atlas.milestones.threshold,8);
   assert.equal(milestones.atlas.guaranteeRequiresSpend,true);assert.match(milestones.atlas.guaranteeNote,/Free-only/);
   assert.equal(milestones.atlas.abyssalConsort.spentThreads,1);assert.equal(milestones.atlas.abyssalConsort.restricted,true);
+  assert.ok(milestones.atlas.modifiers.every(row=>row.restrictionsMet===false && row.conditionStatus==='restricted'));
   const regionPreview=await queued('preview_shaped_region_run',{baseRevision:context.revision,plan:regionsPlan,map:'Beach Map',completed:['Blight']},'atlas');
   assert.deepEqual(regionPreview.atlas.plan.shapedRegions[0].maps,[{name:'Strand Map',freeThreads:4}]);assert.deepEqual(regionPreview.atlas.plan.shapedRegions[1].maps,[{name:'Dunes Map',freeThreads:1}]);
   assert.equal((await call('get_build_context')).context.revision,context.revision);

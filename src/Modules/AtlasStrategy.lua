@@ -25,15 +25,20 @@ local threadMilestones={
 }
 -- The patch describes necessary conditions, not an exhaustive offer pool or odds.
 function M.threadRestrictionReference()
-	local rows=copyTable(threadRestrictions);for _,row in ipairs(rows) do row.minimumThreads=2 end
-	return {modifiers=rows,patch="3.30.0b Hotfix 3",source="https://www.pathofexile.com/forum/view-thread/4015683",note="These seven published restrictions are necessary conditions only. Other requirements, offer availability and probabilities are not modeled."}
+	local rows=copyTable(threadRestrictions);for _,row in ipairs(rows) do row.singleSpendRestricted=true end
+	return {modifiers=rows,patch="3.30.0b Hotfix 3",source="https://www.pathofexile.com/forum/view-thread/4015683",note="The seven modifiers are restricted by area level and cannot occur when only one Thread is spent. This check assumes the relevant type's spend is what matters; interactions with other Thread types are unverified. Applied Threads may include free or bonus Threads. Other requirements, offer availability and probabilities are not modeled."}
 end
-function M.threadRestrictions(areaLevel,threads,spentAbyssThreads)
+function M.threadRestrictions(areaLevel,threads,spentAbyssThreads,spentThreads)
 	assert(type(areaLevel)=="number" and areaLevel==math.floor(areaLevel) and areaLevel>=1 and areaLevel<=100,"Use an area level from 1 to 100")
 	assert(type(threads)=="number" and threads==math.floor(threads) and threads>=0 and threads<=100,"Use a non-negative whole Thread count up to 100")
 	assert(spentAbyssThreads==nil or type(spentAbyssThreads)=="number" and spentAbyssThreads==math.floor(spentAbyssThreads) and spentAbyssThreads>=0 and spentAbyssThreads<=100,"Use a non-negative whole Abyss Thread spend up to 100")
-	local result=M.threadRestrictionReference();result.areaLevel=areaLevel;result.threads=threads
-	for _,row in ipairs(result.modifiers) do row.restrictionsMet=threads>=row.minimumThreads and areaLevel>=row.areaLevel end
+	assert(spentThreads==nil or type(spentThreads)=="number" and spentThreads==math.floor(spentThreads) and spentThreads>=0 and spentThreads<=100,"Use a non-negative whole Thread spend up to 100")
+	local result=M.threadRestrictionReference();result.areaLevel=areaLevel;result.threads=threads;result.spentThreads=spentThreads
+	for _,row in ipairs(result.modifiers) do
+		if areaLevel<row.areaLevel or spentThreads==1 then row.restrictionsMet=false;row.conditionStatus="restricted"
+		elseif spentThreads and spentThreads>=2 then row.restrictionsMet=true;row.conditionStatus="conditions_met"
+		else row.conditionStatus="spend_unresolved" end
+	end
 	local tier=threads>=8 and 3 or threads>=6 and 2 or threads>=3 and 1 or 0
 	result.guaranteedModifiers=threads==0 and 0 or threads>=8 and 3 or threads>=4 and 2 or 1
 	result.guaranteeRequiresSpend=true

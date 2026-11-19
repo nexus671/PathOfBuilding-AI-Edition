@@ -600,7 +600,7 @@ function M.poll(build, force)
 			local planner=require("Modules.AtlasPlanner")
 			local result
 			if request.kind == "atlasSearch" then result=planner.search(request.version,request.query,request.limit)
-			elseif request.kind == "atlasThreads" then result=require("Modules.AtlasStrategy").threadRestrictions(request.areaLevel,request.threads,request.spentAbyssThreads)
+			elseif request.kind == "atlasThreads" then result=require("Modules.AtlasStrategy").threadRestrictions(request.areaLevel,request.threads,request.spentAbyssThreads,request.spentThreads)
 			elseif request.kind == "atlasRegionRun" then
 				local plan=planner.validate(request.plan);assert(plan.shapedRegions,"This Atlas plan has no recorded Shaped Regions")
 				local regions=require("Modules.AtlasRegions");plan.shapedRegions=regions.complete(plan.shapedRegions,request.map,request.completed)

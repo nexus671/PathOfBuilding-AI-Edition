@@ -429,9 +429,9 @@ test('queues versioned Atlas searches and routing without changing build context
 
 test('queues bounded Thread restriction checks', t => {
   const f=fixture(t),baseRevision=f.state.revision;
-  f.call('check_thread_restrictions',{baseRevision,areaLevel:73,threads:2,spentAbyssThreads:1});
+  f.call('check_thread_restrictions',{baseRevision,areaLevel:73,threads:2,spentThreads:2,spentAbyssThreads:1});
   const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
-  assert.equal(queued.kind,'atlasThreads');assert.equal(queued.areaLevel,73);assert.equal(queued.threads,2);assert.equal(queued.spentAbyssThreads,1);
+  assert.equal(queued.kind,'atlasThreads');assert.equal(queued.areaLevel,73);assert.equal(queued.threads,2);assert.equal(queued.spentThreads,2);assert.equal(queued.spentAbyssThreads,1);
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   assert.throws(()=>f.call('check_thread_restrictions',{baseRevision,areaLevel:101,threads:2}),/arguments/);
   assert.throws(()=>f.call('check_thread_restrictions',{baseRevision,areaLevel:73,threads:1.5}),/arguments/);
