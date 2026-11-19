@@ -67,6 +67,9 @@ function M.hasProtectedImplicit(model,state)
 end
 function M.actionWarnings(action,model)
 	local result={}
+	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingCorrupt" then
+		result[#result+1]={code="bloodstained_implicit_assumptions",message="Bloodstained Fossil uses the ordinary corruption implicit model here. Community documentation describes it replacing all existing implicits; that difference and current-patch behavior are not verified. Check the item in game before relying on retained implicits.",source="https://www.poewiki.net/wiki/Bloodstained_Fossil"};break
+	end end
 	if gildedCorruption(action) and M.hasProtectedImplicit(model,model and model.initial) then
 		result[#result+1]={code="protected_implicit_corruption",message="The model treats an implicit-change corruption outcome as no change to protected implicits, including a Gilded modifier. The 3.30 second-corruption interaction is unverified.",source="https://www.poewiki.net/wiki/Composite_Ring"}
 	end

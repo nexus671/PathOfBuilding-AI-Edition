@@ -2,6 +2,11 @@ describe("Crafting result model notes",function()
 	local sim=require("Modules.CraftingSimulator")
 	local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"
 	local donor="Rarity: NORMAL\nCone Helmet\nItem Level: 70"
+	it("reports Bloodstained implicit uncertainty once per recipe",function()
+		local blood="Metadata/Items/Currency/CurrencyDelveCraftingCorrupt";local action={method="fossil",fossils={blood}}
+		local notes=sim.actionWarnings(action);assert.equal("bloodstained_implicit_assumptions",notes[1].code);assert.matches("replacing all existing implicits",notes[1].message)
+		local recipe=sim.recipeWarnings({steps={action,action}});local count=0;for _,note in ipairs(recipe) do if note.code==notes[1].code then count=count+1 end end;assert.equal(1,count)
+	end)
 	it("discloses the incomplete Gilded corruption interaction",function()
 		local gilded="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice";local blood="Metadata/Items/Currency/CurrencyDelveCraftingCorrupt"
 		local function has(notes) local count=0;for _,note in ipairs(notes) do if note.code=="gilded_corruption_incomplete" then count=count+1;assert.matches("Other Gilded corruption combinations remain incomplete",note.message) end end;return count end
