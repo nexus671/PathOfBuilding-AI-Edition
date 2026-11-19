@@ -855,7 +855,8 @@ function Panel.Open(build,project,layout)
 		for _,warning in ipairs(simulator.actionWarnings(action(),{item=model.item,initial=state})) do
 			if warning.code=="abyss_socket_layout" or warning.code=="tincture_imported_values" then text=text.."\n"..warning.message end
 		end
-		return text
+		local lines={};for _,row in ipairs(ui.rows({text},math.min(leftWidth+80,500),14)) do lines[#lines+1]=row[1] end
+		return table.concat(lines,"\n")
 	end
 	controls.apply.height=32;controls.undo.height=32
 	controls.apply.y=function() return #controls.option.list>0 and 370 or 320 end;controls.undo.y=controls.apply.y

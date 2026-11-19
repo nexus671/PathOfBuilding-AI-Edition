@@ -6,5 +6,5 @@ return function(build,ui,frame)
 	for _,row in ipairs(controls.actionHint.list) do used=used+row.height end
 	assert(used<=height,"Crafting blocker or tincture warning is clipped")
 	assert(controls.apply.tooltipText():find("locally scaled",1,true),"Full tincture warning missing from action tooltip")
-	frame("crafting-tincture-blocker");ui:click("close")
+	frame("crafting-tincture-blocker");frame("crafting-tincture-blocker-tooltip","apply");ui:click("close")
 end
