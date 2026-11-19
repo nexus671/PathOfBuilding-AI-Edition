@@ -60,6 +60,22 @@ describe("Local filter editing",function()
 		assert.is_nil(editing.assignmentIssue(p,"compatible","Chaos Orb"))
 		assert.is_nil(editing.assignmentIssue(p,"target","Unknown custom item",'Show\n BaseType == "Unknown custom item"'))
 		assert.same({"Chaos Orb"},editing.assign(p,"compatible","Chaos Orb").tiers[4].items)
+		-- A previously misclassified item must be movable into a compatible tier.
+		p.tiers[1].text='Show\n Class == "Stackable Currency"\n BaseType == "Chaos Orb"'
+		p.tiers[2].text='Show\n Class == "Helmets"\n BaseType == "Iron Hat"'
+		p.tiers[1].items={};p.tiers[2].items={"Chaos Orb"}
+		assert.is_nil(editing.assignmentIssue(p,"source","Chaos Orb"))
+		assert.same({"Chaos Orb"},editing.assign(p,"source","Chaos Orb").tiers[1].items)
+	end)
+	it("only enables adding an item when the selected tier can accept it",function()
+		local p=profile();p.tiers={editing.newTier("helmets","Helmets",'Show\n Class == "Helmets"\n BaseType == "Iron Hat"')}
+		local controls={};local changed
+		require("Classes.LootFilterTierControl").Mount(controls,p,940,650,{}, {change=function(value) changed=value end})
+		assert.is_false(controls.tierAddItem.enabled())
+		controls.tierName:SetText('Mystery "Orb"');assert.is_false(controls.tierAddItem.enabled())
+		controls.tierName:SetText("Chaos Orb");assert.is_false(controls.tierAddItem.enabled())
+		controls.tierName:SetText("Iron Hat");assert.is_true(controls.tierAddItem.enabled());controls.tierAddItem:Click()
+		assert.same({"Iron Hat"},changed.tiers[1].items)
 	end)
 	it("decorates declared styles without adding inherited styles or changing conditions",function()
 		local raw='Show\n BaseType == "Iron Hat"\n SetTextColor 100 120 140\n CustomAlertSoundOptional "folder/my tone.wav"\n MinimapIcon 1 Cyan Diamond\n PlayEffect Green Temp\n Continue\nShow\n Rarity Rare'

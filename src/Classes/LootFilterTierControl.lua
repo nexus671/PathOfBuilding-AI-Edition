@@ -60,7 +60,13 @@ function M.Mount(c,profile,w,h,view,options)
 	c.tierMove.tooltipFunc=function(tooltip) tooltip:AddLine(14,name and (edit.assignmentIssue(profile,c.tierDestination:GetSelValueByKey("val"),name,chosen().text) or "Move this item to the selected tier; its class and stack conditions remain attached.") or "Choose an item and a destination tier.") end
 	c.tierName=new("EditControl"):EditControl(ui.anchor,{332,h-136,w-500,28},"","Exact item name",nil,240)
 	button("tierAddItem",w-148,h-136,132,"Add item",function() local entry=custom();change(edit.assign(profile,entry.id,c.tierName.buf)) end)
-	c.tierAddItem.enabled=function() return selected and selected.custom end
+	local function addItemIssue()
+		if not selected or not selected.custom then return "Choose a custom tier first." end
+		if not c.tierName.buf:match("%S") or c.tierName.buf:find('[%c"]') then return "Enter an exact item name without quotation marks." end
+		return edit.assignmentIssue(profile,selected.id,c.tierName.buf)
+	end
+	c.tierAddItem.enabled=function() return not addItemIssue() end
+	c.tierAddItem.tooltipText=function() return addItemIssue() or "Add this exact item name to the selected tier." end
 	button("tierNew",16,h-136,92,"New tier",function() local next=copyTable(profile);next.tiers=next.tiers or {};local tier=edit.newTier(options.id(),"New tier");next.tiers[#next.tiers+1]=tier;view.scope="My tiers";change(next,tier.id) end)
 	button("tierEdit",116,h-136,92,"Edit",function() local entry=custom();local rule={id=entry.id,title=entry.title,text=#entry.items>0 and edit.withItems(entry.text,entry.items) or entry.text,enabled=entry.enabled}
 		options.edit(rule,function(rule) local next=copyTable(profile);for _,tier in ipairs(next.tiers) do if tier.id==entry.id then tier.title=rule.title;tier.text=rule.text;tier.enabled=rule.enabled;if #tier.items>0 then tier.items=edit.items(rule.text) end end end;next.tiers=edit.validateTiers(next.tiers);change(next) end)

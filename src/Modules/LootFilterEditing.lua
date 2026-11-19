@@ -104,11 +104,17 @@ function M.assignmentIssue(profile,id,name,sourceText)
 	-- A shared class in two multi-class tiers does not prove this item matches.
 	local knownClass=require("Modules.LootFilterLibrary").baseClass(name)
 	if knownClass then
+		local resolved=true
 		for _,condition in ipairs(parser.parse(destination.text).rules[1].conditions) do
-			if condition.keyword=="Class" and parser.condition(condition,{Class=knownClass})==false then
-				return "This item's class ("..knownClass..") does not match the destination tier. Edit its class conditions or choose another tier."
+			if condition.keyword=="Class" then
+				local matches=parser.condition(condition,{Class=knownClass})
+				if matches==false then return "This item's class ("..knownClass..") does not match the destination tier. Edit its class conditions or choose another tier." end
+				if matches==nil then resolved=false end
 			end
 		end
+		-- A known compatible class is stronger evidence than a source tier's
+		-- class condition, which may itself be the mistake the user is fixing.
+		if resolved then return end
 	end
 	local from,to=classes(sourceText),classes(destination.text)
 	if from and to then local overlap=false;for _,a in ipairs(from) do for _,b in ipairs(to) do if a==b then overlap=true end end end
