@@ -22,10 +22,24 @@ describe("Unique crafting recipes",function()
 		result=sim.simulate(raw,restart,{trials=2,maxActions=3});assert.equal(0,result.successChance);assert.equal(3,result.meanActions);assert.equal(4,result.recovery.restarts);assert.equal(2,result.budgetExhausted)
 		restart.steps[1].onFailureAction="stop";result=sim.simulate(raw,restart,{trials=2,maxActions=3});assert.equal(2,result.recovery.stopped);assert.equal(1,result.meanActions)
 	end)
+	it("uses shared resource quotes and preserves missing-price behavior",function()
+		local recipe={steps={{method="quality",maxAttempts=5,untilRequirements={minQuality=14}},{method="omen_connections"}},targets={},requirements={minQuality=14,links=3}}
+		local omen="Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks";local fusing="Metadata/Items/Currency/CurrencyRerollSocketLinks"
+		local book={currency="chaos",source="Manual",quotedAt=1700000000,values={quality=1,[omen]=5,[fusing]=2}}
+		local result=sim.simulate(raw,recipe,{trials=2,maxActions=10,baseCost=3,priceBook=book})
+		assert.equal(12,result.meanCost);assert.equal("chaos",result.costCurrency);assert.equal("Manual",result.priceSource)
+		result=sim.simulate(raw,recipe,{trials=2,maxActions=10,baseCost=3,priceBook=book,actionPrices={omen_connections=0}})
+		assert.equal(5,result.meanCost);assert.equal(2,result.actionPriceOverridesApplied)
+		book.values[fusing]=nil;result=sim.simulate(raw,recipe,{trials=2,maxActions=10,priceBook=book})
+		assert.is_nil(result.meanCost);assert.is_true(result.unpriced[fusing])
+		book.values["Metadata/Items/Currency/CurrencyArmourQuality"]=3
+		assert.has_error(function() sim.simulate(raw,recipe,{trials=1,maxActions=10,priceBook=book}) end)
+	end)
 	it("follows failure routes without charging rejected actions",function()
 		local recipe={steps={{method="quality",maxAttempts=10,untilRequirements={minQuality=21},onFailure=2},{method="socket_white_bench"}},targets={},requirements={socketColours="WWW"}}
 		local result=sim.simulate(raw,recipe,{trials=2,maxActions=20})
 		assert.equal(100,result.successChance);assert.equal(10,result.meanActions);assert.equal(9,result.meanExecutedActions);assert.equal(2,result.failedAttempts)
+		assert.equal(2,result.failedTransitionTrials);assert.equal("rejected_model_actions",result.warnings[2].code);assert.is_truthy(next(result.transitionErrors))
 		assert.equal(2,result.routeCounts[1].failure);assert.equal(2,result.routeCounts[2].success)
 		local amounts={};for _,entry in ipairs(result.resourceUsage) do amounts[entry.key]=entry.amount end
 		assert.equal(16,amounts["Metadata/Items/Currency/CurrencyArmourQuality"]);assert.equal(2,amounts["Metadata/Items/Currency/CurrencyConvertToNormal"])
