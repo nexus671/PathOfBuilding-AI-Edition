@@ -831,7 +831,7 @@ function M.simulate(raw,recipe,options)
 		if (step.method == "ducat_kishara" or step.method == "ducat_katakohi") and not step.allflame then step.allflame={auto=true,upgradeTier=2} end
 		if step.allflame and not step.allflame.preferredTargets and #recipe.targets > 0 then step.allflame.preferredTargets=copyTable(step.untilTargets or recipe.targets) end
 	end
-	local successes,totalCost,totalActions,totalExecuted=0,0,0,0
+	local successes,totalCost,totalActions,totalExecuted,failedTransitionTrials=0,0,0,0,0
 	local spent,missing,errors,times={},{},{},{}
 	local resourceUsage={}
 	local pricing=require("Modules.CraftingPrices")
@@ -847,7 +847,7 @@ function M.simulate(raw,recipe,options)
 		local state=copyState(model.initial)
 		local random=rng(encounter.seed(seed,trial,31))
 		local at,actions,cost,trialExecuted=1,0,baseCost,0
-		local trialUnpriced=false
+		local trialUnpriced,trialRejected=false,false
 		while at <= #recipe.steps and actions < maxActions and not state.destroyed and not state.uniqueTitle and (options.forceFirstAction and actions == 0 or not M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups)) do
 			local step=recipe.steps[at]
 			local route=routes[at] or {visits=0,success=0,failure=0,executed=0};routes[at]=route;route.visits=route.visits+1
@@ -858,7 +858,7 @@ function M.simulate(raw,recipe,options)
 				actions=actions+1
 				local before=state
 				local ok,nextState=pcall(M.action,model,state,step,random)
-				if not ok then local message=tostring(nextState):match("[^:]+$") or tostring(nextState); errors[message]=(errors[message] or 0)+1; break end
+				if not ok then local message=tostring(nextState):match("[^:]+$") or tostring(nextState); errors[message]=(errors[message] or 0)+1;trialRejected=true; break end
 				state=nextState
 				trialExecuted=trialExecuted+1
 				route.executed=route.executed+1
@@ -906,6 +906,7 @@ function M.simulate(raw,recipe,options)
 				local key=step.onFailureAction=="stop" and "stopped" or "salvaged";recovery[key]=recovery[key]+1;at=#recipe.steps+1
 			else at=success and (step.onSuccess or at+1) or (step.onFailure or at+1) end
 		end
+		if trialRejected then failedTransitionTrials=failedTransitionTrials+1 end
 		local hit=(not options.forceFirstAction or trialExecuted>0) and M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups)
 		if hit then successes=successes+1; times[#times+1]=actions end
 		if hit and #retained < retain then retained[#retained+1]={trial=trial,actions=actions,cost=not trialUnpriced and cost or nil,state=copyTable(state),itemText=M.itemText(model,state)} end
@@ -948,10 +949,11 @@ function M.simulate(raw,recipe,options)
 	local usage={};for _,entry in pairs(resourceUsage) do entry.meanPerTrial=entry.amount/trials;usage[#usage+1]=entry end;table.sort(usage,function(a,b) return a.key<b.key end)
 	assert(totalExecuted > 0 or successes > 0,next(errors) or "Recipe could not execute a supported action; inspect its starting rarity and open affixes")
 	local result={trials=trials,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,seed=seed,maxActions=maxActions,
-		meanActions=totalActions/trials,meanExecutedActions=totalExecuted/trials,failedAttempts=totalActions-totalExecuted,executedActionDistribution=executedDistribution,currencySpent=spent,resourceUsage=usage,unpriced=missing,transitionErrors=errors,warnings=M.hasPartialLock(M.context(model,model.initial),model.initial) and partialWarning(M.recipeWarnings(recipe,model)) or M.recipeWarnings(recipe,model),limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=M.itemText(model,sample),sampleState=sample,
+		meanActions=totalActions/trials,meanExecutedActions=totalExecuted/trials,failedAttempts=totalActions-totalExecuted,failedTransitionTrials=failedTransitionTrials,executedActionDistribution=executedDistribution,currencySpent=spent,resourceUsage=usage,unpriced=missing,transitionErrors=errors,warnings=M.hasPartialLock(M.context(model,model.initial),model.initial) and partialWarning(M.recipeWarnings(recipe,model)) or M.recipeWarnings(recipe,model),limitations=copyTable(M.limits),sampleSuccess=sampleSuccess,sampleItem=M.itemText(model,sample),sampleState=sample,
 		engineVersion=2,dataPatch=M.dataPatch,sourceVersion=launch.versionNumber,costCurrency=options.currency or "supplied price units",
 		baseCost=baseCost,retainedSuccesses=retained,retentionLimit=retain,affixDistribution=affixDistribution,propertyDistribution=propertyDistribution,actionDistribution=distribution,successfulActionQuantiles=quantiles(times),routeCounts=routes,budgetExhausted=budgetExhausted,destroyedTrials=destroyedTrials,uniqueTrials=uniqueTrials,uniqueDistribution=uniqueDistribution}
 	if model.initial.socketLayoutUnknown then unknownSocketWarning(result.warnings) end
+	if failedTransitionTrials>0 then result.warnings[#result.warnings+1]={code="rejected_model_actions",message=string.format("%d of %d trials included a model-rejected action. Rejected attempts count toward the action budget and follow failure routes, but are not charged resources. Check the failure reasons; actual game behavior may differ.",failedTransitionTrials,trials)} end
 	if not next(missing) then
 		result.meanCost=totalCost/trials;result.costPerSuccess=successes>0 and totalCost/successes or nil;result.spendingQuantiles=quantiles(costSamples);result.successfulSpendingQuantiles=quantiles(successfulCosts)
 		result.costDistribution={};for _,bucket in pairs(costHistogram) do result.costDistribution[#result.costDistribution+1]=bucket end;table.sort(result.costDistribution,function(a,b) return a.cost<b.cost end)

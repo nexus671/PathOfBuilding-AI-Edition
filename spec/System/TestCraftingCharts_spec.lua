@@ -29,10 +29,12 @@ describe("Crafting budget and spending charts",function()
 		local old=copyTable(run);old.executedActionDistribution=nil;local missing=charts.series({{label="Earlier result",result=old}},charts.modes[6]);assert.equal(0,#missing.series);assert.matches("rerun the simulation",missing.omitted[1])
 		local routes={{label="Tainted jewel",result=run}};local data=charts.series(routes,charts.modes[3]);local notice="Tainted jewel: "..failed.." failed modeled transitions were not charged."
 		local found=false;for _,warning in ipairs(data.warnings) do if warning:find(notice,1,true) then found=true end end;assert.is_true(found)
+		local rejected=false;for _,warning in ipairs(data.warnings) do if warning:find("trials included a model-rejected action",1,true) then rejected=true end end;assert.is_true(rejected)
 		local csv=charts.csv(data);assert.is_truthy(csv:find('"Success by spending","chaos",'..failed..',',1,true));assert.is_truthy(csv:find("failed modeled transitions were not charged",1,true))
 		local controls=require("Classes.CraftingChartsControl").Open(routes);assert.matches("Failed transitions were not charged",controls.assumption.label());assert.is_true(controls.notes:IsEnabled());controls.notes:Click()
 		local lines={};for _,row in ipairs(main.popups[1].controls.messages.list) do lines[#lines+1]=row[1] end
 		assert.is_truthy(table.concat(lines," "):find("failed modeled transitions were not charged",1,true));main.popups={}
+		assert.is_truthy(table.concat(lines," "):find("trials included a model-rejected action",1,true))
 	end)
 	it("returns complete trial distributions only when every executed currency is priced",function()
 		newBuild();local sim=require("Modules.CraftingSimulator");local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"

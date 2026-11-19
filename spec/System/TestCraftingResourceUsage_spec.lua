@@ -69,12 +69,16 @@ describe("Crafting resource usage independent of pricing",function()
 		local usage=entries(r);assert.are.equal(4,usage[scrap].amount);assert.are.equal(2,usage[scrap].meanPerTrial);assert.are.equal(1,#r.resourceUsage)
 		assert.are.equal(4,r.meanActions);assert.are.equal(8,r.meanCost);assert.is_truthy(next(r.transitionErrors));assert.are.equal(0,r.successes)
 		assert.are.equal(2,r.meanExecutedActions);assert.are.equal(4,r.failedAttempts)
+		assert.are.equal(2,r.failedTransitionTrials)
+		local warning;for _,entry in ipairs(r.warnings) do if entry.code=="rejected_model_actions" then warning=entry end end
+		assert.is_truthy(warning);assert.matches("2 of 2 trials",warning.message);assert.matches("not charged resources",warning.message)
 	end)
 	it("reports no use when targets already match and keeps starting cost separate",function()
 		local state=sim.model(raw).initial;state.quality=20
 		local r=sim.simulate(raw,{initialState=state,steps={{method="quality"}},targets={},requirements={minQuality=20}},{trials=2,maxActions=1,baseCost=3,currency="chaos"})
 		assert.are.same({},r.resourceUsage);assert.are.equal(3,r.meanCost);assert.are.equal(0,r.meanActions)
 		assert.are.equal(0,r.meanExecutedActions);assert.are.equal(0,r.failedAttempts)
+		assert.are.equal(0,r.failedTransitionTrials);for _,entry in ipairs(r.warnings) do assert.are_not.equal("rejected_model_actions",entry.code) end
 	end)
 	it("labels service units without claiming their physical ingredients are known",function()
 		local r=sim.simulate(raw.."\nCorrupted",{steps={{method="locus"}},targets={},requirements={minQuality=30}},{trials=2,maxActions=1,actionPrices={locus=7},currency="chaos"})
@@ -115,5 +119,13 @@ describe("Crafting resource usage independent of pricing",function()
 		assert.is_truthy(view.results.list[1].icon);assert.are.equal(scrap,view.results.list[1].entry.id)
 		local details={};for _,row in ipairs(view.details.list) do details[#details+1]=row[1] end
 		assert.is_truthy(table.concat(details," "):find("Total used: 2",1,true))
+	end)
+	it("shows rejected action warnings in the native simulation summary",function()
+		local recipe={steps={{method="quality"},{method="chaos",onFailureAction="restart"}},targets={},requirements={minQuality=20}}
+		local p={id="rejected",title="Rejected",slot="Body Armour",startingItem=raw,goals={},steps={},preferredMethod="quality",nativeRecipe=recipe}
+		local c=require("Classes.CraftingSimulatorControl").Open(build,p);c.page:SelByValue("Simulate recipe");c.page.selFunc();c.trials:SetText("2");c.budget:SetText("4")
+		c.runRecipe:Click();local tasks=require("Modules.CraftingTasks");for i=1,1000 do if not tasks.job then break end;tasks.tick(build) end
+		assert.is_nil(tasks.job);local lines={};for _,row in ipairs(c.resultSummary.list) do lines[#lines+1]=row[1] end
+		assert.is_truthy(table.concat(lines," "):find("2 of 2 trials included a model-rejected action",1,true))
 	end)
 end)

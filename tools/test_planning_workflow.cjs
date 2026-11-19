@@ -564,6 +564,8 @@ async function main(){
   assert.equal(lockedOdds.nativeCrafting.sampled,true);assert.ok(lockedOdds.nativeCrafting.warnings.some(entry=>entry.code==='recombination_count_odds'));
   const lockedPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:bodyRaw,recipe:{initialState:lockedSource,steps:[lockedAction],targets:lockedTargets},options:{trials:10,maxActions:1,seed:1}},'crafted');
   assert.equal(lockedPlan.nativeCrafting.trials,10);assert.ok(lockedPlan.nativeCrafting.warnings.some(entry=>entry.code==='recombination_count_odds'));
+  const rejectedPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nPlate Vest\nItem Level: 86',recipe:{steps:[{method:'quality'},{method:'chaos',onFailureAction:'restart'}],targets:[],requirements:{minQuality:20}},options:{trials:2,maxActions:4,baseCost:3,prices:{quality:1},currency:'chaos'}},'crafted');
+  assert.equal(rejectedPlan.nativeCrafting.failedAttempts,4);assert.equal(rejectedPlan.nativeCrafting.failedTransitionTrials,2);assert.ok(rejectedPlan.nativeCrafting.warnings.some(entry=>entry.code==='rejected_model_actions'));
   const rejectedClasses=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nRusted Sword\nItem Level: 86',action:{method:'recombine',donorItem:'Rarity: NORMAL\nRusted Spike\nItem Level: 86'}},'failed');assert.match(rejectedClasses.error,/same item class/);
   const annulRaw='Rarity: NORMAL\nDriftwood Wand\nItem Level: 86';
   for(const [id,blocker] of [['LocalAddedChaosDamage1','bench:731'],['GlobalChaosSpellGemsLevel1','bench:732']]) {
