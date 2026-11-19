@@ -86,8 +86,11 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1785, f"Expected 1785 UI frames, found {len(paths)}"
+    assert len(paths) == 1788, f"Expected 1788 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
+        audit = json.loads((frames / f"{width}-filter-error-audit.json").read_text())
+        audit_text = " ".join(c.get("text", "") for c in audit["commands"] if c.get("kind") == "text")
+        assert "AlwaysShow" in audit_text and ("PoE 2" in audit_text or "Path of Exile 2" in audit_text), "Filter audit does not show the selected error"
         atlas_totals = json.loads((frames / f"{width}-atlas-added-modifiers.json").read_text())
         assert any("increased effect of Explicit" in c.get("text", "") for c in atlas_totals["commands"]), "Atlas modifier summary is missing"
         atlas_comparison = json.loads((frames / f"{width}-atlas-modifier-comparison.json").read_text())
