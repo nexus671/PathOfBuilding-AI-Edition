@@ -171,7 +171,7 @@ describe("Unique item quality",function()
 		end
 		assert.matches("fixes its socket count",unique.socketCountReason(source.."\nHas 1 Socket",2))
 		assert.matches("Abyssal sockets",unique.socketCountReason(source.."\nHas 1 Abyssal Socket",2))
-		for _,item in ipairs({{"Bubonic Trail","Murder Boots"},{"Tombfist","Steelscale Gauntlets"},{"Shroud of the Lightless","Carnal Armour"},{"Lightpoacher","Great Crown"}}) do
+		for _,item in ipairs({{"Bubonic Trail","Murder Boots"},{"Tombfist","Steelscale Gauntlets"},{"Shroud of the Lightless","Carnal Armour"},{"Lightpoacher","Great Crown"},{"Wraithlord","Bone Circlet"}}) do
 			local partial="Rarity: UNIQUE\n"..item[1].."\n"..item[2].."\nItem Level: 86\nSockets: W"
 			assert.matches("Abyssal sockets",unique.socketCountReason(partial,2))
 		end

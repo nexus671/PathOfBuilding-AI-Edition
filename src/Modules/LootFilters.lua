@@ -255,9 +255,13 @@ function M.generate(build,profile,checkpoint)
 				local result={items={},unknown={}};local prices=require("Modules.CraftingPrices");local model={item=item}
 				if project.nativeRecipe.initialState then result.unknown[#result.unknown+1]="ordinary starting state" end
 				for _,step in ipairs(project.nativeRecipe.steps) do
-					local entry=actions[require("Modules.CraftingSimulator").priceKey(step)]
+					-- Preserve known base ingredients even when an unsupported option
+					-- adds a price-key prefix. Socket variants still need their count.
+					local key=step.method=="socket_bench" and require("Modules.CraftingSimulator").priceKey({method=step.method,count=step.count,linked=step.linked}) or step.method
+					local entry=actions[key]
 					local reason=require("Modules.CraftingUniqueSimulation").stepReason(step)
 					if reason then result.unknown[#result.unknown+1]=reason end
+					if not entry and not reason then result.unknown[#result.unknown+1]="No modeled unique resource breakdown for "..step.method end
 					if entry then for resource in pairs(entry.components) do
 						local canonical=prices.key(resource,model);local name,_,kind=prices.describe(canonical,model,step)
 						if kind=="Currency" then result.items[#result.items+1]={key=canonical,name=name} end

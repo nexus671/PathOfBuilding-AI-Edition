@@ -1,9 +1,29 @@
 -- cspell:ignore RGBW RGBWA
 -- A deliberately bounded unique-item quality operation. It never edits a build.
 local M={}
--- Some unique socket restrictions are hidden or absent from partial item text.
-local fixedSocketCounts={ ["Tabula Rasa"]=true,["Oni-Goroshi"]=true,["Loreweave"]=true,["Replica Loreweave"]=true,["The Squire"]=true,["Crest of Desire"]=true,["Crown of the Tyrant"]=true,["The Geomantic Gyre"]=true }
-local abyssSocketUniques={ ["Spinesnatch"]=true,["Shroud of the Lightless"]=true,["Replica Shroud of the Lightless"]=true,["Bubonic Trail"]=true,["Tombfist"]=true,["Command of the Pit"]=true,["Hale Negator"]=true,["Lightpoacher"]=true,["Subsume the Source"]=true }
+-- Partial item text can omit socket restrictions. Derive known restrictions
+-- from bundled unique data, including legacy variants, and keep hidden cases.
+local socketRestrictions={["Tabula Rasa"]="fixed",["Oni-Goroshi"]="fixed"}
+local uniquesByName
+local function uniqueSocketRestriction(title)
+	if socketRestrictions[title]~=nil then return socketRestrictions[title] end
+	if not uniquesByName then
+		uniquesByName={}
+		for _,entries in pairs(data.uniques or {}) do for _,raw in ipairs(entries) do
+			local name=raw:match("^%s*([^\r\n]+)")
+			if name then uniquesByName[name]=uniquesByName[name] or {};uniquesByName[name][#uniquesByName[name]+1]=raw end
+		end end
+	end
+	local restriction=false
+	for _,raw in ipairs(uniquesByName[title] or {}) do for line in raw:gmatch("[^\r\n]+") do
+		while line:match("^%b{}") do line=line:gsub("^%b{}","") end
+		line=line:lower():match("^%s*(.-)%s*$"):gsub("%s*%(hidden%)$","")
+		if line:match("^has %d+ abyssal sockets?$") then restriction="abyss"
+		elseif (line:match("^has %d+ sockets?$") or line:match("^has %d+ linked sockets?$")) and restriction~="abyss" then restriction="fixed" end
+	end end
+	socketRestrictions[title]=restriction
+	return socketRestrictions[title]
+end
 function M.guideAction(method,count,resource,corrupted,socketCount)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
@@ -105,9 +125,10 @@ end
 function M.socketCountReason(raw,count)
 	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
 	if raw:lower():find("sockets cannot be modified",1,true) then return "This item's sockets cannot be modified" end
-	if fixedSocketCounts[item.title] then return "This unique fixes its socket count" end
+	local restriction=uniqueSocketRestriction(item.title)
+	if restriction=="fixed" then return "This unique fixes its socket count" end
 	if raw:lower():find("has %d+ sockets?%f[^%a]") or raw:lower():find("has %d+ linked sockets?%f[^%a]") then return "This unique fixes its socket count" end
-	if abyssSocketUniques[item.title] or (item.abyssalSocketCount or 0)>0 or raw:lower():find("has %d+ abyssal sockets?%f[^%a]") then return "Abyssal sockets need a separate socket model" end
+	if restriction=="abyss" or (item.abyssalSocketCount or 0)>0 or raw:lower():find("has %d+ abyssal sockets?%f[^%a]") then return "Abyssal sockets or variants need a separate socket model" end
 	local line,lines=raw:match("\nSockets: ([^\r\n]*)"),0
 	for _ in ("\n"..raw):gmatch("\nSockets:") do lines=lines+1 end
 	if lines~=1 or not line or not line:match("^[RGBWA][RGBWA%-%s]*$") then return "A single explicit ordinary socket layout is required" end

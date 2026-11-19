@@ -338,6 +338,14 @@ describe("Linked planning tools",function()
 		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"]);assert.is_true(names["Omen of Connections"])
 		local found=false;for _,warning in ipairs(warnings) do if warning.origin=="craft:"..project.id and warning.message:find("allflame",1,true) then found=true end end
 		assert.is_true(found)
+		project.nativeRecipe.steps={{method="socket_bench",count=2,allflame={auto=true}}};build.savers.CraftingProjects:Upsert(project)
+		rules,warnings=filters.generate(build,profile);names={};for _,rule in ipairs(rules) do names[rule.title]=true end
+		assert.is_true(names["Jeweller's Orb"]);assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"])
+		found=false;for _,warning in ipairs(warnings) do if warning.origin=="craft:"..project.id and warning.message:find("allflame",1,true) then found=true end end;assert.is_true(found)
+		project.nativeRecipe.steps={{method="socket_bench",count=4,linked=true}};build.savers.CraftingProjects:Upsert(project)
+		rules,warnings=filters.generate(build,profile);names={};for _,rule in ipairs(rules) do names[rule.title]=true end
+		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"])
+		found=false;for _,warning in ipairs(warnings) do if warning.origin=="craft:"..project.id and warning.message:find("No modeled unique resource breakdown",1,true) then found=true end end;assert.is_true(found)
 	end)
 	it("generates concrete fossil and corrupted socket recipe pickups",function()
 		local project=craft();project.nativeRecipe={steps={
