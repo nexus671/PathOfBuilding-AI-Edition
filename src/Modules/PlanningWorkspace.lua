@@ -52,7 +52,11 @@ function M:Remember(page)
 	local entry=self.cache[page];if not entry then return end
 	self.drafts[page]={plan=entry.layout.snapshot and entry.layout.snapshot(),view=entry.layout.viewState and entry.layout.viewState(),controls=require("Modules.PlanningUI").capture(entry.body.controls)}
 	if page=="atlas" and self.drafts[page].plan and self.drafts[page].plan.id then self.atlasDrafts[self.drafts[page].plan.id]=self.drafts[page] end
-	local plan=self.drafts[page].plan;if page=="crafting" and plan and plan.kind=="workbench" then self.craftDrafts[plan.project.id]=plan end
+	local plan=self.drafts[page].plan
+	if page=="crafting" and plan then
+		if plan.kind=="workbench" then self.craftDrafts[plan.project.id]=plan
+		elseif plan.kind=="uniqueQuality" then self.build.planningUniqueQualityDrafts=self.build.planningUniqueQualityDrafts or {};self.build.planningUniqueQualityDrafts[plan.project.id]=copyTable(plan) end
+	end
 	if self.drafts[page].plan and (page=="filters" or page=="atlas" or page=="crafting" and self.drafts[page].plan.kind=="workbench") then require("Modules.PlanningRecovery").save(self.build,page,self.drafts[page]) end
 end
 function M:CraftingDraft(id)
@@ -64,12 +68,25 @@ function M:CraftingDraft(id)
 	end
 	return draft and copyTable(draft)
 end
+function M:UniqueQualityDraft(id)
+	local draft=self.build.planningUniqueQualityDrafts and self.build.planningUniqueQualityDrafts[id]
+	local entry=self.cache.crafting
+	if entry and entry.layout.snapshot then
+		local current=entry.layout.snapshot()
+		if current and current.kind=="uniqueQuality" and current.project.id==id then draft=current end
+	end
+	return draft and copyTable(draft)
+end
 function M:CopyCraftingDrafts(candidate)
 	local originals={};for _,project in ipairs(self.build.savers.CraftingProjects.projects) do originals[project.id]=project end
-	local copies={}
+	local copies,uniqueCopies={},{}
 	for _,project in ipairs(candidate.savers.CraftingProjects.projects) do
 		local old=originals[project.id]
 		if old and old.startingItem==project.startingItem and old.slot==project.slot then
+			local qualityDraft=self:UniqueQualityDraft(project.id)
+			if qualityDraft and qualityDraft.project.startingItem==project.startingItem and qualityDraft.project.slot==project.slot then
+				qualityDraft.project=copyTable(project);uniqueCopies[project.id]=qualityDraft
+			end
 			local draft=self:CraftingDraft(project.id)
 			if draft then
 				draft.project=require("Modules.CraftingProjects").copy({project})[1]
@@ -81,13 +98,14 @@ function M:CopyCraftingDrafts(candidate)
 		end
 	end
 	if candidate.planningWorkspace then candidate.planningWorkspace.craftDrafts=copies else candidate.planningCraftDrafts=copies end
+	candidate.planningUniqueQualityDrafts=uniqueCopies
 end
 function M:ForgetCraftingProject(id)
 	local draft=self:CraftingDraft(id)
 	local entry=self.cache.crafting
 	if entry and entry.layout.snapshot then
 		local current=entry.layout.snapshot()
-		if current and current.kind=="workbench" and current.project.id==id then self.cache.crafting=nil;if self.page=="crafting" then self.body=nil end end
+		if current and (current.kind=="workbench" or current.kind=="uniqueQuality") and current.project.id==id then self.cache.crafting=nil;if self.page=="crafting" then self.body=nil end end
 	end
 	self.craftDrafts[id]=nil
 	local saved=self.drafts.crafting

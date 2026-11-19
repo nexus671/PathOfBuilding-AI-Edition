@@ -3,7 +3,11 @@ local ui=require("Modules.PlanningUI")
 local unique=require("Modules.CraftingUniqueQuality")
 local M={}
 function M.Open(build,project,layout,snapshot)
-	local draft=copyTable(project);local raw=snapshot and snapshot.itemText or draft.startingItem
+	local draft=copyTable(project)
+	local saved=build.planningUniqueQualityDrafts and build.planningUniqueQualityDrafts[draft.id]
+	if not snapshot and saved and saved.project.startingItem==draft.startingItem and saved.project.slot==draft.slot then snapshot=saved end
+	local restored=snapshot~=nil
+	local raw=snapshot and snapshot.itemText or draft.startingItem
 	local history=snapshot and copyTable(snapshot.history or {}) or {}
 	local item,info=unique.inspect(raw)
 	local original=unique.inspect(draft.startingItem)
@@ -46,17 +50,21 @@ function M.Open(build,project,layout,snapshot)
 	end)
 	c.loadTarget.enabled=targetAvailable
 	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."
-	ui.label(c,"notice",16,378,"",14)
+	ui.label(c,"notice",16,378,restored and "^7Session preview restored." or "",14)
 	local artPath=require("Modules.CraftingWorkbench").icon("quality",nil,{item=item})
 	local art=artPath and NewImageHandle();if art then art:Load(artPath) end
 	local currency=new("Control"):Control(ui.anchor,{16,414,42,42});c.currency=currency
 	function currency:Draw() if art then local x,y=self:GetPos();SetDrawColor(1,1,1);DrawImage(art,x,y,42,42) end end
 	ui.description(c,"currencyNote",68,416,218,48,{"Preview only", "No currency is spent."},14)
-	button("close",h-50,layout and "Back to projects" or "Close",function() if layout then layout.openProjects() else main:ClosePopup() end end)
+	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history)} end
+	button("close",h-50,layout and "Back to projects" or "Close",function()
+		build.planningUniqueQualityDrafts=build.planningUniqueQualityDrafts or {};build.planningUniqueQualityDrafts[draft.id]=snapshotPreview()
+		if layout then layout.openProjects() else main:ClosePopup() end
+	end)
 	for _,control in pairs(c) do control.layoutAudit="unique-quality" end
 	ui.style(c,{apply=true},{item=true});refresh()
 	if layout then
-		layout.snapshot=function() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history)} end
+		layout.snapshot=snapshotPreview
 		layout.mount(w,h,"Unique quality",c)
 	else main:OpenPopup(w,h,"Unique quality",c,nil,nil,"close") end
 	return c

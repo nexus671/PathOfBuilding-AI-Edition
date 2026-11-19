@@ -49,6 +49,33 @@ describe("Unique item quality",function()
 		control=require("Classes.CraftingUniqueQualityControl").Open(build,other);assert.is_false(control.loadTarget:IsEnabled())
 		main.popups={}
 	end)
+	it("retains session previews and undo history when returning to projects",function()
+		local project={id="session-quality",title="Session",slot="Weapon 2",startingItem=shield,goals={},steps={}}
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.apply:Click();control.apply:Click();control.close:Click()
+		control=require("Classes.CraftingUniqueQualityControl").Open(build,store.projects[1])
+		assert.matches("14%%",control.status.label);control.undo:Click();assert.matches("13%%",control.status.label)
+		control.close:Click();store:Remove(project.id);assert.is_nil(build.planningUniqueQualityDrafts[project.id])
+		store:UndoRemove();control=require("Classes.CraftingUniqueQualityControl").Open(build,store.projects[1]);assert.matches("13%%",control.status.label)
+		control.undo:Click();assert.matches("12%%",control.status.label)
+		main.popups={};newBuild();assert.is_nil(build.planningUniqueQualityDrafts)
+	end)
+	it("copies session previews only to compatible reviewed builds",function()
+		local project={id="copy-quality",title="Original",slot="Weapon 2",startingItem=shield,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.apply:Click();control.close:Click()
+		local changed=copyTable(project);changed.title="Edited guide"
+		local candidate={savers={CraftingProjects={projects={changed}}}}
+		workspace:CopyCraftingDrafts(candidate)
+		local saved=candidate.planningUniqueQualityDrafts[project.id]
+		assert.equal("Edited guide",saved.project.title);assert.equal(13,select(2,quality.inspect(saved.itemText)).quality)
+		changed.startingItem=shield:gsub("Quality: 12","Quality: 11")
+		workspace:CopyCraftingDrafts(candidate);assert.is_nil(candidate.planningUniqueQualityDrafts[project.id])
+		main.popups={}
+	end)
 	it("uses a whetstone for weapons and refuses unavailable cases",function()
 		assert.equal("Blacksmith's Whetstone",quality.apply(weapon).resource)
 		assert.has_error(function() quality.apply(shield:gsub("Quality: 12","Quality: 20")) end)

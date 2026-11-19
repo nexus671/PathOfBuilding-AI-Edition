@@ -98,6 +98,32 @@ describe("Crafting project removal and save-state ownership",function()
 		assert.is_truthy(workspace.craftDrafts.b);assert.are.equal(base,bridge.restore())
 		assert.are.equal(2,#base.savers.CraftingProjects.projects)
 	end)
+	it("retains a unique quality session through a reviewed build edit",function()
+		local p=project("unique-reviewed");p.startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
+		build.savers.CraftingProjects:Upsert(p)
+		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,p);control.apply:Click();control.close:Click()
+		local base=build;local updated=copyTable(p);updated.title="Updated unique guide"
+		local prepared=bridge.prepare(build,{mode="edit",title="Edit unique guide",baseRevision=bridge.revision(build),operations={{type="set_crafting_project",project=updated}}})
+		local candidate=bridge.apply(prepared);local draft=candidate.planningUniqueQualityDrafts[p.id]
+		assert.equal("Updated unique guide",draft.project.title)
+		assert.equal(1,select(2,require("Modules.CraftingUniqueQuality").inspect(draft.itemText)).quality)
+		control=require("Classes.CraftingUniqueQualityControl").Open(candidate,candidate.savers.CraftingProjects.projects[1]);assert.matches("1%%",control.status.label)
+		assert.are.equal(base,bridge.restore())
+	end)
+	it("restores a unique quality preview after reviewed project removal",function()
+		local p=project("unique-removed");p.startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
+		build.savers.CraftingProjects:Upsert(p)
+		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,p);control.apply:Click();control.close:Click()
+		local base=build
+		local prepared=bridge.prepare(base,{mode="edit",title="Remove unique guide",baseRevision=bridge.revision(base),operations={{type="remove_crafting_project",projectId=p.id}}})
+		local candidate=bridge.apply(prepared);assert.is_nil(candidate.planningUniqueQualityDrafts[p.id])
+		candidate.savers.CraftingProjects:UndoRemove();local draft=candidate.planningUniqueQualityDrafts[p.id]
+		assert.equal(1,select(2,require("Modules.CraftingUniqueQuality").inspect(draft.itemText)).quality)
+		control=require("Classes.CraftingUniqueQualityControl").Open(candidate,candidate.savers.CraftingProjects.projects[1]);assert.matches("1%%",control.status.label)
+		candidate.savers.CraftingProjects:Remove(p.id);assert.are.equal(base,bridge.restore())
+	end)
 	it("retains removal undo across an unrelated reviewed edit",function()
 		local store=build.savers.CraftingProjects;store:Upsert(project("a"));store:Upsert(project("b"));store:Remove("a")
 		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace

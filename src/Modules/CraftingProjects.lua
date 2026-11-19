@@ -136,8 +136,10 @@ function M.new(build)
 		local ui=require("Modules.PlanningUI")
 		local pending=ui.hasDraft(build,"workingCraft",id)
 		require("Modules.CraftingAnalysis").forget(build,id)
+		local qualityDraft=build.planningWorkspace and build.planningWorkspace:UniqueQualityDraft(id) or build.planningUniqueQualityDrafts and build.planningUniqueQualityDrafts[id]
 		local draft=build.planningWorkspace and build.planningWorkspace:ForgetCraftingProject(id)
-		self.lastRemoved={project=removed,index=index,draft=draft,pending=pending}
+		if build.planningUniqueQualityDrafts then build.planningUniqueQualityDrafts[id]=nil end
+		self.lastRemoved={project=removed,index=index,draft=draft,qualityDraft=qualityDraft and copyTable(qualityDraft),pending=pending}
 		self.projects=replacement;ui.discard(build,"workingCraft",id);ui.kept(build,"crafting");build.modFlag=true
 		self.notice="Removed project: "..removed.title..". Use Undo removal to restore."
 		return removed
@@ -153,6 +155,7 @@ function M.new(build)
 			if build.planningWorkspace then build.planningWorkspace.craftDrafts[entry.id]=copyTable(removed.draft)
 			else build.planningCraftDrafts=build.planningCraftDrafts or {};build.planningCraftDrafts[entry.id]=copyTable(removed.draft) end
 		end
+		if removed.qualityDraft then build.planningUniqueQualityDrafts=build.planningUniqueQualityDrafts or {};build.planningUniqueQualityDrafts[entry.id]=copyTable(removed.qualityDraft) end
 		if removed.pending then require("Modules.PlanningUI").draft(build,"workingCraft",entry.id) end
 		self.lastRemoved=nil;self.notice="Restored project: "..entry.title..". Use build Save to persist."
 		return entry,removed.draft

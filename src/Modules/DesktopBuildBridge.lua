@@ -281,6 +281,8 @@ function M.apply(prepared)
 		if workspace then workspace:CopyCraftingDrafts(candidate) end
 		local removed=candidate.savers.CraftingProjects.lastRemoved
 		if removed and not carriedRemoval then
+			local qualityDraft=workspace and workspace:UniqueQualityDraft(removed.project.id) or prepared.base.planningUniqueQualityDrafts and prepared.base.planningUniqueQualityDrafts[removed.project.id]
+			removed.qualityDraft=qualityDraft and copyTable(qualityDraft)
 			removed.draft=workspace and workspace:CraftingDraft(removed.project.id)
 			removed.pending=require("Modules.PlanningUI").hasDraft(prepared.base,"workingCraft",removed.project.id)
 			if not removed.draft then local recovery=require("Modules.PlanningRecovery").forCraftingProject(prepared.base,removed.project.id);if recovery then removed.draft=recovery.draft;removed.pending=recovery.pending end end
