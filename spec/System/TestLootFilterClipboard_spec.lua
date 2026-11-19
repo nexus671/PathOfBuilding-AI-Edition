@@ -22,6 +22,11 @@ describe("Copied loot-filter items",function()
 		assert.equal("Hide",parser.simulate(rule,item).action)
 		local incomplete=clipboard.parse(raw:gsub("Area is infested with Fungal Growths %(implicit%)",""));assert.is_nil(incomplete.BlightedMap);assert.is_nil(incomplete.UberBlightedMap)
 		assert.equal("unknown",parser.simulate(rule,incomplete).status)
+		local magic="Item Class: Maps\nRarity: Magic\nEnlarged Blighted Map (Tier 5) of Flames\n--------\nItem Level: 68\n--------\nArea is infested with Fungal Growths (implicit)"
+		local magicItem=clipboard.parse(magic);assert.equal("Map (Tier 5)",magicItem.BaseType);assert.is_true(magicItem.BlightedMap);assert.is_false(magicItem.UberBlightedMap)
+		local ravaged=raw:gsub("Blighted Map %(Tier 16%)","Blight-ravaged Map (Tier 16)");local ravagedItem=clipboard.parse(ravaged)
+		assert.equal("Map (Tier 16)",ravagedItem.BaseType);assert.is_true(ravagedItem.UberBlightedMap);assert.is_nil(ravagedItem.BlightedMap)
+		assert.equal("Hide",parser.simulate(parser.parse('Hide\n Class == "Maps"\n UberBlightedMap True\nShow'),ravagedItem).action)
 	end)
 	it("reads an explicit memory-strand value without assuming a missing one",function()
 		local raw="Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86"
