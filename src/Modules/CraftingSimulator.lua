@@ -45,8 +45,22 @@ function M.genericPriceKey(action)
 	if action.method=="harvest_resistance" then return action.method end
 	if action.beastLevel and (action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix") then return action.method end
 end
+local function gildedCorruption(action)
+	if action.method=="vaal" or action.method=="locus" then return true end
+	if action.method=="gwennen" and (action.firstOutcome==1012 or action.secondOutcome==1012) then return true end
+	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingCorrupt" then return true end end
+	return false
+end
+local function gildedFossil(action)
+	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice" then return true end end
+	return false
+end
+local function gildedCorruptionWarning()
+	return {code="gilded_corruption_incomplete",message="When corruption adds an implicit, this model always removes the Gilded vendor implicit and may also remove another implicit. In game, the Gilded implicit can instead be the one replaced. Retention outcomes and their probabilities are not modeled reliably.",source="https://www.poewiki.net/wiki/Gilded_Fossil"}
+end
 function M.actionWarnings(action,model)
 	local result={}
+	if gildedCorruption(action) and (gildedFossil(action) or model and model.initial and model.initial.vendorImplicit) then result[#result+1]=gildedCorruptionWarning() end
 	if action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix" then result[#result+1]={code="beast_level_pool",message=action.beastLevel and ("Uses the supplied beast level "..action.beastLevel.." for the added modifier. This interaction is based on community research and is not verified in the current game.") or "This model uses the item level for the added modifier. Community research reports that these Bestiary crafts use the beast's level instead, so the eligible pool and odds can differ.",source="https://www.poewiki.net/wiki/Beastcrafting"} end
 	if action.method=="vorici_socket_count" then result[#result+1]={code="vorici_socket_assumptions",message="Vorici samples 100 independent rolls using the experimental Jeweller model and keeps the greatest socket count. Odds, retained socket positions and eligibility are unverified.",source="https://www.pathofexile.com/forum/view-thread/3985332"} end
 	if action.method=="vorici_socket_colours" then result[#result+1]={code="vorici_colour_assumptions",message="Vorici samples 25 independent rolls using the experimental Chromatic model and keeps the first tied result with the most non-white ordinary sockets. Abyssal sockets are preserved; their eligibility, colour probabilities and tie behavior are unverified.",source="https://www.pathofexile.com/forum/view-thread/3985332"} end
@@ -111,8 +125,11 @@ local function veilBenchWarning(warnings)
 end
 function M.recipeWarnings(recipe,model)
 	local result,seen={},{};local pending=model and model.initial and model.initial.veil~=nil
+	local mayHaveGilded=model and model.initial and model.initial.vendorImplicit~=nil
+	for _,action in ipairs(recipe and recipe.steps or {}) do if gildedFossil(action) then mayHaveGilded=true;break end end
 	for _,action in ipairs(recipe and recipe.steps or {}) do
 		for _,warning in ipairs(M.actionWarnings(action,model)) do if not seen[warning.code] then result[#result+1]=warning;seen[warning.code]=true end end
+		if mayHaveGilded and gildedCorruption(action) and not seen.gilded_corruption_incomplete then result[#result+1]=gildedCorruptionWarning();seen.gilded_corruption_incomplete=true end
 		if pending and (action.method=="bench" or action.method=="remove_crafted") and not seen.veil_bench_assumptions then veilBenchWarning(result);seen.veil_bench_assumptions=true end
 		if action.method=="veiled_orb" or action.method=="veiled_chaos" then pending=true elseif action.method=="unveil" then pending=false end
 	end

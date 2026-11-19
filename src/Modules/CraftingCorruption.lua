@@ -201,7 +201,7 @@ function C.extend(M,A,api)
 		assert(not state.twiceCorrupted or state.corrupted==true,"Twice Corrupted items must also be Corrupted")
 		assert(state.destroyed == nil or type(state.destroyed) == "boolean","Invalid destruction flag")
 		if state.synthRolls then
-			assert(not state.destroyed and not state.implicits and not state.vendorImplicit and model.item.synthesised and model.synthesisGroups and type(state.synthRolls)=="table" and #state.synthRolls==#model.synthesisGroups,"Invalid synthesised implicit rolls")
+			assert(not state.destroyed and not state.implicits and model.item.synthesised and model.synthesisGroups and type(state.synthRolls)=="table" and #state.synthRolls==#model.synthesisGroups,"Invalid synthesised implicit rolls")
 			for key in pairs(state.synthRolls) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=#state.synthRolls,"Invalid synthesised implicit rolls") end
 			for index,entry in ipairs(state.synthRolls) do
 				local candidates=model.synthesisGroups[index].candidates

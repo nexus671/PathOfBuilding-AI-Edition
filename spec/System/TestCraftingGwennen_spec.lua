@@ -109,6 +109,17 @@ describe("Experimental Gwennen pair",function()
 		local ambiguous=sim.model(source:gsub("{range:0}%(8%-10%)%% increased maximum Life","8%% increased maximum Life"));local unknown=copyTable(ambiguous.initial);unknown.rarity="RARE"
 		assert.has_error(function() sim.action(ambiguous,unknown,{method="gwennen",firstOutcome=1032,secondOutcome=1000},function() return 0 end) end)
 	end)
+	it("retains the Gilded implicit when rerolling synthesised implicits",function()
+		local source="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 3\n{range:0}(8-10)% increased maximum Life\n+20 to Dexterity\nItem sells for much more to vendors\nSynthesised Item"
+		local model=sim.model(source);local state=copyTable(model.initial);state.rarity="RARE"
+		assert.equal("unknown",state.vendorImplicit);assert.equal(2,#model.synthesisGroups)
+		local calls=0;local changed=sim.action(model,state,{method="gwennen",firstOutcome=1032,secondOutcome=1000},function() calls=calls+1;return calls==1 and 0.1 or 0.999999 end)
+		assert.equal("unknown",changed.vendorImplicit);assert.equal(1,changed.synthRolls[1].range)
+		local saved=require("Modules.CraftingCheckpoint").validate(source,require("Modules.CraftingInventory").run(changed)).state
+		local output=sim.toItem(model,saved).raw;assert.is_truthy(output:find("Item sells for much more to vendors",1,true))
+		local reopened=sim.model(output);assert.equal("unknown",reopened.initial.vendorImplicit);assert.equal(2,#reopened.synthesisGroups)
+		local invalid=copyTable(changed);invalid.vendorImplicit="Strength1";assert.has_error(function() sim.validateState(model,invalid) end)
+	end)
 	it("keeps independent synthesised values and refuses forged identities",function()
 		local source="Rarity: NORMAL\nCopper Sword\nItem Level: 86\nImplicits: 1\nAdds 4 to 9 Fire Damage\nSynthesised Item"
 		local model=sim.model(source);assert.equal(1,#model.synthesisGroups[1].candidates);local state=copyTable(model.initial);state.rarity="RARE"
