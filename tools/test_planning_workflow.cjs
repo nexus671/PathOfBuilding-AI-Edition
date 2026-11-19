@@ -50,6 +50,12 @@ async function main(){
   await host('request-test');await call('get_build_connection');await host('tick',1);
   const proof=await host('connection-proof');assert.equal(proof.client,'planning-workflow-test');assert.equal(proof.tested,true);assert.equal(proof.synced,true);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
+  const partialGroupStart=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,action:{method:'alchemy'},seed:12},'crafted');
+  const partialGroupInitial=partialGroupStart.nativeCrafting.state;const partialGroupPresent=new Set(partialGroupInitial.affixes.map(entry=>entry.id));
+  const partialGroupAbsent=['FireResist1','ColdResist1','LightningResist1'].find(id=>!partialGroupPresent.has(id));assert.ok(partialGroupAbsent);
+  const partialGroupRecipe={initialState:partialGroupInitial,steps:[{method:'quality',untilTargets:[{anyOf:[partialGroupInitial.affixes[0].id]},{anyOf:[partialGroupAbsent]}],untilRequiredGroups:1,onFailureAction:'stop'},{method:'quality'}],targets:[],requirements:{minQuality:20}};
+  const partialGroupResult=await queued('simulate_crafting',{baseRevision:context.revision,itemText:raw,recipe:partialGroupRecipe,options:{trials:1,maxActions:2}},'crafted');
+  assert.equal(partialGroupResult.nativeCrafting.routeCounts[0].success,1);assert.equal(partialGroupResult.nativeCrafting.routeCounts[1].visits,1);
   const origin=createHash('sha1').update(raw).digest('hex');
   const uniqueShield='Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\n+100 to maximum Life';
   const uniqueQuality=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},seed:1},'crafted');

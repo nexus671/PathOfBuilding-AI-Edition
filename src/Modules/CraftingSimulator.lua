@@ -694,6 +694,7 @@ function M.validateRecipe(recipe)
 		integer(step.maxAttempts or 1,1,200,"step attempt limit")
 		if (step.maxAttempts or 1) > 1 then assert(step.untilTargets or step.untilRequirements,"Repeated steps need target or property conditions") end
 		if step.untilTargets then validateTargets(step.untilTargets) end
+		if step.untilRequiredGroups~=nil then assert(step.untilTargets,"Step target count requires target groups");integer(step.untilRequiredGroups,0,#step.untilTargets,"step required target groups") end
 		validateRequirements(step.untilRequirements)
 		for _,key in ipairs({"onSuccess","onFailure"}) do if step[key] then integer(step[key],1,#recipe.steps+1,"recipe route") end end
 	end
@@ -893,11 +894,11 @@ function M.simulate(raw,recipe,options)
 				end
 				if state.destroyed then break end
 				if state.uniqueTitle then
-					success=M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups) or not (step.untilTargets or step.untilRequirements) or M.matches(state,step.untilTargets or {},nil,model,step.untilRequirements)
+					success=M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups) or not (step.untilTargets or step.untilRequirements) or M.matches(state,step.untilTargets or {},nil,model,step.untilRequirements,step.untilRequiredGroups)
 					break
 				end
 				if M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups) then success=true;break end
-				if not (step.untilTargets or step.untilRequirements) or M.matches(state,step.untilTargets or {},nil,model,step.untilRequirements) then success=true; break end
+				if not (step.untilTargets or step.untilRequirements) or M.matches(state,step.untilTargets or {},nil,model,step.untilRequirements,step.untilRequiredGroups) then success=true; break end
 			end
 			route[success and "success" or "failure"]=route[success and "success" or "failure"]+1
 			if not success and step.onFailureAction=="restart" then

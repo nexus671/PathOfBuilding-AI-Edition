@@ -650,6 +650,17 @@ test('accepts bundled historical Atlas versions', t => {
 });
 
 
+test('validates and preserves partial target counts on crafting steps', t => {
+  const f=fixture(t);const base={baseRevision:f.state.revision,itemText:craftingProject().startingItem};
+  const step={method:'quality',untilTargets:[{anyOf:['one']},{anyOf:['two']}],untilRequiredGroups:1};
+  const recipe={steps:[step],targets:[],requirements:{minQuality:20}};
+  f.call('simulate_crafting',{...base,recipe});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe.steps[0].untilRequiredGroups,1);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  for (const invalid of [{...step,untilRequiredGroups:3},{method:'quality',untilRequiredGroups:0}])
+    assert.throws(()=>f.call('simulate_crafting',{...base,recipe:{...recipe,steps:[invalid]}}),/target count/);
+});
+
 test('queues offline appearance, colour goals and optimized Atlas routing', t => {
   const f=fixture(t);const base={baseRevision:f.state.revision};
   const profile={id:'local',title:'Local',preset:'campaign',strictness:1,rules:[],appearance:{minimumFontSize:40,alertVolume:0,disableEffects:true}};

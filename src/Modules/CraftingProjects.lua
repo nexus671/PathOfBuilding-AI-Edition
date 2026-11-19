@@ -229,6 +229,7 @@ function M.lines(project)
 		end
 		for index,step in ipairs(project.nativeRecipe.steps) do
 			lines[#lines+1]=string.format("%d. %s%s | attempts %d | success -> %s | failure -> %s",index,step.method,step.modId and " ("..step.modId..")" or step.essenceId and " ("..step.essenceId..")" or "",step.maxAttempts or 1,destination(edges[index*2-1]),destination(edges[index*2]))
+			if step.untilTargets then lines[#lines+1]=string.format("   Step target groups: %d of %d required",step.untilRequiredGroups or #step.untilTargets,#step.untilTargets) end
 		end
 	end
 	if project.notes and project.notes ~= "" then lines[#lines+1]=project.notes end

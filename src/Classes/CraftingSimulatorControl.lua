@@ -510,7 +510,7 @@ function Panel.Open(build,project,layout)
 		startSimulation({raw=draft.startingItem,recipe=recipe,options=options,label=fromInitial and "Saved recipe | original starting item" or "Selected action: "..actionName()})
 	end
 	button(controls,"simulate",16,486,200,"Simulate action",function()
-		local a=action();local attempts=assert(tonumber(controls.budget.buf),"Invalid budget");a.maxAttempts=math.min(200,attempts); a.untilTargets=#targets > 0 and copyTable(targets) or nil;a.untilRequirements=(requirements and copyTable(requirements) or nil)
+		local a=action();local attempts=assert(tonumber(controls.budget.buf),"Invalid budget");a.maxAttempts=math.min(200,attempts); a.untilTargets=#targets > 0 and copyTable(targets) or nil;a.untilRequiredGroups=a.untilTargets and requiredGroups or nil;a.untilRequirements=(requirements and copyTable(requirements) or nil)
 		showSimulation({steps={a},targets=copyTable(targets),requirements=(requirements and copyTable(requirements) or nil),requiredGroups=requiredGroups},false)
 	end)
 	button(controls,"runRecipe",232,486,200,"Simulate saved recipe",function() assert(draft.nativeRecipe,"This project has no saved native recipe"); showSimulation(draft.nativeRecipe,true) end)

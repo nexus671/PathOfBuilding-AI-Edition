@@ -165,6 +165,20 @@ describe("Advanced native crafting", function()
 		assert.are.equal(1,result.successes)
 		assert.are.equal(1,result.meanActions)
 	end)
+	it("uses a step's saved target-group count even when the final goal differs",function()
+		local model=sim.model(raw);local initial=rare();local first=initial.affixes[1].id;local alternative
+		for _,entry in ipairs(model.mods) do if entry.id~=first and entry.mod.group==model.byId[first].group then alternative=entry.id;break end end
+		assert.is_truthy(alternative)
+		local step={method="quality",untilTargets={{anyOf={first}},{anyOf={alternative}}},untilRequiredGroups=1,onFailureAction="stop"}
+		local recipe={steps={step,{method="quality"}},targets={},requirements={minQuality=20}}
+		local json=require("dkjson");recipe=sim.validateRecipe(assert(json.decode(json.encode(sim.validateRecipe(recipe)))));step=recipe.steps[1];assert.equal(1,step.untilRequiredGroups)
+		local result=sim.simulate(raw,recipe,{initialState=initial,trials=1,maxActions=2})
+		assert.equal(1,result.routeCounts[1].success);assert.equal(1,result.routeCounts[2].visits)
+		step.untilRequiredGroups=nil;result=sim.simulate(raw,recipe,{initialState=initial,trials=1,maxActions=2})
+		assert.equal(1,result.routeCounts[1].failure);assert.is_nil(result.routeCounts[2])
+		step.untilRequiredGroups=3;assert.has_error(function() sim.validateRecipe(recipe) end)
+		step.untilTargets=nil;step.untilRequiredGroups=0;assert.has_error(function() sim.validateRecipe(recipe) end)
+	end)
 	it("applies Foulborn tier bias without changing the currency's rarity transition", function()
 		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
 		local ordinary=sim.calculate(raw,{method="exalt"},{{anyOf={"FireResist1"}}},state)
@@ -597,12 +611,12 @@ describe("Advanced native crafting", function()
 	it("edits native recipe routes and keeps a validated bounded loop", function()
 		local panel=require("Classes.CraftingRecipeControl");local kept
 		local model=sim.model(raw);local id=model.mods[1].id
-		local controls=panel.Open({steps={{method="alchemy"}},targets={{anyOf={id}}}},{method="scour"},function(recipe) kept=recipe end)
+		local controls=panel.Open({steps={{method="alchemy"}},targets={{anyOf={id}}},requiredGroups=0},{method="scour"},function(recipe) kept=recipe end)
 		controls.add:Click();controls.step.selIndex=1;controls.step.selFunc(1,{val=1})
 		controls.attempts:SetText("3");controls.condition:SelByValue("Until final targets and properties match")
 		controls.failure:SelByValue(2,"val");controls.success:SelByValue(3,"val");controls.update:Click();controls.keep:Click()
 		assert.is_truthy(kept);assert.are.equal(3,kept.steps[1].maxAttempts);assert.are.equal(2,kept.steps[1].onFailure);assert.are.equal(3,kept.steps[1].onSuccess)
-		assert.is_truthy(kept.steps[1].untilTargets)
+		assert.is_truthy(kept.steps[1].untilTargets);assert.equal(0,kept.steps[1].untilRequiredGroups)
 		main.popups={}
 	end)
 end)

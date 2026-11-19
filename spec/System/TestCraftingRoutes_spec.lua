@@ -19,10 +19,11 @@ describe("Visual crafting routes",function()
 		assert.equal(4,routes.edges(changed)[1].target)
 	end)
 	it("describes failure recovery and explicit destinations in project reviews",function()
-		local recipe={steps={{method="alchemy",onFailureAction="restart",onFailure=2},{method="chaos",onFailureAction="stop"},{method="divine",onFailureAction="salvage"},{method="exalt",onSuccess=1,onFailure=5}}}
+		local recipe={steps={{method="alchemy",onFailureAction="restart",onFailure=2,untilTargets={{anyOf={"one"}},{anyOf={"two"}}},untilRequiredGroups=1},{method="chaos",onFailureAction="stop"},{method="divine",onFailureAction="salvage"},{method="exalt",onSuccess=1,onFailure=5}}}
 		local project={title="Test",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={},nativeRecipe=recipe}
 		local lines=require("Modules.CraftingProjects").lines(project);local text=table.concat(lines,"\n")
 		assert.matches("success %-> step 2 | failure %-> restart with starting item at step 1",text)
+		assert.matches("Step target groups: 1 of 2 required",text)
 		assert.matches("success %-> step 3 | failure %-> stop",text)
 		assert.matches("success %-> step 4 | failure %-> salvage and stop",text)
 		assert.matches("success %-> step 1 | failure %-> finish",text)

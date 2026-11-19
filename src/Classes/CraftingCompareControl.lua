@@ -7,14 +7,14 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 	local controls={};local width=math.min(960,main.screenW-40);local height=math.min(660,main.screenH-60)
 	local model=sim.model(raw);local entries={};local recipes={};local chartResults
 	local function add(label,recipe,priceKey) recipes[#recipes+1]={label=label,recipe=recipe,priceKey=priceKey};entries[#entries+1]={label=label,val=#recipes} end
-	local selected=copyTable(current);selected.maxAttempts=math.min(200,settings.budget);selected.untilTargets=#targets>0 and copyTable(targets) or nil;selected.untilRequirements=requirements and copyTable(requirements)
+	local selected=copyTable(current);selected.maxAttempts=math.min(200,settings.budget);selected.untilTargets=#targets>0 and copyTable(targets) or nil;selected.untilRequiredGroups=selected.untilTargets and requiredGroups or nil;selected.untilRequirements=requirements and copyTable(requirements)
 	add("Selected action",{steps={selected},targets=copyTable(targets),requirements=requirements and copyTable(requirements),requiredGroups=requiredGroups},sim.priceKey(selected))
 	if saved then local recipe=copyTable(saved);recipe.targets=copyTable(targets);recipe.requirements=requirements and copyTable(requirements);recipe.requiredGroups=requiredGroups;add("Saved recipe",recipe) end
 	for _,method in ipairs({"alchemy","chaos","alteration","essence","fossil","harvest_reforge"}) do
 		local available=require("Modules.CraftingWorkbench").available(method,state,model)
 		local ok,options=pcall(sim.actionOptions,model,state,method)
 		if available and ok and (#options==0 or method~="fossil") then
-			local action=copyTable(options[1] and options[1].action or {method=method});action.maxAttempts=math.min(200,settings.budget);action.untilTargets=#targets>0 and copyTable(targets) or nil;action.untilRequirements=requirements and copyTable(requirements)
+			local action=copyTable(options[1] and options[1].action or {method=method});action.maxAttempts=math.min(200,settings.budget);action.untilTargets=#targets>0 and copyTable(targets) or nil;action.untilRequiredGroups=action.untilTargets and requiredGroups or nil;action.untilRequirements=requirements and copyTable(requirements)
 			add(sim.labels[method],{steps={action},targets=copyTable(targets),requirements=requirements and copyTable(requirements),requiredGroups=requiredGroups},sim.priceKey(action))
 		end
 	end

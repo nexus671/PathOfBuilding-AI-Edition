@@ -105,7 +105,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 	end)
 	button(controls,"replace",288,514,272,"Replace selected with emulator action",function()
 		local old=assert(draft.steps[selected],"Select a step");local next=copyTable(currentAction)
-		for _,key in ipairs({"maxAttempts","onSuccess","onFailure","onFailureAction","recoveryNotes","untilTargets","untilRequirements"}) do
+		for _,key in ipairs({"maxAttempts","onSuccess","onFailure","onFailureAction","recoveryNotes","untilTargets","untilRequiredGroups","untilRequirements"}) do
 			local value=old[key];if value~=nil then next[key]=type(value)=="table" and copyTable(value) or value end
 		end
 		draft.steps[selected]=next;refresh()
@@ -119,8 +119,8 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		local candidate=copyTable(draft);local step=assert(candidate.steps[selected],"Select a step")
 		step.maxAttempts=assert(tonumber(controls.attempts.buf),"Enter an attempt count")
 		local condition=controls.condition:GetSelValue()
-		if condition == "Until final targets and properties match" then assert(#draft.targets > 0 or draft.requirements,"Choose targets or properties in the emulator first");step.untilTargets=#draft.targets > 0 and copyTable(draft.targets) or nil;step.untilRequirements=draft.requirements and copyTable(draft.requirements) or nil
-		elseif condition == "After a successful action" then step.untilTargets=nil;step.untilRequirements=nil end
+		if condition == "Until final targets and properties match" then assert(#draft.targets > 0 or draft.requirements,"Choose targets or properties in the emulator first");step.untilTargets=#draft.targets > 0 and copyTable(draft.targets) or nil;step.untilRequiredGroups=step.untilTargets and draft.requiredGroups or nil;step.untilRequirements=draft.requirements and copyTable(draft.requirements) or nil
+		elseif condition == "After a successful action" then step.untilTargets=nil;step.untilRequiredGroups=nil;step.untilRequirements=nil end
 		local success,failure=controls.success:GetSelValueByKey("val"),controls.failure:GetSelValueByKey("val")
 		step.onSuccess=success ~= 0 and success or nil
 		if type(failure)=="string" then step.onFailureAction=failure
