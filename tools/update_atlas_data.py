@@ -18,6 +18,8 @@ VERSIONS = {
     "3.29.3-ruthless": "dcb2a006b68740f3ecbd317775c262fc6ed7b8af",
     "3.30.0-preview": "d225501d7a3e52c991309116473908c284075e89",
     "3.30.0-preview-ruthless": "d225501d7a3e52c991309116473908c284075e89",
+    "3.30.0c": "24bd611b33fb727c0d1264185599fdd973d02d2d",
+    "3.30.0c-ruthless": "24bd611b33fb727c0d1264185599fdd973d02d2d",
 }
 DESTINATION = Path(__file__).resolve().parents[1] / "src" / "Data" / "Atlas"
 ANGLES = [0, 30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330]
@@ -69,7 +71,7 @@ for version in selected:
         "groups": [{"x": group["x"], "y": group["y"], "background": group["background"]["image"]}
                    for group in data["groups"].values() if group.get("background")],
     }
-    if "-preview" in version or version.startswith("3.28.0j"):
+    if version.startswith("3.30.0") or version.startswith("3.28.0j"):
         if "-preview" in version:
             result["preview"] = True
         league_source = source.replace("/ruthless.json", "/ruthless-league.json") if ruthless else source.replace("/data.json", "/league.json")

@@ -8,6 +8,17 @@ describe("Native Atlas planner", function()
 	end
 	before_each(function() newBuild(); bridge.prepared=nil;main.popups={} end)
 	after_each(function() bridge.prepared=nil; main.popups={} end)
+	it("defaults to the 3.30.0c official graph while retaining the launch tree",function()
+		local launch=atlas.tree("3.30.0-preview");local current=atlas.tree("3.30.0c");local ruthless=atlas.tree("3.30.0c-ruthless")
+		assert.equal("3.30.0c",atlas.defaultVersion("3_30"));assert.equal("3.30.0c-ruthless",atlas.defaultVersion("3_30_ruthless"))
+		assert.equal("24bd611b33fb727c0d1264185599fdd973d02d2d",current.commit);assert.is_nil(launch.nodes[27261]);assert.equal("Celestial Presence",current.nodes[27261].name)
+		assert.equal("Runic Distortion",current.nodes[53484].name);assert.equal(3,#current.nodes[27261].variantEffects);assert.equal(2,#ruthless.nodes[53484].variantEffects)
+		assert.matches("Surpassing Chance",current.nodes[128].stats[1]);assert.not_same(launch.nodes[53175].stats,current.nodes[53175].stats)
+		local p=plan("3.30.0c");p.shapedRegions={};assert.equal("3.30.0c",atlas.validate(p).version);assert.is_truthy(atlas.report(p).threadRestrictions)
+		p=atlas.connect(p,{27261});p=atlas.chooseEffect(p,27261,current.nodes[27261].variantEffects[1].effect)
+		assert.same(p.choices,atlas.import(atlas.export(p)).choices);assert.same(p.choices,atlas.import(atlas.url(p),p.version).choices)
+		assert.is_truthy(require("Modules.AtlasArt").load("3.30.0c-ruthless"))
+	end)
 	it("replaces the standalone planner when opening a saved plan",function()
 		local first=plan("3.30.0-preview");first.id="first";first.title="First"
 		local second=plan("3.30.0-preview");second.id="second";second.title="Second"

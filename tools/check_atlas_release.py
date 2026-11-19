@@ -73,11 +73,14 @@ def graph_errors(graph, source):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ref", default="3.30.0", help="GGG Atlas export tag or commit")
+    parser.add_argument("--version", default="3.30.0-preview", choices=("3.30.0-preview", "3.30.0c"), help="Bundled Standard graph identifier")
     args = parser.parse_args()
     ref = quote(args.ref, safe="")
     failed = False
     exports = {}
-    for version, filename, field in SOURCES:
+    sources = tuple((args.version + ("-ruthless" if "ruthless" in version else ""), filename, field)
+                    for version, filename, field in SOURCES)
+    for version, filename, field in sources:
         graph = json.loads((ROOT / "src" / "Data" / "Atlas" / (version + ".json")).read_text(encoding="utf-8"))
         url = f"https://raw.githubusercontent.com/grindinggear/atlastree-export/{ref}/{filename}"
         with urlopen(url, timeout=30) as response:
@@ -89,8 +92,8 @@ def main():
         print(f"{filename}: {'matches' if matches else 'DIFFERS'} {version} ({digest})")
     if failed:
         raise SystemExit("Atlas export differs; inspect and regenerate the affected graphs before updating plans.")
-    for version, main_file, league_file in (("3.30.0-preview", "data.json", "league.json"),
-                                            ("3.30.0-preview-ruthless", "ruthless.json", "ruthless-league.json")):
+    for version, main_file, league_file in ((args.version, "data.json", "league.json"),
+                                            (args.version + "-ruthless", "ruthless.json", "ruthless-league.json")):
         source, league = exports[main_file], exports[league_file]
         if {key: value for key, value in source.items() if key != "tree"} != {
                 key: value for key, value in league.items() if key != "tree"}:

@@ -1,20 +1,22 @@
 -- Native Atlas plans use pinned GGG data, independently of character passives.
 -- cspell:ignore jsontype
 local json = require("dkjson")
-local M = {versions={"3.27.0","3.27.0-ruthless","3.28.0j","3.28.0j-ruthless","3.29.1","3.29.1-ruthless","3.29.3","3.29.3-ruthless","3.30.0-preview","3.30.0-preview-ruthless"},cache={}}
+local M = {versions={"3.27.0","3.27.0-ruthless","3.28.0j","3.28.0j-ruthless","3.29.1","3.29.1-ruthless","3.29.3","3.29.3-ruthless","3.30.0-preview","3.30.0-preview-ruthless","3.30.0c","3.30.0c-ruthless"},cache={}}
+function M.is330(version) return type(version)=="string" and version:match("^3%.30%.0")~=nil end
 -- The pinned preview snapshot is byte-identical to GGG's 3.30.0 release
 -- export. Keep its saved identifier stable while presenting the released name.
 function M.versionLabel(version)
 	if version=="3.30.0-preview" then return "3.30.0" end
 	if version=="3.30.0-preview-ruthless" then return "3.30.0 Ruthless" end
+	if version=="3.30.0c-ruthless" then return "3.30.0c Ruthless" end
 	return version
 end
 function M.defaultVersion(treeVersion)
 	treeVersion=treeVersion or ""
 	if treeVersion:find("ruthless",1,true) then
-		return treeVersion:match("3_30") and "3.30.0-preview-ruthless" or treeVersion:match("3_27") and "3.27.0-ruthless" or treeVersion:match("3_28") and "3.28.0j-ruthless" or "3.29.3-ruthless"
+		return treeVersion:match("3_30") and "3.30.0c-ruthless" or treeVersion:match("3_27") and "3.27.0-ruthless" or treeVersion:match("3_28") and "3.28.0j-ruthless" or "3.29.3-ruthless"
 	end
-	return treeVersion:match("3_30") and "3.30.0-preview" or treeVersion:match("3_27") and "3.27.0" or treeVersion:match("3_28") and "3.28.0j" or "3.29.3"
+	return treeVersion:match("3_30") and "3.30.0c" or treeVersion:match("3_27") and "3.27.0" or treeVersion:match("3_28") and "3.28.0j" or "3.29.3"
 end
 local function integer(value,low,high,label)
 	assert(type(value) == "number" and value == math.floor(value) and value >= low and value <= high,"Invalid "..label)
@@ -148,7 +150,7 @@ function M.validate(plan)
 		end
 	end
 	if plan.shapedRegions~=nil then
-		assert(plan.version=="3.30.0-preview" or plan.version=="3.30.0-preview-ruthless","Shaped Region tracking requires the 3.30 Atlas")
+		assert(M.is330(plan.version),"Shaped Region tracking requires the 3.30 Atlas")
 		result.shapedRegions=require("Modules.AtlasRegions").validate(plan.shapedRegions)
 	end
 	if plan.mapDrafts~=nil then
@@ -410,7 +412,7 @@ function M.report(plan)
 	table.sort(lines,function(a,b) return a.text < b.text end); table.sort(notables); table.sort(keystones)
 	local releaseMatch=plan.version=="3.30.0-preview" or plan.version=="3.30.0-preview-ruthless"
 	return {version=plan.version,displayVersion=M.versionLabel(plan.version),releaseTag=releaseMatch and "3.30.0" or nil,releaseCheckedAt=releaseMatch and "2026-11-18" or nil,mode=tree.mode=="ruthless" and "Ruthless" or "Standard",preview=tree.preview,compatibleModes=tree.compatibleModes,used=#plan.nodes,budget=plan.budget,bonus=bonus,remaining=plan.budget+bonus-#plan.nodes,budgetReachable=reachable,budgetWarning=budgetWarning,pointsBeforeGrant=pointsBeforeGrant,grantRoute=grantRoute,
-		counts=counts,notables=notables,keystones=keystones,stats=lines,missingChoices=missingChoices,source=tree.source,sourceCommit=tree.commit,threadRestrictions=releaseMatch and require("Modules.AtlasStrategy").threadRestrictionReference() or nil,
+		counts=counts,notables=notables,keystones=keystones,stats=lines,missingChoices=missingChoices,source=tree.source,sourceCommit=tree.commit,threadRestrictions=M.is330(plan.version) and require("Modules.AtlasStrategy").threadRestrictionReference() or nil,
 		limitations={"Atlas plans do not modify character DPS or EHP.","Stat lines are grouped as displayed, not combined into effective map odds. Keystone interactions are not simulated.","Budget is supplied progression, not imported account completion. Small optimized routes can be exact; larger routes use a heuristic."}}
 end
 function M.export(plan)

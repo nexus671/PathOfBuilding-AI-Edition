@@ -839,6 +839,12 @@ async function main(){
     assert.equal(route.atlas.plan.version,version);assert.ok(route.atlas.plan.nodes.includes(target));
   }
   const regionsPlan={id:'region-preview',title:'Regions',version:'3.30.0-preview',budget:150,nodes:[],shapedRegions:[{mechanic:'Blight',maps:[{name:'Beach Map',freeThreads:2},{name:'Strand Map',freeThreads:3}]},{mechanic:'Breach',maps:[{name:'beach map',freeThreads:4},{name:'Dunes Map',freeThreads:1}]}]};
+  for(const version of ['3.30.0c','3.30.0c-ruthless']) {
+    const current=await queued('search_atlas_nodes',{baseRevision:context.revision,version,query:'Celestial Presence',limit:10},'atlas');
+    assert.ok(current.atlas.matches.some(node=>node.id===27261 && node.variantEffects.length===3));
+  }
+  const milestones=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:83,threads:8},'atlas');
+  assert.equal(milestones.atlas.guaranteedModifiers,3);assert.equal(milestones.atlas.milestones.threshold,8);
   const regionPreview=await queued('preview_shaped_region_run',{baseRevision:context.revision,plan:regionsPlan,map:'Beach Map',completed:['Blight']},'atlas');
   assert.deepEqual(regionPreview.atlas.plan.shapedRegions[0].maps,[{name:'Strand Map',freeThreads:4}]);assert.deepEqual(regionPreview.atlas.plan.shapedRegions[1].maps,[{name:'Dunes Map',freeThreads:1}]);
   assert.equal((await call('get_build_context')).context.revision,context.revision);

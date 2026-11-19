@@ -630,6 +630,15 @@ test('queues searches and plans for the pinned Ruthless Atlas', t => {
   assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).plan.version,version);
 });
 
+test('accepts the 3.30.0c Atlas in both modes', t => {
+  const f=fixture(t);const base={baseRevision:f.state.revision};
+  for(const version of ['3.30.0c','3.30.0c-ruthless']) {
+    f.call('search_atlas_nodes',{...base,version,query:'Celestial Presence',limit:10});
+    assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).version,version);
+    fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  }
+});
+
 test('accepts bundled historical Atlas versions', t => {
   const f=fixture(t);const base={baseRevision:f.state.revision};
   for(const version of ['3.27.0-ruthless','3.28.0j','3.28.0j-ruthless','3.29.1-ruthless','3.29.3-ruthless']){

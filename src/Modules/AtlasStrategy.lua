@@ -11,6 +11,18 @@ local threadRestrictions={
 	{mechanic="Betrayal",effect="Syndicate members gain Rare Monster modifiers",areaLevel=80},
 	{mechanic="Breach",effect="Rare monsters gain an additional Breach modifier",areaLevel=73},
 }
+local threadMilestones={
+	{mechanic="Abyss",values={"1 additional pit","2 additional pits","3 additional pits"}},
+	{mechanic="Breach",values={"20% increased Magic Breach monsters","40% increased Magic Breach monsters","60% increased Magic Breach monsters"}},
+	{mechanic="Blight",values={"+40% surpassing chance for a lane to be at least Magic","+80% surpassing chance for a lane to be at least Magic","+120% surpassing chance for a lane to be at least Magic"}},
+	{mechanic="Legion",values={"1 additional encounter","2 additional encounters","3 additional encounters"}},
+	{mechanic="Expedition",values={"15% surpassing chance for an additional Remnant suffix","30% surpassing chance for an additional Remnant suffix","50% surpassing chance for an additional Remnant suffix"}},
+	{mechanic="Ultimatum",values={"15% increased Rare monsters","15% increased Rare monsters; rewards as one additional round","30% increased Rare monsters; rewards as one additional round"}},
+	{mechanic="Ritual",values={"20% increased Favours","40% increased Favours","60% increased Favours"}},
+	{mechanic="Bestiary",values={"2 additional Red Beasts","3 additional Red Beasts","4 additional Red Beasts"}},
+	{mechanic="Betrayal",values={"30% increased reinforcement chance","60% increased reinforcement chance","90% increased reinforcement chance"}},
+	{mechanic="Incursion",values={"20% increased pack size","30% increased pack size","40% increased pack size"}},
+}
 -- The patch describes necessary conditions, not an exhaustive offer pool or odds.
 function M.threadRestrictionReference()
 	local rows=copyTable(threadRestrictions);for _,row in ipairs(rows) do row.minimumThreads=2 end
@@ -21,6 +33,10 @@ function M.threadRestrictions(areaLevel,threads)
 	assert(type(threads)=="number" and threads==math.floor(threads) and threads>=0 and threads<=100,"Use a non-negative whole Thread count up to 100")
 	local result=M.threadRestrictionReference();result.areaLevel=areaLevel;result.threads=threads
 	for _,row in ipairs(result.modifiers) do row.restrictionsMet=threads>=row.minimumThreads and areaLevel>=row.areaLevel end
+	local tier=threads>=8 and 3 or threads>=6 and 2 or threads>=3 and 1 or 0
+	result.guaranteedModifiers=threads==0 and 0 or threads>=8 and 3 or threads>=4 and 2 or 1
+	result.milestones={patch="3.30.0c",source="https://www.pathofexile.com/forum/view-thread/4017172",thresholds={3,6,8},threshold=tier>0 and ({3,6,8})[tier] or nil,mechanics={},note="Use the applied count for one Thread type, including free or bonus Threads. Published values are shown at the reached threshold; stacking between thresholds is not assumed."}
+	for _,entry in ipairs(threadMilestones) do result.milestones.mechanics[#result.milestones.mechanics+1]={mechanic=entry.mechanic,values=copyTable(entry.values),current=tier>0 and entry.values[tier] or nil} end
 	return result
 end
 local aliases={Maps={"map","kirac"},Bosses={"boss","shaper","elder","maven","eater","exarch"},Strongboxes={"strongbox"},Shrines={"shrine"},Heist={"heist","smuggler","blueprint"},Bestiary={"beast","einhar"},Incursion={"incursion","alva"},Betrayal={"syndicate","jun","veiled item"},Delve={"sulphite","niko"},Harvest={"harvest","sacred grove","sacred flora","sacred fauna","sacred specimen","lifeforce"},Wildwood={"viridian wildwood","wildwood chance"},Sentinels={"sentinel"},Torment={"tormented spirit","tormented procurator"},["Rogue Exiles"]={"rogue exile"},Mercenaries={"mercenary","mercenaries","trarthan"},["Ore Deposits"]={"ore deposit","smelted bar","marking ore","kalguuran scarab"},Threads={"thread"}}

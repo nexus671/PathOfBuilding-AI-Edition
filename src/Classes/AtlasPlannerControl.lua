@@ -473,7 +473,7 @@ function Panel.Open(build,source,layout)
 		clearRouteOverlay();exitGrantRoute()
 		local entries={
 			{id="mapModifiers",label="Map modifier explorer",details={"Inspect hypothetical modifiers on an ordinary map.","Uses pinned 3.30 source data; does not roll an item or calculate odds."}},
-			{id="threadRestrictions",label="Thread restrictions",details={"Check minimum area levels and Thread counts for seven dangerous modifiers.","Based on 3.30.0b Hotfix 3; offer odds are not modeled."}},
+			{id="threadRestrictions",label="Thread restrictions",details={"Check minimum area levels, guaranteed modifiers and Thread milestones.","Uses published 3.30.0b restrictions and 3.30.0c milestones; offer odds are not modeled."}},
 			{id="mapDrafts",label="Saved map drafts",details={"Open or remove map drafts kept in this Atlas plan.","Keep the plan and save the build to persist changes."}},
 			{id="presets",label="Strategy starting points",details={"Connect up to three nearby unallocated notables for a mechanic.","Generated from this version's bundled tree, within your budget.","Editable starting routes, not recommendations for farming profit."}},
 			{id="compare",label="Compare with a saved plan",details={"Review added nodes, removed nodes and changed bonus lines.","Both plans must use the same Atlas version."}},
@@ -481,7 +481,7 @@ function Panel.Open(build,source,layout)
 			{id="preferred",label="Prefer selected node in routes",details={"Use the selected node as a waypoint when comparing routes.",preferred and "Current: "..controls.canvas.tree.nodes[preferred].name or "No preferred waypoint."}},
 			{id="clearComparison",label="Clear comparison overlay",details={"Return to the current plan without saved-plan difference colours."}},
 		}
-		if draft.version=="3.30.0-preview" or draft.version=="3.30.0-preview-ruthless" then
+		if atlas.is330(draft.version) then
 			entries[#entries+1]={id="shapedRegions",label="Shaped Regions",details={"Track observed maps and free Threads by region.","Manual observations; no game account is accessed."}}
 		end
 		browser.Open("Atlas plan tools",entries,{closeOnChoose=false,action="Open",choose=function(entry)

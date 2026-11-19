@@ -42,7 +42,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Preview/recalculate all desired targets, with explicit apply and pause controls.
 - [x] Summarise mechanic investment, small nodes, blocking and keystone tradeoffs.
 - [x] Compare saved plans visually and preserve exact tree versions.
-- [ ] Compare the 3.30 preview with any later official release export and the live game, including both Standard and Ruthless graphs. On November 18, GGG's `3.30.0` tag still matched the four bundled source files, and `tools/check_atlas_release.py` verified generated node contents, connections and layout. The live game has not been checked.
+- [ ] Compare the current Atlas with the live game. GGG's 3.30.0c export commit is bundled for Standard and Ruthless, and `tools/check_atlas_release.py` verifies all four source files and both generated graphs. The live game has not been checked.
 
 ## Shared experience
 

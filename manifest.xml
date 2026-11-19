@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="50dbe5d5ca53c80da3f417313d4d829b6cae1d21" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="467b640d932c89c5d7cb278b8e782301f753559f" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -1647,11 +1647,11 @@
 	<File name="Assets/veiledicon.png" part="program" sha1="035479a7ee7847969ef50ff428e3bee897fba671" />
 	<File name="Assets/vestigialicon.png" part="program" sha1="ecb5dd4b9aed1cac0c1a677b18838ae9c62744d7" />
 	<File name="Assets/warlordicon.png" part="program" sha1="cca050c84884f5c0bb1380ece51d3c4b32be4900" />
-	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="05c06a0d3fac4eb17315d99c61e9c80d9b82288a" />
+	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="1448da9a2522fb86cfe8886ec67e8e5606690467" />
 	<File name="Classes/AtlasRegionsControl.lua" part="program" sha1="e66712299a07131a5c7a8b9a990a863339762948" />
 	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="f5f0c329f9a975421ec94e247a25ff421f3f2676" />
 	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="88a5c79581c7096eb7d895395c54535befeb5061" />
-	<File name="Classes/AtlasThreadControl.lua" part="program" sha1="908f7de52f1d702f3933e52a0fa825bae6cdd1bc" />
+	<File name="Classes/AtlasThreadControl.lua" part="program" sha1="2629a5eab0f13caede8acf72e595e1aeee6ebb31" />
 	<File name="Classes/BuildJourneyControl.lua" part="program" sha1="3429fb9b3ce4463a96838e127e3863814d47f976" />
 	<File name="Classes/BuildListControl.lua" part="program" sha1="f60f0d7f6aecbe851db896913cd1aa707c7fb304" />
 	<File name="Classes/BuildProposalControl.lua" part="program" sha1="561317a52ca3a02a51e0cd871ffa0236496bb9cc" />
@@ -1842,7 +1842,7 @@
 	<File name="Data/FlavourText.lua" part="program" sha1="938ff1930796386bcf56148dba7541fec5f10009" />
 	<File name="Data/Gems.lua" part="program" sha1="4452f6a8a4c7dd732a23005c28a05b68e5b26658" />
 	<File name="Data/Global.lua" part="program" sha1="72bff7e953555cf3045880b0ff0dc0c37f43056e" />
-	<File name="Data/HeadlessImageSizes.json" part="program" sha1="baacb6393be0e5527562220bd442c71d0e96afc4" />
+	<File name="Data/HeadlessImageSizes.json" part="program" sha1="83cd64bca55536ccc32de552cdb8bb437305a13a" />
 	<File name="Data/IncursionDropOnly.lua" part="program" sha1="1fa5c24b1bf897e781c54b3ce7a7fcd7d23fd645" />
 	<File name="Data/LootFilters/0.filter" part="program" sha1="5689289ef48deb65a0f9341b83934c3de41c2aea" />
 	<File name="Data/LootFilters/1.filter" part="program" sha1="79d48486f9efcf1d2fecfa22de7cb6f15ac37aa6" />
@@ -2055,9 +2055,9 @@
 	<File name="Modules/AtlasArt.lua" part="program" sha1="d007b7632f8d2e284c7ed46d6a0d98c39d3e2576" />
 	<File name="Modules/AtlasExactRoute.lua" part="program" sha1="4468353ae36dc220916b985ce6de0e1403c7643c" />
 	<File name="Modules/AtlasGrantRoute.lua" part="program" sha1="c9b1be59c1d2c9c6359d5546b3b41e1cfc3bdf12" />
-	<File name="Modules/AtlasPlanner.lua" part="program" sha1="1489d8c0aeeddaf4044aeded4a01814ea4d4b044" />
+	<File name="Modules/AtlasPlanner.lua" part="program" sha1="df4769611f0ed1278ac70bd937896cfe18c07a78" />
 	<File name="Modules/AtlasRegions.lua" part="program" sha1="e418859ff34df69202221e4d46f5c3f1275afc3b" />
-	<File name="Modules/AtlasStrategy.lua" part="program" sha1="0ff014c413bbf807f52fdf94a1a55ca2af942a03" />
+	<File name="Modules/AtlasStrategy.lua" part="program" sha1="5a2e0b308d71c002e42838996a1746c60be16cff" />
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="650adaf8761d03a87383f3d4a3b14c1ffb5a6aca" />
 	<File name="Modules/Build.lua" part="program" sha1="12fbc0fe204cd1f241ad26ccd4cefbda4f5027b5" />
 	<File name="Modules/BuildDisplayStats.lua" part="program" sha1="ffc4da3b13c3d50f3580b452622429f0bd7e70ab" />
@@ -3075,4 +3075,13 @@
 	<File name="TreeData/legion/legion-art.png" part="tree" sha1="e1c20a838f3de40ded09dbd18761b92d0ccac855" />
 	<File name="TreeData/legion/legion-inactive.png" part="tree" sha1="57e30964c354a9575840cf56e3ba55396591d639" />
 	<File name="TreeData/legion/tree-legion.lua" part="tree" sha1="4dce7fd195a045a09c28e268653d60556af7998a" />
+	<File name="Assets/Atlas/3.30.0c/atlas-background-4.webp" part="program" sha1="2fdad1253d7206e03d4fcf2dc1f7b22725235c37" />
+	<File name="Assets/Atlas/3.30.0c/atlas-frame-4.webp" part="program" sha1="fca14bae0e167a367ba958380945d713a01e2087" />
+	<File name="Assets/Atlas/3.30.0c/atlas-group-background-4.webp" part="program" sha1="5d25cce984bfec9c28402254deb61d23d2099cd9" />
+	<File name="Assets/Atlas/3.30.0c/atlas-mastery-4.webp" part="program" sha1="19329cc3618d93fc42d141acfeb716f5d4b70d36" />
+	<File name="Assets/Atlas/3.30.0c/atlas-skills-4.webp" part="program" sha1="d2de5bb4510091dc9064a9f9a8cc8592d1becd5c" />
+	<File name="Assets/Atlas/3.30.0c/atlas-skills-disabled-4.webp" part="program" sha1="262d170e012d02d90d5d413988abf4ca961e5a11" />
+	<File name="Assets/Atlas/3.30.0c/manifest.json" part="program" sha1="a6b3e2e771e8e13e86f3625b479663f8dcb0b3bd" />
+	<File name="Data/Atlas/3.30.0c-ruthless.json" part="program" sha1="93ddab4905bcb99e4bbdb9b31193cdee1f19f420" />
+	<File name="Data/Atlas/3.30.0c.json" part="program" sha1="1f1948c184857a627414410890c2b1a62d7a16cf" />
 </PoBVersion>

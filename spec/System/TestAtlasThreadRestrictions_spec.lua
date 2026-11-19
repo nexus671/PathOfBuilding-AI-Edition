@@ -9,6 +9,15 @@ describe("Current Thread modifier restrictions",function()
 		local result=strategy.threadRestrictions(80,2);assert.equal("https://www.pathofexile.com/forum/view-thread/4015683",result.source);assert.matches("Other requirements",result.note)
 		assert.has_error(function() strategy.threadRestrictions(80,1.5) end);assert.has_error(function() strategy.threadRestrictions(0,2) end)
 	end)
+	it("reports the 3.30.0c modifier guarantees and published milestones",function()
+		for _,case in ipairs({{0,0,nil},{1,1,nil},{2,1,nil},{3,1,3},{4,2,3},{5,2,3},{6,2,6},{7,2,6},{8,3,8},{9,3,8}}) do
+			local result=strategy.threadRestrictions(83,case[1]);assert.equal(case[2],result.guaranteedModifiers);assert.equal(case[3],result.milestones.threshold)
+			assert.same({3,6,8},result.milestones.thresholds);assert.equal(10,#result.milestones.mechanics)
+			if case[3] then assert.is_truthy(result.milestones.mechanics[1].current) else assert.is_nil(result.milestones.mechanics[1].current) end
+		end
+		local result=strategy.threadRestrictions(83,8);assert.equal("3 additional pits",result.milestones.mechanics[1].current)
+		assert.equal("https://www.pathofexile.com/forum/view-thread/4017172",result.milestones.source)
+	end)
 	it("exposes the sourced restrictions to Atlas reports and updates the native control",function()
 		newBuild();main.popups={}
 		local atlas=require("Modules.AtlasPlanner")
@@ -21,6 +30,8 @@ describe("Current Thread modifier restrictions",function()
 		assert.matches("Restricted",text);assert.not_matches("Conditions met",text)
 		c.level:SetText("73",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
 		assert.matches("Conditions met",text);assert.matches("Restricted",text)
+		c.threads:SetText("8",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
+		assert.matches("Guaranteed modifiers: 3",text);assert.matches("Abyss: 3 additional pits",text);assert.matches("stacking not assumed",text)
 		main.popups={}
 	end)
 end)
