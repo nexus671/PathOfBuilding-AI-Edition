@@ -47,7 +47,7 @@ end
 local function implicitChanges(model,before,after)
 	if before.destroyed or after.destroyed then return {} end
 	local json=require("dkjson");local changed=sim.context(model,before).item.baseName~=sim.context(model,after).item.baseName
-	for _,key in ipairs({"uniqueTitle","corruptedImplicits","implicits","synthRetained","synthExhausted","synthRolls","baseImplicitRanges","baseImplicit330","baseImplicitReconstructed","vendorImplicit"}) do
+	for _,key in ipairs({"uniqueTitle","corruptedImplicits","implicits","synthRetained","synthExhausted","synthRolls","baseImplicitRanges","baseImplicit330","baseImplicitReconstructed","vendorImplicit","catalyst","catalystQuality"}) do
 		if json.encode(before[key])~=json.encode(after[key]) then changed=true;break end
 	end
 	if not changed then return {} end
@@ -63,14 +63,38 @@ local function implicitChanges(model,before,after)
 	for line,count in pairs(new) do for _=1,math.max(0,count-(old[line] or 0)) do result[#result+1]="+ Implicit: "..line end end
 	return result
 end
+-- Catalyst quality changes displayed explicit values without changing the
+-- stored modifier rolls. Compare the rendered lines in that case, preserving
+-- duplicates, rather than comparing only the underlying unscaled ranges.
+local function displayedExplicitChanges(model,before,after)
+	local function lines(state)
+		local counts={};if state.destroyed then return counts end
+		local item=sim.toItem(sim.context(model,state),state)
+		for _,entry in ipairs(item.explicitModLines or {}) do
+			local text=StripEscapes(itemLib.formatModLine(entry,false) or "")
+			if text~="" then text=text..(entry.fractured and " [fractured]" or entry.crafted and " [crafted]" or "");counts[text]=(counts[text] or 0)+1 end
+		end
+		return counts
+	end
+	local ok,old,new=pcall(function() return lines(before),lines(after) end)
+	if not ok then return nil end
+	local result={}
+	for line,count in pairs(old) do for _=1,math.max(0,count-(new[line] or 0)) do result[#result+1]="- "..line end end
+	for line,count in pairs(new) do for _=1,math.max(0,count-(old[line] or 0)) do result[#result+1]="+ "..line end end
+	return result
+end
 function M.diff(model,before,after)
 	local old,new=values(model,before),values(model,after);local result=implicitChanges(model,before,after)
+	local rendered=((before.catalystQuality or 0)>0 or (after.catalystQuality or 0)>0) and displayedExplicitChanges(model,before,after)
+	if rendered then for _,line in ipairs(rendered) do result[#result+1]=line end end
 	local oldItem,newItem=sim.context(model,before).item,sim.context(model,after).item
 	if oldItem.baseName~=newItem.baseName then result[#result+1]="Base: "..oldItem.baseName.." -> "..newItem.baseName end
 	if oldItem.itemLevel~=newItem.itemLevel then result[#result+1]="Item level: "..oldItem.itemLevel.." -> "..newItem.itemLevel end
 	if before.uniqueTitle~=after.uniqueTitle then result[#result+1]="Unique item: "..(before.uniqueTitle or "none").." -> "..(after.uniqueTitle or "none") end
-	for id,text in pairs(old) do if not new[id] then result[#result+1]="- "..text elseif new[id]~=text then result[#result+1]="Changed: "..text.." -> "..new[id] end end
-	for id,text in pairs(new) do if not old[id] then result[#result+1]="+ "..text end end
+	if not rendered then
+		for id,text in pairs(old) do if not new[id] then result[#result+1]="- "..text elseif new[id]~=text then result[#result+1]="Changed: "..text.." -> "..new[id] end end
+		for id,text in pairs(new) do if not old[id] then result[#result+1]="+ "..text end end
+	end
 	for _,key in ipairs({"rarity","quality","corrupted","destroyed","intangibility","memoryStrands","baseName"}) do if before[key]~=after[key] then result[#result+1]=key..": "..tostring(before[key] or "none").." -> "..tostring(after[key] or "none") end end
 	if (before.twiceCorrupted or false)~=(after.twiceCorrupted or false) then result[#result+1]="Twice Corrupted: "..(before.twiceCorrupted and "yes" or "no").." -> "..(after.twiceCorrupted and "yes" or "no") end
 	local json=require("dkjson");if json.encode(before.sockets or {})~=json.encode(after.sockets or {}) then result[#result+1]="Socket colours, count or links changed." end

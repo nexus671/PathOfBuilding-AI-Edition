@@ -48,6 +48,29 @@ describe("Blessed Orb on copied base implicits",function()
 		assert.is_truthy(eldritchDiff:find("- Implicit:",1,true));assert.is_truthy(eldritchDiff:find("+ Implicit:",1,true))
 		assert.same(changed.implicits,sim.model(sim.toItem(model,changed).raw).initial.implicits)
 	end)
+	it("compares displayed explicit values when catalyst quality changes",function()
+		local model=sim.model("Rarity: NORMAL\nGold Ring\nItem Level: 86")
+		local before=sim.validateState(model,{rarity="RARE",affixes={{id="IncreasedLife1",range=0}}})
+		local after=copyTable(before);after.catalyst=4;after.catalystQuality=20
+		local function displayed(state)
+			local lines={};for _,line in ipairs(sim.toItem(model,state).explicitModLines) do lines[#lines+1]=StripEscapes(itemLib.formatModLine(line,false) or "") end
+			return table.concat(lines," / ")
+		end
+		local old,new=displayed(before),displayed(after);assert.not_equal(old,new)
+		local diff=table.concat(require("Modules.CraftingInspection").diff(model,before,after),"\n")
+		assert.is_truthy(diff:find(new,1,true),diff)
+		local rerolled=copyTable(after);rerolled.affixes[1].range=1
+		local rerolledText=displayed(rerolled);assert.not_equal(new,rerolledText)
+		local rerollDiff=table.concat(require("Modules.CraftingInspection").diff(model,after,rerolled),"\n")
+		assert.is_truthy(rerollDiff:find(new,1,true),rerollDiff);assert.is_truthy(rerollDiff:find(rerolledText,1,true),rerollDiff)
+	end)
+	it("compares catalyst-scaled implicit values when quality changes",function()
+		local model=sim.model("Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life")
+		local before=copyTable(model.initial);local after=copyTable(before);after.catalyst=4;after.catalystQuality=20
+		local diff=table.concat(require("Modules.CraftingInspection").diff(model,before,after),"\n")
+		assert.is_truthy(diff:find("- Implicit: +25 to maximum Life",1,true),diff)
+		assert.is_truthy(diff:find("+ Implicit: +30 to maximum Life",1,true),diff)
+	end)
 	it("rerolls a copied value within its known base range",function()
 		local raw="Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life"
 		local model=sim.model(raw)
