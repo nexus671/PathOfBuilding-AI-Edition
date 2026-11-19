@@ -19,7 +19,8 @@ for _,size in ipairs({2,3}) do
 			local selected={mods[(n*13)%#mods+1],mods[(n*37+7)%#mods+1]}
 			if size==3 then selected[3]=mods[(n*61+23)%#mods+1] end
 			local state=copyTable(model.initial);state.rarity="RARE";state.affixes={}
-			for _,entry in ipairs(selected) do state.affixes[#state.affixes+1]={id=entry.id,range=0.5} end
+			-- Exercise both tier boundaries as well as midpoint rolls.
+			for index,entry in ipairs(selected) do state.affixes[#state.affixes+1]={id=entry.id,range=({0,0.5,1})[(n+index)%3+1]} end
 			if pcall(sim.validateState,model,state) then
 				local item=sim.toItem(model,state);local lines={}
 				for _,line in ipairs(item.explicitModLines) do lines[#lines+1]=line.line end
