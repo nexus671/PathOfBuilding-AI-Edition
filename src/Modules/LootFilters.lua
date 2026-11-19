@@ -256,9 +256,25 @@ function M.generate(build,profile,checkpoint)
 				if project.nativeRecipe.initialState then result.unknown[#result.unknown+1]="ordinary starting state" end
 				local hasSocketAction=false;for _,step in ipairs(project.nativeRecipe.steps) do if step.method=="socket_bench" then hasSocketAction=true;break end end
 				if hasSocketAction and not project.startingItem:find("\nSockets: ",1,true) then result.unknown[#result.unknown+1]="Starting socket layout is not explicit" end
-				local possibleCounts={[#item.sockets]=true}
-				for _,step in ipairs(project.nativeRecipe.steps) do if step.method=="socket_bench" and not step.linked and type(step.count)=="number" then possibleCounts[step.count]=true end end
-				for _,step in ipairs(project.nativeRecipe.steps) do
+				-- Follow recipe branches, including loops, so a later socket craft only
+				-- counts when a route can actually reach it before the link step.
+				local steps=project.nativeRecipe.steps;local reachable,queue={},{}
+				local function visit(at,count)
+					if type(at)~="number" or at~=math.floor(at) or at<1 or at>#steps then return end
+					reachable[at]=reachable[at] or {};if not reachable[at][count] then reachable[at][count]=true;queue[#queue+1]={at,count} end
+				end
+				visit(1,#item.sockets);local cursor=1
+				while cursor<=#queue do
+					local at,count=queue[cursor][1],queue[cursor][2];cursor=cursor+1;local step=steps[at]
+					local nextCount=count
+					if step.method=="socket_bench" and not step.linked and type(step.count)=="number" and step.count==math.floor(step.count) and step.count>=2 and step.count<=require("Modules.CraftingSimulator").socketLimit({item=item}) then nextCount=step.count end
+					visit(step.onSuccess or at+1,nextCount)
+					if step.onFailureAction=="restart" then visit(1,#item.sockets)
+					elseif step.onFailureAction~="stop" and step.onFailureAction~="salvage" then
+						visit(step.onFailure or at+1,count);visit(step.onFailure or at+1,nextCount)
+					end
+				end
+				for index,step in ipairs(steps) do
 					-- Preserve known base ingredients even when an unsupported option
 					-- adds a price-key prefix. Socket variants still need their count.
 					local reason=require("Modules.CraftingUniqueSimulation").stepReason(step)
@@ -268,7 +284,7 @@ function M.generate(build,profile,checkpoint)
 						if type(count)=="number" and count==math.floor(count) and count>=2 and count<=sim.socketLimit({item=item}) and (step.linked==nil or type(step.linked)=="boolean") then
 							local sockets={};if step.linked then for i=1,count do sockets[i]={} end end
 							entry={components=sim.components({method="socket_bench",count=count,linked=step.linked},{sockets=sockets,corrupted=item.corrupted})}
-							if step.linked and not possibleCounts[count] then result.unknown[#result.unknown+1]="No modeled route sets "..count.." sockets before linking" end
+							if step.linked and reachable[index] and not reachable[index][count] then result.unknown[#result.unknown+1]="No modeled route sets "..count.." sockets before linking" end
 						end
 					else entry=actions[step.method] end
 					if reason then result.unknown[#result.unknown+1]=reason end

@@ -340,6 +340,18 @@ describe("Linked planning tools",function()
 		local _,unknown=filters.generate(build,filters.profile("recipe-unknown","Unknown sockets"));local found=false
 		for _,warning in ipairs(unknown) do if warning.origin=="craft:"..project.id and warning.message:find("Starting socket layout is not explicit",1,true) then found=true end end;assert.is_true(found)
 	end)
+	it("checks socket counts along recipe routes, including loops",function()
+		local project={id="socket-routes",title="Socket routes",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B",goals={},steps={},nativeRecipe={steps={},targets={},requirements={links=4}}}
+		local function warning(steps)
+			project.nativeRecipe.steps=steps;build.savers.CraftingProjects:Upsert(project)
+			local _,warnings=filters.generate(build,filters.profile("socket-routes","Socket routes"))
+			for _,entry in ipairs(warnings) do if entry.origin=="craft:"..project.id and entry.message:find("No modeled route sets 4 sockets",1,true) then return true end end
+			return false
+		end
+		assert.is_true(warning({{method="socket_bench",count=4,linked=true},{method="socket_bench",count=4}}))
+		assert.is_false(warning({{method="socket_bench",count=4},{method="socket_bench",count=4,linked=true}}))
+		assert.is_false(warning({{method="quality",onSuccess=3,onFailureAction="stop"},{method="socket_bench",count=4,linked=true},{method="socket_bench",count=4,onSuccess=2}}))
+	end)
 	it("warns and preserves recipe pickups when a unique action has an unsupported option",function()
 		local project={id="unique-unsupported-filter",title="Unique recipe",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={},nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={socketColours="WWW"}}}
 		build.savers.CraftingProjects:Upsert(project)
