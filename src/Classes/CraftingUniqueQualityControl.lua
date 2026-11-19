@@ -73,7 +73,7 @@ function M.Open(build,project,layout,snapshot)
 			local action=actions[i]
 			if action=="quality" then qualityCount=qualityCount+1
 			elseif action=="beast_max_links" or action=="omen_connections" or action=="socket_white_bench" then
-				flush();steps[#steps+1]={action=unique.guideAction(action,1,info.resource),uniqueCraft={method=action,count=1},done=false}
+				flush();steps[#steps+1]={action=unique.guideAction(action,1,info.resource,item.corrupted),uniqueCraft={method=action,count=1},done=false}
 			else return nil,"Loaded or older previews do not record every action." end
 		end
 		flush()

@@ -1,11 +1,14 @@
 -- cspell:ignore RGBW RGBWA
 -- A deliberately bounded unique-item quality operation. It never edits a build.
 local M={}
-function M.guideAction(method,count,resource)
+function M.guideAction(method,count,resource,corrupted)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
 	if method=="omen_connections" then return "Link existing sockets with an Omen of Connections and an Orb of Fusing" end
-	if method=="socket_white_bench" then return "Use the crafting bench to make all sockets white" end
+	if method=="socket_white_bench" then return "Use the crafting bench to make all sockets white (1 Orb of Scouring"..(corrupted and " and 1 Vaal Orb" or "")..")" end
+end
+function M.matchesGuideAction(method,count,resource,corrupted,action)
+	return action==M.guideAction(method,count,resource,corrupted) or method=="socket_white_bench" and action=="Use the crafting bench to make all sockets white"
 end
 local function withoutQuality(raw)
 	local lines={};for line in (raw.."\n"):gmatch("([^\n]*)\n") do if not line:match("^Quality: ") then lines[#lines+1]=line end end

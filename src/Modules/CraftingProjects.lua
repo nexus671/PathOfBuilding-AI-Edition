@@ -44,7 +44,7 @@ function M.validate(project)
 			local craft=step.uniqueCraft;assert(type(craft)=="table" and (craft.method=="quality" or craft.method=="beast_max_links" or craft.method=="omen_connections" or craft.method=="socket_white_bench") and type(craft.count)=="number" and craft.count==math.floor(craft.count) and craft.count>=1 and craft.count<=(craft.method=="quality" and 20 or 1),"Invalid unique crafting step")
 			if not uniqueChecked then local ok,item,info=pcall(require("Modules.CraftingUniqueQuality").inspect,result.startingItem);uniqueItem=ok and item or nil;uniqueInfo=ok and info or nil;uniqueChecked=true end
 			local compatible=uniqueInfo and (craft.method=="socket_white_bench" or not uniqueItem.corrupted and (craft.method~="quality" or uniqueInfo.quality+craft.count<=20))
-			if compatible and entry.action==require("Modules.CraftingUniqueQuality").guideAction(craft.method,craft.count,uniqueInfo.resource) then entry.uniqueCraft={method=craft.method,count=craft.count} end
+			if compatible and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,uniqueInfo.resource,uniqueItem.corrupted,entry.action) then entry.uniqueCraft={method=craft.method,count=craft.count} end
 		end
 		result.steps[#result.steps+1]=entry
 	end

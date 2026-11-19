@@ -275,7 +275,7 @@ function M.generate(build,profile,checkpoint)
 		if tagged then local inspected,parsed,details=pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem);ok,item,info=inspected,parsed,details end
 		if ok then for _,step in ipairs(project.steps or {}) do
 			local craft=step.uniqueCraft
-			if craft and step.action==require("Modules.CraftingUniqueQuality").guideAction(craft.method,craft.count,info.resource) then
+			if craft and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,info.resource,item.corrupted,step.action) then
 				local items={}
 				if craft.method=="quality" then items={{key=info.resourceKey,name=info.resource}}
 				elseif craft.method=="omen_connections" then items={{key="Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks",name="Omen of Connections"},{key="Metadata/Items/Currency/CurrencyRerollSocketLinks",name="Orb of Fusing"}}
