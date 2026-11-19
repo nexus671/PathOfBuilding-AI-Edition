@@ -26,13 +26,15 @@ function M.Open(build,project,layout,snapshot)
 		item,info=unique.inspect(raw);show(item)
 		c.status.label="^7Quality: "..info.quality.."% | "..(info.available and "Ready" or "20% cap reached")
 		c.apply.label="Use "..info.resource
+		if raw~=draft.startingItem and raw~=draft.targetItem then ui.draft(build,"uniqueQuality",draft.id)
+		else ui.discard(build,"uniqueQuality",draft.id) end
 	end
 	ui.label(c,"status",16,174,"",14)
 	button("apply",206,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;raw=result.itemText;refresh() end)
 	c.apply.enabled=function() return info.available end
 	button("undo",250,"Undo",function() assert(#history>0,"No quality action to undo");raw=table.remove(history);refresh() end)
 	c.undo.enabled=function() return #history>0 end
-	button("keep",294,"Keep as target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);c.notice.label="^7Target kept. Save the build." end)
+	button("keep",294,"Keep as target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);ui.discard(build,"uniqueQuality",draft.id);c.notice.label="^7Target kept. Save the build." end)
 	c.keep.enabled=function() return raw~=draft.targetItem end
 	local checkedTarget,matchingTarget
 	local function targetAvailable()

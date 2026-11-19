@@ -86,6 +86,7 @@ function M:CopyCraftingDrafts(candidate)
 			local qualityDraft=self:UniqueQualityDraft(project.id)
 			if qualityDraft and qualityDraft.project.startingItem==project.startingItem and qualityDraft.project.slot==project.slot then
 				qualityDraft.project=copyTable(project);uniqueCopies[project.id]=qualityDraft
+				if qualityDraft.itemText~=project.startingItem and qualityDraft.itemText~=project.targetItem then require("Modules.PlanningUI").draft(candidate,"uniqueQuality",project.id) end
 			end
 			local draft=self:CraftingDraft(project.id)
 			if draft then

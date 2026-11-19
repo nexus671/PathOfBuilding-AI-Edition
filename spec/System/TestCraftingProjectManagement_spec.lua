@@ -106,6 +106,7 @@ describe("Crafting project removal and save-state ownership",function()
 		local base=build;local updated=copyTable(p);updated.title="Updated unique guide"
 		local prepared=bridge.prepare(build,{mode="edit",title="Edit unique guide",baseRevision=bridge.revision(build),operations={{type="set_crafting_project",project=updated}}})
 		local candidate=bridge.apply(prepared);local draft=candidate.planningUniqueQualityDrafts[p.id]
+		assert.is_true(uiState.hasDraft(candidate,"uniqueQuality",p.id))
 		assert.equal("Updated unique guide",draft.project.title)
 		assert.equal(1,select(2,require("Modules.CraftingUniqueQuality").inspect(draft.itemText)).quality)
 		control=require("Classes.CraftingUniqueQualityControl").Open(candidate,candidate.savers.CraftingProjects.projects[1]);assert.matches("1%%",control.status.label)
@@ -120,7 +121,7 @@ describe("Crafting project removal and save-state ownership",function()
 		local prepared=bridge.prepare(base,{mode="edit",title="Remove unique guide",baseRevision=bridge.revision(base),operations={{type="remove_crafting_project",projectId=p.id}}})
 		local candidate=bridge.apply(prepared);assert.is_nil(candidate.planningUniqueQualityDrafts[p.id])
 		candidate.savers.CraftingProjects:UndoRemove();local draft=candidate.planningUniqueQualityDrafts[p.id]
-		assert.equal(1,select(2,require("Modules.CraftingUniqueQuality").inspect(draft.itemText)).quality)
+		assert.is_true(uiState.hasDraft(candidate,"uniqueQuality",p.id));assert.equal(1,select(2,require("Modules.CraftingUniqueQuality").inspect(draft.itemText)).quality)
 		control=require("Classes.CraftingUniqueQualityControl").Open(candidate,candidate.savers.CraftingProjects.projects[1]);assert.matches("1%%",control.status.label)
 		candidate.savers.CraftingProjects:Remove(p.id);assert.are.equal(base,bridge.restore())
 	end)
