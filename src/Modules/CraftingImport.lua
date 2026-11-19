@@ -45,22 +45,26 @@ function I.resolve(M,model,state)
 	local function consider(id,crafted,legacy,description330)
 		local key=id..(legacy and ":legacy" or description330 and ":description330" or ":current");if seen[key] then return end;seen[key]=true
 		local mod=legacy and model.legacyLightRadius[id] or description330 and model.descriptions330[id] or model.byId[id];if not mod or #mod == 0 then return end
-		local indices,ranges,fractured={},{},nil
-		for _,template in ipairs(mod) do
-			local found,values
+		local indices,ranges={},{}
+		local function matchLine(lineIndex,fractured)
+			if lineIndex>#mod then
+				if legacy then for _,candidate in ipairs(candidates) do if candidate.entry.id==id and not candidate.entry.legacyLightRadius and table.concat(candidate.indices,",")==table.concat(indices,",") then return end end end
+				assert(#candidates<10000,"Import has too many ambiguous modifier assignments; use advanced copy text")
+				candidates[#candidates+1]={indices=copyTable(indices),entry={id=id,range=#ranges == 0 and 0.5 or #ranges == 1 and ranges[1] or copyTable(ranges),crafted=crafted or nil,fractured=fractured or nil,legacyLightRadius=legacy or nil,description330=description330 or nil}}
+				return
+			end
 			for i,row in ipairs(rows) do if not used[i] and row.crafted == crafted and (fractured == nil or fractured == row.fractured) and (not row.prefix or mod.type == "Prefix") and (not row.suffix or mod.type == "Suffix") then
 				local already=false;for _,index in ipairs(indices) do if index == i then already=true end end
-				local inferred=not already and I.inferRange(template,row.text)
+				local inferred=not already and I.inferRange(mod[lineIndex],row.text)
 				if inferred then
-					found,values=i,inferred;break
+					indices[#indices+1]=i;local previous=#ranges
+					for _,value in ipairs(inferred) do ranges[#ranges+1]=value end
+					matchLine(lineIndex+1,row.fractured)
+					indices[#indices]=nil;while #ranges>previous do ranges[#ranges]=nil end
 				end
 			end end
-			if not found then return end
-			indices[#indices+1]=found;fractured=rows[found].fractured
-			for _,value in ipairs(values) do ranges[#ranges+1]=value end
 		end
-		if legacy then for _,candidate in ipairs(candidates) do if candidate.entry.id==id and not candidate.entry.legacyLightRadius and table.concat(candidate.indices,",")==table.concat(indices,",") then return end end end
-		candidates[#candidates+1]={indices=indices,entry={id=id,range=#ranges == 0 and 0.5 or #ranges == 1 and ranges[1] or ranges,crafted=crafted or nil,fractured=fractured or nil,legacyLightRadius=legacy or nil,description330=description330 or nil}}
+		matchLine(1,nil)
 	end
 	for _,entry in ipairs(model.mods) do consider(entry.id,false) end
 	for id in pairs(model.legacyAbyss or {}) do consider(id,false) end
@@ -78,12 +82,20 @@ function I.resolve(M,model,state)
 	local function groups(id) return metadata[id] and metadata[id].groups or {model.byId[id].group} end
 	local occupied,counts={},{Prefix=0,Suffix=0}
 	for _,entry in ipairs(state.affixes) do counts[model.byId[entry.id].type]=counts[model.byId[entry.id].type]+1;for _,group in ipairs(groups(entry.id)) do occupied[group]=true end end
-	local caps=M.capacities(model,state);local selected,solutions={},{};local visits=0
+	local caps=M.capacities(model,state);local selected,solutions,solutionKeys={},{},{};local visits=0
 	local function search()
 		visits=visits+1;assert(visits <= 10000,"Import has too many ambiguous modifier assignments; use advanced copy text")
 		if #solutions > 1 then return end
 		local first;for i=1,#rows do if not used[i] then first=i;break end end
-		if not first then solutions[#solutions+1]=copyTable(selected);return end
+		if not first then
+			local parts={};for _,entry in ipairs(selected) do
+				local range=type(entry.range)=="table" and table.concat(entry.range,",") or tostring(entry.range)
+				parts[#parts+1]=table.concat({entry.id,range,tostring(entry.crafted),tostring(entry.fractured),tostring(entry.legacyLightRadius),tostring(entry.description330)},"|")
+			end
+			table.sort(parts);local key=table.concat(parts,";")
+			if not solutionKeys[key] then solutionKeys[key]=true;solutions[#solutions+1]=copyTable(selected) end
+			return
+		end
 		for _,candidate in ipairs(candidates) do
 			local contains,legal=false,true;local entry=candidate.entry;local kind=model.byId[entry.id].type
 			for _,i in ipairs(candidate.indices) do if used[i] then legal=false end;if i == first then contains=true end end

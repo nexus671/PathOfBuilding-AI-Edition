@@ -32,4 +32,18 @@ describe("Independent modifier ranges",function()
 		local resolved=require("Modules.CraftingImport").resolve(sim,m,{rarity="RARE",affixes={}})
 		assert.are.equal(1,#resolved.affixes);assert.are.equal(id,resolved.affixes[1].id);assert.are.same({0,1},resolved.affixes[1].range)
 	end)
+	it("matches repeated copied lines across separate affixes without inventing ambiguity",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local first={"+(1-3) to Example", "+(4-6) to Other Example",type="Prefix",group="ExampleA"}
+		local second={"+(1-3) to Example",type="Prefix",group="ExampleB"}
+		m.byId.ExampleA=first;m.byId.ExampleB=second;m.mods={{id="ExampleA"},{id="ExampleB"}};m.essences={};m.bench={}
+		m.item.explicitModLines={{line="+2 to Example"},{line="+5 to Other Example"},{line="+2 to Example"}}
+		local resolved=require("Modules.CraftingImport").resolve(sim,m,{rarity="RARE",affixes={}})
+		assert.are.equal(2,#resolved.affixes)
+		local ids={};for _,entry in ipairs(resolved.affixes) do ids[entry.id]=true end
+		assert.is_true(ids.ExampleA);assert.is_true(ids.ExampleB)
+		m.item.explicitModLines[3].line="+3 to Example"
+		local ok,err=pcall(require("Modules.CraftingImport").resolve,sim,m,{rarity="RARE",affixes={}})
+		assert.is_false(ok);assert.matches("several modifier identities",err,1,true)
+	end)
 end)
