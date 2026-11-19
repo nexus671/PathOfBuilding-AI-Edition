@@ -86,12 +86,15 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1767, f"Expected 1767 UI frames, found {len(paths)}"
+    assert len(paths) == 1773, f"Expected 1773 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         before = json.loads((frames / f"{width}-crafting-unique-quality.json").read_text())
         linked = json.loads((frames / f"{width}-crafting-unique-linked.json").read_text())
         assert any("Sockets: R-G B" in c.get("text", "") for c in before["commands"]), "Starting socket layout is missing"
         assert any("Sockets: R-G-B" in c.get("text", "") for c in linked["commands"]), "Linked socket layout is missing"
+        for name in ("crafting-unique-white-sockets", "crafting-unique-corrupted-white"):
+            white = json.loads((frames / f"{width}-{name}.json").read_text())
+            assert any("Sockets: W-W W" in c.get("text", "") for c in white["commands"]), "White socket preview is missing"
         def socket_links(frame):
             title = next(c for c in frame["commands"] if c.get("kind") == "text" and c.get("text") == "WORKING ITEM")
             return [c for c in frame["commands"] if c.get("kind") == "rect" and c.get("width") == 7 and c.get("height") == 3

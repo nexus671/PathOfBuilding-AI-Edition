@@ -271,14 +271,18 @@ function M.generate(build,profile,checkpoint)
 	-- free text: an edited guide may no longer describe the original craft.
 	for _,project in ipairs(build.savers.CraftingProjects.projects) do
 		local tagged=false;for _,step in ipairs(project.steps or {}) do if step.uniqueCraft then tagged=true;break end end
-		local ok,info=false,nil
-		if tagged then local inspected,_,details=pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem);ok,info=inspected,details end
+		local ok,item,info=false,nil,nil
+		if tagged then local inspected,parsed,details=pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem);ok,item,info=inspected,parsed,details end
 		if ok then for _,step in ipairs(project.steps or {}) do
 			local craft=step.uniqueCraft
 			if craft and step.action==require("Modules.CraftingUniqueQuality").guideAction(craft.method,craft.count,info.resource) then
 				local items={}
 				if craft.method=="quality" then items={{key=info.resourceKey,name=info.resource}}
-				elseif craft.method=="omen_connections" then items={{key="Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks",name="Omen of Connections"},{key="Metadata/Items/Currency/CurrencyRerollSocketLinks",name="Orb of Fusing"}} end
+				elseif craft.method=="omen_connections" then items={{key="Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks",name="Omen of Connections"},{key="Metadata/Items/Currency/CurrencyRerollSocketLinks",name="Orb of Fusing"}}
+				elseif craft.method=="socket_white_bench" then
+					items={{key="Metadata/Items/Currency/CurrencyConvertToNormal",name="Orb of Scouring"}}
+					if item.corrupted then items[#items+1]={key="Metadata/Items/Currency/CurrencyCorrupt",name="Vaal Orb"} end
+				end
 				for _,entry in ipairs(items) do if not removed[entry.name] then
 					add("craft-resource-"..project.id.."-"..require("sha1")(entry.key):sub(1,12),entry.name,{"BaseType == "..quote(entry.name)},"craft:"..project.id)
 				end end

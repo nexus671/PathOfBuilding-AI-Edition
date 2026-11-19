@@ -58,7 +58,7 @@ function M.clean(kind,entry)
 		local original=unique.inspect(project.startingItem)
 		local function item(raw)
 			local checked=unique.inspect(raw)
-			assert(checked.title==original.title and checked.baseName==original.baseName,"Unique preview does not match its starting item")
+			assert(checked.title==original.title and checked.baseName==original.baseName and (not not checked.corrupted)==(not not original.corrupted),"Unique preview does not match its starting item")
 			return raw
 		end
 		assert(type(value.history)=="table","Invalid unique quality history")
@@ -66,7 +66,7 @@ function M.clean(kind,entry)
 		assert(value.redo==nil or type(value.redo)=="table","Invalid unique crafting redo history")
 		assert(value.savedTrace==nil or type(value.savedTrace)=="string" and #value.savedTrace==40 and value.savedTrace:match("^[0-9a-f]+$"),"Invalid unique crafting trace")
 		assert(value.savedGuideHash==nil and value.savedGuideLength==nil or value.savedTrace and type(value.savedGuideHash)=="string" and #value.savedGuideHash==40 and value.savedGuideHash:match("^[0-9a-f]+$") and type(value.savedGuideLength)=="number" and value.savedGuideLength==math.floor(value.savedGuideLength) and value.savedGuideLength>=0 and value.savedGuideLength<=40,"Invalid saved guide marker")
-		local allowed={quality=true,beast_max_links=true,omen_connections=true,load=true,unknown=true}
+		local allowed={quality=true,beast_max_links=true,omen_connections=true,socket_white_bench=true,load=true,unknown=true}
 		local history,actions={},{}
 		for i=math.max(1,#value.history-63),#value.history do
 			history[#history+1]=item(value.history[i]);local action=value.actions and value.actions[i] or "unknown"

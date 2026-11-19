@@ -1,10 +1,11 @@
--- cspell:ignore RGBW
+-- cspell:ignore RGBW RGBWA
 -- A deliberately bounded unique-item quality operation. It never edits a build.
 local M={}
 function M.guideAction(method,count,resource)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
 	if method=="omen_connections" then return "Link existing sockets with an Omen of Connections and an Orb of Fusing" end
+	if method=="socket_white_bench" then return "Use the crafting bench to make all sockets white" end
 end
 local function withoutQuality(raw)
 	local lines={};for line in (raw.."\n"):gmatch("([^\n]*)\n") do if not line:match("^Quality: ") then lines[#lines+1]=line end end
@@ -19,14 +20,13 @@ function M.inspect(raw)
 	assert(item.itemLevel>=1 and item.itemLevel<=100 and item.itemLevel==math.floor(item.itemLevel),"Invalid item level")
 	local weapon=data.weaponTypeInfo[item.type]~=nil
 	assert(weapon or item.base.armour,"Unique quality tools currently support armour and weapons")
-	assert(not item.corrupted,"Ordinary quality currency cannot modify a corrupted item")
 	assert(not item.mirrored,"Mirrored items cannot be crafted")
 	assert(not item.foulborn,"Foulborn items need a separate modifier-mutation model")
 	local quality=item.quality or 0;assert(type(quality)=="number" and quality>=0 and quality==math.floor(quality),"Invalid item quality")
-	return item,{quality=quality,available=quality<20,resource=weapon and "Blacksmith's Whetstone" or "Armourer's Scrap",resourceKey=weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality"}
+	return item,{quality=quality,available=quality<20 and not item.corrupted,resource=weapon and "Blacksmith's Whetstone" or "Armourer's Scrap",resourceKey=weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality"}
 end
 function M.apply(raw)
-	local item,info=M.inspect(raw);assert(info.available,"Ordinary quality currency cannot exceed 20%")
+	local item,info=M.inspect(raw);assert(not item.corrupted,"Ordinary quality currency cannot modify a corrupted item");assert(info.available,"Ordinary quality currency cannot exceed 20%")
 	local padded="\n"..raw
 	local output,count=padded:gsub("\nQuality:[^\r\n]*","\nQuality: "..(info.quality+1))
 	assert(count<=1,"Item text contains multiple quality lines")
@@ -46,8 +46,12 @@ end
 function M.linkReason(raw)
 	local ok,item=pcall(M.inspect,raw)
 	if not ok then return tostring(item) end
+	if item.corrupted then return "Use the bench or tainted currency on corrupted items" end
 	if raw:lower():find("sockets cannot be modified",1,true) then return "This item's sockets cannot be modified" end
 	local sockets=item.sockets or {}
+	local line,count=raw:match("\nSockets: ([^\r\n]*)"),0
+	for _ in ("\n"..raw):gmatch("\nSockets:") do count=count+1 end
+	if count~=1 or not line or not line:match("^[RGBWA][RGBWA%-%s]*$") then return "A single explicit ordinary socket layout is required" end
 	if #sockets<2 or #sockets>6 then return "Link crafting needs two to six existing sockets" end
 	local linked=true
 	for _,socket in ipairs(sockets) do
@@ -55,11 +59,40 @@ function M.linkReason(raw)
 		linked=linked and socket.group==sockets[1].group
 	end
 	if linked then return "The item is already fully linked" end
-	local line,count=raw:match("\nSockets: ([^\r\n]*)"),0
-	for _ in ("\n"..raw):gmatch("\nSockets:") do count=count+1 end
-	if count~=1 or not line or not line:match("^[RGBW][RGBW%-%s]*$") then return "A single explicit ordinary socket layout is required" end
 	local colours=line:gsub("[^RGBW]","")
 	if #colours~=#sockets then return "The socket layout could not be verified" end
+end
+
+function M.whiteReason(raw)
+	local ok,item=pcall(M.inspect,raw)
+	if not ok then return tostring(item) end
+	if raw:lower():find("sockets cannot be modified",1,true) then return "This item's sockets cannot be modified" end
+	local sockets=item.sockets or {}
+	local line,count=raw:match("\nSockets: ([^\r\n]*)"),0
+	for _ in ("\n"..raw):gmatch("\nSockets:") do count=count+1 end
+	if count~=1 or not line or not line:match("^[RGBWA][RGBWA%-%s]*$") then return "A single explicit ordinary socket layout is required" end
+	if #sockets<1 or #sockets>6 then return "White socket crafting needs one to six existing sockets" end
+	local white=true
+	for _,socket in ipairs(sockets) do
+		if socket.color=="A" then return "Abyssal sockets need a separate socket model" end
+		white=white and socket.color=="W"
+	end
+	if white then return "The item's sockets are already white" end
+	local colours=line:gsub("[^RGBW]","")
+	if #colours~=#sockets then return "The socket layout could not be verified" end
+end
+
+function M.white(raw)
+	local reason=M.whiteReason(raw);assert(not reason,reason)
+	local before=M.inspect(raw)
+	local output,count=raw:gsub("(\nSockets: )([^\r\n]*)",function(prefix,line) return prefix..line:gsub("[RGB]","W") end)
+	assert(count==1,"The socket layout could not be updated")
+	local after=M.inspect(output)
+	assert(before.title==after.title and before.baseName==after.baseName and #before.sockets==#after.sockets and before.corrupted==after.corrupted,"Unique item did not round-trip after socket crafting")
+	for i,socket in ipairs(after.sockets) do assert(socket.color=="W" and socket.group==before.sockets[i].group,"Socket links changed unexpectedly") end
+	local components={["Metadata/Items/Currency/CurrencyConvertToNormal"]=1}
+	if before.corrupted then components["Metadata/Items/Currency/CurrencyCorrupt"]=1 end
+	return {itemText=output,components=components}
 end
 
 function M.link(raw,method)

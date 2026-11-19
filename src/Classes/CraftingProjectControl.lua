@@ -146,7 +146,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 	end)
 	for _,name in ipairs({"copy","coe","native","preview","inspect","attach","copyExport","done","undoStep"}) do controls[name].enabled=#list > 0 end
 	controls.native.enabled=function() if #list==0 then return false end;local reason=workbenchReason(selected());return not reason or cachedUniqueQuality end
-	controls.native.tooltipText=function() if #list==0 then return "Select a project to open its workbench." end;local reason=workbenchReason(selected());return cachedUniqueQuality and "Preview quality and socket linking for this unique item." or reason or "Open the local crafting workbench." end
+	controls.native.tooltipText=function() if #list==0 then return "Select a project to open its workbench." end;local reason=workbenchReason(selected());return cachedUniqueQuality and "Preview supported quality and socket crafts for this unique item." or reason or "Open the local crafting workbench." end
 	controls.close=button(748,height-48,116,"Close",function() main:ClosePopup() end)
 	controls.inventory=button(252,height-48,180,"Item inventory",function()
 		require("Classes.CraftingInventoryControl").Open(build,{resume=function(project) if layout then layout.openWorkbench(project) else require("Classes.CraftingSimulatorControl").Open(build,project) end end})

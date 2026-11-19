@@ -17,11 +17,11 @@ function M.Open(build,project,layout,snapshot)
 	local savedGuideLength=snapshot and snapshot.savedGuideLength
 	local item,info=unique.inspect(raw)
 	local original=unique.inspect(draft.startingItem)
-	assert(item.title==original.title and item.baseName==original.baseName,"Unique preview does not match the starting item")
+	assert(item.title==original.title and item.baseName==original.baseName and (not not item.corrupted)==(not not original.corrupted),"Unique preview does not match the starting item")
 	local w,h=layout and layout.width or math.min(880,main.screenW-40),layout and layout.height or math.min(650,main.screenH-60)
 	local c={};local cardX=310;local cardWidth=w-cardX-16
 	ui.label(c,"heading",16,18,"Unique crafting",22)
-	ui.description(c,"intro",16,56,270,100,{"Preview quality or link existing sockets.","Quality currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
+	ui.description(c,"intro",16,56,270,100,{"Preview quality and socket crafts.","Quality currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
 	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM")
 	local function button(key,y,label,run)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,y,270,32},label,function()
@@ -72,7 +72,7 @@ function M.Open(build,project,layout,snapshot)
 		for i=first,#actions do
 			local action=actions[i]
 			if action=="quality" then qualityCount=qualityCount+1
-			elseif action=="beast_max_links" or action=="omen_connections" then
+			elseif action=="beast_max_links" or action=="omen_connections" or action=="socket_white_bench" then
 				flush();steps[#steps+1]={action=unique.guideAction(action,1,info.resource),uniqueCraft={method=action,count=1},done=false}
 			else return nil,"Loaded or older previews do not record every action." end
 		end
@@ -85,38 +85,43 @@ function M.Open(build,project,layout,snapshot)
 		if not guideCache then local steps,reason,signature=calculateGuideSteps();guideCache={steps=steps,reason=reason,signature=signature} end
 		return guideCache.steps,guideCache.reason,guideCache.signature
 	end
-	local linkReason
+	local linkReason,whiteReason
 	local function refresh(persist)
 		guideCache=nil;reviewCache=nil;traceCache=nil
 		item,info=unique.inspect(raw);show(item)
 		linkReason=unique.linkReason(raw)
-		c.status.label="^7Quality: "..info.quality.."% | "..(info.available and "Ready" or "20% cap reached")
+		whiteReason=unique.whiteReason(raw)
+		c.status.label="^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
 		c.apply.label="Use "..info.resource
 		if raw~=draft.startingItem and raw~=draft.targetItem then ui.draft(build,"uniqueQuality",draft.id)
 		else ui.discard(build,"uniqueQuality",draft.id) end
 		if persist then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},not ui.hasDraft(build,"uniqueQuality",draft.id)) end
 	end
 	ui.label(c,"status",16,174,"",14)
-	button("apply",206,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;actions[#actions+1]="quality";redo={};raw=result.itemText;refresh(true) end)
+	button("apply",198,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;actions[#actions+1]="quality";redo={};raw=result.itemText;refresh(true) end)
 	c.apply.enabled=function() return info.available end
-	button("link",250,"Bestiary link",function() local result=unique.link(raw);history[#history+1]=raw;actions[#actions+1]="beast_max_links";redo={};raw=result.itemText;refresh(true) end)
+	c.apply.tooltipText=function() return item.corrupted and "Ordinary quality currency cannot modify a corrupted item." or info.available and "Adds 1% quality." or "Ordinary quality currency cannot exceed 20%." end
+	button("link",236,"Bestiary link",function() local result=unique.link(raw);history[#history+1]=raw;actions[#actions+1]="beast_max_links";redo={};raw=result.itemText;refresh(true) end)
 	c.link.width=130
 	c.link.enabled=function() return not linkReason end
 	c.link.tooltipText=function()
 		return linkReason or "Links existing sockets using a Black Morrigan and a Craicic Sand Spitter."
 	end
-	button("omen",250,"Omen + Fusing",function() local result=unique.link(raw,"omen_connections");history[#history+1]=raw;actions[#actions+1]="omen_connections";redo={};raw=result.itemText;refresh(true) end)
+	button("omen",236,"Omen + Fusing",function() local result=unique.link(raw,"omen_connections");history[#history+1]=raw;actions[#actions+1]="omen_connections";redo={};raw=result.itemText;refresh(true) end)
 	c.omen.x=156;c.omen.width=130;c.omen.enabled=function() return not linkReason end
 	c.omen.tooltipText=function() return linkReason or "Links existing sockets using an Omen of Connections and an Orb of Fusing." end
-	button("undo",294,"Undo",function() assert(#history>0,"No action to undo");redo[#redo+1]={itemText=raw,action=table.remove(actions)};raw=table.remove(history);refresh(true) end)
+	button("white",274,"Bench: white sockets",function() local result=unique.white(raw);history[#history+1]=raw;actions[#actions+1]="socket_white_bench";redo={};raw=result.itemText;refresh(true) end)
+	c.white.enabled=function() return not whiteReason end
+	c.white.tooltipText=function() return whiteReason or (item.corrupted and "Uses one Orb of Scouring and one Vaal Orb." or "Uses one Orb of Scouring.") end
+	button("undo",312,"Undo",function() assert(#history>0,"No action to undo");redo[#redo+1]={itemText=raw,action=table.remove(actions)};raw=table.remove(history);refresh(true) end)
 	c.undo.width=130
 	c.undo.enabled=function() return #history>0 end
-	button("redo",294,"Redo",function() assert(#redo>0,"No action to redo");local next=table.remove(redo);history[#history+1]=raw;actions[#actions+1]=next.action;raw=next.itemText;refresh(true) end)
+	button("redo",312,"Redo",function() assert(#redo>0,"No action to redo");local next=table.remove(redo);history[#history+1]=raw;actions[#actions+1]=next.action;raw=next.itemText;refresh(true) end)
 	c.redo.x=156;c.redo.width=130;c.redo.enabled=function() return #redo>0 end
-	button("keep",338,"Keep target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);ui.discard(build,"uniqueQuality",draft.id);require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target kept. Save the build." end)
+	button("keep",350,"Keep target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);ui.discard(build,"uniqueQuality",draft.id);require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target kept. Save the build." end)
 	c.keep.width=130
 	c.keep.enabled=function() return raw~=draft.targetItem end
-	button("guide",338,"Keep + guide",function()
+	button("guide",350,"Keep + guide",function()
 		local steps,reason,signature=guideSteps();assert(steps,reason)
 		local updated=copyTable(draft);updated.targetItem=raw;for _,step in ipairs(steps) do updated.steps[#updated.steps+1]=step end
 		draft=build.savers.CraftingProjects:Upsert(updated);savedTrace=signature;savedGuideLength=#draft.steps;savedGuideHash=guidePrefixHash(draft.steps,savedGuideLength);guideCache=nil;reviewCache=nil;traceCache=nil;ui.discard(build,"uniqueQuality",draft.id)
@@ -130,17 +135,17 @@ function M.Open(build,project,layout,snapshot)
 		if checkedTarget~=draft.targetItem then
 			checkedTarget=draft.targetItem
 			local ok,target=pcall(unique.inspect,checkedTarget)
-			matchingTarget=ok and target.title==original.title and target.baseName==original.baseName
+			matchingTarget=ok and target.title==original.title and target.baseName==original.baseName and (not not target.corrupted)==(not not original.corrupted)
 		end
 		return matchingTarget
 	end
-	button("loadTarget",382,"Load saved target",function()
+	button("loadTarget",388,"Load saved target",function()
 		assert(targetAvailable(),"The saved target is not an eligible matching unique item")
 		history[#history+1]=raw;actions[#actions+1]="load";redo={};raw=draft.targetItem;refresh(true);c.notice.label="^7Saved target loaded."
 	end)
 	c.loadTarget.enabled=targetAvailable
 	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."
-	ui.label(c,"notice",16,422,restored and "^7Session preview restored." or "",14)
+	ui.label(c,"notice",16,426,restored and "^7Session preview restored." or "",14)
 	local artPath=require("Modules.CraftingWorkbench").icon("quality",nil,{item=item})
 	local art=artPath and NewImageHandle();if art then art:Load(artPath) end
 	local currency=new("Control"):Control(ui.anchor,{16,454,42,42});c.currency=currency

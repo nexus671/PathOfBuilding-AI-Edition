@@ -2040,6 +2040,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		p.id="unique-start-project-ui";p.title="Unique starting guide";p.startingItem=unique;p.targetItem=nil;p.steps={{action="Acquire Goldrim"}};store:Upsert(p);w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
 		assert(w.controls.projectItem and w.controls.native:IsEnabled() and w.controls.native.tooltipText():find("unique item",1,true),"Unique quality preview unavailable");frame("crafting-unique-start-project")
 		ui:click("native");frame("crafting-unique-quality")
+		assert(w.controls.white:IsEnabled(),"Unique white-socket bench preview unavailable");ui:click("white");frame("crafting-unique-white-sockets")
+		assert(not w.controls.white:IsEnabled(),"White sockets still offered the white-socket craft");ui:click("undo")
 		assert(w.controls.link:IsEnabled(),"Unique socket-link preview unavailable");ui:click("link")
 		assert(not w.controls.link:IsEnabled(),"Fully linked unique still offered a link craft");frame("crafting-unique-linked")
 		ui:click("undo");assert(w.controls.link:IsEnabled(),"Undo did not restore unique socket links")
@@ -2102,6 +2104,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		frame("crafting-unique-guide-review-entry");ui:click("reviewGuide");frame("crafting-unique-guide-review")
 		ui:click("choose");assert(control.guide:IsEnabled(),"Confirming the guide did not enable continuation")
 		ui:click("guide");assert(not control.guide:IsEnabled(),"Reviewed continuation was not saved");main.popups={}
+	end
+	do
+		local project={id="unique-corrupted-white-ui",title="Corrupted unique sockets",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		assert(not control.apply:IsEnabled() and not control.link:IsEnabled() and control.white:IsEnabled(),"Corrupted unique socket craft availability is incorrect")
+		assert(control.white.tooltipText():find("Vaal Orb",1,true),"Corrupted bench cost omitted the Vaal Orb")
+		ui:click("white");frame("crafting-unique-corrupted-white");ui:click("guide")
+		assert(build.savers.CraftingProjects.projects[#build.savers.CraftingProjects.projects].steps[1].uniqueCraft.method=="socket_white_bench","Corrupted socket guide was not kept");main.popups={}
 	end
 	ui:restore()
 end

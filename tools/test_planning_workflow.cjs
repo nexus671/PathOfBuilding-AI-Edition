@@ -100,6 +100,10 @@ async function main(){
   assert.equal(uniqueOmenLinked.nativeCrafting.components['Metadata/Items/Currency/CurrencyRerollSocketLinks'],1);
   const uniqueLinkedQuality=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueLinked.nativeCrafting.itemText,action:{method:'quality'},seed:4},'crafted');
   assert.equal(uniqueLinkedQuality.nativeCrafting.uniqueQuality.quality,15);assert.match(uniqueLinkedQuality.nativeCrafting.itemText,/Sockets: R-G-B/);
+  const uniqueCorrupted=uniqueShield+'\nCorrupted';
+  const uniqueWhite=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueCorrupted,action:{method:'socket_white_bench'},seed:5},'crafted');
+  assert.equal(uniqueWhite.nativeCrafting.itemText,uniqueCorrupted.replace('Sockets: R-G B','Sockets: W-W W'));
+  assert.equal(uniqueWhite.nativeCrafting.components['Metadata/Items/Currency/CurrencyConvertToNormal'],1);assert.equal(uniqueWhite.nativeCrafting.components['Metadata/Items/Currency/CurrencyCorrupt'],1);
   const uniqueGuide={id:'unique-guide-workflow',title:'Unique shield guide',slot:'Weapon 2',startingItem:uniqueShield,targetItem:uniqueLinked.nativeCrafting.itemText,goals:[],steps:[
     {action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},
     {action:'Link existing sockets with an Omen of Connections and an Orb of Fusing',uniqueCraft:{method:'omen_connections',count:1}},

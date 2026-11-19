@@ -23,7 +23,7 @@ end
 function M.workbenchReason(project)
 	local ok,item=pcall(M.item,project.startingItem)
 	if ok and (item.rarity=="UNIQUE" or item.rarity=="RELIC") then
-		return "Unique and relic starting items can have written guides; full workbench simulation is unavailable. Eligible unique armour and weapons have a quality and socket-link preview."
+		return "Unique and relic starting items can have written guides; full workbench simulation is unavailable. Eligible unique armour and weapons have quality and socket previews."
 	end
 end
 
@@ -36,14 +36,15 @@ function M.validate(project)
 	assert(type(project.goals) == "table" and #project.goals <= 12,"Use up to twelve target modifiers")
 	for _,goal in ipairs(project.goals) do result.goals[#result.goals+1]=text(goal,300,"target modifier") end
 	assert(type(project.steps) == "table" and #project.steps <= 40,"Use up to forty crafting steps")
-	local uniqueInfo,uniqueChecked
+	local uniqueItem,uniqueInfo,uniqueChecked
 	for _,step in ipairs(project.steps) do
 		assert(type(step) == "table","Invalid crafting step")
 		local entry={action=text(step.action,1000,"step action"),stopWhen=text(step.stopWhen,500,"stop condition",true),onFailure=text(step.onFailure,500,"failure route",true),done=step.done == true}
 		if step.uniqueCraft~=nil then
-			local craft=step.uniqueCraft;assert(type(craft)=="table" and (craft.method=="quality" or craft.method=="beast_max_links" or craft.method=="omen_connections") and type(craft.count)=="number" and craft.count==math.floor(craft.count) and craft.count>=1 and craft.count<=(craft.method=="quality" and 20 or 1),"Invalid unique crafting step")
-			if not uniqueChecked then local ok,_,info=pcall(require("Modules.CraftingUniqueQuality").inspect,result.startingItem);uniqueInfo=ok and info or nil;uniqueChecked=true end
-			if uniqueInfo and entry.action==require("Modules.CraftingUniqueQuality").guideAction(craft.method,craft.count,uniqueInfo.resource) then entry.uniqueCraft={method=craft.method,count=craft.count} end
+			local craft=step.uniqueCraft;assert(type(craft)=="table" and (craft.method=="quality" or craft.method=="beast_max_links" or craft.method=="omen_connections" or craft.method=="socket_white_bench") and type(craft.count)=="number" and craft.count==math.floor(craft.count) and craft.count>=1 and craft.count<=(craft.method=="quality" and 20 or 1),"Invalid unique crafting step")
+			if not uniqueChecked then local ok,item,info=pcall(require("Modules.CraftingUniqueQuality").inspect,result.startingItem);uniqueItem=ok and item or nil;uniqueInfo=ok and info or nil;uniqueChecked=true end
+			local compatible=uniqueInfo and (craft.method=="socket_white_bench" or not uniqueItem.corrupted and (craft.method~="quality" or uniqueInfo.quality+craft.count<=20))
+			if compatible and entry.action==require("Modules.CraftingUniqueQuality").guideAction(craft.method,craft.count,uniqueInfo.resource) then entry.uniqueCraft={method=craft.method,count=craft.count} end
 		end
 		result.steps[#result.steps+1]=entry
 	end

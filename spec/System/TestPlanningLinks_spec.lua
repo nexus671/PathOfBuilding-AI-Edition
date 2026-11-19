@@ -303,6 +303,14 @@ describe("Linked planning tools",function()
 		local regenerated=filters.generate(build,profile);names={};for _,rule in ipairs(regenerated) do names[rule.title]=true end
 		assert.is_nil(names["Armourer's Scrap"]);assert.is_true(names["Omen of Connections"])
 	end)
+	it("includes both currencies for a corrupted unique white-socket guide",function()
+		local project={id="corrupted-white-filter",title="Corrupted Goldrim",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.white:Click();control.guide:Click()
+		local profile=filters.profile("corrupted-white","Corrupted white sockets");profile.rules=filters.generate(build,profile)
+		local names={};for _,rule in ipairs(profile.rules) do names[rule.title]=true end
+		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"]);main.popups={}
+	end)
 	it("generates concrete fossil and corrupted socket recipe pickups",function()
 		local project=craft();project.nativeRecipe={steps={
 			{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingLife"}},
