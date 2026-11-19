@@ -75,6 +75,13 @@ function M.inspect(raw)
 	assert(weapon or item.base.armour,"Unique quality tools currently support armour and weapons")
 	assert(not item.mirrored,"Mirrored items cannot be crafted")
 	assert(item.corrupted or not alwaysCorrupted(item.title,item.baseName),"This unique is always corrupted; include its Corrupted line in the starting item")
+	-- These immutable Breach uniques always have six linked sockets. Only
+	-- validate an explicitly supplied layout; missing sockets remain unknown.
+	if item.baseName=="Simple Robe" and (item.title=="Skin of the Loyal" or item.title=="Skin of the Lords") and raw:find("\nSockets:",1,true) then
+		local sockets=item.sockets or {};local linked=#sockets==6
+		for _,socket in ipairs(sockets) do linked=linked and (socket.color=="R" or socket.color=="G" or socket.color=="B" or socket.color=="W") and socket.group==sockets[1].group end
+		assert(linked,"This unique has six linked sockets; correct the starting socket layout")
+	end
 	assert(not item.foulborn,"Foulborn items need a separate modifier-mutation model")
 	local quality=item.quality or 0;assert(type(quality)=="number" and quality>=0 and quality==math.floor(quality),"Invalid item quality")
 	return item,{quality=quality,available=quality<20 and not item.corrupted,resource=weapon and "Blacksmith's Whetstone" or "Armourer's Scrap",resourceKey=weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality"}

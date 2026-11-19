@@ -205,16 +205,23 @@ describe("Unique item quality",function()
 	end)
 	it("requires the corruption marker for known always-corrupted uniques",function()
 		for _,item in ipairs({{"Skin of the Lords","Simple Robe"},{"Shadowstitch","Sacrificial Garb"},{"Glimpse of Chaos","Vaal Mask"},{"Malachai's Vision","Praetor Crown"}}) do
-			local raw="Rarity: UNIQUE\n"..item[1].."\n"..item[2].."\nItem Level: 86\nSockets: R G B"
+			local raw="Rarity: UNIQUE\n"..item[1].."\n"..item[2].."\nItem Level: 86\nSockets: "..(item[1]=="Skin of the Lords" and "R-G-B-R-G-B" or "R G B")
 			local ok,reason=pcall(quality.inspect,raw);assert.is_false(ok);assert.matches("This unique is always corrupted",reason,1,true)
 			local parsed=quality.inspect(raw.."\nCorrupted");assert.is_true(parsed.corrupted)
 		end
-		local normal="Rarity: UNIQUE\nSkin of the Loyal\nSimple Robe\nItem Level: 86\nSockets: R G B"
+		local normal="Rarity: UNIQUE\nSkin of the Loyal\nSimple Robe\nItem Level: 86\nSockets: R-G-B-R-G-B"
 		assert.is_false(quality.inspect(normal).corrupted or false)
+	end)
+	it("rejects impossible explicit socket layouts on Skin uniques",function()
+		for _,name in ipairs({"Skin of the Loyal","Skin of the Lords"}) do
+			local raw="Rarity: UNIQUE\n"..name.."\nSimple Robe\nItem Level: 86\nSockets: R G B"..(name=="Skin of the Lords" and "\nCorrupted" or "")
+			local ok,reason=pcall(quality.inspect,raw);assert.is_false(ok);assert.matches("six linked sockets",reason,1,true)
+			local valid=quality.inspect((raw:gsub("Sockets: R G B","Sockets: R-G-B-R-G-B")));assert.is_truthy(valid)
+		end
 	end)
 	it("rejects socket changes for known immutable uniques with partial text",function()
 		for _,name in ipairs({"Skin of the Loyal","Skin of the Lords"}) do
-			local raw="Rarity: UNIQUE\n"..name.."\nSimple Robe\nItem Level: 86\nSockets: R G B"..(name=="Skin of the Lords" and "\nCorrupted" or "")
+			local raw="Rarity: UNIQUE\n"..name.."\nSimple Robe\nItem Level: 86\nSockets: R-G-B-R-G-B"..(name=="Skin of the Lords" and "\nCorrupted" or "")
 			assert.matches("sockets cannot be modified",quality.socketCountReason(raw,4),1,true)
 			assert.matches("sockets cannot be modified",quality.whiteReason(raw),1,true)
 			assert.matches("sockets cannot be modified",quality.linkReason(raw,"socket_bench"),1,true)

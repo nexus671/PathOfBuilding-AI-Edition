@@ -33,7 +33,7 @@ describe("Crafting project removal and save-state ownership",function()
 		c=panel.Open(build,nil,nil,nil,starting.id);assert.is_true(c.native:IsEnabled());assert.matches("unique item",c.native.tooltipText())
 	end)
 	it("explains a missing corruption marker before opening a unique workbench",function()
-		local p=project("corruption-marker");p.title="Skin";p.slot="Body Armour";p.startingItem="Rarity: UNIQUE\nSkin of the Lords\nSimple Robe\nItem Level: 86\nSockets: R G B"
+		local p=project("corruption-marker");p.title="Skin";p.slot="Body Armour";p.startingItem="Rarity: UNIQUE\nSkin of the Lords\nSimple Robe\nItem Level: 86\nSockets: R-G-B-R-G-B"
 		build.savers.CraftingProjects:Upsert(p);local panel=require("Classes.CraftingProjectControl")
 		local c=panel.Open(build,nil,nil,nil,p.id);assert.is_false(c.native:IsEnabled());assert.matches("always corrupted",c.native.tooltipText(),1,true)
 		local details="";for _,row in ipairs(c.details.list) do details=details..(row[1] or "") end;assert.matches("include its Corrupted line",details,1,true)

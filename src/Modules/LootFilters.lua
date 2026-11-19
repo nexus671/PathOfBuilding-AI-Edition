@@ -347,7 +347,9 @@ function M.generate(build,profile,checkpoint)
 		if not ok or #coverage.unknown>0 then
 			local message
 			if not ok then
-				message=type(coverage)=="string" and coverage:find("This unique is always corrupted",1,true) and "The starting unique is always corrupted; include its Corrupted line." or "Could not inspect this recipe's resources."
+				if type(coverage)=="string" and coverage:find("This unique is always corrupted",1,true) then message="The starting unique is always corrupted; include its Corrupted line."
+				elseif type(coverage)=="string" and coverage:find("This unique has six linked sockets",1,true) then message="The starting unique has six linked sockets; correct its socket layout."
+				else message="Could not inspect this recipe's resources." end
 			else message="Some recipe steps need review: "..table.concat(coverage.unknown,", ").."." end
 			warnings[#warnings+1]={origin="craft:"..project.id,title=project.title,message=message.." Previous recipe pickups were kept; review the crafting guide.",retry=not ok}
 			for _,rule in ipairs(profile.rules) do if rule.origin=="craft:"..project.id and rule.id:match("^craft%-resource%-") and not ids[rule.id] then result[#result+1]=copyTable(rule);ids[rule.id]=true end end
