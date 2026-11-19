@@ -238,14 +238,16 @@ describe("Visual filter catalogue",function()
 	end)
 	it("shows the first filter error and its compiled line on selected and scene drops",function()
 		local profile=filters.profile("invalid-preview","Invalid preview");profile.template="Show\n SetFontSize 99\n SetTextColor 999 0 0"
-		local mounted;local layout={width=1280,height=720,navigate=function() end,mount=function(_,_,_,controls) mounted=controls end}
-		require("Classes.LootFilterWorkspace").Open(build,{data={schemaVersion=1,activeId=profile.id,profiles={profile}},selected=profile.id,page="Simulate",sample={BaseType="Iron Hat"}},layout,{})
+		local mounted,opened;local layout={width=1280,height=720,navigate=function() end,mount=function(_,_,_,controls) mounted=controls end}
+		local controller={Audit=function(_,report) opened=report end}
+		require("Classes.LootFilterWorkspace").Open(build,{data={schemaVersion=1,activeId=profile.id,profiles={profile}},selected=profile.id,page="Simulate",sample={BaseType="Iron Hat"}},layout,controller)
 		local _,report=filters.compile(profile);local first
 		for _,entry in ipairs(report.diagnostics) do if entry.error then first=entry;break end end
 		local expected="Filter line "..first.line..": "..first.error
 		assert.is_truthy(mounted.drop1.tooltipText:find(expected,1,true))
 		local lines={};for _,row in ipairs(mounted.selection.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
 		assert.is_truthy(table.concat(lines," "):find("Filter error: Filter line "..first.line,1,true))
+		mounted.inspectMatch:Click();assert.is_truthy(opened);assert.equal(first.error,opened.diagnostics[1].error)
 	end)
 	it("tests memory strands and preserves legacy sample fields",function()
 		local rules=parser.parse('Hide\n MemoryStrands >= 60\nShow')

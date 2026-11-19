@@ -126,6 +126,9 @@ function M.Open(build,source,layout,controller)
 	local function replaceProfile(next)
 		for i,value in ipairs(data.profiles) do if value.id==next.id then data.profiles[i]=next end end;profile=next;draft();reopen()
 	end
+	local function openAudit()
+		controller.Audit(profile,report,function(next) replaceProfile(next) end)
+	end
 	local function collection(kind)
 		local activeScene=page=="Simulate" and #scene>0
 		local examples=activeScene and scene or library.scene(profile,build,"Mixed drops",seed,settings.areaLevel,settings.itemLevel)
@@ -271,7 +274,7 @@ function M.Open(build,source,layout,controller)
 			end,profile and profile.importFiles)
 			elseif entry.id=="importFiles" and profile then require("Classes.LootFilterImportControl").Open(profile,function(files) profile.importFiles=files;draft();reopen() end)
 			elseif entry.id=="account" and profile then controller.Account(profile,function(text) profile.template=text;draft();reopen() end)
-			elseif entry.id=="audit" and profile then controller.Audit(profile,report,function(next) for i,p in ipairs(data.profiles) do if p.id==next.id then data.profiles[i]=next end end;profile=next;draft();reopen() end)
+			elseif entry.id=="audit" and profile then openAudit()
 			elseif entry.id=="changes" then require("Classes.PlanningBrowserControl").Open("Filter changes",require("Modules.LootFilterEditing").review(saver.data,data))
 			elseif entry.id=="links" and profile then
 				refreshDependencies();if not dependencies or dependencyJob then main:OpenMessagePopup("Linked filter targets",dependencyError or "Checking build pickups. Please try again shortly.");return end
@@ -479,7 +482,8 @@ function M.Open(build,source,layout,controller)
 		local caption=invalidFilterReason and "FILTER INVALID - SEE DETAILS" or sceneKind=="Preset highlights" and "PINNED SNAPSHOT - NOT LIVE PRICES" or sceneKind=="Map tiers" and "MAP TIER COMPARISON" or sceneKind=="Tiered gear" and (profile.mode=="Ruthless" and "RUTHLESS: NO ITEM TIERS" or "TIER COMPARISON") or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
 		sceneControl("preview",groundX,savedSet and 168 or 120,groundW,h-(savedSet and 230 or 182),scene,true,caption)
 		if targets then c.preview.tooltipText=targets.error or (#(targets.warnings or {})>0 and "Some build targets need review. Open linked build targets for details." or "Build target examples update as the build changes. The current test item is also shown.") end
-		button(c,"inspectMatch",w-216,h-96,184,"Inspect matched rules",inspectMatches);c.inspectMatch.enabled=function() return parsed~=nil end
+		button(c,"inspectMatch",w-216,h-96,184,invalidFilterReason and "Review filter errors" or "Inspect matched rules",function() if invalidFilterReason then openAudit() else inspectMatches() end end)
+		c.inspectMatch.enabled=function() return invalidFilterReason~=nil or parsed~=nil end
 	else
 		ui.label(c,"styleHeading",16,128,"A palette for your pickups",22)
 		ui.description(c,"styleHelp",16,164,w-32,44,{"Choose the default style for generated targets, or edit a specific pickup in Customize. Existing base-preset colours are preserved."},14)
