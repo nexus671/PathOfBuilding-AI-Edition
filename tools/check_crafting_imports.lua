@@ -1,3 +1,4 @@
+-- cspell:ignore lupa
 -- Run with: python tools/run_headless_lupa.py tools/check_crafting_imports.lua
 -- This samples legal combinations; it is not an exhaustive crafting audit.
 arg={};dofile("HeadlessWrapper.lua")

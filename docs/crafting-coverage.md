@@ -1,4 +1,4 @@
-<!-- cspell:ignore Siveran Katakohi Ukatoa repoe -->
+<!-- cspell:ignore Siveran Katakohi Ukatoa repoe lupa -->
 # Crafting coverage and rules
 
 Plain item text can combine values from several modifiers. The importer checks
