@@ -124,6 +124,15 @@ describe("Crafting action preconditions",function()
 		assert.is_true(controls.apply:IsEnabled());assert.not_matches("observed override",controls.apply.tooltipText())
 		controls.page:SelByValue("Emulate item");controls.page.selFunc();controls.apply:Click();assert.is_true(controls.undo:IsEnabled());main.popups={}
 	end)
+	it("keeps an unavailable action reason visible alongside tincture warnings",function()
+		local raw="Item Class: Tinctures\nRarity: MAGIC\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed"
+		local project={id="tincture-action-hint",title="Tincture",slot="Flask 1",startingItem=raw,goals={},steps={}}
+		local controls=require("Classes.CraftingSimulatorControl").Open(build,project)
+		controls.method:SelByValue("chaos","val");controls.method.selFunc()
+		assert.is_false(controls.apply:IsEnabled());assert.matches("unavailable for flasks and tinctures",controls.apply.tooltipText(),1,true)
+		local lines={};for _,row in ipairs(controls.actionHint.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		local text=table.concat(lines," ");assert.matches("unavailable for flasks and tinctures",text,1,true);assert.matches("Copied tincture values",text,1,true);main.popups={}
+	end)
 
 	it("checks Awakener targets and asks for a donor before execution",function()
 		local raw="Rarity: NORMAL\nGlorious Plate\nItem Level: 86";local model=sim.model(raw)

@@ -145,29 +145,32 @@ function Panel.Open(build,project,layout)
 		if workingWarning or savedWarning then message=controls.page and controls.page:GetSelValue()=="Simulate recipe" and "Implicit target unavailable; details below." or "Implicit target unavailable; see Simulate tab." end
 		controls.intro.label="^7"..ui.fit(message,leftWidth,14)
 		if controls.actionHint and controls.actionHint.list then
-			local hint=workbench.hint(controls.method:GetSelValueByKey("val"),state,model,action and action())
+			local method=controls.method:GetSelValueByKey("val")
+			local available,unavailableReason=workbench.available(method,state,model)
+			local hint=workbench.hint(method,state,model,action and action())
 			local configuration=actionConfigurationReason and actionConfigurationReason()
-			hint=configuration or (implicitApplyReason and implicitApplyReason()) or hint
+			local blocker=not available and unavailableReason or configuration or (implicitApplyReason and implicitApplyReason())
+			hint=blocker or hint
 			local selected=controls.option and controls.option:GetSelValue()
 			local id=selected and selected.action and selected.action.modId
-			if selected and selected.action and selected.action.essenceId then
+			if not blocker and selected and selected.action and selected.action.essenceId then
 				for _,essence in ipairs(model.essences) do if essence.id==selected.action.essenceId and essence.maxModLevel then
 					hint="Other random modifiers are restricted to level "..essence.maxModLevel.." or below."
 				end end
 			end
-			if selected and selected.action and selected.action.essenceId=="Metadata/Items/Currency/CurrencyEssenceUber1" then
+			if not blocker and selected and selected.action and selected.action.essenceId=="Metadata/Items/Currency/CurrencyEssenceUber1" then
 				hint="Delirium Fog effects are not modeled in build calculations."
 			end
-			if id and id:match("^bench:partial%-") or simulator.hasPartialLock(simulator.context(model,state),state) and workbench.available(controls.method:GetSelValueByKey("val"),state,model) then
+			if not blocker and (id and id:match("^bench:partial%-") or simulator.hasPartialLock(simulator.context(model,state),state) and available) then
 				local method=controls.method:GetSelValueByKey("val")
 				hint=(method=="harvest_reforge" or method=="harvest_augment" or method=="harvest_resistance" or method=="harvest_damage") and "Experimental lock: some protection selections may leave no legal Harvest outcome."
 					or method=="bench_reroll" and "Experimental lock: protection is selected once; some selections may leave too few removable modifiers."
 					or "Experimental partial lock: random protection is modeled with assumed equal weights."
 			end
-			local warningAction=selected and selected.action or action and action()
+			local warnings={};local warningAction=selected and selected.action or action and action()
 			if warningAction then for _,warning in ipairs(simulator.actionWarnings(warningAction,{item=model.item,initial=state})) do
-				if warning.code=="abyss_socket_layout" then hint=hint.." Abyss socket placement and removal are unverified."
-				elseif warning.code=="tincture_imported_values" then hint="Copied tincture values may produce inaccurate tiers and effects; verify the item." end
+				if warning.code=="abyss_socket_layout" then warnings[#warnings+1]="Abyss socket placement and removal are unverified."
+				elseif warning.code=="tincture_imported_values" then warnings[#warnings+1]="Copied tincture values may produce inaccurate tiers and effects; verify the item." end
 			end end
 			local unlock=id and require("Modules.CraftingBenchCosts").unlock(simulator.context(model,state),id)
 			local lines={}
@@ -178,6 +181,7 @@ function Panel.Open(build,project,layout)
 				lines[#lines+1]=ui.fit(brief,leftWidth-38,14)
 				controls.option.tooltipText=hint.." Recipe location is listed by PoEDB; account unlocks and Ruthless availability are not checked."
 			else lines[1]=hint;controls.option.tooltipText=nil end
+			for _,warning in ipairs(warnings) do lines[#lines+1]=warning end
 			controls.actionHint.list=ui.rows(lines,leftWidth-30,14)
 		end
 	end
@@ -842,7 +846,7 @@ function Panel.Open(build,project,layout)
 	controls.option.shown=function() return crafting() and #controls.option.list>0 end
 	controls.optionLabel.shown=controls.option.shown
 	controls.apply.enabled=function() return actionConfigured() and workbench.available(controls.method:GetSelValueByKey("val"),state,model) and not implicitApplyReason() end
-	controls.apply.tooltipText=function() return actionConfigurationReason() or implicitApplyReason() or workbench.hint(controls.method:GetSelValueByKey("val"),state,model,action()) end
+	controls.apply.tooltipText=function() local method=controls.method:GetSelValueByKey("val");local available,reason=workbench.available(method,state,model);return not available and reason or actionConfigurationReason() or implicitApplyReason() or workbench.hint(method,state,model,action()) end
 	controls.apply.height=32;controls.undo.height=32
 	controls.apply.y=function() return #controls.option.list>0 and 370 or 320 end;controls.undo.y=controls.apply.y
 	controls.settings.y=function() return controls.apply:GetProperty("y")+44 end;controls.history.y=controls.settings.y
