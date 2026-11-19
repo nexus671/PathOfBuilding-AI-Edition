@@ -53,7 +53,7 @@ local function implicitChanges(model,before,after)
 	if not changed then return {} end
 	local function lines(state)
 		local item=sim.toItem(sim.context(model,state),state);local counts={}
-		for _,entry in ipairs(item.implicitModLines or {}) do local text=StripEscapes(entry.line or "");if text~="" then counts[text]=(counts[text] or 0)+1 end end
+		for _,entry in ipairs(item.implicitModLines or {}) do local text=StripEscapes(itemLib.formatModLine(entry,false) or "");if text~="" then counts[text]=(counts[text] or 0)+1 end end
 		return counts
 	end
 	local ok,old,new=pcall(function() return lines(before),lines(after) end)
