@@ -161,6 +161,16 @@ describe("Linked planning tools",function()
 		plan.strategy.maps="Map (Tier 5), Beach Map";build.savers.AtlasPlans:Upsert(plan)
 		local report=dependencies.report(build,profile);assert.is_true(report.stale);assert.is_true(report.needsReview)
 	end)
+	it("links current special map items from Atlas plans and budgets",function()
+		local plan={id="special-maps",title="Special maps",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Nightmare Map, Shaper Guardian Map, Valdo Map",avoid="Valdo Map"}}
+		build.savers.AtlasPlans:Upsert(plan)
+		local journey=require("Modules.BuildJourney").empty();journey.resources={{id="valdo",title="Valdo Map"}};build.savers.BuildJourney:Replace(journey)
+		local profile=filters.profile("special-map-filter","Special map filter");profile.rules=filters.generate(build,profile)
+		local found={};for _,rule in ipairs(profile.rules) do found[rule.origin..":"..rule.title]=true end
+		assert.is_true(found["atlas:special-maps:Nightmare Map"]);assert.is_true(found["atlas:special-maps:Shaper Guardian Map"])
+		assert.is_nil(found["atlas:special-maps:Valdo Map"]);assert.is_true(found["budget:valdo:Valdo Map"])
+		for _,name in ipairs({"Nightmare Map","Shaper Guardian Map","Valdo Map"}) do assert.equal("Show",filters.simulate(profile,{BaseType=name}).action) end
+	end)
 	it("respects map tier and Thread exclusions without suppressing separate budget pickups",function()
 		local atlas=require("Modules.AtlasPlanner")
 		local plan=atlas.connect({id="avoid",title="Avoided maps",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Map (Tier 5), Map (Tier 16), Beach Map",scarabs="Breach Thread",avoid="Map (Tier 5) and Breach Thread"}}, {4908})

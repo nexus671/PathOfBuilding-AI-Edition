@@ -236,6 +236,10 @@ function M.generate(build,profile,checkpoint)
 		names[name]=names[name] or "Map";if not specialMaps[name] then layoutNames[name]=true end
 	end end
 	for tier=1,16 do names["Map (Tier "..tier..")"]="Map" end
+	-- Current special map items are distinct bases, not Atlas layout names.
+	for _,name in ipairs({"Nightmare Map","Shaper Guardian Map","Valdo Map"}) do
+		if not removed[name] then names[name]="Map" end
+	end
 	-- Map-device supplies explicitly named in a strategy are pickups too. The
 	-- pinned client catalogue excludes removed and legacy non-currency variants.
 	for _,name in ipairs(assert(json.decode(read("atlas-supplies-3.30.json"))).names) do if not removed[name] then names[name]=names[name] or "Atlas supply" end end
