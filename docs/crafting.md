@@ -44,6 +44,8 @@ The standard Orb of Annulment uses the 3.30 rule: **Cannot roll Attack/Caster Mo
 
 For the 3.30 meta modifiers, the workbench and recipe cards show the map listed as the recipe source. [GGG moved these recipes to Nightmare Maps](https://www.pathofexile.com/forum/view-thread/4013680); [PoEDB's bench listing](https://poedb.tw/us/Crafting_Bench) associates prefix locks with Sanctuary, suffix locks with Citadel, multiple crafted modifiers with Fortress, attack locks with Abomination, and caster locks with Ziggurat. AI bench inspection includes the same source under `unlock`. These are reference locations; the planner does not check your unlocks or establish Ruthless availability. In **Recipe routes**, choose **Review unlocks** to see all listed unlocks used by the draft recipe and their Roadmap status, or select a bench step and choose **Track unlock** to add a linked task to Journey → Roadmap. It will not duplicate an existing tracked task or change its completion or notes. Keep the recipe and save the build separately; adding a task does not check the account or automatically add a prerequisite.
 
+**Blessed Orb** is unavailable when the recognized base implicits are fixed or protected. Imported implicits whose original ranges cannot be identified also need review before rerolling.
+
 Full **Prefixes/Suffixes Cannot Be Changed** crafts use four Divine Orbs plus one Sacred Orb for weapons, four Divine Orbs plus four Blessed Orbs for armour and quivers, or four Divine Orbs plus eight Exalted Orbs for jewellery. Saved action-price overrides still replace the calculated total when used.
 
 **Orbs of Binding** are no longer generated in 3.30. Existing orbs still work, so the planner retains the action for legacy supplies.

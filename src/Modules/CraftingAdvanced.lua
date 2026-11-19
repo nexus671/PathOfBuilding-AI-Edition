@@ -666,7 +666,18 @@ function A.extend(M,api)
 			end
 		end
 	end
-	M.methodChecks.blessed=function(model,state) if (model.blessed330Unresolved or model.baseImplicitUnresolved) and not state.implicits then return "This base implicit could not be identified. Supply a recognized original or current implicit before using a Blessed Orb." end end
+	M.methodChecks.blessed=function(model,state)
+		if M.hasProtectedImplicit(model,state) then return "This item's implicit modifiers cannot be changed." end
+		if (model.blessed330Unresolved or model.baseImplicitUnresolved) and not state.implicits then return "This base implicit could not be identified. Supply a recognized original or current implicit before using a Blessed Orb." end
+		local templates=model.blessed330 and {model.blessed330} or model.baseImplicitTemplates
+		if not state.implicits and templates then
+			for _,line in ipairs(templates) do for range in line:gmatch("%b()") do
+				local low,high=range:match("(%-?%d+%.?%d*)%-(%-?%d+%.?%d*)")
+				if low and tonumber(low)~=tonumber(high) then return end
+			end end
+			return "This item has no variable base implicit for a Blessed Orb to reroll."
+		end
+	end
 	M.methodChecks.binding=function(model,state) if M.socketLimit(model,state)==0 then return "This base cannot have equipment sockets" end end
 	M.methodChecks.veiled_chaos=function(model,state)
 		if model.item.type=="Jewel" then return "Veiled Chaos requires rare equipment, not a jewel" end

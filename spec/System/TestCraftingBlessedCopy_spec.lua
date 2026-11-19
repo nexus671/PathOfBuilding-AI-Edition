@@ -1,5 +1,13 @@
 describe("Blessed Orb on copied base implicits",function()
 	local sim=require("Modules.CraftingSimulator")
+	it("does not spend a Blessed Orb on fixed or protected implicits",function()
+		for _,base in ipairs({"Unset Ring","Composite Ring"}) do
+			local model=sim.model("Rarity: NORMAL\n"..base.."\nItem Level: 86")
+			local available=require("Modules.CraftingAvailability").check("blessed",model.initial,model)
+			assert.is_false(available,base)
+			assert.has_error(function() sim.action(model,model.initial,{method="blessed"},function() return 0 end) end)
+		end
+	end)
 	it("rerolls a copied value within its known base range",function()
 		local raw="Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life"
 		local model=sim.model(raw)
