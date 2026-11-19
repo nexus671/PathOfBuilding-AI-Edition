@@ -266,7 +266,8 @@ function M.generate(build,profile,checkpoint)
 				local catalog=unique.catalog(project.startingItem,"",50);local actions={};for _,entry in ipairs(catalog.uniqueActions) do actions[entry.priceKey]=entry end
 				local result={items={},unknown={}};local prices=require("Modules.CraftingPrices");local model={item=item}
 				if project.nativeRecipe.initialState then result.unknown[#result.unknown+1]="ordinary starting state" end
-				local hasSocketAction=false;for _,step in ipairs(project.nativeRecipe.steps) do if step.method=="socket_bench" then hasSocketAction=true;break end end
+				local socketActions={socket_bench=true,socket_white_bench=true,omen_connections=true,beast_max_links=true}
+				local hasSocketAction=false;for _,step in ipairs(project.nativeRecipe.steps) do if socketActions[step.method] then hasSocketAction=true;break end end
 				if hasSocketAction and not project.startingItem:find("\nSockets: ",1,true) then result.unknown[#result.unknown+1]="Starting socket layout is not explicit" end
 				-- Follow recipe branches, including loops, so a later socket craft only
 				-- counts when a route can actually reach it before the link step.
@@ -286,11 +287,19 @@ function M.generate(build,profile,checkpoint)
 					end
 					return countReasons[step] or nil
 				end
+				local function permanentReason(step)
+					local reason=fixedCountReason(step);if reason then return reason end
+					if item.corrupted and (step.method=="quality" or step.method=="omen_connections" or step.method=="beast_max_links") then
+						return step.method=="quality" and "Ordinary quality currency cannot modify a corrupted item" or "Use the bench or tainted currency on corrupted items"
+					end
+					if step.method=="quality" and (item.quality or 0)>=20 then return "Ordinary quality currency cannot exceed 20%" end
+					if socketActions[step.method] and project.startingItem:lower():find("sockets cannot be modified",1,true) then return "This item's sockets cannot be modified" end
+				end
 				visit(1,#item.sockets);local cursor=1
 				while cursor<=#queue do
 					local at,count=queue[cursor][1],queue[cursor][2];cursor=cursor+1;local step=steps[at]
 					local nextCount=count
-					local blocked=fixedCountReason(step)
+					local blocked=permanentReason(step)
 					if step.method=="socket_bench" and not step.linked and not blocked and type(step.count)=="number" and step.count==math.floor(step.count) and step.count>=2 and step.count<=require("Modules.CraftingSimulator").socketLimit({item=item}) then nextCount=step.count end
 					if not blocked then visit(step.onSuccess or at+1,nextCount) end
 					if step.onFailureAction=="restart" then visit(1,#item.sockets)
@@ -302,7 +311,7 @@ function M.generate(build,profile,checkpoint)
 					-- Preserve known base ingredients even when an unsupported option
 					-- adds a price-key prefix. Socket variants still need their count.
 					local reason=require("Modules.CraftingUniqueSimulation").stepReason(step)
-					local countReason=fixedCountReason(step);if countReason then result.unknown[#result.unknown+1]=countReason end
+					local blocked=permanentReason(step);if blocked then result.unknown[#result.unknown+1]=blocked end
 					local entry
 					if step.method=="socket_bench" then
 						local sim=require("Modules.CraftingSimulator");local count=step.count

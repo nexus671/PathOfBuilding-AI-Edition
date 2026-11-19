@@ -394,6 +394,18 @@ describe("Linked planning tools",function()
 		assert.is_false(warning({{method="socket_bench",count=4},{method="socket_bench",count=4,linked=true}}))
 		assert.is_false(warning({{method="quality",onSuccess=3,onFailureAction="stop"},{method="socket_bench",count=4,linked=true},{method="socket_bench",count=4,onSuccess=2}}))
 	end)
+	it("warns when unique recipe actions cannot modify a corrupted item",function()
+		local project={id="corrupted-unique",title="Corrupted unique",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R G B\nCorrupted",goals={},steps={},nativeRecipe={steps={{method="quality"},{method="omen_connections"}},targets={},requirements={links=3}}}
+		build.savers.CraftingProjects:Upsert(project);local rules,warnings=filters.generate(build,filters.profile("corrupted-unique","Corrupted unique"));local message=""
+		for _,warning in ipairs(warnings) do if warning.origin=="craft:corrupted-unique" then message=message..warning.message end end
+		assert.is_truthy(message:find("Ordinary quality currency cannot modify a corrupted item",1,true));assert.is_truthy(message:find("Use the bench or tainted currency",1,true))
+		local names={};for _,rule in ipairs(rules) do if rule.origin=="craft:corrupted-unique" then names[rule.title]=true end end
+		assert.is_true(names["Armourer's Scrap"]);assert.is_true(names["Omen of Connections"])
+		project.startingItem=project.startingItem:gsub("\nCorrupted","").."\nQuality: 20";project.nativeRecipe.steps={{method="quality"}};build.savers.CraftingProjects:Upsert(project)
+		local _,fullWarnings=filters.generate(build,filters.profile("quality-full","Quality full"));message=""
+		for _,warning in ipairs(fullWarnings) do if warning.origin=="craft:corrupted-unique" then message=message..warning.message end end
+		assert.is_truthy(message:find("Ordinary quality currency cannot exceed 20%",1,true))
+	end)
 	it("warns when a unique recipe cannot change a fixed socket count",function()
 		local project={id="fixed-unique",title="Fixed sockets",slot="Body Armour",startingItem="Rarity: UNIQUE\nTabula Rasa\nSimple Robe\nItem Level: 86\nSockets: W-W-W-W-W-W",goals={},steps={},nativeRecipe={steps={{method="socket_bench",count=4},{method="socket_bench",count=4,linked=true}},targets={},requirements={links=4}}}
 		build.savers.CraftingProjects:Upsert(project);local rules,warnings=filters.generate(build,filters.profile("fixed-sockets","Fixed sockets"));local found=false
