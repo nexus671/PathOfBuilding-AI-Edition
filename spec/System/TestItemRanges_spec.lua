@@ -63,4 +63,13 @@ describe("Independent modifier ranges",function()
 		local resolved=require("Modules.CraftingImport").resolve(sim,m,{rarity="RARE",affixes={{id=prefix,range={0,0}}}})
 		assert.are.equal(2,#resolved.affixes);assert.are.equal(suffix,resolved.affixes[2].id)
 	end)
+	it("preserves known hybrid rolls and rejects ambiguous combined copied values",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86");local state=copyTable(m.initial);state.rarity="RARE"
+		state.affixes={{id="IncreasedLife1",range=0.5},{id="LocalBaseArmourAndLife1",range={0.5,0.6}}}
+		local item=sim.toItem(m,state);local imported=sim.model(item.raw)
+		local ids={};for _,entry in ipairs(imported.initial.affixes) do ids[entry.id]=true end
+		assert.is_true(ids.IncreasedLife1);assert.is_true(ids.LocalBaseArmourAndLife1)
+		local copied="Rarity: RARE\nExample Hood\nIron Hat\nItem Level: 86\nImplicits: 0\n+26 to Armour\n+38 to maximum Life"
+		local ok,err=pcall(sim.model,copied);assert.is_false(ok);assert.matches("several modifier identities",err,1,true)
+	end)
 end)
