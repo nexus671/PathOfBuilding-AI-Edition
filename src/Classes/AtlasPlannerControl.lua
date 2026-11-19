@@ -187,6 +187,11 @@ function Panel.Open(build,source,layout)
 			controls.avoid.label="Avoid selected"
 		end
 		if not controls.canvas.tree.nodes[controls.canvas.focus] then controls.canvas.focus=nil end
+		controls.results.selectedKey=nil
+		for i,row in ipairs(controls.results.list) do
+			row.selected=row.val==controls.canvas.focus
+			if row.selected then controls.results.selIndex=i;controls.results.selectedKey=row.val end
+		end
 		controls.version:SelByValue(draft.version,"val")
 		local report=atlas.report(draft);hasMissingChoices=#report.missingChoices>0
 		if controls.strategySummary then
