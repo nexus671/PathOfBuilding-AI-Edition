@@ -253,10 +253,12 @@ function M.generate(build,profile,checkpoint)
 				local unique=require("Modules.CraftingUniqueQuality");local item=unique.inspect(project.startingItem)
 				local catalog=unique.catalog(project.startingItem,"",50);local actions={};for _,entry in ipairs(catalog.uniqueActions) do actions[entry.method]=entry end
 				local result={items={},unknown={}};local prices=require("Modules.CraftingPrices");local model={item=item}
+				if project.nativeRecipe.initialState then result.unknown[#result.unknown+1]="ordinary starting state" end
 				for _,step in ipairs(project.nativeRecipe.steps) do
 					local entry=actions[step.method]
-					if not entry then result.unknown[#result.unknown+1]=step.method
-					else for resource in pairs(entry.components) do
+					local reason=require("Modules.CraftingUniqueSimulation").stepReason(step)
+					if reason then result.unknown[#result.unknown+1]=reason end
+					if entry then for resource in pairs(entry.components) do
 						local canonical=prices.key(resource,model);local name,_,kind=prices.describe(canonical,model,step)
 						if kind=="Currency" then result.items[#result.items+1]={key=canonical,name=name} end
 					end end

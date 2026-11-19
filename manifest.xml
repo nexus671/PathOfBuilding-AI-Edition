@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview649" />
+	<Version number="2.68.1-ai.preview650" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2125,7 +2125,7 @@
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />
 	<File name="Modules/CraftingSimulator.lua" part="program" sha1="daf280173cee1fa7b0c6bdffbd2368720a66d138" />
 	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="a454284474c68c0579a99171d64f4ce95f26751b" />
-	<File name="Modules/CraftingUniqueSimulation.lua" part="program" sha1="176c88504ea7bbb79a112f470240de9975ab8a3d" />
+	<File name="Modules/CraftingUniqueSimulation.lua" part="program" sha1="4d5f92e9d20d62e1e16ba8bceed33f2e58d8337a" />
 	<File name="Modules/CraftingUnlockTasks.lua" part="program" sha1="b1ab9cc44e5f7411715f74fff720379d44c65d21" />
 	<File name="Modules/CraftingSockets.lua" part="program" sha1="315149ad5253dd8e6ddf1ebea782fb22b7990401" />
 	<File name="Modules/CraftingSynthesisGroups.lua" part="program" sha1="058e5d8e2e20c77edf4db6f0acf9326486a4e3f0" />
@@ -2164,7 +2164,7 @@
 	<File name="Modules/LootFilterStructure.lua" part="program" sha1="f6139db0371b3931a0ffabf1d7be04b52ad8533d" />
 	<File name="Modules/LootFilterVisuals.lua" part="program" sha1="f036fc780db9567d6572d433b8842b9902b0f50a" />
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="240c5844884c630d675d5fe3d5a348bf8f2c91a8" />
-	<File name="Modules/LootFilters.lua" part="program" sha1="f0783cef5013dba5aa624d3f78707cc7dab8df58" />
+	<File name="Modules/LootFilters.lua" part="program" sha1="f79a1f536ee1ea62a36d614f6067e15dfb59bf8f" />
 	<File name="Modules/Main.lua" part="program" sha1="6178b9a43a5bffa6facf16629e039ff4839b3192" />
 	<File name="Modules/MapClipboard.lua" part="program" sha1="457d4af1c18c25f47f5b0e9ffb83da4d8c30cc67" />
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="c03ef32eee4a6eec184aac726605d6104d068af9" />

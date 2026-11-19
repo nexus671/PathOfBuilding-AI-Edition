@@ -1,5 +1,11 @@
 -- Deterministic unique-item recipes use item text, not ordinary affix states.
 local M={}
+local supported={quality=true,beast_max_links=true,omen_connections=true,socket_white_bench=true}
+local fields={method=true,maxAttempts=true,untilRequirements=true,onSuccess=true,onFailure=true,onFailureAction=true,recoveryNotes=true}
+function M.stepReason(step)
+	if not supported[step.method] then return "This unique recipe action is not supported: "..tostring(step.method) end
+	for key in pairs(step) do if not fields[key] then return "This unique recipe option is not supported: "..tostring(key) end end
+end
 local function integer(value,low,high,label)
 	assert(type(value)=="number" and value==math.floor(value) and value>=low and value<=high,"Invalid "..label)
 	return value
@@ -12,11 +18,8 @@ function M.simulate(sim,raw,recipe,options)
 	assert(not recipe.initialState and not options.initialState,"Unique recipes continue from item text, not an ordinary crafting state")
 	assert(#recipe.targets==0,"Modifier-identity targets are not yet supported for unique items")
 	local unique=require("Modules.CraftingUniqueQuality");local start=unique.inspect(raw)
-	local supported={quality=true,beast_max_links=true,omen_connections=true,socket_white_bench=true}
-	local fields={method=true,maxAttempts=true,untilRequirements=true,onSuccess=true,onFailure=true,onFailureAction=true,recoveryNotes=true}
 	for _,step in ipairs(recipe.steps) do
-		assert(supported[step.method],"This unique recipe action is not supported: "..tostring(step.method))
-		for key in pairs(step) do assert(fields[key],"This unique recipe option is not supported: "..tostring(key)) end
+		local reason=M.stepReason(step);assert(not reason,reason)
 		if step.untilRequirements then unique.matches(raw,step.untilRequirements) end
 	end
 	unique.matches(raw,recipe.requirements)

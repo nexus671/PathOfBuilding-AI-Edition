@@ -319,6 +319,16 @@ describe("Linked planning tools",function()
 		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"])
 		for _,warning in ipairs(warnings) do assert.not_equal("craft:"..project.id,warning.origin) end
 	end)
+	it("warns and preserves recipe pickups when a unique action has an unsupported option",function()
+		local project={id="unique-unsupported-filter",title="Unique recipe",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={},nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={socketColours="WWW"}}}
+		build.savers.CraftingProjects:Upsert(project)
+		local profile=filters.profile("unique-unsupported","Unique recipe");profile.rules=filters.generate(build,profile)
+		project.nativeRecipe.steps={{method="omen_connections",allflame={auto=true}}};build.savers.CraftingProjects:Upsert(project)
+		local rules,warnings=filters.generate(build,profile);local names={};for _,rule in ipairs(rules) do names[rule.title]=true end
+		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"]);assert.is_true(names["Omen of Connections"])
+		local found=false;for _,warning in ipairs(warnings) do if warning.origin=="craft:"..project.id and warning.message:find("allflame",1,true) then found=true end end
+		assert.is_true(found)
+	end)
 	it("generates concrete fossil and corrupted socket recipe pickups",function()
 		local project=craft();project.nativeRecipe={steps={
 			{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingLife"}},
