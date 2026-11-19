@@ -184,6 +184,21 @@ describe("Local planning draft recovery",function()
 		assert.matches("1%%",control.status.label);assert.is_true(control.redo:IsEnabled());control.redo:Click();assert.matches("2%%",control.status.label)
 		main.popups={}
 	end)
+	it("recovers a corrupted unique white-socket craft without changing its corruption",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted"
+		local project={id="corrupted-white-recovery",title="Corrupted sockets",slot="Helmet",startingItem=raw,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.white:Click();control.close:Click()
+		local saved=recovery.load(build,"uniqueQuality",project.id).entry
+		assert.same({"socket_white_bench"},saved.plan.actions);assert.matches("Sockets: W%-W W",saved.plan.itemText);assert.matches("Corrupted",saved.plan.itemText)
+		local invalid=copyTable(saved);invalid.plan.itemText=invalid.plan.itemText:gsub("\nCorrupted","")
+		assert.has_error(function() recovery.clean("uniqueQuality",invalid) end)
+		control=require("Classes.CraftingUniqueQualityControl").Open(build,project,nil,saved.plan)
+		assert.is_false(control.white:IsEnabled());control.undo:Click();assert.is_true(control.white:IsEnabled());control.redo:Click();control.guide:Click()
+		local kept=build.savers.CraftingProjects.projects[1];assert.matches("1 Vaal Orb",kept.steps[1].action);assert.matches("Corrupted",kept.targetItem)
+		main.popups={}
+	end)
 	it("recovers a new unsaved project but refuses a conflicting project ID",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
 		local p={id="quality-new",title="Unsaved guide",slot="Helmet",startingItem=raw,goals={},steps={}}
