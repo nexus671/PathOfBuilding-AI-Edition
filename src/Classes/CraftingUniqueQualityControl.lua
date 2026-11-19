@@ -12,6 +12,8 @@ function M.Open(build,project,layout,snapshot)
 	local actions=snapshot and copyTable(snapshot.actions or {}) or {}
 	for i=1,#history do actions[i]=actions[i] or "unknown" end
 	local savedTrace=snapshot and snapshot.savedTrace
+	local savedGuideHash=snapshot and snapshot.savedGuideHash
+	local savedGuideLength=snapshot and snapshot.savedGuideLength
 	local item,info=unique.inspect(raw)
 	local original=unique.inspect(draft.startingItem)
 	assert(item.title==original.title and item.baseName==original.baseName,"Unique preview does not match the starting item")
@@ -25,12 +27,25 @@ function M.Open(build,project,layout,snapshot)
 			local ok,err=pcall(run);if not ok then main:OpenMessagePopup("Unique crafting",ui.errorText(err)) end
 		end))
 	end
-	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history),actions=copyTable(actions),savedTrace=savedTrace} end
+	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history),actions=copyTable(actions),savedTrace=savedTrace,savedGuideHash=savedGuideHash,savedGuideLength=savedGuideLength} end
+	local function guidePrefixHash(steps,count)
+		if not count or count>#steps then return nil end
+		local pieces={}
+		for i=1,count do
+			for _,key in ipairs({"action","stopWhen","onFailure"}) do
+				local value=steps[i][key] or "";pieces[#pieces+1]=#value..":"..value
+			end
+		end
+		return require("sha1")(table.concat(pieces,"|"))
+	end
 	local guideCache
 	local function calculateGuideSteps()
 		if #history==0 or history[1]~=draft.startingItem then return nil,"A complete preview from the starting item is needed." end
 		local first=1
 		if savedTrace then
+			if not savedGuideHash or guidePrefixHash(draft.steps,savedGuideLength)~=savedGuideHash then
+				return nil,"The saved guide changed or cannot be verified; review it before adding more steps."
+			end
 			local matched
 			for i=1,#actions do
 				local boundary=history[i+1] or raw
@@ -91,7 +106,7 @@ function M.Open(build,project,layout,snapshot)
 	button("guide",338,"Keep + guide",function()
 		local steps,reason,signature=guideSteps();assert(steps,reason)
 		local updated=copyTable(draft);updated.targetItem=raw;for _,step in ipairs(steps) do updated.steps[#updated.steps+1]=step end
-		draft=build.savers.CraftingProjects:Upsert(updated);savedTrace=signature;guideCache=nil;ui.discard(build,"uniqueQuality",draft.id)
+		draft=build.savers.CraftingProjects:Upsert(updated);savedTrace=signature;savedGuideLength=#draft.steps;savedGuideHash=guidePrefixHash(draft.steps,savedGuideLength);guideCache=nil;ui.discard(build,"uniqueQuality",draft.id)
 		require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target and guide kept. Save the build."
 	end)
 	c.guide.x=156;c.guide.width=130;c.guide.enabled=function() return guideSteps()~=nil end

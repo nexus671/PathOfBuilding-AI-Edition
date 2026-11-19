@@ -62,9 +62,14 @@ describe("Unique item quality",function()
 		control.apply:Click();assert.is_true(control.guide:IsEnabled());control.guide:Click()
 		saved=store.projects[1];assert.equal(4,#saved.steps);assert.equal("Use 1 Armourer's Scrap",saved.steps[4].action)
 		control.undo:Click();assert.is_false(control.guide:IsEnabled());assert.matches("no longer follows",control.guide.tooltipText())
+		control.close:Click();local changed=copyTable(saved);changed.steps[1].action="Changed starting step"
+		control=require("Classes.CraftingUniqueQualityControl").Open(build,changed);assert.is_false(control.guide:IsEnabled());assert.matches("saved guide changed",control.guide.tooltipText())
 		local legacy={kind="uniqueQuality",project=saved,itemText=saved.targetItem,history={shield}}
 		main.popups={};control=require("Classes.CraftingUniqueQualityControl").Open(build,saved,nil,legacy)
-		assert.is_false(control.guide:IsEnabled());assert.matches("older previews",control.guide.tooltipText());main.popups={}
+		assert.is_false(control.guide:IsEnabled());assert.matches("older previews",control.guide.tooltipText())
+		legacy.actions={"quality"};legacy.savedTrace=string.rep("a",40)
+		main.popups={};control=require("Classes.CraftingUniqueQualityControl").Open(build,saved,nil,legacy)
+		assert.is_false(control.guide:IsEnabled());assert.matches("cannot be verified",control.guide.tooltipText());main.popups={}
 	end)
 	it("keeps a preview as a saved crafting project target",function()
 		local project={id="unique-quality",title="Quality",slot="Weapon 2",startingItem=shield,goals={},steps={}}

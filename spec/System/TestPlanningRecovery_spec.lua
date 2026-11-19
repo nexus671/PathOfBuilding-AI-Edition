@@ -165,7 +165,7 @@ describe("Local planning draft recovery",function()
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
 		control.apply:Click();control.guide:Click();control.apply:Click();control.close:Click()
 		local saved=recovery.load(build,"uniqueQuality",project.id).entry.plan
-		assert.is_string(saved.savedTrace);assert.same({"quality","quality"},saved.actions)
+		assert.is_string(saved.savedTrace);assert.is_string(saved.savedGuideHash);assert.equal(1,saved.savedGuideLength);assert.same({"quality","quality"},saved.actions)
 		control=require("Classes.CraftingUniqueQualityControl").Open(build,build.savers.CraftingProjects.projects[1],nil,saved)
 		assert.is_true(control.guide:IsEnabled());control.guide:Click()
 		local steps=build.savers.CraftingProjects.projects[1].steps

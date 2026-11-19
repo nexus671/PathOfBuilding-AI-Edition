@@ -64,13 +64,14 @@ function M.clean(kind,entry)
 		assert(type(value.history)=="table","Invalid unique quality history")
 		assert(value.actions==nil or type(value.actions)=="table" and #value.actions==#value.history,"Invalid unique crafting actions")
 		assert(value.savedTrace==nil or type(value.savedTrace)=="string" and #value.savedTrace==40 and value.savedTrace:match("^[0-9a-f]+$"),"Invalid unique crafting trace")
+		assert(value.savedGuideHash==nil and value.savedGuideLength==nil or value.savedTrace and type(value.savedGuideHash)=="string" and #value.savedGuideHash==40 and value.savedGuideHash:match("^[0-9a-f]+$") and type(value.savedGuideLength)=="number" and value.savedGuideLength==math.floor(value.savedGuideLength) and value.savedGuideLength>=0 and value.savedGuideLength<=40,"Invalid saved guide marker")
 		local allowed={quality=true,beast_max_links=true,omen_connections=true,load=true,unknown=true}
 		local history,actions={},{}
 		for i=math.max(1,#value.history-63),#value.history do
 			history[#history+1]=item(value.history[i]);local action=value.actions and value.actions[i] or "unknown"
 			assert(allowed[action],"Invalid unique crafting action");actions[#actions+1]=action
 		end
-		return {plan={kind="uniqueQuality",project=project,itemText=item(value.itemText),history=history,actions=actions,savedTrace=value.savedTrace}}
+		return {plan={kind="uniqueQuality",project=project,itemText=item(value.itemText),history=history,actions=actions,savedTrace=value.savedTrace,savedGuideHash=value.savedGuideHash,savedGuideLength=value.savedGuideLength}}
 	elseif kind=="crafting" then
 		assert(value.kind=="workbench","Only working crafts need draft recovery")
 		local project=require("Modules.CraftingProjects").validate(value.project);local run=copyTable(value);run.schemaVersion=1
