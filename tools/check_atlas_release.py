@@ -9,6 +9,10 @@ from urllib.request import urlopen
 
 
 ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_REFS = {
+    "3.30.0-preview": "d225501d7a3e52c991309116473908c284075e89",
+    "3.30.0c": "24bd611b33fb727c0d1264185599fdd973d02d2d",
+}
 SOURCES = (
     ("3.30.0-preview", "data.json", "sha256"),
     ("3.30.0-preview", "league.json", "leagueSha256"),
@@ -70,11 +74,17 @@ def graph_errors(graph, source):
     return errors
 
 
-def main():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--ref", default="3.30.0", help="GGG Atlas export tag or commit")
-    parser.add_argument("--version", default="3.30.0-preview", choices=("3.30.0-preview", "3.30.0c"), help="Bundled Standard graph identifier")
-    args = parser.parse_args()
+    parser.add_argument("--ref", help="GGG Atlas export tag or commit (defaults to the selected graph's pinned source)")
+    parser.add_argument("--version", default="3.30.0c", choices=tuple(DEFAULT_REFS), help="Bundled Standard graph identifier")
+    args = parser.parse_args(argv)
+    args.ref = args.ref or DEFAULT_REFS[args.version]
+    return args
+
+
+def main():
+    args = parse_args()
     ref = quote(args.ref, safe="")
     failed = False
     exports = {}

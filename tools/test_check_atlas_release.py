@@ -2,10 +2,18 @@
 import copy
 import unittest
 
-from check_atlas_release import graph_errors
+from check_atlas_release import DEFAULT_REFS, graph_errors, parse_args
 
 
 class AtlasGraphVerificationTests(unittest.TestCase):
+    def test_defaults_follow_current_graph_and_allow_preview_or_ref_override(self):
+        current = parse_args([])
+        self.assertEqual("3.30.0c", current.version)
+        self.assertEqual(DEFAULT_REFS[current.version], current.ref)
+        preview = parse_args(["--version", "3.30.0-preview"])
+        self.assertEqual(DEFAULT_REFS[preview.version], preview.ref)
+        self.assertEqual("custom-ref", parse_args(["--ref", "custom-ref"]).ref)
+
     def setUp(self):
         self.source = {
             "nodes": {
