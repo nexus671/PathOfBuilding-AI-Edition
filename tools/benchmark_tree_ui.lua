@@ -87,12 +87,25 @@ local function finishRecovery()
 end
 local skillProfile
 if profileSkills then
-	skillProfile={count=0,totalMs=0,worstMs=0}
+	skillProfile={count=0,totalMs=0,worstMs=0,components={}}
 	local calcs=build.calcsTab.calcs;local previous=calcs.buildActiveSkill
+	local depth=0
+	local function pack(...) return {n=select("#",...),...} end
 	calcs.buildActiveSkill=function(...)
-		local start=os.clock();local result=previous(...);local elapsed=(os.clock()-start)*1000
+		depth=depth+1;local start=os.clock();local result=pack(previous(...));local elapsed=(os.clock()-start)*1000;depth=depth-1
 		skillProfile.count=skillProfile.count+1;skillProfile.totalMs=skillProfile.totalMs+elapsed;skillProfile.worstMs=math.max(skillProfile.worstMs,elapsed)
-		return result
+		return unpack(result,1,result.n)
+	end
+	for _,name in ipairs({"initEnv","buildModListForNodeList","buildActiveSkillModList","defence","offence"}) do
+		local fn=calcs[name]
+		calcs[name]=function(...)
+			local measured=depth>0;local start=measured and os.clock();local result=pack(fn(...))
+			if measured then
+				local elapsed=(os.clock()-start)*1000;local row=skillProfile.components[name] or {count=0,totalMs=0,worstMs=0}
+				row.count=row.count+1;row.totalMs=row.totalMs+elapsed;row.worstMs=math.max(row.worstMs,elapsed);skillProfile.components[name]=row
+			end
+			return unpack(result,1,result.n)
+		end
 	end
 end
 local performance=require("Modules.PlanningPerformance")
