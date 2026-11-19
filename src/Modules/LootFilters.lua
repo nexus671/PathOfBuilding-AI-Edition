@@ -154,6 +154,12 @@ function M.generate(build,profile,checkpoint)
 	for _,p in ipairs(build.savers.CraftingProjects.projects) do
 		local origin="craft:"..p.id;local id="craft-"..p.id
 		if not base(p.startingItem,id,p.title.." base",origin) then preserveBase(origin,id,p.title,"the crafting base") end
+		if p.targetItem and p.targetItem:match("%S") then
+			local targetId="craft-target-"..p.id
+			local ok,target=pcall(require("Modules.CraftingProjects").item,p.targetItem)
+			if not ok then preserveBase(origin,targetId,p.title,"the crafting target")
+			elseif target.rarity=="UNIQUE" then base(p.targetItem,targetId,p.title.." unique target",origin) end
+		end
 		local invalidDonor=false
 		for _,step in ipairs(p.nativeRecipe and p.nativeRecipe.steps or {}) do
 			if (step.method=="awakener" or step.method=="recombine" or step.method=="recombine_predictable") and step.donorItem and step.donorItem~="" then

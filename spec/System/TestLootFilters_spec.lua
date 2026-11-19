@@ -567,6 +567,24 @@ describe("Build-owned loot filters",function()
 		assert.equal("Show",filters.simulate(profile,{BaseType="Iron Hat",Rarity="Rare",ItemLevel=86}).action)
 		local count=#profile.rules;profile.rules=filters.generate(build,profile);assert.equal(count,#profile.rules)
 	end)
+	it("generates a unique target pickup alongside a non-unique crafting base",function()
+		local start="Rarity: NORMAL\nEzomyte Tower Shield\nItem Level: 86"
+		local target="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\n+100 to maximum Life"
+		local project={id="unique-goal",title="Shield goal",slot="Weapon 2",startingItem=start,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local profile=filters.profile("test","Test");profile.template="Hide";profile.rules=filters.generate(build,profile)
+		project.targetItem=target;build.savers.CraftingProjects:Upsert(project)
+		assert.is_true(require("Modules.LootFilterDependencies").report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);assert.is_false(require("Modules.LootFilterDependencies").report(build,profile).stale)
+		local function preview(rarity,level) return filters.simulate(profile,{BaseType="Ezomyte Tower Shield",Rarity=rarity,ItemLevel=level}).action end
+		assert.equal("Show",preview("Unique",70));assert.equal("Show",preview("Rare",86));assert.equal("Hide",preview("Rare",70))
+		local targetRule;for _,rule in ipairs(profile.rules) do if rule.id=="craft-target-unique-goal" then targetRule=rule end end
+		assert.is_truthy(targetRule);assert.is_nil(targetRule.text:find("ItemLevel",1,true))
+		build.savers.CraftingProjects.projects[1].targetItem="Not an item"
+		local updated,warnings=filters.generate(build,profile);local retained=false
+		for _,rule in ipairs(updated) do if rule.id=="craft-target-unique-goal" then retained=true end end
+		assert.is_true(retained);assert.is_truthy(warnings[1].message:find("crafting target",1,true))
+	end)
 	it("generates unique pickups for unique crafting starting items",function()
 		local raw="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\n+100 to maximum Life"
 		build.savers.CraftingProjects:Upsert({id="unique-project",title="Improve shield",slot="Weapon 2",startingItem=raw,goals={},steps={}})
