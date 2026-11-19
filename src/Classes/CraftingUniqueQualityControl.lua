@@ -204,6 +204,16 @@ function M.Open(build,project,layout,snapshot)
 		end)
 		view.keep.enabled=result.sampleSuccess
 		view.keep.tooltipText=result.sampleSuccess and "Keep this modeled result as the guide's target." or "The recipe did not reach its goal."
+		view.update=new("ButtonControl"):ButtonControl(ui.anchor,{192,rh-48,160,28},"Update recipe",function()
+			local ok,recipe=pcall(createRecipe)
+			if not ok then main:OpenMessagePopup("Unique crafting",ui.errorText(recipe));return end
+			main:OpenConfirmPopup("Update saved recipe","Replace the saved recipe with the current preview actions?\nUse build Save to persist the change.","Replace",function()
+				local updated=copyTable(draft);updated.nativeRecipe=recipe;draft=build.savers.CraftingProjects:Upsert(updated)
+				refresh(true);c.notice.label="^7Recipe updated. Save the build.";main:ClosePopup()
+			end)
+		end)
+		view.update.enabled=canCreateRecipe()
+		view.update.tooltipText=canCreateRecipe() and "Replace the saved recipe with the complete current preview after confirmation." or "A complete supported preview from the starting item is needed."
 		view.close=new("ButtonControl"):ButtonControl(ui.anchor,{rw-132,rh-48,116,28},"Back",function() main:ClosePopup() end)
 		ui.style(view);for _,control in pairs(view) do control.layoutAudit="unique-recipe-result" end
 		main:OpenPopup(rw,rh,"Saved unique recipe",view,nil,nil,"close")

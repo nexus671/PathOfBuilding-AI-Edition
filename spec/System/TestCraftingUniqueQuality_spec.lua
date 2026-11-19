@@ -12,7 +12,10 @@ describe("Unique item quality",function()
 		local recipe=store.projects[1].nativeRecipe;assert.equal(3,#recipe.steps);assert.equal(2,recipe.steps[1].maxAttempts)
 		assert.equal("omen_connections",recipe.steps[2].method);assert.equal("socket_white_bench",recipe.steps[3].method)
 		assert.equal(14,recipe.requirements.minQuality);assert.equal(3,recipe.requirements.links);assert.equal("WWW",recipe.requirements.socketColours)
-		control.recipe:Click();assert.matches("Sockets: W%-W%-W",main.popups[1].controls.resultItemMods.list[1][1]);main.popups={}
+		control.recipe:Click();assert.matches("Sockets: W%-W%-W",main.popups[1].controls.resultItemMods.list[1][1]);main.popups[1].controls.close:Click()
+		control.apply:Click();control.recipe:Click();main.popups[1].controls.update:Click()
+		assert.equal(14,store.projects[1].nativeRecipe.requirements.minQuality);main.popups[1].controls.confirm:Click()
+		assert.equal(15,store.projects[1].nativeRecipe.requirements.minQuality);assert.matches("15%%",control.status.label);main.popups={}
 	end)
 	it("checks and saves a unique recipe result without changing the preview",function()
 		local project={id="unique-recipe-ui",title="Recipe",slot="Weapon 2",startingItem=shield,goals={},steps={},nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=3}}}
