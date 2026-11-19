@@ -7,6 +7,32 @@ describe("TestOffence", function()
 		-- newBuild() takes care of resetting everything in setup()
 	end)
 
+	it("skips the Full DPS environment only while no skill group is selected", function()
+		build.skillsTab:PasteSocketGroup("Fireball 20/0  1")
+		runCallback("OnFrame")
+		local calcs = require("Modules.Calcs")
+		local initEnv = calcs.initEnv
+		local calls = 0
+		calcs.initEnv = function(...)
+			calls = calls + 1
+			return initEnv(...)
+		end
+		local ok, err = pcall(function()
+			local empty = calcs.calcFullDPS(build, "CALCULATOR", {})
+			assert.are.equal(0, calls)
+			assert.are.equal(0, empty.combinedDPS)
+			assert.are.equal(0, empty.TotalDotDPS)
+			assert.are.equal(0, #empty.skills)
+			build.skillsTab.socketGroupList[1].includeInFullDPS = true
+			local selected = calcs.calcFullDPS(build, "CALCULATOR", {})
+			assert.is_true(calls > 0)
+			assert.is_true(selected.combinedDPS > 0)
+			assert.is_true(#selected.skills > 0)
+		end)
+		calcs.initEnv = initEnv
+		assert.is_true(ok, tostring(err))
+	end)
+
 	-- Asserts actual is within a relative tolerance of expected, e.g. 0.005 = 0.5%
 	local function assertNearRelative(expected, actual, tolerance, msg)
 		assert.is_true(math.abs(expected - actual) / expected <= tolerance,

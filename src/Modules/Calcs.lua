@@ -147,10 +147,6 @@ local function getActiveSkillCount(activeSkill)
 end
 
 function calcs.calcFullDPS(build, mode, override, specEnv)
-	local fullEnv, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(build, mode, override, specEnv)
-	fullEnv.triggerSourceCache = mode == "CALCULATOR" and (specEnv and specEnv.triggerSourceCache or { }) or nil
-	local usedEnv = nil
-
 	local fullDPS = {
 		combinedDPS = 0,
 		TotalDotDPS = 0,
@@ -166,6 +162,23 @@ function calcs.calcFullDPS(build, mode, override, specEnv)
 		dotDPS = 0,
 		cullingMulti = 0
 	}
+
+	-- Only socket groups explicitly selected by the user contribute to Full DPS.
+	-- Avoid building another calculation environment when there are none.
+	local hasFullDPSSkill = false
+	for _, group in ipairs(build.skillsTab.socketGroupList) do
+		if group.includeInFullDPS then
+			hasFullDPSSkill = true
+			break
+		end
+	end
+	if not hasFullDPSSkill then
+		return fullDPS
+	end
+
+	local fullEnv, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(build, mode, override, specEnv)
+	fullEnv.triggerSourceCache = mode == "CALCULATOR" and (specEnv and specEnv.triggerSourceCache or { }) or nil
+	local usedEnv = nil
 
 	local bleedSource = ""
 	local corruptingBloodSource = ""
