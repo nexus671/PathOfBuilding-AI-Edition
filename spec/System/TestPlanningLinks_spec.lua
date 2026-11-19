@@ -544,7 +544,7 @@ describe("Linked planning tools",function()
 		local project=craft();project.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}}
 		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("partial-craft","Partial craft");profile.rules=filters.generate(build,profile)
 		project.nativeRecipe.steps={{method="omen_connections"},{method="locus"}};build.savers.CraftingProjects:Upsert(project)
-		local rules,warnings=filters.generate(build,profile);assert.equal(1,#warnings);assert.matches("ingredient breakdown",warnings[1].message)
+		local rules,warnings=filters.generate(build,profile);assert.equal(1,#warnings);assert.matches("recipe steps need review",warnings[1].message);assert.matches("Locus of Corruption",warnings[1].message,1,true)
 		local names={};for _,rule in ipairs(rules) do names[rule.title]=true end;assert.is_true(names["Omen of Connections"]);assert.is_true(names["Orb of Fusing"])
 		assert.is_true(dependencies.report(build,profile).stale)
 	end)
@@ -554,7 +554,7 @@ describe("Linked planning tools",function()
 		local report=dependencies.report(build,profile);local entry
 		for _,value in ipairs(report.entries) do if value.origin=="craft:helmet" then entry=value end end
 		assert.is_truthy(entry);assert.equal("Needs review",entry.status)
-		local details=table.concat(entry.details,"\n");assert.matches("configured donor base",details);assert.matches("ingredient breakdown",details)
+		local details=table.concat(entry.details,"\n");assert.matches("configured donor base",details);assert.matches("recipe steps need review",details);assert.matches("Locus of Corruption",details,1,true)
 	end)
 	it("reuses incomplete recipe checks until the retained draft changes",function()
 		local project=craft();project.nativeRecipe={steps={{method="omen_connections"},{method="locus"}},targets={},requirements={links=4}}
