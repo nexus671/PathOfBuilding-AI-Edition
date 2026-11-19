@@ -3,9 +3,10 @@ local ui=require("Modules.PlanningUI")
 local itemArt=require("Modules.CraftingWorkbench")
 local M={}
 local artwork
+local socketColors={R="^x713338",G="^x285B3E",B="^x304C7D",W="^x555B65",A="^x644873"}
 function M.new(controls,key,x,y,w,h,label)
 	if not artwork then local file=assert(io.open("Assets/Crafting/items.json","r"));artwork=require("dkjson").decode(file:read("*a")).bases;file:close() end
-	local item,art,artW,artH,artSprite
+	local item,art,artW,artH,artSprite,socketLabel
 	local equipped=label=="EQUIPPED NOW"
 	local starting=label=="STARTING ITEM"
 	local card=new("Control"):Control(ui.anchor,{x,y,w,108});controls[key]=card
@@ -19,10 +20,32 @@ function M.new(controls,key,x,y,w,h,label)
 		if art then SetDrawColor(1,1,1);itemArt.drawArt(art,cx+10+(48-artW)/2,cy+52+(48-artH)/2,artW,artH,artSprite) end
 		SetDrawColor("^xD5DEE8");DrawString(cx+68,cy+54,"LEFT",13,"VAR",fit(item and item.baseName or equipped and "No item equipped" or starting and "Paste your starting item" or "Choose a target item",13,w-78))
 		DrawString(cx+68,cy+76,"LEFT",13,"VAR",item and ("Item level "..tostring(item.itemLevel or "unknown")) or equipped and "Current baseline" or starting and "Or use the equipped item" or "Paste an item or link a craft")
+		if socketLabel and #item.sockets<=6 then
+			local start=cx+w-12-(#item.sockets*20-4)
+			if start>=cx+180 then
+				for i=2,#item.sockets do if item.sockets[i].group==item.sockets[i-1].group then
+					SetDrawColor("^xC9B77D");DrawImage(nil,start+(i-1)*20-5,cy+83,7,3)
+				end end
+				for i,socket in ipairs(item.sockets) do
+					local sx=start+(i-1)*20;SetDrawColor("^xC9B77D");DrawImage(nil,sx,cy+77,16,16)
+					SetDrawColor(socketColors[socket.color] or "^x555B65");DrawImage(nil,sx+1,cy+78,14,14)
+					SetDrawColor("^xFFFFFF");DrawString(sx+8,cy+78,"CENTER_X",12,"VAR",socket.color)
+				end
+			end
+		end
 	end
 	return function(value,other)
-		item=value;local lines={}
+		item=value;socketLabel=nil;local lines={}
 		if item then
+			-- Item parsing can synthesize default sockets when none were supplied;
+			-- only present a layout when the item text actually records one.
+			if item.raw and ("\n"..item.raw):match("\n%s*Sockets:%s*[RGBWA]") and #(item.sockets or {})>0 then
+				local parts={};for i,socket in ipairs(item.sockets) do
+					if i>1 then parts[#parts+1]=socket.group==item.sockets[i-1].group and "-" or " " end
+					parts[#parts+1]=socket.color
+				end
+				socketLabel=table.concat(parts);lines[#lines+1]={text="Sockets: "..socketLabel}
+			end
 			local entry=artwork[item.baseName];local path=entry and entry.path or "Assets/icon_weapon.png"
 			art=NewImageHandle();art:Load(path);artW,artH,artSprite=itemArt.artDimensions(item,entry and entry.width or 84,entry and entry.height or 84,48)
 			local peer={};if other then for _,group in ipairs({other.implicitModLines or {},other.explicitModLines or {}}) do for _,mod in ipairs(group) do peer[mod.line]=true end end end

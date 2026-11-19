@@ -21,11 +21,20 @@ describe("Unique item quality",function()
 		local project={id="unique-link",title="Links",slot="Weapon 2",startingItem=source,goals={},steps={}}
 		build.savers.CraftingProjects:Upsert(project)
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		assert.matches("Sockets: R%-G B",control.itemMods.list[1][1])
 		assert.is_true(control.link:IsEnabled());assert.matches("Black Morrigan",control.link.tooltipText());control.link:Click();assert.is_false(control.link:IsEnabled())
+		assert.matches("Sockets: R%-G%-B",control.itemMods.list[1][1])
 		assert.matches("already fully linked",control.link.tooltipText())
 		control.undo:Click();assert.is_true(control.link:IsEnabled());assert.is_true(control.omen:IsEnabled());control.omen:Click();control.keep:Click()
 		assert.equal(result.itemText,build.savers.CraftingProjects.projects[1].targetItem)
 		main.popups={}
+	end)
+	it("does not display inferred sockets when the item text omits them",function()
+		local project={id="unknown-unique-sockets",title="Unknown sockets",slot="Weapon 2",startingItem=shield:gsub("\nSockets: R%-G B",""),goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		for _,row in ipairs(control.itemMods.list) do assert.is_nil(row[1]:find("Sockets:",1,true)) end
+		assert.is_false(control.link:IsEnabled());main.popups={}
 	end)
 	it("raises unique armour quality one point while preserving item text",function()
 		local result=quality.apply(shield);assert.equal(12,result.beforeQuality);assert.equal(13,result.quality);assert.equal("Armourer's Scrap",result.resource)

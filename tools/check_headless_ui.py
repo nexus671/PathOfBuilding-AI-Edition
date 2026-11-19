@@ -88,6 +88,10 @@ def main():
     paths = sorted(frames.glob("*.json"))
     assert len(paths) == 1767, f"Expected 1767 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
+        before = json.loads((frames / f"{width}-crafting-unique-quality.json").read_text())
+        linked = json.loads((frames / f"{width}-crafting-unique-linked.json").read_text())
+        assert any("Sockets: R-G B" in c.get("text", "") for c in before["commands"]), "Starting socket layout is missing"
+        assert any("Sockets: R-G-B" in c.get("text", "") for c in linked["commands"]), "Linked socket layout is missing"
         frame = json.loads((frames / f"{width}-map-clipboard-imported.json").read_text())
         assert any(c.get("asset") == "Assets/MapCrafting/Items/MapTier5.png" for c in frame["commands"]), "Current map item artwork is missing"
         quality = next(c for c in frame["commands"] if c["kind"] == "text" and "Quality (Pack Size): +20%" in c.get("text", ""))
