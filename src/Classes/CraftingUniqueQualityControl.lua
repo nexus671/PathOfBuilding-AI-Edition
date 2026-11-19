@@ -151,19 +151,26 @@ function M.Open(build,project,layout,snapshot)
 	button("reviewGuide",454,"Review saved guide",function()
 		assert(guideNeedsReview() and savedTraceIndex(),"Return to the saved preview before reviewing the guide")
 		local reviewedHash=guidePrefixHash(draft.steps,#draft.steps)
-		local details={"Review these current guide steps before continuing.","Confirm they describe the actions already saved; no new steps are added yet."}
+		local details={}
 		if #draft.steps==0 then details[#details+1]="The guide has no steps." end
 		for i,step in ipairs(draft.steps) do
 			details[#details+1]=i..". "..step.action
 			if step.stopWhen and step.stopWhen~="" then details[#details+1]="Stop: "..step.stopWhen end
 			if step.onFailure and step.onFailure~="" then details[#details+1]="If unsuccessful: "..step.onFailure end
 		end
-		require("Classes.PlanningBrowserControl").Open("Review saved guide",{{id="guide",label=draft.title,details=details}},{action="Confirm guide",choose=function()
+		local review={};local rw,rh=math.min(680,main.screenW-40),math.min(460,main.screenH-60)
+		ui.label(review,"heading",16,24,ui.fit(draft.title,rw-32,20),20)
+		ui.description(review,"intro",16,56,rw-32,48,{"Review the current steps and confirm they describe the saved actions.","No new steps are added until you keep the guide."},14)
+		review.details=new("TextListControl"):TextListControl(ui.anchor,{16,112,rw-32,rh-176},nil,ui.rows(details,rw-56,15))
+		review.choose=new("ButtonControl"):ButtonControl(ui.anchor,{16,rh-48,180,28},"Confirm guide",function()
 			assert(guideNeedsReview() and savedTraceIndex() and guidePrefixHash(draft.steps,#draft.steps)==reviewedHash,"The guide or preview changed; review it again")
 			savedGuideLength=#draft.steps;savedGuideHash=reviewedHash;guideCache=nil;reviewCache=nil;traceCache=nil
 			require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true)
-			c.notice.label="^7Guide reviewed. Continue the preview."
-		end})
+			c.notice.label="^7Guide reviewed. Continue the preview.";main:ClosePopup()
+		end)
+		review.close=new("ButtonControl"):ButtonControl(ui.anchor,{rw-132,rh-48,116,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(review,{choose=true});for _,control in pairs(review) do control.layoutAudit="unique-guide-review" end
+		main:OpenPopup(rw,rh,"Review saved guide",review,nil,nil,"close")
 	end)
 	c.reviewGuide.shown=guideNeedsReview
 	c.reviewGuide.enabled=function() return savedTraceIndex()~=nil end

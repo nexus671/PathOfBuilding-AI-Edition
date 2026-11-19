@@ -107,6 +107,7 @@ describe("Unique item quality",function()
 		control=require("Classes.CraftingUniqueQualityControl").Open(build,changed);control.apply:Click()
 		assert.is_false(control.guide:IsEnabled());assert.is_true(control.reviewGuide:IsShown());assert.is_true(control.reviewGuide:IsEnabled())
 		control.reviewGuide:Click();local browser=main.popups[1].controls
+		assert.is_nil(browser.search);assert.matches("Review guide",browser.heading.label)
 		local details={};for _,row in ipairs(browser.details.list) do details[#details+1]=row[1] end
 		assert.matches("Acquire the unique shield",table.concat(details," "));browser.choose:Click()
 		assert.is_true(control.guide:IsEnabled());control.guide:Click()

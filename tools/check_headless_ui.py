@@ -97,6 +97,10 @@ def main():
             return [c for c in frame["commands"] if c.get("kind") == "rect" and c.get("width") == 7 and c.get("height") == 3
                     and c.get("y") == title["y"] + 76 and c.get("x", 0) > title["x"]]
         assert len(socket_links(before)) == 1 and len(socket_links(linked)) == 2, "Socket connectors did not reflect the link action"
+        guide_review = json.loads((frames / f"{width}-crafting-unique-guide-review.json").read_text())
+        guide_text = [c.get("text", "") for c in guide_review["commands"] if c.get("kind") == "text"]
+        assert any("Acquire the unique helmet" in text for text in guide_text), "Guide review does not show the edited step"
+        assert any("Confirm guide" in text for text in guide_text), "Guide review has no confirmation action"
         frame = json.loads((frames / f"{width}-map-clipboard-imported.json").read_text())
         assert any(c.get("asset") == "Assets/MapCrafting/Items/MapTier5.png" for c in frame["commands"]), "Current map item artwork is missing"
         quality = next(c for c in frame["commands"] if c["kind"] == "text" and "Quality (Pack Size): +20%" in c.get("text", ""))
