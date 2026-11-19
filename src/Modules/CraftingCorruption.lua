@@ -134,6 +134,16 @@ function C.extend(M,A,api)
 		end
 		local previousCount=#(state.corruptedImplicits or {})
 		state.corruptedImplicits=chosen
+		-- Experimental first-corruption model: a Gilded line and each
+		-- identified Eldritch implicit are eligible for replacement. The
+		-- equal selection weights are an assumption, not server-confirmed.
+		if not state.corrupted and previousCount==0 and #chosen==1 and state.vendorImplicit and state.implicits and #state.implicits>0 then
+			local index=math.floor(random()*(#state.implicits+1))+1
+			if index>#state.implicits then state.vendorImplicit=nil
+			else table.remove(state.implicits,index);if #state.implicits==0 then state.implicits=nil end end
+			state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil;state.corrupted=true
+			return
+		end
 		if model.synthesisGroups and #chosen>previousCount then
 			local retained=copyTable(state.synthRetained or {})
 			if not state.synthRetained and not state.synthExhausted then
@@ -233,7 +243,7 @@ function C.extend(M,A,api)
 			assert(added>=#model.synthesisGroups,"Invalid exhausted synthesised implicit count")
 		end
 		if state.corruptedImplicits then
-			assert(state.corrupted and #state.corruptedImplicits >= 1 and #state.corruptedImplicits + #(state.implicits or {}) <= 2 and (not state.synthRetained or not state.implicits),"Invalid corruption implicit state")
+			assert(state.corrupted and #state.corruptedImplicits >= 1 and #state.corruptedImplicits<=2 and #state.corruptedImplicits + #(state.implicits or {}) <= 3 and (not state.synthRetained or not state.implicits),"Invalid corruption implicit state")
 			local groups={}
 			for _,entry in ipairs(state.corruptedImplicits) do
 				assert(model.corruptionIds[entry.id] or model.legacyCorruptionIds[entry.id],"Invalid corruption implicit for this base")

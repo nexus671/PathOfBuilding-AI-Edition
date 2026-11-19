@@ -143,6 +143,25 @@ describe("Imported corruption identities",function()
 		assert.is_false(available);assert.is_truthy(reason:find("synthesised",1,true))
 		assert.has_error(function() sim.action(synth,synth.initial,{method="vaal"},function() return 0 end) end,reason)
 	end)
+	it("models a Gilded line as one possible first corruption replacement alongside Eldritch implicits",function()
+		local model=sim.model(raw)
+		local first=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state
+		local second=sim.perform(raw,{method="eldritch_implicit",side="Eater",tier=1},12,first).state
+		local gilded=sim.perform(raw,{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingSellPrice"}},13,second).state
+		for _,draw in ipairs({0,0.4,0.999}) do
+			local mixed=copyTable(gilded);sim.rollCorrupted(model,mixed,function() return draw end)
+			assert.equal(1,#mixed.corruptedImplicits);assert.equal(draw<0.9 and 1 or 2,#mixed.implicits)
+			if draw<0.9 then assert.equal(gilded.vendorImplicit,mixed.vendorImplicit);assert.equal(second.implicits[draw==0 and 2 or 1].id,mixed.implicits[1].id) else assert.is_nil(mixed.vendorImplicit) end
+			mixed=sim.validateState(model,mixed)
+			local saved=require("Modules.CraftingCheckpoint").validate(raw,require("Modules.CraftingInventory").run(mixed)).state
+			local output=sim.itemText(model,saved);local reopened=sim.model(output)
+			assert.equal(#mixed.implicits,#reopened.initial.implicits);assert.same(mixed.corruptedImplicits,reopened.initial.corruptedImplicits)
+			if draw<0.9 then assert.equal("unknown",reopened.initial.vendorImplicit) else assert.is_nil(reopened.initial.vendorImplicit) end
+		end
+		local targets={{scope="implicit",anyOf={second.implicits[1].id}},{scope="implicit",anyOf={second.implicits[2].id}}}
+		local result=sim.simulate(raw,{initialState=gilded,steps={{method="vaal"}},targets=targets,requirements={corrupted=true}},{trials=100,maxActions=1,seed=73,forceFirstAction=true})
+		assert.is_nil(next(result.transitionErrors));assert.is_true(result.successes>0);assert.is_true(result.successes<100)
+	end)
 	it("preserves synthesised survivors across second corruption and reopening",function()
 		local lines={"+10 to Strength","+20 to Dexterity","+12 to Intelligence"}
 		for count=1,3 do

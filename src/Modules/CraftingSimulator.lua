@@ -56,7 +56,7 @@ local function gildedFossil(action)
 	return false
 end
 local function gildedCorruptionWarning()
-	return {code="gilded_corruption_incomplete",message="When corruption adds an implicit, this model always removes the Gilded vendor implicit and may also remove another implicit. In game, the Gilded implicit can instead be the one replaced. Retention outcomes and their probabilities are not modeled reliably.",source="https://www.poewiki.net/wiki/Gilded_Fossil"}
+	return {code="gilded_corruption_incomplete",message="For the first added corruption on a Gilded item with identified Eldritch implicits, the model assumes equal replacement chances among those implicits and the vendor implicit. Other Gilded corruption combinations remain incomplete and may remove too many implicits. These chances and interactions are unverified.",source="https://www.poewiki.net/wiki/Gilded_Fossil"}
 end
 function M.actionWarnings(action,model)
 	local result={}
