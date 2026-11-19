@@ -567,6 +567,28 @@ describe("Build-owned loot filters",function()
 		assert.equal("Show",filters.simulate(profile,{BaseType="Iron Hat",Rarity="Rare",ItemLevel=86}).action)
 		local count=#profile.rules;profile.rules=filters.generate(build,profile);assert.equal(count,#profile.rules)
 	end)
+	it("highlights a saved recipe's recombined starting base",function()
+		local sim=require("Modules.CraftingSimulator")
+		local start="Rarity: NORMAL\nZodiac Leather\nItem Level: 70";local derived="Rarity: NORMAL\nPlate Vest\nItem Level: 86"
+		local model=sim.model(start);local initial=sim.validateState(model,{rarity="RARE",affixes={},baseItem=derived})
+		local recipe={steps={{method="chaos"}},targets={},requirements={minAffixes=0},initialState=initial}
+		build.savers.CraftingProjects:Upsert({id="recombined",title="Recombined armour",slot="Body Armour",startingItem=start,nativeRecipe=recipe,goals={},steps={}})
+		local profile=filters.profile("test","Test");profile.template="Hide";profile.rules=filters.generate(build,profile)
+		local function preview(base,level) return filters.simulate(profile,{BaseType=base,Rarity="Rare",ItemLevel=level}).action end
+		assert.equal("Show",preview("Zodiac Leather",70));assert.equal("Show",preview("Plate Vest",86));assert.equal("Hide",preview("Plate Vest",70))
+		local found=false;for _,rule in ipairs(profile.rules) do if rule.id=="craft-working-recombined" then found=true end end;assert.is_true(found)
+		local thread=coroutine.create(function() return filters.generate(build,profile,function() coroutine.yield() end) end)
+		local ok,result;repeat ok,result=coroutine.resume(thread);assert.is_true(ok,result) until coroutine.status(thread)=="dead"
+		assert.same(profile.rules,result)
+		local original=copyTable(build.savers.CraftingProjects.projects[1]);local revised=copyTable(original)
+		revised.nativeRecipe.initialState.baseItem=start;build.savers.CraftingProjects:Upsert(revised)
+		assert.is_true(require("Modules.LootFilterDependencies").report(build,profile).stale)
+		build.savers.CraftingProjects:Upsert(original)
+		build.savers.CraftingProjects.projects[1].nativeRecipe.initialState.baseItem="Not an item"
+		local updated,warnings=filters.generate(build,profile);local kept=false
+		for _,rule in ipairs(updated) do if rule.id=="craft-working-recombined" then kept=true end end
+		assert.is_true(kept);assert.is_true(#warnings>0)
+	end)
 	it("generates a unique target pickup alongside a non-unique crafting base",function()
 		local start="Rarity: NORMAL\nEzomyte Tower Shield\nItem Level: 86"
 		local target="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\n+100 to maximum Life"

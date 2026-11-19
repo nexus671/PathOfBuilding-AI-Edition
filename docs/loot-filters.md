@@ -21,6 +21,8 @@ The workspace has six pages:
 
 **Profile tools** includes profile management, **Review changes** and **Linked build targets**. Review compares the draft with kept profiles; Undo/Redo restores edits. Linked targets flag changed sources and open their craft, gear, resource or Atlas plan. When several sources need the same pickup, each keeps its own link; repeated needs within one source share a rule. **Tools → Recover local drafts** restores interrupted edits without applying them. Keep profiles before using normal **Save**.
 
+A saved recipe whose structured starting state uses a different recombined base also generates a pickup for that base and its item level. If the state cannot be read, the previous pickup is kept for review.
+
 A unique starting item or target in a crafting project generates a pickup for unique items of its base type. This may include other uniques sharing the base; the copied item level is not used as a minimum.
 
 **Campaign and base-family pickups** in Profile tools selects weapon/offhand families, armour defence combinations and recipe pickups. **Use equipped** selects families from active gear and the active weapon set, preserving recipe pickups. The area range limits these supplemental Show rules; the upgrade window raises the minimum base DropLevel in five-area bands. Set the window to 0 to retain every selected base. Recipe pickups use only the area range. Socket recipes include all item rarities and follow vendor priority: six links, six sockets, then linked colours. Recipe pickups take priority over selected base families. Personal rules, custom tiers and modules keep priority. Customize → Policies previews the resulting blocks; no unrelated items are automatically hidden.

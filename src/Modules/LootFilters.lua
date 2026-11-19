@@ -107,7 +107,7 @@ function M.rule(id,title,conditions,origin,theme)
 	return {id=id,title=title,text=table.concat(lines,"\n"),enabled=true,origin=origin}
 end
 function M.generate(build,profile,checkpoint)
-	local result={};local used={};local ids={};local warnings={}
+	local result={};local used={};local ids={};local warnings={};local recipeModels={}
 	local sliceStart=os.clock()
 	local function checkpointIfNeeded()
 		if checkpoint and os.clock()-sliceStart>=0.008 then checkpoint();sliceStart=os.clock() end
@@ -154,6 +154,18 @@ function M.generate(build,profile,checkpoint)
 	for _,p in ipairs(build.savers.CraftingProjects.projects) do
 		local origin="craft:"..p.id;local id="craft-"..p.id
 		if not base(p.startingItem,id,p.title.." base",origin) then preserveBase(origin,id,p.title,"the crafting base") end
+		local initial=p.nativeRecipe and p.nativeRecipe.initialState
+		if initial and initial.baseItem then
+			local workingId="craft-working-"..p.id
+			if checkpoint and not recipeModels[p.startingItem] then require("Modules.CraftingAdvanced").prepare(checkpoint) end
+			local ok=pcall(function()
+				local sim=require("Modules.CraftingSimulator");local model=recipeModels[p.startingItem]
+				if not model then model=sim.model(p.startingItem);recipeModels[p.startingItem]=model end
+				local state=sim.validateState(model,initial);assert(state.baseItem and sim.context(model,state).item.baseName)
+				assert(base(state.baseItem,workingId,p.title.." recipe starting base",origin),"Invalid recipe starting base")
+			end)
+			if not ok then preserveBase(origin,workingId,p.title,"the recipe starting base") end
+		end
 		if p.targetItem and p.targetItem:match("%S") then
 			local targetId="craft-target-"..p.id
 			local ok,target=pcall(require("Modules.CraftingProjects").item,p.targetItem)
@@ -219,7 +231,6 @@ function M.generate(build,profile,checkpoint)
 	for _,name in ipairs({"Orb of Alchemy","Chaos Orb","Divine Orb","Orb of Alteration","Orb of Augmentation","Regal Orb","Exalted Orb","Orb of Annulment","Chromatic Orb","Jeweller's Orb","Orb of Fusing","Vaal Orb"}) do names[name]="Stackable Currency" end
 	-- Only concrete currency items from modeled recipe components become drops.
 	-- Unknown prices, beasts and whole-service prices are not item identities.
-	local recipeModels={}
 	for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.nativeRecipe then
 		local key=require("sha1")(project.startingItem.."\0"..require("Modules.PlanningData").encode(project.nativeRecipe))
 		local coverage=recipeResourceCache[key];local needsInspection=not coverage;local ok=true
