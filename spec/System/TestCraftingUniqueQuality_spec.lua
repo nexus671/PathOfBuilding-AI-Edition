@@ -35,7 +35,14 @@ describe("Unique item quality",function()
 		assert.equal(13,select(2,quality.inspect(store.projects[1].targetItem)).quality)
 		assert.equal(shield,store.projects[1].startingItem)
 		local xml=build:SaveDB("Unique quality");loadBuildFromXML(xml,"Unique quality")
-		assert.equal(13,select(2,quality.inspect(build.savers.CraftingProjects.projects[1].targetItem)).quality)
+		local saved=build.savers.CraftingProjects.projects[1]
+		assert.equal(13,select(2,quality.inspect(saved.targetItem)).quality)
+		main.popups={};control=require("Classes.CraftingUniqueQualityControl").Open(build,saved)
+		assert.is_true(control.loadTarget:IsEnabled());control.loadTarget:Click();assert.matches("13%%",control.status.label)
+		control.undo:Click();assert.matches("12%%",control.status.label);control.loadTarget:Click();control.apply:Click();control.keep:Click()
+		assert.equal(14,select(2,quality.inspect(build.savers.CraftingProjects.projects[1].targetItem)).quality)
+		local other=copyTable(saved);other.targetItem=weapon
+		control=require("Classes.CraftingUniqueQualityControl").Open(build,other);assert.is_false(control.loadTarget:IsEnabled())
 		main.popups={}
 	end)
 	it("uses a whetstone for weapons and refuses unavailable cases",function()

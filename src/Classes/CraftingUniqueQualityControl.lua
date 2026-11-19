@@ -30,12 +30,23 @@ function M.Open(build,project,layout,snapshot)
 	c.undo.enabled=function() return #history>0 end
 	button("keep",294,"Keep as target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);c.notice.label="^7Target kept. Save the build." end)
 	c.keep.enabled=function() return raw~=draft.targetItem end
-	ui.label(c,"notice",16,338,"",14)
+	local function targetAvailable()
+		if not draft.targetItem or draft.targetItem==raw then return false end
+		local ok,target=pcall(unique.inspect,draft.targetItem)
+		return ok and target.title==original.title and target.baseName==original.baseName
+	end
+	button("loadTarget",338,"Load saved target",function()
+		assert(targetAvailable(),"The saved target is not an eligible matching unique item")
+		history[#history+1]=raw;raw=draft.targetItem;refresh();c.notice.label="^7Saved target loaded."
+	end)
+	c.loadTarget.enabled=targetAvailable
+	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."
+	ui.label(c,"notice",16,378,"",14)
 	local artPath=require("Modules.CraftingWorkbench").icon("quality",nil,{item=item})
 	local art=artPath and NewImageHandle();if art then art:Load(artPath) end
-	local currency=new("Control"):Control(ui.anchor,{16,382,42,42});c.currency=currency
+	local currency=new("Control"):Control(ui.anchor,{16,414,42,42});c.currency=currency
 	function currency:Draw() if art then local x,y=self:GetPos();SetDrawColor(1,1,1);DrawImage(art,x,y,42,42) end end
-	ui.description(c,"currencyNote",68,384,218,48,{"Preview only", "No currency is spent."},14)
+	ui.description(c,"currencyNote",68,416,218,48,{"Preview only", "No currency is spent."},14)
 	button("close",h-50,layout and "Back to projects" or "Close",function() if layout then layout.openProjects() else main:ClosePopup() end end)
 	for _,control in pairs(c) do control.layoutAudit="unique-quality" end
 	ui.style(c,{apply=true},{item=true});refresh()
