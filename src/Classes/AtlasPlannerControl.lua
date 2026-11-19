@@ -506,7 +506,7 @@ function Panel.Open(build,source,layout)
 			elseif entry.id=="compare" then
 				local choices={};for _,plan in ipairs(store.plans) do if plan.version==draft.version then
 					local comparison=strategy.compare(plan,current());local lines={"Saved: "..plan.title,"Current draft: "..#comparison.added.." added, "..#comparison.removed.." removed"}
-					if #comparison.modifierChanges>0 then lines[#lines+1]="Modifier changes before keystone and other interactions; not effective map chances";for _,change in ipairs(comparison.modifierChanges) do lines[#lines+1]=string.format("%+d percentage points of modifier | %s",change.delta,change.text) end end
+					if #comparison.modifierChanges>0 then lines[#lines+1]="Modifier changes before keystone and other interactions; not effective map chances";for _,change in ipairs(comparison.modifierChanges) do lines[#lines+1]=string.format("Change: %+d%% | %s",change.delta,change.text) end end
 					for _,node in ipairs(comparison.added) do lines[#lines+1]="+ "..node.name end;for _,node in ipairs(comparison.removed) do lines[#lines+1]="- "..node.name end
 					lines[#lines+1]="Changed bonus counts";for _,stat in ipairs(comparison.stats) do lines[#lines+1]=stat end
 					choices[#choices+1]={id=plan.id,label=plan.title,details=lines,plan=plan}

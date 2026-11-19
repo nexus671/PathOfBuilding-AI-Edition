@@ -91,7 +91,7 @@ def main():
         atlas_totals = json.loads((frames / f"{width}-atlas-added-modifiers.json").read_text())
         assert any("increased effect of Explicit" in c.get("text", "") for c in atlas_totals["commands"]), "Atlas modifier summary is missing"
         atlas_comparison = json.loads((frames / f"{width}-atlas-modifier-comparison.json").read_text())
-        assert any("percentage points of modifier" in c.get("text", "") for c in atlas_comparison["commands"]), "Atlas modifier comparison is not visible"
+        assert any("Change: +" in c.get("text", "") for c in atlas_comparison["commands"]), "Atlas modifier comparison is not visible"
         before = json.loads((frames / f"{width}-crafting-unique-quality.json").read_text())
         linked = json.loads((frames / f"{width}-crafting-unique-linked.json").read_text())
         recipe = json.loads((frames / f"{width}-crafting-unique-recipe-result.json").read_text())
