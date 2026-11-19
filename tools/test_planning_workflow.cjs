@@ -1128,6 +1128,10 @@ async function main(){
   assert.ok(targetScene.examples.total>0);assert.equal(targetScene.examples.results[0].sample.AreaLevel,76);assert.equal(targetScene.examples.results[0].sample.ItemLevel,86);
   const mapTierScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene:'Map tiers',areaLevel:76,itemLevel:86,offset:15,limit:2},'tested');
   assert.equal(mapTierScene.examples.total,17);assert.equal(mapTierScene.examples.results[0].sample.MapTier,16);assert.equal(mapTierScene.examples.results[1].sample.MapTier,17);
+  const blightProfile={id:'blight-rules',title:'Blight comparison',preset:'early_maps',strictness:2,rules:[{id:'blight-rule',title:'Blight-ravaged maps',enabled:true,text:'Hide\n UberBlightedMap True'}]};
+  const blightScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:blightProfile,scene:'Blight & oils',areaLevel:76,itemLevel:86,offset:14,limit:2},'tested');
+  assert.equal(blightScene.examples.total,16);assert.equal(blightScene.examples.results[0].sample.BlightedMap,true);assert.equal(blightScene.examples.results[0].sample.UberBlightedMap,false);
+  assert.equal(blightScene.examples.results[1].sample.UberBlightedMap,true);assert.equal(blightScene.examples.results[1].result.action,'Hide');
   const socketProfile={id:'socket-rules',title:'Socket comparisons',preset:'early_maps',strictness:2,rules:[{id:'socket-rule',title:'Socket rule',enabled:true,text:'Hide\n SocketGroup > 5GGG'}]};
   const colourOnlyProfile={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n Sockets >= 4'}]};
   const colourOnly=await queued('test_loot_filter',{baseRevision:context.revision,profile:colourOnlyProfile,sample:{BaseType:'Iron Hat',SocketColours:'R-G B A'}},'tested');
