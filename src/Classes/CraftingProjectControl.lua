@@ -81,9 +81,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 	local cachedRaw,cachedReason
 	local function workbenchReason(project)
 		if project.startingItem~=cachedRaw then
-			cachedRaw=project.startingItem;cachedReason=nil
-			local ok,item=pcall(projects.item,cachedRaw)
-			if ok and (item.rarity=="UNIQUE" or item.rarity=="RELIC") then cachedReason="Unique and relic starting items can have written guides, but the workbench cannot simulate them yet." end
+			cachedRaw=project.startingItem;cachedReason=projects.workbenchReason(project)
 		end
 		return cachedReason
 	end

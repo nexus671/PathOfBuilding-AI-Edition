@@ -641,5 +641,12 @@ describe("Linked planning tools",function()
 		local item=require("Modules.CraftingInventory").capture(project,previous.state);workspace.cache.crafting.layout.openWorkbench(require("Modules.CraftingInventory").project(item))
 		assert.equal(1,#workspace.craftDrafts[project.id].actions)
 		workspace:Show("filters");assert.equal("Unsaved filter name",workspace.cache.filters.layout.snapshot().data.profiles[1].title)
+		local unique={id="unique-linked",title="Unique guide",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86",goals={},steps={{action="Acquire the unique"}}}
+		build.savers.CraftingProjects:Upsert(unique);workspace.cache.filters.layout.openWorkbench(unique)
+		assert.equal("crafting",workspace.page);assert.equal("Plan",workspace.controls.libraryPage:GetSelValue());assert.equal("unique-linked",workspace.cache.crafting.layout.selectedProject)
+		assert.equal(1,#workspace.craftDrafts[project.id].actions)
+		workspace:Show("filters");assert.equal("Unsaved filter name",workspace.cache.filters.layout.snapshot().data.profiles[1].title)
+		local changed=copyTable(unique);changed.startingItem=changed.startingItem.."\n+40% to Fire Resistance"
+		assert.has_error(function() workspace.cache.filters.layout.openWorkbench(changed) end);assert.equal("filters",workspace.page)
 	end)
 end)

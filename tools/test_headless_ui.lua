@@ -2004,14 +2004,20 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(saved.run.state.sockets[1].color=="A" and saved.inventory[1].state.sockets[1].color=="A")
 		build.viewMode="PLANNER";build.planningWorkspace:Show("crafting",{kind="workbench",project=saved});frame("crafting-stygian-abyss-socket")
 	end
-	do
+	local function uniqueProjectScenario()
 		local unique="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\n+40% to Fire Resistance"
 		local p={id="unique-target-project-ui",title="Unique target guide",slot="Helmet",startingItem="Rarity: NORMAL\nLeather Cap\nItem Level: 86",targetItem=unique,goals={"Obtain Goldrim"},steps={}}
 		local store=build.savers.CraftingProjects;store:Upsert(p);local w=build.planningWorkspace;w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
 		assert(w.controls.projectItem and #w.controls.projectItemMods.list>0 and w.controls.native:IsEnabled(),"Unique target preview or ordinary workbench unavailable");frame("crafting-unique-target-project")
-		p.id="unique-start-project-ui";p.title="Unique starting guide";p.startingItem=unique;p.targetItem=nil;store:Upsert(p);w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
+		p.id="unique-start-project-ui";p.title="Unique starting guide";p.startingItem=unique;p.targetItem=nil;p.steps={{action="Acquire Goldrim"}};store:Upsert(p);w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
 		assert(w.controls.projectItem and not w.controls.native:IsEnabled() and w.controls.native.tooltipText():find("written guides",1,true),"Unique workbench limitation not explained");frame("crafting-unique-start-project")
+		local journey=build.savers.BuildJourney;local data=copyTable(journey.data)
+		data.wishlist[#data.wishlist+1]={id="unique-guide-goal",title="Get Goldrim",slot="Helmet",route="farm",projectId=p.id,targetItem=unique};journey:Replace(data)
+		w:Show("journey",{page="Gear",selected="unique-guide-goal"});assert(w.controls.openLink:IsEnabled(),"Linked unique guide is unavailable");ui:click("openLink")
+		assert(w.page=="crafting" and w.controls.libraryPage:GetSelValue()=="Plan" and w.cache.crafting.layout.selectedProject==p.id,"Unique gear link did not open the saved guide")
+		local lines={};for _,row in ipairs(w.controls.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;assert(table.concat(lines," "):find("Acquire Goldrim",1,true),"Linked guide lost its written steps");frame("journey-unique-linked-guide")
 	end
+	uniqueProjectScenario()
 	ui:restore()
 end
 -- These checks exercise the audit itself: raw uncoloured list text inherits the

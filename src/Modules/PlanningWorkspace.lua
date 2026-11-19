@@ -133,6 +133,16 @@ function M:Show(page,source)
 			self.cache.crafting=nil;self.drafts.crafting=nil;self:Show("crafting")
 		end
 		layout.openWorkbench=function(project)
+			local reason=require("Modules.CraftingProjects").workbenchReason(project)
+			if reason then
+				local saved=false;for _,entry in ipairs(self.build.savers.CraftingProjects.projects) do if entry.id==project.id and entry.startingItem==project.startingItem then saved=true;break end end
+				assert(saved,reason)
+				local current=self.cache.crafting
+				if current and current.layout.snapshot then local draft=current.layout.snapshot();if draft.kind=="workbench" then self.craftDrafts[draft.project.id]=draft end end
+				self.selections.crafting=project.id;self.cache.crafting=nil;self.drafts.crafting=nil;self:Show("crafting")
+				local pages=self.controls.libraryPage;pages:SelByValue("Plan");if pages.selFunc then pages.selFunc() end
+				return
+			end
 			if page~="crafting" then
 				local draft=self.craftDrafts[project.id];if draft and draft.project.startingItem~=project.startingItem then draft=nil end
 				self:Show("crafting",draft or {kind="workbench",project=project});return

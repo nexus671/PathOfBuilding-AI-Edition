@@ -20,6 +20,13 @@ function M.item(raw)
 	return item
 end
 
+function M.workbenchReason(project)
+	local ok,item=pcall(M.item,project.startingItem)
+	if ok and (item.rarity=="UNIQUE" or item.rarity=="RELIC") then
+		return "Unique and relic starting items can have written guides, but the workbench cannot simulate them yet."
+	end
+end
+
 function M.validate(project)
 	assert(type(project) == "table","Invalid crafting project")
 	local result = {id=text(project.id,64,"project ID"),title=text(project.title,120,"project title"),slot=text(project.slot,80,"slot"),
