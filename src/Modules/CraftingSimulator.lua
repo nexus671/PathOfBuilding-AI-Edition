@@ -58,12 +58,17 @@ end
 local function gildedCorruptionWarning()
 	return {code="gilded_corruption_incomplete",message="For added corruption on a Gilded item with identified Eldritch or synthesised implicits, the model assumes equal replacement chances among the remaining implicits and the vendor implicit. For a retained ordinary base implicit, it assumes a second added corruption replaces that base. Other Gilded corruption combinations remain incomplete and may remove too many implicits. These chances and interactions are unverified.",source="https://www.poewiki.net/wiki/Gilded_Fossil"}
 end
+function M.hasProtectedImplicit(model,state)
+	if not model or not model.item or model.item.synthesised or state and (state.corruptedImplicits or state.implicits) then return false end
+	for _,line in ipairs(model.item.implicitModLines or {}) do
+		if StripEscapes(line.line or "")=="Implicit Modifiers Cannot Be Changed" then return true end
+	end
+	return false
+end
 function M.actionWarnings(action,model)
 	local result={}
-	if gildedCorruption(action) and model and model.item and not model.item.synthesised then
-		for _,line in ipairs(model.item.implicitModLines or {}) do if StripEscapes(line.line or "")=="Implicit Modifiers Cannot Be Changed" then
-			result[#result+1]={code="protected_implicit_corruption",message="The model treats an implicit-change corruption outcome as no change to protected implicits, including a Gilded modifier. The 3.30 second-corruption interaction is unverified.",source="https://www.poewiki.net/wiki/Composite_Ring"};break
-		end end
+	if gildedCorruption(action) and M.hasProtectedImplicit(model,model and model.initial) then
+		result[#result+1]={code="protected_implicit_corruption",message="The model treats an implicit-change corruption outcome as no change to protected implicits, including a Gilded modifier. The 3.30 second-corruption interaction is unverified.",source="https://www.poewiki.net/wiki/Composite_Ring"}
 	end
 	if gildedCorruption(action) and (gildedFossil(action) or model and model.initial and model.initial.vendorImplicit) then result[#result+1]=gildedCorruptionWarning() end
 	if gildedFossil(action) then result[#result+1]={code="gilded_vendor_weights",message="Hidden Gilded vendor outcomes are sampled using the pinned 3.30 client weights. Current server odds are not independently verified, and copied item text does not reveal the outcome."} end

@@ -630,7 +630,7 @@ function A.extend(M,api)
 		if model.item.type~="Amulet" then return "Ukatoa requires an amulet." end
 		if state.implicits or model.unresolvedEldritch then return "The amulet already has an Eldritch implicit." end
 		if baseInfluences(state) then return "Influenced amulet interactions are not modeled." end
-		if model.item.baseName=="Simplex Amulet" or model.item.baseName=="Focused Amulet" then return "This amulet has a fixed implicit that cannot be replaced." end
+		if M.hasProtectedImplicit(model,state) or model.item.baseName=="Simplex Amulet" or model.item.baseName=="Focused Amulet" then return "This amulet has a fixed implicit that cannot be replaced." end
 		if #model.item.implicitModLines==0 and not state.vendorImplicit then return "The amulet has no implicit modifier to replace." end
 		for _,side in ipairs({"Exarch","Eater"}) do for tier=1,4 do
 			if #ukatoaChoices(model,side,tier)==0 then return "The amulet has an incomplete Eldritch modifier pool." end

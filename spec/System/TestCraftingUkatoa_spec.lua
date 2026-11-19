@@ -33,9 +33,11 @@ describe("Ukatoa special amulet cases",function()
   assert.is_true(item.synthesised);assert.equal(1,#item.implicitModLines);assert.is_nil(item.raw:find("+10 to Strength",1,true));assert.is_nil(item.raw:find("+12 to Dexterity",1,true))
  end)
  it("does not apply to fixed-implicit amulets or amulets without an implicit",function()
-  for _,base in ipairs({"Simplex Amulet","Focused Amulet"}) do
-   local model=sim.model("Rarity: NORMAL\n"..base.."\nItem Level: 86")
-   assert.is_false(require("Modules.CraftingAvailability").check("ducat_ukatoa",model.initial,model))
+  for _,base in ipairs({"Simplex Amulet","Focused Amulet","Astrolabe Amulet"}) do
+   local raw="Rarity: NORMAL\n"..base.."\nItem Level: 86";local model=sim.model(raw)
+   local allowed,reason=require("Modules.CraftingAvailability").check("ducat_ukatoa",model.initial,model)
+   assert.is_false(allowed);assert.matches("fixed implicit",reason)
+   assert.has_error(function() sim.perform(raw,{method="ducat_ukatoa"},1) end)
   end
  end)
 end)
