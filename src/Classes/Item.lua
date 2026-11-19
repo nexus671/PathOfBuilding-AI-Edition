@@ -503,6 +503,7 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 	self.tinctureBaseExplicit = nil
 	self.tinctureBasePrefix = nil
 	self.tinctureBaseSuffix = nil
+	self.tinctureBaseImplicit = nil
 	self.twiceCorrupted = nil
 	self.unidentifiedMarker = nil
 	self.rawLines = { }
@@ -769,6 +770,8 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 					self.tinctureBasePrefix = specVal == "true" or nil
 				elseif specName == "Tincture Base Suffix" then
 					self.tinctureBaseSuffix = specVal == "true" or nil
+				elseif specName == "Tincture Base Implicit" then
+					self.tinctureBaseImplicit = specVal == "true" or nil
 				elseif specName == "Item Level" then
 					self.itemLevel = specToNumber(specVal)
 				elseif specName == "Memory Strands" then
@@ -1900,6 +1903,7 @@ function ItemClass:BuildRaw()
 		if self.tinctureBaseExplicit then t_insert(rawLines, "Tincture Base Explicit: true") end
 		if self.tinctureBasePrefix then t_insert(rawLines, "Tincture Base Prefix: true") end
 		if self.tinctureBaseSuffix then t_insert(rawLines, "Tincture Base Suffix: true") end
+		if self.tinctureBaseImplicit then t_insert(rawLines, "Tincture Base Implicit: true") end
 	end
 	if self.league then
 		t_insert(rawLines, "League: " .. self.league)
@@ -2684,7 +2688,7 @@ function ItemClass:BuildModList()
 			end
 		end
 	end
-	local function processModLine(modLine, tinctureBase)
+	local function processModLine(modLine, tincturePart)
 		if modLine.disabled then
 			return
 		end
@@ -2707,7 +2711,7 @@ function ItemClass:BuildModList()
 			if not modLine.extra then
 				for _, mod in ipairs(modLine.modList) do
 					for _ = 1, variantCount do
-						if tinctureBase and self.type == "Tincture" and self.tinctureValues == "Final" and (self.tinctureBaseExplicit or modLine.prefix and self.tinctureBasePrefix or modLine.suffix and self.tinctureBaseSuffix) then
+						if self.type == "Tincture" and self.tinctureValues == "Final" and (tincturePart == "implicit" and self.tinctureBaseImplicit or tincturePart == "explicit" and (self.tinctureBaseExplicit or modLine.prefix and self.tinctureBasePrefix or modLine.suffix and self.tinctureBaseSuffix)) then
 							mod=copyTable(mod);mod.tinctureBase=true
 						end
 						baseList:AddMod(modLib.setSource(mod, self.modSource))
@@ -2729,10 +2733,10 @@ function ItemClass:BuildModList()
 		processModLine(modLine)
 	end
 	for _, modLine in ipairs(self.implicitModLines) do
-		processModLine(modLine)
+		processModLine(modLine, "implicit")
 	end
 	for _, modLine in ipairs(self.explicitModLines) do
-		processModLine(modLine, true)
+		processModLine(modLine, "explicit")
 	end
 	for _, modLine in ipairs(self.crucibleModLines) do
 		processModLine(modLine)

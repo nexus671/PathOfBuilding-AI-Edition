@@ -135,6 +135,16 @@ describe("Advanced native crafting", function()
 			for _,choice in ipairs(result.choices) do assert.is_true(choice.state[case.key]);assert.matches(case.label,choice.itemText,1,true);assert.is_true(new("Item"):Item(choice.itemText)[case.key]);if case.method=="divine" then assert.is_true(choice.state.tinctureBaseSuffix) end end
 		end
 	end)
+	it("tracks rerolled tincture implicits independently from imported explicits",function()
+		local raw="Item Class: Tinctures\nRarity: MAGIC\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate"
+		for _,action in ipairs({{method="blessed"},{method="blessed",allflame={outcomes=2,gainMin=0,gainMax=0,sulphur=0}}}) do
+			local result=sim.perform(raw,action,5);assert.is_true(result.state.tinctureBaseImplicit);assert.matches("Tincture Base Implicit: true",result.itemText,1,true)
+			local item=new("Item"):Item(result.itemText);local found=false;for _,mod in ipairs(item.modList) do if mod.name=="ElementalDamage" and mod.tinctureBase then found=true end end;assert.is_true(found)
+			assert.is_true(new("Item"):Item(item:BuildRaw()).tinctureBaseImplicit);assert.is_true(sim.model(result.itemText).initial.tinctureBaseImplicit)
+			for _,choice in ipairs(result.choices or {}) do assert.is_true(choice.state.tinctureBaseImplicit);assert.matches("Tincture Base Implicit: true",choice.itemText,1,true) end
+			local next=sim.perform(raw,{method="quality"},7,result.state);assert.is_true(next.state.tinctureBaseImplicit)
+		end
+	end)
 	it("offers independent Allflame outcomes and charges currency and Sulphur once", function()
 		local state=copyTable(sim.model(raw).initial);state.rarity="RARE";state.affixes={{id="IncreasedLife1",range=0.5}}
 		local craft={method="exalt",allflame={outcomes=4,gainMin=5,gainMax=5,sulphur=100}}

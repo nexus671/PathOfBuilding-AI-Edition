@@ -1921,7 +1921,7 @@ function calcs.perform(env, skipEHP)
 
 			if modList[1] then
 				local srcList = new("ModList"):ModList()
-				if (item.tinctureBaseExplicit or item.tinctureBasePrefix or item.tinctureBaseSuffix) and item.tinctureValues == "Final" then
+				if (item.tinctureBaseExplicit or item.tinctureBasePrefix or item.tinctureBaseSuffix or item.tinctureBaseImplicit) and item.tinctureValues == "Final" then
 					for _, mod in ipairs(modList) do srcList:ScaleAddMod(mod, mod.tinctureBase and baseEffectMod or effectMod) end
 				else
 					srcList:ScaleAddList(modList, effectMod)

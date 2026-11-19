@@ -86,6 +86,10 @@ async function main(){
   const partialGroupResult=await queued('simulate_crafting',{baseRevision:context.revision,itemText:raw,recipe:partialGroupRecipe,options:{trials:1,maxActions:2}},'crafted');
   assert.equal(partialGroupResult.nativeCrafting.routeCounts[0].success,1);assert.equal(partialGroupResult.nativeCrafting.routeCounts[1].visits,1);
   const copiedTincture='Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed';
+  const tinctureBlessed=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:copiedTincture,action:{method:'blessed'},seed:5},'crafted');
+  assert.equal(tinctureBlessed.nativeCrafting.state.tinctureBaseImplicit,true);assert.match(tinctureBlessed.nativeCrafting.itemText,/Tincture Base Implicit: true/);
+  const tinctureBlessedNext=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:copiedTincture,initialState:tinctureBlessed.nativeCrafting.state,action:{method:'quality'},seed:7},'crafted');
+  assert.equal(tinctureBlessedNext.nativeCrafting.state.tinctureBaseImplicit,true);assert.match(tinctureBlessedNext.nativeCrafting.itemText,/Tincture Base Implicit: true/);
   const tincturePreview=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:copiedTincture,action:{method:'alteration'},seed:3},'crafted');
   assert.ok(tincturePreview.nativeCrafting.warnings.some(entry=>entry.code==='tincture_imported_values'));
   const partialTincture=copiedTincture.replace('\n29% increased Melee Weapon Attack Speed','');
