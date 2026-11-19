@@ -30,7 +30,7 @@ function M.workbenchReason(project)
 				return require("Modules.PlanningUI").errorText(reason),false
 			end
 		end
-		return "Unique and relic starting items can have written guides; full workbench simulation is unavailable. Eligible unique armour and weapons have quality and socket previews.",inspected
+		return "Unique and relic starting items can have written guides; full workbench simulation is unavailable. Eligible unique armour, weapons, flasks and tinctures have quality previews; socketed items also have socket previews.",inspected
 	end
 end
 

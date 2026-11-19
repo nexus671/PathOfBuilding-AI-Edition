@@ -72,7 +72,8 @@ function M.inspect(raw)
 	assert(item.rarity=="UNIQUE","Unique quality tools require a unique item")
 	assert(item.itemLevel>=1 and item.itemLevel<=100 and item.itemLevel==math.floor(item.itemLevel),"Invalid item level")
 	local weapon=data.weaponTypeInfo[item.type]~=nil
-	assert(weapon or item.base.armour,"Unique quality tools currently support armour and weapons")
+	local flask=item.type=="Flask" or item.type=="Tincture"
+	assert(weapon or item.base.armour or flask,"Unique quality tools currently support armour, weapons, flasks and tinctures")
 	assert(not item.mirrored,"Mirrored items cannot be crafted")
 	assert(item.corrupted or not alwaysCorrupted(item.title,item.baseName),"This unique is always corrupted; include its Corrupted line in the starting item")
 	-- These immutable Breach uniques always have six linked sockets. Only
@@ -84,7 +85,7 @@ function M.inspect(raw)
 	end
 	assert(not item.foulborn,"Foulborn items need a separate modifier-mutation model")
 	local quality=item.quality or 0;assert(type(quality)=="number" and quality>=0 and quality==math.floor(quality),"Invalid item quality")
-	return item,{quality=quality,available=quality<20 and not item.corrupted,resource=weapon and "Blacksmith's Whetstone" or "Armourer's Scrap",resourceKey=weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality"}
+	return item,{quality=quality,available=quality<20 and not item.corrupted,resource=flask and "Glassblower's Bauble" or weapon and "Blacksmith's Whetstone" or "Armourer's Scrap",resourceKey=flask and "Metadata/Items/Currency/CurrencyFlaskQuality" or weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality"}
 end
 function M.apply(raw)
 	local item,info=M.inspect(raw);assert(not item.corrupted,"Ordinary quality currency cannot modify a corrupted item");assert(info.available,"Ordinary quality currency cannot exceed 20%")
@@ -113,6 +114,7 @@ end
 function M.linkReason(raw,method)
 	local ok,item=pcall(M.inspect,raw)
 	if not ok then return tostring(item) end
+	if item.type=="Flask" or item.type=="Tincture" then return "Flasks and tinctures have no sockets" end
 	if item.corrupted and method~="socket_bench" then return "Use the bench or tainted currency on corrupted items" end
 	local immutable=M.socketModificationReason(raw,item);if immutable then return immutable end
 	local sockets=item.sockets or {}
@@ -133,6 +135,7 @@ end
 function M.whiteReason(raw)
 	local ok,item=pcall(M.inspect,raw)
 	if not ok then return tostring(item) end
+	if item.type=="Flask" or item.type=="Tincture" then return "Flasks and tinctures have no sockets" end
 	local immutable=M.socketModificationReason(raw,item);if immutable then return immutable end
 	local sockets=item.sockets or {}
 	local line,count=raw:match("\nSockets: ([^\r\n]*)"),0
@@ -153,6 +156,7 @@ end
 -- unlinked sockets, matching the ordinary equipment bench model.
 function M.socketCountReason(raw,count)
 	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
+	if item.type=="Flask" or item.type=="Tincture" then return "Flasks and tinctures have no sockets" end
 	local immutable=M.socketModificationReason(raw,item);if immutable then return immutable end
 	local restriction=uniqueSocketRestriction(item.title)
 	if restriction=="fixed" then return "This unique fixes its socket count" end
@@ -204,14 +208,17 @@ function M.catalog(raw,query,limit)
 	local qualityReason=item.corrupted and "Ordinary quality currency cannot modify a corrupted item" or not info.available and "Ordinary quality currency cannot exceed 20%" or nil
 	local whiteComponents={["Metadata/Items/Currency/CurrencyConvertToNormal"]=1}
 	if item.corrupted then whiteComponents["Metadata/Items/Currency/CurrencyCorrupt"]=1 end
-	local definitions={
-		{method="quality",label="Ordinary quality",reason=qualityReason,components={[info.resourceKey]=1}},
+	local sim=require("Modules.CraftingSimulator")
+	local definitions={{method="quality",label="Ordinary quality",reason=qualityReason,components={[info.resourceKey]=1}}}
+	if sim.socketLimit({item=item})>0 then
+		local socketDefinitions={
 		{method="beast_max_links",label="Bestiary: maximum links",reason=linkReason,components={beast_black_morrigan=1,beast_craicic_sand_spitter=1}},
 		{method="omen_connections",label="Omen of Connections + Orb of Fusing",reason=linkReason,components={["Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks"]=1,["Metadata/Items/Currency/CurrencyRerollSocketLinks"]=1}},
 		{method="socket_bench",label="Bench: link existing sockets",reason=benchLinkReason,components=not benchLinkReason and require("Modules.CraftingSimulator").components({method="socket_bench",count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted}) or {}},
 		{method="socket_white_bench",label="Bench: white sockets",reason=whiteReason,components=whiteComponents},
-	}
-	local sim=require("Modules.CraftingSimulator")
+		}
+		for _,entry in ipairs(socketDefinitions) do definitions[#definitions+1]=entry end
+	end
 	for count=2,sim.socketLimit({item=item}) do
 		local request={method="socket_bench",count=count}
 		definitions[#definitions+1]={method="socket_bench",guideMethod="socket_count_bench",guideCount=count,request=request,label="Bench: "..count.." sockets",reason=M.socketCountReason(raw,count),components=sim.components(request,{sockets=item.sockets,corrupted=item.corrupted})}

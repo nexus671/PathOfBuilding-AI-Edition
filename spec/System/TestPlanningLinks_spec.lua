@@ -357,6 +357,13 @@ describe("Linked planning tools",function()
 		project.startingItem=project.startingItem:gsub("R G B","R-G-B-R-G-B");build.savers.CraftingProjects:Upsert(project);rules,warnings=filters.generate(build,profile);assert.is_true(hasScrap(rules))
 		for _,warning in ipairs(warnings) do assert.not_equal("craft:guide-invalid",warning.origin) end
 	end)
+	it("links unique flask quality guides to bauble pickups",function()
+		local project={id="unique-flask",title="Taste of Hate",slot="Flask 1",startingItem="Rarity: UNIQUE\nTaste of Hate\nSapphire Flask\nItem Level: 86\nQuality: 18",goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);assert.is_true(control.apply:IsEnabled());control.apply:Click();control.guide:Click()
+		local saved=build.savers.CraftingProjects.projects[1];assert.matches("Glassblower's Bauble",saved.steps[1].action,1,true)
+		local profile=filters.profile("flask-guide","Flask guide");local rules=filters.generate(build,profile);local found=false
+		for _,rule in ipairs(rules) do if rule.origin=="craft:unique-flask" and rule.title=="Glassblower's Bauble" then found=true end end;assert.is_true(found);main.popups={}
+	end)
 	it("includes both currencies for a corrupted unique white-socket guide",function()
 		local project={id="corrupted-white-filter",title="Corrupted Goldrim",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={}}
 		build.savers.CraftingProjects:Upsert(project)

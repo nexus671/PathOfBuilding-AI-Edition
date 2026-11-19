@@ -3,6 +3,18 @@ describe("Unique item quality",function()
 	local shield="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\nImplicits: 1\n+5% Chance to Block Attack Damage\n+100 to maximum Life\n+1500 to Armour"
 	local weapon="Rarity: UNIQUE\nThe Saviour\nLegion Sword\nItem Level: 86\nQuality: 0\nSockets: R-G-B\n+100% increased Physical Damage"
 	before_each(function() newBuild() end)
+	it("previews and simulates unique flask and tincture quality",function()
+		local sim=require("Modules.CraftingSimulator")
+		for _,entry in ipairs({{"Taste of Hate","Sapphire Flask"},{"The Battle Within","Oakbranch Tincture"}}) do
+			local raw="Rarity: UNIQUE\n"..entry[1].."\n"..entry[2].."\nItem Level: 86\nQuality: 18"
+			local item,info=quality.inspect(raw);assert.equal("Glassblower's Bauble",info.resource);assert.equal("Metadata/Items/Currency/CurrencyFlaskQuality",info.resourceKey)
+			local next=quality.apply(raw);assert.equal(19,next.quality);assert.matches("Quality: 19",next.itemText,1,true)
+			local catalog=sim.catalog(raw,"",50);assert.equal(1,#catalog.uniqueActions);assert.equal("quality",catalog.uniqueActions[1].method)
+			local calc=sim.calculate(raw,{method="quality"},{},nil,{requirements={minQuality=19}});assert.equal(100,calc.successChance);assert.equal(1,calc.components[info.resourceKey])
+			local result=sim.simulate(raw,{steps={{method="quality",maxAttempts=2,untilRequirements={minQuality=20}}},targets={},requirements={minQuality=20}},{trials=1,maxActions=2});assert.is_true(result.sampleSuccess);assert.equal(2,result.meanActions)
+			assert.has_error(function() quality.apply(raw.."\nCorrupted") end);assert.has_error(function() quality.apply(raw:gsub("Quality: 18","Quality: 20")) end)
+		end
+	end)
 	it("creates a checkable recipe from the complete unique preview",function()
 		local project={id="unique-preview-recipe",title="Recipe",slot="Weapon 2",startingItem=shield,goals={},steps={}}
 		local store=build.savers.CraftingProjects;store:Upsert(project)
