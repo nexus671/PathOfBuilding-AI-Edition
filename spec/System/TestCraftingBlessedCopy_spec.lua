@@ -64,6 +64,18 @@ describe("Blessed Orb on copied base implicits",function()
 		local rerollDiff=table.concat(require("Modules.CraftingInspection").diff(model,after,rerolled),"\n")
 		assert.is_truthy(rerollDiff:find(new,1,true),rerollDiff);assert.is_truthy(rerollDiff:find(rerolledText,1,true),rerollDiff)
 	end)
+	it("reports distinct modifier identities even when catalyst-scaled lines look identical",function()
+		local model=sim.model("Rarity: NORMAL\nGold Ring\nItem Level: 86")
+		-- Equal text can belong to different IDs and therefore different tiers or groups.
+		model.item.affixes=copyTable(model.item.affixes);model.item.affixes.IncreasedLife2=copyTable(model.item.affixes.IncreasedLife1)
+		model.byId.IncreasedLife2=model.item.affixes.IncreasedLife2
+		local before=sim.validateState(model,{rarity="RARE",catalyst=4,catalystQuality=20,affixes={{id="IncreasedLife1",range=0}}})
+		local after=copyTable(before);after.affixes[1].id="IncreasedLife2"
+		local old=sim.toItem(model,before).explicitModLines[1];local new=sim.toItem(model,after).explicitModLines[1]
+		assert.equal(StripEscapes(itemLib.formatModLine(old,false)),StripEscapes(itemLib.formatModLine(new,false)))
+		local diff=table.concat(require("Modules.CraftingInspection").diff(model,before,after),"\n")
+		assert.is_truthy(diff:find("identity",1,true),diff)
+	end)
 	it("compares catalyst-scaled implicit values when quality changes",function()
 		local model=sim.model("Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life")
 		local before=copyTable(model.initial);local after=copyTable(before);after.catalyst=4;after.catalystQuality=20

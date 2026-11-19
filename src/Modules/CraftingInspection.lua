@@ -86,7 +86,17 @@ end
 function M.diff(model,before,after)
 	local old,new=values(model,before),values(model,after);local result=implicitChanges(model,before,after)
 	local rendered=((before.catalystQuality or 0)>0 or (after.catalystQuality or 0)>0) and displayedExplicitChanges(model,before,after)
-	if rendered then for _,line in ipairs(rendered) do result[#result+1]=line end end
+	if rendered then
+		for _,line in ipairs(rendered) do result[#result+1]=line end
+		-- Identical displayed values can belong to different modifier IDs, with
+		-- different tiers or crafting groups. Do not call that no change.
+		local removed,added,sameText=false,false,false
+		for id,text in pairs(old) do if not new[id] then
+			removed=true;for newId,newText in pairs(new) do if not old[newId] and text==newText then sameText=true end end
+		end end
+		for id in pairs(new) do if not old[id] then added=true end end
+		if sameText or #rendered==0 and removed and added then result[#result+1]="Modifier identity changed; review its tier and crafting group." end
+	end
 	local oldItem,newItem=sim.context(model,before).item,sim.context(model,after).item
 	if oldItem.baseName~=newItem.baseName then result[#result+1]="Base: "..oldItem.baseName.." -> "..newItem.baseName end
 	if oldItem.itemLevel~=newItem.itemLevel then result[#result+1]="Item level: "..oldItem.itemLevel.." -> "..newItem.itemLevel end
