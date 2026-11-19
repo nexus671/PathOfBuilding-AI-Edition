@@ -227,4 +227,15 @@ describe("Copied loot-filter items",function()
 		assert.equal("unknown",parser.simulate(parser.parse("Hide\n SynthesisedItem True\nShow"),plain).status)
 	end)
 
+	it("does not mistake player-written notes for modifier markers",function()
+		local raw="Item Class: Helmets\nRarity: Rare\nFoe Visage\nIron Hat\n--------\nItem Level: 86"
+		for marker,condition in pairs({implicit="HasImplicitMod",enchant="AnyEnchantment",fractured="FracturedItem"}) do
+			local item=clipboard.parse(raw.."\n--------\nNote: keep this ("..marker..")")
+			assert.is_nil(item.HasImplicitMod);assert.is_nil(item.AnyEnchantment);assert.is_nil(item.FracturedItem)
+			assert.equal("unknown",parser.simulate(parser.parse("Hide\n "..condition.." True\nShow"),item).status)
+		end
+		local fractured=clipboard.parse(raw.."\n+100 to maximum Life (fractured)")
+		assert.is_true(fractured.FracturedItem)
+	end)
+
 end)

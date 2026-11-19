@@ -54,12 +54,15 @@ function M.parse(raw,area)
 		Identified=not markers.Unidentified and tier==nil,Corrupted=markers.Corrupted==true or markers["Twice Corrupted"]==true,
 		TwiceCorrupted=markers["Twice Corrupted"]==true,Mirrored=markers.Mirrored==true}
 	for line in raw:gmatch("[^\n]+") do
+		-- Stash notes are player-written text, not item modifier evidence.
+		local note=line:match("^Note:") ~= nil
 		-- A marked implicit proves its presence; an absent marker may mean the
 		-- clipboard text is incomplete and cannot prove the opposite.
-		if line:match("%S.+ %(implicit%)%s*$") then item.HasImplicitMod=true end
+		if not note and line:match("%S.+ %(implicit%)%s*$") then item.HasImplicitMod=true end
 		-- Visible enchant markers prove an enchantment exists; their absence in
 		-- a possibly incomplete copy does not prove that none exists.
-		if line:match("%S.+ %(enchant%)%s*$") then item.AnyEnchantment=true end
+		if not note and line:match("%S.+ %(enchant%)%s*$") then item.AnyEnchantment=true end
+		if not note and line:lower():find("(fractured)",1,true) then item.FracturedItem=true end
 		-- GGG's filter property counts the specific "Adds X Passive Skills"
 		-- cluster enchant, not jewel sockets or other added-passive lines.
 		if base=="Small Cluster Jewel" or base=="Medium Cluster Jewel" or base=="Large Cluster Jewel" then
@@ -161,7 +164,7 @@ function M.parse(raw,area)
 		end end
 		item.SocketColours=table.concat(colours);item.Sockets=#item.SocketColours;item.SocketGroup=table.concat(groups," ");item.LinkedSockets=linked
 	end
-	if markers["Fractured Item"] or raw:lower():find("(fractured)",1,true) then item.FracturedItem=true end
+	if markers["Fractured Item"] then item.FracturedItem=true end
 	if markers["Synthesised Item"] then item.SynthesisedItem=true end
 	return item
 end
