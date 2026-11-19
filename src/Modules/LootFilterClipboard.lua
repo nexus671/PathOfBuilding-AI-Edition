@@ -57,6 +57,19 @@ function M.parse(raw,area)
 		-- A marked implicit proves its presence; an absent marker may mean the
 		-- clipboard text is incomplete and cannot prove the opposite.
 		if line:match("%S.+ %(implicit%)%s*$") then item.HasImplicitMod=true end
+		-- Visible enchant markers prove an enchantment exists; their absence in
+		-- a possibly incomplete copy does not prove that none exists.
+		if line:match("%S.+ %(enchant%)%s*$") then item.AnyEnchantment=true end
+		-- GGG's filter property counts the specific "Adds X Passive Skills"
+		-- cluster enchant, not jewel sockets or other added-passive lines.
+		if base=="Small Cluster Jewel" or base=="Medium Cluster Jewel" or base=="Large Cluster Jewel" then
+			local count=line:match("^Adds (%d+) Passive Skills %(enchant%)%s*$")
+			if count then
+				count=tonumber(count);assert(count and count==count and count<=1e9,"Invalid clipboard passive count")
+				assert(item.EnchantmentPassiveNum==nil or item.EnchantmentPassiveNum==count,"Conflicting clipboard passive counts")
+				item.EnchantmentPassiveNum=count
+			end
+		end
 		-- Advanced item descriptions can identify some explicit modifier names.
 		-- Keep them separate from a complete list: the copy may be truncated.
 		if item.Identified and line:match("^%{%s*.-%}%s*$") then

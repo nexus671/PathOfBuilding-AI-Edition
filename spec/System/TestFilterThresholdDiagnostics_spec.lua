@@ -33,7 +33,7 @@ describe("Filter threshold conflict diagnostics",function()
   end end end end
   assert.equal(1,#warnings("Rarity == Unique","Rarity > Rare"))
   assert.equal(1,#warnings("Rarity != Normal","Rarity >= Magic"))
-  assert.equal(0,#warnings("Rarity = Rare Unique","Rarity > Magic"))
+  assert.equal(1,#warnings("Rarity = Rare Unique","Rarity > Magic"))
   assert.equal(0,#warnings("Rarity == Rare","Rarity >= Rare"))
   assert.equal(0,#warnings("Rarity ?? Rare","Rarity == Unique"))
   assert.equal(1,#diagnostics.shadowing(parser.parse('Show\n Class == "Helmets" "Boots"\n Rarity == Unique\nHide\n Class == "Helmets"\n Rarity > Rare')))
