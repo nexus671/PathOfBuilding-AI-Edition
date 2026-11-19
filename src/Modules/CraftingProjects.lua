@@ -220,8 +220,15 @@ function M.lines(project)
 	if project.simulatorExport and project.simulatorExport ~= "" then lines[#lines+1]="Simulator export attached for manual import into Craft of Exile; never executed by PoB." end
 	if project.nativeRecipe then
 		lines[#lines+1]="Native recipe: "..#project.nativeRecipe.steps.." steps. Open Native crafting to simulate it."
+		local edges=require("Modules.CraftingRoutes").edges(project.nativeRecipe)
+		local function destination(edge)
+			if edge.label=="Restart" then return "restart with starting item at step 1" end
+			if edge.label=="Stop" then return "stop" end
+			if edge.label=="Salvage" then return "salvage and stop" end
+			return edge.target>#project.nativeRecipe.steps and "finish" or "step "..edge.target
+		end
 		for index,step in ipairs(project.nativeRecipe.steps) do
-			lines[#lines+1]=string.format("%d. %s%s | attempts %d | success -> %d | failure -> %d",index,step.method,step.modId and " ("..step.modId..")" or step.essenceId and " ("..step.essenceId..")" or "",step.maxAttempts or 1,step.onSuccess or index+1,step.onFailure or index+1)
+			lines[#lines+1]=string.format("%d. %s%s | attempts %d | success -> %s | failure -> %s",index,step.method,step.modId and " ("..step.modId..")" or step.essenceId and " ("..step.essenceId..")" or "",step.maxAttempts or 1,destination(edges[index*2-1]),destination(edges[index*2]))
 		end
 	end
 	if project.notes and project.notes ~= "" then lines[#lines+1]=project.notes end
