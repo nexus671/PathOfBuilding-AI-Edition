@@ -41,7 +41,12 @@ function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
 	local function read()
 		draft.title=c.title.buf;draft.slot=c.slot:GetSelValue();draft.startingItem=c.starting.buf;draft.targetItem=c.target.buf;draft.notes=c.notes.buf;draft.preferredMethod=c.method:GetSelValueByKey("val")
 		draft.goals={};for line in c.goals.buf:gmatch("[^\r\n]+") do if line:match("%S") then draft.goals[#draft.goals+1]=line end end
-		if c.steps.buf~=original then draft.steps={};for line in c.steps.buf:gmatch("[^\r\n]+") do if line:match("%S") then draft.steps[#draft.steps+1]={action=line} end end end
+		if c.steps.buf~=original then
+			local previous=draft.steps;draft.steps={}
+			for line in c.steps.buf:gmatch("[^\r\n]+") do if line:match("%S") then
+				local old=previous[#draft.steps+1];draft.steps[#draft.steps+1]=old and old.action==line and copyTable(old) or {action=line}
+			end end
+		end
 		if c.cost.buf~="" then local amount=assert(tonumber(c.cost.buf),"Enter a numeric cost");local old=draft.estimate;draft.estimate={amount=amount,currency=c.currency.buf,source=c.priceSource.buf,quotedAt=old and old.amount==amount and old.currency==c.currency.buf and old.source==c.priceSource.buf and old.quotedAt or os.time()} else draft.estimate=nil end
 		return projects.validate(draft)
 	end

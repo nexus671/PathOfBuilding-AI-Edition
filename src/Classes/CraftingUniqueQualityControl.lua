@@ -57,13 +57,13 @@ function M.Open(build,project,layout,snapshot)
 		end
 		local steps={};local qualityCount=0
 		local function flush()
-			if qualityCount>0 then steps[#steps+1]={action="Use "..qualityCount.." "..info.resource..(qualityCount==1 and "" or "s"),done=false};qualityCount=0 end
+			if qualityCount>0 then steps[#steps+1]={action=unique.guideAction("quality",qualityCount,info.resource),uniqueCraft={method="quality",count=qualityCount},done=false};qualityCount=0 end
 		end
 		for i=first,#actions do
 			local action=actions[i]
 			if action=="quality" then qualityCount=qualityCount+1
 			elseif action=="beast_max_links" or action=="omen_connections" then
-				flush();steps[#steps+1]={action=action=="beast_max_links" and "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" or "Link existing sockets with an Omen of Connections and an Orb of Fusing",done=false}
+				flush();steps[#steps+1]={action=unique.guideAction(action,1,info.resource),uniqueCraft={method=action,count=1},done=false}
 			else return nil,"Loaded or older previews do not record every action." end
 		end
 		flush()

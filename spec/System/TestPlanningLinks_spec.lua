@@ -278,6 +278,26 @@ describe("Linked planning tools",function()
 		profile.rules=filters.generate(build,profile);names={};for _,rule in ipairs(profile.rules) do names[rule.title]=true end
 		assert.is_nil(names["Omen of Connections"]);assert.is_true(names["Orb of Scouring"])
 	end)
+	it("links saved unique guide currencies to filters without guessing edited text",function()
+		local project={id="unique-filter",title="Goldrim",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B",goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.apply:Click();control.omen:Click();control.guide:Click()
+		local saved=build.savers.CraftingProjects.projects[1];assert.equal("quality",saved.steps[1].uniqueCraft.method);assert.equal("omen_connections",saved.steps[2].uniqueCraft.method)
+		local xml=build:SaveDB("Unique filter");loadBuildFromXML(xml,"Unique filter");main.popups={}
+		saved=build.savers.CraftingProjects.projects[1];assert.equal("quality",saved.steps[1].uniqueCraft.method)
+		local profile=filters.profile("unique-filter-profile","Unique filter");profile.rules=filters.generate(build,profile)
+		local names={};for _,rule in ipairs(profile.rules) do names[rule.title]=true end
+		assert.is_true(names["Armourer's Scrap"]);assert.is_true(names["Omen of Connections"]);assert.is_true(names["Orb of Fusing"])
+		assert.equal("Show",filters.simulate(profile,{BaseType="Omen of Connections"}).action)
+		require("Classes.CraftingProjectWizard").Open(build,saved,nil,nil,nil,function() end,function() end)
+		local wizard=main.popups[1].controls;wizard.steps:SetText("Use a different quality method\n"..saved.steps[2].action)
+		wizard.wizardPage:SelByValue("Review");wizard.save:Click()
+		assert.is_nil(build.savers.CraftingProjects.projects[1].steps[1].uniqueCraft);assert.is_true(dependencies.report(build,profile).stale)
+		assert.equal("omen_connections",build.savers.CraftingProjects.projects[1].steps[2].uniqueCraft.method)
+		local regenerated=filters.generate(build,profile);names={};for _,rule in ipairs(regenerated) do names[rule.title]=true end
+		assert.is_nil(names["Armourer's Scrap"]);assert.is_true(names["Omen of Connections"])
+	end)
 	it("generates concrete fossil and corrupted socket recipe pickups",function()
 		local project=craft();project.nativeRecipe={steps={
 			{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingLife"}},

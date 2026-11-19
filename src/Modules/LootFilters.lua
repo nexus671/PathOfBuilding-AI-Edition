@@ -267,6 +267,25 @@ function M.generate(build,profile,checkpoint)
 		end
 		if checkpoint and needsInspection then checkpoint();sliceStart=os.clock() end
 	end end
+	-- Written unique previews carry typed actions. Do not infer currencies from
+	-- free text: an edited guide may no longer describe the original craft.
+	for _,project in ipairs(build.savers.CraftingProjects.projects) do
+		local tagged=false;for _,step in ipairs(project.steps or {}) do if step.uniqueCraft then tagged=true;break end end
+		local ok,info=false,nil
+		if tagged then local inspected,_,details=pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem);ok,info=inspected,details end
+		if ok then for _,step in ipairs(project.steps or {}) do
+			local craft=step.uniqueCraft
+			if craft and step.action==require("Modules.CraftingUniqueQuality").guideAction(craft.method,craft.count,info.resource) then
+				local items={}
+				if craft.method=="quality" then items={{key=info.resourceKey,name=info.resource}}
+				elseif craft.method=="omen_connections" then items={{key="Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks",name="Omen of Connections"},{key="Metadata/Items/Currency/CurrencyRerollSocketLinks",name="Orb of Fusing"}} end
+				for _,entry in ipairs(items) do if not removed[entry.name] then
+					add("craft-resource-"..project.id.."-"..require("sha1")(entry.key):sub(1,12),entry.name,{"BaseType == "..quote(entry.name)},"craft:"..project.id)
+				end end
+			end
+		end end
+		checkpointIfNeeded()
+	end
 	local aliases={chaos="Chaos Orb",divine="Divine Orb",divines="Divine Orb",alchemy="Orb of Alchemy",alteration="Orb of Alteration",exalt="Exalted Orb",annul="Orb of Annulment",fusing="Orb of Fusing",chromatic="Chromatic Orb",jeweller="Jeweller's Orb"}
 	for name in pairs(names) do aliases[name:lower()]=name;aliases[name:lower().."s"]=name end
 	-- Exact budget entries may name currencies outside the artwork catalogue.
