@@ -86,7 +86,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1731, f"Expected 1731 UI frames, found {len(paths)}"
+    assert len(paths) == 1737, f"Expected 1737 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         frame = json.loads((frames / f"{width}-map-clipboard-imported.json").read_text())
         assert any(c.get("asset") == "Assets/MapCrafting/Items/MapTier5.png" for c in frame["commands"]), "Current map item artwork is missing"

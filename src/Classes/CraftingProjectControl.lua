@@ -78,6 +78,15 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 	local height=layout and layout.height or math.min(720,main.screenH-60)
 	local width=layout and layout.width or 880
 	local function selected() return (assert(store.projects[controls.projects:GetSelValueByKey("val")],"Create or select a project first")) end
+	local cachedRaw,cachedReason
+	local function workbenchReason(project)
+		if project.startingItem~=cachedRaw then
+			cachedRaw=project.startingItem;cachedReason=nil
+			local ok,item=pcall(projects.item,cachedRaw)
+			if ok and (item.rarity=="UNIQUE" or item.rarity=="RELIC") then cachedReason="Unique and relic starting items can have written guides, but the workbench cannot simulate them yet." end
+		end
+		return cachedReason
+	end
 	local function reopen(id)
 		if layout then layout.selectedProject=id else main:ClosePopup() end
 		Panel.Open(build,nil,nil,layout,id)
@@ -87,6 +96,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 		if store.notice then table.insert(lines,1,store.notice) end
 		if store.warning then lines[#lines+1]=store.warning end
 		if #list > 0 then
+			local reason=workbenchReason(selected());if reason then lines[#lines+1]=reason end
 			for _,line in ipairs(projects.lines(selected())) do lines[#lines+1]=line end
 			for _,warning in ipairs(projects.handoff(selected().startingItem).warnings) do lines[#lines+1]=warning end
 		else lines[#lines+1]="Create a project from the selected item, or paste starting-item text and write a plan. AI can propose one through MCP." end
@@ -132,6 +142,8 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 		store:Upsert(project); refresh()
 	end)
 	for _,name in ipairs({"copy","coe","native","preview","inspect","attach","copyExport","done","undoStep"}) do controls[name].enabled=#list > 0 end
+	controls.native.enabled=function() return #list>0 and not workbenchReason(selected()) end
+	controls.native.tooltipText=function() if #list==0 then return "Select a project to open its workbench." end;return workbenchReason(selected()) or "Open the local crafting workbench." end
 	controls.close=button(748,height-48,116,"Close",function() main:ClosePopup() end)
 	controls.inventory=button(252,height-48,180,"Item inventory",function()
 		require("Classes.CraftingInventoryControl").Open(build,{resume=function(project) if layout then layout.openWorkbench(project) else require("Classes.CraftingSimulatorControl").Open(build,project) end end})
@@ -186,7 +198,9 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 		controls.coe.label="Craft of Exile"
 		local summary={"Create a project to start crafting.","Paste an item, set your targets, then open the workbench."}
 		if #list>0 then
-			local project=selected();summary={project.slot,"", "Targets"}
+			local project=selected();summary={project.slot}
+			local reason=workbenchReason(project);if reason then summary[#summary+1]="";summary[#summary+1]=reason end
+			summary[#summary+1]="";summary[#summary+1]="Targets"
 			for _,goal in ipairs(project.goals or {}) do summary[#summary+1]=goal end
 			summary[#summary+1]="";summary[#summary+1]=#project.steps.." planned steps"
 			local ok,model=pcall(require("Modules.CraftingSimulator").model,project.targetItem and project.targetItem:match("%S") and project.targetItem or project.startingItem)
@@ -195,7 +209,15 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 				refreshItem()
 				controls.projectItem.shown=function() return controls.libraryPage:GetSelValue()=="Item" end
 				controls.projectItemMods.shown=controls.projectItem.shown
-			else summary[#summary+1]="Edit the starting item to open a native preview." end
+			else
+				local raw=project.targetItem and project.targetItem:match("%S") and project.targetItem or project.startingItem
+				local readable,item=pcall(projects.item,raw)
+				if readable then
+					local cardWidth=math.min(540,width-336);local cardX=304+math.floor((width-320-cardWidth)/2)
+					local show=require("Classes.JourneyItemControl").new(controls,"projectItem",cardX,148,cardWidth,height-188,raw==project.startingItem and "STARTING ITEM" or "TARGET ITEM")
+					show(item);controls.projectItem.shown=function() return controls.libraryPage:GetSelValue()=="Item" end;controls.projectItemMods.shown=controls.projectItem.shown
+				else summary[#summary+1]="Edit the item text to open a preview." end
+			end
 		end
 		controls.summary=new("TextListControl"):TextListControl(ui.anchor,{16,148,260,math.min(240,height-276)},nil,ui.rows(summary,230))
 		controls.summary.shown=function() return #list>0 and controls.libraryPage:GetSelValue()=="Item" end

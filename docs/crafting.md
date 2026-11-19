@@ -4,6 +4,8 @@
 
 Open **AI builds → Crafting**, or choose **Items → Crafting plan**. Create a project with a starting item and explicit item level, then choose **Open workbench**.
 
+Projects can also store written guides and preview unique or relic items. Unique and relic starting items cannot yet be simulated in the workbench; use the project guide and target comparison while that support is unavailable. A unique target does not prevent opening a workbench for a supported starting item.
+
 The workbench tabs separate **Craft**, **Targets**, **Simulate**, and **Settings**. Crafting runs locally. AI builds, Atlas and crafting projects share a persistent planning workspace; switching pages preserves an Atlas draft. Equipped gear changes only through the desktop preview and review flow.
 
 The **Rules** button shows the crafting rules version. Click it to review supported methods and assumptions. Choosing a newer character or Atlas tree does not change the crafting rules.

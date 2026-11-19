@@ -13,6 +13,25 @@ describe("Crafting project removal and save-state ownership",function()
 		tasks.cancel();main.popups={};main.modes.BUILD=activeMode;GlobalCache=activeCache
 		bridge.prepared=nil;bridge.owner=nil;bridge.build=nil;bridge.previous=nil;bridge.undo={};bridge.history={};bridge.enabled=false
 	end)
+	it("previews unique project items and explains unsupported starting items",function()
+		local unique="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\n+40% to Fire Resistance"
+		local store=build.savers.CraftingProjects;local p=project("unique-target");p.targetItem=unique;store:Upsert(p)
+		local layout={width=1100,height=650,mount=function() end,openWorkbench=function() end}
+		local panel=require("Classes.CraftingProjectControl")
+		local c=panel.Open(build,nil,nil,layout,p.id)
+		assert.is_truthy(c.projectItem);assert.is_truthy(c.projectItemMods);assert.is_true(c.native:IsEnabled())
+		local rows={};for _,row in ipairs(c.projectItemMods.list) do rows[#rows+1]=StripEscapes(row[1] or "") end
+		assert.is_truthy(table.concat(rows," "):find("Fire Resistance",1,true))
+		local starting=project("unique-start");starting.startingItem=unique;store:Upsert(starting)
+		c=panel.Open(build,nil,nil,layout,starting.id);assert.is_truthy(c.projectItem);assert.is_false(c.native:IsEnabled())
+		assert.matches("written guides",c.native.tooltipText());assert.matches("cannot simulate",c.native.tooltipText())
+		rows={};for _,row in ipairs(c.summary.list) do rows[#rows+1]=StripEscapes(row[1] or "") end
+		assert.is_truthy(table.concat(rows," "):find("written guides",1,true))
+		c=panel.Open(build,nil,nil,nil,starting.id);assert.is_false(c.native:IsEnabled());assert.matches("cannot simulate",c.native.tooltipText())
+		main.popups={};local xml=build:SaveDB("Unique guides");loadBuildFromXML(xml,"Unique guides")
+		local saved=build.savers.CraftingProjects.projects;assert.equal(unique,saved[2].startingItem);assert.equal(unique,saved[1].targetItem)
+		c=panel.Open(build,nil,nil,nil,starting.id);assert.is_false(c.native:IsEnabled());assert.matches("written guides",c.native.tooltipText())
+	end)
 	it("resets draft and saved labels across reused builds and keeps project draft scopes separate",function()
 		uiState.draft(build,"workingCraft","a");uiState.draft(build,"workingCraft","b");uiState.kept(build,"workingCraft","a")
 		assert.is_false(uiState.hasDraft(build,"workingCraft","a"));assert.is_true(uiState.hasDraft(build,"workingCraft","b"))

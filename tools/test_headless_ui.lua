@@ -2004,6 +2004,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(saved.run.state.sockets[1].color=="A" and saved.inventory[1].state.sockets[1].color=="A")
 		build.viewMode="PLANNER";build.planningWorkspace:Show("crafting",{kind="workbench",project=saved});frame("crafting-stygian-abyss-socket")
 	end
+	do
+		local unique="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\n+40% to Fire Resistance"
+		local p={id="unique-target-project-ui",title="Unique target guide",slot="Helmet",startingItem="Rarity: NORMAL\nLeather Cap\nItem Level: 86",targetItem=unique,goals={"Obtain Goldrim"},steps={}}
+		local store=build.savers.CraftingProjects;store:Upsert(p);local w=build.planningWorkspace;w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
+		assert(w.controls.projectItem and #w.controls.projectItemMods.list>0 and w.controls.native:IsEnabled(),"Unique target preview or ordinary workbench unavailable");frame("crafting-unique-target-project")
+		p.id="unique-start-project-ui";p.title="Unique starting guide";p.startingItem=unique;p.targetItem=nil;store:Upsert(p);w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
+		assert(w.controls.projectItem and not w.controls.native:IsEnabled() and w.controls.native.tooltipText():find("written guides",1,true),"Unique workbench limitation not explained");frame("crafting-unique-start-project")
+	end
 	ui:restore()
 end
 -- These checks exercise the audit itself: raw uncoloured list text inherits the
