@@ -298,6 +298,16 @@ local heistExpeditionExamples={
 	{"Exotic Coinage","Stackable Currency"},{"Scrap Metal","Stackable Currency"},
 	{"Lesser Broken Circle Artifact","Stackable Currency"},{"Lesser Black Scythe Artifact","Stackable Currency"},
 }
+-- Deliberate test items for the campaign recipe policies, not a simulated set
+-- of actual drops. Socket layouts are explicit so their preview is decisive.
+local vendorExamples={
+	{"Iron Hat","Helmets","Normal",{Sockets=3,SocketColours="RGB",SocketGroup="R-G-B",LinkedSockets=3}},
+	{"Vaal Regalia","Body Armours","Normal",{Sockets=6,SocketColours="RRGGBB",SocketGroup="R R G G B B",LinkedSockets=1}},
+	{"Glorious Plate","Body Armours","Normal",{Sockets=6,SocketColours="RRRRGB",SocketGroup="R-R-R-R-G-B",LinkedSockets=6}},
+	{"Arcane Link","Skill Gems","Normal",{Quality=20}},
+	{"Iron Ring","Rings","Rare"},{"Amber Amulet","Amulets","Rare"},{"Leather Belt","Belts","Rare"},
+	{"Wool Gloves","Gloves","Rare"},{"Wool Shoes","Boots","Rare"},{"Driftwood Wand","Wands","Rare"},
+}
 -- Use exact names from NeverSink's pinned high-emphasis currency blocks. This
 -- is a snapshot of filter styling, not a price feed or a drop distribution.
 local presetHighlights
@@ -344,10 +354,11 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		end end
 		return list
 	end
-	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples})[kind] or examples
+	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
 		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end
 		applyBaseProperties(item)
+		for key,value in pairs(example[4] or {}) do item[key]=value end
 		-- Current ordinary map bases explicitly name their tier.
 		if kind=="Maps & threads" and item.Class=="Maps" then item.MapTier=tonumber(item.BaseType:match("^Map %(Tier (%d+)%)$")) end
 		if kind~="Currency" or item.Class=="Stackable Currency" then list[#list+1]=item end

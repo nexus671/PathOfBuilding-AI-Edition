@@ -35,6 +35,8 @@ The optional **Low-level unidentified rare set pieces** policy marks items below
 
 **Crafting materials** provides fossils, resonators, Eldritch currency and Lifeforce examples. **Heist & Expedition** includes contracts, blueprints, a logbook and vendor currencies. These are fixed examples, not predicted loot or prices. Resonator sockets remain unknown until configured.
 
+**Vendor recipes** compares explicit three-colour, six-socket and six-link equipment, a quality gem and unidentified rare pieces. Scene settings apply the same area and item levels to these examples; they do not track a completed vendor set or estimate its proceeds. The same scene is available to MCP filter tests.
+
 For influence tests, `HasInfluence Shaper Elder` matches either influence, while `HasInfluence == Shaper Elder` requires both, as in [GGG's filter examples](https://www.pathofexile.com/forum/view-thread/2687401). Exact matching with additional influences remains an uncertain preview until verified.
 
 When matching rules use `Continue`, a later numbered alert replaces the earlier numbered alert, including `None` to disable it. Custom sounds retain their separate precedence. If a single block specifies both numbered alert modes, the reference-sound preview reports that the effective sound is unverified.
