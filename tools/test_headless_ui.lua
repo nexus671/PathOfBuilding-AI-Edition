@@ -2101,6 +2101,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	uniqueProjectScenario()
 	do
 		main.popups={}
+		local atlas=require("Modules.AtlasPlanner");local plan=atlas.connect({id="atlas-totals-ui",title="Atlas totals",version="3.30.0c",budget=150,nodes={}}, {57123,2929})
+		local control=require("Classes.AtlasPlannerControl").Open(build,plan);control.stats:Click();ui:choose("category","Added modifiers")
+		local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(details," "):gsub("%s+"," "):find("not an effective map chance",1,true),"Atlas modifier totals did not explain their scope")
+		frame("atlas-added-modifiers");main.popups={}
+	end
+	do
+		main.popups={}
 		local project={id="unique-guide-review-ui",title="Review unique guide",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86",goals={},steps={{action="Acquire Goldrim"}}}
 		local store=build.savers.CraftingProjects;store:Upsert(project)
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
