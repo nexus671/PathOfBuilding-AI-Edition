@@ -98,7 +98,15 @@ function M.apply(raw)
 		output=raw..(raw:sub(-1)=="\n" and "" or newline).."Quality: "..(info.quality+1)
 	end
 	if count>0 then assert(withoutQuality(raw)==withoutQuality(output),"Unique item properties changed while applying quality") end
+	-- Game-copied tincture values already include the original quality. Keep
+	-- that baseline explicit before changing quality, so later calculations
+	-- do not treat the old displayed values as if they used the new quality.
+	if item.type=="Tincture" and item.tinctureValues=="Final" and item.tinctureImportedQuality~=nil and not ("\n"..raw):find("\nTincture Imported Quality:",1,true) then
+		local newline=raw:find("\r\n",1,true) and "\r\n" or "\n"
+		output=output..(output:sub(-1)=="\n" and "" or newline).."Tincture Imported Quality: "..item.tinctureImportedQuality
+	end
 	local checked,after=M.inspect(output)
+	if item.type=="Tincture" and item.tinctureValues=="Final" then assert(checked.tinctureValues=="Final" and checked.tinctureImportedQuality==item.tinctureImportedQuality,"Tincture quality baseline changed unexpectedly") end
 	assert(after.quality==info.quality+1 and checked.title==item.title and checked.baseName==item.baseName,"Unique item did not round-trip after applying quality")
 	return {itemText=output,beforeQuality=info.quality,quality=after.quality,resource=info.resource,resourceKey=info.resourceKey}
 end

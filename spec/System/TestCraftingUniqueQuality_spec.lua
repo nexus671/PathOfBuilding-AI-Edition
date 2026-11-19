@@ -15,6 +15,13 @@ describe("Unique item quality",function()
 			assert.has_error(function() quality.apply(raw.."\nCorrupted") end);assert.has_error(function() quality.apply(raw:gsub("Quality: 18","Quality: 20")) end)
 		end
 	end)
+	it("preserves the quality baseline of game-copied unique tinctures",function()
+		local raw="Item Class: Tinctures\nRarity: UNIQUE\nThe Battle Within\nOakbranch Tincture\nItem Level: 86\nQuality: 18\nGain 3 Rage on Melee Weapon Hit"
+		local before=quality.inspect(raw);assert.equal("Final",before.tinctureValues);assert.equal(18,before.tinctureImportedQuality)
+		local first=quality.apply(raw);local after=quality.inspect(first.itemText);assert.equal(19,after.quality);assert.equal(18,after.tinctureImportedQuality)
+		local second=quality.apply(first.itemText);local finished=quality.inspect(second.itemText);assert.equal(20,finished.quality);assert.equal(18,finished.tinctureImportedQuality)
+		local _,count=second.itemText:gsub("Tincture Imported Quality:","");assert.equal(1,count)
+	end)
 	it("creates a checkable recipe from the complete unique preview",function()
 		local project={id="unique-preview-recipe",title="Recipe",slot="Weapon 2",startingItem=shield,goals={},steps={}}
 		local store=build.savers.CraftingProjects;store:Upsert(project)
