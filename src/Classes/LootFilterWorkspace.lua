@@ -67,6 +67,10 @@ function M.Open(build,source,layout,controller)
 		if type(sample.Quality)=="number" and sample.Quality>0 then lines[#lines+1]="Quality: "..sample.Quality.."%" end
 		if sample.Rarity=="Rare" and sample.Identified==false then lines[#lines+1]="Unidentified rare" end
 		lines[#lines+1]=deciding;for index,reason in ipairs(evaluated and evaluated.reasons or {}) do if not firstError or index>1 then lines[#lines+1]=reason end end
+		if evaluated and evaluated.status=="matched" then
+			local sound=require("Modules.LootFilterAudio").dropSound(evaluated.styles or {})
+			if sound then lines[#lines+1]=sound end
+		end
 		if evaluated and evaluated.missingProperties and evaluated.missingProperties[1] then lines[#lines+1]="Configure opens "..evaluated.missingProperties[1].."." end
 		if copied then
 			for index=2,#copied do lines[#lines+1]="Copied: "..copied[index] end

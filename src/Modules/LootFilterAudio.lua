@@ -22,6 +22,20 @@ function M.alert(styles)
 	if tonumber(values[2])==0 then return nil,"The numbered alert volume is zero." end
 	return id
 end
+-- Describe the two independent drop-sound flags without assuming optional
+-- custom files are present or interpreting undocumented action arguments.
+function M.dropSound(styles)
+	local disable,enable=styles.DisableDropSound,styles.EnableDropSound
+	local conditional,restore=styles.DisableDropSoundIfAlertSound,styles.EnableDropSoundIfAlertSound
+	if not (disable or enable or conditional or restore) then return nil end
+	if disable and enable or conditional and restore then return "Drop sound: conflicting settings in one block." end
+	for _,value in ipairs({disable or enable or {},conditional or restore or {}}) do
+		if #value>0 then return "Drop sound: action arguments need in-game verification." end
+	end
+	if disable then return "Drop sound: disabled." end
+	if conditional then return "Drop sound: disabled when an alert is specified; optional files may be missing." end
+	return "Drop sound: enabled."
+end
 function M.play(styles)
 	local id,why=M.alert(styles);if not id then return false,why end
 	local ffi=require("ffi");if ffi.os~="Windows" then return false,"Audio preview is available on Windows. Export retains the game's alert ID." end

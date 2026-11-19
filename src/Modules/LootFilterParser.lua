@@ -16,6 +16,7 @@ M.booleans={AlwaysShow=true,Identified=true,Corrupted=true,TwiceCorrupted=true,M
 M.strings={Class=true,BaseType=true,HasInfluence=true,HasExplicitMod=true,HasEnchantment=true,EnchantmentPassiveNode=true,Prophecy=true,ArchnemesisMod=true,GemQualityType=true}
 local rarity={Normal=0,Magic=1,Rare=2,Unique=3}
 local influences={shaper=true,elder=true,crusader=true,hunter=true,redeemer=true,warlord=true,none=true}
+local dropSoundPairs={{"DisableDropSound","EnableDropSound"},{"DisableDropSoundIfAlertSound","EnableDropSoundIfAlertSound"}}
 -- Some filters put a second operator after a modifier count. Preserve it as
 -- syntax, not a quoted modifier name; its combined semantics need verification.
 function M.countExactMarker(condition,index)
@@ -323,6 +324,14 @@ function M.simulate(parsed,item)
 			-- matching block replaces its earlier numbered alert, including None.
 			if rule.styles.PlayAlertSound or rule.styles.PlayAlertSoundPositional then
 				result.styles.PlayAlertSound=nil;result.styles.PlayAlertSoundPositional=nil
+			end
+			-- These pairs each control one independent drop-sound flag.
+			-- Keep both commands when they occur in one block: their order is
+			-- not represented in styles, so the preview must not guess.
+			for _,pair in ipairs(dropSoundPairs) do
+				if rule.styles[pair[1]] or rule.styles[pair[2]] then
+					result.styles[pair[1]]=nil;result.styles[pair[2]]=nil
+				end
 			end
 			for key,value in pairs(rule.styles) do result.styles[key]=value end
 			if not rule.continue then

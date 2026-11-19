@@ -268,6 +268,13 @@ describe("Visual filter catalogue",function()
 		local lines={};for _,row in ipairs(mounted.selection.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
 		assert.is_truthy(table.concat(lines," "):find("Configure opens BaseArmour",1,true));mounted.sampleEdit:Click();assert.equal("BaseArmour",focus)
 	end)
+	it("explains the effective drop sound in the item preview",function()
+		local profile=filters.profile("drop-sound","Drop sound");profile.template="Show\n DisableDropSound\n Continue\nShow\n EnableDropSound\n DisableDropSoundIfAlertSound"
+		local mounted;local layout={width=1280,height=720,navigate=function() end,mount=function(_,_,_,controls) mounted=controls end}
+		require("Classes.LootFilterWorkspace").Open(build,{data={schemaVersion=1,activeId=profile.id,profiles={profile}},selected=profile.id,page="Simulate",sample={BaseType="Iron Hat"}},layout,{})
+		local lines={};for _,row in ipairs(mounted.selection.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		assert.is_truthy(table.concat(lines," "):find("Drop sound: disabled when an alert",1,true))
+	end)
 	it("shows the first filter error and its compiled line on selected and scene drops",function()
 		local profile=filters.profile("invalid-preview","Invalid preview");profile.template="Show\n SetFontSize 99\n SetTextColor 999 0 0"
 		local mounted,opened,focused;local layout={width=1280,height=720,navigate=function() end,mount=function(_,_,_,controls) mounted=controls end}
