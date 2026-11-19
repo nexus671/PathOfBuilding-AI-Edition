@@ -45,6 +45,22 @@
   end
   assert.is_true(hosts["Iron Hat"]);assert.is_true(hosts["Cone Helmet"])
  end)
+ it("retains legacy Light Radius rolls through either recombination base",function()
+  local model=sim.model(raw);local donorModel=sim.model("Rarity: NORMAL\nCone Helmet\nItem Level: 86")
+  local state=copyTable(donorModel.initial);state.rarity="MAGIC";state.affixes={{id="LightRadiusAndAccuracy3",range=0.5,legacyLightRadius=true}}
+  local donor=sim.toItem(donorModel,state).raw;assert.is_true(sim.model(donor).initial.affixes[1].legacyLightRadius)
+  local hosts={}
+  for seed=1,500 do
+   local ok,out=pcall(sim.perform,raw,{method="recombine",donorItem=donor},seed)
+   if ok then for _,entry in ipairs(out.state.affixes) do if entry.legacyLightRadius then
+    assert.is_truthy(entry.legacySource);local checked=sim.validateState(model,out.state);hosts[sim.toItem(model,checked).baseName]=true
+    local saved=require("Modules.CraftingCheckpoint").validate(raw,require("Modules.CraftingInventory").run(checked)).state
+    assert.is_truthy(sim.validateState(model,saved))
+   end end end
+   if hosts["Iron Hat"] and hosts["Cone Helmet"] then break end
+  end
+  assert.is_true(hosts["Iron Hat"]);assert.is_true(hosts["Cone Helmet"])
+ end)
  it("preserves legacy influenced rolls transferred by an Awakener Orb",function()
   local source="Rarity: NORMAL\nGlorious Plate\nItem Level: 86";local model=sim.model(source)
   local blank=copyTable(model.initial);blank.rarity="RARE"

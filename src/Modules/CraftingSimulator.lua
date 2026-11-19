@@ -800,6 +800,9 @@ function M.rollOutsideTier(entry)
 	for _,value in ipairs(ranges) do if type(value)=="number" and (value<0 or value>1) then return true end end
 	return false
 end
+function M.requiresRollSource(entry)
+	return entry.legacyLightRadius==true or M.rollOutsideTier(entry)
+end
 local function sameAffixRoll(left,right)
 	if left.id~=right.id or not not left.legacyLightRadius~=not not right.legacyLightRadius or not not left.description330~=not not right.description330 then return false end
 	local a=type(left.range)=="table" and left.range or {left.range or 0.5}
@@ -811,7 +814,7 @@ end
 function M.validateLegacyRolls(model,state)
 	for _,entry in ipairs(state.affixes or {}) do
 		assert(entry.legacySource==nil or type(entry.legacySource)=="string" and #entry.legacySource<=24000,"Invalid legacy roll source")
-		if M.rollOutsideTier(entry) then
+		if M.requiresRollSource(entry) then
 			local found=false
 			for _,original in ipairs(model.initial.affixes or {}) do if sameAffixRoll(entry,original) then found=true;break end end
 			if not found and entry.legacySource then
@@ -827,7 +830,7 @@ function M.validateLegacyRolls(model,state)
 				assert(model.item.type==source.item.type,"Legacy roll source must use the same item class")
 				for _,original in ipairs(source.initial.affixes or {}) do if sameAffixRoll(entry,original) then found=true;break end end
 			end
-			assert(found,"A roll outside its current tier must be retained from a matching source item")
+			assert(found,"A legacy or out-of-range roll must be retained from a matching source item")
 		end
 	end
 	if state.imprint~=nil then
