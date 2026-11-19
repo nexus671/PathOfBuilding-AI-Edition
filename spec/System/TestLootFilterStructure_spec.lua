@@ -26,6 +26,12 @@ describe("Compiled filter structure",function()
 		assert.is_truthy(reason.shadowedBy);assert.matches("every item matched",reason.warning)
 		local blocker=structure.blockingEntry(view,conflicts[1]);assert.is_not_nil(blocker);assert.equal(reason.shadowedBy,blocker.line);assert.matches("ItemLevel >= 70",blocker.text,1,true);assert.is_nil(structure.blockingEntry(view,blocker))
 	end)
+	it("links an exact item-level conflict to the covering range",function()
+		local p=filters.profile("range","Range");p.template='Show\n Class == "Helmets"\n ItemLevel >= 60\n ItemLevel <= 80\nHide\n Class == "Helmets"\n ItemLevel == 75'
+		local view=structure.outline(p);local conflicts=structure.filter(view,"",nil,nil,"Priority conflicts")
+		assert.equal(1,#conflicts);local reason=structure.diagnostics(view,conflicts[1])[1]
+		local blocker=structure.blockingEntry(view,conflicts[1]);assert.equal(reason.shadowedBy,blocker.line);assert.matches("ItemLevel <= 80",blocker.text,1,true)
+	end)
 	it("opens a blocking rule and restores the prior filtered view",function()
 		main.popups={};local p=filters.profile("navigation","Navigation");local lines={}
 		for index=1,35 do lines[#lines+1]='Show\n BaseType == "Example '..index..'"' end

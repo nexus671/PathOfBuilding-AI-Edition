@@ -50,8 +50,42 @@ local function containsAll(earlier,later)
  for value in pairs(later) do if not earlier[value] then return false end end
  return true
 end
+-- Compare the intersection of bounds on one numeric property. This also
+-- recognizes a range covering an exact value or a narrower two-sided range.
+local function intervals(rule)
+ local byKeyword={}
+ for _,condition in ipairs(rule.conditions) do
+  if condition.keyword~="Rarity" then
+   local value=bound(condition)
+   local exact=(condition.operator=="=" or condition.operator=="==") and number(condition)
+   if exact and (exact~=exact or math.abs(exact)==math.huge) then exact=nil end
+   if value or exact then
+    local entry=byKeyword[condition.keyword] or {conditions={},lower=nil,upper=nil};byKeyword[condition.keyword]=entry
+    entry.conditions[condition]=true
+    local function add(b)
+     local old=entry[b.direction]
+     if not old or covers(old,b) then entry[b.direction]=b end
+    end
+    if value then add(value) else add({direction="lower",value=exact,inclusive=true});add({direction="upper",value=exact,inclusive=true}) end
+   end
+  end
+ end
+ local result={}
+ for keyword,entry in pairs(byKeyword) do
+  local lower,upper=entry.lower,entry.upper
+  if not lower or not upper or lower.value<upper.value or lower.value==upper.value and lower.inclusive and upper.inclusive then
+   local other={};for _,condition in ipairs(rule.conditions) do if not entry.conditions[condition] then other[#other+1]=encoded(condition) end end
+   table.sort(other);local key=field(keyword);for _,value in ipairs(other) do key=key..field(value) end
+   entry.group=key;result[#result+1]=entry
+  end
+ end
+ return result
+end
+local function intervalCovers(earlier,later)
+ return (not earlier.lower or later.lower and covers(earlier.lower,later.lower)) and (not earlier.upper or later.upper and covers(earlier.upper,later.upper))
+end
 function M.shadowing(parsed)
- local seen,thresholds,sets,combined,paired,diagnostics={},{},{},{},{},{};local rarityIndex={};local terminal
+ local seen,thresholds,sets,combined,paired,diagnostics={},{},{},{},{},{};local rarityIndex,intervalIndex={},{};local terminal
  for _,rule in ipairs(parsed.rules) do
   local conditions,variants,pairsToIndex,rarityVariants={},{},{},{}
   if not terminal then for _,condition in ipairs(rule.conditions) do conditions[#conditions+1]=encoded(condition) end end
@@ -72,6 +106,12 @@ function M.shadowing(parsed)
     end
    end end
   end
+  local intervalVariants=not prior and #conditions<=16 and intervals(rule) or {}
+  if not prior then for _,entry in ipairs(intervalVariants) do
+   for _,candidate in ipairs(intervalIndex[entry.group] or {}) do
+    if intervalCovers(candidate,entry) and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
+   end
+  end end
   if not prior and #conditions<=16 then
    -- Match the finite rarity set on its own, with a class/base list, or with
    -- one numeric bound. Cap each bucket just like the other conflict indexes.
@@ -204,6 +244,10 @@ function M.shadowing(parsed)
    diagnostics[#diagnostics+1]={line=rule.line,shadowedBy=prior.line,warning="This block cannot be reached: a preceding terminating block at line "..prior.line.." "..explanation}
   elseif not rule.continue then
    seen[key]=rule;if #conditions==0 then terminal=rule end
+   for _,entry in ipairs(intervalVariants) do
+    local candidates=intervalIndex[entry.group] or {};intervalIndex[entry.group]=candidates
+    if #candidates<32 then entry.rule=rule;candidates[#candidates+1]=entry end
+   end
    for _,entry in ipairs(rarityVariants) do
     local candidates=rarityIndex[entry.group] or {};rarityIndex[entry.group]=candidates
     if #candidates<32 then entry.rule=rule;candidates[#candidates+1]=entry end

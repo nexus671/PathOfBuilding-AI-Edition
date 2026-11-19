@@ -153,4 +153,28 @@ describe("Filter threshold conflict diagnostics",function()
   assert.equal(0,#diagnostics.shadowing(parser.parse(text:gsub('Hide',' Continue\nHide'))))
   assert.equal(0,#diagnostics.shadowing(parser.parse(text:gsub('AreaLevel >= 80','AreaLevel >= 60'))))
  end)
+ it("recognizes numeric ranges that cover exact values and narrower ranges",function()
+  local function check(first,second)
+   return diagnostics.shadowing(parser.parse('Show\n Class == "Helmets"\n '..first..'\nHide\n Class == "Helmets"\n '..second))
+  end
+  assert.equal(1,#check('ItemLevel >= 60\n ItemLevel <= 80','ItemLevel == 75'))
+  assert.equal(1,#check('ItemLevel > 60\n ItemLevel < 80','ItemLevel >= 61\n ItemLevel <= 79'))
+  assert.equal(1,#check('ItemLevel >= 60','ItemLevel >= 70\n ItemLevel <= 80'))
+  assert.equal(0,#check('ItemLevel > 60\n ItemLevel <= 80','ItemLevel == 60'))
+  assert.equal(0,#check('ItemLevel >= 60\n ItemLevel < 80','ItemLevel <= 80\n ItemLevel >= 70'))
+  assert.equal(0,#check('ItemLevel >= 60\n ItemLevel <= 80','ItemLevel >= 70'))
+  assert.equal(0,#check('ItemLevel >= 80\n ItemLevel <= 60','ItemLevel == 70'))
+  assert.equal(0,#check('ItemLevel >= 60\n ItemLevel <= 80','ItemLevel != 75'))
+  assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n Class == "Helmets"\n ItemLevel >= 60\n ItemLevel <= 80\nHide\n Class == "Boots"\n ItemLevel == 75')))
+  local text='Show\n ItemLevel >= 60\n ItemLevel <= 80\n Continue\nHide\n ItemLevel == 75'
+  assert.equal(0,#diagnostics.shadowing(parser.parse(text)))
+  local expressions={'ItemLevel > 2','ItemLevel >= 2','ItemLevel < 4','ItemLevel <= 4','ItemLevel == 3','ItemLevel >= 2\n ItemLevel <= 4','ItemLevel > 2\n ItemLevel < 4'}
+  for _,a in ipairs(expressions) do for _,b in ipairs(expressions) do
+   local parsed=parser.parse('Show\n '..a..'\nHide\n '..b)
+   if #diagnostics.shadowing(parsed)>0 then for _,level in ipairs({0,2,2.5,3,3.5,4,5}) do
+    local function matches(rule) for _,condition in ipairs(rule.conditions) do if not parser.condition(condition,{ItemLevel=level}) then return false end end;return true end
+    assert.is_false(matches(parsed.rules[2]) and not matches(parsed.rules[1]),a..' / '..b)
+   end end
+  end end
+ end)
 end)
