@@ -175,7 +175,8 @@ function C.extend(M,A,api)
 		-- The Gilded Fossil modifier is additional to the item's other
 		-- implicits; add it after reconstructed Eldritch or corruption lines.
 		if state.vendorImplicit then
-			for _,line in ipairs(assert(model.byId[state.vendorImplicit],"Unknown vendor implicit")) do
+			local lines=state.vendorImplicit=="unknown" and model.importedVendorImplicit and {"Item sells for much more to vendors"} or assert(model.byId[state.vendorImplicit],"Unknown vendor implicit")
+			for _,line in ipairs(lines) do
 				for i=#item.implicitModLines,1,-1 do if item.implicitModLines[i].line==line then table.remove(item.implicitModLines,i) end end
 				item.implicitModLines[#item.implicitModLines+1]={line=line}
 			end
@@ -183,6 +184,10 @@ function C.extend(M,A,api)
 	end
 	function M.validateState(model,state)
 		assert(type(state)=="table","Invalid crafting state")
+		if state.vendorImplicit~=nil then
+			local mod=model.byId[state.vendorImplicit]
+			assert(state.vendorImplicit=="unknown" and model.importedVendorImplicit or mod and mod.type=="DelveImplicit" and mod[1]=="Item sells for much more to vendors","Invalid vendor implicit")
+		end
 		-- Missing markers inherit the starting text; explicit false is a manual override.
 		if state.corrupted==nil and model.initial.corrupted then state=copyTable(state);state.corrupted=true end
 		if state.twiceCorrupted==nil and state.corrupted and model.initial.twiceCorrupted then state=copyTable(state);state.twiceCorrupted=true end

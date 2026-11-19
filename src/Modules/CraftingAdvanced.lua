@@ -249,6 +249,11 @@ function A.extend(M,api)
 	function M.model(raw)
 		M.dataPatch=A.data().patch;M.modifierPatch=A.data().modifierPatch
 		local model=originalModel(raw)
+		-- All Gilded outcomes have the same visible line; copied item text
+		-- proves the implicit exists but does not reveal its vendor outcome.
+		for _,line in ipairs(model.item.implicitModLines) do
+			if StripEscapes(line.line)=="Item sells for much more to vendors" then model.importedVendorImplicit=true;model.initial.vendorImplicit="unknown";break end
+		end
 		if not model.item.corrupted and not model.item.synthesised and #model.item.implicitModLines == 0 and type(model.item.base.implicit) == "string" then
 			for line in model.item.base.implicit:gmatch("[^\n]+") do local i=#model.item.implicitModLines+1;model.item.implicitModLines[i]={line=line,range=0.5,modTags=copyTable(model.item.base.implicitModTypes and model.item.base.implicitModTypes[i] or {})} end
 		end
