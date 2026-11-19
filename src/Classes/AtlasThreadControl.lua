@@ -12,16 +12,23 @@ function M.Open(options)
 	c.level=new("EditControl"):EditControl(ui.anchor,{16,106,140,28},"83",nil,"^%d",3)
 	ui.label(c,"threadsLabel",180,82,"Threads per type",15)
 	c.threads=new("EditControl"):EditControl(ui.anchor,{180,106,140,28},tostring(options.threads or 2),nil,"^%d",3)
+	ui.label(c,"spentLabel",344,82,"Abyss Threads spent (optional)",15)
+	c.spent=new("EditControl"):EditControl(ui.anchor,{344,106,140,28},"",nil,"^%d",3)
+	if options.mechanic and options.mechanic~="Abyss" then c.spentLabel.shown=false;c.spent.shown=false end
 	c.status=ui.label(c,"status",16,146,"",14)
 	c.results=new("TextListControl"):TextListControl(ui.anchor,{16,176,w-32,h-250},nil,{})
 	local function refresh()
-		local ok,result=pcall(strategy.threadRestrictions,tonumber(c.level.buf),tonumber(c.threads.buf))
+		local ok,result=pcall(strategy.threadRestrictions,tonumber(c.level.buf),tonumber(c.threads.buf),c.spent.buf~="" and tonumber(c.spent.buf) or nil)
 		if not ok then c.status.label="^xE9BE7B"..ui.fit(ui.errorText(result),w-32,14);c.results.list={};return end
 		local lines={"Guaranteed modifiers: "..result.guaranteedModifiers.." | 3.30.0c"}
 		if result.milestones.threshold then
 			lines[#lines+1]="Published bonus at "..result.milestones.threshold.." Threads (stacking not assumed):"
 			for _,entry in ipairs(result.milestones.mechanics) do if not options.mechanic or entry.mechanic==options.mechanic then lines[#lines+1]=entry.mechanic..": "..entry.current end end
 		else lines[#lines+1]="No published 3/6/8 Thread milestone reached." end
+		if not options.mechanic or options.mechanic=="Abyss" then
+			lines[#lines+1]=result.abyssalConsort.restricted and "Abyssal Consorts: restricted with one spent Thread." or "Abyssal Consorts: other eligibility is not evaluated."
+			lines[#lines+1]="    Spending exactly one Abyss Thread prevents Consorts; free Threads are separate."
+		end
 		lines[#lines+1]="Modifier restrictions:"
 		local shown=0;for _,row in ipairs(result.modifiers) do if not options.mechanic or row.mechanic==options.mechanic then
 			shown=shown+1
@@ -32,7 +39,7 @@ function M.Open(options)
 		c.status.label="^7Conditions met does not guarantee an offer."
 		c.results.list=ui.rows(lines,w-56,15)
 	end
-	c.level.changeFunc=refresh;c.threads.changeFunc=refresh
+	c.level.changeFunc=refresh;c.threads.changeFunc=refresh;c.spent.changeFunc=refresh
 	c.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-48,140,28},"Close",function() main:ClosePopup() end))
 	ui.style(c,{keep=true});for _,control in pairs(c) do control.layoutAudit="atlas-thread-restrictions" end
 	refresh();main:OpenPopup(w,h,"Thread restrictions",c,nil,"level","close")

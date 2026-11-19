@@ -9,6 +9,14 @@ describe("Current Thread modifier restrictions",function()
 		local result=strategy.threadRestrictions(80,2);assert.equal("https://www.pathofexile.com/forum/view-thread/4015683",result.source);assert.matches("Other requirements",result.note)
 		assert.has_error(function() strategy.threadRestrictions(80,1.5) end);assert.has_error(function() strategy.threadRestrictions(0,2) end)
 	end)
+	it("distinguishes spent Abyss Threads from the applied total",function()
+		local unknown=strategy.threadRestrictions(83,8).abyssalConsort
+		assert.is_nil(unknown.spentThreads);assert.is_nil(unknown.restricted)
+		local restricted=strategy.threadRestrictions(83,8,1).abyssalConsort
+		assert.equal(1,restricted.spentThreads);assert.is_true(restricted.restricted);assert.matches("free or bonus",restricted.note)
+		for _,spent in ipairs({0,2,8}) do assert.is_nil(strategy.threadRestrictions(83,8,spent).abyssalConsort.restricted) end
+		assert.has_error(function() strategy.threadRestrictions(83,8,-1) end);assert.has_error(function() strategy.threadRestrictions(83,8,1.5) end)
+	end)
 	it("reports the 3.30.0c modifier guarantees and published milestones",function()
 		for _,case in ipairs({{0,0,nil},{1,1,nil},{2,1,nil},{3,1,3},{4,2,3},{5,2,3},{6,2,6},{7,2,6},{8,3,8},{9,3,8}}) do
 			local result=strategy.threadRestrictions(83,case[1]);assert.equal(case[2],result.guaranteedModifiers);assert.equal(case[3],result.milestones.threshold)
@@ -32,6 +40,8 @@ describe("Current Thread modifier restrictions",function()
 		assert.matches("Conditions met",text);assert.matches("Restricted",text)
 		c.threads:SetText("8",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
 		assert.matches("Guaranteed modifiers: 3",text);assert.matches("Abyss: 3 additional pits",text);assert.matches("stacking not assumed",text)
+		c.spent:SetText("1",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
+		assert.matches("Consorts: restricted",text);assert.matches("free Threads are separate",text)
 		main.popups={}
 	end)
 end)

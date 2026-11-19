@@ -28,15 +28,17 @@ function M.threadRestrictionReference()
 	local rows=copyTable(threadRestrictions);for _,row in ipairs(rows) do row.minimumThreads=2 end
 	return {modifiers=rows,patch="3.30.0b Hotfix 3",source="https://www.pathofexile.com/forum/view-thread/4015683",note="These seven published restrictions are necessary conditions only. Other requirements, offer availability and probabilities are not modeled."}
 end
-function M.threadRestrictions(areaLevel,threads)
+function M.threadRestrictions(areaLevel,threads,spentAbyssThreads)
 	assert(type(areaLevel)=="number" and areaLevel==math.floor(areaLevel) and areaLevel>=1 and areaLevel<=100,"Use an area level from 1 to 100")
 	assert(type(threads)=="number" and threads==math.floor(threads) and threads>=0 and threads<=100,"Use a non-negative whole Thread count up to 100")
+	assert(spentAbyssThreads==nil or type(spentAbyssThreads)=="number" and spentAbyssThreads==math.floor(spentAbyssThreads) and spentAbyssThreads>=0 and spentAbyssThreads<=100,"Use a non-negative whole Abyss Thread spend up to 100")
 	local result=M.threadRestrictionReference();result.areaLevel=areaLevel;result.threads=threads
 	for _,row in ipairs(result.modifiers) do row.restrictionsMet=threads>=row.minimumThreads and areaLevel>=row.areaLevel end
 	local tier=threads>=8 and 3 or threads>=6 and 2 or threads>=3 and 1 or 0
 	result.guaranteedModifiers=threads==0 and 0 or threads>=8 and 3 or threads>=4 and 2 or 1
 	result.milestones={patch="3.30.0c",source="https://www.pathofexile.com/forum/view-thread/4017172",thresholds={3,6,8},threshold=tier>0 and ({3,6,8})[tier] or nil,mechanics={},note="Use the applied count for one Thread type, including free or bonus Threads. Published values are shown at the reached threshold; stacking between thresholds is not assumed."}
 	for _,entry in ipairs(threadMilestones) do result.milestones.mechanics[#result.milestones.mechanics+1]={mechanic=entry.mechanic,values=copyTable(entry.values),current=tier>0 and entry.values[tier] or nil} end
+	result.abyssalConsort={spentThreads=spentAbyssThreads,restricted=spentAbyssThreads==1 and true or nil,patch="3.30.0c",source="https://www.pathofexile.com/forum/view-thread/4017172",note="Abyssal Consorts cannot appear when only one Abyss Thread is spent. This is the spent count, separate from free or bonus Threads. Other counts and conditions are not evaluated."}
 	return result
 end
 local aliases={Maps={"map","kirac"},Bosses={"boss","shaper","elder","maven","eater","exarch"},Strongboxes={"strongbox"},Shrines={"shrine"},Heist={"heist","smuggler","blueprint"},Bestiary={"beast","einhar"},Incursion={"incursion","alva"},Betrayal={"syndicate","jun","veiled item"},Delve={"sulphite","niko"},Harvest={"harvest","sacred grove","sacred flora","sacred fauna","sacred specimen","lifeforce"},Wildwood={"viridian wildwood","wildwood chance"},Sentinels={"sentinel"},Torment={"tormented spirit","tormented procurator"},["Rogue Exiles"]={"rogue exile"},Mercenaries={"mercenary","mercenaries","trarthan"},["Ore Deposits"]={"ore deposit","smelted bar","marking ore","kalguuran scarab"},Threads={"thread"}}

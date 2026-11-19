@@ -845,8 +845,9 @@ async function main(){
     const current=await queued('search_atlas_nodes',{baseRevision:context.revision,version,query:'Celestial Presence',limit:10},'atlas');
     assert.ok(current.atlas.matches.some(node=>node.id===27261 && node.variantEffects.length===3));
   }
-  const milestones=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:83,threads:8},'atlas');
+  const milestones=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:83,threads:8,spentAbyssThreads:1},'atlas');
   assert.equal(milestones.atlas.guaranteedModifiers,3);assert.equal(milestones.atlas.milestones.threshold,8);
+  assert.equal(milestones.atlas.abyssalConsort.spentThreads,1);assert.equal(milestones.atlas.abyssalConsort.restricted,true);
   const regionPreview=await queued('preview_shaped_region_run',{baseRevision:context.revision,plan:regionsPlan,map:'Beach Map',completed:['Blight']},'atlas');
   assert.deepEqual(regionPreview.atlas.plan.shapedRegions[0].maps,[{name:'Strand Map',freeThreads:4}]);assert.deepEqual(regionPreview.atlas.plan.shapedRegions[1].maps,[{name:'Dunes Map',freeThreads:1}]);
   assert.equal((await call('get_build_context')).context.revision,context.revision);
