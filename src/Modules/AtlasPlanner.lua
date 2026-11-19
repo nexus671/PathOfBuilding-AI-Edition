@@ -13,10 +13,8 @@ function M.versionLabel(version)
 end
 function M.defaultVersion(treeVersion)
 	treeVersion=treeVersion or ""
-	if treeVersion:find("ruthless",1,true) then
-		return treeVersion:match("3_30") and "3.30.0c-ruthless" or treeVersion:match("3_27") and "3.27.0-ruthless" or treeVersion:match("3_28") and "3.28.0j-ruthless" or "3.29.3-ruthless"
-	end
-	return treeVersion:match("3_30") and "3.30.0c" or treeVersion:match("3_27") and "3.27.0" or treeVersion:match("3_28") and "3.28.0j" or "3.29.3"
+	local version=treeVersion:match("3_27") and "3.27.0" or treeVersion:match("3_28") and "3.28.0j" or treeVersion:match("3_29") and "3.29.3" or "3.30.0c"
+	return version..(treeVersion:find("ruthless",1,true) and "-ruthless" or "")
 end
 local function integer(value,low,high,label)
 	assert(type(value) == "number" and value == math.floor(value) and value >= low and value <= high,"Invalid "..label)
