@@ -36,6 +36,8 @@ function M.threadRestrictions(areaLevel,threads,spentAbyssThreads)
 	for _,row in ipairs(result.modifiers) do row.restrictionsMet=threads>=row.minimumThreads and areaLevel>=row.areaLevel end
 	local tier=threads>=8 and 3 or threads>=6 and 2 or threads>=3 and 1 or 0
 	result.guaranteedModifiers=threads==0 and 0 or threads>=8 and 3 or threads>=4 and 2 or 1
+	result.guaranteeRequiresSpend=true
+	result.guaranteeNote="The published modifier guarantee applies when spending Threads; the applied count sets its tier. Free-only cases are not established."
 	result.milestones={patch="3.30.0c",source="https://www.pathofexile.com/forum/view-thread/4017172",thresholds={3,6,8},threshold=tier>0 and ({3,6,8})[tier] or nil,mechanics={},note="Use the applied count for one Thread type, including free or bonus Threads. Published values are shown at the reached threshold; stacking between thresholds is not assumed."}
 	for _,entry in ipairs(threadMilestones) do result.milestones.mechanics[#result.milestones.mechanics+1]={mechanic=entry.mechanic,values=copyTable(entry.values),current=tier>0 and entry.values[tier] or nil} end
 	result.abyssalConsort={spentThreads=spentAbyssThreads,restricted=spentAbyssThreads==1 and true or nil,patch="3.30.0c",source="https://www.pathofexile.com/forum/view-thread/4017172",note="Abyssal Consorts cannot appear when only one Abyss Thread is spent. This is the spent count, separate from free or bonus Threads. Other counts and conditions are not evaluated."}

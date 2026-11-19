@@ -25,6 +25,7 @@ describe("Current Thread modifier restrictions",function()
 		end
 		local result=strategy.threadRestrictions(83,8);assert.equal("3 additional pits",result.milestones.mechanics[1].current)
 		assert.equal("https://www.pathofexile.com/forum/view-thread/4017172",result.milestones.source)
+		assert.is_true(result.guaranteeRequiresSpend);assert.matches("Free%-only cases are not established",result.guaranteeNote)
 	end)
 	it("exposes the sourced restrictions to Atlas reports and updates the native control",function()
 		newBuild();main.popups={}
@@ -39,7 +40,7 @@ describe("Current Thread modifier restrictions",function()
 		c.level:SetText("73",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
 		assert.matches("Conditions met",text);assert.matches("Restricted",text)
 		c.threads:SetText("8",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
-		assert.matches("Guaranteed modifiers: 3",text);assert.matches("Abyss: 3 additional pits",text);assert.matches("stacking not assumed",text)
+		assert.matches("When spending Threads: 3 guaranteed modifiers",text);assert.matches("Free%-only guarantees are not established",text);assert.matches("Abyss: 3 additional pits",text);assert.matches("stacking not assumed",text)
 		c.spent:SetText("1",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
 		assert.matches("Consorts: restricted",text);assert.matches("free Threads are separate",text)
 		main.popups={}

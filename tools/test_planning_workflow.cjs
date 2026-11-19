@@ -847,6 +847,7 @@ async function main(){
   }
   const milestones=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:83,threads:8,spentAbyssThreads:1},'atlas');
   assert.equal(milestones.atlas.guaranteedModifiers,3);assert.equal(milestones.atlas.milestones.threshold,8);
+  assert.equal(milestones.atlas.guaranteeRequiresSpend,true);assert.match(milestones.atlas.guaranteeNote,/Free-only/);
   assert.equal(milestones.atlas.abyssalConsort.spentThreads,1);assert.equal(milestones.atlas.abyssalConsort.restricted,true);
   const regionPreview=await queued('preview_shaped_region_run',{baseRevision:context.revision,plan:regionsPlan,map:'Beach Map',completed:['Blight']},'atlas');
   assert.deepEqual(regionPreview.atlas.plan.shapedRegions[0].maps,[{name:'Strand Map',freeThreads:4}]);assert.deepEqual(regionPreview.atlas.plan.shapedRegions[1].maps,[{name:'Dunes Map',freeThreads:1}]);
