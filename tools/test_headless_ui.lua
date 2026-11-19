@@ -1554,6 +1554,16 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(saved.text:find('HasExplicitMod >=2 "Haast" "Ephij"',1,true),"Rule editor separated the modifier count operator")
 	end
 	do
+		local saved;require("Classes.LootFilterControl").Conditions({id="pages",title="Condition pages",text='Show\n BaseType == "Iron Hat"'},function(rule) saved=rule end)
+		for _=1,8 do ui:click("addCondition") end
+		assert(main.popups[1].controls.previous:IsEnabled(),"Condition editor cannot reach the previous page")
+		ui:click("previous");assert(main.popups[1].controls.next:IsEnabled(),"Condition editor cannot return to the next page")
+		ui:click("next");for _=1,3 do ui:click("c6remove") end
+		local controls=main.popups[1].controls
+		assert(controls.c1key and controls.conditionCount.label()=="^76 conditions" and not controls.previous:IsShown(),"Deleting a condition left the page empty or the count stale")
+		ui:click("keepRule");assert(#require("Modules.LootFilterParser").parse(saved.text).rules[1].conditions==6,"Condition paging changed saved conditions")
+	end
+	do
 		local saved;local raw='Hide\n HasExplicitMod >=2 == "Polar" "Shocking"'
 		require("Classes.LootFilterControl").Conditions({id="exact-count",title="Exact modifier count",text=raw},function(rule) saved=rule end)
 		frame("filter-exact-modifier-count-editor");ui:click("keepRule")

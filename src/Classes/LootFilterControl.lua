@@ -54,10 +54,15 @@ function M.Conditions(rule,save)
 	ui.label(c,"nameLabel",16,28,"Rule name",14);c.title=new("EditControl"):EditControl(ui.anchor,{16,50,w-200,26},rule.title,nil,nil,160)
 	c.action=new("DropDownControl"):DropDownControl(ui.anchor,{w-168,50,152,26},{"Show","Hide","Minimal"});c.action:SelByValue(block.action)
 	ui.description(c,"hint",16,88,w-32,42,{"All conditions must match. Add values in quotes for names with spaces. A filter cannot inspect unidentified explicit modifiers."},14)
-	local rows=math.max(1,math.floor((h-280)/40));local offset=1;local dialog
+	local rows=math.max(1,math.floor((h-330)/40));local offset=1;local dialog
+	ui.label(c,"conditionFieldLabel",16,128,"Condition",14)
+	ui.label(c,"conditionOperatorLabel",218,128,"Operator",14)
+	ui.label(c,"conditionValueLabel",302,128,"Value",14)
+	local function actionY() return 150+math.min(rows,math.max(0,#conditions-offset+1))*40 end
 	local function drawConditions()
+		offset=math.min(offset,math.max(1,#conditions-rows+1))
 		for i=1,rows do
-			local index=offset+i-1;local condition=conditions[index];local y=142+(i-1)*40
+			local index=offset+i-1;local condition=conditions[index];local y=150+(i-1)*40
 			for _,suffix in ipairs({"key","op","values","remove"}) do c["c"..i..suffix]=nil end
 			if condition then
 				c["c"..i.."key"]=new("DropDownControl"):DropDownControl(ui.anchor,{16,y,190,26},keywords,function(_,value) condition.keyword=value end);c["c"..i.."key"]:SelByValue(condition.keyword)
@@ -73,9 +78,13 @@ function M.Conditions(rule,save)
 	ui.label(c,"themeLabel",16,styleY-24,"Label style",14)
 	c.theme=new("DropDownControl"):DropDownControl(ui.anchor,{16,styleY,160,26},{"Keep original","Gold / cyan","High contrast"})
 	c.sound=new("DropDownControl"):DropDownControl(ui.anchor,{188,styleY,164,26},{"Keep sound","Silent","Alert 2","Alert 6"})
-	button(c,"addCondition",364,styleY,140,"Add condition",function() conditions[#conditions+1]={keyword="BaseType",operator="==",values={"Iron Hat"}};offset=math.max(1,#conditions-rows+1);drawConditions() end)
-	button(c,"previous",516,styleY,60,"<",function() offset=math.max(1,offset-rows);drawConditions() end)
-	button(c,"next",588,styleY,60,">",function() offset=math.min(math.max(1,#conditions-rows+1),offset+rows);drawConditions() end)
+	button(c,"addCondition",16,actionY,140,"Add condition",function() conditions[#conditions+1]={keyword="BaseType",operator="==",values={"Iron Hat"}};offset=math.max(1,#conditions-rows+1);drawConditions() end)
+	button(c,"previous",168,actionY,60,"<",function() offset=math.max(1,offset-rows);drawConditions() end)
+	button(c,"next",240,actionY,60,">",function() offset=math.min(math.max(1,#conditions-rows+1),offset+rows);drawConditions() end)
+	c.previous.shown=function() return #conditions>rows end;c.previous.enabled=function() return offset>1 end
+	c.next.shown=function() return #conditions>rows end;c.next.enabled=function() return offset+rows-1<#conditions end
+	ui.label(c,"conditionCount",316,0,"",14);c.conditionCount.y=function() return actionY()+7 end
+	c.conditionCount.label=function() return "^7"..#conditions..(#conditions==1 and " condition" or " conditions") end
 	button(c,"keepRule",16,h-48,140,"Keep rule",function() attempt(function()
 		local lines={c.action:GetSelValue()};for _,condition in ipairs(conditions) do
 			assert(not condition.invalid,"Close every quoted condition value")
