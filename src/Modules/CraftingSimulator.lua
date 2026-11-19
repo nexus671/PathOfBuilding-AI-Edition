@@ -68,7 +68,7 @@ end
 function M.actionWarnings(action,model)
 	local result={}
 	local item=model and model.item
-	if item and item.type=="Tincture" and item.tinctureValues=="Final" and ((item.tinctureImportedQuality or 0)>0 or item.tinctureData and (item.tinctureData.effectInc or 0)~=0) then
+	if item and item.type=="Tincture" and item.tinctureValues=="Final" and ((item.tinctureImportedQuality or 0)>0 or (item.tinctureImportedEffect or item.tinctureData and item.tinctureData.effectInc or 0)~=0) then
 		result[#result+1]={code="tincture_imported_values",message="This copied tincture has locally scaled modifier values. The crafting model may infer the wrong modifier tier, and newly rolled modifiers can use a different scale from retained values. Modifier goals, previews and character effects may be inaccurate; verify the item before relying on this result."}
 	end
 	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingVaal" and gildedFossil(action) then
