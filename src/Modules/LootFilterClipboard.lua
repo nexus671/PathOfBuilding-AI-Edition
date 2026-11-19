@@ -20,7 +20,7 @@ function M.parse(raw,area)
 	if class=="Maps" and (rarity=="Normal" or rarity=="Magic" or rarity=="Rare") then
 		local name=names[#names]
 		if rarity=="Magic" then tierInName=name and (name:match("^Map %(Tier (%d+)%)$") or name:match("^Map %(Tier (%d+)%) .+$") or name:match("^.+ Map %(Tier (%d+)%)$") or name:match("^.+ Map %(Tier (%d+)%) .+$"))
-		else tierInName=name and name:match("^Map %(Tier (%d+)%)$") end
+		else tierInName=name and (name:match("^Map %(Tier (%d+)%)$") or name:match("^Blighted Map %(Tier (%d+)%)$")) end
 		if tierInName then
 			tierInName=tonumber(tierInName);assert(tierInName>=1 and tierInName<=16,"Invalid copied map tier")
 			base="Map (Tier "..tierInName..")"
@@ -53,6 +53,11 @@ function M.parse(raw,area)
 	local item={BaseType=base,Class=class,Rarity=assert(mapped[rarity:lower()],"Unsupported clipboard rarity"),AreaLevel=area,
 		Identified=not markers.Unidentified and tier==nil,Corrupted=markers.Corrupted==true or markers["Twice Corrupted"]==true,
 		TwiceCorrupted=markers["Twice Corrupted"]==true,Mirrored=markers.Mirrored==true}
+	-- A recognizable Blighted map header and its visible implicit establish
+	-- the ordinary Blighted variant. Missing evidence remains unknown.
+	if class=="Maps" and tierInName and names[#names]=="Blighted Map (Tier "..tierInName..")" and markers["Area is infested with Fungal Growths (implicit)"] then
+		item.BlightedMap=true;item.UberBlightedMap=false
+	end
 	for line in raw:gmatch("[^\n]+") do
 		-- Stash notes are player-written text, not item modifier evidence.
 		local note=line:match("^Note:") ~= nil

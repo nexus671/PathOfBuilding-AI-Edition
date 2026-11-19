@@ -193,6 +193,8 @@ describe("Linked planning tools",function()
 		assert.is_truthy(found["budget:ravaged:Blight-ravaged Map"])
 		assert.is_truthy(found["atlas:blight-maps:Blighted Map"].text:find("BlightedMap True",1,true))
 		assert.is_truthy(found["atlas:blight-maps:Blighted Map"].text:find("UberBlightedMap False",1,true))
+		local copied="Item Class: Maps\nRarity: Rare\nBlighted Example\nBlighted Map (Tier 16)\n--------\nItem Level: 83\n--------\nArea is infested with Fungal Growths (implicit)"
+		local preview=filters.simulate(profile,require("Modules.LootFilterClipboard").parse(copied));assert.equal("Show",preview.action);assert.matches("Blighted Map",preview.ruleTitle,1,true)
 		assert.is_truthy(found["budget:ravaged:Blight-ravaged Map"].text:find("UberBlightedMap True",1,true))
 		local parser=require("Modules.LootFilterParser")
 		for _,case in ipairs({{"atlas:blight-maps:Blighted Map","BlightedMap"},{"budget:ravaged:Blight-ravaged Map","UberBlightedMap"}}) do
