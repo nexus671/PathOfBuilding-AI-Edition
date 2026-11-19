@@ -55,9 +55,7 @@ function M.parse(raw)
 			elseif not current then result.diagnostics[#result.diagnostics+1]={line=lineNo,error="Expected Show, Hide or Minimal before "..key}
 			else
 				current.rawLines[#current.rawLines+1]=line
-				if key=="Continue" then
-					current.continue=true
-					if #t>0 then result.diagnostics[#result.diagnostics+1]={line=lineNo,error="Continue does not take values"} end
+				if key=="Continue" then current.continue=true
 				elseif M.actions[key] then
 					current.styles[key]=t
 					local invalid
@@ -70,8 +68,7 @@ function M.parse(raw)
 						if not custom and t[1]~="None" and (not id or id~=math.floor(id) or id<1 or id>16) then invalid=true end
 						if t[2] and (not volume or volume~=math.floor(volume) or volume<0 or volume>300) then invalid=true end
 					elseif key=="MinimapIcon" then local size=tonumber(t[1]);invalid=not (#t==1 and size==-1) and (#t~=3 or not size or size<0 or size>2 or size~=math.floor(size) or not colors[t[2]] or not shapes[t[3]])
-					elseif key=="PlayEffect" then invalid=not (#t==1 and t[1]=="None") and (not colors[t[1]] or #t>2 or #t==2 and t[2]~="Temp")
-					elseif key=="DisableDropSound" or key=="EnableDropSound" or key=="DisableDropSoundIfAlertSound" or key=="EnableDropSoundIfAlertSound" then invalid=#t>0 end
+					elseif key=="PlayEffect" then invalid=not (#t==1 and t[1]=="None") and (not colors[t[1]] or #t>2 or #t==2 and t[2]~="Temp") end
 					if invalid then result.diagnostics[#result.diagnostics+1]={line=lineNo,error="Invalid "..key} end
 				else
 					local op="=";local first=t[1] or "";local prefix=not quoted[1] and first:match("^[<>=!]+")

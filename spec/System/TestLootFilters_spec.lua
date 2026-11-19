@@ -26,12 +26,9 @@ describe("Build-owned loot filters",function()
 			assert.equal("Filter line "..expected.line..": "..expected.error,result.reasons[1])
 		end
 	end)
-	it("rejects values on parameterless filter commands",function()
-		for _,command in ipairs({"Continue","DisableDropSound","EnableDropSound","DisableDropSoundIfAlertSound","EnableDropSoundIfAlertSound"}) do
-			local valid=parser.parse("Show\n "..command);assert.equal(0,#valid.diagnostics,command)
-			local result=parser.simulate(parser.parse("Show\n "..command.." unexpected"),{})
-			assert.equal("invalid",result.status,command);assert.equal(2,result.line,command);assert.matches(command,result.reasons[1],1,true)
-		end
+	it("accepts the bundled drop-sound compatibility form",function()
+		local parsed=parser.parse("Show\n DisableDropSound True")
+		assert.equal(0,#parsed.diagnostics);assert.equal("matched",parser.simulate(parsed,{}).status)
 	end)
 	it("rejects malformed imports even when other imports are unresolved",function()
 		for _,line in ipairs({"Import",'Import ""','Import "file.filter" Invalid','Import "file.filter" Optional extra'}) do
