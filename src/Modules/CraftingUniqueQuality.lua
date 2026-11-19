@@ -1,3 +1,4 @@
+-- cspell:ignore RGBW
 -- A deliberately bounded unique-item quality operation. It never edits a build.
 local M={}
 local function withoutQuality(raw)

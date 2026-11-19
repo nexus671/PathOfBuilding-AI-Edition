@@ -2033,13 +2033,17 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		build.viewMode="PLANNER";build.planningWorkspace:Show("crafting",{kind="workbench",project=saved});frame("crafting-stygian-abyss-socket")
 	end
 	local function uniqueProjectScenario()
-		local unique="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\n+40% to Fire Resistance"
+		local unique="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"
 		local p={id="unique-target-project-ui",title="Unique target guide",slot="Helmet",startingItem="Rarity: NORMAL\nLeather Cap\nItem Level: 86",targetItem=unique,goals={"Obtain Goldrim"},steps={}}
 		local store=build.savers.CraftingProjects;store:Upsert(p);local w=build.planningWorkspace;w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
 		assert(w.controls.projectItem and #w.controls.projectItemMods.list>0 and w.controls.native:IsEnabled(),"Unique target preview or ordinary workbench unavailable");frame("crafting-unique-target-project")
 		p.id="unique-start-project-ui";p.title="Unique starting guide";p.startingItem=unique;p.targetItem=nil;p.steps={{action="Acquire Goldrim"}};store:Upsert(p);w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
 		assert(w.controls.projectItem and w.controls.native:IsEnabled() and w.controls.native.tooltipText():find("unique item",1,true),"Unique quality preview unavailable");frame("crafting-unique-start-project")
-		ui:click("native");frame("crafting-unique-quality");ui:click("apply");assert(w.controls.status.label:find("1%%"),"Quality did not increase")
+		ui:click("native");frame("crafting-unique-quality")
+		assert(w.controls.link:IsEnabled(),"Unique socket-link preview unavailable");ui:click("link")
+		assert(not w.controls.link:IsEnabled(),"Fully linked unique still offered a link craft");frame("crafting-unique-linked")
+		ui:click("undo");assert(w.controls.link:IsEnabled(),"Undo did not restore unique socket links")
+		ui:click("apply");assert(w.controls.status.label:find("1%%"),"Quality did not increase")
 		ui:click("undo");assert(w.controls.status.label:find("0%%"),"Quality undo failed");ui:click("apply");ui:click("keep")
 		assert(select(2,require("Modules.CraftingUniqueQuality").inspect(store.projects[#store.projects].targetItem)).quality==1,"Unique target was not kept")
 		ui:click("apply");assert(require("Modules.PlanningUI").hasDraft(build,"uniqueQuality",p.id),"Unsaved quality preview was not marked as a draft");w:Show("journey");w:Show("crafting");assert(w.controls.status.label:find("2%%"),"Changing tabs lost the quality preview")
