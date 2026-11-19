@@ -66,7 +66,7 @@ function M.Conditions(rule,save)
 			for _,suffix in ipairs({"key","op","values","remove"}) do c["c"..i..suffix]=nil end
 			if condition then
 				c["c"..i.."key"]=new("DropDownControl"):DropDownControl(ui.anchor,{16,y,190,26},keywords,function(_,value) condition.keyword=value end);c["c"..i.."key"]:SelByValue(condition.keyword)
-				c["c"..i.."op"]=new("DropDownControl"):DropDownControl(ui.anchor,{218,y,72,26},{"=","==",">=","<=",">","<","!="},function(_,value) condition.operator=value end);c["c"..i.."op"]:SelByValue(condition.operator)
+				c["c"..i.."op"]=new("DropDownControl"):DropDownControl(ui.anchor,{218,y,72,26},{"=","==",">=","<=",">","<","!=","!"},function(_,value) condition.operator=value end);c["c"..i.."op"]:SelByValue(condition.operator)
 				local values={};for j,v in ipairs(condition.values) do values[#values+1]=(condition.quoted and condition.quoted[j] or v:find(" ",1,true)) and filters.quote(v) or v end
 				c["c"..i.."values"]=new("EditControl"):EditControl(ui.anchor,{302,y,w-366,26},table.concat(values," "),nil,nil,2000,function(value) local ok,result,quoted=pcall(parser.tokens,value);condition.invalid=not ok;if ok then condition.values=result;condition.quoted=quoted end end)
 				button(c,"c"..i.."remove",w-52,y,36,"X",function() table.remove(conditions,index);drawConditions() end)

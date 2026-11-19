@@ -1554,6 +1554,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(saved.text:find('HasExplicitMod >=2 "Haast" "Ephij"',1,true),"Rule editor separated the modifier count operator")
 	end
 	do
+		local saved;require("Classes.LootFilterControl").Conditions({id="negative",title="Negative operator",text='Show\n Identified ! True'},function(rule) saved=rule end)
+		assert(main.popups[1].controls.c1op:GetSelValue()=="!","Condition editor displayed the wrong negative operator")
+		ui:click("keepRule");assert(saved and saved.text:find("Identified ! True",1,true),"Condition editor changed the negative operator")
+	end
+	do
 		local saved;require("Classes.LootFilterControl").Conditions({id="pages",title="Condition pages",text='Show\n BaseType == "Iron Hat"'},function(rule) saved=rule end)
 		for _=1,8 do ui:click("addCondition") end
 		assert(main.popups[1].controls.previous:IsEnabled(),"Condition editor cannot reach the previous page")
