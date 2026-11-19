@@ -170,17 +170,20 @@ function Panel.Open(build,project,layout)
 			local warnings={};local warningAction=selected and selected.action or action and action()
 			if warningAction then for _,warning in ipairs(simulator.actionWarnings(warningAction,{item=model.item,initial=state})) do
 				if warning.code=="abyss_socket_layout" then warnings[#warnings+1]="Abyss socket placement and removal are unverified."
-				elseif warning.code=="tincture_imported_values" then warnings[#warnings+1]="Copied tincture values may produce inaccurate tiers and effects; verify the item." end
+				elseif warning.code=="tincture_imported_values" then warnings[#warnings+1]="Copied tincture values: verify tiers and effects." end
 			end end
 			local unlock=id and require("Modules.CraftingBenchCosts").unlock(simulator.context(model,state),id)
 			local lines={}
-			if unlock then
+			if unlock and #warnings==0 then
 				lines[#lines+1]="Recipe listed in "..unlock.map.."; check your unlocks."
 				local brief=hint
 				if hint=="Experimental partial lock: random protection is modeled with assumed equal weights." then brief="Experimental partial lock: equal odds assumed." end
 				lines[#lines+1]=ui.fit(brief,leftWidth-38,14)
 				controls.option.tooltipText=hint.." Recipe location is listed by PoEDB; account unlocks and Ruthless availability are not checked."
-			else lines[1]=hint;controls.option.tooltipText=nil end
+			else
+				lines[1]=#warnings>0 and ui.fit(hint,leftWidth-30,14) or hint
+				controls.option.tooltipText=unlock and hint.." Recipe location is listed by PoEDB; account unlocks and Ruthless availability are not checked." or nil
+			end
 			for _,warning in ipairs(warnings) do lines[#lines+1]=warning end
 			controls.actionHint.list=ui.rows(lines,leftWidth-30,14)
 		end
@@ -846,7 +849,14 @@ function Panel.Open(build,project,layout)
 	controls.option.shown=function() return crafting() and #controls.option.list>0 end
 	controls.optionLabel.shown=controls.option.shown
 	controls.apply.enabled=function() return actionConfigured() and workbench.available(controls.method:GetSelValueByKey("val"),state,model) and not implicitApplyReason() end
-	controls.apply.tooltipText=function() local method=controls.method:GetSelValueByKey("val");local available,reason=workbench.available(method,state,model);return not available and reason or actionConfigurationReason() or implicitApplyReason() or workbench.hint(method,state,model,action()) end
+	controls.apply.tooltipText=function()
+		local method=controls.method:GetSelValueByKey("val");local available,reason=workbench.available(method,state,model)
+		local text=not available and reason or actionConfigurationReason() or implicitApplyReason() or workbench.hint(method,state,model,action())
+		for _,warning in ipairs(simulator.actionWarnings(action(),{item=model.item,initial=state})) do
+			if warning.code=="abyss_socket_layout" or warning.code=="tincture_imported_values" then text=text.."\n"..warning.message end
+		end
+		return text
+	end
 	controls.apply.height=32;controls.undo.height=32
 	controls.apply.y=function() return #controls.option.list>0 and 370 or 320 end;controls.undo.y=controls.apply.y
 	controls.settings.y=function() return controls.apply:GetProperty("y")+44 end;controls.history.y=controls.settings.y

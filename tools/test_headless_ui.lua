@@ -444,6 +444,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(protectedControls.currency_annul.tooltipText():find("fractures or locks",1,true),"Annulment tooltip did not explain the restriction")
 	frame("crafting-protected-annul-tooltip","currency_annul");ui:click("close")
 	local flaskProject={id="flask-vaal-ui",title="Flask quality",slot="Flask 1",startingItem="Rarity: NORMAL\nSmall Life Flask\nItem Level: 86\nQuality: 30",goals={},steps={}}
+	dofile("../tools/test_tincture_hint.lua")(build,ui,frame)
 	local flaskControls=require("Classes.CraftingSimulatorControl").Open(build,flaskProject)
 	assert(flaskControls.currency_vaal:IsEnabled(),"Vaal Orb should be available for a flask");ui:click("currency_vaal")
 	local flaskHints={};for _,row in ipairs(flaskControls.actionHint.list) do flaskHints[#flaskHints+1]=StripEscapes(row[1] or "") end
