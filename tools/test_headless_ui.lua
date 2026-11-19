@@ -2101,11 +2101,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	uniqueProjectScenario()
 	do
 		main.popups={}
-		local atlas=require("Modules.AtlasPlanner");local plan=atlas.connect({id="atlas-totals-ui",title="Atlas totals",version="3.30.0c",budget=150,nodes={}}, {57123,2929})
+		local atlas=require("Modules.AtlasPlanner");local baseline={id="atlas-totals-baseline",title="Atlas totals baseline",version="3.30.0c",budget=150,nodes={}}
+		build.savers.AtlasPlans:Upsert(baseline);local plan=atlas.connect({id="atlas-totals-ui",title="Atlas totals",version="3.30.0c",budget=150,nodes={}}, {57123,2929})
 		local control=require("Classes.AtlasPlannerControl").Open(build,plan);control.stats:Click();ui:choose("category","Added modifiers");ui:text("search","effect of Explicit Modifiers")
 		local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
 		assert(table.concat(details," "):gsub("%s+"," "):find("not an effective map chance",1,true),"Atlas modifier totals did not explain their scope")
-		frame("atlas-added-modifiers");main.popups={}
+		frame("atlas-added-modifiers");ui:click("close");control.tools:Click();ui:text("search","Compare");ui:click("choose");ui:text("search","Atlas totals baseline")
+		details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(details," "):gsub("%s+"," "):find("percentage points of modifier",1,true),"Atlas comparison omitted modifier changes");main.popups={}
 	end
 	do
 		main.popups={}
