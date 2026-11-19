@@ -56,7 +56,7 @@ local function gildedFossil(action)
 	return false
 end
 local function gildedCorruptionWarning()
-	return {code="gilded_corruption_incomplete",message="For the first added corruption on a Gilded item with identified Eldritch or synthesised implicits, the model assumes equal replacement chances among those implicits and the vendor implicit. Other Gilded corruption combinations remain incomplete and may remove too many implicits. These chances and interactions are unverified.",source="https://www.poewiki.net/wiki/Gilded_Fossil"}
+	return {code="gilded_corruption_incomplete",message="For the first added corruption on a Gilded item with identified Eldritch, synthesised, or supported ordinary base implicits, the model assumes equal replacement chances among those implicits and the vendor implicit. Other Gilded corruption combinations remain incomplete and may remove too many implicits. These chances and interactions are unverified.",source="https://www.poewiki.net/wiki/Gilded_Fossil"}
 end
 function M.actionWarnings(action,model)
 	local result={}
@@ -160,6 +160,13 @@ local function renderLines(item)
 	table.sort(lines)
 	return table.concat(lines,"\n")
 end
+local function retainedBaseLines(model,state)
+	local lines={}
+	if state.baseImplicitRetained then for _,line in ipairs(model.item.implicitModLines or {}) do
+		if not model.item.corrupted or line.modGroup=="retained_base_implicit" then lines[#lines+1]=line end
+	end end
+	return lines
+end
 local function flags(model,state)
 	local result={ }
 	local function rollBlock(line)
@@ -183,6 +190,7 @@ local function flags(model,state)
 	if replacement then
 		for _,entries in ipairs({state.corruptedImplicits or {},state.implicits or {}}) do for _,entry in ipairs(entries) do for _,line in ipairs(model.byId[entry.id] or {}) do rollBlock(line) end end end
 		for _,index in ipairs(state.synthRetained or {}) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do rollBlock(StripEscapes(line.line or "")) end end
+		for _,line in ipairs(retainedBaseLines(model,state)) do rollBlock(StripEscapes(line.line or "")) end
 	else
 		if state.synthRolls then for index in ipairs(model.synthesisGroups) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do rollBlock(StripEscapes(line.line or "")) end end
 		else for _,line in ipairs(model.item.implicitModLines or {}) do rollBlock(StripEscapes(line.line or "")) end end
@@ -1022,6 +1030,7 @@ function M.capacities(model,state)
  if state.rarity == "MAGIC" then prefix,suffix=1,1 end
  local active={}
  if state.corruptedImplicits or state.implicits then
+  for _,line in ipairs(retainedBaseLines(model,state)) do active[#active+1]=line end
   for _,index in ipairs(state.synthRetained or {}) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do active[#active+1]=line end end
   for _,list in ipairs({state.corruptedImplicits or {},state.implicits or {}}) do for _,entry in ipairs(list) do
    for _,line in ipairs(M.rolledLines(M.entryMod(model,entry),entry.range)) do active[#active+1]={line=line} end

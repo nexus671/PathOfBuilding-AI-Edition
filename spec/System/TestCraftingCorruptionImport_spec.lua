@@ -186,6 +186,36 @@ describe("Imported corruption identities",function()
 			end
 		end
 	end)
+	it("models first corruption replacing either a Gilded or ordinary base implicit",function()
+		local source="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+16% to Item Rarity\nItem sells for much more to vendors"
+		local model=sim.model(source);assert.equal("unknown",model.initial.vendorImplicit)
+		assert.is_true(sim.perform(source,{method="vaal"},1).state.baseImplicitRetained)
+		for _,draw in ipairs({0,0.999}) do
+			local result=copyTable(model.initial);sim.rollCorrupted(model,result,function() return draw end)
+			assert.equal(1,#result.corruptedImplicits)
+			if draw==0 then assert.equal("unknown",result.vendorImplicit);assert.is_nil(result.baseImplicitRetained);local invalid=copyTable(result);invalid.baseImplicitRetained=true;assert.has_error(function() sim.validateState(model,invalid) end)
+			else assert.is_nil(result.vendorImplicit);assert.is_true(result.baseImplicitRetained) end
+			local saved=require("Modules.CraftingCheckpoint").validate(source,require("Modules.CraftingInventory").run(result)).state
+			local output=sim.itemText(model,saved);local reopened=sim.model(output);assert.same(saved.corruptedImplicits,reopened.initial.corruptedImplicits)
+			if draw==0 then assert.equal("unknown",reopened.initial.vendorImplicit);assert.is_nil(output:find("+16% to Item Rarity",1,true))
+			else
+				assert.is_true(reopened.initial.baseImplicitRetained);assert.is_truthy(output:find("+16% to Item Rarity",1,true))
+				local forged=output:gsub("%+16%% to Item Rarity","+99%% to Item Rarity");assert.is_truthy(sim.model(forged).unresolvedCorruption)
+				local available,reason=require("Modules.CraftingAvailability").check("locus",saved,model);assert.is_false(available);assert.matches("retained ordinary base",reason)
+			end
+		end
+		local blessed=sim.perform(source,{method="blessed"},17).state;local before=sim.itemText(model,blessed)
+		sim.rollCorrupted(model,blessed,function() return 0.999 end);local after=sim.itemText(model,sim.validateState(model,blessed))
+		local original=sim.model(before).item.implicitModLines[1];local retained=sim.model(after).item.implicitModLines[1]
+		assert.equal(itemLib.applyRange(original.line,original.range or 0.5),itemLib.applyRange(retained.line,retained.range or 0.5))
+	end)
+	it("keeps a retained base implicit's crafting restrictions after reopening",function()
+		local source="Rarity: NORMAL\nSomatic Wand\nItem Level: 86\nImplicits: 2\nCannot roll Caster Modifiers\nItem sells for much more to vendors"
+		local model=sim.model(source);assert.is_true(sim.blockFlags(model,model.initial).caster)
+		local result=copyTable(model.initial);sim.rollCorrupted(model,result,function() return 0.999 end)
+		assert.is_true(result.baseImplicitRetained);assert.is_true(sim.blockFlags(model,sim.validateState(model,result)).caster)
+		local reopened=sim.model(sim.itemText(model,result));assert.is_true(reopened.initial.baseImplicitRetained);assert.is_true(sim.blockFlags(reopened,reopened.initial).caster)
+	end)
 	it("preserves synthesised survivors across second corruption and reopening",function()
 		local lines={"+10 to Strength","+20 to Dexterity","+12 to Intelligence"}
 		for count=1,3 do

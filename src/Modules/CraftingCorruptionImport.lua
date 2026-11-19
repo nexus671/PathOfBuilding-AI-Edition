@@ -7,8 +7,16 @@ function I.resolve(M,model,metadata)
 		if line.modGroup and line.modGroup:sub(1,6)=="synth_" and not model.synthesisGroups then return nil,"unresolved" end
 	end end
 	local infer=require("Modules.CraftingImport").inferRange
-	local rows={};for _,line in ipairs(item.implicitModLines) do if not line.exarch and not line.eater and not (item.synthesised and line.modGroup and line.modGroup:sub(1,6)=="synth_") then rows[#rows+1]={source=line.line,group=line.modGroup,text=itemLib.applyRange(line.line,line.range or 0.5)} end end
-	if #rows==0 then return end
+	local rows,retainedBase={},{}
+	for _,line in ipairs(item.implicitModLines) do if not line.exarch and not line.eater and not (item.synthesised and line.modGroup and line.modGroup:sub(1,6)=="synth_") then
+		local row={source=line.line,group=line.modGroup,text=itemLib.applyRange(line.line,line.range or 0.5)}
+		if line.modGroup=="retained_base_implicit" then retainedBase[#retainedBase+1]=row else rows[#rows+1]=row end
+	end end
+	if #retainedBase>0 then
+		if item.synthesised or #retainedBase~=1 or type(item.base.implicit)~="string" or item.base.implicit:find("\n",1,true) then return nil,"unresolved" end
+		if not infer(item.base.implicit,retainedBase[1].text) then return nil,"unresolved" end
+	end
+	if #rows==0 then return nil,#retainedBase>0 and "unresolved" or nil end
 	-- Synthesised implicits can resemble corruption modifiers. Only interpret
 	-- generated, explicitly identified corruption lines; still validate their text.
 	if item.synthesised then
@@ -88,6 +96,7 @@ function I.resolve(M,model,metadata)
 	-- An unchanged natural implicit is a valid alternative to a corruption roll.
 	if #solutions==0 and baseMatch then return end
 	if #solutions~=1 or baseMatch then return nil,"unresolved" end
+	if #retainedBase>0 then model.initial.baseImplicitRetained=true end
 	return solutions[1]
 end
 return I

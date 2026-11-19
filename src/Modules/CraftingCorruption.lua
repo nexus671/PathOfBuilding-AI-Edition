@@ -24,6 +24,7 @@ function C.extend(M,A,api)
 	M.methodChecks.vaal=mixedImplicitReason
 	M.methodChecks.locus=function(model,state)
 		local reason=mixedImplicitReason(model,state);if reason then return reason end
+		if state.baseImplicitRetained then return "Locus replacement of a retained ordinary base implicit is not modeled." end
 		local flags=api.flags(model,state)
 		if flags.prefixes or flags.suffixes or flags.attack or flags.caster then return "Locus meta-modifier interactions need additional validation" end
 		for _,entry in ipairs(state.affixes) do if entry.fractured then return "Locus influence outcomes on fractured bases need additional validation" end end
@@ -153,6 +154,13 @@ function C.extend(M,A,api)
 			state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil;state.corrupted=true
 			return
 		end
+		local ordinary=model.item.implicitModLines or {}
+		if not state.corrupted and previousCount==0 and #chosen==1 and state.vendorImplicit and not model.item.synthesised and not state.implicits and #ordinary==1 and not ordinary[1].exarch and not ordinary[1].eater and not ordinary[1].corrupted and not model.blessed330 and not model.blessed330Unresolved and not model.baseImplicitUnresolved and model.baseImplicitTemplates and #model.baseImplicitTemplates==1 and type(model.item.base.implicit)=="string" and not model.item.base.implicit:find("\n",1,true) then
+			if random()<0.5 then
+				state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil
+			else state.vendorImplicit=nil;state.baseImplicitRetained=true end
+			state.corrupted=true;return
+		end
 		if model.synthesisGroups and #chosen>previousCount then
 			local retained=copyTable(state.synthRetained or {})
 			if not state.synthRetained and not state.synthExhausted then
@@ -183,7 +191,14 @@ function C.extend(M,A,api)
 			item.implicitModLines={};for index in ipairs(model.synthesisGroups) do for _,line in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do item.implicitModLines[#item.implicitModLines+1]=line end end
 		end
 		if state.corruptedImplicits then
-			if not state.implicits then item.implicitModLines={} end
+			if not state.implicits then
+				if state.baseImplicitRetained then
+					local base={};for _,line in ipairs(item.implicitModLines) do
+						if not model.item.corrupted or line.modGroup=="retained_base_implicit" then local copy=copyTable(line);copy.modGroup="retained_base_implicit";base[#base+1]=copy end
+					end
+					assert(#base==1,"The retained base implicit is unavailable");item.implicitModLines=base
+				else item.implicitModLines={} end
+			end
 			for _,index in ipairs(state.synthRetained or {}) do
 				for _,source in ipairs(require("Modules.CraftingSynthesisGroups").lines(model,state,index)) do
 					local line=copyTable(source);if not state.synthRolls then line.modGroup="synth_"..index end;item.implicitModLines[#item.implicitModLines+1]=line
@@ -217,6 +232,9 @@ function C.extend(M,A,api)
 			state=copyTable(state);state.synthRetained={};for index in ipairs(model.synthesisGroups) do state.synthRetained[index]=index end
 		end
 		assert(state.twiceCorrupted==nil or type(state.twiceCorrupted)=="boolean","Invalid twice-corruption marker")
+		if state.baseImplicitRetained~=nil then
+			assert(state.baseImplicitRetained==true and state.corrupted and state.corruptedImplicits and #state.corruptedImplicits==1 and not state.vendorImplicit and not state.implicits and not model.item.synthesised and (not model.item.corrupted and model.baseImplicitTemplates or model.initial.baseImplicitRetained),"Invalid retained ordinary base implicit")
+		end
 		assert(state.gildedCorruptionReplaced==nil or state.gildedCorruptionReplaced==true and state.corrupted and state.corruptedImplicits and not state.vendorImplicit and model.item.synthesised and not model.item.corrupted and model.synthesisGroups,"Invalid Gilded corruption replacement")
 		if state.gildedCorruptionReplaced then assert(state.synthRetained or state.synthExhausted,"Missing retained synthesised modifiers after Gilded replacement") end
 		assert(not state.twiceCorrupted or state.corrupted==true,"Twice Corrupted items must also be Corrupted")
@@ -332,7 +350,7 @@ function C.extend(M,A,api)
 					local ok=pcall(api.add,model,state,random);if not ok then break end
 				end
 				state.rollBlock=nil
-			elseif method == "locus" then state.destroyed=true;state.affixes={};state.implicits=nil;state.corruptedImplicits=nil;state.synthRolls=nil;state.synthRetained=nil;state.synthExhausted=nil;state.gildedCorruptionReplaced=nil
+			elseif method == "locus" then state.destroyed=true;state.affixes={};state.implicits=nil;state.corruptedImplicits=nil;state.synthRolls=nil;state.synthRetained=nil;state.synthExhausted=nil;state.gildedCorruptionReplaced=nil;state.baseImplicitRetained=nil
 			end
 			state.corrupted=true;state.imprint=nil
 			if method=="locus" and not state.destroyed then state.twiceCorrupted=true end

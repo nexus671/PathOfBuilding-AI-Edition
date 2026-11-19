@@ -529,9 +529,10 @@ test('queues advanced crafting states and rejects untyped execution data', t => 
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   assert.throws(()=>f.call('apply_crafting_action',{...args,initialState:{...args.initialState,runCode:'no'}}),/arguments/);
   assert.throws(()=>f.call('apply_crafting_action',{...args,initialState:{...args.initialState,baseImplicit330:false}}),/arguments/);
-  const reconstructed={...args.initialState,baseImplicitReconstructed:true};delete reconstructed.baseImplicit330;
+  const reconstructed={...args.initialState,baseImplicitReconstructed:true,baseImplicitRetained:true};delete reconstructed.baseImplicit330;
   f.call('apply_crafting_action',{...args,initialState:reconstructed});fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   assert.throws(()=>f.call('apply_crafting_action',{...args,initialState:{...reconstructed,baseImplicitReconstructed:false}}),/arguments/);
+  assert.throws(()=>f.call('apply_crafting_action',{...args,initialState:{...reconstructed,baseImplicitRetained:false}}),/arguments/);
   assert.throws(()=>f.call('apply_crafting_action',{...args,action:{method:'recombine',donorItem:'item',path:'elsewhere'}}),/arguments/);
 });
 
