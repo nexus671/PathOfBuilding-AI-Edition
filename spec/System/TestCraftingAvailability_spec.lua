@@ -14,6 +14,15 @@ describe("Crafting action preconditions",function()
 		local specialState=copyTable(special.initial);specialState.corrupted=true
 		allowed,reason=check("locus",specialState,special);assert.is_false(allowed);assert.matches("special Locus",reason)
 		ok,errorText=pcall(sim.action,special,specialState,{method="locus"},function() return 0 end);assert.is_false(ok);assert.is_truthy(errorText:find(reason,1,true))
+		for _,method in ipairs({"transmute","alchemy"}) do
+			local crafted=sim.perform(special.raw,{method=method},104729).state;crafted.corrupted=true
+			assert.is_true(check("locus",crafted,special))
+			local result=sim.action(special,crafted,{method="locus"},function() return 0 end)
+			assert.is_true(result.twiceCorrupted);assert.are.equal(crafted.rarity,result.rarity);assert.are.equal(1,#result.corruptedImplicits)
+			result=sim.action(special,crafted,{method="locus"},function() return 0.25 end)
+			assert.is_true(result.twiceCorrupted);assert.are.equal(crafted.rarity,result.rarity)
+			for _,roll in ipairs({0.5,0.75}) do result=sim.action(special,crafted,{method="locus"},function() return roll end);assert.is_true(result.destroyed) end
+		end
 		local synthesised=shallow(model);synthesised.item=shallow(model.item);synthesised.item.synthesised=true
 		allowed,reason=check("locus",state,synthesised);assert.is_false(allowed);assert.matches("Synthesised implicits",reason)
 		local locked=copyTable(state);locked.rarity="RARE";locked.affixes={{id=mod.id,range=0.5}}

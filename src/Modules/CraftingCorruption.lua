@@ -27,7 +27,7 @@ function C.extend(M,A,api)
 		local flags=api.flags(model,state)
 		if flags.prefixes or flags.suffixes or flags.attack or flags.caster then return "Locus meta-modifier interactions need additional validation" end
 		for _,entry in ipairs(state.affixes) do if entry.fractured then return "Locus influence outcomes on fractured bases need additional validation" end end
-		if model.item.baseName=="Sacrificial Garb" then return "This special Locus transformation is not modeled" end
+		if model.item.baseName=="Sacrificial Garb" and state.rarity=="NORMAL" then return "This special Locus transformation is not modeled" end
 		if model.item.synthesised and not model.synthesisGroups and (not state.corruptedImplicits or model.unresolvedCorruption) then return "Synthesised implicits must be identified before using the Locus." end
 		do
 			local retained=state.corruptedImplicits or {}
@@ -381,6 +381,6 @@ function C.extend(M,A,api)
 	M.limits[#M.limits+1]="Ordinary jewel Vaal outcomes assume equal branch and unique-selection weights. The bundled candidate pool, individual rolls and rare modifier counts are unverified. Further crafting of transformed uniques is not modeled."
 	M.limits[#M.limits+1]="The equipment Vaal model includes the four outcome branches and current non-white socket conversion. Rare-brick socket/link rerolls are not modeled; tainted affix outcomes use a 50/50 assumption."
 	M.limits[#M.limits+1]="Corrupting unidentified Eldritch implicits or ambiguously grouped synthesised implicits is not modeled. Replacement is selected uniformly as an unverified assumption."
-	M.limits[#M.limits+1]="The 3.30 Locus model requires a Corrupted item and adds a second corruption. Outcome chances, socket conversion and selection of a replaced implicit, including Eldritch replacement, are assumptions; uncorrupted altar use is not modeled. Fractured, meta-modified and special transformation bases are excluded. Synthesised replacement selection is an unverified assumption."
+	M.limits[#M.limits+1]="The 3.30 Locus model requires a Corrupted item and adds a second corruption. Outcome chances, socket conversion and selection of a replaced implicit, including Eldritch replacement, are assumptions; uncorrupted altar use is not modeled. Fractured and meta-modified items and normal Sacrificial Garbs are excluded. Magic and rare Sacrificial Garbs use ordinary outcomes, based on earlier behavior that has not been verified in 3.30. Synthesised replacement selection is an unverified assumption."
 end
 return C

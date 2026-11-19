@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview677" />
+	<Version number="2.68.1-ai.preview678" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2097,7 +2097,7 @@
 	<File name="Modules/CraftingCalculator.lua" part="program" sha1="eb290f6b3de28798da61c2a38fd76d9c23666a70" />
 	<File name="Modules/CraftingChartData.lua" part="program" sha1="5fe7d66a272315a405debc59b05ec5d8a9466c74" />
 	<File name="Modules/CraftingCheckpoint.lua" part="program" sha1="e4858e54dd718de8cc5d3be4f5f8e2872c93735e" />
-	<File name="Modules/CraftingCorruption.lua" part="program" sha1="15b830da305c18ad70460b07421f61b6a4223000" />
+	<File name="Modules/CraftingCorruption.lua" part="program" sha1="09476d8a0570c86c68db1bc6e2ec106b1b39b189" />
 	<File name="Modules/CraftingCorruption330.lua" part="program" sha1="b016eae80805a14eaf99a073902e9d0312351dc4" />
 	<File name="Modules/CraftingCorruptionImport.lua" part="program" sha1="f7ed9cf765f152d9eebe87938a568c44c7a9f623" />
 	<File name="Modules/CraftingDescriptions330.lua" part="program" sha1="8435ff0db71e938b1589b67adac1c9d4bbd44a83" />
