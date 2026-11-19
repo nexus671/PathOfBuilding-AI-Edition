@@ -272,6 +272,10 @@ local mapExamples={
 	{"Breach Thread","Map Fragments"},{"Expedition Thread","Map Fragments"},
 	{"Abyss Thread","Map Fragments"},{"Ritual Thread","Map Fragments"},
 	{"Timeless Maraketh Emblem","Map Fragments"},{"Chaos Orb","Stackable Currency"},
+	{"Nightmare Map","Maps","Rare",{MapTier=17}},
+	{"Shaper Guardian Map","Maps","Rare"},{"Valdo Map","Maps","Rare"},
+	{"Map (Tier 16)","Maps","Rare",{BlightedMap=true,UberBlightedMap=false}},
+	{"Map (Tier 16)","Maps","Rare",{UberBlightedMap=true}},
 }
 local flaskExamples={
 	{"Sacred Life Flask","Life Flasks"},{"Divine Life Flask","Life Flasks"},
@@ -361,7 +365,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		applyBaseProperties(item)
 		for key,value in pairs(example[4] or {}) do item[key]=value end
 		-- Current ordinary map bases explicitly name their tier.
-		if kind=="Maps & threads" and item.Class=="Maps" then item.MapTier=tonumber(item.BaseType:match("^Map %(Tier (%d+)%)$")) end
+		if kind=="Maps & threads" and item.Class=="Maps" then item.MapTier=item.MapTier or tonumber(item.BaseType:match("^Map %(Tier (%d+)%)$")) end
 		if kind~="Currency" or item.Class=="Stackable Currency" then list[#list+1]=item end
 	end
 	for _,item in ipairs(list) do item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86 end

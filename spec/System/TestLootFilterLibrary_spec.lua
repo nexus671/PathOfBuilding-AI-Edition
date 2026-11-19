@@ -129,9 +129,14 @@ describe("Visual filter catalogue",function()
 			{kind="Flasks & tinctures",base="Sacred Life Flask",class="Life Flasks",other="Prismatic Tincture",otherClass="Tinctures"},
 			{kind="Crafting materials",base="Hollow Fossil",class="Stackable Currency",other="Powerful Chaotic Resonator",otherClass="Delve Stackable Socketable Currency"},
 			{kind="Heist & Expedition",base="Blueprint: Underbelly",class="Blueprints",other="Expedition Logbook",otherClass="Expedition Logbooks"}}) do
-			local scene=library.scene(profile,build,case.kind,0,76,81);assert.equal(12,#scene)
+			local scene=library.scene(profile,build,case.kind,0,76,81);assert.equal(case.kind=="Maps & threads" and 17 or 12,#scene)
 			assert.equal(case.base,scene[1].BaseType);assert.equal(case.class,scene[1].Class)
 			if case.kind=="Maps & threads" then
+				assert.equal("Nightmare Map",scene[13].BaseType);assert.equal(17,scene[13].MapTier)
+				assert.is_true(scene[16].BlightedMap);assert.is_false(scene[16].UberBlightedMap)
+				assert.is_true(scene[17].UberBlightedMap)
+				local visual=require("Modules.LootFilterVisuals")
+				assert.equal("Blighted Map (Tier 16)",visual.sampleName(scene[16]));assert.equal("Blight-ravaged Map (Tier 16)",visual.sampleName(scene[17]))
 				assert.equal(1,scene[1].MapTier)
 				assert.equal("Show",parser.simulate(parser.parse('Hide\n MapTier >= 10\nShow'),scene[1]).action)
 				assert.equal(10,scene[3].MapTier)

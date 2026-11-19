@@ -8,7 +8,13 @@ local images={}
 local rarityColors={Normal={200,200,200},Magic={136,136,255},Rare={255,255,119},Unique={175,96,37}}
 local classColors={["Stackable Currency"]={170,158,130},Currency={170,158,130},["Skill Gems"]={26,162,155},["Support Gems"]={26,162,155}}
 function M.sampleName(item)
-	if item.BaseType and item.BaseType~="" then return item.BaseType end
+	if item.BaseType and item.BaseType~="" then
+		if item.Class=="Maps" and item.BaseType:match("^Map %(Tier %d+%)$") then
+			if item.UberBlightedMap==true then return "Blight-ravaged "..item.BaseType end
+			if item.BlightedMap==true then return "Blighted "..item.BaseType end
+		end
+		return item.BaseType
+	end
 	if type(item.TransfiguredGem)=="string" and item.TransfiguredGem~="" then return item.TransfiguredGem.." (transfigured example)" end
 	if item.TransfiguredGem==true then return "Transfigured gem example" end
 	return "Unknown item"
