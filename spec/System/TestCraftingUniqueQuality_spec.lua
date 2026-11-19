@@ -3,7 +3,7 @@ describe("Unique item quality",function()
 	local shield="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\nImplicits: 1\n+5% Chance to Block Attack Damage\n+100 to maximum Life\n+1500 to Armour"
 	local weapon="Rarity: UNIQUE\nThe Saviour\nLegion Sword\nItem Level: 86\nQuality: 0\nSockets: R-G-B\n+100% increased Physical Damage"
 	before_each(function() newBuild() end)
-	it("checks a saved unique recipe without changing the preview or guide",function()
+	it("checks and saves a unique recipe result without changing the preview",function()
 		local project={id="unique-recipe-ui",title="Recipe",slot="Weapon 2",startingItem=shield,goals={},steps={},nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=3}}}
 		local store=build.savers.CraftingProjects;store:Upsert(project)
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
@@ -11,7 +11,11 @@ describe("Unique item quality",function()
 		local popup=main.popups[#main.popups].controls;local text={};for _,row in ipairs(popup.details.list) do text[#text+1]=row[1] end
 		assert.matches("Goal reached",table.concat(text," "));assert.matches("Sockets: R%-G%-B",popup.resultItemMods.list[1][1])
 		assert.matches("13%%",control.status.label);assert.is_nil(store.projects[1].targetItem);popup.keep:Click()
-		assert.matches("Sockets: R%-G%-B",store.projects[1].targetItem);assert.matches("13%%",control.status.label);main.popups={}
+		assert.matches("Sockets: R%-G%-B",store.projects[1].targetItem);assert.matches("13%%",control.status.label)
+		local xml=build:SaveDB("Unique recipe target");loadBuildFromXML(xml,"Unique recipe target");main.popups={}
+		local saved=build.savers.CraftingProjects.projects[1]
+		assert.matches("Sockets: R%-G%-B",saved.targetItem);assert.equal("omen_connections",saved.nativeRecipe.steps[1].method)
+		control=require("Classes.CraftingUniqueQualityControl").Open(build,saved);assert.is_true(control.recipe:IsEnabled());assert.is_true(control.loadTarget:IsEnabled());main.popups={}
 	end)
 	it("confirms before replacing a unique guide target with a recipe result",function()
 		local project={id="unique-recipe-replace",title="Recipe",slot="Weapon 2",startingItem=shield,targetItem=shield,goals={},steps={},nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=3}}}
