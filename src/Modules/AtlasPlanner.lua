@@ -420,7 +420,7 @@ function M.report(plan)
 	end
 	local lines={}
 	for stat,count in pairs(stats) do lines[#lines+1]={text=stat,count=count} end
-	local additiveTotals={};for _,entry in pairs(additive) do if #entry.nodes>1 and entry.value~=0 then
+	local additiveTotals={};for _,entry in pairs(additive) do if entry.value~=0 then
 		table.sort(entry.nodes,function(a,b) return a.id<b.id end)
 		entry.text=entry.prefix..math.abs(entry.value).."% "..(entry.value>0 and "increased " or "reduced ")..entry.suffix;additiveTotals[#additiveTotals+1]=entry
 	end end;table.sort(additiveTotals,function(a,b) return a.text<b.text end)

@@ -156,7 +156,7 @@ end
 function M.compare(before,after)
 	assert(before.version==after.version,"Choose plans from the same Atlas version to compare")
 	local old,new={},{};for _,id in ipairs(before.nodes) do old[id]=true end;for _,id in ipairs(after.nodes) do new[id]=true end
-	local result={added={},removed={},stats={},choiceChanges={}};local tree=atlas.tree(after.version)
+	local result={added={},removed={},stats={},modifierChanges={},choiceChanges={}};local tree=atlas.tree(after.version)
 	local priorChoices,nextChoices={},{}
 	for _,choice in ipairs(before.choices or {}) do priorChoices[choice.node]=choice.effect end
 	for _,choice in ipairs(after.choices or {}) do nextChoices[choice.node]=choice.effect end
@@ -166,11 +166,16 @@ function M.compare(before,after)
 	for id in pairs(new) do if not old[id] then result.added[#result.added+1]=tree.nodes[id] end end
 	for id in pairs(old) do if not new[id] then result.removed[#result.removed+1]=tree.nodes[id] end end
 	for _,list in ipairs({result.added,result.removed}) do table.sort(list,function(a,b) return a.id<b.id end) end
-	local counts={}
-	for _,entry in ipairs(atlas.report(before).stats) do counts[entry.text]=-entry.count end
-	for _,entry in ipairs(atlas.report(after).stats) do counts[entry.text]=(counts[entry.text] or 0)+entry.count end
+	local counts={};local beforeReport,afterReport=atlas.report(before),atlas.report(after)
+	for _,entry in ipairs(beforeReport.stats) do counts[entry.text]=-entry.count end
+	for _,entry in ipairs(afterReport.stats) do counts[entry.text]=(counts[entry.text] or 0)+entry.count end
 	for text,count in pairs(counts) do if count~=0 then result.stats[#result.stats+1]=string.format("%+dx %s",count,text) end end
 	table.sort(result.stats)
+	local changes={}
+	for _,entry in ipairs(beforeReport.additiveTotals) do local key=entry.prefix.."\0"..entry.suffix;changes[key]={text=entry.prefix.."increased "..entry.suffix,delta=-entry.value} end
+	for _,entry in ipairs(afterReport.additiveTotals) do local key=entry.prefix.."\0"..entry.suffix;local change=changes[key] or {text=entry.prefix.."increased "..entry.suffix,delta=0};change.delta=change.delta+entry.value;changes[key]=change end
+	for _,change in pairs(changes) do if change.delta~=0 then result.modifierChanges[#result.modifierChanges+1]=change end end
+	table.sort(result.modifierChanges,function(a,b) return a.text<b.text end)
 	return result
 end
 -- A previous stage cannot already depend on this draft. Check the complete

@@ -379,11 +379,11 @@ function Panel.Open(build,source,layout)
 		for _,warning in ipairs(summary.warnings) do lines[#lines+1]=warning end
 		for _,restriction in ipairs(summary.threadRestrictions) do lines[#lines+1]=restriction.name..": excludes "..restriction.mechanic.." Threads found in your Maps." end
 		local entries={{id="summary",label="Allocated investment overview",category="Overview",details=lines}}
-		for index,total in ipairs(report.additiveTotals) do
+		for index,total in ipairs(report.additiveTotals) do if #total.nodes>1 then
 			local details={total.text,"Sum of matching allocated node modifiers before keystone and other interactions; not an effective map chance."}
 			for _,source in ipairs(total.nodes) do details[#details+1]=source.name..": "..source.stat end
 			entries[#entries+1]={id="additive-"..index,label=total.text,category="Added modifiers",details=details}
-		end
+		end end
 		if report.grantRoute then
 			local details={report.budgetWarning,"Start from an empty Atlas with the entered earned points. Refunds consume refund currency.","Choose effects when allocating choice nodes; temporary choices will be refunded."}
 			for i,step in ipairs(report.grantRoute) do details[#details+1]=i..". "..step.action..": "..controls.canvas.tree.nodes[step.id].name.." ["..step.id.."]" end
@@ -508,6 +508,7 @@ function Panel.Open(build,source,layout)
 					local comparison=strategy.compare(plan,current());local lines={"Saved: "..plan.title,"Current draft: "..#comparison.added.." added, "..#comparison.removed.." removed"}
 					for _,node in ipairs(comparison.added) do lines[#lines+1]="+ "..node.name end;for _,node in ipairs(comparison.removed) do lines[#lines+1]="- "..node.name end
 					lines[#lines+1]="Changed bonus counts";for _,stat in ipairs(comparison.stats) do lines[#lines+1]=stat end
+					if #comparison.modifierChanges>0 then lines[#lines+1]="Modifier changes before keystone and other interactions; not effective map chances";for _,change in ipairs(comparison.modifierChanges) do lines[#lines+1]=string.format("%+d percentage points of modifier | %s",change.delta,change.text) end end
 					choices[#choices+1]={id=plan.id,label=plan.title,details=lines,plan=plan}
 				end end;browser.Open("Compare Atlas plans",choices,{action="Show overlay",choose=function(choice)
 					local before={};for _,id in ipairs(choice.plan.nodes) do before[id]=true end;controls.canvas.comparison={before=before};controls.help.label="^7Green: added paths | Red: removed paths | Gold: shared paths"

@@ -254,6 +254,11 @@ describe("Native Atlas planner", function()
 		assert.is_truthy(found);local seen={};for _,source in ipairs(found.nodes) do seen[source.id]=true end
 		assert.is_true(seen[57123]);assert.is_true(seen[2929]);assert.is_true(found.value>=4)
 		assert.is_truthy(report.limitations[2]:find("not combined",1,true))
+		local strategy=require("Modules.AtlasStrategy");local change
+		for _,entry in ipairs(strategy.compare(plan("3.30.0c"),p).modifierChanges) do if entry.text=="increased effect of Explicit Modifiers on your Maps" then change=entry;break end end
+		assert.is_truthy(change);assert.equal(found.value,change.delta)
+		local reverse;for _,entry in ipairs(strategy.compare(p,plan("3.30.0c")).modifierChanges) do if entry.text==change.text then reverse=entry;break end end
+		assert.is_truthy(reverse);assert.equal(-found.value,reverse.delta)
 	end)
 	it("requires enough earned points to reach a point-granting node before spending its grant",function()
 		local target=atlas.search("3.29.3","Unwavering Vision",10).matches[1].id
