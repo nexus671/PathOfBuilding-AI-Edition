@@ -85,6 +85,12 @@ async function main(){
   const partialGroupRecipe={initialState:partialGroupInitial,steps:[{method:'quality',untilTargets:[{anyOf:[partialGroupInitial.affixes[0].id]},{anyOf:[partialGroupAbsent]}],untilRequiredGroups:1,onFailureAction:'stop'},{method:'quality'}],targets:[],requirements:{minQuality:20}};
   const partialGroupResult=await queued('simulate_crafting',{baseRevision:context.revision,itemText:raw,recipe:partialGroupRecipe,options:{trials:1,maxActions:2}},'crafted');
   assert.equal(partialGroupResult.nativeCrafting.routeCounts[0].success,1);assert.equal(partialGroupResult.nativeCrafting.routeCounts[1].visits,1);
+  const copiedTincture='Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed';
+  const tincturePreview=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:copiedTincture,action:{method:'alteration'},seed:3},'crafted');
+  assert.ok(tincturePreview.nativeCrafting.warnings.some(entry=>entry.code==='tincture_imported_values'));
+  const tinctureRecipe={steps:[{method:'alteration'}],targets:[],requirements:{minQuality:20}};
+  const tinctureSimulation=await queued('simulate_crafting',{baseRevision:context.revision,itemText:copiedTincture,recipe:tinctureRecipe,options:{trials:1,maxActions:1}},'crafted');
+  assert.ok(tinctureSimulation.nativeCrafting.warnings.some(entry=>entry.code==='tincture_imported_values'));
   const origin=createHash('sha1').update(raw).digest('hex');
   for (const [name,base] of [['Taste of Hate','Sapphire Flask'],['The Battle Within','Oakbranch Tincture']]) {
     const flask=`${base.includes('Tincture')?'Item Class: Tinctures\n':''}Rarity: UNIQUE\n${name}\n${base}\nItem Level: 86\nQuality: 18\n30% chance to Avoid being Frozen during Effect`;
