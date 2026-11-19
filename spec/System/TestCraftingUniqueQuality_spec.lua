@@ -125,12 +125,12 @@ describe("Unique item quality",function()
 	it("catalogues supported unique crafts and their current availability",function()
 		local simulator=require("Modules.CraftingSimulator")
 		local catalog=simulator.catalog(shield,"",50,nil,"3_30")
-		assert.is_true(catalog.uniqueCrafting);assert.equal(5,#catalog.uniqueActions);assert.equal(4,#catalog.socketCrafts)
+		assert.is_true(catalog.uniqueCrafting);assert.equal(7,#catalog.uniqueActions);assert.equal(6,#catalog.socketCrafts)
 		assert.same(require("Modules.CraftingItemStats").itemValues(new("Item"):Item(shield)),catalog.nativeStats);assert.is_true(catalog.nativeStats.Armour>0)
-		local byMethod={};for _,action in ipairs(catalog.uniqueActions) do byMethod[action.method]=action end
+		local byMethod={};for _,action in ipairs(catalog.uniqueActions) do if action.method~="socket_bench" or action.action.linked then byMethod[action.method]=action end end
 		assert.is_true(byMethod.quality.available);assert.is_true(byMethod.beast_max_links.available);assert.is_true(byMethod.socket_white_bench.available)
 		local corrupted=simulator.catalog(shield.."\nCorrupted","",50)
-		byMethod={};for _,action in ipairs(corrupted.uniqueActions) do byMethod[action.method]=action end
+		byMethod={};for _,action in ipairs(corrupted.uniqueActions) do if action.method~="socket_bench" or action.action.linked then byMethod[action.method]=action end end
 		assert.is_false(byMethod.quality.available);assert.is_false(byMethod.beast_max_links.available);assert.is_true(byMethod.socket_white_bench.available);assert.is_true(byMethod.socket_bench.available)
 		assert.equal(3,byMethod.socket_bench.components["Metadata/Items/Currency/CurrencyRerollSocketLinks"]);assert.equal(3,byMethod.socket_bench.components["Metadata/Items/Currency/CurrencyCorrupt"])
 		local proposed={id="ai-guide",title="AI guide",slot="Weapon 2",startingItem=shield.."\nCorrupted",goals={},steps={byMethod.socket_bench.guideStep}}
@@ -157,6 +157,34 @@ describe("Unique item quality",function()
 			for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id then fusingRule=fusingRule or rule.text:find("Orb of Fusing",1,true);vaalRule=vaalRule or rule.text:find("Vaal Orb",1,true) end end
 			assert.is_truthy(fusingRule);if corrupted then assert.is_truthy(vaalRule) end
 			control.recipe:Click();saved=store.projects[#store.projects];assert.same(action,saved.nativeRecipe.steps[1])
+			main.popups={}
+		end
+	end)
+	it("changes unique socket counts and keeps sequential bench actions",function()
+		local sim=require("Modules.CraftingSimulator");local unique=require("Modules.CraftingUniqueQuality")
+		local source="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"
+		local tabula="Rarity: UNIQUE\nTabula Rasa\nSimple Robe\nItem Level: 86\nSockets: W-W-W-W-W-W"
+		assert.matches("fixes its socket count",unique.socketCountReason(tabula,2))
+		for _,corrupted in ipairs({false,true}) do
+			local raw=source..(corrupted and "\nCorrupted" or "");local action={method="socket_bench",count=4}
+			local changed=sim.perform(raw,action,1);assert.matches("Sockets: R%-G B W",changed.itemText)
+			assert.equal(10,changed.components["Metadata/Items/Currency/CurrencyRerollSocketNumbers"]);assert.equal(corrupted and 10 or nil,changed.components["Metadata/Items/Currency/CurrencyCorrupt"])
+			assert.matches("Sockets: R%-G",sim.perform(changed.itemText,{method="socket_bench",count=2},1).itemText)
+			local priced=sim.simulate(raw,{steps={{method="socket_bench",count=2}},targets={},requirements={exactSockets=2}},{trials=1,maxActions=1,currency="chaos",actionPrices={["socket_bench:2:false"]=7}})
+			assert.equal(7,priced.meanCost);assert.equal("socket_bench:2:false",priced.stepPriceKeys[1].priceKey)
+			local warned=false;for _,warning in ipairs(priced.warnings) do if warning.code=="unique_socket_count_assumptions" then warned=true end end;assert.is_true(warned)
+			assert.has_error(function() sim.perform(raw.."\nSockets cannot be modified",action,1) end)
+			assert.has_error(function() sim.perform(raw.."\nHas 3 Sockets",action,1) end)
+			local project={id=corrupted and "count-corrupted" or "count-normal",title="Socket count",slot="Helmet",startingItem=raw,goals={},steps={}}
+			local store=build.savers.CraftingProjects;store:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+			control.socketCount:Click();local popup=main.popups[1].controls;popup.count:SelByValue(4,"val");popup.apply:Click()
+			control.undo:Click();assert.is_true(control.redo:IsEnabled());control.redo:Click();assert.is_true(control.benchLink:IsEnabled())
+			control.benchLink:Click();control.guide:Click();control.recipe:Click()
+			local saved=store.projects[#store.projects];assert.equal("socket_count_bench",saved.steps[1].uniqueCraft.method);assert.equal(4,saved.steps[1].uniqueCraft.count);assert.equal("socket_bench",saved.steps[2].uniqueCraft.method)
+			assert.equal(4,saved.nativeRecipe.requirements.exactSockets);local run=sim.simulate(raw,saved.nativeRecipe,{trials=1,maxActions=3});assert.is_true(run.sampleSuccess);assert.equal(saved.targetItem,run.sampleItem)
+			local recovery=require("Modules.PlanningRecovery").clean("uniqueQuality",{plan={kind="uniqueQuality",project=project,itemText=changed.itemText,history={raw},actions={"socket_count_bench:4"},redo={}}});assert.equal("socket_count_bench:4",recovery.plan.actions[1])
+			local filters=require("Modules.LootFilters");local rules=filters.generate(build,filters.profile("count-filter","Socket pickup"));local names={};for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id then names[rule.title]=true end end
+			assert.is_true(names["Jeweller's Orb"]);assert.is_true(names["Orb of Fusing"]);if corrupted then assert.is_true(names["Vaal Orb"]) end
 			main.popups={}
 		end
 	end)

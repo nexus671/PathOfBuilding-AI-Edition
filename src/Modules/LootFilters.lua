@@ -251,11 +251,11 @@ function M.generate(build,profile,checkpoint)
 		if not coverage then ok,coverage=pcall(function()
 			if isUnique then
 				local unique=require("Modules.CraftingUniqueQuality");local item=unique.inspect(project.startingItem)
-				local catalog=unique.catalog(project.startingItem,"",50);local actions={};for _,entry in ipairs(catalog.uniqueActions) do actions[entry.method]=entry end
+				local catalog=unique.catalog(project.startingItem,"",50);local actions={};for _,entry in ipairs(catalog.uniqueActions) do actions[entry.priceKey]=entry end
 				local result={items={},unknown={}};local prices=require("Modules.CraftingPrices");local model={item=item}
 				if project.nativeRecipe.initialState then result.unknown[#result.unknown+1]="ordinary starting state" end
 				for _,step in ipairs(project.nativeRecipe.steps) do
-					local entry=actions[step.method]
+					local entry=actions[require("Modules.CraftingSimulator").priceKey(step)]
 					local reason=require("Modules.CraftingUniqueSimulation").stepReason(step)
 					if reason then result.unknown[#result.unknown+1]=reason end
 					if entry then for resource in pairs(entry.components) do
@@ -291,15 +291,20 @@ function M.generate(build,profile,checkpoint)
 		local tagged=false;for _,step in ipairs(project.steps or {}) do if step.uniqueCraft then tagged=true;break end end
 		local ok,item,info=false,nil,nil
 		if tagged then local inspected,parsed,details=pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem);ok,item,info=inspected,parsed,details end
+		local uniqueSocketCount=ok and #item.sockets or nil
 		if ok then for _,step in ipairs(project.steps or {}) do
 			local craft=step.uniqueCraft
-			if craft and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,info.resource,item.corrupted,step.action,#item.sockets) then
+			if craft and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,info.resource,item.corrupted,step.action,uniqueSocketCount) then
 				local items={}
 				if craft.method=="quality" then items={{key=info.resourceKey,name=info.resource}}
 				elseif craft.method=="omen_connections" then items={{key="Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks",name="Omen of Connections"},{key="Metadata/Items/Currency/CurrencyRerollSocketLinks",name="Orb of Fusing"}}
 				elseif craft.method=="socket_bench" then
 					items={{key="Metadata/Items/Currency/CurrencyRerollSocketLinks",name="Orb of Fusing"}}
 					if item.corrupted then items[#items+1]={key="Metadata/Items/Currency/CurrencyCorrupt",name="Vaal Orb"} end
+				elseif craft.method=="socket_count_bench" then
+					items={{key="Metadata/Items/Currency/CurrencyRerollSocketNumbers",name="Jeweller's Orb"}}
+					if item.corrupted then items[#items+1]={key="Metadata/Items/Currency/CurrencyCorrupt",name="Vaal Orb"} end
+					uniqueSocketCount=craft.count
 				elseif craft.method=="socket_white_bench" then
 					items={{key="Metadata/Items/Currency/CurrencyConvertToNormal",name="Orb of Scouring"}}
 					if item.corrupted then items[#items+1]={key="Metadata/Items/Currency/CurrencyCorrupt",name="Vaal Orb"} end

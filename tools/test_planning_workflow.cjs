@@ -99,6 +99,8 @@ async function main(){
   assert.equal(uniqueBenchOption.available,true);assert.deepEqual(uniqueBenchOption.action,{method:'socket_bench',count:3,linked:true});
   assert.equal(uniqueBenchOption.components['Metadata/Items/Currency/CurrencyRerollSocketLinks'],3);assert.equal(uniqueBenchOption.components['Metadata/Items/Currency/CurrencyCorrupt'],3);
   assert.match(uniqueBenchOption.guideStep.action,/3 Vaal Orbs/);
+  const uniqueCountOption=corruptedUniqueInspection.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='socket_bench' && entry.action.count===2 && !entry.action.linked);
+  assert.equal(uniqueCountOption.available,true);assert.equal(uniqueCountOption.components['Metadata/Items/Currency/CurrencyRerollSocketNumbers'],1);assert.equal(uniqueCountOption.components['Metadata/Items/Currency/CurrencyCorrupt'],1);
   const uniqueQuality=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},seed:1},'crafted');
   assert.equal(uniqueQuality.nativeCrafting.uniqueQuality.quality,13);assert.equal(uniqueQuality.nativeCrafting.uniqueQuality.resource,"Armourer's Scrap");
   const uniqueQualityNext=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueQuality.nativeCrafting.itemText,action:{method:'quality'},seed:2},'crafted');
@@ -119,6 +121,11 @@ async function main(){
   const uniqueBenchRecipe={steps:[uniqueBenchOption.action],targets:[],requirements:{links:3}};
   const uniqueBenchSimulation=await queued('simulate_crafting',{baseRevision:context.revision,itemText:uniqueCorrupted,recipe:uniqueBenchRecipe,options:{trials:1,maxActions:1}},'crafted');
   assert.equal(uniqueBenchSimulation.nativeCrafting.successChance,100);assert.equal(uniqueBenchSimulation.nativeCrafting.sampleItem,uniqueBench.nativeCrafting.itemText);
+  const uniqueCount=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueBench.nativeCrafting.itemText,action:uniqueCountOption.action,seed:5},'crafted');
+  assert.match(uniqueCount.nativeCrafting.itemText,/Sockets: R-G(?:\n|$)/);
+  const uniqueCountRecipe={steps:[uniqueBenchOption.action,uniqueCountOption.action],targets:[],requirements:{exactSockets:2,links:2}};
+  const uniqueCountSimulation=await queued('simulate_crafting',{baseRevision:context.revision,itemText:uniqueCorrupted,recipe:uniqueCountRecipe,options:{trials:1,maxActions:2}},'crafted');
+  assert.equal(uniqueCountSimulation.nativeCrafting.successChance,100);assert.equal(uniqueCountSimulation.nativeCrafting.sampleItem,uniqueCount.nativeCrafting.itemText);
   const uniqueWhite=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueCorrupted,action:{method:'socket_white_bench'},seed:5},'crafted');
   assert.equal(uniqueWhite.nativeCrafting.itemText,uniqueCorrupted.replace('Sockets: R-G B','Sockets: W-W W'));
   assert.equal(uniqueWhite.nativeCrafting.components['Metadata/Items/Currency/CurrencyConvertToNormal'],1);assert.equal(uniqueWhite.nativeCrafting.components['Metadata/Items/Currency/CurrencyCorrupt'],1);
@@ -149,13 +156,13 @@ async function main(){
   for(const name of ["Armourer's Scrap",'Omen of Connections','Orb of Fusing']) assert.ok(uniquePickups.has(name),name+' missing from unique guide pickups');
   await queued('propose_build',{mode:'edit',title:'Remove test guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:uniqueGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
   assert.ok(!(await call('get_crafting_projects')).projects.some(entry=>entry.id===uniqueGuide.id));
-  const benchGuide={id:'unique-bench-workflow',title:'Corrupted shield links',slot:'Weapon 2',startingItem:uniqueCorrupted,targetItem:uniqueBench.nativeCrafting.itemText,goals:[],steps:[uniqueBenchOption.guideStep],nativeRecipe:uniqueBenchRecipe};
+  const benchGuide={id:'unique-bench-workflow',title:'Corrupted shield links',slot:'Weapon 2',startingItem:uniqueCorrupted,targetItem:uniqueCount.nativeCrafting.itemText,goals:[],steps:[uniqueBenchOption.guideStep,uniqueCountOption.guideStep],nativeRecipe:uniqueCountRecipe};
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:benchGuide},'review');await host('apply');context=(await call('get_build_context')).context;
   const savedBench=(await call('get_crafting_projects')).projects.find(entry=>entry.id===benchGuide.id);
-  assert.equal(savedBench.steps[0].uniqueCraft.method,'socket_bench');assert.equal(savedBench.nativeRecipe.steps[0].count,3);
+  assert.equal(savedBench.steps[0].uniqueCraft.method,'socket_bench');assert.equal(savedBench.steps[1].uniqueCraft.method,'socket_count_bench');assert.equal(savedBench.nativeRecipe.steps[1].count,2);
   const benchFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'bench-guide-filter',title:'Bench guide pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');
   const benchPickups=new Set(benchFilter.profile.rules.filter(rule=>rule.origin==='craft:'+benchGuide.id).map(rule=>rule.title));
-  for(const name of ['Orb of Fusing','Vaal Orb']) assert.ok(benchPickups.has(name),name+' missing from bench guide pickups');
+  for(const name of ["Jeweller's Orb",'Orb of Fusing','Vaal Orb']) assert.ok(benchPickups.has(name),name+' missing from bench guide pickups');
   await queued('propose_build',{mode:'edit',title:'Remove bench guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:benchGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
   const corruptJewelRaw='Rarity: NORMAL\nCobalt Jewel\nItem Level: 83';
   const corruptJewelInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:corruptJewelRaw,query:'',limit:5},'inspected');

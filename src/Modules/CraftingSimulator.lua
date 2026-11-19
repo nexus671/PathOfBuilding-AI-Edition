@@ -1264,18 +1264,24 @@ do
 		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="quality" or action.method=="beast_max_links" or action.method=="omen_connections" or action.method=="socket_white_bench" or action.method=="socket_bench") then
 			assert(initialState==nil,"Continue unique crafting using the returned item text, not an ordinary crafting state")
 			for key in pairs(action) do assert(key=="method" or action.method=="socket_bench" and (key=="count" or key=="linked"),"This unique action does not accept additional options") end
-			if action.method=="socket_bench" then local item=require("Modules.CraftingUniqueQuality").inspect(raw);assert(action.linked==true and action.count==#item.sockets,"Unique bench linking requires the current socket count and linked=true") end
+			if action.method=="socket_bench" then
+				local item=require("Modules.CraftingUniqueQuality").inspect(raw)
+				assert(action.linked==nil or type(action.linked)=="boolean","Invalid bench link option")
+				if action.linked then assert(action.count==#item.sockets,"Unique bench linking requires the current socket count") end
+			end
 			if seed~=nil then integer(seed,1,2147483646,"seed") end
 			if action.method~="quality" then
 				local unique=require("Modules.CraftingUniqueQuality")
-				local result=action.method=="socket_white_bench" and unique.white(raw) or unique.link(raw,action.method)
+				local result=action.method=="socket_white_bench" and unique.white(raw) or action.method=="socket_bench" and not action.linked and unique.socketCount(raw,action.count) or unique.link(raw,action.method)
+				local warnings={{code="unique_crafting_scope",message="Unique crafting supports ordinary quality, socket-count and linking crafts, and the white-socket bench. Continue using the returned item text."}}
+				if action.method=="socket_bench" and not action.linked then warnings[#warnings+1]={code="unique_socket_count_assumptions",message="Socket-count previews retain existing groups, remove sockets from the end and add white unlinked sockets; position and link behavior are unverified."} end
 				return M.withTreeContext({priceKey=M.priceKey(action),itemText=result.itemText,components=result.components,dataPatch=M.dataPatch,
-					warnings={{code="unique_crafting_scope",message="Unique crafting supports ordinary quality, maximum links and the white-socket bench. Continue using the returned item text."}},limitations=copyTable(M.limits)},treeVersion)
+					warnings=warnings,limitations=copyTable(M.limits)},treeVersion)
 			end
 			local result=require("Modules.CraftingUniqueQuality").apply(raw)
 			local output=result.itemText;result.itemText=nil
 			return M.withTreeContext({priceKey="quality",itemText=output,uniqueQuality=result,components={[result.resourceKey]=1},dataPatch=M.dataPatch,
-				warnings={{code="unique_quality_scope",message="Unique crafting supports ordinary quality, maximum links and the white-socket bench. Continue using the returned item text; other unique currencies are not modeled."}},limitations=copyTable(M.limits)},treeVersion)
+				warnings={{code="unique_quality_scope",message="Unique crafting supports ordinary quality, socket-count and linking crafts, and the white-socket bench. Continue using the returned item text; other unique currencies are not modeled."}},limitations=copyTable(M.limits)},treeVersion)
 		end
 		return ordinaryPerform(raw,action,seed,initialState,treeVersion)
 	end

@@ -21,7 +21,7 @@ function M.Open(build,project,layout,snapshot)
 	local w,h=layout and layout.width or math.min(880,main.screenW-40),layout and layout.height or math.min(650,main.screenH-60)
 	local c={};local cardX=310;local cardWidth=w-cardX-16
 	ui.label(c,"heading",16,18,"Unique crafting",22)
-	ui.description(c,"intro",16,56,270,100,{"Preview quality and socket crafts.","Quality currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
+	ui.description(c,"intro",16,56,270,68,{"Preview quality and socket crafts.","Quality currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
 	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM",{expanded=true})
 	local function button(key,y,label,run)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,y,270,32},label,function()
@@ -71,9 +71,12 @@ function M.Open(build,project,layout,snapshot)
 		end
 		for i=first,#actions do
 			local action=actions[i]
+			local socketCount=tonumber(action:match("^socket_count_bench:([2-6])$"))
 			if action=="quality" then qualityCount=qualityCount+1
+			elseif socketCount then
+				flush();steps[#steps+1]={action=unique.guideAction("socket_count_bench",socketCount,info.resource,item.corrupted),uniqueCraft={method="socket_count_bench",count=socketCount},done=false}
 			elseif action=="beast_max_links" or action=="omen_connections" or action=="socket_white_bench" or action=="socket_bench" then
-				flush();steps[#steps+1]={action=unique.guideAction(action,1,info.resource,item.corrupted,#item.sockets),uniqueCraft={method=action,count=1},done=false}
+				local before=unique.inspect(history[i]);flush();steps[#steps+1]={action=unique.guideAction(action,1,info.resource,item.corrupted,#before.sockets),uniqueCraft={method=action,count=1},done=false}
 			else return nil,"Loaded or older previews do not record every action." end
 		end
 		flush()
@@ -101,6 +104,37 @@ function M.Open(build,project,layout,snapshot)
 		if persist then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},not ui.hasDraft(build,"uniqueQuality",draft.id)) end
 	end
 	ui.label(c,"status",16,174,"",14)
+	button("socketCount",130,"Bench: socket count",function()
+		local controls={};local width,height=420,210;local options={}
+		local limit=require("Modules.CraftingSimulator").socketLimit({item=item})
+		for count=2,limit do options[#options+1]={label=count.." sockets",val=count} end
+		assert(#options>0,"This base cannot use socket-count recipes")
+		ui.description(controls,"help",16,28,width-32,42,{"Choose the number of sockets. Added sockets are white and unlinked in this preview."},14)
+		controls.count=new("DropDownControl"):DropDownControl(ui.anchor,{16,82,180,28},options)
+		local function chosen() return controls.count:GetSelValueByKey("val") end
+		ui.label(controls,"cost",16,122,"",14);controls.cost.label=function()
+			local cost=require("Modules.CraftingSimulator").components({method="socket_bench",count=chosen()},{sockets=item.sockets,corrupted=item.corrupted});local amount=cost["Metadata/Items/Currency/CurrencyRerollSocketNumbers"] or 0
+			return "^7Cost: "..amount.." Jeweller's Orb"..(amount==1 and "" or "s")..(item.corrupted and " + "..amount.." Vaal Orb"..(amount==1 and "" or "s") or "")
+		end
+		controls.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,height-48,160,28},"Preview sockets",function()
+			local count=chosen();local result=unique.socketCount(raw,count);history[#history+1]=raw;actions[#actions+1]="socket_count_bench:"..count;redo={};raw=result.itemText;main:ClosePopup();refresh(true)
+		end)
+		controls.apply.enabled=function() return not unique.socketCountReason(raw,chosen()) end
+		controls.apply.tooltipText=function() return unique.socketCountReason(raw,chosen()) or "Preview this bench craft without spending currency." end
+		controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-132,height-48,116,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(controls,{apply=true});for _,control in pairs(controls) do control.layoutAudit="unique-socket-count" end
+		main:OpenPopup(width,height,"Socket count",controls,nil,nil,"close")
+	end)
+	local checkedSocketRaw,cachedSocketAvailability,cachedSocketReason
+	local function socketCountAvailability()
+		if checkedSocketRaw==raw then return cachedSocketAvailability,cachedSocketReason end
+		checkedSocketRaw=raw
+		local limit=require("Modules.CraftingSimulator").socketLimit({item=item});local reason
+		for count=2,limit do local why=unique.socketCountReason(raw,count);if not why then cachedSocketAvailability,cachedSocketReason=true,nil;return true end;reason=reason or why end
+		cachedSocketAvailability,cachedSocketReason=false,reason or "This base cannot use socket-count recipes.";return cachedSocketAvailability,cachedSocketReason
+	end
+	c.socketCount.enabled=function() return socketCountAvailability() end
+	c.socketCount.tooltipText=function() local allowed,reason=socketCountAvailability();return allowed and "Preview a socket-count bench craft and its cost." or reason end
 	button("apply",198,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;actions[#actions+1]="quality";redo={};raw=result.itemText;refresh(true) end)
 	c.apply.enabled=function() return info.available end
 	c.apply.tooltipText=function() return item.corrupted and "Ordinary quality currency cannot modify a corrupted item." or info.available and "Adds 1% quality." or "Ordinary quality currency cannot exceed 20%." end
@@ -160,7 +194,7 @@ function M.Open(build,project,layout,snapshot)
 	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."
 	local function canCreateRecipe()
 		if #actions==0 or #actions~=#history or history[1]~=draft.startingItem or #actions>100 then return false end
-		for _,action in ipairs(actions) do if action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="socket_white_bench" and action~="socket_bench" then return false end end
+		for _,action in ipairs(actions) do if action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") then return false end end
 		return true
 	end
 	local function createRecipe()
@@ -168,15 +202,18 @@ function M.Open(build,project,layout,snapshot)
 		local steps,requirements={},{};local i=1
 		while i<=#actions do
 			local action=actions[i]
+			local socketCount=tonumber(action:match("^socket_count_bench:([2-6])$"))
 			if action=="quality" then
 				local first=i;while i<=#actions and actions[i]=="quality" do i=i+1 end
 				local _,after=unique.inspect(history[i] or raw);local count=i-first
 				steps[#steps+1]={method="quality",maxAttempts=count,untilRequirements={minQuality=after.quality}}
 				requirements.minQuality=info.quality
+			elseif socketCount then
+				steps[#steps+1]={method="socket_bench",count=socketCount};requirements.exactSockets=#item.sockets;i=i+1
 			else
-				steps[#steps+1]=action=="socket_bench" and {method=action,count=#item.sockets,linked=true} or {method=action};i=i+1
+				local before=unique.inspect(history[i]);steps[#steps+1]=action=="socket_bench" and {method=action,count=#before.sockets,linked=true} or {method=action};i=i+1
 				if action=="socket_white_bench" then requirements.socketColours=string.rep("W",#item.sockets)
-				else requirements.links=#item.sockets end
+				else local best=0;for _,socket in ipairs(item.sockets) do local count=0;for _,other in ipairs(item.sockets) do if other.group==socket.group then count=count+1 end end;best=math.max(best,count) end;requirements.links=best end
 			end
 		end
 		assert(#steps<=20,"This preview needs more than 20 recipe steps")
@@ -241,15 +278,17 @@ function M.Open(build,project,layout,snapshot)
 	end
 	updateIcons=function()
 		c.apply.planningIcon=icon("quality")
-		c.omen.planningIcon=icon("omen_connections");c.benchLink.planningIcon=icon("fusing");c.white.planningIcon=icon("socket_white_bench")
+		c.omen.planningIcon=icon("omen_connections");c.benchLink.planningIcon=icon("fusing");c.white.planningIcon=icon("socket_white_bench");c.socketCount.planningIcon=icon("jeweller")
 	end
 	local currency=new("Control"):Control(ui.anchor,{16,454,42,42});c.currency=currency
 	function currency:Draw() if art then local x,y=self:GetPos();SetDrawColor(1,1,1);DrawImage(art,x,y,42,42) end end
 	ui.description(c,"currencyNote",68,456,218,48,{"Preview only", "No currency is spent."},14)
 	updateCurrency=function()
 		local method=actions[#actions];local lines
+		local countMethod=method and tonumber(method:match("^socket_count_bench:([2-6])$"))
 		if method=="socket_white_bench" then
 			method="socket_white_bench";lines={"Bench: 1 Orb of Scouring",item.corrupted and "+ 1 Vaal Orb | Preview" or "Preview only"}
+		elseif countMethod then local components=require("Modules.CraftingSimulator").components({method="socket_bench",count=countMethod},{sockets=item.sockets,corrupted=item.corrupted});local amount=components["Metadata/Items/Currency/CurrencyRerollSocketNumbers"] or 0;method="jeweller";lines={"Bench: "..amount.." Jeweller's Orb"..(amount==1 and "" or "s"),item.corrupted and ("+ "..amount.." Vaal Orb"..(amount==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="socket_bench" then local components=require("Modules.CraftingSimulator").components({method=method,count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted});local count=components["Metadata/Items/Currency/CurrencyRerollSocketLinks"] or 0;lines={"Bench: "..count.." Orb"..(count==1 and "" or "s").." of Fusing",item.corrupted and ("+ "..count.." Vaal Orb"..(count==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="omen_connections" then lines={"Omen + Orb of Fusing","1 of each | Preview"}
 		elseif method=="beast_max_links" then lines={"Black Morrigan + Sand Spitter","Preview only"}

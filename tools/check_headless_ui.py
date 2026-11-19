@@ -36,7 +36,7 @@ def source_hashes():
     sources += list((ROOT / "src/TreeData/3_30_ruthless").glob("*"))
     sources += list((ROOT / "src/TreeData/3_30_preview").glob("*"))
     sources += [ROOT / "src/_SimpleGraphic.def.lua", ROOT / "src/GameVersions.lua", ROOT / "src/Data/HeadlessImageSizes.json", ROOT / "tools/update_loot_filter_base_metadata.py", ROOT / "tools/test_update_loot_filter_data.py"]
-    sources += [ROOT / "src/HeadlessWrapper.lua", ROOT / "src/Data/Global.lua", Path(__file__), ROOT / "tools/render_headless_ui.py", ROOT / "tools/test_render_headless_ui.py", ROOT / "tools/test_headless_ui.lua", ROOT / "tools/update_crafting_currency_art.py", ROOT / "tools/update_colour_picker_art.py", ROOT / "tools/update_loot_filter_base_classes.py"]
+    sources += [ROOT / "src/HeadlessWrapper.lua", ROOT / "src/Data/Global.lua", Path(__file__), ROOT / "tools/render_headless_ui.py", ROOT / "tools/test_render_headless_ui.py", ROOT / "tools/test_headless_ui.lua", ROOT / "tools/test_unique_count_ui.lua", ROOT / "tools/update_crafting_currency_art.py", ROOT / "tools/update_colour_picker_art.py", ROOT / "tools/update_loot_filter_base_classes.py"]
     return {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(sources) if path.is_file()}
 
 
@@ -86,7 +86,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1791, f"Expected 1791 UI frames, found {len(paths)}"
+    assert len(paths) == 1797, f"Expected 1797 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         audit = json.loads((frames / f"{width}-filter-error-audit.json").read_text())
         audit_text = " ".join(c.get("text", "") for c in audit["commands"] if c.get("kind") == "text")
@@ -99,6 +99,10 @@ def main():
         atlas_comparison = json.loads((frames / f"{width}-atlas-modifier-comparison.json").read_text())
         assert any("Change: +" in c.get("text", "") for c in atlas_comparison["commands"]), "Atlas modifier comparison is not visible"
         before = json.loads((frames / f"{width}-crafting-unique-quality.json").read_text())
+        count_menu = json.loads((frames / f"{width}-crafting-unique-count-menu.json").read_text())
+        assert any("10 Jeweller's Orbs + 10 Vaal Orbs" in c.get("text", "") for c in count_menu["commands"]), "Corrupted socket-count cost is missing"
+        count_result = json.loads((frames / f"{width}-crafting-unique-count-result.json").read_text())
+        assert any("Sockets: R-G B W" in c.get("text", "") for c in count_result["commands"]), "Unique socket-count preview is missing"
         unique_art = {c.get("asset") for c in before["commands"]}
         assert {"Assets/Crafting/Currency/f3bee36504af7453ea82.png", "Assets/Crafting/Currency/93c6d800e09f89a9a227.png", "Assets/Crafting/Currency/141b8801937fdb05c570.png"} <= unique_art, "Unique crafting actions are missing their currency art"
         assert any("Quality: +0%" in c.get("text", "") for c in before["commands"]), "Unique item card does not show its quality"

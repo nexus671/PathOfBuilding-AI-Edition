@@ -48,6 +48,7 @@ function M.simulate(sim,raw,recipe,options)
 	local prices=(book or options.prices) and pricing.forSimulation(book,currency,model,options.prices) or nil
 	local current,at,actions,executed,cost=raw,1,0,0,baseCost
 	local spent,missing,errors,usage,routes={},{},{},{},{}
+	local actionWarnings,seenWarnings={},{}
 	local recovery={restarts=0,stopped=0,salvaged=0};local rejected=false;local actionPriceUses=0
 	local function target(text,requirements)
 		return (not recipe.rarity or recipe.rarity=="UNIQUE") and unique.matches(text,requirements)
@@ -63,16 +64,19 @@ function M.simulate(sim,raw,recipe,options)
 			local action={method=step.method};if step.method=="socket_bench" then action.count=step.count;action.linked=step.linked end
 			local ok,result=pcall(sim.perform,current,action,seed)
 			if not ok then local message=tostring(result):match("[^:]+$") or tostring(result);errors[message]=(errors[message] or 0)+1;rejected=true;break end
+			for _,warning in ipairs(result.warnings or {}) do if warning.code~="unique_crafting_scope" and warning.code~="unique_quality_scope" and not seenWarnings[warning.code] then actionWarnings[#actionWarnings+1]=warning;seenWarnings[warning.code]=true end end
 			current=result.itemText;executed=executed+1;route.executed=route.executed+1
 			for key,amount in pairs(result.components) do
 				local canonical=pricing.key(key,model);local entry=usage[canonical]
 				if not entry then local name,_,kind=pricing.describe(canonical,model,step);entry={key=canonical,name=name,kind=kind=="Whole action" and "service" or "resource",amount=0};usage[canonical]=entry end
 				entry.amount=entry.amount+amount
 			end
-			local override=options.actionPrices and options.actionPrices[step.method]
-			local service=prices and prices[step.method]~=nil and step.method or nil
+			local actionKey=sim.priceKey(step)
+			local overrideKey=options.actionPrices and (options.actionPrices[actionKey]~=nil and actionKey or step.method)
+			local override=overrideKey and options.actionPrices[overrideKey]
+			local service=prices and (prices[actionKey]~=nil and actionKey or prices[step.method]~=nil and step.method) or nil
 			if override~=nil then actionPriceUses=actionPriceUses+1 end
-			local components=(override~=nil or service) and {[override~=nil and step.method or service]=1} or result.components
+			local components=(override~=nil or service) and {[override~=nil and overrideKey or service]=1} or result.components
 			for key,amount in pairs(components) do
 				spent[key]=(spent[key] or 0)+amount;local price=override~=nil and override or prices and prices[key]
 				if price~=nil then cost=cost+price*amount else missing[key]=true end
@@ -101,7 +105,8 @@ function M.simulate(sim,raw,recipe,options)
 		actionDistribution={{actions=actions,trials=trials,successes=successes}},executedActionDistribution={{actions=executed,trials=trials,successes=successes}},successfulActionQuantiles=hit and quantiles(actions) or nil,routeCounts=routes,budgetExhausted=not hit and at<=#recipe.steps and actions>=maxActions and trials or 0,
 		destroyedTrials=0,uniqueTrials=trials,uniqueDistribution={{name=start.title,trials=trials,successes=successes}},recovery=recovery,stepPriceKeys={},priceOverridesSupplied=suppliedPrices or suppliedActions,resourcePriceOverridesSupplied=suppliedPrices,actionPriceOverridesSupplied=suppliedActions,actionPriceOverridesApplied=actionPriceUses*trials}
 	if rejected then result.warnings[#result.warnings+1]={code="rejected_model_actions",message=string.format("All %d modeled trials included a rejected action. Rejected attempts count toward the action budget and follow failure routes, but are not charged resources. Review the transition errors.",trials)} end
-	for i,step in ipairs(recipe.steps) do result.stepPriceKeys[i]={step=i,method=step.method,priceKey=step.method} end
+	for _,warning in ipairs(actionWarnings) do result.warnings[#result.warnings+1]=warning end
+	for i,step in ipairs(recipe.steps) do result.stepPriceKeys[i]={step=i,method=step.method,priceKey=sim.priceKey(step)} end
 	if not next(missing) then result.meanCost=cost;result.costPerSuccess=hit and cost or nil;result.spendingQuantiles=quantiles(cost);result.successfulSpendingQuantiles=hit and quantiles(cost) or nil;result.costDistribution={{cost=cost,trials=trials,successes=successes}} end
 	if book then result.priceSource=book.source;result.priceQuotedAt=book.quotedAt end
 	return sim.withTreeContext(result,options.treeVersion)

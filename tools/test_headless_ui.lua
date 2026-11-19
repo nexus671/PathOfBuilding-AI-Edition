@@ -2161,6 +2161,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(saved.nativeRecipe and saved.nativeRecipe.steps[1].linked,"Bench linking was not saved in the recipe")
 		main.popups={}
 	end
+	dofile("../tools/test_unique_count_ui.lua")(build,ui,frame)
 	do
 		local saved;require("Classes.CraftingTargetControl").Open({},{exactSockets=3},nil,function(_,value) saved=value end)
 		assert(main.popups[1].controls.socketMode:GetSelValue()=="Exactly","Exact socket target did not reopen")

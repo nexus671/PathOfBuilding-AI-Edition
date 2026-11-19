@@ -5,6 +5,11 @@ function M.guideAction(method,count,resource,corrupted,socketCount)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
 	if method=="omen_connections" then return "Link existing sockets with an Omen of Connections and an Orb of Fusing" end
+	if method=="socket_count_bench" then
+		local components=require("Modules.CraftingSimulator").components({method="socket_bench",count=count},{sockets={},corrupted=corrupted})
+		local amount=components["Metadata/Items/Currency/CurrencyRerollSocketNumbers"]
+		return "Set "..count.." sockets at the crafting bench ("..amount.." Jeweller's Orb"..(amount==1 and "" or "s")..(corrupted and " and "..amount.." Vaal Orb"..(amount==1 and "" or "s") or "")..")"
+	end
 	if method=="socket_bench" then
 		if not socketCount or socketCount<2 or socketCount>6 then return "Link existing sockets at the crafting bench" end
 		local sockets={};for i=1,socketCount do sockets[i]={} end
@@ -92,6 +97,39 @@ function M.whiteReason(raw)
 	if #colours~=#sockets then return "The socket layout could not be verified" end
 end
 
+-- Socket-count recipes preserve the modeled existing groups and add white,
+-- unlinked sockets, matching the ordinary equipment bench model.
+function M.socketCountReason(raw,count)
+	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
+	if raw:lower():find("sockets cannot be modified",1,true) then return "This item's sockets cannot be modified" end
+	if item.title=="Tabula Rasa" or item.title=="Oni-Goroshi" then return "This unique fixes its socket count" end
+	if raw:lower():find("has %d+ sockets") or raw:lower():find("has %d+ linked sockets") then return "This unique fixes its socket count" end
+	local line,lines=raw:match("\nSockets: ([^\r\n]*)"),0
+	for _ in ("\n"..raw):gmatch("\nSockets:") do lines=lines+1 end
+	if lines~=1 or not line or not line:match("^[RGBWA][RGBWA%-%s]*$") then return "A single explicit ordinary socket layout is required" end
+	for _,socket in ipairs(item.sockets or {}) do if socket.color=="A" then return "Abyssal sockets need a separate socket model" end end
+	if #line:gsub("[^RGBW]","")~=#item.sockets then return "The socket layout could not be verified" end
+	local limit=require("Modules.CraftingSimulator").socketLimit({item=item})
+	if type(count)~="number" or count~=math.floor(count) or count<2 or count>limit then return "Choose a socket count supported by this base" end
+	if #item.sockets==count then return "The item already has this many sockets" end
+end
+
+function M.socketCount(raw,count)
+	local reason=M.socketCountReason(raw,count);assert(not reason,reason)
+	local before=M.inspect(raw);local parts={}
+	for i=1,count do
+		local socket=before.sockets[i]
+		if i>1 then local previous=before.sockets[i-1];parts[#parts+1]=socket and previous and socket.group==previous.group and "-" or " " end
+		parts[#parts+1]=socket and socket.color or "W"
+	end
+	local output,n=raw:gsub("(\nSockets: )([^\r\n]*)",function(prefix) return prefix..table.concat(parts) end)
+	assert(n==1,"The socket layout could not be updated")
+	local after=M.inspect(output);assert(after.title==before.title and after.baseName==before.baseName and #after.sockets==count and after.corrupted==before.corrupted,"Unique item did not round-trip after socket crafting")
+	for i=1,math.min(count,#before.sockets) do assert(after.sockets[i].color==before.sockets[i].color and (i==1 or (after.sockets[i].group==after.sockets[i-1].group)==(before.sockets[i].group==before.sockets[i-1].group)),"Existing sockets changed unexpectedly") end
+	local components=require("Modules.CraftingSimulator").components({method="socket_bench",count=count},{sockets=before.sockets,corrupted=before.corrupted})
+	return {itemText=output,components=components}
+end
+
 function M.white(raw)
 	local reason=M.whiteReason(raw);assert(not reason,reason)
 	local before=M.inspect(raw)
@@ -119,13 +157,20 @@ function M.catalog(raw,query,limit)
 		{method="socket_bench",label="Bench: link existing sockets",reason=benchLinkReason,components=not benchLinkReason and require("Modules.CraftingSimulator").components({method="socket_bench",count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted}) or {}},
 		{method="socket_white_bench",label="Bench: white sockets",reason=whiteReason,components=whiteComponents},
 	}
-	local result={uniqueCrafting=true,methods={},uniqueActions={},socketCrafts={},quality={value=info.quality,available=info.available,resource=info.resource},nativeStats=require("Modules.CraftingItemStats").itemValues(item),limitations={"Only the listed unique actions are modeled. Continue by passing the returned item text, not an ordinary affix state."}}
+	local sim=require("Modules.CraftingSimulator")
+	for count=2,sim.socketLimit({item=item}) do
+		local request={method="socket_bench",count=count}
+		definitions[#definitions+1]={method="socket_bench",guideMethod="socket_count_bench",guideCount=count,request=request,label="Bench: "..count.." sockets",reason=M.socketCountReason(raw,count),components=sim.components(request,{sockets=item.sockets,corrupted=item.corrupted})}
+	end
+	local result={uniqueCrafting=true,methods={},uniqueActions={},socketCrafts={},quality={value=info.quality,available=info.available,resource=info.resource},nativeStats=require("Modules.CraftingItemStats").itemValues(item),limitations={"Only the listed unique actions are modeled. Continue by passing the returned item text, not an ordinary affix state.","Socket-count previews retain existing groups, remove sockets from the end and add white unlinked sockets; position and link behavior are unverified."}}
+	local seen={}
 	for _,entry in ipairs(definitions) do
-		result.methods[#result.methods+1]=entry.method
+		if not seen[entry.method] then result.methods[#result.methods+1]=entry.method;seen[entry.method]=true end
 		if #result.uniqueActions<limit and (entry.method.." "..entry.label):lower():find(query,1,true) then
-			local request=entry.method=="socket_bench" and {method=entry.method,count=#item.sockets,linked=true} or {method=entry.method}
+			local request=entry.request or (entry.method=="socket_bench" and {method=entry.method,count=#item.sockets,linked=true} or {method=entry.method})
 			local action={method=entry.method,label=entry.label,action=request,priceKey=entry.method=="socket_bench" and require("Modules.CraftingSimulator").priceKey(request) or entry.method,available=entry.reason==nil,unavailableReason=entry.reason,deterministic=true,components=entry.components}
-			action.guideStep={action=M.guideAction(entry.method,1,info.resource,item.corrupted,#item.sockets),uniqueCraft={method=entry.method,count=1}}
+			local guideMethod,guideCount=entry.guideMethod or entry.method,entry.guideCount or 1
+			action.guideStep={action=M.guideAction(guideMethod,guideCount,info.resource,item.corrupted,#item.sockets),uniqueCraft={method=guideMethod,count=guideCount}}
 			result.uniqueActions[#result.uniqueActions+1]=action
 			if entry.method~="quality" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
 		end

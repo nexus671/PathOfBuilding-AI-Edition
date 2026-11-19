@@ -62,6 +62,7 @@ const craftingPriceBook=object({currency:string(24),source:string(240),quotedAt:
 const uniqueCraftStep={oneOf:[
   object({method:{const:'quality'},count:integer(1,20)},['method','count']),
   object({method:{enum:['beast_max_links','omen_connections','socket_white_bench','socket_bench']},count:{const:1}},['method','count']),
+  object({method:{const:'socket_count_bench'},count:integer(2,6)},['method','count']),
 ]};
 const craftingProjectSchema = object({preferredMethod:{enum:craftingMethods},id:{type:'string',pattern:'^[A-Za-z0-9_-]{1,64}$'},title:string(120),slot:string(80),startingItem:string(24000),targetItem:string(24000),
   priceBook:craftingPriceBook,nativeRecipe:craftingRecipe,inventory:craftingInventory,goals:array(string(300),12),steps:array(object({action:string(1000),stopWhen:string(500),onFailure:string(500),done:boolean,uniqueCraft:uniqueCraftStep},['action']),40),notes:string(8000),estimate:quoteSchema,simulatorExport:string(128000),

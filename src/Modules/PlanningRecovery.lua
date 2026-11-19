@@ -70,10 +70,10 @@ function M.clean(kind,entry)
 		local history,actions={},{}
 		for i=math.max(1,#value.history-63),#value.history do
 			history[#history+1]=item(value.history[i]);local action=value.actions and value.actions[i] or "unknown"
-			assert(allowed[action],"Invalid unique crafting action");actions[#actions+1]=action
+			assert(allowed[action] or type(action)=="string" and action:match("^socket_count_bench:[2-6]$"),"Invalid unique crafting action");actions[#actions+1]=action
 		end
 		local redo={};for i=math.max(1,#(value.redo or {})-63),#(value.redo or {}) do
-			local next=value.redo[i];assert(type(next)=="table" and allowed[next.action],"Invalid unique crafting redo action")
+			local next=value.redo[i];assert(type(next)=="table" and (allowed[next.action] or type(next.action)=="string" and next.action:match("^socket_count_bench:[2-6]$")),"Invalid unique crafting redo action")
 			redo[#redo+1]={itemText=item(next.itemText),action=next.action}
 		end
 		return {plan={kind="uniqueQuality",project=project,itemText=item(value.itemText),history=history,actions=actions,redo=redo,savedTrace=value.savedTrace,savedGuideHash=value.savedGuideHash,savedGuideLength=value.savedGuideLength}}
