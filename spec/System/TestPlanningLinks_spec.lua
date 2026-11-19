@@ -278,6 +278,18 @@ describe("Linked planning tools",function()
 		profile.rules=filters.generate(build,profile);names={};for _,rule in ipairs(profile.rules) do names[rule.title]=true end
 		assert.is_nil(names["Omen of Connections"]);assert.is_true(names["Orb of Scouring"])
 	end)
+	it("generates concrete fossil and corrupted socket recipe pickups",function()
+		local project=craft();project.nativeRecipe={steps={
+			{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingLife"}},
+			{method="vaal"},{method="socket_bench",count=4,linked=true},{method="beast_max_links"}},targets={},requirements={links=4}}
+		build.savers.CraftingProjects:Upsert(project)
+		local profile=filters.profile("recipe-resources","Recipe resources");profile.template="Hide";profile.rules=filters.generate(build,profile)
+		local names={};for _,rule in ipairs(profile.rules) do if rule.origin=="craft:helmet" then names[rule.title]=true end end
+		for _,name in ipairs({"Pristine Fossil","Primitive Chaotic Resonator","Vaal Orb","Jeweller's Orb","Orb of Fusing"}) do
+			assert.is_true(names[name],name);assert.equal("Show",filters.simulate(profile,{BaseType=name}).action,name)
+		end
+		assert.is_nil(names["The Black Morrigan"]);assert.is_nil(names["Craicic Sand Spitter"])
+	end)
 	it("links exact saved crafting-resource budgets and refreshes them when the budget changes",function()
 		local data=copyTable(build.savers.BuildJourney.data)
 		data.resources={{id="fossil",title="pristine fossils"},{id="ichor",title="Greater Eldritch Ichor"},{id="omen",title="Omen of Connections"},
