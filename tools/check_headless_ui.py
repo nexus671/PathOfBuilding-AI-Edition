@@ -95,6 +95,9 @@ def main():
         for name in ("crafting-unique-white-sockets", "crafting-unique-corrupted-white"):
             white = json.loads((frames / f"{width}-{name}.json").read_text())
             assert any("Sockets: W-W W" in c.get("text", "") for c in white["commands"]), "White socket preview is missing"
+            assert any("1 Orb of Scouring" in c.get("text", "") for c in white["commands"]), "White socket cost is missing"
+            if name == "crafting-unique-corrupted-white":
+                assert any("1 Vaal Orb" in c.get("text", "") for c in white["commands"]), "Corrupted socket cost is missing"
         def socket_links(frame):
             title = next(c for c in frame["commands"] if c.get("kind") == "text" and c.get("text") == "WORKING ITEM")
             return [c for c in frame["commands"] if c.get("kind") == "rect" and c.get("width") == 7 and c.get("height") == 3

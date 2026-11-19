@@ -57,6 +57,7 @@ describe("Unique item quality",function()
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
 		assert.is_false(control.apply:IsEnabled());assert.is_false(control.link:IsEnabled());assert.is_true(control.white:IsEnabled())
 		control.white:Click();assert.matches("Sockets: W%-W W",control.itemMods.list[1][1]);control.guide:Click()
+		assert.matches("Orb of Scouring",control.currencyNote.list[1][1]);assert.matches("Vaal Orb",control.currencyNote.list[2][1])
 		assert.equal("socket_white_bench",store.projects[1].steps[1].uniqueCraft.method)
 		assert.matches("1 Orb of Scouring and 1 Vaal Orb",store.projects[1].steps[1].action)
 		local legacy=copyTable(store.projects[1]);legacy.steps[1].action="Use the crafting bench to make all sockets white"

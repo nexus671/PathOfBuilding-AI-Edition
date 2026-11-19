@@ -85,7 +85,7 @@ function M.Open(build,project,layout,snapshot)
 		if not guideCache then local steps,reason,signature=calculateGuideSteps();guideCache={steps=steps,reason=reason,signature=signature} end
 		return guideCache.steps,guideCache.reason,guideCache.signature
 	end
-	local linkReason,whiteReason
+	local linkReason,whiteReason,updateCurrency
 	local function refresh(persist)
 		guideCache=nil;reviewCache=nil;traceCache=nil
 		item,info=unique.inspect(raw);show(item)
@@ -93,6 +93,7 @@ function M.Open(build,project,layout,snapshot)
 		whiteReason=unique.whiteReason(raw)
 		c.status.label="^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
 		c.apply.label="Use "..info.resource
+		if updateCurrency then updateCurrency() end
 		if raw~=draft.startingItem and raw~=draft.targetItem then ui.draft(build,"uniqueQuality",draft.id)
 		else ui.discard(build,"uniqueQuality",draft.id) end
 		if persist then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},not ui.hasDraft(build,"uniqueQuality",draft.id)) end
@@ -146,11 +147,22 @@ function M.Open(build,project,layout,snapshot)
 	c.loadTarget.enabled=targetAvailable
 	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."
 	ui.label(c,"notice",16,426,restored and "^7Session preview restored." or "",14)
-	local artPath=require("Modules.CraftingWorkbench").icon("quality",nil,{item=item})
-	local art=artPath and NewImageHandle();if art then art:Load(artPath) end
+	local art,artCache=nil,{}
 	local currency=new("Control"):Control(ui.anchor,{16,454,42,42});c.currency=currency
 	function currency:Draw() if art then local x,y=self:GetPos();SetDrawColor(1,1,1);DrawImage(art,x,y,42,42) end end
 	ui.description(c,"currencyNote",68,456,218,48,{"Preview only", "No currency is spent."},14)
+	updateCurrency=function()
+		local method=actions[#actions];local lines
+		if method=="socket_white_bench" or item.corrupted and (not method or method=="load" or method=="unknown") then
+			method="socket_white_bench";lines={"Bench: 1 Orb of Scouring",item.corrupted and "+ 1 Vaal Orb | Preview" or "Preview only"}
+		elseif method=="omen_connections" then lines={"Omen + Orb of Fusing","1 of each | Preview"}
+		elseif method=="beast_max_links" then lines={"Black Morrigan + Sand Spitter","Preview only"}
+		elseif method=="quality" then lines={"1 "..info.resource,"Preview only"}
+		else method="quality";lines={"Preview only","No currency is spent."} end
+		local path=require("Modules.CraftingWorkbench").icon(method,nil,{item=item})
+		if path and not artCache[path] then local handle=NewImageHandle();handle:Load(path);artCache[path]=handle end
+		art=path and artCache[path] or nil;c.currencyNote.list=ui.rows(lines,218,14)
+	end
 	c.currency.shown=function() return not guideNeedsReview() end
 	c.currencyNote.shown=c.currency.shown
 	button("reviewGuide",454,"Review saved guide",function()
