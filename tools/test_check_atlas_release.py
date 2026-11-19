@@ -1,8 +1,9 @@
 """Check that release verification detects graph and layout changes."""
 import copy
+import json
 import unittest
 
-from check_atlas_release import DEFAULT_REFS, graph_errors, parse_args
+from check_atlas_release import DEFAULT_REFS, ROOT, graph_errors, parse_args
 
 
 class AtlasGraphVerificationTests(unittest.TestCase):
@@ -13,6 +14,15 @@ class AtlasGraphVerificationTests(unittest.TestCase):
         preview = parse_args(["--version", "3.30.0-preview"])
         self.assertEqual(DEFAULT_REFS[preview.version], preview.ref)
         self.assertEqual("custom-ref", parse_args(["--ref", "custom-ref"]).ref)
+
+    def test_default_refs_match_both_bundled_graphs(self):
+        for version, ref in DEFAULT_REFS.items():
+            for suffix in ("", "-ruthless"):
+                path = ROOT / "src" / "Data" / "Atlas" / (version + suffix + ".json")
+                graph = json.loads(path.read_text(encoding="utf-8"))
+                prefix = "https://raw.githubusercontent.com/grindinggear/atlastree-export/" + ref + "/"
+                self.assertTrue(graph["source"].startswith(prefix), path)
+                self.assertTrue(graph["leagueSource"].startswith(prefix), path)
 
     def setUp(self):
         self.source = {
