@@ -203,6 +203,18 @@ describe("Unique item quality",function()
 			main.popups={}
 		end
 	end)
+	it("rejects socket changes for known immutable uniques with partial text",function()
+		for _,name in ipairs({"Skin of the Loyal","Skin of the Lords"}) do
+			local raw="Rarity: UNIQUE\n"..name.."\nSimple Robe\nItem Level: 86\nSockets: R G B"
+			assert.matches("sockets cannot be modified",quality.socketCountReason(raw,4),1,true)
+			assert.matches("sockets cannot be modified",quality.whiteReason(raw),1,true)
+			assert.matches("sockets cannot be modified",quality.linkReason(raw,"socket_bench"),1,true)
+			assert.has_error(function() quality.socketCount(raw,4) end);assert.has_error(function() quality.white(raw) end)
+			local project={id=name=="Skin of the Loyal" and "loyal" or "lords",title=name,slot="Body Armour",startingItem=raw,goals={},steps={}}
+			build.savers.CraftingProjects:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+			assert.is_false(control.white:IsEnabled());assert.is_false(control.omen:IsEnabled());assert.is_false(control.benchLink:IsEnabled());assert.is_false(control.socketCount:IsEnabled());main.popups={}
+		end
+	end)
 	it("calculates deterministic unique crafts against supported item goals",function()
 		local simulator=require("Modules.CraftingSimulator")
 		local result=simulator.calculate(shield,{method="omen_connections"},{},nil,{requirements={sockets=3,links=3,socketColours="RGB",linkedColours=true,minQuality=12}})

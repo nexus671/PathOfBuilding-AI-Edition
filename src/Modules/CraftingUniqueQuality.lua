@@ -18,8 +18,9 @@ local function uniqueSocketRestriction(title)
 	for _,raw in ipairs(uniquesByName[title] or {}) do for line in raw:gmatch("[^\r\n]+") do
 		while line:match("^%b{}") do line=line:gsub("^%b{}","") end
 		line=line:lower():match("^%s*(.-)%s*$"):gsub("%s*%(hidden%)$","")
-		if line:match("^has %d+ abyssal sockets?$") then restriction="abyss"
-		elseif (line:match("^has %d+ sockets?$") or line:match("^has %d+ linked sockets?$")) and restriction~="abyss" then restriction="fixed" end
+		if line=="sockets cannot be modified" then restriction="locked"
+		elseif restriction~="locked" and line:match("^has %d+ abyssal sockets?$") then restriction="abyss"
+		elseif restriction~="locked" and (line:match("^has %d+ sockets?$") or line:match("^has %d+ linked sockets?$")) and restriction~="abyss" then restriction="fixed" end
 	end end
 	socketRestrictions[title]=restriction
 	return socketRestrictions[title]
@@ -79,13 +80,19 @@ function M.apply(raw)
 	return {itemText=output,beforeQuality=info.quality,quality=after.quality,resource=info.resource,resourceKey=info.resourceKey}
 end
 
+-- Known unique restrictions still apply when a saved item has partial text.
+function M.socketModificationReason(raw,item)
+	item=item or M.inspect(raw)
+	if raw:lower():find("sockets cannot be modified",1,true) or uniqueSocketRestriction(item.title)=="locked" then return "This item's sockets cannot be modified" end
+end
+
 -- Preserve the original item text: rebuilding a unique can lose imported
 -- properties that the item editor does not understand.
 function M.linkReason(raw,method)
 	local ok,item=pcall(M.inspect,raw)
 	if not ok then return tostring(item) end
 	if item.corrupted and method~="socket_bench" then return "Use the bench or tainted currency on corrupted items" end
-	if raw:lower():find("sockets cannot be modified",1,true) then return "This item's sockets cannot be modified" end
+	local immutable=M.socketModificationReason(raw,item);if immutable then return immutable end
 	local sockets=item.sockets or {}
 	local line,count=raw:match("\nSockets: ([^\r\n]*)"),0
 	for _ in ("\n"..raw):gmatch("\nSockets:") do count=count+1 end
@@ -104,7 +111,7 @@ end
 function M.whiteReason(raw)
 	local ok,item=pcall(M.inspect,raw)
 	if not ok then return tostring(item) end
-	if raw:lower():find("sockets cannot be modified",1,true) then return "This item's sockets cannot be modified" end
+	local immutable=M.socketModificationReason(raw,item);if immutable then return immutable end
 	local sockets=item.sockets or {}
 	local line,count=raw:match("\nSockets: ([^\r\n]*)"),0
 	for _ in ("\n"..raw):gmatch("\nSockets:") do count=count+1 end
@@ -124,7 +131,7 @@ end
 -- unlinked sockets, matching the ordinary equipment bench model.
 function M.socketCountReason(raw,count)
 	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
-	if raw:lower():find("sockets cannot be modified",1,true) then return "This item's sockets cannot be modified" end
+	local immutable=M.socketModificationReason(raw,item);if immutable then return immutable end
 	local restriction=uniqueSocketRestriction(item.title)
 	if restriction=="fixed" then return "This unique fixes its socket count" end
 	if raw:lower():find("has %d+ sockets?%f[^%a]") or raw:lower():find("has %d+ linked sockets?%f[^%a]") then return "This unique fixes its socket count" end

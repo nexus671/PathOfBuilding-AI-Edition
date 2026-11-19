@@ -287,13 +287,14 @@ function M.generate(build,profile,checkpoint)
 					end
 					return countReasons[step] or nil
 				end
+				local socketModificationReason=hasSocketAction and unique.socketModificationReason(project.startingItem,item) or nil
 				local function permanentReason(step)
 					local reason=fixedCountReason(step);if reason then return reason end
 					if item.corrupted and (step.method=="quality" or step.method=="omen_connections" or step.method=="beast_max_links") then
 						return step.method=="quality" and "Ordinary quality currency cannot modify a corrupted item" or "Use the bench or tainted currency on corrupted items"
 					end
 					if step.method=="quality" and (item.quality or 0)>=20 then return "Ordinary quality currency cannot exceed 20%" end
-					if socketActions[step.method] and project.startingItem:lower():find("sockets cannot be modified",1,true) then return "This item's sockets cannot be modified" end
+					if socketActions[step.method] and socketModificationReason then return socketModificationReason end
 				end
 				visit(1,#item.sockets);local cursor=1
 				while cursor<=#queue do

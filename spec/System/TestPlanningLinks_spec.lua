@@ -406,6 +406,11 @@ describe("Linked planning tools",function()
 		for _,warning in ipairs(fullWarnings) do if warning.origin=="craft:corrupted-unique" then message=message..warning.message end end
 		assert.is_truthy(message:find("Ordinary quality currency cannot exceed 20%",1,true))
 	end)
+	it("warns about immutable unique sockets even when item text is partial",function()
+		local project={id="immutable-unique",title="Immutable sockets",slot="Body Armour",startingItem="Rarity: UNIQUE\nSkin of the Loyal\nSimple Robe\nItem Level: 86\nSockets: R G B",goals={},steps={},nativeRecipe={steps={{method="socket_white_bench"},{method="socket_bench",count=3,linked=true}},targets={},requirements={links=3}}}
+		build.savers.CraftingProjects:Upsert(project);local _,warnings=filters.generate(build,filters.profile("immutable-sockets","Immutable sockets"));local found=false
+		for _,warning in ipairs(warnings) do if warning.origin=="craft:immutable-unique" and warning.message:find("sockets cannot be modified",1,true) then found=true end end;assert.is_true(found)
+	end)
 	it("warns when a unique recipe cannot change a fixed socket count",function()
 		local project={id="fixed-unique",title="Fixed sockets",slot="Body Armour",startingItem="Rarity: UNIQUE\nTabula Rasa\nSimple Robe\nItem Level: 86\nSockets: W-W-W-W-W-W",goals={},steps={},nativeRecipe={steps={{method="socket_bench",count=4},{method="socket_bench",count=4,linked=true}},targets={},requirements={links=4}}}
 		build.savers.CraftingProjects:Upsert(project);local rules,warnings=filters.generate(build,filters.profile("fixed-sockets","Fixed sockets"));local found=false
