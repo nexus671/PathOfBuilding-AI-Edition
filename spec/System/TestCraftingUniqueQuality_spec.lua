@@ -8,7 +8,7 @@ describe("Unique item quality",function()
 		local store=build.savers.CraftingProjects;store:Upsert(project)
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
 		control.apply:Click();assert.matches("13%%",control.status.label);assert.is_true(control.recipe:IsEnabled());control.recipe:Click()
-		local popup=main.popups[#main.popups].controls;local text={};for _,row in ipairs(popup.details.list) do text[#text+1]=row[1] end
+		local popup=main.popups[1].controls;local text={};for _,row in ipairs(popup.details.list) do text[#text+1]=row[1] end
 		assert.matches("Goal reached",table.concat(text," "));assert.matches("Sockets: R%-G%-B",popup.resultItemMods.list[1][1])
 		assert.matches("13%%",control.status.label);assert.is_nil(store.projects[1].targetItem);popup.keep:Click()
 		assert.matches("Sockets: R%-G%-B",store.projects[1].targetItem);assert.matches("13%%",control.status.label)
@@ -21,8 +21,8 @@ describe("Unique item quality",function()
 		local project={id="unique-recipe-replace",title="Recipe",slot="Weapon 2",startingItem=shield,targetItem=shield,goals={},steps={},nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=3}}}
 		local store=build.savers.CraftingProjects;store:Upsert(project)
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.recipe:Click()
-		main.popups[#main.popups].controls.keep:Click();assert.equal(shield,store.projects[1].targetItem)
-		main.popups[#main.popups].controls.confirm:Click();assert.matches("Sockets: R%-G%-B",store.projects[1].targetItem);main.popups={}
+		main.popups[1].controls.keep:Click();assert.equal(shield,store.projects[1].targetItem)
+		main.popups[1].controls.confirm:Click();assert.matches("Sockets: R%-G%-B",store.projects[1].targetItem);main.popups={}
 	end)
 	it("links existing unique sockets without changing any other item properties",function()
 		local simulator=require("Modules.CraftingSimulator")
