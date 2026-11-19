@@ -2108,7 +2108,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(table.concat(details," "):gsub("%s+"," "):find("not an effective map chance",1,true),"Atlas modifier totals did not explain their scope")
 		frame("atlas-added-modifiers");ui:click("close");control.tools:Click();ui:text("search","Compare");ui:click("choose");ui:text("search","Atlas totals baseline")
 		details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
-		assert(table.concat(details," "):gsub("%s+"," "):find("percentage points of modifier",1,true),"Atlas comparison omitted modifier changes");main.popups={}
+		assert(table.concat(details," "):gsub("%s+"," "):find("percentage points of modifier",1,true),"Atlas comparison omitted modifier changes");frame("atlas-modifier-comparison");main.popups={}
 	end
 	do
 		main.popups={}

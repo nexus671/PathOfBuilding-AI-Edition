@@ -86,10 +86,12 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1782, f"Expected 1782 UI frames, found {len(paths)}"
+    assert len(paths) == 1785, f"Expected 1785 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         atlas_totals = json.loads((frames / f"{width}-atlas-added-modifiers.json").read_text())
         assert any("increased effect of Explicit" in c.get("text", "") for c in atlas_totals["commands"]), "Atlas modifier summary is missing"
+        atlas_comparison = json.loads((frames / f"{width}-atlas-modifier-comparison.json").read_text())
+        assert any("percentage points of modifier" in c.get("text", "") for c in atlas_comparison["commands"]), "Atlas modifier comparison is not visible"
         before = json.loads((frames / f"{width}-crafting-unique-quality.json").read_text())
         linked = json.loads((frames / f"{width}-crafting-unique-linked.json").read_text())
         recipe = json.loads((frames / f"{width}-crafting-unique-recipe-result.json").read_text())
