@@ -77,6 +77,7 @@ describe("Unique item quality",function()
 		local legacy={kind="uniqueQuality",project=saved,itemText=saved.targetItem,history={shield}}
 		main.popups={};control=require("Classes.CraftingUniqueQualityControl").Open(build,saved,nil,legacy)
 		assert.is_false(control.guide:IsEnabled());assert.matches("older previews",control.guide.tooltipText())
+		control.undo:Click();assert.is_true(control.redo:IsEnabled());control.redo:Click();assert.is_false(control.guide:IsEnabled())
 		legacy.actions={"quality"};legacy.savedTrace=string.rep("a",40)
 		main.popups={};control=require("Classes.CraftingUniqueQualityControl").Open(build,saved,nil,legacy)
 		assert.is_false(control.guide:IsEnabled());assert.matches("cannot be verified",control.guide.tooltipText());main.popups={}
@@ -87,6 +88,15 @@ describe("Unique item quality",function()
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
 		control.link:Click();control.undo:Click();assert.is_true(control.redo:IsEnabled())
 		control.omen:Click();assert.is_false(control.redo:IsEnabled());main.popups={}
+	end)
+	it("does not invent crafting steps when a loaded target is undone and redone",function()
+		local project={id="unique-redo-target",title="Redo target",slot="Weapon 2",startingItem=shield,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.apply:Click();control.keep:Click();control.undo:Click();assert.is_true(control.loadTarget:IsEnabled())
+		control.loadTarget:Click();control.undo:Click();assert.is_true(control.redo:IsEnabled());control.redo:Click()
+		assert.matches("13%%",control.status.label);assert.is_false(control.guide:IsEnabled())
+		assert.matches("Loaded or older previews",control.guide.tooltipText());main.popups={}
 	end)
 	it("lets the user review an edited guide before adding new preview actions",function()
 		local project={id="review-guide",title="Review guide",slot="Weapon 2",startingItem=shield,goals={},steps={{action="Acquire the item"}}}
