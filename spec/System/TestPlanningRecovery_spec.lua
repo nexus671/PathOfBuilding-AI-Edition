@@ -172,6 +172,18 @@ describe("Local planning draft recovery",function()
 		assert.equal(2,#steps);assert.equal("Use 1 Armourer's Scrap",steps[1].action);assert.equal("Use 1 Armourer's Scrap",steps[2].action)
 		main.popups={}
 	end)
+	it("preserves unique redo history across recovery",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
+		local project={id="unique-redo-recovery",title="Redo",slot="Helmet",startingItem=raw,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.apply:Click();control.apply:Click();control.undo:Click();control.close:Click()
+		local saved=recovery.load(build,"uniqueQuality",project.id).entry.plan
+		assert.equal(1,#saved.redo);assert.equal("quality",saved.redo[1].action)
+		control=require("Classes.CraftingUniqueQualityControl").Open(build,build.savers.CraftingProjects.projects[1],nil,saved)
+		assert.matches("1%%",control.status.label);assert.is_true(control.redo:IsEnabled());control.redo:Click();assert.matches("2%%",control.status.label)
+		main.popups={}
+	end)
 	it("recovers a new unsaved project but refuses a conflicting project ID",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
 		local p={id="quality-new",title="Unsaved guide",slot="Helmet",startingItem=raw,goals={},steps={}}

@@ -61,7 +61,8 @@ describe("Unique item quality",function()
 		control.close:Click();control=require("Classes.CraftingUniqueQualityControl").Open(build,saved);assert.is_false(control.guide:IsEnabled())
 		control.apply:Click();assert.is_true(control.guide:IsEnabled());control.guide:Click()
 		saved=store.projects[1];assert.equal(4,#saved.steps);assert.equal("Use 1 Armourer's Scrap",saved.steps[4].action)
-		control.undo:Click();assert.is_false(control.guide:IsEnabled());assert.matches("no longer follows",control.guide.tooltipText())
+		control.undo:Click();assert.is_false(control.guide:IsEnabled());assert.matches("no longer follows",control.guide.tooltipText());assert.is_true(control.redo:IsEnabled())
+		control.redo:Click();assert.is_false(control.redo:IsEnabled());assert.matches("already in the guide",control.guide.tooltipText());control.undo:Click()
 		control.close:Click();local changed=copyTable(saved);changed.steps[1].action="Changed starting step"
 		control=require("Classes.CraftingUniqueQualityControl").Open(build,changed);assert.is_false(control.guide:IsEnabled());assert.matches("saved guide changed",control.guide.tooltipText())
 		local legacy={kind="uniqueQuality",project=saved,itemText=saved.targetItem,history={shield}}
@@ -70,6 +71,13 @@ describe("Unique item quality",function()
 		legacy.actions={"quality"};legacy.savedTrace=string.rep("a",40)
 		main.popups={};control=require("Classes.CraftingUniqueQualityControl").Open(build,saved,nil,legacy)
 		assert.is_false(control.guide:IsEnabled());assert.matches("cannot be verified",control.guide.tooltipText());main.popups={}
+	end)
+	it("clears redo when a different unique craft is chosen",function()
+		local project={id="unique-redo",title="Redo",slot="Weapon 2",startingItem=shield,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.link:Click();control.undo:Click();assert.is_true(control.redo:IsEnabled())
+		control.omen:Click();assert.is_false(control.redo:IsEnabled());main.popups={}
 	end)
 	it("lets the user review an edited guide before adding new preview actions",function()
 		local project={id="review-guide",title="Review guide",slot="Weapon 2",startingItem=shield,goals={},steps={{action="Acquire the item"}}}

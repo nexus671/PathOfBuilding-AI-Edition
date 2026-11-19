@@ -10,6 +10,7 @@ function M.Open(build,project,layout,snapshot)
 	local raw=snapshot and snapshot.itemText or draft.startingItem
 	local history=snapshot and copyTable(snapshot.history or {}) or {}
 	local actions=snapshot and copyTable(snapshot.actions or {}) or {}
+	local redo=snapshot and copyTable(snapshot.redo or {}) or {}
 	for i=1,#history do actions[i]=actions[i] or "unknown" end
 	local savedTrace=snapshot and snapshot.savedTrace
 	local savedGuideHash=snapshot and snapshot.savedGuideHash
@@ -27,7 +28,7 @@ function M.Open(build,project,layout,snapshot)
 			local ok,err=pcall(run);if not ok then main:OpenMessagePopup("Unique crafting",ui.errorText(err)) end
 		end))
 	end
-	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history),actions=copyTable(actions),savedTrace=savedTrace,savedGuideHash=savedGuideHash,savedGuideLength=savedGuideLength} end
+	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history),actions=copyTable(actions),redo=copyTable(redo),savedTrace=savedTrace,savedGuideHash=savedGuideHash,savedGuideLength=savedGuideLength} end
 	local function guidePrefixHash(steps,count)
 		if not count or count>#steps then return nil end
 		local pieces={}
@@ -96,19 +97,22 @@ function M.Open(build,project,layout,snapshot)
 		if persist then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},not ui.hasDraft(build,"uniqueQuality",draft.id)) end
 	end
 	ui.label(c,"status",16,174,"",14)
-	button("apply",206,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;actions[#actions+1]="quality";raw=result.itemText;refresh(true) end)
+	button("apply",206,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;actions[#actions+1]="quality";redo={};raw=result.itemText;refresh(true) end)
 	c.apply.enabled=function() return info.available end
-	button("link",250,"Bestiary link",function() local result=unique.link(raw);history[#history+1]=raw;actions[#actions+1]="beast_max_links";raw=result.itemText;refresh(true) end)
+	button("link",250,"Bestiary link",function() local result=unique.link(raw);history[#history+1]=raw;actions[#actions+1]="beast_max_links";redo={};raw=result.itemText;refresh(true) end)
 	c.link.width=130
 	c.link.enabled=function() return not linkReason end
 	c.link.tooltipText=function()
 		return linkReason or "Links existing sockets using a Black Morrigan and a Craicic Sand Spitter."
 	end
-	button("omen",250,"Omen + Fusing",function() local result=unique.link(raw,"omen_connections");history[#history+1]=raw;actions[#actions+1]="omen_connections";raw=result.itemText;refresh(true) end)
+	button("omen",250,"Omen + Fusing",function() local result=unique.link(raw,"omen_connections");history[#history+1]=raw;actions[#actions+1]="omen_connections";redo={};raw=result.itemText;refresh(true) end)
 	c.omen.x=156;c.omen.width=130;c.omen.enabled=function() return not linkReason end
 	c.omen.tooltipText=function() return linkReason or "Links existing sockets using an Omen of Connections and an Orb of Fusing." end
-	button("undo",294,"Undo",function() assert(#history>0,"No action to undo");raw=table.remove(history);table.remove(actions);refresh(true) end)
+	button("undo",294,"Undo",function() assert(#history>0,"No action to undo");redo[#redo+1]={itemText=raw,action=table.remove(actions)};raw=table.remove(history);refresh(true) end)
+	c.undo.width=130
 	c.undo.enabled=function() return #history>0 end
+	button("redo",294,"Redo",function() assert(#redo>0,"No action to redo");local next=table.remove(redo);history[#history+1]=raw;actions[#actions+1]=next.action;raw=next.itemText;refresh(true) end)
+	c.redo.x=156;c.redo.width=130;c.redo.enabled=function() return #redo>0 end
 	button("keep",338,"Keep target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);ui.discard(build,"uniqueQuality",draft.id);require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target kept. Save the build." end)
 	c.keep.width=130
 	c.keep.enabled=function() return raw~=draft.targetItem end
@@ -132,7 +136,7 @@ function M.Open(build,project,layout,snapshot)
 	end
 	button("loadTarget",382,"Load saved target",function()
 		assert(targetAvailable(),"The saved target is not an eligible matching unique item")
-		history[#history+1]=raw;actions[#actions+1]="load";raw=draft.targetItem;refresh(true);c.notice.label="^7Saved target loaded."
+		history[#history+1]=raw;actions[#actions+1]="load";redo={};raw=draft.targetItem;refresh(true);c.notice.label="^7Saved target loaded."
 	end)
 	c.loadTarget.enabled=targetAvailable
 	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."

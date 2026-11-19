@@ -55,7 +55,7 @@ function M.Recovery(build)
 					end
 					table.insert(details,2,"Sockets: "..table.concat(sockets))
 				end
-				details[#details+1]="Up to 64 undo steps are retained."
+				details[#details+1]="Up to 64 undo and redo steps are retained."
 			end
 			local label=kind=="uniqueQuality" and ("Unique crafting: "..record.entry.plan.project.title) or ({filters="Loot-filter draft",atlas="Atlas draft",crafting="Working craft"})[kind]
 			entries[#entries+1]={id=projectId and kind..":"..projectId or kind,kind=kind,projectId=projectId,label=label,details=details,record=record}
