@@ -111,7 +111,7 @@ function M.catalog(raw,query,limit)
 		{method="omen_connections",label="Omen of Connections + Orb of Fusing",reason=linkReason,components={["Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks"]=1,["Metadata/Items/Currency/CurrencyRerollSocketLinks"]=1}},
 		{method="socket_white_bench",label="Bench: white sockets",reason=whiteReason,components=whiteComponents},
 	}
-	local result={uniqueCrafting=true,methods={},uniqueActions={},socketCrafts={},quality={value=info.quality,available=info.available,resource=info.resource},limitations={"Only the listed unique actions are modeled. Continue by passing the returned item text, not an ordinary affix state."}}
+	local result={uniqueCrafting=true,methods={},uniqueActions={},socketCrafts={},quality={value=info.quality,available=info.available,resource=info.resource},nativeStats=require("Modules.CraftingItemStats").itemValues(item),limitations={"Only the listed unique actions are modeled. Continue by passing the returned item text, not an ordinary affix state."}}
 	for _,entry in ipairs(definitions) do
 		result.methods[#result.methods+1]=entry.method
 		if #result.uniqueActions<limit and (entry.method.." "..entry.label):lower():find(query,1,true) then
@@ -125,12 +125,16 @@ end
 
 function M.matches(raw,requirements)
 	local item,info=M.inspect(raw);requirements=requirements or {}
-	local supported={uniqueName=true,minQuality=true,corrupted=true,twiceCorrupted=true,sockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true}
+	local supported={uniqueName=true,minQuality=true,corrupted=true,twiceCorrupted=true,sockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true}
 	for key in pairs(requirements) do assert(supported[key],"This unique item property is not supported: "..tostring(key)) end
 	if requirements.uniqueName and item.title~=requirements.uniqueName then return false end
 	if requirements.minQuality and info.quality<requirements.minQuality then return false end
 	if requirements.corrupted~=nil and (not not item.corrupted)~=requirements.corrupted then return false end
 	if requirements.twiceCorrupted~=nil and (not not item.twiceCorrupted)~=requirements.twiceCorrupted then return false end
+	if requirements.nativeStats then
+		local stats=require("Modules.CraftingItemStats");stats.validate(requirements.nativeStats)
+		local values=stats.itemValues(item);for key,minimum in pairs(requirements.nativeStats) do if values[key]==nil or values[key]<minimum then return false end end
+	end
 	local socketGoal=requirements.sockets~=nil or requirements.links~=nil or requirements.socketColours~=nil or requirements.minAbyssSockets~=nil
 	if socketGoal then
 		local line,count=raw:match("\nSockets: ([^\r\n]*)"),0

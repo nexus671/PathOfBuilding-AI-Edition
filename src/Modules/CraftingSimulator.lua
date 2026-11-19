@@ -1240,9 +1240,10 @@ do
 			assert(type(targets)=="table" and #targets==0,"Modifier-identity targets are not yet supported for unique items")
 			M.validateRecipe({steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			local result=M.perform(raw,action,options.seed,nil,options.treeVersion)
-			local hit=require("Modules.CraftingUniqueQuality").matches(result.itemText,options.requirements)
+			local unique=require("Modules.CraftingUniqueQuality");local hit=unique.matches(result.itemText,options.requirements)
+			local item=unique.inspect(result.itemText);local nativeStats=require("Modules.CraftingItemStats").itemValues(item)
 			return M.withTreeContext({uniqueCrafting=true,exactFor="One deterministic supported unique craft",sampled=false,successChance=hit and 100 or 0,
-				totalWeight=1,matchingWeight=hit and 1 or 0,sampleItem=result.itemText,components=result.components,
+				totalWeight=1,matchingWeight=hit and 1 or 0,sampleItem=result.itemText,nativeStats=nativeStats,components=result.components,
 				outcomes={{chance=100,weight=1,matches=hit,itemText=result.itemText}},warnings=result.warnings,limitations=result.limitations},options.treeVersion)
 		end
 		return ordinaryCalculate(raw,action,targets,initialState,options)

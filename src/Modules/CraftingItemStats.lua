@@ -16,14 +16,17 @@ function M.validate(goals)
 	end
 	return goals
 end
-function M.values(sim,model,state)
-	if state.destroyed or state.veil then return {} end
-	local item=sim.toItem(model,state);local weapon=item.weaponData and item.weaponData[1];local result={}
+function M.itemValues(item)
+	local weapon=item.weaponData and item.weaponData[1];local result={}
 	for i,field in ipairs(M.fields) do
 		local key=field[1];local source=i<=6 and weapon or i>6 and item.armourData
 		if source then result[key]=source[key] or 0 end
 	end
 	return result
+end
+function M.values(sim,model,state)
+	if state.destroyed or state.veil then return {} end
+	return M.itemValues(sim.toItem(model,state))
 end
 function M.matches(sim,model,state,goals)
 	local values=M.values(sim,model,state)

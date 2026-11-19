@@ -90,6 +90,7 @@ async function main(){
   const uniqueInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},limit:20},'inspected');
   assert.equal(uniqueInspection.crafting.nativeEngine.uniqueCrafting,true);
   assert.ok(uniqueInspection.crafting.nativeEngine.uniqueActions.some(entry=>entry.method==='omen_connections' && entry.available));
+  assert.ok(uniqueInspection.crafting.nativeEngine.nativeStats.Armour>0);
   assert.match(uniqueInspection.crafting.nativeEngine.allflameUnavailable,/not modeled for unique/);
   const corruptedUniqueInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueShield+'\nCorrupted',limit:20},'inspected');
   const uniqueWhiteOption=corruptedUniqueInspection.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='socket_white_bench');
@@ -113,6 +114,8 @@ async function main(){
   assert.equal(uniqueWhite.nativeCrafting.components['Metadata/Items/Currency/CurrencyConvertToNormal'],1);assert.equal(uniqueWhite.nativeCrafting.components['Metadata/Items/Currency/CurrencyCorrupt'],1);
   const uniqueOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'omen_connections'},targets:[],options:{requirements:{sockets:3,links:3,socketColours:'RGB',linkedColours:true}}},'crafted');
   assert.equal(uniqueOdds.nativeCrafting.sampled,false);assert.equal(uniqueOdds.nativeCrafting.successChance,100);assert.match(uniqueOdds.nativeCrafting.sampleItem,/Sockets: R-G-B/);
+  const uniqueDefence=await queued('calculate_crafting',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},targets:[],options:{requirements:{nativeStats:{Armour:uniqueInspection.crafting.nativeEngine.nativeStats.Armour}}}},'crafted');
+  assert.equal(uniqueDefence.nativeCrafting.successChance,100);assert.ok(uniqueDefence.nativeCrafting.nativeStats.Armour>=uniqueInspection.crafting.nativeEngine.nativeStats.Armour);
   const uniqueImpossible=await queued('calculate_crafting',{baseRevision:context.revision,itemText:uniqueCorrupted,action:{method:'socket_white_bench'},targets:[],options:{requirements:{socketColours:'WWW',linkedColours:true}}},'crafted');
   assert.equal(uniqueImpossible.nativeCrafting.successChance,0);assert.equal(uniqueImpossible.nativeCrafting.components['Metadata/Items/Currency/CurrencyCorrupt'],1);
   const uniqueUnknownGoal=await queued('calculate_crafting',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},targets:[],options:{requirements:{openPrefixes:1}}},'failed');
