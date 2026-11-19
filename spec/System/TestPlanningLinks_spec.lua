@@ -319,6 +319,16 @@ describe("Linked planning tools",function()
 		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"])
 		for _,warning in ipairs(warnings) do assert.not_equal("craft:"..project.id,warning.origin) end
 	end)
+	it("does not duplicate pickups when a unique preview is saved as both guide and recipe",function()
+		local project={id="unique-preview-linked",title="Unique preview",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B",goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.apply:Click();control.omen:Click();control.guide:Click();control.recipe:Click()
+		assert.is_truthy(build.savers.CraftingProjects.projects[1].nativeRecipe)
+		local profile=filters.profile("unique-preview-filter","Unique preview");local rules,warnings=filters.generate(build,profile);local counts={}
+		for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id then counts[rule.title]=(counts[rule.title] or 0)+1 end end
+		assert.equal(1,counts["Armourer's Scrap"]);assert.equal(1,counts["Omen of Connections"]);assert.equal(1,counts["Orb of Fusing"])
+		for _,warning in ipairs(warnings) do assert.not_equal("craft:"..project.id,warning.origin) end;main.popups={}
+	end)
 	it("warns and preserves recipe pickups when a unique action has an unsupported option",function()
 		local project={id="unique-unsupported-filter",title="Unique recipe",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={},nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={socketColours="WWW"}}}
 		build.savers.CraftingProjects:Upsert(project)
