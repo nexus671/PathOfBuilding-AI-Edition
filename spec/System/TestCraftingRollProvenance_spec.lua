@@ -32,6 +32,14 @@
   assert.equal(5,restored.state.affixes[1].range);assert.is_truthy(restored.state.affixes[1].legacySource)
   assert.is_truthy(sim.validateState(model,restored.state))
  end)
+ it("migrates an older checkpoint with a legacy Light Radius modifier",function()
+  local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="MAGIC"
+  state.affixes={{id="LightRadiusAndAccuracy3",range=0.5,legacyLightRadius=true}}
+  assert.has_error(function() sim.validateState(model,state) end)
+  local saved=require("Modules.CraftingCheckpoint").validate(raw,require("Modules.CraftingInventory").run(state)).state
+  assert.is_truthy(saved.affixes[1].legacySource);assert.is_truthy(sim.validateState(model,saved))
+  local invalid=copyTable(saved);invalid.affixes[1].legacySource="invalid item";assert.has_error(function() sim.validateState(model,invalid) end)
+ end)
  it("keeps donor legacy rolls through either unpredictable host and a checkpoint",function()
   local model=sim.model(raw);local _,_,donor=legacy("Cone Helmet");local hosts={}
   for seed=1,500 do

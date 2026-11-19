@@ -1343,7 +1343,7 @@ function A.extend(M,api)
 			end
 			for _,group in ipairs(groups(model,entry.id)) do assert(not seenGroups[group] or group==M.clusterSpeedGroup and allLegacySpeed,"State has conflicting modifier groups");seenGroups[group]=true end
 			local mod=model.byId[entry.id]
-			if model.special[entry.id] or influenced(model,entry.id) or entry.fractured or beastAllowed and beastAllowed[entry.id] or state.baseItem and mod.weightKey and model.item:GetModSpawnWeight(mod,model.extraTags) > 0 then permitted.affixes[#permitted.affixes+1]=copyTable(entry) end
+			if model.special[entry.id] or influenced(model,entry.id) or entry.fractured or entry.legacyLightRadius and entry.legacySource or beastAllowed and beastAllowed[entry.id] or state.baseItem and mod.weightKey and model.item:GetModSpawnWeight(mod,model.extraTags) > 0 then permitted.affixes[#permitted.affixes+1]=copyTable(entry) end
 		end
 		local old=model.initial; model.initial=permitted
 		local ok,result=pcall(originalValidate,model,state); model.initial=old; assert(ok,result)
