@@ -2040,7 +2040,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		p.id="unique-start-project-ui";p.title="Unique starting guide";p.startingItem=unique;p.targetItem=nil;p.steps={{action="Acquire Goldrim"}};store:Upsert(p);w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
 		assert(w.controls.projectItem and w.controls.native:IsEnabled() and w.controls.native.tooltipText():find("unique item",1,true),"Unique quality preview unavailable");frame("crafting-unique-start-project")
 		ui:click("native");frame("crafting-unique-quality");assert(not w.controls.recipe:IsEnabled(),"Recipe enabled without a preview")
-		ui:click("omen");assert(w.controls.recipe:IsEnabled(),"Unique preview cannot become a recipe");ui:click("recipe");ui:click("undo")
+		ui:click("omen");assert(w.controls.recipe:IsEnabled(),"Unique preview cannot become a recipe");frame("crafting-unique-save-recipe");ui:click("recipe");ui:click("undo")
 		assert(store.projects[#store.projects].nativeRecipe.steps[1].method=="omen_connections","Preview recipe was not saved")
 		ui:click("recipe");frame("crafting-unique-recipe-result");ui:click("keep")
 		assert(store.projects[#store.projects].targetItem:find("Sockets: R-G-B",1,true),"Recipe result was not kept as the target")
