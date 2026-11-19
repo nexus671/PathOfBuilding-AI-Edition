@@ -15,7 +15,7 @@ function M.Open(build,project,layout,snapshot)
 	local w,h=layout and layout.width or math.min(880,main.screenW-40),layout and layout.height or math.min(650,main.screenH-60)
 	local c={};local cardX=310;local cardWidth=w-cardX-16
 	ui.label(c,"heading",16,18,"Unique quality",22)
-	ui.description(c,"intro",16,56,270,100,{"Preview this unique item's quality.","Each currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
+	ui.description(c,"intro",16,56,270,100,{"Preview quality or link existing sockets.","Quality currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
 	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM")
 	local function button(key,y,label,run)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,y,270,32},label,function()
@@ -23,8 +23,10 @@ function M.Open(build,project,layout,snapshot)
 		end))
 	end
 	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history)} end
+	local linkReason
 	local function refresh(persist)
 		item,info=unique.inspect(raw);show(item)
+		linkReason=unique.linkReason(raw)
 		c.status.label="^7Quality: "..info.quality.."% | "..(info.available and "Ready" or "20% cap reached")
 		c.apply.label="Use "..info.resource
 		if raw~=draft.startingItem and raw~=draft.targetItem then ui.draft(build,"uniqueQuality",draft.id)
@@ -34,9 +36,12 @@ function M.Open(build,project,layout,snapshot)
 	ui.label(c,"status",16,174,"",14)
 	button("apply",206,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;raw=result.itemText;refresh(true) end)
 	c.apply.enabled=function() return info.available end
-	button("undo",250,"Undo",function() assert(#history>0,"No quality action to undo");raw=table.remove(history);refresh(true) end)
+	button("link",250,"Bestiary: link sockets",function() local result=unique.link(raw);history[#history+1]=raw;raw=result.itemText;refresh(true) end)
+	c.link.enabled=function() return not linkReason end
+	c.link.tooltipText="Links existing sockets using a Black Morrigan and a Craicic Sand Spitter."
+	button("undo",294,"Undo",function() assert(#history>0,"No action to undo");raw=table.remove(history);refresh(true) end)
 	c.undo.enabled=function() return #history>0 end
-	button("keep",294,"Keep as target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);ui.discard(build,"uniqueQuality",draft.id);require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target kept. Save the build." end)
+	button("keep",338,"Keep as target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);ui.discard(build,"uniqueQuality",draft.id);require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target kept. Save the build." end)
 	c.keep.enabled=function() return raw~=draft.targetItem end
 	local checkedTarget,matchingTarget
 	local function targetAvailable()
@@ -48,18 +53,18 @@ function M.Open(build,project,layout,snapshot)
 		end
 		return matchingTarget
 	end
-	button("loadTarget",338,"Load saved target",function()
+	button("loadTarget",382,"Load saved target",function()
 		assert(targetAvailable(),"The saved target is not an eligible matching unique item")
 		history[#history+1]=raw;raw=draft.targetItem;refresh(true);c.notice.label="^7Saved target loaded."
 	end)
 	c.loadTarget.enabled=targetAvailable
 	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."
-	ui.label(c,"notice",16,378,restored and "^7Session preview restored." or "",14)
+	ui.label(c,"notice",16,422,restored and "^7Session preview restored." or "",14)
 	local artPath=require("Modules.CraftingWorkbench").icon("quality",nil,{item=item})
 	local art=artPath and NewImageHandle();if art then art:Load(artPath) end
-	local currency=new("Control"):Control(ui.anchor,{16,414,42,42});c.currency=currency
+	local currency=new("Control"):Control(ui.anchor,{16,454,42,42});c.currency=currency
 	function currency:Draw() if art then local x,y=self:GetPos();SetDrawColor(1,1,1);DrawImage(art,x,y,42,42) end end
-	ui.description(c,"currencyNote",68,416,218,48,{"Preview only", "No currency is spent."},14)
+	ui.description(c,"currencyNote",68,456,218,48,{"Preview only", "No currency is spent."},14)
 	button("close",h-50,layout and "Back to projects" or "Close",function()
 		build.planningUniqueQualityDrafts=build.planningUniqueQualityDrafts or {};build.planningUniqueQualityDrafts[draft.id]=snapshotPreview()
 		if ui.hasDraft(build,"uniqueQuality",draft.id) then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true) end

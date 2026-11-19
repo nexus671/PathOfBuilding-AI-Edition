@@ -23,7 +23,7 @@ end
 function M.workbenchReason(project)
 	local ok,item=pcall(M.item,project.startingItem)
 	if ok and (item.rarity=="UNIQUE" or item.rarity=="RELIC") then
-		return "Unique and relic starting items can have written guides; full workbench simulation is unavailable. Eligible unique armour and weapons have a quality preview."
+		return "Unique and relic starting items can have written guides; full workbench simulation is unavailable. Eligible unique armour and weapons have a quality and socket-link preview."
 	end
 end
 

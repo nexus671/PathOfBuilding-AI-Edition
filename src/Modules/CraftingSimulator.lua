@@ -1224,14 +1224,19 @@ do
 	local ordinaryPerform=M.perform
 	function M.perform(raw,action,seed,initialState,treeVersion)
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
-		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and action.method=="quality" then
-			assert(initialState==nil,"Continue unique quality using the returned item text, not an ordinary crafting state")
-			for key in pairs(action) do assert(key=="method","Unique quality does not accept additional action options") end
+		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="quality" or action.method=="beast_max_links") then
+			assert(initialState==nil,"Continue unique crafting using the returned item text, not an ordinary crafting state")
+			for key in pairs(action) do assert(key=="method","This unique action does not accept additional options") end
 			if seed~=nil then integer(seed,1,2147483646,"seed") end
+			if action.method=="beast_max_links" then
+				local result=require("Modules.CraftingUniqueQuality").link(raw)
+				return M.withTreeContext({priceKey="beast_max_links",itemText=result.itemText,components=result.components,dataPatch=M.dataPatch,
+					warnings={{code="unique_crafting_scope",message="Unique crafting supports ordinary quality and maximum links only. Continue using the returned item text."}},limitations=copyTable(M.limits)},treeVersion)
+			end
 			local result=require("Modules.CraftingUniqueQuality").apply(raw)
 			local output=result.itemText;result.itemText=nil
 			return M.withTreeContext({priceKey="quality",itemText=output,uniqueQuality=result,components={[result.resourceKey]=1},dataPatch=M.dataPatch,
-				warnings={{code="unique_quality_scope",message="Only ordinary quality currency is supported for unique armour and weapons. Continue using the returned item text; unique recipes and other currencies are not modeled."}},limitations=copyTable(M.limits)},treeVersion)
+				warnings={{code="unique_quality_scope",message="Unique crafting supports ordinary quality and maximum links only. Continue using the returned item text; other unique currencies are not modeled."}},limitations=copyTable(M.limits)},treeVersion)
 		end
 		return ordinaryPerform(raw,action,seed,initialState,treeVersion)
 	end

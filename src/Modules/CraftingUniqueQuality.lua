@@ -34,4 +34,39 @@ function M.apply(raw)
 	assert(after.quality==info.quality+1 and checked.title==item.title and checked.baseName==item.baseName,"Unique item did not round-trip after applying quality")
 	return {itemText=output,beforeQuality=info.quality,quality=after.quality,resource=info.resource,resourceKey=info.resourceKey}
 end
+
+-- Preserve the original item text: rebuilding a unique can lose imported
+-- properties that the item editor does not understand.
+function M.linkReason(raw)
+	local ok,item=pcall(M.inspect,raw)
+	if not ok then return tostring(item) end
+	if raw:lower():find("sockets cannot be modified",1,true) then return "This item's sockets cannot be modified" end
+	local sockets=item.sockets or {}
+	if #sockets<2 or #sockets>6 then return "Link crafting needs two to six existing sockets" end
+	local linked=true
+	for _,socket in ipairs(sockets) do
+		if socket.color=="A" then return "Abyssal sockets need a separate socket model" end
+		linked=linked and socket.group==sockets[1].group
+	end
+	if linked then return "The item is already fully linked" end
+	local line,count=raw:match("\nSockets: ([^\r\n]*)"),0
+	for _ in ("\n"..raw):gmatch("\nSockets:") do count=count+1 end
+	if count~=1 or not line or not line:match("^[RGBW][RGBW%-%s]*$") then return "A single explicit ordinary socket layout is required" end
+	local colours=line:gsub("[^RGBW]","")
+	if #colours~=#sockets then return "The socket layout could not be verified" end
+end
+
+function M.link(raw)
+	local reason=M.linkReason(raw);assert(not reason,reason)
+	local before=M.inspect(raw)
+	local output,count=raw:gsub("(\nSockets: )([^\r\n]*)",function(prefix,line)
+		local colours={};for colour in line:gmatch("[RGBW]") do colours[#colours+1]=colour end
+		return prefix..table.concat(colours,"-")
+	end)
+	assert(count==1,"The socket layout could not be updated")
+	local after=M.inspect(output)
+	assert(before.title==after.title and before.baseName==after.baseName and #before.sockets==#after.sockets,"Unique item did not round-trip after linking")
+	for i,socket in ipairs(after.sockets) do assert(socket.color==before.sockets[i].color and socket.group==after.sockets[1].group,"Socket colours or links changed unexpectedly") end
+	return {itemText=output,components={beast_black_morrigan=1,beast_craicic_sand_spitter=1}}
+end
 return M

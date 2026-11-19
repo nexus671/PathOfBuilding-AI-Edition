@@ -3,6 +3,25 @@ describe("Unique item quality",function()
 	local shield="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\nImplicits: 1\n+5% Chance to Block Attack Damage\n+100 to maximum Life\n+1500 to Armour"
 	local weapon="Rarity: UNIQUE\nThe Saviour\nLegion Sword\nItem Level: 86\nQuality: 0\nSockets: R-G-B\n+100% increased Physical Damage"
 	before_each(function() newBuild() end)
+	it("links existing unique sockets without changing any other item properties",function()
+		local simulator=require("Modules.CraftingSimulator")
+		local source=shield.."\nNote: Preserve unknown fields"
+		local result=simulator.perform(source,{method="beast_max_links"},7)
+		assert.equal(source:gsub("Sockets: R%-G B","Sockets: R-G-B"),result.itemText)
+		assert.same({beast_black_morrigan=1,beast_craicic_sand_spitter=1},result.components)
+		assert.has_error(function() simulator.perform(result.itemText,{method="beast_max_links"},7) end)
+		assert.has_error(function() simulator.perform(source.."\nCorrupted",{method="beast_max_links"},7) end)
+		assert.has_error(function() simulator.perform(source.."\nSockets cannot be modified",{method="beast_max_links"},7) end)
+		assert.has_error(function() simulator.perform(source:gsub("R%-G B","R A"),{method="beast_max_links"},7) end)
+		assert.has_error(function() simulator.perform(source.."\nSockets: R G",{method="beast_max_links"},7) end)
+		local project={id="unique-link",title="Links",slot="Weapon 2",startingItem=source,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		assert.is_true(control.link:IsEnabled());control.link:Click();assert.is_false(control.link:IsEnabled())
+		control.undo:Click();assert.is_true(control.link:IsEnabled());control.link:Click();control.keep:Click()
+		assert.equal(result.itemText,build.savers.CraftingProjects.projects[1].targetItem)
+		main.popups={}
+	end)
 	it("raises unique armour quality one point while preserving item text",function()
 		local result=quality.apply(shield);assert.equal(12,result.beforeQuality);assert.equal(13,result.quality);assert.equal("Armourer's Scrap",result.resource)
 		local original=new("Item"):Item(shield);local item=new("Item"):Item(result.itemText)
