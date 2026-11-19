@@ -120,6 +120,77 @@ function I.resolve(M,model,state)
 		end
 	end
 	search()
+	-- Native item text can combine contributions from two modifiers into one
+	-- displayed stat. A direct line match alone is therefore not proof that
+	-- the modifier assignment is unique. Check integer single-stat overlaps
+	-- against the rest of the item before accepting that assignment.
+	local function hasCombinedAlternative()
+		local examined=0
+		local function budget()
+			examined=examined+1
+			assert(examined<=100000,"Import has too many possible combined modifiers; use advanced copy text")
+		end
+		local function sideFits(row,kind)
+			return not row.crafted and not row.fractured and (not row.prefix or kind=="Prefix") and (not row.suffix or kind=="Suffix")
+		end
+		local function cover()
+			budget()
+			local first;for i=1,#rows do if not used[i] then first=i;break end end
+			if not first then return true end
+			for _,candidate in ipairs(candidates) do
+				local entry=candidate.entry;local kind=model.byId[entry.id].type;local contains,legal=false,counts[kind]<caps[kind] and counts.Prefix+counts.Suffix<caps.total
+				for _,i in ipairs(candidate.indices) do if used[i] then legal=false end;if i==first then contains=true end end
+				for _,group in ipairs(groups(entry.id)) do if occupied[group] then legal=false end end
+				if contains and legal then
+					for _,i in ipairs(candidate.indices) do used[i]=true end
+					for _,group in ipairs(groups(entry.id)) do occupied[group]=true end
+					counts[kind]=counts[kind]+1;local found=cover();counts[kind]=counts[kind]-1
+					for _,group in ipairs(groups(entry.id)) do occupied[group]=nil end
+					for _,i in ipairs(candidate.indices) do used[i]=nil end
+					if found then return true end
+				end
+			end
+			return false
+		end
+		local function escape(text) return text:gsub("([^%w])","%%%1") end
+		for rowIndex,row in ipairs(rows) do if not used[rowIndex] and not row.crafted and not row.fractured then
+			local byPattern={}
+			for _,entry in ipairs(model.mods) do local mod=model.byId[entry.id]
+				if sideFits(row,mod.type) then for lineIndex,line in ipairs(mod) do
+					local first,last,low,high=line:find("%((%-?%d+)%-(%-?%d+)%)")
+					if first and not line:sub(last+1):find("%(%-?%d+%-%-?%d+%)") then
+						local pattern="^"..escape(line:sub(1,first-1)).."(%-?%d+)"..escape(line:sub(last+1)).."$"
+						local value=tonumber(row.text:match(pattern))
+						if value then byPattern[pattern]=byPattern[pattern] or {};byPattern[pattern][#byPattern[pattern]+1]={id=entry.id,mod=mod,line=lineIndex,low=tonumber(low),high=tonumber(high),value=value} end
+					end
+				end end
+			end
+			for _,list in pairs(byPattern) do for a=1,#list do for b=a+1,#list do
+				budget();local left,right=list[a],list[b];local legal=left.id~=right.id and counts.Prefix+counts.Suffix+2<=caps.total
+				local sides={Prefix=0,Suffix=0};sides[left.mod.type]=sides[left.mod.type]+1;sides[right.mod.type]=sides[right.mod.type]+1
+				for side,n in pairs(sides) do if counts[side]+n>caps[side] then legal=false end end
+				local pairGroups={};for _,part in ipairs({left,right}) do for _,group in ipairs(groups(part.id)) do if occupied[group] or pairGroups[group] then legal=false end;pairGroups[group]=true end end
+				local min=math.min(left.low,left.high)+math.min(right.low,right.high);local max=math.max(left.low,left.high)+math.max(right.low,right.high)
+				if legal and left.value>=min and left.value<=max then
+					used[rowIndex]=true;for group in pairs(pairGroups) do occupied[group]=true end;for side,n in pairs(sides) do counts[side]=counts[side]+n end
+					local rest={};for _,part in ipairs({left,right}) do for index,line in ipairs(part.mod) do if index~=part.line then rest[#rest+1]={line=line,kind=part.mod.type} end end end
+					local function matchRest(index)
+						if index>#rest then return cover() end
+						local part=rest[index]
+						for i,other in ipairs(rows) do if not used[i] and sideFits(other,part.kind) and I.inferRange(part.line,other.text) then
+							used[i]=true;local found=matchRest(index+1);used[i]=nil;if found then return true end
+						end end
+						return false
+					end
+					local found=matchRest(1)
+					for side,n in pairs(sides) do counts[side]=counts[side]-n end;for group in pairs(pairGroups) do occupied[group]=nil end;used[rowIndex]=nil
+					if found then return true end
+				end
+			end end end
+		end end
+		return false
+	end
+	if #solutions==1 and hasCombinedAlternative() then solutions[2]=true end
 	local failure=#solutions == 0 and "Imported values do not resolve to legal affixes at this item level; use advanced copy text or a blank base with a structured starting state" or "Imported values match several modifier identities; use advanced copy text or a blank base with a structured starting state"
 	if model.item.type=="Tincture" and model.item.tinctureValues=="Final" and ((model.item.tinctureImportedQuality or 0)~=0 or (model.item.tinctureImportedEffect or 0)~=0) then
 		failure="Copied tincture values may include quality or effect scaling, so their modifier tiers cannot be identified reliably. Start with a blank tincture and enter base-value rolls."

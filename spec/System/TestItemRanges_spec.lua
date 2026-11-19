@@ -72,4 +72,12 @@ describe("Independent modifier ranges",function()
 		local copied="Rarity: RARE\nExample Hood\nIron Hat\nItem Level: 86\nImplicits: 0\n+26 to Armour\n+38 to maximum Life"
 		local ok,err=pcall(sim.model,copied);assert.is_false(ok);assert.matches("several modifier identities",err,1,true)
 	end)
+	it("does not mistake combined armour rolls for a unique modifier assignment",function()
+		local copied="Rarity: RARE\nExample Hood\nIron Hat\nItem Level: 86\nImplicits: 0\n79% increased Armour\n13% increased Stun and Block Recovery"
+		local ok,err=pcall(sim.model,copied);assert.is_false(ok);assert.matches("several modifier identities",err,1,true)
+		local base=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86");local state=copyTable(base.initial);state.rarity="RARE"
+		state.affixes={{id="LocalIncreasedPhysicalDamageReductionRatingPercentAndStunRecovery4",range=0.5},{id="LocalIncreasedPhysicalDamageReductionRatingPercent3",range=0.5}}
+		local imported=sim.model(sim.toItem(base,state).raw);local ids={};for _,entry in ipairs(imported.initial.affixes) do ids[entry.id]=true end
+		assert.is_true(ids.LocalIncreasedPhysicalDamageReductionRatingPercentAndStunRecovery4);assert.is_true(ids.LocalIncreasedPhysicalDamageReductionRatingPercent3)
+	end)
 end)
