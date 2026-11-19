@@ -1,9 +1,10 @@
 import hashlib
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
 
-from check_update_manifest import check
+from check_update_manifest import check, check_index
 
 
 class ManifestCheckTest(unittest.TestCase):
@@ -43,6 +44,28 @@ class ManifestCheckTest(unittest.TestCase):
             self.assertTrue(any("Invalid" in error for error in errors))
             (root / "src" / "ok.lua").write_bytes(b"changed")
             self.assertTrue(any("Hash mismatch" in error for error in check(root)[1]))
+
+    def test_index_check_detects_unstaged_source_and_manifest_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            (root / "src").mkdir()
+            source = root / "src" / "example.lua"
+            source.write_bytes(b"old\n")
+            manifest = root / "manifest.xml"
+            def write_manifest(data):
+                digest = hashlib.sha1(data.replace(b"\n", b"\r\n")).hexdigest()
+                manifest.write_text('<PoBVersion><File part="program" name="example.lua" sha1="' + digest + '"/></PoBVersion>', encoding="utf-8")
+            write_manifest(b"old\n")
+            subprocess.run(["git", "add", "manifest.xml", "src/example.lua"], cwd=root, check=True)
+            self.assertEqual([], check_index(root)[1])
+            source.write_bytes(b"new\n")
+            write_manifest(b"new\n")
+            self.assertEqual([], check(root)[1])
+            subprocess.run(["git", "add", "manifest.xml"], cwd=root, check=True)
+            self.assertTrue(any("Hash mismatch" in error for error in check_index(root)[1]))
+            subprocess.run(["git", "add", "src/example.lua"], cwd=root, check=True)
+            self.assertEqual([], check_index(root)[1])
 
     def test_rejects_empty_and_duplicate_manifests(self):
         with tempfile.TemporaryDirectory() as directory:

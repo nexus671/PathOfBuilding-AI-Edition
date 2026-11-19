@@ -31,7 +31,7 @@ Recovery performance can also be tested without a desktop: `CalcsTab:BuildOutput
 
 From `src`, run `luajit ../tools/benchmark_map_rerolls.lua` to measure the Atlas map reroll estimator with 500 unsuccessful rolls, or add `stress` for 20,000. It reports CPU time, cold data loading, the 95th percentile and maximum background-slice CPU time, and checks cancellation after at least 100 rolls. The benchmark avoids every eligible modifier to force the full attempt count; these timings are machine-specific and do not prove desktop frame times.
 
-`python tools/check_update_manifest.py` checks the content hashes of files listed in the updater manifest. It uses the updater's exact and LF-to-CRLF hash rules; it does not verify that every required file is listed or that remote URLs are reachable. CI runs this check and its regression tests.
+`python tools/check_update_manifest.py` checks the content hashes of files listed in the updater manifest. It uses the updater's exact and LF-to-CRLF hash rules; it does not verify that every required file is listed or that remote URLs are reachable. CI runs this check and its regression tests. Before committing, run `python tools/check_update_manifest.py --git-index` after staging to check the exact staged manifest and files, even if the working copy has newer edits.
 
 `python update_manifest.py` generates `manifest-updated.xml` for review. It preserves the current manifest's download sources and previously published files, and stops if an existing file is missing. Review additions and removals explicitly before using `--in-place`; generation does not verify that remote files are available. `python tools/test_update_manifest.py` checks source, file-retention and platform behavior.
 
