@@ -261,6 +261,19 @@ describe("Encounter reporting and comparisons",function()
 		assert.is_true(speed("Item Class: Tinctures\n"..raw,"Tinctures applied to you have 20% increased effect") > final)
 	end)
 
+	it("applies quality changes to copied unique tincture effects",function()
+		local claw=new("Item"):Item("Rarity: Normal\nImperial Claw");build.itemsTab:AddItem(claw);build.itemsTab.slots["Weapon 1"].selItemId=claw.id
+		build.skillsTab:PasteSocketGroup("Viper Strike 20/0  1");build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1])
+		-- The modifier is synthetic to isolate the quality baseline in character calculations.
+		local raw="Item Class: Tinctures\nRarity: UNIQUE\nThe Battle Within\nOakbranch Tincture\nItem Level: 86\nQuality: 10\nImplicits: 0\n29% increased Attack Speed"
+		local function speed(text)
+			local item=new("Item"):Item(text);build.itemsTab:AddItem(item);build.itemsTab.slots["Flask 1"].selItemId=item.id;build.itemsTab.slots["Flask 1"].active=true
+			build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg);return build.calcsTab.calcsOutput.Speed
+		end
+		local before=speed(raw);local changed=raw;for _=1,10 do changed=require("Modules.CraftingUniqueQuality").apply(changed).itemText end
+		local after=speed(changed);local withoutBaseline=speed((raw:gsub("Quality: 10","Quality: 20")))
+		assert.is_true(after>before);assert.are.near(before,withoutBaseline,1e-8)
+	end)
 	it("deactivates a native tincture at zero mana and removes its drain",function()
 		local tincture=new("Item"):Item("Rarity: Normal\nPrismatic Tincture")
 		build.itemsTab:AddItem(tincture); build.itemsTab.slots["Flask 1"].selItemId=tincture.id
