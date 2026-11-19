@@ -26,7 +26,11 @@ for line in io.lines() do
 	local command=assert(json.decode(line))
 	local ok,result=xpcall(function()
 		if command.kind=="tick" then
-			for i=1,command.frames or 1 do frame();bridge.poll(build,true) end
+			for i=1,command.frames or 1 do
+				frame();bridge.poll(build,true)
+				local status=bridge.status
+				if command.untilId and status and status.id==command.untilId and (status.status==command.untilStatus or status.status=="failed") then break end
+			end
 		elseif command.kind=="convert-tree" then
 			build.treeTab:ConvertToVersion(assert(command.version),true,false,true);frame();bridge.refresh(build)
 			return {treeVersion=build.spec.treeVersion,revision=bridge.revision(build)}
