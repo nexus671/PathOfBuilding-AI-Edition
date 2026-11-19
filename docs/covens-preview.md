@@ -1,6 +1,6 @@
-# Covens of Umbra tree preview
+# Covens of Umbra trees
 
-The fork bundles upstream PR #10437's **3.30 Standard and Ruthless passive trees**, plus GGG's pinned **3.30 Atlas preview 2**. **New builds default to 3.30**, and new Atlas plans on those builds use the 150-point preview. Existing builds and saved plans keep their recorded versions, including our earlier passive preview.
+The fork bundles upstream PR #10437's **3.30 Standard and Ruthless passive trees**, plus GGG's **3.30.0c Atlas** and the earlier Atlas preview. **New builds default to 3.30**, and new Atlas plans on those builds use 3.30.0c. Existing builds and saved plans keep their recorded versions, including our earlier passive preview.
 
 ## Passive tree
 
@@ -14,13 +14,14 @@ Paste Viscera item text into Items, or use character import with OAuth to bring 
 
 ## Atlas
 
-Choose **3.30.0-preview** in Atlas. New Atlas plans on a preview character select that version automatically. The official base point limit is **150**, with granted points accounted for separately. Search, routing, strategy stages, native saving, bundles and MCP proposals preserve the exact preview version.
+New 3.30 Atlas plans use **3.30.0c** by default. Choose **3.30.0-preview** when you want to review the earlier snapshot. The base point limit is **150**, with granted points accounted for separately. Search, routing, strategy stages, native saving, bundles and MCP proposals preserve the selected version.
 
-GGG's Standard and Covens Atlas exports have identical graph data within each mode at this pinned revision. The separate Ruthless graph is bundled and defaults for 3.30 Ruthless characters; its node modifiers differ from Standard. The generator verifies the matching league graphs and shared artwork. Standard and Ruthless Standard snapshots of **3.29.3**, 3.29.1 and 3.27.0 are also available; their historical league variants are not included.
+GGG's Standard and Covens Atlas exports have identical graph data within each mode at the bundled revisions. The separate Ruthless graph is bundled and defaults for 3.30 Ruthless characters; its node modifiers differ from Standard. The generator verifies the matching league graphs and shared artwork. Standard and Ruthless Standard snapshots of **3.29.3**, 3.29.1 and 3.27.0 are also available; their historical league variants are not included.
 
 ## Sources
 
 - [Passive tree preview, commit 550fb34](https://github.com/grindinggear/skilltree-export/commit/550fb34ae7fca9ec4d760a2ac845bb2ba1032ec3)
+- [Atlas 3.30.0c, commit 24bd611](https://github.com/grindinggear/atlastree-export/commit/24bd611b33fb727c0d1264185599fdd973d02d2d)
 - [Atlas preview 2, commit d225501](https://github.com/grindinggear/atlastree-export/commit/d225501d7a3e52c991309116473908c284075e89)
 - [Stable Atlas 3.29.3, commit dcb2a00](https://github.com/grindinggear/atlastree-export/commit/dcb2a006b68740f3ecbd317775c262fc6ed7b8af)
 
