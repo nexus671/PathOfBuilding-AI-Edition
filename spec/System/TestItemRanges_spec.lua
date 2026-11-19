@@ -88,4 +88,12 @@ describe("Independent modifier ranges",function()
 		local state=require("Modules.CraftingImport").resolve(sim,m,{rarity="RARE",affixes={}})
 		assert.are.equal(1,#state.affixes);assert.are.equal("ExampleA",state.affixes[1].id)
 	end)
+	it("checks Essence modifiers as possible combined-value contributors",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local function mod(high,group) return {"(1-"..high..")% increased Example",type="Prefix",group=group,statOrder={100}} end
+		m.byId.ExampleA=mod(10,"ExampleA");m.byId.ExampleB=mod(5,"ExampleB");m.byId.ExampleC=mod(5,"ExampleC")
+		m.mods={{id="ExampleA"},{id="ExampleB"}};m.essences={{modId="ExampleC"}};m.bench={};m.item.explicitModLines={{line="6% increased Example"}}
+		local ok,err=pcall(require("Modules.CraftingImport").resolve,sim,m,{rarity="RARE",affixes={}})
+		assert.is_false(ok);assert.matches("several modifier identities",err,1,true)
+	end)
 end)

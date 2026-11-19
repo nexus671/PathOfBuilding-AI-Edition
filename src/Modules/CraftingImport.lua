@@ -47,10 +47,11 @@ function I.resolve(M,model,state)
 		assert(found,"A native modifier identity does not match the imported values")
 		used[found]=true
 	end end
-	local candidates,seen={},{ }
+	local candidates,seen,contributorMods={},{ },{}
 	local function consider(id,crafted,legacy,description330)
 		local key=id..(legacy and ":legacy" or description330 and ":description330" or ":current");if seen[key] then return end;seen[key]=true
 		local mod=legacy and model.legacyLightRadius[id] or description330 and model.descriptions330[id] or model.byId[id];if not mod or #mod == 0 then return end
+		if not crafted then contributorMods[#contributorMods+1]={id=id,mod=mod} end
 		local indices,ranges={},{}
 		local function matchLine(lineIndex,fractured)
 			if lineIndex>#mod then
@@ -155,7 +156,7 @@ function I.resolve(M,model,state)
 		local function escape(text) return text:gsub("([^%w])","%%%1") end
 		for rowIndex,row in ipairs(rows) do if not used[rowIndex] and not row.crafted and not row.fractured then
 			local byPattern={}
-			for _,entry in ipairs(model.mods) do local mod=model.byId[entry.id]
+			for _,entry in ipairs(contributorMods) do local mod=entry.mod
 				if sideFits(row,mod.type) then for lineIndex,line in ipairs(mod) do
 					local first,last,low,high=line:find("%((%-?%d+)%-(%-?%d+)%)")
 					if first and not line:sub(last+1):find("%(%-?%d+%-%-?%d+%)") then
