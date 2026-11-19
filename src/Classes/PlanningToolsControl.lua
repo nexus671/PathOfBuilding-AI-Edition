@@ -47,6 +47,14 @@ function M.Recovery(build)
 			if projectId then
 				local item,info=require("Modules.CraftingUniqueQuality").inspect(record.entry.plan.itemText)
 				table.insert(details,1,(item.title or item.baseName).." | "..record.entry.plan.project.slot.." | "..info.quality.."% quality")
+				if #item.sockets>0 then
+					local sockets={}
+					for i,socket in ipairs(item.sockets) do
+						if i>1 then sockets[#sockets+1]=socket.group==item.sockets[i-1].group and "-" or " " end
+						sockets[#sockets+1]=socket.color
+					end
+					table.insert(details,2,"Sockets: "..table.concat(sockets))
+				end
 				details[#details+1]="Up to 64 undo steps are retained."
 			end
 			local label=kind=="uniqueQuality" and ("Unique crafting: "..record.entry.plan.project.title) or ({filters="Loot-filter draft",atlas="Atlas draft",crafting="Working craft"})[kind]

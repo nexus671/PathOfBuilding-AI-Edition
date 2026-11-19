@@ -130,20 +130,21 @@ describe("Local planning draft recovery",function()
 		assert.is_true(recovery.save(build,"crafting",{plan=saved.draft},true));assert.is_truthy(recovery.forCraftingProject(build,"a"))
 	end)
 	it("recovers an interrupted unique preview separately from ordinary crafts",function()
-		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B"
 		local project={id="unique-recovery",title="Unique",slot="Helmet",startingItem=raw,goals={},steps={}}
 		build.savers.CraftingProjects:Upsert(project)
 		local oldName,oldFile=build.buildName,build.dbFileName;local xml=build:SaveDB("Unique recovery")
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
-		control.apply:Click();control.apply:Click();control.close:Click()
+		control.apply:Click();control.apply:Click();control.link:Click();control.close:Click()
 		local saved=recovery.load(build,"uniqueQuality",project.id);assert.is_not_nil(saved);assert.equal(2,select(2,require("Modules.CraftingUniqueQuality").inspect(saved.entry.plan.itemText)).quality)
-		assert.equal(2,#saved.entry.plan.history);assert.is_nil(recovery.load(build,"crafting"))
+		assert.equal(3,#saved.entry.plan.history);assert.matches("Sockets: R%-G%-B",saved.entry.plan.itemText);assert.is_nil(recovery.load(build,"crafting"))
 		recovery.session="later-session";recovery.cache={};loadBuildFromXML(xml,"Unique recovery");build.buildName=oldName;build.dbFileName=oldFile
 		assert.is_false(recovery.isCurrent(build,"uniqueQuality",saved.entry));assert.is_nil(build.savers.CraftingProjects.projects[1].targetItem)
 		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
 		require("Classes.PlanningToolsControl").Recovery(build);local browser=main.popups[1].controls
-		assert.matches("Unique crafting: Unique",browser.results.list[1][1]);assert.matches("Goldrim",browser.details.list[1][1]);assert.matches("2%% quality",browser.details.list[1][1]);browser.choose:Click()
-		assert.equal("crafting",workspace.page);assert.matches("2%%",workspace.controls.status.label);workspace.controls.undo:Click();assert.matches("1%%",workspace.controls.status.label)
+		assert.matches("Unique crafting: Unique",browser.results.list[1][1]);assert.matches("Goldrim",browser.details.list[1][1]);assert.matches("2%% quality",browser.details.list[1][1]);assert.matches("Sockets: R%-G%-B",browser.details.list[2][1]);browser.choose:Click()
+		assert.equal("crafting",workspace.page);assert.matches("2%%",workspace.controls.status.label);assert.is_false(workspace.controls.link:IsEnabled())
+		workspace.controls.undo:Click();assert.is_true(workspace.controls.link:IsEnabled());workspace.controls.undo:Click();assert.matches("1%%",workspace.controls.status.label)
 		assert.is_true(require("Modules.PlanningUI").hasDraft(build,"uniqueQuality",project.id))
 	end)
 	it("protects older unique previews and rejects mismatched recovery items",function()
