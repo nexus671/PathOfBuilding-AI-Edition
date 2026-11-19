@@ -125,16 +125,40 @@ describe("Unique item quality",function()
 	it("catalogues supported unique crafts and their current availability",function()
 		local simulator=require("Modules.CraftingSimulator")
 		local catalog=simulator.catalog(shield,"",50,nil,"3_30")
-		assert.is_true(catalog.uniqueCrafting);assert.equal(4,#catalog.uniqueActions);assert.equal(3,#catalog.socketCrafts)
+		assert.is_true(catalog.uniqueCrafting);assert.equal(5,#catalog.uniqueActions);assert.equal(4,#catalog.socketCrafts)
 		assert.same(require("Modules.CraftingItemStats").itemValues(new("Item"):Item(shield)),catalog.nativeStats);assert.is_true(catalog.nativeStats.Armour>0)
 		local byMethod={};for _,action in ipairs(catalog.uniqueActions) do byMethod[action.method]=action end
 		assert.is_true(byMethod.quality.available);assert.is_true(byMethod.beast_max_links.available);assert.is_true(byMethod.socket_white_bench.available)
 		local corrupted=simulator.catalog(shield.."\nCorrupted","",50)
 		byMethod={};for _,action in ipairs(corrupted.uniqueActions) do byMethod[action.method]=action end
-		assert.is_false(byMethod.quality.available);assert.is_false(byMethod.beast_max_links.available);assert.is_true(byMethod.socket_white_bench.available)
+		assert.is_false(byMethod.quality.available);assert.is_false(byMethod.beast_max_links.available);assert.is_true(byMethod.socket_white_bench.available);assert.is_true(byMethod.socket_bench.available)
+		assert.equal(3,byMethod.socket_bench.components["Metadata/Items/Currency/CurrencyRerollSocketLinks"]);assert.equal(3,byMethod.socket_bench.components["Metadata/Items/Currency/CurrencyCorrupt"])
+		local proposed={id="ai-guide",title="AI guide",slot="Weapon 2",startingItem=shield.."\nCorrupted",goals={},steps={byMethod.socket_bench.guideStep}}
+		assert.equal("socket_bench",require("Modules.CraftingProjects").validate(proposed).steps[1].uniqueCraft.method)
 		assert.equal(1,byMethod.socket_white_bench.components["Metadata/Items/Currency/CurrencyCorrupt"])
 		local filtered=simulator.catalog(shield,"omen",50);assert.equal(1,#filtered.uniqueActions);assert.equal("omen_connections",filtered.uniqueActions[1].method)
 		assert.has_error(function() simulator.catalog(shield,"",50,{}) end)
+	end)
+	it("links unique sockets at the bench and saves the costs in a recipe",function()
+		local simulator=require("Modules.CraftingSimulator");local fusing="Metadata/Items/Currency/CurrencyRerollSocketLinks";local vaal="Metadata/Items/Currency/CurrencyCorrupt"
+		for _,corrupted in ipairs({false,true}) do
+			local raw=shield..(corrupted and "\nCorrupted" or "");local action={method="socket_bench",count=3,linked=true}
+			local result=simulator.perform(raw,action,1);assert.matches("Sockets: R%-G%-B",result.itemText)
+			assert.equal(3,result.components[fusing]);assert.equal(corrupted and 3 or nil,result.components[vaal])
+			assert.has_error(function() simulator.perform(raw,{method="socket_bench",count=2,linked=true},1) end)
+			local recipe={steps={action},targets={},requirements={links=3}};local run=simulator.simulate(raw,recipe,{trials=1,maxActions=2})
+			assert.is_true(run.sampleSuccess);assert.equal(result.itemText,run.sampleItem)
+			local project={id=corrupted and "bench-corrupted" or "bench-normal",title="Bench links",slot="Weapon 2",startingItem=raw,goals={},steps={}}
+			local store=build.savers.CraftingProjects;store:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+			assert.is_true(control.benchLink:IsEnabled());control.benchLink:Click();control.guide:Click()
+			local saved=store.projects[#store.projects];assert.equal("socket_bench",saved.steps[1].uniqueCraft.method)
+			assert.matches("3 Orbs of Fusing",saved.steps[1].action);if corrupted then assert.matches("3 Vaal Orbs",saved.steps[1].action) end
+			local filters=require("Modules.LootFilters");local rules=filters.generate(build,filters.profile("bench-filter","Bench filter"));local fusingRule,vaalRule
+			for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id then fusingRule=fusingRule or rule.text:find("Orb of Fusing",1,true);vaalRule=vaalRule or rule.text:find("Vaal Orb",1,true) end end
+			assert.is_truthy(fusingRule);if corrupted then assert.is_truthy(vaalRule) end
+			control.recipe:Click();saved=store.projects[#store.projects];assert.same(action,saved.nativeRecipe.steps[1])
+			main.popups={}
+		end
 	end)
 	it("calculates deterministic unique crafts against supported item goals",function()
 		local simulator=require("Modules.CraftingSimulator")

@@ -1,9 +1,10 @@
 -- Deterministic unique-item recipes use item text, not ordinary affix states.
 local M={}
-local supported={quality=true,beast_max_links=true,omen_connections=true,socket_white_bench=true}
-local fields={method=true,maxAttempts=true,untilRequirements=true,onSuccess=true,onFailure=true,onFailureAction=true,recoveryNotes=true}
+local supported={quality=true,beast_max_links=true,omen_connections=true,socket_white_bench=true,socket_bench=true}
+local fields={method=true,count=true,linked=true,maxAttempts=true,untilRequirements=true,onSuccess=true,onFailure=true,onFailureAction=true,recoveryNotes=true}
 function M.stepReason(step)
 	if not supported[step.method] then return "This unique recipe action is not supported: "..tostring(step.method) end
+	if step.method~="socket_bench" and (step.count~=nil or step.linked~=nil) then return "This unique recipe action does not accept socket options" end
 	for key in pairs(step) do if not fields[key] then return "This unique recipe option is not supported: "..tostring(key) end end
 end
 local function integer(value,low,high,label)
@@ -59,7 +60,8 @@ function M.simulate(sim,raw,recipe,options)
 			if actions>=maxActions then break end
 			if options.checkpoint then options.checkpoint({trial=1,trials=trials,actions=actions,successes=0}) end
 			actions=actions+1
-			local ok,result=pcall(sim.perform,current,{method=step.method},seed)
+			local action={method=step.method};if step.method=="socket_bench" then action.count=step.count;action.linked=step.linked end
+			local ok,result=pcall(sim.perform,current,action,seed)
 			if not ok then local message=tostring(result):match("[^:]+$") or tostring(result);errors[message]=(errors[message] or 0)+1;rejected=true;break end
 			current=result.itemText;executed=executed+1;route.executed=route.executed+1
 			for key,amount in pairs(result.components) do

@@ -1259,14 +1259,15 @@ do
 	end
 	function M.perform(raw,action,seed,initialState,treeVersion)
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
-		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="quality" or action.method=="beast_max_links" or action.method=="omen_connections" or action.method=="socket_white_bench") then
+		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="quality" or action.method=="beast_max_links" or action.method=="omen_connections" or action.method=="socket_white_bench" or action.method=="socket_bench") then
 			assert(initialState==nil,"Continue unique crafting using the returned item text, not an ordinary crafting state")
-			for key in pairs(action) do assert(key=="method","This unique action does not accept additional options") end
+			for key in pairs(action) do assert(key=="method" or action.method=="socket_bench" and (key=="count" or key=="linked"),"This unique action does not accept additional options") end
+			if action.method=="socket_bench" then local item=require("Modules.CraftingUniqueQuality").inspect(raw);assert(action.linked==true and action.count==#item.sockets,"Unique bench linking requires the current socket count and linked=true") end
 			if seed~=nil then integer(seed,1,2147483646,"seed") end
 			if action.method~="quality" then
 				local unique=require("Modules.CraftingUniqueQuality")
 				local result=action.method=="socket_white_bench" and unique.white(raw) or unique.link(raw,action.method)
-				return M.withTreeContext({priceKey=action.method,itemText=result.itemText,components=result.components,dataPatch=M.dataPatch,
+				return M.withTreeContext({priceKey=M.priceKey(action),itemText=result.itemText,components=result.components,dataPatch=M.dataPatch,
 					warnings={{code="unique_crafting_scope",message="Unique crafting supports ordinary quality, maximum links and the white-socket bench. Continue using the returned item text."}},limitations=copyTable(M.limits)},treeVersion)
 			end
 			local result=require("Modules.CraftingUniqueQuality").apply(raw)

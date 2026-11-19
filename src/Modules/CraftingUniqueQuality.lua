@@ -1,14 +1,21 @@
 -- cspell:ignore RGBW RGBWA
 -- A deliberately bounded unique-item quality operation. It never edits a build.
 local M={}
-function M.guideAction(method,count,resource,corrupted)
+function M.guideAction(method,count,resource,corrupted,socketCount)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
 	if method=="omen_connections" then return "Link existing sockets with an Omen of Connections and an Orb of Fusing" end
+	if method=="socket_bench" then
+		if not socketCount or socketCount<2 or socketCount>6 then return "Link existing sockets at the crafting bench" end
+		local sockets={};for i=1,socketCount do sockets[i]={} end
+		local components=require("Modules.CraftingSimulator").components({method=method,count=socketCount,linked=true},{sockets=sockets,corrupted=corrupted})
+		local amount=components["Metadata/Items/Currency/CurrencyRerollSocketLinks"]
+		return "Link existing sockets at the crafting bench ("..amount.." Orb"..(amount==1 and "" or "s").." of Fusing"..(corrupted and " and "..amount.." Vaal Orb"..(amount==1 and "" or "s") or "")..")"
+	end
 	if method=="socket_white_bench" then return "Use the crafting bench to make all sockets white (1 Orb of Scouring"..(corrupted and " and 1 Vaal Orb" or "")..")" end
 end
-function M.matchesGuideAction(method,count,resource,corrupted,action)
-	return action==M.guideAction(method,count,resource,corrupted) or method=="socket_white_bench" and action=="Use the crafting bench to make all sockets white"
+function M.matchesGuideAction(method,count,resource,corrupted,action,socketCount)
+	return action==M.guideAction(method,count,resource,corrupted,socketCount) or method=="socket_white_bench" and action=="Use the crafting bench to make all sockets white"
 end
 local function withoutQuality(raw)
 	local lines={};for line in (raw.."\n"):gmatch("([^\n]*)\n") do if not line:match("^Quality: ") then lines[#lines+1]=line end end
@@ -46,10 +53,10 @@ end
 
 -- Preserve the original item text: rebuilding a unique can lose imported
 -- properties that the item editor does not understand.
-function M.linkReason(raw)
+function M.linkReason(raw,method)
 	local ok,item=pcall(M.inspect,raw)
 	if not ok then return tostring(item) end
-	if item.corrupted then return "Use the bench or tainted currency on corrupted items" end
+	if item.corrupted and method~="socket_bench" then return "Use the bench or tainted currency on corrupted items" end
 	if raw:lower():find("sockets cannot be modified",1,true) then return "This item's sockets cannot be modified" end
 	local sockets=item.sockets or {}
 	local line,count=raw:match("\nSockets: ([^\r\n]*)"),0
@@ -101,7 +108,7 @@ end
 function M.catalog(raw,query,limit)
 	local item,info=M.inspect(raw)
 	query=(query or ""):lower();limit=limit or 50
-	local linkReason=M.linkReason(raw);local whiteReason=M.whiteReason(raw)
+	local linkReason=M.linkReason(raw);local benchLinkReason=M.linkReason(raw,"socket_bench");local whiteReason=M.whiteReason(raw)
 	local qualityReason=item.corrupted and "Ordinary quality currency cannot modify a corrupted item" or not info.available and "Ordinary quality currency cannot exceed 20%" or nil
 	local whiteComponents={["Metadata/Items/Currency/CurrencyConvertToNormal"]=1}
 	if item.corrupted then whiteComponents["Metadata/Items/Currency/CurrencyCorrupt"]=1 end
@@ -109,13 +116,16 @@ function M.catalog(raw,query,limit)
 		{method="quality",label="Ordinary quality",reason=qualityReason,components={[info.resourceKey]=1}},
 		{method="beast_max_links",label="Bestiary: maximum links",reason=linkReason,components={beast_black_morrigan=1,beast_craicic_sand_spitter=1}},
 		{method="omen_connections",label="Omen of Connections + Orb of Fusing",reason=linkReason,components={["Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks"]=1,["Metadata/Items/Currency/CurrencyRerollSocketLinks"]=1}},
+		{method="socket_bench",label="Bench: link existing sockets",reason=benchLinkReason,components=not benchLinkReason and require("Modules.CraftingSimulator").components({method="socket_bench",count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted}) or {}},
 		{method="socket_white_bench",label="Bench: white sockets",reason=whiteReason,components=whiteComponents},
 	}
 	local result={uniqueCrafting=true,methods={},uniqueActions={},socketCrafts={},quality={value=info.quality,available=info.available,resource=info.resource},nativeStats=require("Modules.CraftingItemStats").itemValues(item),limitations={"Only the listed unique actions are modeled. Continue by passing the returned item text, not an ordinary affix state."}}
 	for _,entry in ipairs(definitions) do
 		result.methods[#result.methods+1]=entry.method
 		if #result.uniqueActions<limit and (entry.method.." "..entry.label):lower():find(query,1,true) then
-			local action={method=entry.method,label=entry.label,action={method=entry.method},priceKey=entry.method,available=entry.reason==nil,unavailableReason=entry.reason,deterministic=true,components=entry.components}
+			local request=entry.method=="socket_bench" and {method=entry.method,count=#item.sockets,linked=true} or {method=entry.method}
+			local action={method=entry.method,label=entry.label,action=request,priceKey=entry.method=="socket_bench" and require("Modules.CraftingSimulator").priceKey(request) or entry.method,available=entry.reason==nil,unavailableReason=entry.reason,deterministic=true,components=entry.components}
+			action.guideStep={action=M.guideAction(entry.method,1,info.resource,item.corrupted,#item.sockets),uniqueCraft={method=entry.method,count=1}}
 			result.uniqueActions[#result.uniqueActions+1]=action
 			if entry.method~="quality" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
 		end
@@ -168,8 +178,8 @@ end
 
 function M.link(raw,method)
 	method=method or "beast_max_links"
-	assert(method=="beast_max_links" or method=="omen_connections","Unsupported unique linking method")
-	local reason=M.linkReason(raw);assert(not reason,reason)
+	assert(method=="beast_max_links" or method=="omen_connections" or method=="socket_bench","Unsupported unique linking method")
+	local reason=M.linkReason(raw,method);assert(not reason,reason)
 	local before=M.inspect(raw)
 	local output,count=raw:gsub("(\nSockets: )([^\r\n]*)",function(prefix,line)
 		local colours={};for colour in line:gmatch("[RGBW]") do colours[#colours+1]=colour end
@@ -179,7 +189,7 @@ function M.link(raw,method)
 	local after=M.inspect(output)
 	assert(before.title==after.title and before.baseName==after.baseName and #before.sockets==#after.sockets,"Unique item did not round-trip after linking")
 	for i,socket in ipairs(after.sockets) do assert(socket.color==before.sockets[i].color and socket.group==after.sockets[1].group,"Socket colours or links changed unexpectedly") end
-	local components=method=="beast_max_links" and {beast_black_morrigan=1,beast_craicic_sand_spitter=1} or {
+	local components=method=="socket_bench" and require("Modules.CraftingSimulator").components({method=method,count=#before.sockets,linked=true},{sockets=before.sockets,corrupted=before.corrupted}) or method=="beast_max_links" and {beast_black_morrigan=1,beast_craicic_sand_spitter=1} or {
 		["Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks"]=1,
 		["Metadata/Items/Currency/CurrencyRerollSocketLinks"]=1,
 	}

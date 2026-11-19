@@ -41,10 +41,10 @@ function M.validate(project)
 		assert(type(step) == "table","Invalid crafting step")
 		local entry={action=text(step.action,1000,"step action"),stopWhen=text(step.stopWhen,500,"stop condition",true),onFailure=text(step.onFailure,500,"failure route",true),done=step.done == true}
 		if step.uniqueCraft~=nil then
-			local craft=step.uniqueCraft;assert(type(craft)=="table" and (craft.method=="quality" or craft.method=="beast_max_links" or craft.method=="omen_connections" or craft.method=="socket_white_bench") and type(craft.count)=="number" and craft.count==math.floor(craft.count) and craft.count>=1 and craft.count<=(craft.method=="quality" and 20 or 1),"Invalid unique crafting step")
+			local craft=step.uniqueCraft;assert(type(craft)=="table" and (craft.method=="quality" or craft.method=="beast_max_links" or craft.method=="omen_connections" or craft.method=="socket_white_bench" or craft.method=="socket_bench") and type(craft.count)=="number" and craft.count==math.floor(craft.count) and craft.count>=1 and craft.count<=(craft.method=="quality" and 20 or 1),"Invalid unique crafting step")
 			if not uniqueChecked then local ok,item,info=pcall(require("Modules.CraftingUniqueQuality").inspect,result.startingItem);uniqueItem=ok and item or nil;uniqueInfo=ok and info or nil;uniqueChecked=true end
-			local compatible=uniqueInfo and (craft.method=="socket_white_bench" or not uniqueItem.corrupted and (craft.method~="quality" or uniqueInfo.quality+craft.count<=20))
-			if compatible and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,uniqueInfo.resource,uniqueItem.corrupted,entry.action) then entry.uniqueCraft={method=craft.method,count=craft.count} end
+			local compatible=uniqueInfo and (craft.method=="socket_white_bench" or craft.method=="socket_bench" or not uniqueItem.corrupted and (craft.method~="quality" or uniqueInfo.quality+craft.count<=20))
+			if compatible and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,uniqueInfo.resource,uniqueItem.corrupted,entry.action,#uniqueItem.sockets) then entry.uniqueCraft={method=craft.method,count=craft.count} end
 		end
 		result.steps[#result.steps+1]=entry
 	end

@@ -2151,6 +2151,16 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("white");frame("crafting-unique-corrupted-white");ui:click("guide")
 		assert(build.savers.CraftingProjects.projects[#build.savers.CraftingProjects.projects].steps[1].uniqueCraft.method=="socket_white_bench","Corrupted socket guide was not kept");main.popups={}
 	end
+	do
+		local project={id="unique-corrupted-bench-link-ui",title="Corrupted unique links",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		assert(control.benchLink:IsEnabled() and control.benchLink.tooltipText():find("3 Vaal Orbs",1,true),"Corrupted bench linking or its cost is unavailable")
+		ui:click("benchLink");ui:click("guide");ui:click("recipe")
+		local saved;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==project.id then saved=entry;break end end
+		assert(saved and saved.steps[1] and saved.steps[1].uniqueCraft and saved.steps[1].uniqueCraft.method=="socket_bench","Bench linking was not saved in the guide")
+		assert(saved.nativeRecipe and saved.nativeRecipe.steps[1].linked,"Bench linking was not saved in the recipe")
+		main.popups={}
+	end
 	ui:restore()
 end
 -- These checks exercise the audit itself: raw uncoloured list text inherits the
