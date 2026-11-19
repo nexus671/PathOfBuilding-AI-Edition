@@ -254,12 +254,23 @@ function M.generate(build,profile,checkpoint)
 				local catalog=unique.catalog(project.startingItem,"",50);local actions={};for _,entry in ipairs(catalog.uniqueActions) do actions[entry.priceKey]=entry end
 				local result={items={},unknown={}};local prices=require("Modules.CraftingPrices");local model={item=item}
 				if project.nativeRecipe.initialState then result.unknown[#result.unknown+1]="ordinary starting state" end
+				local hasSocketAction=false;for _,step in ipairs(project.nativeRecipe.steps) do if step.method=="socket_bench" then hasSocketAction=true;break end end
+				if hasSocketAction and not project.startingItem:find("\nSockets: ",1,true) then result.unknown[#result.unknown+1]="Starting socket layout is not explicit" end
+				local possibleCounts={[#item.sockets]=true}
+				for _,step in ipairs(project.nativeRecipe.steps) do if step.method=="socket_bench" and not step.linked and type(step.count)=="number" then possibleCounts[step.count]=true end end
 				for _,step in ipairs(project.nativeRecipe.steps) do
 					-- Preserve known base ingredients even when an unsupported option
 					-- adds a price-key prefix. Socket variants still need their count.
-					local key=step.method=="socket_bench" and require("Modules.CraftingSimulator").priceKey({method=step.method,count=step.count,linked=step.linked}) or step.method
-					local entry=actions[key]
 					local reason=require("Modules.CraftingUniqueSimulation").stepReason(step)
+					local entry
+					if step.method=="socket_bench" then
+						local sim=require("Modules.CraftingSimulator");local count=step.count
+						if type(count)=="number" and count==math.floor(count) and count>=2 and count<=sim.socketLimit({item=item}) and (step.linked==nil or type(step.linked)=="boolean") then
+							local sockets={};if step.linked then for i=1,count do sockets[i]={} end end
+							entry={components=sim.components({method="socket_bench",count=count,linked=step.linked},{sockets=sockets,corrupted=item.corrupted})}
+							if step.linked and not possibleCounts[count] then result.unknown[#result.unknown+1]="No modeled route sets "..count.." sockets before linking" end
+						end
+					else entry=actions[step.method] end
 					if reason then result.unknown[#result.unknown+1]=reason end
 					if not entry and not reason then result.unknown[#result.unknown+1]="No modeled unique resource breakdown for "..step.method end
 					if entry then for resource in pairs(entry.components) do

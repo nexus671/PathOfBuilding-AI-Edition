@@ -329,6 +329,17 @@ describe("Linked planning tools",function()
 		assert.equal(1,counts["Armourer's Scrap"]);assert.equal(1,counts["Omen of Connections"]);assert.equal(1,counts["Orb of Fusing"])
 		for _,warning in ipairs(warnings) do assert.not_equal("craft:"..project.id,warning.origin) end;main.popups={}
 	end)
+	it("finds resources for socket-count and linking steps without a written guide",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted"
+		local project={id="unique-recipe-only",title="Socket recipe",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe={steps={{method="socket_bench",count=4},{method="socket_bench",count=4,linked=true}},targets={},requirements={exactSockets=4,links=4}}}
+		build.savers.CraftingProjects:Upsert(project);local rules,warnings=filters.generate(build,filters.profile("recipe-only","Recipe only"));local names={}
+		for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id then names[rule.title]=true end end
+		assert.is_true(names["Jeweller's Orb"]);assert.is_true(names["Orb of Fusing"]);assert.is_true(names["Vaal Orb"])
+		for _,warning in ipairs(warnings) do assert.not_equal("craft:"..project.id,warning.origin) end
+		project.startingItem=raw:gsub("\nSockets: R%-G B","");build.savers.CraftingProjects:Upsert(project)
+		local _,unknown=filters.generate(build,filters.profile("recipe-unknown","Unknown sockets"));local found=false
+		for _,warning in ipairs(unknown) do if warning.origin=="craft:"..project.id and warning.message:find("Starting socket layout is not explicit",1,true) then found=true end end;assert.is_true(found)
+	end)
 	it("warns and preserves recipe pickups when a unique action has an unsupported option",function()
 		local project={id="unique-unsupported-filter",title="Unique recipe",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={},nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={socketColours="WWW"}}}
 		build.savers.CraftingProjects:Upsert(project)
@@ -345,7 +356,7 @@ describe("Linked planning tools",function()
 		project.nativeRecipe.steps={{method="socket_bench",count=4,linked=true}};build.savers.CraftingProjects:Upsert(project)
 		rules,warnings=filters.generate(build,profile);names={};for _,rule in ipairs(rules) do names[rule.title]=true end
 		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"])
-		found=false;for _,warning in ipairs(warnings) do if warning.origin=="craft:"..project.id and warning.message:find("No modeled unique resource breakdown",1,true) then found=true end end;assert.is_true(found)
+		found=false;for _,warning in ipairs(warnings) do if warning.origin=="craft:"..project.id and warning.message:find("No modeled route sets 4 sockets",1,true) then found=true end end;assert.is_true(found)
 	end)
 	it("generates concrete fossil and corrupted socket recipe pickups",function()
 		local project=craft();project.nativeRecipe={steps={
