@@ -62,14 +62,12 @@ placeholder that pretends to provide those results offline.
 
 ## Remaining release work
 
-As of November 15, the most recent checkpoint with both hosted checks complete
-was `b07b879d90ee4339ea083c2d42b38c973a7425ad`
-([Run Tests](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/43804547737),
-[Spell Checker](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/43804547752)).
-Its local review passed 71 focused filter tests, the MCP planning workflow and
-1,335 source-stable UI views; the updater manifest checked 2,500 entries. Later
-commits need their own checks. Inspect the current commit's hosted results before
-making a release decision; this checkpoint does not establish full 1.0 parity.
+On November 19, checkpoint `cd50961573dfe54caa830a0d45d237f13ddf6dd2` passed
+[Run Tests](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/44619732759)
+and [Spell Checker](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/44619733012).
+The hosted tests included the generated crafting-import sweep, planning workflow,
+headless UI and update-manifest checks. Later commits need their own checks.
+This checkpoint does not establish full 1.0 parity or live-game verification.
 
 An earlier checkpoint, `4d410c005d95f84adf7f19cdb76f8669ebdc775f`, passed
 [Run Tests](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/43447147022)
