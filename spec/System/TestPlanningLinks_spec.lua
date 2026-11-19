@@ -345,6 +345,18 @@ describe("Linked planning tools",function()
 		local regenerated=filters.generate(build,profile);names={};for _,rule in ipairs(regenerated) do names[rule.title]=true end
 		assert.is_nil(names["Armourer's Scrap"]);assert.is_true(names["Omen of Connections"])
 	end)
+	it("preserves unique guide pickups while its starting item needs correction",function()
+		local project={id="guide-invalid",title="Skin",slot="Body Armour",startingItem="Rarity: UNIQUE\nSkin of the Loyal\nSimple Robe\nItem Level: 86\nSockets: R-G-B-R-G-B",goals={},steps={{action="Use 1 Armourer's Scrap",uniqueCraft={method="quality",count=1}}}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("guide-invalid","Guide");profile.rules=filters.generate(build,profile)
+		local function hasScrap(rules) for _,rule in ipairs(rules) do if rule.origin=="craft:guide-invalid" and rule.title=="Armourer's Scrap" then return true end end return false end
+		assert.is_true(hasScrap(profile.rules));project.startingItem=project.startingItem:gsub("R%-G%-B%-R%-G%-B","R G B");build.savers.CraftingProjects:Upsert(project)
+		local rules,warnings=filters.generate(build,profile);assert.is_true(hasScrap(rules));local found=false
+		for _,warning in ipairs(warnings) do if warning.origin=="craft:guide-invalid" and warning.message:find("six linked sockets",1,true) and warning.retry then found=true end end;assert.is_true(found)
+		assert.equal("quality",build.savers.CraftingProjects.projects[1].steps[1].uniqueCraft.method)
+		local xml=build:SaveDB("Invalid guide");loadBuildFromXML(xml,"Invalid guide");project=build.savers.CraftingProjects.projects[1];assert.equal("quality",project.steps[1].uniqueCraft.method)
+		project.startingItem=project.startingItem:gsub("R G B","R-G-B-R-G-B");build.savers.CraftingProjects:Upsert(project);rules,warnings=filters.generate(build,profile);assert.is_true(hasScrap(rules))
+		for _,warning in ipairs(warnings) do assert.not_equal("craft:guide-invalid",warning.origin) end
+	end)
 	it("includes both currencies for a corrupted unique white-socket guide",function()
 		local project={id="corrupted-white-filter",title="Corrupted Goldrim",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={}}
 		build.savers.CraftingProjects:Upsert(project)

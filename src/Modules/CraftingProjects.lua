@@ -51,7 +51,12 @@ function M.validate(project)
 			local craft=step.uniqueCraft;assert(type(craft)=="table" and (craft.method=="quality" or craft.method=="beast_max_links" or craft.method=="omen_connections" or craft.method=="socket_white_bench" or craft.method=="socket_bench" or craft.method=="socket_count_bench") and type(craft.count)=="number" and craft.count==math.floor(craft.count) and craft.count>=(craft.method=="socket_count_bench" and 2 or 1) and craft.count<=(craft.method=="quality" and 20 or craft.method=="socket_count_bench" and 6 or 1),"Invalid unique crafting step")
 			if not uniqueChecked then local ok,item,info=pcall(require("Modules.CraftingUniqueQuality").inspect,result.startingItem);uniqueItem=ok and item or nil;uniqueInfo=ok and info or nil;uniqueSocketCount=ok and #item.sockets or nil;uniqueChecked=true end
 			local compatible=uniqueInfo and (craft.method=="socket_white_bench" or craft.method=="socket_bench" or craft.method=="socket_count_bench" or not uniqueItem.corrupted and (craft.method~="quality" or uniqueInfo.quality+craft.count<=20))
-			if compatible and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,uniqueInfo.resource,uniqueItem.corrupted,entry.action,uniqueSocketCount) then entry.uniqueCraft={method=craft.method,count=craft.count};if craft.method=="socket_count_bench" then uniqueSocketCount=craft.count end end
+			-- Keep typed steps for an uninspectable unique until its item text is
+			-- corrected. Consumers must inspect the item and verify the action text
+			-- before using these unverified steps.
+			local rarity=result.startingItem:match("^Rarity:%s*(%a+)") or result.startingItem:match("\nRarity:%s*(%a+)")
+			local pending=not uniqueInfo and rarity and rarity:upper()=="UNIQUE"
+			if pending or compatible and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,uniqueInfo.resource,uniqueItem.corrupted,entry.action,uniqueSocketCount) then entry.uniqueCraft={method=craft.method,count=craft.count};if not pending and craft.method=="socket_count_bench" then uniqueSocketCount=craft.count end end
 		end
 		result.steps[#result.steps+1]=entry
 	end

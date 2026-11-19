@@ -363,6 +363,13 @@ function M.generate(build,profile,checkpoint)
 		local ok,item,info=false,nil,nil
 		if tagged then local inspected,parsed,details=pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem);ok,item,info=inspected,parsed,details end
 		local uniqueSocketCount=ok and #item.sockets or nil
+		if tagged and not ok and not project.nativeRecipe then
+			local message="Could not inspect this unique crafting guide's starting item."
+			if type(item)=="string" and item:find("This unique is always corrupted",1,true) then message="The starting unique is always corrupted; include its Corrupted line."
+			elseif type(item)=="string" and item:find("This unique has six linked sockets",1,true) then message="The starting unique has six linked sockets; correct its socket layout." end
+			warnings[#warnings+1]={origin="craft:"..project.id,title=project.title,message=message.." Previous guide pickups were kept; review the crafting guide.",retry=true}
+			for _,rule in ipairs(profile.rules) do if rule.origin=="craft:"..project.id and rule.id:match("^craft%-resource%-") and not ids[rule.id] then result[#result+1]=copyTable(rule);ids[rule.id]=true end end
+		end
 		if ok then for _,step in ipairs(project.steps or {}) do
 			local craft=step.uniqueCraft
 			if craft and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,info.resource,item.corrupted,step.action,uniqueSocketCount) then
