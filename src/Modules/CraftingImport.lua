@@ -102,7 +102,11 @@ function I.resolve(M,model,state)
 		end
 	end
 	search()
-	assert(#solutions == 1,#solutions == 0 and "Imported values do not resolve to legal affixes at this item level; use advanced copy text or a blank base with a structured starting state" or "Imported values match several modifier identities; use advanced copy text or a blank base with a structured starting state")
+	local failure=#solutions == 0 and "Imported values do not resolve to legal affixes at this item level; use advanced copy text or a blank base with a structured starting state" or "Imported values match several modifier identities; use advanced copy text or a blank base with a structured starting state"
+	if model.item.type=="Tincture" and model.item.tinctureValues=="Final" and ((model.item.tinctureImportedQuality or 0)~=0 or (model.item.tinctureImportedEffect or 0)~=0) then
+		failure="Copied tincture values may include quality or effect scaling, so their modifier tiers cannot be identified reliably. Start with a blank tincture and enter base-value rolls."
+	end
+	assert(#solutions == 1,failure)
 	for _,entry in ipairs(solutions[1]) do state.affixes[#state.affixes+1]=entry end
 	return state
 end

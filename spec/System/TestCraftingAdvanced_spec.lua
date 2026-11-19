@@ -89,6 +89,8 @@ describe("Advanced native crafting", function()
 		assert.are.equal(2,#sim.model(sim.toItem(life,life.initial).raw).initial.affixes)
 		local impossible=tincture:gsub("29%% increased Melee Weapon Attack Speed","999% increased Melee Weapon Attack Speed")
 		assert.are.equal(false,pcall(sim.model,impossible))
+		local scaled="Item Class: Tinctures\nRarity: MAGIC\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n30% increased Melee Weapon Attack Speed"
+		local ok,err=pcall(sim.model,scaled);assert.is_false(ok);assert.matches("Copied tincture values may include quality or effect scaling",err,1,true)
 	end)
 	it("warns when game-copied tincture values can mix with base rolls",function()
 		local raw="Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed"
