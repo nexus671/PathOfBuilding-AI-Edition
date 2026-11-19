@@ -26,13 +26,26 @@ function M.Open(build,project,layout,snapshot)
 		end))
 	end
 	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history),actions=copyTable(actions),savedTrace=savedTrace} end
-	local function guideSteps()
+	local guideCache
+	local function calculateGuideSteps()
 		if #history==0 or history[1]~=draft.startingItem then return nil,"A complete preview from the starting item is needed." end
+		local first=1
+		if savedTrace then
+			local matched
+			for i=1,#actions do
+				local boundary=history[i+1] or raw
+				if require("sha1")(table.concat(actions,"|",1,i).."\n"..boundary)==savedTrace then matched=i;break end
+			end
+			if not matched then return nil,"The preview no longer follows the steps already saved in the guide." end
+			first=matched+1
+			if first>#actions then return nil,"These preview steps are already in the guide." end
+		end
 		local steps={};local qualityCount=0
 		local function flush()
 			if qualityCount>0 then steps[#steps+1]={action="Use "..qualityCount.." "..info.resource..(qualityCount==1 and "" or "s"),done=false};qualityCount=0 end
 		end
-		for _,action in ipairs(actions) do
+		for i=first,#actions do
+			local action=actions[i]
 			if action=="quality" then qualityCount=qualityCount+1
 			elseif action=="beast_max_links" or action=="omen_connections" then
 				flush();steps[#steps+1]={action=action=="beast_max_links" and "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" or "Link existing sockets with an Omen of Connections and an Orb of Fusing",done=false}
@@ -41,11 +54,15 @@ function M.Open(build,project,layout,snapshot)
 		flush()
 		if #draft.steps+#steps>40 then return nil,"The guide has room for up to 40 steps." end
 		local signature=require("sha1")(table.concat(actions,"|").."\n"..raw)
-		if savedTrace==signature then return nil,"These preview steps are already in the guide." end
 		return steps,nil,signature
+	end
+	local function guideSteps()
+		if not guideCache then local steps,reason,signature=calculateGuideSteps();guideCache={steps=steps,reason=reason,signature=signature} end
+		return guideCache.steps,guideCache.reason,guideCache.signature
 	end
 	local linkReason
 	local function refresh(persist)
+		guideCache=nil
 		item,info=unique.inspect(raw);show(item)
 		linkReason=unique.linkReason(raw)
 		c.status.label="^7Quality: "..info.quality.."% | "..(info.available and "Ready" or "20% cap reached")
@@ -74,7 +91,7 @@ function M.Open(build,project,layout,snapshot)
 	button("guide",338,"Keep + guide",function()
 		local steps,reason,signature=guideSteps();assert(steps,reason)
 		local updated=copyTable(draft);updated.targetItem=raw;for _,step in ipairs(steps) do updated.steps[#updated.steps+1]=step end
-		draft=build.savers.CraftingProjects:Upsert(updated);savedTrace=signature;ui.discard(build,"uniqueQuality",draft.id)
+		draft=build.savers.CraftingProjects:Upsert(updated);savedTrace=signature;guideCache=nil;ui.discard(build,"uniqueQuality",draft.id)
 		require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target and guide kept. Save the build."
 	end)
 	c.guide.x=156;c.guide.width=130;c.guide.enabled=function() return guideSteps()~=nil end

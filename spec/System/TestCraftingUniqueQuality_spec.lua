@@ -59,6 +59,9 @@ describe("Unique item quality",function()
 		assert.equal("Use 2 Armourer's Scraps",saved.steps[2].action);assert.matches("Omen of Connections",saved.steps[3].action)
 		assert.matches("Sockets: R%-G%-B",saved.targetItem)
 		control.close:Click();control=require("Classes.CraftingUniqueQualityControl").Open(build,saved);assert.is_false(control.guide:IsEnabled())
+		control.apply:Click();assert.is_true(control.guide:IsEnabled());control.guide:Click()
+		saved=store.projects[1];assert.equal(4,#saved.steps);assert.equal("Use 1 Armourer's Scrap",saved.steps[4].action)
+		control.undo:Click();assert.is_false(control.guide:IsEnabled());assert.matches("no longer follows",control.guide.tooltipText())
 		local legacy={kind="uniqueQuality",project=saved,itemText=saved.targetItem,history={shield}}
 		main.popups={};control=require("Classes.CraftingUniqueQualityControl").Open(build,saved,nil,legacy)
 		assert.is_false(control.guide:IsEnabled());assert.matches("older previews",control.guide.tooltipText());main.popups={}
