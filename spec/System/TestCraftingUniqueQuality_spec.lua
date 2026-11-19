@@ -71,6 +71,21 @@ describe("Unique item quality",function()
 		main.popups={};control=require("Classes.CraftingUniqueQualityControl").Open(build,saved,nil,legacy)
 		assert.is_false(control.guide:IsEnabled());assert.matches("cannot be verified",control.guide.tooltipText());main.popups={}
 	end)
+	it("lets the user review an edited guide before adding new preview actions",function()
+		local project={id="review-guide",title="Review guide",slot="Weapon 2",startingItem=shield,goals={},steps={{action="Acquire the item"}}}
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.apply:Click();control.guide:Click();control.close:Click()
+		local changed=copyTable(store.projects[1]);changed.steps[1].action="Acquire the unique shield"
+		control=require("Classes.CraftingUniqueQualityControl").Open(build,changed);control.apply:Click()
+		assert.is_false(control.guide:IsEnabled());assert.is_true(control.reviewGuide:IsShown());assert.is_true(control.reviewGuide:IsEnabled())
+		control.reviewGuide:Click();local browser=main.popups[1].controls
+		local details={};for _,row in ipairs(browser.details.list) do details[#details+1]=row[1] end
+		assert.matches("Acquire the unique shield",table.concat(details," "));browser.choose:Click()
+		assert.is_true(control.guide:IsEnabled());control.guide:Click()
+		local saved=store.projects[1];assert.equal(3,#saved.steps);assert.equal("Acquire the unique shield",saved.steps[1].action);assert.equal("Use 1 Armourer's Scrap",saved.steps[3].action)
+		assert.is_false(control.reviewGuide:IsShown());main.popups={}
+	end)
 	it("keeps a preview as a saved crafting project target",function()
 		local project={id="unique-quality",title="Quality",slot="Weapon 2",startingItem=shield,goals={},steps={}}
 		local store=build.savers.CraftingProjects;store:Upsert(project)

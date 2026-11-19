@@ -38,19 +38,28 @@ function M.Open(build,project,layout,snapshot)
 		end
 		return require("sha1")(table.concat(pieces,"|"))
 	end
-	local guideCache
+	local guideCache,reviewCache,traceCache
+	local function savedTraceIndex()
+		if traceCache~=nil then return traceCache or nil end
+		traceCache=false
+		if not savedTrace or #history==0 or history[1]~=draft.startingItem then return nil end
+		for i=1,#actions do
+			local boundary=history[i+1] or raw
+			if require("sha1")(table.concat(actions,"|",1,i).."\n"..boundary)==savedTrace then traceCache=i;return i end
+		end
+	end
+	local function guideNeedsReview()
+		if reviewCache==nil then reviewCache=savedTrace and (not savedGuideHash or guidePrefixHash(draft.steps,savedGuideLength)~=savedGuideHash) or false end
+		return reviewCache
+	end
 	local function calculateGuideSteps()
 		if #history==0 or history[1]~=draft.startingItem then return nil,"A complete preview from the starting item is needed." end
 		local first=1
 		if savedTrace then
-			if not savedGuideHash or guidePrefixHash(draft.steps,savedGuideLength)~=savedGuideHash then
+			if guideNeedsReview() then
 				return nil,"The saved guide changed or cannot be verified; review it before adding more steps."
 			end
-			local matched
-			for i=1,#actions do
-				local boundary=history[i+1] or raw
-				if require("sha1")(table.concat(actions,"|",1,i).."\n"..boundary)==savedTrace then matched=i;break end
-			end
+			local matched=savedTraceIndex()
 			if not matched then return nil,"The preview no longer follows the steps already saved in the guide." end
 			first=matched+1
 			if first>#actions then return nil,"These preview steps are already in the guide." end
@@ -77,7 +86,7 @@ function M.Open(build,project,layout,snapshot)
 	end
 	local linkReason
 	local function refresh(persist)
-		guideCache=nil
+		guideCache=nil;reviewCache=nil;traceCache=nil
 		item,info=unique.inspect(raw);show(item)
 		linkReason=unique.linkReason(raw)
 		c.status.label="^7Quality: "..info.quality.."% | "..(info.available and "Ready" or "20% cap reached")
@@ -106,7 +115,7 @@ function M.Open(build,project,layout,snapshot)
 	button("guide",338,"Keep + guide",function()
 		local steps,reason,signature=guideSteps();assert(steps,reason)
 		local updated=copyTable(draft);updated.targetItem=raw;for _,step in ipairs(steps) do updated.steps[#updated.steps+1]=step end
-		draft=build.savers.CraftingProjects:Upsert(updated);savedTrace=signature;savedGuideLength=#draft.steps;savedGuideHash=guidePrefixHash(draft.steps,savedGuideLength);guideCache=nil;ui.discard(build,"uniqueQuality",draft.id)
+		draft=build.savers.CraftingProjects:Upsert(updated);savedTrace=signature;savedGuideLength=#draft.steps;savedGuideHash=guidePrefixHash(draft.steps,savedGuideLength);guideCache=nil;reviewCache=nil;traceCache=nil;ui.discard(build,"uniqueQuality",draft.id)
 		require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target and guide kept. Save the build."
 	end)
 	c.guide.x=156;c.guide.width=130;c.guide.enabled=function() return guideSteps()~=nil end
@@ -133,6 +142,28 @@ function M.Open(build,project,layout,snapshot)
 	local currency=new("Control"):Control(ui.anchor,{16,454,42,42});c.currency=currency
 	function currency:Draw() if art then local x,y=self:GetPos();SetDrawColor(1,1,1);DrawImage(art,x,y,42,42) end end
 	ui.description(c,"currencyNote",68,456,218,48,{"Preview only", "No currency is spent."},14)
+	c.currency.shown=function() return not guideNeedsReview() end
+	c.currencyNote.shown=c.currency.shown
+	button("reviewGuide",454,"Review saved guide",function()
+		assert(guideNeedsReview() and savedTraceIndex(),"Return to the saved preview before reviewing the guide")
+		local reviewedHash=guidePrefixHash(draft.steps,#draft.steps)
+		local details={"Review these current guide steps before continuing.","Confirm they describe the actions already saved; no new steps are added yet."}
+		if #draft.steps==0 then details[#details+1]="The guide has no steps." end
+		for i,step in ipairs(draft.steps) do
+			details[#details+1]=i..". "..step.action
+			if step.stopWhen and step.stopWhen~="" then details[#details+1]="Stop: "..step.stopWhen end
+			if step.onFailure and step.onFailure~="" then details[#details+1]="If unsuccessful: "..step.onFailure end
+		end
+		require("Classes.PlanningBrowserControl").Open("Review saved guide",{{id="guide",label=draft.title,details=details}},{action="Confirm guide",choose=function()
+			assert(guideNeedsReview() and savedTraceIndex() and guidePrefixHash(draft.steps,#draft.steps)==reviewedHash,"The guide or preview changed; review it again")
+			savedGuideLength=#draft.steps;savedGuideHash=reviewedHash;guideCache=nil;reviewCache=nil;traceCache=nil
+			require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true)
+			c.notice.label="^7Guide reviewed. Continue the preview."
+		end})
+	end)
+	c.reviewGuide.shown=guideNeedsReview
+	c.reviewGuide.enabled=function() return savedTraceIndex()~=nil end
+	c.reviewGuide.tooltipText=function() return savedTraceIndex() and "Review the existing written steps before adding more preview actions." or "Return to the saved preview before reviewing this guide." end
 	button("close",h-50,layout and "Back to projects" or "Close",function()
 		build.planningUniqueQualityDrafts=build.planningUniqueQualityDrafts or {};build.planningUniqueQualityDrafts[draft.id]=snapshotPreview()
 		if ui.hasDraft(build,"uniqueQuality",draft.id) then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true) end

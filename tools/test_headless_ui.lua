@@ -2089,6 +2089,19 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		end
 	end
 	uniqueProjectScenario()
+	do
+		main.popups={}
+		local project={id="unique-guide-review-ui",title="Review unique guide",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86",goals={},steps={{action="Acquire Goldrim"}}}
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.apply:Click();control.guide:Click();control.close:Click()
+		local changed=copyTable(store.projects[#store.projects]);changed.steps[1].action="Acquire the unique helmet"
+		control=require("Classes.CraftingUniqueQualityControl").Open(build,changed);control.apply:Click()
+		assert(control.reviewGuide:IsShown() and control.reviewGuide:IsEnabled(),"Edited unique guide cannot be reviewed")
+		frame("crafting-unique-guide-review-entry");ui:click("reviewGuide");frame("crafting-unique-guide-review")
+		ui:click("choose");assert(control.guide:IsEnabled(),"Confirming the guide did not enable continuation")
+		ui:click("guide");assert(not control.guide:IsEnabled(),"Reviewed continuation was not saved");main.popups={}
+	end
 	ui:restore()
 end
 -- These checks exercise the audit itself: raw uncoloured list text inherits the
