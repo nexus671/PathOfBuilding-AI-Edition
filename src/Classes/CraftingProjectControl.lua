@@ -81,8 +81,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 	local cachedRaw,cachedReason,cachedUniqueQuality
 	local function workbenchReason(project)
 		if project.startingItem~=cachedRaw then
-			cachedRaw=project.startingItem;cachedReason=projects.workbenchReason(project)
-			cachedUniqueQuality=cachedReason and pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem) or false
+			cachedRaw=project.startingItem;cachedReason,cachedUniqueQuality=projects.workbenchReason(project)
 		end
 		return cachedReason
 	end

@@ -23,7 +23,14 @@ end
 function M.workbenchReason(project)
 	local ok,item=pcall(M.item,project.startingItem)
 	if ok and (item.rarity=="UNIQUE" or item.rarity=="RELIC") then
-		return "Unique and relic starting items can have written guides; full workbench simulation is unavailable. Eligible unique armour and weapons have quality and socket previews."
+		local inspected,reason=false,nil
+		if item.rarity=="UNIQUE" then
+			inspected,reason=pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem)
+			if not inspected and type(reason)=="string" and reason:find("This unique is always corrupted",1,true) then
+				return "This unique is always corrupted; include its Corrupted line in the starting item.",false
+			end
+		end
+		return "Unique and relic starting items can have written guides; full workbench simulation is unavailable. Eligible unique armour and weapons have quality and socket previews.",inspected
 	end
 end
 
