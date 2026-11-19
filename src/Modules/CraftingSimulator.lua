@@ -60,6 +60,11 @@ local function gildedCorruptionWarning()
 end
 function M.actionWarnings(action,model)
 	local result={}
+	if gildedCorruption(action) and model and model.item and not model.item.synthesised then
+		for _,line in ipairs(model.item.implicitModLines or {}) do if StripEscapes(line.line or "")=="Implicit Modifiers Cannot Be Changed" then
+			result[#result+1]={code="protected_implicit_corruption",message="The model treats an implicit-change corruption outcome as no change to protected implicits, including a Gilded modifier. The 3.30 second-corruption interaction is unverified.",source="https://www.poewiki.net/wiki/Composite_Ring"};break
+		end end
+	end
 	if gildedCorruption(action) and (gildedFossil(action) or model and model.initial and model.initial.vendorImplicit) then result[#result+1]=gildedCorruptionWarning() end
 	if gildedFossil(action) then result[#result+1]={code="gilded_vendor_weights",message="Hidden Gilded vendor outcomes are sampled using the pinned 3.30 client weights. Current server odds are not independently verified, and copied item text does not reveal the outcome."} end
 	if action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix" then result[#result+1]={code="beast_level_pool",message=action.beastLevel and ("Uses the supplied beast level "..action.beastLevel.." for the added modifier. This interaction is based on community research and is not verified in the current game.") or "This model uses the item level for the added modifier. Community research reports that these Bestiary crafts use the beast's level instead, so the eligible pool and odds can differ.",source="https://www.poewiki.net/wiki/Beastcrafting"} end

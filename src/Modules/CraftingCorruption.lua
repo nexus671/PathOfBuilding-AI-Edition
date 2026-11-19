@@ -117,6 +117,14 @@ function C.extend(M,A,api)
 		return model
 	end
 	function M.rollCorrupted(model,state,random,count,retained)
+		-- A present implicit that prevents implicit changes protects the entire
+		-- implicit set, including a Gilded Fossil modifier. The implicit outcome
+		-- still corrupts the item but does not replace or add a modifier.
+		if not state.corruptedImplicits and not state.implicits and not model.item.synthesised then
+			for _,line in ipairs(model.item.implicitModLines or {}) do
+				if StripEscapes(line.line or "")=="Implicit Modifiers Cannot Be Changed" then state.corrupted=true;return end
+			end
+		end
 		local reason=mixedImplicitReason(model,state);assert(not reason,reason)
 		local chosen,groups=copyTable(retained or {}),{}
 		for _,entry in ipairs(chosen) do for _,group in ipairs(metadata[entry.id].groups) do groups[group]=true end end
