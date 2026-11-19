@@ -40,6 +40,13 @@ describe("Crafting project removal and save-state ownership",function()
 		main.popups={};p.startingItem=p.startingItem.."\nCorrupted";build.savers.CraftingProjects:Upsert(p);c=panel.Open(build,nil,nil,nil,p.id)
 		assert.is_true(c.native:IsEnabled());assert.matches("unique item",c.native.tooltipText());main.popups={}
 	end)
+	it("explains why mirrored and unidentified uniques cannot open the workbench",function()
+		local p=project("unique-reasons");p.title="Goldrim";p.startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R G B\nMirrored"
+		build.savers.CraftingProjects:Upsert(p);local panel=require("Classes.CraftingProjectControl");local c=panel.Open(build,nil,nil,nil,p.id)
+		assert.is_false(c.native:IsEnabled());assert.matches("Mirrored items cannot be crafted",c.native.tooltipText(),1,true);assert.is_nil(c.native.tooltipText():find(".lua:",1,true))
+		main.popups={};p.startingItem=p.startingItem:gsub("Mirrored","Unidentified");build.savers.CraftingProjects:Upsert(p);c=panel.Open(build,nil,nil,nil,p.id)
+		assert.is_false(c.native:IsEnabled());assert.matches("Identify the starting item",c.native.tooltipText(),1,true);main.popups={}
+	end)
 	it("resets draft and saved labels across reused builds and keeps project draft scopes separate",function()
 		uiState.draft(build,"workingCraft","a");uiState.draft(build,"workingCraft","b");uiState.kept(build,"workingCraft","a")
 		assert.is_false(uiState.hasDraft(build,"workingCraft","a"));assert.is_true(uiState.hasDraft(build,"workingCraft","b"))
