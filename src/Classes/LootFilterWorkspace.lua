@@ -134,22 +134,22 @@ function M.Open(build,source,layout,controller)
 			if chosen then page="Simulate";sceneKind="Saved examples";sampleSetId=chosen.id;scenePage=1;item=copyTable(chosen.samples[1]) end;replaceProfile(next)
 		end)
 	end
-	local invalidFilterReason
+	local invalidFilterReason,invalidFilterResult
 	local function compile()
-		parsed=nil;invalidFilterReason=nil
+		parsed=nil;invalidFilterReason=nil;invalidFilterResult=nil
 		if not profile then return end
 		local key=require("Modules.PlanningData").encode(profile);local cached=transient.filterCompiled
 		if not cached or cached.key~=key then
 			local ok,value,details,compiled=pcall(filters.compile,profile,true)
-			if not ok then raw=nil;invalidFilterReason=value;report={error=value};result={action="Unknown",status="invalid",styles={},reasons={value}};return end
+			if not ok then raw=nil;invalidFilterReason=value;report={error=value};result={action="Unknown",status="invalid",styles={},reasons={value}};invalidFilterResult=result;return end
 			cached={key=key,raw=value,report=details,parsed=compiled};transient.filterCompiled=cached
 		end
 		raw,report,parsed=cached.raw,cached.report,cached.parsed;result=parser.simulate(parsed,item)
-		for _,d in ipairs(report.diagnostics) do if d.error then raw=nil;invalidFilterReason=d.error;result={action="Unknown",status="invalid",styles={},reasons={d.error}} end end
+		for _,d in ipairs(report.diagnostics) do if d.error then raw=nil;result=parser.invalidResult(d);invalidFilterResult=result;invalidFilterReason=result.reasons[1];break end end
 	end
 	local evaluationScope
 	local function evaluateDrop(drop)
-		if invalidFilterReason then return {action="Unknown",status="invalid",styles={},reasons={invalidFilterReason}} end
+		if invalidFilterResult then return invalidFilterResult end
 		if not parsed then return {action="Unknown",status="unknown",styles={},reasons={"Filter is unavailable."}} end
 		local encode=require("Modules.PlanningData").encodeExact
 		evaluationScope=evaluationScope or sceneKind.."\0"..(sampleSetId or "").."\0"..encode(settings)
