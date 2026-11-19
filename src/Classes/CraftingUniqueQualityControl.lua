@@ -330,6 +330,11 @@ function M.Open(build,project,layout,snapshot)
 		if ui.hasDraft(build,"uniqueQuality",draft.id) then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true) end
 		if layout then layout.openProjects() else main:ClosePopup() end
 	end)
+	if item.type=="Flask" or item.type=="Tincture" then
+		for _,key in ipairs({"socketCount","link","omen","benchLink","white"}) do c[key].shown=false end
+		c.status.y=130;c.apply.y=150;c.undo.y=188;c.redo.y=188;c.keep.y=226;c.guide.y=226
+		c.loadTarget.y=264;c.recipe.y=264;c.notice.y=302;c.currency.y=330;c.currencyNote.y=332;c.reviewGuide.y=330
+	end
 	for _,control in pairs(c) do control.layoutAudit="unique-quality" end
 	ui.style(c,{apply=true},{item=true});refresh()
 	if layout then
