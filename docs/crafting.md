@@ -62,6 +62,8 @@ and simulation results report both ingredient quantities.
 transition, including Omen combinations and bench services. Its tooltip explains
 the restriction before an unsupported profile can be entered.
 
+In **Recipe routes**, edits to the selected step are applied when you select another step, open the flow graph, or keep the recipe. Invalid entries stay in place until corrected. Keep the recipe and save the build to persist it.
+
 **Item history** previews earlier items and the changes between them; restoring one undoes all subsequent actions. **Before / after** in Settings compares the working item with its recipe starting state. Drag the divider to give more space to the controls or item. Working state, favorites and history survive tool switches and resizing during the session.
 
 In **Targets**, use **Find target modifiers** to browse tiers, item levels, weights, groups and tags. The table explains blocked modifiers and shows conditional draw chances. These describe one ordinary affix draw, rather than the selected currency or a complete recipe. The same explanations are available through AI inspection.

@@ -13,7 +13,7 @@ end
 function Panel.Open(recipe,currentAction,onKeep,model,options)
 	options=options or {}
 	local draft=copyTable(recipe or {steps={},targets={}})
-	local controls={};local selected=1
+	local controls={};local selected=1;local baseline
 	local ui=require("Modules.PlanningUI")
 	controls.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,28,0,14},"Select a step.")
 	controls.graph=new("TextListControl"):TextListControl({"TOPLEFT",nil,"TOPLEFT"},{16,62,828,264},nil,{})
@@ -23,6 +23,9 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 	controls.success=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,456,404,24},{})
 	controls.failure=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{440,456,404,24},{})
 	controls.routeLabel=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,436,0,14},"Success route                                                   Failure / exhausted attempts route")
+	local function formValues()
+		return {attempts=controls.attempts.buf,condition=controls.condition:GetSelValue(),success=controls.success:GetSelValueByKey("val"),failure=controls.failure:GetSelValueByKey("val")}
+	end
 	local function loadStep()
 		local step=draft.steps[selected];if not step then return end
 		for _,row in ipairs(controls.graph.list) do row.selected=row.step==selected end
@@ -32,6 +35,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		controls.condition:SelByValue((step.untilTargets or step.untilRequirements) and "Keep custom conditions" or "After a successful action")
 		controls.success:SelByValue(step.onSuccess or 0,"val")
 		controls.failure:SelByValue(step.onFailureAction and step.onFailureAction~="route" and step.onFailureAction or step.onFailure or 0,"val")
+		baseline=formValues()
 	end
 	local function refresh()
 		local list,routes,lines={ },{{label="Next step",val=0}},{}
@@ -52,6 +56,23 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		for _,policy in ipairs({"stop","restart","salvage"}) do failureRoutes[#failureRoutes+1]={label=recovery.labels[policy],val=policy} end
 		controls.failure:SetList(failureRoutes);loadStep()
 	end
+	local function saveSelected()
+		if not draft.steps[selected] then return end
+		local values=formValues()
+		if baseline and values.attempts==baseline.attempts and values.condition==baseline.condition and values.success==baseline.success and values.failure==baseline.failure then return end
+		local candidate=copyTable(draft);local step=assert(candidate.steps[selected],"Select a step")
+		step.maxAttempts=assert(tonumber(controls.attempts.buf),"Enter an attempt count")
+		local condition=controls.condition:GetSelValue()
+		if condition == "Until final targets and properties match" then assert(#draft.targets > 0 or draft.requirements,"Choose targets or properties in the emulator first");step.untilTargets=#draft.targets > 0 and copyTable(draft.targets) or nil;step.untilRequiredGroups=step.untilTargets and draft.requiredGroups or nil;step.untilRequirements=draft.requirements and copyTable(draft.requirements) or nil
+		elseif condition == "After a successful action" then step.untilTargets=nil;step.untilRequiredGroups=nil;step.untilRequirements=nil end
+		local success,failure=controls.success:GetSelValueByKey("val"),controls.failure:GetSelValueByKey("val")
+		step.onSuccess=success ~= 0 and success or nil
+		if type(failure)=="string" then step.onFailureAction=failure
+		else step.onFailureAction="route";step.onFailure=failure ~= 0 and failure or nil end
+		local validation=copyTable(candidate)
+		if #validation.targets==0 and not validation.requirements then validation.requirements={minQuality=0} end
+		sim.validateRecipe(validation);draft=candidate;baseline=values
+	end
 	local function openBeastSwap(initial,onUse,label)
 		local popup={};ui.description(popup,"help",16,28,488,50,{"Enter the red beast's level, or leave blank to use item level.","The beast-level interaction is not verified in the current game."},14)
 		popup.level=edit(16,92,180,initial.beastLevel or "","Beast level (optional)",3)
@@ -63,7 +84,16 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		button(popup,"cancel",388,132,116,"Cancel",function() main:ClosePopup() end)
 		ui.style(popup,{use=true});main:OpenPopup(520,176,"Bestiary swap",popup,nil,"level","cancel")
 	end
-	controls.step.selFunc=function(_,entry) selected=entry.val;loadStep() end
+	local function selectStep(index)
+		local ok,message=pcall(saveSelected)
+		if not ok then
+			controls.step:SelByValue(selected,"val");controls.graph.selectedKey=selected
+			for _,row in ipairs(controls.graph.list) do row.selected=row.step==selected end
+			main:OpenMessagePopup("Crafting recipe",ui.errorText(message));return
+		end
+		selected=index;refresh()
+	end
+	controls.step.selFunc=function(_,entry) selectStep(entry.val) end
 	button(controls,"reviewUnlocks",232,24,200,"Review unlocks",function()
 		local function show()
 			local report=assert(options.reviewUnlocks,"Review is unavailable")(draft.steps,model);local entries={}
@@ -96,14 +126,17 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 	controls.trackUnlock.enabled=function() local step=draft.steps[selected];return step and step.method=="bench" and model and require("Modules.CraftingBenchCosts").unlock(model,step.modId)~=nil end
 	controls.trackUnlock.tooltipText="Add this listed recipe unlock to Roadmap. Keep the project first; this does not check your account or keep the recipe."
 	button(controls,"flowGraph",664,24,180,"Flow graph",function()
+		saveSelected()
 		require("Classes.CraftingRecipeGraphControl").Open(draft,{model=model,change=function(next) draft=next;refresh() end,edit=function(index) selected=index;refresh();main:ClosePopup();main.popups[1]:SelectControl(controls.attempts) end})
 	end)
-	ui.selectable(controls.graph,function(row) return row.step end,function(row) selected=row.step;controls.step:SelByValue(selected,"val");loadStep() end)
+	ui.selectable(controls.graph,function(row) return row.step end,function(row) selectStep(row.step) end)
 	button(controls,"add",16,514,256,"Append current emulator action",function()
+		saveSelected()
 		assert(#draft.steps < 20,"Use up to twenty steps")
 		draft=require("Modules.CraftingRoutes").append(draft,currentAction);selected=#draft.steps;refresh()
 	end)
 	button(controls,"replace",288,514,272,"Replace selected with emulator action",function()
+		saveSelected()
 		local old=assert(draft.steps[selected],"Select a step");local next=copyTable(currentAction)
 		for _,key in ipairs({"maxAttempts","onSuccess","onFailure","onFailureAction","recoveryNotes","untilTargets","untilRequiredGroups","untilRequirements"}) do
 			local value=old[key];if value~=nil then next[key]=type(value)=="table" and copyTable(value) or value end
@@ -115,25 +148,17 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		for _,step in ipairs(draft.steps) do for _,key in ipairs({"onSuccess","onFailure"}) do if step[key] and step[key] > selected then step[key]=step[key]-1 end end end
 		selected=math.min(selected,math.max(1,#draft.steps));refresh()
 	end)
-	button(controls,"update",16,558,256,"Update selected routes",function()
-		local candidate=copyTable(draft);local step=assert(candidate.steps[selected],"Select a step")
-		step.maxAttempts=assert(tonumber(controls.attempts.buf),"Enter an attempt count")
-		local condition=controls.condition:GetSelValue()
-		if condition == "Until final targets and properties match" then assert(#draft.targets > 0 or draft.requirements,"Choose targets or properties in the emulator first");step.untilTargets=#draft.targets > 0 and copyTable(draft.targets) or nil;step.untilRequiredGroups=step.untilTargets and draft.requiredGroups or nil;step.untilRequirements=draft.requirements and copyTable(draft.requirements) or nil
-		elseif condition == "After a successful action" then step.untilTargets=nil;step.untilRequiredGroups=nil;step.untilRequirements=nil end
-		local success,failure=controls.success:GetSelValueByKey("val"),controls.failure:GetSelValueByKey("val")
-		step.onSuccess=success ~= 0 and success or nil
-		if type(failure)=="string" then step.onFailureAction=failure
-		else step.onFailureAction="route";step.onFailure=failure ~= 0 and failure or nil end
-		sim.validateRecipe(candidate);draft=candidate;refresh()
-	end)
+
+	button(controls,"update",16,558,256,"Update selected routes",function() saveSelected();refresh() end)
 	controls.note=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,604,0,14},"Loops stop at the simulation action budget. Keeping a recipe does not craft or equip an item.")
 	button(controls,"recovery",288,558,272,"Failure recovery",function()
+		saveSelected()
 		local step=assert(draft.steps[selected],"Select a recipe step")
 		require("Classes.CraftingRecoveryControl").Open(step,function(replacement) draft.steps[selected]=replacement;sim.validateRecipe(draft);refresh() end)
 	end)
-	button(controls,"keep",16,642,256,"Keep recipe",function() onKeep(sim.validateRecipe(draft));main:ClosePopup() end)
+	button(controls,"keep",16,642,256,"Keep recipe",function() saveSelected();onKeep(sim.validateRecipe(draft));main:ClosePopup() end)
 	button(controls,"addCurrency",288,642,272,"Add recipe step",function()
+		saveSelected()
 		assert(#draft.steps < 20,"Use up to twenty steps")
 		local entries={};local workbench=require("Modules.CraftingWorkbench")
 		for _,method in ipairs({"transmute","alteration","augmentation","regal","alchemy","binding","chaos","exalt","annul","scour","divine","vaal","blessed","sacred","chromatic","jeweller","fusing","tainted_chromatic","tainted_jeweller","tainted_fusing","quality"}) do
@@ -219,6 +244,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		end})
 	end)
 	button(controls,"editFossils",576,642,136,"Edit fossils",function()
+		saveSelected()
 		local index=selected;local step=assert(draft.steps[index],"Select a fossil step")
 		assert(model and step.method=="fossil","Select a fossil step")
 		require("Classes.CraftingFossilControl").Open(model,step,function(action)
@@ -230,6 +256,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 	local function selectedBeast() local step=draft.steps[selected];return step and (step.method=="beast_prefix_suffix" or step.method=="beast_suffix_prefix") end
 	controls.editFossils.shown=function() return not selectedBeast() end
 	button(controls,"editBeast",576,642,136,"Edit beast level",function()
+		saveSelected()
 		local index=selected;local step=assert(draft.steps[index],"Select a Bestiary swap")
 		openBeastSwap(step,function(action) draft.steps[index]=action;refresh() end,"Update step")
 	end)

@@ -644,6 +644,36 @@ describe("Advanced native crafting", function()
 		assert.is_truthy(tasks.job);assert.is_truthy(progress);assert.is_nil(done)
 		tasks.cancel();assert.is_nil(tasks.job);assert.is_truthy(failed)
 	end)
+	it("keeps route edits when switching steps or keeping without updating", function()
+		local panel=require("Classes.CraftingRecipeControl");local kept
+		local model=sim.model(raw);local id=model.mods[1].id
+		local recipe={steps={{method="alchemy"},{method="scour"}},targets={{anyOf={id}}},requiredGroups=0}
+		local controls=panel.Open(recipe,{method="scour"},function(value) kept=value end)
+		controls.attempts:SetText("3");controls.condition:SelByValue("Until final targets and properties match")
+		controls.success:SelByValue(3,"val");controls.step.selFunc(2,{val=2})
+		controls.attempts:SetText("2");controls.condition:SelByValue("Until final targets and properties match");controls.step.selFunc(1,{val=1})
+		assert.equal("3",controls.attempts.buf);assert.equal(3,controls.success:GetSelValueByKey("val"))
+		controls.failure:SelByValue("restart","val");controls.keep:Click()
+		assert.is_truthy(kept);assert.equal(3,kept.steps[1].maxAttempts);assert.equal(2,kept.steps[2].maxAttempts)
+		assert.equal("restart",kept.steps[1].onFailureAction);assert.is_truthy(kept.steps[1].untilTargets)
+		assert.is_nil(recipe.steps[1].maxAttempts);main.popups={}
+	end)
+	it("allows route edits while a recipe has no final target yet", function()
+		local panel=require("Classes.CraftingRecipeControl")
+		local controls=panel.Open({steps={{method="alchemy"},{method="scour"}},targets={}},{method="scour"},function() end)
+		controls.success:SelByValue(3,"val");controls.step.selFunc(2,{val=2});controls.step.selFunc(1,{val=1})
+		assert.equal(3,controls.success:GetSelValueByKey("val"));main.popups={}
+	end)
+	it("does not discard invalid route edits when changing steps", function()
+		local panel=require("Classes.CraftingRecipeControl");local kept
+		local controls=panel.Open({steps={{method="alchemy"},{method="scour"}},targets={},requirements={minQuality=0}},{method="scour"},function(value) kept=value end)
+		controls.attempts:SetText("0");controls.graph.planningSelect(controls.graph.list[2])
+		assert.is_true(controls.graph.list[1].selected);assert.is_false(controls.graph.list[2].selected);main:ClosePopup()
+		controls.step.selIndex=2;controls.step.selFunc(2,{val=2})
+		assert.equal(1,controls.step:GetSelValueByKey("val"));assert.equal("0",controls.attempts.buf);assert.is_nil(kept)
+		main:ClosePopup();controls.attempts:SetText("2");controls.condition:SelByValue("Until final targets and properties match");controls.keep:Click()
+		assert.equal(2,kept.steps[1].maxAttempts);main.popups={}
+	end)
 	it("edits native recipe routes and keeps a validated bounded loop", function()
 		local panel=require("Classes.CraftingRecipeControl");local kept
 		local model=sim.model(raw);local id=model.mods[1].id
