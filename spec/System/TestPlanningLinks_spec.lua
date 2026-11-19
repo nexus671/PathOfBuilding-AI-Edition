@@ -148,13 +148,13 @@ describe("Linked planning tools",function()
 		assert.is_nil(names()["Abyss Thread"]);plan.choices[2].effect=negative.variantEffects[2].effect;assert.is_true(names()["Abyss Thread"])
 	end)
 	it("links explicit map item tiers and flags changed Atlas layouts",function()
-		local plan={id="farming",title="Farming",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Map (Tier 16), Abomination Map",scarabs="Use Omen of Connections"}}
+		local plan={id="farming",title="Farming",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Map (Tier 16), Nightmare Map",scarabs="Use Omen of Connections"}}
 		build.savers.AtlasPlans:Upsert(plan)
 		local profile=filters.profile("map-filter","Map filter");profile.rules=filters.generate(build,profile)
 		local found={};for _,rule in ipairs(profile.rules) do if rule.origin=="atlas:farming" then found[rule.title]=rule end end
 		assert.is_truthy(found["Map (Tier 16)"]);assert.is_truthy(found["Nightmare Map"]);assert.is_truthy(found["Omen of Connections"])
 		local oldId=found["Map (Tier 16)"].id
-		plan.strategy.maps="Abomination Map, Map (Tier 16)";build.savers.AtlasPlans:Upsert(plan)
+		plan.strategy.maps="Nightmare Map, Map (Tier 16)";build.savers.AtlasPlans:Upsert(plan)
 		assert.is_false(dependencies.report(build,profile).stale)
 		profile.rules=filters.generate(build,profile);found={};for _,rule in ipairs(profile.rules) do found[rule.title]=rule end
 		assert.equal(oldId,found["Map (Tier 16)"].id)

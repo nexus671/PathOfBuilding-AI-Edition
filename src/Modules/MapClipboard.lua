@@ -46,8 +46,9 @@ function M.parse(raw,checkpoint)
  local mirrored=raw:match("\nMirrored\n")~=nil or raw:match("\nMirrored$")~=nil
  local itemTier=tonumber(raw:match("Rarity: [^\n]+\n[^\n]*Map %(Tier (%d+)%)") or raw:match("Rarity: [^\n]+\n[^\n]+\n[^\n]*Map %(Tier (%d+)%)"))
  local displayedTier=tonumber(raw:match("\nMap Tier:%s*(%d+)"))
+ local currentNightmare=raw:match("Rarity: [^\n]+\nNightmare Map\n%-%-%-%-%-%-%-%-")~=nil or raw:match("Rarity: [^\n]+\n[^\n]+\nNightmare Map\n%-%-%-%-%-%-%-%-")~=nil
  assert(not itemTier or not displayedTier or itemTier==displayedTier,"The map item's tier does not match its displayed tier")
- local tier=displayedTier or itemTier;local level=tonumber(raw:match("\nItem Level:%s*(%d+)"))
+ local tier=displayedTier or itemTier or currentNightmare and 17;local level=tonumber(raw:match("\nItem Level:%s*(%d+)"))
  assert(tier and tier>=1 and tier<=17,"Use a map with tier 1 to 17")
  assert(level and level>=1 and level<=100,"The copied map needs its item level")
  local quality
@@ -67,6 +68,7 @@ function M.parse(raw,checkpoint)
   assert(marked,"A copied Blighted map needs its visible Blight implicit; paste the complete item text")
  end
  local matches,exact,longest={},false,0
+ if currentNightmare then matches={"Metadata/Items/Maps/MapKeyNightmareBoss"};exact=true end
  if itemTier then
   local id="Metadata/Items/Maps/MapKeyTier"..itemTier
   assert(map.source().bases[id],"The tier-based map item is not in the current catalogue")
@@ -78,7 +80,7 @@ function M.parse(raw,checkpoint)
   matches={id}
  end
  for id,base in pairs(map.source().bases) do
-  if not itemTier and id:match("^Metadata/Items/Maps/MapWorlds") and base.name then
+  if not itemTier and not currentNightmare and id:match("^Metadata/Items/Maps/MapWorlds") and base.name then
    local whole=false;for line in header:gmatch("[^\n]+") do if line==base.name then whole=true;break end end
    local hit=header:find(base.name,1,true)~=nil
    if whole and not exact then matches={};exact=true;longest=0 end

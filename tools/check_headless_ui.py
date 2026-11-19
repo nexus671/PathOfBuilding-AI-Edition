@@ -137,7 +137,7 @@ def main():
         nightmare = json.loads((frames / f"{width}-map-nightmare-inspection.json").read_text())
         images = [c.get("asset") for c in nightmare["commands"]]
         background = images.index("Assets/MapCrafting/Items/NightmareFrame.png")
-        symbol = images.index("Assets/MapCrafting/Items/99ff7e3f83852f127cb3.png")
+        symbol = images.index("Assets/MapCrafting/Items/9b88dbe87af6dda1c4ce.png")
         assert background < symbol, "Nightmare map frame must be drawn beneath its symbol"
     for width in (960, 1024, 1280):
         stack = json.loads((frames / f"{width}-filter-stack-styles.json").read_text())

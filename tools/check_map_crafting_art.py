@@ -33,7 +33,7 @@ def main():
     assert hashlib.sha256(frame).hexdigest() == "238bf2bf059d0d2cdcdf453e6c2689a463092d47b87b407d5a0feab904c9dae0"
     with Image.open(io.BytesIO(frame)) as decoded:
         assert decoded.format == "PNG" and decoded.size == (78, 78)
-    for name in ("UberMalformation", "UberPrimordialBlocks", "UberSilo", "UberRelicChambers", "UberMausoleum"):
+    for name in ("UberMalformation", "UberPrimordialBlocks", "UberSilo", "UberRelicChambers", "UberMausoleum", "NightmareMapSymbol"):
         assert f"Art/2DItems/Maps/Atlas2Maps/New/{name}.dds" in art["images"]
     print(f"Verified {len(expected)} map images")
 

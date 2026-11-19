@@ -56,7 +56,7 @@ function M.Open(options)
 				local historical=entry.id:match("^Metadata/Items/Maps/MapWorlds")
 				local nightmare=map.isNightmare(entry.id)
 				if nightmare or not entry.special and (tier or historical) then
-					rows[#rows+1]={id=entry.id,label=entry.name..(nightmare and " (Nightmare)" or historical and " (legacy)" or ""),search=entry.id,details={entry.id,nightmare and "Nightmare map: Chaos rerolls use an experimental model." or tier and "Current tier-based map item." or "Historical named map; availability is not verified."}}
+					rows[#rows+1]={id=entry.id,label=entry.name..(nightmare and historical and " (legacy Nightmare)" or nightmare and " (Nightmare)" or historical and " (legacy)" or ""),search=entry.id,details={entry.id,nightmare and "Nightmare map: Chaos rerolls use an experimental model." or tier and "Current tier-based map item." or "Historical named map; availability is not verified."}}
 				end
 			end
 			baseOffset=page.nextOffset
@@ -329,7 +329,7 @@ function M.Open(options)
 	controls.level.changeFunc=function() candidate=nil;offset=0;refresh() end
 	controls.tier.selFunc=function()
 		local tier=controls.tier:GetSelValueByKey("val")
-		if tier==17 and not map.isNightmare(baseId) then baseId="Metadata/Items/Maps/MapWorldsAbomination";controls.level:SetText("84")
+		if tier==17 and not map.isNightmare(baseId) then baseId="Metadata/Items/Maps/MapKeyNightmareBoss";controls.level:SetText("84")
 		elseif tier<17 and (map.isNightmare(baseId) or baseId:match("^Metadata/Items/Maps/MapKeyTier%d+$")) then baseId="Metadata/Items/Maps/MapKeyTier"..tier end
 		syncRarity()
 		selected={};rolls={};implicit=nil;mirrored=nil;unidentified=nil;vaalPreview=nil;observedEffects=nil;estimateSettings=nil;offset=0;refresh()

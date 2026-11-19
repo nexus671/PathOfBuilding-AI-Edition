@@ -3,6 +3,7 @@ local json=require("dkjson")
 local M={}
 local data
 local nightmareBases={
+	["Metadata/Items/Maps/MapKeyNightmareBoss"]=true,
 	["Metadata/Items/Maps/MapWorldsAbomination"]=true,["Metadata/Items/Maps/MapWorldsCitadel"]=true,
 	["Metadata/Items/Maps/MapWorldsFortress"]=true,["Metadata/Items/Maps/MapWorldsSanctuary"]=true,
 	["Metadata/Items/Maps/MapWorldsZiggurat"]=true,

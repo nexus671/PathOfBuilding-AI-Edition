@@ -19,6 +19,7 @@ class MapDataExtractionTest(unittest.TestCase):
         self.assertIn("35% more [Thread|Threads]", maps["mods"]["MapUberModCurses"]["text"])
         self.assertIn("47% more Currency", maps["mods"]["MapUberModJuggernaut"]["text"])
         self.assertIn("Metadata/Items/Maps/MapWorldsBeach", maps["bases"])
+        self.assertEqual("Nightmare Map", maps["bases"]["Metadata/Items/Maps/MapKeyNightmareBoss"]["name"])
         for tier in range(1, 17):
             self.assertEqual(f"Map (Tier {tier})", maps["bases"][f"Metadata/Items/Maps/MapKeyTier{tier}"]["name"])
 
@@ -32,13 +33,14 @@ class MapDataExtractionTest(unittest.TestCase):
         base = {"name": "Example Map", "tags": ["map", "default"], "release_state": "released",
                 "drop_level": 1, "visual_identity": None, "item_class": "Map"}
         base_source = json.dumps({"base": base, "Metadata/Items/Maps/MapKeyTier1": {**base, "item_class": "MapKey"},
+                                  "Metadata/Items/Maps/MapKeyNightmareBoss": {**base, "item_class": "MapKey"},
                                   "special": {**base, "item_class": "MapKey"},
                                   "not_map": {**base, "item_class": "Ring"}}).encode()
         args = (source, hashlib.sha256(source).hexdigest(), base_source,
                 hashlib.sha256(base_source).hexdigest(), {"commit": "test"})
         result = extract(*args)
         self.assertEqual(["map"], list(result["mods"]))
-        self.assertEqual(["base", "Metadata/Items/Maps/MapKeyTier1"], list(result["bases"]))
+        self.assertEqual(["base", "Metadata/Items/Maps/MapKeyTier1", "Metadata/Items/Maps/MapKeyNightmareBoss"], list(result["bases"]))
         self.assertEqual(mod["spawn_weights"], result["mods"]["map"]["spawn_weights"])
         with self.assertRaisesRegex(ValueError, "does not match"):
             extract(source, "0" * 64, *args[2:])

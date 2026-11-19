@@ -15,6 +15,7 @@ describe("Map crafting source data",function()
 		for _,case in ipairs({
 			{base="Metadata/Items/Maps/MapKeyTier5",tier=5,level=68,selected={}},
 			{base="Metadata/Items/Maps/MapWorldsAbomination",tier=17,level=84,selected={"MapUberModCurses"}},
+			{base="Metadata/Items/Maps/MapKeyNightmareBoss",tier=17,level=84,selected={"MapUberModCurses"}},
 		}) do
 			local full=data.inspect(case.base,case.tier,case.level,case.selected,"",0,100,nil,"rare")
 			local light=data.inspect(case.base,case.tier,case.level,case.selected,"",0,100,nil,"rare",nil,nil,nil,nil,nil,nil,true)

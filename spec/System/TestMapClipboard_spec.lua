@@ -56,6 +56,12 @@ describe("Map clipboard import",function()
   local imported=parser.parse(legacy);local existing=imported.state;assert.same({"MapContainsMirageWorlds"},existing.selected);assert.matches("pre%-hotfix",imported.notes[3])
   assert.is_true(require("Modules.MapCurrency").options(existing)[4].available)
  end)
+ it("imports the current shared Nightmare Map item",function()
+  local raw="Item Class: Maps\nRarity: Rare\nDread Tower\nNightmare Map\n--------\nItem Level: 84\n--------\nPlayers are Cursed with Vulnerability\nPlayers are Cursed with Temporal Chains\nPlayers are Cursed with Elemental Weakness\n35% more Threads found in Area"..trailer
+  local result=parser.parse(raw)
+  assert.equal("Metadata/Items/Maps/MapKeyNightmareBoss",result.state.baseId);assert.equal(17,result.state.tier)
+  assert.same({"MapUberModCurses"},result.state.selected);assert.matches("experimental",result.notes[3])
+ end)
  it("imports a named Nightmare map with its complete visible modifier",function()
   local raw="Item Class: Maps\nRarity: Rare\nDread Tower\nAbomination Map\n--------\nMap Tier: 17\nItem Level: 84\n--------\nPlayers are Cursed with Vulnerability\nPlayers are Cursed with Temporal Chains\nPlayers are Cursed with Elemental Weakness\n35% more Threads found in Area"..trailer
   local result=parser.parse(raw)

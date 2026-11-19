@@ -893,11 +893,11 @@ async function main(){
   assert.match(blightedTarget.error,/not eligible/);
   const mapBases=await queued('search_map_bases',{baseRevision:context.revision,query:'MapWorldsBeach',limit:5},'mapData');
   assert.ok(mapBases.mapData.results.some(base=>base.id==='Metadata/Items/Maps/MapWorldsBeach'));
-  const nightmareMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsAbomination',tier:17,itemLevel:84,rarity:'rare',query:'MapUberModCurses'},'mapData');
+  const nightmareMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare',query:'MapUberModCurses'},'mapData');
   assert.equal(nightmareMap.mapData.nightmare,true);assert.equal(nightmareMap.mapData.total,1);assert.equal(nightmareMap.mapData.currencyOptions.find(entry=>entry.id==='chaos').available,true);
-  const nightmareRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsAbomination',tier:17,itemLevel:84,rarity:'rare',selected:[]},action:'chaos',seed:42},'mapData');
+  const nightmareRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare',selected:[]},action:'chaos',seed:42},'mapData');
   assert.equal(nightmareRoll.mapData.state.selected.length,6);assert.match(nightmareRoll.mapData.note,/unverified assumptions/);
-  const nightmareEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsAbomination',tier:17,itemLevel:84,rarity:'rare'},options:{wantedGroups:[['MapUberWeakContainsDeliriumMirror']],trials:2,maxAttempts:2,seed:42}},'mapData');
+  const nightmareEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare'},options:{wantedGroups:[['MapUberWeakContainsDeliriumMirror']],trials:2,maxAttempts:2,seed:42}},'mapData');
   assert.equal(nightmareEstimate.mapData.action,'chaos');assert.match(nightmareEstimate.mapData.note,/generation order is unverified/);
   const nightmareText='Item Class: Maps\nRarity: Rare\nDread Tower\nAbomination Map\n--------\nMap Tier: 17\nItem Level: 84\n--------\nPlayers are Cursed with Vulnerability\nPlayers are Cursed with Temporal Chains\nPlayers are Cursed with Elemental Weakness\n35% more Threads found in Area\n--------\nTravel to this Map by using it in a personal Map Device.';
   const nightmareCopy=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:nightmareText},'mapData');
