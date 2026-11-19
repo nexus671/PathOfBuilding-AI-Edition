@@ -69,6 +69,13 @@ function M.isBlighted(effects)
  end
  return false
 end
+function M.isBlightRavaged(effects)
+ if not M.isBlighted(effects) then return false end
+ for _,effect in ipairs(effects or {}) do
+  if effect.kind=="implicit" and effect.text=="Can be Anointed up to 9 times" then return true end
+ end
+ return false
+end
 function M.note(effects)
  if not effects then return "" end
  if M.isBlighted(effects) then return " Blighted rare-only encounter modifiers are excluded; other mechanics of observed effects are not modeled and can change results." end

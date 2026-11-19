@@ -86,7 +86,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1797, f"Expected 1797 UI frames, found {len(paths)}"
+    assert len(paths) == 1800, f"Expected 1800 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         audit = json.loads((frames / f"{width}-filter-error-audit.json").read_text())
         audit_text = " ".join(c.get("text", "") for c in audit["commands"] if c.get("kind") == "text")
@@ -134,6 +134,8 @@ def main():
         quality = next(c for c in frame["commands"] if c["kind"] == "text" and "Quality (Pack Size): +20%" in c.get("text", ""))
         card = next(c for c in frame["commands"] if c["kind"] == "rect" and c.get("color") == [0.082352941176471, 0.07843137254902, 0.10196078431373, 1])
         assert (quality["layer"], quality["sublayer"]) > (card["layer"], card["sublayer"]), "Map card obscures quality and modifier details"
+        ravaged = json.loads((frames / f"{width}-map-ravaged-imported.json").read_text())
+        assert any("Blight-ravaged:" in c.get("text", "") for c in ravaged["commands"] if c.get("kind") == "text"), "Blight-ravaged map identity is not visible"
         nightmare = json.loads((frames / f"{width}-map-nightmare-inspection.json").read_text())
         images = [c.get("asset") for c in nightmare["commands"]]
         background = images.index("Assets/MapCrafting/Items/NightmareFrame.png")

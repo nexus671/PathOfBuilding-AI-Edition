@@ -62,10 +62,14 @@ function M.parse(raw,checkpoint)
   end
  end
  local header=assert(raw:match("Rarity: [^\n]+\n(.-)\n%-%-%-%-%-%-%-%-"),"The copied map has no item header")
- if itemTier and header:find("Blighted Map (Tier ",1,true) then
+ if itemTier and (header:find("Blighted Map (Tier ",1,true) or header:find("Blight-ravaged Map (Tier ",1,true)) then
   local marked=false
   for line in raw:gmatch("[^\n]+") do if line=="Area is infested with Fungal Growths (implicit)" then marked=true;break end end
   assert(marked,"A copied Blighted map needs its visible Blight implicit; paste the complete item text")
+  if header:find("Blight-ravaged Map (Tier ",1,true) then
+   local ravaged=false;for line in raw:gmatch("[^\n]+") do if line=="Can be Anointed up to 9 times (implicit)" then ravaged=true;break end end
+   assert(ravaged,"A copied Blight-ravaged map needs its visible nine-anointment implicit; paste the complete item text")
+  end
  end
  local matches,exact,longest={},false,0
  if currentNightmare then matches={"Metadata/Items/Maps/MapKeyNightmareBoss"};exact=true end
@@ -75,7 +79,7 @@ function M.parse(raw,checkpoint)
   if rarity~="magic" then
    local name=header:match("([^\n]+)$")
    local blighted=raw:find("\nArea is infested with Fungal Growths (implicit)",1,true)
-   assert(name=="Map (Tier "..itemTier..")" or blighted and name=="Blighted Map (Tier "..itemTier..")","The map item header is not supported")
+   assert(name=="Map (Tier "..itemTier..")" or blighted and (name=="Blighted Map (Tier "..itemTier..")" or name=="Blight-ravaged Map (Tier "..itemTier..")"),"The map item header is not supported")
   end
   matches={id}
  end

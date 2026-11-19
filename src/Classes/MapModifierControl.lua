@@ -114,7 +114,7 @@ function M.Open(options)
 	function card:Draw()
 		local x,y=self:GetPos();local w,h=self:GetSize();SetDrawColor("^x716046");DrawImage(nil,x,y,w,h)
 		SetDrawColor("^x15141A");DrawImage(nil,x+1,y+1,w-2,h-2)
-		local rarity=getRarity();local base=map.source().bases[baseId];local name=(require("Modules.MapObservedEffects").isBlighted(observedEffects) and "Blighted: " or "")..base.name;SetDrawColor(rarity=="magic" and "^x8888FF" or rarity=="normal" and "^7" or "^xE0C586");DrawString(x+w/2,y+12,"CENTER_X",18,"VAR",ui.fit(name,w-20,18))
+		local rarity=getRarity();local base=map.source().bases[baseId];local name=(require("Modules.MapObservedEffects").isBlightRavaged(observedEffects) and "Blight-ravaged: " or require("Modules.MapObservedEffects").isBlighted(observedEffects) and "Blighted: " or "")..base.name;SetDrawColor(rarity=="magic" and "^x8888FF" or rarity=="normal" and "^7" or "^xE0C586");DrawString(x+w/2,y+12,"CENTER_X",18,"VAR",ui.fit(name,w-20,18))
 		local handle,entry=art();if handle and map.isNightmare(baseId) then
 			if not nightmareFrame then nightmareFrame=NewImageHandle();nightmareFrame:Load("Assets/MapCrafting/Items/NightmareFrame.png") end
 			-- Nightmare artwork is a transparent symbol rendered on the map frame.
