@@ -35,6 +35,23 @@ describe("Offline campaign pickup policies",function()
 		end
 		local rules=campaign.rules(p.campaign);assert.equal("campaign-recipe-3",rules[1].id);assert.equal("campaign-recipe-2",rules[2].id);assert.equal("campaign-recipe-1",rules[3].id)
 	end)
+	it("offers an optional 3.30 Vaal-gem vendor pickup in normal mode",function()
+		local p=profile();p.campaign.recipes={"Vaal skill gems"};p.campaign.minAreaLevel=10;p.campaign.maxAreaLevel=70
+		local sample={Class="Skill Gems",BaseType="Vaal Arc",AreaLevel=40}
+		assert.equal("Show",filters.simulate(p,sample).action)
+		sample.BaseType="Arc";assert.equal("Hide",filters.simulate(p,sample).action)
+		sample.BaseType="Vaal Arc";sample.AreaLevel=71;assert.equal("Hide",filters.simulate(p,sample).action)
+		sample.AreaLevel=40;sample.Class="Support Gems";assert.equal("Hide",filters.simulate(p,sample).action)
+		assert.equal(0,#campaign.rules(p.campaign,nil,"Ruthless"))
+		assert.same({"Vaal skill gems"},campaign.validate(p.campaign).recipes)
+	end)
+	it("makes the Vaal-gem pickup available in campaign settings",function()
+		local saved;local panel=require("Classes.LootFilterCampaignControl").Open(build,nil,function(value) saved=value end,"Normal")
+		assert.is_true(panel.recipe7:IsEnabled());panel.recipe7:Click();panel.keep:Click()
+		assert.same({"Vaal skill gems"},saved.recipes)
+		local ruthless=require("Classes.LootFilterCampaignControl").Open(build,nil,function() end,"Ruthless")
+		assert.is_false(ruthless.recipe7:IsEnabled());assert.matches("not been verified",ruthless.recipe7.tooltipText);main.popups={}
+	end)
 	it("chooses a policy preview base that satisfies the displayed drop-level band",function()
 		local p=profile();p.campaign.weapons={"Bow"};p.campaign.minAreaLevel=50;p.campaign.maxAreaLevel=54;p.campaign.upgradeWindow=15
 		local entries=require("Modules.LootFilterLibrary").campaign(p);assert.equal(1,#entries)

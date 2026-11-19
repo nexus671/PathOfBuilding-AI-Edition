@@ -49,13 +49,19 @@ function M.Open(build,value,onKeep,mode)
 		c.summary.list=ui.rows(lines,column,13)
 	end
 	for i,name in ipairs(policy.recipes) do
-		button("recipe"..i,right,396+(i-1)*22,column,name,function() selected.recipes[name]=not selected.recipes[name] or nil;updateSummary() end);c["recipe"..i].height=20;c["recipe"..i].locked=function() return selected.recipes[name] end
+		local x,y,width=right,396+(i-1)*22,column
+		if name=="Vaal skill gems" then x,y,width=right+column-98,462,98 end
+		button("recipe"..i,x,y,width,name=="Vaal skill gems" and "Vaal gems" or name,function() selected.recipes[name]=not selected.recipes[name] or nil;updateSummary() end);c["recipe"..i].height=20;c["recipe"..i].locked=function() return selected.recipes[name] end
+		if name=="Vaal skill gems" then
+			c["recipe"..i].enabled=function() return mode~="Ruthless" end
+			c["recipe"..i].tooltipText=mode=="Ruthless" and "Not emitted in Ruthless: recipe availability has not been verified." or "Highlights Vaal skill gems. Vendor five Vaal skill gems for a Vaal Orb in 3.30."
+		end
 		if name=="Unidentified rare set pieces" or name=="Low-level unidentified rare set pieces" then
 			c["recipe"..i].enabled=function() return mode~="Ruthless" end
 			c["recipe"..i].tooltipText=mode=="Ruthless" and "Not emitted in Ruthless: recipe availability has not been verified." or name=="Low-level unidentified rare set pieces" and "Shows unidentified rare equipment below item level 60. A complete rare set with at least one such piece yields Alchemy Orbs." or "Shows unidentified rare equipment at item level 60+. Gold marks 60-74; blue marks 75+. A full set needs at least one 60-74 item for Chaos Orbs."
 		end
 	end
-	c.recipe5.width=column-106;c.recipe6.width=column-106
+	c.recipe4.width=column-106;c.recipe5.width=column-106;c.recipe6.width=column-106
 	button("rareSetSlots",right+column-98,484,98,"Slots...",function()
 		local chosen={};for _,name in ipairs(current.rareSetSlots) do chosen[name]=true end
 		local popup={};ui.description(popup,"help",16,30,428,44,{"Choose which rare-set pieces to highlight. A complete set still needs every required slot."},14)

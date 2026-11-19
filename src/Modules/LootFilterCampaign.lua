@@ -1,6 +1,6 @@
 -- Offline family policies derived from the bundled native bases, never prices.
 -- cspell:ignore jsontype
-local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces","Low-level unidentified rare set pieces"}}
+local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces","Low-level unidentified rare set pieces","Vaal skill gems"}}
 local knownWeapons={"Bow","Claw","Dagger","Rune Dagger","Fishing Rod","One Handed Axe","One Handed Mace","One Handed Sword","Thrusting Sword","Sceptre","Staff","Warstaff","Two Handed Axe","Two Handed Mace","Two Handed Sword","Wand","Shield","Quiver"}
 M.weapons=knownWeapons
 M.rareSetSlots={"Jewellery","Armour","Weapons and shields"}
@@ -93,9 +93,15 @@ function M.rules(value,theme,mode)
 	}
 	-- Vendor recipes resolve six links before six sockets, then linked colours.
 	-- Keep the original indices for stable rule IDs and saved overrides.
-	local recipeOrder={3,2,1,4,5,6}
+	local recipeOrder={3,2,1,4,5,6,7}
 	for _,i in ipairs(recipeOrder) do local name=M.recipes[i];for _,chosen in ipairs(policy.recipes) do if name==chosen then
-		if name=="Unidentified rare set pieces" or name=="Low-level unidentified rare set pieces" then
+		if name=="Vaal skill gems" then
+			if mode~="Ruthless" then
+				local names,seen={},{};for _,gem in pairs(data.gems) do if gem.vaalGem and gem.baseTypeName and not seen[gem.baseTypeName] then seen[gem.baseTypeName]=true;names[#names+1]=gem.baseTypeName end end
+				table.sort(names);local quoted={};for _,baseName in ipairs(names) do quoted[#quoted+1]=filters.quote(baseName) end
+				if #quoted>0 then rule("recipe-"..i,name,{'Class == "Skill Gems"',"BaseType == "..table.concat(quoted," "),"AreaLevel >= "..policy.minAreaLevel,"AreaLevel <= "..policy.maxAreaLevel}) end
+			end
+		elseif name=="Unidentified rare set pieces" or name=="Low-level unidentified rare set pieces" then
 			if mode~="Ruthless" then
 				local names={};for _,group in ipairs(policy.rareSetSlots) do for _,class in ipairs(rareSetClasses[group]) do names[#names+1]=filters.quote(class) end end
 				local classes="Class == "..table.concat(names," ")
