@@ -1798,8 +1798,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("viewSimulate");ui:frame();local invalidDrop=build.planningWorkspace.controls.drop1
 	assert(invalidDrop and invalidDrop.tooltipText:find("Path of Exile 2%-only"),"Invalid filter was shown as a valid scene result");frame("filter-poe2-condition")
 	ui:click("inspectMatch");assert(main.popups[1] and main.popups[1].title=="Filter audit","Filter error review did not open the audit")
-	local audit=main.popups[1].controls;assert(audit.results.list[1].entry.label:find("Line ",1,true),"Filter audit did not select the error first")
-	assert(audit.results.list[1].entry.details[1]:find("AlwaysShow",1,true),"Filter audit opened the wrong diagnostic");frame("filter-error-audit");ui:click("close")
+	assert(main.popups[1].controls.results.list[1].entry.label:find("Line ",1,true),"Filter audit did not select the error first")
+	assert(main.popups[1].controls.results.list[1].entry.details[1]:find("AlwaysShow",1,true),"Filter audit opened the wrong diagnostic");frame("filter-error-audit");ui:click("close")
 	ui:click("viewOverview");ui:frame();assert(not build.planningWorkspace.controls.export:IsEnabled());assert(build.planningWorkspace.controls.export.tooltipText():find("AlwaysShow",1,true))
 	draft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];for i=#draft.rules,1,-1 do if draft.rules[i].id=="poe2-condition" then table.remove(draft.rules,i) end end;ui:click("viewOverview");ui:frame();assert(build.planningWorkspace.controls.export:IsEnabled())
 	filterTool("Import filter");ui:text("text",'Hide\n    BaseType == "Orb of Binding"\nShow\n    BaseType == "Chaos Orb"\n    SetFontSize 44');ui:click("import");ui:frame()
