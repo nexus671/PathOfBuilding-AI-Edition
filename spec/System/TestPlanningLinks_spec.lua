@@ -171,6 +171,24 @@ describe("Linked planning tools",function()
 		assert.is_nil(found["atlas:special-maps:Valdo Map"]);assert.is_true(found["budget:valdo:Valdo Map"])
 		for _,name in ipairs({"Nightmare Map","Shaper Guardian Map","Valdo Map"}) do assert.equal("Show",filters.simulate(profile,{BaseType=name}).action) end
 	end)
+	it("links blighted map variants by their filter properties",function()
+		local plan={id="blight-maps",title="Blight maps",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Blighted Map, Blight-ravaged Map",avoid="Blight-ravaged Map"}}
+		build.savers.AtlasPlans:Upsert(plan)
+		local journey=require("Modules.BuildJourney").empty();journey.resources={{id="ravaged",title="Blight-ravaged Maps"}};build.savers.BuildJourney:Replace(journey)
+		local profile=filters.profile("blight-map-filter","Blight map filter");profile.rules=filters.generate(build,profile)
+		local found={};for _,rule in ipairs(profile.rules) do found[rule.origin..":"..rule.title]=rule end
+		assert.is_truthy(found["atlas:blight-maps:Blighted Map"]);assert.is_nil(found["atlas:blight-maps:Blight-ravaged Map"])
+		assert.is_truthy(found["budget:ravaged:Blight-ravaged Map"])
+		assert.is_truthy(found["atlas:blight-maps:Blighted Map"].text:find("BlightedMap True",1,true))
+		assert.is_truthy(found["atlas:blight-maps:Blighted Map"].text:find("UberBlightedMap False",1,true))
+		assert.is_truthy(found["budget:ravaged:Blight-ravaged Map"].text:find("UberBlightedMap True",1,true))
+		local parser=require("Modules.LootFilterParser")
+		for _,case in ipairs({{"atlas:blight-maps:Blighted Map","BlightedMap"},{"budget:ravaged:Blight-ravaged Map","UberBlightedMap"}}) do
+			local conditions=parser.parse(found[case[1]].text).rules[1].conditions
+			assert.is_true(parser.condition(conditions[1],{Class="Maps"}));assert.is_false(parser.condition(conditions[1],{Class="Currency"}))
+			assert.is_true(parser.condition(conditions[2],{[case[2]]=true}));assert.is_false(parser.condition(conditions[2],{[case[2]]=false}))
+		end
+	end)
 	it("respects map tier and Thread exclusions without suppressing separate budget pickups",function()
 		local atlas=require("Modules.AtlasPlanner")
 		local plan=atlas.connect({id="avoid",title="Avoided maps",version="3.30.0-preview",budget=150,nodes={},strategy={maps="Map (Tier 5), Map (Tier 16), Beach Map",scarabs="Breach Thread",avoid="Map (Tier 5) and Breach Thread"}}, {4908})

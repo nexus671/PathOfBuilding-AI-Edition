@@ -240,6 +240,13 @@ function M.generate(build,profile,checkpoint)
 	for _,name in ipairs({"Nightmare Map","Shaper Guardian Map","Valdo Map"}) do
 		if not removed[name] then names[name]="Map" end
 	end
+	-- These map variants share ordinary bases; their filter properties identify them.
+	local mapConditions={
+		["Blighted Map"]={"Class == \"Maps\"","BlightedMap True","UberBlightedMap False"},
+		["Blight-ravaged Map"]={"Class == \"Maps\"","UberBlightedMap True"},
+	}
+	for name in pairs(mapConditions) do names[name]="Map" end
+	local function pickupConditions(name) return mapConditions[name] or {"BaseType == "..quote(name)} end
 	-- Map-device supplies explicitly named in a strategy are pickups too. The
 	-- pinned client catalogue excludes removed and legacy non-currency variants.
 	for _,name in ipairs(assert(json.decode(read("atlas-supplies-3.30.json"))).names) do if not removed[name] then names[name]=names[name] or "Atlas supply" end end
@@ -366,7 +373,7 @@ function M.generate(build,profile,checkpoint)
 		local name=renamedAliases[resource.title:lower()] or aliases[resource.title:lower()] or resource.title
 		if layoutNames[name] then
 			warnings[#warnings+1]={origin="budget:"..resource.id,title=resource.title,message="This is an Atlas layout, not a current ordinary map item. Use an explicit item such as Map (Tier 16) for a tiered map pickup."}
-		elseif (names[name] or budgetNames[name]) and not removed[name] then add("resource-"..resource.id,name,{"BaseType == "..quote(name)},"budget:"..resource.id) end
+		elseif (names[name] or budgetNames[name]) and not removed[name] then add("resource-"..resource.id,name,pickupConditions(name),"budget:"..resource.id) end
 	end
 	local strategyNames={};for name in pairs(names) do strategyNames[#strategyNames+1]=name end
 	-- Older saved strategies may still use a renamed item's former name. Match
@@ -405,8 +412,8 @@ function M.generate(build,profile,checkpoint)
 		for name in pairs(layoutNames) do if mentioned[name] and not avoided[name] then hasLayouts=true;break end end
 		for _,region in ipairs(plan.shapedRegions or {}) do if #(region.maps or {})>0 then hasLayouts=true;break end end
 		if hasLayouts then warnings[#warnings+1]={origin="atlas:"..plan.id,title=plan.title or "Atlas strategy",message="Named Atlas layouts and Shaped Regions do not identify ordinary map drops. To highlight a specific tier, add an item such as Map (Tier 16) to the strategy; layout names do not create pickups."} end
-		for _,name in ipairs(strategyNames) do if not strategyRenames[name] and not layoutNames[name] and mentioned[name] and not avoided[name] and not avoidedMechanics[name:match("^(%a+) Thread$")] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
-		for _,name in ipairs(patch.added["Map Fragments"] or {}) do local mechanic=name:match("^(%a+) Thread$");if mechanic and keywords[mechanic] and not excludedThreads[mechanic] and not avoided[name] and not avoidedMechanics[mechanic] then add("atlas-"..plan.id.."-"..mechanic,name,{"BaseType == "..quote(name)},"atlas:"..plan.id) end end
+		for _,name in ipairs(strategyNames) do if not strategyRenames[name] and not layoutNames[name] and mentioned[name] and not avoided[name] and not avoidedMechanics[name:match("^(%a+) Thread$")] then add("atlas-item-"..plan.id.."-"..require("sha1")(name):sub(1,12),name,pickupConditions(name),"atlas:"..plan.id) end end
+		for _,name in ipairs(patch.added["Map Fragments"] or {}) do local mechanic=name:match("^(%a+) Thread$");if mechanic and keywords[mechanic] and not excludedThreads[mechanic] and not avoided[name] and not avoidedMechanics[mechanic] then add("atlas-"..plan.id.."-"..mechanic,name,pickupConditions(name),"atlas:"..plan.id) end end
 	end
 	local rules={};for _,rule in ipairs(profile.rules) do if not rule.origin then rules[#rules+1]=copyTable(rule) end end
 	for _,rule in ipairs(result) do rules[#rules+1]=rule end
