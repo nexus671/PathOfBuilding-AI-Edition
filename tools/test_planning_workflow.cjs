@@ -88,6 +88,11 @@ async function main(){
   const copiedTincture='Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed';
   const tincturePreview=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:copiedTincture,action:{method:'alteration'},seed:3},'crafted');
   assert.ok(tincturePreview.nativeCrafting.warnings.some(entry=>entry.code==='tincture_imported_values'));
+  const partialTincture=copiedTincture.replace('\n29% increased Melee Weapon Attack Speed','');
+  const tinctureAugment=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:partialTincture,action:{method:'augmentation'},seed:500000},'crafted');
+  assert.equal(tinctureAugment.nativeCrafting.state.tinctureBaseSuffix,true);assert.match(tinctureAugment.nativeCrafting.itemText,/Tincture Base Suffix: true/);
+  const tinctureAugmentNext=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:partialTincture,initialState:tinctureAugment.nativeCrafting.state,action:{method:'quality'},seed:7},'crafted');
+  assert.equal(tinctureAugmentNext.nativeCrafting.state.tinctureBaseSuffix,true);assert.match(tinctureAugmentNext.nativeCrafting.itemText,/Tincture Base Suffix: true/);
   assert.equal(tincturePreview.nativeCrafting.state.tinctureBaseExplicit,true);assert.match(tincturePreview.nativeCrafting.itemText,/Tincture Base Explicit: true/);
   const tinctureNext=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:copiedTincture,initialState:tincturePreview.nativeCrafting.state,action:{method:'quality'},seed:7},'crafted');
   assert.equal(tinctureNext.nativeCrafting.state.tinctureBaseExplicit,true);assert.match(tinctureNext.nativeCrafting.itemText,/Tincture Base Explicit: true/);

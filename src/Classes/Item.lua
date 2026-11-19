@@ -501,6 +501,8 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 	self.tinctureImportedQuality = nil
 	self.tinctureImportedEffect = nil
 	self.tinctureBaseExplicit = nil
+	self.tinctureBasePrefix = nil
+	self.tinctureBaseSuffix = nil
 	self.twiceCorrupted = nil
 	self.unidentifiedMarker = nil
 	self.rawLines = { }
@@ -763,6 +765,10 @@ function ItemClass:ParseRaw(raw, rarity, highQuality)
 					self.tinctureImportedEffect = specToNumber(specVal)
 				elseif specName == "Tincture Base Explicit" then
 					self.tinctureBaseExplicit = specVal == "true" or nil
+				elseif specName == "Tincture Base Prefix" then
+					self.tinctureBasePrefix = specVal == "true" or nil
+				elseif specName == "Tincture Base Suffix" then
+					self.tinctureBaseSuffix = specVal == "true" or nil
 				elseif specName == "Item Level" then
 					self.itemLevel = specToNumber(specVal)
 				elseif specName == "Memory Strands" then
@@ -1892,6 +1898,8 @@ function ItemClass:BuildRaw()
 		t_insert(rawLines, "Tincture Imported Quality: "..tostring(self.tinctureImportedQuality or self.quality or 0))
 		t_insert(rawLines, "Tincture Imported Effect: "..tostring(self.tinctureImportedEffect or self.tinctureData and self.tinctureData.effectInc or 0))
 		if self.tinctureBaseExplicit then t_insert(rawLines, "Tincture Base Explicit: true") end
+		if self.tinctureBasePrefix then t_insert(rawLines, "Tincture Base Prefix: true") end
+		if self.tinctureBaseSuffix then t_insert(rawLines, "Tincture Base Suffix: true") end
 	end
 	if self.league then
 		t_insert(rawLines, "League: " .. self.league)
@@ -2699,7 +2707,7 @@ function ItemClass:BuildModList()
 			if not modLine.extra then
 				for _, mod in ipairs(modLine.modList) do
 					for _ = 1, variantCount do
-						if tinctureBase and self.type == "Tincture" and self.tinctureValues == "Final" and self.tinctureBaseExplicit then
+						if tinctureBase and self.type == "Tincture" and self.tinctureValues == "Final" and (self.tinctureBaseExplicit or modLine.prefix and self.tinctureBasePrefix or modLine.suffix and self.tinctureBaseSuffix) then
 							mod=copyTable(mod);mod.tinctureBase=true
 						end
 						baseList:AddMod(modLib.setSource(mod, self.modSource))

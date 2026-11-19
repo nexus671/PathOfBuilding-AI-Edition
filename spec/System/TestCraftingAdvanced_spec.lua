@@ -117,6 +117,17 @@ describe("Advanced native crafting", function()
 		local normal="Item Class: Tinctures\nRarity: NORMAL\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons"
 		local transmuted=sim.perform(normal,{method="transmute"},3);assert.is_true(transmuted.state.tinctureBaseExplicit);assert.is_true(sim.model(transmuted.itemText).initial.tinctureBaseExplicit)
 	end)
+	it("tracks imported and newly added tincture modifiers separately",function()
+		local common="Item Class: Tinctures\nRarity: MAGIC\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n"
+		for _,case in ipairs({{line="26% reduced Mana Burn rate",side="Suffix",seed=500000},{line="29% increased Melee Weapon Attack Speed",side="Prefix",seed=3}}) do
+			local raw=common..case.line;local result=sim.perform(raw,{method="augmentation"},case.seed);local key="tinctureBase"..case.side
+			assert.is_true(result.state[key]);assert.matches("Tincture Base "..case.side..": true",result.itemText,1,true)
+			local item=new("Item"):Item(result.itemText);assert.is_true(item[key]);assert.is_true(new("Item"):Item(item:BuildRaw())[key]);assert.is_true(sim.model(result.itemText).initial[key])
+			local next=sim.perform(raw,{method="quality"},7,result.state);assert.is_true(next.state[key]);assert.matches("Tincture Base "..case.side..": true",next.itemText,1,true)
+		end
+		local raw=common.."26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed";local result=sim.perform(raw,{method="divine"},3)
+		assert.is_true(result.state.tinctureBasePrefix);assert.is_true(result.state.tinctureBaseSuffix)
+	end)
 	it("offers independent Allflame outcomes and charges currency and Sulphur once", function()
 		local state=copyTable(sim.model(raw).initial);state.rarity="RARE";state.affixes={{id="IncreasedLife1",range=0.5}}
 		local craft={method="exalt",allflame={outcomes=4,gainMin=5,gainMax=5,sulphur=100}}

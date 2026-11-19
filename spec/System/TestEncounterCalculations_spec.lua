@@ -296,6 +296,15 @@ describe("Encounter reporting and comparisons",function()
 		local baseReference=withEffect:gsub("\nTincture Values: Final",""):gsub("\nTincture Imported Quality: [^\n]+",""):gsub("\nTincture Imported Effect: [^\n]+",""):gsub("\nTincture Base Explicit: true","")
 		assert.are.near(speed(baseReference),speed(withEffect),1e-8)
 	end)
+	it("scales a newly added tincture suffix without rescaling copied values",function()
+		local common="Item Class: Tinctures\nRarity: MAGIC\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n"
+		local added=require("Modules.CraftingSimulator").perform(common.."26% reduced Mana Burn rate",{method="augmentation"},500000);assert.is_true(added.state.tinctureBaseSuffix)
+		local claw=new("Item"):Item("Rarity: Normal\nImperial Claw");build.itemsTab:AddItem(claw);build.itemsTab.slots["Weapon 1"].selItemId=claw.id;build.skillsTab:PasteSocketGroup("Viper Strike 20/0  1");build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1])
+		local function speed(text) local item=new("Item"):Item(text);build.itemsTab:AddItem(item);build.itemsTab.slots["Flask 1"].selItemId=item.id;build.itemsTab.slots["Flask 1"].active=true;build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg);return build.calcsTab.calcsOutput.Speed end
+		local reference=added.itemText:gsub("\nTincture Values: Final",""):gsub("\nTincture Imported Quality: [^\n]+",""):gsub("\nTincture Imported Effect: [^\n]+",""):gsub("\nTincture Base Suffix: true","")
+		assert.are.near(speed(reference),speed(added.itemText),1e-8)
+		local copied=common.."29% increased Melee Weapon Attack Speed";local withPrefix=require("Modules.CraftingSimulator").perform(copied,{method="augmentation"},3);assert.is_true(withPrefix.state.tinctureBasePrefix);assert.are.near(speed(copied),speed(withPrefix.itemText),1e-8)
+	end)
 	it("deactivates a native tincture at zero mana and removes its drain",function()
 		local tincture=new("Item"):Item("Rarity: Normal\nPrismatic Tincture")
 		build.itemsTab:AddItem(tincture); build.itemsTab.slots["Flask 1"].selItemId=tincture.id
