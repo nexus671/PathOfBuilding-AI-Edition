@@ -128,6 +128,21 @@ describe("Advanced native crafting", function()
 		local raw=common.."26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed";local result=sim.perform(raw,{method="divine"},3)
 		assert.is_true(result.state.tinctureBasePrefix);assert.is_true(result.state.tinctureBaseSuffix)
 	end)
+	it("preserves protected copied tincture rolls while marking new rolls",function()
+		local raw="Item Class: Tinctures\nRarity: MAGIC\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed"
+		local model=sim.model(raw)
+		for _,side in ipairs({"Prefix","Suffix"}) do
+			local state=copyTable(model.initial)
+			for _,entry in ipairs(state.affixes) do if model.byId[entry.id].type==side then entry.fractured=true end end
+			local other=side=="Prefix" and "Suffix" or "Prefix"
+			for _,method in ipairs({"alteration","divine"}) do
+				local outcome=sim.action(model,state,{method=method},function() return 0.75 end)
+				assert.is_true(outcome["tinctureBase"..other]);assert.is_nil(outcome["tinctureBase"..side]);assert.is_nil(outcome.tinctureBaseExplicit)
+				local text=sim.itemText(model,outcome);assert.matches("Tincture Base "..other..": true",text,1,true)
+				assert.is_true(new("Item"):Item(text)["tinctureBase"..other])
+			end
+		end
+	end)
 	it("preserves tincture value provenance in every Allflame choice",function()
 		local common="Item Class: Tinctures\nRarity: MAGIC\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n"
 		for _,case in ipairs({{method="augmentation",mods="26% reduced Mana Burn rate",key="tinctureBaseSuffix",label="Tincture Base Suffix: true"},{method="alteration",mods="26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed",key="tinctureBaseExplicit",label="Tincture Base Explicit: true"},{method="divine",mods="26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed",key="tinctureBasePrefix",label="Tincture Base Prefix: true"}}) do

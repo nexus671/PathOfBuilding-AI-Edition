@@ -553,12 +553,22 @@ function M.action(model,input,action,random)
 		local required=(method == "transmute" or method == "alchemy") and "NORMAL" or magic and "MAGIC" or "RARE"
 		assert(state.rarity == required,"This currency cannot be used on the current rarity")
 		clear(model,state)
+		-- A retained imported affix is still a displayed value. Record which
+		-- sides survived before adding rolls, including partial-lock outcomes.
+		local retained={}
+		if model.item.type=="Tincture" and model.item.tinctureValues=="Final" then
+			for _,entry in ipairs(state.affixes) do retained[model.byId[entry.id].type]=true end
+		end
 		state.rollBlock={attack=f.attack,caster=f.caster}
 		state.rarity=magic and "MAGIC" or "RARE"
 		local value=random()
 		local target=magic and (value < 0.5 and 1 or 2) or (value < 8/12 and 4 or value < 11/12 and 5 or 6)
 		target=math.min(target,M.capacities(model,state).total)
 		while #state.affixes < target do add(model,state,random) end
+		if next(retained) then for _,entry in ipairs(state.affixes) do
+			local side=model.byId[entry.id].type
+			if not retained[side] then state["tinctureBase"..side]=true end
+		end end
 	elseif method == "augmentation" or method == "regal" or method == "exalt" then
 		assert(state.rarity == (method == "exalt" and "RARE" or "MAGIC"),"This currency cannot be used on the current rarity")
 		local capacityState=copyState(state);capacityState.rarity="RARE"
@@ -577,7 +587,10 @@ function M.action(model,input,action,random)
 		state.rarity=left.total == 0 and "NORMAL" or left.Prefix <= 1 and left.Suffix <= 1 and "MAGIC" or "RARE"
 	elseif method == "divine" then
 		assert(state.rarity ~= "NORMAL","Divine requires a magic or rare item")
-		for _,entry in ipairs(state.affixes) do if not protected(entry,model.byId[entry.id],f) then entry.legacyLightRadius=nil;entry.range=M.rollRange(model.byId[entry.id],random) end end
+		for _,entry in ipairs(state.affixes) do if not protected(entry,model.byId[entry.id],f) then
+			local mod=model.byId[entry.id];entry.legacyLightRadius=nil;entry.range=M.rollRange(mod,random)
+			if model.item.type=="Tincture" and model.item.tinctureValues=="Final" then state["tinctureBase"..mod.type]=true end
+		end end
 	elseif method == "bench" then
 		local reason=M.benchReason(model,state,action.modId);assert(not reason,reason)
 		local mod=model.byId[action.modId]
