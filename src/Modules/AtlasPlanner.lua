@@ -391,8 +391,9 @@ function M.remove(plan,id)
 	if plan.choices then local choices={};for _,choice in ipairs(plan.choices) do if keep[choice.node] then choices[#choices+1]=choice end end;plan.choices=choices end
 	return M.validate(plan)
 end
-function M.report(plan)
+function M.report(plan,options)
 	plan=M.validate(plan); local tree=M.tree(plan.version)
+	local collectAdditive=not options or options.includeAdditive~=false
 	local reachable,budgetWarning,pointsBeforeGrant,grantRoute=budgetReachabilityChecked(plan)
 	local counts,notables,keystones,stats,bonus={small=0,notable=0,keystone=0,gateway=0},{},{},{},0
 	local additive={}
@@ -408,7 +409,7 @@ function M.report(plan)
 			stats[stat]=(stats[stat] or 0)+1
 			-- Sum only simple, identically worded increased/reduced modifiers.
 			-- Conditions, scaling and keystones need their own interaction model.
-			if node.kind~="keystone" and not stat:find("[\r\n]") then
+			if collectAdditive and node.kind~="keystone" and not stat:find("[\r\n]") then
 				local lower=stat:lower();local prefix,value,suffix=stat:match("^(.-)(%d+)%% increased (.+)$");local sign=1
 				if not value then prefix,value,suffix=stat:match("^(.-)(%d+)%% reduced (.+)$");sign=-1 end
 				if value and not prefix:find("%d") and not prefix:find("[+%-]$") and not suffix:find("%d") and not (" "..lower.." "):find(" if ",1,true) and not (" "..lower.." "):find(" when ",1,true) and not (" "..lower.." "):find(" while ",1,true) and not (" "..lower.." "):find(" per ",1,true) and not (" "..lower.." "):find(" each ",1,true) then

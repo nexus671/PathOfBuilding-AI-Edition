@@ -253,6 +253,7 @@ describe("Native Atlas planner", function()
 		for _,entry in ipairs(report.additiveTotals) do if entry.text:find("increased effect of Explicit Modifiers on your Maps",1,true) then found=entry;break end end
 		assert.is_truthy(found);local seen={};for _,source in ipairs(found.nodes) do seen[source.id]=true end
 		assert.is_true(seen[57123]);assert.is_true(seen[2929]);assert.is_true(found.value>=4)
+		local quick=atlas.report(p,{includeAdditive=false});assert.same(report.counts,quick.counts);assert.equal(report.remaining,quick.remaining);assert.equal(0,#quick.additiveTotals)
 		assert.is_truthy(report.limitations[2]:find("not combined",1,true))
 		local strategy=require("Modules.AtlasStrategy");local change
 		for _,entry in ipairs(strategy.compare(plan("3.30.0c"),p).modifierChanges) do if entry.text=="increased effect of Explicit Modifiers on your Maps" then change=entry;break end end

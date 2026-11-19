@@ -193,7 +193,7 @@ function Panel.Open(build,source,layout)
 			if row.selected then controls.results.selIndex=i;controls.results.selectedKey=row.val end
 		end
 		controls.version:SelByValue(draft.version,"val")
-		local report=atlas.report(draft);hasMissingChoices=#report.missingChoices>0
+		local report=atlas.report(draft,{includeAdditive=false});hasMissingChoices=#report.missingChoices>0
 		if controls.strategySummary then
 			local counts={};for _,id in ipairs(draft.nodes) do local mechanic=strategy.mechanic(strategy.selectedNode(draft,controls.canvas.tree.nodes[id]));counts[mechanic]=(counts[mechanic] or 0)+1 end
 			local parts={};for name,count in pairsSortByKey(counts) do parts[#parts+1]=name.." "..count end
