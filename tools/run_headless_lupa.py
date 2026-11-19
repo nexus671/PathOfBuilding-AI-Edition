@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# cspell:ignore lupa
 """Run a repository Lua script using Python's optional LuaJIT-backed Lupa."""
 
 import os

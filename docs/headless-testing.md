@@ -1,3 +1,4 @@
+<!-- cspell:ignore lupa -->
 # Headless testing
 
 Calculations, build edits and UI control checks can run without opening PoB or sending desktop input. Use an isolated build loaded through `src/HeadlessWrapper.lua`; saved player builds do not need to be changed.
