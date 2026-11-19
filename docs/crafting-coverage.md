@@ -8,7 +8,7 @@ combination, including more than two contributors or complex multi-stat values;
 use advanced copy text when modifier identity matters.
 
 Run `python tools/run_headless_lupa.py tools/check_crafting_imports.lua` to
-sample two- and three-modifier plain imports across five equipment bases. The
+sample two- and three-modifier plain and labelled imports across five equipment bases. The
 check verifies accepted identities and reports unresolved samples; it is not an
 exhaustive test of all modifier combinations or game-client behavior.
 

@@ -22,19 +22,24 @@ for _,size in ipairs({2,3}) do
 			if pcall(sim.validateState,model,state) then
 				local item=sim.toItem(model,state);local lines={}
 				for _,line in ipairs(item.explicitModLines) do lines[#lines+1]=line.line end
-				local raw="Rarity: RARE\nExample Item\n"..base.."\nItem Level: 86\nImplicits: 0\n"..table.concat(lines,"\n")
-				local ok,result=pcall(sim.model,raw)
-				total=total+1;tested=tested+1
-				if ok then
-					accepted=accepted+1;local ids={}
-					for _,entry in ipairs(result.initial.affixes) do ids[entry.id]=true end
-					for _,entry in ipairs(selected) do
-						assert(ids[entry.id],"Incorrect import for "..base..": expected "..entry.id.." from "..table.concat(lines," | "))
+				local plain="Rarity: RARE\nExample Item\n"..base.."\nItem Level: 86\nImplicits: 0\n"..table.concat(lines,"\n")
+				-- Preserve PoB's line labels, but remove the stored affix IDs so
+				-- the importer must infer them from the displayed values.
+				local labelled=item.raw:gsub("\nPrefix:[^\n]*",""):gsub("\nSuffix:[^\n]*",""):gsub("\nCrafted: true","")
+				for _,raw in ipairs({plain,labelled}) do
+					local ok,result=pcall(sim.model,raw)
+					total=total+1;tested=tested+1
+					if ok then
+						accepted=accepted+1;local ids={}
+						for _,entry in ipairs(result.initial.affixes) do ids[entry.id]=true end
+						for _,entry in ipairs(selected) do
+							assert(ids[entry.id],"Incorrect import for "..base..": expected "..entry.id.." from "..table.concat(lines," | "))
+						end
+					else
+						local message=tostring(result)
+						assert(message:find("Imported values ",1,true) or message:find("Starting modifiers could not be resolved",1,true) or message:find("A native modifier identity does not match",1,true),"Unexpected import error: "..message)
+						rejected=rejected+1
 					end
-				else
-					local message=tostring(result)
-					assert(message:find("Imported values ",1,true) or message:find("Starting modifiers could not be resolved",1,true) or message:find("A native modifier identity does not match",1,true),"Unexpected import error: "..message)
-					rejected=rejected+1
 				end
 			end
 		end
