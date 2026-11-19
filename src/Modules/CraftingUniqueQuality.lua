@@ -25,6 +25,20 @@ local function uniqueSocketRestriction(title)
 	socketRestrictions[title]=restriction
 	return socketRestrictions[title]
 end
+-- Only infer a permanent corruption restriction when every matching bundled
+-- entry for the same title and base explicitly carries the marker.
+local function alwaysCorrupted(title,baseName)
+	uniqueSocketRestriction(title) -- Populate the shared unique index.
+	local matched=false
+	for _,raw in ipairs(uniquesByName[title] or {}) do
+		local base=raw:match("^%s*[^\r\n]+[\r\n]+([^\r\n]+)")
+		if base==baseName then
+			matched=true
+			if not ("\n"..raw:gsub("\r\n","\n").."\n"):find("\nCorrupted\n",1,true) then return false end
+		end
+	end
+	return matched
+end
 function M.guideAction(method,count,resource,corrupted,socketCount)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
@@ -60,6 +74,7 @@ function M.inspect(raw)
 	local weapon=data.weaponTypeInfo[item.type]~=nil
 	assert(weapon or item.base.armour,"Unique quality tools currently support armour and weapons")
 	assert(not item.mirrored,"Mirrored items cannot be crafted")
+	assert(item.corrupted or not alwaysCorrupted(item.title,item.baseName),"This unique is always corrupted; include its Corrupted line in the starting item")
 	assert(not item.foulborn,"Foulborn items need a separate modifier-mutation model")
 	local quality=item.quality or 0;assert(type(quality)=="number" and quality>=0 and quality==math.floor(quality),"Invalid item quality")
 	return item,{quality=quality,available=quality<20 and not item.corrupted,resource=weapon and "Blacksmith's Whetstone" or "Armourer's Scrap",resourceKey=weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality"}

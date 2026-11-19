@@ -406,6 +406,11 @@ describe("Linked planning tools",function()
 		for _,warning in ipairs(fullWarnings) do if warning.origin=="craft:corrupted-unique" then message=message..warning.message end end
 		assert.is_truthy(message:find("Ordinary quality currency cannot exceed 20%",1,true))
 	end)
+	it("explains missing corruption on an always-corrupted unique",function()
+		local project={id="missing-corruption",title="Skin",slot="Body Armour",startingItem="Rarity: UNIQUE\nSkin of the Lords\nSimple Robe\nItem Level: 86\nSockets: R G B",goals={},steps={},nativeRecipe={steps={{method="quality"}},targets={},requirements={minQuality=20}}}
+		build.savers.CraftingProjects:Upsert(project);local _,warnings=filters.generate(build,filters.profile("missing-corruption","Missing corruption"));local found=false
+		for _,warning in ipairs(warnings) do if warning.origin=="craft:missing-corruption" and warning.message:find("always corrupted; include its Corrupted line",1,true) then found=true end end;assert.is_true(found)
+	end)
 	it("warns about immutable unique sockets even when item text is partial",function()
 		local project={id="immutable-unique",title="Immutable sockets",slot="Body Armour",startingItem="Rarity: UNIQUE\nSkin of the Loyal\nSimple Robe\nItem Level: 86\nSockets: R G B",goals={},steps={},nativeRecipe={steps={{method="socket_white_bench"},{method="socket_bench",count=3,linked=true}},targets={},requirements={links=3}}}
 		build.savers.CraftingProjects:Upsert(project);local _,warnings=filters.generate(build,filters.profile("immutable-sockets","Immutable sockets"));local found=false
