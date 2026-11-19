@@ -52,7 +52,7 @@ def check(root, read_bytes=None):
 
 
 class GitIndexReader:
-    """Read the staged tree without relying on the possibly different worktree."""
+    """Read the staged tree without relying on the possibly different working copy."""
     def __init__(self, root):
         self.process = subprocess.Popen(
             ["git", "cat-file", "--batch"], cwd=root,
