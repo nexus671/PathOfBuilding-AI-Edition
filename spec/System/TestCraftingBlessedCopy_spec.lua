@@ -8,6 +8,39 @@ describe("Blessed Orb on copied base implicits",function()
 			assert.has_error(function() sim.action(model,model.initial,{method="blessed"},function() return 0 end) end)
 		end
 	end)
+	it("rerolls identified synthesised and Eldritch implicits without changing their identities",function()
+		local synthRaw="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n{range:0}(8-10)% increased maximum Life\n+20 to Dexterity\nSynthesised Item"
+		local model=sim.model(synthRaw);local before=copyTable(model.initial)
+		assert.is_true(require("Modules.CraftingAvailability").check("blessed",before,model))
+		local changed=sim.action(model,before,{method="blessed"},function() return 0.999999 end)
+		assert.same(model.initial,before);assert.equal(model.synthesisGroups[1].candidates[1].id,changed.synthRolls[1].id)
+		assert.equal(1,changed.synthRolls[1].range);assert.is_truthy(sim.validateState(model,changed))
+		local saved=require("Modules.CraftingCheckpoint").validate(synthRaw,require("Modules.CraftingInventory").run(changed)).state
+		assert.same(changed.synthRolls,saved.synthRolls)
+		local target={{scope="implicit",anyOf={changed.synthRolls[1].id},minRoll=0.9}}
+		local calculation=sim.calculate(synthRaw,{method="blessed"},target,before,{trials=8,seed=7})
+		assert.is_true(calculation.sampled);assert.equal("blessed_roll_assumptions",calculation.warnings[1].code)
+		local reopened=sim.model(sim.toItem(model,changed).raw);assert.equal(changed.synthRolls[1].id,reopened.synthesisGroups[1].candidates[1].id)
+		local catalyst=sim.model("Rarity: NORMAL\nGold Amulet\nItem Level: 86\nCatalyst: Fertile\nCatalystQuality: 20\nImplicits: 1\n{tags:resource,life}{range:0}(8-10)% increased maximum Life\nSynthesised Item")
+		local scaled=sim.toItem(catalyst,sim.action(catalyst,catalyst.initial,{method="blessed"},function() return 0.999999 end))
+		assert.equal("12% increased maximum Life",StripEscapes(itemLib.formatModLine(scaled.implicitModLines[1],false)))
+		local ambiguous=sim.model(synthRaw:gsub("{range:0}%(8%-10%)%% increased maximum Life","8%% increased maximum Life"))
+		assert.is_false(require("Modules.CraftingAvailability").check("blessed",ambiguous.initial,ambiguous))
+		assert.has_error(function() sim.action(ambiguous,ambiguous.initial,{method="blessed"},function() return 0 end) end)
+		local gilded=sim.model(synthRaw:gsub("Implicits: 2","Implicits: 3"):gsub("Synthesised Item","Item sells for much more to vendors\nSynthesised Item"))
+		local gildedResult=sim.action(gilded,gilded.initial,{method="blessed"},function() return 0.999999 end)
+		assert.equal("unknown",gildedResult.vendorImplicit);assert.is_truthy(sim.toItem(gilded,gildedResult).raw:find("Item sells for much more to vendors",1,true))
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";model=sim.model(raw)
+		local state=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state
+		state=sim.perform(raw,{method="eldritch_implicit",side="Eater",tier=1},12,state).state
+		state.implicits[1].id="SpellCriticalStrikeChanceEldritchImplicit2";state.implicits[1].range=0
+		state.implicits[2].id="EnergyShieldFromGlovesBootsEldritchImplicit1";state.implicits[2].range=0
+		before=copyTable(state);assert.is_true(require("Modules.CraftingAvailability").check("blessed",state,model))
+		changed=sim.action(model,state,{method="blessed"},function() return 0.999999 end)
+		assert.same(before,state);assert.equal(before.implicits[1].id,changed.implicits[1].id);assert.equal(before.implicits[2].id,changed.implicits[2].id)
+		assert.equal(1,changed.implicits[1].range);assert.equal(1,changed.implicits[2].range);assert.is_truthy(sim.validateState(model,changed))
+		assert.same(changed.implicits,sim.model(sim.toItem(model,changed).raw).initial.implicits)
+	end)
 	it("rerolls a copied value within its known base range",function()
 		local raw="Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life"
 		local model=sim.model(raw)

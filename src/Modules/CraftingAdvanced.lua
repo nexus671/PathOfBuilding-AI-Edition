@@ -668,14 +668,30 @@ function A.extend(M,api)
 	end
 	M.methodChecks.blessed=function(model,state)
 		if M.hasProtectedImplicit(model,state) then return "This item's implicit modifiers cannot be changed." end
+		if model.unresolvedEldritch and not state.implicits then return "Identify the Eldritch implicits before rerolling them." end
 		if (model.blessed330Unresolved or model.baseImplicitUnresolved) and not state.implicits then return "This base implicit could not be identified. Supply a recognized original or current implicit before using a Blessed Orb." end
-		local templates=model.blessed330 and {model.blessed330} or model.baseImplicitTemplates
-		if not state.implicits and templates then
-			for _,line in ipairs(templates) do for range in line:gmatch("%b()") do
+		local function variable(lines)
+			for _,line in ipairs(lines) do for range in line:gmatch("%b()") do
 				local low,high=range:match("(%-?%d+%.?%d*)%-(%-?%d+%.?%d*)")
-				if low and tonumber(low)~=tonumber(high) then return end
+				if low and tonumber(low)~=tonumber(high) then return true end
 			end end
-			return "This item has no variable base implicit for a Blessed Orb to reroll."
+			return false
+		end
+		if state.implicits then
+			for _,entry in ipairs(state.implicits) do if model.byId[entry.id] and variable(model.byId[entry.id]) then return end end
+			return "This item has no variable Eldritch implicit for a Blessed Orb to reroll."
+		elseif model.item.synthesised then
+			if not model.synthesisGroups then return "Identify the synthesised implicits before rerolling them." end
+			local hasVariable=false
+			for _,group in ipairs(model.synthesisGroups) do
+				if #group.candidates~=1 then return "Synthesised implicit identities must be unambiguous before rerolling." end
+				local mod=model.byId[group.candidates[1].id];if not mod then return "The synthesised implicit is not recognized." end
+				if variable(mod) then hasVariable=true end
+			end
+			if not hasVariable then return "This item has no variable synthesised implicit for a Blessed Orb to reroll." end
+		else
+			local templates=model.blessed330 and {model.blessed330} or model.baseImplicitTemplates
+			if templates and not variable(templates) then return "This item has no variable base implicit for a Blessed Orb to reroll." end
 		end
 	end
 	M.methodChecks.binding=function(model,state) if M.socketLimit(model,state)==0 then return "This base cannot have equipment sockets" end end
@@ -1199,12 +1215,22 @@ function A.extend(M,api)
 			local selected=matches[math.floor(random()*#matches)+1];local old=state.affixes[selected.index]
 			old.id=selected.id;old.range=M.rollRange(model.byId[selected.id],random)
 		elseif method == "blessed" then
-			assert(#model.item.implicitModLines > 0 and not state.implicits,"No base implicit to reroll")
-			state.baseImplicitRanges={}
-			if model.blessed330 then state.baseImplicit330=true;state.baseImplicitRanges[1]=M.rollRange({model.blessed330},random)
+			if state.implicits then
+				for _,entry in ipairs(state.implicits) do entry.range=M.rollRange(assert(model.byId[entry.id],"The Eldritch implicit is not recognized"),random) end
+			elseif model.item.synthesised then
+				state.synthRolls=state.synthRolls or {}
+				for index,group in ipairs(model.synthesisGroups) do
+					local entry=state.synthRolls[index] or copyTable(group.candidates[1]);state.synthRolls[index]=entry
+					entry.range=M.rollRange(assert(model.byId[entry.id],"The synthesised implicit is not recognized"),random)
+				end
 			else
-				state.baseImplicit330=nil;state.baseImplicitReconstructed=model.baseImplicitTemplates and true or nil
-				for i,line in ipairs(model.item.implicitModLines) do state.baseImplicitRanges[i]=M.rollRange({model.baseImplicitTemplates and model.baseImplicitTemplates[i] or line.line},random) end
+				assert(#model.item.implicitModLines > 0,"No base implicit to reroll")
+				state.baseImplicitRanges={}
+				if model.blessed330 then state.baseImplicit330=true;state.baseImplicitRanges[1]=M.rollRange({model.blessed330},random)
+				else
+					state.baseImplicit330=nil;state.baseImplicitReconstructed=model.baseImplicitTemplates and true or nil
+					for i,line in ipairs(model.item.implicitModLines) do state.baseImplicitRanges[i]=M.rollRange({model.baseImplicitTemplates and model.baseImplicitTemplates[i] or line.line},random) end
+				end
 			end
 		elseif method == "sacred" then
 			assert(model.item.base.armour,"Sacred Orbs require armour")

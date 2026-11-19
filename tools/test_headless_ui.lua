@@ -839,6 +839,16 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(table.concat(lines," "):find("+20 to maximum Life",1,true),"Blessed Orb did not reroll the copied implicit");frame("crafting-blessed-copied");ui:click("close")
 	end
 	do
+		local raw="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n{range:0}(8-10)% increased maximum Life\n+20 to Dexterity\nSynthesised Item"
+		require("Classes.CraftingSimulatorControl").Open(build,{id="blessed-synth-ui",title="Synthesised amulet",slot="Amulet",startingItem=raw,goals={},steps={}})
+		ui:click("settings");ui:text("paletteSearch","Blessed Orb");ui:click("paletteUse");ui:click("tab_craft")
+		assert(main.popups[1].controls.item:IsEnabled(),"Identified synthesised implicit should allow Blessed Orb")
+		ui:click("item");ui:click("keepItem")
+		local project;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id=="blessed-synth-ui" then project=entry end end
+		assert(project and project.inventory[1].state.synthRolls,"Blessed Orb did not persist synthesised implicit rolls through the UI")
+		build.savers.CraftingProjects:Remove("blessed-synth-ui");ui:click("close")
+	end
+	do
 		local raw="Item Class: Rings\nRarity: Normal\nCoral Ring\n--------\nQuality (Life and Mana Modifiers): +20% (augmented)\n--------\nItem Level: 86\n--------\n{ Implicit Modifier — Life }\n+36(24-36) to maximum Life"
 		require("Classes.CraftingSimulatorControl").Open(build,{id="blessed-quality-ui",title="Quality ring",slot="Ring",startingItem=raw,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch","Blessed Orb");ui:click("paletteUse");ui:click("tab_settings");ui:text("seed","1");ui:click("tab_craft");ui:click("item")

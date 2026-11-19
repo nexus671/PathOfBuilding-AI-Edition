@@ -78,7 +78,7 @@ function M.check(method,state,model)
 	end
 	if method=="vaal" or method=="locus" then if kind=="Jewel" and method=="vaal" and item.base.subType~="Abyss" and not item.clusterJewel and item.baseName~="Prismatic Jewel" and #require("Modules.CraftingJewelCorruption").candidates(item.baseName)==0 or kind=="Tincture" or kind=="Flask" and method=="locus" then return false,"This jewel or item type does not have a supported Vaal corruption model." end end
 	if method=="vaal" and kind=="Jewel" and #model.corruptions==0 then return false,"No eligible corruption implicit is available in the current model." end
-	if method=="blessed" and (#item.implicitModLines==0 or state.implicits) then return false,"This item has no supported base implicit to reroll." end
+	if method=="blessed" and #item.implicitModLines==0 and not state.implicits then return false,"This item has no supported implicit to reroll." end
 	if method=="sacred" then
 		local variable=false
 		for _,property in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
