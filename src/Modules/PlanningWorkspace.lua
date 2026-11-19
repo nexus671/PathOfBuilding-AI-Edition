@@ -4,6 +4,7 @@ local pages={ai="AI builds",atlas="Atlas",crafting="Crafting",journey="Journey",
 function M.new(build)
 	local self=setmetatable({build=build,page="ai",cache={},drafts={},atlasDrafts={},transient={},selections={},craftDrafts=build.planningCraftDrafts or {},controls={},viewport={x=0,y=32,width=main.screenW,height=main.screenH-32}},{__index=M})
 	build.planningCraftDrafts=nil
+	self.recoveryScan=require("Modules.PlanningRecovery").startScan(build)
 	self.nav=new("ControlHost"):ControlHost()
 	local anchor=new("Control"):Control(nil,{0,0,0,0})
 	anchor.x=function() return self.viewport.x end;anchor.y=function() return self.viewport.y end
@@ -221,6 +222,11 @@ function M:ProcessControlsInput(events,viewport)
 	if self.body then self.body:ProcessControlsInput(events,viewport) end
 end
 function M:Draw(viewport,events)
+	if self.recoveryScan then
+		local ok,message=coroutine.resume(self.recoveryScan)
+		if not ok then require("Modules.PlanningRecovery").lastError=tostring(message);self.recoveryScan=nil
+		elseif coroutine.status(self.recoveryScan)=="dead" then self.recoveryScan=nil end
+	end
 	local resized=self.viewport.width~=viewport.width or self.viewport.height~=viewport.height
 	self.viewport=viewport
 	-- Dialog callbacks refer to their parent panel. Remount only after the

@@ -2029,7 +2029,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(require("lfs").mkdir(temp));recovery.testDirectory=temp;recovery.cache={}
 		local project=store.projects[#store.projects];local changed=require("Modules.CraftingUniqueQuality").apply(project.startingItem).itemText
 		assert(recovery.save(build,"uniqueQuality",{plan={kind="uniqueQuality",project=project,itemText=changed,history={project.startingItem}}},true))
-		recovery.session="headless-next-session";recovery.cache={};require("Classes.PlanningToolsControl").Recovery(build);frame("crafting-unique-recovery-browser")
+		recovery.session="headless-next-session";recovery.cache={};w.recoveryScan=recovery.startScan(build)
+		for _=1,40 do ui:frame();if recovery.hasPending(build) then break end end
+		assert(w.nav.controls.nav_tools:GetProperty("label")=="Tools *","Earlier recovery draft was not announced");frame("crafting-recovery-indicator")
+		ui:click("nav_tools");ui:text("search","Recover local drafts");ui:click("choose");frame("crafting-unique-recovery-browser")
 		ui:click("choose");assert(w.page=="crafting" and w.controls.status.label:find("1%%"),"Unique recovery did not restore its preview")
 		ui:click("undo");assert(w.controls.status.label:find("0%%"),"Recovered unique preview lost undo history")
 		recovery.clear(build,"uniqueQuality",project.id);assert(require("lfs").rmdir(temp));recovery.testDirectory=nil;recovery.cache={};recovery.session=oldSession

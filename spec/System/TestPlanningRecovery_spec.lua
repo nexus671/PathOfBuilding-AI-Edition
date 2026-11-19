@@ -7,6 +7,47 @@ describe("Local planning draft recovery",function()
 		newBuild();directory=os.tmpname();os.remove(directory);assert(require("lfs").mkdir(directory));session=recovery.session;recovery.testDirectory=directory;recovery.cache={}
 	end)
 	after_each(function() for _,kind in ipairs({"filters","atlas","crafting"}) do recovery.clear(build,kind) end;for _,record in ipairs(recovery.listUnique(build)) do recovery.clear(build,"uniqueQuality",record.entry.plan.project.id) end;os.remove(directory);recovery.testDirectory=nil;recovery.cache={};recovery.session=session;recovery.lastError=nil;main.popups={} end)
+	it("discovers earlier drafts incrementally without changing recovery files",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
+		local p={id="scan-unique",title="Unique",slot="Helmet",startingItem=raw,goals={},steps={}}
+		local changed=require("Modules.CraftingUniqueQuality").apply(raw).itemText
+		assert.is_true(recovery.save(build,"uniqueQuality",{plan={kind="uniqueQuality",project=p,itemText=changed,history={raw}}},true))
+		local record=recovery.load(build,"uniqueQuality",p.id);local file=assert(io.open(record.path,"rb"));local before=file:read("*a");file:close()
+		recovery.session="later-session";recovery.cache={}
+		local scan=assert(recovery.startScan(build));assert.is_false(recovery.hasPending(build));local steps=0
+		while coroutine.status(scan)~="dead" do assert(coroutine.resume(scan));steps=steps+1 end
+		assert.is_true(steps>=4);assert.is_true(recovery.hasPending(build))
+		file=assert(io.open(record.path,"rb"));assert.equal(before,file:read("*a"));file:close()
+		recovery.acknowledge(build,"uniqueQuality",p.id);assert.is_false(recovery.hasPending(build))
+	end)
+	it("does not re-alert for an acknowledged or already-kept draft",function()
+		local value=entry("Kept");build.savers.LootFilters:Replace(value.plan.data);assert.is_true(recovery.save(build,"filters",value,true))
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86";local p={id="scan-ack",title="Unique",slot="Helmet",startingItem=raw,goals={},steps={}}
+		local changed=require("Modules.CraftingUniqueQuality").apply(raw).itemText
+		assert.is_true(recovery.save(build,"uniqueQuality",{plan={kind="uniqueQuality",project=p,itemText=changed,history={raw}}},true))
+		recovery.session="later-session";recovery.cache={};local scan=assert(recovery.startScan(build));recovery.acknowledge(build,"uniqueQuality",p.id)
+		while coroutine.status(scan)~="dead" do assert(coroutine.resume(scan)) end
+		assert.is_false(recovery.hasPending(build))
+	end)
+	it("does not leak recovery notices when a build object opens another file",function()
+		local oldFile=build.dbFileName;assert.is_true(recovery.save(build,"filters",entry("First file"),true))
+		recovery.session="later-session";recovery.cache={};local scan=assert(recovery.startScan(build))
+		while coroutine.status(scan)~="dead" do assert(coroutine.resume(scan)) end;assert.is_true(recovery.hasPending(build))
+		build.dbFileName="different-file.xml";assert.is_false(recovery.hasPending(build))
+		recovery.session="second-earlier-session";assert.is_true(recovery.save(build,"filters",entry("Second file"),true))
+		recovery.session="later-session";scan=assert(recovery.startScan(build))
+		while coroutine.status(scan)~="dead" do assert(coroutine.resume(scan)) end;assert.is_true(recovery.hasPending(build))
+		recovery.clear(build,"filters");build.dbFileName=oldFile;recovery.clear(build,"filters")
+	end)
+	it("shows the Tools indicator after scanning an earlier draft",function()
+		assert.is_true(recovery.save(build,"filters",entry("Interrupted"),true));recovery.session="later-session";recovery.cache={}
+		local ui=require("Modules.HeadlessUI").install({width=1024,height=768});local ok,err=pcall(function()
+			build.viewMode="PLANNER";build.planningWorkspace=require("Modules.PlanningWorkspace").new(build);ui:bind(build)
+			for _=1,8 do ui:frame() end
+			assert.equal("Tools *",build.planningWorkspace.nav.controls.nav_tools:GetProperty("label"))
+			recovery.acknowledge(build,"filters");assert.equal("Tools",build.planningWorkspace.nav.controls.nav_tools:GetProperty("label"))
+		end);ui:restore();assert(ok,err)
+	end)
 	it("recovers the older complete slot after an interrupted write",function()
 		assert.is_true(recovery.save(build,"filters",entry("First"),true));assert.is_true(recovery.save(build,"filters",entry("Second"),true))
 		local latest=recovery.load(build,"filters");assert.equal("Second",latest.entry.plan.data.profiles[1].title)
@@ -169,6 +210,16 @@ describe("Local planning draft recovery",function()
 		_G.NewFileSearch=oldSearch;launch.headless=oldHeadless;assert(ok,err)
 		for i=1,12 do assert.equal("unique-"..i,recovery.load(build,"uniqueQuality","unique-"..i).entry.plan.project.id) end
 		recovery.clear(build,"uniqueQuality","unique-4");assert.equal(13,#recovery.listUnique(build));assert.is_nil(recovery.load(build,"uniqueQuality","unique-4"));assert.is_not_nil(recovery.load(build,"uniqueQuality","unique-5"))
+	end)
+	it("yields while discovering many project files",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86";local changed=require("Modules.CraftingUniqueQuality").apply(raw).itemText
+		for i=1,35 do
+			local p={id="scan-many-"..i,title="Guide "..i,slot="Helmet",startingItem=raw,goals={},steps={}}
+			assert.is_true(recovery.save(build,"uniqueQuality",{plan={kind="uniqueQuality",project=p,itemText=changed,history={raw}}},true))
+		end
+		recovery.session="later-session";recovery.cache={};local scan=assert(recovery.startScan(build));local steps=0
+		while coroutine.status(scan)~="dead" do local ok,err=coroutine.resume(scan);assert(ok,err);steps=steps+1 end
+		assert.is_true(steps>=40);assert.is_true(recovery.hasPending(build))
 	end)
 	it("keeps recovery files unchanged while preparing and applying an MCP removal",function()
 		local p={id="review-delete",title="Review delete",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}}

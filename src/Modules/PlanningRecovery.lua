@@ -3,6 +3,7 @@ local json=require("dkjson")
 local data=require("Modules.PlanningData")
 local M={cache={},limit=4*1024*1024,session=require("sha1")(os.time()..tostring({}))}
 local kinds={filters=true,atlas=true,crafting=true,uniqueQuality=true}
+local function buildIdentity(build) return (build.dbFileName or "untitled:"..(build.buildName or ""))..":"..GetScriptPath() end
 local function path(build,kind,slot,projectId,hashed)
 	assert(kinds[kind],"Unsupported draft type")
 	if kind=="uniqueQuality" then
@@ -10,7 +11,7 @@ local function path(build,kind,slot,projectId,hashed)
 	end
 	if launch.headless and not M.testDirectory then return end
 	local directory=M.testDirectory or main.userPath.."PlanningDrafts"
-	local id=require("sha1")((build.dbFileName or "untitled:"..(build.buildName or ""))..":"..GetScriptPath())
+	local id=require("sha1")(buildIdentity(build))
 	local projectKey=projectId and (hashed and projectId or require("sha1")(projectId))
 	return directory.."/"..id.."-"..kind.."-"..(projectKey and projectKey.."-" or "")..slot..".json",directory
 end
@@ -114,12 +115,15 @@ function M.load(build,kind,projectId)
 end
 -- Each unique project has its own rotating pair; browsing one item never
 -- replaces the interrupted preview of another item in the same build.
-function M.listUnique(build)
+function M.listUnique(build,visit,checkpoint)
 	local sample,directory=path(build,"uniqueQuality",1,"_");if not sample then return {} end
 	local suffix=require("sha1")("_").."%-1%.json$"
 	local prefix=assert(sample:match("([^/\\]+)"..suffix));local escaped=prefix:gsub("(%W)","%%%1")
-	local ids={}
-	local function add(name) local id=name:match("^"..escaped.."([a-f0-9]+)%-[12]%.json$");if id and #id==40 then ids[id]=true end end
+	local ids={};local scanned=0
+	local function add(name)
+		local id=name:match("^"..escaped.."([a-f0-9]+)%-[12]%.json$");if id and #id==40 then ids[id]=true end
+		scanned=scanned+1;if checkpoint and scanned%32==0 then checkpoint() end
+	end
 	if launch.headless and M.testDirectory then
 		local ok,iterator,state=pcall(require("lfs").dir,directory)
 		if ok then for name in iterator,state do add(name) end end
@@ -131,7 +135,7 @@ function M.listUnique(build)
 	for id in pairs(ids) do
 		local first=readRecord(build,"uniqueQuality",1,id,true);local second=readRecord(build,"uniqueQuality",2,id,true)
 		local record=first and second and (first.generation>second.generation and first or second) or first or second
-		if record then result[#result+1]=record end
+		if record then result[#result+1]=record;if visit then visit(record) end end
 	end
 	table.sort(result,function(a,b) return a.entry.plan.project.id<b.entry.plan.project.id end);return result
 end
@@ -166,17 +170,22 @@ function M.forgetAtlasSessionDraft(build,id)
 		elseif not remaining then cache.pending=false end
 	end
 end
+local function noticeKey(build,kind,projectId)
+	local identity=require("sha1")(buildIdentity(build))
+	return "scan:"..tostring(build)..":"..identity..":"..kind..":"..(projectId or "")
+end
 function M.save(build,kind,entry,force)
 	local projectId=kind=="uniqueQuality" and entry and entry.plan and entry.plan.project and entry.plan.project.id or nil
 	if kind=="uniqueQuality" and (type(projectId)~="string" or #projectId>64 or not projectId:match("^[%w%-_]+$")) then return false,"Invalid recovery project ID" end
 	local _,directory=path(build,kind,1,projectId);if not directory then return end
-	local key=directory..":"..(build.dbFileName or build.buildName or "")..":"..kind..(projectId and ":"..projectId or "");local cache=M.cache[key] or {build=build};M.cache[key]=cache
+	local key=directory..":"..(build.dbFileName or build.buildName or "")..":"..kind..(projectId and ":"..projectId or "");local cache=M.cache[key] or {};cache.build=build;cache.identity=buildIdentity(build);M.cache[key]=cache
 	local now=GetTime();if not force and cache.checked and now-cache.checked<2000 then return end;cache.checked=now
 	local ok,message=pcall(function()
 		local clean=M.clean(kind,entry);local digest=data.hash(clean);if digest==cache.digest then return end
 		local old=M.load(build,kind,projectId)
 		if old and old.session~=M.session and not cache.acknowledged and not M.isCurrent(build,kind,old.entry) then cache.pending=true;return end
 		cache.pending=false
+		local notice=M.cache[noticeKey(build,kind,projectId)];if notice then notice.pending=false end
 		local generation=(old and old.generation or 0)+1
 		local record={schemaVersion=1,kind=kind,generation=generation,at=os.time(),digest=digest,entry=clean,session=M.session}
 		local raw=json.encode(record);assert(#raw<=M.limit,"Recovery draft exceeds 4 MiB; keep the working project in the build")
@@ -185,15 +194,33 @@ function M.save(build,kind,entry,force)
 	end)
 	M.lastError=not ok and tostring(message) or nil;return ok,message
 end
+-- Scan a little at a time so reopening a build with many projects stays responsive.
+function M.startScan(build)
+	if launch.headless and not M.testDirectory then return end
+	return coroutine.create(function()
+		local function visit(kind,record,projectId)
+			if record and record.session~=M.session and not M.isCurrent(build,kind,record.entry) then
+				local key=noticeKey(build,kind,projectId);local notice=M.cache[key] or {};notice.build=build;notice.identity=buildIdentity(build);M.cache[key]=notice
+				if not notice.acknowledged then notice.pending=true end
+			end
+		end
+		for _,kind in ipairs({"filters","atlas","crafting"}) do visit(kind,M.load(build,kind));coroutine.yield() end
+		M.listUnique(build,function(record) visit("uniqueQuality",record,record.entry.plan.project.id);coroutine.yield() end,coroutine.yield)
+	end)
+end
 function M.acknowledge(build,kind,projectId)
 	local _,directory=path(build,kind,1,projectId);if not directory then return end
 	local key=directory..":"..(build.dbFileName or build.buildName or "")..":"..kind..(projectId and ":"..projectId or "")
-	M.cache[key]=M.cache[key] or {build=build};M.cache[key].acknowledged=true;M.cache[key].pending=false
+	M.cache[key]=M.cache[key] or {};M.cache[key].build=build;M.cache[key].identity=buildIdentity(build);M.cache[key].acknowledged=true;M.cache[key].pending=false
+	local notice=noticeKey(build,kind,projectId);M.cache[notice]=M.cache[notice] or {};M.cache[notice].build=build;M.cache[notice].identity=buildIdentity(build);M.cache[notice].acknowledged=true;M.cache[notice].pending=false
 end
 function M.clear(build,kind,projectId)
 	for slot=1,2 do local target=path(build,kind,slot,projectId);if target then local ok,why,code=os.remove(target);assert(ok or code==2,why) end end
 	M.acknowledge(build,kind,projectId)
 	for _,cache in pairs(M.cache) do if cache.build==build then cache.digest=nil;cache.checked=nil end end
 end
-function M.hasPending(build) for _,cache in pairs(M.cache) do if cache.build==build and cache.pending then return true end end;return false end
+function M.hasPending(build)
+	local identity=buildIdentity(build)
+	for _,cache in pairs(M.cache) do if cache.build==build and cache.identity==identity and cache.pending then return true end end;return false
+end
 return M
