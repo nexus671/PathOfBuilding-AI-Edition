@@ -86,6 +86,13 @@ async function main(){
   const partialGroupResult=await queued('simulate_crafting',{baseRevision:context.revision,itemText:raw,recipe:partialGroupRecipe,options:{trials:1,maxActions:2}},'crafted');
   assert.equal(partialGroupResult.nativeCrafting.routeCounts[0].success,1);assert.equal(partialGroupResult.nativeCrafting.routeCounts[1].visits,1);
   const origin=createHash('sha1').update(raw).digest('hex');
+  for (const [name,base] of [['Taste of Hate','Sapphire Flask'],['The Battle Within','Oakbranch Tincture']]) {
+    const flask=`Rarity: UNIQUE\n${name}\n${base}\nItem Level: 86\nQuality: 18\n30% chance to Avoid being Frozen during Effect`;
+    const inspected=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:flask,limit:20},'inspected');
+    assert.equal(inspected.crafting.nativeEngine.quality.resource,"Glassblower's Bauble");assert.deepEqual(inspected.crafting.nativeEngine.uniqueActions.map(entry=>entry.method),['quality']);
+    const applied=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:flask,action:{method:'quality'},seed:1},'crafted');
+    assert.equal(applied.nativeCrafting.uniqueQuality.quality,19);assert.equal(applied.nativeCrafting.components['Metadata/Items/Currency/CurrencyFlaskQuality'],1);assert.equal(applied.nativeCrafting.itemText,flask.replace('Quality: 18','Quality: 19'));
+  }
   const uniqueShield='Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\n+100 to maximum Life';
   const uniqueInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},limit:20},'inspected');
   assert.equal(uniqueInspection.crafting.nativeEngine.uniqueCrafting,true);
