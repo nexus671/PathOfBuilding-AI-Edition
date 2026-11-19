@@ -451,7 +451,7 @@ function M.variants(profile)
 end
 function M.simulate(profile,item)
 	local raw,report,parsed=M.compile(profile,true)
-	for _,d in ipairs(report.diagnostics) do if d.error then return {status="invalid",action="Unknown",styles={},matches={},reasons={d.error}} end end
+	for _,d in ipairs(report.diagnostics) do if d.error then return parser.invalidResult(d) end end
 	return parser.simulate(parsed,item)
 end
 -- Reuse one compiled filter for a page. Offsets are zero-based.
@@ -471,11 +471,11 @@ local function simulatePage(profile,selected,offset,limit,checkpoint,includeSamp
 	assert(type(offset)=="number" and offset==math.floor(offset) and offset>=0 and offset<=total,"Invalid example offset")
 	assert(type(limit)=="number" and limit==math.floor(limit) and limit>=1 and limit<=50,"Use 1 to 50 examples per page")
 	local _,report,parsed=M.compile(profile,true);local invalid
-	for _,diagnostic in ipairs(report.diagnostics) do if diagnostic.error then invalid=diagnostic.error;break end end
+	for _,diagnostic in ipairs(report.diagnostics) do if diagnostic.error then invalid=parser.invalidResult(diagnostic);break end end
 	local results={};local last=math.min(total,offset+limit)
 	for i=offset+1,last do
 		local sample=selected.sampleAt and selected.sampleAt(i) or selected.samples[i]
-		local evaluated=invalid and {status="invalid",action="Unknown",styles={},matches={},reasons={invalid}} or parser.simulate(parsed,sample)
+		local evaluated=invalid or parser.simulate(parsed,sample)
 		-- Keep a page bounded even when an imported filter has thousands of
 		-- Continue blocks or unusually long custom sound paths. The single-item
 		-- evaluator remains available for complete style details.

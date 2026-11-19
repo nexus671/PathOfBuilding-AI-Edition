@@ -12,6 +12,20 @@ describe("Build-owned loot filters",function()
 	end)
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("explains invalid filter previews with their compiled line in single and batch tests",function()
+		local direct=parser.simulate(parser.parse('Show\n SetFontSize 99'),{})
+		assert.equal("invalid",direct.status);assert.equal(2,direct.line);assert.matches("line 2: Invalid SetFontSize",direct.reasons[1])
+		local profile=filters.profile("invalid-preview","Invalid preview");profile.template='Show\n SetFontSize 99'
+		profile.sampleSets={{id="drops",title="Drops",samples={{BaseType="Iron Hat"},{BaseType="Iron Ring"}}}}
+		local _,report=filters.compile(profile);local expected
+		for _,entry in ipairs(report.diagnostics) do if entry.error then expected=entry;break end end
+		assert.is_truthy(expected)
+		local single=filters.simulate(profile,{});local page=filters.simulateExamples(profile,"drops",0,2)
+		for _,result in ipairs({single,page.results[1].result,page.results[2].result}) do
+			assert.equal("invalid",result.status);assert.equal(expected.line,result.line)
+			assert.equal("Filter line "..expected.line..": "..expected.error,result.reasons[1])
+		end
+	end)
 	it("rejects malformed imports even when other imports are unresolved",function()
 		for _,line in ipairs({"Import",'Import ""','Import "file.filter" Invalid','Import "file.filter" Optional extra'}) do
 			local parsed=parser.parse('Import "valid.filter" Optional\n'..line..'\nShow')

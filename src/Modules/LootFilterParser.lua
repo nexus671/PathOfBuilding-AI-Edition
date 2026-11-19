@@ -298,9 +298,13 @@ function M.condition(c,item)
 		return negative and count==0 or not negative and count>0
 	end
 end
+function M.invalidResult(diagnostic)
+	local reason=diagnostic.line and ("Filter line "..diagnostic.line..": "..diagnostic.error) or diagnostic.error
+	return {status="invalid",action="Unknown",line=diagnostic.line,styles={},matches={},reasons={reason}}
+end
 function M.simulate(parsed,item)
 	local result={action="Show",status="matched",styles={},matches={},reasons={}}
-	for _,d in ipairs(parsed.diagnostics) do if d.error then return {status="invalid",action="Unknown",styles={},matches={},reasons={"Syntax error on line "..d.line}} end end
+	for _,d in ipairs(parsed.diagnostics) do if d.error then return M.invalidResult(d) end end
 	local importIndex=1
 	local function unresolvedImport()
 		local entry=parsed.imports[importIndex]
