@@ -30,10 +30,15 @@ function M.Open(build,project,layout,snapshot)
 	c.undo.enabled=function() return #history>0 end
 	button("keep",294,"Keep as target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);c.notice.label="^7Target kept. Save the build." end)
 	c.keep.enabled=function() return raw~=draft.targetItem end
+	local checkedTarget,matchingTarget
 	local function targetAvailable()
 		if not draft.targetItem or draft.targetItem==raw then return false end
-		local ok,target=pcall(unique.inspect,draft.targetItem)
-		return ok and target.title==original.title and target.baseName==original.baseName
+		if checkedTarget~=draft.targetItem then
+			checkedTarget=draft.targetItem
+			local ok,target=pcall(unique.inspect,checkedTarget)
+			matchingTarget=ok and target.title==original.title and target.baseName==original.baseName
+		end
+		return matchingTarget
 	end
 	button("loadTarget",338,"Load saved target",function()
 		assert(targetAvailable(),"The saved target is not an eligible matching unique item")

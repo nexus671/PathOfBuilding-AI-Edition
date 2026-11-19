@@ -38,7 +38,11 @@ describe("Unique item quality",function()
 		local saved=build.savers.CraftingProjects.projects[1]
 		assert.equal(13,select(2,quality.inspect(saved.targetItem)).quality)
 		main.popups={};control=require("Classes.CraftingUniqueQualityControl").Open(build,saved)
-		assert.is_true(control.loadTarget:IsEnabled());control.loadTarget:Click();assert.matches("13%%",control.status.label)
+		local inspect=quality.inspect;local inspections=0
+		quality.inspect=function(...) inspections=inspections+1;return inspect(...) end
+		local first=control.loadTarget:IsEnabled();local second=control.loadTarget:IsEnabled();quality.inspect=inspect
+		assert.is_true(first);assert.is_true(second);assert.equal(1,inspections)
+		control.loadTarget:Click();assert.matches("13%%",control.status.label)
 		control.undo:Click();assert.matches("12%%",control.status.label);control.loadTarget:Click();control.apply:Click();control.keep:Click()
 		assert.equal(14,select(2,quality.inspect(build.savers.CraftingProjects.projects[1].targetItem)).quality)
 		local other=copyTable(saved);other.targetItem=weapon
