@@ -789,6 +789,21 @@ describe("Build-owned loot filters",function()
 		assert.is_true(titles.Arc);assert.is_nil(titles.Fireball);assert.is_nil(titles["Links for skill group 1"])
 		build.itemsTab.activeItemSet.useSecondWeaponSet=false;build.skillsTab.socketGroupList=original
 	end)
+	it("refreshes generated pickups when a gem resolves as a support",function()
+		local dependencies=require("Modules.LootFilterDependencies");local original=build.skillsTab.socketGroupList
+		local ok,err=pcall(function()
+			build.skillsTab.socketGroupList={{enabled=true,gemList={{nameSpec="Added Fire Damage",enabled=true,grantedEffect={color="R"},gemData={tags={support=false}}}}}}
+			local profile=filters.profile("support-refresh","Support refresh");profile.rules=filters.generate(build,profile)
+			assert.is_false(dependencies.report(build,profile).stale)
+			local job=dependencies.beginGenerate(build,profile)
+			build.skillsTab.socketGroupList[1].gemList[1].gemData.tags.support=true
+			assert.is_false(dependencies.current(job));assert.is_true(dependencies.report(build,profile).stale)
+			local generated=filters.generate(build,profile);local found=false
+			for _,rule in ipairs(generated) do if rule.origin=="gems" and rule.text:find('BaseType == "Added Fire Damage Support"',1,true) then found=true end end
+			assert.is_true(found);profile.rules=generated;assert.is_false(dependencies.report(build,profile).stale)
+		end)
+		build.skillsTab.socketGroupList=original;assert.is_true(ok,tostring(err))
+	end)
 	it("rejects malformed metadata, title injection, duplicate IDs and executable imports",function()
 		local p=filters.profile("test","Bad\nHide");assert.has_error(function() filters.validate({schemaVersion=1,profiles={p}}) end)
 		p=filters.profile("test","Test");p.rules={{id="bad",title="Bad",text='Import "evil.filter"'}}

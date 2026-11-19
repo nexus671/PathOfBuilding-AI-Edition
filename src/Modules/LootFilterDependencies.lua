@@ -20,7 +20,7 @@ local function skillInputs(build)
 		for _,gem in ipairs(group.gemList) do
 			local effect=gem.grantedEffect or gem.gemData and gem.gemData.grantedEffect
 			local color=effect and effect.color; if type(color)~="number" and type(color)~="string" then color="" end
-			entry.gems[#entry.gems+1]={enabled=gem.enabled~=false,name=gem.nameSpec or "",color=color}
+			entry.gems[#entry.gems+1]={enabled=gem.enabled~=false,name=gem.nameSpec or "",color=color,support=not not (gem.gemData and gem.gemData.tags and gem.gemData.tags.support)}
 		end
 	end
 	return stable.encode(result)
