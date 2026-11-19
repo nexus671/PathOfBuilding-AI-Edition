@@ -1708,6 +1708,16 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		frame("filter-priority-return");ui:click("close")
 	end
 	do
+		local example=require("Modules.LootFilters").profile("rarity-list-example","Rarity list example")
+		example.template='Show\n Class == "Helmets"\n Rarity Normal Magic Rare\nHide\n Class == "Helmets"\n Rarity >= Magic\n Rarity <= Rare'
+		local c=require("Classes.LootFilterStructureControl").Open(example);ui:choose("mode","Priority conflicts")
+		local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(details," "):gsub("%s+"," "):find("matches every item matched",1,true),"Rarity-list conflict was not explained")
+		assert(c.blocking:IsEnabled(),"Rarity-list blocking rule is unavailable");frame("filter-rarity-list-conflict");ui:click("blocking")
+		local earlier={};for _,row in ipairs(c.details.list) do earlier[#earlier+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(earlier," "):find("Rarity Normal Magic Rare",1,true),"Rarity-list blocker was not selected");ui:click("close")
+	end
+	do
 		local example=require("Modules.LootFilters").profile("subset-example","Subset example")
 		example.template='Show\n Class == "Currency"\nHide\n Class == "Currency"\n BaseType == "Chaos Orb"\n ItemLevel >= 50'
 		local structureControls=require("Classes.LootFilterStructureControl").Open(example)

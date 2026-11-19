@@ -69,6 +69,83 @@ describe("Compiled filter structure",function()
 		local continuing='Show\n ItemLevel >= 70\n Continue\nHide\n ItemLevel == 80'
 		assert.are.equal(0,#diagnostics.shadowing(parser.parse(continuing)))
 	end)
+	it("detects coverage for multi-value rarity conditions",function()
+		local parser=require("Modules.LootFilterParser");local diagnostics=require("Modules.LootFilterDiagnostics")
+		local rarities={"Normal","Magic","Rare","Unique"}
+		local function names(mask)
+			local result={};for i,name in ipairs(rarities) do if math.floor(mask/2^(i-1))%2==1 then result[#result+1]=name end end
+			return table.concat(result," ")
+		end
+		for earlier=1,15 do for later=1,15 do
+			local raw='Show\n Class == "Helmets"\n Rarity '..names(earlier)..'\nHide\n Class == "Helmets"\n Rarity '..names(later)
+			local parsed=parser.parse(raw);assert.equal(0,#parsed.diagnostics,raw)
+			local covered=true
+			for _,rarity in ipairs(rarities) do
+				local first=parser.condition(parsed.rules[1].conditions[2],{Rarity=rarity})
+				local second=parser.condition(parsed.rules[2].conditions[2],{Rarity=rarity})
+				if second and not first then covered=false end
+			end
+			assert.equal(covered,#diagnostics.shadowing(parsed)==1,raw)
+		end end
+		local exclusions={
+			{'Rarity != Unique','Rarity Normal Magic Rare',true},
+			{'Rarity != Unique Rare','Rarity Normal Magic',true},
+			{'Rarity != Unique Rare','Rarity Magic Rare',false},
+			{'Rarity Normal Magic','Rarity != Rare Unique',true},
+		}
+		for _,case in ipairs(exclusions) do
+			local parsed=parser.parse("Show\n "..case[1].."\nHide\n "..case[2]);assert.equal(case[3],#diagnostics.shadowing(parsed)==1,case[1].." / "..case[2])
+		end
+		local continuing='Show\n Rarity Normal Magic Rare\n Continue\nHide\n Rarity Magic Rare'
+		assert.equal(0,#diagnostics.shadowing(parser.parse(continuing)))
+		local combined='Show\n Class == "Helmets" "Boots"\n Rarity Normal Magic Rare\nHide\n Class == "Helmets"\n Rarity Magic Rare'
+		assert.equal(1,#diagnostics.shadowing(parser.parse(combined)))
+		local partial='Show\n Rarity Normal Rare\nHide\n Rarity Magic Rare'
+		assert.equal(0,#diagnostics.shadowing(parser.parse(partial)))
+	end)
+	it("matches the filter evaluator for rarity lists and operators",function()
+		local parser=require("Modules.LootFilterParser");local diagnostics=require("Modules.LootFilterDiagnostics")
+		local expressions={};local values={"Normal","Magic Rare","Normal Magic Rare","Unique"}
+		for _,op in ipairs({"=","==","!=",">",">=","<","<="}) do for _,names in ipairs(values) do expressions[#expressions+1]=op.." "..names end end
+		for _,earlier in ipairs(expressions) do for _,later in ipairs(expressions) do
+			local raw="Show\n Rarity "..earlier.."\nHide\n Rarity "..later;local parsed=parser.parse(raw);local covered,hasLater=true,false
+			for _,rarity in ipairs({"Normal","Magic","Rare","Unique"}) do
+				local a=parser.condition(parsed.rules[1].conditions[1],{Rarity=rarity});local b=parser.condition(parsed.rules[2].conditions[1],{Rarity=rarity})
+				if b then hasLater=true;if not a then covered=false end end
+			end
+			if hasLater then assert.equal(covered,#diagnostics.shadowing(parsed)==1,raw) end
+		end end
+	end)
+	it("compares intersections of multiple rarity conditions",function()
+		local parser=require("Modules.LootFilterParser");local diagnostics=require("Modules.LootFilterDiagnostics")
+		local cases={
+			{"Rarity Normal Magic Rare","Rarity >= Magic\n Rarity <= Rare",true},
+			{"Rarity >= Magic\n Rarity <= Rare","Rarity Magic Rare",true},
+			{"Rarity >= Normal\n Rarity <= Rare","Rarity >= Magic\n Rarity <= Rare",true},
+			{"Rarity >= Magic\n Rarity < Rare","Rarity Magic Rare",false},
+			{"Rarity >= Magic\n Rarity < Magic","Rarity Magic",false},
+		}
+		for _,case in ipairs(cases) do
+			local raw='Show\n Class == "Helmets"\n '..case[1]..'\nHide\n Class == "Helmets"\n '..case[2]
+			assert.equal(case[3],#diagnostics.shadowing(parser.parse(raw))==1,raw)
+		end
+	end)
+	it("never reports a false conflict across rarity intersections",function()
+		local parser=require("Modules.LootFilterParser");local diagnostics=require("Modules.LootFilterDiagnostics")
+		local rarities={"Normal","Magic","Rare","Unique"};local masks={1,3,5,7,11,15}
+		local function contains(mask,index) return math.floor(mask/2^(index-1))%2==1 end
+		local function names(mask)
+			local result={};for i,name in ipairs(rarities) do if contains(mask,i) then result[#result+1]=name end end;return table.concat(result," ")
+		end
+		for _,a in ipairs(masks) do for _,b in ipairs(masks) do for _,c in ipairs(masks) do for _,d in ipairs(masks) do
+			local priorAny,laterAny,covered=false,false,true
+			for i=1,4 do local prior=contains(a,i) and contains(b,i);local later=contains(c,i) and contains(d,i);priorAny=priorAny or prior;laterAny=laterAny or later;if later and not prior then covered=false end end
+			if priorAny and laterAny then
+				local raw="Show\n Rarity "..names(a).."\n Rarity "..names(b).."\nHide\n Rarity "..names(c).."\n Rarity "..names(d)
+				assert.equal(covered,#diagnostics.shadowing(parser.parse(raw))==1,raw)
+			end
+		end end end end
+	end)
 	it("finds rules covered by a broader earlier condition set",function()
 		local p=filters.profile("subset","Subset")
 		p.template='Show\n Class == "Currency"\nHide\n Class == "Currency"\n BaseType == "Chaos Orb"\n ItemLevel >= 50\nShow\n Class == "Maps"\n BaseType == "Chaos Orb"'

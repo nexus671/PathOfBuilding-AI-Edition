@@ -34,21 +34,43 @@ end
 -- Rarity is a finite domain, so compare its actual matching tiers instead of
 -- guessing from the spelling of equality, exclusion or range expressions.
 local function rarityChoices(condition)
- if condition.keyword~="Rarity" or #condition.values~=1 then return end
+ if condition.keyword~="Rarity" or #condition.values<1 or #condition.values>16 then return end
  local allowed={["="]=true,["=="]=true,["!"]=true,["!="]=true,[">"]=true,[">="]=true,["<"]=true,["<="]=true}
  if not allowed[condition.operator] then return end
  for _,value in ipairs(condition.values) do if rarity[value]==nil then return end end
- local values={};local count=0
+ local values={};local count=0;local op=condition.operator
  for _,name in ipairs({"Normal","Magic","Rare","Unique"}) do
-  local result=parser.condition(condition,{Rarity=name})
-  if result==nil then return end
-  if result then values[name]=true;count=count+1 end
+  local current=rarity[name];local matched=false
+  for _,value in ipairs(condition.values) do
+   local target=rarity[value]
+   if (op=="=" or op=="==" or op=="!" or op=="!=") and current==target
+    or op==">" and current>target or op==">=" and current>=target
+    or op=="<" and current<target or op=="<=" and current<=target then matched=true;break end
+  end
+  if op=="!" or op=="!=" then matched=not matched end
+  if matched then values[name]=true;count=count+1 end
  end
  if count>0 then return values end
 end
 local function containsAll(earlier,later)
  for value in pairs(later) do if not earlier[value] then return false end end
  return true
+end
+-- Multiple rarity lines are ANDed by the filter; compare their exact finite
+-- intersection while keeping every non-rarity condition identical.
+local function rarityIntersection(rule,choicesFor)
+ local choices,other,count=nil,{},0
+ for _,condition in ipairs(rule.conditions) do
+  if condition.keyword=="Rarity" then
+   local current=choicesFor(condition);if not current then return end
+   count=count+1
+   if not choices then choices={};for value in pairs(current) do choices[value]=true end
+   else for value in pairs(choices) do if not current[value] then choices[value]=nil end end end
+  else other[#other+1]=encoded(condition) end
+ end
+ if count==0 or not next(choices) then return end
+ table.sort(other);local parts={};for _,value in ipairs(other) do parts[#parts+1]=field(value) end
+ return {group=table.concat(parts),choices=choices}
 end
 -- Compare the intersection of bounds on one numeric property. This also
 -- recognizes a range covering an exact value or a narrower two-sided range.
@@ -85,9 +107,20 @@ local function intervalCovers(earlier,later)
  return (not earlier.lower or later.lower and covers(earlier.lower,later.lower)) and (not earlier.upper or later.upper and covers(earlier.upper,later.upper))
 end
 function M.shadowing(parsed)
- local seen,thresholds,sets,combined,paired,diagnostics={},{},{},{},{},{};local rarityIndex,intervalIndex={},{};local terminal
+ local seen,thresholds,sets,combined,paired,diagnostics={},{},{},{},{},{};local rarityIndex,intervalIndex,rarityIntersectionIndex={},{},{};local terminal
+ local hasMultipleRarityLines=false
+ for _,rule in ipairs(parsed.rules) do
+  local count=0;for _,condition in ipairs(rule.conditions) do if condition.keyword=="Rarity" then count=count+1;if count>1 then hasMultipleRarityLines=true;break end end end
+  if hasMultipleRarityLines then break end
+ end
  for _,rule in ipairs(parsed.rules) do
   local conditions,variants,pairsToIndex,rarityVariants={},{},{},{}
+  local rarityCache={}
+  local function choicesFor(condition)
+   local choices=rarityCache[condition]
+   if choices==nil then choices=rarityChoices(condition) or false;rarityCache[condition]=choices end
+   return choices or nil
+  end
   if not terminal then for _,condition in ipairs(rule.conditions) do conditions[#conditions+1]=encoded(condition) end end
   table.sort(conditions);local parts={};for _,condition in ipairs(conditions) do parts[#parts+1]=field(condition) end
   local key=table.concat(parts);local prior=terminal or seen[key];local broader=false
@@ -116,7 +149,7 @@ function M.shadowing(parsed)
    -- Match the finite rarity set on its own, with a class/base list, or with
    -- one numeric bound. Cap each bucket just like the other conflict indexes.
    for _,condition in ipairs(rule.conditions) do
-    local choices=rarityChoices(condition)
+    local choices=choicesFor(condition)
     if choices then
      local function variant(other,kind,extra,bounds)
       local remaining,removedA,removedB={},false,not other
@@ -141,6 +174,12 @@ function M.shadowing(parsed)
       elseif other.keyword~="Rarity" then local limit=bound(other);if limit then variant(other,"rarity-bound",nil,limit) end end
      end end
     end
+   end
+  end
+  local rarityIntersectionEntry=not prior and hasMultipleRarityLines and #conditions<=16 and rarityIntersection(rule,choicesFor) or nil
+  if rarityIntersectionEntry and not prior then
+   for _,candidate in ipairs(rarityIntersectionIndex[rarityIntersectionEntry.group] or {}) do
+    if containsAll(candidate.choices,rarityIntersectionEntry.choices) and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
    end
   end
   if not prior then
@@ -247,6 +286,10 @@ function M.shadowing(parsed)
    for _,entry in ipairs(intervalVariants) do
     local candidates=intervalIndex[entry.group] or {};intervalIndex[entry.group]=candidates
     if #candidates<32 then entry.rule=rule;candidates[#candidates+1]=entry end
+   end
+   if rarityIntersectionEntry then
+    local candidates=rarityIntersectionIndex[rarityIntersectionEntry.group] or {};rarityIntersectionIndex[rarityIntersectionEntry.group]=candidates
+    if #candidates<32 then rarityIntersectionEntry.rule=rule;candidates[#candidates+1]=rarityIntersectionEntry end
    end
    for _,entry in ipairs(rarityVariants) do
     local candidates=rarityIndex[entry.group] or {};rarityIndex[entry.group]=candidates
