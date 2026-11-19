@@ -68,6 +68,16 @@ end
 function M.actionWarnings(action,model)
 	local result={}
 	local item=model and model.item
+	-- Native imports can preserve legacy values; hypothetical state can also
+	-- contain them. Neither proves current-game availability.
+	local function outsideTier(state)
+		for _,entry in ipairs(state and state.affixes or {}) do
+			local ranges=type(entry.range)=="table" and entry.range or {entry.range or 0.5}
+			for _,value in ipairs(ranges) do if type(value)=="number" and (value<0 or value>1) then return true end end
+		end
+		return false
+	end
+	local unusualRoll=outsideTier(model and model.initial)
 	if item and item.type=="Tincture" and item.tinctureValues=="Final" and ((item.tinctureImportedQuality or 0)>0 or (item.tinctureImportedEffect or item.tinctureData and item.tinctureData.effectInc or 0)~=0) then
 		result[#result+1]={code="tincture_imported_values",message="This copied tincture has locally scaled modifier values. The crafting model may infer the wrong modifier tier, and newly rolled modifiers can use a different scale from retained values. Modifier goals, previews and character effects may be inaccurate; verify the item before relying on this result."}
 	end
@@ -86,10 +96,14 @@ function M.actionWarnings(action,model)
 	local abyss=false
 	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingAbyss" then abyss=true end end
 	for _,entry in ipairs(model and model.initial and model.initial.affixes or {}) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true end end
-	if not abyss and (action.method=="recombine" or action.method=="recombine_predictable") and type(action.donorItem)=="string" then
+	if (action.method=="recombine" or action.method=="recombine_predictable") and type(action.donorItem)=="string" then
 		local ok,donor=pcall(M.model,action.donorItem)
-		if ok then for _,entry in ipairs(donor.initial.affixes) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true;break end end end
+		if ok then
+			unusualRoll=unusualRoll or outsideTier(donor.initial)
+			if not abyss then for _,entry in ipairs(donor.initial.affixes) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true;break end end end
+		end
 	end
+	if unusualRoll then result[#result+1]={code="affix_roll_outside_current_tier",message="A modifier has a roll outside its current tier range. It may be a legacy value or a hypothetical input; verify its origin before relying on item values or crafting goals."} end
 	if abyss then result[#result+1]={code="abyss_socket_layout",message="Experimental: adding the Abyssal socket modifier replaces the final socket; removing it restores an unlinked white socket. Placement, zero-socket behavior and removal are not verified.",source="https://www.poewiki.net/wiki/Abyssal_socket"} end
 	if action.method=="bench" and type(action.modId)=="string" and action.modId:match("^bench:partial%-") then result[#result+1]={code="partial_lock_model",message=partialWarningMessage} end
 	if action.method=="recombine" then result[#result+1]={code="recombination_count_odds",message="Recombination uses preliminary 3.30 small-pool observations, older larger-pool estimates and assumed square-root modifier weights. Crafted and non-rollable modifiers default to 1000; partial locks count as non-exclusive and do not protect other affixes. Special cases and weights are uncertain.",source="https://www.reddit.com/r/pathofexile/comments/1xxt2jr/330_recombinator_updated_oddsstrategies/",asOfPatch="3.30"} end

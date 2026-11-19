@@ -170,7 +170,8 @@ function Panel.Open(build,project,layout)
 			local warnings={};local warningAction=selected and selected.action or action and action()
 			if warningAction then for _,warning in ipairs(simulator.actionWarnings(warningAction,{item=model.item,initial=state})) do
 				if warning.code=="abyss_socket_layout" then warnings[#warnings+1]="Abyss socket placement and removal are unverified."
-				elseif warning.code=="tincture_imported_values" then warnings[#warnings+1]="Copied tincture values: verify tiers and effects." end
+				elseif warning.code=="tincture_imported_values" then warnings[#warnings+1]="Copied tincture values: verify tiers and effects."
+				elseif warning.code=="affix_roll_outside_current_tier" then warnings[#warnings+1]="A roll is outside its current tier; verify its origin." end
 			end end
 			local unlock=id and require("Modules.CraftingBenchCosts").unlock(simulator.context(model,state),id)
 			local lines={}

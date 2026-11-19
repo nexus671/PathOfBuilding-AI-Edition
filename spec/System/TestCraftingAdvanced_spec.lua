@@ -106,6 +106,25 @@ describe("Advanced native crafting", function()
 		local saved=new("Item"):Item(effectRaw):BuildRaw();local edited=(saved:gsub("\n{prefix}20%% increased effect","")):gsub("\n20%% increased effect","")
 		local changed=sim.model(edited);assert.equal(20,changed.item.tinctureImportedEffect);assert.equal(0,changed.item.tinctureData.effectInc);assert.is_true(warned(sim.actionWarnings({method="alteration"},changed)))
 	end)
+	it("warns about out-of-range working rolls while preserving imported legacy values",function()
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw);local state=copyTable(model.initial)
+		state.rarity="MAGIC";state.affixes={{id="IncreasedLife2",range=5}}
+		local function warned(list) for _,entry in ipairs(list or {}) do if entry.code=="affix_roll_outside_current_tier" then return true end end;return false end
+		assert.is_true(warned(sim.perform(raw,{method="divine"},7,state).warnings))
+		assert.is_true(warned(sim.calculate(raw,{method="divine"},{},state,{trials=2,requirements={minAffixes=1}}).warnings))
+		assert.is_true(warned(sim.catalog(raw,"",10,state).methodWarnings.divine))
+		local recipe={steps={{method="divine"}},targets={},requirements={minAffixes=1},initialState=state}
+		assert.is_true(warned(sim.simulate(raw,recipe,{trials=1,maxActions=1,forceFirstAction=true}).warnings))
+		local legal=copyTable(state);legal.affixes[1].range=1;assert.is_false(warned(sim.perform(raw,{method="divine"},7,legal).warnings))
+		local below=copyTable(state);below.affixes[1].range=-1;assert.is_true(warned(sim.perform(raw,{method="divine"},7,below).warnings))
+		local legacyRaw=sim.toItem(model,state).raw;local imported=sim.model(legacyRaw)
+		assert.same(imported.initial.affixes,sim.validateState(imported,imported.initial).affixes)
+		assert.is_true(warned(sim.catalog(legacyRaw,"",10).methodWarnings.divine))
+		assert.is_true(warned(sim.actionWarnings({method="recombine",donorItem=legacyRaw},model)))
+		local project={id="range-warning",title="Legacy helmet",slot="Helmet",startingItem=raw,goals={},steps={},preferredMethod="divine",nativeRecipe=recipe}
+		local control=require("Classes.CraftingSimulatorControl").Open(build,project);local lines={};for _,row in ipairs(control.actionHint.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		assert.matches("outside its current tier",table.concat(lines," "),1,true);main.popups={}
+	end)
 	it("marks fully rerolled copied tincture modifiers as base values",function()
 		local raw="Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed"
 		local model=sim.model(raw);local result=sim.perform(raw,{method="alteration"},3)
