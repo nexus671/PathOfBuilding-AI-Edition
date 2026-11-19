@@ -13,6 +13,13 @@ describe("Visual filter catalogue",function()
 		local rotated=library.scene(profile,build,"Vendor recipes",1,65,72);assert.equal(scene[2].BaseType,rotated[1].BaseType)
 		local page=filters.simulateScene(profile,"Vendor recipes",0,65,72,0,10);assert.equal(10,page.total);assert.equal("Iron Hat",page.results[1].sample.BaseType)
 	end)
+	it("shows the identifying properties of a vendor-recipe sample",function()
+		local profile=filters.profile("vendor-ui","Vendor UI");local scene=library.scene(profile,build,"Vendor recipes",0,65,72)
+		local mounted;local layout={width=1280,height=720,navigate=function() end,mount=function(_,_,_,controls) mounted=controls end}
+		require("Classes.LootFilterWorkspace").Open(build,{data={schemaVersion=1,activeId=profile.id,profiles={profile}},selected=profile.id,page="Simulate",sceneKind="Vendor recipes",sample=scene[1]},layout,{})
+		assert.is_truthy(mounted.drop1.tooltipText:find("Sockets: R-G-B",1,true))
+		local found=false;for _,control in pairs(mounted) do if type(control)=="table" and type(control.tooltipText)=="string" and control.tooltipText:find("Quality: 20%",1,true) then found=true end end;assert.is_true(found)
+	end)
 	it("finds Gold with currencies and generates its actual item class",function()
 		local rule={text='Show\n BaseType == "Gold"\n StackSize >= 500'}
 		assert.equal("Currency",library.category(rule));assert.equal("Currency",library.category({text='Show\n Class == "Gold"'}))

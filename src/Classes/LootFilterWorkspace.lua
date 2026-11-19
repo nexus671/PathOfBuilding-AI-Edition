@@ -48,6 +48,9 @@ function M.Open(build,source,layout,controller)
 		local lines={visual.sampleName(sample),"iLvl "..tostring(sample.ItemLevel or "?").." / area "..tostring(sample.AreaLevel or "?"),evaluated and evaluated.action or "Choose a drop"}
 		local firstError=evaluated and evaluated.status=="invalid" and evaluated.reasons and evaluated.reasons[1]
 		if firstError then table.insert(lines,1,"Filter error: "..firstError) end
+		if type(sample.SocketGroup)=="string" and sample.SocketGroup:find("[RGBWAD]") then lines[#lines+1]="Sockets: "..sample.SocketGroup end
+		if type(sample.Quality)=="number" and sample.Quality>0 then lines[#lines+1]="Quality: "..sample.Quality.."%" end
+		if sample.Rarity=="Rare" and sample.Identified==false then lines[#lines+1]="Unidentified rare" end
 		local copied=not sample.HasExplicitMod and sample.KnownExplicitMods
 		if copied and copied[1] then lines[#lines+1]="Copied: "..copied[1] end
 		local tier=itemTier(sample);if tier~=nil then lines[#lines+1]="Unidentified item tier: "..tier
