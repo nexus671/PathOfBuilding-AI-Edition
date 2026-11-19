@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview704" />
+	<Version number="2.68.1-ai.preview705" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="f0d87cea0476f66e7d55368ee7bf19ecb7708e47" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="5319701a5a6b5d6c2dbac54709d5fc53acf32d88" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -1749,7 +1749,7 @@
 	<File name="Classes/LootFilterStackControl.lua" part="program" sha1="bb1b92ae6516eb6e650777f183a242378f40660b" />
 	<File name="Classes/LootFilterStructureControl.lua" part="program" sha1="80dc6d4482eee8ef9a72a455950292870d55376b" />
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
-	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="1a24f21bac87c0a3baf04f9d95ec1a7efec2ee67" />
+	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="a5260f19b7513313b4e5fcbdf008f9e7da24655d" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="8788e0fdf6ff7e368774a367e11e9c4e305791c6" />
 	<File name="Classes/MapModifierControl.lua" part="program" sha1="82fd2456f848eb4d3edd8529581b751e03dda769" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
@@ -2178,14 +2178,14 @@
 	<File name="Modules/LootFilterEditing.lua" part="program" sha1="d85f3a11105f01865b713ea96e9e85dd14204139" />
 	<File name="Modules/LootFilterFileNames.lua" part="program" sha1="5f26edc8dfc72aa9fbe03be2bb1cbf0c93094e20" />
 	<File name="Modules/LootFilterImports.lua" part="program" sha1="14c2904c7ecbaed9a44146b21fffe1c341d8bb14" />
-	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="9edd84fa5854c98703abe801f0361365af8f3a37" />
+	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="485962c9d0369d64f389b49db0ec2c439c730e8b" />
 	<File name="Modules/LootFilterParser.lua" part="program" sha1="e2adf0c26e99e99b32712c4a758db80136b17db9" />
 	<File name="Modules/LootFilterRuleOrder.lua" part="program" sha1="c9bd2dd5f27d9f701a4d82071e756c97db2ad101" />
 	<File name="Modules/LootFilterStackTiers.lua" part="program" sha1="41793d1a2d3cb914990a79609f809c068c0fcc1b" />
 	<File name="Modules/LootFilterStructure.lua" part="program" sha1="f6139db0371b3931a0ffabf1d7be04b52ad8533d" />
 	<File name="Modules/LootFilterVisuals.lua" part="program" sha1="f385117dc7ec1b55819d2c82d3f8e990ad47b529" />
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="240c5844884c630d675d5fe3d5a348bf8f2c91a8" />
-	<File name="Modules/LootFilters.lua" part="program" sha1="bde5b28dfd7b80ae948fddaf82e938e796a1e79c" />
+	<File name="Modules/LootFilters.lua" part="program" sha1="075d48a86a268c8a58bc5e59f044824b94648fa4" />
 	<File name="Modules/Main.lua" part="program" sha1="617f48b41e8da9a3f116630600abc48cfa36588a" />
 	<File name="Modules/MapClipboard.lua" part="program" sha1="8d14b1337dbb48d64214dce4f051e6f387a84317" />
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="c03ef32eee4a6eec184aac726605d6104d068af9" />

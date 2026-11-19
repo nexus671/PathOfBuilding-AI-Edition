@@ -156,6 +156,14 @@ describe("Visual filter catalogue",function()
 			assert.equal(scene[2].BaseType,rotated[1].BaseType);assert.same(rotated,library.scene(profile,build,case.kind,1,76,81))
 		end
 	end)
+	it("compares Blight oils and explicitly flagged map variants",function()
+		local profile=filters.profile("blight","Blight");local scene=library.scene(profile,build,"Blight & oils",0,76,81)
+		assert.equal(16,#scene);assert.equal("Clear Oil",scene[1].BaseType);assert.equal("Stackable Currency",scene[1].Class)
+		assert.equal("Golden Oil",scene[12].BaseType);assert.equal("Blight Thread",scene[14].BaseType);assert.equal("Map Fragments",scene[14].Class)
+		assert.is_true(scene[15].BlightedMap);assert.is_false(scene[15].UberBlightedMap);assert.is_true(scene[16].UberBlightedMap);assert.equal(16,scene[16].MapTier)
+		local rule=parser.parse('Show\n UberBlightedMap True\nHide');assert.equal("Hide",parser.simulate(rule,scene[15]).action);assert.equal("Show",parser.simulate(rule,scene[16]).action)
+		local page=filters.simulateScene(profile,"Blight & oils",0,76,81,14,2);assert.equal(16,page.total)
+	end)
 	it("uses pinned base drop levels and sizes, leaving ambiguous values unknown",function()
 		local profile=filters.profile("base-properties","Base properties");local mixed=library.scene(profile,build,"Mixed drops",0,83,86);local byName={}
 		for _,item in ipairs(mixed) do byName[item.BaseType]=item end

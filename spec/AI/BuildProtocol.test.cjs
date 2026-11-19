@@ -100,6 +100,8 @@ test('queues bounded built-in filter scenes', t => {
   assert.equal(JSON.parse(fs.readFileSync(path.join(targetFixture.dir,'AI-build-request.json'))).scene,'Build targets');
   const mapFixture=fixture(t);mapFixture.call('test_loot_filter_scene',{...args,baseRevision:mapFixture.state.revision,scene:'Map tiers'});
   assert.equal(JSON.parse(fs.readFileSync(path.join(mapFixture.dir,'AI-build-request.json'))).scene,'Map tiers');
+  const blightFixture=fixture(t);blightFixture.call('test_loot_filter_scene',{...args,baseRevision:blightFixture.state.revision,scene:'Blight & oils'});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(blightFixture.dir,'AI-build-request.json'))).scene,'Blight & oils');
   const vendorFixture=fixture(t);vendorFixture.call('test_loot_filter_scene',{...args,baseRevision:vendorFixture.state.revision,scene:'Vendor recipes'});
   assert.equal(JSON.parse(fs.readFileSync(path.join(vendorFixture.dir,'AI-build-request.json'))).scene,'Vendor recipes');
   for(const invalid of [{...args,scene:'Unknown'},{...args,seed:-1},{...args,areaLevel:101},{...args,limit:51},{...args,offset:-1},{...args,unknown:true}]) assert.throws(()=>f.call('test_loot_filter_scene',invalid),/arguments/);

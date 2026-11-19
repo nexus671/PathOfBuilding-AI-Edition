@@ -295,6 +295,16 @@ local craftingExamples={
 	{"Exceptional Eldritch Ember","Stackable Currency"},{"Exceptional Eldritch Ichor","Stackable Currency"},
 	{"Wild Crystallised Lifeforce","Stackable Currency"},{"Sacred Crystallised Lifeforce","Stackable Currency"},
 }
+-- Oil tiers and map flags are explicit comparison samples, not drop rates.
+local blightExamples={
+	{"Clear Oil","Stackable Currency"},{"Sepia Oil","Stackable Currency"},{"Amber Oil","Stackable Currency"},
+	{"Verdant Oil","Stackable Currency"},{"Teal Oil","Stackable Currency"},{"Azure Oil","Stackable Currency"},
+	{"Violet Oil","Stackable Currency"},{"Crimson Oil","Stackable Currency"},{"Black Oil","Stackable Currency"},
+	{"Opalescent Oil","Stackable Currency"},{"Silver Oil","Stackable Currency"},{"Golden Oil","Stackable Currency"},
+	{"Tainted Oil","Stackable Currency"},{"Blight Thread","Map Fragments"},
+	{"Map (Tier 16)","Maps","Rare",{MapTier=16,BlightedMap=true,UberBlightedMap=false}},
+	{"Map (Tier 16)","Maps","Rare",{MapTier=16,UberBlightedMap=true}},
+}
 local heistExpeditionExamples={
 	{"Blueprint: Underbelly","Blueprints"},{"Blueprint: Repository","Blueprints"},
 	{"Contract: Underbelly","Contracts"},{"Contract: Repository","Contracts"},
@@ -359,7 +369,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		end end
 		return list
 	end
-	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
+	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Blight & oils"]=blightExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
 		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end
 		applyBaseProperties(item)

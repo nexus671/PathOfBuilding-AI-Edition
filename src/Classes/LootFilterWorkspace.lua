@@ -437,7 +437,7 @@ function M.Open(build,source,layout,controller)
 	elseif page=="Simulate" then
 		local left=208;local groundX=240;local groundW=w-256
 		ui.label(c,"sceneTitle",16,124,"Loot simulator",20)
-		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Vendor recipes","Covens & Threads","Maps & threads","Map tiers","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
+		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Vendor recipes","Covens & Threads","Maps & threads","Map tiers","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition","Blight & oils"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
 		c.sceneKind=new("DropDownControl"):DropDownControl(ui.anchor,{16,162,left,26},kinds,function(_,value)
 			sceneKind=value;scenePage=1;if value=="Saved examples" then local chosen=savedSets[1];for _,entry in ipairs(savedSets) do if entry.id==sampleSetId then chosen=entry end end;item=copyTable(chosen.samples[1]) elseif value~="Build targets" then item=library.scene(profile,build,value,seed,settings.areaLevel,settings.itemLevel)[1] or item end;reopen()
 		end);c.sceneKind:SelByValue(sceneKind)
