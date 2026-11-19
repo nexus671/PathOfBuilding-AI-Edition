@@ -109,6 +109,9 @@ describe("Advanced native crafting", function()
 	it("warns about out-of-range working rolls while preserving imported legacy values",function()
 		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw);local state=copyTable(model.initial)
 		state.rarity="MAGIC";state.affixes={{id="IncreasedLife2",range=5}}
+		assert.has_error(function() sim.validateState(model,state) end)
+		local legacyRaw=sim.toItem(model,state).raw;state.affixes[1].legacySource=legacyRaw
+		local invalid=copyTable(state);invalid.affixes[1].range=4;assert.has_error(function() sim.validateState(model,invalid) end)
 		local function warned(list) for _,entry in ipairs(list or {}) do if entry.code=="affix_roll_outside_current_tier" then return true end end;return false end
 		assert.is_true(warned(sim.perform(raw,{method="divine"},7,state).warnings))
 		assert.is_true(warned(sim.calculate(raw,{method="divine"},{},state,{trials=2,requirements={minAffixes=1}}).warnings))
@@ -116,8 +119,8 @@ describe("Advanced native crafting", function()
 		local recipe={steps={{method="divine"}},targets={},requirements={minAffixes=1},initialState=state}
 		assert.is_true(warned(sim.simulate(raw,recipe,{trials=1,maxActions=1,forceFirstAction=true}).warnings))
 		local legal=copyTable(state);legal.affixes[1].range=1;assert.is_false(warned(sim.perform(raw,{method="divine"},7,legal).warnings))
-		local below=copyTable(state);below.affixes[1].range=-1;assert.is_true(warned(sim.perform(raw,{method="divine"},7,below).warnings))
-		local legacyRaw=sim.toItem(model,state).raw;local imported=sim.model(legacyRaw)
+		local below=copyTable(state);below.affixes[1].range=-1;below.affixes[1].legacySource=sim.toItem(model,below).raw;assert.is_true(warned(sim.perform(raw,{method="divine"},7,below).warnings))
+		local imported=sim.model(legacyRaw)
 		assert.same(imported.initial.affixes,sim.validateState(imported,imported.initial).affixes)
 		assert.is_true(warned(sim.catalog(legacyRaw,"",10).methodWarnings.divine))
 		assert.is_true(warned(sim.actionWarnings({method="recombine",donorItem=legacyRaw},model)))

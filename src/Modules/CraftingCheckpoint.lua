@@ -6,11 +6,29 @@ function M.validate(raw,run,models)
 	models=models or {}
 	local function state(value)
 		assert(type(value)=="table","Missing checkpoint item")
-		local base=value.baseItem or raw;local model=models[base]
-		if not model then model=simulator.model(base);models[base]=model end
+		local model=models[raw]
+		if not model then model=simulator.model(raw);models[raw]=model end
+		local itemModel=simulator.context(model,value)
+		-- Older checkpoints predate roll provenance. Preserve their existing
+		-- hypothetical values as a labelled snapshot, not as proof of a game drop.
+		value=copyTable(value)
+		local ok=pcall(simulator.validateLegacyRolls,itemModel,value)
+		if not ok then
+			local function preserve(snapshotState)
+				local snapshot
+				for _,entry in ipairs(snapshotState.affixes or {}) do
+					if simulator.rollOutsideTier(entry) and not entry.legacySource then
+						snapshot=snapshot or simulator.toItem(model,snapshotState).raw;entry.legacySource=snapshot
+					end
+				end
+			end
+			preserve(value);if value.imprint then preserve(value.imprint) end
+			simulator.validateLegacyRolls(itemModel,value)
+		end
 		-- Emulation may have created fractures since the original base was imported.
-		model.initial.affixes=value.affixes
-		local result=simulator.validateState(model,value)
+		local original=itemModel.initial.affixes;itemModel.initial.affixes=value.affixes
+		local valid,result=pcall(simulator.validateState,model,value);itemModel.initial.affixes=original
+		assert(valid,result)
 		assert(simulator.toItem(model,result).base,"Invalid checkpoint item")
 		return result
 	end

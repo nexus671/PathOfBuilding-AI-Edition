@@ -24,7 +24,9 @@ function P.extend(M,A,api)
 				local found;for _,entry in ipairs(states[side].affixes) do if entry.id == id then found=entry;break end end
 				assert(found and not found.fractured,"Select a non-fractured modifier present on that input")
 				for _,group in ipairs(A.data().mods[id] and A.data().mods[id].groups or {models[side].byId[id].group}) do assert(not groups[group],"Selected modifiers conflict");groups[group]=true end
-				entries[side][#entries[side]+1]=copyTable(found);total=total+1
+				local entry=copyTable(found)
+				if M.rollOutsideTier(entry) and not entry.legacySource then entry.legacySource=M.toItem(models[side],states[side]).raw end
+				entries[side][#entries[side]+1]=entry;total=total+1
 			end
 		end
 		assert(total <= 6,"Select at most six modifiers")

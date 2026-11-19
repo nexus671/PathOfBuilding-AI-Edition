@@ -1066,7 +1066,10 @@ function A.extend(M,api)
 			local reason=M.awakenerDonorReason(model,state,donor);assert(not reason,reason)
 			local function select(from,source)
 				local entries={}; for _,entry in ipairs(source.affixes) do if influenced(from,entry.id) then entries[#entries+1]=entry end end
-				assert(#entries > 0,"Each item needs an influenced modifier"); return copyTable(entries[math.floor(random()*#entries)+1])
+				assert(#entries > 0,"Each item needs an influenced modifier")
+				local chosen=copyTable(entries[math.floor(random()*#entries)+1])
+				if M.rollOutsideTier(chosen) and not chosen.legacySource then chosen.legacySource=M.toItem(from,source).raw end
+				return chosen
 			end
 			local left,right=select(model,state),select(donor,other)
 			state.affixes={left}; state.influences={state.influences[1],other.influences[1]}
@@ -1259,6 +1262,7 @@ function A.extend(M,api)
 	function M.validateState(model,state)
 		-- Validate supported properties before the legacy affix and range checks.
 		assert(type(state) == "table","Invalid crafting state")
+		M.validateLegacyRolls(model,state)
 		assert(not state.origin or state.origin == model.initial.origin,"Crafting state belongs to another starting item")
 		if state.influences then
 			assert(type(state.influences) == "table" and #state.influences <= 2,"Use at most two influences")

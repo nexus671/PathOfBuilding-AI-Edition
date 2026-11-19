@@ -96,7 +96,7 @@ function M.actionWarnings(action,model)
 	local abyss=false
 	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingAbyss" then abyss=true end end
 	for _,entry in ipairs(model and model.initial and model.initial.affixes or {}) do if entry.id=="DelveAbyssJewelSocket1" then abyss=true end end
-	if (action.method=="recombine" or action.method=="recombine_predictable") and type(action.donorItem)=="string" then
+	if (action.method=="awakener" or action.method=="recombine" or action.method=="recombine_predictable") and type(action.donorItem)=="string" then
 		local ok,donor=pcall(M.model,action.donorItem)
 		if ok then
 			unusualRoll=unusualRoll or outsideTier(donor.initial)
@@ -792,6 +792,49 @@ local function validateCorruptionSocketGoals(model,recipe)
 end
 local function priceKey(action) return action.method == "bench" and action.modId or action.method == "essence" and action.essenceId or action.method end
 
+-- Out-of-range values are legitimate only when retained from an item that
+-- already carried that exact modifier and roll. Recombination may attach the
+-- originating item text when its chosen base came from the other input.
+function M.rollOutsideTier(entry)
+	local ranges=type(entry.range)=="table" and entry.range or {entry.range or 0.5}
+	for _,value in ipairs(ranges) do if type(value)=="number" and (value<0 or value>1) then return true end end
+	return false
+end
+local function sameAffixRoll(left,right)
+	if left.id~=right.id or not not left.legacyLightRadius~=not not right.legacyLightRadius or not not left.description330~=not not right.description330 then return false end
+	local a=type(left.range)=="table" and left.range or {left.range or 0.5}
+	local b=type(right.range)=="table" and right.range or {right.range or 0.5}
+	if #a~=#b then return false end
+	for i,value in ipairs(a) do if type(value)~="number" or type(b[i])~="number" or math.abs(value-b[i])>0.00051 then return false end end
+	return true
+end
+function M.validateLegacyRolls(model,state)
+	for _,entry in ipairs(state.affixes or {}) do
+		assert(entry.legacySource==nil or type(entry.legacySource)=="string" and #entry.legacySource<=24000,"Invalid legacy roll source")
+		if M.rollOutsideTier(entry) then
+			local found=false
+			for _,original in ipairs(model.initial.affixes or {}) do if sameAffixRoll(entry,original) then found=true;break end end
+			if not found and entry.legacySource then
+				model.legacyRollModels=model.legacyRollModels or {}
+				local source=model.legacyRollModels[entry.legacySource]
+				if not source then
+					local ok,value=pcall(M.model,entry.legacySource)
+					assert(ok,"Could not read the legacy roll source")
+					local count=0;for _ in pairs(model.legacyRollModels) do count=count+1 end
+					if count>=40 then model.legacyRollModels={} end
+					source=value;model.legacyRollModels[entry.legacySource]=source
+				end
+				assert(model.item.type==source.item.type,"Legacy roll source must use the same item class")
+				for _,original in ipairs(source.initial.affixes or {}) do if sameAffixRoll(entry,original) then found=true;break end end
+			end
+			assert(found,"A roll outside its current tier must be retained from a matching source item")
+		end
+	end
+	if state.imprint~=nil then
+		assert(type(state.imprint)=="table" and state.imprint.imprint==nil,"Invalid nested imprint")
+		M.validateLegacyRolls(model,state.imprint)
+	end
+end
 function M.validateState(model,state)
 	assert(type(state) == "table" and type(state.affixes) == "table" and #state.affixes <= 6,"Invalid crafting state")
 	assert(state.socketLayoutUnknown==nil or type(state.socketLayoutUnknown)=="boolean","Invalid unknown socket layout marker")

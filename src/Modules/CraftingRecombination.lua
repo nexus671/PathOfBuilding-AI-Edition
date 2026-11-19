@@ -129,7 +129,13 @@ function R.extend(M,A,api)
 				end
 				local draw=random()*total;local selected=eligible[#eligible]
 				for i,candidate in ipairs(eligible) do draw=draw-weights[i];if draw<0 then selected=candidate;break end end
-				local entry=copyTable(selected.entry);state.affixes[#state.affixes+1]=entry
+				local entry=copyTable(selected.entry)
+				if M.rollOutsideTier(entry) and not entry.legacySource then
+					local sourceModel=selected.source==1 and current or donor
+					local sourceState=selected.source==1 and input or other
+					entry.legacySource=toItem(sourceModel,sourceState).raw
+				end
+				state.affixes[#state.affixes+1]=entry
 				for _,group in ipairs(groups(base,entry.id)) do used[group]=true end
 				hasExclusive=hasExclusive or selected.exclusive
 			end

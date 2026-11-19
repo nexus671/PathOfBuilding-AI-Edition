@@ -30,12 +30,14 @@ test('queues reviewed crafting removals with closed project-ID validation', t =>
 
 test('accepts 3.30 crafting state markers without opening the schema', t => {
   const f=fixture(t), itemText='Rarity: NORMAL\nIron Hat\nItem Level: 86';
-  const initialState={rarity:'RARE',affixes:[{id:'AttackCastSpeedPerNearbyEnemyEssence1',range:0.5,description330:true}],corrupted:true,corruptedImplicits:[{id:'V2SupportedByLifeGainOnHitCorrupted',range:0.5,corruption330:true}],synthRetained:[1,2,3],gildedCorruptionReplaced:true,synthExhausted:true,synthRolls:[{id:'SynthesisImplicitPercentLife3',range:0.5}],socketLayoutUnknown:true};
+  const initialState={rarity:'RARE',affixes:[{id:'AttackCastSpeedPerNearbyEnemyEssence1',range:0.5,description330:true,legacySource:itemText}],corrupted:true,corruptedImplicits:[{id:'V2SupportedByLifeGainOnHitCorrupted',range:0.5,corruption330:true}],synthRetained:[1,2,3],gildedCorruptionReplaced:true,synthExhausted:true,synthRolls:[{id:'SynthesisImplicitPercentLife3',range:0.5}],socketLayoutUnknown:true};
   const args={baseRevision:f.state.revision,itemText,initialState,action:{method:'tainted_chromatic'}};
   f.call('apply_crafting_action',args);
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.deepEqual(request.initialState,initialState);
   for(const invalid of [
     {...initialState,affixes:[{...initialState.affixes[0],description330:'yes'}]},
+    {...initialState,affixes:[{...initialState.affixes[0],legacySource:123}]},
+    {...initialState,affixes:[{...initialState.affixes[0],legacySource:'x'.repeat(24001)}]},
     {...initialState,socketLayoutUnknown:'yes'},
     {...initialState,synthExhausted:false},
     {...initialState,synthRetained:[0]},
