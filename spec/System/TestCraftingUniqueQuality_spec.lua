@@ -49,6 +49,20 @@ describe("Unique item quality",function()
 		assert.has_error(function() simulator.perform(shield,{method="quality"},1,{}) end)
 		assert.has_error(function() simulator.perform(shield,{method="quality",extra=true},1) end)
 	end)
+	it("keeps the chosen unique actions as guide steps without duplicating them",function()
+		local project={id="unique-guide",title="Guide",slot="Weapon 2",startingItem=shield,goals={},steps={{action="Acquire the base",done=false}}}
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		assert.is_false(control.guide:IsEnabled());control.apply:Click();control.apply:Click();control.omen:Click()
+		assert.is_true(control.guide:IsEnabled());control.guide:Click();assert.is_false(control.guide:IsEnabled())
+		local saved=store.projects[1];assert.equal(3,#saved.steps);assert.equal("Acquire the base",saved.steps[1].action)
+		assert.equal("Use 2 Armourer's Scraps",saved.steps[2].action);assert.matches("Omen of Connections",saved.steps[3].action)
+		assert.matches("Sockets: R%-G%-B",saved.targetItem)
+		control.close:Click();control=require("Classes.CraftingUniqueQualityControl").Open(build,saved);assert.is_false(control.guide:IsEnabled())
+		local legacy={kind="uniqueQuality",project=saved,itemText=saved.targetItem,history={shield}}
+		main.popups={};control=require("Classes.CraftingUniqueQualityControl").Open(build,saved,nil,legacy)
+		assert.is_false(control.guide:IsEnabled());assert.matches("older previews",control.guide.tooltipText());main.popups={}
+	end)
 	it("keeps a preview as a saved crafting project target",function()
 		local project={id="unique-quality",title="Quality",slot="Weapon 2",startingItem=shield,goals={},steps={}}
 		local store=build.savers.CraftingProjects;store:Upsert(project)

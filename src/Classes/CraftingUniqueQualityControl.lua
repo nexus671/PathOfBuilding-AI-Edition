@@ -9,6 +9,9 @@ function M.Open(build,project,layout,snapshot)
 	local restored=snapshot~=nil
 	local raw=snapshot and snapshot.itemText or draft.startingItem
 	local history=snapshot and copyTable(snapshot.history or {}) or {}
+	local actions=snapshot and copyTable(snapshot.actions or {}) or {}
+	for i=1,#history do actions[i]=actions[i] or "unknown" end
+	local savedTrace=snapshot and snapshot.savedTrace
 	local item,info=unique.inspect(raw)
 	local original=unique.inspect(draft.startingItem)
 	assert(item.title==original.title and item.baseName==original.baseName,"Unique preview does not match the starting item")
@@ -22,7 +25,25 @@ function M.Open(build,project,layout,snapshot)
 			local ok,err=pcall(run);if not ok then main:OpenMessagePopup("Unique crafting",ui.errorText(err)) end
 		end))
 	end
-	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history)} end
+	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history),actions=copyTable(actions),savedTrace=savedTrace} end
+	local function guideSteps()
+		if #history==0 or history[1]~=draft.startingItem then return nil,"A complete preview from the starting item is needed." end
+		local steps={};local qualityCount=0
+		local function flush()
+			if qualityCount>0 then steps[#steps+1]={action="Use "..qualityCount.." "..info.resource..(qualityCount==1 and "" or "s"),done=false};qualityCount=0 end
+		end
+		for _,action in ipairs(actions) do
+			if action=="quality" then qualityCount=qualityCount+1
+			elseif action=="beast_max_links" or action=="omen_connections" then
+				flush();steps[#steps+1]={action=action=="beast_max_links" and "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" or "Link existing sockets with an Omen of Connections and an Orb of Fusing",done=false}
+			else return nil,"Loaded or older previews do not record every action." end
+		end
+		flush()
+		if #draft.steps+#steps>40 then return nil,"The guide has room for up to 40 steps." end
+		local signature=require("sha1")(table.concat(actions,"|").."\n"..raw)
+		if savedTrace==signature then return nil,"These preview steps are already in the guide." end
+		return steps,nil,signature
+	end
 	local linkReason
 	local function refresh(persist)
 		item,info=unique.inspect(raw);show(item)
@@ -34,21 +55,30 @@ function M.Open(build,project,layout,snapshot)
 		if persist then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},not ui.hasDraft(build,"uniqueQuality",draft.id)) end
 	end
 	ui.label(c,"status",16,174,"",14)
-	button("apply",206,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;raw=result.itemText;refresh(true) end)
+	button("apply",206,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;actions[#actions+1]="quality";raw=result.itemText;refresh(true) end)
 	c.apply.enabled=function() return info.available end
-	button("link",250,"Bestiary link",function() local result=unique.link(raw);history[#history+1]=raw;raw=result.itemText;refresh(true) end)
+	button("link",250,"Bestiary link",function() local result=unique.link(raw);history[#history+1]=raw;actions[#actions+1]="beast_max_links";raw=result.itemText;refresh(true) end)
 	c.link.width=130
 	c.link.enabled=function() return not linkReason end
 	c.link.tooltipText=function()
 		return linkReason or "Links existing sockets using a Black Morrigan and a Craicic Sand Spitter."
 	end
-	button("omen",250,"Omen + Fusing",function() local result=unique.link(raw,"omen_connections");history[#history+1]=raw;raw=result.itemText;refresh(true) end)
+	button("omen",250,"Omen + Fusing",function() local result=unique.link(raw,"omen_connections");history[#history+1]=raw;actions[#actions+1]="omen_connections";raw=result.itemText;refresh(true) end)
 	c.omen.x=156;c.omen.width=130;c.omen.enabled=function() return not linkReason end
 	c.omen.tooltipText=function() return linkReason or "Links existing sockets using an Omen of Connections and an Orb of Fusing." end
-	button("undo",294,"Undo",function() assert(#history>0,"No action to undo");raw=table.remove(history);refresh(true) end)
+	button("undo",294,"Undo",function() assert(#history>0,"No action to undo");raw=table.remove(history);table.remove(actions);refresh(true) end)
 	c.undo.enabled=function() return #history>0 end
-	button("keep",338,"Keep as target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);ui.discard(build,"uniqueQuality",draft.id);require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target kept. Save the build." end)
+	button("keep",338,"Keep target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);ui.discard(build,"uniqueQuality",draft.id);require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target kept. Save the build." end)
+	c.keep.width=130
 	c.keep.enabled=function() return raw~=draft.targetItem end
+	button("guide",338,"Keep + guide",function()
+		local steps,reason,signature=guideSteps();assert(steps,reason)
+		local updated=copyTable(draft);updated.targetItem=raw;for _,step in ipairs(steps) do updated.steps[#updated.steps+1]=step end
+		draft=build.savers.CraftingProjects:Upsert(updated);savedTrace=signature;ui.discard(build,"uniqueQuality",draft.id)
+		require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target and guide kept. Save the build."
+	end)
+	c.guide.x=156;c.guide.width=130;c.guide.enabled=function() return guideSteps()~=nil end
+	c.guide.tooltipText=function() local _,reason=guideSteps();return reason or "Keep the target and append these preview actions to the written guide." end
 	local checkedTarget,matchingTarget
 	local function targetAvailable()
 		if not draft.targetItem or draft.targetItem==raw then return false end
@@ -61,7 +91,7 @@ function M.Open(build,project,layout,snapshot)
 	end
 	button("loadTarget",382,"Load saved target",function()
 		assert(targetAvailable(),"The saved target is not an eligible matching unique item")
-		history[#history+1]=raw;raw=draft.targetItem;refresh(true);c.notice.label="^7Saved target loaded."
+		history[#history+1]=raw;actions[#actions+1]="load";raw=draft.targetItem;refresh(true);c.notice.label="^7Saved target loaded."
 	end)
 	c.loadTarget.enabled=targetAvailable
 	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."

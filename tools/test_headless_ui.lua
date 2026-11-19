@@ -2047,6 +2047,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("apply");assert(w.controls.status.label:find("1%%"),"Quality did not increase")
 		ui:click("undo");assert(w.controls.status.label:find("0%%"),"Quality undo failed");ui:click("apply");ui:click("keep")
 		assert(select(2,require("Modules.CraftingUniqueQuality").inspect(store.projects[#store.projects].targetItem)).quality==1,"Unique target was not kept")
+		assert(w.controls.guide:IsEnabled(),"Unique guide actions unavailable");ui:click("guide");assert(not w.controls.guide:IsEnabled(),"Saved guide could be duplicated")
+		assert(store.projects[#store.projects].steps[2].action:find("Armourer's Scrap",1,true),"Unique preview actions were not saved as a guide")
 		ui:click("apply");assert(require("Modules.PlanningUI").hasDraft(build,"uniqueQuality",p.id),"Unsaved quality preview was not marked as a draft");w:Show("journey");w:Show("crafting");assert(w.controls.status.label:find("2%%"),"Changing tabs lost the quality preview")
 		ui:click("close");ui:click("native");assert(w.controls.status.label:find("2%%"),"Session preview was not restored")
 		ui:click("undo");assert(w.controls.status.label:find("1%%"),"Restored preview lost undo history");ui:click("undo");assert(w.controls.status.label:find("0%%"),"Restored preview lost earlier undo history")

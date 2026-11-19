@@ -62,8 +62,15 @@ function M.clean(kind,entry)
 			return raw
 		end
 		assert(type(value.history)=="table","Invalid unique quality history")
-		local history={};for i=math.max(1,#value.history-63),#value.history do history[#history+1]=item(value.history[i]) end
-		return {plan={kind="uniqueQuality",project=project,itemText=item(value.itemText),history=history}}
+		assert(value.actions==nil or type(value.actions)=="table" and #value.actions==#value.history,"Invalid unique crafting actions")
+		assert(value.savedTrace==nil or type(value.savedTrace)=="string" and #value.savedTrace==40 and value.savedTrace:match("^[0-9a-f]+$"),"Invalid unique crafting trace")
+		local allowed={quality=true,beast_max_links=true,omen_connections=true,load=true,unknown=true}
+		local history,actions={},{}
+		for i=math.max(1,#value.history-63),#value.history do
+			history[#history+1]=item(value.history[i]);local action=value.actions and value.actions[i] or "unknown"
+			assert(allowed[action],"Invalid unique crafting action");actions[#actions+1]=action
+		end
+		return {plan={kind="uniqueQuality",project=project,itemText=item(value.itemText),history=history,actions=actions,savedTrace=value.savedTrace}}
 	elseif kind=="crafting" then
 		assert(value.kind=="workbench","Only working crafts need draft recovery")
 		local project=require("Modules.CraftingProjects").validate(value.project);local run=copyTable(value);run.schemaVersion=1
