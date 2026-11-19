@@ -99,6 +99,8 @@ def main():
         atlas_comparison = json.loads((frames / f"{width}-atlas-modifier-comparison.json").read_text())
         assert any("Change: +" in c.get("text", "") for c in atlas_comparison["commands"]), "Atlas modifier comparison is not visible"
         before = json.loads((frames / f"{width}-crafting-unique-quality.json").read_text())
+        unique_art = {c.get("asset") for c in before["commands"]}
+        assert {"Assets/Crafting/Currency/f3bee36504af7453ea82.png", "Assets/Crafting/Currency/93c6d800e09f89a9a227.png", "Assets/Crafting/Currency/141b8801937fdb05c570.png"} <= unique_art, "Unique crafting actions are missing their currency art"
         linked = json.loads((frames / f"{width}-crafting-unique-linked.json").read_text())
         recipe = json.loads((frames / f"{width}-crafting-unique-recipe-result.json").read_text())
         save_recipe = json.loads((frames / f"{width}-crafting-unique-save-recipe.json").read_text())

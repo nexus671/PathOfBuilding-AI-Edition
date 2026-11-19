@@ -142,10 +142,13 @@ function M.styleButton(control,kind)
 		local accent=kind=="primary" or active
 		SetDrawColor(self.hasFocus and "^x83C8EF" or accent and "^xBAA06B" or hover and "^x647C96" or "^x344253");DrawImage(nil,x,y,w,h)
 		SetDrawColor(accent and "^x302B20" or hover and "^x233142" or "^x151E29");DrawImage(nil,x+1,y+1,w-2,h-2)
+		local icon=self.planningIcon
+		if icon then SetDrawColor(enabled and "^xFFFFFF" or "^x777777");DrawImage(icon,x+5,y+4,h-8,h-8) end
 		SetDrawColor(not enabled and "^x7C8792" or accent and "^xF3D89D" or "^xD5DEE8")
 		local size=M.size(16);local label=self:GetProperty("label")
-		while size>14 and DrawStringWidth(size,"VAR",label)>w-10 do size=size-1 end
-		DrawString(x+w/2,y+math.floor((h-size)/2),"CENTER_X",size,"VAR",label)
+		local inset=icon and h or 0
+		while size>14 and DrawStringWidth(size,"VAR",label)>w-inset-10 do size=size-1 end
+		DrawString(x+(w+inset)/2,y+math.floor((h-size)/2),"CENTER_X",size,"VAR",label)
 		if hover and not noTooltip then SetDrawLayer(nil,100);self:DrawTooltip(x,y,w,h,viewport);SetDrawLayer(nil,0) end
 	end
 	return control

@@ -85,7 +85,7 @@ function M.Open(build,project,layout,snapshot)
 		if not guideCache then local steps,reason,signature=calculateGuideSteps();guideCache={steps=steps,reason=reason,signature=signature} end
 		return guideCache.steps,guideCache.reason,guideCache.signature
 	end
-	local linkReason,whiteReason,updateCurrency
+	local linkReason,whiteReason,updateCurrency,updateIcons
 	local function refresh(persist)
 		guideCache=nil;reviewCache=nil;traceCache=nil
 		item,info=unique.inspect(raw);show(item)
@@ -94,6 +94,7 @@ function M.Open(build,project,layout,snapshot)
 		c.status.label="^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
 		c.apply.label="Use "..info.resource
 		if updateCurrency then updateCurrency() end
+		if updateIcons then updateIcons() end
 		if raw~=draft.startingItem and raw~=draft.targetItem then ui.draft(build,"uniqueQuality",draft.id)
 		else ui.discard(build,"uniqueQuality",draft.id) end
 		if persist then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},not ui.hasDraft(build,"uniqueQuality",draft.id)) end
@@ -223,6 +224,15 @@ function M.Open(build,project,layout,snapshot)
 	c.recipe.tooltipText=function() return draft.nativeRecipe and "Check the saved native recipe from its starting item. No changes are made." or canCreateRecipe() and "Save this complete preview as a recipe; then check its result and cost." or "Preview supported actions from the starting item to create a recipe." end
 	ui.label(c,"notice",16,426,restored and "^7Session preview restored." or "",14)
 	local art,artCache=nil,{}
+	local function icon(method)
+		local path=require("Modules.CraftingWorkbench").icon(method,nil,{item=item})
+		if path and not artCache[path] then local handle=NewImageHandle();handle:Load(path);artCache[path]=handle end
+		return path and artCache[path] or nil
+	end
+	updateIcons=function()
+		c.apply.planningIcon=icon("quality")
+		c.omen.planningIcon=icon("omen_connections");c.white.planningIcon=icon("socket_white_bench")
+	end
 	local currency=new("Control"):Control(ui.anchor,{16,454,42,42});c.currency=currency
 	function currency:Draw() if art then local x,y=self:GetPos();SetDrawColor(1,1,1);DrawImage(art,x,y,42,42) end end
 	ui.description(c,"currencyNote",68,456,218,48,{"Preview only", "No currency is spent."},14)
@@ -234,9 +244,7 @@ function M.Open(build,project,layout,snapshot)
 		elseif method=="beast_max_links" then lines={"Black Morrigan + Sand Spitter","Preview only"}
 		elseif method=="quality" then lines={"1 "..info.resource,"Preview only"}
 		else method="quality";lines={"Preview only","No currency is spent."} end
-		local path=require("Modules.CraftingWorkbench").icon(method,nil,{item=item})
-		if path and not artCache[path] then local handle=NewImageHandle();handle:Load(path);artCache[path]=handle end
-		art=path and artCache[path] or nil;c.currencyNote.list=ui.rows(lines,218,14)
+		art=icon(method);c.currencyNote.list=ui.rows(lines,218,14)
 	end
 	c.currency.shown=function() return not guideNeedsReview() end
 	c.currencyNote.shown=c.currency.shown
