@@ -92,7 +92,7 @@ def main():
         linked = json.loads((frames / f"{width}-crafting-unique-linked.json").read_text())
         recipe = json.loads((frames / f"{width}-crafting-unique-recipe-result.json").read_text())
         recipe_text = " ".join(c.get("text", "") for c in recipe["commands"] if c.get("kind") == "text")
-        assert "Goal reached" in recipe_text and "Sockets: R-G-B" in recipe_text, "Unique recipe result is missing its outcome or item"
+        assert "Goal reached" in recipe_text and "Sockets: R-G-B" in recipe_text and "Keep as target" in recipe_text, "Unique recipe result is missing its outcome, item or target action"
         assert any("Sockets: R-G B" in c.get("text", "") for c in before["commands"]), "Starting socket layout is missing"
         assert any("Sockets: R-G-B" in c.get("text", "") for c in linked["commands"]), "Linked socket layout is missing"
         for name in ("crafting-unique-white-sockets", "crafting-unique-corrupted-white"):
