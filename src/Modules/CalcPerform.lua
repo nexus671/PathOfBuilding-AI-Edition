@@ -1905,6 +1905,7 @@ function calcs.perform(env, skipEHP)
 			-- Compute tincture effect multiplier.
 			-- Tincture effect multiplier is rounded to 2 decimal places before applying it.
 			local effectMod = math.floor((1 + (tinctureEffectInc) / 100) * (1 + (item.quality or 0) / 100) * 100) / 100 
+			local baseEffectMod = effectMod
 			if item.tinctureValues == "Final" then
 				local localEffect = math.floor((1 + (item.tinctureImportedEffect or item.tinctureData.effectInc) / 100) * (1 + (item.tinctureImportedQuality or item.quality or 0) / 100) * 100) / 100
 				effectMod = effectMod / m_max(localEffect, 0.01)
@@ -1920,7 +1921,11 @@ function calcs.perform(env, skipEHP)
 
 			if modList[1] then
 				local srcList = new("ModList"):ModList()
-				srcList:ScaleAddList(modList, effectMod)
+				if item.tinctureBaseExplicit and item.tinctureValues == "Final" then
+					for _, mod in ipairs(modList) do srcList:ScaleAddMod(mod, mod.tinctureBase and baseEffectMod or effectMod) end
+				else
+					srcList:ScaleAddList(modList, effectMod)
+				end
 				local key
 				if item.rarity == "UNIQUE" or item.rarity == "RELIC" then
 					key = item.title

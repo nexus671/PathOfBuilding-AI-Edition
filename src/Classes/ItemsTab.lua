@@ -665,7 +665,7 @@ holding Shift will put it in the second.]])
 		self:UpdateDisplayItemTooltip()
 	end)
 	self.controls.displayItemTinctureValues.shown = function() return self.displayItem and self.displayItem.type == "Tincture" end
-	self.controls.displayItemTinctureValues.tooltipText = "Game displayed values already include quality and local tincture effect. Select this for modifiers copied from the game; imported items select it automatically. Older items cannot be identified automatically."
+	self.controls.displayItemTinctureValues.tooltipText = "Game displayed values already include quality and local tincture effect. Select this for modifiers copied from the game; imported items select it automatically. A crafting preview may retain copied implicits while marking newly rolled explicit modifiers as base values. Older items cannot be identified automatically."
 
 	local sortingOptions = {
 		{ stat = nil, label = "Default" }

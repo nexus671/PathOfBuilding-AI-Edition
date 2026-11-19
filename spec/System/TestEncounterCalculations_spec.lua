@@ -284,6 +284,18 @@ describe("Encounter reporting and comparisons",function()
 		local after=speed(changed);local withoutBaseline=speed((raw:gsub("Quality: 10","Quality: 20")))
 		assert.is_true(after>before);assert.are.near(before,withoutBaseline,1e-8)
 	end)
+	it("scales newly rerolled tincture modifiers as base values",function()
+		local raw="Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed"
+		local result=require("Modules.CraftingSimulator").perform(raw,{method="alteration"},3);assert.is_true(result.state.tinctureBaseExplicit)
+		local claw=new("Item"):Item("Rarity: Normal\nImperial Claw");build.itemsTab:AddItem(claw);build.itemsTab.slots["Weapon 1"].selItemId=claw.id;build.skillsTab:PasteSocketGroup("Viper Strike 20/0  1");build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1])
+		local function speed(text) local item=new("Item"):Item(text);build.itemsTab:AddItem(item);build.itemsTab.slots["Flask 1"].selItemId=item.id;build.itemsTab.slots["Flask 1"].active=true;build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg);return build.calcsTab.calcsOutput.Speed end
+		local reference=result.itemText:gsub("\nTincture Values: Final",""):gsub("\nTincture Imported Quality: [^\n]+",""):gsub("\nTincture Imported Effect: [^\n]+",""):gsub("\nTincture Base Explicit: true","")
+		assert.are.near(speed(reference),speed(result.itemText),1e-8)
+		local withEffect=require("Modules.CraftingSimulator").perform(raw,{method="alteration"},11500000).itemText
+		assert.matches("17%% increased effect",withEffect);assert.equal(17,new("Item"):Item(withEffect).tinctureData.effectInc)
+		local baseReference=withEffect:gsub("\nTincture Values: Final",""):gsub("\nTincture Imported Quality: [^\n]+",""):gsub("\nTincture Imported Effect: [^\n]+",""):gsub("\nTincture Base Explicit: true","")
+		assert.are.near(speed(baseReference),speed(withEffect),1e-8)
+	end)
 	it("deactivates a native tincture at zero mana and removes its drain",function()
 		local tincture=new("Item"):Item("Rarity: Normal\nPrismatic Tincture")
 		build.itemsTab:AddItem(tincture); build.itemsTab.slots["Flask 1"].selItemId=tincture.id

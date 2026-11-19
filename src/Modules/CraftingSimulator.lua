@@ -238,6 +238,7 @@ end
 
 function M.toItem(model,state)
 	local item=new("Item"):Item(model.raw)
+	if item.type=="Tincture" and item.tinctureValues=="Final" then item.tinctureBaseExplicit=state.tinctureBaseExplicit or nil end
 	item.affixes=model.byId
 	for _,entry in ipairs(state.affixes) do if entry.legacyLightRadius or entry.description330 then
 		if item.affixes==model.byId then item.affixes={};for id,mod in pairs(model.byId) do item.affixes[id]=mod end end
@@ -341,7 +342,7 @@ function M.model(raw)
 	local desolation=require("Modules.CraftingDesolation330")[item.type]
 	if desolation and model.byId[desolation] then model.essences[#model.essences+1]={id="Metadata/Items/Currency/CurrencyEssenceFaridun1",name="Essence of Desolation",modId=desolation,tier=0,canReforgeRare=true,maxModLevel=15} end
 	table.sort(model.essences,function(a,b) return a.id < b.id end)
-	local state={rarity=item.rarity,affixes={},corrupted=item.corrupted or false}
+	local state={rarity=item.rarity,affixes={},corrupted=item.corrupted or false,tinctureBaseExplicit=item.tinctureBaseExplicit or nil}
 	for _,list in ipairs({item.prefixes,item.suffixes}) do for _,entry in ipairs(list) do
 		if entry.modId ~= "None" then
 			assert(model.byId[entry.modId],"Starting item has an unknown modifier")
@@ -765,6 +766,7 @@ local function priceKey(action) return action.method == "bench" and action.modId
 function M.validateState(model,state)
 	assert(type(state) == "table" and type(state.affixes) == "table" and #state.affixes <= 6,"Invalid crafting state")
 	assert(state.socketLayoutUnknown==nil or type(state.socketLayoutUnknown)=="boolean","Invalid unknown socket layout marker")
+	assert(state.tinctureBaseExplicit==nil or state.tinctureBaseExplicit==true and model.item.type=="Tincture" and model.item.tinctureValues=="Final","Invalid tincture value provenance")
 	assert(state.rarity == "NORMAL" or state.rarity == "MAGIC" or state.rarity == "RARE","Invalid state rarity")
 	local groups,allowed,fractured,legacy={},{},{},{}
 	for _,entry in ipairs(model.mods) do allowed[entry.id]=true end
@@ -1167,6 +1169,14 @@ end
 function M.action(model,state,craft,random)
 	if type(state)=="table" and type(craft)=="table" then local reason=M.methodReason(model,state,craft.method);assert(not reason,reason) end
 	local result,details=transition(model,state,craft,random)
+	-- A complete alteration or transmutation generates every explicit value
+	-- from base rolls. Retained game-copied implicits still use their original
+	-- baseline. Never set this marker if an existing affix can be protected.
+	if model.item.type=="Tincture" and model.item.tinctureValues=="Final" and (craft.method=="alteration" or craft.method=="transmute") then
+		local f=flags(model,state);local protected=f.prefixes or f.suffixes or M.hasPartialLock(model,state)
+		for _,entry in ipairs(state.affixes or {}) do if entry.fractured then protected=true end end
+		if not protected then result.tinctureBaseExplicit=true end
+	end
 	local function startingState(candidate)
 		if not candidate.destroyed and candidate.baseItem and (craft.method=="recombine" or craft.method=="recombine_predictable") then return M.context(model,candidate).initial end
 		return state
@@ -1188,10 +1198,11 @@ function M.validateState(model,state)
 	-- Omitted properties inherit the starting item; explicit empty sockets,
 	-- zero quality and false mirrored state remain deliberate overrides.
 	-- Never infer a layout after an outcome that marked it unknown.
-	if type(state)=="table" and (state.sockets==nil and not state.socketLayoutUnknown or state.quality==nil or state.mirrored==nil and model.initial.mirrored
+	if type(state)=="table" and (state.tinctureBaseExplicit==nil and model.initial.tinctureBaseExplicit or state.sockets==nil and not state.socketLayoutUnknown or state.quality==nil or state.mirrored==nil and model.initial.mirrored
 		or state.influences==nil and #(model.initial.influences or {})>0 or state.memoryStrands==nil and (model.initial.memoryStrands or 0)>0
 		or state.catalyst==nil and state.catalystQuality==nil and model.initial.catalyst or inheritEldritch) then
 		state=copyTable(state)
+		if state.tinctureBaseExplicit==nil and model.initial.tinctureBaseExplicit then state.tinctureBaseExplicit=true end
 		if state.sockets==nil and not state.socketLayoutUnknown then state.sockets=copyTable(model.initial.sockets or {}) end
 		if state.quality==nil then state.quality=model.initial.quality end
 		if state.mirrored==nil and model.initial.mirrored then state.mirrored=true end

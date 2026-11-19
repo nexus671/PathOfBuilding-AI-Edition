@@ -104,6 +104,19 @@ describe("Advanced native crafting", function()
 		local saved=new("Item"):Item(effectRaw):BuildRaw();local edited=(saved:gsub("\n{prefix}20%% increased effect","")):gsub("\n20%% increased effect","")
 		local changed=sim.model(edited);assert.equal(20,changed.item.tinctureImportedEffect);assert.equal(0,changed.item.tinctureData.effectInc);assert.is_true(warned(sim.actionWarnings({method="alteration"},changed)))
 	end)
+	it("marks fully rerolled copied tincture modifiers as base values",function()
+		local raw="Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed"
+		local model=sim.model(raw);local result=sim.perform(raw,{method="alteration"},3)
+		assert.is_true(result.state.tinctureBaseExplicit);assert.matches("Tincture Base Explicit: true",result.itemText,1,true);assert.matches("100%% increased Elemental Damage",result.itemText)
+		local parsed=new("Item"):Item(result.itemText);assert.is_true(parsed.tinctureBaseExplicit);local explicit,implicit=false,false
+		for _,mod in ipairs(parsed.modList) do if mod.name=="Speed" and mod.tinctureBase then explicit=true elseif mod.name=="ElementalDamage" and not mod.tinctureBase then implicit=true end end
+		assert.is_true(explicit);assert.is_true(implicit);assert.is_true(new("Item"):Item(parsed:BuildRaw()).tinctureBaseExplicit)
+		local reloaded=sim.model(result.itemText);assert.is_true(reloaded.initial.tinctureBaseExplicit)
+		local advanced=sim.perform(raw,{method="quality"},7,result.state);assert.is_true(advanced.state.tinctureBaseExplicit);assert.matches("Tincture Base Explicit: true",advanced.itemText,1,true)
+		local protected=copyTable(model.initial);protected.affixes[1].fractured=true;local outcome=sim.action(model,protected,{method="alteration"},function() return 0.1 end);assert.is_nil(outcome.tinctureBaseExplicit)
+		local normal="Item Class: Tinctures\nRarity: NORMAL\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons"
+		local transmuted=sim.perform(normal,{method="transmute"},3);assert.is_true(transmuted.state.tinctureBaseExplicit);assert.is_true(sim.model(transmuted.itemText).initial.tinctureBaseExplicit)
+	end)
 	it("offers independent Allflame outcomes and charges currency and Sulphur once", function()
 		local state=copyTable(sim.model(raw).initial);state.rarity="RARE";state.affixes={{id="IncreasedLife1",range=0.5}}
 		local craft={method="exalt",allflame={outcomes=4,gainMin=5,gainMax=5,sulphur=100}}
