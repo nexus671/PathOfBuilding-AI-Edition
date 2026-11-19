@@ -567,6 +567,15 @@ describe("Build-owned loot filters",function()
 		assert.equal("Show",filters.simulate(profile,{BaseType="Iron Hat",Rarity="Rare",ItemLevel=86}).action)
 		local count=#profile.rules;profile.rules=filters.generate(build,profile);assert.equal(count,#profile.rules)
 	end)
+	it("generates unique pickups for unique crafting starting items",function()
+		local raw="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\n+100 to maximum Life"
+		build.savers.CraftingProjects:Upsert({id="unique-project",title="Improve shield",slot="Weapon 2",startingItem=raw,goals={},steps={}})
+		local profile=filters.profile("test","Test");profile.template="Hide";profile.rules=filters.generate(build,profile)
+		local function preview(rarity,level) return filters.simulate(profile,{BaseType="Ezomyte Tower Shield",Rarity=rarity,ItemLevel=level}).action end
+		assert.equal("Show",preview("Unique",70));assert.equal("Hide",preview("Rare",86))
+		local generated;for _,rule in ipairs(profile.rules) do if rule.origin=="craft:unique-project" then generated=rule end end
+		assert.is_truthy(generated);assert.is_truthy(generated.text:find("Rarity == Unique",1,true));assert.is_nil(generated.text:find("ItemLevel",1,true))
+	end)
 	it("generates Betrayal Thread pickups for either Secrets Unveiled choice",function()
 		local atlas=require("Modules.AtlasPlanner");local node=atlas.tree("3.30.0-preview").nodes[45404]
 		local profile=filters.profile("test","Test")

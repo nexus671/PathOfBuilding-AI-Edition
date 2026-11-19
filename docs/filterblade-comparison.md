@@ -60,7 +60,7 @@ Example item classes use the pinned [3.30.0.2.2 RePoE export](https://github.com
 
 Exact budget titles also recognize selected oils, tattoos, currency shards, Soul Cores, Ancient Orbs, Cartographer's Chisels and Gemcutter's Prisms from the pinned 3.30.0.2 export. These names identify items, not current drop availability. Rebuild the list with `python tools/update_filter_budget_items.py path/to/base_items.json`; use `--check` to verify it.
 
-A unique item in the gear wishlist adds a pickup for unique items of its base type. This can include other uniques sharing that base; the copied item's item level is not used as a minimum.
+A unique item in the gear wishlist or a crafting project adds a pickup for unique items of its base type. This can include other uniques sharing that base; the copied item's item level is not used as a minimum.
 
 The remaining offline polish includes additional starter presets and encounter sample collections. Hosted economy updates remain separate service work. The release checklist tracks implementation and repeated workflow verification.
 
