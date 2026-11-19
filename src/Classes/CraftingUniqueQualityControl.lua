@@ -144,8 +144,30 @@ function M.Open(build,project,layout,snapshot)
 		assert(targetAvailable(),"The saved target is not an eligible matching unique item")
 		history[#history+1]=raw;actions[#actions+1]="load";redo={};raw=draft.targetItem;refresh(true);c.notice.label="^7Saved target loaded."
 	end)
+	c.loadTarget.width=130
 	c.loadTarget.enabled=targetAvailable
 	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."
+	button("recipe",388,"Check recipe",function()
+		assert(draft.nativeRecipe,"This guide has no saved native recipe")
+		local result=require("Modules.CraftingSimulator").simulate(draft.startingItem,draft.nativeRecipe,{trials=1,maxActions=100,priceBook=draft.priceBook,treeVersion=build.spec.treeVersion})
+		local rw,rh=math.min(760,main.screenW-40),math.min(520,main.screenH-60);local view={}
+		ui.label(view,"heading",16,24,"Saved recipe result",20)
+		local lines={result.sampleSuccess and "Goal reached in the deterministic model." or "Goal not reached in the deterministic model.",
+			"Starts from the saved starting item; the current preview is unchanged.",
+			string.format("Actions: %d attempted, %d executed (limit 100).",result.meanActions,result.meanExecutedActions),
+			result.meanCost and string.format("Estimated cost: %.2f %s",result.meanCost,result.costCurrency) or "Cost unavailable: add prices for all used resources."}
+		for _,entry in ipairs(result.resourceUsage or {}) do lines[#lines+1]=entry.name..": "..entry.amount end
+		for _,warning in ipairs(result.warnings or {}) do lines[#lines+1]="Model note: "..warning.message end
+		for message,count in pairs(result.transitionErrors or {}) do lines[#lines+1]="Rejected action ("..count.."): "..message end
+		view.details=new("TextListControl"):TextListControl(ui.anchor,{16,62,300,rh-126},nil,ui.rows(lines,276,14))
+		local render=require("Classes.JourneyItemControl").new(view,"resultItem",332,62,rw-348,rh-126,"RESULT ITEM")
+		render(require("Modules.CraftingProjects").item(result.sampleItem))
+		view.close=new("ButtonControl"):ButtonControl(ui.anchor,{rw-132,rh-48,116,28},"Back",function() main:ClosePopup() end)
+		ui.style(view);for _,control in pairs(view) do control.layoutAudit="unique-recipe-result" end
+		main:OpenPopup(rw,rh,"Saved unique recipe",view,nil,nil,"close")
+	end)
+	c.recipe.x=156;c.recipe.width=130;c.recipe.enabled=function() return draft.nativeRecipe~=nil end
+	c.recipe.tooltipText=function() return draft.nativeRecipe and "Check the saved native recipe from its starting item. No changes are made." or "Save a native recipe in this guide to check it here." end
 	ui.label(c,"notice",16,426,restored and "^7Session preview restored." or "",14)
 	local art,artCache=nil,{}
 	local currency=new("Control"):Control(ui.anchor,{16,454,42,42});c.currency=currency

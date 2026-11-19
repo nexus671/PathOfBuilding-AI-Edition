@@ -3,6 +3,15 @@ describe("Unique item quality",function()
 	local shield="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\nImplicits: 1\n+5% Chance to Block Attack Damage\n+100 to maximum Life\n+1500 to Armour"
 	local weapon="Rarity: UNIQUE\nThe Saviour\nLegion Sword\nItem Level: 86\nQuality: 0\nSockets: R-G-B\n+100% increased Physical Damage"
 	before_each(function() newBuild() end)
+	it("checks a saved unique recipe without changing the preview or guide",function()
+		local project={id="unique-recipe-ui",title="Recipe",slot="Weapon 2",startingItem=shield,goals={},steps={},nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=3}}}
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.apply:Click();assert.matches("13%%",control.status.label);assert.is_true(control.recipe:IsEnabled());control.recipe:Click()
+		local popup=main.popups[#main.popups].controls;local text={};for _,row in ipairs(popup.details.list) do text[#text+1]=row[1] end
+		assert.matches("Goal reached",table.concat(text," "));assert.matches("Sockets: R%-G%-B",popup.resultItemMods.list[1][1])
+		assert.matches("13%%",control.status.label);assert.is_nil(store.projects[1].targetItem);popup.close:Click();main.popups={}
+	end)
 	it("links existing unique sockets without changing any other item properties",function()
 		local simulator=require("Modules.CraftingSimulator")
 		local source=shield.."\nNote: Preserve unknown fields"

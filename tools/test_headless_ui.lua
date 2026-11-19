@@ -2037,9 +2037,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		local p={id="unique-target-project-ui",title="Unique target guide",slot="Helmet",startingItem="Rarity: NORMAL\nLeather Cap\nItem Level: 86",targetItem=unique,goals={"Obtain Goldrim"},steps={}}
 		local store=build.savers.CraftingProjects;store:Upsert(p);local w=build.planningWorkspace;w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
 		assert(w.controls.projectItem and #w.controls.projectItemMods.list>0 and w.controls.native:IsEnabled(),"Unique target preview or ordinary workbench unavailable");frame("crafting-unique-target-project")
-		p.id="unique-start-project-ui";p.title="Unique starting guide";p.startingItem=unique;p.targetItem=nil;p.steps={{action="Acquire Goldrim"}};store:Upsert(p);w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
+		p.id="unique-start-project-ui";p.title="Unique starting guide";p.startingItem=unique;p.targetItem=nil;p.steps={{action="Acquire Goldrim"}};p.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=3}};store:Upsert(p);w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
 		assert(w.controls.projectItem and w.controls.native:IsEnabled() and w.controls.native.tooltipText():find("unique item",1,true),"Unique quality preview unavailable");frame("crafting-unique-start-project")
-		ui:click("native");frame("crafting-unique-quality")
+		ui:click("native");frame("crafting-unique-quality");assert(w.controls.recipe:IsEnabled(),"Saved unique recipe unavailable");ui:click("recipe");frame("crafting-unique-recipe-result");ui:click("close")
 		assert(w.controls.white:IsEnabled(),"Unique white-socket bench preview unavailable");ui:click("white");frame("crafting-unique-white-sockets")
 		assert(not w.controls.white:IsEnabled(),"White sockets still offered the white-socket craft");ui:click("undo")
 		assert(w.controls.link:IsEnabled(),"Unique socket-link preview unavailable");ui:click("link")
