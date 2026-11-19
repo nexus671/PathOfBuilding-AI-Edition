@@ -580,6 +580,9 @@ describe("Build-owned loot filters",function()
 		assert.equal("Show",preview("Unique",70));assert.equal("Show",preview("Rare",86));assert.equal("Hide",preview("Rare",70))
 		local targetRule;for _,rule in ipairs(profile.rules) do if rule.id=="craft-target-unique-goal" then targetRule=rule end end
 		assert.is_truthy(targetRule);assert.is_nil(targetRule.text:find("ItemLevel",1,true))
+		local scene=filters.simulateScene(profile,"Build targets",0,70,70,0,50,nil,build);local uniqueSample
+		for _,entry in ipairs(scene.results) do if entry.sample.BaseType=="Ezomyte Tower Shield" and entry.sample.Rarity=="Unique" then uniqueSample=entry end end
+		assert.is_truthy(uniqueSample);assert.equal("Show",uniqueSample.result.action);assert.equal(70,uniqueSample.sample.ItemLevel)
 		build.savers.CraftingProjects.projects[1].targetItem="Not an item"
 		local updated,warnings=filters.generate(build,profile);local retained=false
 		for _,rule in ipairs(updated) do if rule.id=="craft-target-unique-goal" then retained=true end end
@@ -593,6 +596,9 @@ describe("Build-owned loot filters",function()
 		assert.equal("Show",preview("Unique",70));assert.equal("Hide",preview("Rare",86))
 		local generated;for _,rule in ipairs(profile.rules) do if rule.origin=="craft:unique-project" then generated=rule end end
 		assert.is_truthy(generated);assert.is_truthy(generated.text:find("Rarity == Unique",1,true));assert.is_nil(generated.text:find("ItemLevel",1,true))
+		local project=copyTable(build.savers.CraftingProjects.projects[1]);project.targetItem=raw;build.savers.CraftingProjects:Upsert(project)
+		local count=0;for _,rule in ipairs(filters.generate(build,profile)) do if rule.origin=="craft:unique-project" then count=count+1 end end
+		assert.equal(1,count)
 	end)
 	it("generates Betrayal Thread pickups for either Secrets Unveiled choice",function()
 		local atlas=require("Modules.AtlasPlanner");local node=atlas.tree("3.30.0-preview").nodes[45404]
