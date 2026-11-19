@@ -1173,32 +1173,40 @@ end
 function M.action(model,state,craft,random)
 	if type(state)=="table" and type(craft)=="table" then local reason=M.methodReason(model,state,craft.method);assert(not reason,reason) end
 	local result,details=transition(model,state,craft,random)
-	-- A complete alteration or transmutation generates every explicit value
-	-- from base rolls. Retained game-copied implicits still use their original
-	-- baseline. Never set this marker if an existing affix can be protected.
-	if model.item.type=="Tincture" and model.item.tinctureValues=="Final" and (craft.method=="alteration" or craft.method=="transmute") then
-		local f=flags(model,state);local protected=f.prefixes or f.suffixes or M.hasPartialLock(model,state)
-		for _,entry in ipairs(state.affixes or {}) do if entry.fractured then protected=true end end
-		if not protected then result.tinctureBaseExplicit=true end
-	elseif model.item.type=="Tincture" and model.item.tinctureValues=="Final" and craft.method=="augmentation" then
-		local existing={};for _,entry in ipairs(state.affixes or {}) do existing[entry.id]=true end
-		for _,entry in ipairs(result.affixes or {}) do if not existing[entry.id] then
-			local side=model.byId[entry.id].type
-			if side=="Prefix" then result.tinctureBasePrefix=true elseif side=="Suffix" then result.tinctureBaseSuffix=true end
-		end end
-	elseif model.item.type=="Tincture" and model.item.tinctureValues=="Final" and craft.method=="divine" and not M.hasPartialLock(model,state) then
-		local f=flags(model,state)
-		for _,entry in ipairs(state.affixes or {}) do local mod=model.byId[entry.id];if not protected(entry,mod,f) then
-			if mod.type=="Prefix" then result.tinctureBasePrefix=true elseif mod.type=="Suffix" then result.tinctureBaseSuffix=true end
-		end end
+	-- Mark each outcome before exposing it: Allflame can return several
+	-- alternatives, including the selected state and its serialized item text.
+	local function markTincture(candidate)
+		if not candidate or model.item.type~="Tincture" or model.item.tinctureValues~="Final" then return false end
+		local changed=false
+		local function mark(key) if not candidate[key] then candidate[key]=true;changed=true end end
+		if craft.method=="alteration" or craft.method=="transmute" then
+			local f=flags(model,state);local locked=f.prefixes or f.suffixes or M.hasPartialLock(model,state)
+			for _,entry in ipairs(state.affixes or {}) do if entry.fractured then locked=true end end
+			if not locked then mark("tinctureBaseExplicit") end
+		elseif craft.method=="augmentation" then
+			local existing={};for _,entry in ipairs(state.affixes or {}) do existing[entry.id]=true end
+			for _,entry in ipairs(candidate.affixes or {}) do if not existing[entry.id] then
+				local side=model.byId[entry.id].type
+				if side=="Prefix" then mark("tinctureBasePrefix") elseif side=="Suffix" then mark("tinctureBaseSuffix") end
+			end end
+		elseif craft.method=="divine" and not M.hasPartialLock(model,state) then
+			local f=flags(model,state)
+			for _,entry in ipairs(state.affixes or {}) do local mod=model.byId[entry.id];if not protected(entry,mod,f) then
+				if mod.type=="Prefix" then mark("tinctureBasePrefix") elseif mod.type=="Suffix" then mark("tinctureBaseSuffix") end
+			end end
+		end
+		return changed
 	end
+	local resultMarked=markTincture(result)
 	local function startingState(candidate)
 		if not candidate.destroyed and candidate.baseItem and (craft.method=="recombine" or craft.method=="recombine_predictable") then return M.context(model,candidate).initial end
 		return state
 	end
 	local updated=M.syncAbyssSocket(startingState(result),result)
 	if details and details.choices then for _,choice in ipairs(details.choices) do
-		if choice.state and (M.syncAbyssSocket(startingState(choice.state),choice.state) or updated and choice.state==result) then choice.itemText=M.itemText(model,choice.state) end
+		local marked=choice.state and markTincture(choice.state)
+		local synced=choice.state and M.syncAbyssSocket(startingState(choice.state),choice.state)
+		if choice.state and (marked or resultMarked and choice.state==result or synced or updated and choice.state==result) then choice.itemText=M.itemText(model,choice.state) end
 	end end
 	return result,details
 end

@@ -128,6 +128,13 @@ describe("Advanced native crafting", function()
 		local raw=common.."26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed";local result=sim.perform(raw,{method="divine"},3)
 		assert.is_true(result.state.tinctureBasePrefix);assert.is_true(result.state.tinctureBaseSuffix)
 	end)
+	it("preserves tincture value provenance in every Allflame choice",function()
+		local common="Item Class: Tinctures\nRarity: MAGIC\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n"
+		for _,case in ipairs({{method="augmentation",mods="26% reduced Mana Burn rate",key="tinctureBaseSuffix",label="Tincture Base Suffix: true"},{method="alteration",mods="26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed",key="tinctureBaseExplicit",label="Tincture Base Explicit: true"},{method="divine",mods="26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed",key="tinctureBasePrefix",label="Tincture Base Prefix: true"}}) do
+			local action={method=case.method,allflame={outcomes=2,gainMin=0,gainMax=0,sulphur=0}};local result=sim.perform(common..case.mods,action,500000);assert.equal(2,#result.choices)
+			for _,choice in ipairs(result.choices) do assert.is_true(choice.state[case.key]);assert.matches(case.label,choice.itemText,1,true);assert.is_true(new("Item"):Item(choice.itemText)[case.key]);if case.method=="divine" then assert.is_true(choice.state.tinctureBaseSuffix) end end
+		end
+	end)
 	it("offers independent Allflame outcomes and charges currency and Sulphur once", function()
 		local state=copyTable(sim.model(raw).initial);state.rarity="RARE";state.affixes={{id="IncreasedLife1",range=0.5}}
 		local craft={method="exalt",allflame={outcomes=4,gainMin=5,gainMax=5,sulphur=100}}
