@@ -189,7 +189,8 @@ describe("Imported corruption identities",function()
 	it("models first corruption replacing either a Gilded or ordinary base implicit",function()
 		local source="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+16% to Item Rarity\nItem sells for much more to vendors"
 		local model=sim.model(source);assert.equal("unknown",model.initial.vendorImplicit)
-		assert.is_true(sim.perform(source,{method="vaal"},1).state.baseImplicitRetained)
+		local seeded=sim.perform(source,{method="vaal"},1).state;assert.is_true(seeded.baseImplicitRetained)
+		local seededLocus=sim.perform(source,{method="locus"},1,seeded).state;assert.is_true(seededLocus.twiceCorrupted);assert.equal(2,#seededLocus.corruptedImplicits);assert.is_nil(seededLocus.baseImplicitRetained)
 		for _,draw in ipairs({0,0.999}) do
 			local result=copyTable(model.initial);sim.rollCorrupted(model,result,function() return draw end)
 			assert.equal(1,#result.corruptedImplicits)
@@ -201,13 +202,49 @@ describe("Imported corruption identities",function()
 			else
 				assert.is_true(reopened.initial.baseImplicitRetained);assert.is_truthy(output:find("+16% to Item Rarity",1,true))
 				local forged=output:gsub("%+16%% to Item Rarity","+99%% to Item Rarity");assert.is_truthy(sim.model(forged).unresolvedCorruption)
-				local available,reason=require("Modules.CraftingAvailability").check("locus",saved,model);assert.is_false(available);assert.matches("retained ordinary base",reason)
+				local available=require("Modules.CraftingAvailability").check("locus",saved,model);assert.is_true(available)
+				local twice=sim.action(model,saved,{method="locus"},function() return 0 end);assert.is_true(twice.twiceCorrupted);assert.equal(2,#twice.corruptedImplicits);assert.is_nil(twice.baseImplicitRetained)
+				local final=sim.model(sim.itemText(model,sim.validateState(model,twice)));assert.equal(2,#final.initial.corruptedImplicits);assert.is_nil(final.initial.baseImplicitRetained)
+				local afterImport=sim.action(reopened,reopened.initial,{method="locus"},function() return 0 end);assert.is_nil(afterImport.baseImplicitRetained);assert.equal(2,#afterImport.corruptedImplicits);sim.validateState(reopened,afterImport)
+				local unchanged=sim.action(model,saved,{method="locus"},function() return 0.3 end);assert.is_true(unchanged.baseImplicitRetained);assert.is_true(unchanged.twiceCorrupted);sim.validateState(model,unchanged)
+				local destroyed=sim.action(model,saved,{method="locus"},function() return 0.9 end);assert.is_true(destroyed.destroyed);assert.is_nil(destroyed.baseImplicitRetained);sim.validateState(model,destroyed)
 			end
 		end
 		local blessed=sim.perform(source,{method="blessed"},17).state;local before=sim.itemText(model,blessed)
 		sim.rollCorrupted(model,blessed,function() return 0.999 end);local after=sim.itemText(model,sim.validateState(model,blessed))
 		local original=sim.model(before).item.implicitModLines[1];local retained=sim.model(after).item.implicitModLines[1]
 		assert.equal(itemLib.applyRange(original.line,original.range or 0.5),itemLib.applyRange(retained.line,retained.range or 0.5))
+	end)
+	it("models the second corruption replacing a remaining Gilded or synthesised implicit",function()
+		local lines={"+10 to Strength","+20 to Dexterity","+12 to Intelligence"}
+		for count=1,3 do
+			local source="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: "..(count+1).."\n"..table.concat(lines,"\n",1,count).."\nItem sells for much more to vendors\nSynthesised Item"
+			local model=sim.model(source);local first=copyTable(model.initial);sim.rollCorrupted(model,first,function() return 0 end)
+			assert.equal("unknown",first.vendorImplicit)
+			for _,draw in ipairs({0,0.999}) do
+				local state=copyTable(first);sim.rollCorrupted(model,state,function() return draw end,1,first.corruptedImplicits)
+				assert.equal(2,#state.corruptedImplicits)
+				if count==1 or draw~=0 then assert.is_nil(state.vendorImplicit);assert.is_true(state.gildedCorruptionReplaced);assert.equal(count-1,#(state.synthRetained or {}))
+				else assert.equal("unknown",state.vendorImplicit);assert.equal(count-2,#(state.synthRetained or {})) end
+				state.twiceCorrupted=true;state=sim.validateState(model,state)
+				local output=sim.itemText(model,state);local reopened=sim.model(output);local removed=(count==1 or draw~=0) and 1 or 2;assert.equal(count-removed,#(reopened.synthesisGroups or {}))
+			end
+		end
+	end)
+	it("retains unaffected Gilded and Eldritch implicits on a second corruption",function()
+		local model=sim.model(raw);local first=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state
+		local second=sim.perform(raw,{method="eldritch_implicit",side="Eater",tier=1},12,first).state
+		local gilded=sim.perform(raw,{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingSellPrice"}},13,second).state
+		local corrupted=copyTable(gilded);sim.rollCorrupted(model,corrupted,function() return 0 end);assert.is_truthy(corrupted.vendorImplicit);assert.equal(1,#corrupted.implicits)
+		for _,draw in ipairs({0,0.999}) do
+			local state=copyTable(corrupted);sim.rollCorrupted(model,state,function() return draw end,1,corrupted.corruptedImplicits);assert.equal(2,#state.corruptedImplicits)
+			if draw==0 then assert.is_nil(state.implicits);assert.equal(gilded.vendorImplicit,state.vendorImplicit)
+			else assert.equal(1,#state.implicits);assert.is_nil(state.vendorImplicit) end
+			state.twiceCorrupted=true;state=sim.validateState(model,state);local reopened=sim.model(sim.itemText(model,state))
+			assert.equal(#(state.implicits or {}),#(reopened.initial.implicits or {}));assert.equal(state.vendorImplicit and "unknown" or nil,reopened.initial.vendorImplicit)
+			local replacement=copyTable(state);sim.rollCorrupted(model,replacement,function() return 0 end,1,{state.corruptedImplicits[1]})
+			assert.same(state.implicits,replacement.implicits);assert.equal(state.vendorImplicit,replacement.vendorImplicit)
+		end
 	end)
 	it("keeps a retained base implicit's crafting restrictions after reopening",function()
 		local source="Rarity: NORMAL\nSomatic Wand\nItem Level: 86\nImplicits: 2\nCannot roll Caster Modifiers\nItem sells for much more to vendors"

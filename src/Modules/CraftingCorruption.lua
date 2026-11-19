@@ -24,7 +24,6 @@ function C.extend(M,A,api)
 	M.methodChecks.vaal=mixedImplicitReason
 	M.methodChecks.locus=function(model,state)
 		local reason=mixedImplicitReason(model,state);if reason then return reason end
-		if state.baseImplicitRetained then return "Locus replacement of a retained ordinary base implicit is not modeled." end
 		local flags=api.flags(model,state)
 		if flags.prefixes or flags.suffixes or flags.attack or flags.caster then return "Locus meta-modifier interactions need additional validation" end
 		for _,entry in ipairs(state.affixes) do if entry.fractured then return "Locus influence outcomes on fractured bases need additional validation" end end
@@ -135,18 +134,28 @@ function C.extend(M,A,api)
 		end
 		local previousCount=#(state.corruptedImplicits or {})
 		state.corruptedImplicits=chosen
+		-- Once two corruption implicits exist, a new one replaces one of
+		-- them; unrelated surviving implicits are not removed again.
+		if state.corrupted and previousCount==2 and #chosen==2 then return end
+		-- Under the current model, adding the second corruption replaces the
+		-- retained ordinary base implicit. This interaction is unverified.
+		if state.corrupted and state.baseImplicitRetained and #chosen>previousCount then
+			state.baseImplicitRetained=nil;state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil
+			return
+		end
 		-- Experimental first-corruption model: a Gilded line and each
 		-- identified Eldritch implicit are eligible for replacement. The
 		-- equal selection weights are an assumption, not server-confirmed.
-		if not state.corrupted and previousCount==0 and #chosen==1 and state.vendorImplicit and state.implicits and #state.implicits>0 then
+		if #chosen>previousCount and state.vendorImplicit and state.implicits and #state.implicits>0 then
 			local index=math.floor(random()*(#state.implicits+1))+1
 			if index>#state.implicits then state.vendorImplicit=nil
 			else table.remove(state.implicits,index);if #state.implicits==0 then state.implicits=nil end end
 			state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil;state.corrupted=true
 			return
 		end
-		if not state.corrupted and previousCount==0 and #chosen==1 and state.vendorImplicit and model.synthesisGroups and #model.synthesisGroups>0 then
-			local retained={};for index in ipairs(model.synthesisGroups) do retained[#retained+1]=index end
+		if #chosen>previousCount and state.vendorImplicit and model.synthesisGroups and #model.synthesisGroups>0 then
+			local retained=copyTable(state.synthRetained or {})
+			if not state.synthRetained and not state.synthExhausted then for index in ipairs(model.synthesisGroups) do retained[#retained+1]=index end end
 			local index=math.floor(random()*(#retained+1))+1
 			if index>#retained then state.vendorImplicit=nil;state.gildedCorruptionReplaced=true
 			else table.remove(retained,index) end
@@ -235,7 +244,7 @@ function C.extend(M,A,api)
 		if state.baseImplicitRetained~=nil then
 			assert(state.baseImplicitRetained==true and state.corrupted and state.corruptedImplicits and #state.corruptedImplicits==1 and not state.vendorImplicit and not state.implicits and not model.item.synthesised and (not model.item.corrupted and model.baseImplicitTemplates or model.initial.baseImplicitRetained),"Invalid retained ordinary base implicit")
 		end
-		assert(state.gildedCorruptionReplaced==nil or state.gildedCorruptionReplaced==true and state.corrupted and state.corruptedImplicits and not state.vendorImplicit and model.item.synthesised and not model.item.corrupted and model.synthesisGroups,"Invalid Gilded corruption replacement")
+		assert(state.gildedCorruptionReplaced==nil or state.gildedCorruptionReplaced==true and state.corrupted and state.corruptedImplicits and not state.vendorImplicit and model.item.synthesised and (not model.item.corrupted or model.initial.vendorImplicit) and model.synthesisGroups,"Invalid Gilded corruption replacement")
 		if state.gildedCorruptionReplaced then assert(state.synthRetained or state.synthExhausted,"Missing retained synthesised modifiers after Gilded replacement") end
 		assert(not state.twiceCorrupted or state.corrupted==true,"Twice Corrupted items must also be Corrupted")
 		assert(state.destroyed == nil or type(state.destroyed) == "boolean","Invalid destruction flag")

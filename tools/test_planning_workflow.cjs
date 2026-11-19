@@ -55,6 +55,8 @@ async function main(){
   assert.equal(gildedBase.nativeCrafting.state.baseImplicitRetained,true);assert.ok(gildedBase.nativeCrafting.itemText.includes('+16% to Item Rarity'));
   const gildedBaseReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:gildedBaseRaw,initialState:gildedBase.nativeCrafting.state,limit:5},'inspected');
   assert.equal(gildedBaseReview.crafting.nativeEngine.initialState.baseImplicitRetained,true);
+  const gildedBaseLocus=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedBaseRaw,initialState:gildedBase.nativeCrafting.state,action:{method:'locus'},seed:1},'crafted');
+  assert.equal(gildedBaseLocus.nativeCrafting.state.twiceCorrupted,true);assert.equal(gildedBaseLocus.nativeCrafting.state.corruptedImplicits.length,2);assert.equal(gildedBaseLocus.nativeCrafting.state.baseImplicitRetained,undefined);
   const gildedSynthRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 4\n+10 to Strength\n+20 to Dexterity\n+12 to Intelligence\nItem sells for much more to vendors\nSynthesised Item';
   const gildedSynth=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedSynthRaw,action:{method:'vaal'},seed:1},'crafted');
   assert.equal(gildedSynth.nativeCrafting.state.gildedCorruptionReplaced,true);assert.equal(gildedSynth.nativeCrafting.state.synthRetained.length,3);
