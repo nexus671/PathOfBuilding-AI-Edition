@@ -167,7 +167,7 @@ function Panel.Open(build,project,layout)
 			local warningAction=selected and selected.action or action and action()
 			if warningAction then for _,warning in ipairs(simulator.actionWarnings(warningAction,{item=model.item,initial=state})) do
 				if warning.code=="abyss_socket_layout" then hint=hint.." Abyss socket placement and removal are unverified."
-				elseif warning.code=="tincture_imported_values" then hint=hint.." Copied tincture values may produce inaccurate tiers and effects; verify the item." end
+				elseif warning.code=="tincture_imported_values" then hint="Copied tincture values may produce inaccurate tiers and effects; verify the item." end
 			end end
 			local unlock=id and require("Modules.CraftingBenchCosts").unlock(simulator.context(model,state),id)
 			local lines={}
