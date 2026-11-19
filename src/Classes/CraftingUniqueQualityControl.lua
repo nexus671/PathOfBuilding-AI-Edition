@@ -147,8 +147,38 @@ function M.Open(build,project,layout,snapshot)
 	c.loadTarget.width=130
 	c.loadTarget.enabled=targetAvailable
 	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."
+	local function canCreateRecipe()
+		if #actions==0 or #actions~=#history or history[1]~=draft.startingItem or #actions>100 then return false end
+		for _,action in ipairs(actions) do if action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="socket_white_bench" then return false end end
+		return true
+	end
+	local function createRecipe()
+		assert(canCreateRecipe(),"A complete supported preview from the starting item is needed")
+		local steps,requirements={},{};local i=1
+		while i<=#actions do
+			local action=actions[i]
+			if action=="quality" then
+				local first=i;while i<=#actions and actions[i]=="quality" do i=i+1 end
+				local _,after=unique.inspect(history[i] or raw);local count=i-first
+				steps[#steps+1]={method="quality",maxAttempts=count,untilRequirements={minQuality=after.quality}}
+				requirements.minQuality=info.quality
+			else
+				steps[#steps+1]={method=action};i=i+1
+				if action=="socket_white_bench" then requirements.socketColours=string.rep("W",#item.sockets)
+				else requirements.links=#item.sockets end
+			end
+		end
+		assert(#steps<=20,"This preview needs more than 20 recipe steps")
+		local recipe={steps=steps,targets={},requirements=requirements}
+		local result=require("Modules.CraftingSimulator").simulate(draft.startingItem,recipe,{trials=1,maxActions=100})
+		assert(result.sampleSuccess and result.sampleItem==raw,"The recipe did not reproduce this preview; review the actions")
+		return recipe
+	end
 	button("recipe",388,"Check recipe",function()
-		assert(draft.nativeRecipe,"This guide has no saved native recipe")
+		if not draft.nativeRecipe then
+			local updated=copyTable(draft);updated.nativeRecipe=createRecipe();draft=build.savers.CraftingProjects:Upsert(updated)
+			refresh(true);c.notice.label="^7Recipe saved. Save the build.";return
+		end
 		local result=require("Modules.CraftingSimulator").simulate(draft.startingItem,draft.nativeRecipe,{trials=1,maxActions=100,priceBook=draft.priceBook,treeVersion=build.spec.treeVersion})
 		local rw,rh=math.min(760,main.screenW-40),math.min(520,main.screenH-60);local view={}
 		ui.label(view,"heading",16,24,"Saved recipe result",20)
@@ -178,8 +208,9 @@ function M.Open(build,project,layout,snapshot)
 		ui.style(view);for _,control in pairs(view) do control.layoutAudit="unique-recipe-result" end
 		main:OpenPopup(rw,rh,"Saved unique recipe",view,nil,nil,"close")
 	end)
-	c.recipe.x=156;c.recipe.width=130;c.recipe.enabled=function() return draft.nativeRecipe~=nil end
-	c.recipe.tooltipText=function() return draft.nativeRecipe and "Check the saved native recipe from its starting item. No changes are made." or "Save a native recipe in this guide to check it here." end
+	c.recipe.x=156;c.recipe.width=130;c.recipe.label=function() return draft.nativeRecipe and "Check recipe" or "Save recipe" end
+	c.recipe.enabled=function() return draft.nativeRecipe~=nil or canCreateRecipe() end
+	c.recipe.tooltipText=function() return draft.nativeRecipe and "Check the saved native recipe from its starting item. No changes are made." or canCreateRecipe() and "Save this complete preview as a recipe; then check its result and cost." or "Preview supported actions from the starting item to create a recipe." end
 	ui.label(c,"notice",16,426,restored and "^7Session preview restored." or "",14)
 	local art,artCache=nil,{}
 	local currency=new("Control"):Control(ui.anchor,{16,454,42,42});c.currency=currency

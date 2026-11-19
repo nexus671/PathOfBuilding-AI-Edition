@@ -3,6 +3,17 @@ describe("Unique item quality",function()
 	local shield="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\nImplicits: 1\n+5% Chance to Block Attack Damage\n+100 to maximum Life\n+1500 to Armour"
 	local weapon="Rarity: UNIQUE\nThe Saviour\nLegion Sword\nItem Level: 86\nQuality: 0\nSockets: R-G-B\n+100% increased Physical Damage"
 	before_each(function() newBuild() end)
+	it("creates a checkable recipe from the complete unique preview",function()
+		local project={id="unique-preview-recipe",title="Recipe",slot="Weapon 2",startingItem=shield,goals={},steps={}}
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		assert.is_false(control.recipe:IsEnabled());control.apply:Click();control.apply:Click();control.omen:Click();control.white:Click()
+		assert.is_true(control.recipe:IsEnabled());control.recipe:Click()
+		local recipe=store.projects[1].nativeRecipe;assert.equal(3,#recipe.steps);assert.equal(2,recipe.steps[1].maxAttempts)
+		assert.equal("omen_connections",recipe.steps[2].method);assert.equal("socket_white_bench",recipe.steps[3].method)
+		assert.equal(14,recipe.requirements.minQuality);assert.equal(3,recipe.requirements.links);assert.equal("WWW",recipe.requirements.socketColours)
+		control.recipe:Click();assert.matches("Sockets: W%-W%-W",main.popups[1].controls.resultItemMods.list[1][1]);main.popups={}
+	end)
 	it("checks and saves a unique recipe result without changing the preview",function()
 		local project={id="unique-recipe-ui",title="Recipe",slot="Weapon 2",startingItem=shield,goals={},steps={},nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=3}}}
 		local store=build.savers.CraftingProjects;store:Upsert(project)
