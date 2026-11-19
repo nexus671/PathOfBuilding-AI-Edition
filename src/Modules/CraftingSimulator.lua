@@ -1179,4 +1179,22 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
 	end
 	return true
 end
+-- Unique quality uses a separate item-preserving path; ordinary affix states
+-- cannot represent unique modifiers. Continue by passing the returned text.
+do
+	local ordinaryPerform=M.perform
+	function M.perform(raw,action,seed,initialState,treeVersion)
+		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
+		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and action.method=="quality" then
+			assert(initialState==nil,"Continue unique quality using the returned item text, not an ordinary crafting state")
+			for key in pairs(action) do assert(key=="method","Unique quality does not accept additional action options") end
+			if seed~=nil then integer(seed,1,2147483646,"seed") end
+			local result=require("Modules.CraftingUniqueQuality").apply(raw)
+			local output=result.itemText;result.itemText=nil
+			return M.withTreeContext({priceKey="quality",itemText=output,uniqueQuality=result,components={[result.resourceKey]=1},dataPatch=M.dataPatch,
+				warnings={{code="unique_quality_scope",message="Only ordinary quality currency is supported for unique armour and weapons. Continue using the returned item text; unique recipes and other currencies are not modeled."}},limitations=copyTable(M.limits)},treeVersion)
+		end
+		return ordinaryPerform(raw,action,seed,initialState,treeVersion)
+	end
+end
 return M

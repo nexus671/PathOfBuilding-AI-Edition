@@ -78,10 +78,11 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 	local height=layout and layout.height or math.min(720,main.screenH-60)
 	local width=layout and layout.width or 880
 	local function selected() return (assert(store.projects[controls.projects:GetSelValueByKey("val")],"Create or select a project first")) end
-	local cachedRaw,cachedReason
+	local cachedRaw,cachedReason,cachedUniqueQuality
 	local function workbenchReason(project)
 		if project.startingItem~=cachedRaw then
 			cachedRaw=project.startingItem;cachedReason=projects.workbenchReason(project)
+			cachedUniqueQuality=cachedReason and pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem) or false
 		end
 		return cachedReason
 	end
@@ -113,7 +114,11 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 		local project=assert(json.decode(Paste()),"Clipboard needs a crafting project JSON object")
 		store:Upsert(project); main.popups={}; Panel.Open(build,nil,nil,layout)
 	end)
-	controls.native=button(544,height-138,160,"Native crafting",function() if layout then layout.openWorkbench(selected()) else require("Classes.CraftingSimulatorControl").Open(build,selected()) end end)
+	controls.native=button(544,height-138,160,"Native crafting",function()
+		workbenchReason(selected())
+		if cachedUniqueQuality then require("Classes.CraftingUniqueQualityControl").Open(build,selected(),layout)
+		elseif layout then layout.openWorkbench(selected()) else require("Classes.CraftingSimulatorControl").Open(build,selected()) end
+	end)
 	controls.coe=button(16,height-48,220,"Craft of Exile (optional)",function() OpenURL(projects.handoff(selected().startingItem).url) end)
 	controls.preview=button(720,height-138,144,"Preview target",function() Panel.Preview(build,selected()) end)
 	controls.inspect=button(16,height-94,160,"Find modifiers",function()
@@ -140,8 +145,8 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 		store:Upsert(project); refresh()
 	end)
 	for _,name in ipairs({"copy","coe","native","preview","inspect","attach","copyExport","done","undoStep"}) do controls[name].enabled=#list > 0 end
-	controls.native.enabled=function() return #list>0 and not workbenchReason(selected()) end
-	controls.native.tooltipText=function() if #list==0 then return "Select a project to open its workbench." end;return workbenchReason(selected()) or "Open the local crafting workbench." end
+	controls.native.enabled=function() if #list==0 then return false end;local reason=workbenchReason(selected());return not reason or cachedUniqueQuality end
+	controls.native.tooltipText=function() if #list==0 then return "Select a project to open its workbench." end;local reason=workbenchReason(selected());return cachedUniqueQuality and "Preview ordinary quality currency for this unique item." or reason or "Open the local crafting workbench." end
 	controls.close=button(748,height-48,116,"Close",function() main:ClosePopup() end)
 	controls.inventory=button(252,height-48,180,"Item inventory",function()
 		require("Classes.CraftingInventoryControl").Open(build,{resume=function(project) if layout then layout.openWorkbench(project) else require("Classes.CraftingSimulatorControl").Open(build,project) end end})
@@ -177,7 +182,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 		controls.inventory.x=width-196;controls.inventory.y=102
 		controls.details.x=16;controls.details.y=148;controls.details.width=width-32;controls.details.height=height-224
 		controls.details.shown=function() return controls.libraryPage:GetSelValue()=="Plan" end
-		controls.native.x=16;controls.native.y=404;controls.native.width=260;controls.native.height=32;controls.native.label="Open workbench"
+		controls.native.x=16;controls.native.y=404;controls.native.width=260;controls.native.height=32;controls.native.label=function() if #list>0 then workbenchReason(selected());if cachedUniqueQuality then return "Unique quality" end end;return "Open workbench" end
 		controls.preview.x=16;controls.preview.y=448;controls.preview.width=260;controls.preview.height=32;controls.preview.label="Compare target with build"
 		for _,key in ipairs({"native","preview"}) do controls[key].shown=function() return #list>0 and controls.libraryPage:GetSelValue()=="Item" end end
 		controls.remove.x=16;controls.remove.y=height-56;controls.remove.width=126

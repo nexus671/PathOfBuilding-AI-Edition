@@ -251,3 +251,5 @@ other unfinished work still needs **Keep working craft**.
 Base artwork is bundled from the same pinned game-data export as crafting. Missing artwork uses PoB's equipment silhouette. The workbench works offline; `python tools/update_crafting_art.py` refreshes the asset manifest when the crafting data is updated.
 
 AI clients can call `review_crafting_unlocks` for a saved project to review its known bench unlocks, recipe step numbers and Roadmap status. It returns reference data without changing the build or checking the account. The report uses the starting item model; steps affected by later base changes require review.
+
+Eligible uncorrupted unique armour and weapons can use the **Unique quality** preview in a crafting project. Each ordinary quality currency raises quality by one percentage point, up to 20%; undo is available for the current preview. **Keep as target**, then save the build, to retain the result. Other unique crafting methods are not yet simulated. MCP `apply_crafting_action` also accepts `quality` for these items; pass the returned item text to the next action rather than an ordinary crafting state.

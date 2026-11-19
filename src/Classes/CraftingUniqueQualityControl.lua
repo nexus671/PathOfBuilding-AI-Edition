@@ -1,0 +1,48 @@
+-- Session preview for the deterministic unique quality operation.
+local ui=require("Modules.PlanningUI")
+local unique=require("Modules.CraftingUniqueQuality")
+local M={}
+function M.Open(build,project,layout,snapshot)
+	local draft=copyTable(project);local raw=snapshot and snapshot.itemText or draft.startingItem
+	local history=snapshot and copyTable(snapshot.history or {}) or {}
+	local item,info=unique.inspect(raw)
+	local original=unique.inspect(draft.startingItem)
+	assert(item.title==original.title and item.baseName==original.baseName,"Unique preview does not match the starting item")
+	local w,h=layout and layout.width or math.min(880,main.screenW-40),layout and layout.height or math.min(650,main.screenH-60)
+	local c={};local cardX=310;local cardWidth=w-cardX-16
+	ui.label(c,"heading",16,18,"Unique quality",22)
+	ui.description(c,"intro",16,56,270,100,{"Preview this unique item's quality.","Each currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
+	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM")
+	local function button(key,y,label,run)
+		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,y,270,32},label,function()
+			local ok,err=pcall(run);if not ok then main:OpenMessagePopup("Unique quality",ui.errorText(err)) end
+		end))
+	end
+	local function refresh()
+		item,info=unique.inspect(raw);show(item)
+		c.status.label="^7Quality: "..info.quality.."% | "..(info.available and "Ready" or "20% cap reached")
+		c.apply.label="Use "..info.resource
+	end
+	ui.label(c,"status",16,174,"",14)
+	button("apply",206,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;raw=result.itemText;refresh() end)
+	c.apply.enabled=function() return info.available end
+	button("undo",250,"Undo",function() assert(#history>0,"No quality action to undo");raw=table.remove(history);refresh() end)
+	c.undo.enabled=function() return #history>0 end
+	button("keep",294,"Keep as target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);c.notice.label="^7Target kept. Save the build." end)
+	c.keep.enabled=function() return raw~=draft.targetItem end
+	ui.label(c,"notice",16,338,"",14)
+	local artPath=require("Modules.CraftingWorkbench").icon("quality",nil,{item=item})
+	local art=artPath and NewImageHandle();if art then art:Load(artPath) end
+	local currency=new("Control"):Control(ui.anchor,{16,382,42,42});c.currency=currency
+	function currency:Draw() if art then local x,y=self:GetPos();SetDrawColor(1,1,1);DrawImage(art,x,y,42,42) end end
+	ui.description(c,"currencyNote",68,384,218,48,{"Preview only", "No currency is spent."},14)
+	button("close",h-50,layout and "Back to projects" or "Close",function() if layout then layout.openProjects() else main:ClosePopup() end end)
+	for _,control in pairs(c) do control.layoutAudit="unique-quality" end
+	ui.style(c,{apply=true},{item=true});refresh()
+	if layout then
+		layout.snapshot=function() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history)} end
+		layout.mount(w,h,"Unique quality",c)
+	else main:OpenPopup(w,h,"Unique quality",c,nil,nil,"close") end
+	return c
+end
+return M

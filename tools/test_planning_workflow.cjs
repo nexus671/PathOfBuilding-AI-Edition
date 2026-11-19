@@ -51,6 +51,11 @@ async function main(){
   const proof=await host('connection-proof');assert.equal(proof.client,'planning-workflow-test');assert.equal(proof.tested,true);assert.equal(proof.synced,true);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
   const origin=createHash('sha1').update(raw).digest('hex');
+  const uniqueShield='Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\n+100 to maximum Life';
+  const uniqueQuality=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},seed:1},'crafted');
+  assert.equal(uniqueQuality.nativeCrafting.uniqueQuality.quality,13);assert.equal(uniqueQuality.nativeCrafting.uniqueQuality.resource,"Armourer's Scrap");
+  const uniqueQualityNext=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueQuality.nativeCrafting.itemText,action:{method:'quality'},seed:2},'crafted');
+  assert.equal(uniqueQualityNext.nativeCrafting.uniqueQuality.quality,14);assert.match(uniqueQualityNext.nativeCrafting.itemText,/\+100 to maximum Life/);
   const corruptJewelRaw='Rarity: NORMAL\nCobalt Jewel\nItem Level: 83';
   const corruptJewelInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:corruptJewelRaw,query:'',limit:5},'inspected');
   assert.ok(corruptJewelInspection.crafting.nativeEngine.uniqueCorruption.names.includes('Powerlessness'));

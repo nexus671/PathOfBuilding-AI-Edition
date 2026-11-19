@@ -170,7 +170,8 @@ function M:Show(page,source)
 		elseif page=="journey" then require("Classes.BuildJourneyControl").Open(self.build,source,layout)
 		elseif page=="atlas" then require("Classes.AtlasPlannerControl").Open(self.build,source,layout)
 		elseif page=="crafting" then
-			if source and source.kind=="workbench" then layout.workbench=source.state and source or nil;require("Classes.CraftingSimulatorControl").Open(self.build,source.project,layout)
+			if source and source.kind=="uniqueQuality" then require("Classes.CraftingUniqueQualityControl").Open(self.build,source.project,layout,source)
+			elseif source and source.kind=="workbench" then layout.workbench=source.state and source or nil;require("Classes.CraftingSimulatorControl").Open(self.build,source.project,layout)
 			else require("Classes.CraftingProjectControl").Open(self.build,nil,nil,layout) end
 		else require("Classes.BuildProposalControl").Open(self.build,layout) end
 	else self.body=cached.body end
