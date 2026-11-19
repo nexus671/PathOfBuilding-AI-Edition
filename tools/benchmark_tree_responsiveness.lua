@@ -29,13 +29,13 @@ end
 for _ = 1, cycles do
 	local selected
 	for _, node in pairsSortByKey(build.spec.nodes) do
-		if not node.alloc and node.type == "Normal" and not node.isMultipleChoiceOption
+		if not node.alloc and (node.type == "Normal" or node.type == "Notable") and not node.isMultipleChoiceOption
 			and not node.ascendancyName and node.path and #node.path == 1 then
 			selected = node
 			break
 		end
 	end
-	assert(selected, "No adjacent ordinary passive is available")
+	assert(selected, "No adjacent small or notable passive is available")
 	local start = os.clock()
 	build.spec:AllocNode(selected)
 	local allocated = os.clock()

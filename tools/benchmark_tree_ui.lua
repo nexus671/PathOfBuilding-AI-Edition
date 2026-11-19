@@ -54,14 +54,14 @@ end
 ui:frame()
 local selected
 for _, node in pairsSortByKey(build.spec.nodes) do
-	if not node.alloc and node.type == "Normal" and not node.isMultipleChoiceOption
+	if not node.alloc and (node.type == "Normal" or node.type == "Notable") and not node.isMultipleChoiceOption
 		and not node.ascendancyName and node.path and #node.path == 1 and node.rsq
 		and not node.isProxy and node.group and not node.group.isProxy then
 		selected = node
 		break
 	end
 end
-assert(selected, "No visible adjacent normal passive found")
+assert(selected, "No visible adjacent small or notable passive found")
 viewer:Focus(selected.x, selected.y, viewport, build)
 ui:frame()
 local x, y = viewport.x + viewport.width / 2, viewport.y + viewport.height / 2
