@@ -2052,6 +2052,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("undo");assert(w.controls.link:IsEnabled(),"Undo did not restore unique socket links")
 		assert(w.controls.omen:IsEnabled(),"Unique Omen link preview unavailable");ui:click("omen");assert(not w.controls.omen:IsEnabled(),"Fully linked unique still offered an Omen link craft");ui:click("undo")
 		ui:click("apply");assert(w.controls.status.label:find("1%%"),"Quality did not increase")
+		ui:click("recipe");ui:click("update");assert(store.projects[#store.projects].nativeRecipe.steps[1].method=="omen_connections","Recipe changed before confirmation")
+		ui:click("confirm");assert(store.projects[#store.projects].nativeRecipe.requirements.minQuality==1,"Confirmed preview recipe was not updated")
 		ui:click("undo");assert(w.controls.status.label:find("0%%"),"Quality undo failed");assert(w.controls.redo:IsEnabled(),"Unique redo unavailable")
 		ui:click("redo");assert(w.controls.status.label:find("1%%"),"Quality redo failed");ui:click("undo");ui:click("apply");ui:click("keep")
 		assert(select(2,require("Modules.CraftingUniqueQuality").inspect(store.projects[#store.projects].targetItem)).quality==1,"Unique target was not kept")
