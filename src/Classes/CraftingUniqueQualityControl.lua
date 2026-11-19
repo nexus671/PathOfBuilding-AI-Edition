@@ -162,6 +162,18 @@ function M.Open(build,project,layout,snapshot)
 		view.details=new("TextListControl"):TextListControl(ui.anchor,{16,62,300,rh-126},nil,ui.rows(lines,276,14))
 		local render=require("Classes.JourneyItemControl").new(view,"resultItem",332,62,rw-348,rh-126,"RESULT ITEM")
 		render(require("Modules.CraftingProjects").item(result.sampleItem))
+		view.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,rh-48,160,28},"Keep as target",function()
+			local function keepResult()
+				local updated=copyTable(draft);updated.targetItem=result.sampleItem
+				draft=build.savers.CraftingProjects:Upsert(updated);refresh(true)
+				c.notice.label="^7Recipe result kept. Save the build.";main:ClosePopup()
+			end
+			if draft.targetItem and draft.targetItem:match("%S") and draft.targetItem~=result.sampleItem then
+				main:OpenConfirmPopup("Replace crafting target","Replace the saved target with this modeled recipe result?\nUse build Save to persist the change.","Replace",keepResult)
+			else keepResult() end
+		end)
+		view.keep.enabled=result.sampleSuccess
+		view.keep.tooltipText=result.sampleSuccess and "Keep this modeled result as the guide's target." or "The recipe did not reach its goal."
 		view.close=new("ButtonControl"):ButtonControl(ui.anchor,{rw-132,rh-48,116,28},"Back",function() main:ClosePopup() end)
 		ui.style(view);for _,control in pairs(view) do control.layoutAudit="unique-recipe-result" end
 		main:OpenPopup(rw,rh,"Saved unique recipe",view,nil,nil,"close")
