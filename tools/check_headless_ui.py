@@ -86,10 +86,13 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1773, f"Expected 1773 UI frames, found {len(paths)}"
+    assert len(paths) == 1776, f"Expected 1776 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         before = json.loads((frames / f"{width}-crafting-unique-quality.json").read_text())
         linked = json.loads((frames / f"{width}-crafting-unique-linked.json").read_text())
+        recipe = json.loads((frames / f"{width}-crafting-unique-recipe-result.json").read_text())
+        recipe_text = " ".join(c.get("text", "") for c in recipe["commands"] if c.get("kind") == "text")
+        assert "Goal reached" in recipe_text and "Sockets: R-G-B" in recipe_text, "Unique recipe result is missing its outcome or item"
         assert any("Sockets: R-G B" in c.get("text", "") for c in before["commands"]), "Starting socket layout is missing"
         assert any("Sockets: R-G-B" in c.get("text", "") for c in linked["commands"]), "Linked socket layout is missing"
         for name in ("crafting-unique-white-sockets", "crafting-unique-corrupted-white"):
