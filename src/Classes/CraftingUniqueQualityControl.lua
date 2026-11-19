@@ -1,4 +1,4 @@
--- Session preview for the deterministic unique quality operation.
+-- Session preview for supported unique item crafts.
 local ui=require("Modules.PlanningUI")
 local unique=require("Modules.CraftingUniqueQuality")
 local M={}
@@ -14,12 +14,12 @@ function M.Open(build,project,layout,snapshot)
 	assert(item.title==original.title and item.baseName==original.baseName,"Unique preview does not match the starting item")
 	local w,h=layout and layout.width or math.min(880,main.screenW-40),layout and layout.height or math.min(650,main.screenH-60)
 	local c={};local cardX=310;local cardWidth=w-cardX-16
-	ui.label(c,"heading",16,18,"Unique quality",22)
+	ui.label(c,"heading",16,18,"Unique crafting",22)
 	ui.description(c,"intro",16,56,270,100,{"Preview quality or link existing sockets.","Quality currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
 	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM")
 	local function button(key,y,label,run)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,y,270,32},label,function()
-			local ok,err=pcall(run);if not ok then main:OpenMessagePopup("Unique quality",ui.errorText(err)) end
+			local ok,err=pcall(run);if not ok then main:OpenMessagePopup("Unique crafting",ui.errorText(err)) end
 		end))
 	end
 	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history)} end
@@ -38,7 +38,9 @@ function M.Open(build,project,layout,snapshot)
 	c.apply.enabled=function() return info.available end
 	button("link",250,"Bestiary: link sockets",function() local result=unique.link(raw);history[#history+1]=raw;raw=result.itemText;refresh(true) end)
 	c.link.enabled=function() return not linkReason end
-	c.link.tooltipText="Links existing sockets using a Black Morrigan and a Craicic Sand Spitter."
+	c.link.tooltipText=function()
+		return linkReason or "Links existing sockets using a Black Morrigan and a Craicic Sand Spitter."
+	end
 	button("undo",294,"Undo",function() assert(#history>0,"No action to undo");raw=table.remove(history);refresh(true) end)
 	c.undo.enabled=function() return #history>0 end
 	button("keep",338,"Keep as target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);ui.discard(build,"uniqueQuality",draft.id);require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target kept. Save the build." end)
@@ -74,8 +76,8 @@ function M.Open(build,project,layout,snapshot)
 	ui.style(c,{apply=true},{item=true});refresh()
 	if layout then
 		layout.snapshot=snapshotPreview
-		layout.mount(w,h,"Unique quality",c)
-	else main:OpenPopup(w,h,"Unique quality",c,nil,nil,"close") end
+		layout.mount(w,h,"Unique crafting",c)
+	else main:OpenPopup(w,h,"Unique crafting",c,nil,nil,"close") end
 	return c
 end
 return M

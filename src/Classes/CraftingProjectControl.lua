@@ -146,7 +146,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 	end)
 	for _,name in ipairs({"copy","coe","native","preview","inspect","attach","copyExport","done","undoStep"}) do controls[name].enabled=#list > 0 end
 	controls.native.enabled=function() if #list==0 then return false end;local reason=workbenchReason(selected());return not reason or cachedUniqueQuality end
-	controls.native.tooltipText=function() if #list==0 then return "Select a project to open its workbench." end;local reason=workbenchReason(selected());return cachedUniqueQuality and "Preview ordinary quality currency for this unique item." or reason or "Open the local crafting workbench." end
+	controls.native.tooltipText=function() if #list==0 then return "Select a project to open its workbench." end;local reason=workbenchReason(selected());return cachedUniqueQuality and "Preview quality and socket linking for this unique item." or reason or "Open the local crafting workbench." end
 	controls.close=button(748,height-48,116,"Close",function() main:ClosePopup() end)
 	controls.inventory=button(252,height-48,180,"Item inventory",function()
 		require("Classes.CraftingInventoryControl").Open(build,{resume=function(project) if layout then layout.openWorkbench(project) else require("Classes.CraftingSimulatorControl").Open(build,project) end end})
@@ -182,7 +182,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 		controls.inventory.x=width-196;controls.inventory.y=102
 		controls.details.x=16;controls.details.y=148;controls.details.width=width-32;controls.details.height=height-224
 		controls.details.shown=function() return controls.libraryPage:GetSelValue()=="Plan" end
-		controls.native.x=16;controls.native.y=404;controls.native.width=260;controls.native.height=32;controls.native.label=function() if #list>0 then workbenchReason(selected());if cachedUniqueQuality then return "Unique quality" end end;return "Open workbench" end
+		controls.native.x=16;controls.native.y=404;controls.native.width=260;controls.native.height=32;controls.native.label=function() if #list>0 then workbenchReason(selected());if cachedUniqueQuality then return "Unique crafting" end end;return "Open workbench" end
 		controls.preview.x=16;controls.preview.y=448;controls.preview.width=260;controls.preview.height=32;controls.preview.label="Compare target with build"
 		for _,key in ipairs({"native","preview"}) do controls[key].shown=function() return #list>0 and controls.libraryPage:GetSelValue()=="Item" end end
 		controls.remove.x=16;controls.remove.y=height-56;controls.remove.width=126

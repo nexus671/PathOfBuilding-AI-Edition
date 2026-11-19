@@ -49,7 +49,7 @@ function M.Recovery(build)
 				table.insert(details,1,(item.title or item.baseName).." | "..record.entry.plan.project.slot.." | "..info.quality.."% quality")
 				details[#details+1]="Up to 64 undo steps are retained."
 			end
-			local label=kind=="uniqueQuality" and ("Unique quality: "..record.entry.plan.project.title) or ({filters="Loot-filter draft",atlas="Atlas draft",crafting="Working craft"})[kind]
+			local label=kind=="uniqueQuality" and ("Unique crafting: "..record.entry.plan.project.title) or ({filters="Loot-filter draft",atlas="Atlas draft",crafting="Working craft"})[kind]
 			entries[#entries+1]={id=projectId and kind..":"..projectId or kind,kind=kind,projectId=projectId,label=label,details=details,record=record}
 		end
 	end

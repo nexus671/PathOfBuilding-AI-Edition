@@ -142,7 +142,7 @@ describe("Local planning draft recovery",function()
 		assert.is_false(recovery.isCurrent(build,"uniqueQuality",saved.entry));assert.is_nil(build.savers.CraftingProjects.projects[1].targetItem)
 		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
 		require("Classes.PlanningToolsControl").Recovery(build);local browser=main.popups[1].controls
-		assert.matches("Unique quality: Unique",browser.results.list[1][1]);assert.matches("Goldrim",browser.details.list[1][1]);assert.matches("2%% quality",browser.details.list[1][1]);browser.choose:Click()
+		assert.matches("Unique crafting: Unique",browser.results.list[1][1]);assert.matches("Goldrim",browser.details.list[1][1]);assert.matches("2%% quality",browser.details.list[1][1]);browser.choose:Click()
 		assert.equal("crafting",workspace.page);assert.matches("2%%",workspace.controls.status.label);workspace.controls.undo:Click();assert.matches("1%%",workspace.controls.status.label)
 		assert.is_true(require("Modules.PlanningUI").hasDraft(build,"uniqueQuality",project.id))
 	end)

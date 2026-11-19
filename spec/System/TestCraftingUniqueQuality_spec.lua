@@ -17,7 +17,8 @@ describe("Unique item quality",function()
 		local project={id="unique-link",title="Links",slot="Weapon 2",startingItem=source,goals={},steps={}}
 		build.savers.CraftingProjects:Upsert(project)
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
-		assert.is_true(control.link:IsEnabled());control.link:Click();assert.is_false(control.link:IsEnabled())
+		assert.is_true(control.link:IsEnabled());assert.matches("Black Morrigan",control.link.tooltipText());control.link:Click();assert.is_false(control.link:IsEnabled())
+		assert.matches("already fully linked",control.link.tooltipText())
 		control.undo:Click();assert.is_true(control.link:IsEnabled());control.link:Click();control.keep:Click()
 		assert.equal(result.itemText,build.savers.CraftingProjects.projects[1].targetItem)
 		main.popups={}
