@@ -425,6 +425,13 @@ describe("Linked planning tools",function()
 		for _,warning in ipairs(fullWarnings) do if warning.origin=="craft:corrupted-unique" then message=message..warning.message end end
 		assert.is_truthy(message:find("Ordinary quality currency cannot exceed 20%",1,true))
 	end)
+	it("explains impossible fixed unique layouts in linked filter plans",function()
+		for _,item in ipairs({{"Tabula Rasa","Simple Robe","R-W-W-W-W-W","Body Armour","six linked white sockets"},{"Oni-Goroshi","Charan's Sword","R G B","Weapon 1","six linked sockets"}}) do
+			local project={id="fixed-invalid",title=item[1],slot=item[4],startingItem="Rarity: UNIQUE\n"..item[1].."\n"..item[2].."\nItem Level: 86\nSockets: "..item[3],goals={},steps={},nativeRecipe={steps={{method="quality"}},targets={},requirements={minQuality=20}}}
+			build.savers.CraftingProjects:Upsert(project);local _,warnings=filters.generate(build,filters.profile("fixed-invalid","Fixed"));local found=false
+			for _,warning in ipairs(warnings) do if warning.origin=="craft:fixed-invalid" and warning.message:find(item[5],1,true) then found=true end end;assert.is_true(found)
+		end
+	end)
 	it("explains impossible Skin socket layouts in linked filter plans",function()
 		local project={id="bad-skin",title="Skin",slot="Body Armour",startingItem="Rarity: UNIQUE\nSkin of the Loyal\nSimple Robe\nItem Level: 86\nSockets: R G B",goals={},steps={},nativeRecipe={steps={{method="quality"}},targets={},requirements={minQuality=20}}}
 		build.savers.CraftingProjects:Upsert(project);local _,warnings=filters.generate(build,filters.profile("bad-skin","Bad Skin"));local found=false

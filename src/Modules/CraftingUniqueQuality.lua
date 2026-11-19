@@ -6,7 +6,6 @@ local M={}
 local socketRestrictions={["Tabula Rasa"]="fixed",["Oni-Goroshi"]="fixed"}
 local uniquesByName
 local function uniqueSocketRestriction(title)
-	if socketRestrictions[title]~=nil then return socketRestrictions[title] end
 	if not uniquesByName then
 		uniquesByName={}
 		for _,entries in pairs(data.uniques or {}) do for _,raw in ipairs(entries) do
@@ -14,6 +13,7 @@ local function uniqueSocketRestriction(title)
 			if name then uniquesByName[name]=uniquesByName[name] or {};uniquesByName[name][#uniquesByName[name]+1]=raw end
 		end end
 	end
+	if socketRestrictions[title]~=nil then return socketRestrictions[title] end
 	local restriction=false
 	for _,raw in ipairs(uniquesByName[title] or {}) do for line in raw:gmatch("[^\r\n]+") do
 		while line:match("^%b{}") do line=line:gsub("^%b{}","") end
@@ -76,12 +76,18 @@ function M.inspect(raw)
 	assert(weapon or item.base.armour or flask,"Unique quality tools currently support armour, weapons, flasks and tinctures")
 	assert(not item.mirrored,"Mirrored items cannot be crafted")
 	assert(item.corrupted or not alwaysCorrupted(item.title,item.baseName),"This unique is always corrupted; include its Corrupted line in the starting item")
-	-- These immutable Breach uniques always have six linked sockets. Only
-	-- validate an explicitly supplied layout; missing sockets remain unknown.
-	if item.baseName=="Simple Robe" and (item.title=="Skin of the Loyal" or item.title=="Skin of the Lords") and raw:find("\nSockets:",1,true) then
-		local sockets=item.sockets or {};local linked=#sockets==6
-		for _,socket in ipairs(sockets) do linked=linked and (socket.color=="R" or socket.color=="G" or socket.color=="B" or socket.color=="W") and socket.group==sockets[1].group end
+	-- These uniques have hidden fixed six-link layouts. Only validate an
+	-- explicitly supplied layout; missing sockets remain unknown.
+	local tabula=item.baseName=="Simple Robe" and item.title=="Tabula Rasa"
+	local fixedSix=tabula or item.baseName=="Simple Robe" and (item.title=="Skin of the Loyal" or item.title=="Skin of the Lords") or item.baseName=="Charan's Sword" and item.title=="Oni-Goroshi"
+	if fixedSix and raw:find("\nSockets:",1,true) then
+		local sockets=item.sockets or {};local linked=#sockets==6;local white=true
+		for _,socket in ipairs(sockets) do
+			linked=linked and (socket.color=="R" or socket.color=="G" or socket.color=="B" or socket.color=="W") and socket.group==sockets[1].group
+			white=white and socket.color=="W"
+		end
 		assert(linked,"This unique has six linked sockets; correct the starting socket layout")
+		assert(not tabula or white,"This unique has six linked white sockets; correct the starting socket layout")
 	end
 	assert(not item.foulborn,"Foulborn items need a separate modifier-mutation model")
 	local quality=item.quality or 0;assert(type(quality)=="number" and quality>=0 and quality==math.floor(quality),"Invalid item quality")

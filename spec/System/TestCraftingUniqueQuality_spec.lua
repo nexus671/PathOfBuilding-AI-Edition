@@ -231,6 +231,21 @@ describe("Unique item quality",function()
 		local normal="Rarity: UNIQUE\nSkin of the Loyal\nSimple Robe\nItem Level: 86\nSockets: R-G-B-R-G-B"
 		assert.is_false(quality.inspect(normal).corrupted or false)
 	end)
+	it("initializes fixed unique restrictions on the first inspection",function()
+		local cached=package.loaded["Modules.CraftingUniqueQuality"]
+		for _,item in ipairs({{"Tabula Rasa","Simple Robe","W-W-W-W-W-W"},{"Oni-Goroshi","Charan's Sword","R-G-B-W-R-G"}}) do
+			package.loaded["Modules.CraftingUniqueQuality"]=nil;local fresh=require("Modules.CraftingUniqueQuality")
+			local parsed=fresh.inspect("Rarity: UNIQUE\n"..item[1].."\n"..item[2].."\nItem Level: 86\nSockets: "..item[3]);assert.equal(item[1],parsed.title)
+		end
+		package.loaded["Modules.CraftingUniqueQuality"]=cached
+	end)
+	it("rejects impossible Tabula and Oni socket layouts",function()
+		for _,item in ipairs({{"Tabula Rasa","Simple Robe","W-W-W-W-W-W","R-W-W-W-W-W","six linked white sockets"},{"Oni-Goroshi","Charan's Sword","R-G-B-W-R-G","R-G-B","six linked sockets"}}) do
+			local raw="Rarity: UNIQUE\n"..item[1].."\n"..item[2].."\nItem Level: 86";local missing=quality.inspect(raw);assert.is_truthy(missing)
+			local valid=quality.inspect(raw.."\nSockets: "..item[3]);assert.is_truthy(valid)
+			local ok,reason=pcall(quality.inspect,raw.."\nSockets: "..item[4]);assert.is_false(ok);assert.matches(item[5],reason,1,true)
+		end
+	end)
 	it("rejects impossible explicit socket layouts on Skin uniques",function()
 		for _,name in ipairs({"Skin of the Loyal","Skin of the Lords"}) do
 			local raw="Rarity: UNIQUE\n"..name.."\nSimple Robe\nItem Level: 86\nSockets: R G B"..(name=="Skin of the Lords" and "\nCorrupted" or "")
