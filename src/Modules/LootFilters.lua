@@ -245,8 +245,24 @@ function M.generate(build,profile,checkpoint)
 	for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.nativeRecipe then
 		local key=require("sha1")(project.startingItem.."\0"..require("Modules.PlanningData").encode(project.nativeRecipe))
 		local coverage=recipeResourceCache[key];local needsInspection=not coverage;local ok=true
-		if not coverage and checkpoint then require("Modules.CraftingAdvanced").prepare(checkpoint) end
+		local rarity=project.startingItem:match("^Rarity:%s*(%a+)") or project.startingItem:match("\nRarity:%s*(%a+)")
+		local isUnique=rarity and rarity:upper()=="UNIQUE"
+		if not coverage and checkpoint and not isUnique then require("Modules.CraftingAdvanced").prepare(checkpoint) end
 		if not coverage then ok,coverage=pcall(function()
+			if isUnique then
+				local unique=require("Modules.CraftingUniqueQuality");local item=unique.inspect(project.startingItem)
+				local catalog=unique.catalog(project.startingItem,"",50);local actions={};for _,entry in ipairs(catalog.uniqueActions) do actions[entry.method]=entry end
+				local result={items={},unknown={}};local prices=require("Modules.CraftingPrices");local model={item=item}
+				for _,step in ipairs(project.nativeRecipe.steps) do
+					local entry=actions[step.method]
+					if not entry then result.unknown[#result.unknown+1]=step.method
+					else for resource in pairs(entry.components) do
+						local canonical=prices.key(resource,model);local name,_,kind=prices.describe(canonical,model,step)
+						if kind=="Currency" then result.items[#result.items+1]={key=canonical,name=name} end
+					end end
+				end
+				return result
+			end
 			local sim=require("Modules.CraftingSimulator");local model=recipeModels[project.startingItem]
 			if not model then model=sim.model(project.startingItem);recipeModels[project.startingItem]=model end
 			local state=project.nativeRecipe.initialState and sim.validateState(model,project.nativeRecipe.initialState) or model.initial

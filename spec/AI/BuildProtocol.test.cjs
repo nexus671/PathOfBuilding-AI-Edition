@@ -361,7 +361,7 @@ test('describes unique crafting continuation and simulation limits to AI clients
   const descriptions=Object.fromEntries(tools.map(tool=>[tool.name,tool.description]));
   assert.match(descriptions.apply_crafting_action,/unique items, pass the returned itemText and omit initialState/);
   assert.match(descriptions.calculate_crafting,/Supported unique actions.*intrinsic item stats/);
-  assert.match(descriptions.simulate_crafting,/Multi-step unique recipes are not modeled/);
+  assert.match(descriptions.simulate_crafting,/Supported unique quality and socket actions use an exact deterministic recipe model/);
 });
 
 test('queues crafting inspection with exactly one item source and current revision', t => {

@@ -120,6 +120,10 @@ async function main(){
   assert.equal(uniqueImpossible.nativeCrafting.successChance,0);assert.equal(uniqueImpossible.nativeCrafting.components['Metadata/Items/Currency/CurrencyCorrupt'],1);
   const uniqueUnknownGoal=await queued('calculate_crafting',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},targets:[],options:{requirements:{openPrefixes:1}}},'failed');
   assert.match(uniqueUnknownGoal.error,/not supported/);
+  const uniqueRecipe={steps:[{method:'quality',maxAttempts:5,untilRequirements:{minQuality:14}},{method:'omen_connections'}],targets:[],requirements:{minQuality:14,links:3}};
+  const uniqueSimulation=await queued('simulate_crafting',{baseRevision:context.revision,itemText:uniqueShield,recipe:uniqueRecipe,options:{trials:3,maxActions:10,currency:'chaos',actionPrices:{quality:2,omen_connections:10}}},'crafted');
+  assert.equal(uniqueSimulation.nativeCrafting.sampled,false);assert.equal(uniqueSimulation.nativeCrafting.successChance,100);assert.equal(uniqueSimulation.nativeCrafting.meanActions,3);assert.equal(uniqueSimulation.nativeCrafting.meanCost,14);
+  assert.match(uniqueSimulation.nativeCrafting.sampleItem,/Sockets: R-G-B/);
   const uniqueGuide={id:'unique-guide-workflow',title:'Unique shield guide',slot:'Weapon 2',startingItem:uniqueShield,targetItem:uniqueLinked.nativeCrafting.itemText,goals:[],steps:[
     {action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},
     {action:'Link existing sockets with an Omen of Connections and an Orb of Fusing',uniqueCraft:{method:'omen_connections',count:1}},

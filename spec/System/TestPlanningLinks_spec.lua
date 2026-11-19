@@ -311,6 +311,14 @@ describe("Linked planning tools",function()
 		local names={};for _,rule in ipairs(profile.rules) do names[rule.title]=true end
 		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"]);main.popups={}
 	end)
+	it("links unique native recipe ingredients to filter pickups",function()
+		local project={id="unique-native-filter",title="Unique recipe",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={},nativeRecipe={steps={{method="socket_white_bench"}},targets={},requirements={socketColours="WWW"}}}
+		build.savers.CraftingProjects:Upsert(project)
+		local profile=filters.profile("unique-native","Unique recipe");local rules,warnings=filters.generate(build,profile)
+		local names={};for _,rule in ipairs(rules) do names[rule.title]=true end
+		assert.is_true(names["Orb of Scouring"]);assert.is_true(names["Vaal Orb"])
+		for _,warning in ipairs(warnings) do assert.not_equal("craft:"..project.id,warning.origin) end
+	end)
 	it("generates concrete fossil and corrupted socket recipe pickups",function()
 		local project=craft();project.nativeRecipe={steps={
 			{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingLife"}},

@@ -1224,6 +1224,7 @@ do
 	local ordinaryPerform=M.perform
 	local ordinaryCatalog=M.catalog
 	local ordinaryCalculate=M.calculate
+	local ordinarySimulate=M.simulate
 	function M.catalog(raw,query,limit,initialState,treeVersion)
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
 		if rarity and rarity:upper()=="UNIQUE" then
@@ -1232,6 +1233,11 @@ do
 			return M.withTreeContext(result,treeVersion)
 		end
 		return ordinaryCatalog(raw,query,limit,initialState,treeVersion)
+	end
+	function M.simulate(raw,recipe,options)
+		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
+		if rarity and rarity:upper()=="UNIQUE" then return require("Modules.CraftingUniqueSimulation").simulate(M,raw,recipe,options) end
+		return ordinarySimulate(raw,recipe,options)
 	end
 	function M.calculate(raw,action,targets,initialState,options)
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
