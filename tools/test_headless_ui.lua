@@ -2025,6 +2025,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		w:Show("journey",{page="Gear",selected="unique-guide-goal"});assert(w.controls.openLink:IsEnabled(),"Linked unique guide is unavailable");ui:click("openLink")
 		assert(w.page=="crafting" and w.controls.libraryPage:GetSelValue()=="Plan" and w.cache.crafting.layout.selectedProject==p.id,"Unique gear link did not open the saved guide")
 		local lines={};for _,row in ipairs(w.controls.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;assert(table.concat(lines," "):find("Acquire Goldrim",1,true),"Linked guide lost its written steps");frame("journey-unique-linked-guide")
+		local recovery=require("Modules.PlanningRecovery");local oldSession=recovery.session;local temp=directory.."/unique-recovery-"..size[1]
+		assert(require("lfs").mkdir(temp));recovery.testDirectory=temp;recovery.cache={}
+		local project=store.projects[#store.projects];local changed=require("Modules.CraftingUniqueQuality").apply(project.startingItem).itemText
+		assert(recovery.save(build,"uniqueQuality",{plan={kind="uniqueQuality",project=project,itemText=changed,history={project.startingItem}}},true))
+		recovery.session="headless-next-session";recovery.cache={};require("Classes.PlanningToolsControl").Recovery(build);frame("crafting-unique-recovery-browser")
+		ui:click("choose");assert(w.page=="crafting" and w.controls.status.label:find("1%%"),"Unique recovery did not restore its preview")
+		ui:click("undo");assert(w.controls.status.label:find("0%%"),"Recovered unique preview lost undo history")
+		recovery.clear(build,"uniqueQuality",project.id);assert(require("lfs").rmdir(temp));recovery.testDirectory=nil;recovery.cache={};recovery.session=oldSession
 	end
 	uniqueProjectScenario()
 	ui:restore()

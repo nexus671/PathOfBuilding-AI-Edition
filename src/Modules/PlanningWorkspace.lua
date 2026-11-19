@@ -55,7 +55,10 @@ function M:Remember(page)
 	local plan=self.drafts[page].plan
 	if page=="crafting" and plan then
 		if plan.kind=="workbench" then self.craftDrafts[plan.project.id]=plan
-		elseif plan.kind=="uniqueQuality" then self.build.planningUniqueQualityDrafts=self.build.planningUniqueQualityDrafts or {};self.build.planningUniqueQualityDrafts[plan.project.id]=copyTable(plan) end
+		elseif plan.kind=="uniqueQuality" then
+			self.build.planningUniqueQualityDrafts=self.build.planningUniqueQualityDrafts or {};self.build.planningUniqueQualityDrafts[plan.project.id]=copyTable(plan)
+			if require("Modules.PlanningUI").hasDraft(self.build,"uniqueQuality",plan.project.id) then require("Modules.PlanningRecovery").save(self.build,"uniqueQuality",{plan=plan}) end
+		end
 	end
 	if self.drafts[page].plan and (page=="filters" or page=="atlas" or page=="crafting" and self.drafts[page].plan.kind=="workbench") then require("Modules.PlanningRecovery").save(self.build,page,self.drafts[page]) end
 end

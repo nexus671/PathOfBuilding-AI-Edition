@@ -2,13 +2,17 @@
 local json=require("dkjson")
 local data=require("Modules.PlanningData")
 local M={cache={},limit=4*1024*1024,session=require("sha1")(os.time()..tostring({}))}
-local kinds={filters=true,atlas=true,crafting=true}
-local function path(build,kind,slot)
+local kinds={filters=true,atlas=true,crafting=true,uniqueQuality=true}
+local function path(build,kind,slot,projectId,hashed)
 	assert(kinds[kind],"Unsupported draft type")
+	if kind=="uniqueQuality" then
+		assert(type(projectId)=="string" and (hashed and #projectId==40 and projectId:match("^[a-f0-9]+$") or not hashed and #projectId<=64 and projectId:match("^[%w%-_]+$")),"Invalid recovery project ID")
+	end
 	if launch.headless and not M.testDirectory then return end
 	local directory=M.testDirectory or main.userPath.."PlanningDrafts"
 	local id=require("sha1")((build.dbFileName or "untitled:"..(build.buildName or ""))..":"..GetScriptPath())
-	return directory.."/"..id.."-"..kind.."-"..slot..".json",directory
+	local projectKey=projectId and (hashed and projectId or require("sha1")(projectId))
+	return directory.."/"..id.."-"..kind.."-"..(projectKey and projectKey.."-" or "")..slot..".json",directory
 end
 -- The stage editor is temporarily closed while its route is shown on the tree.
 -- Preserve its raw inputs, including values that are not yet valid for saving.
@@ -46,6 +50,19 @@ function M.clean(kind,entry)
 			savedView.stageResume=cleanAtlasStage(view.stageResume)
 		end
 		return {plan=require("Modules.AtlasPlanner").validate(value),view=savedView}
+	elseif kind=="uniqueQuality" then
+		assert(value.kind=="uniqueQuality","Invalid unique quality preview")
+		local project=require("Modules.CraftingProjects").validate(value.project)
+		local unique=require("Modules.CraftingUniqueQuality")
+		local original=unique.inspect(project.startingItem)
+		local function item(raw)
+			local checked=unique.inspect(raw)
+			assert(checked.title==original.title and checked.baseName==original.baseName,"Unique preview does not match its starting item")
+			return raw
+		end
+		assert(type(value.history)=="table","Invalid unique quality history")
+		local history={};for i=math.max(1,#value.history-63),#value.history do history[#history+1]=item(value.history[i]) end
+		return {plan={kind="uniqueQuality",project=project,itemText=item(value.itemText),history=history}}
 	elseif kind=="crafting" then
 		assert(value.kind=="workbench","Only working crafts need draft recovery")
 		local project=require("Modules.CraftingProjects").validate(value.project);local run=copyTable(value);run.schemaVersion=1
@@ -62,6 +79,13 @@ function M.isCurrent(build,kind,entry)
 			if view then plan.title=view.title;plan.notes=view.notes;plan.budget=tonumber(view.budgetText) end
 			plan=require("Modules.AtlasPlanner").validate(plan)
 			for _,saved in ipairs(build.savers.AtlasPlans.plans) do if saved.id==plan.id then return data.hash(saved)==data.hash(plan) and (not view or not view.stageResume or atlasStageIsCurrent(saved,view.stageResume)) end end
+		elseif kind=="uniqueQuality" then
+			local working=entry.plan
+			for _,project in ipairs(build.savers.CraftingProjects.projects) do
+				if project.id==working.project.id and project.startingItem==working.project.startingItem and project.slot==working.project.slot then
+					return working.itemText==project.startingItem or working.itemText==project.targetItem
+				end
+			end
 		elseif kind=="crafting" then
 			local working=entry.plan;local run=copyTable(working);run.project=nil;run.kind=nil
 			for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id==working.project.id and project.startingItem==working.project.startingItem and project.run then
@@ -72,21 +96,44 @@ function M.isCurrent(build,kind,entry)
 	end)
 	return ok and result==true
 end
-local function readRecord(build,kind,slot)
-	local filePath=path(build,kind,slot);if not filePath then return end
+local function readRecord(build,kind,slot,projectId,hashed)
+	local filePath=path(build,kind,slot,projectId,hashed);if not filePath then return end
 	local file=io.open(filePath,"rb");if not file then return end
 	local raw=file:read(M.limit+1);file:close();if #raw>M.limit then return end
 	local ok,value=pcall(function()
 		local record=assert(json.decode(raw));assert(record.schemaVersion==1 and record.kind==kind and type(record.generation)=="number" and record.generation==math.floor(record.generation) and record.generation>=1 and record.generation<1e12,"Invalid recovery record")
 		assert(type(record.at)=="number" and record.at>=0 and record.at<4102444800,"Invalid recovery date")
-		assert(record.digest==data.hash(record.entry),"Incomplete recovery record");record.entry=M.clean(kind,record.entry);record.path=filePath;return record
+		assert(record.digest==data.hash(record.entry),"Incomplete recovery record");record.entry=M.clean(kind,record.entry);if kind=="uniqueQuality" then assert((hashed and require("sha1")(record.entry.plan.project.id)==projectId) or (not hashed and record.entry.plan.project.id==projectId),"Recovery project ID mismatch") end;record.path=filePath;return record
 	end)
 	if ok then return value end
 end
-function M.load(build,kind)
+function M.load(build,kind,projectId)
 	local best
-	for slot=1,2 do local value=readRecord(build,kind,slot);if value and (not best or value.generation>best.generation) then best=value end end
+	for slot=1,2 do local value=readRecord(build,kind,slot,projectId);if value and (not best or value.generation>best.generation) then best=value end end
 	return best
+end
+-- Each unique project has its own rotating pair; browsing one item never
+-- replaces the interrupted preview of another item in the same build.
+function M.listUnique(build)
+	local sample,directory=path(build,"uniqueQuality",1,"_");if not sample then return {} end
+	local suffix=require("sha1")("_").."%-1%.json$"
+	local prefix=assert(sample:match("([^/\\]+)"..suffix));local escaped=prefix:gsub("(%W)","%%%1")
+	local ids={}
+	local function add(name) local id=name:match("^"..escaped.."([a-f0-9]+)%-[12]%.json$");if id and #id==40 then ids[id]=true end end
+	if launch.headless and M.testDirectory then
+		local ok,iterator,state=pcall(require("lfs").dir,directory)
+		if ok then for name in iterator,state do add(name) end end
+	else
+		local handle=NewFileSearch(directory.."/"..prefix.."*.json")
+		while handle do add(handle:GetFileName());if not handle:NextFile() then break end end
+	end
+	local result={}
+	for id in pairs(ids) do
+		local first=readRecord(build,"uniqueQuality",1,id,true);local second=readRecord(build,"uniqueQuality",2,id,true)
+		local record=first and second and (first.generation>second.generation and first or second) or first or second
+		if record then result[#result+1]=record end
+	end
+	table.sort(result,function(a,b) return a.entry.plan.project.id<b.entry.plan.project.id end);return result
 end
 function M.forCraftingProject(build,id)
 	local best
@@ -120,30 +167,32 @@ function M.forgetAtlasSessionDraft(build,id)
 	end
 end
 function M.save(build,kind,entry,force)
-	local _,directory=path(build,kind,1);if not directory then return end
-	local key=directory..":"..(build.dbFileName or build.buildName or "")..":"..kind;local cache=M.cache[key] or {build=build};M.cache[key]=cache
+	local projectId=kind=="uniqueQuality" and entry and entry.plan and entry.plan.project and entry.plan.project.id or nil
+	if kind=="uniqueQuality" and (type(projectId)~="string" or #projectId>64 or not projectId:match("^[%w%-_]+$")) then return false,"Invalid recovery project ID" end
+	local _,directory=path(build,kind,1,projectId);if not directory then return end
+	local key=directory..":"..(build.dbFileName or build.buildName or "")..":"..kind..(projectId and ":"..projectId or "");local cache=M.cache[key] or {build=build};M.cache[key]=cache
 	local now=GetTime();if not force and cache.checked and now-cache.checked<2000 then return end;cache.checked=now
 	local ok,message=pcall(function()
 		local clean=M.clean(kind,entry);local digest=data.hash(clean);if digest==cache.digest then return end
-		local old=M.load(build,kind)
+		local old=M.load(build,kind,projectId)
 		if old and old.session~=M.session and not cache.acknowledged and not M.isCurrent(build,kind,old.entry) then cache.pending=true;return end
 		cache.pending=false
 		local generation=(old and old.generation or 0)+1
 		local record={schemaVersion=1,kind=kind,generation=generation,at=os.time(),digest=digest,entry=clean,session=M.session}
 		local raw=json.encode(record);assert(#raw<=M.limit,"Recovery draft exceeds 4 MiB; keep the working project in the build")
-		MakeDir(directory);local target=path(build,kind,generation%2+1);local file=assert(io.open(target,"wb"),"Could not create recovery draft")
+		MakeDir(directory);local target=path(build,kind,generation%2+1,projectId);local file=assert(io.open(target,"wb"),"Could not create recovery draft")
 		local written=file:write(raw);local closed=file:close();assert(written and closed,"Could not finish recovery draft");cache.digest=digest
 	end)
 	M.lastError=not ok and tostring(message) or nil;return ok,message
 end
-function M.acknowledge(build,kind)
-	local _,directory=path(build,kind,1);if not directory then return end
-	local key=directory..":"..(build.dbFileName or build.buildName or "")..":"..kind
+function M.acknowledge(build,kind,projectId)
+	local _,directory=path(build,kind,1,projectId);if not directory then return end
+	local key=directory..":"..(build.dbFileName or build.buildName or "")..":"..kind..(projectId and ":"..projectId or "")
 	M.cache[key]=M.cache[key] or {build=build};M.cache[key].acknowledged=true;M.cache[key].pending=false
 end
-function M.clear(build,kind)
-	for slot=1,2 do local target=path(build,kind,slot);if target then local ok,why,code=os.remove(target);assert(ok or code==2,why) end end
-	M.acknowledge(build,kind)
+function M.clear(build,kind,projectId)
+	for slot=1,2 do local target=path(build,kind,slot,projectId);if target then local ok,why,code=os.remove(target);assert(ok or code==2,why) end end
+	M.acknowledge(build,kind,projectId)
 	for _,cache in pairs(M.cache) do if cache.build==build then cache.digest=nil;cache.checked=nil end end
 end
 function M.hasPending(build) for _,cache in pairs(M.cache) do if cache.build==build and cache.pending then return true end end;return false end

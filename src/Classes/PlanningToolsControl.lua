@@ -39,14 +39,40 @@ function M.Bundle(build)
 end
 function M.Recovery(build)
 	local recovery=require("Modules.PlanningRecovery");local entries={}
-	for _,kind in ipairs({"filters","atlas","crafting"}) do local record=recovery.load(build,kind)
-		if record and not recovery.isCurrent(build,kind,record.entry) then local details={"Saved locally: "..os.date("%Y-%m-%d %H:%M",record.at),"Restore opens a working draft. Review it, then Keep and Save.","An earlier-session draft is preserved until you restore or discard it."};if kind=="atlas" and record.entry.view and record.entry.view.stageResume then details[#details+1]="Choose Resume stages to recover unfinished stage inputs." end;entries[#entries+1]={id=kind,label=({filters="Loot-filter draft",atlas="Atlas draft",crafting="Working craft"})[kind],details=details,record=record} end
+	local function add(kind,record)
+		if record and not recovery.isCurrent(build,kind,record.entry) then
+			local details={"Saved locally: "..os.date("%Y-%m-%d %H:%M",record.at),"Restore opens a working draft. Review it, then Keep and Save.","An earlier-session draft is preserved until you restore or discard it."}
+			if kind=="atlas" and record.entry.view and record.entry.view.stageResume then details[#details+1]="Choose Resume stages to recover unfinished stage inputs." end
+			local projectId=kind=="uniqueQuality" and record.entry.plan.project.id or nil
+			if projectId then
+				local item,info=require("Modules.CraftingUniqueQuality").inspect(record.entry.plan.itemText)
+				table.insert(details,1,(item.title or item.baseName).." | "..record.entry.plan.project.slot.." | "..info.quality.."% quality")
+				details[#details+1]="Up to 64 undo steps are retained."
+			end
+			local label=kind=="uniqueQuality" and ("Unique quality: "..record.entry.plan.project.title) or ({filters="Loot-filter draft",atlas="Atlas draft",crafting="Working craft"})[kind]
+			entries[#entries+1]={id=projectId and kind..":"..projectId or kind,kind=kind,projectId=projectId,label=label,details=details,record=record}
+		end
 	end
+	for _,kind in ipairs({"filters","atlas","crafting"}) do add(kind,recovery.load(build,kind)) end
+	for _,record in ipairs(recovery.listUnique(build)) do add("uniqueQuality",record) end
 	if recovery.lastError then entries[#entries+1]={id="error",label="Draft recovery needs attention",details={recovery.lastError,"Keep your working project and save the build."}} end
 	require("Classes.PlanningBrowserControl").Open("Recover local drafts",entries,{action="Restore draft",closeOnChoose=false,choose=function(entry)
-		assert(entry.record,"Choose a valid draft");local clean=recovery.clean(entry.id,entry.record.entry)
-		main:ClosePopup();recovery.acknowledge(build,entry.id);build.planningWorkspace.cache[entry.id]=nil;build.planningWorkspace.drafts[entry.id]=clean;build.planningWorkspace:Show(entry.id,clean.plan)
-	end,secondary={label="Discard draft",run=function(entry) if entry and entry.record then recovery.clear(build,entry.id);main:ClosePopup();M.Recovery(build) end end}})
+		assert(entry.record,"Choose a valid draft");local clean=recovery.clean(entry.kind,entry.record.entry)
+		local page=entry.kind=="uniqueQuality" and "crafting" or entry.kind
+		if entry.kind=="uniqueQuality" then
+			local match
+			for _,project in ipairs(build.savers.CraftingProjects.projects) do
+				if project.id==clean.plan.project.id then
+					assert(project.startingItem==clean.plan.project.startingItem and project.slot==clean.plan.project.slot,"A different project uses this ID; restore the matching project before recovering this preview")
+					match=project;break
+				end
+			end
+			local project=match or clean.plan.project;local item=require("Modules.CraftingUniqueQuality").inspect(project.startingItem)
+			assert(build.itemsTab.slots[project.slot] and build.itemsTab:IsItemValidForSlot(item,project.slot),"Recovered project does not fit its equipment slot")
+			clean.plan.project=copyTable(project)
+		end
+		main:ClosePopup();recovery.acknowledge(build,entry.kind,entry.projectId);build.planningWorkspace.cache[page]=nil;build.planningWorkspace.drafts[page]=clean;build.planningWorkspace:Show(page,clean.plan)
+	end,secondary={label="Discard draft",run=function(entry) if entry and entry.record then recovery.clear(build,entry.kind,entry.projectId);main:ClosePopup();M.Recovery(build) end end}})
 end
 function M.Open(build)
 	require("Classes.PlanningBrowserControl").Open("Planning tools",{

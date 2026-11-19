@@ -22,19 +22,21 @@ function M.Open(build,project,layout,snapshot)
 			local ok,err=pcall(run);if not ok then main:OpenMessagePopup("Unique quality",ui.errorText(err)) end
 		end))
 	end
-	local function refresh()
+	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history)} end
+	local function refresh(persist)
 		item,info=unique.inspect(raw);show(item)
 		c.status.label="^7Quality: "..info.quality.."% | "..(info.available and "Ready" or "20% cap reached")
 		c.apply.label="Use "..info.resource
 		if raw~=draft.startingItem and raw~=draft.targetItem then ui.draft(build,"uniqueQuality",draft.id)
 		else ui.discard(build,"uniqueQuality",draft.id) end
+		if persist then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},not ui.hasDraft(build,"uniqueQuality",draft.id)) end
 	end
 	ui.label(c,"status",16,174,"",14)
-	button("apply",206,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;raw=result.itemText;refresh() end)
+	button("apply",206,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;raw=result.itemText;refresh(true) end)
 	c.apply.enabled=function() return info.available end
-	button("undo",250,"Undo",function() assert(#history>0,"No quality action to undo");raw=table.remove(history);refresh() end)
+	button("undo",250,"Undo",function() assert(#history>0,"No quality action to undo");raw=table.remove(history);refresh(true) end)
 	c.undo.enabled=function() return #history>0 end
-	button("keep",294,"Keep as target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);ui.discard(build,"uniqueQuality",draft.id);c.notice.label="^7Target kept. Save the build." end)
+	button("keep",294,"Keep as target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);ui.discard(build,"uniqueQuality",draft.id);require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target kept. Save the build." end)
 	c.keep.enabled=function() return raw~=draft.targetItem end
 	local checkedTarget,matchingTarget
 	local function targetAvailable()
@@ -48,7 +50,7 @@ function M.Open(build,project,layout,snapshot)
 	end
 	button("loadTarget",338,"Load saved target",function()
 		assert(targetAvailable(),"The saved target is not an eligible matching unique item")
-		history[#history+1]=raw;raw=draft.targetItem;refresh();c.notice.label="^7Saved target loaded."
+		history[#history+1]=raw;raw=draft.targetItem;refresh(true);c.notice.label="^7Saved target loaded."
 	end)
 	c.loadTarget.enabled=targetAvailable
 	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."
@@ -58,9 +60,9 @@ function M.Open(build,project,layout,snapshot)
 	local currency=new("Control"):Control(ui.anchor,{16,414,42,42});c.currency=currency
 	function currency:Draw() if art then local x,y=self:GetPos();SetDrawColor(1,1,1);DrawImage(art,x,y,42,42) end end
 	ui.description(c,"currencyNote",68,416,218,48,{"Preview only", "No currency is spent."},14)
-	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history)} end
 	button("close",h-50,layout and "Back to projects" or "Close",function()
 		build.planningUniqueQualityDrafts=build.planningUniqueQualityDrafts or {};build.planningUniqueQualityDrafts[draft.id]=snapshotPreview()
+		if ui.hasDraft(build,"uniqueQuality",draft.id) then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true) end
 		if layout then layout.openProjects() else main:ClosePopup() end
 	end)
 	for _,control in pairs(c) do control.layoutAudit="unique-quality" end
