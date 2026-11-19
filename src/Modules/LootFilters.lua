@@ -120,8 +120,9 @@ function M.generate(build,profile,checkpoint)
 		local base=id;local suffix=1;while ids[id] do suffix=suffix+1;id=base.."-"..suffix end;ids[id]=true
 		result[#result+1]=M.rule(id,title,conditions,origin,profile.theme)
 	end
-	local function base(raw,id,title,origin)
-		local ok,item=pcall(require("Modules.CraftingProjects").item,raw or "")
+	local function base(raw,id,title,origin,parsed)
+		local ok,item=true,parsed
+		if not item then ok,item=pcall(require("Modules.CraftingProjects").item,raw or "") end
 		if not ok then return false end
 		local baseName=item.baseName;local conditions
 		local uniqueTarget=item.rarity=="UNIQUE"
@@ -140,7 +141,7 @@ function M.generate(build,profile,checkpoint)
 		if type(id)=="function" then id=id(item,level) end
 		if type(title)=="function" then title=title(item) end
 		add(id,title,conditions,origin)
-		return true
+		return true,item,level
 	end
 	local function preserveBase(origin,id,title,description)
 		warnings[#warnings+1]={origin=origin,title=title,message="Could not read "..description..". Previous base pickups were kept; review the saved item."}
@@ -153,8 +154,9 @@ function M.generate(build,profile,checkpoint)
 	end
 	for _,p in ipairs(build.savers.CraftingProjects.projects) do
 		local origin="craft:"..p.id;local id="craft-"..p.id
-		if not base(p.startingItem,id,p.title.." base",origin) then preserveBase(origin,id,p.title,"the crafting base") end
-		local initial=p.nativeRecipe and p.nativeRecipe.initialState
+		local startOK,startItem,startLevel=base(p.startingItem,id,p.title.." base",origin)
+		if not startOK then preserveBase(origin,id,p.title,"the crafting base") end
+		local initial=p.nativeRecipe and p.nativeRecipe.initialState;local workingItem,workingLevel
 		if initial and initial.baseItem then
 			local workingId="craft-working-"..p.id
 			if checkpoint and not recipeModels[p.startingItem] then require("Modules.CraftingAdvanced").prepare(checkpoint) end
@@ -162,7 +164,8 @@ function M.generate(build,profile,checkpoint)
 				local sim=require("Modules.CraftingSimulator");local model=recipeModels[p.startingItem]
 				if not model then model=sim.model(p.startingItem);recipeModels[p.startingItem]=model end
 				local state=sim.validateState(model,initial);assert(state.baseItem and sim.context(model,state).item.baseName)
-				assert(base(state.baseItem,workingId,p.title.." recipe starting base",origin),"Invalid recipe starting base")
+				local valid;valid,workingItem,workingLevel=base(state.baseItem,workingId,p.title.." recipe starting base",origin)
+				assert(valid,"Invalid recipe starting base")
 			end)
 			if not ok then preserveBase(origin,workingId,p.title,"the recipe starting base") end
 		end
@@ -170,7 +173,15 @@ function M.generate(build,profile,checkpoint)
 			local targetId="craft-target-"..p.id
 			local ok,target=pcall(require("Modules.CraftingProjects").item,p.targetItem)
 			if not ok then preserveBase(origin,targetId,p.title,"the crafting target")
-			elseif target.rarity=="UNIQUE" then base(p.targetItem,targetId,p.title.." unique target",origin) end
+			elseif target.rarity=="UNIQUE" or target.rarity=="NORMAL" or target.rarity=="MAGIC" or target.rarity=="RARE" then
+				local targetLevel=target.rarity~="UNIQUE" and tonumber(p.targetItem:match("Item Level: (%d+)")) or nil
+				-- A broader starting-base rule already covers this non-unique target.
+				local function covers(item,level)
+					return item and item.rarity~="UNIQUE" and target.rarity~="UNIQUE" and item.baseName==target.baseName and (not level or targetLevel and level<=targetLevel)
+				end
+				local covered=(startOK and covers(startItem,startLevel)) or covers(workingItem,workingLevel)
+				if not covered then base(p.targetItem,targetId,p.title..(target.rarity=="UNIQUE" and " unique target" or " target base"),origin,target) end
+			end
 		end
 		local invalidDonor=false
 		for _,step in ipairs(p.nativeRecipe and p.nativeRecipe.steps or {}) do

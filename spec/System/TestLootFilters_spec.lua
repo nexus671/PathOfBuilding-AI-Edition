@@ -567,6 +567,21 @@ describe("Build-owned loot filters",function()
 		assert.equal("Show",filters.simulate(profile,{BaseType="Iron Hat",Rarity="Rare",ItemLevel=86}).action)
 		local count=#profile.rules;profile.rules=filters.generate(build,profile);assert.equal(count,#profile.rules)
 	end)
+	it("includes a distinct non-unique crafting target base without duplicating covered bases",function()
+		local start="Rarity: NORMAL\nZodiac Leather\nItem Level: 70"
+		local target="Rarity: RARE\nGoal Armour\nPlate Vest\nItem Level: 86"
+		local project={id="armour-goal",title="Armour goal",slot="Body Armour",startingItem=start,targetItem=target,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local profile=filters.profile("test","Test");profile.template="Hide";profile.rules=filters.generate(build,profile)
+		local function preview(base,level) return filters.simulate(profile,{BaseType=base,Rarity="Rare",ItemLevel=level}).action end
+		assert.equal("Show",preview("Zodiac Leather",70));assert.equal("Show",preview("Plate Vest",86));assert.equal("Hide",preview("Plate Vest",70))
+		project.targetItem="Rarity: RARE\nGoal Armour\nZodiac Leather\nItem Level: 86";build.savers.CraftingProjects:Upsert(project)
+		local count=0;for _,rule in ipairs(filters.generate(build,profile)) do if rule.origin=="craft:armour-goal" then count=count+1 end end;assert.equal(1,count)
+		project.targetItem="Rarity: RARE\nGoal Armour\nZodiac Leather\nItem Level: 60";build.savers.CraftingProjects:Upsert(project)
+		profile.rules=filters.generate(build,profile);assert.equal("Show",preview("Zodiac Leather",60))
+		project.targetItem="Rarity: RARE\nGoal Armour\nZodiac Leather";build.savers.CraftingProjects:Upsert(project)
+		profile.rules=filters.generate(build,profile);assert.equal("Show",preview("Zodiac Leather",1))
+	end)
 	it("highlights a saved recipe's recombined starting base",function()
 		local sim=require("Modules.CraftingSimulator")
 		local start="Rarity: NORMAL\nZodiac Leather\nItem Level: 70";local derived="Rarity: NORMAL\nPlate Vest\nItem Level: 86"
@@ -581,7 +596,11 @@ describe("Build-owned loot filters",function()
 		local ok,result;repeat ok,result=coroutine.resume(thread);assert.is_true(ok,result) until coroutine.status(thread)=="dead"
 		assert.same(profile.rules,result)
 		local original=copyTable(build.savers.CraftingProjects.projects[1]);local revised=copyTable(original)
-		revised.nativeRecipe.initialState.baseItem=start;build.savers.CraftingProjects:Upsert(revised)
+		revised.targetItem="Rarity: RARE\nGoal Armour\nPlate Vest\nItem Level: 90";build.savers.CraftingProjects:Upsert(revised)
+		local higher=filters.generate(build,profile);for _,rule in ipairs(higher) do assert.is_not.equal("craft-target-recombined",rule.id) end
+		revised.targetItem="Rarity: RARE\nGoal Armour\nPlate Vest\nItem Level: 80";build.savers.CraftingProjects:Upsert(revised)
+		local lower=filters.generate(build,profile);local lowerFound=false;for _,rule in ipairs(lower) do if rule.id=="craft-target-recombined" then lowerFound=true end end;assert.is_true(lowerFound)
+		revised.targetItem=nil;revised.nativeRecipe.initialState.baseItem=start;build.savers.CraftingProjects:Upsert(revised)
 		assert.is_true(require("Modules.LootFilterDependencies").report(build,profile).stale)
 		build.savers.CraftingProjects:Upsert(original)
 		build.savers.CraftingProjects.projects[1].nativeRecipe.initialState.baseItem="Not an item"
