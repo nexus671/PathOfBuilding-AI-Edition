@@ -32,6 +32,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Exercise controls and audit frames
         run: |
+          (cd src && luajit ../tools/benchmark_atlas_report.lua)
           python3 tools/test_crafting_data_status.py
           python3 tools/test_crafting_export_refresh.py
           python3 tools/test_compare_crafting_export.py
