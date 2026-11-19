@@ -34,11 +34,14 @@ function M.Open(options)
 	local rollSeed=os.time()%2147483646+1
 	local artManifest;do local f=assert(io.open("Assets/MapCrafting/art.json","rb"));artManifest=assert(require("dkjson").decode(f:read("*a")));f:close() end
 	local itemArt;do local f=assert(io.open("Assets/MapCrafting/items.json","rb"));itemArt=assert(require("dkjson").decode(f:read("*a")));f:close() end
+	local variantArt;do local f=assert(io.open("Assets/MapCrafting/variants.json","rb"));variantArt=assert(require("dkjson").decode(f:read("*a")));f:close() end
 	local artCache={}
 	local nightmareFrame
 	local function art()
 		local base=map.source().bases[baseId];local identity=base and base.visual_identity
-		local entry=itemArt.images[baseId] or (type(identity)=="table" and artManifest.images[identity.dds_file])
+		local effects=require("Modules.MapObservedEffects");local tier=baseId:match("^Metadata/Items/Maps/MapKeyTier(%d+)$")
+		local variant=effects.isBlightRavaged(observedEffects) and "ravaged" or effects.isBlighted(observedEffects) and "blighted"
+		local entry=tier and variant and variantArt.images[variant..":"..tier] or itemArt.images[baseId] or (type(identity)=="table" and artManifest.images[identity.dds_file])
 		if not entry then return nil end
 		if not artCache[entry.path] then local handle=NewImageHandle();handle:Load(entry.path);artCache[entry.path]=handle end
 		return artCache[entry.path],entry

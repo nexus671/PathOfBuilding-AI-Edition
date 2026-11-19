@@ -39,6 +39,7 @@ jobs:
           python3 tools/test_update_map_crafting_data.py
           python3 tools/check_map_crafting_art.py
           python3 tools/test_update_map_item_art.py
+          python3 tools/test_update_map_variant_art.py
           python3 tools/test_modifier_overlay_330.py
           python3 tools/test_bench_330.py
           python3 tools/test_update_loot_filter_data.py

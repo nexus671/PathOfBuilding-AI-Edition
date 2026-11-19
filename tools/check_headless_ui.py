@@ -29,7 +29,7 @@ def source_hashes():
     sources += list((ROOT / "src/Assets/Atlas").rglob("*"))
     sources += list((ROOT / "src/Data/Atlas").glob("*.json"))
     sources += list((ROOT / "src/Data/Crafting").glob("*.json"))
-    sources += [ROOT / "tools/update_harvest_enchants.py", ROOT / "tools/update_harvest_damage_330.py", ROOT / "tools/update_crafting_data.py", ROOT / "tools/crafting_data_status.py", ROOT / "tools/test_crafting_data_status.py", ROOT / "tools/update_modifier_overlay_330.py", ROOT / "tools/test_modifier_overlay_330.py", ROOT / "tools/update_allflame_data.py", ROOT / "tools/update_map_crafting_art.py", ROOT / "tools/check_map_crafting_art.py", ROOT / "tools/update_map_item_art.py"]
+    sources += [ROOT / "tools/update_harvest_enchants.py", ROOT / "tools/update_harvest_damage_330.py", ROOT / "tools/update_crafting_data.py", ROOT / "tools/crafting_data_status.py", ROOT / "tools/test_crafting_data_status.py", ROOT / "tools/update_modifier_overlay_330.py", ROOT / "tools/test_modifier_overlay_330.py", ROOT / "tools/update_allflame_data.py", ROOT / "tools/update_map_crafting_art.py", ROOT / "tools/check_map_crafting_art.py", ROOT / "tools/update_map_item_art.py", ROOT / "tools/update_map_variant_art.py", ROOT / "tools/test_update_map_variant_art.py"]
     sources += list((ROOT / "src/Data/LootFilters").glob("*"))
     sources += list((ROOT / "src/Assets/LootFilters").glob("*"))
     sources += list((ROOT / "src/TreeData/3_30").glob("*"))
@@ -58,6 +58,8 @@ def main():
     check_currency_art()
     check_colour_art()
     check_map_item_art()
+    from update_map_variant_art import check as check_map_variant_art
+    check_map_variant_art()
     hashes = source_hashes()
     args.output.mkdir(parents=True, exist_ok=True)
     directory = Path(tempfile.mkdtemp(prefix="run-", dir=args.output.resolve()))
@@ -136,6 +138,7 @@ def main():
         assert (quality["layer"], quality["sublayer"]) > (card["layer"], card["sublayer"]), "Map card obscures quality and modifier details"
         ravaged = json.loads((frames / f"{width}-map-ravaged-imported.json").read_text())
         assert any("Blight-ravaged:" in c.get("text", "") for c in ravaged["commands"] if c.get("kind") == "text"), "Blight-ravaged map identity is not visible"
+        assert any(c.get("asset") == "Assets/MapCrafting/Items/RavagedTier16.png" for c in ravaged["commands"]), "Blight-ravaged map artwork is missing"
         nightmare = json.loads((frames / f"{width}-map-nightmare-inspection.json").read_text())
         images = [c.get("asset") for c in nightmare["commands"]]
         background = images.index("Assets/MapCrafting/Items/NightmareFrame.png")

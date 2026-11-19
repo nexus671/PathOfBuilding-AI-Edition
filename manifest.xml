@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview694" />
+	<Version number="2.68.1-ai.preview695" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1015,6 +1015,26 @@
 	<File name="Assets/LootFilters/colour-picker.json" part="program" sha1="967dd448f8e2f9b34014c80c2ee1fef35d9e12c1" />
 	<File name="Assets/LootFilters/colour-value.png" part="program" sha1="6f7fe00ef5bc09c5c96aae8ab3e5757da558f6aa" />
 	<File name="Assets/LootFilters/colour-wheel.png" part="program" sha1="ed4a4ff0fa5b44d670e2760262de6be212131da1" />
+	<File name="Assets/MapCrafting/Items/BlightedTier1.png" part="program" sha1="a969b6aa07684766807d5cd08bf50fdf61301b92" />
+	<File name="Assets/MapCrafting/Items/BlightedTier2.png" part="program" sha1="17ca0e94bd7ce61871f4ffa9eb0e68ad2d6e915c" />
+	<File name="Assets/MapCrafting/Items/BlightedTier3.png" part="program" sha1="73a552ef346c1a222723ded350339adb70993d12" />
+	<File name="Assets/MapCrafting/Items/BlightedTier4.png" part="program" sha1="81d6268e387290f07d6bca4b8e80debf1b62009f" />
+	<File name="Assets/MapCrafting/Items/BlightedTier5.png" part="program" sha1="b871e8fca4d2d2479beaf1d75464b5a89e0a25be" />
+	<File name="Assets/MapCrafting/Items/BlightedTier6.png" part="program" sha1="f4f4c9c13559342824a15e6a6fef4f76d15f93f9" />
+	<File name="Assets/MapCrafting/Items/BlightedTier7.png" part="program" sha1="3ff6bb453a22dd9f674a7123c8fa5f1bde3e447b" />
+	<File name="Assets/MapCrafting/Items/BlightedTier8.png" part="program" sha1="9926f0d0052af43f7553d3a942a4da2fa67420e3" />
+	<File name="Assets/MapCrafting/Items/BlightedTier9.png" part="program" sha1="fab731fb3a12f8036852e1a04cd959589f5bf723" />
+	<File name="Assets/MapCrafting/Items/BlightedTier10.png" part="program" sha1="26ca37e7c7f0855c4ccdd37f959eac16c83b3967" />
+	<File name="Assets/MapCrafting/Items/BlightedTier11.png" part="program" sha1="06f83114532ac034e20b6b8e4e23d4e4bdcb96d4" />
+	<File name="Assets/MapCrafting/Items/BlightedTier12.png" part="program" sha1="2aff05fe1bf7f6461f8c7a1c11024d8e57456121" />
+	<File name="Assets/MapCrafting/Items/BlightedTier13.png" part="program" sha1="f551d5bf383119a9c4c9d2690535d67072d2cc31" />
+	<File name="Assets/MapCrafting/Items/BlightedTier14.png" part="program" sha1="bdd33388582dc7909175ffbe021e0e92d56de08c" />
+	<File name="Assets/MapCrafting/Items/BlightedTier15.png" part="program" sha1="8b9d1243dd1fc693e2886af6767cd6f29b24d3db" />
+	<File name="Assets/MapCrafting/Items/BlightedTier16.png" part="program" sha1="ec89edaa95c1d02f8f710610b5ab80058a3d0caa" />
+	<File name="Assets/MapCrafting/Items/RavagedTier14.png" part="program" sha1="1bc4f287e35c2eed1ef688c8849b475e626762f9" />
+	<File name="Assets/MapCrafting/Items/RavagedTier15.png" part="program" sha1="ec3f55959180b5876e2f8cdb7042b21e01c42824" />
+	<File name="Assets/MapCrafting/Items/RavagedTier16.png" part="program" sha1="041f5784c3ae617312553ab39147d17e9602e013" />
+	<File name="Assets/MapCrafting/variants.json" part="program" sha1="d36ef47f19ff5b2ecff2974a5d17591ad37f8714" />
 	<File name="Assets/MapCrafting/Items/0139e667ade8e6d84f79.png" part="program" sha1="ccef2b580f0f69f143f9263c565bd5c31e7cd8da" />
 	<File name="Assets/MapCrafting/Items/0201ee0d4a7ac544e171.png" part="program" sha1="3e7cae580e7a39b596dcf677da5e8272a3066607" />
 	<File name="Assets/MapCrafting/Items/03fad961535d43385c15.png" part="program" sha1="e3a456869baebfcafe613f7416ac2a16462212e9" />
@@ -1731,7 +1751,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="1a24f21bac87c0a3baf04f9d95ec1a7efec2ee67" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="8788e0fdf6ff7e368774a367e11e9c4e305791c6" />
-	<File name="Classes/MapModifierControl.lua" part="program" sha1="6be2241303b1bb27d035eb4c6e927fb96d090995" />
+	<File name="Classes/MapModifierControl.lua" part="program" sha1="82fd2456f848eb4d3edd8529581b751e03dda769" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
 	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="cfff5d76e380c7bdcbdac229325cefb1599af36c" />
 	<File name="Classes/ModDB.lua" part="program" sha1="1327beebeba14dc8320d137a3dede673b74942af" />
