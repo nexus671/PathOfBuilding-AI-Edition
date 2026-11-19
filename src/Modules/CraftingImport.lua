@@ -166,7 +166,9 @@ function I.resolve(M,model,state)
 				end end
 			end
 			for _,list in pairs(byPattern) do for a=1,#list do for b=a+1,#list do
-				budget();local left,right=list[a],list[b];local legal=left.id~=right.id and counts.Prefix+counts.Suffix+2<=caps.total
+				budget();local left,right=list[a],list[b]
+				local order=left.mod.statOrder and left.mod.statOrder[left.line]
+				local legal=left.id~=right.id and order~=nil and right.mod.statOrder and order==right.mod.statOrder[right.line] and counts.Prefix+counts.Suffix+2<=caps.total
 				local sides={Prefix=0,Suffix=0};sides[left.mod.type]=sides[left.mod.type]+1;sides[right.mod.type]=sides[right.mod.type]+1
 				for side,n in pairs(sides) do if counts[side]+n>caps[side] then legal=false end end
 				local pairGroups={};for _,part in ipairs({left,right}) do for _,group in ipairs(groups(part.id)) do if occupied[group] or pairGroups[group] then legal=false end;pairGroups[group]=true end end

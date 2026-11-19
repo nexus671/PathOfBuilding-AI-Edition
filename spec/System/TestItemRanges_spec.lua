@@ -80,4 +80,12 @@ describe("Independent modifier ranges",function()
 		local imported=sim.model(sim.toItem(base,state).raw);local ids={};for _,entry in ipairs(imported.initial.affixes) do ids[entry.id]=true end
 		assert.is_true(ids.LocalIncreasedPhysicalDamageReductionRatingPercentAndStunRecovery4);assert.is_true(ids.LocalIncreasedPhysicalDamageReductionRatingPercent3)
 	end)
+	it("does not combine matching text from different native stats",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local function mod(high,group,order) return {"(1-"..high..")% increased Example",type="Prefix",group=group,statOrder={order}} end
+		m.byId.ExampleA=mod(10,"ExampleA",100);m.byId.ExampleB=mod(5,"ExampleB",101);m.byId.ExampleC=mod(5,"ExampleC",102)
+		m.mods={{id="ExampleA"},{id="ExampleB"},{id="ExampleC"}};m.essences={};m.bench={};m.item.explicitModLines={{line="6% increased Example"}}
+		local state=require("Modules.CraftingImport").resolve(sim,m,{rarity="RARE",affixes={}})
+		assert.are.equal(1,#state.affixes);assert.are.equal("ExampleA",state.affixes[1].id)
+	end)
 end)
