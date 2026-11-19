@@ -83,6 +83,8 @@ local function finishRecovery()
 	end
 	return { frames=count, totalFrameMs=total, worstFrameMs=worst, workerSlices=recoverySlices }
 end
+local performance=require("Modules.PlanningPerformance")
+performance.clear(build)
 for _ = 1, cycles do
 	recoveryStarted=false
 	recoverySlices={count=0,totalMs=0,worstMs=0}
@@ -110,6 +112,6 @@ for _ = 1, cycles do
 		releaseMs=(clicked-pressed)*1000, updateFrameMs=(updated-clicked)*1000, recovery=recovery }
 end
 assert(bridge.revision(build) == revision, "The benchmark did not restore the build revision")
-print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,restored=true,
+print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,components=performance.rows(build),restored=true,
 	recoveryMode=forcedRecovery and "deferred" or desktopRecovery and "desktop with saved settings" or "build configuration",
 	limitations="Headless CPU timings include draw-command capture, not desktop rendering or frame rate."}))
