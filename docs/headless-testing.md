@@ -6,6 +6,8 @@ The wrapper uses real zlib compression for imports and compressed jewel data. Wi
 
 Run the calculation suite with `busted --lua=luajit`, and the MCP protocol suite with `node --test spec/AI/*.test.cjs`.
 
+If a LuaJIT executable is unavailable, Python with the optional `lupa` package can run individual headless Lua scripts from the repository root. For example, `python tools/run_headless_lupa.py tools/benchmark_atlas_report.lua`. Script arguments follow the script path. Some scripts require additional Lua modules, such as LuaFileSystem (`lfs`) for the full UI suite. This runs the selected script with normal filesystem access; use isolated fixtures and output directories.
+
 ## Render and exercise controls
 
 Install Pillow for Python, then run from the repository root:

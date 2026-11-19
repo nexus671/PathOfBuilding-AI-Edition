@@ -523,7 +523,7 @@ local function describeGrantedEffects(mod, stats)
 		if grantedEffect.IsSupport then
 			name, template, orderStat = names[grantedEffect.Id], "ModGrantsSupportEffect", "local_random_support_gem_level"
 		else
-			name, template, orderStat = grantedEffect.ActiveSkill?.DisplayName, "ModGrantsEffect", "local_display_grants_skill_frostbite_level"
+			name, template, orderStat = grantedEffect.ActiveSkill and grantedEffect.ActiveSkill.DisplayName, "ModGrantsEffect", "local_display_grants_skill_frostbite_level"
 		end
 		if not name or name == "" then
 			print("Granted effect '" .. grantedEffect.Id .. "' of mod '" .. mod.Id .. "' has no name")
@@ -608,7 +608,8 @@ function describeScalability(fileName)
 		if statDescription.stats then
 			for i, stat in ipairs(statDescription.stats) do
 				-- assume unscalable for invalid reference where ID doesn't exist
-				table.insert(scalability, stats:GetRow("Id", stat)?.IsScalable or false)
+				local row = stats:GetRow("Id", stat)
+				table.insert(scalability, row and row.IsScalable or false)
 			end
 			for _, wordings in ipairs(statDescription[1]) do
 				local wordingFormats = {}
