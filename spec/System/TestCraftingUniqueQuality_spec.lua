@@ -171,6 +171,10 @@ describe("Unique item quality",function()
 		end
 		assert.matches("fixes its socket count",unique.socketCountReason(source.."\nHas 1 Socket",2))
 		assert.matches("Abyssal sockets",unique.socketCountReason(source.."\nHas 1 Abyssal Socket",2))
+		for _,item in ipairs({{"Bubonic Trail","Murder Boots"},{"Tombfist","Steelscale Gauntlets"},{"Shroud of the Lightless","Carnal Armour"},{"Lightpoacher","Great Crown"}}) do
+			local partial="Rarity: UNIQUE\n"..item[1].."\n"..item[2].."\nItem Level: 86\nSockets: W"
+			assert.matches("Abyssal sockets",unique.socketCountReason(partial,2))
+		end
 		assert.is_nil(unique.socketCountReason(source.."\nHas 1 Socketed Gem",2))
 		local crown="Rarity: UNIQUE\nCrown of the Tyrant\nMagistrate Crown\nItem Level: 86\nSockets: W"
 		local options=sim.catalog(crown,"",50).uniqueActions;for _,entry in ipairs(options) do if entry.guideStep.uniqueCraft.method=="socket_count_bench" then assert.is_false(entry.available);assert.matches("fixes its socket count",entry.unavailableReason) end end
