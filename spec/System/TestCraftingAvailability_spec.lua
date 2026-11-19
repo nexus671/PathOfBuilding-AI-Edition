@@ -37,6 +37,17 @@ describe("Crafting action preconditions",function()
 		allowed,reason=check("locus",existing,isolated);assert.is_false(allowed);assert.matches("no compatible",reason)
 		ok,errorText=pcall(sim.action,isolated,existing,{method="locus"},function() return 0 end);assert.is_false(ok);assert.is_truthy(errorText:find(reason,1,true))
 	end)
+	it("checks the current recombined base for the special Locus transformation",function()
+		local plate="Rarity: NORMAL\nPlate Vest\nItem Level: 86"
+		local garb="Rarity: NORMAL\nSacrificial Garb\nItem Level: 86"
+		for _,pair in ipairs({{plate,garb},{garb,plate}}) do
+			local model=sim.model(pair[1]);local current=sim.model(pair[2]);local state=copyTable(current.initial)
+			state.baseItem=pair[2];state.corrupted=true
+			local allowed,reason=check("locus",state,model)
+			if pair[2]==garb then assert.is_false(allowed);assert.matches("special Locus",reason)
+			else assert.is_true(allowed);local result=sim.action(model,state,{method="locus"},function() return 0 end);assert.is_true(result.twiceCorrupted) end
+		end
+	end)
 	it("explains Aspect crafts without equipment or a free suffix",function()
 		local jewel=sim.model("Rarity: NORMAL\nCobalt Jewel\nItem Level: 86")
 		local allowed,reason=check("beast_aspect",jewel.initial,jewel);assert.is_false(allowed);assert.are.equal("Aspect crafts require equipment.",reason)
