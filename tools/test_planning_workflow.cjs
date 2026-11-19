@@ -100,6 +100,19 @@ async function main(){
   assert.equal(uniqueOmenLinked.nativeCrafting.components['Metadata/Items/Currency/CurrencyRerollSocketLinks'],1);
   const uniqueLinkedQuality=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueLinked.nativeCrafting.itemText,action:{method:'quality'},seed:4},'crafted');
   assert.equal(uniqueLinkedQuality.nativeCrafting.uniqueQuality.quality,15);assert.match(uniqueLinkedQuality.nativeCrafting.itemText,/Sockets: R-G-B/);
+  const uniqueGuide={id:'unique-guide-workflow',title:'Unique shield guide',slot:'Weapon 2',startingItem:uniqueShield,targetItem:uniqueLinked.nativeCrafting.itemText,goals:[],steps:[
+    {action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},
+    {action:'Link existing sockets with an Omen of Connections and an Orb of Fusing',uniqueCraft:{method:'omen_connections',count:1}},
+  ]};
+  await queued('propose_crafting_plan',{baseRevision:context.revision,project:uniqueGuide},'review');await host('apply');context=(await call('get_build_context')).context;
+  const savedUnique=(await call('get_crafting_projects')).projects.find(entry=>entry.id===uniqueGuide.id);
+  assert.deepEqual(savedUnique.steps.map(step=>step.uniqueCraft),uniqueGuide.steps.map(step=>step.uniqueCraft));
+  await queued('propose_crafting_plan',{baseRevision:context.revision,project:savedUnique},'review');await host('apply');context=(await call('get_build_context')).context;
+  const uniqueFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'unique-guide-filter',title:'Unique guide pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');
+  const uniquePickups=new Set(uniqueFilter.profile.rules.filter(rule=>rule.origin==='craft:'+uniqueGuide.id).map(rule=>rule.title));
+  for(const name of ["Armourer's Scrap",'Omen of Connections','Orb of Fusing']) assert.ok(uniquePickups.has(name),name+' missing from unique guide pickups');
+  await queued('propose_build',{mode:'edit',title:'Remove test guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:uniqueGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
+  assert.ok(!(await call('get_crafting_projects')).projects.some(entry=>entry.id===uniqueGuide.id));
   const corruptJewelRaw='Rarity: NORMAL\nCobalt Jewel\nItem Level: 83';
   const corruptJewelInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:corruptJewelRaw,query:'',limit:5},'inspected');
   assert.ok(corruptJewelInspection.crafting.nativeEngine.uniqueCorruption.names.includes('Powerlessness'));
