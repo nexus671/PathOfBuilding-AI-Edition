@@ -11,6 +11,7 @@ describe("Current Thread modifier restrictions",function()
 		for _,row in ipairs(strategy.threadRestrictions(80,8,nil,1).modifiers) do assert.is_false(row.restrictionsMet);assert.equal("restricted",row.conditionStatus) end
 		for _,row in ipairs(strategy.threadRestrictions(80,8,nil,0).modifiers) do assert.is_nil(row.restrictionsMet) end
 		assert.has_error(function() strategy.threadRestrictions(80,1.5) end);assert.has_error(function() strategy.threadRestrictions(0,2) end)
+		assert.has_error(function() strategy.threadRestrictions(80,1,nil,2) end);assert.has_error(function() strategy.threadRestrictions(80,0,nil,1) end)
 	end)
 	it("distinguishes spent Abyss Threads from the applied total",function()
 		local unknown=strategy.threadRestrictions(83,8).abyssalConsort
@@ -46,6 +47,7 @@ describe("Current Thread modifier restrictions",function()
 		assert.matches("When spending Threads: 3 guaranteed modifiers",text);assert.matches("Free%-only guarantees are not established",text);assert.matches("Abyss: 3 additional pits",text);assert.matches("stacking not assumed",text)
 		c.spent:SetText("1",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
 		assert.matches("Consorts: restricted",text);assert.matches("free Threads are separate",text)
+		c.spent:SetText("9",true);assert.matches("cannot exceed",StripEscapes(c.status.label));assert.equal(0,#c.results.list)
 		main.popups={}
 	end)
 end)

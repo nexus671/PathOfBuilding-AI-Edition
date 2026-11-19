@@ -374,5 +374,7 @@ describe("Desktop build proposals", function()
 		assert.is_true(bridge.status.atlas.abyssalConsort.restricted);assert.equal(1,bridge.status.atlas.abyssalConsort.spentThreads)
 		local count=0;for _,row in ipairs(bridge.status.atlas.modifiers) do if row.restrictionsMet then count=count+1 end end
 		assert.equal(3,count);assert.equal(revision,bridge.revision(build))
+		files.request=json.encode({id="threads-invalid",kind="atlasThreads",session=bridge.session,baseRevision=revision,areaLevel=73,threads=1,spentThreads=2})
+		bridge.poll(build,true);assert.equal("failed",bridge.status.status);assert.matches("cannot exceed",bridge.status.error);assert.equal(revision,bridge.revision(build))
 	end)
 end)

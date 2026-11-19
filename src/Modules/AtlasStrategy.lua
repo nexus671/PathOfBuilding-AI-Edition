@@ -33,6 +33,7 @@ function M.threadRestrictions(areaLevel,threads,spentAbyssThreads,spentThreads)
 	assert(type(threads)=="number" and threads==math.floor(threads) and threads>=0 and threads<=100,"Use a non-negative whole Thread count up to 100")
 	assert(spentAbyssThreads==nil or type(spentAbyssThreads)=="number" and spentAbyssThreads==math.floor(spentAbyssThreads) and spentAbyssThreads>=0 and spentAbyssThreads<=100,"Use a non-negative whole Abyss Thread spend up to 100")
 	assert(spentThreads==nil or type(spentThreads)=="number" and spentThreads==math.floor(spentThreads) and spentThreads>=0 and spentThreads<=100,"Use a non-negative whole Thread spend up to 100")
+	assert(spentThreads==nil or spentThreads<=threads,"Threads spent cannot exceed Threads applied for the same type")
 	local result=M.threadRestrictionReference();result.areaLevel=areaLevel;result.threads=threads;result.spentThreads=spentThreads
 	for _,row in ipairs(result.modifiers) do
 		if areaLevel<row.areaLevel or spentThreads==1 then row.restrictionsMet=false;row.conditionStatus="restricted"

@@ -2057,7 +2057,7 @@
 	<File name="Modules/AtlasGrantRoute.lua" part="program" sha1="c9b1be59c1d2c9c6359d5546b3b41e1cfc3bdf12" />
 	<File name="Modules/AtlasPlanner.lua" part="program" sha1="df4769611f0ed1278ac70bd937896cfe18c07a78" />
 	<File name="Modules/AtlasRegions.lua" part="program" sha1="e418859ff34df69202221e4d46f5c3f1275afc3b" />
-	<File name="Modules/AtlasStrategy.lua" part="program" sha1="cd7879033d382fee3544bcd59d16e792f445a5b4" />
+	<File name="Modules/AtlasStrategy.lua" part="program" sha1="0491cbffe5b1bcf89558c2f121c459fb16504f84" />
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="650adaf8761d03a87383f3d4a3b14c1ffb5a6aca" />
 	<File name="Modules/Build.lua" part="program" sha1="12fbc0fe204cd1f241ad26ccd4cefbda4f5027b5" />
 	<File name="Modules/BuildDisplayStats.lua" part="program" sha1="ffc4da3b13c3d50f3580b452622429f0bd7e70ab" />
