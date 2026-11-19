@@ -260,6 +260,15 @@ describe("Native Atlas planner", function()
 		local reverse;for _,entry in ipairs(strategy.compare(p,plan("3.30.0c")).modifierChanges) do if entry.text==change.text then reverse=entry;break end end
 		assert.is_truthy(reverse);assert.equal(-found.value,reverse.delta)
 	end)
+	it("compares reduced Atlas modifiers in both directions",function()
+		local empty=plan("3.30.0c");local selected=atlas.connect(empty,{51896,8887});local report=atlas.report(selected);local total
+		for _,entry in ipairs(report.additiveTotals) do if entry.suffix=="Cost of Building and Upgrading Towers in your Maps" and entry.prefix=="" then total=entry;break end end
+		assert.is_truthy(total);assert.is_true(total.value<=-20);assert.matches("reduced Cost",total.text)
+		local strategy=require("Modules.AtlasStrategy");local function delta(before,after)
+			for _,entry in ipairs(strategy.compare(before,after).modifierChanges) do if entry.text=="increased Cost of Building and Upgrading Towers in your Maps" then return entry.delta end end
+		end
+		assert.equal(total.value,delta(empty,selected));assert.equal(-total.value,delta(selected,empty))
+	end)
 	it("requires enough earned points to reach a point-granting node before spending its grant",function()
 		local target=atlas.search("3.29.3","Unwavering Vision",10).matches[1].id
 		local full=atlas.connect(plan("3.29.3"),{target});local needed=#full.nodes
