@@ -94,6 +94,10 @@ async function main(){
   const uniqueLinked=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueQualityNext.nativeCrafting.itemText,action:{method:'beast_max_links'},seed:3},'crafted');
   assert.equal(uniqueLinked.nativeCrafting.itemText,uniqueShield.replace('Quality: 12','Quality: 14').replace('Sockets: R-G B','Sockets: R-G-B'));
   assert.equal(uniqueLinked.nativeCrafting.components.beast_black_morrigan,1);assert.equal(uniqueLinked.nativeCrafting.components.beast_craicic_sand_spitter,1);
+  const uniqueOmenLinked=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueQualityNext.nativeCrafting.itemText,action:{method:'omen_connections'},seed:3},'crafted');
+  assert.equal(uniqueOmenLinked.nativeCrafting.itemText,uniqueLinked.nativeCrafting.itemText);
+  assert.equal(uniqueOmenLinked.nativeCrafting.components['Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks'],1);
+  assert.equal(uniqueOmenLinked.nativeCrafting.components['Metadata/Items/Currency/CurrencyRerollSocketLinks'],1);
   const uniqueLinkedQuality=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueLinked.nativeCrafting.itemText,action:{method:'quality'},seed:4},'crafted');
   assert.equal(uniqueLinkedQuality.nativeCrafting.uniqueQuality.quality,15);assert.match(uniqueLinkedQuality.nativeCrafting.itemText,/Sockets: R-G-B/);
   const corruptJewelRaw='Rarity: NORMAL\nCobalt Jewel\nItem Level: 83';

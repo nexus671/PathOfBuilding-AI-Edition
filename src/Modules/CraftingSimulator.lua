@@ -1224,13 +1224,13 @@ do
 	local ordinaryPerform=M.perform
 	function M.perform(raw,action,seed,initialState,treeVersion)
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
-		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="quality" or action.method=="beast_max_links") then
+		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="quality" or action.method=="beast_max_links" or action.method=="omen_connections") then
 			assert(initialState==nil,"Continue unique crafting using the returned item text, not an ordinary crafting state")
 			for key in pairs(action) do assert(key=="method","This unique action does not accept additional options") end
 			if seed~=nil then integer(seed,1,2147483646,"seed") end
-			if action.method=="beast_max_links" then
-				local result=require("Modules.CraftingUniqueQuality").link(raw)
-				return M.withTreeContext({priceKey="beast_max_links",itemText=result.itemText,components=result.components,dataPatch=M.dataPatch,
+			if action.method=="beast_max_links" or action.method=="omen_connections" then
+				local result=require("Modules.CraftingUniqueQuality").link(raw,action.method)
+				return M.withTreeContext({priceKey=action.method,itemText=result.itemText,components=result.components,dataPatch=M.dataPatch,
 					warnings={{code="unique_crafting_scope",message="Unique crafting supports ordinary quality and maximum links only. Continue using the returned item text."}},limitations=copyTable(M.limits)},treeVersion)
 			end
 			local result=require("Modules.CraftingUniqueQuality").apply(raw)

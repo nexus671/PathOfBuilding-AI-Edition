@@ -36,11 +36,15 @@ function M.Open(build,project,layout,snapshot)
 	ui.label(c,"status",16,174,"",14)
 	button("apply",206,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;raw=result.itemText;refresh(true) end)
 	c.apply.enabled=function() return info.available end
-	button("link",250,"Bestiary: link sockets",function() local result=unique.link(raw);history[#history+1]=raw;raw=result.itemText;refresh(true) end)
+	button("link",250,"Bestiary link",function() local result=unique.link(raw);history[#history+1]=raw;raw=result.itemText;refresh(true) end)
+	c.link.width=130
 	c.link.enabled=function() return not linkReason end
 	c.link.tooltipText=function()
 		return linkReason or "Links existing sockets using a Black Morrigan and a Craicic Sand Spitter."
 	end
+	button("omen",250,"Omen + Fusing",function() local result=unique.link(raw,"omen_connections");history[#history+1]=raw;raw=result.itemText;refresh(true) end)
+	c.omen.x=156;c.omen.width=130;c.omen.enabled=function() return not linkReason end
+	c.omen.tooltipText=function() return linkReason or "Links existing sockets using an Omen of Connections and an Orb of Fusing." end
 	button("undo",294,"Undo",function() assert(#history>0,"No action to undo");raw=table.remove(history);refresh(true) end)
 	c.undo.enabled=function() return #history>0 end
 	button("keep",338,"Keep as target",function() draft.targetItem=raw;draft=build.savers.CraftingProjects:Upsert(draft);ui.discard(build,"uniqueQuality",draft.id);require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true);c.notice.label="^7Target kept. Save the build." end)

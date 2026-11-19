@@ -57,7 +57,9 @@ function M.linkReason(raw)
 	if #colours~=#sockets then return "The socket layout could not be verified" end
 end
 
-function M.link(raw)
+function M.link(raw,method)
+	method=method or "beast_max_links"
+	assert(method=="beast_max_links" or method=="omen_connections","Unsupported unique linking method")
 	local reason=M.linkReason(raw);assert(not reason,reason)
 	local before=M.inspect(raw)
 	local output,count=raw:gsub("(\nSockets: )([^\r\n]*)",function(prefix,line)
@@ -68,6 +70,10 @@ function M.link(raw)
 	local after=M.inspect(output)
 	assert(before.title==after.title and before.baseName==after.baseName and #before.sockets==#after.sockets,"Unique item did not round-trip after linking")
 	for i,socket in ipairs(after.sockets) do assert(socket.color==before.sockets[i].color and socket.group==after.sockets[1].group,"Socket colours or links changed unexpectedly") end
-	return {itemText=output,components={beast_black_morrigan=1,beast_craicic_sand_spitter=1}}
+	local components=method=="beast_max_links" and {beast_black_morrigan=1,beast_craicic_sand_spitter=1} or {
+		["Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks"]=1,
+		["Metadata/Items/Currency/CurrencyRerollSocketLinks"]=1,
+	}
+	return {itemText=output,components=components}
 end
 return M
