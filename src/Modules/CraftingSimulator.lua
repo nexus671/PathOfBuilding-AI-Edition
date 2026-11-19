@@ -610,7 +610,7 @@ end
 function M.matches(state,targets,rarity,model,requirements,requiredGroups)
  if state.veil or state.destroyed then return false end
  if requirements and requirements.uniqueName and not state.uniqueTitle then return false end
- if state.socketLayoutUnknown and requirements and (requirements.sockets~=nil or requirements.links~=nil or requirements.minAbyssSockets~=nil or requirements.socketColours~=nil) then error("Set the unknown socket layout before checking socket or link goals.") end
+ if state.socketLayoutUnknown and requirements and (requirements.sockets~=nil or requirements.exactSockets~=nil or requirements.links~=nil or requirements.minAbyssSockets~=nil or requirements.socketColours~=nil) then error("Set the unknown socket layout before checking socket or link goals.") end
  if rarity and state.rarity ~= rarity then return false end
  local matched=0
  for _,group in ipairs(targets) do
@@ -663,6 +663,7 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   if requirements.harvestEnchant and state.harvestEnchant~=requirements.harvestEnchant then return false end
   if requirements.nativeStats and not require("Modules.CraftingItemStats").matches(M,model,state,requirements.nativeStats) then return false end
   if requirements.sockets and #(state.sockets or model.item.sockets or {}) < requirements.sockets then return false end
+  if requirements.exactSockets and #(state.sockets or model.item.sockets or {}) ~= requirements.exactSockets then return false end
   if requirements.minAbyssSockets then
    local count=0;for _,socket in ipairs(state.sockets or model.item.sockets or {}) do if socket.color=="A" then count=count+1 end end
    if count < requirements.minAbyssSockets then return false end
@@ -695,7 +696,7 @@ function M.validateRecipe(recipe)
 	local function validateRequirements(requirements)
 		if not requirements then return end
 		assert(type(requirements) == "table" and next(requirements),"Choose at least one property condition")
-		local limits={openPrefixes=3,openSuffixes=3,minAffixes=6,maxAffixes=6,minQuality=40,sockets=6,links=6,minAbyssSockets=6,minMemoryStrands=100,maxMemoryStrands=100,minFractured=6,maxFractured=6,minIntangibility=100,maxIntangibility=100}
+		local limits={openPrefixes=3,openSuffixes=3,minAffixes=6,maxAffixes=6,minQuality=40,sockets=6,exactSockets=6,links=6,minAbyssSockets=6,minMemoryStrands=100,maxMemoryStrands=100,minFractured=6,maxFractured=6,minIntangibility=100,maxIntangibility=100}
 		for key,value in pairs(requirements) do
 			if key == "uniqueName" then assert(type(value)=="string" and #value<=160 and value:match("%S"),"Enter a unique item name")
 			elseif key == "nativeStats" then require("Modules.CraftingItemStats").validate(value)
@@ -706,6 +707,7 @@ function M.validateRecipe(recipe)
 			else integer(value,0,assert(limits[key],"Unknown property condition"),key) end
 		end
 		assert(not requirements.linkedColours or requirements.socketColours,"Linked colours require a socket colour target")
+		assert(not requirements.sockets or not requirements.exactSockets or requirements.sockets<=requirements.exactSockets,"Minimum sockets exceed the exact socket count")
 		assert(not (requirements.corrupted==false and requirements.twiceCorrupted==true),"A twice corrupted item cannot be uncorrupted")
 		for _,pair in ipairs({{"minAffixes","maxAffixes"},{"minMemoryStrands","maxMemoryStrands"},{"minFractured","maxFractured"},{"minIntangibility","maxIntangibility"}}) do
 			assert(not requirements[pair[1]] or not requirements[pair[2]] or requirements[pair[1]] <= requirements[pair[2]],"Minimum property condition exceeds maximum")
@@ -741,7 +743,7 @@ function M.validateRecipe(recipe)
 	return copyTable(recipe)
 end
 local function socketGoal(requirements)
-	return requirements and (requirements.sockets~=nil or requirements.links~=nil or requirements.minAbyssSockets~=nil or requirements.socketColours~=nil)
+	return requirements and (requirements.sockets~=nil or requirements.exactSockets~=nil or requirements.links~=nil or requirements.minAbyssSockets~=nil or requirements.socketColours~=nil)
 end
 local function validateCorruptionSocketGoals(model,recipe)
 	if M.socketLimit(model,model.initial)==0 then return end

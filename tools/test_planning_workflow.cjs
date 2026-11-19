@@ -124,6 +124,8 @@ async function main(){
   assert.equal(uniqueWhite.nativeCrafting.components['Metadata/Items/Currency/CurrencyConvertToNormal'],1);assert.equal(uniqueWhite.nativeCrafting.components['Metadata/Items/Currency/CurrencyCorrupt'],1);
   const uniqueOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'omen_connections'},targets:[],options:{requirements:{sockets:3,links:3,socketColours:'RGB',linkedColours:true}}},'crafted');
   assert.equal(uniqueOdds.nativeCrafting.sampled,false);assert.equal(uniqueOdds.nativeCrafting.successChance,100);assert.match(uniqueOdds.nativeCrafting.sampleItem,/Sockets: R-G-B/);
+  const exactSockets=await queued('calculate_crafting',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'omen_connections'},targets:[],options:{requirements:{exactSockets:2}}},'crafted');
+  assert.equal(exactSockets.nativeCrafting.successChance,0);
   const uniqueDefence=await queued('calculate_crafting',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},targets:[],options:{requirements:{nativeStats:{Armour:uniqueInspection.crafting.nativeEngine.nativeStats.Armour}}}},'crafted');
   assert.equal(uniqueDefence.nativeCrafting.successChance,100);assert.ok(uniqueDefence.nativeCrafting.nativeStats.Armour>=uniqueInspection.crafting.nativeEngine.nativeStats.Armour);
   const uniqueImpossible=await queued('calculate_crafting',{baseRevision:context.revision,itemText:uniqueCorrupted,action:{method:'socket_white_bench'},targets:[],options:{requirements:{socketColours:'WWW',linkedColours:true}}},'crafted');

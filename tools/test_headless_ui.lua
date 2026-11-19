@@ -2161,6 +2161,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(saved.nativeRecipe and saved.nativeRecipe.steps[1].linked,"Bench linking was not saved in the recipe")
 		main.popups={}
 	end
+	do
+		local saved;require("Classes.CraftingTargetControl").Open({},{exactSockets=3},nil,function(_,value) saved=value end)
+		assert(main.popups[1].controls.socketMode:GetSelValue()=="Exactly","Exact socket target did not reopen")
+		ui:text("sockets","2");ui:click("keep");assert(saved.exactSockets==2 and not saved.sockets,"Exact socket target was not kept")
+	end
 	ui:restore()
 end
 -- These checks exercise the audit itself: raw uncoloured list text inherits the

@@ -30,6 +30,10 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 	end
 	local properties={{"openPrefixes","Open prefixes"},{"openSuffixes","Open suffixes"},{"minAffixes","Minimum affixes"},{"maxAffixes","Maximum affixes"},{"minQuality","Minimum quality"},{"sockets","Minimum sockets"},{"links","Minimum linked sockets"},{"minMemoryStrands","Minimum memory strands"},{"maxMemoryStrands","Maximum memory strands"},{"minFractured","Minimum fractured mods"},{"maxFractured","Maximum fractured mods"},{"minIntangibility","Minimum Intangibility"},{"maxIntangibility","Maximum Intangibility"}}
 	for i,entry in ipairs(properties) do edit(entry[1],16+(i-1)%3*196,214+math.floor((i-1)/3)*42,conditions[entry[1]],entry[2]) end
+	controls.socketsLabel.label="Sockets";controls.sockets.width=72
+	if conditions.exactSockets~=nil then controls.sockets:SetText(tostring(conditions.exactSockets)) end
+	controls.socketMode=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{488,272,100,24},{"At least","Exactly"})
+	controls.socketMode:SelByValue(conditions.exactSockets~=nil and "Exactly" or "At least")
 	edit("socketColours",212,382,conditions.socketColours,"Socket colours (e.g. RRBG)")
 	controls.linkedColours=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{408,398,180,24},{"Anywhere on item","In one linked group"})
 	controls.linkedColours:SelByValue(conditions.linkedColours and "In one linked group" or "Anywhere on item")
@@ -70,6 +74,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 			for _,key in ipairs({"fractured","crafted"}) do local value=controls[key]:GetSelValue();group[key]=nil;if not value:match("^Any ") then group[key]=not value:match("^Not ") end end
 		end
 		local result={nativeStats=conditions.nativeStats and copyTable(conditions.nativeStats)};for _,entry in ipairs(properties) do local value=controls[entry[1]].buf;if value ~= "" then result[entry[1]]=assert(tonumber(value),"Enter a number for "..entry[2]:lower()) end end
+		if result.sockets~=nil and controls.socketMode:GetSelValue()=="Exactly" then result.exactSockets=result.sockets;result.sockets=nil end
 		if controls.uniqueName.buf:match("%S") then result.uniqueName=controls.uniqueName.buf end
 		if controls.minAbyssSockets.buf~="" then result.minAbyssSockets=assert(tonumber(controls.minAbyssSockets.buf),"Enter a number for Abyss sockets") end
 		local corruption=controls.corrupted:GetSelValue()

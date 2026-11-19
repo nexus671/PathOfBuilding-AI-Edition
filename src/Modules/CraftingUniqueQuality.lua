@@ -135,7 +135,7 @@ end
 
 function M.matches(raw,requirements)
 	local item,info=M.inspect(raw);requirements=requirements or {}
-	local supported={uniqueName=true,minQuality=true,corrupted=true,twiceCorrupted=true,sockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true}
+	local supported={uniqueName=true,minQuality=true,corrupted=true,twiceCorrupted=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true}
 	for key in pairs(requirements) do assert(supported[key],"This unique item property is not supported: "..tostring(key)) end
 	if requirements.uniqueName and item.title~=requirements.uniqueName then return false end
 	if requirements.minQuality and info.quality<requirements.minQuality then return false end
@@ -145,7 +145,7 @@ function M.matches(raw,requirements)
 		local stats=require("Modules.CraftingItemStats");stats.validate(requirements.nativeStats)
 		local values=stats.itemValues(item);for key,minimum in pairs(requirements.nativeStats) do if values[key]==nil or values[key]<minimum then return false end end
 	end
-	local socketGoal=requirements.sockets~=nil or requirements.links~=nil or requirements.socketColours~=nil or requirements.minAbyssSockets~=nil
+	local socketGoal=requirements.sockets~=nil or requirements.exactSockets~=nil or requirements.links~=nil or requirements.socketColours~=nil or requirements.minAbyssSockets~=nil
 	if socketGoal then
 		local line,count=raw:match("\nSockets: ([^\r\n]*)"),0
 		for _ in ("\n"..raw):gmatch("\nSockets:") do count=count+1 end
@@ -153,6 +153,7 @@ function M.matches(raw,requirements)
 	end
 	local sockets=item.sockets or {}
 	if requirements.sockets and #sockets<requirements.sockets then return false end
+	if requirements.exactSockets and #sockets~=requirements.exactSockets then return false end
 	local groups,previous={},nil;local abyss=0
 	for _,socket in ipairs(sockets) do
 		if socket.color=="A" then abyss=abyss+1;previous=nil

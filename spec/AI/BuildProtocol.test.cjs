@@ -710,6 +710,15 @@ test('queues bounded Abyss socket goals in recipes and step conditions', t => {
   for(const invalid of [-1,7,1.5]) assert.throws(()=>f.call('simulate_crafting',{...base,recipe:{...recipe,requirements:{minAbyssSockets:invalid}}}),/arguments/);
 });
 
+test('queues exact socket goals and rejects out-of-range counts', t => {
+  const f=fixture(t),base={baseRevision:f.state.revision,itemText:craftingProject().startingItem};
+  const recipe={steps:[{method:'socket_bench',count:3}],targets:[],requirements:{exactSockets:3}};
+  f.call('simulate_crafting',{...base,recipe,options:{trials:1,maxActions:1}});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe,recipe);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  for(const invalid of [-1,7,1.5]) assert.throws(()=>f.call('simulate_crafting',{...base,recipe:{...recipe,requirements:{exactSockets:invalid}}}),/arguments/);
+});
+
 test('accepts supported influence goals in recipes and calculations', t => {
   const f=fixture(t), base={baseRevision:f.state.revision,itemText:craftingProject().startingItem};
   const action={method:'gwennen',firstOutcome:1031,secondOutcome:1031};

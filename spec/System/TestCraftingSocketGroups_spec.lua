@@ -2,6 +2,19 @@ describe("Crafting socket group validation",function()
 	local sim=require("Modules.CraftingSimulator")
 	local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: W W W"
 	before_each(function() newBuild() end)
+	it("distinguishes an exact socket count from a minimum",function()
+		local model=sim.model(raw);assert.is_true(sim.matches(model.initial,{},nil,model,{exactSockets=3}))
+		assert.is_false(sim.matches(model.initial,{},nil,model,{exactSockets=2}));assert.is_true(sim.matches(model.initial,{},nil,model,{sockets=2}))
+		local run=sim.simulate(raw,{steps={{method="socket_bench",count=2}},targets={},requirements={exactSockets=2}},{trials=1,maxActions=1})
+		assert.is_true(run.sampleSuccess);assert.equal(1,run.meanExecutedActions);assert.equal(2,#run.sampleState.sockets)
+		local unknown=copyTable(model.initial);unknown.socketLayoutUnknown=true;unknown.sockets=nil
+		assert.has_error(function() sim.matches(unknown,{},nil,model,{exactSockets=3}) end)
+		assert.has_error(function() sim.validateRecipe({steps={{method="chaos"}},targets={},requirements={sockets=4,exactSockets=3}}) end)
+		local unique="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B"
+		assert.is_true(require("Modules.CraftingUniqueQuality").matches(unique,{exactSockets=3}));assert.is_false(require("Modules.CraftingUniqueQuality").matches(unique,{exactSockets=2}))
+		local saved;local editor=require("Classes.CraftingTargetControl").Open({},{exactSockets=3},nil,function(_,value) saved=value end)
+		assert.equal("Exactly",editor.socketMode:GetSelValue());editor.sockets:SetText("2");editor.keep:Click();assert.equal(2,saved.exactSockets);assert.is_nil(saved.sockets)
+	end)
 	it("rejects separated groups before they can claim a linked-colour goal",function()
 		local model=sim.model(raw);local state=copyTable(model.initial)
 		state.sockets={{color="R",group=0},{color="G",group=1},{color="B",group=0}}
