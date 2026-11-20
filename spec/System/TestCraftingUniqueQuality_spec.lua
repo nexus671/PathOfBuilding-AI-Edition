@@ -138,6 +138,25 @@ describe("Unique item quality",function()
 		assert.is_true(quality.matches(saved.targetItem,{socketColours="G"}));main.popups={}
 	end)
 
+	it("saves a direct unique colour target without rolling first",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: W-W W W"
+		local project={id="direct-colour",title="Target colours",slot="Helmet",startingItem=raw,goals={},steps={}}
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.socketCount:Click();main.popups[1].controls.colours:Click()
+		local popup=main.popups[1].controls;assert.is_false(popup.plan:IsEnabled());popup.target:SetText("RRRRR");assert.is_false(popup.plan:IsEnabled())
+		popup.target:SetText("rgb");assert.is_true(popup.plan:IsEnabled());popup.plan:Click()
+		local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+		assert.equal(raw,saved.startingItem);assert.equal("RGB",saved.nativeRecipe.requirements.socketColours);assert.equal(100,saved.nativeRecipe.steps[1].maxAttempts)
+		assert.equal("chromatic",saved.steps[1].uniqueCraft.method);assert.matches("RGB",saved.steps[1].stopWhen);assert.is_true(control.recipe:IsEnabled())
+		local result=require("Modules.CraftingSimulator").simulate(raw,saved.nativeRecipe,{trials=20,maxActions=100,seed=123})
+		assert.is_true(result.sampled);assert.is_true(result.trials==20)
+		local filters=require("Modules.LootFilters");local pickups=filters.generate(build,filters.profile("direct-colour","Colours"));local found=false
+		for _,entry in ipairs(pickups) do if entry.origin=="craft:direct-colour" and entry.title=="Chromatic Orb" then found=true end end;assert.is_true(found)
+		control.socketCount:Click();main.popups[1].controls.colours:Click();local replacement=main.popups[1].controls;replacement.target:SetText("RR");replacement.plan:Click()
+		assert.equal("RGB",saved.nativeRecipe.requirements.socketColours);main.popups[1].controls.confirm:Click()
+		for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end;assert.equal("RR",saved.nativeRecipe.requirements.socketColours);main.popups={}
+	end)
+
 	it("previews and simulates unique flask and tincture quality",function()
 		local sim=require("Modules.CraftingSimulator")
 		for _,entry in ipairs({{"Taste of Hate","Sapphire Flask"},{"The Battle Within","Oakbranch Tincture"}}) do

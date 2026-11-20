@@ -8,4 +8,9 @@ return function(build,ui,frame)
 	assert(saved and saved.steps[1].uniqueCraft.method=="chromatic" and saved.nativeRecipe.steps[1].method=="chromatic","Unique colour guide or recipe was not kept")
 	ui:click("recipe");frame("crafting-unique-colour-result");ui:click("close")
 	main.popups={}
+	local direct={id="unique-direct-colour-ui",title="Desired colours",slot="Helmet",startingItem=project.startingItem,goals={},steps={}}
+	store:Upsert(direct);require("Classes.CraftingUniqueQualityControl").Open(build,direct)
+	ui:click("socketCount");ui:click("colours");ui:text("target","RGB");frame("crafting-unique-colour-target");ui:click("plan")
+	local planned;for _,entry in ipairs(store.projects) do if entry.id==direct.id then planned=entry end end
+	assert(planned and planned.nativeRecipe.requirements.socketColours=="RGB" and planned.steps[1].uniqueCraft.method=="chromatic","Direct colour plan was not kept");main.popups={}
 end

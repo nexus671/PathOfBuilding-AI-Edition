@@ -127,7 +127,7 @@ function M.Open(build,project,layout,snapshot)
 		controls.colours=new("ButtonControl"):ButtonControl(ui.anchor,{184,height-48,96,28},"Colours",function()
 			main:ClosePopup();local options={}
 			for _,entry in ipairs({{label="Chromatic Orb",val="chromatic"},{label="Tainted Chromatic Orb",val="tainted_chromatic"},{label="Omen of Trichromatism",val="omen_trichromatism"}}) do options[#options+1]=entry end
-			local colour={};local cw,ch=440,238
+			local colour={};local cw,ch=480,304
 			ui.description(colour,"help",16,25,cw-32,54,{"Preview one sampled colour roll.","Colour and placement probabilities are estimates."},14)
 			colour.method=new("DropDownControl"):DropDownControl(ui.anchor,{16,90,cw-32,28},options)
 			if item.corrupted then colour.method:SelByValue("tainted_chromatic","val") end
@@ -135,12 +135,35 @@ function M.Open(build,project,layout,snapshot)
 			local checked,cached
 			local function reason() local selected=method();if checked~=selected then checked=selected;cached=unique.colourReason(raw,selected) end;return cached end
 			ui.label(colour,"availability",16,132,"",14);colour.availability.label=function() return "^7"..ui.fit(reason() or "Ready to preview; no currency is spent.",cw-32,14) end
-			colour.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,ch-48,160,28},"Preview roll",function()
+			ui.label(colour,"targetLabel",16,164,"Desired colours (R, G, B, W; any order)",14)
+			colour.target=new("EditControl"):EditControl(ui.anchor,{16,185,cw-32,26},"","e.g. RGB",nil,6)
+			local function targetReason()
+				if reason() then return reason() end
+				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a direct colour plan." end
+				if #draft.steps>=40 then return "The guide has room for up to 40 steps." end
+				local target=colour.target.buf:upper()
+				if target=="" or not target:match("^[RGBW]+$") then return "Enter one or more socket colours using R, G, B or W." end
+				if #target>#item.sockets then return "The target has more colours than the item has sockets." end
+			end
+			colour.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,ch-48,140,28},"Preview roll",function()
 				local choice=method();colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
 				local result=unique.colour(raw,choice,seed);history[#history+1]=raw;actions[#actions+1]=choice;redo={};raw=result.itemText;main:ClosePopup();refresh(true)
 			end)
 			colour.apply.enabled=function() return not reason() end
 			colour.apply.tooltipText=function() return reason() or "Preview one sampled socket-colour outcome." end
+			colour.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,ch-48,150,28},"Save colour plan",function()
+				local why=targetReason();assert(not why,why);local choice=method();local target=colour.target.buf:upper()
+				local recipe={steps={{method=choice,maxAttempts=100,untilRequirements={socketColours=target}}},targets={},requirements={socketColours=target}}
+				require("Modules.CraftingSimulator").validateRecipe(recipe)
+				local function keepPlan()
+					local updated=copyTable(draft);updated.nativeRecipe=recipe
+					updated.steps[#updated.steps+1]={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen="At least "..target.." sockets in any order",uniqueCraft={method=choice,count=1},done=false}
+					draft=build.savers.CraftingProjects:Upsert(updated);refresh(true);c.notice.label="^7Colour plan kept. Save the build.";main:ClosePopup()
+				end
+				if draft.nativeRecipe then main:OpenConfirmPopup("Replace crafting recipe","Replace the saved recipe with this colour plan?\nThe existing guide steps will be kept.","Replace",keepPlan) else keepPlan() end
+			end)
+			colour.plan.enabled=function() return not targetReason() end
+			colour.plan.tooltipText=function() return targetReason() or "Save a bounded repeat-until-colours recipe and guide step." end
 			colour.close=new("ButtonControl"):ButtonControl(ui.anchor,{cw-132,ch-48,116,28},"Cancel",function() main:ClosePopup() end)
 			ui.style(colour,{apply=true});for _,control in pairs(colour) do control.layoutAudit="unique-socket-colours" end
 			main:OpenPopup(cw,ch,"Socket colours",colour,nil,nil,"close")
