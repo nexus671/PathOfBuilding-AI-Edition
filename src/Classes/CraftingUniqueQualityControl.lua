@@ -136,8 +136,12 @@ function M.Open(build,project,layout,snapshot)
 			local checked,cached
 			local function reason() local selected=method();if checked~=selected then checked=selected;cached=unique.colourReason(raw,selected) end;return cached end
 			ui.label(colour,"availability",16,132,"",14);colour.availability.label=function() return "^7"..ui.fit(reason() or "Ready to preview; no currency is spent.",cw-32,14) end
-			ui.label(colour,"targetLabel",16,164,"Desired colours (R, G, B, W; any order)",14)
-			colour.target=new("EditControl"):EditControl(ui.anchor,{16,185,cw-32,26},"","e.g. RGB",nil,6)
+			ui.label(colour,"targetLabel",16,164,"Desired colours (R, G, B, W)",14)
+			ui.label(colour,"placementLabel",240,164,"Placement",14)
+			colour.target=new("EditControl"):EditControl(ui.anchor,{16,185,208,26},"","e.g. RGB",nil,6)
+			colour.placement=new("DropDownControl"):DropDownControl(ui.anchor,{240,185,cw-256,26},{"Anywhere on item","In one linked group"})
+			local function linked() return colour.placement:GetSelValue()=="In one linked group" end
+			local function stopText(target,linkedColours) return "At least "..target..(linkedColours and " sockets in one linked group" or " sockets in any order") end
 			local function replaceableColourStep()
 				local recipe=draft.nativeRecipe
 				if not recipe or #recipe.steps~=1 or not recipe.requirements then return nil end
@@ -145,7 +149,7 @@ function M.Open(build,project,layout,snapshot)
 				if type(target)~="string" or not (action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism") then return nil end
 				local expected=unique.guideAction(action,1,info.resource,item.corrupted,#item.sockets);local found
 				for index,step in ipairs(draft.steps) do
-					if step.uniqueCraft and step.uniqueCraft.method==action and step.uniqueCraft.count==1 and not step.done and (not step.onFailure or step.onFailure=="") and step.action==expected and step.stopWhen=="At least "..target.." sockets in any order" then
+					if step.uniqueCraft and step.uniqueCraft.method==action and step.uniqueCraft.count==1 and not step.done and (not step.onFailure or step.onFailure=="") and step.action==expected and step.stopWhen==stopText(target,recipe.requirements.linkedColours) then
 						if found then return nil end;found=index
 					end
 				end
@@ -158,6 +162,10 @@ function M.Open(build,project,layout,snapshot)
 				local target=colour.target.buf:upper()
 				if target=="" or not target:match("^[RGBW]+$") then return "Enter one or more socket colours using R, G, B or W." end
 				if #target>#item.sockets then return "The target has more colours than the item has sockets." end
+				if linked() then
+					local counts,best={},0;for _,socket in ipairs(item.sockets) do counts[socket.group]=(counts[socket.group] or 0)+1;best=math.max(best,counts[socket.group]) end
+					if #target>best then return "No existing linked group has enough sockets for this target." end
+				end
 			end
 			colour.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,ch-48,140,28},"Preview roll",function()
 				local choice=method();colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
@@ -166,13 +174,14 @@ function M.Open(build,project,layout,snapshot)
 			colour.apply.enabled=function() return not reason() end
 			colour.apply.tooltipText=function() return reason() or "Preview one sampled socket-colour outcome." end
 			colour.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,ch-48,150,28},"Save colour plan",function()
-				local why=targetReason();assert(not why,why);local choice=method();local target=colour.target.buf:upper()
-				local recipe={steps={{method=choice,maxAttempts=100,untilRequirements={socketColours=target}}},targets={},requirements={socketColours=target}}
+				local why=targetReason();assert(not why,why);local choice=method();local target=colour.target.buf:upper();local together=linked()
+				local requirements={socketColours=target,linkedColours=together}
+				local recipe={steps={{method=choice,maxAttempts=100,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements}
 				require("Modules.CraftingSimulator").validateRecipe(recipe)
 				local replaceIndex=replaceableColourStep()
 				local function keepPlan()
 					local updated=copyTable(draft);updated.nativeRecipe=recipe
-					local step={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen="At least "..target.." sockets in any order",uniqueCraft={method=choice,count=1},done=false}
+					local step={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen=stopText(target,together),uniqueCraft={method=choice,count=1},done=false}
 					if replaceIndex then updated.steps[replaceIndex]=step else updated.steps[#updated.steps+1]=step end
 					draft=build.savers.CraftingProjects:Upsert(updated);refresh(true);c.notice.label="^7Colour plan kept. Save the build.";main:ClosePopup()
 				end

@@ -163,6 +163,23 @@ describe("Unique item quality",function()
 		assert.equal("G",saved.nativeRecipe.requirements.socketColours);assert.equal(2,#saved.steps);assert.equal("My custom condition",saved.steps[1].stopWhen);main.popups={}
 	end)
 
+	it("plans unique socket colours within one linked group",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-R G G"
+		local project={id="linked-colour",title="Linked colours",slot="Helmet",startingItem=raw,goals={},steps={}}
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.socketCount:Click();main.popups[1].controls.colours:Click()
+		local popup=main.popups[1].controls;popup.placement:SelByValue("In one linked group");popup.target:SetText("RGB");assert.is_false(popup.plan:IsEnabled())
+		assert.matches("linked group",popup.plan.tooltipText());popup.target:SetText("RG");assert.is_true(popup.plan:IsEnabled());popup.plan:Click()
+		local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+		assert.is_true(saved.nativeRecipe.requirements.linkedColours);assert.is_true(saved.nativeRecipe.steps[1].untilRequirements.linkedColours)
+		assert.equal("At least RG sockets in one linked group",saved.steps[1].stopWhen);assert.is_false(quality.matches(raw,saved.nativeRecipe.requirements))
+		local result=require("Modules.CraftingSimulator").simulate(raw,saved.nativeRecipe,{trials=20,maxActions=100,seed=123,retainSuccesses=1})
+		assert.is_true(result.sampled);assert.is_true(result.successes>0);assert.is_true(quality.matches(result.retainedSuccesses[1].itemText,saved.nativeRecipe.requirements))
+		control.socketCount:Click();main.popups[1].controls.colours:Click();popup=main.popups[1].controls;popup.target:SetText("G");popup.plan:Click();main.popups[1].controls.confirm:Click()
+		for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+		assert.is_false(saved.nativeRecipe.requirements.linkedColours);assert.equal(1,#saved.steps);assert.equal("At least G sockets in any order",saved.steps[1].stopWhen);main.popups={}
+	end)
+
 	it("previews and simulates unique flask and tincture quality",function()
 		local sim=require("Modules.CraftingSimulator")
 		for _,entry in ipairs({{"Taste of Hate","Sapphire Flask"},{"The Battle Within","Oakbranch Tincture"}}) do
