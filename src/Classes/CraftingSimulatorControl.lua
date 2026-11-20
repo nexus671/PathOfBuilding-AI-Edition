@@ -482,10 +482,10 @@ function Panel.Open(build,project,layout)
 		return "Action limit: "..options.maxActions.." per trial | seed "..options.seed
 	end
 	local function showSimulationResult(result,captured)
-		local lines={string.format("Modeled successes: %d / %d (%.2f%%)",result.successes,result.trials,result.successChance),
+		local lines={string.format("Modeled successes: %d / %d (%s)",result.successes,result.trials,ui.percent(result.successChance,2)),
 			result.meanCost~=nil and string.format("Mean spent: %.2f %s",result.meanCost,result.costCurrency) or "Cost unavailable: some executed actions have no supplied price.",
 			captured.label,capturedSettings(captured),
-			string.format("95%% sampling interval: %.2f%% to %.2f%%",result.confidenceLow,result.confidenceHigh),string.format("Mean attempted actions: %.2f",result.meanActions)}
+			"95% sampling interval: "..ui.percent(result.confidenceLow,2).." to "..ui.percent(result.confidenceHigh,2),string.format("Mean attempted actions: %.2f",result.meanActions)}
 		if result.meanExecutedActions then lines[#lines+1]=string.format("Mean executed actions: %.2f | failed attempts: %d",result.meanExecutedActions,result.failedAttempts) end
 		local warnings=result.warnings or simulator.recipeWarnings(captured.recipe,model)
 		for i,warning in ipairs(warnings) do table.insert(lines,1+i,"Model note: "..warning.message) end
@@ -574,19 +574,19 @@ function Panel.Open(build,project,layout)
 		analysis:start("fossils",nil,function(checkpoint) options.checkpoint=checkpoint;return simulator.optimizeFossils(draft.startingItem,captured,options) end)
 	end)
 	local function showOddsResult(result,context)
-		local lines={string.format("Target chance under model: %.6f%%",result.successChance),result.exactFor or result.estimateFor}
+		local lines={"Target chance under model: "..ui.percent(result.successChance),result.exactFor or result.estimateFor}
 		if result.outcomesFirst then
 			lines[#lines+1]="Modeled outcomes (assumptions below):"
-			for _,entry in ipairs(result.outcomes) do lines[#lines+1]=string.format("%.6f%% | %s%s",entry.chance,entry.text or "Finite item outcome",entry.matches and " | Target" or "") end
+			for _,entry in ipairs(result.outcomes) do lines[#lines+1]=ui.percent(entry.chance).." | "..(entry.text or "Finite item outcome")..(entry.matches and " | Target" or "") end
 		end
 		for _,warning in ipairs(result.warnings or {}) do
 			if warning.code=="gwennen_estimate" then lines[#lines+1]="Experimental: Gwennen odds and rules are unverified.";break end
 		end
 		for _,warning in ipairs(result.warnings or {}) do lines[#lines+1]="Model note: "..warning.message end
-		if result.sampled then lines[#lines+1]=string.format("%d trials | 95%% interval %.2f%% to %.2f%%",result.trials,result.confidenceLow,result.confidenceHigh) end
+		if result.sampled then lines[#lines+1]=string.format("%d trials | 95%% interval %s to %s",result.trials,ui.percent(result.confidenceLow,2),ui.percent(result.confidenceHigh,2)) end
 		for message,count in pairsSortByKey(result.transitionErrors or {}) do lines[#lines+1]="Failed modeled transitions: "..count.." | "..message end
 		if result.showAllOutcomes and not result.outcomesFirst then lines[#lines+1]="All modeled outcomes (target matches marked):" end
-		if not result.outcomesFirst then for _,entry in ipairs(result.outcomes) do if entry.matches or result.showAllOutcomes then lines[#lines+1]=string.format("%.6f%% | %s%s",entry.chance,entry.text or "Finite item outcome",result.showAllOutcomes and entry.matches and " | Target" or "") end end end
+		if not result.outcomesFirst then for _,entry in ipairs(result.outcomes) do if entry.matches or result.showAllOutcomes then lines[#lines+1]=ui.percent(entry.chance).." | "..(entry.text or "Finite item outcome")..(result.showAllOutcomes and entry.matches and " | Target" or "") end end end
 		if result.treeVersion then lines[#lines+1]="Build tree: "..(treeVersions[result.treeVersion] and treeVersions[result.treeVersion].display or result.treeVersion).." (context only) | crafting data: "..tostring(result.dataPatch).."; modifiers: "..tostring(result.modifierPatch or simulator.modifierPatch or "bundled") end
 		refresh(lines,context)
 	end
@@ -639,10 +639,10 @@ function Panel.Open(build,project,layout)
 		local resultHeight=math.max(420,math.min(650,main.screenH-60))
 		local display={};for _,line in ipairs(lines) do for _,row in ipairs(require("Modules.PlanningUI").rows({line[1]},798)) do display[#display+1]=row end end;lines=display
 		local cardWidth=195
-		ui.card(popup,"successCard",16,28,cardWidth,"SUCCESS",string.format("%.1f%%",result.successChance),result.successes.." / "..result.trials.." trials")
+		ui.card(popup,"successCard",16,28,cardWidth,"SUCCESS",ui.percent(result.successChance,1),result.successes.." / "..result.trials.." trials")
 		ui.card(popup,"attemptCard",227,28,cardWidth,"MEAN ATTEMPTS",string.format("%.1f",result.meanActions),"All trials, including failures")
 		ui.card(popup,"costCard",438,28,cardWidth,"MEAN SPENDING",result.meanCost and string.format("%.2f",result.meanCost) or "Not priced",result.meanCost and result.costCurrency or "Unpriced actions")
-		ui.card(popup,"intervalCard",649,28,195,"95% INTERVAL",string.format("%.1f-%.1f%%",result.confidenceLow,result.confidenceHigh),"Sampling uncertainty")
+		ui.card(popup,"intervalCard",649,28,195,"95% INTERVAL",ui.percent(result.confidenceLow,1).." - "..ui.percent(result.confidenceHigh,1),"Sampling uncertainty")
 		local precision={}
 		if result.warnings and #result.warnings>0 then precision[#precision+1]="Model notes are listed with the distribution below." end
 		if request then precision[#precision+1]=request.label.." | "..capturedSettings(request) end

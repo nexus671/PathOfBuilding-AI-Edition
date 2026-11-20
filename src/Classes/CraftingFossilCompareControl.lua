@@ -42,7 +42,7 @@ function P.Open(result,onChoose)
 		end
 		local lines={}
 		if selected.error then lines={ui.errorText(selected.error)} else
-			lines={string.format("%.2f%% success (%d / %d)",selected.successChance,selected.successes,result.trialsPerCombination),string.format("95%% interval: %.2f-%.2f%%",selected.confidenceLow,selected.confidenceHigh)}
+			lines={string.format("%s success (%d / %d)",ui.percent(selected.successChance,2),selected.successes,result.trialsPerCombination),"95% interval: "..ui.percent(selected.confidenceLow,2).." - "..ui.percent(selected.confidenceHigh,2)}
 			lines[#lines+1]=selected.meanCost~=nil and string.format("Mean / trial: %.4g %s",selected.meanCost,unit) or "Cost unknown: quote every ingredient."
 			lines[#lines+1]=selected.costPerSuccess~=nil and string.format("Per observed success: %.4g %s",selected.costPerSuccess,unit) or "Cost per success: no estimate."
 			if selected.successes==0 then lines[#lines+1]="No observed successes does not prove impossibility." end
@@ -54,7 +54,7 @@ function P.Open(result,onChoose)
 		for index,entry in ipairs(ordered) do
 			local names={};for _,name in ipairs(fossil.names(entry)) do names[#names+1]=name:gsub(" Fossil$","") end
 			rows[#rows+1]={height=24,textSize=16,x=138,"^xE2C28C"..ui.fit(table.concat(names," + "),listWidth-164,16),key=index,fossils=entry.fossils}
-			rows[#rows+1]={height=24,textSize=13,x=138,entry.error and "^xE07070Unavailable" or string.format("^xD5DEE8%.2f%% | %d / %d",entry.successChance,entry.successes,result.trialsPerCombination),key=index}
+			rows[#rows+1]={height=24,textSize=13,x=138,entry.error and "^xE07070Unavailable" or string.format("^xD5DEE8%s | %d / %d",ui.percent(entry.successChance,2),entry.successes,result.trialsPerCombination),key=index}
 			local cost=entry.costPerSuccess~=nil and string.format("%.4g %s / success",entry.costPerSuccess,unit) or entry.meanCost~=nil and string.format("%.4g %s / trial",entry.meanCost,unit) or "Cost unknown"
 			rows[#rows+1]={height=24,textSize=13,x=138,"^xA6B3C6"..ui.fit(cost,listWidth-164,13),key=index}
 		end

@@ -2,6 +2,14 @@
 local M={anchor={"TOPLEFT",nil,"TOPLEFT"}}
 local states=setmetatable({},{__mode="k"})
 function M.size(size) return math.floor(math.max(14,size or 16)*(main and main.planningTextLarge and 1.125 or 1)) end
+-- Do not round a nonzero probability to zero or an imperfect one to 100%.
+function M.percent(value,digits)
+	digits=digits or 6;local unit=10^-digits
+	if value>0 and value<unit then return "<"..string.format("%."..digits.."f",unit).."%" end
+	if value<100 and value>100-unit then return ">"..string.format("%."..digits.."f",100-unit).."%" end
+	local text=string.format("%."..digits.."f",value):gsub("(%..-)0+$","%1"):gsub("%.$","")
+	return text.."%"
+end
 function M.fit(text,width,size)
 	text=tostring(text);if DrawStringWidth(size or 15,"VAR",text)<=width then return text end
 	while #text>0 and DrawStringWidth(size or 15,"VAR",text.."...")>width do text=text:sub(1,-2) end;return text.."..."

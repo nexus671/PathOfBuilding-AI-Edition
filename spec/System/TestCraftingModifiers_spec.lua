@@ -4,6 +4,12 @@ describe("Crafting modifier explanations",function()
 	local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("formats modeled chances without turning rare outcomes into zero or near-certainty into certainty",function()
+		local percent=require("Modules.PlanningUI").percent
+		assert.equal("0%",percent(0));assert.equal("100%",percent(100));assert.equal("50%",percent(50))
+		assert.equal("<0.000001%",percent(0.00000001));assert.equal(">99.999999%",percent(99.99999999))
+		assert.equal("<0.001%",percent(0.0001,3));assert.equal("12.345679%",percent(12.3456789))
+	end)
 	it("reports the actual conditional pool and keeps source/level exclusions visible",function()
 		local model=sim.model(raw);local result=modifiers.inspect(model,model.initial);local weight,chance=0,0;local bench=false
 		for _,row in ipairs(result.rows) do weight=weight+row.weight;chance=chance+(row.chance or 0);if row.source=="Bench" then bench=true;assert.is_false(row.eligible);assert.is_true(#row.reasons>0) end end

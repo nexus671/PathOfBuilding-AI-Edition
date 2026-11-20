@@ -526,7 +526,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("settings");ui:text("paletteSearch",sim.labels.harvest_damage);ui:click("paletteUse");ui:choose("option","fire to cold","label");ui:click("tab_settings");ui:click("exact")
 		local damageJobs=require("Modules.CraftingTasks");for i=1,1000 do if not damageJobs.job then break end;damageJobs.tick(build) end;assert(not damageJobs.job,"Damage conversion odds did not finish")
 		local damageOdds={};for _,row in ipairs(main.popups[1].controls.resultSummary.list) do damageOdds[#damageOdds+1]=row[1] end
-		local damageText=table.concat(damageOdds," ");assert(damageText:find("50.000000%%") and damageText:find("uniform selection",1,true),"Modeled damage outcomes are missing")
+		local damageText=table.concat(damageOdds," ");assert(damageText:find("50%%") and damageText:find("uniform selection",1,true),"Modeled damage outcomes are missing")
 		ui:click("tab_simulate");frame("crafting-harvest-damage-odds");ui:click("close")
 		local magic=sim.perform(menuRaw,{method="transmute"},7)
 		require("Classes.CraftingSimulatorControl").Open(build,{id="essence-menu-ui",title="Essence input requirements",slot="Helmet",startingItem=magic.itemText,goals={},steps={}})

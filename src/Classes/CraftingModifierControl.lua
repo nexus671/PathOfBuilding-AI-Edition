@@ -18,7 +18,7 @@ function M.Open(model,state,options)
 	local function show(row)
 		selected=row;local lines={row and row.text or "Choose a modifier",result.note}
 		if row then
-			lines={row.text,row.type.." | "..row.source,"Required item level: "..row.level,row.tier and "Group tier: "..row.tier or "Special modifier: no natural tier rank","Groups: "..table.concat(row.groups,", "),"Tags: "..table.concat(row.tags,", "),"Current draw weight: "..row.weight,"Total draw weight: "..result.totalWeight,row.chance and string.format("Conditional draw chance: %.6f%%",row.chance) or "No ordinary affix draw is available"}
+			lines={row.text,row.type.." | "..row.source,"Required item level: "..row.level,row.tier and "Group tier: "..row.tier or "Special modifier: no natural tier rank","Groups: "..table.concat(row.groups,", "),"Tags: "..table.concat(row.tags,", "),"Current draw weight: "..row.weight,"Total draw weight: "..result.totalWeight,row.chance and "Conditional draw chance: "..ui.percent(row.chance) or "No ordinary affix draw is available"}
 			for _,reason in ipairs(row.reasons) do lines[#lines+1]=reason end;lines[#lines+1]=result.note
 		end
 		c.details.list=ui.rows(lines,detailW-28,14)
@@ -28,7 +28,7 @@ function M.Open(model,state,options)
 		local pages=math.max(1,math.ceil(#rows/pageSize));page=math.min(page,pages);local first=(page-1)*pageSize+1
 		for i=first,math.min(#rows,first+pageSize-1) do local row=rows[i];if selected and selected.id==row.id then keep=row end
 			local color=row.eligible and "^xD5DEE8" or "^x95A4B7"
-			list[#list+1]={height=46,textSize=14,color..ui.fit(row.text,col[2]-20,14),"^7"..(row.tier and "T"..row.tier or "-"),"^7"..row.level,"^7"..row.weight,"^7"..(row.chance and string.format("%.3f",row.chance) or "-"),subtitle=ui.fit(row.type.." | "..row.source.." | "..(row.eligible and "Eligible draw" or row.reasons[1] or "Blocked"),tableW-36,13),entry=row}
+			list[#list+1]={height=46,textSize=14,color..ui.fit(row.text,col[2]-20,14),"^7"..(row.tier and "T"..row.tier or "-"),"^7"..row.level,"^7"..row.weight,"^7"..(row.chance and ui.percent(row.chance,3):gsub("%%$","") or "-"),subtitle=ui.fit(row.type.." | "..row.source.." | "..(row.eligible and "Eligible draw" or row.reasons[1] or "Blocked"),tableW-36,13),entry=row}
 		end
 		c.modifiers.list=#list>0 and list or ui.rows({"No modifiers match. Clear a filter or shorten the search."},tableW-28,14)
 		show(keep or rows[first]);c.modifiers.selectedKey=selected and selected.id or nil

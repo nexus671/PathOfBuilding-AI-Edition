@@ -60,7 +60,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 			for _,route in ipairs(results) do
 				lines[#lines+1]="";lines[#lines+1]=route.label
 				if route.error then lines[#lines+1]=route.error else local r=route.result
-					lines[#lines+1]=string.format("%.2f%% success | 95%% interval %.2f-%.2f%% | %.2f mean attempts",r.successChance,r.confidenceLow,r.confidenceHigh,r.meanActions)
+					lines[#lines+1]=string.format("%s success | 95%% interval %s - %s | %.2f mean attempts",ui.percent(r.successChance,2),ui.percent(r.confidenceLow,2),ui.percent(r.confidenceHigh,2),r.meanActions)
 					if r.meanExecutedActions then lines[#lines+1]=string.format("%.2f mean executed actions | %d failed attempts",r.meanExecutedActions,r.failedAttempts) end
 					for _,warning in ipairs(r.warnings or {}) do lines[#lines+1]="Model note: "..warning.message end
 					lines[#lines+1]=r.meanCost and string.format("Mean spent: %.2f %s per trial",r.meanCost,r.costCurrency) or "Cost unknown: supply every executed action's price."
