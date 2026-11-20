@@ -696,6 +696,17 @@ function Panel.Open(build,project,layout)
 			local c={};local w,h=math.min(660,main.screenW-40),math.min(560,main.screenH-48)
 			ui.description(c,"hint",16,28,w-32,48,{result.sampleSuccess and "One successful sampled outcome. Other trials can differ." or "One unsuccessful sampled outcome. Inspect it before deciding whether to salvage or restart."},16)
 			local render=require("Classes.JourneyItemControl").new(c,"sampleItem",16,92,w-32,h-166,"SAMPLED OUTCOME");render(require("Modules.CraftingProjects").item(result.sampleItem))
+			button(c,"load",16,h-48,200,"Load into workbench",function()
+				local sampled=simulator.validateState(model,copyTable(assert(result.sampleState,"This older result has no saved item state. Run a new simulation.")))
+				assert(not sampled.destroyed and not sampled.uniqueTitle,"This outcome cannot be crafted in this workbench.")
+				main:OpenConfirmPopup("Load sampled outcome","Replace the working item with this simulated outcome?\nWorking actions and history will be cleared; the saved recipe is kept.","Load",function()
+					state=sampled;initial=copyTable(sampled);history={};actions={};sequence=0;analysis:clearSimulation();syncAnalysis();changedAffixes={};ui.draft(build,"workingCraft",draft.id)
+					controls.page:SelByValue("Emulate item");controls.page.selFunc();updateOptions();refresh({"Simulated outcome loaded as a new hypothetical starting item. Working actions reset."})
+					main:ClosePopup();main:ClosePopup()
+				end)
+			end)
+			c.load.enabled=result.sampleState~=nil and not result.sampleState.destroyed and not result.sampleState.uniqueTitle
+			c.load.tooltipText=not result.sampleState and "Run a new simulation to capture an item state." or result.sampleState.destroyed and "Destroyed items cannot be loaded for crafting." or result.sampleState.uniqueTitle and "This unique outcome cannot be crafted in this workbench." or "Continue crafting this simulated outcome as a new hypothetical starting item."
 			button(c,"close",w-156,h-48,140,"Back to results",function() main:ClosePopup() end);ui.style(c);main:OpenPopup(w,h,"Sampled crafting outcome",c,nil,nil,"close")
 		end)
 		popup.sample.enabled=result.sampleItem~=nil

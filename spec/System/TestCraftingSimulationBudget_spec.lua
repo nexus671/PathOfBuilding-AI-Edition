@@ -4,6 +4,36 @@ describe("Crafting action simulation budget", function()
 	local raw = "Rarity: NORMAL\nPlate Vest\nItem Level: 86"
 	before_each(function() newBuild() end)
 	after_each(function() tasks.cancel(); main.popups = {} end)
+	it("loads a sampled outcome as a new hypothetical starting item", function()
+		local project = { id = "sample-ui", title = "Sample", slot = "Body Armour", startingItem = raw, goals = {}, steps = {}, preferredMethod = "alchemy", nativeRecipe = { steps = { { method = "alchemy" } }, targets = {}, requirements = { minAffixes = 1 } } }
+		local layout = { mount = function() end }
+		local controls = require("Classes.CraftingSimulatorControl").Open(build, project, layout)
+		controls.page:SelByValue("Simulate recipe"); controls.page.selFunc()
+		controls.trials:SetText("1"); controls.budget:SetText("1"); controls.simulate:Click()
+		for i = 1, 10000 do if not tasks.job then break end; tasks.tick(build) end
+		local result = build.craftingAnalyses[project.id].results.simulation.result
+		assert.is_true(result.sampleSuccess)
+		controls.distribution:Click(); main.popups[1].controls.sample:Click()
+		assert.is_true(main.popups[1].controls.load:IsEnabled())
+		main.popups[1].controls.load:Click()
+		assert.are.equal("Load sampled outcome", main.popups[1].title)
+		local before = layout.snapshot()
+		main:ClosePopup()
+		assert.are.same(before.state, layout.snapshot().state)
+		main.popups[1].controls.load:Click()
+		main.popups[1].controls.confirm:Click()
+		local snapshot = layout.snapshot()
+		assert.are.same(result.sampleState, snapshot.state)
+		assert.are.same(result.sampleState, snapshot.initial)
+		assert.are.equal(0, #snapshot.history); assert.are.equal(0, #snapshot.actions)
+		assert.is_nil(build.craftingAnalyses[project.id].results.simulation)
+		assert.are.same(project.nativeRecipe, snapshot.project.nativeRecipe)
+		assert.are.equal("Emulate item", snapshot.page)
+		controls.keepWorking:Click()
+		local saved = build.savers.CraftingProjects.projects[1]
+		assert.are.same(result.sampleState, saved.run.state)
+		assert.are.same(project.nativeRecipe, saved.nativeRecipe)
+	end)
 	it("explains why empty crafting actions are unavailable", function()
 		local project = { id = "empty-ui", title = "Empty", slot = "Body Armour", startingItem = raw, goals = {}, steps = {} }
 		local controls = require("Classes.CraftingSimulatorControl").Open(build, project)
