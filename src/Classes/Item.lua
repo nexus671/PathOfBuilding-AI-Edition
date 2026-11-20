@@ -2205,9 +2205,11 @@ function ItemClass:Craft()
 					table.sort(tags)
 					local sourceKey = mod.type .. (affix.fractured and ":fractured" or ":ordinary")
 					for _, tag in ipairs(tags) do sourceKey = sourceKey .. #tag .. ":" .. tag end
-					if bySource[sourceKey] then
-						-- Keep contributions separate when their side, tags or
-						-- fracture status differ, preserving scaling and display.
+					local existing = bySource[sourceKey]
+					local fractional = line:find("%d+%.%d+") or existing and existing.line:find("%d+%.%d+")
+					if existing and not fractional then
+						-- Only combine integer contributions from the same
+						-- source; fractional values must retain their precision.
 						local start = 1
 						bySource[sourceKey].line = bySource[sourceKey].line:gsub("%d+", function(num)
 							local s, e, other = line:find("(%d+)", start)
@@ -2222,7 +2224,7 @@ function ItemClass:Craft()
 							modLine.suffix = true
 						end
 						t_insert(self.explicitModLines, modLine)
-						bySource[sourceKey] = modLine
+						if not existing then bySource[sourceKey] = modLine end
 					end
 				end
 			end

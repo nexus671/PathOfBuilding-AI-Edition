@@ -11,7 +11,8 @@ combined explanation, the import error says so; it does not invent the
 individual modifier rolls.
 When simulated modifiers contribute to the same stat, PoB keeps their generated
 lines separate if their side, tags or fracture status differ. This preserves
-source-specific scaling and fracture display. Game copies that combine the
+source-specific scaling and fracture display. Fractional contributions also
+remain separate so they are not combined with integer-only arithmetic. Game copies that combine the
 values can still be ambiguous.
 
 Run `python tools/run_headless_lupa.py tools/check_crafting_imports.lua` to

@@ -118,6 +118,19 @@ describe("Independent modifier ranges",function()
 		assert.are.equal(1,item:GetModLineValueScalar(flat,"explicit"));assert.are.equal(1.5,item:GetModLineValueScalar(hybrid,"explicit"))
 		local imported=sim.model(item.raw);assert.equal(2,#imported.initial.affixes)
 	end)
+	it("keeps fractional modifier contributions numerically correct",function()
+		-- These bundled templates demonstrate decimal arithmetic; their current
+		-- availability together is not assumed by this rendering test.
+		local m=sim.model("Rarity: NORMAL\nPlate Vest\nItem Level: 86");local state=copyTable(m.initial);state.rarity="RARE"
+		local first,second="LifeRegenerationEnhancedLevel50Mod","LifeRegenerationPercentBodyInfluenceMaven"
+		m.byId[first]=data.itemMods.Explicit[first];m.byId[second]=data.itemMods.Explicit[second]
+		state.affixes={{id=first,range=0.5},{id=second,range=7/9}}
+		local item=sim.toItem(m,state);local values={};local total=0
+		for _,line in ipairs(item.explicitModLines) do values[line.line]=true end
+		for _,mod in ipairs(item.baseModList) do if mod.name=="LifeRegenPercent" then total=total+mod.value end end
+		assert.is_true(values["Regenerate 0.4% of Life per second"]);assert.is_true(values["Regenerate 2.8% of Life per second"])
+		assert.are.near(3.2,total,0.000001)
+	end)
 	it("does not combine matching text from different native stats",function()
 		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
 		local function mod(high,group,order) return {"(1-"..high..")% increased Example",type="Prefix",group=group,statOrder={order}} end
