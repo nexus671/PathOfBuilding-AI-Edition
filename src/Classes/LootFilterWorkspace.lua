@@ -223,7 +223,7 @@ function M.Open(build,source,layout,controller)
 	local function sceneControl(key,x,y,width,height,drops,selectable,caption)
 		local canvas=new("Control"):Control(ui.anchor,{x,y,width,height});c[key]=canvas;backgrounds[key]=true
 		local columns=width>700 and 4 or width>460 and 3 or 2;local reserve=selectable and 98 or 46;local rows=math.max(2,math.floor((height-reserve)/70));local capacity=columns*rows;local cells={};local visible=0;local eligible={}
-		if selectable and (sceneKind=="Essences" or sceneKind=="Preset highlights" or sceneKind=="Breach" or sceneKind=="Legion") then columns=math.min(columns,3);capacity=columns*rows end
+		if selectable and (sceneKind=="Essences" or sceneKind=="Preset highlights" or sceneKind=="Breach" or sceneKind=="Legion" or sceneKind=="Delirium" or sceneKind=="Harvest" or sceneKind=="Ritual") then columns=math.min(columns,3);capacity=columns*rows end
 		local function evaluate(drop) return evaluateDrop(drop) end
 		for _,drop in ipairs(drops) do local evaluated=not showHidden and evaluate(drop) or nil;if showHidden or evaluated.action~="Hide" then eligible[#eligible+1]={item=drop,result=evaluated} end end
 		local pages=math.max(1,math.ceil(#eligible/capacity));if selectable then scenePage=math.max(1,math.min(scenePage,pages)) end
