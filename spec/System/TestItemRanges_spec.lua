@@ -96,4 +96,19 @@ describe("Independent modifier ranges",function()
 		local ok,err=pcall(require("Modules.CraftingImport").resolve,sim,m,{rarity="RARE",affixes={}})
 		assert.is_false(ok);assert.matches("several modifier identities",err,1,true)
 	end)
+	it("rejects a three-contributor alternative without conflating different stats",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local function mod(value,group,order) return {"("..value.."-"..value..")% increased Example",type="Prefix",group=group,statOrder={order}} end
+		m.byId.ExampleA=mod(9,"ExampleA",100);m.byId.ExampleB=mod(3,"ExampleB",100)
+		m.byId.ExampleC=mod(3,"ExampleC",100);m.byId.ExampleD=mod(3,"ExampleD",100)
+		m.mods={{id="ExampleA"},{id="ExampleB"},{id="ExampleC"},{id="ExampleD"}};m.essences={};m.bench={}
+		m.item.explicitModLines={{line="9% increased Example"}}
+		local import=require("Modules.CraftingImport")
+		local ok,err=pcall(import.resolve,sim,m,{rarity="RARE",affixes={}})
+		assert.is_false(ok);assert.matches("several modifier identities",err,1,true)
+		m.byId.ExampleD.statOrder={101}
+		local state=import.resolve(sim,m,{rarity="RARE",affixes={}})
+		assert.are.equal(1,#state.affixes);assert.are.equal("ExampleA",state.affixes[1].id)
+	end)
+
 end)

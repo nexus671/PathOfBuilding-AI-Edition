@@ -123,7 +123,7 @@ function I.resolve(M,model,state)
 	search()
 	-- Native item text can combine contributions from two modifiers into one
 	-- displayed stat. A direct line match alone is therefore not proof that
-	-- the modifier assignment is unique. Check integer single-stat overlaps
+	-- the modifier assignment is unique. Check two- and three-contributor integer single-stat overlaps
 	-- against the rest of the item before accepting that assignment.
 	local function hasCombinedAlternative()
 		local examined=0
@@ -190,6 +190,36 @@ function I.resolve(M,model,state)
 					if found then return true end
 				end
 			end end end
+			-- A third contributing modifier can make a combined value possible
+			-- even when no pair of modifiers can reach it.
+			if counts.Prefix+counts.Suffix+3<=caps.total then
+				for _,list in pairs(byPattern) do for a=1,#list do for b=a+1,#list do for c=b+1,#list do
+					budget();local parts={list[a],list[b],list[c]};local order=parts[1].mod.statOrder and parts[1].mod.statOrder[parts[1].line]
+					local legal=order~=nil;local ids,partGroups,sides={},{},{Prefix=0,Suffix=0};local min,max=0,0
+					for _,part in ipairs(parts) do
+						if ids[part.id] or not part.mod.statOrder or part.mod.statOrder[part.line]~=order then legal=false end
+						ids[part.id]=true;sides[part.mod.type]=sides[part.mod.type]+1
+						min=min+math.min(part.low,part.high);max=max+math.max(part.low,part.high)
+						for _,group in ipairs(groups(part.id)) do if occupied[group] or partGroups[group] then legal=false end;partGroups[group]=true end
+					end
+					for side,n in pairs(sides) do if counts[side]+n>caps[side] then legal=false end end
+					if legal and parts[1].value>=min and parts[1].value<=max then
+						used[rowIndex]=true;for group in pairs(partGroups) do occupied[group]=true end;for side,n in pairs(sides) do counts[side]=counts[side]+n end
+						local rest={};for _,part in ipairs(parts) do for index,line in ipairs(part.mod) do if index~=part.line then rest[#rest+1]={line=line,kind=part.mod.type} end end end
+						local function matchRest(index)
+							if index>#rest then return cover() end
+							local part=rest[index]
+							for i,other in ipairs(rows) do if not used[i] and sideFits(other,part.kind) and I.inferRange(part.line,other.text) then
+								used[i]=true;local found=matchRest(index+1);used[i]=nil;if found then return true end
+							end end
+							return false
+						end
+						local found=matchRest(1)
+						for side,n in pairs(sides) do counts[side]=counts[side]-n end;for group in pairs(partGroups) do occupied[group]=nil end;used[rowIndex]=nil
+						if found then return true end
+					end
+				end end end end
+			end
 		end end
 		return false
 	end
