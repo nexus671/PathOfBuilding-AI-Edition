@@ -42,4 +42,68 @@ function M.profile(line,low,high,scalar)
 	end
 	return remember(result)
 end
+-- Verify that each component independently changes one displayed integer.
+-- Full enumeration prevents assuming independence for an unfamiliar format.
+local multiOwner,multiCache,multiOrder
+function M.multiProfile(line,ranges,scalar)
+	if not multiCache or multiOwner~=data.modScalability then multiOwner=data.modScalability;multiCache={};multiOrder={} end
+	local parts={line,tostring(scalar)};local combinations=1
+	for _,range in ipairs(ranges) do
+		parts[#parts+1]=range.low..":"..range.high;combinations=combinations*(range.high-range.low+1)
+	end
+	local key=table.concat(parts,"\0");if multiCache[key]~=nil then return multiCache[key] or nil end
+	local function remember(value)
+		if #multiOrder>=32 then multiCache[table.remove(multiOrder,1)]=nil end
+		multiOrder[#multiOrder+1]=key;multiCache[key]=value or false;return value
+	end
+	if #ranges<2 or #ranges>6 or combinations>4096 then return remember(nil) end
+	for _,range in ipairs(ranges) do if range.high<=range.low or range.high-range.low>500 then return remember(nil) end end
+	local vector={};for i=1,#ranges do vector[i]=0 end
+	local baseline=itemLib.applyRange(line,vector,scalar);local skeleton,initial=tokens(baseline)
+	local axes,indices,used={},{},{}
+	for i,range in ipairs(ranges) do
+		local axis,index={},nil
+		for value=range.low,range.high do
+			vector[i]=(value-range.low)/(range.high-range.low)
+			local shape,values=tokens(itemLib.applyRange(line,vector,scalar))
+			if shape~=skeleton or #values~=#initial then return remember(nil) end
+			for j,number in ipairs(values) do
+				if number~=math.floor(number) then return remember(nil) end
+				if number~=initial[j] then if index and index~=j then return remember(nil) end;index=j end
+			end
+			axis[value]=values
+		end
+		vector[i]=0
+		if not index or used[index] then return remember(nil) end
+		used[index]=true;indices[i]=index;axes[i]=axis
+	end
+	local result={lookup={},mins={},maxs={},components=#ranges}
+	for i=1,#ranges do result.mins[i]=math.huge;result.maxs[i]=-math.huge end
+	local selected={}
+	local function enumerate(index)
+		if index>#ranges then
+			local rendered=itemLib.applyRange(line,vector,scalar);local shape,values=tokens(rendered)
+			if shape~=skeleton or #values~=#initial then return false end
+			for j,value in ipairs(values) do
+				local component
+				for i,position in ipairs(indices) do if position==j then component=i;break end end
+				if component then if value~=axes[component][selected[component]][j] then return false end
+				elseif value~=initial[j] then return false end
+			end
+			local display={};for i,position in ipairs(indices) do
+				display[i]=values[position];result.mins[i]=math.min(result.mins[i],display[i]);result.maxs[i]=math.max(result.maxs[i],display[i])
+			end
+			result.lookup[rendered]=display;return true
+		end
+		local range=ranges[index]
+		for value=range.low,range.high do
+			selected[index]=value;vector[index]=(value-range.low)/(range.high-range.low)
+			if not enumerate(index+1) then return false end
+		end
+		vector[index]=0;return true
+	end
+	if not enumerate(1) then return remember(nil) end
+	return remember(result)
+end
+
 return M

@@ -202,7 +202,10 @@ local function divinePlanForReference(raw,item,reference)
 			elseif #ranges==1 then
 				profile=require("Modules.CraftingUniqueCatalyst").profile(text,ranges[1].low,ranges[1].high,scalar)
 				if not profile then return nil,"This catalyst-scaled modifier needs a separate Divine model" end
-			else return nil,"Catalyst-scaled multi-range modifiers need a separate Divine model" end
+			else
+				profile=require("Modules.CraftingUniqueCatalyst").multiProfile(text,ranges,scalar)
+				if not profile then return nil,"This catalyst-scaled multi-range modifier needs a separate Divine model" end
+			end
 		end
 		local _,allRanges=text:gsub("%(%-?[%d%.]+%-%-?[%d%.]+%)","")
 		if allRanges~=#ranges or #ranges>6 then return nil,"Fractional or complex ranges need a separate Divine model" end
@@ -229,10 +232,10 @@ local function divinePlanForReference(raw,item,reference)
 				if line.modTags and #line.modTags>0 and (not candidate.profile or text~=candidate.line) then effective=itemLib.applyRange(text,1,candidate.scalar) end
 				if candidate.profile then
 					local displayed=candidate.profile.lookup[effective]
-					if displayed~=nil then matches=true;numbers={displayed}
+					if displayed~=nil then matches=true;numbers=type(displayed)=="table" and copyTable(displayed) or {displayed}
 					elseif text==candidate.line and line.modTags and tableDeepEquals(line.modTags,candidate.tags) and line.valueScalar==candidate.scalar then
 						local rendered=itemLib.applyRange(candidate.line,line.range or 0.5,candidate.scalar)
-						displayed=candidate.profile.lookup[rendered];matches=displayed~=nil;if matches then numbers={displayed} end
+						displayed=candidate.profile.lookup[rendered];matches=displayed~=nil;if matches then numbers=type(displayed)=="table" and copyTable(displayed) or {displayed} end
 					else matches=false end
 				else matches=effective==candidate.fixed end
 			end
@@ -313,7 +316,7 @@ end
 function M.divineReason(raw) local _,reason=divinePlan(raw);return reason end
 function M.divineOptions(raw)
 	local plan,reason=divinePlan(raw);if not plan then return nil,reason end
-	local result={};for _,row in ipairs(plan.rows) do for index,part in ipairs(row.ranges) do result[#result+1]={line=row.line,component=index,components=#row.ranges,min=row.profile and row.profile.min or part.low,max=row.profile and row.profile.max or part.high,current=row.current[index]} end end
+	local result={};for _,row in ipairs(plan.rows) do for index,part in ipairs(row.ranges) do result[#result+1]={line=row.line,component=index,components=#row.ranges,min=row.profile and (row.profile.mins and row.profile.mins[index] or row.profile.min) or part.low,max=row.profile and (row.profile.maxs and row.profile.maxs[index] or row.profile.max) or part.high,current=row.current[index]} end end
 	return result
 end
 function M.divine(raw,seed)
@@ -325,11 +328,12 @@ function M.divine(raw,seed)
 			local part=row.ranges[1];local value=part.low+math.floor(random()*(part.high-part.low+1));local range=(value-part.low)/(part.high-part.low)
 			replacements[row.input]="{range:"..string.format("%.6f",range).."}"..(row.tags and "{tags:"..table.concat(row.tags,",").."}" or "")..row.line
 		else
-			local index=0;replacements[row.input]=row.line:gsub("([%+%-]?)%((%-?%d+)%-(%-?%d+)%)",function(sign,low,high)
+			local index=0;local rendered=row.line:gsub("([%+%-]?)%((%-?%d+)%-(%-?%d+)%)",function(sign,low,high)
 				index=index+1;local part=row.ranges[index];local value=part.low+math.floor(random()*(part.high-part.low+1))
 				local shown=sign=="-" and -value or value;local prefix=sign=="+" and shown>0 and "+" or ""
 				return prefix..shown.."("..low.."-"..high..")"
 			end)
+			replacements[row.input]=(row.tags and "{tags:"..table.concat(row.tags,",").."}" or "")..rendered
 		end
 	end
 	local changed=0

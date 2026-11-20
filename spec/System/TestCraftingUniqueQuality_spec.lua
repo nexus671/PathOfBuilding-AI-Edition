@@ -139,6 +139,29 @@ describe("Unique item quality",function()
 		assert.matches("untagged",quality.divineReason(unknownTags))
 	end)
 
+
+	it("preserves independent catalyst-scaled multi-range rolls",function()
+		local raw="Rarity: UNIQUE\nPrismweave\nRustic Sash\nItem Level: 86\nCatalyst: Turbulent\nCatalystQuality: 20\nImplicits: 1\n18% increased Global Physical Damage\nAdds 18 to 37 Fire Damage to Attacks\nAdds 13 to 31 Cold Damage to Attacks\nAdds 1 to 76 Lightning Damage to Attacks\n+11% to all Elemental Resistances\n36% increased Elemental Damage with Attack Skills during any Flask Effect"
+		assert.is_nil(quality.divineReason(raw));local options=quality.divineOptions(raw)
+		assert.equal(18,options[1].current);assert.equal(37,options[2].current);assert.equal(36,options[2].min);assert.equal(38,options[2].max)
+		local seen={};for seed=1,30 do
+			local result=quality.divine(raw,seed*104729);assert.is_truthy(result.itemText:find("{tags:elemental_damage,attack}",1,true))
+			local item=quality.inspect(result.itemText);local after=quality.divineOptions(result.itemText)
+			for index,name in ipairs({"FireMin","FireMax","ColdMin","ColdMax","LightningMax"}) do
+				local actual;for _,line in ipairs(item.explicitModLines) do for _,mod in ipairs(line.modList or {}) do if mod.name==name then actual=mod.value end end end
+				assert.equal(after[index].current,actual)
+			end
+			seen[after[1].current..":"..after[2].current]=true;assert.is_truthy(quality.divine(result.itemText,seed*130363))
+		end
+		local count=0;for _ in pairs(seen) do count=count+1 end;assert.is_true(count>3)
+		local goal={uniqueModifier={line="Adds (14-16) to (30-32) Fire Damage to Attacks",component=2,minValue=38}};local recipe={rarity="UNIQUE",steps={{method="divine",maxAttempts=20,untilRequirements=goal}},targets={},requirements=goal}
+		local run=require("Modules.CraftingSimulator").simulate(raw,recipe,{trials=5,maxActions=20,seed=123});assert.equal(5,run.trials)
+		local found=false;for _,warning in ipairs(run.warnings) do if warning.code=="unique_catalyst_tags" then found=true end end;assert.is_true(found)
+		assert.is_truthy(quality.divineReason(raw:gsub("Adds 18 to 37 Fire","Adds 20 to 37 Fire")))
+		assert.is_truthy(quality.divineReason(raw:gsub("Catalyst: Turbulent","Catalyst: Dextral")))
+		assert.is_nil(require("Modules.CraftingUniqueCatalyst").multiProfile("Adds (1-100) to (1-100) Fire Damage",{{low=1,high=100},{low=1,high=100}},1.2))
+	end)
+
 	it("preserves catalyst-scaled unique rolls and plans displayed values",function()
 		local raw="Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20\nImplicits: 1\nHas 1 Socket\n+3 to Level of Socketed Curse Gems\n+30% to Cold Resistance\n+30% to Lightning Resistance\nLeft Ring Slot: Your Chilling Skitterbot's Aura applies Socketed Hex Curse instead\nRight Ring Slot: Your Shocking Skitterbot's Aura applies Socketed Hex Curse instead"
 		assert.is_nil(quality.divineReason(raw));local options=quality.divineOptions(raw);assert.equal(2,#options);assert.equal(24,options[1].min);assert.equal(36,options[1].max);assert.equal(30,options[1].current)
