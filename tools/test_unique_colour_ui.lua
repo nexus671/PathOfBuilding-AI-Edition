@@ -19,6 +19,12 @@ return function(build,ui,frame)
 	ui:click("socketCount");ui:click("colours");ui:text("target","RR");ui:click("plan");frame("crafting-unique-colour-replace");ui:click("confirm")
 	for _,entry in ipairs(store.projects) do if entry.id==direct.id then planned=entry end end
 	assert(planned.nativeRecipe.requirements.socketColours=="RR" and #planned.steps==1 and planned.steps[1].stopWhen=="At least RR sockets in any order","Colour guide did not follow the replacement");main.popups={}
+	local socketProject={id="unique-random-sockets-ui",title="Desired sockets",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B",goals={},steps={}}
+	store:Upsert(socketProject);require("Classes.CraftingUniqueQualityControl").Open(build,socketProject)
+	ui:click("socketCount");ui:click("roll");ui:text("target","4");ui:text("attempts","250");frame("crafting-unique-socket-target");ui:click("plan")
+	local sockets;for _,entry in ipairs(store.projects) do if entry.id==socketProject.id then sockets=entry end end
+	assert(sockets and sockets.nativeRecipe.requirements.exactSockets==4 and sockets.nativeRecipe.steps[1].maxAttempts==250 and sockets.steps[1].uniqueCraft.method=="jeweller","Unique socket plan was not kept")
+	ui:click("recipe");local socketTasks=require("Modules.CraftingTasks");assert(socketTasks.job,"Socket recipe did not use a background task");while socketTasks.job do socketTasks.tick(build) end;frame("crafting-unique-socket-result");ui:click("close");main.popups={}
 	local linkProject={id="unique-random-links-ui",title="Desired links",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W",goals={},steps={}}
 	store:Upsert(linkProject);require("Classes.CraftingUniqueQualityControl").Open(build,linkProject)
 	ui:click("socketCount");ui:click("links");ui:text("target","4");ui:text("attempts","1000");frame("crafting-unique-link-target");ui:click("plan")

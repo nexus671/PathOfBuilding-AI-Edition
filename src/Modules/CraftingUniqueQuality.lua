@@ -43,6 +43,8 @@ function M.guideAction(method,count,resource,corrupted,socketCount)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
 	if method=="omen_connections" then return "Link existing sockets with an Omen of Connections and an Orb of Fusing" end
+	if method=="jeweller" then return "Use a Jeweller's Orb to reroll socket count" end
+	if method=="tainted_jeweller" then return "Use a Tainted Jeweller's Orb to change socket count" end
 	if method=="fusing" then return "Use an Orb of Fusing to reroll socket links" end
 	if method=="tainted_fusing" then return "Use a Tainted Orb of Fusing to change socket links" end
 	if method=="chromatic" then return "Use a Chromatic Orb to reroll socket colours" end
@@ -324,6 +326,40 @@ function M.randomLinks(raw,method,seed)
 	return {itemText=output,components=sim.components({method=method})}
 end
 
+-- Sample socket-count currency while retaining imported unique properties.
+-- The underlying currency probabilities are estimates, as for ordinary items.
+function M.randomSocketReason(raw,method)
+	if method~="jeweller" and method~="tainted_jeweller" then return "Unsupported unique socket-count method" end
+	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
+	if (not not item.corrupted)~=(method=="tainted_jeweller") then return item.corrupted and "Use tainted currency on corrupted items" or "Tainted currency requires a corrupted item" end
+	-- Validate the existing layout and unique restrictions independently of
+	-- whether the chosen bench target is already present.
+	local reason=M.socketCountReason(raw,2)
+	if reason and reason~="The item already has this many sockets" then return reason end
+	local sim=require("Modules.CraftingSimulator")
+	local state={affixes={},sockets=copyTable(item.sockets),quality=item.quality,corrupted=item.corrupted}
+	return sim.methodReason({item=item,byId={}},state,method)
+end
+function M.randomSockets(raw,method,seed)
+	local reason=M.randomSocketReason(raw,method);assert(not reason,reason)
+	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
+	local before=M.inspect(raw);local sim=require("Modules.CraftingSimulator")
+	local state={affixes={},sockets=copyTable(before.sockets),quality=before.quality,corrupted=before.corrupted}
+	local result=sim.action({item=before,byId={}},state,{method=method},require("Modules.CalcTime").random(seed))
+	local parts={};for i,socket in ipairs(result.sockets) do
+		if i>1 then parts[#parts+1]=socket.group==result.sockets[i-1].group and "-" or " " end
+		parts[#parts+1]=socket.color
+	end
+	local output,n=raw:gsub("(\nSockets: )([^\r\n]*)",function(prefix) return prefix..table.concat(parts) end)
+	assert(n==1,"The socket layout could not be updated")
+	local after=M.inspect(output)
+	assert(after.title==before.title and after.baseName==before.baseName and #after.sockets==#result.sockets and after.corrupted==before.corrupted,"Unique item did not round-trip after socket crafting")
+	for i,socket in ipairs(after.sockets) do
+		assert(socket.color==result.sockets[i].color and (i==1 or (socket.group==after.sockets[i-1].group)==(result.sockets[i].group==result.sockets[i-1].group)),"Socket layout changed unexpectedly")
+	end
+	return {itemText=output,components=sim.components({method=method})}
+end
+
 function M.white(raw)
 	local reason=M.whiteReason(raw);assert(not reason,reason)
 	local before=M.inspect(raw)
@@ -351,6 +387,8 @@ function M.catalog(raw,query,limit)
 		{method="beast_max_links",label="Bestiary: maximum links",reason=linkReason,components={beast_black_morrigan=1,beast_craicic_sand_spitter=1}},
 		{method="fusing",label="Orb of Fusing",reason=M.randomLinkReason(raw,"fusing"),sampled=true,components=sim.components({method="fusing"})},
 		{method="tainted_fusing",label="Tainted Orb of Fusing",reason=M.randomLinkReason(raw,"tainted_fusing"),sampled=true,components=sim.components({method="tainted_fusing"})},
+		{method="jeweller",label="Jeweller's Orb",reason=M.randomSocketReason(raw,"jeweller"),sampled=true,components=sim.components({method="jeweller"})},
+		{method="tainted_jeweller",label="Tainted Jeweller's Orb",reason=M.randomSocketReason(raw,"tainted_jeweller"),sampled=true,components=sim.components({method="tainted_jeweller"})},
 		{method="chromatic",label="Chromatic Orb",reason=M.colourReason(raw,"chromatic"),sampled=true,components=sim.components({method="chromatic"})},
 		{method="tainted_chromatic",label="Tainted Chromatic Orb",reason=M.colourReason(raw,"tainted_chromatic"),sampled=true,components=sim.components({method="tainted_chromatic"})},
 		{method="omen_trichromatism",label="Omen of Trichromatism + Chromatic Orb",reason=M.colourReason(raw,"omen_trichromatism"),sampled=true,components=sim.components({method="omen_trichromatism"})},

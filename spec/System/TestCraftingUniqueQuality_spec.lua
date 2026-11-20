@@ -50,6 +50,40 @@ describe("Unique item quality",function()
 		main.popups={}
 	end)
 
+	it("samples unique socket counts while preserving item properties and restrictions",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"
+		for _,method in ipairs({"jeweller","tainted_jeweller"}) do
+			local input=raw..(method=="tainted_jeweller" and "\nCorrupted" or "")
+			for seed=1,20 do
+				local result=quality.randomSockets(input,method,seed)
+				assert.equal(result.itemText,quality.randomSockets(input,method,seed).itemText)
+				assert.is_true(result.itemText:find("+40% to Fire Resistance",1,true)~=nil)
+				local item=quality.inspect(result.itemText)
+				assert.is_true(#item.sockets>=1 and #item.sockets<=4)
+				assert.equal(method=="tainted_jeweller",not not item.corrupted)
+			end
+		end
+		assert.has_error(function() quality.randomSockets(raw,"tainted_jeweller",1) end)
+		assert.has_error(function() quality.randomSockets(raw.."\nCorrupted","jeweller",1) end)
+		assert.has_error(function() quality.randomSockets(raw.."\nSockets cannot be modified","jeweller",1) end)
+		assert.has_error(function() quality.randomSockets(raw:gsub("Sockets: R%-G B","Sockets: R-G B W"),"jeweller",1) end)
+		assert.has_error(function() quality.randomSockets(raw,"jeweller",0) end)
+		local sim=require("Modules.CraftingSimulator")
+		local result=sim.perform(raw,{method="jeweller"},12)
+		assert.equal(quality.randomSockets(raw,"jeweller",12).itemText,result.itemText)
+		local warnings={};for _,warning in ipairs(result.warnings) do warnings[warning.code]=true end
+		assert.is_true(warnings.unique_socket_count_estimate)
+		local recipe={steps={{method="jeweller",maxAttempts=10,untilRequirements={exactSockets=4}}},targets={},requirements={exactSockets=4}}
+		local run=sim.simulate(raw,recipe,{trials=5,maxActions=10,seed=12})
+		assert.is_true(run.sampled);assert.equal(5,run.trials)
+		local calculated=sim.calculate(raw,{method="jeweller"},{},nil,{trials=5,requirements={exactSockets=4}})
+		assert.is_true(calculated.sampled);assert.equal(5,calculated.trials)
+		local entries=sim.catalog(raw,"jeweller",50).uniqueActions;local found={}
+		for _,entry in ipairs(entries) do found[entry.method]=entry end
+		assert.is_true(found.jeweller.available);assert.is_false(found.tainted_jeweller.available)
+
+	end)
+
 	it("samples unique socket colours without changing other item properties",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W\n+40% to Fire Resistance"
 		for _,method in ipairs({"chromatic","omen_trichromatism","tainted_chromatic"}) do
@@ -237,6 +271,23 @@ describe("Unique item quality",function()
 		end
 	end)
 
+	it("plans and previews unique socket-count rolls",function()
+		for _,corrupted in ipairs({false,true}) do
+			local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B"..(corrupted and "\nCorrupted" or "")
+			local project={id=corrupted and "sockets-corrupted" or "sockets-normal",title="Sockets",slot="Helmet",startingItem=raw,goals={},steps={}}
+			local store=build.savers.CraftingProjects;store:Upsert(project)
+			local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.socketCount:Click();main.popups[1].controls.roll:Click()
+			local popup=main.popups[1].controls;local method=corrupted and "tainted_jeweller" or "jeweller"
+			assert.equal(method,popup.method:GetSelValueByKey("val"));popup.target:SetText("5");assert.is_false(popup.plan:IsEnabled());popup.target:SetText("3");assert.matches("Already met",popup.targetHelp.label());popup.target:SetText("4");popup.attempts:SetText("250");assert.is_true(popup.plan:IsEnabled());popup.plan:Click()
+			local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+			assert.equal(method,saved.nativeRecipe.steps[1].method);assert.equal(4,saved.nativeRecipe.requirements.exactSockets);assert.equal(250,saved.nativeRecipe.steps[1].maxAttempts);assert.equal(method,saved.steps[1].uniqueCraft.method)
+			local result=require("Modules.CraftingSimulator").simulate(raw,saved.nativeRecipe,{trials=10,maxActions=250,seed=123});assert.is_true(result.sampled);assert.is_true(result.successes>0)
+			local filters=require("Modules.LootFilters");local rules=filters.generate(build,filters.profile("socket-"..tostring(corrupted),"Sockets"));local found=false
+			for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id and rule.title==(corrupted and "Tainted Jeweller's Orb" or "Jeweller's Orb") then found=true end end;assert.is_true(found)
+			control.socketCount:Click();main.popups[1].controls.roll:Click();popup=main.popups[1].controls;popup.apply:Click();assert.is_true(control.undo:IsEnabled());main.popups={}
+		end
+	end)
+
 	it("plans and previews unique socket links",function()
 		for _,corrupted in ipairs({false,true}) do
 			local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W"..(corrupted and "\nCorrupted" or "")
@@ -417,7 +468,7 @@ describe("Unique item quality",function()
 	it("catalogues supported unique crafts and their current availability",function()
 		local simulator=require("Modules.CraftingSimulator")
 		local catalog=simulator.catalog(shield,"",50,nil,"3_30")
-		assert.is_true(catalog.uniqueCrafting);assert.equal(13,#catalog.uniqueActions);assert.equal(12,#catalog.socketCrafts)
+		assert.is_true(catalog.uniqueCrafting);assert.equal(15,#catalog.uniqueActions);assert.equal(14,#catalog.socketCrafts)
 		assert.same(require("Modules.CraftingItemStats").itemValues(new("Item"):Item(shield)),catalog.nativeStats);assert.is_true(catalog.nativeStats.Armour>0)
 		local byMethod={};for _,action in ipairs(catalog.uniqueActions) do if action.method~="socket_bench" or action.action.linked then byMethod[action.method]=action end end
 		assert.is_true(byMethod.quality.available);assert.is_true(byMethod.beast_max_links.available);assert.is_true(byMethod.socket_white_bench.available)

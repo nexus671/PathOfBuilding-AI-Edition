@@ -77,7 +77,7 @@ function M.Open(build,project,layout,snapshot)
 			if action=="quality" then qualityCount=qualityCount+1
 			elseif socketCount then
 				flush();steps[#steps+1]={action=unique.guideAction("socket_count_bench",socketCount,info.resource,item.corrupted),uniqueCraft={method="socket_count_bench",count=socketCount},done=false}
-			elseif action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
+			elseif action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
 				local before=unique.inspect(history[i]);flush();steps[#steps+1]={action=unique.guideAction(action,1,info.resource,item.corrupted,#before.sockets),uniqueCraft={method=action,count=1},done=false}
 			else return nil,"Loaded or older previews do not record every action." end
 		end
@@ -120,12 +120,12 @@ function M.Open(build,project,layout,snapshot)
 			local cost=require("Modules.CraftingSimulator").components({method="socket_bench",count=chosen()},{sockets=item.sockets,corrupted=item.corrupted});local amount=cost["Metadata/Items/Currency/CurrencyRerollSocketNumbers"] or 0
 			return "^7Cost: "..amount.." Jeweller's Orb"..(amount==1 and "" or "s")..(item.corrupted and " + "..amount.." Vaal Orb"..(amount==1 and "" or "s") or "")
 		end
-		controls.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,height-48,150,28},"Preview sockets",function()
+		controls.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,height-48,128,28},"Preview sockets",function()
 			local count=chosen();local result=unique.socketCount(raw,count);history[#history+1]=raw;actions[#actions+1]="socket_count_bench:"..count;redo={};raw=result.itemText;main:ClosePopup();refresh(true)
 		end)
 		controls.apply.enabled=function() return not unique.socketCountReason(raw,chosen()) end
 		controls.apply.tooltipText=function() return unique.socketCountReason(raw,chosen()) or "Preview this bench craft without spending currency." end
-		controls.colours=new("ButtonControl"):ButtonControl(ui.anchor,{174,height-48,90,28},"Colours",function()
+		controls.colours=new("ButtonControl"):ButtonControl(ui.anchor,{152,height-48,75,28},"Colours",function()
 			main:ClosePopup();local options={}
 			for _,entry in ipairs({{label="Chromatic Orb",val="chromatic"},{label="Tainted Chromatic Orb",val="tainted_chromatic"},{label="Omen of Trichromatism",val="omen_trichromatism"}}) do options[#options+1]=entry end
 			local colour={};local cw,ch=480,384
@@ -191,7 +191,7 @@ function M.Open(build,project,layout,snapshot)
 			ui.style(colour,{apply=true});for _,control in pairs(colour) do control.layoutAudit="unique-socket-colours" end
 			main:OpenPopup(cw,ch,"Socket colours",colour,nil,nil,"close")
 		end)
-		controls.links=new("ButtonControl"):ButtonControl(ui.anchor,{272,height-48,90,28},"Links",function()
+		controls.links=new("ButtonControl"):ButtonControl(ui.anchor,{235,height-48,75,28},"Links",function()
 			main:ClosePopup();local link={};local lw,lh=480,384
 			ui.description(link,"help",16,25,lw-32,54,{"Preview one sampled link roll.","Link probabilities and tainted outcomes are estimates."},14)
 			link.method=new("DropDownControl"):DropDownControl(ui.anchor,{16,90,lw-32,28},{{label="Orb of Fusing",val="fusing"},{label="Tainted Orb of Fusing",val="tainted_fusing"}})
@@ -248,7 +248,49 @@ function M.Open(build,project,layout,snapshot)
 			ui.style(link,{apply=true});for _,control in pairs(link) do control.layoutAudit="unique-socket-links" end
 			main:OpenPopup(lw,lh,"Socket links",link,nil,nil,"close")
 		end)
-		controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-132,height-48,116,28},"Cancel",function() main:ClosePopup() end)
+		controls.roll=new("ButtonControl"):ButtonControl(ui.anchor,{318,height-48,84,28},"Roll",function()
+			main:ClosePopup();local roll={};local rw,rh=480,340
+			ui.description(roll,"help",16,25,rw-32,50,{"Preview a sampled socket-count roll.","Socket odds and placement are estimates."},14)
+			roll.method=new("DropDownControl"):DropDownControl(ui.anchor,{16,80,rw-32,28},{{label="Jeweller's Orb",val="jeweller"},{label="Tainted Jeweller's Orb",val="tainted_jeweller"}})
+			if item.corrupted then roll.method:SelByValue("tainted_jeweller","val") end
+			local function method() return roll.method:GetSelValueByKey("val") end
+			local checked,cached;local function reason() local choice=method();if choice~=checked then checked=choice;cached=unique.randomSocketReason(raw,choice) end;return cached end
+			ui.label(roll,"availability",16,120,"",14);roll.availability.label=function() return "^7"..ui.fit(reason() or "Ready to preview; no currency is spent.",rw-32,14) end
+			ui.label(roll,"targetLabel",16,154,"Desired socket count",14)
+			roll.target=new("EditControl"):EditControl(ui.anchor,{16,176,200,26},"","e.g. 4",nil,1)
+			ui.label(roll,"attemptsLabel",240,154,"Attempt limit (1-2000)",14)
+			roll.attempts=new("EditControl"):EditControl(ui.anchor,{240,176,rw-256,26},"100","Max attempts",nil,4)
+			local function planReason()
+				if reason() then return reason() end
+				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a direct socket plan." end
+				if #draft.steps>=40 then return "The guide has room for up to 40 steps." end
+				local attempts=tonumber(roll.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
+				local target=tonumber(roll.target.buf);if not target or target~=math.floor(target) or target<1 or target>unique.omenCount(item) then return "Enter a socket count within the natural limit." end
+				if #item.sockets==target then return nil,true end
+			end
+			ui.label(roll,"targetHelp",16,222,"",14);roll.targetHelp.label=function() local why,met=planReason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save a socket plan."),rw-32,14) end
+			roll.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,rh-48,140,28},"Preview roll",function()
+				local choice=method();colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
+				local result=unique.randomSockets(raw,choice,seed);history[#history+1]=raw;actions[#actions+1]=choice;redo={};raw=result.itemText;main:ClosePopup();refresh(true)
+			end)
+			roll.apply.enabled=function() return not reason() end;roll.apply.tooltipText=function() return reason() or "Preview one sampled socket-count outcome." end
+			roll.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,rh-48,150,28},"Save socket plan",function()
+				local why=planReason();assert(not why,why);local choice=method();local target=tonumber(roll.target.buf);local attempts=tonumber(roll.attempts.buf)
+				local requirements={exactSockets=target};local recipe={steps={{method=choice,maxAttempts=attempts,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements}
+				require("Modules.CraftingSimulator").validateRecipe(recipe)
+				local function keepPlan()
+					local updated=copyTable(draft);updated.nativeRecipe=recipe
+					updated.steps[#updated.steps+1]={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen="Exactly "..target.." sockets",onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method=choice,count=1},done=false}
+					draft=build.savers.CraftingProjects:Upsert(updated);refresh(true);c.notice.label="^7Socket plan kept. Save the build.";main:ClosePopup()
+				end
+				if draft.nativeRecipe then main:OpenConfirmPopup("Replace crafting recipe","Replace the saved recipe with this socket plan?\nExisting guide steps will be kept.","Replace",keepPlan) else keepPlan() end
+			end)
+			roll.plan.enabled=function() return not planReason() end;roll.plan.tooltipText=function() return planReason() or "Save a bounded repeat-until-sockets recipe and guide step." end
+			roll.close=new("ButtonControl"):ButtonControl(ui.anchor,{rw-132,rh-48,116,28},"Cancel",function() main:ClosePopup() end)
+			ui.style(roll,{apply=true});for _,control in pairs(roll) do control.layoutAudit="unique-socket-roll" end
+			main:OpenPopup(rw,rh,"Roll sockets",roll,nil,nil,"close")
+		end)
+		controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{410,height-48,94,28},"Cancel",function() main:ClosePopup() end)
 		ui.style(controls,{apply=true});for _,control in pairs(controls) do control.layoutAudit="unique-socket-count" end
 		main:OpenPopup(width,height,"Socket count",controls,nil,nil,"close")
 	end)
@@ -327,7 +369,7 @@ function M.Open(build,project,layout,snapshot)
 		if #actions==0 or #actions~=#history or history[1]~=draft.startingItem or #actions>100 then return false end
 		local colourSeen=false
 		for _,action in ipairs(actions) do
-			local colour=action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing"
+			local colour=action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller"
 			if colour then if colourSeen then return false end;colourSeen=true
 			elseif colourSeen and action~="quality" then return false
 			elseif action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") then return false end
@@ -347,6 +389,8 @@ function M.Open(build,project,layout,snapshot)
 				requirements.minQuality=info.quality
 			elseif socketCount then
 				steps[#steps+1]={method="socket_bench",count=socketCount};requirements.exactSockets=#item.sockets;i=i+1
+			elseif action=="jeweller" or action=="tainted_jeweller" then
+				requirements.exactSockets=#item.sockets;steps[#steps+1]={method=action,maxAttempts=100,untilRequirements={exactSockets=#item.sockets}};sampled=true;i=i+1
 			elseif action=="fusing" or action=="tainted_fusing" then
 				local counts,best={},0;for _,socket in ipairs(item.sockets) do counts[socket.group]=(counts[socket.group] or 0)+1;best=math.max(best,counts[socket.group]) end
 				requirements.links=best;steps[#steps+1]={method=action,maxAttempts=100,untilRequirements={links=best}};sampled=true;i=i+1
@@ -376,7 +420,7 @@ function M.Open(build,project,layout,snapshot)
 			local updated=copyTable(draft);updated.nativeRecipe=createRecipe();draft=build.savers.CraftingProjects:Upsert(updated)
 			refresh(true);c.notice.label="^7Recipe saved. Save the build.";return
 		end
-		local stochastic=false;for _,step in ipairs(draft.nativeRecipe.steps) do if step.method=="chromatic" or step.method=="tainted_chromatic" or step.method=="omen_trichromatism" or step.method=="fusing" or step.method=="tainted_fusing" then stochastic=true end end
+		local stochastic=false;for _,step in ipairs(draft.nativeRecipe.steps) do if step.method=="jeweller" or step.method=="tainted_jeweller" or step.method=="chromatic" or step.method=="tainted_chromatic" or step.method=="omen_trichromatism" or step.method=="fusing" or step.method=="tainted_fusing" then stochastic=true end end
 		local budget=100
 		if stochastic then local sum=0;for _,step in ipairs(draft.nativeRecipe.steps) do sum=sum+(step.maxAttempts or 1) end;budget=math.min(2000,math.max(100,sum)) end
 		local trials=stochastic and math.max(1,math.min(20,math.floor(10000/budget))) or 1
@@ -463,6 +507,8 @@ function M.Open(build,project,layout,snapshot)
 		elseif countMethod then local components=require("Modules.CraftingSimulator").components({method="socket_bench",count=countMethod},{sockets=item.sockets,corrupted=item.corrupted});local amount=components["Metadata/Items/Currency/CurrencyRerollSocketNumbers"] or 0;method="jeweller";lines={"Bench: "..amount.." Jeweller's Orb"..(amount==1 and "" or "s"),item.corrupted and ("+ "..amount.." Vaal Orb"..(amount==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="socket_bench" then local components=require("Modules.CraftingSimulator").components({method=method,count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted});local count=components["Metadata/Items/Currency/CurrencyRerollSocketLinks"] or 0;lines={"Bench: "..count.." Orb"..(count==1 and "" or "s").." of Fusing",item.corrupted and ("+ "..count.." Vaal Orb"..(count==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="fusing" then lines={"1 Orb of Fusing","Sampled preview"}
+		elseif method=="jeweller" then lines={"1 Jeweller's Orb","Sampled preview"}
+		elseif method=="tainted_jeweller" then lines={"1 Tainted Jeweller's Orb","Sampled preview"}
 		elseif method=="tainted_fusing" then lines={"1 Tainted Orb of Fusing","Sampled preview"}
 		elseif method=="omen_connections" then lines={"Omen + Orb of Fusing","1 of each | Preview"}
 		elseif method=="omen_jeweller" then lines={"Omen + Jeweller's Orb","1 of each | Preview"}
