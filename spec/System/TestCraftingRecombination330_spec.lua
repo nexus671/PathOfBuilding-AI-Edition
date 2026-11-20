@@ -133,7 +133,12 @@ describe("3.30 recombination base rules",function()
 		local affix;for _,entry in ipairs(result.affixes) do if entry.id=="LocalIncreasedPhysicalDamageReductionRating1" then affix=entry end end
 		local expected=require("Modules.PlanningUI").rows(require("Modules.CraftingInspection").modDetails(sim.context(evasion,result),"LocalIncreasedPhysicalDamageReductionRating1",affix),386)
 		assert.same(expected,controls.affixFacts.list)
-		controls.inspectItem:Click();assert.is_truthy(main.popups[1]);main:ClosePopup()
+		controls.page:SelByValue("Craft settings");controls.inspectItem:Click();local popup=assert(main.popups[1])
+		assert.matches("Item modifiers",popup.title,1,true)
+		assert.matches("1 result |",StripEscapes(popup.controls.count.label),1,true)
+		local rows={};for _,row in ipairs(popup.controls.results.list) do rows[#rows+1]=StripEscapes(row[1] or "") end
+		assert.matches("Prefix:",table.concat(rows," "),1,true)
+		main:ClosePopup()
 		controls.close:Click();main.popups={}
 	end)
 end)

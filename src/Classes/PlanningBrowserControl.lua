@@ -54,7 +54,7 @@ function M.Open(title,entries,options)
 				for _,line in ipairs(lines) do line[1]=color..StripEscapes(line[1]);line.entry=entry;list[#list+1]=line end
 				list[#list+1]={height=8,"",entry=entry}
 		end
-		controls.results.list=list;controls.count.label="^7"..#filtered.." results | Page "..page.." / "..math.max(1,math.ceil(#filtered/pageSize))
+		controls.results.list=list;controls.count.label="^7"..#filtered..(#filtered==1 and " result | Page " or " results | Page ")..page.." / "..math.max(1,math.ceil(#filtered/pageSize))
 	end
 	controls.results.onClick=function(row) if row then show(row.line.entry);refresh() end end
 	local function changed() page=1;selected=nil;controls.results.controls.scrollBar.offset=0;refresh() end
