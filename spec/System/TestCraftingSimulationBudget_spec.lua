@@ -4,6 +4,16 @@ describe("Crafting action simulation budget", function()
 	local raw = "Rarity: NORMAL\nPlate Vest\nItem Level: 86"
 	before_each(function() newBuild() end)
 	after_each(function() tasks.cancel(); main.popups = {} end)
+	it("explains why empty crafting actions are unavailable", function()
+		local project = { id = "empty-ui", title = "Empty", slot = "Body Armour", startingItem = raw, goals = {}, steps = {} }
+		local controls = require("Classes.CraftingSimulatorControl").Open(build, project)
+		assert.is_false(controls.keepRecipe:IsEnabled())
+		assert.is_truthy(controls.keepRecipe.tooltipText():find("Apply an action first", 1, true))
+		assert.is_false(controls.history:IsEnabled())
+		assert.is_truthy(controls.history.tooltipText():find("Apply an action first", 1, true))
+		assert.is_false(controls.distribution:IsEnabled())
+		assert.is_truthy(controls.distribution.tooltipText():find("Run a simulation first", 1, true))
+	end)
 	it("uses the full selected budget when repeating an action", function()
 		local rare = simulator.perform(raw, { method = "alchemy" }, 1).state
 		local project = { id = "budget-ui", title = "Budget", slot = "Body Armour", startingItem = raw, goals = {}, steps = {}, preferredMethod = "chaos", nativeRecipe = { initialState = rare, steps = {}, targets = {}, requirements = { minQuality = 20 } } }

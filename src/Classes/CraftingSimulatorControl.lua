@@ -799,7 +799,13 @@ function Panel.Open(build,project,layout)
 	controls.compareRecipes.enabled=function() return not tasks.job and not targetReason() and (#targets>0 or requirements and next(requirements)~=nil) end
 	controls.compareRecipes.tooltipText=function() return tasks.job and busy or targetReason() or missingTargets() and noTargets or "Compare recipes using the current targets." end
 	controls.keepRecipe.enabled=function() return #actions>0 and not state.destroyed and not state.veil end
+	controls.keepRecipe.tooltipText=function()
+		return state.destroyed and "This item was destroyed. Undo that action before keeping a recipe." or state.veil and "Resolve the veiled modifier before keeping a recipe." or #actions==0 and "Apply an action first to create a recipe." or "Keep the recorded actions as this project's recipe."
+	end
 	controls.manual.enabled=function() return not state.destroyed and not state.veil and not state.uniqueTitle end
+	controls.manual.tooltipText=function()
+		return state.destroyed and "This item was destroyed. Undo that action before editing it." or state.veil and "Resolve the veiled modifier before editing the item." or state.uniqueTitle and "Editing this unique outcome is not supported here." or "Edit a hypothetical item state."
+	end
 	controls.allflame.enabled=function() return simulator.supportsAllflame(controls.method:GetSelValueByKey("val")) end
 	controls.allflame.tooltipText=function() return controls.allflame:IsEnabled() and "Historical 3.29 Allflame model; Allflame is not core in 3.30." or "Allflame is not modeled for this action. Choose a supported itemised currency." end
 	controls.fossilResults.tooltipText="Reopen the captured comparison. Rerun after changing the item, targets or quotes."
@@ -817,10 +823,11 @@ function Panel.Open(build,project,layout)
 		local craft=action();return craft.fossils~=nil and #craft.fossils>0
 	end
 	controls.distribution.enabled=function() return not tasks.job and lastSimulation~=nil end
+	controls.distribution.tooltipText=function() return tasks.job and busy or not lastSimulation and "Run a simulation first to see its results and distribution." or "Inspect the most recent simulation results and distribution." end
 	controls.cancelJob.enabled=function() return require("Modules.CraftingTasks").job~=nil end
 	controls.apply.enabled=function() return not state.destroyed and not state.uniqueTitle end
 	controls.preview.enabled=function() return not state.destroyed and not state.veil and not state.socketLayoutUnknown end
-	controls.preview.tooltipText=function() return state.socketLayoutUnknown and "Set the unknown socket layout before previewing this item in a build." or "Preview this item against the current build." end
+	controls.preview.tooltipText=function() return state.destroyed and "This item was destroyed. Undo that action before previewing it." or state.veil and "Resolve the veiled modifier before previewing this item." or state.socketLayoutUnknown and "Set the unknown socket layout before previewing this item in a build." or "Preview this item against the current build." end
 	controls.configure.label=function() local method=controls.method:GetSelValueByKey("val");return method=="fossil" and "Configure fossil combination" or method=="gwennen" and "Configure Gwennen pair" or (method=="beast_prefix_suffix" or method=="beast_suffix_prefix") and "Set beast level" or "Configure donor item" end
 	controls.configure.enabled=function() local method=controls.method:GetSelValueByKey("val");return method=="beast_prefix_suffix" or method=="beast_suffix_prefix" or method=="gwennen" or method=="fossil" or method=="awakener" or method=="recombine" or method=="recombine_predictable" end
 	controls.page=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,18,416,28},{"Emulate item","Target conditions","Simulate recipe","Craft settings"})
@@ -868,6 +875,7 @@ function Panel.Open(build,project,layout)
 	controls.resolveSockets.tooltipText="Enter an observed or hypothetical layout; accepting the edit starts a new recipe state."
 	controls.targetSummary.height=height-338
 	controls.history.enabled=function() return #history>0 end
+	controls.history.tooltipText=function() return #history==0 and "Apply an action first to see item history." or "Review the item's recorded crafting history." end
 	controls.settings.label="Find currencies"
 	controls.allflame.width=200
 	controls.cancelJob.shown=function() return require("Modules.CraftingTasks").job~=nil end
