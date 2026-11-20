@@ -64,9 +64,13 @@ function M.parse(raw)
 	-- Magic items normally have one displayed name, including their affixes.
 	-- Unidentified rare or unique items can also have a single name line.
 	-- Keep that visible name for review without guessing the underlying base.
-	local singleName=lines[4]=="--------" and (rarity=="Magic" or (rarity=="Rare" or rarity=="Unique") and (raw:match("\nUnidentified\n") or raw:match("\nUnidentified %(Tier %d+%)\n") or raw:match("\nUnidentified$") or raw:match("\nUnidentified %(Tier %d+%)$")))
+	local function property(line)
+		return line and (line:match("^Quality[:%s%(]") or line:match("^Item Level:") or line:match("^Sockets:") or line:match("^Requirements:"))
+	end
+	local endOfName=lines[4]=="--------" or property(lines[4])
+	local singleName=endOfName and (rarity=="Magic" or (rarity=="Rare" or rarity=="Unique") and (raw:match("\nUnidentified\n") or raw:match("\nUnidentified %(Tier %d+%)\n") or raw:match("\nUnidentified$") or raw:match("\nUnidentified %(Tier %d+%)$")))
 	local base=lines[(rarity=="Normal" or rarity=="Gem" or singleName) and 3 or 4]
-	assert(base and base~="--------" and #base<=160 and not base:find("[%c%^]"),"The copied item needs a visible base type")
+	assert(base and base~="--------" and not property(base) and #base<=160 and not base:find("[%c%^]"),"The copied item needs a visible base type")
 	local quality
 	for _,line in ipairs(lines) do
 		local value=line:match("^Quality:%s*%+?(%d+)%%") or line:match("^Quality %([^%)]+%):%s*%+?(%d+)%%")
