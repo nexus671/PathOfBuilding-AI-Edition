@@ -90,7 +90,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1890, f"Expected 1890 UI frames, found {len(paths)}"
+    assert len(paths) == 1893, f"Expected 1893 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         audit = json.loads((frames / f"{width}-filter-error-audit.json").read_text())
         audit_text = " ".join(c.get("text", "") for c in audit["commands"] if c.get("kind") == "text")
@@ -102,6 +102,9 @@ def main():
         assert any("increased effect of Explicit" in c.get("text", "") for c in atlas_totals["commands"]), "Atlas modifier summary is missing"
         atlas_comparison = json.loads((frames / f"{width}-atlas-modifier-comparison.json").read_text())
         assert any("Change: +" in c.get("text", "") for c in atlas_comparison["commands"]), "Atlas modifier comparison is not visible"
+        catalyst = json.loads((frames / f"{width}-crafting-unique-ring-catalyst.json").read_text())
+        catalyst_text = " ".join(c.get("text", "") for c in catalyst["commands"] if c.get("kind") == "text")
+        assert "Catalyst quality: +20%" in catalyst_text and "Catalyst quality: 20%" in catalyst_text, "Catalyst card and status disagree"
         before = json.loads((frames / f"{width}-crafting-unique-quality.json").read_text())
         count_menu = json.loads((frames / f"{width}-crafting-unique-count-menu.json").read_text())
         assert any("10 Jeweller's Orbs + 10 Vaal Orbs" in c.get("text", "") for c in count_menu["commands"]), "Corrupted socket-count cost is missing"

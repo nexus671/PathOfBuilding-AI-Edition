@@ -110,6 +110,11 @@ describe("Unique item quality",function()
 		local catalog=quality.catalog(raw,"",50);assert.equal(1,#catalog.uniqueActions);assert.equal("divine",catalog.uniqueActions[1].method);assert.is_true(catalog.uniqueActions[1].available)
 		assert.has_error(function() quality.apply(raw) end);assert.has_error(function() quality.matches(raw,{minQuality=1}) end)
 		local scaled=raw:gsub("Item Level: 86","Item Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20");assert.is_truthy(quality.divineReason(scaled));local _,scaledInfo=quality.inspect(scaled);assert.equal(20,scaledInfo.quality);assert.equal(20,quality.catalog(scaled,"divine",10).quality.value);assert.has_error(function() quality.divine(scaled,1) end)
+		local defaultQuality=raw:gsub("Item Level: 86","Item Level: 86\nCatalyst: Prismatic");local _,defaultInfo=quality.inspect(defaultQuality);assert.equal(20,defaultInfo.quality);assert.is_truthy(quality.divineReason(defaultQuality));assert.has_error(function() quality.divine(defaultQuality,1) end)
+		local zeroQuality=defaultQuality:gsub("Catalyst: Prismatic","Catalyst: Prismatic\nCatalystQuality: 0");local _,zeroInfo=quality.inspect(zeroQuality);assert.equal(0,zeroInfo.quality);assert.is_nil(quality.divineReason(zeroQuality))
+		local copiedQuality=raw:gsub("Item Level: 86","Item Level: 86\nQuality (Resistance Modifiers): +20%%");local _,copiedInfo=quality.inspect(copiedQuality);assert.equal(20,copiedInfo.quality);assert.is_truthy(quality.divineReason(copiedQuality))
+		local unrecognized=defaultQuality:gsub("Catalyst: Prismatic","Catalyst: Unknown");assert.matches("Unrecognized jewellery catalyst",quality.divineReason(unrecognized))
+
 		local otherItems={
 			"Rarity: UNIQUE\nBloodsoaked Medallion\nAmber Amulet\nItem Level: 86\nImplicits: 1\n+25 to Strength\n40% increased Global Critical Strike Chance\n+60 to maximum Life\n+20% to Chaos Resistance\nEvery 10 seconds:\nGain 2% of Life per Enemy Hit with Attacks for 5 seconds\nGain 5% of Life per Enemy Killed for 5 seconds",
 			"Rarity: UNIQUE\nThe Burden of Truth\nCrystal Belt\nItem Level: 86\nImplicits: 1\n+80 to maximum Energy Shield\n33% of Non-Chaos Damage taken bypasses Energy Shield\n35% increased Life Recovery from Flasks\n33% of Chaos Damage taken does not bypass Energy Shield\nGain 7% of Maximum Life as Extra Maximum Energy Shield\nSupreme Decadence",

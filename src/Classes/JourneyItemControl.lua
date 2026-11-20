@@ -22,7 +22,11 @@ function M.new(controls,key,x,y,w,h,label,options)
 		local propertyX=expanded and 94 or 68
 		SetDrawColor("^xD5DEE8");DrawString(cx+propertyX,cy+54,"LEFT",13,"VAR",fit(item and item.baseName or equipped and "No item equipped" or starting and "Paste your starting item" or "Choose a target item",13,w-propertyX-10))
 		DrawString(cx+propertyX,cy+76,"LEFT",13,"VAR",item and ("Item level "..tostring(item.itemLevel or "unknown")) or equipped and "Current baseline" or starting and "Or use the equipped item" or "Paste an item or link a craft")
-		if expanded and item then DrawString(cx+propertyX,cy+98,"LEFT",13,"VAR","Quality: +"..tostring(item.quality or 0).."%") end
+		if expanded and item then
+			local jewellery=item.type=="Ring" or item.type=="Amulet" or item.type=="Belt"
+			local quality=jewellery and (item.catalystQuality or (item.catalyst and 20) or item.quality or 0) or (item.quality or 0)
+			DrawString(cx+propertyX,cy+98,"LEFT",13,"VAR",(jewellery and "Catalyst quality: +" or "Quality: +")..tostring(quality).."%")
+		end
 		if socketLabel and #item.sockets<=6 then
 			local start=cx+w-12-(#item.sockets*20-4)
 			if start>=cx+180 then

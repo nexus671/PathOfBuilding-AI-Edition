@@ -46,6 +46,10 @@ return function(build,ui,frame)
 	store:Upsert(ringProject);require("Classes.CraftingUniqueQualityControl").Open(build,ringProject);local ringControls=main.popups[1].controls;assert(not ringControls.apply:IsShown() and not ringControls.socketCount:IsShown() and ringControls.divine:IsShown(),"Jewellery layout should focus on available crafting");frame("crafting-unique-ring");ui:click("divine");local ringPicker=main.popups[1].controls;ringPicker.stat:SelByValue("modifier:1","val");ui:text("target","70");ui:click("plan")
 	local ringSaved;for _,entry in ipairs(store.projects) do if entry.id==ringProject.id then ringSaved=entry end end
 	assert(ringSaved and ringSaved.nativeRecipe.requirements.uniqueModifier.minValue==70,"Ring Divine target was not kept");main.popups={}
+	local defaultCatalyst={id="unique-catalyst-ring-ui",title="Catalyst ring",slot="Ring 1",startingItem=ringRaw:gsub("Item Level: 86","Item Level: 86\nCatalyst: Prismatic"),goals={},steps={}}
+	store:Upsert(defaultCatalyst);require("Classes.CraftingUniqueQualityControl").Open(build,defaultCatalyst);local catalystControls=main.popups[1].controls
+	assert(not catalystControls.divine:IsEnabled() and catalystControls.status.label:find("20%%"),"Implicit catalyst quality must be shown and Divine disabled");frame("crafting-unique-ring-catalyst");main.popups={}
+
 	local corruptRing={id="unique-corrupt-ring-ui",title="Corrupted ring",slot="Ring 1",startingItem=ringRaw.."\nCorrupted",goals={},steps={}}
 	store:Upsert(corruptRing);require("Classes.CraftingUniqueQualityControl").Open(build,corruptRing);local corruptControls=main.popups[1].controls
 	assert(not corruptControls.divine:IsShown() and not corruptControls.apply:IsShown(),"Corrupted jewellery cannot use Divine Orbs or ordinary quality currency");frame("crafting-unique-ring-corrupted");main.popups={}

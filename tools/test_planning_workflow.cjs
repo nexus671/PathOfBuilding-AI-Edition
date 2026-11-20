@@ -264,6 +264,9 @@ async function main(){
   const ringApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:ringUniqueRaw,action:ringOption.action,seed:123},'crafted');assert.ok(ringApply.nativeCrafting.itemText.includes('+(50-70)% to Item Rarity'));
   const ringGoal={uniqueModifier:{line:'+(50-70)% to Item Rarity',minValue:70}};const ringRecipe={rarity:'UNIQUE',steps:[{method:'divine',maxAttempts:10,untilRequirements:ringGoal}],targets:[],requirements:ringGoal};
   const ringRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:ringUniqueRaw,recipe:ringRecipe,options:{trials:5,maxActions:10,seed:123}},'crafted');assert.equal(ringRun.nativeCrafting.trials,5);
+  const catalystRing=ringUniqueRaw.replace('Item Level: 86','Item Level: 86\nCatalyst: Prismatic');
+  const catalystInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:catalystRing,query:'divine',limit:10},'inspected');
+  const catalystOption=catalystInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='divine');assert.equal(catalystInspect.crafting.nativeEngine.quality.value,20);assert.equal(catalystOption.available,false);assert.match(catalystOption.unavailableReason,/Catalyst-scaled/);
   const taintedQualityRaw=uniqueColourRaw+'\nCorrupted';
   const taintedQualityInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:taintedQualityRaw,query:'tainted quality',limit:10},'inspected');
   const taintedQualityOption=taintedQualityInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='tainted_quality');assert.equal(taintedQualityOption.available,true);

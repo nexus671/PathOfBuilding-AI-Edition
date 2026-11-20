@@ -101,7 +101,7 @@ function M.inspect(raw)
 		assert(not tabula or white,"This unique has six linked white sockets; correct the starting socket layout")
 	end
 	assert(not item.foulborn,"Foulborn items need a separate modifier-mutation model")
-	local quality=jewellery and (item.catalystQuality or item.quality or 0) or (item.quality or 0);assert(type(quality)=="number" and quality>=0 and quality==math.floor(quality),"Invalid item quality")
+	local quality=jewellery and (item.catalystQuality or (item.catalyst and 20) or item.quality or 0) or (item.quality or 0);assert(type(quality)=="number" and quality>=0 and quality==math.floor(quality),"Invalid item quality")
 	return item,{quality=quality,qualitySupported=not jewellery,available=not jewellery and quality<20 and not item.corrupted,resource=not jewellery and (flask and "Glassblower's Bauble" or weapon and "Blacksmith's Whetstone" or "Armourer's Scrap") or nil,resourceKey=not jewellery and (flask and "Metadata/Items/Currency/CurrencyFlaskQuality" or weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality") or nil}
 end
 -- Imported armour lines are totals, which PoB uses to infer the base roll.
@@ -251,7 +251,10 @@ local function divinePlan(raw)
 	local ok,item=pcall(M.inspect,raw);if not ok then return nil,tostring(item) end
 	if item.corrupted then return nil,"Divine Orbs cannot modify a corrupted item" end
 	if item.type=="Tincture" and item.tinctureValues=="Final" then return nil,"Copied tincture values need a separate scaling model for Divine rolls" end
-	if (item.catalystQuality or 0)>0 or ((item.type=="Ring" or item.type=="Amulet" or item.type=="Belt") and (item.quality or 0)>0) then return nil,"Catalyst-scaled jewellery needs a separate Divine model" end
+	local jewellery=item.type=="Ring" or item.type=="Amulet" or item.type=="Belt"
+	if jewellery and ("\n"..raw):find("\nCatalyst:",1,true) and not item.catalyst then return nil,"Unrecognized jewellery catalyst needs a separate Divine model" end
+	local catalystQuality=item.catalystQuality or (item.catalyst and 20) or 0
+	if catalystQuality>0 or (jewellery and (item.quality or 0)>0) then return nil,"Catalyst-scaled jewellery needs a separate Divine model" end
 	if item.variantList or item.usesVariantGroups then return nil,"Items with saved variant selections need a separate Divine model" end
 	uniqueSocketRestriction(item.title)
 	local candidates={}
