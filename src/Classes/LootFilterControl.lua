@@ -94,12 +94,13 @@ function M.Conditions(rule,save)
 			if count then lines[#lines+1]="    "..condition.keyword.." "..condition.operator..table.concat(controlValues," ")
 			else lines[#lines+1]="    "..condition.keyword.." "..condition.operator.." "..table.concat(controlValues," ") end
 		end
-		local styles=copyTable(block.styles)
-		if c.theme.selIndex>1 then local generated=filters.rule("style","Style",{},nil,c.theme.selIndex==3 and "contrast" or "default");local style=parser.parse(generated.text).rules[1].styles;for key,value in pairs(style) do styles[key]=value end end
-		if c.sound.selIndex>1 then if c.sound.selIndex==2 then styles.PlayAlertSound={"None"};styles.CustomAlertSound={"None"} else styles.PlayAlertSound={c.sound.selIndex==3 and "2" or "6","200"};styles.CustomAlertSound=nil end;styles.CustomAlertSoundOptional=nil;styles.PlayAlertSoundPositional=nil end
-		local keys={};for key in pairs(styles) do keys[#keys+1]=key end;table.sort(keys)
-		for _,key in ipairs(keys) do local values=styles[key];local quoted=key:match("^CustomAlertSound") and (filters.quote(values[1])..(#values>1 and " "..table.concat(values," ",2) or "")) or table.concat(values," ");lines[#lines+1]="    "..key.." "..quoted end
-		if block.continue then lines[#lines+1]="    Continue" end
+		local styles={}
+		if c.theme.selIndex>1 then local generated=filters.rule("style","Style",{},nil,c.theme.selIndex==3 and "contrast" or "default");styles=parser.parse(generated.text).rules[1].styles end
+		if c.sound.selIndex>1 then
+			for _,key in ipairs({"PlayAlertSound","PlayAlertSoundPositional","CustomAlertSound","CustomAlertSoundOptional"}) do styles[key]=false end
+			if c.sound.selIndex==2 then styles.PlayAlertSound={"None"};styles.CustomAlertSound={"None"} else styles.PlayAlertSound={c.sound.selIndex==3 and "2" or "6","200"} end
+		end
+		require("Modules.LootFilterLibrary").appendStyleLines(lines,block,styles)
 		local nextRule=copyTable(rule);nextRule.title=c.title.buf;nextRule.text=table.concat(lines,"\n");nextRule.origin=nil
 		local p=filters.profile("validate","Validate");p.rules={nextRule};filters.validate({schemaVersion=1,activeId=p.id,profiles={p}})
 		save(nextRule);main:ClosePopup()

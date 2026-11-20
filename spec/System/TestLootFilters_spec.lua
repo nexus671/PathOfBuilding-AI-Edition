@@ -333,6 +333,25 @@ describe("Build-owned loot filters",function()
 			assert.equal("invalid",parser.simulate(parser.parse('Hide\n '..key..' >= 2 "Haast"\nShow'),item).status)
 		end
 	end)
+	it("preserves appearance command order and continue arguments when editing conditions",function()
+		local raw='Show\n BaseType "Iron Hat"\n DisableDropSound\n EnableDropSound\n DisableDropSound\n SetTextColor 1 2 3\n Continue unexpected'
+		local saved;local editor=require("Classes.LootFilterControl")
+		editor.Conditions({id="order",title="Order",text=raw},function(value) saved=value end)
+		main.popups[1].controls.keepRule:Click()
+		assert.is_truthy(saved.text:find('DisableDropSound\n EnableDropSound\n DisableDropSound\n SetTextColor 1 2 3\n Continue unexpected',1,true))
+		local parsed=parser.parse(saved.text);assert.is_true(parsed.diagnostics[1].unverifiedContinue)
+		editor.Conditions({id="order",title="Order",text=raw},function(value) saved=value end)
+		main.popups[1].controls.theme:SelByValue("High contrast");main.popups[1].controls.keepRule:Click()
+		assert.is_truthy(saved.text:find('DisableDropSound\n EnableDropSound\n DisableDropSound',1,true))
+		assert.is_nil(saved.text:find('SetTextColor 1 2 3',1,true));assert.is_truthy(saved.text:find('Continue unexpected',1,true))
+		local styled=require("Modules.LootFilterLibrary").appearance({id="order",text=raw},{SetFontSize={"40"}})
+		assert.is_truthy(styled.text:find('DisableDropSound\n EnableDropSound\n DisableDropSound\n SetTextColor 1 2 3',1,true))
+		assert.is_truthy(styled.text:find('Continue unexpected',1,true));assert.is_truthy(styled.text:find('SetFontSize 40',1,true))
+		local sounds='Show\n PlayAlertSound 1\n PlayAlertSoundPositional 2\n SetFontSize 42'
+		editor.Conditions({id="sound",title="Sound",text=sounds},function(value) saved=value end)
+		main.popups[1].controls.sound:SelByValue("Alert 6");main.popups[1].controls.keepRule:Click()
+		assert.is_truthy(saved.text:find('PlayAlertSound 6 200',1,true));assert.is_nil(saved.text:find('PlayAlertSoundPositional',1,true));assert.is_truthy(saved.text:find('SetFontSize 42',1,true))
+	end)
 	it("preserves a separate exact marker and reports its preview as uncertain",function()
 		for _,key in ipairs({"HasExplicitMod","HasEnchantment"}) do
 			local raw='Hide\n '..key..' >=2 == "Polar" "Shocking"';local item={Identified=true,[key]={"of the Polar Bear","Shocking"}}

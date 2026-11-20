@@ -233,6 +233,18 @@ function M.entries(profile,source,category,query)
 		if (category==nil or category=="All items" or entry.category==category) and (entry.rule.title.." "..entry.rule.text):lower():find((query or ""):lower(),1,true) then result[#result+1]=entry end
 	end;return result
 end
+-- Keep untouched commands in their original order, including repeated actions.
+function M.appendStyleLines(lines,block,changes)
+	local continues={}
+	for _,line in ipairs(block.rawLines) do
+		local tokens=parser.tokens(line);local key=tokens[1]
+		if parser.actions[key] and changes[key]==nil then lines[#lines+1]=line
+		elseif key=="Continue" then continues[#continues+1]=line end
+	end
+	local keys={};for key,value in pairs(changes) do if value~=false then keys[#keys+1]=key end end;table.sort(keys)
+	for _,key in ipairs(keys) do local value=changes[key];local output=key:match("^CustomAlertSound") and (filters.quote(value[1])..(#value>1 and " "..table.concat(value," ",2) or "")) or table.concat(value," ");lines[#lines+1]="    "..key.." "..output end
+	for _,line in ipairs(continues) do lines[#lines+1]=line end
+end
 function M.appearance(rule,changes)
 	local block=assert(parser.parse(rule.text).rules[1]);local lines={block.action}
 	for _,condition in ipairs(block.conditions) do
@@ -240,10 +252,7 @@ function M.appearance(rule,changes)
 		local count=(condition.keyword=="HasExplicitMod" or condition.keyword=="HasEnchantment") and not (condition.quoted and condition.quoted[1]) and tonumber(condition.values[1])
 		lines[#lines+1]="    "..condition.keyword.." "..condition.operator..(count and "" or " ")..table.concat(values," ")
 	end
-	local styles=copyTable(block.styles);for key,value in pairs(changes) do styles[key]=value~=false and value or nil end
-	local keys={};for key in pairs(styles) do keys[#keys+1]=key end;table.sort(keys)
-	for _,key in ipairs(keys) do local value=styles[key];local output=key:match("^CustomAlertSound") and (filters.quote(value[1])..(#value>1 and " "..table.concat(value," ",2) or "")) or table.concat(value," ");lines[#lines+1]="    "..key.." "..output end
-	if block.continue then lines[#lines+1]="    Continue" end
+	M.appendStyleLines(lines,block,changes)
 	local nextRule=copyTable(rule);nextRule.text=table.concat(lines,"\n");nextRule.origin=nil;return nextRule
 end
 local examples={
