@@ -50,6 +50,63 @@ describe("Unique item quality",function()
 		main.popups={}
 	end)
 
+	it("samples unique socket colours without changing other item properties",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W\n+40% to Fire Resistance"
+		for _,method in ipairs({"chromatic","omen_trichromatism","tainted_chromatic"}) do
+			local input=raw..(method=="tainted_chromatic" and "\nCorrupted" or "")
+			local first=quality.colour(input,method,123);local second=quality.colour(input,method,123)
+			assert.equal(first.itemText,second.itemText);assert.is_true(first.itemText:find("+40% to Fire Resistance",1,true)~=nil)
+			local item=quality.inspect(first.itemText);assert.equal(4,#item.sockets)
+			assert.equal(item.sockets[1].group,item.sockets[2].group);assert.is_true(item.sockets[2].group~=item.sockets[3].group)
+			if method=="omen_trichromatism" then local colors={};for _,socket in ipairs(item.sockets) do colors[socket.color]=true end;assert.is_true(colors.R and colors.G and colors.B) end
+		end
+		assert.has_error(function() quality.colour(raw.."\nCorrupted","chromatic",1) end)
+		assert.has_error(function() quality.colour(raw,"tainted_chromatic",1) end)
+		assert.has_error(function() quality.colour(raw:gsub("Sockets: R%-G B W","Sockets: R-G"),"omen_trichromatism",1) end)
+		assert.has_error(function() quality.colour(raw.."\nSockets cannot be modified","chromatic",1) end)
+	end)
+
+	it("samples unique socket recipes with independent reproducible trials",function()
+		local sim=require("Modules.CraftingSimulator")
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W\n+40% to Fire Resistance"
+		local options={trials=80,seed=123,requirements={socketColours="R"}}
+		local a=sim.calculate(raw,{method="chromatic"},{},nil,options);local b=sim.calculate(raw,{method="chromatic"},{},nil,options)
+		assert.is_true(a.sampled);assert.equal(80,a.trials);assert.equal(a.successes,b.successes)
+		assert.is_true(a.successChance>0 and a.successChance<100);assert.is_true(a.confidenceLow<=a.successChance and a.confidenceHigh>=a.successChance)
+		local recipe={steps={{method="omen_trichromatism"}},targets={},requirements={socketColours="RGB"}}
+		local r=sim.simulate(raw,recipe,{trials=25,maxActions=1,seed=456,forceFirstAction=true})
+		assert.is_true(r.sampled);assert.equal(25,r.successes);assert.equal(100,r.successChance);assert.equal(25,r.resourceUsage[1].amount)
+		local once=sim.perform(raw,{method="omen_trichromatism"},1);assert.equal(1,once.components["Metadata/Items/Currency/CurrencyRerollSocketColours"])
+		local repeatedRaw=raw:gsub("Sockets: R%-G B W","Sockets: W-W W W")
+		local repeated={steps={{method="chromatic",maxAttempts=10,untilRequirements={socketColours="RR"}}},targets={},requirements={socketColours="RR"}}
+		local repeatedOptions={trials=30,maxActions=10,seed=123,currency="chaos",prices={chromatic=1},retainSuccesses=4}
+		local repeatResult=sim.simulate(repeatedRaw,repeated,repeatedOptions);local repeatAgain=sim.simulate(repeatedRaw,repeated,repeatedOptions)
+		assert.is_true(repeatResult.successes>0 and repeatResult.successes<30);assert.equal(repeatResult.successes,repeatAgain.successes)
+		assert.is_true(math.abs(repeatResult.meanActions-repeatResult.meanCost)<1e-8);assert.is_true(math.abs(repeatResult.meanActions*30-repeatResult.resourceUsage[1].amount)<1e-8)
+		assert.equal(4,#repeatResult.retainedSuccesses);assert.is_true(repeatResult.confidenceLow<repeatResult.successChance and repeatResult.confidenceHigh>repeatResult.successChance)
+		local rejectedRecipe={steps={{method="chromatic"},{method="omen_jeweller"}},targets={},requirements={socketColours="RRRR"}}
+		local rejected=sim.simulate(repeatedRaw,rejectedRecipe,{trials=10,maxActions=2,seed=123})
+		assert.equal(10,rejected.failedTransitionTrials);local warning
+		for _,entry in ipairs(rejected.warnings) do if entry.code=="rejected_model_actions" then warning=entry.message end end
+		assert.is_true(warning and warning:find("10 of 10",1,true)~=nil)
+	end)
+
+	it("previews unique socket colours and keeps a guide",function()
+		for _,corrupted in ipairs({false,true}) do
+			local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: W-W W W"..(corrupted and "\nCorrupted" or "")
+			local project={id=corrupted and "colour-corrupt" or "colour-normal",title="Colour",slot="Helmet",startingItem=raw,goals={},steps={}}
+			local store=build.savers.CraftingProjects;store:Upsert(project)
+			local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+			control.socketCount:Click();main.popups[1].controls.colours:Click()
+			local popup=main.popups[1].controls;assert.equal(corrupted and "tainted_chromatic" or "chromatic",popup.method:GetSelValueByKey("val"));assert.is_true(popup.apply:IsEnabled());popup.apply:Click()
+			assert.is_true(control.undo:IsEnabled());control.guide:Click()
+			local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+			assert.equal(corrupted and "tainted_chromatic" or "chromatic",saved.steps[1].uniqueCraft.method);assert.is_true(control.recipe:IsEnabled());control.recipe:Click()
+			for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+			assert.equal(corrupted and "tainted_chromatic" or "chromatic",saved.nativeRecipe.steps[1].method);assert.equal(100,saved.nativeRecipe.steps[1].maxAttempts);main.popups={}
+		end
+	end)
+
 	it("previews and simulates unique flask and tincture quality",function()
 		local sim=require("Modules.CraftingSimulator")
 		for _,entry in ipairs({{"Taste of Hate","Sapphire Flask"},{"The Battle Within","Oakbranch Tincture"}}) do
@@ -191,7 +248,7 @@ describe("Unique item quality",function()
 	it("catalogues supported unique crafts and their current availability",function()
 		local simulator=require("Modules.CraftingSimulator")
 		local catalog=simulator.catalog(shield,"",50,nil,"3_30")
-		assert.is_true(catalog.uniqueCrafting);assert.equal(8,#catalog.uniqueActions);assert.equal(7,#catalog.socketCrafts)
+		assert.is_true(catalog.uniqueCrafting);assert.equal(11,#catalog.uniqueActions);assert.equal(10,#catalog.socketCrafts)
 		assert.same(require("Modules.CraftingItemStats").itemValues(new("Item"):Item(shield)),catalog.nativeStats);assert.is_true(catalog.nativeStats.Armour>0)
 		local byMethod={};for _,action in ipairs(catalog.uniqueActions) do if action.method~="socket_bench" or action.action.linked then byMethod[action.method]=action end end
 		assert.is_true(byMethod.quality.available);assert.is_true(byMethod.beast_max_links.available);assert.is_true(byMethod.socket_white_bench.available)
@@ -202,7 +259,7 @@ describe("Unique item quality",function()
 		local proposed={id="ai-guide",title="AI guide",slot="Weapon 2",startingItem=shield.."\nCorrupted",goals={},steps={byMethod.socket_bench.guideStep}}
 		assert.equal("socket_bench",require("Modules.CraftingProjects").validate(proposed).steps[1].uniqueCraft.method)
 		assert.equal(1,byMethod.socket_white_bench.components["Metadata/Items/Currency/CurrencyCorrupt"])
-		local filtered=simulator.catalog(shield,"omen",50);assert.equal(2,#filtered.uniqueActions);assert.is_false(byMethod.omen_jeweller.available)
+		local filtered=simulator.catalog(shield,"omen",50);assert.equal(3,#filtered.uniqueActions);assert.is_false(byMethod.omen_jeweller.available)
 		assert.has_error(function() simulator.catalog(shield,"",50,{}) end)
 	end)
 	it("links unique sockets at the bench and saves the costs in a recipe",function()
@@ -245,7 +302,7 @@ describe("Unique item quality",function()
 		local crown="Rarity: UNIQUE\nCrown of the Tyrant\nMagistrate Crown\nItem Level: 86\nSockets: W"
 		local options=sim.catalog(crown,"",50).uniqueActions;for _,entry in ipairs(options) do if entry.guideStep.uniqueCraft.method=="socket_count_bench" then assert.is_false(entry.available);assert.matches("fixes its socket count",entry.unavailableReason) end end
 		local locked={id="fixed-socket-ui",title="Fixed socket",slot="Helmet",startingItem=crown,goals={},steps={}};build.savers.CraftingProjects:Upsert(locked)
-		local lockedControl=require("Classes.CraftingUniqueQualityControl").Open(build,locked);assert.is_false(lockedControl.socketCount:IsEnabled());assert.matches("fixes its socket count",lockedControl.socketCount.tooltipText());main.popups={}
+		local lockedControl=require("Classes.CraftingUniqueQualityControl").Open(build,locked);assert.is_true(lockedControl.socketCount:IsEnabled());assert.matches("socket%-colour",lockedControl.socketCount.tooltipText());main.popups={}
 		for _,corrupted in ipairs({false,true}) do
 			local raw=source..(corrupted and "\nCorrupted" or "");local action={method="socket_bench",count=4}
 			local changed=sim.perform(raw,action,1);assert.matches("Sockets: R%-G B W",changed.itemText)

@@ -4,4 +4,5 @@ return function(build,ui,frame)
 		assert(control.omenJeweller:IsEnabled(),"Unique Jeweller Omen is unavailable");ui:click("omenJeweller");frame("crafting-unique-omen-jeweller")
 		ui:click("guide");ui:click("recipe");local saved;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==project.id then saved=entry end end
 		assert(saved and saved.steps[1].uniqueCraft.method=="omen_jeweller" and saved.nativeRecipe.steps[1].method=="omen_jeweller","Unique Jeweller Omen guide or recipe was not kept");main.popups={}
+	dofile("../tools/test_unique_colour_ui.lua")(build,ui,frame)
 end

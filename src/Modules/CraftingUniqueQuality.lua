@@ -43,6 +43,9 @@ function M.guideAction(method,count,resource,corrupted,socketCount)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
 	if method=="omen_connections" then return "Link existing sockets with an Omen of Connections and an Orb of Fusing" end
+	if method=="chromatic" then return "Use a Chromatic Orb to reroll socket colours" end
+	if method=="tainted_chromatic" then return "Use a Tainted Chromatic Orb to reroll socket colours" end
+	if method=="omen_trichromatism" then return "Use an Omen of Trichromatism and a Chromatic Orb to guarantee red, green and blue sockets" end
 	if method=="omen_jeweller" then return "Add white sockets with an Omen of the Jeweller and a Jeweller's Orb" end
 	if method=="socket_count_bench" then
 		local components=require("Modules.CraftingSimulator").components({method="socket_bench",count=count},{sockets={},corrupted=corrupted})
@@ -224,6 +227,41 @@ function M.socketCount(raw,count,method)
 	return {itemText=output,components=components}
 end
 
+-- Reuse the ordinary socket-colour model while retaining the unique item text.
+-- These are sampled outcomes; a single result is not a probability estimate.
+function M.colourReason(raw,method)
+	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
+	if method~="chromatic" and method~="tainted_chromatic" and method~="omen_trichromatism" then return "Unsupported unique socket colour method" end
+	if item.type=="Flask" or item.type=="Tincture" then return "Flasks and tinctures have no sockets" end
+	if (not not item.corrupted)~=(method=="tainted_chromatic") then return item.corrupted and "Use tainted currency on corrupted items" or "Tainted currency requires a corrupted item" end
+	local immutable=M.socketModificationReason(raw,item);if immutable then return immutable end
+	local line,lines=raw:match("\nSockets: ([^\r\n]*)"),0
+	for _ in ("\n"..raw):gmatch("\nSockets:") do lines=lines+1 end
+	if lines~=1 or not line or not line:match("^[RGBWA][RGBWA%-%s]*$") then return "A single explicit socket layout is required" end
+	if #item.sockets<1 or #item.sockets>6 then return "Colour crafting needs one to six existing sockets" end
+	for _,socket in ipairs(item.sockets) do if socket.color=="A" then return "Abyssal sockets need a separate socket model" end end
+	if #line:gsub("[^RGBW]","")~=#item.sockets then return "The socket layout could not be verified" end
+	if method=="omen_trichromatism" and #item.sockets<3 then return "At least three sockets are required for the RGB guarantee" end
+end
+function M.colour(raw,method,seed)
+	local reason=M.colourReason(raw,method);assert(not reason,reason)
+	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
+	local before=M.inspect(raw)
+	local sim=require("Modules.CraftingSimulator")
+	local state={affixes={},sockets=copyTable(before.sockets),quality=before.quality,corrupted=before.corrupted}
+	local result=sim.action({item=before,byId={}},state,{method=method},require("Modules.CalcTime").random(seed))
+	local parts={};for i,socket in ipairs(result.sockets) do
+		if i>1 then parts[#parts+1]=socket.group==result.sockets[i-1].group and "-" or " " end
+		parts[#parts+1]=socket.color
+	end
+	local output,n=raw:gsub("(\nSockets: )([^\r\n]*)",function(prefix) return prefix..table.concat(parts) end)
+	assert(n==1,"The socket layout could not be updated")
+	local after=M.inspect(output)
+	assert(after.title==before.title and after.baseName==before.baseName and #after.sockets==#before.sockets and after.corrupted==before.corrupted,"Unique item did not round-trip after colour crafting")
+	for i,socket in ipairs(after.sockets) do assert(i==1 or (socket.group==after.sockets[i-1].group)==(before.sockets[i].group==before.sockets[i-1].group),"Socket links changed unexpectedly") end
+	return {itemText=output,components=sim.components({method=method})}
+end
+
 function M.white(raw)
 	local reason=M.whiteReason(raw);assert(not reason,reason)
 	local before=M.inspect(raw)
@@ -249,6 +287,9 @@ function M.catalog(raw,query,limit)
 	if sim.socketLimit({item=item})>0 then
 		local socketDefinitions={
 		{method="beast_max_links",label="Bestiary: maximum links",reason=linkReason,components={beast_black_morrigan=1,beast_craicic_sand_spitter=1}},
+		{method="chromatic",label="Chromatic Orb",reason=M.colourReason(raw,"chromatic"),sampled=true,components=sim.components({method="chromatic"})},
+		{method="tainted_chromatic",label="Tainted Chromatic Orb",reason=M.colourReason(raw,"tainted_chromatic"),sampled=true,components=sim.components({method="tainted_chromatic"})},
+		{method="omen_trichromatism",label="Omen of Trichromatism + Chromatic Orb",reason=M.colourReason(raw,"omen_trichromatism"),sampled=true,components=sim.components({method="omen_trichromatism"})},
 		{method="omen_jeweller",label="Omen of the Jeweller + Jeweller's Orb",reason=M.omenReason(raw),components=sim.components({method="omen_jeweller"})},
 		{method="omen_connections",label="Omen of Connections + Orb of Fusing",reason=linkReason,components={["Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks"]=1,["Metadata/Items/Currency/CurrencyRerollSocketLinks"]=1}},
 		{method="socket_bench",label="Bench: link existing sockets",reason=benchLinkReason,components=not benchLinkReason and require("Modules.CraftingSimulator").components({method="socket_bench",count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted}) or {}},
@@ -266,7 +307,7 @@ function M.catalog(raw,query,limit)
 		if not seen[entry.method] then result.methods[#result.methods+1]=entry.method;seen[entry.method]=true end
 		if #result.uniqueActions<limit and (entry.method.." "..entry.label):lower():find(query,1,true) then
 			local request=entry.request or (entry.method=="socket_bench" and {method=entry.method,count=#item.sockets,linked=true} or {method=entry.method})
-			local action={method=entry.method,label=entry.label,action=request,priceKey=entry.method=="socket_bench" and require("Modules.CraftingSimulator").priceKey(request) or entry.method,available=entry.reason==nil,unavailableReason=entry.reason,deterministic=true,components=entry.components}
+			local action={method=entry.method,label=entry.label,action=request,priceKey=entry.method=="socket_bench" and require("Modules.CraftingSimulator").priceKey(request) or entry.method,available=entry.reason==nil,unavailableReason=entry.reason,deterministic=not entry.sampled,components=entry.components}
 			local guideMethod,guideCount=entry.guideMethod or entry.method,entry.guideCount or 1
 			action.guideStep={action=M.guideAction(guideMethod,guideCount,info.resource,item.corrupted,#item.sockets),uniqueCraft={method=guideMethod,count=guideCount}}
 			result.uniqueActions[#result.uniqueActions+1]=action

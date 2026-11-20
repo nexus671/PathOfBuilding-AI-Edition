@@ -75,7 +75,7 @@ function M.Open(build,project,layout,snapshot)
 			if action=="quality" then qualityCount=qualityCount+1
 			elseif socketCount then
 				flush();steps[#steps+1]={action=unique.guideAction("socket_count_bench",socketCount,info.resource,item.corrupted),uniqueCraft={method="socket_count_bench",count=socketCount},done=false}
-			elseif action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="socket_white_bench" or action=="socket_bench" then
+			elseif action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
 				local before=unique.inspect(history[i]);flush();steps[#steps+1]={action=unique.guideAction(action,1,info.resource,item.corrupted,#before.sockets),uniqueCraft={method=action,count=1},done=false}
 			else return nil,"Loaded or older previews do not record every action." end
 		end
@@ -88,7 +88,7 @@ function M.Open(build,project,layout,snapshot)
 		if not guideCache then local steps,reason,signature=calculateGuideSteps();guideCache={steps=steps,reason=reason,signature=signature} end
 		return guideCache.steps,guideCache.reason,guideCache.signature
 	end
-	local linkReason,benchLinkReason,whiteReason,omenJewellerReason,updateCurrency,updateIcons
+	local linkReason,benchLinkReason,whiteReason,omenJewellerReason,colourReason,updateCurrency,updateIcons
 	local function refresh(persist)
 		guideCache=nil;reviewCache=nil;traceCache=nil
 		item,info=unique.inspect(raw);show(item)
@@ -96,6 +96,7 @@ function M.Open(build,project,layout,snapshot)
 		benchLinkReason=unique.linkReason(raw,"socket_bench")
 		whiteReason=unique.whiteReason(raw)
 		omenJewellerReason=unique.omenReason(raw)
+		colourReason=unique.colourReason(raw,item.corrupted and "tainted_chromatic" or "chromatic")
 		c.status.label="^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
 		c.apply.label="Use "..info.resource
 		if updateCurrency then updateCurrency() end
@@ -105,7 +106,7 @@ function M.Open(build,project,layout,snapshot)
 		if persist then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},not ui.hasDraft(build,"uniqueQuality",draft.id)) end
 	end
 	ui.label(c,"status",16,174,"",14)
-	button("socketCount",130,"Bench: sockets",function()
+	button("socketCount",130,"Socket crafts",function()
 		local controls={};local width,height=420,210;local options={}
 		local limit=require("Modules.CraftingSimulator").socketLimit({item=item})
 		for count=2,limit do options[#options+1]={label=count.." sockets",val=count} end
@@ -122,6 +123,27 @@ function M.Open(build,project,layout,snapshot)
 		end)
 		controls.apply.enabled=function() return not unique.socketCountReason(raw,chosen()) end
 		controls.apply.tooltipText=function() return unique.socketCountReason(raw,chosen()) or "Preview this bench craft without spending currency." end
+		controls.colours=new("ButtonControl"):ButtonControl(ui.anchor,{184,height-48,96,28},"Colours",function()
+			main:ClosePopup();local options={}
+			for _,entry in ipairs({{label="Chromatic Orb",val="chromatic"},{label="Tainted Chromatic Orb",val="tainted_chromatic"},{label="Omen of Trichromatism",val="omen_trichromatism"}}) do options[#options+1]=entry end
+			local colour={};local cw,ch=440,238
+			ui.description(colour,"help",16,25,cw-32,54,{"Preview one sampled colour roll.","Colour and placement probabilities are estimates."},14)
+			colour.method=new("DropDownControl"):DropDownControl(ui.anchor,{16,90,cw-32,28},options)
+			if item.corrupted then colour.method:SelByValue("tainted_chromatic","val") end
+			local function method() return colour.method:GetSelValueByKey("val") end
+			local checked,cached
+			local function reason() local selected=method();if checked~=selected then checked=selected;cached=unique.colourReason(raw,selected) end;return cached end
+			ui.label(colour,"availability",16,132,"",14);colour.availability.label=function() return "^7"..ui.fit(reason() or "Ready to preview; no currency is spent.",cw-32,14) end
+			colour.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,ch-48,160,28},"Preview roll",function()
+				local choice=method();local seed=require("Modules.CalcEncounter").seed(104729,#history+1,79)
+				local result=unique.colour(raw,choice,seed);history[#history+1]=raw;actions[#actions+1]=choice;redo={};raw=result.itemText;main:ClosePopup();refresh(true)
+			end)
+			colour.apply.enabled=function() return not reason() end
+			colour.apply.tooltipText=function() return reason() or "Preview one sampled socket-colour outcome." end
+			colour.close=new("ButtonControl"):ButtonControl(ui.anchor,{cw-132,ch-48,116,28},"Cancel",function() main:ClosePopup() end)
+			ui.style(colour,{apply=true});for _,control in pairs(colour) do control.layoutAudit="unique-socket-colours" end
+			main:OpenPopup(cw,ch,"Socket colours",colour,nil,nil,"close")
+		end)
 		controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-132,height-48,116,28},"Cancel",function() main:ClosePopup() end)
 		ui.style(controls,{apply=true});for _,control in pairs(controls) do control.layoutAudit="unique-socket-count" end
 		main:OpenPopup(width,height,"Socket count",controls,nil,nil,"close")
@@ -138,8 +160,8 @@ function M.Open(build,project,layout,snapshot)
 	button("omenJeweller",130,"Omen + Jeweller",function() local result=unique.socketCount(raw,unique.omenCount(item),"omen_jeweller");history[#history+1]=raw;actions[#actions+1]="omen_jeweller";redo={};raw=result.itemText;refresh(true) end)
 	c.omenJeweller.x=156;c.omenJeweller.width=130;c.omenJeweller.enabled=function() return not omenJewellerReason end
 	c.omenJeweller.tooltipText=function() return omenJewellerReason or "Adds white sockets up to the natural limit using an Omen of the Jeweller and a Jeweller's Orb." end
-	c.socketCount.enabled=function() return socketCountAvailability() end
-	c.socketCount.tooltipText=function() local allowed,reason=socketCountAvailability();return allowed and "Preview a socket-count bench craft and its cost." or reason end
+	c.socketCount.enabled=function() local allowed=socketCountAvailability();return allowed or not colourReason end
+	c.socketCount.tooltipText=function() local allowed,reason=socketCountAvailability();return allowed and "Preview socket-count or socket-colour crafts." or not colourReason and "Preview socket-colour crafts." or reason end
 	button("apply",198,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;actions[#actions+1]="quality";redo={};raw=result.itemText;refresh(true) end)
 	c.apply.enabled=function() return info.available end
 	c.apply.tooltipText=function() return item.corrupted and "Ordinary quality currency cannot modify a corrupted item." or info.available and "Adds 1% quality." or "Ordinary quality currency cannot exceed 20%." end
@@ -199,12 +221,18 @@ function M.Open(build,project,layout,snapshot)
 	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."
 	local function canCreateRecipe()
 		if #actions==0 or #actions~=#history or history[1]~=draft.startingItem or #actions>100 then return false end
-		for _,action in ipairs(actions) do if action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") then return false end end
+		local colourSeen=false
+		for _,action in ipairs(actions) do
+			local colour=action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism"
+			if colour then if colourSeen then return false end;colourSeen=true
+			elseif colourSeen and action~="quality" then return false
+			elseif action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") then return false end
+		end
 		return true
 	end
 	local function createRecipe()
 		assert(canCreateRecipe(),"A complete supported preview from the starting item is needed")
-		local steps,requirements={},{};local i=1
+		local steps,requirements={},{};local i=1;local sampled=false
 		while i<=#actions do
 			local action=actions[i]
 			local socketCount=tonumber(action:match("^socket_count_bench:([2-6])$"))
@@ -215,6 +243,10 @@ function M.Open(build,project,layout,snapshot)
 				requirements.minQuality=info.quality
 			elseif socketCount then
 				steps[#steps+1]={method="socket_bench",count=socketCount};requirements.exactSockets=#item.sockets;i=i+1
+			elseif action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" then
+				local colours={};for _,socket in ipairs(item.sockets) do colours[#colours+1]=socket.color end
+				local target=table.concat(colours);requirements.socketColours=target
+				steps[#steps+1]={method=action,maxAttempts=100,untilRequirements={socketColours=target}};sampled=true;i=i+1
 			else
 				local before=unique.inspect(history[i]);steps[#steps+1]=action=="socket_bench" and {method=action,count=#before.sockets,linked=true} or {method=action};i=i+1
 				if action=="omen_jeweller" then requirements.exactSockets=#item.sockets
@@ -224,8 +256,12 @@ function M.Open(build,project,layout,snapshot)
 		end
 		assert(#steps<=20,"This preview needs more than 20 recipe steps")
 		local recipe={steps=steps,targets={},requirements=requirements}
-		local result=require("Modules.CraftingSimulator").simulate(draft.startingItem,recipe,{trials=1,maxActions=100})
-		assert(result.sampleSuccess and result.sampleItem==raw,"The recipe did not reproduce this preview; review the actions")
+		if sampled then
+			assert(unique.matches(raw,requirements),"The preview does not meet its recipe goals")
+		else
+			local result=require("Modules.CraftingSimulator").simulate(draft.startingItem,recipe,{trials=1,maxActions=100})
+			assert(result.sampleSuccess and result.sampleItem==raw,"The recipe did not reproduce this preview; review the actions")
+		end
 		return recipe
 	end
 	button("recipe",388,"Check recipe",function()
@@ -233,12 +269,13 @@ function M.Open(build,project,layout,snapshot)
 			local updated=copyTable(draft);updated.nativeRecipe=createRecipe();draft=build.savers.CraftingProjects:Upsert(updated)
 			refresh(true);c.notice.label="^7Recipe saved. Save the build.";return
 		end
-		local result=require("Modules.CraftingSimulator").simulate(draft.startingItem,draft.nativeRecipe,{trials=1,maxActions=100,priceBook=draft.priceBook,treeVersion=build.spec.treeVersion})
+		local stochastic=false;for _,step in ipairs(draft.nativeRecipe.steps) do if step.method=="chromatic" or step.method=="tainted_chromatic" or step.method=="omen_trichromatism" then stochastic=true end end
+		local result=require("Modules.CraftingSimulator").simulate(draft.startingItem,draft.nativeRecipe,{trials=stochastic and 20 or 1,maxActions=100,priceBook=draft.priceBook,treeVersion=build.spec.treeVersion})
 		local rw,rh=math.min(760,main.screenW-40),math.min(520,main.screenH-60);local view={}
 		ui.label(view,"heading",16,24,"Saved recipe result",20)
-		local lines={result.sampleSuccess and "Goal reached in the deterministic model." or "Goal not reached in the deterministic model.",
+		local lines={result.sampled and string.format("Sampled success: %.1f%% (%.1f–%.1f%% interval).",result.successChance,result.confidenceLow,result.confidenceHigh) or result.sampleSuccess and "Goal reached in the deterministic model." or "Goal not reached in the deterministic model.",
 			"Starts from the saved starting item; the current preview is unchanged.",
-			string.format("Actions: %d attempted, %d executed (limit 100).",result.meanActions,result.meanExecutedActions),
+			string.format("Mean actions: %.1f attempted, %.1f executed (limit 100).",result.meanActions,result.meanExecutedActions),
 			result.meanCost and string.format("Estimated cost: %.2f %s",result.meanCost,result.costCurrency) or "Cost unavailable: add prices for all used resources."}
 		for _,entry in ipairs(result.resourceUsage or {}) do lines[#lines+1]=entry.name..": "..entry.amount end
 		for _,warning in ipairs(result.warnings or {}) do lines[#lines+1]="Model note: "..warning.message end
@@ -274,7 +311,7 @@ function M.Open(build,project,layout,snapshot)
 	end)
 	c.recipe.x=156;c.recipe.width=130;c.recipe.label=function() return draft.nativeRecipe and "Check recipe" or "Save recipe" end
 	c.recipe.enabled=function() return draft.nativeRecipe~=nil or canCreateRecipe() end
-	c.recipe.tooltipText=function() return draft.nativeRecipe and "Check the saved native recipe from its starting item. No changes are made." or canCreateRecipe() and "Save this complete preview as a recipe; then check its result and cost." or "Preview supported actions from the starting item to create a recipe." end
+	c.recipe.tooltipText=function() return draft.nativeRecipe and "Check the saved native recipe from its starting item. No changes are made." or canCreateRecipe() and "Save this complete preview as a recipe; then check its result and cost." or "Preview supported actions from the starting item. For colour crafts, use one sampled colour action followed only by quality actions." end
 	ui.label(c,"notice",16,426,restored and "^7Session preview restored." or "",14)
 	local art,artCache=nil,{}
 	local function icon(method)
@@ -298,6 +335,9 @@ function M.Open(build,project,layout,snapshot)
 		elseif method=="socket_bench" then local components=require("Modules.CraftingSimulator").components({method=method,count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted});local count=components["Metadata/Items/Currency/CurrencyRerollSocketLinks"] or 0;lines={"Bench: "..count.." Orb"..(count==1 and "" or "s").." of Fusing",item.corrupted and ("+ "..count.." Vaal Orb"..(count==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="omen_connections" then lines={"Omen + Orb of Fusing","1 of each | Preview"}
 		elseif method=="omen_jeweller" then lines={"Omen + Jeweller's Orb","1 of each | Preview"}
+		elseif method=="omen_trichromatism" then lines={"Omen + Chromatic Orb","Sampled preview"}
+		elseif method=="chromatic" then lines={"1 Chromatic Orb","Sampled preview"}
+		elseif method=="tainted_chromatic" then lines={"1 Tainted Chromatic Orb","Sampled preview"}
 		elseif method=="beast_max_links" then lines={"Black Morrigan + Sand Spitter","Preview only"}
 		elseif method=="quality" then lines={"1 "..info.resource,"Preview only"}
 		else method="quality";lines={"Preview only","No currency is spent."} end

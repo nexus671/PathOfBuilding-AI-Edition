@@ -1,6 +1,6 @@
--- Deterministic unique-item recipes use item text, not ordinary affix states.
+-- Unique-item recipes use item text, not ordinary affix states.
 local M={}
-local supported={quality=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,socket_white_bench=true,socket_bench=true}
+local supported={quality=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true}
 local fields={method=true,count=true,linked=true,maxAttempts=true,untilRequirements=true,onSuccess=true,onFailure=true,onFailureAction=true,recoveryNotes=true}
 function M.stepReason(step)
 	if not supported[step.method] then return "This unique recipe action is not supported: "..tostring(step.method) end
@@ -14,8 +14,59 @@ end
 local function quantiles(value)
 	local result={};for _,percent in ipairs({10,25,50,75,90,95,99}) do result["p"..percent]=value end;return result
 end
+local stochastic={chromatic=true,tainted_chromatic=true,omen_trichromatism=true}
+local function percentiles(values)
+	if #values==0 then return nil end
+	table.sort(values);local out={};for _,percent in ipairs({10,25,50,75,90,95,99}) do out["p"..percent]=values[math.max(1,math.ceil(#values*percent/100))] end;return out
+end
+local function sampled(sim,raw,recipe,options)
+	local trials=integer(options.trials or 200,1,2000,"trial count")
+	local maxActions=integer(options.maxActions or 100,1,2000,"action budget")
+	assert(trials*maxActions<=20000,"Use at most 20000 total budgeted actions per simulation")
+	local seed=integer(options.seed or 104729,1,2147483646,"seed")
+	local retain=integer(options.retainSuccesses or 0,0,100,"retained successful items")
+	local encounter=require("Modules.CalcEncounter")
+	local aggregate,successes,actions,executed,cost= nil,0,0,0,0
+	local attempts,failedTrials,budget,overrides=0,0,0,0
+	local spent,missing,errors,usage,routes,recovery,warnings,seen={},{},{},{},{},{},{},{}
+	local histogram,executedHistogram,costHistogram={},{},{}
+	local costs,successCosts,successActions,retained={},{},{},{}
+	local allPriced=true
+	for trial=1,trials do
+		if options.checkpoint then options.checkpoint({trial=trial,trials=trials,successes=successes}) end
+		local single=copyTable(options);single._uniqueSingleTrial=true;single.trials=1;single.retainSuccesses=0;single.seed=encounter.seed(seed,trial,31);single.checkpoint=options.checkpoint and function(progress) progress.trial=trial;progress.trials=trials;progress.successes=successes;options.checkpoint(progress) end or nil
+		local r=M.simulate(sim,raw,recipe,single);aggregate=aggregate or r
+		local hit=r.sampleSuccess;successes=successes+(hit and 1 or 0);actions=actions+r.meanActions;executed=executed+r.meanExecutedActions
+		attempts=attempts+r.failedAttempts;failedTrials=failedTrials+r.failedTransitionTrials;budget=budget+r.budgetExhausted;overrides=overrides+r.actionPriceOverridesApplied
+		for k,v in pairs(r.currencySpent) do spent[k]=(spent[k] or 0)+v end
+		for k in pairs(r.unpriced) do missing[k]=true;allPriced=false end
+		for k,v in pairs(r.transitionErrors) do errors[k]=(errors[k] or 0)+v end
+		for _,entry in ipairs(r.resourceUsage) do local v=usage[entry.key] or {key=entry.key,name=entry.name,kind=entry.kind,amount=0};usage[entry.key]=v;v.amount=v.amount+entry.amount end
+		for k,route in pairs(r.routeCounts) do local dest=routes[k] or {visits=0,success=0,failure=0,executed=0};routes[k]=dest;for field,value in pairs(route) do dest[field]=(dest[field] or 0)+value end end
+		for k,v in pairs(r.recovery) do recovery[k]=(recovery[k] or 0)+v end
+		for _,warning in ipairs(r.warnings) do local key=warning.code..warning.message;if warning.code~="unique_crafting_scope" and warning.code~="rejected_model_actions" and not seen[key] then warnings[#warnings+1]=warning;seen[key]=true end end
+		local function bucket(table,key,field) local v=table[key] or {[field]=key,trials=0,successes=0};table[key]=v;v.trials=v.trials+1;v.successes=v.successes+(hit and 1 or 0) end
+		bucket(histogram,r.meanActions,"actions");bucket(executedHistogram,r.meanExecutedActions,"actions")
+		if r.meanCost~=nil then cost=cost+r.meanCost;costs[#costs+1]=r.meanCost;bucket(costHistogram,r.meanCost,"cost");if hit then successCosts[#successCosts+1]=r.meanCost end else allPriced=false end
+		if hit then successActions[#successActions+1]=r.meanActions;if #retained<retain then retained[#retained+1]={trial=trial,actions=r.meanActions,cost=r.meanCost,itemText=r.sampleItem} end end
+	end
+	local function list(map,key) local out={};for _,v in pairs(map) do out[#out+1]=v end;table.sort(out,function(a,b) return a[key]<b[key] end);return out end
+	local resources=list(usage,"key");for _,entry in ipairs(resources) do entry.meanPerTrial=entry.amount/trials end
+	local low,high=encounter.wilson(successes,trials)
+	local out=aggregate;out.exactFor=nil;out.sampled=true;out.trials=trials;out.successes=successes;out.successChance=100*successes/trials;out.confidenceLow=low;out.confidenceHigh=high;out.seed=seed
+	out.meanActions=actions/trials;out.meanExecutedActions=executed/trials;out.failedAttempts=attempts;out.failedTransitionTrials=failedTrials;out.budgetExhausted=budget;out.actionPriceOverridesApplied=overrides
+	out.currencySpent=spent;out.unpriced=missing;out.transitionErrors=errors;out.resourceUsage=resources;out.routeCounts=routes;out.recovery=recovery;out.retainedSuccesses=retained;out.retentionLimit=retain
+	out.actionDistribution=list(histogram,"actions");out.executedActionDistribution=list(executedHistogram,"actions");out.successfulActionQuantiles=percentiles(successActions)
+	out.uniqueTrials=trials;out.uniqueDistribution={{name=out.uniqueDistribution[1].name,trials=trials,successes=successes}}
+	out.meanCost=allPriced and cost/trials or nil;out.costPerSuccess=allPriced and successes>0 and cost/successes or nil;out.spendingQuantiles=allPriced and percentiles(costs) or nil;out.successfulSpendingQuantiles=allPriced and percentiles(successCosts) or nil;out.costDistribution=allPriced and list(costHistogram,"cost") or nil
+	out.warnings=warnings
+	if failedTrials>0 then out.warnings[#out.warnings+1]={code="rejected_model_actions",message=string.format("%d of %d modeled trials included a rejected action. Rejected attempts count toward the action budget and follow failure routes, but are not charged resources. Review the transition errors.",failedTrials,trials)} end
+	out.warnings[#out.warnings+1]={code="unique_socket_sampling",message="Socket outcomes use estimated probabilities. The Wilson interval measures sampling uncertainty, not uncertainty in game rules."}
+	return out
+end
 function M.simulate(sim,raw,recipe,options)
 	options=options or {};recipe=sim.validateRecipe(recipe)
+	if not options._uniqueSingleTrial then for _,step in ipairs(recipe.steps) do if stochastic[step.method] then return sampled(sim,raw,recipe,options) end end end
 	assert(not recipe.initialState and not options.initialState,"Unique recipes continue from item text, not an ordinary crafting state")
 	assert(#recipe.targets==0,"Modifier-identity targets are not yet supported for unique items")
 	local unique=require("Modules.CraftingUniqueQuality");local start=unique.inspect(raw)
@@ -62,7 +113,8 @@ function M.simulate(sim,raw,recipe,options)
 			if options.checkpoint then options.checkpoint({trial=1,trials=trials,actions=actions,successes=0}) end
 			actions=actions+1
 			local action={method=step.method};if step.method=="socket_bench" then action.count=step.count;action.linked=step.linked end
-			local ok,result=pcall(sim.perform,current,action,seed)
+			local actionSeed=require("Modules.CalcEncounter").seed(seed,actions,31)
+			local ok,result=pcall(sim.perform,current,action,actionSeed)
 			if not ok then local message=tostring(result):match("[^:]+$") or tostring(result);errors[message]=(errors[message] or 0)+1;rejected=true;break end
 			for _,warning in ipairs(result.warnings or {}) do if warning.code~="unique_crafting_scope" and warning.code~="unique_quality_scope" and not seenWarnings[warning.code] then actionWarnings[#actionWarnings+1]=warning;seenWarnings[warning.code]=true end end
 			current=result.itemText;executed=executed+1;route.executed=route.executed+1
