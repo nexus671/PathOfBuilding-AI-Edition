@@ -69,6 +69,30 @@ class PortablePackageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "hash mismatch"):
             check_portable_package.verify(rewritten)
 
+    def test_expected_commit_requires_the_tracked_manifest(self):
+        self.build()
+        trusted = (self.root / "manifest.xml").read_bytes()
+        self.assertEqual(check_portable_package.verify(self.output, trusted, "a" * 40)[3], "a" * 40)
+        with self.assertRaisesRegex(ValueError, "commit does not match"):
+            check_portable_package.verify(self.output, trusted, "b" * 40)
+        with self.assertRaisesRegex(ValueError, "update branch does not match"):
+            check_portable_package.verify(self.output, trusted, "a" * 40, "main")
+        forged = self.root / "forged.zip"
+        with zipfile.ZipFile(self.output) as source, zipfile.ZipFile(forged, "w") as target:
+            for entry in source.infolist():
+                data = source.read(entry)
+                if entry.filename == "Launch.lua":
+                    data = b"forged program"
+                elif entry.filename == "manifest.xml":
+                    manifest = ET.fromstring(data)
+                    next(item for item in manifest.findall("File") if item.get("name") == "Launch.lua").set("sha1", hashlib.sha1(b"forged program").hexdigest())
+                    data = ET.tostring(manifest, encoding="utf-8", xml_declaration=True)
+                target.writestr(entry, data)
+        # A self-consistent archive is not evidence of source authenticity.
+        self.assertEqual(check_portable_package.verify(forged)[3], "a" * 40)
+        with self.assertRaisesRegex(ValueError, "manifest does not match"):
+            check_portable_package.verify(forged, trusted, "a" * 40)
+
     def test_bad_hash_and_unsafe_or_duplicate_paths_do_not_leave_output(self):
         for name, part, digest in [("../outside", "program", "0" * 40), ("Launch.lua", "program", "0" * 40), ("launch.lua", "program", hashlib.sha1(self.lua.replace(b"\n", b"\r\n")).hexdigest())]:
             added = ET.SubElement(self.manifest, "File", name=name, part=part, sha1=digest)
@@ -88,6 +112,12 @@ class PortablePackageTests(unittest.TestCase):
             portable.build(self.root, self.output, "dev", "a" * 40, changed)
         self.assertFalse(self.output.exists())
         self.assertFalse(list(self.root.glob(".pob-package-*.tmp")))
+
+    def test_rejects_windows_device_and_invalid_file_names(self):
+        for name in ("NUL.txt", "folder/COM1.json", "folder/Lpt9", "bad?.lua", "trailing.", "file\x01.lua"):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                portable.safe_name(name)
+        self.assertEqual(str(portable.safe_name("data/COM10.lua")), "data/COM10.lua")
 
     def test_rejects_unknown_branch_or_short_commit(self):
         with self.assertRaises(ValueError):

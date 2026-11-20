@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# cspell:ignore compresslevel
 """Build a fork-owned Windows portable ZIP from a clean, committed checkout."""
 import argparse
 import hashlib
@@ -13,6 +14,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 PARTS = {"default": "", "runtime": "runtime", "program": "src", "tree": "src"}
 SHA1 = re.compile(r"[0-9a-f]{40}\Z")
+WINDOWS_DEVICES = {"CON", "PRN", "AUX", "NUL"} | {f"{prefix}{number}" for prefix in ("COM", "LPT") for number in range(1, 10)}
 
 
 def git(*args):
@@ -23,7 +25,8 @@ def safe_name(name):
     name = name.replace("{space}", " ")
     path = PurePosixPath(name)
     if (not name or "\\" in name or path.is_absolute() or any(p in {".", ".."} for p in name.split("/"))
-            or any(not part or ":" in part or part.endswith((".", " ")) for part in name.split("/"))):
+            or any(not part or part.endswith((".", " ")) or part.split(".", 1)[0].upper() in WINDOWS_DEVICES
+                   or any(ord(char) < 32 or char in '<>:"|?*' for char in part) for part in name.split("/"))):
         raise ValueError(f"Unsafe manifest path: {name!r}")
     return path
 

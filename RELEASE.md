@@ -10,10 +10,17 @@ A fork-owned portable ZIP can be prepared without installing it:
 2. Run `python tools/build_portable_package.py <new-output.zip>`. The command
    requires a clean tracked checkout, verifies each manifest file, and refuses
    to replace an existing output. It excludes local builds and settings.
-3. Run `python tools/check_portable_package.py <new-output.zip>` to verify the
-   archive against its manifest, then inspect the extracted app before publishing.
-   The ZIP records its commit and update branch in `PACKAGE-INFO.txt`; the
-   extracted application stores its own builds and settings beside the program.
+3. Compare the archive with that commit's tracked manifest and expected branch:
+
+   ```powershell
+   python tools/check_portable_package.py <new-output.zip> --expected-commit <full-commit-id> --expected-branch dev
+   ```
+
+   Use `main` when appropriate, then inspect the extracted app before publishing.
+   Without the commit option, the check verifies internal consistency but not
+   source identity. The ZIP records its commit and update branch in
+   `PACKAGE-INFO.txt`; the extracted application stores its own builds and
+   settings beside the program.
 
 This produces a portable package, not an installer or a published release.
 Native Windows startup and a fork-owned release process still require separate

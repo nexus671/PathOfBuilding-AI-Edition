@@ -5,13 +5,29 @@ import hashlib
 from pathlib import Path
 import re
 import stat
+import subprocess
 import xml.etree.ElementTree as ET
 import zipfile
 
-from build_portable_package import safe_name, SHA1
+from build_portable_package import safe_name, SHA1, ROOT
 
 
-def verify(path):
+def manifest_identity(root, local=False):
+    if root.tag != "PoBVersion":
+        raise ValueError("Invalid source manifest")
+    children = []
+    for child in root:
+        if child.tag not in {"Version", "Source", "File"} or list(child) or (child.text or "").strip():
+            raise ValueError("Unexpected source manifest content")
+        attributes = dict(child.attrib)
+        if local and child.tag == "Version":
+            attributes.pop("branch", None)
+            attributes.pop("platform", None)
+        children.append((child.tag, tuple(sorted(attributes.items()))))
+    return tuple(children)
+
+
+def verify(path, source_manifest=None, expected_commit=None, expected_branch=None):
     with zipfile.ZipFile(path) as archive:
         entries = {}
         for info in archive.infolist():
@@ -25,6 +41,8 @@ def verify(path):
         version = local.find("Version")
         if local.tag != "PoBVersion" or version is None or version.get("platform") != "win32" or version.get("branch") not in {"dev", "main"}:
             raise ValueError("Invalid local update identity")
+        if expected_branch is not None and (expected_branch not in {"dev", "main"} or version.get("branch") != expected_branch):
+            raise ValueError("Package update branch does not match the expected branch")
         expected = {"manifest.xml", "package-info.txt", "launch.cfg"}
         manifest_entries = local.findall("File")
         if not manifest_entries:
@@ -51,15 +69,30 @@ def verify(path):
         commit = re.search(r"(?m)^Commit: ([0-9a-f]{40})\r?$", info)
         if not commit or f"Version: {version.get('number')}\r\n" not in info or f"Update branch: {version.get('branch')}\r\n" not in info:
             raise ValueError("Package identity does not match its manifest")
+        if (source_manifest is None) != (expected_commit is None):
+            raise ValueError("Source manifest and expected commit must be supplied together")
+        if source_manifest is not None:
+            if not re.fullmatch(r"[0-9a-f]{40}", expected_commit) or commit.group(1) != expected_commit:
+                raise ValueError("Package commit does not match the expected commit")
+            if manifest_identity(local, local=True) != manifest_identity(ET.fromstring(source_manifest)):
+                raise ValueError("Package manifest does not match the expected commit")
         return len(entries), version.get("number"), version.get("branch"), commit.group(1)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path)
+    parser.add_argument("--expected-commit", help="Full commit ID whose tracked manifest is trusted")
+    parser.add_argument("--expected-branch", choices=("dev", "main"), help="Expected update branch")
     args = parser.parse_args()
-    count, version, branch, commit = verify(args.package)
-    print(f"Verified {count} files: {version}, {branch}, {commit}")
+    source_manifest = None
+    if args.expected_commit:
+        if not re.fullmatch(r"[0-9a-f]{40}", args.expected_commit):
+            parser.error("--expected-commit must be a full lowercase commit ID")
+        source_manifest = subprocess.check_output(["git", "show", args.expected_commit + ":manifest.xml"], cwd=ROOT)
+    count, version, branch, commit = verify(args.package, source_manifest, args.expected_commit, args.expected_branch)
+    outcome = "Source verified" if source_manifest is not None else "Internally consistent; source commit not independently verified"
+    print(f"{outcome}: {count} files, {version}, {branch}, {commit}")
 
 
 if __name__ == "__main__":
