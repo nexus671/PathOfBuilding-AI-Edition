@@ -23,7 +23,7 @@ describe("Current Thread modifier restrictions",function()
 	end)
 	it("reports the 3.30.0c modifier guarantees and published milestones",function()
 		for _,case in ipairs({{0,0,nil},{1,1,nil},{2,1,nil},{3,1,3},{4,2,3},{5,2,3},{6,2,6},{7,2,6},{8,3,8},{9,3,8}}) do
-			local result=strategy.threadRestrictions(83,case[1]);assert.equal(case[2],result.guaranteedModifiers);assert.equal(case[3],result.milestones.threshold)
+			local result=strategy.threadRestrictions(83,case[1]);assert.equal(case[2],result.guaranteedWhenSpending);if case[1]==0 then assert.equal(0,result.guaranteedModifiers);assert.equal("no_threads",result.guaranteeStatus) else assert.is_nil(result.guaranteedModifiers);assert.equal("spend_unresolved",result.guaranteeStatus);local free=strategy.threadRestrictions(83,case[1],nil,0);assert.is_nil(free.guaranteedModifiers);assert.equal("free_only_unverified",free.guaranteeStatus);local spent=strategy.threadRestrictions(83,case[1],nil,1);assert.equal(case[2],spent.guaranteedModifiers);assert.equal("confirmed_spend",spent.guaranteeStatus) end;assert.equal(case[3],result.milestones.threshold)
 			assert.same({3,6,8},result.milestones.thresholds);assert.equal(10,#result.milestones.mechanics)
 			if case[3] then assert.is_truthy(result.milestones.mechanics[1].current) else assert.is_nil(result.milestones.mechanics[1].current) end
 		end
@@ -44,8 +44,9 @@ describe("Current Thread modifier restrictions",function()
 		c.level:SetText("73",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
 		assert.matches("Conditions met",text);assert.matches("Restricted",text)
 		c.threads:SetText("8",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
-		assert.matches("When spending Threads: 3 guaranteed modifiers",text);assert.matches("Free%-only guarantees are not established",text);assert.matches("Abyss: 3 additional pits",text);assert.matches("stacking not assumed",text)
-		c.spent:SetText("1",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
+		assert.matches("With this spend: 3 guaranteed modifiers",text);assert.matches("Free%-only guarantees are not established",text);assert.matches("Abyss: 3 additional pits",text);assert.matches("stacking not assumed",text)
+		c.spent:SetText("1",true);c.threads:SetText("2",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
+		assert.matches("With this spend: 1 guaranteed modifier |",text);assert.not_matches("1 guaranteed modifiers",text)
 		assert.matches("Consorts: restricted",text);assert.matches("free Threads are separate",text)
 		c.spent:SetText("9",true);assert.matches("cannot exceed",StripEscapes(c.status.label));assert.equal(0,#c.results.list)
 		main.popups={}

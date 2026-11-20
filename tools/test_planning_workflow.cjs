@@ -1099,6 +1099,9 @@ async function main(){
   assert.equal(milestones.atlas.guaranteeRequiresSpend,true);assert.match(milestones.atlas.guaranteeNote,/Free-only/);
   assert.equal(milestones.atlas.abyssalConsort.spentThreads,1);assert.equal(milestones.atlas.abyssalConsort.restricted,true);
   assert.ok(milestones.atlas.modifiers.every(row=>row.restrictionsMet===false && row.conditionStatus==='restricted'));
+  const freeOnlyThreads=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:83,threads:8,spentThreads:0},'atlas');
+  assert.equal(freeOnlyThreads.atlas.guaranteeStatus,'free_only_unverified');assert.equal(freeOnlyThreads.atlas.guaranteedWhenSpending,3);assert.equal(freeOnlyThreads.atlas.guaranteedModifiers,undefined);
+  const unknownThreadSpend=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:83,threads:8},'atlas');assert.equal(unknownThreadSpend.atlas.guaranteeStatus,'spend_unresolved');assert.equal(unknownThreadSpend.atlas.guaranteedModifiers,undefined);
   const invalidThreadSpend=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:83,threads:1,spentThreads:2},'failed');
   assert.match(invalidThreadSpend.error,/cannot exceed/);
   const regionPreview=await queued('preview_shaped_region_run',{baseRevision:context.revision,plan:regionsPlan,map:'Beach Map',completed:['Blight']},'atlas');

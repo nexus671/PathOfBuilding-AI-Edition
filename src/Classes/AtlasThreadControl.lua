@@ -20,7 +20,8 @@ function M.Open(options)
 		local spent=c.spent.buf~="" and tonumber(c.spent.buf) or nil
 		local ok,result=pcall(strategy.threadRestrictions,tonumber(c.level.buf),tonumber(c.threads.buf),(not options.mechanic or options.mechanic=="Abyss") and spent or nil,spent)
 		if not ok then c.status.label="^xE9BE7B"..ui.fit(ui.errorText(result),w-32,14);c.results.list={};return end
-		local lines={result.threads==0 and "No Threads applied; no modifier guarantee modeled." or "When spending Threads: "..result.guaranteedModifiers.." guaranteed modifiers | 3.30.0c", "Free-only guarantees are not established."}
+		local count=result.guaranteedWhenSpending;local guarantee=result.threads==0 and "No Threads applied; no modifier guarantee modeled." or (result.guaranteeStatus=="confirmed_spend" and "With this spend: " or "When spending Threads: ")..count.." guaranteed modifier"..(count==1 and "" or "s").." | 3.30.0c"
+		local lines={guarantee, "Free-only guarantees are not established."}
 		if result.milestones.threshold then
 			lines[#lines+1]="Published bonus at "..result.milestones.threshold.." Threads (stacking not assumed):"
 			for _,entry in ipairs(result.milestones.mechanics) do if not options.mechanic or entry.mechanic==options.mechanic then lines[#lines+1]=entry.mechanic..": "..entry.current end end
