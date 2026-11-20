@@ -33,6 +33,21 @@ describe("Unique item quality",function()
 		assert.is_true(names["Omen of the Jeweller"]);assert.is_true(names["Jeweller's Orb"]);main.popups={}
 	end)
 
+	it("keeps a unique Omen and following bench link together in the guide",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"
+		local project={id="omen-link",title="Omen link",slot="Helmet",startingItem=raw,goals={},steps={}}
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.omenJeweller:Click();assert.is_true(control.benchLink:IsEnabled());control.benchLink:Click()
+		control.recipe:Click();control.guide:Click();local saved=store.projects[1]
+		assert.equal("omen_jeweller",saved.steps[1].uniqueCraft.method);assert.equal("socket_bench",saved.steps[2].uniqueCraft.method)
+		assert.matches("5 Orbs of Fusing",saved.steps[2].action,1,true);assert.equal(4,saved.nativeRecipe.requirements.exactSockets)
+		local filters=require("Modules.LootFilters");local rules=filters.generate(build,filters.profile("omen-link","Omen link"));local names={}
+		for _,rule in ipairs(rules) do if rule.origin=="craft:omen-link" then names[rule.title]=true end end
+		for _,name in ipairs({"Omen of the Jeweller","Jeweller's Orb","Orb of Fusing"}) do assert.is_true(names[name]) end
+		main.popups={}
+	end)
+
 	it("previews and simulates unique flask and tincture quality",function()
 		local sim=require("Modules.CraftingSimulator")
 		for _,entry in ipairs({{"Taste of Hate","Sapphire Flask"},{"The Battle Within","Oakbranch Tincture"}}) do
