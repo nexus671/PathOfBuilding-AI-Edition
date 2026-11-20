@@ -52,6 +52,22 @@ function M.validate(raw,run,models)
 		assert(method==action.method,"Invalid configured craft")
 		result.configured[method]=simulator.validateRecipe({steps={action},targets={},requirements={minAffixes=0}}).steps[1]
 	end
+	if run.simulationRequest then
+		local ok,request=pcall(function()
+			local value=run.simulationRequest
+			assert(type(value)=="table" and value.raw==raw and type(value.label)=="string" and #value.label<=200 and type(value.options)=="table","Invalid saved simulation")
+			assert(#require("Modules.PlanningData").encodeExact(value)<=262144,"Saved simulation is too large")
+			local options=copyTable(value.options)
+			for _,key in ipairs({"trials","maxActions","seed"}) do assert(type(options[key])=="number" and options[key]==math.floor(options[key]) and options[key]>=1,"Invalid saved simulation setting") end
+			assert(options.trials<=2000 and options.maxActions<=2000 and options.trials*options.maxActions<=20000 and options.seed<=2147483646,"Saved simulation exceeds its limits")
+			assert(type(options.initialState)=="table","Missing saved simulation item")
+			options.initialState=state(options.initialState)
+			if options.priceBook then options.priceBook=require("Modules.CraftingPrices").validate(options.priceBook) end
+			options.checkpoint=nil
+			return {raw=raw,label=value.label,recipe=simulator.validateRecipe(value.recipe),options=options}
+		end)
+		if ok then result.simulationRequest=request end
+	end
 	return result
 end
 return M
