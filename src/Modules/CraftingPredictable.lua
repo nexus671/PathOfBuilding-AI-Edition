@@ -4,8 +4,18 @@ local P={}
 local function family(id) return id:gsub("_+$",""):gsub("Maven.*$",""):gsub("%d+$","") end
 function P.extend(M,A,api)
 	M.methods[#M.methods+1]="recombine_predictable";M.labels.recombine_predictable="Predictable recombination (observed odds)";table.sort(M.methods)
+	function M.predictableObservation(craft)
+		return {donorItem=craft.donorItem,selectedMods=copyTable(craft.selectedMods),reportedSuccessChance=craft.reportedSuccessChance}
+	end
+	function M.predictableObservationMatches(craft)
+		local observed=craft.observedInputs
+		if type(observed)~="table" or type(craft.selectedMods)~="table" or type(craft.donorItem)~="string" or type(craft.reportedSuccessChance)~="number" then return false end
+		local current=M.predictableObservation(craft)
+		return tableDeepEquals(observed,current) and tableDeepEquals(current,observed)
+	end
 	local originalAction,originalCalculate=M.action,M.calculate
 	local function prepare(model,input,craft)
+		if craft.observedInputs then assert(M.predictableObservationMatches(craft),"Donor, selected modifiers or success percentage changed since the observation; obtain a new observation") end
 		if craft.observedRecipientState then
 			assert(type(craft.observedRecipientState)=="table" and craft.observedRecipientState.origin==require("sha1")(model.raw) and tableDeepEquals(input,craft.observedRecipientState) and tableDeepEquals(craft.observedRecipientState,input),"Recipient differs from the item used for the observed success percentage; obtain a new observation")
 		end

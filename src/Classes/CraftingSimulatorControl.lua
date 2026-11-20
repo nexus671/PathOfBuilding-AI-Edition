@@ -419,6 +419,7 @@ function Panel.Open(build,project,layout)
 					craft.selectedMods=selected;craft.reportedSuccessChance=assert(tonumber(popup.chance.buf),"Enter the game's displayed success percentage")
 					assert(craft.reportedSuccessChance >= 0 and craft.reportedSuccessChance <= 100,"Success percentage must be between 0 and 100")
 					craft.observedRecipientState=copyTable(state)
+					craft.observedInputs=simulator.predictableObservation(craft)
 				end
 				configured[method]=craft;changed();main:ClosePopup();refresh()
 			end)
@@ -778,6 +779,9 @@ function Panel.Open(build,project,layout)
 		local observed=configured.recombine_predictable and configured.recombine_predictable.observedRecipientState
 		if controls.method:GetSelValueByKey("val")=="recombine_predictable" and (type(observed)~="table" or observed.origin~=model.initial.origin or not tableDeepEquals(observed,state) or not tableDeepEquals(state,observed)) then
 			return "Recipient changed or the observation is missing. Reconfirm the in-game success percentage in Craft settings."
+		end
+		if controls.method:GetSelValueByKey("val")=="recombine_predictable" and not simulator.predictableObservationMatches(configured.recombine_predictable or {}) then
+			return "Donor or selection changed, or the observation is incomplete. Reconfirm the in-game success percentage in Craft settings."
 		end
 	end
 	local implicitState,implicitReason

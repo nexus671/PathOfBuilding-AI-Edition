@@ -932,6 +932,7 @@ function M.simulate(raw,recipe,options)
 	for _,step in ipairs(recipe.steps) do
 		if step.method=="recombine_predictable" then
 			assert(type(step.observedRecipientState)=="table","Predictable recombination recipes require the recipient state used for the observed success percentage")
+			assert(M.predictableObservationMatches(step),"Predictable recombination recipes require the donor, selections and percentage recorded with the observation; reconfirm them")
 		end
 	end
 	local trials=integer(options.trials or 200,1,2000,"trial count")

@@ -325,6 +325,7 @@ describe("Advanced native crafting", function()
 		local ok,message=pcall(sim.simulate,raw,{steps={craft},targets=targets},{initialState=input,trials=1,maxActions=1})
 		assert.is_false(ok);assert.matches("recipient state",message)
 		craft.observedRecipientState=copyTable(input)
+		craft.observedInputs=sim.predictableObservation(craft)
 		local trial=sim.simulate(raw,{steps={craft},targets=targets},{initialState=input,trials=40,maxActions=1,seed=11})
 		assert.are.equal(40,trial.successes+trial.destroyedTrials)
 		local changed=copyTable(input);changed.affixes[1].range=0.5

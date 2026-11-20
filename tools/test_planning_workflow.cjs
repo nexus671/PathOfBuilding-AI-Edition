@@ -376,6 +376,7 @@ async function main(){
   const donor=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:donorInput,action:{method:'divine'},seed:2},'crafted');
   const observed=recipient.nativeCrafting.state;
   const predictable={method:'recombine_predictable',donorItem:donor.nativeCrafting.itemText,selectedMods:{left:['IncreasedLife1'],right:['FireResist1']},reportedSuccessChance:0,observedRecipientState:observed};
+  predictable.observedInputs={donorItem:predictable.donorItem,selectedMods:structuredClone(predictable.selectedMods),reportedSuccessChance:predictable.reportedSuccessChance};
   const predictableTargets=[{anyOf:['IncreasedLife1']},{anyOf:['FireResist1']}];
   const predictableRecipe={initialState:observed,steps:[predictable],targets:predictableTargets};
   const predictablePlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:raw,recipe:predictableRecipe,options:{trials:2,maxActions:1,seed:1}},'crafted');

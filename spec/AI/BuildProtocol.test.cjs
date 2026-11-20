@@ -26,6 +26,19 @@ test('queues same-name rare review with bounded copied items', t => {
   for(const items of [[],[3],['x'.repeat(24001)]]) assert.throws(()=>f.call('review_same_name_rares',{baseRevision:f.state.revision,items}),/arguments/);
 });
 
+test('preserves and validates predictable recombination observations', t => {
+  const f=fixture(t), donorItem='Rarity: MAGIC\nIron Hat', selectedMods={left:['Life1'],right:['FireResist1']};
+  const observedInputs={donorItem,selectedMods,reportedSuccessChance:40};
+  const action={method:'recombine_predictable',donorItem,selectedMods,reportedSuccessChance:40,observedInputs};
+  const args={baseRevision:f.state.revision,itemText:donorItem,recipe:{steps:[action],targets:[{anyOf:['Life1']}]}};
+  f.call('simulate_crafting',args);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe.steps[0].observedInputs,observedInputs);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  for (const invalid of [{...observedInputs,reportedSuccessChance:101},{...observedInputs,extra:true},{...observedInputs,selectedMods:{left:[],right:['FireResist1']}}]) {
+    assert.throws(()=>f.call('simulate_crafting',{...args,recipe:{...args.recipe,steps:[{...action,observedInputs:invalid}]}}),/arguments/);
+  }
+});
+
 test('queues reviewed crafting removals with closed project-ID validation', t => {
   const f=fixture(t);const proposal={...f.proposal,mode:'edit',operations:[{type:'remove_crafting_project',projectId:'helmet-guide'}]};
   f.call('propose_build',proposal);
