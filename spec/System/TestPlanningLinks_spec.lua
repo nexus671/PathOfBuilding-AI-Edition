@@ -339,7 +339,12 @@ describe("Linked planning tools",function()
 		assert.is_false(dependencies.report(build,profile).stale)
 		require("Classes.CraftingProjectWizard").Open(build,saved,nil,nil,nil,function() end,function() end)
 		wizard=main.popups[1].controls;wizard.steps:SetText("Acquire the item\nUse a different quality method\n"..saved.steps[3].action)
-		wizard.wizardPage:SelByValue("Review");wizard.save:Click()
+		wizard.wizardPage:SelByValue("Method & budget");wizard.next:Click()
+		assert.equal("Planning tool",main.popups[1].title);assert.equal("quality",build.savers.CraftingProjects.projects[1].steps[2].uniqueCraft.method)
+		main.popups={}
+		local browser=require("Classes.CraftingGuideStepsControl").Open(build,saved.id);browser.results.planningSelect(browser.results.list[2]);browser.edit:Click()
+		local edit=main.popups[1].controls;edit.action:SetText("Use a different quality method");edit.saveStep:Click()
+		assert.equal("Change modeled step",main.popups[1].title);main.popups[1].controls.confirm:Click()
 		assert.is_nil(build.savers.CraftingProjects.projects[1].steps[2].uniqueCraft);assert.is_true(dependencies.report(build,profile).stale)
 		assert.equal("omen_connections",build.savers.CraftingProjects.projects[1].steps[3].uniqueCraft.method)
 		local regenerated=filters.generate(build,profile);names={};for _,rule in ipairs(regenerated) do names[rule.title]=true end
