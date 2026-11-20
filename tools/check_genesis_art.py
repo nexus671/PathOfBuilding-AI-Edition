@@ -9,7 +9,7 @@ manifest = json.loads((ASSETS / "manifest.json").read_text(encoding="utf-8"))
 graph = json.loads((ROOT / "src/Data/Genesis/3.30.0d.json").read_text(encoding="utf-8"))
 icons = manifest["icons"]
 expected = {"KeepersCurrencyNode", "KeepersCurrencyNotable", "KeepersEquipmentNode", "KeepersEquipmentNotable",
-            "KeepersMiscellaneousNode", "KeepersMiscellaneousNotable", "KeepersUniqueNode", "KeepersUniqueNotable"}
+            "KeepersMiscellaneousNode", "KeepersMiscellaneousNotable", "KeepersUniqueNode", "KeepersUniqueNotable", "MasteryBlank"}
 assert set(icons) == expected, "Unexpected Genesis icon catalogue"
 for name, entry in icons.items():
     assert entry["file"] == f"Assets/Genesis/{name}.png", name
@@ -18,5 +18,5 @@ for name, entry in icons.items():
     assert hashlib.sha256(raw).hexdigest() == entry["sha256"], name
 used = {node["icon"].rsplit("/", 1)[-1].removesuffix(".dds") for node in graph["nodes"].values() if node.get("icon")}
 missing = used - set(icons)
-assert missing == {"KeepersSelectionNotable", "MasteryBlank"}, f"Unexpected missing Genesis icons: {missing}"
-print(f"Genesis icons: {len(icons)} verified; choice and womb artwork use fallback frames")
+assert missing == {"KeepersSelectionNotable"}, f"Unexpected missing Genesis icons: {missing}"
+print(f"Genesis icons: {len(icons)} verified; choice artwork uses a fallback frame")

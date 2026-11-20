@@ -40,6 +40,11 @@
       "file": "Assets/Genesis/KeepersUniqueNotable.png",
       "sha256": "3b3a5d810ad99fcac59ccf5383c887c1c83b4d55a18f8aaa00fd238a32ddc70b",
       "source": "https://www.poewiki.net/images/8/83/KeepersUniqueNotable_passive_skill_icon.png"
+    },
+    "MasteryBlank": {
+      "file": "Assets/Genesis/MasteryBlank.png",
+      "sha256": "9d489004daa6e524e27afd569912bc79424fa6d6f46f11cab6f4a5798ba37b8b",
+      "source": "https://www.poewiki.net/images/6/6a/MasteryBlank_passive_skill_icon.png"
     }
   },
   "sourceNote": "Game passive icons mirrored by PoE Wiki; artwork remains copyright Grinding Gear Games."
