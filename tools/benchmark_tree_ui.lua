@@ -2,13 +2,14 @@
 local fixture = assert(arg[1], "Supply a build XML path")
 local cycles = tonumber(arg[2]) or 5
 assert(cycles >= 1 and cycles <= 20 and cycles == math.floor(cycles))
-local allowed = {["deferred-recovery"]=true,["desktop-recovery"]=true,["skill-profile"]=true,["no-capture"]=true,["full-profile"]=true,["include-all"]=true,["convert-latest"]=true}
+local allowed = {["deferred-recovery"]=true,["desktop-recovery"]=true,["skill-profile"]=true,["skill-callers"]=true,["no-capture"]=true,["full-profile"]=true,["include-all"]=true,["convert-latest"]=true}
 local flags = {}
 for i = 3, #arg do local flag=arg[i];assert(allowed[flag] and not flags[flag], "Unknown or repeated benchmark option: "..tostring(flag));flags[flag]=true end
 assert(not (flags["deferred-recovery"] and flags["desktop-recovery"]), "Choose one recovery mode")
 local forcedRecovery = flags["deferred-recovery"] or false
 local desktopRecovery = forcedRecovery or flags["desktop-recovery"] or false
-local profileSkills = flags["skill-profile"] or false
+local profileCallers = flags["skill-callers"] or false
+local profileSkills = flags["skill-profile"] or profileCallers
 local noCapture = flags["no-capture"] or false
 local profileFull = flags["full-profile"] or false
 local includeAll = flags["include-all"] or false
@@ -111,6 +112,12 @@ if profileSkills then
 	local depth=0
 	local function pack(...) return {n=select("#",...),...} end
 	calcs.buildActiveSkill=function(...)
+		if profileCallers then
+			local env,mode,skill=...;local caller=debug.getinfo(2,"Sl");local source=caller and caller.short_src or "unknown"
+			local skillName=skill and skill.activeEffect and skill.activeEffect.grantedEffect and skill.activeEffect.grantedEffect.name or "unknown"
+			local key=tostring(mode)..":"..skillName..":"..source..":"..tostring(caller and caller.currentline or 0)
+			skillProfile.callers=skillProfile.callers or {};skillProfile.callers[key]=(skillProfile.callers[key] or 0)+1
+		end
 		depth=depth+1;local start=os.clock();local result=pack(previous(...));local elapsed=(os.clock()-start)*1000;depth=depth-1
 		skillProfile.count=skillProfile.count+1;skillProfile.totalMs=skillProfile.totalMs+elapsed;skillProfile.worstMs=math.max(skillProfile.worstMs,elapsed)
 		return unpack(result,1,result.n)
