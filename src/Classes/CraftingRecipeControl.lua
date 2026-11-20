@@ -204,6 +204,9 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		end
 		entries[#entries+1]={id="beast_talisman_imprint",label=sim.labels.beast_talisman_imprint,category="Bestiary",icon=workbench.icon("beast_talisman_imprint"),action={method="beast_talisman_imprint"},details={"Create an imprint of an uncorrupted, non-fractured rare Talisman.","Enter a whole-action price for the Bestiary service."}}
 		if model then
+			for _,choice in ipairs(sim.actionOptions(model,model.initial,"beast_flask")) do
+				entries[#entries+1]={id="beast-flask-"..choice.action.modId,label=workbench.actionLabel(choice.action,model),category="Bestiary",icon=workbench.icon("beast_flask"),action=choice.action,details={choice.label,"Uses one red beast. Enter a whole-service price.","Eligibility and roll distributions require current-game verification."}}
+			end
 			entries[#entries+1]={id="fossil-combination",label="Fossil combination",category="Fossils",configure="fossil",details={"Choose up to four fossils for this recipe step.","The item must meet the fossil requirements when this step runs."}}
 			for _,entry in ipairs(model.bench or {}) do
 				local action={method="bench",modId=entry.id};local label=workbench.actionLabel(action,model)

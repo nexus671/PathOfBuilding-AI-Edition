@@ -85,7 +85,7 @@ end
 local methods={
 	fossil="Fossil resonator",harvest_reforge="Harvest: reforge with a tagged modifier",harvest_augment="Harvest: add tagged / remove random",
 	harvest_resistance="Harvest: change elemental resistance",harvest_damage="Harvest: change elemental damage",fracture="Fracturing Orb",influence_exalt="Influenced Exalted Orb",awakener="Awakener's Orb",
-	veiled_orb="Veiled Exalted Orb",veiled_chaos="Veiled Chaos Orb",unveil="Choose an unveil",dominance="Orb of Dominance",beast_aspect="Bestiary: Aspect skill",beast_prefix_suffix="Bestiary: prefix to suffix",
+	veiled_orb="Veiled Exalted Orb",veiled_chaos="Veiled Chaos Orb",unveil="Choose an unveil",dominance="Orb of Dominance",beast_aspect="Bestiary: Aspect skill",beast_flask="Bestiary: add a flask suffix",beast_prefix_suffix="Bestiary: prefix to suffix",
 	beast_suffix_prefix="Bestiary: suffix to prefix",beast_imprint="Bestiary: create magic imprint",beast_talisman_imprint="Bestiary: imprint rare Talisman",restore_imprint="Restore imprint",
 	bench_reroll="Bench: reroll 1 or 3 modifiers",eldritch_implicit="Eldritch Ember / Ichor",eldritch_exalt="Eldritch Exalted Orb",eldritch_annul="Eldritch Orb of Annulment",
 	eldritch_chaos="Eldritch Chaos Orb",blessed="Blessed Orb",sacred="Sacred Orb",socket_bench="Bench: socket count / links",binding="Orb of Binding",
@@ -94,6 +94,17 @@ local methods={
 	beast_meta="Bestiary: add a crafted meta modifier",beast_influence="Bestiary: add a modifier to an influenced item",
 }
 A.methods=methods
+-- Named Bestiary outcomes; the game does not publish roll probabilities.
+local beastFlaskMods={
+	FlaskChillFreezeImmunity1="recovery",FlaskIgniteImmunity1="recovery",FlaskShockImmunity1="recovery",FlaskBleedCorruptingBloodImmunity1="recovery",FlaskPoisonImmunity1__="recovery",FlaskCurseImmunity1="recovery",
+	FlaskPoisonImmunityDuringEffect="utility",FlaskShockImmunityDuringEffect="utility",FlaskFreezeAndChillImmunityDuringEffect="utility",FlaskIgniteImmunityDuringEffect_="utility",FlaskBleedingAndCorruptedBloodImmunityDuringEffect_1="utility",
+}
+local function beastFlaskKind(model)
+	if model.item.type~="Flask" then return nil end
+	local subtype=model.item.base.subType
+	if subtype=="Life" or subtype=="Mana" then return "recovery" end
+	if subtype=="Utility" then return "utility" end
+end
 local influences={shaper=true,elder=true,adjudicator=true,basilisk=true,crusader=true,eyrie=true}
 local tags={attack=true,caster=true,physical=true,fire=true,cold=true,lightning=true,chaos=true,life=true,defences=true,speed=true,critical=true,influence=true,minion=true,elemental=true,attribute=true,mana=true,drop=true}
 -- HarvestCraftOptions, client 3.30.0.1.4: currency, reforge, augment.
@@ -995,7 +1006,7 @@ function A.extend(M,api)
 		assert(not input.veil or action.method == "unveil" or action.method == "veiled_chaos" or action.method=="bench" or action.method=="remove_crafted","Choose the pending unveil first")
 		local state=copyTable(input); local method=action.method; local f=api.flags(model,state)
 		if model.item.type == "Flask" or model.item.type == "Tincture" then
-			assert(contains({"transmute","alteration","augmentation","annul","scour","divine","blessed"},method),"This method is unavailable for flasks and tinctures")
+			assert(contains({"transmute","alteration","augmentation","annul","scour","divine","blessed"},method) or model.item.type=="Flask" and method=="beast_flask","This method is unavailable for flasks and tinctures")
 		end
 		-- In 3.30, attack/caster roll blockers no longer protect those modifiers
 		-- from an Orb of Annulment. Prefix/suffix locks and fractures still apply.
@@ -1174,6 +1185,14 @@ function A.extend(M,api)
 				assert(contains(veil.choices,action.modId),"The selected modifier is not an offered unveil choice");id=action.modId
 			end
 			id=id or veil.choices[1]; state.affixes[#state.affixes+1]={id=id,range=M.rollRange(model.byId[id],random),fractured=veil.fractured or nil}; state.veil=nil
+		elseif method == "beast_flask" then
+			local kind=beastFlaskKind(model);local mod=model.byId[action.modId]
+			assert(kind and beastFlaskMods[action.modId]==kind and mod,"Select an eligible Bestiary flask modifier")
+			assert(mod.level<=model.item.itemLevel,"Item level is too low for this modifier")
+			assert(state.rarity=="NORMAL" or state.rarity=="MAGIC","Requires a normal or magic flask")
+			assert(api.counts(model,state).Suffix<cap(model,state).Suffix,"No open suffix")
+			if state.rarity=="NORMAL" then state.rarity="MAGIC" end
+			state.affixes[#state.affixes+1]={id=action.modId,range=M.rollRange(mod,random)}
 		elseif method == "beast_aspect" then
 			assert(model.item.type ~= "Jewel","Aspect crafts require equipment")
 			local mod=assert(data.beastCraft[action.modId],"Select a native Aspect modifier")
@@ -1428,6 +1447,10 @@ function A.extend(M,api)
 			result.methodAvailability[#result.methodAvailability+1]={method=method,label=M.labels[method],available=allowed,unavailableReason=not allowed and reason or nil,configurationRequired=configuration}
 		end
 		result.methodAvailabilityNote="Availability checks general item prerequisites; individual options and outcomes may have further restrictions."
+		if model.item.type=="Flask" then
+			local allowed,reason=available("beast_flask",state,model)
+			result.beastFlaskOptions={available=allowed,unavailableReason=not allowed and reason or nil,choices=M.actionOptions(model,state,"beast_flask"),priceKey="beast_flask",note="One red beast; eligibility and roll distributions require current-game verification."}
+		end
 		for _,catalog in ipairs({{method="bench",rows=result.bench},{method="essence",rows=result.essences}}) do
 			local allowed,reason=available(catalog.method,state,model)
 			for _,entry in ipairs(catalog.rows) do
@@ -1498,6 +1521,9 @@ function A.extend(M,api)
 		elseif method == "harvest_reforge" or method == "harvest_augment" then result=M.harvestChoices(model,state,method)
 		elseif method == "influence_exalt" or method == "beast_influence" then for key in pairs(influences) do if method == "influence_exalt" or contains(state.influences,key) then option(key,{influence=key}) end end
 		elseif method == "unveil" then for _,id in ipairs(state.veil and state.veil.choices or {}) do option(table.concat(model.byId[id]," / "),{modId=id}) end
+		elseif method == "beast_flask" then
+			local kind=beastFlaskKind(model)
+			for id,category in pairs(beastFlaskMods) do local mod=model.byId[id];if kind and category==kind and mod and mod.level<=model.item.itemLevel then option(mod.affix.." | "..table.concat(mod," / "),{modId=id}) end end
 		elseif method == "beast_aspect" then for id,mod in pairs(data.beastCraft) do if id:find("AspectCrafted",1,true) and not contains(mod.weightKey,"deepwater_pantheon_aspect") then option(table.concat(mod," / "),{modId=id}) end end
 		elseif method == "bench_reroll" then local possible=M.benchRerollChoices(model,state);if possible[1] then option("Reroll one random modifier",{count=1}) end;if possible[3] then option("Reroll three random modifiers",{count=3}) end
 		elseif method == "eldritch_implicit" then for _,side in ipairs({"Exarch","Eater"}) do for tier=1,4 do option(side.." | "..({"Lesser","Greater","Grand","Exceptional"})[tier],{side=side,tier=tier}) end end

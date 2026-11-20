@@ -4,7 +4,7 @@ local M={}
 local normal={transmute=true,alchemy=true,binding=true}
 local magic={alteration=true,augmentation=true,regal=true,foulborn_augmentation=true,foulborn_regal=true}
 local rare={chaos=true,exalt=true,veiled_orb=true,veiled_chaos=true,fracture=true,influence_exalt=true,awakener=true,dominance=true,bench_reroll=true,eldritch_exalt=true,eldritch_annul=true,eldritch_chaos=true,foulborn_exalt=true,tainted_chaos=true,tainted_exalt=true,harvest_reforge=true,harvest_augment=true,gwennen=true}
-local flask={transmute=true,alteration=true,augmentation=true,annul=true,scour=true,divine=true,blessed=true,quality=true,bench_remove_enchant=true}
+local flask={transmute=true,alteration=true,augmentation=true,annul=true,scour=true,divine=true,blessed=true,quality=true,bench_remove_enchant=true,beast_flask=true}
 local socket={vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,jeweller=true,fusing=true,tainted_chromatic=true,socket_colour_bench=true,socket_white_bench=true,tainted_jeweller=true,tainted_fusing=true}
 function M.check(method,state,model)
 	if state.destroyed then return false,"Undo or reset the destroyed item." end
@@ -49,6 +49,12 @@ function M.check(method,state,model)
 	if method=="remove_crafted" and not crafted then return false,"This item has no bench-crafted modifiers." end
 	if method=="beast_aspect" then
 		if kind=="Jewel" then return false,"Aspect crafts require equipment." end
+		local suffixes=0;for _,entry in ipairs(state.affixes) do if model.byId[entry.id].type=="Suffix" then suffixes=suffixes+1 end end
+		if suffixes>=sim.capacities(model,state).Suffix then return false,"Requires an open suffix." end
+	end
+	if method=="beast_flask" then
+		if kind~="Flask" or #sim.actionOptions(model,state,method)==0 then return false,"Requires an eligible life, mana or utility flask and item level." end
+		if state.rarity~="NORMAL" and state.rarity~="MAGIC" then return false,"Requires a normal or magic flask." end
 		local suffixes=0;for _,entry in ipairs(state.affixes) do if model.byId[entry.id].type=="Suffix" then suffixes=suffixes+1 end end
 		if suffixes>=sim.capacities(model,state).Suffix then return false,"Requires an open suffix." end
 	end
