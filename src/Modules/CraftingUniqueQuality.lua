@@ -187,6 +187,7 @@ end
 -- Numeric copies are matched to single integer ranges before rerolling.
 local function divinePlanForReference(raw,item,reference)
 	local expected={};for _,line in ipairs(reference.explicitModLines or {}) do if reference:CheckModLineVariant(line) then
+		if reference.catalyst and (not line.modTags or #line.modTags==0 or reference:GetModLineValueScalar(line,"explicit")~=1) then return nil,"Catalyst-scaled or untagged explicit modifiers need a separate Divine model" end
 		local text=line.line;local ranges,parts={},{};local pos=1
 		while true do
 			local first,last,low,high=text:find("%((%-?%d+)%-(%-?%d+)%)",pos);if not first then break end
@@ -254,7 +255,7 @@ local function divinePlan(raw)
 	local jewellery=item.type=="Ring" or item.type=="Amulet" or item.type=="Belt"
 	if jewellery and ("\n"..raw):find("\nCatalyst:",1,true) and not item.catalyst then return nil,"Unrecognized jewellery catalyst needs a separate Divine model" end
 	local catalystQuality=item.catalystQuality or (item.catalyst and 20) or 0
-	if catalystQuality>0 or (jewellery and (item.quality or 0)>0) then return nil,"Catalyst-scaled jewellery needs a separate Divine model" end
+	if (jewellery and (item.quality or 0)>0) or catalystQuality>0 and (not jewellery or not item.catalyst or item.catalyst==3 or item.catalyst==9) then return nil,"Catalyst-scaled jewellery needs a separate Divine model" end
 	if item.variantList or item.usesVariantGroups then return nil,"Items with saved variant selections need a separate Divine model" end
 	uniqueSocketRestriction(item.title)
 	local candidates={}
@@ -270,6 +271,10 @@ local function divinePlan(raw)
 	local parsed,reference=pcall(function() return new("Item"):Item("Rarity: UNIQUE\n"..template) end)
 	if not parsed or not reference.base then return nil,"The bundled unique template could not be verified" end
 	if reference.usesVariantGroups then return nil,"This unique's variant groups need a separate Divine model" end
+	if catalystQuality>0 then
+		if #(reference.modMagnitudeMods or {})>0 then return nil,"Modifier magnitude changes need a separate Divine model" end
+		reference.catalyst=item.catalyst;reference.catalystQuality=catalystQuality
+	end
 	local selected,reason
 	for variant=1,reference.variantList and #reference.variantList or 1 do
 		if reference.variantList then reference.variant=variant end
@@ -314,7 +319,8 @@ function M.divine(raw,seed)
 	assert(changed==#plan.rows,"The unique modifier lines could not be updated safely")
 	output=preserveArmourBaseline(raw,output,plan.item)
 	local after=M.inspect(output);assert(after.title==plan.item.title and after.baseName==plan.item.baseName and not after.corrupted,"Unique item did not round-trip after Divine crafting")
-	return {itemText=output,components={divine=1}}
+	local catalystUnaffected=plan.item.catalyst and (plan.item.catalystQuality or 20)>0 or nil
+	return {itemText=output,components={divine=1},catalystUnaffected=catalystUnaffected}
 end
 
 -- Known unique restrictions still apply when a saved item has partial text.
@@ -594,6 +600,7 @@ function M.catalog(raw,query,limit)
 		definitions[#definitions+1]={method="socket_bench",guideMethod="socket_count_bench",guideCount=count,request=request,label="Bench: "..count.." sockets",reason=M.socketCountReason(raw,count),components=sim.components(request,{sockets=item.sockets,corrupted=item.corrupted})}
 	end
 	local result={uniqueCrafting=true,methods={},uniqueActions={},socketCrafts={},quality={value=info.quality,available=info.available,resource=info.resource},nativeStats=require("Modules.CraftingItemStats").itemValues(item),limitations={"Only the listed unique actions are modeled. Continue by passing the returned item text, not an ordinary affix state.","Socket-count previews retain existing groups, remove sockets from the end and add white unlinked sockets; position and link behavior are unverified."}}
+	if item.catalyst and info.quality>0 and not M.divineReason(raw) then result.limitations[#result.limitations+1]="Catalyst eligibility uses bundled unique modifier tags; their completeness and current game behavior are unverified." end
 	local seen={}
 	for _,entry in ipairs(definitions) do
 		if not seen[entry.method] then result.methods[#result.methods+1]=entry.method;seen[entry.method]=true end

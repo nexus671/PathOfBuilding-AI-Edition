@@ -455,7 +455,7 @@ function M.Open(build,project,layout,snapshot)
 		main:OpenPopup(dw,dh,"Divine Orb",controls,nil,nil,"close")
 	end)
 	c.divine.x=156;c.divine.width=130;c.divine.shown=function() return not item.corrupted end;c.divine.enabled=function() return not divineReason end
-	c.divine.tooltipText=function() return divineReason or "Preview a Divine Orb roll. Modifier-value probabilities are estimated." end
+	c.divine.tooltipText=function() return divineReason or item.catalyst and info.quality>0 and "Preview a Divine Orb roll. Catalyst eligibility uses bundled modifier tags; game behavior is unverified." or "Preview a Divine Orb roll. Modifier-value probabilities are estimated." end
 	button("link",236,"Bestiary link",function() local result=unique.link(raw);history[#history+1]=raw;actions[#actions+1]="beast_max_links";redo={};raw=result.itemText;refresh(true) end)
 	c.link.width=130
 	c.link.enabled=function() return not linkReason end

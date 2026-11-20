@@ -50,6 +50,11 @@ return function(build,ui,frame)
 	store:Upsert(defaultCatalyst);require("Classes.CraftingUniqueQualityControl").Open(build,defaultCatalyst);local catalystControls=main.popups[1].controls
 	assert(not catalystControls.divine:IsEnabled() and catalystControls.status.label:find("20%%"),"Implicit catalyst quality must be shown and Divine disabled");frame("crafting-unique-ring-catalyst");main.popups={}
 
+	local taggedCatalyst="Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86\nCatalyst: Fertile\nCatalystQuality: 20\nImplicits: 1\nHas 1 Socket\n+3 to Level of Socketed Curse Gems\n+25% to Cold Resistance\n+25% to Lightning Resistance\nLeft Ring Slot: Your Chilling Skitterbot's Aura applies Socketed Hex Curse instead\nRight Ring Slot: Your Shocking Skitterbot's Aura applies Socketed Hex Curse instead"
+	local taggedProject={id="unique-unaffected-catalyst-ui",title="Unaffected rolls",slot="Ring 1",startingItem=taggedCatalyst,goals={},steps={}}
+	store:Upsert(taggedProject);require("Classes.CraftingUniqueQualityControl").Open(build,taggedProject);local taggedControls=main.popups[1].controls
+	assert(taggedControls.divine:IsEnabled() and taggedControls.divine.tooltipText():find("bundled modifier tags",1,true),"Unaffected catalyst case should explain its assumption");frame("crafting-unique-unaffected-catalyst");ui:click("divine");local taggedPicker=main.popups[1].controls;taggedPicker.stat:SelByValue("modifier:1","val");ui:text("target","30");ui:click("plan")
+	local taggedSaved;for _,entry in ipairs(store.projects) do if entry.id==taggedProject.id then taggedSaved=entry end end;assert(taggedSaved and taggedSaved.nativeRecipe.requirements.uniqueModifier.minValue==30,"Catalyst-independent target was not kept");main.popups={}
 	local corruptRing={id="unique-corrupt-ring-ui",title="Corrupted ring",slot="Ring 1",startingItem=ringRaw.."\nCorrupted",goals={},steps={}}
 	store:Upsert(corruptRing);require("Classes.CraftingUniqueQualityControl").Open(build,corruptRing);local corruptControls=main.popups[1].controls
 	assert(not corruptControls.divine:IsShown() and not corruptControls.apply:IsShown(),"Corrupted jewellery cannot use Divine Orbs or ordinary quality currency");frame("crafting-unique-ring-corrupted");main.popups={}

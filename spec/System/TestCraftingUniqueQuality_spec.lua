@@ -124,6 +124,20 @@ describe("Unique item quality",function()
 		local run=require("Modules.CraftingSimulator").simulate(raw,recipe,{trials=5,maxActions=10,seed=123});assert.equal(5,run.trials)
 	end)
 
+	it("rerolls fully tagged unique modifiers unaffected by their catalyst",function()
+		local raw="Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86\nCatalyst: Fertile\nCatalystQuality: 20\nImplicits: 1\nHas 1 Socket\n+3 to Level of Socketed Curse Gems\n+25% to Cold Resistance\n+25% to Lightning Resistance\nLeft Ring Slot: Your Chilling Skitterbot's Aura applies Socketed Hex Curse instead\nRight Ring Slot: Your Shocking Skitterbot's Aura applies Socketed Hex Curse instead"
+		assert.is_nil(quality.divineReason(raw));local options=quality.divineOptions(raw);assert.equal(2,#options)
+		for seed=1,20 do local rolled=quality.divine(raw,seed*104729);assert.is_nil(quality.divineReason(rolled.itemText));assert.is_truthy(rolled.itemText:find("CatalystQuality: 20",1,true));assert.is_truthy(quality.divine(rolled.itemText,seed*130363)) end
+		local goal={uniqueModifier={line="+(20-30)% to Cold Resistance",minValue=30}};local recipe={rarity="UNIQUE",steps={{method="divine",maxAttempts=10,untilRequirements=goal}},targets={},requirements=goal}
+		local sim=require("Modules.CraftingSimulator");local run=sim.simulate(raw,recipe,{trials=5,maxActions=10,seed=123});assert.equal(5,run.trials)
+		local function hasWarning(warnings) for _,warning in ipairs(warnings or {}) do if warning.code=="unique_catalyst_tags" then return true end end end
+		assert.is_truthy(hasWarning(sim.perform(raw,{method="divine"},104729).warnings));assert.is_truthy(hasWarning(run.warnings))
+		assert.matches("Catalyst%-scaled",quality.divineReason(raw:gsub("Catalyst: Fertile","Catalyst: Prismatic")))
+		for _,name in ipairs({"Dextral","Sinistral"}) do assert.matches("Catalyst%-scaled",quality.divineReason(raw:gsub("Catalyst: Fertile","Catalyst: "..name))) end
+		local unknownTags="Rarity: UNIQUE\nAndvarius\nGold Ring\nItem Level: 86\nCatalyst: Fertile\nCatalystQuality: 20\nImplicits: 1\n+10% to Item Rarity\n+10 to Dexterity\n+60% to Item Rarity\n-20% to all Elemental Resistances"
+		assert.matches("untagged",quality.divineReason(unknownTags))
+	end)
+
 	it("preserves copied armour base rolls when unique stats or quality change",function()
 		local raw="Item Class: Helmets\nRarity: Unique\nGoldrim\nLeather Cap\n--------\nEvasion Rating: 67\n--------\nItem Level: 86\n--------\n+40 to Evasion Rating\n+10% to Item Rarity\n+35% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
 		local before=quality.inspect(raw);local baseline=before.armourData.EvasionBasePercentile;assert.is_truthy(baseline)

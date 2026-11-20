@@ -267,6 +267,10 @@ async function main(){
   const catalystRing=ringUniqueRaw.replace('Item Level: 86','Item Level: 86\nCatalyst: Prismatic');
   const catalystInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:catalystRing,query:'divine',limit:10},'inspected');
   const catalystOption=catalystInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='divine');assert.equal(catalystInspect.crafting.nativeEngine.quality.value,20);assert.equal(catalystOption.available,false);assert.match(catalystOption.unavailableReason,/Catalyst-scaled/);
+  const unaffectedCatalyst="Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86\nCatalyst: Fertile\nCatalystQuality: 20\nImplicits: 1\nHas 1 Socket\n+3 to Level of Socketed Curse Gems\n+25% to Cold Resistance\n+25% to Lightning Resistance\nLeft Ring Slot: Your Chilling Skitterbot's Aura applies Socketed Hex Curse instead\nRight Ring Slot: Your Shocking Skitterbot's Aura applies Socketed Hex Curse instead";
+  const unaffectedInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:unaffectedCatalyst,query:'divine',limit:10},'inspected');
+  const unaffectedOption=unaffectedInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='divine');assert.equal(unaffectedOption.available,true,JSON.stringify(unaffectedOption));
+  const unaffectedApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:unaffectedCatalyst,action:unaffectedOption.action,seed:123},'crafted');assert.ok(unaffectedApply.nativeCrafting.warnings.some(entry=>entry.code==='unique_catalyst_tags'));
   const taintedQualityRaw=uniqueColourRaw+'\nCorrupted';
   const taintedQualityInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:taintedQualityRaw,query:'tainted quality',limit:10},'inspected');
   const taintedQualityOption=taintedQualityInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='tainted_quality');assert.equal(taintedQualityOption.available,true);
