@@ -46,7 +46,15 @@ local function snapshot()
  local result = {}
  for key, value in pairs(out) do
   if type(value) == "number" or type(value) == "boolean" or type(value) == "string" then result[key] = value
-  elseif type(value) == "table" and key:find("Warning") then result[key] = table.concat(value, "\n") end
+  elseif type(value) == "table" and key:find("Warning") then result[key] = table.concat(value, "\n")
+  elseif key == "SkillDPS" and type(value) == "table" then
+   for index, row in ipairs(value) do
+    for _, field in ipairs({"name", "dps", "count"}) do
+     local entry = row[field]
+     if type(entry) == "number" or type(entry) == "string" then result["SkillDPS:" .. index .. ":" .. field] = entry end
+    end
+   end
+  end
  end
  -- A later trigger or detail view may demand a complete skill cache.
  for _, skill in ipairs(env.player.activeSkillList) do
@@ -93,12 +101,21 @@ if fixture:find("OccVortex", 1, true) then
  block.text = "20000% increased Cost of Skills\nSkills Cost Life instead of Mana"
  build.configTab:BuildModList(); local lifeStress = compareOutput()
  assert(lifeStress.LifeCostWarningList and lifeStress.LifeCostWarningList ~= "", "Life stress did not produce a warning")
+ block.text = "20000% increased Cost of Skills\nSkills Cost Energy Shield instead of Mana or Life"
+ build.configTab:BuildModList(); local shieldStress = compareOutput()
+ assert(shieldStress.ESCostWarningList and shieldStress.ESCostWarningList ~= "", "Energy shield stress did not produce a warning")
+ block.text = "20000% increased Cost of Skills\nEnergy Shield protects Mana instead of Life"
+ build.configTab:BuildModList(); local batteryStress = compareOutput()
+ assert(batteryStress.EnergyShieldProtectsMana, "Energy shield protection was not active")
+ assert(batteryStress.ManaCostWarningList and batteryStress.ManaCostWarningList ~= "", "Protected mana stress did not produce a warning")
  -- PoB reuses the build-mode object; switch to a different triggered build in-process.
  local nextFile = assert(io.open("../spec/TestBuilds/3.13/Dual Wield Cospris CoC.xml", "rb"))
  local nextRaw = nextFile:read("*a"); nextFile:close()
  loadBuildFromXML(nextRaw, "Cost probe build switch")
  build.treeTab:ConvertToVersion(latestTreeVersion, true, false)
- build.buildFlag = true; runCallback("OnFrame"); compareOutput()
+ for _, group in ipairs(build.skillsTab.socketGroupList) do if group.enabled ~= false then group.includeInFullDPS = true end end
+ build.buildFlag = true; runCallback("OnFrame"); local triggered = compareOutput()
+ assert(triggered["FullDPS"] and triggered["FullDPS"] > 0, "Triggered build did not calculate full DPS")
 end
 if fixture:find("Generals Perforate", 1, true) then assert(fallbackCount > 0, "General's Cry did not exercise the cache fallback") end
 print("COST_PROBES_OK " .. compared .. " partial=" .. partialCount .. " full=" .. fallbackCount .. " " .. fixture)
