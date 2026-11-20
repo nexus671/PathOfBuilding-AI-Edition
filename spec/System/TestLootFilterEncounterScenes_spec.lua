@@ -14,6 +14,8 @@ describe("Filter encounter scenes", function()
 				ui:click("sceneNext");assert.equal(2,build.planningWorkspace.cache.filters.layout.snapshot().scenePage)
 				ui:click("scenePrevious");assert.equal(1,build.planningWorkspace.cache.filters.layout.snapshot().scenePage)
 			end
+			ui:choose("sceneKind","Mixed drops")
+			assert.equal("Mixed drops",build.planningWorkspace.cache.filters.layout.snapshot().sceneKind)
 		end)
 		ui:restore();main.popups={}
 		assert.is_true(ok,err)

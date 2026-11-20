@@ -33,6 +33,58 @@ describe("TestOffence", function()
 		assert.is_true(ok, tostring(err))
 	end)
 
+	it("honours a request to skip Full DPS on the passive tree", function()
+		build.skillsTab:PasteSocketGroup("Fireball 20/0  1")
+		build.skillsTab.socketGroupList[1].includeInFullDPS = true
+		runCallback("OnFrame")
+		build.viewMode = "TREE"
+		local calcs = require("Modules.Calcs")
+		local calculator, base = calcs.getMiscCalculator(build)
+		local omitted = calculator({}, false)
+		local full = calculator({}, true)
+		local default = calculator({})
+		assert.is_nil(omitted.FullDPS)
+		assert.is_true(full.FullDPS > 0)
+		assert.are.equal(full.FullDPS, default.FullDPS)
+		for _, key in ipairs({"Life", "EnergyShield", "CombinedDPS", "TotalDPS"}) do
+			assert.are.equal(full[key], omitted[key], key)
+		end
+		for _, selection in ipairs(data.powerStatList) do
+			if selection.stat and selection.stat ~= "FullDPS" and not selection.ignoreForNodes then
+				local a=build.calcsTab:CalculatePowerStat(selection,omitted,base)
+				local b=build.calcsTab:CalculatePowerStat(selection,full,base)
+				assert.is_true(a==b or (a~=a and b~=b),selection.stat)
+			end
+		end
+		local a,b=build.calcsTab:CalculateCombinedOffDefStat(omitted,base)
+		local c,d=build.calcsTab:CalculateCombinedOffDefStat(full,base)
+		assert.are.equal(a,c);assert.are.equal(b,d)
+	end)
+
+	it("requests Full DPS only for its node-power metric", function()
+		runCallback("OnFrame")
+		local tab = build.calcsTab
+		local original = tab.GetMiscCalculator
+		local ok, err = pcall(function()
+			for _, case in ipairs({{stat=false, expected=false},{stat="Life",expected=false},{stat="FullDPS",expected=true}}) do
+				tab.powerStat = case.stat and {stat=case.stat} or nil
+				local captured
+				tab.GetMiscCalculator = function(self)
+					local _,base = original(self)
+					return function(_, fullDPS) captured=fullDPS;error("captured node power request") end,base
+				end
+				local worker=coroutine.create(tab.PowerBuilder)
+				assert.is_true(coroutine.resume(worker,tab))
+				local finished, reason=coroutine.resume(worker,tab)
+				assert.is_false(finished)
+				assert.is_true(tostring(reason):find("captured node power request",1,true)~=nil)
+				assert.are.equal(case.expected,captured)
+			end
+		end)
+		tab.GetMiscCalculator = original
+		assert.is_true(ok, tostring(err))
+	end)
+
 	-- Asserts actual is within a relative tolerance of expected, e.g. 0.005 = 0.5%
 	local function assertNearRelative(expected, actual, tolerance, msg)
 		assert.is_true(math.abs(expected - actual) / expected <= tolerance,

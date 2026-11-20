@@ -188,8 +188,11 @@ function M.install(options)
 		-- intermediate confirmation before reaching the requested version.
 		self:frame()
 		if control.dropped and control.dropHeight and not control:IsSearchActive() then
-			local x,y=control:GetPos();local w,h=control:GetSize();local offset=control.controls.scrollBar.offset
-			local row=(target-0.5)*(h-4)-offset
+			local x,y=control:GetPos();local w,h=control:GetSize();local scrollBar=control.controls.scrollBar
+			-- Scroll before clicking: a selection callback can replace this dropdown,
+			-- so navigating through intermediate choices leaves a stale control.
+			scrollBar:ScrollIntoView((target-1)*(h-4),h-4)
+			local row=(target-0.5)*(h-4)-scrollBar.offset
 			if row>=0 and row<control.dropHeight then return self:clickAt(x+w/2,(control.dropUp and y-control.dropHeight-4 or y+h)+row) end
 		end
 		local attempts=0

@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview747" />
+	<Version number="2.68.1-ai.preview748" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1679,7 +1679,7 @@
 	<File name="Classes/ButtonControl.lua" part="program" sha1="7a58ec249f011107f2ddcdc3aa02f812643e5c5f" />
 	<File name="Classes/CalcBreakdownControl.lua" part="program" sha1="a21556a505153a81023f0d04ace948d606e2914e" />
 	<File name="Classes/CalcSectionControl.lua" part="program" sha1="ace88981a36381c6ccecbdb76ee1b9b04d1afeaf" />
-	<File name="Classes/CalcsTab.lua" part="program" sha1="5a66915be7fbf8b76974b7bc24e20979a8baac12" />
+	<File name="Classes/CalcsTab.lua" part="program" sha1="f0c78a40a7b45747fe12acff2955f1a3a07dd020" />
 	<File name="Classes/CheckBoxControl.lua" part="program" sha1="021e4ea29d62a600ab14e69e6ed0ad33832d78ab" />
 	<File name="Classes/ColourPickerControl.lua" part="program" sha1="c635b032cb53d0770a68b2f2e64f0fcd19f6a256" />
 	<File name="Classes/CompareBuySimilar.lua" part="program" sha1="c6dc67e5af4f66ef013cbdb6a29e29968fac53bd" />
@@ -2102,7 +2102,7 @@
 	<File name="Modules/CalcTime.lua" part="program" sha1="961767bb5c4d11391243b30a35ffc5820896c352" />
 	<File name="Modules/CalcTools.lua" part="program" sha1="6d39e85eef9e3c71a9aa2e11e7031848f4c2fb9f" />
 	<File name="Modules/CalcTriggers.lua" part="program" sha1="fbd5911e886916088863bd730f83e4d2bda6f827" />
-	<File name="Modules/Calcs.lua" part="program" sha1="8326d4473e71a63f700db52fc8c2c395144d7bcc" />
+	<File name="Modules/Calcs.lua" part="program" sha1="48887f1a6f826f47f510f3357af5e636d9286f19" />
 	<File name="Modules/ColourMath.lua" part="program" sha1="f01a899fcc5c3e00d9a00a5994afed071ce8416b" />
 	<File name="Modules/Common.lua" part="program" sha1="aa1890eac558f3f6ab30cdf40b9ecf56263a8daa" />
 	<File name="Modules/ConfigModBrowser.lua" part="program" sha1="6c32488700943decebee20dc939d8a2bde291bb0" />
@@ -2160,7 +2160,7 @@
 	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="c0881ecfc02658376080e1163d70d0caf5f5b5d0" />
 	<File name="Modules/EncounterReport.lua" part="program" sha1="710dc78939bfbc8282f295cf626bcde9c9b7d8e5" />
 	<File name="Modules/HeadlessCompression.lua" part="program" sha1="16a42bf407eb777602f9b03b5c8466188a04ee58" />
-	<File name="Modules/HeadlessUI.lua" part="program" sha1="6d0d2d7a874a3fbcb547b0df5ae93705140e267b" />
+	<File name="Modules/HeadlessUI.lua" part="program" sha1="4f80dc993d54bcd6eaa633015dd30896c3d51353" />
 	<File name="Modules/ItemSlotHelper.lua" part="program" sha1="4b7d441f9ade5d57c413aa1f8f8067b654cfb927" />
 	<File name="Modules/ItemTools.lua" part="program" sha1="7dec4fb56cbfa848967ae082e604f9a3de45fd7a" />
 	<File name="Modules/JourneyUpgrades.lua" part="program" sha1="bb121d8115f693518ae9431fefff305fdb46878f" />
