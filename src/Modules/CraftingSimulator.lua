@@ -737,7 +737,8 @@ function M.validateRecipe(recipe)
 			elseif key == "nativeStats" then require("Modules.CraftingItemStats").validate(value)
 			elseif key == "uniqueModifier" then
 				assert(recipe.rarity=="UNIQUE" and type(value)=="table" and type(value.line)=="string" and #value.line>0 and #value.line<=1000,"Choose a unique modifier target on a unique recipe")
-				for field in pairs(value) do assert(field=="line" or field=="minValue" or field=="maxValue","Unknown unique modifier target field") end
+				for field in pairs(value) do assert(field=="line" or field=="component" or field=="minValue" or field=="maxValue","Unknown unique modifier target field") end
+				if value.component~=nil then integer(value.component,1,6,"unique modifier component") end
 				assert((value.minValue~=nil)~=(value.maxValue~=nil),"Choose either a minimum or maximum unique modifier roll")
 				integer(value.minValue or value.maxValue,-100000,100000,"unique modifier target")
 			elseif key == "harvestEnchant" then assert(type(value)=="string" and require("Modules.CraftingEnchants").data().crafts[value],"Choose a known Harvest enchantment")

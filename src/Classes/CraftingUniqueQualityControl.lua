@@ -388,7 +388,7 @@ function M.Open(build,project,layout,snapshot)
 		ui.description(controls,"help",16,25,dw-32,50,{"Preview a roll or plan a stat or modifier target.","Modifier-value probabilities are estimates."},14)
 		local stats=require("Modules.CraftingItemStats");local values=stats.itemValues(item);local options,selection={},{}
 		for _,field in ipairs(stats.fields) do if values[field[1]] and values[field[1]]>0 then options[#options+1]={label=field[2],val=field[1]};selection[field[1]]={kind="stat",label=field[2],current=values[field[1]]} end end
-		for index,row in ipairs(unique.divineOptions(raw) or {}) do local key="modifier:"..index;options[#options+1]={label=ui.fit("Roll: "..row.line,210,14),val=key};selection[key]={kind="modifier",line=row.line,min=row.min,max=row.max,current=row.current} end
+		for index,row in ipairs(unique.divineOptions(raw) or {}) do local key="modifier:"..index;local part=row.components>1 and (" ["..row.component.."/"..row.components.."]") or "";options[#options+1]={label=ui.fit("Roll"..part..": "..row.line,190,14),val=key};selection[key]={kind="modifier",line=row.line,component=row.component,components=row.components,min=row.min,max=row.max,current=row.current} end
 		if #options==0 then options[1]={label="No supported target",val=""} end
 		ui.label(controls,"statLabel",16,90,"Stat or modifier roll",14)
 		controls.stat=new("DropDownControl"):DropDownControl(ui.anchor,{16,112,200,26},options)
@@ -402,7 +402,7 @@ function M.Open(build,project,layout,snapshot)
 		local function replaceable()
 			local recipe=draft.nativeRecipe;if not recipe or #recipe.steps~=1 or recipe.steps[1].method~="divine" or not recipe.requirements then return nil end
 			local stop
-			if recipe.requirements.uniqueModifier then local goal=recipe.requirements.uniqueModifier;stop="Roll "..(goal.maxValue~=nil and "at most "..goal.maxValue or "at least "..goal.minValue).." on "..goal.line
+			if recipe.requirements.uniqueModifier then local goal=recipe.requirements.uniqueModifier;local part=goal.component and (" [part "..goal.component.."]") or "";stop="Roll "..(goal.maxValue~=nil and "at most "..goal.maxValue or "at least "..goal.minValue).." on "..goal.line..part
 			elseif type(recipe.requirements.nativeStats)=="table" then
 				local key,target=next(recipe.requirements.nativeStats);if not key or next(recipe.requirements.nativeStats,key)~=nil then return nil end
 				local label;for _,field in ipairs(stats.fields) do if field[1]==key then label=field[2];break end end;if not label then return nil end;stop="At least "..target.." "..label
@@ -428,7 +428,8 @@ function M.Open(build,project,layout,snapshot)
 		ui.label(controls,"targetHelp",16,222,"",14);controls.targetHelp.label=function() local why,met=reason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save a target plan."),dw-32,14) end
 		ui.label(controls,"selectedInfo",16,250,"",14);controls.selectedInfo.label=function()
 			local selected=selection[stat()];if not selected or selected.kind~="modifier" then return "" end
-			return "^7"..ui.fit(selected.line.." | current roll: "..selected.current,dw-32,14)
+			local part=selected.components>1 and (" [part "..selected.component.."/"..selected.components.."]") or ""
+			return "^7"..ui.fit(selected.line..part.." | current roll: "..selected.current,dw-32,14)
 		end
 		controls.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,dh-48,140,28},"Preview roll",function()
 			colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
@@ -437,8 +438,9 @@ function M.Open(build,project,layout,snapshot)
 		controls.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,dh-48,150,28},"Save Divine plan",function()
 			local why=reason();assert(not why,why);local key=stat();local target=tonumber(controls.target.buf);local attempts=tonumber(controls.attempts.buf)
 			local selected=selection[key];local requirements
-			if selected.kind=="modifier" then requirements={uniqueModifier={line=selected.line}};requirements.uniqueModifier[upper() and "maxValue" or "minValue"]=target else requirements={nativeStats={[key]=target}} end
-			local stop=selected.kind=="modifier" and ("Roll "..(upper() and "at most " or "at least ")..target.." on "..selected.line) or ("At least "..target.." "..selected.label)
+			if selected.kind=="modifier" then requirements={uniqueModifier={line=selected.line}};if selected.components>1 then requirements.uniqueModifier.component=selected.component end;requirements.uniqueModifier[upper() and "maxValue" or "minValue"]=target else requirements={nativeStats={[key]=target}} end
+			local part=selected.kind=="modifier" and selected.components>1 and (" [part "..selected.component.."]") or ""
+			local stop=selected.kind=="modifier" and ("Roll "..(upper() and "at most " or "at least ")..target.." on "..selected.line..part) or ("At least "..target.." "..selected.label)
 			local recipe={rarity="UNIQUE",steps={{method="divine",maxAttempts=attempts,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements};require("Modules.CraftingSimulator").validateRecipe(recipe);local replaceIndex=replaceable()
 			local function keepPlan()
 				local updated=copyTable(draft);updated.nativeRecipe=recipe;local step={action=unique.guideAction("divine",1,info.resource,item.corrupted,#item.sockets),stopWhen=stop,onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method="divine",count=1},done=false}

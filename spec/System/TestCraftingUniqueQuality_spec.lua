@@ -71,7 +71,8 @@ describe("Unique item quality",function()
 		assert.has_error(function() quality.divine(raw,0) end)
 		local variant=raw:gsub("Goldrim","Heatshiver"):gsub("Leather Cap","Leather Hood");assert.is_truthy(quality.divineReason(variant))
 		local multi;for _,group in pairs(data.uniques) do for _,entry in ipairs(group) do if entry:match("^%s*Dreadarc[\r\n]") then multi=entry end end end
-		assert.is_truthy(multi);assert.matches("Multiple or fractional ranges",quality.divineReason("Rarity: UNIQUE\n"..multi.."\nItem Level: 86"))
+		assert.is_truthy(multi);local multiple="Rarity: UNIQUE\n"..multi.."\nItem Level: 86";assert.is_nil(quality.divineReason(multiple))
+		local result=quality.divine(multiple,104729);assert.is_nil(quality.divineReason(result.itemText));assert.is_truthy(quality.divine(result.itemText,209458))
 	end)
 
 	it("preserves copied armour base rolls when unique stats or quality change",function()
@@ -95,6 +96,24 @@ describe("Unique item quality",function()
 		local project={id="divine-unique",title="Divine",slot="Helmet",startingItem=raw,goals={},steps={catalog.uniqueActions[1].guideStep}}
 		local store=build.savers.CraftingProjects;store:Upsert(project);local filters=require("Modules.LootFilters");local rules=filters.generate(build,filters.profile("divine-filter","Divine"));local found=false
 		for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id and rule.title=="Divine Orb" then found=true end end;assert.is_true(found)
+	end)
+
+	it("rerolls and targets independent values on multi-range unique modifiers",function()
+		local template;for _,group in pairs(data.uniques) do for _,entry in ipairs(group) do if entry:match("^%s*Dreadarc[\r\n]") then template=entry end end end
+		assert.is_truthy(template);local raw="Rarity: UNIQUE\n"..template.."\nItem Level: 86"
+		local copied=raw:gsub("Adds %(5%-15%) to %(20%-25%) Physical Damage","Adds 9 to 22 Physical Damage"):gsub("Adds %(5%-15%) to %(20%-25%) Fire Damage","Adds 12 to 21 Fire Damage")
+		local options=quality.divineOptions(copied);assert.is_truthy(options);local parts={}
+		for _,option in ipairs(options) do if option.line=="Adds (5-15) to (20-25) Physical Damage" then parts[option.component]=option end end
+		assert.equal(9,parts[1].current);assert.equal(22,parts[2].current);assert.equal(2,parts[2].components)
+		local goal={uniqueModifier={line=parts[2].line,component=2,minValue=23}};assert.is_false(quality.matches(copied,goal));goal.uniqueModifier.minValue=22;assert.is_true(quality.matches(copied,goal));goal.uniqueModifier.component=3;assert.has_error(function() quality.matches(copied,goal) end)
+		local pairsSeen={};for seed=1,20 do
+			local result=quality.divine(copied,seed*104729);local after=quality.divineOptions(result.itemText);assert.is_truthy(after)
+			local first,second;for _,option in ipairs(after) do if option.line==parts[1].line then if option.component==1 then first=option.current else second=option.current end end end
+			assert.is_true(first>=5 and first<=15 and second>=20 and second<=25);pairsSeen[first..":"..second]=true
+			local item=quality.inspect(result.itemText);assert.equal(item.base.weapon.PhysicalMin+first,item.weaponData[1].PhysicalMin);assert.equal(item.base.weapon.PhysicalMax+second,item.weaponData[1].PhysicalMax)
+			assert.is_truthy(quality.divine(result.itemText,seed*130363))
+		end
+		local count=0;for _ in pairs(pairsSeen) do count=count+1 end;assert.is_true(count>2)
 	end)
 
 	it("targets a specific unique modifier roll",function()

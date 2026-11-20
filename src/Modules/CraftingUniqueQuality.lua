@@ -198,51 +198,60 @@ local function divinePlan(raw)
 	local parsed,reference=pcall(function() return new("Item"):Item("Rarity: UNIQUE\n"..candidates[1].."\nItem Level: "..item.itemLevel) end)
 	if not parsed or not reference.base then return nil,"The bundled unique template could not be verified" end
 	local expected={};for _,line in ipairs(reference.explicitModLines or {}) do
-		local text=line.line;local ranges={};for low,high in text:gmatch("%((%-?%d+)%-(%-?%d+)%)") do ranges[#ranges+1]={tonumber(low),tonumber(high)} end
-		local hasRange=text:find("%(%-?[%d%.]+%-%-?[%d%.]+%)")~=nil
-		if hasRange and #ranges~=1 then return nil,"Multiple or fractional ranges need a separate Divine model" end
-		local row={line=text}
-		if hasRange then
-			row.low,row.high=ranges[1][1],ranges[1][2]
-			if row.high<=row.low or row.high-row.low>100000 or row.low< -100000 or row.high>100000 then return nil,"This modifier range needs a separate Divine model" end
-			local first,last=text:find("%(%-?%d+%-%-?%d+%)");row.prefix=text:sub(1,first-1);row.suffix=text:sub(last+1)
+		local text=line.line;local ranges,parts={},{};local pos=1
+		while true do
+			local first,last,low,high=text:find("%((%-?%d+)%-(%-?%d+)%)",pos);if not first then break end
+			low,high=tonumber(low),tonumber(high);if high<=low or high-low>100000 or low< -100000 or high>100000 then return nil,"This modifier range needs a separate Divine model" end
+			parts[#parts+1]=text:sub(pos,first-1);ranges[#ranges+1]={low=low,high=high};pos=last+1
 		end
-		expected[#expected+1]=row
+		parts[#parts+1]=text:sub(pos)
+		local _,allRanges=text:gsub("%(%-?[%d%.]+%-%-?[%d%.]+%)","")
+		if allRanges~=#ranges or #ranges>6 then return nil,"Fractional or complex ranges need a separate Divine model" end
+		-- Advanced copied values cannot safely encode an external sign combined
+		-- with a signed range in a multi-range line.
+		if #ranges>1 then for i,range in ipairs(ranges) do if range.low<0 or parts[i]:sub(-1)=="-" then return nil,"This signed multi-range modifier needs a separate Divine model" end end end
+		local pattern={"^"}
+		for i,part in ipairs(parts) do
+			local optionalPlus=i<=#ranges and ranges[i].low<=0 and part:sub(-1)=="+"
+			if optionalPlus then part=part:sub(1,-2) end
+			pattern[#pattern+1]=part:gsub("([^%w])","%%%1");if optionalPlus then pattern[#pattern+1]="%+?" end
+			if i<=#ranges then pattern[#pattern+1]="(%-?%d+)" end
+		end
+		pattern[#pattern+1]="$";expected[#expected+1]={line=text,ranges=ranges,pattern=table.concat(pattern)}
 	end
 	local rows,seen={},{}
 	for _,line in ipairs(item.explicitModLines or {}) do
 		if line.disabled or line.custom or line.crafted or line.fractured or line.mutated or line.scourge or line.crucible or line.unscalable then return nil,"Special modifier lines need a separate Divine model" end
-		local text=line.line;local match,matchedValue
+		local text=line.line;local match,matchedValues
 		for _,candidate in ipairs(expected) do if not candidate.used then
-			local matches=text==candidate.line;local number
-			if not matches and candidate.low and (#candidate.suffix==0 or text:sub(-#candidate.suffix)==candidate.suffix) then
-				local prefixes={candidate.prefix}
-				if candidate.low<=0 and candidate.prefix:sub(-1)=="+" then prefixes[#prefixes+1]=candidate.prefix:sub(1,-2) end
-				for _,prefix in ipairs(prefixes) do if text:sub(1,#prefix)==prefix then
-					local last=#candidate.suffix>0 and #text-#candidate.suffix or #text
-					local value=text:sub(#prefix+1,last);local candidateNumber=value:match("^%-?%d+$") and tonumber(value)
-					if candidateNumber and candidateNumber>=candidate.low and candidateNumber<=candidate.high then number=candidateNumber;matches=true;break end
-				end end
+			local matches=text==candidate.line;local numbers
+			if not matches and #candidate.ranges>0 then
+				local captures={text:match(candidate.pattern)}
+				if #captures==#candidate.ranges then
+					numbers={};matches=true
+					for i,value in ipairs(captures) do local number=tonumber(value);local range=candidate.ranges[i];if not number or number<range.low or number>range.high then matches=false;break end;numbers[i]=number end
+				end
 			end
-			if matches then if match then return nil,"This modifier matches multiple bundled ranges" end;match=candidate;matchedValue=number end
+			if matches then if match then return nil,"This modifier matches multiple bundled ranges" end;match=candidate;matchedValues=numbers end
 		end end
 		if not match then return nil,"Use complete modifiers matching the bundled unique template" end
 		match.used=true
-		if match.low then
+		if #match.ranges>0 then
 			local source,count=nil,0
 			for rawLine in raw:gmatch("[^\r\n]+") do
 				local plain=rawLine:gsub("^%{range:[^}]+%}","")
 				local advanced=plain:gsub("(%-?%d+)(%(%-?%d+%-%-?%d+%))","%2")
-				if plain==text or line.rangeFromValue and text==match.line and advanced==match.line then source=plain;count=count+1 end
+				local advancedValues=plain:gsub("(%-?%d+)(%(%-?%d+%-%-?%d+%))","%1")
+				if plain==text or line.rangeFromValue and text==match.line and advanced==match.line or advanced==match.line and advancedValues==text then source=plain;count=count+1 end
 			end
 			if count~=1 then return nil,"The original modifier line cannot be identified safely" end
 			if seen[source] then return nil,"Repeated modifier lines need a separate Divine model" end
-			local current
+			local current=matchedValues
 			if text==match.line then
 				local range=line.range or 0.5;if type(range)~="number" or range~=range or range<0 or range>1 then return nil,"The current modifier roll is outside its supported range" end
-				current=math.floor(match.low+range*(match.high-match.low)+0.5)
-			else current=matchedValue end
-			seen[source]=true;rows[#rows+1]={input=source,line=match.line,low=match.low,high=match.high,current=current}
+				current={};for i,part in ipairs(match.ranges) do current[i]=math.floor(part.low+range*(part.high-part.low)+0.5) end
+			end
+			seen[source]=true;rows[#rows+1]={input=source,line=match.line,ranges=match.ranges,current=current}
 		end
 	end
 	for _,row in ipairs(expected) do if not row.used then return nil,"Use complete modifiers matching the bundled unique template" end end
@@ -252,7 +261,7 @@ end
 function M.divineReason(raw) local _,reason=divinePlan(raw);return reason end
 function M.divineOptions(raw)
 	local plan,reason=divinePlan(raw);if not plan then return nil,reason end
-	local result={};for _,row in ipairs(plan.rows) do result[#result+1]={line=row.line,min=row.low,max=row.high,current=row.current} end
+	local result={};for _,row in ipairs(plan.rows) do for index,part in ipairs(row.ranges) do result[#result+1]={line=row.line,component=index,components=#row.ranges,min=part.low,max=part.high,current=row.current[index]} end end
 	return result
 end
 function M.divine(raw,seed)
@@ -260,8 +269,16 @@ function M.divine(raw,seed)
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
 	local random=require("Modules.CalcTime").random(seed);local replacements={}
 	for _,row in ipairs(plan.rows) do
-		local value=row.low+math.floor(random()*(row.high-row.low+1));local range=(value-row.low)/(row.high-row.low)
-		replacements[row.input]="{range:"..string.format("%.6f",range).."}"..row.line
+		if #row.ranges==1 then
+			local part=row.ranges[1];local value=part.low+math.floor(random()*(part.high-part.low+1));local range=(value-part.low)/(part.high-part.low)
+			replacements[row.input]="{range:"..string.format("%.6f",range).."}"..row.line
+		else
+			local index=0;replacements[row.input]=row.line:gsub("([%+%-]?)%((%-?%d+)%-(%-?%d+)%)",function(sign,low,high)
+				index=index+1;local part=row.ranges[index];local value=part.low+math.floor(random()*(part.high-part.low+1))
+				local shown=sign=="-" and -value or value;local prefix=sign=="+" and shown>0 and "+" or ""
+				return prefix..shown.."("..low.."-"..high..")"
+			end)
+		end
 	end
 	local changed=0
 	local output=raw:gsub("[^\r\n]+",function(line)
@@ -579,7 +596,8 @@ function M.matches(raw,requirements)
 		local goal=requirements.uniqueModifier;assert(type(goal)=="table" and type(goal.line)=="string" and (goal.minValue~=nil)~=(goal.maxValue~=nil),"Invalid unique modifier target")
 		local value=goal.minValue or goal.maxValue;assert(type(value)=="number","Invalid unique modifier target")
 		local options,reason=M.divineOptions(raw);assert(options,reason);local selected
-		for _,option in ipairs(options) do if option.line==goal.line then selected=option;break end end
+		local component=goal.component or 1;assert(type(component)=="number" and component==math.floor(component) and component>=1 and component<=6,"Invalid unique modifier component")
+		for _,option in ipairs(options) do if option.line==goal.line and option.component==component then selected=option;break end end
 		assert(selected,"The selected unique modifier is not available on this item")
 		assert(value==math.floor(value) and value>=selected.min and value<=selected.max,"The unique modifier target is outside its roll range")
 		if goal.minValue and selected.current<value or goal.maxValue and selected.current>value then return false end

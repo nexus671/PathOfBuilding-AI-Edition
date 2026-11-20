@@ -31,6 +31,11 @@ return function(build,ui,frame)
 	local divinePreview={id="unique-divine-preview-ui",title="Divine preview",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40 to Evasion Rating\n+10% to Item Rarity\n+35% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers",goals={},steps={}}
 	store:Upsert(divinePreview);require("Classes.CraftingUniqueQualityControl").Open(build,divinePreview);ui:click("divine");ui:click("apply");frame("crafting-unique-divine-preview");ui:click("guide")
 	for _,entry in ipairs(store.projects) do if entry.id==divinePreview.id then divineSaved=entry end end;assert(divineSaved.steps[1].uniqueCraft.method=="divine","Divine preview guide was not kept");main.popups={}
+	local multiTemplate;for _,group in pairs(data.uniques) do for _,entry in ipairs(group) do if entry:match("^%s*Dreadarc[\r\n]") then multiTemplate=entry end end end
+	assert(multiTemplate,"Missing multi-range unique fixture");local multiProject={id="unique-divine-multi-ui",title="Weapon rolls",slot="Weapon 1",startingItem="Rarity: UNIQUE\n"..multiTemplate.."\nItem Level: 86",goals={},steps={}}
+	store:Upsert(multiProject);require("Classes.CraftingUniqueQualityControl").Open(build,multiProject);ui:click("divine");local multiPicker=main.popups[1].controls;multiPicker.stat:SelByValue("modifier:2","val");ui:text("target","25");frame("crafting-unique-divine-multi");ui:click("plan")
+	local multiSaved;for _,entry in ipairs(store.projects) do if entry.id==multiProject.id then multiSaved=entry end end
+	assert(multiSaved and multiSaved.nativeRecipe.requirements.uniqueModifier.component==2,"Multi-range target component was not kept");main.popups={}
 	local taintedQuality={id="unique-tainted-quality-ui",title="Tainted quality",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nQuality: 0\nSockets: R-G B\nCorrupted",goals={},steps={}}
 	store:Upsert(taintedQuality);require("Classes.CraftingUniqueQualityControl").Open(build,taintedQuality);frame("crafting-unique-tainted-quality")
 	ui:click("qualityPlan");ui:text("target","20");ui:text("attempts","1000");frame("crafting-unique-quality-target");ui:click("plan")
