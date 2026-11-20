@@ -132,6 +132,7 @@ describe("Map clipboard import",function()
  it("projects Delirium stacking, switching and the cap without guessing probabilities",function()
   local project=require("Modules.MapObservedEffects").projectDelirium
   local same=project(35,"Currency","currency",10)
+  assert.matches("3%.30%.0d",same.note);assert.matches("specific item eligibility",same.note)
   assert.is_true(same.sameType);assert.same({percent=40,baseRewardCount=3},same.minimum);assert.same({percent=85,baseRewardCount=5},same.maximum);assert.same({percent=45,baseRewardCount=3},same.example)
   local switched=project(35,"Currency","Maps",10);assert.is_false(switched.sameType);assert.same({percent=10,baseRewardCount=1},switched.example)
   assert.same({percent=100,baseRewardCount=6},project(90,"Currency","Currency",50).example)

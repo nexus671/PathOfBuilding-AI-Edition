@@ -59,7 +59,7 @@ function M.projectDelirium(currentPercent,currentType,nextType,gain)
  end
  return {currentPercent=currentPercent,currentType=currentType,nextType=nextType,exampleGain=gain,sameType=same,
   minimum=outcome(5),maximum=outcome(50),example=outcome(gain),
-  note="Projection only. No map is modified. Reward names, eligibility, reforged modifiers, other reward effects and gain probabilities are not verified."}
+  note="Projection only. No map is modified. GGG fixed Delirium Orb use on Nightmare Maps in 3.30.0d. Reward names, specific item eligibility, reforged modifiers, other rewards and gain probabilities are not verified."}
 end
 -- This visible implicit identifies a Blighted or Blight-ravaged map. Do not
 -- infer the variant merely from a map's name or an ordinary Blight encounter.

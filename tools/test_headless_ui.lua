@@ -124,7 +124,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	end
 	ui:choose("tier",17,"val");ui:text("search","MapUberModCurses")
 	do local c=main.popups[1].controls;assert(c.currency:IsEnabled() and c.estimate:IsEnabled(),"Nightmare Chaos estimates should be available");assert(c.list.list[1].entry,"Nightmare modifier was not offered");c.list.onClick({line=c.list.list[1]}) end
-	ui:click("add");frame("map-nightmare-inspection");ui:click("currency");ui:text("search","Chaos Orb");ui:click("choose");frame("map-nightmare-rolled")
+	ui:click("add");frame("map-nightmare-inspection");ui:click("delirium");frame("map-nightmare-delirium");ui:click("close");ui:click("currency");ui:text("search","Chaos Orb");ui:click("choose");frame("map-nightmare-rolled")
 	do local c=main.popups[1].controls;local row;for _,entry in ipairs(c.affixes.list) do if entry.modifierId then row=entry;break end end
 		assert(row,"Expected a selectable map modifier");c.affixes.onClick({line=row});assert(c.remove.label=="Remove selected");frame("map-modifier-selected");ui:click("remove") end
 	ui:choose("tier",16,"val");ui:text("search","")

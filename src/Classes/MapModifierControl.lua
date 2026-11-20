@@ -163,7 +163,7 @@ function M.Open(options)
 		local uncertain=unidentified or module.hasExplicit(observedEffects) and not known
 		for _,effect in ipairs(observedEffects or {}) do if effect.kind=="enchant" and (effect.text:lower():find("delirious",1,true) or effect.text:lower():find("delirium",1,true)) then uncertain=true end end
 		local c={};local w,h=math.min(640,main.screenW-40),300
-		ui.description(c,"intro",16,24,w-32,40,{"Project a Delirium Orb's percentage and base rewards. This does not modify the map or model rerolls."},14)
+		ui.description(c,"intro",16,24,w-32,40,{map.isNightmare(baseId) and "3.30.0d fixed Delirium Orbs on Nightmare Maps. Preview only; reforging is not modeled." or "Project a Delirium Orb's percentage and base rewards. This does not modify the map or model rerolls."},14)
 		ui.label(c,"currentLabel",16,76,"Current %",14);ui.label(c,"currentTypeLabel",128,76,"Current reward type",14)
 		ui.label(c,"nextTypeLabel",344,76,"Next reward type",14)
 		c.current=new("EditControl"):EditControl(ui.anchor,{16,100,96,26},known and tostring(known.percent) or uncertain and "" or "0",nil,"%D",3)

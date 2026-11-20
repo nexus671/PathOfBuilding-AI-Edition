@@ -1041,7 +1041,7 @@ async function main(){
   assert.equal(delirious.mapData.state.observedEffects.filter(effect=>effect.kind==='explicit').length,2);
   assert.deepEqual(delirious.mapData.delirium,{percent:35,rewardType:'Currency',baseRewardCount:2});
   const projection=await queued('project_map_delirium',{baseRevision:context.revision,currentPercent:35,currentType:'Currency',nextType:'Currency',gain:10},'mapData');
-  assert.equal(projection.mapData.sameType,true);assert.deepEqual(projection.mapData.example,{percent:45,baseRewardCount:3});assert.equal(projection.mapData.maximum.percent,85);
+  assert.equal(projection.mapData.sameType,true);assert.deepEqual(projection.mapData.example,{percent:45,baseRewardCount:3});assert.equal(projection.mapData.maximum.percent,85);assert.match(projection.mapData.note,/3\.30\.0d/);
   const deliriousState=delirious.mapData.state;
   const deliriousInspection=await queued('inspect_map_modifiers',{baseRevision:context.revision,...deliriousState,limit:5},'mapData');
   assert.deepEqual(deliriousInspection.mapData.delirium,delirious.mapData.delirium);assert.match(deliriousInspection.mapData.currencyOptionsWarning,/unsupported explicit/);
