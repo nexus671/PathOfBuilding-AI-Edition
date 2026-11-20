@@ -12,7 +12,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Build auto-adjust | Reads saved crafts, planned gear, gems, resources and Atlas plans | More stage-specific vendor recipes |
 | Campaign weapon selection | Eighteen native families, equipped-family selection and progressive base-level windows | More character-specific class presets |
 | Campaign armour selection | Armour/evasion/ES combinations and Ward, with native base art | More starter presets |
-| Campaign vendor rares | Base preset rules plus level-bounded linked-colour, six-socket/link, quality-gem, Vaal-gem and normal-mode unidentified rare-set policies | More vendor recipes; no completed-set or proceeds model |
+| Campaign vendor rares | Base preset rules plus level-bounded linked-colour, six-socket/link, quality-gem, quality-flask and tincture, Vaal-gem and normal-mode unidentified rare-set policies | More vendor recipes; no completed-set or proceeds model |
 | Endgame build adjustment | Exact saved targets and Atlas pickups | Trade/SSF-specific policies |
 | Item overview and colour examples | Live scene using the compiled filter | Explanatory galleries for every item family |
 | Hierarchical customizer | Category sidebar, search, personal/base/policy scope and collapsible compiled sections | Human-edited subcategories |
@@ -25,7 +25,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Stacked currency tiering | Custom stack thresholds can reuse another custom tier's visibility and appearance while preserving item conditions and Continue behavior | Automatic economy-based promotion and preset-wide stack controls |
 | Economy-based tiers | Pinned NeverSink snapshot | Live pricing, outlier handling and recalculation |
 | Global search | Searches names and raw condition/action text | Cross-page command palette |
-| Loot generator | Deterministic example scenes, including a tier 1–17 map comparison, vendor recipes, threads, flasks, tinctures, cards, essences, crafting materials, Heist, Expedition, Blight oils and maps, Breach, Legion, and build targets. Base drop levels and inventory sizes use the pinned 3.30.0.1.4 client export; ambiguous values, unique drop levels and unspecified gear sockets remain unknown | Representative drop distributions and more encounter presets |
+| Loot generator | Deterministic example scenes, including a tier 1–17 map comparison, vendor recipes, threads, flasks, tinctures, cards, essences, crafting materials, Heist, Expedition, Blight oils and maps, Breach, Legion, and build targets. Base drop levels and inventory sizes use the pinned 3.30.0.4 export; ambiguous values, unique drop levels and unspecified gear sockets remain unknown | Representative drop distributions and more encounter presets |
 | Hidden-drop display | Simulator toggle and searchable scene review with shown, minimal, hidden and uncertain counts | Counts describe examples, not drop rates |
 | Click a simulated item | Explains results and opens matched blocks for editing | More unknown-property guidance |
 | Item configuration | Editable properties and game-clipboard import in the desktop and MCP filter tests. Known base drop level and dimensions come from pinned data; ambiguous values remain unknown | Hidden identities are never inferred |
@@ -54,7 +54,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Validation | Native parser checks and account-server validation when authorised | Broader syntax coverage and live game validation |
 | Mobile layout | Desktop layouts tested at 960, 1024 and 1280 widths | Native PoB is not a mobile web app |
 
-Example base properties come from the pinned 3.30.0.1.4 client base-item export (SHA-256 `bcf0743a00d8db0f3ffb1dc8a15dad47d6469c884bee18bc6029494a8c81400b`). Rebuild with `python tools/update_loot_filter_base_metadata.py path/to/base_items.min.json`; use `--check` to verify. If same-named base records disagree, the affected property remains unknown. Unique drop levels and unspecified equipment sockets are also unknown.
+Example base properties come from the pinned [3.30.0.4 RePoE export](https://github.com/repoe-fork/repoe-fork.github.io/tree/c97553d1fc14a134dd6813e672d2b45fddf5b42d), with base-item SHA-256 `b16dc6c967b7e70ee369fba80506cdf08a1fa5bc5dd5c4f07aaddead97c98b2f`. Rebuild with `python tools/update_loot_filter_base_metadata.py path/to/base_items.json`; use `--check` to verify. If same-named base records disagree, the affected property remains unknown. Unique drop levels and unspecified equipment sockets are also unknown.
 
 Example item classes use the pinned [3.30.0.4 RePoE export](https://github.com/repoe-fork/repoe-fork.github.io/tree/c97553d1fc14a134dd6813e672d2b45fddf5b42d). Names with conflicting or missing classes, hidden records and trade proxies remain unresolved unless the rule supplies a class. Rebuild or verify with `python tools/update_loot_filter_base_classes.py path/to/base_items.json path/to/item_classes.json` and optionally `--check`; both inputs are hash-checked.
 

@@ -35,6 +35,16 @@ describe("Offline campaign pickup policies",function()
 		end
 		local rules=campaign.rules(p.campaign);assert.equal("campaign-recipe-3",rules[1].id);assert.equal("campaign-recipe-2",rules[2].id);assert.equal("campaign-recipe-1",rules[3].id)
 	end)
+	it("highlights quality flasks and tinctures only inside the selected area range",function()
+		local p=profile();p.campaign.recipes={"Quality flasks and tinctures"};p.campaign.minAreaLevel=10;p.campaign.maxAreaLevel=70
+		for _,pair in ipairs({{"Life Flasks","Small Life Flask"},{"Mana Flasks","Small Mana Flask"},{"Hybrid Flasks","Small Hybrid Flask"},{"Utility Flasks","Quicksilver Flask"},{"Critical Utility Flasks","Diamond Flask"},{"Tinctures","Prismatic Tincture"}}) do
+			local class,base=pair[1],pair[2];local item={Class=class,BaseType=base,Quality=1,AreaLevel=40};local result=filters.simulate(p,item);assert.equal("Show",result.action,class);assert.matches("Quality flasks and tinctures",result.ruleTitle)
+			item.Quality=0;assert.equal("Hide",filters.simulate(p,item).action,class);item.Quality=1;item.AreaLevel=71;assert.equal("Hide",filters.simulate(p,item).action,class)
+		end
+		assert.equal("Hide",filters.simulate(p,{Class="Skill Gems",BaseType="Arc",Quality=20,AreaLevel=40}).action)
+		local ruthless=copyTable(p);ruthless.mode="Ruthless";ruthless.template="Minimal";assert.equal("Show",filters.simulate(ruthless,{Class="Life Flasks",BaseType="Small Life Flask",Quality=5,AreaLevel=40}).action)
+		local panel=require("Classes.LootFilterCampaignControl").Open(build,nil,function(value) p.campaign=value end,"Normal");assert.is_true(panel.recipe8:IsEnabled());panel.recipe8:Click();panel.keep:Click();assert.same({"Quality flasks and tinctures"},p.campaign.recipes)
+	end)
 	it("offers an optional 3.30 Vaal-gem vendor pickup in normal mode",function()
 		local p=profile();p.campaign.recipes={"Vaal skill gems"};p.campaign.minAreaLevel=10;p.campaign.maxAreaLevel=70
 		local sample={Class="Skill Gems",BaseType="Vaal Arc",AreaLevel=40}

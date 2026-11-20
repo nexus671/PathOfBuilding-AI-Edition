@@ -1,6 +1,6 @@
 -- Offline family policies derived from the bundled native bases, never prices.
 -- cspell:ignore jsontype
-local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces","Low-level unidentified rare set pieces","Vaal skill gems"}}
+local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces","Low-level unidentified rare set pieces","Vaal skill gems","Quality flasks and tinctures"}}
 local knownWeapons={"Bow","Claw","Dagger","Rune Dagger","Fishing Rod","One Handed Axe","One Handed Mace","One Handed Sword","Thrusting Sword","Sceptre","Staff","Warstaff","Two Handed Axe","Two Handed Mace","Two Handed Sword","Wand","Shield","Quiver"}
 M.weapons=knownWeapons
 M.rareSetSlots={"Jewellery","Armour","Weapons and shields"}
@@ -90,10 +90,11 @@ function M.rules(value,theme,mode)
 		["Six-socket equipment"]={"Sockets 6"},
 		["Six-link equipment"]={"LinkedSockets 6"},
 		["Quality gems"]={'Class == "Skill Gems" "Support Gems"',"Quality >= 1"},
+		["Quality flasks and tinctures"]={'Class == "Life Flasks" "Mana Flasks" "Hybrid Flasks" "Utility Flasks" "Critical Utility Flasks" "Tinctures"',"Quality >= 1"},
 	}
 	-- Vendor recipes resolve six links before six sockets, then linked colours.
 	-- Keep the original indices for stable rule IDs and saved overrides.
-	local recipeOrder={3,2,1,4,5,6,7}
+	local recipeOrder={3,2,1,4,8,5,6,7}
 	for _,i in ipairs(recipeOrder) do local name=M.recipes[i];for _,chosen in ipairs(policy.recipes) do if name==chosen then
 		if name=="Vaal skill gems" then
 			if mode~="Ruthless" then

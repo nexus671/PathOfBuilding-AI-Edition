@@ -1245,6 +1245,12 @@ async function main(){
   const uncertainContinue={...lootProfile,template:'Show\n BaseType "Iron"\n Continue unexpected\nHide'};
   const uncertainContinueTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:uncertainContinue,sample:{BaseType:'Iron Hat'}},'tested');
   assert.equal(uncertainContinueTest.result.status,'unknown');assert.match(uncertainContinueTest.result.reasons[0],/Continue arguments/);
+  const flaskRecipeProfile={...lootProfile,template:'Hide',campaign:{recipes:['Quality flasks and tinctures','Vaal skill gems'],minAreaLevel:1,maxAreaLevel:70}};
+  const qualityFlask=await queued('test_loot_filter',{baseRevision:context.revision,profile:flaskRecipeProfile,sample:{Class:'Life Flasks',BaseType:'Small Life Flask',Quality:5,AreaLevel:40}},'tested');assert.equal(qualityFlask.result.action,'Show');assert.match(qualityFlask.result.ruleTitle,/Quality flasks/);
+  const vaalRecipe=await queued('test_loot_filter',{baseRevision:context.revision,profile:flaskRecipeProfile,sample:{Class:'Skill Gems',BaseType:'Vaal Arc',AreaLevel:40}},'tested');assert.equal(vaalRecipe.result.action,'Show');assert.match(vaalRecipe.result.ruleTitle,/Vaal skill gems/);
+  const unqualifiedFlask=await queued('test_loot_filter',{baseRevision:context.revision,profile:flaskRecipeProfile,sample:{Class:'Life Flasks',BaseType:'Small Life Flask',Quality:0,AreaLevel:40}},'tested');assert.equal(unqualifiedFlask.result.action,'Hide');
+  const allCampaignRecipes=['Three-colour linked equipment','Six-socket equipment','Six-link equipment','Quality gems','Unidentified rare set pieces','Low-level unidentified rare set pieces','Vaal skill gems','Quality flasks and tinctures'];
+  const allRecipeProfile={...flaskRecipeProfile,campaign:{...flaskRecipeProfile.campaign,recipes:allCampaignRecipes}};const allRecipe=await queued('test_loot_filter',{baseRevision:context.revision,profile:allRecipeProfile,sample:{Class:'Life Flasks',BaseType:'Small Life Flask',Quality:5,AreaLevel:40,Sockets:0,LinkedSockets:0,SocketGroup:'0'}},'tested');assert.equal(allRecipe.result.action,'Show');
   const rareSetProfile={...lootProfile,template:'Hide',campaign:{recipes:['Unidentified rare set pieces'],rareSetSlots:['Jewellery'],minAreaLevel:1,maxAreaLevel:100}};
   const rareSetSample={BaseType:'Iron Ring',Class:'Rings',Rarity:'Rare',Identified:false,ItemLevel:74,AreaLevel:75};
   const rareSet=await queued('test_loot_filter',{baseRevision:context.revision,profile:rareSetProfile,sample:rareSetSample},'tested');

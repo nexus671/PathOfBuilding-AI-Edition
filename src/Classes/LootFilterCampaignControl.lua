@@ -49,9 +49,10 @@ function M.Open(build,value,onKeep,mode)
 		c.summary.list=ui.rows(lines,column,13)
 	end
 	for i,name in ipairs(policy.recipes) do
-		local x,y,width=right,396+(i-1)*22,column
-		if name=="Vaal skill gems" then x,y,width=right+column-98,462,98 end
+		local x,y,width=right,396+(i-1)*20,column
+		if name=="Vaal skill gems" then x,y,width=right+column-98,456,98 elseif name=="Quality flasks and tinctures" then y=516 end
 		button("recipe"..i,x,y,width,name=="Vaal skill gems" and "Vaal gems" or name,function() selected.recipes[name]=not selected.recipes[name] or nil;updateSummary() end);c["recipe"..i].height=20;c["recipe"..i].locked=function() return selected.recipes[name] end
+		if name=="Quality flasks and tinctures" then c["recipe"..i].tooltipText="Highlights quality flasks and tinctures for the Glassblower's Bauble recipe. Several items generally need 40% total quality; check the vendor offer." end
 		if name=="Vaal skill gems" then
 			c["recipe"..i].enabled=function() return mode~="Ruthless" end
 			c["recipe"..i].tooltipText=mode=="Ruthless" and "Not emitted in Ruthless: recipe availability has not been verified." or "Highlights Vaal skill gems. Vendor five Vaal skill gems for a Vaal Orb in 3.30."
@@ -62,7 +63,7 @@ function M.Open(build,value,onKeep,mode)
 		end
 	end
 	c.recipe4.width=column-106;c.recipe5.width=column-106;c.recipe6.width=column-106
-	button("rareSetSlots",right+column-98,484,98,"Slots...",function()
+	button("rareSetSlots",right+column-98,476,98,"Slots...",function()
 		local chosen={};for _,name in ipairs(current.rareSetSlots) do chosen[name]=true end
 		local popup={};ui.description(popup,"help",16,30,428,44,{"Choose which rare-set pieces to highlight. A complete set still needs every required slot."},14)
 		for i,name in ipairs(policy.rareSetSlots) do
@@ -78,7 +79,7 @@ function M.Open(build,value,onKeep,mode)
 		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{328,210,116,28},"Cancel",function() main:ClosePopup() end)
 		ui.style(popup,{keep=true});main:OpenPopup(460,256,"Rare-set slot groups",popup,nil,nil,"close")
 	end)
-	c.rareSetSlots.height=42;c.rareSetSlots.label=function() return #current.rareSetSlots.."/3 slots" end;c.rareSetSlots.enabled=function() return mode~="Ruthless" and (selected.recipes["Unidentified rare set pieces"] or selected.recipes["Low-level unidentified rare set pieces"]) end
+	c.rareSetSlots.height=40;c.rareSetSlots.label=function() return #current.rareSetSlots.."/3 slots" end;c.rareSetSlots.enabled=function() return mode~="Ruthless" and (selected.recipes["Unidentified rare set pieces"] or selected.recipes["Low-level unidentified rare set pieces"]) end
 	c.rareSetSlots.tooltipText="Choose jewellery, armour, and weapon/shield groups independently."
 	local function read()
 		local next=copyTable(current)

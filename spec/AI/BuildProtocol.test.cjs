@@ -222,7 +222,7 @@ test('queues full crafting inventory snapshots without imposing a count limit', 
 });
 
 test('accepts typed campaign pickup policies and rejects invented families', t => {
-  const f=fixture(t);const profile={id:'campaign',title:'Campaign',preset:'campaign',strictness:1,rules:[],campaign:{weapons:['Bow','Rune Dagger'],defences:['Energy shield'],recipes:['Quality gems','Unidentified rare set pieces','Low-level unidentified rare set pieces'],rareSetSlots:['Jewellery'],minAreaLevel:1,maxAreaLevel:70,minLinks:3,upgradeWindow:15}};
+  const f=fixture(t);const profile={id:'campaign',title:'Campaign',preset:'campaign',strictness:1,rules:[],campaign:{weapons:['Bow','Rune Dagger'],defences:['Energy shield'],recipes:['Quality gems','Unidentified rare set pieces','Low-level unidentified rare set pieces','Vaal skill gems','Quality flasks and tinctures'],rareSetSlots:['Jewellery'],minAreaLevel:1,maxAreaLevel:70,minLinks:3,upgradeWindow:15}};
   f.call('export_loot_filter',{baseRevision:f.state.revision,profile});
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.deepEqual(request.profile.campaign,profile.campaign);
   for(const campaign of [{weapons:['Invented weapon']},{defences:['All armour']},{recipes:['Guaranteed profit']},{rareSetSlots:[]},{rareSetSlots:['Jewellery','Jewellery']},{rareSetSlots:['Invented slot']},{minLinks:7},{upgradeWindow:-1}]) {
