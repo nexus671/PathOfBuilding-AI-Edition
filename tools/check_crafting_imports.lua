@@ -8,6 +8,7 @@ newBuild()
 local sim=require("Modules.CraftingSimulator")
 local bases={"Iron Hat","Plate Vest","Rusted Sword","Gold Ring","Turquoise Amulet"}
 local total,accepted,rejected=0,0,0
+local formats={plain={accepted=0,rejected=0,reasons={}},labelled={accepted=0,rejected=0,reasons={}}}
 
 for _,size in ipairs({2,3}) do
 	for _,base in ipairs(bases) do
@@ -28,11 +29,13 @@ for _,size in ipairs({2,3}) do
 				-- Preserve PoB's line labels, but remove the stored affix IDs so
 				-- the importer must infer them from the displayed values.
 				local labelled=item.raw:gsub("\nPrefix:[^\n]*",""):gsub("\nSuffix:[^\n]*",""):gsub("\nCrafted: true","")
-				for _,raw in ipairs({plain,labelled}) do
+				for index,raw in ipairs({plain,labelled}) do
+					local stats=formats[index==1 and "plain" or "labelled"]
 					local ok,result=pcall(sim.model,raw)
 					total=total+1;tested=tested+1
 					if ok then
-						accepted=accepted+1;local ids={}
+						accepted=accepted+1;stats.accepted=stats.accepted+1;local ids={}
+						assert(#result.initial.affixes==#selected,"Incorrect modifier count for "..base.." from "..table.concat(lines," | "))
 						for _,entry in ipairs(result.initial.affixes) do ids[entry.id]=true end
 						for _,entry in ipairs(selected) do
 							assert(ids[entry.id],"Incorrect import for "..base..": expected "..entry.id.." from "..table.concat(lines," | "))
@@ -40,7 +43,8 @@ for _,size in ipairs({2,3}) do
 					else
 						local message=tostring(result)
 						assert(message:find("Imported values ",1,true) or message:find("Starting modifiers could not be resolved",1,true) or message:find("A native modifier identity does not match",1,true),"Unexpected import error: "..message)
-						rejected=rejected+1
+						local reason=message:find("Imported values match several",1,true) and "ambiguous" or message:find("Imported values do not resolve",1,true) and "no legal assignment" or message:find("A native modifier identity does not match",1,true) and "native identity mismatch" or "other unresolved"
+						rejected=rejected+1;stats.rejected=stats.rejected+1;stats.reasons[reason]=(stats.reasons[reason] or 0)+1
 					end
 				end
 			end
@@ -50,4 +54,8 @@ for _,size in ipairs({2,3}) do
 	end
 end
 assert(accepted>0 and rejected>0,"The sample must exercise both accepted and unresolved imports")
+for _,format in ipairs({"plain","labelled"}) do
+	local stats=formats[format];local reasons={};for reason,count in pairs(stats.reasons) do reasons[#reasons+1]=reason.."="..count end;table.sort(reasons)
+	print(format..": "..stats.accepted.." accepted, "..stats.rejected.." unresolved ("..table.concat(reasons,", ")..")")
+end
 print("CRAFTING_IMPORT_SWEEP_OK: "..total.." legal samples, "..accepted.." accepted, "..rejected.." unresolved")

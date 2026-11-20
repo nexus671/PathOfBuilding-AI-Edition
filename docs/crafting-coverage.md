@@ -11,6 +11,8 @@ Run `python tools/run_headless_lupa.py tools/check_crafting_imports.lua` to
 sample two- and three-modifier plain and labelled imports across five equipment bases. The
 check verifies accepted identities and reports unresolved samples; it is not an
 exhaustive test of all modifier combinations or game-client behavior.
+It also checks the accepted modifier count and separates ambiguous matches from
+copies with no legal assignment, for plain and labelled text independently.
 
 Working states can retain a modifier roll outside its current tier range or a legacy Light Radius modifier when the same roll is present on the starting item or a supplied source item. Recombination and Awakener Orbs carry the relevant source text with the roll. Older checkpoints retain such values through a reconstructed snapshot for compatibility. Crafting actions, estimates, the modifier catalogue and the workbench warn about these rolls, including on a recombination donor. Item text and reconstructed snapshots do not prove that an item exists in game.
 
