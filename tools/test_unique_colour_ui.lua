@@ -41,6 +41,11 @@ return function(build,ui,frame)
 	store:Upsert(variantProject);require("Classes.CraftingUniqueQualityControl").Open(build,variantProject);ui:click("divine");local variantPicker=main.popups[1].controls;variantPicker.stat:SelByValue("modifier:1","val");ui:text("target","200");ui:click("plan")
 	local variantSaved;for _,entry in ipairs(store.projects) do if entry.id==variantProject.id then variantSaved=entry end end
 	assert(variantSaved and variantSaved.nativeRecipe.requirements.uniqueModifier.minValue==200,"Variant target was not kept");main.popups={}
+	local ringRaw="Rarity: UNIQUE\nAndvarius\nGold Ring\nItem Level: 86\nImplicits: 1\n+10% to Item Rarity\n+10 to Dexterity\n+60% to Item Rarity\n-20% to all Elemental Resistances"
+	local ringProject={id="unique-divine-ring-ui",title="Ring rolls",slot="Ring 1",startingItem=ringRaw,goals={},steps={}}
+	store:Upsert(ringProject);require("Classes.CraftingUniqueQualityControl").Open(build,ringProject);local ringControls=main.popups[1].controls;assert(not ringControls.apply:IsEnabled(),"Jewellery incorrectly allows ordinary quality currency");frame("crafting-unique-ring");ui:click("divine");local ringPicker=main.popups[1].controls;ringPicker.stat:SelByValue("modifier:1","val");ui:text("target","70");ui:click("plan")
+	local ringSaved;for _,entry in ipairs(store.projects) do if entry.id==ringProject.id then ringSaved=entry end end
+	assert(ringSaved and ringSaved.nativeRecipe.requirements.uniqueModifier.minValue==70,"Ring Divine target was not kept");main.popups={}
 	local taintedQuality={id="unique-tainted-quality-ui",title="Tainted quality",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nQuality: 0\nSockets: R-G B\nCorrupted",goals={},steps={}}
 	store:Upsert(taintedQuality);require("Classes.CraftingUniqueQualityControl").Open(build,taintedQuality);frame("crafting-unique-tainted-quality")
 	ui:click("qualityPlan");ui:text("target","20");ui:text("attempts","1000");frame("crafting-unique-quality-target");ui:click("plan")

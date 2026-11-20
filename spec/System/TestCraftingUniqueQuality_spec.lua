@@ -103,6 +103,22 @@ describe("Unique item quality",function()
 
 	end)
 
+	it("plans unique jewellery Divine rolls without inventing quality crafts",function()
+		local raw="Rarity: UNIQUE\nAndvarius\nGold Ring\nItem Level: 86\nImplicits: 1\n+10% to Item Rarity\n+10 to Dexterity\n+60% to Item Rarity\n-20% to all Elemental Resistances"
+		local item,info=quality.inspect(raw);assert.equal("Ring",item.type);assert.is_false(info.qualitySupported);assert.is_false(info.available)
+		assert.is_nil(quality.divineReason(raw));local result=quality.divine(raw,104729);assert.is_nil(quality.divineReason(result.itemText));assert.is_truthy(quality.divine(result.itemText,209458))
+		local catalog=quality.catalog(raw,"",50);assert.equal(1,#catalog.uniqueActions);assert.equal("divine",catalog.uniqueActions[1].method);assert.is_true(catalog.uniqueActions[1].available)
+		assert.has_error(function() quality.apply(raw) end);assert.has_error(function() quality.matches(raw,{minQuality=1}) end)
+		local scaled=raw:gsub("Item Level: 86","Item Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20");assert.is_truthy(quality.divineReason(scaled));local _,scaledInfo=quality.inspect(scaled);assert.equal(20,scaledInfo.quality);assert.equal(20,quality.catalog(scaled,"divine",10).quality.value);assert.has_error(function() quality.divine(scaled,1) end)
+		local otherItems={
+			"Rarity: UNIQUE\nBloodsoaked Medallion\nAmber Amulet\nItem Level: 86\nImplicits: 1\n+25 to Strength\n40% increased Global Critical Strike Chance\n+60 to maximum Life\n+20% to Chaos Resistance\nEvery 10 seconds:\nGain 2% of Life per Enemy Hit with Attacks for 5 seconds\nGain 5% of Life per Enemy Killed for 5 seconds",
+			"Rarity: UNIQUE\nThe Burden of Truth\nCrystal Belt\nItem Level: 86\nImplicits: 1\n+80 to maximum Energy Shield\n33% of Non-Chaos Damage taken bypasses Energy Shield\n35% increased Life Recovery from Flasks\n33% of Chaos Damage taken does not bypass Energy Shield\nGain 7% of Maximum Life as Extra Maximum Energy Shield\nSupreme Decadence",
+		}
+		for _,other in ipairs(otherItems) do assert.is_nil(quality.divineReason(other));local rolled=quality.divine(other,104729);assert.is_nil(quality.divineReason(rolled.itemText));assert.is_truthy(quality.divine(rolled.itemText,209458)) end
+		local goal={uniqueModifier={line="+(50-70)% to Item Rarity",minValue=70}};local recipe={rarity="UNIQUE",steps={{method="divine",maxAttempts=10,untilRequirements=goal}},targets={},requirements=goal}
+		local run=require("Modules.CraftingSimulator").simulate(raw,recipe,{trials=5,maxActions=10,seed=123});assert.equal(5,run.trials)
+	end)
+
 	it("preserves copied armour base rolls when unique stats or quality change",function()
 		local raw="Item Class: Helmets\nRarity: Unique\nGoldrim\nLeather Cap\n--------\nEvasion Rating: 67\n--------\nItem Level: 86\n--------\n+40 to Evasion Rating\n+10% to Item Rarity\n+35% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
 		local before=quality.inspect(raw);local baseline=before.armourData.EvasionBasePercentile;assert.is_truthy(baseline)

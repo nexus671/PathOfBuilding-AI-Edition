@@ -83,7 +83,8 @@ function M.inspect(raw)
 	assert(item.itemLevel>=1 and item.itemLevel<=100 and item.itemLevel==math.floor(item.itemLevel),"Invalid item level")
 	local weapon=data.weaponTypeInfo[item.type]~=nil
 	local flask=item.type=="Flask" or item.type=="Tincture"
-	assert(weapon or item.base.armour or flask,"Unique quality tools currently support armour, weapons, flasks and tinctures")
+	local jewellery=item.type=="Ring" or item.type=="Amulet" or item.type=="Belt"
+	assert(weapon or item.base.armour or flask or jewellery,"Unique crafting supports armour, weapons, flasks, tinctures and jewellery")
 	assert(not item.mirrored,"Mirrored items cannot be crafted")
 	assert(item.corrupted or not alwaysCorrupted(item.title,item.baseName),"This unique is always corrupted; include its Corrupted line in the starting item")
 	-- These uniques have hidden fixed six-link layouts. Only validate an
@@ -100,8 +101,8 @@ function M.inspect(raw)
 		assert(not tabula or white,"This unique has six linked white sockets; correct the starting socket layout")
 	end
 	assert(not item.foulborn,"Foulborn items need a separate modifier-mutation model")
-	local quality=item.quality or 0;assert(type(quality)=="number" and quality>=0 and quality==math.floor(quality),"Invalid item quality")
-	return item,{quality=quality,available=quality<20 and not item.corrupted,resource=flask and "Glassblower's Bauble" or weapon and "Blacksmith's Whetstone" or "Armourer's Scrap",resourceKey=flask and "Metadata/Items/Currency/CurrencyFlaskQuality" or weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality"}
+	local quality=jewellery and (item.catalystQuality or item.quality or 0) or (item.quality or 0);assert(type(quality)=="number" and quality>=0 and quality==math.floor(quality),"Invalid item quality")
+	return item,{quality=quality,qualitySupported=not jewellery,available=not jewellery and quality<20 and not item.corrupted,resource=not jewellery and (flask and "Glassblower's Bauble" or weapon and "Blacksmith's Whetstone" or "Armourer's Scrap") or nil,resourceKey=not jewellery and (flask and "Metadata/Items/Currency/CurrencyFlaskQuality" or weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality") or nil}
 end
 -- Imported armour lines are totals, which PoB uses to infer the base roll.
 -- Keep that inferred roll when an operation changes modifiers or quality;
@@ -133,7 +134,7 @@ local function addQuality(raw,value)
 	return raw..(raw:sub(-1)=="\n" and "" or newline).."Quality: "..value
 end
 function M.apply(raw)
-	local item,info=M.inspect(raw);assert(not item.corrupted,"Ordinary quality currency cannot modify a corrupted item");assert(info.available,"Ordinary quality currency cannot exceed 20%")
+	local item,info=M.inspect(raw);assert(info.qualitySupported,"Jewellery quality requires a catalyst");assert(not item.corrupted,"Ordinary quality currency cannot modify a corrupted item");assert(info.available,"Ordinary quality currency cannot exceed 20%")
 	local padded="\n"..raw
 	local output,count=padded:gsub("\nQuality:[^\r\n]*","\nQuality: "..(info.quality+1))
 	assert(count<=1,"Item text contains multiple quality lines")
@@ -250,6 +251,7 @@ local function divinePlan(raw)
 	local ok,item=pcall(M.inspect,raw);if not ok then return nil,tostring(item) end
 	if item.corrupted then return nil,"Divine Orbs cannot modify a corrupted item" end
 	if item.type=="Tincture" and item.tinctureValues=="Final" then return nil,"Copied tincture values need a separate scaling model for Divine rolls" end
+	if (item.catalystQuality or 0)>0 or ((item.type=="Ring" or item.type=="Amulet" or item.type=="Belt") and (item.quality or 0)>0) then return nil,"Catalyst-scaled jewellery needs a separate Divine model" end
 	if item.variantList or item.usesVariantGroups then return nil,"Items with saved variant selections need a separate Divine model" end
 	uniqueSocketRestriction(item.title)
 	local candidates={}
@@ -258,10 +260,10 @@ local function divinePlan(raw)
 		if base==item.baseName then candidates[#candidates+1]=template end
 	end
 	if #candidates~=1 then return nil,"This unique's variant needs identification before Divine rolls" end
-	local template=candidates[1]
-	if template:find("Variant:",1,true) or template:find("{variant:",1,true) then
-		template=template:gsub("^(%s*[^\r\n]+[\r\n]+[^\r\n]+)","%1\nItem Level: "..item.itemLevel,1)
-	else template=template.."\nItem Level: "..item.itemLevel end
+	local template=candidates[1];local levelAsModifier=false
+	for _,line in ipairs(item.explicitModLines or {}) do if line.line=="Item Level: "..item.itemLevel then levelAsModifier=true end end
+	if levelAsModifier then template=template.."\nItem Level: "..item.itemLevel
+	else template=template:gsub("^(%s*[^\r\n]+[\r\n]+[^\r\n]+)","%1\nItem Level: "..item.itemLevel,1) end
 	local parsed,reference=pcall(function() return new("Item"):Item("Rarity: UNIQUE\n"..template) end)
 	if not parsed or not reference.base then return nil,"The bundled unique template could not be verified" end
 	if reference.usesVariantGroups then return nil,"This unique's variant groups need a separate Divine model" end
@@ -564,7 +566,8 @@ function M.catalog(raw,query,limit)
 	local whiteComponents={["Metadata/Items/Currency/CurrencyConvertToNormal"]=1}
 	if item.corrupted then whiteComponents["Metadata/Items/Currency/CurrencyCorrupt"]=1 end
 	local sim=require("Modules.CraftingSimulator")
-	local definitions={{method="quality",label="Ordinary quality",reason=qualityReason,components={[info.resourceKey]=1}},{method="divine",label="Divine Orb",reason=M.divineReason(raw),sampled=true,components={divine=1}}}
+	local definitions={{method="divine",label="Divine Orb",reason=M.divineReason(raw),sampled=true,components={divine=1}}}
+	if info.qualitySupported then table.insert(definitions,1,{method="quality",label="Ordinary quality",reason=qualityReason,components={[info.resourceKey]=1}}) end
 	if item.base.armour or data.weaponTypeInfo[item.type] then definitions[#definitions+1]={method="tainted_quality",label="Tainted quality: "..info.resource,reason=M.taintedQualityReason(raw),sampled=true,components=sim.components({method="tainted_quality"},nil,{item=item})} end
 	if sim.socketLimit({item=item})>0 then
 		local socketDefinitions={
@@ -609,7 +612,7 @@ function M.matches(raw,requirements)
 	local supported={uniqueName=true,uniqueModifier=true,minQuality=true,corrupted=true,twiceCorrupted=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true}
 	for key in pairs(requirements) do assert(supported[key],"This unique item property is not supported: "..tostring(key)) end
 	if requirements.uniqueName and item.title~=requirements.uniqueName then return false end
-	if requirements.minQuality and info.quality<requirements.minQuality then return false end
+	if requirements.minQuality then assert(info.qualitySupported,"Jewellery catalyst-quality goals need a separate model");if info.quality<requirements.minQuality then return false end end
 	if requirements.corrupted~=nil and (not not item.corrupted)~=requirements.corrupted then return false end
 	if requirements.twiceCorrupted~=nil and (not not item.twiceCorrupted)~=requirements.twiceCorrupted then return false end
 	if requirements.uniqueModifier then

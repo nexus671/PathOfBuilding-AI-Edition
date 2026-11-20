@@ -258,6 +258,12 @@ async function main(){
   const variantGoal={uniqueModifier:{line:'(180-200)% increased Physical Damage',minValue:200}};
   const variantRecipe={rarity:'UNIQUE',steps:[{method:'divine',maxAttempts:10,untilRequirements:variantGoal}],targets:[],requirements:variantGoal};
   const variantRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:variantUniqueRaw,recipe:variantRecipe,options:{trials:5,maxActions:10,seed:123}},'crafted');assert.equal(variantRun.nativeCrafting.trials,5);
+  const ringUniqueRaw='Rarity: UNIQUE\nAndvarius\nGold Ring\nItem Level: 86\nImplicits: 1\n+10% to Item Rarity\n+10 to Dexterity\n+60% to Item Rarity\n-20% to all Elemental Resistances';
+  const ringInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ringUniqueRaw,query:'divine',limit:10},'inspected');
+  const ringOption=ringInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='divine');assert.equal(ringOption.available,true,JSON.stringify(ringOption));
+  const ringApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:ringUniqueRaw,action:ringOption.action,seed:123},'crafted');assert.ok(ringApply.nativeCrafting.itemText.includes('+(50-70)% to Item Rarity'));
+  const ringGoal={uniqueModifier:{line:'+(50-70)% to Item Rarity',minValue:70}};const ringRecipe={rarity:'UNIQUE',steps:[{method:'divine',maxAttempts:10,untilRequirements:ringGoal}],targets:[],requirements:ringGoal};
+  const ringRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:ringUniqueRaw,recipe:ringRecipe,options:{trials:5,maxActions:10,seed:123}},'crafted');assert.equal(ringRun.nativeCrafting.trials,5);
   const taintedQualityRaw=uniqueColourRaw+'\nCorrupted';
   const taintedQualityInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:taintedQualityRaw,query:'tainted quality',limit:10},'inspected');
   const taintedQualityOption=taintedQualityInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='tainted_quality');assert.equal(taintedQualityOption.available,true);

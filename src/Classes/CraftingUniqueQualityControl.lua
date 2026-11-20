@@ -23,7 +23,7 @@ function M.Open(build,project,layout,snapshot)
 	local w,h=layout and layout.width or math.min(880,main.screenW-40),layout and layout.height or math.min(650,main.screenH-60)
 	local c={};local cardX=310;local cardWidth=w-cardX-16
 	ui.label(c,"heading",16,18,"Unique crafting",22)
-	ui.description(c,"intro",16,56,270,68,{(item.type=="Flask" or item.type=="Tincture") and "Preview item quality." or "Preview quality and socket crafts.",item.corrupted and ((item.type=="Flask" or item.type=="Tincture") and "Tainted quality is unavailable." or "Tainted quality rolls are estimated.") or "Quality currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
+	ui.description(c,"intro",16,56,270,68,{not info.qualitySupported and "Preview Divine Orb rolls." or (item.type=="Flask" or item.type=="Tincture") and "Preview item quality." or "Preview quality and socket crafts.",not info.qualitySupported and "Catalyst crafting is not modeled." or item.corrupted and ((item.type=="Flask" or item.type=="Tincture") and "Tainted quality is unavailable." or "Tainted quality rolls are estimated.") or "Quality currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
 	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM",{expanded=true})
 	local function button(key,y,label,run)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,y,270,32},label,function()
@@ -101,8 +101,8 @@ function M.Open(build,project,layout,snapshot)
 		colourReason=unique.colourReason(raw,item.corrupted and "tainted_chromatic" or "chromatic")
 		taintedQualityReason=item.corrupted and unique.taintedQualityReason(raw) or nil
 		divineReason=not item.corrupted and unique.divineReason(raw) or nil
-		c.status.label="^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
-		c.apply.label=item.corrupted and (item.type=="Flask" or item.type=="Tincture") and "Quality unavailable" or item.corrupted and "Roll quality" or "Add quality"
+		c.status.label=not info.qualitySupported and "^7Catalyst quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or "Crafting not modeled") or "^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
+		c.apply.label=not info.qualitySupported and "Quality unavailable" or item.corrupted and (item.type=="Flask" or item.type=="Tincture") and "Quality unavailable" or item.corrupted and "Roll quality" or "Add quality"
 		c.apply.width=(not item.corrupted or not taintedQualityReason) and 130 or 270
 		if updateCurrency then updateCurrency() end
 		if updateIcons then updateIcons() end
@@ -336,7 +336,7 @@ function M.Open(build,project,layout,snapshot)
 		history[#history+1]=raw;actions[#actions+1]=action;redo={};raw=result.itemText;refresh(true)
 	end)
 	c.apply.enabled=function() return item.corrupted and not unique.taintedQualityReason(raw) or not item.corrupted and info.available end
-	c.apply.tooltipText=function() return item.corrupted and (taintedQualityReason or "Sample a tainted quality roll. The 1-20% range and odds are estimates.") or info.available and "Use "..info.resource.." to add 1% quality." or "Ordinary quality currency cannot exceed 20%." end
+	c.apply.tooltipText=function() return not info.qualitySupported and "Jewellery quality requires a catalyst; catalyst crafting is not modeled here." or item.corrupted and (taintedQualityReason or "Sample a tainted quality roll. The 1-20% range and odds are estimates.") or info.available and "Use "..info.resource.." to add 1% quality." or "Ordinary quality currency cannot exceed 20%." end
 	button("qualityPlan",198,"Plan quality",function()
 		local controls={};local qw,qh=480,310
 		ui.description(controls,"help",16,25,qw-32,50,{"Save a target without rolling the item.","Tainted quality probabilities are estimates."},14)
@@ -640,7 +640,7 @@ function M.Open(build,project,layout,snapshot)
 		return path and artCache[path] or nil
 	end
 	updateIcons=function()
-		c.apply.planningIcon=icon("quality")
+		c.apply.planningIcon=info.qualitySupported and icon("quality") or nil
 		c.omenJeweller.planningIcon=icon("omen_jeweller");c.omen.planningIcon=icon("omen_connections");c.benchLink.planningIcon=icon("fusing");c.white.planningIcon=icon("socket_white_bench");c.socketCount.planningIcon=icon("jeweller")
 	end
 	local currency=new("Control"):Control(ui.anchor,{16,454,42,42});c.currency=currency
@@ -666,7 +666,7 @@ function M.Open(build,project,layout,snapshot)
 		elseif method=="tainted_chromatic" then lines={"1 Tainted Chromatic Orb","Sampled preview"}
 		elseif method=="beast_max_links" then lines={"Black Morrigan + Sand Spitter","Preview only"}
 		elseif method=="quality" then lines={"1 "..info.resource,"Preview only"}
-		else method="quality";lines={"Preview only","No currency is spent."} end
+		else method=info.qualitySupported and "quality" or "divine";lines={"Preview only","No currency is spent."} end
 		art=icon(method=="socket_bench" and "fusing" or method);c.currencyNote.list=ui.rows(lines,218,14)
 	end
 	c.currency.shown=function() return not guideNeedsReview() end
