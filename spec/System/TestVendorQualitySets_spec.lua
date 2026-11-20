@@ -15,6 +15,16 @@ describe("Quality vendor review",function()
 		assert.has_error(function() vendor.parse(item("Wands","Normal","Driftwood Wand",0)) end)
 		assert.has_error(function() vendor.parse(item("Wands","Normal","Driftwood Wand",10).."\nQuality: +15%") end)
 		assert.has_error(function() vendor.review({[2]=item("Wands","Normal","Driftwood Wand",20)}) end)
+		assert.has_error(function() vendor.parse("Item Class: Wands\nRarity: Gem\nDriftwood Wand\nQuality: +20%") end)
+		assert.has_error(function() vendor.parse("Item Class: Skill Gems\nRarity: Normal\nArc\nQuality: +20%") end)
+	end)
+	it("separates flask and tincture groups from gems and handles 20% gems",function()
+		local gem=function(name,q) return "Item Class: Skill Gems\nRarity: Gem\n"..name.."\n--------\nQuality: +"..q.."%" end
+		local copies={item("Life Flasks","Normal","Small Life Flask",20),item("Life Flasks","Magic","Small Life Flask",18),item("Tinctures","Magic","Prismatic Tincture",12),item("Utility Flasks","Magic","Quicksilver Flask",10),gem("Arc",20),gem("Frostbolt",18),gem("Fireball",13),gem("Spark",9),gem("Ice Nova",21)}
+		local review=vendor.review(copies);local flasks,gems=review.categories[3],review.categories[4]
+		assert.equal(2,#flasks.groups);assert.equal("normal",flasks.groups[1].singleKind);assert.equal(40,flasks.groups[2].quality)
+		assert.equal(2,#gems.groups);assert.equal("gem",gems.groups[1].singleKind);assert.equal(20,gems.groups[1].quality);assert.equal(1,#gems.leftover)
+		assert.is_true(flasks.optimal);assert.is_false(gems.optimal);assert.is_true(gems.eligibilityUncertain)
 	end)
 	it("does not turn an 80% total into two offers without two valid groups",function()
 		local copies={};for _,quality in ipairs({19,13,15,9,17,7}) do copies[#copies+1]=item("Wands","Magic","Driftwood Wand",quality) end

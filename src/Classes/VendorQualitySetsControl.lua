@@ -6,7 +6,7 @@ function M.Open(build)
 	build.planningVendorQualityItems=build.planningVendorQualityItems or {}
 	local items=build.planningVendorQualityItems;local bytes=0;for _,raw in ipairs(items) do bytes=bytes+#raw end
 	local c={};local w,h=math.min(880,main.screenW-40),math.min(580,main.screenH-48);local left=math.floor(w*0.49);local selected
-	ui.description(c,"intro",16,28,w-32,64,{"Paste quality weapons, armour or shields to make possible vendor groups.","Counts marked maximum are proven for these values; check the actual vendor offer."},14)
+	ui.description(c,"intro",16,28,w-32,64,{"Paste quality equipment, flasks, tinctures or gems to make possible vendor groups.","Counts marked maximum are proven for these values; check the actual vendor offer."},14)
 	c.entries=new("TextListControl"):TextListControl(ui.anchor,{16,106,left-24,h-210},{{x=8},{x=math.floor(left*0.68)}},{})
 	c.details=new("TextListControl"):TextListControl(ui.anchor,{left+8,106,w-left-24,h-210},nil,{})
 	c.status=new("LabelControl"):LabelControl(ui.anchor,{16,h-94,0,14},"^7No items pasted")
@@ -19,14 +19,15 @@ function M.Open(build)
 		c.entries.list=rows;local lines={}
 		for _,category in ipairs(review.categories) do
 			lines[#lines+1]=category.name.." - "..category.reward..": "..#category.groups..(category.optimal and " maximum" or " suggested")
+			if category.eligibilityUncertain then lines[#lines+1]="  Single-gem offers above 20% are unverified." end
 			for index,group in ipairs(category.groups) do
 				local ids={};for _,item in ipairs(group.items) do ids[#ids+1]="#"..item.index end
-				lines[#lines+1]="  "..index..". "..table.concat(ids,", ").." ("..group.quality.."%"..(group.single and ", normal item" or "")..")"
+				lines[#lines+1]="  "..index..". "..table.concat(ids,", ").." ("..group.quality.."%"..(group.single and (group.singleKind=="gem" and ", gem" or ", normal item") or "")..")"
 			end
 			if #category.leftover>0 then local ids={};for _,item in ipairs(category.leftover) do ids[#ids+1]="#"..item.index end;lines[#lines+1]="  Remaining: "..table.concat(ids,", ").." ("..category.leftoverQuality.."%)" end
 		end
 		if #items==0 then lines[#lines+1]="Paste a copied item to start." end
-		local proven=review.categories[1].optimal and review.categories[2].optimal
+		local proven=true;for _,category in ipairs(review.categories) do if not category.optimal then proven=false;break end end
 		c.details.list=ui.rows(lines,w-left-42,14);c.status.label="^7"..review.totalItems.." pasted item"..(review.totalItems==1 and "" or "s")..(proven and " | Maximum group counts" or " | Some groups are suggestions")
 	end
 	c.entries.onClick=function(row) local index=row and row.line and row.line.itemIndex;if index then selected=index;refresh() end end

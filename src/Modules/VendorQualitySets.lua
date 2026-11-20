@@ -56,10 +56,12 @@ function M.parse(raw)
 	local lines={};for line in (raw.."\n"):gmatch("([^\n]*)\n") do line=clean(line);if line~="" then lines[#lines+1]=line end end
 	local class=lines[1] and lines[1]:match("^Item Class:%s*(.+)$")
 	local kind=require("Modules.LootFilterCampaign").qualityCategory(class)
-	assert(kind,"Copy a weapon, armour or shield with its item class")
+	local flaskClasses={ ["Life Flasks"]=true,["Mana Flasks"]=true,["Hybrid Flasks"]=true,["Utility Flasks"]=true,["Critical Utility Flasks"]=true,["Tinctures"]=true }
+	local category=kind=="Quality weapon" and "Weapons" or kind=="Quality armour" and "Armour" or flaskClasses[class] and "Flasks and tinctures" or (class=="Skill Gems" or class=="Support Gems") and "Gems"
+	assert(category,"Copy a weapon, armour, flask, tincture or gem with its item class")
 	local rarity=lines[2] and lines[2]:match("^Rarity:%s*(%a+)$")
-	assert(rarity and ({Normal=true,Magic=true,Rare=true,Unique=true})[rarity],"The copied item needs a supported rarity")
-	local base=lines[rarity=="Normal" and 3 or 4]
+	assert(category=="Gems" and rarity=="Gem" or category~="Gems" and rarity and ({Normal=true,Magic=true,Rare=true,Unique=true})[rarity],"The copied item needs a supported rarity")
+	local base=lines[(rarity=="Normal" or rarity=="Gem") and 3 or 4]
 	assert(base and base~="--------" and #base<=160 and not base:find("[%c%^]"),"The copied item needs a visible base type")
 	local quality
 	for _,line in ipairs(lines) do
@@ -67,13 +69,13 @@ function M.parse(raw)
 		if value then assert(not quality,"Copied item has multiple quality values");quality=tonumber(value) end
 	end
 	assert(quality and quality>=1 and quality<=100,"The copied item needs quality between 1% and 100%")
-	return {base=base,class=class,rarity=rarity,quality=quality,category=kind=="Quality weapon" and "Weapons" or "Armour"}
+	return {base=base,class=class,rarity=rarity,quality=quality,category=category}
 end
 function M.review(items)
 	assert(type(items)=="table","Supply copied items")
 	for index in pairs(items) do assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=#items,"Copied items must be an array") end
-	local categories={{name="Weapons",reward="Blacksmith's Whetstone",items={},groups={},leftover={}},{name="Armour",reward="Armourer's Scrap",items={},groups={},leftover={}}}
-	local byName={Weapons=categories[1],Armour=categories[2]};local bytes=0
+	local categories={{name="Weapons",reward="Blacksmith's Whetstone",items={},groups={},leftover={}},{name="Armour",reward="Armourer's Scrap",items={},groups={},leftover={}},{name="Flasks and tinctures",reward="Glassblower's Bauble",items={},groups={},leftover={}},{name="Gems",reward="Gemcutter's Prism",items={},groups={},leftover={}}}
+	local byName={};for _,category in ipairs(categories) do byName[category.name]=category end;local bytes=0
 	for index,raw in ipairs(items) do
 		assert(type(raw)=="string","Item "..index.." must be copied item text");bytes=bytes+#raw;assert(bytes<=M.maxBytes,"Copied items exceed the 4 MiB review limit")
 		local ok,item=pcall(M.parse,raw);assert(ok,"Item "..index..": "..tostring(item));item.index=index
@@ -82,14 +84,15 @@ function M.review(items)
 	for _,category in ipairs(categories) do
 		local rest={}
 		for _,item in ipairs(category.items) do
-			if item.rarity=="Normal" and item.quality>=20 then category.groups[#category.groups+1]={items={item},quality=item.quality,single=true}
+			if category.name=="Gems" and item.quality>20 then category.eligibilityUncertain=true end
+			if item.rarity=="Normal" and item.quality>=20 or category.name=="Gems" and item.quality==20 then category.groups[#category.groups+1]={items={item},quality=item.quality,single=true,singleKind=category.name=="Gems" and "gem" or "normal"}
 			else rest[#rest+1]=item end
 		end
 		table.sort(rest,function(a,b) if a.quality~=b.quality then return a.quality>b.quality end return a.index<b.index end)
 		local groups,leftover,leftoverQuality,optimal=bestGroups(rest)
 		for _,group in ipairs(groups) do category.groups[#category.groups+1]=group end
-		category.leftover=leftover;category.leftoverQuality=leftoverQuality;category.optimal=optimal
+		category.leftover=leftover;category.leftoverQuality=leftoverQuality;category.optimal=optimal and not category.eligibilityUncertain
 	end
-	return {categories=categories,totalItems=#items,note="Optimal counts are proven for the supplied quality values when marked; otherwise groups are heuristic. Each paste must be a different item. Check eligibility and the actual vendor offer; this does not read your stash."}
+	return {categories=categories,totalItems=#items,note="Optimal counts are proven for the modeled recipe and supplied quality values when marked; otherwise groups are suggestions. Single-item offers for gems above 20% are unverified. Each paste must be a different item. Check eligibility and the actual vendor offer; this does not read your stash."}
 end
 return M
