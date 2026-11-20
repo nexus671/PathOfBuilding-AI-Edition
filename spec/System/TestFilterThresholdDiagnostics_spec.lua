@@ -177,4 +177,22 @@ describe("Filter threshold conflict diagnostics",function()
    end end
   end end
  end)
+ it("combines exact base lists with full numeric ranges without inventing conflicts",function()
+  local first='Show\n BaseType == "Iron Hat" "Wool Shoes"\n ItemLevel >= 60\n ItemLevel < 80'
+  local later='Hide\n BaseType == "Iron Hat"\n ItemLevel >= 70\n ItemLevel <= 75'
+  assert.equal(1,#diagnostics.shadowing(parser.parse(first..'\n'..later)))
+  assert.equal(1,#diagnostics.shadowing(parser.parse(first..'\nHide\n BaseType == "Iron Hat"\n ItemLevel == 70')))
+  assert.equal(0,#diagnostics.shadowing(parser.parse(first..'\n'..later:gsub('<= 75','<= 80'))))
+  assert.equal(0,#diagnostics.shadowing(parser.parse(first..'\n'..later:gsub('"Iron Hat"','"Leather Cap"'))))
+  assert.equal(0,#diagnostics.shadowing(parser.parse(first..'\n Continue\n'..later)))
+  local ranges={'ItemLevel > 2','ItemLevel >= 2','ItemLevel < 4','ItemLevel <= 4','ItemLevel == 3','ItemLevel >= 2\n ItemLevel <= 4','ItemLevel > 2\n ItemLevel < 4'}
+  local lists={'"Iron Hat"','"Wool Shoes"','"Iron Hat" "Wool Shoes"','"Leather Cap"'}
+  for _,a in ipairs(ranges) do for _,b in ipairs(ranges) do for _,x in ipairs(lists) do for _,y in ipairs(lists) do
+   local parsed=parser.parse('Show\n BaseType == '..x..'\n '..a..'\nHide\n BaseType == '..y..'\n '..b)
+   if #diagnostics.shadowing(parsed)>0 then for _,base in ipairs({'Iron Hat','Wool Shoes','Leather Cap'}) do for _,level in ipairs({0,2,2.5,3,3.5,4,5}) do
+    local function matches(rule) for _,condition in ipairs(rule.conditions) do if not parser.condition(condition,{BaseType=base,ItemLevel=level}) then return false end end;return true end
+    assert.is_false(matches(parsed.rules[2]) and not matches(parsed.rules[1]),x..' / '..y..' / '..a..' / '..b)
+   end end end
+  end end end end
+ end)
 end)
