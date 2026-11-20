@@ -110,6 +110,16 @@ describe("Build-owned loot filters",function()
 		assert.equal("unknown",test("SocketGroup 0",{}).status)
 		assert.equal("Hide",test("Sockets R",{Sockets=0}).action)
 	end)
+	it("rejects zero linked sockets when the sample has sockets",function()
+		local function test(condition,item) return parser.simulate(parser.parse("Show\n "..condition.."\nHide"),item) end
+		for _,item in ipairs({{Sockets=2,LinkedSockets=0},{SocketColours="R-G",LinkedSockets=0},{SocketGroup="R-G",LinkedSockets=0}}) do
+			for _,condition in ipairs({"Sockets >= 1","SocketGroup RG","LinkedSockets = 0"}) do
+				local result=test(condition,item);assert.equal("unknown",result.status);assert.matches("Zero linked sockets",result.reasons[1],1,true)
+			end
+		end
+		assert.equal("Show",test("LinkedSockets = 0",{Sockets=0,LinkedSockets=0}).action)
+		assert.equal("Show",test("LinkedSockets = 0",{LinkedSockets=0}).action)
+	end)
 	it("uses complete socket colours when the separate count is omitted",function()
 		local function test(condition,item) return parser.simulate(parser.parse("Show\n "..condition.."\nHide"),item) end
 		local item={SocketColours="R-G B A"}

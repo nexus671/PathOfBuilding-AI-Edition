@@ -145,6 +145,9 @@ local function socketConsistency(item)
 	end
 	local linked=tonumber(item.LinkedSockets)
 	if linked and na and linked>na then return "Linked socket count exceeds total socket colours" end
+	if linked==0 and ((count and count>0) or (na and na>0) or (nb and nb>0)) then
+		return "Zero linked sockets conflicts with sockets on the item"
+	end
 end
 local function influenceState(item)
 	local value=item.HasInfluence;if value==nil then return nil end
