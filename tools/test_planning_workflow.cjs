@@ -57,6 +57,10 @@ async function main(){
   assert.equal(gildedBaseReview.crafting.nativeEngine.initialState.baseImplicitRetained,true);
   const gildedBaseLocus=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedBaseRaw,initialState:gildedBase.nativeCrafting.state,action:{method:'locus'},seed:1},'crafted');
   assert.equal(gildedBaseLocus.nativeCrafting.state.twiceCorrupted,true);assert.equal(gildedBaseLocus.nativeCrafting.state.corruptedImplicits.length,2);assert.equal(gildedBaseLocus.nativeCrafting.state.baseImplicitRetained,undefined);
+  const gilded330Raw='Rarity: NORMAL\nAmethyst Ring\nItem Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20\nImplicits: 2\n+27% to Chaos Resistance\nItem sells for much more to vendors';
+  const gilded330=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gilded330Raw,action:{method:'vaal'},seed:1},'crafted');assert.equal(gilded330.nativeCrafting.state.baseImplicitRetained,true);assert.match(gilded330.nativeCrafting.itemText,/retained_base_implicit/);
+  const gilded330Review=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:gilded330Raw,initialState:gilded330.nativeCrafting.state,limit:5},'inspected');assert.equal(gilded330Review.crafting.nativeEngine.initialState.baseImplicitRetained,true);
+  const gilded330Locus=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gilded330Raw,initialState:gilded330.nativeCrafting.state,action:{method:'locus'},seed:1},'crafted');assert.equal(gilded330Locus.nativeCrafting.state.twiceCorrupted,true);assert.equal(gilded330Locus.nativeCrafting.state.baseImplicitRetained,undefined);
   const gildedSynthRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 4\n+10 to Strength\n+20 to Dexterity\n+12 to Intelligence\nItem sells for much more to vendors\nSynthesised Item';
   const gildedSynth=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedSynthRaw,action:{method:'vaal'},seed:1},'crafted');
   assert.equal(gildedSynth.nativeCrafting.state.gildedCorruptionReplaced,true);assert.equal(gildedSynth.nativeCrafting.state.synthRetained.length,3);

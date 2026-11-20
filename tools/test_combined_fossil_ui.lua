@@ -9,4 +9,16 @@ return function(build,ui,frame)
 	ui:click("keepWorking");local saved;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==project.id then saved=entry end end
 	assert(saved and saved.run.state.fossilImplicitReplacement and saved.run.state.vendorImplicit and #saved.run.state.corruptedImplicits==1,"Combined fossil state was not kept")
 	ui:click("close")
+	local ring="Rarity: NORMAL\nAmethyst Ring\nItem Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20\nImplicits: 2\n+27% to Chaos Resistance\nItem sells for much more to vendors"
+	local retainedProject={id="gilded-base-330-ui",title="Gilded ring",slot="Ring 1",startingItem=ring,goals={},steps={}}
+	local retained=require("Classes.CraftingSimulatorControl").Open(build,retainedProject)
+	ui:click("tab_settings");ui:text("seed","1");ui:click("tab_craft");ui:click("currency_vaal");ui:click("item")
+	assert(retained.intro.label:find("Applied",1,true),"Gilded corruption did not apply");frame("crafting-gilded-330-retained")
+	ui:click("keepWorking");local retainedSaved;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==retainedProject.id then retainedSaved=entry end end
+	assert(retainedSaved and retainedSaved.run.state.baseImplicitRetained,"Retained 3.30 implicit was not saved")
+	local sim=require("Modules.CraftingSimulator");local model=sim.model(ring);assert(sim.toItem(model,retainedSaved.run.state).baseModList:Sum("BASE",nil,"ChaosResist")==27,"Catalyst-scaled retained value changed")
+	ui:click("close");retained=require("Classes.CraftingSimulatorControl").Open(build,retainedSaved)
+	local text="";for _,row in ipairs(retained.itemMods.list) do text=text..StripEscapes(row[1] or "").." " end;assert(text:find("Chaos Resistance",1,true),"Reopened craft lost its retained implicit")
+	frame("crafting-gilded-330-reopened");ui:click("close")
+
 end

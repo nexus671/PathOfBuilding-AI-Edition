@@ -176,7 +176,7 @@ function C.extend(M,A,api)
 			return
 		end
 		local ordinary=model.item.implicitModLines or {}
-		if not state.corrupted and previousCount==0 and #chosen==1 and state.vendorImplicit and not model.item.synthesised and not state.implicits and #ordinary==1 and not ordinary[1].exarch and not ordinary[1].eater and not ordinary[1].corrupted and not model.blessed330 and not model.blessed330Unresolved and not model.baseImplicitUnresolved and model.baseImplicitTemplates and #model.baseImplicitTemplates==1 and type(model.item.base.implicit)=="string" and not model.item.base.implicit:find("\n",1,true) then
+		if not state.corrupted and previousCount==0 and #chosen==1 and state.vendorImplicit and not model.item.synthesised and not state.implicits and #ordinary==1 and not ordinary[1].exarch and not ordinary[1].eater and not ordinary[1].corrupted and not model.blessed330Unresolved and not model.baseImplicitUnresolved and (model.blessed330 or model.baseImplicitTemplates and #model.baseImplicitTemplates==1) and type(model.item.base.implicit)=="string" and not model.item.base.implicit:find("\n",1,true) then
 			if random()<0.5 then
 				state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil
 			else state.vendorImplicit=nil;state.baseImplicitRetained=true end
@@ -254,7 +254,7 @@ function C.extend(M,A,api)
 		end
 		assert(state.twiceCorrupted==nil or type(state.twiceCorrupted)=="boolean","Invalid twice-corruption marker")
 		if state.baseImplicitRetained~=nil then
-			assert(state.baseImplicitRetained==true and state.corrupted and state.corruptedImplicits and #state.corruptedImplicits==1 and not state.vendorImplicit and not state.implicits and not model.item.synthesised and (not model.item.corrupted and model.baseImplicitTemplates or model.initial.baseImplicitRetained),"Invalid retained ordinary base implicit")
+			assert(state.baseImplicitRetained==true and state.corrupted and state.corruptedImplicits and #state.corruptedImplicits==1 and not state.vendorImplicit and not state.implicits and not model.item.synthesised and (not model.item.corrupted and (model.baseImplicitTemplates or model.blessed330) or model.initial.baseImplicitRetained),"Invalid retained ordinary base implicit")
 		end
 		assert(state.fossilImplicitReplacement==nil or state.fossilImplicitReplacement==true and not state.destroyed and state.corrupted and state.corruptedImplicits and model.item.synthesised and model.synthesisGroups and state.synthExhausted and not state.synthRetained,"Invalid fossil implicit replacement")
 		assert(state.gildedCorruptionReplaced==nil or state.gildedCorruptionReplaced==true and state.corrupted and state.corruptedImplicits and not state.vendorImplicit and model.item.synthesised and (not model.item.corrupted or model.initial.vendorImplicit) and model.synthesisGroups,"Invalid Gilded corruption replacement")

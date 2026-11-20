@@ -230,6 +230,34 @@ describe("Imported corruption identities",function()
 		local original=sim.model(before).item.implicitModLines[1];local retained=sim.model(after).item.implicitModLines[1]
 		assert.equal(itemLib.applyRange(original.line,original.range or 0.5),itemLib.applyRange(retained.line,retained.range or 0.5))
 	end)
+	it("retains old and current 3.30 base implicits when Gilded absorbs corruption",function()
+		local cases={{"Amethyst Ring","+23% to Chaos Resistance"},{"Amethyst Ring","+13% to Chaos Resistance"},{"Crystal Belt","+80 to maximum Energy Shield"},{"Crystal Belt","+95 to maximum Energy Shield"},{"Two-Toned Boots (Armour/Evasion)","+10% to Fire and Cold Resistances"},{"Two-Toned Boots (Armour/Evasion)","+18% to Fire and Cold Resistances"}}
+		for _,pair in ipairs(cases) do
+			local source="Rarity: NORMAL\n"..pair[1].."\nItem Level: 86\nImplicits: 2\n"..pair[2].."\nItem sells for much more to vendors"
+			local model=sim.model(source);assert.is_truthy(model.blessed330)
+			for _,draw in ipairs({0,0.999}) do
+				local state=copyTable(model.initial);sim.rollCorrupted(model,state,function() return draw end);local saved=require("Modules.CraftingCheckpoint").validate(source,require("Modules.CraftingInventory").run(state)).state
+				local text=sim.itemText(model,saved);local reopened=sim.model(text);assert.same(saved.corruptedImplicits,reopened.initial.corruptedImplicits)
+				if draw==0 then assert.equal("unknown",state.vendorImplicit);assert.is_nil(state.baseImplicitRetained);assert.is_nil(text:find(pair[2],1,true))
+				else
+					assert.is_nil(state.vendorImplicit);assert.is_true(state.baseImplicitRetained);assert.is_true(reopened.initial.baseImplicitRetained);assert.is_truthy(text:find(pair[2],1,true))
+					local twice=sim.action(reopened,reopened.initial,{method="locus"},function() return 0 end);assert.is_true(twice.twiceCorrupted);assert.is_nil(twice.baseImplicitRetained);assert.equal(2,#twice.corruptedImplicits);sim.validateState(reopened,twice)
+				end
+			end
+		end
+	end)
+	it("retains catalyst scaling and Blessed rolls on 3.30 base implicits",function()
+		for _,displayed in ipairs({"+27% to Chaos Resistance","+16% to Chaos Resistance"}) do
+			local source="Rarity: NORMAL\nAmethyst Ring\nItem Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20\nImplicits: 2\n"..displayed.."\nItem sells for much more to vendors"
+			local model=sim.model(source);local state=copyTable(model.initial);sim.rollCorrupted(model,state,function() return 0.999 end)
+			local output=sim.itemText(model,sim.validateState(model,state));local reopened=sim.model(output);assert.is_true(reopened.initial.baseImplicitRetained)
+			assert.equal(tonumber(displayed:match("%d+")),sim.toItem(reopened,reopened.initial).baseModList:Sum("BASE",nil,"ChaosResist"))
+			local blessed=sim.perform(source,{method="blessed"},17).state;local expected=sim.toItem(model,blessed).baseModList:Sum("BASE",nil,"ChaosResist")
+			sim.rollCorrupted(model,blessed,function() return 0.999 end);local after=sim.model(sim.itemText(model,sim.validateState(model,blessed)))
+			assert.is_true(after.initial.baseImplicitRetained);assert.equal(expected,sim.toItem(after,after.initial).baseModList:Sum("BASE",nil,"ChaosResist"))
+			local forged=output:gsub("retained_base_implicit}%+%d+%%","retained_base_implicit}+99%%");assert.is_truthy(sim.model(forged).unresolvedCorruption)
+		end
+	end)
 	it("models the second corruption replacing a remaining Gilded or synthesised implicit",function()
 		local lines={"+10 to Strength","+20 to Dexterity","+12 to Intelligence"}
 		for count=1,3 do

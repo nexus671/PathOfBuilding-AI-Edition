@@ -14,7 +14,11 @@ function I.resolve(M,model,metadata)
 	end end
 	if #retainedBase>0 then
 		if item.synthesised or #retainedBase~=1 or type(item.base.implicit)~="string" or item.base.implicit:find("\n",1,true) then return nil,"unresolved" end
-		if not infer(item.base.implicit,retainedBase[1].text) then return nil,"unresolved" end
+		local valid=infer(item.base.implicit,retainedBase[1].text)
+		if not valid and item.base.blessed330 then
+			valid=infer(item.base.blessed330.old,retainedBase[1].text) or infer(item.base.blessed330.current,retainedBase[1].text)
+		end
+		if not valid then return nil,"unresolved" end
 	end
 	if #rows==0 then return nil,#retainedBase>0 and "unresolved" or nil end
 	-- Synthesised implicits can resemble corruption modifiers. Only interpret
