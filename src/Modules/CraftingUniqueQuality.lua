@@ -187,7 +187,8 @@ end
 -- Numeric copies are matched to single integer ranges before rerolling.
 local function divinePlanForReference(raw,item,reference)
 	local expected={};for _,line in ipairs(reference.explicitModLines or {}) do if reference:CheckModLineVariant(line) then
-		if reference.catalyst and (not line.modTags or #line.modTags==0 or reference:GetModLineValueScalar(line,"explicit")~=1) then return nil,"Catalyst-scaled or untagged explicit modifiers need a separate Divine model" end
+		if reference.catalyst and (not line.modTags or #line.modTags==0) then return nil,"Catalyst-scaled or untagged explicit modifiers need a separate Divine model" end
+		local scalar=reference.catalyst and reference:GetModLineValueScalar(line,"explicit") or 1
 		local text=line.line;local ranges,parts={},{};local pos=1
 		while true do
 			local first,last,low,high=text:find("%((%-?%d+)%-(%-?%d+)%)",pos);if not first then break end
@@ -195,6 +196,14 @@ local function divinePlanForReference(raw,item,reference)
 			parts[#parts+1]=text:sub(pos,first-1);ranges[#ranges+1]={low=low,high=high};pos=last+1
 		end
 		parts[#parts+1]=text:sub(pos)
+		local profile,fixed
+		if scalar~=1 then
+			if #ranges==0 then fixed=itemLib.applyRange(text,0,scalar)
+			elseif #ranges==1 then
+				profile=require("Modules.CraftingUniqueCatalyst").profile(text,ranges[1].low,ranges[1].high,scalar)
+				if not profile then return nil,"This catalyst-scaled modifier needs a separate Divine model" end
+			else return nil,"Catalyst-scaled multi-range modifiers need a separate Divine model" end
+		end
 		local _,allRanges=text:gsub("%(%-?[%d%.]+%-%-?[%d%.]+%)","")
 		if allRanges~=#ranges or #ranges>6 then return nil,"Fractional or complex ranges need a separate Divine model" end
 		-- Advanced copied values cannot safely encode an external sign combined
@@ -207,7 +216,7 @@ local function divinePlanForReference(raw,item,reference)
 			pattern[#pattern+1]=part:gsub("([^%w])","%%%1");if optionalPlus then pattern[#pattern+1]="%+?" end
 			if i<=#ranges then pattern[#pattern+1]="(%-?%d+)" end
 		end
-		pattern[#pattern+1]="$";expected[#expected+1]={line=text,ranges=ranges,pattern=table.concat(pattern)}
+		pattern[#pattern+1]="$";expected[#expected+1]={line=text,ranges=ranges,pattern=table.concat(pattern),scalar=scalar,profile=profile,fixed=fixed,tags=line.modTags}
 	end end
 	local rows,seen={},{}
 	for _,line in ipairs(item.explicitModLines or {}) do
@@ -215,13 +224,26 @@ local function divinePlanForReference(raw,item,reference)
 		local text=line.line;local match,matchedValues
 		for _,candidate in ipairs(expected) do if not candidate.used then
 			local matches=text==candidate.line;local numbers
-			if not matches and #candidate.ranges>0 then
+			if candidate.scalar~=1 then
+				local effective=text
+				if line.modTags and #line.modTags>0 and (not candidate.profile or text~=candidate.line) then effective=itemLib.applyRange(text,1,candidate.scalar) end
+				if candidate.profile then
+					local displayed=candidate.profile.lookup[effective]
+					if displayed~=nil then matches=true;numbers={displayed}
+					elseif text==candidate.line and line.modTags and tableDeepEquals(line.modTags,candidate.tags) and line.valueScalar==candidate.scalar then
+						local rendered=itemLib.applyRange(candidate.line,line.range or 0.5,candidate.scalar)
+						displayed=candidate.profile.lookup[rendered];matches=displayed~=nil;if matches then numbers={displayed} end
+					else matches=false end
+				else matches=effective==candidate.fixed end
+			end
+			if not matches and candidate.scalar==1 and #candidate.ranges>0 then
 				local captures={text:match(candidate.pattern)}
 				if #captures==#candidate.ranges then
 					numbers={};matches=true
 					for i,value in ipairs(captures) do local number=tonumber(value);local range=candidate.ranges[i];if not number or number<range.low or number>range.high then matches=false;break end;numbers[i]=number end
 				end
 			end
+			if matches and line.modTags and #line.modTags>0 and not tableDeepEquals(line.modTags,candidate.tags or {}) then matches=false end
 			if matches then if match then return nil,"This modifier matches multiple bundled ranges" end;match=candidate;matchedValues=numbers end
 		end end
 		if not match then return nil,"Use complete modifiers matching the bundled unique template" end
@@ -229,7 +251,7 @@ local function divinePlanForReference(raw,item,reference)
 		if #match.ranges>0 then
 			local source,count=nil,0
 			for rawLine in raw:gmatch("[^\r\n]+") do
-				local plain=rawLine:gsub("^%{range:[^}]+%}","")
+				local plain=rawLine:gsub("^%{range:[^}]+%}",""):gsub("^%{tags:[^}]+%}","")
 				local advanced=plain:gsub("(%-?%d+)(%(%-?%d+%-%-?%d+%))","%2")
 				local advancedValues=plain:gsub("(%-?%d+)(%(%-?%d+%-%-?%d+%))","%1")
 				if plain==text or line.rangeFromValue and text==match.line and advanced==match.line or advanced==match.line and advancedValues==text then source=plain;count=count+1 end
@@ -237,11 +259,11 @@ local function divinePlanForReference(raw,item,reference)
 			if count~=1 then return nil,"The original modifier line cannot be identified safely" end
 			if seen[source] then return nil,"Repeated modifier lines need a separate Divine model" end
 			local current=matchedValues
-			if text==match.line then
+			if text==match.line and not match.profile then
 				local range=line.range or 0.5;if type(range)~="number" or range~=range or range<0 or range>1 then return nil,"The current modifier roll is outside its supported range" end
 				current={};for i,part in ipairs(match.ranges) do current[i]=math.floor(part.low+range*(part.high-part.low)+0.5) end
 			end
-			seen[source]=true;rows[#rows+1]={input=source,line=match.line,ranges=match.ranges,current=current}
+			seen[source]=true;rows[#rows+1]={input=source,line=match.line,ranges=match.ranges,current=current,profile=match.profile,tags=match.profile and match.tags or nil}
 		end
 	end
 	for _,row in ipairs(expected) do if not row.used then return nil,"Use complete modifiers matching the bundled unique template" end end
@@ -291,7 +313,7 @@ end
 function M.divineReason(raw) local _,reason=divinePlan(raw);return reason end
 function M.divineOptions(raw)
 	local plan,reason=divinePlan(raw);if not plan then return nil,reason end
-	local result={};for _,row in ipairs(plan.rows) do for index,part in ipairs(row.ranges) do result[#result+1]={line=row.line,component=index,components=#row.ranges,min=part.low,max=part.high,current=row.current[index]} end end
+	local result={};for _,row in ipairs(plan.rows) do for index,part in ipairs(row.ranges) do result[#result+1]={line=row.line,component=index,components=#row.ranges,min=row.profile and row.profile.min or part.low,max=row.profile and row.profile.max or part.high,current=row.current[index]} end end
 	return result
 end
 function M.divine(raw,seed)
@@ -301,7 +323,7 @@ function M.divine(raw,seed)
 	for _,row in ipairs(plan.rows) do
 		if #row.ranges==1 then
 			local part=row.ranges[1];local value=part.low+math.floor(random()*(part.high-part.low+1));local range=(value-part.low)/(part.high-part.low)
-			replacements[row.input]="{range:"..string.format("%.6f",range).."}"..row.line
+			replacements[row.input]="{range:"..string.format("%.6f",range).."}"..(row.tags and "{tags:"..table.concat(row.tags,",").."}" or "")..row.line
 		else
 			local index=0;replacements[row.input]=row.line:gsub("([%+%-]?)%((%-?%d+)%-(%-?%d+)%)",function(sign,low,high)
 				index=index+1;local part=row.ranges[index];local value=part.low+math.floor(random()*(part.high-part.low+1))
@@ -312,15 +334,15 @@ function M.divine(raw,seed)
 	end
 	local changed=0
 	local output=raw:gsub("[^\r\n]+",function(line)
-		local plain=line:gsub("^%{range:[^}]+%}","");local replacement=replacements[plain]
+		local plain=line:gsub("^%{range:[^}]+%}",""):gsub("^%{tags:[^}]+%}","");local replacement=replacements[plain]
 		if replacement then changed=changed+1;return replacement end
 		return line
 	end)
 	assert(changed==#plan.rows,"The unique modifier lines could not be updated safely")
 	output=preserveArmourBaseline(raw,output,plan.item)
 	local after=M.inspect(output);assert(after.title==plan.item.title and after.baseName==plan.item.baseName and not after.corrupted,"Unique item did not round-trip after Divine crafting")
-	local catalystUnaffected=plan.item.catalyst and (plan.item.catalystQuality or 20)>0 or nil
-	return {itemText=output,components={divine=1},catalystUnaffected=catalystUnaffected}
+	local catalystModeled=plan.item.catalyst and (plan.item.catalystQuality or 20)>0 or nil
+	return {itemText=output,components={divine=1},catalystModeled=catalystModeled}
 end
 
 -- Known unique restrictions still apply when a saved item has partial text.
@@ -600,7 +622,7 @@ function M.catalog(raw,query,limit)
 		definitions[#definitions+1]={method="socket_bench",guideMethod="socket_count_bench",guideCount=count,request=request,label="Bench: "..count.." sockets",reason=M.socketCountReason(raw,count),components=sim.components(request,{sockets=item.sockets,corrupted=item.corrupted})}
 	end
 	local result={uniqueCrafting=true,methods={},uniqueActions={},socketCrafts={},quality={value=info.quality,available=info.available,resource=info.resource},nativeStats=require("Modules.CraftingItemStats").itemValues(item),limitations={"Only the listed unique actions are modeled. Continue by passing the returned item text, not an ordinary affix state.","Socket-count previews retain existing groups, remove sockets from the end and add white unlinked sockets; position and link behavior are unverified."}}
-	if item.catalyst and info.quality>0 and not M.divineReason(raw) then result.limitations[#result.limitations+1]="Catalyst eligibility uses bundled unique modifier tags; their completeness and current game behavior are unverified." end
+	if item.catalyst and info.quality>0 and not M.divineReason(raw) then result.limitations[#result.limitations+1]="Catalyst eligibility and scaling use bundled modifier tags and PoB rounding; tag completeness and current game behavior are unverified." end
 	local seen={}
 	for _,entry in ipairs(definitions) do
 		if not seen[entry.method] then result.methods[#result.methods+1]=entry.method;seen[entry.method]=true end

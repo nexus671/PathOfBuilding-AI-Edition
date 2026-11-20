@@ -429,7 +429,11 @@ function M.Open(build,project,layout,snapshot)
 		ui.label(controls,"selectedInfo",16,250,"",14);controls.selectedInfo.label=function()
 			local selected=selection[stat()];if not selected or selected.kind~="modifier" then return "" end
 			local part=selected.components>1 and (" [part "..selected.component.."/"..selected.components.."]") or ""
-			return "^7"..ui.fit(selected.line..part.." | current roll: "..selected.current,dw-32,14)
+			return "^7"..ui.fit(selected.line..part,dw-32,14)
+		end
+		ui.label(controls,"selectedRange",16,270,"",14);controls.selectedRange.label=function()
+			local selected=selection[stat()];if not selected or selected.kind~="modifier" then return "" end
+			return "^7Displayed roll: "..selected.min.."-"..selected.max.." | current: "..selected.current
 		end
 		controls.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,dh-48,140,28},"Preview roll",function()
 			colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
@@ -455,7 +459,7 @@ function M.Open(build,project,layout,snapshot)
 		main:OpenPopup(dw,dh,"Divine Orb",controls,nil,nil,"close")
 	end)
 	c.divine.x=156;c.divine.width=130;c.divine.shown=function() return not item.corrupted end;c.divine.enabled=function() return not divineReason end
-	c.divine.tooltipText=function() return divineReason or item.catalyst and info.quality>0 and "Preview a Divine Orb roll. Catalyst eligibility uses bundled modifier tags; game behavior is unverified." or "Preview a Divine Orb roll. Modifier-value probabilities are estimated." end
+	c.divine.tooltipText=function() return divineReason or item.catalyst and info.quality>0 and "Preview a Divine Orb roll. Catalyst eligibility uses bundled modifier tags and PoB rounding; game behavior is unverified." or "Preview a Divine Orb roll. Modifier-value probabilities are estimated." end
 	button("link",236,"Bestiary link",function() local result=unique.link(raw);history[#history+1]=raw;actions[#actions+1]="beast_max_links";redo={};raw=result.itemText;refresh(true) end)
 	c.link.width=130
 	c.link.enabled=function() return not linkReason end

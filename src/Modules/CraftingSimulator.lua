@@ -1424,7 +1424,7 @@ do
 				elseif socketRoll then warnings[#warnings+1]={code="unique_socket_count_estimate",message="Sampled socket counts and tainted outcomes use estimated probabilities; server odds are unverified."}
 				elseif linkRoll then warnings[#warnings+1]={code="unique_socket_link_assumptions",message="Sampled socket links use estimated link and selection probabilities; server odds are unverified."}
 				elseif stochastic then warnings[#warnings+1]={code="unique_socket_colour_assumptions",message="Sampled socket colours use estimated colour and position probabilities; server odds are unverified."} end
-				if result.catalystUnaffected then warnings[#warnings+1]={code="unique_catalyst_tags",message="Catalyst eligibility uses bundled unique modifier tags; their completeness and current game behavior are unverified."} end
+				if result.catalystModeled then warnings[#warnings+1]={code="unique_catalyst_tags",message="Catalyst eligibility and scaling use bundled modifier tags and PoB rounding; tag completeness and current game behavior are unverified."} end
 				if socketRoll or action.method=="omen_jeweller" or action.method=="socket_bench" and not action.linked then warnings[#warnings+1]={code="unique_socket_count_assumptions",message="Socket-count previews retain existing groups, remove sockets from the end and add white unlinked sockets; position and link behavior are unverified."} end
 				return M.withTreeContext({priceKey=M.priceKey(action),itemText=result.itemText,components=result.components,dataPatch=M.dataPatch,
 					warnings=warnings,limitations=copyTable(M.limits)},treeVersion)

@@ -132,10 +132,41 @@ describe("Unique item quality",function()
 		local sim=require("Modules.CraftingSimulator");local run=sim.simulate(raw,recipe,{trials=5,maxActions=10,seed=123});assert.equal(5,run.trials)
 		local function hasWarning(warnings) for _,warning in ipairs(warnings or {}) do if warning.code=="unique_catalyst_tags" then return true end end end
 		assert.is_truthy(hasWarning(sim.perform(raw,{method="divine"},104729).warnings));assert.is_truthy(hasWarning(run.warnings))
-		assert.matches("Catalyst%-scaled",quality.divineReason(raw:gsub("Catalyst: Fertile","Catalyst: Prismatic")))
+		local invalid=raw:gsub("Catalyst: Fertile","Catalyst: Prismatic"):gsub("+25%% to Cold Resistance","+29%% to Cold Resistance")
+		assert.is_truthy(quality.divineReason(invalid))
 		for _,name in ipairs({"Dextral","Sinistral"}) do assert.matches("Catalyst%-scaled",quality.divineReason(raw:gsub("Catalyst: Fertile","Catalyst: "..name))) end
 		local unknownTags="Rarity: UNIQUE\nAndvarius\nGold Ring\nItem Level: 86\nCatalyst: Fertile\nCatalystQuality: 20\nImplicits: 1\n+10% to Item Rarity\n+10 to Dexterity\n+60% to Item Rarity\n-20% to all Elemental Resistances"
 		assert.matches("untagged",quality.divineReason(unknownTags))
+	end)
+
+	it("preserves catalyst-scaled unique rolls and plans displayed values",function()
+		local raw="Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20\nImplicits: 1\nHas 1 Socket\n+3 to Level of Socketed Curse Gems\n+30% to Cold Resistance\n+30% to Lightning Resistance\nLeft Ring Slot: Your Chilling Skitterbot's Aura applies Socketed Hex Curse instead\nRight Ring Slot: Your Shocking Skitterbot's Aura applies Socketed Hex Curse instead"
+		assert.is_nil(quality.divineReason(raw));local options=quality.divineOptions(raw);assert.equal(2,#options);assert.equal(24,options[1].min);assert.equal(36,options[1].max);assert.equal(30,options[1].current)
+		local observed={};for seed=1,30 do
+			local result=quality.divine(raw,seed*104729);assert.is_nil(quality.divineReason(result.itemText));assert.is_truthy(result.itemText:find("{tags:resistance}",1,true))
+			local item=quality.inspect(result.itemText);local after=quality.divineOptions(result.itemText)
+			assert.equal(after[1].current,item.baseModList:Sum("BASE",nil,"ColdResist"));assert.equal(after[2].current,item.baseModList:Sum("BASE",nil,"LightningResist"))
+			for index,option in ipairs(after) do
+				local mod=item.explicitModLines[index+1];local rendered=itemLib.applyRange(mod.line,mod.range,mod.valueScalar)
+				assert.is_truthy(rendered:find(tostring(option.current).."%%"));assert.is_true(option.current>=24 and option.current<=36);observed[option.current]=true
+			end
+			assert.is_truthy(quality.divine(result.itemText,seed*130363))
+		end
+		local count=0;for _ in pairs(observed) do count=count+1 end;assert.is_true(count>1)
+		local goal={uniqueModifier={line="+(20-30)% to Cold Resistance",minValue=36}};local recipe={rarity="UNIQUE",steps={{method="divine",maxAttempts=20,untilRequirements=goal}},targets={},requirements=goal}
+		local sim=require("Modules.CraftingSimulator");local run=sim.simulate(raw,recipe,{trials=5,maxActions=20,seed=123});assert.equal(5,run.trials)
+		local found=false;for _,warning in ipairs(run.warnings) do if warning.code=="unique_catalyst_tags" then found=true end end;assert.is_true(found)
+		assert.is_truthy(quality.divineReason(raw:gsub("+30%% to Cold Resistance","+29%% to Cold Resistance")))
+		local taggedNumeric=raw:gsub("+30%% to Cold Resistance","{tags:resistance}+30%% to Cold Resistance");local taggedItem=quality.inspect(taggedNumeric);local taggedOptions=quality.divineOptions(taggedNumeric)
+		assert.equal(36,taggedOptions[1].current);assert.equal(36,taggedItem.baseModList:Sum("BASE",nil,"ColdResist"));assert.is_truthy(quality.divine(taggedNumeric,104729))
+		local wrongTagged=raw:gsub("+30%% to Cold Resistance","{tags:resistance}+31%% to Cold Resistance");assert.is_truthy(quality.divineReason(wrongTagged))
+		local fixed="Rarity: UNIQUE\nNgamahu Tiki\nCoral Amulet\nItem Level: 86\nCatalyst: Tempering\nCatalystQuality: 20\nImplicits: 1\n+5 to Life gained per second\n60% increased Fire Damage\n+120 to Evasion Rating while on Low Life\n+40 to maximum Life\n+25% to Fire Resistance\nRegenerate 1% of Life per second while on Low Life"
+		assert.is_nil(quality.divineReason(fixed));assert.is_nil(quality.divineReason(fixed:gsub("+120 to Evasion Rating","{tags:defences}+100 to Evasion Rating")))
+		assert.is_truthy(quality.divineReason(fixed:gsub("+120 to Evasion Rating","{tags:defences}+120 to Evasion Rating")))
+		local forged=raw:gsub("+30%% to Cold Resistance","{tags:resource}+30%% to Cold Resistance");assert.is_truthy(quality.divineReason(forged))
+		local extraTags=raw:gsub("+30%% to Cold Resistance","{tags:resistance,resource}+30%% to Cold Resistance");assert.is_truthy(quality.divineReason(extraTags))
+		assert.is_truthy(quality.divineReason(raw:gsub("Catalyst: Prismatic","Catalyst: Dextral")))
+		local profile=require("Modules.CraftingUniqueCatalyst");assert.is_nil(profile.profile("+(0-501)% to Cold Resistance",0,501,1.2))
 	end)
 
 	it("preserves copied armour base rolls when unique stats or quality change",function()
