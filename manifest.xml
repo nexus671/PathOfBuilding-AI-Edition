@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview862" />
+	<Version number="2.68.1-ai.preview863" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1868,6 +1868,7 @@
 	<File name="Data/Global.lua" part="program" sha1="72bff7e953555cf3045880b0ff0dc0c37f43056e" />
 	<File name="Data/HeadlessImageSizes.json" part="program" sha1="0b2c9b44fa61a5c541f4465fea2828fb4f759373" />
 	<File name="Data/IncursionDropOnly.lua" part="program" sha1="1fa5c24b1bf897e781c54b3ce7a7fcd7d23fd645" />
+	<File name="Data/Genesis/3.30.0d.json" part="program" sha1="8ba49aeb742a28350e17754c302d28ec4414b776" />
 	<File name="Data/LootFilters/0.filter" part="program" sha1="95ae274d3a62374fcb0d573065586ec13990ec7a" />
 	<File name="Data/LootFilters/1.filter" part="program" sha1="57125a56ed05ed46c9df992094586a2789ff95ee" />
 	<File name="Data/LootFilters/2.filter" part="program" sha1="69556692f13bdbc29b88f2e5b6ada3fc1c7f808f" />
