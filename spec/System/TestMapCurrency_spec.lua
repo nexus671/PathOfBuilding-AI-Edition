@@ -23,7 +23,7 @@ describe("Experimental map currency",function()
 		assert.is_true(options.originator.available);assert.matches("Some random suffix",options.originator.detail)
 		local success,failure=0,0;for seed=1,30 do local ok,result=pcall(currency.perform,original,"originator",seed*104729)
 			if ok then success=success+1;assert.is_true(require("Modules.MapCraftingData").isOriginatorModifier(result.state.selected[#result.state.selected]));assert.same(before,original)
-			else failure=failure+1;assert.matches("no supported Originator replacement",result);assert.same(before,original) end
+			else failure=failure+1;assert.matches("Unsupported outcome",result);assert.same(before,original) end
 		end
 		assert.is_true(success>0);assert.is_true(failure>0)
 	end)

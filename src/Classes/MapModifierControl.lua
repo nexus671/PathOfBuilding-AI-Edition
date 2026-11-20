@@ -236,9 +236,10 @@ function M.Open(options)
 		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon="Assets/Crafting/"..(entry.id=="vaal_add" and "vaal" or entry.id)..".png",details={entry.reason or entry.detail or (entry.id=="originator" and "Removes a random suffix and samples a rare-only replacement; some outcomes and weights are unverified." or entry.id=="vaal_add" and "Conditional outcome only, not a full Vaal Orb roll; outcome odds are unknown." or "Available for this modeled map."),"Experimental map crafting; no real currency is consumed.",map.isNightmare(baseId) and "Six modifiers: exclusive prefix and suffix first, then four weighted draws; order is unverified." or "Counts, selection and independent uniform stat rolls are estimates.",observedEffects and "Observed effects are not modeled and can change results." or "Unmatched translations remain ranges; some restrictions are unverified."}} end
 		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",canChoose=function(entry) return entry.available end,choose=function(entry)
 			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
-			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,rollSeed)
+			local attemptSeed=rollSeed;rollSeed=rollSeed*16807%2147483647
+			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,attemptSeed)
 			if not ok then main:OpenMessagePopup("Currency unavailable",ui.errorText(result));return end
-			rollSeed=rollSeed*16807%2147483647;selected=result.state.selected;rolls=result.state.rolls
+			selected=result.state.selected;rolls=result.state.rolls
 			local rarityValue=result.state.corrupted and "corrupted_"..result.state.rarity or result.state.rarity
 			local clearedEstimate=result.state.corrupted and estimateSettings~=nil
 			if result.state.corrupted then estimateSettings=nil end

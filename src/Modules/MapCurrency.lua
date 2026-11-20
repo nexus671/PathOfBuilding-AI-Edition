@@ -156,7 +156,7 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
 	elseif action=="originator" then
 		local suffixes={};for index,id in ipairs(state.selected) do if map.source().mods[id].generation_type=="suffix" then suffixes[#suffixes+1]=index end end
 		local index=suffixes[math.floor(random()*#suffixes)+1];local options,total=originatorPool(state,index,checkpoint,cache)
-		assert(total>0,"This suffix removal has no supported Originator replacement; the hypothetical map was not changed")
+		assert(total>0,"Unsupported outcome; map unchanged. Try again.")
 		local removed=table.remove(state.selected,index);existing[removed]=nil;priorIds[removed]=nil
 		local target=random()*total;local picked
 		for _,entry in ipairs(options) do target=target-entry.spawnWeight;if target<0 then picked=entry.id;break end end
