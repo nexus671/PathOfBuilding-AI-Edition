@@ -172,7 +172,7 @@ function Panel.Open(build,source,layout)
 	local graphWidth=width-inspector-48; local graphHeight=height-262; local side=graphWidth+32
 	local controls,undo,avoided,redo={},{},copyTable(draft.avoided or {}),{}
 	local preferred
-	local pointUsage,routeAvailable,hasMissingChoices
+	local pointUsage,routeAvailable,routeReason,hasMissingChoices
 	local grantSteps,grantIndex,grantInitial,grantBudget,grantWarning,grantMatchLabel,stageResume,openStages
 	local function current()
 		local result=copyTable(draft); result.title=controls.title.buf; result.budget=assert(tonumber(controls.budget.buf),"Enter a point budget"); result.notes=controls.notes.buf
@@ -209,7 +209,7 @@ function Panel.Open(build,source,layout)
 		else pointUsage=nil;controls.status.label="^xE58F8FEnter a budget from 0 to "..controls.canvas.tree.maxPoints end
 		local node=atlas.tree(draft.version).nodes[id or controls.canvas.focus]
 		local lines={node and node.name or "Select a node on the tree or search.",node and node.kind:gsub("^%l",string.upper) or "Search a mechanic, or select a node."}
-		controls.canvas.preview={};routeAvailable=false
+		controls.canvas.preview={};routeAvailable=false;routeReason=nil
 		if node then
 			local selectedStats=atlas.nodeStats(draft,node)
 			if #strategy.blocking({stats=selectedStats})>0 then lines[#lines+1]="^xFFBF80Blocks natural encounters; forced encounters may differ." end
@@ -231,7 +231,7 @@ function Panel.Open(build,source,layout)
 					local cost=0;for _,other in ipairs(plan.nodes) do if not allocated[other] then controls.canvas.preview[other]=true;cost=cost+1 end end
 					routeAvailable=true;controls.allocate.label="Connect +"..cost
 					lines[#lines+1]="";lines[#lines+1]=cost.." new points to connect this node."
-				else controls.allocate.label="No route";lines[#lines+1]="";lines[#lines+1]=reason or "No route within the point budget and avoided nodes." end
+				else controls.allocate.label="No route";routeReason=reason or "No route within the point budget and avoided nodes.";lines[#lines+1]="";lines[#lines+1]=routeReason end
 			else controls.allocate.label=node.variantEffects and "Choose effect" or "Allocated" end
 		else controls.allocate.label="Connect path" end
 		local detailRows=rows({lines[1]},inspector-30,18)
@@ -562,6 +562,21 @@ function Panel.Open(build,source,layout)
 	controls.remove.enabled=function() return not grantSteps and allocatedFocus() end
 	controls.avoid.enabled=function() return not grantSteps and controls.canvas.focus~=nil and controls.canvas.focus~=controls.canvas.tree.start and not allocatedFocus() end
 	controls.clearAvoid.enabled=function() return not grantSteps and #avoided>0 end
+	local routeReview="Exit the progression route preview to edit the plan."
+	controls.allocate.tooltipText=function()
+		if grantSteps then return routeReview end
+		local id=controls.canvas.focus;local node=id and controls.canvas.tree.nodes[id]
+		if not node then return "Select a node to preview a connection." end
+		if id==controls.canvas.tree.start then return "The starting node is already connected." end
+		if allocatedFocus() then return node.variantEffects and "Choose an effect for this allocated node." or "This node is already allocated." end
+		return routeReason or "Connect the previewed path to this node."
+	end
+	controls.remove.tooltipText=function() return grantSteps and routeReview or not controls.canvas.focus and "Select an allocated node to remove its branch." or not allocatedFocus() and "Select an allocated node first." or "Remove this node and any disconnected branch." end
+	controls.avoid.tooltipText=function() return grantSteps and routeReview or not controls.canvas.focus and "Select an unallocated node to avoid." or controls.canvas.focus==controls.canvas.tree.start and "The starting node cannot be avoided." or allocatedFocus() and "Remove this node before avoiding it." or "Toggle avoidance for this node when finding routes." end
+	controls.clearAvoid.tooltipText=function() return grantSteps and routeReview or #avoided==0 and "No nodes are currently avoided." or "Clear the nodes excluded from routes." end
+	controls.undo.tooltipText=function() return #undo==0 and "There are no changes to undo." or "Undo the last Atlas plan change." end
+	controls.redo.tooltipText=function() return #redo==0 and "There are no changes to redo." or "Redo the last undone Atlas plan change." end
+	controls.routes.tooltipText=function() return controls.canvas.focus and "Review routes to the selected node." or "Select a node to review its routes." end
 	for _,key in ipairs({"search","results","mechanic","stats","browse","targets","tools"}) do controls[key].enabled=function() return not grantSteps end end
 	for _,key in ipairs({"version","library","new"}) do controls[key].enabled=function() return not grantSteps and not stageResume end end
 	if layout then
