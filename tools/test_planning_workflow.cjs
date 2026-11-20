@@ -228,6 +228,16 @@ async function main(){
   const uniqueLinkFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'unique-link-filter',title:'Link pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');
   assert.ok(uniqueLinkFilter.profile.rules.some(rule=>rule.origin==='craft:'+uniqueLinkGuide.id && rule.title==='Orb of Fusing'));
   await queued('propose_build',{mode:'edit',title:'Remove link test guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:uniqueLinkGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
+  const taintedQualityRaw=uniqueColourRaw+'\nCorrupted';
+  const taintedQualityInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:taintedQualityRaw,query:'tainted quality',limit:10},'inspected');
+  const taintedQualityOption=taintedQualityInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='tainted_quality');assert.equal(taintedQualityOption.available,true);
+  const taintedQualityApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:taintedQualityRaw,action:taintedQualityOption.action,seed:123},'crafted');assert.ok(taintedQualityApply.nativeCrafting.warnings.some(w=>w.code==='tainted_quality_estimate'));
+  const taintedQualityGuide={id:'unique-tainted-quality-workflow',title:'Tainted quality',slot:'Helmet',startingItem:taintedQualityRaw,goals:[],steps:[taintedQualityOption.guideStep],nativeRecipe:{steps:[{method:'tainted_quality',maxAttempts:50,untilRequirements:{minQuality:20}}],targets:[],requirements:{minQuality:20}}};
+  await queued('propose_crafting_plan',{baseRevision:context.revision,project:taintedQualityGuide},'review');await host('apply');context=(await call('get_build_context')).context;
+  const taintedQualitySaved=(await call('get_crafting_projects')).projects.find(entry=>entry.id===taintedQualityGuide.id);assert.equal(taintedQualitySaved.steps[0].uniqueCraft.method,'tainted_quality');
+  const taintedQualityRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:taintedQualityRaw,recipe:taintedQualitySaved.nativeRecipe,options:{trials:10,maxActions:50,seed:123}},'crafted');assert.equal(taintedQualityRun.nativeCrafting.trials,10);
+  const taintedQualityFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'tainted-quality-filter',title:'Quality pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');assert.ok(taintedQualityFilter.profile.rules.some(rule=>rule.origin==='craft:'+taintedQualityGuide.id && rule.title==="Tainted Armourer's Scrap"));
+  await queued('propose_build',{mode:'edit',title:'Remove tainted quality guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:taintedQualityGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
   const uniqueSocketRaw=uniqueColourRaw.replace('Sockets: R-G B W','Sockets: R-G B');
   const uniqueSocketInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueSocketRaw,query:'jeweller',limit:30},'inspected');
   const uniqueSocketOption=uniqueSocketInspection.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='jeweller');

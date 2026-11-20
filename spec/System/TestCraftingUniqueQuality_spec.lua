@@ -50,6 +50,43 @@ describe("Unique item quality",function()
 		main.popups={}
 	end)
 
+	it("samples tainted unique quality while preserving the item",function()
+		for _,base in ipairs({shield,weapon}) do
+			local raw=base.."\nCorrupted";local initial=quality.inspect(raw)
+			for seed=1,20 do
+				local rolled=quality.taintedQuality(raw,seed);assert.equal(rolled.itemText,quality.taintedQuality(raw,seed).itemText)
+				local item,info=quality.inspect(rolled.itemText);assert.is_true(info.quality>=1 and info.quality<=20);assert.equal(initial.title,item.title);assert.is_true(item.corrupted)
+				assert.is_true(rolled.itemText:find("Sockets:",1,true)~=nil)
+			end
+			assert.has_error(function() quality.taintedQuality(base,1) end)
+		end
+		local flask="Rarity: UNIQUE\nTaste of Hate\nSapphire Flask\nItem Level: 86\nCorrupted";assert.has_error(function() quality.taintedQuality(flask,1) end)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,{id="corrupted-flask",title="Flask",slot="Flask 1",startingItem=flask,goals={},steps={}})
+		assert.is_false(control.apply:IsEnabled());assert.equal("Quality unavailable",control.apply.label);main.popups={}
+		assert.has_error(function() quality.taintedQuality(shield.."\nCorrupted",0) end)
+	end)
+
+	it("connects tainted unique quality to simulations, guides and filters",function()
+		local sim=require("Modules.CraftingSimulator")
+		for index,base in ipairs({shield,weapon}) do
+			local raw=base.."\nCorrupted";local result=sim.perform(raw,{method="tainted_quality"},12)
+			assert.equal(quality.taintedQuality(raw,12).itemText,result.itemText)
+			local warned=false;for _,entry in ipairs(result.warnings) do if entry.code=="tainted_quality_estimate" then warned=true end end;assert.is_true(warned)
+			local recipe={steps={{method="tainted_quality",maxAttempts=20,untilRequirements={minQuality=20}}},targets={},requirements={minQuality=20}}
+			local sampled=sim.simulate(raw,recipe,{trials=10,maxActions=20,seed=123});assert.is_true(sampled.sampled);assert.equal(10,sampled.trials)
+			local calculation=sim.calculate(raw,{method="tainted_quality"},{},nil,{trials=10,requirements={minQuality=20}});assert.is_true(calculation.sampled)
+			local catalog=sim.catalog(raw,"tainted quality",50);assert.equal(1,#catalog.uniqueActions);assert.is_true(catalog.uniqueActions[1].available)
+			local project={id="tainted-quality-"..index,title="Quality",slot=index==1 and "Weapon 2" or "Weapon 1",startingItem=raw,goals={},steps={}}
+			local store=build.savers.CraftingProjects;store:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+			assert.is_true(control.apply:IsEnabled());control.apply:Click();assert.is_true(control.undo:IsEnabled());assert.is_true(control.guide:IsEnabled());control.guide:Click()
+			local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+			assert.equal("tainted_quality",saved.steps[1].uniqueCraft.method)
+			local _,info=quality.inspect(raw);local filters=require("Modules.LootFilters");local rules=filters.generate(build,filters.profile("tainted-quality-filter-"..index,"Quality"));local found=false
+			for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id and rule.title=="Tainted "..info.resource then found=true end end;assert.is_true(found)
+			main.popups={}
+		end
+	end)
+
 	it("samples unique socket counts while preserving item properties and restrictions",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"
 		for _,method in ipairs({"jeweller","tainted_jeweller"}) do
@@ -474,7 +511,7 @@ describe("Unique item quality",function()
 		local project={id="corrupted-white",title="Corrupted sockets",slot="Weapon 2",startingItem=corrupted,goals={},steps={}}
 		local store=build.savers.CraftingProjects;store:Upsert(project)
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
-		assert.is_false(control.apply:IsEnabled());assert.is_false(control.link:IsEnabled());assert.is_true(control.white:IsEnabled())
+		assert.is_true(control.apply:IsEnabled());assert.is_false(control.link:IsEnabled());assert.is_true(control.white:IsEnabled())
 		control.white:Click();assert.matches("Sockets: W%-W W",control.itemMods.list[1][1]);control.guide:Click()
 		assert.matches("Orb of Scouring",control.currencyNote.list[1][1]);assert.matches("Vaal Orb",control.currencyNote.list[2][1])
 		assert.equal("socket_white_bench",store.projects[1].steps[1].uniqueCraft.method)
@@ -508,7 +545,7 @@ describe("Unique item quality",function()
 	it("catalogues supported unique crafts and their current availability",function()
 		local simulator=require("Modules.CraftingSimulator")
 		local catalog=simulator.catalog(shield,"",50,nil,"3_30")
-		assert.is_true(catalog.uniqueCrafting);assert.equal(15,#catalog.uniqueActions);assert.equal(14,#catalog.socketCrafts)
+		assert.is_true(catalog.uniqueCrafting);assert.equal(16,#catalog.uniqueActions);assert.equal(14,#catalog.socketCrafts)
 		assert.same(require("Modules.CraftingItemStats").itemValues(new("Item"):Item(shield)),catalog.nativeStats);assert.is_true(catalog.nativeStats.Armour>0)
 		local byMethod={};for _,action in ipairs(catalog.uniqueActions) do if action.method~="socket_bench" or action.action.linked then byMethod[action.method]=action end end
 		assert.is_true(byMethod.quality.available);assert.is_true(byMethod.beast_max_links.available);assert.is_true(byMethod.socket_white_bench.available)

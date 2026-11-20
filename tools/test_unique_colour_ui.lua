@@ -19,6 +19,11 @@ return function(build,ui,frame)
 	ui:click("socketCount");ui:click("colours");ui:text("target","RR");ui:click("plan");frame("crafting-unique-colour-replace");ui:click("confirm")
 	for _,entry in ipairs(store.projects) do if entry.id==direct.id then planned=entry end end
 	assert(planned.nativeRecipe.requirements.socketColours=="RR" and #planned.steps==1 and planned.steps[1].stopWhen=="At least RR sockets in any order","Colour guide did not follow the replacement");main.popups={}
+	local taintedQuality={id="unique-tainted-quality-ui",title="Tainted quality",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nQuality: 0\nSockets: R-G B\nCorrupted",goals={},steps={}}
+	store:Upsert(taintedQuality);require("Classes.CraftingUniqueQualityControl").Open(build,taintedQuality);frame("crafting-unique-tainted-quality");ui:click("apply");ui:click("guide");ui:click("recipe")
+	local qualityPlan;for _,entry in ipairs(store.projects) do if entry.id==taintedQuality.id then qualityPlan=entry end end
+	assert(qualityPlan and qualityPlan.steps[1].uniqueCraft.method=="tainted_quality" and qualityPlan.nativeRecipe.steps[1].method=="tainted_quality","Tainted quality guide or recipe was not kept")
+	ui:click("recipe");local qualityTasks=require("Modules.CraftingTasks");assert(qualityTasks.job,"Tainted quality check did not use a background task");while qualityTasks.job do qualityTasks.tick(build) end;frame("crafting-unique-tainted-quality-result");ui:click("close");main.popups={}
 	local socketProject={id="unique-random-sockets-ui",title="Desired sockets",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B",goals={},steps={}}
 	store:Upsert(socketProject);require("Classes.CraftingUniqueQualityControl").Open(build,socketProject)
 	ui:click("socketCount");ui:click("roll");ui:text("target","4");ui:text("attempts","250");frame("crafting-unique-socket-target");ui:click("plan")

@@ -2178,7 +2178,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	do
 		local project={id="unique-corrupted-white-ui",title="Corrupted unique sockets",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={}}
 		build.savers.CraftingProjects:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
-		assert(not control.apply:IsEnabled() and not control.link:IsEnabled() and control.white:IsEnabled(),"Corrupted unique socket craft availability is incorrect")
+		assert(control.apply:IsEnabled() and not control.link:IsEnabled() and control.white:IsEnabled(),"Corrupted unique crafting availability is incorrect")
 		assert(control.white.tooltipText():find("Vaal Orb",1,true),"Corrupted bench cost omitted the Vaal Orb")
 		ui:click("white");frame("crafting-unique-corrupted-white");ui:click("guide")
 		assert(build.savers.CraftingProjects.projects[#build.savers.CraftingProjects.projects].steps[1].uniqueCraft.method=="socket_white_bench","Corrupted socket guide was not kept");main.popups={}

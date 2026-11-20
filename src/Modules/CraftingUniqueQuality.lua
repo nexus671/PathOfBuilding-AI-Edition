@@ -41,6 +41,7 @@ local function alwaysCorrupted(title,baseName)
 end
 function M.guideAction(method,count,resource,corrupted,socketCount)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
+	if method=="tainted_quality" then return "Use a Tainted "..resource.." to reroll quality" end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
 	if method=="omen_connections" then return "Link existing sockets with an Omen of Connections and an Orb of Fusing" end
 	if method=="jeweller" then return "Use a Jeweller's Orb to reroll socket count" end
@@ -127,6 +128,29 @@ function M.apply(raw)
 	if item.type=="Tincture" and item.tinctureValues=="Final" then assert(checked.tinctureValues=="Final" and checked.tinctureImportedQuality==item.tinctureImportedQuality and checked.tinctureImportedEffect==item.tinctureImportedEffect,"Tincture baseline changed unexpectedly") end
 	assert(after.quality==info.quality+1 and checked.title==item.title and checked.baseName==item.baseName,"Unique item did not round-trip after applying quality")
 	return {itemText=output,beforeQuality=info.quality,quality=after.quality,resource=info.resource,resourceKey=info.resourceKey}
+end
+
+-- Tainted quality uses the same estimated range as ordinary equipment.
+-- Preserve the original unique text instead of reconstructing its modifiers.
+function M.taintedQualityReason(raw)
+	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
+	if not item.corrupted then return "Tainted currency requires a corrupted item" end
+	if not item.base.armour and not data.weaponTypeInfo[item.type] then return "Tainted quality requires armour or a weapon" end
+end
+function M.taintedQuality(raw,seed)
+	local reason=M.taintedQualityReason(raw);assert(not reason,reason)
+	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
+	local before=M.inspect(raw);local sim=require("Modules.CraftingSimulator")
+	local state={affixes={},sockets=copyTable(before.sockets),quality=before.quality,corrupted=true}
+	local model={item=before,byId={}}
+	local rolled=sim.action(model,state,{method="tainted_quality"},require("Modules.CalcTime").random(seed))
+	local padded="\n"..raw;local output,count=padded:gsub("\nQuality:[^\r\n]*","\nQuality: "..rolled.quality)
+	assert(count<=1,"Item text contains multiple quality lines");output=output:sub(2)
+	if count==0 then local newline=raw:find("\r\n",1,true) and "\r\n" or "\n";output=raw..(raw:sub(-1)=="\n" and "" or newline).."Quality: "..rolled.quality end
+	if count>0 then assert(withoutQuality(raw)==withoutQuality(output),"Unique item properties changed while applying quality") end
+	local after,info=M.inspect(output)
+	assert(after.title==before.title and after.baseName==before.baseName and after.corrupted and info.quality==rolled.quality,"Unique item did not round-trip after tainted quality")
+	return {itemText=output,quality=info.quality,components=sim.components({method="tainted_quality"},state,model)}
 end
 
 -- Known unique restrictions still apply when a saved item has partial text.
@@ -382,6 +406,7 @@ function M.catalog(raw,query,limit)
 	if item.corrupted then whiteComponents["Metadata/Items/Currency/CurrencyCorrupt"]=1 end
 	local sim=require("Modules.CraftingSimulator")
 	local definitions={{method="quality",label="Ordinary quality",reason=qualityReason,components={[info.resourceKey]=1}}}
+	if item.base.armour or data.weaponTypeInfo[item.type] then definitions[#definitions+1]={method="tainted_quality",label="Tainted quality: "..info.resource,reason=M.taintedQualityReason(raw),sampled=true,components=sim.components({method="tainted_quality"},nil,{item=item})} end
 	if sim.socketLimit({item=item})>0 then
 		local socketDefinitions={
 		{method="beast_max_links",label="Bestiary: maximum links",reason=linkReason,components={beast_black_morrigan=1,beast_craicic_sand_spitter=1}},
@@ -413,7 +438,7 @@ function M.catalog(raw,query,limit)
 			local guideMethod,guideCount=entry.guideMethod or entry.method,entry.guideCount or 1
 			action.guideStep={action=M.guideAction(guideMethod,guideCount,info.resource,item.corrupted,#item.sockets),uniqueCraft={method=guideMethod,count=guideCount}}
 			result.uniqueActions[#result.uniqueActions+1]=action
-			if entry.method~="quality" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
+			if entry.method~="quality" and entry.method~="tainted_quality" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
 		end
 	end
 	return result
