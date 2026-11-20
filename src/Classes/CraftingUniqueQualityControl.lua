@@ -77,7 +77,7 @@ function M.Open(build,project,layout,snapshot)
 			if action=="quality" then qualityCount=qualityCount+1
 			elseif socketCount then
 				flush();steps[#steps+1]={action=unique.guideAction("socket_count_bench",socketCount,info.resource,item.corrupted),uniqueCraft={method="socket_count_bench",count=socketCount},done=false}
-			elseif action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
+			elseif action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="divine" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
 				local before=unique.inspect(history[i]);flush();steps[#steps+1]={action=unique.guideAction(action,1,info.resource,item.corrupted,#before.sockets),uniqueCraft={method=action,count=1},done=false}
 			else return nil,"Loaded or older previews do not record every action." end
 		end
@@ -90,7 +90,7 @@ function M.Open(build,project,layout,snapshot)
 		if not guideCache then local steps,reason,signature=calculateGuideSteps();guideCache={steps=steps,reason=reason,signature=signature} end
 		return guideCache.steps,guideCache.reason,guideCache.signature
 	end
-	local linkReason,benchLinkReason,whiteReason,omenJewellerReason,colourReason,taintedQualityReason,updateCurrency,updateIcons
+	local linkReason,benchLinkReason,whiteReason,omenJewellerReason,colourReason,taintedQualityReason,divineReason,updateCurrency,updateIcons
 	local function refresh(persist)
 		guideCache=nil;reviewCache=nil;traceCache=nil
 		item,info=unique.inspect(raw);show(item)
@@ -100,9 +100,10 @@ function M.Open(build,project,layout,snapshot)
 		omenJewellerReason=unique.omenReason(raw)
 		colourReason=unique.colourReason(raw,item.corrupted and "tainted_chromatic" or "chromatic")
 		taintedQualityReason=item.corrupted and unique.taintedQualityReason(raw) or nil
+		divineReason=not item.corrupted and unique.divineReason(raw) or nil
 		c.status.label="^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
-		c.apply.label=item.corrupted and (item.type=="Flask" or item.type=="Tincture") and "Quality unavailable" or item.corrupted and "Roll quality" or "Use "..info.resource
-		c.apply.width=item.corrupted and not taintedQualityReason and 130 or 270
+		c.apply.label=item.corrupted and (item.type=="Flask" or item.type=="Tincture") and "Quality unavailable" or item.corrupted and "Roll quality" or "Add quality"
+		c.apply.width=(not item.corrupted or not taintedQualityReason) and 130 or 270
 		if updateCurrency then updateCurrency() end
 		if updateIcons then updateIcons() end
 		if raw~=draft.startingItem and raw~=draft.targetItem then ui.draft(build,"uniqueQuality",draft.id)
@@ -335,7 +336,7 @@ function M.Open(build,project,layout,snapshot)
 		history[#history+1]=raw;actions[#actions+1]=action;redo={};raw=result.itemText;refresh(true)
 	end)
 	c.apply.enabled=function() return item.corrupted and not unique.taintedQualityReason(raw) or not item.corrupted and info.available end
-	c.apply.tooltipText=function() return item.corrupted and (taintedQualityReason or "Sample a tainted quality roll. The 1-20% range and odds are estimates.") or info.available and "Adds 1% quality." or "Ordinary quality currency cannot exceed 20%." end
+	c.apply.tooltipText=function() return item.corrupted and (taintedQualityReason or "Sample a tainted quality roll. The 1-20% range and odds are estimates.") or info.available and "Use "..info.resource.." to add 1% quality." or "Ordinary quality currency cannot exceed 20%." end
 	button("qualityPlan",198,"Plan quality",function()
 		local controls={};local qw,qh=480,310
 		ui.description(controls,"help",16,25,qw-32,50,{"Save a target without rolling the item.","Tainted quality probabilities are estimates."},14)
@@ -382,6 +383,61 @@ function M.Open(build,project,layout,snapshot)
 		main:OpenPopup(qw,qh,"Tainted quality target",controls,nil,nil,"close")
 	end)
 	c.qualityPlan.x=156;c.qualityPlan.width=130;c.qualityPlan.shown=function() return item.corrupted and not taintedQualityReason end
+	button("divine",198,"Divine Orb",function()
+		local controls={};local dw,dh=500,340
+		ui.description(controls,"help",16,25,dw-32,50,{"Preview one roll or plan an item-stat target.","Modifier-value probabilities are estimates."},14)
+		local stats=require("Modules.CraftingItemStats");local values=stats.itemValues(item);local options={}
+		for _,field in ipairs(stats.fields) do if values[field[1]] and values[field[1]]>0 then options[#options+1]={label=field[2],val=field[1]} end end
+		if #options==0 then options[1]={label="No supported item stat",val=""} end
+		ui.label(controls,"statLabel",16,90,"Minimum item stat",14)
+		controls.stat=new("DropDownControl"):DropDownControl(ui.anchor,{16,112,220,26},options)
+		controls.target=new("EditControl"):EditControl(ui.anchor,{252,112,dw-268,26},"","Minimum",nil,10)
+		ui.label(controls,"attemptsLabel",16,155,"Attempt limit (1-2000)",14)
+		controls.attempts=new("EditControl"):EditControl(ui.anchor,{16,177,dw-32,26},"100","Max attempts",nil,4)
+		local function stat() return controls.stat:GetSelValueByKey("val") end
+		local function replaceable()
+			local recipe=draft.nativeRecipe;if not recipe or #recipe.steps~=1 or recipe.steps[1].method~="divine" or not recipe.requirements or type(recipe.requirements.nativeStats)~="table" then return nil end
+			local key,target=next(recipe.requirements.nativeStats);if not key or next(recipe.requirements.nativeStats,key)~=nil then return nil end
+			local label;for _,field in ipairs(stats.fields) do if field[1]==key then label=field[2];break end end;if not label then return nil end
+			local expected=unique.guideAction("divine",1,info.resource,item.corrupted,#item.sockets);local found
+			for index,guide in ipairs(draft.steps) do
+				if guide.uniqueCraft and guide.uniqueCraft.method=="divine" and guide.uniqueCraft.count==1 and not guide.done and (not guide.onFailure or guide.onFailure=="" or guide.onFailure=="Stop after "..(recipe.steps[1].maxAttempts or 100).." attempts.") and guide.action==expected and guide.stopWhen=="At least "..target.." "..label then
+					if found then return nil end;found=index
+				end
+			end
+			return found
+		end
+		local function reason()
+			if divineReason then return divineReason end
+			if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a Divine plan." end
+			if #draft.steps>=40 and not replaceable() then return "The guide has room for up to 40 steps." end
+			if stat()=="" then return "No supported item stat is available for a target." end
+			local target=tonumber(controls.target.buf);if not target or target~=target or target<0 or target>10000000 then return "Enter a minimum item stat from 0 to 10000000." end
+			local attempts=tonumber(controls.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
+			if values[stat()]>=target then return nil,true end
+		end
+		ui.label(controls,"targetHelp",16,222,"",14);controls.targetHelp.label=function() local why,met=reason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save an item-stat plan."),dw-32,14) end
+		controls.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,dh-48,140,28},"Preview roll",function()
+			colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
+			local result=unique.divine(raw,seed);history[#history+1]=raw;actions[#actions+1]="divine";redo={};raw=result.itemText;main:ClosePopup();refresh(true)
+		end)
+		controls.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,dh-48,150,28},"Save Divine plan",function()
+			local why=reason();assert(not why,why);local key=stat();local target=tonumber(controls.target.buf);local attempts=tonumber(controls.attempts.buf)
+			local requirements={nativeStats={[key]=target}};local recipe={steps={{method="divine",maxAttempts=attempts,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements};require("Modules.CraftingSimulator").validateRecipe(recipe);local replaceIndex=replaceable()
+			local function keepPlan()
+				local updated=copyTable(draft);updated.nativeRecipe=recipe;local step={action=unique.guideAction("divine",1,info.resource,item.corrupted,#item.sockets),stopWhen="At least "..target.." "..controls.stat:GetSelValueByKey("label"),onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method="divine",count=1},done=false}
+				if replaceIndex then updated.steps[replaceIndex]=step else updated.steps[#updated.steps+1]=step end
+				draft=build.savers.CraftingProjects:Upsert(updated);refresh(true);c.notice.label="^7Divine plan kept. Save the build.";main:ClosePopup()
+			end
+			if draft.nativeRecipe then main:OpenConfirmPopup("Replace crafting recipe",replaceIndex and "Replace the saved recipe and its unchanged Divine guide step?\nOther guide steps will be kept." or "Replace the saved recipe with this Divine plan?\nExisting guide steps will be kept.","Replace",keepPlan) else keepPlan() end
+		end)
+		controls.plan.enabled=function() return not reason() end;controls.plan.tooltipText=function() return reason() or "Save a bounded repeat-until-item-stat recipe and guide step." end
+		controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{dw-132,dh-48,116,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(controls,{apply=true});for _,control in pairs(controls) do control.layoutAudit="unique-divine-target" end
+		main:OpenPopup(dw,dh,"Divine Orb",controls,nil,nil,"close")
+	end)
+	c.divine.x=156;c.divine.width=130;c.divine.shown=function() return not item.corrupted end;c.divine.enabled=function() return not divineReason end
+	c.divine.tooltipText=function() return divineReason or "Preview a Divine Orb roll. Modifier-value probabilities are estimated." end
 	button("link",236,"Bestiary link",function() local result=unique.link(raw);history[#history+1]=raw;actions[#actions+1]="beast_max_links";redo={};raw=result.itemText;refresh(true) end)
 	c.link.width=130
 	c.link.enabled=function() return not linkReason end
@@ -580,6 +636,7 @@ function M.Open(build,project,layout,snapshot)
 		elseif countMethod then local components=require("Modules.CraftingSimulator").components({method="socket_bench",count=countMethod},{sockets=item.sockets,corrupted=item.corrupted});local amount=components["Metadata/Items/Currency/CurrencyRerollSocketNumbers"] or 0;method="jeweller";lines={"Bench: "..amount.." Jeweller's Orb"..(amount==1 and "" or "s"),item.corrupted and ("+ "..amount.." Vaal Orb"..(amount==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="socket_bench" then local components=require("Modules.CraftingSimulator").components({method=method,count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted});local count=components["Metadata/Items/Currency/CurrencyRerollSocketLinks"] or 0;lines={"Bench: "..count.." Orb"..(count==1 and "" or "s").." of Fusing",item.corrupted and ("+ "..count.." Vaal Orb"..(count==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="fusing" then lines={"1 Orb of Fusing","Sampled preview"}
+		elseif method=="divine" then lines={"1 Divine Orb","Sampled preview"}
 		elseif method=="tainted_quality" then lines={"1 Tainted "..info.resource,"Sampled preview"}
 		elseif method=="jeweller" then lines={"1 Jeweller's Orb","Sampled preview"}
 		elseif method=="tainted_jeweller" then lines={"1 Tainted Jeweller's Orb","Sampled preview"}
@@ -630,7 +687,7 @@ function M.Open(build,project,layout,snapshot)
 	end)
 	if item.type=="Flask" or item.type=="Tincture" then
 		for _,key in ipairs({"socketCount","omenJeweller","link","omen","benchLink","white"}) do c[key].shown=false end
-		c.status.y=130;c.apply.y=150;c.undo.y=188;c.redo.y=188;c.keep.y=226;c.guide.y=226
+		c.status.y=130;c.apply.y=150;c.divine.y=150;c.undo.y=188;c.redo.y=188;c.keep.y=226;c.guide.y=226
 		c.loadTarget.y=264;c.recipe.y=264;c.notice.y=302;c.currency.y=330;c.currencyNote.y=332;c.reviewGuide.y=330
 	end
 	for _,control in pairs(c) do control.layoutAudit="unique-quality" end

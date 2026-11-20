@@ -2082,7 +2082,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	do
 		main.popups={};local p={id="unique-flask-quality-ui",title="Unique flask",slot="Flask 1",startingItem="Rarity: UNIQUE\nTaste of Hate\nSapphire Flask\nItem Level: 86\nQuality: 18",goals={},steps={}}
 		build.savers.CraftingProjects:Upsert(p);local w=build.planningWorkspace;w.selections.crafting=p.id;w.cache.crafting=nil;w.drafts.crafting=nil;w:Show("crafting")
-		assert(w.controls.native:IsEnabled(),"Unique flask preview unavailable");ui:click("native");assert(w.controls.apply:IsEnabled() and w.controls.apply.label=="Use Glassblower's Bauble","Unique flask quality action unavailable")
+		assert(w.controls.native:IsEnabled(),"Unique flask preview unavailable");ui:click("native");assert(w.controls.apply:IsEnabled() and w.controls.apply.label=="Add quality" and w.controls.apply.tooltipText():find("Glassblower's Bauble",1,true),"Unique flask quality action unavailable")
 		assert(not w.controls.link:IsEnabled() and not w.controls.white:IsEnabled(),"Socket actions enabled for a flask");ui:click("apply");assert(w.controls.status.label:find("19%%"),"Unique flask quality did not increase");frame("crafting-unique-flask-quality");ui:click("guide");assert(build.savers.CraftingProjects.projects[#build.savers.CraftingProjects.projects].steps[1].action:find("Glassblower's Bauble",1,true));ui:click("close")
 	end
 		local unique="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"

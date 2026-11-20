@@ -50,6 +50,50 @@ describe("Unique item quality",function()
 		main.popups={}
 	end)
 
+	it("samples Divine rolls only for complete unambiguous unique range forms",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+(30-50) to Evasion Rating\n+10% to Item Rarity\n+(30-40)% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
+		assert.is_nil(quality.divineReason(raw));local changed,values={},{}
+		for seed=1,20 do
+			local rollSeed=seed*104729;local result=quality.divine(raw,rollSeed);assert.equal(result.itemText,quality.divine(raw,rollSeed).itemText);assert.equal(1,result.components.divine)
+			local item=quality.inspect(result.itemText);assert.equal("Goldrim",item.title);assert.equal(4,#item.explicitModLines);assert.equal(3,#item.sockets)
+			assert.is_truthy(result.itemText:find("+10% to Item Rarity",1,true));changed[result.itemText]=true;values[item.armourData.Evasion]=true
+		end
+		local count=0;for _ in pairs(changed) do count=count+1 end;assert.is_true(count>1);count=0;for _ in pairs(values) do count=count+1 end;assert.is_true(count>1)
+		assert.has_error(function() quality.divine(raw.."\nCorrupted",1) end)
+		assert.has_error(function() quality.divine(raw:gsub("Reflects 4 Physical Damage to Melee Attackers",""),1) end)
+		assert.has_error(function() quality.divine(raw:gsub("%+%(30%-50%) to Evasion Rating","+40 to Evasion Rating"),1) end)
+		assert.has_error(function() quality.divine(raw,0) end)
+		local variant=raw:gsub("Goldrim","Heatshiver"):gsub("Leather Cap","Leather Hood");assert.is_truthy(quality.divineReason(variant))
+		local multi;for _,group in pairs(data.uniques) do for _,entry in ipairs(group) do if entry:match("^%s*Dreadarc[\r\n]") then multi=entry end end end
+		assert.is_truthy(multi);assert.matches("Multiple or fractional ranges",quality.divineReason("Rarity: UNIQUE\n"..multi.."\nItem Level: 86"))
+	end)
+
+	it("exposes unique Divine previews, simulations and resource guides",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+(30-50) to Evasion Rating\n+10% to Item Rarity\n+(30-40)% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
+		local sim=require("Modules.CraftingSimulator");local result=sim.perform(raw,{method="divine"},12);assert.equal(quality.divine(raw,12).itemText,result.itemText)
+		local warned=false;for _,entry in ipairs(result.warnings) do if entry.code=="unique_divine_estimate" then warned=true end end;assert.is_true(warned)
+		local catalog=sim.catalog(raw,"divine",20);assert.equal(1,#catalog.uniqueActions);assert.is_true(catalog.uniqueActions[1].available);assert.is_false(catalog.uniqueActions[1].deterministic)
+		local recipe={steps={{method="divine",maxAttempts=5,untilRequirements={nativeStats={Evasion=60}}}},targets={},requirements={nativeStats={Evasion=60}}}
+		local run=sim.simulate(raw,recipe,{trials=5,maxActions=5,seed=123,forceFirstAction=true});assert.is_true(run.sampled);assert.equal(5,run.trials)
+		local calc=sim.calculate(raw,{method="divine"},{},nil,{trials=5,requirements={nativeStats={Evasion=60}}});assert.is_true(calc.sampled)
+		local project={id="divine-unique",title="Divine",slot="Helmet",startingItem=raw,goals={},steps={catalog.uniqueActions[1].guideStep}}
+		local store=build.savers.CraftingProjects;store:Upsert(project);local filters=require("Modules.LootFilters");local rules=filters.generate(build,filters.profile("divine-filter","Divine"));local found=false
+		for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id and rule.title=="Divine Orb" then found=true end end;assert.is_true(found)
+	end)
+
+	it("previews and plans supported unique Divine rolls",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+(30-50) to Evasion Rating\n+10% to Item Rarity\n+(30-40)% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
+		local project={id="divine-ui",title="Divine",slot="Helmet",startingItem=raw,goals={},steps={}}
+		local store=build.savers.CraftingProjects;store:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		assert.is_true(control.divine:IsEnabled());control.divine:Click();local popup=main.popups[1].controls
+		popup.stat:SelByValue("Evasion","val");popup.target:SetText("100");popup.attempts:SetText("250");assert.is_true(popup.plan:IsEnabled());popup.plan:Click()
+		local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+		assert.equal(100,saved.nativeRecipe.requirements.nativeStats.Evasion);assert.equal("divine",saved.steps[1].uniqueCraft.method)
+		control.divine:Click();popup=main.popups[1].controls;popup.stat:SelByValue("Evasion","val");popup.target:SetText("80");popup.plan:Click();main.popups[1].controls.confirm:Click()
+		for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end;assert.equal(1,#saved.steps);assert.equal(80,saved.nativeRecipe.requirements.nativeStats.Evasion)
+		control.divine:Click();popup=main.popups[1].controls;popup.apply:Click();assert.is_true(control.undo:IsEnabled());assert.is_true(control.guide:IsEnabled());main.popups={}
+	end)
+
 	it("samples tainted unique quality while preserving the item",function()
 		for _,base in ipairs({shield,weapon}) do
 			local raw=base.."\nCorrupted";local initial=quality.inspect(raw)
@@ -423,7 +467,7 @@ describe("Unique item quality",function()
 			local raw="Rarity: UNIQUE\n"..entry[1].."\n"..entry[2].."\nItem Level: 86\nQuality: 18"
 			local item,info=quality.inspect(raw);assert.equal("Glassblower's Bauble",info.resource);assert.equal("Metadata/Items/Currency/CurrencyFlaskQuality",info.resourceKey)
 			local next=quality.apply(raw);assert.equal(19,next.quality);assert.matches("Quality: 19",next.itemText,1,true)
-			local catalog=sim.catalog(raw,"",50);assert.equal(1,#catalog.uniqueActions);assert.equal("quality",catalog.uniqueActions[1].method)
+			local catalog=sim.catalog(raw,"",50);assert.equal(2,#catalog.uniqueActions);assert.equal("quality",catalog.uniqueActions[1].method)
 			local calc=sim.calculate(raw,{method="quality"},{},nil,{requirements={minQuality=19}});assert.equal(100,calc.successChance);assert.equal(1,calc.components[info.resourceKey])
 			local result=sim.simulate(raw,{steps={{method="quality",maxAttempts=2,untilRequirements={minQuality=20}}},targets={},requirements={minQuality=20}},{trials=1,maxActions=2});assert.is_true(result.sampleSuccess);assert.equal(2,result.meanActions)
 			assert.has_error(function() quality.apply(raw.."\nCorrupted") end);assert.has_error(function() quality.apply(raw:gsub("Quality: 18","Quality: 20")) end)
@@ -558,7 +602,7 @@ describe("Unique item quality",function()
 	it("catalogues supported unique crafts and their current availability",function()
 		local simulator=require("Modules.CraftingSimulator")
 		local catalog=simulator.catalog(shield,"",50,nil,"3_30")
-		assert.is_true(catalog.uniqueCrafting);assert.equal(16,#catalog.uniqueActions);assert.equal(14,#catalog.socketCrafts)
+		assert.is_true(catalog.uniqueCrafting);assert.equal(17,#catalog.uniqueActions);assert.equal(14,#catalog.socketCrafts)
 		assert.same(require("Modules.CraftingItemStats").itemValues(new("Item"):Item(shield)),catalog.nativeStats);assert.is_true(catalog.nativeStats.Armour>0)
 		local byMethod={};for _,action in ipairs(catalog.uniqueActions) do if action.method~="socket_bench" or action.action.linked then byMethod[action.method]=action end end
 		assert.is_true(byMethod.quality.available);assert.is_true(byMethod.beast_max_links.available);assert.is_true(byMethod.socket_white_bench.available)

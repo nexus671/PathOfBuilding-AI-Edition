@@ -107,7 +107,7 @@ async function main(){
   for (const [name,base] of [['Taste of Hate','Sapphire Flask'],['The Battle Within','Oakbranch Tincture']]) {
     const flask=`${base.includes('Tincture')?'Item Class: Tinctures\n':''}Rarity: UNIQUE\n${name}\n${base}\nItem Level: 86\nQuality: 18\n30% chance to Avoid being Frozen during Effect`;
     const inspected=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:flask,limit:20},'inspected');
-    assert.equal(inspected.crafting.nativeEngine.quality.resource,"Glassblower's Bauble");assert.deepEqual(inspected.crafting.nativeEngine.uniqueActions.map(entry=>entry.method),['quality']);
+    assert.equal(inspected.crafting.nativeEngine.quality.resource,"Glassblower's Bauble");assert.deepEqual(inspected.crafting.nativeEngine.uniqueActions.map(entry=>entry.method),['quality','divine']);assert.equal(inspected.crafting.nativeEngine.uniqueActions[1].available,false);
     const applied=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:flask,action:{method:'quality'},seed:1},'crafted');
     assert.equal(applied.nativeCrafting.uniqueQuality.quality,19);assert.equal(applied.nativeCrafting.components['Metadata/Items/Currency/CurrencyFlaskQuality'],1);assert.equal(applied.nativeCrafting.itemText,flask.replace('Quality: 18','Quality: 19')+(base.includes('Tincture')?'\nTincture Imported Quality: 18\nTincture Imported Effect: 0':''));
   }
@@ -228,6 +228,16 @@ async function main(){
   const uniqueLinkFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'unique-link-filter',title:'Link pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');
   assert.ok(uniqueLinkFilter.profile.rules.some(rule=>rule.origin==='craft:'+uniqueLinkGuide.id && rule.title==='Orb of Fusing'));
   await queued('propose_build',{mode:'edit',title:'Remove link test guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:uniqueLinkGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
+  const divineUniqueRaw='Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+(30-50) to Evasion Rating\n+10% to Item Rarity\n+(30-40)% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers';
+  const divineUniqueInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:divineUniqueRaw,query:'divine',limit:10},'inspected');
+  const divineUniqueOption=divineUniqueInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='divine');assert.equal(divineUniqueOption.available,true);
+  const divineUniqueApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:divineUniqueRaw,action:divineUniqueOption.action,seed:123},'crafted');assert.ok(divineUniqueApply.nativeCrafting.warnings.some(w=>w.code==='unique_divine_estimate'));
+  const divineUniqueGuide={id:'unique-divine-workflow',title:'Divine target',slot:'Helmet',startingItem:divineUniqueRaw,goals:[],steps:[divineUniqueOption.guideStep],nativeRecipe:{steps:[{method:'divine',maxAttempts:10,untilRequirements:{nativeStats:{Evasion:100}}}],targets:[],requirements:{nativeStats:{Evasion:100}}}};
+  await queued('propose_crafting_plan',{baseRevision:context.revision,project:divineUniqueGuide},'review');await host('apply');context=(await call('get_build_context')).context;
+  const divineUniqueSaved=(await call('get_crafting_projects')).projects.find(entry=>entry.id===divineUniqueGuide.id);assert.equal(divineUniqueSaved.steps[0].uniqueCraft.method,'divine');
+  const divineUniqueRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:divineUniqueRaw,recipe:divineUniqueSaved.nativeRecipe,options:{trials:5,maxActions:10,seed:123}},'crafted');assert.equal(divineUniqueRun.nativeCrafting.trials,5);
+  const divineUniqueFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'unique-divine-filter',title:'Divine pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');assert.ok(divineUniqueFilter.profile.rules.some(rule=>rule.origin==='craft:'+divineUniqueGuide.id && rule.title==='Divine Orb'));
+  await queued('propose_build',{mode:'edit',title:'Remove Divine test guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:divineUniqueGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
   const taintedQualityRaw=uniqueColourRaw+'\nCorrupted';
   const taintedQualityInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:taintedQualityRaw,query:'tainted quality',limit:10},'inspected');
   const taintedQualityOption=taintedQualityInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='tainted_quality');assert.equal(taintedQualityOption.available,true);

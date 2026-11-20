@@ -41,6 +41,7 @@ local function alwaysCorrupted(title,baseName)
 end
 function M.guideAction(method,count,resource,corrupted,socketCount)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
+	if method=="divine" then return "Use a Divine Orb to reroll explicit modifier values" end
 	if method=="tainted_quality" then return "Use a Tainted "..resource.." to reroll quality" end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
 	if method=="omen_connections" then return "Link existing sockets with an Omen of Connections and an Orb of Fusing" end
@@ -151,6 +152,58 @@ function M.taintedQuality(raw,seed)
 	local after,info=M.inspect(output)
 	assert(after.title==before.title and after.baseName==before.baseName and after.corrupted and info.quality==rolled.quality,"Unique item did not round-trip after tainted quality")
 	return {itemText=output,quality=info.quality,components=sim.components({method="tainted_quality"},state,model)}
+end
+
+-- A bounded Divine preview for complete PoB range-form uniques. Copied
+-- numeric-only items and variants need identification before they can be used.
+local function divinePlan(raw)
+	local ok,item=pcall(M.inspect,raw);if not ok then return nil,tostring(item) end
+	if item.corrupted then return nil,"Divine Orbs cannot modify a corrupted item" end
+	uniqueSocketRestriction(item.title) -- Populate the bundled unique index.
+	local candidates={}
+	for _,template in ipairs(uniquesByName[item.title] or {}) do
+		local base=template:match("^%s*[^\r\n]+[\r\n]+([^\r\n]+)")
+		if base==item.baseName then candidates[#candidates+1]=template end
+	end
+	if #candidates~=1 or candidates[1]:find("Variant:",1,true) or candidates[1]:find("{variant:",1,true) then return nil,"This unique's variant needs identification before Divine rolls" end
+	local parsed,reference=pcall(function() return new("Item"):Item("Rarity: UNIQUE\n"..candidates[1].."\nItem Level: "..item.itemLevel) end)
+	if not parsed or not reference.base then return nil,"The bundled unique template could not be verified" end
+	local expected={};for _,line in ipairs(reference.explicitModLines or {}) do expected[line.line]=(expected[line.line] or 0)+1 end
+	local rows,seen={},{}
+	for _,line in ipairs(item.explicitModLines or {}) do
+		if line.disabled or line.custom or line.crafted or line.fractured or line.mutated or line.scourge or line.crucible or line.unscalable then return nil,"Special modifier lines need a separate Divine model" end
+		local text=line.line;local count=expected[text] or 0;if count<1 then return nil,"Use the complete bundled range-form modifiers for this unique" end;expected[text]=count-1
+		local ranges={};for low,high in text:gmatch("%((%-?%d+)%-(%-?%d+)%)") do ranges[#ranges+1]={tonumber(low),tonumber(high)} end
+		if text:find("%(%-?[%d%.]+%-%-?[%d%.]+%)") then
+			if #ranges~=1 then return nil,"Multiple or fractional ranges need a separate Divine model" end
+			local low,high=ranges[1][1],ranges[1][2]
+			if high<=low or high-low>100000 then return nil,"This modifier range needs a separate Divine model" end
+			if seen[text] then return nil,"Repeated modifier lines need a separate Divine model" end
+			seen[text]=true;rows[#rows+1]={line=text,low=low,high=high}
+		end
+	end
+	for _,count in pairs(expected) do if count~=0 then return nil,"Use the complete bundled range-form modifiers for this unique" end end
+	if #rows==0 then return nil,"No supported variable explicit modifiers were found" end
+	return {item=item,rows=rows}
+end
+function M.divineReason(raw) local _,reason=divinePlan(raw);return reason end
+function M.divine(raw,seed)
+	local plan,reason=divinePlan(raw);assert(plan,reason)
+	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
+	local random=require("Modules.CalcTime").random(seed);local replacements={}
+	for _,row in ipairs(plan.rows) do
+		local value=row.low+math.floor(random()*(row.high-row.low+1));local range=(value-row.low)/(row.high-row.low)
+		replacements[row.line]="{range:"..string.format("%.6f",range).."}"..row.line
+	end
+	local changed=0
+	local output=raw:gsub("[^\r\n]+",function(line)
+		local plain=line:gsub("^%{range:[^}]+%}","");local replacement=replacements[plain]
+		if replacement then changed=changed+1;return replacement end
+		return line
+	end)
+	assert(changed==#plan.rows,"The unique modifier lines could not be updated safely")
+	local after=M.inspect(output);assert(after.title==plan.item.title and after.baseName==plan.item.baseName and not after.corrupted,"Unique item did not round-trip after Divine crafting")
+	return {itemText=output,components={divine=1}}
 end
 
 -- Known unique restrictions still apply when a saved item has partial text.
@@ -405,7 +458,7 @@ function M.catalog(raw,query,limit)
 	local whiteComponents={["Metadata/Items/Currency/CurrencyConvertToNormal"]=1}
 	if item.corrupted then whiteComponents["Metadata/Items/Currency/CurrencyCorrupt"]=1 end
 	local sim=require("Modules.CraftingSimulator")
-	local definitions={{method="quality",label="Ordinary quality",reason=qualityReason,components={[info.resourceKey]=1}}}
+	local definitions={{method="quality",label="Ordinary quality",reason=qualityReason,components={[info.resourceKey]=1}},{method="divine",label="Divine Orb",reason=M.divineReason(raw),sampled=true,components={divine=1}}}
 	if item.base.armour or data.weaponTypeInfo[item.type] then definitions[#definitions+1]={method="tainted_quality",label="Tainted quality: "..info.resource,reason=M.taintedQualityReason(raw),sampled=true,components=sim.components({method="tainted_quality"},nil,{item=item})} end
 	if sim.socketLimit({item=item})>0 then
 		local socketDefinitions={
@@ -438,7 +491,7 @@ function M.catalog(raw,query,limit)
 			local guideMethod,guideCount=entry.guideMethod or entry.method,entry.guideCount or 1
 			action.guideStep={action=M.guideAction(guideMethod,guideCount,info.resource,item.corrupted,#item.sockets),uniqueCraft={method=guideMethod,count=guideCount}}
 			result.uniqueActions[#result.uniqueActions+1]=action
-			if entry.method~="quality" and entry.method~="tainted_quality" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
+			if entry.method~="quality" and entry.method~="tainted_quality" and entry.method~="divine" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
 		end
 	end
 	return result

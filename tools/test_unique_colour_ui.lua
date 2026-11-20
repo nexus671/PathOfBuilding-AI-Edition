@@ -19,6 +19,15 @@ return function(build,ui,frame)
 	ui:click("socketCount");ui:click("colours");ui:text("target","RR");ui:click("plan");frame("crafting-unique-colour-replace");ui:click("confirm")
 	for _,entry in ipairs(store.projects) do if entry.id==direct.id then planned=entry end end
 	assert(planned.nativeRecipe.requirements.socketColours=="RR" and #planned.steps==1 and planned.steps[1].stopWhen=="At least RR sockets in any order","Colour guide did not follow the replacement");main.popups={}
+	local divineRaw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+(30-50) to Evasion Rating\n+10% to Item Rarity\n+(30-40)% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
+	local divineProject={id="unique-divine-ui",title="Divine target",slot="Helmet",startingItem=divineRaw,goals={},steps={}}
+	store:Upsert(divineProject);require("Classes.CraftingUniqueQualityControl").Open(build,divineProject);ui:click("divine");local divinePicker=main.popups[1].controls
+	divinePicker.stat:SelByValue("Evasion","val");ui:text("target","100");ui:text("attempts","250");frame("crafting-unique-divine-target");ui:click("plan")
+	local divineSaved;for _,entry in ipairs(store.projects) do if entry.id==divineProject.id then divineSaved=entry end end
+	assert(divineSaved and divineSaved.nativeRecipe.requirements.nativeStats.Evasion==100 and divineSaved.steps[1].uniqueCraft.method=="divine","Divine target was not kept");main.popups={}
+	local divinePreview={id="unique-divine-preview-ui",title="Divine preview",slot="Helmet",startingItem=divineRaw,goals={},steps={}}
+	store:Upsert(divinePreview);require("Classes.CraftingUniqueQualityControl").Open(build,divinePreview);ui:click("divine");ui:click("apply");frame("crafting-unique-divine-preview");ui:click("guide")
+	for _,entry in ipairs(store.projects) do if entry.id==divinePreview.id then divineSaved=entry end end;assert(divineSaved.steps[1].uniqueCraft.method=="divine","Divine preview guide was not kept");main.popups={}
 	local taintedQuality={id="unique-tainted-quality-ui",title="Tainted quality",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nQuality: 0\nSockets: R-G B\nCorrupted",goals={},steps={}}
 	store:Upsert(taintedQuality);require("Classes.CraftingUniqueQualityControl").Open(build,taintedQuality);frame("crafting-unique-tainted-quality")
 	ui:click("qualityPlan");ui:text("target","20");ui:text("attempts","1000");frame("crafting-unique-quality-target");ui:click("plan")
