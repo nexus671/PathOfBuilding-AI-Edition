@@ -154,4 +154,19 @@ describe("Independent modifier ranges",function()
 		assert.are.equal(1,#state.affixes);assert.are.equal("ExampleA",state.affixes[1].id)
 	end)
 
+	it("detects separate combined contributor groups across rows",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local function mod(value,label,group,kind,order) return {"("..value.."-"..value..")% increased "..label,type=kind,group=group,statOrder={order}} end
+		m.byId.A=mod(8,"Example","GroupA","Prefix",100);m.byId.B=mod(10,"Other","GroupB","Suffix",101)
+		m.byId.C=mod(4,"Example","GroupB","Prefix",100);m.byId.D=mod(4,"Example","GroupD","Prefix",100)
+		m.byId.E=mod(5,"Other","GroupA","Suffix",101);m.byId.F=mod(5,"Other","GroupF","Suffix",101)
+		m.mods={{id="A"},{id="B"},{id="C"},{id="D"},{id="E"},{id="F"}};m.essences={};m.bench={}
+		m.item.explicitModLines={{line="8% increased Example"},{line="10% increased Other"}}
+		local import=require("Modules.CraftingImport")
+		local ok,err=pcall(import.resolve,sim,m,{rarity="RARE",affixes={}})
+		assert.is_false(ok);assert.matches("several modifier identities",err,1,true)
+		m.byId.F.statOrder[1]=102
+		local state=import.resolve(sim,m,{rarity="RARE",affixes={}});assert.are.equal(2,#state.affixes)
+	end)
+
 end)

@@ -3,8 +3,8 @@
 
 Plain item text can combine values from several modifiers. The importer checks
 for alternative combinations of integer single-stat ranges before accepting an exact
-line match, and rejects ambiguous items. The bounded search checks additional combined
-rows involving those same contributors; separate sets of combined contributors and complex multi-stat values remain incomplete;
+line match, and rejects ambiguous items. The bounded search can check several
+combined rows, including overlapping hybrid and separate contributor groups. Complex multi-stat values remain incomplete;
 use advanced copy text when modifier identity matters.
 
 Run `python tools/run_headless_lupa.py tools/check_crafting_imports.lua` to

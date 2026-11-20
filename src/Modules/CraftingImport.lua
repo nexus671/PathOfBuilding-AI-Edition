@@ -134,6 +134,7 @@ function I.resolve(M,model,state)
 		local function sideFits(row,kind)
 			return not row.crafted and not row.fractured and (not row.prefix or kind=="Prefix") and (not row.suffix or kind=="Suffix")
 		end
+		local findCombined
 		local function cover()
 			budget()
 			local first;for i=1,#rows do if not used[i] then first=i;break end end
@@ -151,7 +152,7 @@ function I.resolve(M,model,state)
 					if found then return true end
 				end
 			end
-			return false
+			return findCombined()
 		end
 		local function escape(text) return text:gsub("([^%w])","%%%1") end
 		-- Cover remaining lines of the selected contributors. Several modifiers
@@ -203,6 +204,7 @@ function I.resolve(M,model,state)
 			end
 			return match()
 		end
+		findCombined=function()
 		for rowIndex,row in ipairs(rows) do if not used[rowIndex] and not row.crafted and not row.fractured then
 			local byPattern={}
 			for _,entry in ipairs(contributorMods) do local mod=entry.mod
@@ -288,6 +290,8 @@ function I.resolve(M,model,state)
 			end end
 		end end
 		return false
+		end
+		return findCombined()
 	end
 	if #solutions==1 and hasCombinedAlternative() then solutions[2]=true end
 	local failure=#solutions == 0 and "Imported values do not resolve to legal affixes at this item level; use advanced copy text or a blank base with a structured starting state" or "Imported values match several modifier identities; use advanced copy text or a blank base with a structured starting state"
