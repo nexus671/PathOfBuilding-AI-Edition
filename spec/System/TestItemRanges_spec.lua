@@ -131,6 +131,29 @@ describe("Independent modifier ranges",function()
 		assert.is_true(values["Regenerate 0.4% of Life per second"]);assert.is_true(values["Regenerate 2.8% of Life per second"])
 		assert.are.near(3.2,total,0.000001)
 	end)
+	it("scales and rounds separate affixes before adding their values",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86\nImplicits: 1\n50% increased effect of prefixes");local state=copyTable(m.initial);state.rarity="RARE"
+		state.affixes={{id="LocalIncreasedPhysicalDamageReductionRatingPercentAndStunRecovery6",range={2/3,1}},{id="LocalIncreasedPhysicalDamageReductionRatingPercent6",range=1}}
+		local item=sim.toItem(m,state);local total=0;for _,mod in ipairs(item.baseModList) do if mod.name=="Armour" and mod.type=="INC" then total=total+mod.value end end
+		assert.equal(197,total)
+	end)
+	it("keeps sources separate when a newly added crafted modifier scales them",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86");local state=copyTable(m.initial);state.rarity="RARE"
+		m.byId.ExampleMagnitude={"50% increased effect of prefixes",type="Suffix",group="ExampleMagnitude",statOrder={5000},modTags={},affix="",level=1}
+		state.affixes={{id="LocalIncreasedPhysicalDamageReductionRatingPercentAndStunRecovery6",range={2/3,1}},{id="LocalIncreasedPhysicalDamageReductionRatingPercent6",range=1},{id="ExampleMagnitude",range=0.5,crafted=true}}
+		local item=sim.toItem(m,state);local total=0;for _,mod in ipairs(item.baseModList) do if mod.name=="Armour" and mod.type=="INC" then total=total+mod.value end end
+		assert.equal(197,total)
+		state.affixes[3].crafted=nil;local natural=sim.toItem(m,state);total=0
+		for _,mod in ipairs(natural.baseModList) do if mod.name=="Armour" and mod.type=="INC" then total=total+mod.value end end
+		assert.equal(197,total)
+	end)
+	it("rounds catalyst quality on individual affixes before adding",function()
+		local m=sim.model("Rarity: NORMAL\nGold Ring\nItem Level: 86\nCatalyst: Fertile\nCatalystQuality: 20");local state=copyTable(m.initial);state.rarity="RARE"
+		for _,id in ipairs({"ExampleLifeA","ExampleLifeB"}) do m.byId[id]={"+(3-3) to maximum Life",type="Prefix",group=id,statOrder={19999},modTags={"life"},affix="",level=1} end
+		state.affixes={{id="ExampleLifeA",range=0.5},{id="ExampleLifeB",range=0.5}}
+		local item=sim.toItem(m,state);local total=0;for _,mod in ipairs(item.baseModList) do if mod.name=="Life" and mod.type=="BASE" then total=total+mod.value end end
+		assert.equal(6,total)
+	end)
 	it("keeps distinct socketed supports that share a display order",function()
 		local m=sim.model("Rarity: NORMAL\nWool Gloves\nItem Level: 86");local state=copyTable(m.initial);state.rarity="RARE";state.influences={"shaper"}
 		state.affixes={{id="TrapSpeedCooldownUber1",range=0.5},{id="BlindOnHitSupportedUber1",range=0.5}}

@@ -2183,6 +2183,18 @@ function ItemClass:Craft()
 	self.nameSuffix = ""
 	self.requirements.level = self.base.req.level
 	local statOrder = { }
+	local preserveSources = self.preserveAffixSources or self.catalyst and (self.catalystQuality == nil or self.catalystQuality > 0) or #(self.modMagnitudeMods or { }) > 0
+	if not preserveSources then
+		for _, list in ipairs({ self.prefixes, self.suffixes }) do
+			for i = 1, (list.limit or (self.affixLimit / 2)) do
+				local affix = list[i]
+				local mod = affix and self.affixes[affix.modId]
+				for _, line in ipairs(mod or { }) do if itemLib.isModifierMagnitudeLine(line) then preserveSources = true; break end end
+				if preserveSources then break end
+			end
+			if preserveSources then break end
+		end
+	end
 	for _, list in ipairs({ self.prefixes, self.suffixes }) do
 		for i = 1, (list.limit or (self.affixLimit / 2)) do
 			local affix = list[i]
@@ -2210,7 +2222,7 @@ function ItemClass:Craft()
 					local sameText = existing and line:gsub("%d+%.?%d*", "#") == existing.line:gsub("%d+%.?%d*", "#")
 					local lower = line:lower()
 					local grantsSkill = lower:find("supported by level", 1, true) or lower:find("grants level", 1, true)
-					if existing and not fractional and sameText and not grantsSkill then
+					if existing and not preserveSources and not fractional and sameText and not grantsSkill then
 						-- Only combine integer contributions from the same
 						-- source; fractional values must retain their precision.
 						local start = 1

@@ -270,6 +270,7 @@ function M.toItem(model,state)
 	item.suffixes.limit=caps.Suffix
 	for _,entry in ipairs(state.affixes) do
 		local mod=model.byId[entry.id]
+		if entry.crafted then for _,line in ipairs(mod) do if itemLib.isModifierMagnitudeLine(line) then item.preserveAffixSources=true;break end end end
 		if not entry.crafted then
 			local list=mod.type == "Prefix" and item.prefixes or item.suffixes
 			list[#list+1]={modId=entry.id,range=type(entry.range) == "table" and copyTable(entry.range) or {entry.range or 0.5},fractured=entry.fractured}

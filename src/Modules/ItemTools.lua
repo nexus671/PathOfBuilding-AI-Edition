@@ -11,6 +11,12 @@ local m_floor = math.floor
 
 itemLib = { }
 
+-- These item lines can change how other individual modifiers are scaled.
+function itemLib.isModifierMagnitudeLine(line)
+	line = line:lower()
+	return line:find("modifier magnitude", 1, true) or line:find("effect of prefixes", 1, true) or line:find("effect of suffixes", 1, true)
+end
+
 -- Cluster-template positions, shared by the passive tree and the item editor.
 -- Index 0 is the entrance; half of totalIndicies is the back of the cluster.
 function itemLib.getClusterJewelNotableIndices(clusterJewel, jewelData, notableCount)
