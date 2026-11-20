@@ -18,9 +18,13 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("status","To do");assert(not c.toggle:IsEnabled(),"A filtered-out step must not remain selected")
 	ui:choose("status","Done");x,y=c.results:GetPos();ui:clickAt(x+20,y+12)
 	ui:click("toggle");assert(not store.projects[1].steps[176].done,"Step was not restored to to-do")
+	ui:choose("status","All steps");x,y=c.results:GetPos();ui:clickAt(x+20,y+12);ui:click("remove")
+	assert(main.popups[1].title=="Remove crafting step","Removing a step must be confirmed")
+	ui:frame():write(directory.."/"..size[1].."-guide-steps-remove.json");ui:click("confirm")
+	assert(#store.projects[1].steps==175,"The selected step was not removed")
 	ui:click("close");ui:click("close");ui:click("aiBuild");build.planningWorkspace:Show("crafting");ui:click("tab_plan")
 	ui:frame():write(directory.."/"..size[1].."-guide-steps-workspace.json")
 	ui:click("browseSteps");assert(main.popups[1].title=="Crafting guide steps","Workspace guide browser did not open")
 	ui:restore();main.popups={}
 end
-print("CRAFTING_GUIDE_UI_OK",12)
+print("CRAFTING_GUIDE_UI_OK",15)

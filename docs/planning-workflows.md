@@ -20,7 +20,7 @@ Developers can run `luajit ../tools/benchmark_planning.lua` from `src`, optional
 
 Written crafting guides can contain as many steps and goals as fit in the build's crafting metadata. The combined saved crafting data has a 2 MiB size guard; executable simulation recipes still have their own bounded limits.
 
-In a saved project's **Plan** tab, **Browse guide steps** searches instructions, stop conditions and failure notes. Filter by completion status, page through long guides and select any step to mark it done or to do. Save the build to persist those changes.
+In a saved project's **Plan** tab, **Browse guide steps** searches instructions, stop conditions and failure notes. Filter by completion status, page through long guides and select any step to mark it done or to do, or remove it after confirmation. If repeated steps have different notes or progress, remove the intended one here so editing the written guide does not discard the wrong details. Save the build to persist those changes.
 
 In **Crafting > Simulate recipe > Recipe routes**, select a step and open **Failure recovery**. Choose to continue along the failure route, stop for inspection, restart from the starting item, or set the item aside for salvage. Written recovery instructions stay with that step.
 

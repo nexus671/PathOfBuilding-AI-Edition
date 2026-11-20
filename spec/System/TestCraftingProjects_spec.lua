@@ -80,6 +80,19 @@ describe("Crafting projects", function()
 		c.status:SelByValue("Done");c.status.selFunc();assert.is_nil(c.results.list[1].index)
 		local xml={};store:Save(xml);local reopened=projects.new(build);reopened:Load(xml);assert.is_false(reopened.projects[1].steps[76].done)
 	end)
+	it("preserves duplicate step metadata and removes the intended duplicate explicitly",function()
+		local entry=project();entry.steps={{action="Repeat craft",done=true,stopWhen="First result"},{action="Repeat craft",done=false,onFailure="Second recovery"}}
+		local store=build.savers.CraftingProjects;store:Upsert(entry)
+		require("Classes.CraftingProjectControl").Open(build).edit:Click();local c=main.popups[1].controls
+		c.steps:SetText(c.steps.buf.."\nFinish craft");c.wizardPage:SelByValue("Review");c.wizardPage.selFunc();c.save:Click()
+		assert.equal(3,#store.projects[1].steps);assert.is_true(store.projects[1].steps[1].done);assert.equal("Second recovery",store.projects[1].steps[2].onFailure)
+		main.popups[1].controls.edit:Click();c=main.popups[1].controls;c.steps:SetText("Repeat craft\nFinish craft");c.wizardPage:SelByValue("Method & budget");c.next:Click()
+		assert.equal("Planning tool",main.popups[1].title);local warning={};for _,control in pairs(main.popups[1].controls) do if type(control.label)=="string" then warning[#warning+1]=control.label end end
+		assert.matches("Browse guide steps",table.concat(warning," "),1,true);main:ClosePopup();main:ClosePopup()
+		main.popups[1].controls.browseSteps:Click();c=main.popups[1].controls;c.results.planningSelect(c.results.list[2]);c.remove:Click()
+		assert.equal("Remove crafting step",main.popups[1].title);main.popups[1].controls.confirm:Click()
+		assert.equal(2,#store.projects[1].steps);assert.is_true(store.projects[1].steps[1].done);assert.equal("First result",store.projects[1].steps[1].stopWhen)
+	end)
 	it("keeps size limits and preserves malformed project collections",function()
 		local store=build.savers.CraftingProjects
 		for _,raw in ipairs({'{"schemaVersion":1,"projects":{}}','{"schemaVersion":1,"projects":{"one":{}}}','{"schemaVersion":1,"projects":[null]}','{"schemaVersion":1,"projects":null}',string.rep(" ",2*1024*1024).."{}"}) do

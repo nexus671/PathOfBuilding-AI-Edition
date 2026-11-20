@@ -26,7 +26,8 @@ function M.Open(build,projectId,onChanged)
 		c.details.list=ui.rows(lines,detailW-20,14)
 	end
 	ui.selectable(c.results,function(row) return row.index end,function(row) selected=row.index;detail() end)
-	button("toggle",side,h-102,detailW,"Mark done",function()
+	local actionWidth=math.floor((detailW-12)/2)
+	button("toggle",side,h-102,actionWidth,"Mark done",function()
 		local changed=copyTable(project());local step=assert(changed.steps[selected],"Select a step first.")
 		step.done=not step.done;local ok,err=pcall(store.Upsert,store,changed)
 		if not ok then main:OpenMessagePopup("Crafting guide",ui.errorText(err));return end
@@ -34,6 +35,17 @@ function M.Open(build,projectId,onChanged)
 	end)
 	c.toggle.enabled=function() return selected~=nil and project().steps[selected]~=nil end
 	c.toggle.label=function() local step=selected and project().steps[selected];return step and step.done and "Mark to do" or "Mark done" end
+	button("remove",side+actionWidth+12,h-102,actionWidth,"Remove step",function()
+		local index=assert(selected,"Select a step first.");local expected=copyTable(assert(project().steps[index],"Step is no longer available."))
+		main:OpenConfirmPopup("Remove crafting step","Remove step "..index.." and its notes and progress?","Remove",function()
+			local ok,err=pcall(function()
+				local changed=copyTable(project());assert(changed.steps[index] and tableDeepEquals(changed.steps[index],expected),"This step changed. Select it again before removing it.")
+				table.remove(changed.steps,index);store:Upsert(changed);selected=nil;if onChanged then onChanged() end;refresh(false)
+			end)
+			if not ok then main:OpenMessagePopup("Crafting guide",ui.errorText(err)) end
+		end)
+	end)
+	c.remove.enabled=c.toggle.enabled
 	button("previous",16,h-88,100,"Previous",function() page=math.max(1,page-1);refresh(true) end)
 	button("next",128,h-88,100,"Next",function() page=math.min(pages,page+1);refresh(true) end)
 	c.previous.enabled=function() return page>1 end;c.next.enabled=function() return page<pages end

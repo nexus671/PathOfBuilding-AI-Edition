@@ -42,12 +42,16 @@ function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
 		draft.title=c.title.buf;draft.slot=c.slot:GetSelValue();draft.startingItem=c.starting.buf;draft.targetItem=c.target.buf;draft.notes=c.notes.buf;draft.preferredMethod=c.method:GetSelValueByKey("val")
 		draft.goals={};for line in c.goals.buf:gmatch("[^\r\n]+") do if line:match("%S") then draft.goals[#draft.goals+1]=line end end
 		if c.steps.buf~=original then
-			local previous=draft.steps;local oldCount,oldByText,newCount,lines={},{},{},{}
-			for _,step in ipairs(previous) do oldCount[step.action]=(oldCount[step.action] or 0)+1;oldByText[step.action]=step end
+			local previous=draft.steps;local oldByText,newCount,lines={},{},{}
+			for _,step in ipairs(previous) do local group=oldByText[step.action] or {};oldByText[step.action]=group;group[#group+1]=step end
 			for line in c.steps.buf:gmatch("[^\r\n]+") do if line:match("%S") then lines[#lines+1]=line;newCount[line]=(newCount[line] or 0)+1 end end
+			for action,group in pairs(oldByText) do if #group>1 and (newCount[action] or 0)<#group then
+				for index=2,#group do assert(tableDeepEquals(group[1],group[index]),"Repeated steps have different progress or notes. Use Browse guide steps to remove the intended step first.") end
+			end end
 			draft.steps={}
+			local used={}
 			for _,line in ipairs(lines) do
-				local old=oldCount[line]==1 and newCount[line]==1 and oldByText[line]
+				used[line]=(used[line] or 0)+1;local group=oldByText[line];local old=group and group[used[line]]
 				draft.steps[#draft.steps+1]=old and copyTable(old) or {action=line}
 			end
 		end
