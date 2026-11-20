@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview831" />
+	<Version number="2.68.1-ai.preview832" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1752,7 +1752,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="43867eda701842f46d8b2323fe8c7cea9d3734b6" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="f5f92d5f155dd2e771fcbbb08a0dfb4b84b71cb9" />
-	<File name="Classes/MapModifierControl.lua" part="program" sha1="d79d3962ab5b362b7b8ab50d9e81377822647815" />
+	<File name="Classes/MapModifierControl.lua" part="program" sha1="04ab3bccdd5635cd4d09744331f3bc70d33c1f56" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
 	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="cfff5d76e380c7bdcbdac229325cefb1599af36c" />
 	<File name="Classes/ModDB.lua" part="program" sha1="1327beebeba14dc8320d137a3dede673b74942af" />
