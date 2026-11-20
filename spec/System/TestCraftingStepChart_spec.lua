@@ -16,9 +16,10 @@ describe("Crafting step spending chart",function()
 		local ui=UI.install({width=960,height=640});ui:bind(build)
 		local counts,steps={},{};for i=1,10 do counts[i]={pricedCost=i*2,unpricedComponents=0};steps[i]={method="alchemy"} end
 		counts[2].unpricedComponents=1
-		local c=require("Classes.CraftingStepCostsControl").Open({{label='First, "quoted"',recipe={steps=steps},result={trials=2,costCurrency="chaos",routeCounts=counts}},{label="Second",result={trials=1,costCurrency="divine",routeCounts={[1]={pricedCost=3,unpricedComponents=0}}}}})
+		local c=require("Classes.CraftingStepCostsControl").Open({{label='First, "quoted"',recipe={steps=steps},result={trials=2,seed=123,maxActions=20,dataPatch="3.30",modifierPatch="test",warnings={{message='Assumed "weights"'}},limitations={"Estimates only"},transitionErrors={blocked=3},costCurrency="chaos",routeCounts=counts}},{label="Second",result={trials=1,costCurrency="divine",routeCounts={[1]={pricedCost=3,unpricedComponents=0}}}}})
 		ui:frame();local first=text(ui);assert.is_truthy(first:find("Step 1: Orb of Alchemy",1,true));assert.is_truthy(first:find("1.00 chaos",1,true));assert.is_truthy(first:find("Unavailable: missing prices",1,true))
 		ui:click("copy");assert.is_truthy(ui.clipboard:find('"First, ""quoted""",2,"Orb of Alchemy",,"chaos","unavailable",2',1,true));assert.is_truthy(ui.clipboard:find('"First, ""quoted""",10,"Orb of Alchemy",10,"chaos","priced",2',1,true))
+		assert.is_truthy(ui.clipboard:find('123,20,"3.30","test",3,"Assumed ""weights""\nEstimates only"',1,true));assert.is_truthy(ui.clipboard:find("Failed transitions are not charged",1,true))
 		assert.is_true(c.next:IsEnabled());ui:click("next");ui:frame();assert.is_truthy(text(ui):find("Step 10",1,true));assert.is_false(c.next:IsEnabled())
 		c.route:SelByValue(2,"val");c.route.selFunc();ui:frame();assert.is_truthy(text(ui):find("3.00 divine",1,true));assert.is_false(c.previous:IsEnabled());ui:click("copy");assert.is_truthy(ui.clipboard:find('"Second",1,"",3,"divine","priced",1',1,true))
 		ui:bind(nil)

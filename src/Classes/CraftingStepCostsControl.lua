@@ -39,10 +39,13 @@ function M.Open(routes)
 	c.copy=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-42,200,28},"Copy step costs (CSV)",function()
 		local route=selected();local result=route.result
 		local function quote(value) return '"'..tostring(value or ""):gsub('"','""')..'"' end
-		local lines={"route,step,action,mean_per_trial,unit,status,trials,note"}
+		local warnings={};for _,warning in ipairs(result.warnings or {}) do if warning.message then warnings[#warnings+1]=warning.message end end
+		for _,limitation in ipairs(result.limitations or {}) do warnings[#warnings+1]=limitation end
+		local failed=0;for _,count in pairs(result.transitionErrors or {}) do failed=failed+count end
+		local lines={"route,step,action,mean_per_trial,unit,status,trials,seed,action_limit,data_patch,modifier_patch,failed_transitions,model_notes,note"}
 		for _,entry in ipairs(rows) do
 			local amount=entry.amount~=nil and (string.format("%.17g",entry.amount):gsub(",",".")) or ""
-			lines[#lines+1]=table.concat({quote(route.label),tostring(entry.step),quote(entry.method),amount,quote(result.costCurrency or "units"),quote(entry.amount~=nil and "priced" or "unavailable"),tostring(result.trials),quote("Includes unsuccessful trials; excludes starting items and restart costs.")},",")
+			lines[#lines+1]=table.concat({quote(route.label),tostring(entry.step),quote(entry.method),amount,quote(result.costCurrency or "units"),quote(entry.amount~=nil and "priced" or "unavailable"),tostring(result.trials),tostring(result.seed or ""),tostring(result.maxActions or ""),quote(result.dataPatch),quote(result.modifierPatch),tostring(failed),quote(table.concat(warnings,"\n")),quote("Includes unsuccessful trials; excludes starting items and restart costs. Failed transitions are not charged.")},",")
 		end
 		Copy(table.concat(lines,"\n"))
 	end)
