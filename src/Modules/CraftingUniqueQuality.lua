@@ -103,6 +103,22 @@ function M.inspect(raw)
 	local quality=item.quality or 0;assert(type(quality)=="number" and quality>=0 and quality==math.floor(quality),"Invalid item quality")
 	return item,{quality=quality,available=quality<20 and not item.corrupted,resource=flask and "Glassblower's Bauble" or weapon and "Blacksmith's Whetstone" or "Armourer's Scrap",resourceKey=flask and "Metadata/Items/Currency/CurrencyFlaskQuality" or weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality"}
 end
+-- Imported armour lines are totals, which PoB uses to infer the base roll.
+-- Keep that inferred roll when an operation changes modifiers or quality;
+-- otherwise the old displayed total would be inferred again after the edit.
+local function preserveArmourBaseline(raw,output,item)
+	if not item.base.armour or not item.armourData then return output end
+	local source="\n"..raw:gsub("\r\n","\n");local newline=raw:find("\r\n",1,true) and "\r\n" or "\n"
+	for _,entry in ipairs({{"Armour","Armour"},{"Evasion","Evasion"},{"Evasion Rating","Evasion"},{"Energy Shield","EnergyShield"},{"Ward","Ward"}}) do
+		local label,key=entry[1],entry[2];local marker=key.."BasePercentile"
+		if source:find("\n"..label..":",1,true) and not source:find("\n"..marker..":",1,true) then
+			local value=item.armourData[marker];assert(type(value)=="number" and value==value and value>=0 and value<=1,"The imported armour baseline could not be preserved")
+			output=output..(output:sub(-1)=="\n" and "" or newline)..marker..": "..tostring(value)
+			source=source.."\n"..marker..":"
+		end
+	end
+	return output
+end
 function M.apply(raw)
 	local item,info=M.inspect(raw);assert(not item.corrupted,"Ordinary quality currency cannot modify a corrupted item");assert(info.available,"Ordinary quality currency cannot exceed 20%")
 	local padded="\n"..raw
@@ -114,6 +130,7 @@ function M.apply(raw)
 		output=raw..(raw:sub(-1)=="\n" and "" or newline).."Quality: "..(info.quality+1)
 	end
 	if count>0 then assert(withoutQuality(raw)==withoutQuality(output),"Unique item properties changed while applying quality") end
+	output=preserveArmourBaseline(raw,output,item)
 	-- Game-copied tincture values already include the original quality. Keep
 	-- that baseline explicit before changing quality, so later calculations
 	-- do not treat the old displayed values as if they used the new quality.
@@ -149,16 +166,18 @@ function M.taintedQuality(raw,seed)
 	assert(count<=1,"Item text contains multiple quality lines");output=output:sub(2)
 	if count==0 then local newline=raw:find("\r\n",1,true) and "\r\n" or "\n";output=raw..(raw:sub(-1)=="\n" and "" or newline).."Quality: "..rolled.quality end
 	if count>0 then assert(withoutQuality(raw)==withoutQuality(output),"Unique item properties changed while applying quality") end
+	output=preserveArmourBaseline(raw,output,before)
 	local after,info=M.inspect(output)
 	assert(after.title==before.title and after.baseName==before.baseName and after.corrupted and info.quality==rolled.quality,"Unique item did not round-trip after tainted quality")
 	return {itemText=output,quality=info.quality,components=sim.components({method="tainted_quality"},state,model)}
 end
 
--- A bounded Divine preview for complete PoB range-form uniques. Copied
--- numeric-only items and variants need identification before they can be used.
+-- A bounded Divine preview for complete, unambiguous unique templates.
+-- Numeric copies are matched to single integer ranges before rerolling.
 local function divinePlan(raw)
 	local ok,item=pcall(M.inspect,raw);if not ok then return nil,tostring(item) end
 	if item.corrupted then return nil,"Divine Orbs cannot modify a corrupted item" end
+	if item.type=="Tincture" and item.tinctureValues=="Final" then return nil,"Copied tincture values need a separate scaling model for Divine rolls" end
 	uniqueSocketRestriction(item.title) -- Populate the bundled unique index.
 	local candidates={}
 	for _,template in ipairs(uniquesByName[item.title] or {}) do
@@ -168,21 +187,46 @@ local function divinePlan(raw)
 	if #candidates~=1 or candidates[1]:find("Variant:",1,true) or candidates[1]:find("{variant:",1,true) then return nil,"This unique's variant needs identification before Divine rolls" end
 	local parsed,reference=pcall(function() return new("Item"):Item("Rarity: UNIQUE\n"..candidates[1].."\nItem Level: "..item.itemLevel) end)
 	if not parsed or not reference.base then return nil,"The bundled unique template could not be verified" end
-	local expected={};for _,line in ipairs(reference.explicitModLines or {}) do expected[line.line]=(expected[line.line] or 0)+1 end
+	local expected={};for _,line in ipairs(reference.explicitModLines or {}) do
+		local text=line.line;local ranges={};for low,high in text:gmatch("%((%-?%d+)%-(%-?%d+)%)") do ranges[#ranges+1]={tonumber(low),tonumber(high)} end
+		local hasRange=text:find("%(%-?[%d%.]+%-%-?[%d%.]+%)")~=nil
+		if hasRange and #ranges~=1 then return nil,"Multiple or fractional ranges need a separate Divine model" end
+		local row={line=text}
+		if hasRange then
+			row.low,row.high=ranges[1][1],ranges[1][2]
+			if row.low<0 or row.high<=row.low or row.high-row.low>100000 then return nil,"This modifier range needs a separate Divine model" end
+			local first,last=text:find("%(%-?%d+%-%-?%d+%)");row.prefix=text:sub(1,first-1);row.suffix=text:sub(last+1)
+		end
+		expected[#expected+1]=row
+	end
 	local rows,seen={},{}
 	for _,line in ipairs(item.explicitModLines or {}) do
 		if line.disabled or line.custom or line.crafted or line.fractured or line.mutated or line.scourge or line.crucible or line.unscalable then return nil,"Special modifier lines need a separate Divine model" end
-		local text=line.line;local count=expected[text] or 0;if count<1 then return nil,"Use the complete bundled range-form modifiers for this unique" end;expected[text]=count-1
-		local ranges={};for low,high in text:gmatch("%((%-?%d+)%-(%-?%d+)%)") do ranges[#ranges+1]={tonumber(low),tonumber(high)} end
-		if text:find("%(%-?[%d%.]+%-%-?[%d%.]+%)") then
-			if #ranges~=1 then return nil,"Multiple or fractional ranges need a separate Divine model" end
-			local low,high=ranges[1][1],ranges[1][2]
-			if high<=low or high-low>100000 then return nil,"This modifier range needs a separate Divine model" end
-			if seen[text] then return nil,"Repeated modifier lines need a separate Divine model" end
-			seen[text]=true;rows[#rows+1]={line=text,low=low,high=high}
+		local text=line.line;local match
+		for _,candidate in ipairs(expected) do if not candidate.used then
+			local matches=text==candidate.line
+			if not matches and candidate.low and text:sub(1,#candidate.prefix)==candidate.prefix and (#candidate.suffix==0 or text:sub(-#candidate.suffix)==candidate.suffix) then
+				local last=#candidate.suffix>0 and #text-#candidate.suffix or #text
+				local value=text:sub(#candidate.prefix+1,last);local number=value:match("^%d+$") and tonumber(value)
+				matches=number~=nil and number>=candidate.low and number<=candidate.high
+			end
+			if matches then if match then return nil,"This modifier matches multiple bundled ranges" end;match=candidate end
+		end end
+		if not match then return nil,"Use complete modifiers matching the bundled unique template" end
+		match.used=true
+		if match.low then
+			local source,count=nil,0
+			for rawLine in raw:gmatch("[^\r\n]+") do
+				local plain=rawLine:gsub("^%{range:[^}]+%}","")
+				local advanced=plain:gsub("(%-?%d+)(%(%-?%d+%-%-?%d+%))","%2")
+				if plain==text or line.rangeFromValue and text==match.line and advanced==match.line then source=plain;count=count+1 end
+			end
+			if count~=1 then return nil,"The original modifier line cannot be identified safely" end
+			if seen[source] then return nil,"Repeated modifier lines need a separate Divine model" end
+			seen[source]=true;rows[#rows+1]={input=source,line=match.line,low=match.low,high=match.high}
 		end
 	end
-	for _,count in pairs(expected) do if count~=0 then return nil,"Use the complete bundled range-form modifiers for this unique" end end
+	for _,row in ipairs(expected) do if not row.used then return nil,"Use complete modifiers matching the bundled unique template" end end
 	if #rows==0 then return nil,"No supported variable explicit modifiers were found" end
 	return {item=item,rows=rows}
 end
@@ -193,7 +237,7 @@ function M.divine(raw,seed)
 	local random=require("Modules.CalcTime").random(seed);local replacements={}
 	for _,row in ipairs(plan.rows) do
 		local value=row.low+math.floor(random()*(row.high-row.low+1));local range=(value-row.low)/(row.high-row.low)
-		replacements[row.line]="{range:"..string.format("%.6f",range).."}"..row.line
+		replacements[row.input]="{range:"..string.format("%.6f",range).."}"..row.line
 	end
 	local changed=0
 	local output=raw:gsub("[^\r\n]+",function(line)
@@ -202,6 +246,7 @@ function M.divine(raw,seed)
 		return line
 	end)
 	assert(changed==#plan.rows,"The unique modifier lines could not be updated safely")
+	output=preserveArmourBaseline(raw,output,plan.item)
 	local after=M.inspect(output);assert(after.title==plan.item.title and after.baseName==plan.item.baseName and not after.corrupted,"Unique item did not round-trip after Divine crafting")
 	return {itemText=output,components={divine=1}}
 end

@@ -25,7 +25,7 @@ return function(build,ui,frame)
 	divinePicker.stat:SelByValue("Evasion","val");ui:text("target","100");ui:text("attempts","250");frame("crafting-unique-divine-target");ui:click("plan")
 	local divineSaved;for _,entry in ipairs(store.projects) do if entry.id==divineProject.id then divineSaved=entry end end
 	assert(divineSaved and divineSaved.nativeRecipe.requirements.nativeStats.Evasion==100 and divineSaved.steps[1].uniqueCraft.method=="divine","Divine target was not kept");main.popups={}
-	local divinePreview={id="unique-divine-preview-ui",title="Divine preview",slot="Helmet",startingItem=divineRaw,goals={},steps={}}
+	local divinePreview={id="unique-divine-preview-ui",title="Divine preview",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40 to Evasion Rating\n+10% to Item Rarity\n+35% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers",goals={},steps={}}
 	store:Upsert(divinePreview);require("Classes.CraftingUniqueQualityControl").Open(build,divinePreview);ui:click("divine");ui:click("apply");frame("crafting-unique-divine-preview");ui:click("guide")
 	for _,entry in ipairs(store.projects) do if entry.id==divinePreview.id then divineSaved=entry end end;assert(divineSaved.steps[1].uniqueCraft.method=="divine","Divine preview guide was not kept");main.popups={}
 	local taintedQuality={id="unique-tainted-quality-ui",title="Tainted quality",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nQuality: 0\nSockets: R-G B\nCorrupted",goals={},steps={}}
