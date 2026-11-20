@@ -10,7 +10,9 @@ return function(build,ui,frame)
 	main.popups={}
 	local direct={id="unique-direct-colour-ui",title="Desired colours",slot="Helmet",startingItem=project.startingItem,goals={},steps={}}
 	store:Upsert(direct);require("Classes.CraftingUniqueQualityControl").Open(build,direct)
-	ui:click("socketCount");ui:click("colours");ui:text("target","RG");main.popups[1].controls.placement:SelByValue("In one linked group");frame("crafting-unique-colour-target");ui:click("plan")
+	ui:click("socketCount");ui:click("colours");local picker=main.popups[1].controls
+	picker.method:SelByValue("omen_trichromatism","val");ui:text("target","RRW");assert(not picker.plan:IsEnabled(),"Impossible colour target was enabled");frame("crafting-unique-colour-impossible")
+	picker.method:SelByValue("chromatic","val");picker.target:SetText("RG");picker.placement:SelByValue("In one linked group");frame("crafting-unique-colour-target");ui:click("plan")
 	local planned;for _,entry in ipairs(store.projects) do if entry.id==direct.id then planned=entry end end
 	assert(planned and planned.nativeRecipe.requirements.socketColours=="RG" and planned.nativeRecipe.requirements.linkedColours and planned.steps[1].uniqueCraft.method=="chromatic","Direct colour plan was not kept")
 	ui:click("socketCount");ui:click("colours");ui:text("target","RR");ui:click("plan");frame("crafting-unique-colour-replace");ui:click("confirm")

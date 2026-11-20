@@ -180,6 +180,26 @@ describe("Unique item quality",function()
 		assert.is_false(saved.nativeRecipe.requirements.linkedColours);assert.equal(1,#saved.steps);assert.equal("At least G sockets in any order",saved.steps[1].stopWhen);main.popups={}
 	end)
 
+	it("explains colour targets that conflict with guaranteed outcomes",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-R G G"
+		local item=quality.inspect(raw)
+		assert.matches("non%-white",quality.colourTargetReason(item,"chromatic","WWWW",false))
+		assert.matches("guaranteed",quality.colourTargetReason(item,"omen_trichromatism","RRW",false))
+		assert.is_nil(quality.colourTargetReason(item,"omen_trichromatism","RGB",false))
+		assert.matches("linked group",quality.colourTargetReason(item,"chromatic","RGB",true))
+		assert.is_nil(quality.colourTargetReason(item,"chromatic","RG",true))
+		local white=quality.inspect(raw:gsub("Sockets: R%-R G G","Sockets: W-W W W"))
+		assert.is_nil(quality.colourTargetReason(white,"chromatic","WWWW",false))
+		local zero=require("Modules.CraftingSimulator").simulate(raw:gsub("Sockets: R%-R G G","Sockets: W-W W W"),{steps={{method="chromatic",maxAttempts=100,untilRequirements={socketColours="WWWW"}}},targets={},requirements={socketColours="WWWW"}},{trials=5,maxActions=100})
+		assert.equal(5,zero.successes);assert.equal(0,zero.meanActions);assert.equal(0,#zero.resourceUsage)
+		local project={id="impossible-colour",title="Colour",slot="Helmet",startingItem=raw,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.socketCount:Click();main.popups[1].controls.colours:Click();local popup=main.popups[1].controls
+		popup.target:SetText("WWWW");assert.is_false(popup.plan:IsEnabled());assert.matches("non%-white",popup.targetHelp.label())
+		popup.method:SelByValue("omen_trichromatism","val");popup.target:SetText("RRW");assert.is_false(popup.plan:IsEnabled());assert.matches("guaranteed",popup.targetHelp.label())
+		popup.target:SetText("RGB");assert.is_true(popup.plan:IsEnabled());main.popups={}
+	end)
+
 	it("previews and simulates unique flask and tincture quality",function()
 		local sim=require("Modules.CraftingSimulator")
 		for _,entry in ipairs({{"Taste of Hate","Sapphire Flask"},{"The Battle Within","Oakbranch Tincture"}}) do

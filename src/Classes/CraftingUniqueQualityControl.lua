@@ -159,14 +159,9 @@ function M.Open(build,project,layout,snapshot)
 				if reason() then return reason() end
 				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a direct colour plan." end
 				if #draft.steps>=40 and not replaceableColourStep() then return "The guide has room for up to 40 steps." end
-				local target=colour.target.buf:upper()
-				if target=="" or not target:match("^[RGBW]+$") then return "Enter one or more socket colours using R, G, B or W." end
-				if #target>#item.sockets then return "The target has more colours than the item has sockets." end
-				if linked() then
-					local counts,best={},0;for _,socket in ipairs(item.sockets) do counts[socket.group]=(counts[socket.group] or 0)+1;best=math.max(best,counts[socket.group]) end
-					if #target>best then return "No existing linked group has enough sockets for this target." end
-				end
+				return unique.colourTargetReason(item,method(),colour.target.buf:upper(),linked())
 			end
+			ui.label(colour,"targetHelp",16,222,"",14);colour.targetHelp.label=function() return "^7"..ui.fit(targetReason() or "Ready to save a colour plan.",cw-32,14) end
 			colour.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,ch-48,140,28},"Preview roll",function()
 				local choice=method();colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
 				local result=unique.colour(raw,choice,seed);history[#history+1]=raw;actions[#actions+1]=choice;redo={};raw=result.itemText;main:ClosePopup();refresh(true)

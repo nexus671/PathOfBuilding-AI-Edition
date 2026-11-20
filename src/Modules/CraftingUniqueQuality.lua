@@ -243,6 +243,29 @@ function M.colourReason(raw,method)
 	if #line:gsub("[^RGBW]","")~=#item.sockets then return "The socket layout could not be verified" end
 	if method=="omen_trichromatism" and #item.sockets<3 then return "At least three sockets are required for the RGB guarantee" end
 end
+-- Check whether any modeled colour outcome can satisfy a direct target.
+function M.colourTargetReason(item,method,target,linked)
+	if type(target)~="string" or target=="" or not target:match("^[RGBW]+$") then return "Enter one or more socket colours using R, G, B or W." end
+	local sockets=item.sockets or {}
+	if #target>#sockets then return "The target has more colours than the item has sockets." end
+	local groups={};local best=0
+	if linked then
+		local byGroup={};for _,socket in ipairs(sockets) do local group=byGroup[socket.group];if not group then group={};byGroup[socket.group]=group;groups[#groups+1]=group end;group[#group+1]=socket;best=math.max(best,#group) end
+		if #target>best then return "No existing linked group has enough sockets for this target." end
+	else groups={sockets} end
+	-- A goal already met needs no currency, even if a new roll cannot recreate it.
+	local needed={};for colour in target:gmatch(".") do needed[colour]=(needed[colour] or 0)+1 end
+	for _,group in ipairs(groups) do local available={};for _,socket in ipairs(group) do available[socket.color]=(available[socket.color] or 0)+1 end
+		local matched=true;for colour,count in pairs(needed) do if (available[colour] or 0)<count then matched=false;break end end
+		if matched then return nil end
+	end
+	if method=="omen_trichromatism" then
+		local missing=0;for _,colour in ipairs({"R","G","B"}) do if not target:find(colour,1,true) then missing=missing+1 end end
+		if #sockets-#target<missing then return "This target conflicts with the Omen's guaranteed red, green and blue sockets." end
+	elseif (method=="chromatic" or method=="tainted_chromatic") and #target==#sockets and not target:find("[RGB]") then
+		return "This target conflicts with the currency's guaranteed non-white socket."
+	end
+end
 function M.colour(raw,method,seed)
 	local reason=M.colourReason(raw,method);assert(not reason,reason)
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
