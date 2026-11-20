@@ -1,3 +1,4 @@
+-- cspell:ignore RGBW
 -- Session preview for supported unique item crafts.
 local ui=require("Modules.PlanningUI")
 local unique=require("Modules.CraftingUniqueQuality")
@@ -137,10 +138,23 @@ function M.Open(build,project,layout,snapshot)
 			ui.label(colour,"availability",16,132,"",14);colour.availability.label=function() return "^7"..ui.fit(reason() or "Ready to preview; no currency is spent.",cw-32,14) end
 			ui.label(colour,"targetLabel",16,164,"Desired colours (R, G, B, W; any order)",14)
 			colour.target=new("EditControl"):EditControl(ui.anchor,{16,185,cw-32,26},"","e.g. RGB",nil,6)
+			local function replaceableColourStep()
+				local recipe=draft.nativeRecipe
+				if not recipe or #recipe.steps~=1 or not recipe.requirements then return nil end
+				local target=recipe.requirements.socketColours;local action=recipe.steps[1].method
+				if type(target)~="string" or not (action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism") then return nil end
+				local expected=unique.guideAction(action,1,info.resource,item.corrupted,#item.sockets);local found
+				for index,step in ipairs(draft.steps) do
+					if step.uniqueCraft and step.uniqueCraft.method==action and step.uniqueCraft.count==1 and not step.done and (not step.onFailure or step.onFailure=="") and step.action==expected and step.stopWhen=="At least "..target.." sockets in any order" then
+						if found then return nil end;found=index
+					end
+				end
+				return found
+			end
 			local function targetReason()
 				if reason() then return reason() end
 				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a direct colour plan." end
-				if #draft.steps>=40 then return "The guide has room for up to 40 steps." end
+				if #draft.steps>=40 and not replaceableColourStep() then return "The guide has room for up to 40 steps." end
 				local target=colour.target.buf:upper()
 				if target=="" or not target:match("^[RGBW]+$") then return "Enter one or more socket colours using R, G, B or W." end
 				if #target>#item.sockets then return "The target has more colours than the item has sockets." end
@@ -155,12 +169,14 @@ function M.Open(build,project,layout,snapshot)
 				local why=targetReason();assert(not why,why);local choice=method();local target=colour.target.buf:upper()
 				local recipe={steps={{method=choice,maxAttempts=100,untilRequirements={socketColours=target}}},targets={},requirements={socketColours=target}}
 				require("Modules.CraftingSimulator").validateRecipe(recipe)
+				local replaceIndex=replaceableColourStep()
 				local function keepPlan()
 					local updated=copyTable(draft);updated.nativeRecipe=recipe
-					updated.steps[#updated.steps+1]={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen="At least "..target.." sockets in any order",uniqueCraft={method=choice,count=1},done=false}
+					local step={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen="At least "..target.." sockets in any order",uniqueCraft={method=choice,count=1},done=false}
+					if replaceIndex then updated.steps[replaceIndex]=step else updated.steps[#updated.steps+1]=step end
 					draft=build.savers.CraftingProjects:Upsert(updated);refresh(true);c.notice.label="^7Colour plan kept. Save the build.";main:ClosePopup()
 				end
-				if draft.nativeRecipe then main:OpenConfirmPopup("Replace crafting recipe","Replace the saved recipe with this colour plan?\nThe existing guide steps will be kept.","Replace",keepPlan) else keepPlan() end
+				if draft.nativeRecipe then main:OpenConfirmPopup("Replace crafting recipe",replaceIndex and "Replace the saved recipe and its unchanged colour guide step?\nOther guide steps will be kept." or "Replace the saved recipe with this colour plan?\nExisting guide steps will be kept.","Replace",keepPlan) else keepPlan() end
 			end)
 			colour.plan.enabled=function() return not targetReason() end
 			colour.plan.tooltipText=function() return targetReason() or "Save a bounded repeat-until-colours recipe and guide step." end

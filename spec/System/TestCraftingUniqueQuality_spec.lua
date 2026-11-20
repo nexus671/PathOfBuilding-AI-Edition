@@ -154,7 +154,13 @@ describe("Unique item quality",function()
 		for _,entry in ipairs(pickups) do if entry.origin=="craft:direct-colour" and entry.title=="Chromatic Orb" then found=true end end;assert.is_true(found)
 		control.socketCount:Click();main.popups[1].controls.colours:Click();local replacement=main.popups[1].controls;replacement.target:SetText("RR");replacement.plan:Click()
 		assert.equal("RGB",saved.nativeRecipe.requirements.socketColours);main.popups[1].controls.confirm:Click()
-		for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end;assert.equal("RR",saved.nativeRecipe.requirements.socketColours);main.popups={}
+		for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+		assert.equal("RR",saved.nativeRecipe.requirements.socketColours);assert.equal(1,#saved.steps);assert.equal("At least RR sockets in any order",saved.steps[1].stopWhen)
+		local edited=copyTable(saved);edited.steps[1].stopWhen="My custom condition";store:Upsert(edited);main.popups={}
+		control=require("Classes.CraftingUniqueQualityControl").Open(build,edited);control.socketCount:Click();main.popups[1].controls.colours:Click()
+		replacement=main.popups[1].controls;replacement.target:SetText("G");replacement.plan:Click();main.popups[1].controls.confirm:Click()
+		for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+		assert.equal("G",saved.nativeRecipe.requirements.socketColours);assert.equal(2,#saved.steps);assert.equal("My custom condition",saved.steps[1].stopWhen);main.popups={}
 	end)
 
 	it("previews and simulates unique flask and tincture quality",function()

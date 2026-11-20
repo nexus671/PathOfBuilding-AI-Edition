@@ -12,5 +12,8 @@ return function(build,ui,frame)
 	store:Upsert(direct);require("Classes.CraftingUniqueQualityControl").Open(build,direct)
 	ui:click("socketCount");ui:click("colours");ui:text("target","RGB");frame("crafting-unique-colour-target");ui:click("plan")
 	local planned;for _,entry in ipairs(store.projects) do if entry.id==direct.id then planned=entry end end
-	assert(planned and planned.nativeRecipe.requirements.socketColours=="RGB" and planned.steps[1].uniqueCraft.method=="chromatic","Direct colour plan was not kept");main.popups={}
+	assert(planned and planned.nativeRecipe.requirements.socketColours=="RGB" and planned.steps[1].uniqueCraft.method=="chromatic","Direct colour plan was not kept")
+	ui:click("socketCount");ui:click("colours");ui:text("target","RR");ui:click("plan");frame("crafting-unique-colour-replace");ui:click("confirm")
+	for _,entry in ipairs(store.projects) do if entry.id==direct.id then planned=entry end end
+	assert(planned.nativeRecipe.requirements.socketColours=="RR" and #planned.steps==1 and planned.steps[1].stopWhen=="At least RR sockets in any order","Colour guide did not follow the replacement");main.popups={}
 end
