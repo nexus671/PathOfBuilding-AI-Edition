@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview748" />
+	<Version number="2.68.1-ai.preview749" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1841,7 +1841,7 @@
 	<File name="Data/Crafting/3.30-harvest-damage.json" part="program" sha1="2c3925fed8cc1e53896c452eaeaf22164e326a1d" />
 	<File name="Data/Crafting/3.30-modifier-overlay.json" part="program" sha1="f59b065e1dd47919e79dc62e0904cca031e8f824" />
 	<File name="Data/Crafting/3.30-unveiled-jewels.json" part="program" sha1="726ee1460440393b9b02b33bba65b00e7cd04862" />
-	<File name="Data/Crafting/3.30.json" part="program" sha1="de8ea18478500598b6aa82ac9f45a0ca6812e2b4" />
+	<File name="Data/Crafting/3.30.json" part="program" sha1="a68ae5696d93d98786ee01ad116635974d585d8a" />
 	<File name="Data/Crafting/Allflame.json" part="program" sha1="b2063d95ad59fae8baf6bee166e3f2f9393c0349" />
 	<File name="Data/Crafting/GwennenReference.json" part="program" sha1="76a38ac343f9a96cbb76ea52b2cda1335a39f663" />
 	<File name="Data/Crafting/HarvestEnchants.json" part="program" sha1="03fef9d0e14feb62dab0fc0192aaf7e51211a25d" />
@@ -2109,7 +2109,7 @@
 	<File name="Modules/ConfigOptions.lua" part="program" sha1="a3fe2e0d2f528f3e080e60a85583288db5cc9d48" />
 	<File name="Modules/ConfigVisibility.lua" part="program" sha1="ad4a825bfe36dc94dca1ac7033d815110fd46d3c" />
 	<File name="Modules/CraftingAbyss330.lua" part="program" sha1="6ca66c250e7c07b42ffc7c8939f15a2c678f1e85" />
-	<File name="Modules/CraftingAdvanced.lua" part="program" sha1="8fe78f191d18ed14c0bb1cc11a785c130b9b6e99" />
+	<File name="Modules/CraftingAdvanced.lua" part="program" sha1="ef85471bfa532010b87c2f3fc8de2e783b8265f4" />
 	<File name="Modules/CraftingAllflame.lua" part="program" sha1="8431a463a68babe2e70d8a71baf682377a244160" />
 	<File name="Modules/CraftingAnalysis.lua" part="program" sha1="33e31717c40a26f1a2cb13b4ba8bb05bea8aa917" />
 	<File name="Modules/CraftingAvailability.lua" part="program" sha1="e3c03fc9ca0f828c0ec2a8e599b857a6fca715b8" />

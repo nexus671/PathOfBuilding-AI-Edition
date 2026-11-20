@@ -1,4 +1,4 @@
-"""Check the reviewed same-version modifier-export correction."""
+"""Check the reviewed 3.30 crafting export changes."""
 import hashlib
 import json
 from pathlib import Path
@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class CraftingExportRefreshTest(unittest.TestCase):
     def test_reviewed_jewel_domains_preserve_other_modifier_data(self):
         data = json.loads((ROOT / "src/Data/Crafting/3.30.json").read_text(encoding="utf-8"))
-        self.assertEqual("585b4b8433079e514bbd6095c7a5af0480c9d824", data["source"]["commit"])
+        self.assertEqual("59cb134eeb57a3202837296a409cbb9d8f42be4b", data["source"]["commit"])
         jewels = sorted(key for key, mod in data["mods"].items() if mod["domain"] == "jewel")
         self.assertEqual(253, len(jewels))
         self.assertEqual("67ed0db78edab50282c1d8ae105b026d3d51deae99f79e3b2b76c9227dd85a9c",
@@ -22,6 +22,11 @@ class CraftingExportRefreshTest(unittest.TestCase):
         self.assertTrue(vendor_ids <= data["mods"].keys())
         other_fields = {key: {field: value for field, value in mod.items() if field != "domain"}
                         for key, mod in data["mods"].items() if key not in vendor_ids}
+        updated = [key for key in other_fields if key.startswith(("JunMasterVeiledJewel", "JunMasterVeiledAbyss"))]
+        self.assertEqual(53, len(updated))
+        for key in updated:
+            self.assertIn("unveiled_mod", other_fields[key]["implicit_tags"])
+            other_fields[key]["implicit_tags"] = [tag for tag in other_fields[key]["implicit_tags"] if tag != "unveiled_mod"]
         encoded = json.dumps(other_fields, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
         self.assertEqual("f165e1926173a5258a0506c507abbd129d2aac8802c4d24bbed0660abe38bebb",
                          hashlib.sha256(encoded).hexdigest())

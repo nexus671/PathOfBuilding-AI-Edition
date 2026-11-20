@@ -22,6 +22,15 @@ class CraftingDataStatusTest(unittest.TestCase):
                 mod["domain"] = "jewel"
                 corrected += 1
         self.assertEqual(253, corrected)
+        tagged = 0
+        for identifier, mod in expected.items():
+            actual = current["mods"][identifier]
+            if identifier.startswith(("JunMasterVeiledJewel", "JunMasterVeiledAbyss")):
+                self.assertIn("unveiled_mod", actual["implicit_tags"])
+                self.assertEqual(mod["implicit_tags"], [tag for tag in actual["implicit_tags"] if tag != "unveiled_mod"])
+                mod["implicit_tags"] = actual["implicit_tags"]
+                tagged += 1
+        self.assertEqual(53, tagged)
         vendor_weights = {"DoubleModSellPrice1": 6000, "DoubleModSellPrice2": 1000,
                           "DoubleModSellPrice3_": 6000, "DoubleModSellPrice4": 1000,
                           "DoubleModSellPrice5_": 6000, "DoubleModSellPrice6": 10,

@@ -44,9 +44,10 @@ def main():
     parser.add_argument("bases", type=Path, help="Pinned RePoE base_items.json")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    existing = json.loads((ROOT / "src/Data/Crafting/3.30.json").read_text(encoding="utf-8"))
-    data = extract(args.mods.read_bytes(), existing["hashes"]["mods.json"],
-                   args.bases.read_bytes(), existing["hashes"]["base_items.json"], existing["source"])
+    # Map drafts remain pinned independently of the equipment crafting export.
+    existing = json.loads(DESTINATION.read_text(encoding="utf-8"))
+    data = extract(args.mods.read_bytes(), existing["modsSha256"],
+                   args.bases.read_bytes(), existing["basesSha256"], existing["source"])
     encoded = json.dumps(data, ensure_ascii=False, separators=(",", ":"), sort_keys=True) + "\n"
     if args.check:
         if DESTINATION.read_text(encoding="utf-8") != encoded:
