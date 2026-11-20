@@ -205,6 +205,8 @@ async function main(){
   assert.match(uniqueColourApply.nativeCrafting.itemText,/Sockets:/);assert.ok(uniqueColourApply.nativeCrafting.warnings.some(w=>w.code==='unique_socket_colour_assumptions'));
   const uniqueColourCalc=await queued('calculate_crafting',{baseRevision:context.revision,itemText:uniqueColourRaw,action:uniqueColourOption.action,targets:[],options:{trials:16,seed:123,requirements:{socketColours:'RGB'}}},'crafted');
   assert.equal(uniqueColourCalc.nativeCrafting.sampled,true);assert.equal(uniqueColourCalc.nativeCrafting.successChance,100);assert.equal(uniqueColourCalc.nativeCrafting.trials,16);
+  const uniqueImpossibleColour=await queued('calculate_crafting',{baseRevision:context.revision,itemText:uniqueColourRaw,action:{method:'chromatic'},targets:[],options:{trials:8,seed:123,requirements:{socketColours:'WWWW'}}},'crafted');
+  assert.equal(uniqueImpossibleColour.nativeCrafting.successChance,0);assert.ok(uniqueImpossibleColour.nativeCrafting.warnings.some(w=>w.code==='unique_socket_target_unreachable'));
   const uniqueColourGuide={id:'unique-colour-workflow',title:'Unique colours',slot:'Helmet',startingItem:uniqueColourRaw,goals:[],steps:[uniqueColourOption.guideStep],nativeRecipe:{steps:[uniqueColourOption.action],targets:[],requirements:{socketColours:'RGB'}}};
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:uniqueColourGuide},'review');await host('apply');context=(await call('get_build_context')).context;
   const uniqueSavedColour=(await call('get_crafting_projects')).projects.find(entry=>entry.id===uniqueColourGuide.id);assert.equal(uniqueSavedColour.steps[0].uniqueCraft.method,'omen_trichromatism');

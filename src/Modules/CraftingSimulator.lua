@@ -1375,7 +1375,12 @@ do
 			if action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" then
 				local sampledOptions=copyTable(options);sampledOptions.maxActions=1;sampledOptions.forceFirstAction=true
 				local sampled=M.simulate(raw,{steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups},sampledOptions)
-				sampled.outcomes={};sampled.components=M.components(action);sampled.nativeStats=require("Modules.CraftingItemStats").itemValues(require("Modules.CraftingUniqueQuality").inspect(sampled.sampleItem))
+				sampled.outcomes={};sampled.components=M.components(action)
+				local unique=require("Modules.CraftingUniqueQuality");sampled.nativeStats=require("Modules.CraftingItemStats").itemValues(unique.inspect(sampled.sampleItem))
+				if options.requirements and options.requirements.socketColours then
+					local why=unique.colourTargetReason(unique.inspect(raw),action.method,options.requirements.socketColours,options.requirements.linkedColours,true)
+					if why then sampled.warnings[#sampled.warnings+1]={code="unique_socket_target_unreachable",message="No roll reaches this target in the current model: "..why} end
+				end
 				return sampled
 			end
 			local result=M.perform(raw,action,options.seed,nil,options.treeVersion)

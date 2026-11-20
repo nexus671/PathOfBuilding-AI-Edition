@@ -161,7 +161,7 @@ function M.Open(build,project,layout,snapshot)
 				if #draft.steps>=40 and not replaceableColourStep() then return "The guide has room for up to 40 steps." end
 				return unique.colourTargetReason(item,method(),colour.target.buf:upper(),linked())
 			end
-			ui.label(colour,"targetHelp",16,222,"",14);colour.targetHelp.label=function() return "^7"..ui.fit(targetReason() or "Ready to save a colour plan.",cw-32,14) end
+			ui.label(colour,"targetHelp",16,222,"",14);colour.targetHelp.label=function() local why,met=targetReason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save a colour plan."),cw-32,14) end
 			colour.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,ch-48,140,28},"Preview roll",function()
 				local choice=method();colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
 				local result=unique.colour(raw,choice,seed);history[#history+1]=raw;actions[#actions+1]=choice;redo={};raw=result.itemText;main:ClosePopup();refresh(true)

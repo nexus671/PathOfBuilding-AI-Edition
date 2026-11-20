@@ -189,7 +189,10 @@ describe("Unique item quality",function()
 		assert.matches("linked group",quality.colourTargetReason(item,"chromatic","RGB",true))
 		assert.is_nil(quality.colourTargetReason(item,"chromatic","RG",true))
 		local white=quality.inspect(raw:gsub("Sockets: R%-R G G","Sockets: W-W W W"))
-		assert.is_nil(quality.colourTargetReason(white,"chromatic","WWWW",false))
+		local reason,already=quality.colourTargetReason(white,"chromatic","WWWW",false);assert.is_nil(reason);assert.is_true(already)
+		assert.matches("non%-white",quality.colourTargetReason(white,"chromatic","WWWW",false,true))
+		local calculation=require("Modules.CraftingSimulator").calculate(raw:gsub("Sockets: R%-R G G","Sockets: W-W W W"),{method="chromatic"},{},nil,{trials=5,requirements={socketColours="WWWW"}})
+		assert.equal(0,calculation.successChance);local warned=false;for _,entry in ipairs(calculation.warnings) do if entry.code=="unique_socket_target_unreachable" then warned=true end end;assert.is_true(warned)
 		local zero=require("Modules.CraftingSimulator").simulate(raw:gsub("Sockets: R%-R G G","Sockets: W-W W W"),{steps={{method="chromatic",maxAttempts=100,untilRequirements={socketColours="WWWW"}}},targets={},requirements={socketColours="WWWW"}},{trials=5,maxActions=100})
 		assert.equal(5,zero.successes);assert.equal(0,zero.meanActions);assert.equal(0,#zero.resourceUsage)
 		local project={id="impossible-colour",title="Colour",slot="Helmet",startingItem=raw,goals={},steps={}}
@@ -197,7 +200,8 @@ describe("Unique item quality",function()
 		control.socketCount:Click();main.popups[1].controls.colours:Click();local popup=main.popups[1].controls
 		popup.target:SetText("WWWW");assert.is_false(popup.plan:IsEnabled());assert.matches("non%-white",popup.targetHelp.label())
 		popup.method:SelByValue("omen_trichromatism","val");popup.target:SetText("RRW");assert.is_false(popup.plan:IsEnabled());assert.matches("guaranteed",popup.targetHelp.label())
-		popup.target:SetText("RGB");assert.is_true(popup.plan:IsEnabled());main.popups={}
+		popup.target:SetText("RGB");assert.is_true(popup.plan:IsEnabled());popup.method:SelByValue("chromatic","val");popup.target:SetText("RR")
+		assert.is_true(popup.plan:IsEnabled());assert.matches("Already met",popup.targetHelp.label());main.popups={}
 	end)
 
 	it("previews and simulates unique flask and tincture quality",function()
