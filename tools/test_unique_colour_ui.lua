@@ -28,6 +28,10 @@ return function(build,ui,frame)
 	for _,entry in ipairs(store.projects) do if entry.id==socketProject.id then sockets=entry end end
 	assert(#sockets.steps==1 and sockets.steps[1].stopWhen=="Exactly 2 sockets" and sockets.nativeRecipe.requirements.exactSockets==2,"Socket guide did not follow replacement")
 	ui:click("recipe");local socketTasks=require("Modules.CraftingTasks");assert(socketTasks.job,"Socket recipe did not use a background task");while socketTasks.job do socketTasks.tick(build) end;frame("crafting-unique-socket-result");ui:click("close");main.popups={}
+	local completeLink={id="unique-complete-link-ui",title="Completed links",slot="Body Armour",startingItem="Rarity: UNIQUE\nBelly of the Beast\nFull Wyrmscale\nItem Level: 86\nSockets: R-G-B-W-R-G",goals={},steps={}}
+	store:Upsert(completeLink);require("Classes.CraftingUniqueQualityControl").Open(build,completeLink)
+	ui:click("socketCount");ui:click("links");ui:text("target","6");local completePicker=main.popups[1].controls
+	assert(not completePicker.apply:IsEnabled() and completePicker.plan:IsEnabled() and completePicker.targetHelp.label():find("Already met",1,true),"Fully linked item did not offer its completed plan");ui:click("plan");main.popups={}
 	local linkProject={id="unique-random-links-ui",title="Desired links",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W",goals={},steps={}}
 	store:Upsert(linkProject);require("Classes.CraftingUniqueQualityControl").Open(build,linkProject)
 	ui:click("socketCount");ui:click("links");ui:text("target","4");ui:text("attempts","1000");frame("crafting-unique-link-target");ui:click("plan")

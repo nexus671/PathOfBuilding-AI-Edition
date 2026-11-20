@@ -322,6 +322,27 @@ describe("Unique item quality",function()
 		end
 	end)
 
+	it("saves an already fully linked unique target without rolling",function()
+		for _,corrupted in ipairs({false,true}) do
+			local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G-B-W"..(corrupted and "\nCorrupted" or "")
+			local project={id=corrupted and "complete-tainted-link" or "complete-link",title="Links",slot="Helmet",startingItem=raw,goals={},steps={}}
+			local store=build.savers.CraftingProjects;store:Upsert(project)
+			local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.socketCount:Click();main.popups[1].controls.links:Click()
+			local popup=main.popups[1].controls;popup.target:SetText("4")
+			if corrupted then assert.is_false(popup.apply:IsEnabled()) end
+			assert.is_true(popup.plan:IsEnabled());assert.matches("Already met",popup.targetHelp.label());popup.plan:Click()
+			local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+			local result=require("Modules.CraftingSimulator").simulate(raw,saved.nativeRecipe,{trials=1,maxActions=100});assert.is_true(result.sampleSuccess);assert.equal(0,result.meanActions);main.popups={}
+		end
+		local raw="Rarity: UNIQUE\nBelly of the Beast\nFull Wyrmscale\nItem Level: 86\nSockets: R-G-B-W-R-G"
+		local project={id="complete-six-link",title="Six links",slot="Body Armour",startingItem=raw,goals={},steps={}}
+		local store=build.savers.CraftingProjects;store:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.socketCount:Click();main.popups[1].controls.links:Click();local popup=main.popups[1].controls;popup.target:SetText("6")
+		assert.is_false(popup.apply:IsEnabled());assert.is_true(popup.plan:IsEnabled());assert.matches("Already met",popup.targetHelp.label());popup.plan:Click()
+		local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+		local result=require("Modules.CraftingSimulator").simulate(raw,saved.nativeRecipe,{trials=1,maxActions=100});assert.is_true(result.sampleSuccess);assert.equal(0,result.meanActions);main.popups={}
+	end)
+
 	it("runs and cancels long unique recipe checks in the background",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W"
 		local recipe={steps={{method="fusing",maxAttempts=1000,untilRequirements={links=4}}},targets={},requirements={links=4}}

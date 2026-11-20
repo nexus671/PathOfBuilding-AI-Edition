@@ -216,14 +216,15 @@ function M.Open(build,project,layout,snapshot)
 				return found
 			end
 			local function targetReason()
-				if reason() then return reason() end
 				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a direct link plan." end
 				if #draft.steps>=40 and not replaceableLinkStep() then return "The guide has room for up to 40 steps." end
 				local attempts=tonumber(link.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
 				local value=tonumber(link.target.buf)
 				if not value or value~=math.floor(value) or value<2 or value>#item.sockets then return "Enter a link target from 2 to the item's socket count." end
 				local groups,best={},0;for _,socket in ipairs(item.sockets) do groups[socket.group]=(groups[socket.group] or 0)+1;best=math.max(best,groups[socket.group]) end
-				if best>=value then return nil,true end
+				local why=reason();local met=best>=value
+				if why and not (met and why=="The item is already fully linked") then return why end
+				if met then return nil,true end
 			end
 			ui.label(link,"targetHelp",16,222,"",14);link.targetHelp.label=function() local why,met=targetReason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save a link plan."),lw-32,14) end
 			link.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,lh-48,140,28},"Preview roll",function()
