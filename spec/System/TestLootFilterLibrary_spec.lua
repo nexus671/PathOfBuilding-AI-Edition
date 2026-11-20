@@ -6,15 +6,18 @@ describe("Visual filter catalogue",function()
 	after_each(function() main.popups={} end)
 	it("compares explicit vendor-recipe examples at the selected levels",function()
 		local profile=filters.profile("vendor-scenes","Vendor scenes");local scene=library.scene(profile,build,"Vendor recipes",0,65,72)
-		assert.equal(12,#scene);for _,item in ipairs(scene) do assert.equal(65,item.AreaLevel);assert.equal(72,item.ItemLevel) end
+		assert.equal(15,#scene);for _,item in ipairs(scene) do assert.equal(65,item.AreaLevel);assert.equal(72,item.ItemLevel) end
 		local function matches(condition,item) return parser.simulate(parser.parse("Hide\n "..condition.."\nShow"),item).action end
 		assert.equal("Hide",matches("SocketGroup RGB",scene[1]));assert.equal("Hide",matches("Sockets 6",scene[2]));assert.equal("Hide",matches("LinkedSockets 6",scene[3]))
 		assert.equal("Hide",matches("Quality >= 1",scene[4]));assert.equal("Hide",matches("Rarity Rare\n Identified False\n ItemLevel >= 60",scene[5]))
 		local rotated=library.scene(profile,build,"Vendor recipes",1,65,72);assert.equal(scene[2].BaseType,rotated[1].BaseType)
-		local page=filters.simulateScene(profile,"Vendor recipes",0,65,72,0,10);assert.equal(12,page.total);assert.equal("Iron Hat",page.results[1].sample.BaseType)
+		local page=filters.simulateScene(profile,"Vendor recipes",0,65,72,0,10);assert.equal(15,page.total);assert.equal("Iron Hat",page.results[1].sample.BaseType)
+		local second=filters.simulateScene(profile,"Vendor recipes",0,65,72,10,10);assert.equal(5,#second.results);assert.equal("Prismatic Tincture",second.results[5].sample.BaseType)
 		local label=require("Classes.LootFilterWorkspace").vendorLabel
 		for i,value in ipairs({"3 linked colours","6 sockets","6 linked","Quality gem","Rare piece"}) do assert.equal(value,label(scene[i])) end
 		assert.equal("Quality weapon",label(scene[11]));assert.equal("Quality armour",label(scene[12]))
+		assert.equal("Quality flask",label(scene[13]));assert.equal("Quality flask",label(scene[14]));assert.equal("Quality tincture",label(scene[15]))
+		for i=13,15 do assert.equal("Hide",matches('Class == "Life Flasks" "Utility Flasks" "Tinctures"\n Quality >= 1',scene[i])) end
 		assert.is_nil(label({SocketGroup="R G B"}))
 	end)
 	it("shows the identifying properties of a vendor-recipe sample",function()

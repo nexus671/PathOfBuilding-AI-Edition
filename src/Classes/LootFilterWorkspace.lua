@@ -33,6 +33,10 @@ function M.vendorLabel(sample)
 		if group:find("R",1,true) and group:find("G",1,true) and group:find("B",1,true) then return "3 linked colours" end
 	end end
 	if (sample.Class=="Skill Gems" or sample.Class=="Support Gems") and quality and quality>0 then return "Quality gem" end
+	if quality and quality>0 then
+		if sample.Class=="Tinctures" then return "Quality tincture" end
+		if sample.Class=="Life Flasks" or sample.Class=="Mana Flasks" or sample.Class=="Hybrid Flasks" or sample.Class=="Utility Flasks" or sample.Class=="Critical Utility Flasks" then return "Quality flask" end
+	end
 	if sample.Rarity=="Rare" and sample.Identified==false then return "Rare piece" end
 	if quality and quality>0 then return require("Modules.LootFilterCampaign").qualityCategory(sample.Class) end
 end

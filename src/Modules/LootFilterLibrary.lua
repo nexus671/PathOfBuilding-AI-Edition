@@ -364,6 +364,8 @@ local vendorExamples={
 	{"Iron Ring","Rings","Rare"},{"Amber Amulet","Amulets","Rare"},{"Leather Belt","Belts","Rare"},
 	{"Wool Gloves","Gloves","Rare"},{"Wool Shoes","Boots","Rare"},{"Driftwood Wand","Wands","Rare"},
 	{"Driftwood Wand","Wands","Normal",{Quality=12}},{"Iron Hat","Helmets","Normal",{Quality=12}},
+	{"Divine Life Flask","Life Flasks","Normal",{Quality=20}},{"Granite Flask","Utility Flasks","Normal",{Quality=12}},
+	{"Prismatic Tincture","Tinctures","Normal",{Quality=12}},
 }
 -- Use exact names from NeverSink's pinned high-emphasis currency blocks. This
 -- is a snapshot of filter styling, not a price feed or a drop distribution.

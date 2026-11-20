@@ -1890,7 +1890,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("sceneKind","Essences");local essenceScene=build.planningWorkspace.cache.filters.layout.snapshot();assert(essenceScene.sceneKind=="Essences" and essenceScene.sample.BaseType:find("Essence",1,true))
 	for _,row in ipairs(build.planningWorkspace.controls.selection.list) do assert(not row[1]:find("Unidentified item tier",1,true),"Currency incorrectly shows an equipment tier") end;frame("filter-essence-examples")
 	ui:choose("sceneKind","Crafting materials");local craftScene=build.planningWorkspace.cache.filters.layout.snapshot();assert(craftScene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,"Crafting materials",craftScene.seed)[1].BaseType);frame("filter-crafting-examples")
-	ui:choose("sceneKind","Vendor recipes");frame("filter-vendor-examples")
+	ui:choose("sceneKind","Vendor recipes");frame("filter-vendor-examples");ui:click("sceneStats");assert(main.popups[#main.popups].controls.count.label:find("15 results |",1,true),"Quality flask and tincture examples are missing");ui:click("choose")
 	ui:choose("sceneKind","Heist & Expedition");local heistScene=build.planningWorkspace.cache.filters.layout.snapshot();assert(heistScene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,"Heist & Expedition",heistScene.seed)[1].BaseType);frame("filter-heist-expedition-examples")
 	do ui:choose("sceneKind","Blight & oils");local blightScene=build.planningWorkspace.cache.filters.layout.snapshot();assert(blightScene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,"Blight & oils",blightScene.seed)[1].BaseType);frame("filter-blight-oil-examples") end
 	for _,kind in ipairs({"Delirium","Harvest","Ritual"}) do
