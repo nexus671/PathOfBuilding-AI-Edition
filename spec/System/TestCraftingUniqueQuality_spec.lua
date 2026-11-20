@@ -22,8 +22,10 @@ describe("Unique item quality",function()
 		assert.matches("Sockets: R%-G W W",sim.perform(low,{method="omen_jeweller"},1).itemText)
 		local project={id="unique-omen",title="Omen",slot="Helmet",startingItem=raw,goals={},steps={}}
 		local store=build.savers.CraftingProjects;store:Upsert(project)
-		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
-		assert.is_true(control.omenJeweller:IsEnabled());control.omenJeweller:Click();assert.is_true(control.recipe:IsEnabled());control.recipe:Click()
+		local recovery=require("Modules.PlanningRecovery").clean("uniqueQuality",{plan={kind="uniqueQuality",project=project,itemText=result.itemText,history={raw},actions={"omen_jeweller"},redo={}}}).plan
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project,nil,recovery)
+		assert.is_true(control.undo:IsEnabled());control.undo:Click();assert.is_true(control.redo:IsEnabled());control.redo:Click()
+		assert.is_true(control.recipe:IsEnabled());control.recipe:Click()
 		assert.equal("omen_jeweller",store.projects[1].nativeRecipe.steps[1].method);control.guide:Click()
 		assert.equal("omen_jeweller",store.projects[1].steps[1].uniqueCraft.method)
 		local filters=require("Modules.LootFilters");local profile=filters.profile("unique-omen","Omen")
