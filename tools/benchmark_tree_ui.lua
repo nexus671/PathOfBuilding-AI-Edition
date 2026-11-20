@@ -3,7 +3,7 @@
 local fixture = assert(arg[1], "Supply a build XML path")
 local cycles = tonumber(arg[2]) or 5
 assert(cycles >= 1 and cycles <= 20 and cycles == math.floor(cycles))
-local allowed = {["deferred-recovery"]=true,["desktop-recovery"]=true,["skill-profile"]=true,["skill-callers"]=true,["no-capture"]=true,["full-profile"]=true,["include-all"]=true,["convert-latest"]=true}
+local allowed = {["deferred-recovery"]=true,["desktop-recovery"]=true,["skill-profile"]=true,["skill-callers"]=true,["no-capture"]=true,["full-profile"]=true,["include-all"]=true,["convert-latest"]=true,["full-cost"]=true}
 local flags = {}
 for i = 3, #arg do local flag=arg[i];assert(allowed[flag] and not flags[flag], "Unknown or repeated benchmark option: "..tostring(flag));flags[flag]=true end
 assert(not (flags["deferred-recovery"] and flags["desktop-recovery"]), "Choose one recovery mode")
@@ -22,6 +22,10 @@ local file = assert(io.open(fixture, "rb"))
 local raw = file:read("*a")
 file:close()
 loadBuildFromXML(raw, "Read-only tree UI benchmark")
+if flags["full-cost"] then
+ local calcs = require("Modules.Calcs"); local original = calcs.buildActiveSkill
+ calcs.buildActiveSkill = function(a,b,c,d,e,f,g) return original(a,b,c,d,e,f,g) end
+end
 assert(not main.popups[1], "The supplied build requires conversion")
 if convertLatest then build.treeTab:ConvertToVersion(latestTreeVersion,true,false) end
 if includeAll then
@@ -189,7 +193,7 @@ for _ = 1, cycles do
 		releaseMs=(clicked-pressed)*1000, updateFrameMs=(updated-clicked)*1000, recovery=recovery }
 end
 assert(bridge.revision(build) == revision, "The benchmark did not restore the build revision")
-print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,components=performance.rows(build),skillProfile=skillProfile,fullProfile=fullProfile,includeAll=includeAll,convertedToLatest=convertLatest,treeVersion=build.spec.treeVersion,restored=true,
+print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,components=performance.rows(build),skillProfile=skillProfile,fullProfile=fullProfile,includeAll=includeAll,fullCostWarnings=flags["full-cost"] or false,convertedToLatest=convertLatest,treeVersion=build.spec.treeVersion,restored=true,
 	recoveryMode=forcedRecovery and "deferred" or desktopRecovery and "desktop with saved settings" or "build configuration",
 	drawCapture=not noCapture,
 	limitations=noCapture and "Headless CPU timings omit drawing calls and do not measure desktop rendering or frame rate."

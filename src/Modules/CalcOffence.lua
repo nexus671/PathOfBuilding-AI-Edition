@@ -1908,8 +1908,9 @@ function calcs.offence(env, actor, activeSkill)
 			end
 		end
 	end
-	-- A trigger-source probe only needs the cost; skip the damage work for candidates that cannot pay it
-	if env.triggerSourceCost and actor == env.player and (output[env.triggerSourceCost.stat] or 0) < env.triggerSourceCost.minimum then
+	-- If a nested trigger published this skill, finish the full calculation to preserve its cache.
+	-- Otherwise warning probes and rejected trigger-source probes need only the cost.
+	if actor == env.player and ((env.warningOnly and not GlobalCache.cachedData[env.mode][cacheSkillUUID(activeSkill, env)]) or (env.triggerSourceCost and (output[env.triggerSourceCost.stat] or 0) < env.triggerSourceCost.minimum)) then
 		return false
 	end
 	-- Eldritch Battery adds maximum Energy Shield to the Mana available for payable-cost damage.

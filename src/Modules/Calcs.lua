@@ -375,8 +375,8 @@ function calcs.calcFullDPS(build, mode, override, specEnv)
 	return fullDPS
 end
 
--- Process active skill; a trigger-source cost probe returns the partial output of a rejected candidate
-function calcs.buildActiveSkill(env, mode, skill, targetUUID, limitedProcessingFlags, minimumCost, sourceCache)
+-- Cost probes return partial output without publishing it as a complete skill cache.
+function calcs.buildActiveSkill(env, mode, skill, targetUUID, limitedProcessingFlags, minimumCost, sourceCache, warningOnly)
 	-- Only a rejected probe's environment can be reused: published results keep referencing theirs
 	local reusable = sourceCache and sourceCache.rejectedEnv
 	if reusable then
@@ -385,6 +385,7 @@ function calcs.buildActiveSkill(env, mode, skill, targetUUID, limitedProcessingF
 	local fullEnv, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(env.build, mode, env.override, reusable)
 	fullEnv.buildBreakdown = false
 	fullEnv.triggerSourceCost = minimumCost
+	fullEnv.warningOnly = warningOnly
 
 	-- env.limitedSkills contains a map of uuids that should be limited in calculation
 	-- this is in order to prevent infinite recursion loops
@@ -405,8 +406,9 @@ function calcs.buildActiveSkill(env, mode, skill, targetUUID, limitedProcessingF
 				if sourceCache and not fullEnv.minion and not activeSkill.mirage and not activeSkill.skillFlags.globalTrigger then
 					sourceCache.rejectedEnv = { env = fullEnv, cachedPlayerDB = cachedPlayerDB, cachedEnemyDB = cachedEnemyDB, cachedMinionDB = cachedMinionDB, accelerate = { nodeAlloc = not (env.override.addNodes or env.override.removeNodes), requirementsItems = true, requirementsGems = true, skills = true } }
 				end
-				return fullEnv.player.output
+				return fullEnv.player.output, fullEnv.player.mainSkill
 			end
+			fullEnv.warningOnly = nil
 			return
 		end
 	end
@@ -439,18 +441,23 @@ function calcs.buildOutput(build, mode, deferRecovery)
 		for _, skill in ipairs(env.player.activeSkillList) do
 			if build.planningCheckpoint then build.planningCheckpoint() end
 			local uuid = cacheSkillUUID(skill, env)
+			-- Nested trigger calculations can publish a complete cache while probing.
+			local partial, partialSkill
 			if not GlobalCache.cachedData[mode][uuid] then
-				calcs.buildActiveSkill(env, mode, skill, uuid)
+				partial, partialSkill = calcs.buildActiveSkill(env, mode, skill, uuid, nil, nil, nil, true)
 			end
-			if GlobalCache.cachedData[mode][uuid] then
+			local costEnv = GlobalCache.cachedData[mode][uuid] and GlobalCache.cachedData[mode][uuid].Env
+			local costOutput = costEnv and costEnv.player.output or partial
+			local costSkill = costEnv and costEnv.player.mainSkill or partialSkill
+			if costOutput then
 				output.EnergyShieldProtectsMana = env.modDB:Flag(nil, "EnergyShieldProtectsMana")
 				for pool, costResource in pairs({["LifeUnreserved"] = "LifeCost", ["ManaUnreserved"] = "ManaCost", ["Rage"] = "RageCost", ["EnergyShield"] = "ESCost"}) do
-					local cachedCost = GlobalCache.cachedData[mode][uuid].Env.player.output[costResource]
+					local cachedCost = costOutput[costResource]
 					if cachedCost then
 						local totalPool = (output.EnergyShieldProtectsMana and costResource == "ManaCost" and output["EnergyShield"] or 0) + (output[pool] or 0)
 						if totalPool < cachedCost then
 							local rawPool = pool:gsub("Unreserved$", "")
-							local reservation = GlobalCache.cachedData[mode][uuid].Env.player.mainSkill and GlobalCache.cachedData[mode][uuid].Env.player.mainSkill.skillData[rawPool .. "ReservedPercent"]
+							local reservation = costSkill and costSkill.skillData[rawPool .. "ReservedPercent"]
 							-- Skill has both cost and reservation check if there's available pool for raw cost before reservation
 							if not reservation or (reservation and (totalPool + m_ceil((output[rawPool] or 0) * reservation / 100)) < cachedCost) then
 								if env.player.mainSkill and env.player.mainSkill.activeEffect.grantedEffect.name == skill.activeEffect.grantedEffect.name then
@@ -463,7 +470,7 @@ function calcs.buildOutput(build, mode, deferRecovery)
 					end
 				end
 				for pool, costResource in pairs({["LifeUnreservedPercent"] = "LifePercentCost", ["ManaUnreservedPercent"] = "ManaPercentCost"}) do
-					local cachedCost = GlobalCache.cachedData[mode][uuid].Env.player.output[costResource]
+					local cachedCost = costOutput[costResource]
 					if cachedCost then
 						if (output[pool] or 0) < cachedCost then
 							output[costResource.."PercentCostWarningList"] = output[costResource.."PercentCostWarningList"] or {}

@@ -23,6 +23,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Exercise MCP planning through native review and save
         run: node tools/test_planning_workflow.cjs
+  test_cost_probes:
+    runs-on: ubuntu-latest
+    container: ghcr.io/pathofbuildingcommunity/pathofbuilding-tests:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare full and partial skill costs
+        run: |
+          cd src
+          for fixture in ../spec/TestBuilds/3.13/*.xml; do
+            LUA_PATH='../runtime/lua/?.lua;../runtime/lua/?/init.lua;;' luajit ../tools/check_cost_warning_probes.lua "$fixture"
+          done
   test_ai_bridge:
     runs-on: ubuntu-latest
     steps:
