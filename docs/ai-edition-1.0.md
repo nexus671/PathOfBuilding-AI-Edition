@@ -62,6 +62,16 @@ placeholder that pretends to provide those results offline.
 
 ## Remaining release work
 
+The [3.30.0d patch notes](https://www.pathofexile.com/forum/view-thread/4017726)
+introduce Originator's Exalted Orbs for rare maps, including Nightmare Maps, and
+Primordial Exalted Orbs that reveal a random exotic Exalted Orb. They also
+change two Genesis Tree currency passives. As of November 19, the latest
+reviewed RePoE export remains 3.30.0.3 and the latest official Atlas export is
+3.30.0c. Recheck the client exports when available; update filter item data,
+map-crafting eligibility and modifier pools, and any affected planning data.
+The notes do not specify outcome weights, so do not infer simulation odds.
+
+
 On November 19, checkpoint `cd50961573dfe54caa830a0d45d237f13ddf6dd2` passed
 [Run Tests](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/44619732759)
 and [Spell Checker](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/44619733012).
