@@ -2207,7 +2207,10 @@ function ItemClass:Craft()
 					for _, tag in ipairs(tags) do sourceKey = sourceKey .. #tag .. ":" .. tag end
 					local existing = bySource[sourceKey]
 					local fractional = line:find("%d+%.%d+") or existing and existing.line:find("%d+%.%d+")
-					if existing and not fractional then
+					local sameText = existing and line:gsub("%d+%.?%d*", "#") == existing.line:gsub("%d+%.?%d*", "#")
+					local lower = line:lower()
+					local grantsSkill = lower:find("supported by level", 1, true) or lower:find("grants level", 1, true)
+					if existing and not fractional and sameText and not grantsSkill then
 						-- Only combine integer contributions from the same
 						-- source; fractional values must retain their precision.
 						local start = 1

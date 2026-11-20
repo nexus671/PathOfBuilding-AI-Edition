@@ -5718,7 +5718,6 @@ c["150% increased total Recovery per second from Life Leech"]={{[1]={flags=0,key
 c["152% increased Physical Damage"]={{[1]={flags=0,keywordFlags=0,name="PhysicalDamage",type="INC",value=152}},nil}
 c["155% increased Evasion and Energy Shield"]={{[1]={flags=0,keywordFlags=0,name="EvasionAndEnergyShield",type="INC",value=155}},nil}
 c["155% increased Spell Damage"]={{[1]={flags=2,keywordFlags=0,name="Damage",type="INC",value=155}},nil}
-c["157% increased Spell Damage"]={{[1]={flags=2,keywordFlags=0,name="Damage",type="INC",value=157}},nil}
 c["16% Chance to Block Attack Damage"]={{[1]={flags=0,keywordFlags=0,name="BlockChance",type="BASE",value=16}},nil}
 c["16% additional Elemental Resistances during Effect"]={{[1]={[1]={type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="ElementalResist",type="BASE",value=16}},nil}
 c["16% chance to Avoid Elemental Ailments"]={{[1]={flags=0,keywordFlags=0,name="AvoidElementalAilments",type="BASE",value=16}},nil}
@@ -10003,8 +10002,8 @@ c["48% chance to Avoid being Ignited during Effect"]={{[1]={[1]={type="Condition
 c["48% chance to Avoid being Shocked during Effect"]={{[1]={[1]={type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="AvoidShock",type="BASE",value=48}},nil}
 c["48% increased Amount Recovered"]={{[1]={flags=0,keywordFlags=0,name="FlaskRecovery",type="INC",value=48}},nil}
 c["48% increased Armour during Effect"]={{[1]={[1]={type="Condition",var="UsingFlask"},flags=0,keywordFlags=0,name="Armour",type="INC",value=48}},nil}
-end)();(function()
 c["48% increased Attack Damage"]={{[1]={flags=1,keywordFlags=0,name="Damage",type="INC",value=48}},nil}
+end)();(function()
 c["48% increased Charge Recovery"]={{[1]={flags=0,keywordFlags=0,name="FlaskChargeRecovery",type="INC",value=48}},nil}
 c["48% increased Cold Damage"]={{[1]={flags=0,keywordFlags=0,name="ColdDamage",type="INC",value=48}},nil}
 c["48% increased Cooldown Recovery Rate of Movement Skills"]={{[1]={flags=0,keywordFlags=8,name="CooldownRecovery",type="INC",value=48}},nil}
@@ -15005,8 +15004,8 @@ c["Cannot have Minions other than Summoned Holy Relics Maximum number of Summone
 c["Cannot have Minions other than Summoned Phantasms"]={nil,"Cannot have Minions other than Summoned Phantasms "}
 c["Cannot have Minions other than Summoned Phantasms Maximum number of Summoned Skeletons is Doubled"]={{[1]={flags=0,keywordFlags=0,name="MinionModifier",type="LIST",value={mod={[1]={globalLimit=100,globalLimitKey="ActiveSkeletonLimitDoubledLimit",type="Multiplier",var="ActiveSkeletonLimitDoubled"},flags=0,keywordFlags=0,name="ActiveSkeletonLimit",type="MORE",value=100}}},[2]={flags=0,keywordFlags=0,name="MinionModifier",type="LIST",value={mod={flags=0,keywordFlags=0,name="Multiplier:ActiveSkeletonLimitDoubled",type="OVERRIDE",value=1}}}},"Cannot have s other than Summoned Phantasms   "}
 c["Cannot have Minions other than Summoned Raging Spirits"]={nil,"Cannot have Minions other than Summoned Raging Spirits "}
-end)();(function()
 c["Cannot have Minions other than Summoned Raging Spirits Maximum number of Raised Spectres is Doubled"]={{[1]={flags=0,keywordFlags=0,name="MinionModifier",type="LIST",value={mod={[1]={globalLimit=100,globalLimitKey="ActiveSpectreLimitDoubledLimit",type="Multiplier",var="ActiveSpectreLimitDoubled"},flags=0,keywordFlags=0,name="ActiveSpectreLimit",type="MORE",value=100}}},[2]={flags=0,keywordFlags=0,name="MinionModifier",type="LIST",value={mod={flags=0,keywordFlags=0,name="Multiplier:ActiveSpectreLimitDoubled",type="OVERRIDE",value=1}}}},"Cannot have s other than Summoned Raging Spirits   "}
+end)();(function()
 c["Cannot have Minions other than Summoned Reapers"]={nil,"Cannot have Minions other than Summoned Reapers "}
 c["Cannot have Minions other than Summoned Reapers Maximum number of Sentinels of Absolution is Doubled"]={{},"Cannot have s other than Summoned Reapers Maximum number of Sentinels of "}
 c["Cannot have Minions other than Summoned Skeletons"]={nil,"Cannot have Minions other than Summoned Skeletons "}
@@ -16291,7 +16290,7 @@ c["Gain 2 Charges when you are Hit by an Enemy"]={{[1]={flags=0,keywordFlags=0,n
 c["Gain 2 Endurance Charge on use"]={{}," Endurance Charge on use "}
 c["Gain 2 Endurance, Frenzy or Power Charges every 6 seconds"]={{}," Endurance,or Power Charges every 6 seconds "}
 c["Gain 2 Endurance, Frenzy or Power Charges every 6 seconds 172% increased Physical Damage"]={{[1]={[1]={includeTransfigured=true,skillName="Frenzy",type="SkillName"},flags=0,keywordFlags=0,name="PhysicalDamage",type="BASE",value=2}}," Endurance,or Power Charges every 6 seconds 172% increased  "}
-c["Gain 2 Endurance, Frenzy or Power Charges every 6 seconds 90% increased Spell Damage"]={{[1]={[1]={includeTransfigured=true,skillName="Frenzy",type="SkillName"},flags=2,keywordFlags=0,name="Damage",type="BASE",value=2}}," Endurance,or Power Charges every 6 seconds 90% increased   "}
+c["Gain 2 Endurance, Frenzy or Power Charges every 6 seconds 62% increased Spell Damage"]={{[1]={[1]={includeTransfigured=true,skillName="Frenzy",type="SkillName"},flags=2,keywordFlags=0,name="Damage",type="BASE",value=2}}," Endurance,or Power Charges every 6 seconds 62% increased   "}
 c["Gain 2 Endurance, Frenzy or Power Charges every 6 seconds Adds 70 to 130 Fire Damage"]={{[1]={[1]={includeTransfigured=true,skillName="Frenzy",type="SkillName"},flags=0,keywordFlags=0,name="FireDamage",type="BASE",value=2}}," Endurance,or Power Charges every 6 seconds Adds 70 to 130  "}
 c["Gain 2 Energy Shield per Enemy Hit with Attacks"]={{[1]={flags=4,keywordFlags=65536,name="EnergyShieldOnHit",type="BASE",value=2}},nil}
 c["Gain 2 Frenzy Charge on use"]={{},"Charge on use "}
@@ -20007,8 +20006,8 @@ c["Requires Class Scion Allocates Chieftain if you have the matching modifier on
 c["Requires Class Scion Allocates Deadeye if you have the matching modifier on Forbidden Flame"]={nil,"Requires Class Scion Allocates Deadeye if you have the matching modifier on Forbidden Flame "}
 c["Requires Class Scion Allocates Deadeye if you have the matching modifier on Forbidden Flesh"]={nil,"Requires Class Scion Allocates Deadeye if you have the matching modifier on Forbidden Flesh "}
 c["Requires Class Scion Allocates Elementalist if you have the matching modifier on Forbidden Flame"]={nil,"Requires Class Scion Allocates Elementalist if you have the matching modifier on Forbidden Flame "}
-end)();(function()
 c["Requires Class Scion Allocates Elementalist if you have the matching modifier on Forbidden Flesh"]={nil,"Requires Class Scion Allocates Elementalist if you have the matching modifier on Forbidden Flesh "}
+end)();(function()
 c["Requires Class Scion Allocates Gladiator if you have the matching modifier on Forbidden Flame"]={nil,"Requires Class Scion Allocates Gladiator if you have the matching modifier on Forbidden Flame "}
 c["Requires Class Scion Allocates Gladiator if you have the matching modifier on Forbidden Flesh"]={nil,"Requires Class Scion Allocates Gladiator if you have the matching modifier on Forbidden Flesh "}
 c["Requires Class Scion Allocates Guardian if you have the matching modifier on Forbidden Flame"]={nil,"Requires Class Scion Allocates Guardian if you have the matching modifier on Forbidden Flame "}

@@ -14,6 +14,8 @@ lines separate if their side, tags or fracture status differ. This preserves
 source-specific scaling and fracture display. Fractional contributions also
 remain separate so they are not combined with integer-only arithmetic. Game copies that combine the
 values can still be ambiguous.
+Distinct modifier text and skill-granting lines also stay separate, even if
+the native data assigns them the same display order.
 
 Run `python tools/run_headless_lupa.py tools/check_crafting_imports.lua` to
 sample two- and three-modifier plain and labelled imports across five equipment bases. The

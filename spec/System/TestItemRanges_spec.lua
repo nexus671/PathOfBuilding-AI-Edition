@@ -131,6 +131,25 @@ describe("Independent modifier ranges",function()
 		assert.is_true(values["Regenerate 0.4% of Life per second"]);assert.is_true(values["Regenerate 2.8% of Life per second"])
 		assert.are.near(3.2,total,0.000001)
 	end)
+	it("keeps distinct socketed supports that share a display order",function()
+		local m=sim.model("Rarity: NORMAL\nWool Gloves\nItem Level: 86");local state=copyTable(m.initial);state.rarity="RARE";state.influences={"shaper"}
+		state.affixes={{id="TrapSpeedCooldownUber1",range=0.5},{id="BlindOnHitSupportedUber1",range=0.5}}
+		assert.has_no.errors(function() sim.validateState(m,state) end)
+		local item=sim.toItem(m,state);local lines={};for _,line in ipairs(item.explicitModLines) do lines[line.line]=true end
+		assert.is_true(lines["Socketed Gems are Supported by Level 16 Advanced Traps Support"])
+		assert.is_true(lines["Socketed Gems are Supported by Level 16 Blind Support"])
+		assert.is_nil(lines["Socketed Gems are Supported by Level 32 Advanced Traps Support"])
+		local supports={};for _,mod in ipairs(item.baseModList) do if mod.name=="ExtraSupport" then supports[mod.value.skillId]=mod.value.level end end
+		assert.equal(16,supports.SupportAdvancedTraps);assert.equal(16,supports.SupportBlind)
+	end)
+	it("does not add different modifier text solely because its display order matches",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86");local state=copyTable(m.initial);state.rarity="RARE"
+		m.byId.ExampleArmour={"(10-10)% increased Armour",type="Prefix",group="ExampleArmour",statOrder={12345},modTags={"defences"},affix="",level=1}
+		m.byId.ExampleEvasion={"(20-20)% increased Evasion Rating",type="Prefix",group="ExampleEvasion",statOrder={12345},modTags={"defences"},affix="",level=1}
+		state.affixes={{id="ExampleArmour",range=0.5},{id="ExampleEvasion",range=0.5}}
+		local item=sim.toItem(m,state);local lines={};for _,line in ipairs(item.explicitModLines) do lines[line.line]=true end
+		assert.is_true(lines["10% increased Armour"]);assert.is_true(lines["20% increased Evasion Rating"])
+	end)
 	it("does not combine matching text from different native stats",function()
 		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
 		local function mod(high,group,order) return {"(1-"..high..")% increased Example",type="Prefix",group=group,statOrder={order}} end
