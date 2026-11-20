@@ -76,7 +76,9 @@ function M.parse(raw)
 					local separated=prefix and #first==#prefix
 					if prefix then op=prefix;t[1]=first:sub(#prefix+1);if t[1]=="" then table.remove(t,1);table.remove(quoted,1) end end
 					local known=M.numeric[key] or M.booleans[key] or M.strings[key] or key=="Rarity" or key=="SocketGroup"
-					current.conditions[#current.conditions+1]={keyword=key,operator=op,values=t,quoted=quoted,known=known,line=lineNo}
+					local condition={keyword=key,operator=op,values=t,quoted=quoted,known=known,line=lineNo}
+					current.conditions[#current.conditions+1]=condition
+					if M.countExactMarker(condition,2) then result.diagnostics[#result.diagnostics+1]={line=lineNo,warning="Preview cannot verify modifier count with a separate exact-match operator; original text is preserved"} end
 					if #t==0 then result.diagnostics[#result.diagnostics+1]={line=lineNo,error="Condition requires a value: "..key}
 					elseif not known then result.diagnostics[#result.diagnostics+1]={line=lineNo,warning="Simulator cannot resolve "..key.."; original text is preserved"} end
 					if not ({["="]=true,["=="]=true,["!="]=true,["!"]=true,[">="]=true,["<="]=true,[">"]=true,["<"]=true})[op] then result.diagnostics[#result.diagnostics+1]={line=lineNo,error="Invalid operator "..op} end

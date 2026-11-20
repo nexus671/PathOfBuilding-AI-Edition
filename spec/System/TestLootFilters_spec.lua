@@ -319,14 +319,21 @@ describe("Build-owned loot filters",function()
 	it("preserves a separate exact marker and reports its preview as uncertain",function()
 		for _,key in ipairs({"HasExplicitMod","HasEnchantment"}) do
 			local raw='Hide\n '..key..' >=2 == "Polar" "Shocking"';local item={Identified=true,[key]={"of the Polar Bear","Shocking"}}
-			local result=parser.simulate(parser.parse(raw.."\nShow"),item)
+			local parsed=parser.parse(raw.."\nShow");local warned=false
+			for _,diagnostic in ipairs(parsed.diagnostics) do if diagnostic.line==2 and diagnostic.warning and diagnostic.warning:find("separate exact-match operator",1,true) then warned=true end end;assert.is_true(warned)
+			local result=parser.simulate(parsed,item)
 			assert.equal("unknown",result.status);assert.matches("exact%-match operator",result.reasons[1])
+			local profile=filters.profile("exact-warning","Exact warning");profile.template=raw.."\nShow"
+			local compiled,report=filters.compile(profile);local reportWarning=false
+			for _,diagnostic in ipairs(report.diagnostics) do assert.is_nil(diagnostic.error);if diagnostic.warning and diagnostic.warning:find("separate exact-match operator",1,true) then reportWarning=true end end
+			assert.is_true(reportWarning);assert.is_truthy(compiled:find(key..' >=2 == "Polar" "Shocking"',1,true))
 			local saved;require("Classes.LootFilterControl").Conditions({id="exact",title="Exact",text=raw},function(value) saved=value end)
 			main.popups[1].controls.keepRule:Click();assert.is_truthy(saved.text:find(key..' >=2 == "Polar" "Shocking"',1,true))
 			local styled=require("Modules.LootFilterLibrary").appearance({id="exact",text=raw},{SetFontSize={"40"}})
 			assert.is_truthy(styled.text:find(key..' >=2 == "Polar" "Shocking"',1,true))
 		end
-		local ordinary=parser.simulate(parser.parse('Hide\n HasExplicitMod >=2 "==" "Polar"\nShow'),{Identified=true,HasExplicitMod={"==","Polar"}})
+		local literal=parser.parse('Hide\n HasExplicitMod >=2 "==" "Polar"\nShow');assert.equal(0,#literal.diagnostics)
+		local ordinary=parser.simulate(literal,{Identified=true,HasExplicitMod={"==","Polar"}})
 		assert.equal("Hide",ordinary.action)
 	end)
 	it("never treats incomplete or unsupported samples as a certain hide",function()
