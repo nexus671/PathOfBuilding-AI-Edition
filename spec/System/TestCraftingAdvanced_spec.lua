@@ -158,6 +158,18 @@ describe("Advanced native crafting", function()
 		assert.has_error(function() sim.model(raw:gsub("Quality: 18","Quality: 0",1)) end)
 		assert.has_error(function() sim.model(raw:gsub("30%% increased Melee Weapon Attack Speed","99%% increased Melee Weapon Attack Speed")) end)
 	end)
+	it("preserves named quality-scaled tincture prefixes and suffixes together",function()
+		local raw="Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n30% reduced Mana Burn rate\n30% increased Melee Weapon Attack Speed"
+		local model=sim.model(raw);local ids={};for _,entry in ipairs(model.initial.affixes) do ids[entry.id]=true end
+		assert.is_true(ids.TinctureToxicityRate4);assert.is_true(ids.TinctureIncreasedAttackSpeed3)
+		local text=sim.toItem(model,sim.validateState(model,model.initial)).raw
+		assert.matches("30%% reduced Mana Burn rate",text);assert.matches("30%% increased Melee Weapon Attack Speed",text)
+		local reopened=sim.model(text);assert.equal(2,#reopened.initial.affixes)
+		local result=sim.perform(raw,{method="divine"},7);assert.is_true(result.state.tinctureBasePrefix);assert.is_true(result.state.tinctureBaseSuffix)
+		assert.has_error(function() sim.model(raw:gsub("Persevering ","",1)) end)
+		assert.has_error(function() sim.model(raw:gsub("Persevering","Persistent",1)) end)
+		assert.has_error(function() sim.model(raw:gsub("Quality: 18","Quality: 18\nTincture Imported Effect: 20",1)) end)
+	end)
 	it("warns about out-of-range working rolls while preserving imported legacy values",function()
 		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw);local state=copyTable(model.initial)
 		state.rarity="MAGIC";state.affixes={{id="IncreasedLife2",range=5}}

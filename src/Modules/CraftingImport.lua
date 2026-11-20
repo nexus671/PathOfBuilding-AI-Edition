@@ -48,18 +48,21 @@ function I.resolve(M,model,state)
 		used[found]=true
 	end end
 	local candidates,seen,contributorMods={},{ },{}
-	local namedSuffix
+	local namedPrefix,namedSuffix
 	if model.item.type=="Tincture" and model.item.tinctureValues=="Final" and model.item.rarity=="MAGIC" then
 		local name,base=model.item.name or "",model.item.baseName or "";local start=base~="" and name:find(base,1,true)
-		if start then namedSuffix=name:sub(start+#base):match("^%s+(.+)$") end
+		if start then
+			namedPrefix=name:sub(1,start-1):match("^(.+)%s+$");namedSuffix=name:sub(start+#base):match("^%s+(.+)$")
+			if namedPrefix=="Superior" then namedPrefix=nil elseif namedPrefix then namedPrefix=namedPrefix:gsub("^Superior%s+","") end
+		end
 	end
-	-- A named magic tincture suffix can establish the tier even when a game
+	-- A named magic tincture affix can establish the tier even when a game
 	-- copy displays a quality-scaled value outside its native range. Keep the
 	-- displayed roll for round trips; do not claim the original roll is known.
 	local function namedTinctureDisplay(mod,line)
 		local item=model.item;local quality=item.tinctureImportedQuality or 0
-		if item.type~="Tincture" or item.tinctureValues~="Final" or quality<=0 or (item.tinctureImportedEffect or 0)~=0 or mod.type~="Suffix" or #mod~=1 or not mod.affix or mod.affix=="" then return end
-		local name=item.name or "";if name:sub(-#mod.affix)~=mod.affix or name:sub(-#mod.affix-1,-#mod.affix-1)~=" " then return end
+		if item.type~="Tincture" or item.tinctureValues~="Final" or quality<=0 or (item.tinctureImportedEffect or 0)~=0 or #mod~=1 or not mod.affix or mod.affix=="" then return end
+		if mod.type=="Prefix" and namedPrefix~=mod.affix or mod.type=="Suffix" and namedSuffix~=mod.affix or mod.type~="Prefix" and mod.type~="Suffix" then return end
 		local low,high=mod[1]:match("%((%-?%d+)%-(%-?%d+)%)")
 		low,high=tonumber(low),tonumber(high);if not low or not high or high<=low or high-low>4096 then return end
 		local display=I.inferRange(mod[1],line,true);if not display or #display~=1 or math.abs(display[1])>100 then return end
@@ -71,6 +74,7 @@ function I.resolve(M,model,state)
 	local function consider(id,crafted,legacy,description330)
 		local key=id..(legacy and ":legacy" or description330 and ":description330" or ":current");if seen[key] then return end;seen[key]=true
 		local mod=legacy and model.legacyLightRadius[id] or description330 and model.descriptions330[id] or model.byId[id];if not mod or #mod == 0 then return end
+		if namedPrefix and mod.type=="Prefix" and mod.affix~=namedPrefix then return end
 		if namedSuffix and mod.type=="Suffix" and mod.affix~=namedSuffix then return end
 		if not crafted then contributorMods[#contributorMods+1]={id=id,mod=mod} end
 		local indices,ranges={},{}
