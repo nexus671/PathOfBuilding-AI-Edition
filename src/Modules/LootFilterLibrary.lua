@@ -92,6 +92,9 @@ local function baseClass(name)
 	-- base cannot resolve those cases; retain a separately supplied class.
 	if baseClasses.ambiguous[name] then return nil end
 	if baseClasses.classes[name] then return baseClasses.classes[name] end
+	-- NeverSink 8.21.1 identifies these 3.30.0d additions as stackable currency;
+	-- retain unknown client properties until the next pinned item export.
+	if name=="Originator's Exalted Orb" or name=="Primordial Exalted Orb" then return "Stackable Currency" end
 	local base=data and data.itemBases and data.itemBases[name]
 	if base then
 		local kind=base.subType=="Thrusting" and "Thrusting Sword" or (base.subType=="Rune Dagger" or base.subType=="Warstaff") and base.subType or base.type

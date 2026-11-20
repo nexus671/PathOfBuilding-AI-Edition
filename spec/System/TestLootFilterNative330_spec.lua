@@ -29,6 +29,14 @@ describe("3.30 native filter update",function()
 			end
 		end
 	end)
+	it("recognises new Exalted Orbs in the filter example library",function()
+		for _,name in ipairs({"Originator's Exalted Orb","Primordial Exalted Orb"}) do
+			assert.equal("Stackable Currency",library.baseClass(name))
+			local sample=library.sample({text='Show\n BaseType == "'..name..'"'})
+			assert.equal("Stackable Currency",sample.Class)
+			assert.is_nil(library.baseProperties(name,"Normal").DropLevel)
+		end
+	end)
 	it("requires review of old profiles and keeps personal rules ahead of the new base",function()
 		local old=filters.profile("old","Old");old.baseCommit="3ab00dd016b00c6be7acfa989baf498842973d54"
 		old.rules={{id="personal",title="Hide thread",text='Hide\n BaseType == "Frayed Thread"',enabled=true}}
