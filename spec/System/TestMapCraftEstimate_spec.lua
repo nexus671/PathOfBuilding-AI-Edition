@@ -123,6 +123,19 @@ describe("Map reroll estimates",function()
 		local ok,err=pcall(estimate.run,magic,{wantedGroups={{"MapMonsterAreaOfEffectMapWorlds"},{"MapMonsterCriticalStrikesAndDamageMapWorlds"}},trials=1,maxAttempts=1,seed=77})
 		assert.is_false(ok);assert.matches("Wanted groups 1 and 2 cannot coexist",err)
 	end)
+	it("rejects too many required suffix groups before exploring alternatives",function()
+		local page=require("Modules.MapCraftingData").inspect(state.baseId,state.tier,state.itemLevel,{},"",0,100,nil,"rare")
+		local groups={{},{},{},{}}
+		local count=0
+		for _,entry in ipairs(page.candidates) do
+			if entry.side=="suffix" and count<40 then count=count+1;groups[(count-1)%4+1][#groups[(count-1)%4+1]+1]=entry.id end
+		end
+		assert.equal(40,count)
+		local checkpoints=0
+		local ok,err=pcall(estimate.run,state,{wantedGroups=groups,trials=1,maxAttempts=1,seed=42},function() checkpoints=checkpoints+1 end)
+		assert.is_false(ok);assert.matches("Wanted targets cannot all coexist",err)
+		assert.matches("at least 4 suffix",err);assert.is_true(checkpoints<50)
+	end)
 	it("rejects collectively impossible targets while accepting a compatible alternative",function()
 		local low=copyTable(state);low.tier=5;low.itemLevel=68
 		local a,b,c,d="MapBossPossessedMapWorlds","MapDangerousBoss1MapWorlds","MapMonsterCannotBeStunnedMapWorlds_","MapMonsterChainMapWorlds"

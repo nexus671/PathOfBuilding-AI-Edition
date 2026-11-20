@@ -78,6 +78,17 @@ function M.run(state,options,checkpoint)
 		end
 		assert(possible,"Wanted groups "..i.." and "..j.." cannot coexist under the modeled map modifier rules. Change or remove a target.")
 	end end
+	-- Every group must contribute a distinct modifier. If more groups require
+	-- one side than the item can hold, no combination can satisfy the target.
+	local required={prefix=0,suffix=0};local limit=rarity=="magic" and 1 or 3
+	for _,group in ipairs(groups) do
+		local side=mods[group[1]].generation_type;local same=true
+		for _,id in ipairs(group) do if mods[id].generation_type~=side then same=false;break end end
+		if same then required[side]=required[side]+1 end
+	end
+	for _,side in ipairs({"prefix","suffix"}) do
+		assert(required[side]<=limit,"Wanted targets cannot all coexist: at least "..required[side].." "..side.." modifiers are required, but this map supports at most "..limit..".")
+	end
 	if #groups>2 then
 		local ordered={};for index,group in ipairs(groups) do ordered[#ordered+1]={index=index,choices=group} end
 		table.sort(ordered,function(a,b) return #a.choices==#b.choices and a.index<b.index or #a.choices<#b.choices end)
