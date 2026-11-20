@@ -282,7 +282,11 @@ function M.Open(build,project,layout,snapshot)
 				if why and not (met and why=="The item already has its maximum natural socket count.") then return why end
 				if met then return nil,true end
 			end
-			ui.label(roll,"targetHelp",16,222,"",14);roll.targetHelp.label=function() local why,met=planReason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save a socket plan."),rw-32,14) end
+			ui.label(roll,"targetHelp",16,222,"",14);roll.targetHelp.label=function()
+				local why,met=planReason();local target=tonumber(roll.target.buf)
+				local note=met and "Already met; the plan will use no currency." or method()=="jeweller" and target and target<unique.omenCount(item) and "Maximum sockets stop rerolls; use the bench to reset." or "Ready to save a socket plan."
+				return "^7"..ui.fit(why or note,rw-32,14)
+			end
 			roll.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,rh-48,140,28},"Preview roll",function()
 				local choice=method();colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
 				local result=unique.randomSockets(raw,choice,seed);history[#history+1]=raw;actions[#actions+1]=choice;redo={};raw=result.itemText;main:ClosePopup();refresh(true)

@@ -62,6 +62,14 @@ local function sampled(sim,raw,recipe,options)
 	out.warnings=warnings
 	if failedTrials>0 then out.warnings[#out.warnings+1]={code="rejected_model_actions",message=string.format("%d of %d modeled trials included a rejected action. Rejected attempts count toward the action budget and follow failure routes, but are not charged resources. Review the transition errors.",failedTrials,trials)} end
 	out.warnings[#out.warnings+1]={code="unique_socket_sampling",message="Socket outcomes use estimated probabilities. The Wilson interval measures sampling uncertainty, not uncertainty in game rules."}
+	local unique=require("Modules.CraftingUniqueQuality");local start=unique.inspect(raw)
+	for _,step in ipairs(recipe.steps) do
+		local target=step.untilRequirements and step.untilRequirements.exactSockets or recipe.requirements and recipe.requirements.exactSockets
+		if step.method=="jeweller" and type(target)=="number" and target<unique.omenCount(start) then
+			out.warnings[#out.warnings+1]={code="unique_jeweller_maximum_stops",message="An ordinary Jeweller's Orb cannot reroll the maximum natural socket count. If the maximum is reached before a lower target, use a bench socket craft to reset it; this recipe does not do that automatically unless a recovery step is included."}
+			break
+		end
+	end
 	return out
 end
 function M.simulate(sim,raw,recipe,options)

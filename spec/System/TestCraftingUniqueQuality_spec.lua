@@ -296,6 +296,9 @@ describe("Unique item quality",function()
 		control.socketCount:Click();main.popups[1].controls.roll:Click();popup=main.popups[1].controls;popup.target:SetText("2");popup.plan:Click();main.popups[1].controls.confirm:Click()
 		local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
 		assert.equal(1,#saved.steps);assert.equal("Exactly 2 sockets",saved.steps[1].stopWhen);assert.equal(2,saved.nativeRecipe.requirements.exactSockets)
+		control.socketCount:Click();main.popups[1].controls.roll:Click();popup=main.popups[1].controls;popup.target:SetText("2");assert.matches("Maximum sockets stop",popup.targetHelp.label());main.popups={}
+		local warningRun=require("Modules.CraftingSimulator").simulate(raw,saved.nativeRecipe,{trials=5,maxActions=100,seed=123});local warned=false
+		for _,warning in ipairs(warningRun.warnings) do if warning.code=="unique_jeweller_maximum_stops" then warned=true end end;assert.is_true(warned)
 		local full=raw:gsub("Sockets: R%-G B","Sockets: R-G B W")
 		local complete={id="socket-complete",title="Complete",slot="Helmet",startingItem=full,goals={},steps={}}
 		store:Upsert(complete);control=require("Classes.CraftingUniqueQualityControl").Open(build,complete);control.socketCount:Click();main.popups[1].controls.roll:Click();popup=main.popups[1].controls
