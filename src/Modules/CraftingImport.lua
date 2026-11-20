@@ -318,8 +318,18 @@ function I.resolve(M,model,state)
 		end
 		return findCombined()
 	end
-	if #solutions==1 and hasCombinedAlternative() then solutions[2]=true end
+	local combinedWithoutDirect=false
+	if #solutions==1 and hasCombinedAlternative() then solutions[2]=true
+	elseif #solutions==0 then
+		-- An item may display the sum of two otherwise legal modifiers, even
+		-- when neither modifier matches the displayed line by itself. Reuse the
+		-- bounded alternative check to explain that case without guessing rolls.
+		local ok,result=pcall(hasCombinedAlternative)
+		if ok then combinedWithoutDirect=result
+		elseif not tostring(result):find("Import has too many possible combined modifiers",1,true) then error(result) end
+	end
 	local failure=#solutions == 0 and "Imported values do not resolve to legal affixes at this item level; use advanced copy text or a blank base with a structured starting state" or "Imported values match several modifier identities; use advanced copy text or a blank base with a structured starting state"
+	if combinedWithoutDirect then failure="Imported values may combine multiple modifiers, so their individual rolls cannot be recovered reliably; use advanced copy text or a blank base with a structured starting state" end
 	if model.item.type=="Tincture" and model.item.tinctureValues=="Final" and ((model.item.tinctureImportedQuality or 0)~=0 or (model.item.tinctureImportedEffect or 0)~=0) then
 		failure="Copied tincture values may include quality or effect scaling, so their modifier tiers cannot be identified reliably. Start with a blank tincture and enter base-value rolls."
 	end

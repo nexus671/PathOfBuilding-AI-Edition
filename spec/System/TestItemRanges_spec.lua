@@ -80,6 +80,10 @@ describe("Independent modifier ranges",function()
 		local imported=sim.model(sim.toItem(base,state).raw);local ids={};for _,entry in ipairs(imported.initial.affixes) do ids[entry.id]=true end
 		assert.is_true(ids.LocalIncreasedPhysicalDamageReductionRatingPercentAndStunRecovery4);assert.is_true(ids.LocalIncreasedPhysicalDamageReductionRatingPercent3)
 	end)
+	it("explains combined values when no individual modifier matches",function()
+		local copied="Rarity: RARE\nExample Hood\nIron Hat\nItem Level: 86\nImplicits: 0\n132% increased Armour\n17% increased Stun and Block Recovery"
+		local ok,err=pcall(sim.model,copied);assert.is_false(ok);assert.matches("may combine multiple modifiers",err,1,true);assert.matches("advanced copy text",err,1,true)
+	end)
 	it("does not combine matching text from different native stats",function()
 		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
 		local function mod(high,group,order) return {"(1-"..high..")% increased Example",type="Prefix",group=group,statOrder={order}} end

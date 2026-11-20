@@ -43,7 +43,7 @@ for _,size in ipairs({2,3}) do
 					else
 						local message=tostring(result)
 						assert(message:find("Imported values ",1,true) or message:find("Starting modifiers could not be resolved",1,true) or message:find("A native modifier identity does not match",1,true),"Unexpected import error: "..message)
-						local reason=message:find("Imported values match several",1,true) and "ambiguous" or message:find("Imported values do not resolve",1,true) and "no legal assignment" or message:find("A native modifier identity does not match",1,true) and "native identity mismatch" or "other unresolved"
+						local reason=message:find("Imported values match several",1,true) and "ambiguous" or message:find("Imported values may combine",1,true) and "combined values" or message:find("Imported values do not resolve",1,true) and "no legal assignment" or message:find("A native modifier identity does not match",1,true) and "native identity mismatch" or "other unresolved"
 						rejected=rejected+1;stats.rejected=stats.rejected+1;stats.reasons[reason]=(stats.reasons[reason] or 0)+1
 					end
 				end

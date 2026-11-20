@@ -6,6 +6,9 @@ for alternative combinations of integer single-stat ranges before accepting an e
 line match, and rejects ambiguous items. The bounded search can check several
 combined rows, including overlapping hybrid and separate contributor groups. Complex multi-stat values remain incomplete;
 use advanced copy text when modifier identity matters.
+When no individual modifier matches but a bounded check finds a possible
+combined explanation, the import error says so; it does not invent the
+individual modifier rolls.
 
 Run `python tools/run_headless_lupa.py tools/check_crafting_imports.lua` to
 sample two- and three-modifier plain and labelled imports across five equipment bases. The
