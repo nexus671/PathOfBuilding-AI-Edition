@@ -1,6 +1,11 @@
 describe("Map reroll estimates",function()
 	local estimate=require("Modules.MapCraftEstimate");local currency=require("Modules.MapCurrency")
 	local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
+	it("reports the map data version used for an estimate",function()
+		local result=estimate.run(state,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})
+		local source=require("Modules.MapCraftingData").source()
+		assert.equal(source.patch,result.dataPatch);assert.same(source.source,result.dataSource)
+	end)
 	it("reports a bounded probability and resource use without mutating the map",function()
 		local options={wanted={},avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=20,maxAttempts=3,seed=42}
 		local updates=0;local result=estimate.run(state,options,function(progress) assert.is_truthy(progress.trial);assert.equal(20,progress.trials);updates=updates+1 end);local repeated=estimate.run(state,options)

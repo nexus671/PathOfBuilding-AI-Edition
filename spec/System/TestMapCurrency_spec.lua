@@ -1,6 +1,13 @@
 describe("Experimental map currency",function()
 	local currency=require("Modules.MapCurrency")
 	local function state(rarity,selected) return {baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity=rarity,selected=selected or {}} end
+	it("reports the map data version for currency outcomes",function()
+		local result=currency.perform(state("normal"),"alchemy",42)
+		local source=require("Modules.MapCraftingData").source()
+		assert.equal(source.patch,result.dataPatch);assert.same(source.source,result.dataSource)
+		local fast=currency.perform(state("normal"),"alchemy",42,nil,true)
+		assert.is_nil(fast.dataSource);assert.is_nil(fast.dataPatch)
+	end)
 	it("keeps Blighted modifier restrictions in currency rolls and cached pools",function()
 		local input=state("rare");input.observedEffects={{kind="implicit",text="Area is infested with Fungal Growths"}}
 		local forbidden={MapContainsBeyondDemonFactionWorlds=true,MapContainsBeyondFleshFactionWorlds=true,MapContainsBeyondPaleFactionWorlds=true,MapContainsDeliriumMirrorWorlds=true,MapContainsMirageWorlds=true,MapContainsWildwoodWorlds=true,MapContainsSentinelApexWorlds=true,MapContainsSentinelPandemoniumWorlds=true,MapContainsSentinelStalkerWorlds=true}

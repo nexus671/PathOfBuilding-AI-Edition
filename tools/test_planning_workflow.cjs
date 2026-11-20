@@ -920,6 +920,7 @@ async function main(){
   assert.ok(mapBases.mapData.results.some(base=>base.id==='Metadata/Items/Maps/MapWorldsBeach'));
   const nightmareMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare',query:'MapUberModCurses'},'mapData');
   assert.equal(nightmareMap.mapData.nightmare,true);assert.equal(nightmareMap.mapData.total,1);assert.equal(nightmareMap.mapData.currencyOptions.find(entry=>entry.id==='chaos').available,true);
+  assert.equal(blightedReroll.mapData.dataPatch,nightmareMap.mapData.patch);assert.deepEqual(blightedReroll.mapData.dataSource,nightmareMap.mapData.source);
   const nightmareRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare',selected:[]},action:'chaos',seed:42},'mapData');
   assert.equal(nightmareRoll.mapData.state.selected.length,6);assert.match(nightmareRoll.mapData.note,/unverified assumptions/);
   const nightmareEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare'},options:{wantedGroups:[['MapUberWeakContainsDeliriumMirror']],trials:2,maxAttempts:2,seed:42}},'mapData');
@@ -953,6 +954,7 @@ async function main(){
   assert.deepEqual(inspectedRoll.mapData.summary,mapRoll.mapData.summary);
   const mapEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'},options:{wanted:[],avoid:['MapMonsterAreaOfEffectMapWorlds'],trials:2,maxAttempts:1,seed:42,price:{amount:0.5,currency:'chaos'}}},'mapData');
   assert.equal(mapEstimate.mapData.successes,2);assert.equal(mapEstimate.mapData.attempts,2);assert.match(mapEstimate.mapData.note,/sampling uncertainty only/);
+  assert.equal(mapEstimate.mapData.dataPatch,nightmareMap.mapData.patch);assert.deepEqual(mapEstimate.mapData.dataSource,nightmareMap.mapData.source);
   assert.deepEqual(mapEstimate.mapData.cost,{currency:'chaos',unitPrice:0.5,totalSpent:1,meanSpent:0.5,maxPerTrial:0.5,p50:0.5,p90:0.5,p99:0.5});
   const mapAlternatives=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'},options:{wantedGroups:[['MapContainsMirageWorlds','MapContainsWildwoodWorlds']],trials:1,maxAttempts:1,seed:42}},'mapData');
   assert.deepEqual(mapAlternatives.mapData.wantedGroups,[['MapContainsMirageWorlds','MapContainsWildwoodWorlds']]);
