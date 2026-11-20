@@ -55,6 +55,20 @@ describe("Offline campaign pickup policies",function()
 		assert.equal(0,#campaign.rules(p.campaign,nil,"Ruthless"))
 		assert.same({"Vaal skill gems"},campaign.validate(p.campaign).recipes)
 	end)
+	it("offers separate quality weapon and armour pickups without overriding uniques",function()
+		local p=profile();p.campaign.recipes={"Quality weapons","Quality armour"};p.campaign.minAreaLevel=10;p.campaign.maxAreaLevel=70
+		for _,pair in ipairs({{"Wands","Driftwood Wand","Quality weapons"},{"Bows","Crude Bow","Quality weapons"},{"Shields","Twig Spirit Shield","Quality armour"},{"Helmets","Iron Hat","Quality armour"}}) do
+			local item={Class=pair[1],BaseType=pair[2],Quality=10,AreaLevel=40,Rarity="Normal"}
+			local result=filters.simulate(p,item);assert.equal("Show",result.action,pair[1]);assert.matches(pair[3],result.ruleTitle)
+			item.Quality=0;assert.equal("Hide",filters.simulate(p,item).action);item.Quality=10;item.Rarity="Unique";assert.equal("Hide",filters.simulate(p,item).action)
+			item.Rarity="Rare";item.AreaLevel=71;assert.equal("Hide",filters.simulate(p,item).action)
+		end
+		local sample={Class="Wands",BaseType="Driftwood Wand",Quality=10,AreaLevel=40,Rarity="Magic"}
+		p.campaign.recipes={"Quality armour"};assert.equal("Hide",filters.simulate(p,sample).action)
+		p.campaign.recipes={"Quality weapons"};p.mode="Ruthless";p.template="Minimal";assert.equal("Show",filters.simulate(p,sample).action)
+		local saved;local panel=require("Classes.LootFilterCampaignControl").Open(build,nil,function(value) saved=value end,"Normal")
+		panel.recipe9:Click();panel.recipe10:Click();panel.keep:Click();assert.same({"Quality weapons","Quality armour"},saved.recipes)
+	end)
 	it("makes the Vaal-gem pickup available in campaign settings",function()
 		local saved;local panel=require("Classes.LootFilterCampaignControl").Open(build,nil,function(value) saved=value end,"Normal")
 		assert.is_true(panel.recipe7:IsEnabled());panel.recipe7:Click();panel.keep:Click()

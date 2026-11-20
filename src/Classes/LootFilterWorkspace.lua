@@ -34,6 +34,7 @@ function M.vendorLabel(sample)
 	end end
 	if (sample.Class=="Skill Gems" or sample.Class=="Support Gems") and quality and quality>0 then return "Quality gem" end
 	if sample.Rarity=="Rare" and sample.Identified==false then return "Rare piece" end
+	if quality and quality>0 then return require("Modules.LootFilterCampaign").qualityCategory(sample.Class) end
 end
 local function itemTier(sample)
 	if sample.Identified==false and (sample.Rarity=="Magic" or sample.Rarity=="Rare") then return sample.UnidentifiedItemTier end

@@ -1,6 +1,6 @@
 -- Offline family policies derived from the bundled native bases, never prices.
 -- cspell:ignore jsontype
-local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces","Low-level unidentified rare set pieces","Vaal skill gems","Quality flasks and tinctures"}}
+local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces","Low-level unidentified rare set pieces","Vaal skill gems","Quality flasks and tinctures","Quality weapons","Quality armour"}}
 local knownWeapons={"Bow","Claw","Dagger","Rune Dagger","Fishing Rod","One Handed Axe","One Handed Mace","One Handed Sword","Thrusting Sword","Sceptre","Staff","Warstaff","Two Handed Axe","Two Handed Mace","Two Handed Sword","Wand","Shield","Quiver"}
 M.weapons=knownWeapons
 M.rareSetSlots={"Jewellery","Armour","Weapons and shields"}
@@ -10,6 +10,11 @@ local rareSetClasses={
 	["Weapons and shields"]={"Bows","Claws","Daggers","Fishing Rods","One Hand Axes","One Hand Maces","One Hand Swords","Rune Daggers","Sceptres","Shields","Staves","Thrusting One Hand Swords","Two Hand Axes","Two Hand Maces","Two Hand Swords","Wands","Warstaves"},
 }
 local armourTypes={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true}
+function M.qualityCategory(class)
+	if class=="Shields" then return "Quality armour" end
+	for _,name in ipairs(rareSetClasses.Armour) do if class==name then return "Quality armour" end end
+	for _,name in ipairs(rareSetClasses["Weapons and shields"]) do if class==name then return "Quality weapon" end end
+end
 function M.weapon(base)
 	if base.subType=="Rune Dagger" or base.subType=="Warstaff" then return base.subType elseif base.subType=="Thrusting" then return "Thrusting Sword" end
 	if base.weapon or base.type=="Shield" or base.type=="Quiver" then return base.type end
@@ -91,10 +96,12 @@ function M.rules(value,theme,mode)
 		["Six-link equipment"]={"LinkedSockets 6"},
 		["Quality gems"]={'Class == "Skill Gems" "Support Gems"',"Quality >= 1"},
 		["Quality flasks and tinctures"]={'Class == "Life Flasks" "Mana Flasks" "Hybrid Flasks" "Utility Flasks" "Critical Utility Flasks" "Tinctures"',"Quality >= 1"},
+		["Quality weapons"]={'Class == "Bows" "Claws" "Daggers" "Fishing Rods" "One Hand Axes" "One Hand Maces" "One Hand Swords" "Rune Daggers" "Sceptres" "Staves" "Thrusting One Hand Swords" "Two Hand Axes" "Two Hand Maces" "Two Hand Swords" "Wands" "Warstaves"',"Rarity <= Rare","Quality >= 1"},
+		["Quality armour"]={'Class == "Body Armours" "Boots" "Gloves" "Helmets" "Shields"',"Rarity <= Rare","Quality >= 1"},
 	}
 	-- Vendor recipes resolve six links before six sockets, then linked colours.
 	-- Keep the original indices for stable rule IDs and saved overrides.
-	local recipeOrder={3,2,1,4,8,5,6,7}
+	local recipeOrder={3,2,1,4,8,5,6,7,9,10}
 	for _,i in ipairs(recipeOrder) do local name=M.recipes[i];for _,chosen in ipairs(policy.recipes) do if name==chosen then
 		if name=="Vaal skill gems" then
 			if mode~="Ruthless" then

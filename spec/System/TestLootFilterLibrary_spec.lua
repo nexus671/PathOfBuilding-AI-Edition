@@ -6,14 +6,15 @@ describe("Visual filter catalogue",function()
 	after_each(function() main.popups={} end)
 	it("compares explicit vendor-recipe examples at the selected levels",function()
 		local profile=filters.profile("vendor-scenes","Vendor scenes");local scene=library.scene(profile,build,"Vendor recipes",0,65,72)
-		assert.equal(10,#scene);for _,item in ipairs(scene) do assert.equal(65,item.AreaLevel);assert.equal(72,item.ItemLevel) end
+		assert.equal(12,#scene);for _,item in ipairs(scene) do assert.equal(65,item.AreaLevel);assert.equal(72,item.ItemLevel) end
 		local function matches(condition,item) return parser.simulate(parser.parse("Hide\n "..condition.."\nShow"),item).action end
 		assert.equal("Hide",matches("SocketGroup RGB",scene[1]));assert.equal("Hide",matches("Sockets 6",scene[2]));assert.equal("Hide",matches("LinkedSockets 6",scene[3]))
 		assert.equal("Hide",matches("Quality >= 1",scene[4]));assert.equal("Hide",matches("Rarity Rare\n Identified False\n ItemLevel >= 60",scene[5]))
 		local rotated=library.scene(profile,build,"Vendor recipes",1,65,72);assert.equal(scene[2].BaseType,rotated[1].BaseType)
-		local page=filters.simulateScene(profile,"Vendor recipes",0,65,72,0,10);assert.equal(10,page.total);assert.equal("Iron Hat",page.results[1].sample.BaseType)
+		local page=filters.simulateScene(profile,"Vendor recipes",0,65,72,0,10);assert.equal(12,page.total);assert.equal("Iron Hat",page.results[1].sample.BaseType)
 		local label=require("Classes.LootFilterWorkspace").vendorLabel
 		for i,value in ipairs({"3 linked colours","6 sockets","6 linked","Quality gem","Rare piece"}) do assert.equal(value,label(scene[i])) end
+		assert.equal("Quality weapon",label(scene[11]));assert.equal("Quality armour",label(scene[12]))
 		assert.is_nil(label({SocketGroup="R G B"}))
 	end)
 	it("shows the identifying properties of a vendor-recipe sample",function()
