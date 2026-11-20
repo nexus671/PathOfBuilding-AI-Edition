@@ -136,12 +136,18 @@ describe("Independent modifier ranges",function()
 		state.affixes={{id="LocalIncreasedPhysicalDamageReductionRatingPercentAndStunRecovery6",range={2/3,1}},{id="LocalIncreasedPhysicalDamageReductionRatingPercent6",range=1}}
 		local item=sim.toItem(m,state);local total=0;for _,mod in ipairs(item.baseModList) do if mod.name=="Armour" and mod.type=="INC" then total=total+mod.value end end
 		assert.equal(197,total)
+		local reopened=new("Item"):Item(item.raw);reopened:Craft();total=0
+		for _,mod in ipairs(reopened.baseModList) do if mod.name=="Armour" and mod.type=="INC" then total=total+mod.value end end
+		assert.equal(197,total)
 	end)
 	it("keeps sources separate when a newly added crafted modifier scales them",function()
 		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86");local state=copyTable(m.initial);state.rarity="RARE"
 		m.byId.ExampleMagnitude={"50% increased effect of prefixes",type="Suffix",group="ExampleMagnitude",statOrder={5000},modTags={},affix="",level=1}
 		state.affixes={{id="LocalIncreasedPhysicalDamageReductionRatingPercentAndStunRecovery6",range={2/3,1}},{id="LocalIncreasedPhysicalDamageReductionRatingPercent6",range=1},{id="ExampleMagnitude",range=0.5,crafted=true}}
 		local item=sim.toItem(m,state);local total=0;for _,mod in ipairs(item.baseModList) do if mod.name=="Armour" and mod.type=="INC" then total=total+mod.value end end
+		assert.equal(197,total)
+		local reopened=new("Item"):Item(item.raw);reopened:Craft();total=0
+		for _,mod in ipairs(reopened.baseModList) do if mod.name=="Armour" and mod.type=="INC" then total=total+mod.value end end
 		assert.equal(197,total)
 		state.affixes[3].crafted=nil;local natural=sim.toItem(m,state);total=0
 		for _,mod in ipairs(natural.baseModList) do if mod.name=="Armour" and mod.type=="INC" then total=total+mod.value end end
