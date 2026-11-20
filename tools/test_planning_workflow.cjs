@@ -251,6 +251,13 @@ async function main(){
   const multiSaved=(await call('get_crafting_projects')).projects.find(entry=>entry.id===multiGuide.id);assert.equal(multiSaved.nativeRecipe.requirements.uniqueModifier.component,2);
   const multiRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:multiUniqueRaw,recipe:multiSaved.nativeRecipe,options:{trials:5,maxActions:20,seed:123}},'crafted');assert.equal(multiRun.nativeCrafting.trials,5);
   await queued('propose_build',{mode:'edit',title:'Remove weapon roll guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:multiGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
+  const variantUniqueRaw='Rarity: UNIQUE\nThe Blood Reaper\nHeadsman Axe\nItem Level: 86\n190% increased Physical Damage\n+100 to maximum Life\nRegenerate 20 Life per second\n1% of Physical Attack Damage Leeched as Life\n50% increased Mana Cost of Skills\n50% chance to cause Bleeding on Hit';
+  const variantInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:variantUniqueRaw,query:'divine',limit:10},'inspected');
+  const variantOption=variantInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='divine');assert.equal(variantOption.available,true,JSON.stringify(variantOption));
+  const variantApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:variantUniqueRaw,action:variantOption.action,seed:123},'crafted');assert.ok(variantApply.nativeCrafting.itemText.includes('(180-200)% increased Physical Damage'));
+  const variantGoal={uniqueModifier:{line:'(180-200)% increased Physical Damage',minValue:200}};
+  const variantRecipe={rarity:'UNIQUE',steps:[{method:'divine',maxAttempts:10,untilRequirements:variantGoal}],targets:[],requirements:variantGoal};
+  const variantRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:variantUniqueRaw,recipe:variantRecipe,options:{trials:5,maxActions:10,seed:123}},'crafted');assert.equal(variantRun.nativeCrafting.trials,5);
   const taintedQualityRaw=uniqueColourRaw+'\nCorrupted';
   const taintedQualityInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:taintedQualityRaw,query:'tainted quality',limit:10},'inspected');
   const taintedQualityOption=taintedQualityInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='tainted_quality');assert.equal(taintedQualityOption.available,true);

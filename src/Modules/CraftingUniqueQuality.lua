@@ -184,20 +184,8 @@ end
 
 -- A bounded Divine preview for complete, unambiguous unique templates.
 -- Numeric copies are matched to single integer ranges before rerolling.
-local function divinePlan(raw)
-	local ok,item=pcall(M.inspect,raw);if not ok then return nil,tostring(item) end
-	if item.corrupted then return nil,"Divine Orbs cannot modify a corrupted item" end
-	if item.type=="Tincture" and item.tinctureValues=="Final" then return nil,"Copied tincture values need a separate scaling model for Divine rolls" end
-	uniqueSocketRestriction(item.title) -- Populate the bundled unique index.
-	local candidates={}
-	for _,template in ipairs(uniquesByName[item.title] or {}) do
-		local base=template:match("^%s*[^\r\n]+[\r\n]+([^\r\n]+)")
-		if base==item.baseName then candidates[#candidates+1]=template end
-	end
-	if #candidates~=1 or candidates[1]:find("Variant:",1,true) or candidates[1]:find("{variant:",1,true) then return nil,"This unique's variant needs identification before Divine rolls" end
-	local parsed,reference=pcall(function() return new("Item"):Item("Rarity: UNIQUE\n"..candidates[1].."\nItem Level: "..item.itemLevel) end)
-	if not parsed or not reference.base then return nil,"The bundled unique template could not be verified" end
-	local expected={};for _,line in ipairs(reference.explicitModLines or {}) do
+local function divinePlanForReference(raw,item,reference)
+	local expected={};for _,line in ipairs(reference.explicitModLines or {}) do if reference:CheckModLineVariant(line) then
 		local text=line.line;local ranges,parts={},{};local pos=1
 		while true do
 			local first,last,low,high=text:find("%((%-?%d+)%-(%-?%d+)%)",pos);if not first then break end
@@ -218,7 +206,7 @@ local function divinePlan(raw)
 			if i<=#ranges then pattern[#pattern+1]="(%-?%d+)" end
 		end
 		pattern[#pattern+1]="$";expected[#expected+1]={line=text,ranges=ranges,pattern=table.concat(pattern)}
-	end
+	end end
 	local rows,seen={},{}
 	for _,line in ipairs(item.explicitModLines or {}) do
 		if line.disabled or line.custom or line.crafted or line.fractured or line.mutated or line.scourge or line.crucible or line.unscalable then return nil,"Special modifier lines need a separate Divine model" end
@@ -258,6 +246,38 @@ local function divinePlan(raw)
 	if #rows==0 then return nil,"No supported variable explicit modifiers were found" end
 	return {item=item,rows=rows}
 end
+local function divinePlan(raw)
+	local ok,item=pcall(M.inspect,raw);if not ok then return nil,tostring(item) end
+	if item.corrupted then return nil,"Divine Orbs cannot modify a corrupted item" end
+	if item.type=="Tincture" and item.tinctureValues=="Final" then return nil,"Copied tincture values need a separate scaling model for Divine rolls" end
+	if item.variantList or item.usesVariantGroups then return nil,"Items with saved variant selections need a separate Divine model" end
+	uniqueSocketRestriction(item.title)
+	local candidates={}
+	for _,template in ipairs(uniquesByName[item.title] or {}) do
+		local base=template:match("^%s*[^\r\n]+[\r\n]+([^\r\n]+)")
+		if base==item.baseName then candidates[#candidates+1]=template end
+	end
+	if #candidates~=1 then return nil,"This unique's variant needs identification before Divine rolls" end
+	local template=candidates[1]
+	if template:find("Variant:",1,true) or template:find("{variant:",1,true) then
+		template=template:gsub("^(%s*[^\r\n]+[\r\n]+[^\r\n]+)","%1\nItem Level: "..item.itemLevel,1)
+	else template=template.."\nItem Level: "..item.itemLevel end
+	local parsed,reference=pcall(function() return new("Item"):Item("Rarity: UNIQUE\n"..template) end)
+	if not parsed or not reference.base then return nil,"The bundled unique template could not be verified" end
+	if reference.usesVariantGroups then return nil,"This unique's variant groups need a separate Divine model" end
+	local selected,reason
+	for variant=1,reference.variantList and #reference.variantList or 1 do
+		if reference.variantList then reference.variant=variant end
+		local plan,why=divinePlanForReference(raw,item,reference)
+		if plan then
+			if selected then return nil,"This item matches multiple unique variants" end
+			selected=plan
+		else reason=reason or why end
+	end
+	if selected then return selected end
+	return nil,reason
+end
+
 function M.divineReason(raw) local _,reason=divinePlan(raw);return reason end
 function M.divineOptions(raw)
 	local plan,reason=divinePlan(raw);if not plan then return nil,reason end

@@ -75,6 +75,34 @@ describe("Unique item quality",function()
 		local result=quality.divine(multiple,104729);assert.is_nil(quality.divineReason(result.itemText));assert.is_truthy(quality.divine(result.itemText,209458))
 	end)
 
+	it("identifies complete copied unique variants before Divine rolls",function()
+		local current="Rarity: UNIQUE\nThe Blood Reaper\nHeadsman Axe\nItem Level: 86\n190% increased Physical Damage\n+100 to maximum Life\nRegenerate 20 Life per second\n1% of Physical Attack Damage Leeched as Life\n50% increased Mana Cost of Skills\n50% chance to cause Bleeding on Hit"
+		local older=current:gsub("190%% increased Physical Damage","110%% increased Physical Damage"):gsub("Regenerate 20 Life per second","Regenerate 10 Life per second")
+		for _,raw in ipairs({current,older}) do
+			assert.is_nil(quality.divineReason(raw));local options=quality.divineOptions(raw);assert.equal(1,#options)
+			local result=quality.divine(raw,104729);assert.is_nil(quality.divineReason(result.itemText));assert.is_truthy(quality.divine(result.itemText,209458))
+		end
+
+		local sim=require("Modules.CraftingSimulator");local catalog=sim.catalog(current,"divine",20);assert.is_true(catalog.uniqueActions[1].available)
+		local goal={uniqueModifier={line="(180-200)% increased Physical Damage",minValue=200}};local recipe={rarity="UNIQUE",steps={{method="divine",maxAttempts=10,untilRequirements=goal}},targets={},requirements=goal}
+		local run=sim.simulate(current,recipe,{trials=5,maxActions=10,seed=123});assert.equal(5,run.trials)
+		assert.is_truthy(quality.divineReason(current:gsub("Regenerate 20 Life per second", "")))
+		local ambiguous="Rarity: UNIQUE\nAtziri's Splendour\nSacrificial Garb\nItem Level: 86\nImplicits: 1\n+1 to Level of all Vaal Skill Gems\n400% increased Armour\n+95 to maximum Life\n+22% to all Elemental Resistances\nGain 100 Life per Enemy Killed\nGain 100 Mana per Enemy Killed"
+		assert.equal("This item matches multiple unique variants",quality.divineReason(ambiguous))
+
+	end)
+
+	it("retains variant identity through overlapping multi-range Divine rolls",function()
+		local raw="Rarity: UNIQUE\nAtziri's Disfavour\nVaal Axe\nItem Level: 86\n+2 to Level of Socketed Support Gems\nAdds 210 to 260 Physical Damage\n14% increased Attack Speed\n25% chance to cause Bleeding on Hit\n+0.2 metres to Weapon Range"
+		assert.is_nil(quality.divineReason(raw));local advanced=raw:gsub("Adds 210 to 260 Physical Damage","Adds 220(205-220) to 270(250-270) Physical Damage")
+		assert.is_nil(quality.divineReason(advanced));local result=quality.divine(advanced,104729);assert.is_nil(quality.divineReason(result.itemText));assert.is_truthy(quality.divine(result.itemText,209458))
+		local overlap="Rarity: UNIQUE\nDeath's Hand\nKarui Sceptre\nItem Level: 86\nImplicits: 1\n26% increased Elemental Damage\nAdds 40 to 100 Physical Damage\n35% increased Critical Strike Chance\n30% chance to gain a Power Charge when you Stun\nGain Unholy Might for 4 seconds on Critical Strike"
+		assert.equal("This item matches multiple unique variants",quality.divineReason(overlap))
+		local identified=overlap:gsub("Adds 40 to 100 Physical Damage","Adds 40(35-46) to 100(85-128) Physical Damage")
+		assert.is_nil(quality.divineReason(identified));assert.is_truthy(quality.divine(identified,104729))
+
+	end)
+
 	it("preserves copied armour base rolls when unique stats or quality change",function()
 		local raw="Item Class: Helmets\nRarity: Unique\nGoldrim\nLeather Cap\n--------\nEvasion Rating: 67\n--------\nItem Level: 86\n--------\n+40 to Evasion Rating\n+10% to Item Rarity\n+35% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
 		local before=quality.inspect(raw);local baseline=before.armourData.EvasionBasePercentile;assert.is_truthy(baseline)

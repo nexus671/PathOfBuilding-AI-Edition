@@ -36,6 +36,11 @@ return function(build,ui,frame)
 	store:Upsert(multiProject);require("Classes.CraftingUniqueQualityControl").Open(build,multiProject);ui:click("divine");local multiPicker=main.popups[1].controls;multiPicker.stat:SelByValue("modifier:2","val");ui:text("target","25");frame("crafting-unique-divine-multi");ui:click("plan")
 	local multiSaved;for _,entry in ipairs(store.projects) do if entry.id==multiProject.id then multiSaved=entry end end
 	assert(multiSaved and multiSaved.nativeRecipe.requirements.uniqueModifier.component==2,"Multi-range target component was not kept");main.popups={}
+	local variantRaw="Rarity: UNIQUE\nThe Blood Reaper\nHeadsman Axe\nItem Level: 86\n190% increased Physical Damage\n+100 to maximum Life\nRegenerate 20 Life per second\n1% of Physical Attack Damage Leeched as Life\n50% increased Mana Cost of Skills\n50% chance to cause Bleeding on Hit"
+	local variantProject={id="unique-divine-variant-ui",title="Variant rolls",slot="Weapon 1",startingItem=variantRaw,goals={},steps={}}
+	store:Upsert(variantProject);require("Classes.CraftingUniqueQualityControl").Open(build,variantProject);ui:click("divine");local variantPicker=main.popups[1].controls;variantPicker.stat:SelByValue("modifier:1","val");ui:text("target","200");ui:click("plan")
+	local variantSaved;for _,entry in ipairs(store.projects) do if entry.id==variantProject.id then variantSaved=entry end end
+	assert(variantSaved and variantSaved.nativeRecipe.requirements.uniqueModifier.minValue==200,"Variant target was not kept");main.popups={}
 	local taintedQuality={id="unique-tainted-quality-ui",title="Tainted quality",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nQuality: 0\nSockets: R-G B\nCorrupted",goals={},steps={}}
 	store:Upsert(taintedQuality);require("Classes.CraftingUniqueQualityControl").Open(build,taintedQuality);frame("crafting-unique-tainted-quality")
 	ui:click("qualityPlan");ui:text("target","20");ui:text("attempts","1000");frame("crafting-unique-quality-target");ui:click("plan")
