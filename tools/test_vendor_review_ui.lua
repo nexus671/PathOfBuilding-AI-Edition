@@ -17,5 +17,8 @@ return function(build,ui,frame)
 	do local c=main.popups[1].controls;local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;local text=table.concat(details," ");assert(text:find("Whetstone",1,true) and text:find("Scrap",1,true) and text:find("40%",1,true),"Quality vendor groups were not displayed") end
 	frame("vendor-quality-groups");ui:click("close")
 	ui:click("nav_tools");do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="qualityVendor" then selected=row;break end end;assert(selected);browser.results.onClick({line=selected});ui:click("choose") end
-	assert(main.popups[1].controls.status.label:find("4 pasted items",1,true),"Quality vendor review lost its working items");frame("vendor-quality-reopened");ui:click("clear");ui:click("close")
+	assert(main.popups[1].controls.status.label:find("4 pasted items",1,true),"Quality vendor review lost its working items");frame("vendor-quality-reopened");ui:click("clear")
+	for _,quality in ipairs({18,17,13,12,11,9}) do ui.clipboard="Item Class: Wands\nRarity: Magic\nExample Item\nDriftwood Wand\n--------\nQuality: +"..quality.."%";ui:click("paste") end
+	do local c=main.popups[1].controls;local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;assert(table.concat(details," "):find("2 maximum",1,true),"Maximum quality groups were not displayed") end
+	frame("vendor-quality-optimal");ui:click("clear");ui:click("close")
 end

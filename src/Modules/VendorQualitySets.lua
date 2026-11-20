@@ -1,6 +1,55 @@
 -- Review copied items only; no stash access or currency transaction.
 local M={maxBytes=4*1024*1024}
 local function clean(value) return (value:gsub("^%s+",""):gsub("%s+$","")) end
+local function groupByQuality(items)
+	local groups,group,total={}, {},0
+	for _,item in ipairs(items) do
+		group[#group+1]=item;total=total+item.quality
+		if #group>=2 and total>=40 then groups[#groups+1]={items=group,quality=total};group={};total=0 end
+	end
+	return groups,group,total
+end
+-- Search small collections exactly, with a fixed work budget. Larger or hard
+-- inputs keep the linear heuristic; no item is rejected because of its count.
+local function bestGroups(items)
+	local greedy,leftover,leftoverQuality=groupByQuality(items)
+	local total=0;for _,item in ipairs(items) do total=total+item.quality end
+	if #greedy==math.min(math.floor(total/40),math.floor(#items/2)) then return greedy,leftover,leftoverQuality,true end
+	if #items>14 then return greedy,leftover,leftoverQuality,false end
+	local bit=require("bit");local band=bit.band;local size=2^#items;local sums,counts,minimum,positions={[0]=0},{[0]=0},{},{}
+	for i=1,#items do positions[2^(i-1)]=i end
+	for mask=1,size-1 do
+		local first=band(mask,-mask);local prior=mask-first;local q=items[positions[first]].quality
+		sums[mask]=sums[prior]+q;counts[mask]=counts[prior]+1;minimum[mask]=math.min(minimum[prior] or q,q)
+	end
+	local best,choice={[0]=0},{};local work,aborted=0,false
+	local function solve(mask)
+		if best[mask]~=nil then return best[mask] end
+		local upper=math.min(math.floor(sums[mask]/40),math.floor(counts[mask]/2))
+		if upper==0 then best[mask]=0;choice[mask]=0;return 0 end
+		local first=band(mask,-mask);local value,selected=0,0;local sub=mask
+		while sub>0 do
+			work=work+1;if work>100000 then aborted=true;return 0 end
+			if band(sub,first)~=0 and counts[sub]>=2 and sums[sub]>=40 and (counts[sub]==2 or sums[sub]-minimum[sub]<40) then
+				local candidate=1+solve(mask-sub);if aborted then return 0 end
+				if candidate>value then value,selected=candidate,sub end
+				if value==upper then break end
+			end
+			sub=band(sub-1,mask)
+		end
+		if value<upper then local without=solve(mask-first);if aborted then return 0 end;if without>value then value,selected=without,0 end end
+		best[mask]=value;choice[mask]=selected;return value
+	end
+	local mask=size-1;solve(mask);if aborted then return greedy,leftover,leftoverQuality,false end
+	local groups,remaining,remainingQuality={},{},0
+	while mask>0 do
+		if best[mask]==0 then for i,item in ipairs(items) do if band(mask,2^(i-1))~=0 then remaining[#remaining+1]=item;remainingQuality=remainingQuality+item.quality end end;break end
+		local selected=choice[mask]
+		if selected==0 then local first=band(mask,-mask);local item=items[positions[first]];remaining[#remaining+1]=item;remainingQuality=remainingQuality+item.quality;mask=mask-first
+		else local group={};for i,item in ipairs(items) do if band(selected,2^(i-1))~=0 then group[#group+1]=item end end;groups[#groups+1]={items=group,quality=sums[selected]};mask=mask-selected end
+	end
+	return groups,remaining,remainingQuality,true
+end
 function M.parse(raw)
 	assert(type(raw)=="string" and #raw>0 and #raw<=24000 and not raw:find("%z"),"Paste one copied item up to 24 KiB")
 	raw=raw:gsub("\r\n","\n"):gsub("\r","\n")
@@ -37,13 +86,10 @@ function M.review(items)
 			else rest[#rest+1]=item end
 		end
 		table.sort(rest,function(a,b) if a.quality~=b.quality then return a.quality>b.quality end return a.index<b.index end)
-		local group,total={},0
-		for _,item in ipairs(rest) do
-			group[#group+1]=item;total=total+item.quality
-			if #group>=2 and total>=40 then category.groups[#category.groups+1]={items=group,quality=total};group={};total=0 end
-		end
-		category.leftover=group;category.leftoverQuality=total
+		local groups,leftover,leftoverQuality,optimal=bestGroups(rest)
+		for _,group in ipairs(groups) do category.groups[#category.groups+1]=group end
+		category.leftover=leftover;category.leftoverQuality=leftoverQuality;category.optimal=optimal
 	end
-	return {categories=categories,totalItems=#items,note="Suggested groups use a simple high-quality-first order, not an optimal packing. Each paste must be a different item. Check eligibility and the actual vendor offer; this does not read your stash."}
+	return {categories=categories,totalItems=#items,note="Optimal counts are proven for the supplied quality values when marked; otherwise groups are heuristic. Each paste must be a different item. Check eligibility and the actual vendor offer; this does not read your stash."}
 end
 return M

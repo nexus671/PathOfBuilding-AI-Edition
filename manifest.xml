@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview828" />
+	<Version number="2.68.1-ai.preview829" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="b123ff5946581145959e5380d8bd0ed4e2868385" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="3ff34223b0225aad551869976cccff065ab7a202" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -3112,6 +3112,6 @@
 	<File name="Data/Atlas/3.30.0c.json" part="program" sha1="1f1948c184857a627414410890c2b1a62d7a16cf" />
 	<File name="Classes/VendorRarePairsControl.lua" part="program" sha1="5d92f9949eedb12db9f8517c973d0ebb837d83e4" />
 	<File name="Modules/VendorRarePairs.lua" part="program" sha1="59ab6c539899c166743eb1d88e471ec9c0b55955" />
-	<File name="Classes/VendorQualitySetsControl.lua" part="program" sha1="f1036a0a56695dc55f4259b5104d8f1564cc9295" />
-	<File name="Modules/VendorQualitySets.lua" part="program" sha1="bd86d783e9c28ce51b30c4bf1fb0de6decaf7e60" />
+	<File name="Classes/VendorQualitySetsControl.lua" part="program" sha1="f43a12f2d44c29bda2d754631a92fd3f6e8edb5a" />
+	<File name="Modules/VendorQualitySets.lua" part="program" sha1="efa17059af7e0aa85e5620dddba9b56c053603f1" />
 </PoBVersion>

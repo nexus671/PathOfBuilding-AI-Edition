@@ -55,6 +55,8 @@ async function main(){
   const qualityCopies=[20,12,18,10].map(q=>`Item Class: ${q===20?'Wands':'Helmets'}\nRarity: ${q===20?'Normal':'Magic'}\n${q===20?'Driftwood Wand':'Example Item\nIron Hat'}\n--------\nQuality: +${q}%`);
   const qualityReview=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:qualityCopies},'qualityVendorReview');
   assert.equal(qualityReview.qualityVendorReview.categories[0].groups.length,1);assert.equal(qualityReview.qualityVendorReview.categories[1].groups.length,1);assert.equal(qualityReview.qualityVendorReview.categories[1].groups[0].quality,40);
+  const qualityOptimalCopies=[18,17,13,12,11,9].map(q=>`Item Class: Wands\nRarity: Magic\nExample Item\nDriftwood Wand\n--------\nQuality: +${q}%`);
+  const qualityOptimal=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:qualityOptimalCopies},'qualityVendorReview');assert.equal(qualityOptimal.qualityVendorReview.categories[0].optimal,true);assert.equal(qualityOptimal.qualityVendorReview.categories[0].groups.length,2);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
   const gildedBaseRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+16% to Item Rarity\nItem sells for much more to vendors';
   const gildedBase=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedBaseRaw,action:{method:'vaal'},seed:1},'crafted');
