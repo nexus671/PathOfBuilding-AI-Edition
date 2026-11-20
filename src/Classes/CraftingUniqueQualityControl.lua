@@ -82,7 +82,6 @@ function M.Open(build,project,layout,snapshot)
 			else return nil,"Loaded or older previews do not record every action." end
 		end
 		flush()
-		if #draft.steps+#steps>40 then return nil,"The guide has room for up to 40 steps." end
 		local signature=require("sha1")(table.concat(actions,"|").."\n"..raw)
 		return steps,nil,signature
 	end
@@ -163,7 +162,6 @@ function M.Open(build,project,layout,snapshot)
 			local function targetReason()
 				if reason() then return reason() end
 				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a direct colour plan." end
-				if #draft.steps>=40 and not replaceableColourStep() then return "The guide has room for up to 40 steps." end
 				local attempts=tonumber(colour.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
 				return unique.colourTargetReason(item,method(),colour.target.buf:upper(),linked())
 			end
@@ -220,7 +218,6 @@ function M.Open(build,project,layout,snapshot)
 			end
 			local function targetReason()
 				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a direct link plan." end
-				if #draft.steps>=40 and not replaceableLinkStep() then return "The guide has room for up to 40 steps." end
 				local attempts=tonumber(link.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
 				local value=tonumber(link.target.buf)
 				if not value or value~=math.floor(value) or value<2 or value>#item.sockets then return "Enter a link target from 2 to the item's socket count." end
@@ -278,7 +275,6 @@ function M.Open(build,project,layout,snapshot)
 			end
 			local function planReason()
 				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a direct socket plan." end
-				if #draft.steps>=40 and not replaceableSocketStep() then return "The guide has room for up to 40 steps." end
 				local attempts=tonumber(roll.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
 				local target=tonumber(roll.target.buf);if not target or target~=math.floor(target) or target<1 or target>unique.omenCount(item) then return "Enter a socket count within the natural limit." end
 				local why=reason();local met=#item.sockets==target
@@ -359,7 +355,6 @@ function M.Open(build,project,layout,snapshot)
 		local function reason()
 			if taintedQualityReason then return taintedQualityReason end
 			if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a quality plan." end
-			if #draft.steps>=40 and not replaceable() then return "The guide has room for up to 40 steps." end
 			local target=tonumber(controls.target.buf);if not target or target~=math.floor(target) or target<1 or target>20 then return "Enter a quality target from 1 to 20." end
 			local attempts=tonumber(controls.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
 			if info.quality>=target then return nil,true end
@@ -418,7 +413,6 @@ function M.Open(build,project,layout,snapshot)
 		local function reason()
 			if divineReason then return divineReason end
 			if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a Divine plan." end
-			if #draft.steps>=40 and not replaceable() then return "The guide has room for up to 40 steps." end
 			local selected=selection[stat()];if not selected then return "No supported target is available." end
 			local target=tonumber(controls.target.buf);if not target or target~=target or target< -100000 or target>10000000 or selected.kind=="stat" and target<0 then return "Enter a valid minimum target." end
 			if selected.kind=="modifier" and (target~=math.floor(target) or target<selected.min or target>selected.max) then return "Enter a roll from "..selected.min.." to "..selected.max.."." end

@@ -3,6 +3,15 @@ describe("Unique item quality",function()
 	local shield="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\nImplicits: 1\n+5% Chance to Block Attack Damage\n+100 to maximum Life\n+1500 to Armour"
 	local weapon="Rarity: UNIQUE\nThe Saviour\nLegion Sword\nItem Level: 86\nQuality: 0\nSockets: R-G-B\n+100% increased Physical Damage"
 	before_each(function() newBuild() end)
+	it("appends a unique craft to a long written guide",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"
+		local project={id="long-unique",title="Long guide",slot="Helmet",startingItem=raw,goals={},steps={}}
+		for i=1,45 do project.steps[i]={action="Existing step "..i} end
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.omenJeweller:Click();assert.is_true(control.guide:IsEnabled());control.guide:Click()
+		assert.equal(46,#store.projects[1].steps);assert.equal("omen_jeweller",store.projects[1].steps[46].uniqueCraft.method);main.popups={}
+	end)
 	it("adds natural white sockets to unique items with the Jeweller Omen",function()
 		local sim=require("Modules.CraftingSimulator")
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"

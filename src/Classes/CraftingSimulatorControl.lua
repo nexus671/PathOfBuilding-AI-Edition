@@ -351,7 +351,6 @@ function Panel.Open(build,project,layout)
 	end)
 	local function openGwennen()
 		require("Classes.CraftingGwennenControl").Open(function(first,second,cost)
-			assert(#draft.steps<40,"This guide already has forty steps")
 			local price=cost~="" and " Artifact price: "..cost.."." or " Verify the artifact price in game."
 			draft.steps[#draft.steps+1]={action="Gwennen observed pair: "..first.description.." OR "..second.description.."."..price,stopWhen="Review both outcomes and cost before committing; Gwennen keeps the item until you choose.",onFailure="The selected outcome is random; this pair is not simulated.",done=false}
 			changed();refresh({"Pair added to this guide. Keep working craft, then save the build."})

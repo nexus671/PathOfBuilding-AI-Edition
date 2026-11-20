@@ -56,6 +56,20 @@ describe("Crafting projects", function()
 		local loaded=prepared.candidate.savers.CraftingProjects
 		assert.are.equal(64,#loaded.projects);assert.are.equal("project-64",loaded.projects[64].id);assert.are.equal(entry.notes,loaded.projects[32].notes)
 	end)
+	it("keeps long guides and goals through native editing and save/reopen",function()
+		local entry=project();entry.goals={};entry.steps={}
+		for i=1,20 do entry.goals[i]="Goal "..i end
+		for i=1,75 do entry.steps[i]={action="Craft step "..i,stopWhen="Stop "..i,done=i==1} end
+		build.savers.CraftingProjects:Upsert(entry)
+		require("Classes.CraftingProjectControl").Open(build);main.popups[1].controls.edit:Click()
+		local c=main.popups[1].controls;c.steps:SetText(c.steps.buf.."\nCraft step 76")
+		c.wizardPage:SelByValue("Review");c.wizardPage.selFunc();c.save:Click()
+		local xml={};build.savers.CraftingProjects:Save(xml);local loaded=projects.new(build);loaded:Load(xml)
+		assert.is_nil(loaded.warning);assert.equal(20,#loaded.projects[1].goals);assert.equal(76,#loaded.projects[1].steps)
+		assert.equal("Stop 1",loaded.projects[1].steps[1].stopWhen);assert.is_true(loaded.projects[1].steps[1].done)
+		assert.equal("Craft step 76",loaded.projects[1].steps[76].action)
+		local bad=project();bad.steps={[1]={action="One"},[3]={action="Three"}};assert.has_error(function() projects.validate(bad) end)
+	end)
 	it("keeps size limits and preserves malformed project collections",function()
 		local store=build.savers.CraftingProjects
 		for _,raw in ipairs({'{"schemaVersion":1,"projects":{}}','{"schemaVersion":1,"projects":{"one":{}}}','{"schemaVersion":1,"projects":[null]}','{"schemaVersion":1,"projects":null}',string.rep(" ",2*1024*1024).."{}"}) do

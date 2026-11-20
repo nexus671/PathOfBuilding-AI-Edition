@@ -422,6 +422,15 @@ test('proposes crafting metadata and optional target gear through desktop review
   assert.equal(f.call('get_crafting_projects',{}).projects.length,0);
 });
 
+test('accepts long crafting guides and goals for desktop review', t => {
+  const f=fixture(t), project=craftingProject();
+  project.goals=Array.from({length:20},(_,i)=>`Goal ${i+1}`);
+  project.steps=Array.from({length:75},(_,i)=>({action:`Craft step ${i+1}`}));
+  f.call('propose_crafting_plan',{baseRevision:f.state.revision,project});
+  const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.deepEqual(queued.proposal.operations[0].project,project);
+});
+
 test('round-trips structured unique guide actions through desktop review', t => {
   const f=fixture(t);const project=craftingProject();
   project.steps=[{action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},{action:'Link sockets with an Omen',uniqueCraft:{method:'omen_connections',count:1}},{action:'Make sockets white',uniqueCraft:{method:'socket_white_bench',count:1}},{action:'Link existing sockets at the crafting bench',uniqueCraft:{method:'socket_bench',count:1}},{action:'Set 4 sockets at the crafting bench',uniqueCraft:{method:'socket_count_bench',count:4}}];

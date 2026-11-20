@@ -40,9 +40,15 @@ function M.validate(project)
 		startingItem=text(project.startingItem,24000,"starting item"),targetItem=text(project.targetItem,24000,"target item",true),
 		notes=text(project.notes,8000,"project notes",true),simulatorExport=text(project.simulatorExport,128000,"simulator export",true),goals={},steps={}}
 	assert(result.id:match("^[%w%-_]+$"),"Project ID must use letters, numbers, underscores or hyphens")
-	assert(type(project.goals) == "table" and #project.goals <= 12,"Use up to twelve target modifiers")
+	local function denseArray(value,label)
+		assert(type(value)=="table" and value~=json.null,"Invalid "..label)
+		local meta=getmetatable(value);assert(not meta or meta.__jsontype~="object","Invalid "..label)
+		local count=0;for key in pairs(value) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=#value,"Invalid "..label);count=count+1 end
+		assert(count==#value,"Invalid "..label)
+	end
+	denseArray(project.goals,"target modifiers")
 	for _,goal in ipairs(project.goals) do result.goals[#result.goals+1]=text(goal,300,"target modifier") end
-	assert(type(project.steps) == "table" and #project.steps <= 40,"Use up to forty crafting steps")
+	denseArray(project.steps,"crafting steps")
 	local uniqueItem,uniqueInfo,uniqueChecked,uniqueSocketCount
 	for _,step in ipairs(project.steps) do
 		assert(type(step) == "table","Invalid crafting step")

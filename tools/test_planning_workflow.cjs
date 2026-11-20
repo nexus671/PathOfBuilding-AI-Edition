@@ -214,6 +214,11 @@ async function main(){
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:uniqueGuide},'review');await host('apply');context=(await call('get_build_context')).context;
   const savedUnique=(await call('get_crafting_projects')).projects.find(entry=>entry.id===uniqueGuide.id);
   assert.deepEqual(savedUnique.steps.map(step=>step.uniqueCraft),uniqueGuide.steps.map(step=>step.uniqueCraft));
+
+  const longGuide={...uniqueGuide,id:'long-guide-workflow',title:'Long guide',goals:Array.from({length:20},(_,i)=>`Goal ${i+1}`),steps:Array.from({length:75},(_,i)=>({action:`Craft step ${i+1}`}))};
+  await queued('propose_crafting_plan',{baseRevision:context.revision,project:longGuide},'review');await host('apply');context=(await call('get_build_context')).context;
+  const savedLong=(await call('get_crafting_projects')).projects.find(entry=>entry.id===longGuide.id);
+  assert.equal(savedLong.goals.length,20);assert.equal(savedLong.steps.length,75);assert.equal(savedLong.steps[74].action,'Craft step 75');
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:savedUnique},'review');await host('apply');context=(await call('get_build_context')).context;
   const uniqueFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'unique-guide-filter',title:'Unique guide pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');
   const uniquePickups=new Set(uniqueFilter.profile.rules.filter(rule=>rule.origin==='craft:'+uniqueGuide.id).map(rule=>rule.title));

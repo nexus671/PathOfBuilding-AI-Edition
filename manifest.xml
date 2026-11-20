@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview871" />
+	<Version number="2.68.1-ai.preview872" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="0bddea5da42558f33f7c3533a16c978693755253" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="5321de97a14c49da2ae04120ba7e585241bdc0e6" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -1705,12 +1705,12 @@
 	<File name="Classes/CraftingModifierControl.lua" part="program" sha1="d15485e09c6aa68453c2ecde121457cb06eefc8d" />
 	<File name="Classes/CraftingPricesControl.lua" part="program" sha1="99ce6d31e9ba823247f5ef2306d74cfcd49a93a0" />
 	<File name="Classes/CraftingProjectControl.lua" part="program" sha1="b171822bc9b0c036e91021078900a9cac2f1dbb4" />
-	<File name="Classes/CraftingUniqueQualityControl.lua" part="program" sha1="10ac07e219e59005be035cece5518ed7882fef34" />
-	<File name="Classes/CraftingProjectWizard.lua" part="program" sha1="21682c9be36cd1fbfcd34a898c4afd98485ecf59" />
+	<File name="Classes/CraftingUniqueQualityControl.lua" part="program" sha1="05ae37fb076963c65497768ed3c696db300fdf7e" />
+	<File name="Classes/CraftingProjectWizard.lua" part="program" sha1="353105f59100923c0e35f21325a62f13b7d6ddef" />
 	<File name="Classes/CraftingRecipeControl.lua" part="program" sha1="dc95455b09fe9fc724c7aba823b333c4d66918f4" />
 	<File name="Classes/CraftingRecipeGraphControl.lua" part="program" sha1="a3f12c0823b83e552a19e597750352622b070aa2" />
 	<File name="Classes/CraftingRecoveryControl.lua" part="program" sha1="6bdf797c867f14c6a1b5338bfc6f6dcea18cd1f1" />
-	<File name="Classes/CraftingSimulatorControl.lua" part="program" sha1="938894fa09d8fc74358b1d0c57a1d3d4c6da2b9d" />
+	<File name="Classes/CraftingSimulatorControl.lua" part="program" sha1="29a1b31ea6cd57c8cf28b2af253b68885256cc2d" />
 	<File name="Classes/CraftingSocketControl.lua" part="program" sha1="27e0d2b5d303d40f03eefc754be5ad878e500eb1" />
 	<File name="Classes/CraftingTargetControl.lua" part="program" sha1="88fb3d0392e564b4fa9a18fbe54a7344bd9315d5" />
 	<File name="Classes/CraftingStepCostsControl.lua" part="program" sha1="6659d42da2a3c970da94b16bf90e62d926305e7b" />
@@ -2155,7 +2155,7 @@
 	<File name="Modules/CraftingPalette.lua" part="program" sha1="edd27dc9231769e2c5035238bc2e6aa1a5df5de6" />
 	<File name="Modules/CraftingPredictable.lua" part="program" sha1="017467de7b630baaafd290756b88e1ab2aab7a4c" />
 	<File name="Modules/CraftingPrices.lua" part="program" sha1="a1315844422d1144a8a77e6fb2e3dcbc8914fa9b" />
-	<File name="Modules/CraftingProjects.lua" part="program" sha1="afd63d275087388a5c835a06d0f5604139823c94" />
+	<File name="Modules/CraftingProjects.lua" part="program" sha1="48146fb158732737e1353fb37bf87d728f41dcdb" />
 	<File name="Modules/CraftingProperties.lua" part="program" sha1="8158a5624e99eca560b0095620ea967bf1952a84" />
 	<File name="Modules/CraftingRecombination.lua" part="program" sha1="6c01c0d4c562d1dff8e20f6d71210c99e45de347" />
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />

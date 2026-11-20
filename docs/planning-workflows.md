@@ -18,6 +18,8 @@ Developers can run `luajit ../tools/benchmark_planning.lua` from `src`, optional
 
 ## Crafting recovery and spending
 
+Written crafting guides can contain as many steps and goals as fit in the build's crafting metadata. The combined saved crafting data has a 2 MiB size guard; executable simulation recipes still have their own bounded limits.
+
 In **Crafting > Simulate recipe > Recipe routes**, select a step and open **Failure recovery**. Choose to continue along the failure route, stop for inspection, restart from the starting item, or set the item aside for salvage. Written recovery instructions stay with that step.
 
 An unwanted roll counts as a failed step when its target or property conditions are unmet. With the successful-action condition, a supported currency use can succeed even though the final item is unfinished.
