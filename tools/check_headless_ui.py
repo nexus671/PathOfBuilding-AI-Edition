@@ -49,6 +49,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_crafting_replay_ui.lua")
     sources.append(ROOT / "tools/test_genesis_ui.lua")
     sources.append(ROOT / "tools/test_crafting_guide_ui.lua")
+    sources.append(ROOT / "tools/test_journey_crafting_guide_ui.lua")
     sources.append(ROOT / "tools/run_headless_lupa.py")
     sources.append(ROOT / "tools/test_campaign_selection_ui.lua")
     return {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(sources) if path.is_file()}
@@ -101,6 +102,10 @@ def main():
                            env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-guide-controls.log").write_text(guide.stdout)
     assert guide.returncode == 0, guide.stdout
+    journey_guide = subprocess.run(lua_command + ["../tools/test_journey_crafting_guide_ui.lua", str(frames)], cwd=ROOT / "src",
+                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "journey-crafting-guide-controls.log").write_text(journey_guide.stdout)
+    assert journey_guide.returncode == 0, journey_guide.stdout
     assert source_hashes() == hashes, "Source files changed during UI capture; repeat against stable sources"
     for width in (1280, 1024, 960):
         archive = frames / f"ui-{width}-strictnesses.zip"
@@ -116,7 +121,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2034, f"Expected 2034 UI frames, found {len(paths)}"
+    assert len(paths) == 2046, f"Expected 2046 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         replay_frame = json.loads((frames / f"{width}-saved-replay.json").read_text())
         replay_text = " ".join(c.get("text", "") for c in replay_frame["commands"] if c.get("kind") == "text")

@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview876" />
+	<Version number="2.68.1-ai.preview877" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1674,7 +1674,7 @@
 	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="f5f0c329f9a975421ec94e247a25ff421f3f2676" />
 	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="88a5c79581c7096eb7d895395c54535befeb5061" />
 	<File name="Classes/AtlasThreadControl.lua" part="program" sha1="84bc4d7da993baff64ba927fde8cbdfda031f894" />
-	<File name="Classes/BuildJourneyControl.lua" part="program" sha1="3429fb9b3ce4463a96838e127e3863814d47f976" />
+	<File name="Classes/BuildJourneyControl.lua" part="program" sha1="35cdc08965c3b760a3fd9f2613785df1e49124d9" />
 	<File name="Classes/BuildListControl.lua" part="program" sha1="f60f0d7f6aecbe851db896913cd1aa707c7fb304" />
 	<File name="Classes/BuildProposalControl.lua" part="program" sha1="561317a52ca3a02a51e0cd871ffa0236496bb9cc" />
 	<File name="Classes/ButtonControl.lua" part="program" sha1="7a58ec249f011107f2ddcdc3aa02f812643e5c5f" />

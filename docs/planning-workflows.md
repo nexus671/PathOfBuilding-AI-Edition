@@ -22,6 +22,8 @@ Written crafting guides can contain as many steps and goals as fit in the build'
 
 In a saved project's **Plan** tab, **Browse guide steps** searches instructions, stop conditions and failure notes. Filter by completion status, page through long guides and select any step to edit it, mark it done or to do, or remove it after confirmation. You can undo the last removal while the browser stays open, provided the guide steps have not changed since. Editing preserves its progress; changing a modeled instruction asks before removing its guide link and leaves the saved recipe intact. Use this editor when a text edit would otherwise discard step details. Save the build to persist those changes.
 
+In **Journey**, a linked gear goal or milestone shows its crafting-guide progress and next unfinished step. **Open guide** lets you update those steps without leaving Journey; **Open linked plan** still opens the crafting workbench. Step progress does not automatically mark the gear as owned.
+
 In **Crafting > Simulate recipe > Recipe routes**, select a step and open **Failure recovery**. Choose to continue along the failure route, stop for inspection, restart from the starting item, or set the item aside for salvage. Written recovery instructions stay with that step.
 
 An unwanted roll counts as a failed step when its target or property conditions are unmet. With the successful-action condition, a supported currency use can succeed even though the final item is unfinished.

@@ -160,6 +160,10 @@ function Panel.Open(build,source,layout)
 		if list then for _,entry in ipairs(list) do if entry.id==value then return entry.title end end;return "Missing: "..value end
 		return tostring(value)
 	end
+	local function linkedCraft(entry)
+		local id=entry and entry.projectId
+		if id then for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id==id then return project end end end
+	end
 	local labels={kind="Type",slot="Slot",route="Acquire by",stage="Upgrade stage",status="Status",level="Level",priority="Priority",projectId="Craft",atlasId="Atlas plan",stageId="Guide stage",wishlistId="Gear goal",gems="Gems and links",passives="Passives",gear="Gear",ascendancy="Ascendancy",quests="Quests",transition="Switch when",notes="Notes"}
 	local function show(e)
 		selectedEntry=e;selected=e.id;local lines={e.title}
@@ -178,6 +182,12 @@ function Panel.Open(build,source,layout)
 				if row.perCost[metric] then lines[#lines+1]=string.format("%+.3f gain per %s",row.perCost[metric],budget[row.resourceId].title) end
 				if not row.eligible then lines[#lines+1]="Needs review: outside constraints or new requirements." end
 			elseif measurements and not require("Modules.JourneyUpgrades").fresh(build) then lines[#lines+1]="Build or goals changed: recalculate measurements." end
+		end
+		local craft=linkedCraft(e)
+		if craft then
+			local done,nextStep=0,nil;for index,step in ipairs(craft.steps) do if step.done then done=done+1 elseif not nextStep then nextStep=index end end
+			lines[#lines+1]="Crafting guide: "..done.." / "..#craft.steps.." steps done"
+			if nextStep then lines[#lines+1]="Next craft step "..nextStep..": "..craft.steps[nextStep].action end
 		end
 		if e.slot then local slot=build.itemsTab.slots[e.slot];local item=slot and build.itemsTab.items[slot.selItemId];lines[#lines+1]="Equipped now: "..(item and (item.name or item.baseName) or "Empty slot") end
 		for _,field in ipairs({"kind","slot","route","stage","status","level","priority","projectId","atlasId","stageId","wishlistId","gems","passives","gear","ascendancy","quests","transition","notes"}) do if e[field] then lines[#lines+1]=labels[field]..": "..linkedTitle(field,e[field]) end end
@@ -283,6 +293,13 @@ function Panel.Open(build,source,layout)
 	end)
 	c.openLink.label=page=="Leveling" and "Open leveling guide" or "Open linked plan"
 	c.openLink.enabled=function() local e=selectedEntry and (selectedEntry.entry or selectedEntry);return e and (page=="Leveling" or (e.projectId or e.atlasId or e.stageId or e.wishlistId)~=nil) end
+	button(c,"openGuide",w-330,h-48,118,"Open guide",function()
+		local entry=selectedEntry and (selectedEntry.entry or selectedEntry);local craft=assert(linkedCraft(entry),"Linked craft is missing")
+		require("Classes.CraftingGuideStepsControl").Open(build,craft.id,function() if selectedEntry then show(selectedEntry) end end)
+	end)
+	c.openGuide.shown=function() local entry=selectedEntry and (selectedEntry.entry or selectedEntry);return page~="Leveling" and entry and entry.projectId~=nil end
+	c.openGuide.enabled=function() local entry=selectedEntry and (selectedEntry.entry or selectedEntry);local craft=linkedCraft(entry);return craft and #craft.steps>0 end
+	c.openGuide.tooltipText=function() local entry=selectedEntry and (selectedEntry.entry or selectedEntry);local craft=linkedCraft(entry);return not craft and "The linked crafting project is missing." or #craft.steps==0 and "This crafting project has no written guide steps yet." or "Review and update the linked crafting guide without leaving Journey." end
 	layout.snapshot=function() return {page=page,selected=selected,sortMetric=sortMetric,perCost=perCost,expanded=expanded,itemHeight=itemHeight} end
 	for _,control in pairs(c) do control.layoutAudit="journey-workspace" end
 	ui.style(c,{add=true});layout.mount(w,h,"Journey",c)
