@@ -37,6 +37,16 @@ describe("Stack tier rule generation",function()
   low.items={"Chaos Orb"};high.items={"Divine Orb"};low.stackRules={{minimum=5,styleTierId="high"}}
   local rules=editing.tierRules(editing.validateTiers({low,high}));assert.is_truthy(rules[1].text:find('Continue unexpected',1,true))
  end)
+ it("rejects combined stack conditions only when no integer in the tier can match",function()
+  local target='Show\n BaseType == "Divine Orb"';local base='Show\n BaseType == "Chaos Orb"'
+  local conditions={'StackSize < 4','StackSize <= 4.5','StackSize > 4','StackSize >= 4.5',
+   'StackSize == 3 5','StackSize == 4.5','StackSize != 3 4','StackSize != 5 6'}
+  for _,first in ipairs(conditions) do for _,second in ipairs(conditions) do
+   local source=base..'\n '..first..'\n '..second;local parsed=parser.parse(source);local possible=false
+   for size=3,5 do if parser.simulate(parsed,{BaseType="Chaos Orb",StackSize=size}).line then possible=true end end
+   local ok=pcall(stack.rule,source,target,3,6);assert.equal(possible,ok,first.." / "..second)
+  end end
+ end)
  it("compiles and shares descending stack thresholds with tier changes",function()
   local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
   local p=filters.profile("stacks","Stacks");p.template='Show\n BaseType == "Chaos Orb"\n SetFontSize 12'
