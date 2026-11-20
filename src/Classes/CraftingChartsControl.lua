@@ -52,6 +52,8 @@ function M.Open(routes)
 		ui.style(popup);main:OpenPopup(width,height,"Chart model notes",popup,nil,nil,"close")
 	end)
 	c.notes.enabled=function() return #data.warnings>0 end
+	c.stepCosts=new("ButtonControl"):ButtonControl(ui.anchor,{380,h-42,180,28},"Step spending",function() require("Classes.CraftingStepCostsControl").Open(routes) end)
+	c.stepCosts.tooltipText="Compare the average modeled spending of each visited step in one route."
 	c.close=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-42,140,28},"Close",function() main:ClosePopup() end)
 	c.mode.selFunc=function() data=charts.series(routes,c.mode:GetSelValue());pinned=nil end;c.mode.selFunc()
 	ui.style(c);for _,control in pairs(c) do control.layoutAudit="crafting-charts" end;main:OpenPopup(w,h,"Crafting results and budget charts",c,nil,nil,"close");return c

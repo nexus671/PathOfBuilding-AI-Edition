@@ -99,11 +99,14 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1995, f"Expected 1995 UI frames, found {len(paths)}"
+    assert len(paths) == 1998, f"Expected 1998 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         replay_frame = json.loads((frames / f"{width}-saved-replay.json").read_text())
         replay_text = " ".join(c.get("text", "") for c in replay_frame["commands"] if c.get("kind") == "text")
         assert "Rerun saved" in replay_text and "Saved simulation setup available" in replay_text, "Saved simulation is not discoverable"
+        steps_frame = json.loads((frames / f"{width}-crafting-step-spending.json").read_text())
+        steps_text = " ".join(c.get("text", "") for c in steps_frame["commands"] if c.get("kind") == "text")
+        assert "Step 1" in steps_text and "2.00 chaos" in steps_text, "Crafting step spending is not visible"
         audit = json.loads((frames / f"{width}-filter-error-audit.json").read_text())
         audit_text = " ".join(c.get("text", "") for c in audit["commands"] if c.get("kind") == "text")
         assert "AlwaysShow" in audit_text and ("PoE 2" in audit_text or "Path of Exile 2" in audit_text), "Filter audit does not show the selected error"

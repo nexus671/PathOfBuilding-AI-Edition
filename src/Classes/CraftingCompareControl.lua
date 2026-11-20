@@ -50,7 +50,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 				local prices=settings.prices and copyTable(settings.prices)
 				local actionPrices=require("Modules.CraftingPrices").actionOverride(route.priceKey,route.price)
 				local options={initialState=copyTable(state),trials=settings.trials,maxActions=settings.budget,seed=settings.seed,currency=settings.currency,priceBook=settings.priceBook,prices=prices,actionPrices=actionPrices,treeVersion=settings.treeVersion,checkpoint=function(progress) checkpoint({route=i,trial=progress.trial,trials=progress.trials}) end}
-				local ok,result=pcall(sim.simulate,raw,route.recipe,options);results[#results+1]={label=route.label,result=ok and result or nil,error=not ok and ui.errorText(result) or nil}
+				local ok,result=pcall(sim.simulate,raw,route.recipe,options);results[#results+1]={label=route.label,recipe=copyTable(route.recipe),result=ok and result or nil,error=not ok and ui.errorText(result) or nil}
 			end
 			return results
 		end,function(results)

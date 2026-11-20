@@ -727,7 +727,7 @@ function Panel.Open(build,project,layout)
 		popup.sample.enabled=result.sampleItem~=nil
 		popup.sample.label=function() local index=popup.item:GetSelValueByKey("val");return index and result.retainedSuccesses and result.retainedSuccesses[index] and "Inspect selected item" or "Inspect sampled outcome" end
 		popup.sample.tooltipText="Inspect the selected successful item, or a sample if none succeeded."
-		button(popup,"charts",484,resultHeight-42,220,"Explore charts",function() require("Classes.CraftingChartsControl").Open({{label=draft.title,result=result}}) end)
+		button(popup,"charts",484,resultHeight-42,220,"Explore charts",function() require("Classes.CraftingChartsControl").Open({{label=draft.title,result=result,recipe=request and request.recipe}}) end)
 		button(popup,"moreTrials",16,resultHeight-42,220,"Run more trials",function()
 			assert(request,"Run a fresh simulation to capture its setup")
 			request.options.trials=math.min(2000,math.floor(20000/request.options.maxActions),math.max(32,result.trials*4))
