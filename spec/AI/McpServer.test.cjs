@@ -43,7 +43,7 @@ test('negotiates versions, requires initialization, and keeps applying builds in
   assert.equal((await c.request('tools/list')).error.code,-32000);
   assert.equal((await c.initialize('2025-03-26')).result.protocolVersion,'2025-03-26');
   const list = (await c.request('tools/list')).result.tools;
-  assert.equal(list.length,47);
+  assert.equal(list.length,48);
   assert.ok(list.every(tool => !tool.annotations.openWorldHint));
   assert.equal(list.filter(tool => !tool.annotations.readOnlyHint).length,34);
   assert.ok(list.some(tool => tool.name === 'review_same_name_rares' && !tool.annotations.readOnlyHint));
@@ -55,6 +55,7 @@ test('negotiates versions, requires initialization, and keeps applying builds in
   assert.ok(!list.some(tool => /apply_build|save/.test(tool.name)));
   assert.ok(list.some(tool => tool.name === 'apply_crafting_action'));
   assert.ok(list.some(tool => tool.name === 'compare_atlas_plans'));
+  assert.ok(list.some(tool => tool.name === 'get_genesis_tree' && tool.annotations.readOnlyHint));
   assert.ok(list.some(tool => tool.name === 'test_loot_filter_examples'));
   assert.ok(list.some(tool => tool.name === 'test_loot_filter_scene'));
   assert.ok(list.some(tool => tool.name === 'search_map_bases'));
