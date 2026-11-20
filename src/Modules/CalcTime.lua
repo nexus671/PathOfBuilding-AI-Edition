@@ -362,8 +362,19 @@ function M.survival(config)
 			hits = hits + 1
 			if interrupted or pools.EnergyShield < oldES then
 				if not (config.wickedWard and rechargeActive and t - rechargeBegan < 4 - 1e-9) then
+					local wasRecharging = rechargeActive
 					lastRechargeDamage, rechargeActive = t, false
-					if config.observe then config.observe(t,pools,"Recharge interrupted by hit") end
+					if config.observe then
+						local available = wasRecharging
+						if not available then
+							local rate = config.recharge
+							if type(rate) == "function" then rate = rate(pools, t) end
+							rate = rate or 0
+							local resource = config.rechargeResource or "EnergyShield"
+							available = rate > 0 and (config.caps[resource] or 0) > 0
+						end
+						if available then config.observe(t,pools,wasRecharging and "Recharge interrupted by hit" or "Recharge delayed by hit") end
+					end
 				end
 			end
 			if config.dissolution and (config.actualDissolution and (pools.LifeDamageReserved or 0) > 0 or not config.actualDissolution and pools.Life < oldLife) then reservationRelease = t + 2 end

@@ -123,6 +123,32 @@ describe("Finite combat windows", function()
 		assert.are.equal(20, result.pools.Mana)
 	end)
 
+	it("labels recharge delays and interruptions without inventing recharge", function()
+		local events={}
+		local function observe(t,_,event) events[#events+1]={time=t,event=event} end
+		for _,rate in ipairs({0,function() return 0 end}) do
+			events={};simulate({window=2,interval=1,recharge=rate,observe=observe,hit=function(p) p.Life=p.Life-1;return p,{},true end})
+			for _,entry in ipairs(events) do assert.is_false(entry.event:find("Recharge",1,true)~=nil) end
+		end
+		events={}
+		simulate({window=4,interval=3,recharge=function() return 10 end,rechargeDelay=2,observe=observe,
+			pools={Life=100,Mana=0,EnergyShield=50},caps={Life=100,Mana=0,EnergyShield=100},
+			hit=function(p) p.EnergyShield=p.EnergyShield-1;return p,{},true end})
+		local delayed,started,interrupted
+		for _,entry in ipairs(events) do
+			if entry.event=="Recharge delayed by hit" then delayed=entry.time end
+			if entry.event=="Recharge started" then started=entry.time end
+			if entry.event=="Recharge interrupted by hit" then interrupted=entry.time end
+		end
+		assert.are.equal(0,delayed);assert.are.equal(2,started);assert.are.equal(3,interrupted)
+		local function result(withTrace)
+			return simulate({window=4,interval=3,recharge=10,rechargeDelay=2,observe=withTrace and function() end or nil,
+				pools={Life=100,Mana=0,EnergyShield=50},caps={Life=100,Mana=0,EnergyShield=100},
+				hit=function(p) p.EnergyShield=p.EnergyShield-1;return p,{},true end})
+		end
+		assert.same(result(false),result(true))
+	end)
+
 	it("interrupts recharge when on-block recovery hides ES damage", function()
 		local result = simulate({ window = 3, recharge = 10, rechargeDelay = 2,
 			pools = { Life = 100, Mana = 0, EnergyShield = 25 }, caps = { Life = 100, Mana = 0, EnergyShield = 50 },

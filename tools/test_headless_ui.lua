@@ -1494,7 +1494,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	guardInput.enemyDamageType="Melee";guardInput.enemyIsBoss="None";guardInput.enemySpeed=1000;guardInput.enemyCritChance=0;guardInput.enemyColdDamage="20";guardInput.customMods="+3000 to maximum Life\n+60% to Cold Resistance"
 	build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg)
 	local guardTrace=assert(build.calcsTab.calcsEnv.player.recoverySimulationTrace);local expired,recast=false,false
-	for _,row in ipairs(guardTrace.rows) do expired=expired or row.event=="Guard expired";recast=recast or row.event=="Guard recast; costs paid" end
+	for _,row in ipairs(guardTrace.rows) do expired=expired or row.event=="Guard expired";recast=recast or row.event=="Guard recast; costs paid";assert(not row.event:find("Recharge",1,true),"Do not report recharge without a recharge pool") end
 	assert(expired and recast,"Guard expiry and recast must both appear in the encounter trace")
 	build.calcsTab:OpenEncounterWorkspace()
 	local preset=main.popups[1].controls.preset;local presetWidth,presetHeight=preset:GetSize();local presetTextSize=math.min(presetHeight-4,preset.planningTextSize or presetHeight-4)
