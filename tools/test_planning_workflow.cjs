@@ -1447,6 +1447,14 @@ async function main(){
   await host('save-reopen');const reopened=await call('get_build_journey');assert.deepEqual(reopened.journey,saved.journey);
   assert.deepEqual((await call('get_loot_filters')).filters,savedFilters.filters);
   const projects=await call('get_crafting_projects');assert.equal(projects.projects[0].run.actions[0].method,'alchemy');assert.equal(projects.projects[0].nativeRecipe.steps[0].method,'alchemy');assert.equal(projects.projects[0].nativeRecipe.steps[0].onFailureAction,'stop');
+  assert.ok(projects.projects[0].run.simulationRequest,'Desktop simulation setup did not survive save and reopen');
+  context=(await call('get_build_context')).context;
+  const replay=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'helmet'},'crafted');
+  assert.equal(replay.nativeCrafting.savedSimulation.projectId,'helmet');assert.equal(replay.nativeCrafting.trials,2);assert.equal(replay.nativeCrafting.maxActions,1);
+  const mixedReplay=await rpc('tools/call',{name:'simulate_crafting',arguments:{baseRevision:context.revision,projectId:'helmet',itemText:raw}});
+  assert.ok(mixedReplay.error || mixedReplay.result?.isError,'Saved replay accepted conflicting inputs');
+  const missingReplay=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'missing'},'failed');
+  assert.match(missingReplay.error,/Unknown crafting project/);
   assert.equal(projects.projects[0].targetItem,keptTarget.target,'Kept target did not survive build save and reopen');
   assert.deepEqual(projects.projects[0].priceBook.values,{});assert.equal(projects.projects[0].inventory[0].title,'Reusable helmet base');assert.equal(projects.projects[0].inventory[0].state.rarity,'NORMAL');
   assert.equal(projects.projects.length,2);const savedBody=projects.projects.find(entry=>entry.id==='body-enchant');

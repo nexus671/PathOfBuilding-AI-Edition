@@ -632,12 +632,21 @@ function M.poll(build, force)
 		end
 		if request.kind == "craftAction" or request.kind == "craftSimulate" or request.kind == "craftCalculate" or request.kind == "craftOptimize" then
 			assert(request.baseRevision == M.revision(build),"Build changed. Refresh crafting context.")
-			local raw=request.itemText
+			local replay
+			if request.kind=="craftSimulate" and request.projectId~=nil then
+				assert(not request.itemText and not request.slot and not request.recipe and not request.options,"A saved simulation cannot be combined with other inputs")
+				assert(not build.savers.CraftingProjects.unreadable,build.savers.CraftingProjects.warning)
+				local project;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==request.projectId then project=entry;break end end
+				assert(project,"Unknown crafting project")
+				local run=project.run;assert(run and run.simulationRequest and not run.simulationRequestWarning,"This project has no readable saved simulation setup")
+				replay=copyTable(run.simulationRequest)
+			end
+			local raw=replay and replay.raw or request.itemText
 			if not raw then local slot=assert(build.itemsTab.slots[request.slot],"Unknown item slot"); raw=assert(build.itemsTab.items[slot.selItemId],"Selected slot is empty").raw end
 			local simulator=require("Modules.CraftingSimulator")
 			M.status={id=request.id,status="calculating"}; M.publishState()
 			if request.kind == "craftSimulate" or request.kind == "craftOptimize" or request.kind == "craftCalculate" then
-				local session=M.session;local options=copyTable(request.options or {});options.treeVersion=build.spec.treeVersion
+				local session=M.session;local options=copyTable(replay and replay.options or request.options or {});options.treeVersion=options.treeVersion or build.spec.treeVersion
 				local function publish(status,values)
 					if not M.enabled or M.session ~= session then return end
 					M.status={id=request.id,status=status,baseRevision=request.baseRevision}
@@ -646,7 +655,9 @@ function M.poll(build, force)
 				local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
 					options.checkpoint=checkpoint
 					if request.kind == "craftCalculate" then return simulator.calculate(raw,request.action,request.targets,request.initialState,options) end
-					return request.kind == "craftOptimize" and simulator.optimizeFossils(raw,request.targets,options) or simulator.simulate(raw,request.recipe,options)
+					local result=request.kind == "craftOptimize" and simulator.optimizeFossils(raw,request.targets,options) or simulator.simulate(raw,replay and replay.recipe or request.recipe,options)
+					if replay then result.savedSimulation={projectId=request.projectId,label=replay.label} end
+					return result
 				end,function(result) publish("crafted",{nativeCrafting=result}) end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end)
 				job.requestId=request.id
 			else

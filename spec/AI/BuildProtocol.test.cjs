@@ -757,6 +757,16 @@ test('queues exact socket goals and rejects out-of-range counts', t => {
   for(const invalid of [-1,7,1.5]) assert.throws(()=>f.call('simulate_crafting',{...base,recipe:{...recipe,requirements:{exactSockets:invalid}}}),/arguments/);
 });
 
+test('queues a saved crafting simulation without allowing mixed inputs', t => {
+  const f=fixture(t),baseRevision=f.state.revision;
+  f.call('simulate_crafting',{baseRevision,projectId:'helmet-guide'});
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.kind,'craftSimulate');assert.equal(request.projectId,'helmet-guide');
+  for(const extra of [{recipe:{steps:[{method:'alchemy'}],targets:[],requirements:{minAffixes:1}}},{itemText:craftingProject().startingItem},{slot:'Helmet'},{options:{trials:1}}])
+    assert.throws(()=>f.call('simulate_crafting',{baseRevision,projectId:'helmet-guide',...extra}),/saved projectId/);
+  assert.throws(()=>f.call('simulate_crafting',{baseRevision}),/recipe/);
+});
+
 test('accepts supported influence goals in recipes and calculations', t => {
   const f=fixture(t), base={baseRevision:f.state.revision,itemText:craftingProject().startingItem};
   const action={method:'gwennen',firstOutcome:1031,secondOutcome:1031};

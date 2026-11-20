@@ -62,7 +62,11 @@ for line in io.lines() do
 			return {target=target,revision=bridge.revision(build)}
 		elseif command.kind=="save-reopen" then
 			build.viewMode="CONFIG";ui:bind(build);ui:click("aiBuild");ui:click("nav_crafting");ui:click("native")
-			ui:click("tab_craft");ui:click("currency_alchemy");ui:click("item");ui:click("keepWorking")
+			ui:click("tab_craft");ui:click("currency_alchemy");ui:click("item")
+			ui:click("tab_simulate");ui:text("trials","2");ui:text("budget","1");ui:click("runRecipe")
+			local tasks=require("Modules.CraftingTasks");for i=1,1000 do if not tasks.job then break end;tasks.tick(build) end
+			assert(not tasks.job and build.craftingAnalyses[build.savers.CraftingProjects.projects[1].id].results.simulation,"Simulation did not finish")
+			ui:click("keepWorking")
 			assert(build.savers.CraftingProjects.projects[1].run,"Checkpoint was not kept")
 			build.dbFileName=directory.."journey.xml";build:SaveDBFile()
 			assert(require("Modules.PlanningUI").saveStatus(build)=="Build saved","Save status did not acknowledge the actual file save")
