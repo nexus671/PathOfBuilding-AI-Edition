@@ -168,7 +168,7 @@ function M.Open(options)
 		ui.label(c,"nextTypeLabel",344,76,"Next reward type",14)
 		c.current=new("EditControl"):EditControl(ui.anchor,{16,100,96,26},known and tostring(known.percent) or uncertain and "" or "0",nil,"%D",3)
 		c.currentType=new("EditControl"):EditControl(ui.anchor,{128,100,200,26},known and known.rewardType or "",nil,nil,80)
-		c.nextType=new("EditControl"):EditControl(ui.anchor,{344,100,w-360,26},known and known.rewardType or "Currency",nil,nil,80)
+		c.nextType=new("EditControl"):EditControl(ui.anchor,{344,100,w-456,26},known and known.rewardType or "Currency Items",nil,nil,80)
 		ui.label(c,"gainLabel",16,142,"Example gain (5-50%)",14)
 		c.gain=new("EditControl"):EditControl(ui.anchor,{16,166,120,26},"10",nil,"%D",2)
 		c.results=new("TextListControl"):TextListControl(ui.anchor,{152,142,w-168,96},nil,{})
@@ -179,6 +179,12 @@ function M.Open(options)
 			c.results.list=ui.rows({line("Example",result.example),"Possible: "..result.minimum.percent.."-"..result.maximum.percent.."% | "..result.minimum.baseRewardCount.."-"..result.maximum.baseRewardCount.." base rewards",result.sameType and "Same type: percentage accumulates." or "Different or new type: percentage starts over."},w-190,14)
 		end
 		for _,key in ipairs({"current","currentType","nextType","gain"}) do c[key].changeFunc=update end
+		c.chooseOrb=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-104,100,88,26},"Choose...",function()
+			local entries={};for _,choice in ipairs(module.orbReference().choices) do
+				entries[#entries+1]={id=choice.name,label=choice.name,search=choice.reward,reward=choice.reward,details={"Reward type: "..choice.reward,"Client data 3.30.0.4; item availability and reforge behavior are not verified."}}
+			end
+			require("Classes.PlanningBrowserControl").Open("Choose Delirium Orb",entries,{action="Use orb",choose=function(entry) c.nextType:SetText(entry.reward);update() end})
+		end));c.chooseOrb.tooltipText="Choose a reward type from pinned client data, or enter a type manually."
 		ui.description(c,"scope",16,242,w-168,42,{"No map is changed. Eligibility, rerolled modifiers, other rewards and roll odds are not modeled."},12)
 		c.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-132,h-42,116,28},"Close",function() main:ClosePopup() end))
 		ui.style(c);for _,control in pairs(c) do control.layoutAudit="map-delirium-projection" end

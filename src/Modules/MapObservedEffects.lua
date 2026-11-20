@@ -1,5 +1,27 @@
 -- Preserve copied map lines whose mechanics are not yet modeled.
 local M={}
+local orbData,orbAliases
+local function bindAlias(alias,reward)
+ local key=alias:lower();local existing=orbAliases[key]
+ if existing==nil then orbAliases[key]=reward elseif existing~=reward then orbAliases[key]=false end
+end
+local function loadOrbs()
+ if orbData then return end
+ local root=GetScriptPath();local file=assert(io.open((root~="" and root.."/" or "").."Data/Atlas/delirium-orbs-3.30.json","rb"))
+ local raw=file:read("*a");file:close();local data=assert(require("dkjson").decode(raw))
+ assert(data.clientVersion=="3.30.0.4" and type(data.choices)=="table" and #data.choices==20,"Invalid Delirium Orb reference")
+ orbData=data;orbAliases={}
+ for _,choice in ipairs(data.choices) do
+  bindAlias(choice.name,choice.reward);bindAlias(choice.reward,choice.reward)
+ end
+ -- Common shorthand in old saved examples; both map to exact client labels.
+ bindAlias("Currency","Currency Items");bindAlias("Maps","Map Items")
+end
+function M.orbReference() loadOrbs();return copyTable(orbData) end
+local function resolvedReward(value)
+ if not value then return nil end
+ loadOrbs();return orbAliases[value:lower()] or value
+end
 function M.validate(effects)
  if effects==nil then return nil end
  assert(type(effects)=="table" and #effects<=30,"Use at most 30 observed map effects")
@@ -51,15 +73,16 @@ function M.projectDelirium(currentPercent,currentType,nextType,gain)
  gain=number(gain,5,50,"example Delirium gain")
  currentType=name(currentType,"current reward type",currentPercent==0)
  nextType=name(nextType,"next reward type")
- local same=currentPercent>0 and currentType:lower()==nextType:lower()
+ local currentReward,nextReward=resolvedReward(currentType),resolvedReward(nextType)
+ local same=currentPercent>0 and currentReward:lower()==nextReward:lower()
  local start=same and currentPercent or 0
  local function outcome(add)
   local percent=math.min(100,start+add)
   return {percent=percent,baseRewardCount=1+math.floor(percent/20)}
  end
- return {currentPercent=currentPercent,currentType=currentType,nextType=nextType,exampleGain=gain,sameType=same,
+ return {currentPercent=currentPercent,currentType=currentType,nextType=nextType,currentReward=currentReward,nextReward=nextReward,orbReference=M.orbReference(),exampleGain=gain,sameType=same,
   minimum=outcome(5),maximum=outcome(50),example=outcome(gain),
-  note="Projection only. No map is modified. GGG fixed Delirium Orb use on Nightmare Maps in 3.30.0d; orbs cannot be used on legacy maps with Delirium layers. Reward names, other item eligibility, reforged modifiers, other rewards and gain probabilities are not verified."}
+  note="Projection only. No map is modified. GGG fixed Delirium Orb use on Nightmare Maps in 3.30.0d; orbs cannot be used on legacy maps with Delirium layers. Orb availability, other item eligibility, reforged modifiers, other rewards and gain probabilities are not verified."}
 end
 -- This visible implicit identifies a Blighted or Blight-ravaged map. Do not
 -- infer the variant merely from a map's name or an ordinary Blight encounter.

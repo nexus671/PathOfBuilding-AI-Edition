@@ -1,0 +1,87 @@
+{
+  "_comment": "Generated game data; cspell:disable",
+  "clientVersion": "3.30.0.4",
+  "sourceSha256": "b16dc6c967b7e70ee369fba80506cdf08a1fa5bc5dd5c4f07aaddead97c98b2f",
+  "choices": [
+    {
+      "name": "Abyssal Delirium Orb",
+      "reward": "Abyss Items"
+    },
+    {
+      "name": "Armoursmith's Delirium Orb",
+      "reward": "Armour"
+    },
+    {
+      "name": "Blacksmith's Delirium Orb",
+      "reward": "Weapons"
+    },
+    {
+      "name": "Blighted Delirium Orb",
+      "reward": "Blight"
+    },
+    {
+      "name": "Cartographer's Delirium Orb",
+      "reward": "Map Items"
+    },
+    {
+      "name": "Challenging Delirium Orb",
+      "reward": "Ultimatum"
+    },
+    {
+      "name": "Delirium Orb",
+      "reward": "Generic Items"
+    },
+    {
+      "name": "Diviner's Delirium Orb",
+      "reward": "Divination Cards"
+    },
+    {
+      "name": "Fine Delirium Orb",
+      "reward": "Currency Items"
+    },
+    {
+      "name": "Fossilised Delirium Orb",
+      "reward": "Fossils"
+    },
+    {
+      "name": "Imperial Delirium Orb",
+      "reward": "Labyrinth Items"
+    },
+    {
+      "name": "Jeweller's Delirium Orb",
+      "reward": "Trinkets"
+    },
+    {
+      "name": "Kalguuran Delirium Orb",
+      "reward": "Expedition Items"
+    },
+    {
+      "name": "Obscured Delirium Orb",
+      "reward": "Breach Items"
+    },
+    {
+      "name": "Primal Delirium Orb",
+      "reward": "Talismans"
+    },
+    {
+      "name": "Singular Delirium Orb",
+      "reward": "Unique Items"
+    },
+    {
+      "name": "Thaumaturge's Delirium Orb",
+      "reward": "Gems"
+    },
+    {
+      "name": "Threaded Delirium Orb",
+      "reward": "Threads"
+    },
+    {
+      "name": "Timeless Delirium Orb",
+      "reward": "Legion"
+    },
+    {
+      "name": "Whispering Delirium Orb",
+      "reward": "Essences"
+    }
+  ]
+}

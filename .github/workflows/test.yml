@@ -55,6 +55,7 @@ jobs:
           python3 tools/test_crafting_export_refresh.py
           python3 tools/test_compare_crafting_export.py
           python3 tools/test_update_map_crafting_data.py
+          python3 tools/test_delirium_orbs.py
           python3 tools/check_map_crafting_art.py
           python3 tools/test_update_map_item_art.py
           python3 tools/test_update_map_variant_art.py
