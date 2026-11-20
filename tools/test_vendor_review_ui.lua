@@ -13,7 +13,7 @@ return function(build,ui,frame)
 	frame("vendor-rare-reopened");ui:click("clear");ui:click("close")
 	ui:click("nav_tools");do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="qualityVendor" then selected=row;break end end;assert(selected,"Quality vendor review is missing");browser.results.onClick({line=selected});ui:click("choose") end
 	ui.clipboard="Item Class: Wands\nRarity: Normal\nDriftwood Wand\n--------\nQuality: +20%";ui:click("paste")
-	for _,quality in ipairs({18,12,10}) do ui.clipboard="Item Class: Helmets\nRarity: Magic\nExample Item\nIron Hat\n--------\nQuality: +"..quality.."%";ui:click("paste") end
+	for _,quality in ipairs({18,12,10}) do ui.clipboard="Item Class: Helmets\nRarity: Magic\nSuperior Iron Hat of the Fox\n--------\nQuality: +"..quality.."%";ui:click("paste") end
 	ui.clipboard="Item Class: Life Flasks\nRarity: Normal\nSmall Life Flask\n--------\nQuality: +20%";ui:click("paste")
 	ui.clipboard="Item Class: Skill Gems\nRarity: Gem\nArc\n--------\nQuality: +20%";ui:click("paste")
 	ui.clipboard="Item Class: Skill Gems\nRarity: Gem\nSpark\n--------\nQuality: +21%";ui:click("paste")
@@ -21,7 +21,7 @@ return function(build,ui,frame)
 	frame("vendor-quality-groups");ui:click("close")
 	ui:click("nav_tools");do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="qualityVendor" then selected=row;break end end;assert(selected);browser.results.onClick({line=selected});ui:click("choose") end
 	assert(main.popups[1].controls.status.label:find("7 pasted items",1,true),"Quality vendor review lost its working items");frame("vendor-quality-reopened");ui:click("clear")
-	for _,quality in ipairs({18,17,13,12,11,9}) do ui.clipboard="Item Class: Wands\nRarity: Magic\nExample Item\nDriftwood Wand\n--------\nQuality: +"..quality.."%";ui:click("paste") end
+	for _,quality in ipairs({18,17,13,12,11,9}) do ui.clipboard="Item Class: Wands\nRarity: Magic\nSuperior Driftwood Wand of the Fox\n--------\nQuality: +"..quality.."%";ui:click("paste") end
 	do local c=main.popups[1].controls;local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;assert(table.concat(details," "):find("2 maximum",1,true),"Maximum quality groups were not displayed") end
 	frame("vendor-quality-optimal");ui:click("clear");ui:click("close")
 end

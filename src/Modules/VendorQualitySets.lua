@@ -61,7 +61,11 @@ function M.parse(raw)
 	assert(category,"Copy a weapon, armour, flask, tincture or gem with its item class")
 	local rarity=lines[2] and lines[2]:match("^Rarity:%s*(%a+)$")
 	assert(category=="Gems" and rarity=="Gem" or category~="Gems" and rarity and ({Normal=true,Magic=true,Rare=true,Unique=true})[rarity],"The copied item needs a supported rarity")
-	local base=lines[(rarity=="Normal" or rarity=="Gem") and 3 or 4]
+	-- Magic items normally have one displayed name, including their affixes.
+	-- Unidentified rare or unique items can also have a single name line.
+	-- Keep that visible name for review without guessing the underlying base.
+	local singleName=lines[4]=="--------" and (rarity=="Magic" or (rarity=="Rare" or rarity=="Unique") and (raw:match("\nUnidentified\n") or raw:match("\nUnidentified %(Tier %d+%)\n") or raw:match("\nUnidentified$") or raw:match("\nUnidentified %(Tier %d+%)$")))
+	local base=lines[(rarity=="Normal" or rarity=="Gem" or singleName) and 3 or 4]
 	assert(base and base~="--------" and #base<=160 and not base:find("[%c%^]"),"The copied item needs a visible base type")
 	local quality
 	for _,line in ipairs(lines) do
