@@ -93,6 +93,15 @@ describe("Crafting projects", function()
 		assert.equal("Remove crafting step",main.popups[1].title);main.popups[1].controls.confirm:Click()
 		assert.equal(2,#store.projects[1].steps);assert.is_true(store.projects[1].steps[1].done);assert.equal("First result",store.projects[1].steps[1].stopWhen)
 	end)
+	it("removes unannotated duplicates while retaining protected instructions",function()
+		local entry=project();entry.steps={{action="Repeat craft"},{action="Repeat craft",done=true,stopWhen="Keep result"},{action="Repeat craft"}}
+		local store=build.savers.CraftingProjects;store:Upsert(entry)
+		require("Classes.CraftingProjectControl").Open(build).edit:Click();local c=main.popups[1].controls
+		c.steps:SetText("Repeat craft");c.wizardPage:SelByValue("Review");c.wizardPage.selFunc();c.save:Click()
+		assert.equal(1,#store.projects[1].steps);assert.is_true(store.projects[1].steps[1].done);assert.equal("Keep result",store.projects[1].steps[1].stopWhen)
+		main.popups[1].controls.edit:Click();c=main.popups[1].controls;c.steps:SetText("");c.wizardPage:SelByValue("Method & budget");c.next:Click()
+		assert.equal("Planning tool",main.popups[1].title);assert.equal("Keep result",store.projects[1].steps[1].stopWhen)
+	end)
 	it("edits a step without losing its progress or recovery notes",function()
 		local entry=project();entry.steps={{action="Original instruction",stopWhen="Original goal",onFailure="Original recovery",done=true}}
 		local store=build.savers.CraftingProjects;store:Upsert(entry)

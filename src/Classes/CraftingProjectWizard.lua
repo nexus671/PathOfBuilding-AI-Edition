@@ -45,11 +45,19 @@ function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
 			local previous=draft.steps;local oldByText,newCount,lines={},{},{}
 			for _,step in ipairs(previous) do local group=oldByText[step.action] or {};oldByText[step.action]=group;group[#group+1]=step end
 			for line in c.steps.buf:gmatch("[^\r\n]+") do if line:match("%S") then lines[#lines+1]=line;newCount[line]=(newCount[line] or 0)+1 end end
-			for action,group in pairs(oldByText) do if (newCount[action] or 0)<#group then
+			for action,group in pairs(oldByText) do
+				local remove=math.max(0,#group-(newCount[action] or 0))
+				-- Identical instructions are indistinguishable here. Retain every
+				-- protected copy and discard only unannotated duplicates.
+				local retained={}
 				for _,step in ipairs(group) do
-					assert(not step.done and not step.uniqueCraft and (not step.stopWhen or step.stopWhen=="") and (not step.onFailure or step.onFailure==""),"This edit would remove step progress, notes or a modeled craft. Use Browse guide steps to edit or remove that step first.")
+					if remove>0 and not step.done and not step.uniqueCraft and (not step.stopWhen or step.stopWhen=="") and (not step.onFailure or step.onFailure=="") then
+						remove=remove-1
+					else retained[#retained+1]=step end
 				end
-			end end
+				assert(remove==0,"This edit would remove step progress, notes or a modeled craft. Use Browse guide steps to edit or remove that step first.")
+				oldByText[action]=retained
+			end
 			draft.steps={}
 			local used={}
 			for _,line in ipairs(lines) do
