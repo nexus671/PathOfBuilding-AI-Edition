@@ -34,7 +34,14 @@ describe("3.30 native filter update",function()
 			assert.equal("Stackable Currency",library.baseClass(name))
 			local sample=library.sample({text='Show\n BaseType == "'..name..'"'})
 			assert.equal("Stackable Currency",sample.Class)
-			assert.is_nil(library.baseProperties(name,"Normal").DropLevel)
+			assert.equal(name=="Primordial Exalted Orb" and 81 or 78,library.baseProperties(name,"Normal").DropLevel)
+		end
+	end)
+	it("uses updated Foulborn currency drop levels in filter examples",function()
+		for _,name in ipairs({"Foulborn Regal Orb","Foulborn Orb of Augmentation"}) do
+			local sample=library.sample({text='Show\n BaseType == "'..name..'"'})
+			assert.equal("Stackable Currency",sample.Class);assert.equal(75,sample.DropLevel)
+			assert.equal("Hide",parser.simulate(parser.parse("Hide\n DropLevel >= 75\nShow"),sample).action)
 		end
 	end)
 	it("includes the new orbs in the currency test scene",function()
@@ -42,7 +49,7 @@ describe("3.30 native filter update",function()
 		local scene=library.scene(profile,build,"Currency",0,83,86);local found={}
 		for _,item in ipairs(scene) do found[item.BaseType]=item end
 		for _,name in ipairs({"Originator's Exalted Orb","Primordial Exalted Orb"}) do
-			local item=assert(found[name]);assert.equal("Stackable Currency",item.Class);assert.is_nil(item.DropLevel)
+			local item=assert(found[name]);assert.equal("Stackable Currency",item.Class);assert.equal(name=="Primordial Exalted Orb" and 81 or 78,item.DropLevel)
 			assert.equal("Show",filters.simulate(profile,item).action)
 		end
 	end)

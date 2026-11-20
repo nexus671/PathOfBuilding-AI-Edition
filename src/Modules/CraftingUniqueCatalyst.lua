@@ -77,8 +77,8 @@ function M.multiProfile(line,ranges,scalar)
 		if not index or used[index] then return remember(nil) end
 		used[index]=true;indices[i]=index;axes[i]=axis
 	end
-	local result={lookup={},mins={},maxs={},components=#ranges}
-	for i=1,#ranges do result.mins[i]=math.huge;result.maxs[i]=-math.huge end
+	local result={lookup={},minima={},maxima={},components=#ranges}
+	for i=1,#ranges do result.minima[i]=math.huge;result.maxima[i]=-math.huge end
 	local selected={}
 	local function enumerate(index)
 		if index>#ranges then
@@ -91,7 +91,7 @@ function M.multiProfile(line,ranges,scalar)
 				elseif value~=initial[j] then return false end
 			end
 			local display={};for i,position in ipairs(indices) do
-				display[i]=values[position];result.mins[i]=math.min(result.mins[i],display[i]);result.maxs[i]=math.max(result.maxs[i],display[i])
+				display[i]=values[position];result.minima[i]=math.min(result.minima[i],display[i]);result.maxima[i]=math.max(result.maxima[i],display[i])
 			end
 			result.lookup[rendered]=display;return true
 		end

@@ -11,7 +11,7 @@ describe("Map reroll estimate control",function()
 		for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
 		assert.is_nil(tasks.job);assert.is_true(controls.use:IsEnabled())
 		local report="";for _,row in ipairs(controls.report.list) do report=report..StripEscapes(row[1] or "") end
-		assert.matches("Cannot appear in modeled pool",report);assert.matches("Area of Effect",report);assert.matches("Map data: 3.30.0.3",report,1,true)
+		assert.matches("Cannot appear in modeled pool",report);assert.matches("Area of Effect",report);assert.matches("Map data: 3.30.0.4",report,1,true)
 		controls.attempts:SetText("2",true);assert.is_falsy(controls.use:IsEnabled())
 		controls.attempts:SetText("1",true);controls.run:Click();for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
 		assert.is_true(controls.use:IsEnabled());controls.use:Click()

@@ -22,7 +22,7 @@ describe("Native crafting ingredient costs",function()
 		local catalog=sim.catalog(raw,"maximum Life",100);local found
 		for _,entry in ipairs(catalog.bench) do if entry.id==action.modId then found=entry end end
 		assert.is_true(found.ingredientCostsKnown);assert.are.same(cost,found.components);assert.are.same(sources,found.costSources)
-		assert.are.equal("59cb134eeb57a3202837296a409cbb9d8f42be4b",catalog.benchCostSource.commit)
+		assert.are.equal("c97553d1fc14a134dd6813e672d2b45fddf5b42d",catalog.benchCostSource.commit)
 		assert.are.equal("3.30.0.1.4",catalog.benchCostClient.version)
 		local entries=require("Modules.CraftingPrices").entries(model,model.initial,{action})
 		local required={};for _,entry in ipairs(entries) do if entry.required then required[entry.key]=true end end

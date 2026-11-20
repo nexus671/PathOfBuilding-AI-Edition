@@ -5,7 +5,7 @@ local json=require("dkjson")
 local A={}
 local cached
 local function finishData(data)
-	assert(data.patch=="3.30.0.3" and type(data.mods)=="table" and type(data.bench)=="table" and #data.bench==782 and type(data.benchMods)=="table","Invalid crafting data")
+	assert(data.patch=="3.30.0.4" and type(data.mods)=="table" and type(data.bench)=="table" and #data.bench==782 and type(data.benchMods)=="table","Invalid crafting data")
 	data.modifierPatch=data.patch;data.benchPatch=data.patch
 	return data
 end
@@ -1583,7 +1583,7 @@ function A.extend(M,api)
 		for _,entry in ipairs(outcomes) do entry.chance=entry.weight/total*100 end
 		return {exactFor="One weighted affix draw, conditional on the supplied state and native pool",successChance=success/total*100,totalWeight=total,matchingWeight=success,outcomes=outcomes,dataPatch=A.data().patch,modifierPatch=A.data().modifierPatch,limitations=copyTable(M.limits)}
 	end
-	M.limits={"Independent PoE 1 crafting model uses 3.30.0.3 supplemental data; this is not complete Craft of Exile parity.",
+	M.limits={"Independent PoE 1 crafting model uses 3.30.0.4 supplemental data; this is not complete Craft of Exile parity.",
 		"Harvest damage conversion uses client eligibility groups and ingredient costs, but assumes matching elemental modifier IDs correspond to tiers and chooses eligible modifiers uniformly. The mapping and selection odds are unverified; unmatched families are rejected.",
 		"Light Radius accuracy modifiers use 3.30 crafting ranges; existing legacy values are retained until rerolled.",
 		"Abyss jewel crafting uses the 3.30 client weight changes, including the Assembled Eye pool and seven removed natural modifiers. Existing removed modifiers are retained until removed.",
@@ -1592,7 +1592,7 @@ function A.extend(M,api)
 		"Tangled Fossils require a revealed resonator outcome. Automatic predictable recombination odds, unique generation and many 3.30 rules are not implemented.",
 		"The standard Orb of Annulment uses the announced 3.30 attack/caster blocker rule. Some specialized supplemental sources remain pinned to 3.29.3.6 where not explicitly updated.",
 		"Partial locks use uniform random selection from all modifiers on the protected side, including fractures; group conflicts and other interactions are assumptions. Core affix actions, Harvest reforge/augment and elemental conversions, and independent socket, quality, implicit and enchantment crafts are supported; other interactions are rejected.",
-		"Bench ingredient prices use the 3.30.0.1.4 client catalogue, which matches the 3.30.0.3 export.",
+		"Bench ingredient prices use the 3.30.0.1.4 client catalogue, which matches the 3.30.0.4 export.",
 		"Rare modifier counts and Eldritch Chaos counts are model assumptions. Numeric display rolls and sampling intervals do not establish exact in-game odds.",
 		"Abyssal socket modifier changes use an experimental last-socket and unlinked-white restoration model; placement, zero-socket behavior and removal are unverified.",
 		"Every result is a separate hypothetical item. Costs use supplied prices; no game currency is spent."}

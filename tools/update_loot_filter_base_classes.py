@@ -5,8 +5,8 @@ import hashlib
 import json
 from pathlib import Path
 
-COMMIT = "f49a9a43f5b06cac7f7125093cfd7ef2f0137650"
-BASE_SHA256 = "336cbd6c463249c862b8e47ab78392f7fbe03864044d5d8fcf5a7f3433de2ae4"
+COMMIT = "c97553d1fc14a134dd6813e672d2b45fddf5b42d"
+BASE_SHA256 = "b16dc6c967b7e70ee369fba80506cdf08a1fa5bc5dd5c4f07aaddead97c98b2f"
 CLASS_SHA256 = "58c679523f4c45ab7a70ec9db9c0405b1ff37633e9083fa4ca860bfb42c9c380"
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "src/Data/LootFilters/base-classes.json"
@@ -16,7 +16,7 @@ NON_DROP_CLASSES = {"InstanceLocalItem", "HiddenItem"}
 
 def build(base_raw, class_raw):
     if hashlib.sha256(base_raw).hexdigest() != BASE_SHA256 or hashlib.sha256(class_raw).hexdigest() != CLASS_SHA256:
-        raise ValueError("Filter class source does not match the reviewed 3.30.0.2.2 export")
+        raise ValueError("Filter class source does not match the reviewed 3.30.0.4 export")
     bases = json.loads(base_raw)
     class_data = json.loads(class_raw)
     groups = {}
@@ -33,7 +33,7 @@ def build(base_raw, class_raw):
             resolved[name] = next(iter(values))
         else:
             ambiguous[name] = True
-    return {"clientVersion": "3.30.0.2.2", "sourceCommit": COMMIT,
+    return {"_comment": "Generated game data; cspell:disable", "clientVersion": "3.30.0.4", "sourceCommit": COMMIT,
             "baseSha256": BASE_SHA256, "classSha256": CLASS_SHA256,
             "classes": resolved, "ambiguous": ambiguous}
 
@@ -50,7 +50,7 @@ def main():
         if OUTPUT.read_text(encoding="utf-8") != content:
             raise SystemExit("Filter class data differs from the reviewed export")
     else:
-        OUTPUT.write_text(content, encoding="utf-8", newline="\n")
+        OUTPUT.write_text(content, encoding="utf-8")
     print(f"Verified {len(data['classes'])} class identities; {len(data['ambiguous'])} names remain ambiguous")
 
 

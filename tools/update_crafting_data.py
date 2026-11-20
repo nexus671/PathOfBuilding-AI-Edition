@@ -10,8 +10,8 @@ from crafting_data_status import reconstruct_granted_effect_levels, require_chan
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = "repoe-fork/repoe-fork.github.io"
-COMMIT = "59cb134eeb57a3202837296a409cbb9d8f42be4b"
-PATCH = "3.30.0.3"
+COMMIT = "c97553d1fc14a134dd6813e672d2b45fddf5b42d"
+PATCH = "3.30.0.4"
 FILES = ["mods.json", "fossils.json", "base_items.json", "crafting_bench_options.json"]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--allow-identical-export", action="store_true", help="Allow a reviewed new patch whose crafting source files are unchanged")

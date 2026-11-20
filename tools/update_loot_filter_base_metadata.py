@@ -1,10 +1,10 @@
-"""Generate conservative filter-example base properties from a pinned client export."""
+"""Generate conservative filter-example base properties from a pinned RePoE export."""
 import argparse
 import hashlib
 import json
 from pathlib import Path
 
-SOURCE_SHA256 = "bcf0743a00d8db0f3ffb1dc8a15dad47d6469c884bee18bc6029494a8c81400b"
+SOURCE_SHA256 = "b16dc6c967b7e70ee369fba80506cdf08a1fa5bc5dd5c4f07aaddead97c98b2f"
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "src/Data/LootFilters/base-metadata.json"
 FIELDS = {"drop_level": "DropLevel", "inventory_width": "Width", "inventory_height": "Height"}
@@ -12,7 +12,7 @@ FIELDS = {"drop_level": "DropLevel", "inventory_width": "Width", "inventory_heig
 
 def build(raw):
     if hashlib.sha256(raw).hexdigest() != SOURCE_SHA256:
-        raise ValueError("Client base-item export does not match the reviewed 3.30.0.1.4 data")
+        raise ValueError("Client base-item export does not match the reviewed 3.30.0.4 data")
     groups = {}
     for item in json.loads(raw).values():
         name = item.get("name")
@@ -29,7 +29,7 @@ def build(raw):
                     properties[target] = value
         if properties:
             bases[name] = properties
-    return {"clientVersion": "3.30.0.1.4", "sourceSha256": SOURCE_SHA256, "bases": bases}
+    return {"_comment": "Generated game data; cspell:disable", "clientVersion": "3.30.0.4", "sourceSha256": SOURCE_SHA256, "bases": bases}
 
 
 def main():
@@ -42,7 +42,7 @@ def main():
         if OUTPUT.read_text(encoding="utf-8") != content:
             raise SystemExit("Filter base metadata differs from the pinned export")
     else:
-        OUTPUT.write_text(content, encoding="utf-8", newline="\n")
+        OUTPUT.write_text(content, encoding="utf-8")
     print(f"Verified {len(json.loads(content)['bases'])} filter base names")
 
 

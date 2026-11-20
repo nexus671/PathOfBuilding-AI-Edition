@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview804" />
+	<Version number="2.68.1-ai.preview805" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1841,13 +1841,13 @@
 	<File name="Data/Crafting/3.30-harvest-damage.json" part="program" sha1="2c3925fed8cc1e53896c452eaeaf22164e326a1d" />
 	<File name="Data/Crafting/3.30-modifier-overlay.json" part="program" sha1="f59b065e1dd47919e79dc62e0904cca031e8f824" />
 	<File name="Data/Crafting/3.30-unveiled-jewels.json" part="program" sha1="726ee1460440393b9b02b33bba65b00e7cd04862" />
-	<File name="Data/Crafting/3.30.json" part="program" sha1="a68ae5696d93d98786ee01ad116635974d585d8a" />
+	<File name="Data/Crafting/3.30.json" part="program" sha1="056c4ace9ea0820d5dadc5e0f4d928d092348a13" />
 	<File name="Data/Crafting/Allflame.json" part="program" sha1="b2063d95ad59fae8baf6bee166e3f2f9393c0349" />
 	<File name="Data/Crafting/GwennenReference.json" part="program" sha1="76a38ac343f9a96cbb76ea52b2cda1335a39f663" />
 	<File name="Data/Crafting/HarvestEnchants.json" part="program" sha1="03fef9d0e14feb62dab0fc0192aaf7e51211a25d" />
 	<File name="Data/Crafting/Katakohi.json" part="program" sha1="bfcf1e258c32205abb6cd757f13bedeaa42c6213" />
 	<File name="Data/Crafting/LegacyBench329.lua" part="program" sha1="840251c6ac1b35444a88357f1228e5feb69df905" />
-	<File name="Data/Crafting/Map330.json" part="program" sha1="68873e4a3d461d85ccce4719c7a775c8359974db" />
+	<File name="Data/Crafting/Map330.json" part="program" sha1="81c2b4668343c14e5443de9a289a19403253cf04" />
 	<File name="Data/Crafting/MapCorruption330.json" part="program" sha1="18e6c74e545a42aef08651f908603a8d86cd5298" />
 	<File name="Data/Crafting/MemoryStrands.json" part="program" sha1="ed32b21ad297a09f0875c51d982659af2788e6df" />
 	<File name="Data/Crucible.lua" part="program" sha1="efc0f7dca72b476bbffa10f687a270abb89050b2" />
@@ -1875,8 +1875,8 @@
 	<File name="Data/LootFilters/6.filter" part="program" sha1="623997a0fb5e617ab9b588c254d9f557670e1d0b" />
 	<File name="Data/LootFilters/LICENSE-NeverSink.txt" part="program" sha1="f6bd82c134a39fb235b8480b483f775dccfaf913" />
 	<File name="Data/LootFilters/atlas-supplies-3.30.json" part="program" sha1="0c10d6ec9bfdcb080d2663f9f5f7e43b55c7f992" />
-	<File name="Data/LootFilters/base-classes.json" part="program" sha1="a6b54a1b255673ab8c8cf224c393332b17c71f89" />
-	<File name="Data/LootFilters/base-metadata.json" part="program" sha1="7fe43f2a3a9324037c75e766aba21c5e4fc785d0" />
+	<File name="Data/LootFilters/base-classes.json" part="program" sha1="aff51342ad778f23d2be4863a181511204ac445c" />
+	<File name="Data/LootFilters/base-metadata.json" part="program" sha1="8bf5b024d5a4f6daf10cd3700365b439987dfed2" />
 	<File name="Data/LootFilters/budget-items-3.30.json" part="program" sha1="0b363272413ea70d8ed92ac1f385ed38b489dd83" />
 	<File name="Data/LootFilters/map-names.json" part="program" sha1="95fb3deb8545f04a7dfc6f32e51dd684385488b0" />
 	<File name="Data/LootFilters/patch-3.30.json" part="program" sha1="d1912b3b33fe0529e8e0e8f108b7dea4c972c83b" />
@@ -2109,7 +2109,7 @@
 	<File name="Modules/ConfigOptions.lua" part="program" sha1="3418c04b0ec78c2e8dfc69aa69bef6b50bd0001e" />
 	<File name="Modules/ConfigVisibility.lua" part="program" sha1="ad4a825bfe36dc94dca1ac7033d815110fd46d3c" />
 	<File name="Modules/CraftingAbyss330.lua" part="program" sha1="6ca66c250e7c07b42ffc7c8939f15a2c678f1e85" />
-	<File name="Modules/CraftingAdvanced.lua" part="program" sha1="ef85471bfa532010b87c2f3fc8de2e783b8265f4" />
+	<File name="Modules/CraftingAdvanced.lua" part="program" sha1="228b017eaf9b38c354576c7ce8dfc46725503d90" />
 	<File name="Modules/CraftingAllflame.lua" part="program" sha1="8431a463a68babe2e70d8a71baf682377a244160" />
 	<File name="Modules/CraftingAnalysis.lua" part="program" sha1="33e31717c40a26f1a2cb13b4ba8bb05bea8aa917" />
 	<File name="Modules/CraftingAvailability.lua" part="program" sha1="e3c03fc9ca0f828c0ec2a8e599b857a6fca715b8" />
@@ -2145,8 +2145,8 @@
 	<File name="Modules/CraftingRecombination.lua" part="program" sha1="6c01c0d4c562d1dff8e20f6d71210c99e45de347" />
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />
 	<File name="Modules/CraftingSimulator.lua" part="program" sha1="5f0c62516be71162189e5d00f66b3d372a57094e" />
-	<File name="Modules/CraftingUniqueCatalyst.lua" part="program" sha1="615ed81e29cbf747857d779d250bd0e8a63e624b" />
-	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="c2151e66b2442e8f502d32dced0e791e9de63565" />
+	<File name="Modules/CraftingUniqueCatalyst.lua" part="program" sha1="2a86e01995f87d043e4c042a81ec65dbc4ae5752" />
+	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="b96b127a02fe2eaccf7515b87887c9c42611fdc9" />
 	<File name="Modules/CraftingUniqueSimulation.lua" part="program" sha1="768ef01adfe37d0050397ffc8e4d68e83290c165" />
 	<File name="Modules/CraftingUnlockTasks.lua" part="program" sha1="b1ab9cc44e5f7411715f74fff720379d44c65d21" />
 	<File name="Modules/CraftingSockets.lua" part="program" sha1="315149ad5253dd8e6ddf1ebea782fb22b7990401" />
@@ -2179,7 +2179,7 @@
 	<File name="Modules/LootFilterEditing.lua" part="program" sha1="d85f3a11105f01865b713ea96e9e85dd14204139" />
 	<File name="Modules/LootFilterFileNames.lua" part="program" sha1="5f26edc8dfc72aa9fbe03be2bb1cbf0c93094e20" />
 	<File name="Modules/LootFilterImports.lua" part="program" sha1="14c2904c7ecbaed9a44146b21fffe1c341d8bb14" />
-	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="51f6399553cf0ef0f93da9047b830385a863892a" />
+	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="1fe4776e39b9d7e1273db365abc7400ee5a2488a" />
 	<File name="Modules/LootFilterParser.lua" part="program" sha1="ecc9dd8781d4c15ebd306af034cee15e9c15e7a0" />
 	<File name="Modules/LootFilterRuleOrder.lua" part="program" sha1="c9bd2dd5f27d9f701a4d82071e756c97db2ad101" />
 	<File name="Modules/LootFilterStackTiers.lua" part="program" sha1="41793d1a2d3cb914990a79609f809c068c0fcc1b" />
@@ -2191,7 +2191,7 @@
 	<File name="Modules/MapClipboard.lua" part="program" sha1="29933b555158e884e7120765943280aeb5492785" />
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="c03ef32eee4a6eec184aac726605d6104d068af9" />
 	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="3dca2fbe1ed7019781cff659be4c2d179df7f848" />
-	<File name="Modules/MapCraftingData.lua" part="program" sha1="d434e6a501a4d50aaa329b54aabf9fe1b4c860ee" />
+	<File name="Modules/MapCraftingData.lua" part="program" sha1="a5b95f75eacc8652532b46922c996d723bd97912" />
 	<File name="Modules/MapCurrency.lua" part="program" sha1="c2eb9da2cfd516719e8085b76ca6704d3d0f68de" />
 	<File name="Modules/MapObservedEffects.lua" part="program" sha1="73f3af8a2844fcf13f25fae0243dc98339c16a10" />
 	<File name="Modules/MapQuality.lua" part="program" sha1="c7f308aa75c1ab907d8c864fe878bc8afcf4c429" />

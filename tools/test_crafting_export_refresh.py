@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class CraftingExportRefreshTest(unittest.TestCase):
     def test_reviewed_jewel_domains_preserve_other_modifier_data(self):
         data = json.loads((ROOT / "src/Data/Crafting/3.30.json").read_text(encoding="utf-8"))
-        self.assertEqual("59cb134eeb57a3202837296a409cbb9d8f42be4b", data["source"]["commit"])
+        self.assertEqual("c97553d1fc14a134dd6813e672d2b45fddf5b42d", data["source"]["commit"])
         jewels = sorted(key for key, mod in data["mods"].items() if mod["domain"] == "jewel")
         self.assertEqual(253, len(jewels))
         self.assertEqual("67ed0db78edab50282c1d8ae105b026d3d51deae99f79e3b2b76c9227dd85a9c",

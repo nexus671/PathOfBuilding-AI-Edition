@@ -316,7 +316,7 @@ end
 function M.divineReason(raw) local _,reason=divinePlan(raw);return reason end
 function M.divineOptions(raw)
 	local plan,reason=divinePlan(raw);if not plan then return nil,reason end
-	local result={};for _,row in ipairs(plan.rows) do for index,part in ipairs(row.ranges) do result[#result+1]={line=row.line,component=index,components=#row.ranges,min=row.profile and (row.profile.mins and row.profile.mins[index] or row.profile.min) or part.low,max=row.profile and (row.profile.maxs and row.profile.maxs[index] or row.profile.max) or part.high,current=row.current[index]} end end
+	local result={};for _,row in ipairs(plan.rows) do for index,part in ipairs(row.ranges) do result[#result+1]={line=row.line,component=index,components=#row.ranges,min=row.profile and (row.profile.minima and row.profile.minima[index] or row.profile.min) or part.low,max=row.profile and (row.profile.maxima and row.profile.maxima[index] or row.profile.max) or part.high,current=row.current[index]} end end
 	return result
 end
 function M.divine(raw,seed)

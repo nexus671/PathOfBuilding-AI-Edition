@@ -34,7 +34,7 @@ def extract(raw, expected_hash, base_raw, expected_base_hash, source):
     if not map_bases:
         raise ValueError("No map bases found")
     return {"_comment": "Generated GGG game data from RePoE; cspell:disable",
-            "patch": "3.30.0.3", "source": source, "modsSha256": actual,
+            "patch": "3.30.0.4", "source": source, "modsSha256": actual,
             "basesSha256": base_hash, "bases": map_bases, "mods": selected}
 
 

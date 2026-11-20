@@ -12,12 +12,12 @@ ROOT = Path(__file__).resolve().parents[1]
 def compatible_source(art, data):
     if art["source"] == data["source"] and art["basesSha256"] == data["basesSha256"]:
         return True
-    # The reviewed 3.30.0.3 export changes one non-map base description.
+    # The reviewed 3.30.0.4 export changes no map bases or visual identities.
     # All 508 map visual identities match the earlier art catalogue exactly.
     old = {"repo": "repoe-fork/repoe-fork.github.io", "commit": "585b4b8433079e514bbd6095c7a5af0480c9d824"}
-    new = {"repo": "repoe-fork/repoe-fork.github.io", "commit": "59cb134eeb57a3202837296a409cbb9d8f42be4b"}
+    new = {"repo": "repoe-fork/repoe-fork.github.io", "commit": "c97553d1fc14a134dd6813e672d2b45fddf5b42d"}
     if (art["source"] != old or art["basesSha256"] != "3bcca7d01e91e2356bee0a053a0e5d3636997d77b8b38492cad1599c92d8706d"
-            or data["source"] != new or data["basesSha256"] != "841b57e921ddd2c56e8c17220a1fc9d9a46e20e6703d72909ed847abc2084cdb"):
+            or data["source"] != new or data["basesSha256"] != "b16dc6c967b7e70ee369fba80506cdf08a1fa5bc5dd5c4f07aaddead97c98b2f"):
         return False
     identities = {key: base.get("visual_identity") for key, base in data["bases"].items()}
     encoded = json.dumps(identities, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()

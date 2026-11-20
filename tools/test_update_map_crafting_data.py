@@ -12,7 +12,7 @@ class MapDataExtractionTest(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         baseline = json.loads((root / "src/Data/Crafting/3.30.json").read_text(encoding="utf-8"))
         maps = json.loads((root / "src/Data/Crafting/Map330.json").read_text(encoding="utf-8"))
-        self.assertEqual("3.30.0.3", maps["patch"])
+        self.assertEqual("3.30.0.4", maps["patch"])
         self.assertEqual(baseline["patch"], maps["patch"])
         self.assertEqual(baseline["source"], maps["source"])
         self.assertEqual(baseline["hashes"]["mods.json"], maps["modsSha256"])

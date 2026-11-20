@@ -25,10 +25,15 @@ assert "Orb of Binding" in patch["removed"]
 assert len(patch["removed"]) == 171 and len(set(patch["removed"])) == 171
 assert "Report Forum Post" not in patch["removed"]
 classes = json.loads((root / "base-classes.json").read_text(encoding="utf-8"))
-assert classes["clientVersion"] == "3.30.0.2.2" and len(classes["classes"]) == 4382
-assert classes["sourceCommit"] == "f49a9a43f5b06cac7f7125093cfd7ef2f0137650"
-assert classes["baseSha256"] == "336cbd6c463249c862b8e47ab78392f7fbe03864044d5d8fcf5a7f3433de2ae4"
+assert classes["clientVersion"] == "3.30.0.4" and len(classes["classes"]) == 4384
+assert classes["sourceCommit"] == "c97553d1fc14a134dd6813e672d2b45fddf5b42d"
+assert classes["baseSha256"] == "b16dc6c967b7e70ee369fba80506cdf08a1fa5bc5dd5c4f07aaddead97c98b2f"
 assert classes["classSha256"] == "58c679523f4c45ab7a70ec9db9c0405b1ff37633e9083fa4ca860bfb42c9c380"
+metadata = json.loads((root / "base-metadata.json").read_text(encoding="utf-8"))
+assert metadata["clientVersion"] == "3.30.0.4" and metadata["sourceSha256"] == "b16dc6c967b7e70ee369fba80506cdf08a1fa5bc5dd5c4f07aaddead97c98b2f"
+for name, level in [("Originator's Exalted Orb", 78), ("Primordial Exalted Orb", 81), ("Foulborn Regal Orb", 75), ("Foulborn Orb of Augmentation", 75)]:
+    assert classes["classes"][name] == "Stackable Currency"
+    assert metadata["bases"][name] == {"DropLevel": level, "Width": 1, "Height": 1}
 assert classes["classes"]["Gold"] == "Gold" and classes["classes"]["Expedition Logbook"] == "Expedition Logbooks"
 assert classes["ambiguous"]["Primitive Chaotic Resonator"] and "Primitive Chaotic Resonator" not in classes["classes"]
 print("Loot filter data: 7 pinned hashes, MIT notice and 3.30 snapshot verified")
