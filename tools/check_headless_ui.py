@@ -1,10 +1,12 @@
 """Exercise native controls and audit rendered frames without opening a window."""
+# cspell:ignore lupa
 import argparse
 from concurrent.futures import ProcessPoolExecutor
 import hashlib
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import time
 import zipfile
@@ -43,6 +45,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_vendor_review_ui.lua")
     sources.append(ROOT / "tools/test_modifier_paging_ui.lua")
     sources.append(ROOT / "tools/test_crafting_replay_ui.lua")
+    sources.append(ROOT / "tools/run_headless_lupa.py")
     sources.append(ROOT / "tools/test_campaign_selection_ui.lua")
     return {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(sources) if path.is_file()}
 
@@ -58,6 +61,7 @@ def render_frame(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--lua", default="luajit", help="LuaJIT executable; defaults to PATH")
+    parser.add_argument("--lupa", action="store_true", help="Use Python Lupa with the headless filesystem adapter")
     parser.add_argument("--output", type=Path, default=ROOT / "artifacts/headless-ui")
     parser.add_argument("--workers", type=int, default=min(4, os.cpu_count() or 1), help="Parallel render processes (1 to 4)")
     args = parser.parse_args()
@@ -76,11 +80,12 @@ def main():
     if os.name == "nt":
         environment["LUA_CPATH"] = str(ROOT / "runtime/?.dll") + ";;"
         environment["PATH"] = str(ROOT / "runtime") + os.pathsep + environment["PATH"]
-    result = subprocess.run([args.lua, "../tools/test_headless_ui.lua", str(frames)], cwd=ROOT / "src",
+    lua_command = [sys.executable, str(ROOT / "tools/run_headless_lupa.py"), "--filesystem"] if args.lupa else [args.lua]
+    result = subprocess.run(lua_command + ["../tools/test_headless_ui.lua", str(frames)], cwd=ROOT / "src",
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "controls.log").write_text(result.stdout)
     assert result.returncode == 0, result.stdout
-    replay = subprocess.run([args.lua, "../tools/test_crafting_replay_ui.lua", str(frames)], cwd=ROOT / "src",
+    replay = subprocess.run(lua_command + ["../tools/test_crafting_replay_ui.lua", str(frames)], cwd=ROOT / "src",
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-replay-controls.log").write_text(replay.stdout)
     assert replay.returncode == 0, replay.stdout

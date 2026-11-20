@@ -7,7 +7,7 @@ The wrapper uses real zlib compression for imports and compressed jewel data. Wi
 
 Run the calculation suite with `busted --lua=luajit`, and the MCP protocol suite with `node --test spec/AI/*.test.cjs`.
 
-If a LuaJIT executable is unavailable, Python with the optional `lupa` package can run individual headless Lua scripts from the repository root. For example, `python tools/run_headless_lupa.py tools/benchmark_atlas_report.lua`. Script arguments follow the script path. Some scripts require additional Lua modules, such as LuaFileSystem (`lfs`) for the full UI suite. This runs the selected script with normal filesystem access; use isolated fixtures and output directories.
+If a LuaJIT executable is unavailable, Python with the optional `lupa` package can run individual headless Lua scripts from the repository root. For example, `python tools/run_headless_lupa.py tools/benchmark_atlas_report.lua`. Script arguments follow the script path. Add `--filesystem` before the script to provide the `mkdir`, `rmdir` and `dir` subset of LuaFileSystem using real files; this is not a complete replacement for that module. Check the adapter with `python tools/run_headless_lupa.py --filesystem tools/test_headless_lupa_fs.lua`. This runs the selected script with normal filesystem access; use isolated fixtures and output directories.
 
 ## Render and exercise controls
 
@@ -18,6 +18,8 @@ python tools/check_headless_ui.py --lua luajit
 ```
 
 On Windows, pass the full path to a LuaJIT executable if it is outside PATH. The runner configures the repository's Lua modules and runtime DLLs automatically.
+
+With Python Lupa and Pillow installed, `python tools/check_headless_ui.py --lupa` runs the same UI audit without a separate LuaJIT executable. Its filesystem adapter uses real files in the isolated audit output directory.
 
 Each run produces a fresh directory under `artifacts/headless-ui` containing PNG frames, draw records, contrast, clipping and overlap audits, input logs and source hashes. CI runs the same checks and uploads this evidence. The checker verifies source hashes before capture, after capture and after rendering; changes require a fresh run. Rendering uses up to four worker processes; `--workers 1` runs serially.
 

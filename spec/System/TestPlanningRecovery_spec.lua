@@ -6,7 +6,7 @@ describe("Local planning draft recovery",function()
 	before_each(function()
 		newBuild();directory=os.tmpname();os.remove(directory);assert(require("lfs").mkdir(directory));session=recovery.session;recovery.testDirectory=directory;recovery.cache={}
 	end)
-	after_each(function() for _,kind in ipairs({"filters","atlas","crafting"}) do recovery.clear(build,kind) end;for _,record in ipairs(recovery.listUnique(build)) do recovery.clear(build,"uniqueQuality",record.entry.plan.project.id) end;os.remove(directory);recovery.testDirectory=nil;recovery.cache={};recovery.session=session;recovery.lastError=nil;main.popups={} end)
+	after_each(function() for _,kind in ipairs({"filters","atlas","crafting"}) do recovery.clear(build,kind) end;for _,record in ipairs(recovery.listUnique(build)) do recovery.clear(build,"uniqueQuality",record.entry.plan.project.id) end;require("lfs").rmdir(directory);recovery.testDirectory=nil;recovery.cache={};recovery.session=session;recovery.lastError=nil;main.popups={} end)
 	it("discovers earlier drafts incrementally without changing recovery files",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
 		local p={id="scan-unique",title="Unique",slot="Helmet",startingItem=raw,goals={},steps={}}
