@@ -1224,6 +1224,7 @@ local partialLockActions={veiled_chaos=true,recombine=true,bench=true,bench_rero
 local socketDependent={socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,vaal=true,locus=true,binding=true,gwennen=true,fossil=true,ducat_katakohi=true,recombine=true,recombine_predictable=true}
 function M.methodReason(model,state,method)
 	if state.uniqueTitle then return "Further crafting of transformed unique jewels is not yet modeled. Undo or reset to continue." end
+	if method=="vaal" and M.unrecognizedGildedBaseReason then local reason=M.unrecognizedGildedBaseReason(M.context(model,state),state);if reason then return reason end end
 	if state.socketLayoutUnknown and socketDependent[method] then return "Set the unknown socket layout before using this action." end
 	if M.hasPartialLock(M.context(model,state),state) and not partialLockActions[method] then
 		return "This action is not yet modeled with partial affix locks."

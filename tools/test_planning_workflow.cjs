@@ -73,6 +73,9 @@ async function main(){
   const shadow=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:shadowRaw,action:{method:'vaal'},seed:1},'crafted');
   assert.equal(shadow.nativeCrafting.state.baseImplicitRetained,true);assert.match(shadow.nativeCrafting.itemText,/Lightning Damage from Hits taken as Cold Damage/);assert.match(shadow.nativeCrafting.itemText,/Cold Damage from Hits taken as Lightning Damage/);
   const shadowReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:shadow.nativeCrafting.itemText,limit:5},'inspected');assert.equal(shadowReview.crafting.nativeEngine.initialState.baseImplicitRetained,true);
+  const otherShadowRaw='Rarity: NORMAL\nShadowed Ring\nItem Level: 86\nImplicits: 3\nLeft ring slot: 25% of Cold Damage from Hits taken as Fire Damage\nRight ring slot: 25% of Fire Damage from Hits taken as Cold Damage\nItem sells for much more to vendors';
+  const otherShadowReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:otherShadowRaw,limit:5},'inspected');
+  const otherShadowVaal=otherShadowReview.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='vaal');assert.equal(otherShadowVaal.available,false);assert.match(otherShadowVaal.unavailableReason,/Shadowed Ring variant/);
   const gildedSynthRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 4\n+10 to Strength\n+20 to Dexterity\n+12 to Intelligence\nItem sells for much more to vendors\nSynthesised Item';
   const gildedSynth=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedSynthRaw,action:{method:'vaal'},seed:1},'crafted');
   assert.equal(gildedSynth.nativeCrafting.state.gildedCorruptionReplaced,true);assert.equal(gildedSynth.nativeCrafting.state.synthRetained.length,3);

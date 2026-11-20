@@ -116,11 +116,17 @@ function C.extend(M,A,api)
 		for _,entry in ipairs(imported or {}) do if not model.corruptionIds[entry.id] then model.legacyCorruptionIds[entry.id]=true;model.special[entry.id]=true end end
 		return model
 	end
+	function M.unrecognizedGildedBaseReason(model,state)
+		if model.item.baseName=="Shadowed Ring" and not state.corrupted and state.vendorImplicit and not model.item.synthesised and not state.implicits and #model.item.implicitModLines>0 and not model.baseImplicitTemplates then
+			return "This Shadowed Ring variant cannot be identified by the current base data. Gilded corruption is not modeled for it."
+		end
+	end
 	function M.rollCorrupted(model,state,random,count,retained,replaceAll)
 		-- A present implicit that prevents implicit changes protects the entire
 		-- implicit set, including a Gilded Fossil modifier. The implicit outcome
 		-- still corrupts the item but does not replace or add a modifier.
 		if M.hasProtectedImplicit(model,state) then state.corrupted=true;return end
+		if not replaceAll then local reason=M.unrecognizedGildedBaseReason(model,state);assert(not reason,reason) end
 		local reason=mixedImplicitReason(model,state);assert(not reason,reason)
 		local chosen,groups=copyTable(retained or {}),{}
 		for _,entry in ipairs(chosen) do for _,group in ipairs(metadata[entry.id].groups) do groups[group]=true end end
