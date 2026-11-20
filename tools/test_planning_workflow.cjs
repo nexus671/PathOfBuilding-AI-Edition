@@ -1154,6 +1154,11 @@ async function main(){
   assert.equal(scenePage.examples.nextOffset,2);assert.match(scenePage.examples.note,/not live prices/);assert.equal(scenePage.examples.results[0].sample.AreaLevel,76);assert.equal(scenePage.examples.results[0].sample.ItemLevel,81);
   const nextScenePage=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene:'Preset highlights',seed:3,areaLevel:76,itemLevel:81,offset:2,limit:2},'tested');
   assert.equal(nextScenePage.examples.results[0].index,2);assert.notEqual(nextScenePage.examples.results[0].sample.BaseType,scenePage.examples.results[0].sample.BaseType);
+  const currencyScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene:'Currency',areaLevel:83,itemLevel:86,limit:50},'tested');
+  for(const name of ["Originator's Exalted Orb",'Primordial Exalted Orb']) {
+    const sample=currencyScene.examples.results.find(entry=>entry.sample.BaseType===name)?.sample;
+    assert.ok(sample,`Missing currency test example: ${name}`);assert.equal(sample.Class,'Stackable Currency');assert.equal(sample.DropLevel,undefined);
+  }
   const targetScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene:'Build targets',areaLevel:76,itemLevel:86,limit:2},'tested');
   assert.ok(targetScene.examples.total>0);assert.equal(targetScene.examples.results[0].sample.AreaLevel,76);assert.equal(targetScene.examples.results[0].sample.ItemLevel,86);
   const mapTierScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene:'Map tiers',areaLevel:76,itemLevel:86,offset:15,limit:2},'tested');

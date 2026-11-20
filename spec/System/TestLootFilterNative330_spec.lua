@@ -37,6 +37,15 @@ describe("3.30 native filter update",function()
 			assert.is_nil(library.baseProperties(name,"Normal").DropLevel)
 		end
 	end)
+	it("includes the new orbs in the currency test scene",function()
+		local profile=filters.profile("new-scene","New currency")
+		local scene=library.scene(profile,build,"Currency",0,83,86);local found={}
+		for _,item in ipairs(scene) do found[item.BaseType]=item end
+		for _,name in ipairs({"Originator's Exalted Orb","Primordial Exalted Orb"}) do
+			local item=assert(found[name]);assert.equal("Stackable Currency",item.Class);assert.is_nil(item.DropLevel)
+			assert.equal("Show",filters.simulate(profile,item).action)
+		end
+	end)
 	it("requires review of old profiles and keeps personal rules ahead of the new base",function()
 		local old=filters.profile("old","Old");old.baseCommit="3ab00dd016b00c6be7acfa989baf498842973d54"
 		old.rules={{id="personal",title="Hide thread",text='Hide\n BaseType == "Frayed Thread"',enabled=true}}

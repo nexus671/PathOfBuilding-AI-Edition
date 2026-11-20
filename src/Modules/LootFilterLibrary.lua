@@ -239,6 +239,7 @@ local examples={
 	{"Frayed Thread","Stackable Currency"},{"Breach Thread","Map Fragments"},{"Enshrouded Quiver","Enshrouded Items"},{"Coven Queen's Crown","Viscera"},
 	{"Iron Hat","Helmets","Rare"},{"Vaal Regalia","Body Armours","Rare"},{"Leather Belt","Belts","Unique"},{"Iron Ring","Rings","Magic"},
 	{"Arcane Link","Skill Gems"},{"Orb of Fusing","Stackable Currency"},{"Scroll of Wisdom","Stackable Currency"},{"Chromatic Orb","Stackable Currency"},
+	{"Originator's Exalted Orb","Stackable Currency"},{"Primordial Exalted Orb","Stackable Currency"},
 }
 -- Exact examples from GGG's published 3.30 item-filter changes. These are
 -- deliberately varied test items, not an estimate of encounter drops.
