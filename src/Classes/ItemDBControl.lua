@@ -22,7 +22,7 @@ local ItemDBClass = newClass("ItemDBControl", "ListControl")
 ---@param rect Rect?
 ---@param itemsTab ItemsTab
 ---@param db ItemDBData
----@param dbType "RARE"|"UNIQUE"
+---@param dbType "RARE"|"UNIQUE"|"VISCERA"
 function ItemDBClass:ItemDBControl(anchor, rect, itemsTab, db, dbType)
 	self:ListControl(anchor, rect, 16, "VERTICAL", false)
 	self.itemsTab = itemsTab
@@ -43,17 +43,19 @@ function ItemDBClass:ItemDBControl(anchor, rect, itemsTab, db, dbType)
 		-- Wickerman (3.30)
 		"Head", "Body", "Arm", "Leg"
 	}
-	local baseY = dbType == "RARE" and -22 or -62
+	local baseY = ({ RARE = -22, VISCERA = -42, UNIQUE = -62 })[dbType]
 	self.controls.slot = new("DropDownControl"):DropDownControl({"BOTTOMLEFT",self,"TOPLEFT"}, {0, baseY, 179, 18}, self.slotList, function(index, value)
 		self.listBuildFlag = true
 	end)
 	self.controls.type = new("DropDownControl"):DropDownControl({"LEFT",self.controls.slot,"RIGHT"}, {2, 0, 179, 18}, self.typeList, function(index, value)
 		self.listBuildFlag = true
 	end)
-	if dbType == "UNIQUE" then
+	if dbType == "UNIQUE" or dbType == "VISCERA" then
 		self.controls.sort = new("DropDownControl"):DropDownControl({"BOTTOMLEFT",self,"TOPLEFT"}, {0, baseY + 20, 179, 18}, self.sortDropList, function(index, value)
 			self:SetSortMode(value.sortMode)
 		end)
+	end
+	if dbType == "UNIQUE" then
 		self.controls.league = new("DropDownControl"):DropDownControl({"LEFT",self.controls.sort,"RIGHT"}, {2, 0, 179, 18}, self.leagueList, function(index, value)
 			self.listBuildFlag = true
 		end)
