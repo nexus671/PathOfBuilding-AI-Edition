@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview839" />
+	<Version number="2.68.1-ai.preview840" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1724,7 +1724,7 @@
 	<File name="Classes/GemSelectControl.lua" part="program" sha1="8954e020052121d13122873b578b87e0bb7c60fc" />
 	<File name="Classes/GemTooltip.lua" part="program" sha1="aa0ce7d2eb619fc6b6e55aec9767320bee187343" />
 	<File name="Classes/ImportTab.lua" part="program" sha1="6b81f9ee1e6858b353c8f8a35ac84f937e85a1f3" />
-	<File name="Classes/Item.lua" part="program" sha1="b35ee6a40c86ae49e70fd418129995f744d4da2b" />
+	<File name="Classes/Item.lua" part="program" sha1="02af4e68ba738bd2b49befd5bb205cfa6c604d1c" />
 	<File name="Classes/ItemDBControl.lua" part="program" sha1="4fa25eded7334e82a79437fe6c881933c920d6b8" />
 	<File name="Classes/ItemListControl.lua" part="program" sha1="01546a91c647cb978ffb757cbe75a7afaa2d0cba" />
 	<File name="Classes/ItemSetListControl.lua" part="program" sha1="5ff494b708b1b633f0cf4157e30ad295c1044ed4" />

@@ -9,10 +9,10 @@ use advanced copy text when modifier identity matters.
 When no individual modifier matches but a bounded check finds a possible
 combined explanation, the import error says so; it does not invent the
 individual modifier rolls.
-When a simulated item's prefix and suffix contribute to the same stat, PoB
-keeps their generated lines separate so prefix- and suffix-specific effects
-retain the correct source. Game copies that combine the values can still be
-ambiguous.
+When simulated modifiers contribute to the same stat, PoB keeps their generated
+lines separate if their side, tags or fracture status differ. This preserves
+source-specific scaling and fracture display. Game copies that combine the
+values can still be ambiguous.
 
 Run `python tools/run_headless_lupa.py tools/check_crafting_imports.lua` to
 sample two- and three-modifier plain and labelled imports across five equipment bases. The

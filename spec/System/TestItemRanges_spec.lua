@@ -101,6 +101,22 @@ describe("Independent modifier ranges",function()
 		sameSide.affixes={{id="LocalIncreasedPhysicalDamageReductionRatingPercentAndStunRecovery6",range={1,1}},{id="LocalIncreasedPhysicalDamageReductionRatingPercent6",range=1}}
 		local combined=sim.toItem(hat,sameSide);local found=0;for _,line in ipairs(combined.explicitModLines) do if line.line=="133% increased Armour" and line.prefix then found=found+1 end end
 		assert.equal(1,found)
+		sameSide.affixes[1].fractured=true;local split=sim.toItem(hat,sameSide);local fractured,ordinary
+		for _,line in ipairs(split.explicitModLines) do if line.line=="42% increased Armour" then fractured=line elseif line.line=="91% increased Armour" then ordinary=line end end
+		assert.is_not_nil(fractured);assert.is_not_nil(ordinary);assert.is_true(fractured.fractured);assert.is_falsy(ordinary.fractured)
+	end)
+	it("keeps tag and fracture information when same-side stats overlap",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86");local state=copyTable(m.initial);state.rarity="RARE"
+		state.affixes={{id="IncreasedLife9",range=0.5,fractured=true},{id="LocalBaseArmourAndLife1",range={0.5,0.5}}}
+		local item=sim.toItem(m,state);local flat,hybrid
+		for _,line in ipairs(item.explicitModLines) do
+			if line.line=="+137 to maximum Life" then flat=line end
+			if line.line=="+21 to maximum Life" then hybrid=line end
+		end
+		assert.is_not_nil(flat);assert.is_not_nil(hybrid);assert.is_true(flat.fractured);assert.is_falsy(hybrid.fractured)
+		item.modMagnitudeMods={{tags={"armour"},quality=50}}
+		assert.are.equal(1,item:GetModLineValueScalar(flat,"explicit"));assert.are.equal(1.5,item:GetModLineValueScalar(hybrid,"explicit"))
+		local imported=sim.model(item.raw);assert.equal(2,#imported.initial.affixes)
 	end)
 	it("does not combine matching text from different native stats",function()
 		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
