@@ -1,3 +1,4 @@
+-- cspell:ignore currentline
 -- Run from src with a build XML path. The build is loaded in memory and never saved.
 local fixture = assert(arg[1], "Supply a build XML path")
 local cycles = tonumber(arg[2]) or 5
