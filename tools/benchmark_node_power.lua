@@ -1,6 +1,8 @@
 -- Measure node-power work in a synthetic or explicitly supplied build without saving it.
 local fixture = assert(arg[1], "Supply a build XML path")
 local frames = tonumber(arg[2]) or 30
+local noCapture = arg[3] == "no-capture"
+assert(not arg[3] or noCapture, "Third argument must be no-capture")
 assert(frames >= 1 and frames <= 1000 and frames == math.floor(frames), "Frame count must be 1 to 1000")
 arg = {}
 dofile("HeadlessWrapper.lua")
@@ -12,6 +14,11 @@ loadBuildFromXML(raw, "Read-only node power benchmark")
 assert(not main.popups[1], "The supplied build requires conversion")
 local ui = require("Modules.HeadlessUI").install({width=1280, height=720, interactiveRecovery=true,
 	clock=function() return os.clock()*1000 end})
+if noCapture then
+	DrawImage = function() end
+	DrawImageQuad = function() end
+	DrawString = function() end
+end
 build.viewMode = "TREE"
 ui:bind(build)
 ui:frame()
@@ -31,5 +38,6 @@ for i = 1, frames do
 	frameTimes[i] = (os.clock()-start)*1000
 end
 print("NODE_POWER_RESPONSIVENESS " .. require("dkjson").encode({slicesMs=slices, framesMs=frameTimes,
-	completed=tab.powerBuilder == nil and not tab.powerBuildFlag,
-	limitations="CPU clock measures headless work, including draw-command capture; it is not desktop rendering or frame rate."}))
+	completed=tab.powerBuilder == nil and not tab.powerBuildFlag, drawCapture=not noCapture,
+	limitations=noCapture and "CPU clock measures headless work without drawing calls; it is not desktop rendering or frame rate."
+		or "CPU clock measures headless work, including draw-command capture; it is not desktop rendering or frame rate."}))

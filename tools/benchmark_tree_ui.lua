@@ -7,6 +7,8 @@ local desktopRecovery = forcedRecovery or arg[3] == "desktop-recovery"
 assert(not arg[3] or desktopRecovery, "Third argument must be deferred-recovery or desktop-recovery")
 local profileSkills = arg[4] == "skill-profile"
 assert(not arg[4] or profileSkills, "Fourth argument must be skill-profile")
+local noCapture = arg[5] == "no-capture"
+assert(not arg[5] or noCapture, "Fifth argument must be no-capture")
 arg = {}
 dofile("HeadlessWrapper.lua")
 main.disableDevAutoSave = true
@@ -23,6 +25,12 @@ end
 local bridge = require("Modules.DesktopBuildBridge")
 local revision = bridge.revision(build)
 local ui = require("Modules.HeadlessUI").install({width=1280,height=720,interactiveRecovery=desktopRecovery})
+-- Suppress captured draw calls only for CPU profiling. This is not a renderer benchmark.
+if noCapture then
+	DrawImage = function() end
+	DrawImageQuad = function() end
+	DrawString = function() end
+end
 local recoveryStarted=false
 local recoverySlices
 if desktopRecovery then
@@ -139,4 +147,6 @@ end
 assert(bridge.revision(build) == revision, "The benchmark did not restore the build revision")
 print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,components=performance.rows(build),skillProfile=skillProfile,restored=true,
 	recoveryMode=forcedRecovery and "deferred" or desktopRecovery and "desktop with saved settings" or "build configuration",
-	limitations="Headless CPU timings include draw-command capture, not desktop rendering or frame rate."}))
+	drawCapture=not noCapture,
+	limitations=noCapture and "Headless CPU timings omit drawing calls and do not measure desktop rendering or frame rate."
+		or "Headless CPU timings include draw-command capture, not desktop rendering or frame rate."}))
