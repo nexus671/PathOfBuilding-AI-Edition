@@ -921,6 +921,7 @@ async function main(){
   const nightmareMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare',query:'MapUberModCurses'},'mapData');
   assert.equal(nightmareMap.mapData.nightmare,true);assert.equal(nightmareMap.mapData.total,1);assert.equal(nightmareMap.mapData.currencyOptions.find(entry=>entry.id==='chaos').available,true);
   assert.equal(blightedReroll.mapData.dataPatch,nightmareMap.mapData.patch);assert.deepEqual(blightedReroll.mapData.dataSource,nightmareMap.mapData.source);
+  for(const response of [copiedMap,unidentifiedCopy,mapBases]) { assert.equal(response.mapData.dataPatch,nightmareMap.mapData.patch);assert.deepEqual(response.mapData.dataSource,nightmareMap.mapData.source); }
   const nightmareRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare',selected:[]},action:'chaos',seed:42},'mapData');
   assert.equal(nightmareRoll.mapData.state.selected.length,6);assert.match(nightmareRoll.mapData.note,/unverified assumptions/);
   const nightmareEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare'},options:{wantedGroups:[['MapUberWeakContainsDeliriumMirror']],trials:2,maxAttempts:2,seed:42}},'mapData');

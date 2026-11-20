@@ -67,7 +67,7 @@ function M.searchBases(query,offset,limit,checkpoint)
 	end
 	table.sort(entries,function(a,b) return a.name==b.name and a.id<b.id or a.name<b.name end)
 	local results,total,nextOffset=page(entries,offset,limit)
-	return {results=results,total=total,offset=offset or 0,nextOffset=nextOffset,
+	return {results=results,total=total,offset=offset or 0,nextOffset=nextOffset,dataPatch=M.source().patch,dataSource=copyTable(M.source().source),
 		note="The source includes legacy and special bases; release metadata does not establish current availability."}
 end
 

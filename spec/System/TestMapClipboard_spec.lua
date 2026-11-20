@@ -5,6 +5,7 @@ describe("Map clipboard import",function()
  it("imports a current tier-based map without a separate Map Tier line",function()
   local raw="Item Class: Maps\nRarity: Rare\nVortex Artifice\nMap (Tier 5)\n--------\nQuality (Pack Size): +20% (augmented)\n--------\nItem Level: 68\n--------\nMonsters have 45% increased Area of Effect"..trailer
   local result=parser.parse(raw)
+  local source=require("Modules.MapCraftingData").source();assert.equal(source.patch,result.dataPatch);assert.same(source.source,result.dataSource)
   assert.equal("Metadata/Items/Maps/MapKeyTier5",result.state.baseId)
   assert.equal(5,result.state.tier)
   assert.same({kind="Pack Size",value=20},result.state.quality)

@@ -90,6 +90,7 @@ describe("Map crafting source data",function()
 	end)
 	it("pages base and modifier searches without losing records",function()
 		local first=data.searchBases("Map",0,2);assert.equal(2,#first.results);assert.equal(2,first.nextOffset)
+		assert.equal(data.source().patch,first.dataPatch);assert.same(data.source().source,first.dataSource)
 		local second=data.searchBases("Map",first.nextOffset,2);assert.not_equal(first.results[1].id,second.results[1].id)
 		local base="Metadata/Items/Maps/MapWorldsBeach"
 		local firstMods=data.inspect(base,5,68,{},"",0,1)
