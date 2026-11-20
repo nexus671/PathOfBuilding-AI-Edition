@@ -10,6 +10,9 @@ describe("Filter encounter scenes", function()
 				local scene=build.planningWorkspace.cache.filters.layout.snapshot()
 				assert.equal(name,scene.sceneKind)
 				assert.equal(require("Modules.LootFilterLibrary").scene(nil,nil,name,scene.seed)[1].BaseType,scene.sample.BaseType)
+				assert.is_true(build.planningWorkspace.controls.drop1.width >= 200, "Encounter labels need room at 960px")
+				ui:click("sceneNext");assert.equal(2,build.planningWorkspace.cache.filters.layout.snapshot().scenePage)
+				ui:click("scenePrevious");assert.equal(1,build.planningWorkspace.cache.filters.layout.snapshot().scenePage)
 			end
 		end)
 		ui:restore();main.popups={}
