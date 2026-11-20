@@ -111,4 +111,33 @@ describe("Independent modifier ranges",function()
 		assert.are.equal(1,#state.affixes);assert.are.equal("ExampleA",state.affixes[1].id)
 	end)
 
+	it("rejects four contributors only when their groups and sides can coexist",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local function mod(value,group,kind) return {"("..value.."-"..value..")% increased Example",type=kind,group=group,statOrder={100}} end
+		m.byId.ExampleA=mod(8,"ExampleA","Prefix");m.byId.ExampleB=mod(2,"ExampleB","Prefix")
+		m.byId.ExampleC=mod(2,"ExampleC","Prefix");m.byId.ExampleD=mod(2,"ExampleD","Suffix");m.byId.ExampleE=mod(2,"ExampleE","Suffix")
+		m.mods={{id="ExampleA"},{id="ExampleB"},{id="ExampleC"},{id="ExampleD"},{id="ExampleE"}};m.essences={};m.bench={}
+		m.item.explicitModLines={{line="8% increased Example"}}
+		local import=require("Modules.CraftingImport")
+		local ok,err=pcall(import.resolve,sim,m,{rarity="RARE",affixes={}})
+		assert.is_false(ok);assert.matches("several modifier identities",err,1,true)
+		m.byId.ExampleE.group="ExampleD"
+		local state=import.resolve(sim,m,{rarity="RARE",affixes={}})
+		assert.are.equal(1,#state.affixes);assert.are.equal("ExampleA",state.affixes[1].id)
+	end)
+
+	it("detects alternatives with five or six contributing modifiers",function()
+		for _,count in ipairs({5,6}) do
+			local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+			local function mod(value,group,kind) return {"("..value.."-"..value..")% increased Example",type=kind,group=group,statOrder={100}} end
+			m.byId.ExampleDirect=mod(count,"Direct","Prefix");m.mods={{id="ExampleDirect"}}
+			for i=1,count do
+				local id="Example"..i;m.byId[id]=mod(1,id,i<=3 and "Prefix" or "Suffix");m.mods[#m.mods+1]={id=id}
+			end
+			m.essences={};m.bench={};m.item.explicitModLines={{line=count.."% increased Example"}}
+			local ok,err=pcall(require("Modules.CraftingImport").resolve,sim,m,{rarity="RARE",affixes={}})
+			assert.is_false(ok);assert.matches("several modifier identities",err,1,true)
+		end
+	end)
+
 end)

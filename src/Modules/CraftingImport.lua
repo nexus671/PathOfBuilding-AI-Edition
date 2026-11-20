@@ -123,7 +123,7 @@ function I.resolve(M,model,state)
 	search()
 	-- Native item text can combine contributions from two modifiers into one
 	-- displayed stat. A direct line match alone is therefore not proof that
-	-- the modifier assignment is unique. Check two- and three-contributor integer single-stat overlaps
+	-- the modifier assignment is unique. Check integer single-stat overlaps
 	-- against the rest of the item before accepting that assignment.
 	local function hasCombinedAlternative()
 		local examined=0
@@ -220,6 +220,50 @@ function I.resolve(M,model,state)
 					end
 				end end end end
 			end
+			-- Four or more combined contributions are unusual but can still
+			-- make an apparently exact single-modifier match ambiguous.
+			local slots=caps.total-counts.Prefix-counts.Suffix
+			if slots>=4 then for _,list in pairs(byPattern) do
+				local selected,ids,partGroups,sides={},{},{},{Prefix=0,Suffix=0}
+				local lo,hi=0,0
+				for _,part in ipairs(list) do lo=math.min(lo,part.low,part.high);hi=math.max(hi,part.low,part.high) end
+				local function searchCombined(start,low,high,order)
+					budget()
+					local remaining=slots-#selected;local value=list[1].value
+					if value<low+remaining*lo or value>high+remaining*hi then return false end
+					if #selected>=4 and value>=low and value<=high then
+						used[rowIndex]=true;for group in pairs(partGroups) do occupied[group]=true end;for side,n in pairs(sides) do counts[side]=counts[side]+n end
+						local rest={};for _,part in ipairs(selected) do for index,line in ipairs(part.mod) do if index~=part.line then rest[#rest+1]={line=line,kind=part.mod.type} end end end
+						local function matchRest(index)
+							if index>#rest then return cover() end
+							local part=rest[index]
+							for i,other in ipairs(rows) do if not used[i] and sideFits(other,part.kind) and I.inferRange(part.line,other.text) then
+								used[i]=true;local found=matchRest(index+1);used[i]=nil;if found then return true end
+							end end
+							return false
+						end
+						local found=matchRest(1)
+						for side,n in pairs(sides) do counts[side]=counts[side]-n end;for group in pairs(partGroups) do occupied[group]=nil end;used[rowIndex]=nil
+						if found then return true end
+					end
+					if remaining==0 then return false end
+					for i=start,#list do
+						local part=list[i];local partOrder=part.mod.statOrder and part.mod.statOrder[part.line]
+						local legal=partOrder and (not order or order==partOrder) and not ids[part.id] and counts[part.mod.type]+sides[part.mod.type]<caps[part.mod.type]
+						for _,group in ipairs(groups(part.id)) do if occupied[group] or partGroups[group] then legal=false end end
+						if legal then
+							selected[#selected+1]=part;ids[part.id]=true;sides[part.mod.type]=sides[part.mod.type]+1
+							for _,group in ipairs(groups(part.id)) do partGroups[group]=true end
+							local found=searchCombined(i+1,low+math.min(part.low,part.high),high+math.max(part.low,part.high),partOrder)
+							for _,group in ipairs(groups(part.id)) do partGroups[group]=nil end
+							sides[part.mod.type]=sides[part.mod.type]-1;ids[part.id]=nil;selected[#selected]=nil
+							if found then return true end
+						end
+					end
+					return false
+				end
+				if searchCombined(1,0,0,nil) then return true end
+			end end
 		end end
 		return false
 	end

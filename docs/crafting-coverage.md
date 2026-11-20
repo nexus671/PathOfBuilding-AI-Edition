@@ -2,9 +2,9 @@
 # Crafting coverage and rules
 
 Plain item text can combine values from several modifiers. The importer checks
-for alternative pairs and triples of integer single-stat ranges before accepting an exact
-line match, and rejects ambiguous items. This does not yet cover every possible
-combination, including more than three contributors or complex multi-stat values;
+for alternative combinations of integer single-stat ranges before accepting an exact
+line match, and rejects ambiguous items. The search is bounded and checks one
+combined row at a time; multiple combined rows or complex multi-stat values remain incomplete;
 use advanced copy text when modifier identity matters.
 
 Run `python tools/run_headless_lupa.py tools/check_crafting_imports.lua` to
