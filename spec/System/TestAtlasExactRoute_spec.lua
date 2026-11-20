@@ -42,6 +42,18 @@ describe("Exact small Atlas routes",function()
 			assert.equal(expected,actual and count or nil);assertConnected(tree,case[1],case[2],case[3],actual)
 		end
 	end)
+	it("explains unreachable targets before exploring route orders",function()
+		local p={id="blocked-route",title="Blocked",version="3.30.0-preview",budget=150,nodes={},notes=""}
+		local tree=atlas.tree(p.version);local avoid=copyTable(tree.nodes[tree.start].links);local target
+		local excluded={};for _,id in ipairs(avoid) do excluded[id]=true end
+		for id,node in pairs(tree.nodes) do if id~=tree.start and not excluded[id] and node.name and node.name~="" then target=id;break end end
+		assert.is_truthy(target);local checkpoints=0
+		local ok,why=pcall(atlas.connectOptimized,p,{target},avoid,{checkpoint=function() checkpoints=checkpoints+1 end})
+		assert.is_false(ok);assert.is_truthy(tostring(why):find(tree.nodes[target].name,1,true));assert.is_truthy(tostring(why):find("avoided nodes",1,true));assert.equal(0,checkpoints)
+		p.desired={target};p.avoided=avoid;local jobs=require("Modules.AtlasTargets");local owner={};local job=jobs.start(owner,p)
+		while job.thread do jobs.tick(owner,true) end
+		assert.equal("Could not find a route",job.status);assert.is_truthy(job.error:find(tree.nodes[target].name,1,true));assert.is_truthy(job.error:find("avoided nodes",1,true));jobs.reset(owner)
+	end)
 	it("solves six distinct targets on the bundled tree and retains checkpoints",function()
 		local p={id="six",title="Six",version="3.30.0-preview",budget=150,nodes={},notes=""}
 		local ids={53175,34352,14203,63753,57123,55003};local checkpoints=0

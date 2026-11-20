@@ -312,6 +312,21 @@ function M.connectOptimized(plan,targets,avoid,options)
 	-- Existing allocations and duplicate targets cannot affect the route. Drop
 	-- them before ordering and before applying the exact-solver target limit.
 	targets=pending
+	-- Detect disconnected targets before trying many route orders. This also
+	-- gives the user the specific target rather than a generic budget error.
+	if #targets>0 then
+		local reached,queue={},sorted(allocated);for _,id in ipairs(queue) do reached[id]=true end
+		local index=1
+		while index<=#queue do
+			if options.checkpoint and index%128==0 then options.checkpoint({phase="reachability",target=0,targets=#targets}) end
+			local current=queue[index];index=index+1
+			for _,id in ipairs(tree.nodes[current].links) do if not blocked[id] and not reached[id] then reached[id]=true;queue[#queue+1]=id end end
+		end
+		for _,id in ipairs(targets) do if not reached[id] then
+			local name=tree.nodes[id].name;if not name or name=="" then name="Atlas node "..id end
+			error("Cannot reach "..name.." with the current avoided nodes.",0)
+		end end
+	end
 	local solver=require("Modules.AtlasExactRoute")
 	-- Bound added connection work as target sets grow.
 	local refineBudget=#targets>solver.maxTargets and options.refine~=false and math.min(24,math.max(1,math.floor(168/#targets)),#targets*(#targets-1)/2) or 0
