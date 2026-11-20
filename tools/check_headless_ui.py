@@ -92,7 +92,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1947, f"Expected 1947 UI frames, found {len(paths)}"
+    assert len(paths) == 1953, f"Expected 1953 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         audit = json.loads((frames / f"{width}-filter-error-audit.json").read_text())
         audit_text = " ".join(c.get("text", "") for c in audit["commands"] if c.get("kind") == "text")

@@ -528,6 +528,11 @@ function M.poll(build, force)
 		end
 		assert(not require("Modules.CraftingTasks").job,"Finish or cancel the active crafting job first")
 		assert(not require("Modules.JourneyUpgrades").job,"Finish or cancel upgrade measurements first")
+		if request.kind=="review_same_name_rares" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local result=require("Modules.VendorRarePairs").review(request.items)
+			M.status={id=request.id,status="vendorReview",vendorReview=result};M.publishState();return
+		end
 		if request.kind=="journeyUpgrades" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh Journey context.")
 			local session=M.session

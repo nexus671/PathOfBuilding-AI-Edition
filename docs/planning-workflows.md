@@ -2,6 +2,10 @@
 
 Open AI builds, Atlas, Crafting or Journey to enter the planning workspace. **Tools** in the top bar opens performance diagnostics and portable bundles.
 
+## Same-name rare review
+
+**Tools > Same-name rare review** compares identified rare items pasted from the game. Matching pairs can yield Chaos Orbs and triples can yield Exalted Orbs under the [3.30 vendor recipe](https://www.pathofexile.com/forum/view-thread/4013680). The review prioritizes triples and then pairs without reusing an entry. Each paste counts as a separate item; verify the actual items and vendor offer in game. This is a session-only review, does not read the stash, and accepts copied items up to a 4 MiB total per review. The `review_same_name_rares` MCP tool accepts copied item text and returns the same grouping for AI clients; its request shares the 256 KiB desktop bridge limit.
+
 ## Performance and background upgrades
 
 **Tools > Performance diagnostics** shows observed last, mean and worst processing times, ordered by the worst slice. Main calculation, detailed calculation and comparison setup are shown separately within the overall build recalculation. Refresh after an interaction, or copy the timings when reporting a slowdown. Reset clears session measurements only.

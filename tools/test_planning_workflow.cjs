@@ -49,6 +49,9 @@ async function main(){
   let context=(await call('get_build_context')).context;const baseLife=context.stats.LifeUnreserved;
   await host('request-test');await call('get_build_connection');await host('tick',1);
   const proof=await host('connection-proof');assert.equal(proof.client,'planning-workflow-test');assert.equal(proof.tested,true);assert.equal(proof.synced,true);
+  const rareCopy='Item Class: Helmets\nRarity: Rare\nVortex Visage\nIron Hat\n--------\nItem Level: 80';
+  const rareReview=await queued('review_same_name_rares',{baseRevision:context.revision,items:[rareCopy,rareCopy,rareCopy]},'vendorReview');
+  assert.equal(rareReview.vendorReview.groups[0].name,'Vortex Visage');assert.equal(rareReview.vendorReview.groups[0].exalted,1);assert.equal(rareReview.vendorReview.groups[0].chaos,0);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
   const gildedBaseRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+16% to Item Rarity\nItem sells for much more to vendors';
   const gildedBase=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedBaseRaw,action:{method:'vaal'},seed:1},'crafted');

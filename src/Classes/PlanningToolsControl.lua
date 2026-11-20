@@ -85,8 +85,9 @@ end
 function M.Open(build)
 	require("Classes.PlanningBrowserControl").Open("Planning tools",{
 		{id="performance",label="Performance diagnostics",details={"See observed calculation and background-slice times. Refresh, copy or reset the session measurements."}},
+		{id="vendor",label="Same-name rare review",details={"Paste identified rares to find possible Chaos and Exalted Orb vendor offers.","Each paste represents one item; review the vendor offer in game."}},
 		{id="bundle",label="Export / import complete bundle",details={"Carry the character, crafting guides, working checkpoints, Atlas stages and Journey plans together.","Imports open through native review as a new build."}},
 		{id="recovery",label="Recover local drafts",details={"Resume an interrupted filter, Atlas or crafting draft.","Earlier-session drafts are preserved until reviewed."}},
-	},{action="Open",closeOnChoose=false,choose=function(entry) main:ClosePopup();if entry.id=="performance" then M.Performance(build) elseif entry.id=="recovery" then M.Recovery(build) else M.Bundle(build) end end})
+	},{action="Open",closeOnChoose=false,choose=function(entry) main:ClosePopup();if entry.id=="vendor" then require("Classes.VendorRarePairsControl").Open() elseif entry.id=="performance" then M.Performance(build) elseif entry.id=="recovery" then M.Recovery(build) else M.Bundle(build) end end})
 end
 return M
