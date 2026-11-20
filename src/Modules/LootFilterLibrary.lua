@@ -331,6 +331,29 @@ local legionExamples={
 	{"Timeless Templar Emblem","Map Fragments"},{"Timeless Vaal Emblem","Map Fragments"},
 	{"Diviner's Incubator","Incubators"},{"Ornate Incubator","Incubators"},{"Legion Thread","Map Fragments"},
 }
+-- Named encounter comparisons use pinned base classes, not drop distributions.
+local deliriumExamples={
+ {"Simulacrum Splinter","Stackable Currency"},{"Simulacrum","Map Fragments"},
+ {"Fine Delirium Orb","Stackable Currency"},{"Diviner's Delirium Orb","Stackable Currency"},
+ {"Fossilised Delirium Orb","Stackable Currency"},{"Blighted Delirium Orb","Stackable Currency"},
+ {"Delirium Scarab","Map Fragments"},{"Delirium Scarab of Delusions","Map Fragments"},
+ {"Delirium Scarab of Mania","Map Fragments"},{"Delirium Scarab of Neuroses","Map Fragments"},
+ {"Delirium Scarab of Paranoia","Map Fragments"},
+}
+local harvestExamples={
+ {"Wild Crystallised Lifeforce","Stackable Currency"},{"Vivid Crystallised Lifeforce","Stackable Currency"},
+ {"Primal Crystallised Lifeforce","Stackable Currency"},{"Sacred Crystallised Lifeforce","Stackable Currency"},
+ {"Sacred Blossom","Map Fragments"},{"Harvest Scarab","Map Fragments"},
+ {"Harvest Scarab of Cornucopia","Map Fragments"},{"Harvest Scarab of Doubling","Map Fragments"},
+}
+local ritualExamples={
+ {"Ritual Vessel","Stackable Currency"},{"Omen of Fortune","Stackable Currency"},
+ {"Omen of Connections","Stackable Currency"},{"Omen of the Jeweller","Stackable Currency"},
+ {"Omen of Trichromatism","Stackable Currency"},{"Omen of Amelioration","Stackable Currency"},
+ {"Ritual Thread","Map Fragments"},{"Ritual Scarab of Abundance","Map Fragments"},
+ {"Ritual Scarab of Corpses","Map Fragments"},{"Ritual Scarab of Selectiveness","Map Fragments"},
+ {"Ritual Scarab of Wisps","Map Fragments"},
+}
 -- Deliberate test items for the campaign recipe policies, not a simulated set
 -- of actual drops. Socket layouts are explicit so their preview is decisive.
 local vendorExamples={
@@ -387,7 +410,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		end end
 		return list
 	end
-	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Blight & oils"]=blightExamples,["Breach"]=breachExamples,["Legion"]=legionExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
+	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Blight & oils"]=blightExamples,["Breach"]=breachExamples,["Legion"]=legionExamples,["Delirium"]=deliriumExamples,["Harvest"]=harvestExamples,["Ritual"]=ritualExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
 		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end
 		applyBaseProperties(item)

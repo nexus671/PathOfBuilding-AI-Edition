@@ -156,6 +156,16 @@ describe("Visual filter catalogue",function()
 			assert.equal(scene[2].BaseType,rotated[1].BaseType);assert.same(rotated,library.scene(profile,build,case.kind,1,76,81))
 		end
 	end)
+	it("offers pinned encounter examples to users and AI",function()
+		local profile=filters.profile("encounters","Encounters")
+		local file=assert(io.open("Data/LootFilters/base-classes.json","rb"));local raw=file:read("*a");file:close();local classes=assert(require("dkjson").decode(raw)).classes
+		for _,case in ipairs({{"Delirium",11,"Simulacrum Splinter"},{"Harvest",8,"Wild Crystallised Lifeforce"},{"Ritual",11,"Ritual Vessel"}}) do
+			local scene=library.scene(profile,build,case[1],0,76,81);assert.equal(case[2],#scene);assert.equal(case[3],scene[1].BaseType)
+			for _,item in ipairs(scene) do assert.equal(classes[item.BaseType],item.Class);assert.equal(76,item.AreaLevel);assert.equal(81,item.ItemLevel) end
+			local rotated=library.scene(profile,build,case[1],1,76,81);assert.equal(scene[2].BaseType,rotated[1].BaseType)
+			local page=filters.simulateScene(profile,case[1],0,76,81,1,2);assert.equal(case[2],page.total);assert.equal(scene[2].BaseType,page.results[1].sample.BaseType)
+		end
+	end)
 	it("compares Blight oils and explicitly flagged map variants",function()
 		local profile=filters.profile("blight","Blight");local scene=library.scene(profile,build,"Blight & oils",0,76,81)
 		assert.equal(16,#scene);assert.equal("Clear Oil",scene[1].BaseType);assert.equal("Stackable Currency",scene[1].Class)

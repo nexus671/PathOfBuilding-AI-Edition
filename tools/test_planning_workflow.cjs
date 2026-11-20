@@ -1322,6 +1322,10 @@ async function main(){
   const blightScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:blightProfile,scene:'Blight & oils',areaLevel:76,itemLevel:86,offset:14,limit:2},'tested');
   assert.equal(blightScene.examples.total,16);assert.equal(blightScene.examples.results[0].sample.BlightedMap,true);assert.equal(blightScene.examples.results[0].sample.UberBlightedMap,false);
   assert.equal(blightScene.examples.results[1].sample.UberBlightedMap,true);assert.equal(blightScene.examples.results[1].result.action,'Hide');
+  for (const [scene,first,total] of [['Delirium','Simulacrum Splinter',11],['Harvest','Wild Crystallised Lifeforce',8],['Ritual','Ritual Vessel',11]]) {
+    const encounter=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene,seed:0,areaLevel:76,itemLevel:86,limit:2},'tested');
+    assert.equal(encounter.examples.total,total);assert.equal(encounter.examples.results[0].sample.BaseType,first);assert.equal(encounter.examples.results[0].sample.AreaLevel,76);
+  }
   const socketProfile={id:'socket-rules',title:'Socket comparisons',preset:'early_maps',strictness:2,rules:[{id:'socket-rule',title:'Socket rule',enabled:true,text:'Hide\n SocketGroup > 5GGG'}]};
   const colourOnlyProfile={...socketProfile,rules:[{...socketProfile.rules[0],text:'Hide\n Sockets >= 4'}]};
   const colourOnly=await queued('test_loot_filter',{baseRevision:context.revision,profile:colourOnlyProfile,sample:{BaseType:'Iron Hat',SocketColours:'R-G B A'}},'tested');
