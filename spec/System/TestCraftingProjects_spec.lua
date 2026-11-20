@@ -70,6 +70,16 @@ describe("Crafting projects", function()
 		assert.equal("Craft step 76",loaded.projects[1].steps[76].action)
 		local bad=project();bad.steps={[1]={action="One"},[3]={action="Three"}};assert.has_error(function() projects.validate(bad) end)
 	end)
+	it("finds and updates any long-guide step without changing its instructions",function()
+		local entry=project();entry.steps={};for i=1,76 do entry.steps[i]={action="Craft step "..i,stopWhen="Stop "..i,onFailure="Recover "..i} end
+		local store=build.savers.CraftingProjects;store:Upsert(entry)
+		local parent=require("Classes.CraftingProjectControl").Open(build);assert.is_true(parent.browseSteps:IsEnabled());parent.browseSteps:Click()
+		local c=main.popups[1].controls;c.search:SetText("Recover 76",true);assert.equal(1,#c.results.list);c.results.planningSelect(c.results.list[1])
+		assert.equal("Mark done",c.toggle.label());c.toggle:Click();assert.is_true(store.projects[1].steps[76].done);assert.equal("Recover 76",store.projects[1].steps[76].onFailure)
+		assert.equal("Mark to do",c.toggle.label());c.toggle:Click();assert.is_false(store.projects[1].steps[76].done)
+		c.status:SelByValue("Done");c.status.selFunc();assert.is_nil(c.results.list[1].index)
+		local xml={};store:Save(xml);local reopened=projects.new(build);reopened:Load(xml);assert.is_false(reopened.projects[1].steps[76].done)
+	end)
 	it("keeps size limits and preserves malformed project collections",function()
 		local store=build.savers.CraftingProjects
 		for _,raw in ipairs({'{"schemaVersion":1,"projects":{}}','{"schemaVersion":1,"projects":{"one":{}}}','{"schemaVersion":1,"projects":[null]}','{"schemaVersion":1,"projects":null}',string.rep(" ",2*1024*1024).."{}"}) do

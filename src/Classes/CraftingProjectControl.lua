@@ -105,7 +105,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 	if selection then for index,entry in ipairs(store.projects) do if entry.id==selection then controls.projects:SelByValue(index,"val") end end end
 	controls.edit=button(682,28,182,"Edit selected project",function() Panel.Edit(build,selected(),nil,nil,layout) end)
 	controls.edit.enabled=#list > 0
-	controls.details=new("TextListControl"):TextListControl({"TOPLEFT",nil,"TOPLEFT"},{16,68,848,height-224},nil,{})
+	controls.details=new("TextListControl"):TextListControl({"TOPLEFT",nil,"TOPLEFT"},{16,68,848,height-260},nil,{})
 	refresh()
 	controls.new=button(16,height-138,160,"New project",function() Panel.Edit(build,nil,displayItem and displayItem.raw,displaySlot,layout) end)
 	controls.copy=button(192,height-138,160,"Copy plan",function() Copy(json.encode(selected(),{indent=true})) end)
@@ -143,6 +143,11 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 		for i=#project.steps,1,-1 do if project.steps[i].done then project.steps[i].done=false; break end end
 		store:Upsert(project); refresh()
 	end)
+	controls.browseSteps=button(16,height-188,200,"Browse guide steps",function()
+		require("Classes.CraftingGuideStepsControl").Open(build,selected().id,refresh)
+	end)
+	controls.browseSteps.enabled=function() return #list>0 and #selected().steps>0 end
+	controls.browseSteps.tooltipText="Find a step, review its stop and failure notes, and mark it done or to do."
 	for _,name in ipairs({"copy","coe","native","preview","inspect","attach","copyExport","done","undoStep"}) do controls[name].enabled=#list > 0 end
 	controls.native.enabled=function() if #list==0 then return false end;local reason=workbenchReason(selected());return not reason or cachedUniqueQuality end
 	controls.native.tooltipText=function() if #list==0 then return "Select a project to open its workbench." end;local reason=workbenchReason(selected());return cachedUniqueQuality and "Preview supported quality and socket crafts for this unique item." or reason or "Open the local crafting workbench." end
@@ -193,6 +198,8 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 			controls[key].x=16+(index-1)*224;controls[key].y=height-56;controls[key].width=212
 			controls[key].shown=function() return controls.libraryPage:GetSelValue()=="Plan" end
 		end
+		controls.browseSteps.x=464;controls.browseSteps.y=height-56;controls.browseSteps.width=200
+		controls.browseSteps.shown=function() return #list>0 and controls.libraryPage:GetSelValue()=="Plan" end
 		for index,key in ipairs({"copy","import","inspect","attach","copyExport","coe"}) do
 			controls[key].x=16+(index-1)%3*math.floor((width-32)/3);controls[key].y=164+math.floor((index-1)/3)*62;controls[key].width=math.floor((width-64)/3);controls[key].height=32
 			controls[key].shown=function() return controls.libraryPage:GetSelValue()=="Sharing" end
