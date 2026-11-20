@@ -313,6 +313,23 @@ local heistExpeditionExamples={
 	{"Exotic Coinage","Stackable Currency"},{"Scrap Metal","Stackable Currency"},
 	{"Lesser Broken Circle Artifact","Stackable Currency"},{"Lesser Black Scythe Artifact","Stackable Currency"},
 }
+-- Comparison samples from the pinned base/class catalogue; presence in the
+-- catalogue does not establish current drop availability or encounter odds.
+local breachExamples={
+	{"Splinter of Xoph","Stackable Currency"},{"Splinter of Tul","Stackable Currency"},
+	{"Splinter of Esh","Stackable Currency"},{"Splinter of Uul-Netol","Stackable Currency"},
+	{"Splinter of Chayula","Stackable Currency"},{"Chayula's Flawless Breachstone","Breachstones"},
+	{"Breach Ring","Rings","Rare"},{"Breach Thread","Map Fragments"},
+	{"Breach Scarab of the Dreamer","Map Fragments"},{"Breach Scarab of Instability","Map Fragments"},
+}
+local legionExamples={
+	{"Timeless Karui Splinter","Stackable Currency"},{"Timeless Maraketh Splinter","Stackable Currency"},
+	{"Timeless Eternal Empire Splinter","Stackable Currency"},{"Timeless Templar Splinter","Stackable Currency"},
+	{"Timeless Vaal Splinter","Stackable Currency"},{"Timeless Karui Emblem","Map Fragments"},
+	{"Timeless Maraketh Emblem","Map Fragments"},{"Timeless Eternal Emblem","Map Fragments"},
+	{"Timeless Templar Emblem","Map Fragments"},{"Timeless Vaal Emblem","Map Fragments"},
+	{"Diviner's Incubator","Incubators"},{"Ornate Incubator","Incubators"},{"Legion Thread","Map Fragments"},
+}
 -- Deliberate test items for the campaign recipe policies, not a simulated set
 -- of actual drops. Socket layouts are explicit so their preview is decisive.
 local vendorExamples={
@@ -369,7 +386,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		end end
 		return list
 	end
-	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Blight & oils"]=blightExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
+	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Blight & oils"]=blightExamples,["Breach"]=breachExamples,["Legion"]=legionExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
 		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end
 		applyBaseProperties(item)

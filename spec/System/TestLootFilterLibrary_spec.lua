@@ -535,4 +535,20 @@ describe("Visual filter catalogue",function()
 		local p=filters.profile("test","Test");p.template='Hide\nShow\n Continue'
 		local entries=library.catalog(p);assert.equal("Hide remaining items",entries[1].rule.title);assert.equal("Style remaining items",entries[2].rule.title)
 	end)
+	it("provides Breach and Legion scenes to filter simulation",function()
+		local profile=filters.profile("encounters","Encounters")
+		for _,case in ipairs({{kind="Breach",count=10,base="Splinter of Chayula",class="Stackable Currency"},
+			{kind="Legion",count=13,base="Timeless Maraketh Emblem",class="Map Fragments"}}) do
+			local scene=library.scene(profile,build,case.kind,0,76,81);assert.equal(case.count,#scene)
+			local found;for _,item in ipairs(scene) do
+				assert.equal(76,item.AreaLevel);assert.equal(81,item.ItemLevel)
+				if item.BaseType==case.base then found=item end
+			end
+			assert.equal(case.class,assert(found).Class)
+			local rule=parser.parse('Show\n Class == "'..case.class..'"\n BaseType == "'..case.base..'"\nHide')
+			assert.equal("Show",parser.simulate(rule,found).action)
+			local page=filters.simulateScene(profile,case.kind,0,76,81,0,3);assert.equal(case.count,page.total)
+		end
+	end)
+
 end)

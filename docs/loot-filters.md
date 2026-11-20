@@ -128,3 +128,5 @@ GGG's [Covens of Umbra item-filter announcement](https://www.pathofexile.com/for
 Maintainers run `python tools/update_loot_filter_data.py --commit <immutable-commit>` to refresh templates and the announcement snapshot. Source URLs and SHA-256 hashes ship beside the data. Refreshes travel through fork releases; there is no live price feed or FilterBlade subscription. Profiles record their base revision and require an explicit **Audit / update** after the bundled template changes. Personal rules and original imported text are retained.
 
 Copied cluster jewels with a visible `Adds X Passive Skills (enchant)` line supply `EnchantmentPassiveNum` to filter tests. A visible enchant marker also establishes `AnyEnchantment`; missing markers remain unknown. Enchantment identity is not inferred from its displayed text.
+
+The **Breach** and **Legion** simulator scenes provide deterministic comparison samples from the bundled item catalogue, including splinters, fragments and related items. They do not predict current drop availability, encounter rates or item values.
