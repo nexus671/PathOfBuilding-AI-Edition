@@ -62,6 +62,8 @@ describe("Native crafting simulation replay",function()
 		c.trials:SetText("2");c.budget:SetText("1");c.baseCost:SetText("3");c.runRecipe:Click();finish()
 		local snapshot=layout.snapshot();local original=snapshot.lastSimulation
 		assert.are.equal(4,original.routeCounts[1].pricedCost);assert.are.equal(0,original.routeCounts[1].unpricedComponents)
+		local recovered=require("Modules.PlanningRecovery").clean("crafting",{plan=snapshot}).plan
+		assert.are.same(snapshot.simulationRequest,recovered.simulationRequest)
 		main:ClosePopup();layout.workbench=snapshot;c=panel.Open(build,p,layout)
 		assert.are.equal(4,layout.snapshot().lastSimulation.routeCounts[1].pricedCost)
 		c.price:SetText("99");c.seed:SetText("19");c.distribution:Click();main.popups[1].controls.moreTrials:Click();finish()
