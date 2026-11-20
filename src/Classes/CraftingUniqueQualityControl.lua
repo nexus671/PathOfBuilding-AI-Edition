@@ -88,13 +88,14 @@ function M.Open(build,project,layout,snapshot)
 		if not guideCache then local steps,reason,signature=calculateGuideSteps();guideCache={steps=steps,reason=reason,signature=signature} end
 		return guideCache.steps,guideCache.reason,guideCache.signature
 	end
-	local linkReason,benchLinkReason,whiteReason,updateCurrency,updateIcons
+	local linkReason,benchLinkReason,whiteReason,omenJewellerReason,updateCurrency,updateIcons
 	local function refresh(persist)
 		guideCache=nil;reviewCache=nil;traceCache=nil
 		item,info=unique.inspect(raw);show(item)
 		linkReason=unique.linkReason(raw)
 		benchLinkReason=unique.linkReason(raw,"socket_bench")
 		whiteReason=unique.whiteReason(raw)
+		omenJewellerReason=unique.omenReason(raw)
 		c.status.label="^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
 		c.apply.label="Use "..info.resource
 		if updateCurrency then updateCurrency() end
@@ -135,8 +136,8 @@ function M.Open(build,project,layout,snapshot)
 	end
 	c.socketCount.width=130
 	button("omenJeweller",130,"Omen + Jeweller",function() local result=unique.socketCount(raw,unique.omenCount(item),"omen_jeweller");history[#history+1]=raw;actions[#actions+1]="omen_jeweller";redo={};raw=result.itemText;refresh(true) end)
-	c.omenJeweller.x=156;c.omenJeweller.width=130;c.omenJeweller.enabled=function() return not unique.omenReason(raw) end
-	c.omenJeweller.tooltipText=function() return unique.omenReason(raw) or "Adds white sockets up to the natural limit using an Omen of the Jeweller and a Jeweller's Orb." end
+	c.omenJeweller.x=156;c.omenJeweller.width=130;c.omenJeweller.enabled=function() return not omenJewellerReason end
+	c.omenJeweller.tooltipText=function() return omenJewellerReason or "Adds white sockets up to the natural limit using an Omen of the Jeweller and a Jeweller's Orb." end
 	c.socketCount.enabled=function() return socketCountAvailability() end
 	c.socketCount.tooltipText=function() local allowed,reason=socketCountAvailability();return allowed and "Preview a socket-count bench craft and its cost." or reason end
 	button("apply",198,"Use quality currency",function() local result=unique.apply(raw);history[#history+1]=raw;actions[#actions+1]="quality";redo={};raw=result.itemText;refresh(true) end)

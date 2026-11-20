@@ -204,7 +204,11 @@ function M.omenReason(raw)
 end
 
 function M.socketCount(raw,count,method)
-	if method=="omen_jeweller" then local reason=M.omenReason(raw);assert(not reason,reason) end
+	assert(method==nil or method=="omen_jeweller","Unsupported unique socket-count method")
+	if method=="omen_jeweller" then
+		local reason=M.omenReason(raw);assert(not reason,reason)
+		assert(count==M.omenCount(M.inspect(raw)),"The Jeweller Omen must use the maximum natural socket count")
+	end
 	local reason=M.socketCountReason(raw,count);assert(not reason,reason)
 	local before=M.inspect(raw);local parts={}
 	for i=1,count do
