@@ -103,6 +103,17 @@ describe("Crafting projects", function()
 		local edit=main.popups[1].controls;edit.action:SetText("Revised instruction");edit.stop:SetText("Revised goal");edit.saveStep:Click()
 		local step=store.projects[1].steps[1];assert.equal("Revised instruction",step.action);assert.equal("Revised goal",step.stopWhen);assert.equal("Original recovery",step.onFailure);assert.is_true(step.done)
 	end)
+	it("undoes a step removal without overwriting later project changes",function()
+		local entry=project();entry.steps={{action="First",done=true,stopWhen="Keep this",onFailure="Recovery"},{action="Second"}}
+		local store=build.savers.CraftingProjects;store:Upsert(entry)
+		local browser=require("Classes.CraftingGuideStepsControl").Open(build,entry.id);browser.results.planningSelect(browser.results.list[1]);browser.remove:Click();main.popups[1].controls.confirm:Click()
+		assert.equal(1,#store.projects[1].steps);assert.is_true(browser.undoRemove:IsEnabled())
+		local updated=copyTable(store.projects[1]);updated.notes="Updated independently";store:Upsert(updated);browser.undoRemove:Click()
+		assert.equal(2,#store.projects[1].steps);assert.is_true(store.projects[1].steps[1].done);assert.equal("Recovery",store.projects[1].steps[1].onFailure);assert.equal("Updated independently",store.projects[1].notes)
+		browser.results.planningSelect(browser.results.list[1]);browser.remove:Click();main.popups[1].controls.confirm:Click()
+		updated=copyTable(store.projects[1]);updated.steps[1].action="Changed later";store:Upsert(updated);browser.undoRemove:Click()
+		assert.equal("Crafting guide",main.popups[1].title);assert.equal(1,#store.projects[1].steps);assert.equal("Changed later",store.projects[1].steps[1].action)
+	end)
 	it("keeps size limits and preserves malformed project collections",function()
 		local store=build.savers.CraftingProjects
 		for _,raw in ipairs({'{"schemaVersion":1,"projects":{}}','{"schemaVersion":1,"projects":{"one":{}}}','{"schemaVersion":1,"projects":[null]}','{"schemaVersion":1,"projects":null}',string.rep(" ",2*1024*1024).."{}"}) do

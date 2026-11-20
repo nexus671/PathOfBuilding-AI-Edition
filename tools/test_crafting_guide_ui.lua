@@ -25,9 +25,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(main.popups[1].title=="Remove crafting step","Removing a step must be confirmed")
 	ui:frame():write(directory.."/"..size[1].."-guide-steps-remove.json");ui:click("confirm")
 	assert(#store.projects[1].steps==175,"The selected step was not removed")
+	ui:frame():write(directory.."/"..size[1].."-guide-steps-undo.json");ui:click("undoRemove")
+	assert(#store.projects[1].steps==176 and store.projects[1].steps[176].onFailure=="Recover 176","Undo did not restore the step and its notes")
 	ui:click("close");ui:click("close");ui:click("aiBuild");build.planningWorkspace:Show("crafting");ui:click("tab_plan")
 	ui:frame():write(directory.."/"..size[1].."-guide-steps-workspace.json")
 	ui:click("browseSteps");assert(main.popups[1].title=="Crafting guide steps","Workspace guide browser did not open")
 	ui:restore();main.popups={}
 end
-print("CRAFTING_GUIDE_UI_OK",18)
+print("CRAFTING_GUIDE_UI_OK",21)

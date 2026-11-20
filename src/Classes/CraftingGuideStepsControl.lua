@@ -2,7 +2,7 @@
 local ui=require("Modules.PlanningUI")
 local M={}
 function M.Open(build,projectId,onChanged)
-	local store=build.savers.CraftingProjects;local c={};local selected;local page=1;local pages=1;local pageSize=100
+	local store=build.savers.CraftingProjects;local c={};local selected;local lastRemoved;local page=1;local pages=1;local pageSize=100
 	local w,h=math.min(920,main.screenW-40),math.min(680,main.screenH-60)
 	local side=math.floor(w*0.58);local detailW=w-side-32
 	local function project()
@@ -69,12 +69,24 @@ function M.Open(build,projectId,onChanged)
 		main:OpenConfirmPopup("Remove crafting step","Remove step "..index.." and its notes and progress?","Remove",function()
 			local ok,err=pcall(function()
 				local changed=copyTable(project());assert(changed.steps[index] and tableDeepEquals(changed.steps[index],expected),"This step changed. Select it again before removing it.")
-				table.remove(changed.steps,index);store:Upsert(changed);selected=nil;if onChanged then onChanged() end;refresh(false)
+				local removed=table.remove(changed.steps,index);local kept=store:Upsert(changed)
+				lastRemoved={index=index,step=removed,remaining=copyTable(kept.steps)};selected=nil;if onChanged then onChanged() end;refresh(false)
 			end)
 			if not ok then main:OpenMessagePopup("Crafting guide",ui.errorText(err)) end
 		end)
 	end)
 	c.remove.enabled=c.toggle.enabled
+	button("undoRemove",16,h-48,160,"Undo removal",function()
+		local ok,err=pcall(function()
+			local undo=assert(lastRemoved,"No step removal to undo.");local changed=copyTable(project())
+			assert(tableDeepEquals(changed.steps,undo.remaining),"The guide steps changed after removal. Undo is unavailable to avoid overwriting them.")
+			table.insert(changed.steps,undo.index,copyTable(undo.step));store:Upsert(changed)
+			selected=undo.index;lastRemoved=nil;if onChanged then onChanged() end;refresh(false)
+		end)
+		if not ok then main:OpenMessagePopup("Crafting guide",ui.errorText(err)) end
+	end)
+	c.undoRemove.enabled=function() return lastRemoved~=nil end
+	c.undoRemove.tooltipText="Restore the last removed step while this browser is open, if the guide steps have not changed."
 	button("previous",16,h-88,100,"Previous",function() page=math.max(1,page-1);refresh(true) end)
 	button("next",128,h-88,100,"Next",function() page=math.min(pages,page+1);refresh(true) end)
 	c.previous.enabled=function() return page>1 end;c.next.enabled=function() return page<pages end
