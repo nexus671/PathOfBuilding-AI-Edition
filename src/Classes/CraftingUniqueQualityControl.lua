@@ -90,7 +90,7 @@ function M.Open(build,project,layout,snapshot)
 		if not guideCache then local steps,reason,signature=calculateGuideSteps();guideCache={steps=steps,reason=reason,signature=signature} end
 		return guideCache.steps,guideCache.reason,guideCache.signature
 	end
-	local linkReason,benchLinkReason,whiteReason,omenJewellerReason,colourReason,updateCurrency,updateIcons
+	local linkReason,benchLinkReason,whiteReason,omenJewellerReason,colourReason,taintedQualityReason,updateCurrency,updateIcons
 	local function refresh(persist)
 		guideCache=nil;reviewCache=nil;traceCache=nil
 		item,info=unique.inspect(raw);show(item)
@@ -99,8 +99,10 @@ function M.Open(build,project,layout,snapshot)
 		whiteReason=unique.whiteReason(raw)
 		omenJewellerReason=unique.omenReason(raw)
 		colourReason=unique.colourReason(raw,item.corrupted and "tainted_chromatic" or "chromatic")
+		taintedQualityReason=item.corrupted and unique.taintedQualityReason(raw) or nil
 		c.status.label="^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
-		c.apply.label=item.corrupted and (item.type=="Flask" or item.type=="Tincture") and "Quality unavailable" or "Use "..(item.corrupted and "Tainted " or "")..info.resource
+		c.apply.label=item.corrupted and (item.type=="Flask" or item.type=="Tincture") and "Quality unavailable" or item.corrupted and "Roll quality" or "Use "..info.resource
+		c.apply.width=item.corrupted and not taintedQualityReason and 130 or 270
 		if updateCurrency then updateCurrency() end
 		if updateIcons then updateIcons() end
 		if raw~=draft.startingItem and raw~=draft.targetItem then ui.draft(build,"uniqueQuality",draft.id)
@@ -333,7 +335,53 @@ function M.Open(build,project,layout,snapshot)
 		history[#history+1]=raw;actions[#actions+1]=action;redo={};raw=result.itemText;refresh(true)
 	end)
 	c.apply.enabled=function() return item.corrupted and not unique.taintedQualityReason(raw) or not item.corrupted and info.available end
-	c.apply.tooltipText=function() return item.corrupted and (unique.taintedQualityReason(raw) or "Sample a tainted quality roll. The 1-20% range and odds are estimates.") or info.available and "Adds 1% quality." or "Ordinary quality currency cannot exceed 20%." end
+	c.apply.tooltipText=function() return item.corrupted and (taintedQualityReason or "Sample a tainted quality roll. The 1-20% range and odds are estimates.") or info.available and "Adds 1% quality." or "Ordinary quality currency cannot exceed 20%." end
+	button("qualityPlan",198,"Plan quality",function()
+		local controls={};local qw,qh=480,310
+		ui.description(controls,"help",16,25,qw-32,50,{"Save a target without rolling the item.","Tainted quality probabilities are estimates."},14)
+		ui.label(controls,"targetLabel",16,90,"Minimum quality (1-20%)",14)
+		controls.target=new("EditControl"):EditControl(ui.anchor,{16,112,200,26},"","e.g. 20",nil,2)
+		ui.label(controls,"attemptsLabel",240,90,"Attempt limit (1-2000)",14)
+		controls.attempts=new("EditControl"):EditControl(ui.anchor,{240,112,qw-256,26},"100","Max attempts",nil,4)
+		local function replaceable()
+			local recipe=draft.nativeRecipe;if not recipe or #recipe.steps~=1 or not recipe.requirements then return nil end
+			local target=recipe.requirements.minQuality;local step=recipe.steps[1]
+			if type(target)~="number" or step.method~="tainted_quality" then return nil end
+			local expected=unique.guideAction("tainted_quality",1,info.resource,item.corrupted,#item.sockets);local found
+			for index,guide in ipairs(draft.steps) do
+				if guide.uniqueCraft and guide.uniqueCraft.method=="tainted_quality" and guide.uniqueCraft.count==1 and not guide.done and (not guide.onFailure or guide.onFailure=="" or guide.onFailure=="Stop after "..(step.maxAttempts or 100).." attempts.") and guide.action==expected and guide.stopWhen=="At least "..target.."% quality" then
+					if found then return nil end;found=index
+				end
+			end
+			return found
+		end
+		local function reason()
+			if taintedQualityReason then return taintedQualityReason end
+			if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a quality plan." end
+			if #draft.steps>=40 and not replaceable() then return "The guide has room for up to 40 steps." end
+			local target=tonumber(controls.target.buf);if not target or target~=math.floor(target) or target<1 or target>20 then return "Enter a quality target from 1 to 20." end
+			local attempts=tonumber(controls.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
+			if info.quality>=target then return nil,true end
+		end
+		ui.label(controls,"targetHelp",16,160,"",14);controls.targetHelp.label=function() local why,met=reason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save a quality plan."),qw-32,14) end
+		controls.plan=new("ButtonControl"):ButtonControl(ui.anchor,{16,qh-48,150,28},"Save quality plan",function()
+			local why=reason();assert(not why,why);local target=tonumber(controls.target.buf);local attempts=tonumber(controls.attempts.buf);local requirements={minQuality=target}
+			local recipe={steps={{method="tainted_quality",maxAttempts=attempts,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements};require("Modules.CraftingSimulator").validateRecipe(recipe)
+			local replaceIndex=replaceable()
+			local function keepPlan()
+				local updated=copyTable(draft);updated.nativeRecipe=recipe
+				local step={action=unique.guideAction("tainted_quality",1,info.resource,item.corrupted,#item.sockets),stopWhen="At least "..target.."% quality",onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method="tainted_quality",count=1},done=false}
+				if replaceIndex then updated.steps[replaceIndex]=step else updated.steps[#updated.steps+1]=step end
+				draft=build.savers.CraftingProjects:Upsert(updated);refresh(true);c.notice.label="^7Quality plan kept. Save the build.";main:ClosePopup()
+			end
+			if draft.nativeRecipe then main:OpenConfirmPopup("Replace crafting recipe",replaceIndex and "Replace the saved recipe and its unchanged quality guide step?\nOther guide steps will be kept." or "Replace the saved recipe with this quality plan?\nExisting guide steps will be kept.","Replace",keepPlan) else keepPlan() end
+		end)
+		controls.plan.enabled=function() return not reason() end;controls.plan.tooltipText=function() return reason() or "Save a bounded repeat-until-quality recipe and guide step." end
+		controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{qw-132,qh-48,116,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(controls,{plan=true});for _,control in pairs(controls) do control.layoutAudit="unique-quality-plan" end
+		main:OpenPopup(qw,qh,"Tainted quality target",controls,nil,nil,"close")
+	end)
+	c.qualityPlan.x=156;c.qualityPlan.width=130;c.qualityPlan.shown=function() return item.corrupted and not taintedQualityReason end
 	button("link",236,"Bestiary link",function() local result=unique.link(raw);history[#history+1]=raw;actions[#actions+1]="beast_max_links";redo={};raw=result.itemText;refresh(true) end)
 	c.link.width=130
 	c.link.enabled=function() return not linkReason end

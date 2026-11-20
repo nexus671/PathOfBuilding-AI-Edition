@@ -20,8 +20,13 @@ return function(build,ui,frame)
 	for _,entry in ipairs(store.projects) do if entry.id==direct.id then planned=entry end end
 	assert(planned.nativeRecipe.requirements.socketColours=="RR" and #planned.steps==1 and planned.steps[1].stopWhen=="At least RR sockets in any order","Colour guide did not follow the replacement");main.popups={}
 	local taintedQuality={id="unique-tainted-quality-ui",title="Tainted quality",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nQuality: 0\nSockets: R-G B\nCorrupted",goals={},steps={}}
-	store:Upsert(taintedQuality);require("Classes.CraftingUniqueQualityControl").Open(build,taintedQuality);frame("crafting-unique-tainted-quality");ui:click("apply");ui:click("guide");ui:click("recipe")
-	local qualityPlan;for _,entry in ipairs(store.projects) do if entry.id==taintedQuality.id then qualityPlan=entry end end
+	store:Upsert(taintedQuality);require("Classes.CraftingUniqueQualityControl").Open(build,taintedQuality);frame("crafting-unique-tainted-quality")
+	ui:click("qualityPlan");ui:text("target","20");ui:text("attempts","1000");frame("crafting-unique-quality-target");ui:click("plan")
+	local qualityDirect;for _,entry in ipairs(store.projects) do if entry.id==taintedQuality.id then qualityDirect=entry end end
+	assert(qualityDirect and qualityDirect.nativeRecipe.requirements.minQuality==20 and qualityDirect.nativeRecipe.steps[1].maxAttempts==1000,"Direct quality plan was not kept")
+	main.popups={};local rolledQuality={id="unique-tainted-quality-preview-ui",title="Tainted preview",slot="Helmet",startingItem=taintedQuality.startingItem,goals={},steps={}}
+	store:Upsert(rolledQuality);require("Classes.CraftingUniqueQualityControl").Open(build,rolledQuality);ui:click("apply");ui:click("guide");ui:click("recipe")
+	local qualityPlan;for _,entry in ipairs(store.projects) do if entry.id==rolledQuality.id then qualityPlan=entry end end
 	assert(qualityPlan and qualityPlan.steps[1].uniqueCraft.method=="tainted_quality" and qualityPlan.nativeRecipe.steps[1].method=="tainted_quality","Tainted quality guide or recipe was not kept")
 	ui:click("recipe");local qualityTasks=require("Modules.CraftingTasks");assert(qualityTasks.job,"Tainted quality check did not use a background task");while qualityTasks.job do qualityTasks.tick(build) end;frame("crafting-unique-tainted-quality-result");ui:click("close");main.popups={}
 	local socketProject={id="unique-random-sockets-ui",title="Desired sockets",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B",goals={},steps={}}

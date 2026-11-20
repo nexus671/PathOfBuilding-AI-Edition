@@ -87,6 +87,19 @@ describe("Unique item quality",function()
 		end
 	end)
 
+	it("plans tainted unique quality directly and replaces unchanged guide steps",function()
+		local raw=shield.."\nCorrupted";local project={id="quality-direct",title="Quality",slot="Weapon 2",startingItem=raw,goals={},steps={}}
+		local store=build.savers.CraftingProjects;store:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		assert.is_true(control.qualityPlan:IsShown());control.qualityPlan:Click();local popup=main.popups[1].controls
+		popup.target:SetText("21");assert.is_false(popup.plan:IsEnabled());popup.target:SetText("10");assert.matches("Already met",popup.targetHelp.label());popup.target:SetText("20");popup.attempts:SetText("1000");assert.is_true(popup.plan:IsEnabled());popup.plan:Click()
+		local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+		assert.equal(20,saved.nativeRecipe.requirements.minQuality);assert.equal(1000,saved.nativeRecipe.steps[1].maxAttempts);assert.equal("tainted_quality",saved.steps[1].uniqueCraft.method)
+		control.qualityPlan:Click();popup=main.popups[1].controls;popup.target:SetText("18");popup.plan:Click();main.popups[1].controls.confirm:Click()
+		for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+		assert.equal(1,#saved.steps);assert.equal("At least 18% quality",saved.steps[1].stopWhen);assert.equal(18,saved.nativeRecipe.requirements.minQuality)
+		local run=require("Modules.CraftingSimulator").simulate(raw,saved.nativeRecipe,{trials=10,maxActions=100,seed=123});assert.is_true(run.sampled);assert.is_true(run.successes>0);main.popups={}
+	end)
+
 	it("samples unique socket counts while preserving item properties and restrictions",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"
 		for _,method in ipairs({"jeweller","tainted_jeweller"}) do
