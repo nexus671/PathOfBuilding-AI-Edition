@@ -260,13 +260,26 @@ function M.Open(build,project,layout,snapshot)
 			roll.target=new("EditControl"):EditControl(ui.anchor,{16,176,200,26},"","e.g. 4",nil,1)
 			ui.label(roll,"attemptsLabel",240,154,"Attempt limit (1-2000)",14)
 			roll.attempts=new("EditControl"):EditControl(ui.anchor,{240,176,rw-256,26},"100","Max attempts",nil,4)
+			local function replaceableSocketStep()
+				local recipe=draft.nativeRecipe;if not recipe or #recipe.steps~=1 or not recipe.requirements then return nil end
+				local target=recipe.requirements.exactSockets;local action=recipe.steps[1].method
+				if type(target)~="number" or not (action=="jeweller" or action=="tainted_jeweller") then return nil end
+				local expected=unique.guideAction(action,1,info.resource,item.corrupted,#item.sockets);local found
+				for index,step in ipairs(draft.steps) do
+					if step.uniqueCraft and step.uniqueCraft.method==action and step.uniqueCraft.count==1 and not step.done and (not step.onFailure or step.onFailure=="" or step.onFailure=="Stop after "..(recipe.steps[1].maxAttempts or 100).." attempts.") and step.action==expected and step.stopWhen=="Exactly "..target.." sockets" then
+						if found then return nil end;found=index
+					end
+				end
+				return found
+			end
 			local function planReason()
-				if reason() then return reason() end
 				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a direct socket plan." end
-				if #draft.steps>=40 then return "The guide has room for up to 40 steps." end
+				if #draft.steps>=40 and not replaceableSocketStep() then return "The guide has room for up to 40 steps." end
 				local attempts=tonumber(roll.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
 				local target=tonumber(roll.target.buf);if not target or target~=math.floor(target) or target<1 or target>unique.omenCount(item) then return "Enter a socket count within the natural limit." end
-				if #item.sockets==target then return nil,true end
+				local why=reason();local met=#item.sockets==target
+				if why and not (met and why=="The item already has its maximum natural socket count.") then return why end
+				if met then return nil,true end
 			end
 			ui.label(roll,"targetHelp",16,222,"",14);roll.targetHelp.label=function() local why,met=planReason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save a socket plan."),rw-32,14) end
 			roll.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,rh-48,140,28},"Preview roll",function()
@@ -277,13 +290,14 @@ function M.Open(build,project,layout,snapshot)
 			roll.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,rh-48,150,28},"Save socket plan",function()
 				local why=planReason();assert(not why,why);local choice=method();local target=tonumber(roll.target.buf);local attempts=tonumber(roll.attempts.buf)
 				local requirements={exactSockets=target};local recipe={steps={{method=choice,maxAttempts=attempts,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements}
-				require("Modules.CraftingSimulator").validateRecipe(recipe)
+				require("Modules.CraftingSimulator").validateRecipe(recipe);local replaceIndex=replaceableSocketStep()
 				local function keepPlan()
 					local updated=copyTable(draft);updated.nativeRecipe=recipe
-					updated.steps[#updated.steps+1]={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen="Exactly "..target.." sockets",onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method=choice,count=1},done=false}
+					local step={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen="Exactly "..target.." sockets",onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method=choice,count=1},done=false}
+					if replaceIndex then updated.steps[replaceIndex]=step else updated.steps[#updated.steps+1]=step end
 					draft=build.savers.CraftingProjects:Upsert(updated);refresh(true);c.notice.label="^7Socket plan kept. Save the build.";main:ClosePopup()
 				end
-				if draft.nativeRecipe then main:OpenConfirmPopup("Replace crafting recipe","Replace the saved recipe with this socket plan?\nExisting guide steps will be kept.","Replace",keepPlan) else keepPlan() end
+				if draft.nativeRecipe then main:OpenConfirmPopup("Replace crafting recipe",replaceIndex and "Replace the saved recipe and its unchanged socket guide step?\nOther guide steps will be kept." or "Replace the saved recipe with this socket plan?\nExisting guide steps will be kept.","Replace",keepPlan) else keepPlan() end
 			end)
 			roll.plan.enabled=function() return not planReason() end;roll.plan.tooltipText=function() return planReason() or "Save a bounded repeat-until-sockets recipe and guide step." end
 			roll.close=new("ButtonControl"):ButtonControl(ui.anchor,{rw-132,rh-48,116,28},"Cancel",function() main:ClosePopup() end)

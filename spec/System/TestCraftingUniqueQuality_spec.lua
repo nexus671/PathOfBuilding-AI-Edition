@@ -288,6 +288,22 @@ describe("Unique item quality",function()
 		end
 	end)
 
+	it("replaces only unchanged socket guide steps and accepts an already met maximum",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B"
+		local store=build.savers.CraftingProjects;local project={id="socket-replace",title="Sockets",slot="Helmet",startingItem=raw,goals={},steps={}}
+		store:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		control.socketCount:Click();main.popups[1].controls.roll:Click();local popup=main.popups[1].controls;popup.target:SetText("4");popup.plan:Click()
+		control.socketCount:Click();main.popups[1].controls.roll:Click();popup=main.popups[1].controls;popup.target:SetText("2");popup.plan:Click();main.popups[1].controls.confirm:Click()
+		local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+		assert.equal(1,#saved.steps);assert.equal("Exactly 2 sockets",saved.steps[1].stopWhen);assert.equal(2,saved.nativeRecipe.requirements.exactSockets)
+		local full=raw:gsub("Sockets: R%-G B","Sockets: R-G B W")
+		local complete={id="socket-complete",title="Complete",slot="Helmet",startingItem=full,goals={},steps={}}
+		store:Upsert(complete);control=require("Classes.CraftingUniqueQualityControl").Open(build,complete);control.socketCount:Click();main.popups[1].controls.roll:Click();popup=main.popups[1].controls
+		assert.is_false(popup.apply:IsEnabled());popup.target:SetText("4");assert.is_true(popup.plan:IsEnabled());assert.matches("Already met",popup.targetHelp.label());popup.plan:Click()
+		for _,entry in ipairs(store.projects) do if entry.id==complete.id then saved=entry end end
+		local run=require("Modules.CraftingSimulator").simulate(full,saved.nativeRecipe,{trials=1,maxActions=100});assert.is_true(run.sampleSuccess);assert.equal(0,run.meanActions);main.popups={}
+	end)
+
 	it("plans and previews unique socket links",function()
 		for _,corrupted in ipairs({false,true}) do
 			local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W"..(corrupted and "\nCorrupted" or "")
