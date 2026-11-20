@@ -1282,7 +1282,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("page","Craft settings");frame("settings");ui:click("inspectItem");frame("crafting-affix-inspector");ui:click("close")
 	ui:click("compareItem");frame("crafting-item-diff");ui:click("close");ui:click("coverage");frame("crafting-coverage")
 	local coverageText={};for _,line in ipairs(main.popups[1].controls.details.list) do coverageText[#coverageText+1]=line[1] end
-	assert(StripEscapes(table.concat(coverageText," ")):find("Modifier data: 3.30.0.2",1,true),"Crafting coverage did not disclose the modifier version")
+	assert(StripEscapes(table.concat(coverageText," ")):find("Modifier data: "..sim.modifierPatch,1,true),"Crafting coverage did not disclose the modifier version")
 	ui:click("close");ui:choose("page","Simulate recipe")
 	frame("simulation");ui:text("trials","12")
 	ui:choose("page","Target conditions")
