@@ -767,7 +767,7 @@ function M.validateRecipe(recipe)
 		if step.beastLevel~=nil then assert(step.method=="beast_prefix_suffix" or step.method=="beast_suffix_prefix","Beast level only applies to Bestiary modifier swaps");integer(step.beastLevel,1,100,"beast level") end
 		assert(step.onFailureAction==nil or ({route=true,stop=true,restart=true,salvage=true})[step.onFailureAction],"Unknown failure recovery action")
 		assert(step.recoveryNotes==nil or type(step.recoveryNotes)=="string" and #step.recoveryNotes<=1000,"Recovery notes are too long")
-		integer(step.maxAttempts or 1,1,200,"step attempt limit")
+		integer(step.maxAttempts or 1,1,2000,"step attempt limit")
 		if (step.maxAttempts or 1) > 1 then assert(step.untilTargets or step.untilRequirements,"Repeated steps need target or property conditions") end
 		if step.untilTargets then validateTargets(step.untilTargets) end
 		if step.untilRequiredGroups~=nil then assert(step.untilTargets,"Step target count requires target groups");integer(step.untilRequiredGroups,0,#step.untilTargets,"step required target groups") end

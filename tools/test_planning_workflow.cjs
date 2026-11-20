@@ -221,9 +221,10 @@ async function main(){
   assert.ok(uniqueLinkApply.nativeCrafting.warnings.some(w=>w.code==='unique_socket_link_assumptions'));
   const uniqueLinkCalc=await queued('calculate_crafting',{baseRevision:context.revision,itemText:uniqueColourRaw,action:uniqueLinkOption.action,targets:[],options:{trials:16,seed:123,requirements:{links:4}}},'crafted');
   assert.equal(uniqueLinkCalc.nativeCrafting.sampled,true);assert.equal(uniqueLinkCalc.nativeCrafting.trials,16);
-  const uniqueLinkGuide={id:'unique-link-workflow',title:'Unique links',slot:'Helmet',startingItem:uniqueColourRaw,goals:[],steps:[uniqueLinkOption.guideStep],nativeRecipe:{steps:[{method:'fusing',maxAttempts:10,untilRequirements:{links:4}}],targets:[],requirements:{links:4}}};
+  const uniqueLinkGuide={id:'unique-link-workflow',title:'Unique links',slot:'Helmet',startingItem:uniqueColourRaw,goals:[],steps:[uniqueLinkOption.guideStep],nativeRecipe:{steps:[{method:'fusing',maxAttempts:1000,untilRequirements:{links:4}}],targets:[],requirements:{links:4}}};
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:uniqueLinkGuide},'review');await host('apply');context=(await call('get_build_context')).context;
-  const savedLink=(await call('get_crafting_projects')).projects.find(entry=>entry.id===uniqueLinkGuide.id);assert.equal(savedLink.steps[0].uniqueCraft.method,'fusing');
+  const savedLink=(await call('get_crafting_projects')).projects.find(entry=>entry.id===uniqueLinkGuide.id);assert.equal(savedLink.steps[0].uniqueCraft.method,'fusing');assert.equal(savedLink.nativeRecipe.steps[0].maxAttempts,1000);
+  const longLinkSimulation=await queued('simulate_crafting',{baseRevision:context.revision,itemText:uniqueColourRaw,recipe:savedLink.nativeRecipe,options:{trials:10,maxActions:1000,seed:123}},'crafted');assert.equal(longLinkSimulation.nativeCrafting.trials,10);assert.equal(longLinkSimulation.nativeCrafting.maxActions,1000);
   const uniqueLinkFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'unique-link-filter',title:'Link pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');
   assert.ok(uniqueLinkFilter.profile.rules.some(rule=>rule.origin==='craft:'+uniqueLinkGuide.id && rule.title==='Orb of Fusing'));
   await queued('propose_build',{mode:'edit',title:'Remove link test guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:uniqueLinkGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;

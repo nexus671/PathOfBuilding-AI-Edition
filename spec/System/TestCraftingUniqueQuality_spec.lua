@@ -131,6 +131,7 @@ describe("Unique item quality",function()
 		local project={id="colour-result",title="Sampled result",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe=recipe}
 		local store=build.savers.CraftingProjects;store:Upsert(project)
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.recipe:Click()
+		local tasks=require("Modules.CraftingTasks");assert.is_truthy(tasks.job);while tasks.job do tasks.tick(build) end
 		local view=main.popups[1].controls;assert.is_true(view.keep:IsEnabled())
 		local lines={};for _,row in ipairs(view.details.list) do lines[#lines+1]=row[1] end
 		assert.is_true(table.concat(lines," "):find("per trial",1,true)~=nil)
@@ -144,9 +145,9 @@ describe("Unique item quality",function()
 		local store=build.savers.CraftingProjects;store:Upsert(project)
 		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.socketCount:Click();main.popups[1].controls.colours:Click()
 		local popup=main.popups[1].controls;assert.is_false(popup.plan:IsEnabled());popup.target:SetText("RRRRR");assert.is_false(popup.plan:IsEnabled())
-		popup.target:SetText("rgb");assert.is_true(popup.plan:IsEnabled());popup.plan:Click()
+		popup.target:SetText("rgb");popup.attempts:SetText("0");assert.is_false(popup.plan:IsEnabled());popup.attempts:SetText("250");assert.is_true(popup.plan:IsEnabled());popup.plan:Click()
 		local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
-		assert.equal(raw,saved.startingItem);assert.equal("RGB",saved.nativeRecipe.requirements.socketColours);assert.equal(100,saved.nativeRecipe.steps[1].maxAttempts)
+		assert.equal(raw,saved.startingItem);assert.equal("RGB",saved.nativeRecipe.requirements.socketColours);assert.equal(250,saved.nativeRecipe.steps[1].maxAttempts);assert.equal("Stop after 250 attempts.",saved.steps[1].onFailure)
 		assert.equal("chromatic",saved.steps[1].uniqueCraft.method);assert.matches("RGB",saved.steps[1].stopWhen);assert.is_true(control.recipe:IsEnabled())
 		local result=require("Modules.CraftingSimulator").simulate(raw,saved.nativeRecipe,{trials=20,maxActions=100,seed=123})
 		assert.is_true(result.sampled);assert.is_true(result.trials==20)
@@ -221,6 +222,8 @@ describe("Unique item quality",function()
 
 	it("simulates sampled unique Fusing recipes",function()
 		local sim=require("Modules.CraftingSimulator");local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W"
+		local boundary={steps={{method="fusing",maxAttempts=2000,untilRequirements={links=4}}},targets={},requirements={links=4}}
+		assert.equal(2000,sim.validateRecipe(boundary).steps[1].maxAttempts);boundary.steps[1].maxAttempts=2001;assert.has_error(function() sim.validateRecipe(boundary) end)
 		for _,method in ipairs({"fusing","tainted_fusing"}) do
 			local input=raw..(method=="tainted_fusing" and "\nCorrupted" or "")
 			local catalog=sim.catalog(input,method,50);local action
@@ -241,15 +244,36 @@ describe("Unique item quality",function()
 			local store=build.savers.CraftingProjects;store:Upsert(project)
 			local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.socketCount:Click();main.popups[1].controls.links:Click()
 			local popup=main.popups[1].controls;local method=corrupted and "tainted_fusing" or "fusing"
-			assert.equal(method,popup.method:GetSelValueByKey("val"));popup.target:SetText("5");assert.is_false(popup.plan:IsEnabled());popup.target:SetText("4");assert.is_true(popup.plan:IsEnabled());popup.plan:Click()
+			assert.equal(method,popup.method:GetSelValueByKey("val"));popup.target:SetText("5");assert.is_false(popup.plan:IsEnabled());popup.target:SetText("2");assert.matches("Already met",popup.targetHelp.label());popup.target:SetText("4");popup.attempts:SetText("2001");assert.is_false(popup.plan:IsEnabled());popup.attempts:SetText("1000");assert.is_true(popup.plan:IsEnabled());popup.plan:Click()
 			local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
-			assert.equal(method,saved.nativeRecipe.steps[1].method);assert.equal(4,saved.nativeRecipe.requirements.links);assert.equal(method,saved.steps[1].uniqueCraft.method)
+			assert.equal(method,saved.nativeRecipe.steps[1].method);assert.equal(4,saved.nativeRecipe.requirements.links);assert.equal(1000,saved.nativeRecipe.steps[1].maxAttempts);assert.equal("Stop after 1000 attempts.",saved.steps[1].onFailure);assert.equal(method,saved.steps[1].uniqueCraft.method)
 			local result=require("Modules.CraftingSimulator").simulate(raw,saved.nativeRecipe,{trials=20,maxActions=100,seed=123});assert.is_true(result.sampled);assert.is_true(result.successes>0)
-			control.recipe:Click();local view=main.popups[1].controls;local summary={};for _,row in ipairs(view.details.list) do summary[#summary+1]=row[1] end;assert.is_true(table.concat(summary," "):find("20 trials",1,true)~=nil);view.close:Click()
+			control.recipe:Click();local tasks=require("Modules.CraftingTasks");assert.is_truthy(tasks.job);while tasks.job do tasks.tick(build) end;local view=main.popups[1].controls;local summary={};for _,row in ipairs(view.details.list) do summary[#summary+1]=row[1] end;assert.is_true(table.concat(summary," "):find("10 trials",1,true)~=nil);assert.is_true(table.concat(summary," "):find("limit 1000",1,true)~=nil);view.close:Click()
 			local filters=require("Modules.LootFilters");local rules=filters.generate(build,filters.profile("link-"..tostring(corrupted),"Links"));local found=false
 			for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id and rule.title==(corrupted and "Tainted Orb of Fusing" or "Orb of Fusing") then found=true end end;assert.is_true(found)
 			control.socketCount:Click();main.popups[1].controls.links:Click();popup=main.popups[1].controls;assert.is_true(popup.apply:IsEnabled());popup.apply:Click();assert.is_true(control.undo:IsEnabled());main.popups={}
 		end
+	end)
+
+	it("runs and cancels long unique recipe checks in the background",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W"
+		local recipe={steps={{method="fusing",maxAttempts=1000,untilRequirements={links=4}}},targets={},requirements={links=4}}
+		local project={id="unique-background",title="Background",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe=recipe}
+		build.savers.CraftingProjects:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		local tasks=require("Modules.CraftingTasks");control.recipe:Click();assert.is_truthy(tasks.job);assert.is_truthy(main.popups[1].controls.cancel)
+		main.popups[1].controls.cancel:Click();assert.is_nil(tasks.job)
+		control.recipe:Click();assert.is_truthy(tasks.job);local slices=0;while tasks.job do tasks.tick(build);slices=slices+1;assert.is_true(slices<100000) end
+		assert.is_true(slices>0);assert.is_truthy(main.popups[1].controls.details);main.popups={}
+	end)
+
+	it("retains long attempt budgets in the recipe editor and comparison",function()
+		local kept;local editor=require("Classes.CraftingRecipeControl").Open({steps={{method="fusing"}},targets={},requirements={links=4}},{method="fusing"},function(value) kept=value end)
+		editor.attempts:SetText("2000");editor.condition:SelByValue("Until final targets and properties match");editor.keep:Click();assert.equal(2000,kept.steps[1].maxAttempts);main.popups={}
+		local sim=require("Modules.CraftingSimulator");local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw);local seen={};local original=sim.simulate
+		sim.simulate=function(_,recipe) seen[#seen+1]=recipe.steps[1].maxAttempts;error("comparison probe") end
+		local controls=require("Classes.CraftingCompareControl").Open(build,raw,model.initial,{}, {minAffixes=1},nil,{method="transmute"},nil,{budget=1000,trials=1,seed=1,currency="chaos"})
+		controls.run:Click();local tasks=require("Modules.CraftingTasks");while tasks.job do tasks.tick(build) end;sim.simulate=original
+		assert.equal(3,#seen);for _,attempts in ipairs(seen) do assert.equal(1000,attempts) end;main.popups={}
 	end)
 
 	it("previews and simulates unique flask and tincture quality",function()

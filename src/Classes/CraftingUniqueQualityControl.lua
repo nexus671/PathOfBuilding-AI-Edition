@@ -128,7 +128,7 @@ function M.Open(build,project,layout,snapshot)
 		controls.colours=new("ButtonControl"):ButtonControl(ui.anchor,{174,height-48,90,28},"Colours",function()
 			main:ClosePopup();local options={}
 			for _,entry in ipairs({{label="Chromatic Orb",val="chromatic"},{label="Tainted Chromatic Orb",val="tainted_chromatic"},{label="Omen of Trichromatism",val="omen_trichromatism"}}) do options[#options+1]=entry end
-			local colour={};local cw,ch=480,304
+			local colour={};local cw,ch=480,384
 			ui.description(colour,"help",16,25,cw-32,54,{"Preview one sampled colour roll.","Colour and placement probabilities are estimates."},14)
 			colour.method=new("DropDownControl"):DropDownControl(ui.anchor,{16,90,cw-32,28},options)
 			if item.corrupted then colour.method:SelByValue("tainted_chromatic","val") end
@@ -140,6 +140,8 @@ function M.Open(build,project,layout,snapshot)
 			ui.label(colour,"placementLabel",240,164,"Placement",14)
 			colour.target=new("EditControl"):EditControl(ui.anchor,{16,185,208,26},"","e.g. RGB",nil,6)
 			colour.placement=new("DropDownControl"):DropDownControl(ui.anchor,{240,185,cw-256,26},{"Anywhere on item","In one linked group"})
+			ui.label(colour,"attemptsLabel",16,244,"Attempt limit (1-2000)",14)
+			colour.attempts=new("EditControl"):EditControl(ui.anchor,{16,265,cw-32,26},"100","Max attempts",nil,4)
 			local function linked() return colour.placement:GetSelValue()=="In one linked group" end
 			local function stopText(target,linkedColours) return "At least "..target..(linkedColours and " sockets in one linked group" or " sockets in any order") end
 			local function replaceableColourStep()
@@ -149,7 +151,7 @@ function M.Open(build,project,layout,snapshot)
 				if type(target)~="string" or not (action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism") then return nil end
 				local expected=unique.guideAction(action,1,info.resource,item.corrupted,#item.sockets);local found
 				for index,step in ipairs(draft.steps) do
-					if step.uniqueCraft and step.uniqueCraft.method==action and step.uniqueCraft.count==1 and not step.done and (not step.onFailure or step.onFailure=="") and step.action==expected and step.stopWhen==stopText(target,recipe.requirements.linkedColours) then
+					if step.uniqueCraft and step.uniqueCraft.method==action and step.uniqueCraft.count==1 and not step.done and (not step.onFailure or step.onFailure=="" or step.onFailure=="Stop after "..(recipe.steps[1].maxAttempts or 100).." attempts.") and step.action==expected and step.stopWhen==stopText(target,recipe.requirements.linkedColours) then
 						if found then return nil end;found=index
 					end
 				end
@@ -159,6 +161,7 @@ function M.Open(build,project,layout,snapshot)
 				if reason() then return reason() end
 				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a direct colour plan." end
 				if #draft.steps>=40 and not replaceableColourStep() then return "The guide has room for up to 40 steps." end
+				local attempts=tonumber(colour.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
 				return unique.colourTargetReason(item,method(),colour.target.buf:upper(),linked())
 			end
 			ui.label(colour,"targetHelp",16,222,"",14);colour.targetHelp.label=function() local why,met=targetReason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save a colour plan."),cw-32,14) end
@@ -169,14 +172,14 @@ function M.Open(build,project,layout,snapshot)
 			colour.apply.enabled=function() return not reason() end
 			colour.apply.tooltipText=function() return reason() or "Preview one sampled socket-colour outcome." end
 			colour.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,ch-48,150,28},"Save colour plan",function()
-				local why=targetReason();assert(not why,why);local choice=method();local target=colour.target.buf:upper();local together=linked()
+				local why=targetReason();assert(not why,why);local choice=method();local target=colour.target.buf:upper();local together=linked();local attempts=tonumber(colour.attempts.buf)
 				local requirements={socketColours=target,linkedColours=together}
-				local recipe={steps={{method=choice,maxAttempts=100,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements}
+				local recipe={steps={{method=choice,maxAttempts=attempts,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements}
 				require("Modules.CraftingSimulator").validateRecipe(recipe)
 				local replaceIndex=replaceableColourStep()
 				local function keepPlan()
 					local updated=copyTable(draft);updated.nativeRecipe=recipe
-					local step={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen=stopText(target,together),uniqueCraft={method=choice,count=1},done=false}
+					local step={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen=stopText(target,together),onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method=choice,count=1},done=false}
 					if replaceIndex then updated.steps[replaceIndex]=step else updated.steps[#updated.steps+1]=step end
 					draft=build.savers.CraftingProjects:Upsert(updated);refresh(true);c.notice.label="^7Colour plan kept. Save the build.";main:ClosePopup()
 				end
@@ -189,7 +192,7 @@ function M.Open(build,project,layout,snapshot)
 			main:OpenPopup(cw,ch,"Socket colours",colour,nil,nil,"close")
 		end)
 		controls.links=new("ButtonControl"):ButtonControl(ui.anchor,{272,height-48,90,28},"Links",function()
-			main:ClosePopup();local link={};local lw,lh=480,304
+			main:ClosePopup();local link={};local lw,lh=480,384
 			ui.description(link,"help",16,25,lw-32,54,{"Preview one sampled link roll.","Link probabilities and tainted outcomes are estimates."},14)
 			link.method=new("DropDownControl"):DropDownControl(ui.anchor,{16,90,lw-32,28},{{label="Orb of Fusing",val="fusing"},{label="Tainted Orb of Fusing",val="tainted_fusing"}})
 			if item.corrupted then link.method:SelByValue("tainted_fusing","val") end
@@ -198,13 +201,15 @@ function M.Open(build,project,layout,snapshot)
 			ui.label(link,"availability",16,132,"",14);link.availability.label=function() return "^7"..ui.fit(reason() or "Ready to preview; no currency is spent.",lw-32,14) end
 			ui.label(link,"targetLabel",16,164,"Minimum linked sockets",14)
 			link.target=new("EditControl"):EditControl(ui.anchor,{16,185,lw-32,26},"","e.g. 4",nil,1)
+			ui.label(link,"attemptsLabel",16,244,"Attempt limit (1-2000)",14)
+			link.attempts=new("EditControl"):EditControl(ui.anchor,{16,265,lw-32,26},"100","Max attempts",nil,4)
 			local function replaceableLinkStep()
 				local recipe=draft.nativeRecipe;if not recipe or #recipe.steps~=1 or not recipe.requirements then return nil end
 				local target=recipe.requirements.links;local action=recipe.steps[1].method
 				if type(target)~="number" or not (action=="fusing" or action=="tainted_fusing") then return nil end
 				local expected=unique.guideAction(action,1,info.resource,item.corrupted,#item.sockets);local found
 				for index,step in ipairs(draft.steps) do
-					if step.uniqueCraft and step.uniqueCraft.method==action and step.uniqueCraft.count==1 and not step.done and (not step.onFailure or step.onFailure=="") and step.action==expected and step.stopWhen=="At least "..target.." linked sockets" then
+					if step.uniqueCraft and step.uniqueCraft.method==action and step.uniqueCraft.count==1 and not step.done and (not step.onFailure or step.onFailure=="" or step.onFailure=="Stop after "..(recipe.steps[1].maxAttempts or 100).." attempts.") and step.action==expected and step.stopWhen=="At least "..target.." linked sockets" then
 						if found then return nil end;found=index
 					end
 				end
@@ -214,22 +219,25 @@ function M.Open(build,project,layout,snapshot)
 				if reason() then return reason() end
 				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a direct link plan." end
 				if #draft.steps>=40 and not replaceableLinkStep() then return "The guide has room for up to 40 steps." end
+				local attempts=tonumber(link.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
 				local value=tonumber(link.target.buf)
 				if not value or value~=math.floor(value) or value<2 or value>#item.sockets then return "Enter a link target from 2 to the item's socket count." end
+				local groups,best={},0;for _,socket in ipairs(item.sockets) do groups[socket.group]=(groups[socket.group] or 0)+1;best=math.max(best,groups[socket.group]) end
+				if best>=value then return nil,true end
 			end
-			ui.label(link,"targetHelp",16,222,"",14);link.targetHelp.label=function() return "^7"..ui.fit(targetReason() or "Ready to save a link plan.",lw-32,14) end
+			ui.label(link,"targetHelp",16,222,"",14);link.targetHelp.label=function() local why,met=targetReason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save a link plan."),lw-32,14) end
 			link.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,lh-48,140,28},"Preview roll",function()
 				local choice=method();colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
 				local result=unique.randomLinks(raw,choice,seed);history[#history+1]=raw;actions[#actions+1]=choice;redo={};raw=result.itemText;main:ClosePopup();refresh(true)
 			end)
 			link.apply.enabled=function() return not reason() end;link.apply.tooltipText=function() return reason() or "Preview one sampled socket-link outcome." end
 			link.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,lh-48,150,28},"Save link plan",function()
-				local why=targetReason();assert(not why,why);local choice=method();local target=tonumber(link.target.buf)
-				local requirements={links=target};local recipe={steps={{method=choice,maxAttempts=100,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements}
+				local why=targetReason();assert(not why,why);local choice=method();local target=tonumber(link.target.buf);local attempts=tonumber(link.attempts.buf)
+				local requirements={links=target};local recipe={steps={{method=choice,maxAttempts=attempts,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements}
 				require("Modules.CraftingSimulator").validateRecipe(recipe);local replaceIndex=replaceableLinkStep()
 				local function keepPlan()
 					local updated=copyTable(draft);updated.nativeRecipe=recipe
-					local step={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen="At least "..target.." linked sockets",uniqueCraft={method=choice,count=1},done=false}
+					local step={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen="At least "..target.." linked sockets",onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method=choice,count=1},done=false}
 					if replaceIndex then updated.steps[replaceIndex]=step else updated.steps[#updated.steps+1]=step end
 					draft=build.savers.CraftingProjects:Upsert(updated);refresh(true);c.notice.label="^7Link plan kept. Save the build.";main:ClosePopup()
 				end
@@ -369,13 +377,20 @@ function M.Open(build,project,layout,snapshot)
 			refresh(true);c.notice.label="^7Recipe saved. Save the build.";return
 		end
 		local stochastic=false;for _,step in ipairs(draft.nativeRecipe.steps) do if step.method=="chromatic" or step.method=="tainted_chromatic" or step.method=="omen_trichromatism" or step.method=="fusing" or step.method=="tainted_fusing" then stochastic=true end end
-		local result=require("Modules.CraftingSimulator").simulate(draft.startingItem,draft.nativeRecipe,{trials=stochastic and 20 or 1,maxActions=100,retainSuccesses=stochastic and 1 or 0,priceBook=draft.priceBook,treeVersion=build.spec.treeVersion})
+		local budget=100
+		if stochastic then local sum=0;for _,step in ipairs(draft.nativeRecipe.steps) do sum=sum+(step.maxAttempts or 1) end;budget=math.min(2000,math.max(100,sum)) end
+		local trials=stochastic and math.max(1,math.min(20,math.floor(10000/budget))) or 1
+		local capturedRaw=draft.startingItem;local capturedRecipe=copyTable(draft.nativeRecipe);local capturedPrice=draft.priceBook and copyTable(draft.priceBook);local capturedTree=build.spec.treeVersion
+		local function run(checkpoint)
+			return require("Modules.CraftingSimulator").simulate(capturedRaw,capturedRecipe,{trials=trials,maxActions=budget,retainSuccesses=stochastic and 1 or 0,priceBook=capturedPrice,treeVersion=capturedTree,checkpoint=checkpoint})
+		end
+		local function showResult(result)
 		local kept=result.retainedSuccesses and result.retainedSuccesses[1];local outputItem=kept and kept.itemText or result.sampleItem;local outputSuccess=kept~=nil or result.sampleSuccess
 		local rw,rh=math.min(760,main.screenW-40),math.min(520,main.screenH-60);local view={}
 		ui.label(view,"heading",16,24,"Saved recipe result",20)
 		local lines={result.sampled and string.format("%d trials: %.1f%% success (%.1f-%.1f%% interval).",result.trials,result.successChance,result.confidenceLow,result.confidenceHigh) or result.sampleSuccess and "Goal reached in the deterministic model." or "Goal not reached in the deterministic model.",
 			"Starts from the saved starting item; the current preview is unchanged.",
-			string.format("Mean actions: %.1f attempted, %.1f executed (limit 100).",result.meanActions,result.meanExecutedActions),
+			string.format("Mean actions: %.1f attempted, %.1f executed (limit %d).",result.meanActions,result.meanExecutedActions,budget),
 			result.meanCost and string.format("Estimated cost: %.2f %s",result.meanCost,result.costCurrency) or "Cost unavailable: add prices for all used resources."}
 		for _,entry in ipairs(result.resourceUsage or {}) do lines[#lines+1]=result.sampled and string.format("%s: %.2f per trial",entry.name,entry.meanPerTrial) or entry.name..": "..entry.amount end
 		for _,warning in ipairs(result.warnings or {}) do lines[#lines+1]="Model note: "..warning.message end
@@ -408,6 +423,20 @@ function M.Open(build,project,layout,snapshot)
 		view.close=new("ButtonControl"):ButtonControl(ui.anchor,{rw-132,rh-48,116,28},"Back",function() main:ClosePopup() end)
 		ui.style(view);for _,control in pairs(view) do control.layoutAudit="unique-recipe-result" end
 		main:OpenPopup(rw,rh,"Saved unique recipe",view,nil,nil,"close")
+		end
+		if not stochastic then showResult(run());return end
+		local tasks=require("Modules.CraftingTasks");local progress={};local pw,ph=420,168
+		ui.label(progress,"heading",16,24,"Checking recipe",20)
+		ui.label(progress,"status",16,70,"Preparing sampled trials...",14)
+		progress.cancel=new("ButtonControl"):ButtonControl(ui.anchor,{16,ph-48,160,28},"Cancel",function() if tasks.job and tasks.job.owner==progress then tasks.cancel("Calculation cancelled.") end end)
+		ui.style(progress);for _,control in pairs(progress) do control.layoutAudit="unique-recipe-progress" end
+		local function closeProgress()
+			if main.popups[1] and main.popups[1].controls==progress then main:ClosePopup();return true end
+		end
+		local job=tasks.start(build,run,function(result) if closeProgress() then showResult(result) end end,function(message)
+			if closeProgress() and message~="Calculation cancelled." and message~="The active build changed" then main:OpenMessagePopup("Unique crafting",ui.errorText(message)) end
+		end,function(state) progress.status.label=string.format("Trial %d / %d | %d successes",state.trial or 0,state.trials or trials,state.successes or 0) end,"Unique recipe simulation slice")
+		job.owner=progress;main:OpenPopup(pw,ph,"Checking recipe",progress,nil,nil,"cancel")
 	end)
 	c.recipe.x=156;c.recipe.width=130;c.recipe.label=function() return draft.nativeRecipe and "Check recipe" or "Save recipe" end
 	c.recipe.enabled=function() return draft.nativeRecipe~=nil or canCreateRecipe() end
