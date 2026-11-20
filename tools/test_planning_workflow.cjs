@@ -653,6 +653,7 @@ async function main(){
   const beastFlaskRaw='Rarity: NORMAL\nSmall Life Flask\nItem Level: 86';
   const beastFlaskInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:beastFlaskRaw,limit:10},'inspected');
   const beastFlaskOptions=beastFlaskInspect.crafting.nativeEngine.beastFlaskOptions;assert.equal(beastFlaskOptions.available,true);assert.equal(beastFlaskOptions.choices.length,6);
+  assert.deepEqual(beastFlaskOptions.components,{beast_any_red:1});
   const beastFlaskAction=beastFlaskOptions.choices.find(choice=>choice.action.modId==='FlaskChillFreezeImmunity1').action;
   const beastFlaskCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:beastFlaskRaw,action:beastFlaskAction,seed:1},'crafted');
   assert.equal(beastFlaskCraft.nativeCrafting.state.affixes[0].id,beastFlaskAction.modId);assert.ok(beastFlaskCraft.nativeCrafting.warnings.some(w=>w.code==='beast_flask_assumptions'));

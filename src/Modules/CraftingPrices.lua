@@ -112,6 +112,10 @@ function M.describe(key,model,action)
 	if method=="bench" then local mod=_G.data.masterMods[tonumber(option)];if mod then label="Bench: "..table.concat(mod," / ") end
 	elseif option then label=label.." / "..option end
 	local id=data.methods[method]
+	if canonical=="beast_any_red" then
+		local orb=data.methods.beast_max_links;local path=orb and data.items[orb] and data.items[orb].path
+		return "Any red beast",path,"Beast"
+	end
 	if key=="dead_mans_sulphur" then return "Dead Man's Sulphur",nil,"Resource" end
 	if key=="beast_black_morrigan" or key=="beast_craicic_sand_spitter" then
 		local orb=data.methods.beast_max_links;local path=orb and data.items[orb] and data.items[orb].path

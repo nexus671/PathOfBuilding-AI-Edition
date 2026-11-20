@@ -39,6 +39,9 @@ function Panel.Open(model,state,actions,book,currency,onKeep,books,recipeState)
 		stash();selected=entry;controls.resources.selectedKey=entry and entry.key;controls.price:SetText(entry and buffers[entry.key] or "")
 		controls.selected.list=ui.rows({entry and entry.name or "No resource selected"},sideWidth,16)
 		controls.hint.list=ui.rows(entry and {entry.kind=="Whole action" and "Price of the complete craft." or "Quote one unit of this resource.",entry.fallbackKey and "Blank uses a saved generic quote, if available." or "0 means free; blank stays unknown.","Recipe resources include possible costs."} or {"Select a resource from the list.","Recipe resources include possible costs."},sideWidth,14)
+		if entry and entry.key=="beast_any_red" and buffers.beast_flask and buffers.beast_flask~="" then
+			controls.hint.list=ui.rows({"Quote one red beast.","A saved flask-service quote takes priority.","Clear it to use the beast price."},sideWidth,14)
+		end
 		renderRows()
 	end
 	local function refresh()

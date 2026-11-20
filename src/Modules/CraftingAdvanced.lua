@@ -1449,7 +1449,7 @@ function A.extend(M,api)
 		result.methodAvailabilityNote="Availability checks general item prerequisites; individual options and outcomes may have further restrictions."
 		if model.item.type=="Flask" then
 			local allowed,reason=available("beast_flask",state,model)
-			result.beastFlaskOptions={available=allowed,unavailableReason=not allowed and reason or nil,choices=M.actionOptions(model,state,"beast_flask"),priceKey="beast_flask",note="One red beast; eligibility and roll distributions require current-game verification."}
+			result.beastFlaskOptions={available=allowed,unavailableReason=not allowed and reason or nil,choices=M.actionOptions(model,state,"beast_flask"),priceKey="beast_flask",components={beast_any_red=1},note="One red beast; eligibility and roll distributions require current-game verification."}
 		end
 		for _,catalog in ipairs({{method="bench",rows=result.bench},{method="essence",rows=result.essences}}) do
 			local allowed,reason=available(catalog.method,state,model)
@@ -1548,6 +1548,7 @@ function A.extend(M,api)
 		return action.method
 	end
 	function M.components(action,state,model)
+		if action.method=="beast_flask" then return {beast_any_red=1} end
 		if (action.method=="awakener" or action.method=="recombine" or action.method=="recombine_predictable") and type(action.donorItem)=="string" and action.donorItem~="" then
 			return {[M.priceKey(action)]=1,["donor:"..require("sha1")(action.donorItem)]=1}
 		end

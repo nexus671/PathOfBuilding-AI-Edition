@@ -8,6 +8,30 @@ describe("Saved crafting resource prices",function()
 	local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20\nSockets: W W W W W W"
 	local omen="Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks";local fusing="Metadata/Items/Currency/CurrencyRerollSocketLinks"
 	local function book(values) return {currency="chaos",source="Test quotes",quotedAt=1700000000,values=values or {[omen]=2,[fusing]=0.25}} end
+	it("shows the red beast and preserves existing flask-service quotes",function()
+		local flask="Rarity: NORMAL\nSmall Life Flask\nItem Level: 86";local model=sim.model(flask)
+		local action={method="beast_flask",modId="FlaskChillFreezeImmunity1"}
+		local name,_,kind=prices.describe("beast_any_red",model,action)
+		assert.equal("Any red beast",name);assert.equal("Beast",kind);assert.equal("beast_any_red",prices.key("beast_any_red",model))
+		local rows=prices.entries(model,model.initial,{action},book({beast_flask=4}));local found
+		for _,row in ipairs(rows) do if row.key=="beast_any_red" then found=row end end
+		assert.is_not_nil(found);assert.equal("Any red beast",found.name);assert.is_true(found.required)
+		for _,key in ipairs({"beast_flask","beast_any_red"}) do
+			local recipe={steps={action},targets={{anyOf={action.modId}}}}
+			local result=sim.simulate(flask,recipe,{trials=3,maxActions=1,seed=1,priceBook=book({[key]=4}),currency="chaos"})
+			assert.equal(4,result.meanCost)
+		end
+		local recipe={steps={action},targets={{anyOf={action.modId}}}}
+		local result=sim.simulate(flask,recipe,{trials=1,maxActions=1,seed=1,priceBook=book({beast_flask=4,beast_any_red=2}),currency="chaos"})
+		assert.equal(4,result.meanCost)
+		assert.equal("beast_any_red",result.resourceUsage[1].key);assert.equal(1,result.resourceUsage[1].amount)
+		result=sim.simulate(flask,recipe,{trials=1,maxActions=1,seed=1,priceBook=book({beast_flask=4,beast_any_red=2}),actionPrices={beast_flask=7},currency="chaos"})
+		assert.equal(7,result.meanCost);assert.equal("beast_any_red",result.resourceUsage[1].key)
+		newBuild();main.popups={}
+		local controls=require("Classes.CraftingPricesControl").Open(model,model.initial,{action},book({beast_flask=4}),"chaos",function() end)
+		local hint={};for _,row in ipairs(controls.hint.list) do hint[#hint+1]=row[1] or "" end
+		assert.matches("takes priority",table.concat(hint," "),1,true);main.popups={}
+	end)
 	local function project() return {id="priced-body",title="Priced body armour",slot="Body Armour",startingItem=raw,goals={},steps={},preferredMethod="omen_connections",nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=6}},priceBook=book()} end
 	before_each(function() newBuild() end)
 	after_each(function() require("Modules.CraftingTasks").cancel();main.popups={} end)
