@@ -377,6 +377,8 @@ function M.generate(build,profile,checkpoint)
 			if craft and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,info.resource,item.corrupted,step.action,uniqueSocketCount) then
 				local items={}
 				if craft.method=="quality" then items={{key=info.resourceKey,name=info.resource}}
+				elseif craft.method=="fusing" then items={{key="fusing",name="Orb of Fusing"}}
+				elseif craft.method=="tainted_fusing" then items={{key="tainted_fusing",name="Tainted Orb of Fusing"}}
 				elseif craft.method=="chromatic" then items={{key="chromatic",name="Chromatic Orb"}}
 				elseif craft.method=="tainted_chromatic" then items={{key="tainted_chromatic",name="Tainted Chromatic Orb"}}
 				elseif craft.method=="omen_trichromatism" then items={{key="Metadata/Items/Currency/AncestralOmenOnChromaticAddWhiteSockets",name="Omen of Trichromatism"},{key="Metadata/Items/Currency/CurrencyRerollSocketColours",name="Chromatic Orb"}}

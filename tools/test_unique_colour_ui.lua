@@ -19,4 +19,10 @@ return function(build,ui,frame)
 	ui:click("socketCount");ui:click("colours");ui:text("target","RR");ui:click("plan");frame("crafting-unique-colour-replace");ui:click("confirm")
 	for _,entry in ipairs(store.projects) do if entry.id==direct.id then planned=entry end end
 	assert(planned.nativeRecipe.requirements.socketColours=="RR" and #planned.steps==1 and planned.steps[1].stopWhen=="At least RR sockets in any order","Colour guide did not follow the replacement");main.popups={}
+	local linkProject={id="unique-random-links-ui",title="Desired links",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W",goals={},steps={}}
+	store:Upsert(linkProject);require("Classes.CraftingUniqueQualityControl").Open(build,linkProject)
+	ui:click("socketCount");ui:click("links");ui:text("target","4");frame("crafting-unique-link-target");ui:click("plan")
+	local linked;for _,entry in ipairs(store.projects) do if entry.id==linkProject.id then linked=entry end end
+	assert(linked and linked.nativeRecipe.requirements.links==4 and linked.steps[1].uniqueCraft.method=="fusing","Unique link plan was not kept")
+	ui:click("socketCount");ui:click("links");ui:click("apply");frame("crafting-unique-link-preview");main.popups={}
 end

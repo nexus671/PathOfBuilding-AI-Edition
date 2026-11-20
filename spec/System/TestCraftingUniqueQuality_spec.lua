@@ -204,6 +204,54 @@ describe("Unique item quality",function()
 		assert.is_true(popup.plan:IsEnabled());assert.matches("Already met",popup.targetHelp.label());main.popups={}
 	end)
 
+	it("samples unique links without changing socket colours",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W\n+40% to Fire Resistance"
+		for _,method in ipairs({"fusing","tainted_fusing"}) do
+			local input=raw..(method=="tainted_fusing" and "\nCorrupted" or "")
+			local first=quality.randomLinks(input,method,123);local again=quality.randomLinks(input,method,123)
+			assert.equal(first.itemText,again.itemText);local item=quality.inspect(first.itemText)
+			assert.equal(4,#item.sockets);for index,colour in ipairs({"R","G","B","W"}) do assert.equal(colour,item.sockets[index].color) end
+			assert.is_true(first.itemText:find("+40% to Fire Resistance",1,true)~=nil)
+		end
+		assert.has_error(function() quality.randomLinks(raw.."\nCorrupted","fusing",1) end)
+		assert.has_error(function() quality.randomLinks(raw,"tainted_fusing",1) end)
+		assert.has_error(function() quality.randomLinks(raw.."\nSockets cannot be modified","fusing",1) end)
+		assert.has_error(function() quality.randomLinks(raw:gsub("Sockets: R%-G B W","Sockets: R-G-B-W").."\nCorrupted","tainted_fusing",1) end)
+	end)
+
+	it("simulates sampled unique Fusing recipes",function()
+		local sim=require("Modules.CraftingSimulator");local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W"
+		for _,method in ipairs({"fusing","tainted_fusing"}) do
+			local input=raw..(method=="tainted_fusing" and "\nCorrupted" or "")
+			local catalog=sim.catalog(input,method,50);local action
+			for _,entry in ipairs(catalog.uniqueActions) do if entry.method==method then action=entry end end
+			assert.is_true(action.available);assert.is_false(action.deterministic)
+			local first=sim.perform(input,{method=method},123);local second=sim.perform(input,{method=method},123);assert.equal(first.itemText,second.itemText)
+			local recipe={steps={{method=method,maxAttempts=10,untilRequirements={links=4}}},targets={},requirements={links=4}}
+			local result=sim.simulate(input,recipe,{trials=20,maxActions=10,seed=123,retainSuccesses=1})
+			assert.is_true(result.sampled);assert.is_true(result.successes>0 and result.successes<20);assert.is_true(quality.matches(result.retainedSuccesses[1].itemText,{links=4}))
+			local calculated=sim.calculate(input,{method=method},{},nil,{trials=20,seed=123,requirements={links=4}});assert.is_true(calculated.sampled)
+		end
+	end)
+
+	it("plans and previews unique socket links",function()
+		for _,corrupted in ipairs({false,true}) do
+			local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W"..(corrupted and "\nCorrupted" or "")
+			local project={id=corrupted and "link-corrupted" or "link-normal",title="Link",slot="Helmet",startingItem=raw,goals={},steps={}}
+			local store=build.savers.CraftingProjects;store:Upsert(project)
+			local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.socketCount:Click();main.popups[1].controls.links:Click()
+			local popup=main.popups[1].controls;local method=corrupted and "tainted_fusing" or "fusing"
+			assert.equal(method,popup.method:GetSelValueByKey("val"));popup.target:SetText("5");assert.is_false(popup.plan:IsEnabled());popup.target:SetText("4");assert.is_true(popup.plan:IsEnabled());popup.plan:Click()
+			local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+			assert.equal(method,saved.nativeRecipe.steps[1].method);assert.equal(4,saved.nativeRecipe.requirements.links);assert.equal(method,saved.steps[1].uniqueCraft.method)
+			local result=require("Modules.CraftingSimulator").simulate(raw,saved.nativeRecipe,{trials=20,maxActions=100,seed=123});assert.is_true(result.sampled);assert.is_true(result.successes>0)
+			control.recipe:Click();local view=main.popups[1].controls;local summary={};for _,row in ipairs(view.details.list) do summary[#summary+1]=row[1] end;assert.is_true(table.concat(summary," "):find("20 trials",1,true)~=nil);view.close:Click()
+			local filters=require("Modules.LootFilters");local rules=filters.generate(build,filters.profile("link-"..tostring(corrupted),"Links"));local found=false
+			for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id and rule.title==(corrupted and "Tainted Orb of Fusing" or "Orb of Fusing") then found=true end end;assert.is_true(found)
+			control.socketCount:Click();main.popups[1].controls.links:Click();popup=main.popups[1].controls;assert.is_true(popup.apply:IsEnabled());popup.apply:Click();assert.is_true(control.undo:IsEnabled());main.popups={}
+		end
+	end)
+
 	it("previews and simulates unique flask and tincture quality",function()
 		local sim=require("Modules.CraftingSimulator")
 		for _,entry in ipairs({{"Taste of Hate","Sapphire Flask"},{"The Battle Within","Oakbranch Tincture"}}) do
@@ -345,7 +393,7 @@ describe("Unique item quality",function()
 	it("catalogues supported unique crafts and their current availability",function()
 		local simulator=require("Modules.CraftingSimulator")
 		local catalog=simulator.catalog(shield,"",50,nil,"3_30")
-		assert.is_true(catalog.uniqueCrafting);assert.equal(11,#catalog.uniqueActions);assert.equal(10,#catalog.socketCrafts)
+		assert.is_true(catalog.uniqueCrafting);assert.equal(13,#catalog.uniqueActions);assert.equal(12,#catalog.socketCrafts)
 		assert.same(require("Modules.CraftingItemStats").itemValues(new("Item"):Item(shield)),catalog.nativeStats);assert.is_true(catalog.nativeStats.Armour>0)
 		local byMethod={};for _,action in ipairs(catalog.uniqueActions) do if action.method~="socket_bench" or action.action.linked then byMethod[action.method]=action end end
 		assert.is_true(byMethod.quality.available);assert.is_true(byMethod.beast_max_links.available);assert.is_true(byMethod.socket_white_bench.available)

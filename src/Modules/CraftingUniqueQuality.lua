@@ -43,6 +43,8 @@ function M.guideAction(method,count,resource,corrupted,socketCount)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
 	if method=="omen_connections" then return "Link existing sockets with an Omen of Connections and an Orb of Fusing" end
+	if method=="fusing" then return "Use an Orb of Fusing to reroll socket links" end
+	if method=="tainted_fusing" then return "Use a Tainted Orb of Fusing to change socket links" end
 	if method=="chromatic" then return "Use a Chromatic Orb to reroll socket colours" end
 	if method=="tainted_chromatic" then return "Use a Tainted Chromatic Orb to reroll socket colours" end
 	if method=="omen_trichromatism" then return "Use an Omen of Trichromatism and a Chromatic Orb to guarantee red, green and blue sockets" end
@@ -285,6 +287,43 @@ function M.colour(raw,method,seed)
 	return {itemText=output,components=sim.components({method=method})}
 end
 
+-- Socket-link rolls use the same estimated model as ordinary equipment.
+function M.randomLinkReason(raw,method)
+	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
+	if method~="fusing" and method~="tainted_fusing" then return "Unsupported unique link method" end
+	if item.type=="Flask" or item.type=="Tincture" then return "Flasks and tinctures have no sockets" end
+	if (not not item.corrupted)~=(method=="tainted_fusing") then return item.corrupted and "Use tainted currency on corrupted items" or "Tainted currency requires a corrupted item" end
+	local immutable=M.socketModificationReason(raw,item);if immutable then return immutable end
+	local line,lines=raw:match("\nSockets: ([^\r\n]*)"),0
+	for _ in ("\n"..raw):gmatch("\nSockets:") do lines=lines+1 end
+	if lines~=1 or not line or not line:match("^[RGBWA][RGBWA%-%s]*$") then return "A single explicit socket layout is required" end
+	if #item.sockets<2 or #item.sockets>6 then return "Link crafting needs two to six existing sockets" end
+	local linked=true
+	for _,socket in ipairs(item.sockets) do
+		if socket.color=="A" then return "Abyssal sockets need a separate socket model" end
+		linked=linked and socket.group==item.sockets[1].group
+	end
+	if #line:gsub("[^RGBW]","")~=#item.sockets then return "The socket layout could not be verified" end
+	if linked and (method=="tainted_fusing" or #item.sockets>=5) then return "The item is already fully linked" end
+end
+function M.randomLinks(raw,method,seed)
+	local reason=M.randomLinkReason(raw,method);assert(not reason,reason)
+	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
+	local before=M.inspect(raw);local sim=require("Modules.CraftingSimulator")
+	local state={affixes={},sockets=copyTable(before.sockets),quality=before.quality,corrupted=before.corrupted}
+	local result=sim.action({item=before,byId={}},state,{method=method},require("Modules.CalcTime").random(seed))
+	local parts={};for i,socket in ipairs(result.sockets) do
+		if i>1 then parts[#parts+1]=socket.group==result.sockets[i-1].group and "-" or " " end
+		parts[#parts+1]=socket.color
+	end
+	local output,n=raw:gsub("(\nSockets: )([^\r\n]*)",function(prefix) return prefix..table.concat(parts) end)
+	assert(n==1,"The socket layout could not be updated")
+	local after=M.inspect(output)
+	assert(after.title==before.title and after.baseName==before.baseName and #after.sockets==#before.sockets and after.corrupted==before.corrupted,"Unique item did not round-trip after link crafting")
+	for i,socket in ipairs(after.sockets) do assert(socket.color==before.sockets[i].color,"Socket colours changed unexpectedly") end
+	return {itemText=output,components=sim.components({method=method})}
+end
+
 function M.white(raw)
 	local reason=M.whiteReason(raw);assert(not reason,reason)
 	local before=M.inspect(raw)
@@ -310,6 +349,8 @@ function M.catalog(raw,query,limit)
 	if sim.socketLimit({item=item})>0 then
 		local socketDefinitions={
 		{method="beast_max_links",label="Bestiary: maximum links",reason=linkReason,components={beast_black_morrigan=1,beast_craicic_sand_spitter=1}},
+		{method="fusing",label="Orb of Fusing",reason=M.randomLinkReason(raw,"fusing"),sampled=true,components=sim.components({method="fusing"})},
+		{method="tainted_fusing",label="Tainted Orb of Fusing",reason=M.randomLinkReason(raw,"tainted_fusing"),sampled=true,components=sim.components({method="tainted_fusing"})},
 		{method="chromatic",label="Chromatic Orb",reason=M.colourReason(raw,"chromatic"),sampled=true,components=sim.components({method="chromatic"})},
 		{method="tainted_chromatic",label="Tainted Chromatic Orb",reason=M.colourReason(raw,"tainted_chromatic"),sampled=true,components=sim.components({method="tainted_chromatic"})},
 		{method="omen_trichromatism",label="Omen of Trichromatism + Chromatic Orb",reason=M.colourReason(raw,"omen_trichromatism"),sampled=true,components=sim.components({method="omen_trichromatism"})},
