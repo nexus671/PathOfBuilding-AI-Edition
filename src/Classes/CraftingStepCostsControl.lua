@@ -36,6 +36,18 @@ function M.Open(routes)
 	ui.label(c,"pageLabel",180,h-79,"",14);c.pageLabel.label=function() return string.format("^7Page %d / %d | %d visited steps",page,math.max(1,math.ceil(#rows/pageSize)),#rows) end
 	c.previous=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-84,72,24},"Previous",function() page=page-1 end);c.previous.enabled=function() return page>1 end
 	c.next=new("ButtonControl"):ButtonControl(ui.anchor,{96,h-84,72,24},"Next",function() page=page+1 end);c.next.enabled=function() return page<math.ceil(#rows/pageSize) end
+	c.copy=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-42,200,28},"Copy step costs (CSV)",function()
+		local route=selected();local result=route.result
+		local function quote(value) return '"'..tostring(value or ""):gsub('"','""')..'"' end
+		local lines={"route,step,action,mean_per_trial,unit,status,trials,note"}
+		for _,entry in ipairs(rows) do
+			local amount=entry.amount~=nil and (string.format("%.17g",entry.amount):gsub(",",".")) or ""
+			lines[#lines+1]=table.concat({quote(route.label),tostring(entry.step),quote(entry.method),amount,quote(result.costCurrency or "units"),quote(entry.amount~=nil and "priced" or "unavailable"),tostring(result.trials),quote("Includes unsuccessful trials; excludes starting items and restart costs.")},",")
+		end
+		Copy(table.concat(lines,"\n"))
+	end)
+	c.copy.enabled=function() return #rows>0 end
+	c.copy.tooltipText="Copy every visited step for the selected route, including steps with unavailable prices."
 	c.close=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-42,140,28},"Close",function() main:ClosePopup() end)
 	c.route.selFunc=function() page=1;refresh() end;refresh();ui.style(c);for _,control in pairs(c) do control.layoutAudit="crafting-step-costs" end
 	main:OpenPopup(w,h,"Crafting step spending",c,nil,nil,"close");return c

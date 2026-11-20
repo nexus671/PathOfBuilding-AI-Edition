@@ -11,6 +11,7 @@ for _,size in ipairs({{960,640},{1024,768},{1280,720}}) do
  ui:click("distribution");for i=1,1000 do if not tasks.job then break end;tasks.tick(build) end;assert(not tasks.job and build.craftingAnalyses[p.id].results.simulation)
  ui:frame():write(directory.."/"..size[1].."-saved-replay-finished.json")
  ui:click("distribution");ui:click("charts");ui:click("stepCosts")
- ui.cursorX,ui.cursorY=-100,-100;ui:frame():write(directory.."/"..size[1].."-crafting-step-spending.json");ui:bind(nil);main.popups={}
+ ui.cursorX,ui.cursorY=-100,-100;ui:frame():write(directory.."/"..size[1].."-crafting-step-spending.json")
+ ui:click("copy");assert(ui.clipboard:find("mean_per_trial",1,true) and ui.clipboard:find('"priced"',1,true),"Step cost CSV is incomplete");ui:bind(nil);main.popups={}
 end
 print("Saved simulation UI: three widths, save/reopen/rerun passed")
