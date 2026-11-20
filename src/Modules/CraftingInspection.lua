@@ -47,7 +47,7 @@ end
 local function implicitChanges(model,before,after)
 	if before.destroyed or after.destroyed then return {} end
 	local json=require("dkjson");local changed=sim.context(model,before).item.baseName~=sim.context(model,after).item.baseName
-	for _,key in ipairs({"uniqueTitle","corruptedImplicits","implicits","synthRetained","synthExhausted","synthRolls","baseImplicitRanges","baseImplicit330","baseImplicitReconstructed","vendorImplicit","catalyst","catalystQuality"}) do
+	for _,key in ipairs({"uniqueTitle","corruptedImplicits","implicits","synthRetained","synthExhausted","fossilImplicitReplacement","synthRolls","baseImplicitRanges","baseImplicit330","baseImplicitReconstructed","vendorImplicit","catalyst","catalystQuality"}) do
 		if json.encode(before[key])~=json.encode(after[key]) then changed=true;break end
 	end
 	if not changed then return {} end

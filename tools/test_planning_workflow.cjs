@@ -70,6 +70,12 @@ async function main(){
   assert.ok(blessedSynth.nativeCrafting.warnings.some(entry=>entry.code==='blessed_roll_assumptions'));
   const blessedSynthReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:blessedSynthRaw,initialState:blessedSynth.nativeCrafting.state,limit:5},'inspected');
   assert.deepEqual(blessedSynthReview.crafting.nativeEngine.initialState.synthRolls,blessedSynth.nativeCrafting.state.synthRolls);
+  const pairedFossilRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 3\n+10 to Strength\n+20 to Dexterity\n+20 to Intelligence\nSynthesised Item';
+  const pairedFossilAction={method:'fossil',fossils:['Metadata/Items/Currency/CurrencyDelveCraftingVaal','Metadata/Items/Currency/CurrencyDelveCraftingSellPrice']};
+  const pairedFossil=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:pairedFossilRaw,action:pairedFossilAction,seed:17},'crafted');
+  assert.equal(pairedFossil.nativeCrafting.state.fossilImplicitReplacement,true);assert.equal(pairedFossil.nativeCrafting.state.synthExhausted,true);assert.equal(pairedFossil.nativeCrafting.state.corruptedImplicits.length,1);assert.ok(pairedFossil.nativeCrafting.state.vendorImplicit);assert.ok(!pairedFossil.nativeCrafting.itemText.includes('+20 to Dexterity'));
+  const pairedFossilReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:pairedFossilRaw,initialState:pairedFossil.nativeCrafting.state,limit:5},'inspected');assert.equal(pairedFossilReview.crafting.nativeEngine.initialState.fossilImplicitReplacement,true);
+  const pairedFossilLocus=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:pairedFossilRaw,initialState:pairedFossil.nativeCrafting.state,action:{method:'locus'},seed:1},'crafted');assert.equal(pairedFossilLocus.nativeCrafting.state.twiceCorrupted,true);
   const blessedSynthAgain=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:blessedSynthRaw,initialState:blessedSynth.nativeCrafting.state,action:{method:'blessed'},seed:2},'crafted');
   assert.equal(blessedSynthAgain.nativeCrafting.state.synthRolls[0].id,'SynthesisImplicitPercentLife3');
   const eldritchStart=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,action:{method:'eldritch_implicit',side:'Exarch',tier:2},seed:11},'crafted');

@@ -1032,6 +1032,8 @@ function A.extend(M,api)
 				seen[id]=true; fossils[#fossils+1]=fossil
 				for _,modId in ipairs(fossil.added_mods) do extras[modId]=true end
 			end
+			local protectedVendor=M.hasProtectedImplicit(model,state) and seen["Metadata/Items/Currency/CurrencyDelveCraftingVaal"] and seen["Metadata/Items/Currency/CurrencyDelveCraftingSellPrice"] and state.vendorImplicit or nil
+			local protectedImplicit=M.hasProtectedImplicit(model,state)
 			api.clear(model,state,true); state.rarity="RARE"
 			local source=copyTable(baseInfluences(state) and model.influencePool or model.mods)
 			for id in pairs(extras) do local mod=assert(model.byId[id],"Fossil modifier data missing"); local weight=model.item:GetModSpawnWeight(mod); if weight > 0 then source[#source+1]={id=id,mod=mod,weight=weight} end end
@@ -1046,10 +1048,11 @@ function A.extend(M,api)
 				if #fossil.sell_price_mods > 0 then state.vendorImplicit=choose(A.vendorChoices(fossil),random) end
 			end
 			fill(model,state,random,options)
+			if protectedImplicit and seen["Metadata/Items/Currency/CurrencyDelveCraftingVaal"] and seen["Metadata/Items/Currency/CurrencyDelveCraftingSellPrice"] then state.vendorImplicit=protectedVendor end
 			for _,id in ipairs(action.fossils) do
 				local name=A.data().fossils[id].name
 				if name == "Fractured Fossil" then state.affixes[math.floor(random()*#state.affixes)+1].fractured=true end
-				if name == "Bloodstained Fossil" then M.rollCorrupted(model,state,random) end
+				if name == "Bloodstained Fossil" then M.rollCorrupted(model,state,random,nil,nil,seen["Metadata/Items/Currency/CurrencyDelveCraftingSellPrice"]==true) end
 			end
 		elseif method == "fracture" then
 			assert(state.rarity == "RARE" and #state.affixes >= 4 and not baseInfluences(state) and not fractured(state),"Fracturing requires at least four rare affixes and no influence or fracture")

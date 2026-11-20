@@ -116,7 +116,7 @@ function C.extend(M,A,api)
 		for _,entry in ipairs(imported or {}) do if not model.corruptionIds[entry.id] then model.legacyCorruptionIds[entry.id]=true;model.special[entry.id]=true end end
 		return model
 	end
-	function M.rollCorrupted(model,state,random,count,retained)
+	function M.rollCorrupted(model,state,random,count,retained,replaceAll)
 		-- A present implicit that prevents implicit changes protects the entire
 		-- implicit set, including a Gilded Fossil modifier. The implicit outcome
 		-- still corrupts the item but does not replace or add a modifier.
@@ -138,6 +138,14 @@ function C.extend(M,A,api)
 		end
 		local previousCount=#(state.corruptedImplicits or {})
 		state.corruptedImplicits=chosen
+		if replaceAll then
+			-- Bloodstained and Gilded together replace the old implicit set and
+			-- retain the newly generated vendor line as a separate implicit.
+			state.implicits=nil;state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil;state.baseImplicitRetained=nil
+			state.synthRolls=nil;state.synthRetained=nil
+			if model.item.synthesised and model.synthesisGroups then state.synthExhausted=true;state.fossilImplicitReplacement=true end
+			state.corrupted=true;return
+		end
 		-- Once two corruption implicits exist, a new one replaces one of
 		-- them; unrelated surviving implicits are not removed again.
 		if state.corrupted and previousCount==2 and #chosen==2 then return end
@@ -248,6 +256,7 @@ function C.extend(M,A,api)
 		if state.baseImplicitRetained~=nil then
 			assert(state.baseImplicitRetained==true and state.corrupted and state.corruptedImplicits and #state.corruptedImplicits==1 and not state.vendorImplicit and not state.implicits and not model.item.synthesised and (not model.item.corrupted and model.baseImplicitTemplates or model.initial.baseImplicitRetained),"Invalid retained ordinary base implicit")
 		end
+		assert(state.fossilImplicitReplacement==nil or state.fossilImplicitReplacement==true and not state.destroyed and state.corrupted and state.corruptedImplicits and model.item.synthesised and model.synthesisGroups and state.synthExhausted and not state.synthRetained,"Invalid fossil implicit replacement")
 		assert(state.gildedCorruptionReplaced==nil or state.gildedCorruptionReplaced==true and state.corrupted and state.corruptedImplicits and not state.vendorImplicit and model.item.synthesised and (not model.item.corrupted or model.initial.vendorImplicit) and model.synthesisGroups,"Invalid Gilded corruption replacement")
 		if state.gildedCorruptionReplaced then assert(state.synthRetained or state.synthExhausted,"Missing retained synthesised modifiers after Gilded replacement") end
 		assert(not state.twiceCorrupted or state.corrupted==true,"Twice Corrupted items must also be Corrupted")
@@ -283,7 +292,7 @@ function C.extend(M,A,api)
 		if state.synthExhausted then
 			assert(state.synthExhausted==true and not state.destroyed and model.item.synthesised and model.synthesisGroups and state.corruptedImplicits and not state.synthRetained,"Invalid exhausted synthesised implicit state")
 			local added=#state.corruptedImplicits-(model.item.corrupted and #(model.initial.corruptedImplicits or {}) or 0)
-			assert(added-(state.gildedCorruptionReplaced and 1 or 0)>=#model.synthesisGroups,"Invalid exhausted synthesised implicit count")
+			assert(state.fossilImplicitReplacement or added-(state.gildedCorruptionReplaced and 1 or 0)>=#model.synthesisGroups,"Invalid exhausted synthesised implicit count")
 		end
 		if state.corruptedImplicits then
 			assert(state.corrupted and #state.corruptedImplicits >= 1 and #state.corruptedImplicits<=2 and #state.corruptedImplicits + #(state.implicits or {}) <= 3 and (not state.synthRetained or not state.implicits),"Invalid corruption implicit state")
@@ -363,7 +372,7 @@ function C.extend(M,A,api)
 					local ok=pcall(api.add,model,state,random);if not ok then break end
 				end
 				state.rollBlock=nil
-			elseif method == "locus" then state.destroyed=true;state.affixes={};state.implicits=nil;state.corruptedImplicits=nil;state.synthRolls=nil;state.synthRetained=nil;state.synthExhausted=nil;state.gildedCorruptionReplaced=nil;state.baseImplicitRetained=nil
+			elseif method == "locus" then state.destroyed=true;state.affixes={};state.implicits=nil;state.corruptedImplicits=nil;state.synthRolls=nil;state.synthRetained=nil;state.synthExhausted=nil;state.gildedCorruptionReplaced=nil;state.fossilImplicitReplacement=nil;state.baseImplicitRetained=nil
 			end
 			state.corrupted=true;state.imprint=nil
 			if method=="locus" and not state.destroyed then state.twiceCorrupted=true end

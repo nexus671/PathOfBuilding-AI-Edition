@@ -4,6 +4,45 @@ describe("Advanced native crafting", function()
 	local random=function() return 0.42 end
 	local function rare() return sim.perform(raw,{method="alchemy"},12).state end
 	local function tag(model,id,wanted) for _,value in ipairs(model.byId[id].modTags or {}) do if value == wanted then return true end end;return nil end
+	it("combines Bloodstained and Gilded by replacing the old implicit set",function()
+		local blood="Metadata/Items/Currency/CurrencyDelveCraftingVaal";local gilded="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice"
+		local action={method="fossil",fossils={blood,gilded}}
+		local ring="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 1\n16% increased Rarity of Items found"
+		local synth="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 3\n+10 to Strength\n+20 to Dexterity\n+20 to Intelligence\nSynthesised Item"
+		for _,source in ipairs({raw,ring,synth}) do
+			local model=sim.model(source);local starting=copyTable(model.initial)
+			for _,seed in ipairs({1,17,42,104729}) do
+				local result=sim.perform(source,action,seed);local state=result.state
+				assert.is_true(state.corrupted);assert.equal(1,#state.corruptedImplicits);assert.is_truthy(state.vendorImplicit);assert.is_nil(state.implicits)
+				assert.is_truthy(result.itemText:find("Item sells for much more to vendors",1,true));assert.is_nil(result.itemText:find("+20 to Dexterity",1,true));assert.is_nil(result.itemText:find("16% increased Rarity of Items found",1,true))
+				if source==synth then assert.is_true(state.fossilImplicitReplacement);assert.is_true(state.synthExhausted);assert.is_nil(state.synthRetained) end
+				local json=require("dkjson");local restored=assert(json.decode(json.encode(state)));assert.is_truthy(sim.validateState(model,restored));local reopened=sim.model(result.itemText)
+				assert.equal("unknown",reopened.initial.vendorImplicit);assert.equal(1,#reopened.initial.corruptedImplicits);assert.same(starting,model.initial)
+			end
+		end
+		local model=sim.model(synth);local s=sim.action(model,model.initial,action,function() return 0.4 end);local twice=copyTable(s)
+		local checkpoint={schemaVersion=1,state=s,initial=model.initial,history={model.initial},actions={action},configured={fossil=action},settings={},sequence=1}
+		local saved=require("Modules.CraftingCheckpoint").validate(synth,checkpoint);assert.is_true(saved.state.fossilImplicitReplacement);assert.is_true(saved.state.synthExhausted);assert.is_truthy(saved.state.vendorImplicit)
+		sim.rollCorrupted(model,twice,function() return 0.4 end,1,twice.corruptedImplicits);twice.twiceCorrupted=true;assert.is_truthy(sim.validateState(model,twice))
+		local forged=copyTable(s);forged.synthExhausted=nil;assert.has_error(function() sim.validateState(model,forged) end)
+		local reversed=sim.perform(synth,{method="fossil",fossils={gilded,blood}},17);assert.is_true(reversed.state.fossilImplicitReplacement);assert.is_truthy(reversed.state.vendorImplicit);assert.equal(1,#reversed.state.corruptedImplicits)
+	end)
+	it("keeps protected implicits when the fossil pair cannot change them",function()
+		local source="Rarity: NORMAL\nComposite Ring\nItem Level: 86\nImplicits: 3\n+3 Prefix Modifiers allowed\n-3 Suffix Modifiers allowed\nImplicit Modifiers Cannot Be Changed"
+		local result=sim.perform(source,{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingVaal","Metadata/Items/Currency/CurrencyDelveCraftingSellPrice"}},17)
+		assert.is_true(result.state.corrupted);assert.is_nil(result.state.vendorImplicit);assert.is_nil(result.state.corruptedImplicits)
+		assert.is_truthy(result.itemText:find("Implicit Modifiers Cannot Be Changed",1,true));assert.is_nil(result.itemText:find("Item sells for much more to vendors",1,true))
+		local withVendor=source:gsub("Implicits: 3","Implicits: 4").."\nItem sells for much more to vendors"
+		local retained=sim.perform(withVendor,{method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingVaal","Metadata/Items/Currency/CurrencyDelveCraftingSellPrice"}},17)
+		assert.equal("unknown",retained.state.vendorImplicit);assert.is_nil(retained.state.corruptedImplicits);assert.is_truthy(retained.itemText:find("Item sells for much more to vendors",1,true))
+	end)
+	it("replaces Eldritch implicits with the combined fossil result",function()
+		local base=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state
+		base=sim.perform(raw,{method="eldritch_implicit",side="Eater",tier=1},12,base).state
+		local model=sim.model(raw);local before=copyTable(base);local action={method="fossil",fossils={"Metadata/Items/Currency/CurrencyDelveCraftingVaal","Metadata/Items/Currency/CurrencyDelveCraftingSellPrice"}}
+		local result=sim.perform(raw,action,17,base);assert.same(before,base);assert.is_nil(result.state.implicits);assert.equal(1,#result.state.corruptedImplicits);assert.is_truthy(result.state.vendorImplicit);assert.is_truthy(sim.validateState(model,result.state))
+		assert.is_nil(result.itemText:find("{exarch}",1,true));assert.is_nil(result.itemText:find("{eater}",1,true));local reopened=sim.model(result.itemText);assert.equal("unknown",reopened.initial.vendorImplicit);assert.equal(1,#reopened.initial.corruptedImplicits)
+	end)
 	it("samples Gilded vendor outcomes using pinned 3.30 weights",function()
 		local data=require("Modules.CraftingAdvanced");local id="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice";local choices=data.vendorChoices(data.data().fossils[id]);local total=0
 		assert.equal(9,#choices);for _,entry in ipairs(choices) do total=total+entry.weight end

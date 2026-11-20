@@ -82,7 +82,7 @@ function M.actionWarnings(action,model)
 		result[#result+1]={code="tincture_imported_values",message="This copied tincture has locally scaled modifier values. The crafting model may infer the wrong modifier tier, and newly rolled modifiers can use a different scale from retained values. Modifier goals, previews and character effects may be inaccurate; verify the item before relying on this result."}
 	end
 	for _,id in ipairs(action.fossils or {}) do if id=="Metadata/Items/Currency/CurrencyDelveCraftingVaal" and gildedFossil(action) then
-		result[#result+1]={code="bloodstained_implicit_assumptions",message="This model uses ordinary corruption replacement for Bloodstained and Gilded together. Community documentation describes that combination replacing existing implicits and adding both corruption and vendor implicits; current-patch behavior is unverified. Check the item in game before relying on retained implicits.",source="https://www.poewiki.net/wiki/Bloodstained_Fossil"};break
+		result[#result+1]={code="bloodstained_implicit_assumptions",message="The combined Bloodstained and Gilded model replaces the existing implicit set and adds both a corruption and a vendor implicit, following community documentation. Current-patch behavior and protected implicit interactions are unverified.",source="https://www.poewiki.net/wiki/Bloodstained_Fossil"};break
 	end end
 	if gildedCorruption(action) and M.hasProtectedImplicit(model,model and model.initial) then
 		result[#result+1]={code="protected_implicit_corruption",message="The model treats an implicit-change corruption outcome as no change to protected implicits, including a Gilded modifier. The 3.30 second-corruption interaction is unverified.",source="https://www.poewiki.net/wiki/Composite_Ring"}

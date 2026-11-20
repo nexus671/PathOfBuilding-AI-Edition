@@ -4,7 +4,7 @@ describe("Crafting result model notes",function()
 	local donor="Rarity: NORMAL\nCone Helmet\nItem Level: 70"
 	it("reports Bloodstained implicit uncertainty once per recipe",function()
 		local blood="Metadata/Items/Currency/CurrencyDelveCraftingVaal";local gilded="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice";local action={method="fossil",fossils={blood,gilded}}
-		local notes=sim.actionWarnings(action);assert.equal("bloodstained_implicit_assumptions",notes[1].code);assert.matches("combination replacing existing implicits",notes[1].message)
+		local notes=sim.actionWarnings(action);assert.equal("bloodstained_implicit_assumptions",notes[1].code);assert.matches("replaces the existing implicit set",notes[1].message)
 		for _,note in ipairs(sim.actionWarnings({method="fossil",fossils={blood}})) do assert.not_equal("bloodstained_implicit_assumptions",note.code) end
 		local recipe=sim.recipeWarnings({steps={action,action}});local count=0;for _,note in ipairs(recipe) do if note.code==notes[1].code then count=count+1 end end;assert.equal(1,count)
 		local performed=sim.perform(raw,action,17);local found=false;for _,note in ipairs(performed.warnings) do if note.code==notes[1].code then found=true end end;assert.is_true(found)
