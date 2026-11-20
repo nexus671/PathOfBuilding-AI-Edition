@@ -230,6 +230,25 @@ describe("Imported corruption identities",function()
 		local original=sim.model(before).item.implicitModLines[1];local retained=sim.model(after).item.implicitModLines[1]
 		assert.equal(itemLib.applyRange(original.line,original.range or 0.5),itemLib.applyRange(retained.line,retained.range or 0.5))
 	end)
+	it("retains all lines of one identified base implicit when Gilded absorbs corruption",function()
+		local cases={{"Gemini Claw","Grants 38 Life per Enemy Hit","Grants 14 Mana per Enemy Hit"},{"Imp Crown","-1 to Level of Socketed Support Gems","+1 to Level of Socketed Skill Gems"},{"Sorrow Mask","+2% to maximum Chaos Resistance","You are Crushed"},{"Transformer Staff","Spend Energy Shield before Mana for Costs of Socketed Skills","+73 to maximum Energy Shield"}}
+		for _,pair in ipairs(cases) do
+			local source="Rarity: NORMAL\n"..pair[1].."\nItem Level: 86\nImplicits: 3\n"..pair[2].."\n"..pair[3].."\nItem sells for much more to vendors"
+			local model=sim.model(source);assert.is_truthy(model.singleBaseImplicitId);assert.equal(2,#model.baseImplicitTemplates)
+			for _,draw in ipairs({0,0.999}) do
+				local state=copyTable(model.initial);sim.rollCorrupted(model,state,function() return draw end)
+				local saved=require("Modules.CraftingCheckpoint").validate(source,require("Modules.CraftingInventory").run(state)).state;local text=sim.itemText(model,saved);local reopened=sim.model(text)
+				assert.same(saved.corruptedImplicits,reopened.initial.corruptedImplicits)
+				if draw==0 then assert.equal("unknown",saved.vendorImplicit);assert.is_nil(saved.baseImplicitRetained);assert.is_nil(text:find(pair[2],1,true));assert.is_nil(text:find(pair[3],1,true))
+				else
+					assert.is_nil(saved.vendorImplicit);assert.is_true(saved.baseImplicitRetained);assert.is_true(reopened.initial.baseImplicitRetained);assert.is_truthy(text:find(pair[2],1,true));assert.is_truthy(text:find(pair[3],1,true))
+					local identity=model.singleBaseImplicitId;model.singleBaseImplicitId=nil;assert.has_error(function() sim.validateState(model,saved) end);model.singleBaseImplicitId=identity
+					local forged=text:gsub("{modGroup:retained_base_implicit}","{modGroup:forged}",1);assert.is_truthy(sim.model(forged).unresolvedCorruption)
+					local twice=sim.action(reopened,reopened.initial,{method="locus"},function() return 0 end);assert.is_true(twice.twiceCorrupted);assert.is_nil(twice.baseImplicitRetained);assert.equal(2,#twice.corruptedImplicits);sim.validateState(reopened,twice)
+				end
+			end
+		end
+	end)
 	it("retains old and current 3.30 base implicits when Gilded absorbs corruption",function()
 		local cases={{"Amethyst Ring","+23% to Chaos Resistance"},{"Amethyst Ring","+13% to Chaos Resistance"},{"Crystal Belt","+80 to maximum Energy Shield"},{"Crystal Belt","+95 to maximum Energy Shield"},{"Two-Toned Boots (Armour/Evasion)","+10% to Fire and Cold Resistances"},{"Two-Toned Boots (Armour/Evasion)","+18% to Fire and Cold Resistances"}}
 		for _,pair in ipairs(cases) do

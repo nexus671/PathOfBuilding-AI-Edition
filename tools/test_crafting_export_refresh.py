@@ -3,11 +3,28 @@ import hashlib
 import json
 from pathlib import Path
 import unittest
+from crafting_data_status import single_base_implicit_ids
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class CraftingExportRefreshTest(unittest.TestCase):
+    def test_single_implicit_grouping_is_conservative(self):
+        values = {
+            "one": {"name": "same", "implicits": ["ModA"]},
+            "duplicate": {"name": "same", "implicits": ["ModA"]},
+            "ambiguous1": {"name": "ambiguous", "implicits": ["ModA"]},
+            "ambiguous2": {"name": "ambiguous", "implicits": ["ModB"]},
+            "several": {"name": "several", "implicits": ["ModA", "ModB"]},
+            "absent": {"name": "absent", "implicits": []},
+            "invalid": {"name": "invalid", "implicits": [None]},
+        }
+        self.assertEqual({"same": "ModA"}, single_base_implicit_ids(values))
+        data = json.loads((ROOT / "src/Data/Crafting/3.30.json").read_text(encoding="utf-8"))
+        self.assertEqual("LifeAndManaOnHitSeparatedImplicitMarakethClaw3", data["singleBaseImplicits"]["Gemini Claw"])
+        self.assertEqual("SocketedActiveGemLevelSupportGemPenaltyImplicitR1", data["singleBaseImplicits"]["Imp Crown"])
+        self.assertNotIn("Two-Toned Boots", data["singleBaseImplicits"])
+
     def test_reviewed_jewel_domains_preserve_other_modifier_data(self):
         data = json.loads((ROOT / "src/Data/Crafting/3.30.json").read_text(encoding="utf-8"))
         self.assertEqual("c97553d1fc14a134dd6813e672d2b45fddf5b42d", data["source"]["commit"])

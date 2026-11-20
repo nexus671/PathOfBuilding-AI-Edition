@@ -176,7 +176,12 @@ function C.extend(M,A,api)
 			return
 		end
 		local ordinary=model.item.implicitModLines or {}
-		if not state.corrupted and previousCount==0 and #chosen==1 and state.vendorImplicit and not model.item.synthesised and not state.implicits and #ordinary==1 and not ordinary[1].exarch and not ordinary[1].eater and not ordinary[1].corrupted and not model.blessed330Unresolved and not model.baseImplicitUnresolved and (model.blessed330 or model.baseImplicitTemplates and #model.baseImplicitTemplates==1) and type(model.item.base.implicit)=="string" and not model.item.base.implicit:find("\n",1,true) then
+		local singleOrdinary=#ordinary>0 and type(model.item.base.implicit)=="string" and not model.blessed330Unresolved and not model.baseImplicitUnresolved
+		if singleOrdinary then
+			singleOrdinary=(#ordinary==1 and (model.blessed330 or model.baseImplicitTemplates and #model.baseImplicitTemplates==1)) or (#ordinary>1 and model.singleBaseImplicitId and model.baseImplicitTemplates and #model.baseImplicitTemplates==#ordinary)
+			for _,line in ipairs(ordinary) do if line.exarch or line.eater or line.corrupted then singleOrdinary=false;break end end
+		end
+		if not state.corrupted and previousCount==0 and #chosen==1 and state.vendorImplicit and not model.item.synthesised and not state.implicits and singleOrdinary then
 			if random()<0.5 then
 				state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil
 			else state.vendorImplicit=nil;state.baseImplicitRetained=true end
@@ -217,7 +222,7 @@ function C.extend(M,A,api)
 					local base={};for _,line in ipairs(item.implicitModLines) do
 						if not model.item.corrupted or line.modGroup=="retained_base_implicit" then local copy=copyTable(line);copy.modGroup="retained_base_implicit";base[#base+1]=copy end
 					end
-					assert(#base==1,"The retained base implicit is unavailable");item.implicitModLines=base
+					assert(#base==1 or #base>1 and model.singleBaseImplicitId and type(model.item.base.implicit)=="string" and select(2,model.item.base.implicit:gsub("\n",""))+1==#base,"The retained base implicit is unavailable");item.implicitModLines=base
 				else item.implicitModLines={} end
 			end
 			for _,index in ipairs(state.synthRetained or {}) do
@@ -254,7 +259,7 @@ function C.extend(M,A,api)
 		end
 		assert(state.twiceCorrupted==nil or type(state.twiceCorrupted)=="boolean","Invalid twice-corruption marker")
 		if state.baseImplicitRetained~=nil then
-			assert(state.baseImplicitRetained==true and state.corrupted and state.corruptedImplicits and #state.corruptedImplicits==1 and not state.vendorImplicit and not state.implicits and not model.item.synthesised and (not model.item.corrupted and (model.baseImplicitTemplates or model.blessed330) or model.initial.baseImplicitRetained),"Invalid retained ordinary base implicit")
+			assert(state.baseImplicitRetained==true and state.corrupted and state.corruptedImplicits and #state.corruptedImplicits==1 and not state.vendorImplicit and not state.implicits and not model.item.synthesised and (not model.item.corrupted and (model.blessed330 or model.baseImplicitTemplates and (#model.baseImplicitTemplates==1 or model.singleBaseImplicitId)) or model.initial.baseImplicitRetained),"Invalid retained ordinary base implicit")
 		end
 		assert(state.fossilImplicitReplacement==nil or state.fossilImplicitReplacement==true and not state.destroyed and state.corrupted and state.corruptedImplicits and model.item.synthesised and model.synthesisGroups and state.synthExhausted and not state.synthRetained,"Invalid fossil implicit replacement")
 		assert(state.gildedCorruptionReplaced==nil or state.gildedCorruptionReplaced==true and state.corrupted and state.corruptedImplicits and not state.vendorImplicit and model.item.synthesised and (not model.item.corrupted or model.initial.vendorImplicit) and model.synthesisGroups,"Invalid Gilded corruption replacement")

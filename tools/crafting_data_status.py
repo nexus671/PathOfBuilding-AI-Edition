@@ -23,6 +23,20 @@ def version(raw):
     return value
 
 
+def single_base_implicit_ids(bases):
+    """Keep names whose every client record has the same single implicit ID."""
+    groups = {}
+    for item in bases.values():
+        name = item.get("name")
+        if isinstance(name, str) and name:
+            ids = item.get("implicits")
+            if not isinstance(ids, list) or any(not isinstance(value, str) or not value for value in ids):
+                ids = []
+            groups.setdefault(name, set()).add(tuple(ids))
+    return {name: ids[0] for name, variants in sorted(groups.items())
+            if len(variants) == 1 and len(ids := next(iter(variants))) == 1}
+
+
 def require_exported(expected, actual):
     if expected != actual:
         raise ValueError(f"Expected exported data {expected}, but the source reports {actual}; wait for the export or select the correct patch")

@@ -13,12 +13,22 @@ function I.resolve(M,model,metadata)
 		if line.modGroup=="retained_base_implicit" then retainedBase[#retainedBase+1]=row else rows[#rows+1]=row end
 	end end
 	if #retainedBase>0 then
-		if item.synthesised or #retainedBase~=1 or type(item.base.implicit)~="string" or item.base.implicit:find("\n",1,true) then return nil,"unresolved" end
-		local valid=infer(item.base.implicit,retainedBase[1].text)
-		if not valid and item.base.blessed330 then
-			valid=infer(item.base.blessed330.old,retainedBase[1].text) or infer(item.base.blessed330.current,retainedBase[1].text)
+		if item.synthesised or type(item.base.implicit)~="string" then return nil,"unresolved" end
+		local templates={};for line in item.base.implicit:gmatch("[^\n]+") do templates[#templates+1]=line end
+		if #retainedBase~=#templates or #templates>1 and not model.singleBaseImplicitId then return nil,"unresolved" end
+		local used={}
+		local function matches(index)
+			if index>#templates then return true end
+			for i,row in ipairs(retainedBase) do if not used[i] then
+				local valid=infer(templates[index],row.text)
+				if not valid and #templates==1 and item.base.blessed330 then
+					valid=infer(item.base.blessed330.old,row.text) or infer(item.base.blessed330.current,row.text)
+				end
+				if valid then used[i]=true;if matches(index+1) then return true end;used[i]=nil end
+			end end
+			return false
 		end
-		if not valid then return nil,"unresolved" end
+		if not matches(1) then return nil,"unresolved" end
 	end
 	if #rows==0 then return nil,#retainedBase>0 and "unresolved" or nil end
 	-- Synthesised implicits can resemble corruption modifiers. Only interpret

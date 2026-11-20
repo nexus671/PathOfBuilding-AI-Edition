@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 from urllib.request import urlopen
-from crafting_data_status import reconstruct_granted_effect_levels, require_changed_export, require_exported, require_supported_granted_effects, version
+from crafting_data_status import reconstruct_granted_effect_levels, require_changed_export, require_exported, require_supported_granted_effects, single_base_implicit_ids, version
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = "repoe-fork/repoe-fork.github.io"
@@ -52,6 +52,7 @@ result = {
     "patch": PATCH, "source": {"repo": REPOSITORY, "commit": COMMIT},
     "hashes": {name: hashlib.sha256(content).hexdigest() for name, content in raw.items()},
     "mods": compiled, "fossils": fossils, "bench": bench,
+    "singleBaseImplicits": single_base_implicit_ids(bases),
     "benchMods": {identifier: {key: mods[identifier][key] for key in ["text", "required_level", "generation_type"]}
                   for identifier in sorted({row["actions"]["add_explicit_mod"] for row in bench}
                                            - {None})},

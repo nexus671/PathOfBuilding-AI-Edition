@@ -21,4 +21,16 @@ return function(build,ui,frame)
 	local text="";for _,row in ipairs(retained.itemMods.list) do text=text..StripEscapes(row[1] or "").." " end;assert(text:find("Chaos Resistance",1,true),"Reopened craft lost its retained implicit")
 	frame("crafting-gilded-330-reopened");ui:click("close")
 
+	local crown="Rarity: NORMAL\nImp Crown\nItem Level: 86\nImplicits: 3\n-1 to Level of Socketed Support Gems\n+1 to Level of Socketed Skill Gems\nItem sells for much more to vendors"
+	local crownProject={id="gilded-multiline-ui",title="Gilded crown",slot="Helmet",startingItem=crown,goals={},steps={}}
+	local crownControls=require("Classes.CraftingSimulatorControl").Open(build,crownProject)
+	ui:click("tab_settings");ui:text("seed","1");ui:click("tab_craft");ui:click("currency_vaal");ui:click("item")
+	assert(crownControls.intro.label:find("Applied",1,true),"Gilded crown corruption did not apply");frame("crafting-gilded-multiline-retained")
+	ui:click("keepWorking");local crownSaved;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==crownProject.id then crownSaved=entry end end
+	assert(crownSaved and crownSaved.run.state.baseImplicitRetained,"Retained multi-line implicit was not saved")
+	ui:click("close");crownControls=require("Classes.CraftingSimulatorControl").Open(build,crownSaved)
+	local crownText="";for _,row in ipairs(crownControls.itemMods.list) do crownText=crownText..StripEscapes(row[1] or "").." " end
+	assert(crownText:find("Socketed Support Gems",1,true) and crownText:find("Socketed Skill Gems",1,true),"Reopened crown lost an implicit line")
+	frame("crafting-gilded-multiline-reopened");ui:click("close")
+
 end
