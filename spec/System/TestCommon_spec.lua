@@ -1,4 +1,11 @@
 describe("Common", function()
+	it("detects added and removed named fields in nested comparison inputs", function()
+		local original = { state = { item = "Ring" }, targets = { life = 50 } }
+		local changed = { state = { item = "Ring", corrupted = false }, targets = { life = 50 } }
+		assert.is_false(tableDeepEquals(original, changed))
+		assert.is_false(tableDeepEquals(changed, original))
+		assert.is_true(tableDeepEquals(original, { state = { item = "Ring" }, targets = { life = 50 } }))
+	end)
 	describe("Class creation and use", function()
 		it("produces error when parent constructors are not called", function()
 			local ParentClass = newClass("ConstructorTestParentClass")

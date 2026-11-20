@@ -637,6 +637,11 @@ function tableDeepEquals(t1, t2)
 			return false
 		end
 	end
+	for k in pairs(t2) do
+		if t1[k] == nil then
+			return false
+		end
+	end
 	return true
 end
 
