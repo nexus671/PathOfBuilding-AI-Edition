@@ -176,6 +176,21 @@ function M.sample(rule,block)
 	applyBaseProperties(item,#socketConditions==1,hasDefence)
 	return item
 end
+-- Show every parsed condition so similarly named rules can be distinguished.
+-- Preserve quoted values: they are significant for filter matching.
+function M.conditionSummaries(block)
+	local lines={}
+	for _,condition in ipairs(block.conditions or {}) do
+		local values={}
+		for i,value in ipairs(condition.values) do
+			values[#values+1]=condition.quoted and condition.quoted[i] and '"'..value..'"' or value
+		end
+		local operator=condition.operator.." "
+		if (condition.keyword=="HasExplicitMod" or condition.keyword=="HasEnchantment") and not (condition.quoted and condition.quoted[1]) and tonumber(condition.values[1]) then operator=condition.operator end
+		lines[#lines+1]=condition.keyword:gsub("(%l)(%u)","%1 %2").." "..operator..table.concat(values," ")
+	end
+	return lines
+end
 function M.catalog(profile)
 	local raw=filters.migratedBase(profile);local entries={};local ids={}
 	for i,block in ipairs(parser.parse(raw).rules) do

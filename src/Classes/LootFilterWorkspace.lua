@@ -212,12 +212,14 @@ function M.Open(build,source,layout,controller)
 		if c.detail then local lines={}
 			if selectedEntry then
 				local entry=selectedEntry
-				lines={entry.rule.title,entry.category.." / "..entry.tier,(entry.rule.enabled==false and "Disabled. The base preset still applies." or entry.base and "Base preset. Editing creates a personal override." or entry.rule.origin and "Linked to "..require("Modules.LootFilterDependencies").sourceLabel(build,entry.rule.origin) or "Personal rule"),tostring(#entry.block.conditions).." matching conditions",result and result.action=="Unknown" and (result.reasons[1] or "Resolve the sample properties to preview this drop.") or "Preview uses this profile's complete filter."}
+				lines={entry.rule.title,entry.category.." / "..entry.tier,(entry.rule.enabled==false and "Disabled. The base preset still applies." or entry.base and "Base preset. Editing creates a personal override." or entry.rule.origin and "Linked to "..require("Modules.LootFilterDependencies").sourceLabel(build,entry.rule.origin) or "Personal rule"),result and result.action=="Unknown" and (result.reasons[1] or "Resolve the sample properties to preview this drop.") or "Preview uses this profile's complete filter.","",#entry.block.conditions>0 and "Matching conditions (all required):" or "Matches any item."}
+				for _,condition in ipairs(library.conditionSummaries(entry.block)) do lines[#lines+1]=condition end
 			else lines={"Choose a rule or a drop to inspect it.","Personal rules take priority over the base preset."} end
 			c.detail.list=ui.rows(lines,c.detail.width-28,14)
 		end
 	end
 	local function updateSelection(entry)
+		if c.detail then c.detail.controls.scrollBar:SetOffset(0) end
 		selectedEntry=entry;selected=entry and entry.rule.id;item=entry and copyTable(entry.sample) or item;if parsed then result=evaluateDrop(item) end
 		updateDetail()
 	end
