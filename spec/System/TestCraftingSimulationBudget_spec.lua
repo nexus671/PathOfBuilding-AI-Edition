@@ -9,11 +9,19 @@ describe("Crafting action simulation budget", function()
 		local layout = { mount = function() end }
 		local controls = require("Classes.CraftingSimulatorControl").Open(build, project, layout)
 		controls.page:SelByValue("Simulate recipe"); controls.page.selFunc()
-		controls.trials:SetText("1"); controls.budget:SetText("1"); controls.simulate:Click()
+		controls.trials:SetText("3"); controls.budget:SetText("1"); controls.simulate:Click()
 		for i = 1, 10000 do if not tasks.job then break end; tasks.tick(build) end
 		local result = build.craftingAnalyses[project.id].results.simulation.result
 		assert.is_true(result.sampleSuccess)
-		controls.distribution:Click(); main.popups[1].controls.sample:Click()
+		assert.is_false(tableDeepEquals(result.sampleState, result.retainedSuccesses[2].state))
+		controls.distribution:Click(); main.popups[1].controls.item:SelByValue(2, "val")
+		assert.are.equal("Inspect selected item", main.popups[1].controls.sample:GetProperty("label"))
+		local selectedState = result.retainedSuccesses[2].state
+		result.retainedSuccesses[2].state = nil
+		main.popups[1].controls.sample:Click()
+		assert.is_false(main.popups[1].controls.load:IsEnabled())
+		main:ClosePopup(); result.retainedSuccesses[2].state = selectedState
+		main.popups[1].controls.sample:Click()
 		assert.is_true(main.popups[1].controls.load:IsEnabled())
 		main.popups[1].controls.load:Click()
 		assert.are.equal("Load sampled outcome", main.popups[1].title)
@@ -23,16 +31,30 @@ describe("Crafting action simulation budget", function()
 		main.popups[1].controls.load:Click()
 		main.popups[1].controls.confirm:Click()
 		local snapshot = layout.snapshot()
-		assert.are.same(result.sampleState, snapshot.state)
-		assert.are.same(result.sampleState, snapshot.initial)
+		assert.are.same(result.retainedSuccesses[2].state, snapshot.state)
+		assert.are.same(result.retainedSuccesses[2].state, snapshot.initial)
 		assert.are.equal(0, #snapshot.history); assert.are.equal(0, #snapshot.actions)
 		assert.is_nil(build.craftingAnalyses[project.id].results.simulation)
 		assert.are.same(project.nativeRecipe, snapshot.project.nativeRecipe)
 		assert.are.equal("Emulate item", snapshot.page)
 		controls.keepWorking:Click()
 		local saved = build.savers.CraftingProjects.projects[1]
-		assert.are.same(result.sampleState, saved.run.state)
+		assert.are.same(result.retainedSuccesses[2].state, saved.run.state)
 		assert.are.same(project.nativeRecipe, saved.nativeRecipe)
+	end)
+	it("can continue from an unsuccessful sample when no successes were retained", function()
+		local project = { id = "failed-sample-ui", title = "Sample", slot = "Body Armour", startingItem = raw, goals = {}, steps = {}, preferredMethod = "alchemy", nativeRecipe = { steps = { { method = "alchemy" } }, targets = {}, requirements = { minQuality = 20 } } }
+		local layout = { mount = function() end }
+		local controls = require("Classes.CraftingSimulatorControl").Open(build, project, layout)
+		controls.page:SelByValue("Simulate recipe"); controls.page.selFunc()
+		controls.trials:SetText("1"); controls.budget:SetText("1"); controls.simulate:Click()
+		for i = 1, 10000 do if not tasks.job then break end; tasks.tick(build) end
+		local result = build.craftingAnalyses[project.id].results.simulation.result
+		assert.is_false(result.sampleSuccess); assert.are.equal(0, #result.retainedSuccesses)
+		controls.distribution:Click(); assert.are.equal("Inspect sampled outcome", main.popups[1].controls.sample:GetProperty("label")); main.popups[1].controls.sample:Click()
+		assert.is_true(main.popups[1].controls.load:IsEnabled())
+		main.popups[1].controls.load:Click(); main.popups[1].controls.confirm:Click()
+		assert.are.same(result.sampleState, layout.snapshot().state)
 	end)
 	it("explains why empty crafting actions are unavailable", function()
 		local project = { id = "empty-ui", title = "Empty", slot = "Body Armour", startingItem = raw, goals = {}, steps = {} }

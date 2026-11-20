@@ -693,11 +693,17 @@ function Panel.Open(build,project,layout)
 		if #kept==0 then popup.item:SetList({{label=#(result.retainedSuccesses or {})>0 and "No items available to preview" or "No successful items retained",val=0}}) end
 		button(popup,"close",728,resultHeight-42,116,"Close",function() main:ClosePopup() end)
 		button(popup,"sample",252,resultHeight-42,220,"Inspect sampled outcome",function()
+			local index=popup.item:GetSelValueByKey("val")
+			local selected=index and result.retainedSuccesses and result.retainedSuccesses[index]
+			local sampleState=result.sampleState
+			if selected then sampleState=selected.state end
+			local sampleItem=selected and selected.itemText or result.sampleItem
+			local success=selected~=nil or result.sampleSuccess
 			local c={};local w,h=math.min(660,main.screenW-40),math.min(560,main.screenH-48)
-			ui.description(c,"hint",16,28,w-32,48,{result.sampleSuccess and "One successful sampled outcome. Other trials can differ." or "One unsuccessful sampled outcome. Inspect it before deciding whether to salvage or restart."},16)
-			local render=require("Classes.JourneyItemControl").new(c,"sampleItem",16,92,w-32,h-166,"SAMPLED OUTCOME");render(require("Modules.CraftingProjects").item(result.sampleItem))
+			ui.description(c,"hint",16,28,w-32,48,{success and "Selected successful sampled outcome. Other trials can differ." or "One unsuccessful sampled outcome. Inspect it before deciding whether to salvage or restart."},16)
+			local render=require("Classes.JourneyItemControl").new(c,"sampleItem",16,92,w-32,h-166,"SAMPLED OUTCOME");render(require("Modules.CraftingProjects").item(sampleItem))
 			button(c,"load",16,h-48,200,"Load into workbench",function()
-				local sampled=simulator.validateState(model,copyTable(assert(result.sampleState,"This older result has no saved item state. Run a new simulation.")))
+				local sampled=simulator.validateState(model,copyTable(assert(sampleState,"This older result has no saved item state. Run a new simulation.")))
 				assert(not sampled.destroyed and not sampled.uniqueTitle,"This outcome cannot be crafted in this workbench.")
 				main:OpenConfirmPopup("Load sampled outcome","Replace the working item with this simulated outcome?\nWorking actions and history will be cleared; the saved recipe is kept.","Load",function()
 					state=sampled;initial=copyTable(sampled);history={};actions={};sequence=0;analysis:clearSimulation();syncAnalysis();changedAffixes={};ui.draft(build,"workingCraft",draft.id)
@@ -705,11 +711,13 @@ function Panel.Open(build,project,layout)
 					main:ClosePopup();main:ClosePopup()
 				end)
 			end)
-			c.load.enabled=result.sampleState~=nil and not result.sampleState.destroyed and not result.sampleState.uniqueTitle
-			c.load.tooltipText=not result.sampleState and "Run a new simulation to capture an item state." or result.sampleState.destroyed and "Destroyed items cannot be loaded for crafting." or result.sampleState.uniqueTitle and "This unique outcome cannot be crafted in this workbench." or "Continue crafting this simulated outcome as a new hypothetical starting item."
+			c.load.enabled=sampleState~=nil and not sampleState.destroyed and not sampleState.uniqueTitle
+			c.load.tooltipText=not sampleState and "Run a new simulation to capture an item state." or sampleState.destroyed and "Destroyed items cannot be loaded for crafting." or sampleState.uniqueTitle and "This unique outcome cannot be crafted in this workbench." or "Continue crafting this simulated outcome as a new hypothetical starting item."
 			button(c,"close",w-156,h-48,140,"Back to results",function() main:ClosePopup() end);ui.style(c);main:OpenPopup(w,h,"Sampled crafting outcome",c,nil,nil,"close")
 		end)
 		popup.sample.enabled=result.sampleItem~=nil
+		popup.sample.label=function() local index=popup.item:GetSelValueByKey("val");return index and result.retainedSuccesses and result.retainedSuccesses[index] and "Inspect selected item" or "Inspect sampled outcome" end
+		popup.sample.tooltipText="Inspect the selected successful item, or a sample if none succeeded."
 		button(popup,"charts",484,resultHeight-42,220,"Explore charts",function() require("Classes.CraftingChartsControl").Open({{label=draft.title,result=result}}) end)
 		button(popup,"moreTrials",16,resultHeight-42,220,"Run more trials",function()
 			assert(request,"Run a fresh simulation to capture its setup")
