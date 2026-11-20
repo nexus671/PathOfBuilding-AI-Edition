@@ -154,6 +154,55 @@ function I.resolve(M,model,state)
 			return false
 		end
 		local function escape(text) return text:gsub("([^%w])","%%%1") end
+		-- Cover remaining lines of the selected contributors. Several modifiers
+		-- can contribute to another displayed row, including multiple hybrids.
+		local function matchRemaining(parts)
+			local rest,consumed={},{}
+			for _,part in ipairs(parts) do for index,line in ipairs(part.mod) do if index~=part.line then
+				rest[#rest+1]={line=line,kind=part.mod.type,id=part.id,order=part.mod.statOrder and part.mod.statOrder[index]}
+			end end end
+			local function patternFor(line)
+				local first,last,low,high=line:find("%((%-?%d+)%-(%-?%d+)%)")
+				if not first or line:sub(last+1):find("%(%-?%d+%-%-?%d+%)") then return end
+				return "^"..escape(line:sub(1,first-1)).."(%-?%d+)"..escape(line:sub(last+1)).."$",tonumber(low),tonumber(high)
+			end
+			local function match()
+				budget()
+				local first;for i=1,#rest do if not consumed[i] then first=i;break end end
+				if not first then return cover() end
+				local part=rest[first];consumed[first]=true
+				for i,row in ipairs(rows) do if not used[i] and sideFits(row,part.kind) and I.inferRange(part.line,row.text) then
+					used[i]=true;local found=match();used[i]=nil;if found then consumed[first]=nil;return true end
+				end end
+				local pattern,low,high=patternFor(part.line)
+				if pattern and part.order then
+					for rowIndex,row in ipairs(rows) do if not used[rowIndex] and sideFits(row,part.kind) then
+						local value=tonumber(row.text:match(pattern))
+						if value then
+							local ids={[part.id]=true}
+							local function combine(start,min,max,count)
+								budget()
+								if count>=2 and value>=min and value<=max then
+									used[rowIndex]=true;local found=match();used[rowIndex]=nil;if found then return true end
+								end
+								for j=start,#rest do if not consumed[j] then
+									local other=rest[j];local otherPattern,a,b=patternFor(other.line)
+									if not ids[other.id] and other.order==part.order and otherPattern==pattern and sideFits(row,other.kind) then
+										ids[other.id]=true;consumed[j]=true
+										local found=combine(j+1,min+math.min(a,b),max+math.max(a,b),count+1)
+										consumed[j]=nil;ids[other.id]=nil;if found then return true end
+									end
+								end end
+								return false
+							end
+							if combine(first+1,math.min(low,high),math.max(low,high),1) then consumed[first]=nil;return true end
+						end
+					end end
+				end
+				consumed[first]=nil;return false
+			end
+			return match()
+		end
 		for rowIndex,row in ipairs(rows) do if not used[rowIndex] and not row.crafted and not row.fractured then
 			local byPattern={}
 			for _,entry in ipairs(contributorMods) do local mod=entry.mod
@@ -176,16 +225,7 @@ function I.resolve(M,model,state)
 				local min=math.min(left.low,left.high)+math.min(right.low,right.high);local max=math.max(left.low,left.high)+math.max(right.low,right.high)
 				if legal and left.value>=min and left.value<=max then
 					used[rowIndex]=true;for group in pairs(pairGroups) do occupied[group]=true end;for side,n in pairs(sides) do counts[side]=counts[side]+n end
-					local rest={};for _,part in ipairs({left,right}) do for index,line in ipairs(part.mod) do if index~=part.line then rest[#rest+1]={line=line,kind=part.mod.type} end end end
-					local function matchRest(index)
-						if index>#rest then return cover() end
-						local part=rest[index]
-						for i,other in ipairs(rows) do if not used[i] and sideFits(other,part.kind) and I.inferRange(part.line,other.text) then
-							used[i]=true;local found=matchRest(index+1);used[i]=nil;if found then return true end
-						end end
-						return false
-					end
-					local found=matchRest(1)
+					local found=matchRemaining({left,right})
 					for side,n in pairs(sides) do counts[side]=counts[side]-n end;for group in pairs(pairGroups) do occupied[group]=nil end;used[rowIndex]=nil
 					if found then return true end
 				end
@@ -205,16 +245,7 @@ function I.resolve(M,model,state)
 					for side,n in pairs(sides) do if counts[side]+n>caps[side] then legal=false end end
 					if legal and parts[1].value>=min and parts[1].value<=max then
 						used[rowIndex]=true;for group in pairs(partGroups) do occupied[group]=true end;for side,n in pairs(sides) do counts[side]=counts[side]+n end
-						local rest={};for _,part in ipairs(parts) do for index,line in ipairs(part.mod) do if index~=part.line then rest[#rest+1]={line=line,kind=part.mod.type} end end end
-						local function matchRest(index)
-							if index>#rest then return cover() end
-							local part=rest[index]
-							for i,other in ipairs(rows) do if not used[i] and sideFits(other,part.kind) and I.inferRange(part.line,other.text) then
-								used[i]=true;local found=matchRest(index+1);used[i]=nil;if found then return true end
-							end end
-							return false
-						end
-						local found=matchRest(1)
+						local found=matchRemaining(parts)
 						for side,n in pairs(sides) do counts[side]=counts[side]-n end;for group in pairs(partGroups) do occupied[group]=nil end;used[rowIndex]=nil
 						if found then return true end
 					end
@@ -233,16 +264,7 @@ function I.resolve(M,model,state)
 					if value<low+remaining*lo or value>high+remaining*hi then return false end
 					if #selected>=4 and value>=low and value<=high then
 						used[rowIndex]=true;for group in pairs(partGroups) do occupied[group]=true end;for side,n in pairs(sides) do counts[side]=counts[side]+n end
-						local rest={};for _,part in ipairs(selected) do for index,line in ipairs(part.mod) do if index~=part.line then rest[#rest+1]={line=line,kind=part.mod.type} end end end
-						local function matchRest(index)
-							if index>#rest then return cover() end
-							local part=rest[index]
-							for i,other in ipairs(rows) do if not used[i] and sideFits(other,part.kind) and I.inferRange(part.line,other.text) then
-								used[i]=true;local found=matchRest(index+1);used[i]=nil;if found then return true end
-							end end
-							return false
-						end
-						local found=matchRest(1)
+						local found=matchRemaining(selected)
 						for side,n in pairs(sides) do counts[side]=counts[side]-n end;for group in pairs(partGroups) do occupied[group]=nil end;used[rowIndex]=nil
 						if found then return true end
 					end

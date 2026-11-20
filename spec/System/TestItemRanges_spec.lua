@@ -140,4 +140,18 @@ describe("Independent modifier ranges",function()
 		end
 	end)
 
+	it("detects hybrid modifiers combined across multiple displayed rows",function()
+		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local function mod(first,second,group) return {"("..first.."-"..first..")% increased Example","("..second.."-"..second..")% increased Other",type="Prefix",group=group,statOrder={100,101}} end
+		m.byId.ExampleA=mod(8,10,"ExampleA");m.byId.ExampleB=mod(4,5,"ExampleB");m.byId.ExampleC=mod(4,5,"ExampleC")
+		m.mods={{id="ExampleA"},{id="ExampleB"},{id="ExampleC"}};m.essences={};m.bench={}
+		m.item.explicitModLines={{line="8% increased Example"},{line="10% increased Other"}}
+		local import=require("Modules.CraftingImport")
+		local ok,err=pcall(import.resolve,sim,m,{rarity="RARE",affixes={}})
+		assert.is_false(ok);assert.matches("several modifier identities",err,1,true)
+		m.byId.ExampleC.statOrder[2]=102
+		local state=import.resolve(sim,m,{rarity="RARE",affixes={}})
+		assert.are.equal(1,#state.affixes);assert.are.equal("ExampleA",state.affixes[1].id)
+	end)
+
 end)
