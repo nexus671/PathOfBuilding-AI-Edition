@@ -11,6 +11,7 @@ function M.Open(build,project,layout,snapshot)
 	local history=snapshot and copyTable(snapshot.history or {}) or {}
 	local actions=snapshot and copyTable(snapshot.actions or {}) or {}
 	local redo=snapshot and copyTable(snapshot.redo or {}) or {}
+	local colourRollCounter=snapshot and snapshot.colourRollCounter or 0
 	for i=1,#history do actions[i]=actions[i] or "unknown" end
 	local savedTrace=snapshot and snapshot.savedTrace
 	local savedGuideHash=snapshot and snapshot.savedGuideHash
@@ -28,7 +29,7 @@ function M.Open(build,project,layout,snapshot)
 			local ok,err=pcall(run);if not ok then main:OpenMessagePopup("Unique crafting",ui.errorText(err)) end
 		end))
 	end
-	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history),actions=copyTable(actions),redo=copyTable(redo),savedTrace=savedTrace,savedGuideHash=savedGuideHash,savedGuideLength=savedGuideLength} end
+	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history),actions=copyTable(actions),redo=copyTable(redo),colourRollCounter=colourRollCounter,savedTrace=savedTrace,savedGuideHash=savedGuideHash,savedGuideLength=savedGuideLength} end
 	local function guidePrefixHash(steps,count)
 		if not count or count>#steps then return nil end
 		local pieces={}
@@ -135,7 +136,7 @@ function M.Open(build,project,layout,snapshot)
 			local function reason() local selected=method();if checked~=selected then checked=selected;cached=unique.colourReason(raw,selected) end;return cached end
 			ui.label(colour,"availability",16,132,"",14);colour.availability.label=function() return "^7"..ui.fit(reason() or "Ready to preview; no currency is spent.",cw-32,14) end
 			colour.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,ch-48,160,28},"Preview roll",function()
-				local choice=method();local seed=require("Modules.CalcEncounter").seed(104729,#history+1,79)
+				local choice=method();colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
 				local result=unique.colour(raw,choice,seed);history[#history+1]=raw;actions[#actions+1]=choice;redo={};raw=result.itemText;main:ClosePopup();refresh(true)
 			end)
 			colour.apply.enabled=function() return not reason() end

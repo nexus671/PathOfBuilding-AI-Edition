@@ -64,6 +64,7 @@ function M.clean(kind,entry)
 		assert(type(value.history)=="table","Invalid unique quality history")
 		assert(value.actions==nil or type(value.actions)=="table" and #value.actions==#value.history,"Invalid unique crafting actions")
 		assert(value.redo==nil or type(value.redo)=="table","Invalid unique crafting redo history")
+		assert(value.colourRollCounter==nil or type(value.colourRollCounter)=="number" and value.colourRollCounter==math.floor(value.colourRollCounter) and value.colourRollCounter>=0 and value.colourRollCounter<=2147483646,"Invalid unique colour roll counter")
 		assert(value.savedTrace==nil or type(value.savedTrace)=="string" and #value.savedTrace==40 and value.savedTrace:match("^[0-9a-f]+$"),"Invalid unique crafting trace")
 		assert(value.savedGuideHash==nil and value.savedGuideLength==nil or value.savedTrace and type(value.savedGuideHash)=="string" and #value.savedGuideHash==40 and value.savedGuideHash:match("^[0-9a-f]+$") and type(value.savedGuideLength)=="number" and value.savedGuideLength==math.floor(value.savedGuideLength) and value.savedGuideLength>=0 and value.savedGuideLength<=40,"Invalid saved guide marker")
 		local allowed={quality=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true,load=true,unknown=true}
@@ -76,7 +77,7 @@ function M.clean(kind,entry)
 			local next=value.redo[i];assert(type(next)=="table" and (allowed[next.action] or type(next.action)=="string" and next.action:match("^socket_count_bench:[2-6]$")),"Invalid unique crafting redo action")
 			redo[#redo+1]={itemText=item(next.itemText),action=next.action}
 		end
-		return {plan={kind="uniqueQuality",project=project,itemText=item(value.itemText),history=history,actions=actions,redo=redo,savedTrace=value.savedTrace,savedGuideHash=value.savedGuideHash,savedGuideLength=value.savedGuideLength}}
+		return {plan={kind="uniqueQuality",project=project,itemText=item(value.itemText),history=history,actions=actions,redo=redo,colourRollCounter=value.colourRollCounter or 0,savedTrace=value.savedTrace,savedGuideHash=value.savedGuideHash,savedGuideLength=value.savedGuideLength}}
 	elseif kind=="crafting" then
 		assert(value.kind=="workbench","Only working crafts need draft recovery")
 		local project=require("Modules.CraftingProjects").validate(value.project);local run=copyTable(value);run.schemaVersion=1

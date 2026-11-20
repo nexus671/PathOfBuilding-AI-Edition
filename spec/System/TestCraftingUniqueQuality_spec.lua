@@ -107,6 +107,22 @@ describe("Unique item quality",function()
 		end
 	end)
 
+	it("uses a fresh colour preview after undo and session recovery",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: W-W W W"
+		local project={id="colour-seeds",title="Colour",slot="Helmet",startingItem=raw,goals={},steps={}}
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local original=quality.colour;local seeds={}
+		quality.colour=function(item,method,seed) seeds[#seeds+1]=seed;return original(item,method,seed) end
+		local function roll(control) control.socketCount:Click();main.popups[1].controls.colours:Click();main.popups[1].controls.apply:Click() end
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		roll(control);control.undo:Click();roll(control);control.close:Click()
+		local snapshot=build.planningUniqueQualityDrafts[project.id]
+		local recovered=require("Modules.PlanningRecovery").clean("uniqueQuality",{plan=snapshot}).plan
+		main.popups={};control=require("Classes.CraftingUniqueQualityControl").Open(build,project,nil,recovered);control.undo:Click();roll(control)
+		quality.colour=original;main.popups={}
+		assert.equal(3,#seeds);assert.is_true(seeds[1]~=seeds[2] and seeds[2]~=seeds[3] and seeds[1]~=seeds[3]);assert.equal(2,recovered.colourRollCounter)
+	end)
+
 	it("previews and simulates unique flask and tincture quality",function()
 		local sim=require("Modules.CraftingSimulator")
 		for _,entry in ipairs({{"Taste of Hate","Sapphire Flask"},{"The Battle Within","Oakbranch Tincture"}}) do
