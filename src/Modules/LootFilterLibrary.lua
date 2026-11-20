@@ -334,7 +334,7 @@ local legionExamples={
 -- Named encounter comparisons use pinned base classes, not drop distributions.
 local deliriumExamples={
  {"Simulacrum Splinter","Stackable Currency"},{"Simulacrum","Map Fragments"},
- {"Fine Delirium Orb","Stackable Currency"},{"Diviner's Delirium Orb","Stackable Currency"},
+ {"Fine Delirium Orb","Stackable Currency"},{"Threaded Delirium Orb","Stackable Currency"},{"Diviner's Delirium Orb","Stackable Currency"},
  {"Fossilised Delirium Orb","Stackable Currency"},{"Blighted Delirium Orb","Stackable Currency"},
  {"Delirium Scarab","Map Fragments"},{"Delirium Scarab of Delusions","Map Fragments"},
  {"Delirium Scarab of Mania","Map Fragments"},{"Delirium Scarab of Neuroses","Map Fragments"},

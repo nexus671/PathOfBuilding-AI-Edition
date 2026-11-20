@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview816" />
+	<Version number="2.68.1-ai.preview817" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1752,7 +1752,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="e0a9da8064b7197e31c7989eaf9d06e750dc2209" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="f5f92d5f155dd2e771fcbbb08a0dfb4b84b71cb9" />
-	<File name="Classes/MapModifierControl.lua" part="program" sha1="e25c190fb42f37bda384188d5e73aed61a0e3f8d" />
+	<File name="Classes/MapModifierControl.lua" part="program" sha1="f61ec931b6ee2d25eaa297e05e966621e3679ef3" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
 	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="cfff5d76e380c7bdcbdac229325cefb1599af36c" />
 	<File name="Classes/ModDB.lua" part="program" sha1="1327beebeba14dc8320d137a3dede673b74942af" />
@@ -2180,7 +2180,7 @@
 	<File name="Modules/LootFilterEditing.lua" part="program" sha1="d85f3a11105f01865b713ea96e9e85dd14204139" />
 	<File name="Modules/LootFilterFileNames.lua" part="program" sha1="5f26edc8dfc72aa9fbe03be2bb1cbf0c93094e20" />
 	<File name="Modules/LootFilterImports.lua" part="program" sha1="14c2904c7ecbaed9a44146b21fffe1c341d8bb14" />
-	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="56fd067ced730a824707239b2c90cbe7cc07c570" />
+	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="5cc108bb3c9f8e92442e36d322bad03aacc127e9" />
 	<File name="Modules/LootFilterParser.lua" part="program" sha1="ecc9dd8781d4c15ebd306af034cee15e9c15e7a0" />
 	<File name="Modules/LootFilterRuleOrder.lua" part="program" sha1="c9bd2dd5f27d9f701a4d82071e756c97db2ad101" />
 	<File name="Modules/LootFilterStackTiers.lua" part="program" sha1="41793d1a2d3cb914990a79609f809c068c0fcc1b" />
@@ -2194,7 +2194,7 @@
 	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="3dca2fbe1ed7019781cff659be4c2d179df7f848" />
 	<File name="Modules/MapCraftingData.lua" part="program" sha1="c09a89493850f42027a4244f764c436433d34ff1" />
 	<File name="Modules/MapCurrency.lua" part="program" sha1="4ab516c92938117e2d54389774385b8879b70644" />
-	<File name="Modules/MapObservedEffects.lua" part="program" sha1="bbfbda22bf2b95e901aed69f4c0ee73c69cbc537" />
+	<File name="Modules/MapObservedEffects.lua" part="program" sha1="10b7b7fc8f6ce0f77f76bbc242de7cc153397f26" />
 	<File name="Modules/MapQuality.lua" part="program" sha1="c7f308aa75c1ab907d8c864fe878bc8afcf4c429" />
 	<File name="Modules/MapRollValues.lua" part="program" sha1="738d8da00d86027c40d51555476d7c2a947a72c8" />
 	<File name="Modules/ModParser.lua" part="program" sha1="369440c28b5fa279749372ac48b706bb8a178a1f" />
