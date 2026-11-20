@@ -66,7 +66,13 @@ function M.validate(raw,run,models)
 			options.checkpoint=nil
 			return {raw=raw,label=value.label,recipe=simulator.validateRecipe(value.recipe),options=options}
 		end)
-		if ok then result.simulationRequest=request end
+		if ok then result.simulationRequest=request
+		else
+			-- Preserve an unrecognized request through save/reopen so that an
+			-- older or future version can recover it. Never execute it here.
+			result.simulationRequest=type(run.simulationRequest)=="table" and copyTable(run.simulationRequest) or run.simulationRequest
+			result.simulationRequestWarning=true
+		end
 	end
 	return result
 end

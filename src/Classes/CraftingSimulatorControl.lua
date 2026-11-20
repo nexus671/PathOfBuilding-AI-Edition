@@ -61,7 +61,8 @@ function Panel.Open(build,project,layout)
 	if layout then layout.favorites=favorites end
 	if layout then layout.selectedProject=draft.id end
 	local restored=layout and layout.workbench or draft.run and require("Modules.CraftingCheckpoint").validate(draft.startingItem,draft.run)
-	local savedSimulationRun=restored and restored.simulationRequest
+	local savedSimulationRun=restored and not restored.simulationRequestWarning and restored.simulationRequest or nil
+	local invalidSimulationRun=restored and restored.simulationRequestWarning and restored.simulationRequest or nil
 	if layout then layout.workbench=nil end
 	if restored then
 		state=restored.state;initial=restored.initial;targets=restored.targets;requirements=restored.requirements;requiredGroups=restored.requiredGroups
@@ -511,7 +512,7 @@ function Panel.Open(build,project,layout)
 		analysis:start("simulation",captured,function(checkpoint)
 			options.checkpoint=checkpoint;return simulator.simulate(captured.raw,copyTable(captured.recipe),options)
 		end)
-		savedSimulationRun=captured
+		savedSimulationRun=captured;invalidSimulationRun=nil
 	end
 	local function showSimulation(recipe,fromInitial)
 		local budget=assert(tonumber(controls.budget.buf),"Invalid action budget")
@@ -851,7 +852,7 @@ function Panel.Open(build,project,layout)
 	end
 	controls.distribution.enabled=function() return not tasks.job and (lastSimulation~=nil or savedSimulationRun~=nil) end
 	controls.distribution.label=function() return not lastSimulation and savedSimulationRun and "Rerun saved" or "Results / distribution" end
-	controls.distribution.tooltipText=function() return tasks.job and busy or not lastSimulation and savedSimulationRun and "Rerun the saved recipe, item, seed and prices using current crafting data." or not lastSimulation and "Run a simulation first to see its results and distribution." or "Inspect the most recent simulation results and distribution." end
+	controls.distribution.tooltipText=function() return tasks.job and busy or not lastSimulation and savedSimulationRun and "Rerun the saved recipe, item, seed and prices using current crafting data." or not lastSimulation and invalidSimulationRun and "The saved simulation setup could not be read. Run a new simulation; the original setup is preserved." or not lastSimulation and "Run a simulation first to see its results and distribution." or "Inspect the most recent simulation results and distribution." end
 	controls.cancelJob.enabled=function() return require("Modules.CraftingTasks").job~=nil end
 	controls.apply.enabled=function() return not state.destroyed and not state.uniqueTitle end
 	controls.preview.enabled=function() return not state.destroyed and not state.veil and not state.socketLayoutUnknown end
@@ -952,11 +953,11 @@ function Panel.Open(build,project,layout)
 	end
 	if layout then
 		layout.snapshot=function() return copyTable({kind="workbench",priceOverrides=priceOverrides,project=draft,state=state,initial=initial,targets=targets,requirements=requirements,requiredGroups=requiredGroups,craftWidth=leftWidth,favorites=favorites,paletteOpen=paletteOpen,palette=paletteView and paletteView.snapshot(),inspectedId=inspectedId,
-			history=history,actions=actions,configured=configured,sequence=sequence,lastSimulation=lastSimulation,lastSimulationRun=lastSimulationRun,simulationRequest=savedSimulationRun,lastFossilComparison=lastFossilComparison,page=controls.page:GetSelValue(),method=controls.method:GetSelValueByKey("val"),seed=controls.seed.buf,resultRows=savedResultRows or controls.resultSummary.list,settings={trials=controls.trials.buf,budget=controls.budget.buf,price=controls.price.buf,currency=controls.currency.buf,baseCost=controls.baseCost.buf}}) end
+			history=history,actions=actions,configured=configured,sequence=sequence,lastSimulation=lastSimulation,lastSimulationRun=lastSimulationRun,simulationRequest=savedSimulationRun or invalidSimulationRun,simulationRequestWarning=invalidSimulationRun~=nil,lastFossilComparison=lastFossilComparison,page=controls.page:GetSelValue(),method=controls.method:GetSelValueByKey("val"),seed=controls.seed.buf,resultRows=savedResultRows or controls.resultSummary.list,settings={trials=controls.trials.buf,budget=controls.budget.buf,price=controls.price.buf,currency=controls.currency.buf,baseCost=controls.baseCost.buf}}) end
 	end
 	button(controls,"keepWorking",232,height-48,200,"Keep working craft",function()
 		if overrideKey then priceOverrides[overrideKey]=controls.price.buf end
-		local run={priceOverrides=priceOverrides,schemaVersion=1,state=state,initial=initial,history=history,actions=actions,configured=configured,sequence=sequence,targets=targets,requirements=requirements,requiredGroups=requiredGroups,simulationRequest=lastSimulationRun or savedSimulationRun,
+		local run={priceOverrides=priceOverrides,schemaVersion=1,state=state,initial=initial,history=history,actions=actions,configured=configured,sequence=sequence,targets=targets,requirements=requirements,requiredGroups=requiredGroups,simulationRequest=lastSimulationRun or savedSimulationRun or invalidSimulationRun,
 			page=controls.page:GetSelValue(),method=controls.method:GetSelValueByKey("val"),seed=controls.seed.buf,
 			settings={trials=controls.trials.buf,budget=controls.budget.buf,price=controls.price.buf,currency=controls.currency.buf,baseCost=controls.baseCost.buf}}
 		local saved=copyTable(draft);saved.run=run
@@ -991,7 +992,7 @@ function Panel.Open(build,project,layout)
 	end);controls.splitter.enabled=function() return not tasks.job end end
 	if restored then controls.method:SelByValue(restored.method or "alchemy","val");controls.resultSummary.list=restored.resultRows or controls.resultSummary.list
 	elseif draft.preferredMethod then controls.method:SelByValue(draft.preferredMethod,"val") end
-	updateOptions(true);refresh()
+	updateOptions(true);refresh(invalidSimulationRun and {"Saved simulation setup could not be read. The original is preserved; run a new simulation to replace it."} or nil)
 	-- Hook edits after restoring controls so viewing a saved craft stays clean.
 	for _,key in ipairs({"trials","budget","price","currency","baseCost","seed"}) do
 		local control=controls[key];local previous=control.changeFunc
