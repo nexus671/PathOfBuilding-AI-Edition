@@ -17,6 +17,18 @@ describe("Map reroll estimate control",function()
 		assert.is_true(controls.use:IsEnabled());controls.use:Click()
 		assert.is_truthy(sample);assert.equal("rare",sample.rarity);assert.equal(#sample.selected,#sample.rolls)
 	end)
+	it("warns when the feasibility search did not finish",function()
+		local estimate=require("Modules.MapCraftEstimate");local previous=estimate.run
+		local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
+		local controls=require("Classes.MapCraftEstimateControl").Open(build,{state=state,avoid={"MapMonsterAreaOfEffectMapWorlds"},apply=function() end})
+		estimate.run=function() return {feasibilityUnverified=true,successChance=0,maxAttempts=1,successes=0,trials=1,confidenceLow=0,confidenceHigh=100,meanAttempts=1,action="chaos",dataPatch="test"} end
+		local ok,err=pcall(function()
+			controls.run:Click();for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
+		end)
+		estimate.run=previous;assert.is_true(ok,tostring(err));assert.is_nil(tasks.job)
+		local report="";for _,row in ipairs(controls.report.list) do report=report..StripEscapes(row[1] or "") end
+		assert.matches("Target feasibility was not established",report,1,true)
+	end)
 	it("saves a manual orb price and displays bounded estimated costs",function()
 		local saved;local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
 		local options={state=state,avoid={"MapMonsterAreaOfEffectMapWorlds"},saveSettings=function(value) saved=copyTable(value) end,apply=function() end}

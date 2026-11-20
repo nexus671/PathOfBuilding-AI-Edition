@@ -136,6 +136,39 @@ describe("Map reroll estimates",function()
 		assert.is_false(ok);assert.matches("Wanted targets cannot all coexist",err)
 		assert.matches("at least 4 suffix",err);assert.is_true(checkpoints<50)
 	end)
+	it("proves conflicts without rechecking equivalent modifier alternatives",function()
+		local map=require("Modules.MapCraftingData")
+		local oldSource,oldInspect,oldNightmare,oldPerform=map.source,map.inspect,map.isNightmare,currency.perform
+		local data={patch="test",source={},mods={}};local candidates={};local groups={{},{},{},{}}
+		for groupIndex=1,4 do for index=1,30 do
+			local id="test-"..groupIndex.."-"..index;local side=index%2==0 and "prefix" or "suffix"
+			local mod={generation_type=side,groups={"family-"..((index-1)%3+1)},adds_tags={}}
+			data.mods[id]=mod;candidates[#candidates+1]={id=id,side=side};groups[groupIndex][#groups[groupIndex]+1]=id
+		end end
+		map.source=function() return data end;map.inspect=function() return {candidates=candidates} end;map.isNightmare=function() return false end
+		currency.perform=function() return {state={selected={}}} end
+		local checkpoints=0
+		local ok,result=pcall(estimate.run,state,{wantedGroups=groups,trials=1,maxAttempts=1,seed=42},function() checkpoints=checkpoints+1 end)
+		local valid,validResult=pcall(estimate.run,state,{wantedGroups={groups[1],groups[2],groups[3]},trials=1,maxAttempts=1,seed=42})
+		map.source, map.inspect, map.isNightmare, currency.perform=oldSource,oldInspect,oldNightmare,oldPerform
+		assert.is_false(ok);assert.matches("Wanted targets cannot all coexist",result);assert.is_true(checkpoints<100)
+		assert.is_true(valid,tostring(validResult));assert.equal(1,validResult.trials)
+	end)
+	it("discloses when target feasibility exceeds the search limit",function()
+		local map=require("Modules.MapCraftingData")
+		local oldSource,oldInspect,oldNightmare,oldPerform=map.source,map.inspect,map.isNightmare,currency.perform
+		local data={patch="test",source={},mods={}};local candidates={};local groups={{},{},{},{},{},{}}
+		for groupIndex=1,6 do for index=1,30 do
+			local id="limit-"..groupIndex.."-"..index;local side=index%2==0 and "prefix" or "suffix"
+			data.mods[id]={generation_type=side,groups={"family-"..((index-1)%5+1)},adds_tags={}}
+			candidates[#candidates+1]={id=id,side=side};groups[groupIndex][#groups[groupIndex]+1]=id
+		end end
+		map.source=function() return data end;map.inspect=function() return {candidates=candidates} end;map.isNightmare=function() return false end
+		currency.perform=function() return {state={selected={}}} end
+		local ok,result=pcall(estimate.run,state,{wantedGroups=groups,trials=1,maxAttempts=1,seed=42})
+		map.source,map.inspect,map.isNightmare,currency.perform=oldSource,oldInspect,oldNightmare,oldPerform
+		assert.is_true(ok,tostring(result));assert.is_true(result.feasibilityUnverified);assert.matches("Target feasibility was not established",result.note)
+	end)
 	it("rejects collectively impossible targets while accepting a compatible alternative",function()
 		local low=copyTable(state);low.tier=5;low.itemLevel=68
 		local a,b,c,d="MapBossPossessedMapWorlds","MapDangerousBoss1MapWorlds","MapMonsterCannotBeStunnedMapWorlds_","MapMonsterChainMapWorlds"

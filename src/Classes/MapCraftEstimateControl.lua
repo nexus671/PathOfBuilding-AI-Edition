@@ -112,6 +112,7 @@ function M.Open(build,options)
 				if not alive then return end
 				active=nil;result=value
 				local lines={string.format("%.1f%% succeeded within %d rolls (%d / %d trials)",value.successChance,value.maxAttempts,value.successes,value.trials),string.format("95%% sampling interval %.1f%% to %.1f%% | mean %.2f %s per trial",value.confidenceLow,value.confidenceHigh,value.meanAttempts,value.action=="chaos" and "Chaos Orbs" or "Alteration Orbs"),"Model estimates only; interval does not measure uncertainty in game rules or prices.","Map data: "..value.dataPatch}
+				if value.feasibilityUnverified then lines[#lines+1]="Target feasibility was not established within the search limit." end
 				if value.cost then
 					lines[#lines+1]=string.format("Mean orb cost per trial: %.6g %s | maximum: %.6g %s",value.cost.meanSpent,value.cost.currency,value.cost.maxPerTrial,value.cost.currency)
 					lines[#lines+1]=string.format("Spending percentiles: median %.6g | 90%% %.6g | 99%% %.6g %s",value.cost.p50,value.cost.p90,value.cost.p99,value.cost.currency)

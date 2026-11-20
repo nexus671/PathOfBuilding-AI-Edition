@@ -89,8 +89,22 @@ function M.run(state,options,checkpoint)
 	for _,side in ipairs({"prefix","suffix"}) do
 		assert(required[side]<=limit,"Wanted targets cannot all coexist: at least "..required[side].." "..side.." modifiers are required, but this map supports at most "..limit..".")
 	end
+	local feasibilityUnverified=false
 	if #groups>2 then
-		local ordered={};for index,group in ipairs(groups) do ordered[#ordered+1]={index=index,choices=group} end
+		-- The search only depends on side, conflict groups and Nightmare exclusivity.
+		-- Collapse equivalent choices per target without changing the actual target.
+		local ordered={}
+		for index,group in ipairs(groups) do
+			local choices,seen={},{}
+			for _,id in ipairs(group) do
+				local mod=mods[id];local names=copyTable(mod.groups or {});table.sort(names)
+				local exclusive=false;for _,tag in ipairs(mod.adds_tags or {}) do if tag:match("^has_uber_map_") then exclusive=true;break end end
+				local key=mod.generation_type..(exclusive and ":1" or ":0")
+				for _,name in ipairs(names) do key=key..":"..#name..":"..name end
+				if not seen[key] then seen[key]=true;choices[#choices+1]=id end
+			end
+			ordered[#ordered+1]={index=index,choices=choices}
+		end
 		table.sort(ordered,function(a,b) return #a.choices==#b.choices and a.index<b.index or #a.choices<#b.choices end)
 		local occupied={};local counts={prefix=0,suffix=0};local exclusive={prefix=0,suffix=0};local limit=rarity=="magic" and 1 or 3
 		local examined,exhausted=0,false
@@ -114,6 +128,7 @@ function M.run(state,options,checkpoint)
 			return false
 		end
 		local possible=search(1)
+		feasibilityUnverified=not possible and exhausted
 		assert(possible or exhausted,"Wanted targets cannot all coexist under the modeled map modifier rules"..(map.isNightmare(base.baseId) and ", including required Nightmare modifiers" or "")..". Change or remove a target.")
 	end
 	local successes,totalAttempts=0,0;local sample,successfulAttempts;local histogram={};local poolCache={}
@@ -147,9 +162,9 @@ function M.run(state,options,checkpoint)
 		end
 		cost={currency=price.currency,unitPrice=price.amount,totalSpent=totalAttempts*price.amount,meanSpent=totalAttempts/trials*price.amount,maxPerTrial=maxAttempts*price.amount,p50=percentile(0.5),p90=percentile(0.9),p99=percentile(0.99)}
 	end
-	return {dataPatch=map.source().patch,dataSource=copyTable(map.source().source),trials=trials,maxAttempts=maxAttempts,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,cost=cost,
+	return {dataPatch=map.source().patch,dataSource=copyTable(map.source().source),feasibilityUnverified=feasibilityUnverified,trials=trials,maxAttempts=maxAttempts,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,cost=cost,
 		attempts=totalAttempts,meanAttempts=totalAttempts/trials,action=action,seed=seed,wanted=copyTable(wanted),wantedGroups=copyTable(alternatives),avoid=copyTable(avoid),unavailableAvoid=unavailableAvoid,
 		successDistribution=distribution,sampleSuccess=sample and sample.state or nil,sampleSummary=sample and sample.summary or nil,sampleAttempts=successfulAttempts,
-		note="Chance of meeting every wanted group (at least one alternative per group) and no avoided modifiers within the attempt limit. Wilson interval measures sampling uncertainty only. Map roll counts, weights, stat distributions and some restrictions are unverified estimates; no prices or game odds are inferred."..(price and " Costs use the supplied per-orb price and exclude the map and other resources. Spending percentiles include unsuccessful trials stopped at the attempt limit." or "")..(map.isNightmare(base.baseId) and " Nightmare estimates assume one exclusive prefix and suffix drawn first, followed by four weighted draws; generation order is unverified." or "")..(#unavailableAvoid>0 and " Some avoided modifiers cannot appear in the modeled pool for this map." or "")..require("Modules.MapObservedEffects").note(base.observedEffects)}
+		note=(feasibilityUnverified and "Target feasibility was not established within the search limit. " or "").."Chance of meeting every wanted group (at least one alternative per group) and no avoided modifiers within the attempt limit. Wilson interval measures sampling uncertainty only. Map roll counts, weights, stat distributions and some restrictions are unverified estimates; no prices or game odds are inferred."..(price and " Costs use the supplied per-orb price and exclude the map and other resources. Spending percentiles include unsuccessful trials stopped at the attempt limit." or "")..(map.isNightmare(base.baseId) and " Nightmare estimates assume one exclusive prefix and suffix drawn first, followed by four weighted draws; generation order is unverified." or "")..(#unavailableAvoid>0 and " Some avoided modifiers cannot appear in the modeled pool for this map." or "")..require("Modules.MapObservedEffects").note(base.observedEffects)}
 end
 return M
