@@ -650,6 +650,18 @@ async function main(){
   const ukatoaAfter=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ukatoaRaw,initialState:ukatoa.nativeCrafting.state,limit:5},'inspected');
   assert.equal(ukatoaAfter.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='ducat_ukatoa').available,false);
   const tinctureRaw='Rarity: NORMAL\nPrismatic Tincture\nItem Level: 86';
+  const beastFlaskRaw='Rarity: NORMAL\nSmall Life Flask\nItem Level: 86';
+  const beastFlaskInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:beastFlaskRaw,limit:10},'inspected');
+  const beastFlaskOptions=beastFlaskInspect.crafting.nativeEngine.beastFlaskOptions;assert.equal(beastFlaskOptions.available,true);assert.equal(beastFlaskOptions.choices.length,6);
+  const beastFlaskAction=beastFlaskOptions.choices.find(choice=>choice.action.modId==='FlaskChillFreezeImmunity1').action;
+  const beastFlaskCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:beastFlaskRaw,action:beastFlaskAction,seed:1},'crafted');
+  assert.equal(beastFlaskCraft.nativeCrafting.state.affixes[0].id,beastFlaskAction.modId);assert.ok(beastFlaskCraft.nativeCrafting.warnings.some(w=>w.code==='beast_flask_assumptions'));
+  const beastFlaskRecipe={steps:[beastFlaskAction],targets:[{anyOf:[beastFlaskAction.modId]}]};
+  const beastFlaskGuide={id:'beast-flask-workflow',title:'Flask suffix',slot:'Flask 1',startingItem:beastFlaskRaw,goals:[],steps:[],nativeRecipe:beastFlaskRecipe};
+  await queued('propose_crafting_plan',{baseRevision:context.revision,project:beastFlaskGuide},'review');await host('apply');context=(await call('get_build_context')).context;
+  const savedBeastFlask=(await call('get_crafting_projects')).projects.find(entry=>entry.id===beastFlaskGuide.id);assert.equal(savedBeastFlask.nativeRecipe.steps[0].modId,beastFlaskAction.modId);
+  const beastFlaskRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:beastFlaskRaw,recipe:savedBeastFlask.nativeRecipe,options:{trials:3,maxActions:1,seed:1}},'crafted');assert.equal(beastFlaskRun.nativeCrafting.trials,3);
+  await queued('propose_build',{mode:'edit',title:'Remove flask test guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:beastFlaskGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
   const tincture=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:tinctureRaw,action:{method:'transmute'},seed:1},'crafted');
   const tinctureInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:tinctureRaw,initialState:tincture.nativeCrafting.state,limit:5},'inspected');
   const kishara=tinctureInspection.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='ducat_kishara');

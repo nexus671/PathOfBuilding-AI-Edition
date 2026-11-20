@@ -850,6 +850,17 @@ test('preserves bounded stack tier settings in filter proposals', t => {
 });
 
 
+test('accepts a named Bestiary flask action and recipe', t => {
+  const f=fixture(t), itemText='Rarity: NORMAL\nSmall Life Flask\nItem Level: 86';
+  const action={method:'beast_flask',modId:'FlaskChillFreezeImmunity1'};
+  f.call('apply_crafting_action',{baseRevision:f.state.revision,itemText,action});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).action,action);
+  fs.rmSync(path.join(f.dir,'AI-build-request.json'));
+  const recipe={steps:[action],targets:[{anyOf:[action.modId]}]};
+  f.call('simulate_crafting',{baseRevision:f.state.revision,itemText,recipe});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe,recipe);
+});
+
 test('queues paged Bestiary modifier inspection and validates the offset', t => {
   const f=fixture(t), action={method:'beast_prefix_suffix',beastLevel:86};
   const args={baseRevision:f.state.revision,itemText:'Rarity: NORMAL\nIron Hat\nItem Level: 20',action,query:'resistance',limit:3,beastOffset:3};

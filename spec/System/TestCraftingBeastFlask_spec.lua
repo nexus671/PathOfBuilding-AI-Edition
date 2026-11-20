@@ -33,6 +33,8 @@ describe("Bestiary flask suffixes",function()
 		assert.equal("beast_flask_assumptions",performed.warnings[1].code)
 		local catalog=sim.catalog(m.raw,"",10);assert.is_true(catalog.beastFlaskOptions.available);assert.equal(6,#catalog.beastFlaskOptions.choices)
 		assert.equal("beast_flask",catalog.beastFlaskOptions.priceKey)
+		local odds=sim.calculate(m.raw,action,recipe.targets,nil,{trials=20,seed=7})
+		assert.equal(100,odds.successChance);assert.equal("beast_flask_assumptions",odds.warnings[1].code)
 	end)
 	it("adds a named suffix through the recipe browser",function()
 		newBuild();main.popups={};local m=model("Small Life Flask");local kept
@@ -49,5 +51,14 @@ describe("Bestiary flask suffixes",function()
 		controls.method:SelByValue("beast_flask","val");controls.method.selFunc()
 		assert.equal(6,#controls.option.list);assert.is_true(controls.apply:IsEnabled())
 		controls.apply:Click();assert.is_true(controls.undo:IsEnabled());assert.is_false(controls.apply:IsEnabled());main.popups={}
+	end)
+	it("preserves a flask guide through project save and reload",function()
+		newBuild();local store=build.savers.CraftingProjects
+		local action={method="beast_flask",modId="FlaskChillFreezeImmunity1"}
+		local project={id="beast-flask-save",title="Flask suffix",slot="Flask 1",startingItem="Rarity: NORMAL\nSmall Life Flask\nItem Level: 86",goals={},steps={},nativeRecipe={steps={action},targets={{anyOf={action.modId}}}}}
+		store:Upsert(project);local xml={};store:Save(xml)
+		local reopened=require("Modules.CraftingProjects").new(build);reopened:Load(xml)
+		assert.is_nil(reopened.warning);assert.equal(action.modId,reopened.projects[1].nativeRecipe.steps[1].modId)
+		local outcome=sim.simulate(project.startingItem,reopened.projects[1].nativeRecipe,{trials=2,maxActions=1,seed=1});assert.equal(2,outcome.successes)
 	end)
 end)
