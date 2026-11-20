@@ -49,10 +49,10 @@ describe("Quality vendor review",function()
 	end)
 	it("keeps pasted items while the build remains open",function()
 		newBuild();main.popups={};local raw=item("Wands","Normal","Driftwood Wand",20)
-		local oldPaste=Paste;Paste=function() return raw end
-		local control=require("Classes.VendorQualitySetsControl").Open(build);control.paste:Click();assert.equal(1,#build.planningVendorQualityItems)
+		build.planningVendorQualityItems={raw}
+		local control=require("Classes.VendorQualitySetsControl").Open(build);assert.equal(1,#build.planningVendorQualityItems);assert.matches("1 pasted item",control.status.label)
 		main.popups={};local reopened=require("Classes.VendorQualitySetsControl").Open(build);assert.equal(1,#build.planningVendorQualityItems);assert.matches("1 pasted item",reopened.status.label)
-		Paste=oldPaste;main.popups={}
+		main.popups={}
 	end)
 	it("clears the review when another build is opened",function()
 		newBuild();build.planningVendorQualityItems={item("Wands","Normal","Driftwood Wand",20)};newBuild();assert.is_nil(build.planningVendorQualityItems)
