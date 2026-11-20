@@ -58,6 +58,8 @@ Example base properties come from the pinned 3.30.0.1.4 client base-item export 
 
 Example item classes use the pinned [3.30.0.2.2 RePoE export](https://github.com/repoe-fork/repoe-fork.github.io/tree/f49a9a43f5b06cac7f7125093cfd7ef2f0137650). Names with conflicting or missing classes, hidden records and trade proxies remain unresolved unless the rule supplies a class. Rebuild or verify with `python tools/update_loot_filter_base_classes.py path/to/base_items.json path/to/item_classes.json` and optionally `--check`; both inputs are hash-checked.
 
+The reviewed 3.30.0.3 export has the same base IDs, names, classes, drop levels and inventory dimensions as the 3.30.0.2.2 source used for filter classes; item-class records also match. The older filter snapshot is retained. `python tools/compare_filter_base_export.py previous-base.json candidate-base.json --previous-classes previous-classes.json --candidate-classes candidate-classes.json` compares these fields for later reviews. This does not verify live drop availability.
+
 Exact budget titles also recognize selected oils, tattoos, currency shards, Soul Cores, Ancient Orbs, Cartographer's Chisels and Gemcutter's Prisms from the pinned 3.30.0.2 export. These names identify items, not current drop availability. Rebuild the list with `python tools/update_filter_budget_items.py path/to/base_items.json`; use `--check` to verify it.
 
 A unique item in the gear wishlist or a crafting project adds a pickup for unique items of its base type, whether it is the project's starting item or target. This can include other uniques sharing that base; the copied item's item level is not used as a minimum.
