@@ -194,8 +194,8 @@ Intrinsic resource loss such as Mana Burn remains resource loss, not damage.
 | --- | --- |
 | Regeneration, configured resource loss | Native rates between events with recovery caps. |
 | Recoup | Per-hit cohorts with native duration and modifiers. |
-| ES recharge | Full/partial recovery in real gaps; damage to ES or its protected resource interrupts it. Costs do not interrupt it. |
-| Wicked Ward | Protects recharge for four seconds from its start, not four seconds from every hit. |
+| ES recharge | Full/partial recovery in real gaps; damage to ES or its protected resource interrupts it. Costs do not interrupt it. A full recharge pool starts the window with recharge active. |
+| Wicked Ward | Protects recharge for four seconds from its start, not four seconds from every hit. A recharge already active at the start has an unknown start time and is not assumed to have recent protection. |
 | Eternal Youth | Recharge applies to actual life. It does not clear Dissolution reservation. |
 | Ghost Dance | Three finite charges, two-second generation, eligible unblocked-hit consumption and capped ES recovery after nonlethal damage. |
 | Divine Shield / physical-prevention regeneration | Per-hit cohorts, native modifiers, recovery restrictions, Zealot's Oath conversion, and copying such as Pious Path. Shifted damage is not physical prevention. |

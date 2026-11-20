@@ -323,7 +323,17 @@ function M.survival(config)
 	local t, nextHit, hits, lastRechargeDamage = 0, 0, 0, 0
 	local sampleInterval, nextSample = max(0.25,window / 240), 0
 	local nextAttack, attempts, attacks = config.attack and 0 or math.huge, 0, 0
-	local rechargeActive, rechargeBegan = false, -math.huge
+	-- Recharge can continue at a full pool and is not interrupted by skill costs.
+	-- Its previous start time is unknown, so do not assume Wicked Ward is recent.
+	local rechargeResource = config.rechargeResource or "EnergyShield"
+	local rechargeCap = config.caps[rechargeResource] or 0
+	local rechargeRate = config.recharge
+	if rechargeCap > 0 and pools[rechargeResource] >= rechargeCap then
+		if type(rechargeRate) == "function" then rechargeRate = rechargeRate(pools, 0) end
+	else
+		rechargeRate = 0
+	end
+	local rechargeActive, rechargeBegan = (rechargeRate or 0) > 0, -math.huge
 	local continuousInterruption = false
 	local reservationRelease = math.huge
 	local cohorts = { }

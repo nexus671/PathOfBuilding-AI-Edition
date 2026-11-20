@@ -149,6 +149,22 @@ describe("Finite combat windows", function()
 		assert.same(result(false),result(true))
 	end)
 
+	it("keeps recharge active when a skill spends a full protected pool", function()
+		for _, resource in ipairs({"EnergyShield", "Life"}) do
+			local pools = {Life=100, Mana=0, EnergyShield=resource == "EnergyShield" and 100 or 0}
+			local caps = {Life=100, Mana=0, EnergyShield=pools.EnergyShield}
+			local result = simulate({window=1,interval=100,step=math.huge,pools=pools,caps=caps,
+				rechargeResource=resource,recharge=10,rechargeDelay=2,hit=function(p) return p end,
+				attackInterval=100,attack=function(p) p[resource]=p[resource]-20;return p,true end})
+			assert.are.near(90,result.pools[resource],1e-8)
+		end
+		-- An unknown pre-window recharge start must not grant recent Wicked Ward protection.
+		local hit = simulate({window=1,interval=100,step=math.huge,wickedWard=true,recharge=10,rechargeDelay=2,
+			pools={Life=100,Mana=0,EnergyShield=100},caps={Life=100,Mana=0,EnergyShield=100},
+			hit=function(p) p.EnergyShield=p.EnergyShield-20;return p,{},true end})
+		assert.are.near(80,hit.pools.EnergyShield,1e-8)
+	end)
+
 	it("interrupts recharge when on-block recovery hides ES damage", function()
 		local result = simulate({ window = 3, recharge = 10, rechargeDelay = 2,
 			pools = { Life = 100, Mana = 0, EnergyShield = 25 }, caps = { Life = 100, Mana = 0, EnergyShield = 50 },
