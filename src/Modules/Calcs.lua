@@ -526,7 +526,7 @@ function calcs.buildOutput(build, mode, deferRecovery)
 			end
 		end
 		local function addStatTag(out, tag, mod)
-			if tag.varList then
+			if tag.statList then
 				for _, var in ipairs(tag.statList) do
 					addTo(out, var, mod)
 				end
