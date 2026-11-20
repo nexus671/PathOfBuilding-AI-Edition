@@ -1,10 +1,13 @@
 local ui=require("Modules.PlanningUI")
 local vendor=require("Modules.VendorRarePairs")
 local M={}
-function M.Open()
- local c={};local w,h=math.min(820,main.screenW-40),math.min(560,main.screenH-48);local items={};local totalBytes=0
+function M.Open(build)
+ assert(build,"Open a build before reviewing rare items")
+ build.planningVendorRareItems=build.planningVendorRareItems or {}
+ local items=build.planningVendorRareItems;local totalBytes=0;for _,raw in ipairs(items) do totalBytes=totalBytes+#raw end
+ local c={};local w,h=math.min(820,main.screenW-40),math.min(560,main.screenH-48)
  local selectedName,selectedIndex
- ui.description(c,"intro",16,28,w-32,64,{"Paste identified rare items to compare their names. Two matching rares can yield a Chaos Orb; three can yield an Exalted Orb.","Session only: each paste counts as one item. Verify items and the vendor offer in game."},14)
+ ui.description(c,"intro",16,28,w-32,64,{"Paste identified rare items to compare their names. Two matching rares can yield a Chaos Orb; three can yield an Exalted Orb.","Kept while this build stays open. Each paste is one item; verify the vendor offer."},14)
  local left=math.floor(w*0.52);local listHeight=h-210
  c.entries=new("TextListControl"):TextListControl(ui.anchor,{16,106,left-24,listHeight},{{x=8},{x=math.floor(left*0.52)},{x=math.floor(left*0.67)}},{})
  c.details=new("TextListControl"):TextListControl(ui.anchor,{left+8,106,w-left-24,listHeight},nil,{})
@@ -45,7 +48,7 @@ function M.Open()
  end);c.remove.enabled=function() return selectedIndex~=nil and items[selectedIndex]~=nil end
  button("undo",316,110,"Undo last",function() if #items>0 then totalBytes=totalBytes-#items[#items];table.remove(items);selectedIndex=nil;refresh() end end)
  c.undo.enabled=function() return #items>0 end
- button("clear",438,90,"Clear",function() items={};totalBytes=0;selectedName=nil;selectedIndex=nil;refresh() end);c.clear.enabled=function() return #items>0 end
+ button("clear",438,90,"Clear",function() items={};build.planningVendorRareItems=items;totalBytes=0;selectedName=nil;selectedIndex=nil;refresh() end);c.clear.enabled=function() return #items>0 end
  button("close",w-146,130,"Close",function() main:ClosePopup() end)
  refresh();ui.style(c);main:OpenPopup(w,h,"Same-name rare review",c,nil,nil,"close")
 end

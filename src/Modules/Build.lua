@@ -84,6 +84,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	self.timelessData = { jewelType = { }, conquerorType = { }, devotionVariant1 = 1, devotionVariant2 = 1, jewelSocket = { }, fallbackWeightMode = { }, searchList = "", searchListFallback = "", searchResults = { }, sharedResults = { } }
 	self.viewMode = "TREE"
 	self.planningWorkspace = nil
+	self.planningVendorRareItems = nil
 	self.planningCraftDrafts = nil
 	self.planningUniqueQualityDrafts = nil
 	self.characterLevel = m_min(m_max(main.defaultCharLevel or 1, 1), 100)
