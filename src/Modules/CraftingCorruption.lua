@@ -62,7 +62,12 @@ function C.extend(M,A,api)
 		local reason=M.implicitTargetReason(model,state,targets);assert(not reason,reason)
 		return originalMatches(state,targets,rarity,model,...)
 	end
-	function M.toItem(model,state) assert(not state.destroyed,"The hypothetical item was destroyed");return originalItem(model,state) end
+	function M.toItem(model,state)
+		assert(not state.destroyed,"The hypothetical item was destroyed")
+		local item=originalItem(model,state)
+		if model.shadowedVariant then item.base=copyTable(model.item.base) end
+		return item
+	end
 	local function weight(model,id)
 		local mod=metadata[id]
 		if not mod then return 0 end

@@ -4,6 +4,29 @@
 local json=require("dkjson")
 local A={}
 local cached
+-- PoB's base table has one entry per name. These two client bases share the
+-- name of the third Shadowed Ring, but their fixed implicit text identifies
+-- them when both lines are present. Do not infer a variant from a partial set.
+local shadowedVariants={
+	{path="Metadata/Items/Rings/RingK5a",id="ReflectedFireColdDamageTakenConversionImplicitK5a",tags={"elemental","fire","cold"},lines={"Left ring slot: 25% of Cold Damage from Hits taken as Fire Damage","Right ring slot: 25% of Fire Damage from Hits taken as Cold Damage"}},
+	{path="Metadata/Items/Rings/RingK5b",id="ReflectedFireLightningDamageTakenConversionImplicitK5b",tags={"elemental","fire","lightning"},lines={"Left ring slot: 25% of Fire Damage from Hits taken as Lightning Damage","Right ring slot: 25% of Lightning Damage from Hits taken as Fire Damage"}},
+}
+local function identifyShadowedBase(item,paths)
+	if item.baseName~="Shadowed Ring" or item.synthesised then return end
+	for _,variant in ipairs(shadowedVariants) do
+		local found={0,0}
+		for _,line in ipairs(item.implicitModLines) do
+			if not line.modGroup or line.modGroup=="retained_base_implicit" then
+				for index,text in ipairs(variant.lines) do if StripEscapes(line.line)==text then found[index]=found[index]+1 end end
+			end
+		end
+		if found[1]==1 and found[2]==1 and paths[variant.path]==variant.id then
+			local base=copyTable(item.base);base.baseId=variant.path;base.implicitIds={variant.id}
+			base.implicit=table.concat(variant.lines,"\n");base.implicitModTypes={copyTable(variant.tags),copyTable(variant.tags)}
+			item.base=base;return true
+		end
+	end
+end
 local function finishData(data)
 	assert(data.patch=="3.30.0.4" and type(data.mods)=="table" and type(data.bench)=="table" and #data.bench==782 and type(data.benchMods)=="table","Invalid crafting data")
 	data.modifierPatch=data.patch;data.benchPatch=data.patch
@@ -261,6 +284,7 @@ function A.extend(M,api)
 	function M.model(raw)
 		M.dataPatch=A.data().patch;M.modifierPatch=A.data().modifierPatch
 		local model=originalModel(raw)
+		model.shadowedVariant=identifyShadowedBase(model.item,A.data().singleBaseImplicitPaths)
 		local base=model.item.base
 		local pathId=base and A.data().singleBaseImplicitPaths[base.baseId]
 		if pathId then
@@ -921,6 +945,7 @@ function A.extend(M,api)
 		return result,#result==0 and "No legal modifier is available for this craft." or nil
 	end
 	function M.decorateItem(model,state,item)
+		if model.shadowedVariant then item.base=copyTable(model.item.base) end
 		-- Imported Gilded lines are tracked separately from the base implicit.
 		-- Remove the copied line before applying indexed base rolls; the outer
 		-- decorator restores it when it remains present in the state.

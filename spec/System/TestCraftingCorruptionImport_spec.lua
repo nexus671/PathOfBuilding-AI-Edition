@@ -231,10 +231,15 @@ describe("Imported corruption identities",function()
 		assert.equal(itemLib.applyRange(original.line,original.range or 0.5),itemLib.applyRange(retained.line,retained.range or 0.5))
 	end)
 	it("retains all lines of one identified base implicit when Gilded absorbs corruption",function()
-		local cases={{"Gemini Claw","Grants 38 Life per Enemy Hit","Grants 14 Mana per Enemy Hit"},{"Imp Crown","-1 to Level of Socketed Support Gems","+1 to Level of Socketed Skill Gems"},{"Sorrow Mask","+2% to maximum Chaos Resistance","You are Crushed"},{"Transformer Staff","Spend Energy Shield before Mana for Costs of Socketed Skills","+73 to maximum Energy Shield"},{"Shadowed Ring","Left ring slot: 25% of Lightning Damage from Hits taken as Cold Damage","Right ring slot: 25% of Cold Damage from Hits taken as Lightning Damage"}}
+		local cases={{"Gemini Claw","Grants 38 Life per Enemy Hit","Grants 14 Mana per Enemy Hit"},{"Imp Crown","-1 to Level of Socketed Support Gems","+1 to Level of Socketed Skill Gems"},{"Sorrow Mask","+2% to maximum Chaos Resistance","You are Crushed"},{"Transformer Staff","Spend Energy Shield before Mana for Costs of Socketed Skills","+73 to maximum Energy Shield"},{"Shadowed Ring","Left ring slot: 25% of Lightning Damage from Hits taken as Cold Damage","Right ring slot: 25% of Cold Damage from Hits taken as Lightning Damage"},{"Shadowed Ring","Left ring slot: 25% of Cold Damage from Hits taken as Fire Damage","Right ring slot: 25% of Fire Damage from Hits taken as Cold Damage"},{"Shadowed Ring","Left ring slot: 25% of Fire Damage from Hits taken as Lightning Damage","Right ring slot: 25% of Lightning Damage from Hits taken as Fire Damage"}}
 		for _,pair in ipairs(cases) do
 			local source="Rarity: NORMAL\n"..pair[1].."\nItem Level: 86\nImplicits: 3\n"..pair[2].."\n"..pair[3].."\nItem sells for much more to vendors"
 			local model=sim.model(source);assert.is_truthy(model.singleBaseImplicitId);assert.equal(2,#model.baseImplicitTemplates)
+			if pair[1]=="Shadowed Ring" then
+				local suffix=pair[2]:find("Cold Damage from Hits taken as Fire",1,true) and "a" or pair[2]:find("Fire Damage from Hits taken as Lightning",1,true) and "b" or "c"
+				assert.equal("Metadata/Items/Rings/RingK5"..suffix,model.item.base.baseId)
+				assert.equal(model.item.base.baseId,sim.toItem(model,model.initial).base.baseId)
+			end
 			for _,draw in ipairs({0,0.999}) do
 				local state=copyTable(model.initial);sim.rollCorrupted(model,state,function() return draw end)
 				local saved=require("Modules.CraftingCheckpoint").validate(source,require("Modules.CraftingInventory").run(state)).state;local text=sim.itemText(model,saved);local reopened=sim.model(text)
@@ -242,6 +247,7 @@ describe("Imported corruption identities",function()
 				if draw==0 then assert.equal("unknown",saved.vendorImplicit);assert.is_nil(saved.baseImplicitRetained);assert.is_nil(text:find(pair[2],1,true));assert.is_nil(text:find(pair[3],1,true))
 				else
 					assert.is_nil(saved.vendorImplicit);assert.is_true(saved.baseImplicitRetained);assert.is_true(reopened.initial.baseImplicitRetained);assert.is_truthy(text:find(pair[2],1,true));assert.is_truthy(text:find(pair[3],1,true))
+					assert.equal(model.item.base.baseId,reopened.item.base.baseId);assert.equal(model.item.base.baseId,sim.toItem(model,saved).base.baseId)
 					local identity=model.singleBaseImplicitId;model.singleBaseImplicitId=nil;assert.has_error(function() sim.validateState(model,saved) end);model.singleBaseImplicitId=identity
 					local forged=text:gsub("{modGroup:retained_base_implicit}","{modGroup:forged}",1);assert.is_truthy(sim.model(forged).unresolvedCorruption)
 					local twice=sim.action(reopened,reopened.initial,{method="locus"},function() return 0 end);assert.is_true(twice.twiceCorrupted);assert.is_nil(twice.baseImplicitRetained);assert.equal(2,#twice.corruptedImplicits);sim.validateState(reopened,twice)
@@ -249,8 +255,8 @@ describe("Imported corruption identities",function()
 			end
 		end
 	end)
-	it("does not group a different same-name Shadowed Ring as the native base",function()
-		local source="Rarity: NORMAL\nShadowed Ring\nItem Level: 86\nImplicits: 3\nLeft ring slot: 25% of Cold Damage from Hits taken as Fire Damage\nRight ring slot: 25% of Fire Damage from Hits taken as Cold Damage\nItem sells for much more to vendors"
+	it("rejects an unrecognized same-name Shadowed Ring implicit",function()
+		local source="Rarity: NORMAL\nShadowed Ring\nItem Level: 86\nImplicits: 3\nLeft ring slot: 26% of Cold Damage from Hits taken as Fire Damage\nRight ring slot: 25% of Fire Damage from Hits taken as Cold Damage\nItem sells for much more to vendors"
 		local model=sim.model(source);assert.is_nil(model.baseImplicitTemplates)
 		local state=copyTable(model.initial)
 		assert.matches("Shadowed Ring variant",sim.methodReason(model,state,"vaal"))

@@ -32,7 +32,7 @@ return function(build,ui,frame)
 	local crownText="";for _,row in ipairs(crownControls.itemMods.list) do crownText=crownText..StripEscapes(row[1] or "").." " end
 	assert(crownText:find("Socketed Support Gems",1,true) and crownText:find("Socketed Skill Gems",1,true),"Reopened crown lost an implicit line")
 	frame("crafting-gilded-multiline-reopened");ui:click("close")
-	local shadow="Rarity: NORMAL\nShadowed Ring\nItem Level: 86\nImplicits: 3\nLeft ring slot: 25% of Lightning Damage from Hits taken as Cold Damage\nRight ring slot: 25% of Cold Damage from Hits taken as Lightning Damage\nItem sells for much more to vendors"
+	local shadow="Rarity: NORMAL\nShadowed Ring\nItem Level: 86\nImplicits: 3\nLeft ring slot: 25% of Cold Damage from Hits taken as Fire Damage\nRight ring slot: 25% of Fire Damage from Hits taken as Cold Damage\nItem sells for much more to vendors"
 	local shadowProject={id="gilded-shadowed-ui",title="Gilded Shadowed Ring",slot="Ring 1",startingItem=shadow,goals={},steps={}}
 	local shadowControls=require("Classes.CraftingSimulatorControl").Open(build,shadowProject)
 	ui:click("tab_settings");ui:text("seed","1");ui:click("tab_craft");ui:click("currency_vaal");ui:click("item")
@@ -43,9 +43,9 @@ return function(build,ui,frame)
 	local shadowText="";for _,row in ipairs(shadowControls.itemMods.list) do shadowText=shadowText..StripEscapes(row[1] or "").." " end
 	assert(shadowText:find("Left ring slot:",1,true) and shadowText:find("Right ring slot:",1,true),"Reopened Shadowed Ring lost an implicit line")
 	local shadowOutput=sim.itemText(sim.model(shadow),shadowSaved.run.state)
-	assert(shadowOutput:find("Lightning Damage from Hits taken as Cold Damage",1,true) and shadowOutput:find("Cold Damage from Hits taken as Lightning Damage",1,true),"Saved Shadowed Ring lost an implicit line")
+	assert(shadowOutput:find("Cold Damage from Hits taken as Fire Damage",1,true) and shadowOutput:find("Fire Damage from Hits taken as Cold Damage",1,true),"Saved Shadowed Ring lost an implicit line")
 	frame("crafting-gilded-shadowed-reopened");ui:click("close")
-	local otherShadow="Rarity: NORMAL\nShadowed Ring\nItem Level: 86\nImplicits: 3\nLeft ring slot: 25% of Cold Damage from Hits taken as Fire Damage\nRight ring slot: 25% of Fire Damage from Hits taken as Cold Damage\nItem sells for much more to vendors"
+	local otherShadow="Rarity: NORMAL\nShadowed Ring\nItem Level: 86\nImplicits: 3\nLeft ring slot: 26% of Cold Damage from Hits taken as Fire Damage\nRight ring slot: 25% of Fire Damage from Hits taken as Cold Damage\nItem sells for much more to vendors"
 	local otherControls=require("Classes.CraftingSimulatorControl").Open(build,{id="other-shadowed-ui",title="Other Shadowed Ring",slot="Ring 1",startingItem=otherShadow,goals={},steps={}})
 	assert(not otherControls.currency_vaal:IsEnabled(),"Unsupported Shadowed Ring corruption was enabled")
 	assert(otherControls.currency_vaal.tooltipText():find("Shadowed Ring variant",1,true),"Unsupported Shadowed Ring reason was not shown");ui:click("close")
