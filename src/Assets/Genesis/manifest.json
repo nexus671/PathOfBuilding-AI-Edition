@@ -1,0 +1,46 @@
+{
+  "copyright": "Grinding Gear Games",
+  "icons": {
+    "KeepersCurrencyNode": {
+      "file": "Assets/Genesis/KeepersCurrencyNode.png",
+      "sha256": "8d98bc4a9396ee1812c718c6dc25525642c42b23d5297387b1f5d57d7385626f",
+      "source": "https://www.poewiki.net/images/0/04/KeepersCurrencyNode_passive_skill_icon.png"
+    },
+    "KeepersCurrencyNotable": {
+      "file": "Assets/Genesis/KeepersCurrencyNotable.png",
+      "sha256": "c0e1c9a72e72b56c7cfdd8dd0ea9c0146fb91909368627d7b5280c24fce44336",
+      "source": "https://www.poewiki.net/images/4/48/KeepersCurrencyNotable_passive_skill_icon.png"
+    },
+    "KeepersEquipmentNode": {
+      "file": "Assets/Genesis/KeepersEquipmentNode.png",
+      "sha256": "22a94df16bd6b00fb0b914f5ed7c25143ad750e57db5ba8b64bb78329b3c717a",
+      "source": "https://www.poewiki.net/images/f/fb/KeepersEquipmentNode_passive_skill_icon.png"
+    },
+    "KeepersEquipmentNotable": {
+      "file": "Assets/Genesis/KeepersEquipmentNotable.png",
+      "sha256": "9e632ddb916c697a61a400410623540dc54e64a5f27e04c5dee3e5245f182388",
+      "source": "https://www.poewiki.net/images/f/f8/KeepersEquipmentNotable_passive_skill_icon.png"
+    },
+    "KeepersMiscellaneousNode": {
+      "file": "Assets/Genesis/KeepersMiscellaneousNode.png",
+      "sha256": "1bd8c9476801988a89b7989e1ec36724350132b955575eca9d99a8a890b76d9a",
+      "source": "https://www.poewiki.net/images/b/b0/KeepersMiscellaneousNode_passive_skill_icon.png"
+    },
+    "KeepersMiscellaneousNotable": {
+      "file": "Assets/Genesis/KeepersMiscellaneousNotable.png",
+      "sha256": "941667ee4c3b43475e31597524686849af57c5d6d14ea4d3f26eefb03f0cccb4",
+      "source": "https://www.poewiki.net/images/c/c3/KeepersMiscellaneousNotable_passive_skill_icon.png"
+    },
+    "KeepersUniqueNode": {
+      "file": "Assets/Genesis/KeepersUniqueNode.png",
+      "sha256": "599653d87ba7da4560123db52ebfef76b089a6f2455ca3c72af4a5c575bb5657",
+      "source": "https://www.poewiki.net/images/b/be/KeepersUniqueNode_passive_skill_icon.png"
+    },
+    "KeepersUniqueNotable": {
+      "file": "Assets/Genesis/KeepersUniqueNotable.png",
+      "sha256": "3b3a5d810ad99fcac59ccf5383c887c1c83b4d55a18f8aaa00fd238a32ddc70b",
+      "source": "https://www.poewiki.net/images/8/83/KeepersUniqueNotable_passive_skill_icon.png"
+    }
+  },
+  "sourceNote": "Game passive icons mirrored by PoE Wiki; artwork remains copyright Grinding Gear Games."
+}

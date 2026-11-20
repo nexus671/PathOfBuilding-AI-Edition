@@ -84,10 +84,17 @@ function M.changes(before, after)
 	end
 	if not tableDeepEquals(before.atlasPlans,after.atlasPlans) then
 		add("Atlas plans updated (planning only; character stats are unchanged by Atlas nodes)")
+		local oldPlans={};for _,old in ipairs(before.atlasPlans or {}) do oldPlans[old.id]=old end
 		for _,plan in ipairs(after.atlasPlans or {}) do
 			local report=require("Modules.AtlasPlanner").report(plan)
 			add(plan.title.." ["..require("Modules.AtlasPlanner").versionLabel(plan.version).."] "..report.used.." points; budget "..report.budget.." + "..report.bonus)
 			for _,id in ipairs(plan.nodes) do add("  #"..id.." "..require("Modules.AtlasPlanner").tree(plan.version).nodes[id].name) end
+			if plan.genesis then
+				local genesis=require("Modules.GenesisPlanner");local graph=genesis.tree();local summary=genesis.report(plan.genesis)
+				add("  Genesis ["..plan.genesis.version.."] "..#plan.genesis.nodes.." selected nodes; allocation rules need game verification")
+				for _,id in ipairs(plan.genesis.nodes) do local node=graph.nodes[id];add("    "..genesis.roots[node.root]..": "..node.name.." | "..table.concat(node.stats," ")) end
+				if #summary.missingChoices>0 then add("  Genesis choices not selected: "..#summary.missingChoices) end
+			elseif oldPlans[plan.id] and oldPlans[plan.id].genesis then add("  Genesis allocations removed") end
 			for _,choice in ipairs(plan.choices or {}) do
 				local planner=require("Modules.AtlasPlanner");local node=planner.tree(plan.version).nodes[choice.node]
 				add("  Selected effect: "..node.name.." | "..table.concat(planner.nodeStats(plan,node)," "))

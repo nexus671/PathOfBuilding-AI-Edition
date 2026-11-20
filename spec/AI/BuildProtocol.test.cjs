@@ -571,6 +571,23 @@ test('keeps Atlas proposals in the desktop review flow and rejects unsupported v
 });
 
 
+test('provides searchable, paged Genesis data to AI clients', t => {
+  const f=fixture(t),first=f.call('get_genesis_tree',{limit:10});
+  assert.equal(first.total,133);assert.equal(first.nodes.length,10);assert.equal(first.nextOffset,10);
+  const currency=f.call('get_genesis_tree',{branch:'Currency',query:'Foulborn'});
+  assert.ok(currency.nodes.some(node=>node.id===40721 && node.stats.some(line=>line.includes('6% chance'))));
+  assert.ok(currency.nodes.every(node=>node.root===currency.roots.Currency));
+  assert.throws(()=>f.call('get_genesis_tree',{branch:'Unknown'}),/arguments/);
+});
+
+test('preserves Genesis allocations in reviewed Atlas proposals', t => {
+  const f=fixture(t),genesis={version:'3.30.0d',nodes:[19912,53412]};
+  const plan={id:'atlas',title:'Atlas',version:'3.30.0c',budget:20,nodes:[],genesis};
+  f.call('propose_atlas_plan',{baseRevision:f.state.revision,plan});
+  const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.deepEqual(queued.proposal.operations[0].plan.genesis,genesis);
+});
+
 test('queues Omen of Trichromatism actions through the typed crafting protocol', t => {
   const f=fixture(t);const args={baseRevision:f.state.revision,itemText:'Rarity: NORMAL\nPlate Vest\nItem Level: 86\nSockets: W-W-W',action:{method:'omen_trichromatism'}};
   f.call('apply_crafting_action',args);

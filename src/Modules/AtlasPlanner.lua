@@ -134,6 +134,10 @@ function M.validate(plan)
 	local result={id=text(plan.id,64,"Atlas plan ID"),title=text(plan.title,120,"Atlas title"),version=plan.version,
 		budget=integer(plan.budget,0,tree.maxPoints,"Atlas point budget"),notes=text(plan.notes or "",8000,"Atlas notes"),nodes={}}
 	assert(result.id:match("^[%w_-]+$") and result.title:match("%S"),"Use an Atlas plan ID and title")
+	if plan.genesis~=nil then
+		assert(M.is330(plan.version) and not plan.version:match("%-ruthless$"),"Genesis 3.30 data is currently available only for Standard Atlas plans")
+		result.genesis=require("Modules.GenesisPlanner").validate(plan.genesis)
+	end
 	if plan.progression then
 		local p=plan.progression;assert(type(p)=="table" and ({starter=true,intermediate=true,final=true})[p.stage],"Choose an Atlas progression stage")
 		result.progression={stage=p.stage}

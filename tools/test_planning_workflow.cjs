@@ -1203,14 +1203,15 @@ async function main(){
   assert.match(conflictResult.atlas.strategySummary.warnings.join(' '),/does not block Breach encounters/);
   const variantNode=variantSearch.atlas.matches.find(node=>node.id===45404);assert.ok(variantNode?.variantEffects?.length>1);
   const variantRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'variant',title:'Variant',version:'3.30.0-preview',budget:150,nodes:[]},targets:[variantNode.id]},'atlas');
-  const variantPlan={...variantRoute.atlas.plan,choices:[{node:variantNode.id,effect:variantNode.variantEffects[0].effect}]};
+  const genesisCatalog=await call('get_genesis_tree',{branch:'Currency',query:'Foulborn'});assert.ok(genesisCatalog.nodes.some(node=>node.id===40721));assert.equal(genesisCatalog.roots.Currency,19625);
+  const variantPlan={...variantRoute.atlas.plan,choices:[{node:variantNode.id,effect:variantNode.variantEffects[0].effect}],genesis:{version:'3.30.0d',nodes:[19912,53412]}};
   const variantResult=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:variantPlan,targets:[]},'atlas');
-  assert.deepEqual(variantResult.atlas.plan.choices,variantPlan.choices);assert.equal(variantResult.atlas.officialUrlWarning,undefined);assert.ok(variantResult.atlas.officialUrl);assert.ok(variantResult.atlas.report.stats.some(row=>row.text===variantNode.variantEffects[0].stats[0]));
+  assert.deepEqual(variantResult.atlas.plan.choices,variantPlan.choices);assert.deepEqual(variantResult.atlas.plan.genesis,variantPlan.genesis);assert.match(variantResult.atlas.officialUrlWarning,/omit Genesis allocations/);assert.ok(variantResult.atlas.officialUrl);assert.ok(variantResult.atlas.report.stats.some(row=>row.text===variantNode.variantEffects[0].stats[0]));
   const changedVariant={...variantPlan,choices:[{node:variantNode.id,effect:variantNode.variantEffects[1].effect}]};
   const variantTransition=await queued('compare_atlas_plans',{baseRevision:context.revision,before:variantPlan,after:changedVariant},'atlas');
   assert.equal(variantTransition.atlas.transition.choiceReselectionCostUnknown,true);assert.equal(variantTransition.atlas.transition.choiceChanges[0].reselectionCostUnknown,true);assert.match(variantTransition.atlas.transition.lines.join(' '),/additional refund/);
   const variantReview=await queued('propose_atlas_plan',{baseRevision:context.revision,plan:variantPlan},'review');
-  assert.match(JSON.stringify(variantReview),/Selected effect: Secrets Unveiled/);await host('apply');await host('undo-applied');context=(await call('get_build_context')).context;
+  assert.match(JSON.stringify(variantReview),/Selected effect: Secrets Unveiled/);assert.match(JSON.stringify(variantReview),/Genesis \[3\.30\.0d\].*2 selected nodes/);await host('apply');assert.deepEqual((await call('get_atlas_plans')).plans.find(plan=>plan.id==='variant').genesis,variantPlan.genesis);await host('undo-applied');context=(await call('get_build_context')).context;
   assert.equal(refinedRoute.atlas.routing.cost,50);assert.equal(refinedRoute.atlas.routing.heuristic,true);assert.ok(refinedTargets.every(id=>refinedRoute.atlas.plan.nodes.includes(id)));
   const mercenaryNodes=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Mercenary',limit:100},'atlas');
   const oreNodes=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Ore Deposit',limit:100},'atlas');

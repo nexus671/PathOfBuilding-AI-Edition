@@ -492,11 +492,16 @@ function Panel.Open(build,source,layout)
 			{id="clearComparison",label="Clear comparison overlay",details={"Return to the current plan without saved-plan difference colours."}},
 		}
 		if atlas.is330(draft.version) then
+			local ruthless=draft.version:match("%-ruthless$")~=nil
+			entries[#entries+1]={id="genesis",label="Genesis tree",details=ruthless and {"Unavailable for Ruthless: the bundled Genesis data is Standard only.","Ruthless effects require separate source data and verification."} or {"Plan Currency, Equipment, Unique and Mysterious wombs.","Experimental allocation and layout; point rules need game verification.","Use in the Atlas draft, then keep the plan and save the build."}}
 			entries[#entries+1]={id="shapedRegions",label="Shaped Regions",details={"Track observed maps and free Threads by region.","Manual observations; no game account is accessed."}}
 		end
 		browser.Open("Atlas plan tools",entries,{closeOnChoose=false,action="Open",choose=function(entry)
 			main:ClosePopup()
-			if entry.id=="shapedRegions" then require("Classes.AtlasRegionsControl").Open(current(),function(items) local nextPlan=copyTable(current());nextPlan.shapedRegions=items;change(nextPlan) end)
+			if entry.id=="genesis" then
+				if draft.version:match("%-ruthless$") then main:OpenMessagePopup("Genesis tree unavailable","The bundled Genesis data is for Standard. Ruthless effects need separate data and verification.")
+				else require("Classes.GenesisPlannerControl").Open(current().genesis,function(value) local nextPlan=copyTable(current());nextPlan.genesis=value;change(nextPlan) end) end
+			elseif entry.id=="shapedRegions" then require("Classes.AtlasRegionsControl").Open(current(),function(items) local nextPlan=copyTable(current());nextPlan.shapedRegions=items;change(nextPlan) end)
 			elseif entry.id=="mapModifiers" then openMapDraft()
 			elseif entry.id=="threadRestrictions" then require("Classes.AtlasThreadControl").Open()
 			elseif entry.id=="mapDrafts" then showMapDrafts()
@@ -522,9 +527,9 @@ function Panel.Open(build,source,layout)
 	end)
 	controls.copy=button(16,height-104,120,"Copy plan",function() Copy(atlas.export(current())) end)
 	controls.import=button(148,height-104,120,"Paste plan",function() change(atlas.import(Paste(),draft.version,draft.id,controls.title.buf,tonumber(controls.budget.buf))) end)
-	controls.url=button(280,height-104,120,"Official link",function() Copy(atlas.url(current())); main:OpenMessagePopup("Atlas link copied","Official URLs do not carry patch versions. Use Copy plan to preserve the exact version.") end)
+	controls.url=button(280,height-104,120,"Official link",function() Copy(atlas.url(current())); main:OpenMessagePopup("Atlas link copied","Official Atlas URLs do not carry patch versions or Genesis allocations. Use Copy plan to preserve both.") end)
 	controls.url.enabled=function() return not hasMissingChoices end
-	controls.url.tooltipFunc=function(tooltip) tooltip:AddLine(14,hasMissingChoices and "Choose an effect for each allocated choice node before sharing an official link." or "Copy an official Atlas link. Copy plan also preserves the exact version.") end
+	controls.url.tooltipFunc=function(tooltip) tooltip:AddLine(14,hasMissingChoices and "Choose an effect for each allocated choice node before sharing an official link." or "Copy an official Atlas link. Copy plan also preserves the version and Genesis allocations.") end
 	controls.keep=button(16,height-42,160,"Keep plan",function() store:Upsert(current());if layout then controls.status.label="^7Plan kept. Save the build to persist it." else main:ClosePopup() end end)
 	controls.keep.label=function() return (controls.canvas.routeOverlay or grantSteps) and "Keep current plan" or "Keep plan" end
 	controls.keep.tooltipText=function() return grantSteps and "Keeps the destination draft, not the step preview." or controls.canvas.routeOverlay and "Keeps the current draft, not the route preview. Open Targets to apply the preview first." or "Keep this plan in the build. Save the build to persist it." end

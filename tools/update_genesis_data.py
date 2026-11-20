@@ -17,6 +17,10 @@ HASHES = {
 DESTINATION = ROOT / "src/Data/Genesis/3.30.0d.json"
 
 
+def same_generated_content(actual, expected):
+    return actual.replace(b"\r\n", b"\n") == expected
+
+
 def read_source(name, directory):
     if directory:
         raw = (directory / Path(name).name).read_bytes()
@@ -126,7 +130,7 @@ def main():
     result = build(read_source(TREE, args.source_dir), read_source(TRANSLATIONS, args.source_dir))
     raw = (json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
     if args.check:
-        if DESTINATION.read_bytes() != raw:
+        if not same_generated_content(DESTINATION.read_bytes(), raw):
             raise SystemExit("Genesis data differs from the pinned sources")
         print(f"Genesis data verified: {len(result['nodes'])} nodes, {len(result['roots'])} roots")
     else:
