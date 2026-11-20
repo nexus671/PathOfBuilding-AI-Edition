@@ -84,6 +84,24 @@ describe("Independent modifier ranges",function()
 		local copied="Rarity: RARE\nExample Hood\nIron Hat\nItem Level: 86\nImplicits: 0\n132% increased Armour\n17% increased Stun and Block Recovery"
 		local ok,err=pcall(sim.model,copied);assert.is_false(ok);assert.matches("may combine multiple modifiers",err,1,true);assert.matches("advanced copy text",err,1,true)
 	end)
+	it("keeps combined prefix and suffix contributions on their own sides",function()
+		local m=sim.model("Rarity: NORMAL\nPlate Vest\nItem Level: 86");local state=copyTable(m.initial);state.rarity="RARE"
+		state.affixes={{id="LocalIncreasedPhysicalDamageReductionRatingPercentAndStunRecovery3",range={0,0}},{id="StunRecovery6",range=1}}
+		local item=sim.toItem(m,state);local prefix,suffix
+		for _,line in ipairs(item.explicitModLines) do
+			if line.line=="10% increased Stun and Block Recovery" then prefix=line end
+			if line.line=="28% increased Stun and Block Recovery" then suffix=line end
+		end
+		assert.is_not_nil(prefix);assert.is_true(prefix.prefix);assert.is_falsy(prefix.suffix)
+		assert.is_not_nil(suffix);assert.is_true(suffix.suffix);assert.is_falsy(suffix.prefix)
+		item.modMagnitudeMods={{tags={"prefix"},quality=50}}
+		assert.are.equal(1.5,item:GetModLineValueScalar(prefix,"explicit"));assert.are.equal(1,item:GetModLineValueScalar(suffix,"explicit"))
+		local imported=sim.model(item.raw);assert.equal(2,#imported.initial.affixes)
+		local hat=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86");local sameSide=copyTable(hat.initial);sameSide.rarity="RARE"
+		sameSide.affixes={{id="LocalIncreasedPhysicalDamageReductionRatingPercentAndStunRecovery6",range={1,1}},{id="LocalIncreasedPhysicalDamageReductionRatingPercent6",range=1}}
+		local combined=sim.toItem(hat,sameSide);local found=0;for _,line in ipairs(combined.explicitModLines) do if line.line=="133% increased Armour" and line.prefix then found=found+1 end end
+		assert.equal(1,found)
+	end)
 	it("does not combine matching text from different native stats",function()
 		local m=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
 		local function mod(high,group,order) return {"(1-"..high..")% increased Example",type="Prefix",group=group,statOrder={order}} end

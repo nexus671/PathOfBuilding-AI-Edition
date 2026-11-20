@@ -2199,10 +2199,13 @@ function ItemClass:Craft()
 				self.requirements.level = m_max(self.requirements.level or 0, m_floor(mod.level * 0.8))
 				for i, line in ipairs(itemLib.applyModRanges(mod, affix.range)) do
 					local order = mod.statOrder[i]
-					if statOrder[order] then
-						-- Combine stats
+					local bySide = statOrder[order] or { }
+					statOrder[order] = bySide
+					if bySide[mod.type] then
+						-- Keep prefix and suffix contributions separate so their
+						-- source remains correct for modifier-effect calculations.
 						local start = 1
-						statOrder[order].line = statOrder[order].line:gsub("%d+", function(num)
+						bySide[mod.type].line = bySide[mod.type].line:gsub("%d+", function(num)
 							local s, e, other = line:find("(%d+)", start)
 							start = e + 1
 							return tonumber(num) + tonumber(other)
@@ -2215,7 +2218,7 @@ function ItemClass:Craft()
 							modLine.suffix = true
 						end
 						t_insert(self.explicitModLines, modLine)
-						statOrder[order] = modLine
+						bySide[mod.type] = modLine
 					end
 				end
 			end
