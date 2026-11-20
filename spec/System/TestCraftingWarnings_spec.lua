@@ -11,7 +11,7 @@ describe("Crafting result model notes",function()
 	end)
 	it("discloses the incomplete Gilded corruption interaction",function()
 		local gilded="Metadata/Items/Currency/CurrencyDelveCraftingSellPrice";local blood="Metadata/Items/Currency/CurrencyDelveCraftingVaal"
-		local function has(notes) local count=0;for _,note in ipairs(notes) do if note.code=="gilded_corruption_incomplete" then count=count+1;assert.matches("Other Gilded corruption combinations remain incomplete",note.message) end end;return count end
+		local function has(notes) local count=0;for _,note in ipairs(notes) do if note.code=="gilded_corruption_incomplete" then count=count+1;assert.matches("equal chances of replacing the base or vendor implicit",note.message);assert.matches("Other Gilded corruption combinations remain incomplete",note.message) end end;return count end
 		local model=sim.model(raw);local state=sim.perform(raw,{method="fossil",fossils={gilded}},12).state
 		assert.equal(1,has(sim.actionWarnings({method="vaal"},{item=model.item,initial=state})))
 		assert.equal(1,has(sim.actionWarnings({method="fossil",fossils={gilded,blood}},model)))

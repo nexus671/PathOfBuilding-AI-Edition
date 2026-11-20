@@ -108,6 +108,9 @@ if fixture:find("OccVortex", 1, true) then
  build.configTab:BuildModList(); local batteryStress = compareOutput()
  assert(batteryStress.EnergyShieldProtectsMana, "Energy shield protection was not active")
  assert(batteryStress.ManaCostWarningList and batteryStress.ManaCostWarningList ~= "", "Protected mana stress did not produce a warning")
+ block.text = "Warcries Cost +150% of Life"
+ build.configTab:BuildModList(); local percentStress = compareOutput()
+ assert(percentStress.LifeCostWarningList and percentStress.LifeCostWarningList:find("Enduring Cry", 1, true), "Life-based warcry cost did not produce a warning")
  -- PoB reuses the build-mode object; switch to a different triggered build in-process.
  local nextFile = assert(io.open("../spec/TestBuilds/3.13/Dual Wield Cospris CoC.xml", "rb"))
  local nextRaw = nextFile:read("*a"); nextFile:close()

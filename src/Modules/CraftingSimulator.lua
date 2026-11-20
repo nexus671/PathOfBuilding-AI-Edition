@@ -56,7 +56,7 @@ local function gildedFossil(action)
 	return false
 end
 local function gildedCorruptionWarning()
-	return {code="gilded_corruption_incomplete",message="For added corruption on a Gilded item with identified Eldritch or synthesised implicits, the model assumes equal replacement chances among the remaining implicits and the vendor implicit. For a retained ordinary base implicit, it assumes a second added corruption replaces that base. Other Gilded corruption combinations remain incomplete and may remove too many implicits. These chances and interactions are unverified.",source="https://www.poewiki.net/wiki/Gilded_Fossil"}
+	return {code="gilded_corruption_incomplete",message="For added corruption on a Gilded item with identified Eldritch or synthesised implicits, the model assumes equal replacement chances among the remaining implicits and the vendor implicit. For a supported ordinary base implicit, the first added corruption assumes equal chances of replacing the base or vendor implicit; a second added corruption assumes it replaces a retained base. Other Gilded corruption combinations remain incomplete and may remove too many implicits. These chances and interactions are unverified.",source="https://www.poewiki.net/wiki/Gilded_Fossil"}
 end
 function M.hasProtectedImplicit(model,state)
 	if not model or not model.item or model.item.synthesised or state and (state.corruptedImplicits or state.implicits) then return false end
