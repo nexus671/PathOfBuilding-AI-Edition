@@ -1297,7 +1297,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	do
 		local model=sim.model("Rarity: NORMAL\nSomatic Wand\nItem Level: 86");local row
 		for _,entry in ipairs(require("Modules.CraftingModifiers").inspect(model,model.initial).rows) do if table.concat(entry.reasons," "):find("Cannot roll caster",1,true) then row=entry;break end end
-		assert(row,"The wand's caster restriction was not explained");require("Classes.CraftingModifierControl").Open(model,model.initial,{choose=function() end});ui:text("search",row.id)
+		assert(row,"The wand's caster restriction was not explained");require("Classes.CraftingModifierControl").Open(model,model.initial,{choose=function() end});dofile("../tools/test_modifier_paging_ui.lua")(ui,frame,row.id)
 		local lines={};for _,line in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=line[1] end;assert(table.concat(lines," "):find("Cannot roll caster",1,true),"Modifier browser did not show the implicit restriction")
 		frame("crafting-wand-implicit-block");ui:click("close")
 	end

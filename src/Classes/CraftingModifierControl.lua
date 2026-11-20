@@ -3,7 +3,7 @@ local modifiers=require("Modules.CraftingModifiers")
 local M={}
 function M.Open(model,state,options)
 	local c={};local w,h=math.min(1080,main.screenW-40),math.min(680,main.screenH-60);local tableW=math.floor((w-48)*0.64);local detailX=tableW+32;local detailW=w-detailX-16
-	local result=modifiers.inspect(model,state);local selected;local rows
+	local result=modifiers.inspect(model,state);local selected;local rows;local page=1;local pageSize=100
 	local function button(key,x,y,width,label,run) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,run) end
 	c.search=new("EditControl"):EditControl(ui.anchor,{16,28,tableW,28},"","Find a modifier, group or tag",nil,160)
 	c.kind=new("DropDownControl"):DropDownControl(ui.anchor,{16,68,tableW/2-6,28},{"All affixes","Prefix","Suffix","Corrupted","Exarch","Eater","Synthesis","Enchant"})
@@ -25,15 +25,23 @@ function M.Open(model,state,options)
 	end
 	local function refresh()
 		rows=modifiers.filter(result,c.search.buf,c.kind:GetSelValue(),c.source:GetSelValue(),c.availability:GetSelValue(),c.sort:GetSelValue());local list={};local keep
-		for i=1,math.min(#rows,400) do local row=rows[i];if selected and selected.id==row.id then keep=row end
+		local pages=math.max(1,math.ceil(#rows/pageSize));page=math.min(page,pages);local first=(page-1)*pageSize+1
+		for i=first,math.min(#rows,first+pageSize-1) do local row=rows[i];if selected and selected.id==row.id then keep=row end
 			local color=row.eligible and "^xD5DEE8" or "^x95A4B7"
 			list[#list+1]={height=46,textSize=14,color..ui.fit(row.text,col[2]-20,14),"^7"..(row.tier and "T"..row.tier or "-"),"^7"..row.level,"^7"..row.weight,"^7"..(row.chance and string.format("%.3f",row.chance) or "-"),subtitle=ui.fit(row.type.." | "..row.source.." | "..(row.eligible and "Eligible draw" or row.reasons[1] or "Blocked"),tableW-36,13),entry=row}
 		end
-		c.modifiers.list=#list>0 and list or ui.rows({"No modifiers match. Clear a filter or shorten the search."},tableW-28,14);show(keep or rows[1]);c.count.label="^7"..#rows..(#rows>400 and " matches / first 400 shown" or " matching modifiers")
+		c.modifiers.list=#list>0 and list or ui.rows({"No modifiers match. Clear a filter or shorten the search."},tableW-28,14)
+		show(keep or rows[first]);c.modifiers.selectedKey=selected and selected.id or nil
+		for _,line in ipairs(list) do line.selected=selected and line.entry.id==selected.id or false end
+		c.count.label="^7"..#rows.." matching modifiers | Page "..page.." / "..pages
 	end
 	ui.selectable(c.modifiers,function(row) return row.entry and row.entry.id end,function(row) show(row.entry) end)
-	for _,key in ipairs({"kind","source","availability","sort"}) do c[key].selFunc=refresh end;c.search.changeFunc=refresh
+	local function changed() page=1;selected=nil;c.modifiers.controls.scrollBar.offset=0;refresh() end
+	for _,key in ipairs({"kind","source","availability","sort"}) do c[key].selFunc=changed end;c.search.changeFunc=changed
 	ui.label(c,"count",16,h-72,"",12)
+	local function turn(delta) page=page+delta;selected=nil;c.modifiers.controls.scrollBar.offset=0;refresh() end
+	button("previousPage",detailX,h-72,100,"Previous",function() turn(-1) end);c.previousPage.enabled=function() return page>1 end
+	button("nextPage",detailX+108,h-72,100,"Next",function() turn(1) end);c.nextPage.enabled=function() return page*pageSize<#rows end
 	button("choose",16,h-42,200,options.action or "Require modifier",function() if selected then options.choose(selected.id);main:ClosePopup() end end)
 	c.choose.enabled=function() return selected~=nil end
 	if options.alternative then button("alternative",228,h-42,200,"Add alternative",function() if selected then options.alternative(selected.id);main:ClosePopup() end end);c.alternative.enabled=function() return selected and (not options.canAlternative or options.canAlternative()) end end

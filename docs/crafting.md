@@ -8,6 +8,8 @@ Projects can also store written guides and preview unique or relic items. Unique
 
 The workbench tabs separate **Craft**, **Targets**, **Simulate**, and **Settings**. Crafting runs locally. AI builds, Atlas and crafting projects share a persistent planning workspace; switching pages preserves an Atlas draft. Equipped gear changes only through the desktop preview and review flow.
 
+The modifier browser supports search, filters and sorting. Use **Previous** and **Next** to browse every matching modifier; changing a filter returns to the first page.
+
 The **Rules** button shows the crafting rules version. Click it to review supported methods and assumptions. Choosing a newer character or Atlas tree does not change the crafting rules.
 
 Plain item copies can be imported when their complete modifier identities and rolls resolve uniquely. Advanced copy text helps preserve identities. Missing item levels, overlapping modifier tiers and values the engine cannot reconstruct require an explicit choice; the importer does not guess. For a structured starting state through MCP, use the corresponding blank base as the starting text. Omitted sockets, quality, mirrored status, influences, memory strands, catalyst settings and recognized Eldritch implicits inherit the starting item unless a replacement implicit is supplied. Explicit empty sockets, influences or Eldritch implicits, zero quality or strands, and a false mirrored flag override them; a supplied catalyst type uses its supplied quality. A socket layout marked unknown is never inferred.

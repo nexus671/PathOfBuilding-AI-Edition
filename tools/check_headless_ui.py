@@ -41,6 +41,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_tincture_hint.lua")
     sources.append(ROOT / "tools/test_combined_fossil_ui.lua")
     sources.append(ROOT / "tools/test_vendor_review_ui.lua")
+    sources.append(ROOT / "tools/test_modifier_paging_ui.lua")
     sources.append(ROOT / "tools/test_campaign_selection_ui.lua")
     return {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(sources) if path.is_file()}
 
@@ -93,7 +94,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1986, f"Expected 1986 UI frames, found {len(paths)}"
+    assert len(paths) == 1989, f"Expected 1989 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         audit = json.loads((frames / f"{width}-filter-error-audit.json").read_text())
         audit_text = " ".join(c.get("text", "") for c in audit["commands"] if c.get("kind") == "text")
