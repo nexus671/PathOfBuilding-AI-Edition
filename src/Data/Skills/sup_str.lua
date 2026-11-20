@@ -2541,8 +2541,11 @@ skills["AvengingFlame"] = {
 		local uuid = activeSkill.skillData.triggerSourceUUID
 		-- Use the source calculated for this environment and override; the
 		-- main tab's cache can describe a different passive or item setup.
-		local cache = uuid and ((env.triggerSourceCache and env.triggerSourceCache[uuid]) or GlobalCache.cachedData[env.mode][uuid])
-		local totemLife = cache and cache.Env.player.output.TotemLife or 0
+		local cache = uuid and env.triggerSourceCache and env.triggerSourceCache[uuid]
+		if not cache and uuid then cache = GlobalCache.cachedData[env.mode][uuid] end
+		-- Rejected cost probes have no published environment and must not
+		-- fall back to an older calculation for the same skill.
+		local totemLife = cache and cache.Env and cache.Env.player.output.TotemLife or 0
 
 		local add = totemLife * activeSkill.skillData.lifeDealtAsFire / 100
 		activeSkill.skillData.FireMax = (activeSkill.skillData.FireMax or 0) + add

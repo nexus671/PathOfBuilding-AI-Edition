@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview753" />
+	<Version number="2.68.1-ai.preview754" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1922,7 +1922,7 @@
 	<File name="Data/Skills/spectre.lua" part="program" sha1="77e7d56c485fc9a5347643b6b9746a6885a8d39e" />
 	<File name="Data/Skills/sup_dex.lua" part="program" sha1="632140681e6ad8d8f70a3044af8841004fab84c1" />
 	<File name="Data/Skills/sup_int.lua" part="program" sha1="860ac4811c2640617c29c408cb4a795a2aa8d7e2" />
-	<File name="Data/Skills/sup_str.lua" part="program" sha1="42501c14da0d52b4b7d40d2d6c18915159a2c5f9" />
+	<File name="Data/Skills/sup_str.lua" part="program" sha1="1c5cd6a31b384eb3840f3dbd0d571c0984d5490c" />
 	<File name="Data/Spectres.lua" part="program" sha1="7624dba8b501929c1b77aeb71166f647ab4f381e" />
 	<File name="Data/StatDescriptionFormatters.lua" part="program" sha1="fd261c089ec0e81f610aaae8cec603718dab6d44" />
 	<File name="Data/StatDescriptions/active_skill_gem_stat_descriptions.lua" part="program" sha1="40a8e23a1a3e31e229073125e76a0112f9c565f1" />

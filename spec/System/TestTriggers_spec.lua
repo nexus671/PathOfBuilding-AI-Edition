@@ -1451,6 +1451,21 @@ describe("TestTriggers", function()
 		assert.near(base.FullDPS,restored.FullDPS,0.000001)
 	end)
 
+	it("does not use an old Flamewood source after a rejected cost probe", function()
+		local uuid="flamewood-rejected-test"
+		local cache=GlobalCache.cachedData.CALCULATOR;local previous=cache[uuid]
+		local ok,err=pcall(function()
+			cache[uuid]={Env={player={output={TotemLife=1000}}}}
+			local active={skillData={triggerSourceUUID=uuid,lifeDealtAsFire=10}}
+			data.skills.AvengingFlame.preDamageFunc(active,{},nil,{mode="CALCULATOR",triggerSourceCache={[uuid]={rejectedOutput={ManaCost=0}}}})
+			assert.are.equal(0,active.skillData.FireMin);assert.are.equal(0,active.skillData.FireMax)
+			local current={skillData={triggerSourceUUID=uuid,lifeDealtAsFire=10}}
+			data.skills.AvengingFlame.preDamageFunc(current,{},nil,{mode="CALCULATOR",triggerSourceCache={}})
+			assert.are.equal(100,current.skillData.FireMin);assert.are.equal(100,current.skillData.FireMax)
+		end)
+		cache[uuid]=previous;assert.is_true(ok,tostring(err))
+	end)
+
 	it("Trigger Automation", function()
 		build.skillsTab:PasteSocketGroup("Steelskin 20/0  1\nAutomation 20/0  1\n")
 		runCallback("OnFrame")
