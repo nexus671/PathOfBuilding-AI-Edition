@@ -1,36 +1,36 @@
 {
   "schemaVersion": 1,
-  "commit": "7c8f374b802564aa265a00061a0cd1d009afc0fb",
+  "commit": "4c0e73c9ecc700c4cfae4f76755fb74a8d954a10",
   "source": "NeverSinkDev/NeverSink-Filter",
   "license": "MIT",
   "files": {
     "0.filter": {
-      "sha256": "78c46cccf459e754063945fa97d1f0934457d008d4c786f6a57393ef3d189af2",
-      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/7c8f374b802564aa265a00061a0cd1d009afc0fb/NeverSink%27s%20filter%20-%200-SOFT.filter"
+      "sha256": "893aad3f6282ba40bfbe14c96cfa5c752efd9a2d9615760f57495ab9072caf62",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%200-SOFT.filter"
     },
     "1.filter": {
-      "sha256": "1a779d9040703dfc3e7037da94253875b6f9185d742292a4ca4c4bf7f0529cfe",
-      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/7c8f374b802564aa265a00061a0cd1d009afc0fb/NeverSink%27s%20filter%20-%201-REGULAR.filter"
+      "sha256": "b6e81de56ab96f32d33242a66f7a3696cebfc2c8ce12eb9ee5bbfdcdcb19f64b",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%201-REGULAR.filter"
     },
     "2.filter": {
-      "sha256": "3ef3cc7b0500de6c3bf901aecc859a152f7aa2ab55f32c9968385287fc493ff7",
-      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/7c8f374b802564aa265a00061a0cd1d009afc0fb/NeverSink%27s%20filter%20-%202-SEMI-STRICT.filter"
+      "sha256": "80704db30c85d97a756c06bed0597e42853007d904e5da77b90d5cfce1488297",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%202-SEMI-STRICT.filter"
     },
     "3.filter": {
-      "sha256": "04782931359626b3eb5159d07f6eb3aac650c41f4753a1afc217a7e872a0e713",
-      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/7c8f374b802564aa265a00061a0cd1d009afc0fb/NeverSink%27s%20filter%20-%203-STRICT.filter"
+      "sha256": "edb695f5dad3ec74e0c6b7918c9aeac1f5be69ea1f8ecde5023d34989c52da1a",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%203-STRICT.filter"
     },
     "4.filter": {
-      "sha256": "dcc098e5545eacc2e361e38b4ebf7f2c6a98f7329fc42e1cc7092702972286ed",
-      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/7c8f374b802564aa265a00061a0cd1d009afc0fb/NeverSink%27s%20filter%20-%204-VERY-STRICT.filter"
+      "sha256": "227061f886a9a5a03a134954a77adc01c0cfce087b426fcdc829e6ad6dc329f0",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%204-VERY-STRICT.filter"
     },
     "5.filter": {
-      "sha256": "4150d1e5061c5dc3fcba3e33096800c92e59277fa7a3edcad9035e2b294d104e",
-      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/7c8f374b802564aa265a00061a0cd1d009afc0fb/NeverSink%27s%20filter%20-%205-UBER-STRICT.filter"
+      "sha256": "dd3cf22d721b1a956d1402e217683161543938f867e8f9c595517e8c796b940e",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%205-UBER-STRICT.filter"
     },
     "6.filter": {
-      "sha256": "b82a5b4450bb4b4860ed1a891ab7e0a1381865ed46a72cf275ca7a33acc2fa1b",
-      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/7c8f374b802564aa265a00061a0cd1d009afc0fb/NeverSink%27s%20filter%20-%206-UBER-PLUS-STRICT.filter"
+      "sha256": "84aa2090c10b5374144b98b42d55bf701c19abecb40fb75baebbc25c54da42bb",
+      "source": "https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/4c0e73c9ecc700c4cfae4f76755fb74a8d954a10/NeverSink%27s%20filter%20-%206-UBER-PLUS-STRICT.filter"
     }
   },
   "nativePatch": "3.30"

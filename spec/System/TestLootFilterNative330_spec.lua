@@ -19,6 +19,16 @@ describe("3.30 native filter update",function()
 			end
 		end
 	end)
+	it("shows the 3.30.0d Exalted Orbs in every native strictness",function()
+		for strictness=0,6 do
+			local profile=filters.profile("new-currency","New currency");profile.strictness=strictness
+			for _,name in ipairs({"Originator's Exalted Orb","Primordial Exalted Orb"}) do
+				local item=library.sample();item.BaseType=name;item.MemoryStrands=0
+				local result=filters.simulate(profile,item)
+				assert.equal("Show",result.action,name.." strictness "..strictness)
+			end
+		end
+	end)
 	it("requires review of old profiles and keeps personal rules ahead of the new base",function()
 		local old=filters.profile("old","Old");old.baseCommit="3ab00dd016b00c6be7acfa989baf498842973d54"
 		old.rules={{id="personal",title="Hide thread",text='Hide\n BaseType == "Frayed Thread"',enabled=true}}

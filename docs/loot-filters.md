@@ -121,7 +121,7 @@ Generation, testing and compilation return request IDs. Poll **get_proposal_stat
 
 ## Sources and updates
 
-The seven bundled templates are [NeverSink's filter](https://github.com/NeverSinkDev/NeverSink-Filter), version 8.21.0e from the unreleased source commit `7c8f374b802564aa265a00061a0cd1d009afc0fb`. They are MIT-licensed; the copyright and permission notice is included in `src/Data/LootFilters/LICENSE-NeverSink.txt`. These 3.30-native presets keep NeverSink's own item tiers and rules. Existing bundled profiles require an explicit **Audit / update** before exporting with the new base. This is our native workspace, not the FilterBlade website or its hosted economy service.
+The seven bundled templates are [NeverSink's filter](https://github.com/NeverSinkDev/NeverSink-Filter), version 8.21.1 from source commit `4c0e73c9ecc700c4cfae4f76755fb74a8d954a10`. They are MIT-licensed; the copyright and permission notice is included in `src/Data/LootFilters/LICENSE-NeverSink.txt`. These 3.30-native presets keep NeverSink's own item tiers and rules. Existing bundled profiles require an explicit **Audit / update** before exporting with the new base. This is our native workspace, not the FilterBlade website or its hosted economy service.
 
 GGG's [Covens of Umbra item-filter announcement](https://www.pathofexile.com/forum/view-thread/4013923) supplies the pinned 3.30 item additions, renames, removals and new keywords. [GGG's filter guide](https://www.pathofexile.com/item-filter/about) defines filter syntax; [the API reference](https://www.pathofexile.com/developer/docs/reference#itemfilters) documents account access and server validation.
 
