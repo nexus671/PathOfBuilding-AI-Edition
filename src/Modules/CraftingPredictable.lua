@@ -13,6 +13,15 @@ function P.extend(M,A,api)
 		local current=M.predictableObservation(craft)
 		return tableDeepEquals(observed,current) and tableDeepEquals(current,observed)
 	end
+	function M.predictableRecipeObservationReason(recipe)
+		for index,step in ipairs(recipe and recipe.steps or {}) do
+			if step.method=="recombine_predictable" then
+				local prefix="Step "..index..": "
+				if type(step.observedRecipientState)~="table" then return prefix.."The recipient state used for the observed percentage is missing." end
+				if not M.predictableObservationMatches(step) then return prefix.."The donor, selections or observed percentage need reconfirmation." end
+			end
+		end
+	end
 	local originalAction,originalCalculate=M.action,M.calculate
 	local function prepare(model,input,craft)
 		if craft.observedInputs then assert(M.predictableObservationMatches(craft),"Donor, selected modifiers or success percentage changed since the observation; obtain a new observation") end

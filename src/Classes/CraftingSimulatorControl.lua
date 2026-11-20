@@ -816,8 +816,12 @@ function Panel.Open(build,project,layout)
 	controls.currency.changeFunc=updateCurrency
 	controls.currency.tooltipText="Saved resource quotes use this common unit. Change it through Resource prices. Changing units clears action overrides and base cost."
 	controls.price.tooltipText=function() return "Optional total price of "..actionName()..". It applies when that action executes, including inside saved recipes." end
-	controls.runRecipe.enabled=function() return not tasks.job and draft.nativeRecipe~=nil and not targetReason(true) end
-	controls.runRecipe.tooltipText=function() return tasks.job and busy or not draft.nativeRecipe and "Save a recipe in this project first." or targetReason(true) or "Run the project's saved steps from the original starting item, with the saved recipe's targets." end
+	local function savedObservationReason()
+		local reason=simulator.predictableRecipeObservationReason(draft.nativeRecipe)
+		if reason then return reason.." Configure a new observation in Craft settings, then use Recipe routes to replace the selected step with the emulator action." end
+	end
+	controls.runRecipe.enabled=function() return not tasks.job and draft.nativeRecipe~=nil and not targetReason(true) and not savedObservationReason() end
+	controls.runRecipe.tooltipText=function() return tasks.job and busy or not draft.nativeRecipe and "Save a recipe in this project first." or targetReason(true) or savedObservationReason() or "Run the project's saved steps from the original starting item, with the saved recipe's targets." end
 	controls.exact.enabled=function() return actionConfigured() and not tasks.job and not targetReason() and (#targets>0 or requirements~=nil and next(requirements)~=nil) and workbench.available(controls.method:GetSelValueByKey("val"),state,model) end
 	controls.exact.tooltipText=function()
 		local configuration=actionConfigurationReason();if configuration then return configuration end

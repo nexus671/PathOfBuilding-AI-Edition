@@ -45,4 +45,21 @@ describe("Predictable recombination observation persistence",function()
 		controls=open(build,changed);assert.is_false(controls.apply:IsEnabled());assert.matches("Donor or selection changed",controls.apply.tooltipText())
 		main.popups={}
 	end)
+	it("explains and repairs an older saved recipe before simulation",function()
+		newBuild()
+		local sim=require("Modules.CraftingSimulator");local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw)
+		local recipient=copyTable(model.initial);recipient.rarity="MAGIC";recipient.affixes={{id="IncreasedLife1",range=0.75}}
+		local donor=copyTable(model.initial);donor.rarity="MAGIC";donor.affixes={{id="FireResist1",range=0.25}}
+		local action={method="recombine_predictable",donorItem=sim.toItem(model,donor).raw,selectedMods={left={"IncreasedLife1"},right={"FireResist1"}},reportedSuccessChance=0,observedRecipientState=copyTable(recipient)}
+		local old=copyTable(action);action.observedInputs=sim.predictableObservation(action)
+		local run=require("Modules.CraftingInventory").run(recipient);run.method="recombine_predictable";run.configured.recombine_predictable=action
+		local recipe={initialState=recipient,steps={old},targets={{anyOf={"IncreasedLife1"}},{anyOf={"FireResist1"}}}}
+		local project=build.savers.CraftingProjects:Upsert({id="old-observation",title="Old observation",slot="Helmet",startingItem=raw,goals={},steps={},run=run,nativeRecipe=recipe})
+		local c=require("Classes.CraftingSimulatorControl").Open(build,project)
+		c.page:SelByValue("Simulate recipe")
+		assert.is_false(c.runRecipe:IsEnabled());assert.matches("Step 1",c.runRecipe.tooltipText());assert.matches("Recipe routes",c.runRecipe.tooltipText())
+		c.editRecipe:Click();local routes=main.popups[1].controls;routes.replace:Click();routes.keep:Click()
+		assert.is_true(c.runRecipe:IsEnabled());assert.is_true(sim.predictableObservationMatches(build.savers.CraftingProjects.projects[1].nativeRecipe.steps[1]))
+		main.popups={}
+	end)
 end)
