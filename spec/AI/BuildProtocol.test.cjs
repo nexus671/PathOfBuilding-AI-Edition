@@ -238,6 +238,12 @@ test('accepts typed campaign pickup policies and rejects invented families', t =
   }
 });
 
+test('queues copied quality items for vendor review', t => {
+  const f=fixture(t);const items=['Item Class: Wands\nRarity: Normal\nDriftwood Wand\nQuality: +20%'];
+  f.call('review_quality_vendor_items',{baseRevision:f.state.revision,items});
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'review_quality_vendor_items');assert.deepEqual(request.items,items);
+});
+
 test('queues exact saved filter examples and named appearance snapshots', t => {
   const f=fixture(t);const profile={id:'test',title:'Test',preset:'early_maps',strictness:2,rules:[],sampleSets:[{id:'early',title:'Early drops',samples:[{BaseType:'Iron Hat',AreaLevel:12,HasInfluence:['Shaper']}]}],palettes:[{id:'muted',title:'Muted',theme:'contrast',appearance:{alertVolume:0,textColor:[255,220,100,255]}}]};
   f.call('propose_loot_filters',{title:'Reusable examples',baseRevision:f.state.revision,filters:{schemaVersion:1,activeId:'test',profiles:[profile]}});

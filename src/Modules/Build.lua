@@ -85,6 +85,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	self.viewMode = "TREE"
 	self.planningWorkspace = nil
 	self.planningVendorRareItems = nil
+	self.planningVendorQualityItems = nil
 	self.planningCraftDrafts = nil
 	self.planningUniqueQualityDrafts = nil
 	self.characterLevel = m_min(m_max(main.defaultCharLevel or 1, 1), 100)
