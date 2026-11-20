@@ -73,6 +73,7 @@ local function compareOutput()
  local actual = snapshot()
  for key, value in pairs(expected) do assert(actual[key] == value, "Changed main output " .. key .. ": " .. tostring(value) .. " vs " .. tostring(actual[key])) end
  for key in pairs(actual) do assert(expected[key] ~= nil, "Unexpected main output " .. key) end
+ return actual
 end
 compareOutput()
 local selected
@@ -82,5 +83,22 @@ end
 assert(selected, "No adjacent passive available for comparison")
 build.spec:AllocNode(selected); compareOutput()
 build.spec:DeallocSingleNode(selected); build.spec:BuildAllDependsAndPaths(); compareOutput()
+if fixture:find("OccVortex", 1, true) then
+ local config = build.configTab.configSets[build.configTab.activeConfigSetId]
+ local block = { title = "Cost probe stress", enabled = true, text = "20000% increased Cost of Skills" }
+ config.customModsList[#config.customModsList+1] = block
+ build.configTab:BuildModList()
+ local stressed = compareOutput()
+ assert(stressed.ManaCostWarningList and stressed.ManaCostWarningList ~= "", "Mana stress did not produce a warning")
+ block.text = "20000% increased Cost of Skills\nSkills Cost Life instead of Mana"
+ build.configTab:BuildModList(); local lifeStress = compareOutput()
+ assert(lifeStress.LifeCostWarningList and lifeStress.LifeCostWarningList ~= "", "Life stress did not produce a warning")
+ -- PoB reuses the build-mode object; switch to a different triggered build in-process.
+ local nextFile = assert(io.open("../spec/TestBuilds/3.13/Dual Wield Cospris CoC.xml", "rb"))
+ local nextRaw = nextFile:read("*a"); nextFile:close()
+ loadBuildFromXML(nextRaw, "Cost probe build switch")
+ build.treeTab:ConvertToVersion(latestTreeVersion, true, false)
+ build.buildFlag = true; runCallback("OnFrame"); compareOutput()
+end
 if fixture:find("Generals Perforate", 1, true) then assert(fallbackCount > 0, "General's Cry did not exercise the cache fallback") end
 print("COST_PROBES_OK " .. compared .. " partial=" .. partialCount .. " full=" .. fallbackCount .. " " .. fixture)
