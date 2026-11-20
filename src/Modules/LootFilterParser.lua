@@ -170,6 +170,13 @@ function M.condition(c,item)
 		return nil,item.Identified==false and "Explicit modifiers are hidden on unidentified items" or "Supply identification state for explicit modifiers"
 	end
 	local value=item[c.keyword];local present,influenceCount
+	-- Memory Strands occur on equipment, not stackable currency. Positive
+	-- thresholds therefore cannot match a currency example even if its strand
+	-- count was not supplied. Keep other comparisons and equipment unknown.
+	if c.keyword=="MemoryStrands" and value==nil and item.Class=="Stackable Currency" and #c.values==1 then
+		local threshold=tonumber(c.values[1])
+		if threshold and ((c.operator==">" and threshold>=0) or (c.operator==">=" and threshold>0)) then return false end
+	end
 	if (c.keyword=="HasInfluence" or c.keyword=="ShaperItem" or c.keyword=="ElderItem") and item.HasInfluence~=nil then
 		local reason;present,influenceCount,reason=influenceState(item);if reason then return nil,reason end
 		if c.keyword~="HasInfluence" and value==nil then value=present[c.keyword=="ShaperItem" and "shaper" or "elder"]==true end

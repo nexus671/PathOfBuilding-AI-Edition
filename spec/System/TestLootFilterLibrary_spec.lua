@@ -291,6 +291,10 @@ describe("Visual filter catalogue",function()
 	it("tests memory strands and preserves legacy sample fields",function()
 		local rules=parser.parse('Hide\n MemoryStrands >= 60\nShow')
 		local item=library.sample();assert.is_nil(item.MemoryStrands);assert.is_nil(item.AlwaysShow)
+		assert.equal("Show",parser.simulate(rules,item).action)
+		assert.equal("unknown",parser.simulate(parser.parse("Hide\n MemoryStrands >= 0\nShow"),item).status)
+		item.MemoryStrands=75;assert.equal("Hide",parser.simulate(rules,item).action);item.MemoryStrands=nil
+		item.Class="Helmets";item.BaseType="Hubris Circlet"
 		assert.equal("unknown",parser.simulate(rules,item).status)
 		item.AlwaysShow=false
 		local saved;require("Classes.LootFilterControl").EditSample(item,function(value) saved=value end)

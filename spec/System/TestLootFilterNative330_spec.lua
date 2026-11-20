@@ -23,7 +23,7 @@ describe("3.30 native filter update",function()
 		for strictness=0,6 do
 			local profile=filters.profile("new-currency","New currency");profile.strictness=strictness
 			for _,name in ipairs({"Originator's Exalted Orb","Primordial Exalted Orb"}) do
-				local item=library.sample();item.BaseType=name;item.MemoryStrands=0
+				local item=library.sample();item.BaseType=name
 				local result=filters.simulate(profile,item)
 				assert.equal("Show",result.action,name.." strictness "..strictness)
 			end
