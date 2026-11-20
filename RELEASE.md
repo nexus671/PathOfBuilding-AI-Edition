@@ -22,9 +22,21 @@ A fork-owned portable ZIP can be prepared without installing it:
    `PACKAGE-INFO.txt`; the extracted application stores its own builds and
    settings beside the program.
 
+On Windows, extract the verified ZIP into a new, empty folder and run:
+
+```powershell
+python tools/smoke_portable_windows.py <fresh-extraction-folder>
+```
+
+The smoke check starts the packaged application hidden, waits for a responsive
+build window, closes it normally, and verifies that settings and a Builds folder
+were created inside the extraction. It refuses an extraction with existing user
+data. Run this against the exact release candidate; it checks startup and local
+data isolation, not every feature or the updater's network behaviour.
+
 This produces a portable package, not an installer or a published release.
-Native Windows startup and a fork-owned release process still require separate
-verification. The tool does not sign files or upload a release.
+A fork-owned release process still requires separate verification. The tool does
+not sign files or upload a release.
 
 The release and installer workflows below are inherited from Community Edition.
 The installer workflow uses the Community project's private installer and is
