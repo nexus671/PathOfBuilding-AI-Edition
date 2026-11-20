@@ -14,7 +14,7 @@ function I.prepareDropOnly(model)
 		end
 	end
 end
-function I.inferRange(template,line)
+function I.inferRange(template,line,allowOutside)
 	local pattern,ranges,at="",{},1
 	local function escape(text) return text:gsub("([^%w])","%%%1") end
 	for first,low,high,last in template:gmatch("()%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)()") do
@@ -26,7 +26,7 @@ function I.inferRange(template,line)
 	local result={}
 	for i,bounds in ipairs(ranges) do
 		local value=tonumber(values[i]);local low,high=math.min(unpack(bounds)),math.max(unpack(bounds))
-		if not value or value < low or value > high then return nil end
+		if not value or not allowOutside and (value < low or value > high) then return nil end
 		result[i]=bounds[1] == bounds[2] and 0.5 or (value-bounds[1])/(bounds[2]-bounds[1])
 	end
 	return result
@@ -48,9 +48,30 @@ function I.resolve(M,model,state)
 		used[found]=true
 	end end
 	local candidates,seen,contributorMods={},{ },{}
+	local namedSuffix
+	if model.item.type=="Tincture" and model.item.tinctureValues=="Final" and model.item.rarity=="MAGIC" then
+		local name,base=model.item.name or "",model.item.baseName or "";local start=base~="" and name:find(base,1,true)
+		if start then namedSuffix=name:sub(start+#base):match("^%s+(.+)$") end
+	end
+	-- A named magic tincture suffix can establish the tier even when a game
+	-- copy displays a quality-scaled value outside its native range. Keep the
+	-- displayed roll for round trips; do not claim the original roll is known.
+	local function namedTinctureDisplay(mod,line)
+		local item=model.item;local quality=item.tinctureImportedQuality or 0
+		if item.type~="Tincture" or item.tinctureValues~="Final" or quality<=0 or (item.tinctureImportedEffect or 0)~=0 or mod.type~="Suffix" or #mod~=1 or not mod.affix or mod.affix=="" then return end
+		local name=item.name or "";if name:sub(-#mod.affix)~=mod.affix or name:sub(-#mod.affix-1,-#mod.affix-1)~=" " then return end
+		local low,high=mod[1]:match("%((%-?%d+)%-(%-?%d+)%)")
+		low,high=tonumber(low),tonumber(high);if not low or not high or high<=low or high-low>4096 then return end
+		local display=I.inferRange(mod[1],line,true);if not display or #display~=1 or math.abs(display[1])>100 then return end
+		local scalar=math.floor((1+quality/100)*100)/100
+		for value=low,high do
+			if itemLib.applyRange(mod[1],(value-low)/(high-low),scalar)==line then return display end
+		end
+	end
 	local function consider(id,crafted,legacy,description330)
 		local key=id..(legacy and ":legacy" or description330 and ":description330" or ":current");if seen[key] then return end;seen[key]=true
 		local mod=legacy and model.legacyLightRadius[id] or description330 and model.descriptions330[id] or model.byId[id];if not mod or #mod == 0 then return end
+		if namedSuffix and mod.type=="Suffix" and mod.affix~=namedSuffix then return end
 		if not crafted then contributorMods[#contributorMods+1]={id=id,mod=mod} end
 		local indices,ranges={},{}
 		local function matchLine(lineIndex,fractured)
@@ -62,7 +83,7 @@ function I.resolve(M,model,state)
 			end
 			for i,row in ipairs(rows) do if not used[i] and row.crafted == crafted and (fractured == nil or fractured == row.fractured) and (not row.prefix or mod.type == "Prefix") and (not row.suffix or mod.type == "Suffix") then
 				local already=false;for _,index in ipairs(indices) do if index == i then already=true end end
-				local inferred=not already and I.inferRange(mod[lineIndex],row.text)
+				local inferred=not already and (I.inferRange(mod[lineIndex],row.text) or namedTinctureDisplay(mod,row.text))
 				if inferred then
 					indices[#indices+1]=i;local previous=#ranges
 					for _,value in ipairs(inferred) do ranges[#ranges+1]=value end
