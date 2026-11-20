@@ -954,6 +954,7 @@ async function main(){
   const rollState=mapRoll.mapData.state;const inspectedRoll=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:rollState.baseId,tier:rollState.tier,itemLevel:rollState.itemLevel,rarity:rollState.rarity,selected:rollState.selected,rolls:rollState.rolls},'mapData');
   assert.deepEqual(inspectedRoll.mapData.summary,mapRoll.mapData.summary);
   const mapEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'},options:{wanted:[],avoid:['MapMonsterAreaOfEffectMapWorlds'],trials:2,maxAttempts:1,seed:42,price:{amount:0.5,currency:'chaos'}}},'mapData');
+  assert.equal(mapEstimate.mapData.feasibilityUnverified,false);
   assert.equal(mapEstimate.mapData.successes,2);assert.equal(mapEstimate.mapData.attempts,2);assert.match(mapEstimate.mapData.note,/sampling uncertainty only/);
   assert.equal(mapEstimate.mapData.dataPatch,nightmareMap.mapData.patch);assert.deepEqual(mapEstimate.mapData.dataSource,nightmareMap.mapData.source);
   assert.deepEqual(mapEstimate.mapData.cost,{currency:'chaos',unitPrice:0.5,totalSpent:1,meanSpent:0.5,maxPerTrial:0.5,p50:0.5,p90:0.5,p99:0.5});
@@ -963,6 +964,7 @@ async function main(){
   assert.match(impossibleMap.error,/Wanted groups 1 and 2 cannot coexist/);
   const tooManyPrefixes=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:5,itemLevel:68,rarity:'rare'},options:{wantedGroups:[['MapBossPossessedMapWorlds'],['MapDangerousBoss1MapWorlds'],['MapMonsterCannotBeStunnedMapWorlds_'],['MapMonsterChainMapWorlds']],trials:1000,maxAttempts:20,seed:42}},'failed');
   assert.match(tooManyPrefixes.error,/Wanted targets cannot all coexist/);
+  assert.match(tooManyPrefixes.error,/at least 4 prefix/);
   const altarItem='Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: W W W\nCorrupted';
   const secondCorruption=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:altarItem,action:{method:'locus'},seed:1},'crafted');
   assert.equal(secondCorruption.nativeCrafting.warnings[0].code,'locus_assumptions');

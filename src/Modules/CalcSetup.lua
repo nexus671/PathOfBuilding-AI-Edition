@@ -818,7 +818,7 @@ function calcs.initEnv(build, mode, override, specEnv)
 				if not build.spec.treeVersion:find("3_27") then
 					goto continue
 				end
-			elseif slotName:match("^Wickerman ") and not env.spec.treeVersion:find("3_30") then
+			elseif (slotName:match("^Wickerman ") or slotName == "Head" or slotName == "Body" or slotName == "Arm" or slotName == "Leg") and not env.spec.treeVersion:find("3_30") then
 				goto continue
 			end
 			-- ignore item in Ring 3 if The Unseen Hand is not allocated
