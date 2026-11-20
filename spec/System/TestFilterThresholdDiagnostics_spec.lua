@@ -195,4 +195,19 @@ describe("Filter threshold conflict diagnostics",function()
    end end end
   end end end end
  end)
+ it("recognizes two narrowed ranges without reporting reachable blocks",function()
+  local first='Show\n ItemLevel >= 2\n ItemLevel <= 4\n AreaLevel > 1\n AreaLevel < 5'
+  local later='Hide\n ItemLevel == 3\n AreaLevel >= 2\n AreaLevel <= 4'
+  assert.equal(1,#diagnostics.shadowing(parser.parse(first..'\n'..later)))
+  assert.equal(0,#diagnostics.shadowing(parser.parse(first..'\n Continue\n'..later)))
+  assert.equal(0,#diagnostics.shadowing(parser.parse(first..'\n'..later:gsub('AreaLevel <= 4','AreaLevel <= 5'))))
+  local ranges={'%s >= 2\n %s <= 4','%s > 2\n %s < 4','%s == 3','%s >= 1','%s < 5'}
+  for _,a in ipairs(ranges) do for _,b in ipairs(ranges) do for _,c in ipairs(ranges) do for _,d in ipairs(ranges) do
+   local parsed=parser.parse('Show\n '..a:format('ItemLevel','ItemLevel')..'\n '..b:format('AreaLevel','AreaLevel')..'\nHide\n '..c:format('ItemLevel','ItemLevel')..'\n '..d:format('AreaLevel','AreaLevel'))
+   for _,warning in ipairs(diagnostics.shadowing(parsed)) do for _,itemLevel in ipairs({1,2,2.5,3,4,4.5,5}) do for _,areaLevel in ipairs({1,2,2.5,3,4,4.5,5}) do
+    local item={ItemLevel=itemLevel,AreaLevel=areaLevel};local function matches(rule) for _,condition in ipairs(rule.conditions) do if not parser.condition(condition,item) then return false end end;return true end
+    assert.is_false(matches(parsed.rules[2]) and not matches(parsed.rules[1]),warning.warning)
+   end end end
+  end end end end
+ end)
 end)
