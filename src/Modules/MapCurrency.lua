@@ -1,7 +1,7 @@
 -- Experimental ordinary-map modifier and stat rolls. Probabilities are estimates.
 local map=require("Modules.MapCraftingData")
 local M={}
-M.actions={{id="transmute",label="Orb of Transmutation"},{id="alchemy",label="Orb of Alchemy"},{id="alteration",label="Orb of Alteration"},{id="chaos",label="Chaos Orb"},{id="augmentation",label="Orb of Augmentation"},{id="regal",label="Regal Orb"},{id="exalt",label="Exalted Orb"},{id="annul",label="Orb of Annulment"},{id="scour",label="Orb of Scouring"},{id="vaal_add",label="Vaal: +2 modifier outcome (conditional)"}}
+M.actions={{id="transmute",label="Orb of Transmutation"},{id="alchemy",label="Orb of Alchemy"},{id="alteration",label="Orb of Alteration"},{id="chaos",label="Chaos Orb"},{id="augmentation",label="Orb of Augmentation"},{id="regal",label="Regal Orb"},{id="exalt",label="Exalted Orb"},{id="originator",label="Originator's Exalted Orb"},{id="annul",label="Orb of Annulment"},{id="scour",label="Orb of Scouring"},{id="vaal_add",label="Vaal: +2 modifier outcome (conditional)"}}
 local function rng(seed)
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid map roll seed")
 	return function() seed=seed*16807%2147483647;return seed/2147483647 end
@@ -41,6 +41,23 @@ local function add(state,random,checkpoint,cache,requiredSide,exclusive)
 		end
 	end
 	error("Could not select a map modifier")
+end
+-- The 3.30 notes identify nine rare-only suffixes. Their Nightmare variants,
+-- weights and interactions with other modifiers remain assumptions.
+local function originatorPool(state,index,checkpoint,cache)
+	local after=copyTable(state);table.remove(after.selected,index)
+	local eligible={};local total=0
+	for _,entry in ipairs(candidates(after,checkpoint,cache)) do
+		if map.isOriginatorModifier(entry.id) then eligible[#eligible+1]=entry;total=total+entry.spawnWeight end
+	end
+	return eligible,total
+end
+local function originatorBranches(state,checkpoint,cache)
+	local suffixes,unsupported={},0
+	for index,id in ipairs(state.selected) do if map.source().mods[id].generation_type=="suffix" then
+		suffixes[#suffixes+1]=index;local _,weight=originatorPool(state,index,checkpoint,cache);if weight==0 then unsupported=unsupported+1 end
+	end end
+	return suffixes,unsupported
 end
 local function validate(input,checkpoint,cache)
 	assert(type(input)=="table" and type(input.selected)=="table","Invalid map state")
@@ -91,14 +108,15 @@ local function validate(input,checkpoint,cache)
 end
 function M.reason(state,action)
 	local rarity=state.rarity;local count=#state.selected
-	if map.isNightmare(state.baseId) and action~="chaos" then return "Only Chaos Orb rerolls are modeled for Nightmare maps." end
+	if map.isNightmare(state.baseId) and action~="chaos" and action~="originator" then return "Only Chaos and Originator's Exalted Orbs are modeled for Nightmare maps." end
 	if action=="transmute" or action=="alchemy" then if rarity~="normal" then return "Requires a normal map." end
 	elseif action=="alteration" or action=="augmentation" or action=="regal" then
 		if rarity~="magic" then return "Requires a magic map." end
 		if action=="augmentation" and count>=2 then return "A magic map already has its maximum of two modifiers." end
-	elseif action=="chaos" or action=="exalt" then
+	elseif action=="chaos" or action=="exalt" or action=="originator" then
 		if rarity~="rare" then return "Requires a rare map." end
 		if action=="exalt" and count>=6 then return "A rare map already has its maximum of six modifiers." end
+		if action=="originator" then local found=false;for _,id in ipairs(state.selected) do if map.source().mods[id].generation_type=="suffix" then found=true;break end end;if not found then return "Requires a rare map with a suffix." end end
 	elseif action=="annul" then if rarity=="normal" or count==0 then return "Requires a magic or rare map with a modifier." end
 	elseif action=="scour" then if rarity=="normal" then return "Requires a magic or rare map." end
 	elseif action=="vaal_add" then if rarity~="rare" then return "Only the rare-map outcome is modeled." end
@@ -112,7 +130,13 @@ function M.options(input,checkpoint)
 			local candidateState=copyTable(state);if action.id=="regal" then candidateState.rarity="rare" end
 			if #candidates(candidateState,checkpoint,cache)==0 then reason="No modeled eligible modifier remains." end
 		end
-		result[#result+1]={id=action.id,label=action.label,available=not reason,reason=reason}
+		local detail
+		if not reason and action.id=="originator" then
+			local suffixes,unsupported=originatorBranches(state,checkpoint,cache)
+			if unsupported==#suffixes then reason="No supported replacement remains after any suffix removal."
+			elseif unsupported>0 then detail="Some random suffix removals have no supported replacement; those previews stop without changing the map." end
+		end
+		result[#result+1]={id=action.id,label=action.label,available=not reason,reason=reason,detail=detail}
 	end
 	return result
 end
@@ -129,6 +153,14 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
 	elseif action=="augmentation" then assert(state.rarity=="magic","Requires a magic map");add(state,random,checkpoint,cache)
 	elseif action=="regal" then assert(state.rarity=="magic","Requires a magic map");state.rarity="rare";add(state,random,checkpoint,cache)
 	elseif action=="exalt" then assert(state.rarity=="rare","Requires a rare map");add(state,random,checkpoint,cache)
+	elseif action=="originator" then
+		local suffixes={};for index,id in ipairs(state.selected) do if map.source().mods[id].generation_type=="suffix" then suffixes[#suffixes+1]=index end end
+		local index=suffixes[math.floor(random()*#suffixes)+1];local options,total=originatorPool(state,index,checkpoint,cache)
+		assert(total>0,"This suffix removal has no supported Originator replacement; the hypothetical map was not changed")
+		local removed=table.remove(state.selected,index);existing[removed]=nil;priorIds[removed]=nil
+		local target=random()*total;local picked
+		for _,entry in ipairs(options) do target=target-entry.spawnWeight;if target<0 then picked=entry.id;break end end
+		assert(picked,"Could not select a modeled Originator modifier");state.selected[#state.selected+1]=picked
 	elseif action=="annul" then assert(state.rarity~="normal" and #state.selected>0,"Requires a magic or rare map with a modifier");table.remove(state.selected,math.floor(random()*#state.selected)+1)
 	elseif action=="scour" then assert(state.rarity~="normal","Requires a magic or rare map");state.rarity="normal";state.selected={}
 	elseif action=="vaal_add" then
@@ -149,6 +181,6 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
 		local roll=existing[id] or (not identitiesOnly and not priorIds[id] and values.sample(map.source().mods[id],random))
 		if roll then state.rolls[#state.rolls+1]={id=id,values=roll} end
 	end
-	return {state=state,seed=seed,action=action,dataPatch=not identitiesOnly and map.source().patch or nil,dataSource=not identitiesOnly and copyTable(map.source().source) or nil,summary=not identitiesOnly and map.summarize(state.selected,state.rolls,nil,state.quality) or nil,note=(action=="vaal_add" and "Conditional Vaal outcome only: two modifiers are added and the map is corrupted. This is not a full Vaal Orb simulation or an outcome probability. Weighted selection, stat rolls, side limits and interactions are unverified assumptions." or map.isNightmare(state.baseId) and "Experimental Nightmare model: six modifiers, one exclusive prefix and suffix drawn first, then four weighted draws. Draw order, weights, independent uniform values and interactions are unverified assumptions." or "Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified.")..require("Modules.MapObservedEffects").note(state.observedEffects)..(map.hasBlightedLegacy(state.selected,state.observedEffects) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")}
+	return {state=state,seed=seed,action=action,dataPatch=not identitiesOnly and map.source().patch or nil,dataSource=not identitiesOnly and copyTable(map.source().source) or nil,summary=not identitiesOnly and map.summarize(state.selected,state.rolls,nil,state.quality) or nil,note=(action=="originator" and "Experimental Originator preview: a suffix is selected uniformly and a documented rare-only replacement is sampled using exported spawn weights. Independent uniform stat rolls, Nightmare variants, eligibility, selection weights and interactions are unverified; some removal branches are unsupported." or action=="vaal_add" and "Conditional Vaal outcome only: two modifiers are added and the map is corrupted. This is not a full Vaal Orb simulation or an outcome probability. Weighted selection, stat rolls, side limits and interactions are unverified assumptions." or map.isNightmare(state.baseId) and "Experimental Nightmare model: six modifiers, one exclusive prefix and suffix drawn first, then four weighted draws. Draw order, weights, independent uniform values and interactions are unverified assumptions." or "Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified.")..require("Modules.MapObservedEffects").note(state.observedEffects)..(map.hasBlightedLegacy(state.selected,state.observedEffects) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")}
 end
 return M

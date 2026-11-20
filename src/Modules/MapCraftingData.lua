@@ -17,6 +17,14 @@ local rareOnly={
 	MapContainsSentinelApexWorlds=true,MapContainsSentinelPandemoniumWorlds=true,MapContainsSentinelStalkerWorlds=true,
 }
 function M.isRareOnly(id) return rareOnly[id]==true end
+-- The documented rare-only suffixes also have separate Nightmare identities.
+local originatorNightmare={
+	MapUberWeakContainsBeyondDemonFaction=true,MapUberWeakContainsBeyondFleshFaction=true,MapUberWeakContainsBeyondPaleFaction=true,
+	MapUberWeakContainsDeliriumMirror=true,MapUberWeakContainsMirage=true,MapUberWeakContainsWildwood=true,
+	MapUberWeakContainsSentinelApex=true,MapUberWeakContainsSentinelPandemonium=true,MapUberWeakContainsSentinelStalker=true,
+}
+function M.isOriginatorModifier(id) return rareOnly[id]==true or originatorNightmare[id]==true end
+
 function M.hasBlightedLegacy(selected,effects)
 	if require("Modules.MapObservedEffects").isBlighted(effects) then for _,id in ipairs(selected or {}) do if rareOnly[id] then return true end end end
 	return false

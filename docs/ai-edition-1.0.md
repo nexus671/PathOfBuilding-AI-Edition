@@ -66,7 +66,7 @@ The [3.30.0d patch notes](https://www.pathofexile.com/forum/view-thread/4017726)
 introduce Originator's Exalted Orbs for rare maps, including Nightmare Maps, and
 Primordial Exalted Orbs that reveal a random exotic Exalted Orb. They also
 change two Genesis Tree currency passives. The November 20 RePoE 3.30.0.4 export adds both currency records. Filter class and drop-level metadata and the crafting catalogue now use that snapshot; its map bases and map modifier pool match 3.30.0.3. The latest official Atlas export is 3.30.0c. Recheck future exports and validate map-crafting eligibility and modifiers in game.
-The notes do not specify outcome weights, so do not infer simulation odds.
+The notes do not specify outcome weights. Originator previews use a labelled experimental model, with unsupported removal branches reported instead of silently skipped. Validate eligibility, Nightmare interactions and outcome weights in game.
 
 
 On November 19, checkpoint `cd50961573dfe54caa830a0d45d237f13ddf6dd2` passed

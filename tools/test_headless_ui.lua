@@ -158,10 +158,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:text("draftName","Targets");ui:click("keep");ui:click("close");ui:click("tools");ui:text("search","Saved map drafts");ui:click("choose");ui:click("choose");ui:click("estimate")
 	do local c=main.popups[1].controls;local t="";for _,row in ipairs(c.wanted.list) do t=t..StripEscapes(row[1] or "") end;local a="";for _,row in ipairs(c.avoid.list) do a=a..StripEscapes(row[1] or "") end;assert(t:find("Burning",1,true) and a:find("Freezing",1,true) and c.trials.buf=="1","Map estimate settings did not reopen") end
 	frame("map-estimate-restored");ui:click("price");assert(main.popups[1].controls.amount.buf=="0.5","Map orb price did not reopen");ui:click("close");ui:click("removeAvoid");frame("map-remove-avoided");ui:click("close");ui:click("removeAlternative");frame("map-remove-option");ui:click("close");ui:click("close")
-	ui:click("remove");ui:choose("rarity","normal","val");ui:click("currency");ui:text("search","Chaos Orb")
-	do local c=main.popups[1].controls;local detail={};for _,row in ipairs(c.details.list) do detail[#detail+1]=StripEscapes(row[1] or "") end;assert(not c.choose:IsEnabled() and table.concat(detail," "):find("Requires a rare map",1,true),"Incompatible currency did not explain why it is unavailable") end
-	frame("map-currency-unavailable");ui:text("search","Orb of Alchemy");frame("map-currency-picker");ui:click("choose")
-	assert(main.popups[1].controls.rarity:GetSelValueByKey("val")=="rare","Map Alchemy did not produce a rare map");assert(main.popups[1].controls.remove:IsEnabled(),"Map Alchemy did not add modifiers");frame("map-currency-result")
+	dofile("../tools/test_originator_ui.lua")(ui,frame)
 	ui:text("draftName","My map draft");ui:click("keep");ui:click("close");ui:click("tools");ui:text("search","Saved map drafts");ui:click("choose");frame("saved-map-drafts");ui:click("choose")
 	assert(main.popups[1].controls.draftName.buf=="My map draft" and main.popups[1].controls.remove:IsEnabled(),"Saved map draft did not reopen");frame("reopened-map-draft");ui:click("close")
 	do

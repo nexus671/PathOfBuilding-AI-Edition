@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview805" />
+	<Version number="2.68.1-ai.preview806" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="b1de1e12401987f6e3b580bcbe6e967584336f1b" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="673987df02b3ebd8c8e7e1e890e891c4b56b1c98" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -990,6 +990,7 @@
 	<File name="Assets/Crafting/exalt.png" part="program" sha1="eab8a2c84b5b744fdca04c17f2e6b3eda08c53d7" />
 	<File name="Assets/Crafting/items.json" part="program" sha1="90074bb1d9669a26033f2e74a27b3f40f908baca" />
 	<File name="Assets/Crafting/regal.png" part="program" sha1="ef0544c325a5d46bc38cb06eb2a4e5b26954c387" />
+	<File name="Assets/Crafting/originator.png" part="program" sha1="89e8c5cf1832bb5f66b80d489a92ca4d43c8de94" />
 	<File name="Assets/Crafting/scour.png" part="program" sha1="f7a44bd9e32930d2a98afe0d49997bb8c6b87e5b" />
 	<File name="Assets/Crafting/sources.json" part="program" sha1="44c28a96d05fad9283473ce058ed68ea3b9015f3" />
 	<File name="Assets/Crafting/transmute.png" part="program" sha1="7d5e237295ea687e8df708c7053d10a437f85557" />
@@ -1751,7 +1752,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="1c33c47b7570e2596553e338a4588c5a22cf61d3" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="f5f92d5f155dd2e771fcbbb08a0dfb4b84b71cb9" />
-	<File name="Classes/MapModifierControl.lua" part="program" sha1="0329a25ed6e00962d02bb997d5b473e929e8524e" />
+	<File name="Classes/MapModifierControl.lua" part="program" sha1="f6d09e55b625b53767dad1051a4d66185b4c1ce0" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
 	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="cfff5d76e380c7bdcbdac229325cefb1599af36c" />
 	<File name="Classes/ModDB.lua" part="program" sha1="1327beebeba14dc8320d137a3dede673b74942af" />
@@ -1864,7 +1865,7 @@
 	<File name="Data/FlavourText.lua" part="program" sha1="938ff1930796386bcf56148dba7541fec5f10009" />
 	<File name="Data/Gems.lua" part="program" sha1="4452f6a8a4c7dd732a23005c28a05b68e5b26658" />
 	<File name="Data/Global.lua" part="program" sha1="72bff7e953555cf3045880b0ff0dc0c37f43056e" />
-	<File name="Data/HeadlessImageSizes.json" part="program" sha1="83cd64bca55536ccc32de552cdb8bb437305a13a" />
+	<File name="Data/HeadlessImageSizes.json" part="program" sha1="0b2c9b44fa61a5c541f4465fea2828fb4f759373" />
 	<File name="Data/IncursionDropOnly.lua" part="program" sha1="1fa5c24b1bf897e781c54b3ce7a7fcd7d23fd645" />
 	<File name="Data/LootFilters/0.filter" part="program" sha1="95ae274d3a62374fcb0d573065586ec13990ec7a" />
 	<File name="Data/LootFilters/1.filter" part="program" sha1="57125a56ed05ed46c9df992094586a2789ff95ee" />
@@ -2191,8 +2192,8 @@
 	<File name="Modules/MapClipboard.lua" part="program" sha1="29933b555158e884e7120765943280aeb5492785" />
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="c03ef32eee4a6eec184aac726605d6104d068af9" />
 	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="3dca2fbe1ed7019781cff659be4c2d179df7f848" />
-	<File name="Modules/MapCraftingData.lua" part="program" sha1="a5b95f75eacc8652532b46922c996d723bd97912" />
-	<File name="Modules/MapCurrency.lua" part="program" sha1="c2eb9da2cfd516719e8085b76ca6704d3d0f68de" />
+	<File name="Modules/MapCraftingData.lua" part="program" sha1="c09a89493850f42027a4244f764c436433d34ff1" />
+	<File name="Modules/MapCurrency.lua" part="program" sha1="63adbaf4832bef1bcc3b8b0e0d60614ccf5c1cdb" />
 	<File name="Modules/MapObservedEffects.lua" part="program" sha1="73f3af8a2844fcf13f25fae0243dc98339c16a10" />
 	<File name="Modules/MapQuality.lua" part="program" sha1="c7f308aa75c1ab907d8c864fe878bc8afcf4c429" />
 	<File name="Modules/MapRollValues.lua" part="program" sha1="738d8da00d86027c40d51555476d7c2a947a72c8" />

@@ -1,6 +1,32 @@
 describe("Experimental map currency",function()
 	local currency=require("Modules.MapCurrency")
 	local function state(rarity,selected) return {baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity=rarity,selected=selected or {}} end
+	it("previews Originator suffix replacement while preserving other rolls",function()
+		local map=require("Modules.MapCraftingData");local initial=currency.perform(state("normal"),"alchemy",123).state
+		initial.quality={kind="Pack Size",value=20};local before=copyTable(initial);local choices={};for _,entry in ipairs(currency.options(initial)) do choices[entry.id]=entry end
+		assert.is_true(choices.originator.available);local seen={}
+		for seed=1,30 do
+			local result=currency.perform(initial,"originator",seed*104729);assert.same(before,initial);assert.equal(#initial.selected,#result.state.selected);assert.same(initial.quality,result.state.quality);assert.matches("unverified",result.note)
+			local after={};for _,id in ipairs(result.state.selected) do after[id]=true end
+			local new=result.state.selected[#result.state.selected];assert.is_true(map.isOriginatorModifier(new));seen[new]=true
+			local kept=0;for _,id in ipairs(initial.selected) do if after[id] then kept=kept+1;local original;local current;for _,roll in ipairs(initial.rolls) do if roll.id==id then original=roll end end;for _,roll in ipairs(result.state.rolls) do if roll.id==id then current=roll end end;if id~=new then assert.same(original,current) end end end
+			assert.is_true(kept>=#initial.selected-1)
+		end
+		local count=0;for _ in pairs(seen) do count=count+1 end;assert.is_true(count>1)
+		assert.has_error(function() currency.perform(state("normal"),"originator",1) end)
+		local empty=state("rare");local options={};for _,entry in ipairs(currency.options(empty)) do options[entry.id]=entry end;assert.is_false(options.originator.available);assert.matches("suffix",options.originator.reason)
+		local blight=copyTable(initial);blight.observedEffects={{kind="implicit",text="Area is infested with Fungal Growths"}};local blocked={};for _,entry in ipairs(currency.options(blight)) do blocked[entry.id]=entry end;assert.is_false(blocked.originator.available)
+	end)
+	it("explains unsupported Nightmare Originator branches",function()
+		local nightmare={baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}
+		local original=currency.perform(nightmare,"chaos",300).state;local before=copyTable(original);local options={};for _,entry in ipairs(currency.options(original)) do options[entry.id]=entry end
+		assert.is_true(options.originator.available);assert.matches("Some random suffix",options.originator.detail)
+		local success,failure=0,0;for seed=1,30 do local ok,result=pcall(currency.perform,original,"originator",seed*104729)
+			if ok then success=success+1;assert.is_true(require("Modules.MapCraftingData").isOriginatorModifier(result.state.selected[#result.state.selected]));assert.same(before,original)
+			else failure=failure+1;assert.matches("no supported Originator replacement",result);assert.same(before,original) end
+		end
+		assert.is_true(success>0);assert.is_true(failure>0)
+	end)
 	it("reports the map data version for currency outcomes",function()
 		local result=currency.perform(state("normal"),"alchemy",42)
 		local source=require("Modules.MapCraftingData").source()
