@@ -6,5 +6,6 @@ return function(build,ui,frame)
 	ui:click("apply");frame("crafting-unique-colour-preview");ui:click("guide");ui:click("recipe")
 	local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
 	assert(saved and saved.steps[1].uniqueCraft.method=="chromatic" and saved.nativeRecipe.steps[1].method=="chromatic","Unique colour guide or recipe was not kept")
+	ui:click("recipe");frame("crafting-unique-colour-result");ui:click("close")
 	main.popups={}
 end

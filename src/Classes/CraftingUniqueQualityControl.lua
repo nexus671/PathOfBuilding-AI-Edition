@@ -271,31 +271,32 @@ function M.Open(build,project,layout,snapshot)
 			refresh(true);c.notice.label="^7Recipe saved. Save the build.";return
 		end
 		local stochastic=false;for _,step in ipairs(draft.nativeRecipe.steps) do if step.method=="chromatic" or step.method=="tainted_chromatic" or step.method=="omen_trichromatism" then stochastic=true end end
-		local result=require("Modules.CraftingSimulator").simulate(draft.startingItem,draft.nativeRecipe,{trials=stochastic and 20 or 1,maxActions=100,priceBook=draft.priceBook,treeVersion=build.spec.treeVersion})
+		local result=require("Modules.CraftingSimulator").simulate(draft.startingItem,draft.nativeRecipe,{trials=stochastic and 20 or 1,maxActions=100,retainSuccesses=stochastic and 1 or 0,priceBook=draft.priceBook,treeVersion=build.spec.treeVersion})
+		local kept=result.retainedSuccesses and result.retainedSuccesses[1];local outputItem=kept and kept.itemText or result.sampleItem;local outputSuccess=kept~=nil or result.sampleSuccess
 		local rw,rh=math.min(760,main.screenW-40),math.min(520,main.screenH-60);local view={}
 		ui.label(view,"heading",16,24,"Saved recipe result",20)
-		local lines={result.sampled and string.format("Sampled success: %.1f%% (%.1f–%.1f%% interval).",result.successChance,result.confidenceLow,result.confidenceHigh) or result.sampleSuccess and "Goal reached in the deterministic model." or "Goal not reached in the deterministic model.",
+		local lines={result.sampled and string.format("%d trials: %.1f%% success (%.1f-%.1f%% interval).",result.trials,result.successChance,result.confidenceLow,result.confidenceHigh) or result.sampleSuccess and "Goal reached in the deterministic model." or "Goal not reached in the deterministic model.",
 			"Starts from the saved starting item; the current preview is unchanged.",
 			string.format("Mean actions: %.1f attempted, %.1f executed (limit 100).",result.meanActions,result.meanExecutedActions),
 			result.meanCost and string.format("Estimated cost: %.2f %s",result.meanCost,result.costCurrency) or "Cost unavailable: add prices for all used resources."}
-		for _,entry in ipairs(result.resourceUsage or {}) do lines[#lines+1]=entry.name..": "..entry.amount end
+		for _,entry in ipairs(result.resourceUsage or {}) do lines[#lines+1]=result.sampled and string.format("%s: %.2f per trial",entry.name,entry.meanPerTrial) or entry.name..": "..entry.amount end
 		for _,warning in ipairs(result.warnings or {}) do lines[#lines+1]="Model note: "..warning.message end
 		for message,count in pairs(result.transitionErrors or {}) do lines[#lines+1]="Rejected action ("..count.."): "..message end
 		view.details=new("TextListControl"):TextListControl(ui.anchor,{16,62,300,rh-126},nil,ui.rows(lines,276,14))
-		local render=require("Classes.JourneyItemControl").new(view,"resultItem",332,62,rw-348,rh-126,"RESULT ITEM")
-		render(require("Modules.CraftingProjects").item(result.sampleItem))
+		local render=require("Classes.JourneyItemControl").new(view,"resultItem",332,62,rw-348,rh-126,kept and "SUCCESSFUL SAMPLE" or "RESULT ITEM")
+		render(require("Modules.CraftingProjects").item(outputItem))
 		view.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,rh-48,160,28},"Keep as target",function()
 			local function keepResult()
-				local updated=copyTable(draft);updated.targetItem=result.sampleItem
+				local updated=copyTable(draft);updated.targetItem=outputItem
 				draft=build.savers.CraftingProjects:Upsert(updated);refresh(true)
 				c.notice.label="^7Recipe result kept. Save the build.";main:ClosePopup()
 			end
-			if draft.targetItem and draft.targetItem:match("%S") and draft.targetItem~=result.sampleItem then
+			if draft.targetItem and draft.targetItem:match("%S") and draft.targetItem~=outputItem then
 				main:OpenConfirmPopup("Replace crafting target","Replace the saved target with this modeled recipe result?\nUse build Save to persist the change.","Replace",keepResult)
 			else keepResult() end
 		end)
-		view.keep.enabled=result.sampleSuccess
-		view.keep.tooltipText=result.sampleSuccess and "Keep this modeled result as the guide's target." or "The recipe did not reach its goal."
+		view.keep.enabled=outputSuccess
+		view.keep.tooltipText=outputSuccess and "Keep this modeled result as the guide's target." or "The recipe did not reach its goal."
 		view.update=new("ButtonControl"):ButtonControl(ui.anchor,{192,rh-48,160,28},"Update recipe",function()
 			local ok,recipe=pcall(createRecipe)
 			if not ok then main:OpenMessagePopup("Unique crafting",ui.errorText(recipe));return end

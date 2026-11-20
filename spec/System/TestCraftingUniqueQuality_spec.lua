@@ -123,6 +123,21 @@ describe("Unique item quality",function()
 		assert.equal(3,#seeds);assert.is_true(seeds[1]~=seeds[2] and seeds[2]~=seeds[3] and seeds[1]~=seeds[3]);assert.equal(2,recovered.colourRollCounter)
 	end)
 
+	it("offers a later successful sampled recipe item and per-trial resources",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: W-W W W"
+		local recipe={steps={{method="chromatic"}},targets={},requirements={socketColours="G"}}
+		local direct=require("Modules.CraftingSimulator").simulate(raw,recipe,{trials=20,maxActions=100,retainSuccesses=1})
+		assert.is_false(direct.sampleSuccess);assert.is_true(direct.successes>0);assert.equal(1,#direct.retainedSuccesses)
+		local project={id="colour-result",title="Sampled result",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe=recipe}
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);control.recipe:Click()
+		local view=main.popups[1].controls;assert.is_true(view.keep:IsEnabled())
+		local lines={};for _,row in ipairs(view.details.list) do lines[#lines+1]=row[1] end
+		assert.is_true(table.concat(lines," "):find("per trial",1,true)~=nil)
+		view.keep:Click();local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+		assert.is_true(quality.matches(saved.targetItem,{socketColours="G"}));main.popups={}
+	end)
+
 	it("previews and simulates unique flask and tincture quality",function()
 		local sim=require("Modules.CraftingSimulator")
 		for _,entry in ipairs({{"Taste of Hate","Sapphire Flask"},{"The Battle Within","Oakbranch Tincture"}}) do
