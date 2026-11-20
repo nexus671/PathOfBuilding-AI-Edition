@@ -2,17 +2,17 @@
 local fixture = assert(arg[1], "Supply a build XML path")
 local cycles = tonumber(arg[2]) or 5
 assert(cycles >= 1 and cycles <= 20 and cycles == math.floor(cycles))
-local forcedRecovery = arg[3] == "deferred-recovery"
-local desktopRecovery = forcedRecovery or arg[3] == "desktop-recovery"
-assert(not arg[3] or desktopRecovery, "Third argument must be deferred-recovery or desktop-recovery")
-local profileSkills = arg[4] == "skill-profile"
-assert(not arg[4] or profileSkills, "Fourth argument must be skill-profile")
-local noCapture = arg[5] == "no-capture"
-assert(not arg[5] or noCapture, "Fifth argument must be no-capture")
-local profileFull = arg[6] == "full-profile"
-assert(not arg[6] or profileFull, "Sixth argument must be full-profile")
-local includeAll = arg[7] == "include-all"
-assert(not arg[7] or includeAll, "Seventh argument must be include-all")
+local allowed = {["deferred-recovery"]=true,["desktop-recovery"]=true,["skill-profile"]=true,["no-capture"]=true,["full-profile"]=true,["include-all"]=true,["convert-latest"]=true}
+local flags = {}
+for i = 3, #arg do local flag=arg[i];assert(allowed[flag] and not flags[flag], "Unknown or repeated benchmark option: "..tostring(flag));flags[flag]=true end
+assert(not (flags["deferred-recovery"] and flags["desktop-recovery"]), "Choose one recovery mode")
+local forcedRecovery = flags["deferred-recovery"] or false
+local desktopRecovery = forcedRecovery or flags["desktop-recovery"] or false
+local profileSkills = flags["skill-profile"] or false
+local noCapture = flags["no-capture"] or false
+local profileFull = flags["full-profile"] or false
+local includeAll = flags["include-all"] or false
+local convertLatest = flags["convert-latest"] or false
 arg = {}
 dofile("HeadlessWrapper.lua")
 main.disableDevAutoSave = true
@@ -21,6 +21,7 @@ local raw = file:read("*a")
 file:close()
 loadBuildFromXML(raw, "Read-only tree UI benchmark")
 assert(not main.popups[1], "The supplied build requires conversion")
+if convertLatest then build.treeTab:ConvertToVersion(latestTreeVersion,true,false) end
 if includeAll then
 	for _,group in ipairs(build.skillsTab.socketGroupList) do
 		if group.enabled ~= false then group.includeInFullDPS = true end
@@ -180,7 +181,7 @@ for _ = 1, cycles do
 		releaseMs=(clicked-pressed)*1000, updateFrameMs=(updated-clicked)*1000, recovery=recovery }
 end
 assert(bridge.revision(build) == revision, "The benchmark did not restore the build revision")
-print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,components=performance.rows(build),skillProfile=skillProfile,fullProfile=fullProfile,includeAll=includeAll,restored=true,
+print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,components=performance.rows(build),skillProfile=skillProfile,fullProfile=fullProfile,includeAll=includeAll,convertedToLatest=convertLatest,treeVersion=build.spec.treeVersion,restored=true,
 	recoveryMode=forcedRecovery and "deferred" or desktopRecovery and "desktop with saved settings" or "build configuration",
 	drawCapture=not noCapture,
 	limitations=noCapture and "Headless CPU timings omit drawing calls and do not measure desktop rendering or frame rate."
