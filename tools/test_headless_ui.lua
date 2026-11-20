@@ -2183,6 +2183,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		ui:click("white");frame("crafting-unique-corrupted-white");ui:click("guide")
 		assert(build.savers.CraftingProjects.projects[#build.savers.CraftingProjects.projects].steps[1].uniqueCraft.method=="socket_white_bench","Corrupted socket guide was not kept");main.popups={}
 	end
+	dofile("../tools/test_unique_omen_ui.lua")(build,ui,frame)
 	do
 		local project={id="unique-corrupted-bench-link-ui",title="Corrupted unique links",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\nCorrupted",goals={},steps={}}
 		build.savers.CraftingProjects:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)

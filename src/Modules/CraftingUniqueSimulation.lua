@@ -1,6 +1,6 @@
 -- Deterministic unique-item recipes use item text, not ordinary affix states.
 local M={}
-local supported={quality=true,beast_max_links=true,omen_connections=true,socket_white_bench=true,socket_bench=true}
+local supported={quality=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,socket_white_bench=true,socket_bench=true}
 local fields={method=true,count=true,linked=true,maxAttempts=true,untilRequirements=true,onSuccess=true,onFailure=true,onFailureAction=true,recoveryNotes=true}
 function M.stepReason(step)
 	if not supported[step.method] then return "This unique recipe action is not supported: "..tostring(step.method) end

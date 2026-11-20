@@ -43,6 +43,7 @@ function M.guideAction(method,count,resource,corrupted,socketCount)
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
 	if method=="omen_connections" then return "Link existing sockets with an Omen of Connections and an Orb of Fusing" end
+	if method=="omen_jeweller" then return "Add white sockets with an Omen of the Jeweller and a Jeweller's Orb" end
 	if method=="socket_count_bench" then
 		local components=require("Modules.CraftingSimulator").components({method="socket_bench",count=count},{sockets={},corrupted=corrupted})
 		local amount=components["Metadata/Items/Currency/CurrencyRerollSocketNumbers"]
@@ -190,7 +191,20 @@ function M.socketCountReason(raw,count)
 	if #item.sockets==count then return "The item already has this many sockets" end
 end
 
-function M.socketCount(raw,count)
+function M.omenCount(item)
+	local level=item.itemLevel
+	return math.min(require("Modules.CraftingSimulator").socketLimit({item=item}),level >= 50 and 6 or level >= 35 and 5 or level >= 25 and 4 or level >= 2 and 3 or 2)
+end
+function M.omenReason(raw)
+	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
+	if item.corrupted then return "Ordinary currency cannot modify a corrupted item" end
+	local count=M.omenCount(item)
+	if #item.sockets>=count then return "The item already has its maximum natural socket count" end
+	return M.socketCountReason(raw,count)
+end
+
+function M.socketCount(raw,count,method)
+	if method=="omen_jeweller" then local reason=M.omenReason(raw);assert(not reason,reason) end
 	local reason=M.socketCountReason(raw,count);assert(not reason,reason)
 	local before=M.inspect(raw);local parts={}
 	for i=1,count do
@@ -202,7 +216,7 @@ function M.socketCount(raw,count)
 	assert(n==1,"The socket layout could not be updated")
 	local after=M.inspect(output);assert(after.title==before.title and after.baseName==before.baseName and #after.sockets==count and after.corrupted==before.corrupted,"Unique item did not round-trip after socket crafting")
 	for i=1,math.min(count,#before.sockets) do assert(after.sockets[i].color==before.sockets[i].color and (i==1 or (after.sockets[i].group==after.sockets[i-1].group)==(before.sockets[i].group==before.sockets[i-1].group)),"Existing sockets changed unexpectedly") end
-	local components=require("Modules.CraftingSimulator").components({method="socket_bench",count=count},{sockets=before.sockets,corrupted=before.corrupted})
+	local components=require("Modules.CraftingSimulator").components(method=="omen_jeweller" and {method=method} or {method="socket_bench",count=count},{sockets=before.sockets,corrupted=before.corrupted})
 	return {itemText=output,components=components}
 end
 
@@ -231,6 +245,7 @@ function M.catalog(raw,query,limit)
 	if sim.socketLimit({item=item})>0 then
 		local socketDefinitions={
 		{method="beast_max_links",label="Bestiary: maximum links",reason=linkReason,components={beast_black_morrigan=1,beast_craicic_sand_spitter=1}},
+		{method="omen_jeweller",label="Omen of the Jeweller + Jeweller's Orb",reason=M.omenReason(raw),components=sim.components({method="omen_jeweller"})},
 		{method="omen_connections",label="Omen of Connections + Orb of Fusing",reason=linkReason,components={["Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks"]=1,["Metadata/Items/Currency/CurrencyRerollSocketLinks"]=1}},
 		{method="socket_bench",label="Bench: link existing sockets",reason=benchLinkReason,components=not benchLinkReason and require("Modules.CraftingSimulator").components({method="socket_bench",count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted}) or {}},
 		{method="socket_white_bench",label="Bench: white sockets",reason=whiteReason,components=whiteComponents},

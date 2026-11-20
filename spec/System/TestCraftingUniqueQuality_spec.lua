@@ -3,6 +3,34 @@ describe("Unique item quality",function()
 	local shield="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\nImplicits: 1\n+5% Chance to Block Attack Damage\n+100 to maximum Life\n+1500 to Armour"
 	local weapon="Rarity: UNIQUE\nThe Saviour\nLegion Sword\nItem Level: 86\nQuality: 0\nSockets: R-G-B\n+100% increased Physical Damage"
 	before_each(function() newBuild() end)
+	it("adds natural white sockets to unique items with the Jeweller Omen",function()
+		local sim=require("Modules.CraftingSimulator")
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"
+		local result=sim.perform(raw,{method="omen_jeweller"},1)
+		assert.equal(raw:gsub("Sockets: R%-G B","Sockets: R-G B W"),result.itemText)
+		assert.equal(1,result.components["Metadata/Items/Currency/AncestralOmenOnJewellersMakeFullSockets"])
+		assert.equal(1,result.components["Metadata/Items/Currency/CurrencyRerollSocketNumbers"])
+		local calculated=sim.calculate(raw,{method="omen_jeweller"},{},nil,{requirements={exactSockets=4}})
+		assert.equal(100,calculated.successChance)
+		local run=sim.simulate(raw,{steps={{method="omen_jeweller"}},targets={},requirements={exactSockets=4}},{trials=1,maxActions=1})
+		assert.is_true(run.sampleSuccess);assert.equal(result.itemText,run.sampleItem)
+		local found=false;for _,entry in ipairs(sim.catalog(raw,"omen",50).uniqueActions) do if entry.method=="omen_jeweller" then found=entry.available end end;assert.is_true(found)
+		assert.has_error(function() sim.perform(raw.."\nCorrupted",{method="omen_jeweller"},1) end)
+		assert.has_error(function() sim.perform(result.itemText,{method="omen_jeweller"},1) end)
+		assert.has_error(function() sim.perform(raw.."\nSockets cannot be modified",{method="omen_jeweller"},1) end)
+		local low=raw:gsub("Item Level: 86","Item Level: 25"):gsub("Sockets: R%-G B","Sockets: R-G")
+		assert.matches("Sockets: R%-G W W",sim.perform(low,{method="omen_jeweller"},1).itemText)
+		local project={id="unique-omen",title="Omen",slot="Helmet",startingItem=raw,goals={},steps={}}
+		local store=build.savers.CraftingProjects;store:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		assert.is_true(control.omenJeweller:IsEnabled());control.omenJeweller:Click();assert.is_true(control.recipe:IsEnabled());control.recipe:Click()
+		assert.equal("omen_jeweller",store.projects[1].nativeRecipe.steps[1].method);control.guide:Click()
+		assert.equal("omen_jeweller",store.projects[1].steps[1].uniqueCraft.method)
+		local filters=require("Modules.LootFilters");local profile=filters.profile("unique-omen","Omen")
+		local rules=filters.generate(build,profile);local names={};for _,rule in ipairs(rules) do names[rule.title]=true end
+		assert.is_true(names["Omen of the Jeweller"]);assert.is_true(names["Jeweller's Orb"]);main.popups={}
+	end)
+
 	it("previews and simulates unique flask and tincture quality",function()
 		local sim=require("Modules.CraftingSimulator")
 		for _,entry in ipairs({{"Taste of Hate","Sapphire Flask"},{"The Battle Within","Oakbranch Tincture"}}) do
@@ -144,7 +172,7 @@ describe("Unique item quality",function()
 	it("catalogues supported unique crafts and their current availability",function()
 		local simulator=require("Modules.CraftingSimulator")
 		local catalog=simulator.catalog(shield,"",50,nil,"3_30")
-		assert.is_true(catalog.uniqueCrafting);assert.equal(7,#catalog.uniqueActions);assert.equal(6,#catalog.socketCrafts)
+		assert.is_true(catalog.uniqueCrafting);assert.equal(8,#catalog.uniqueActions);assert.equal(7,#catalog.socketCrafts)
 		assert.same(require("Modules.CraftingItemStats").itemValues(new("Item"):Item(shield)),catalog.nativeStats);assert.is_true(catalog.nativeStats.Armour>0)
 		local byMethod={};for _,action in ipairs(catalog.uniqueActions) do if action.method~="socket_bench" or action.action.linked then byMethod[action.method]=action end end
 		assert.is_true(byMethod.quality.available);assert.is_true(byMethod.beast_max_links.available);assert.is_true(byMethod.socket_white_bench.available)
@@ -155,7 +183,7 @@ describe("Unique item quality",function()
 		local proposed={id="ai-guide",title="AI guide",slot="Weapon 2",startingItem=shield.."\nCorrupted",goals={},steps={byMethod.socket_bench.guideStep}}
 		assert.equal("socket_bench",require("Modules.CraftingProjects").validate(proposed).steps[1].uniqueCraft.method)
 		assert.equal(1,byMethod.socket_white_bench.components["Metadata/Items/Currency/CurrencyCorrupt"])
-		local filtered=simulator.catalog(shield,"omen",50);assert.equal(1,#filtered.uniqueActions);assert.equal("omen_connections",filtered.uniqueActions[1].method)
+		local filtered=simulator.catalog(shield,"omen",50);assert.equal(2,#filtered.uniqueActions);assert.is_false(byMethod.omen_jeweller.available)
 		assert.has_error(function() simulator.catalog(shield,"",50,{}) end)
 	end)
 	it("links unique sockets at the bench and saves the costs in a recipe",function()

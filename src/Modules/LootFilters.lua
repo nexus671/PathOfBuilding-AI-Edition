@@ -377,6 +377,9 @@ function M.generate(build,profile,checkpoint)
 			if craft and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,info.resource,item.corrupted,step.action,uniqueSocketCount) then
 				local items={}
 				if craft.method=="quality" then items={{key=info.resourceKey,name=info.resource}}
+				elseif craft.method=="omen_jeweller" then
+					items={{key="Metadata/Items/Currency/AncestralOmenOnJewellersMakeFullSockets",name="Omen of the Jeweller"},{key="Metadata/Items/Currency/CurrencyRerollSocketNumbers",name="Jeweller's Orb"}}
+					uniqueSocketCount=require("Modules.CraftingUniqueQuality").omenCount(item)
 				elseif craft.method=="omen_connections" then items={{key="Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks",name="Omen of Connections"},{key="Metadata/Items/Currency/CurrencyRerollSocketLinks",name="Orb of Fusing"}}
 				elseif craft.method=="socket_bench" then
 					items={{key="Metadata/Items/Currency/CurrencyRerollSocketLinks",name="Orb of Fusing"}}
