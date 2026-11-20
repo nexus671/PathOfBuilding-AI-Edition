@@ -675,6 +675,7 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
  end
  if matched < (requiredGroups or #targets) then return false end
  if requirements then
+  if requirements.uniqueModifier then return false end -- Unique text goals require the unique-item engine.
   assert(model,"A native item model is required for property conditions")
   local c=counts(model,state); local caps=M.capacities(model,state)
   local prefix=c.Prefix+(state.veil and state.veil.type == "Prefix" and 1 or 0)
@@ -734,6 +735,10 @@ function M.validateRecipe(recipe)
 		for key,value in pairs(requirements) do
 			if key == "uniqueName" then assert(type(value)=="string" and #value<=160 and value:match("%S"),"Enter a unique item name")
 			elseif key == "nativeStats" then require("Modules.CraftingItemStats").validate(value)
+			elseif key == "uniqueModifier" then
+				assert(recipe.rarity=="UNIQUE" and type(value)=="table" and type(value.line)=="string" and #value.line>0 and #value.line<=1000,"Choose a unique modifier target on a unique recipe")
+				for field in pairs(value) do assert(field=="line" or field=="minValue","Unknown unique modifier target field") end
+				integer(value.minValue,-100000,100000,"unique modifier minimum")
 			elseif key == "harvestEnchant" then assert(type(value)=="string" and require("Modules.CraftingEnchants").data().crafts[value],"Choose a known Harvest enchantment")
 			elseif key == "corrupted" or key == "twiceCorrupted" or key == "linkedColours" then assert(type(value) == "boolean","Invalid boolean property condition")
 			elseif key == "influence" then assert(({shaper=true,elder=true,adjudicator=true,basilisk=true,crusader=true,eyrie=true})[value],"Choose a supported influence")
@@ -1371,10 +1376,10 @@ do
 		if rarity and rarity:upper()=="UNIQUE" then
 			options=options or {};assert(initialState==nil,"Calculate unique crafts using the item text, not an ordinary crafting state")
 			assert(type(targets)=="table" and #targets==0,"Modifier-identity targets are not yet supported for unique items")
-			M.validateRecipe({steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
+			M.validateRecipe({rarity="UNIQUE",steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			if action.method=="divine" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" then
 				local sampledOptions=copyTable(options);sampledOptions.maxActions=1;sampledOptions.forceFirstAction=true
-				local sampled=M.simulate(raw,{steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups},sampledOptions)
+				local sampled=M.simulate(raw,{rarity="UNIQUE",steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups},sampledOptions)
 				sampled.outcomes={};sampled.components=M.components(action)
 				local unique=require("Modules.CraftingUniqueQuality");sampled.nativeStats=require("Modules.CraftingItemStats").itemValues(unique.inspect(sampled.sampleItem))
 				if action.method~="divine" and action.method~="tainted_quality" and action.method~="jeweller" and action.method~="tainted_jeweller" and action.method~="fusing" and action.method~="tainted_fusing" and options.requirements and options.requirements.socketColours then

@@ -77,11 +77,11 @@ describe("Unique item quality",function()
 	it("preserves copied armour base rolls when unique stats or quality change",function()
 		local raw="Item Class: Helmets\nRarity: Unique\nGoldrim\nLeather Cap\n--------\nEvasion Rating: 67\n--------\nItem Level: 86\n--------\n+40 to Evasion Rating\n+10% to Item Rarity\n+35% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
 		local before=quality.inspect(raw);local baseline=before.armourData.EvasionBasePercentile;assert.is_truthy(baseline)
-		local values={};for seed=1,20 do local result=quality.divine(raw,seed*104729);local item=quality.inspect(result.itemText);assert.equal(baseline,item.armourData.EvasionBasePercentile);values[item.armourData.Evasion]=true;assert.is_truthy(result.itemText:find("EvasionBasePercentile:",1,true)) end
+		local values={};for seed=1,20 do local result=quality.divine(raw,seed*104729);local item=quality.inspect(result.itemText);assert.equal(baseline,item.armourData.EvasionBasePercentile);values[item.armourData.Evasion]=true;assert.is_truthy(result.itemText:find("EvasionBasePercentile:",1,true));assert.equal(4,#item.explicitModLines);assert.is_nil(quality.divineReason(result.itemText));assert.is_truthy(quality.divine(result.itemText,seed*130363)) end
 		local distinct=0;for _ in pairs(values) do distinct=distinct+1 end;assert.is_true(distinct>1)
-		local raised=quality.apply(raw);local item=quality.inspect(raised.itemText);assert.equal(baseline,item.armourData.EvasionBasePercentile)
-		local corrupted=raw.."\nCorrupted";local corruptedBefore=quality.inspect(corrupted);local tainted=quality.taintedQuality(corrupted,104729);item=quality.inspect(tainted.itemText);assert.equal(corruptedBefore.armourData.EvasionBasePercentile,item.armourData.EvasionBasePercentile)
-		local windows=raw:gsub("\n","\r\n");local winResult=quality.divine(windows,104729);assert.is_truthy(winResult.itemText:find("\r\nEvasionBasePercentile:",1,true))
+		local raised=quality.apply(raw);local item=quality.inspect(raised.itemText);assert.equal(baseline,item.armourData.EvasionBasePercentile);assert.equal(4,#item.explicitModLines);assert.is_nil(quality.divineReason(raised.itemText))
+		local corrupted=raw.."\nCorrupted";local corruptedBefore=quality.inspect(corrupted);local tainted=quality.taintedQuality(corrupted,104729);item=quality.inspect(tainted.itemText);assert.equal(corruptedBefore.armourData.EvasionBasePercentile,item.armourData.EvasionBasePercentile);assert.equal(4,#item.explicitModLines)
+		local windows=raw:gsub("\n","\r\n");local winResult=quality.divine(windows,104729);assert.is_truthy(winResult.itemText:find("\r\nEvasionBasePercentile:",1,true));assert.is_nil(quality.divineReason(winResult.itemText))
 	end)
 
 	it("exposes unique Divine previews, simulations and resource guides",function()
@@ -97,6 +97,30 @@ describe("Unique item quality",function()
 		for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id and rule.title=="Divine Orb" then found=true end end;assert.is_true(found)
 	end)
 
+	it("targets a specific unique modifier roll",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40 to Evasion Rating\n+10% to Item Rarity\n+35% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
+		local options=quality.divineOptions(raw);assert.equal(2,#options);local target
+		for _,entry in ipairs(options) do if entry.line:find("Elemental Resistances",1,true) then target=entry end end
+		assert.equal(30,target.min);assert.equal(40,target.max);assert.equal(35,target.current)
+		local requirement={uniqueModifier={line=target.line,minValue=36}}
+		assert.is_false(quality.matches(raw,requirement));requirement.uniqueModifier.minValue=35;assert.is_true(quality.matches(raw,requirement));requirement.uniqueModifier.minValue=41;assert.has_error(function() quality.matches(raw,requirement) end)
+		requirement.uniqueModifier.minValue=40;local recipe={rarity="UNIQUE",steps={{method="divine",maxAttempts=30,untilRequirements=copyTable(requirement)}},targets={},requirements=requirement}
+		local sim=require("Modules.CraftingSimulator");local result=sim.simulate(raw,recipe,{trials=10,maxActions=30,seed=123});assert.is_true(result.sampled);assert.is_true(result.successes>0)
+		local calculated=sim.calculate(raw,{method="divine"},{},nil,{trials=5,requirements=requirement});assert.is_true(calculated.sampled)
+		local invalid=copyTable(recipe);invalid.rarity=nil;assert.has_error(function() sim.validateRecipe(invalid) end)
+	end)
+
+	it("handles signed unique modifier ranges and copied negative rolls",function()
+		local template;for _,group in pairs(data.uniques) do for _,entry in ipairs(group) do if entry:match("^%s*Saqawal's Talons[\r\n]") then template=entry end end end
+		assert.is_truthy(template);local raw="Rarity: UNIQUE\n"..template.."\nItem Level: 86"
+		local options=quality.divineOptions(raw);assert.is_truthy(options);local target;for _,entry in ipairs(options) do if entry.line:find("Avian's Flight Duration",1,true) then target=entry end end
+		assert.is_truthy(target);assert.equal(-2,target.min);assert.equal(2,target.max);assert.equal(0,target.current)
+		local goal={uniqueModifier={line=target.line,minValue=-1}};assert.is_true(quality.matches(raw,goal));goal.uniqueModifier.minValue=1;assert.is_false(quality.matches(raw,goal))
+		local copied=raw:gsub("%(100%-150%)%% increased Armour and Evasion","125%% increased Armour and Evasion"):gsub("%(20%-30%)%% increased Movement Speed","25%% increased Movement Speed"):gsub("%+%(%-2%-2%) seconds to Avian's Flight Duration","-1 seconds to Avian's Flight Duration")
+		local copiedOptions=quality.divineOptions(copied);assert.is_truthy(copiedOptions);for _,entry in ipairs(copiedOptions) do if entry.line==target.line then assert.equal(-1,entry.current) end end
+		local result=quality.divine(copied,104729);assert.is_nil(quality.divineReason(result.itemText))
+	end)
+
 	it("previews and plans supported unique Divine rolls",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+(30-50) to Evasion Rating\n+10% to Item Rarity\n+(30-40)% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
 		local project={id="divine-ui",title="Divine",slot="Helmet",startingItem=raw,goals={},steps={}}
@@ -107,6 +131,9 @@ describe("Unique item quality",function()
 		assert.equal(100,saved.nativeRecipe.requirements.nativeStats.Evasion);assert.equal("divine",saved.steps[1].uniqueCraft.method)
 		control.divine:Click();popup=main.popups[1].controls;popup.stat:SelByValue("Evasion","val");popup.target:SetText("80");popup.plan:Click();main.popups[1].controls.confirm:Click()
 		for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end;assert.equal(1,#saved.steps);assert.equal(80,saved.nativeRecipe.requirements.nativeStats.Evasion)
+		control.divine:Click();popup=main.popups[1].controls;popup.stat:SelByValue("modifier:2","val");popup.target:SetText("41");assert.is_false(popup.plan:IsEnabled());popup.target:SetText("40");assert.is_true(popup.plan:IsEnabled());popup.plan:Click();main.popups[1].controls.confirm:Click()
+		for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end;assert.equal(1,#saved.steps);assert.equal(40,saved.nativeRecipe.requirements.uniqueModifier.minValue);assert.equal("+(30-40)% to all Elemental Resistances",saved.nativeRecipe.requirements.uniqueModifier.line)
+		local sampled=require("Modules.CraftingSimulator").simulate(raw,saved.nativeRecipe,{trials=5,maxActions=100,seed=123});assert.is_true(sampled.sampled)
 		control.divine:Click();popup=main.popups[1].controls;popup.apply:Click();assert.is_true(control.undo:IsEnabled());assert.is_true(control.guide:IsEnabled());main.popups={}
 	end)
 

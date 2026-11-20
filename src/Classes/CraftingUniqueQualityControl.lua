@@ -385,23 +385,28 @@ function M.Open(build,project,layout,snapshot)
 	c.qualityPlan.x=156;c.qualityPlan.width=130;c.qualityPlan.shown=function() return item.corrupted and not taintedQualityReason end
 	button("divine",198,"Divine Orb",function()
 		local controls={};local dw,dh=500,340
-		ui.description(controls,"help",16,25,dw-32,50,{"Preview one roll or plan an item-stat target.","Modifier-value probabilities are estimates."},14)
-		local stats=require("Modules.CraftingItemStats");local values=stats.itemValues(item);local options={}
-		for _,field in ipairs(stats.fields) do if values[field[1]] and values[field[1]]>0 then options[#options+1]={label=field[2],val=field[1]} end end
-		if #options==0 then options[1]={label="No supported item stat",val=""} end
-		ui.label(controls,"statLabel",16,90,"Minimum item stat",14)
+		ui.description(controls,"help",16,25,dw-32,50,{"Preview a roll or plan a stat or modifier target.","Modifier-value probabilities are estimates."},14)
+		local stats=require("Modules.CraftingItemStats");local values=stats.itemValues(item);local options,selection={},{}
+		for _,field in ipairs(stats.fields) do if values[field[1]] and values[field[1]]>0 then options[#options+1]={label=field[2],val=field[1]};selection[field[1]]={kind="stat",label=field[2],current=values[field[1]]} end end
+		for index,row in ipairs(unique.divineOptions(raw) or {}) do local key="modifier:"..index;options[#options+1]={label=ui.fit("Roll: "..row.line,210,14),val=key};selection[key]={kind="modifier",line=row.line,min=row.min,max=row.max,current=row.current} end
+		if #options==0 then options[1]={label="No supported target",val=""} end
+		ui.label(controls,"statLabel",16,90,"Stat or modifier roll",14)
 		controls.stat=new("DropDownControl"):DropDownControl(ui.anchor,{16,112,220,26},options)
 		controls.target=new("EditControl"):EditControl(ui.anchor,{252,112,dw-268,26},"","Minimum",nil,10)
 		ui.label(controls,"attemptsLabel",16,155,"Attempt limit (1-2000)",14)
 		controls.attempts=new("EditControl"):EditControl(ui.anchor,{16,177,dw-32,26},"100","Max attempts",nil,4)
 		local function stat() return controls.stat:GetSelValueByKey("val") end
 		local function replaceable()
-			local recipe=draft.nativeRecipe;if not recipe or #recipe.steps~=1 or recipe.steps[1].method~="divine" or not recipe.requirements or type(recipe.requirements.nativeStats)~="table" then return nil end
-			local key,target=next(recipe.requirements.nativeStats);if not key or next(recipe.requirements.nativeStats,key)~=nil then return nil end
-			local label;for _,field in ipairs(stats.fields) do if field[1]==key then label=field[2];break end end;if not label then return nil end
+			local recipe=draft.nativeRecipe;if not recipe or #recipe.steps~=1 or recipe.steps[1].method~="divine" or not recipe.requirements then return nil end
+			local stop
+			if recipe.requirements.uniqueModifier then local goal=recipe.requirements.uniqueModifier;stop="Roll at least "..goal.minValue.." on "..goal.line
+			elseif type(recipe.requirements.nativeStats)=="table" then
+				local key,target=next(recipe.requirements.nativeStats);if not key or next(recipe.requirements.nativeStats,key)~=nil then return nil end
+				local label;for _,field in ipairs(stats.fields) do if field[1]==key then label=field[2];break end end;if not label then return nil end;stop="At least "..target.." "..label
+			else return nil end
 			local expected=unique.guideAction("divine",1,info.resource,item.corrupted,#item.sockets);local found
 			for index,guide in ipairs(draft.steps) do
-				if guide.uniqueCraft and guide.uniqueCraft.method=="divine" and guide.uniqueCraft.count==1 and not guide.done and (not guide.onFailure or guide.onFailure=="" or guide.onFailure=="Stop after "..(recipe.steps[1].maxAttempts or 100).." attempts.") and guide.action==expected and guide.stopWhen=="At least "..target.." "..label then
+				if guide.uniqueCraft and guide.uniqueCraft.method=="divine" and guide.uniqueCraft.count==1 and not guide.done and (not guide.onFailure or guide.onFailure=="" or guide.onFailure=="Stop after "..(recipe.steps[1].maxAttempts or 100).." attempts.") and guide.action==expected and guide.stopWhen==stop then
 					if found then return nil end;found=index
 				end
 			end
@@ -411,27 +416,34 @@ function M.Open(build,project,layout,snapshot)
 			if divineReason then return divineReason end
 			if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a Divine plan." end
 			if #draft.steps>=40 and not replaceable() then return "The guide has room for up to 40 steps." end
-			if stat()=="" then return "No supported item stat is available for a target." end
-			local target=tonumber(controls.target.buf);if not target or target~=target or target<0 or target>10000000 then return "Enter a minimum item stat from 0 to 10000000." end
+			local selected=selection[stat()];if not selected then return "No supported target is available." end
+			local target=tonumber(controls.target.buf);if not target or target~=target or target< -100000 or target>10000000 or selected.kind=="stat" and target<0 then return "Enter a valid minimum target." end
+			if selected.kind=="modifier" and (target~=math.floor(target) or target<selected.min or target>selected.max) then return "Enter a roll from "..selected.min.." to "..selected.max.."." end
 			local attempts=tonumber(controls.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
-			if values[stat()]>=target then return nil,true end
+			if selected.current>=target then return nil,true end
 		end
-		ui.label(controls,"targetHelp",16,222,"",14);controls.targetHelp.label=function() local why,met=reason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save an item-stat plan."),dw-32,14) end
+		ui.label(controls,"targetHelp",16,222,"",14);controls.targetHelp.label=function() local why,met=reason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save a target plan."),dw-32,14) end
+		ui.label(controls,"selectedInfo",16,250,"",14);controls.selectedInfo.label=function()
+			local selected=selection[stat()];if not selected or selected.kind~="modifier" then return "" end
+			return "^7"..ui.fit(selected.line.." | current roll: "..selected.current,dw-32,14)
+		end
 		controls.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,dh-48,140,28},"Preview roll",function()
 			colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
 			local result=unique.divine(raw,seed);history[#history+1]=raw;actions[#actions+1]="divine";redo={};raw=result.itemText;main:ClosePopup();refresh(true)
 		end)
 		controls.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,dh-48,150,28},"Save Divine plan",function()
 			local why=reason();assert(not why,why);local key=stat();local target=tonumber(controls.target.buf);local attempts=tonumber(controls.attempts.buf)
-			local requirements={nativeStats={[key]=target}};local recipe={steps={{method="divine",maxAttempts=attempts,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements};require("Modules.CraftingSimulator").validateRecipe(recipe);local replaceIndex=replaceable()
+			local selected=selection[key];local requirements=selected.kind=="modifier" and {uniqueModifier={line=selected.line,minValue=target}} or {nativeStats={[key]=target}}
+			local stop=selected.kind=="modifier" and ("Roll at least "..target.." on "..selected.line) or ("At least "..target.." "..selected.label)
+			local recipe={rarity="UNIQUE",steps={{method="divine",maxAttempts=attempts,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements};require("Modules.CraftingSimulator").validateRecipe(recipe);local replaceIndex=replaceable()
 			local function keepPlan()
-				local updated=copyTable(draft);updated.nativeRecipe=recipe;local step={action=unique.guideAction("divine",1,info.resource,item.corrupted,#item.sockets),stopWhen="At least "..target.." "..controls.stat:GetSelValueByKey("label"),onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method="divine",count=1},done=false}
+				local updated=copyTable(draft);updated.nativeRecipe=recipe;local step={action=unique.guideAction("divine",1,info.resource,item.corrupted,#item.sockets),stopWhen=stop,onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method="divine",count=1},done=false}
 				if replaceIndex then updated.steps[replaceIndex]=step else updated.steps[#updated.steps+1]=step end
 				draft=build.savers.CraftingProjects:Upsert(updated);refresh(true);c.notice.label="^7Divine plan kept. Save the build.";main:ClosePopup()
 			end
 			if draft.nativeRecipe then main:OpenConfirmPopup("Replace crafting recipe",replaceIndex and "Replace the saved recipe and its unchanged Divine guide step?\nOther guide steps will be kept." or "Replace the saved recipe with this Divine plan?\nExisting guide steps will be kept.","Replace",keepPlan) else keepPlan() end
 		end)
-		controls.plan.enabled=function() return not reason() end;controls.plan.tooltipText=function() return reason() or "Save a bounded repeat-until-item-stat recipe and guide step." end
+		controls.plan.enabled=function() return not reason() end;controls.plan.tooltipText=function() return reason() or "Save a bounded repeat-until-target recipe and guide step." end
 		controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{dw-132,dh-48,116,28},"Cancel",function() main:ClosePopup() end)
 		ui.style(controls,{apply=true});for _,control in pairs(controls) do control.layoutAudit="unique-divine-target" end
 		main:OpenPopup(dw,dh,"Divine Orb",controls,nil,nil,"close")

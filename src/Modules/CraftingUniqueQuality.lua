@@ -113,11 +113,24 @@ local function preserveArmourBaseline(raw,output,item)
 		local label,key=entry[1],entry[2];local marker=key.."BasePercentile"
 		if source:find("\n"..label..":",1,true) and not source:find("\n"..marker..":",1,true) then
 			local value=item.armourData[marker];assert(type(value)=="number" and value==value and value>=0 and value<=1,"The imported armour baseline could not be preserved")
-			output=output..(output:sub(-1)=="\n" and "" or newline)..marker..": "..tostring(value)
+			local inserted=0;local prefix=label..":"
+			output=output:gsub("[^\r\n]+",function(line)
+				if line:sub(1,#prefix)==prefix then inserted=inserted+1;return line..newline..marker..": "..tostring(value) end
+				return line
+			end)
+			assert(inserted==1,"The imported armour property could not be located safely")
 			source=source.."\n"..marker..":"
 		end
 	end
 	return output
+end
+-- Game-copy metadata must stay in the property section. Appending a missing
+-- quality line after the modifiers would make it look like a modifier.
+local function addQuality(raw,value)
+	local newline=raw:find("\r\n",1,true) and "\r\n" or "\n"
+	local _,last=raw:find("\n%-%-%-%-%-%-%-%-\r?\n")
+	if last then return raw:sub(1,last).."Quality: "..value..newline..raw:sub(last+1) end
+	return raw..(raw:sub(-1)=="\n" and "" or newline).."Quality: "..value
 end
 function M.apply(raw)
 	local item,info=M.inspect(raw);assert(not item.corrupted,"Ordinary quality currency cannot modify a corrupted item");assert(info.available,"Ordinary quality currency cannot exceed 20%")
@@ -125,10 +138,7 @@ function M.apply(raw)
 	local output,count=padded:gsub("\nQuality:[^\r\n]*","\nQuality: "..(info.quality+1))
 	assert(count<=1,"Item text contains multiple quality lines")
 	output=output:sub(2)
-	if count==0 then
-		local newline=raw:find("\r\n",1,true) and "\r\n" or "\n"
-		output=raw..(raw:sub(-1)=="\n" and "" or newline).."Quality: "..(info.quality+1)
-	end
+	if count==0 then output=addQuality(raw,info.quality+1) end
 	if count>0 then assert(withoutQuality(raw)==withoutQuality(output),"Unique item properties changed while applying quality") end
 	output=preserveArmourBaseline(raw,output,item)
 	-- Game-copied tincture values already include the original quality. Keep
@@ -164,7 +174,7 @@ function M.taintedQuality(raw,seed)
 	local rolled=sim.action(model,state,{method="tainted_quality"},require("Modules.CalcTime").random(seed))
 	local padded="\n"..raw;local output,count=padded:gsub("\nQuality:[^\r\n]*","\nQuality: "..rolled.quality)
 	assert(count<=1,"Item text contains multiple quality lines");output=output:sub(2)
-	if count==0 then local newline=raw:find("\r\n",1,true) and "\r\n" or "\n";output=raw..(raw:sub(-1)=="\n" and "" or newline).."Quality: "..rolled.quality end
+	if count==0 then output=addQuality(raw,rolled.quality) end
 	if count>0 then assert(withoutQuality(raw)==withoutQuality(output),"Unique item properties changed while applying quality") end
 	output=preserveArmourBaseline(raw,output,before)
 	local after,info=M.inspect(output)
@@ -194,7 +204,7 @@ local function divinePlan(raw)
 		local row={line=text}
 		if hasRange then
 			row.low,row.high=ranges[1][1],ranges[1][2]
-			if row.low<0 or row.high<=row.low or row.high-row.low>100000 then return nil,"This modifier range needs a separate Divine model" end
+			if row.high<=row.low or row.high-row.low>100000 or row.low< -100000 or row.high>100000 then return nil,"This modifier range needs a separate Divine model" end
 			local first,last=text:find("%(%-?%d+%-%-?%d+%)");row.prefix=text:sub(1,first-1);row.suffix=text:sub(last+1)
 		end
 		expected[#expected+1]=row
@@ -202,15 +212,19 @@ local function divinePlan(raw)
 	local rows,seen={},{}
 	for _,line in ipairs(item.explicitModLines or {}) do
 		if line.disabled or line.custom or line.crafted or line.fractured or line.mutated or line.scourge or line.crucible or line.unscalable then return nil,"Special modifier lines need a separate Divine model" end
-		local text=line.line;local match
+		local text=line.line;local match,matchedValue
 		for _,candidate in ipairs(expected) do if not candidate.used then
-			local matches=text==candidate.line
-			if not matches and candidate.low and text:sub(1,#candidate.prefix)==candidate.prefix and (#candidate.suffix==0 or text:sub(-#candidate.suffix)==candidate.suffix) then
-				local last=#candidate.suffix>0 and #text-#candidate.suffix or #text
-				local value=text:sub(#candidate.prefix+1,last);local number=value:match("^%d+$") and tonumber(value)
-				matches=number~=nil and number>=candidate.low and number<=candidate.high
+			local matches=text==candidate.line;local number
+			if not matches and candidate.low and (#candidate.suffix==0 or text:sub(-#candidate.suffix)==candidate.suffix) then
+				local prefixes={candidate.prefix}
+				if candidate.low<=0 and candidate.prefix:sub(-1)=="+" then prefixes[#prefixes+1]=candidate.prefix:sub(1,-2) end
+				for _,prefix in ipairs(prefixes) do if text:sub(1,#prefix)==prefix then
+					local last=#candidate.suffix>0 and #text-#candidate.suffix or #text
+					local value=text:sub(#prefix+1,last);local candidateNumber=value:match("^%-?%d+$") and tonumber(value)
+					if candidateNumber and candidateNumber>=candidate.low and candidateNumber<=candidate.high then number=candidateNumber;matches=true;break end
+				end end
 			end
-			if matches then if match then return nil,"This modifier matches multiple bundled ranges" end;match=candidate end
+			if matches then if match then return nil,"This modifier matches multiple bundled ranges" end;match=candidate;matchedValue=number end
 		end end
 		if not match then return nil,"Use complete modifiers matching the bundled unique template" end
 		match.used=true
@@ -223,7 +237,12 @@ local function divinePlan(raw)
 			end
 			if count~=1 then return nil,"The original modifier line cannot be identified safely" end
 			if seen[source] then return nil,"Repeated modifier lines need a separate Divine model" end
-			seen[source]=true;rows[#rows+1]={input=source,line=match.line,low=match.low,high=match.high}
+			local current
+			if text==match.line then
+				local range=line.range or 0.5;if type(range)~="number" or range~=range or range<0 or range>1 then return nil,"The current modifier roll is outside its supported range" end
+				current=math.floor(match.low+range*(match.high-match.low)+0.5)
+			else current=matchedValue end
+			seen[source]=true;rows[#rows+1]={input=source,line=match.line,low=match.low,high=match.high,current=current}
 		end
 	end
 	for _,row in ipairs(expected) do if not row.used then return nil,"Use complete modifiers matching the bundled unique template" end end
@@ -231,6 +250,11 @@ local function divinePlan(raw)
 	return {item=item,rows=rows}
 end
 function M.divineReason(raw) local _,reason=divinePlan(raw);return reason end
+function M.divineOptions(raw)
+	local plan,reason=divinePlan(raw);if not plan then return nil,reason end
+	local result={};for _,row in ipairs(plan.rows) do result[#result+1]={line=row.line,min=row.low,max=row.high,current=row.current} end
+	return result
+end
 function M.divine(raw,seed)
 	local plan,reason=divinePlan(raw);assert(plan,reason)
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
@@ -533,6 +557,7 @@ function M.catalog(raw,query,limit)
 		if #result.uniqueActions<limit and (entry.method.." "..entry.label):lower():find(query,1,true) then
 			local request=entry.request or (entry.method=="socket_bench" and {method=entry.method,count=#item.sockets,linked=true} or {method=entry.method})
 			local action={method=entry.method,label=entry.label,action=request,priceKey=entry.method=="socket_bench" and require("Modules.CraftingSimulator").priceKey(request) or entry.method,available=entry.reason==nil,unavailableReason=entry.reason,deterministic=not entry.sampled,components=entry.components}
+			if entry.method=="divine" and action.available then action.modifierTargets=M.divineOptions(raw) end
 			local guideMethod,guideCount=entry.guideMethod or entry.method,entry.guideCount or 1
 			action.guideStep={action=M.guideAction(guideMethod,guideCount,info.resource,item.corrupted,#item.sockets),uniqueCraft={method=guideMethod,count=guideCount}}
 			result.uniqueActions[#result.uniqueActions+1]=action
@@ -544,12 +569,20 @@ end
 
 function M.matches(raw,requirements)
 	local item,info=M.inspect(raw);requirements=requirements or {}
-	local supported={uniqueName=true,minQuality=true,corrupted=true,twiceCorrupted=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true}
+	local supported={uniqueName=true,uniqueModifier=true,minQuality=true,corrupted=true,twiceCorrupted=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true}
 	for key in pairs(requirements) do assert(supported[key],"This unique item property is not supported: "..tostring(key)) end
 	if requirements.uniqueName and item.title~=requirements.uniqueName then return false end
 	if requirements.minQuality and info.quality<requirements.minQuality then return false end
 	if requirements.corrupted~=nil and (not not item.corrupted)~=requirements.corrupted then return false end
 	if requirements.twiceCorrupted~=nil and (not not item.twiceCorrupted)~=requirements.twiceCorrupted then return false end
+	if requirements.uniqueModifier then
+		local goal=requirements.uniqueModifier;assert(type(goal)=="table" and type(goal.line)=="string" and type(goal.minValue)=="number","Invalid unique modifier target")
+		local options,reason=M.divineOptions(raw);assert(options,reason);local selected
+		for _,option in ipairs(options) do if option.line==goal.line then selected=option;break end end
+		assert(selected,"The selected unique modifier is not available on this item")
+		assert(goal.minValue==math.floor(goal.minValue) and goal.minValue>=selected.min and goal.minValue<=selected.max,"The unique modifier target is outside its roll range")
+		if selected.current<goal.minValue then return false end
+	end
 	if requirements.nativeStats then
 		local stats=require("Modules.CraftingItemStats");stats.validate(requirements.nativeStats)
 		local values=stats.itemValues(item);for key,minimum in pairs(requirements.nativeStats) do if values[key]==nil or values[key]<minimum then return false end end
