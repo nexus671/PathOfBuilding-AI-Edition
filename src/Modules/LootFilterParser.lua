@@ -56,7 +56,9 @@ function M.parse(raw)
 			elseif not current then result.diagnostics[#result.diagnostics+1]={line=lineNo,error="Expected Show, Hide or Minimal before "..key}
 			else
 				current.rawLines[#current.rawLines+1]=line
-				if key=="Continue" then current.continue=true
+				if key=="Continue" then
+					current.continue=true
+					if #t>0 then result.diagnostics[#result.diagnostics+1]={line=lineNo,warning="Continue arguments need in-game verification; original text is preserved",unverifiedContinue=true} end
 				elseif M.actions[key] then
 					current.styles[key]=t
 					local invalid
@@ -315,6 +317,9 @@ end
 function M.simulate(parsed,item)
 	local result={action="Show",status="matched",styles={},matches={},reasons={}}
 	for _,d in ipairs(parsed.diagnostics) do if d.error then return M.invalidResult(d) end end
+	for _,d in ipairs(parsed.diagnostics) do if d.unverifiedContinue then
+		return {status="unknown",action="Unknown",line=d.line,styles={},matches={},reasons={"Filter line "..d.line..": Continue arguments need in-game verification; the filter may not load as expected."}}
+	end end
 	local importIndex=1
 	local function unresolvedImport()
 		local entry=parsed.imports[importIndex]

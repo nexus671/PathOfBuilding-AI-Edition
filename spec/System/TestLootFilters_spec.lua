@@ -26,6 +26,13 @@ describe("Build-owned loot filters",function()
 			assert.equal("Filter line "..expected.line..": "..expected.error,result.reasons[1])
 		end
 	end)
+	it("keeps undocumented Continue arguments uncertain without changing the text",function()
+		local raw='Show\n BaseType "Iron"\n Continue unexpected\nHide'
+		local parsed=parser.parse(raw);assert.equal(1,#parsed.diagnostics);assert.equal(3,parsed.diagnostics[1].line);assert.is_true(parsed.diagnostics[1].unverifiedContinue)
+		for _,item in ipairs({{BaseType="Iron Hat"},{BaseType="Wooden Shield"}}) do local outcome=parser.simulate(parsed,item);assert.equal("unknown",outcome.status);assert.equal(3,outcome.line);assert.matches("Continue arguments",outcome.reasons[1]) end
+		assert.equal("Hide",parser.simulate(parser.parse('Show\n Continue # comment\nHide'),{}).action)
+		local profile=filters.profile("continue-warning","Continue warning");profile.template=raw;local text,report=filters.compile(profile);assert.is_truthy(text:find("Continue unexpected",1,true));local found=false;for _,d in ipairs(report.diagnostics) do if d.unverifiedContinue then found=true end end;assert.is_true(found)
+	end)
 	it("accepts the bundled drop-sound compatibility form",function()
 		local parsed=parser.parse("Show\n DisableDropSound True")
 		assert.equal(0,#parsed.diagnostics);assert.equal("matched",parser.simulate(parsed,{}).status)

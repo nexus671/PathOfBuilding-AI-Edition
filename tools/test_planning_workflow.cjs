@@ -1211,6 +1211,9 @@ async function main(){
   const surrenderPickup=generated.profile.rules.find(rule=>rule.origin==='gear:surrender');assert.ok(surrenderPickup);
   assert.match(surrenderPickup.text,/BaseType == "Ezomyte Tower Shield"/);assert.match(surrenderPickup.text,/Rarity == Unique/);assert.doesNotMatch(surrenderPickup.text,/ItemLevel/);
   const tested=await queued('test_loot_filter',{baseRevision:context.revision,profile:generated.profile,sample:{BaseType:'Iron Hat',Rarity:'Rare',ItemLevel:86}},'tested');assert.equal(tested.result.action,'Show');
+  const uncertainContinue={...lootProfile,template:'Show\n BaseType "Iron"\n Continue unexpected\nHide'};
+  const uncertainContinueTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:uncertainContinue,sample:{BaseType:'Iron Hat'}},'tested');
+  assert.equal(uncertainContinueTest.result.status,'unknown');assert.match(uncertainContinueTest.result.reasons[0],/Continue arguments/);
   const rareSetProfile={...lootProfile,template:'Hide',campaign:{recipes:['Unidentified rare set pieces'],rareSetSlots:['Jewellery'],minAreaLevel:1,maxAreaLevel:100}};
   const rareSetSample={BaseType:'Iron Ring',Class:'Rings',Rarity:'Rare',Identified:false,ItemLevel:74,AreaLevel:75};
   const rareSet=await queued('test_loot_filter',{baseRevision:context.revision,profile:rareSetProfile,sample:rareSetSample},'tested');
