@@ -61,6 +61,24 @@ describe("TestOffence", function()
 		assert.are.equal(a,c);assert.are.equal(b,d)
 	end)
 
+	it("keeps Full DPS calculations sensitive to the detailed buff mode", function()
+		build.skillsTab:PasteSocketGroup("Fireball 20/0  1")
+		build.skillsTab:PasteSocketGroup("Anger 20/0  1")
+		build.skillsTab.socketGroupList[1].includeInFullDPS = true
+		build.configTab.input.customMods = "Inflict Fire Exposure on Hit, applying -15% to Fire Resistance"
+		build.configTab:BuildModList()
+		local calcs = require("Modules.Calcs")
+		wipeGlobalCache()
+		local main = calcs.buildOutput(build, "MAIN")
+		build.calcsTab.input.misc_buffMode = "EFFECTIVE"
+		local effective = calcs.buildOutput(build, "CALCS")
+		assert.are.equal(main.player.output.FullDPS, effective.player.output.FullDPS)
+		assert.same(main.player.output.SkillDPS, effective.player.output.SkillDPS)
+		build.calcsTab.input.misc_buffMode = "COMBAT"
+		local combat = calcs.buildOutput(build, "CALCS")
+		assert.is_true(main.player.output.FullDPS > combat.player.output.FullDPS)
+	end)
+
 	it("requests Full DPS only for its node-power metric", function()
 		runCallback("OnFrame")
 		local tab = build.calcsTab

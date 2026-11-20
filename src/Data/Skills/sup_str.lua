@@ -2537,9 +2537,11 @@ skills["AvengingFlame"] = {
 	skillTypes = { [SkillType.Spell] = true, [SkillType.Damage] = true, [SkillType.Area] = true, [SkillType.AreaSpell] = true, [SkillType.Fire] = true, [SkillType.ProjectileNumber] = true, [SkillType.ProjectileSpeed] = true, [SkillType.Triggerable] = true, [SkillType.SkillGrantedBySupport] = true, [SkillType.Triggered] = true, [SkillType.InbuiltTrigger] = true, [SkillType.Cooldown] = true, [SkillType.SummonsTotem] = true, [SkillType.Projectile] = true, },
 	statDescriptionScope = "debuff_skill_stat_descriptions",
 	castTime = 1,
-	preDamageFunc = function(activeSkill, output)
+	preDamageFunc = function(activeSkill, output, breakdown, env)
 		local uuid = activeSkill.skillData.triggerSourceUUID
-		local cache = uuid and (GlobalCache.cachedData["MAIN"][uuid] or GlobalCache.cachedData["CALCS"][uuid])
+		-- Use the source calculated for this environment and override; the
+		-- main tab's cache can describe a different passive or item setup.
+		local cache = uuid and ((env.triggerSourceCache and env.triggerSourceCache[uuid]) or GlobalCache.cachedData[env.mode][uuid])
 		local totemLife = cache and cache.Env.player.output.TotemLife or 0
 
 		local add = totemLife * activeSkill.skillData.lifeDealtAsFire / 100

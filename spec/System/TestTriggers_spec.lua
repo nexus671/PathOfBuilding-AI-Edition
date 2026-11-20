@@ -1429,6 +1429,28 @@ describe("TestTriggers", function()
 		assert.True(build.calcsTab.mainOutput.SkillTriggerRate ~= nil)
 	end)
 	
+	it("uses the current totem life for Flamewood Full DPS and passive comparisons", function()
+		build.skillsTab:PasteSocketGroup("Fireball 20/0  1")
+		build.skillsTab:PasteSocketGroup("Decoy Totem 20/0  1\nFlamewood 20/0  1")
+		local group=build.skillsTab.socketGroupList[2];group.includeInFullDPS=true;group.mainActiveSkill=2
+		build.buildFlag=true;runCallback("OnFrame")
+		assert.is_true(build.calcsTab.mainOutput.FullDPS > 0)
+		assert.near(build.calcsTab.mainOutput.FullDPS,build.calcsTab.calcsOutput.FullDPS,0.000001)
+		local calculator,base=build.calcsTab:GetMiscCalculator()
+		local node
+		for _,candidate in pairsSortByKey(build.spec.nodes) do
+			if not candidate.alloc then for _,line in ipairs(candidate.sd or {}) do
+				if line:find("Totem Life",1,true) then node=candidate;break end
+			end end
+			if node then break end
+		end
+		assert.is_not_nil(node)
+		local changed=calculator({addNodes={[node]=true}},true)
+		assert.is_true(changed.FullDPS > base.FullDPS)
+		local restored=calculator({},true)
+		assert.near(base.FullDPS,restored.FullDPS,0.000001)
+	end)
+
 	it("Trigger Automation", function()
 		build.skillsTab:PasteSocketGroup("Steelskin 20/0  1\nAutomation 20/0  1\n")
 		runCallback("OnFrame")

@@ -9,6 +9,10 @@ local profileSkills = arg[4] == "skill-profile"
 assert(not arg[4] or profileSkills, "Fourth argument must be skill-profile")
 local noCapture = arg[5] == "no-capture"
 assert(not arg[5] or noCapture, "Fifth argument must be no-capture")
+local profileFull = arg[6] == "full-profile"
+assert(not arg[6] or profileFull, "Sixth argument must be full-profile")
+local includeAll = arg[7] == "include-all"
+assert(not arg[7] or includeAll, "Seventh argument must be include-all")
 arg = {}
 dofile("HeadlessWrapper.lua")
 main.disableDevAutoSave = true
@@ -17,6 +21,12 @@ local raw = file:read("*a")
 file:close()
 loadBuildFromXML(raw, "Read-only tree UI benchmark")
 assert(not main.popups[1], "The supplied build requires conversion")
+if includeAll then
+	for _,group in ipairs(build.skillsTab.socketGroupList) do
+		if group.enabled ~= false then group.includeInFullDPS = true end
+	end
+	build.buildFlag=true;runCallback("OnFrame")
+end
 if forcedRecovery then
 	build.configTab.input.simulateRecovery = true
 	build.configTab.input.recoverySimulationTrials = 32
@@ -116,6 +126,31 @@ if profileSkills then
 		end
 	end
 end
+local fullProfile
+if profileFull then
+	fullProfile={components={}}
+	local calcs=build.calcsTab.calcs
+	local originalFull,originalOutput,originalMisc=calcs.calcFullDPS,calcs.buildOutput,calcs.getMiscCalculator
+	local phase="other"
+	local function pack(...) return {n=select("#",...),...} end
+	calcs.calcFullDPS=function(...)
+		local start=os.clock();local result=pack(originalFull(...));local elapsed=(os.clock()-start)*1000
+		local row=fullProfile.components[phase] or {count=0,totalMs=0,worstMs=0}
+		row.count=row.count+1;row.totalMs=row.totalMs+elapsed;row.worstMs=math.max(row.worstMs,elapsed);fullProfile.components[phase]=row
+		return unpack(result,1,result.n)
+	end
+	calcs.buildOutput=function(buildArg,mode,...)
+		local previous=phase;phase=mode;local result=pack(originalOutput(buildArg,mode,...));phase=previous
+		return unpack(result,1,result.n)
+	end
+	calcs.getMiscCalculator=function(...)
+		local previous=phase;phase="comparison setup";local calculator,base=originalMisc(...);phase=previous
+		return function(...)
+			local previousPhase=phase;phase="comparison evaluation";local result=pack(calculator(...));phase=previousPhase
+			return unpack(result,1,result.n)
+		end,base
+	end
+end
 local performance=require("Modules.PlanningPerformance")
 performance.clear(build)
 for _ = 1, cycles do
@@ -145,7 +180,7 @@ for _ = 1, cycles do
 		releaseMs=(clicked-pressed)*1000, updateFrameMs=(updated-clicked)*1000, recovery=recovery }
 end
 assert(bridge.revision(build) == revision, "The benchmark did not restore the build revision")
-print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,components=performance.rows(build),skillProfile=skillProfile,restored=true,
+print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,components=performance.rows(build),skillProfile=skillProfile,fullProfile=fullProfile,includeAll=includeAll,restored=true,
 	recoveryMode=forcedRecovery and "deferred" or desktopRecovery and "desktop with saved settings" or "build configuration",
 	drawCapture=not noCapture,
 	limitations=noCapture and "Headless CPU timings omit drawing calls and do not measure desktop rendering or frame rate."
