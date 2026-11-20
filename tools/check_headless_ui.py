@@ -42,6 +42,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_combined_fossil_ui.lua")
     sources.append(ROOT / "tools/test_vendor_review_ui.lua")
     sources.append(ROOT / "tools/test_modifier_paging_ui.lua")
+    sources.append(ROOT / "tools/test_crafting_replay_ui.lua")
     sources.append(ROOT / "tools/test_campaign_selection_ui.lua")
     return {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(sources) if path.is_file()}
 
@@ -79,6 +80,10 @@ def main():
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "controls.log").write_text(result.stdout)
     assert result.returncode == 0, result.stdout
+    replay = subprocess.run([args.lua, "../tools/test_crafting_replay_ui.lua", str(frames)], cwd=ROOT / "src",
+                            env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-replay-controls.log").write_text(replay.stdout)
+    assert replay.returncode == 0, replay.stdout
     assert source_hashes() == hashes, "Source files changed during UI capture; repeat against stable sources"
     for width in (1280, 1024, 960):
         archive = frames / f"ui-{width}-strictnesses.zip"
@@ -94,8 +99,11 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 1989, f"Expected 1989 UI frames, found {len(paths)}"
+    assert len(paths) == 1995, f"Expected 1995 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
+        replay_frame = json.loads((frames / f"{width}-saved-replay.json").read_text())
+        replay_text = " ".join(c.get("text", "") for c in replay_frame["commands"] if c.get("kind") == "text")
+        assert "Rerun saved" in replay_text and "Saved simulation setup available" in replay_text, "Saved simulation is not discoverable"
         audit = json.loads((frames / f"{width}-filter-error-audit.json").read_text())
         audit_text = " ".join(c.get("text", "") for c in audit["commands"] if c.get("kind") == "text")
         assert "AlwaysShow" in audit_text and ("PoE 2" in audit_text or "Path of Exile 2" in audit_text), "Filter audit does not show the selected error"

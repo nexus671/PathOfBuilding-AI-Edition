@@ -992,7 +992,7 @@ function Panel.Open(build,project,layout)
 	end);controls.splitter.enabled=function() return not tasks.job end end
 	if restored then controls.method:SelByValue(restored.method or "alchemy","val");controls.resultSummary.list=restored.resultRows or controls.resultSummary.list
 	elseif draft.preferredMethod then controls.method:SelByValue(draft.preferredMethod,"val") end
-	updateOptions(true);refresh(invalidSimulationRun and {"Saved simulation setup could not be read. The original is preserved; run a new simulation to replace it."} or nil)
+	updateOptions(true);refresh(invalidSimulationRun and {"Saved simulation setup could not be read. The original is preserved; run a new simulation to replace it."} or savedSimulationRun and not lastSimulation and {"Saved simulation setup available. Choose Rerun saved to calculate it using current crafting data."} or nil)
 	-- Hook edits after restoring controls so viewing a saved craft stays clean.
 	for _,key in ipairs({"trials","budget","price","currency","baseCost","seed"}) do
 		local control=controls[key];local previous=control.changeFunc
