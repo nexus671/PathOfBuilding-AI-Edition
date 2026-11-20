@@ -23,7 +23,7 @@ function M.Open(build,project,layout,snapshot)
 	local w,h=layout and layout.width or math.min(880,main.screenW-40),layout and layout.height or math.min(650,main.screenH-60)
 	local c={};local cardX=310;local cardWidth=w-cardX-16
 	ui.label(c,"heading",16,18,"Unique crafting",22)
-	ui.description(c,"intro",16,56,270,68,{not info.qualitySupported and "Preview Divine Orb rolls." or (item.type=="Flask" or item.type=="Tincture") and "Preview item quality." or "Preview quality and socket crafts.",not info.qualitySupported and "Catalyst crafting is not modeled." or item.corrupted and ((item.type=="Flask" or item.type=="Tincture") and "Tainted quality is unavailable." or "Tainted quality rolls are estimated.") or "Quality currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
+	ui.description(c,"intro",16,56,270,68,{not info.qualitySupported and (item.corrupted and "This item is corrupted." or "Preview Divine Orb rolls.") or (item.type=="Flask" or item.type=="Tincture") and "Preview item quality." or "Preview quality and socket crafts.",not info.qualitySupported and (item.corrupted and "Divine Orbs cannot modify it." or "Catalyst crafting is not modeled.") or item.corrupted and ((item.type=="Flask" or item.type=="Tincture") and "Tainted quality is unavailable." or "Tainted quality rolls are estimated.") or "Quality currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
 	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM",{expanded=true})
 	local function button(key,y,label,run)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,y,270,32},label,function()
@@ -703,10 +703,12 @@ function M.Open(build,project,layout,snapshot)
 		if ui.hasDraft(build,"uniqueQuality",draft.id) then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true) end
 		if layout then layout.openProjects() else main:ClosePopup() end
 	end)
-	if item.type=="Flask" or item.type=="Tincture" then
+	local compactJewellery=not info.qualitySupported and require("Modules.CraftingSimulator").socketLimit({item=item})==0
+	if item.type=="Flask" or item.type=="Tincture" or compactJewellery then
 		for _,key in ipairs({"socketCount","omenJeweller","link","omen","benchLink","white"}) do c[key].shown=false end
 		c.status.y=130;c.apply.y=150;c.divine.y=150;c.undo.y=188;c.redo.y=188;c.keep.y=226;c.guide.y=226
 		c.loadTarget.y=264;c.recipe.y=264;c.notice.y=302;c.currency.y=330;c.currencyNote.y=332;c.reviewGuide.y=330
+		if compactJewellery then c.apply.shown=false;c.divine.x=16;c.divine.width=270 end
 	end
 	for _,control in pairs(c) do control.layoutAudit="unique-quality" end
 	ui.style(c,{apply=true},{item=true});refresh()
