@@ -576,12 +576,13 @@ function M.matches(raw,requirements)
 	if requirements.corrupted~=nil and (not not item.corrupted)~=requirements.corrupted then return false end
 	if requirements.twiceCorrupted~=nil and (not not item.twiceCorrupted)~=requirements.twiceCorrupted then return false end
 	if requirements.uniqueModifier then
-		local goal=requirements.uniqueModifier;assert(type(goal)=="table" and type(goal.line)=="string" and type(goal.minValue)=="number","Invalid unique modifier target")
+		local goal=requirements.uniqueModifier;assert(type(goal)=="table" and type(goal.line)=="string" and (goal.minValue~=nil)~=(goal.maxValue~=nil),"Invalid unique modifier target")
+		local value=goal.minValue or goal.maxValue;assert(type(value)=="number","Invalid unique modifier target")
 		local options,reason=M.divineOptions(raw);assert(options,reason);local selected
 		for _,option in ipairs(options) do if option.line==goal.line then selected=option;break end end
 		assert(selected,"The selected unique modifier is not available on this item")
-		assert(goal.minValue==math.floor(goal.minValue) and goal.minValue>=selected.min and goal.minValue<=selected.max,"The unique modifier target is outside its roll range")
-		if selected.current<goal.minValue then return false end
+		assert(value==math.floor(value) and value>=selected.min and value<=selected.max,"The unique modifier target is outside its roll range")
+		if goal.minValue and selected.current<value or goal.maxValue and selected.current>value then return false end
 	end
 	if requirements.nativeStats then
 		local stats=require("Modules.CraftingItemStats");stats.validate(requirements.nativeStats)

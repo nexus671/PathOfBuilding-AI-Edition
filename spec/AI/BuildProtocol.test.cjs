@@ -70,7 +70,8 @@ test('accepts bounded unique modifier roll targets', t => {
   const args={baseRevision:f.state.revision,itemText:'Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86',recipe,options:{trials:5,maxActions:20}};
   f.call('simulate_crafting',args);assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe.requirements,goal);
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
-  const signed={uniqueModifier:{line:'+( -2-2 ) seconds',minValue:-1}};f.call('simulate_crafting',{...args,recipe:{...recipe,requirements:signed}});fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  const signed={uniqueModifier:{line:'+( -2-2 ) seconds',maxValue:-1}};f.call('simulate_crafting',{...args,recipe:{...recipe,requirements:signed}});fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  assert.throws(()=>f.call('simulate_crafting',{...args,recipe:{...recipe,requirements:{uniqueModifier:{...goal.uniqueModifier,maxValue:40}}}}),/arguments/);
   assert.throws(()=>f.call('simulate_crafting',{...args,recipe:{...recipe,requirements:{uniqueModifier:{...goal.uniqueModifier,minValue:-100001}}}}),/arguments/);
 });
 

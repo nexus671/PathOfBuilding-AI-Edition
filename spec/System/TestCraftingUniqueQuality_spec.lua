@@ -104,6 +104,7 @@ describe("Unique item quality",function()
 		assert.equal(30,target.min);assert.equal(40,target.max);assert.equal(35,target.current)
 		local requirement={uniqueModifier={line=target.line,minValue=36}}
 		assert.is_false(quality.matches(raw,requirement));requirement.uniqueModifier.minValue=35;assert.is_true(quality.matches(raw,requirement));requirement.uniqueModifier.minValue=41;assert.has_error(function() quality.matches(raw,requirement) end)
+		assert.is_true(quality.matches(raw,{uniqueModifier={line=target.line,maxValue=35}}));assert.is_false(quality.matches(raw,{uniqueModifier={line=target.line,maxValue=34}}));assert.has_error(function() quality.matches(raw,{uniqueModifier={line=target.line,minValue=30,maxValue=40}}) end)
 		requirement.uniqueModifier.minValue=40;local recipe={rarity="UNIQUE",steps={{method="divine",maxAttempts=30,untilRequirements=copyTable(requirement)}},targets={},requirements=requirement}
 		local sim=require("Modules.CraftingSimulator");local result=sim.simulate(raw,recipe,{trials=10,maxActions=30,seed=123});assert.is_true(result.sampled);assert.is_true(result.successes>0)
 		local calculated=sim.calculate(raw,{method="divine"},{},nil,{trials=5,requirements=requirement});assert.is_true(calculated.sampled)
@@ -133,6 +134,8 @@ describe("Unique item quality",function()
 		for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end;assert.equal(1,#saved.steps);assert.equal(80,saved.nativeRecipe.requirements.nativeStats.Evasion)
 		control.divine:Click();popup=main.popups[1].controls;popup.stat:SelByValue("modifier:2","val");popup.target:SetText("41");assert.is_false(popup.plan:IsEnabled());popup.target:SetText("40");assert.is_true(popup.plan:IsEnabled());popup.plan:Click();main.popups[1].controls.confirm:Click()
 		for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end;assert.equal(1,#saved.steps);assert.equal(40,saved.nativeRecipe.requirements.uniqueModifier.minValue);assert.equal("+(30-40)% to all Elemental Resistances",saved.nativeRecipe.requirements.uniqueModifier.line)
+		control.divine:Click();popup=main.popups[1].controls;popup.stat:SelByValue("modifier:2","val");popup.direction:SelByValue("At most");popup.target:SetText("30");assert.is_true(popup.plan:IsEnabled());popup.plan:Click();main.popups[1].controls.confirm:Click()
+		for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end;assert.equal(1,#saved.steps);assert.equal(30,saved.nativeRecipe.requirements.uniqueModifier.maxValue);assert.matches("Roll at most 30",saved.steps[1].stopWhen)
 		local sampled=require("Modules.CraftingSimulator").simulate(raw,saved.nativeRecipe,{trials=5,maxActions=100,seed=123});assert.is_true(sampled.sampled)
 		control.divine:Click();popup=main.popups[1].controls;popup.apply:Click();assert.is_true(control.undo:IsEnabled());assert.is_true(control.guide:IsEnabled());main.popups={}
 	end)

@@ -25,9 +25,9 @@ return function(build,ui,frame)
 	divinePicker.stat:SelByValue("Evasion","val");ui:text("target","100");ui:text("attempts","250");frame("crafting-unique-divine-target");ui:click("plan")
 	local divineSaved;for _,entry in ipairs(store.projects) do if entry.id==divineProject.id then divineSaved=entry end end
 	assert(divineSaved and divineSaved.nativeRecipe.requirements.nativeStats.Evasion==100 and divineSaved.steps[1].uniqueCraft.method=="divine","Divine target was not kept")
-	ui:click("divine");divinePicker=main.popups[1].controls;divinePicker.stat:SelByValue("modifier:2","val");ui:text("target","40");assert(divinePicker.selectedInfo.label():find("Elemental Resistances",1,true),"Selected modifier description is truncated");frame("crafting-unique-divine-modifier");ui:click("plan");ui:click("confirm")
+	ui:click("divine");divinePicker=main.popups[1].controls;divinePicker.stat:SelByValue("modifier:2","val");divinePicker.direction:SelByValue("At most");ui:text("target","30");assert(divinePicker.selectedInfo.label():find("Elemental Resistances",1,true),"Selected modifier description is truncated");frame("crafting-unique-divine-modifier");ui:click("plan");ui:click("confirm")
 	for _,entry in ipairs(store.projects) do if entry.id==divineProject.id then divineSaved=entry end end
-	assert(#divineSaved.steps==1 and divineSaved.nativeRecipe.requirements.uniqueModifier.minValue==40,"Divine modifier target was not kept");main.popups={}
+	assert(#divineSaved.steps==1 and divineSaved.nativeRecipe.requirements.uniqueModifier.maxValue==30,"Divine modifier target was not kept");main.popups={}
 	local divinePreview={id="unique-divine-preview-ui",title="Divine preview",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40 to Evasion Rating\n+10% to Item Rarity\n+35% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers",goals={},steps={}}
 	store:Upsert(divinePreview);require("Classes.CraftingUniqueQualityControl").Open(build,divinePreview);ui:click("divine");ui:click("apply");frame("crafting-unique-divine-preview");ui:click("guide")
 	for _,entry in ipairs(store.projects) do if entry.id==divinePreview.id then divineSaved=entry end end;assert(divineSaved.steps[1].uniqueCraft.method=="divine","Divine preview guide was not kept");main.popups={}

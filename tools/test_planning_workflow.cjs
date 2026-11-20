@@ -233,7 +233,7 @@ async function main(){
   const divineUniqueOption=divineUniqueInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='divine');assert.equal(divineUniqueOption.available,true);
   const divineUniqueApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:divineUniqueRaw,action:divineUniqueOption.action,seed:123},'crafted');assert.ok(divineUniqueApply.nativeCrafting.warnings.some(w=>w.code==='unique_divine_estimate'));assert.ok(divineUniqueApply.nativeCrafting.itemText.includes('+(30-50) to Evasion Rating'));assert.ok(divineUniqueApply.nativeCrafting.itemText.includes('EvasionBasePercentile:'));
   const divineModifier=divineUniqueOption.modifierTargets.find(entry=>entry.line.includes('Elemental Resistances'));assert.equal(divineModifier.current,35);
-  const divineGoal={uniqueModifier:{line:divineModifier.line,minValue:40}};
+  const divineGoal={uniqueModifier:{line:divineModifier.line,maxValue:30}};
   const divineUniqueGuide={id:'unique-divine-workflow',title:'Divine target',slot:'Helmet',startingItem:divineUniqueRaw,goals:[],steps:[divineUniqueOption.guideStep],nativeRecipe:{rarity:'UNIQUE',steps:[{method:'divine',maxAttempts:10,untilRequirements:divineGoal}],targets:[],requirements:divineGoal}};
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:divineUniqueGuide},'review');await host('apply');context=(await call('get_build_context')).context;
   const divineUniqueSaved=(await call('get_crafting_projects')).projects.find(entry=>entry.id===divineUniqueGuide.id);assert.equal(divineUniqueSaved.steps[0].uniqueCraft.method,'divine');
