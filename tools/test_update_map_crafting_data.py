@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from update_map_crafting_data import extract
+from check_map_crafting_art import compatible_source
 
 
 class MapDataExtractionTest(unittest.TestCase):
@@ -28,6 +29,16 @@ class MapDataExtractionTest(unittest.TestCase):
         self.assertEqual("Nightmare Map", maps["bases"]["Metadata/Items/Maps/MapKeyNightmareBoss"]["name"])
         for tier in range(1, 17):
             self.assertEqual(f"Map (Tier {tier})", maps["bases"][f"Metadata/Items/Maps/MapKeyTier{tier}"]["name"])
+
+    def test_prior_art_source_requires_reviewed_map_identity_projection(self):
+        root = Path(__file__).resolve().parents[1]
+        art = json.loads((root / "src/Assets/MapCrafting/art.json").read_text(encoding="utf-8"))
+        data = json.loads((root / "src/Data/Crafting/Map330.json").read_text(encoding="utf-8"))
+        self.assertTrue(compatible_source(art, data))
+        data["bases"][next(iter(data["bases"]))]["visual_identity"] = {"dds_file": "changed"}
+        self.assertFalse(compatible_source(art, data))
+        data["source"]["commit"] = "unreviewed"
+        self.assertFalse(compatible_source(art, data))
 
     def test_keeps_area_affixes_and_ordered_weights(self):
         mod = {field: [] for field in ("groups", "spawn_weights", "generation_weights", "adds_tags", "stats")}
