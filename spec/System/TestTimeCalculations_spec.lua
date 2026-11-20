@@ -443,6 +443,16 @@ describe("Finite combat windows", function()
 		assert.is_true(build.calcsTab.calcsOutput.RecoverySimulationTime < fixed)
 	end)
 
+	it("suppresses ordered guard buffs in recovery projections", function()
+		build.skillsTab:PasteSocketGroup("Molten Shell 20/0  1")
+		build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1]);runCallback("OnFrame")
+		local calcs=build.calcsTab.calcs
+		local active=calcs.initEnv(build,"CALCULATOR");calcs.perform(active)
+		assert.is_true(active.player.output.GuardSkillActive)
+		local projected=calcs.initEnv(build,"CALCULATOR");projected.recoveryGuardSuppressed=true;calcs.perform(projected)
+		assert.is_false(projected.player.output.GuardSkillActive)
+	end)
+
 	it("expires guard protection and supports a paid recast policy", function()
 		build.skillsTab:PasteSocketGroup("Molten Shell 20/0  1")
 		build.skillsTab:ProcessSocketGroup(build.skillsTab.socketGroupList[1])

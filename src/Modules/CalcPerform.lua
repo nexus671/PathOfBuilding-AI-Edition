@@ -3386,7 +3386,7 @@ function calcs.perform(env, skipEHP)
 	end
 
 	-- Process guard buffs
-	if env.recoveryGuardSuppressed then guards = { } end
+	if env.recoveryGuardSuppressed then guards = { }; guardOrder = { } end
 	local guardSlots = { }
 	local nonVaal = false
 	for _, name in ipairs(guardOrder) do
