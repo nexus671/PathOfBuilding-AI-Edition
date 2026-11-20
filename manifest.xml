@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview864" />
+	<Version number="2.68.1-ai.preview865" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1868,7 +1868,7 @@
 	<File name="Data/Global.lua" part="program" sha1="72bff7e953555cf3045880b0ff0dc0c37f43056e" />
 	<File name="Data/HeadlessImageSizes.json" part="program" sha1="0b2c9b44fa61a5c541f4465fea2828fb4f759373" />
 	<File name="Data/IncursionDropOnly.lua" part="program" sha1="1fa5c24b1bf897e781c54b3ce7a7fcd7d23fd645" />
-	<File name="Classes/GenesisPlannerControl.lua" part="program" sha1="ca2deedfbf70539e24e80c39f4b9dd9f9684a9bd" />
+	<File name="Classes/GenesisPlannerControl.lua" part="program" sha1="d0f47e9865d68a698e3212a3ffeccd257abbefe0" />
 	<File name="Modules/GenesisPlanner.lua" part="program" sha1="b1c40dc79795ae2f69624f58913c7cf8670479e9" />
 	<File name="Assets/Genesis/KeepersCurrencyNode.png" part="program" sha1="a5d87d270fdc35f15d952bcdc14a2700f7f2b60d" />
 	<File name="Assets/Genesis/KeepersCurrencyNotable.png" part="program" sha1="450e139c644cdd434e1f3df0ab1636da416b78aa" />

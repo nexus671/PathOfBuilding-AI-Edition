@@ -88,12 +88,23 @@ function Panel.Open(original,onKeep)
 	local function safe(fn) local ok,err=pcall(fn);if not ok then main:OpenMessagePopup("Genesis planner",ui.errorText(err)) end end
 	local refresh;local canToggle=false
 	local function isAllocated(id) for _,value in ipairs(plan.nodes) do if value==id then return true end end;return false end
+	local function replacedChoice(id)
+		local node=tree.nodes[id]
+		if not node or not node.choiceOption or isAllocated(id) then return nil end
+		for _,parent in ipairs(node.links) do if tree.nodes[parent].choice then
+			for _,other in ipairs(tree.nodes[parent].links) do
+				if tree.nodes[other].choiceOption and isAllocated(other) then return tree.nodes[other] end
+			end
+		end end
+	end
 	local function apply(id)
 		safe(function()
-			local removing=isAllocated(id);local next,affected
+			local removing=isAllocated(id);local replaced=replacedChoice(id);local next,affected
 			if removing then next,affected=planner.toggle(plan,id) else next,affected=planner.connect(plan,id) end
 			local function commit() plan=next;refresh() end
-			if #affected>1 then
+			if replaced then
+				main:OpenConfirmPopup("Replace Genesis choice","Replace "..replaced.name.." with "..tree.nodes[id].name.."?","Replace",commit)
+			elseif #affected>1 then
 				main:OpenConfirmPopup(removing and "Remove Genesis branch" or "Connect Genesis path",removing and (#affected.." passives would be removed, including disconnected nodes.") or (#affected.." nodes will be added to connect this passive."),removing and "Remove" or "Connect",commit)
 			else commit() end
 		end)
@@ -148,6 +159,8 @@ function Panel.Open(original,onKeep)
 				elseif not allocated then lines[#lines+1]=#path..(#path==1 and " node to connect." or " nodes to connect.") end
 			end
 			if node.choice then lines[#lines+1]="Choose one connected option." end
+			local replaced=replacedChoice(node.id)
+			if replaced then lines[#lines+1]="Replaces "..replaced.name.."." end
 		end
 		if #report.missingChoices>0 then lines[#lines+1]=#report.missingChoices.." allocated choice nodes need an option." end
 		c.details.list=ui.rows(lines,230,14)

@@ -15,9 +15,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:frame():write(directory.."/"..size[1].."-genesis-search.json")
 	ui:click("toggle");assert(main.popups[1].title=="Connect Genesis path","A multi-node path must be confirmed")
 	ui:click("confirm");ui:frame():write(directory.."/"..size[1].."-genesis-allocated.json")
+	ui:choose("branch",22476,"val")
+	local function find(name) ui:text("search",name);local sx,sy=c.results:GetPos();ui:clickAt(sx+20,sy+12) end
+	find("Increased Attack Modifier Chance");ui:click("toggle");ui:click("confirm")
+	find("Increased Caster Modifier Chance");ui:click("toggle")
+	assert(main.popups[1].title=="Replace Genesis choice","Replacing a choice must be confirmed")
+	ui:frame():write(directory.."/"..size[1].."-genesis-replace-choice.json");ui:click("confirm")
 	ui:click("keep");ui:click("keep")
 	local saved=assert(build.savers.AtlasPlans.plans[1].genesis,"Genesis draft was not saved")
 	local found=false;for _,id in ipairs(saved.nodes) do if id==40721 then found=true end end;assert(found,"The selected passive was not saved")
 	ui:restore();main.popups={}
 end
-print("GENESIS_UI_OK",9)
+print("GENESIS_UI_OK",12)
