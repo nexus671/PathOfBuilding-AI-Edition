@@ -9,11 +9,18 @@ from update_map_crafting_data import extract
 class MapDataExtractionTest(unittest.TestCase):
     def test_bundled_map_catalogue_matches_the_pinned_export(self):
         root = Path(__file__).resolve().parents[1]
+        baseline = json.loads((root / "src/Data/Crafting/3.30.json").read_text(encoding="utf-8"))
         maps = json.loads((root / "src/Data/Crafting/Map330.json").read_text(encoding="utf-8"))
-        self.assertEqual("3.30.0.2.2", maps["patch"])
-        self.assertEqual("585b4b8433079e514bbd6095c7a5af0480c9d824", maps["source"]["commit"])
-        self.assertEqual("d6087c26b3d95cd30359c69826fb5b2e431799b4df53bb750bbc7ffcbde312bf", maps["modsSha256"])
-        self.assertEqual("3bcca7d01e91e2356bee0a053a0e5d3636997d77b8b38492cad1599c92d8706d", maps["basesSha256"])
+        self.assertEqual("3.30.0.3", maps["patch"])
+        self.assertEqual(baseline["patch"], maps["patch"])
+        self.assertEqual(baseline["source"], maps["source"])
+        self.assertEqual(baseline["hashes"]["mods.json"], maps["modsSha256"])
+        self.assertEqual(baseline["hashes"]["base_items.json"], maps["basesSha256"])
+        for key in ("MapContainsBeyondDemonFactionWorlds", "MapContainsBeyondFleshFactionWorlds",
+                    "MapContainsBeyondPaleFactionWorlds", "MapContainsDeliriumMirrorWorlds",
+                    "MapContainsMirageWorlds", "MapContainsWildwoodWorlds", "MapContainsSentinelApexWorlds",
+                    "MapContainsSentinelPandemoniumWorlds", "MapContainsSentinelStalkerWorlds"):
+            self.assertEqual({"tag": "infected_map", "weight": 0}, maps["mods"][key]["spawn_weights"][0])
         self.assertIn("MapMonsterAreaOfEffectMapWorlds", maps["mods"])
         self.assertIn("35% more [Thread|Threads]", maps["mods"]["MapUberModCurses"]["text"])
         self.assertIn("47% more Currency", maps["mods"]["MapUberModJuggernaut"]["text"])

@@ -34,7 +34,7 @@ def extract(raw, expected_hash, base_raw, expected_base_hash, source):
     if not map_bases:
         raise ValueError("No map bases found")
     return {"_comment": "Generated GGG game data from RePoE; cspell:disable",
-            "patch": "3.30.0.2.2", "source": source, "modsSha256": actual,
+            "patch": "3.30.0.3", "source": source, "modsSha256": actual,
             "basesSha256": base_hash, "bases": map_bases, "mods": selected}
 
 
@@ -44,10 +44,9 @@ def main():
     parser.add_argument("bases", type=Path, help="Pinned RePoE base_items.json")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    # Map drafts remain pinned independently of the equipment crafting export.
-    existing = json.loads(DESTINATION.read_text(encoding="utf-8"))
-    data = extract(args.mods.read_bytes(), existing["modsSha256"],
-                   args.bases.read_bytes(), existing["basesSha256"], existing["source"])
+    existing = json.loads((ROOT / "src/Data/Crafting/3.30.json").read_text(encoding="utf-8"))
+    data = extract(args.mods.read_bytes(), existing["hashes"]["mods.json"],
+                   args.bases.read_bytes(), existing["hashes"]["base_items.json"], existing["source"])
     encoded = json.dumps(data, ensure_ascii=False, separators=(",", ":"), sort_keys=True) + "\n"
     if args.check:
         if DESTINATION.read_text(encoding="utf-8") != encoded:

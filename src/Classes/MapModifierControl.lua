@@ -15,9 +15,10 @@ end
 function M.Open(options)
 	options=options or {};local initial=options.initial
 	if initial then
-		assert(initial.patch==map.source().patch,"This map draft uses a different data version")
+		assert(map.acceptsDraftVersion(initial.patch),"This map draft uses a different data version")
 		map.inspect(initial.baseId,initial.tier,initial.itemLevel,initial.selected,"",0,1,nil,initial.rarity,initial.rolls,initial.corrupted,initial.implicit,initial.quality,initial.observedEffects)
 	end
+	local draftNeedsUpdate=initial and initial.patch~=map.source().patch or false
 	local width=math.min(900,main.screenW-40);local height=math.min(600,main.screenH-60)
 	local left=math.floor(width*0.38);local right=left+32;local rightWidth=width-right-16
 	local controls={};local function isCorrupted() return controls.rarity and (controls.rarity:GetSelValueByKey("val") or ""):match("^corrupted_")~=nil or false end
@@ -258,9 +259,9 @@ function M.Open(options)
 			if estimateSettings then entry.estimate=copyTable(estimateSettings) end
 			local ok,result=pcall(options.keep,entry)
 			if not ok then main:OpenMessagePopup("Map draft",ui.errorText(result));return end
-			draftId=result;controls.status.label="^7Draft kept. Keep the plan and save the build."
+			draftId=result;draftNeedsUpdate=false;controls.status.label="^7Draft kept. Keep the plan and save the build."
 		end)
-		controls.keep.tooltipText="Keep this draft in the Atlas plan; keep the plan and save the build to persist it."
+		controls.keep.tooltipText="Keep this draft using current map data in the Atlas plan; keep the plan and save the build to persist it."
 	end
 	local function show(entry)
 		candidate=entry
@@ -282,6 +283,7 @@ function M.Open(options)
 		if unidentified then controls.status.label="^xE9BE7BUnidentified | unknown modifiers; identify and paste again"
 		elseif vaalPreview then controls.status.label="^xE9BE7BBased on conditional Vaal preview | outcome odds not modeled" end
 		local problem=levelProblem();if problem then controls.status.label="^xE9BE7B"..ui.fit(problem,rightWidth,14) end
+		if draftNeedsUpdate and not problem and not unidentified and not vaalPreview and not isCorrupted() and not map.isNightmare(baseId) then controls.status.label=ui.fit(controls.status.label.." | "..map.source().patch.." on keep",rightWidth,14) end
 		local found=false;for _,id in ipairs(selected) do if id==selectedAffix then found=true;break end end
 		if not found then selectedAffix=nil end
 		controls.remove.label=selectedAffix and "Remove selected" or "Remove last"

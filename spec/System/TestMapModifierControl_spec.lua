@@ -230,4 +230,16 @@ describe("Map modifier explorer",function()
 		popup=main.popups[1].controls;assert.equal("MapCorruptionItemRarity",popup.choice:GetSelValueByKey("val"));assert.equal("15",popup.value.buf)
 	end)
 
+	it("opens the reviewed previous map version and upgrades only when kept",function()
+		local initial={id="previous",title="Saved map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="rare",selected={"MapMonsterAreaOfEffectMapWorlds"},quality={kind="Pack Size",value=20},estimate={wantedGroups={},avoid={},trials=2,maxAttempts=2}}
+		local saved;local controls=require("Classes.MapModifierControl").Open({initial=initial,keep=function(entry) saved=copyTable(entry);return "previous" end})
+		assert.equal("3.30.0.2.2",initial.patch);assert.matches("3.30.0.3",StripEscapes(controls.status.label),1,true)
+		controls.keep:Click();assert.equal("3.30.0.3",saved.patch);assert.same(initial.selected,saved.selected)
+		assert.same(initial.quality,saved.quality);assert.same(initial.estimate,saved.estimate);assert.equal("3.30.0.2.2",initial.patch)
+		local persisted=require("Modules.AtlasPlanner").validateMapDraft(saved)
+		main:ClosePopup();local reopened=require("Classes.MapModifierControl").Open({initial=persisted})
+		assert.is_not_nil(reopened);assert.equal("3.30.0.3",persisted.patch)
+		local unknown=copyTable(initial);unknown.patch="3.29.0";assert.has_error(function() require("Classes.MapModifierControl").Open({initial=unknown}) end)
+	end)
+
 end)

@@ -38,13 +38,17 @@ describe("Map crafting source data",function()
 		assert.has_error(function() data.inspect(base,17,84,{},"",0,10,nil,"magic") end)
 	end)
 	it("retains the pinned source and applies the first matching spawn rule",function()
-		assert.equal("3.30.0.2.2",data.source().patch)
+		assert.equal("3.30.0.3",data.source().patch)
 		local tags=data.baseTags("Metadata/Items/Maps/MapWorldsBeach")
 		assert.is_true(tags.map);assert.is_true(tags.default);assert.is_true(tags.beach)
 		assert.has_error(function() data.baseTags("unknown") end)
 		local mod=assert(data.source().mods.MapMonsterAreaOfEffectMapWorlds)
 		assert.equal(800,data.spawnWeight(mod,{low_tier_map=true,default=true}))
 		assert.equal(0,data.spawnWeight(mod,{uber_tier_map=true,low_tier_map=true,default=true}))
+		for _,id in ipairs({"MapContainsBeyondDemonFactionWorlds","MapContainsBeyondFleshFactionWorlds","MapContainsBeyondPaleFactionWorlds","MapContainsDeliriumMirrorWorlds","MapContainsMirageWorlds","MapContainsWildwoodWorlds","MapContainsSentinelApexWorlds","MapContainsSentinelPandemoniumWorlds","MapContainsSentinelStalkerWorlds"}) do
+			local affected=assert(data.source().mods[id]);local weight,tag=data.spawnWeight(affected,{infected_map=true,default=true})
+			assert.equal(0,weight);assert.equal("infected_map",tag)
+		end
 	end)
 	it("returns eligible records in deterministic order without changing source data",function()
 		local tags={low_tier_map=true,map=true,default=true}

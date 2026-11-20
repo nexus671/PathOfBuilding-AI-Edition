@@ -31,6 +31,13 @@ function M.source()
 	return data
 end
 
+-- The reviewed 3.30.0.3 map export preserves every prior base and modifier;
+-- only nine spawn rules gained an infected-map exclusion. Other versions need
+-- their own compatibility review before opening a saved draft.
+function M.acceptsDraftVersion(version)
+	return version==M.source().patch or M.source().patch=="3.30.0.3" and version=="3.30.0.2.2"
+end
+
 -- Base metadata includes legacy bases. Callers must verify availability for
 -- their chosen patch and add dynamic tier tags from the actual map.
 function M.baseTags(id)
