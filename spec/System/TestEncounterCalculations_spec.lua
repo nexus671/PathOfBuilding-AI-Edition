@@ -3,6 +3,16 @@ describe("Encounter reporting and comparisons",function()
 	local time=require("Modules.CalcTime")
 	before_each(function() newBuild() end)
 
+	it("highlights distinct important timeline events instead of repeated recharge events",function()
+		local breakdown=build.calcsTab.controls.breakdown
+		local events=breakdown:TimelineEventHighlights({
+			{time=0,event="Recharge interrupted by hit"},{time=1,event="Recharge interrupted by hit"},
+			{time=3,event="Guard expired"},{time=4,event="Tincture deactivated"},{time=9,event="Death"},
+		})
+		assert.same({"9.00s Death","3.00s Guard expired","4.00s Tincture deactivated"},events)
+		local guard=breakdown:TimelineEventHighlights({{time=0,event="Recharge interrupted by hit"},{time=3,event="Guard expired"}})
+		assert.same({"3.00s Guard expired","0.00s Recharge interrupted by hit"},guard)
+	end)
 	it("formats digit-bearing poison outputs as values instead of raw placeholders",function()
 		assert.are.equal("123.5",formatCalcStr("{1:output:PoisonDPSAt1}",{output={PoisonDPSAt1=123.456}}))
 		assert.are.equal("7",formatCalcStr("{output:PoisonDPSAt10}",{output={PoisonDPSAt10=7}}))

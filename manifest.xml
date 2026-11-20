@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview765" />
+	<Version number="2.68.1-ai.preview766" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1677,7 +1677,7 @@
 	<File name="Classes/BuildListControl.lua" part="program" sha1="f60f0d7f6aecbe851db896913cd1aa707c7fb304" />
 	<File name="Classes/BuildProposalControl.lua" part="program" sha1="561317a52ca3a02a51e0cd871ffa0236496bb9cc" />
 	<File name="Classes/ButtonControl.lua" part="program" sha1="7a58ec249f011107f2ddcdc3aa02f812643e5c5f" />
-	<File name="Classes/CalcBreakdownControl.lua" part="program" sha1="a21556a505153a81023f0d04ace948d606e2914e" />
+	<File name="Classes/CalcBreakdownControl.lua" part="program" sha1="2bd418ddf600499f54288768fbd56c9cac259a7a" />
 	<File name="Classes/CalcSectionControl.lua" part="program" sha1="ace88981a36381c6ccecbdb76ee1b9b04d1afeaf" />
 	<File name="Classes/CalcsTab.lua" part="program" sha1="f0c78a40a7b45747fe12acff2955f1a3a07dd020" />
 	<File name="Classes/CheckBoxControl.lua" part="program" sha1="021e4ea29d62a600ab14e69e6ed0ad33832d78ab" />

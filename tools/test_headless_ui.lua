@@ -1486,6 +1486,20 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:frame(function() build.calcsTab.controls.breakdown:DrawEncounterTimeline(16,16,{width=size[1]-32,timeline=actor.recoverySimulationTrace}) end)
 	ui.regions={{0,0,size[1],size[2]}}
 	ui:write(directory.."/"..size[1].."-recovery-timeline.json");frames=frames+1
+	;(function()
+	newBuild();ui:bind(build)
+	local previousClipboard=ui.clipboard;ui.clipboard="Molten Shell 20/0  1";build.skillsTab:PasteSocketGroup();ui.clipboard=previousClipboard
+	build.skillsTab:ProcessSocketGroup(assert(build.skillsTab.socketGroupList[1],"Guard skill was not pasted"))
+	local guardInput=build.configTab.input;guardInput.simulateRecovery=true;guardInput.recoverySimulationTrials=1;guardInput.recoverySimulationWindow=20;guardInput.recoverySimulationRecastGuard=true
+	guardInput.enemyDamageType="Melee";guardInput.enemyIsBoss="None";guardInput.enemySpeed=1000;guardInput.enemyCritChance=0;guardInput.enemyColdDamage="20";guardInput.customMods="+3000 to maximum Life\n+60% to Cold Resistance"
+	build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg)
+	local guardTrace=assert(build.calcsTab.calcsEnv.player.recoverySimulationTrace);local expired,recast=false,false
+	for _,row in ipairs(guardTrace.rows) do expired=expired or row.event=="Guard expired";recast=recast or row.event=="Guard recast; costs paid" end
+	assert(expired and recast,"Guard expiry and recast must both appear in the encounter trace")
+	build.calcsTab:OpenEncounterWorkspace();frame("encounter-guard-highlights")
+	local highlighted=false;for _,command in ipairs(ui.commands) do if command.kind=="text" and command.text:find("Highlights:",1,true) and command.text:find("Guard expired",1,true) then highlighted=true end end
+	assert(highlighted,"Guard expiry must be visible in the chart highlights");ui:click("close")
+	end)()
 	newBuild();ui:bind(build)
 	assert(not main.popups[1],"Preview setup: "..tostring(main.popups[1] and main.popups[1].title).." | "..tostring(main.popups[1] and main.popups[1].controls[1] and main.popups[1].controls[1].label))
 	assert(build.spec.treeVersion=="3_30","New builds should default to 3.30")

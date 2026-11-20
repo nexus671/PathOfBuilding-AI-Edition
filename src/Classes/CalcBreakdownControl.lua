@@ -736,6 +736,25 @@ function CalcBreakdownClass:DrawRadiusVisual(x, y, width, height, radius)
 	DrawImage(self.uiOverlay, x, y, width, height)
 end
 
+-- Show different kinds of meaningful events before repeated events of one kind.
+-- The full event log remains available for every recorded occurrence.
+function CalcBreakdownClass:TimelineEventHighlights(rows)
+	local categories={"death","guard","tincture","shroud","recharge","flask","barrier","leech"}
+	local first={}
+	for _,row in ipairs(rows or {}) do
+		local name=row.event:lower()
+		for _,category in ipairs(categories) do
+			if not first[category] and name:find(category,1,true) then first[category]=row;break end
+		end
+	end
+	local result={}
+	for _,category in ipairs(categories) do
+		local row=first[category]
+		if row then result[#result+1]=s_format("%.2fs %s",row.time,row.event);if #result==3 then break end end
+	end
+	return result
+end
+
 function CalcBreakdownClass:DrawEncounterTimeline(x,y,section)
 	local trace=section.timeline;local options=section.options or {};local hidden=options.hidden or {}
 	local width,plotX,plotWidth=section.width,x+48,section.width-65
@@ -795,8 +814,8 @@ function CalcBreakdownClass:DrawEncounterTimeline(x,y,section)
 		local event;for _,row in ipairs(self.timelineMarkers) do if not event or math.abs(row.time-hoverTime)<math.abs(event.time-hoverTime) then event=row end end
 		DrawString(x+4,bottom+20,"LEFT",12,"VAR",fit(event and s_format("%.3fs: %s",event.time,event.event) or "No nearby event"))
 	else DrawString(x+4,bottom+4,"LEFT",12,"VAR",fit("Hover for exact samples. Solid and dashed lines distinguish series.")) end
-	local events={};for _,row in ipairs(self.timelineMarkers) do local name=row.event:lower();if name:find("tincture",1,true) or name:find("recharge",1,true) or name:find("shroud",1,true) or name:find("death",1,true) then events[#events+1]=s_format("%.2fs %s",row.time,row.event);if #events==3 then break end end end
-	if #events>0 then DrawString(x+4,bottom+38,"LEFT",12,"VAR",fit(table.concat(events," | "))) end
+	local events=self:TimelineEventHighlights(self.timelineMarkers)
+	if #events>0 then DrawString(x+4,bottom+38,"LEFT",12,"VAR",fit("Highlights: "..table.concat(events," | "))) end
 end
 
 
