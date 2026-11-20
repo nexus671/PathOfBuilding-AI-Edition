@@ -625,7 +625,12 @@ function Panel.Open(build,project,layout)
 		for id,bucket in pairsSortByKey(result.affixDistribution or {}) do
 			lines[#lines+1]={height=22,string.format("%d / %d | %s",bucket.trials,bucket.successes,model.byId[id] and table.concat(model.byId[id]," / ") or id)}
 		end
-		for i,route in pairsSortByKey(result.routeCounts) do lines[#lines+1]={height=24,string.format("Step %d: %d visits, %d actions, %d success routes, %d failure routes",i,route.visits,route.executed,route.success,route.failure)} end
+		for i,route in pairsSortByKey(result.routeCounts) do
+			lines[#lines+1]={height=24,string.format("Step %d: %d visits, %d actions, %d success routes, %d failure routes",i,route.visits,route.executed,route.success,route.failure)}
+			local spending=(type(route.pricedCost)~="number" or type(route.unpricedComponents)~="number") and "Rerun to see step spending." or route.unpricedComponents>0 and "Step spending unavailable: missing prices." or string.format("Step spending: %.2f %s per trial",route.pricedCost/result.trials,result.costCurrency or "units")
+			lines[#lines+1]={height=22,spending}
+		end
+		if next(result.routeCounts) then lines[#lines+1]={height=22,"Step spending excludes starting items and restarts."} end
 		local popup={}
 		local resultHeight=math.max(420,math.min(650,main.screenH-60))
 		local display={};for _,line in ipairs(lines) do for _,row in ipairs(require("Modules.PlanningUI").rows({line[1]},798)) do display[#display+1]=row end end;lines=display

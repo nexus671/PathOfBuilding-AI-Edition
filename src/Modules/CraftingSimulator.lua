@@ -990,7 +990,7 @@ function M.simulate(raw,recipe,options)
 		local trialUnpriced,trialRejected=false,false
 		while at <= #recipe.steps and actions < maxActions and not state.destroyed and not state.uniqueTitle and (options.forceFirstAction and actions == 0 or not M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups)) do
 			local step=recipe.steps[at]
-			local route=routes[at] or {visits=0,success=0,failure=0,executed=0};routes[at]=route;route.visits=route.visits+1
+			local route=routes[at] or {visits=0,success=0,failure=0,executed=0,pricedCost=0,unpricedComponents=0};routes[at]=route;route.visits=route.visits+1
 			local success=false
 			for _=1,(step.maxAttempts or 1) do
 				if actions >= maxActions then break end
@@ -1029,7 +1029,7 @@ function M.simulate(raw,recipe,options)
 				for key,amount in pairs(components) do
 					spent[key]=(spent[key] or 0)+amount
 					local price=actionPrice~=nil and actionPrice or options.prices and options.prices[key]
-					if price then cost=cost+price*amount else missing[key]=true;trialUnpriced=true end
+					if price then local value=price*amount;cost=cost+value;route.pricedCost=route.pricedCost+value else missing[key]=true;trialUnpriced=true;route.unpricedComponents=route.unpricedComponents+1 end
 				end
 				if state.destroyed then break end
 				if state.uniqueTitle then

@@ -114,7 +114,7 @@ function M.simulate(sim,raw,recipe,options)
 	end
 	while at<=#recipe.steps and actions<maxActions and (options.forceFirstAction and actions==0 or not target(current,recipe.requirements)) do
 		if options.checkpoint then options.checkpoint({trial=1,trials=trials,actions=actions,successes=0}) end
-		local step=recipe.steps[at];local route=routes[at] or {visits=0,success=0,failure=0,executed=0};routes[at]=route;route.visits=route.visits+1
+		local step=recipe.steps[at];local route=routes[at] or {visits=0,success=0,failure=0,executed=0,pricedCost=0,unpricedComponents=0};routes[at]=route;route.visits=route.visits+1
 		local success=false
 		for _=1,(step.maxAttempts or 1) do
 			if actions>=maxActions then break end
@@ -139,7 +139,7 @@ function M.simulate(sim,raw,recipe,options)
 			local components=(override~=nil or service) and {[override~=nil and overrideKey or service]=1} or result.components
 			for key,amount in pairs(components) do
 				spent[key]=(spent[key] or 0)+amount;local price=override~=nil and override or prices and prices[key]
-				if price~=nil then cost=cost+price*amount else missing[key]=true end
+				if price~=nil then local value=price*amount;cost=cost+value;route.pricedCost=route.pricedCost+value else missing[key]=true;route.unpricedComponents=route.unpricedComponents+1 end
 			end
 			if target(current,recipe.requirements) or not step.untilRequirements or unique.matches(current,step.untilRequirements) then success=true;break end
 		end
