@@ -93,6 +93,16 @@ describe("Crafting projects", function()
 		assert.equal("Remove crafting step",main.popups[1].title);main.popups[1].controls.confirm:Click()
 		assert.equal(2,#store.projects[1].steps);assert.is_true(store.projects[1].steps[1].done);assert.equal("First result",store.projects[1].steps[1].stopWhen)
 	end)
+	it("edits a step without losing its progress or recovery notes",function()
+		local entry=project();entry.steps={{action="Original instruction",stopWhen="Original goal",onFailure="Original recovery",done=true}}
+		local store=build.savers.CraftingProjects;store:Upsert(entry)
+		require("Classes.CraftingProjectControl").Open(build).edit:Click();local wizard=main.popups[1].controls
+		wizard.steps:SetText("Revised instruction");wizard.wizardPage:SelByValue("Method & budget");wizard.next:Click()
+		assert.equal("Planning tool",main.popups[1].title);main:ClosePopup();main:ClosePopup()
+		main.popups[1].controls.browseSteps:Click();local browser=main.popups[1].controls;browser.results.planningSelect(browser.results.list[1]);browser.edit:Click()
+		local edit=main.popups[1].controls;edit.action:SetText("Revised instruction");edit.stop:SetText("Revised goal");edit.saveStep:Click()
+		local step=store.projects[1].steps[1];assert.equal("Revised instruction",step.action);assert.equal("Revised goal",step.stopWhen);assert.equal("Original recovery",step.onFailure);assert.is_true(step.done)
+	end)
 	it("keeps size limits and preserves malformed project collections",function()
 		local store=build.savers.CraftingProjects
 		for _,raw in ipairs({'{"schemaVersion":1,"projects":{}}','{"schemaVersion":1,"projects":{"one":{}}}','{"schemaVersion":1,"projects":[null]}','{"schemaVersion":1,"projects":null}',string.rep(" ",2*1024*1024).."{}"}) do

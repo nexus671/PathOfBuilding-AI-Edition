@@ -12,6 +12,16 @@ describe("Unique item quality",function()
 		control.omenJeweller:Click();assert.is_true(control.guide:IsEnabled());control.guide:Click()
 		assert.equal(46,#store.projects[1].steps);assert.equal("omen_jeweller",store.projects[1].steps[46].uniqueCraft.method);main.popups={}
 	end)
+	it("confirms before changing a modeled guide instruction",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"
+		local project={id="modeled-edit",title="Modeled guide",slot="Helmet",startingItem=raw,goals={},steps={}}
+		local store=build.savers.CraftingProjects;store:Upsert(project);local craft=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		craft.omenJeweller:Click();craft.guide:Click();assert.is_not_nil(store.projects[1].steps[1].uniqueCraft);main.popups={}
+		local browser=require("Classes.CraftingGuideStepsControl").Open(build,project.id);browser.results.planningSelect(browser.results.list[1]);browser.edit:Click()
+		local edit=main.popups[1].controls;edit.action:SetText("A different instruction");edit.saveStep:Click()
+		assert.equal("Change modeled step",main.popups[1].title);assert.is_not_nil(store.projects[1].steps[1].uniqueCraft)
+		main.popups[1].controls.confirm:Click();assert.is_nil(store.projects[1].steps[1].uniqueCraft);assert.equal("A different instruction",store.projects[1].steps[1].action);main.popups={}
+	end)
 	it("adds natural white sockets to unique items with the Jeweller Omen",function()
 		local sim=require("Modules.CraftingSimulator")
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"

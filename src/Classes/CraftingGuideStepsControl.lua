@@ -26,7 +26,7 @@ function M.Open(build,projectId,onChanged)
 		c.details.list=ui.rows(lines,detailW-20,14)
 	end
 	ui.selectable(c.results,function(row) return row.index end,function(row) selected=row.index;detail() end)
-	local actionWidth=math.floor((detailW-12)/2)
+	local actionWidth=math.floor((detailW-16)/3)
 	button("toggle",side,h-102,actionWidth,"Mark done",function()
 		local changed=copyTable(project());local step=assert(changed.steps[selected],"Select a step first.")
 		step.done=not step.done;local ok,err=pcall(store.Upsert,store,changed)
@@ -35,7 +35,36 @@ function M.Open(build,projectId,onChanged)
 	end)
 	c.toggle.enabled=function() return selected~=nil and project().steps[selected]~=nil end
 	c.toggle.label=function() local step=selected and project().steps[selected];return step and step.done and "Mark to do" or "Mark done" end
-	button("remove",side+actionWidth+12,h-102,actionWidth,"Remove step",function()
+	button("edit",side+actionWidth+8,h-102,actionWidth,"Edit step",function()
+		local index=assert(selected,"Select a step first.");local expected=copyTable(assert(project().steps[index],"Step is no longer available."))
+		local edit={};local ew,eh=math.min(760,main.screenW-40),math.min(520,main.screenH-60)
+		local function field(key,y,label,value,limit)
+			ui.label(edit,key.."Label",16,y,label,14)
+			edit[key]=new("EditControl"):EditControl(ui.anchor,{16,y+22,ew-32,58},value or "",nil,"^%C\t\n",limit,nil,16)
+		end
+		field("action",28,"Instruction",expected.action,1000);field("stop",130,"Stop when (optional)",expected.stopWhen,500);field("failure",232,"On failure (optional)",expected.onFailure,500)
+		ui.description(edit,"note",16,334,ew-32,44,{"Keep the instruction on one line. Progress is retained. Changing a modeled instruction removes its guide link; the saved recipe remains."},14)
+		local function commit(detach)
+			local ok,err=pcall(function()
+				local changed=copyTable(project());assert(changed.steps[index] and tableDeepEquals(changed.steps[index],expected),"This step changed. Select it again before editing it.")
+				assert(edit.action.buf:match("%S"),"Enter an instruction.");assert(not edit.action.buf:find("[\r\n]"),"Keep the instruction on one line.")
+				local step=changed.steps[index];step.action=edit.action.buf;step.stopWhen=edit.stop.buf;step.onFailure=edit.failure.buf;if detach then step.uniqueCraft=nil end
+				store:Upsert(changed)
+			end)
+			if not ok then main:OpenMessagePopup("Crafting guide",ui.errorText(err));return end
+			main:ClosePopup();if onChanged then onChanged() end;refresh(false)
+		end
+		edit.saveStep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,eh-48,160,28},"Keep step",function()
+			if expected.uniqueCraft and edit.action.buf~=expected.action then
+				main:OpenConfirmPopup("Change modeled step","Changing this instruction removes its modeled guide link. Continue?","Change",function() commit(true) end)
+			else commit(false) end
+		end),"primary")
+		edit.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{ew-132,eh-48,116,28},"Cancel",function() main:ClosePopup() end))
+		ui.style(edit,{saveStep=true});for _,control in pairs(edit) do control.layoutAudit="crafting-guide-edit" end
+		main:OpenPopup(ew,eh,"Edit crafting step",edit,nil,"action","close")
+	end)
+	c.edit.enabled=c.toggle.enabled
+	button("remove",side+2*(actionWidth+8),h-102,actionWidth,"Remove step",function()
 		local index=assert(selected,"Select a step first.");local expected=copyTable(assert(project().steps[index],"Step is no longer available."))
 		main:OpenConfirmPopup("Remove crafting step","Remove step "..index.." and its notes and progress?","Remove",function()
 			local ok,err=pcall(function()
