@@ -55,6 +55,8 @@ function M.parse(raw)
 	raw=raw:gsub("\r\n","\n"):gsub("\r","\n")
 	local lines={};for line in (raw.."\n"):gmatch("([^\n]*)\n") do line=clean(line);if line~="" then lines[#lines+1]=line end end
 	local class=lines[1] and lines[1]:match("^Item Class:%s*(.+)$")
+	-- Game clipboard labels differ from the filter-language class names.
+	class=({["Active Skill Gems"]="Skill Gems",["Support Skill Gems"]="Support Gems"})[class] or class
 	local kind=require("Modules.LootFilterCampaign").qualityCategory(class)
 	local flaskClasses={ ["Life Flasks"]=true,["Mana Flasks"]=true,["Hybrid Flasks"]=true,["Utility Flasks"]=true,["Critical Utility Flasks"]=true,["Tinctures"]=true }
 	local category=kind=="Quality weapon" and "Weapons" or kind=="Quality armour" and "Armour" or flaskClasses[class] and "Flasks and tinctures" or (class=="Skill Gems" or class=="Support Gems") and "Gems"
