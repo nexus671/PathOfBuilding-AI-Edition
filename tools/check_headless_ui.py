@@ -111,7 +111,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2010, f"Expected 2010 UI frames, found {len(paths)}"
+    assert len(paths) == 2013, f"Expected 2013 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         replay_frame = json.loads((frames / f"{width}-saved-replay.json").read_text())
         replay_text = " ".join(c.get("text", "") for c in replay_frame["commands"] if c.get("kind") == "text")

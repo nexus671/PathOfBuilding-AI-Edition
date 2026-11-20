@@ -115,7 +115,7 @@ function Panel.Open(original,onKeep)
 	ui.label(c,"count",232,37,"",14)
 	button("fit",side,30,110,"Fit tree",function() c.canvas:Fit() end)
 	ui.label(c,"version",side+118,37,"3.30.0d Standard",14)
-	c.search=new("EditControl"):EditControl(ui.anchor,{side,80,246,26},"","Search passives",nil,120)
+	c.search=new("EditControl"):EditControl(ui.anchor,{side,80,246,26},"","Search all trees",nil,120)
 	c.results=new("TextListControl"):TextListControl(ui.anchor,{side,112,246,104},nil,{})
 	ui.description(c,"details",side,226,246,math.max(40,h-390),{},14)
 	button("toggle",side,h-146,246,"Allocate or remove",function() if c.canvas.focus then apply(c.canvas.focus) end end)
@@ -129,17 +129,19 @@ function Panel.Open(original,onKeep)
 	local function search()
 		local rows={};local query=c.search.buf:lower()
 		if query~="" then
-			local matches={};for id,node in pairs(tree.nodes) do if node.root==c.canvas.root and node.name~="" and not planner.wombs[id] then
+			local matches={};for id,node in pairs(tree.nodes) do if node.name~="" and not planner.wombs[id] and not planner.roots[id] then
 				if (node.name.." "..table.concat(node.stats," ")):lower():find(query,1,true) then matches[#matches+1]=node end
 			end end
 			table.sort(matches,function(a,b) if a.name==b.name then return a.id<b.id end;return a.name<b.name end)
-			for _,node in ipairs(matches) do rows[#rows+1]={height=24,textSize=14,"^7"..ui.fit(node.name,216,14),node=node} end
+			for _,node in ipairs(matches) do rows[#rows+1]={height=38,textSize=14,"^7"..ui.fit(node.name,216,14),subtitle=planner.roots[node.root].." tree",node=node} end
 			if #rows==0 then rows=ui.rows({"No matching passives."},216,14) end
-		else rows=ui.rows({"Search by name or effect."},216,14) end
+		else rows=ui.rows({"Search all trees by name or effect."},216,14) end
 		c.results.list=rows;c.results.controls.scrollBar:SetOffset(0)
 	end
 	ui.selectable(c.results,function(row) return row.node and row.node.id end,function(row)
-		local node=row.node;c.canvas.focus=node.id;c.canvas.centerX,c.canvas.centerY=position(node);c.canvas.scale=math.max(c.canvas.scale,0.35);refresh()
+		local node=row.node
+		if c.canvas.root~=node.root then c.canvas:SetBranch(node.root);c.branch:SelByValue(node.root,"val") end
+		c.canvas.focus=node.id;c.canvas.centerX,c.canvas.centerY=position(node);c.canvas.scale=math.max(c.canvas.scale,0.35);refresh()
 	end)
 	c.search.changeFunc=search
 	c.branch.selFunc=function() c.canvas:SetBranch(c.branch:GetSelValueByKey("val"));search();refresh() end
