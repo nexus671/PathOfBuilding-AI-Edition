@@ -22,8 +22,8 @@ function Workspace:Draw()
 		DrawString(x,y+offset,"LEFT",size or 14,"VAR",value)
 	end
 	if summary.SurvivalChance then
-		text(0,string.format("Survival: %.1f%%   |   95%% interval: %.1f-%.1f%%   |   %d trials   |   %.1fs window",
-			summary.SurvivalChance,summary.ConfidenceLow,summary.ConfidenceHigh,summary.Trials,summary.Window),16)
+		text(0,string.format("Survival: %.1f%%   |   95%% interval: %.1f-%.1f%%   |   %d trial%s   |   %.1fs window",
+			summary.SurvivalChance,summary.ConfidenceLow,summary.ConfidenceHigh,summary.Trials,summary.Trials==1 and "" or "s",summary.Window),16)
 		text(24,string.format("Attack uptime: %.1f%%   |   Damage / window: %.0f DPS   |   Configuration warnings: %d",
 			summary.AttackUptime or 0,summary.DamageDPS or 0,summary.Warnings or 0))
 	else text(0,"Run a supported encounter to see survival and resource history.",16) end
@@ -82,18 +82,19 @@ function Workspace.Open(tab)
 		return string.format("Incoming: %s   |   Enemy interval: %.0fms   |   Attacking: %s   |   Timed effects: %s",
 			config.input.enemyDamageType or "Average",(tab.calcsOutput.enemySkillTime or 0)*1000,config.input.recoverySimulationAttacking and "yes" or "no",config.input.recoverySimulationTimedEffects == false and "no" or "yes")
 	end)
-	button("settings",16,88,145,"Encounter settings",function() main:ClosePopup(); config:ShowEncounterSimulation() end)
-	button("events",173,88,120,"Full event log",function()
+	button("settings",16,88,130,"Encounter settings",function() main:ClosePopup(); config:ShowEncounterSimulation() end)
+	button("events",154,88,102,"Full event log",function()
 		main:ClosePopup(); tab:ShowRecoverySimulation()
 		tab:SetDisplayStat({{breakdown="RecoverySimulationTimeline"},x=100,y=100,width=0},true)
 	end)
-	button("ai",305,88,120,"AI tools / MCP",function() Workspace.OpenAI(tab) end)
-	button("checks",437,88,125,"Review warnings",function()
+	button("ai",264,88,100,"AI tools / MCP",function() Workspace.OpenAI(tab) end)
+	button("checks",372,88,116,"Review warnings",function()
 		main:ClosePopup(); tab:ShowRecoverySimulation()
 		tab:SetDisplayStat({{breakdown="RecoverySimulationWarnings"},x=100,y=100,width=0},true)
 	end)
-	controls.preset=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{574,88,math.max(60,width-822),24},(function() local list={};for i,preset in ipairs(require("Modules.CalcEncounter").presets) do list[#list+1]={label=preset.name,val=i} end;return list end)())
-	button("usePreset",width-236,88,112,"New scenario",function()
+	controls.preset=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{496,88,math.max(60,width-712),24},(function() local list={};for i,preset in ipairs(require("Modules.CalcEncounter").presets) do list[#list+1]={label=preset.name,val=i} end;return list end)())
+	controls.preset.tooltipText=function() local choice=controls.preset.list[controls.preset.selIndex];return choice and ("Scenario: "..choice.label) or "Select a scenario" end
+	button("usePreset",width-208,88,104,"New scenario",function()
 		local encounters=require("Modules.CalcEncounter");local index=controls.preset:GetSelValueByKey("val");local preset=encounters.presets[index]
 		local c={};local w,h=math.min(820,main.screenW-40),math.min(450,main.screenH-48);local ui=require("Modules.PlanningUI")
 		ui.label(c,"name",16,28,preset.name,22);c.details=new("TextListControl"):TextListControl(ui.anchor,{16,72,w-32,h-146},nil,ui.rows(encounters.presetLines(preset),w-56))
@@ -104,7 +105,7 @@ function Workspace.Open(tab)
 		c.close=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-48,140,28},"Cancel",function() main:ClosePopup() end)
 		ui.style(c,{create=true});main:OpenPopup(w,h,"Scenario assumptions",c,nil,nil,"close")
 	end)
-	button("close",width-112,88,96,"Close",function() main:ClosePopup() end)
+	button("close",width-96,88,80,"Close",function() main:ClosePopup() end)
 	controls.overview = new("EncounterWorkspaceControl"):EncounterWorkspaceControl({"TOPLEFT",nil,"TOPLEFT"},{16,168,width-32,height-184},tab)
 	local options={hidden={},hideEmpty=true,raw=false};controls.overview.options=options
 	for index,entry in ipairs({{"Life","Life",16,68},{"EnergyShield","ES",92,68},{"Mana","Mana",168,68},{"crab","Crab",244,68},{"shrouds","Shrouds",320,88},{"chargesTotal","Charges",416,88},{"poison","Poison",512,88}}) do

@@ -1496,9 +1496,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local guardTrace=assert(build.calcsTab.calcsEnv.player.recoverySimulationTrace);local expired,recast=false,false
 	for _,row in ipairs(guardTrace.rows) do expired=expired or row.event=="Guard expired";recast=recast or row.event=="Guard recast; costs paid" end
 	assert(expired and recast,"Guard expiry and recast must both appear in the encounter trace")
-	build.calcsTab:OpenEncounterWorkspace();frame("encounter-guard-highlights")
-	local highlighted=false;for _,command in ipairs(ui.commands) do if command.kind=="text" and command.text:find("Highlights:",1,true) and command.text:find("Guard expired",1,true) then highlighted=true end end
-	assert(highlighted,"Guard expiry must be visible in the chart highlights");ui:click("close")
+	build.calcsTab:OpenEncounterWorkspace()
+	local preset=main.popups[1].controls.preset;local presetWidth,presetHeight=preset:GetSize();local presetTextSize=math.min(presetHeight-4,preset.planningTextSize or presetHeight-4)
+	for _,entry in ipairs(preset.list) do assert(DrawStringWidth(presetTextSize,"VAR",entry.label)<=presetWidth-presetHeight,"Scenario name is clipped: "..entry.label) end
+	frame("encounter-guard-highlights")
+	local highlighted,singular=false,false;for _,command in ipairs(ui.commands) do if command.kind=="text" then
+		if command.text:find("Highlights:",1,true) and command.text:find("Guard expired",1,true) then highlighted=true end
+		if command.text:find("1 trial",1,true) and not command.text:find("1 trials",1,true) then singular=true end
+	end end
+	assert(highlighted,"Guard expiry must be visible in the chart highlights");assert(singular,"One trial must use a singular label");ui:click("close")
 	end)()
 	newBuild();ui:bind(build)
 	assert(not main.popups[1],"Preview setup: "..tostring(main.popups[1] and main.popups[1].title).." | "..tostring(main.popups[1] and main.popups[1].controls[1] and main.popups[1].controls[1].label))
