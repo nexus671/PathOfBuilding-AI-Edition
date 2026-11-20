@@ -37,6 +37,13 @@ def single_base_implicit_ids(bases):
             if len(variants) == 1 and len(ids := next(iter(variants))) == 1}
 
 
+def single_base_implicit_paths(bases):
+    """Identify single implicits by their unique client base paths."""
+    return {path: ids[0] for path, item in sorted(bases.items())
+            if isinstance(path, str) and path and isinstance(ids := item.get("implicits"), list)
+            and len(ids) == 1 and isinstance(ids[0], str) and ids[0]}
+
+
 def require_exported(expected, actual):
     if expected != actual:
         raise ValueError(f"Expected exported data {expected}, but the source reports {actual}; wait for the export or select the correct patch")

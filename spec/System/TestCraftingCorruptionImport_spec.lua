@@ -231,7 +231,7 @@ describe("Imported corruption identities",function()
 		assert.equal(itemLib.applyRange(original.line,original.range or 0.5),itemLib.applyRange(retained.line,retained.range or 0.5))
 	end)
 	it("retains all lines of one identified base implicit when Gilded absorbs corruption",function()
-		local cases={{"Gemini Claw","Grants 38 Life per Enemy Hit","Grants 14 Mana per Enemy Hit"},{"Imp Crown","-1 to Level of Socketed Support Gems","+1 to Level of Socketed Skill Gems"},{"Sorrow Mask","+2% to maximum Chaos Resistance","You are Crushed"},{"Transformer Staff","Spend Energy Shield before Mana for Costs of Socketed Skills","+73 to maximum Energy Shield"}}
+		local cases={{"Gemini Claw","Grants 38 Life per Enemy Hit","Grants 14 Mana per Enemy Hit"},{"Imp Crown","-1 to Level of Socketed Support Gems","+1 to Level of Socketed Skill Gems"},{"Sorrow Mask","+2% to maximum Chaos Resistance","You are Crushed"},{"Transformer Staff","Spend Energy Shield before Mana for Costs of Socketed Skills","+73 to maximum Energy Shield"},{"Shadowed Ring","Left ring slot: 25% of Lightning Damage from Hits taken as Cold Damage","Right ring slot: 25% of Cold Damage from Hits taken as Lightning Damage"}}
 		for _,pair in ipairs(cases) do
 			local source="Rarity: NORMAL\n"..pair[1].."\nItem Level: 86\nImplicits: 3\n"..pair[2].."\n"..pair[3].."\nItem sells for much more to vendors"
 			local model=sim.model(source);assert.is_truthy(model.singleBaseImplicitId);assert.equal(2,#model.baseImplicitTemplates)
@@ -248,6 +248,12 @@ describe("Imported corruption identities",function()
 				end
 			end
 		end
+	end)
+	it("does not group a different same-name Shadowed Ring as the native base",function()
+		local source="Rarity: NORMAL\nShadowed Ring\nItem Level: 86\nImplicits: 3\nLeft ring slot: 25% of Cold Damage from Hits taken as Fire Damage\nRight ring slot: 25% of Fire Damage from Hits taken as Cold Damage\nItem sells for much more to vendors"
+		local model=sim.model(source);assert.is_nil(model.baseImplicitTemplates)
+		local state=copyTable(model.initial);sim.rollCorrupted(model,state,function() return 0.999 end)
+		assert.is_nil(state.baseImplicitRetained)
 	end)
 	it("retains old and current 3.30 base implicits when Gilded absorbs corruption",function()
 		local cases={{"Amethyst Ring","+23% to Chaos Resistance"},{"Amethyst Ring","+13% to Chaos Resistance"},{"Crystal Belt","+80 to maximum Energy Shield"},{"Crystal Belt","+95 to maximum Energy Shield"},{"Two-Toned Boots (Armour/Evasion)","+10% to Fire and Cold Resistances"},{"Two-Toned Boots (Armour/Evasion)","+18% to Fire and Cold Resistances"}}

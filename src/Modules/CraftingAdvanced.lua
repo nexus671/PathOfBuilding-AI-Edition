@@ -261,7 +261,14 @@ function A.extend(M,api)
 	function M.model(raw)
 		M.dataPatch=A.data().patch;M.modifierPatch=A.data().modifierPatch
 		local model=originalModel(raw)
-		model.singleBaseImplicitId=A.data().singleBaseImplicits[model.item.baseName]
+		local base=model.item.base
+		local pathId=base and A.data().singleBaseImplicitPaths[base.baseId]
+		if pathId then
+			local ids=base.implicitIds
+			if ids and #ids==1 and ids[1]==pathId then model.singleBaseImplicitId=pathId end
+		else
+			model.singleBaseImplicitId=A.data().singleBaseImplicits[model.item.baseName]
+		end
 		-- All Gilded outcomes have the same visible line; copied item text
 		-- proves the implicit exists but does not reveal its vendor outcome.
 		for i=#model.item.implicitModLines,1,-1 do

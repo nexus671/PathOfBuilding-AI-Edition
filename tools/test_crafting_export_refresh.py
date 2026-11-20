@@ -3,7 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 import unittest
-from crafting_data_status import single_base_implicit_ids
+from crafting_data_status import single_base_implicit_ids, single_base_implicit_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,10 +20,12 @@ class CraftingExportRefreshTest(unittest.TestCase):
             "invalid": {"name": "invalid", "implicits": [None]},
         }
         self.assertEqual({"same": "ModA"}, single_base_implicit_ids(values))
+        self.assertEqual({"one": "ModA", "duplicate": "ModA", "ambiguous1": "ModA", "ambiguous2": "ModB"}, single_base_implicit_paths(values))
         data = json.loads((ROOT / "src/Data/Crafting/3.30.json").read_text(encoding="utf-8"))
         self.assertEqual("LifeAndManaOnHitSeparatedImplicitMarakethClaw3", data["singleBaseImplicits"]["Gemini Claw"])
         self.assertEqual("SocketedActiveGemLevelSupportGemPenaltyImplicitR1", data["singleBaseImplicits"]["Imp Crown"])
         self.assertNotIn("Two-Toned Boots", data["singleBaseImplicits"])
+        self.assertEqual("ReflectedColdLightningDamageTakenConversionImplicitK5c", data["singleBaseImplicitPaths"]["Metadata/Items/Rings/RingK5c"])
 
     def test_reviewed_jewel_domains_preserve_other_modifier_data(self):
         data = json.loads((ROOT / "src/Data/Crafting/3.30.json").read_text(encoding="utf-8"))
