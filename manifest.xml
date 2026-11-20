@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview880" />
+	<Version number="2.68.1-ai.preview881" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2183,7 +2183,7 @@
 	<File name="Modules/JourneyUpgrades.lua" part="program" sha1="bb121d8115f693518ae9431fefff305fdb46878f" />
 	<File name="Modules/LootFilterAccount.lua" part="program" sha1="8d3b431416c28b60eebf246a105e980a2913b05f" />
 	<File name="Modules/LootFilterAppearanceSettings.lua" part="program" sha1="feecc806a9fd76a8977a3365cb565f32f33ee9fe" />
-	<File name="Modules/LootFilterAudio.lua" part="program" sha1="a8b9ddec9a92616d2b42aa962cc5318de85e4151" />
+	<File name="Modules/LootFilterAudio.lua" part="program" sha1="a8ed1a44b0cb0d0b3c4cd1dc1f554e3c91f43e79" />
 	<File name="Modules/LootFilterCampaign.lua" part="program" sha1="5668c957a5ab482e9e7a77be0396cad65b21e27a" />
 	<File name="Modules/LootFilterCategoryStyles.lua" part="program" sha1="4c8f8e6a1aef62f216496dcd7cb55fd7ba9f0716" />
 	<File name="Modules/LootFilterClipboard.lua" part="program" sha1="6033f462a4d66e64c2c242cf928789f22d938c8c" />

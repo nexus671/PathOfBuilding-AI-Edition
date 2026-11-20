@@ -305,6 +305,29 @@ describe("Build-owned loot filters",function()
 			assert.equal("matched",parser.simulate(parser.parse("Show\n "..line),{}).status,line)
 		end
 	end)
+	it("scales reference audio by the selected volume without changing system settings",function()
+		local audio=require("Modules.LootFilterAudio")
+		local file=assert(io.open("Assets/LootFilters/alert-1.wav","rb"));local raw=file:read("*a");file:close()
+		local quiet=audio.scaleReferenceWave(raw,50);local loud=audio.scaleReferenceWave(raw,300)
+		assert.equal(#raw,#quiet);assert.equal(#raw,#loud);assert.equal(raw:sub(1,44),quiet:sub(1,44));assert.equal(raw,audio.scaleReferenceWave(raw,100))
+		local function sample(wave,i) local a,b=wave:byte(i,i+1);local value=a+b*256;return value>=32768 and value-65536 or value end
+		local found=false
+		for i=45,#raw-1,2 do
+			local original=sample(raw,i)
+			if original>0 and original<10000 then assert.equal(math.floor(original/2),sample(quiet,i));assert.equal(original*3,sample(loud,i));found=true;break end
+		end
+		assert.is_true(found)
+		local clipped=false;for i=45,#raw-1,2 do if sample(raw,i)>10923 then assert.equal(32767,sample(loud,i));clipped=true;break end end
+		assert.is_true(clipped);assert.has_error(function() audio.scaleReferenceWave("invalid",50) end);assert.has_error(function() audio.scaleReferenceWave(raw,301) end)
+		for id=2,16 do local source=assert(io.open("Assets/LootFilters/alert-"..id..".wav","rb"));local bytes=source:read("*a");source:close();assert.equal(#bytes,#audio.scaleReferenceWave(bytes,50)) end
+		local ffi=require("ffi")
+		if ffi.os=="Windows" then
+			local load=ffi.load;local played
+			ffi.load=function(name) if name=="winmm" then return {PlaySoundA=function(buffer,_,flags) played={wave=ffi.string(buffer,#raw),flags=flags};return 1 end} end;return load(name) end
+			local ok,success,message=pcall(audio.play,{PlayAlertSound={"1","50"}});ffi.load=load
+			assert.is_true(ok);assert.is_true(success);assert.matches("volume%-adjusted",message);assert.same(quiet,played.wave);assert.equal(7,played.flags);assert.is_not_nil(audio.buffer)
+		end
+	end)
 	it("treats numeric text as a name outside modifier-count conditions",function()
 		local function action(condition,item) return parser.simulate(parser.parse("Hide\n "..condition.."\nShow"),item).action end
 		assert.equal("Hide",action('BaseType "1"',{BaseType="Level 1 Relic"}))

@@ -36,14 +36,47 @@ function M.dropSound(styles)
 	if conditional then return "Drop sound: disabled when an alert is specified; optional files may be missing." end
 	return "Drop sound: enabled."
 end
+-- Scale the bundled 16-bit PCM reference tone without changing system volume.
+function M.scaleReferenceWave(raw,volume)
+	assert(type(raw)=="string" and raw:sub(1,4)=="RIFF" and raw:sub(9,12)=="WAVE","Invalid reference audio")
+	assert(type(volume)=="number" and volume==volume and volume>=0 and volume<=300,"Invalid reference volume")
+	local function u16(i) local a,b=raw:byte(i,i+1);assert(b,"Truncated reference audio");return a+b*256 end
+	local function u32(i) return u16(i)+u16(i+2)*65536 end
+	local offset,valid=13,false
+	while offset+7<=#raw do
+		local kind=raw:sub(offset,offset+3);local size=u32(offset+4);local start=offset+8;local last=start+size-1
+		assert(last<=#raw,"Truncated reference audio")
+		if kind=="fmt " then
+			assert(size>=16 and u16(start)==1 and u16(start+14)==16,"Unsupported reference audio format");valid=true
+		elseif kind=="data" then
+			assert(valid and size%2==0,"Unsupported reference audio format")
+			local samples={};local gain=volume/100
+			for i=start,last,2 do
+				local sample=u16(i);if sample>=32768 then sample=sample-65536 end
+				local scaled=sample*gain;scaled=scaled<0 and math.ceil(scaled) or math.floor(scaled)
+				scaled=math.max(-32768,math.min(32767,scaled));if scaled<0 then scaled=scaled+65536 end
+				samples[#samples+1]=string.char(scaled%256,math.floor(scaled/256))
+			end
+			return raw:sub(1,start-1)..table.concat(samples)..raw:sub(last+1)
+		end
+		offset=last+1+size%2
+	end
+	error("Missing reference audio samples")
+end
 function M.play(styles)
 	local id,why=M.alert(styles);if not id then return false,why end
 	local ffi=require("ffi");if ffi.os~="Windows" then return false,"Audio preview is available on Windows. Export retains the game's alert ID." end
 	pcall(ffi.cdef,"int __stdcall PlaySoundA(const char *pszSound, void *hmod, unsigned int fdwSound);")
 	local sound=ffi.load("winmm")
 	local root=GetScriptPath();local filename=(root~="" and root.."/" or "").."Assets/LootFilters/alert-"..id..".wav"
-	M.filename=filename;M.library=sound
-	if sound.PlaySoundA(filename,nil,0x00020003)==0 then return false,"Could not play the reference tone." end
-	return true,"Playing a reference tone for alert "..id..". The game's exact sound plays in game."
+	local file=io.open(filename,"rb");if not file then return false,"Could not load the reference tone." end
+	local raw=file:read("*a");file:close()
+	local values=styles.PlayAlertSound or styles.PlayAlertSoundPositional;local volume=tonumber(values[2]) or 50
+	local ok,wave=pcall(M.scaleReferenceWave,raw,volume);if not ok then return false,"Could not prepare the reference tone." end
+	local buffer=ffi.new("char[?]",#wave+1);ffi.copy(buffer,wave,#wave)
+	-- Keep the previous buffer alive until PlaySound replaces it.
+	if sound.PlaySoundA(buffer,nil,0x00000007)==0 then return false,"Could not play the reference tone." end
+	M.buffer=buffer;M.filename=filename;M.library=sound
+	return true,"Playing a volume-adjusted reference tone for alert "..id..". The game's exact sound plays in game."
 end
 return M
