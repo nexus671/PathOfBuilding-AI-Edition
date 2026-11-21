@@ -631,6 +631,9 @@ async function main(){
   const gwennenImplicitStart=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gwennenImplicitRaw,action:{method:'alchemy'},seed:1},'crafted');
   const gwennenImplicitPair=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gwennenImplicitRaw,initialState:gwennenImplicitStart.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1032,secondOutcome:1032},seed:7},'crafted');
   assert.equal(gwennenImplicitPair.nativeCrafting.gwennen.outcome,1032);assert.ok(gwennenImplicitPair.nativeCrafting.state.baseImplicitRanges);assert.ok(gwennenImplicitPair.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_implicit_assumptions'));
+  const rogImplicit={method:'rog_reroll',rogOperation:'values_implicit',rogAttempts:3,artifactCost:{grand:7}};
+  const rogImplicitResult=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gwennenImplicitRaw,initialState:gwennenImplicitStart.nativeCrafting.state,action:rogImplicit,seed:7},'crafted');
+  assert.ok(rogImplicitResult.nativeCrafting.state.baseImplicitRanges);assert.ok(rogImplicitResult.nativeCrafting.warnings.some(entry=>/not always better/.test(entry.message)));
   const tierStart={...binding.nativeCrafting.state,affixes:[{id:'IncreasedLife2',range:0.5},{id:'FireResist2',range:0.5}]};
   const rogUpgrade={method:'rog_reroll',rogOperation:'upgrade',count:2,artifactCost:{grand:7}};
   const rogUpgraded=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogUpgrade,seed:7},'crafted');

@@ -166,6 +166,37 @@ describe("Experimental Rog side rerolls",function()
 		c.keep:Click();assert.same({method="rog_reroll",rogOperation="remove_lowest_two"},saved)
 		c=require("Classes.CraftingRogControl").Open(saved,function() end);assert.equal("remove_lowest_two",c.operation:GetSelValueByKey("val"));main.popups={}
 	end)
+	it("rerolls implicit values using the best of independent modeled candidates",function()
+		local source="Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life"
+		local model=sim.model(source);local state=copyTable(model.initial);state.rarity="RARE";local original=copyTable(state)
+		local craft={method="rog_reroll",rogOperation="values_implicit",rogAttempts=5,artifactCost={grand=3}}
+		assert.is_nil(sim.configurationReason(model,state,craft));local actual=sim.action(model,state,craft,stream(19));sim.validateState(model,actual);assert.same(original,state)
+		local random=stream(19);local best=-1
+		for _=1,5 do local candidate=sim.action(model,state,{method="rog_reroll",rogOperation="values_implicit",rogAttempts=1},random);best=math.max(best,candidate.baseImplicitRanges[1]) end
+		assert.equal(best,actual.baseImplicitRanges[1]);assert.matches("not always better",sim.perform(source,craft,19,state).warnings[1].message)
+		local maximum=sim.model(source:gsub("%+25","+30"));local full=copyTable(maximum.initial);full.rarity="RARE"
+		assert.is_nil(sim.configurationReason(maximum,full,craft));local rerolled=sim.action(maximum,full,craft,stream(19));assert.is_not_nil(rerolled.baseImplicitRanges)
+		assert.has_error(function() rog.validate({rogOperation="values_implicit",rogAttempts=3,rogSide="Prefix"}) end)
+		assert.has_error(function() rog.validate({rogOperation="values_implicit",rogAttempts=2}) end)
+		local noImplicit=sim.model(raw);local empty=copyTable(noImplicit.initial);empty.rarity="RARE"
+		assert.is_not_nil(sim.configurationReason(noImplicit,empty,craft));assert.has_error(function() sim.action(noImplicit,empty,craft,function() error("invalid offer used randomness") end) end)
+		newBuild();local saved;local c=require("Classes.CraftingRogControl").Open(nil,function(value) saved=value end)
+		c.operation:SelByValue("values_implicit","val");c.attempts:SelByValue(3,"val");assert.is_false(c.side:IsShown());assert.is_true(c.valueHint:IsShown());c.keep:Click()
+		assert.same({method="rog_reroll",rogOperation="values_implicit",rogAttempts=3},saved);main.popups={}
+	end)
+	it("rerolls supported multi-range, synthesised and Eldritch implicits",function()
+		local craft={method="rog_reroll",rogOperation="values_implicit",rogAttempts=3}
+		local steel=sim.model("Rarity: NORMAL\nSteel Ring\nItem Level: 86\nImplicits: 1\nAdds 3 to 14 Physical Damage to Attacks")
+		local state=copyTable(steel.initial);state.rarity="RARE";local changed=sim.action(steel,state,craft,stream(3))
+		assert.equal(2,#changed.baseImplicitRanges[1]);sim.validateState(steel,changed)
+		local source="Rarity: NORMAL\nCopper Sword\nItem Level: 86\nImplicits: 1\nAdds 4 to 9 Fire Damage\nSynthesised Item"
+		local synth=sim.model(source);state=copyTable(synth.initial);state.rarity="RARE";changed=sim.action(synth,state,craft,stream(4));sim.validateState(synth,changed)
+		assert.equal(2,#changed.synthRolls[1].range);local reopened=sim.model(sim.toItem(synth,changed).raw);assert.same(changed.synthRolls[1].range,reopened.synthesisGroups[1].candidates[1].range)
+		local helm=sim.model(raw);state=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11).state
+		state=sim.perform(raw,{method="eldritch_implicit",side="Eater",tier=1},12,state).state;state.rarity="RARE"
+		state.implicits[1].id="SpellCriticalStrikeChanceEldritchImplicit2";state.implicits[1].range=1;state.implicits[2].id="EnergyShieldFromGlovesBootsEldritchImplicit1";state.implicits[2].range=0
+		changed=sim.action(helm,state,craft,stream(5));sim.validateState(helm,changed);assert.equal(2,#changed.implicits)
+	end)
 	it("upgrades distinct supported tiers without changing the input",function()
 		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
 		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}};local before=copyTable(state)

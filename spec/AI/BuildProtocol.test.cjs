@@ -860,6 +860,10 @@ test('accepts observed Rog offers and rejects invalid attempt counts', t => {
   f.call('calculate_crafting',{...base,action:values,targets:[],options:{requirements:{minAffixes:1}}});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).action,values);
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  const implicit={method:'rog_reroll',rogOperation:'values_implicit',rogAttempts:3};
+  f.call('calculate_crafting',{...base,action:implicit,targets:[],options:{requirements:{minAffixes:1}}});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).action,implicit);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   const sockets={method:'rog_reroll',rogOperation:'socket_links',rogSocketRolls:30,artifactCost:{grand:7}};
   f.call('calculate_crafting',{...base,action:sockets,targets:[],options:{requirements:{links:4}}});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).action,sockets);

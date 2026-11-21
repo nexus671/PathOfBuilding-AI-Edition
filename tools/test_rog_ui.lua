@@ -6,7 +6,9 @@ return function(build,ui,frame)
 	ui:click("tab_settings");ui:click("configure");frame("crafting-rog-offer")
 	ui:choose("operation","socket_links","val");ui:choose("socketRolls",30,"val");assert(main.popups[1].controls.socketHint:IsShown() and not main.popups[1].controls.side:IsShown(),"Socket offer details are missing");frame("crafting-rog-socket-offer")
 	ui:choose("operation","values_one","val");ui:choose("attempts",5,"val");assert(main.popups[1].controls.valueHint:IsShown() and not main.popups[1].controls.side:IsShown(),"Value offer explanation is missing");frame("crafting-rog-values-offer")
-	ui:choose("operation","socket_count","val");ui:click("keep");ui:click("exact")
+	ui:choose("operation","values_implicit","val");assert(main.popups[1].controls.valueHint:IsShown() and not main.popups[1].controls.side:IsShown(),"Implicit offer explanation missing");frame("crafting-rog-implicit-values");ui:click("keep");ui:click("tab_craft")
+	assert(not main.popups[1].controls.apply:IsEnabled() and main.popups[1].controls.apply.tooltipText():find("no supported implicit",1,true),"Missing implicit was not explained")
+	ui:click("tab_settings");ui:click("configure");ui:choose("operation","socket_count","val");ui:choose("socketRolls",30,"val");ui:click("keep");ui:click("exact")
 	local socketJobs=require("Modules.CraftingTasks");for _=1,1000 do if not socketJobs.job then break end;socketJobs.tick(build) end
 	assert(StripEscapes(main.popups[1].controls.intro.label):find("Rog: best socket count of 30",1,true),"Simulation does not identify the configured offer")
 	local socketOdds=build.craftingAnalyses["rog-ui"].results.odds.result
@@ -46,8 +48,12 @@ return function(build,ui,frame)
 	ui:choose("step",2,"val");ui:click("editRog");ui:choose("operation","upgrade_highest","val");ui:choose("highestCount",0,"val");ui:click("keep");ui:click("keep")
 	assert(highestRecipe.steps[2].rogOperation=="upgrade_highest_all" and highestRecipe.steps[2].count==nil,"Highest-tier recipe offer was not preserved")
 	updated=highestRecipe
+	local implicitRecipe;require("Classes.CraftingRecipeControl").Open(updated,{method="alchemy"},function(value) implicitRecipe=value end,sim.model(raw))
+	ui:choose("step",2,"val");ui:click("editRog");ui:choose("operation","values_implicit","val");ui:choose("attempts",3,"val");ui:click("keep");ui:click("keep")
+	assert(implicitRecipe.steps[2].rogOperation=="values_implicit" and implicitRecipe.steps[2].rogAttempts==3 and implicitRecipe.steps[2].rogSide==nil,"Implicit offer was not retained in the recipe")
+	updated=implicitRecipe
 	local again;require("Classes.CraftingRecipeControl").Open(updated,{method="alchemy"},function(value) again=value end,sim.model(raw))
-	ui:choose("step",2,"val");ui:click("editRog");assert(main.popups[1].controls.highestCount:GetSelValueByKey("val")==0,"Highest-tier recipe offer was not loaded");ui:choose("operation","set_quality","val");assert(main.popups[1].controls.qualityHint:IsShown(),"Rog quality explanation is missing");frame("crafting-recipe-rog-quality");ui:click("keep");ui:click("keep")
+	ui:choose("step",2,"val");ui:click("editRog");assert(main.popups[1].controls.operation:GetSelValueByKey("val")=="values_implicit" and main.popups[1].controls.attempts:GetSelValueByKey("val")==3,"Implicit recipe offer was not loaded");ui:choose("operation","set_quality","val");assert(main.popups[1].controls.qualityHint:IsShown(),"Rog quality explanation is missing");frame("crafting-recipe-rog-quality");ui:click("keep");ui:click("keep")
 	step=again.steps[2];assert(step.count==nil and step.rogOperation=="set_quality" and step.rogSide==nil and step.rogAttempts==nil and step.artifactCost.grand==12,"Rog quality edit retained obsolete fields or lost its price")
 	assert(step.maxAttempts==4 and step.untilRequirements.minAffixes==6 and step.onFailureAction=="stop","Rog quality edit changed the step's routes")
 end

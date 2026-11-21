@@ -6,7 +6,7 @@ function M.Open(initial,keep)
 	local controls={};initial=initial or {}
 	ui.description(controls,"intro",16,28,width-32,38,{"Enter an offer and its price as shown by Rog."},16)
 	ui.label(controls,"operationLabel",16,78,"Observed offer",16)
-	controls.operation=new("DropDownControl"):DropDownControl(ui.anchor,{16,100,454,26},{{label="Reroll one side",val="reroll"},{label="Add a modifier to one side",val="add"},{label="Fill empty modifier slots",val="fill"},{label="Set quality to 20%",val="set_quality"},{label="Upgrade modifier tiers by one",val="upgrade"},{label="Upgrade modifiers to highest tier",val="upgrade_highest"},{label="Remove the lowest-level modifier",val="remove_lowest"},{label="Remove the two lowest-level modifiers",val="remove_lowest_two"},{label="Reroll socket count, keep the most",val="socket_count"},{label="Reroll links, keep the longest",val="socket_links"},{label="Reroll values of one modifier",val="values_one"},{label="Reroll values on one side",val="values_side"}})
+	controls.operation=new("DropDownControl"):DropDownControl(ui.anchor,{16,100,454,26},{{label="Reroll one side",val="reroll"},{label="Add a modifier to one side",val="add"},{label="Fill empty modifier slots",val="fill"},{label="Set quality to 20%",val="set_quality"},{label="Upgrade modifier tiers by one",val="upgrade"},{label="Upgrade modifiers to highest tier",val="upgrade_highest"},{label="Remove the lowest-level modifier",val="remove_lowest"},{label="Remove the two lowest-level modifiers",val="remove_lowest_two"},{label="Reroll socket count, keep the most",val="socket_count"},{label="Reroll links, keep the longest",val="socket_links"},{label="Reroll values of one modifier",val="values_one"},{label="Reroll values on one side",val="values_side"},{label="Reroll implicit values",val="values_implicit"}})
 	controls.operation:SelByValue(initial.rogOperation=="upgrade_highest_all" and "upgrade_highest" or initial.rogOperation or "reroll","val")
 	ui.label(controls,"sideLabel",16,140,"Modifier side",16)
 	controls.side=new("DropDownControl"):DropDownControl(ui.anchor,{16,162,250,26},{{label="Prefixes",val="Prefix"},{label="Suffixes",val="Suffix"}})
@@ -14,7 +14,7 @@ function M.Open(initial,keep)
 	controls.attempts=new("DropDownControl"):DropDownControl(ui.anchor,{300,162,170,26},{{label="1",val=1},{label="3",val=3},{label="5",val=5}})
 	controls.side:SelByValue(initial.rogSide or "Prefix","val");controls.attempts:SelByValue(initial.rogAttempts or 1,"val")
 	local function sideOffer() local operation=controls.operation:GetSelValueByKey("val");return operation=="reroll" or operation=="add" or operation=="values_side" end
-	local function attemptOffer() return sideOffer() or controls.operation:GetSelValueByKey("val")=="values_one" end
+	local function attemptOffer() local op=controls.operation:GetSelValueByKey("val");return sideOffer() or op=="values_one" or op=="values_implicit" end
 	local function socketOffer() local operation=controls.operation:GetSelValueByKey("val");return operation=="socket_count" or operation=="socket_links" end
 	ui.label(controls,"socketRollsLabel",16,140,"Observed rerolls",16)
 	controls.socketRolls=new("DropDownControl"):DropDownControl(ui.anchor,{16,162,180,26},{{label="10",val=10},{label="20",val=20},{label="30",val=30},{label="50",val=50},{label="100",val=100}})
@@ -53,9 +53,9 @@ function M.Open(initial,keep)
 		controls[tier]=new("EditControl"):EditControl(ui.anchor,{x,273,125,26},initial.artifactCost and tostring(initial.artifactCost[tier] or 0) or "",nil,nil,10)
 	end
 	ui.description(controls,"limits",16,315,width-32,32,{"Offer availability, ranking and model odds are unverified."},14)
-	controls.limits.shown=function() local op=controls.operation:GetSelValueByKey("val");return op~="values_one" and op~="values_side" end
+	controls.limits.shown=function() local op=controls.operation:GetSelValueByKey("val");return op~="values_one" and op~="values_side" and op~="values_implicit" end
 	ui.description(controls,"valueHint",16,315,width-32,38,{"Best ranks numeric rolls, which may not match your preference. Odds and offer rules are unverified."},14)
-	controls.valueHint.shown=function() local op=controls.operation:GetSelValueByKey("val");return op=="values_one" or op=="values_side" end
+	controls.valueHint.shown=function() local op=controls.operation:GetSelValueByKey("val");return op=="values_one" or op=="values_side" or op=="values_implicit" end
 	controls.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,height-44,180,28},"Use observed offer",function()
 		local ok,err=pcall(function()
 		local operation=controls.operation:GetSelValueByKey("val");local craft={method="rog_reroll"};local cost={};local any=false
