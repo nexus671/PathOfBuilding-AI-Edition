@@ -12,6 +12,7 @@ function Canvas:GenesisTreeCanvas(rect,tree,getPlan,onFocus,onActivate)
 	self.art=require("Modules.AtlasArt").load("3.30.0c");self.icons={}
 	local file=assert(io.open("Assets/Genesis/manifest.json","rb"));local manifest=assert(require("dkjson").decode(file:read("*a")));file:close()
 	for name,entry in pairs(manifest.icons) do local handle=NewImageHandle();handle:Load(entry.file);self.icons[name]=handle end
+	self.background=NewImageHandle();self.background:Load(manifest.background.file);self.backgroundSize=manifest.background.nativeSize
 	self:SetBranch(19625);return self
 end
 function Canvas:SetBranch(root)
@@ -33,6 +34,8 @@ function Canvas:Draw()
 	for _,id in ipairs(self.getPlan().nodes) do allocated[id]=true end
 	allocated[self.root]=true;for id in pairs(planner.wombs) do allocated[id]=true end
 	SetViewport(x,y,self.width,self.height);SetDrawColor("^x101923");DrawImage(nil,0,0,self.width,self.height)
+	local bw,bh=self.backgroundSize[1],self.backgroundSize[2]
+	SetDrawColor(1,1,1);DrawImage(self.background,self.width/2+(-bw/2-self.centerX)*self.scale,self.height/2+(-bh/2-self.centerY)*self.scale,bw*self.scale,bh*self.scale)
 	for id,node in pairs(self.tree.nodes) do if node.root==self.root then
 		local a,b=self:Position(node)
 		for _,other in ipairs(node.links) do if id<other and id~=self.root and other~=self.root then

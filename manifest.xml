@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview904" />
+	<Version number="2.68.1-ai.preview905" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1877,10 +1877,11 @@
 	<File name="Data/FlavourText.lua" part="program" sha1="938ff1930796386bcf56148dba7541fec5f10009" />
 	<File name="Data/Gems.lua" part="program" sha1="4452f6a8a4c7dd732a23005c28a05b68e5b26658" />
 	<File name="Data/Global.lua" part="program" sha1="72bff7e953555cf3045880b0ff0dc0c37f43056e" />
-	<File name="Data/HeadlessImageSizes.json" part="program" sha1="991ead579ed049c75cc22964c9972699942c0142" />
+	<File name="Data/HeadlessImageSizes.json" part="program" sha1="62cc409ee6c1937b888f16b0cf22e3cd3512fed0" />
 	<File name="Data/IncursionDropOnly.lua" part="program" sha1="1fa5c24b1bf897e781c54b3ce7a7fcd7d23fd645" />
-	<File name="Classes/GenesisPlannerControl.lua" part="program" sha1="0522ef482ceb866852ff6bd603812854852f33ad" />
+	<File name="Classes/GenesisPlannerControl.lua" part="program" sha1="cf58fc10508992f0b7c591670524901452067f92" />
 	<File name="Modules/GenesisPlanner.lua" part="program" sha1="14ef6d29220456d78d1034816d57b7042042ec38" />
+	<File name="Assets/Genesis/Background.png" part="program" sha1="d6122d3d8788390ce7181c316c0e13739d0227da" />
 	<File name="Assets/Genesis/KeepersCurrencyNode.png" part="program" sha1="a5d87d270fdc35f15d952bcdc14a2700f7f2b60d" />
 	<File name="Assets/Genesis/KeepersCurrencyNotable.png" part="program" sha1="450e139c644cdd434e1f3df0ab1636da416b78aa" />
 	<File name="Assets/Genesis/KeepersEquipmentNode.png" part="program" sha1="fdc62bfe5722e3ddf291d2d9b37f0b1096a316cd" />
@@ -1891,7 +1892,7 @@
 	<File name="Assets/Genesis/KeepersUniqueNode.png" part="program" sha1="b3a60b61166b5a81d923126a6de62cb9e2130c10" />
 	<File name="Assets/Genesis/KeepersUniqueNotable.png" part="program" sha1="0fb79779a84bedd1d3929ec191b9e4d0c76e063e" />
 	<File name="Assets/Genesis/MasteryBlank.png" part="program" sha1="e77fe57d12283901618685bbbd28d6bb63bf846a" />
-	<File name="Assets/Genesis/manifest.json" part="program" sha1="0e3a659238d10d8e2c38d59063e1a9f8599c388f" />
+	<File name="Assets/Genesis/manifest.json" part="program" sha1="28c0b0a41c1b07482211364cb62c8aaf0648aa2f" />
 	<File name="Data/Genesis/3.30.0d.json" part="program" sha1="8ba49aeb742a28350e17754c302d28ec4414b776" />
 	<File name="Data/Genesis/point-reference.json" part="program" sha1="33eac52cbd6ad28e75fde4738c1b8fd556087357" />
 	<File name="Data/LootFilters/0.filter" part="program" sha1="95ae274d3a62374fcb0d573065586ec13990ec7a" />

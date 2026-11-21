@@ -54,5 +54,20 @@
       "source": "https://www.poewiki.net/images/6/6a/MasteryBlank_passive_skill_icon.png"
     }
   },
-  "sourceNote": "Game passive icons mirrored by PoE Wiki and PoEDB; artwork remains copyright Grinding Gear Games."
+  "sourceNote": "Game passive icons mirrored by PoE Wiki and PoEDB; the background is extracted from GGG game data. Artwork remains copyright Grinding Gear Games.",
+  "background": {
+    "file": "Assets/Genesis/Background.png",
+    "sha256": "f685b7dac863ea0fa0d8b53a667d4b570ae9e35447e89a1b25bde294b9ba0f05",
+    "source": "https://patch.poecdn.com/3.30.0.4/Bundles2/Folders/art/textures/interface/2d/2dart/55/uiimages_2.bundle.bin",
+    "sourcePath": "art/textures/interface/2d/2dart/uiimages/ingame/breachleague/breachtreepassivebackground.dds",
+    "sourceSha256": "60b518341495c5b1fbf677f0a9e8d9a7bf82a245c5c361ac643314a944e793bb",
+    "nativeSize": [
+      7576,
+      6640
+    ],
+    "size": [
+      2048,
+      1795
+    ]
+  }
 }
