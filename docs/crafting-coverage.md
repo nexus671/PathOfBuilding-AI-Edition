@@ -5,7 +5,7 @@ Rog's observed prefix and suffix reroll or add-modifier offers, fill-empty-slots
 
 The odds view enumerates lowest-level removal outcomes under the assumed equal tie chances, merging different removal orders that leave the same item. This is exact for that model, not a verified in-game probability. Other Rog offers use sampled estimates.
 
-The workbench explains when the current item lacks modifiers to reroll or remove, or has no open slot for the selected addition. These checks do not guarantee that every later weighted roll can be completed.
+The workbench explains when the current item lacks modifiers to reroll or remove, or has no open slot for the selected addition. These checks do not guarantee that every later weighted roll can be completed. Rog and Gwennen choices also explain when fractured or unsupported meta modifiers prevent the current model from applying the offer. Rog additionally excludes crafted modifiers. An implicit attack or caster roll restriction blocks modeled Rog side offers, but the fill and quality offers remain available when otherwise eligible. These are model limits, not claims about every in-game offer.
 
 In a saved recipe, select a Rog step and choose **Edit Rog offer** to change its offer or artifact cost. Its attempt limit, stop conditions and routes stay with the step.
 

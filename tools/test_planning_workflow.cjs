@@ -62,6 +62,9 @@ async function main(){
   const qualityOptimalCopies=[18,17,13,12,11,9].map(q=>`Item Class: Wands\nRarity: Magic\nSuperior Driftwood Wand of the Fox\n--------\nQuality: +${q}%`);
   const qualityOptimal=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:qualityOptimalCopies},'qualityVendorReview');assert.equal(qualityOptimal.qualityVendorReview.categories[0].optimal,true);assert.equal(qualityOptimal.qualityVendorReview.categories[0].groups.length,2);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
+  const fracturedOffer={rarity:'RARE',affixes:[{id:'IncreasedLife2',range:0.5,fractured:true}]};
+  const offerInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,initialState:fracturedOffer,limit:5},'inspected');
+  for(const method of ['rog_reroll','gwennen']) {const entry=offerInspection.crafting.nativeEngine.methodAvailability.find(value=>value.method===method);assert.equal(entry.available,false);assert.match(entry.unavailableReason,/fractured/);}
   const gildedBaseRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+16% to Item Rarity\nItem sells for much more to vendors';
   const gildedBase=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedBaseRaw,action:{method:'vaal'},seed:1},'crafted');
   assert.equal(gildedBase.nativeCrafting.state.baseImplicitRetained,true);assert.ok(gildedBase.nativeCrafting.itemText.includes('+16% to Item Rarity'));

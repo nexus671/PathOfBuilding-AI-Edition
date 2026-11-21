@@ -217,6 +217,11 @@ function G.validate(craft)
 	end
 end
 function G.extend(M,api)
+	M.methodChecks.gwennen=function(model,state)
+		local flags=api.flags(model,state)
+		if flags.prefixes or flags.suffixes or flags.attack or flags.caster or flags.explicitAttack or flags.explicitCaster then return "Gwennen interactions with meta modifiers or implicit roll restrictions are not modeled." end
+		for _,entry in ipairs(state.affixes) do if entry.fractured then return "Gwennen interactions with fractured modifiers are not modeled." end end
+	end
 	M.methods[#M.methods+1]="gwennen";M.labels.gwennen="Gwennen: observed pair (experimental)";table.sort(M.methods)
 	local action,components,priceKey,validateRecipe=M.action,M.components,M.priceKey,M.validateRecipe
 	function M.validateRecipe(recipe)

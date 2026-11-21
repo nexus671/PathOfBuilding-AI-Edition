@@ -57,6 +57,33 @@ describe("Crafting action preconditions",function()
 		for seed=1,100 do local state=sim.perform(raw,{method="alchemy"},seed).state;local count=0;for _,entry in ipairs(state.affixes) do if model.byId[entry.id].type=="Suffix" then count=count+1 end end;if count==3 then full=state;break end end
 		assert.is_truthy(full);allowed,reason=check("beast_aspect",full,model);assert.is_false(allowed);assert.are.equal("Requires an open suffix.",reason)
 	end)
+	it("explains Rog and Gwennen restrictions before offering them",function()
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw)
+		local base=copyTable(model.initial);base.rarity="RARE";base.affixes={{id="IncreasedLife2",range=0.5}}
+		local actions={{method="rog_reroll",rogOperation="set_quality"},{method="gwennen",firstOutcome=1000,secondOutcome=1029}}
+		local fractured=copyTable(base);fractured.affixes[1].fractured=true;fractured=sim.validateState(model,fractured)
+		local catalog=sim.catalog(raw,"",5,fractured);local entries={};for _,entry in ipairs(catalog.methodAvailability) do entries[entry.method]=entry end
+		for _,action in ipairs(actions) do
+			local allowed,reason=check(action.method,fractured,model);assert.is_false(allowed);assert.matches("fractured",reason)
+			assert.is_false(entries[action.method].available);assert.equal(reason,entries[action.method].unavailableReason)
+			local ok,err=pcall(sim.action,model,fractured,action,function() return 0.5 end);assert.is_false(ok);assert.is_truthy(err:find(reason,1,true))
+		end
+		local project={id="offer-fracture",title="Fractured helmet",slot="Helmet",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(fractured)}
+		local controls=require("Classes.CraftingSimulatorControl").Open(build,project)
+		for _,action in ipairs(actions) do controls.method:SelByValue(action.method,"val");controls.method.selFunc();assert.is_false(controls.apply:IsEnabled());assert.matches("fractured",controls.apply.tooltipText()) end
+		main.popups={}
+		local crafted=copyTable(base);crafted.affixes[#crafted.affixes+1]={id="bench:5",range=0.5,crafted=true};crafted=sim.validateState(model,crafted)
+		local allowed,reason=check("rog_reroll",crafted,model);assert.is_false(allowed);assert.matches("crafted",reason)
+		assert.is_true(check("gwennen",crafted,model));assert.is_not_nil(sim.action(model,crafted,actions[2],function() return 0.1 end))
+		local meta=copyTable(base);meta.affixes[#meta.affixes+1]={id="bench:728",range=0.5,crafted=true};meta=sim.validateState(model,meta)
+		for _,action in ipairs(actions) do local ok,why=check(action.method,meta,model);assert.is_false(ok);assert.matches("meta",why) end
+		local wand=sim.model("Rarity: NORMAL\nSomatic Wand\nItem Level: 86\nImplicits: 1\nCannot roll Caster Modifiers")
+		local wandState=copyTable(wand.initial);wandState.rarity="RARE"
+		local fill={method="rog_reroll",rogOperation="fill"};assert.is_true(check("rog_reroll",wandState,wand));assert.is_nil(sim.configurationReason(wand,wandState,fill))
+		assert.is_not_nil(sim.action(wand,wandState,fill,function() return 0.5 end))
+		local reroll={method="rog_reroll",rogSide="Prefix",rogAttempts=1};assert.matches("implicit roll restriction",sim.configurationReason(wand,wandState,reroll))
+		local ok,why=check("gwennen",wandState,wand);assert.is_false(ok);assert.matches("implicit roll restrictions",why)
+	end)
 	it("explains when an Annulment has no removable modifier",function()
 		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw);local state=copyTable(model.initial)
 		state.rarity="MAGIC";state.affixes={{id=model.mods[1].id,range=0.5,fractured=true}}

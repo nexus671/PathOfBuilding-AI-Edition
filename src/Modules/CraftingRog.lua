@@ -91,6 +91,8 @@ function R.readiness(M,model,input,craft)
 		local _,total=M.pool(model,input);if total<=0 then return "No legal modifier can be added." end
 		return
 	end
+	local blocked=M.blockFlags(model,input)
+	if blocked.attack or blocked.caster then return "Rog interactions with this implicit roll restriction are not modeled for this offer." end
 	local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
 	if removal then
 		local count=craft.rogOperation=="remove_lowest_two" and 2 or 1
@@ -139,6 +141,11 @@ function R.reroll(M,model,input,craft,random)
 	return best
 end
 function R.extend(M,api)
+	M.methodChecks.rog_reroll=function(model,state)
+		local flags=api.flags(model,state)
+		if flags.prefixes or flags.suffixes or flags.explicitAttack or flags.explicitCaster then return "Rog interactions with meta modifiers are not modeled." end
+		for _,entry in ipairs(state.affixes) do if entry.fractured or entry.crafted then return "Rog interactions with fractured or crafted modifiers are not modeled." end end
+	end
 	M.methods[#M.methods+1]="rog_reroll";M.labels.rog_reroll="Rog: observed modifier offer (experimental)";table.sort(M.methods)
 	local action,components,priceKey,validateRecipe=M.action,M.components,M.priceKey,M.validateRecipe
 	function M.validateRecipe(recipe)
