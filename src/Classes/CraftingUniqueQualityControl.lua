@@ -791,6 +791,19 @@ function M.Open(build,project,layout,snapshot)
 		if ui.hasDraft(build,"uniqueQuality",draft.id) then require("Modules.PlanningRecovery").save(build,"uniqueQuality",{plan=snapshotPreview()},true) end
 		if layout then layout.openProjects() else main:ClosePopup() end
 	end)
+	c.close.width=130
+	button("resources",h-50,"Resources",function()
+		local resources,reason=unique.previewResources(draft.startingItem,history,actions,raw)
+		local lines={"Recorded preview only; no currency is spent. Prices are not included."}
+		if not resources then lines[#lines+1]=reason
+		elseif #resources==0 then lines[#lines+1]="No preview actions recorded."
+		else for _,entry in ipairs(resources) do lines[#lines+1]=entry.name..": "..entry.amount end end
+		local popup={};local rw,rh=math.min(620,main.screenW-40),math.min(480,main.screenH-60)
+		popup.results=new("TextListControl"):TextListControl(ui.anchor,{16,24,rw-32,rh-88},nil,ui.rows(lines,rw-56,15))
+		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{rw-136,rh-48,120,28},"Close",function() main:ClosePopup() end)
+		ui.style(popup);main:OpenPopup(rw,rh,"Preview resources",popup,nil,nil,"close")
+	end)
+	c.resources.x=156;c.resources.width=130;c.resources.tooltipText="Review the ingredients recorded in this preview."
 	local compactJewellery=not info.qualitySupported and require("Modules.CraftingSimulator").socketLimit({item=item})==0
 	if item.type=="Flask" or item.type=="Tincture" or compactJewellery then
 		for _,key in ipairs({"socketCount","omenJeweller","link","omen","benchLink","white"}) do c[key].shown=false end

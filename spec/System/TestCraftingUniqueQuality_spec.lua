@@ -3,6 +3,31 @@ describe("Unique item quality",function()
 	local shield="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\nImplicits: 1\n+5% Chance to Block Attack Damage\n+100 to maximum Life\n+1500 to Armour"
 	local weapon="Rarity: UNIQUE\nThe Saviour\nLegion Sword\nItem Level: 86\nQuality: 0\nSockets: R-G-B\n+100% increased Physical Damage"
 	before_each(function() newBuild() end)
+	it("totals recorded unique preview ingredients and rejects incomplete histories",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B"
+		local first=quality.apply(raw).itemText;local second=quality.apply(first).itemText
+		local rows=assert(quality.previewResources(raw,{raw,first,second},{"quality","quality","socket_white_bench"}));local totals={};for _,row in ipairs(rows) do totals[row.name]=row.amount end
+		assert.equal(2,totals["Armourer's Scrap"]);assert.equal(1,totals["Orb of Scouring"])
+		rows=assert(quality.previewResources(raw,{raw},{"omen_jeweller"}));totals={};for _,row in ipairs(rows) do totals[row.name]=row.amount end
+		assert.equal(1,totals["Omen of the Jeweller"]);assert.equal(1,totals["Jeweller's Orb"])
+		local corrupt=raw.."\nCorrupted";local four=quality.socketCount(corrupt,4).itemText
+		rows=assert(quality.previewResources(corrupt,{corrupt,four},{"socket_count_bench:4","socket_white_bench"}));totals={};for _,row in ipairs(rows) do totals[row.name]=row.amount end
+		assert.equal(10,totals["Jeweller's Orb"]);assert.equal(11,totals["Vaal Orb"]);assert.equal(1,totals["Orb of Scouring"])
+		local missing,reason=quality.previewResources(raw,{raw},{"load"});assert.is_nil(missing);assert.matches("do not record every action",reason,1,true)
+		missing,reason=quality.previewResources(raw,{raw},{});assert.is_nil(missing);assert.matches("incomplete",reason,1,true)
+		missing,reason=quality.previewResources(raw,{}, {},first);assert.is_nil(missing);assert.matches("no recorded path",reason,1,true)
+		local flask="Rarity: UNIQUE\nTaste of Hate\nSapphire Flask\nItem Level: 86\nQuality: 20\n+17% to Cold Resistance"
+		rows=assert(quality.previewResources(flask,{flask},{"bench_flask_enchant:FlaskEnchantmentInjectorOnFullCharges__"}));totals={};for _,row in ipairs(rows) do totals[row.name]=row.amount end
+		assert.equal(5,totals["Instilling Orb"]);assert.equal(5,totals["Glassblower's Bauble"])
+	end)
+	it("explains why a loaded target has no complete resource total",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B"
+		local project={id="loaded-resource",title="Loaded target",slot="Helmet",startingItem=raw,targetItem=quality.apply(raw).itemText,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+		assert.is_true(control.loadTarget:IsEnabled());control.loadTarget:Click();control.resources:Click()
+		local lines={};for _,row in ipairs(main.popups[1].controls.results.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		assert.matches("do not record every action",table.concat(lines," "),1,true);main.popups={}
+	end)
 	it("appends a unique craft to a long written guide",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40% to Fire Resistance"
 		local project={id="long-unique",title="Long guide",slot="Helmet",startingItem=raw,goals={},steps={}}

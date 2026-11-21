@@ -96,6 +96,8 @@ end
 function M.describe(key,model,action)
 	local data=catalogue();local canonical=M.key(key,model);local entry=data.items[canonical]
 	if entry then return entry.name,entry.path,"Currency" end
+	-- This omen is present in the pinned crafting data but has no bundled art entry.
+	if canonical=="Metadata/Items/Currency/AncestralOmenOnJewellersMakeFullSockets" then return "Omen of the Jeweller",nil,"Currency" end
 	local faction,tier=canonical:match("^Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction([13])_([1-4])$")
 	if faction then return ({"Lesser","Greater","Grand","Exceptional"})[tonumber(tier)]..(faction=="1" and " Broken Circle Artifact" or " Order Artifact"),nil,"Currency" end
 	if canonical=="gwennen:observed_artifacts" or canonical=="rog:observed_artifacts" then return "Unspecified artifact cost",nil,"Resource" end

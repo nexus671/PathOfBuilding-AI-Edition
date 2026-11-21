@@ -634,6 +634,33 @@ function M.randomSockets(raw,method,seed)
 	return {itemText=output,components=sim.components({method=method})}
 end
 
+-- Summarise only a complete recorded preview; loading an item does not record
+-- the actions that made it, and older snapshots may have unknown actions.
+function M.previewResources(startingItem,history,actions,currentItem)
+	if type(history)~="table" or type(actions)~="table" or #history~=#actions then return nil,"The preview action history is incomplete." end
+	if #actions==0 then
+		if currentItem and currentItem~=startingItem then return nil,"The current preview has no recorded path from the starting item." end
+		return {}
+	end
+	if history[1]~=startingItem then return nil,"The preview does not start from this project's starting item." end
+	local sim=require("Modules.CraftingSimulator");local prices=require("Modules.CraftingPrices");local totals={};local firstItem
+	local allowed={quality=true,tainted_quality=true,divine=true,instilling=true,enkindling=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,jeweller=true,tainted_jeweller=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true}
+	for index,encoded in ipairs(actions) do
+		if type(encoded)~="string" or type(history[index])~="string" then return nil,"The preview contains an unknown action." end
+		local count=tonumber(encoded:match("^socket_count_bench:([2-6])$"));local enchant=encoded:match("^bench_flask_enchant:(.+)$")
+		if not count and not enchant and not allowed[encoded] then return nil,"Loaded or older previews do not record every action." end
+		local ok,item=pcall(M.inspect,history[index]);if not ok then return nil,"A recorded preview item could not be read." end;firstItem=firstItem or item
+		local action=count and {method="socket_bench",count=count} or enchant and {method="bench_flask_enchant",enchantId=enchant} or {method=encoded}
+		if encoded=="socket_bench" then action.count=#item.sockets;action.linked=true end
+		local model={item=item};local valid,components=pcall(sim.components,action,{sockets=item.sockets,corrupted=item.corrupted},model)
+		if not valid then return nil,"The resources for a recorded action could not be determined." end
+		for key,amount in pairs(components) do local canonical=prices.key(key,model);totals[canonical]=(totals[canonical] or 0)+amount end
+	end
+	local result={};for key,amount in pairs(totals) do local name=prices.describe(key,{item=firstItem});result[#result+1]={key=key,name=name,amount=amount} end
+	table.sort(result,function(a,b) if a.name~=b.name then return a.name<b.name end;return a.key<b.key end)
+	return result
+end
+
 function M.white(raw)
 	local reason=M.whiteReason(raw);assert(not reason,reason)
 	local before=M.inspect(raw)
