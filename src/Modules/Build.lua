@@ -86,6 +86,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	self.planningWorkspace = nil
 	self.planningVendorRareItems = nil
 	self.planningVendorRareSetItems = nil
+	self.planningVendorRareSetPreference = nil
 	self.planningVendorQualityItems = nil
 	self.planningCraftDrafts = nil
 	self.planningUniqueQualityDrafts = nil

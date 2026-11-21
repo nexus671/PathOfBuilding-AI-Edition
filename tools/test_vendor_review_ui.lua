@@ -23,7 +23,11 @@ return function(build,ui,frame)
 		local level=class=="Bows" and 40 or 80;ui.clipboard="Item Class: "..class.."\nRarity: Rare\nExample Base\n--------\nItem Level: "..level.."\n--------\nUnidentified";ui:click("paste")
 	end
 	do local c=main.popups[1].controls;local lines={};for _,row in ipairs(c.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;local text=table.concat(lines," ");assert(text:find("Regal Orb",1,true) and text:find("Remaining: #9",1,true),"Higher-level weapon combination was not selected") end
-	frame("vendor-rare-set-weapon-choice");ui:click("clear");ui:click("close")
+	frame("vendor-rare-set-weapon-choice")
+	ui.clipboard="Item Class: Helmets\nRarity: Rare\nExample Base\n--------\nItem Level: 68\n--------\nUnidentified";ui:click("paste");ui:choose("preference","chaos","val")
+	do local c=main.popups[1].controls;local lines={};for _,row in ipairs(c.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;assert(table.concat(lines," "):find("Chaos Orb",1,true),"Chaos preference did not select a Chaos set") end
+	frame("vendor-rare-set-chaos");ui:click("close")
+	require("Classes.VendorRareSetsControl").Open(build);assert(main.popups[1].controls.preference:GetSelValueByKey("val")=="chaos","Rare-set preference was not retained");ui:click("clear");ui:click("close")
 	ui:click("nav_tools");do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="qualityVendor" then selected=row;break end end;assert(selected,"Quality vendor review is missing");browser.results.onClick({line=selected});ui:click("choose") end
 	ui.clipboard="Item Class: Wands\nRarity: Normal\nDriftwood Wand\n--------\nQuality: +20%";ui:click("paste")
 	for _,quality in ipairs({18,12,10}) do ui.clipboard="Item Class: Helmets\nRarity: Magic\nSuperior Iron Hat of the Fox\n--------\nQuality: +"..quality.."%";ui:click("paste") end
