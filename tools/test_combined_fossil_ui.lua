@@ -54,4 +54,9 @@ return function(build,ui,frame)
 	local ambiguousControls=require("Classes.CraftingSimulatorControl").Open(build,{id="gilded-ambiguous-ui",title="Unrecognized base implicit",slot="Amulet",startingItem=ambiguous,goals={},steps={}})
 	assert(not ambiguousControls.currency_vaal:IsEnabled(),"Ambiguous Gilded corruption was enabled")
 	assert(ambiguousControls.currency_vaal.tooltipText():find("cannot be identified",1,true),"Ambiguous Gilded reason missing");frame("crafting-gilded-ambiguous","currency_vaal");ui:click("close")
+	local locusSource="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+16% to Item Rarity\nItem sells for much more to vendors"
+	local first=sim.perform(locusSource,{method="vaal"},3).state;assert(first.corrupted and first.vendorImplicit and not first.corruptedImplicits)
+	local locus=require("Classes.CraftingSimulatorControl").Open(build,{id="gilded-locus-ordinary-ui",title="Gilded Locus",slot="Amulet",startingItem=locusSource,goals={},steps={},preferredMethod="locus",run=require("Modules.CraftingInventory").run(first)})
+	ui:click("settings");ui:text("paletteSearch","Locus of Corruption");ui:click("paletteUse");ui:click("tab_craft")
+	assert(locus.apply:IsEnabled(),"Identified Gilded Locus action was unavailable");frame("crafting-gilded-locus-ready");ui:click("apply");assert(locus.intro.label:find("Applied Locus",1,true),"Gilded Locus did not apply");ui:click("close")
 end

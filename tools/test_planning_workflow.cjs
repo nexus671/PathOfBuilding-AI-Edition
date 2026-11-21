@@ -81,6 +81,10 @@ async function main(){
   const ambiguousReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ambiguousGilded,limit:5},'inspected');
   const ambiguousVaal=ambiguousReview.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='vaal');assert.equal(ambiguousVaal.available,false);assert.match(ambiguousVaal.unavailableReason,/cannot be identified/);
   const ambiguousApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:ambiguousGilded,action:{method:'vaal'},seed:1},'failed');assert.match(ambiguousApply.error,/cannot be identified/);
+  const gildedUnchanged=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedBaseRaw,action:{method:'vaal'},seed:3},'crafted');
+  assert.ok(gildedUnchanged.nativeCrafting.state.vendorImplicit);assert.equal(gildedUnchanged.nativeCrafting.state.corruptedImplicits,undefined);
+  const gildedUnchangedReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:gildedBaseRaw,initialState:gildedUnchanged.nativeCrafting.state,limit:5},'inspected');assert.equal(gildedUnchangedReview.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='locus').available,true);
+  const gildedUnchangedLocus=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedBaseRaw,initialState:gildedUnchanged.nativeCrafting.state,action:{method:'locus'},seed:1},'crafted');assert.equal(gildedUnchangedLocus.nativeCrafting.state.twiceCorrupted,true);assert.ok(gildedUnchangedLocus.nativeCrafting.warnings.some(entry=>entry.code==='gilded_corruption_incomplete'));
   const gildedBase=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedBaseRaw,action:{method:'vaal'},seed:1},'crafted');
   assert.equal(gildedBase.nativeCrafting.state.baseImplicitRetained,true);assert.ok(gildedBase.nativeCrafting.itemText.includes('+16% to Item Rarity'));
   const gildedBaseReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:gildedBaseRaw,initialState:gildedBase.nativeCrafting.state,limit:5},'inspected');

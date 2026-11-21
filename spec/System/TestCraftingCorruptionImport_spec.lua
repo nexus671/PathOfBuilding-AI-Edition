@@ -273,12 +273,21 @@ describe("Imported corruption identities",function()
 			assert.has_error(function() sim.rollCorrupted(model,state,function() error("unexpected random draw") end) end);assert.same(before,state)
 		end
 	end)
-	it("rejects second Gilded corruption when the base and vendor implicit both remain",function()
+	it("models Locus replacement when the first corruption left a known base and Gilded implicit",function()
 		local source="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+16% to Item Rarity\nItem sells for much more to vendors"
 		local model=sim.model(source);local first=sim.action(model,model.initial,{method="vaal"},function() return 0.3 end)
 		assert.is_true(first.corrupted);assert.equal("unknown",first.vendorImplicit);assert.is_nil(first.corruptedImplicits)
-		local before=copyTable(first);assert.matches("existing base implicit",sim.methodReason(model,first,"locus"))
-		assert.has_error(function() sim.action(model,first,{method="locus"},function() error("unexpected random draw") end) end);assert.same(before,first)
+		local before=copyTable(first);assert.is_nil(sim.methodReason(model,first,"locus"))
+		for _,draw in ipairs({0,0.999}) do
+			local state=copyTable(first);sim.rollCorrupted(model,state,function() return draw end,1,{});state.twiceCorrupted=true
+			state=sim.validateState(model,state);local checkpoint=require("Modules.CraftingCheckpoint").validate(source,require("Modules.CraftingInventory").run(state)).state
+			local output=sim.itemText(model,checkpoint);local reopened=sim.model(output)
+			assert.equal(1,#checkpoint.corruptedImplicits);assert.same(checkpoint.corruptedImplicits,reopened.initial.corruptedImplicits)
+			if draw==0 then assert.equal("unknown",checkpoint.vendorImplicit);assert.is_nil(checkpoint.baseImplicitRetained);assert.is_nil(output:find("+16% to Item Rarity",1,true))
+			else assert.is_nil(checkpoint.vendorImplicit);assert.is_true(checkpoint.baseImplicitRetained);assert.is_truthy(output:find("+16% to Item Rarity",1,true));assert.is_true(reopened.initial.baseImplicitRetained) end
+		end
+		local actual=sim.action(model,first,{method="locus"},function() return 0 end);assert.is_true(actual.twiceCorrupted);assert.equal("unknown",actual.vendorImplicit);assert.same(before,first)
+		local imported=sim.model(sim.itemText(model,first));assert.matches("unidentified base implicit",sim.methodReason(imported,imported.initial,"locus"))
 	end)
 	it("retains old and current 3.30 base implicits when Gilded absorbs corruption",function()
 		local cases={{"Amethyst Ring","+23% to Chaos Resistance"},{"Amethyst Ring","+13% to Chaos Resistance"},{"Crystal Belt","+80 to maximum Energy Shield"},{"Crystal Belt","+95 to maximum Energy Shield"},{"Two-Toned Boots (Armour/Evasion)","+10% to Fire and Cold Resistances"},{"Two-Toned Boots (Armour/Evasion)","+18% to Fire and Cold Resistances"}}

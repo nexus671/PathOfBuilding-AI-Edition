@@ -135,7 +135,7 @@ function C.extend(M,A,api)
 	end
 	function M.unrecognizedGildedBaseReason(model,state)
 		if state.vendorImplicit and not model.item.synthesised and not state.implicits and #(model.item.implicitModLines or {})>0 and not M.hasProtectedImplicit(model,state) then
-			if state.corrupted and #(state.corruptedImplicits or {})==0 then return "Gilded corruption with an existing base implicit and no corruption implicit is not modeled." end
+			if state.corrupted and #(state.corruptedImplicits or {})==0 and (model.item.corrupted or not singleOrdinaryImplicit(model)) then return "Gilded corruption with an unidentified base implicit and no corruption implicit is not modeled." end
 			if not state.corrupted and not singleOrdinaryImplicit(model) then
 				if model.item.baseName=="Shadowed Ring" then return "This Shadowed Ring variant cannot be identified by the current base data. Gilded corruption is not modeled for it." end
 				return "The ordinary base implicit cannot be identified unambiguously. Gilded corruption is not modeled for this item."
@@ -203,7 +203,7 @@ function C.extend(M,A,api)
 			return
 		end
 		local singleOrdinary=singleOrdinaryImplicit(model)
-		if not state.corrupted and previousCount==0 and #chosen==1 and state.vendorImplicit and not model.item.synthesised and not state.implicits and singleOrdinary then
+		if previousCount==0 and #chosen==1 and state.vendorImplicit and not model.item.synthesised and not state.implicits and singleOrdinary and (not state.corrupted or not model.item.corrupted) then
 			if random()<0.5 then
 				state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil
 			else state.vendorImplicit=nil;state.baseImplicitRetained=true end
