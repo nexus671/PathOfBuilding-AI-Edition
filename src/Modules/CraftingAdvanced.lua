@@ -1671,5 +1671,6 @@ function A.extend(M,api)
 	require("Modules.CraftingLeague").extend(M,A,api)
 	require("Modules.CraftingAllflame").extend(M,A,api)
 	require("Modules.CraftingGwennen").extend(M,api)
+	require("Modules.CraftingRog").extend(M,api)
 end
 return A

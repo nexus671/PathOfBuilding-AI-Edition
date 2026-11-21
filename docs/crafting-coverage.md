@@ -1,6 +1,8 @@
 <!-- cspell:ignore Siveran Katakohi Ukatoa repoe lupa -->
 # Crafting coverage and rules
 
+Rog's observed prefix and suffix reroll offers can be entered in **Craft settings** and used in the item emulator or a recipe. Choose the side, the displayed one, three or five attempts, and any known Order Artifact quantities. Blank prices stay unknown. The experimental model assumes independent ordinary-weight rolls, preserves the number of modifiers on that side and ranks candidates by average modifier level; server weights, ranking, tie handling and special interactions are unverified. Offer generation and other Rog crafts are not yet modeled. The [3.30 notes](https://www.pathofexile.com/forum/view-thread/4013680) specify the current attempt counts.
+
 Plain item text can combine values from several modifiers. The importer checks
 for alternative combinations of integer single-stat ranges before accepting an exact
 line match, and rejects ambiguous items. The bounded search can check several

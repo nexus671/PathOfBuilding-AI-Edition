@@ -53,6 +53,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_flask_enchant_ui.lua")
     sources.append(ROOT / "tools/test_unique_flask_enchant_ui.lua")
     sources.append(ROOT / "tools/test_map_vaal_ui.lua")
+    sources += [ROOT / "tools/test_gwennen_ui.lua", ROOT / "tools/test_rog_ui.lua"]
     sources += [ROOT / "tools/update_flask_enchant_data.py", ROOT / "tools/test_update_flask_enchant_data.py"]
     sources.append(ROOT / "tools/run_headless_lupa.py")
     sources.append(ROOT / "tools/test_campaign_selection_ui.lua")
@@ -137,7 +138,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2106, f"Expected 2106 UI frames, found {len(paths)}"
+    assert len(paths) == 2112, f"Expected 2112 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         replay_frame = json.loads((frames / f"{width}-saved-replay.json").read_text())
         replay_text = " ".join(c.get("text", "") for c in replay_frame["commands"] if c.get("kind") == "text")

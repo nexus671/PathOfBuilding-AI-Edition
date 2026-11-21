@@ -275,6 +275,7 @@ function M.hint(method,state,model,craft)
 	if available and method=="jeweller" then return "Experimental socket-count odds and quality model; retained socket and link positions are assumed." end
 	if available and method=="fusing" then return "Experimental link odds based on historical observations; quality and layout rules are assumptions." end
 	if available and method=="gwennen" then return "Experimental: choose a pair in Settings. Coin odds, removal counts and currency transitions are assumptions." end
+	if available and method=="rog_reroll" then return "Experimental: enter an observed offer in Settings. Modifier weights and best-result selection are assumptions." end
 	if available and (method=="beast_prefix_suffix" or method=="beast_suffix_prefix") then return craft and craft.beastLevel and ("Uses beast level "..craft.beastLevel.." for the added modifier. Current game behavior is unverified.") or "Set the red beast's level in Settings; otherwise the item level is used. Current game behavior is unverified." end
 	if available and method=="omen_jeweller" then return "Add white sockets up to the base and item-level limit. Uses one Omen and one Jeweller's Orb." end
 	if available and method=="harvest_enchant" then return "Replace the enchantment with a quality bonus. Options show the Lifeforce cost." end

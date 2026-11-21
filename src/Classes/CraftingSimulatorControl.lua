@@ -376,6 +376,8 @@ function Panel.Open(build,project,layout)
 		local method=controls.method:GetSelValueByKey("val")
 		local popup={}
 		if method == "gwennen" then openGwennen();return
+		elseif method == "rog_reroll" then
+			require("Classes.CraftingRogControl").Open(configured.rog_reroll,function(craft) configured.rog_reroll=craft;changed();refresh() end);return
 		elseif method == "fossil" then
 			require("Classes.CraftingFossilControl").Open(model,configured.fossil,function(craft) configured.fossil=craft;updateOptions();changed();refresh() end)
 			return
@@ -866,8 +868,8 @@ function Panel.Open(build,project,layout)
 	controls.apply.enabled=function() return not state.destroyed and not state.uniqueTitle end
 	controls.preview.enabled=function() return not state.destroyed and not state.veil and not state.socketLayoutUnknown end
 	controls.preview.tooltipText=function() return state.destroyed and "This item was destroyed. Undo that action before previewing it." or state.veil and "Resolve the veiled modifier before previewing this item." or state.socketLayoutUnknown and "Set the unknown socket layout before previewing this item in a build." or "Preview this item against the current build." end
-	controls.configure.label=function() local method=controls.method:GetSelValueByKey("val");return method=="fossil" and "Configure fossil combination" or method=="gwennen" and "Configure Gwennen pair" or (method=="beast_prefix_suffix" or method=="beast_suffix_prefix") and "Set beast level" or "Configure donor item" end
-	controls.configure.enabled=function() local method=controls.method:GetSelValueByKey("val");return method=="beast_prefix_suffix" or method=="beast_suffix_prefix" or method=="gwennen" or method=="fossil" or method=="awakener" or method=="recombine" or method=="recombine_predictable" end
+	controls.configure.label=function() local method=controls.method:GetSelValueByKey("val");return method=="fossil" and "Configure fossil combination" or method=="gwennen" and "Configure Gwennen pair" or method=="rog_reroll" and "Configure Rog offer" or (method=="beast_prefix_suffix" or method=="beast_suffix_prefix") and "Set beast level" or "Configure donor item" end
+	controls.configure.enabled=function() local method=controls.method:GetSelValueByKey("val");return method=="beast_prefix_suffix" or method=="beast_suffix_prefix" or method=="gwennen" or method=="rog_reroll" or method=="fossil" or method=="awakener" or method=="recombine" or method=="recombine_predictable" end
 	controls.page=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,18,416,28},{"Emulate item","Target conditions","Simulate recipe","Craft settings"})
 	controls.page.selFunc=function() refresh() end
 	button(controls,"settings",16,380,200,"Find currencies",palette)
