@@ -6,7 +6,8 @@ for index,tier in ipairs(tiers) do artifacts[tier]="Metadata/Items/Expedition/Ex
 
 function R.validate(craft)
 	local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
-	local fixed=craft.rogOperation=="fill" or craft.rogOperation=="set_quality"
+	local fixed=craft.rogOperation=="fill" or craft.rogOperation=="set_quality" or craft.rogOperation=="upgrade"
+	if craft.rogOperation=="upgrade" then assert(type(craft.count)=="number" and craft.count==math.floor(craft.count) and craft.count>=1 and craft.count<=6,"Choose 1 to 6 modifiers to upgrade") end
 	assert(craft.rogOperation==nil or craft.rogOperation=="reroll" or craft.rogOperation=="add" or removal or fixed,"Choose a supported Rog offer")
 	if removal or fixed then assert(craft.rogSide==nil and craft.rogAttempts==nil,"This offer does not use a side or attempt count")
 	else
@@ -93,6 +94,12 @@ function R.readiness(M,model,input,craft)
 	end
 	local blocked=M.blockFlags(model,input)
 	if blocked.attack or blocked.caster then return "Rog interactions with this implicit roll restriction are not modeled for this offer." end
+	if craft.rogOperation=="upgrade" then
+		if #input.affixes<craft.count then return "Not enough modifiers to upgrade." end
+		local ok,err=pcall(require("Modules.CraftingGwennen").tierChoices,model,input,true)
+		if not ok then return require("Modules.PlanningUI").errorText(err) end
+		return
+	end
 	local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
 	if removal then
 		local count=craft.rogOperation=="remove_lowest_two" and 2 or 1
@@ -161,6 +168,15 @@ function R.extend(M,api)
 		local flags=api.flags(model,input)
 		assert(not (flags.prefixes or flags.suffixes or flags.explicitAttack or flags.explicitCaster or M.hasPartialLock(model,input) or craft.rogOperation~="fill" and craft.rogOperation~="set_quality" and (flags.attack or flags.caster)),"Rog interactions with meta modifiers are not modeled")
 		for _,entry in ipairs(input.affixes) do assert(not entry.fractured and not entry.crafted,"Rog interactions with fractured or crafted modifiers are not modeled") end
+		if craft.rogOperation=="upgrade" then
+			assert(#input.affixes>=craft.count,"Not enough modifiers to upgrade")
+			local choices=require("Modules.CraftingGwennen").tierChoices(model,input,true);local result=copyTable(input)
+			for _=1,craft.count do
+				local selected=table.remove(choices,math.floor(random()*#choices)+1);local entry=result.affixes[selected.index]
+				entry.id=selected.id;entry.range=M.rollRange(model.byId[selected.id],random)
+			end
+			return result
+		end
 		if craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two" then return R.removeLowest(model,input,craft,random) end
 		if craft.rogOperation=="set_quality" then
 			local reason=R.readiness(M,model,input,craft);assert(not reason,reason)
@@ -179,6 +195,7 @@ function R.extend(M,api)
 		local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
 		local fields=(removal or craft.rogOperation=="fill" or craft.rogOperation=="set_quality") and {"rog_reroll",craft.rogOperation} or {"rog_reroll",tostring(craft.rogSide),tostring(craft.rogAttempts)}
 		if craft.rogOperation=="add" then fields[#fields+1]="add" end
+		if craft.rogOperation=="upgrade" then fields={"rog_reroll","upgrade",tostring(craft.count)} end
 		for _,tier in ipairs(tiers) do fields[#fields+1]=craft.artifactCost and tostring(craft.artifactCost[tier] or 0) or "unknown" end
 		return table.concat(fields,":")
 	end

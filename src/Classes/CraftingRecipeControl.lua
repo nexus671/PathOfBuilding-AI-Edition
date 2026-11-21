@@ -274,7 +274,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		assert(step.method=="rog_reroll","Select a Rog step")
 		require("Classes.CraftingRogControl").Open(step,function(action)
 			local next=copyTable(step)
-			for _,key in ipairs({"rogOperation","rogSide","rogAttempts","artifactCost"}) do next[key]=type(action[key])=="table" and copyTable(action[key]) or action[key] end
+			for _,key in ipairs({"rogOperation","rogSide","rogAttempts","artifactCost","count"}) do next[key]=type(action[key])=="table" and copyTable(action[key]) or action[key] end
 			draft.steps[index]=next;refresh()
 		end)
 	end)

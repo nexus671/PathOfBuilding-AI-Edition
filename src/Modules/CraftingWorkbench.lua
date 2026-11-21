@@ -195,6 +195,7 @@ local descriptions={beast_max_links="Link existing sockets using the Black Morri
 local currencyArt,currencyNames
 function M.actionLabel(action,model)
 	if action.method=="rog_reroll" then
+		if action.rogOperation=="upgrade" and action.count then return "Rog: upgrade "..action.count.." modifier"..(action.count==1 and "" or "s").." by one tier" end
 		local fixed={fill="fill empty modifier slots",set_quality="set quality to 20%",remove_lowest="remove lowest-level modifier",remove_lowest_two="remove two lowest-level modifiers"}
 		if fixed[action.rogOperation] then return "Rog: "..fixed[action.rogOperation] end
 		if action.rogSide and action.rogAttempts then return "Rog: "..(action.rogOperation=="add" and "add " or "reroll ")..action.rogSide:lower().." ("..action.rogAttempts.." attempts)" end

@@ -166,6 +166,23 @@ describe("Experimental Rog side rerolls",function()
 		c.keep:Click();assert.same({method="rog_reroll",rogOperation="remove_lowest_two"},saved)
 		c=require("Classes.CraftingRogControl").Open(saved,function() end);assert.equal("remove_lowest_two",c.operation:GetSelValueByKey("val"));main.popups={}
 	end)
+	it("upgrades distinct supported tiers without changing the input",function()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
+		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}};local before=copyTable(state)
+		local action={method="rog_reroll",rogOperation="upgrade",count=2,artifactCost={grand=7}}
+		assert.is_nil(sim.configurationReason(model,state,action))
+		local result=sim.action(model,state,action,stream(1));sim.validateState(model,result)
+		assert.equal("IncreasedLife3",result.affixes[1].id);assert.equal("FireResist3",result.affixes[2].id);assert.same(before,state)
+		assert.same({["Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_3"]=7},sim.components(action))
+		assert.matches("uniformly",sim.perform(raw,action,17,state).warnings[1].message)
+		local tooMany=copyTable(action);tooMany.count=3
+		assert.matches("Not enough",sim.configurationReason(model,state,tooMany))
+		assert.has_error(function() sim.action(model,state,tooMany,function() error("invalid action consumed randomness") end) end)
+		assert.has_error(function() rog.validate({rogOperation="upgrade"}) end)
+		assert.has_error(function() rog.validate({rogOperation="upgrade",count=7}) end)
+		assert.has_error(function() rog.validate({rogOperation="upgrade",count=1,rogSide="Prefix"}) end)
+		local one=copyTable(action);one.count=1;assert.is_true(sim.priceKey(one)~=sim.priceKey(action))
+	end)
 	it("configures the offer from the workbench and preserves it in the working craft",function()
 		newBuild();local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
 		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}}

@@ -112,6 +112,7 @@ local function tierChoices(model,state,upgrade)
 	end
 	return choices
 end
+G.tierChoices=tierChoices
 -- Enumerate removal sets without multiplying equivalent removal orders.
 function G.discrete(model,state,id,craft)
 	if deterministic[id] then return {{draws={},probability=1,text=deterministic[id]}} end
