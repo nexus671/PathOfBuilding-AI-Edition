@@ -44,12 +44,20 @@ function I.resolve(M,model,metadata)
 	local function matchesBase(index)
 		work=work+1;if work>10000 then return false end
 		if index>#base then return true end
-		for i,row in ipairs(rows) do if not baseUsed[i] and (not row.group or row.group:sub(1,9)~="crafting_") and infer(base[index],row.text) then
-			baseUsed[i]=true;if matchesBase(index+1) then return true end;baseUsed[i]=nil
+		for i,row in ipairs(rows) do if not baseUsed[i] and (not row.group or row.group:sub(1,9)~="crafting_") then
+			local valid=infer(base[index],row.text)
+			if not valid and #base==1 and item.base.blessed330 then valid=infer(item.base.blessed330.old,row.text) or infer(item.base.blessed330.current,row.text) end
+			if valid then baseUsed[i]=true;if matchesBase(index+1) then return true end;baseUsed[i]=nil end
 		end end
 		return false
 	end
 	local baseMatch=#base==#rows and matchesBase(1)
+	-- The advanced importer can also identify catalyst-scaled ordinary base
+	-- values, which do not necessarily fit the unscaled template ranges.
+	-- Do not let a native corruption tag masquerade as that base.
+	if not baseMatch and model.baseImplicitTemplates and #model.baseImplicitTemplates==#rows and #rows>0 then
+		baseMatch=true;for _,row in ipairs(rows) do if row.group and row.group:sub(1,9)=="crafting_" then baseMatch=false;break end end
+	end
 	if work>10000 then return nil,"unresolved" end
 	local function consider(id,mod,is330)
 		if #mod>#rows then return end

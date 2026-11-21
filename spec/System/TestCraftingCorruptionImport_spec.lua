@@ -287,7 +287,35 @@ describe("Imported corruption identities",function()
 			else assert.is_nil(checkpoint.vendorImplicit);assert.is_true(checkpoint.baseImplicitRetained);assert.is_truthy(output:find("+16% to Item Rarity",1,true));assert.is_true(reopened.initial.baseImplicitRetained) end
 		end
 		local actual=sim.action(model,first,{method="locus"},function() return 0 end);assert.is_true(actual.twiceCorrupted);assert.equal("unknown",actual.vendorImplicit);assert.same(before,first)
-		local imported=sim.model(sim.itemText(model,first));assert.matches("unidentified base implicit",sim.methodReason(imported,imported.initial,"locus"))
+		local imported=sim.model(sim.itemText(model,first));assert.is_nil(sim.methodReason(imported,imported.initial,"locus"))
+		for _,draw in ipairs({0,0.999}) do
+			local state=copyTable(imported.initial);sim.rollCorrupted(imported,state,function() return draw end,1,{});state.twiceCorrupted=true
+			local saved=sim.validateState(imported,state);local output=sim.itemText(imported,saved);local reopened=sim.model(output)
+			assert.equal(1,#saved.corruptedImplicits);assert.same(saved.corruptedImplicits,reopened.initial.corruptedImplicits)
+			if draw==0 then assert.equal("unknown",saved.vendorImplicit);assert.is_nil(output:find("+16% to Item Rarity",1,true))
+			else assert.is_nil(saved.vendorImplicit);assert.is_true(saved.baseImplicitRetained);assert.is_truthy(output:find("+16% to Item Rarity",1,true));assert.is_true(reopened.initial.baseImplicitRetained) end
+		end
+	end)
+	it("recognizes only unambiguous copied corrupted Gilded base implicits",function()
+		local cases={{"Amethyst Ring","+13% to Chaos Resistance"},{"Gemini Claw","Grants 38 Life per Enemy Hit\nGrants 14 Mana per Enemy Hit"}}
+		for _,case in ipairs(cases) do
+			local count=select(2,case[2]:gsub("\n",""))+2
+			local raw="Rarity: NORMAL\n"..case[1].."\nItem Level: 86\nImplicits: "..count.."\n"..case[2].."\nItem sells for much more to vendors\nCorrupted"
+			local model=sim.model(raw);assert.is_nil(model.unresolvedCorruption);assert.is_nil(sim.methodReason(model,model.initial,"locus"))
+			for _,draw in ipairs({0,0.999}) do
+				local state=copyTable(model.initial);sim.rollCorrupted(model,state,function() return draw end,1,{});state.twiceCorrupted=true
+				local output=sim.itemText(model,sim.validateState(model,state));local reopened=sim.model(output)
+				assert.same(state.corruptedImplicits,reopened.initial.corruptedImplicits)
+				if draw==0 then assert.equal("unknown",state.vendorImplicit);assert.is_nil(output:find(case[2]:match("^[^\n]+"),1,true))
+				else assert.is_nil(state.vendorImplicit);assert.is_true(state.baseImplicitRetained);assert.is_true(reopened.initial.baseImplicitRetained) end
+			end
+		end
+		local overlap="Rarity: NORMAL\nAmethyst Ring\nItem Level: 86\nImplicits: 2\n+23% to Chaos Resistance\nItem sells for much more to vendors\nCorrupted"
+		local ambiguous=sim.model(overlap);assert.is_truthy(ambiguous.unresolvedCorruption);assert.is_truthy(sim.methodReason(ambiguous,ambiguous.initial,"locus"))
+		local scaled="Rarity: NORMAL\nAmethyst Ring\nItem Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20\nImplicits: 2\n+27% to Chaos Resistance\nItem sells for much more to vendors\nCorrupted"
+		local scaledModel=sim.model(scaled);assert.is_truthy(scaledModel.unresolvedCorruption);assert.is_truthy(sim.methodReason(scaledModel,scaledModel.initial,"locus"));assert.is_nil(scaledModel.initial.corruptedImplicits)
+		local bad="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+999% to Item Rarity\nItem sells for much more to vendors\nCorrupted"
+		local model=sim.model(bad);assert.is_truthy(sim.methodReason(model,model.initial,"locus"));assert.has_error(function() sim.action(model,model.initial,{method="locus"},function() error("unexpected draw") end) end)
 	end)
 	it("retains old and current 3.30 base implicits when Gilded absorbs corruption",function()
 		local cases={{"Amethyst Ring","+23% to Chaos Resistance"},{"Amethyst Ring","+13% to Chaos Resistance"},{"Crystal Belt","+80 to maximum Energy Shield"},{"Crystal Belt","+95 to maximum Energy Shield"},{"Two-Toned Boots (Armour/Evasion)","+10% to Fire and Cold Resistances"},{"Two-Toned Boots (Armour/Evasion)","+18% to Fire and Cold Resistances"}}

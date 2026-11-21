@@ -59,4 +59,7 @@ return function(build,ui,frame)
 	local locus=require("Classes.CraftingSimulatorControl").Open(build,{id="gilded-locus-ordinary-ui",title="Gilded Locus",slot="Amulet",startingItem=locusSource,goals={},steps={},preferredMethod="locus",run=require("Modules.CraftingInventory").run(first)})
 	ui:click("settings");ui:text("paletteSearch","Locus of Corruption");ui:click("paletteUse");ui:click("tab_craft")
 	assert(locus.apply:IsEnabled(),"Identified Gilded Locus action was unavailable");frame("crafting-gilded-locus-ready");ui:click("apply");assert(locus.intro.label:find("Applied Locus",1,true),"Gilded Locus did not apply");ui:click("close")
+	local imported=sim.itemText(sim.model(locusSource),first)
+	local importedControls=require("Classes.CraftingSimulatorControl").Open(build,{id="gilded-locus-import-ui",title="Copied Gilded item",slot="Amulet",startingItem=imported,goals={},steps={},preferredMethod="locus"})
+	assert(importedControls.apply:IsEnabled(),"Recognized copied Gilded item was unavailable");frame("crafting-gilded-locus-import");ui:click("apply");assert(importedControls.intro.label:find("Applied Locus",1,true));ui:click("close")
 end

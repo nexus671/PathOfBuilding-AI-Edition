@@ -342,7 +342,7 @@ function A.extend(M,api)
 		-- A game copy normally contains a rolled number, not the base range.
 		-- Reconstruct only complete ordinary base implicits that match the
 		-- native templates; keep the imported value until a reroll is applied.
-		if not changed and not model.item.synthesised and not model.item.corrupted and type(model.item.base.implicit)=="string" then
+		if not changed and not model.item.synthesised and (not model.item.corrupted or model.importedVendorImplicit) and type(model.item.base.implicit)=="string" then
 			local templates={};for line in model.item.base.implicit:gmatch("[^\n]+") do templates[#templates+1]=line end
 			local recognized=#templates==#model.item.implicitModLines and #templates>0;local ordinary=true;local normalized,tagLines={},{}
 			for i,line in ipairs(model.item.implicitModLines) do

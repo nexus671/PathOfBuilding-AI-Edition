@@ -133,9 +133,14 @@ function C.extend(M,A,api)
 		end
 		return single
 	end
+	-- The corruption importer independently checks whether the visible lines
+	-- could instead be a corruption implicit. Ambiguous matches stay blocked.
+	local function recognizedImportedGildedBase(model)
+		return model.item.corrupted and model.importedVendorImplicit and not model.unresolvedCorruption and not model.initial.corruptedImplicits and singleOrdinaryImplicit(model)
+	end
 	function M.unrecognizedGildedBaseReason(model,state)
 		if state.vendorImplicit and not model.item.synthesised and not state.implicits and #(model.item.implicitModLines or {})>0 and not M.hasProtectedImplicit(model,state) then
-			if state.corrupted and #(state.corruptedImplicits or {})==0 and (model.item.corrupted or not singleOrdinaryImplicit(model)) then return "Gilded corruption with an unidentified base implicit and no corruption implicit is not modeled." end
+			if state.corrupted and #(state.corruptedImplicits or {})==0 and (not singleOrdinaryImplicit(model) or model.item.corrupted and not recognizedImportedGildedBase(model)) then return "Gilded corruption with an unidentified base implicit and no corruption implicit is not modeled." end
 			if not state.corrupted and not singleOrdinaryImplicit(model) then
 				if model.item.baseName=="Shadowed Ring" then return "This Shadowed Ring variant cannot be identified by the current base data. Gilded corruption is not modeled for it." end
 				return "The ordinary base implicit cannot be identified unambiguously. Gilded corruption is not modeled for this item."
@@ -203,7 +208,7 @@ function C.extend(M,A,api)
 			return
 		end
 		local singleOrdinary=singleOrdinaryImplicit(model)
-		if previousCount==0 and #chosen==1 and state.vendorImplicit and not model.item.synthesised and not state.implicits and singleOrdinary and (not state.corrupted or not model.item.corrupted) then
+		if previousCount==0 and #chosen==1 and state.vendorImplicit and not model.item.synthesised and not state.implicits and singleOrdinary and (not state.corrupted or not model.item.corrupted or recognizedImportedGildedBase(model)) then
 			if random()<0.5 then
 				state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil
 			else state.vendorImplicit=nil;state.baseImplicitRetained=true end
@@ -242,7 +247,7 @@ function C.extend(M,A,api)
 			if not state.implicits then
 				if state.baseImplicitRetained then
 					local base={};for _,line in ipairs(item.implicitModLines) do
-						if not model.item.corrupted or line.modGroup=="retained_base_implicit" then local copy=copyTable(line);copy.modGroup="retained_base_implicit";base[#base+1]=copy end
+						if not model.item.corrupted or recognizedImportedGildedBase(model) or line.modGroup=="retained_base_implicit" then local copy=copyTable(line);copy.modGroup="retained_base_implicit";base[#base+1]=copy end
 					end
 					assert(#base==1 or #base>1 and model.singleBaseImplicitId and type(model.item.base.implicit)=="string" and select(2,model.item.base.implicit:gsub("\n",""))+1==#base,"The retained base implicit is unavailable");item.implicitModLines=base
 				else item.implicitModLines={} end
@@ -281,7 +286,7 @@ function C.extend(M,A,api)
 		end
 		assert(state.twiceCorrupted==nil or type(state.twiceCorrupted)=="boolean","Invalid twice-corruption marker")
 		if state.baseImplicitRetained~=nil then
-			assert(state.baseImplicitRetained==true and state.corrupted and state.corruptedImplicits and #state.corruptedImplicits==1 and not state.vendorImplicit and not state.implicits and not model.item.synthesised and (not model.item.corrupted and (model.blessed330 or model.baseImplicitTemplates and (#model.baseImplicitTemplates==1 or model.singleBaseImplicitId)) or model.initial.baseImplicitRetained),"Invalid retained ordinary base implicit")
+			assert(state.baseImplicitRetained==true and state.corrupted and state.corruptedImplicits and #state.corruptedImplicits==1 and not state.vendorImplicit and not state.implicits and not model.item.synthesised and (not model.item.corrupted and (model.blessed330 or model.baseImplicitTemplates and (#model.baseImplicitTemplates==1 or model.singleBaseImplicitId)) or model.initial.baseImplicitRetained or recognizedImportedGildedBase(model)),"Invalid retained ordinary base implicit")
 		end
 		assert(state.fossilImplicitReplacement==nil or state.fossilImplicitReplacement==true and not state.destroyed and state.corrupted and state.corruptedImplicits and model.item.synthesised and model.synthesisGroups and state.synthExhausted and not state.synthRetained,"Invalid fossil implicit replacement")
 		assert(state.gildedCorruptionReplaced==nil or state.gildedCorruptionReplaced==true and state.corrupted and state.corruptedImplicits and not state.vendorImplicit and model.item.synthesised and (not model.item.corrupted or model.initial.vendorImplicit) and model.synthesisGroups,"Invalid Gilded corruption replacement")
