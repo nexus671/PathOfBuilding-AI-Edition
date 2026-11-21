@@ -271,6 +271,9 @@ function M.hint(method,state,model,craft)
 	if available and method=="vaal" and #require("Modules.CraftingJewelCorruption").candidates(model.item.baseName)>0 then return "Experimental: equal branch and unique-selection weights are assumed. The unique pool and item rolls are unverified." end
 	if available and method=="vaal" and require("Modules.CraftingSimulator").socketLimit(model,state)>0 then return "Rare corruption can reroll sockets and links; its resulting layout will be unknown." end
 	if available and method=="tainted_quality" then return "Maximum 20% quality. The modeled 1-20% range and equal odds are assumptions." end
+	if available and method=="annul" and simulator.hasPartialLock(model,state) and not simulator.partialAnnulBranches(model,state) then
+		return "Some partial-lock selections leave no removable modifier; those modeled attempts fail."
+	end
 	if available and method=="annul" then return "3.30: remove a random modifier. Attack/caster roll blockers do not protect it; fractures and prefix/suffix locks still apply." end
 	if available and method=="binding" then return "No longer generated in 3.30. Existing Orbs of Binding still work." end
 	if available and method=="recombine" then return "Uses the chosen base's item level and preliminary 3.30 small-pool estimates. Modifier weights and special cases are uncertain." end

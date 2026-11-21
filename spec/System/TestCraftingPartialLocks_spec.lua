@@ -3,6 +3,27 @@ describe("3.30 partial affix locks",function()
 	local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86"
 	local id="bench:partial-prefix-1"
 	before_each(function() newBuild() end)
+	it("explains when an Annulment has no removable modifier",function()
+		local model=sim.model(raw);local prefix
+		for _,entry in ipairs(model.mods) do if entry.mod.type=="Prefix" then prefix=entry.id;break end end
+		assert.is_truthy(prefix)
+		local state={rarity="MAGIC",affixes={{id=prefix,range=0.5,fractured=true}}}
+		local available,reason=require("Modules.CraftingAvailability").check("annul",state,model)
+		assert.is_false(available);assert.matches("all are protected",reason)
+		assert.matches("all are protected",require("Modules.CraftingWorkbench").hint("annul",state,model))
+		state.affixes[1].fractured=false;assert.is_true(require("Modules.CraftingAvailability").check("annul",state,model))
+	end)
+	it("distinguishes partial locks that sometimes or always block Annulment",function()
+		local model=sim.model(raw);local prefixes={};local groups={}
+		for _,entry in ipairs(model.mods) do if entry.mod.type=="Prefix" and not groups[entry.mod.group] then prefixes[#prefixes+1]=entry.id;groups[entry.mod.group]=true;if #prefixes==2 then break end end end
+		assert.equal(2,#prefixes)
+		-- Synthetic protection on the lock isolates the model's selection branches.
+		local state={rarity="RARE",affixes={{id=prefixes[1],range=0.5},{id=id,range=0.5,crafted=true,fractured=true}}}
+		local available,reason=require("Modules.CraftingAvailability").check("annul",state,model);assert.is_false(available);assert.matches("all are protected",reason)
+		state.affixes[#state.affixes+1]={id=prefixes[2],range=0.5,fractured=true}
+		assert.is_true(require("Modules.CraftingAvailability").check("annul",state,model))
+		assert.matches("Some partial%-lock selections",require("Modules.CraftingWorkbench").hint("annul",state,model))
+	end)
 	it("rechecks attack protection after its blocker is removed",function()
 		local model=sim.model(raw)
 		model.byId.testAttackA={type="Prefix",group="testA",modTags={"attack"}}

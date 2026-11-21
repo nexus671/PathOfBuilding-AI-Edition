@@ -29,6 +29,23 @@ function M.check(method,state,model)
 	if magic[method] and state.rarity~="MAGIC" then return false,"Requires a magic item." end
 	if rare[method] and state.rarity~="RARE" then return false,"Requires a rare item." end
 	if (method=="annul" or method=="divine" or method=="scour" or method=="veiled_orb" or method=="ducat_kishara") and #state.affixes==0 then return false,"Requires an item with modifiers." end
+	if method=="annul" then
+		local eligible=sim.annulCandidates(model,state);local possible=#eligible>0
+		if possible and sim.hasPartialLock(model,state) then
+			-- A side with more removable modifiers than partial locks always has
+			-- a candidate, avoiding enumeration on the common workbench path.
+			local locks,counts={},{}
+			for _,entry in ipairs(state.affixes) do local partial=model.byId[entry.id].partialLock;if partial then locks[partial.side]=partial.count end end
+			for _,index in ipairs(eligible) do local side=model.byId[state.affixes[index].id].type;counts[side]=(counts[side] or 0)+1 end
+			local guaranteed=false;for side,count in pairs(counts) do if count>(locks[side] or 0) then guaranteed=true;break end end
+			if not guaranteed then
+				possible=false;sim.eachPartialSelection(model,state,function(selected)
+					if #sim.annulCandidates(model,selected)>0 then possible=true;return true end
+				end)
+			end
+		end
+		if not possible then return false,"No modifier can be removed in the current model; all are protected." end
+	end
 	local fractured,crafted=false,false;for _,entry in ipairs(state.affixes) do fractured=fractured or entry.fractured;crafted=crafted or entry.crafted end
 	local influenced=state.influences and #state.influences>0
 	if method=="bench" then return sim.benchAvailable(model,state) end
