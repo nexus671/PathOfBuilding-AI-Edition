@@ -240,10 +240,12 @@ function createBridge(reportPath, clientName = () => "MCP client") {
     if (captured.schemaVersion !== 1 || captured.session !== current.session || captured.context?.revision !== current.revision) throw new Error('Desktop context is refreshing. Try again after calculations finish.');
     if (name === 'get_genesis_tree') {
       const graph=JSON.parse(fs.readFileSync(path.join(__dirname,'..','Data','Genesis','3.30.0d.json'),'utf8'));
+      const pointReference=JSON.parse(fs.readFileSync(path.join(__dirname,'..','Data','Genesis','point-reference.json'),'utf8'));
+      if (pointReference.version!==graph.version) throw new Error('Genesis point reference does not match the bundled tree.');
       const roots={Currency:19625,Equipment:22476,Unique:47967,Mysterious:42956};
       const query=(args.query ?? '').toLowerCase(),offset=args.offset ?? 0,limit=args.limit ?? 100;
       const rows=Object.values(graph.nodes).filter(node=>(!args.branch || node.root===roots[args.branch]) && (!query || `${node.name} ${node.stats.join(' ')}`.toLowerCase().includes(query))).sort((a,b)=>a.id-b.id);
-      return {revision:current.revision,version:graph.version,roots,nodes:rows.slice(offset,offset+limit),total:rows.length,offset,nextOffset:offset+limit<rows.length?offset+limit:undefined,source:graph.treeSource,limitations:['Standard mode only; Ruthless data is not modeled.','Point limits, choice costs, allocation rules and layout need current-game verification.','Genesis planning does not modify character calculations.']};
+      return {revision:current.revision,version:graph.version,roots,pointReference,nodes:rows.slice(offset,offset+limit),total:rows.length,offset,nextOffset:offset+limit<rows.length?offset+limit:undefined,source:graph.treeSource,limitations:['Standard mode only; Ruthless data is not modeled.','Point costs, other branch limits, allocation rules and layout need current-game verification.','Genesis planning does not modify character calculations.']};
     }
     if (name === 'get_atlas_plans') {
       const plans=captured.context.atlasPlans ?? [];

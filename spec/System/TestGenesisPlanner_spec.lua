@@ -28,6 +28,25 @@ describe("Genesis planning",function()
 		assert.equal(3839,choicePath[#choicePath]);assert.equal(0,#genesis.report(withChoice).missingChoices)
 		assert.is_false(pcall(genesis.connect,connected,40721))
 	end)
+	it("reports the published Equipment maximum without rejecting experimental plans",function()
+		local reference=genesis.pointReference();assert.equal(16,reference.branches.Equipment.publishedMaximum)
+		assert.matches("3985332",reference.branches.Equipment.source)
+		local plan=genesis.empty();local tree=genesis.tree();local ids={}
+		for id,node in pairs(tree.nodes) do if node.root==22476 and not node.choiceOption and not genesis.roots[id] and not genesis.wombs[id] then ids[#ids+1]=id end end
+		table.sort(ids)
+		for _,id in ipairs(ids) do
+			local exists=false;for _,selected in ipairs(plan.nodes) do if selected==id then exists=true end end
+			if not exists then local ok,result=pcall(genesis.connect,plan,id);if ok then plan=result end end
+			if genesis.report(plan).counts[22476].allocated>16 then break end
+		end
+		local report=genesis.report(plan);assert.equal(16,report.counts[22476].publishedMaximum)
+		assert.is_true(report.counts[22476].selectedPassivesExceedReference);assert.is_false(report.pointAccountingVerified)
+		assert.same(plan,genesis.validate(plan))
+		newBuild();main.popups={};local ui=require("Modules.HeadlessUI").install({width=960,height=640});ui:bind(build)
+		local c=require("Classes.GenesisPlannerControl").Open(plan,function() end);ui:choose("branch",22476,"val")
+		local text={};for _,row in ipairs(c.details.list) do text[#text+1]=StripEscapes(row[1]) end
+		assert.is_truthy(table.concat(text," "):find("Over 16 passives selected",1,true));ui:restore();main.popups={}
+	end)
 	it("preserves Genesis allocations in a saved Atlas plan",function()
 		newBuild();local atlas=require("Modules.AtlasPlanner");local g=genesis.toggle(genesis.empty(),19912)
 		local plan={id="genesis-test",title="Genesis test",version=atlas.defaultVersion(build.spec.treeVersion),budget=10,nodes={},notes="",genesis=g}
@@ -43,6 +62,9 @@ describe("Genesis planning",function()
 		local plan={id="genesis-review",title="Genesis review",version="3.30.0c",budget=10,nodes={},notes="",genesis=genesis.toggle(genesis.empty(),19912)}
 		local prepared=bridge.prepare(build,{mode="edit",title="Genesis review",baseRevision=bridge.revision(build),operations={{type="set_atlas_plan",plan=plan}}})
 		local changes=table.concat(prepared.changes," ");assert.is_truthy(changes:find("Genesis [3.30.0d]",1,true));assert.is_truthy(changes:find("Currency: Additional Currency Chance",1,true))
+		plan.genesis=genesis.connect(genesis.empty(),20212)
+		prepared=bridge.prepare(build,{mode="edit",title="Genesis review",baseRevision=bridge.revision(build),operations={{type="set_atlas_plan",plan=plan}}})
+		changes=table.concat(prepared.changes," ");assert.is_truthy(changes:find("maximum of 16 points",1,true));assert.is_truthy(changes:find("costs need verification",1,true))
 	end)
 	it("navigates from Atlas tools, edits the tree and keeps the plan",function()
 		for _,width in ipairs({960,1024,1280}) do

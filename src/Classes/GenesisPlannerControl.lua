@@ -149,6 +149,11 @@ function Panel.Open(original,onKeep)
 		local report=planner.report(plan);local count=report.counts[c.canvas.root]
 		c.count.label="^7"..count.allocated..(count.allocated==1 and " passive | " or " passives | ")..count.options..(count.options==1 and " choice" or " choices")
 		local node=c.canvas.focus and tree.nodes[c.canvas.focus];local lines=node and {node.name} or {"Select a passive to inspect it."}
+		if count.publishedMaximum then
+			lines[#lines+1]="3.29 notes: Equipment maximum "..count.publishedMaximum.." points."
+			lines[#lines+1]="Womb and choice point costs need game verification."
+			if count.selectedPassivesExceedReference then lines[#lines+1]="^xFFBB77Over 16 passives selected; verify their point costs in game." end
+		end
 		canToggle=false
 		if node then
 			for _,stat in ipairs(node.stats) do lines[#lines+1]=stat end
@@ -158,7 +163,11 @@ function Panel.Open(original,onKeep)
 				if allocated then ok,reason,path=pcall(planner.toggle,plan,node.id) else ok,reason,path=pcall(planner.connect,plan,node.id) end
 				canToggle=ok
 				if not ok then lines[#lines+1]=ui.errorText(reason)
-				elseif not allocated then lines[#lines+1]=#path..(#path==1 and " node to connect." or " nodes to connect.") end
+				elseif not allocated then
+					lines[#lines+1]=#path..(#path==1 and " node to connect." or " nodes to connect.")
+					local projected=planner.report(reason).counts[c.canvas.root]
+					if projected.selectedPassivesExceedReference and not count.selectedPassivesExceedReference then lines[#lines+1]="^xFFBB77This path selects over 16 passives; verify point costs." end
+				end
 			end
 			if node.choice then lines[#lines+1]="Choose one connected option." end
 			local replaced=replacedChoice(node.id)

@@ -1,0 +1,12 @@
+{
+  "version": "3.30.0d",
+  "branches": {
+    "Equipment": {
+      "root": 22476,
+      "publishedMaximum": 16,
+      "sourcePatch": "3.29.0",
+      "source": "https://www.pathofexile.com/forum/view-thread/3985332"
+    }
+  },
+  "note": "The 3.29 notes state the Equipment maximum. Womb and choice point costs, earned points, other branch limits and later changes are not verified."
+}

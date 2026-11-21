@@ -604,6 +604,7 @@ test('keeps Atlas proposals in the desktop review flow and rejects unsupported v
 test('provides searchable, paged Genesis data to AI clients', t => {
   const f=fixture(t),first=f.call('get_genesis_tree',{limit:10});
   assert.equal(first.total,133);assert.equal(first.nodes.length,10);assert.equal(first.nextOffset,10);
+  assert.equal(first.pointReference.branches.Equipment.publishedMaximum,16);assert.match(first.pointReference.branches.Equipment.source,/3985332/);
   const currency=f.call('get_genesis_tree',{branch:'Currency',query:'Foulborn'});
   assert.ok(currency.nodes.some(node=>node.id===40721 && node.stats.some(line=>line.includes('6% chance'))));
   assert.ok(currency.nodes.every(node=>node.root===currency.roots.Currency));

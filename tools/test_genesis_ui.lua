@@ -20,6 +20,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("branch",22476,"val")
 	local function find(name) ui:text("search",name);local sx,sy=c.results:GetPos();ui:clickAt(sx+20,sy+12) end
 	find("Devoted Technique");assert(c.canvas.focus==20212,"Search must focus the choice node")
+	local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1]) end;assert(table.concat(details," "):find("Equipment maximum 16",1,true),"Published point reference is missing")
 	ui:frame():write(directory.."/"..size[1].."-genesis-choice-art.json")
 	local art=false;for _,command in ipairs(ui.commands) do if command.asset=="Assets/Genesis/KeepersSelectionNotable.png" then art=true end end
 	assert(art,"Choice node art was not drawn")

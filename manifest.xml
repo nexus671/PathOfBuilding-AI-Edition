@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview887" />
+	<Version number="2.68.1-ai.preview888" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="3060a238e0183430e04cc12777f672cfa129740b" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="dacc1a59b30e62821b902ffc6cd212748db32521" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -1869,8 +1869,8 @@
 	<File name="Data/Global.lua" part="program" sha1="72bff7e953555cf3045880b0ff0dc0c37f43056e" />
 	<File name="Data/HeadlessImageSizes.json" part="program" sha1="991ead579ed049c75cc22964c9972699942c0142" />
 	<File name="Data/IncursionDropOnly.lua" part="program" sha1="1fa5c24b1bf897e781c54b3ce7a7fcd7d23fd645" />
-	<File name="Classes/GenesisPlannerControl.lua" part="program" sha1="da8fe9946012c334239c38fbc648e402985e1f91" />
-	<File name="Modules/GenesisPlanner.lua" part="program" sha1="b1c40dc79795ae2f69624f58913c7cf8670479e9" />
+	<File name="Classes/GenesisPlannerControl.lua" part="program" sha1="0522ef482ceb866852ff6bd603812854852f33ad" />
+	<File name="Modules/GenesisPlanner.lua" part="program" sha1="14ef6d29220456d78d1034816d57b7042042ec38" />
 	<File name="Assets/Genesis/KeepersCurrencyNode.png" part="program" sha1="a5d87d270fdc35f15d952bcdc14a2700f7f2b60d" />
 	<File name="Assets/Genesis/KeepersCurrencyNotable.png" part="program" sha1="450e139c644cdd434e1f3df0ab1636da416b78aa" />
 	<File name="Assets/Genesis/KeepersEquipmentNode.png" part="program" sha1="fdc62bfe5722e3ddf291d2d9b37f0b1096a316cd" />
@@ -1883,6 +1883,7 @@
 	<File name="Assets/Genesis/MasteryBlank.png" part="program" sha1="e77fe57d12283901618685bbbd28d6bb63bf846a" />
 	<File name="Assets/Genesis/manifest.json" part="program" sha1="0e3a659238d10d8e2c38d59063e1a9f8599c388f" />
 	<File name="Data/Genesis/3.30.0d.json" part="program" sha1="8ba49aeb742a28350e17754c302d28ec4414b776" />
+	<File name="Data/Genesis/point-reference.json" part="program" sha1="33eac52cbd6ad28e75fde4738c1b8fd556087357" />
 	<File name="Data/LootFilters/0.filter" part="program" sha1="95ae274d3a62374fcb0d573065586ec13990ec7a" />
 	<File name="Data/LootFilters/1.filter" part="program" sha1="57125a56ed05ed46c9df992094586a2789ff95ee" />
 	<File name="Data/LootFilters/2.filter" part="program" sha1="69556692f13bdbc29b88f2e5b6ada3fc1c7f808f" />
@@ -2100,7 +2101,7 @@
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="650adaf8761d03a87383f3d4a3b14c1ffb5a6aca" />
 	<File name="Modules/Build.lua" part="program" sha1="aa2e1b52f5e7388131a302f39d3cc6cfee0a5dba" />
 	<File name="Modules/BuildDisplayStats.lua" part="program" sha1="ffc4da3b13c3d50f3580b452622429f0bd7e70ab" />
-	<File name="Modules/BuildInsights.lua" part="program" sha1="0aa8ef8393dfbe2c4f0e74b281014c8bd4daa893" />
+	<File name="Modules/BuildInsights.lua" part="program" sha1="001ce5477dbd6fed64c50949dac49d64ba352a07" />
 	<File name="Modules/BuildJourney.lua" part="program" sha1="f1894a9bb542ecbea77c1d9b1b344975287d3cb7" />
 	<File name="Modules/BuildList.lua" part="program" sha1="daa0c88f606ade9687f037b6e99c9cec2904200e" />
 	<File name="Modules/BuildListHelpers.lua" part="program" sha1="a95770f18b54c05ed1d68f870f3693cac53a0fab" />

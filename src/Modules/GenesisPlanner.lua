@@ -2,13 +2,20 @@
 -- cspell:ignore jsontype
 local json=require("dkjson")
 local M={version="3.30.0d"}
-local cache
+local cache,pointReference
 local roots={
 	[42956]="Mysterious",[19625]="Currency",[22476]="Equipment",[47967]="Unique",
 }
 local wombs={[7411]=true,[41240]=true,[33919]=true,[28988]=true}
 M.roots=roots
 M.wombs=wombs
+function M.pointReference()
+	if not pointReference then
+		local file=assert(io.open("Data/Genesis/point-reference.json","rb"));local raw=file:read("*a");file:close()
+		pointReference=assert(json.decode(raw));assert(pointReference.version==M.version,"Unsupported Genesis point reference")
+	end
+	return copyTable(pointReference)
+end
 function M.tree()
 	if not cache then
 		local file=assert(io.open("Data/Genesis/3.30.0d.json","rb"));local raw=file:read("*a");file:close()
@@ -60,6 +67,10 @@ function M.report(plan)
 	plan=M.validate(plan);local tree=M.tree();local result={counts={},missingChoices={}}
 	local set=selectedSet(plan)
 	for _,root in ipairs(tree.roots) do result.counts[root]={allocated=0,options=0} end
+	for _,entry in pairs(M.pointReference().branches) do
+		local count=assert(result.counts[entry.root],"Unknown Genesis point-reference branch")
+		count.publishedMaximum=entry.publishedMaximum;count.maximumSource=entry.source;count.maximumSourcePatch=entry.sourcePatch
+	end
 	for _,id in ipairs(plan.nodes) do
 		local node=tree.nodes[id];local count=result.counts[node.root]
 		if node.choiceOption then count.options=count.options+1 else count.allocated=count.allocated+1 end
@@ -68,6 +79,8 @@ function M.report(plan)
 			if not chosen then result.missingChoices[#result.missingChoices+1]=id end
 		end
 	end
+	for _,count in pairs(result.counts) do if count.publishedMaximum then count.selectedPassivesExceedReference=count.allocated>count.publishedMaximum end end
+	result.pointAccountingVerified=false
 	return result
 end
 function M.toggle(plan,id)

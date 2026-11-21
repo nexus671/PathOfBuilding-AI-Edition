@@ -44,7 +44,7 @@ The installed application and personal builds are outside this release workspace
 - [x] Compare saved plans visually and preserve exact tree versions.
 - [ ] Compare the current Atlas with the live game. GGG's 3.30.0c export commit is bundled for Standard and Ruthless, and `tools/check_atlas_release.py` verifies all four source files and both generated graphs. The live game has not been checked.
 - [x] Make an experimental Genesis Tree planner available from Atlas plan tools, with search, connected paths, choices and build-persisted allocations.
-- [ ] Validate Genesis allocation and choice rules, point limits and layout against the live game; complete the original backgrounds. All node icons from the pinned graph are bundled. The current graph uses the pinned 3.30.0.4 client export and standard passive-tree orbit geometry.
+- [ ] Validate Genesis allocation and choice rules, point limits and layout against the live game; complete the original backgrounds. The planner shows the published 16-point Equipment maximum as a reference, while point costs and other branch limits remain unverified. All node icons from the pinned graph are bundled. The current graph uses the pinned 3.30.0.4 client export and standard passive-tree orbit geometry.
 
 ## Shared experience
 

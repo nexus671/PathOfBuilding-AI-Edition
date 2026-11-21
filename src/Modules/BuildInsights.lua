@@ -92,6 +92,8 @@ function M.changes(before, after)
 			if plan.genesis then
 				local genesis=require("Modules.GenesisPlanner");local graph=genesis.tree();local summary=genesis.report(plan.genesis)
 				add("  Genesis ["..plan.genesis.version.."] "..#plan.genesis.nodes.." selected nodes; allocation rules need game verification")
+				local equipment=summary.counts[22476]
+				if equipment.allocated>0 then add("  Equipment Genesis: "..equipment.allocated.." selected passives; the 3.29 notes list a maximum of "..equipment.publishedMaximum.." points. Womb and choice costs need verification.") end
 				for _,id in ipairs(plan.genesis.nodes) do local node=graph.nodes[id];add("    "..genesis.roots[node.root]..": "..node.name.." | "..table.concat(node.stats," ")) end
 				if #summary.missingChoices>0 then add("  Genesis choices not selected: "..#summary.missingChoices) end
 			elseif oldPlans[plan.id] and oldPlans[plan.id].genesis then add("  Genesis allocations removed") end
