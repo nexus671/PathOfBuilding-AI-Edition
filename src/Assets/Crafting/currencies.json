@@ -431,6 +431,14 @@
       "height": 78,
       "sha256": "41affdb6741f547ce4bd79d6803d5319ddcbfc46d343b76d9df3c699cf21b683"
     },
+    "Metadata/Items/Currency/CurrencyEnkindlingOrb": {
+      "name": "Enkindling Orb",
+      "path": "Assets/Crafting/Currency/95e43fd333795c8a758a.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/Expedition/FlaskPlate.png",
+      "width": 78,
+      "height": 78,
+      "sha256": "797792f0878ad58db626f58d5671b698721e7591761ae96f9d736587b7030803"
+    },
     "Metadata/Items/Currency/CurrencyEssenceAnger1": {
       "name": "Muttering Essence of Anger",
       "path": "Assets/Crafting/Currency/bb2a311f35a11a7287a4.png",
@@ -1351,6 +1359,14 @@
       "height": 78,
       "sha256": "072b034345117585d90763e8e19b9b3056393520f215c15fd43ab9efe0792bd2"
     },
+    "Metadata/Items/Currency/CurrencyInstillingOrb": {
+      "name": "Instilling Orb",
+      "path": "Assets/Crafting/Currency/452b63ccb02eb75f558c.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/Expedition/FlaskInjector.png",
+      "width": 78,
+      "height": 78,
+      "sha256": "0eff5622c810cf1d87c52a3a665cdc680f098a96b3c581b086a17c618ba07c7e"
+    },
     "Metadata/Items/Currency/CurrencyItemisedCapturedMonster": {
       "name": "Imprinted Bestiary Orb",
       "path": "Assets/Crafting/Currency/b8439154c0cc6e3936e8.png",
@@ -1837,6 +1853,7 @@
     "eldritch_chaos": "Metadata/Items/Currency/CurrencyEldritchRerollRare",
     "eldritch_exalt": "Metadata/Items/Currency/CurrencyEldritchAddModToRare",
     "eldritch_implicit": "Metadata/Items/Currency/CurrencyEldritchEmber1",
+    "enkindling": "Metadata/Items/Currency/CurrencyEnkindlingOrb",
     "essence": "Metadata/Items/Currency/CurrencyEssenceGreed7",
     "exalt": "Metadata/Items/Currency/CurrencyAddModToRare",
     "fossil": "Metadata/Items/Delve/DelveStackableSocketableCurrencyReroll1",
@@ -1848,6 +1865,7 @@
     "harvest_augment": "Metadata/Items/Currency/HarvestSeedBlue",
     "harvest_reforge": "Metadata/Items/Currency/HarvestSeedBlue",
     "harvest_resistance": "Metadata/Items/Currency/HarvestSeedBlue",
+    "instilling": "Metadata/Items/Currency/CurrencyInstillingOrb",
     "jeweller": "Metadata/Items/Currency/CurrencyRerollSocketNumbers",
     "omen_connections": "Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks",
     "omen_trichromatism": "Metadata/Items/Currency/AncestralOmenOnChromaticAddWhiteSockets",

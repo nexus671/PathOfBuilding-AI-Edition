@@ -245,6 +245,7 @@ end
 function M.hint(method,state,model,craft)
 	local available,reason=M.available(method,state,model)
 	if available and method=="beast_flask" then return "Uses one red beast. Choose a named suffix; item eligibility and roll odds are experimental." end
+	if available and (method=="instilling" or method=="enkindling") then return "Replace the utility flask enchantment. Client weights and uniformly sampled rolls are experimental; verify in game." end
 	if available then
 		local configuration=simulator.configurationReason(model,state,craft or {method=method})
 		if configuration then return configuration end

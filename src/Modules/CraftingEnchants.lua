@@ -51,7 +51,7 @@ function E.extend(M,A,api)
 	function M.action(model,state,craft,random)
 		if craft.method=="bench_remove_enchant" then
 			local reason=M.methodChecks.bench_remove_enchant(model,state);assert(not reason,reason)
-			local next=copyTable(state);next.harvestEnchant=nil;next.enchantCleared=true
+			local next=copyTable(state);next.harvestEnchant=nil;next.flaskEnchant=nil;next.enchantCleared=true
 			if model.item.type=="Gloves" then next.katakohiEnchants={} end
 			return next
 		end

@@ -39,13 +39,20 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 	controls.linkedColours:SelByValue(conditions.linkedColours and "In one linked group" or "Anywhere on item")
 	controls.corrupted=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,438,572,24},{"Any corruption state","Must be corrupted","Must be uncorrupted","Must be twice corrupted","Must be corrupted once","Must not be twice corrupted"})
 	controls.corrupted:SelByValue(conditions.twiceCorrupted==true and "Must be twice corrupted" or conditions.corrupted==false and "Must be uncorrupted" or conditions.twiceCorrupted==false and (conditions.corrupted==true and "Must be corrupted once" or "Must not be twice corrupted") or conditions.corrupted==true and "Must be corrupted" or "Any corruption state")
-	local enchantments={{label="Any Harvest enchantment",val=false}}
-	for id,craft in pairs(require("Modules.CraftingEnchants").data().crafts) do enchantments[#enchantments+1]={label=(id:find("Body",1,true) and "Body: " or "Weapon: ")..craft.lines[#craft.lines],val=id} end
+	local base=baseName and data.itemBases[baseName];local flask=base and base.tags and base.tags.utility_flask
+	local enchantments={{label=flask and "Any flask enchantment" or "Any Harvest enchantment",val=false}}
+	if flask then
+		for group,pool in pairs(require("Modules.CraftingFlaskEnchants").data().pools) do for _,entry in ipairs(pool) do
+			enchantments[#enchantments+1]={label=(group=="INSTILLING" and "Instilling: " or "Enkindling: ")..data.enchantments.UtilityFlask[group][entry.index]:gsub("/.*$","")..(entry.weight==0 and " (not rollable)" or ""),val=entry.id}
+		end end
+	else for id,craft in pairs(require("Modules.CraftingEnchants").data().crafts) do enchantments[#enchantments+1]={label=(id:find("Body",1,true) and "Body: " or "Weapon: ")..craft.lines[#craft.lines],val=id} end end
 	table.sort(enchantments,function(a,b) if not a.val then return not not b.val elseif not b.val then return false else return a.label<b.label end end)
 	controls.harvestEnchant=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,478,376,24},enchantments)
-	controls.harvestEnchant:SelByValue(conditions.harvestEnchant or false,"val")
-	edit("minAbyssSockets",408,462,conditions.minAbyssSockets,"Minimum Abyss sockets")
-	controls.minAbyssSockets.tooltipText="Counts actual Abyssal sockets, independently of modifier text. Modeled layout changes can be experimental."
+	local currentEnchant=conditions.harvestEnchant;if flask then currentEnchant=conditions.flaskEnchant end
+	controls.harvestEnchant:SelByValue(currentEnchant or false,"val")
+	local minimum=conditions.minAbyssSockets;if flask then minimum=conditions.flaskEnchantMin end
+	edit("minAbyssSockets",408,462,minimum,flask and "Minimum enchant roll" or "Minimum Abyss sockets")
+	controls.minAbyssSockets.tooltipText=flask and "Optional minimum for an Enkindling enchantment's numeric roll." or "Counts actual Abyssal sockets, independently of modifier text. Modeled layout changes can be experimental."
 	local influences={{label="Any influence",val=false}}
 	for _,info in ipairs(itemLib.influenceInfo.default) do influences[#influences+1]={label=info.display.." influence",val=info.key} end
 	controls.influence=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,518,376,24},influences)
@@ -76,11 +83,14 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 		local result={nativeStats=conditions.nativeStats and copyTable(conditions.nativeStats)};for _,entry in ipairs(properties) do local value=controls[entry[1]].buf;if value ~= "" then result[entry[1]]=assert(tonumber(value),"Enter a number for "..entry[2]:lower()) end end
 		if result.sockets~=nil and controls.socketMode:GetSelValue()=="Exactly" then result.exactSockets=result.sockets;result.sockets=nil end
 		if controls.uniqueName.buf:match("%S") then result.uniqueName=controls.uniqueName.buf end
-		if controls.minAbyssSockets.buf~="" then result.minAbyssSockets=assert(tonumber(controls.minAbyssSockets.buf),"Enter a number for Abyss sockets") end
+		if controls.minAbyssSockets.buf~="" then
+			local value=assert(tonumber(controls.minAbyssSockets.buf),"Enter a numeric minimum")
+			if flask then result.flaskEnchantMin=value else result.minAbyssSockets=value end
+		end
 		local corruption=controls.corrupted:GetSelValue()
 		if corruption=="Must be corrupted" or corruption=="Must be corrupted once" then result.corrupted=true elseif corruption=="Must be uncorrupted" then result.corrupted=false end
 		if corruption=="Must be twice corrupted" then result.twiceCorrupted=true elseif corruption=="Must be corrupted once" or corruption=="Must not be twice corrupted" then result.twiceCorrupted=false end
-		result.harvestEnchant=controls.harvestEnchant:GetSelValueByKey("val") or nil
+		if flask then result.flaskEnchant=controls.harvestEnchant:GetSelValueByKey("val") or nil else result.harvestEnchant=controls.harvestEnchant:GetSelValueByKey("val") or nil end
 		result.influence=controls.influence:GetSelValueByKey("val") or nil
 		if controls.socketColours.buf~="" then result.socketColours=controls.socketColours.buf:upper();result.linkedColours=controls.linkedColours:GetSelValue()=="In one linked group" end
 		local required=controls.groups.buf ~= "" and assert(tonumber(controls.groups.buf),"Invalid required group count") or nil

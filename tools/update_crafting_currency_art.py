@@ -24,6 +24,7 @@ METHODS = {
     "scour": "Orb of Scouring", "divine": "Divine Orb", "vaal": "Vaal Orb",
     "chromatic": "Chromatic Orb", "jeweller": "Jeweller's Orb", "fusing": "Orb of Fusing",
     "blessed": "Blessed Orb", "sacred": "Sacred Orb", "conflict": "Orb of Conflict",
+    "instilling": "Instilling Orb", "enkindling": "Enkindling Orb",
     "fracture": "Fracturing Orb", "awakener": "Awakener's Orb", "dominance": "Orb of Dominance",
     "veiled_orb": "Veiled Exalted Orb", "veiled_chaos": "Veiled Chaos Orb",
     "eldritch_exalt": "Eldritch Exalted Orb", "eldritch_annul": "Eldritch Orb of Annulment",

@@ -119,6 +119,8 @@ function Panel.Open(build,project,layout)
 			elseif key=="twiceCorrupted" then lines[#lines+1]=value and "Must be twice corrupted" or "Must not be twice corrupted"
 			elseif key=="influence" then for _,info in ipairs(itemLib.influenceInfo.default) do if info.key==value then lines[#lines+1]="Influence: "..info.display;break end end
 			elseif key=="minAbyssSockets" then lines[#lines+1]="Minimum Abyss sockets: "..value
+			elseif key=="flaskEnchant" then lines[#lines+1]="Flask enchantment: "..require("Modules.CraftingFlaskEnchants").label(value)
+			elseif key=="flaskEnchantMin" then lines[#lines+1]="Minimum enchantment roll: "..value
 			else lines[#lines+1]=key:gsub("(%l)(%u)","%1 %2")..": "..tostring(value) end
 		end
 		controls.targetSummary.list=rows(lines)

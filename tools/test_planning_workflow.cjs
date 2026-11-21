@@ -150,6 +150,13 @@ async function main(){
     const applied=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:flask,action:{method:'quality'},seed:1},'crafted');
     assert.equal(applied.nativeCrafting.uniqueQuality.quality,19);assert.equal(applied.nativeCrafting.components['Metadata/Items/Currency/CurrencyFlaskQuality'],1);assert.equal(applied.nativeCrafting.itemText,flask.replace('Quality: 18','Quality: 19')+(base.includes('Tincture')?'\nTincture Imported Quality: 18\nTincture Imported Effect: 0':''));
   }
+  const utilityFlask='Rarity: NORMAL\nQuicksilver Flask\nItem Level: 86';
+  const flaskCatalog=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:utilityFlask,query:'OnFullCharges',limit:20},'inspected');
+  assert.equal(flaskCatalog.crafting.nativeEngine.flaskEnchants[0].id,'FlaskEnchantmentInjectorOnFullCharges__');
+  const flaskCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:utilityFlask,action:{method:'enkindling'},seed:123},'crafted');
+  assert.ok(flaskCraft.nativeCrafting.state.flaskEnchant.id);assert.match(flaskCraft.nativeCrafting.itemText,/Gains no Charges during Effect/);
+  const flaskPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:utilityFlask,recipe:{steps:[{method:'enkindling'}],targets:[],requirements:{flaskEnchant:flaskCraft.nativeCrafting.state.flaskEnchant.id}},options:{trials:5,maxActions:2,seed:1}},'crafted');
+  assert.equal(flaskPlan.nativeCrafting.trials,5);
   const uniqueShield='Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\n+100 to maximum Life';
   const uniqueInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},limit:20},'inspected');
   assert.equal(uniqueInspection.crafting.nativeEngine.uniqueCrafting,true);

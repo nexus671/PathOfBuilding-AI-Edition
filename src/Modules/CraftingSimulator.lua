@@ -67,6 +67,7 @@ function M.hasProtectedImplicit(model,state)
 end
 function M.actionWarnings(action,model)
 	local result={}
+	if action.method=="instilling" or action.method=="enkindling" then result[#result+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."} end
 	local item=model and model.item
 	-- Native imports can preserve legacy values; hypothetical state can also
 	-- contain them. Neither proves current-game availability.
@@ -698,6 +699,8 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
 	   if not found then return false end
 	  end
   if requirements.harvestEnchant and state.harvestEnchant~=requirements.harvestEnchant then return false end
+  if requirements.flaskEnchant and (not state.flaskEnchant or state.flaskEnchant.id~=requirements.flaskEnchant) then return false end
+  if requirements.flaskEnchantMin and (not state.flaskEnchant or not state.flaskEnchant.roll or state.flaskEnchant.roll<requirements.flaskEnchantMin) then return false end
   if requirements.nativeStats and not require("Modules.CraftingItemStats").matches(M,model,state,requirements.nativeStats) then return false end
   if requirements.sockets and #(state.sockets or model.item.sockets or {}) < requirements.sockets then return false end
   if requirements.exactSockets and #(state.sockets or model.item.sockets or {}) ~= requirements.exactSockets then return false end
@@ -744,6 +747,10 @@ function M.validateRecipe(recipe)
 				assert((value.minValue~=nil)~=(value.maxValue~=nil),"Choose either a minimum or maximum unique modifier roll")
 				integer(value.minValue or value.maxValue,-100000,100000,"unique modifier target")
 			elseif key == "harvestEnchant" then assert(type(value)=="string" and require("Modules.CraftingEnchants").data().crafts[value],"Choose a known Harvest enchantment")
+			elseif key == "flaskEnchant" then assert(type(value)=="string" and require("Modules.CraftingFlaskEnchants").entry(value),"Choose a known flask enchantment")
+			elseif key == "flaskEnchantMin" then
+				integer(value,0,100,"minimum flask enchantment roll");local lo,hi=require("Modules.CraftingFlaskEnchants").bounds(requirements.flaskEnchant)
+				assert(lo and value<=hi,"Choose a rolled flask enchantment and a minimum within its range")
 			elseif key == "corrupted" or key == "twiceCorrupted" or key == "linkedColours" then assert(type(value) == "boolean","Invalid boolean property condition")
 			elseif key == "influence" then assert(({shaper=true,elder=true,adjudicator=true,basilisk=true,crusader=true,eyrie=true})[value],"Choose a supported influence")
 			elseif key == "socketColours" then assert(type(value)=="string" and #value>=1 and #value<=6 and not value:find("[^RGBW]"),"Use one to six socket colours: R, G, B or W")
