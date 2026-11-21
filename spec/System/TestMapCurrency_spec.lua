@@ -107,6 +107,38 @@ describe("Experimental map currency",function()
 		local nightmare={baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}
 		assert.has_error(function() currency.perform(nightmare,"vaal_add",1) end)
 	end)
+	it("previews conditional unchanged and implicit outcomes across ordinary map rarities",function()
+		local map=require("Modules.MapCraftingData");local atlas=require("Modules.AtlasPlanner")
+		for _,rarity in ipairs({"normal","magic","rare"}) do
+			local input=rarity=="normal" and state("normal") or currency.perform(state("normal"),rarity=="magic" and "transmute" or "alchemy",42).state
+			input.quality={kind="Pack Size",value=20};input.observedEffects={{kind="enchant",text="Players are Delirious"}};local before=copyTable(input)
+			for _,action in ipairs({"vaal_unchanged","vaal_implicit"}) do
+				local result=currency.perform(input,action,123456);assert.same(before,input);assert.is_true(result.state.corrupted);assert.is_true(result.state.vaalPreview)
+				assert.same(input.selected,result.state.selected);assert.same(input.rolls or {},result.state.rolls);assert.same(input.quality,result.state.quality);assert.same(input.observedEffects,result.state.observedEffects)
+				assert.matches("Conditional Vaal",result.note,1,true);assert.matches("not a full Vaal",result.note,1,true)
+				if action=="vaal_implicit" then assert.is_truthy(result.state.implicit);assert.equal("3.30.0.2",result.implicitSource.patch)
+				else assert.is_nil(result.state.implicit) end
+				local draft=copyTable(result.state);draft.id="vaal-conditional";draft.title="Map";draft.patch=map.source().patch
+				assert.has_no.errors(function() atlas.validateMapDraft(draft);map.inspect(draft.baseId,draft.tier,draft.itemLevel,draft.selected,"",0,50,nil,draft.rarity,draft.rolls,true,draft.implicit,draft.quality,draft.observedEffects) end)
+				assert.has_error(function() currency.perform(result.state,action,1) end)
+			end
+		end
+	end)
+	it("uses pinned level and Blighted restrictions for sampled corruption implicits",function()
+		local implicit=require("Modules.MapCorruptionImplicits");local blocked={MapCorruptionAtlasEffect=true,MapCorruptionBossCorruption=true,MapCorruptionRandomAtlasNotables=true,MapCorruptionVaalVessel=true,MapCorruptionItemQuantity=true}
+		for i=1,150 do
+			local input=state("normal");input.itemLevel=70;input.observedEffects={{kind="implicit",text="Area is infested with Fungal Growths"}}
+			local result=currency.perform(input,"vaal_implicit",i*104729).state;assert.is_nil(blocked[result.implicit.id]);assert.is_true(implicit.describe(result.implicit,70).requiredLevel<=70)
+		end
+	end)
+	it("previews a conditional same-tier rare reroll without retaining old values",function()
+		local input=currency.perform(state("normal"),"alchemy",123).state;local before=copyTable(input)
+		local reroll=currency.perform(input,"vaal_reroll",42);local chaos=currency.perform(input,"chaos",42)
+		assert.same(before,input);assert.same(chaos.state.selected,reroll.state.selected);assert.same(chaos.state.rolls,reroll.state.rolls)
+		assert.equal(input.baseId,reroll.state.baseId);assert.equal(input.tier,reroll.state.tier);assert.is_true(reroll.state.corrupted);assert.is_true(reroll.state.vaalPreview)
+		assert.matches("same tier",reroll.note,1,true);assert.matches("Vaal Temple",reroll.note,1,true)
+		assert.has_error(function() currency.perform(state("magic"),"vaal_reroll",42) end)
+	end)
 	it("rerolls values even when Chaos selects the same modifier again",function()
 		local map=require("Modules.MapCraftingData")
 		local inputs={state("rare"),{baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}}

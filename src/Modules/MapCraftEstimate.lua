@@ -23,7 +23,7 @@ end
 function M.run(state,options,checkpoint)
 	assert(type(state)=="table" and type(options)=="table","Invalid map estimate")
 	assert(state.vaalPreview==nil or type(state.vaalPreview)=="boolean","Invalid conditional Vaal preview marker")
-	assert(not state.vaalPreview or state.corrupted and state.rarity=="rare","A conditional Vaal preview requires a corrupted rare map")
+	assert(not state.vaalPreview or state.corrupted,"A conditional Vaal preview requires a corrupted map")
 	assert(not state.corrupted,"Corrupted maps cannot be rerolled")
 	assert(state.implicit==nil,"A map corruption implicit requires a corrupted map")
 	assert(not state.mirrored,"Mirrored maps cannot be rerolled")

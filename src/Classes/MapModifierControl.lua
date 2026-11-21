@@ -239,13 +239,13 @@ function M.Open(options)
 		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
 		local ok,actions=pcall(require("Modules.MapCurrency").options,current)
 		if not ok then main:OpenMessagePopup("Map currency",ui.errorText(actions));return end
-		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon="Assets/Crafting/"..(entry.id=="vaal_add" and "vaal" or entry.id)..".png",details={entry.reason or entry.detail or (entry.id=="originator" and "Removes a random suffix and samples a rare-only replacement; some outcomes and weights are unverified." or entry.id=="vaal_add" and "Conditional outcome only, not a full Vaal Orb roll; outcome odds are unknown." or "Available for this modeled map."),"Experimental map crafting; no real currency is consumed.",map.isNightmare(baseId) and "Six modifiers: exclusive prefix and suffix first, then four weighted draws; order is unverified." or "Counts, selection and independent uniform stat rolls are estimates.",observedEffects and "Observed effects are not modeled and can change results." or "Unmatched translations remain ranges; some restrictions are unverified."}} end
+		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon="Assets/Crafting/"..(entry.id:match("^vaal_") and "vaal" or entry.id)..".png",details={entry.reason or entry.detail or (entry.id=="originator" and "Removes a random suffix and samples a rare-only replacement; some outcomes and weights are unverified." or entry.id:match("^vaal_") and "Conditional outcome only, not a full Vaal Orb roll; outcome odds are unknown." or "Available for this modeled map."),"Experimental map crafting; no real currency is consumed.",map.isNightmare(baseId) and "Six modifiers: exclusive prefix and suffix first, then four weighted draws; order is unverified." or "Counts, selection and independent uniform stat rolls are estimates.",observedEffects and "Observed effects are not modeled and can change results." or "Unmatched translations remain ranges; some restrictions are unverified."}} end
 		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",canChoose=function(entry) return entry.available end,choose=function(entry)
 			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
 			local attemptSeed=rollSeed;rollSeed=rollSeed*16807%2147483647
 			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,attemptSeed)
 			if not ok then main:OpenMessagePopup("Currency unavailable",ui.errorText(result));return end
-			selected=result.state.selected;rolls=result.state.rolls
+			selected=result.state.selected;rolls=result.state.rolls;implicit=result.state.implicit and copyTable(result.state.implicit) or nil
 			local rarityValue=result.state.corrupted and "corrupted_"..result.state.rarity or result.state.rarity
 			local clearedEstimate=result.state.corrupted and estimateSettings~=nil
 			if result.state.corrupted then estimateSettings=nil end
@@ -253,7 +253,7 @@ function M.Open(options)
 			controls.rarity:SelByValue(rarityValue,"val");previousRarity=rarityValue;candidate=nil;offset=0
 			main:ClosePopup();controls.search:SetText("");refresh()
 			if entry.id=="originator" then controls.status.label="^xE9BE7BOriginator preview | replacement weights and interactions unverified" end
-			if entry.id=="vaal_add" then controls.status.label=clearedEstimate and "^xE9BE7BConditional Vaal outcome | reroll settings cleared" or "^xE9BE7BConditional Vaal outcome | other outcomes and odds not modeled" end
+			if entry.id:match("^vaal_") then controls.status.label=clearedEstimate and "^xE9BE7BConditional Vaal outcome | reroll settings cleared" or "^xE9BE7BConditional Vaal outcome | overall odds not modeled" end
 		end,closeOnChoose=false})
 	end)
 	controls.currency.enabled=function() return not isCorrupted() and not mirrored and not unidentified and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and not levelProblem() end

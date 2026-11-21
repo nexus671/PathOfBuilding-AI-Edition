@@ -60,7 +60,7 @@ function M.validateMapDraft(entry)
 	assert(entry.corrupted==nil or type(entry.corrupted)=="boolean","Invalid map corruption state")
 	result.corrupted=entry.corrupted or nil
 	assert(entry.vaalPreview==nil or type(entry.vaalPreview)=="boolean","Invalid conditional Vaal preview marker")
-	assert(not entry.vaalPreview or result.corrupted and result.rarity=="rare","A conditional Vaal preview requires a corrupted rare map")
+	assert(not entry.vaalPreview or result.corrupted,"A conditional Vaal preview requires a corrupted map")
 	result.vaalPreview=entry.vaalPreview or nil
 	assert(entry.mirrored==nil or type(entry.mirrored)=="boolean","Invalid map mirrored state");result.mirrored=entry.mirrored or nil
 	assert(entry.unidentified==nil or type(entry.unidentified)=="boolean","Invalid map identification state");result.unidentified=entry.unidentified or nil

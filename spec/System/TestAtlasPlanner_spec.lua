@@ -134,6 +134,14 @@ describe("Native Atlas planner", function()
 		local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
 		assert.matches("conditional Vaal preview",table.concat(details," "),1,true);assert.matches("outcome odds",table.concat(details," "),1,true)
 	end)
+	it("persists normal-map Vaal implicit previews through Atlas saves and sharing",function()
+		local source=plan("3.30.0-preview");local state={baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="normal",selected={}}
+		local draft=require("Modules.MapCurrency").perform(state,"vaal_implicit",123).state
+		draft.id="normal-vaal";draft.title="Normal map";draft.patch=require("Modules.MapCraftingData").source().patch;source.mapDrafts={draft}
+		local store=atlas.new(build);store:Upsert(source);local xml={};store:Save(xml);local reopened=atlas.new(build);reopened:Load(xml)
+		assert.same(draft.implicit,reopened.plans[1].mapDrafts[1].implicit);assert.is_true(reopened.plans[1].mapDrafts[1].vaalPreview)
+		assert.same(draft.implicit,atlas.import(atlas.export(source)).mapDrafts[1].implicit)
+	end)
 	it("preserves, searches and reports 3.30 multiple-choice effects",function()
 		local version="3.30.0-preview";local node=atlas.tree(version).nodes[45404]
 		assert.equal("Secrets Unveiled",node.name);assert.equal(2,#node.variantEffects)
