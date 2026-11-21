@@ -37,9 +37,11 @@ function M.Open(title,entries,options)
 		controls.details.controls.scrollBar.offset=0
 	end
 	local function refresh()
-		local query=controls.search.buf:lower();local category=controls.category:GetSelValue();filtered={};local list={}
+		local terms={};for term in controls.search.buf:lower():gmatch("%S+") do terms[#terms+1]=term end
+		local category=controls.category:GetSelValue();filtered={};local list={}
 		for _,entry in ipairs(entries) do
-			if (category=="All" or entry.category==category or category=="Favorites" and options.favorites[entry.id]) and entry.searchText:find(query,1,true) then
+			local matches=true;for _,term in ipairs(terms) do if not entry.searchText:find(term,1,true) then matches=false;break end end
+			if (category=="All" or entry.category==category or category=="Favorites" and options.favorites[entry.id]) and matches then
 				filtered[#filtered+1]=entry
 			end
 		end

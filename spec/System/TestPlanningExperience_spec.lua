@@ -193,6 +193,16 @@ describe("Planning experience queries",function()
 		c.search:SetText("nothing",true);assert.matches("0 results |",StripEscapes(c.count.label),1,true)
 		main:ClosePopup()
 	end)
+	it("finds browser entries by multiple words in any order",function()
+		local chosen;local c=require("Classes.PlanningBrowserControl").Open("Find",{
+			{id="abyss",label="Abyss",category="Encounters",search="eye jewels and scarabs"},
+			{id="other",label="Breach",category="Encounters",search="scarabs and splinters"},
+			{id="item",label="Abyss jewel",category="Items",search="scarabs"},
+		},{choose=function(entry) chosen=entry.id end})
+		c.search:SetText("  SCARABS  jewel  ",true);assert.matches("2 results |",StripEscapes(c.count.label),1,true)
+		c.category:SelByValue("Encounters");c.category.selFunc();assert.matches("1 result |",StripEscapes(c.count.label),1,true)
+		c.choose:Click();assert.equal("abyss",chosen)
+	end)
 	it("keeps standalone modifier pickers read-only until a selection is confirmed",function()
 		local chosen
 		local controls=require("Classes.PlanningBrowserControl").Open("Find",{{id="a",label="Life",category="Prefix",details={"A target"}}},{choose=function(entry) chosen=entry.id end,favorites={}})
