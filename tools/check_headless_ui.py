@@ -175,8 +175,10 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2301, f"Expected 2301 UI frames, found {len(paths)}"
+    assert len(paths) == 2307, f"Expected 2307 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
+        for scene in ("beyond", "incursion"):
+            assert (frames / f"{width}-filter-{scene}-examples.json").is_file(), f"Missing {scene} scene at {width}px"
         def label_and_background(name):
             commands = json.loads((frames / f"{width}-{name}.json").read_text())["commands"]
             index = next(i for i in range(len(commands) - 1, -1, -1) if commands[i].get("kind") == "text" and commands[i].get("text") == "Iron Hat")
