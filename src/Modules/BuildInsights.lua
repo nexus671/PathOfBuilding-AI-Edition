@@ -57,12 +57,8 @@ function M.changes(before, after)
 	for _,key in ipairs(sortedKeys(config)) do if before.config[key] ~= after.config[key] then add("Configuration "..key..": "..tostring(before.config[key]).." -> "..tostring(after.config[key])) end end
 	if before.notes ~= after.notes then add("Notes updated:"); for line in after.notes:gmatch("[^\n]+") do add("  "..line) end end
 	if not tableDeepEquals(before.journey,after.journey) or not tableDeepEquals(after.journey,before.journey) then
-		add("Build journey updated; use build Save to persist.")
-		for _,key in ipairs({"milestones","wishlist","resources","ledger","stages"}) do
-			for _,entry in ipairs(after.journey and after.journey[key] or {}) do
-				add(key.." | "..require("dkjson").encode(entry))
-			end
-		end
+		add("Build journey updated; unchanged entries are omitted. Use build Save to persist.")
+		for _,line in ipairs(require("Modules.BuildJourney").review(before.journey,after.journey)) do add(line) end
 	end
 	if not tableDeepEquals(before.craftingProjects,after.craftingProjects) or not tableDeepEquals(after.craftingProjects,before.craftingProjects) then
 		add("Crafting projects updated (saved only with an explicit build Save)")

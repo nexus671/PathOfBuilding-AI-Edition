@@ -97,6 +97,50 @@ function M.validate(input,build)
 	assert(#json.encode(out)<=M.limit,"Journey exceeds supported size")
 	return out
 end
+-- Human-readable before/after evidence for full replacement proposals.
+function M.review(before,after)
+	local lines={};local labels={milestones="milestone",wishlist="gear goal",resources="resource",ledger="ledger entry",stages="leveling stage"}
+	local beforeResources,afterResources={},{}
+	for _,entry in ipairs(before.resources or {}) do beforeResources[entry.id]=entry.title end
+	for _,entry in ipairs(after.resources or {}) do afterResources[entry.id]=entry.title end
+	local function label(key,entry,resources)
+		local title=entry.title
+		if key=="ledger" then title=entry.kind.." "..tostring(entry.amount).." "..(resources[entry.resourceId] or entry.resourceId) end
+		return labels[key]..": "..title.." ["..entry.id.."]"
+	end
+	local function display(value)
+		if value==nil then return "(not set)" end
+		if type(value)=="boolean" then return value and "Yes" or "No" end
+		if type(value)=="table" then local values={};for _,item in ipairs(value) do values[#values+1]=tostring(item) end;return #values>0 and table.concat(values,", ") or "None" end
+		return tostring(value)
+	end
+	local function same(a,b)
+		if type(a)=="table" and type(b)=="table" then return tableDeepEquals(a,b) and tableDeepEquals(b,a) end
+		return a==b
+	end
+	for _,key in ipairs(collections) do
+		local old,new,oldOrder,newOrder={},{},{},{}
+		for _,entry in ipairs(before[key] or {}) do old[entry.id]=entry end
+		for _,entry in ipairs(after[key] or {}) do new[entry.id]=entry end
+		for _,entry in ipairs(before[key] or {}) do if new[entry.id] then oldOrder[#oldOrder+1]=entry.id end end
+		for _,entry in ipairs(after[key] or {}) do if old[entry.id] then newOrder[#newOrder+1]=entry.id end end
+		if table.concat(oldOrder,"\0")~=table.concat(newOrder,"\0") then lines[#lines+1]="Reordered "..key..": "..table.concat(oldOrder,", ").." -> "..table.concat(newOrder,", ") end
+		for _,entry in ipairs(after[key] or {}) do
+			local prior=old[entry.id]
+			if not prior or not same(prior,entry) then
+				lines[#lines+1]=(prior and "Updated " or "Added ")..label(key,entry,afterResources)
+				local fields={};for field in pairs(entry) do if field~="id" then fields[field]=true end end
+				if prior then for field in pairs(prior) do if field~="id" then fields[field]=true end end end
+				for field in pairsSortByKey(fields) do
+					if not prior then lines[#lines+1]="  "..field..": "..display(entry[field])
+					elseif not same(prior[field],entry[field]) then lines[#lines+1]="  "..field..": "..display(prior[field]).." -> "..display(entry[field]) end
+				end
+			end
+		end
+		for _,entry in ipairs(before[key] or {}) do if not new[entry.id] then lines[#lines+1]="Removed "..label(key,entry,beforeResources) end end
+	end
+	return lines
+end
 function M.budget(data)
 	local result={}
 	for _,r in ipairs(data.resources) do result[r.id]={id=r.id,title=r.title,unit=r.unit or "",owned=0,spent=0,reserved=0} end

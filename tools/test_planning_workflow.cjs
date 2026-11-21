@@ -1435,6 +1435,13 @@ async function main(){
   await queued('propose_journey_plan',{title:'Gear roadmap',baseRevision:context.revision,journey},'review');await host('apply');context=(await call('get_build_context')).context;
   const measured=await queued('measure_journey_upgrades',{baseRevision:context.revision},'measured');assert.ok(measured.upgrades.entries.helmet.delta.LifeUnreserved>0);assert.ok(measured.upgrades.entries.alternative.delta.LifeUnreserved>measured.upgrades.entries.helmet.delta.LifeUnreserved);
   const saved=await call('get_build_journey');assert.equal(saved.budget.chaos.available,60);assert.equal(saved.journey.milestones[0].wishlistId,'helmet');
+  const reducedJourney={...saved.journey,milestones:[],ledger:[]};
+  const journeyReview=await queued('propose_journey_plan',{title:'Review journey removals',baseRevision:context.revision,journey:reducedJourney},'review');
+  assert.match(JSON.stringify(journeyReview),/Removed milestone: Craft the helmet/);assert.match(JSON.stringify(journeyReview),/Removed ledger entry: add 100 Chaos Orbs/);
+  assert.deepEqual((await call('get_build_journey')).journey,saved.journey,'Review changed the saved journey');
+  await host('apply');assert.equal((await call('get_build_journey')).journey.ledger.length,0);
+  await host('undo-applied');context=(await call('get_build_context')).context;assert.deepEqual((await call('get_build_journey')).journey,saved.journey);
+
   const lootProfile={id:'mapping',title:'Build pickups',preset:'early_maps',strictness:2,rules:[]};
   const generated=await queued('generate_loot_filter',{baseRevision:context.revision,profile:lootProfile},'generated');
   assert.equal(generated.profile.trackBuildPickups,true,'Generated filter did not retain build pickup tracking');
