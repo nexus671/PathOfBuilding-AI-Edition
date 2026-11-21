@@ -77,10 +77,19 @@ end
 local function compareOutput()
  calcs.buildActiveSkill = function(a,b,c,d,e,f,g) return original(a,b,c,d,e,f,g) end
  local expected = snapshot()
+ -- Compare the optimized warning probes against both full skill calculations
+ -- and the same partial probes with environment reuse disabled.
+ calcs.buildActiveSkill = function(a,b,c,d,e,f,g,h)
+  if h then return original(a,b,c,d,e,f,nil,h) end
+  return original(a,b,c,d,e,f,g,h)
+ end
+ local noReuse = snapshot()
  calcs.buildActiveSkill = original
  local actual = snapshot()
  for key, value in pairs(expected) do assert(actual[key] == value, "Changed main output " .. key .. ": " .. tostring(value) .. " vs " .. tostring(actual[key])) end
  for key in pairs(actual) do assert(expected[key] ~= nil, "Unexpected main output " .. key) end
+ for key, value in pairs(noReuse) do assert(actual[key] == value, "Probe reuse changed " .. key .. ": " .. tostring(value) .. " vs " .. tostring(actual[key])) end
+ for key in pairs(actual) do assert(noReuse[key] ~= nil, "Unexpected reused-probe output " .. key) end
  return actual
 end
 compareOutput()
