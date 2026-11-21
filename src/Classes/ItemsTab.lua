@@ -2455,7 +2455,7 @@ function ItemsTabClass:UpdateAffixControl(control, item, affixType, outputTable,
 				end
 				testSubject:BuildAndParseRaw()
 				power = data.powerStatList.GetFromOutput(
-					calcFunc({ repSlotName = slotName, repItem = testSubject }),
+					calcFunc({ repSlotName = slotName, repItem = testSubject }, sortOption.stat == "FullDPS"),
 					sortOption
 				)
 				testSubject = new("Item"):Item(originalItem)
@@ -2472,7 +2472,7 @@ function ItemsTabClass:UpdateAffixControl(control, item, affixType, outputTable,
 
 				testSubject:BuildModList()
 				power = data.powerStatList.GetFromOutput(
-					calcFunc({ repSlotName = slotName, repItem = testSubject }),
+					calcFunc({ repSlotName = slotName, repItem = testSubject }, sortOption.stat == "FullDPS"),
 					sortOption
 				)
 				for _ = 1, modCount do

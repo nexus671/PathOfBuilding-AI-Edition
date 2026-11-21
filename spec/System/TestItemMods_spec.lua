@@ -1425,6 +1425,52 @@ describe("TetsItemMods", function()
 		assert.is_true(controls.displayItemAffix1:IsShown())
 	end)
 
+	it("only calculates Full DPS for modifier sorting when selected", function()
+		local tab = build.itemsTab
+		for _, catalyst in ipairs({"", "Catalyst: Fertile\nCatalystQuality: 20\n"}) do
+			local item = new("Item"):Item("Rarity: RARE\nNew Item\nGold Ring\nCrafted: true\nPrefix: None\nPrefix: None\nPrefix: None\nSuffix: None\nSuffix: None\nSuffix: None\n" .. catalyst .. "Implicits: 0")
+			tab.displayItem = item
+			if catalyst ~= "" then assert.is_true((item.catalyst or 0) > 0) end
+			for _, selection in ipairs({{stat="Life",full=false},{stat="BlockChance",full=false},{stat="FullDPS",full=true}}) do
+				tab.controls.craftingSorting:SelByValue(selection.stat, "stat")
+				local count = 0
+				build.calcsTab.GetMiscCalculator = function()
+					return function(_, useFullDPS)
+						count = count + 1
+						assert.equal(selection.full, useFullDPS)
+						return { Life = 1, BlockChance = 1, FullDPS = 1 }
+					end
+				end
+				tab:UpdateAffixControl(tab.controls.displayItemAffix1, item, "Prefix", "prefixes", 1, {})
+				assert.is_true(count > 0)
+			end
+		end
+	end)
+
+	it("preserves non-Full-DPS modifier sort values for item replacements", function()
+		build.skillsTab:PasteSocketGroup("Fireball 20/0  1")
+		build.skillsTab:PasteSocketGroup("Summon Raging Spirit 20/0  1")
+		for _, group in ipairs(build.skillsTab.socketGroupList) do group.includeInFullDPS = true end
+		runCallback("OnFrame")
+		local calc = build.calcsTab:GetMiscCalculator()
+		for _, raw in ipairs({
+			"Rarity: RARE\nExample\nGold Ring\nItem Level: 86\nImplicits: 0\n+50 to maximum Life\n+25% to Fire Resistance",
+			"Rarity: RARE\nExample\nGold Ring\nItem Level: 86\nCatalyst: Fertile\nCatalystQuality: 20\nImplicits: 0\n+35 to maximum Life\nMinions deal 20% increased Damage",
+		}) do
+			local item = new("Item"):Item(raw)
+			local override = { repSlotName = "Ring 1", repItem = item }
+			local partial, full = calc(override, false), calc(override, true)
+			assert.is_true(full.FullDPS > 0)
+			for _, selection in ipairs(data.powerStatList) do
+				if selection.stat and selection.stat ~= "FullDPS" and not selection.ignoreForItems then
+					local a = data.powerStatList.GetFromOutput(partial, selection)
+					local b = data.powerStatList.GetFromOutput(full, selection)
+					assert.is_true(a == b or (a ~= a and b ~= b), selection.stat)
+				end
+			end
+		end
+	end)
+
 	it("sorts crafted modifier replacements without retaining the selected modifier", function()
 		local item = new("Item"):Item([[
 			Rarity: RARE
