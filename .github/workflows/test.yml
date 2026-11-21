@@ -28,6 +28,8 @@ jobs:
     container: ghcr.io/pathofbuildingcommunity/pathofbuilding-tests:latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check comparison baseline and Timeless jewel tooltip
+        run: cd src && LUA_PATH='../runtime/lua/?.lua;../runtime/lua/?/init.lua;;' luajit ../tools/check_comparison_contract.lua
       - name: Compare full and partial skill costs
         run: |
           cd src

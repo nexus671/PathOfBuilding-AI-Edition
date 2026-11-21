@@ -65,5 +65,7 @@ Add `full-profile` after `no-capture` in the tree interaction benchmark to time 
 
 `tools/check_cost_warning_probes.lua` compares scalar outputs and already-published skill caches against both full calculations and partial probes without reuse, including after passive edits and cost-stress cases. Reusing warning-probe environments was removed after it produced different nested skill-cache values. This check does not measure desktop frame rate.
 
+Run `python tools/run_headless_lupa.py --filesystem tools/check_comparison_contract.lua` for a quick check of calculation-pass timing records and an equipped Timeless Jewel's removal comparison. It runs two existing system tests; the full Busted suite remains necessary. The check detects both failures from the reverted deferred-comparison experiment. Append `timings` or `jewel` to run one case.
+
 The tree responsiveness probe samples distinct adjacent passives before repeating them, restores each edit and checks the original build revision. It reports headless CPU times; use a representative build and desktop testing to assess actual interaction latency.
 Add `sample-nodes` to the tree UI benchmark to measure different adjacent passives; the default keeps one node for paired comparisons. Focusing each node happens outside the recorded interaction timing.
