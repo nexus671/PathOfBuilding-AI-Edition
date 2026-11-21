@@ -40,6 +40,8 @@ local function alwaysCorrupted(title,baseName)
 	return matched
 end
 function M.guideAction(method,count,resource,corrupted,socketCount)
+	if method=="instilling" then return "Use an Instilling Orb to roll a utility flask enchantment" end
+	if method=="enkindling" then return "Use an Enkindling Orb to roll a utility flask enchantment" end
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="divine" then return "Use a Divine Orb to reroll explicit modifier values" end
 	if method=="tainted_quality" then return "Use a Tainted "..resource.." to reroll quality" end
@@ -157,6 +159,48 @@ function M.apply(raw)
 	if item.type=="Tincture" and item.tinctureValues=="Final" then assert(checked.tinctureValues=="Final" and checked.tinctureImportedQuality==item.tinctureImportedQuality and checked.tinctureImportedEffect==item.tinctureImportedEffect,"Tincture baseline changed unexpectedly") end
 	assert(after.quality==info.quality+1 and checked.title==item.title and checked.baseName==item.baseName,"Unique item did not round-trip after applying quality")
 	return {itemText=output,beforeQuality=info.quality,quality=after.quality,resource=info.resource,resourceKey=info.resourceKey}
+end
+
+-- Replace only explicitly marked enchantment lines. Preserve all other copied
+-- item text, including fields PoB does not interpret.
+function M.flaskEnchantReason(raw,method)
+	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
+	if method~="instilling" and method~="enkindling" then return "Choose a flask enchantment currency" end
+	if item.corrupted then return "Flask enchantment currency requires an uncorrupted item" end
+	if not require("Modules.CraftingFlaskEnchants").eligible({item=item}) then return "Requires a utility flask" end
+	local text=raw:gsub("\r\n","\n");if text:find("\r",1,true) then return "The item has mixed line endings" end
+	local marked,counts=0,0
+	for line in (text.."\n"):gmatch("([^\n]*)\n") do
+		if line:find("{enchant}",1,true) or line:match(" %(enchant%)%s*$") then marked=marked+1 end
+		if line:match("^Implicits:%s*%d+%s*$") then counts=counts+1 end
+	end
+	if counts>1 then return "The item has more than one implicit-count line" end
+	if marked~=#item.enchantModLines then return "Existing enchantment lines could not be identified safely" end
+end
+function M.flaskEnchant(raw,method,seed)
+	local reason=M.flaskEnchantReason(raw,method);assert(not reason,reason)
+	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
+	local before=M.inspect(raw);local flask=require("Modules.CraftingFlaskEnchants");local selected=flask.roll(method,require("Modules.CalcTime").random(seed))
+	local entry,group=flask.validate({item=before},selected);local replacements=flask.lines(entry,group,selected.roll)
+	local newline=raw:find("\r\n",1,true) and "\r\n" or "\n";local source=raw:gsub("\r\n","\n");local ended=source:sub(-1)=="\n"
+	local lines={};local insertion,countIndex,implicitCount;local removed=0
+	for line in (source..(ended and "" or "\n")):gmatch("([^\n]*)\n") do
+		if line:find("{enchant}",1,true) or line:match(" %(enchant%)%s*$") then insertion=insertion or #lines+1;removed=removed+1
+		else
+			local count=line:match("^Implicits:%s*(%d+)%s*$")
+			if count then countIndex=#lines+1;implicitCount=tonumber(count) end
+			lines[#lines+1]=line
+		end
+	end
+	if countIndex then assert(implicitCount>=removed,"The implicit count does not match the enchantment lines");lines[countIndex]="Implicits: "..(implicitCount-removed+#replacements) end
+	insertion=insertion or (countIndex and countIndex+1) or #lines+1
+	for i=#replacements,1,-1 do table.insert(lines,insertion,"{enchant}"..replacements[i]) end
+	local output=table.concat(lines,newline)..(ended and newline or "")
+	local after=M.inspect(output);assert(after.title==before.title and after.baseName==before.baseName and not after.corrupted,"Unique flask did not round-trip")
+	local function linesOf(item,key) local result={};for _,line in ipairs(item[key] or {}) do result[#result+1]=line.line end;return result end
+	assert(tableDeepEquals(linesOf(before,"explicitModLines"),linesOf(after,"explicitModLines")) and tableDeepEquals(linesOf(before,"implicitModLines"),linesOf(after,"implicitModLines")),"The flask's other modifiers could not be preserved safely")
+	assert(tableDeepEquals(selected,flask.identify(after)),"The flask enchantment did not round-trip")
+	return {itemText=output,components={[method]=1},flaskEnchant=selected}
 end
 
 -- Tainted quality uses the same estimated range as ordinary equipment.
@@ -602,6 +646,10 @@ function M.catalog(raw,query,limit)
 	if item.corrupted then whiteComponents["Metadata/Items/Currency/CurrencyCorrupt"]=1 end
 	local sim=require("Modules.CraftingSimulator")
 	local definitions={{method="divine",label="Divine Orb",reason=M.divineReason(raw),sampled=true,components={divine=1}}}
+	local flask=require("Modules.CraftingFlaskEnchants")
+	if flask.eligible({item=item}) then
+		for _,method in ipairs({"instilling","enkindling"}) do definitions[#definitions+1]={method=method,label=sim.labels[method],reason=M.flaskEnchantReason(raw,method),sampled=true,components=sim.components({method=method})} end
+	end
 	if info.qualitySupported then table.insert(definitions,1,{method="quality",label="Ordinary quality",reason=qualityReason,components={[info.resourceKey]=1}}) end
 	if item.base.armour or data.weaponTypeInfo[item.type] then definitions[#definitions+1]={method="tainted_quality",label="Tainted quality: "..info.resource,reason=M.taintedQualityReason(raw),sampled=true,components=sim.components({method="tainted_quality"},nil,{item=item})} end
 	if sim.socketLimit({item=item})>0 then
@@ -637,17 +685,25 @@ function M.catalog(raw,query,limit)
 			local guideMethod,guideCount=entry.guideMethod or entry.method,entry.guideCount or 1
 			action.guideStep={action=M.guideAction(guideMethod,guideCount,info.resource,item.corrupted,#item.sockets),uniqueCraft={method=guideMethod,count=guideCount}}
 			result.uniqueActions[#result.uniqueActions+1]=action
-			if entry.method~="quality" and entry.method~="tainted_quality" and entry.method~="divine" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
+			if entry.method~="quality" and entry.method~="tainted_quality" and entry.method~="divine" and entry.method~="instilling" and entry.method~="enkindling" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
 		end
 	end
+	result.flaskEnchants=flask.eligible({item=item}) and flask.list(query,limit) or {}
+	if flask.eligible({item=item}) then result.flaskEnchant=flask.identify(item) end
 	return result
 end
 
 function M.matches(raw,requirements)
 	local item,info=M.inspect(raw);requirements=requirements or {}
-	local supported={uniqueName=true,uniqueModifier=true,minQuality=true,corrupted=true,twiceCorrupted=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true}
+	local supported={uniqueName=true,uniqueModifier=true,minQuality=true,corrupted=true,twiceCorrupted=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true,flaskEnchant=true,flaskEnchantMin=true}
 	for key in pairs(requirements) do assert(supported[key],"This unique item property is not supported: "..tostring(key)) end
 	if requirements.uniqueName and item.title~=requirements.uniqueName then return false end
+	if requirements.flaskEnchant or requirements.flaskEnchantMin then
+		local flask=require("Modules.CraftingFlaskEnchants");assert(flask.eligible({item=item}),"Flask enchantment goals require a utility flask")
+		local enchant=flask.identify(item);assert(enchant or #item.enchantModLines==0,"The existing flask enchantment could not be identified")
+		if requirements.flaskEnchant and (not enchant or enchant.id~=requirements.flaskEnchant) then return false end
+		if requirements.flaskEnchantMin and (not enchant or not enchant.roll or enchant.roll<requirements.flaskEnchantMin) then return false end
+	end
 	if requirements.minQuality then assert(info.qualitySupported,"Jewellery catalyst-quality goals need a separate model");if info.quality<requirements.minQuality then return false end end
 	if requirements.corrupted~=nil and (not not item.corrupted)~=requirements.corrupted then return false end
 	if requirements.twiceCorrupted~=nil and (not not item.twiceCorrupted)~=requirements.twiceCorrupted then return false end

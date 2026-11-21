@@ -30,6 +30,38 @@ function E.lines(entry,group,roll)
  local lines={};for line in text:gmatch("[^/]+") do lines[#lines+1]=line end
  return lines
 end
+function E.identify(item)
+ local lines={};for _,line in ipairs(item.enchantModLines or {}) do
+  local text=StripEscapes(itemLib.formatModLine(line,false) or line.line or ""):gsub(" %(Not supported in PoB yet%)$","")
+  lines[#lines+1]=text
+ end
+ local text=identity(lines);if text=="" then return end
+ for group,pool in pairs(E.data().pools) do for _,entry in ipairs(pool) do
+  local lo,hi=bounds(entry,group)
+  if not lo and text==identity(E.lines(entry,group)) then return {id=entry.id} end
+  if lo then for roll=lo,hi do if text==identity(E.lines(entry,group,roll)) then return {id=entry.id,roll=roll} end end end
+ end end
+end
+function E.roll(method,random)
+ local group=assert(methods[method],"Unknown flask enchantment currency")
+ local pool=E.data().pools[group];local total=0;for _,entry in ipairs(pool) do total=total+entry.weight end
+ local pick=random()*total;local selected=pool[#pool]
+ for _,entry in ipairs(pool) do pick=pick-entry.weight;if pick<0 then selected=entry;break end end
+ local lo,hi=bounds(selected,group)
+ return {id=selected.id,roll=lo and lo+math.floor(random()*(hi-lo+1)) or nil}
+end
+function E.list(query,limit)
+ local result={};local search=(query or ""):lower()
+ for group,pool in pairs(E.data().pools) do for _,entry in ipairs(pool) do
+  local text=template(entry,group)
+  if (entry.id.." "..text.." "..group.." orb"):lower():find(search,1,true) then
+   local lo,hi=bounds(entry,group);result[#result+1]={id=entry.id,method=group:lower(),text=text,weight=entry.weight,minRoll=lo,maxRoll=hi,rollable=entry.weight>0}
+  end
+ end end
+ table.sort(result,function(a,b) return a.id<b.id end)
+ for i=#result,(limit or 50)+1,-1 do result[i]=nil end
+ return result
+end
 function E.validate(model,value)
  assert(E.eligible(model) and type(value)=="table","Invalid utility flask enchantment")
  local entry,group=E.entry(value.id);assert(entry,"Unknown utility flask enchantment")
@@ -45,32 +77,12 @@ function E.extend(M)
  local action,decorate,validate,originalModel,originalCatalog=M.action,M.decorateItem,M.validateState,M.model,M.catalog
  function M.model(raw)
   local model=originalModel(raw)
-  if E.eligible(model) then
-   local lines={};for _,line in ipairs(model.item.enchantModLines or {}) do lines[#lines+1]=StripEscapes(line.line or "") end
-   local text=identity(lines)
-   if text~="" then for group,pool in pairs(E.data().pools) do for _,entry in ipairs(pool) do
-    local lo,hi=bounds(entry,group)
-    if not lo and text==identity(E.lines(entry,group)) then model.initial.flaskEnchant={id=entry.id} end
-    if lo then for roll=lo,hi do if text==identity(E.lines(entry,group,roll)) then model.initial.flaskEnchant={id=entry.id,roll=roll};break end end end
-   end end end
-  end
+  if E.eligible(model) then model.initial.flaskEnchant=E.identify(model.item) end
   return model
  end
  function M.catalog(raw,query,limit,initialState,...)
   local result=originalCatalog(raw,query,limit,initialState,...);local model={item=new("Item"):Item(initialState and initialState.baseItem or raw)}
-  result.flaskEnchants={}
-  if E.eligible(model) then
-   local search=(query or ""):lower()
-   for group,pool in pairs(E.data().pools) do for _,entry in ipairs(pool) do
-    local text=template(entry,group)
-    if (entry.id.." "..text):lower():find(search,1,true) then
-     local lo,hi=bounds(entry,group)
-     result.flaskEnchants[#result.flaskEnchants+1]={id=entry.id,method=group:lower(),text=text,weight=entry.weight,minRoll=lo,maxRoll=hi,rollable=entry.weight>0}
-    end
-   end end
-   table.sort(result.flaskEnchants,function(a,b) return a.id<b.id end)
-   for i=#result.flaskEnchants,(limit or 50)+1,-1 do result.flaskEnchants[i]=nil end
-  end
+  result.flaskEnchants=E.eligible(model) and E.list(query,limit) or {}
   return result
  end
  local function reason(model,state)
@@ -81,11 +93,7 @@ function E.extend(M)
  function M.action(model,state,craft,random)
   local group=methods[craft.method];if not group then return action(model,state,craft,random) end
   local why=reason(model,state);assert(not why,why)
-  local pool=E.data().pools[group];local total=0;for _,entry in ipairs(pool) do total=total+entry.weight end
-  local pick=random()*total;local selected=pool[#pool]
-  for _,entry in ipairs(pool) do pick=pick-entry.weight;if pick<0 then selected=entry;break end end
-  local lo,hi=bounds(selected,group);local result=copyTable(state)
-  result.flaskEnchant={id=selected.id,roll=lo and lo+math.floor(random()*(hi-lo+1)) or nil}
+  local result=copyTable(state);result.flaskEnchant=E.roll(craft.method,random)
   result.enchantCleared=nil;result.harvestEnchant=nil;result.katakohiEnchants=nil
   return result
  end

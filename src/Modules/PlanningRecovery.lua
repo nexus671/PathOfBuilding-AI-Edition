@@ -67,7 +67,7 @@ function M.clean(kind,entry)
 		assert(value.colourRollCounter==nil or type(value.colourRollCounter)=="number" and value.colourRollCounter==math.floor(value.colourRollCounter) and value.colourRollCounter>=0 and value.colourRollCounter<=2147483646,"Invalid unique colour roll counter")
 		assert(value.savedTrace==nil or type(value.savedTrace)=="string" and #value.savedTrace==40 and value.savedTrace:match("^[0-9a-f]+$"),"Invalid unique crafting trace")
 		assert(value.savedGuideHash==nil and value.savedGuideLength==nil or value.savedTrace and type(value.savedGuideHash)=="string" and #value.savedGuideHash==40 and value.savedGuideHash:match("^[0-9a-f]+$") and type(value.savedGuideLength)=="number" and value.savedGuideLength==math.floor(value.savedGuideLength) and value.savedGuideLength>=0 and value.savedGuideLength<=40,"Invalid saved guide marker")
-		local allowed={divine=true,tainted_quality=true,jeweller=true,tainted_jeweller=true,quality=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true,load=true,unknown=true}
+		local allowed={instilling=true,enkindling=true,divine=true,tainted_quality=true,jeweller=true,tainted_jeweller=true,quality=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true,load=true,unknown=true}
 		local history,actions={},{}
 		for i=math.max(1,#value.history-63),#value.history do
 			history[#history+1]=item(value.history[i]);local action=value.actions and value.actions[i] or "unknown"

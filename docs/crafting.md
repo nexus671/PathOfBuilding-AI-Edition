@@ -106,7 +106,7 @@ Use a blank base or item text PoB can identify. Unresolved explicit modifiers ar
 
 Item-property goals can require a minimum number of actual Abyssal sockets. This checks the socket layout rather than the modifier text. Hollow Fossil socket placement and restoration use the experimental assumptions described in **Rules & sources**.
 
-For a non-unique utility flask, **Find currencies** offers Instilling and Enkindling Orbs. Item properties can target a specific flask enchantment and, for rolled Enkindling modifiers, a minimum value. The model uses pinned client weights and assumed uniform rolls; replacement and eligibility have not been verified in game. Unique flasks are not yet supported, and PoB does not model the no-charges-during-effect modifier.
+For an ordinary utility flask, **Find currencies** offers Instilling and Enkindling Orbs; unique utility flasks offer them in **Unique crafting**. Item properties can target a specific flask enchantment and, for rolled Enkindling modifiers, a minimum value. Unique previews can save the sampled enchantment as a bounded recipe and guide. The model uses pinned client weights and assumed uniform rolls; replacement and eligibility have not been verified in game. PoB does not model the no-charges-during-effect modifier.
 
 If an equipment Vaal reroll produces the rare outcome, the model marks its socket layout unknown because that reroll is not simulated. The unknown marker survives working-state saves; socket-dependent actions and build previews stay unavailable until you use **Set socket layout** on the Craft page to enter an observed or hypothetical result. Accepting the edit sets a new recipe starting state. Simulated item text is omitted while sockets are unknown.
 

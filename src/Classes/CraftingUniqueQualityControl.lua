@@ -23,7 +23,8 @@ function M.Open(build,project,layout,snapshot)
 	local w,h=layout and layout.width or math.min(880,main.screenW-40),layout and layout.height or math.min(650,main.screenH-60)
 	local c={};local cardX=310;local cardWidth=w-cardX-16
 	ui.label(c,"heading",16,18,"Unique crafting",22)
-	ui.description(c,"intro",16,56,270,68,{not info.qualitySupported and (item.corrupted and "This item is corrupted." or "Preview supported Divine Orb rolls.") or (item.type=="Flask" or item.type=="Tincture") and "Preview item quality." or "Preview quality and socket crafts.",not info.qualitySupported and (item.corrupted and "Divine Orbs cannot modify it." or "Catalyst crafting is not modeled.") or item.corrupted and ((item.type=="Flask" or item.type=="Tincture") and "Tainted quality is unavailable." or "Tainted quality rolls are estimated.") or "Quality currency adds 1%, up to 20%.","Keep the target, then save the build."},15)
+	local utility=require("Modules.CraftingFlaskEnchants").eligible({item=item})
+	ui.description(c,"intro",16,56,270,68,{utility and "Preview flask crafts." or not info.qualitySupported and (item.corrupted and "This item is corrupted." or "Preview supported Divine Orb rolls.") or (item.type=="Flask" or item.type=="Tincture") and "Preview item quality." or "Preview quality and socket crafts.",utility and (item.corrupted and "Corrupted flasks cannot be enchanted." or "Enchant odds are experimental.") or not info.qualitySupported and (item.corrupted and "Divine Orbs cannot modify it." or "Catalyst crafting is not modeled.") or item.corrupted and ((item.type=="Flask" or item.type=="Tincture") and "Tainted quality is unavailable." or "Tainted quality rolls are estimated.") or "Quality currency adds 1%, up to 20%.",utility and "Keep target, then save the build." or "Keep the target, then save the build."},15)
 	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM",{expanded=true})
 	local function button(key,y,label,run)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,y,270,32},label,function()
@@ -77,7 +78,7 @@ function M.Open(build,project,layout,snapshot)
 			if action=="quality" then qualityCount=qualityCount+1
 			elseif socketCount then
 				flush();steps[#steps+1]={action=unique.guideAction("socket_count_bench",socketCount,info.resource,item.corrupted),uniqueCraft={method="socket_count_bench",count=socketCount},done=false}
-			elseif action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="divine" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
+			elseif action=="instilling" or action=="enkindling" or action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="divine" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
 				local before=unique.inspect(history[i]);flush();steps[#steps+1]={action=unique.guideAction(action,1,info.resource,item.corrupted,#before.sockets),uniqueCraft={method=action,count=1},done=false}
 			else return nil,"Loaded or older previews do not record every action." end
 		end
@@ -333,6 +334,18 @@ function M.Open(build,project,layout,snapshot)
 	end)
 	c.apply.enabled=function() return item.corrupted and not unique.taintedQualityReason(raw) or not item.corrupted and info.available end
 	c.apply.tooltipText=function() return not info.qualitySupported and "Jewellery quality requires a catalyst; catalyst crafting is not modeled here." or item.corrupted and (taintedQualityReason or "Sample a tainted quality roll. The 1-20% range and odds are estimates.") or info.available and "Use "..info.resource.." to add 1% quality." or "Ordinary quality currency cannot exceed 20%." end
+	local function flaskButton(method,x,label)
+		button(method,188,label,function()
+			colourRollCounter=colourRollCounter%2147483646+1
+			local result=unique.flaskEnchant(raw,method,require("Modules.CalcEncounter").seed(104729,colourRollCounter,83))
+			history[#history+1]=raw;actions[#actions+1]=method;redo={};raw=result.itemText;refresh(true)
+		end)
+		c[method].x=x;c[method].width=130
+		c[method].shown=function() return require("Modules.CraftingFlaskEnchants").eligible({item=item}) end
+		c[method].enabled=function() return not unique.flaskEnchantReason(raw,method) end
+		c[method].tooltipText=function() return unique.flaskEnchantReason(raw,method) or "Replace the utility flask enchantment. Client weights and rolls are experimental." end
+	end
+	flaskButton("instilling",16,"Instilling Orb");flaskButton("enkindling",156,"Enkindling Orb")
 	button("qualityPlan",198,"Plan quality",function()
 		local controls={};local qw,qh=480,310
 		ui.description(controls,"help",16,25,qw-32,50,{"Save a target without rolling the item.","Tainted quality probabilities are estimates."},14)
@@ -512,7 +525,7 @@ function M.Open(build,project,layout,snapshot)
 		if #actions==0 or #actions~=#history or history[1]~=draft.startingItem or #actions>100 then return false end
 		local colourSeen=false
 		for _,action in ipairs(actions) do
-			local colour=action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality"
+			local colour=action=="instilling" or action=="enkindling" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality"
 			if colour then if colourSeen then return false end;colourSeen=true
 			elseif colourSeen and action~="quality" then return false
 			elseif action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") then return false end
@@ -532,6 +545,10 @@ function M.Open(build,project,layout,snapshot)
 				requirements.minQuality=info.quality
 			elseif socketCount then
 				steps[#steps+1]={method="socket_bench",count=socketCount};requirements.exactSockets=#item.sockets;i=i+1
+			elseif action=="instilling" or action=="enkindling" then
+				local enchant=assert(require("Modules.CraftingFlaskEnchants").identify(item),"The preview enchantment could not be identified")
+				requirements.flaskEnchant=enchant.id;requirements.flaskEnchantMin=enchant.roll
+				steps[#steps+1]={method=action,maxAttempts=100,untilRequirements={flaskEnchant=enchant.id,flaskEnchantMin=enchant.roll}};sampled=true;i=i+1
 			elseif action=="tainted_quality" then
 				requirements.minQuality=info.quality;steps[#steps+1]={method=action,maxAttempts=100,untilRequirements={minQuality=info.quality}};sampled=true;i=i+1
 			elseif action=="jeweller" or action=="tainted_jeweller" then
@@ -565,7 +582,7 @@ function M.Open(build,project,layout,snapshot)
 			local updated=copyTable(draft);updated.nativeRecipe=createRecipe();draft=build.savers.CraftingProjects:Upsert(updated)
 			refresh(true);c.notice.label="^7Recipe saved. Save the build.";return
 		end
-		local stochastic=false;for _,step in ipairs(draft.nativeRecipe.steps) do if step.method=="tainted_quality" or step.method=="jeweller" or step.method=="tainted_jeweller" or step.method=="chromatic" or step.method=="tainted_chromatic" or step.method=="omen_trichromatism" or step.method=="fusing" or step.method=="tainted_fusing" then stochastic=true end end
+		local stochastic=false;for _,step in ipairs(draft.nativeRecipe.steps) do if step.method=="instilling" or step.method=="enkindling" or step.method=="tainted_quality" or step.method=="jeweller" or step.method=="tainted_jeweller" or step.method=="chromatic" or step.method=="tainted_chromatic" or step.method=="omen_trichromatism" or step.method=="fusing" or step.method=="tainted_fusing" then stochastic=true end end
 		local budget=100
 		if stochastic then local sum=0;for _,step in ipairs(draft.nativeRecipe.steps) do sum=sum+(step.maxAttempts or 1) end;budget=math.min(2000,math.max(100,sum)) end
 		local trials=stochastic and math.max(1,math.min(20,math.floor(10000/budget))) or 1
@@ -629,7 +646,7 @@ function M.Open(build,project,layout,snapshot)
 	end)
 	c.recipe.x=156;c.recipe.width=130;c.recipe.label=function() return draft.nativeRecipe and "Check recipe" or "Save recipe" end
 	c.recipe.enabled=function() return draft.nativeRecipe~=nil or canCreateRecipe() end
-	c.recipe.tooltipText=function() return draft.nativeRecipe and "Check the saved native recipe from its starting item. No changes are made." or canCreateRecipe() and "Save this complete preview as a recipe; then check its result and cost." or "Preview supported actions from the starting item. For sampled socket crafts, use one sampled action followed only by quality actions." end
+	c.recipe.tooltipText=function() return draft.nativeRecipe and "Check the saved native recipe from its starting item. No changes are made." or canCreateRecipe() and "Save this complete preview as a recipe; then check its result and cost." or "Preview supported actions from the starting item. For sampled crafts, use one sampled action followed only by quality actions." end
 	ui.label(c,"notice",16,426,restored and "^7Session preview restored." or "",14)
 	local art,artCache=nil,{}
 	local function icon(method)
@@ -639,6 +656,7 @@ function M.Open(build,project,layout,snapshot)
 	end
 	updateIcons=function()
 		c.apply.planningIcon=info.qualitySupported and icon("quality") or nil
+		c.instilling.planningIcon=icon("instilling");c.enkindling.planningIcon=icon("enkindling")
 		c.omenJeweller.planningIcon=icon("omen_jeweller");c.omen.planningIcon=icon("omen_connections");c.benchLink.planningIcon=icon("fusing");c.white.planningIcon=icon("socket_white_bench");c.socketCount.planningIcon=icon("jeweller")
 	end
 	local currency=new("Control"):Control(ui.anchor,{16,454,42,42});c.currency=currency
@@ -653,6 +671,7 @@ function M.Open(build,project,layout,snapshot)
 		elseif method=="socket_bench" then local components=require("Modules.CraftingSimulator").components({method=method,count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted});local count=components["Metadata/Items/Currency/CurrencyRerollSocketLinks"] or 0;lines={"Bench: "..count.." Orb"..(count==1 and "" or "s").." of Fusing",item.corrupted and ("+ "..count.." Vaal Orb"..(count==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="fusing" then lines={"1 Orb of Fusing","Sampled preview"}
 		elseif method=="divine" then lines={"1 Divine Orb","Sampled preview"}
+		elseif method=="instilling" or method=="enkindling" then lines={method=="instilling" and "1 Instilling Orb" or "1 Enkindling Orb","Sampled preview"}
 		elseif method=="tainted_quality" then lines={"1 Tainted "..info.resource,"Sampled preview"}
 		elseif method=="jeweller" then lines={"1 Jeweller's Orb","Sampled preview"}
 		elseif method=="tainted_jeweller" then lines={"1 Tainted Jeweller's Orb","Sampled preview"}
@@ -707,6 +726,9 @@ function M.Open(build,project,layout,snapshot)
 		c.status.y=130;c.apply.y=150;c.divine.y=150;c.undo.y=188;c.redo.y=188;c.keep.y=226;c.guide.y=226
 		c.loadTarget.y=264;c.recipe.y=264;c.notice.y=302;c.currency.y=330;c.currencyNote.y=332;c.reviewGuide.y=330
 		if compactJewellery then c.apply.shown=false;c.divine.x=16;c.divine.width=270 end
+		if require("Modules.CraftingFlaskEnchants").eligible({item=item}) then
+			c.undo.y=226;c.redo.y=226;c.keep.y=264;c.guide.y=264;c.loadTarget.y=302;c.recipe.y=302;c.notice.y=340;c.currency.y=368;c.currencyNote.y=370;c.reviewGuide.y=368
+		end
 	end
 	for _,control in pairs(c) do control.layoutAudit="unique-quality" end
 	ui.style(c,{apply=true},{item=true});refresh()

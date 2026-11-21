@@ -377,6 +377,8 @@ function M.generate(build,profile,checkpoint)
 			if craft and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,info.resource,item.corrupted,step.action,uniqueSocketCount) then
 				local items={}
 				if craft.method=="quality" then items={{key=info.resourceKey,name=info.resource}}
+				elseif craft.method=="instilling" then items={{key="instilling",name="Instilling Orb"}}
+				elseif craft.method=="enkindling" then items={{key="enkindling",name="Enkindling Orb"}}
 				elseif craft.method=="divine" then items={{key="divine",name="Divine Orb"}}
 				elseif craft.method=="tainted_quality" then items={{key="tainted_quality",name="Tainted "..info.resource}}
 				elseif craft.method=="fusing" then items={{key="fusing",name="Orb of Fusing"}}

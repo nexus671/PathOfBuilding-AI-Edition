@@ -146,7 +146,7 @@ async function main(){
   for (const [name,base] of [['Taste of Hate','Sapphire Flask'],['The Battle Within','Oakbranch Tincture']]) {
     const flask=`${base.includes('Tincture')?'Item Class: Tinctures\n':''}Rarity: UNIQUE\n${name}\n${base}\nItem Level: 86\nQuality: 18\n30% chance to Avoid being Frozen during Effect`;
     const inspected=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:flask,limit:20},'inspected');
-    assert.equal(inspected.crafting.nativeEngine.quality.resource,"Glassblower's Bauble");assert.deepEqual(inspected.crafting.nativeEngine.uniqueActions.map(entry=>entry.method),['quality','divine']);assert.equal(inspected.crafting.nativeEngine.uniqueActions[1].available,false);
+    assert.equal(inspected.crafting.nativeEngine.quality.resource,"Glassblower's Bauble");assert.deepEqual(inspected.crafting.nativeEngine.uniqueActions.map(entry=>entry.method),base==='Sapphire Flask'?['quality','divine','instilling','enkindling']:['quality','divine']);assert.equal(inspected.crafting.nativeEngine.uniqueActions[1].available,false);
     const applied=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:flask,action:{method:'quality'},seed:1},'crafted');
     assert.equal(applied.nativeCrafting.uniqueQuality.quality,19);assert.equal(applied.nativeCrafting.components['Metadata/Items/Currency/CurrencyFlaskQuality'],1);assert.equal(applied.nativeCrafting.itemText,flask.replace('Quality: 18','Quality: 19')+(base.includes('Tincture')?'\nTincture Imported Quality: 18\nTincture Imported Effect: 0':''));
   }
@@ -157,6 +157,13 @@ async function main(){
   assert.ok(flaskCraft.nativeCrafting.state.flaskEnchant.id);assert.match(flaskCraft.nativeCrafting.itemText,/Gains no Charges during Effect/);
   const flaskPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:utilityFlask,recipe:{steps:[{method:'enkindling'}],targets:[],requirements:{flaskEnchant:flaskCraft.nativeCrafting.state.flaskEnchant.id}},options:{trials:5,maxActions:2,seed:1}},'crafted');
   assert.equal(flaskPlan.nativeCrafting.trials,5);
+  const uniqueUtility='Rarity: UNIQUE\nTaste of Hate\nSapphire Flask\nItem Level: 86\n+17% to Cold Resistance';
+  const uniqueFlaskCatalog=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueUtility,query:'Enkindling',limit:20},'inspected');
+  assert.ok(uniqueFlaskCatalog.crafting.nativeEngine.uniqueActions.some(entry=>entry.method==='enkindling' && entry.available));
+  const uniqueFlaskCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueUtility,action:{method:'enkindling'},seed:123},'crafted');
+  assert.ok(uniqueFlaskCraft.nativeCrafting.flaskEnchant.id);assert.match(uniqueFlaskCraft.nativeCrafting.itemText,/\+17% to Cold Resistance/);
+  const uniqueFlaskPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:uniqueUtility,recipe:{steps:[{method:'enkindling'}],targets:[],requirements:{flaskEnchant:uniqueFlaskCraft.nativeCrafting.flaskEnchant.id}},options:{trials:5,maxActions:1,seed:1}},'crafted');
+  assert.equal(uniqueFlaskPlan.nativeCrafting.trials,5);
   const uniqueShield='Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\n+100 to maximum Life';
   const uniqueInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},limit:20},'inspected');
   assert.equal(uniqueInspection.crafting.nativeEngine.uniqueCrafting,true);

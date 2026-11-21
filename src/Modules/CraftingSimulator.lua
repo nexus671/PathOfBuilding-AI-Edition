@@ -1386,12 +1386,12 @@ do
 			options=options or {};assert(initialState==nil,"Calculate unique crafts using the item text, not an ordinary crafting state")
 			assert(type(targets)=="table" and #targets==0,"Modifier-identity targets are not yet supported for unique items")
 			M.validateRecipe({rarity="UNIQUE",steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
-			if action.method=="divine" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" then
+			if action.method=="instilling" or action.method=="enkindling" or action.method=="divine" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" then
 				local sampledOptions=copyTable(options);sampledOptions.maxActions=1;sampledOptions.forceFirstAction=true
 				local sampled=M.simulate(raw,{rarity="UNIQUE",steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups},sampledOptions)
 				sampled.outcomes={};sampled.components=M.components(action)
 				local unique=require("Modules.CraftingUniqueQuality");sampled.nativeStats=require("Modules.CraftingItemStats").itemValues(unique.inspect(sampled.sampleItem))
-				if action.method~="divine" and action.method~="tainted_quality" and action.method~="jeweller" and action.method~="tainted_jeweller" and action.method~="fusing" and action.method~="tainted_fusing" and options.requirements and options.requirements.socketColours then
+				if action.method~="instilling" and action.method~="enkindling" and action.method~="divine" and action.method~="tainted_quality" and action.method~="jeweller" and action.method~="tainted_jeweller" and action.method~="fusing" and action.method~="tainted_fusing" and options.requirements and options.requirements.socketColours then
 					local why=unique.colourTargetReason(unique.inspect(raw),action.method,options.requirements.socketColours,options.requirements.linkedColours,true)
 					if why then sampled.warnings[#sampled.warnings+1]={code="unique_socket_target_unreachable",message="No roll reaches this target in the current model: "..why} end
 				end
@@ -1408,7 +1408,7 @@ do
 	end
 	function M.perform(raw,action,seed,initialState,treeVersion)
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
-		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="divine" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="quality" or action.method=="beast_max_links" or action.method=="omen_connections" or action.method=="omen_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_white_bench" or action.method=="socket_bench") then
+		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="instilling" or action.method=="enkindling" or action.method=="divine" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="quality" or action.method=="beast_max_links" or action.method=="omen_connections" or action.method=="omen_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_white_bench" or action.method=="socket_bench") then
 			assert(initialState==nil,"Continue unique crafting using the returned item text, not an ordinary crafting state")
 			for key in pairs(action) do assert(key=="method" or action.method=="socket_bench" and (key=="count" or key=="linked"),"This unique action does not accept additional options") end
 			if action.method=="socket_bench" then
@@ -1423,23 +1423,25 @@ do
 				local socketRoll=action.method=="jeweller" or action.method=="tainted_jeweller"
 				local qualityRoll=action.method=="tainted_quality"
 				local divineRoll=action.method=="divine"
-				local stochastic=divineRoll or qualityRoll or socketRoll or linkRoll or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism"
-				local result=divineRoll and unique.divine(raw,seed or 104729) or qualityRoll and unique.taintedQuality(raw,seed or 104729) or socketRoll and unique.randomSockets(raw,action.method,seed or 104729) or linkRoll and unique.randomLinks(raw,action.method,seed or 104729) or stochastic and unique.colour(raw,action.method,seed or 104729) or action.method=="omen_jeweller" and unique.socketCount(raw,unique.omenCount(unique.inspect(raw)),"omen_jeweller") or action.method=="socket_white_bench" and unique.white(raw) or action.method=="socket_bench" and not action.linked and unique.socketCount(raw,action.count) or unique.link(raw,action.method)
-				local warnings={{code="unique_crafting_scope",message="Unique crafting supports ordinary quality, socket-count and linking crafts, and the white-socket bench. Continue using the returned item text."}}
-				if divineRoll then warnings[#warnings+1]={code="unique_divine_estimate",message="Supported integer modifier values are sampled independently and uniformly; actual roll correlations and distributions are unverified."}
+				local flaskRoll=action.method=="instilling" or action.method=="enkindling"
+				local stochastic=flaskRoll or divineRoll or qualityRoll or socketRoll or linkRoll or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism"
+				local result=flaskRoll and unique.flaskEnchant(raw,action.method,seed or 104729) or divineRoll and unique.divine(raw,seed or 104729) or qualityRoll and unique.taintedQuality(raw,seed or 104729) or socketRoll and unique.randomSockets(raw,action.method,seed or 104729) or linkRoll and unique.randomLinks(raw,action.method,seed or 104729) or stochastic and unique.colour(raw,action.method,seed or 104729) or action.method=="omen_jeweller" and unique.socketCount(raw,unique.omenCount(unique.inspect(raw)),"omen_jeweller") or action.method=="socket_white_bench" and unique.white(raw) or action.method=="socket_bench" and not action.linked and unique.socketCount(raw,action.count) or unique.link(raw,action.method)
+				local warnings={{code="unique_crafting_scope",message="Only listed unique crafting actions are modeled. Continue using the returned item text."}}
+				if flaskRoll then warnings[#warnings+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."}
+				elseif divineRoll then warnings[#warnings+1]={code="unique_divine_estimate",message="Supported integer modifier values are sampled independently and uniformly; actual roll correlations and distributions are unverified."}
 				elseif qualityRoll then warnings[#warnings+1]={code="tainted_quality_estimate",message="Tainted armour and weapon quality uses an assumed uniform 1-20% range; the minimum and distribution are unverified."}
 				elseif socketRoll then warnings[#warnings+1]={code="unique_socket_count_estimate",message="Sampled socket counts and tainted outcomes use estimated probabilities; server odds are unverified."}
 				elseif linkRoll then warnings[#warnings+1]={code="unique_socket_link_assumptions",message="Sampled socket links use estimated link and selection probabilities; server odds are unverified."}
 				elseif stochastic then warnings[#warnings+1]={code="unique_socket_colour_assumptions",message="Sampled socket colours use estimated colour and position probabilities; server odds are unverified."} end
 				if result.catalystModeled then warnings[#warnings+1]={code="unique_catalyst_tags",message="Catalyst eligibility and scaling use bundled modifier tags and PoB rounding; tag completeness and current game behavior are unverified."} end
 				if socketRoll or action.method=="omen_jeweller" or action.method=="socket_bench" and not action.linked then warnings[#warnings+1]={code="unique_socket_count_assumptions",message="Socket-count previews retain existing groups, remove sockets from the end and add white unlinked sockets; position and link behavior are unverified."} end
-				return M.withTreeContext({priceKey=M.priceKey(action),itemText=result.itemText,components=result.components,dataPatch=M.dataPatch,
+				return M.withTreeContext({priceKey=M.priceKey(action),itemText=result.itemText,flaskEnchant=result.flaskEnchant,components=result.components,dataPatch=M.dataPatch,
 					warnings=warnings,limitations=copyTable(M.limits)},treeVersion)
 			end
 			local result=require("Modules.CraftingUniqueQuality").apply(raw)
 			local output=result.itemText;result.itemText=nil
 			return M.withTreeContext({priceKey="quality",itemText=output,uniqueQuality=result,components={[result.resourceKey]=1},dataPatch=M.dataPatch,
-				warnings={{code="unique_quality_scope",message="Unique crafting supports ordinary quality, socket-count and linking crafts, and the white-socket bench. Continue using the returned item text; other unique currencies are not modeled."}},limitations=copyTable(M.limits)},treeVersion)
+				warnings={{code="unique_quality_scope",message="Only listed unique crafting actions are modeled. Continue using the returned item text."}},limitations=copyTable(M.limits)},treeVersion)
 		end
 		return ordinaryPerform(raw,action,seed,initialState,treeVersion)
 	end

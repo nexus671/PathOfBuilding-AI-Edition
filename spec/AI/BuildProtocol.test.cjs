@@ -455,6 +455,14 @@ test('round-trips structured unique guide actions through desktop review', t => 
   }
 });
 
+test('accepts structured unique flask enchantment guide steps', t => {
+  const f=fixture(t),project=craftingProject();
+  project.startingItem='Rarity: UNIQUE\nTaste of Hate\nSapphire Flask\nItem Level: 86';project.slot='Flask 1';
+  project.steps=[{action:'Use an Enkindling Orb to roll a utility flask enchantment',uniqueCraft:{method:'enkindling',count:1}}];
+  f.call('propose_crafting_plan',{baseRevision:f.state.revision,project});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).proposal.operations[0].project.steps,project.steps);
+});
+
 test('preserves typed Harvest enchant actions, goals and inventory states', t => {
   const f=fixture(t);const project=craftingProject();
   project.preferredMethod='harvest_enchant';

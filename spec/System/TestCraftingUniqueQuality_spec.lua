@@ -668,7 +668,7 @@ describe("Unique item quality",function()
 			local raw="Rarity: UNIQUE\n"..entry[1].."\n"..entry[2].."\nItem Level: 86\nQuality: 18"
 			local item,info=quality.inspect(raw);assert.equal("Glassblower's Bauble",info.resource);assert.equal("Metadata/Items/Currency/CurrencyFlaskQuality",info.resourceKey)
 			local next=quality.apply(raw);assert.equal(19,next.quality);assert.matches("Quality: 19",next.itemText,1,true)
-			local catalog=sim.catalog(raw,"",50);assert.equal(2,#catalog.uniqueActions);assert.equal("quality",catalog.uniqueActions[1].method)
+			local catalog=sim.catalog(raw,"",50);assert.equal(entry[2]=="Sapphire Flask" and 4 or 2,#catalog.uniqueActions);assert.equal("quality",catalog.uniqueActions[1].method)
 			local calc=sim.calculate(raw,{method="quality"},{},nil,{requirements={minQuality=19}});assert.equal(100,calc.successChance);assert.equal(1,calc.components[info.resourceKey])
 			local result=sim.simulate(raw,{steps={{method="quality",maxAttempts=2,untilRequirements={minQuality=20}}},targets={},requirements={minQuality=20}},{trials=1,maxActions=2});assert.is_true(result.sampleSuccess);assert.equal(2,result.meanActions)
 			assert.has_error(function() quality.apply(raw.."\nCorrupted") end);assert.has_error(function() quality.apply(raw:gsub("Quality: 18","Quality: 20")) end)

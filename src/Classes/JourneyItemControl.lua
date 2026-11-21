@@ -56,8 +56,9 @@ function M.new(controls,key,x,y,w,h,label,options)
 			end
 			local entry=artwork[item.baseName];local path=entry and entry.path or "Assets/icon_weapon.png"
 			art=NewImageHandle();art:Load(path);artW,artH,artSprite=itemArt.artDimensions(item,entry and entry.width or 84,entry and entry.height or 84,artSize)
-			local peer={};if other then for _,group in ipairs({other.implicitModLines or {},other.explicitModLines or {}}) do for _,mod in ipairs(group) do peer[mod.line]=true end end end
-			for _,group in ipairs({item.implicitModLines or {},item.explicitModLines or {}}) do for _,mod in ipairs(group) do lines[#lines+1]={text=mod.line,changed=other and not peer[mod.line]} end end
+			local function display(mod,isEnchant) return isEnchant and StripEscapes(itemLib.formatModLine(mod,false) or mod.line) or mod.line end
+			local peer={};if other then for i,group in ipairs({other.enchantModLines or {},other.implicitModLines or {},other.explicitModLines or {}}) do for _,mod in ipairs(group) do peer[display(mod,i==1)]=true end end end
+			for i,group in ipairs({item.enchantModLines or {},item.implicitModLines or {},item.explicitModLines or {}}) do for _,mod in ipairs(group) do local text=display(mod,i==1);lines[#lines+1]={text=text,changed=other and not peer[text]} end end
 		else art=nil;lines={equipped and "This slot is empty in the current build." or starting and "The base and its modifiers will appear here." or "An exact target item enables native upgrade measurements."} end
 		local rows={};for _,line in ipairs(lines) do local changed=type(line)=="table" and line.changed;local text=type(line)=="table" and line.text or line
 			for _,row in ipairs(ui.rows({(changed and (equipped and "- " or "+ ") or "")..text},w-24,13)) do if changed then row[1]=(equipped and "^xE58F8F" or "^x92D39C")..StripEscapes(row[1]) end;rows[#rows+1]=row end
