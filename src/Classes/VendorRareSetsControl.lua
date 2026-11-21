@@ -19,10 +19,21 @@ function M.Open(build)
   table.sort(all,function(a,b) return a.index<b.index end)
   for _,item in ipairs(all) do local colour=item.index==selected and "^xEED49C" or "^7";rows[#rows+1]={height=25,textSize=14,itemIndex=item.index,colour..ui.fit("#"..item.index.." "..item.base,math.floor(left*0.65)-18,14),colour..item.level} end
   c.entries.list=rows;local lines={}
+  if selected then
+   for _,item in ipairs(all) do if item.index==selected then
+    local assignment="Unassigned"
+    for groupIndex,group in ipairs(review.groups) do for _,member in ipairs(group.items) do if member.index==selected then assignment="Set "..groupIndex end end end
+    lines[#lines+1]="Selected #"..item.index..": "..item.base
+    lines[#lines+1]=item.slot.." | Item level "..item.level.." | "..assignment
+    lines[#lines+1]=(item.unidentified and "Unidentified" or "Identified").." | Quality "..item.quality.."%"
+    lines[#lines+1]=""
+   end end
+  end
   for index,group in ipairs(review.groups) do
    lines[#lines+1]="Set "..index..": possible "..group.reward.." (lowest level "..group.minLevel..")"
-   local ids={};for _,item in ipairs(group.items) do ids[#ids+1]="#"..item.index end;lines[#lines+1]="  "..table.concat(ids,", ")
    lines[#lines+1]="  "..(group.unidentified and "All unidentified" or "Includes identified")..(group.quality20 and "; all 20% quality" or "").."; verify bonus."
+   for _,item in ipairs(group.items) do lines[#lines+1]="  #"..item.index.." "..item.slot..": "..item.base.." (level "..item.level..")" end
+   lines[#lines+1]=""
   end
   if preference=="chaos" and #review.groups>0 then lines[#lines+1]="Chaos suggestions may not maximize sets." end
   if #review.remaining>0 then local ids={};for _,item in ipairs(review.remaining) do ids[#ids+1]="#"..item.index end;lines[#lines+1]="Remaining: "..table.concat(ids,", ") end
@@ -34,7 +45,7 @@ function M.Open(build)
   c.details.list=ui.rows(lines,w-left-42,14);c.status.label="^7"..review.totalItems.." pasted | "..#review.groups.." suggested sets"
  end
  c.preference.selFunc=function() preference=c.preference:GetSelValueByKey("val");build.planningVendorRareSetPreference=preference;refresh() end
- c.entries.onClick=function(row) local index=row and row.line and row.line.itemIndex;if index then selected=index;refresh() end end
+ c.entries.onClick=function(row) local index=row and row.line and row.line.itemIndex;if index then selected=index;refresh();c.details.controls.scrollBar:SetOffset(0) end end
  local function button(key,x,width,label,run) c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{x,h-54,width,28},label,run)) end
  button("paste",16,146,"Paste rare",function()
   local raw=Paste();local ok,item=pcall(vendor.parseSet,raw)

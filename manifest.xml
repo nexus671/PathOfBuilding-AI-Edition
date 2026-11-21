@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview956" />
+	<Version number="2.68.1-ai.preview957" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -3161,7 +3161,7 @@
 	<File name="Data/Atlas/3.30.0c.json" part="program" sha1="1f1948c184857a627414410890c2b1a62d7a16cf" />
 	<File name="Classes/VendorRarePairsControl.lua" part="program" sha1="5d92f9949eedb12db9f8517c973d0ebb837d83e4" />
 	<File name="Modules/VendorRarePairs.lua" part="program" sha1="6e825c5cfec6f95923681228a65c26b725ade64f" />
-	<File name="Classes/VendorRareSetsControl.lua" part="program" sha1="5a7536c3bcb5d508bf1c09394a07c282e5fedc7d" />
+	<File name="Classes/VendorRareSetsControl.lua" part="program" sha1="30b2d4842003fe30dfbe5f4ed26c7eacf911155e" />
 	<File name="Classes/VendorQualitySetsControl.lua" part="program" sha1="8630e7cfdcca16eaa7d0336bf53db26f7f36c609" />
 	<File name="Modules/VendorQualitySets.lua" part="program" sha1="b4e8718cd9f90aeb9061345fbb82bd5df8971a66" />
 	<File name="Data/Atlas/delirium-orbs-3.30.json" part="program" sha1="8a1fe3223596c7794eff185015d266b3afa239d5" />
