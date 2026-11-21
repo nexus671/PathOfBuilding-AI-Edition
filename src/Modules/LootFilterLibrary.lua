@@ -395,6 +395,21 @@ local ritualExamples={
  {"Ritual Scarab of Corpses","Map Fragments"},{"Ritual Scarab of Selectiveness","Map Fragments"},
  {"Ritual Scarab of Wisps","Map Fragments"},
 }
+-- Catalogue examples for testing filters; these do not imply current drops.
+local sanctumExamples={
+ {"Forbidden Tome","Sanctum Research"},{"Candlestick Relic","Relics"},{"Censer Relic","Relics"},
+ {"Coffer Relic","Relics"},{"Papyrus Relic","Relics"},{"Processional Relic","Relics"},
+ {"Tome Relic","Relics"},{"Urn Relic","Relics"},{"Lycia's Invocation of Acrobatics","Stackable Currency"},
+ {"Lycia's Invocation of Divine Shield","Stackable Currency"},{"Lycia's Invocation of Eldritch Battery","Stackable Currency"},
+}
+local bossExamples={
+ {"Crescent Splinter","Stackable Currency"},{"The Maven's Writ","Map Fragments"},
+ {"Fragment of the Hydra","Map Fragments"},{"Fragment of the Phoenix","Map Fragments"},
+ {"Fragment of the Minotaur","Map Fragments"},{"Fragment of the Chimera","Map Fragments"},
+ {"Fragment of Purification","Map Fragments"},{"Fragment of Constriction","Map Fragments"},
+ {"Fragment of Eradication","Map Fragments"},{"Fragment of Enslavement","Map Fragments"},
+ {"Maven's Invitation: The Feared","Misc Map Items"},{"Orb of Conflict","Stackable Currency"},
+}
 -- Deliberate test items for the campaign recipe policies, not a simulated set
 -- of actual drops. Socket layouts are explicit so their preview is decisive.
 local vendorExamples={
@@ -454,7 +469,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		end end
 		return list
 	end
-	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Blight & oils"]=blightExamples,["Breach"]=breachExamples,["Legion"]=legionExamples,["Delirium"]=deliriumExamples,["Harvest"]=harvestExamples,["Abyss"]=abyssExamples,["Ultimatum"]=ultimatumExamples,["Ritual"]=ritualExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
+	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Blight & oils"]=blightExamples,["Breach"]=breachExamples,["Legion"]=legionExamples,["Delirium"]=deliriumExamples,["Harvest"]=harvestExamples,["Abyss"]=abyssExamples,["Ultimatum"]=ultimatumExamples,["Ritual"]=ritualExamples,["Sanctum"]=sanctumExamples,["Pinnacle bosses"]=bossExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
 		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end
 		applyBaseProperties(item)

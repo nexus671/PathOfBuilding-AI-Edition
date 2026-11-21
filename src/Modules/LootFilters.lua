@@ -605,7 +605,7 @@ function M.simulateExamples(profile,setId,offset,limit,checkpoint)
 	assert(selected,"Choose a saved example set")
 	return simulatePage(profile,selected,offset,limit,checkpoint,false)
 end
-local sceneKinds={ ["Mixed drops"]=true,["Build targets"]=true,Currency=true,["Preset highlights"]=true,["Tiered gear"]=true,["Vendor recipes"]=true,["Covens & Threads"]=true,["Maps & threads"]=true,["Map tiers"]=true,["Flasks & tinctures"]=true,["Divination cards"]=true,Essences=true,["Crafting materials"]=true,["Heist & Expedition"]=true,["Blight & oils"]=true,Breach=true,Legion=true,Delirium=true,Harvest=true,Abyss=true,Ultimatum=true,Ritual=true }
+local sceneKinds={ ["Mixed drops"]=true,["Build targets"]=true,Currency=true,["Preset highlights"]=true,["Tiered gear"]=true,["Vendor recipes"]=true,["Covens & Threads"]=true,["Maps & threads"]=true,["Map tiers"]=true,["Flasks & tinctures"]=true,["Divination cards"]=true,Essences=true,["Crafting materials"]=true,["Heist & Expedition"]=true,["Blight & oils"]=true,Breach=true,Legion=true,Delirium=true,Harvest=true,Abyss=true,Ultimatum=true,Ritual=true,Sanctum=true,["Pinnacle bosses"]=true }
 function M.simulateScene(profile,kind,seed,areaLevel,itemLevel,offset,limit,checkpoint,build)
 	assert(sceneKinds[kind],"Choose a supported built-in filter scene")
 	seed=seed or 0;areaLevel=areaLevel or 83;itemLevel=itemLevel or 86

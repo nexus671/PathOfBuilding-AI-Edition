@@ -465,6 +465,17 @@ describe("Visual filter catalogue",function()
 		local rotated=library.scene(profile,build,"Covens & Threads",1,76,81)
 		assert.equal(scene[2].BaseType,rotated[1].BaseType);assert.same(rotated,library.scene(profile,build,"Covens & Threads",1,76,81))
 	end)
+	it("tests Sanctum and pinnacle examples using pinned item classes",function()
+		local f=assert(io.open("Data/LootFilters/base-classes.json","rb"));local classes=assert(require("dkjson").decode(f:read("*a"))).classes;f:close()
+		local profile=filters.profile("scenes","Scenes");profile.template='Show\n Class == "Sanctum Research" "Map Fragments"\nHide'
+		for _,example in ipairs({{"Sanctum","Forbidden Tome",11},{"Pinnacle bosses","Crescent Splinter",12}}) do
+			local scene=library.scene(profile,build,example[1],0,76,81);assert.equal(example[3],#scene);assert.equal(example[2],scene[1].BaseType)
+			for _,item in ipairs(scene) do assert.equal(classes[item.BaseType],item.Class);assert.equal(76,item.AreaLevel);assert.equal(81,item.ItemLevel) end
+			local page=filters.simulateScene(profile,example[1],0,76,81,0,2);assert.equal(example[3],page.total);assert.equal(example[2],page.results[1].sample.BaseType)
+			assert.equal(example[1]=="Sanctum" and "Show" or "Hide",page.results[1].result.action)
+			local nextPage=filters.simulateScene(profile,example[1],0,76,81,2,2);assert.equal(scene[3].BaseType,nextPage.results[1].sample.BaseType)
+		end
+	end)
 	it("browses real base blocks without mutating the profile or their conditions",function()
 		local profile=filters.profile("test","Test");local before=copyTable(profile)
 		local entries=library.catalog(profile);assert.is_true(#entries>500)
