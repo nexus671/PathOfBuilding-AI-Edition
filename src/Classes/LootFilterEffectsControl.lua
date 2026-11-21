@@ -22,13 +22,24 @@ function M.Open(original,sample,onKeep)
 	label("iconSizeLabel",392,276,"Minimap size");drop("iconSize",392,300,{{label="Large",val=0},{label="Medium",val=1},{label="Small",val=2}});c.iconSize:SelByValue(tonumber(original.MinimapIcon and original.MinimapIcon[1]) or 1,"val")
 	for _,key in ipairs({"iconColor","iconSize"}) do c[key].enabled=function() return c.iconShape.selIndex>2 end end
 	label("customLabel",16,348,"Custom sound file / relative path")
-	c.customPath=new("EditControl"):EditControl(ui.anchor,{16,372,352,28},original.CustomAlertSound and original.CustomAlertSound[1] or original.CustomAlertSoundOptional and original.CustomAlertSoundOptional[1] or "",nil,nil,500);c.customPath.placeholder="sound.wav"
+	c.customPath=new("EditControl"):EditControl(ui.anchor,{16,372,260,28},original.CustomAlertSound and original.CustomAlertSound[1] or original.CustomAlertSoundOptional and original.CustomAlertSoundOptional[1] or "",nil,nil,500);c.customPath.placeholder="sound.wav"
 	c.customPath.enabled=function() return c.soundKind.selIndex>=5 end
+	c.browseSound=new("ButtonControl"):ButtonControl(ui.anchor,{284,372,84,28},"Browse",function()
+		local path=c.customPath.buf
+		if path:find(";",1,true) or not (path:match("^%a:[/\\]") or path:sub(1,2)=="\\\\" or path:sub(1,1)=="/") then
+			path=(main.userPath or "./"):gsub("\\","/");if path:sub(-1)~="/" then path=path.."/" end
+		end
+		require("Classes.LootFilterFileBrowser").Open(path,function(selected) c.customPath:SetText(selected,true) end,{title="Choose a sound file",itemLabel="Sound",category="Sounds",accept=function(name)
+			return ({wav=true,mp3=true,ogg=true,flac=true,m4a=true,aac=true})[(name:match("%.([^%.]+)$") or ""):lower()]==true
+		end})
+	end)
+	c.browseSound.enabled=c.customPath.enabled
+	c.browseSound.tooltipText="Choose a local sound file. The selected path is saved in the filter."
 	label("beamLabel",392,348,"Drop beam")
 	local beams={"Keep current","None"};for _,color in ipairs(options.colors) do beams[#beams+1]=color end
 	drop("beam",392,372,beams);c.beam:SelByValue(original.PlayEffect and original.PlayEffect[1] or "Keep current")
 	label("beamDurationLabel",392,420,"Beam duration");drop("beamDuration",392,444,{"Permanent","Temporary"});c.beamDuration:SelByValue(original.PlayEffect and original.PlayEffect[2]=="Temp" and "Temporary" or "Permanent");c.beamDuration.enabled=function() return c.beam.selIndex>2 end
-	ui.description(c,"help",16,420,352,58,{"Custom audio overrides built-in alerts; optional files fall back if missing. Previews use reference tones."},13)
+	ui.description(c,"help",16,420,352,58,{"Custom sound paths are saved in the filter. Preview supports local 16-bit WAV files and reference tones."},13)
 	local function styles(strict)
 		local next=copyTable(original);local mode=c.soundKind.selIndex
 		if mode>1 then for _,key in ipairs({"PlayAlertSound","PlayAlertSoundPositional","CustomAlertSound","CustomAlertSoundOptional"}) do next[key]=nil end end
@@ -44,7 +55,7 @@ function M.Open(original,sample,onKeep)
 	end
 	c.preview=new("Control"):Control(ui.anchor,{16,28,w-32,92});function c.preview:Draw() local x,y=self:GetPos();visual.floor(x,y,self.width,self.height);visual.chip(x,y,self.width,self.height,sample,{action="Show",styles=styles()}) end
 	c.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-42,220,28},"Use sound and effects",function() onKeep(styles(true));main:ClosePopup() end)
-	c.test=new("ButtonControl"):ButtonControl(ui.anchor,{252,h-42,220,28},"Preview reference alert",function() local _,message=require("Modules.LootFilterAudio").play(styles());main:OpenMessagePopup("Reference alert",message) end)
+	c.test=new("ButtonControl"):ButtonControl(ui.anchor,{252,h-42,220,28},"Preview sound",function() local _,message=require("Modules.LootFilterAudio").play(styles());main:OpenMessagePopup("Sound preview",message) end)
 	c.close=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-42,140,28},"Cancel",function() main:ClosePopup() end)
 	ui.style(c,{keep=true});visual.layers(c,{preview=true});main:OpenPopup(w,h,"Sound, minimap icon and beam",c,nil,nil,"close");return c
 end

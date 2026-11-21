@@ -14,7 +14,8 @@ local function parent(path)
 	if result=="" then return "/" end
 	return result.."/"
 end
-function M.entries(path)
+function M.entries(path,options)
+	options=options or {}
 	local entries={}
 	local up=parent(path)
 	if up then entries[#entries+1]={id=up,label=".. (parent folder)",category="Folders",folder=true} end
@@ -22,9 +23,9 @@ function M.entries(path)
 		local handle=NewFileSearch(path.."*",folders)
 		while handle do
 			local name=handle:GetFileName()
-			if name~="." and name~=".." and (folders or require("Modules.LootFilterFileNames").isFilter(name)) then
+			if name~="." and name~=".." and (folders or (options.accept and options.accept(name) or not options.accept and require("Modules.LootFilterFileNames").isFilter(name))) then
 				local full=path..name..(folders and "/" or "")
-				entries[#entries+1]={id=full,label=(folders and "Folder: " or "Filter: ")..name,category=folders and "Folders" or "Filters",folder=folders,details={full}}
+				entries[#entries+1]={id=full,label=(folders and "Folder: " or (options.itemLabel or "Filter")..": ")..name,category=folders and "Folders" or (options.category or "Filters"),folder=folders,details={full}}
 			end
 			if not handle:NextFile() then break end
 		end
@@ -34,10 +35,11 @@ function M.entries(path)
 	table.sort(entries,function(a,b) if a.folder~=b.folder then return a.folder end return a.label:lower()<b.label:lower() end)
 	return entries
 end
-function M.Open(initial,choose)
+function M.Open(initial,choose,options)
+	options=options or {}
 	local function browse(path)
-		local entries=M.entries(path)
-		require("Classes.PlanningBrowserControl").Open("Choose a local filter",entries,{action="Open",closeOnChoose=false,choose=function(entry)
+		local entries=M.entries(path,options)
+		require("Classes.PlanningBrowserControl").Open(options.title or "Choose a local filter",entries,{action="Open",closeOnChoose=false,choose=function(entry)
 			main:ClosePopup()
 			if entry.folder then browse(entry.id) else choose(entry.id) end
 		end})

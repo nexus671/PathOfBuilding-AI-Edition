@@ -7,12 +7,12 @@ function M.alert(styles)
 		if custom[1]=="None" then return nil,"The custom alert is disabled; no custom audio is previewed." end
 		if styles.CustomAlertSoundOptional and not styles.CustomAlertSound then
 			local fallback=styles.PlayAlertSound or styles.PlayAlertSoundPositional
-			if fallback and fallback[1]~="None" and tonumber(fallback[2])~=0 then return nil,"Optional custom audio may fall back to a numbered alert if its file is missing. Custom files are not previewed." end
+			if fallback and fallback[1]~="None" and tonumber(fallback[2])~=0 then return nil,"Optional custom audio may fall back to a numbered alert if its file is missing. Use Preview sound for a local WAV." end
 			if tonumber(custom[2])==0 then return nil,"The custom alert volume is zero." end
-			return nil,"Optional custom audio plays only if its file is available. Custom files are not previewed."
+			return nil,"Optional custom audio plays only if its file is available. Use Preview sound for a local WAV."
 		end
 		if tonumber(custom[2])==0 then return nil,"The custom alert volume is zero." end
-		return nil,"Custom audio overrides numbered alerts. Custom files are not previewed."
+		return nil,"Custom audio overrides numbered alerts. Use Preview sound for a local WAV."
 	end
 	if styles.PlayAlertSound and styles.PlayAlertSoundPositional then return nil,"Both numbered alert modes are present in the same block; the effective sound is not verified." end
 	local values=styles.PlayAlertSound or styles.PlayAlertSoundPositional
@@ -63,20 +63,49 @@ function M.scaleReferenceWave(raw,volume)
 	end
 	error("Missing reference audio samples")
 end
-function M.play(styles)
-	local id,why=M.alert(styles);if not id then return false,why end
-	local ffi=require("ffi");if ffi.os~="Windows" then return false,"Audio preview is available on Windows. Export retains the game's alert ID." end
+-- Prepare only explicitly selected local WAV files; relative game paths are preserved.
+function M.prepareCustomWave(path,volume)
+	if type(path)~="string" then return nil,"No custom sound path is configured." end
+	path=path:match("^[^;]*") or ""
+	path=path:match("^%s*(.-)%s*$")
+	if path:find("[%z\r\n]") or not (path:match("^%a:[/\\]") or path:sub(1,2)=="\\\\" or path:sub(1,1)=="/") then
+		return nil,"Choose an absolute WAV path for preview; relative paths remain in the exported filter."
+	end
+	if not path:lower():match("%.wav$") then return nil,"Custom preview supports 16-bit PCM WAV files; the original path is preserved." end
+	volume=tonumber(volume) or 100
+	if volume~=volume or volume<0 or volume>300 then return nil,"Custom sound volume must be between 0 and 300." end
+	if volume==0 then return nil,"The custom alert volume is zero." end
+	local file=io.open(path,"rb");if not file then return nil,"Could not open the custom sound file; optional fallback is not previewed." end
+	local size=file:seek("end")
+	if not size or size>2*1024*1024 or not file:seek("set",0) then file:close();return nil,"Custom WAV preview is limited to files of 2 MiB or less." end
+	local raw=file:read("*a");file:close()
+	local ok,wave=pcall(M.scaleReferenceWave,raw,volume)
+	if not ok then return nil,"Custom preview requires a valid 16-bit PCM WAV file." end
+	return wave,"Playing the first custom WAV at the selected preview volume."
+end
+local function playWave(wave,message)
+	local ffi=require("ffi");if ffi.os~="Windows" then return false,"Audio preview is available on Windows." end
 	pcall(ffi.cdef,"int __stdcall PlaySoundA(const char *pszSound, void *hmod, unsigned int fdwSound);")
-	local sound=ffi.load("winmm")
+	local ok,sound=pcall(ffi.load,"winmm");if not ok then return false,"Could not load Windows audio preview." end
+	local buffer=ffi.new("char[?]",#wave+1);ffi.copy(buffer,wave,#wave)
+	-- Keep the previous buffer alive until PlaySound replaces it.
+	if sound.PlaySoundA(buffer,nil,0x00000007)==0 then return false,"Could not play the sound preview." end
+	M.buffer=buffer;M.library=sound
+	return true,message
+end
+function M.play(styles)
+	local custom=styles.CustomAlertSound or styles.CustomAlertSoundOptional
+	if custom and custom[1]~="None" then
+		local wave,message=M.prepareCustomWave(custom[1],custom[2]);if not wave then return false,message end
+		return playWave(wave,message)
+	end
+	local id,why=M.alert(styles);if not id then return false,why end
 	local root=GetScriptPath();local filename=(root~="" and root.."/" or "").."Assets/LootFilters/alert-"..id..".wav"
 	local file=io.open(filename,"rb");if not file then return false,"Could not load the reference tone." end
 	local raw=file:read("*a");file:close()
 	local values=styles.PlayAlertSound or styles.PlayAlertSoundPositional;local volume=tonumber(values[2]) or 50
 	local ok,wave=pcall(M.scaleReferenceWave,raw,volume);if not ok then return false,"Could not prepare the reference tone." end
-	local buffer=ffi.new("char[?]",#wave+1);ffi.copy(buffer,wave,#wave)
-	-- Keep the previous buffer alive until PlaySound replaces it.
-	if sound.PlaySoundA(buffer,nil,0x00000007)==0 then return false,"Could not play the reference tone." end
-	M.buffer=buffer;M.filename=filename;M.library=sound
-	return true,"Playing a volume-adjusted reference tone for alert "..id..". The game's exact sound plays in game."
+	M.filename=filename
+	return playWave(wave,"Playing a volume-adjusted reference tone for alert "..id..". The game's exact sound plays in game.")
 end
 return M

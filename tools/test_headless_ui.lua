@@ -1660,7 +1660,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:text("search","Chaos Orb");frame("filter-search")
 	ui:click("edit");frame("filter-appearance");ui:click("textHexPick");frame("filter-colour-wheel");frame("filter-colour-preset-hover","preset7")
 	local colourWheel=main.popups[1].controls.wheel;local wx,wy=colourWheel:GetPos();ui:dragAt(wx+192,wy+128,-64,64,"LEFTBUTTON");frame("filter-colour-dragged");ui:text("hex","FFE0A0FF");ui:click("keep");assert(main.popups[1].controls.textHex.buf=="FFE0A0FF","Rule picker did not return the selected colour")
-	ui:text("backgroundHex","101820FF");ui:choose("sound","Alert 6");ui:choose("icon","Diamond");ui:click("effects");ui:choose("iconShape","Moon");ui:choose("iconColor","Purple");ui:choose("iconSize","Large","label");ui:choose("beam","Purple");ui:choose("beamDuration","Temporary");frame("filter-sound-and-effects");ui:click("keep");ui:click("keepRule");frame("filter-base-override")
+	ui:text("backgroundHex","101820FF");ui:choose("sound","Alert 6");ui:choose("icon","Diamond");ui:click("effects");ui:choose("iconShape","Moon");ui:choose("iconColor","Purple");ui:choose("iconSize","Large","label");ui:choose("beam","Purple");ui:choose("beamDuration","Temporary");frame("filter-sound-and-effects")
+	ui:choose("soundKind","Custom sound")
+	do
+		local browser=require("Classes.LootFilterFileBrowser");local open=browser.Open
+		browser.Open=function(_,choose,options) assert(options.accept("Alert.WAV") and not options.accept("notes.txt"));choose("C:/Sounds/alert.wav") end
+		ui:click("browseSound");browser.Open=open
+		assert(main.popups[1].controls.customPath.buf=="C:/Sounds/alert.wav","Sound picker did not return the path")
+	end
+	frame("filter-custom-sound");ui:choose("soundKind","Keep current");ui:click("keep");ui:click("keepRule");frame("filter-base-override")
 	do
 		local saved;local rule={id="implicit-alpha",title="Imported background",text='Show\n BaseType == "Chaos Orb"\n SetBackgroundColor 10 20 30'}
 		require("Classes.LootFilterAppearance").Open(rule,function(value) saved=value end,function() end)
