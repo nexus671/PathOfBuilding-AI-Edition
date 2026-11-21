@@ -122,23 +122,36 @@ local function intervalPairs(rule,entries)
  end end
  return result
 end
--- An exact class/base list can narrow at the same time as a full interval.
+-- A class/base list can narrow at the same time as a full interval.
 -- Other predicates remain identical; bounded buckets keep large filters fast.
 local function listIntervals(rule,intervalEntries)
  local result={}
  for _,list in ipairs(rule.conditions) do
-  if (list.keyword=="BaseType" or list.keyword=="Class") and list.operator=="==" and #list.values>0 and #list.values<=256 then
+  if (list.keyword=="BaseType" or list.keyword=="Class") and (list.operator=="==" or list.operator=="=") and #list.values>0 and #list.values<=(list.operator=="=" and 32 or 256) then
    for _,entry in ipairs(intervalEntries) do
     local other={}
     for _,condition in ipairs(rule.conditions) do if condition~=list and not entry.conditions[condition] then other[#other+1]=encoded(condition) end end
     table.sort(other);local group=field(list.keyword)..field(entry.keyword)
     for _,value in ipairs(other) do group=group..field(value) end
-    local values={};for _,value in ipairs(list.values) do values[value]=true end
-    result[#result+1]={group=group,values=values,lower=entry.lower,upper=entry.upper}
+    local values,exact={},{};for _,value in ipairs(list.values) do values[#values+1]=value;exact[value]=true end
+    result[#result+1]={group=group,values=values,exact=exact,operator=list.operator,lower=entry.lower,upper=entry.upper}
    end
   end
  end
  return result
+end
+-- Partial names match case-insensitively; an exact list cannot prove coverage
+-- of a later partial-name rule because it also matches longer names.
+local function listCovers(earlier,later)
+ if earlier.operator=="==" then return later.operator=="==" and containsAll(earlier.exact,later.exact) end
+ for _,value in ipairs(later.values) do
+  local found=false
+  for _,candidate in ipairs(earlier.values) do
+   if value:lower():find(candidate:lower(),1,true) then found=true;break end
+  end
+  if not found then return false end
+ end
+ return true
 end
 function M.shadowing(parsed)
  local seen,thresholds,sets,combined,paired,diagnostics={},{},{},{},{},{};local rarityIndex,intervalIndex,rarityIntersectionIndex,listIntervalIndex,pairIntervalIndex={},{},{},{},{};local partialLists={};local terminal
@@ -188,7 +201,7 @@ function M.shadowing(parsed)
   local listIntervalVariants=not prior and #conditions<=16 and listIntervals(rule,intervalVariants) or {}
   if not prior then for _,entry in ipairs(listIntervalVariants) do
    for _,candidate in ipairs(listIntervalIndex[entry.group] or {}) do
-    if containsAll(candidate.values,entry.values) and intervalCovers(candidate,entry) and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
+    if listCovers(candidate,entry) and intervalCovers(candidate,entry) and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
    end
   end end
   if not prior and #conditions<=16 then

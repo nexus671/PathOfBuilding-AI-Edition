@@ -109,6 +109,34 @@ describe("Compiled filter structure",function()
 		local partial='Show\n Rarity Normal Rare\nHide\n Rarity Magic Rare'
 		assert.equal(0,#diagnostics.shadowing(parser.parse(partial)))
 	end)
+	it("finds covered partial-name rules with narrower level ranges",function()
+		local parser=require("Modules.LootFilterParser");local diagnostics=require("Modules.LootFilterDiagnostics")
+		local cases={
+			{'BaseType "ring"\n ItemLevel >= 60\n ItemLevel <= 86','BaseType == "Coral Ring" "Iron Ring"\n ItemLevel >= 70\n ItemLevel <= 80',true},
+			{'Class "flask"\n ItemLevel >= 60','Class "Utility Flask"\n ItemLevel >= 70',true},
+			{'BaseType == "Coral Ring"\n ItemLevel >= 60','BaseType "Ring"\n ItemLevel >= 70',false},
+			{'BaseType "ring"\n ItemLevel >= 70','BaseType == "Coral Ring"\n ItemLevel >= 60',false},
+			{'BaseType "ring"\n ItemLevel >= 60','BaseType == "Coral Ring" "Amber Amulet"\n ItemLevel >= 70',false},
+		}
+		for _,case in ipairs(cases) do
+			local raw='Hide\n '..case[1]..'\nShow\n '..case[2];assert.equal(case[3],#diagnostics.shadowing(parser.parse(raw))==1,raw)
+		end
+		local names={'"ring"','"Coral" "Iron"','== "Coral Ring"','== "Iron Ring" "Amber Amulet"'}
+		local ranges={'ItemLevel >= 60','ItemLevel > 70','ItemLevel <= 80','ItemLevel == 75'}
+		for _,a in ipairs(names) do for _,b in ipairs(names) do for _,x in ipairs(ranges) do for _,y in ipairs(ranges) do
+			local parsed=parser.parse('Hide\n BaseType '..a..'\n '..x..'\nShow\n BaseType '..b..'\n '..y)
+			if #diagnostics.shadowing(parsed)>0 then for _,base in ipairs({"Coral Ring","Iron Ring","Amber Amulet","coral ring","Iron Ringmail"}) do for _,level in ipairs({59,60,70,71,75,80,81}) do
+				local function matches(rule) for _,condition in ipairs(rule.conditions) do if not parser.condition(condition,{BaseType=base,ItemLevel=level}) then return false end end;return true end
+				assert.is_false(matches(parsed.rules[2]) and not matches(parsed.rules[1]),a..' / '..b..' / '..x..' / '..y)
+			end end end
+		end end end end
+		local profile=filters.profile("partial-range","Partial range")
+		profile.template='Hide\n BaseType "Ring"\n ItemLevel >= 60\nShow\n BaseType == "Coral Ring"\n ItemLevel >= 70'
+		local view=structure.outline(profile);local entries=structure.filter(view,"",nil,nil,"Priority conflicts")
+		assert.equal(1,#entries);assert.equal(structure.diagnostics(view,entries[1])[1].shadowedBy,structure.blockingEntry(view,entries[1]).line)
+		local continuing='Hide\n BaseType "Ring"\n ItemLevel >= 60\n Continue\nShow\n BaseType == "Coral Ring"\n ItemLevel >= 70'
+		assert.equal(0,#diagnostics.shadowing(parser.parse(continuing)))
+	end)
 	it("matches the filter evaluator for rarity lists and operators",function()
 		local parser=require("Modules.LootFilterParser");local diagnostics=require("Modules.LootFilterDiagnostics")
 		local expressions={};local values={"Normal","Magic Rare","Normal Magic Rare","Unique"}
