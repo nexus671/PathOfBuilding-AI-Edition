@@ -293,8 +293,13 @@ function M.hint(method,state,model,craft)
 	if available and method=="harvest_enchant" then return "Replace the enchantment with a quality bonus. Options show the Lifeforce cost." end
 	if available and method=="harvest_resistance" then return "Change one elemental resistance to another. Costs 300 Lifeforce for each element." end
 	if available and method=="harvest_damage" then return "Experimental: tiers and odds are unverified. Costs 300 of each Lifeforce and 1 Crystallised Rancour." end
-	if available and (method=="tainted_exalt" or method=="tainted_chaos") and model.item.type=="Jewel" and model.item.base.subType=="Abyss" then return "Assumes equal branch odds and up to three prefixes and suffixes on corrupted Abyss jewels. Both assumptions are unverified." end
-	if available and method=="tainted_exalt" then return "The add or remove branch can fail at modifier limits in this model. Game behavior and odds are unverified; failed transitions are not charged." end
+	if available and method=="tainted_exalt" then
+		local current=simulator.context(model,state);local abyss=current.item.type=="Jewel" and current.item.base.subType=="Abyss"
+		local capacity=simulator.capacities(current,state);local full=#state.affixes>=capacity.total
+		local branch=full and "Full: add fails; " or "Add/remove may fail; "
+		return branch.."failed model rolls cost nothing. "..(abyss and "Abyss cap and odds unverified." or "Game behavior and odds unverified.")
+	end
+	if available and method=="tainted_chaos" and model.item.type=="Jewel" and model.item.base.subType=="Abyss" then return "Assumes equal branch odds and up to three prefixes and suffixes on corrupted Abyss jewels. Both assumptions are unverified." end
 	if available and method=="tainted_chaos" then return "Assumes equal chances to reforge or remove modifiers. The game's branch odds are unverified." end
 	return available and (descriptions[method] or "Choose the craft options, then apply to the item.") or reason
 end

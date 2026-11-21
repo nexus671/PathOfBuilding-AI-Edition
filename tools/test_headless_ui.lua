@@ -1293,6 +1293,18 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(saved and saved.steps[2].method=="bench_remove_enchant","The recipe did not retain enchantment removal")
 	end
 	do
+		local raw="Rarity: NORMAL\nMurderous Eye Jewel\nItem Level: 86";local model=sim.model(raw)
+		local state=sim.perform(raw,{method="alchemy"},104729).state;state.corrupted=true
+		local draws=0;state=sim.action(model,state,{method="tainted_chaos"},function() draws=draws+1;return draws==1 and 0.1 or draws==2 and 0.99 or 0.37 end)
+		assert(#state.affixes==6,"Expected a full Abyss jewel")
+		local project={id="abyss-warning-ui",title="Abyss warning",slot="Jewel",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(state)}
+		local c=require("Classes.CraftingSimulatorControl").Open(build,project);c.method:SelByValue("tainted_exalt","val");c.method.selFunc()
+		local warning=c.apply.tooltipText():gsub("%s+"," ");assert(warning:find("Full: add fails",1,true) and warning:find("cost nothing",1,true) and warning:find("Abyss",1,true),"Abyss Tainted Exalted warning is incomplete")
+		ui:frame();local visible,top={},0;for _,row in ipairs(c.actionHint.list) do if top+(row.textSize or 14)<=c.actionHint.height then visible[#visible+1]=StripEscapes(row[1] or "") end;top=top+row.height end
+		local text=table.concat(visible," "):gsub("%s+"," ");assert(text:find("cost nothing",1,true) and text:find("unverified",1,true),"Critical warning was clipped")
+		frame("crafting-abyss-tainted-warning","apply");ui:click("close")
+	end
+	do
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86";local routeModel=sim.model(raw);local benchId=routeModel.bench[1].id
 		local saved;require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy"}},targets={},requirements={maxAffixes=0}},{method="alchemy"},function(value) saved=value end,routeModel)
 		ui:click("addCurrency");ui:text("search","Orb of Fusing (experimental)");frame("crafting-recipe-socket-currency");local socketDetails={};for _,row in ipairs(main.popups[1].controls.details.list) do socketDetails[#socketDetails+1]=StripEscapes(row[1]) end;assert(table.concat(socketDetails," "):find("unverified",1,true),"Socket currency assumptions are missing");ui:click("close")
