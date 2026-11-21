@@ -101,13 +101,15 @@ end
 
 -- Charge state is shared by use policies and incoming/outgoing event callbacks.
 function M.charges(config, random)
-	local bank = { charges=config.charges, uses=0, generated=0, last=0, lastUse=-math.huge }
+	local bank = { charges=config.charges, uses=0, generated=0, last=0, lastUse=-math.huge, noGainUntil=-math.huge }
 	function bank:advance(t)
-		self.charges = min(config.charges, self.charges + max(0,t - self.last) * (config.generation or 0))
+		local gainingFrom = max(self.last, self.noGainUntil)
+		self.charges = min(config.charges, self.charges + max(0,t - gainingFrom) * (config.generation or 0))
 		self.last = t
 	end
 	function bank:gain(t, amount)
 		self:advance(t)
+		if t < self.noGainUntil - 1e-9 then return end
 		local gain = max(0,amount) * (config.gain or 1)
 		self.generated = self.generated + min(gain, config.charges - self.charges)
 		self.charges = min(config.charges, self.charges + gain)
@@ -122,6 +124,7 @@ function M.charges(config, random)
 		if t <= self.lastUse + 1e-9 or config.used <= 0 or self.charges + 1e-9 < config.used then return false end
 		if (config.freeChance or 0) <= 0 or random() * 100 >= config.freeChance then self.charges = max(0,self.charges - config.used) end
 		self.uses, self.lastUse = self.uses + 1, t
+		if config.noGainDuringEffect then self.noGainUntil = t + max(0,config.duration or 0) end
 		return true
 	end
 	function bank:ready(t)
@@ -130,7 +133,7 @@ function M.charges(config, random)
 	end
 	function bank:next(t)
 		if self:ready(t) or not config.generation or config.generation <= 0 then return math.huge end
-		return t + max(0,config.used - self.charges) / config.generation
+		return max(t,self.noGainUntil) + max(0,config.used - self.charges) / config.generation
 	end
 	return bank
 end

@@ -151,6 +151,16 @@ describe("Encounter reporting and comparisons",function()
 		assert.is_true(bank:use(2)); assert.are.equal(8,bank.charges)
 		bank:advance(4); assert.are.equal(10,bank.charges)
 	end)
+	it("blocks passive and hit or critical flask charges only while its effect lasts",function()
+		local sealed=encounter.charges({charges=10,used=10,generation=2,gain=1,duration=4,noGainDuringEffect=true},function() return 1 end)
+		local ordinary=encounter.charges({charges=10,used=10,generation=2},function() return 1 end)
+		assert.is_true(sealed:use(0));assert.is_true(ordinary:use(0))
+		local events=encounter.chargeEvents({sealed,ordinary},{{chargesWhenHit=3,critChance=100},{chargesWhenHit=3}},function() return 0 end)
+		events:hit(1);events:critical(1,0);assert.equal(0,sealed.charges);assert.equal(5,ordinary.charges)
+		sealed:update(2,4,1);assert.equal(0,sealed.charges);assert.equal(6.5,sealed:next(2))
+		sealed:advance(4);assert.equal(0,sealed.charges);sealed:gain(4,2);assert.equal(2,sealed.charges)
+		sealed:advance(5);ordinary:advance(5);assert.equal(6,sealed.charges);assert.equal(10,ordinary.charges)
+	end)
 
 	it("honors non-consumption without allowing repeated uses at the same timestamp",function()
 		local bank=encounter.charges({charges=10,used=10,freeChance=100},function() return 0 end)
@@ -256,6 +266,23 @@ describe("Encounter reporting and comparisons",function()
 		assert(not __mainObject__.promptMsg,__mainObject__.promptMsg)
 		return build.calcsTab.calcsOutput
 	end
+	it("applies the no-charge enchantment to the actual encounter flask trace",function()
+		local function trace(enchant)
+			newBuild()
+			local raw="Rarity: MAGIC\nGranite Flask\nItem Level: 86\n"..(enchant and "Implicits: 1\n{enchant}Gains no Charges during Effect\n" or "")
+			local flask=new("Item"):Item(raw);build.itemsTab:AddItem(flask)
+			build.itemsTab.slots["Flask 1"].selItemId=flask.id;build.itemsTab.slots["Flask 1"].active=true
+			calculate();build.configTab.input.customMods="+3000 to maximum Life\n+60% to Cold Resistance\nFlasks gain 10 Charges every 1 seconds"
+			build.configTab:BuildModList();runCallback("OnFrame");assert(not __mainObject__.promptMsg,__mainObject__.promptMsg)
+			return build.calcsTab.calcsEnv.player.recoverySimulationTrace.points
+		end
+		local normal,sealed=trace(false),trace(true)
+		local function atOne(points)
+			for _,point in ipairs(points) do if point.time>=1-1e-8 then return point.chargesTotal end end
+			error("Missing one-second flask sample")
+		end
+		assert.is_true(atOne(normal)>atOne(sealed),"An active enchanted flask must not gain passive charges")
+	end)
 
 	it("does not apply quality twice to game tincture modifiers but retains external effect",function()
 		local claw=new("Item"):Item("Rarity: Normal\nImperial Claw")

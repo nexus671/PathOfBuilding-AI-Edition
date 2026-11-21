@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview884" />
+	<Version number="2.68.1-ai.preview885" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2107,8 +2107,8 @@
 	<File name="Modules/CalcActiveSkill.lua" part="program" sha1="462b2e8a3d1ffd8b43d09943f250c9ff1500cb84" />
 	<File name="Modules/CalcBase.lua" part="program" sha1="d4b5f492c68c8600aedfdcb5efdc44e6ac885c6e" />
 	<File name="Modules/CalcBreakdown.lua" part="program" sha1="ac9a792c343623799b7005cb4142b76adce2a27f" />
-	<File name="Modules/CalcDefence.lua" part="program" sha1="cd4d85a9edb0826bcb447d4f53af0c4dc1977a05" />
-	<File name="Modules/CalcEncounter.lua" part="program" sha1="857033a421ea223bed99634fa6ac2d04b745c4c5" />
+	<File name="Modules/CalcDefence.lua" part="program" sha1="77780cae7ea1f7e9fb787d1c78251a95cd179562" />
+	<File name="Modules/CalcEncounter.lua" part="program" sha1="9eaa51cb3b96e8ce2f07b2ad45547f2f32a84932" />
 	<File name="Modules/CalcFormat.lua" part="program" sha1="f51fa1f166b830c6bc30b83e9de3b312097132e6" />
 	<File name="Modules/CalcMirages.lua" part="program" sha1="779ea9b6d2905c5a08fb6fc781ce4631e8247a70" />
 	<File name="Modules/CalcOffence.lua" part="program" sha1="f46f964dda5084de4215eb7c3edf244fc8633b40" />

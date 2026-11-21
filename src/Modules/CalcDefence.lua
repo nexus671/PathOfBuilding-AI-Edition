@@ -4267,11 +4267,17 @@ function calcs.recoveryOverTime(env, actor)
 		end
 		for i,item in ipairs(flaskList) do
 			local d = item.flaskData
+			local noGainDuringEffect = false
+			for _,lines in ipairs({item.enchantModLines or { }, item.explicitModLines or { }}) do
+				for _,line in ipairs(lines) do
+					if (line.line or ""):lower():match("^%s*gains no charges during effect%s*$") then noGainDuringEffect = true end
+				end
+			end
 			local recovery = item.base.flask.life and "Life" or item.base.flask.mana and "Mana" or "Utility"
 			local generation, gain = chargeRates(item)
 			local duration = d.duration * (1 + mods:Sum("INC", nil, "FlaskDuration") / 100)
 			local config = { charges=d.chargesMax, used=encounter.chargesUsed(item.base.flask.chargesUsed,d.chargesUsedInc or 0,mods:Sum("INC", nil, "FlaskChargesUsed")),
-				duration=duration, generation=generation,gain=gain,freeChance=mods:Sum("BASE",nil,"FlaskChanceNotConsumeCharges") }
+				duration=duration, generation=generation,gain=gain,freeChance=mods:Sum("BASE",nil,"FlaskChanceNotConsumeCharges"),noGainDuringEffect=noGainDuringEffect and recovery=="Utility" }
 			flaskBanks[i] = encounter.charges(config,timeCalcs.random(encounter.seed(seed,0,10+i)))
 			config.bank = flaskBanks[i]
 			if recovery == "Utility" then flaskSchedules[i] = timeCalcs.flask(config)
@@ -4710,7 +4716,7 @@ function calcs.recoveryOverTime(env, actor)
 			"Includes recoup and physical-prevention regeneration cohorts, delayed Life loss, ordinary ES recharge and Ghost Shroud charges/recovery.",
 			dissolution and "Dissolution: actual Life and reservation are separate. Two seconds without damage to Life clears reservation; healing only restores actual Life. Delayed Life loss can kill without full reservation." or "Life/ES/Mana recovery is capped at the configured recoverable pools.",
 			env.configInput.recoverySimulationAttacking and "Outgoing hits pay costs, apply instant recovery and create leech instances with startup, expiry, rate caps and removal at full unless retained. Unaffordable attacks are skipped." or "Standing still: main-skill leech, gain on hit and skill costs are excluded.",
-			timedEffects and s_format("Flasks start with full charges; utility/enduring effects reuse at expiry. Other recovery flasks trigger below %.0f%% of recoverable pools after %.0fms (observed at most 50ms apart), end at full and can heal above PB's cap. Includes passive charges, local hit/critical charges and non-consumption; no kill charges.", env.configInput.recoverySimulationFlaskThreshold or 50, env.configInput.recoverySimulationFlaskReaction or 100) or "Selected flasks, Elusive, Crab Barriers and guard buffs stay at configured values; their expiry is excluded.",
+				timedEffects and s_format("Flasks start with full charges; utility/enduring effects reuse at expiry. Other recovery flasks trigger below %.0f%% of recoverable pools after %.0fms (observed at most 50ms apart), end at full and can heal above PB's cap. Includes passive charges, local hit/critical charges and non-consumption; Enkindling blocks charge gain during its effect. No kill charges.", env.configInput.recoverySimulationFlaskThreshold or 50, env.configInput.recoverySimulationFlaskReaction or 100) or "Selected flasks, Elusive, Crab Barriers and guard buffs stay at configured values; their expiry is excluded.",
 			timedEffects and "Crab Barriers regenerate every 0.5s, lose stacks on physical damage from hits, and respect Craiceann loss/protection/gain modifiers. Native mitigation and block bonuses are recalculated. Elusive decays; Nightblade can reapply it on outgoing critical hits." or "Temporary defense tracking is disabled.",
 			"Configured continuous damage uses current ES/bypass, EB and MoM routing, interrupts unprotected recharge, and accumulates Dissolution reservation. Damage-only inputs do not trigger hit recovery or Crab losses. Hit-derived enemy ailments are not inferred as permanent DoTs.",
 			"Ordinary Ward restoration, native Aegis refill delays and recharge protection are timed. Guard recasting, if enabled, is a paid manual-use policy; trigger thresholds are not simulated.",
