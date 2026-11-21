@@ -122,6 +122,12 @@ function M.Open(build)
 	for _,project in ipairs(build.savers.CraftingProjects.projects) do
 		entries[#entries+1]={id="craft:"..project.id,label=project.title,search="crafting project "..project.slot,category="Crafting projects",projectId=project.id,details={"Open crafting project: "..project.title,"Equipment slot: "..project.slot,"A working craft for this project remains available."}}
 	end
+	for _,group in ipairs({{"milestones","Roadmap","Journey milestones"},{"wishlist","Gear","Journey gear goals"},{"resources","Budget","Journey resources"},{"stages","Leveling","Journey leveling stages"}}) do
+		for _,item in ipairs(build.savers.BuildJourney.data[group[1]]) do
+			local terms={"journey",group[2]};for _,key in ipairs({"notes","slot","gems","passives","gear","ascendancy","quests","transition","targetItem"}) do if item[key] then terms[#terms+1]=item[key] end end
+			entries[#entries+1]={id="journey:"..group[1]..":"..item.id,label=item.title,search=table.concat(terms," "),category=group[3],journeyGroup=group[1],journeyPage=group[2],journeyId=item.id,details={"Open "..group[2]..": "..item.title,"Changes to the Journey are saved with the build."}}
+		end
+	end
 	local workspace=build.planningWorkspace
 	local filterState=workspace.cache.filters and workspace.cache.filters.layout.snapshot() or workspace.drafts.filters and workspace.drafts.filters.plan
 	local filterData=filterState and filterState.data or build.savers.LootFilters.data
@@ -136,6 +142,14 @@ function M.Open(build)
 	require("Classes.PlanningBrowserControl").Open("Planning tools",entries,{action="Open",closeOnChoose=false,canChoose=function(entry) return entry.id~="presetSearch" or activeProfile~=nil end,choose=function(entry)
 		main:ClosePopup();local workspace=build.planningWorkspace
 		if entry.page then workspace:Show(entry.page)
+		elseif entry.journeyId then
+			local found=false;for _,item in ipairs(build.savers.BuildJourney.data[entry.journeyGroup]) do if item.id==entry.journeyId then found=true;break end end
+			if not found then return end
+			local current=workspace.cache.journey and workspace.cache.journey.layout.snapshot() or workspace.drafts.journey and workspace.drafts.journey.plan
+			local view=copyTable(current or {});view.page=entry.journeyPage;view.selected=entry.journeyId
+			workspace:Show("journey",view)
+			local list=workspace.controls.entries;local offset=0
+			for _,row in ipairs(list.list) do if row.line==list.selectedKey then list.controls.scrollBar.offset=offset;break end;offset=offset+row.height end
 		elseif entry.id=="presetSearch" then searchPreset(build,activeProfile)
 		elseif entry.filterId then openFilter(build,entry.filterId,entry.ruleId)
 		elseif entry.atlasId then

@@ -8,6 +8,16 @@ local UI=require("Modules.HeadlessUI")
 local sim=require("Modules.CraftingSimulator")
 local frames=0
 local function checkPlanningSearch(ui,workspace,filter)
+	if filter=="journey" then
+		local data=workspace.build.savers.BuildJourney.data;local before=require("Modules.PlanningData").encode(data)
+		for _,group in ipairs({{"milestones","Roadmap","Journey milestones"},{"wishlist","Gear","Journey gear goals"},{"resources","Budget","Journey resources"},{"stages","Leveling","Journey leveling stages"}}) do
+			local item=assert(data[group[1]][1],"Missing Journey search fixture")
+			ui:click("nav_atlas");ui:click("nav_tools");ui:choose("category",group[3]);ui:text("search",item.title);assert(main.popups[1].controls.choose:IsEnabled(),"Journey entry was not searchable");ui:click("choose")
+			local view=workspace.cache.journey.layout.snapshot();assert(workspace.page=="journey" and view.page==group[2] and view.selected==item.id,"Journey search did not select the entry")
+		end
+		assert(require("Modules.PlanningData").encode(data)==before,"Journey search changed the saved plan")
+		return
+	end
 	if filter then
 		local before=workspace.cache.filters.layout.snapshot();local encode=require("Modules.PlanningData").encode
 		ui:click("nav_journey");ui:click("nav_tools");ui:text("search","Leather Belt");assert(main.popups[1].controls.choose:IsEnabled(),"Working filter rule was not searchable");ui:click("choose")
@@ -1477,6 +1487,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("page1");frame("journey-overview");ui:click("openLink")
 	assert(workspace.page=="crafting" and workspace.controls.keepWorking,"Journey link did not open the working craft")
 	checkPlanningSearch(ui,workspace)
+	checkPlanningSearch(ui,workspace,"journey")
 	ui:click("nav_journey");ui.keys.ALT=true;ui:key("1");ui:key("4");ui.keys.ALT=nil
 	assert(workspace.page=="journey","Alt+4 did not open Journey")
 	ui:click("nav_text");frame("planning-large-text");ui:click("nav_text")

@@ -1,6 +1,6 @@
 # Connected planning tools
 
-Open AI builds, Atlas, Crafting or Journey to enter the planning workspace. **Tools** in the top bar searches planning pages, saved Atlas plans, crafting projects, and filter profiles and personal rules as well as performance diagnostics and portable bundles. Filter rule searches include their conditions and actions. Select a result to open it; working crafting and filter drafts remain available.
+Open AI builds, Atlas, Crafting or Journey to enter the planning workspace. **Tools** in the top bar searches planning pages, saved Atlas plans, crafting projects, Journey milestones, gear goals, resources and leveling stages, and filter profiles and personal rules as well as performance diagnostics and portable bundles. Journey searches include notes and guide text; filter rule searches include their conditions and actions. Select a result to open it; working crafting and filter drafts remain available.
 
 Choose **Search base filter rules** in Tools to search the selected profile's base filter, including imported filters. The catalogue loads when you open it. Selecting a result opens that rule in the filter editor; edits create a personal override.
 
