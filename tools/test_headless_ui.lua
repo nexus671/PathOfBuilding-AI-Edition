@@ -1853,6 +1853,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("sceneKind","Vendor recipes");frame("filter-vendor-examples");ui:click("sceneStats");assert(main.popups[#main.popups].controls.count.label:find("15 results |",1,true),"Quality flask and tincture examples are missing");ui:click("choose")
 	ui:choose("sceneKind","Heist & Expedition");local heistScene=build.planningWorkspace.cache.filters.layout.snapshot();assert(heistScene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,"Heist & Expedition",heistScene.seed)[1].BaseType);frame("filter-heist-expedition-examples")
 	do ui:choose("sceneKind","Blight & oils");local blightScene=build.planningWorkspace.cache.filters.layout.snapshot();assert(blightScene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,"Blight & oils",blightScene.seed)[1].BaseType);frame("filter-blight-oil-examples") end
+	ui:click("browseScenes");ui:text("search","catalysts");assert(main.popups[1].controls.count.label:find("1 result",1,true),"Scene search did not find the catalyst examples");frame("filter-scene-browser");ui:click("choose")
+	assert(build.planningWorkspace.cache.filters.layout.snapshot().sceneKind=="Ultimatum","Scene browser did not select the matching scene")
 	for _,kind in ipairs({"Delirium","Harvest","Ritual","Abyss","Ultimatum"}) do
 		ui:choose("sceneKind",kind);local scene=build.planningWorkspace.cache.filters.layout.snapshot()
 		assert(scene.sceneKind==kind and scene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,kind,scene.seed)[1].BaseType,"Encounter examples did not load")

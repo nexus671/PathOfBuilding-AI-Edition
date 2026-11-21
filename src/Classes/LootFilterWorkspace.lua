@@ -449,9 +449,34 @@ function M.Open(build,source,layout,controller)
 		local left=208;local groundX=240;local groundW=w-256
 		ui.label(c,"sceneTitle",16,124,"Loot simulator",20)
 		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Vendor recipes","Covens & Threads","Maps & threads","Map tiers","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition","Blight & oils","Breach","Legion","Delirium","Harvest","Abyss","Ultimatum","Ritual"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
-		c.sceneKind=new("DropDownControl"):DropDownControl(ui.anchor,{16,162,left,26},kinds,function(_,value)
+		local function selectScene(value)
 			sceneKind=value;scenePage=1;if value=="Saved examples" then local chosen=savedSets[1];for _,entry in ipairs(savedSets) do if entry.id==sampleSetId then chosen=entry end end;item=copyTable(chosen.samples[1]) elseif value~="Build targets" then item=library.scene(profile,build,value,seed,settings.areaLevel,settings.itemLevel)[1] or item end;reopen()
-		end);c.sceneKind:SelByValue(sceneKind)
+		end
+		c.sceneKind=new("DropDownControl"):DropDownControl(ui.anchor,{16,162,left,26},kinds,function(_,value) selectScene(value) end);c.sceneKind:SelByValue(sceneKind)
+		button(c,"browseScenes",146,120,78,"Browse",function()
+			local descriptions={
+				["Mixed drops"]="Compare a variety of example items.",["Build targets"]="Test pickups generated from your build and plans.",
+				Currency="Compare currency examples.",["Preset highlights"]="Review high-emphasis currency in the pinned preset, not live prices.",
+				["Tiered gear"]="Compare unidentified item tiers on the same base.",["Vendor recipes"]="Test sample recipe items and their socket or quality properties.",
+				["Covens & Threads"]="Compare Threads and other Covens items.",["Maps & threads"]="Compare map bases, Threads and special map examples.",
+				["Map tiers"]="Compare map tier conditions from tier 1 through 17.",["Flasks & tinctures"]="Compare life, mana and utility flasks with tinctures.",
+				["Divination cards"]="Compare example divination cards.",Essences="Compare essence tiers and special essences.",
+				["Crafting materials"]="Compare fossils, resonators, Eldritch currency and Lifeforce.",["Heist & Expedition"]="Compare contracts, blueprints, a logbook and vendor currency.",
+				["Blight & oils"]="Compare oils, a Thread and Blighted map examples.",Breach="Compare splinters, a Breachstone, a Thread and scarabs.",
+				Legion="Compare splinters, emblems, incubators and a Thread.",Delirium="Compare Simulacrum items, Delirium Orbs and scarabs.",
+				Harvest="Compare Lifeforce, Sacred Blossom and scarabs.",Abyss="Compare eye jewels, a Stygian Vise, a Thread and scarabs.",
+				Ultimatum="Compare an inscribed item, catalysts, a Thread and scarabs.",Ritual="Compare vessels, Omens, a Thread and scarabs.",
+				["Saved examples"]="Reopen your saved sets of exact example properties.",
+			}
+			local encounters={Breach=true,Legion=true,Delirium=true,Harvest=true,Abyss=true,Ultimatum=true,Ritual=true,["Blight & oils"]=true,["Heist & Expedition"]=true,["Covens & Threads"]=true}
+			local entries={};for _,kind in ipairs(kinds) do
+				local description=descriptions[kind] or "Compare example items."
+				local category=encounters[kind] and "Encounters" or kind=="Saved examples" and "Saved" or kind=="Build targets" and "Build" or "Items and comparisons"
+				entries[#entries+1]={id=kind,label=kind,category=category,search=description,details={kind,description,"Examples are not predicted drops, odds or prices."}}
+			end
+			require("Classes.PlanningBrowserControl").Open("Choose example scene",entries,{action="Use scene",choose=function(entry) selectScene(entry.id) end})
+		end)
+		c.browseScenes.tooltipText="Search examples by name or item, and read what each scene contains."
 		c.sceneKind.tooltipText="Preset highlights use exact names from the pinned NeverSink currency snapshot. They are not live prices or drop rates."
 		button(c,"regenerate",16,202,100,"Regenerate",function() seed=seed+1;scenePage=1;if sceneKind=="Build targets" then transient.filterSceneTargets=nil end;reopen() end)
 		c.regenerate.enabled=sceneKind~="Saved examples" and sceneKind~="Tiered gear" and sceneKind~="Map tiers";c.regenerate.tooltipText="Reorder generated examples. Saved and tier-comparison examples keep their exact properties; examples are not drop-rate estimates."
