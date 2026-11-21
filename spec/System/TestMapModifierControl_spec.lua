@@ -19,7 +19,7 @@ describe("Map modifier explorer",function()
 		controls.delirium:Click();local popup=main.popups[1].controls;assert.equal("35",popup.current.buf);assert.equal("Currency",popup.nextType.buf)
 		popup.chooseOrb:Click();assert.equal("Select orb",main.popups[1].controls.choose.label);main.popups[1].controls.close:Click()
 		popup.nextType:SetText("Maps",true);assert.matches("10%%",StripEscapes(popup.results.list[1][1]));popup.close:Click()
-		assert.is_not_nil(selectable);assert.equal("MapMonsterAreaOfEffectMapWorlds",selectable.modifierId);controls.affixes.onClick({line=selectable});assert.equal("Remove selected",controls.remove.label)
+		assert.is_not_nil(selectable);assert.equal("MapMonsterAreaOfEffectMapWorlds",selectable.modifierId);controls.affixes.onClick({line=selectable});assert.equal("Remove",controls.remove.label)
 	end)
 	it("explains the recognized Blighted modifier restriction",function()
 		local observed={{kind="implicit",text="Area is infested with Fungal Growths"}}
@@ -180,7 +180,7 @@ describe("Map modifier explorer",function()
 		controls.quality:Click();local quality=main.popups[1].controls;quality.keep:Click();controls.keep:Click()
 		local before=copyTable(captured);local target=before.selected[1];local row
 		for _,entry in ipairs(controls.affixes.list) do if entry.modifierId==target then row=entry;break end end
-		assert.is_truthy(row);controls.affixes.onClick({line=row});assert.equal("Remove selected",controls.remove.label)
+		assert.is_truthy(row);controls.affixes.onClick({line=row});assert.equal("Remove",controls.remove.label)
 		controls.remove:Click();controls.keep:Click();assert.equal(#before.selected-1,#captured.selected)
 		for _,id in ipairs(captured.selected) do assert.is_not.equal(target,id) end
 		for _,roll in ipairs(captured.rolls) do for _,old in ipairs(before.rolls) do if roll.id==old.id then assert.same(old.values,roll.values) end end end
