@@ -98,6 +98,17 @@ describe("Crafting action preconditions",function()
 		local candidate=copyTable(state);candidate.affixes[1].fractured=nil;assert.is_true(check("annul",candidate,model))
 		main.popups={}
 	end)
+	it("explains when no modifier can be added despite an open slot",function()
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw)
+		for _,method in ipairs({"augmentation","regal","exalt","foulborn_augmentation","foulborn_regal","foulborn_exalt"}) do
+			local state=sim.perform(raw,{method=method:find("exalt",1,true) and "alchemy" or "transmute"},104729).state
+			assert.is_true(check(method,state,model),method)
+			local empty={};for key,value in pairs(model) do empty[key]=value end;empty.mods={}
+			local allowed,reason=check(method,state,empty);assert.is_false(allowed);assert.equal("No legal modifier can be added.",reason)
+			local before=copyTable(state);local ok,err=pcall(sim.action,empty,state,{method=method},function() return 0.5 end)
+			assert.is_false(ok);assert.is_truthy(err:find("No legal modifier can be added",1,true));assert.same(before,state)
+		end
+	end)
 	it("requires actual defence variance for Sacred Orbs",function()
 		local model=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
 		assert.is_true(check("sacred",model.initial,model))

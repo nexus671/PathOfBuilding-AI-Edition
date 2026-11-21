@@ -38,6 +38,16 @@ function M.check(method,state,model)
 	if method=="harvest_damage" then local options,reason=sim.damageOptions(model,state);return #options>0,reason end
 	if method=="harvest_enchant" and #sim.actionOptions(model,state,method)==0 then return false,"Harvest quality enchantments require an eligible weapon or body armour." end
 	if method=="exalt" or method=="augmentation" or method=="foulborn_exalt" or method=="foulborn_augmentation" then if #state.affixes>=sim.capacities(model,state).total then return false,"There is no open modifier slot." end end
+	local underlying=sim.baseCurrency({method=method})
+	if underlying=="augmentation" or underlying=="regal" or underlying=="exalt" then
+		-- Match the roll context used by the action, including memory tier filtering
+		-- and the rarity change before a Regal Orb adds its modifier.
+		local probe=copyTable(state);if underlying=="regal" then probe.rarity="RARE" end
+		if (state.memoryStrands or 0)>0 or sim.isFoulbornCurrency({method=method}) then
+			probe.memoryActive=state.memoryStrands or 0;probe.memoryFoulborn=sim.isFoulbornCurrency({method=method})
+		end
+		local _,total=sim.pool(model,probe);if total<=0 then return false,"No legal modifier can be added." end
+	end
 	if method=="annul" and #sim.annulCandidates(model,state)==0 then return false,"No modifier can be removed; fractures or locks protect them." end
 	if method=="fracture" then
 		if #state.affixes<4 then return false,"Fracturing requires at least four modifiers." end
