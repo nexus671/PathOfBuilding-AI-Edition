@@ -183,6 +183,28 @@ describe("Experimental Rog side rerolls",function()
 		assert.has_error(function() rog.validate({rogOperation="upgrade",count=1,rogSide="Prefix"}) end)
 		local one=copyTable(action);one.count=1;assert.is_true(sim.priceKey(one)~=sim.priceKey(action))
 	end)
+	it("upgrades observed highest-tier offers and preserves their configuration",function()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
+		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}};local before=copyTable(state)
+		local all={method="rog_reroll",rogOperation="upgrade_highest_all",artifactCost={grand=7}}
+		assert.is_nil(sim.configurationReason(model,state,all))
+		local result=sim.action(model,state,all,stream(3));sim.validateState(model,result);assert.same(before,state)
+		for i,entry in ipairs(result.affixes) do assert.is_true(model.byId[entry.id].level>model.byId[before.affixes[i].id].level) end
+		local adjacent=sim.action(model,state,{method="rog_reroll",rogOperation="upgrade",count=2},stream(3))
+		assert.is_true(model.byId[result.affixes[1].id].level>model.byId[adjacent.affixes[1].id].level)
+		assert.matches("highest",sim.perform(raw,all,17,state).warnings[1].message)
+		local two=copyTable(all);two.rogOperation="upgrade_highest";two.count=2;local both=sim.action(model,state,two,stream(9))
+		for i,entry in ipairs(both.affixes) do assert.equal(result.affixes[i].id,entry.id) end
+		local atTop=copyTable(result);assert.is_not_nil(sim.configurationReason(model,atTop,all))
+		local one=copyTable(all);one.rogOperation="upgrade_highest";one.count=1;local picked=sim.action(model,state,one,stream(2));local changed=0
+		for i,entry in ipairs(picked.affixes) do if entry.id~=state.affixes[i].id then changed=changed+1 end end;assert.equal(1,changed)
+		assert.is_true(sim.priceKey(one)~=sim.priceKey(all))
+		assert.has_error(function() rog.validate({rogOperation="upgrade_highest",count=3}) end)
+		local empty=copyTable(state);empty.affixes={};assert.matches("Not enough",sim.configurationReason(model,empty,all))
+		newBuild();local saved;local dialog=require("Classes.CraftingRogControl").Open(nil,function(value) saved=value end)
+		dialog.operation:SelByValue("upgrade_highest","val");dialog.highestCount:SelByValue(0,"val");dialog.keep:Click();assert.same({method="rog_reroll",rogOperation="upgrade_highest_all"},saved)
+		dialog=require("Classes.CraftingRogControl").Open(saved,function() end);assert.equal(0,dialog.highestCount:GetSelValueByKey("val"));main.popups={}
+	end)
 	it("configures the offer from the workbench and preserves it in the working craft",function()
 		newBuild();local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
 		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}}

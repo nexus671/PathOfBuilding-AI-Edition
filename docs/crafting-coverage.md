@@ -9,6 +9,8 @@ Rog's observed socket-count and link offers can be recorded in Craft settings wi
 
 An experimental **Upgrade modifier tiers by one** offer supports one to six distinct modifiers. It assumes uniform selection, rerolls values and uses the nearest uniquely identified legal tier in each ordinary family. Every modifier must have an unambiguous adjacent tier; boundary, crafted and special tiers are excluded. The [Rog reference](https://poedb.tw/us/Rog) lists tier-upgrade offers, but their current availability, eligibility, selection and tier rules need in-game verification. These results are sampled estimates, not verified game odds.
 
+An experimental Rog offer upgrades one, two or all modifiers to their highest uniquely identified tier in the current legal pool. It selects distinct modifiers uniformly and rerolls their values. Offer availability, item-level limits, selection and tier rules are unverified; every modifier must have an unambiguous higher tier, so boundary and special tiers are refused. This is an estimate, not verified game odds.
+
 The odds view enumerates lowest-level removal outcomes under the assumed equal tie chances, merging different removal orders that leave the same item. This is exact for that model, not a verified in-game probability. Other Rog offers use sampled estimates.
 
 The item-property editor checks conflicting exact socket, link, colour and Abyss socket goals before keeping an edit. Recipe and single-action calculations also explain these contradictions before running. Existing saved recipes remain loadable so their goals can be repaired. These checks only identify contradictions between the supplied properties; they do not prove that a particular base or recipe can reach a goal.

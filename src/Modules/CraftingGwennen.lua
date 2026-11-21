@@ -79,7 +79,7 @@ end
 -- Restrict tier changes to ordinary families whose adjacent tier is unique
 -- in the current item's legal pool. Selection and Gwennen's tier rules remain
 -- assumptions; special or ambiguous families must not be guessed.
-local function tierChoices(model,state,upgrade)
+local function tierChoices(model,state,upgrade,highest)
 	local sim=require("Modules.CraftingSimulator");local metadata=require("Modules.CraftingAdvanced").data().mods
 	assert(#state.affixes>0,"No modifier can change tier")
 	local choices={}
@@ -99,13 +99,13 @@ local function tierChoices(model,state,upgrade)
 			if other and candidate.id:match("^(.-)%d+$")==stem and other.domain==meta.domain and other.generation_type==meta.generation_type and signature(other)==signature(meta) then
 				local level=other.required_level
 				if upgrade and level>meta.required_level or not upgrade and level<meta.required_level then
-					if not bestLevel or upgrade and level<bestLevel or not upgrade and level>bestLevel then bestLevel,bestId,ties=level,candidate.id,1
+					if not bestLevel or upgrade and (highest and level>bestLevel or not highest and level<bestLevel) or not upgrade and level>bestLevel then bestLevel,bestId,ties=level,candidate.id,1
 					elseif level==bestLevel then ties=ties+1 end
 				end
 			end
 		end
 		assert(current,"Tier changes require a currently rollable modifier family")
-		assert(bestId and ties==1,"Every modifier needs one unambiguous adjacent tier for this experimental outcome")
+		assert(bestId and ties==1,highest and "Every modifier needs one unambiguous highest legal tier for this experimental outcome" or "Every modifier needs one unambiguous adjacent tier for this experimental outcome")
 		local function addedTags(value) local tags=copyTable(value.adds_tags or {});table.sort(tags);return table.concat(tags,"\0") end
 		assert(addedTags(meta)==addedTags(metadata[bestId]),"Adjacent tiers with different granted tags are not modeled")
 		choices[#choices+1]={index=index,id=bestId}

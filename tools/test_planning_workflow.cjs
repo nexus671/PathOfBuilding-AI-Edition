@@ -624,6 +624,9 @@ async function main(){
   const rogUpgrade={method:'rog_reroll',rogOperation:'upgrade',count:2,artifactCost:{grand:7}};
   const rogUpgraded=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogUpgrade,seed:7},'crafted');
   assert.deepEqual(rogUpgraded.nativeCrafting.state.affixes.map(entry=>entry.id),['IncreasedLife3','FireResist3']);assert.ok(rogUpgraded.nativeCrafting.warnings.some(entry=>entry.code==='rog_reroll_assumptions' && /unverified/.test(entry.message)));
+  const rogHighest={method:'rog_reroll',rogOperation:'upgrade_highest_all',artifactCost:{grand:7}};
+  const rogHighestResult=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogHighest,seed:7},'crafted');
+  assert.notDeepEqual(rogHighestResult.nativeCrafting.state.affixes.map(entry=>entry.id),rogUpgraded.nativeCrafting.state.affixes.map(entry=>entry.id));assert.ok(rogHighestResult.nativeCrafting.warnings.some(entry=>/highest uniquely identified legal tier/.test(entry.message)));
   const rogAdd={method:'rog_reroll',rogOperation:'add',rogSide:'Prefix',rogAttempts:3,artifactCost:{grand:12}};
   const rogAdded=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogAdd,seed:7},'crafted');
   assert.equal(rogAdded.nativeCrafting.state.affixes.length,3);assert.ok(rogAdded.nativeCrafting.warnings.some(entry=>entry.code==='rog_reroll_assumptions'));

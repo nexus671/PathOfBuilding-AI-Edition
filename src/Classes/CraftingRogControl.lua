@@ -6,8 +6,8 @@ function M.Open(initial,keep)
 	local controls={};initial=initial or {}
 	ui.description(controls,"intro",16,28,width-32,38,{"Enter an offer and its price as shown by Rog."},16)
 	ui.label(controls,"operationLabel",16,78,"Observed offer",16)
-	controls.operation=new("DropDownControl"):DropDownControl(ui.anchor,{16,100,454,26},{{label="Reroll one side",val="reroll"},{label="Add a modifier to one side",val="add"},{label="Fill empty modifier slots",val="fill"},{label="Set quality to 20%",val="set_quality"},{label="Upgrade modifier tiers by one",val="upgrade"},{label="Remove the lowest-level modifier",val="remove_lowest"},{label="Remove the two lowest-level modifiers",val="remove_lowest_two"},{label="Reroll socket count, keep the most",val="socket_count"},{label="Reroll links, keep the longest",val="socket_links"},{label="Reroll values of one modifier",val="values_one"},{label="Reroll values on one side",val="values_side"}})
-	controls.operation:SelByValue(initial.rogOperation or "reroll","val")
+	controls.operation=new("DropDownControl"):DropDownControl(ui.anchor,{16,100,454,26},{{label="Reroll one side",val="reroll"},{label="Add a modifier to one side",val="add"},{label="Fill empty modifier slots",val="fill"},{label="Set quality to 20%",val="set_quality"},{label="Upgrade modifier tiers by one",val="upgrade"},{label="Upgrade modifiers to highest tier",val="upgrade_highest"},{label="Remove the lowest-level modifier",val="remove_lowest"},{label="Remove the two lowest-level modifiers",val="remove_lowest_two"},{label="Reroll socket count, keep the most",val="socket_count"},{label="Reroll links, keep the longest",val="socket_links"},{label="Reroll values of one modifier",val="values_one"},{label="Reroll values on one side",val="values_side"}})
+	controls.operation:SelByValue(initial.rogOperation=="upgrade_highest_all" and "upgrade_highest" or initial.rogOperation or "reroll","val")
 	ui.label(controls,"sideLabel",16,140,"Modifier side",16)
 	controls.side=new("DropDownControl"):DropDownControl(ui.anchor,{16,162,250,26},{{label="Prefixes",val="Prefix"},{label="Suffixes",val="Suffix"}})
 	ui.label(controls,"attemptLabel",300,140,"Attempts",16)
@@ -27,8 +27,14 @@ function M.Open(initial,keep)
 	ui.label(controls,"upgradeCountLabel",16,140,"Modifiers to upgrade",16)
 	controls.upgradeCount=new("DropDownControl"):DropDownControl(ui.anchor,{16,162,180,26},{{label="1",val=1},{label="2",val=2},{label="3",val=3},{label="4",val=4},{label="5",val=5},{label="6",val=6}})
 	controls.upgradeCount:SelByValue(initial.count or 1,"val")
+	controls.highestCount=new("DropDownControl"):DropDownControl(ui.anchor,{16,162,180,26},{{label="1",val=1},{label="2",val=2},{label="All",val=0}})
+	controls.highestCount:SelByValue(initial.rogOperation=="upgrade_highest_all" and 0 or initial.count or 1,"val")
+	controls.highestCount.shown=function() return controls.operation:GetSelValueByKey("val")=="upgrade_highest" end
+	controls.upgradeCountLabel.shown=function() local op=controls.operation:GetSelValueByKey("val");return op=="upgrade" or op=="upgrade_highest" end
+	ui.description(controls,"highestHint",215,145,width-231,45,{"Experimental: highest legal tier; game rules unverified."},14)
+	controls.highestHint.shown=controls.highestCount.shown
 	ui.description(controls,"upgradeHint",215,145,width-231,45,{"Experimental: unique adjacent tiers only; game rules unverified."},14)
-	for _,key in ipairs({"upgradeCountLabel","upgradeCount","upgradeHint"}) do controls[key].shown=function() return controls.operation:GetSelValueByKey("val")=="upgrade" end end
+	for _,key in ipairs({"upgradeCount","upgradeHint"}) do controls[key].shown=function() return controls.operation:GetSelValueByKey("val")=="upgrade" end end
 	ui.description(controls,"removeHint",16,145,width-32,40,{"If modifier levels are tied, this preview assumes equal selection chances."},14)
 	controls.removeHint.shown=function() local operation=controls.operation:GetSelValueByKey("val");return operation=="remove_lowest" or operation=="remove_lowest_two" end
 	ui.description(controls,"fillHint",16,145,width-32,40,{"The preview fills slots sequentially using estimated modifier weights."},14)
@@ -56,7 +62,7 @@ function M.Open(initial,keep)
 		if sideOffer() then craft.rogSide=controls.side:GetSelValueByKey("val") end
 		if attemptOffer() then craft.rogAttempts=controls.attempts:GetSelValueByKey("val") end
 		if operation~="reroll" then craft.rogOperation=operation end
-		if operation=="upgrade" then craft.count=controls.upgradeCount:GetSelValueByKey("val") end
+		if operation=="upgrade" then craft.count=controls.upgradeCount:GetSelValueByKey("val") elseif operation=="upgrade_highest" then local count=controls.highestCount:GetSelValueByKey("val");if count==0 then craft.rogOperation="upgrade_highest_all" else craft.count=count end end
 		if socketOffer() then craft.rogSocketRolls=controls.socketRolls:GetSelValueByKey("val") end
 		for _,tier in ipairs({"lesser","greater","grand","exceptional"}) do
 			local value=controls[tier].buf:match("^%s*(.-)%s*$")

@@ -199,6 +199,8 @@ function M.actionLabel(action,model)
 		if action.rogOperation=="values_one" or action.rogOperation=="values_side" then return "Rog: reroll "..(action.rogOperation=="values_one" and "one modifier's values" or action.rogSide:lower().." values").." ("..tostring(action.rogAttempts).." attempts)" end
 		if action.rogOperation=="socket_count" or action.rogOperation=="socket_links" then return "Rog: best "..(action.rogOperation=="socket_count" and "socket count" or "links").." of "..tostring(action.rogSocketRolls) end
 		if action.rogOperation=="upgrade" and action.count then return "Rog: upgrade "..action.count.." modifier"..(action.count==1 and "" or "s").." by one tier" end
+		if action.rogOperation=="upgrade_highest_all" then return "Rog: upgrade all modifiers to highest tier" end
+		if action.rogOperation=="upgrade_highest" and action.count then return "Rog: upgrade "..action.count.." modifier"..(action.count==1 and "" or "s").." to highest tier" end
 		local fixed={fill="fill empty modifier slots",set_quality="set quality to 20%",remove_lowest="remove lowest-level modifier",remove_lowest_two="remove two lowest-level modifiers"}
 		if fixed[action.rogOperation] then return "Rog: "..fixed[action.rogOperation] end
 		if action.rogSide and action.rogAttempts then return "Rog: "..(action.rogOperation=="add" and "add " or "reroll ")..action.rogSide:lower().." ("..action.rogAttempts.." attempts)" end

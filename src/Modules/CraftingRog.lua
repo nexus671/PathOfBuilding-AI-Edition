@@ -6,7 +6,8 @@ for index,tier in ipairs(tiers) do artifacts[tier]="Metadata/Items/Expedition/Ex
 
 function R.validate(craft)
 	local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
-	local fixed=craft.rogOperation=="fill" or craft.rogOperation=="set_quality" or craft.rogOperation=="upgrade"
+	local highest=craft.rogOperation=="upgrade_highest" or craft.rogOperation=="upgrade_highest_all"
+	local fixed=craft.rogOperation=="fill" or craft.rogOperation=="set_quality" or craft.rogOperation=="upgrade" or highest
 	local sockets=craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links"
 	local valuesOne=craft.rogOperation=="values_one"
 	local valuesSide=craft.rogOperation=="values_side"
@@ -14,6 +15,8 @@ function R.validate(craft)
 		assert(craft.rogSocketRolls==10 or craft.rogSocketRolls==20 or craft.rogSocketRolls==30 or craft.rogSocketRolls==50 or craft.rogSocketRolls==100,"Choose 10, 20, 30, 50 or 100 socket rerolls")
 	else assert(craft.rogSocketRolls==nil,"Socket reroll count applies only to a socket offer") end
 	if craft.rogOperation=="upgrade" then assert(type(craft.count)=="number" and craft.count==math.floor(craft.count) and craft.count>=1 and craft.count<=6,"Choose 1 to 6 modifiers to upgrade") end
+	if craft.rogOperation=="upgrade_highest" then assert(craft.count==1 or craft.count==2,"Choose one or two modifiers to upgrade") end
+	if craft.rogOperation=="upgrade_highest_all" then assert(craft.count==nil,"All-modifier offer does not use a count") end
 	assert(craft.rogOperation==nil or craft.rogOperation=="reroll" or craft.rogOperation=="add" or removal or fixed or sockets or valuesOne or valuesSide,"Choose a supported Rog offer")
 	if removal or fixed or sockets then assert(craft.rogSide==nil and craft.rogAttempts==nil,"This offer does not use a side or attempt count")
 	else
@@ -108,9 +111,9 @@ function R.readiness(M,model,input,craft)
 	end
 	local blocked=M.blockFlags(model,input)
 	if craft.rogOperation~="values_side" and (blocked.attack or blocked.caster) then return "Rog interactions with this implicit roll restriction are not modeled for this offer." end
-	if craft.rogOperation=="upgrade" then
-		if #input.affixes<craft.count then return "Not enough modifiers to upgrade." end
-		local ok,err=pcall(require("Modules.CraftingGwennen").tierChoices,model,input,true)
+	if craft.rogOperation=="upgrade" or craft.rogOperation=="upgrade_highest" or craft.rogOperation=="upgrade_highest_all" then
+		if #input.affixes<(craft.rogOperation=="upgrade_highest_all" and 1 or craft.count) then return "Not enough modifiers to upgrade." end
+		local ok,err=pcall(require("Modules.CraftingGwennen").tierChoices,model,input,true,craft.rogOperation=="upgrade_highest" or craft.rogOperation=="upgrade_highest_all")
 		if not ok then return require("Modules.PlanningUI").errorText(err) end
 		return
 	end
@@ -211,10 +214,11 @@ function R.extend(M,api)
 			local reason=R.readiness(M,model,input,craft);assert(not reason,reason)
 			return craft.rogOperation=="socket_count" and M.bestJeweller(model,input,craft.rogSocketRolls,random) or M.bestFusing(model,input,craft.rogSocketRolls,random)
 		end
-		if craft.rogOperation=="upgrade" then
-			assert(#input.affixes>=craft.count,"Not enough modifiers to upgrade")
-			local choices=require("Modules.CraftingGwennen").tierChoices(model,input,true);local result=copyTable(input)
-			for _=1,craft.count do
+		if craft.rogOperation=="upgrade" or craft.rogOperation=="upgrade_highest" or craft.rogOperation=="upgrade_highest_all" then
+			local count=craft.rogOperation=="upgrade_highest_all" and #input.affixes or craft.count
+			assert(count>0 and #input.affixes>=count,"Not enough modifiers to upgrade")
+			local choices=require("Modules.CraftingGwennen").tierChoices(model,input,true,craft.rogOperation=="upgrade_highest" or craft.rogOperation=="upgrade_highest_all");local result=copyTable(input)
+			for _=1,count do
 				local selected=table.remove(choices,math.floor(random()*#choices)+1);local entry=result.affixes[selected.index]
 				entry.id=selected.id;entry.range=M.rollRange(model.byId[selected.id],random)
 			end
@@ -238,7 +242,7 @@ function R.extend(M,api)
 		local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
 		local fields=(removal or craft.rogOperation=="fill" or craft.rogOperation=="set_quality") and {"rog_reroll",craft.rogOperation} or {"rog_reroll",tostring(craft.rogSide),tostring(craft.rogAttempts)}
 		if craft.rogOperation=="add" then fields[#fields+1]="add" end
-		if craft.rogOperation=="upgrade" then fields={"rog_reroll","upgrade",tostring(craft.count)} end
+		if craft.rogOperation=="upgrade" or craft.rogOperation=="upgrade_highest" or craft.rogOperation=="upgrade_highest_all" then fields={"rog_reroll",craft.rogOperation,tostring(craft.count or "all")} end
 		if craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links" then fields={"rog_reroll",craft.rogOperation,tostring(craft.rogSocketRolls)} end
 		if craft.rogOperation=="values_one" or craft.rogOperation=="values_side" then fields={"rog_reroll",craft.rogOperation,tostring(craft.rogSide or "one"),tostring(craft.rogAttempts)} end
 		for _,tier in ipairs(tiers) do fields[#fields+1]=craft.artifactCost and tostring(craft.artifactCost[tier] or 0) or "unknown" end
