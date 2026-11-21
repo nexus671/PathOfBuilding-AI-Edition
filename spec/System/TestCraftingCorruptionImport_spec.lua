@@ -264,6 +264,22 @@ describe("Imported corruption identities",function()
 		assert.has_error(function() sim.action(model,state,{method="vaal"},function() return 0.999 end) end)
 		assert.is_nil(state.baseImplicitRetained)
 	end)
+	it("rejects ambiguous Gilded base implicits without consuming randomness",function()
+		for _,pair in ipairs({{"Gold Amulet","+999% to Item Rarity"},{"Amethyst Ring","+999% to Chaos Resistance"},{"Iron Ring","Adds 500 to 600 Physical Damage to Attacks"}}) do
+			local source="Rarity: NORMAL\n"..pair[1].."\nItem Level: 86\nImplicits: 2\n"..pair[2].."\nItem sells for much more to vendors"
+			local model=sim.model(source);local state=copyTable(model.initial);local before=copyTable(state)
+			assert.matches("cannot be identified",sim.methodReason(model,state,"vaal"))
+			assert.has_error(function() sim.action(model,state,{method="vaal"},function() error("unexpected random draw") end) end)
+			assert.has_error(function() sim.rollCorrupted(model,state,function() error("unexpected random draw") end) end);assert.same(before,state)
+		end
+	end)
+	it("rejects second Gilded corruption when the base and vendor implicit both remain",function()
+		local source="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+16% to Item Rarity\nItem sells for much more to vendors"
+		local model=sim.model(source);local first=sim.action(model,model.initial,{method="vaal"},function() return 0.3 end)
+		assert.is_true(first.corrupted);assert.equal("unknown",first.vendorImplicit);assert.is_nil(first.corruptedImplicits)
+		local before=copyTable(first);assert.matches("existing base implicit",sim.methodReason(model,first,"locus"))
+		assert.has_error(function() sim.action(model,first,{method="locus"},function() error("unexpected random draw") end) end);assert.same(before,first)
+	end)
 	it("retains old and current 3.30 base implicits when Gilded absorbs corruption",function()
 		local cases={{"Amethyst Ring","+23% to Chaos Resistance"},{"Amethyst Ring","+13% to Chaos Resistance"},{"Crystal Belt","+80 to maximum Energy Shield"},{"Crystal Belt","+95 to maximum Energy Shield"},{"Two-Toned Boots (Armour/Evasion)","+10% to Fire and Cold Resistances"},{"Two-Toned Boots (Armour/Evasion)","+18% to Fire and Cold Resistances"}}
 		for _,pair in ipairs(cases) do

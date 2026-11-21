@@ -24,6 +24,7 @@ function C.extend(M,A,api)
 	M.methodChecks.vaal=mixedImplicitReason
 	M.methodChecks.locus=function(model,state)
 		local reason=mixedImplicitReason(model,state);if reason then return reason end
+		if M.unrecognizedGildedBaseReason then reason=M.unrecognizedGildedBaseReason(model,state);if reason then return reason end end
 		local flags=api.flags(model,state)
 		if flags.prefixes or flags.suffixes or flags.attack or flags.caster then return "Locus meta-modifier interactions need additional validation" end
 		for _,entry in ipairs(state.affixes) do if entry.fractured then return "Locus influence outcomes on fractured bases need additional validation" end end
@@ -121,9 +122,24 @@ function C.extend(M,A,api)
 		for _,entry in ipairs(imported or {}) do if not model.corruptionIds[entry.id] then model.legacyCorruptionIds[entry.id]=true;model.special[entry.id]=true end end
 		return model
 	end
+	-- All display lines must be known to belong to one ordinary base implicit;
+	-- otherwise a Gilded replacement could silently delete multiple implicits.
+	local function singleOrdinaryImplicit(model)
+		local ordinary=model.item.implicitModLines or {}
+		local single=#ordinary>0 and type(model.item.base.implicit)=="string" and not model.blessed330Unresolved and not model.baseImplicitUnresolved
+		if single then
+			single=(#ordinary==1 and (model.blessed330 or model.baseImplicitTemplates and #model.baseImplicitTemplates==1)) or (#ordinary>1 and model.singleBaseImplicitId and model.baseImplicitTemplates and #model.baseImplicitTemplates==#ordinary)
+			for _,line in ipairs(ordinary) do if line.exarch or line.eater or line.corrupted then single=false;break end end
+		end
+		return single
+	end
 	function M.unrecognizedGildedBaseReason(model,state)
-		if model.item.baseName=="Shadowed Ring" and not state.corrupted and state.vendorImplicit and not model.item.synthesised and not state.implicits and #model.item.implicitModLines>0 and not model.baseImplicitTemplates then
-			return "This Shadowed Ring variant cannot be identified by the current base data. Gilded corruption is not modeled for it."
+		if state.vendorImplicit and not model.item.synthesised and not state.implicits and #(model.item.implicitModLines or {})>0 and not M.hasProtectedImplicit(model,state) then
+			if state.corrupted and #(state.corruptedImplicits or {})==0 then return "Gilded corruption with an existing base implicit and no corruption implicit is not modeled." end
+			if not state.corrupted and not singleOrdinaryImplicit(model) then
+				if model.item.baseName=="Shadowed Ring" then return "This Shadowed Ring variant cannot be identified by the current base data. Gilded corruption is not modeled for it." end
+				return "The ordinary base implicit cannot be identified unambiguously. Gilded corruption is not modeled for this item."
+			end
 		end
 	end
 	function M.rollCorrupted(model,state,random,count,retained,replaceAll)
@@ -186,12 +202,7 @@ function C.extend(M,A,api)
 			state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil;state.corrupted=true
 			return
 		end
-		local ordinary=model.item.implicitModLines or {}
-		local singleOrdinary=#ordinary>0 and type(model.item.base.implicit)=="string" and not model.blessed330Unresolved and not model.baseImplicitUnresolved
-		if singleOrdinary then
-			singleOrdinary=(#ordinary==1 and (model.blessed330 or model.baseImplicitTemplates and #model.baseImplicitTemplates==1)) or (#ordinary>1 and model.singleBaseImplicitId and model.baseImplicitTemplates and #model.baseImplicitTemplates==#ordinary)
-			for _,line in ipairs(ordinary) do if line.exarch or line.eater or line.corrupted then singleOrdinary=false;break end end
-		end
+		local singleOrdinary=singleOrdinaryImplicit(model)
 		if not state.corrupted and previousCount==0 and #chosen==1 and state.vendorImplicit and not model.item.synthesised and not state.implicits and singleOrdinary then
 			if random()<0.5 then
 				state.baseImplicitRanges=nil;state.baseImplicit330=nil;state.baseImplicitReconstructed=nil

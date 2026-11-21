@@ -77,6 +77,10 @@ async function main(){
   const offerInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,initialState:fracturedOffer,limit:5},'inspected');
   for(const method of ['rog_reroll','gwennen']) {const entry=offerInspection.crafting.nativeEngine.methodAvailability.find(value=>value.method===method);assert.equal(entry.available,false);assert.match(entry.unavailableReason,/fractured/);}
   const gildedBaseRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+16% to Item Rarity\nItem sells for much more to vendors';
+  const ambiguousGilded=gildedBaseRaw.replace('+16% to Item Rarity','+999% to Item Rarity');
+  const ambiguousReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ambiguousGilded,limit:5},'inspected');
+  const ambiguousVaal=ambiguousReview.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='vaal');assert.equal(ambiguousVaal.available,false);assert.match(ambiguousVaal.unavailableReason,/cannot be identified/);
+  const ambiguousApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:ambiguousGilded,action:{method:'vaal'},seed:1},'failed');assert.match(ambiguousApply.error,/cannot be identified/);
   const gildedBase=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedBaseRaw,action:{method:'vaal'},seed:1},'crafted');
   assert.equal(gildedBase.nativeCrafting.state.baseImplicitRetained,true);assert.ok(gildedBase.nativeCrafting.itemText.includes('+16% to Item Rarity'));
   const gildedBaseReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:gildedBaseRaw,initialState:gildedBase.nativeCrafting.state,limit:5},'inspected');

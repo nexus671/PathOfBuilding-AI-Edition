@@ -50,4 +50,8 @@ return function(build,ui,frame)
 	assert(not otherControls.currency_vaal:IsEnabled(),"Unsupported Shadowed Ring corruption was enabled")
 	assert(otherControls.currency_vaal.tooltipText():find("Shadowed Ring variant",1,true),"Unsupported Shadowed Ring reason was not shown");ui:click("close")
 
+	local ambiguous="Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+999% to Item Rarity\nItem sells for much more to vendors"
+	local ambiguousControls=require("Classes.CraftingSimulatorControl").Open(build,{id="gilded-ambiguous-ui",title="Unrecognized base implicit",slot="Amulet",startingItem=ambiguous,goals={},steps={}})
+	assert(not ambiguousControls.currency_vaal:IsEnabled(),"Ambiguous Gilded corruption was enabled")
+	assert(ambiguousControls.currency_vaal.tooltipText():find("cannot be identified",1,true),"Ambiguous Gilded reason missing");frame("crafting-gilded-ambiguous","currency_vaal");ui:click("close")
 end
