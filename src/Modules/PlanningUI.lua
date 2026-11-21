@@ -106,6 +106,21 @@ function M.rows(lines,width,size)
 	end
 	return rows
 end
+-- Keep long validation messages on screen and scrollable without truncating them.
+function M.errorPopup(title,value)
+	local message=M.errorText(value)
+	local available=math.max(190,main.screenW-40)
+	if DrawStringWidth(16,"VAR",message)+30<=available then return main:OpenMessagePopup(title,message) end
+	local width=math.min(760,available)
+	local rows=M.rows({message},width-52,16)
+	local contentHeight=0;for _,row in ipairs(rows) do contentHeight=contentHeight+row.height end
+	local height=math.min(main.screenH-48,math.max(110,contentHeight+76))
+	local controls={}
+	controls.message=new("TextListControl"):TextListControl(M.anchor,{16,18,width-32,height-70},nil,rows)
+	controls.close=new("ButtonControl"):ButtonControl(M.anchor,{width-136,height-42,120,28},"Close",function() main:ClosePopup() end)
+	M.style(controls,{close=true})
+	return main:OpenPopup(width,height,title,controls,nil,nil,"close")
+end
 function M.label(controls,key,x,y,label,size)
 	size=M.size(size or 16);controls[key]=new("LabelControl"):LabelControl(M.anchor,{x,y,0,size},"^7"..label)
 	return controls[key]
@@ -140,7 +155,7 @@ function M.styleButton(control,kind)
 		local run=control.onClick
 		control.onClick=function(...)
 			local ok,result=pcall(run,...)
-			if not ok then main:OpenMessagePopup("Planning tool",M.errorText(result)) else return result end
+			if not ok then M.errorPopup("Planning tool",result) else return result end
 		end
 		control.planningGuarded=true
 	end

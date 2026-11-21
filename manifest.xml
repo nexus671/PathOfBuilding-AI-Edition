@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1001" />
+	<Version number="2.68.1-ai.preview1002" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2256,7 +2256,7 @@
 	<File name="Modules/PlanningPerformance.lua" part="program" sha1="0be53fc34487b96cdf7a81896764731ab5bde94a" />
 	<File name="Modules/PlanningRecovery.lua" part="program" sha1="23501442063491b2107adecd9c9642e6e580efd6" />
 	<File name="Modules/PlanningRevision.lua" part="program" sha1="f68afda18a3c9768fbc71a72c6dd67bfebfea316" />
-	<File name="Modules/PlanningUI.lua" part="program" sha1="20cd3a15eae9573ad9c5ac3ddf5113a7e7cd0e50" />
+	<File name="Modules/PlanningUI.lua" part="program" sha1="e6cdc5dbfe4cd066168a050a9c230f2d9b27900f" />
 	<File name="Modules/PlanningWorker.lua" part="program" sha1="cfa18e6b4626a7a834906bc0df0e992b386e68f2" />
 	<File name="Modules/PlanningWorkspace.lua" part="program" sha1="0abffbcd624ddd05ff60716bb054044474820cfa" />
 	<File name="Modules/RecoveryTasks.lua" part="program" sha1="99bdef734b4030782fda58f36e3863f0d25f50ac" />
