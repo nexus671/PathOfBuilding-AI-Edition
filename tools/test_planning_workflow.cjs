@@ -593,6 +593,8 @@ async function main(){
   const rogRemove={method:'rog_reroll',rogOperation:'remove_lowest_two',artifactCost:{lesser:20}};
   const rogRemoved=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogRemove,seed:7},'crafted');
   assert.equal(rogRemoved.nativeCrafting.state.affixes.length,0);assert.match(rogRemoved.nativeCrafting.warnings[0].message,/equal chances among ties/);
+  const rogRemovalOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogRemove,targets:[],options:{requirements:{maxAffixes:0}}},'crafted');
+  assert.equal(rogRemovalOdds.nativeCrafting.sampled,false);assert.equal(rogRemovalOdds.nativeCrafting.successChance,100);assert.match(rogRemovalOdds.nativeCrafting.exactFor,/assumed equal tie chances/);
   const orderArtifact='Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_3';
   const rogPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:raw,recipe:{initialState:tierStart,steps:[rogAdd],targets:[],requirements:{minAffixes:3}},options:{trials:2,maxActions:1,currency:'chaos',prices:{[orderArtifact]:2}}},'crafted');
   assert.equal(rogPlan.nativeCrafting.successes,2);assert.equal(rogPlan.nativeCrafting.meanCost,24);assert.equal(rogPlan.nativeCrafting.currencySpent[orderArtifact],24);

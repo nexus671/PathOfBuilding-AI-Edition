@@ -38,6 +38,37 @@ function R.removeLowest(model,input,craft,random)
 	return result
 end
 
+-- Enumerate removal sets, merging different orders that reach the same item.
+-- The probabilities are exact only under the stated uniform tie assumption.
+function R.removalOutcomes(model,input,craft)
+	local count=craft.rogOperation=="remove_lowest_two" and 2 or 1
+	assert(#input.affixes>=count,"Not enough modifiers for this offer")
+	local remaining={};for index in ipairs(input.affixes) do remaining[index]=index end
+	local outcomes,byKey={},{}
+	local function visit(indices,removed,draws,probability)
+		if #removed==count then
+			local sorted=copyTable(removed);table.sort(sorted);local key=table.concat(sorted,",");local entry=byKey[key]
+			if entry then entry.probability=entry.probability+probability;return end
+			local labels={};for _,index in ipairs(sorted) do labels[#labels+1]=table.concat(model.byId[input.affixes[index].id]," / ") end
+			entry={draws=copyTable(draws),probability=probability,text="Remove: "..table.concat(labels,"; ")};byKey[key]=entry;outcomes[#outcomes+1]=entry;return
+		end
+		local lowest,choices=nil,{}
+		for position,index in ipairs(indices) do
+			local level=assert(assert(model.byId[input.affixes[index].id],"Modifier is unavailable").level,"Modifier level is unavailable")
+			if not lowest or level<lowest then lowest=level;choices={} end
+			if level==lowest then choices[#choices+1]=position end
+		end
+		for choice,position in ipairs(choices) do
+			local nextIndices=copyTable(indices);local index=table.remove(nextIndices,position)
+			removed[#removed+1]=index;draws[#draws+1]=(choice-0.5)/#choices
+			visit(nextIndices,removed,draws,probability/#choices)
+			removed[#removed]=nil;draws[#draws]=nil
+		end
+	end
+	visit(remaining,{},{},1)
+	return outcomes
+end
+
 function R.components(craft)
 	R.validate(craft)
 	if craft.artifactCost==nil then return {["rog:observed_artifacts"]=1} end

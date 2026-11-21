@@ -65,6 +65,24 @@ describe("Experimental Rog side rerolls",function()
 		assert.equal(1,#output.affixes);sim.validateState(real,output)
 		assert.has_error(function() sim.action(real,output,{method="rog_reroll",rogOperation="remove_lowest_two"},stream(1)) end)
 	end)
+	it("enumerates tied lowest-removal sets without double-counting their order",function()
+		local model={byId={a={"A",level=10},b={"B",level=10},c={"C",level=10},d={"D",level=20}}}
+		local state={affixes={{id="a"},{id="b"},{id="c"},{id="d"}}};local before=copyTable(state)
+		local branches=rog.removalOutcomes(model,state,{rogOperation="remove_lowest_two"});local total=0
+		assert.equal(3,#branches)
+		for _,branch in ipairs(branches) do
+			assert.are.near(1/3,branch.probability,1e-12);total=total+branch.probability
+			local i=0;local actual=rog.removeLowest(model,state,{rogOperation="remove_lowest_two"},function() i=i+1;return branch.draws[i] end)
+			assert.equal(2,#actual.affixes);assert.equal("d",actual.affixes[2].id)
+		end
+		assert.are.near(1,total,1e-12);assert.same(before,state)
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local real=sim.model(raw);local input=copyTable(real.initial);input.rarity="RARE"
+		input.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}}
+		local craft={method="rog_reroll",rogOperation="remove_lowest"}
+		local result=sim.calculate(raw,craft,{},input,{requirements={minAffixes=1},trials=1})
+		assert.is_false(result.sampled);assert.are.near(100,result.successChance,1e-10);assert.is_truthy(result.exactFor:find("assumed",1,true))
+		assert.equal("rog_reroll_assumptions",result.warnings[1].code)
+	end)
 	it("runs configured offers through the shared simulator and saved checkpoint",function()
 		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
 		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}}

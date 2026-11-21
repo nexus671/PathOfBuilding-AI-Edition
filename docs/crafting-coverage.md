@@ -3,6 +3,8 @@
 
 Rog's observed prefix and suffix reroll or add-modifier offers, and removal of one or two lowest-level modifiers, can be entered in **Craft settings** and used in the item emulator or a recipe. Choose the observed offer and any known Order Artifact quantities; side offers also require the side and displayed attempt count. Blank prices stay unknown. The experimental model assumes independent ordinary-weight rolls, preserves the number of modifiers on rerolled sides and ranks candidates by average modifier level; lowest-level removal assumes equal chances among ties. Server weights, ranking, tie handling and special interactions are unverified. Offer generation and other Rog crafts are not yet modeled. The [3.30 notes](https://www.pathofexile.com/forum/view-thread/4013680) specify the current reroll counts; [PoEDB](https://poedb.tw/us/Rog) lists the other modeled offers.
 
+The odds view enumerates lowest-level removal outcomes under the assumed equal tie chances, merging different removal orders that leave the same item. This is exact for that model, not a verified in-game probability. Other Rog offers use sampled estimates.
+
 Plain item text can combine values from several modifiers. The importer checks
 for alternative combinations of integer single-stat ranges before accepting an exact
 line match, and rejects ambiguous items. The bounded search can check several

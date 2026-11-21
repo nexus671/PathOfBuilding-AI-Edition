@@ -5,6 +5,21 @@ function C.extend(M)
 	local finite={recombine_predictable=true,augmentation=true,regal=true,exalt=true,influence_exalt=true,beast_talisman_fracture=true,ducat_kishara=true,ducat_tzamoto=true}
 	function M.calculate(raw,craft,targets,initialState,options)
 		options=options or {}
+		if craft.method=="rog_reroll" and (craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two") then
+			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
+			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
+			model=M.context(model,state);local branches=require("Modules.CraftingRog").removalOutcomes(model,state,craft)
+			local outcomes,hits={},0
+			for index,branch in ipairs(branches) do
+				local cursor=0;local result=M.action(model,state,craft,function() cursor=cursor+1;return assert(branch.draws[cursor],"Unexpected Rog random draw") end)
+				local hit=M.matches(result,targets,nil,model,options.requirements,options.requiredGroups)
+				if hit then hits=hits+branch.probability end
+				outcomes[#outcomes+1]={id=tostring(index),text=branch.text,chance=100*branch.probability,weight=branch.probability,matches=hit,state=result}
+			end
+			local sample=outcomes[1].state
+			return {exactFor="Rog lowest-level removal under the assumed equal tie chances",showAllOutcomes=true,sampled=false,successChance=100*hits,totalWeight=1,matchingWeight=hits,
+				outcomes=outcomes,sampleState=sample,sampleItem=M.itemText(model,sample),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+		end
 		local gwennen=require("Modules.CraftingGwennen")
 		if craft.method=="gwennen" and gwennen.isDiscrete(craft.firstOutcome) and gwennen.isDiscrete(craft.secondOutcome) then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})

@@ -5,6 +5,11 @@ return function(build,ui,frame)
 	ui:click("settings");ui:text("paletteSearch","Rog:");ui:click("paletteUse");assert(not main.popups[1].controls.apply:IsEnabled(),"Unconfigured Rog offer could be applied")
 	ui:click("tab_settings");ui:click("configure");frame("crafting-rog-offer")
 	ui:choose("operation","remove_lowest_two","val");assert(not main.popups[1].controls.side:IsShown() and main.popups[1].controls.removeHint:IsShown(),"Removal offer did not explain its selection assumption");frame("crafting-rog-removal")
+	ui:click("keep");ui:click("exact")
+	local jobs=require("Modules.CraftingTasks");for _=1,1000 do if not jobs.job then break end;jobs.tick(build) end
+	local odds=build.craftingAnalyses["rog-ui"].results.odds.result
+	assert(not jobs.job and not odds.sampled and odds.successChance==100,"Rog removal odds were not enumerated");frame("crafting-rog-odds")
+	ui:click("tab_settings");ui:click("configure")
 	ui:choose("operation","add","val");ui:choose("side","Suffix","val");ui:choose("attempts",3,"val");ui:text("grand","12");ui:click("keep")
 	ui:click("tab_craft");assert(main.popups[1].controls.apply:IsEnabled(),"Configured Rog offer could not be applied");ui:click("item");frame("crafting-rog-result")
 	ui:click("keepWorking");local saved;for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id=="rog-ui" then saved=project end end
