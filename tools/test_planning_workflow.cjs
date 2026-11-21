@@ -1621,6 +1621,13 @@ async function main(){
   assert.deepEqual(importReport.report.unresolvedImports,[{name:'absent.filter',optional:true,cycle:false,count:1},{name:'inner.filter',optional:false,cycle:false,count:1},{name:'outer.filter',optional:false,cycle:true,count:1}]);
   await queued('propose_loot_filters',{title:'Keep pickup plan',baseRevision:context.revision,filters:{schemaVersion:1,activeId:'mapping',profiles:[generated.profile]}},'review');await host('apply');context=(await call('get_build_context')).context;
   const savedFilters=await call('get_loot_filters');assert.equal(savedFilters.filters.profiles.length,1);
+  const alteredFilters={...savedFilters.filters,profiles:savedFilters.filters.profiles.map(profile=>({...profile,trackBuildPickups:false}))};
+  const filterReview=await queued('propose_loot_filters',{title:'Review pickup notices',baseRevision:context.revision,filters:alteredFilters},'review');
+  assert.match(JSON.stringify(filterReview),/Build pickup notices: Enabled -> Disabled/);
+  assert.equal((await call('get_loot_filters')).filters.profiles[0].trackBuildPickups,true,'Review changed the current filter');
+  await host('apply');assert.equal((await call('get_loot_filters')).filters.profiles[0].trackBuildPickups,false);
+  await host('undo-applied');context=(await call('get_build_context')).context;assert.deepEqual((await call('get_loot_filters')).filters,savedFilters.filters);
+
   const savedPage=await queued('test_loot_filter_examples',{baseRevision:context.revision,profileId:'mapping',sampleSetId:'campaign-drop'},'tested');
   assert.equal(savedPage.examples.total,1);assert.equal(savedPage.examples.results[0].baseType,'Iron Hat');
   const missingSet=await queued('test_loot_filter_examples',{baseRevision:context.revision,profileId:'mapping',sampleSetId:'missing'},'failed');

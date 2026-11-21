@@ -3,6 +3,11 @@ describe("Loot filter change review",function()
 	local editing=require("Modules.LootFilterEditing")
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("includes rule contents when a profile is newly proposed",function()
+		local profile=filters.profile("a","First");profile.rules={filters.rule("hat","Hat",{'BaseType == "Iron Hat"'})}
+		local review=editing.review({profiles={},activeId=""},{profiles={profile},activeId="a"})
+		local text=table.concat(review[2].details,"\n");assert.is_truthy(text:find("Enabled: Hat",1,true));assert.is_truthy(text:find('BaseType == "Iron Hat"',1,true))
+	end)
 	it("shows a changed active profile even when the profiles themselves are unchanged",function()
 		local a=filters.profile("a","First");local b=filters.profile("b","Second")
 		local before={schemaVersion=1,activeId="a",profiles={a,b}};local after=copyTable(before);after.activeId="b"

@@ -127,7 +127,7 @@ Modifier-count conditions with a separate `==` operator are preserved when edite
 - **generate_loot_filter:** derive a separate draft from build plans.
 - **test_loot_filter:** evaluate either a drop with exact filter property names (`sample`) or copied game item text (`itemText`). For copied items, optionally provide `areaLevel`; the response includes the interpreted sample so known and missing properties can be checked.
 - **export_loot_filter:** return compiled text and diagnostics; never write files.
-- **propose_loot_filters:** submit profiles for native desktop review. Read and preserve existing profiles before replacing them.
+- **propose_loot_filters:** submit profiles for native desktop review. The Changes page shows added, changed and removed profiles, the active profile and pickup-notice changes. Read and preserve existing profiles before replacing them.
 
 Generation, testing and compilation return request IDs. Poll **get_proposal_status** and match the ID. Only native **Apply** keeps a proposed change; normal **Save** persists it. The existing 256 KiB MCP request guard applies to imported templates as well; larger imports can use the native editor.
 

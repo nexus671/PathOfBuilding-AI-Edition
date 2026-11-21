@@ -891,6 +891,15 @@ describe("Build-owned loot filters",function()
 		assert.has_error(function() filters.validate({schemaVersion=1,profiles={p}}) end)
 		p=filters.profile("test","Test");assert.has_error(function() filters.validate({schemaVersion=1,profiles={p,p}}) end)
 	end)
+	it("reviews removed profiles and changed pickup notices in an AI proposal",function()
+		local first=filters.profile("first","First");local second=filters.profile("second","Second");second.trackBuildPickups=true
+		build.savers.LootFilters:Replace({schemaVersion=1,activeId="first",profiles={first,second}})
+		local changed=copyTable(second);changed.trackBuildPickups=false
+		local bridge=require("Modules.DesktopBuildBridge");local prepared=bridge.prepare(build,{mode="edit",title="Revise filters",baseRevision=bridge.revision(build),operations={{type="set_loot_filters",filters={schemaVersion=1,activeId="second",profiles={changed}}}}})
+		local summary=table.concat(prepared.changes,"\n")
+		assert.is_truthy(summary:find("Active profile changed",1,true));assert.is_truthy(summary:find("Profile removed",1,true));assert.is_truthy(summary:find("Build pickup notices: Enabled -> Disabled",1,true))
+		assert.equal(2,#build.savers.LootFilters.data.profiles);assert.is_true(build.savers.LootFilters.data.profiles[2].trackBuildPickups)
+	end)
 	it("carries filters through native proposal review and portable XML without exporting files",function()
 		local p=filters.profile("test","Test");p.rules={filters.rule("mine","My rule",{'BaseType == "Chaos Orb"'})}
 		local bridge=require("Modules.DesktopBuildBridge");local prepared=bridge.prepare(build,{mode="edit",title="Loot filter",baseRevision=bridge.revision(build),operations={{type="set_loot_filters",filters={schemaVersion=1,activeId="test",profiles={p}}}}})

@@ -107,9 +107,8 @@ function M.changes(before, after)
 	end
 	if not tableDeepEquals(before.lootFilters,after.lootFilters) then
 		add("Loot filters updated; export and build Save remain explicit.")
-		for _,profile in ipairs(after.lootFilters.profiles) do
-			add(profile.title.." | "..profile.preset.." | "..require("Modules.LootFilters").strictness[profile.strictness+1])
-			for _,rule in ipairs(profile.rules) do add((rule.enabled and "Enabled: " or "Disabled: ")..rule.title);add(rule.text) end
+		for _,entry in ipairs(require("Modules.LootFilterEditing").review(before.lootFilters,after.lootFilters)) do
+			add(entry.label);for _,detail in ipairs(entry.details) do add("  "..detail) end
 		end
 	end
 	if #lines == 0 then add("No character, equipment, gem, passive, configuration, Atlas plan or notes changes.") end

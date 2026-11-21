@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview988" />
+	<Version number="2.68.1-ai.preview989" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2132,7 +2132,7 @@
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="650adaf8761d03a87383f3d4a3b14c1ffb5a6aca" />
 	<File name="Modules/Build.lua" part="program" sha1="b3f975a27ea8e44bd8bbe749c61851a45df85e2d" />
 	<File name="Modules/BuildDisplayStats.lua" part="program" sha1="ffc4da3b13c3d50f3580b452622429f0bd7e70ab" />
-	<File name="Modules/BuildInsights.lua" part="program" sha1="001ce5477dbd6fed64c50949dac49d64ba352a07" />
+	<File name="Modules/BuildInsights.lua" part="program" sha1="2ef3df175c74a4276306352a8bcbcdc549299ac1" />
 	<File name="Modules/BuildJourney.lua" part="program" sha1="f1894a9bb542ecbea77c1d9b1b344975287d3cb7" />
 	<File name="Modules/BuildList.lua" part="program" sha1="daa0c88f606ade9687f037b6e99c9cec2904200e" />
 	<File name="Modules/BuildListHelpers.lua" part="program" sha1="a95770f18b54c05ed1d68f870f3693cac53a0fab" />
@@ -2226,7 +2226,7 @@
 	<File name="Modules/LootFilterDependencies.lua" part="program" sha1="95e511708017ff5a90507d300cf8e00431bddac1" />
 	<File name="Modules/LootFilterDiagnostics.lua" part="program" sha1="5a06caf19dca63595b5ca8041b3f939528a75a8f" />
 	<File name="Modules/LootFilterDiff.lua" part="program" sha1="6f117c8c4dac0273eec0a5b64ba31140c0bac7e6" />
-	<File name="Modules/LootFilterEditing.lua" part="program" sha1="7f717134d386f9f713d4f210990a80f88e032c00" />
+	<File name="Modules/LootFilterEditing.lua" part="program" sha1="db99a9761e46b2b1415967cc6bb69796a2bbc437" />
 	<File name="Modules/LootFilterExports.lua" part="program" sha1="778f95494f6f7f499327b8e094457f0ff227b9e1" />
 	<File name="Modules/LootFilterFileNames.lua" part="program" sha1="dfe7063ddc6f031aca1cef3f79198006e7b50aaf" />
 	<File name="Modules/LootFilterImports.lua" part="program" sha1="14c2904c7ecbaed9a44146b21fffe1c341d8bb14" />

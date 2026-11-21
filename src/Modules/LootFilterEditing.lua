@@ -201,7 +201,12 @@ function M.review(before,after)
 	end
 	for _,p in ipairs(after.profiles) do
 		local previous=old[p.id];old[p.id]=nil
-		if not previous then entries[#entries+1]={id=p.id,label="+ "..p.title,details={"New profile",#p.rules.." personal rules"}}
+		if not previous then
+			local lines={"New profile", "Preset: "..p.preset.." | Strictness: "..p.strictness.." | Mode: "..p.mode, "Build pickup notices: "..tracking(p.trackBuildPickups)}
+			if p.template then lines[#lines+1]="Imported base filter: "..#p.template.." bytes" end
+			for _,file in ipairs(p.importFiles or {}) do lines[#lines+1]="Included file: "..file.name.." ("..#file.text.." bytes)" end
+			for _,rule in ipairs(p.rules) do lines[#lines+1]=(rule.enabled~=false and "Enabled: " or "Disabled: ")..rule.title;lines[#lines+1]=rule.text end
+			entries[#entries+1]={id=p.id,label="+ "..p.title,details=lines}
 		elseif encode(previous)~=encode(p) then
 			local lines={}
 			if previous.title~=p.title then lines[#lines+1]="Name: "..previous.title.." -> "..p.title end
