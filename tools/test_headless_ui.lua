@@ -15,6 +15,12 @@ local function checkPlanningSearch(ui,workspace,filter)
 		assert(workspace.page=="filters" and after.page=="Customize" and after.rule=="order-hidden","Filter search did not select the matching rule")
 		assert(encode(after.data)==encode(before.data),"Filter search changed the working profiles")
 		assert(workspace.controls.rules.selectedKey=="order-hidden","Filter search did not select the rule in the list")
+		ui:click("nav_tools");ui:text("search","Search base filter rules");ui:click("choose");ui:text("search","Chaos Orb")
+		local result=assert(main.popups[1].controls.results.list[1].entry,"Preset search returned no matching rules")
+		ui:click("choose");after=workspace.cache.filters.layout.snapshot()
+		assert(after.scope=="Base filter" and after.rule==result.id and workspace.controls.rules.selectedKey==result.id,"Preset search did not select its rule")
+		assert(encode(after.data)==encode(before.data),"Preset search changed the working profiles")
+		ui:click("nav_tools");ui:text("search","Leather Belt");ui:click("choose")
 		return
 	end
 	local original=workspace.cache.crafting.layout.snapshot();local project=original.project

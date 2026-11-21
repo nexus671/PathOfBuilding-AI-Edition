@@ -82,6 +82,28 @@ function M.Recovery(build)
 		main:ClosePopup();recovery.acknowledge(build,entry.kind,entry.projectId);build.planningWorkspace.cache[page]=nil;build.planningWorkspace.drafts[page]=clean;build.planningWorkspace:Show(page,clean.plan)
 	end,secondary={label="Discard draft",run=function(entry) if entry and entry.record then recovery.clear(build,entry.kind,entry.projectId);main:ClosePopup();M.Recovery(build) end end}})
 end
+local function openFilter(build,filterId,ruleId,scope)
+	local workspace=build.planningWorkspace
+	if workspace.cache.filters then workspace:Remember("filters") end
+	local saved=workspace.drafts.filters and workspace.drafts.filters.plan
+	local state=copyTable(saved or {data=build.savers.LootFilters.data})
+	local profile=require("Modules.LootFilters").find(state.data,filterId);if not profile then return end
+	state.selected=filterId
+	if ruleId then state.page="Customize";state.scope=scope or "My rules";state.category="All items";state.query="";state.rule=ruleId else state.page="Overview" end
+	workspace:Show("filters",state)
+	if ruleId then
+		local list=workspace.controls.rules;local offset=0
+		for _,row in ipairs(list.list) do if row.entry and row.entry.rule.id==ruleId then list.controls.scrollBar.offset=offset;break end;offset=offset+row.height end
+	end
+end
+local function searchPreset(build,profile)
+	local entries={};local ok,catalog=pcall(require("Modules.LootFilterLibrary").catalog,profile)
+	if not ok then main:OpenMessagePopup("Search base filter rules",require("Modules.PlanningUI").errorText(catalog));return end
+	for _,item in ipairs(catalog) do
+		entries[#entries+1]={id=item.rule.id,label=item.rule.title,search=item.rule.text,category=item.category,details={item.tier,"Open this base filter rule in the editor.","Editing creates a personal override."}}
+	end
+	require("Classes.PlanningBrowserControl").Open("Search base filter rules",entries,{action="Open rule",closeOnChoose=false,choose=function(entry) main:ClosePopup();openFilter(build,profile.id,entry.id,"Base filter") end})
+end
 function M.Open(build)
 	local entries={
 		{id="performance",label="Performance diagnostics",details={"See observed calculation and background-slice times. Refresh, copy or reset the session measurements."}},
@@ -103,27 +125,19 @@ function M.Open(build)
 	local workspace=build.planningWorkspace
 	local filterState=workspace.cache.filters and workspace.cache.filters.layout.snapshot() or workspace.drafts.filters and workspace.drafts.filters.plan
 	local filterData=filterState and filterState.data or build.savers.LootFilters.data
+	local activeProfile=require("Modules.LootFilters").find(filterData,filterState and filterState.selected or filterData.activeId) or filterData.profiles[1]
+	entries[#entries+1]={id="presetSearch",label="Search base filter rules",category="Loot filters",details={activeProfile and ("Search the base filter for "..activeProfile.title..".") or "Create a filter profile before searching its base filter.","The base catalogue loads only when opened."}}
 	for _,profile in ipairs(filterData.profiles) do
 		entries[#entries+1]={id="filter:"..profile.id,label=profile.title,search="loot filter profile",category="Loot filters",filterId=profile.id,details={"Open filter profile: "..profile.title,"The current filter draft is preserved."}}
 		for _,rule in ipairs(profile.rules) do
 			entries[#entries+1]={id="filter-rule:"..profile.id..":"..rule.id,label=rule.title,search="loot filter "..profile.title.." "..rule.text,category="Filter rules",filterId=profile.id,ruleId=rule.id,details={"Open rule in "..profile.title,rule.enabled==false and "This rule is disabled." or "This rule is enabled.","The current filter draft is preserved."}}
 		end
 	end
-	require("Classes.PlanningBrowserControl").Open("Planning tools",entries,{action="Open",closeOnChoose=false,choose=function(entry)
+	require("Classes.PlanningBrowserControl").Open("Planning tools",entries,{action="Open",closeOnChoose=false,canChoose=function(entry) return entry.id~="presetSearch" or activeProfile~=nil end,choose=function(entry)
 		main:ClosePopup();local workspace=build.planningWorkspace
 		if entry.page then workspace:Show(entry.page)
-		elseif entry.filterId then
-			if workspace.cache.filters then workspace:Remember("filters") end
-			local saved=workspace.drafts.filters and workspace.drafts.filters.plan
-			local state=copyTable(saved or {data=build.savers.LootFilters.data})
-			local profile=require("Modules.LootFilters").find(state.data,entry.filterId);if not profile then return end
-			state.selected=entry.filterId
-			if entry.ruleId then state.page="Customize";state.scope="My rules";state.category="All items";state.query="";state.rule=entry.ruleId else state.page="Overview" end
-			workspace:Show("filters",state)
-			if entry.ruleId then
-				local list=workspace.controls.rules;local offset=0
-				for _,row in ipairs(list.list) do if row.entry and row.entry.rule.id==entry.ruleId then list.controls.scrollBar.offset=offset;break end;offset=offset+row.height end
-			end
+		elseif entry.id=="presetSearch" then searchPreset(build,activeProfile)
+		elseif entry.filterId then openFilter(build,entry.filterId,entry.ruleId)
 		elseif entry.atlasId then
 			for _,plan in ipairs(build.savers.AtlasPlans.plans) do if plan.id==entry.atlasId then workspace:Show("atlas",plan);return end end
 		elseif entry.projectId then

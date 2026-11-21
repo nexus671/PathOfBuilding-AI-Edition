@@ -2,6 +2,8 @@
 
 Open AI builds, Atlas, Crafting or Journey to enter the planning workspace. **Tools** in the top bar searches planning pages, saved Atlas plans, crafting projects, and filter profiles and personal rules as well as performance diagnostics and portable bundles. Filter rule searches include their conditions and actions. Select a result to open it; working crafting and filter drafts remain available.
 
+Choose **Search base filter rules** in Tools to search the selected profile's base filter, including imported filters. The catalogue loads when you open it. Selecting a result opens that rule in the filter editor; edits create a personal override.
+
 ## Same-name rare review
 
 **Tools > Same-name rare review** compares identified rare items pasted from the game. Matching pairs can yield Chaos Orbs and triples can yield Exalted Orbs under the [3.30 vendor recipe](https://www.pathofexile.com/forum/view-thread/4013680). The review prioritizes triples and then pairs without reusing an entry. Select a name to see its pasted bases and remove an individual entry. Each paste counts as a separate item; verify the actual items and vendor offer in game. The working list stays available when the review is reopened while the same build is open; it is cleared when the current build closes or reloads and is not saved in the build. The review does not read the stash and accepts copied items up to a 4 MiB total. The `review_same_name_rares` MCP tool accepts copied item text and returns the same grouping for AI clients; its request shares the 256 KiB desktop bridge limit.
