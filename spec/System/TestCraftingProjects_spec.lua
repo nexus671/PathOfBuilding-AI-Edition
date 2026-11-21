@@ -328,6 +328,40 @@ describe("Crafting projects", function()
 		local minimal=copyTable(kept);minimal.recipeAlternatives=nil;build.savers.CraftingProjects:Upsert(minimal);assert.equal(1,#build.savers.CraftingProjects.projects[1].recipeAlternatives)
 		minimal.recipeAlternatives={};build.savers.CraftingProjects:Upsert(minimal);assert.equal(0,#build.savers.CraftingProjects.projects[1].recipeAlternatives)
 	end)
+	it("updates a renamed alternative from an edited comparison route",function()
+		local entry=project();entry.preferredMethod="alchemy";entry.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		entry.recipeAlternatives={{name="Original",recipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}}}
+		build.savers.CraftingProjects:Upsert(entry);local control=require("Classes.CraftingSimulatorControl").Open(build,entry)
+		control.page:SelByValue("Emulate item");control.apply:Click();control.page:SelByValue("Simulate recipe");control.compareRecipes:Click();local compare=main.popups[1].controls
+		local index;for i,value in ipairs(compare.route1.list) do if value.label=="Saved: Original" then index=i end end;assert.is_not_nil(index);compare.route1:SetSel(index)
+		compare.edit1:Click();local editor=main.popups[1].controls;editor.add:Click();editor.keep:Click()
+		compare.manageAlternatives:Click();local manager=main.popups[1].controls;manager.list.onClick({line=manager.list.list[1]});manager.name:SetText("Renamed");manager.rename:Click();manager.close:Click()
+		compare.alternative1:Click();local dialog=main.popups[1].controls;assert.is_not_nil(dialog.update);dialog.update:Click();assert.equal("Update alternative",main.popups[1].title);main:ClosePopup()
+		assert.equal(1,#build.savers.CraftingProjects.projects[1].recipeAlternatives[1].recipe.steps)
+		dialog.update:Click();main.popups[1].controls.confirm:Click();assert.equal("Recipe kept",main.popups[1].title);main:ClosePopup()
+		local kept=build.savers.CraftingProjects.projects[1];assert.equal(1,#kept.recipeAlternatives);assert.equal("Renamed",kept.recipeAlternatives[1].name)
+		assert.equal(2,#kept.recipeAlternatives[1].recipe.steps);assert.equal("RARE",kept.recipeAlternatives[1].recipe.initialState.rarity);assert.equal(1,#kept.nativeRecipe.steps)
+		assert.equal("Saved: Renamed",compare.route1:GetSelValue().label)
+		local reopened=bridge.prepare(build,{mode="edit",title="Reopen updated alternative",baseRevision=bridge.revision(build),operations={{type="set_character",level=80}}}).candidate
+		assert.equal(2,#reopened.savers.CraftingProjects.projects[1].recipeAlternatives[1].recipe.steps)
+	end)
+	it("follows a newly saved copy when editing it again",function()
+		local entry=project();entry.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		entry.recipeAlternatives={{name="Original",recipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}}}
+		build.savers.CraftingProjects:Upsert(entry);local control=require("Classes.CraftingSimulatorControl").Open(build,entry);control.page:SelByValue("Simulate recipe");control.compareRecipes:Click();local compare=main.popups[1].controls
+		local index;for i,value in ipairs(compare.route1.list) do if value.label=="Saved: Original" then index=i end end;compare.route1:SetSel(index)
+		compare.alternative1:Click();local dialog=main.popups[1].controls;dialog.name:SetText("Copy");dialog.save:Click();main:ClosePopup();assert.equal("Saved: Copy",compare.route1:GetSelValue().label)
+		compare.edit1:Click();local editor=main.popups[1].controls;editor.add:Click();editor.keep:Click();compare.alternative1:Click();dialog=main.popups[1].controls;assert.is_truthy(dialog.update.tooltipText:find("Copy",1,true));dialog.update:Click();main.popups[1].controls.confirm:Click();main:ClosePopup()
+		local alternatives=build.savers.CraftingProjects.projects[1].recipeAlternatives;assert.equal(1,#alternatives[1].recipe.steps);assert.equal(2,#alternatives[2].recipe.steps)
+	end)
+	it("does not update an alternative after that saved entry was removed",function()
+		local entry=project();entry.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		entry.recipeAlternatives={{name="Old",recipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}}}
+		build.savers.CraftingProjects:Upsert(entry);local control=require("Classes.CraftingSimulatorControl").Open(build,entry);control.page:SelByValue("Simulate recipe");control.compareRecipes:Click();local compare=main.popups[1].controls
+		local index;for i,value in ipairs(compare.route1.list) do if value.label=="Saved: Old" then index=i end end;compare.route1:SetSel(index)
+		compare.edit1:Click();main.popups[1].controls.keep:Click();compare.manageAlternatives:Click();local manager=main.popups[1].controls;manager.list.onClick({line=manager.list.list[1]});manager.remove:Click();main.popups[1].controls.confirm:Click();manager.close:Click()
+		compare.alternative1:Click();assert.is_nil(main.popups[1].controls.update)
+	end)
 	it("refuses to promote an alternative with an incompatible saved starting state",function()
 		local entry=project();entry.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
 		entry.recipeAlternatives={{name="Incompatible",recipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1},initialState={rarity="RARE",affixes={{id="UnknownModifier",roll=1}}}}}}
