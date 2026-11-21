@@ -26,16 +26,19 @@ local function finish()
 	return { count = count, totalMs = total, worstMs = worst }
 end
 
+local visitedNodes = {}
 for _ = 1, cycles do
-	local selected
+	local selected, fallback
 	for _, node in pairsSortByKey(build.spec.nodes) do
 		if not node.alloc and (node.type == "Normal" or node.type == "Notable") and not node.isMultipleChoiceOption
 			and not node.ascendancyName and node.path and #node.path == 1 then
-			selected = node
-			break
+			fallback = fallback or node
+			if not visitedNodes[node.id] then selected = node; break end
 		end
 	end
+	if not selected then visitedNodes = {}; selected = fallback end
 	assert(selected, "No adjacent small or notable passive is available")
+	visitedNodes[selected.id] = true
 	local start = os.clock()
 	build.spec:AllocNode(selected)
 	local allocated = os.clock()

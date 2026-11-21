@@ -3,7 +3,7 @@
 local fixture = assert(arg[1], "Supply a build XML path")
 local cycles = tonumber(arg[2]) or 5
 assert(cycles >= 1 and cycles <= 20 and cycles == math.floor(cycles))
-local allowed = {["deferred-recovery"]=true,["desktop-recovery"]=true,["skill-profile"]=true,["skill-callers"]=true,["no-capture"]=true,["full-profile"]=true,["include-all"]=true,["convert-latest"]=true,["full-cost"]=true}
+local allowed = {["deferred-recovery"]=true,["desktop-recovery"]=true,["skill-profile"]=true,["skill-callers"]=true,["no-capture"]=true,["full-profile"]=true,["include-all"]=true,["convert-latest"]=true,["full-cost"]=true,["sample-nodes"]=true}
 local flags = {}
 for i = 3, #arg do local flag=arg[i];assert(allowed[flag] and not flags[flag], "Unknown or repeated benchmark option: "..tostring(flag));flags[flag]=true end
 assert(not (flags["deferred-recovery"] and flags["desktop-recovery"]), "Choose one recovery mode")
@@ -79,15 +79,15 @@ viewer.Draw = function(self, host, rect, events)
 	return originalDraw(self, host, rect, events)
 end
 ui:frame()
-local selected
+local candidates = {}
 for _, node in pairsSortByKey(build.spec.nodes) do
 	if not node.alloc and (node.type == "Normal" or node.type == "Notable") and not node.isMultipleChoiceOption
 		and not node.ascendancyName and node.path and #node.path == 1 and node.rsq
 		and not node.isProxy and node.group and not node.group.isProxy then
-		selected = node
-		break
+		candidates[#candidates + 1] = node
 	end
 end
+local selected = candidates[1]
 assert(selected, "No visible adjacent small or notable passive found")
 viewer:Focus(selected.x, selected.y, viewport, build)
 ui:frame()
@@ -166,7 +166,12 @@ if profileFull then
 end
 local performance=require("Modules.PlanningPerformance")
 performance.clear(build)
-for _ = 1, cycles do
+for cycle = 1, cycles do
+	if flags["sample-nodes"] then
+		selected = candidates[(cycle - 1) % #candidates + 1]
+		viewer:Focus(selected.x, selected.y, viewport, build)
+		ui:frame()
+	end
 	recoveryStarted=false
 	recoverySlices={count=0,totalMs=0,worstMs=0}
 	local start = os.clock()
@@ -189,11 +194,11 @@ for _ = 1, cycles do
 	ui:frame()
 	if desktopRecovery and build.configTab.input.simulateRecovery then assert(recoveryStarted, "Tree removal did not start deferred recovery") end
 	finishRecovery()
-	rows[#rows+1] = { hoverMs=(hovered-start)*1000, pressMs=(pressed-hovered)*1000,
+	rows[#rows+1] = { node=selected.id, hoverMs=(hovered-start)*1000, pressMs=(pressed-hovered)*1000,
 		releaseMs=(clicked-pressed)*1000, updateFrameMs=(updated-clicked)*1000, recovery=recovery }
 end
 assert(bridge.revision(build) == revision, "The benchmark did not restore the build revision")
-print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,components=performance.rows(build),skillProfile=skillProfile,fullProfile=fullProfile,includeAll=includeAll,fullCostWarnings=flags["full-cost"] or false,convertedToLatest=convertLatest,treeVersion=build.spec.treeVersion,restored=true,
+print("TREE_UI_RESPONSIVENESS " .. require("dkjson").encode({node=selected.id,cycles=rows,components=performance.rows(build),skillProfile=skillProfile,fullProfile=fullProfile,includeAll=includeAll,sampleNodes=flags["sample-nodes"] or false,fullCostWarnings=flags["full-cost"] or false,convertedToLatest=convertLatest,treeVersion=build.spec.treeVersion,restored=true,
 	recoveryMode=forcedRecovery and "deferred" or desktopRecovery and "desktop with saved settings" or "build configuration",
 	drawCapture=not noCapture,
 	limitations=noCapture and "Headless CPU timings omit drawing calls and do not measure desktop rendering or frame rate."

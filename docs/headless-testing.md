@@ -64,3 +64,6 @@ For a controlled Full DPS comparison, add `no-capture life include-all` to enabl
 Add `full-profile` after `no-capture` in the tree interaction benchmark to time Full DPS roll-ups by main, detailed and comparison phases. Add `include-all` after that to mark all enabled skill groups for Full DPS in memory. Profiling adds overhead, and the fixture is never saved. Detailed calculations can use a different buff mode, so their Full DPS output must not be assumed equal to the main output.
 
 `tools/check_cost_warning_probes.lua` compares scalar outputs and already-published skill caches against both full calculations and partial probes without reuse, including after passive edits and cost-stress cases. Reusing warning-probe environments was removed after it produced different nested skill-cache values. This check does not measure desktop frame rate.
+
+The tree responsiveness probe samples distinct adjacent passives before repeating them, restores each edit and checks the original build revision. It reports headless CPU times; use a representative build and desktop testing to assess actual interaction latency.
+Add `sample-nodes` to the tree UI benchmark to measure different adjacent passives; the default keeps one node for paired comparisons. Focusing each node happens outside the recorded interaction timing.
