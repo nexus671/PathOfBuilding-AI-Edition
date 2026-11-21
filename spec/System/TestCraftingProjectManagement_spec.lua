@@ -42,6 +42,16 @@ describe("Crafting project removal and save-state ownership",function()
 		local text=table.concat(projects.reviewChanges(original,changed),"\n")
 		for _,expected in ipairs({"Added saved item: Base [saved]","Saved item saved base:","Saved item saved state:","Working craft checkpoint changed.","Working craft fields changed:","Working craft state:"}) do assert.is_truthy(text:find(expected,1,true),expected) end
 	end)
+	it("shows changes to supplied simulation notes",function()
+		local original=project("simulation-notes")
+		original.simulation={trials=100,successes=5,patch="3.30",observedAt=1,notes="Old assumptions"}
+		local changed=copyTable(original);changed.simulation.notes="New assumptions"
+		local review=table.concat(projects.reviewChanges(original,changed),"\n")
+		assert.is_truthy(review:find("Supplied simulation notes: Old assumptions -> New assumptions",1,true))
+		changed.simulation=nil
+		review=table.concat(projects.reviewChanges(original,changed),"\n")
+		assert.is_truthy(review:find("Supplied simulation notes: Old assumptions -> (not saved)",1,true))
+	end)
 	it("does not report automatically preserved project data as removed",function()
 		local original=project("preserved");local model=sim.model(original.startingItem)
 		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}};original.recipeAlternatives={{name="Alternative",recipe=copyTable(original.nativeRecipe)}}

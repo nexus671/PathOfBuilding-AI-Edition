@@ -269,6 +269,9 @@ function M.reviewChanges(before,after)
 		end
 		if not same(before[key],after[key]) then summary[#summary+1]=label..": "..format(before[key]).." -> "..format(after[key]) end
 	end
+	local oldNotes=before.simulation and before.simulation.notes
+	local newNotes=after.simulation and after.simulation.notes
+	if oldNotes~=newNotes then details[#details+1]="Supplied simulation notes: "..value(oldNotes).." -> "..value(newNotes) end
 	for _,field in ipairs({{"startingItem","Starting item"},{"targetItem","Target item"}}) do
 		local key,label=field[1],field[2];if before[key]~=after[key] then summary[#summary+1]=label.." changed";details[#details+1]=label.." before: "..value(before[key]);details[#details+1]=label.." after: "..value(after[key]) end
 	end
