@@ -1226,7 +1226,10 @@ async function main(){
   assert.equal(milestones.atlas.guaranteedModifiers,3);assert.equal(milestones.atlas.milestones.threshold,8);
   assert.equal(milestones.atlas.guaranteeRequiresSpend,true);assert.match(milestones.atlas.guaranteeNote,/Free-only/);
   assert.equal(milestones.atlas.abyssalConsort.spentThreads,1);assert.equal(milestones.atlas.abyssalConsort.restricted,true);
-  assert.ok(milestones.atlas.modifiers.every(row=>row.restrictionsMet===false && row.conditionStatus==='restricted'));
+  const abyssRestriction=milestones.atlas.modifiers.find(row=>row.mechanic==='Abyss');
+  assert.equal(abyssRestriction.conditionStatus,'current_offer_unverified');assert.equal(abyssRestriction.restrictionsMet,undefined);assert.equal(abyssRestriction.historicalRestrictionsMet,false);
+  assert.ok(milestones.atlas.modifiers.filter(row=>row.mechanic!=='Abyss').every(row=>row.restrictionsMet===false && row.conditionStatus==='restricted'));
+  assert.equal(milestones.atlas.laterChanges.patch,'3.30.0d');assert.ok(milestones.atlas.laterChanges.entries.some(row=>row.mechanic==='Incursion' && /Architects/.test(row.effect)));
   const freeOnlyThreads=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:83,threads:8,spentThreads:0},'atlas');
   assert.equal(freeOnlyThreads.atlas.guaranteeStatus,'free_only_unverified');assert.equal(freeOnlyThreads.atlas.guaranteedWhenSpending,3);assert.equal(freeOnlyThreads.atlas.guaranteedModifiers,undefined);
   const unknownThreadSpend=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:83,threads:8},'atlas');assert.equal(unknownThreadSpend.atlas.guaranteeStatus,'spend_unresolved');assert.equal(unknownThreadSpend.atlas.guaranteedModifiers,undefined);

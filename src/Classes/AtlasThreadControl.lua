@@ -26,6 +26,12 @@ function M.Open(options)
 			lines[#lines+1]="Published bonus at "..result.milestones.threshold.." Threads (stacking not assumed):"
 			for _,entry in ipairs(result.milestones.mechanics) do if not options.mechanic or entry.mechanic==options.mechanic then lines[#lines+1]=entry.mechanic..": "..entry.current end end
 		else lines[#lines+1]="No published 3/6/8 Thread milestone reached." end
+		local additions={};for _,entry in ipairs(result.laterChanges.entries) do if not options.mechanic or entry.mechanic==options.mechanic then additions[#additions+1]=entry end end
+		if #additions>0 then
+			lines[#lines+1]="3.30.0d additions (offer eligibility and odds unverified):"
+			for _,entry in ipairs(additions) do lines[#lines+1]=entry.mechanic..": "..entry.effect end
+			if not options.mechanic or options.mechanic=="Abyss" then lines[#lines+1]="The similar older Abyss restriction may not apply to the new offer." end
+		end
 		if not options.mechanic or options.mechanic=="Abyss" then
 			lines[#lines+1]=result.abyssalConsort.restricted and "Abyssal Consorts: restricted with one spent Thread." or "Abyssal Consorts: other eligibility is not evaluated."
 			lines[#lines+1]="    Spending exactly one Abyss Thread prevents Consorts; free Threads are separate."
@@ -33,9 +39,9 @@ function M.Open(options)
 		lines[#lines+1]="Modifier restrictions:"
 		local shown=0;for _,row in ipairs(result.modifiers) do if not options.mechanic or row.mechanic==options.mechanic then
 			shown=shown+1
-			local status=row.conditionStatus=="conditions_met" and "^x85D6A6Conditions met" or row.conditionStatus=="restricted" and "^xE9BE7BRestricted" or "^xE9BE7BSpend unresolved"
+			local status=row.conditionStatus=="conditions_met" and "^x85D6A6Conditions met" or row.conditionStatus=="restricted" and "^xE9BE7BRestricted" or row.conditionStatus=="current_offer_unverified" and "^xE9BE7BCurrent offer unverified" or "^xE9BE7BSpend unresolved"
 			lines[#lines+1]=status.."^7 | "..row.mechanic..": "..row.effect
-			lines[#lines+1]="    Area level "..row.areaLevel.."+; cannot occur with exactly one spent Thread."
+			lines[#lines+1]=row.currentOfferUnverified and "    Earlier restriction: area level 80+; cannot occur with exactly one spent Thread. The 3.30.0d addition may differ." or "    Area level "..row.areaLevel.."+; cannot occur with exactly one spent Thread."
 		end end
 		if shown==0 then lines[#lines+1]="No listed restrictions for "..options.mechanic.."; other conditions may apply." end
 		c.status.label="^7Conditions met does not guarantee an offer."

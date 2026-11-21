@@ -25,8 +25,12 @@ local threadMilestones={
 }
 -- The patch describes necessary conditions, not an exhaustive offer pool or odds.
 function M.threadRestrictionReference()
-	local rows=copyTable(threadRestrictions);for _,row in ipairs(rows) do row.singleSpendRestricted=true end
-	return {modifiers=rows,patch="3.30.0b Hotfix 3",source="https://www.pathofexile.com/forum/view-thread/4015683",note="The seven modifiers are restricted by area level and cannot occur when only one Thread is spent. This check assumes the relevant type's spend is what matters; interactions with other Thread types are unverified. Applied Threads may include free or bonus Threads. Other requirements, offer availability and probabilities are not modeled."}
+	local rows=copyTable(threadRestrictions);for _,row in ipairs(rows) do if row.mechanic=="Abyss" then row.currentOfferUnverified=true;row.historicalSingleSpendRestricted=true else row.singleSpendRestricted=true end end
+	return {modifiers=rows,patch="3.30.0b Hotfix 3",source="https://www.pathofexile.com/forum/view-thread/4015683",note="The 3.30.0b notes restrict these seven modifiers by area level and single-Thread spend. The similar Abyss modifier added in 3.30.0d may have different restrictions; its identity and eligibility are unverified. This check assumes the relevant type's spend is what matters; interactions with other Thread types are unverified. Applied Threads may include free or bonus Threads. Other requirements, offer availability and probabilities are not modeled.",
+		laterChanges={patch="3.30.0d",source="https://www.pathofexile.com/forum/view-thread/4017726",note="These are published additions, not guaranteed offers; their eligibility and odds are unverified.",entries={
+			{mechanic="Abyss",effect="Rare Abyssal monsters have an additional Abyssal modifier."},
+			{mechanic="Incursion",effect="One room contains only Architects; killing them drops an itemised Temple with random room tiers."},
+		}}}
 end
 function M.threadRestrictions(areaLevel,threads,spentAbyssThreads,spentThreads)
 	assert(type(areaLevel)=="number" and areaLevel==math.floor(areaLevel) and areaLevel>=1 and areaLevel<=100,"Use an area level from 1 to 100")
@@ -36,7 +40,11 @@ function M.threadRestrictions(areaLevel,threads,spentAbyssThreads,spentThreads)
 	assert(spentThreads==nil or spentThreads<=threads,"Threads spent cannot exceed Threads applied for the same type")
 	local result=M.threadRestrictionReference();result.areaLevel=areaLevel;result.threads=threads;result.spentThreads=spentThreads
 	for _,row in ipairs(result.modifiers) do
-		if areaLevel<row.areaLevel or spentThreads==1 then row.restrictionsMet=false;row.conditionStatus="restricted"
+		if row.currentOfferUnverified then
+			row.conditionStatus="current_offer_unverified"
+			if areaLevel<row.areaLevel or spentThreads==1 then row.historicalRestrictionsMet=false
+			elseif spentThreads and spentThreads>=2 then row.historicalRestrictionsMet=true end
+		elseif areaLevel<row.areaLevel or spentThreads==1 then row.restrictionsMet=false;row.conditionStatus="restricted"
 		elseif spentThreads and spentThreads>=2 then row.restrictionsMet=true;row.conditionStatus="conditions_met"
 		else row.conditionStatus="spend_unresolved" end
 	end

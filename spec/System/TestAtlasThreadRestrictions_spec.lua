@@ -5,11 +5,13 @@ describe("Current Thread modifier restrictions",function()
 		return total
 	end
 	it("checks the published level and Thread thresholds without predicting offers",function()
-		assert.equal(0,count(100,8,1));assert.equal(0,count(72,2,2));assert.equal(3,count(73,2,2));assert.equal(3,count(79,8,2));assert.equal(7,count(80,2,2))
+		assert.equal(0,count(100,8,1));assert.equal(0,count(72,2,2));assert.equal(3,count(73,2,2));assert.equal(3,count(79,8,2));assert.equal(6,count(80,2,2))
 		local result=strategy.threadRestrictions(80,2);assert.equal("https://www.pathofexile.com/forum/view-thread/4015683",result.source);assert.matches("Other requirements",result.note);assert.matches("other Thread types are unverified",result.note)
-		for _,row in ipairs(result.modifiers) do assert.is_nil(row.restrictionsMet);assert.equal("spend_unresolved",row.conditionStatus) end
-		for _,row in ipairs(strategy.threadRestrictions(80,8,nil,1).modifiers) do assert.is_false(row.restrictionsMet);assert.equal("restricted",row.conditionStatus) end
+		for _,row in ipairs(result.modifiers) do assert.is_nil(row.restrictionsMet);assert.equal(row.mechanic=="Abyss" and "current_offer_unverified" or "spend_unresolved",row.conditionStatus) end
+		for _,row in ipairs(strategy.threadRestrictions(80,8,nil,1).modifiers) do if row.mechanic=="Abyss" then assert.is_nil(row.restrictionsMet);assert.is_false(row.historicalRestrictionsMet);assert.equal("current_offer_unverified",row.conditionStatus) else assert.is_false(row.restrictionsMet);assert.equal("restricted",row.conditionStatus) end end
 		for _,row in ipairs(strategy.threadRestrictions(80,8,nil,0).modifiers) do assert.is_nil(row.restrictionsMet) end
+		local newer=strategy.threadRestrictions(83,8,nil,2);assert.equal("3.30.0d",newer.laterChanges.patch);assert.equal(2,#newer.laterChanges.entries)
+		for _,row in ipairs(newer.modifiers) do if row.mechanic=="Abyss" then assert.is_true(row.historicalRestrictionsMet);assert.is_nil(row.restrictionsMet);assert.is_nil(row.singleSpendRestricted);assert.is_true(row.historicalSingleSpendRestricted) end end
 		assert.has_error(function() strategy.threadRestrictions(80,1.5) end);assert.has_error(function() strategy.threadRestrictions(0,2) end)
 		assert.has_error(function() strategy.threadRestrictions(80,1,nil,2) end);assert.has_error(function() strategy.threadRestrictions(80,0,nil,1) end)
 	end)
@@ -43,6 +45,7 @@ describe("Current Thread modifier restrictions",function()
 		assert.matches("Restricted",text);assert.not_matches("Conditions met",text)
 		c.level:SetText("73",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
 		assert.matches("Conditions met",text);assert.matches("Restricted",text)
+		assert.matches("Current offer unverified",text);assert.matches("Architects",text)
 		c.threads:SetText("8",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
 		assert.matches("With this spend: 3 guaranteed modifiers",text);assert.matches("Free%-only guarantees are not established",text);assert.matches("Abyss: 3 additional pits",text);assert.matches("stacking not assumed",text)
 		c.spent:SetText("1",true);c.threads:SetText("2",true);text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end

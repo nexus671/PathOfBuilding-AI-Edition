@@ -86,7 +86,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	frame("atlas-ruthless-sharing");ui:choose("page","Tree")
 	ui:choose("version","3.29.3","val");ui:click("confirm");frame("atlas-start");assert(not build.controls.statBox:IsShown(),"Build sidebar should be hidden while planning")
 	ui:click("tools");ui:text("search","Thread restrictions");ui:click("choose");ui:text("level","73");ui:text("threads","2");ui:text("spent","1");frame("atlas-thread-restrictions")
-	do local lines={};for _,row in ipairs(main.popups[1].controls.results.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;local text=table.concat(lines," ");assert(not text:find("Conditions met",1,true) and text:find("Restricted",1,true) and text:find("Consorts: restricted",1,true),"Single-spend or Consort restriction was not displayed") end
+	do local lines={};for _,row in ipairs(main.popups[1].controls.results.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;local text=table.concat(lines," ");assert(not text:find("Conditions met",1,true) and text:find("Restricted",1,true) and text:find("Consorts: restricted",1,true),"Single-spend or Consort restriction was not displayed");assert(text:find("Current offer unverified",1,true) and text:find("Architects",1,true),"Current Thread additions or Abyss uncertainty were not shown") end
 	ui:text("spent","3");assert(main.popups[1].controls.status.label:find("cannot exceed",1,true) and #main.popups[1].controls.results.list==0,"Impossible Thread spend was not explained");frame("atlas-thread-invalid-spend");ui:text("spent","1")
 	ui:click("close")
 	ui:click("tools");ui:text("search","Map modifier explorer");ui:click("choose");frame("map-modifier-explorer")

@@ -483,7 +483,7 @@ function Panel.Open(build,source,layout)
 		clearRouteOverlay();exitGrantRoute()
 		local entries={
 			{id="mapModifiers",label="Map modifier explorer",details={"Inspect hypothetical modifiers on an ordinary map.","Uses pinned 3.30 source data; does not roll an item or calculate odds."}},
-			{id="threadRestrictions",label="Thread restrictions",details={"Check minimum area levels, guaranteed modifiers and Thread milestones.","Uses published 3.30.0b restrictions and 3.30.0c milestones; offer odds are not modeled."}},
+			{id="threadRestrictions",label="Thread restrictions",details={"Check minimum area levels, guaranteed modifiers and Thread milestones.","Includes published 3.30.0d additions; offer eligibility and odds are not fully modeled."}},
 			{id="mapDrafts",label="Saved map drafts",details={"Open or remove map drafts kept in this Atlas plan.","Keep the plan and save the build to persist changes."}},
 			{id="presets",label="Strategy starting points",details={"Connect up to three nearby unallocated notables for a mechanic.","Generated from this version's bundled tree, within your budget.","Editable starting routes, not recommendations for farming profit."}},
 			{id="compare",label="Compare with a saved plan",details={"Review added nodes, removed nodes and changed bonus lines.","Both plans must use the same Atlas version."}},
