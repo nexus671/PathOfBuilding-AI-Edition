@@ -85,6 +85,15 @@ function M.reviewSets(items)
   groups[#groups+1]=group
  end
  local remaining={};for _,bucket in pairs(buckets) do for _,item in ipairs(bucket) do remaining[#remaining+1]=item end end;table.sort(remaining,function(a,b) return a.index<b.index end)
- return {groups=groups,remaining=remaining,totalItems=#items,note="Suggested groups use copied classes and item levels. Weapon combinations, identification and quality bonuses, special items and vendor priority need in-game verification. Each paste must be a different item; no stash is accessed."}
+ -- Progress is based only on unused copies, so an item already assigned to a
+ -- set cannot also appear to satisfy the next one.
+ local missing={}
+ for _,slot in ipairs(setSlots) do local needed=(slot=="Ring" and 2 or 1)-#buckets[slot];if needed>0 then missing[#missing+1]={slot=slot,count=needed} end end
+ if #buckets["Two hand"]==0 then
+  local one,shields=#buckets["One hand"],#buckets.Shield
+  if one==0 then missing[#missing+1]={slot="Weapon",count=1,detail=shields>0 and "One-handed or two-handed weapon" or "Two-handed weapon, or a one-handed weapon plus another one-handed weapon or shield"}
+  elseif one+shields<2 then missing[#missing+1]={slot="Weapon or shield",count=1,detail="Another one-handed weapon or a shield; a two-handed weapon also works"} end
+ end
+ return {groups=groups,remaining=remaining,missing=missing,totalItems=#items,note="Suggested groups use copied classes and item levels. Weapon combinations, identification and quality bonuses, special items and vendor priority need in-game verification. Each paste must be a different item; no stash is accessed."}
 end
 return M

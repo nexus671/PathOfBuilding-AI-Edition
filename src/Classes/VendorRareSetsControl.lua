@@ -23,6 +23,10 @@ function M.Open(build)
   end
   if #review.remaining>0 then local ids={};for _,item in ipairs(review.remaining) do ids[#ids+1]="#"..item.index end;lines[#lines+1]="Remaining: "..table.concat(ids,", ") end
   if #items==0 then lines[#lines+1]="Paste a copied rare to start." elseif #review.groups==0 then lines[#lines+1]="No complete set yet." end
+  if #items>0 and #review.missing>0 then
+   lines[#lines+1]="Next set needs:"
+   for _,entry in ipairs(review.missing) do lines[#lines+1]="  "..entry.count.." "..entry.slot..(entry.detail and ": "..entry.detail or "") end
+  end
   c.details.list=ui.rows(lines,w-left-42,14);c.status.label="^7"..review.totalItems.." pasted | "..#review.groups.." suggested sets"
  end
  c.entries.onClick=function(row) local index=row and row.line and row.line.itemIndex;if index then selected=index;refresh() end end

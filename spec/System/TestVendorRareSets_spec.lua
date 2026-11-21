@@ -21,6 +21,14 @@ describe("Rare vendor set review",function()
   local input=kit(80);input[#input+1]=item("Helmets",40);local result=vendor.reviewSets(input)
   assert.equal("Regal Orb",result.groups[1].reward);assert.equal(40,result.remaining[1].level)
  end)
+ it("reports missing slots from unused items",function()
+  local input={item("Helmets",70),item("Rings",70),item("One Hand Swords",70)};local result=vendor.reviewSets(input);local missing={}
+  for _,entry in ipairs(result.missing) do missing[entry.slot]=entry end
+  assert.is_nil(missing.Helmet);assert.equal(1,missing.Ring.count);assert.equal(1,missing["Weapon or shield"].count);assert.equal(1,missing.Belt.count)
+  local completed=kit(70);completed[#completed+1]=item("Rings",70);result=vendor.reviewSets(completed);missing={};for _,entry in ipairs(result.missing) do missing[entry.slot]=entry end
+  assert.equal(1,missing.Ring.count);assert.equal(1,missing.Helmet.count);assert.equal(1,missing.Weapon.count)
+  assert.equal(1,#result.groups);assert.equal(1,#result.remaining)
+ end)
  it("rejects unsupported, missing-level and non-rare input",function()
   assert.has_error(function() vendor.parseSet(item("Quivers",80)) end)
   assert.has_error(function() vendor.parseSet(item("Helmets",80):gsub("Item Level: 80","Item Level: unknown")) end)

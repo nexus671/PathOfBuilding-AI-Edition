@@ -12,6 +12,9 @@ return function(build,ui,frame)
 	do local c=main.popups[1].controls;assert(c.entries.list[2][1]:find("Vortex Visage",1,true) and c.entries.list[2][2]:find("1",1,true),"Reopened review lost its working items") end
 	frame("vendor-rare-reopened");ui:click("clear");ui:click("close")
 	ui:click("nav_tools");do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="rareSets" then selected=row;break end end;assert(selected,"Rare set review is missing");browser.results.onClick({line=selected});ui:click("choose") end
+	ui.clipboard="Item Class: Rings\nRarity: Rare\nExample Ring\n--------\nItem Level: 70\n--------\nUnidentified";ui:click("paste")
+	do local c=main.popups[1].controls;local lines={};for _,row in ipairs(c.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;local text=table.concat(lines," ");assert(text:find("Next set needs",1,true) and text:find("1 Ring",1,true) and text:find("Weapon",1,true),"Missing rare-set slots not shown") end
+	frame("vendor-rare-set-progress");ui:click("clear")
 	for _,class in ipairs({"Helmets","Body Armours","Gloves","Boots","Amulets","Belts","Rings","Rings","Bows"}) do ui.clipboard="Item Class: "..class.."\nRarity: Rare\nExample Base\n--------\nItem Level: 70\n--------\nUnidentified";ui:click("paste") end
 	do local c=main.popups[1].controls;local lines={};for _,row in ipairs(c.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;assert(table.concat(lines," "):find("Chaos Orb",1,true),"Rare set reward not displayed") end
 	frame("vendor-rare-set");ui:click("close");ui:click("nav_tools");do local browser=main.popups[1].controls;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="rareSets" then browser.results.onClick({line=row});break end end;ui:click("choose") end
