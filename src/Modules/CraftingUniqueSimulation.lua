@@ -18,6 +18,7 @@ local function quantiles(value)
 	local result={};for _,percent in ipairs({10,25,50,75,90,95,99}) do result["p"..percent]=value end;return result
 end
 local stochastic={divine=true,tainted_quality=true,jeweller=true,tainted_jeweller=true,fusing=true,tainted_fusing=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,instilling=true,enkindling=true}
+function M.isStochastic(method) return stochastic[method]==true end
 local function percentiles(values)
 	if #values==0 then return nil end
 	table.sort(values);local out={};for _,percent in ipairs({10,25,50,75,90,95,99}) do out["p"..percent]=values[math.max(1,math.ceil(#values*percent/100))] end;return out
@@ -87,7 +88,7 @@ function M.simulate(sim,raw,recipe,options)
 	end
 	local matchesStart=unique.matches(raw,recipe.requirements)
 	local alreadyMet=not options.forceFirstAction and (not recipe.rarity or recipe.rarity=="UNIQUE") and matchesStart
-	if not options._uniqueSingleTrial and not alreadyMet then for _,step in ipairs(recipe.steps) do if stochastic[step.method] then return sampled(sim,raw,recipe,options) end end end
+	if not options._uniqueSingleTrial and not alreadyMet then for _,step in ipairs(recipe.steps) do if M.isStochastic(step.method) then return sampled(sim,raw,recipe,options) end end end
 	local trials=integer(options.trials or 200,1,2000,"trial count")
 	local maxActions=integer(options.maxActions or 100,1,2000,"action budget")
 	assert(trials*maxActions<=20000,"Use at most 20000 total budgeted actions per simulation")

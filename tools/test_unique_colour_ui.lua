@@ -22,9 +22,12 @@ return function(build,ui,frame)
 	local divineRaw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+(30-50) to Evasion Rating\n+10% to Item Rarity\n+(30-40)% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
 	local divineProject={id="unique-divine-ui",title="Divine target",slot="Helmet",startingItem=divineRaw,goals={},steps={}}
 	store:Upsert(divineProject);require("Classes.CraftingUniqueQualityControl").Open(build,divineProject);ui:click("divine");local divinePicker=main.popups[1].controls
-	divinePicker.stat:SelByValue("Evasion","val");ui:text("target","100");ui:text("attempts","250");frame("crafting-unique-divine-target");ui:click("plan")
+	divinePicker.stat:SelByValue("Evasion","val");ui:text("target","100");ui:text("attempts","3");frame("crafting-unique-divine-target");ui:click("plan")
 	local divineSaved;for _,entry in ipairs(store.projects) do if entry.id==divineProject.id then divineSaved=entry end end
 	assert(divineSaved and divineSaved.nativeRecipe.requirements.nativeStats.Evasion==100 and divineSaved.steps[1].uniqueCraft.method=="divine","Divine target was not kept")
+	ui:click("recipe");local divineTasks=require("Modules.CraftingTasks");assert(divineTasks.job,"A Divine recipe must use sampled background trials");while divineTasks.job do divineTasks.tick(build) end
+	local summary="";for _,row in ipairs(main.popups[1].controls.details.list) do summary=summary..StripEscapes(row[1] or "").." " end
+	assert(summary:find("20 trials",1,true),"Divine recipe used only one sampled trial");ui:click("close")
 	ui:click("divine");divinePicker=main.popups[1].controls;divinePicker.stat:SelByValue("modifier:2","val");divinePicker.direction:SelByValue("At most");ui:text("target","30");assert(divinePicker.selectedInfo.label():find("Elemental Resistances",1,true),"Selected modifier description is truncated");frame("crafting-unique-divine-modifier");ui:click("plan");ui:click("confirm")
 	for _,entry in ipairs(store.projects) do if entry.id==divineProject.id then divineSaved=entry end end
 	assert(#divineSaved.steps==1 and divineSaved.nativeRecipe.requirements.uniqueModifier.maxValue==30,"Divine modifier target was not kept");main.popups={}

@@ -607,7 +607,7 @@ function M.Open(build,project,layout,snapshot)
 			local updated=copyTable(draft);updated.nativeRecipe=createRecipe();draft=build.savers.CraftingProjects:Upsert(updated)
 			refresh(true);c.notice.label="^7Recipe saved. Save the build.";return
 		end
-		local stochastic=false;for _,step in ipairs(draft.nativeRecipe.steps) do if step.method=="instilling" or step.method=="enkindling" or step.method=="tainted_quality" or step.method=="jeweller" or step.method=="tainted_jeweller" or step.method=="chromatic" or step.method=="tainted_chromatic" or step.method=="omen_trichromatism" or step.method=="fusing" or step.method=="tainted_fusing" then stochastic=true end end
+		local stochastic=false;for _,step in ipairs(draft.nativeRecipe.steps) do if require("Modules.CraftingUniqueSimulation").isStochastic(step.method) then stochastic=true;break end end
 		local budget=100
 		if stochastic then local sum=0;for _,step in ipairs(draft.nativeRecipe.steps) do sum=sum+(step.maxAttempts or 1) end;budget=math.min(2000,math.max(100,sum)) end
 		local trials=stochastic and math.max(1,math.min(20,math.floor(10000/budget))) or 1
