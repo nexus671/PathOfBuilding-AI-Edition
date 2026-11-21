@@ -234,6 +234,26 @@ describe("Unique item quality",function()
 		for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id and rule.title=="Divine Orb" then found=true end end;assert.is_true(found)
 	end)
 
+	it("distinguishes a truncated unique recipe step from an exhausted step",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+(30-50) to Evasion Rating\n+10% to Item Rarity\n+(30-40)% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
+		local goal={nativeStats={Evasion=100}};local recipe={steps={{method="divine",maxAttempts=3,untilRequirements=goal,onFailureAction="stop"}},targets={},requirements=goal}
+		local sim=require("Modules.CraftingSimulator")
+		local truncated=sim.simulate(raw,recipe,{trials=4,maxActions=1,seed=777})
+		assert.equal(4,truncated.budgetExhausted);assert.equal(0,truncated.recovery.stopped);assert.equal(0,truncated.routeCounts[1].failure)
+		local completed=sim.simulate(raw,recipe,{trials=4,maxActions=3,seed=777})
+		assert.equal(0,completed.budgetExhausted);assert.equal(4,completed.recovery.stopped);assert.equal(4,completed.routeCounts[1].failure)
+	end)
+
+	it("does not take an ordinary recipe failure route when its trial budget interrupts a step",function()
+		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86";local goal={minQuality=20}
+		local recipe={steps={{method="quality",maxAttempts=3,untilRequirements=goal,onFailureAction="stop"}},targets={},requirements=goal}
+		local sim=require("Modules.CraftingSimulator")
+		local truncated=sim.simulate(raw,recipe,{trials=4,maxActions=1,seed=777})
+		assert.equal(4,truncated.budgetExhausted);assert.equal(0,truncated.recovery.stopped);assert.equal(0,truncated.routeCounts[1].failure)
+		local completed=sim.simulate(raw,recipe,{trials=4,maxActions=3,seed=777})
+		assert.equal(0,completed.budgetExhausted);assert.equal(4,completed.recovery.stopped);assert.equal(4,completed.routeCounts[1].failure)
+	end)
+
 	it("rerolls and targets independent values on multi-range unique modifiers",function()
 		local template;for _,group in pairs(data.uniques) do for _,entry in ipairs(group) do if entry:match("^%s*Dreadarc[\r\n]") then template=entry end end end
 		assert.is_truthy(template);local raw="Rarity: UNIQUE\n"..template.."\nItem Level: 86"

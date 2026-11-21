@@ -1028,9 +1028,9 @@ function M.simulate(raw,recipe,options)
 		while at <= #recipe.steps and actions < maxActions and not state.destroyed and not state.uniqueTitle and (options.forceFirstAction and actions == 0 or not M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups)) do
 			local step=recipe.steps[at]
 			local route=routes[at] or {visits=0,success=0,failure=0,executed=0,pricedCost=0,unpricedComponents=0};routes[at]=route;route.visits=route.visits+1
-			local success=false
+			local success,interrupted=false,false
 			for _=1,(step.maxAttempts or 1) do
-				if actions >= maxActions then break end
+				if actions >= maxActions then interrupted=true;break end
 				if options.checkpoint then options.checkpoint({trial=trial,trials=trials,actions=actions,successes=successes}) end
 				actions=actions+1
 				local before=state
@@ -1076,6 +1076,7 @@ function M.simulate(raw,recipe,options)
 				if M.matches(state,recipe.targets,recipe.rarity,model,recipe.requirements,recipe.requiredGroups) then success=true;break end
 				if not (step.untilTargets or step.untilRequirements) or M.matches(state,step.untilTargets or {},nil,model,step.untilRequirements,step.untilRequiredGroups) then success=true; break end
 			end
+			if interrupted then break end
 			route[success and "success" or "failure"]=route[success and "success" or "failure"]+1
 			if not success and step.onFailureAction=="restart" then
 				if actions<maxActions then recovery.restarts=recovery.restarts+1;state=copyState(model.initial);cost=cost+baseCost end;at=1

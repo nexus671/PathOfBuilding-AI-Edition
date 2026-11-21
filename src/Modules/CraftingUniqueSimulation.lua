@@ -121,9 +121,9 @@ function M.simulate(sim,raw,recipe,options)
 	while at<=#recipe.steps and actions<maxActions and (options.forceFirstAction and actions==0 or not target(current,recipe.requirements)) do
 		if options.checkpoint then options.checkpoint({trial=1,trials=trials,actions=actions,successes=0}) end
 		local step=recipe.steps[at];local route=routes[at] or {visits=0,success=0,failure=0,executed=0,pricedCost=0,unpricedComponents=0};routes[at]=route;route.visits=route.visits+1
-		local success=false
+		local success,interrupted=false,false
 		for _=1,(step.maxAttempts or 1) do
-			if actions>=maxActions then break end
+			if actions>=maxActions then interrupted=true;break end
 			if options.checkpoint then options.checkpoint({trial=1,trials=trials,actions=actions,successes=0}) end
 			actions=actions+1
 			local action={method=step.method};if step.method=="socket_bench" then action.count=step.count;action.linked=step.linked elseif step.method=="bench_flask_enchant" then action.enchantId=step.enchantId end
@@ -149,6 +149,7 @@ function M.simulate(sim,raw,recipe,options)
 			end
 			if target(current,recipe.requirements) or not step.untilRequirements or unique.matches(current,step.untilRequirements) then success=true;break end
 		end
+		if interrupted then break end
 		route[success and "success" or "failure"]=route[success and "success" or "failure"]+1
 		if not success and step.onFailureAction=="restart" then
 			if actions<maxActions then recovery.restarts=recovery.restarts+1;current=raw;cost=cost+baseCost end;at=1

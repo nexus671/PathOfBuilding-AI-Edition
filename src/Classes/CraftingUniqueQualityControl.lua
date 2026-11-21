@@ -611,10 +611,12 @@ function M.Open(build,project,layout,snapshot)
 		local budget=100
 		if stochastic then local sum=0;for _,step in ipairs(draft.nativeRecipe.steps) do sum=sum+(step.maxAttempts or 1) end;budget=math.min(2000,math.max(100,sum)) end
 		local trials=stochastic and math.max(1,math.min(20,math.floor(10000/budget))) or 1
+		local seed=104729
 		local capturedRaw=draft.startingItem;local capturedRecipe=copyTable(draft.nativeRecipe);local capturedPrice=draft.priceBook and copyTable(draft.priceBook);local capturedTree=build.spec.treeVersion
 		local function run(checkpoint)
-			return require("Modules.CraftingSimulator").simulate(capturedRaw,capturedRecipe,{trials=trials,maxActions=budget,retainSuccesses=stochastic and 1 or 0,priceBook=capturedPrice,treeVersion=capturedTree,checkpoint=checkpoint})
+			return require("Modules.CraftingSimulator").simulate(capturedRaw,capturedRecipe,{trials=trials,maxActions=budget,seed=seed,retainSuccesses=stochastic and 1 or 0,priceBook=capturedPrice,treeVersion=capturedTree,checkpoint=checkpoint})
 		end
+		local startCheck
 		local function showResult(result)
 		local kept=result.retainedSuccesses and result.retainedSuccesses[1];local outputItem=kept and kept.itemText or result.sampleItem;local outputSuccess=kept~=nil or result.sampleSuccess
 		local rw,rh=math.min(760,main.screenW-40),math.min(520,main.screenH-60);local view={}
@@ -622,7 +624,9 @@ function M.Open(build,project,layout,snapshot)
 		local lines={result.sampled and string.format("%d trials: %s success (%s - %s interval).",result.trials,ui.percent(result.successChance,1),ui.percent(result.confidenceLow,1),ui.percent(result.confidenceHigh,1)) or result.sampleSuccess and "Goal reached in the deterministic model." or "Goal not reached in the deterministic model.",
 			"Starts from the saved starting item; the current preview is unchanged.",
 			string.format("Mean actions: %.1f attempted, %.1f executed (limit %d).",result.meanActions,result.meanExecutedActions,budget),
+			result.sampled and ("Seed: "..seed.." | Up to "..(trials*budget).." trial-actions.") or "Deterministic action result.",
 			result.meanCost and string.format("Estimated cost: %.2f %s",result.meanCost,result.costCurrency) or "Cost unavailable: add prices for all used resources."}
+		if (result.budgetExhausted or 0)>0 then lines[#lines+1]=string.format("Action limit reached: %d of %d trials.",result.budgetExhausted,result.trials) end
 		for _,entry in ipairs(result.resourceUsage or {}) do lines[#lines+1]=result.sampled and string.format("%s: %.2f per trial",entry.name,entry.meanPerTrial) or entry.name..": "..entry.amount end
 		for _,warning in ipairs(result.warnings or {}) do lines[#lines+1]="Model note: "..warning.message end
 		for message,count in pairs(result.transitionErrors or {}) do lines[#lines+1]="Rejected action ("..count.."): "..message end
@@ -651,10 +655,32 @@ function M.Open(build,project,layout,snapshot)
 		end)
 		view.update.enabled=canCreateRecipe()
 		view.update.tooltipText=canCreateRecipe() and "Replace the saved recipe with the complete current preview after confirmation." or "A complete supported preview from the starting item is needed."
+		view.refine=new("ButtonControl"):ButtonControl(ui.anchor,{368,rh-48,160,28},"Refine estimate",function()
+			local settings={};local sw,sh=460,250
+			ui.description(settings,"help",16,24,sw-32,40,{"Run the same saved recipe with your chosen sampling settings.","The combined trial-action budget cannot exceed 20,000."},14)
+			ui.label(settings,"trialLabel",16,78,"Trials",14);ui.label(settings,"budgetLabel",156,78,"Actions per trial",14);ui.label(settings,"seedLabel",296,78,"Seed",14)
+			settings.trials=new("EditControl"):EditControl(ui.anchor,{16,100,124,26},tostring(trials),nil,"%D",4)
+			settings.budget=new("EditControl"):EditControl(ui.anchor,{156,100,124,26},tostring(budget),nil,"%D",4)
+			settings.seed=new("EditControl"):EditControl(ui.anchor,{296,100,148,26},tostring(seed),nil,"%D",10)
+			ui.label(settings,"error",16,148,"",14)
+			for _,key in ipairs({"trials","budget","seed"}) do settings[key].changeFunc=function() settings.error.label="" end end
+			settings.run=new("ButtonControl"):ButtonControl(ui.anchor,{16,sh-48,160,28},"Run estimate",function()
+				local count,limit,nextSeed=tonumber(settings.trials.buf),tonumber(settings.budget.buf),tonumber(settings.seed.buf)
+				if not count or count<1 or count>2000 or count~=math.floor(count) or not limit or limit<1 or limit>2000 or limit~=math.floor(limit) then settings.error.label="^xFF8080Trials and actions must be 1-2000.";return end
+				if count*limit>20000 then settings.error.label="^xFF8080Total trial-actions must be at most 20,000.";return end
+				if not nextSeed or nextSeed<1 or nextSeed>2147483646 or nextSeed~=math.floor(nextSeed) then settings.error.label="^xFF8080Seed must be 1-2147483646.";return end
+				trials,budget,seed=count,limit,nextSeed;main:ClosePopup();main:ClosePopup();startCheck()
+			end)
+			settings.cancel=new("ButtonControl"):ButtonControl(ui.anchor,{sw-132,sh-48,116,28},"Cancel",function() main:ClosePopup() end)
+			ui.style(settings);for _,control in pairs(settings) do control.layoutAudit="unique-recipe-settings" end
+			main:OpenPopup(sw,sh,"Refine unique recipe estimate",settings,nil,"trials","cancel")
+		end)
+		view.refine.shown=stochastic;view.refine.tooltipText="Adjust the number of trials, action budget and random seed."
 		view.close=new("ButtonControl"):ButtonControl(ui.anchor,{rw-132,rh-48,116,28},"Back",function() main:ClosePopup() end)
 		ui.style(view);for _,control in pairs(view) do control.layoutAudit="unique-recipe-result" end
 		main:OpenPopup(rw,rh,"Saved unique recipe",view,nil,nil,"close")
 		end
+		startCheck=function()
 		if not stochastic then showResult(run());return end
 		local tasks=require("Modules.CraftingTasks");local progress={};local pw,ph=420,168
 		ui.label(progress,"heading",16,24,"Checking recipe",20)
@@ -668,6 +694,8 @@ function M.Open(build,project,layout,snapshot)
 			if closeProgress() and message~="Calculation cancelled." and message~="The active build changed" then main:OpenMessagePopup("Unique crafting",ui.errorText(message)) end
 		end,function(state) progress.status.label=string.format("Trial %d / %d | %d successes",state.trial or 0,state.trials or trials,state.successes or 0) end,"Unique recipe simulation slice")
 		job.owner=progress;main:OpenPopup(pw,ph,"Checking recipe",progress,nil,nil,"cancel")
+		end
+		startCheck()
 	end)
 	c.recipe.x=156;c.recipe.width=130;c.recipe.label=function() return draft.nativeRecipe and "Check recipe" or "Save recipe" end
 	c.recipe.enabled=function() return draft.nativeRecipe~=nil or canCreateRecipe() end

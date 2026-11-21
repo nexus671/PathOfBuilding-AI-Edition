@@ -27,7 +27,13 @@ return function(build,ui,frame)
 	assert(divineSaved and divineSaved.nativeRecipe.requirements.nativeStats.Evasion==100 and divineSaved.steps[1].uniqueCraft.method=="divine","Divine target was not kept")
 	ui:click("recipe");local divineTasks=require("Modules.CraftingTasks");assert(divineTasks.job,"A Divine recipe must use sampled background trials");while divineTasks.job do divineTasks.tick(build) end
 	local summary="";for _,row in ipairs(main.popups[1].controls.details.list) do summary=summary..StripEscapes(row[1] or "").." " end
-	assert(summary:find("20 trials",1,true),"Divine recipe used only one sampled trial");ui:click("close")
+	assert(summary:find("20 trials",1,true),"Divine recipe used only one sampled trial")
+	ui:click("refine");ui:text("trials","201");ui:text("budget","100");ui:click("run");assert(main.popups[1].controls.error.label:find("20,000",1,true),"Oversized simulation was not explained")
+	ui:text("trials","4");ui:text("budget","1");ui:text("seed","777");assert(main.popups[1].controls.error.label=="","Correcting the settings left a stale error");frame("crafting-unique-refine-options");ui:click("run")
+	assert(divineTasks.job,"Refined recipe did not start a background task");while divineTasks.job do divineTasks.tick(build) end
+	summary="";for _,row in ipairs(main.popups[1].controls.details.list) do summary=summary..StripEscapes(row[1] or "").." " end
+	assert(summary:find("4 trials",1,true) and summary:find("Seed: 777",1,true) and summary:find("limit 1",1,true),"Refined settings were not used in the result")
+	assert(summary:find("Action limit reached: 4 of 4 trials",1,true),"Truncated trials were not disclosed");ui:click("close")
 	ui:click("divine");divinePicker=main.popups[1].controls;divinePicker.stat:SelByValue("modifier:2","val");divinePicker.direction:SelByValue("At most");ui:text("target","30");assert(divinePicker.selectedInfo.label():find("Elemental Resistances",1,true),"Selected modifier description is truncated");frame("crafting-unique-divine-modifier");ui:click("plan");ui:click("confirm")
 	for _,entry in ipairs(store.projects) do if entry.id==divineProject.id then divineSaved=entry end end
 	assert(#divineSaved.steps==1 and divineSaved.nativeRecipe.requirements.uniqueModifier.maxValue==30,"Divine modifier target was not kept");main.popups={}
