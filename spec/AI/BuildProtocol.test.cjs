@@ -427,7 +427,7 @@ test('describes unique crafting continuation and simulation limits to AI clients
   const descriptions=Object.fromEntries(tools.map(tool=>[tool.name,tool.description]));
   assert.match(descriptions.apply_crafting_action,/unique items, pass the returned itemText and omit initialState/);
   assert.match(descriptions.calculate_crafting,/Supported unique actions.*intrinsic item stats/);
-  assert.match(descriptions.simulate_crafting,/Supported unique quality and socket actions.*socket recolouring and random linking use sampled outcomes/);
+  assert.match(descriptions.simulate_crafting,/Supported unique actions include Divine.*unique modifier-value.*Random outcomes use sampled estimates/);
 });
 
 test('queues crafting inspection with exactly one item source and current revision', t => {
@@ -847,6 +847,19 @@ test('queues a named saved crafting alternative with bounded options', t => {
     {projectId:'helmet-guide',alternativeName:'Life route',itemText:craftingProject().startingItem},
     {projectId:'helmet-guide',alternativeName:'Life route',options:{trials:2000,maxActions:2000}},
   ]) assert.throws(()=>f.call('simulate_crafting',{baseRevision,...bad}),/alternative|budgeted|saved projectId/);
+});
+
+test('queues the saved primary recipe without changing checkpoint semantics', t => {
+  const f=fixture(t),baseRevision=f.state.revision;
+  f.call('simulate_crafting',{baseRevision,projectId:'helmet-guide',usePrimary:true,options:{trials:20,maxActions:10,seed:7}});
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.usePrimary,true);assert.equal(request.options.trials,20);
+  for(const bad of [
+    {usePrimary:true,itemText:craftingProject().startingItem,recipe:{steps:[{method:'alchemy'}],targets:[],requirements:{minAffixes:1}}},
+    {projectId:'helmet-guide',usePrimary:true,alternativeName:'Other'},
+    {projectId:'helmet-guide',usePrimary:true,itemText:craftingProject().startingItem},
+    {projectId:'helmet-guide',usePrimary:true,options:{trials:2000,maxActions:2000}},
+  ]) assert.throws(()=>f.call('simulate_crafting',{baseRevision,...bad}),/usePrimary|saved projectId|budgeted/);
 });
 
 test('queues a bounded comparison of named crafting alternatives', t => {
