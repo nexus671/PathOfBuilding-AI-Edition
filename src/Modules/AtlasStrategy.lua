@@ -351,6 +351,11 @@ function M.transition(before,after)
 	local result={added=diff.added,removed=diff.removed,stats=diff.stats,modifierChanges=diff.modifierChanges,genesisChanges=diff.genesisChanges,choiceChanges=diff.choiceChanges,choiceReselectionCostUnknown=choiceReselectionCostUnknown,steps=steps,rebuild=rebuilt,temporary=temporary,startingReachable=startingReachable,startingStatus=startingReachable==nil and "unknown" or startingReachable and "reachable" or "unreachable",startingWarning=startingWarning,lines={before.title.." -> "..after.title,#diff.removed.." changed nodes to refund; "..#diff.added.." changed nodes to allocate.","Route assumes "..budget.." base points are available. Each step preserves connectivity and the supplied budget plus granted points. Refund currency prices are not assumed."}}
 	if startingReachable==false then result.lines[#result.lines+1]="Starting plan cannot be reached with this budget. "..startingWarning
 	elseif startingReachable==nil then result.lines[#result.lines+1]="Starting plan reachability is unverified; this route assumes it is already allocated. "..startingWarning end
+	if diff.genesisChanges then
+		local changes=diff.genesisChanges
+		result.lines[#result.lines+1]=string.format("Genesis saved allocations: %d added, %d removed. Atlas route steps do not include Genesis; its point and refund rules are unverified.",#changes.added,#changes.removed)
+		if not changes.beforePresent or not changes.afterPresent then result.lines[#result.lines+1]="A plan has no saved Genesis section; an absent section does not establish its in-game allocations." end
+	end
 	if steps then
 		local refunds=0;for _,step in ipairs(steps) do if step.action=="Refund" then refunds=refunds+1 end end
 		result.lines[#result.lines+1]=(temporary and "Temporary grant path; includes extra refunds. " or rebuilt and "Rebuild route; may require extra refunds. " or "Direct route. ")..refunds.." node refunds, "..(#steps-refunds).." allocations. This is a valid allocation route, not a minimum-refund optimizer."
@@ -358,8 +363,6 @@ function M.transition(before,after)
 	elseif startingReachable~=false then result.lines[#result.lines+1]="No sequential route found within this budget. Earn more points or plan a temporary route before applying these allocations." end
 	if diff.genesisChanges then
 		local changes=diff.genesisChanges
-		result.lines[#result.lines+1]=string.format("Genesis saved allocations: %d added, %d removed. Atlas route steps do not include Genesis; its point and refund rules are unverified.",#changes.added,#changes.removed)
-		if not changes.beforePresent or not changes.afterPresent then result.lines[#result.lines+1]="A plan has no saved Genesis section; an absent section does not establish its in-game allocations." end
 		for _,node in ipairs(changes.added) do result.lines[#result.lines+1]="Genesis + "..node.branch..": "..node.name.." ["..node.id.."]" end
 		for _,node in ipairs(changes.removed) do result.lines[#result.lines+1]="Genesis - "..node.branch..": "..node.name.." ["..node.id.."]" end
 	end

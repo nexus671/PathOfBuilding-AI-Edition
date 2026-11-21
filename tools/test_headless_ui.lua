@@ -47,6 +47,27 @@ local function checkPlanningSearch(ui,workspace,filter)
 	local restored=workspace.cache.crafting.layout.snapshot();assert(workspace.page=="crafting" and restored.project.id==project.id and restored.kind=="workbench","Planning search did not restore the working craft")
 	assert(require("Modules.PlanningData").encode(restored.state)==require("Modules.PlanningData").encode(original.state),"Planning search changed the working item")
 end
+function UI.checkAtlasGenesisComparison(ui,build,frame)
+		main.popups={}
+		local atlas=require("Modules.AtlasPlanner");local baseline={id="atlas-totals-baseline",title="Atlas totals baseline",version="3.30.0c",budget=150,nodes={}}
+		baseline.genesis={version="3.30.0d",nodes={19912,53412}}
+		build.savers.AtlasPlans:Upsert(baseline);local plan=atlas.connect({id="atlas-totals-ui",title="Atlas totals",version="3.30.0c",budget=150,nodes={}}, {57123,2929});plan.genesis={version="3.30.0d",nodes={19912}}
+		local control=require("Classes.AtlasPlannerControl").Open(build,plan);control.stats:Click();ui:choose("category","Added modifiers");ui:text("search","effect of Explicit Modifiers")
+		local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(details," "):gsub("%s+"," "):find("not an effective map chance",1,true),"Atlas modifier totals did not explain their scope")
+		frame("atlas-added-modifiers");ui:click("close");control.tools:Click();ui:text("search","Compare");ui:click("choose");ui:text("search","Atlas totals baseline")
+		details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
+		details=table.concat(details," "):gsub("%s+"," ")
+		assert(details:find("Change: +",1,true),"Atlas comparison omitted modifier changes")
+		assert(details:find("Genesis saved allocations: 0 added, 1 removed",1,true) and details:find("Encrusted Fruit",1,true),"Atlas comparison omitted Genesis changes")
+		frame("atlas-modifier-comparison");main.popups={}
+		require("Classes.AtlasPlanningControl").Open(build,plan,function() end);ui:choose("previous","atlas-totals-baseline","val")
+		details={};for _,row in ipairs(main.popups[1].controls.transition.list) do details[#details+1]=StripEscapes(row[1] or "") end
+		details=table.concat(details," "):gsub("%s+"," ")
+		assert(details:find("Genesis saved allocations: 0 added, 1 removed",1,true) and details:find("Atlas route steps do not include Genesis",1,true),"Atlas progression omitted Genesis summary")
+		assert(details:find("Genesis saved allocations",1,true)<details:find("Allocate:",1,true),"Genesis summary was buried after the allocation steps")
+		frame("atlas-genesis-progression");ui:click("close");main.popups={}
+end
 for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	newBuild();main.popups={}
 	local ui=UI.install({width=size[1],height=size[2]})
@@ -2220,17 +2241,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		end
 	end
 	uniqueProjectScenario()
-	do
-		main.popups={}
-		local atlas=require("Modules.AtlasPlanner");local baseline={id="atlas-totals-baseline",title="Atlas totals baseline",version="3.30.0c",budget=150,nodes={}}
-		build.savers.AtlasPlans:Upsert(baseline);local plan=atlas.connect({id="atlas-totals-ui",title="Atlas totals",version="3.30.0c",budget=150,nodes={}}, {57123,2929})
-		local control=require("Classes.AtlasPlannerControl").Open(build,plan);control.stats:Click();ui:choose("category","Added modifiers");ui:text("search","effect of Explicit Modifiers")
-		local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
-		assert(table.concat(details," "):gsub("%s+"," "):find("not an effective map chance",1,true),"Atlas modifier totals did not explain their scope")
-		frame("atlas-added-modifiers");ui:click("close");control.tools:Click();ui:text("search","Compare");ui:click("choose");ui:text("search","Atlas totals baseline")
-		details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
-		assert(table.concat(details," "):gsub("%s+"," "):find("Change: +",1,true),"Atlas comparison omitted modifier changes");frame("atlas-modifier-comparison");main.popups={}
-	end
+	UI.checkAtlasGenesisComparison(ui,build,frame)
 	do
 		main.popups={}
 		local project={id="unique-guide-review-ui",title="Review unique guide",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86",goals={},steps={{action="Acquire Goldrim"}}}
