@@ -72,15 +72,35 @@ function M.reviewSets(items)
  for _,bucket in pairs(buckets) do table.sort(bucket,function(a,b) if a.level~=b.level then return a.level<b.level end return a.index>b.index end) end
  local groups={}
  while true do
-  local complete=true;for _,slot in ipairs(setSlots) do if #buckets[slot]<(slot=="Ring" and 2 or 1) then complete=false;break end end
-  if not complete or (#buckets["Two hand"]==0 and (#buckets["One hand"]==0 or #buckets["One hand"]+#buckets.Shield<2)) then break end
+  local possible=math.huge
+  for _,slot in ipairs(setSlots) do possible=math.min(possible,math.floor(#buckets[slot]/(slot=="Ring" and 2 or 1))) end
+  local two,one,shields=#buckets["Two hand"],#buckets["One hand"],#buckets.Shield
+  possible=math.min(possible,two+math.floor((one+shields)/2))
+  if possible==0 then break end
+  -- Prefer the highest-level weapon combination that leaves enough equipment
+  -- for the remaining possible sets. Two shields are a historical recipe
+  -- option; its current eligibility still needs confirmation in game.
+  local choice,score
+  local function consider(first,second,twos,ones,shieldCount)
+   if two-twos+math.floor((one-ones+shields-shieldCount)/2)<possible-1 then return end
+   local firstItem=buckets[first][#buckets[first]]
+   local secondItem=second and buckets[second][#buckets[second]-(first==second and 1 or 0)]
+   if not firstItem or second and not secondItem then return end
+   local level=secondItem and math.min(firstItem.level,secondItem.level) or firstItem.level
+   if not score or level>score then score=level;choice={first,second} end
+  end
+  consider("Two hand",nil,1,0,0)
+  if one>=1 and shields>=1 then consider("One hand","Shield",0,1,1) end
+  if one>=2 then consider("One hand","One hand",0,2,0) end
+  if shields>=2 then consider("Shield","Shield",0,0,2) end
+  assert(choice,"Could not assemble the suggested weapon slots")
   local group={items={},minLevel=100,unidentified=true,quality20=true}
   local function take(slot)
    local item=table.remove(buckets[slot]);group.items[#group.items+1]=item;group.minLevel=math.min(group.minLevel,item.level)
    group.unidentified=group.unidentified and item.unidentified;group.quality20=group.quality20 and item.quality>=20
   end
   for _,slot in ipairs(setSlots) do take(slot);if slot=="Ring" then take(slot) end end
-  if #buckets["Two hand"]>0 then take("Two hand") else take("One hand");if #buckets.Shield>0 then take("Shield") else take("One hand") end end
+  take(choice[1]);if choice[2] then take(choice[2]) end
   group.reward=group.minLevel<60 and "Orb of Alchemy" or group.minLevel<75 and "Chaos Orb" or "Regal Orb"
   groups[#groups+1]=group
  end
@@ -91,8 +111,8 @@ function M.reviewSets(items)
  for _,slot in ipairs(setSlots) do local needed=(slot=="Ring" and 2 or 1)-#buckets[slot];if needed>0 then missing[#missing+1]={slot=slot,count=needed} end end
  if #buckets["Two hand"]==0 then
   local one,shields=#buckets["One hand"],#buckets.Shield
-  if one==0 then missing[#missing+1]={slot="Weapon",count=1,detail=shields>0 and "One-handed or two-handed weapon" or "Two-handed weapon, or a one-handed weapon plus another one-handed weapon or shield"}
-  elseif one+shields<2 then missing[#missing+1]={slot="Weapon or shield",count=1,detail="Another one-handed weapon or a shield; a two-handed weapon also works"} end
+  if one+shields==0 then missing[#missing+1]={slot="Weapon",count=1,detail="Two-handed weapon, or two one-handed weapons or shields"}
+  elseif one+shields<2 then missing[#missing+1]={slot="Weapon or shield",count=1,detail="Another one-handed weapon or shield; a two-handed weapon also works"} end
  end
  return {groups=groups,remaining=remaining,missing=missing,totalItems=#items,note="Suggested groups use copied classes and item levels. Weapon combinations, identification and quality bonuses, special items and vendor priority need in-game verification. Each paste must be a different item; no stash is accessed."}
 end

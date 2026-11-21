@@ -21,6 +21,18 @@ describe("Rare vendor set review",function()
   local input=kit(80);input[#input+1]=item("Helmets",40);local result=vendor.reviewSets(input)
   assert.equal("Regal Orb",result.groups[1].reward);assert.equal(40,result.remaining[1].level)
  end)
+ it("chooses the highest available weapon combination without losing later sets",function()
+  local input=kit(80);input[9]=item("Bows",40);input[#input+1]=item("One Hand Swords",80);input[#input+1]=item("Shields",80)
+  local result=vendor.reviewSets(input);assert.equal(1,#result.groups);assert.equal("Regal Orb",result.groups[1].reward);assert.equal(40,result.remaining[1].level)
+  local second=kit(80);for _,entry in ipairs(second) do input[#input+1]=entry end
+  result=vendor.reviewSets(input);assert.equal(2,#result.groups);assert.equal("Regal Orb",result.groups[1].reward);assert.equal("Regal Orb",result.groups[2].reward)
+  local used={};for _,group in ipairs(result.groups) do for _,entry in ipairs(group.items) do assert.is_nil(used[entry.index]);used[entry.index]=true end end
+ end)
+ it("can suggest two shields and describes missing one-hand slots",function()
+  local input=kit(80,"Shields");local partial=vendor.reviewSets(input);assert.equal(0,#partial.groups)
+  local found;for _,entry in ipairs(partial.missing) do if entry.slot=="Weapon or shield" then found=entry end end;assert.is_not_nil(found)
+  input[#input+1]=item("Shields",80);local result=vendor.reviewSets(input);assert.equal(1,#result.groups);assert.equal(10,#result.groups[1].items);assert.equal("Regal Orb",result.groups[1].reward)
+ end)
  it("reports missing slots from unused items",function()
   local input={item("Helmets",70),item("Rings",70),item("One Hand Swords",70)};local result=vendor.reviewSets(input);local missing={}
   for _,entry in ipairs(result.missing) do missing[entry.slot]=entry end

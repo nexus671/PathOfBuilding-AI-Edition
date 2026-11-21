@@ -55,6 +55,12 @@ async function main(){
   const rareSetCopies=['Helmets','Body Armours','Gloves','Boots','Amulets','Belts','Rings','Rings','Bows'].map(cls=>`Item Class: ${cls}\nRarity: Rare\nExample Base\n--------\nItem Level: 70\n--------\nUnidentified`);
   const rareSetReview=await queued('review_rare_vendor_sets',{baseRevision:context.revision,items:rareSetCopies},'rareSetVendorReview');
   assert.equal(rareSetReview.rareSetVendorReview.groups.length,1);assert.equal(rareSetReview.rareSetVendorReview.groups[0].reward,'Chaos Orb');assert.equal(rareSetReview.rareSetVendorReview.groups[0].items.length,9);
+  const betterWeapons=rareSetCopies.slice(0,8).map(text=>text.replace('Item Level: 70','Item Level: 80')).concat([
+    rareSetCopies[8].replace('Item Level: 70','Item Level: 40'),
+    rareSetCopies[8].replace('Bows','One Hand Swords').replace('Item Level: 70','Item Level: 80'),
+    rareSetCopies[8].replace('Bows','Shields').replace('Item Level: 70','Item Level: 80')]);
+  const betterSet=await queued('review_rare_vendor_sets',{baseRevision:context.revision,items:betterWeapons},'rareSetVendorReview');
+  assert.equal(betterSet.rareSetVendorReview.groups[0].reward,'Regal Orb');assert.equal(betterSet.rareSetVendorReview.remaining[0].level,40);
   const partialSet=await queued('review_rare_vendor_sets',{baseRevision:context.revision,items:[rareSetCopies[0],rareSetCopies[6]]},'rareSetVendorReview');
   assert.ok(partialSet.rareSetVendorReview.missing.some(entry=>entry.slot==='Ring' && entry.count===1));assert.ok(partialSet.rareSetVendorReview.missing.some(entry=>entry.slot==='Weapon'));assert.ok(!partialSet.rareSetVendorReview.missing.some(entry=>entry.slot==='Helmet'));
   const qualityCopies=[20,12,18,10].map(q=>`Item Class: ${q===20?'Wands':'Helmets'}\nRarity: ${q===20?'Normal':'Magic'}\n${q===20?'Driftwood Wand':'Superior Iron Hat of the Fox'}\n--------\nQuality: +${q}%`);
