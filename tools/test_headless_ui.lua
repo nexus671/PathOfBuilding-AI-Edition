@@ -103,7 +103,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		frame("map-clipboard-imported");ui:click("quality");frame("map-quality-editor");ui:text("kind","Threads");ui:click("keep")
 		do local rows={};for _,row in ipairs(main.popups[1].controls.affixes.list) do rows[#rows+1]=StripEscapes(row[1] or "") end;assert(table.concat(rows," "):find("Thread quantity %(amount unverified%)"),"Thread quality uncertainty was not shown") end
 		frame("map-quality-threads");ui:click("quality");ui:text("kind","Pack Size");ui:click("keep")
-		local savedCopy=ui.clipboard;ui.clipboard="Item Class: Maps\nRarity: Rare\nMap (Tier 5)\n--------\nItem Level: 68\n--------\nUnidentified\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
+		local savedCopy=ui.clipboard;ui.clipboard=savedCopy.."\n--------\nTwice Corrupted";ui:click("pasteMap");frame("map-twice-review");ui:click("keep")
+		assert(not main.popups[1].controls.currency:IsEnabled(),"Twice-corrupted map allowed currency");ui:text("draftName","Twice corrupted map");ui:click("keep");ui:click("close");ui:click("tools");ui:text("search","Saved map drafts");ui:click("choose")
+		do local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;assert(table.concat(details," "):find("Twice Corrupted",1,true),"Saved twice-corrupted marker missing") end
+		frame("saved-twice-corrupted-map");ui:click("secondary");ui:click("close");ui:click("tools");ui:text("search","Map modifier explorer");ui:click("choose")
+		ui.clipboard="Item Class: Maps\nRarity: Rare\nMap (Tier 5)\n--------\nItem Level: 68\n--------\nUnidentified\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
 		ui:click("pasteMap");frame("map-unidentified-review");ui:click("keep")
 		do local c=main.popups[1].controls;assert(c.status.label:find("unknown",1,true) and not c.currency:IsEnabled() and not c.estimate:IsEnabled(),"Unidentified copied maps must keep modifiers unknown") end;frame("map-unidentified-imported")
 		ui:text("draftName","Unknown map");ui:click("keep");ui:click("close");ui:click("tools");ui:text("search","Saved map drafts");ui:click("choose")

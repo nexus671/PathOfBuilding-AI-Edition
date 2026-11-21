@@ -231,6 +231,13 @@ describe("Map modifier explorer",function()
 		assert.is_false(controls.currency:IsEnabled());assert.is_false(controls.estimate:IsEnabled());controls.keep:Click();assert.is_true(captured.mirrored)
 	end)
 
+	it("keeps and reopens a twice-corrupted map",function()
+		local saved;local initial={id="twice",title="Twice corrupted",patch=require("Modules.MapCraftingData").source().patch,baseId="Metadata/Items/Maps/MapKeyTier16",tier=16,itemLevel=83,rarity="rare",selected={},corrupted=true,twiceCorrupted=true}
+		local controls=require("Classes.MapModifierControl").Open({build=build,initial=initial,keep=function(entry) saved=require("Modules.AtlasPlanner").validateMapDraft(entry);return "twice" end})
+		assert.is_false(controls.currency:IsEnabled());controls.keep:Click();assert.is_true(saved.twiceCorrupted);controls.close:Click()
+		controls=require("Classes.MapModifierControl").Open({build=build,initial=saved,keep=function(entry) saved=entry;return "twice" end});controls.keep:Click();assert.is_true(saved.twiceCorrupted)
+		controls.rarity:SelByValue("rare","val");controls.rarity.selFunc();controls.keep:Click();assert.is_nil(saved.twiceCorrupted)
+	end)
 	it("records and reopens a corruption implicit and exact value",function()
 		local captured;local controls=require("Classes.MapModifierControl").Open({keep=function(entry) captured=copyTable(entry);return "map-implicit" end})
 		controls.rarity:SelByValue("corrupted_rare","val");controls.rarity.selFunc();controls.implicit:Click()

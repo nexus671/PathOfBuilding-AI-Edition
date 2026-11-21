@@ -466,7 +466,7 @@ function Panel.Open(build,source,layout)
 	showMapDrafts=function()
 		local choices={};for _,entry in ipairs(current().mapDrafts or {}) do
 			local base=require("Modules.MapCraftingData").source().bases[entry.baseId]
-			local details={base and base.name or entry.baseId,"Tier "..entry.tier.." | "..entry.rarity.." | item level "..entry.itemLevel,(entry.unidentified and "Unidentified: modifiers and totals unknown; +30% Atlas Drops when opened" or #entry.selected.." hypothetical modifiers")..(entry.corrupted and " | Corrupted" or "")..(entry.mirrored and " | Mirrored" or "")}
+			local details={base and base.name or entry.baseId,"Tier "..entry.tier.." | "..entry.rarity.." | item level "..entry.itemLevel,(entry.unidentified and "Unidentified: modifiers and totals unknown; +30% Atlas Drops when opened" or #entry.selected.." hypothetical modifiers")..(entry.twiceCorrupted and " | Twice Corrupted" or entry.corrupted and " | Corrupted" or "")..(entry.mirrored and " | Mirrored" or "")}
 			local delirium=require("Modules.MapObservedEffects").delirium(entry.observedEffects)
 			if delirium then details[#details+1]="Delirium: "..delirium.percent.."% | "..delirium.baseRewardCount.." base "..delirium.rewardType.." rewards" end
 			if entry.vaalPreview then details[#details+1]="Based on a conditional Vaal preview; outcome odds are not modeled." end

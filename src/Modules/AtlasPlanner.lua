@@ -59,6 +59,9 @@ function M.validateMapDraft(entry)
 	assert(result.tier~=17 or result.rarity=="rare","Tier 17 map drafts require rare rarity")
 	assert(entry.corrupted==nil or type(entry.corrupted)=="boolean","Invalid map corruption state")
 	result.corrupted=entry.corrupted or nil
+	assert(entry.twiceCorrupted==nil or type(entry.twiceCorrupted)=="boolean","Invalid twice-corrupted map state")
+	assert(not entry.twiceCorrupted or result.corrupted,"A twice-corrupted map must be corrupted")
+	result.twiceCorrupted=entry.twiceCorrupted or nil
 	assert(entry.vaalPreview==nil or type(entry.vaalPreview)=="boolean","Invalid conditional Vaal preview marker")
 	assert(not entry.vaalPreview or result.corrupted,"A conditional Vaal preview requires a corrupted map")
 	result.vaalPreview=entry.vaalPreview or nil

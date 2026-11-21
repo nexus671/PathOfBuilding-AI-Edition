@@ -61,6 +61,8 @@ local function originatorBranches(state,checkpoint,cache)
 end
 local function validate(input,checkpoint,cache)
 	assert(type(input)=="table" and type(input.selected)=="table","Invalid map state")
+	assert(input.twiceCorrupted==nil or type(input.twiceCorrupted)=="boolean","Invalid twice-corrupted map state")
+	assert(not input.twiceCorrupted or input.corrupted,"A twice-corrupted map must be corrupted")
 	assert(input.vaalPreview==nil or type(input.vaalPreview)=="boolean","Invalid conditional Vaal preview marker")
 	assert(not input.vaalPreview or input.corrupted,"A conditional Vaal preview requires a corrupted map")
 	assert(not input.corrupted,"Corrupted maps cannot be modified with these currencies")

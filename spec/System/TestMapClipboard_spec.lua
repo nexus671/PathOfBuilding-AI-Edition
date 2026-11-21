@@ -31,6 +31,14 @@ describe("Map clipboard import",function()
   local draft={id="normal-corrupt",title="Copied map",patch=require("Modules.MapCraftingData").source().patch,baseId=parsed.baseId,tier=parsed.tier,itemLevel=parsed.itemLevel,rarity=parsed.rarity,selected=parsed.selected,corrupted=parsed.corrupted,implicit=parsed.implicit,observedEffects=parsed.observedEffects}
   assert.same(draft,require("Modules.AtlasPlanner").validateMapDraft(draft))
  end)
+ it("preserves a twice-corrupted map and its blocked currency actions",function()
+  local raw=header.."Monsters have 45% increased Area of Effect"..trailer.."\n--------\nTwice Corrupted"
+  local state=parser.parse(raw).state;assert.is_true(state.corrupted);assert.is_true(state.twiceCorrupted)
+  state.id="twice";state.title="Twice corrupted";state.patch=require("Modules.MapCraftingData").source().patch
+  local saved=require("Modules.AtlasPlanner").validateMapDraft(state);assert.is_true(saved.twiceCorrupted)
+  assert.has_error(function() require("Modules.MapCurrency").perform(state,"chaos",1) end)
+  saved.corrupted=nil;assert.has_error(function() require("Modules.AtlasPlanner").validateMapDraft(saved) end)
+ end)
  it("imports unidentified maps without inventing their hidden modifiers",function()
   local raw="Item Class: Maps\nRarity: Rare\nMap (Tier 5)\n--------\nItem Level: 68\n--------\nUnidentified"..trailer
   local result=parser.parse(raw);local state=result.state;assert.is_true(state.unidentified);assert.equal(0,#state.selected);assert.matches("unknown",result.notes[1],1,true);assert.equal(30,result.unidentifiedOpeningBonus.atlasDrops)

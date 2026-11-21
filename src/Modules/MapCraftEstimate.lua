@@ -22,6 +22,8 @@ local function ids(list,limit,label)
 end
 function M.run(state,options,checkpoint)
 	assert(type(state)=="table" and type(options)=="table","Invalid map estimate")
+	assert(state.twiceCorrupted==nil or type(state.twiceCorrupted)=="boolean","Invalid twice-corrupted map state")
+	assert(not state.twiceCorrupted or state.corrupted,"A twice-corrupted map must be corrupted")
 	assert(state.vaalPreview==nil or type(state.vaalPreview)=="boolean","Invalid conditional Vaal preview marker")
 	assert(not state.vaalPreview or state.corrupted,"A conditional Vaal preview requires a corrupted map")
 	assert(not state.corrupted,"Corrupted maps cannot be rerolled")

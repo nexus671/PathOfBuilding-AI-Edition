@@ -97,7 +97,8 @@ function M.parse(raw,checkpoint)
  assert(#matches==1,#matches==0 and "The map base is not in the supported map catalogue" or "The copied map base is ambiguous")
  local nightmare=map.isNightmare(matches[1]);assert(nightmare == (tier==17),"Nightmare maps require tier 17; ordinary maps require tier 1 to 16")
  assert(not nightmare or rarity=="rare","Nightmare maps require rare rarity")
- local corrupted=raw:match("\nCorrupted\n")~=nil or raw:match("\nCorrupted$")~=nil
+ local twiceCorrupted=raw:match("\nTwice Corrupted\n")~=nil or raw:match("\nTwice Corrupted$")~=nil
+ local corrupted=twiceCorrupted or raw:match("\nCorrupted\n")~=nil or raw:match("\nCorrupted$")~=nil
  local _,levelEnd=raw:find("\nItem Level:%s*%d+");local tail=raw:sub(assert(levelEnd,"The copied map needs its item level")+1)
  local lines,implicit,observed={},nil,{}
  local deliriumDepth,deliriumReward
@@ -115,7 +116,7 @@ function M.parse(raw,checkpoint)
    deliriumDepth=line
   elseif line:match("^Delirium Reward Type: .+$") then
    assert(not deliriumReward,"The copied map has multiple Delirium reward types");deliriumReward=line
-  elseif line~="" and not line:match("^%-+$") and not line:match("^%b{}$") and not line:match("^Monster Level:") and not line:match("^Modifiable only with ") and line~="Corrupted" and line~="Mirrored" and line~="Unidentified" and not line:match("^Travel to this Map") then
+  elseif line~="" and not line:match("^%-+$") and not line:match("^%b{}$") and not line:match("^Monster Level:") and not line:match("^Modifiable only with ") and line~="Corrupted" and line~="Twice Corrupted" and line~="Mirrored" and line~="Unidentified" and not line:match("^Travel to this Map") then
    lines[#lines+1]=line
   end
  end
@@ -211,7 +212,7 @@ function M.parse(raw,checkpoint)
  search(1)
  assert(#solutions>0,"Some copied modifier lines could not be matched to the current map data; the existing draft was not changed")
  assert(#solutions==1,"The copied modifiers match multiple identities; select them manually instead")
- local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,mirrored=mirrored or nil,unidentified=unidentified or nil,implicit=implicit,quality=quality,observedEffects=observed}
+ local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,twiceCorrupted=twiceCorrupted or nil,mirrored=mirrored or nil,unidentified=unidentified or nil,implicit=implicit,quality=quality,observedEffects=observed}
  if rarity~="normal" then map.inspect(state.baseId,tier,level,state.selected,"",0,1,checkpoint,rarity,nil,corrupted,implicit,nil,observed) end
  local qualityEffect=require("Modules.MapQuality").effect(quality)
  return {state=state,dataPatch=map.source().patch,dataSource=copyTable(map.source().source),delirium=require("Modules.MapObservedEffects").delirium(observed),unidentifiedOpeningBonus=unidentified and {atlasDrops=30,condition="When opened unidentified"} or nil,notes={unidentified and "Unidentified map: explicit modifiers and their totals are unknown. Opening it unidentified grants +30% Atlas Drops." or "Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality: "..quality.kind.." +"..quality.value.."%. "..(qualityEffect.supported and qualityEffect.text or "Effect not modeled")..".") or "No quality recorded.",observed and (#observed.." additional effect lines recorded."..require("Modules.MapObservedEffects").note(observed)..(map.hasBlightedLegacy(state.selected,observed) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")) or (nightmare and "Nightmare Chaos estimates use an experimental draw order and unverified odds." or itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately.")}}
