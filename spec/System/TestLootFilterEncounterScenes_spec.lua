@@ -5,7 +5,7 @@ describe("Filter encounter scenes", function()
 		local ok,err=pcall(function()
 			build.viewMode="CONFIG";ui:bind(build);ui:click("aiBuild");ui:click("nav_filters")
 			ui:click("create2");ui:text("title","Encounter examples");ui:click("viewSimulate")
-			for _,name in ipairs({"Breach","Legion","Sanctum","Pinnacle bosses"}) do
+			for _,name in ipairs({"Breach","Incursion","Legion","Sanctum","Pinnacle bosses"}) do
 				ui:choose("sceneKind",name)
 				local scene=build.planningWorkspace.cache.filters.layout.snapshot()
 				assert.equal(name,scene.sceneKind)
