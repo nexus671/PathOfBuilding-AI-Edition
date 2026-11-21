@@ -487,7 +487,7 @@ test('preserves typed Harvest enchant actions, goals and inventory states', t =>
 
 test('accepts named crafting recipe alternatives', t => {
   const f=fixture(t),project=craftingProject();
-  project.recipeAlternatives=Array.from({length:12},(_,index)=>({name:`Route ${index+1}`,recipe:{steps:[{method:'alchemy'}],targets:[]}}));
+  project.recipeAlternatives=Array.from({length:12},(_,index)=>({name:`Route ${index+1}`,recipe:{steps:[{method:'alchemy'}],targets:[]},trackPickups:index===0}));
   f.call('propose_crafting_plan',{baseRevision:f.state.revision,project});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).proposal.operations[0].project.recipeAlternatives,project.recipeAlternatives);
   assert.throws(()=>f.call('propose_crafting_plan',{baseRevision:f.state.revision,project:{...project,recipeAlternatives:[{name:'Broken',recipe:{steps:[],targets:[]}}]}}),/arguments/);

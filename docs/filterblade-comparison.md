@@ -13,7 +13,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Campaign weapon selection | Eighteen native families, equipped-family selection and progressive base-level windows | More character-specific class presets |
 | Campaign armour selection | Armour/evasion/ES combinations and Ward, with native base art | More starter presets |
 | Campaign vendor rares | Base preset rules and campaign pickup policies, plus copied-item reviews for quality groups and rare equipment sets | Rare set combinations, bonuses and vendor priority need in-game verification; other completed vendor sets remain unsupported |
-| Endgame build adjustment | Exact saved targets and Atlas pickups | Trade/SSF-specific policies |
+| Endgame build adjustment | Exact saved targets, opted-in crafting alternatives and Atlas pickups | Trade/SSF-specific policies |
 | Item overview and colour examples | Live scene using the compiled filter | Explanatory galleries for every item family |
 | Hierarchical customizer | Category sidebar, search, personal/base/policy scope and collapsible compiled sections | Human-edited subcategories |
 | Base-filter rule browsing | Full parsed preset catalogue with styled examples | Human-edited descriptions for every source rule |

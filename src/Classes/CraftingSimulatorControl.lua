@@ -561,6 +561,11 @@ function Panel.Open(build,project,layout)
 					assert(found,"Saved alternative no longer exists");draft=copyTable(build.savers.CraftingProjects:Upsert(candidate));refresh({"Alternative recipe updated. Use build Save to persist."})
 					for _,alternative in ipairs(draft.recipeAlternatives) do if alternative.name==name then return copyTable(alternative) end end
 				end,
+				trackAlternative=function(name,enabled)
+					local candidate=copyTable(draft);local found
+					for _,alternative in ipairs(candidate.recipeAlternatives or {}) do if alternative.name==name then alternative.trackPickups=enabled;found=true;break end end
+					assert(found,"Saved alternative no longer exists");draft=copyTable(build.savers.CraftingProjects:Upsert(candidate));refresh({"Pickup tracking updated. Use build Save to persist."})
+				end,
 				renameAlternative=function(oldName,newName)
 					local candidate=copyTable(draft);local found
 					for _,alternative in ipairs(candidate.recipeAlternatives or {}) do if alternative.name==oldName then alternative.name=newName;found=true;break end end

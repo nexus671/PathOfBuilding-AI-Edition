@@ -50,6 +50,7 @@ return function(ui, frame, build, sim, jobs)
 		assert(#store.projects[#store.projects].recipeAlternatives[1].recipe.steps==3,"Alternative update was not saved")
 		ui:click("manageAlternatives");local popup=main.popups[1].controls;local x,y=popup.list:GetPos();ui:clickAt(x+20,y+12);ui:text("name","Renamed route");frame("crafting-alternative-manage");ui:click("rename")
 		assert(store.projects[#store.projects].recipeAlternatives[1].name=="Renamed route","Alternative rename was not saved")
+		ui:click("track");assert(store.projects[#store.projects].recipeAlternatives[1].trackPickups==true,"Alternative pickup tracking was not saved");frame("crafting-alternative-track")
 		ui:click("use");ui:click("confirm");ui:click("close");ui:click("remove");ui:click("confirm");assert(#store.projects[#store.projects].recipeAlternatives==0,"Alternative removal was not saved")
 		ui:click("close");ui:click("close");ui:click("close");store.projects=original
 	end

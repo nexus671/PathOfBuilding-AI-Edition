@@ -320,6 +320,49 @@ describe("Linked planning tools",function()
 		profile.rules=filters.generate(build,profile);names={};for _,rule in ipairs(profile.rules) do names[rule.title]=true end
 		assert.is_nil(names["Omen of Connections"]);assert.is_true(names["Orb of Scouring"])
 	end)
+	it("links only tracked alternative recipe resources and donor bases",function()
+		local project=craft();project.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		local derived="Rarity: NORMAL\nLeather Cap\nItem Level: 86";local donor="Rarity: NORMAL\nHubris Circlet\nItem Level: 86"
+		project.recipeAlternatives={
+			{name="Quality",trackPickups=false,recipe={steps={{method="quality"}},targets={},requirements={minQuality=1}}},
+			{name="Donor",trackPickups=false,recipe={steps={{method="recombine",donorItem=donor}},targets={},requirements={minAffixes=1},initialState={rarity="RARE",affixes={},baseItem=derived}}},
+			{name="Ignored",recipe={steps={{method="chaos"}},targets={},requirements={minAffixes=1}}},
+			{name="Duplicate",trackPickups=true,recipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}},
+		}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("alternative-pickups","Alternatives");profile.template="Hide";profile.rules=filters.generate(build,profile)
+		local function names(rules) local result={};for _,rule in ipairs(rules) do if rule.origin=="craft:helmet" then result[rule.title]=(result[rule.title] or 0)+1 end end;return result end
+		local found=names(profile.rules);assert.equal(1,found["Orb of Alchemy"]);assert.is_nil(found["Armourer's Scrap"]);assert.is_nil(found["Chaos Orb"])
+		assert.is_nil(found["Donor base: Hubris Circlet"]);assert.is_false(dependencies.report(build,profile).stale)
+		project.recipeAlternatives[1].trackPickups=true;build.savers.CraftingProjects:Upsert(project);assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);found=names(profile.rules);assert.equal(1,found["Armourer's Scrap"]);assert.is_nil(found["Chaos Orb"])
+		project.recipeAlternatives[2].trackPickups=true;build.savers.CraftingProjects:Upsert(project);assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);found=names(profile.rules);assert.is_true(found["Donor base: Hubris Circlet"]~=nil);assert.equal("Show",filters.simulate(profile,{BaseType="Leather Cap",Rarity="Rare",ItemLevel=86}).action)
+		local existing=build.savers.CraftingProjects.projects[1].recipeAlternatives[2];existing.name="Renamed donor";existing.recipe.initialState.baseItem="Not an item"
+		local preserved,warnings=filters.generate(build,profile);local foundBase=false;for _,rule in ipairs(preserved) do if rule.origin=="craft:helmet" and rule.title=="Helmet alternative starting base" then foundBase=true end end
+		assert.is_true(foundBase);assert.is_true(#warnings>0);build.savers.CraftingProjects:Upsert(project)
+		project.recipeAlternatives[2].trackPickups=false;build.savers.CraftingProjects:Upsert(project);assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);found=names(profile.rules);assert.is_nil(found["Donor base: Hubris Circlet"]);assert.is_true(found["Armourer's Scrap"]~=nil)
+	end)
+	it("does not duplicate a preserved working base when another tracked route uses it",function()
+		local project=craft();local derived="Rarity: NORMAL\nLeather Cap\nItem Level: 86"
+		local recipe={steps={{method="quality"}},targets={},requirements={minQuality=1},initialState={rarity="RARE",affixes={},baseItem=derived}}
+		project.recipeAlternatives={{name="First",trackPickups=true,recipe=copyTable(recipe)},{name="Second",trackPickups=true,recipe=copyTable(recipe)}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("working-base-unique","Working bases");profile.rules=filters.generate(build,profile)
+		local saved=build.savers.CraftingProjects.projects[1].recipeAlternatives[1];saved.name="Renamed";saved.recipe.initialState.baseItem="Not an item"
+		local rules,warnings=filters.generate(build,profile);local count=0
+		for _,rule in ipairs(rules) do if rule.origin=="craft:helmet" and rule.text:find('BaseType == "Leather Cap"',1,true) then count=count+1 end end
+		assert.equal(1,count);assert.is_true(#warnings>0)
+	end)
+	it("does not duplicate a known alternative resource when another recipe needs review",function()
+		local project=craft();project.nativeRecipe={steps={{method="recombine",donorItem="Rarity: NORMAL\nHubris Circlet\nItem Level: 86"}},targets={},requirements={minAffixes=1}}
+		project.recipeAlternatives={{name="Quality",trackPickups=true,recipe={steps={{method="quality"}},targets={},requirements={minQuality=1}}}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("deduplicate-alternatives","Deduplicate");profile.rules=filters.generate(build,profile)
+		for _=1,2 do
+			profile.rules=filters.generate(build,profile);local count=0
+			for _,rule in ipairs(profile.rules) do if rule.origin=="craft:helmet" and rule.title=="Armourer's Scrap" then count=count+1 end end
+			assert.equal(1,count)
+		end
+	end)
 	it("links saved unique guide currencies to filters without guessing edited text",function()
 		local project={id="unique-filter",title="Goldrim",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B",goals={},steps={}}
 		build.savers.CraftingProjects:Upsert(project)

@@ -106,6 +106,16 @@ function M.rule(id,title,conditions,origin,theme)
 	for _,pair in ipairs({{"SetTextColor",style.text},{"SetBorderColor",style.border},{"SetBackgroundColor",style.background},{"SetFontSize","42"},{"PlayAlertSound",style.sound.." 200"},{"MinimapIcon","1 Cyan Diamond"},{"PlayEffect","Cyan"}}) do lines[#lines+1]="    "..pair[1].." "..pair[2] end
 	return {id=id,title=title,text=table.concat(lines,"\n"),enabled=true,origin=origin}
 end
+-- The primary recipe is always linked; alternative routes are included only
+-- when the user explicitly tracks their pickups.
+local function linkedRecipes(project)
+	local recipes={}
+	if project.nativeRecipe then recipes[#recipes+1]={recipe=project.nativeRecipe,primary=true} end
+	for _,alternative in ipairs(project.recipeAlternatives or {}) do
+		if alternative.trackPickups then recipes[#recipes+1]={recipe=alternative.recipe,name=alternative.name} end
+	end
+	return recipes
+end
 function M.generate(build,profile,checkpoint)
 	local result={};local used={};local ids={};local warnings={};local recipeModels={}
 	local sliceStart=os.clock()
@@ -143,31 +153,58 @@ function M.generate(build,profile,checkpoint)
 		add(id,title,conditions,origin)
 		return true,item,level
 	end
+	local function preserveRule(rule)
+		if ids[rule.id] then return end
+		-- Recognize the simple generated base conditions so a later valid
+		-- route does not add a duplicate of a preserved pickup.
+		local block=parser.parse(rule.text).rules[1];local conditions={};local comparable=block and block.action=="Show"
+		if comparable then for _,condition in ipairs(block.conditions) do
+			local value=condition.values[1]
+			if #condition.values~=1 then comparable=false;break end
+			if (condition.keyword=="BaseType" or condition.keyword=="Class") and condition.operator=="==" and not value:find('["\r\n]') then
+				conditions[#conditions+1]=condition.keyword.." == "..quote(value)
+			elseif condition.keyword=="Rarity" and (condition.operator=="==" or condition.operator=="<=") then
+				conditions[#conditions+1]="Rarity "..condition.operator.." "..value
+			elseif condition.keyword=="ItemLevel" and condition.operator==">=" and value:match("^%d+$") then
+				conditions[#conditions+1]="ItemLevel >= "..value
+			else comparable=false;break end
+		end end
+		local signature=comparable and #conditions>0 and (rule.origin or "").."\0"..table.concat(conditions,"\n") or nil
+		if signature and used[signature] then return end
+		if signature then used[signature]=true end
+		result[#result+1]=copyTable(rule);ids[rule.id]=true
+	end
 	local function preserveBase(origin,id,title,description)
 		warnings[#warnings+1]={origin=origin,title=title,message="Could not read "..description..". Previous base pickups were kept; review the saved item."}
 		for _,rule in ipairs(profile.rules) do
 			local suffix=rule.id:sub(#id+1)
-			if rule.origin==origin and rule.id:sub(1,#id)==id and (suffix=="" or suffix:match("^%-%d+$")) and not ids[rule.id] then
-				result[#result+1]=copyTable(rule);ids[rule.id]=true
-			end
+			if rule.origin==origin and rule.id:sub(1,#id)==id and (suffix=="" or suffix:match("^%-%d+$")) then preserveRule(rule) end
 		end
 	end
 	for _,p in ipairs(build.savers.CraftingProjects.projects) do
 		local origin="craft:"..p.id;local id="craft-"..p.id
 		local startOK,startItem,startLevel=base(p.startingItem,id,p.title.." base",origin)
 		if not startOK then preserveBase(origin,id,p.title,"the crafting base") end
-		local initial=p.nativeRecipe and p.nativeRecipe.initialState;local workingItem,workingLevel
-		if initial and initial.baseItem then
-			local workingId="craft-working-"..p.id
-			if checkpoint and not recipeModels[p.startingItem] then require("Modules.CraftingAdvanced").prepare(checkpoint) end
-			local ok=pcall(function()
-				local sim=require("Modules.CraftingSimulator");local model=recipeModels[p.startingItem]
-				if not model then model=sim.model(p.startingItem);recipeModels[p.startingItem]=model end
-				local state=sim.validateState(model,initial);assert(state.baseItem and sim.context(model,state).item.baseName)
-				local valid;valid,workingItem,workingLevel=base(state.baseItem,workingId,p.title.." recipe starting base",origin)
-				assert(valid,"Invalid recipe starting base")
-			end)
-			if not ok then preserveBase(origin,workingId,p.title,"the recipe starting base") end
+		local workingItem,workingLevel
+		for _,linked in ipairs(linkedRecipes(p)) do
+			local initial=linked.recipe.initialState
+			if initial and initial.baseItem then
+				local workingId="craft-working-"..p.id..(linked.primary and "" or "-"..require("sha1")(linked.name):sub(1,12))
+				if checkpoint and not recipeModels[p.startingItem] then require("Modules.CraftingAdvanced").prepare(checkpoint) end
+				local ok=pcall(function()
+					local sim=require("Modules.CraftingSimulator");local model=recipeModels[p.startingItem]
+					if not model then model=sim.model(p.startingItem);recipeModels[p.startingItem]=model end
+					local state=sim.validateState(model,initial);assert(state.baseItem and sim.context(model,state).item.baseName)
+					local valid,item,level=base(state.baseItem,workingId,p.title..(linked.primary and " recipe starting base" or " alternative starting base"),origin)
+					assert(valid,"Invalid recipe starting base");if linked.primary then workingItem,workingLevel=item,level end
+				end)
+				if not ok then
+					preserveBase(origin,workingId,p.title,"the recipe starting base")
+					-- A renamed alternative can have a different generated ID. Keep
+					-- earlier working-base pickups until the invalid state is repaired.
+					if not linked.primary then for _,rule in ipairs(profile.rules) do if rule.origin==origin and rule.id:match("^craft%-working%-") then preserveRule(rule) end end end
+				end
+			end
 		end
 		if p.targetItem and p.targetItem:match("%S") then
 			local targetId="craft-target-"..p.id
@@ -184,12 +221,12 @@ function M.generate(build,profile,checkpoint)
 			end
 		end
 		local invalidDonor=false
-		for _,step in ipairs(p.nativeRecipe and p.nativeRecipe.steps or {}) do
+		for _,linked in ipairs(linkedRecipes(p)) do for _,step in ipairs(linked.recipe.steps) do
 			if (step.method=="awakener" or step.method=="recombine" or step.method=="recombine_predictable") and step.donorItem and step.donorItem~="" then
 				local ok=base(step.donorItem,function(item,level) return "craft-donor-"..p.id.."-"..require("sha1")(item.baseName..":"..tostring(level or 0)):sub(1,12) end,function(item) return "Donor base: "..item.baseName end,origin)
 				invalidDonor=invalidDonor or not ok
 			end
-		end
+		end end
 		if invalidDonor then
 			warnings[#warnings+1]={origin=origin,title=p.title,message="Could not read a configured donor base. Previous donor pickups were kept; review the crafting guide."}
 			for _,rule in ipairs(profile.rules) do if rule.origin==origin and rule.id:match("^craft%-donor%-") and not ids[rule.id] then result[#result+1]=copyTable(rule);ids[rule.id]=true end end
@@ -254,7 +291,9 @@ function M.generate(build,profile,checkpoint)
 	for _,name in ipairs({"Orb of Alchemy","Chaos Orb","Divine Orb","Orb of Alteration","Orb of Augmentation","Regal Orb","Exalted Orb","Orb of Annulment","Chromatic Orb","Jeweller's Orb","Orb of Fusing","Vaal Orb"}) do names[name]="Stackable Currency" end
 	-- Only concrete currency items from modeled recipe components become drops.
 	-- Unknown prices, beasts and whole-service prices are not item identities.
-	for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.nativeRecipe then
+	local preserveRecipeResources={}
+	for _,source in ipairs(build.savers.CraftingProjects.projects) do for _,linked in ipairs(linkedRecipes(source)) do
+		local project={id=source.id,title=source.title..(linked.primary and "" or " / "..linked.name),startingItem=source.startingItem,nativeRecipe=linked.recipe}
 		local key=require("sha1")(project.startingItem.."\0"..require("Modules.PlanningData").encode(project.nativeRecipe))
 		local coverage=recipeResourceCache[key];local needsInspection=not coverage;local ok=true
 		local rarity=project.startingItem:match("^Rarity:%s*(%a+)") or project.startingItem:match("\nRarity:%s*(%a+)")
@@ -353,10 +392,16 @@ function M.generate(build,profile,checkpoint)
 				else message="Could not inspect this recipe's resources." end
 			else message="Some recipe steps need review: "..table.concat(coverage.unknown,", ").."." end
 			warnings[#warnings+1]={origin="craft:"..project.id,title=project.title,message=message.." Previous recipe pickups were kept; review the crafting guide.",retry=not ok}
-			for _,rule in ipairs(profile.rules) do if rule.origin=="craft:"..project.id and rule.id:match("^craft%-resource%-") and not ids[rule.id] then result[#result+1]=copyTable(rule);ids[rule.id]=true end end
+			preserveRecipeResources[project.id]=true
 		end
 		if checkpoint and needsInspection then checkpoint();sliceStart=os.clock() end
 	end end
+	-- Preserve old uncertain pickups after all known recipes have contributed,
+	-- so a later known route cannot duplicate a preserved resource rule.
+	for _,rule in ipairs(profile.rules) do
+		local projectId=(rule.origin or ""):match("^craft:(.+)$")
+		if projectId and preserveRecipeResources[projectId] and rule.id:match("^craft%-resource%-") and not ids[rule.id] then result[#result+1]=copyTable(rule);ids[rule.id]=true end
+	end
 	-- Written unique previews carry typed actions. Do not infer currencies from
 	-- free text: an edited guide may no longer describe the original craft.
 	for _,project in ipairs(build.savers.CraftingProjects.projects) do

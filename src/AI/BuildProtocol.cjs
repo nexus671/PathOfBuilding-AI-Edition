@@ -66,7 +66,7 @@ const uniqueCraftStep={oneOf:[
   object({method:{const:'socket_count_bench'},count:integer(2,6)},['method','count']),
 ]};
 const craftingProjectSchema = object({preferredMethod:{enum:craftingMethods},id:{type:'string',pattern:'^[A-Za-z0-9_-]{1,64}$'},title:string(120),slot:string(80),startingItem:string(24000),targetItem:string(24000),
-  priceBook:craftingPriceBook,nativeRecipe:craftingRecipe,recipeAlternatives:journeyList(object({name:string(120),recipe:craftingRecipe},['name','recipe'])),inventory:craftingInventory,goals:journeyList(string(300)),steps:journeyList(object({action:string(1000),stopWhen:string(500),onFailure:string(500),done:boolean,uniqueCraft:uniqueCraftStep},['action'])),notes:string(8000),estimate:quoteSchema,simulatorExport:string(128000),
+  priceBook:craftingPriceBook,nativeRecipe:craftingRecipe,recipeAlternatives:journeyList(object({name:string(120),recipe:craftingRecipe,trackPickups:boolean},['name','recipe'])),inventory:craftingInventory,goals:journeyList(string(300)),steps:journeyList(object({action:string(1000),stopWhen:string(500),onFailure:string(500),done:boolean,uniqueCraft:uniqueCraftStep},['action'])),notes:string(8000),estimate:quoteSchema,simulatorExport:string(128000),
   simulation:object({patch:string(40),observedAt:integer(0,4102444800),trials:integer(1,1e9),successes:integer(0,1e9),notes:string(4000)},['patch','observedAt','trials','successes'])},['id','title','slot','startingItem','goals','steps']);
 const operations = [
   object({type:{const:'set_character'},level:integer(1,100),className:string(40),ascendancy:string(40)},['type']),

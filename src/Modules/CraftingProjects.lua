@@ -82,7 +82,8 @@ function M.validate(project)
 			local name=text(alternative.name,120,"recipe name"):match("^%s*(.-)%s*$")
 			assert(name~="" and not name:find("[%c%^]"),"Invalid recipe name")
 			assert(not names[name:lower()],"Recipe names must be unique");names[name:lower()]=true
-			result.recipeAlternatives[#result.recipeAlternatives+1]={name=name,recipe=require("Modules.CraftingSimulator").validateRecipe(alternative.recipe)}
+			assert(alternative.trackPickups==nil or type(alternative.trackPickups)=="boolean","Invalid recipe pickup tracking")
+			result.recipeAlternatives[#result.recipeAlternatives+1]={name=name,recipe=require("Modules.CraftingSimulator").validateRecipe(alternative.recipe),trackPickups=alternative.trackPickups}
 		end
 	end
 	if project.preferredMethod then
@@ -271,7 +272,7 @@ function M.lines(project)
 			if step.untilTargets then lines[#lines+1]=string.format("   Step target groups: %d of %d required",step.untilRequiredGroups or #step.untilTargets,#step.untilTargets) end
 		end
 	end
-	for _,alternative in ipairs(project.recipeAlternatives or {}) do lines[#lines+1]="Alternative recipe: "..alternative.name.." ("..#alternative.recipe.steps.." steps)" end
+	for _,alternative in ipairs(project.recipeAlternatives or {}) do lines[#lines+1]="Alternative recipe: "..alternative.name.." ("..#alternative.recipe.steps.." steps"..(alternative.trackPickups and "; filter pickups tracked" or "")..")" end
 	if project.notes and project.notes ~= "" then lines[#lines+1]=project.notes end
 	return lines
 end

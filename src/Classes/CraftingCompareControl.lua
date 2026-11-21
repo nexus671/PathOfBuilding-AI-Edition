@@ -14,7 +14,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 	local library,origins={},{}
 	local function addAlternative(alternative)
 		local recipe=copyTable(alternative.recipe);recipe.targets=copyTable(targets);recipe.requirements=requirements and copyTable(requirements);recipe.requiredGroups=requiredGroups
-		add("Saved: "..alternative.name,recipe);local entry={name=alternative.name,index=#recipes,recipe=copyTable(alternative.recipe)};library[#library+1]=entry;origins[#recipes]=entry
+		add("Saved: "..alternative.name,recipe);local entry={name=alternative.name,index=#recipes,recipe=copyTable(alternative.recipe),trackPickups=alternative.trackPickups==true};library[#library+1]=entry;origins[#recipes]=entry
 	end
 	for _,alternative in ipairs(settings.alternatives or {}) do addAlternative(alternative) end
 	for _,method in ipairs({"alchemy","chaos","alteration","essence","fossil","harvest_reforge"}) do
@@ -156,14 +156,26 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 	ui.label(controls,"page",348,200,"",14);controls.page.label=function() return "^7Routes "..((page-1)*3+1).."-"..math.min(page*3,#rows).." of "..#rows end
 	if settings.renameAlternative and settings.removeAlternative then
 		controls.manageAlternatives=new("ButtonControl"):ButtonControl(ui.anchor,{width-156,194,140,26},"Saved routes",function()
-			local popup={};local selected;local w,h=math.min(620,main.screenW-40),math.min(440,main.screenH-60)
-			popup.list=new("TextListControl"):TextListControl(ui.anchor,{16,28,w-32,h-156},nil,{})
-			popup.name=new("EditControl"):EditControl(ui.anchor,{16,h-112,w-32,26},"","Recipe name",nil,120)
+			local popup={};local selected;local w,h=math.min(620,main.screenW-40),math.min(480,main.screenH-60)
+			popup.list=new("TextListControl"):TextListControl(ui.anchor,{16,28,w-32,h-196},nil,{})
+			popup.name=new("EditControl"):EditControl(ui.anchor,{16,h-152,w-32,26},"","Recipe name",nil,120)
 			local function refreshList()
-				local lines={};for index,entry in ipairs(library) do lines[#lines+1]={height=25,textSize=14,entry=index,selected=index==selected,"^7"..ui.fit(entry.name,w-68,14)} end
+				local lines={};for index,entry in ipairs(library) do lines[#lines+1]={height=25,textSize=14,entry=index,selected=index==selected,"^7"..ui.fit(entry.name..(entry.trackPickups and " | pickups tracked" or ""),w-68,14)} end
 				if #lines==0 then lines[1]={height=25,textSize=14,"^7No saved alternatives yet."} end;popup.list.list=lines
 			end
 			popup.list.onClick=function(row) local index=row and row.line and row.line.entry;if index then selected=index;popup.name:SetText(library[index].name);refreshList() end end
+			if settings.trackAlternative then
+				popup.track=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-112,200,28},"Track pickups",function()
+					local entry=library[selected];local nextValue=not entry.trackPickups
+					local ok,message=pcall(settings.trackAlternative,entry.name,nextValue)
+					if not ok then main:OpenMessagePopup("Track pickups",ui.errorText(message));return end
+					entry.trackPickups=nextValue;refreshList()
+				end)
+				popup.track.label=function() local entry=library[selected];return entry and entry.trackPickups and "Stop tracking pickups" or "Track pickups" end
+				popup.track.enabled=function() return selected~=nil and library[selected]~=nil end
+				popup.track.tooltipText="Include this alternative's modeled ingredients and donor bases when refreshing build pickups."
+				ui.label(popup,"trackNote",228,h-105,"Refresh build pickups to update the filter.",12)
+			end
 			popup.rename=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-70,140,28},"Rename",function()
 				local entry=library[selected];local ok,name=pcall(settings.renameAlternative,entry.name,popup.name.buf)
 				if not ok then main:OpenMessagePopup("Rename recipe",ui.errorText(name));return end

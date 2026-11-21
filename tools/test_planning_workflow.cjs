@@ -1393,7 +1393,7 @@ async function main(){
   const reforgeChoice=rareInspection.crafting.nativeEngine.harvestOptions.find(entry=>entry.method==='harvest_reforge');
   assert.equal(reforgeChoice.available,true);assert.ok(reforgeChoice.options.some(entry=>entry.action.tag==='life'));
   const project={priceBook:{currency:'chaos',source:'Unquoted',quotedAt:1700000000,values:{}},id:'helmet',title:'Life helmet',slot:'Helmet',startingItem:raw,targetItem:item(200),goals:['More maximum Life'],steps:[{action:'Apply an Orb of Alchemy',stopWhen:'Target modifiers match',onFailure:'Stop at the recorded budget and reconsider'}],nativeRecipe:recipe};
-  project.recipeAlternatives=[{name:'Alternate route',recipe:{...recipe,steps:[{method:'transmute'}]}},{name:'Already prepared',recipe:{steps:[{method:'transmute'}],targets:[],requirements:{minQuality:13},initialState:{...inspected.crafting.nativeEngine.initialState,quality:13}}},{name:'Unresolvable step',recipe:{steps:[{method:'alchemy',maxAttempts:2,untilTargets:[{anyOf:['UnknownModifierForTest']}]}],targets:[],requirements:{minAffixes:1}}}];
+  project.recipeAlternatives=[{name:'Alternate route',trackPickups:true,recipe:{...recipe,steps:[{method:'transmute'}]}},{name:'Already prepared',recipe:{steps:[{method:'transmute'}],targets:[],requirements:{minQuality:13},initialState:{...inspected.crafting.nativeEngine.initialState,quality:13}}},{name:'Unresolvable step',recipe:{steps:[{method:'alchemy',maxAttempts:2,untilTargets:[{anyOf:['UnknownModifierForTest']}]}],targets:[],requirements:{minAffixes:1}}}];
   project.inventory=[{id:'blank-base',title:'Reusable helmet base',slot:'Helmet',baseItem:raw,at:1700000000,state:inspected.crafting.nativeEngine.initialState}];
   const conflicting={...project,id:'conflicting-quotes',priceBook:{currency:'chaos',source:'Conflicting quotes',quotedAt:1700000000,values:{exalt:1,'Metadata/Items/Currency/CurrencyAddModToRare':2}}};
   const rejected=await queued('propose_crafting_plan',{baseRevision:context.revision,project:conflicting},'failed');assert.match(rejected.error,/Conflicting quotes/);
@@ -1422,6 +1422,7 @@ async function main(){
   const saved=await call('get_build_journey');assert.equal(saved.budget.chaos.available,60);assert.equal(saved.journey.milestones[0].wishlistId,'helmet');
   const lootProfile={id:'mapping',title:'Build pickups',preset:'early_maps',strictness:2,rules:[]};
   const generated=await queued('generate_loot_filter',{baseRevision:context.revision,profile:lootProfile},'generated');
+  assert.ok(generated.profile.rules.some(rule=>rule.title==='Orb of Transmutation' && rule.origin==='craft:helmet'),'Tracked alternative currency was not included');
   const mapPickup=generated.profile.rules.find(rule=>rule.title==='Map (Tier 16)');assert.ok(mapPickup);assert.equal(mapPickup.origin,'atlas:final-atlas');assert.match(mapPickup.text,/BaseType == "Map \(Tier 16\)"/);
   assert.ok(!generated.profile.rules.some(rule=>rule.title==='Strand Map'));assert.ok(generated.warnings.some(warning=>warning.origin==='atlas:final-atlas' && warning.message.includes('do not identify ordinary map drops')));
   for(const name of ['Allflame Ember of Kulemak','Divine Vessel']) assert.ok(generated.profile.rules.some(rule=>rule.title===name && rule.origin==='atlas:final-atlas'));

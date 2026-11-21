@@ -319,8 +319,10 @@ describe("Crafting projects", function()
 		local kept=build.savers.CraftingProjects.projects[1];assert.equal(2,#kept.recipeAlternatives);assert.equal(1,#kept.nativeRecipe.steps)
 		local reopened=bridge.prepare(build,{mode="edit",title="Reopen alternative recipes",baseRevision=bridge.revision(build),operations={{type="set_character",level=80}}}).candidate
 		assert.equal("First route",reopened.savers.CraftingProjects.projects[1].recipeAlternatives[1].name)
-		compare.manageAlternatives:Click();popup=main.popups[1].controls;popup.list.onClick({line=popup.list.list[1]});popup.name:SetText("Improved route");popup.rename:Click()
-		assert.equal("Improved route",build.savers.CraftingProjects.projects[1].recipeAlternatives[1].name)
+		compare.manageAlternatives:Click();popup=main.popups[1].controls;popup.list.onClick({line=popup.list.list[1]});popup.track:Click();assert.is_true(build.savers.CraftingProjects.projects[1].recipeAlternatives[1].trackPickups)
+		popup.name:SetText("Improved route");popup.rename:Click()
+		assert.equal("Improved route",build.savers.CraftingProjects.projects[1].recipeAlternatives[1].name);assert.is_true(build.savers.CraftingProjects.projects[1].recipeAlternatives[1].trackPickups)
+		local tracked=bridge.prepare(build,{mode="edit",title="Reopen pickup tracking",baseRevision=bridge.revision(build),operations={{type="set_character",level=80}}}).candidate;assert.is_true(tracked.savers.CraftingProjects.projects[1].recipeAlternatives[1].trackPickups)
 		popup.use:Click();assert.equal("Replace saved recipe",main.popups[1].title);main.popups[1].controls.confirm:Click();assert.equal("Recipe kept",main.popups[1].title);main:ClosePopup()
 		assert.equal("RARE",build.savers.CraftingProjects.projects[1].nativeRecipe.initialState.rarity)
 		popup.remove:Click();assert.equal("Remove alternative",main.popups[1].title);main.popups[1].controls.confirm:Click()
@@ -330,7 +332,7 @@ describe("Crafting projects", function()
 	end)
 	it("updates a renamed alternative from an edited comparison route",function()
 		local entry=project();entry.preferredMethod="alchemy";entry.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
-		entry.recipeAlternatives={{name="Original",recipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}}}
+		entry.recipeAlternatives={{name="Original",trackPickups=true,recipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}}}
 		build.savers.CraftingProjects:Upsert(entry);local control=require("Classes.CraftingSimulatorControl").Open(build,entry)
 		control.page:SelByValue("Emulate item");control.apply:Click();control.page:SelByValue("Simulate recipe");control.compareRecipes:Click();local compare=main.popups[1].controls
 		local index;for i,value in ipairs(compare.route1.list) do if value.label=="Saved: Original" then index=i end end;assert.is_not_nil(index);compare.route1:SetSel(index)
@@ -340,7 +342,7 @@ describe("Crafting projects", function()
 		assert.equal(1,#build.savers.CraftingProjects.projects[1].recipeAlternatives[1].recipe.steps)
 		dialog.update:Click();main.popups[1].controls.confirm:Click();assert.equal("Recipe kept",main.popups[1].title);main:ClosePopup()
 		local kept=build.savers.CraftingProjects.projects[1];assert.equal(1,#kept.recipeAlternatives);assert.equal("Renamed",kept.recipeAlternatives[1].name)
-		assert.equal(2,#kept.recipeAlternatives[1].recipe.steps);assert.equal("RARE",kept.recipeAlternatives[1].recipe.initialState.rarity);assert.equal(1,#kept.nativeRecipe.steps)
+		assert.equal(2,#kept.recipeAlternatives[1].recipe.steps);assert.equal("RARE",kept.recipeAlternatives[1].recipe.initialState.rarity);assert.is_true(kept.recipeAlternatives[1].trackPickups);assert.equal(1,#kept.nativeRecipe.steps)
 		assert.equal("Saved: Renamed",compare.route1:GetSelValue().label)
 		local reopened=bridge.prepare(build,{mode="edit",title="Reopen updated alternative",baseRevision=bridge.revision(build),operations={{type="set_character",level=80}}}).candidate
 		assert.equal(2,#reopened.savers.CraftingProjects.projects[1].recipeAlternatives[1].recipe.steps)
@@ -381,6 +383,7 @@ describe("Crafting projects", function()
 		local entry=project();local recipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
 		entry.recipeAlternatives={{name="Plan",recipe=recipe},{name=" plan ",recipe=recipe}};assert.has_error(function() projects.validate(entry) end)
 		entry.recipeAlternatives={{name="^1Injected",recipe=recipe}};assert.has_error(function() projects.validate(entry) end)
+		entry.recipeAlternatives={{name="Plan",recipe=recipe,trackPickups="yes"}};assert.has_error(function() projects.validate(entry) end)
 		entry.recipeAlternatives={{name="Plan",recipe={steps={},targets={}}}};assert.has_error(function() projects.validate(entry) end)
 	end)
 
