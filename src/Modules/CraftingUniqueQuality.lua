@@ -39,7 +39,14 @@ local function alwaysCorrupted(title,baseName)
 	end
 	return matched
 end
-function M.guideAction(method,count,resource,corrupted,socketCount)
+function M.guideAction(method,count,resource,corrupted,socketCount,enchantId)
+	if method=="bench_flask_enchant" then
+		local flask=require("Modules.CraftingFlaskEnchants");local cost=flask.benchCost(enchantId)
+		if not cost then return nil end
+		local instilling=cost["Metadata/Items/Currency/CurrencyInstillingOrb"] or 0
+		local baubles=cost["Metadata/Items/Currency/CurrencyFlaskQuality"] or 0
+		return "Enchant at the crafting bench: "..flask.label(enchantId).." ("..instilling.." Instilling Orb"..(instilling==1 and "" or "s").." and "..baubles.." Glassblower's Bauble"..(baubles==1 and "" or "s")..")"
+	end
 	if method=="instilling" then return "Use an Instilling Orb to roll a utility flask enchantment" end
 	if method=="enkindling" then return "Use an Enkindling Orb to roll a utility flask enchantment" end
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
@@ -69,8 +76,8 @@ function M.guideAction(method,count,resource,corrupted,socketCount)
 	end
 	if method=="socket_white_bench" then return "Use the crafting bench to make all sockets white (1 Orb of Scouring"..(corrupted and " and 1 Vaal Orb" or "")..")" end
 end
-function M.matchesGuideAction(method,count,resource,corrupted,action,socketCount)
-	return action==M.guideAction(method,count,resource,corrupted,socketCount) or method=="socket_white_bench" and action=="Use the crafting bench to make all sockets white"
+function M.matchesGuideAction(method,count,resource,corrupted,action,socketCount,enchantId)
+	return action==M.guideAction(method,count,resource,corrupted,socketCount,enchantId) or method=="socket_white_bench" and action=="Use the crafting bench to make all sockets white"
 end
 local function withoutQuality(raw)
 	local lines={};for line in (raw.."\n"):gmatch("([^\n]*)\n") do if not line:match("^Quality: ") then lines[#lines+1]=line end end
@@ -165,7 +172,7 @@ end
 -- item text, including fields PoB does not interpret.
 function M.flaskEnchantReason(raw,method)
 	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
-	if method~="instilling" and method~="enkindling" then return "Choose a flask enchantment currency" end
+	if method~="instilling" and method~="enkindling" and method~="bench_flask_enchant" then return "Choose a flask enchantment currency" end
 	if item.corrupted then return "Flask enchantment currency requires an uncorrupted item" end
 	if not require("Modules.CraftingFlaskEnchants").eligible({item=item}) then return "Requires a utility flask" end
 	local text=raw:gsub("\r\n","\n");if text:find("\r",1,true) then return "The item has mixed line endings" end
@@ -177,10 +184,13 @@ function M.flaskEnchantReason(raw,method)
 	if counts>1 then return "The item has more than one implicit-count line" end
 	if marked~=#item.enchantModLines then return "Existing enchantment lines could not be identified safely" end
 end
-function M.flaskEnchant(raw,method,seed)
+function M.flaskEnchant(raw,method,seed,enchantId)
 	local reason=M.flaskEnchantReason(raw,method);assert(not reason,reason)
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
-	local before=M.inspect(raw);local flask=require("Modules.CraftingFlaskEnchants");local selected=flask.roll(method,require("Modules.CalcTime").random(seed))
+	local before=M.inspect(raw);local flask=require("Modules.CraftingFlaskEnchants")
+	local cost=method=="bench_flask_enchant" and flask.benchCost(enchantId)
+	if method=="bench_flask_enchant" then assert(cost,"Choose an available flask bench enchantment") end
+	local selected=cost and {id=enchantId} or flask.roll(method,require("Modules.CalcTime").random(seed))
 	local entry,group=flask.validate({item=before},selected);local replacements=flask.lines(entry,group,selected.roll)
 	local newline=raw:find("\r\n",1,true) and "\r\n" or "\n";local source=raw:gsub("\r\n","\n");local ended=source:sub(-1)=="\n"
 	local lines={};local insertion,countIndex,implicitCount;local removed=0
@@ -200,7 +210,7 @@ function M.flaskEnchant(raw,method,seed)
 	local function linesOf(item,key) local result={};for _,line in ipairs(item[key] or {}) do result[#result+1]=line.line end;return result end
 	assert(tableDeepEquals(linesOf(before,"explicitModLines"),linesOf(after,"explicitModLines")) and tableDeepEquals(linesOf(before,"implicitModLines"),linesOf(after,"implicitModLines")),"The flask's other modifiers could not be preserved safely")
 	assert(tableDeepEquals(selected,flask.identify(after)),"The flask enchantment did not round-trip")
-	return {itemText=output,components={[method]=1},flaskEnchant=selected}
+	return {itemText=output,components=cost or {[method]=1},flaskEnchant=selected}
 end
 
 -- Tainted quality uses the same estimated range as ordinary equipment.
@@ -689,7 +699,11 @@ function M.catalog(raw,query,limit)
 		end
 	end
 	result.flaskEnchants=flask.eligible({item=item}) and flask.list(query,limit) or {}
-	if flask.eligible({item=item}) then result.flaskEnchant=flask.identify(item) end
+	if flask.eligible({item=item}) then
+		result.flaskEnchant=flask.identify(item)
+		local reason=M.flaskEnchantReason(raw,"bench_flask_enchant")
+		for _,entry in ipairs(result.flaskEnchants) do if entry.benchAction then entry.benchAvailable=not reason;entry.benchUnavailableReason=reason end end
+	end
 	return result
 end
 

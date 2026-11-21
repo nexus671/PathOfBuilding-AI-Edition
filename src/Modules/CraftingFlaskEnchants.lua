@@ -23,6 +23,10 @@ local function bounds(entry,group)
  return tonumber(a),tonumber(b)
 end
 function E.bounds(id) local entry,group=E.entry(id);if entry then return bounds(entry,group) end end
+function E.benchCost(id)
+ local entry,group=E.entry(id)
+ if entry and group=="INSTILLING" then return require("Modules.CraftingBenchCosts").flaskEnchant(id) end
+end
 local function identity(lines) local sorted=copyTable(lines);table.sort(sorted);return table.concat(sorted,"\n") end
 function E.lines(entry,group,roll)
  local text=template(entry,group)
@@ -55,7 +59,8 @@ function E.list(query,limit)
  for group,pool in pairs(E.data().pools) do for _,entry in ipairs(pool) do
   local text=template(entry,group)
   if (entry.id.." "..text.." "..group.." orb"):lower():find(search,1,true) then
-   local lo,hi=bounds(entry,group);result[#result+1]={id=entry.id,method=group:lower(),text=text,weight=entry.weight,minRoll=lo,maxRoll=hi,rollable=entry.weight>0}
+   local lo,hi=bounds(entry,group);local cost=E.benchCost(entry.id)
+   result[#result+1]={id=entry.id,method=group:lower(),text=text,weight=entry.weight,minRoll=lo,maxRoll=hi,rollable=entry.weight>0,benchAction=cost and {method="bench_flask_enchant",enchantId=entry.id} or nil,benchCost=cost}
   end
  end end
  table.sort(result,function(a,b) return a.id<b.id end)
@@ -73,8 +78,10 @@ function E.validate(model,value)
 end
 function E.extend(M)
  for method,group in pairs(methods) do M.methods[#M.methods+1]=method;M.labels[method]=group=="INSTILLING" and "Instilling Orb" or "Enkindling Orb" end
+ M.methods[#M.methods+1]="bench_flask_enchant";M.labels.bench_flask_enchant="Bench: choose flask enchantment"
  table.sort(M.methods)
  local action,decorate,validate,originalModel,originalCatalog=M.action,M.decorateItem,M.validateState,M.model,M.catalog
+ local options,price,components=M.actionOptions,M.priceKey,M.components
  function M.model(raw)
   local model=originalModel(raw)
   if E.eligible(model) then model.initial.flaskEnchant=E.identify(model.item) end
@@ -83,6 +90,8 @@ function E.extend(M)
  function M.catalog(raw,query,limit,initialState,...)
   local result=originalCatalog(raw,query,limit,initialState,...);local model={item=new("Item"):Item(initialState and initialState.baseItem or raw)}
   result.flaskEnchants=E.eligible(model) and E.list(query,limit) or {}
+  local state=result.initialState or initialState or {};local unavailable=state.destroyed or state.corrupted or state.mirrored or state.veil
+  for _,entry in ipairs(result.flaskEnchants) do if entry.benchAction then entry.benchAvailable=not not (not unavailable);entry.benchUnavailableReason=unavailable and "Requires an uncorrupted, usable utility flask." or nil end end
   return result
  end
  local function reason(model,state)
@@ -90,12 +99,27 @@ function E.extend(M)
   if not E.eligible(model) then return "Requires a utility flask." end
  end
  for method in pairs(methods) do M.methodChecks[method]=reason end
+ M.methodChecks.bench_flask_enchant=reason
  function M.action(model,state,craft,random)
-  local group=methods[craft.method];if not group then return action(model,state,craft,random) end
+  local group=methods[craft.method];if not group and craft.method~="bench_flask_enchant" then return action(model,state,craft,random) end
   local why=reason(model,state);assert(not why,why)
-  local result=copyTable(state);result.flaskEnchant=E.roll(craft.method,random)
+  if craft.method=="bench_flask_enchant" then assert(E.benchCost(craft.enchantId),"Choose an available flask bench enchantment") end
+  local result=copyTable(state);result.flaskEnchant=craft.method=="bench_flask_enchant" and {id=craft.enchantId} or E.roll(craft.method,random)
   result.enchantCleared=nil;result.harvestEnchant=nil;result.katakohiEnchants=nil
   return result
+ end
+ function M.actionOptions(model,state,method)
+  if method~="bench_flask_enchant" then return options(model,state,method) end
+  local result={};if not E.eligible(model) then return result end
+  for _,entry in ipairs(E.data().pools.INSTILLING) do if E.benchCost(entry.id) then
+   result[#result+1]={label=E.label(entry.id),action={method=method,enchantId=entry.id}}
+  end end
+  table.sort(result,function(a,b) return a.label<b.label end);return result
+ end
+ function M.priceKey(craft) if craft.method=="bench_flask_enchant" then return craft.method..":"..tostring(craft.enchantId) end;return price(craft) end
+ function M.components(craft,state,model)
+  if craft.method=="bench_flask_enchant" then return assert(E.benchCost(craft.enchantId),"Choose an available flask bench enchantment") end
+  return components(craft,state,model)
  end
  function M.decorateItem(model,state,item)
   decorate(model,state,item)

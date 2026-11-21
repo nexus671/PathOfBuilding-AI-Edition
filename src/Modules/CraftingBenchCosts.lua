@@ -42,6 +42,10 @@ function B.index(data)
 		if updated then result[key].sources["GGG 3.30 patch notes"]=true end
 	end
 	for _,service in ipairs(data.bench) do
+		local enchant=service.actions.add_enchant_mod
+		if enchant then for _,class in ipairs(service.item_classes) do
+			add(serviceKey("add_enchant_mod",enchant,class),service.cost,enchant)
+		end end
 		local id=service.actions.add_explicit_mod
 		local mod=id and (data.benchMods or {})[id]
 		if mod and (mod.generation_type=="prefix" or mod.generation_type=="suffix") then
@@ -81,6 +85,9 @@ local function lookupEntry(key,lookup)
 	if not entry or entry.ambiguous then return end
 	local sources={};for source in pairs(entry.sources) do sources[#sources+1]=source end;table.sort(sources)
 	return copyTable(entry.cost),sources
+end
+function B.flaskEnchant(id,lookup)
+	return lookupEntry(serviceKey("add_enchant_mod",id,"UtilityFlask"),lookup)
 end
 function B.service(model,action)
 	local operation,value

@@ -194,6 +194,7 @@ local currencies={
 local descriptions={beast_max_links="Link existing sockets using the Black Morrigan and a Craicic Sand Spitter.",omen_trichromatism="Guarantee one red, green and blue socket. Uses one Omen and one Chromatic Orb.",omen_connections="Fully link existing sockets. Uses one Omen of Connections and one Orb of Fusing.",transmute="Add magic modifiers to a normal item.",alteration="Reroll the modifiers on a magic item.",augmentation="Add a modifier to a magic item.",regal="Upgrade a magic item and add a modifier.",alchemy="Turn a normal item into a rare item.",chaos="Reroll the modifiers on a rare item.",veiled_chaos="Reforge a rare item with a veiled modifier.",exalt="Add a modifier to a rare item.",annul="Remove a random modifier.",scour="Remove the item's modifiers.",divine="Reroll the values of existing modifiers.",vaal="Corrupt the item. Outcomes can be destructive.",chromatic="Reroll socket colours."}
 local currencyArt,currencyNames
 function M.actionLabel(action,model)
+	if action.method=="bench_flask_enchant" and action.enchantId then return "Bench: "..require("Modules.CraftingFlaskEnchants").label(action.enchantId) end
 	if model and action.method=="beast_flask" and model.byId[action.modId] then return "Bestiary: "..model.byId[action.modId].affix end
 	if (action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix") and action.beastLevel then return (simulator.labels[action.method] or action.method).." (beast level "..action.beastLevel..")" end
 	if action.method=="bench_reroll" and (action.count==1 or action.count==3) then return "Bench: reroll "..action.count.." modifier"..(action.count==1 and "" or "s") end
@@ -216,7 +217,8 @@ function M.icon(method,action,model)
 		for _,entry in pairs(currencyArt.items) do currencyNames[entry.name]=entry.path end
 	end
 	action=action or {};local id=currencyArt.methods[method];local name
-	if method=="socket_white_bench" then name="Orb of Scouring"
+	if method=="bench_flask_enchant" then name="Instilling Orb"
+	elseif method=="socket_white_bench" then name="Orb of Scouring"
 	elseif method=="omen_jeweller" then name="Jeweller's Orb"
 	elseif method=="essence" and action.essenceId then
 		local entry=data.essences[action.essenceId]
@@ -246,6 +248,7 @@ function M.hint(method,state,model,craft)
 	local available,reason=M.available(method,state,model)
 	if available and method=="beast_flask" then return "Uses one red beast. Choose a named suffix; item eligibility and roll odds are experimental." end
 	if available and (method=="instilling" or method=="enkindling") then return "Replace the utility flask enchantment. Client weights and uniformly sampled rolls are experimental; verify in game." end
+	if available and method=="bench_flask_enchant" then return "Choose a utility flask enchantment: 5 Instilling Orbs and 5 Glassblower's Baubles. Availability is unverified in game." end
 	if available then
 		local configuration=simulator.configurationReason(model,state,craft or {method=method})
 		if configuration then return configuration end

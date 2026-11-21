@@ -50,6 +50,22 @@ describe("Utility flask enchantments",function()
   local dead=0;for _,entry in ipairs(entries) do if not entry.rollable then dead=dead+1;assert.equal("FlaskEnchantmentInjectorOnGuardSkillExpired",entry.id) end end
   assert.equal(1,dead);assert.equal(1,#sim.catalog(raw,"OnFullCharges",100).flaskEnchants)
  end)
+ it("chooses and prices only flask enchantments supported by the pinned bench",function()
+  local model=sim.model(raw);local choices=sim.actionOptions(model,model.initial,"bench_flask_enchant")
+  assert.equal(15,#choices)
+  local cost={["Metadata/Items/Currency/CurrencyInstillingOrb"]=5,["Metadata/Items/Currency/CurrencyFlaskQuality"]=5}
+  for _,choice in ipairs(choices) do
+   assert.same(cost,sim.components(choice.action,model.initial,model))
+   local state=sim.action(model,model.initial,choice.action,function() error("Bench action must not roll") end)
+   assert.equal(choice.action.enchantId,state.flaskEnchant.id)
+   assert.same(state.flaskEnchant,sim.model(sim.itemText(model,state)).initial.flaskEnchant)
+  end
+  local choice=choices[1].action;local calculation=sim.calculate(raw,choice,{},nil,{requirements={flaskEnchant=choice.enchantId}})
+  assert.is_false(calculation.sampled);assert.equal(100,calculation.successChance)
+  assert.has_error(function() sim.action(model,model.initial,{method="bench_flask_enchant",enchantId="FlaskEnchantmentInjectorOnGuardSkillExpired"},function() return 0 end) end)
+  local entry=sim.catalog(raw,choice.enchantId,100).flaskEnchants[1]
+  assert.same(choice,entry.benchAction);assert.same(cost,entry.benchCost)
+ end)
  it("lets the workbench select a flask enchantment goal",function()
   local selected
   local controls=require("Classes.CraftingTargetControl").Open({},nil,nil,function(_,requirements) selected=requirements end,0,"Quicksilver Flask")

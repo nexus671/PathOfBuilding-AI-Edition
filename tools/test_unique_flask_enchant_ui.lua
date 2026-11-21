@@ -13,6 +13,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  local saved=build.savers.CraftingProjects.projects[1];assert(saved.nativeRecipe.requirements.flaskEnchant,"Recipe target was not saved");assert(saved.steps[1].uniqueCraft.method=="enkindling","Guide was not saved")
  ui:frame():write(directory.."/"..size[1].."-unique-flask-enchant-saved.json")
  ui:click("instilling");ui:frame():write(directory.."/"..size[1].."-unique-flask-enchant-replaced.json")
+	main.popups={};project.id="unique-flask-bench-ui";build.savers.CraftingProjects:Upsert(project);c=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+	ui:click("flaskBench");ui:frame():write(directory.."/"..size[1].."-unique-flask-bench-picker.json")
+	local picker=main.popups[1].controls;local chosen=picker.option:GetSelValue().action.enchantId;ui:click("apply")
+	ui:frame():write(directory.."/"..size[1].."-unique-flask-bench-result.json")
+	ui:click("guide");ui:click("recipe");local benchSaved
+	for _,candidate in ipairs(build.savers.CraftingProjects.projects) do if candidate.id==project.id then benchSaved=candidate end end
+	assert(benchSaved.steps[1].uniqueCraft.enchantId==chosen and benchSaved.nativeRecipe.steps[1].enchantId==chosen,"Bench choice did not survive guide and recipe saving")
+	ui:frame():write(directory.."/"..size[1].."-unique-flask-bench-saved.json")
  ui:restore();main.popups={}
 end
-print("UNIQUE_FLASK_ENCHANT_UI_OK",12)
+print("UNIQUE_FLASK_ENCHANT_UI_OK",21)

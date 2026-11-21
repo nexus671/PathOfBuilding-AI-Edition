@@ -68,6 +68,7 @@ end
 function M.actionWarnings(action,model)
 	local result={}
 	if action.method=="instilling" or action.method=="enkindling" then result[#result+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."} end
+	if action.method=="bench_flask_enchant" then result[#result+1]={code="flask_bench_assumptions",message="Flask enchantment bench costs use pinned client data; eligibility, recipe availability and replacement behavior are unverified in game."} end
 	local item=model and model.item
 	-- Native imports can preserve legacy values; hypothetical state can also
 	-- contain them. Neither proves current-game availability.
@@ -1168,6 +1169,7 @@ require("Modules.CraftingAdvanced").extend(M,{counts=counts,flags=flags,clear=cl
 local allflameConfigurationReason=M.configurationReason
 local cachedDonorText,cachedDonorModel
 function M.configurationReason(model,state,craft)
+	if craft.method=="bench_flask_enchant" and not require("Modules.CraftingFlaskEnchants").benchCost(craft.enchantId) then return "Choose an available flask bench enchantment." end
 	if craft.method=="gwennen" then
 		local valid=pcall(require("Modules.CraftingGwennen").validate,craft)
 		if not valid then return "Configure a supported Gwennen pair and valid artifact cost in Craft settings." end
@@ -1226,7 +1228,7 @@ end
 -- Extensions register state prerequisites once for both execution and browsing.
 local partialLockActions={veiled_chaos=true,recombine=true,bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true,beast_imprint=true,beast_talisman_imprint=true,
 	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,ducat_ukatoa=true,ducat_katakohi=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
-	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,bench_remove_enchant=true,eldritch_implicit=true,conflict=true}
+	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,bench_remove_enchant=true,bench_flask_enchant=true,eldritch_implicit=true,conflict=true}
 local socketDependent={socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,vaal=true,locus=true,binding=true,gwennen=true,fossil=true,ducat_katakohi=true,recombine=true,recombine_predictable=true}
 function M.methodReason(model,state,method)
 	if state.uniqueTitle then return "Further crafting of transformed unique jewels is not yet modeled. Undo or reset to continue." end
@@ -1408,9 +1410,9 @@ do
 	end
 	function M.perform(raw,action,seed,initialState,treeVersion)
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
-		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="instilling" or action.method=="enkindling" or action.method=="divine" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="quality" or action.method=="beast_max_links" or action.method=="omen_connections" or action.method=="omen_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_white_bench" or action.method=="socket_bench") then
+		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="instilling" or action.method=="enkindling" or action.method=="bench_flask_enchant" or action.method=="divine" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="quality" or action.method=="beast_max_links" or action.method=="omen_connections" or action.method=="omen_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_white_bench" or action.method=="socket_bench") then
 			assert(initialState==nil,"Continue unique crafting using the returned item text, not an ordinary crafting state")
-			for key in pairs(action) do assert(key=="method" or action.method=="socket_bench" and (key=="count" or key=="linked"),"This unique action does not accept additional options") end
+			for key in pairs(action) do assert(key=="method" or action.method=="socket_bench" and (key=="count" or key=="linked") or action.method=="bench_flask_enchant" and key=="enchantId","This unique action does not accept additional options") end
 			if action.method=="socket_bench" then
 				local item=require("Modules.CraftingUniqueQuality").inspect(raw)
 				assert(action.linked==nil or type(action.linked)=="boolean","Invalid bench link option")
@@ -1425,9 +1427,10 @@ do
 				local divineRoll=action.method=="divine"
 				local flaskRoll=action.method=="instilling" or action.method=="enkindling"
 				local stochastic=flaskRoll or divineRoll or qualityRoll or socketRoll or linkRoll or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism"
-				local result=flaskRoll and unique.flaskEnchant(raw,action.method,seed or 104729) or divineRoll and unique.divine(raw,seed or 104729) or qualityRoll and unique.taintedQuality(raw,seed or 104729) or socketRoll and unique.randomSockets(raw,action.method,seed or 104729) or linkRoll and unique.randomLinks(raw,action.method,seed or 104729) or stochastic and unique.colour(raw,action.method,seed or 104729) or action.method=="omen_jeweller" and unique.socketCount(raw,unique.omenCount(unique.inspect(raw)),"omen_jeweller") or action.method=="socket_white_bench" and unique.white(raw) or action.method=="socket_bench" and not action.linked and unique.socketCount(raw,action.count) or unique.link(raw,action.method)
+				local result=(flaskRoll or action.method=="bench_flask_enchant") and unique.flaskEnchant(raw,action.method,seed or 104729,action.enchantId) or divineRoll and unique.divine(raw,seed or 104729) or qualityRoll and unique.taintedQuality(raw,seed or 104729) or socketRoll and unique.randomSockets(raw,action.method,seed or 104729) or linkRoll and unique.randomLinks(raw,action.method,seed or 104729) or stochastic and unique.colour(raw,action.method,seed or 104729) or action.method=="omen_jeweller" and unique.socketCount(raw,unique.omenCount(unique.inspect(raw)),"omen_jeweller") or action.method=="socket_white_bench" and unique.white(raw) or action.method=="socket_bench" and not action.linked and unique.socketCount(raw,action.count) or unique.link(raw,action.method)
 				local warnings={{code="unique_crafting_scope",message="Only listed unique crafting actions are modeled. Continue using the returned item text."}}
 				if flaskRoll then warnings[#warnings+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."}
+				elseif action.method=="bench_flask_enchant" then warnings[#warnings+1]={code="flask_bench_assumptions",message="Flask enchantment bench costs use pinned client data; eligibility, recipe availability and replacement behavior are unverified in game."}
 				elseif divineRoll then warnings[#warnings+1]={code="unique_divine_estimate",message="Supported integer modifier values are sampled independently and uniformly; actual roll correlations and distributions are unverified."}
 				elseif qualityRoll then warnings[#warnings+1]={code="tainted_quality_estimate",message="Tainted armour and weapon quality uses an assumed uniform 1-20% range; the minimum and distribution are unverified."}
 				elseif socketRoll then warnings[#warnings+1]={code="unique_socket_count_estimate",message="Sampled socket counts and tainted outcomes use estimated probabilities; server odds are unverified."}

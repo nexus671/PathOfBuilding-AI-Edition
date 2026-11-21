@@ -75,7 +75,10 @@ function M.Open(build,project,layout,snapshot)
 		for i=first,#actions do
 			local action=actions[i]
 			local socketCount=tonumber(action:match("^socket_count_bench:([2-6])$"))
+			local enchantId=action:match("^bench_flask_enchant:(.+)$")
 			if action=="quality" then qualityCount=qualityCount+1
+			elseif enchantId then
+				flush();steps[#steps+1]={action=unique.guideAction("bench_flask_enchant",1,info.resource,item.corrupted,nil,enchantId),uniqueCraft={method="bench_flask_enchant",count=1,enchantId=enchantId},done=false}
 			elseif socketCount then
 				flush();steps[#steps+1]={action=unique.guideAction("socket_count_bench",socketCount,info.resource,item.corrupted),uniqueCraft={method="socket_count_bench",count=socketCount},done=false}
 			elseif action=="instilling" or action=="enkindling" or action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="divine" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
@@ -346,6 +349,25 @@ function M.Open(build,project,layout,snapshot)
 		c[method].tooltipText=function() return unique.flaskEnchantReason(raw,method) or "Replace the utility flask enchantment. Client weights and rolls are experimental." end
 	end
 	flaskButton("instilling",16,"Instilling Orb");flaskButton("enkindling",156,"Enkindling Orb")
+	c.instilling.width=85;c.instilling.label="Instill";c.enkindling.x=108;c.enkindling.width=85;c.enkindling.label="Enkindle"
+	button("flaskBench",188,"Bench...",function()
+		local controls={};local width,height=540,210;local sim=require("Modules.CraftingSimulator")
+		local model={item=item};local choices=sim.actionOptions(model,{},"bench_flask_enchant")
+		ui.description(controls,"help",16,22,width-32,48,{"Choose an enchantment for this flask.","Costs 5 Instilling Orbs and 5 Glassblower's Baubles."},14)
+		controls.option=new("DropDownControl"):DropDownControl(ui.anchor,{16,86,width-32,26},choices)
+		controls.apply=new("ButtonControl"):ButtonControl(ui.anchor,{width-220,height-48,94,28},"Apply",function()
+			local choice=assert(controls.option:GetSelValue(),"Choose an enchantment")
+			local result=unique.flaskEnchant(raw,"bench_flask_enchant",104729,choice.action.enchantId)
+			history[#history+1]=raw;actions[#actions+1]="bench_flask_enchant:"..choice.action.enchantId;redo={};raw=result.itemText
+			main:ClosePopup();refresh(true)
+		end)
+		controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-110,height-48,94,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(controls,{apply=true});for _,control in pairs(controls) do control.layoutAudit="unique-flask-bench" end
+		main:OpenPopup(width,height,"Flask enchantment",controls,nil,nil,"close")
+	end)
+	c.flaskBench.x=200;c.flaskBench.width=86;c.flaskBench.shown=c.instilling.shown
+	c.flaskBench.enabled=function() return not unique.flaskEnchantReason(raw,"bench_flask_enchant") end
+	c.flaskBench.tooltipText=function() return unique.flaskEnchantReason(raw,"bench_flask_enchant") or "Choose a specific enchantment at the crafting bench." end
 	button("qualityPlan",198,"Plan quality",function()
 		local controls={};local qw,qh=480,310
 		ui.description(controls,"help",16,25,qw-32,50,{"Save a target without rolling the item.","Tainted quality probabilities are estimates."},14)
@@ -528,7 +550,7 @@ function M.Open(build,project,layout,snapshot)
 			local colour=action=="instilling" or action=="enkindling" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality"
 			if colour then if colourSeen then return false end;colourSeen=true
 			elseif colourSeen and action~="quality" then return false
-			elseif action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") then return false end
+			elseif action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") and not action:match("^bench_flask_enchant:.+$") then return false end
 		end
 		return true
 	end
@@ -538,11 +560,14 @@ function M.Open(build,project,layout,snapshot)
 		while i<=#actions do
 			local action=actions[i]
 			local socketCount=tonumber(action:match("^socket_count_bench:([2-6])$"))
+			local enchantId=action:match("^bench_flask_enchant:(.+)$")
 			if action=="quality" then
 				local first=i;while i<=#actions and actions[i]=="quality" do i=i+1 end
 				local _,after=unique.inspect(history[i] or raw);local count=i-first
 				steps[#steps+1]={method="quality",maxAttempts=count,untilRequirements={minQuality=after.quality}}
 				requirements.minQuality=info.quality
+			elseif enchantId then
+				steps[#steps+1]={method="bench_flask_enchant",enchantId=enchantId};requirements.flaskEnchant=enchantId;i=i+1
 			elseif socketCount then
 				steps[#steps+1]={method="socket_bench",count=socketCount};requirements.exactSockets=#item.sockets;i=i+1
 			elseif action=="instilling" or action=="enkindling" then
@@ -672,6 +697,7 @@ function M.Open(build,project,layout,snapshot)
 		elseif method=="fusing" then lines={"1 Orb of Fusing","Sampled preview"}
 		elseif method=="divine" then lines={"1 Divine Orb","Sampled preview"}
 		elseif method=="instilling" or method=="enkindling" then lines={method=="instilling" and "1 Instilling Orb" or "1 Enkindling Orb","Sampled preview"}
+		elseif method and method:match("^bench_flask_enchant:") then method="instilling";lines={"5 Instilling Orbs","5 Glassblower's Baubles | Preview"}
 		elseif method=="tainted_quality" then lines={"1 Tainted "..info.resource,"Sampled preview"}
 		elseif method=="jeweller" then lines={"1 Jeweller's Orb","Sampled preview"}
 		elseif method=="tainted_jeweller" then lines={"1 Tainted Jeweller's Orb","Sampled preview"}

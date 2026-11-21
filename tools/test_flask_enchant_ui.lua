@@ -13,6 +13,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  ui:frame():write(directory.."/"..size[1].."-flask-enchant-target-summary.json")
  ui:choose("page","Emulate item");ui:click("settings");ui:text("paletteSearch","Instilling Orb");ui:click("paletteUse");ui:click("apply")
  ui:frame():write(directory.."/"..size[1].."-flask-enchant-instilling.json")
+	ui:click("settings");ui:text("paletteSearch","Bench: choose flask enchantment");ui:click("paletteUse")
+	ui:frame():write(directory.."/"..size[1].."-flask-enchant-bench-choice.json");ui:click("apply")
+	ui:frame():write(directory.."/"..size[1].."-flask-enchant-bench-result.json")
  ui:restore();main.popups={}
 end
-print("FLASK_ENCHANT_UI_OK",15)
+print("FLASK_ENCHANT_UI_OK",21)
