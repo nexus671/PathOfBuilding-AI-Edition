@@ -1,5 +1,8 @@
 # Encounter simulation guide
 
+Node power and item sorting also offer **net regeneration** for life, mana and energy shield, plus an energy shield recharge rate. Net regeneration includes direct resource degeneration and flat recovery in PoB's calculation; it does not include all incoming damage, leech or recharge uptime. The existing regeneration choices remain available.
+
+
 Explore how your build survives an encounter, then inspect its resources and defenses over time. These tools are experimental and depend on the scenario you configure.
 
 ## Quick start

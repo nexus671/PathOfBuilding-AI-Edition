@@ -244,6 +244,21 @@ for i = 1, #data.powerStatList do
 	t_insert(data.powerStatList, minionStat)
 	::statContinue::
 end
+-- Append these choices after the existing entries to preserve their order.
+-- Net regeneration includes direct resource degeneration and flat recovery;
+-- it is not a simulation of leech, recharge uptime or incoming damage.
+for _, stat in ipairs({
+	{stat="LifeRegenRecovery",label="Net life regen"},
+	{stat="ManaRegenRecovery",label="Net mana regen"},
+	{stat="EnergyShieldRegenRecovery",label="Net ES regen"},
+	{stat="EnergyShieldRecharge",label="ES recharge rate"},
+}) do
+	t_insert(data.powerStatList, stat)
+	local minionStat = copyTable(stat)
+	minionStat.stat = "Minion" .. stat.stat
+	minionStat.label = "Minion " .. stat.label
+	t_insert(data.powerStatList, minionStat)
+end
 data.misc = { -- magic numbers
 	ServerTickTime = 0.033,
 	ServerTickRate = 1 / 0.033,

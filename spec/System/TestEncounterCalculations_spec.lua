@@ -35,6 +35,32 @@ describe("Encounter reporting and comparisons",function()
 			assert.are.equal(value,data.powerStatList.GetFromOutput(output,{stat=key}))
 		end
 	end)
+	it("offers net regeneration and recharge for item sorting and node power",function()
+		runCallback("OnFrame")
+		local calc=build.calcsTab:GetMiscCalculator()
+		local function output(lines)
+			local item=new("Item"):Item("Rarity: RARE\nTest\nGold Ring\nItem Level: 86\nImplicits: 0\n"..lines)
+			return calc({repSlotName="Ring 1",repItem=item},false)
+		end
+		local base="Regenerate 100 Life per second\nRegenerate 30 Mana per second\nRegenerate 40 Energy Shield per second\n+100 to maximum Energy Shield"
+		local plain=output(base)
+		local changed=output(base.."\nLose 100 Life per second\nLose 25 Mana per second\nLose 20 Energy Shield per second\n100% increased Energy Shield Recharge Rate")
+		for _,case in ipairs({{"Life",100},{"Mana",25},{"EnergyShield",20}}) do
+			local raw,net=case[1].."Regen",case[1].."RegenRecovery"
+			assert.equal(plain[raw],changed[raw]);assert.near(case[2],plain[net]-changed[net],0.001)
+			local selection;for _,entry in ipairs(data.powerStatList) do if entry.stat==net then selection=entry end end
+			assert.is_not_nil(selection);assert.near(-case[2],build.calcsTab:CalculatePowerStat(selection,changed,plain),0.001)
+		end
+		assert.is_true(changed.EnergyShieldRecharge>plain.EnergyShieldRecharge)
+		for _,key in ipairs({"LifeRegenRecovery","ManaRegenRecovery","EnergyShieldRegenRecovery","EnergyShieldRecharge"}) do
+			local found,minion=false,false
+			for _,entry in ipairs(data.powerStatList) do if entry.stat==key then found=true elseif entry.stat=="Minion"..key then minion=true end end
+			assert.is_true(found and minion,key)
+			assert.equal(123,data.powerStatList.GetFromOutput({Minion={[key]=123}},{stat="Minion"..key}))
+			local present=false;for _,entry in ipairs(build.treeTab.powerStatList) do if entry.stat==key then present=true end end;assert.is_true(present,key)
+			local sort=build.itemsTab.controls.craftingSorting;sort:SelByValue(key,"stat");assert.equal(key,sort:GetSelValue().stat)
+		end
+	end)
 	it("keeps node power and heatmap colours defined for zero and infinite values",function()
 		local power=common.classes.CalcsTab.CalculatePowerStat;local stat={stat="SecondMinimalMaximumHitTaken"}
 		assert.equal(0,power(nil,stat,{SecondMinimalMaximumHitTaken=math.huge},{SecondMinimalMaximumHitTaken=math.huge}))
