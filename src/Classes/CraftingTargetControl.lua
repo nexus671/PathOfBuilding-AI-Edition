@@ -99,6 +99,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 		local required=controls.groups.buf ~= "" and assert(tonumber(controls.groups.buf),"Invalid required group count") or nil
 		if not next(result) then result=nil end
 		sim.validateRecipe({steps={{method="chaos"}},targets=groups,requirements=result,requiredGroups=required})
+		local conflict=sim.requirementsConflict(result);assert(not conflict,conflict)
 		onKeep(groups,result,required);main:ClosePopup()
 	end)
 	button("close",492,568,116,"Close",function() main:ClosePopup() end)

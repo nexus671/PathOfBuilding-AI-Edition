@@ -77,6 +77,7 @@ local function sampled(sim,raw,recipe,options)
 end
 function M.simulate(sim,raw,recipe,options)
 	options=options or {};recipe=sim.validateRecipe(recipe)
+	local conflict=sim.recipeConflict(recipe);assert(not conflict,conflict)
 	assert(not recipe.initialState and not options.initialState,"Unique recipes continue from item text, not an ordinary crafting state")
 	assert(#recipe.targets==0,"Modifier-identity targets are not yet supported for unique items")
 	local unique=require("Modules.CraftingUniqueQuality");local start=unique.inspect(raw)

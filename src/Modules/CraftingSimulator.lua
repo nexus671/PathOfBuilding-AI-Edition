@@ -737,6 +737,24 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
  end
  return true
 end
+-- Check contradictions separately from structural validation so previously
+-- saved recipes remain loadable and can be repaired.
+function M.requirementsConflict(requirements)
+ if type(requirements)~="table" or type(requirements.exactSockets)~="number" then return nil end
+ local exact=requirements.exactSockets
+ local abyss=type(requirements.minAbyssSockets)=="number" and requirements.minAbyssSockets or 0
+ if type(requirements.links)=="number" and requirements.links+abyss>exact then
+  return "Minimum linked sockets and Abyss sockets exceed the exact socket count."
+ end
+ if type(requirements.socketColours)=="string" and #requirements.socketColours+abyss>exact then
+  return "Required socket colours and Abyss sockets exceed the exact socket count."
+ end
+ if abyss>exact then return "Minimum Abyss sockets exceed the exact socket count." end
+end
+function M.recipeConflict(recipe)
+ local reason=M.requirementsConflict(recipe.requirements)
+ if reason then return "Item goal: "..reason end
+end
 function M.validateRecipe(recipe)
 	assert(type(recipe) == "table" and type(recipe.steps) == "table" and #recipe.steps >= 1 and #recipe.steps <= 20,"Use one to twenty recipe steps")
 	assert(type(recipe.targets) == "table" and #recipe.targets <= 6,"Choose up to six target groups")
@@ -947,6 +965,7 @@ function M.simulate(raw,recipe,options)
 		options.currency=options.currency or options.priceBook.currency
 	end
 	recipe=M.validateRecipe(recipe)
+	local conflict=M.recipeConflict(recipe);assert(not conflict,conflict)
 	local observationReason=M.predictableRecipeObservationReason(recipe)
 	assert(not observationReason,observationReason)
 	local trials=integer(options.trials or 200,1,2000,"trial count")
@@ -1399,6 +1418,7 @@ do
 		return ordinarySimulate(raw,recipe,options)
 	end
 	function M.calculate(raw,action,targets,initialState,options)
+		local conflict=M.requirementsConflict(options and options.requirements);assert(not conflict,conflict)
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
 		if rarity and rarity:upper()=="UNIQUE" then
 			options=options or {};assert(initialState==nil,"Calculate unique crafts using the item text, not an ordinary crafting state")

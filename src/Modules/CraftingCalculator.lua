@@ -5,6 +5,7 @@ function C.extend(M)
 	local finite={recombine_predictable=true,augmentation=true,regal=true,exalt=true,influence_exalt=true,beast_talisman_fracture=true,ducat_kishara=true,ducat_tzamoto=true}
 	function M.calculate(raw,craft,targets,initialState,options)
 		options=options or {}
+		local conflict=M.requirementsConflict(options.requirements);assert(not conflict,conflict)
 		if craft.method=="rog_reroll" and (craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two") then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
