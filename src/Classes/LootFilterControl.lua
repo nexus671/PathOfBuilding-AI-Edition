@@ -278,7 +278,7 @@ function M.Export(profile,raw,report)
 		local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a directory")
 		local target=directory.."/"..c.filename.buf;local existing=io.open(target,"rb")
 		if existing then existing:close();notify("File exists","Choose another filename to preserve the existing filter.");return end
-		MakeDir(directory);local file=assert(io.open(target,"wb"),"Could not create filter file");assert(file:write(raw));assert(file:close());notify("Filter exported",target)
+		MakeDir(directory);require("Modules.LootFilterExports").writeNew(target,raw);notify("Filter exported",target)
 	end) end)
 	button(c,"raw",320,236,140,"Inspect text",function() modal("Compiled filter",raw) end)
 	button(c,"reviewImports",472,236,160,"Review imports",function()
@@ -300,8 +300,8 @@ function M.Export(profile,raw,report)
 		end
 		MakeDir(directory);local written=0
 		for i,variant in ipairs(variants) do
-			local file=io.open(targets[i],"wb");assert(file,"Could not create "..targets[i]..". Files already written: "..written)
-			local ok=file:write(variant.text);local closed=file:close();assert(ok and closed,"Could not finish "..targets[i]..". Files already completed: "..written);written=written+1
+			local ok,err=pcall(require("Modules.LootFilterExports").writeNew,targets[i],variant.text)
+			assert(ok,"Could not export "..targets[i]..". Files already completed: "..written..". "..ui.errorText(err));written=written+1
 		end
 		notify("Filters exported","Saved seven strictnesses to "..directory)
 	end) end)
@@ -312,7 +312,7 @@ function M.Export(profile,raw,report)
 		local target=directory.."/"..stem.."-strictnesses.zip"
 		local existing=io.open(target,"rb");if existing then existing:close();notify("File exists","Choose another filename to preserve the existing archive.");return end
 		local archive=require("Modules.LootFilterZip").variants(profile,c.filename.buf)
-		MakeDir(directory);local file=assert(io.open(target,"wb"),"Could not create archive");local ok=file:write(archive);local closed=file:close();assert(ok and closed,"Could not finish "..target)
+		MakeDir(directory);require("Modules.LootFilterExports").writeNew(target,archive)
 		notify("Filters exported",target)
 	end) end)
 	c.writeZip.enabled=not profile.template;c.writeZip.tooltipText=c.writeAll.tooltipText

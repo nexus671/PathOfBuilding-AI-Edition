@@ -49,6 +49,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_crafting_replay_ui.lua")
     sources.append(ROOT / "tools/test_genesis_ui.lua")
     sources.append(ROOT / "tools/test_atlas_remove_ui.lua")
+    sources.append(ROOT / "tools/test_filter_export_race.lua")
     sources.append(ROOT / "tools/test_crafting_guide_ui.lua")
     sources.append(ROOT / "tools/test_journey_crafting_guide_ui.lua")
     sources.append(ROOT / "tools/test_flask_enchant_ui.lua")
@@ -102,6 +103,10 @@ def main():
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-removal-controls.log").write_text(atlas_removal.stdout)
     assert atlas_removal.returncode == 0, atlas_removal.stdout
+    filter_race = subprocess.run(lua_command + ["../tools/test_filter_export_race.lua"], cwd=ROOT / "src",
+                                 env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "filter-export-race-controls.log").write_text(filter_race.stdout)
+    assert filter_race.returncode == 0, filter_race.stdout
     replay = subprocess.run(lua_command + ["../tools/test_crafting_replay_ui.lua", str(frames)], cwd=ROOT / "src",
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-replay-controls.log").write_text(replay.stdout)
