@@ -1,3 +1,4 @@
+<!-- cspell:ignore lupa -->
 # AI Edition 1.0 release review
 
 This is the working acceptance checklist, not a completed release announcement.
@@ -161,6 +162,8 @@ items without XML mismatches. Focused tests cover range rounding, variants,
 whitespace/entities, source edits and notes restoration on failure. The command
 `luajit ../tools/check_snapshot_equivalence.lua path/to/build.xml`, run from
 `src`, repeats the saved-build proof without writing the supplied file.
+The read-only headless click benchmark `python tools/run_headless_lupa.py --filesystem tools/benchmark_tree_ui_responsiveness.lua path/to/build.xml 5 deferred-recovery` measures a passive click, the following update frame, per-skill cost-warning probes and deferred recovery slices. Probe times include their nested work and are part of, not additional to, BuildOutput time. Omit `deferred-recovery` to use the build configuration, or use `desktop-recovery` for desktop-style deferred recovery with the saved configuration. It checks that the build revision is restored and never saves the supplied file. Draw-command capture and instrumentation add overhead; these figures do not measure native desktop frame time.
+
 A paired run captured the same 476,247 XML bytes and legacy revision in 119 ms,
 versus 282 ms for the legacy path; a revision-only check took 91 ms. The idle
 planning benchmark measured a 101 ms snapshot, 3.79 seconds synchronous,
