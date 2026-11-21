@@ -190,6 +190,10 @@ def main():
         guide_text = [c.get("text", "") for c in guide_review["commands"] if c.get("kind") == "text"]
         assert any("Acquire the unique helmet" in text for text in guide_text), "Guide review does not show the edited step"
         assert any("Confirm guide" in text for text in guide_text), "Guide review has no confirmation action"
+        frame = json.loads((frames / f"{width}-crafting-rog-offer.json").read_text())
+        currency_art = json.loads((ROOT / "src/Assets/Crafting/currencies.json").read_text())
+        order_paths = {currency_art["items"][f"Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_{i}"]["path"] for i in range(1, 5)}
+        assert order_paths <= {c.get("asset") for c in frame["commands"]}, "Rog offer is missing Order Artifact artwork"
         frame = json.loads((frames / f"{width}-map-clipboard-imported.json").read_text())
         assert any(c.get("asset") == "Assets/MapCrafting/Items/MapTier5.png" for c in frame["commands"]), "Current map item artwork is missing"
         quality = next(c for c in frame["commands"] if c["kind"] == "text" and "Quality (Pack Size): +20%" in c.get("text", ""))

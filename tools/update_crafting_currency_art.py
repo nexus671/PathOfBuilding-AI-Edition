@@ -14,6 +14,7 @@ ASSETS = ROOT / "src/Assets/Crafting/Currency"
 SOURCE = {"repo": "repoe-fork/repoe-fork.github.io", "commit": "0071545fba8d079f65cc9c6a415d8f525f3af07a"}
 BASE_ITEMS_HASH = "336cbd6c463249c862b8e47ab78392f7fbe03864044d5d8fcf5a7f3433de2ae4"
 METHODS = {
+    "gwennen": "Astragali", "rog_reroll": "Grand Order Artifact",
     "beast_max_links": "Imprinted Bestiary Orb",
     "beast_talisman_imprint": "Imprinted Bestiary Orb",
     "omen_connections": "Omen of Connections",
@@ -81,6 +82,7 @@ def main():
     bases = json.loads(raw)
     wanted = set(METHODS.values())
     wanted.update({"Potent Chaotic Resonator", "Powerful Chaotic Resonator", "Prime Chaotic Resonator", "Glassblower's Bauble", "Wild Crystallised Lifeforce", "Vivid Crystallised Lifeforce", "Sacred Crystallised Lifeforce", "Crystallised Rancour"})
+    wanted.update(f"{tier} {faction} Artifact" for tier in ("Lesser", "Greater", "Grand", "Exceptional") for faction in ("Order", "Broken Circle"))
     entries = {key: value for key, value in bases.items() if value.get("visual_identity", {}).get("dds_file")
                and (value["name"] in wanted or value["item_class"] == "StackableCurrency" and
                     any(word in value["name"] for word in ("Essence of", "Fossil", "Catalyst", "Eldritch Ember", "Eldritch Ichor", "Resonator", "Whetstone", "Exalted Orb")))}

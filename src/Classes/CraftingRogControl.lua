@@ -14,6 +14,11 @@ function M.Open(initial,keep)
 	for index,tier in ipairs({"lesser","greater","grand","exceptional"}) do
 		local x=16+(index-1)*145
 		ui.label(controls,tier.."Label",x,195,tier:gsub("^%l",string.upper),14)
+		local iconPath=select(2,require("Modules.CraftingPrices").describe("Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_"..index))
+		if iconPath then
+			local icon=NewImageHandle();icon:Load(iconPath);local label=controls[tier.."Label"];local draw=label.Draw
+			function label:Draw(viewport) draw(self,viewport);local ix,iy=self:GetPos();SetDrawColor(1,1,1);DrawImage(icon,ix+95,iy-3,20,20) end
+		end
 		controls[tier]=new("EditControl"):EditControl(ui.anchor,{x,218,125,26},initial.artifactCost and tostring(initial.artifactCost[tier] or 0) or "",nil,nil,10)
 	end
 	ui.description(controls,"limits",16,260,width-32,32,{"Affix weights and how Rog chooses the best result are unverified."},14)

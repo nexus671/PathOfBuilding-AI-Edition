@@ -1511,6 +1511,14 @@
       "height": 78,
       "sha256": "0dc15732af5af2894950c4169a98e717a5c60f958efa0f5200e3ebf4a70526e0"
     },
+    "Metadata/Items/Currency/CurrencyRefreshGambler": {
+      "name": "Astragali",
+      "path": "Assets/Crafting/Currency/ee380721d4e7dec8a25e.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/Expedition/GamblerRefreshCurrency.png",
+      "width": 78,
+      "height": 78,
+      "sha256": "fff3cba685d79185a0886f735edca29c4e11f3abb493a5d947225adcb0effb1b"
+    },
     "Metadata/Items/Currency/CurrencyRemoveMod": {
       "name": "Orb of Annulment",
       "path": "Assets/Crafting/Currency/f7aca9acdfa1ea4f7b7f.png",
@@ -1822,6 +1830,70 @@
       "width": 156,
       "height": 156,
       "sha256": "1ec9fc1428486d702b3c07fec8e92ce3a77ac0b5dfc33c6cef1ddb7bb7043320"
+    },
+    "Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1": {
+      "name": "Lesser Broken Circle Artifact",
+      "path": "Assets/Crafting/Currency/5f787724b867fc729026.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/Expedition/Rune16.png",
+      "width": 78,
+      "height": 78,
+      "sha256": "5dab841ec3aac1732fe428669885334342bf0db1ecd5cef55ddea1f1acac1968"
+    },
+    "Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2": {
+      "name": "Greater Broken Circle Artifact",
+      "path": "Assets/Crafting/Currency/2410855e62c8f505eb2f.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/Expedition/Rune11.png",
+      "width": 78,
+      "height": 78,
+      "sha256": "94fd2f4efd7ce8f2142945edbe31231b912deaf9a6753c5ebc46c8063629f6c2"
+    },
+    "Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3": {
+      "name": "Grand Broken Circle Artifact",
+      "path": "Assets/Crafting/Currency/8e2da866d2feee696d91.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/Expedition/Rune8.png",
+      "width": 78,
+      "height": 156,
+      "sha256": "001518904ee89e0ef797d549ebb5adb44dec92948ca322e656d6a3851fef54d8"
+    },
+    "Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4": {
+      "name": "Exceptional Broken Circle Artifact",
+      "path": "Assets/Crafting/Currency/35b9ad182394fb4baf61.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/Expedition/Rune3.png",
+      "width": 156,
+      "height": 156,
+      "sha256": "4409b158314afbf798936875263a44df7cf7471ba0edc06250048367bf6489e2"
+    },
+    "Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_1": {
+      "name": "Lesser Order Artifact",
+      "path": "Assets/Crafting/Currency/c7d15af95c0a49e68097.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/Expedition/Rune13.png",
+      "width": 78,
+      "height": 78,
+      "sha256": "f9f825ad2de5d1635cb1df167b54cf3dcea233da055bf30fbf40b9c46f1a06f1"
+    },
+    "Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_2": {
+      "name": "Greater Order Artifact",
+      "path": "Assets/Crafting/Currency/84fae577c3156d2efede.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/Expedition/Rune14.png",
+      "width": 78,
+      "height": 78,
+      "sha256": "e7658749a37d3f0b4744feea37f7fe6f6189e121413a04f11621843cd34c4e96"
+    },
+    "Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_3": {
+      "name": "Grand Order Artifact",
+      "path": "Assets/Crafting/Currency/10649bb9de78774faec6.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/Expedition/Rune7.png",
+      "width": 78,
+      "height": 156,
+      "sha256": "b9c4837b8d2f2d08235ef901e45f5c15ba0f09b4e98e70d4f96301ca8da8ab23"
+    },
+    "Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_4": {
+      "name": "Exceptional Order Artifact",
+      "path": "Assets/Crafting/Currency/59a705ca88728d3bf343.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/Expedition/Rune21.png",
+      "width": 156,
+      "height": 156,
+      "sha256": "e43ab58021713ad9ca1921ff850bd1a9fc1fa206be41bcf99c00604976ac79e3"
     }
   },
   "methods": {
@@ -1862,6 +1934,7 @@
     "foulborn_regal": "Metadata/Items/Currency/CurrencyMutatedUpgradeMagicToRare",
     "fracture": "Metadata/Items/Currency/CurrencyFractureRare",
     "fusing": "Metadata/Items/Currency/CurrencyRerollSocketLinks",
+    "gwennen": "Metadata/Items/Currency/CurrencyRefreshGambler",
     "harvest_augment": "Metadata/Items/Currency/HarvestSeedBlue",
     "harvest_reforge": "Metadata/Items/Currency/HarvestSeedBlue",
     "harvest_resistance": "Metadata/Items/Currency/HarvestSeedBlue",
@@ -1872,6 +1945,7 @@
     "quality": "Metadata/Items/Currency/CurrencyArmourQuality",
     "regal": "Metadata/Items/Currency/CurrencyUpgradeMagicToRare",
     "remembrance": "Metadata/Items/Currency/CurrencyAddZanaInfluence",
+    "rog_reroll": "Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_3",
     "sacred": "Metadata/Items/Currency/CurrencyRerollDefences",
     "scour": "Metadata/Items/Currency/CurrencyConvertToNormal",
     "tainted_catalyst": "Metadata/Items/Currency/CurrencyJewelleryQualityVaal",

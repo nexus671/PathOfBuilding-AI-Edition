@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview890" />
+	<Version number="2.68.1-ai.preview891" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -202,6 +202,15 @@
 	<File name="Assets/Atlas/3.30.0-preview/atlas-skills-4.webp" part="program" sha1="53ca87505f1d45e9dc6f4aac0d53d95d471ae09e" />
 	<File name="Assets/Atlas/3.30.0-preview/atlas-skills-disabled-4.webp" part="program" sha1="9d7f4cddc986908ae97794ff3b66ee862854664f" />
 	<File name="Assets/Atlas/3.30.0-preview/manifest.json" part="program" sha1="08de7572ee6e1ae85c220d1d9759b9e5e918ef08" />
+	<File name="Assets/Crafting/Currency/10649bb9de78774faec6.png" part="program" sha1="e2f5c54533696f318583e7b2648b8c61861bfb33" />
+	<File name="Assets/Crafting/Currency/2410855e62c8f505eb2f.png" part="program" sha1="1a44e807c339d72d39d726fd7f97ca5380af81e7" />
+	<File name="Assets/Crafting/Currency/35b9ad182394fb4baf61.png" part="program" sha1="105245f057072e34d2e35d283aee4a9e8916ee5d" />
+	<File name="Assets/Crafting/Currency/59a705ca88728d3bf343.png" part="program" sha1="fe11ba68604546f1b7c060f91ec0bec37e3f4ce4" />
+	<File name="Assets/Crafting/Currency/5f787724b867fc729026.png" part="program" sha1="995b53fc3b2f7759557f26e874d369709c08148c" />
+	<File name="Assets/Crafting/Currency/84fae577c3156d2efede.png" part="program" sha1="7dd2b6654de4bda8a51bb2be4bf2059ee8b3fe89" />
+	<File name="Assets/Crafting/Currency/8e2da866d2feee696d91.png" part="program" sha1="cdd856ca6751e216e5e6d105b87b95cc9d3236f5" />
+	<File name="Assets/Crafting/Currency/c7d15af95c0a49e68097.png" part="program" sha1="c6877b920cb017103782d267b1d89a13ceca53a6" />
+	<File name="Assets/Crafting/Currency/ee380721d4e7dec8a25e.png" part="program" sha1="244e38cc6ffbda08a40f07659fa83d88839ea3fe" />
 	<File name="Assets/Crafting/Currency/03fd8ecb579cf9c46ea7.png" part="program" sha1="2523d8e8367361e15e884bf0a2c6aab03db06b74" />
 	<File name="Assets/Crafting/Currency/04b01b4d96d7701f854f.png" part="program" sha1="413dc92cc620736d4d97184131056e2fa640886e" />
 	<File name="Assets/Crafting/Currency/0550e7e48a4d7775c826.png" part="program" sha1="e9fe7324e1970ca1a05deee821d9938d53e1188b" />
@@ -985,7 +994,7 @@
 	<File name="Assets/Crafting/augmentation.png" part="program" sha1="fad416087255184d9f22f2723bb7d45aee00dae7" />
 	<File name="Assets/Crafting/chaos.png" part="program" sha1="e7a21347961c7dce1a423a74872354c61a46be25" />
 	<File name="Assets/Crafting/chromatic.png" part="program" sha1="d5b9ad7b631880f9bb0476688e4792ace6f89486" />
-	<File name="Assets/Crafting/currencies.json" part="program" sha1="340557593e64e15fe972bea9bcdb491a78c4cbae" />
+	<File name="Assets/Crafting/currencies.json" part="program" sha1="4930c7345cb477db69495efb25ab4d9b3777e62d" />
 	<File name="Assets/Crafting/divine.png" part="program" sha1="fd658ddb8a7003ba6481863f018e0fbff1058d8e" />
 	<File name="Assets/Crafting/exalt.png" part="program" sha1="eab8a2c84b5b744fdca04c17f2e6b3eda08c53d7" />
 	<File name="Assets/Crafting/items.json" part="program" sha1="90074bb1d9669a26033f2e74a27b3f40f908baca" />
@@ -1697,7 +1706,7 @@
 	<File name="Classes/CraftingFossilCompareControl.lua" part="program" sha1="4ea9510d1eff146e58c3b0aa9ee3d6d863336d58" />
 	<File name="Classes/CraftingFossilControl.lua" part="program" sha1="25a2de85dd46208a7771f659bc59ddb103649025" />
 	<File name="Classes/CraftingGwennenControl.lua" part="program" sha1="48fe8c7ce9600b7ef26342e1c3eaa498a936d8f8" />
-	<File name="Classes/CraftingRogControl.lua" part="program" sha1="be6d34e29b2684e40107406c8358bf82f71cfcbc" />
+	<File name="Classes/CraftingRogControl.lua" part="program" sha1="085d44eff1a404816a116234933d3e2f304e4a87" />
 	<File name="Classes/CraftingHistoryControl.lua" part="program" sha1="e5d93860b1f0b56531e3c581c95713d4ce1c9ad0" />
 	<File name="Classes/CraftingInventoryControl.lua" part="program" sha1="3261cb7e8f02c05f99b2fac58eefc242ad2842bd" />
 	<File name="Classes/CraftingItemComparisonControl.lua" part="program" sha1="e2a04459cde8751208135bfea6239dd98280bc81" />
