@@ -126,3 +126,5 @@ In a 3.30 Atlas plan, open **Plan tools → Shaped Regions** to record the maps 
 These are manual observations, not a game or account import. Unlisted maps, Thread limits and other in-game restrictions are not predicted. Keep the tracker in the Atlas draft, keep the Atlas plan and save the build to persist it. Plan JSON and AI Atlas proposals also carry these observations. Changing Atlas versions starts a separate empty draft.
 
 AI clients can call `preview_shaped_region_run` with an Atlas plan, map name and explicitly completed region objectives. It returns a separate proposed plan and the remaining recorded maps; it does not access the game or save the build. Use `propose_atlas_plan`, review in PoB, then save to keep the result.
+
+Divine Vessel can be added as a conditional Deified plan in the map currency browser and MCP. The plan is stored separately from copied effects and can be removed without changing them. The documented boss bonuses are a reference, not map-wide rarity; item eligibility, other enchantments, corruption order and Pantheon capture need in-game verification.

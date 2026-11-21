@@ -1,7 +1,7 @@
 -- Experimental ordinary-map modifier and stat rolls. Probabilities are estimates.
 local map=require("Modules.MapCraftingData")
 local M={}
-M.actions={{id="transmute",label="Orb of Transmutation"},{id="alchemy",label="Orb of Alchemy"},{id="alteration",label="Orb of Alteration"},{id="chaos",label="Chaos Orb"},{id="augmentation",label="Orb of Augmentation"},{id="regal",label="Regal Orb"},{id="exalt",label="Exalted Orb"},{id="originator",label="Originator's Exalted Orb"},{id="annul",label="Orb of Annulment"},{id="scour",label="Orb of Scouring"},{id="vaal_add",label="Vaal: +2 modifier outcome (conditional)"},{id="vaal_implicit",label="Vaal: corruption implicit (conditional)"},{id="vaal_unchanged",label="Vaal: no other change (conditional)"},{id="vaal_reroll",label="Vaal: reroll at same tier (conditional)"}}
+M.actions={{id="transmute",label="Orb of Transmutation"},{id="alchemy",label="Orb of Alchemy"},{id="alteration",label="Orb of Alteration"},{id="chaos",label="Chaos Orb"},{id="augmentation",label="Orb of Augmentation"},{id="regal",label="Regal Orb"},{id="exalt",label="Exalted Orb"},{id="originator",label="Originator's Exalted Orb"},{id="divine_vessel",label="Divine Vessel (conditional plan)"},{id="clear_deified_plan",label="Remove planned Deified"},{id="annul",label="Orb of Annulment"},{id="scour",label="Orb of Scouring"},{id="vaal_add",label="Vaal: +2 modifier outcome (conditional)"},{id="vaal_implicit",label="Vaal: corruption implicit (conditional)"},{id="vaal_unchanged",label="Vaal: no other change (conditional)"},{id="vaal_reroll",label="Vaal: reroll at same tier (conditional)"}}
 local function rng(seed)
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid map roll seed")
 	return function() seed=seed*16807%2147483647;return seed/2147483647 end
@@ -63,13 +63,14 @@ local function validate(input,checkpoint,cache)
 	assert(type(input)=="table" and type(input.selected)=="table","Invalid map state")
 	assert(input.twiceCorrupted==nil or type(input.twiceCorrupted)=="boolean","Invalid twice-corrupted map state")
 	assert(not input.twiceCorrupted or input.corrupted,"A twice-corrupted map must be corrupted")
+	assert(input.plannedDeified==nil or type(input.plannedDeified)=="boolean","Invalid planned Deified marker")
 	assert(input.vaalPreview==nil or type(input.vaalPreview)=="boolean","Invalid conditional Vaal preview marker")
 	assert(not input.vaalPreview or input.corrupted,"A conditional Vaal preview requires a corrupted map")
 	assert(not input.corrupted,"Corrupted maps cannot be modified with these currencies")
 	assert(input.implicit==nil,"A map corruption implicit requires a corrupted map")
 	assert(not input.mirrored,"Mirrored maps cannot be modified with these currencies")
 	assert(not input.unidentified,"Identify the map before simulating currency")
-	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,selected={},rolls={},quality=require("Modules.MapQuality").validate(input.quality),observedEffects=require("Modules.MapObservedEffects").validate(input.observedEffects)}
+	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,plannedDeified=input.plannedDeified or nil,selected={},rolls={},quality=require("Modules.MapQuality").validate(input.quality),observedEffects=require("Modules.MapObservedEffects").validate(input.observedEffects)}
 	assert(not require("Modules.MapObservedEffects").hasExplicit(state.observedEffects),"Currency simulation is unavailable while unsupported explicit map modifiers are recorded")
 	for _,id in ipairs(input.selected) do state.selected[#state.selected+1]=id end
 	local values=require("Modules.MapRollValues");local existing=values.validate(state.selected,input.rolls,map.source());local priorIds={}
@@ -110,7 +111,12 @@ local function validate(input,checkpoint,cache)
 end
 function M.reason(state,action)
 	local rarity=state.rarity;local count=#state.selected
-	if map.isNightmare(state.baseId) and action~="chaos" and action~="originator" then return "Only Chaos and Originator's Exalted Orbs are modeled for Nightmare maps." end
+	if map.isNightmare(state.baseId) and action~="chaos" and action~="originator" and action~="divine_vessel" and action~="clear_deified_plan" then return "Only Chaos and Originator's Exalted Orbs are modeled for Nightmare maps." end
+	if action=="clear_deified_plan" then if not state.plannedDeified then return "There is no planned Deified effect to remove." end;return nil end
+	if action=="divine_vessel" then
+		if state.plannedDeified or require("Modules.MapObservedEffects").deified(state.observedEffects) then return "This map already has a planned or observed Deified effect." end
+		return nil
+	end
 	if action=="transmute" or action=="alchemy" then if rarity~="normal" then return "Requires a normal map." end
 	elseif action=="alteration" or action=="augmentation" or action=="regal" then
 		if rarity~="magic" then return "Requires a magic map." end
@@ -145,6 +151,18 @@ function M.options(input,checkpoint)
 	return result
 end
 function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
+	if action=="divine_vessel" or action=="clear_deified_plan" then
+		-- This is a reversible planning marker, not an assertion that the currency
+		-- can be used on a corrupted, mirrored or unidentified map in the game.
+		assert(type(input)=="table","Invalid map state");rng(seed)
+		local draft=copyTable(input);draft.id="preview";draft.title="Map preview";draft.patch=map.source().patch
+		local state=require("Modules.AtlasPlanner").validateMapDraft(draft);state.id=nil;state.title=nil;state.patch=nil
+		local reason=M.reason(state,action);assert(not reason,reason)
+		local inspected=map.inspect(state.baseId,state.tier,state.itemLevel,state.selected,"",0,1,checkpoint,state.rarity,state.rolls,state.corrupted,state.implicit,state.quality,state.observedEffects)
+		state.plannedDeified=action=="divine_vessel" and true or nil
+		return {state=state,seed=seed,action=action,deified=require("Modules.MapObservedEffects").deified(state.observedEffects,state.plannedDeified),dataPatch=map.source().patch,dataSource=copyTable(map.source().source),summary=not state.unidentified and inspected.summary or nil,
+		 note=action=="divine_vessel" and "Conditional Divine Vessel plan: boss bonuses follow the 3.30 notes. Eligibility, other enchantments, corruption order and Pantheon capture need in-game verification; no map or currency is changed." or "Removed the hypothetical Deified plan; copied effects are unchanged."}
+	end
 	local state,existing,priorIds=validate(input,checkpoint,cache)
 	local reason=M.reason(state,action);assert(not reason,reason)
 	local values=require("Modules.MapRollValues")
@@ -190,6 +208,6 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache)
 		if roll then state.rolls[#state.rolls+1]={id=id,values=roll} end
 	end
 	local implicitInfo=state.implicit and require("Modules.MapCorruptionImplicits").describe(state.implicit,state.itemLevel) or nil
-	return {state=state,seed=seed,action=action,dataPatch=not identitiesOnly and map.source().patch or nil,dataSource=not identitiesOnly and copyTable(map.source().source) or nil,implicitSource=state.implicit and require("Modules.MapCorruptionImplicits").source() or nil,summary=not identitiesOnly and map.summarize(state.selected,state.rolls,implicitInfo,state.quality) or nil,note=(action=="originator" and "Experimental Originator preview: a suffix is selected uniformly and a documented rare-only replacement is sampled using exported spawn weights. Independent uniform stat rolls, Nightmare variants, eligibility, selection weights and interactions are unverified; some removal branches are unsupported." or action=="vaal_add" and "Conditional Vaal outcome only: two modifiers are added and the map is corrupted. This is not a full Vaal Orb simulation or an outcome probability. Weighted selection, stat rolls, side limits and interactions are unverified assumptions." or action=="vaal_implicit" and "Conditional Vaal implicit outcome only; this is not a full Vaal Orb roll or an outcome probability. Implicit selection uses pinned weights, with uniformly sampled values; eligibility and interactions are unverified." or action=="vaal_unchanged" and "Conditional Vaal outcome only: the map is corrupted without another change. This is not a full Vaal Orb roll or an outcome probability." or action=="vaal_reroll" and "Conditional Vaal reroll at the same tier only; this is not a full Vaal Orb roll or an outcome probability. Modifier counts, weights, uniform values and interactions are unverified assumptions; tier changes and Vaal Temple are excluded." or map.isNightmare(state.baseId) and "Experimental Nightmare model: six modifiers, one exclusive prefix and suffix drawn first, then four weighted draws. Draw order, weights, independent uniform values and interactions are unverified assumptions." or "Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified.")..require("Modules.MapObservedEffects").note(state.observedEffects)..(map.hasBlightedLegacy(state.selected,state.observedEffects) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")}
+	return {state=state,seed=seed,action=action,deified=require("Modules.MapObservedEffects").deified(state.observedEffects,state.plannedDeified),dataPatch=not identitiesOnly and map.source().patch or nil,dataSource=not identitiesOnly and copyTable(map.source().source) or nil,implicitSource=state.implicit and require("Modules.MapCorruptionImplicits").source() or nil,summary=not identitiesOnly and map.summarize(state.selected,state.rolls,implicitInfo,state.quality) or nil,note=(action=="originator" and "Experimental Originator preview: a suffix is selected uniformly and a documented rare-only replacement is sampled using exported spawn weights. Independent uniform stat rolls, Nightmare variants, eligibility, selection weights and interactions are unverified; some removal branches are unsupported." or action=="vaal_add" and "Conditional Vaal outcome only: two modifiers are added and the map is corrupted. This is not a full Vaal Orb simulation or an outcome probability. Weighted selection, stat rolls, side limits and interactions are unverified assumptions." or action=="vaal_implicit" and "Conditional Vaal implicit outcome only; this is not a full Vaal Orb roll or an outcome probability. Implicit selection uses pinned weights, with uniformly sampled values; eligibility and interactions are unverified." or action=="vaal_unchanged" and "Conditional Vaal outcome only: the map is corrupted without another change. This is not a full Vaal Orb roll or an outcome probability." or action=="vaal_reroll" and "Conditional Vaal reroll at the same tier only; this is not a full Vaal Orb roll or an outcome probability. Modifier counts, weights, uniform values and interactions are unverified assumptions; tier changes and Vaal Temple are excluded." or map.isNightmare(state.baseId) and "Experimental Nightmare model: six modifiers, one exclusive prefix and suffix drawn first, then four weighted draws. Draw order, weights, independent uniform values and interactions are unverified assumptions." or "Experimental: modifier counts, weighted selection, independent uniform stat rolls and map interactions are estimates. Unmatched or unsampled text remains a range; base availability and some restrictions are unverified.")..require("Modules.MapObservedEffects").note(state.observedEffects)..(map.hasBlightedLegacy(state.selected,state.observedEffects) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")}
 end
 return M

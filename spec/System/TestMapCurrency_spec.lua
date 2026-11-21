@@ -1,6 +1,22 @@
 describe("Experimental map currency",function()
 	local currency=require("Modules.MapCurrency")
 	local function state(rarity,selected) return {baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity=rarity,selected=selected or {}} end
+	it("plans and removes Deified without inventing an observed enchantment",function()
+		local initial=currency.perform(state("normal"),"alchemy",123).state;initial.observedEffects={{kind="enchant",text="Other recorded enchantment"}}
+		local before=copyTable(initial);local result=currency.perform(initial,"divine_vessel",1)
+		assert.same(before,initial);assert.is_true(result.state.plannedDeified);assert.same(before.observedEffects,result.state.observedEffects)
+		assert.same(before.selected,result.state.selected);assert.same(before.rolls,result.state.rolls);assert.equal("planned",result.deified.provenance);assert.equal(50,result.deified.bossItemRarityIncrease)
+		local map=require("Modules.MapCraftingData");assert.equal(map.summarize(before.selected,before.rolls).totals.rarity.min,result.summary.totals.rarity.min)
+		assert.has_error(function() currency.perform(result.state,"divine_vessel",1) end)
+		local cleared=currency.perform(result.state,"clear_deified_plan",1);assert.is_nil(cleared.state.plannedDeified);assert.same(before.observedEffects,cleared.state.observedEffects)
+		local observed=copyTable(before);observed.observedEffects={{kind="enchant",text="Deified"}};assert.has_error(function() currency.perform(observed,"divine_vessel",1) end)
+		local draft=copyTable(result.state);draft.id="planned";draft.title="Planned map";draft.patch=map.source().patch
+		local saved=require("Modules.AtlasPlanner").validateMapDraft(draft);assert.is_true(saved.plannedDeified);assert.same(before.observedEffects,saved.observedEffects)
+		local corrupted=copyTable(before);corrupted.corrupted=true;corrupted.twiceCorrupted=true
+		local plan=currency.perform(corrupted,"divine_vessel",1);assert.is_true(plan.state.twiceCorrupted);assert.is_true(plan.state.plannedDeified)
+		local removed=currency.perform(plan.state,"clear_deified_plan",1);assert.is_true(removed.state.twiceCorrupted);assert.is_nil(removed.state.plannedDeified)
+		draft.plannedDeified="yes";assert.has_error(function() require("Modules.AtlasPlanner").validateMapDraft(draft) end)
+	end)
 	it("previews Originator suffix replacement while preserving other rolls",function()
 		local map=require("Modules.MapCraftingData");local initial=currency.perform(state("normal"),"alchemy",123).state
 		initial.quality={kind="Pack Size",value=20};local before=copyTable(initial);local choices={};for _,entry in ipairs(currency.options(initial)) do choices[entry.id]=entry end

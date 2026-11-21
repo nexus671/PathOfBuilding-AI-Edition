@@ -90,6 +90,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:text("spent","3");assert(main.popups[1].controls.status.label:find("cannot exceed",1,true) and #main.popups[1].controls.results.list==0,"Impossible Thread spend was not explained");frame("atlas-thread-invalid-spend");ui:text("spent","1")
 	ui:click("close")
 	ui:click("tools");ui:text("search","Map modifier explorer");ui:click("choose");frame("map-modifier-explorer")
+	ui:click("deifiedPlan");frame("map-deified-plan-dialog");ui:click("plan");do local lines={};for _,row in ipairs(main.popups[1].controls.affixes.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;assert(table.concat(lines," "):find("Planned Deified",1,true),"Planned boss bonuses missing") end;frame("map-deified-plan");ui:click("deifiedPlan");ui:click("clear")
 	do
 		ui.clipboard="Item Class: Maps\nRarity: Rare\nVortex Artifice\nMap (Tier 5)\n--------\nQuality (Pack Size): +20% (augmented)\n--------\nItem Level: 68\n--------\nMonster Level: 72\n--------\nArea is Influenced by the Originator's Memories (implicit)\nPlayers are Delirious (enchant)\n--------\nMonsters have 45% increased Area of Effect\nMonsters deal 55% extra Physical Damage as Fire\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
 		ui:click("pasteMap");frame("map-clipboard-review");ui:click("close")
@@ -135,7 +136,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	do local c=main.popups[1].controls;assert(c.currency:IsEnabled() and c.estimate:IsEnabled(),"Nightmare Chaos estimates should be available");assert(c.list.list[1].entry,"Nightmare modifier was not offered");c.list.onClick({line=c.list.list[1]}) end
 	ui:click("add");frame("map-nightmare-inspection");ui:click("delirium");frame("map-nightmare-delirium");ui:click("close");ui:click("currency");ui:text("search","Chaos Orb");ui:click("choose");frame("map-nightmare-rolled")
 	do local c=main.popups[1].controls;local row;for _,entry in ipairs(c.affixes.list) do if entry.modifierId then row=entry;break end end
-		assert(row,"Expected a selectable map modifier");c.affixes.onClick({line=row});assert(c.remove.label=="Remove selected");frame("map-modifier-selected");ui:click("remove") end
+		assert(row,"Expected a selectable map modifier");c.affixes.onClick({line=row});assert(c.remove.label=="Remove");frame("map-modifier-selected");ui:click("remove") end
 	ui:choose("tier",16,"val");ui:text("search","")
 	do
 		local initial=main.popups[1].controls;initial.list.onClick({line=initial.list.list[1]});ui:click("add")

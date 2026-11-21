@@ -24,6 +24,7 @@ function M.run(state,options,checkpoint)
 	assert(type(state)=="table" and type(options)=="table","Invalid map estimate")
 	assert(state.twiceCorrupted==nil or type(state.twiceCorrupted)=="boolean","Invalid twice-corrupted map state")
 	assert(not state.twiceCorrupted or state.corrupted,"A twice-corrupted map must be corrupted")
+	assert(state.plannedDeified==nil or type(state.plannedDeified)=="boolean","Invalid planned Deified marker")
 	assert(state.vaalPreview==nil or type(state.vaalPreview)=="boolean","Invalid conditional Vaal preview marker")
 	assert(not state.vaalPreview or state.corrupted,"A conditional Vaal preview requires a corrupted map")
 	assert(not state.corrupted,"Corrupted maps cannot be rerolled")
@@ -46,7 +47,7 @@ function M.run(state,options,checkpoint)
 	local price=M.validatePrice(options.price)
 	assert(trials*maxAttempts<=20000,"Use at most 20,000 total simulated attempts")
 	local seed=integer(options.seed,1,2147483646,"estimate seed");local action=rarity=="magic" and "alteration" or "chaos"
-	local base={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity=rarity,selected={},quality=require("Modules.MapQuality").validate(state.quality),observedEffects=require("Modules.MapObservedEffects").validate(state.observedEffects)}
+	local base={baseId=state.baseId,tier=state.tier,itemLevel=state.itemLevel,rarity=rarity,plannedDeified=state.plannedDeified or nil,selected={},quality=require("Modules.MapQuality").validate(state.quality),observedEffects=require("Modules.MapObservedEffects").validate(state.observedEffects)}
 	assert(not require("Modules.MapObservedEffects").hasExplicit(base.observedEffects),"Reroll estimates are unavailable while unsupported explicit map modifiers are recorded")
 	local progress={trial=1,trials=trials,attempts=0}
 	local function slice() if checkpoint then checkpoint(progress) end end

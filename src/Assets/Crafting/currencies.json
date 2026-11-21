@@ -1902,6 +1902,22 @@
       "width": 156,
       "height": 156,
       "sha256": "e43ab58021713ad9ca1921ff850bd1a9fc1fa206be41bcf99c00604976ac79e3"
+    },
+    "Metadata/Items/MapFragments/CurrencyFragmentPantheonFlask": {
+      "name": "Divine Vessel",
+      "path": "Assets/Crafting/Currency/50bfa9731178ef7cc0d6.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Maps/SinFlaskEmpty.png",
+      "width": 78,
+      "height": 78,
+      "sha256": "58291efad3ee08ed4b13fdc4a9cce92412ba429923f480a7f82eee93a649bc15"
+    },
+    "Metadata/Items/MapFragments/FragmentPantheonFlask": {
+      "name": "Divine Vessel",
+      "path": "Assets/Crafting/Currency/50bfa9731178ef7cc0d6.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Maps/SinFlaskEmpty.png",
+      "width": 78,
+      "height": 78,
+      "sha256": "58291efad3ee08ed4b13fdc4a9cce92412ba429923f480a7f82eee93a649bc15"
     }
   },
   "methods": {
@@ -1919,6 +1935,7 @@
     "chromatic": "Metadata/Items/Currency/CurrencyRerollSocketColours",
     "conflict": "Metadata/Items/Currency/CurrencyConflictOrb",
     "divine": "Metadata/Items/Currency/CurrencyModValues",
+    "divine_vessel": "Metadata/Items/MapFragments/FragmentPantheonFlask",
     "dominance": "Metadata/Items/Currency/CurrencyUpgradeInfluenceMod",
     "ducat_brinehook": "Metadata/Items/Deepwater/DeepwaterPantheon",
     "ducat_cyaxan": "Metadata/Items/Deepwater/DeepwaterMercenaryCurrency",

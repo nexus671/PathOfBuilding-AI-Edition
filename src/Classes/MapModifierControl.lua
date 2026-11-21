@@ -26,6 +26,7 @@ function M.Open(options)
 	local mirrored=initial and initial.mirrored or nil
 	local twiceCorrupted=initial and initial.twiceCorrupted or nil
 	local unidentified=initial and initial.unidentified or nil
+	local plannedDeified=initial and initial.plannedDeified or nil
 	local vaalPreview=initial and initial.vaalPreview or nil
 	local implicit=initial and initial.implicit and copyTable(initial.implicit) or nil
 	local quality=initial and require("Modules.MapQuality").validate(initial.quality) or nil
@@ -83,7 +84,7 @@ function M.Open(options)
 			baseId=state.baseId;syncRarity();mirrored=state.mirrored or nil;twiceCorrupted=state.twiceCorrupted or nil;unidentified=state.unidentified or nil;selected=copyTable(state.selected);rolls=copyTable(state.rolls);implicit=state.implicit and copyTable(state.implicit) or nil;quality=state.quality and copyTable(state.quality) or nil;observedEffects=state.observedEffects and copyTable(state.observedEffects) or nil
 			controls.tier:SelByValue(state.tier,"val");controls.level:SetText(tostring(state.itemLevel))
 			previousRarity=state.corrupted and "corrupted_"..state.rarity or state.rarity;controls.rarity:SelByValue(previousRarity,"val")
-			estimateSettings=nil;vaalPreview=nil;candidate=nil;offset=0;controls.search:SetText("");main:ClosePopup();refresh()
+			estimateSettings=nil;vaalPreview=nil;plannedDeified=nil;candidate=nil;offset=0;controls.search:SetText("");main:ClosePopup();refresh()
 		end)
 		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{524,154,100,28},"Cancel",function() main:ClosePopup() end)
 		ui.style(popup,{keep=true});main:OpenPopup(640,200,"Review copied map",popup,nil,nil,"close")
@@ -140,16 +141,16 @@ function M.Open(options)
 	function controls.affixes:Draw(viewPort)
 		SetDrawLayer(nil,1);drawAffixes(self,viewPort);SetDrawLayer(nil,0)
 	end
-	local cardButtonWidth=math.floor((left-16)/3)
-	button("remove",16,height-62,cardButtonWidth,"Remove last",function()
+	local cardButtonWidth=math.floor((left-24)/4)
+	button("remove",16,height-62,cardButtonWidth,"Remove",function()
 		local index=#selected;for i,id in ipairs(selected) do if id==selectedAffix then index=i;break end end
 		local id=table.remove(selected,index);for i=#rolls,1,-1 do if rolls[i].id==id then table.remove(rolls,i) end end
 		selectedAffix=nil;candidate=nil;offset=0;refresh()
 	end)
 	controls.remove.enabled=function() return not unidentified and #selected>0 end
 	controls.remove.tooltipText="Select a modifier on the item to remove it, or remove the last one."
-	button("estimate",24+cardButtonWidth,height-62,cardButtonWidth,"Estimate rerolls",function()
-		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=copyTable(selected),rolls=copyTable(rolls),quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
+	button("estimate",24+cardButtonWidth,height-62,cardButtonWidth,"Rerolls",function()
+		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=copyTable(selected),rolls=copyTable(rolls),quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil,plannedDeified=plannedDeified}
 		require("Classes.MapCraftEstimateControl").Open(options.build,{state=state,wanted=selected,settings=estimateSettings,saveSettings=function(settings) estimateSettings=copyTable(settings) end,apply=function(sample)
 			selected=copyTable(sample.selected);rolls=copyTable(sample.rolls);offset=0;candidate=nil;controls.search:SetText("");refresh()
 		end})
@@ -159,7 +160,7 @@ function M.Open(options)
 		return options.build~=nil and getRarity()~="normal" and not isCorrupted() and not mirrored and not unidentified and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and level~=nil and not levelProblem()
 	end
 	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. The item level must support those modifiers. Corrupted or mirrored maps and unsupported explicit modifiers cannot be rerolled here. Nightmare estimates use unverified draw-order assumptions."
-	button("delirium",32+2*cardButtonWidth,height-62,cardButtonWidth,"Delirium...",function()
+	button("delirium",32+2*cardButtonWidth,height-62,cardButtonWidth,"Delirium",function()
 		local module=require("Modules.MapObservedEffects");local known=module.delirium(observedEffects)
 		local uncertain=unidentified or module.hasExplicit(observedEffects) and not known
 		for _,effect in ipairs(observedEffects or {}) do if effect.kind=="enchant" and (effect.text:lower():find("delirious",1,true) or effect.text:lower():find("delirium",1,true)) then uncertain=true end end
@@ -192,6 +193,16 @@ function M.Open(options)
 		update();main:OpenPopup(w,h,"Delirium projection",c,nil,"gain","close")
 	end)
 	controls.delirium.tooltipText="Project same-type stacking or a reward-type switch using a chosen example gain. Legacy maps with Delirium layers cannot use these orbs. Does not modify the map."
+	button("deifiedPlan",40+3*cardButtonWidth,height-62,cardButtonWidth,"Deified",function()
+		local popup={};local observed=require("Modules.MapObservedEffects").deified(observedEffects)
+		ui.description(popup,"help",16,28,568,90,{"Plan a Divine Vessel enchantment for this map. This is hypothetical, not an observed effect.","Bosses: +25% damage, attack/cast speed and area; +100% toughness; +50% item rarity.","Eligibility, other enchantments, corruption order and Pantheon capture need in-game verification."},14)
+		popup.plan=new("ButtonControl"):ButtonControl(ui.anchor,{16,136,175,28},"Plan Divine Vessel",function() plannedDeified=true;main:ClosePopup();refresh() end)
+		popup.plan.enabled=not observed and not plannedDeified;popup.plan.tooltipText=observed and "The copied map already has Deified." or plannedDeified and "Deified is already planned." or "Add a hypothetical Divine Vessel plan."
+		popup.clear=new("ButtonControl"):ButtonControl(ui.anchor,{208,136,175,28},"Remove plan",function() plannedDeified=nil;main:ClosePopup();refresh() end);popup.clear.enabled=not not plannedDeified
+		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{484,136,100,28},"Close",function() main:ClosePopup() end)
+		ui.style(popup,{plan=true});main:OpenPopup(600,180,"Deified map plan",popup,nil,nil,"close")
+	end)
+	controls.deifiedPlan.tooltipText="Plan or remove a hypothetical Divine Vessel enchantment without changing copied map effects."
 	ui.label(controls,"resultsLabel",right,68,"Available modifiers",16)
 	ui.label(controls,"rarityLabel",right+180,68,"Rarity",14)
 	local allRarities={{label="Normal",val="normal"},{label="Magic",val="magic"},{label="Rare",val="rare"},{label="Corrupted normal",val="corrupted_normal"},{label="Corrupted magic",val="corrupted_magic"},{label="Corrupted rare",val="corrupted_rare"}}
@@ -237,12 +248,12 @@ function M.Open(options)
 	button("add",right,height-88,math.floor(rightWidth/2)-6,"Add modifier",function() if candidate then selected[#selected+1]=candidate.id;candidate=nil;offset=0;controls.search:SetText("");refresh() end end)
 	controls.add.enabled=function() return not unidentified and candidate~=nil end
 	button("currency",right+math.floor(rightWidth/2)+6,height-88,math.floor(rightWidth/2)-6,"Use currency",function()
-		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
+		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects,plannedDeified=plannedDeified}
 		local ok,actions=pcall(require("Modules.MapCurrency").options,current)
 		if not ok then main:OpenMessagePopup("Map currency",ui.errorText(actions));return end
-		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon="Assets/Crafting/"..(entry.id:match("^vaal_") and "vaal" or entry.id)..".png",details={entry.reason or entry.detail or (entry.id=="originator" and "Removes a random suffix and samples a rare-only replacement; some outcomes and weights are unverified." or entry.id:match("^vaal_") and "Conditional outcome only, not a full Vaal Orb roll; outcome odds are unknown." or "Available for this modeled map."),"Experimental map crafting; no real currency is consumed.",map.isNightmare(baseId) and "Six modifiers: exclusive prefix and suffix first, then four weighted draws; order is unverified." or "Counts, selection and independent uniform stat rolls are estimates.",observedEffects and "Observed effects are not modeled and can change results." or "Unmatched translations remain ranges; some restrictions are unverified."}} end
+		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon=(entry.id=="divine_vessel" or entry.id=="clear_deified_plan") and require("Modules.CraftingWorkbench").icon("divine_vessel") or "Assets/Crafting/"..(entry.id:match("^vaal_") and "vaal" or entry.id)..".png",details={entry.reason or entry.detail or (entry.id=="clear_deified_plan" and "Remove only the hypothetical plan; copied enchantments remain unchanged." or entry.id=="divine_vessel" and "Plan Deified boss bonuses; eligibility and enchantment interactions are unverified." or entry.id=="originator" and "Removes a random suffix and samples a rare-only replacement; some outcomes and weights are unverified." or entry.id:match("^vaal_") and "Conditional outcome only, not a full Vaal Orb roll; outcome odds are unknown." or "Available for this modeled map."),"Experimental map crafting; no real currency is consumed.",map.isNightmare(baseId) and "Six modifiers: exclusive prefix and suffix first, then four weighted draws; order is unverified." or "Counts, selection and independent uniform stat rolls are estimates.",observedEffects and "Observed effects are not modeled and can change results." or "Unmatched translations remain ranges; some restrictions are unverified."}} end
 		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",canChoose=function(entry) return entry.available end,choose=function(entry)
-			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects}
+			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects,plannedDeified=plannedDeified}
 			local attemptSeed=rollSeed;rollSeed=rollSeed*16807%2147483647
 			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,attemptSeed)
 			if not ok then main:OpenMessagePopup("Currency unavailable",ui.errorText(result));return end
@@ -250,7 +261,7 @@ function M.Open(options)
 			local rarityValue=result.state.corrupted and "corrupted_"..result.state.rarity or result.state.rarity
 			local clearedEstimate=result.state.corrupted and estimateSettings~=nil
 			if result.state.corrupted then estimateSettings=nil end
-			vaalPreview=result.state.vaalPreview or nil
+			vaalPreview=result.state.vaalPreview or nil;plannedDeified=result.state.plannedDeified or nil
 			controls.rarity:SelByValue(rarityValue,"val");previousRarity=rarityValue;candidate=nil;offset=0
 			main:ClosePopup();controls.search:SetText("");refresh()
 			if entry.id=="originator" then controls.status.label="^xE9BE7BOriginator preview | replacement weights and interactions unverified" end
@@ -264,7 +275,7 @@ function M.Open(options)
 		ui.label(controls,"draftNameLabel",right,height-42,"Name",14)
 		controls.draftName=new("EditControl"):EditControl(ui.anchor,{right+46,height-48,160,26},initial and initial.title or "Map draft",nil,nil,120)
 		button("keep",right+218,height-48,150,"Keep map draft",function()
-			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil,twiceCorrupted=twiceCorrupted and isCorrupted() or nil,mirrored=mirrored or nil,unidentified=unidentified or nil,vaalPreview=vaalPreview or nil,implicit=implicit and copyTable(implicit) or nil,quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
+			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil,twiceCorrupted=twiceCorrupted and isCorrupted() or nil,mirrored=mirrored or nil,unidentified=unidentified or nil,vaalPreview=vaalPreview or nil,plannedDeified=plannedDeified or nil,implicit=implicit and copyTable(implicit) or nil,quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
 			if estimateSettings then entry.estimate=copyTable(estimateSettings) end
 			local ok,result=pcall(options.keep,entry)
 			if not ok then main:OpenMessagePopup("Map draft",ui.errorText(result));return end
@@ -295,7 +306,7 @@ function M.Open(options)
 		if draftNeedsUpdate and not problem and not unidentified and not vaalPreview and not isCorrupted() and not map.isNightmare(baseId) then controls.status.label=ui.fit(controls.status.label.." | "..map.source().patch.." on keep",rightWidth,14) end
 		local found=false;for _,id in ipairs(selected) do if id==selectedAffix then found=true;break end end
 		if not found then selectedAffix=nil end
-		controls.remove.label=selectedAffix and "Remove selected" or "Remove last"
+		controls.remove.label="Remove"
 		local affixes,affixIds={},{};local prefixLines=0
 		if unidentified then affixes={"^xE9BE7BUnidentified: explicit modifiers and totals are unknown.","^xAABBD0Opening unidentified: +30% Atlas Drops."}
 		elseif #selected==0 and not result.implicit and not (result.summary.qualityEffect and result.summary.qualityEffect.supported) then affixes={"No hypothetical modifiers selected."} else
@@ -314,6 +325,10 @@ function M.Open(options)
 			table.insert(affixes,1,"^xAABBD0Quality ("..quality.kind.."): +"..quality.value.."%")
 			table.insert(affixes,2,effect.supported and "^xAABBD0"..effect.text or "^xE9BE7BQuality effect not modeled")
 			prefixLines=prefixLines+2
+		end
+		if plannedDeified then
+			table.insert(affixes,1,"^xE9BE7BPlanned Deified bosses: +25% damage, attack/cast speed and area; +100% toughness; +50% item rarity. Eligibility unverified.")
+			prefixLines=prefixLines+1
 		end
 		if observedEffects then
 			local blighted=require("Modules.MapObservedEffects").isBlighted(observedEffects)
@@ -350,7 +365,7 @@ function M.Open(options)
 		if tier==17 and not map.isNightmare(baseId) then baseId="Metadata/Items/Maps/MapKeyNightmareBoss";controls.level:SetText("84")
 		elseif tier<17 and (map.isNightmare(baseId) or baseId:match("^Metadata/Items/Maps/MapKeyTier%d+$")) then baseId="Metadata/Items/Maps/MapKeyTier"..tier end
 		syncRarity()
-		selected={};rolls={};implicit=nil;mirrored=nil;twiceCorrupted=nil;unidentified=nil;vaalPreview=nil;observedEffects=nil;estimateSettings=nil;offset=0;refresh()
+		selected={};rolls={};implicit=nil;mirrored=nil;twiceCorrupted=nil;unidentified=nil;vaalPreview=nil;plannedDeified=nil;observedEffects=nil;estimateSettings=nil;offset=0;refresh()
 	end
 	controls.rarity.selFunc=function()
 		local current=controls.rarity:GetSelValueByKey("val")

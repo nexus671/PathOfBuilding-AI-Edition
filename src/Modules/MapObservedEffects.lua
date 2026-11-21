@@ -61,14 +61,14 @@ end
 -- GGG describes these as bonuses to map bosses, not map-wide item rarity.
 -- Recognition uses the pinned client stat label; copied-item layout and
 -- Pantheon capture eligibility still need live-game verification.
-function M.deified(effects)
+function M.deified(effects,planned)
  local found=false
  for _,effect in ipairs(effects or {}) do if effect.kind=="enchant" and effect.text=="Deified" then
   if found then return nil end;found=true
  end end
- if not found then return nil end
- return {damageIncrease=25,attackCastSpeedIncrease=25,toughnessIncrease=100,areaOfEffectIncrease=25,bossItemRarityIncrease=50,
-  source="https://www.pathofexile.com/forum/view-thread/4013680",note="Boss bonuses follow the 3.30 notes. Copied-item recognition and Pantheon capture eligibility are unverified; bonuses are not included in map-wide totals."}
+ if not found and not planned then return nil end
+ return {provenance=found and "observed" or "planned",damageIncrease=25,attackCastSpeedIncrease=25,toughnessIncrease=100,areaOfEffectIncrease=25,bossItemRarityIncrease=50,
+  source="https://www.pathofexile.com/forum/view-thread/4013680",note=found and "Boss bonuses follow the 3.30 notes. Copied-item recognition and Pantheon capture eligibility are unverified; bonuses are not included in map-wide totals." or "Conditional plan based on the 3.30 notes. Eligibility, other enchantments, corruption order and Pantheon capture are unverified; bonuses are not included in map-wide totals."}
 end
 -- Project the published stacking rule using a user-supplied example gain.
 -- This does not model map reforging, eligibility or the gain distribution.

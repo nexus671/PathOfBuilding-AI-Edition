@@ -140,7 +140,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2214, f"Expected 2214 UI frames, found {len(paths)}"
+    assert len(paths) == 2220, f"Expected 2220 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         def label_and_background(name):
             commands = json.loads((frames / f"{width}-{name}.json").read_text())["commands"]
