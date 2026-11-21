@@ -288,6 +288,12 @@ async function main(){
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:longGuide},'review');await host('apply');context=(await call('get_build_context')).context;
   const savedLong=(await call('get_crafting_projects')).projects.find(entry=>entry.id===longGuide.id);
   assert.equal(savedLong.goals.length,20);assert.equal(savedLong.steps.length,75);assert.equal(savedLong.steps[74].action,'Craft step 75');
+  const shortenedGuide={...savedLong,steps:savedLong.steps.slice(0,-1)};
+  const shortenedReview=await queued('propose_crafting_plan',{baseRevision:context.revision,project:shortenedGuide},'review');
+  assert.match(JSON.stringify(shortenedReview),/Removed guide step 75: \[todo\] Craft step 75/);
+  assert.equal((await call('get_crafting_projects')).projects.find(entry=>entry.id===longGuide.id).steps.length,75,'Review changed the saved crafting guide');
+  await host('reject-proposal');context=(await call('get_build_context')).context;
+
   await queued('propose_build',{mode:'edit',title:'Remove long test guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:longGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:savedUnique},'review');await host('apply');context=(await call('get_build_context')).context;
   const uniqueFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'unique-guide-filter',title:'Unique guide pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');

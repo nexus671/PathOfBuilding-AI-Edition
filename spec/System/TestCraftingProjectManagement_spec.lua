@@ -13,6 +13,45 @@ describe("Crafting project removal and save-state ownership",function()
 		tasks.cancel();main.popups={};main.modes.BUILD=activeMode;GlobalCache=activeCache
 		bridge.prepared=nil;bridge.owner=nil;bridge.build=nil;bridge.previous=nil;bridge.undo={};bridge.history={};bridge.enabled=false
 	end)
+	it("reviews removed guide, recipes, inventory and checkpoint before applying",function()
+		local original=project("review");local model=sim.model(original.startingItem)
+		original.goals={"High life"};original.steps={{action="Apply an Orb of Alchemy"},{action="Finish the helmet",done=true}}
+		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		original.recipeAlternatives={{name="Alternative",recipe=copyTable(original.nativeRecipe),trackPickups=true}}
+		original.primarySimulation={trials=20,maxActions=3,seed=7};original.run=require("Modules.CraftingInventory").run(model.initial)
+		original.inventory={{id="saved",title="Saved base",slot="Helmet",baseItem=original.startingItem,at=1,state=model.initial}}
+		build.savers.CraftingProjects:Upsert(original)
+		local changed=copyTable(original);changed.startingItem="Rarity: NORMAL\nLeather Cap\nItem Level: 86";changed.goals={};changed.steps={};changed.nativeRecipe=nil;changed.recipeAlternatives={};changed.inventory={};changed.run=nil;changed.priceBook=nil;changed.primarySimulation=false
+		local prepared=bridge.prepare(build,{mode="edit",title="Revise guide",baseRevision=bridge.revision(build),operations={{type="set_crafting_project",project=changed}}})
+		local text=table.concat(prepared.changes,"\n")
+		for _,expected in ipairs({"Removed goal 1: High life","Removed guide step 1: [todo] Apply an Orb of Alchemy","Removed guide step 2: [done] Finish the helmet","Primary recipe removed","Alternative recipe 'Alternative' removed","Removed saved item: Saved base [saved]","Working craft checkpoint removed","Resource price book removed","Primary simulation defaults:"}) do assert.is_truthy(text:find(expected,1,true),expected) end
+		assert.equal(2,#build.savers.CraftingProjects.projects[1].steps);assert.equal(1,#build.savers.CraftingProjects.projects[1].inventory)
+	end)
+	it("reviews recipe actions and resource quote edits",function()
+		local original=project("details");original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		original.recipeAlternatives={{name="First",recipe=copyTable(original.nativeRecipe),trackPickups=true},{name="Second",recipe=copyTable(original.nativeRecipe)}};original.priceBook.values.chaos=2
+		original=projects.validate(original);local changed=copyTable(original);changed.nativeRecipe.steps[1].method="chaos";changed.recipeAlternatives[1].trackPickups=false;changed.priceBook.values.chaos=3
+		changed.recipeAlternatives[1],changed.recipeAlternatives[2]=changed.recipeAlternatives[2],changed.recipeAlternatives[1]
+		local text=table.concat(projects.reviewChanges(original,changed),"\n")
+		for _,expected in ipairs({"Primary recipe changed","Changed Primary recipe step 1:","Alternative pickup tracking for First: true -> false","Reordered alternative recipes: First, Second -> Second, First","Price chaos: 2 -> 3"}) do assert.is_truthy(text:find(expected,1,true),expected) end
+	end)
+	it("identifies changed checkpoint fields and added saved item state",function()
+		local original=project("checkpoint-review");local model=sim.model(original.startingItem);original.run=require("Modules.CraftingInventory").run(model.initial)
+		local changed=copyTable(original);changed.run.state.quality=1;changed.run.seed="7"
+		changed.inventory={{id="saved",title="Base",slot="Helmet",baseItem=original.startingItem,at=1,state=copyTable(model.initial)}}
+		local text=table.concat(projects.reviewChanges(original,changed),"\n")
+		for _,expected in ipairs({"Added saved item: Base [saved]","Saved item saved base:","Saved item saved state:","Working craft checkpoint changed.","Working craft fields changed:","Working craft state:"}) do assert.is_truthy(text:find(expected,1,true),expected) end
+	end)
+	it("does not report automatically preserved project data as removed",function()
+		local original=project("preserved");local model=sim.model(original.startingItem)
+		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}};original.recipeAlternatives={{name="Alternative",recipe=copyTable(original.nativeRecipe)}}
+		original.primarySimulation={trials=20,maxActions=3,seed=7};original.run=require("Modules.CraftingInventory").run(model.initial)
+		original.inventory={{id="saved",title="Saved base",slot="Helmet",baseItem=original.startingItem,at=1,state=model.initial}}
+		build.savers.CraftingProjects:Upsert(original)
+		local changed=copyTable(original);changed.title="Renamed guide";changed.recipeAlternatives=nil;changed.primarySimulation=nil;changed.inventory=nil;changed.run=nil
+		local prepared=bridge.prepare(build,{mode="edit",title="Rename guide",baseRevision=bridge.revision(build),operations={{type="set_crafting_project",project=changed}}})
+		local text=table.concat(prepared.changes,"\n");assert.is_nil(text:find("Alternative recipe 'Alternative' removed",1,true));assert.is_nil(text:find("Removed saved item",1,true));assert.is_nil(text:find("checkpoint removed",1,true));assert.is_nil(text:find("Primary simulation defaults:",1,true))
+	end)
 	it("previews unique project items and explains unsupported starting items",function()
 		local unique="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\n+40% to Fire Resistance"
 		local store=build.savers.CraftingProjects;local p=project("unique-target");p.targetItem=unique;store:Upsert(p)

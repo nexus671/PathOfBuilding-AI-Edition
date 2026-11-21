@@ -69,6 +69,7 @@ function M.changes(before, after)
 			local old=originals[project.id]
 			if not old or not tableDeepEquals(old,project) or not tableDeepEquals(project,old) then
 				add((old and "Updated" or "Added").." crafting project: "..project.title)
+				if old then for _,line in ipairs(require("Modules.CraftingProjects").reviewChanges(old,project)) do add("  "..line) end end
 				for _,line in ipairs(require("Modules.CraftingProjects").lines(project)) do add(line) end
 			end
 		end

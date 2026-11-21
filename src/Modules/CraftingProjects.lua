@@ -250,6 +250,107 @@ function M.inspect(raw,query,limit)
 		limitations={"This is PoB's item-editor affix pool, not Craft of Exile's probability engine.","Spawn weights are not success probabilities. Method-specific pools, existing group blocking, fractures, crafted modifiers and special rules require simulator validation.","If item level is unknown, listed modifier levels are not filtered. Unique off-base pools may not have a meaningful spawn weight."}}
 end
 
+-- Summarize actual saved-project changes before a candidate is applied.
+function M.reviewChanges(before,after)
+	local summary,details={},{}
+	local function same(a,b)
+		if type(a)=="table" and type(b)=="table" then return tableDeepEquals(a,b) and tableDeepEquals(b,a) end
+		return a==b
+	end
+	local function value(v) if v==nil then return "(not saved)" end;if type(v)=="table" then return json.encode(v) end;if v=="" then return "(empty)" end;return tostring(v) end
+	for _,field in ipairs({{"title","Name"},{"slot","Slot"},{"preferredMethod","Preferred action"},{"notes","Notes"},{"estimate","Cost estimate"},{"simulation","Supplied simulation"},{"primarySimulation","Primary simulation defaults"}}) do
+		local key,label=field[1],field[2]
+		local function format(v)
+			if not v then return "(not saved)" end
+			if key=="primarySimulation" then return v.trials.." trials, "..v.maxActions.." actions, seed "..v.seed end
+			if key=="estimate" then return v.amount.." "..v.currency.." | "..v.source.." | quoted "..v.quotedAt end
+			if key=="simulation" then return v.successes.." / "..v.trials.." successes | patch "..v.patch.." | observed "..v.observedAt end
+			return value(v)
+		end
+		if not same(before[key],after[key]) then summary[#summary+1]=label..": "..format(before[key]).." -> "..format(after[key]) end
+	end
+	for _,field in ipairs({{"startingItem","Starting item"},{"targetItem","Target item"}}) do
+		local key,label=field[1],field[2];if before[key]~=after[key] then summary[#summary+1]=label.." changed";details[#details+1]=label.." before: "..value(before[key]);details[#details+1]=label.." after: "..value(after[key]) end
+	end
+	if before.simulatorExport~=after.simulatorExport then summary[#summary+1]="External simulator attachment changed ("..#(before.simulatorExport or "").." -> "..#(after.simulatorExport or "").." bytes)." end
+	local function indexed(label,old,new,format)
+		for index=1,math.max(#old,#new) do local a,b=old[index],new[index]
+			if not same(a,b) then
+				if a and not b then summary[#summary+1]="Removed "..label.." "..index..": "..format(a)
+				elseif b and not a then summary[#summary+1]="Added "..label.." "..index..": "..format(b)
+				else summary[#summary+1]="Changed "..label.." "..index..": "..format(a).." -> "..format(b) end
+			end
+		end
+	end
+	indexed("goal",before.goals,after.goals,tostring)
+	local function guide(step)
+		return (step.done and "[done] " or "[todo] ")..step.action..(step.stopWhen and step.stopWhen~="" and " | Stop: "..step.stopWhen or "")..(step.onFailure and step.onFailure~="" and " | On failure: "..step.onFailure or "")..(step.uniqueCraft and " | Linked action: "..json.encode(step.uniqueCraft) or "")
+	end
+	indexed("guide step",before.steps,after.steps,guide)
+	local function recipeStep(step)
+		local simulator=require("Modules.CraftingSimulator");local parts={simulator.labels[step.method] or step.method}
+		for key in pairsSortByKey(step) do if key~="method" then parts[#parts+1]=key..": "..value(step[key]) end end
+		return table.concat(parts," | ")
+	end
+	local function recipe(label,a,b)
+		if same(a,b) then return end
+		summary[#summary+1]=label..(not a and " added" or not b and " removed" or " changed")
+		if a and b then
+			indexed(label.." step",a.steps,b.steps,recipeStep)
+			for _,field in ipairs({"targets","requirements","requiredGroups","rarity","initialState"}) do if not same(a[field],b[field]) then details[#details+1]=label.." "..field..": "..value(a[field]).." -> "..value(b[field]) end end
+		else
+			local selected=b or a;local side=b and "after" or "before"
+			for index,step in ipairs(selected.steps) do details[#details+1]=label.." "..side.." step "..index..": "..recipeStep(step) end
+			for _,field in ipairs({"targets","requirements","requiredGroups","rarity","initialState"}) do if selected[field]~=nil then details[#details+1]=label.." "..side.." "..field..": "..value(selected[field]) end end
+		end
+	end
+	recipe("Primary recipe",before.nativeRecipe,after.nativeRecipe)
+	local oldAlt,newAlt={},{};for _,entry in ipairs(before.recipeAlternatives or {}) do oldAlt[entry.name]=entry end;for _,entry in ipairs(after.recipeAlternatives or {}) do newAlt[entry.name]=entry end
+	for _,entry in ipairs(after.recipeAlternatives or {}) do local prior=oldAlt[entry.name]
+		if not prior then recipe("Alternative recipe '"..entry.name.."'",nil,entry.recipe)
+		else
+			if prior.trackPickups~=entry.trackPickups then summary[#summary+1]="Alternative pickup tracking for "..entry.name..": "..value(prior.trackPickups).." -> "..value(entry.trackPickups) end
+			recipe("Alternative recipe '"..entry.name.."'",prior.recipe,entry.recipe)
+		end
+	end
+	for _,entry in ipairs(before.recipeAlternatives or {}) do if not newAlt[entry.name] then recipe("Alternative recipe '"..entry.name.."'",entry.recipe,nil) end end
+	local function order(label,a,b,key)
+		local old,new={},{};for _,entry in ipairs(a or {}) do old[#old+1]=entry[key] end;for _,entry in ipairs(b or {}) do new[#new+1]=entry[key] end
+		if #old==#new then local oldSet,newSet={},{};for _,id in ipairs(old) do oldSet[id]=true end;for _,id in ipairs(new) do newSet[id]=true end
+			if same(oldSet,newSet) and table.concat(old,"\0")~=table.concat(new,"\0") then summary[#summary+1]="Reordered "..label..": "..table.concat(old,", ").." -> "..table.concat(new,", ") end
+		end
+	end
+	order("alternative recipes",before.recipeAlternatives,after.recipeAlternatives,"name")
+	order("saved items",before.inventory,after.inventory,"id")
+	local oldItems,newItems={},{};for _,entry in ipairs(before.inventory or {}) do oldItems[entry.id]=entry end;for _,entry in ipairs(after.inventory or {}) do newItems[entry.id]=entry end
+	for _,entry in ipairs(after.inventory or {}) do local prior=oldItems[entry.id]
+		if not prior then summary[#summary+1]="Added saved item: "..entry.title.." ["..entry.id.."]";details[#details+1]="Saved item "..entry.id.." base: "..entry.baseItem;details[#details+1]="Saved item "..entry.id.." state: "..json.encode(entry.state)
+		elseif not same(prior,entry) then
+			summary[#summary+1]="Changed saved item: "..prior.title.." -> "..entry.title.." ["..entry.id.."]"
+			for _,field in ipairs({"slot","baseItem","at","state"}) do if not same(prior[field],entry[field]) then details[#details+1]="Saved item "..entry.id.." "..field..": "..value(prior[field]).." -> "..value(entry[field]) end end
+		end
+	end
+	for _,entry in ipairs(before.inventory or {}) do if not newItems[entry.id] then summary[#summary+1]="Removed saved item: "..entry.title.." ["..entry.id.."]" end end
+	if not same(before.run,after.run) then
+		summary[#summary+1]="Working craft checkpoint "..(not before.run and "added" or not after.run and "removed" or "changed").."."
+		if before.run and after.run then
+			local fields={};for key in pairs(before.run) do fields[key]=true end;for key in pairs(after.run) do fields[key]=true end
+			local changed={};for key in pairsSortByKey(fields) do if not same(before.run[key],after.run[key]) then changed[#changed+1]=key end end
+			if #changed>0 then details[#details+1]="Working craft fields changed: "..table.concat(changed,", ") end
+			if not same(before.run.state,after.run.state) then details[#details+1]="Working craft state: "..value(before.run.state).." -> "..value(after.run.state) end
+		end
+	end
+	if not same(before.priceBook,after.priceBook) then
+		summary[#summary+1]="Resource price book "..(not before.priceBook and "added" or not after.priceBook and "removed" or "changed")
+		local a,b=before.priceBook or {},after.priceBook or {}
+		for _,field in ipairs({"currency","source","quotedAt"}) do if not same(a[field],b[field]) then details[#details+1]="Price "..field..": "..value(a[field]).." -> "..value(b[field]) end end
+		local keys={};for key in pairs(a.values or {}) do keys[key]=true end;for key in pairs(b.values or {}) do keys[key]=true end
+		for key in pairsSortByKey(keys) do local x,y=(a.values or {})[key],(b.values or {})[key];if x~=y then details[#details+1]="Price "..key..": "..value(x).." -> "..value(y) end end
+	end
+	for _,line in ipairs(details) do summary[#summary+1]=line end
+	return summary
+end
+
 function M.lines(project)
 	local lines={project.title.." | "..project.slot,"Starting item: "..M.item(project.startingItem).baseName,"Target modifiers"}
 	for _,goal in ipairs(project.goals) do lines[#lines+1]="- "..goal end

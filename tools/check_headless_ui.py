@@ -54,6 +54,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_ai_filter_proposal_ui.lua")
     sources.append(ROOT / "tools/test_ai_journey_proposal_ui.lua")
     sources.append(ROOT / "tools/test_ai_atlas_proposal_ui.lua")
+    sources.append(ROOT / "tools/test_ai_crafting_proposal_ui.lua")
     sources.append(ROOT / "tools/test_crafting_guide_ui.lua")
     sources.append(ROOT / "tools/test_journey_crafting_guide_ui.lua")
     sources.append(ROOT / "tools/test_flask_enchant_ui.lua")
@@ -127,6 +128,10 @@ def main():
                                      env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "ai-atlas-review-controls.log").write_text(ai_atlas_review.stdout)
     assert ai_atlas_review.returncode == 0, ai_atlas_review.stdout
+    ai_crafting_review = subprocess.run(lua_command + ["../tools/test_ai_crafting_proposal_ui.lua"], cwd=ROOT / "src",
+                                        env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "ai-crafting-review-controls.log").write_text(ai_crafting_review.stdout)
+    assert ai_crafting_review.returncode == 0, ai_crafting_review.stdout
     replay = subprocess.run(lua_command + ["../tools/test_crafting_replay_ui.lua", str(frames)], cwd=ROOT / "src",
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-replay-controls.log").write_text(replay.stdout)
