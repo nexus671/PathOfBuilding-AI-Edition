@@ -181,9 +181,9 @@ describe("Visual filter catalogue",function()
 	it("offers pinned encounter examples to users and AI",function()
 		local profile=filters.profile("encounters","Encounters")
 		local file=assert(io.open("Data/LootFilters/base-classes.json","rb"));local raw=file:read("*a");file:close();local classes=assert(require("dkjson").decode(raw)).classes
-		for _,case in ipairs({{"Delirium",12,"Simulacrum Splinter"},{"Harvest",8,"Wild Crystallised Lifeforce"},{"Ritual",11,"Ritual Vessel"},{"Abyss",11,"Murderous Eye Jewel"},{"Ultimatum",13,"Inscribed Ultimatum"}}) do
+		for _,case in ipairs({{"Delirium",7,"Simulacrum Splinter"},{"Harvest",5,"Wild Crystallised Lifeforce"},{"Ritual",8,"Ritual Vessel"},{"Abyss",7,"Murderous Eye Jewel"},{"Ultimatum",9,"Inscribed Ultimatum"}}) do
 			local scene=library.scene(profile,build,case[1],0,76,81);assert.equal(case[2],#scene);assert.equal(case[3],scene[1].BaseType)
-			for _,item in ipairs(scene) do assert.equal(classes[item.BaseType],item.Class);assert.equal(76,item.AreaLevel);assert.equal(81,item.ItemLevel) end
+			for _,item in ipairs(scene) do assert.is_nil(item.BaseType:find("Scarab",1,true));assert.equal(classes[item.BaseType],item.Class);assert.equal(76,item.AreaLevel);assert.equal(81,item.ItemLevel) end
 			if case[1]=="Delirium" then assert.equal("Threaded Delirium Orb",scene[4].BaseType);assert.equal("Stackable Currency",scene[4].Class) end
 			local rotated=library.scene(profile,build,case[1],1,76,81);assert.equal(scene[2].BaseType,rotated[1].BaseType)
 			local page=filters.simulateScene(profile,case[1],0,76,81,1,2);assert.equal(case[2],page.total);assert.equal(scene[2].BaseType,page.results[1].sample.BaseType)
@@ -585,11 +585,11 @@ describe("Visual filter catalogue",function()
 	end)
 	it("provides Breach and Legion scenes to filter simulation",function()
 		local profile=filters.profile("encounters","Encounters")
-		for _,case in ipairs({{kind="Breach",count=10,base="Splinter of Chayula",class="Stackable Currency"},
+		for _,case in ipairs({{kind="Breach",count=9,base="Splinter of Chayula",class="Stackable Currency"},
 			{kind="Legion",count=13,base="Timeless Maraketh Emblem",class="Map Fragments"}}) do
 			local scene=library.scene(profile,build,case.kind,0,76,81);assert.equal(case.count,#scene)
 			local found;for _,item in ipairs(scene) do
-				assert.equal(76,item.AreaLevel);assert.equal(81,item.ItemLevel)
+				assert.is_nil(item.BaseType:find("Scarab",1,true));assert.equal(76,item.AreaLevel);assert.equal(81,item.ItemLevel)
 				if item.BaseType==case.base then found=item end
 			end
 			assert.equal(case.class,assert(found).Class)

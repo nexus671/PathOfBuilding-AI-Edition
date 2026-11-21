@@ -345,7 +345,7 @@ local breachExamples={
 	{"Splinter of Esh","Stackable Currency"},{"Splinter of Uul-Netol","Stackable Currency"},
 	{"Splinter of Chayula","Stackable Currency"},{"Chayula's Flawless Breachstone","Breachstones"},
 	{"Breach Ring","Rings","Rare"},{"Breach Thread","Map Fragments"},
-	{"Breach Scarab of the Dreamer","Map Fragments"},{"Breach Scarab of Instability","Map Fragments"},
+	{"Frayed Thread","Stackable Currency"},
 }
 local legionExamples={
 	{"Timeless Karui Splinter","Stackable Currency"},{"Timeless Maraketh Splinter","Stackable Currency"},
@@ -360,40 +360,30 @@ local deliriumExamples={
  {"Simulacrum Splinter","Stackable Currency"},{"Simulacrum","Map Fragments"},
  {"Fine Delirium Orb","Stackable Currency"},{"Threaded Delirium Orb","Stackable Currency"},{"Diviner's Delirium Orb","Stackable Currency"},
  {"Fossilised Delirium Orb","Stackable Currency"},{"Blighted Delirium Orb","Stackable Currency"},
- {"Delirium Scarab","Map Fragments"},{"Delirium Scarab of Delusions","Map Fragments"},
- {"Delirium Scarab of Mania","Map Fragments"},{"Delirium Scarab of Neuroses","Map Fragments"},
- {"Delirium Scarab of Paranoia","Map Fragments"},
 }
 local harvestExamples={
  {"Wild Crystallised Lifeforce","Stackable Currency"},{"Vivid Crystallised Lifeforce","Stackable Currency"},
  {"Primal Crystallised Lifeforce","Stackable Currency"},{"Sacred Crystallised Lifeforce","Stackable Currency"},
- {"Sacred Blossom","Map Fragments"},{"Harvest Scarab","Map Fragments"},
- {"Harvest Scarab of Cornucopia","Map Fragments"},{"Harvest Scarab of Doubling","Map Fragments"},
+ {"Sacred Blossom","Map Fragments"},
 }
 local abyssExamples={
  {"Murderous Eye Jewel","Abyss Jewels","Rare"},{"Searching Eye Jewel","Abyss Jewels","Rare"},
  {"Hypnotic Eye Jewel","Abyss Jewels","Rare"},{"Ghastly Eye Jewel","Abyss Jewels","Rare"},
  {"Stygian Vise","Belts","Rare"},{"Abyss Thread","Map Fragments"},
- {"Abyss Scarab","Map Fragments"},{"Abyss Scarab of Crystals","Map Fragments"},
- {"Abyss Scarab of Descending","Map Fragments"},{"Abyss Scarab of Multitudes","Map Fragments"},
- {"Abyss Scarab of the Consort","Map Fragments"},
+ {"Frayed Thread","Stackable Currency"},
 }
 local ultimatumExamples={
  {"Inscribed Ultimatum","Misc Map Items"},{"Fertile Catalyst","Stackable Currency"},
  {"Prismatic Catalyst","Stackable Currency"},{"Intrinsic Catalyst","Stackable Currency"},
  {"Turbulent Catalyst","Stackable Currency"},{"Noxious Catalyst","Stackable Currency"},
  {"Accelerating Catalyst","Stackable Currency"},{"Ultimatum Thread","Map Fragments"},
- {"Ultimatum Scarab","Map Fragments"},{"Ultimatum Scarab of Bribing","Map Fragments"},
- {"Ultimatum Scarab of Catalysing","Map Fragments"},{"Ultimatum Scarab of Dueling","Map Fragments"},
- {"Ultimatum Scarab of Inscription","Map Fragments"},
+ {"Frayed Thread","Stackable Currency"},
 }
 local ritualExamples={
  {"Ritual Vessel","Stackable Currency"},{"Omen of Fortune","Stackable Currency"},
  {"Omen of Connections","Stackable Currency"},{"Omen of the Jeweller","Stackable Currency"},
  {"Omen of Trichromatism","Stackable Currency"},{"Omen of Amelioration","Stackable Currency"},
- {"Ritual Thread","Map Fragments"},{"Ritual Scarab of Abundance","Map Fragments"},
- {"Ritual Scarab of Corpses","Map Fragments"},{"Ritual Scarab of Selectiveness","Map Fragments"},
- {"Ritual Scarab of Wisps","Map Fragments"},
+ {"Ritual Thread","Map Fragments"},{"Frayed Thread","Stackable Currency"},
 }
 -- Catalogue examples for testing filters; these do not imply current drops.
 local sanctumExamples={
