@@ -190,11 +190,33 @@ local function stackSummary(rules,tiers)
 end
 function M.review(before,after)
 	local entries={};local old={};for _,p in ipairs(before.profiles) do old[p.id]=p end
+	local function profileLabel(data,id)
+		if not id or id=="" then return "None" end
+		for _,profile in ipairs(data.profiles) do if profile.id==id then return profile.title.." ["..id.."]" end end
+		return id.." (unavailable)"
+	end
+	local function tracking(value) if value==nil then return "Automatic (legacy)" end;return value and "Enabled" or "Disabled" end
+	if before.activeId~=after.activeId then
+		entries[#entries+1]={id="$active",label="Active profile changed",details={"Before: "..profileLabel(before,before.activeId),"After: "..profileLabel(after,after.activeId)}}
+	end
 	for _,p in ipairs(after.profiles) do
 		local previous=old[p.id];old[p.id]=nil
 		if not previous then entries[#entries+1]={id=p.id,label="+ "..p.title,details={"New profile",#p.rules.." personal rules"}}
 		elseif encode(previous)~=encode(p) then
-			local lines={"Before: "..previous.title,"After: "..p.title,"Strictness: "..previous.strictness.." -> "..p.strictness,"Mode: "..previous.mode.." -> "..p.mode}
+			local lines={}
+			if previous.title~=p.title then lines[#lines+1]="Name: "..previous.title.." -> "..p.title end
+			if previous.strictness~=p.strictness then lines[#lines+1]="Strictness: "..previous.strictness.." -> "..p.strictness end
+			if previous.mode~=p.mode then lines[#lines+1]="Mode: "..previous.mode.." -> "..p.mode end
+			if previous.preset~=p.preset then lines[#lines+1]="Preset: "..previous.preset.." -> "..p.preset end
+			if previous.theme~=p.theme then lines[#lines+1]="Theme: "..tostring(previous.theme or "default").." -> "..tostring(p.theme or "default") end
+			if previous.trackBuildPickups~=p.trackBuildPickups then lines[#lines+1]="Build pickup notices: "..tracking(previous.trackBuildPickups).." -> "..tracking(p.trackBuildPickups) end
+			local included={};for _,file in ipairs(previous.importFiles or {}) do included[file.name]=file end
+			for _,file in ipairs(p.importFiles or {}) do
+				local prior=included[file.name];included[file.name]=nil
+				if not prior then lines[#lines+1]="Included file added: "..file.name.." ("..#file.text.." bytes)"
+				elseif prior.text~=file.text then lines[#lines+1]="Included file changed: "..file.name.." ("..#prior.text.." -> "..#file.text.." bytes)" end
+			end
+			for name in pairsSortByKey(included) do lines[#lines+1]="Included file removed: "..name end
 			if previous.template~=p.template then lines[#lines+1]="Base filter changed: "..(previous.template and "imported ("..#previous.template.." bytes)" or "pinned preset").." -> "..(p.template and "imported ("..#p.template.." bytes)" or "pinned preset") end
 			if previous.baseCommit~=p.baseCommit then lines[#lines+1]="Base revision: "..tostring(previous.baseCommit).." -> "..tostring(p.baseCommit) end
 			for _,key in ipairs({"rules","tiers","modules"}) do local a,b={},{};for _,v in ipairs(previous[key] or {}) do a[#a+1]=v.id end;for _,v in ipairs(p[key] or {}) do b[#b+1]=v.id end;if #a==#b and table.concat(a,"/")~=table.concat(b,"/") then lines[#lines+1]="Priority order changed: "..key end end
@@ -204,6 +226,10 @@ function M.review(before,after)
 					if not prior or encode(prior)~=encode(v) then
 						lines[#lines+1]=(prior and "Changed " or "Added ")..key..": "..v.title
 						if prior and prior.text then lines[#lines+1]="Before:\n"..prior.text end;if v.text then lines[#lines+1]="After:\n"..v.text end
+						if key=="rules" and prior and (prior.enabled~=v.enabled or prior.origin~=v.origin) then
+							if prior.enabled~=v.enabled then lines[#lines+1]="Rule enabled: "..tostring(prior.enabled~=false).." -> "..tostring(v.enabled~=false) end
+							if prior.origin~=v.origin then lines[#lines+1]="Linked source: "..tostring(prior.origin or "Manual").." -> "..tostring(v.origin or "Manual") end
+						end
 						if key=="tiers" then lines[#lines+1]="Items before: "..table.concat(prior and prior.items or {},", ");lines[#lines+1]="Items after: "..table.concat(v.items,", ");if encode(prior and prior.stackRules)~=encode(v.stackRules) then lines[#lines+1]="Stack styles before: "..stackSummary(prior and prior.stackRules,previous.tiers);lines[#lines+1]="Stack styles after: "..stackSummary(v.stackRules,p.tiers) end end
 						if key=="modules" then lines[#lines+1]="Module before: "..(prior and encode(prior) or "not installed");lines[#lines+1]="Module after: "..encode(v) end
 						if key=="sampleSets" or key=="palettes" then lines[#lines+1]="Before: "..(prior and encode(prior) or "not saved");lines[#lines+1]="After: "..encode(v) end
@@ -214,6 +240,7 @@ function M.review(before,after)
 			if encode(previous.appearance)~=encode(p.appearance) then lines[#lines+1]="Appearance before: "..json.encode(previous.appearance);lines[#lines+1]="Appearance after: "..json.encode(p.appearance) end
 			if encode(previous.campaign)~=encode(p.campaign) then lines[#lines+1]="Campaign policy before: "..encode(previous.campaign);lines[#lines+1]="Campaign policy after: "..encode(p.campaign) end
 			if encode(previous.categoryStyles)~=encode(p.categoryStyles) then lines[#lines+1]="Category styles before: "..encode(previous.categoryStyles);lines[#lines+1]="Category styles after: "..encode(p.categoryStyles) end
+			if #lines==0 then lines[1]="Profile metadata changed; inspect the draft for details." end
 			entries[#entries+1]={id=p.id,label="Changed: "..p.title,details=lines}
 		end
 	end
