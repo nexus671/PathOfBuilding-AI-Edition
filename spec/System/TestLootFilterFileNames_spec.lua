@@ -9,6 +9,23 @@ describe("Mode-specific filter files",function()
 		assert.has_error(function() names.stem(normal,"../outside.filter") end)
 		assert.is_true(names.isFilter("MY.RUTHLESSFILTER"));assert.is_false(names.isFilter(".ruthlessfilter"))
 	end)
+	it("accepts readable portable names and rejects invalid or reserved names",function()
+		local profile={mode="Normal"}
+		assert.equal("My filter",names.stem(profile,"My filter.FILTER"))
+		assert.equal("装备-3.filter",names.variant(profile,"装备.filter",3))
+		for _,name in ipairs({"CON.filter","con.notes.filter","LPT1.filter","bad .filter","bad..filter","../filter.filter","bad:name.filter",string.char(255)..".filter"}) do
+			assert.has_error(function() names.stem(profile,name) end)
+		end
+	end)
+	it("marks Unicode strictness ZIP filenames as UTF-8",function()
+		local filters=require("Modules.LootFilters");local original=filters.variants
+		filters.variants=function() return {{strictness=3,text="Show\n"}} end
+		local ok,zip=pcall(require("Modules.LootFilterZip").variants,{mode="Normal"},"装备.filter")
+		filters.variants=original;assert.is_true(ok)
+		assert.equal(0x0800,zip:byte(7)+256*zip:byte(8))
+		local central=assert(zip:find("PK\001\002",1,true));assert.equal(0x0800,zip:byte(central+8)+256*zip:byte(central+9))
+		assert.is_truthy(zip:find("装备-3.filter",1,true))
+	end)
 	it("loads a referenced Ruthless sibling without following path references",function()
 		local path=os.tmpname()..".ruthlessfilter";local name=path:match("([^/\\]+)$")
 		local file=assert(io.open(path,"wb"));file:write("Minimal\n BaseType \"Iron Hat\"");file:close()

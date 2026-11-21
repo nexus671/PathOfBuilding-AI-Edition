@@ -21,7 +21,7 @@ function M.variants(profile,filename)
 	for _,file in ipairs(files) do
 		local name=names.variant(profile,filename,file.strictness);local body=file.text
 		local size=#body;local crc=crc32(body)
-		local metadata=u16(20)..u16(0)..u16(0)..u16(0)..u16(0)..u32(crc)..u32(size)..u32(size)..u16(#name)..u16(0)
+		local metadata=u16(20)..u16(0x0800)..u16(0)..u16(0)..u16(0)..u32(crc)..u32(size)..u32(size)..u16(#name)..u16(0)
 		local localHeader="PK\003\004"..metadata..name
 		output[#output+1]=localHeader;output[#output+1]=body
 		central[#central+1]="PK\001\002"..u16(20)..metadata..u16(0)..u16(0)..u16(0)..u32(0)..u32(offset)..name
