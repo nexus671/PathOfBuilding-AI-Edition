@@ -20,7 +20,7 @@ end
 function M.orbReference() loadOrbs();return copyTable(orbData) end
 local function resolvedReward(value)
  if not value then return nil end
- loadOrbs();return orbAliases[value:lower()] or value
+ loadOrbs();return orbAliases[value:lower()] or nil
 end
 function M.validate(effects)
  if effects==nil then return nil end
@@ -86,6 +86,8 @@ function M.projectDelirium(currentPercent,currentType,nextType,gain)
  currentType=name(currentType,"current reward type",currentPercent==0)
  nextType=name(nextType,"next reward type")
  local currentReward,nextReward=resolvedReward(currentType),resolvedReward(nextType)
+ assert(nextReward,"Unrecognized next reward type; choose a listed Delirium Orb or reward type")
+ assert(currentPercent==0 or currentReward,"Unrecognized current reward type; use a listed Delirium Orb or reward type")
  local same=currentPercent>0 and currentReward:lower()==nextReward:lower()
  local start=same and currentPercent or 0
  local function outcome(add)

@@ -187,7 +187,7 @@ function M.Open(options)
 				entries[#entries+1]={id=choice.name,label=choice.name,search=choice.reward,reward=choice.reward,details={"Reward type: "..choice.reward,"Client data 3.30.0.4; item availability and reforge behavior are not verified."}}
 			end
 			require("Classes.PlanningBrowserControl").Open("Choose Delirium Orb",entries,{action="Select orb",choose=function(entry) c.nextType:SetText(entry.reward);update() end})
-		end));c.chooseOrb.tooltipText="Choose a reward type from pinned client data, or enter a type manually."
+			end));c.chooseOrb.tooltipText="Choose a reward type from pinned client data, or enter a listed orb or reward name."
 		ui.description(c,"scope",16,242,w-168,42,{"No map is changed. Eligibility, rerolled modifiers, other rewards and roll odds are not modeled."},12)
 		c.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-132,h-42,116,28},"Close",function() main:ClosePopup() end))
 		ui.style(c);for _,control in pairs(c) do control.layoutAudit="map-delirium-projection" end
