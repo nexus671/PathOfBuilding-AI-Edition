@@ -1393,7 +1393,7 @@ async function main(){
   const reforgeChoice=rareInspection.crafting.nativeEngine.harvestOptions.find(entry=>entry.method==='harvest_reforge');
   assert.equal(reforgeChoice.available,true);assert.ok(reforgeChoice.options.some(entry=>entry.action.tag==='life'));
   const project={priceBook:{currency:'chaos',source:'Unquoted',quotedAt:1700000000,values:{}},id:'helmet',title:'Life helmet',slot:'Helmet',startingItem:raw,targetItem:item(200),goals:['More maximum Life'],steps:[{action:'Apply an Orb of Alchemy',stopWhen:'Target modifiers match',onFailure:'Stop at the recorded budget and reconsider'}],nativeRecipe:recipe};
-  project.recipeAlternatives=[{name:'Alternate route',recipe:{...recipe,steps:[{method:'transmute'}]}}];
+  project.recipeAlternatives=[{name:'Alternate route',recipe:{...recipe,steps:[{method:'transmute'}]}},{name:'Already prepared',recipe:{steps:[{method:'transmute'}],targets:[],requirements:{minQuality:13},initialState:{...inspected.crafting.nativeEngine.initialState,quality:13}}}];
   project.inventory=[{id:'blank-base',title:'Reusable helmet base',slot:'Helmet',baseItem:raw,at:1700000000,state:inspected.crafting.nativeEngine.initialState}];
   const conflicting={...project,id:'conflicting-quotes',priceBook:{currency:'chaos',source:'Conflicting quotes',quotedAt:1700000000,values:{exalt:1,'Metadata/Items/Currency/CurrencyAddModToRare':2}}};
   const rejected=await queued('propose_crafting_plan',{baseRevision:context.revision,project:conflicting},'failed');assert.match(rejected.error,/Conflicting quotes/);
@@ -1402,6 +1402,7 @@ async function main(){
   await queued('propose_crafting_plan',{baseRevision:context.revision,project},'review');await host('apply');context=(await call('get_build_context')).context;
   assert.equal((await call('get_crafting_projects')).projects.find(entry=>entry.id==='helmet').recipeAlternatives[0].name,'Alternate route');
   const bodyProject={priceBook:bodyPriceBook,id:'body-enchant',title:'Body armour quality guide',slot:'Body Armour',startingItem:bodyRaw,targetItem:bodySimulation.nativeCrafting.sampleItem,preferredMethod:'harvest_enchant',nativeRecipe:{...bodyRecipe,steps:[...bodyRecipe.steps,whiteService.action]},goals:['Quality grants maximum Life','Six linked sockets'],steps:[{action:'Apply the Harvest Life quality enchantment',stopWhen:'Life quality enchantment is present'},{action:'Use an Orb of Fusing with Omen of Connections',stopWhen:'All six sockets are linked'}],inventory:[{id:'enchanted-body',title:'Enchanted body armour',slot:'Body Armour',baseItem:bodyRaw,at:1700000000,state:enchanted.nativeCrafting.state}]};
+  bodyProject.recipeAlternatives=[{name:'Priced body plan',recipe:bodyRecipe}];
   bodyProject.nativeRecipe.steps.push({method:'recombine',donorItem:'Rarity: NORMAL\nGlorious Plate\nItem Level: 86'});
   bodyProject.nativeRecipe.steps.push({method:'bench',modId:'bench:partial-prefix-1'});
   bodyProject.nativeRecipe.steps.push(rogRemove);
@@ -1611,6 +1612,15 @@ async function main(){
   context=(await call('get_build_context')).context;
   const replay=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'helmet'},'crafted');
   assert.equal(replay.nativeCrafting.savedSimulation.projectId,'helmet');assert.equal(replay.nativeCrafting.trials,2);assert.equal(replay.nativeCrafting.maxActions,1);
+  const alternative=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'helmet',alternativeName:'Alternate route',options:{trials:2,maxActions:1,seed:7,currency:'chaos',actionPrices:{transmute:7}}},'crafted');
+  assert.deepEqual(alternative.nativeCrafting.savedAlternative,{projectId:'helmet',name:'Alternate route'});assert.equal(alternative.nativeCrafting.stepPriceKeys[0].priceKey,'transmute');assert.equal(alternative.nativeCrafting.meanCost,7);
+  const prepared=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'helmet',alternativeName:'Already prepared',options:{trials:2,maxActions:1}},'crafted');
+  assert.equal(prepared.nativeCrafting.successes,2);assert.equal(prepared.nativeCrafting.meanActions,0);
+  const missingAlternative=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'helmet',alternativeName:'No such route'},'failed');assert.match(missingAlternative.error,/Unknown saved alternative recipe/);
+  const pricedAlternative=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'body-enchant',alternativeName:'Priced body plan',options:{trials:2,maxActions:2}},'crafted');
+  assert.equal(pricedAlternative.nativeCrafting.meanCost,327.25);assert.equal(pricedAlternative.nativeCrafting.priceSource,bodyPriceBook.source);
+  const wrongCurrency=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'body-enchant',alternativeName:'Priced body plan',options:{trials:2,maxActions:2,currency:'divine'}},'failed');assert.match(wrongCurrency.error,/Saved prices are in chaos/);
+  assert.equal((await call('get_build_context')).context.revision,context.revision,'Simulating a saved alternative changed the build');
   const mixedReplay=await rpc('tools/call',{name:'simulate_crafting',arguments:{baseRevision:context.revision,projectId:'helmet',itemText:raw}});
   assert.ok(mixedReplay.error || mixedReplay.result?.isError,'Saved replay accepted conflicting inputs');
   const missingReplay=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'missing'},'failed');
