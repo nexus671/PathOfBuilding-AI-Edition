@@ -11,6 +11,11 @@ return function(build,ui,frame)
 	ui:click("nav_tools");do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="vendor" then selected=row;break end end;assert(selected);browser.results.onClick({line=selected});ui:click("choose") end
 	do local c=main.popups[1].controls;assert(c.entries.list[2][1]:find("Vortex Visage",1,true) and c.entries.list[2][2]:find("1",1,true),"Reopened review lost its working items") end
 	frame("vendor-rare-reopened");ui:click("clear");ui:click("close")
+	ui:click("nav_tools");do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="rareSets" then selected=row;break end end;assert(selected,"Rare set review is missing");browser.results.onClick({line=selected});ui:click("choose") end
+	for _,class in ipairs({"Helmets","Body Armours","Gloves","Boots","Amulets","Belts","Rings","Rings","Bows"}) do ui.clipboard="Item Class: "..class.."\nRarity: Rare\nExample Base\n--------\nItem Level: 70\n--------\nUnidentified";ui:click("paste") end
+	do local c=main.popups[1].controls;local lines={};for _,row in ipairs(c.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;assert(table.concat(lines," "):find("Chaos Orb",1,true),"Rare set reward not displayed") end
+	frame("vendor-rare-set");ui:click("close");ui:click("nav_tools");do local browser=main.popups[1].controls;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="rareSets" then browser.results.onClick({line=row});break end end;ui:click("choose") end
+	assert(main.popups[1].controls.status.label:find("9 pasted",1,true),"Rare set items not retained");ui:click("clear");ui:click("close")
 	ui:click("nav_tools");do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="qualityVendor" then selected=row;break end end;assert(selected,"Quality vendor review is missing");browser.results.onClick({line=selected});ui:click("choose") end
 	ui.clipboard="Item Class: Wands\nRarity: Normal\nDriftwood Wand\n--------\nQuality: +20%";ui:click("paste")
 	for _,quality in ipairs({18,12,10}) do ui.clipboard="Item Class: Helmets\nRarity: Magic\nSuperior Iron Hat of the Fox\n--------\nQuality: +"..quality.."%";ui:click("paste") end

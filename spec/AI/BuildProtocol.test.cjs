@@ -251,6 +251,12 @@ test('accepts typed campaign pickup policies and rejects invented families', t =
   }
 });
 
+test('queues copied rare equipment for set review', t => {
+  const f=fixture(t);const items=['Item Class: Helmets\nRarity: Rare\nIron Hat\nItem Level: 70\nUnidentified'];
+  f.call('review_rare_vendor_sets',{baseRevision:f.state.revision,items});
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'review_rare_vendor_sets');assert.deepEqual(request.items,items);
+});
+
 test('queues copied quality items for vendor review', t => {
   const f=fixture(t);const items=['Item Class: Wands\nRarity: Normal\nDriftwood Wand\nQuality: +20%'];
   f.call('review_quality_vendor_items',{baseRevision:f.state.revision,items});

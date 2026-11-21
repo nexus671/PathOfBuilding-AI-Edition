@@ -12,7 +12,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Build auto-adjust | Reads saved crafts, planned gear, gems, resources and Atlas plans | More stage-specific vendor recipes |
 | Campaign weapon selection | Eighteen native families, equipped-family selection and progressive base-level windows | More character-specific class presets |
 | Campaign armour selection | Armour/evasion/ES combinations and Ward, with native base art | More starter presets |
-| Campaign vendor rares | Base preset rules plus level-bounded linked-colour, six-socket/link, quality-gem, quality-flask and tincture, quality-weapon and armour, Vaal-gem and normal-mode unidentified rare-set policies | Quality gear, flasks, tinctures and gems can be grouped from pasted items; other completed vendor sets and proceeds are not modeled |
+| Campaign vendor rares | Base preset rules and campaign pickup policies, plus copied-item reviews for quality groups and rare equipment sets | Rare set combinations, bonuses and vendor priority need in-game verification; other completed vendor sets remain unsupported |
 | Endgame build adjustment | Exact saved targets and Atlas pickups | Trade/SSF-specific policies |
 | Item overview and colour examples | Live scene using the compiled filter | Explanatory galleries for every item family |
 | Hierarchical customizer | Category sidebar, search, personal/base/policy scope and collapsible compiled sections | Human-edited subcategories |
@@ -53,6 +53,8 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Export all strictnesses | Seven files or one ZIP, including personal edits and appearance, with collision checks | Imported filters have no preset variants |
 | Validation | Native parser checks and account-server validation when authorised | Broader syntax coverage and live game validation |
 | Mobile layout | Desktop layouts tested at 960, 1024 and 1280 widths | Native PoB is not a mobile web app |
+
+Planning tools can suggest full rare equipment sets from copied rare items, including two rings and either a two-handed weapon or two supported one-hand slots. The displayed possible currency depends on the lowest item level. The [3.30 notes](https://www.pathofexile.com/forum/view-thread/4013680) specify Alchemy Orbs for sets containing an item below level 60; Chaos and Regal bands follow the historical recipe. Weapon combinations, bonuses, special items and vendor priority remain unverified. The planner does not read the stash; review the actual vendor offer. MCP exposes the same review as `review_rare_vendor_sets`.
 
 Boolean conditions containing multiple values, or a mixed boolean and gem-name `TransfiguredGem` list, produce an unknown preview and a validation warning. Their original text is preserved because current-game interpretation is unverified. Named `TransfiguredGem` lists remain supported.
 

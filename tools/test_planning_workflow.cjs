@@ -52,6 +52,9 @@ async function main(){
   const rareCopy='Item Class: Helmets\nRarity: Rare\nVortex Visage\nIron Hat\n--------\nItem Level: 80';
   const rareReview=await queued('review_same_name_rares',{baseRevision:context.revision,items:[rareCopy,rareCopy,rareCopy]},'vendorReview');
   assert.equal(rareReview.vendorReview.groups[0].name,'Vortex Visage');assert.equal(rareReview.vendorReview.groups[0].exalted,1);assert.equal(rareReview.vendorReview.groups[0].chaos,0);
+  const rareSetCopies=['Helmets','Body Armours','Gloves','Boots','Amulets','Belts','Rings','Rings','Bows'].map(cls=>`Item Class: ${cls}\nRarity: Rare\nExample Base\n--------\nItem Level: 70\n--------\nUnidentified`);
+  const rareSetReview=await queued('review_rare_vendor_sets',{baseRevision:context.revision,items:rareSetCopies},'rareSetVendorReview');
+  assert.equal(rareSetReview.rareSetVendorReview.groups.length,1);assert.equal(rareSetReview.rareSetVendorReview.groups[0].reward,'Chaos Orb');assert.equal(rareSetReview.rareSetVendorReview.groups[0].items.length,9);
   const qualityCopies=[20,12,18,10].map(q=>`Item Class: ${q===20?'Wands':'Helmets'}\nRarity: ${q===20?'Normal':'Magic'}\n${q===20?'Driftwood Wand':'Superior Iron Hat of the Fox'}\n--------\nQuality: +${q}%`);
   const qualityReview=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:qualityCopies},'qualityVendorReview');
   assert.equal(qualityReview.qualityVendorReview.categories[0].groups.length,1);assert.equal(qualityReview.qualityVendorReview.categories[1].groups.length,1);assert.equal(qualityReview.qualityVendorReview.categories[1].groups[0].quality,40);

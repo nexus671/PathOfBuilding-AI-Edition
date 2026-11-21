@@ -533,6 +533,11 @@ function M.poll(build, force)
 			local result=require("Modules.VendorRarePairs").review(request.items)
 			M.status={id=request.id,status="vendorReview",vendorReview=result};M.publishState();return
 		end
+		if request.kind=="review_rare_vendor_sets" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local result=require("Modules.VendorRarePairs").reviewSets(request.items)
+			M.status={id=request.id,status="rareSetVendorReview",rareSetVendorReview=result};M.publishState();return
+		end
 		if request.kind=="review_quality_vendor_items" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
 			local result=require("Modules.VendorQualitySets").review(request.items)
