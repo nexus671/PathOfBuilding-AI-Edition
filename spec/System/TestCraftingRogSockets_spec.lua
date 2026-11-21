@@ -20,6 +20,24 @@ describe("Rog socket offers",function()
   assert.has_error(function() rog.validate({rogOperation="socket_links",rogSocketRolls=10,rogSide="Prefix"}) end)
   assert.has_error(function() rog.validate({rogOperation="fill",rogSocketRolls=10}) end)
  end)
+ it("enumerates best-of odds under the socket model",function()
+  local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
+  local probabilities=require("Modules.CraftingSockets").jewellerProbabilities(model,state);local below=0
+  for count,chance in ipairs(probabilities) do if count<5 then below=below+chance end end
+  local action={method="rog_reroll",rogOperation="socket_count",rogSocketRolls=20}
+  local result=sim.calculate(raw,action,{},state,{requirements={sockets=5}})
+  assert.is_false(result.sampled);assert.matches("estimated socket model",result.exactFor,1,true)
+  assert.is_true(math.abs(result.successChance-100*(1-below^20))<0.0000001)
+  local total=0;for _,outcome in ipairs(result.outcomes) do total=total+outcome.chance end;assert.is_true(math.abs(total-100)<0.0000001)
+  local linkBelow=0;for _,candidate in ipairs(require("Modules.CraftingSockets").fusingOutcomes(state)) do
+   local groups={};local best=0;for _,group in ipairs(candidate.groups) do groups[group]=(groups[group] or 0)+1;best=math.max(best,groups[group]) end
+   if best<3 then linkBelow=linkBelow+candidate.probability end
+  end
+  action.rogOperation="socket_links";action.rogSocketRolls=10
+  result=sim.calculate(raw,action,{},state,{requirements={links=3}})
+  assert.is_false(result.sampled);assert.is_true(math.abs(result.successChance-100*(1-linkBelow^10))<0.0000001)
+  total=0;for _,outcome in ipairs(result.outcomes) do total=total+outcome.chance end;assert.is_true(math.abs(total-100)<0.0000001)
+ end)
  it("preserves rerolls, price and routes while editing a saved recipe",function()
   local recipe={steps={{method="rog_reroll",rogOperation="socket_count",rogSocketRolls=20,artifactCost={grand=7},maxAttempts=4,untilRequirements={sockets=6},onFailureAction="stop"}},targets={},requirements={sockets=6}}
   local saved;local editor=require("Classes.CraftingRecipeControl").Open(recipe,{method="alchemy"},function(value) saved=value end,sim.model(raw))

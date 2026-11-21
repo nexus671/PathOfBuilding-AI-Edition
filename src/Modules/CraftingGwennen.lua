@@ -118,48 +118,9 @@ function G.discrete(model,state,id,craft)
 	if deterministic[id] then return {{draws={},probability=1,text=deterministic[id]}} end
 	if id==1028 or id==1030 then
 		local rolls=id==1028 and 50 or assert(craft and craft.gwennenSocketRerolls,"Choose 50 or 100 socket rerolls for this disputed offer")
-		local sim=require("Modules.CraftingSimulator")
-		local reason=sim.methodReason(model,state,"jeweller");assert(not reason,reason)
-		local probabilities=require("Modules.CraftingSockets").jewellerProbabilities(model,state)
-		local result,cumulative={},0
-		for count,chance in ipairs(probabilities) do
-			local below=cumulative;cumulative=math.min(1,cumulative+chance)
-			local probability=cumulative^rolls-below^rolls
-			if probability>0 then
-				local draws={};for i=1,rolls do draws[i]=below+chance/2 end
-				result[#result+1]={draws=draws,probability=probability,text="Best socket count: "..count}
-			end
-		end
-		return result
+		return require("Modules.CraftingSockets").bestOfOutcomes(model,state,"count",rolls)
 	end
-	if id==1016 or id==1017 then
-		local sim=require("Modules.CraftingSimulator")
-		local reason=sim.methodReason(model,state,"fusing");assert(not reason,reason)
-		local candidates=require("Modules.CraftingSockets").fusingOutcomes(state)
-		local scores,totals={},{}
-		for i,candidate in ipairs(candidates) do
-			local counts,largest={},0
-			for _,group in ipairs(candidate.groups) do counts[group]=(counts[group] or 0)+1;largest=math.max(largest,counts[group]) end
-			scores[i]=largest;totals[largest]=(totals[largest] or 0)+candidate.probability
-		end
-		-- The maximum has score s with probability P(score <= s)^N - P(score < s)^N.
-		-- The first tied layout is distributed proportionally to its original weight.
-		local rolls=id==1016 and 100 or 50;local weights={};local cumulative=0
-		for score=1,6 do
-			local below=cumulative;cumulative=cumulative+(totals[score] or 0)
-			if totals[score] then weights[score]=(cumulative^rolls-below^rolls)/totals[score] end
-		end
-		local result,offset={},0
-		for i,candidate in ipairs(candidates) do
-			local probability=candidate.probability*weights[scores[i]]
-			if probability>0 then
-				local draws={};for n=1,rolls do draws[n]=offset+candidate.probability/2 end
-				result[#result+1]={draws=draws,probability=probability,text="Best link: "..scores[i].." (layout "..table.concat(candidate.groups,"-")..")"}
-			end
-			offset=offset+candidate.probability
-		end
-		return result
-	end
+	if id==1016 or id==1017 then return require("Modules.CraftingSockets").bestOfOutcomes(model,state,"links",id==1016 and 100 or 50) end
 	if id==1031 then
 		local choices=influenceChoices(model,state);local result={}
 		for index,key in ipairs(choices) do result[#result+1]={draws={(index-0.5)/#choices},probability=1/#choices,text="Add influence: "..key} end

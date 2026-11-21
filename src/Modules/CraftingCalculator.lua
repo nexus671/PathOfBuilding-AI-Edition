@@ -6,6 +6,22 @@ function C.extend(M)
 	function M.calculate(raw,craft,targets,initialState,options)
 		options=options or {}
 		local conflict=M.requirementsConflict(options.requirements);assert(not conflict,conflict)
+		if craft.method=="rog_reroll" and (craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links") then
+			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
+			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
+			model=M.context(model,state)
+			local branches=require("Modules.CraftingSockets").bestOfOutcomes(model,state,craft.rogOperation=="socket_count" and "count" or "links",craft.rogSocketRolls)
+			local outcomes,hits={},0
+			for index,branch in ipairs(branches) do
+				local cursor=0;local result=M.action(model,state,craft,function() cursor=cursor+1;return assert(branch.draws[cursor],"Unexpected Rog socket draw") end)
+				local hit=M.matches(result,targets,nil,model,options.requirements,options.requiredGroups)
+				if hit then hits=hits+branch.probability end
+				outcomes[#outcomes+1]={id=tostring(index),text=branch.text,chance=100*branch.probability,weight=branch.probability,matches=hit,state=result}
+			end
+			local sample=assert(outcomes[1],"No modeled socket outcomes").state
+			return {exactFor="Rog best-of socket outcomes under the estimated socket model and first-on-tie rule",showAllOutcomes=true,sampled=false,successChance=100*hits,totalWeight=1,matchingWeight=hits,
+				outcomes=outcomes,sampleState=sample,sampleItem=M.itemText(model,sample),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+		end
 		if craft.method=="rog_reroll" and (craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two") then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial

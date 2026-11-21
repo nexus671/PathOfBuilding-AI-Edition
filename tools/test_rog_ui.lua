@@ -1,10 +1,15 @@
 return function(build,ui,frame)
-	local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local sim=require("Modules.CraftingSimulator")
+	local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86\nSockets: R-G W";local sim=require("Modules.CraftingSimulator")
 	local state=copyTable(sim.model(raw).initial);state.rarity="RARE";state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}}
 	require("Classes.CraftingSimulatorControl").Open(build,{id="rog-ui",title="Rog offer",slot="Helmet",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(state)})
 	ui:click("settings");ui:text("paletteSearch","Rog:");ui:click("paletteUse");assert(not main.popups[1].controls.apply:IsEnabled(),"Unconfigured Rog offer could be applied")
 	ui:click("tab_settings");ui:click("configure");frame("crafting-rog-offer")
 	ui:choose("operation","socket_links","val");ui:choose("socketRolls",30,"val");assert(main.popups[1].controls.socketHint:IsShown() and not main.popups[1].controls.side:IsShown(),"Socket offer details are missing");frame("crafting-rog-socket-offer")
+	ui:choose("operation","socket_count","val");ui:click("keep");ui:click("exact")
+	local socketJobs=require("Modules.CraftingTasks");for _=1,1000 do if not socketJobs.job then break end;socketJobs.tick(build) end
+	local socketOdds=build.craftingAnalyses["rog-ui"].results.odds.result
+	assert(not socketJobs.job and not socketOdds.sampled and socketOdds.exactFor:find("estimated socket model",1,true),"Rog socket odds were not enumerated");frame("crafting-rog-socket-odds")
+	ui:click("tab_settings");ui:click("configure")
 	ui:choose("operation","remove_lowest_two","val");assert(not main.popups[1].controls.side:IsShown() and main.popups[1].controls.removeHint:IsShown(),"Removal offer did not explain its selection assumption");frame("crafting-rog-removal")
 	ui:click("keep");ui:click("exact")
 	local jobs=require("Modules.CraftingTasks");for _=1,1000 do if not jobs.job then break end;jobs.tick(build) end

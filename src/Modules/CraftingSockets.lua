@@ -277,4 +277,52 @@ function S.extend(M,A,api)
 
 	M.limits[#M.limits+1]="Socket colours use Siveran's empirical 3.29 model, with attribute bias for ordinary Chromatics and uniform RGB for tainted Chromatics. Tainted socket/link currencies assume 50/50 addition/removal; added sockets are white. Tainted Fusing grows the largest group by one socket, so a 4-link and 2-link become a 5-link and one unlinked socket, not a 6-link. It selects the first largest group and extends it to the right when possible; tie and direction rules are model assumptions."
 end
+-- Finite best-of socket outcomes under the shared estimated currency models.
+function S.bestOfOutcomes(model,state,kind,rolls)
+	assert(type(rolls)=="number" and rolls==math.floor(rolls) and rolls>=1 and rolls<=100,"Invalid socket reroll count")
+	if kind=="count" then
+		local sim=require("Modules.CraftingSimulator")
+		local reason=sim.methodReason(model,state,"jeweller");assert(not reason,reason)
+		local probabilities=S.jewellerProbabilities(model,state)
+		local result,cumulative={},0
+		for count,chance in ipairs(probabilities) do
+			local below=cumulative;cumulative=math.min(1,cumulative+chance)
+			local probability=cumulative^rolls-below^rolls
+			if probability>0 then
+				local draws={};for i=1,rolls do draws[i]=below+chance/2 end
+				result[#result+1]={draws=draws,probability=probability,text="Best socket count: "..count}
+			end
+		end
+		return result
+	end
+	if kind=="links" then
+		local sim=require("Modules.CraftingSimulator")
+		local reason=sim.methodReason(model,state,"fusing");assert(not reason,reason)
+		local candidates=S.fusingOutcomes(state)
+		local scores,totals={},{}
+		for i,candidate in ipairs(candidates) do
+			local counts,largest={},0
+			for _,group in ipairs(candidate.groups) do counts[group]=(counts[group] or 0)+1;largest=math.max(largest,counts[group]) end
+			scores[i]=largest;totals[largest]=(totals[largest] or 0)+candidate.probability
+		end
+		-- The maximum has score s with probability P(score <= s)^N - P(score < s)^N.
+		-- The first tied layout is distributed proportionally to its original weight.
+		local weights={};local cumulative=0
+		for score=1,6 do
+			local below=cumulative;cumulative=cumulative+(totals[score] or 0)
+			if totals[score] then weights[score]=(cumulative^rolls-below^rolls)/totals[score] end
+		end
+		local result,offset={},0
+		for i,candidate in ipairs(candidates) do
+			local probability=candidate.probability*weights[scores[i]]
+			if probability>0 then
+				local draws={};for n=1,rolls do draws[n]=offset+candidate.probability/2 end
+				result[#result+1]={draws=draws,probability=probability,text="Best link: "..scores[i].." (layout "..table.concat(candidate.groups,"-")..")"}
+			end
+			offset=offset+candidate.probability
+		end
+		return result
+	end
+	error("Unknown socket outcome kind")
+end
 return S
