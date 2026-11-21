@@ -20,21 +20,63 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 	end
 	ui.label(controls,"intro",16,26,"Compare recipes with the same item, targets, seed, trials and action budget.",14)
 	ui.label(controls,"hint",16,50,"Prices in "..settings.currency..". Saved quotes apply to every route; action overrides apply to single actions.",14)
-	for i=1,3 do
-		controls["route"..i]=new("DropDownControl"):DropDownControl(ui.anchor,{16,82+(i-1)*38,width-218,26},entries)
-		controls["route"..i]:SelByValue(math.min(i,#entries),"val")
-		controls["price"..i]=new("EditControl"):EditControl(ui.anchor,{width-186,82+(i-1)*38,170,26},"","Action override",nil,16)
-		local drop,input=controls["route"..i],controls["price"..i];local overrides={};local previous=drop:GetSelValueByKey("val")
-		drop.selFunc=function() overrides[previous]=input.buf;previous=drop:GetSelValueByKey("val");input:SetText(overrides[previous] or "") end
-		input.enabled=function() return recipes[drop:GetSelValueByKey("val")].priceKey~=nil end
-		input.tooltipText="Override the complete price of one selected action. Saved recipes use their ingredient prices."
+	-- Three controls per page keep the dialog compact; the route list itself
+	-- has no fixed count limit. Each route retains overrides per selected action.
+	local rows,page,previous={},1,{}
+	for i=1,3 do rows[i]={choice=math.min(i,#entries),prices={}} end
+	local function position(slot) return (page-1)*3+slot end
+	local function invalidate()
+		chartResults=nil
+		if controls.results then controls.results.list=ui.rows({"Routes changed. Run the comparison to update results."},width-62) end
 	end
-	controls.results=new("TextListControl"):TextListControl(ui.anchor,{16,206,width-32,height-280},nil,ui.rows({"Choose up to three routes and run the comparison.","Missing prices remain unknown. Sampling intervals do not measure model uncertainty."},width-62))
+	local function savePage()
+		for slot=1,3 do local row=rows[position(slot)];if row then
+			local choice=controls["route"..slot]:GetSelValueByKey("val")
+			row.choice=choice;row.prices[choice]=controls["price"..slot].buf
+		end end
+	end
+	local function showPage()
+		page=math.max(1,math.min(page,math.ceil(#rows/3)))
+		for slot=1,3 do local row=rows[position(slot)];if row then
+			controls["route"..slot]:SelByValue(row.choice,"val");previous[slot]=row.choice
+			controls["price"..slot]:SetText(row.prices[row.choice] or "")
+		end end
+	end
+	for i=1,3 do
+		local slot=i
+		controls["route"..slot]=new("DropDownControl"):DropDownControl(ui.anchor,{16,82+(slot-1)*38,width-248,26},entries)
+		controls["price"..slot]=new("EditControl"):EditControl(ui.anchor,{width-220,82+(slot-1)*38,160,26},"","Action override",nil,16)
+		local drop,input=controls["route"..slot],controls["price"..slot]
+		drop.shown=function() return rows[position(slot)]~=nil end;input.shown=drop.shown
+		drop.enabled=function() return not tasks.job end;input.changeFunc=invalidate
+		drop.selFunc=function()
+			local row=rows[position(slot)];row.prices[previous[slot]]=input.buf
+			previous[slot]=drop:GetSelValueByKey("val");row.choice=previous[slot];input:SetText(row.prices[row.choice] or "");invalidate()
+		end
+		input.enabled=function() local row=rows[position(slot)];return not tasks.job and row and recipes[drop:GetSelValueByKey("val")].priceKey~=nil end
+		input.tooltipText="Override the complete price of one selected action. Saved recipes use their ingredient prices."
+		controls["remove"..slot]=new("ButtonControl"):ButtonControl(ui.anchor,{width-52,82+(slot-1)*38,36,26},"X",function()
+			savePage();table.remove(rows,position(slot));showPage();invalidate()
+		end)
+		controls["remove"..slot].shown=drop.shown;controls["remove"..slot].enabled=function() return #rows>1 and not tasks.job end
+		controls["remove"..slot].tooltipText="Remove this route from the comparison."
+	end
+	showPage()
+	controls.addRoute=new("ButtonControl"):ButtonControl(ui.anchor,{16,194,140,26},"Add route",function()
+		savePage();rows[#rows+1]={choice=(#rows%#entries)+1,prices={}};page=math.ceil(#rows/3);showPage();invalidate()
+	end)
+	controls.addRoute.enabled=function() return not tasks.job end
+	controls.previousPage=new("ButtonControl"):ButtonControl(ui.anchor,{166,194,80,26},"Prev",function() savePage();page=page-1;showPage() end)
+	controls.nextPage=new("ButtonControl"):ButtonControl(ui.anchor,{254,194,80,26},"Next",function() savePage();page=page+1;showPage() end)
+	controls.previousPage.enabled=function() return page>1 end
+	controls.nextPage.enabled=function() return page<math.ceil(#rows/3) end
+	ui.label(controls,"page",348,200,"",14);controls.page.label=function() return "^7Routes "..((page-1)*3+1).."-"..math.min(page*3,#rows).." of "..#rows end
+	controls.results=new("TextListControl"):TextListControl(ui.anchor,{16,230,width-32,height-304},nil,ui.rows({"Add routes and run the comparison.","Missing prices remain unknown. Sampling intervals do not measure model uncertainty."},width-62))
 	controls.run=new("ButtonControl"):ButtonControl(ui.anchor,{16,height-48,180,28},"Compare recipes",function()
 		local ok,captured=pcall(function()
-			local routes={}
-			for i=1,3 do
-				local route=copyTable(recipes[controls["route"..i]:GetSelValueByKey("val")]);local price=controls["price"..i].buf
+			savePage();local routes={}
+			for _,row in ipairs(rows) do
+				local route=copyTable(recipes[row.choice]);local price=row.prices[row.choice] or ""
 				if route.priceKey and price~="" then
 					route.price=assert(tonumber(price),"Enter a valid action price")
 					require("Modules.CraftingPrices").actionOverride(route.priceKey,route.price)
@@ -44,13 +86,14 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 			return routes
 		end)
 		if not ok then main:OpenMessagePopup("Compare recipes",ui.errorText(captured));return end
+		chartResults=nil
 		local job=tasks.start(build,function(checkpoint)
 			local results={}
 			for i,route in ipairs(captured) do
 				local prices=settings.prices and copyTable(settings.prices)
 				local actionPrices=require("Modules.CraftingPrices").actionOverride(route.priceKey,route.price)
-				local options={initialState=copyTable(state),trials=settings.trials,maxActions=settings.budget,seed=settings.seed,currency=settings.currency,priceBook=settings.priceBook,prices=prices,actionPrices=actionPrices,treeVersion=settings.treeVersion,checkpoint=function(progress) checkpoint({route=i,trial=progress.trial,trials=progress.trials}) end}
-				local ok,result=pcall(sim.simulate,raw,route.recipe,options);results[#results+1]={label=route.label,recipe=copyTable(route.recipe),result=ok and result or nil,error=not ok and ui.errorText(result) or nil}
+				local options={initialState=copyTable(state),trials=settings.trials,maxActions=settings.budget,seed=settings.seed,currency=settings.currency,priceBook=settings.priceBook,prices=prices,actionPrices=actionPrices,treeVersion=settings.treeVersion,checkpoint=function(progress) checkpoint({route=i,routes=#captured,trial=progress.trial,trials=progress.trials}) end}
+				local ok,result=pcall(sim.simulate,raw,route.recipe,options);results[#results+1]={label="Route "..i..": "..route.label,recipe=copyTable(route.recipe),result=ok and result or nil,error=not ok and ui.errorText(result) or nil}
 			end
 			return results
 		end,function(results)
@@ -68,7 +111,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 				end
 			end
 			controls.results.list=ui.rows(lines,width-62)
-		end,function(message) controls.results.list=ui.rows({ui.errorText(message)},width-62) end,function(p) controls.results.list=ui.rows({"Route "..p.route..": trial "..p.trial.." / "..p.trials},width-62) end)
+		end,function(message) controls.results.list=ui.rows({ui.errorText(message)},width-62) end,function(p) controls.results.list=ui.rows({"Route "..p.route.." / "..p.routes..": trial "..p.trial.." / "..p.trials},width-62) end)
 		job.owner=controls
 	end)
 	controls.run.enabled=function() return not tasks.job end

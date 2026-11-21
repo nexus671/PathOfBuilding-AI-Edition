@@ -1389,6 +1389,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	-- can be too short on slower hosts even when comparison is still advancing.
 	for i=1,2000 do if not jobs.job then break end;jobs.tick(build) end
 	assert(not jobs.job,"Recipe comparison did not finish");frame("crafting-comparison-result");ui:click("charts");frame("crafting-comparison-chart");ui:click("close");ui:click("close")
+	dofile("../tools/test_crafting_compare_paging_ui.lua")(ui,frame,build,sim,jobs)
 	assert(main.popups[1].controls.trials.buf=="48","Native character events did not reach the edit control")
 	ui:click("close");main.popups={}
 	ui:bind(build);ui:click("nav_crafting");ui:click("native");ui:choose("page","Emulate item");ui:click(workspace.controls.currency_chaos:IsEnabled() and "currency_chaos" or "currency_alchemy");ui:click("item");ui:click("keepWorking")

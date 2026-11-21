@@ -167,7 +167,7 @@ retains its costing buckets for compatibility.
 
 Crafted-mod removal uses one Orb of Scouring. The supported one-mod and three-mod bench reforges use eight and three Chaos Orbs respectively, following the pinned recipe data. Their normal item prerequisites still apply.
 
-**Explore charts** shows cumulative success and completed-trial distributions by attempts, executed actions or supplied spending. Attempts include failed modeled transitions; executed actions exclude them. Older results without executed-action counts must be rerun for those charts. Hover to inspect, click to pin, or copy the data as CSV. The CSV includes the chart mode, unit, model notes, omitted routes and any recorded failed-transition count. **Compare recipes → Compare charts** overlays captured routes. Failed and capped trials stay in the denominator; unpriced routes are omitted from spending charts.
+**Explore charts** shows cumulative success and completed-trial distributions by attempts, executed actions or supplied spending. Attempts include failed modeled transitions; executed actions exclude them. Older results without executed-action counts must be rerun for those charts. Hover to inspect, click to pin, or copy the data as CSV. The CSV includes the chart mode, unit, model notes, omitted routes and any recorded failed-transition count. **Compare recipes → Compare charts** overlays three captured routes at a time with a shared scale; use the page controls for more routes. CSV export includes all chartable routes. Failed and capped trials stay in the denominator; unpriced routes are omitted from spending charts.
 
 **Run more trials** repeats that result's captured recipe, starting item, targets,
 seed and quotes. Only the trial count increases. Later edits to the working item,
@@ -215,7 +215,7 @@ review identifies the removed guide, inventory count and remaining gear links.
 
 ## Compare recipes
 
-The desktop **Simulate → Compare recipes** view compares up to three supported routes with the same captured item, final targets, seed, trial count and action budget. Saved resource quotes apply to every route. Action overrides apply to single-action routes; a saved recipe needs prices for every executed ingredient to report a cost. Results include success intervals, mean attempts and executed actions, spending when known, and failed transitions. **Cancel comparison** stops the job. Invalid action prices keep the comparison form open. Property-only goals work without a modifier-target group. These are bounded model experiments, not guaranteed game costs.
+The desktop **Simulate → Compare recipes** view compares any number of supported routes, with three route editors per page with the same captured item, final targets, seed, trial count and action budget. Saved resource quotes apply to every route. Action overrides apply to single-action routes; a saved recipe needs prices for every executed ingredient to report a cost. Results include success intervals, mean attempts and executed actions, spending when known, and failed transitions. **Cancel comparison** stops the job. Invalid action prices keep the comparison form open. Property-only goals work without a modifier-target group. These are bounded model experiments, not guaranteed game costs.
 
 **Rules** opens a browser searchable by mechanic, with assumptions alongside implemented actions. Advanced actions still validate item-specific prerequisites when applied.
 

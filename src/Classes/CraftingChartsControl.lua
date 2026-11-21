@@ -4,8 +4,8 @@ local visual=require("Modules.LootFilterVisuals")
 local M={}
 local colors={"^x79D8A0","^xDDBB78","^x94B9ED"}
 function M.Open(routes)
-	local c={};local w,h=math.min(1080,main.screenW-40),math.min(720,main.screenH-60);local data;local pinned
-	c.mode=new("DropDownControl"):DropDownControl(ui.anchor,{16,28,w-32,28},charts.modes)
+	local c={};local w,h=math.min(1080,main.screenW-40),math.min(720,main.screenH-60);local data,allData;local pinned;local page=1
+	c.mode=new("DropDownControl"):DropDownControl(ui.anchor,{16,28,#routes>3 and w-360 or w-32,28},charts.modes)
 	local graph=new("Control"):Control(ui.anchor,{16,100,w-32,h-292});c.chart=graph
 	function graph:IsMouseOver() return self:IsShown() and self:IsMouseInBounds() end
 	local function line(x1,y1,x2,y2,color)
@@ -40,22 +40,35 @@ function M.Open(routes)
 	function c.readout:Draw(...)
 		local x=value();local lines={string.format("At %.4g %s",x,data.unit)}
 		for _,series in ipairs(data.series) do local point=charts.at(series.points,x);lines[#lines+1]=string.format("%s: %.2f%% (%d / %d trials)",series.label,point.y,point.count,point.trials) end
-		for _,message in ipairs(data.omitted) do lines[#lines+1]=message end
+		if #data.omitted>0 then lines[#lines+1]=#data.omitted.." routes omitted; see Model notes." end
 		self.list=ui.rows(lines,w-60,14);drawReadout(self,...)
 	end
-	ui.label(c,"assumption",16,h-76,"",12);c.assumption.label=function() return "^7"..ui.fit((data.hasTransitionErrors and "Failed transitions were not charged. " or #data.warnings>0 and "Model notes available. " or "")..data.note,w-32,12) end
-	c.copy=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-42,180,28},"Copy chart data (CSV)",function() Copy(charts.csv(data)) end)
+	ui.label(c,"assumption",16,h-76,"",12);c.assumption.label=function() return "^7"..ui.fit((data.hasTransitionErrors and "Failed transitions were not charged. " or (#data.warnings>0 or #data.omitted>0) and "Model notes available. " or "")..data.note,w-32,12) end
+	c.copy=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-42,180,28},"Copy chart data (CSV)",function() Copy(charts.csv(allData)) end)
 	c.notes=new("ButtonControl"):ButtonControl(ui.anchor,{208,h-42,160,28},"Model notes",function()
 		local popup={};local width,height=math.min(780,main.screenW-40),math.min(420,main.screenH-60)
-		popup.messages=new("TextListControl"):TextListControl(ui.anchor,{16,28,width-32,height-92},nil,ui.rows(data.warnings,width-60,14))
+		local lines=copyTable(data.warnings);for _,message in ipairs(data.omitted) do lines[#lines+1]="Omitted: "..message end
+		popup.messages=new("TextListControl"):TextListControl(ui.anchor,{16,28,width-32,height-92},nil,ui.rows(lines,width-60,14))
 		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-156,height-48,140,28},"Close",function() main:ClosePopup() end)
 		ui.style(popup);main:OpenPopup(width,height,"Chart model notes",popup,nil,nil,"close")
 	end)
-	c.notes.enabled=function() return #data.warnings>0 end
+	c.notes.enabled=function() return #data.warnings>0 or #data.omitted>0 end
 	c.stepCosts=new("ButtonControl"):ButtonControl(ui.anchor,{380,h-42,180,28},"Step spending",function() require("Classes.CraftingStepCostsControl").Open(routes) end)
 	c.stepCosts.tooltipText="Compare the average modeled spending of each visited step in one route."
 	c.close=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-42,140,28},"Close",function() main:ClosePopup() end)
-	c.mode.selFunc=function() data=charts.series(routes,c.mode:GetSelValue());pinned=nil end;c.mode.selFunc()
+	local function showPage()
+		page=math.max(1,math.min(page,math.max(1,math.ceil(#allData.series/3))))
+		data={};for key,value in pairs(allData) do data[key]=value end;data.series={}
+		for index=(page-1)*3+1,math.min(page*3,#allData.series) do data.series[#data.series+1]=allData.series[index] end
+		pinned=nil
+	end
+	c.previousPage=new("ButtonControl"):ButtonControl(ui.anchor,{w-332,28,80,28},"Prev",function() page=page-1;showPage() end)
+	c.nextPage=new("ButtonControl"):ButtonControl(ui.anchor,{w-244,28,80,28},"Next",function() page=page+1;showPage() end)
+	c.previousPage.shown=function() return #routes>3 end;c.nextPage.shown=c.previousPage.shown
+	c.previousPage.enabled=function() return page>1 end;c.nextPage.enabled=function() return page<math.ceil(#allData.series/3) end
+	ui.label(c,"page",w-148,36,"",12);c.page.shown=c.previousPage.shown
+	c.page.label=function() return "^7"..(#allData.series==0 and 0 or (page-1)*3+1).."-"..math.min(page*3,#allData.series).." / "..#allData.series end
+	c.mode.selFunc=function() allData=charts.series(routes,c.mode:GetSelValue());page=1;showPage() end;c.mode.selFunc()
 	ui.style(c);for _,control in pairs(c) do control.layoutAudit="crafting-charts" end;main:OpenPopup(w,h,"Crafting results and budget charts",c,nil,nil,"close");return c
 end
 return M
