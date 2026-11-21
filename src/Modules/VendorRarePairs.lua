@@ -149,7 +149,7 @@ function M.reviewSets(items,preference)
  if preference=="chaos" then
   if not findAnchor(true) then missing[#missing+1]={slot="Item level 60-74",count=1}
   elseif not findAnchor() and #buckets["Two hand"]>0 then
-   missing[#missing+1]={slot="Chaos-level item or weapon partner",count=1,detail="Use another level 60-74 item, or pair the existing one-handed item with another one-handed weapon or shield"}
+   missing[#missing+1]={slot="Chaos-level item or weapon partner",count=1,detail="Use another level 60-74 item, or pair the existing weapon or shield with another one-handed weapon or shield"}
   end
  end
  return {preference=preference,groups=groups,remaining=remaining,missing=missing,totalItems=#items,note=(preference=="chaos" and "Chaos grouping is heuristic and may not maximize the number of sets. " or "").."Suggested groups use copied classes and item levels. Weapon combinations, identification and quality bonuses, special items and vendor priority need in-game verification. Each paste must be a different item; no stash is accessed."}
