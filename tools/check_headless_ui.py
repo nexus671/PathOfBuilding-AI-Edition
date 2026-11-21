@@ -48,6 +48,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_modifier_paging_ui.lua")
     sources.append(ROOT / "tools/test_crafting_replay_ui.lua")
     sources.append(ROOT / "tools/test_genesis_ui.lua")
+    sources.append(ROOT / "tools/test_atlas_remove_ui.lua")
     sources.append(ROOT / "tools/test_crafting_guide_ui.lua")
     sources.append(ROOT / "tools/test_journey_crafting_guide_ui.lua")
     sources.append(ROOT / "tools/test_flask_enchant_ui.lua")
@@ -97,6 +98,10 @@ def main():
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "controls.log").write_text(result.stdout)
     assert result.returncode == 0, result.stdout
+    atlas_removal = subprocess.run(lua_command + ["../tools/test_atlas_remove_ui.lua"], cwd=ROOT / "src",
+                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "atlas-removal-controls.log").write_text(atlas_removal.stdout)
+    assert atlas_removal.returncode == 0, atlas_removal.stdout
     replay = subprocess.run(lua_command + ["../tools/test_crafting_replay_ui.lua", str(frames)], cwd=ROOT / "src",
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-replay-controls.log").write_text(replay.stdout)

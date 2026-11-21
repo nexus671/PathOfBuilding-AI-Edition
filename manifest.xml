@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview982" />
+	<Version number="2.68.1-ai.preview983" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1693,7 +1693,7 @@
 	<File name="Assets/MapCrafting/Allflame/e79882e1a0bbca4f90dd.png" part="program" sha1="548fea8f01e777a19815582d04dd47ffbdaa2226" />
 	<File name="Data/Atlas/map-allflame-3.30.json" part="program" sha1="f8711d061efd86aacbb83186351d50d7885df832" />
 	<File name="Modules/MapAllflame.lua" part="program" sha1="563b130b2aa82c6e3fcb9421dd7298e150cb5be3" />
-	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="46093e723af64f92f155f139662ce5a997947429" />
+	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="60dfc00cd3a3ee689819b95cfd04123f25de73cd" />
 	<File name="Classes/AtlasRegionsControl.lua" part="program" sha1="6c38dc363ccab16fd564da72fbc7030a210a7571" />
 	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="f5f0c329f9a975421ec94e247a25ff421f3f2676" />
 	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="88a5c79581c7096eb7d895395c54535befeb5061" />
@@ -2126,7 +2126,7 @@
 	<File name="Modules/AtlasArt.lua" part="program" sha1="d007b7632f8d2e284c7ed46d6a0d98c39d3e2576" />
 	<File name="Modules/AtlasExactRoute.lua" part="program" sha1="4468353ae36dc220916b985ce6de0e1403c7643c" />
 	<File name="Modules/AtlasGrantRoute.lua" part="program" sha1="c9b1be59c1d2c9c6359d5546b3b41e1cfc3bdf12" />
-	<File name="Modules/AtlasPlanner.lua" part="program" sha1="13f1610a106fa42442941dd5562f99397cca30fb" />
+	<File name="Modules/AtlasPlanner.lua" part="program" sha1="5db7dfc961ff3d19eada318d0d3caffaf141a55b" />
 	<File name="Modules/AtlasRegions.lua" part="program" sha1="e418859ff34df69202221e4d46f5c3f1275afc3b" />
 	<File name="Modules/AtlasStrategy.lua" part="program" sha1="ded6873f204e28aeb113fa20e3f842753d54a730" />
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="650adaf8761d03a87383f3d4a3b14c1ffb5a6aca" />

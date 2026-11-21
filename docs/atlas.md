@@ -43,6 +43,8 @@ If an imported stage references a missing, incompatible or cyclic previous stage
 
 ## Sharing
 
+In **Saved Atlas plans**, **Undo removal** restores the most recently deleted saved plan during the current build session, including its Genesis allocations. It will not replace another plan with the same ID, and a missing or incompatible previous stage must be repaired first. Save the build to persist the restoration.
+
 **Copy plan** exports JSON with the exact patch version, point budget, allocations and notes. **Paste plan** imports that JSON into the current draft. Review it before keeping it.
 
 In **Targets**, calculate a route and choose **Show on tree** to review its additions in teal and refunds in red. Avoided nodes are also red. The draft stays unchanged. Open **Targets** again to apply the preview or return to the current tree; editing the plan clears the overlay.

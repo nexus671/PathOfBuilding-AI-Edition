@@ -651,7 +651,8 @@ function Panel.Library(build,layout)
 		if not savedIds[plan.id] then local title=entry.view and entry.view.title or plan.title;if not title:match("%S") then title="Untitled draft" end;list[#list+1]={label=ui.fit(title,420,14).." [Session draft]",val=plan.id,plan=plan,draft=true} end
 	end end
 	controls.plans=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,32,568,24},list)
-	controls.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,76,0,14},"^7"..(store.warning or "Session drafts are temporary. Keep a plan and save the build to persist it."))
+	local notice=store.warning or store.notice or "Session drafts are temporary. Keep a plan and save the build to persist it."
+	controls.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,76,0,14},"^7"..ui.fit(notice,568,14));controls.info.tooltipText=notice
 	local function selected() local choice=controls.plans:GetSelValue();return assert(choice and choice.plan,"Choose an Atlas plan") end
 	controls.open=button(16,112,160,"Open plan",function() local plan=selected();main:ClosePopup();if layout and layout.navigate then layout.navigate("atlas",plan) else if not layout then main:ClosePopup() end;Panel.Open(build,plan,layout) end end)
 	controls.delete=button(188,112,160,"Delete plan",function()
@@ -666,9 +667,16 @@ function Panel.Library(build,layout)
 		if not ok then main:OpenMessagePopup("Saved Atlas plans",ui.errorText(err)); return end
 		main:ClosePopup(); Panel.Library(build,layout)
 	end)
+	controls.undoRemove=button(360,112,160,"Undo removal",function()
+		local ok,err=pcall(function() store:UndoRemove() end)
+		if not ok then main:OpenMessagePopup("Saved Atlas plans",ui.errorText(err));return end
+		main:ClosePopup();Panel.Library(build,layout)
+	end)
+	controls.undoRemove.enabled=function() return store.lastRemoved~=nil and not store.unreadable end
+	controls.undoRemove.tooltipText="Restore the last deleted saved plan, including its Genesis allocations, until another plan is deleted or the build is closed."
 	controls.open.enabled=#list>0;controls.delete.enabled=#list>0
 	controls.delete.label=function() local choice=controls.plans:GetSelValue();return choice and choice.draft and "Discard draft" or "Delete plan" end
-	controls.delete.tooltipText="Discard a session draft or delete a saved plan. Older recovery records are preserved."
+	controls.delete.tooltipText="Discard a session draft or delete a saved plan. Undo removal restores the last deleted saved plan."
 	controls.close=button(468,160,116,"Close",function() main:ClosePopup() end)
 	main:OpenPopup(600,204,"Saved Atlas plans",controls,nil,nil,"close")
 end

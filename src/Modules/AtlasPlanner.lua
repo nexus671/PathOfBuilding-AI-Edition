@@ -516,6 +516,7 @@ function M.new(build)
 		return #title>24 and title:sub(1,21).."..." or title
 	end
 	function self:Load(xml)
+		self.lastRemoved=nil;self.notice=nil
 		local ok,plans=pcall(function()
 			local raw=table.concat(xml); assert(#raw <= 2*1024*1024,"Atlas metadata too large")
 			if not raw:match("%S") then return {} end
@@ -550,14 +551,35 @@ function M.new(build)
 		local seen={[entry.id]=true};local previous=entry.progression and entry.progression.previousId
 		while previous do assert(not seen[previous],"Atlas progression contains a cycle");seen[previous]=true;local nextPlan;for _,p in ipairs(replacement) do if p.id==previous then nextPlan=p end end;assert(nextPlan and nextPlan.version==entry.version,"Previous Atlas plan is missing or uses a different version");previous=nextPlan.progression and nextPlan.progression.previousId end
 		assert(#json.encode(replacement) <= 2*1024*1024,"Atlas metadata too large")
-		self.plans=replacement; build.modFlag=true;require("Modules.PlanningUI").kept(build,"atlas"); return entry
+		self.plans=replacement;self.notice=nil; build.modFlag=true;require("Modules.PlanningUI").kept(build,"atlas"); return entry
 	end
 	function self:Remove(id)
 		assert(not self.unreadable,self.warning)
 		for _,plan in ipairs(self.plans) do
 			assert(not (plan.progression and plan.progression.previousId==id),"'"..shortTitle(plan.title).."' follows this plan. Change its previous plan first.")
 		end
-		for i,plan in ipairs(self.plans) do if plan.id == id then table.remove(self.plans,i); build.modFlag=true; return end end
+		for i,plan in ipairs(self.plans) do if plan.id == id then
+			local replacement=copyTable(self.plans);table.remove(replacement,i)
+			self.lastRemoved={plan=copyTable(plan),index=i};self.plans=replacement;build.modFlag=true
+			require("Modules.PlanningUI").kept(build,"atlas");self.notice="Removed plan: "..plan.title..". Use Undo removal to restore."
+			return plan
+		end end
+	end
+	function self:UndoRemove()
+		assert(not self.unreadable,self.warning)
+		local removed=assert(self.lastRemoved,"No removed Atlas plan to restore");local entry=M.validate(removed.plan)
+		local byId={};for _,plan in ipairs(self.plans) do assert(plan.id~=entry.id,"A plan with this ID already exists; undo will not replace it");byId[plan.id]=plan end
+		local seen={[entry.id]=true};local previous=entry.progression and entry.progression.previousId
+		while previous do
+			assert(not seen[previous],"Atlas progression contains a cycle");seen[previous]=true
+			local parent=assert(byId[previous],"Previous Atlas plan is missing; restore it first")
+			assert(parent.version==entry.version,"Previous Atlas plan uses a different version")
+			previous=parent.progression and parent.progression.previousId
+		end
+		local replacement=copyTable(self.plans);table.insert(replacement,math.min(removed.index,#replacement+1),entry)
+		assert(#json.encode(replacement)<=2*1024*1024,"Atlas metadata too large")
+		self.plans=replacement;self.lastRemoved=nil;self.notice="Restored plan: "..entry.title..". Use build Save to persist."
+		build.modFlag=true;require("Modules.PlanningUI").kept(build,"atlas");return entry
 	end
 	return self
 end
