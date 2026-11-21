@@ -99,6 +99,21 @@ describe("Build-owned loot filters",function()
 			assert.equal(before.operator,after.operator);assert.same(before.values,after.values);assert.same(before.quoted,after.quoted)
 		end
 	end)
+	it("does not claim matches for impossible numeric drop samples",function()
+		local function test(condition,item) return parser.simulate(parser.parse("Show\n "..condition.."\nHide"),item) end
+		for _,value in ipairs({-1,2.5,7,math.huge,-math.huge,0/0}) do
+			for _,condition in ipairs({"Sockets >= 1","SocketGroup R","LinkedSockets >= 1"}) do
+				local result=test(condition,{Sockets=value,SocketGroup="R"});assert.equal("unknown",result.status);assert.matches("Invalid Sockets",result.reasons[1],1,true)
+			end
+		end
+		for _,value in ipairs({math.huge,-math.huge,0/0}) do
+			local result=test("ItemLevel >= 80",{ItemLevel=value});assert.equal("unknown",result.status);assert.matches("Invalid ItemLevel",result.reasons[1],1,true)
+		end
+		for _,value in ipairs({-1,5.5,6}) do assert.equal("unknown",test("UnidentifiedItemTier >= 4",{UnidentifiedItemTier=value}).status) end
+		for _,value in ipairs({-1,101}) do assert.equal("unknown",test("BaseDefencePercentile >= 90",{BaseDefencePercentile=value}).status) end
+		assert.equal("Show",test("UnidentifiedItemTier >= 4",{UnidentifiedItemTier=4}).action)
+		assert.equal("Show",test("BaseDefencePercentile >= 90",{BaseDefencePercentile=100}).action)
+	end)
 	it("distinguishes known zero sockets from an unknown socket group",function()
 		local function test(condition,item) return parser.simulate(parser.parse("Show\n "..condition.."\nHide"),item) end
 		for _,item in ipairs({{Sockets=0},{SocketGroup="0"},{SocketGroup=""}}) do

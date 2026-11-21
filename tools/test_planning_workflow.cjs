@@ -1409,6 +1409,7 @@ async function main(){
   const uncertainContinue={...lootProfile,template:'Show\n BaseType "Iron"\n Continue unexpected\nHide'};
   const uncertainContinueTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:uncertainContinue,sample:{BaseType:'Iron Hat'}},'tested');
   assert.equal(uncertainContinueTest.result.status,'unknown');assert.match(uncertainContinueTest.result.reasons[0],/Continue arguments/);
+  const badSocketSample=await queued('test_loot_filter',{baseRevision:context.revision,profile:{...lootProfile,template:'Show\n Sockets >= 1\nHide'},sample:{BaseType:'Iron Hat',Sockets:2.5}},'tested');assert.equal(badSocketSample.result.status,'unknown');assert.match(badSocketSample.result.reasons[0],/Invalid Sockets/);
   const flaskRecipeProfile={...lootProfile,template:'Hide',campaign:{recipes:['Quality flasks and tinctures','Vaal skill gems'],minAreaLevel:1,maxAreaLevel:70}};
   const qualityFlask=await queued('test_loot_filter',{baseRevision:context.revision,profile:flaskRecipeProfile,sample:{Class:'Life Flasks',BaseType:'Small Life Flask',Quality:5,AreaLevel:40}},'tested');assert.equal(qualityFlask.result.action,'Show');assert.match(qualityFlask.result.ruleTitle,/Quality flasks/);
   const vaalRecipe=await queued('test_loot_filter',{baseRevision:context.revision,profile:flaskRecipeProfile,sample:{Class:'Skill Gems',BaseType:'Vaal Arc',AreaLevel:40}},'tested');assert.equal(vaalRecipe.result.action,'Show');assert.match(vaalRecipe.result.ruleTitle,/Vaal skill gems/);

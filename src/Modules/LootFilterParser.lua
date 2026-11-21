@@ -155,6 +155,7 @@ local function socketConsistency(item)
 	local b,nb
 	if item.SocketGroup~=nil then b,nb,err=colours(item.SocketGroup,true);if err then return err end end
 	local count=tonumber(item.Sockets)
+	if count and (count~=count or math.abs(count)==math.huge or count<0 or count>6 or count~=math.floor(count)) then return "Invalid Sockets" end
 	if count and na and count~=na then return "Socket count does not match socket colours" end
 	if count and nb and count~=nb then return "Socket group layout does not account for the stated socket count" end
 	if a and b then
@@ -299,7 +300,9 @@ function M.condition(c,item)
 		end;return false
 	elseif M.numeric[c.keyword] or c.keyword=="Rarity" then
 		value=c.keyword=="Rarity" and rarity[value] or tonumber(value)
-		if value==nil then return nil,"Invalid "..c.keyword end
+		if value==nil or value~=value or math.abs(value)==math.huge then return nil,"Invalid "..c.keyword end
+		if c.keyword=="UnidentifiedItemTier" and (value<0 or value>5 or value~=math.floor(value)) then return nil,"Invalid UnidentifiedItemTier" end
+		if c.keyword=="BaseDefencePercentile" and (value<0 or value>100) then return nil,"Invalid BaseDefencePercentile" end
 		local negative=op=="!" or op=="!="
 		for _,v in ipairs(values) do local n=c.keyword=="Rarity" and rarity[v] or tonumber(v);if not n then return nil,"Invalid numeric value for "..c.keyword end
 			if negative and value==n then return false elseif not negative and compare(value,n,op) then return true end
