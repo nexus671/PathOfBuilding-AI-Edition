@@ -154,7 +154,7 @@ local function listCovers(earlier,later)
  return true
 end
 function M.shadowing(parsed)
- local seen,thresholds,sets,combined,paired,diagnostics={},{},{},{},{},{};local rarityIndex,intervalIndex,rarityIntersectionIndex,listIntervalIndex,pairIntervalIndex={},{},{},{},{};local partialLists={};local terminal
+ local seen,thresholds,sets,combined,paired,diagnostics={},{},{},{},{},{};local rarityIndex,intervalIndex,rarityIntersectionIndex,listIntervalIndex,pairIntervalIndex={},{},{},{},{};local partialLists={};local subsetIndex={};local terminal
  local hasMultipleRarityLines=false
  for _,rule in ipairs(parsed.rules) do
   local count=0;for _,condition in ipairs(rule.conditions) do if condition.keyword=="Rarity" then count=count+1;if count>1 then hasMultipleRarityLines=true;break end end end
@@ -185,6 +185,25 @@ function M.shadowing(parsed)
      if candidate and (not prior or candidate.line<prior.line) then prior=candidate;broader=true end
     end
    end end
+  end
+  -- Check longer exact subsets using a bounded index keyed by each prior
+  -- rule's sorted conditions. Merge the sorted lists so repeated
+  -- conditions do not accidentally count as multiple matches.
+  if not prior and #conditions>=4 and #conditions<=16 then
+   local checked={}
+   for _,condition in ipairs(conditions) do
+    for _,candidate in ipairs(subsetIndex[condition] or {}) do
+     if not checked[candidate] and #candidate.conditions<=#conditions-3 then
+      checked[candidate]=true
+      local i,j=1,1
+      while i<=#candidate.conditions and j<=#conditions do
+       if candidate.conditions[i]==conditions[j] then i=i+1;j=j+1
+       elseif candidate.conditions[i]>conditions[j] then j=j+1 else break end
+      end
+      if i>#candidate.conditions and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
+     end
+    end
+   end
   end
   local intervalVariants=not prior and #conditions<=16 and intervals(rule) or {}
   local pairIntervalVariants=not prior and intervalPairs(rule,intervalVariants) or {}
@@ -367,6 +386,16 @@ function M.shadowing(parsed)
    diagnostics[#diagnostics+1]={line=rule.line,shadowedBy=prior.line,warning="This block cannot be reached: a preceding terminating block at line "..prior.line.." "..explanation}
   elseif not rule.continue then
    seen[key]=rule;if #conditions==0 then terminal=rule end
+   if #conditions>0 and #conditions<=13 then
+    local entry={rule=rule,conditions=conditions};local previous
+    for _,condition in ipairs(conditions) do
+     if condition~=previous then
+      local candidates=subsetIndex[condition] or {};subsetIndex[condition]=candidates
+      if #candidates<32 then candidates[#candidates+1]=entry end
+      previous=condition
+     end
+    end
+   end
    for _,entry in ipairs(partialVariants) do
     local candidates=partialLists[entry.group] or {};partialLists[entry.group]=candidates
     if #candidates<32 then candidates[#candidates+1]=entry end

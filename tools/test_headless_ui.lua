@@ -1725,6 +1725,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		frame("filter-threshold-conflict");ui:click("close")
 	end
 	do
+		local example=require("Modules.LootFilters").profile("subset-example","Subset example")
+		example.template='Hide\n Class == "Rings"\n Rarity == Rare\nShow\n Class == "Rings"\n Rarity == Rare\n ItemLevel >= 75\n Identified True\n Corrupted False'
+		local c=require("Classes.LootFilterStructureControl").Open(example);ui:choose("mode","Priority conflicts")
+		local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(details," "):gsub("%s+"," "):find("matches every item matched",1,true),"Multiple-condition conflict was not explained")
+		frame("filter-subset-conflict");ui:click("close")
+	end
+	do
 		local example=require("Modules.LootFilters").profile("rarity-example","Rarity example")
 		example.template='Show\n Class == "Helmets" "Boots"\n Rarity == Unique\nHide\n Class == "Helmets"\n Rarity > Rare'
 		local c=require("Classes.LootFilterStructureControl").Open(example)

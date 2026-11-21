@@ -26,6 +26,28 @@ describe("Compiled filter structure",function()
 		assert.is_truthy(reason.shadowedBy);assert.matches("every item matched",reason.warning)
 		local blocker=structure.blockingEntry(view,conflicts[1]);assert.is_not_nil(blocker);assert.equal(reason.shadowedBy,blocker.line);assert.matches("ItemLevel >= 70",blocker.text,1,true);assert.is_nil(structure.blockingEntry(view,blocker))
 	end)
+	it("detects a broad rule with several additional conditions without guessing other rules",function()
+		local parser=require("Modules.LootFilterParser");local diagnostics=require("Modules.LootFilterDiagnostics")
+		local earlier='Class == "Rings"\n Rarity == Rare'
+		local later=earlier..'\n ItemLevel >= 75\n Identified True\n Corrupted False'
+		local raw='Hide\n '..earlier..'\nShow\n '..later
+		local result=diagnostics.shadowing(parser.parse(raw));assert.equal(1,#result);assert.equal(1,result[1].shadowedBy)
+		local p=filters.profile("subset","Subset");p.template=raw;local view=structure.outline(p)
+		local conflicts=structure.filter(view,"",nil,nil,"Priority conflicts");assert.equal(1,#conflicts);assert.is_not_nil(structure.blockingEntry(view,conflicts[1]))
+		assert.equal(0,#diagnostics.shadowing(parser.parse('Hide\n '..earlier..'\n Continue\nShow\n '..later)))
+		assert.equal(0,#diagnostics.shadowing(parser.parse('Hide\n '..earlier..'\nShow\n Class == "Rings"\n Rarity == Unique\n ItemLevel >= 75\n Identified True\n Corrupted False')))
+		local repeated='Hide\n Class == "Rings"\n Class == "Rings"\nShow\n Class == "Rings"\n Rarity == Rare\n ItemLevel >= 75\n Identified True\n Corrupted False'
+		assert.equal(0,#diagnostics.shadowing(parser.parse(repeated)))
+	end)
+	it("finds specific blockers after many rules share a common condition",function()
+		local parser=require("Modules.LootFilterParser");local diagnostics=require("Modules.LootFilterDiagnostics");local blocks={}
+		for i=1,60 do
+			local base='BaseType == "Example '..i..'"'
+			blocks[#blocks+1]='Hide\n '..base..'\n Rarity == Rare'
+			blocks[#blocks+1]='Show\n '..base..'\n Rarity == Rare\n ItemLevel >= 75\n Identified True\n Corrupted False'
+		end
+		assert.equal(60,#diagnostics.shadowing(parser.parse(table.concat(blocks,"\n"))))
+	end)
 	it("links an exact item-level conflict to the covering range",function()
 		local p=filters.profile("range","Range");p.template='Show\n Class == "Helmets"\n ItemLevel >= 60\n ItemLevel <= 80\nHide\n Class == "Helmets"\n ItemLevel == 75'
 		local view=structure.outline(p);local conflicts=structure.filter(view,"",nil,nil,"Priority conflicts")
