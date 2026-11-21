@@ -35,6 +35,18 @@ describe("Local filter editing",function()
 		assert.equal("0A141EC8",c.backgroundHex.buf);assert.matches("40",c.sizeLabel.label());c.keepRule:Click()
 		block=parser.parse(saved.text).rules[1];assert.same({"10","20","30","200"},block.styles.SetBackgroundColor);assert.same({"40"},block.styles.SetFontSize)
 	end)
+	it("offers mode-valid actions and keeps incompatible existing rules repairable",function()
+		local editor=require("Classes.LootFilterControl");local saved
+		local minimal={id="minimal",title="Minimal",text='Minimal\n BaseType == "Iron Hat"'}
+		editor.EditRule(minimal,function(value) saved=value end,"Normal")
+		local c=main.popups[1].controls;assert.equal("Minimal",c.action:GetSelValue());assert.is_false(c.keepRule:IsEnabled());assert.matches("only in Ruthless",c.modeNotice.label())
+		c.action:SelByValue("Show");c.action.selFunc();assert.is_true(c.keepRule:IsEnabled());c.conditions:Click()
+		c=main.popups[1].controls;assert.equal("Show",c.action:GetSelValue());assert.equal(2,#c.action.list);c.keepRule:Click();assert.equal("Show",parser.parse(saved.text).rules[1].action)
+		local hidden={id="hidden",title="Hidden",text='Hide\n BaseType == "Iron Hat"'}
+		editor.EditRule(hidden,function(value) saved=value end,"Ruthless");c=main.popups[1].controls
+		assert.equal("Hide",c.action:GetSelValue());assert.is_false(c.keepRule:IsEnabled());assert.matches("cannot hide",c.modeNotice.label())
+		c.action:SelByValue("Minimal");c.action.selFunc();assert.is_true(c.keepRule:IsEnabled());c.keepRule:Click();assert.equal("Minimal",parser.parse(saved.text).rules[1].action)
+	end)
 	it("moves exact items between tiers while retaining conditions and pinned source",function()
 		local p=profile();p.tiers={editing.newTier("low","Low",'Show\n Class == "Stackable Currency"\n BaseType == "Chaos Orb"\n StackSize >= 2\n SetFontSize 30\n Continue'),editing.newTier("high","High",'Show\n BaseType == "Divine Orb"\n SetFontSize 45')}
 		local source=p.template;local next=editing.assign(p,"low","Chaos Orb");assert.equal(0,#p.tiers[1].items)

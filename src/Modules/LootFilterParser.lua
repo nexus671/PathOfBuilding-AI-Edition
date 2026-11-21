@@ -4,6 +4,16 @@
 local M={}
 -- GGG's item-filter reference marks these conditions as PoE 2-only.
 M.poe2Only={AlwaysShow=true,HasVaalUniqueMod=true,IsVaalUnique=true,WaystoneTier=true}
+function M.actionReason(mode,action)
+	if mode=="Normal" and action=="Minimal" then return "Minimal is available only in Ruthless. Choose Show or Hide." end
+	if mode=="Ruthless" and action=="Hide" then return "Ruthless cannot hide drops. Choose Show or Minimal." end
+end
+function M.actionChoices(mode,current)
+	local choices=mode=="Normal" and {"Show","Hide"} or mode=="Ruthless" and {"Show","Minimal"} or {"Show","Hide","Minimal"}
+	-- Keep an existing incompatible choice visible so it can be repaired.
+	if current and M.actionReason(mode,current) then choices[#choices+1]=current end
+	return choices
+end
 local styleOptions=require("Modules.LootFilterAppearanceSettings");local colors,shapes={},{}
 for _,value in ipairs(styleOptions.colors) do colors[value]=true end;for _,value in ipairs(styleOptions.shapes) do shapes[value]=true end
 M.actions={SetTextColor=true,SetBorderColor=true,SetBackgroundColor=true,SetFontSize=true,PlayAlertSound=true,PlayAlertSoundPositional=true,

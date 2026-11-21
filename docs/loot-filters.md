@@ -4,6 +4,8 @@ The simulator's **Covens & Threads** scene provides varied 3.30 league-item exam
 
 Ruthless **Minimal** examples use a small label and transparent background in the preview, following [GGG's filter reference](https://www.pathofexile.com/item-filter/about). The preview also makes the default border transparent; that detail and interactions with explicitly set styles are approximations until checked in game. Explicit colours and sizes remain editable, and the preview keeps text large enough to read.
 
+The appearance and condition editors offer **Show / Hide** for Normal filters and **Show / Minimal** for Ruthless. If an existing rule uses an action incompatible with the selected mode, it remains visible for repair; choose an available action before keeping that edit.
+
 **Preset highlights** samples exact currency names from high-emphasis blocks in the pinned NeverSink Regular preset when their item class is known. It is a snapshot of that preset's styling, not a list of live prices, trade recommendations or drop rates. Your active filter still determines each preview result.
 
 Generated unidentified magic and rare examples have an unknown item tier unless a rule or sample explicitly supplies one. A tier-dependent filter therefore reports an unknown result until the tier is set. **Tiered gear** compares explicit example tiers; in Ruthless it shows only the example without a tier because items there do not have tiers.

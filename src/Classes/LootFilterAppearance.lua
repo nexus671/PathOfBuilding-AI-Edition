@@ -13,7 +13,9 @@ function M.Open(rule,save,conditions,options)
 	local function nextRule() local next=library.appearance(rule,changes);next.title=c.title.buf;return next end
 	ui.label(c,"heading",16,24,"Make this drop yours",22)
 	c.title=new("EditControl"):EditControl(ui.anchor,{16,56,w-200,28},rule.title,nil,nil,160)
-	c.action=new("DropDownControl"):DropDownControl(ui.anchor,{w-168,56,152,28},{"Show","Hide","Minimal"});c.action:SelByValue(original.action)
+	c.action=new("DropDownControl"):DropDownControl(ui.anchor,{w-168,56,152,28},parser.actionChoices(options.mode,original.action));c.action:SelByValue(original.action)
+	ui.label(c,"modeNotice",16,85,"",14)
+	c.modeNotice.label=function() local reason=parser.actionReason(options.mode,c.action:GetSelValue());return reason and "^xFFD27F"..reason or "" end
 	c.preview=new("Control"):Control(ui.anchor,{16,100,w-32,112})
 	function c.preview:Draw() local x,y=self:GetPos();local width,height=self:GetSize();visual.floor(x,y,width,height);visual.chip(x+width*0.2,y+8,width*0.6,height-8,sample,{action=c.action:GetSelValue(),styles=parser.parse(nextRule().text).rules[1].styles}) end
 	local palette={"FFFFFF","F2D59A","EF6A62","FFAE57","61D8ED","7BD89B","7C9FF2","BE8CE8"}
@@ -70,6 +72,8 @@ function M.Open(rule,save,conditions,options)
 		for _,entry in ipairs(columns) do assert(decode(c[entry[1]].buf),"Enter a valid hex colour") end
 		local next=nextRule();next.text=next.text:gsub("^%a+",c.action:GetSelValue());save(next);main:ClosePopup()
 	end)
+	c.keepRule.enabled=function() return not parser.actionReason(options.mode,c.action:GetSelValue()) end
+	c.keepRule.tooltipText=function() return parser.actionReason(options.mode,c.action:GetSelValue()) or "Keep this rule's appearance." end
 	ui.style(c,{keepRule=true},custom);visual.layers(c,{preview=true});main:OpenPopup(w,h,"Drop appearance",c,nil,"title","cancel")
 end
 return M

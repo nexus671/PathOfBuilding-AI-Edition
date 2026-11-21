@@ -44,7 +44,7 @@ local function modal(title,raw,save,existing)
 	button(c,"close",w-140,h-48,124,"Close",function() main:ClosePopup() end)
 	ui.style(c);main:OpenPopup(w,h,title,c,nil,"text","close")
 end
-function M.Conditions(rule,save)
+function M.Conditions(rule,save,mode)
 	local c={};local w,h=math.min(880,main.screenW-40),math.min(600,main.screenH-60);local parsed=parser.parse(rule.text);local block=parsed.rules[1]
 	local conditions=copyTable(block.conditions);local keywords={"BaseType","Class","Rarity","ItemLevel","AreaLevel","Quality","BaseDefencePercentile","MemoryStrands","LinkedSockets","Sockets","SocketGroup","GemLevel","MapTier","StackSize","UnidentifiedItemTier","Fated","Identified","Corrupted","TwiceCorrupted","FracturedItem","HasInfluence"}
 	local known=copyTable(parser.poe2Only);for _,key in ipairs(keywords) do known[key]=true end
@@ -52,8 +52,9 @@ function M.Conditions(rule,save)
 	table.sort(additional);for _,key in ipairs(additional) do keywords[#keywords+1]=key end
 	for _,condition in ipairs(conditions) do local known=false;for _,k in ipairs(keywords) do if k==condition.keyword then known=true end end;if not known then keywords[#keywords+1]=condition.keyword end end
 	ui.label(c,"nameLabel",16,28,"Rule name",14);c.title=new("EditControl"):EditControl(ui.anchor,{16,50,w-200,26},rule.title,nil,nil,160)
-	c.action=new("DropDownControl"):DropDownControl(ui.anchor,{w-168,50,152,26},{"Show","Hide","Minimal"});c.action:SelByValue(block.action)
+	c.action=new("DropDownControl"):DropDownControl(ui.anchor,{w-168,50,152,26},parser.actionChoices(mode,block.action));c.action:SelByValue(block.action)
 	ui.description(c,"hint",16,88,w-32,42,{"All conditions must match. Add values in quotes for names with spaces. A filter cannot inspect unidentified explicit modifiers."},14)
+	c.action.tooltipText=function() return parser.actionReason(mode,c.action:GetSelValue()) or "Choose how matching drops are displayed." end
 	local rows=math.max(1,math.floor((h-330)/40));local offset=1;local dialog
 	ui.label(c,"conditionFieldLabel",16,128,"Condition",14)
 	ui.label(c,"conditionOperatorLabel",218,128,"Operator",14)
@@ -106,13 +107,15 @@ function M.Conditions(rule,save)
 		save(nextRule);main:ClosePopup()
 	end) end)
 	button(c,"cancel",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)
+	c.keepRule.enabled=function() return not parser.actionReason(mode,c.action:GetSelValue()) end
+	c.keepRule.tooltipText=function() return parser.actionReason(mode,c.action:GetSelValue()) or "Keep this rule's conditions." end
 	drawConditions();ui.style(c,{keepRule=true});main:OpenPopup(w,h,"Loot filter rule",c,nil,"title","cancel");dialog=main.popups[1]
 end
 function M.EditRule(rule,save,mode)
  require("Classes.LootFilterAppearance").Open(rule,function(nextRule)
   local profile=filters.profile("validate","Validate");profile.rules={nextRule};filters.validate({schemaVersion=1,activeId=profile.id,profiles={profile}})
   save(nextRule)
- end,M.Conditions,{mode=mode})
+ end,function(nextRule,keep) M.Conditions(nextRule,keep,mode) end,{mode=mode})
 end
 function M.Import(save,existing)
  modal("Import loot filter","",function(raw,linked)
