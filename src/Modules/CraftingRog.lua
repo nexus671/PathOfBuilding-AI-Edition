@@ -77,6 +77,24 @@ function R.components(craft)
 	return result
 end
 
+-- This checks the current item without consuming random numbers. It does not
+-- promise that every later weighted roll has a legal continuation.
+function R.readiness(M,model,input,craft)
+	if input.rarity~="MAGIC" and input.rarity~="RARE" then return end
+	local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
+	if removal then
+		local count=craft.rogOperation=="remove_lowest_two" and 2 or 1
+		if #input.affixes<count then return "Requires at least "..count.." modifier"..(count==1 and "." or "s.") end
+		return
+	end
+	local count=0
+	for _,entry in ipairs(input.affixes) do local mod=model.byId[entry.id];if mod and mod.type==craft.rogSide then count=count+1 end end
+	if craft.rogOperation=="add" then
+		local limits=M.capacities(model,input)
+		if count>=limits[craft.rogSide] or #input.affixes>=limits.total then return "No open "..craft.rogSide:lower().." modifier slot." end
+	elseif count==0 then return "No "..craft.rogSide:lower().." modifiers to reroll." end
+end
+
 -- Independent candidates start from the same item. Ordinary affix weights,
 -- side-reroll count, average required-level ranking and first-on-tie are
 -- provisional assumptions, not a reconstruction of Rog's server logic.

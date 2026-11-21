@@ -1173,7 +1173,11 @@ require("Modules.CraftingAdvanced").extend(M,{counts=counts,flags=flags,clear=cl
 local allflameConfigurationReason=M.configurationReason
 local cachedDonorText,cachedDonorModel
 function M.configurationReason(model,state,craft)
-	if craft.method=="rog_reroll" and not pcall(require("Modules.CraftingRog").validate,craft) then return "Configure an observed Rog offer and valid artifact cost in Craft settings." end
+	if craft.method=="rog_reroll" then
+		local rog=require("Modules.CraftingRog")
+		if not pcall(rog.validate,craft) then return "Configure an observed Rog offer and valid artifact cost in Craft settings." end
+		local reason=rog.readiness(M,M.context(model,state),state,craft);if reason then return reason end
+	end
 	if craft.method=="bench_flask_enchant" and not require("Modules.CraftingFlaskEnchants").benchCost(craft.enchantId) then return "Choose an available flask bench enchantment." end
 	if craft.method=="gwennen" then
 		local valid=pcall(require("Modules.CraftingGwennen").validate,craft)

@@ -5,6 +5,8 @@ Rog's observed prefix and suffix reroll or add-modifier offers, and removal of o
 
 The odds view enumerates lowest-level removal outcomes under the assumed equal tie chances, merging different removal orders that leave the same item. This is exact for that model, not a verified in-game probability. Other Rog offers use sampled estimates.
 
+The workbench explains when the current item lacks modifiers to reroll or remove, or has no open slot for the selected addition. These checks do not guarantee that every later weighted roll can be completed.
+
 Plain item text can combine values from several modifiers. The importer checks
 for alternative combinations of integer single-stat ranges before accepting an exact
 line match, and rejects ambiguous items. The bounded search can check several

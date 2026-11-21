@@ -14,4 +14,10 @@ return function(build,ui,frame)
 	ui:click("tab_craft");assert(main.popups[1].controls.apply:IsEnabled(),"Configured Rog offer could not be applied");ui:click("item");frame("crafting-rog-result")
 	ui:click("keepWorking");local saved;for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id=="rog-ui" then saved=project end end
 	assert(saved and saved.run.configured.rog_reroll.artifactCost.grand==12 and saved.run.configured.rog_reroll.rogOperation=="add","Rog offer was not saved");ui:click("close")
+	local full=copyTable(state);full.rarity="MAGIC"
+	require("Classes.CraftingSimulatorControl").Open(build,{id="rog-full-ui",title="Full magic item",slot="Helmet",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(full)})
+	ui:click("settings");ui:text("paletteSearch","Rog:");ui:click("paletteUse");ui:click("tab_settings");ui:click("configure")
+	ui:choose("operation","add","val");ui:click("keep");ui:click("tab_craft")
+	assert(not main.popups[1].controls.apply:IsEnabled() and main.popups[1].controls.apply.tooltipText():find("No open prefix",1,true),"Full side did not explain why the offer is unavailable")
+	frame("crafting-rog-full-slot","apply");ui:click("close")
 end

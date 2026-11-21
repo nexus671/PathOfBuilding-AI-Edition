@@ -100,6 +100,21 @@ describe("Experimental Rog side rerolls",function()
 		local locked=copyTable(state);locked.affixes[1].fractured=true
 		assert.has_error(function() sim.action(model,locked,craft,stream(1)) end)
 	end)
+	it("explains missing modifiers and full slots before applying an observed offer",function()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="MAGIC"
+		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}}
+		local add={method="rog_reroll",rogOperation="add",rogSide="Prefix",rogAttempts=1}
+		assert.matches("No open prefix",sim.configurationReason(model,state,add))
+		local removed=copyTable(state);removed.affixes={}
+		assert.matches("No suffix modifiers",sim.configurationReason(model,removed,{method="rog_reroll",rogSide="Suffix",rogAttempts=1}))
+		assert.matches("at least 2 modifiers",sim.configurationReason(model,removed,{method="rog_reroll",rogOperation="remove_lowest_two"}))
+		assert.is_nil(sim.configurationReason(model,state,{method="rog_reroll",rogOperation="remove_lowest_two"}))
+		newBuild();local project={id="rog-readiness",title="Helmet",slot="Helmet",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(state)}
+		local c=require("Classes.CraftingSimulatorControl").Open(build,project);c.method:SelByValue("rog_reroll","val");c.method.selFunc();c.page:SelByValue("Craft settings");c.page.selFunc();c.configure:Click()
+		local popup=main.popups[1].controls;popup.operation:SelByValue("add","val");popup.keep:Click()
+		assert.is_false(c.apply:IsEnabled());assert.matches("No open prefix",c.apply.tooltipText())
+		main.popups={}
+	end)
 	it("configures and restores an observed offer in the dialog",function()
 		newBuild();local saved
 		local c=require("Classes.CraftingRogControl").Open(nil,function(craft) saved=craft end)
