@@ -543,8 +543,27 @@ function Panel.Open(build,project,layout)
 		require("Classes.CraftingCompareControl").Open(build,draft.startingItem,copyTable(state),copyTable(targets),requirements and copyTable(requirements),requiredGroups,action(),draft.nativeRecipe,
 			{trials=assert(tonumber(controls.trials.buf)),budget=assert(tonumber(controls.budget.buf)),seed=assert(tonumber(controls.seed.buf)),currency=controls.currency.buf,treeVersion=build.spec.treeVersion,priceBook=draft.priceBook and copyTable(draft.priceBook),
 				hasSavedRecipe=function() return draft.nativeRecipe~=nil end,keepRecipe=function(recipe)
+					if recipe.initialState then simulator.validateState(model,recipe.initialState) end
 					local candidate=copyTable(draft);candidate.nativeRecipe=recipe
 					draft=copyTable(build.savers.CraftingProjects:Upsert(candidate));refresh({"Recipe kept. Use build Save to persist."})
+				end,
+				alternatives=copyTable(draft.recipeAlternatives or {}),
+				keepAlternative=function(name,recipe)
+					local candidate=copyTable(draft);candidate.recipeAlternatives=candidate.recipeAlternatives or {}
+					candidate.recipeAlternatives[#candidate.recipeAlternatives+1]={name=name,recipe=recipe}
+					draft=copyTable(build.savers.CraftingProjects:Upsert(candidate));refresh({"Alternative recipe kept. Use build Save to persist."})
+					return copyTable(draft.recipeAlternatives[#draft.recipeAlternatives])
+				end,
+				renameAlternative=function(oldName,newName)
+					local candidate=copyTable(draft);local found
+					for _,alternative in ipairs(candidate.recipeAlternatives or {}) do if alternative.name==oldName then alternative.name=newName;found=true;break end end
+					assert(found,"Saved alternative no longer exists");draft=copyTable(build.savers.CraftingProjects:Upsert(candidate));refresh({"Alternative recipe renamed. Use build Save to persist."})
+					for _,alternative in ipairs(draft.recipeAlternatives) do if alternative.name:lower()==newName:match("^%s*(.-)%s*$"):lower() then return alternative.name end end
+				end,
+				removeAlternative=function(name)
+					local candidate=copyTable(draft);local found
+					for index,alternative in ipairs(candidate.recipeAlternatives or {}) do if alternative.name==name then table.remove(candidate.recipeAlternatives,index);found=true;break end end
+					assert(found,"Saved alternative no longer exists");draft=copyTable(build.savers.CraftingProjects:Upsert(candidate));refresh({"Alternative recipe removed. Use build Save to persist."})
 				end})
 	end)
 	button(controls,"resourcePrices",232,266,200,"Resource prices",function()

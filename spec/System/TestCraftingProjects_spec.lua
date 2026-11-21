@@ -309,4 +309,45 @@ describe("Crafting projects", function()
 		kept=reopened.savers.CraftingProjects.projects[1];assert.equal(2,#kept.nativeRecipe.steps);assert.equal("RARE",kept.nativeRecipe.initialState.rarity)
 	end)
 
+	it("keeps, renames, promotes and removes independent recipe alternatives",function()
+		local entry=project();entry.preferredMethod="alchemy";entry.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		build.savers.CraftingProjects:Upsert(entry);local control=require("Classes.CraftingSimulatorControl").Open(build,entry)
+		control.page:SelByValue("Emulate item");control.apply:Click();assert.equal("Crafting workbench",main.popups[1].title)
+		control.page:SelByValue("Simulate recipe");control.compareRecipes:Click();local compare=main.popups[1].controls
+		compare.alternative1:Click();local popup=main.popups[1].controls;popup.name:SetText("First route");popup.save:Click();assert.equal("Recipe kept",main.popups[1].title);main:ClosePopup()
+		compare.alternative2:Click();popup=main.popups[1].controls;popup.name:SetText("Second route");popup.save:Click();main:ClosePopup()
+		local kept=build.savers.CraftingProjects.projects[1];assert.equal(2,#kept.recipeAlternatives);assert.equal(1,#kept.nativeRecipe.steps)
+		local reopened=bridge.prepare(build,{mode="edit",title="Reopen alternative recipes",baseRevision=bridge.revision(build),operations={{type="set_character",level=80}}}).candidate
+		assert.equal("First route",reopened.savers.CraftingProjects.projects[1].recipeAlternatives[1].name)
+		compare.manageAlternatives:Click();popup=main.popups[1].controls;popup.list.onClick({line=popup.list.list[1]});popup.name:SetText("Improved route");popup.rename:Click()
+		assert.equal("Improved route",build.savers.CraftingProjects.projects[1].recipeAlternatives[1].name)
+		popup.use:Click();assert.equal("Replace saved recipe",main.popups[1].title);main.popups[1].controls.confirm:Click();assert.equal("Recipe kept",main.popups[1].title);main:ClosePopup()
+		assert.equal("RARE",build.savers.CraftingProjects.projects[1].nativeRecipe.initialState.rarity)
+		popup.remove:Click();assert.equal("Remove alternative",main.popups[1].title);main.popups[1].controls.confirm:Click()
+		kept=build.savers.CraftingProjects.projects[1];assert.equal(1,#kept.recipeAlternatives);assert.equal("Second route",kept.recipeAlternatives[1].name)
+		local minimal=copyTable(kept);minimal.recipeAlternatives=nil;build.savers.CraftingProjects:Upsert(minimal);assert.equal(1,#build.savers.CraftingProjects.projects[1].recipeAlternatives)
+		minimal.recipeAlternatives={};build.savers.CraftingProjects:Upsert(minimal);assert.equal(0,#build.savers.CraftingProjects.projects[1].recipeAlternatives)
+	end)
+	it("refuses to promote an alternative with an incompatible saved starting state",function()
+		local entry=project();entry.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		entry.recipeAlternatives={{name="Incompatible",recipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1},initialState={rarity="RARE",affixes={{id="UnknownModifier",roll=1}}}}}}
+		build.savers.CraftingProjects:Upsert(entry);local control=require("Classes.CraftingSimulatorControl").Open(build,entry)
+		control.page:SelByValue("Simulate recipe");control.compareRecipes:Click();local compare=main.popups[1].controls;compare.manageAlternatives:Click()
+		local manager=main.popups[1].controls;manager.list.onClick({line=manager.list.list[1]});manager.use:Click();main.popups[1].controls.confirm:Click()
+		assert.equal("Make primary",main.popups[1].title);assert.is_nil(build.savers.CraftingProjects.projects[1].nativeRecipe.initialState)
+	end)
+	it("round trips more than eight recipe alternatives without a count limit",function()
+		local entry=project();entry.recipeAlternatives={}
+		for i=1,12 do entry.recipeAlternatives[i]={name="Route "..i,recipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}} end
+		build.savers.CraftingProjects:Upsert(entry)
+		local xml={};build.savers.CraftingProjects:Save(xml);local loaded=projects.new(build);loaded:Load(xml)
+		assert.is_nil(loaded.warning);assert.equal(12,#loaded.projects[1].recipeAlternatives);assert.equal("Route 12",loaded.projects[1].recipeAlternatives[12].name)
+	end)
+	it("rejects duplicate or malformed recipe alternatives",function()
+		local entry=project();local recipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		entry.recipeAlternatives={{name="Plan",recipe=recipe},{name=" plan ",recipe=recipe}};assert.has_error(function() projects.validate(entry) end)
+		entry.recipeAlternatives={{name="^1Injected",recipe=recipe}};assert.has_error(function() projects.validate(entry) end)
+		entry.recipeAlternatives={{name="Plan",recipe={steps={},targets={}}}};assert.has_error(function() projects.validate(entry) end)
+	end)
+
 end)

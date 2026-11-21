@@ -75,6 +75,16 @@ function M.validate(project)
 		prices.normalized(result.priceBook,{item=M.item(result.startingItem)})
 	end
 	if project.nativeRecipe then result.nativeRecipe=require("Modules.CraftingSimulator").validateRecipe(project.nativeRecipe) end
+	if project.recipeAlternatives~=nil then
+		denseArray(project.recipeAlternatives,"recipe alternatives");result.recipeAlternatives={};local names={}
+		for _,alternative in ipairs(project.recipeAlternatives) do
+			assert(type(alternative)=="table","Invalid recipe alternative")
+			local name=text(alternative.name,120,"recipe name"):match("^%s*(.-)%s*$")
+			assert(name~="" and not name:find("[%c%^]"),"Invalid recipe name")
+			assert(not names[name:lower()],"Recipe names must be unique");names[name:lower()]=true
+			result.recipeAlternatives[#result.recipeAlternatives+1]={name=name,recipe=require("Modules.CraftingSimulator").validateRecipe(alternative.recipe)}
+		end
+	end
 	if project.preferredMethod then
 		local valid=false;for _,method in ipairs(require("Modules.CraftingSimulator").methods) do if project.preferredMethod==method then valid=true end end
 		assert(valid,"Unknown starting currency");result.preferredMethod=project.preferredMethod
@@ -143,6 +153,7 @@ function M.new(build)
 		for index,existing in ipairs(replacement) do if existing.id == entry.id then
 			if not entry.run and existing.run and entry.startingItem==existing.startingItem then entry.run=copyTable(existing.run) end
 			if project.inventory==nil and existing.inventory then entry.inventory=copyTable(existing.inventory) end
+			if project.recipeAlternatives==nil and existing.recipeAlternatives then entry.recipeAlternatives=copyTable(existing.recipeAlternatives) end
 			replacement[index]=entry; found=true; break
 		end end
 		if not found then replacement[#replacement+1]=entry end
@@ -260,6 +271,7 @@ function M.lines(project)
 			if step.untilTargets then lines[#lines+1]=string.format("   Step target groups: %d of %d required",step.untilRequiredGroups or #step.untilTargets,#step.untilTargets) end
 		end
 	end
+	for _,alternative in ipairs(project.recipeAlternatives or {}) do lines[#lines+1]="Alternative recipe: "..alternative.name.." ("..#alternative.recipe.steps.." steps)" end
 	if project.notes and project.notes ~= "" then lines[#lines+1]=project.notes end
 	return lines
 end

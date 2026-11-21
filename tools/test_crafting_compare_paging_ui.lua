@@ -45,7 +45,11 @@ return function(ui, frame, build, sim, jobs)
 		ui:click("keep1");frame("crafting-comparison-keep-confirm");ui:click("confirm");assert(main.popups[1].title=="Recipe kept");ui:click("close")
 		local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
 		assert(saved and #saved.nativeRecipe.steps==2 and saved.nativeRecipe.initialState.rarity=="NORMAL","Kept comparison recipe lost its state")
-		ui:click("close");ui:click("close");store.projects=original
+		ui:click("alternative1");ui:text("name","Test route");frame("crafting-alternative-save");ui:click("save");ui:click("close")
+		ui:click("manageAlternatives");local popup=main.popups[1].controls;local x,y=popup.list:GetPos();ui:clickAt(x+20,y+12);ui:text("name","Renamed route");frame("crafting-alternative-manage");ui:click("rename")
+		assert(store.projects[#store.projects].recipeAlternatives[1].name=="Renamed route","Alternative rename was not saved")
+		ui:click("use");ui:click("confirm");ui:click("close");ui:click("remove");ui:click("confirm");assert(#store.projects[#store.projects].recipeAlternatives==0,"Alternative removal was not saved")
+		ui:click("close");ui:click("close");ui:click("close");store.projects=original
 	end
 
 end

@@ -1393,12 +1393,14 @@ async function main(){
   const reforgeChoice=rareInspection.crafting.nativeEngine.harvestOptions.find(entry=>entry.method==='harvest_reforge');
   assert.equal(reforgeChoice.available,true);assert.ok(reforgeChoice.options.some(entry=>entry.action.tag==='life'));
   const project={priceBook:{currency:'chaos',source:'Unquoted',quotedAt:1700000000,values:{}},id:'helmet',title:'Life helmet',slot:'Helmet',startingItem:raw,targetItem:item(200),goals:['More maximum Life'],steps:[{action:'Apply an Orb of Alchemy',stopWhen:'Target modifiers match',onFailure:'Stop at the recorded budget and reconsider'}],nativeRecipe:recipe};
+  project.recipeAlternatives=[{name:'Alternate route',recipe:{...recipe,steps:[{method:'transmute'}]}}];
   project.inventory=[{id:'blank-base',title:'Reusable helmet base',slot:'Helmet',baseItem:raw,at:1700000000,state:inspected.crafting.nativeEngine.initialState}];
   const conflicting={...project,id:'conflicting-quotes',priceBook:{currency:'chaos',source:'Conflicting quotes',quotedAt:1700000000,values:{exalt:1,'Metadata/Items/Currency/CurrencyAddModToRare':2}}};
   const rejected=await queued('propose_crafting_plan',{baseRevision:context.revision,project:conflicting},'failed');assert.match(rejected.error,/Conflicting quotes/);
   assert.equal((await call('get_build_context')).context.revision,context.revision);
 
   await queued('propose_crafting_plan',{baseRevision:context.revision,project},'review');await host('apply');context=(await call('get_build_context')).context;
+  assert.equal((await call('get_crafting_projects')).projects.find(entry=>entry.id==='helmet').recipeAlternatives[0].name,'Alternate route');
   const bodyProject={priceBook:bodyPriceBook,id:'body-enchant',title:'Body armour quality guide',slot:'Body Armour',startingItem:bodyRaw,targetItem:bodySimulation.nativeCrafting.sampleItem,preferredMethod:'harvest_enchant',nativeRecipe:{...bodyRecipe,steps:[...bodyRecipe.steps,whiteService.action]},goals:['Quality grants maximum Life','Six linked sockets'],steps:[{action:'Apply the Harvest Life quality enchantment',stopWhen:'Life quality enchantment is present'},{action:'Use an Orb of Fusing with Omen of Connections',stopWhen:'All six sockets are linked'}],inventory:[{id:'enchanted-body',title:'Enchanted body armour',slot:'Body Armour',baseItem:bodyRaw,at:1700000000,state:enchanted.nativeCrafting.state}]};
   bodyProject.nativeRecipe.steps.push({method:'recombine',donorItem:'Rarity: NORMAL\nGlorious Plate\nItem Level: 86'});
   bodyProject.nativeRecipe.steps.push({method:'bench',modId:'bench:partial-prefix-1'});
@@ -1604,7 +1606,7 @@ async function main(){
   assert.equal((await call('get_crafting_projects')).projects.find(entry=>entry.id==='helmet').targetItem,keptTarget.target,'MCP did not receive the target kept in the native UI');
   await host('save-reopen');const reopened=await call('get_build_journey');assert.deepEqual(reopened.journey,saved.journey);
   assert.deepEqual((await call('get_loot_filters')).filters,savedFilters.filters);
-  const projects=await call('get_crafting_projects');assert.equal(projects.projects[0].run.actions[0].method,'alchemy');assert.equal(projects.projects[0].nativeRecipe.steps[0].method,'alchemy');assert.equal(projects.projects[0].nativeRecipe.steps[0].onFailureAction,'stop');
+  const projects=await call('get_crafting_projects');assert.equal(projects.projects.find(entry=>entry.id==='helmet').recipeAlternatives[0].recipe.steps[0].method,'transmute');assert.equal(projects.projects[0].run.actions[0].method,'alchemy');assert.equal(projects.projects[0].nativeRecipe.steps[0].method,'alchemy');assert.equal(projects.projects[0].nativeRecipe.steps[0].onFailureAction,'stop');
   assert.ok(projects.projects[0].run.simulationRequest,'Desktop simulation setup did not survive save and reopen');
   context=(await call('get_build_context')).context;
   const replay=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'helmet'},'crafted');

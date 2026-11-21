@@ -11,6 +11,12 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 	add("Selected: "..(current.allflame and "Allflame " or "")..workbench.actionLabel(current,model),{steps={selected},targets=copyTable(targets),requirements=requirements and copyTable(requirements),requiredGroups=requiredGroups},sim.priceKey(selected))
 	local savedIndex
 	if saved then local recipe=copyTable(saved);recipe.targets=copyTable(targets);recipe.requirements=requirements and copyTable(requirements);recipe.requiredGroups=requiredGroups;add("Saved recipe",recipe);savedIndex=#recipes end
+	local library={}
+	local function addAlternative(alternative)
+		local recipe=copyTable(alternative.recipe);recipe.targets=copyTable(targets);recipe.requirements=requirements and copyTable(requirements);recipe.requiredGroups=requiredGroups
+		add("Saved: "..alternative.name,recipe);library[#library+1]={name=alternative.name,index=#recipes,recipe=copyTable(alternative.recipe)}
+	end
+	for _,alternative in ipairs(settings.alternatives or {}) do addAlternative(alternative) end
 	for _,method in ipairs({"alchemy","chaos","alteration","essence","fossil","harvest_reforge"}) do
 		local available=workbench.available(method,state,model)
 		if available then
@@ -50,9 +56,9 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 		end end
 	end
 	for i=1,3 do
-		local slot=i;local canKeep=settings.keepRecipe~=nil
-		controls["route"..slot]=new("DropDownControl"):DropDownControl(ui.anchor,{16,82+(slot-1)*38,width-(canKeep and 385 or 316),26},entries)
-		controls["price"..slot]=new("EditControl"):EditControl(ui.anchor,{width-(canKeep and 357 or 288),82+(slot-1)*38,canKeep and 135 or 160,26},"","Action override",nil,16)
+		local slot=i;local canKeep=settings.keepRecipe~=nil;local canAlternative=settings.keepAlternative~=nil
+		controls["route"..slot]=new("DropDownControl"):DropDownControl(ui.anchor,{16,82+(slot-1)*38,width-(canAlternative and 455 or canKeep and 385 or 316),26},entries)
+		controls["price"..slot]=new("EditControl"):EditControl(ui.anchor,{width-(canAlternative and 427 or canKeep and 357 or 288),82+(slot-1)*38,canKeep and 135 or 160,26},"","Action override",nil,16)
 		local drop,input=controls["route"..slot],controls["price"..slot]
 		drop.shown=function() return rows[position(slot)]~=nil end;input.shown=drop.shown
 		drop.enabled=function() return not tasks.job end;input.changeFunc=invalidate
@@ -75,7 +81,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 		controls["edit"..slot].shown=drop.shown;controls["edit"..slot].enabled=function() return not tasks.job end
 		controls["edit"..slot].tooltipText="Create a separate comparison recipe from this route. Use Keep to save one to the project."
 		if canKeep then
-			controls["keep"..slot]=new("ButtonControl"):ButtonControl(ui.anchor,{width-214,82+(slot-1)*38,86,26},"Keep",function()
+			controls["keep"..slot]=new("ButtonControl"):ButtonControl(ui.anchor,{width-(canAlternative and 284 or 214),82+(slot-1)*38,86,26},"Keep",function()
 				savePage();local row=rows[position(slot)];local recipe=copyTable(recipes[row.choice].recipe);recipe.initialState=copyTable(state)
 				local function keep()
 					local ok,message=pcall(settings.keepRecipe,recipe)
@@ -93,6 +99,27 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 			controls["keep"..slot].shown=drop.shown;controls["keep"..slot].enabled=function() return not tasks.job end
 			controls["keep"..slot].tooltipText="Keep this route as the project's saved recipe, starting from the compared item. Resource prices remain separate."
 		end
+		if canAlternative then
+			controls["alternative"..slot]=new("ButtonControl"):ButtonControl(ui.anchor,{width-190,82+(slot-1)*38,62,26},"Save +",function()
+				savePage();local row=rows[position(slot)];local recipe=copyTable(recipes[row.choice].recipe);recipe.initialState=copyTable(state)
+				local popup={};local w,h=math.min(540,main.screenW-40),190;local number=1;local exists={}
+				for _,entry in ipairs(library) do exists[entry.name:lower()]=true end
+				while exists[("Alternative "..number):lower()] do number=number+1 end
+				ui.label(popup,"intro",16,28,"Name this recipe for the current crafting project.",14)
+				popup.name=new("EditControl"):EditControl(ui.anchor,{16,56,w-32,28},"Alternative "..number,"Recipe name",nil,120)
+				ui.label(popup,"note",16,96,"Resource prices are shared; comparison overrides are not saved.",14)
+				popup.save=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-48,150,28},"Save alternative",function()
+					local ok,result=pcall(settings.keepAlternative,popup.name.buf,recipe)
+					if not ok then main:OpenMessagePopup("Save alternative",ui.errorText(result));return end
+					addAlternative(result);for index=1,3 do controls["route"..index]:ResetSearch() end
+					main:ClosePopup();main:OpenMessagePopup("Recipe kept","Alternative saved to this project. Use build Save to persist.")
+				end)
+				popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{w-136,h-48,120,28},"Cancel",function() main:ClosePopup() end)
+				ui.style(popup,{save=true});main:OpenPopup(w,h,"Save alternative recipe",popup,nil,"name","close")
+			end)
+			controls["alternative"..slot].shown=drop.shown;controls["alternative"..slot].enabled=function() return not tasks.job end
+			controls["alternative"..slot].tooltipText="Save this route as a named alternative without replacing the project's primary recipe."
+		end
 		controls["remove"..slot]=new("ButtonControl"):ButtonControl(ui.anchor,{width-52,82+(slot-1)*38,36,26},"X",function()
 			savePage();table.remove(rows,position(slot));showPage();invalidate()
 		end)
@@ -109,6 +136,51 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 	controls.previousPage.enabled=function() return page>1 end
 	controls.nextPage.enabled=function() return page<math.ceil(#rows/3) end
 	ui.label(controls,"page",348,200,"",14);controls.page.label=function() return "^7Routes "..((page-1)*3+1).."-"..math.min(page*3,#rows).." of "..#rows end
+	if settings.renameAlternative and settings.removeAlternative then
+		controls.manageAlternatives=new("ButtonControl"):ButtonControl(ui.anchor,{width-156,194,140,26},"Saved routes",function()
+			local popup={};local selected;local w,h=math.min(620,main.screenW-40),math.min(440,main.screenH-60)
+			popup.list=new("TextListControl"):TextListControl(ui.anchor,{16,28,w-32,h-156},nil,{})
+			popup.name=new("EditControl"):EditControl(ui.anchor,{16,h-112,w-32,26},"","Recipe name",nil,120)
+			local function refreshList()
+				local lines={};for index,entry in ipairs(library) do lines[#lines+1]={height=25,textSize=14,entry=index,selected=index==selected,"^7"..ui.fit(entry.name,w-68,14)} end
+				if #lines==0 then lines[1]={height=25,textSize=14,"^7No saved alternatives yet."} end;popup.list.list=lines
+			end
+			popup.list.onClick=function(row) local index=row and row.line and row.line.entry;if index then selected=index;popup.name:SetText(library[index].name);refreshList() end end
+			popup.rename=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-70,140,28},"Rename",function()
+				local entry=library[selected];local ok,name=pcall(settings.renameAlternative,entry.name,popup.name.buf)
+				if not ok then main:OpenMessagePopup("Rename recipe",ui.errorText(name));return end
+				entry.name=name;entries[entry.index].label="Saved: "..name;recipes[entry.index].label=entries[entry.index].label
+				for index=1,3 do controls["route"..index]:ResetSearch() end;popup.name:SetText(name);refreshList();invalidate()
+			end)
+			popup.rename.enabled=function() return selected~=nil and library[selected]~=nil end
+			popup.remove=new("ButtonControl"):ButtonControl(ui.anchor,{168,h-70,140,28},"Remove",function()
+				local entry=library[selected]
+				main:OpenConfirmPopup("Remove alternative","Remove this saved alternative from the project?\nAny route already selected remains in this comparison.","Remove",function()
+					local ok,message=pcall(settings.removeAlternative,entry.name)
+					if not ok then main:OpenMessagePopup("Remove recipe",ui.errorText(message));return end
+					entries[entry.index].label="Unsaved: "..entry.name;recipes[entry.index].label=entries[entry.index].label
+					table.remove(library,selected);selected=nil;popup.name:SetText("");for index=1,3 do controls["route"..index]:ResetSearch() end;refreshList();invalidate()
+				end)
+			end)
+			popup.remove.enabled=popup.rename.enabled
+			popup.use=new("ButtonControl"):ButtonControl(ui.anchor,{320,h-70,140,28},"Make primary",function()
+				local entry=library[selected];local recipe=copyTable(entry.recipe)
+				local function keep()
+					local ok,message=pcall(settings.keepRecipe,recipe)
+					if not ok then main:OpenMessagePopup("Make primary",ui.errorText(message));return end
+					local comparison=copyTable(recipe);comparison.targets=copyTable(targets);comparison.requirements=requirements and copyTable(requirements);comparison.requiredGroups=requiredGroups
+					if savedIndex then recipes[savedIndex].recipe=comparison else add("Saved recipe",comparison);savedIndex=#recipes end
+					for index=1,3 do controls["route"..index]:ResetSearch() end;invalidate()
+					main:OpenMessagePopup("Recipe kept","Primary recipe updated with its saved starting state.\nUse build Save to persist.")
+				end
+				if settings.hasSavedRecipe and settings.hasSavedRecipe() then main:OpenConfirmPopup("Replace saved recipe","Replace the primary recipe with this alternative?\nIts saved starting state and targets will be used.","Replace",keep) else keep() end
+			end)
+			popup.use.enabled=popup.rename.enabled
+			popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{w-136,h-70,120,28},"Close",function() main:ClosePopup() end)
+			refreshList();ui.style(popup);main:OpenPopup(w,h,"Saved alternative recipes",popup,nil,nil,"close")
+		end)
+		controls.manageAlternatives.enabled=function() return not tasks.job end
+	end
 	controls.results=new("TextListControl"):TextListControl(ui.anchor,{16,230,width-32,height-304},nil,ui.rows({"Add routes and run the comparison.","Missing prices remain unknown. Sampling intervals do not measure model uncertainty."},width-62))
 	controls.run=new("ButtonControl"):ButtonControl(ui.anchor,{16,height-48,180,28},"Compare recipes",function()
 		local ok,captured=pcall(function()
