@@ -856,10 +856,14 @@ test('queues a bounded comparison of named crafting alternatives', t => {
   assert.equal(request.kind,'craftCompareAlternatives');assert.deepEqual(request.names,['Life','Armour']);
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   f.call('compare_crafting_alternatives',{baseRevision,projectId:'helmet-guide',names:Array.from({length:12},(_,i)=>`Route ${i+1}`),options:{trials:1,maxActions:1}});
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  f.call('compare_crafting_alternatives',{baseRevision,projectId:'helmet-guide',includePrimary:true,names:['Life'],options:{trials:2,maxActions:1}});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).includePrimary,true);
   for(const bad of [
-    {names:['Life']},{names:['Life','Life']},{names:['Life','  ']},{names:['Life','Armour'],options:{trials:2000,maxActions:2000}},
+    {names:['Life']},{names:['Life','Armour'],reference:'primary'},{names:['Life','Life']},{names:['Life','  ']},{names:['Life','Armour'],options:{trials:2000,maxActions:2000}},
     {names:['Life','Armour'],options:{trials:2,maxActions:1,prices:{alchemy:3}}},
-  ]) assert.throws(()=>f.call('compare_crafting_alternatives',{baseRevision,projectId:'helmet-guide',...bad}),/arguments|names|budgeted|currency/);
+    {includePrimary:true,names:['Life','Armour'],options:{trials:100,maxActions:100}},
+  ]) assert.throws(()=>f.call('compare_crafting_alternatives',{baseRevision,projectId:'helmet-guide',...bad}),/arguments|names|routes|budgeted|currency|reference/);
 });
 
 test('accepts observed Rog offers and rejects invalid attempt counts', t => {

@@ -651,15 +651,26 @@ function M.poll(build, force)
 			assert(not build.savers.CraftingProjects.unreadable,build.savers.CraftingProjects.warning)
 			local project;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==request.projectId then project=entry;break end end
 			assert(project,"Unknown crafting project")
-			assert(type(request.names)=="table" and #request.names>=2,"Choose at least two saved alternatives")
+			assert(request.includePrimary==nil or type(request.includePrimary)=="boolean","Invalid primary recipe selection")
+			assert(request.reference==nil or request.reference=="primary" or request.reference=="firstAlternative","Invalid reference selection")
+			assert(request.reference~="primary" or request.includePrimary,"A primary reference requires includePrimary")
+			assert(type(request.names)=="table" and #request.names>=1,"Choose saved alternatives")
 			for key in pairs(request.names) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=#request.names,"Alternative names must be an array") end
 			assert(request.options==nil or type(request.options)=="table","Invalid comparison options")
 			local byName={};for _,entry in ipairs(project.recipeAlternatives or {}) do byName[entry.name]=entry end
-			local chosen,seen={},{};for _,name in ipairs(request.names) do
+			local chosen,seen={},{};local primary
+			if request.includePrimary then
+				assert(project.nativeRecipe,"This project has no primary recipe")
+				primary={name="Primary recipe",kind="primary",recipe=copyTable(project.nativeRecipe)}
+				if request.reference~="firstAlternative" then chosen[#chosen+1]=primary end
+			end
+			for _,name in ipairs(request.names) do
 				assert(type(name)=="string" and #name<=120 and name:match("%S") and not name:find("[%c%^]"),"Invalid alternative recipe name")
 				assert(not seen[name],"Choose each saved alternative once");seen[name]=true
-				local alternative=assert(byName[name],"Unknown saved alternative recipe: "..name);chosen[#chosen+1]=copyTable(alternative)
+				local alternative=assert(byName[name],"Unknown saved alternative recipe: "..name);chosen[#chosen+1]={name=alternative.name,kind="alternative",recipe=copyTable(alternative.recipe)}
 			end
+			if primary and request.reference=="firstAlternative" then chosen[#chosen+1]=primary end
+			assert(#chosen>=2,"Choose at least two saved routes")
 			local options=copyTable(request.options or {});local trials=options.trials or 100;local budget=options.maxActions or 100
 			assert(type(trials)=="number" and trials==math.floor(trials) and trials>=1 and trials<=2000 and type(budget)=="number" and budget==math.floor(budget) and budget>=1 and budget<=2000,"Invalid comparison trials or action budget")
 			assert(#chosen*trials*budget<=20000,"Use at most 20000 total budgeted actions across routes")
@@ -681,9 +692,9 @@ function M.poll(build, force)
 					candidate.requirements=reference.requirements and copyTable(reference.requirements) or nil;candidate.requiredGroups=reference.requiredGroups;candidate.rarity=reference.rarity
 					local routeOptions=copyTable(options);routeOptions.checkpoint=function(progress) checkpoint({route=index,routes=#chosen,trial=progress.trial,trials=progress.trials}) end
 					local ok,result=pcall(simulator.simulate,project.startingItem,candidate,routeOptions)
-					routes[#routes+1]={name=entry.name,savedStartDiffers=startDiffers,savedGoalDiffers=goalDiffers,result=ok and result or nil,error=not ok and require("Modules.PlanningUI").errorText(result) or nil}
+					routes[#routes+1]={name=entry.name,kind=entry.kind,savedStartDiffers=startDiffers,savedGoalDiffers=goalDiffers,result=ok and result or nil,error=not ok and require("Modules.PlanningUI").errorText(result) or nil}
 				end
-				return {projectId=request.projectId,referenceName=chosen[1].name,routes=routes,notes={"All routes use the reference starting state and final targets; their own step conditions remain unchanged.","Sampling intervals do not include model uncertainty; no route is ranked automatically."}}
+				return {projectId=request.projectId,referenceName=chosen[1].name,referenceKind=chosen[1].kind,routes=routes,notes={"All routes use the reference starting state and final targets; their own step conditions remain unchanged.","Sampling intervals do not include model uncertainty; no route is ranked automatically."}}
 			end,function(result) publish("crafted",{craftingComparison=result}) end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end)
 			job.requestId=request.id;return
 		end

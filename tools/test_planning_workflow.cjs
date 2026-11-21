@@ -1401,6 +1401,11 @@ async function main(){
 
   await queued('propose_crafting_plan',{baseRevision:context.revision,project},'review');await host('apply');context=(await call('get_build_context')).context;
   assert.equal((await call('get_crafting_projects')).projects.find(entry=>entry.id==='helmet').recipeAlternatives[0].name,'Alternate route');
+  const noPrimary={...project,id:'no-primary',title:'No primary recipe'};delete noPrimary.nativeRecipe;
+  await queued('propose_crafting_plan',{baseRevision:context.revision,project:noPrimary},'review');await host('apply');context=(await call('get_build_context')).context;
+  const absentPrimary=await queued('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'no-primary',includePrimary:true,names:['Alternate route'],options:{trials:2,maxActions:1}},'failed');assert.match(absentPrimary.error,/no primary recipe/);
+  await queued('propose_build',{mode:'edit',title:'Remove test project',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:'no-primary'}]},'review');await host('apply');context=(await call('get_build_context')).context;
+
   const bodyProject={priceBook:bodyPriceBook,id:'body-enchant',title:'Body armour quality guide',slot:'Body Armour',startingItem:bodyRaw,targetItem:bodySimulation.nativeCrafting.sampleItem,preferredMethod:'harvest_enchant',nativeRecipe:{...bodyRecipe,steps:[...bodyRecipe.steps,whiteService.action]},goals:['Quality grants maximum Life','Six linked sockets'],steps:[{action:'Apply the Harvest Life quality enchantment',stopWhen:'Life quality enchantment is present'},{action:'Use an Orb of Fusing with Omen of Connections',stopWhen:'All six sockets are linked'}],inventory:[{id:'enchanted-body',title:'Enchanted body armour',slot:'Body Armour',baseItem:bodyRaw,at:1700000000,state:enchanted.nativeCrafting.state}]};
   bodyProject.recipeAlternatives=[{name:'Priced body plan',recipe:bodyRecipe}];
   bodyProject.nativeRecipe.steps.push({method:'recombine',donorItem:'Rarity: NORMAL\nGlorious Plate\nItem Level: 86'});
@@ -1622,6 +1627,11 @@ async function main(){
   assert.equal(compared.craftingComparison.routes[0].savedStartDiffers,false);assert.equal(compared.craftingComparison.routes[0].savedGoalDiffers,false);
   assert.equal(compared.craftingComparison.routes[1].savedStartDiffers,true);assert.equal(compared.craftingComparison.routes[1].savedGoalDiffers,true);
   assert.equal(compared.craftingComparison.routes[0].result.meanCost,7);assert.equal(compared.craftingComparison.routes[1].result.meanCost,7);
+  const primaryComparison=await queued('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'helmet',includePrimary:true,names:['Alternate route'],options:{trials:2,maxActions:1,seed:7,currency:'chaos',actionPrices:{alchemy:4,transmute:7}}},'crafted');
+  assert.equal(primaryComparison.craftingComparison.referenceKind,'primary');assert.equal(primaryComparison.craftingComparison.routes[0].kind,'primary');assert.equal(primaryComparison.craftingComparison.routes[1].kind,'alternative');
+  assert.equal(primaryComparison.craftingComparison.routes[0].result.meanCost,4);assert.equal(primaryComparison.craftingComparison.routes[1].result.meanCost,7);
+  const altReference=await queued('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'helmet',includePrimary:true,reference:'firstAlternative',names:['Already prepared'],options:{trials:2,maxActions:1}},'crafted');
+  assert.equal(altReference.craftingComparison.referenceKind,'alternative');assert.equal(altReference.craftingComparison.routes[1].kind,'primary');assert.equal(altReference.craftingComparison.routes[1].result.successes,2);assert.equal(altReference.craftingComparison.routes[1].result.meanActions,0);
   const reversed=await queued('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'helmet',names:['Already prepared','Alternate route'],options:{trials:2,maxActions:1}},'crafted');
   assert.equal(reversed.craftingComparison.routes[0].result.successes,2);assert.equal(reversed.craftingComparison.routes[1].result.successes,2);assert.equal(reversed.craftingComparison.routes[1].result.meanActions,0);
   const missingCompare=await queued('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'helmet',names:['Alternate route','No such route'],options:{trials:2,maxActions:1}},'failed');assert.match(missingCompare.error,/Unknown saved alternative recipe/);
