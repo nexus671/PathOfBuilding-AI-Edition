@@ -7,6 +7,14 @@ main.disableDevAutoSave=true
 local UI=require("Modules.HeadlessUI")
 local sim=require("Modules.CraftingSimulator")
 local frames=0
+local function checkPlanningSearch(ui,workspace)
+	local original=workspace.cache.crafting.layout.snapshot();local project=original.project
+	ui:click("nav_tools");ui:text("search","Starter maps");assert(main.popups[1].controls.choose:IsEnabled(),"Saved Atlas plan was not searchable");ui:click("choose")
+	assert(workspace.page=="atlas" and workspace.cache.atlas.layout.snapshot().id=="starter-atlas","Planning search did not open the saved Atlas plan")
+	ui:click("nav_tools");ui:text("search",project.title);assert(main.popups[1].controls.choose:IsEnabled(),"Crafting project was not searchable");ui:click("choose")
+	local restored=workspace.cache.crafting.layout.snapshot();assert(workspace.page=="crafting" and restored.project.id==project.id and restored.kind=="workbench","Planning search did not restore the working craft")
+	assert(require("Modules.PlanningData").encode(restored.state)==require("Modules.PlanningData").encode(original.state),"Planning search changed the working item")
+end
 for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	newBuild();main.popups={}
 	local ui=UI.install({width=size[1],height=size[2]})
@@ -1453,6 +1461,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:key("DOWN");assert(workspace.controls.entries.selectedKey==2,"Keyboard navigation did not select the next milestone");frame("journey-keyboard-selection");ui:key("UP")
 	ui:click("page1");frame("journey-overview");ui:click("openLink")
 	assert(workspace.page=="crafting" and workspace.controls.keepWorking,"Journey link did not open the working craft")
+	checkPlanningSearch(ui,workspace)
 	ui:click("nav_journey");ui.keys.ALT=true;ui:key("1");ui:key("4");ui.keys.ALT=nil
 	assert(workspace.page=="journey","Alt+4 did not open Journey")
 	ui:click("nav_text");frame("planning-large-text");ui:click("nav_text")

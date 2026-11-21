@@ -1,6 +1,6 @@
 # Connected planning tools
 
-Open AI builds, Atlas, Crafting or Journey to enter the planning workspace. **Tools** in the top bar opens performance diagnostics and portable bundles.
+Open AI builds, Atlas, Crafting or Journey to enter the planning workspace. **Tools** in the top bar searches planning pages, saved Atlas plans and crafting projects as well as performance diagnostics and portable bundles. Select a result to open it; working crafting drafts remain available.
 
 ## Same-name rare review
 
