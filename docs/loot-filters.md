@@ -10,7 +10,7 @@ The appearance and condition editors offer **Show / Hide** for Normal filters an
 
 Generated unidentified magic and rare examples have an unknown item tier unless a rule or sample explicitly supplies one. A tier-dependent filter therefore reports an unknown result until the tier is set. **Tiered gear** compares explicit example tiers; in Ruthless it shows only the example without a tier because items there do not have tiers.
 
-**Map tiers** compares synthetic map examples from tier 1 through tier 17, with an Abomination Map for the Nightmare example. The tiers are explicit sample properties for testing filter rules, not estimates of drop rates or map availability. The same scene is available through MCP `test_loot_filter_scene`.
+**Map tiers** compares synthetic map examples from tier 1 through tier 17, with a Nightmare Map for the tier-17 example. The tiers are explicit sample properties for testing filter rules, not estimates of drop rates or map availability. The same scene is available through MCP `test_loot_filter_scene`.
 
 Open **AI builds**, **Atlas**, or **Crafting**, then choose **Loot filter**. **Alt+5** opens it from any planning page.
 

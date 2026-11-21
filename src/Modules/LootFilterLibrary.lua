@@ -360,6 +360,7 @@ local deliriumExamples={
  {"Simulacrum Splinter","Stackable Currency"},{"Simulacrum","Map Fragments"},
  {"Fine Delirium Orb","Stackable Currency"},{"Threaded Delirium Orb","Stackable Currency"},{"Diviner's Delirium Orb","Stackable Currency"},
  {"Fossilised Delirium Orb","Stackable Currency"},{"Blighted Delirium Orb","Stackable Currency"},
+ {"Refracting Fog","Stackable Currency"},
 }
 local harvestExamples={
  {"Wild Crystallised Lifeforce","Stackable Currency"},{"Vivid Crystallised Lifeforce","Stackable Currency"},
@@ -398,7 +399,7 @@ local bossExamples={
  {"Fragment of the Minotaur","Map Fragments"},{"Fragment of the Chimera","Map Fragments"},
  {"Fragment of Purification","Map Fragments"},{"Fragment of Constriction","Map Fragments"},
  {"Fragment of Eradication","Map Fragments"},{"Fragment of Enslavement","Map Fragments"},
- {"Maven's Invitation: The Feared","Misc Map Items"},{"Orb of Conflict","Stackable Currency"},
+ {"Orb of Conflict","Stackable Currency"},
 }
 -- Deliberate test items for the campaign recipe policies, not a simulated set
 -- of actual drops. Socket layouts are explicit so their preview is decisive.

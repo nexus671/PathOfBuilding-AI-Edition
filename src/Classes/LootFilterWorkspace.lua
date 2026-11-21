@@ -476,10 +476,10 @@ function M.Open(build,source,layout,controller)
 				["Divination cards"]="Compare example divination cards.",Essences="Compare essence tiers and special essences.",
 				["Crafting materials"]="Compare fossils, resonators, Eldritch currency and Lifeforce.",["Heist & Expedition"]="Compare contracts, blueprints, a logbook and vendor currency.",
 				["Blight & oils"]="Compare oils, a Thread and Blighted map examples.",Breach="Compare splinters, a Breachstone and Threads.",
-				Legion="Compare splinters, emblems, incubators and a Thread.",Delirium="Compare Simulacrum items and Delirium Orbs.",
+				Legion="Compare splinters, emblems, incubators and a Thread.",Delirium="Compare Simulacrum items, Delirium Orbs and Refracting Fog.",
 				Harvest="Compare Lifeforce and Sacred Blossom.",Abyss="Compare eye jewels, a Stygian Vise and Threads.",
 				Ultimatum="Compare an inscribed item, catalysts and Threads.",Ritual="Compare vessels, Omens and Threads.",
-				Sanctum="Compare a Forbidden Tome, relic bases and invocations.",["Pinnacle bosses"]="Compare boss fragments, an invitation and related currency.",
+				Sanctum="Compare a Forbidden Tome, relic bases and invocations.",["Pinnacle bosses"]="Compare boss fragments and related currency.",
 				["Saved examples"]="Reopen your saved sets of exact example properties.",
 			}
 			local encounters={Breach=true,Legion=true,Delirium=true,Harvest=true,Abyss=true,Ultimatum=true,Ritual=true,Sanctum=true,["Pinnacle bosses"]=true,["Blight & oils"]=true,["Heist & Expedition"]=true,["Covens & Threads"]=true}
