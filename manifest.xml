@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview935" />
+	<Version number="2.68.1-ai.preview936" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="21f3d5f556e469be39118cbd2806b38c6b55d32c" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="180af9156495700b7da67f62dd0ff55d14767527" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -994,7 +994,8 @@
 	<File name="Assets/Crafting/augmentation.png" part="program" sha1="fad416087255184d9f22f2723bb7d45aee00dae7" />
 	<File name="Assets/Crafting/chaos.png" part="program" sha1="e7a21347961c7dce1a423a74872354c61a46be25" />
 	<File name="Assets/Crafting/chromatic.png" part="program" sha1="d5b9ad7b631880f9bb0476688e4792ace6f89486" />
-	<File name="Assets/Crafting/currencies.json" part="program" sha1="4930c7345cb477db69495efb25ab4d9b3777e62d" />
+	<File name="Assets/Crafting/Currency/d6dbc8890aeea8afef49.png" part="program" sha1="2bb32a2ab1c2b0bbbfc6b5ade22740099bbf08d8" />
+	<File name="Assets/Crafting/currencies.json" part="program" sha1="0da95779393c8bd241dec0ce3e6062734e1041c3" />
 	<File name="Assets/Crafting/divine.png" part="program" sha1="fd658ddb8a7003ba6481863f018e0fbff1058d8e" />
 	<File name="Assets/Crafting/exalt.png" part="program" sha1="eab8a2c84b5b744fdca04c17f2e6b3eda08c53d7" />
 	<File name="Assets/Crafting/items.json" part="program" sha1="90074bb1d9669a26033f2e74a27b3f40f908baca" />
@@ -1721,9 +1722,9 @@
 	<File name="Classes/CraftingRecipeControl.lua" part="program" sha1="0d6eaf30f1da442e23d5ca1f116e1b6ca79bd19e" />
 	<File name="Classes/CraftingRecipeGraphControl.lua" part="program" sha1="a3f12c0823b83e552a19e597750352622b070aa2" />
 	<File name="Classes/CraftingRecoveryControl.lua" part="program" sha1="6bdf797c867f14c6a1b5338bfc6f6dcea18cd1f1" />
-	<File name="Classes/CraftingSimulatorControl.lua" part="program" sha1="06e740a0df306ec76124c6e07b986d8768518c4e" />
+	<File name="Classes/CraftingSimulatorControl.lua" part="program" sha1="fe4ba65370a133b959c983c4ee5dc6fb9df740c1" />
 	<File name="Classes/CraftingSocketControl.lua" part="program" sha1="27e0d2b5d303d40f03eefc754be5ad878e500eb1" />
-	<File name="Classes/CraftingTargetControl.lua" part="program" sha1="c3e625f8e0f0747305eaa099adcfc3d98bedd6af" />
+	<File name="Classes/CraftingTargetControl.lua" part="program" sha1="372eceedf1291c62c122a01bfb186b17f1167e0a" />
 	<File name="Classes/CraftingStepCostsControl.lua" part="program" sha1="6659d42da2a3c970da94b16bf90e62d926305e7b" />
 	<File name="Classes/CraftingTargetGroupsControl.lua" part="program" sha1="c05fa3bc165d1d1b74c7d99aeda016a427d007ba" />
 	<File name="Classes/DraggerControl.lua" part="program" sha1="99b86b751df018a33714b000c9eed240a7101b8e" />
@@ -2143,10 +2144,10 @@
 	<File name="Modules/ConfigOptions.lua" part="program" sha1="3418c04b0ec78c2e8dfc69aa69bef6b50bd0001e" />
 	<File name="Modules/ConfigVisibility.lua" part="program" sha1="ad4a825bfe36dc94dca1ac7033d815110fd46d3c" />
 	<File name="Modules/CraftingAbyss330.lua" part="program" sha1="6ca66c250e7c07b42ffc7c8939f15a2c678f1e85" />
-	<File name="Modules/CraftingAdvanced.lua" part="program" sha1="4fe0712604dc0637498ccee89763a76f71283db5" />
+	<File name="Modules/CraftingAdvanced.lua" part="program" sha1="704f915070291c2c36c78a42b3d333861d1c65ab" />
 	<File name="Modules/CraftingAllflame.lua" part="program" sha1="8431a463a68babe2e70d8a71baf682377a244160" />
 	<File name="Modules/CraftingAnalysis.lua" part="program" sha1="33e31717c40a26f1a2cb13b4ba8bb05bea8aa917" />
-	<File name="Modules/CraftingAvailability.lua" part="program" sha1="5add1b97c4613f851c0135394fd6d9bf88437b43" />
+	<File name="Modules/CraftingAvailability.lua" part="program" sha1="26c6a2fa226c3b6abb7ab4b4a9068b969a3e990b" />
 	<File name="Modules/CraftingBenchCosts.lua" part="program" sha1="a3178ae5e34776046bfdc8cc65beaf1b8fc9d657" />
 	<File name="Modules/CraftingBenchMigration.lua" part="program" sha1="70ba9b95ed0599ece84a7a58d1efe80e6ca18a2c" />
 	<File name="Modules/CraftingCalculator.lua" part="program" sha1="a1ef70d09ee8b522e345c42201228579d7cc8936" />
@@ -2174,21 +2175,21 @@
 	<File name="Modules/CraftingModifiers.lua" part="program" sha1="0e7a91ca5f9be148be67181a1826f58dbf74bef1" />
 	<File name="Modules/CraftingPalette.lua" part="program" sha1="edd27dc9231769e2c5035238bc2e6aa1a5df5de6" />
 	<File name="Modules/CraftingPredictable.lua" part="program" sha1="9c3c591db9c7aa8db9783e843f823a18d07f3d2e" />
-	<File name="Modules/CraftingPrices.lua" part="program" sha1="b3874b27cbe5a7f5aa12a91a000977dd434a1e85" />
+	<File name="Modules/CraftingPrices.lua" part="program" sha1="c7d42c68b08c02c31c7b56f273972698dec8e96e" />
 	<File name="Modules/CraftingProjects.lua" part="program" sha1="d0974c03ae22a867b610fd27be6b8624af8514fb" />
 	<File name="Modules/CraftingProperties.lua" part="program" sha1="8158a5624e99eca560b0095620ea967bf1952a84" />
 	<File name="Modules/CraftingRecombination.lua" part="program" sha1="6c01c0d4c562d1dff8e20f6d71210c99e45de347" />
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />
-	<File name="Modules/CraftingSimulator.lua" part="program" sha1="ff659ef37011b7b236008279892fb2ef8190d70b" />
+	<File name="Modules/CraftingSimulator.lua" part="program" sha1="efdbe5f71fea2a12730d426bc141e81554c919ba" />
 	<File name="Modules/CraftingUniqueCatalyst.lua" part="program" sha1="2a86e01995f87d043e4c042a81ec65dbc4ae5752" />
-	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="b0042212b4e276ee8e3980c75f62a2268c78c18a" />
+	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="87e0ae52ec0b5e26042eb25a5dfed97893d5a24c" />
 	<File name="Modules/CraftingUniqueSimulation.lua" part="program" sha1="674791d77eac141d476f4307bea3fa4d73b33e36" />
 	<File name="Modules/CraftingUnlockTasks.lua" part="program" sha1="b1ab9cc44e5f7411715f74fff720379d44c65d21" />
 	<File name="Modules/CraftingSockets.lua" part="program" sha1="315149ad5253dd8e6ddf1ebea782fb22b7990401" />
 	<File name="Modules/CraftingSynthesisGroups.lua" part="program" sha1="058e5d8e2e20c77edf4db6f0acf9326486a4e3f0" />
 	<File name="Modules/CraftingTasks.lua" part="program" sha1="5884e439905689280d65534ef8e78591341970d6" />
 	<File name="Modules/CraftingUnveiledJewel330.lua" part="program" sha1="5b05b7293ddad3c073f1cb82ab53932899f739c0" />
-	<File name="Modules/CraftingWorkbench.lua" part="program" sha1="b294d9d1efb0231374617615ae5aa4b2f4c07926" />
+	<File name="Modules/CraftingWorkbench.lua" part="program" sha1="011fd4cbd526d51989cc6baf5cddee5864211bcd" />
 	<File name="Modules/Data.lua" part="program" sha1="dedf619f2bb5a856072edaed0a8fc8e16a8a61e0" />
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />

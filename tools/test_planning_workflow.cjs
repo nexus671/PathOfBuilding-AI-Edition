@@ -80,6 +80,10 @@ async function main(){
   const ambiguousGilded=gildedBaseRaw.replace('+16% to Item Rarity','+999% to Item Rarity');
   const ambiguousReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ambiguousGilded,limit:5},'inspected');
   const ambiguousVaal=ambiguousReview.crafting.nativeEngine.methodAvailability.find(entry=>entry.method==='vaal');assert.equal(ambiguousVaal.available,false);assert.match(ambiguousVaal.unavailableReason,/cannot be identified/);
+  const mirrorRaw='Rarity: NORMAL\nIron Hat\nItem Level: 86\nQuality: 20\nSockets: R-G B';
+  const mirrored=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:mirrorRaw,action:{method:'mirror'},seed:1},'crafted');
+  assert.equal(mirrored.nativeCrafting.state.mirrored,true);assert.notEqual(mirrored.nativeCrafting.originalState.mirrored,true);assert.match(mirrored.nativeCrafting.itemText,/Mirrored/);assert.doesNotMatch(mirrored.nativeCrafting.originalItemText,/Mirrored/);assert.equal(mirrored.nativeCrafting.priceKey,'mirror');
+  const mirrorAgain=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:mirrorRaw,initialState:mirrored.nativeCrafting.state,action:{method:'mirror'},seed:1},'failed');assert.match(mirrorAgain.error,/Mirrored/);
   const ambiguousApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:ambiguousGilded,action:{method:'vaal'},seed:1},'failed');assert.match(ambiguousApply.error,/cannot be identified/);
   const gildedUnchanged=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gildedBaseRaw,action:{method:'vaal'},seed:3},'crafted');
   assert.ok(gildedUnchanged.nativeCrafting.state.vendorImplicit);assert.equal(gildedUnchanged.nativeCrafting.state.corruptedImplicits,undefined);

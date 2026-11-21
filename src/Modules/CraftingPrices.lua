@@ -17,7 +17,7 @@ local catalysts={"Abrasive","Accelerating","Dextral","Fertile","Imbued","Intrins
 -- have a one-to-one currency price; adding artwork must not add a price alias.
 local simpleCurrency={alchemy=true,alteration=true,annul=true,augmentation=true,awakener=true,binding=true,blessed=true,chaos=true,chromatic=true,conflict=true,divine=true,dominance=true,
 	ducat_brinehook=true,ducat_cyaxan=true,ducat_genteel=true,ducat_katakohi=true,ducat_kishara=true,ducat_merrick=true,ducat_rotmother=true,ducat_tzamoto=true,ducat_ukatoa=true,
-	eldritch_annul=true,eldritch_chaos=true,eldritch_exalt=true,exalt=true,foulborn_augmentation=true,foulborn_exalt=true,foulborn_regal=true,fracture=true,fusing=true,jeweller=true,instilling=true,enkindling=true,
+	eldritch_annul=true,eldritch_chaos=true,eldritch_exalt=true,exalt=true,foulborn_augmentation=true,foulborn_exalt=true,foulborn_regal=true,fracture=true,fusing=true,jeweller=true,instilling=true,enkindling=true,mirror=true,
 	regal=true,remembrance=true,sacred=true,scour=true,tainted_catalyst=true,tainted_chaos=true,tainted_chromatic=true,tainted_exalt=true,tainted_fusing=true,tainted_jeweller=true,transmute=true,unravelling=true,vaal=true,veiled_chaos=true,veiled_orb=true}
 function M.currencyAliases(methods)
 	local result={};for method in pairs(simpleCurrency) do local id=methods[method];if id then result[method]=id end end;return result

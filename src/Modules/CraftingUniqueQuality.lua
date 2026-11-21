@@ -709,7 +709,7 @@ end
 
 function M.matches(raw,requirements)
 	local item,info=M.inspect(raw);requirements=requirements or {}
-	local supported={uniqueName=true,uniqueModifier=true,minQuality=true,corrupted=true,twiceCorrupted=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true,flaskEnchant=true,flaskEnchantMin=true}
+	local supported={uniqueName=true,uniqueModifier=true,minQuality=true,corrupted=true,twiceCorrupted=true,mirrored=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true,flaskEnchant=true,flaskEnchantMin=true}
 	for key in pairs(requirements) do assert(supported[key],"This unique item property is not supported: "..tostring(key)) end
 	if requirements.uniqueName and item.title~=requirements.uniqueName then return false end
 	if requirements.flaskEnchant or requirements.flaskEnchantMin then
@@ -721,6 +721,7 @@ function M.matches(raw,requirements)
 	if requirements.minQuality then assert(info.qualitySupported,"Jewellery catalyst-quality goals need a separate model");if info.quality<requirements.minQuality then return false end end
 	if requirements.corrupted~=nil and (not not item.corrupted)~=requirements.corrupted then return false end
 	if requirements.twiceCorrupted~=nil and (not not item.twiceCorrupted)~=requirements.twiceCorrupted then return false end
+	if requirements.mirrored~=nil and (not not item.mirrored)~=requirements.mirrored then return false end
 	if requirements.uniqueModifier then
 		local goal=requirements.uniqueModifier;assert(type(goal)=="table" and type(goal.line)=="string" and (goal.minValue~=nil)~=(goal.maxValue~=nil),"Invalid unique modifier target")
 		local value=goal.minValue or goal.maxValue;assert(type(value)=="number","Invalid unique modifier target")

@@ -469,7 +469,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("settings");ui:text("paletteSearch","replace quality");frame("crafting-harvest-service");ui:click("paletteUse")
 	ui:choose("option",require("Modules.CraftingEnchants").label("LifeBodyEnchant"),"label");ui:click("apply");frame("crafting-harvest-enchanted")
 	assert(main.popups[1].controls.intro.label:find("Applied Harvest",1,true),"Harvest enchantment was not applied")
-	ui:choose("page","Target conditions");ui:click("targetConditions");ui:choose("harvestEnchant","LifeBodyEnchant","val");frame("crafting-harvest-goal");ui:choose("influence","shaper","val");frame("crafting-influence-goal");ui:click("keep")
+	ui:choose("page","Target conditions");ui:click("targetConditions");ui:choose("harvestEnchant","LifeBodyEnchant","val");frame("crafting-harvest-goal");ui:choose("influence","shaper","val");ui:choose("mirrored","Must be mirrored");frame("crafting-mirror-goal");frame("crafting-influence-goal");ui:click("keep");ui:click("targetConditions");assert(main.popups[1].controls.mirrored:GetSelValue()=="Must be mirrored","Mirror target did not persist");ui:choose("mirrored","Any mirrored state");ui:click("keep")
 	ui:choose("page","Emulate item");ui:click("undo");frame("crafting-harvest-undone");ui:click("close")
 	local swordRaw="Rarity: NORMAL\nRusted Sword\nItem Level: 86\nQuality: 20\nSockets: R-G-B"
 	local swordProject={id="weapon-ui",title="Local weapon properties",slot="Weapon 1",startingItem=swordRaw,goals={},steps={}}

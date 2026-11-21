@@ -37,8 +37,10 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 	edit("socketColours",212,382,conditions.socketColours,"Socket colours (e.g. RRBG)")
 	controls.linkedColours=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{408,398,180,24},{"Anywhere on item","In one linked group"})
 	controls.linkedColours:SelByValue(conditions.linkedColours and "In one linked group" or "Anywhere on item")
-	controls.corrupted=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,438,572,24},{"Any corruption state","Must be corrupted","Must be uncorrupted","Must be twice corrupted","Must be corrupted once","Must not be twice corrupted"})
+	controls.corrupted=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,438,278,24},{"Any corruption state","Must be corrupted","Must be uncorrupted","Must be twice corrupted","Must be corrupted once","Must not be twice corrupted"})
 	controls.corrupted:SelByValue(conditions.twiceCorrupted==true and "Must be twice corrupted" or conditions.corrupted==false and "Must be uncorrupted" or conditions.twiceCorrupted==false and (conditions.corrupted==true and "Must be corrupted once" or "Must not be twice corrupted") or conditions.corrupted==true and "Must be corrupted" or "Any corruption state")
+	controls.mirrored=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{310,438,278,24},{"Any mirrored state","Must be mirrored","Must not be mirrored"})
+	controls.mirrored:SelByValue(conditions.mirrored==true and "Must be mirrored" or conditions.mirrored==false and "Must not be mirrored" or "Any mirrored state")
 	local base=baseName and data.itemBases[baseName];local flask=base and base.tags and base.tags.utility_flask
 	local enchantments={{label=flask and "Any flask enchantment" or "Any Harvest enchantment",val=false}}
 	if flask then
@@ -89,6 +91,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 		end
 		local corruption=controls.corrupted:GetSelValue()
 		if corruption=="Must be corrupted" or corruption=="Must be corrupted once" then result.corrupted=true elseif corruption=="Must be uncorrupted" then result.corrupted=false end
+		local mirror=controls.mirrored:GetSelValue();if mirror=="Must be mirrored" then result.mirrored=true elseif mirror=="Must not be mirrored" then result.mirrored=false end
 		if corruption=="Must be twice corrupted" then result.twiceCorrupted=true elseif corruption=="Must be corrupted once" or corruption=="Must not be twice corrupted" then result.twiceCorrupted=false end
 		if flask then result.flaskEnchant=controls.harvestEnchant:GetSelValueByKey("val") or nil else result.harvestEnchant=controls.harvestEnchant:GetSelValueByKey("val") or nil end
 		result.influence=controls.influence:GetSelValueByKey("val") or nil

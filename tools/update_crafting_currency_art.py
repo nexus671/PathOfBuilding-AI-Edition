@@ -22,7 +22,7 @@ METHODS = {
     "transmute": "Orb of Transmutation", "alteration": "Orb of Alteration",
     "augmentation": "Orb of Augmentation", "regal": "Regal Orb", "alchemy": "Orb of Alchemy",
     "chaos": "Chaos Orb", "exalt": "Exalted Orb", "annul": "Orb of Annulment",
-    "scour": "Orb of Scouring", "divine": "Divine Orb", "vaal": "Vaal Orb",
+    "scour": "Orb of Scouring", "divine": "Divine Orb", "vaal": "Vaal Orb", "mirror": "Mirror of Kalandra",
     "chromatic": "Chromatic Orb", "jeweller": "Jeweller's Orb", "fusing": "Orb of Fusing",
     "blessed": "Blessed Orb", "sacred": "Sacred Orb", "conflict": "Orb of Conflict",
     "instilling": "Instilling Orb", "enkindling": "Enkindling Orb",

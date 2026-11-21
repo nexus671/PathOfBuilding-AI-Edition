@@ -343,6 +343,14 @@
       "height": 78,
       "sha256": "e9691624ea8c73c4923f4bd63b705120275487d82a89e7b27455490ba372fb0f"
     },
+    "Metadata/Items/Currency/CurrencyDuplicate": {
+      "name": "Mirror of Kalandra",
+      "path": "Assets/Crafting/Currency/d6dbc8890aeea8afef49.png",
+      "url": "https://web.poecdn.com/image/Art/2DItems/Currency/CurrencyDuplicate.png",
+      "width": 78,
+      "height": 78,
+      "sha256": "c738915e63ae9d36c6ae7bbcde6e5e9ee0c9a7715d3d53da211fb9440187c454"
+    },
     "Metadata/Items/Currency/CurrencyEldritchAddModToRare": {
       "name": "Eldritch Exalted Orb",
       "path": "Assets/Crafting/Currency/75ebfae9ef24db534311.png",
@@ -1940,6 +1948,7 @@
     "harvest_resistance": "Metadata/Items/Currency/HarvestSeedBlue",
     "instilling": "Metadata/Items/Currency/CurrencyInstillingOrb",
     "jeweller": "Metadata/Items/Currency/CurrencyRerollSocketNumbers",
+    "mirror": "Metadata/Items/Currency/CurrencyDuplicate",
     "omen_connections": "Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks",
     "omen_trichromatism": "Metadata/Items/Currency/AncestralOmenOnChromaticAddWhiteSockets",
     "quality": "Metadata/Items/Currency/CurrencyArmourQuality",

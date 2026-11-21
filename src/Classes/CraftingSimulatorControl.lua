@@ -117,6 +117,7 @@ function Panel.Open(build,project,layout)
 		for key,value in pairsSortByKey(requirements or {}) do
 			if key=="nativeStats" then
 				for _,field in ipairs(require("Modules.CraftingItemStats").fields) do if value[field[1]] then lines[#lines+1]="Minimum "..field[2]..": "..value[field[1]] end end
+			elseif key=="mirrored" then lines[#lines+1]=value and "Must be mirrored" or "Must not be mirrored"
 			elseif key=="twiceCorrupted" then lines[#lines+1]=value and "Must be twice corrupted" or "Must not be twice corrupted"
 			elseif key=="influence" then for _,info in ipairs(itemLib.influenceInfo.default) do if info.key==value then lines[#lines+1]="Influence: "..info.display;break end end
 			elseif key=="minAbyssSockets" then lines[#lines+1]="Minimum Abyss sockets: "..value
@@ -285,6 +286,7 @@ function Panel.Open(build,project,layout)
 			local label=craft.method=="essence" and "Essence: "..workbench.actionLabel(craft,model) or simulator.labels[craft.method] or "craft"
 			state=nextState;actions[#actions+1]=craft;updateOptions(craft.method=="veiled_chaos" or craft.method=="veiled_orb")
 			local message=state.uniqueTitle and ("Applied "..label..". Unique outcome; undo or keep this item.") or ("Applied "..label..". Select another currency or undo.")
+			if craft.method=="mirror" then message="Mirrored copy selected. The original remains in item history; keep a snapshot to compare." end
 			for _,warning in ipairs(result.warnings or {}) do if warning.code=="abyss_socket_layout" then message="Applied "..label..". Abyss socket layout is experimental.";break end end
 			if result.gwennen then for _,entry in ipairs(require("Modules.CraftingGwennenReference").search("",100).offers) do if entry.id==result.gwennen.outcome then message="Gwennen modeled outcome: "..entry.description;break end end end
 			if state.socketLayoutUnknown then message="Socket layout is unknown after corruption. Set it in Edit hypothetical item before socket crafts or build preview." end

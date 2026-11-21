@@ -27,8 +27,8 @@ function M.isClusterSpeedMod(model,id)
 	end
 	return false
 end
-M.methods = {"transmute","alteration","augmentation","regal","alchemy","chaos","exalt","annul","scour","divine","bench","remove_crafted","essence"}
-M.labels = {transmute="Orb of Transmutation",alteration="Orb of Alteration",augmentation="Orb of Augmentation",regal="Regal Orb",alchemy="Orb of Alchemy",chaos="Chaos Orb",exalt="Exalted Orb",annul="Orb of Annulment",scour="Orb of Scouring",divine="Divine Orb",bench="Crafting bench",remove_crafted="Remove crafted modifiers",essence="Essence"}
+M.methods = {"transmute","alteration","augmentation","regal","alchemy","chaos","exalt","annul","scour","divine","mirror","bench","remove_crafted","essence"}
+M.labels = {transmute="Orb of Transmutation",alteration="Orb of Alteration",augmentation="Orb of Augmentation",regal="Regal Orb",alchemy="Orb of Alchemy",chaos="Chaos Orb",exalt="Exalted Orb",annul="Orb of Annulment",scour="Orb of Scouring",divine="Divine Orb",mirror="Mirror of Kalandra",bench="Crafting bench",remove_crafted="Remove crafted modifiers",essence="Essence"}
 function M.withTreeContext(result,version)
 	result.dataPatch=result.dataPatch or M.dataPatch
 	result.modifierPatch=result.modifierPatch or M.modifierPatch
@@ -67,6 +67,7 @@ function M.hasProtectedImplicit(model,state)
 end
 function M.actionWarnings(action,model)
 	local result={}
+	if action.method=="mirror" then result[#result+1]={code="mirror_copy",message="The result is the mirrored copy; the original remains unchanged. Item-class and special-property eligibility need current-game verification."} end
 	if action.method=="instilling" or action.method=="enkindling" then result[#result+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."} end
 	if action.method=="bench_flask_enchant" then result[#result+1]={code="flask_bench_assumptions",message="Flask enchantment bench costs use pinned client data; eligibility, recipe availability and replacement behavior are unverified in game."} end
 	local item=model and model.item
@@ -598,6 +599,9 @@ function M.action(model,input,action,random)
 		assert(c.total < (method == "augmentation" and 2 or M.capacities(model,capacityState).total),"The item has no open affix")
 		if method == "regal" then state.rarity="RARE" end
 		add(model,state,random)
+	elseif method == "mirror" then
+		assert(not state.corrupted and not state.mirrored and not state.destroyed and not state.veil,"Mirror requires an intact, uncorrupted, non-mirrored item without a pending unveil")
+		state.mirrored=true;state.imprint=nil
 	elseif method == "annul" then
 		assert(state.rarity ~= "NORMAL","Annulment requires a magic or rare item")
 		local eligible=M.annulCandidates(model,state)
@@ -698,6 +702,7 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   if requirements.minQuality and (state.quality or model.item.quality or 0) < requirements.minQuality then return false end
   if requirements.minMemoryStrands and (state.memoryStrands or 0) < requirements.minMemoryStrands then return false end
   if requirements.maxMemoryStrands and (state.memoryStrands or 0) > requirements.maxMemoryStrands then return false end
+  if requirements.mirrored ~= nil and (state.mirrored or false) ~= requirements.mirrored then return false end
   if requirements.corrupted ~= nil and (state.corrupted or false) ~= requirements.corrupted then return false end
   if requirements.twiceCorrupted ~= nil and (state.twiceCorrupted or false) ~= requirements.twiceCorrupted then return false end
 	  if requirements.influence then
@@ -757,7 +762,7 @@ function M.validateRecipe(recipe)
 			elseif key == "flaskEnchantMin" then
 				integer(value,0,100,"minimum flask enchantment roll");local lo,hi=require("Modules.CraftingFlaskEnchants").bounds(requirements.flaskEnchant)
 				assert(lo and value<=hi,"Choose a rolled flask enchantment and a minimum within its range")
-			elseif key == "corrupted" or key == "twiceCorrupted" or key == "linkedColours" then assert(type(value) == "boolean","Invalid boolean property condition")
+			elseif key == "corrupted" or key == "twiceCorrupted" or key == "mirrored" or key == "linkedColours" then assert(type(value) == "boolean","Invalid boolean property condition")
 			elseif key == "influence" then assert(({shaper=true,elder=true,adjudicator=true,basilisk=true,crusader=true,eyrie=true})[value],"Choose a supported influence")
 			elseif key == "socketColours" then assert(type(value)=="string" and #value>=1 and #value<=6 and not value:find("[^RGBW]"),"Use one to six socket colours: R, G, B or W")
 			else integer(value,0,assert(limits[key],"Unknown property condition"),key) end
@@ -968,7 +973,7 @@ function M.simulate(raw,recipe,options)
 	end
 	if mayTransform then
 		local function checkUniqueRequirements(requirements)
-			for key in pairs(requirements or {}) do assert(key=="corrupted" or key=="twiceCorrupted" or key=="uniqueName","This property target cannot yet be checked for a transformed unique jewel: "..key) end
+			for key in pairs(requirements or {}) do assert(key=="corrupted" or key=="twiceCorrupted" or key=="mirrored" or key=="uniqueName","This property target cannot yet be checked for a transformed unique jewel: "..key) end
 		end
 		if recipe.rarity~="RARE" and recipe.rarity~="MAGIC" then checkUniqueRequirements(recipe.requirements) end
 		for _,step in ipairs(recipe.steps) do checkUniqueRequirements(step.untilRequirements) end
@@ -1127,7 +1132,7 @@ function M.perform(raw,action,seed,initialState,treeVersion)
 	if model.initial.veil and (action.method=="bench" or action.method=="remove_crafted") then veilBenchWarning(warnings) end
 	if state.socketLayoutUnknown then unknownSocketWarning(warnings) end
 	if M.hasPartialLock(M.context(model,model.initial),model.initial) then partialWarning(warnings) end
-	return M.withTreeContext({priceKey=(M.priceKey or priceKey)(action),itemText=M.itemText(model,state),state=state,choices=details and details.choices,allflame=details and details.allflame,gwennen=details and details.gwennen,dataPatch=M.dataPatch,warnings=warnings,limitations=copyTable(M.limits)},treeVersion)
+	return M.withTreeContext({priceKey=(M.priceKey or priceKey)(action),itemText=M.itemText(model,state),state=state,originalItemText=action.method=="mirror" and M.itemText(model,model.initial) or nil,originalState=action.method=="mirror" and copyTable(model.initial) or nil,choices=details and details.choices,allflame=details and details.allflame,gwennen=details and details.gwennen,dataPatch=M.dataPatch,warnings=warnings,limitations=copyTable(M.limits)},treeVersion)
 end
 
 function M.catalog(raw,query,limit)
@@ -1236,7 +1241,7 @@ do
 	end
 end
 -- Extensions register state prerequisites once for both execution and browsing.
-local partialLockActions={veiled_chaos=true,recombine=true,bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true,beast_imprint=true,beast_talisman_imprint=true,
+local partialLockActions={mirror=true,veiled_chaos=true,recombine=true,bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true,beast_imprint=true,beast_talisman_imprint=true,
 	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,ducat_ukatoa=true,ducat_katakohi=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
 	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,bench_remove_enchant=true,bench_flask_enchant=true,eldritch_implicit=true,conflict=true}
 local socketDependent={socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,vaal=true,locus=true,binding=true,gwennen=true,fossil=true,ducat_katakohi=true,recombine=true,recombine_predictable=true}
@@ -1366,6 +1371,7 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
 			if key=="uniqueName" then if value~=state.uniqueTitle then return false end
 			elseif key=="corrupted" then if value~=true then return false end
 			elseif key=="twiceCorrupted" then if value~=false then return false end
+			elseif key=="mirrored" then if value~=false then return false end
 			else error("This property target cannot yet be checked for a transformed unique jewel: "..key) end
 		end
 	end

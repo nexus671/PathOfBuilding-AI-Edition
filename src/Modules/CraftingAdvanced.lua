@@ -1006,7 +1006,7 @@ function A.extend(M,api)
 		assert(not input.veil or action.method == "unveil" or action.method == "veiled_chaos" or action.method=="bench" or action.method=="remove_crafted","Choose the pending unveil first")
 		local state=copyTable(input); local method=action.method; local f=api.flags(model,state)
 		if model.item.type == "Flask" or model.item.type == "Tincture" then
-			assert(contains({"transmute","alteration","augmentation","annul","scour","divine","blessed"},method) or model.item.type=="Flask" and method=="beast_flask","This method is unavailable for flasks and tinctures")
+			assert(contains({"transmute","alteration","augmentation","annul","scour","divine","blessed","mirror"},method) or model.item.type=="Flask" and method=="beast_flask","This method is unavailable for flasks and tinctures")
 		end
 		-- In 3.30, attack/caster roll blockers no longer protect those modifiers
 		-- from an Orb of Annulment. Prefix/suffix locks and fractures still apply.
