@@ -7,7 +7,16 @@ main.disableDevAutoSave=true
 local UI=require("Modules.HeadlessUI")
 local sim=require("Modules.CraftingSimulator")
 local frames=0
-local function checkPlanningSearch(ui,workspace)
+local function checkPlanningSearch(ui,workspace,filter)
+	if filter then
+		local before=workspace.cache.filters.layout.snapshot();local encode=require("Modules.PlanningData").encode
+		ui:click("nav_journey");ui:click("nav_tools");ui:text("search","Leather Belt");assert(main.popups[1].controls.choose:IsEnabled(),"Working filter rule was not searchable");ui:click("choose")
+		local after=workspace.cache.filters.layout.snapshot()
+		assert(workspace.page=="filters" and after.page=="Customize" and after.rule=="order-hidden","Filter search did not select the matching rule")
+		assert(encode(after.data)==encode(before.data),"Filter search changed the working profiles")
+		assert(workspace.controls.rules.selectedKey=="order-hidden","Filter search did not select the rule in the list")
+		return
+	end
 	local original=workspace.cache.crafting.layout.snapshot();local project=original.project
 	ui:click("nav_tools");ui:text("search","Starter maps");assert(main.popups[1].controls.choose:IsEnabled(),"Saved Atlas plan was not searchable");ui:click("choose")
 	assert(workspace.page=="atlas" and workspace.cache.atlas.layout.snapshot().id=="starter-atlas","Planning search did not open the saved Atlas plan")
@@ -1547,6 +1556,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 			{id="order-c",title="Match C",text='Show\n BaseType == "Iron Hat"',enabled=true}}
 		ui:click("viewCustomize");ui:choose("source","My rules");ui:text("search","Match");local list=build.planningWorkspace.controls.rules
 		assert(#list.list==2,"Filtered rule fixture did not show two rules")
+		checkPlanningSearch(ui,build.planningWorkspace,true);profile=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];ui:text("search","Match");list=build.planningWorkspace.controls.rules
 		for _,key in ipairs({"edit","toggle","appearance"}) do assert(build.planningWorkspace.controls[key]:IsEnabled(),key.." unavailable for selected rule") end
 		ui:text("search","No such pickup");for _,key in ipairs({"edit","toggle","appearance"}) do
 			local control=build.planningWorkspace.controls[key];assert(not control:IsEnabled(),key.." remains enabled without a selection")

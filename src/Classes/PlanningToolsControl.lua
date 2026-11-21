@@ -100,9 +100,30 @@ function M.Open(build)
 	for _,project in ipairs(build.savers.CraftingProjects.projects) do
 		entries[#entries+1]={id="craft:"..project.id,label=project.title,search="crafting project "..project.slot,category="Crafting projects",projectId=project.id,details={"Open crafting project: "..project.title,"Equipment slot: "..project.slot,"A working craft for this project remains available."}}
 	end
+	local workspace=build.planningWorkspace
+	local filterState=workspace.cache.filters and workspace.cache.filters.layout.snapshot() or workspace.drafts.filters and workspace.drafts.filters.plan
+	local filterData=filterState and filterState.data or build.savers.LootFilters.data
+	for _,profile in ipairs(filterData.profiles) do
+		entries[#entries+1]={id="filter:"..profile.id,label=profile.title,search="loot filter profile",category="Loot filters",filterId=profile.id,details={"Open filter profile: "..profile.title,"The current filter draft is preserved."}}
+		for _,rule in ipairs(profile.rules) do
+			entries[#entries+1]={id="filter-rule:"..profile.id..":"..rule.id,label=rule.title,search="loot filter "..profile.title.." "..rule.text,category="Filter rules",filterId=profile.id,ruleId=rule.id,details={"Open rule in "..profile.title,rule.enabled==false and "This rule is disabled." or "This rule is enabled.","The current filter draft is preserved."}}
+		end
+	end
 	require("Classes.PlanningBrowserControl").Open("Planning tools",entries,{action="Open",closeOnChoose=false,choose=function(entry)
 		main:ClosePopup();local workspace=build.planningWorkspace
 		if entry.page then workspace:Show(entry.page)
+		elseif entry.filterId then
+			if workspace.cache.filters then workspace:Remember("filters") end
+			local saved=workspace.drafts.filters and workspace.drafts.filters.plan
+			local state=copyTable(saved or {data=build.savers.LootFilters.data})
+			local profile=require("Modules.LootFilters").find(state.data,entry.filterId);if not profile then return end
+			state.selected=entry.filterId
+			if entry.ruleId then state.page="Customize";state.scope="My rules";state.category="All items";state.query="";state.rule=entry.ruleId else state.page="Overview" end
+			workspace:Show("filters",state)
+			if entry.ruleId then
+				local list=workspace.controls.rules;local offset=0
+				for _,row in ipairs(list.list) do if row.entry and row.entry.rule.id==entry.ruleId then list.controls.scrollBar.offset=offset;break end;offset=offset+row.height end
+			end
 		elseif entry.atlasId then
 			for _,plan in ipairs(build.savers.AtlasPlans.plans) do if plan.id==entry.atlasId then workspace:Show("atlas",plan);return end end
 		elseif entry.projectId then
