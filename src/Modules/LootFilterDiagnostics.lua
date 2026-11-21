@@ -14,7 +14,7 @@ local function field(value) value=tostring(value);return #value..":"..value end
 local function encoded(condition)
  local count=(condition.keyword=="HasExplicitMod" or condition.keyword=="HasEnchantment") and not (condition.quoted and condition.quoted[1]) and tonumber(condition.values[1])
  local values={};for i=count and 2 or 1,#condition.values do values[#values+1]=field(condition.values[i])..(condition.quoted and condition.quoted[i] and "1" or "0") end
- table.sort(values);return field(condition.keyword)..field(condition.operator)..field(count)..field(table.concat(values))
+ if not parser.ambiguousBoolean(condition) then table.sort(values) end;return field(condition.keyword)..field(condition.operator)..field(count)..field(table.concat(values))
 end
 local function bound(condition)
  local op=condition.operator;local direction=(op==">" or op==">=") and "lower" or (op=="<" or op=="<=") and "upper"

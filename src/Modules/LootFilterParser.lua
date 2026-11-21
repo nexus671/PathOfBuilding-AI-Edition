@@ -34,6 +34,14 @@ function M.countExactMarker(condition,index)
 		and index==2 and not (condition.quoted and (condition.quoted[1] or condition.quoted[2]))
 		and tonumber(condition.values[1])~=nil and condition.values[2]=="=="
 end
+-- A boolean plus extra values may be rejected or interpreted differently by
+-- the game. Named TransfiguredGem lists are a separate supported form.
+function M.ambiguousBoolean(condition)
+ if not M.booleans[condition.keyword] or #condition.values<=1 then return false end
+ if condition.keyword~="TransfiguredGem" then return true end
+ for _,value in ipairs(condition.values) do if value=="True" or value=="False" then return true end end
+ return false
+end
 function M.tokens(line)
 	local out,quoted={},{};local pos=1
 	while pos<=#line do
@@ -90,6 +98,7 @@ function M.parse(raw)
 					local known=M.numeric[key] or M.booleans[key] or M.strings[key] or key=="Rarity" or key=="SocketGroup"
 					local condition={keyword=key,operator=op,values=t,quoted=quoted,known=known,line=lineNo}
 					current.conditions[#current.conditions+1]=condition
+					if M.ambiguousBoolean(condition) then result.diagnostics[#result.diagnostics+1]={line=lineNo,warning="Preview cannot verify multiple boolean values; original text is preserved"} end
 					if M.countExactMarker(condition,2) then result.diagnostics[#result.diagnostics+1]={line=lineNo,warning="Preview cannot verify modifier count with a separate exact-match operator; original text is preserved"} end
 					if #t==0 then result.diagnostics[#result.diagnostics+1]={line=lineNo,error="Condition requires a value: "..key}
 					elseif not known then result.diagnostics[#result.diagnostics+1]={line=lineNo,warning="Simulator cannot resolve "..key.."; original text is preserved"} end
@@ -183,6 +192,7 @@ function M.condition(c,item)
 	end
 	if not c.known then return nil,"Unsupported condition "..c.keyword end
 	if M.countExactMarker(c,2) then return nil,"Modifier count with a separate exact-match operator is not yet verified" end
+	if M.ambiguousBoolean(c) then return nil,"Multiple boolean values are not verified" end
 	if c.keyword=="HasExplicitMod" and item.Identified~=true then
 		return nil,item.Identified==false and "Explicit modifiers are hidden on unidentified items" or "Supply identification state for explicit modifiers"
 	end

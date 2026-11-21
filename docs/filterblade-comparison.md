@@ -54,6 +54,8 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Validation | Native parser checks and account-server validation when authorised | Broader syntax coverage and live game validation |
 | Mobile layout | Desktop layouts tested at 960, 1024 and 1280 widths | Native PoB is not a mobile web app |
 
+Boolean conditions containing multiple values, or a mixed boolean and gem-name `TransfiguredGem` list, produce an unknown preview and a validation warning. Their original text is preserved because current-game interpretation is unverified. Named `TransfiguredGem` lists remain supported.
+
 Example base properties come from the pinned [3.30.0.4 RePoE export](https://github.com/repoe-fork/repoe-fork.github.io/tree/c97553d1fc14a134dd6813e672d2b45fddf5b42d), with base-item SHA-256 `b16dc6c967b7e70ee369fba80506cdf08a1fa5bc5dd5c4f07aaddead97c98b2f`. Rebuild with `python tools/update_loot_filter_base_metadata.py path/to/base_items.json`; use `--check` to verify. If same-named base records disagree, the affected property remains unknown. Unique drop levels and unspecified equipment sockets are also unknown.
 
 Example item classes use the pinned [3.30.0.4 RePoE export](https://github.com/repoe-fork/repoe-fork.github.io/tree/c97553d1fc14a134dd6813e672d2b45fddf5b42d). Names with conflicting or missing classes, hidden records and trade proxies remain unresolved unless the rule supplies a class. Rebuild or verify with `python tools/update_loot_filter_base_classes.py path/to/base_items.json path/to/item_classes.json` and optionally `--check`; both inputs are hash-checked.
