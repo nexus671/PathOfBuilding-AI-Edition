@@ -1436,6 +1436,7 @@ async function main(){
   const saved=await call('get_build_journey');assert.equal(saved.budget.chaos.available,60);assert.equal(saved.journey.milestones[0].wishlistId,'helmet');
   const lootProfile={id:'mapping',title:'Build pickups',preset:'early_maps',strictness:2,rules:[]};
   const generated=await queued('generate_loot_filter',{baseRevision:context.revision,profile:lootProfile},'generated');
+  assert.equal(generated.profile.trackBuildPickups,true,'Generated filter did not retain build pickup tracking');
   assert.ok(generated.profile.rules.some(rule=>rule.title==='Orb of Transmutation' && rule.origin==='craft:helmet'),'Tracked alternative currency was not included');
   const mapPickup=generated.profile.rules.find(rule=>rule.title==='Map (Tier 16)');assert.ok(mapPickup);assert.equal(mapPickup.origin,'atlas:final-atlas');assert.match(mapPickup.text,/BaseType == "Map \(Tier 16\)"/);
   assert.ok(!generated.profile.rules.some(rule=>rule.title==='Strand Map'));assert.ok(generated.warnings.some(warning=>warning.origin==='atlas:final-atlas' && warning.message.includes('do not identify ordinary map drops')));

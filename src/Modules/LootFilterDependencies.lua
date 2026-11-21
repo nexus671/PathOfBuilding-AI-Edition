@@ -67,12 +67,15 @@ function M.report(build,profile,checkpoint)
 		for _,warning in ipairs(warnings or {}) do lines[#lines+1]=warning.message end
 		result.entries[#result.entries+1]={id=origin,label=(after and after.rules[1] or before and before.rules[1] or warnings[1].title).." | "..status,category=status,details=lines,origin=origin,status=status}
 	end
-	-- An entirely manual filter has no previous generation to become out of date.
-	result.stale=result.linked>0 and result.stale;return result
+	-- Legacy profiles with linked rules were already tracking; new manual profiles are not.
+	local tracking=profile.trackBuildPickups~=false and (profile.trackBuildPickups==true or result.linked>0)
+	result.tracking=tracking;result.stale=tracking and result.stale
+	if profile.trackBuildPickups==false then result.needsReview=false end
+	return result
 end
 local function begin(build,profile,generate)
 	local revision=require("Modules.PlanningRevision")
-	local job={build=build,profile=profile,stamp=revision.stamp(build),skills=skillInputs(build),profileKey=stable.encode({preset=profile.preset,theme=profile.theme,rules=profile.rules}),generate=generate}
+	local job={build=build,profile=profile,stamp=revision.stamp(build),skills=skillInputs(build),profileKey=stable.encode({preset=profile.preset,theme=profile.theme,rules=profile.rules,trackBuildPickups=profile.trackBuildPickups}),generate=generate}
 	local captured=copyTable(profile)
 	job.thread=coroutine.create(function()
 		local checkpoint=function() coroutine.yield() end
@@ -86,7 +89,7 @@ function M.beginGenerate(build,profile) return begin(build,profile,true) end
 function M.current(job)
 	local revision=require("Modules.PlanningRevision")
 	return revision.same(job.stamp,revision.stamp(job.build)) and job.skills==skillInputs(job.build)
-		and job.profileKey==stable.encode({preset=job.profile.preset,theme=job.profile.theme,rules=job.profile.rules})
+		and job.profileKey==stable.encode({preset=job.profile.preset,theme=job.profile.theme,rules=job.profile.rules,trackBuildPickups=job.profile.trackBuildPickups})
 end
 function M.poll(job)
 	if not M.current(job) then return true,nil,"changed" end

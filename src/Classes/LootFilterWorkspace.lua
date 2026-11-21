@@ -6,6 +6,11 @@ local parser=require("Modules.LootFilterParser")
 local library=require("Modules.LootFilterLibrary")
 local visual=require("Modules.LootFilterVisuals")
 local M={}
+local function trackingEnabled(profile)
+	if profile.trackBuildPickups~=nil then return profile.trackBuildPickups end
+	for _,rule in ipairs(profile.rules) do if rule.origin then return true end end
+	return false
+end
 -- The generation job owns its immutable rules; discard this cache whenever a
 -- new job or scene level is selected. Return a fresh list because the caller
 -- inserts the current test item into it.
@@ -136,7 +141,7 @@ function M.Open(build,source,layout,controller)
 			main:OpenMessagePopup("Build pickups",(err=="changed" or profile~=original) and "The build or filter changed. Please try again." or ui.errorText(err))
 			return
 		end
-		profile.rules=result.rules;draft();reopen()
+		profile.rules=result.rules;profile.trackBuildPickups=true;draft();reopen()
 		if #result.warnings>0 then
 			local entries={};for _,warning in ipairs(result.warnings) do entries[#entries+1]={id=warning.origin,label=warning.title,details={warning.message}} end
 			require("Classes.PlanningBrowserControl").Open("Review build pickups",entries)
@@ -276,6 +281,7 @@ function M.Open(build,source,layout,controller)
 			{id="audit",label="Audit and update",details={"Inspect patch migrations, diagnostics and base updates."}},
 			{id="changes",label="Review changes",details={"Compare the working draft with the profiles kept in this build."}},
 			{id="links",label="Linked build targets",details={"Review changed craft, gear, resource, skill and Atlas pickups; open their source plans."}},
+			{id="tracking",label=profile and trackingEnabled(profile) and "Disable pickup update notices" or "Enable pickup update notices",details={"Choose whether this profile reports changes to build pickups. Existing rules remain unchanged."}},
 			{id="campaign",label="Campaign and base-family pickups",details={"Choose weapon and armour families, upgrade windows and recipe pickups without changing preset files."}},
 			{id="structure",label="Filter structure and priority",details={"Browse compiled sections, nested item families, Continue blocks, diagnostics and exact source text."}},
 			{id="sampleSets",label="Saved example sets",details={"Keep exact test items with the build and reuse them after filter edits."}},
@@ -309,6 +315,7 @@ function M.Open(build,source,layout,controller)
 			elseif entry.id=="campaign" and profile then require("Classes.LootFilterCampaignControl").Open(build,profile.campaign,function(value) profile.campaign=value;draft();reopen() end,profile.mode)
 			elseif entry.id=="structure" and profile then require("Classes.LootFilterStructureControl").Open(profile,function(rule) editRule(rule,keepRule) end)
 			elseif (entry.id=="sampleSets" or entry.id=="palettes") and profile then collection(entry.id)
+			elseif entry.id=="tracking" and profile then profile.trackBuildPickups=not trackingEnabled(profile);dependencyTime=nil;draft();reopen()
 			elseif entry.id=="categoryStyles" and profile then require("Classes.LootFilterCategoryControl").Open(profile,replaceProfile)
 			elseif entry.id=="fileChanges" and profile then require("Classes.LootFilterDiffControl").Open(filters.find(saver.data,profile.id),profile)
 			elseif entry.id=="delete" and profile then for i,p in ipairs(data.profiles) do if p.id==profile.id then table.remove(data.profiles,i);break end end;profile=data.profiles[1];data.activeId=profile and profile.id or "";draft();reopen() end

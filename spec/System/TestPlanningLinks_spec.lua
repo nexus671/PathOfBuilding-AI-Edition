@@ -100,6 +100,33 @@ describe("Linked planning tools",function()
 		assert.equal("Show",filters.simulate(profile,{BaseType="Ezomyte Tower Shield",Rarity="Unique",ItemLevel=70}).action)
 		assert.equal("Hide",filters.simulate(profile,{BaseType="Ezomyte Tower Shield",Rarity="Rare",ItemLevel=86}).action)
 	end)
+	it("tracks Atlas pickup changes through deletion, refresh and undo",function()
+		local store=build.savers.AtlasPlans
+		local plan={id="farm",title="Farm supplies",version="3.30.0c",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
+		store:Upsert(plan);build.savers.CraftingProjects:Upsert(craft())
+		local profile=filters.profile("atlas-recovery","Atlas recovery");profile.rules=filters.generate(build,profile)
+		local function sourceStatus()
+			local report=dependencies.report(build,profile);local statuses={}
+			for _,entry in ipairs(report.entries) do statuses[entry.origin]=entry.status end
+			return report.stale,statuses
+		end
+		local stale,statuses=sourceStatus();assert.is_false(stale);assert.equal("Current",statuses["atlas:farm"])
+		store:Remove("farm");stale,statuses=sourceStatus();assert.is_true(stale);assert.equal("Source removed / no longer needed",statuses["atlas:farm"])
+		store:UndoRemove();stale,statuses=sourceStatus();assert.is_false(stale);assert.equal("Current",statuses["atlas:farm"])
+		store:Remove("farm");profile.rules=filters.generate(build,profile);store:UndoRemove()
+		stale,statuses=sourceStatus();assert.is_true(stale);assert.equal("New target",statuses["atlas:farm"]);assert.equal("Current",statuses["craft:helmet"])
+		profile.rules=filters.generate(build,profile);stale,statuses=sourceStatus();assert.is_false(stale);assert.equal("Current",statuses["atlas:farm"])
+	end)
+	it("remembers tracked build pickups after the last linked rule disappears",function()
+		local store=build.savers.AtlasPlans
+		local plan={id="only-farm",title="Only farm",version="3.30.0c",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
+		store:Upsert(plan);local profile=filters.profile("tracked","Tracked");profile.trackBuildPickups=true;profile.rules=filters.generate(build,profile)
+		store:Remove(plan.id);profile.rules=filters.generate(build,profile);assert.equal(0,#profile.rules)
+		local saved=filters.validate({schemaVersion=1,activeId=profile.id,profiles={profile}}).profiles[1];assert.is_true(saved.trackBuildPickups)
+		store:UndoRemove();local report=dependencies.report(build,saved);assert.is_true(report.stale);assert.is_true(report.tracking);assert.equal("New target",report.entries[1].status)
+		saved.trackBuildPickups=false;report=dependencies.report(build,saved);assert.is_false(report.stale);assert.is_false(report.tracking)
+		local manual=filters.profile("manual","Manual");assert.is_false(dependencies.report(build,manual).stale)
+	end)
 	it("keeps shared recipe currencies linked to each guide",function()
 		local first=craft();first.nativeRecipe={steps={{method="omen_connections"}},targets={},requirements={links=4}}
 		local second=copyTable(first);second.id="second";second.title="Second helmet"

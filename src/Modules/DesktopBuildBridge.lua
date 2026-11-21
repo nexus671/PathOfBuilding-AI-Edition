@@ -573,7 +573,7 @@ function M.poll(build, force)
 				end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Filter example evaluation slice")
 				job.requestId=request.id;publish("calculating",{});return
 			elseif request.kind=="generate_loot_filter" then
-				local rules,warnings=filters.generate(build,profile);profile.rules=rules;M.status={id=request.id,status="generated",profile=profile,warnings=warnings}
+				local rules,warnings=filters.generate(build,profile);profile.rules=rules;profile.trackBuildPickups=true;M.status={id=request.id,status="generated",profile=profile,warnings=warnings}
 			elseif request.kind=="test_loot_filter" then
 				assert((type(request.sample)=="table" and request.itemText==nil) or (request.sample==nil and type(request.itemText)=="string" and request.itemText:match("%S")),"Supply exactly one sample or copied item")
 				assert(request.areaLevel==nil or request.itemText and type(request.areaLevel)=="number" and request.areaLevel%1==0 and request.areaLevel>=1 and request.areaLevel<=100,"Invalid area level")

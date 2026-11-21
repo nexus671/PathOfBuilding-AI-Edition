@@ -142,3 +142,5 @@ Maintainers run `python tools/update_loot_filter_data.py --commit <immutable-com
 Copied cluster jewels with a visible `Adds X Passive Skills (enchant)` line supply `EnchantmentPassiveNum` to filter tests. A visible enchant marker also establishes `AnyEnchantment`; missing markers remain unknown. Enchantment identity is not inferred from its displayed text.
 
 The **Breach** and **Legion** simulator scenes provide deterministic comparison samples from the bundled item catalogue, including splinters, fragments and related items. They do not predict current drop availability, encounter rates or item values.
+
+After **Auto-adjust for this build**, the profile tracks build pickup changes even if a refresh produces no linked rules. **Profile tools → Disable pickup update notices** turns those notices off without deleting rules; enable them again from the same menu or refresh build pickups. Older manual profiles stay untracked unless enabled. Keep the profile and save the build to persist the setting.

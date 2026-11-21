@@ -65,6 +65,7 @@ function M.validate(data)
 		assert(type(p.strictness)=="number" and p.strictness==math.floor(p.strictness) and p.strictness>=0 and p.strictness<=6,"Strictness must be 0 to 6")
 		assert(entry.theme=="default" or entry.theme=="contrast","Unknown filter theme")
 		assert(entry.mode=="Normal" or entry.mode=="Ruthless","Unknown filter mode")
+		if p.trackBuildPickups~=nil then assert(type(p.trackBuildPickups)=="boolean","Invalid build pickup tracking setting");entry.trackBuildPickups=p.trackBuildPickups end
 		if p.appearance~=nil then
 			entry.appearance=require("Modules.LootFilterAppearanceSettings").validate(p.appearance)
 		end

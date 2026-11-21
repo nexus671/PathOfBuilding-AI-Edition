@@ -1719,6 +1719,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	frame("filter-map-layout-warning");ui:click("close")
 	local profile=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];for _,rule in ipairs(profile.rules) do assert(rule.title~="Beach Map","Avoided Atlas map became a pickup") end
 	frame("filter-budget-fossil-pickup")
+	assert(profile.trackBuildPickups==true,"Generated filter did not enable pickup tracking")
+	filterTool("Disable pickup update notices");assert(build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].trackBuildPickups==false,"Pickup notices did not turn off")
+	filterTool("Enable pickup update notices");assert(build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].trackBuildPickups==true,"Pickup notices did not turn back on")
 	ui:click("viewCustomize");ui:choose("source","My rules");ui:text("search","Map (Tier 16)")
 	local mapFound=false;for _,row in ipairs(build.planningWorkspace.controls.rules.list) do if row.entry and row.entry.rule.title=="Map (Tier 16)" then mapFound=true end end
 	assert(mapFound,"Explicit Atlas map tier did not produce a visible filter pickup")
