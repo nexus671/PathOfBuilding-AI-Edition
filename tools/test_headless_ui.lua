@@ -100,7 +100,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(table.concat(lines," "):find("55%% extra Physical Damage"),"Verified copied map roll was not displayed")
 		assert(table.concat(lines," "):find("Quality %(Pack Size%): %+20%%"),"Copied map quality was not shown")
 		assert(table.concat(lines," "):find("Observed effects are not modeled",1,true) and table.concat(lines," "):find("Players are Delirious",1,true),"Observed map effects were not shown")
-		frame("map-clipboard-imported");ui:click("quality");frame("map-quality-editor");ui:click("keep")
+		frame("map-clipboard-imported");ui:click("quality");frame("map-quality-editor");ui:text("kind","Threads");ui:click("keep")
+		do local rows={};for _,row in ipairs(main.popups[1].controls.affixes.list) do rows[#rows+1]=StripEscapes(row[1] or "") end;assert(table.concat(rows," "):find("Thread quantity %(amount unverified%)"),"Thread quality uncertainty was not shown") end
+		frame("map-quality-threads");ui:click("quality");ui:text("kind","Pack Size");ui:click("keep")
 		local savedCopy=ui.clipboard;ui.clipboard="Item Class: Maps\nRarity: Rare\nMap (Tier 5)\n--------\nItem Level: 68\n--------\nUnidentified\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
 		ui:click("pasteMap");frame("map-unidentified-review");ui:click("keep")
 		do local c=main.popups[1].controls;assert(c.status.label:find("unknown",1,true) and not c.currency:IsEnabled() and not c.estimate:IsEnabled(),"Unidentified copied maps must keep modifiers unknown") end;frame("map-unidentified-imported")

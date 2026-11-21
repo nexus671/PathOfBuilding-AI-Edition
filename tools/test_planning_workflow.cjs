@@ -1175,6 +1175,10 @@ async function main(){
   const mapMods=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:2,quality:{kind:'Pack Size',value:20}},'mapData');
   assert.equal(mapMods.mapData.candidates.length,2);assert.equal(mapMods.mapData.nextOffset,2);assert.match(mapMods.mapData.note,/not outcome probabilities/);
   assert.equal(mapMods.mapData.summary.estimatedTotals.packSize.min,10);
+  const threadQuality=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:1,quality:{kind:'Threads',value:20}},'mapData');
+  assert.equal(threadQuality.mapData.summary.qualityEffect.stat,'threadQuantity');assert.equal(threadQuality.mapData.summary.qualityEffect.status,'amount_unverified');assert.equal(threadQuality.mapData.summary.qualityEffect.value,undefined);
+  const legacyQuality=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:1,quality:{kind:'Item Quantity',value:20}},'mapData');
+  assert.equal(legacyQuality.mapData.summary.qualityEffect.status,'historical');assert.equal(legacyQuality.mapData.summary.qualityEffect.value,10);assert.equal(legacyQuality.mapData.summary.estimatedTotals,undefined);
   assert.equal(mapMods.mapData.currencyOptions.find(entry=>entry.id==='chaos').available,true);
   assert.equal(mapMods.mapData.currencyOptions.find(entry=>entry.id==='transmute').available,false);assert.match(mapMods.mapData.currencyOptions.find(entry=>entry.id==='transmute').reason,/normal map/);
   const mapPool=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,limit:100},'mapData');
