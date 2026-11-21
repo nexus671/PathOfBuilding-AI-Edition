@@ -1635,6 +1635,11 @@ async function main(){
   assert.equal(compared.craftingComparison.routes[0].savedStartDiffers,false);assert.equal(compared.craftingComparison.routes[0].savedGoalDiffers,false);
   assert.equal(compared.craftingComparison.routes[1].savedStartDiffers,true);assert.equal(compared.craftingComparison.routes[1].savedGoalDiffers,true);
   assert.equal(compared.craftingComparison.routes[0].result.meanCost,7);assert.equal(compared.craftingComparison.routes[1].result.meanCost,7);
+  const threeRoutes=await queued('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'helmet',includePrimary:true,names:['Alternate route','Already prepared']},'crafted');
+  assert.deepEqual(threeRoutes.craftingComparison.settings,{trials:66,maxActions:100,seed:104729});assert.equal(threeRoutes.craftingComparison.routes.length,3);
+  assert.ok(threeRoutes.craftingComparison.routes.every(route=>route.result && route.result.trials===66));
+  const partialSettings=await queued('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'helmet',includePrimary:true,names:['Alternate route','Already prepared'],options:{trials:300,seed:7}},'crafted');
+  assert.deepEqual(partialSettings.craftingComparison.settings,{trials:300,maxActions:22,seed:7});assert.equal(partialSettings.craftingComparison.routes.length,3);
   const primaryComparison=await queued('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'helmet',includePrimary:true,names:['Alternate route'],options:{trials:2,maxActions:1,seed:7,currency:'chaos',actionPrices:{alchemy:4,transmute:7}}},'crafted');
   assert.equal(primaryComparison.craftingComparison.referenceKind,'primary');assert.equal(primaryComparison.craftingComparison.routes[0].kind,'primary');assert.equal(primaryComparison.craftingComparison.routes[1].kind,'alternative');
   assert.equal(primaryComparison.craftingComparison.routes[0].result.meanCost,4);assert.equal(primaryComparison.craftingComparison.routes[1].result.meanCost,7);

@@ -671,9 +671,13 @@ function M.poll(build, force)
 			end
 			if primary and request.reference=="firstAlternative" then chosen[#chosen+1]=primary end
 			assert(#chosen>=2,"Choose at least two saved routes")
-			local options=copyTable(request.options or {});local trials=options.trials or 100;local budget=options.maxActions or 100
-			assert(type(trials)=="number" and trials==math.floor(trials) and trials>=1 and trials<=2000 and type(budget)=="number" and budget==math.floor(budget) and budget>=1 and budget<=2000,"Invalid comparison trials or action budget")
-			assert(#chosen*trials*budget<=20000,"Use at most 20000 total budgeted actions across routes")
+			local options=copyTable(request.options or {});local trials,budget=options.trials,options.maxActions
+			local function validBudget(value) return value==nil or type(value)=="number" and value==math.floor(value) and value>=1 and value<=2000 end
+			assert(validBudget(trials) and validBudget(budget),"Invalid comparison trials or action budget")
+			if not trials and not budget then budget=math.min(100,math.floor(20000/#chosen)) end
+			if not trials then trials=budget>0 and math.min(100,math.floor(20000/(#chosen*budget))) or 0 end
+			if not budget then budget=math.min(100,math.floor(20000/(#chosen*trials))) end
+			assert(trials>=1 and budget>=1 and #chosen*trials*budget<=20000,"Use at most 20000 total budgeted actions across routes")
 			options.trials,options.maxActions=trials,budget;options.treeVersion=build.spec.treeVersion
 			if not options.priceBook and project.priceBook then options.priceBook=copyTable(project.priceBook) end
 			local reference=chosen[1].recipe;local session=M.session
@@ -694,7 +698,7 @@ function M.poll(build, force)
 					local ok,result=pcall(simulator.simulate,project.startingItem,candidate,routeOptions)
 					routes[#routes+1]={name=entry.name,kind=entry.kind,savedStartDiffers=startDiffers,savedGoalDiffers=goalDiffers,result=ok and result or nil,error=not ok and require("Modules.PlanningUI").errorText(result) or nil}
 				end
-				return {projectId=request.projectId,referenceName=chosen[1].name,referenceKind=chosen[1].kind,routes=routes,notes={"All routes use the reference starting state and final targets; their own step conditions remain unchanged.","Sampling intervals do not include model uncertainty; no route is ranked automatically."}}
+				return {projectId=request.projectId,referenceName=chosen[1].name,referenceKind=chosen[1].kind,settings={trials=trials,maxActions=budget,seed=options.seed or 104729},routes=routes,notes={"All routes use the reference starting state and final targets; their own step conditions remain unchanged.","Sampling intervals do not include model uncertainty; no route is ranked automatically."}}
 			end,function(result) publish("crafted",{craftingComparison=result}) end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end)
 			job.requestId=request.id;return
 		end

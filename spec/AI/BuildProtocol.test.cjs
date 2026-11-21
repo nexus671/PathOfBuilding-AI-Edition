@@ -888,6 +888,10 @@ test('queues a bounded comparison of named crafting alternatives', t => {
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   f.call('compare_crafting_alternatives',{baseRevision,projectId:'helmet-guide',names:Array.from({length:12},(_,i)=>`Route ${i+1}`),options:{trials:1,maxActions:1}});
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  f.call('compare_crafting_alternatives',{baseRevision,projectId:'helmet-guide',names:['Life','Armour','Energy shield']});
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  f.call('compare_crafting_alternatives',{baseRevision,projectId:'helmet-guide',names:['Life','Armour','Energy shield'],options:{trials:300}});
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   f.call('compare_crafting_alternatives',{baseRevision,projectId:'helmet-guide',includePrimary:true,names:['Life'],options:{trials:2,maxActions:1}});
   assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).includePrimary,true);
   for(const bad of [
