@@ -29,11 +29,19 @@ return function(build,ui,frame)
 	local summary="";for _,row in ipairs(main.popups[1].controls.details.list) do summary=summary..StripEscapes(row[1] or "").." " end
 	assert(summary:find("20 trials",1,true),"Divine recipe used only one sampled trial")
 	ui:click("refine");ui:text("trials","201");ui:text("budget","100");ui:click("run");assert(main.popups[1].controls.error.label:find("20,000",1,true),"Oversized simulation was not explained")
-	ui:text("trials","4");ui:text("budget","1");ui:text("seed","777");assert(main.popups[1].controls.error.label=="","Correcting the settings left a stale error");frame("crafting-unique-refine-options");ui:click("run")
+	ui:text("trials","4");ui:text("budget","1");ui:text("seed","777");assert(main.popups[1].controls.error.label=="","Correcting the settings left a stale error");assert(not divineSaved.primarySimulation,"Refining silently changed the saved project");ui:click("keep")
+	for _,entry in ipairs(store.projects) do if entry.id==divineProject.id then divineSaved=entry end end
+	assert(divineSaved.primarySimulation.trials==4 and divineSaved.primarySimulation.maxActions==1 and divineSaved.primarySimulation.seed==777,"Settings were not kept with the project")
+	frame("crafting-unique-refine-options");ui:click("run")
 	assert(divineTasks.job,"Refined recipe did not start a background task");while divineTasks.job do divineTasks.tick(build) end
 	summary="";for _,row in ipairs(main.popups[1].controls.details.list) do summary=summary..StripEscapes(row[1] or "").." " end
 	assert(summary:find("4 trials",1,true) and summary:find("Seed: 777",1,true) and summary:find("limit 1",1,true),"Refined settings were not used in the result")
 	assert(summary:find("Action limit reached: 4 of 4 trials",1,true),"Truncated trials were not disclosed");ui:click("close")
+	ui:click("recipe");assert(divineTasks.job,"Saved settings did not start a background check");while divineTasks.job do divineTasks.tick(build) end
+	summary="";for _,row in ipairs(main.popups[1].controls.details.list) do summary=summary..StripEscapes(row[1] or "").." " end
+	assert(summary:find("4 trials",1,true) and summary:find("Seed: 777",1,true),"The saved settings were not reused")
+	ui:click("refine");ui:click("clear");for _,entry in ipairs(store.projects) do if entry.id==divineProject.id then divineSaved=entry end end
+	assert(not divineSaved.primarySimulation,"Clearing saved defaults did not update the project");ui:click("cancel");ui:click("close")
 	ui:click("divine");divinePicker=main.popups[1].controls;divinePicker.stat:SelByValue("modifier:2","val");divinePicker.direction:SelByValue("At most");ui:text("target","30");assert(divinePicker.selectedInfo.label():find("Elemental Resistances",1,true),"Selected modifier description is truncated");frame("crafting-unique-divine-modifier");ui:click("plan");ui:click("confirm")
 	for _,entry in ipairs(store.projects) do if entry.id==divineProject.id then divineSaved=entry end end
 	assert(#divineSaved.steps==1 and divineSaved.nativeRecipe.requirements.uniqueModifier.maxValue==30,"Divine modifier target was not kept");main.popups={}

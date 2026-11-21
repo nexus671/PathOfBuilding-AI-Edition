@@ -75,6 +75,13 @@ function M.validate(project)
 		prices.normalized(result.priceBook,{item=M.item(result.startingItem)})
 	end
 	if project.nativeRecipe then result.nativeRecipe=require("Modules.CraftingSimulator").validateRecipe(project.nativeRecipe) end
+	if project.primarySimulation~=nil and project.primarySimulation~=false then
+		local settings=project.primarySimulation;assert(type(settings)=="table","Invalid primary simulation settings")
+		for key in pairs(settings) do assert(key=="trials" or key=="maxActions" or key=="seed","Invalid primary simulation setting") end
+		local trials=number(settings.trials,1,2000,"simulation trials");local maxActions=number(settings.maxActions,1,2000,"simulation action budget");local seed=number(settings.seed,1,2147483646,"simulation seed")
+		assert(trials==math.floor(trials) and maxActions==math.floor(maxActions) and seed==math.floor(seed) and trials*maxActions<=20000,"Invalid primary simulation budget")
+		result.primarySimulation={trials=trials,maxActions=maxActions,seed=seed}
+	end
 	if project.recipeAlternatives~=nil then
 		denseArray(project.recipeAlternatives,"recipe alternatives");result.recipeAlternatives={};local names={}
 		for _,alternative in ipairs(project.recipeAlternatives) do
@@ -153,6 +160,7 @@ function M.new(build)
 		local found=false
 		for index,existing in ipairs(replacement) do if existing.id == entry.id then
 			if not entry.run and existing.run and entry.startingItem==existing.startingItem then entry.run=copyTable(existing.run) end
+			if project.primarySimulation==nil and existing.primarySimulation then entry.primarySimulation=copyTable(existing.primarySimulation) end
 			if project.inventory==nil and existing.inventory then entry.inventory=copyTable(existing.inventory) end
 			if project.recipeAlternatives==nil and existing.recipeAlternatives then entry.recipeAlternatives=copyTable(existing.recipeAlternatives) end
 			replacement[index]=entry; found=true; break

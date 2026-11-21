@@ -612,6 +612,7 @@ function M.Open(build,project,layout,snapshot)
 		if stochastic then local sum=0;for _,step in ipairs(draft.nativeRecipe.steps) do sum=sum+(step.maxAttempts or 1) end;budget=math.min(2000,math.max(100,sum)) end
 		local trials=stochastic and math.max(1,math.min(20,math.floor(10000/budget))) or 1
 		local seed=104729
+		if stochastic and draft.primarySimulation then trials=draft.primarySimulation.trials;budget=draft.primarySimulation.maxActions;seed=draft.primarySimulation.seed end
 		local capturedRaw=draft.startingItem;local capturedRecipe=copyTable(draft.nativeRecipe);local capturedPrice=draft.priceBook and copyTable(draft.priceBook);local capturedTree=build.spec.treeVersion
 		local function run(checkpoint)
 			return require("Modules.CraftingSimulator").simulate(capturedRaw,capturedRecipe,{trials=trials,maxActions=budget,seed=seed,retainSuccesses=stochastic and 1 or 0,priceBook=capturedPrice,treeVersion=capturedTree,checkpoint=checkpoint})
@@ -656,7 +657,7 @@ function M.Open(build,project,layout,snapshot)
 		view.update.enabled=canCreateRecipe()
 		view.update.tooltipText=canCreateRecipe() and "Replace the saved recipe with the complete current preview after confirmation." or "A complete supported preview from the starting item is needed."
 		view.refine=new("ButtonControl"):ButtonControl(ui.anchor,{368,rh-48,160,28},"Refine estimate",function()
-			local settings={};local sw,sh=460,250
+			local settings={};local sw,sh=460,290
 			ui.description(settings,"help",16,24,sw-32,40,{"Run the same saved recipe with your chosen sampling settings.","The combined trial-action budget cannot exceed 20,000."},14)
 			ui.label(settings,"trialLabel",16,78,"Trials",14);ui.label(settings,"budgetLabel",156,78,"Actions per trial",14);ui.label(settings,"seedLabel",296,78,"Seed",14)
 			settings.trials=new("EditControl"):EditControl(ui.anchor,{16,100,124,26},tostring(trials),nil,"%D",4)
@@ -664,13 +665,29 @@ function M.Open(build,project,layout,snapshot)
 			settings.seed=new("EditControl"):EditControl(ui.anchor,{296,100,148,26},tostring(seed),nil,"%D",10)
 			ui.label(settings,"error",16,148,"",14)
 			for _,key in ipairs({"trials","budget","seed"}) do settings[key].changeFunc=function() settings.error.label="" end end
-			settings.run=new("ButtonControl"):ButtonControl(ui.anchor,{16,sh-48,160,28},"Run estimate",function()
+			local function readSettings()
 				local count,limit,nextSeed=tonumber(settings.trials.buf),tonumber(settings.budget.buf),tonumber(settings.seed.buf)
 				if not count or count<1 or count>2000 or count~=math.floor(count) or not limit or limit<1 or limit>2000 or limit~=math.floor(limit) then settings.error.label="^xFF8080Trials and actions must be 1-2000.";return end
 				if count*limit>20000 then settings.error.label="^xFF8080Total trial-actions must be at most 20,000.";return end
 				if not nextSeed or nextSeed<1 or nextSeed>2147483646 or nextSeed~=math.floor(nextSeed) then settings.error.label="^xFF8080Seed must be 1-2147483646.";return end
-				trials,budget,seed=count,limit,nextSeed;main:ClosePopup();main:ClosePopup();startCheck()
+				return {trials=count,maxActions=limit,seed=nextSeed}
+			end
+			settings.run=new("ButtonControl"):ButtonControl(ui.anchor,{16,sh-48,140,28},"Run estimate",function()
+				local chosen=readSettings();if not chosen then return end
+				trials,budget,seed=chosen.trials,chosen.maxActions,chosen.seed;main:ClosePopup();main:ClosePopup();startCheck()
 			end)
+			settings.keep=new("ButtonControl"):ButtonControl(ui.anchor,{172,sh-48,140,28},"Keep settings",function()
+				local chosen=readSettings();if not chosen then return end
+				local candidate=copyTable(draft);candidate.primarySimulation=chosen;draft=build.savers.CraftingProjects:Upsert(candidate)
+				settings.error.label="^x90D5A0Settings kept. Save the build to persist.";c.notice.label="^7Recipe settings kept. Save the build."
+			end)
+			settings.keep.tooltipText="Keep these defaults with this project; use build Save to persist them."
+			settings.clear=new("ButtonControl"):ButtonControl(ui.anchor,{16,174,200,28},"Clear saved defaults",function()
+				local candidate=copyTable(draft);candidate.primarySimulation=false;draft=build.savers.CraftingProjects:Upsert(candidate)
+				settings.error.label="^x90D5A0Defaults cleared. Save the build to persist.";c.notice.label="^7Recipe settings cleared. Save the build."
+			end)
+			settings.clear.shown=function() return draft.primarySimulation~=nil end
+			settings.clear.tooltipText="Return future checks to automatic trial and action defaults."
 			settings.cancel=new("ButtonControl"):ButtonControl(ui.anchor,{sw-132,sh-48,116,28},"Cancel",function() main:ClosePopup() end)
 			ui.style(settings);for _,control in pairs(settings) do control.layoutAudit="unique-recipe-settings" end
 			main:OpenPopup(sw,sh,"Refine unique recipe estimate",settings,nil,"trials","cancel")

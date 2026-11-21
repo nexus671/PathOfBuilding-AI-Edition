@@ -23,14 +23,25 @@ describe("Crafting projects", function()
 
 	it("round trips plans and opaque simulator exports through the native build XML", function()
 		local entry=project()
+		entry.primarySimulation={trials=40,maxActions=25,seed=777}
 		entry.simulatorExport='{"data":"<not executable>&"}'
 		entry.steps[1].done=true
 		build.savers.CraftingProjects:Upsert(entry)
 		local prepared=bridge.prepare(build,{mode="edit",title="Keep crafting metadata",baseRevision=bridge.revision(build),operations={{type="set_character",level=80}}})
 		local loaded=prepared.candidate.savers.CraftingProjects.projects[1]
 		assert.are.equal(entry.simulatorExport,loaded.simulatorExport)
+		assert.are.same(entry.primarySimulation,loaded.primarySimulation)
 		assert.is_true(loaded.steps[1].done)
 		assert.are.equal(entry.steps[1].onFailure,loaded.steps[1].onFailure)
+	end)
+
+	it("rejects invalid saved primary simulation settings without replacing the project",function()
+		local entry=project();entry.primarySimulation={trials=40,maxActions=25,seed=777};local store=build.savers.CraftingProjects;store:Upsert(entry)
+		for _,settings in ipairs({{trials=0,maxActions=1,seed=1},{trials=1.5,maxActions=1,seed=1},{trials=201,maxActions=100,seed=1},{trials=1,maxActions=1,seed=0},{trials=1,maxActions=1,seed=1,extra=true}}) do
+			local invalid=copyTable(entry);invalid.primarySimulation=settings;assert.has_error(function() store:Upsert(invalid) end);assert.are.same(entry.primarySimulation,store.projects[1].primarySimulation)
+		end
+		local oldClient=copyTable(entry);oldClient.primarySimulation=nil;oldClient.title="Edited guide";store:Upsert(oldClient);assert.are.same(entry.primarySimulation,store.projects[1].primarySimulation)
+		oldClient.primarySimulation=false;store:Upsert(oldClient);assert.is_nil(store.projects[1].primarySimulation)
 	end)
 
 	it("preserves unsupported metadata instead of discarding it while loading a build", function()

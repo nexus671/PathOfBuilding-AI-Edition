@@ -862,6 +862,24 @@ test('queues the saved primary recipe without changing checkpoint semantics', t 
   ]) assert.throws(()=>f.call('simulate_crafting',{baseRevision,...bad}),/usePrimary|saved projectId|budgeted/);
 });
 
+test('keeps primary simulation defaults and validates effective override budgets', t => {
+  const f=fixture(t),baseRevision=f.state.revision;
+  const project={...craftingProject(),primarySimulation:{trials:500,maxActions:20,seed:777}};
+  f.call('propose_crafting_plan',{baseRevision,project});
+  let request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.deepEqual(request.proposal.operations[0].project.primarySimulation,project.primarySimulation);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  assert.throws(()=>f.call('propose_crafting_plan',{baseRevision,project:{...project,primarySimulation:{trials:201,maxActions:100,seed:1}}}),/budgeted/);
+  f.call('propose_crafting_plan',{baseRevision,project:{...project,primarySimulation:false}});
+  request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.proposal.operations[0].project.primarySimulation,false);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  f.captured.context.craftingProjects=[project];f.write('context',f.captured);
+  f.call('simulate_crafting',{baseRevision,projectId:project.id,usePrimary:true,options:{trials:300}});
+  request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.options.trials,300);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  assert.throws(()=>f.call('simulate_crafting',{baseRevision,projectId:project.id,usePrimary:true,options:{trials:1100}}),/budgeted/);
+});
+
 test('queues a bounded comparison of named crafting alternatives', t => {
   const f=fixture(t),baseRevision=f.state.revision;
   f.call('compare_crafting_alternatives',{baseRevision,projectId:'helmet-guide',names:['Life','Armour'],options:{trials:20,maxActions:10,seed:7}});

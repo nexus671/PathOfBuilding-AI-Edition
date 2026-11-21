@@ -710,7 +710,7 @@ function M.poll(build, force)
 				assert(project,"Unknown crafting project")
 				if request.usePrimary then
 					assert(project.nativeRecipe,"This project has no saved primary recipe")
-					primary={raw=project.startingItem,recipe=copyTable(project.nativeRecipe),priceBook=project.priceBook and copyTable(project.priceBook)}
+					primary={raw=project.startingItem,recipe=copyTable(project.nativeRecipe),priceBook=project.priceBook and copyTable(project.priceBook),settings=project.primarySimulation and copyTable(project.primarySimulation)}
 				elseif request.alternativeName~=nil then
 					assert(type(request.alternativeName)=="string" and #request.alternativeName<=120 and request.alternativeName:match("%S") and not request.alternativeName:find("[%c%^]"),"Invalid alternative recipe name")
 					for _,entry in ipairs(project.recipeAlternatives or {}) do if entry.name==request.alternativeName then alternative={name=entry.name,raw=project.startingItem,recipe=copyTable(entry.recipe),priceBook=project.priceBook and copyTable(project.priceBook)};break end end
@@ -729,6 +729,7 @@ function M.poll(build, force)
 			if request.kind == "craftSimulate" or request.kind == "craftOptimize" or request.kind == "craftCalculate" then
 				local session=M.session;local options=copyTable(replay and replay.options or request.options or {});options.treeVersion=options.treeVersion or build.spec.treeVersion
 				if savedRecipe and not options.priceBook and savedRecipe.priceBook then options.priceBook=copyTable(savedRecipe.priceBook) end
+				if primary and primary.settings then for key,value in pairs(primary.settings) do if options[key]==nil then options[key]=value end end end
 				local function publish(status,values)
 					if not M.enabled or M.session ~= session then return end
 					M.status={id=request.id,status=status,baseRevision=request.baseRevision}

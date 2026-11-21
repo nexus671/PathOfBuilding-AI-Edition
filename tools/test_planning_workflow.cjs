@@ -347,12 +347,14 @@ async function main(){
   const divineUniqueApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:divineUniqueRaw,action:divineUniqueOption.action,seed:123},'crafted');assert.ok(divineUniqueApply.nativeCrafting.warnings.some(w=>w.code==='unique_divine_estimate'));assert.ok(divineUniqueApply.nativeCrafting.itemText.includes('+(30-50) to Evasion Rating'));assert.ok(divineUniqueApply.nativeCrafting.itemText.includes('EvasionBasePercentile:'));
   const divineModifier=divineUniqueOption.modifierTargets.find(entry=>entry.line.includes('Elemental Resistances'));assert.equal(divineModifier.current,35);
   const divineGoal={uniqueModifier:{line:divineModifier.line,maxValue:30}};
-  const divineUniqueGuide={id:'unique-divine-workflow',title:'Divine target',slot:'Helmet',startingItem:divineUniqueRaw,goals:[],steps:[divineUniqueOption.guideStep],nativeRecipe:{rarity:'UNIQUE',steps:[{method:'divine',maxAttempts:10,untilRequirements:divineGoal}],targets:[],requirements:divineGoal}};
+  const divineUniqueGuide={id:'unique-divine-workflow',title:'Divine target',slot:'Helmet',startingItem:divineUniqueRaw,goals:[],steps:[divineUniqueOption.guideStep],primarySimulation:{trials:5,maxActions:10,seed:123},nativeRecipe:{rarity:'UNIQUE',steps:[{method:'divine',maxAttempts:10,untilRequirements:divineGoal}],targets:[],requirements:divineGoal}};
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:divineUniqueGuide},'review');await host('apply');context=(await call('get_build_context')).context;
   const divineUniqueSaved=(await call('get_crafting_projects')).projects.find(entry=>entry.id===divineUniqueGuide.id);assert.equal(divineUniqueSaved.steps[0].uniqueCraft.method,'divine');
   const divineUniqueRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:divineUniqueRaw,recipe:divineUniqueSaved.nativeRecipe,options:{trials:5,maxActions:10,seed:123}},'crafted');assert.equal(divineUniqueRun.nativeCrafting.trials,5);
-  const divinePrimary=await queued('simulate_crafting',{baseRevision:context.revision,projectId:divineUniqueGuide.id,usePrimary:true,options:{trials:5,maxActions:10,seed:123}},'crafted');
+  const divinePrimary=await queued('simulate_crafting',{baseRevision:context.revision,projectId:divineUniqueGuide.id,usePrimary:true},'crafted');
   assert.deepEqual(divinePrimary.nativeCrafting.savedPrimary,{projectId:divineUniqueGuide.id});assert.equal(divinePrimary.nativeCrafting.successes,divineUniqueRun.nativeCrafting.successes);assert.equal(divinePrimary.nativeCrafting.meanActions,divineUniqueRun.nativeCrafting.meanActions);
+  assert.equal(divinePrimary.nativeCrafting.trials,5);assert.equal(divinePrimary.nativeCrafting.maxActions,10);assert.equal(divinePrimary.nativeCrafting.seed,123);
+  const divineOverride=await queued('simulate_crafting',{baseRevision:context.revision,projectId:divineUniqueGuide.id,usePrimary:true,options:{maxActions:5}},'crafted');assert.equal(divineOverride.nativeCrafting.trials,5);assert.equal(divineOverride.nativeCrafting.maxActions,5);assert.equal(divineOverride.nativeCrafting.seed,123);
   const divineUniqueFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'unique-divine-filter',title:'Divine pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');assert.ok(divineUniqueFilter.profile.rules.some(rule=>rule.origin==='craft:'+divineUniqueGuide.id && rule.title==='Divine Orb'));
   await queued('propose_build',{mode:'edit',title:'Remove Divine test guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:divineUniqueGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
   const multiUniqueRaw='Rarity: UNIQUE\nDreadarc\nCleaver\nImplicits: 0\nAdds (5-15) to (20-25) Physical Damage\nAdds (5-15) to (20-25) Fire Damage\n(7-10)% increased Attack Speed\n+(15-25)% to Fire Resistance\n5% increased Movement Speed\nCurse Enemies with Flammability on Hit\nItem Level: 86';
@@ -1412,6 +1414,7 @@ async function main(){
 
   const bodyProject={priceBook:bodyPriceBook,id:'body-enchant',title:'Body armour quality guide',slot:'Body Armour',startingItem:bodyRaw,targetItem:bodySimulation.nativeCrafting.sampleItem,preferredMethod:'harvest_enchant',nativeRecipe:{...bodyRecipe,steps:[...bodyRecipe.steps,whiteService.action]},goals:['Quality grants maximum Life','Six linked sockets'],steps:[{action:'Apply the Harvest Life quality enchantment',stopWhen:'Life quality enchantment is present'},{action:'Use an Orb of Fusing with Omen of Connections',stopWhen:'All six sockets are linked'}],inventory:[{id:'enchanted-body',title:'Enchanted body armour',slot:'Body Armour',baseItem:bodyRaw,at:1700000000,state:enchanted.nativeCrafting.state}]};
   bodyProject.recipeAlternatives=[{name:'Priced body plan',recipe:bodyRecipe}];
+  bodyProject.primarySimulation={trials:2,maxActions:2,seed:123};
   bodyProject.nativeRecipe.steps.push({method:'recombine',donorItem:'Rarity: NORMAL\nGlorious Plate\nItem Level: 86'});
   bodyProject.nativeRecipe.steps.push({method:'bench',modId:'bench:partial-prefix-1'});
   bodyProject.nativeRecipe.steps.push(rogRemove);
@@ -1647,8 +1650,10 @@ async function main(){
   const cancellation=await call('cancel_crafting_simulation',{requestId:runningCompare.id});await host('tick',1);const cancelled=await call('get_proposal_status');assert.equal(cancelled.proposal.id,cancellation.id);assert.equal(cancelled.proposal.status,'cancelled');
   const pricedAlternative=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'body-enchant',alternativeName:'Priced body plan',options:{trials:2,maxActions:2}},'crafted');
   assert.equal(pricedAlternative.nativeCrafting.meanCost,327.25);assert.equal(pricedAlternative.nativeCrafting.priceSource,bodyPriceBook.source);
-  const pricedPrimary=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'body-enchant',usePrimary:true,options:{trials:2,maxActions:2}},'crafted');
+  assert.deepEqual(projects.projects.find(entry=>entry.id==='body-enchant').primarySimulation,{trials:2,maxActions:2,seed:123});
+  const pricedPrimary=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'body-enchant',usePrimary:true},'crafted');
   assert.equal(pricedPrimary.nativeCrafting.meanCost,327.25);assert.equal(pricedPrimary.nativeCrafting.priceSource,bodyPriceBook.source);
+  assert.equal(pricedPrimary.nativeCrafting.seed,123);assert.equal(pricedPrimary.nativeCrafting.trials,2);assert.equal(pricedPrimary.nativeCrafting.maxActions,2);
   const wrongCurrency=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'body-enchant',alternativeName:'Priced body plan',options:{trials:2,maxActions:2,currency:'divine'}},'failed');assert.match(wrongCurrency.error,/Saved prices are in chaos/);
   assert.equal((await call('get_build_context')).context.revision,context.revision,'Simulating a saved alternative changed the build');
   const mixedReplay=await rpc('tools/call',{name:'simulate_crafting',arguments:{baseRevision:context.revision,projectId:'helmet',itemText:raw}});
