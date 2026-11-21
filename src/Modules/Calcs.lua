@@ -438,15 +438,13 @@ function calcs.buildOutput(build, mode, deferRecovery)
 	env.player.output.FullDotDPS = fullDPS.TotalDotDPS
 
 	if mode == "MAIN" then
-		-- Reuse only rejected, unpublished probe environments within this output pass.
-		local warningProbeCache = {}
 		for _, skill in ipairs(env.player.activeSkillList) do
 			if build.planningCheckpoint then build.planningCheckpoint() end
 			local uuid = cacheSkillUUID(skill, env)
 			-- Nested trigger calculations can publish a complete cache while probing.
 			local partial, partialSkill
 			if not GlobalCache.cachedData[mode][uuid] then
-				partial, partialSkill = calcs.buildActiveSkill(env, mode, skill, uuid, nil, nil, warningProbeCache, true)
+				partial, partialSkill = calcs.buildActiveSkill(env, mode, skill, uuid, nil, nil, nil, true)
 			end
 			local costEnv = GlobalCache.cachedData[mode][uuid] and GlobalCache.cachedData[mode][uuid].Env
 			local costOutput = costEnv and costEnv.player.output or partial

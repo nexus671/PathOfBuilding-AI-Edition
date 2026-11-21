@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview903" />
+	<Version number="2.68.1-ai.preview904" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2130,7 +2130,7 @@
 	<File name="Modules/CalcTime.lua" part="program" sha1="d640514a38d7580be4ba784bcc92ddfffba0bacf" />
 	<File name="Modules/CalcTools.lua" part="program" sha1="6d39e85eef9e3c71a9aa2e11e7031848f4c2fb9f" />
 	<File name="Modules/CalcTriggers.lua" part="program" sha1="e898893f6c7b9a0e3d2a54dd7b0216c0af14f99d" />
-	<File name="Modules/Calcs.lua" part="program" sha1="a63a38162d13e03eee16ef6be9b65f7f1c3e5ed9" />
+	<File name="Modules/Calcs.lua" part="program" sha1="713ece01c8a8129bef4cd3d17f01dfc23c3a337d" />
 	<File name="Modules/ColourMath.lua" part="program" sha1="f01a899fcc5c3e00d9a00a5994afed071ce8416b" />
 	<File name="Modules/Common.lua" part="program" sha1="8f618d9e646449c0861ccf9f996c888c5ba6f42c" />
 	<File name="Modules/ConfigModBrowser.lua" part="program" sha1="6c32488700943decebee20dc939d8a2bde291bb0" />

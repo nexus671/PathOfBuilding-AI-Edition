@@ -39,7 +39,7 @@ for _, skill in ipairs(mainEnv.player.activeSkillList) do
 end
 assert(compared > 0, "No active skills were compared")
 local original = calcs.buildActiveSkill
-local function snapshot()
+local function snapshot(includeCache)
  wipeGlobalCache()
  local env = calcs.buildOutput(build, "MAIN")
  local out = env.player.output
@@ -55,6 +55,18 @@ local function snapshot()
     end
    end
   end
+ end
+ -- Nested calculations can publish skill caches even from a rejected probe.
+ -- Capture them before a later full calculation can overwrite stale values.
+ if includeCache then
+  local cache={};result.__cache=cache
+  for _,mode in ipairs({"MAIN","CALCULATOR"}) do for uuid,entry in pairs(GlobalCache.cachedData[mode]) do
+   local prefix="cache:"..mode..":"..uuid..":"
+   for key,value in pairs(entry) do if type(value)=="number" or type(value)=="boolean" or type(value)=="string" then cache[prefix..key]=value end end
+   if entry.Env and entry.Env.player and entry.Env.player.output then for key,value in pairs(entry.Env.player.output) do
+    if type(value)=="number" or type(value)=="boolean" or type(value)=="string" then cache[prefix.."output:"..key]=value end
+   end end
+  end end
  end
  -- A later trigger or detail view may demand a complete skill cache.
  for _, skill in ipairs(env.player.activeSkillList) do
@@ -83,13 +95,15 @@ local function compareOutput()
   if h then return original(a,b,c,d,e,f,nil,h) end
   return original(a,b,c,d,e,f,g,h)
  end
- local noReuse = snapshot()
+ local noReuse = snapshot(true)
  calcs.buildActiveSkill = original
- local actual = snapshot()
+ local actual = snapshot(true)
  for key, value in pairs(expected) do assert(actual[key] == value, "Changed main output " .. key .. ": " .. tostring(value) .. " vs " .. tostring(actual[key])) end
- for key in pairs(actual) do assert(expected[key] ~= nil, "Unexpected main output " .. key) end
- for key, value in pairs(noReuse) do assert(actual[key] == value, "Probe reuse changed " .. key .. ": " .. tostring(value) .. " vs " .. tostring(actual[key])) end
+ for key in pairs(actual) do if key~="__cache" then assert(expected[key] ~= nil, "Unexpected main output " .. key) end end
+ for key, value in pairs(noReuse) do if key~="__cache" then assert(actual[key] == value, "Probe reuse changed " .. key .. ": " .. tostring(value) .. " vs " .. tostring(actual[key])) end end
  for key in pairs(actual) do assert(noReuse[key] ~= nil, "Unexpected reused-probe output " .. key) end
+ for key,value in pairs(noReuse.__cache) do assert(actual.__cache[key]==value,"Probe reuse changed "..key..": "..tostring(value).." vs "..tostring(actual.__cache[key])) end
+ for key in pairs(actual.__cache) do assert(noReuse.__cache[key]~=nil,"Unexpected reused-probe "..key) end
  return actual
 end
 compareOutput()
