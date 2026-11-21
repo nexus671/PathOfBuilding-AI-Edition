@@ -140,7 +140,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2154, f"Expected 2154 UI frames, found {len(paths)}"
+    assert len(paths) == 2157, f"Expected 2157 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         def label_and_background(name):
             commands = json.loads((frames / f"{width}-{name}.json").read_text())["commands"]
@@ -207,6 +207,9 @@ def main():
             frame = json.loads((frames / f"{width}-{name}.json").read_text())
             labels = " ".join(c.get("text", "") for c in frame["commands"] if c.get("kind") == "text")
             assert "Fill empty modifier slots" in labels and "estimated modifier weights" in labels, "Rog fill offer or model explanation is missing"
+        frame = json.loads((frames / f"{width}-crafting-recipe-rog-edit.json").read_text())
+        labels = " ".join(c.get("text", "") for c in frame["commands"] if c.get("kind") == "text")
+        assert "Add a modifier to one side" in labels and "Suffix" in labels, "Edited Rog offer is not visible"
         frame = json.loads((frames / f"{width}-map-clipboard-imported.json").read_text())
         assert any(c.get("asset") == "Assets/MapCrafting/Items/MapTier5.png" for c in frame["commands"]), "Current map item artwork is missing"
         quality = next(c for c in frame["commands"] if c["kind"] == "text" and "Quality (Pack Size): +20%" in c.get("text", ""))

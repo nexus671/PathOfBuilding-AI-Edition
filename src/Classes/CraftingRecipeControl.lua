@@ -260,13 +260,25 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 	end)
 	controls.editFossils.enabled=function() return model~=nil and draft.steps[selected]~=nil and draft.steps[selected].method=="fossil" end
 	local function selectedBeast() local step=draft.steps[selected];return step and (step.method=="beast_prefix_suffix" or step.method=="beast_suffix_prefix") end
-	controls.editFossils.shown=function() return not selectedBeast() end
+	local function selectedRog() local step=draft.steps[selected];return step and step.method=="rog_reroll" end
+	controls.editFossils.shown=function() return not selectedBeast() and not selectedRog() end
 	button(controls,"editBeast",576,642,136,"Edit beast level",function()
 		saveSelected()
 		local index=selected;local step=assert(draft.steps[index],"Select a Bestiary swap")
 		openBeastSwap(step,function(action) draft.steps[index]=action;refresh() end,"Update step")
 	end)
 	controls.editBeast.shown=selectedBeast
+	button(controls,"editRog",576,642,136,"Edit Rog offer",function()
+		saveSelected()
+		local index=selected;local step=assert(draft.steps[index],"Select a Rog step")
+		assert(step.method=="rog_reroll","Select a Rog step")
+		require("Classes.CraftingRogControl").Open(step,function(action)
+			local next=copyTable(step)
+			for _,key in ipairs({"rogOperation","rogSide","rogAttempts","artifactCost"}) do next[key]=type(action[key])=="table" and copyTable(action[key]) or action[key] end
+			draft.steps[index]=next;refresh()
+		end)
+	end)
+	controls.editRog.shown=selectedRog
 
 	button(controls,"close",728,642,116,"Close",function() main:ClosePopup() end)
 	local height=math.max(520,math.min(690,main.screenH-60));local offset=690-height

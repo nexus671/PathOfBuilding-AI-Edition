@@ -7,6 +7,8 @@ The odds view enumerates lowest-level removal outcomes under the assumed equal t
 
 The workbench explains when the current item lacks modifiers to reroll or remove, or has no open slot for the selected addition. These checks do not guarantee that every later weighted roll can be completed.
 
+In a saved recipe, select a Rog step and choose **Edit Rog offer** to change its offer or artifact cost. Its attempt limit, stop conditions and routes stay with the step.
+
 For magic items, recognized prefix and suffix names can help identify overlapping modifier tiers. The importer treats matching names as the item's affix names; custom names that happen to match an affix can therefore misidentify a manually edited item. Unknown custom names do not constrain the search, and conflicting names and rolls are rejected.
 
 Plain item text can combine values from several modifiers. The importer checks
