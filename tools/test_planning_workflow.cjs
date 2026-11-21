@@ -1362,7 +1362,13 @@ async function main(){
   assert.equal(genesisDifference.atlas.transition.genesisChanges.removed[0].id,53412);assert.equal(genesisDifference.atlas.transition.steps.length,0);
   assert.match(genesisDifference.atlas.transition.lines.join(' '),/Atlas route steps do not include Genesis/);
   const variantReview=await queued('propose_atlas_plan',{baseRevision:context.revision,plan:variantPlan},'review');
-  assert.match(JSON.stringify(variantReview),/Selected effect: Secrets Unveiled/);assert.match(JSON.stringify(variantReview),/Genesis \[3\.30\.0d\].*2 selected nodes/);await host('apply');assert.deepEqual((await call('get_atlas_plans')).plans.find(plan=>plan.id==='variant').genesis,variantPlan.genesis);await host('undo-applied');context=(await call('get_build_context')).context;
+  assert.match(JSON.stringify(variantReview),/Selected effect: Secrets Unveiled/);assert.match(JSON.stringify(variantReview),/Genesis \[3\.30\.0d\].*2 selected nodes/);await host('apply');assert.deepEqual((await call('get_atlas_plans')).plans.find(plan=>plan.id==='variant').genesis,variantPlan.genesis);
+  context=(await call('get_build_context')).context;
+  const revisedVariant={...changedVariant,genesis:{version:'3.30.0d',nodes:[19912]}};
+  const revisedReview=await queued('propose_atlas_plan',{baseRevision:context.revision,plan:revisedVariant},'review');
+  assert.match(JSON.stringify(revisedReview),/Choice Secrets Unveiled/);assert.match(JSON.stringify(revisedReview),/Removed Genesis passive: Currency \/ Encrusted Fruit/);
+  assert.deepEqual((await call('get_atlas_plans')).plans.find(plan=>plan.id==='variant').genesis,variantPlan.genesis,'Review changed the saved Atlas plan');
+  await host('reject-proposal');await host('undo-applied');context=(await call('get_build_context')).context;
   assert.equal(refinedRoute.atlas.routing.cost,50);assert.equal(refinedRoute.atlas.routing.heuristic,true);assert.ok(refinedTargets.every(id=>refinedRoute.atlas.plan.nodes.includes(id)));
   const mercenaryNodes=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Mercenary',limit:100},'atlas');
   const oreNodes=await queued('search_atlas_nodes',{baseRevision:context.revision,version:'3.30.0-preview',query:'Ore Deposit',limit:100},'atlas');

@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview990" />
+	<Version number="2.68.1-ai.preview991" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2132,7 +2132,7 @@
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="650adaf8761d03a87383f3d4a3b14c1ffb5a6aca" />
 	<File name="Modules/Build.lua" part="program" sha1="b3f975a27ea8e44bd8bbe749c61851a45df85e2d" />
 	<File name="Modules/BuildDisplayStats.lua" part="program" sha1="ffc4da3b13c3d50f3580b452622429f0bd7e70ab" />
-	<File name="Modules/BuildInsights.lua" part="program" sha1="36054639aaeafe88aef1b83c108fafce640a4b6a" />
+	<File name="Modules/BuildInsights.lua" part="program" sha1="a80cb5447d6edc226780481c468e2f00843f7a8b" />
 	<File name="Modules/BuildJourney.lua" part="program" sha1="55dc50fadcede28a55a0c207bf61678478f4a083" />
 	<File name="Modules/BuildList.lua" part="program" sha1="daa0c88f606ade9687f037b6e99c9cec2904200e" />
 	<File name="Modules/BuildListHelpers.lua" part="program" sha1="a95770f18b54c05ed1d68f870f3693cac53a0fab" />

@@ -41,6 +41,10 @@ for line in io.lines() do
 			build.viewMode="CONFIG";ui:bind(build);ui:click("aiBuild");ui:click("review");ui:click("apply")
 			assert(not main.popups[1],"Native apply did not finish")
 			build=main.modes.BUILD;ui:bind(build);frame();bridge.refresh(build)
+		elseif command.kind=="reject-proposal" then
+			assert(bridge.prepared,"Expected a pending native review")
+			build.viewMode="CONFIG";ui:bind(build);ui:click("aiBuild");ui:click("review");ui:click("reject")
+			frame();bridge.refresh(build)
 		elseif command.kind=="undo-applied" then
 			build.viewMode="CONFIG";ui:bind(build);ui:click("aiBuild");ui:choose("page","Plan & review");ui:click("restore")
 			build=main.modes.BUILD;ui:bind(build);frame();bridge.refresh(build)

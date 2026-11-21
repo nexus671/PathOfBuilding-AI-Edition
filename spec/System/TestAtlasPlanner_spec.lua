@@ -193,6 +193,35 @@ describe("Native Atlas planner", function()
 		local match=atlas.search(plan.version,"Threads found in your Maps cannot",100).matches
 		local found=false;for _,entry in ipairs(match) do if entry.id==node.id then found=true;assert.equal("Breach",entry.variantEffects[1].stats[1]);assert.is_truthy(entry.stats[1]:find("Threads",1,true)) end end;assert.is_true(found)
 	end)
+	it("reviews removed Atlas metadata, Genesis nodes and changed effects in AI proposals",function()
+		local version="3.30.0c";local node=atlas.tree(version).nodes[45404]
+		local original=atlas.chooseEffect(atlas.connect(plan(version),{node.id}),node.id,node.variantEffects[1].effect)
+		original.genesis={version="3.30.0d",nodes={19912,53412}}
+		original.strategy={maps="Strand Map",scarabs="Essence Thread",requirements="Unlock maps",avoid="Reflect",notes="Farm"}
+		original.shapedRegions={{mechanic="Abyss",maps={{name="Strand Map",freeThreads=2}}}}
+		original.mapDrafts={{id="planned",title="Planned map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}}
+		build.savers.AtlasPlans:Upsert(original)
+		local nextPlan=copyTable(original);nextPlan.choices[1].effect=node.variantEffects[2].effect;nextPlan.genesis.nodes={19912};nextPlan.strategy=nil;nextPlan.shapedRegions=nil;nextPlan.mapDrafts=nil
+		local prepared=bridge.prepare(build,{mode="edit",title="Revise Atlas",baseRevision=bridge.revision(build),operations={{type="set_atlas_plan",plan=nextPlan}}})
+		local text=table.concat(prepared.changes,"\n")
+		for _,expected in ipairs({"Updated Atlas plan:","Choice "..node.name,"Removed Genesis passive: Currency / Encrusted Fruit", "Strategy Maps: Strand Map -> (not saved)","Shaped Regions: Abyss: Strand Map (2 free Threads) -> (not saved)","Removed map draft: Planned map [planned]"}) do assert.is_truthy(text:find(expected,1,true),expected) end
+		assert.equal(2,#build.savers.AtlasPlans.plans[1].genesis.nodes);assert.equal(1,#build.savers.AtlasPlans.plans[1].mapDrafts)
+	end)
+	it("reports removed nodes and avoids comparing IDs across Atlas versions",function()
+		local original=atlas.connect(plan("3.30.0c"),{57123});build.savers.AtlasPlans:Upsert(original)
+		local empty=copyTable(original);empty.nodes={};local prepared=bridge.prepare(build,{mode="edit",title="Reduce Atlas",baseRevision=bridge.revision(build),operations={{type="set_atlas_plan",plan=empty}}})
+		assert.is_truthy(table.concat(prepared.changes," "):find("Removed Atlas passive:",1,true))
+		local old=plan("3.29.3");old.id="legacy";build.savers.AtlasPlans:Upsert(old)
+		local upgraded=plan("3.30.0c");upgraded.id="legacy";prepared=bridge.prepare(build,{mode="edit",title="Upgrade Atlas",baseRevision=bridge.revision(build),operations={{type="set_atlas_plan",plan=upgraded}}})
+		assert.is_truthy(table.concat(prepared.changes," "):find("passive IDs are not compared across versions",1,true))
+	end)
+	it("shows strategy and map drafts for a newly proposed Atlas plan",function()
+		local candidate=plan("3.30.0c");candidate.strategy={maps="Strand Map",scarabs="",requirements="",avoid="",notes=""}
+		candidate.shapedRegions={{mechanic="Abyss",maps={{name="Strand Map",freeThreads=2}}}}
+		candidate.mapDrafts={{id="planned",title="Planned map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}}
+		local prepared=bridge.prepare(build,{mode="edit",title="New Atlas",baseRevision=bridge.revision(build),operations={{type="set_atlas_plan",plan=candidate}}});local text=table.concat(prepared.changes,"\n")
+		for _,expected in ipairs({"Added Atlas plan:","Strategy maps: Strand Map","Shaped Region Abyss: Strand Map (2 free Threads)","Added map draft: Planned map [planned]"}) do assert.is_truthy(text:find(expected,1,true),expected) end
+	end)
 	it("reviews and routes effect changes and refunds between Atlas stages",function()
 		local version="3.30.0-preview";local node=atlas.tree(version).nodes[45404]
 		local base=atlas.connect(plan(version),{node.id});local first=atlas.chooseEffect(base,node.id,node.variantEffects[1].effect)
