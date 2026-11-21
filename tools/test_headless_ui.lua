@@ -1976,7 +1976,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	do ui:choose("sceneKind","Blight & oils");local blightScene=build.planningWorkspace.cache.filters.layout.snapshot();assert(blightScene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,"Blight & oils",blightScene.seed)[1].BaseType);frame("filter-blight-oil-examples") end
 	ui:click("browseScenes");ui:text("search","abyss jewel");assert(main.popups[1].controls.count.label:find("1 result",1,true),"Scene search did not find the jewel examples");frame("filter-scene-browser");ui:click("choose")
 	assert(build.planningWorkspace.cache.filters.layout.snapshot().sceneKind=="Abyss","Scene browser did not select the matching scene")
-	for _,kind in ipairs({"Incursion","Delirium","Harvest","Ritual","Abyss","Ultimatum","Sanctum","Pinnacle bosses"}) do
+	for _,kind in ipairs({"Beyond","Incursion","Delirium","Harvest","Ritual","Abyss","Ultimatum","Sanctum","Pinnacle bosses"}) do
 		ui:choose("sceneKind",kind);local scene=build.planningWorkspace.cache.filters.layout.snapshot()
 		assert(scene.sceneKind==kind and scene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,kind,scene.seed)[1].BaseType,"Encounter examples did not load")
 		frame("filter-"..kind:lower():gsub("%s+","-").."-examples")
