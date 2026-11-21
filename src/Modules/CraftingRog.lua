@@ -8,14 +8,17 @@ function R.validate(craft)
 	local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
 	local fixed=craft.rogOperation=="fill" or craft.rogOperation=="set_quality" or craft.rogOperation=="upgrade"
 	local sockets=craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links"
+	local valuesOne=craft.rogOperation=="values_one"
+	local valuesSide=craft.rogOperation=="values_side"
 	if sockets then
 		assert(craft.rogSocketRolls==10 or craft.rogSocketRolls==20 or craft.rogSocketRolls==30 or craft.rogSocketRolls==50 or craft.rogSocketRolls==100,"Choose 10, 20, 30, 50 or 100 socket rerolls")
 	else assert(craft.rogSocketRolls==nil,"Socket reroll count applies only to a socket offer") end
 	if craft.rogOperation=="upgrade" then assert(type(craft.count)=="number" and craft.count==math.floor(craft.count) and craft.count>=1 and craft.count<=6,"Choose 1 to 6 modifiers to upgrade") end
-	assert(craft.rogOperation==nil or craft.rogOperation=="reroll" or craft.rogOperation=="add" or removal or fixed or sockets,"Choose a supported Rog offer")
+	assert(craft.rogOperation==nil or craft.rogOperation=="reroll" or craft.rogOperation=="add" or removal or fixed or sockets or valuesOne or valuesSide,"Choose a supported Rog offer")
 	if removal or fixed or sockets then assert(craft.rogSide==nil and craft.rogAttempts==nil,"This offer does not use a side or attempt count")
 	else
-		assert(craft.rogSide=="Prefix" or craft.rogSide=="Suffix","Choose prefixes or suffixes")
+		if valuesOne then assert(craft.rogSide==nil,"A single-modifier value offer does not use a side")
+		else assert(craft.rogSide=="Prefix" or craft.rogSide=="Suffix","Choose prefixes or suffixes") end
 		assert(craft.rogAttempts==1 or craft.rogAttempts==3 or craft.rogAttempts==5,"Choose 1, 3 or 5 attempts")
 	end
 	assert(not craft.allflame,"Allflame cannot be used with Rog")
@@ -99,8 +102,12 @@ function R.readiness(M,model,input,craft)
 		local _,total=M.pool(model,input);if total<=0 then return "No legal modifier can be added." end
 		return
 	end
+	if craft.rogOperation=="values_one" then
+		if #input.affixes==0 then return "No modifiers to reroll." end
+		return
+	end
 	local blocked=M.blockFlags(model,input)
-	if blocked.attack or blocked.caster then return "Rog interactions with this implicit roll restriction are not modeled for this offer." end
+	if craft.rogOperation~="values_side" and (blocked.attack or blocked.caster) then return "Rog interactions with this implicit roll restriction are not modeled for this offer." end
 	if craft.rogOperation=="upgrade" then
 		if #input.affixes<craft.count then return "Not enough modifiers to upgrade." end
 		local ok,err=pcall(require("Modules.CraftingGwennen").tierChoices,model,input,true)
@@ -154,6 +161,27 @@ function R.reroll(M,model,input,craft,random)
 	end
 	return best
 end
+-- Rank independent candidate rolls by their average normalized range position.
+-- This is a provisional proxy: higher numeric rolls are not always more desirable.
+function R.rerollValues(M,model,input,craft,random)
+	R.validate(craft)
+	local indices={};for index,entry in ipairs(input.affixes) do
+		if craft.rogOperation=="values_one" or model.byId[entry.id].type==craft.rogSide then indices[#indices+1]=index end
+	end
+	assert(#indices>0,"No modifiers to reroll")
+	if craft.rogOperation=="values_one" then indices={indices[math.floor(random()*#indices)+1]} end
+	local best,bestScore
+	for _=1,craft.rogAttempts do
+		local candidate=copyTable(input);local sum,count=0,0
+		for _,index in ipairs(indices) do
+			local entry=candidate.affixes[index];entry.legacyLightRadius=nil;entry.range=M.rollRange(model.byId[entry.id],random)
+			for _,value in ipairs(type(entry.range)=="table" and entry.range or {entry.range}) do sum=sum+value;count=count+1 end
+		end
+		local score=sum/count
+		if not bestScore or score>bestScore then best,bestScore=candidate,score end
+	end
+	return best
+end
 function R.extend(M,api)
 	M.methodChecks.rog_reroll=function(model,state)
 		local flags=api.flags(model,state)
@@ -173,8 +201,12 @@ function R.extend(M,api)
 		assert((input.rarity=="MAGIC" or input.rarity=="RARE") and not input.destroyed and not input.corrupted and not input.mirrored and not input.veil,"Rog requires an uncorrupted magic or rare item")
 		assert(model.item.type~="Flask" and model.item.type~="Tincture","Rog requires equipment or a jewel")
 		local flags=api.flags(model,input)
-		assert(not (flags.prefixes or flags.suffixes or flags.explicitAttack or flags.explicitCaster or M.hasPartialLock(model,input) or craft.rogOperation~="fill" and craft.rogOperation~="set_quality" and craft.rogOperation~="socket_count" and craft.rogOperation~="socket_links" and (flags.attack or flags.caster)),"Rog interactions with meta modifiers are not modeled")
+		assert(not (flags.prefixes or flags.suffixes or flags.explicitAttack or flags.explicitCaster or M.hasPartialLock(model,input) or craft.rogOperation~="fill" and craft.rogOperation~="set_quality" and craft.rogOperation~="socket_count" and craft.rogOperation~="socket_links" and craft.rogOperation~="values_one" and craft.rogOperation~="values_side" and (flags.attack or flags.caster)),"Rog interactions with meta modifiers are not modeled")
 		for _,entry in ipairs(input.affixes) do assert(not entry.fractured and not entry.crafted,"Rog interactions with fractured or crafted modifiers are not modeled") end
+		if craft.rogOperation=="values_one" or craft.rogOperation=="values_side" then
+			local reason=R.readiness(M,model,input,craft);assert(not reason,reason)
+			return R.rerollValues(M,model,input,craft,random)
+		end
 		if craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links" then
 			local reason=R.readiness(M,model,input,craft);assert(not reason,reason)
 			return craft.rogOperation=="socket_count" and M.bestJeweller(model,input,craft.rogSocketRolls,random) or M.bestFusing(model,input,craft.rogSocketRolls,random)
@@ -208,6 +240,7 @@ function R.extend(M,api)
 		if craft.rogOperation=="add" then fields[#fields+1]="add" end
 		if craft.rogOperation=="upgrade" then fields={"rog_reroll","upgrade",tostring(craft.count)} end
 		if craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links" then fields={"rog_reroll",craft.rogOperation,tostring(craft.rogSocketRolls)} end
+		if craft.rogOperation=="values_one" or craft.rogOperation=="values_side" then fields={"rog_reroll",craft.rogOperation,tostring(craft.rogSide or "one"),tostring(craft.rogAttempts)} end
 		for _,tier in ipairs(tiers) do fields[#fields+1]=craft.artifactCost and tostring(craft.artifactCost[tier] or 0) or "unknown" end
 		return table.concat(fields,":")
 	end

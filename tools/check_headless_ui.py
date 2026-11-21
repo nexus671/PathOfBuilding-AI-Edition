@@ -140,7 +140,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2232, f"Expected 2232 UI frames, found {len(paths)}"
+    assert len(paths) == 2235, f"Expected 2235 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         def label_and_background(name):
             commands = json.loads((frames / f"{width}-{name}.json").read_text())["commands"]
@@ -210,6 +210,9 @@ def main():
         frame = json.loads((frames / f"{width}-crafting-rog-socket-offer.json").read_text())
         labels = " ".join(c.get("text", "") for c in frame["commands"] if c.get("kind") == "text")
         assert "Observed rerolls" in labels and "estimated socket odds" in labels, "Rog socket offer explanation is missing"
+        frame = json.loads((frames / f"{width}-crafting-rog-values-offer.json").read_text())
+        labels = " ".join(c.get("text", "") for c in frame["commands"] if c.get("kind") == "text")
+        assert "Reroll values of one modifier" in labels and "may not match your preference" in labels, "Rog value-offer note is missing"
         frame = json.loads((frames / f"{width}-crafting-recipe-rog-edit.json").read_text())
         labels = " ".join(c.get("text", "") for c in frame["commands"] if c.get("kind") == "text")
         assert "Add a modifier to one side" in labels and "Suffix" in labels, "Edited Rog offer is not visible"

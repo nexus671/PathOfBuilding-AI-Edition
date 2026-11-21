@@ -5,6 +5,7 @@ return function(build,ui,frame)
 	ui:click("settings");ui:text("paletteSearch","Rog:");ui:click("paletteUse");assert(not main.popups[1].controls.apply:IsEnabled(),"Unconfigured Rog offer could be applied")
 	ui:click("tab_settings");ui:click("configure");frame("crafting-rog-offer")
 	ui:choose("operation","socket_links","val");ui:choose("socketRolls",30,"val");assert(main.popups[1].controls.socketHint:IsShown() and not main.popups[1].controls.side:IsShown(),"Socket offer details are missing");frame("crafting-rog-socket-offer")
+	ui:choose("operation","values_one","val");ui:choose("attempts",5,"val");assert(main.popups[1].controls.valueHint:IsShown() and not main.popups[1].controls.side:IsShown(),"Value offer explanation is missing");frame("crafting-rog-values-offer")
 	ui:choose("operation","socket_count","val");ui:click("keep");ui:click("exact")
 	local socketJobs=require("Modules.CraftingTasks");for _=1,1000 do if not socketJobs.job then break end;socketJobs.tick(build) end
 	assert(StripEscapes(main.popups[1].controls.intro.label):find("Rog: best socket count of 30",1,true),"Simulation does not identify the configured offer")

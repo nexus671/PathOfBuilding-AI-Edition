@@ -627,6 +627,9 @@ async function main(){
   const rogAdd={method:'rog_reroll',rogOperation:'add',rogSide:'Prefix',rogAttempts:3,artifactCost:{grand:12}};
   const rogAdded=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogAdd,seed:7},'crafted');
   assert.equal(rogAdded.nativeCrafting.state.affixes.length,3);assert.ok(rogAdded.nativeCrafting.warnings.some(entry=>entry.code==='rog_reroll_assumptions'));
+  const rogValues={method:'rog_reroll',rogOperation:'values_side',rogSide:'Suffix',rogAttempts:3,artifactCost:{grand:7}};
+  const rogValueResult=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogValues,seed:7},'crafted');
+  assert.deepEqual(rogValueResult.nativeCrafting.state.affixes.map(entry=>entry.id),tierStart.affixes.map(entry=>entry.id));assert.deepEqual(rogValueResult.nativeCrafting.state.affixes[0],tierStart.affixes[0]);assert.ok(rogValueResult.nativeCrafting.warnings.some(entry=>/not always better/.test(entry.message)));
   const rogFill={method:'rog_reroll',rogOperation:'fill',artifactCost:{grand:7}};
   const rogFilled=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogFill,seed:7},'crafted');
   assert.equal(rogFilled.nativeCrafting.state.affixes.length,6);assert.ok(rogFilled.nativeCrafting.warnings.some(entry=>entry.code==='rog_reroll_assumptions' && /sequential/.test(entry.message)));
