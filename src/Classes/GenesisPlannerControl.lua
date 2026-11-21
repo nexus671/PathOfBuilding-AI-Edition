@@ -9,9 +9,10 @@ local function position(node)
 end
 function Canvas:GenesisTreeCanvas(rect,tree,getPlan,onFocus,onActivate)
 	self:Control(ui.anchor,rect);self:TooltipHost();self.tree=tree;self.getPlan=getPlan;self.onFocus=onFocus;self.onActivate=onActivate
-	self.art=require("Modules.AtlasArt").load("3.30.0c");self.icons={}
+	self.icons={};self.frames={}
 	local file=assert(io.open("Assets/Genesis/manifest.json","rb"));local manifest=assert(require("dkjson").decode(file:read("*a")));file:close()
 	for name,entry in pairs(manifest.icons) do local handle=NewImageHandle();handle:Load(entry.file);self.icons[name]=handle end
+	for name,entry in pairs(manifest.frames) do local handle=NewImageHandle();handle:Load(entry.file);self.frames[name]=handle end
 	self.background=NewImageHandle();self.background:Load(manifest.background.file);self.backgroundSize=manifest.background.nativeSize
 	self:SetBranch(19625);return self
 end
@@ -40,22 +41,24 @@ function Canvas:Draw()
 		local a,b=self:Position(node)
 		for _,other in ipairs(node.links) do if id<other and id~=self.root and other~=self.root then
 			local c,d=self:Position(self.tree.nodes[other]);local dx,dy=c-a,d-b;local len=math.max(1,math.sqrt(dx*dx+dy*dy));local ox,oy=-dy/len,dx/len
-			SetDrawColor(allocated[id] and allocated[other] and "^xC6A568" or "^x465667");DrawImageQuad(nil,a+ox,b+oy,c+ox,d+oy,c-ox,d-oy,a-ox,b-oy)
+			SetDrawColor(allocated[id] and allocated[other] and "^xB25AFF" or "^x6D587A");DrawImageQuad(nil,a+ox,b+oy,c+ox,d+oy,c-ox,d-oy,a-ox,b-oy)
 		end end
 	end end
 	self.hover=nil;local nearest=math.huge
 	for id,node in pairs(self.tree.nodes) do if node.root==self.root and id~=self.root then
-		local a,b=self:Position(node);local size=planner.wombs[id] and 20 or (node.notable or node.choice) and 22 or 15
-		local icon=node.icon and node.icon:match("/([^/]+)%.dds$");local handle=icon and self.icons[icon]
-		if handle then SetDrawColor(allocated[id] and 1 or 0.65,allocated[id] and 1 or 0.65,allocated[id] and 1 or 0.65);DrawImage(handle,a-size/2,b-size/2,size,size)
-		else SetDrawColor(self.focus==id and "^x6EDDD1" or allocated[id] and "^xCBA965" or "^x63798A");DrawImage(nil,a-size/2,b-size/2,size,size) end
-		local frame=(node.notable or node.choice) and "NotableFrame" or "PSSkillFrame"
-		local suffix=frame=="PSSkillFrame" and (allocated[id] and "Active" or "") or (allocated[id] and "Allocated" or "Unallocated")
-		SetDrawColor(1,1,1);self.art:draw("frame",frame..suffix,a,b,0.30)
-		if planner.wombs[id] then self.art:draw("startNode","AtlasPassiveSkillScreenStart",a,b,0.23) end
+		local a,b=self:Position(node);local womb=planner.wombs[id];local notable=node.notable or node.choice
+		local size=womb and 20 or notable and 22 or 15
+		local frameSize=womb and 40 or notable and 36 or 24
+		if not womb then
+			local icon=node.icon and node.icon:match("/([^/]+)%.dds$");local handle=icon and self.icons[icon]
+			if handle then SetDrawColor(allocated[id] and 1 or 0.65,allocated[id] and 1 or 0.65,allocated[id] and 1 or 0.65);DrawImage(handle,a-size/2,b-size/2,size,size)
+			else SetDrawColor(self.focus==id and "^x6EDDD1" or allocated[id] and "^xCBA965" or "^x63798A");DrawImage(nil,a-size/2,b-size/2,size,size) end
+		end
+		local frame=womb and "Womb" or notable and (allocated[id] and "FrameNotableActive" or "FrameNotable") or (allocated[id] and "FrameSmallActive" or "FrameSmall")
+		SetDrawColor(1,1,1);DrawImage(self.frames[frame],a-frameSize/2,b-frameSize/2,frameSize,frameSize)
 		if self.focus==id then SetDrawColor("^x6EDDD1");DrawImage(nil,a-size/2-2,b-size/2-2,size+4,2);DrawImage(nil,a-size/2-2,b+size/2,size+4,2) end
 		local distance=(cursorX-x-a)^2+(cursorY-y-b)^2
-		if distance<nearest and distance<=144 then self.hover=id;nearest=distance end
+		if distance<nearest and distance<=(frameSize/2)^2 then self.hover=id;nearest=distance end
 	end end
 	SetViewport()
 	if self.hover and self:IsMouseOver() then

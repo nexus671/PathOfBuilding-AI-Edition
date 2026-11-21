@@ -20,12 +20,18 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(math.abs(background.width-7576*c.canvas.scale)<0.1 and math.abs(background.height-6640*c.canvas.scale)<0.1,"Genesis background scale is incorrect")
 	end
 	assertBackground()
+	local assets={};for _,command in ipairs(ui.commands) do if command.asset then assets[command.asset]=true end end
+	assert(assets["Assets/Genesis/FrameSmall.png"] and assets["Assets/Genesis/FrameNotable.png"] and assets["Assets/Genesis/Womb.png"],"Genesis frames or womb artwork were not drawn")
 	ui:text("search","Mutation Cultivation");local x,y=c.results:GetPos();ui:clickAt(x+20,y+12)
 	assert(c.canvas.focus==40721,"Search did not focus the current currency passive")
 	ui:frame():write(directory.."/"..size[1].."-genesis-search.json")
 	assertBackground()
 	ui:click("toggle");assert(main.popups[1].title=="Connect Genesis path","A multi-node path must be confirmed")
 	ui:click("confirm");ui:frame():write(directory.."/"..size[1].."-genesis-allocated.json")
+	assets={};for _,command in ipairs(ui.commands) do if command.asset then assets[command.asset]=true end end
+	assert(assets["Assets/Genesis/FrameSmallActive.png"] and assets["Assets/Genesis/FrameNotableActive.png"],"Allocated Genesis frame artwork was not drawn")
+	local nx,ny=c.canvas:Position(c.canvas.tree.nodes[40721]);local cx,cy=c.canvas:GetPos()
+	ui:clickAt(cx+nx+15,cy+ny);assert(c.canvas.focus==40721,"The notable frame edge did not select its node")
 	ui:text("search","Parthenogenesis");ui:frame():write(directory.."/"..size[1].."-genesis-all-trees.json")
 	local sx,sy=c.results:GetPos();ui:clickAt(sx+20,sy+12);assert(c.canvas.root==42956,"Search must switch to the result's tree")
 	ui:choose("branch",22476,"val")
