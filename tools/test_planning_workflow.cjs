@@ -587,6 +587,15 @@ async function main(){
   const gwennenImplicitPair=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gwennenImplicitRaw,initialState:gwennenImplicitStart.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1032,secondOutcome:1032},seed:7},'crafted');
   assert.equal(gwennenImplicitPair.nativeCrafting.gwennen.outcome,1032);assert.ok(gwennenImplicitPair.nativeCrafting.state.baseImplicitRanges);assert.ok(gwennenImplicitPair.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_implicit_assumptions'));
   const tierStart={...binding.nativeCrafting.state,affixes:[{id:'IncreasedLife2',range:0.5},{id:'FireResist2',range:0.5}]};
+  const rogAdd={method:'rog_reroll',rogOperation:'add',rogSide:'Prefix',rogAttempts:3,artifactCost:{grand:12}};
+  const rogAdded=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogAdd,seed:7},'crafted');
+  assert.equal(rogAdded.nativeCrafting.state.affixes.length,3);assert.ok(rogAdded.nativeCrafting.warnings.some(entry=>entry.code==='rog_reroll_assumptions'));
+  const rogRemove={method:'rog_reroll',rogOperation:'remove_lowest_two',artifactCost:{lesser:20}};
+  const rogRemoved=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogRemove,seed:7},'crafted');
+  assert.equal(rogRemoved.nativeCrafting.state.affixes.length,0);assert.match(rogRemoved.nativeCrafting.warnings[0].message,/equal chances among ties/);
+  const orderArtifact='Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_3';
+  const rogPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:raw,recipe:{initialState:tierStart,steps:[rogAdd],targets:[],requirements:{minAffixes:3}},options:{trials:2,maxActions:1,currency:'chaos',prices:{[orderArtifact]:2}}},'crafted');
+  assert.equal(rogPlan.nativeCrafting.successes,2);assert.equal(rogPlan.nativeCrafting.meanCost,24);assert.equal(rogPlan.nativeCrafting.currencySpent[orderArtifact],24);
   const tierChange=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:{method:'gwennen',firstOutcome:1020,secondOutcome:1020},seed:7},'crafted');
   assert.ok(tierChange.nativeCrafting.state.affixes.some(entry=>['IncreasedLife3','FireResist3'].includes(entry.id)));assert.ok(tierChange.nativeCrafting.warnings.some(entry=>entry.code==='gwennen_tier_assumptions'));
   const threeTierStart={...tierStart,affixes:[...tierStart.affixes,{id:'ColdResist2',range:0.5}]};
@@ -1296,6 +1305,7 @@ async function main(){
   const bodyProject={priceBook:bodyPriceBook,id:'body-enchant',title:'Body armour quality guide',slot:'Body Armour',startingItem:bodyRaw,targetItem:bodySimulation.nativeCrafting.sampleItem,preferredMethod:'harvest_enchant',nativeRecipe:{...bodyRecipe,steps:[...bodyRecipe.steps,whiteService.action]},goals:['Quality grants maximum Life','Six linked sockets'],steps:[{action:'Apply the Harvest Life quality enchantment',stopWhen:'Life quality enchantment is present'},{action:'Use an Orb of Fusing with Omen of Connections',stopWhen:'All six sockets are linked'}],inventory:[{id:'enchanted-body',title:'Enchanted body armour',slot:'Body Armour',baseItem:bodyRaw,at:1700000000,state:enchanted.nativeCrafting.state}]};
   bodyProject.nativeRecipe.steps.push({method:'recombine',donorItem:'Rarity: NORMAL\nGlorious Plate\nItem Level: 86'});
   bodyProject.nativeRecipe.steps.push({method:'bench',modId:'bench:partial-prefix-1'});
+  bodyProject.nativeRecipe.steps.push(rogRemove);
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:bodyProject},'review');await host('apply');context=(await call('get_build_context')).context;
   const unlocks=await queued('review_crafting_unlocks',{baseRevision:context.revision,projectId:'body-enchant'},'craftUnlocks');
   assert.equal(unlocks.craftUnlocks.entries[0].unlock.map,'Sanctuary Map');assert.equal(unlocks.craftUnlocks.entries[0].taskStatus,'untracked');
@@ -1510,6 +1520,7 @@ async function main(){
   assert.equal(projects.projects.length,2);const savedBody=projects.projects.find(entry=>entry.id==='body-enchant');
   assert.deepEqual(savedBody.priceBook,bodyPriceBook);assert.equal(savedBody.nativeRecipe.steps[1].method,'omen_connections');assert.equal(savedBody.nativeRecipe.requirements.links,6);assert.equal(savedBody.nativeRecipe.steps[0].enchantId,'LifeBodyEnchant');assert.equal(savedBody.nativeRecipe.requirements.harvestEnchant,'LifeBodyEnchant');
   assert.equal(savedBody.nativeRecipe.steps[2].method,'socket_white_bench');
+  assert.deepEqual(savedBody.nativeRecipe.steps.find(entry=>entry.rogOperation==='remove_lowest_two'),rogRemove,'Rog offer did not survive save and reopen');
   assert.equal(savedBody.inventory[0].state.harvestEnchant,'LifeBodyEnchant');assert.equal(savedBody.targetItem,bodySimulation.nativeCrafting.sampleItem);
   const atlasPlans=await call('get_atlas_plans');assert.equal(atlasPlans.plans[1].strategy.setupCost.amount,25);assert.equal(atlasPlans.plans[1].progression.previousId,'starter-atlas');assert.deepEqual(atlasPlans.plans[0].mapDrafts,starterAtlas.mapDrafts);assert.ok(atlasPlans.limitations.some(note=>note.includes('unknown explicit modifiers') && note.includes('+30% Atlas Drops')));assert.ok(atlasPlans.limitations.some(note=>note.includes('one conditional modeled outcome')));await host('bundle-roundtrip');
   assert.deepEqual((await call('get_atlas_plans')).plans[0].mapDrafts,starterAtlas.mapDrafts);
