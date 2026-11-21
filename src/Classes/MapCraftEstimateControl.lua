@@ -125,6 +125,7 @@ function M.Open(build,options)
 				end
 				if map.isNightmare(state.baseId) then lines[#lines+1]="Nightmare model: exclusive prefix and suffix first, then four weighted draws; order and odds are unverified." end
 				if state.observedEffects then lines[#lines+1]="Observed effects are not modeled and can change results." end
+				if value.plannedDeified then lines[#lines+1]="Deified remains a plan; reroll and enchantment interactions are unverified." end
 				report(lines)
 			end,
 			function(err) if not alive then return end;active=nil;result=nil;report({"Estimate stopped: "..ui.errorText(err)}) end,

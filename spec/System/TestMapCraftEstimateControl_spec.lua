@@ -3,7 +3,7 @@ describe("Map reroll estimate control",function()
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() if tasks.job then tasks.cancel() end;main.popups={} end)
 	it("runs an estimate and applies an explicitly selected example",function()
-		local sample;local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
+		local sample;local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={},plannedDeified=true}
 		local controls=require("Classes.MapCraftEstimateControl").Open(build,{state=state,avoid={"MapMonsterAreaOfEffectMapWorlds"},apply=function(value) sample=value end})
 		assert.matches("Area of Effect",StripEscapes(controls.avoid.list[2][1]))
 		controls.trials:SetText("2",true);controls.attempts:SetText("1",true);controls.run:Click()
@@ -11,11 +11,11 @@ describe("Map reroll estimate control",function()
 		for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
 		assert.is_nil(tasks.job);assert.is_true(controls.use:IsEnabled())
 		local report="";for _,row in ipairs(controls.report.list) do report=report..StripEscapes(row[1] or "") end
-		assert.matches("Cannot appear in modeled pool",report);assert.matches("Area of Effect",report);assert.matches("Map data: 3.30.0.4",report,1,true)
+		assert.matches("Deified remains a plan",report,1,true);assert.matches("Cannot appear in modeled pool",report);assert.matches("Area of Effect",report);assert.matches("Map data: 3.30.0.4",report,1,true)
 		controls.attempts:SetText("2",true);assert.is_falsy(controls.use:IsEnabled())
 		controls.attempts:SetText("1",true);controls.run:Click();for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
 		assert.is_true(controls.use:IsEnabled());controls.use:Click()
-		assert.is_truthy(sample);assert.equal("rare",sample.rarity);assert.equal(#sample.selected,#sample.rolls)
+		assert.is_truthy(sample);assert.equal("rare",sample.rarity);assert.equal(#sample.selected,#sample.rolls);assert.is_true(sample.plannedDeified)
 	end)
 	it("warns when the feasibility search did not finish",function()
 		local estimate=require("Modules.MapCraftEstimate");local previous=estimate.run

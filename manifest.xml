@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview938" />
+	<Version number="2.68.1-ai.preview939" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1765,7 +1765,7 @@
 	<File name="Classes/LootFilterStructureControl.lua" part="program" sha1="80dc6d4482eee8ef9a72a455950292870d55376b" />
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="f534d6e4ff3ba4d40dc1c455125923b074b2c617" />
-	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="ef3b5f39043382fd1633506ce1696e40cd85f5e5" />
+	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="693f7cfb845e5305a999674ed6e58789dfff2fb0" />
 	<File name="Classes/MapModifierControl.lua" part="program" sha1="1aacccbe04e094f123eb2122d1400fe8b57d6d87" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
 	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="cfff5d76e380c7bdcbdac229325cefb1599af36c" />
@@ -2227,7 +2227,7 @@
 	<File name="Modules/Main.lua" part="program" sha1="617f48b41e8da9a3f116630600abc48cfa36588a" />
 	<File name="Modules/MapClipboard.lua" part="program" sha1="eb59d14815d965e0396a7ccf759a1f318b000fb5" />
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="4bde5edf6208613815c1410d2e7916ccf88b273e" />
-	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="9f1df8c7fcdb9be30941f8798266ec6444d3fed1" />
+	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="5b52a9be4b80bd5fd21f4206d6a6985a03cb6258" />
 	<File name="Modules/MapCraftingData.lua" part="program" sha1="9c9c1d0dabc9d3c61eb6e650d0f473363a2b154d" />
 	<File name="Modules/MapCurrency.lua" part="program" sha1="53da0d63b0a043f1a290c77d6b455320d9c8621c" />
 	<File name="Modules/MapObservedEffects.lua" part="program" sha1="653306b580c181a2836d5b5099f6424b43381d5f" />

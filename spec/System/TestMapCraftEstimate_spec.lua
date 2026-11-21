@@ -1,6 +1,13 @@
 describe("Map reroll estimates",function()
 	local estimate=require("Modules.MapCraftEstimate");local currency=require("Modules.MapCurrency")
 	local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
+	it("retains conditional Deified plans without treating boss rarity as map rarity",function()
+		local input=copyTable(state);input.plannedDeified=true
+		local result=estimate.run(input,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})
+		assert.is_true(result.plannedDeified);assert.equal("planned",result.deified.provenance);assert.equal(50,result.deified.bossItemRarityIncrease)
+		assert.matches("reroll",result.note,1,true);assert.matches("unverified",result.note,1,true)
+		if result.sampleSuccess then assert.is_true(result.sampleSuccess.plannedDeified) end
+	end)
 	it("reports the map data version used for an estimate",function()
 		local result=estimate.run(state,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})
 		local source=require("Modules.MapCraftingData").source()

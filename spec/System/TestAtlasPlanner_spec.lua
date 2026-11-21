@@ -68,6 +68,14 @@ describe("Native Atlas planner", function()
 		assert.same({},panel.canvas.selected().nodes);assert.same({first},build.savers.AtlasPlans.plans[1].nodes)
 		panel.grantExit:Click();main.popups[1].controls.close:Click();panel.close:Click()
 	end)
+	it("keeps a planned Divine Vessel separate from observed map effects through save and export",function()
+		local source=plan("3.30.0-preview");source.mapDrafts={{id="planned",title="Planned map",patch=require("Modules.MapCraftingData").source().patch,baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={},plannedDeified=true,observedEffects={{kind="implicit",text="Area is Influenced by the Originator's Memories"}}}}
+		local store=atlas.new(build);store:Upsert(source);local xml={};store:Save(xml);local reopened=atlas.new(build);reopened:Load(xml)
+		assert.same(source.mapDrafts,reopened.plans[1].mapDrafts);assert.same(source.mapDrafts,atlas.import(atlas.export(source)).mapDrafts)
+		local controls=require("Classes.MapModifierControl").Open({build=build,initial=reopened.plans[1].mapDrafts[1],keep=function(value) return value.id end})
+		local lines={};for _,row in ipairs(controls.affixes.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		assert.matches("Planned Deified",table.concat(lines," "),1,true);assert.matches("Originator's Memories",table.concat(lines," "),1,true);main.popups={}
+	end)
 	it("persists a tier 17 Nightmare map draft",function()
 		local source=plan("3.30.0-preview")
 		source.mapDrafts={{id="nightmare",title="Abomination",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={"MapUberModCurses"}}}
