@@ -1,0 +1,15 @@
+describe("Magic item crafting imports",function()
+ local sim=require("Modules.CraftingSimulator")
+ before_each(function() newBuild() end)
+ local function raw(name,stats) return "Rarity: MAGIC\n"..name.."\nItem Level: 86\nImplicits: 0\n"..stats end
+ it("uses recognized prefix and suffix names to resolve overlapping modifiers",function()
+  local model=sim.model(raw("Superior Hale Iron Hat of the Lost","+6 to maximum Life\n+7% to Chaos Resistance"))
+  local ids={};for _,entry in ipairs(model.initial.affixes) do ids[entry.id]=true end
+  assert.is_true(ids.IncreasedLife0);assert.is_true(ids.ChaosResist1);assert.equal(2,#model.initial.affixes)
+ end)
+ it("does not infer from an unknown custom name or accept a conflicting roll",function()
+  local ok,err=pcall(sim.model,raw("Custom Iron Hat","+6 to maximum Life"));assert.is_false(ok);assert.matches("several modifier identities",tostring(err))
+  ok,err=pcall(sim.model,raw("Custom Iron Hat of the Lost","+6 to maximum Life\n+7% to Chaos Resistance"));assert.is_false(ok);assert.matches("several modifier identities",tostring(err))
+  ok,err=pcall(sim.model,raw("Hale Iron Hat","+17 to maximum Life"));assert.is_false(ok);assert.matches("do not resolve",tostring(err))
+ end)
+end)

@@ -59,3 +59,18 @@ for _,format in ipairs({"plain","labelled"}) do
 	print(format..": "..stats.accepted.." accepted, "..stats.rejected.." unresolved ("..table.concat(reasons,", ")..")")
 end
 print("CRAFTING_IMPORT_SWEEP_OK: "..total.." legal samples, "..accepted.." accepted, "..rejected.." unresolved")
+
+-- Named magic items provide a second source of tier identity.
+local magicAccepted,magicRejected=0,0
+for _,base in ipairs({"Iron Hat","Plate Vest","Rusted Sword","Gold Ring","Turquoise Amulet"}) do
+ local m=sim.model("Rarity: NORMAL\n"..base.."\nItem Level: 86");local pre,suf={},{}
+ for _,e in ipairs(m.mods) do if e.mod.affix and e.mod.affix~="" then local dest=e.mod.type=="Prefix" and pre or suf;dest[#dest+1]=e end end
+ for n=1,60 do local a,b=pre[(n*13)%#pre+1],suf[(n*37)%#suf+1];local state=copyTable(m.initial);state.rarity="MAGIC";state.affixes={{id=a.id,range=(n%3)/2},{id=b.id,range=((n+1)%3)/2}}
+  if pcall(sim.validateState,m,state) then local item=sim.toItem(m,state);local lines={};for _,line in ipairs(item.explicitModLines) do lines[#lines+1]=line.line end
+   local raw="Rarity: MAGIC\n"..a.mod.affix.." "..base.." "..b.mod.affix.."\nItem Level: 86\nImplicits: 0\n"..table.concat(lines,"\n")
+   local ok,result=pcall(sim.model,raw);if ok then local ids={};for _,entry in ipairs(result.initial.affixes) do ids[entry.id]=true end;assert(#result.initial.affixes==2 and ids[a.id] and ids[b.id],"Incorrect named magic import: "..base.." "..a.id.." "..b.id);magicAccepted=magicAccepted+1 else magicRejected=magicRejected+1 end
+  end
+ end
+ print(base,"checked")
+end
+print("MAGIC_IMPORT_SWEEP_OK: "..magicAccepted.." accepted, "..magicRejected.." unresolved");assert(magicAccepted>0)

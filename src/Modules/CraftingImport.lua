@@ -49,12 +49,22 @@ function I.resolve(M,model,state)
 	end end
 	local candidates,seen,contributorMods={},{ },{}
 	local namedPrefix,namedSuffix
-	if model.item.type=="Tincture" and model.item.tinctureValues=="Final" and model.item.rarity=="MAGIC" then
+	if model.item.rarity=="MAGIC" then
 		local name,base=model.item.name or "",model.item.baseName or "";local start=base~="" and name:find(base,1,true)
 		if start then
 			namedPrefix=name:sub(1,start-1):match("^(.+)%s+$");namedSuffix=name:sub(start+#base):match("^%s+(.+)$")
 			if namedPrefix=="Superior" then namedPrefix=nil elseif namedPrefix then namedPrefix=namedPrefix:gsub("^Superior%s+","") end
 		end
+	end
+	-- Trust magic names only when every present name component is a known
+	-- affix for this base. Custom or unrecognized names remain unconstrained.
+	if namedPrefix or namedSuffix then
+		local prefixKnown,suffixKnown=not namedPrefix,not namedSuffix
+		for _,entry in ipairs(model.mods) do local mod=entry.mod
+			if mod.type=="Prefix" and mod.affix==namedPrefix then prefixKnown=true end
+			if mod.type=="Suffix" and mod.affix==namedSuffix then suffixKnown=true end
+		end
+		if not prefixKnown or not suffixKnown then namedPrefix,namedSuffix=nil,nil end
 	end
 	-- A named magic tincture affix can establish the tier even when a game
 	-- copy displays a quality-scaled value outside its native range. Keep the
