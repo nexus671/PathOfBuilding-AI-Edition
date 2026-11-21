@@ -30,7 +30,7 @@ function M.Open(build,projectId,onChanged)
 	button("toggle",side,h-102,actionWidth,"Mark done",function()
 		local changed=copyTable(project());local step=assert(changed.steps[selected],"Select a step first.")
 		step.done=not step.done;local ok,err=pcall(store.Upsert,store,changed)
-		if not ok then main:OpenMessagePopup("Crafting guide",ui.errorText(err));return end
+		if not ok then ui.errorPopup("Crafting guide",err);return end
 		if onChanged then onChanged() end;refresh(false)
 	end)
 	c.toggle.enabled=function() return selected~=nil and project().steps[selected]~=nil end
@@ -51,7 +51,7 @@ function M.Open(build,projectId,onChanged)
 				local step=changed.steps[index];step.action=edit.action.buf;step.stopWhen=edit.stop.buf;step.onFailure=edit.failure.buf;if detach then step.uniqueCraft=nil end
 				store:Upsert(changed)
 			end)
-			if not ok then main:OpenMessagePopup("Crafting guide",ui.errorText(err));return end
+			if not ok then ui.errorPopup("Crafting guide",err);return end
 			main:ClosePopup();if onChanged then onChanged() end;refresh(false)
 		end
 		edit.saveStep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,eh-48,160,28},"Keep step",function()
@@ -72,7 +72,7 @@ function M.Open(build,projectId,onChanged)
 				local removed=table.remove(changed.steps,index);local kept=store:Upsert(changed)
 				lastRemoved={index=index,step=removed,remaining=copyTable(kept.steps)};selected=nil;if onChanged then onChanged() end;refresh(false)
 			end)
-			if not ok then main:OpenMessagePopup("Crafting guide",ui.errorText(err)) end
+			if not ok then ui.errorPopup("Crafting guide",err) end
 		end)
 	end)
 	c.remove.enabled=c.toggle.enabled
@@ -83,7 +83,7 @@ function M.Open(build,projectId,onChanged)
 			table.insert(changed.steps,undo.index,copyTable(undo.step));store:Upsert(changed)
 			selected=undo.index;lastRemoved=nil;if onChanged then onChanged() end;refresh(false)
 		end)
-		if not ok then main:OpenMessagePopup("Crafting guide",ui.errorText(err)) end
+		if not ok then ui.errorPopup("Crafting guide",err) end
 	end)
 	c.undoRemove.enabled=function() return lastRemoved~=nil end
 	c.undoRemove.tooltipText="Restore the last removed step while this browser is open, if the guide steps have not changed."

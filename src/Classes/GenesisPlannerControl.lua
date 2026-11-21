@@ -91,7 +91,7 @@ function Panel.Open(original,onKeep)
 	local function button(key,x,y,width,label,callback)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,callback))
 	end
-	local function safe(fn) local ok,err=pcall(fn);if not ok then main:OpenMessagePopup("Genesis planner",ui.errorText(err)) end end
+	local function safe(fn) local ok,err=pcall(fn);if not ok then ui.errorPopup("Genesis planner",err) end end
 	local refresh;local canToggle=false
 	local function isAllocated(id) for _,value in ipairs(plan.nodes) do if value==id then return true end end;return false end
 	local function replacedChoice(id)

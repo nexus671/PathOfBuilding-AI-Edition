@@ -6,7 +6,7 @@ local browser=require("Classes.PlanningBrowserControl")
 local Panel={}
 local function safely(callback)
 	local ok,err=pcall(callback)
-	if not ok then main:OpenMessagePopup("Atlas planner",require("Modules.PlanningUI").errorText(err)) end
+	if not ok then require("Modules.PlanningUI").errorPopup("Atlas planner",err) end
 end
 local function button(x,y,w,label,callback)
 	return new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,w,24},label,function() safely(callback) end)
@@ -460,7 +460,7 @@ function Panel.Open(build,source,layout)
 			if not found then plan.mapDrafts[#plan.mapDrafts+1]=value end
 			change(plan);return value.id
 		end})
-		if not ok then main:OpenMessagePopup("Map draft unavailable",ui.errorText(err)) end
+		if not ok then ui.errorPopup("Map draft unavailable",err) end
 	end
 	local showMapDrafts
 	showMapDrafts=function()
@@ -659,17 +659,17 @@ function Panel.Library(build,layout)
 		local choice=controls.plans:GetSelValue()
 		if choice and choice.draft then
 			main:OpenConfirmPopup("Discard session draft","Discard this draft and its current-session recovery copies?","Discard",function()
-				local ok,err=pcall(layout.discardAtlasDraft,choice.val);if not ok then main:OpenMessagePopup("Atlas draft",ui.errorText(err));return end
+				local ok,err=pcall(layout.discardAtlasDraft,choice.val);if not ok then ui.errorPopup("Atlas draft",err);return end
 				main:ClosePopup();Panel.Library(build,layout)
 			end);return
 		end
 		local ok,err=pcall(function() local plan=selected(); store:Remove(plan.id) end)
-		if not ok then main:OpenMessagePopup("Saved Atlas plans",ui.errorText(err)); return end
+		if not ok then ui.errorPopup("Saved Atlas plans",err); return end
 		main:ClosePopup(); Panel.Library(build,layout)
 	end)
 	controls.undoRemove=button(360,112,160,"Undo removal",function()
 		local ok,err=pcall(function() store:UndoRemove() end)
-		if not ok then main:OpenMessagePopup("Saved Atlas plans",ui.errorText(err));return end
+		if not ok then ui.errorPopup("Saved Atlas plans",err);return end
 		main:ClosePopup();Panel.Library(build,layout)
 	end)
 	controls.undoRemove.enabled=function() return store.lastRemoved~=nil and not store.unreadable end

@@ -28,7 +28,7 @@ function M.Open(build,project,layout,snapshot)
 	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM",{expanded=true})
 	local function button(key,y,label,run)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,y,270,32},label,function()
-			local ok,err=pcall(run);if not ok then main:OpenMessagePopup("Unique crafting",ui.errorText(err)) end
+			local ok,err=pcall(run);if not ok then ui.errorPopup("Unique crafting",err) end
 		end))
 	end
 	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history),actions=copyTable(actions),redo=copyTable(redo),colourRollCounter=colourRollCounter,savedTrace=savedTrace,savedGuideHash=savedGuideHash,savedGuideLength=savedGuideLength} end
@@ -648,7 +648,7 @@ function M.Open(build,project,layout,snapshot)
 		view.keep.tooltipText=outputSuccess and "Keep this modeled result as the guide's target." or "The recipe did not reach its goal."
 		view.update=new("ButtonControl"):ButtonControl(ui.anchor,{192,rh-48,160,28},"Update recipe",function()
 			local ok,recipe=pcall(createRecipe)
-			if not ok then main:OpenMessagePopup("Unique crafting",ui.errorText(recipe));return end
+			if not ok then ui.errorPopup("Unique crafting",recipe);return end
 			main:OpenConfirmPopup("Update saved recipe","Replace the saved recipe with the current preview actions?\nUse build Save to persist the change.","Replace",function()
 				local updated=copyTable(draft);updated.nativeRecipe=recipe;draft=build.savers.CraftingProjects:Upsert(updated)
 				refresh(true);c.notice.label="^7Recipe updated. Save the build.";main:ClosePopup()
@@ -708,7 +708,7 @@ function M.Open(build,project,layout,snapshot)
 			if main.popups[1] and main.popups[1].controls==progress then main:ClosePopup();return true end
 		end
 		local job=tasks.start(build,run,function(result) if closeProgress() then showResult(result) end end,function(message)
-			if closeProgress() and message~="Calculation cancelled." and message~="The active build changed" then main:OpenMessagePopup("Unique crafting",ui.errorText(message)) end
+			if closeProgress() and message~="Calculation cancelled." and message~="The active build changed" then ui.errorPopup("Unique crafting",message) end
 		end,function(state) progress.status.label=string.format("Trial %d / %d | %d successes",state.trial or 0,state.trials or trials,state.successes or 0) end,"Unique recipe simulation slice")
 		job.owner=progress;main:OpenPopup(pw,ph,"Checking recipe",progress,nil,nil,"cancel")
 		end

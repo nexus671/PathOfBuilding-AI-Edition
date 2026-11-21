@@ -13,7 +13,7 @@ end
 
 local function safely(callback)
 	local ok,err = pcall(callback)
-	if not ok then main:OpenMessagePopup("Build proposal",tostring(err):match("^[^\n]+")) end
+	if not ok then ui.errorPopup("Build proposal",err) end
 end
 
 function Panel.Review()

@@ -5,7 +5,7 @@ function M.Mount(c,data,profile,w,h,options)
 	local selected;local selectedRule
 	local function button(key,x,y,width,title,run)
 		c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},title,function()
-			local ok,err=pcall(run);if not ok then main:OpenMessagePopup("Pickup modules",ui.errorText(err)) end
+			local ok,err=pcall(run);if not ok then ui.errorPopup("Pickup modules",err) end
 		end)
 	end
 	ui.label(c,"moduleHeading",16,124,"Reusable pickup modules",20)

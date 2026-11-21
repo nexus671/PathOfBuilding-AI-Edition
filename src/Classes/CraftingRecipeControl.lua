@@ -4,7 +4,7 @@ local sim=require("Modules.CraftingSimulator")
 local Panel={}
 local function button(controls,key,x,y,w,label,callback)
 	controls[key]=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,w,24},label,function()
-		local ok,message=pcall(callback);if not ok then main:OpenMessagePopup("Crafting recipe",require("Modules.PlanningUI").errorText(message)) end
+		local ok,message=pcall(callback);if not ok then require("Modules.PlanningUI").errorPopup("Crafting recipe",message) end
 	end)
 end
 local function edit(x,y,w,value,prompt,limit)
@@ -90,7 +90,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		if not ok then
 			controls.step:SelByValue(selected,"val");controls.graph.selectedKey=selected
 			for _,row in ipairs(controls.graph.list) do row.selected=row.step==selected end
-			main:OpenMessagePopup("Crafting recipe",ui.errorText(message));return
+			ui.errorPopup("Crafting recipe",message);return
 		end
 		selected=index;refresh()
 	end
@@ -110,7 +110,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 				canChoose=function(row) return options.trackUnlock and row.entry and row.entry.taskStatus=="untracked" end,
 				choose=function(row)
 					local ok,why=pcall(options.trackUnlock,{method="bench",modId=row.entry.modId},model)
-					if not ok then main:OpenMessagePopup("Recipe unlock",ui.errorText(why));return end
+					if not ok then ui.errorPopup("Recipe unlock",why);return end
 					main:ClosePopup();show()
 				end})
 		end

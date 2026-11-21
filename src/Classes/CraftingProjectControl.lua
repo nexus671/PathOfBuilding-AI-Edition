@@ -5,7 +5,7 @@ local ui=require("Modules.PlanningUI")
 local Panel = { }
 local function safely(callback)
 	local ok,err=pcall(callback)
-	if not ok then main:OpenMessagePopup("Crafting project",require("Modules.PlanningUI").errorText(err)) end
+	if not ok then require("Modules.PlanningUI").errorPopup("Crafting project",err) end
 end
 local function button(x,y,w,label,callback)
 	return new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,w,24},label,function() safely(callback) end)

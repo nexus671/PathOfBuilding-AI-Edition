@@ -15,7 +15,7 @@ function M.Open(profile,keep)
 	c.path=new("EditControl"):EditControl(ui.anchor,{16,h-140,w-284,26},"",nil,nil,1024)
 	local function loadFile()
 		local ok,contents=pcall(require("Modules.LootFilterImports").readFile,c.path.buf,filters.limit)
-		if not ok then main:OpenMessagePopup("Included filter",ui.errorText(contents));return end
+		if not ok then ui.errorPopup("Included filter",contents);return end
 		if c.name.buf=="" then c.name:SetText(c.path.buf:match("([^/\\]+)$") or "") end
 		c.text:SetText(contents)
 	end
@@ -41,10 +41,10 @@ function M.Open(profile,keep)
 	end
 	c.files.selFunc=function(_,entry)
 		local target=entry.val;local ok,why=pcall(saveCurrent,false)
-		if ok then refresh(target) else c.files:SelByValue(selected,"val");main:OpenMessagePopup("Included filter",ui.errorText(why)) end
+		if ok then refresh(target) else c.files:SelByValue(selected,"val");ui.errorPopup("Included filter",why) end
 	end
 	local function button(key,x,width,label,callback) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,h-96,width,28},label,function()
-		local ok,why=pcall(callback);if not ok then main:OpenMessagePopup("Included filter",require("Modules.PlanningUI").errorText(why)) end
+		local ok,why=pcall(callback);if not ok then require("Modules.PlanningUI").errorPopup("Included filter",why) end
 	end) end
 	button("saveFile",16,152,"Add / update",function() refresh(saveCurrent(true)) end)
 	button("removeFile",180,120,"Remove",function() assert(selected>0,"Select a file first");table.remove(draft.importFiles,selected);refresh(0) end)
@@ -63,7 +63,7 @@ function M.Open(profile,keep)
 		end})
 	end)
 	c.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-48,152,28},"Keep files",function()
-		local ok,why=pcall(saveCurrent,false);if not ok then main:OpenMessagePopup("Included filter",ui.errorText(why));return end
+		local ok,why=pcall(saveCurrent,false);if not ok then ui.errorPopup("Included filter",why);return end
 		keep(draft.importFiles);main:ClosePopup()
 	end)
 	c.cancel=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-48,140,28},"Cancel",function() main:ClosePopup() end)

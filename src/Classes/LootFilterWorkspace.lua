@@ -112,7 +112,7 @@ function M.Open(build,source,layout,controller)
 	local function reopen() layout.navigate("filters",snapshot()) end
 	local function openSource(origin)
 		local ok,reason=require("Modules.LootFilterDependencies").open(build,layout,origin)
-		if not ok then main:OpenMessagePopup("Linked source",reason) end
+		if not ok then ui.errorPopup("Linked source",reason) end
 	end
 	local function targetPreview()
 		local state=transient.filterSceneTargets;local dependency=require("Modules.LootFilterDependencies")
@@ -138,7 +138,7 @@ function M.Open(build,source,layout,controller)
 		local original=generationJob.profile;generationJob=nil;transient.filterGeneration=nil
 		if err or profile~=original then
 			dependencyTime=nil
-			main:OpenMessagePopup("Build pickups",(err=="changed" or profile~=original) and "The build or filter changed. Please try again." or ui.errorText(err))
+			ui.errorPopup("Build pickups",(err=="changed" or profile~=original) and "The build or filter changed. Please try again." or err)
 			return
 		end
 		profile.rules=result.rules;profile.trackBuildPickups=true;draft();reopen()
@@ -504,7 +504,7 @@ function M.Open(build,source,layout,controller)
 		button(c,"sampleEdit",16,282,100,"Configure",function() controller.EditSample(item,function(next) rememberSample(next);scenePage=1;compile();reopen() end,result and result.missingProperties and result.missingProperties[1]) end)
 		button(c,"pasteDrop",124,282,100,"Paste item",function()
 			local ok,sample=pcall(function() return require("Modules.LootFilterClipboard").parse(Paste(),settings.areaLevel) end)
-			if not ok then main:OpenMessagePopup("Paste item",ui.errorText(sample));return end
+			if not ok then ui.errorPopup("Paste item",sample);return end
 			rememberSample(sample);scenePage=1;compile();reopen()
 		end)
 		button(c,"sceneSettings",16,322,100,"Scene",function() require("Classes.LootFilterSceneControl").Open(settings,function(next) settings=next;reopen() end) end)

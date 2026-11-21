@@ -71,7 +71,7 @@ function M.Open(initial,keep)
 		if any then craft.artifactCost=cost end
 		require("Modules.CraftingRog").validate(craft);keep(craft);main:ClosePopup()
 		end)
-		if not ok then main:OpenMessagePopup("Rog offer",ui.errorText(err)) end
+		if not ok then ui.errorPopup("Rog offer",err) end
 	end),"primary")
 	controls.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{width-132,height-44,116,28},"Cancel",function() main:ClosePopup() end))
 	ui.style(controls,{keep=true});for _,control in pairs(controls) do control.layoutAudit="rog-offer" end

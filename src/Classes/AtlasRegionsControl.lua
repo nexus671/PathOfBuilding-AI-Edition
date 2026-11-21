@@ -62,7 +62,7 @@ function M.Open(plan,keep)
 		confirm.apply=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,ph-48,180,28},"Record run",function()
 			local completed={};for i,mechanic in ipairs(involved) do if confirm["objective"..i].state then completed[#completed+1]=mechanic end end
 			local ok,result=pcall(regions.complete,draft,name,completed)
-			if not ok then main:OpenMessagePopup("Shaped Regions",ui.errorText(result));return end
+			if not ok then ui.errorPopup("Shaped Regions",result);return end
 			draft=result;selected=nil;main:ClosePopup();refresh()
 		end),"primary")
 		confirm.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{pw-156,ph-48,140,28},"Cancel",function() main:ClosePopup() end))

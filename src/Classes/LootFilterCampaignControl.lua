@@ -98,7 +98,7 @@ function M.Open(build,value,onKeep,mode)
 	updateSummary()
 	button("keep",16,h-42,220,"Keep pickup policy",function()
 		local ok,next=pcall(function() local value=read();policy.rules(value,nil,mode);return value end)
-		if not ok then main:OpenMessagePopup("Check pickup policy",ui.errorText(next));return end
+		if not ok then ui.errorPopup("Check pickup policy",next);return end
 		onKeep(next);main:ClosePopup()
 	end)
 	button("reset",252,h-42,180,"Remove policy",function() onKeep(nil);main:ClosePopup() end)

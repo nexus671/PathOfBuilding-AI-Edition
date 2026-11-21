@@ -277,7 +277,7 @@ function Panel.Open(build,source,layout)
 				local replacement=copyTable(data);local list=replacement[keys[page]]
 				for i,e in ipairs(list) do if e.id==selectedEntry.id then table.remove(list,i);break end end
 				local ok,err=pcall(function() saver:Replace(replacement) end)
-				if ok then selected=nil;reopen() else main:OpenMessagePopup("Entry is still linked",tostring(err):match("[^\n]+")) end
+				if ok then selected=nil;reopen() else ui.errorPopup("Entry is still linked",err) end
 			end)
 		end)
 		c.remove.enabled=function() return selectedEntry~=nil end

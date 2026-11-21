@@ -7,7 +7,7 @@ function M.Open(build,plan,keep,inspectRoute,view,onEdit,onCancel)
 	local function button(key,x,y,width,label,run)
 		c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,function()
 			local ok,result=pcall(run)
-			if not ok then main:OpenMessagePopup("Atlas strategy",ui.errorText(result)) else return result end
+			if not ok then ui.errorPopup("Atlas strategy",result) else return result end
 		end)
 	end
 	c.page=new("DropDownControl"):DropDownControl(ui.anchor,{16,24,220,28},{"Progression","Strategy"})

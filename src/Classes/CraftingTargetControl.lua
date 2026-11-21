@@ -9,7 +9,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 	end
 	local function button(key,x,y,w,text,callback)
 		controls[key]=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,w,24},text,function()
-			local ok,message=pcall(callback);if not ok then main:OpenMessagePopup("Crafting targets",require("Modules.PlanningUI").errorText(message)) end
+			local ok,message=pcall(callback);if not ok then require("Modules.PlanningUI").errorPopup("Crafting targets",message) end
 		end)
 	end
 	groupIndex=groupIndex or #groups

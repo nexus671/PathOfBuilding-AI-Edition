@@ -23,7 +23,7 @@ function M.Open(model,configured,onUse)
 			assert(#ids > 0,"Choose at least one fossil")
 			onUse({method="fossil",fossils=ids,tangledOutcome=popup.tangled:GetSelValueByKey("id")});main:ClosePopup()
 		end)
-		if not ok then main:OpenMessagePopup("Native crafting",ui.errorText(err)) end
+		if not ok then ui.errorPopup("Native crafting",err) end
 	end))
 	popup.close=ui.styleButton(new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{508,260,116,24},"Cancel",function() main:ClosePopup() end))
 	main:OpenPopup(640,310,"Fossil combination",popup,nil,nil,"close")

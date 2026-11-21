@@ -77,7 +77,7 @@ function M.Open(options)
 	end)
 	button("pasteMap",16+left-196,66,96,"Paste map",function()
 		local ok,result=pcall(require("Modules.MapClipboard").parse,Paste())
-		if not ok then main:OpenMessagePopup("Paste map",ui.errorText(result));return end
+		if not ok then ui.errorPopup("Paste map",result);return end
 		local state=result.state;local popup={}
 		local label=map.source().bases[state.baseId].name.." | Tier "..state.tier.." | "..(state.unidentified and "Modifiers unknown" or #state.selected.." modifiers")..(state.twiceCorrupted and " | Twice Corrupted" or state.corrupted and " | Corrupted" or "")..(state.mirrored and " | Mirrored" or "")..(state.unidentified and " | Unidentified" or "")
 		ui.description(popup,"review",16,28,608,108,{label,result.notes[1],result.notes[2],result.notes[3],"Using this map replaces the current draft's working modifiers and targets."},14)
@@ -99,7 +99,7 @@ function M.Open(options)
 		popup.value=new("EditControl"):EditControl(ui.anchor,{340,116,120,26},quality and tostring(quality.value) or "20",nil,"%D",3)
 		popup.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,164,180,28},"Keep quality",function()
 			local ok,result=pcall(require("Modules.MapQuality").validate,{kind=popup.kind.buf,value=tonumber(popup.value.buf)})
-			if not ok then main:OpenMessagePopup("Check quality",ui.errorText(result));return end
+			if not ok then ui.errorPopup("Check quality",result);return end
 			quality=result;main:ClosePopup();refresh()
 		end)
 		popup.clear=new("ButtonControl"):ButtonControl(ui.anchor,{208,164,150,28},"Clear quality",function() quality=nil;main:ClosePopup();refresh() end)
@@ -240,7 +240,7 @@ function M.Open(options)
 			local id=popup.choice:GetSelValueByKey("val");local next
 			if id~="" then
 				next={id=id};if popup.value.buf~="" then next.value=tonumber(popup.value.buf) end
-				local ok,reason=pcall(module.describe,next,tonumber(controls.level.buf));if not ok then main:OpenMessagePopup("Check implicit",ui.errorText(reason));return end
+				local ok,reason=pcall(module.describe,next,tonumber(controls.level.buf));if not ok then ui.errorPopup("Check implicit",reason);return end
 			end
 			implicit=next;main:ClosePopup();refresh()
 		end)
@@ -263,13 +263,13 @@ function M.Open(options)
 	button("currency",right+math.floor(rightWidth/2)+6,height-88,math.floor(rightWidth/2)-6,"Use currency",function()
 		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects,plannedDeified=plannedDeified,plannedAllflame=plannedAllflame}
 		local ok,actions=pcall(require("Modules.MapCurrency").options,current)
-		if not ok then main:OpenMessagePopup("Map currency",ui.errorText(actions));return end
+		if not ok then ui.errorPopup("Map currency",actions);return end
 		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon=(entry.id=="divine_vessel" or entry.id=="clear_deified_plan") and require("Modules.CraftingWorkbench").icon("divine_vessel") or "Assets/Crafting/"..(entry.id:match("^vaal_") and "vaal" or entry.id)..".png",details={entry.reason or entry.detail or (entry.id=="clear_deified_plan" and "Remove only the hypothetical plan; copied enchantments remain unchanged." or entry.id=="divine_vessel" and "Plan Deified boss bonuses; eligibility and enchantment interactions are unverified." or entry.id=="originator" and "Removes a random suffix and samples a rare-only replacement; some outcomes and weights are unverified." or entry.id:match("^vaal_") and "Conditional outcome only, not a full Vaal Orb roll; outcome odds are unknown." or "Available for this modeled map."),"Experimental map crafting; no real currency is consumed.",map.isNightmare(baseId) and "Six modifiers: exclusive prefix and suffix first, then four weighted draws; order is unverified." or "Counts, selection and independent uniform stat rolls are estimates.",observedEffects and "Observed effects are not modeled and can change results." or "Unmatched translations remain ranges; some restrictions are unverified."}} end
 		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",canChoose=function(entry) return entry.available end,choose=function(entry)
 			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects,plannedDeified=plannedDeified,plannedAllflame=plannedAllflame}
 			local attemptSeed=rollSeed;rollSeed=rollSeed*16807%2147483647
 			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,attemptSeed)
-			if not ok then main:OpenMessagePopup("Currency unavailable",ui.errorText(result));return end
+			if not ok then ui.errorPopup("Currency unavailable",result);return end
 			selected=result.state.selected;rolls=result.state.rolls;implicit=result.state.implicit and copyTable(result.state.implicit) or nil
 			local rarityValue=result.state.corrupted and "corrupted_"..result.state.rarity or result.state.rarity
 			local clearedEstimate=result.state.corrupted and estimateSettings~=nil
@@ -291,7 +291,7 @@ function M.Open(options)
 			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil,twiceCorrupted=twiceCorrupted and isCorrupted() or nil,mirrored=mirrored or nil,unidentified=unidentified or nil,vaalPreview=vaalPreview or nil,plannedDeified=plannedDeified or nil,plannedAllflame=plannedAllflame,implicit=implicit and copyTable(implicit) or nil,quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
 			if estimateSettings then entry.estimate=copyTable(estimateSettings) end
 			local ok,result=pcall(options.keep,entry)
-			if not ok then main:OpenMessagePopup("Map draft",ui.errorText(result));return end
+			if not ok then ui.errorPopup("Map draft",result);return end
 			draftId=result;draftNeedsUpdate=false;controls.status.label="^7Draft kept. Keep the plan and save the build."
 		end)
 		controls.keep.tooltipText="Keep this draft using current map data in the Atlas plan; keep the plan and save the build to persist it."

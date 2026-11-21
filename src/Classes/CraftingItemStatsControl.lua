@@ -16,7 +16,7 @@ function Panel.Open(goals,onKeep)
 			if next(result) then stats.validate(result) else result=nil end
 			onKeep(result);main:ClosePopup()
 		end)
-		if not ok then main:OpenMessagePopup("Item stat goals",require("Modules.PlanningUI").errorText(message)) end
+		if not ok then require("Modules.PlanningUI").errorPopup("Item stat goals",message) end
 	end)
 	controls.close=new("ButtonControl"):ButtonControl(anchor,{388,372,116,26},"Close",function() main:ClosePopup() end)
 	require("Modules.PlanningUI").style(controls,{keep=true})

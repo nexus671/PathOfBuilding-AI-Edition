@@ -12,7 +12,7 @@ function M.Open(profile,id,keep)
 	local controls={};local selected;local refresh
 	local function button(key,x,y,width,title,callback)
 		controls[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,26},title,function()
-			local ok,err=pcall(callback);if not ok then main:OpenMessagePopup("Stack styles",ui.errorText(err)) end
+			local ok,err=pcall(callback);if not ok then ui.errorPopup("Stack styles",err) end
 		end)
 	end
 	ui.label(controls,"intro",16,34,"Choose visibility and appearance for larger stacks in this tier.",16)

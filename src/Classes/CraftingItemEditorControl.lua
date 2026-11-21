@@ -11,7 +11,7 @@ function Panel.Open(model,input,onKeep)
 	local extra=(hasOffers or hasKatakohi) and 34 or 0
 	local function button(key,x,y,w,text,callback)
 		controls[key]=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,w,24},text,function()
-			local ok,message=pcall(callback);if not ok then main:OpenMessagePopup("Edit hypothetical item",require("Modules.PlanningUI").errorText(message)) end
+			local ok,message=pcall(callback);if not ok then require("Modules.PlanningUI").errorPopup("Edit hypothetical item",message) end
 		end)
 	end
 	local function edit(key,x,y,w,value,prompt)
@@ -119,7 +119,7 @@ function Panel.Open(model,input,onKeep)
 				local choices={};for i=1,3 do local id=popup["choice"..i]:GetSelValueByKey("val");if id and id~="" then choices[#choices+1]=id end end
 				return sim.recordJewelOffers(model,state,choices,popup.fractured:GetSelValue()=="Fractured veil")
 			end)
-			if not ok then main:OpenMessagePopup("Jewel unveil choices",require("Modules.PlanningUI").errorText(result));return end
+			if not ok then require("Modules.PlanningUI").errorPopup("Jewel unveil choices",result);return end
 			state=result;refresh();main:ClosePopup()
 		end)
 		popup.clear=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{232,222,200,28},"Clear choices",function() state=copyTable(state);state.veil=nil;refresh();main:ClosePopup() end)
@@ -142,7 +142,7 @@ function Panel.Open(model,input,onKeep)
 				local ids={};for i=1,3 do local id=popup["choice"..i]:GetSelValueByKey("val");if id and id~="" then ids[#ids+1]=id end end
 				return sim.setKatakohi(model,state,ids)
 			end)
-			if not ok then main:OpenMessagePopup("Socket enchantments",require("Modules.PlanningUI").errorText(result));return end
+			if not ok then require("Modules.PlanningUI").errorPopup("Socket enchantments",result);return end
 			state=result;refresh();main:ClosePopup()
 		end)
 		popup.close=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{644,208,116,28},"Cancel",function() main:ClosePopup() end)

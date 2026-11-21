@@ -11,7 +11,7 @@ local pageHints={["Target conditions"]="Choose the modifiers and item properties
 local function button(controls,key,x,y,w,label,callback)
 	controls[key]=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,w,24},label,function()
 		local ok,err=pcall(callback)
-		if not ok then main:OpenMessagePopup("Native crafting",require("Modules.PlanningUI").errorText(err)) else return err end
+		if not ok then require("Modules.PlanningUI").errorPopup("Native crafting",err) else return err end
 	end)
 	ui.styleButton(controls[key])
 end
@@ -734,7 +734,7 @@ function Panel.Open(build,project,layout)
 			end
 			if draft.targetItem and draft.targetItem:match("%S") and draft.targetItem~=target then
 				main:OpenConfirmPopup("Replace crafting target","Replace the target item in this crafting guide?\nUse build Save to persist the change.","Replace",function()
-					local ok,err=pcall(keep);if not ok then main:OpenMessagePopup("Native crafting",ui.errorText(err)) end
+					local ok,err=pcall(keep);if not ok then ui.errorPopup("Native crafting",err) end
 				end)
 			else keep() end
 		end)

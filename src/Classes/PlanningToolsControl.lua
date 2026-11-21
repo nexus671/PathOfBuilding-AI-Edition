@@ -98,7 +98,7 @@ local function openFilter(build,filterId,ruleId,scope)
 end
 local function searchPreset(build,profile)
 	local entries={};local ok,catalog=pcall(require("Modules.LootFilterLibrary").catalog,profile)
-	if not ok then main:OpenMessagePopup("Search base filter rules",require("Modules.PlanningUI").errorText(catalog));return end
+	if not ok then require("Modules.PlanningUI").errorPopup("Search base filter rules",catalog);return end
 	for _,item in ipairs(catalog) do
 		entries[#entries+1]={id=item.rule.id,label=item.rule.title,search=item.rule.text,category=item.category,details={item.tier,"Open this base filter rule in the editor.","Editing creates a personal override."}}
 	end

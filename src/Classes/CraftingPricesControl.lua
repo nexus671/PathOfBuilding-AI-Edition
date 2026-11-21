@@ -68,7 +68,7 @@ function Panel.Open(model,state,actions,book,currency,onKeep,books,recipeState)
 				controls.currency:SetText(book.currency);controls.source:SetText(book.source);originalTime=os.date(timeFormat,book.quotedAt);controls.quotedAt:SetText(originalTime)
 				refresh();main:ClosePopup()
 			end)
-			if not ok then main:OpenMessagePopup("Copy resource prices",ui.errorText(message)) end
+			if not ok then ui.errorPopup("Copy resource prices",message) end
 		end)
 		c.close=new("ButtonControl"):ButtonControl(ui.anchor,{508,128,116,28},"Cancel",function() main:ClosePopup() end)
 		ui.style(c,{keep=true});for _,control in pairs(c) do control.layoutAudit="crafting-price-copy" end
@@ -119,7 +119,7 @@ function Panel.Open(model,state,actions,book,currency,onKeep,books,recipeState)
 			local saved=prices.normalized({currency=controls.currency.buf:match("^%s*(.-)%s*$"),source=controls.source.buf:match("^%s*(.-)%s*$"),quotedAt=quotedAt,values=values},model)
 			onKeep(saved);main:ClosePopup()
 		end)
-		if not ok then main:OpenMessagePopup("Resource prices",ui.errorText(message)) end
+		if not ok then ui.errorPopup("Resource prices",message) end
 	end)
 	controls.close=new("ButtonControl"):ButtonControl(ui.anchor,{width-132,height-48,116,28},"Cancel",function() main:ClosePopup() end)
 	ui.style(controls,{keep=true});for _,control in pairs(controls) do control.layoutAudit="crafting-prices" end

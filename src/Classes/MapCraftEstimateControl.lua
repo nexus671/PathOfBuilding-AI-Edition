@@ -146,7 +146,7 @@ function M.Open(build,options)
 		popup.currency=new("EditControl"):EditControl(ui.anchor,{212,112,180,26},price and price.currency or "chaos",nil,nil,24)
 		popup.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,160,150,28},"Keep price",function()
 			local ok,value=pcall(require("Modules.MapCraftEstimate").validatePrice,{amount=tonumber(popup.amount.buf),currency=popup.currency.buf})
-			if not ok then main:OpenMessagePopup("Check orb price",ui.errorText(value));return end
+			if not ok then ui.errorPopup("Check orb price",value);return end
 			price=value;invalidate();main:ClosePopup();report({"Manual price set: "..tostring(price.amount).." "..price.currency.." per "..action..". Run an estimate to calculate costs.",options.saveSettings and "Keep targets again to save the price in this map draft." or ""})
 		end)
 		popup.clear=new("ButtonControl"):ButtonControl(ui.anchor,{174,160,150,28},"Clear price",function() price=nil;invalidate();main:ClosePopup();report({"Orb price cleared. Run an estimate to see currency counts.",options.saveSettings and "Keep targets again to save the change in this map draft." or ""}) end)
@@ -164,7 +164,7 @@ function M.Open(build,options)
 	button("keepSettings",174,height-48,170,"Keep targets",function()
 		local settings={wantedGroups=copyTable(groups),avoid=copyTable(avoid),price=price and copyTable(price) or nil,trials=tonumber(controls.trials.buf),maxAttempts=tonumber(controls.attempts.buf)}
 		local ok,value=pcall(require("Modules.AtlasPlanner").validateMapEstimate,settings)
-		if not ok then main:OpenMessagePopup("Map targets",ui.errorText(value));return end
+		if not ok then ui.errorPopup("Map targets",value);return end
 		options.saveSettings(value);settingsKept=true;report({"Targets ready. Keep the map draft, keep the Atlas plan, then save the build."})
 	end)
 	controls.keepSettings.shown=options.saveSettings~=nil;controls.keepSettings.enabled=function() return not active and options.saveSettings~=nil end

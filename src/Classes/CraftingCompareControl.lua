@@ -86,7 +86,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 				savePage();local row=rows[position(slot)];local recipe=copyTable(recipes[row.choice].recipe);recipe.initialState=copyTable(state)
 				local function keep()
 					local ok,message=pcall(settings.keepRecipe,recipe)
-					if not ok then main:OpenMessagePopup("Keep recipe",ui.errorText(message));return end
+					if not ok then ui.errorPopup("Keep recipe",message);return end
 					if savedIndex then recipes[savedIndex].recipe=copyTable(recipe)
 					else add("Saved recipe",copyTable(recipe));savedIndex=#recipes end
 					for index=1,3 do controls["route"..index]:ResetSearch() end
@@ -112,7 +112,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 				ui.label(popup,"note",16,96,"Resource prices are shared; comparison overrides are not saved.",14)
 				popup.save=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-48,150,28},"Save alternative",function()
 					local ok,result=pcall(settings.keepAlternative,popup.name.buf,recipe)
-					if not ok then main:OpenMessagePopup("Save alternative",ui.errorText(result));return end
+					if not ok then ui.errorPopup("Save alternative",result);return end
 					addAlternative(result);row.choice=#recipes;row.prices[row.choice]=""
 					for index=1,3 do controls["route"..index]:ResetSearch() end;showPage();invalidate()
 					main:ClosePopup();main:OpenMessagePopup("Recipe kept","Alternative saved to this project. Use build Save to persist.")
@@ -122,7 +122,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 					popup.update=new("ButtonControl"):ButtonControl(ui.anchor,{178,h-48,160,28},"Update saved",function()
 						main:OpenConfirmPopup("Update alternative","Replace the saved alternative with this route?\nThe comparison's item state and targets will be saved.","Update",function()
 							local ok,result=pcall(settings.updateAlternative,origin.name,recipe)
-							if not ok then main:OpenMessagePopup("Update alternative",ui.errorText(result));return end
+							if not ok then ui.errorPopup("Update alternative",result);return end
 							origin.recipe=copyTable(result.recipe)
 							local comparison=copyTable(result.recipe);comparison.targets=copyTable(targets);comparison.requirements=requirements and copyTable(requirements);comparison.requiredGroups=requiredGroups
 							recipes[origin.index].recipe=comparison;row.choice=origin.index;row.prices[row.choice]=""
@@ -168,7 +168,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 				popup.track=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-112,200,28},"Track pickups",function()
 					local entry=library[selected];local nextValue=not entry.trackPickups
 					local ok,message=pcall(settings.trackAlternative,entry.name,nextValue)
-					if not ok then main:OpenMessagePopup("Track pickups",ui.errorText(message));return end
+					if not ok then ui.errorPopup("Track pickups",message);return end
 					entry.trackPickups=nextValue;refreshList()
 				end)
 				popup.track.label=function() local entry=library[selected];return entry and entry.trackPickups and "Stop tracking pickups" or "Track pickups" end
@@ -178,7 +178,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 			end
 			popup.rename=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-70,140,28},"Rename",function()
 				local entry=library[selected];local ok,name=pcall(settings.renameAlternative,entry.name,popup.name.buf)
-				if not ok then main:OpenMessagePopup("Rename recipe",ui.errorText(name));return end
+				if not ok then ui.errorPopup("Rename recipe",name);return end
 				entry.name=name;entries[entry.index].label="Saved: "..name;recipes[entry.index].label=entries[entry.index].label
 				for index=1,3 do controls["route"..index]:ResetSearch() end;popup.name:SetText(name);refreshList();invalidate()
 			end)
@@ -187,7 +187,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 				local entry=library[selected]
 				main:OpenConfirmPopup("Remove alternative","Remove this saved alternative from the project?\nAny route already selected remains in this comparison.","Remove",function()
 					local ok,message=pcall(settings.removeAlternative,entry.name)
-					if not ok then main:OpenMessagePopup("Remove recipe",ui.errorText(message));return end
+					if not ok then ui.errorPopup("Remove recipe",message);return end
 					entries[entry.index].label="Unsaved: "..entry.name;recipes[entry.index].label=entries[entry.index].label
 					entry.removed=true;table.remove(library,selected);selected=nil;popup.name:SetText("");for index=1,3 do controls["route"..index]:ResetSearch() end;refreshList();invalidate()
 				end)
@@ -197,7 +197,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 				local entry=library[selected];local recipe=copyTable(entry.recipe)
 				local function keep()
 					local ok,message=pcall(settings.keepRecipe,recipe)
-					if not ok then main:OpenMessagePopup("Make primary",ui.errorText(message));return end
+					if not ok then ui.errorPopup("Make primary",message);return end
 					local comparison=copyTable(recipe);comparison.targets=copyTable(targets);comparison.requirements=requirements and copyTable(requirements);comparison.requiredGroups=requiredGroups
 					if savedIndex then recipes[savedIndex].recipe=comparison else add("Saved recipe",comparison);savedIndex=#recipes end
 					for index=1,3 do controls["route"..index]:ResetSearch() end;invalidate()
@@ -225,7 +225,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 			end
 			return routes
 		end)
-		if not ok then main:OpenMessagePopup("Compare recipes",ui.errorText(captured));return end
+		if not ok then ui.errorPopup("Compare recipes",captured);return end
 		chartResults=nil
 		local job=tasks.start(build,function(checkpoint)
 			local results={}

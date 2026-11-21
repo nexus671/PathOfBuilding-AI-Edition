@@ -45,6 +45,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_tincture_hint.lua")
     sources.append(ROOT / "tools/test_combined_fossil_ui.lua")
     sources.append(ROOT / "tools/test_vendor_review_ui.lua")
+    sources.append(ROOT / "tools/test_bounded_planning_errors.lua")
     sources.append(ROOT / "tools/test_modifier_paging_ui.lua")
     sources.append(ROOT / "tools/test_crafting_replay_ui.lua")
     sources.append(ROOT / "tools/test_genesis_ui.lua")
@@ -132,6 +133,10 @@ def main():
                                         env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "ai-crafting-review-controls.log").write_text(ai_crafting_review.stdout)
     assert ai_crafting_review.returncode == 0, ai_crafting_review.stdout
+    bounded_errors = subprocess.run(lua_command + ["../tools/test_bounded_planning_errors.lua"], cwd=ROOT / "src",
+                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "bounded-planning-errors.log").write_text(bounded_errors.stdout)
+    assert bounded_errors.returncode == 0, bounded_errors.stdout
     replay = subprocess.run(lua_command + ["../tools/test_crafting_replay_ui.lua", str(frames)], cwd=ROOT / "src",
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-replay-controls.log").write_text(replay.stdout)

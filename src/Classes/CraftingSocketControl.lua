@@ -42,7 +42,7 @@ function M.Open(model,input,keep)
 			assert(abyssCount==abyss,"Keep the existing number of Abyss sockets; change their source separately.")
 			return sim.validateState(model,candidate)
 		end)
-		if not ok then main:OpenMessagePopup("Socket layout",ui.errorText(result));return end
+		if not ok then ui.errorPopup("Socket layout",result);return end
 		keep(result);main:ClosePopup()
 	end),"primary")
 	controls.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{612,270,116,28},"Cancel",function() main:ClosePopup() end))

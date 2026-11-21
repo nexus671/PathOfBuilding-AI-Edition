@@ -21,13 +21,18 @@ describe("Crafting projects", function()
 		empty:Click();assert.matches("Unable to complete this action.",message(),1,true)
 	end)
 	it("keeps long guarded errors readable and closable", function()
-		local ui=require("Modules.PlanningUI")
-		local detail=string.rep("Check the saved item and its crafting conditions. ",100).."Final guidance."
-		local bad=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{0,0,120,28},"Test",function() error(detail,0) end))
-		bad:Click();local popup=main.popups[1];assert.is_true(popup.width<=main.screenW-40);assert.is_true(popup.height<=main.screenH-48)
-		local lines={};for _,row in ipairs(popup.controls.message.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
-		assert.matches("Final guidance.",table.concat(lines," "),1,true);assert.is_true(popup.controls.close:IsEnabled())
-		popup.controls.close:Click();assert.is_nil(main.popups[1])
+		local headless=require("Modules.HeadlessUI").install({width=960,height=640});headless:bind(build)
+		local ok,err=pcall(function()
+			local ui=require("Modules.PlanningUI")
+			local detail=string.rep("Check the saved item and its crafting conditions. ",100).."Final guidance."
+			local bad=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{0,0,120,28},"Test",function() error(detail,0) end))
+			bad:Click();local popup=main.popups[1];assert.is_true(popup.width<=main.screenW-40);assert.is_true(popup.height<=main.screenH-48)
+			local lines={};for _,row in ipairs(popup.controls.message.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+			assert.matches("Final guidance.",table.concat(lines," "),1,true);assert.is_true(popup.controls.close:IsEnabled())
+			headless:frame();assert.is_true(popup.controls.message.controls.scrollBar.offsetMax>0)
+			popup.controls.close:Click();assert.is_nil(main.popups[1])
+		end)
+		headless:restore();assert.is_true(ok,err)
 	end)
 
 	it("previews a target and project separately without changing or saving the live build", function()
