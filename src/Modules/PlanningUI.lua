@@ -140,7 +140,7 @@ function M.styleButton(control,kind)
 		local run=control.onClick
 		control.onClick=function(...)
 			local ok,result=pcall(run,...)
-			if not ok then main:OpenMessagePopup("Planning tool",tostring(result):match("[^\n]+")) else return result end
+			if not ok then main:OpenMessagePopup("Planning tool",M.errorText(result)) else return result end
 		end
 		control.planningGuarded=true
 	end

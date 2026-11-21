@@ -9,6 +9,17 @@ describe("Crafting projects", function()
 			targetItem="Rarity: RARE\nPlanned Hat\nIron Hat\n+100 to maximum Life",goals={"100 Life"},
 			steps={{action="Choose and test a method in Craft of Exile",stopWhen="Target modifiers present",onFailure="Stop at budget limit"}}}
 	end
+	it("presents guarded planning errors without source paths or missing messages", function()
+		local ui=require("Modules.PlanningUI")
+		local function message()
+			local labels={};for _,control in pairs(main.popups[1].controls) do if type(control.label)=="string" then labels[#labels+1]=control.label end end
+			return table.concat(labels," ")
+		end
+		local bad=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{0,0,120,28},"Test",function() error("C:\\work\\test.lua:12: Invalid value",0) end))
+		bad:Click();assert.matches("Invalid value",message(),1,true);assert.is_nil(message():find(".lua:",1,true));main:ClosePopup()
+		local empty=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{0,0,120,28},"Test",function() error(nil,0) end))
+		empty:Click();assert.matches("Unable to complete this action.",message(),1,true)
+	end)
 
 	it("previews a target and project separately without changing or saving the live build", function()
 		local entry=project()
@@ -99,7 +110,8 @@ describe("Crafting projects", function()
 		assert.equal(3,#store.projects[1].steps);assert.is_true(store.projects[1].steps[1].done);assert.equal("Second recovery",store.projects[1].steps[2].onFailure)
 		main.popups[1].controls.edit:Click();c=main.popups[1].controls;c.steps:SetText("Repeat craft\nFinish craft");c.wizardPage:SelByValue("Method & budget");c.next:Click()
 		assert.equal("Planning tool",main.popups[1].title);local warning={};for _,control in pairs(main.popups[1].controls) do if type(control.label)=="string" then warning[#warning+1]=control.label end end
-		assert.matches("Browse guide steps",table.concat(warning," "),1,true);main:ClosePopup();main:ClosePopup()
+		local message=table.concat(warning," ");assert.matches("Browse guide steps",message,1,true);assert.is_nil(message:find(".lua:",1,true))
+		main:ClosePopup();assert.equal("Repeat craft\nFinish craft",main.popups[1].controls.steps.buf);main:ClosePopup()
 		main.popups[1].controls.browseSteps:Click();c=main.popups[1].controls;c.results.planningSelect(c.results.list[2]);c.remove:Click()
 		assert.equal("Remove crafting step",main.popups[1].title);main.popups[1].controls.confirm:Click()
 		assert.equal(2,#store.projects[1].steps);assert.is_true(store.projects[1].steps[1].done);assert.equal("First result",store.projects[1].steps[1].stopWhen)
