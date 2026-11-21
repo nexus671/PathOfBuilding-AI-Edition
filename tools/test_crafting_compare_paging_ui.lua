@@ -27,4 +27,14 @@ return function(ui, frame, build, sim, jobs)
 		assert(results:find(essences[1].label,1,true) and results:find(essences[2].label,1,true) and results:find(harvestLabel,1,true),"Compared choices were not identified")
 		ui:click("close")
 	end
+	do
+		local c=require("Classes.CraftingCompareControl").Open(build,compareRaw,model.initial,{}, {minAffixes=1},nil,{method="transmute"},nil,{budget=2,trials=2,seed=1,currency="chaos"})
+		ui:click("edit1");ui:click("add");frame("crafting-comparison-edit-recipe");ui:click("keep")
+		ui:click("edit2");ui:click("add");ui:click("keep");frame("crafting-comparison-custom-recipes")
+		assert(c.route1:GetSelValue().label:find("Custom recipe 1",1,true) and c.route2:GetSelValue().label:find("Custom recipe 2",1,true),"Comparison lost edited recipes")
+		ui:click("run");for i=1,2000 do if not jobs.job then break end;jobs.tick(build) end;assert(not jobs.job,"Custom recipe comparison did not finish")
+		local lines={};for _,row in ipairs(c.results.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;local results=table.concat(lines," ")
+		assert(results:find("Custom recipe 1",1,true) and results:find("Custom recipe 2",1,true),"Custom recipe results were not identified")
+		ui:click("close")
+	end
 end

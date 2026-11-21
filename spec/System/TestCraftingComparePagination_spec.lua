@@ -46,4 +46,21 @@ describe("Recipe comparison pagination",function()
   assert.is_truthy(text:find(essences[1].label,1,true));assert.is_truthy(text:find(essences[2].label,1,true))
  end)
 
+ it("creates independent multi-step comparison recipes without changing the saved recipe",function()
+  local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw);local saved={steps={{method="alchemy"}},targets={}};local seen={}
+  sim.simulate=function(_,recipe,options)
+   seen[#seen+1]={recipe=copyTable(recipe),prices=copyTable(options.actionPrices or {})}
+   return {successChance=50,confidenceLow=25,confidenceHigh=75,meanActions=1,trials=2,transitionErrors={},warnings={},actionDistribution={{actions=1,trials=2,successes=1}}}
+  end
+  local c=require("Classes.CraftingCompareControl").Open(build,raw,model.initial,{}, {minAffixes=1},nil,{method="transmute"},saved,{budget=2,trials=2,seed=1,currency="chaos"})
+  c.price1:SetText("11",true);c.edit1:Click();local edit=main.popups[1].controls;edit.add:Click();edit.keep:Click()
+  assert.matches("Custom recipe 1",c.route1:GetSelValue().label);assert.is_false(c.price1:IsEnabled())
+  c.edit2:Click();edit=main.popups[1].controls;edit.add:Click();edit.keep:Click()
+  assert.matches("Custom recipe 2",c.route2:GetSelValue().label);assert.equal(1,#saved.steps)
+  c.addRoute:Click();c.previousPage:Click();assert.matches("Custom recipe 1",c.route1:GetSelValue().label);assert.matches("Custom recipe 2",c.route2:GetSelValue().label)
+  c.run:Click();local tasks=require("Modules.CraftingTasks");while tasks.job do tasks.tick(build) end
+  assert.equal(4,#seen);assert.equal(2,#seen[1].recipe.steps);assert.equal("transmute",seen[1].recipe.steps[1].method);assert.equal(2,#seen[2].recipe.steps);assert.equal("alchemy",seen[2].recipe.steps[1].method);assert.equal("transmute",seen[2].recipe.steps[2].method)
+  assert.is_nil(next(seen[1].prices));assert.is_nil(next(seen[2].prices))
+ end)
+
 end)

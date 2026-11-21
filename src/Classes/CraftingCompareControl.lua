@@ -28,7 +28,7 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 	ui.label(controls,"hint",16,50,"Prices in "..settings.currency..". Saved quotes apply to every route; search the route dropdown to find a craft.",14)
 	-- Three controls per page keep the dialog compact; the route list itself
 	-- has no fixed count limit. Each route retains overrides per selected action.
-	local rows,page,previous={},1,{}
+	local rows,page,previous={},1,{};local customCount=0
 	for i=1,3 do rows[i]={choice=math.min(i,#entries),prices={}} end
 	local function position(slot) return (page-1)*3+slot end
 	local function invalidate()
@@ -50,8 +50,8 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 	end
 	for i=1,3 do
 		local slot=i
-		controls["route"..slot]=new("DropDownControl"):DropDownControl(ui.anchor,{16,82+(slot-1)*38,width-248,26},entries)
-		controls["price"..slot]=new("EditControl"):EditControl(ui.anchor,{width-220,82+(slot-1)*38,160,26},"","Action override",nil,16)
+		controls["route"..slot]=new("DropDownControl"):DropDownControl(ui.anchor,{16,82+(slot-1)*38,width-316,26},entries)
+		controls["price"..slot]=new("EditControl"):EditControl(ui.anchor,{width-288,82+(slot-1)*38,160,26},"","Action override",nil,16)
 		local drop,input=controls["route"..slot],controls["price"..slot]
 		drop.shown=function() return rows[position(slot)]~=nil end;input.shown=drop.shown
 		drop.enabled=function() return not tasks.job end;input.changeFunc=invalidate
@@ -60,7 +60,19 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 			previous[slot]=drop:GetSelValueByKey("val");row.choice=previous[slot];input:SetText(row.prices[row.choice] or "");invalidate()
 		end
 		input.enabled=function() local row=rows[position(slot)];return not tasks.job and row and recipes[drop:GetSelValueByKey("val")].priceKey~=nil end
-		input.tooltipText="Override the complete price of one selected action. Saved recipes use their ingredient prices."
+		input.tooltipText="Override the complete price of one selected action. Saved and custom recipes use their ingredient prices."
+		controls["edit"..slot]=new("ButtonControl"):ButtonControl(ui.anchor,{width-120,82+(slot-1)*38,60,26},"Edit",function()
+			savePage();local row=rows[position(slot)];local source=recipes[row.choice]
+			require("Classes.CraftingRecipeControl").Open(source.recipe,current,function(recipe)
+				customCount=customCount+1
+				add("Custom recipe "..customCount.." ("..#recipe.steps.." steps)",copyTable(recipe))
+				row.choice=#recipes;row.prices[row.choice]=""
+				for index=1,3 do controls["route"..index]:ResetSearch() end
+				showPage();invalidate()
+			end,sim.context(model,state))
+		end)
+		controls["edit"..slot].shown=drop.shown;controls["edit"..slot].enabled=function() return not tasks.job end
+		controls["edit"..slot].tooltipText="Create a separate comparison recipe from this route. Changes are kept for this comparison only."
 		controls["remove"..slot]=new("ButtonControl"):ButtonControl(ui.anchor,{width-52,82+(slot-1)*38,36,26},"X",function()
 			savePage();table.remove(rows,position(slot));showPage();invalidate()
 		end)
