@@ -317,11 +317,15 @@ function M.Open(options)
 		end
 		if observedEffects then
 			local blighted=require("Modules.MapObservedEffects").isBlighted(observedEffects)
-			table.insert(affixes,1,(blighted or result.delirium) and "^xE9BE7BObserved effects are not fully modeled:" or "^xE9BE7BObserved effects are not modeled:")
+			table.insert(affixes,1,(blighted or result.delirium or result.deified) and "^xE9BE7BObserved effects are not fully modeled:" or "^xE9BE7BObserved effects are not modeled:")
 			for i=#observedEffects,1,-1 do local effect=observedEffects[i];table.insert(affixes,2,"^xB4B4FF"..effect.text.." ("..effect.kind..")") end
 			prefixLines=prefixLines+1+#observedEffects
 			if result.delirium then
 				table.insert(affixes,2,"^xAABBD0Base Delirium rewards: "..result.delirium.baseRewardCount.." | "..result.delirium.rewardType)
+				prefixLines=prefixLines+1
+			end
+			if result.deified then
+				table.insert(affixes,2,"^xAABBD0Deified bosses: +25% damage, attack/cast speed and area; +100% toughness; +50% item rarity.")
 				prefixLines=prefixLines+1
 			end
 			if blighted then

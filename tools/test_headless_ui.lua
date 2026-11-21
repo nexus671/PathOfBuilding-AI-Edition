@@ -103,7 +103,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		frame("map-clipboard-imported");ui:click("quality");frame("map-quality-editor");ui:text("kind","Threads");ui:click("keep")
 		do local rows={};for _,row in ipairs(main.popups[1].controls.affixes.list) do rows[#rows+1]=StripEscapes(row[1] or "") end;assert(table.concat(rows," "):find("Thread quantity %(amount unverified%)"),"Thread quality uncertainty was not shown") end
 		frame("map-quality-threads");ui:click("quality");ui:text("kind","Pack Size");ui:click("keep")
-		local savedCopy=ui.clipboard;ui.clipboard=savedCopy.."\n--------\nTwice Corrupted";ui:click("pasteMap");frame("map-twice-review");ui:click("keep")
+		local savedCopy=ui.clipboard;ui.clipboard=savedCopy:gsub("Players are Delirious %(enchant%)","Deified (enchant)");ui:click("pasteMap");ui:click("keep")
+		do local rows={};for _,row in ipairs(main.popups[1].controls.affixes.list) do rows[#rows+1]=StripEscapes(row[1] or "") end;local text=table.concat(rows," ");assert(text:find("Deified bosses",1,true) and text:find("100%% toughness"),"Deified boss reference missing") end
+		frame("map-deified-reference");ui.clipboard=savedCopy.."\n--------\nTwice Corrupted";ui:click("pasteMap");frame("map-twice-review");ui:click("keep")
 		assert(not main.popups[1].controls.currency:IsEnabled(),"Twice-corrupted map allowed currency");ui:text("draftName","Twice corrupted map");ui:click("keep");ui:click("close");ui:click("tools");ui:text("search","Saved map drafts");ui:click("choose")
 		do local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;assert(table.concat(details," "):find("Twice Corrupted",1,true),"Saved twice-corrupted marker missing") end
 		frame("saved-twice-corrupted-map");ui:click("secondary");ui:click("close");ui:click("tools");ui:text("search","Map modifier explorer");ui:click("choose")

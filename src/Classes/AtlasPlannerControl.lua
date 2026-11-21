@@ -469,6 +469,7 @@ function Panel.Open(build,source,layout)
 			local details={base and base.name or entry.baseId,"Tier "..entry.tier.." | "..entry.rarity.." | item level "..entry.itemLevel,(entry.unidentified and "Unidentified: modifiers and totals unknown; +30% Atlas Drops when opened" or #entry.selected.." hypothetical modifiers")..(entry.twiceCorrupted and " | Twice Corrupted" or entry.corrupted and " | Corrupted" or "")..(entry.mirrored and " | Mirrored" or "")}
 			local delirium=require("Modules.MapObservedEffects").delirium(entry.observedEffects)
 			if delirium then details[#details+1]="Delirium: "..delirium.percent.."% | "..delirium.baseRewardCount.." base "..delirium.rewardType.." rewards" end
+			if require("Modules.MapObservedEffects").deified(entry.observedEffects) then details[#details+1]="Deified bosses: +25% damage, attack/cast speed and area; +100% toughness; +50% item rarity." end
 			if entry.vaalPreview then details[#details+1]="Based on a conditional Vaal preview; outcome odds are not modeled." end
 			details[#details+1]="Data version "..entry.patch;details[#details+1]="Keep the Atlas plan and save the build to persist changes."
 			choices[#choices+1]={id=entry.id,label=entry.title,details=details,draft=entry}

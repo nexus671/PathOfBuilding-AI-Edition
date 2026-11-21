@@ -58,6 +58,18 @@ function M.delirium(effects)
  if not percent or not reward then return nil end
  return {percent=percent,rewardType=reward,baseRewardCount=1+math.floor(percent/20)}
 end
+-- GGG describes these as bonuses to map bosses, not map-wide item rarity.
+-- Recognition uses the pinned client stat label; copied-item layout and
+-- Pantheon capture eligibility still need live-game verification.
+function M.deified(effects)
+ local found=false
+ for _,effect in ipairs(effects or {}) do if effect.kind=="enchant" and effect.text=="Deified" then
+  if found then return nil end;found=true
+ end end
+ if not found then return nil end
+ return {damageIncrease=25,attackCastSpeedIncrease=25,toughnessIncrease=100,areaOfEffectIncrease=25,bossItemRarityIncrease=50,
+  source="https://www.pathofexile.com/forum/view-thread/4013680",note="Boss bonuses follow the 3.30 notes. Copied-item recognition and Pantheon capture eligibility are unverified; bonuses are not included in map-wide totals."}
+end
 -- Project the published stacking rule using a user-supplied example gain.
 -- This does not model map reforging, eligibility or the gain distribution.
 function M.projectDelirium(currentPercent,currentType,nextType,gain)
@@ -102,6 +114,7 @@ end
 function M.note(effects)
  if not effects then return "" end
  if M.isBlighted(effects) then return " Blighted rare-only encounter modifiers are excluded; other mechanics of observed effects are not modeled and can change results." end
+ if M.deified(effects) then return " Deified boss bonuses follow the 3.30 notes; other observed effects and capture eligibility are not modeled." end
  if M.delirium(effects) then return " Base Delirium reward count follows the 3.30 notes; other observed effects and modifier interactions are not modeled and can change results." end
  return " Observed effects are not modeled and can change results."
 end
