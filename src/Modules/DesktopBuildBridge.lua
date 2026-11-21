@@ -646,6 +646,47 @@ function M.poll(build, force)
 			end
 			M.status={id=request.id,status="atlas",atlas=result}; M.publishState(); return
 		end
+		if request.kind=="craftCompareAlternatives" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh crafting context.")
+			assert(not build.savers.CraftingProjects.unreadable,build.savers.CraftingProjects.warning)
+			local project;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==request.projectId then project=entry;break end end
+			assert(project,"Unknown crafting project")
+			assert(type(request.names)=="table" and #request.names>=2,"Choose at least two saved alternatives")
+			for key in pairs(request.names) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=#request.names,"Alternative names must be an array") end
+			assert(request.options==nil or type(request.options)=="table","Invalid comparison options")
+			local byName={};for _,entry in ipairs(project.recipeAlternatives or {}) do byName[entry.name]=entry end
+			local chosen,seen={},{};for _,name in ipairs(request.names) do
+				assert(type(name)=="string" and #name<=120 and name:match("%S") and not name:find("[%c%^]"),"Invalid alternative recipe name")
+				assert(not seen[name],"Choose each saved alternative once");seen[name]=true
+				local alternative=assert(byName[name],"Unknown saved alternative recipe: "..name);chosen[#chosen+1]=copyTable(alternative)
+			end
+			local options=copyTable(request.options or {});local trials=options.trials or 100;local budget=options.maxActions or 100
+			assert(type(trials)=="number" and trials==math.floor(trials) and trials>=1 and trials<=2000 and type(budget)=="number" and budget==math.floor(budget) and budget>=1 and budget<=2000,"Invalid comparison trials or action budget")
+			assert(#chosen*trials*budget<=20000,"Use at most 20000 total budgeted actions across routes")
+			options.trials,options.maxActions=trials,budget;options.treeVersion=build.spec.treeVersion
+			if not options.priceBook and project.priceBook then options.priceBook=copyTable(project.priceBook) end
+			local reference=chosen[1].recipe;local session=M.session
+			local function publish(status,values)
+				if not M.enabled or M.session~=session then return end
+				M.status={id=request.id,status=status,baseRevision=request.baseRevision};for key,value in pairs(values) do M.status[key]=value end;M.publishState()
+			end
+			publish("calculating",{})
+			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+				local simulator=require("Modules.CraftingSimulator");local routes={}
+				for index,entry in ipairs(chosen) do
+					local original=entry.recipe;local candidate=copyTable(original)
+					local startDiffers=not tableDeepEquals(original.initialState,reference.initialState)
+					local goalDiffers=not tableDeepEquals(original.targets,reference.targets) or not tableDeepEquals(original.requirements,reference.requirements) or original.requiredGroups~=reference.requiredGroups or original.rarity~=reference.rarity
+					candidate.initialState=reference.initialState and copyTable(reference.initialState) or nil;candidate.targets=copyTable(reference.targets)
+					candidate.requirements=reference.requirements and copyTable(reference.requirements) or nil;candidate.requiredGroups=reference.requiredGroups;candidate.rarity=reference.rarity
+					local routeOptions=copyTable(options);routeOptions.checkpoint=function(progress) checkpoint({route=index,routes=#chosen,trial=progress.trial,trials=progress.trials}) end
+					local ok,result=pcall(simulator.simulate,project.startingItem,candidate,routeOptions)
+					routes[#routes+1]={name=entry.name,savedStartDiffers=startDiffers,savedGoalDiffers=goalDiffers,result=ok and result or nil,error=not ok and require("Modules.PlanningUI").errorText(result) or nil}
+				end
+				return {projectId=request.projectId,referenceName=chosen[1].name,routes=routes,notes={"All routes use the reference starting state and final targets; their own step conditions remain unchanged.","Sampling intervals do not include model uncertainty; no route is ranked automatically."}}
+			end,function(result) publish("crafted",{craftingComparison=result}) end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end)
+			job.requestId=request.id;return
+		end
 		if request.kind == "craftAction" or request.kind == "craftSimulate" or request.kind == "craftCalculate" or request.kind == "craftOptimize" then
 			assert(request.baseRevision == M.revision(build),"Build changed. Refresh crafting context.")
 			local replay,alternative

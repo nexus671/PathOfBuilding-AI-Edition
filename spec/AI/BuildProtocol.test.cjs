@@ -849,6 +849,19 @@ test('queues a named saved crafting alternative with bounded options', t => {
   ]) assert.throws(()=>f.call('simulate_crafting',{baseRevision,...bad}),/alternative|budgeted|saved projectId/);
 });
 
+test('queues a bounded comparison of named crafting alternatives', t => {
+  const f=fixture(t),baseRevision=f.state.revision;
+  f.call('compare_crafting_alternatives',{baseRevision,projectId:'helmet-guide',names:['Life','Armour'],options:{trials:20,maxActions:10,seed:7}});
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.kind,'craftCompareAlternatives');assert.deepEqual(request.names,['Life','Armour']);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  f.call('compare_crafting_alternatives',{baseRevision,projectId:'helmet-guide',names:Array.from({length:12},(_,i)=>`Route ${i+1}`),options:{trials:1,maxActions:1}});
+  for(const bad of [
+    {names:['Life']},{names:['Life','Life']},{names:['Life','  ']},{names:['Life','Armour'],options:{trials:2000,maxActions:2000}},
+    {names:['Life','Armour'],options:{trials:2,maxActions:1,prices:{alchemy:3}}},
+  ]) assert.throws(()=>f.call('compare_crafting_alternatives',{baseRevision,projectId:'helmet-guide',...bad}),/arguments|names|budgeted|currency/);
+});
+
 test('accepts observed Rog offers and rejects invalid attempt counts', t => {
   const f=fixture(t), base={baseRevision:f.state.revision,itemText:craftingProject().startingItem};
   const action={method:'rog_reroll',rogSide:'Suffix',rogOperation:'add',rogAttempts:5,artifactCost:{grand:12}};

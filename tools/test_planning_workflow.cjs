@@ -1393,7 +1393,7 @@ async function main(){
   const reforgeChoice=rareInspection.crafting.nativeEngine.harvestOptions.find(entry=>entry.method==='harvest_reforge');
   assert.equal(reforgeChoice.available,true);assert.ok(reforgeChoice.options.some(entry=>entry.action.tag==='life'));
   const project={priceBook:{currency:'chaos',source:'Unquoted',quotedAt:1700000000,values:{}},id:'helmet',title:'Life helmet',slot:'Helmet',startingItem:raw,targetItem:item(200),goals:['More maximum Life'],steps:[{action:'Apply an Orb of Alchemy',stopWhen:'Target modifiers match',onFailure:'Stop at the recorded budget and reconsider'}],nativeRecipe:recipe};
-  project.recipeAlternatives=[{name:'Alternate route',recipe:{...recipe,steps:[{method:'transmute'}]}},{name:'Already prepared',recipe:{steps:[{method:'transmute'}],targets:[],requirements:{minQuality:13},initialState:{...inspected.crafting.nativeEngine.initialState,quality:13}}}];
+  project.recipeAlternatives=[{name:'Alternate route',recipe:{...recipe,steps:[{method:'transmute'}]}},{name:'Already prepared',recipe:{steps:[{method:'transmute'}],targets:[],requirements:{minQuality:13},initialState:{...inspected.crafting.nativeEngine.initialState,quality:13}}},{name:'Unresolvable step',recipe:{steps:[{method:'alchemy',maxAttempts:2,untilTargets:[{anyOf:['UnknownModifierForTest']}]}],targets:[],requirements:{minAffixes:1}}}];
   project.inventory=[{id:'blank-base',title:'Reusable helmet base',slot:'Helmet',baseItem:raw,at:1700000000,state:inspected.crafting.nativeEngine.initialState}];
   const conflicting={...project,id:'conflicting-quotes',priceBook:{currency:'chaos',source:'Conflicting quotes',quotedAt:1700000000,values:{exalt:1,'Metadata/Items/Currency/CurrencyAddModToRare':2}}};
   const rejected=await queued('propose_crafting_plan',{baseRevision:context.revision,project:conflicting},'failed');assert.match(rejected.error,/Conflicting quotes/);
@@ -1617,6 +1617,19 @@ async function main(){
   const prepared=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'helmet',alternativeName:'Already prepared',options:{trials:2,maxActions:1}},'crafted');
   assert.equal(prepared.nativeCrafting.successes,2);assert.equal(prepared.nativeCrafting.meanActions,0);
   const missingAlternative=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'helmet',alternativeName:'No such route'},'failed');assert.match(missingAlternative.error,/Unknown saved alternative recipe/);
+  const compared=await queued('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'helmet',names:['Alternate route','Already prepared'],options:{trials:2,maxActions:1,seed:7,currency:'chaos',actionPrices:{transmute:7}}},'crafted');
+  assert.equal(compared.craftingComparison.referenceName,'Alternate route');assert.equal(compared.craftingComparison.routes.length,2);
+  assert.equal(compared.craftingComparison.routes[0].savedStartDiffers,false);assert.equal(compared.craftingComparison.routes[0].savedGoalDiffers,false);
+  assert.equal(compared.craftingComparison.routes[1].savedStartDiffers,true);assert.equal(compared.craftingComparison.routes[1].savedGoalDiffers,true);
+  assert.equal(compared.craftingComparison.routes[0].result.meanCost,7);assert.equal(compared.craftingComparison.routes[1].result.meanCost,7);
+  const reversed=await queued('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'helmet',names:['Already prepared','Alternate route'],options:{trials:2,maxActions:1}},'crafted');
+  assert.equal(reversed.craftingComparison.routes[0].result.successes,2);assert.equal(reversed.craftingComparison.routes[1].result.successes,2);assert.equal(reversed.craftingComparison.routes[1].result.meanActions,0);
+  const missingCompare=await queued('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'helmet',names:['Alternate route','No such route'],options:{trials:2,maxActions:1}},'failed');assert.match(missingCompare.error,/Unknown saved alternative recipe/);
+  const partialCompare=await queued('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'helmet',names:['Alternate route','Unresolvable step'],options:{trials:2,maxActions:2}},'crafted');
+  assert.ok(partialCompare.craftingComparison.routes[0].result);assert.match(partialCompare.craftingComparison.routes[1].error,/unavailable for this base/);assert.equal(partialCompare.craftingComparison.routes[1].result,undefined);
+  const runningCompare=await call('compare_crafting_alternatives',{baseRevision:context.revision,projectId:'helmet',names:['Alternate route','Already prepared'],options:{trials:1000,maxActions:10}});
+  await host('tick',1);const runningStatus=await call('get_proposal_status');assert.equal(runningStatus.proposal.id,runningCompare.id);assert.equal(runningStatus.proposal.status,'calculating');
+  const cancellation=await call('cancel_crafting_simulation',{requestId:runningCompare.id});await host('tick',1);const cancelled=await call('get_proposal_status');assert.equal(cancelled.proposal.id,cancellation.id);assert.equal(cancelled.proposal.status,'cancelled');
   const pricedAlternative=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'body-enchant',alternativeName:'Priced body plan',options:{trials:2,maxActions:2}},'crafted');
   assert.equal(pricedAlternative.nativeCrafting.meanCost,327.25);assert.equal(pricedAlternative.nativeCrafting.priceSource,bodyPriceBook.source);
   const wrongCurrency=await queued('simulate_crafting',{baseRevision:context.revision,projectId:'body-enchant',alternativeName:'Priced body plan',options:{trials:2,maxActions:2,currency:'divine'}},'failed');assert.match(wrongCurrency.error,/Saved prices are in chaos/);
