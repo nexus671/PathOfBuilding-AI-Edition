@@ -18,7 +18,8 @@ function M.Open(rule,save,conditions,options)
 	function c.preview:Draw() local x,y=self:GetPos();local width,height=self:GetSize();visual.floor(x,y,width,height);visual.chip(x+width*0.2,y+8,width*0.6,height-8,sample,{action=c.action:GetSelValue(),styles=parser.parse(nextRule().text).rules[1].styles}) end
 	local palette={"FFFFFF","F2D59A","EF6A62","FFAE57","61D8ED","7BD89B","7C9FF2","BE8CE8"}
 	local defaultText=copyTable(visual.defaultTextColor(sample));defaultText[4]=255
-	local columns={{"textHex","Text colour","SetTextColor",defaultText},{"borderHex","Border colour","SetBorderColor",{120,140,150,255}},{"backgroundHex","Background","SetBackgroundColor",{8,12,14,255}}}
+	local minimal=original.action=="Minimal"
+	local columns={{"textHex","Text colour","SetTextColor",defaultText},{"borderHex","Border colour","SetBorderColor",{120,140,150,minimal and 0 or 255}},{"backgroundHex","Background","SetBackgroundColor",{8,12,14,minimal and 0 or 255}}}
 	local column=math.floor((w-64)/3);local custom={}
 	local function decode(value)
 		value=value:gsub("^#","");if not value:match("^%x+$") or #value~=6 and #value~=8 then return nil end
@@ -39,8 +40,15 @@ function M.Open(rule,save,conditions,options)
 	end
 	ui.label(c,"hexHint",16,386,"Hex colours include opacity in the final two digits (FF = solid).",14)
 	ui.label(c,"sizeLabel",16,414,"Label size",14)
-	c.size=new("SliderControl"):SliderControl(ui.anchor,{16,440,column,24},function(value) changes.SetFontSize={tostring(math.floor(1+value*44+0.5))} end);c.size.val=math.max(0,math.min(1,((tonumber(original.styles.SetFontSize and original.styles.SetFontSize[1]) or 32)-1)/44))
-	c.sizeLabel.label=function() return "^7Label size: "..tostring(changes.SetFontSize and changes.SetFontSize[1] or original.styles.SetFontSize and original.styles.SetFontSize[1] or 32) end
+	c.size=new("SliderControl"):SliderControl(ui.anchor,{16,440,column,24},function(value) changes.SetFontSize={tostring(math.floor(1+value*44+0.5))} end);c.size.val=math.max(0,math.min(1,((tonumber(original.styles.SetFontSize and original.styles.SetFontSize[1]) or (minimal and 1 or 32))-1)/44))
+	c.sizeLabel.label=function() if c.action:GetSelValue()=="Minimal" and not changes.SetFontSize and not original.styles.SetFontSize then return "^7Label size: minimum (Minimal)" end;return "^7Label size: "..tostring(changes.SetFontSize and changes.SetFontSize[1] or original.styles.SetFontSize and original.styles.SetFontSize[1] or 32) end
+	c.action.selFunc=function()
+		local isMinimal=c.action:GetSelValue()=="Minimal"
+		if not changes.SetFontSize and not original.styles.SetFontSize then c.size.val=isMinimal and 0 or 31/44 end
+		for _,entry in ipairs({{"borderHex","SetBorderColor","788C96"},{"backgroundHex","SetBackgroundColor","080C0E"}}) do
+			if not changes[entry[2]] and not original.styles[entry[2]] then c[entry[1]]:SetText(entry[3]..(isMinimal and "00" or "FF")) end
+		end
+	end
 	ui.label(c,"soundLabel",32+column,414,"Drop sound",14)
 	local sounds={"Keep sound","Silent"};for i=1,16 do sounds[#sounds+1]="Alert "..i end
 	c.sound=new("DropDownControl"):DropDownControl(ui.anchor,{32+column,440,column,26},sounds,function(index)

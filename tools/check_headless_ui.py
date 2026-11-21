@@ -53,6 +53,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_flask_enchant_ui.lua")
     sources.append(ROOT / "tools/test_unique_flask_enchant_ui.lua")
     sources.append(ROOT / "tools/test_map_vaal_ui.lua")
+    sources.append(ROOT / "tools/test_minimal_ui.lua")
     sources += [ROOT / "tools/test_gwennen_ui.lua", ROOT / "tools/test_rog_ui.lua"]
     sources += [ROOT / "tools/update_flask_enchant_data.py", ROOT / "tools/test_update_flask_enchant_data.py"]
     sources.append(ROOT / "tools/run_headless_lupa.py")
@@ -138,8 +139,15 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2121, f"Expected 2121 UI frames, found {len(paths)}"
+    assert len(paths) == 2127, f"Expected 2127 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
+        def label_and_background(name):
+            commands = json.loads((frames / f"{width}-{name}.json").read_text())["commands"]
+            index = next(i for i in range(len(commands) - 1, -1, -1) if commands[i].get("kind") == "text" and commands[i].get("text") == "Iron Hat")
+            return commands[index], commands[index - 1]
+        minimal_label, minimal_background = label_and_background("filter-minimal-default")
+        shown_label, shown_background = label_and_background("filter-minimal-show")
+        assert minimal_label["fontHeight"] < shown_label["fontHeight"] and minimal_background["color"][3] == 0 and shown_background["color"][3] > 0, "Minimal preview did not use its small transparent defaults"
         replay_frame = json.loads((frames / f"{width}-saved-replay.json").read_text())
         replay_text = " ".join(c.get("text", "") for c in replay_frame["commands"] if c.get("kind") == "text")
         assert "Rerun saved" in replay_text and "Saved simulation setup available" in replay_text, "Saved simulation is not discoverable"

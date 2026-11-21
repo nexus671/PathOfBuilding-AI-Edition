@@ -22,6 +22,19 @@ describe("Local filter editing",function()
 		main.popups[1].controls.keep:Click();main.popups[1].controls.keepRule:Click()
 		assert.matches("SetBackgroundColor 10 20 30 240",saved.text)
 	end)
+	it("shows Minimal defaults in the appearance editor without adding style commands",function()
+		local rule={id="minimal",title="Minimal",text='Minimal\n BaseType == "Iron Hat"'};local saved
+		require("Classes.LootFilterAppearance").Open(rule,function(value) saved=value end,function() end)
+		local c=main.popups[1].controls
+		assert.equal("080C0E00",c.backgroundHex.buf);assert.equal("788C9600",c.borderHex.buf);assert.matches("minimum",c.sizeLabel.label());assert.equal(0,c.size.val)
+		c.action:SelByValue("Show");c.action.selFunc();assert.equal("080C0EFF",c.backgroundHex.buf);assert.is_truthy(c.size.val>0)
+		c.action:SelByValue("Minimal");c.action.selFunc();assert.equal("080C0E00",c.backgroundHex.buf);c.keepRule:Click()
+		local block=parser.parse(saved.text).rules[1];assert.equal("Minimal",block.action);assert.is_nil(next(block.styles));assert.equal("Iron Hat",block.conditions[1].values[1])
+		local explicit={id="explicit",title="Explicit",text='Minimal\n BaseType == "Iron Hat"\n SetBackgroundColor 10 20 30 200\n SetFontSize 40'}
+		require("Classes.LootFilterAppearance").Open(explicit,function(value) saved=value end,function() end);c=main.popups[1].controls
+		assert.equal("0A141EC8",c.backgroundHex.buf);assert.matches("40",c.sizeLabel.label());c.keepRule:Click()
+		block=parser.parse(saved.text).rules[1];assert.same({"10","20","30","200"},block.styles.SetBackgroundColor);assert.same({"40"},block.styles.SetFontSize)
+	end)
 	it("moves exact items between tiers while retaining conditions and pinned source",function()
 		local p=profile();p.tiers={editing.newTier("low","Low",'Show\n Class == "Stackable Currency"\n BaseType == "Chaos Orb"\n StackSize >= 2\n SetFontSize 30\n Continue'),editing.newTier("high","High",'Show\n BaseType == "Divine Orb"\n SetFontSize 45')}
 		local source=p.template;local next=editing.assign(p,"low","Chaos Orb");assert.equal(0,#p.tiers[1].items)

@@ -1603,7 +1603,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		assert(main.popups[1].controls.name.buf=="outer.filter" and main.popups[1].controls.text.buf:find('Import "outer.filter"',1,true),"Circular import did not open its existing file")
 		frame("filter-circular-import-selected");ui:click("cancel")
 	end
-	ui:choose("mode","Ruthless");frame("filter-ruthless");ui:click("viewStyle");ui:click("globalStyle");ui:click("textColorPick");ui:text("a","0");assert(not main.popups[1].controls.keep:IsEnabled(),"Ruthless picker allowed invisible text");ui:text("a","80");frame("filter-colour-ruthless");ui:click("cancel");ui:click("close");ui:click("viewOverview");ui:choose("mode","Normal")
+	ui:choose("mode","Ruthless");frame("filter-ruthless");dofile("../tools/test_minimal_ui.lua")(ui,frame);ui:click("viewStyle");ui:click("globalStyle");ui:click("textColorPick");ui:text("a","0");assert(not main.popups[1].controls.keep:IsEnabled(),"Ruthless picker allowed invisible text");ui:text("a","80");frame("filter-colour-ruthless");ui:click("cancel");ui:click("close");ui:click("viewOverview");ui:choose("mode","Normal")
 	ui:click("generate");frame("filter-build-targets")
 	local foundBudget=false
 	for i=1,2000 do

@@ -63,8 +63,8 @@ function M.icon(shape,cx,cy,r)
 	return true
 end
 function M.chip(x,y,w,h,item,result,selected)
-	local styles=result and result.styles or {};local hidden=result and result.action=="Hide";local unknown=result and (result.status=="unknown" or result.status=="invalid")
-	local size=math.max(14,math.min(26,math.floor((tonumber(styles.SetFontSize and styles.SetFontSize[1]) or 28)*0.65)))
+	local styles=result and result.styles or {};local hidden=result and result.action=="Hide";local minimal=result and result.action=="Minimal";local unknown=result and (result.status=="unknown" or result.status=="invalid")
+	local size=math.max(14,math.min(26,math.floor((tonumber(styles.SetFontSize and styles.SetFontSize[1]) or (minimal and 1 or 28))*0.65)))
 	local name=M.sampleName(item);while size>14 and DrawStringWidth(size,"VAR",name)>w-22 do size=size-1 end;name=ui.fit(name,w-22,size)
 	local width=math.min(w-8,DrawStringWidth(size,"VAR",name)+18);local left=x+(w-width)/2;local top=y+(h-32)/2
 	local function color(key,fallback) local value=styles[key] or fallback;SetDrawColor((tonumber(value[1]) or 255)/255,(tonumber(value[2]) or 255)/255,(tonumber(value[3]) or 255)/255,hidden and 0.35 or appearance.alpha(key,value)/255) end
@@ -72,8 +72,8 @@ function M.chip(x,y,w,h,item,result,selected)
 		for i=1,3 do SetDrawColor(color[1],color[2],color[3],0.12+i*0.08);DrawImage(nil,x+w/2-9+i*2,y+1,18-i*4,math.max(1,h/2-6)) end
 	end
 	if selected then M.box(left-3,top-3,width+6,38,"^xEAD29D") end
-	color("SetBorderColor",{100,110,115});DrawImage(nil,left-1,top-1,width+2,34)
-	color("SetBackgroundColor",{8,12,14,255});DrawImage(nil,left,top,width,32)
+	color("SetBorderColor",{100,110,115,minimal and 0 or 255});DrawImage(nil,left-1,top-1,width+2,34)
+	color("SetBackgroundColor",{8,12,14,minimal and 0 or 255});DrawImage(nil,left,top,width,32)
 	color("SetTextColor",M.defaultTextColor(item));DrawString(x+w/2,top+(32-size)/2,"CENTER_X",size,"VAR",name)
 	if unknown then M.text(x+w-20,y+2,14,"?","^xE5B66A") end
 	local icon=styles.MinimapIcon;if icon and tonumber(icon[1]) and tonumber(icon[1])>=0 and not hidden then
