@@ -582,7 +582,7 @@ function M.poll(build, force)
 			else local raw,report=filters.compile(profile);for _,diagnostic in ipairs(report.diagnostics) do if diagnostic.error then error("Line "..diagnostic.line..": "..tostring(diagnostic.error),0) end end;M.status={id=request.id,status="exported",filter=raw,report=report} end
 			M.publishState();return
 		end
-		if request.kind == "search_map_bases" or request.kind == "inspect_map_modifiers" or request.kind == "inspect_copied_map" or request.kind == "project_map_delirium" or request.kind == "simulate_map_currency" or request.kind == "estimate_map_rerolls" then
+		if request.kind == "search_map_bases" or request.kind == "list_map_allflame" or request.kind == "inspect_map_modifiers" or request.kind == "inspect_copied_map" or request.kind == "project_map_delirium" or request.kind == "simulate_map_currency" or request.kind == "estimate_map_rerolls" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh map context.")
 			local session=M.session
 			local function publish(status,values)
@@ -591,14 +591,16 @@ function M.poll(build, force)
 				for key,value in pairs(values) do M.status[key]=value end;M.publishState()
 			end
 			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+				if request.kind=="list_map_allflame" then return require("Modules.MapAllflame").reference() end
 				if request.kind=="project_map_delirium" then return require("Modules.MapObservedEffects").projectDelirium(request.currentPercent,request.currentType,request.nextType,request.gain) end
 				if request.kind=="inspect_copied_map" then return require("Modules.MapClipboard").parse(request.itemText,checkpoint) end
 				if request.kind=="estimate_map_rerolls" then return require("Modules.MapCraftEstimate").run(request.state,request.options,checkpoint) end
-				if request.kind=="simulate_map_currency" then return require("Modules.MapCurrency").perform(request.state,request.action,request.seed,checkpoint) end
+				if request.kind=="simulate_map_currency" then return require("Modules.MapCurrency").perform(request.state,request.action,request.seed,checkpoint,nil,nil,request.allflameId) end
 				local map=require("Modules.MapCraftingData")
 				if request.kind=="search_map_bases" then return map.searchBases(request.query,request.offset,request.limit,checkpoint) end
 				assert(not request.unidentified or request.rarity~="normal","Normal maps cannot be unidentified")
 				assert(not request.unidentified or not request.selected or #request.selected==0,"Unidentified map modifiers are unknown")
+				local plannedAllflame=require("Modules.MapAllflame").validate(request.plannedAllflame)
 				assert(request.plannedDeified==nil or type(request.plannedDeified)=="boolean","Invalid planned Deified marker")
 				assert(not request.vaalPreview or request.corrupted,"A conditional Vaal preview requires a corrupted map")
 				assert(not request.twiceCorrupted or request.corrupted,"A twice-corrupted map must be corrupted")
@@ -606,8 +608,9 @@ function M.poll(build, force)
 				result.mirrored=request.mirrored or nil;result.unidentified=request.unidentified or nil;result.vaalPreview=request.vaalPreview or nil;result.twiceCorrupted=request.twiceCorrupted or nil
 				if request.unidentified then result.summary=nil;result.counts=nil;result.candidates={};result.total=nil;result.nextOffset=nil;result.note="Unidentified map: explicit modifiers and their totals are unknown.";result.unidentifiedOpeningBonus={atlasDrops=30,condition="When opened unidentified"} end
 				if request.vaalPreview then result.note=result.note.." Based on a conditional Vaal preview; outcome odds are not modeled." end
+				if plannedAllflame then result.plannedAllflame=plannedAllflame;result.allflame=require("Modules.MapAllflame").describe(plannedAllflame);result.note=result.note.." Allflame is a conditional plan; eligibility and enchantment interactions are unverified." end
 				if request.plannedDeified then result.plannedDeified=true;result.deified=result.deified or require("Modules.MapObservedEffects").deified(nil,true);result.note=result.note.." Deified is a conditional plan; eligibility and enchantment interactions are unverified." end
-				local state={baseId=request.baseId,tier=request.tier,itemLevel=request.itemLevel,rarity=request.rarity or "rare",selected=request.selected or {},rolls=request.rolls,corrupted=request.corrupted,mirrored=request.mirrored,unidentified=request.unidentified,quality=request.quality,observedEffects=request.observedEffects,plannedDeified=request.plannedDeified}
+				local state={baseId=request.baseId,tier=request.tier,itemLevel=request.itemLevel,rarity=request.rarity or "rare",selected=request.selected or {},rolls=request.rolls,corrupted=request.corrupted,mirrored=request.mirrored,unidentified=request.unidentified,quality=request.quality,observedEffects=request.observedEffects,plannedDeified=request.plannedDeified,plannedAllflame=plannedAllflame}
 				local ok,options=pcall(require("Modules.MapCurrency").options,state,checkpoint)
 				if ok then result.currencyOptions=options else result.currencyOptionsWarning=require("Modules.PlanningUI").errorText(options) end
 				return result

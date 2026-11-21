@@ -43,9 +43,9 @@ test('negotiates versions, requires initialization, and keeps applying builds in
   assert.equal((await c.request('tools/list')).error.code,-32000);
   assert.equal((await c.initialize('2025-03-26')).result.protocolVersion,'2025-03-26');
   const list = (await c.request('tools/list')).result.tools;
-  assert.equal(list.length,49);
+  assert.equal(list.length,50);
   assert.ok(list.every(tool => !tool.annotations.openWorldHint));
-  assert.equal(list.filter(tool => !tool.annotations.readOnlyHint).length,35);
+  assert.equal(list.filter(tool => !tool.annotations.readOnlyHint).length,36);
   assert.ok(list.some(tool => tool.name === 'review_same_name_rares' && !tool.annotations.readOnlyHint));
   assert.ok(list.some(tool => tool.name === 'review_rare_vendor_sets' && !tool.annotations.readOnlyHint));
   assert.ok(list.some(tool => tool.name === 'review_quality_vendor_items' && !tool.annotations.readOnlyHint));
@@ -60,6 +60,7 @@ test('negotiates versions, requires initialization, and keeps applying builds in
   assert.ok(list.some(tool => tool.name === 'test_loot_filter_examples'));
   assert.ok(list.some(tool => tool.name === 'test_loot_filter_scene'));
   assert.ok(list.some(tool => tool.name === 'search_map_bases'));
+  assert.ok(list.some(tool => tool.name === 'list_map_allflame' && !tool.annotations.readOnlyHint));
   assert.ok(list.some(tool => tool.name === 'inspect_copied_map' && !tool.annotations.readOnlyHint));
   assert.ok(list.some(tool => tool.name === 'inspect_map_modifiers'));
   assert.ok(list.some(tool => tool.name === 'simulate_map_currency'));

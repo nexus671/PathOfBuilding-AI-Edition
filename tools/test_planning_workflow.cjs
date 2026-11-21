@@ -1187,7 +1187,11 @@ async function main(){
   assert.equal(nightmareRoll.mapData.state.selected.length,6);assert.match(nightmareRoll.mapData.note,/unverified assumptions/);
   const nightmareEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare'},options:{wantedGroups:[['MapUberWeakContainsDeliriumMirror']],trials:2,maxAttempts:2,seed:42}},'mapData');
   assert.equal(nightmareEstimate.mapData.action,'chaos');assert.match(nightmareEstimate.mapData.note,/generation order is unverified/);
+  const allflameRef=await queued('list_map_allflame',{baseRevision:context.revision},'mapData');assert.equal(allflameRef.mapData.items.length,11);const allflameId=allflameRef.mapData.items.find(item=>item.name==='Allflame Ember of the Multitude').id;
   const planBase={baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:5,itemLevel:68,rarity:'normal',selected:[]};
+  const allflamePlan=await queued('simulate_map_currency',{baseRevision:context.revision,state:planBase,action:'plan_allflame',allflameId,seed:1},'mapData');assert.equal(allflamePlan.mapData.state.plannedAllflame,allflameId);assert.equal(allflamePlan.mapData.allflame.provenance,'planned');
+  const allflameInspect=await queued('inspect_map_modifiers',{baseRevision:context.revision,...allflamePlan.mapData.state},'mapData');assert.equal(allflameInspect.mapData.allflame.id,allflameId);assert.match(allflameInspect.mapData.note,/conditional plan/);
+  const allflameClear=await queued('simulate_map_currency',{baseRevision:context.revision,state:allflamePlan.mapData.state,action:'clear_allflame_plan',seed:1},'mapData');assert.equal(allflameClear.mapData.state.plannedAllflame,undefined);
   const plannedDeified=await queued('simulate_map_currency',{baseRevision:context.revision,state:planBase,action:'divine_vessel',seed:1},'mapData');
   assert.equal(plannedDeified.mapData.state.plannedDeified,true);assert.equal(plannedDeified.mapData.deified.provenance,'planned');assert.equal(plannedDeified.mapData.deified.bossItemRarityIncrease,50);
   const plannedInspect=await queued('inspect_map_modifiers',{baseRevision:context.revision,...plannedDeified.mapData.state},'mapData');assert.equal(plannedInspect.mapData.plannedDeified,true);assert.equal(plannedInspect.mapData.deified.provenance,'planned');

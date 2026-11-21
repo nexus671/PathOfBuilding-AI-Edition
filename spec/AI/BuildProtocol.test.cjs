@@ -159,6 +159,13 @@ test('explains unidentified saved map drafts without changing them', t => {
   f.captured.context.atlasPlans=[{id:'atlas',mapDrafts:[{id:'known',selected:[]}]}];f.write('context',f.captured);
   assert.ok(!f.call('get_atlas_plans',{}).limitations.some(note=>note.includes('Unidentified map drafts')));
 });
+test('queues map Allflame reference and conditional plans', t => {
+  const f=fixture(t);f.call('list_map_allflame',{baseRevision:f.state.revision});
+  let request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'list_map_allflame');
+  const state={baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare',selected:[]};
+  const g=fixture(t);g.call('simulate_map_currency',{baseRevision:g.state.revision,state,action:'plan_allflame',allflameId:'Metadata/Items/MapFragments/AtlasAllflamePack',seed:1});
+  request=JSON.parse(fs.readFileSync(path.join(g.dir,'AI-build-request.json')));assert.equal(request.action,'plan_allflame');assert.match(request.allflameId,/AtlasAllflamePack/);
+});
 test('queues a bounded Delirium projection', t => {
   const f=fixture(t), args={baseRevision:f.state.revision,currentPercent:35,currentType:'Currency',nextType:'Maps',gain:10};
   f.call('project_map_delirium',args);

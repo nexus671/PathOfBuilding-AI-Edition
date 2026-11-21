@@ -91,6 +91,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("close")
 	ui:click("tools");ui:text("search","Map modifier explorer");ui:click("choose");frame("map-modifier-explorer")
 	ui:click("deifiedPlan");frame("map-deified-plan-dialog");ui:click("plan");do local lines={};for _,row in ipairs(main.popups[1].controls.affixes.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;assert(table.concat(lines," "):find("Planned Deified",1,true),"Planned boss bonuses missing") end;frame("map-deified-plan");ui:click("deifiedPlan");ui:click("clear")
+	ui:click("allflamePlan");ui:text("search","Multitude");frame("map-allflame-picker");ui:click("choose");do local lines={};for _,row in ipairs(main.popups[1].controls.affixes.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;assert(table.concat(lines," "):find("Allflame Ember of the Multitude",1,true),"Planned Allflame missing") end;frame("map-allflame-plan");ui:click("allflamePlan");ui:click("secondary")
 	do
 		ui.clipboard="Item Class: Maps\nRarity: Rare\nVortex Artifice\nMap (Tier 5)\n--------\nQuality (Pack Size): +20% (augmented)\n--------\nItem Level: 68\n--------\nMonster Level: 72\n--------\nArea is Influenced by the Originator's Memories (implicit)\nPlayers are Delirious (enchant)\n--------\nMonsters have 45% increased Area of Effect\nMonsters deal 55% extra Physical Damage as Fire\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
 		ui:click("pasteMap");frame("map-clipboard-review");ui:click("close")
