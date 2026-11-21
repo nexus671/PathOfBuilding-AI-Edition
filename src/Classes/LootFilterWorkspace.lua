@@ -416,11 +416,15 @@ function M.Open(build,source,layout,controller)
 			else editRule(filters.rule("rule-"..identifier(),"New pickup",{'BaseType == "Iron Hat"'}),keepRule) end
 		end)
 		button(c,"edit",listX+bw+8,h-94,bw,"Edit",edit)
+		c.edit.enabled=function() return selectedEntry~=nil end
+		c.edit.tooltipText=function() return selectedEntry and "Edit the selected rule." or "Select a rule to edit it." end
 		button(c,"toggle",listX+(bw+8)*2,h-94,bw,"On / off",function() if selectedEntry then local rule=copyTable(selectedEntry.rule)
 			if selectedEntry.base then rule.text=rule.text:gsub("^%a+",selectedEntry.block.action=="Show" and (profile.mode=="Ruthless" and "Minimal" or "Hide") or "Show");rule.enabled=true else rule.enabled=not rule.enabled end
 			keepRule(rule)
 		end end)
 		c.toggle.label=function() return selectedEntry and (selectedEntry.base and (selectedEntry.block.action=="Show" and "Hide" or "Show") or selectedEntry.rule.enabled==false and "Enable" or "Disable") or "On / off" end
+		c.toggle.enabled=function() return selectedEntry~=nil end
+		c.toggle.tooltipText=function() return selectedEntry and "Change the selected rule's visibility." or "Select a rule to change its visibility." end
 		button(c,"remove",listX+(bw+8)*3,h-94,bw,"Delete",function() if selectedEntry and not selectedEntry.base then for i,r in ipairs(profile.rules) do if r.id==selected then table.remove(profile.rules,i);break end end;selected=nil;draft();reopen() end end)
 		c.remove.enabled=function() return selectedEntry~=nil and not selectedEntry.base end
 		local function visibleNeighbour(delta)
@@ -441,6 +445,8 @@ function M.Open(build,source,layout,controller)
 		c.detail=new("TextListControl"):TextListControl(ui.anchor,{detailX,260,detailW,h-382},nil,{})
 		button(c,"appearance",detailX,h-110,detailW,"Colours, sound & size",edit)
 		c.appearance.width=math.floor((detailW-12)/2);c.appearance.label="Appearance"
+		c.appearance.enabled=function() return selectedEntry~=nil end
+		c.appearance.tooltipText=function() return selectedEntry and "Edit the selected rule's appearance." or "Select a rule to edit its appearance." end
 		button(c,"openSource",detailX+math.floor((detailW-12)/2)+12,h-110,math.floor((detailW-12)/2),"Open source",function() openSource(assert(selectedRule().origin)) end)
 		c.openSource.enabled=function() return selectedRule() and selectedRule().origin~=nil end;c.openSource.tooltipText="Open the craft, gear, resource, skill guide or Atlas plan that generated this pickup."
 		button(c,"sampleEdit",detailX,h-72,detailW,"Test sample properties",function() controller.EditSample(item,function(next) rememberSample(next);compile();updateDetail() end) end)

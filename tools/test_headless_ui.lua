@@ -1538,6 +1538,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 			{id="order-c",title="Match C",text='Show\n BaseType == "Iron Hat"',enabled=true}}
 		ui:click("viewCustomize");ui:choose("source","My rules");ui:text("search","Match");local list=build.planningWorkspace.controls.rules
 		assert(#list.list==2,"Filtered rule fixture did not show two rules")
+		for _,key in ipairs({"edit","toggle","appearance"}) do assert(build.planningWorkspace.controls[key]:IsEnabled(),key.." unavailable for selected rule") end
+		ui:text("search","No such pickup");for _,key in ipairs({"edit","toggle","appearance"}) do
+			local control=build.planningWorkspace.controls[key];assert(not control:IsEnabled(),key.." remains enabled without a selection")
+			assert(control:GetProperty("tooltipText"):find("Select a rule",1,true),key.." does not explain the missing selection")
+		end
+		ui:text("search","Match");list=build.planningWorkspace.controls.rules
 		local function ids() local result={};for _,rule in ipairs(profile.rules) do result[#result+1]=rule.id end;return table.concat(result,",") end
 		assert(list.selectedKey=="order-a","Initial visible selection was not available to keyboard navigation")
 		build.planningWorkspace.body:SelectControl(list);ui:key("DOWN")
