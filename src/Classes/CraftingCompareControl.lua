@@ -5,21 +5,27 @@ local tasks=require("Modules.CraftingTasks")
 local M={}
 function M.Open(build,raw,state,targets,requirements,requiredGroups,current,saved,settings)
 	local controls={};local width=math.min(960,main.screenW-40);local height=math.min(660,main.screenH-60)
-	local model=sim.model(raw);local entries={};local recipes={};local chartResults
+	local model=sim.model(raw);local workbench=require("Modules.CraftingWorkbench");local entries={};local recipes={};local chartResults
 	local function add(label,recipe,priceKey) recipes[#recipes+1]={label=label,recipe=recipe,priceKey=priceKey};entries[#entries+1]={label=label,val=#recipes} end
 	local selected=copyTable(current);selected.maxAttempts=math.min(2000,settings.budget);selected.untilTargets=#targets>0 and copyTable(targets) or nil;selected.untilRequiredGroups=selected.untilTargets and requiredGroups or nil;selected.untilRequirements=requirements and copyTable(requirements)
-	add("Selected action",{steps={selected},targets=copyTable(targets),requirements=requirements and copyTable(requirements),requiredGroups=requiredGroups},sim.priceKey(selected))
+	add("Selected: "..(current.allflame and "Allflame " or "")..workbench.actionLabel(current,model),{steps={selected},targets=copyTable(targets),requirements=requirements and copyTable(requirements),requiredGroups=requiredGroups},sim.priceKey(selected))
 	if saved then local recipe=copyTable(saved);recipe.targets=copyTable(targets);recipe.requirements=requirements and copyTable(requirements);recipe.requiredGroups=requiredGroups;add("Saved recipe",recipe) end
 	for _,method in ipairs({"alchemy","chaos","alteration","essence","fossil","harvest_reforge"}) do
-		local available=require("Modules.CraftingWorkbench").available(method,state,model)
-		local ok,options=pcall(sim.actionOptions,model,state,method)
-		if available and ok and (#options==0 or method~="fossil") then
-			local action=copyTable(options[1] and options[1].action or {method=method});action.maxAttempts=math.min(2000,settings.budget);action.untilTargets=#targets>0 and copyTable(targets) or nil;action.untilRequiredGroups=action.untilTargets and requiredGroups or nil;action.untilRequirements=requirements and copyTable(requirements)
-			add(sim.labels[method],{steps={action},targets=copyTable(targets),requirements=requirements and copyTable(requirements),requiredGroups=requiredGroups},sim.priceKey(action))
+		local available=workbench.available(method,state,model)
+		if available then
+			local ok,options=pcall(sim.actionOptions,model,state,method)
+			if ok then
+				if method=="alchemy" or method=="chaos" or method=="alteration" then options={{action={method=method}}} end
+				for _,option in ipairs(options) do
+					local action=copyTable(option.action);action.maxAttempts=math.min(2000,settings.budget);action.untilTargets=#targets>0 and copyTable(targets) or nil;action.untilRequiredGroups=action.untilTargets and requiredGroups or nil;action.untilRequirements=requirements and copyTable(requirements)
+					local label=workbench.actionLabel(action,model)
+					add(label,{steps={action},targets=copyTable(targets),requirements=requirements and copyTable(requirements),requiredGroups=requiredGroups},sim.priceKey(action))
+				end
+			end
 		end
 	end
 	ui.label(controls,"intro",16,26,"Compare recipes with the same item, targets, seed, trials and action budget.",14)
-	ui.label(controls,"hint",16,50,"Prices in "..settings.currency..". Saved quotes apply to every route; action overrides apply to single actions.",14)
+	ui.label(controls,"hint",16,50,"Prices in "..settings.currency..". Saved quotes apply to every route; search the route dropdown to find a craft.",14)
 	-- Three controls per page keep the dialog compact; the route list itself
 	-- has no fixed count limit. Each route retains overrides per selected action.
 	local rows,page,previous={},1,{}

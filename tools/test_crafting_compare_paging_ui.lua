@@ -14,4 +14,17 @@ return function(ui, frame, build, sim, jobs)
 	assert(StripEscapes(chart.legend1.label()):find("Route 4",1,true));frame("crafting-many-recipe-chart")
 	ui:click("copy");assert(ui.clipboard:find("Route 1:",1,true) and ui.clipboard:find("Route 5:",1,true))
 	ui:click("close");ui:click("close")
+	do
+		local rare=sim.perform(compareRaw,{method="alchemy"},1).state
+		local essences=sim.actionOptions(model,rare,"essence");local harvest=sim.actionOptions(model,rare,"harvest_reforge")
+		assert(#essences>=2 and #harvest>0,"Expected Essence and Harvest options")
+		local control=require("Classes.CraftingCompareControl").Open(build,compareRaw,rare,{}, {minAffixes=1},nil,essences[2].action,nil,{budget=1,trials=2,seed=1,currency="chaos"})
+		ui:choose("route1",essences[1].label,"label");ui:choose("route2",essences[2].label,"label")
+		local harvestLabel=require("Modules.CraftingWorkbench").actionLabel(harvest[1].action,model);ui:choose("route3",harvestLabel,"label")
+		ui:text("price1","11");ui:text("price2","22");ui:text("price3","33");frame("crafting-comparison-choices")
+		ui:click("run");for i=1,2000 do if not jobs.job then break end;jobs.tick(build) end;assert(not jobs.job,"Choice comparison did not finish")
+		local lines={};for _,row in ipairs(control.results.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;local results=table.concat(lines," ")
+		assert(results:find(essences[1].label,1,true) and results:find(essences[2].label,1,true) and results:find(harvestLabel,1,true),"Compared choices were not identified")
+		ui:click("close")
+	end
 end
