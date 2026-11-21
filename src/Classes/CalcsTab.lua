@@ -503,8 +503,11 @@ function CalcsTabClass:BuildOutput(deferRecovery)
 		self.controls.breakdown:SetBreakdownData(self.displayData, self.displayPinned)
 	end
 	
-	-- Rebuild comparisons only if a view requests them for this output.
-	self.miscCalculator = nil
+	-- Retrieve calculator functions
+	passStart = os.clock()
+	local miscCalcFunc, miscCalcBase = self.calcs.getMiscCalculator(self.build)
+	perf.record(self.build, "Comparison setup", os.clock() - passStart)
+	self.miscCalculator = { miscCalcFunc, miscCalcBase }
 end
 
 -- Controls the coroutine that calculates node power
@@ -801,12 +804,6 @@ function CalcsTabClass:CalculateCombinedOffDefStat(original, modified)
 end
 
 function CalcsTabClass:GetMiscCalculator()
-	if not self.miscCalculator then
-		local start = os.clock()
-		local calc, base = self.calcs.getMiscCalculator(self.build)
-		require("Modules.PlanningPerformance").record(self.build, "Comparison setup", os.clock() - start)
-		self.miscCalculator = { calc, base }
-	end
 	return self.miscCalculator[1], self.miscCalculator[2]
 end
 

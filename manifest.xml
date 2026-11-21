@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview911" />
+	<Version number="2.68.1-ai.preview912" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1689,7 +1689,7 @@
 	<File name="Classes/ButtonControl.lua" part="program" sha1="7a58ec249f011107f2ddcdc3aa02f812643e5c5f" />
 	<File name="Classes/CalcBreakdownControl.lua" part="program" sha1="2bd418ddf600499f54288768fbd56c9cac259a7a" />
 	<File name="Classes/CalcSectionControl.lua" part="program" sha1="ace88981a36381c6ccecbdb76ee1b9b04d1afeaf" />
-	<File name="Classes/CalcsTab.lua" part="program" sha1="fd5dccb7b0db516f927e50c0dd466948de055919" />
+	<File name="Classes/CalcsTab.lua" part="program" sha1="f0c78a40a7b45747fe12acff2955f1a3a07dd020" />
 	<File name="Classes/CheckBoxControl.lua" part="program" sha1="021e4ea29d62a600ab14e69e6ed0ad33832d78ab" />
 	<File name="Classes/ColourPickerControl.lua" part="program" sha1="c635b032cb53d0770a68b2f2e64f0fcd19f6a256" />
 	<File name="Classes/CompareBuySimilar.lua" part="program" sha1="c6dc67e5af4f66ef013cbdb6a29e29968fac53bd" />
@@ -2115,7 +2115,7 @@
 	<File name="Modules/AtlasRegions.lua" part="program" sha1="e418859ff34df69202221e4d46f5c3f1275afc3b" />
 	<File name="Modules/AtlasStrategy.lua" part="program" sha1="bac9888c3d82a98a7522464c22fccf48b237e2a9" />
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="650adaf8761d03a87383f3d4a3b14c1ffb5a6aca" />
-	<File name="Modules/Build.lua" part="program" sha1="1be98fa4ea44408c17a98887c65c6062a362f4c9" />
+	<File name="Modules/Build.lua" part="program" sha1="aa2e1b52f5e7388131a302f39d3cc6cfee0a5dba" />
 	<File name="Modules/BuildDisplayStats.lua" part="program" sha1="ffc4da3b13c3d50f3580b452622429f0bd7e70ab" />
 	<File name="Modules/BuildInsights.lua" part="program" sha1="001ce5477dbd6fed64c50949dac49d64ba352a07" />
 	<File name="Modules/BuildJourney.lua" part="program" sha1="f1894a9bb542ecbea77c1d9b1b344975287d3cb7" />

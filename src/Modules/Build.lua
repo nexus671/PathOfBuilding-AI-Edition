@@ -1348,7 +1348,7 @@ function buildMode:OnFrame(inputEvents)
 			self:RefreshStatList()
 			if self.characterLevel~=calculatedLevel then self.buildFlag=true end
 		end
-		self.configTab.calcFunc, self.configTab.calcBase = nil, nil
+		self.configTab.calcFunc, self.configTab.calcBase = self.calcsTab:GetMiscCalculator()
 		require("Modules.PlanningPerformance").record(self,"Build recalculation",os.clock()-calculationStart)
 	end
 	if require("Modules.RecoveryTasks").tick(self.calcsTab) then
