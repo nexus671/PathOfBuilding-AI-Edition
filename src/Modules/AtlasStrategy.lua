@@ -334,7 +334,7 @@ function M.transition(before,after)
 			change.reselectionCostUnknown=true;choiceReselectionCostUnknown=true
 		end
 	end
-	local result={added=diff.added,removed=diff.removed,stats=diff.stats,choiceChanges=diff.choiceChanges,choiceReselectionCostUnknown=choiceReselectionCostUnknown,steps=steps,rebuild=rebuilt,temporary=temporary,startingReachable=startingReachable,startingStatus=startingReachable==nil and "unknown" or startingReachable and "reachable" or "unreachable",startingWarning=startingWarning,lines={before.title.." -> "..after.title,#diff.removed.." changed nodes to refund; "..#diff.added.." changed nodes to allocate.","Route assumes "..budget.." base points are available. Each step preserves connectivity and the supplied budget plus granted points. Refund currency prices are not assumed."}}
+	local result={added=diff.added,removed=diff.removed,stats=diff.stats,modifierChanges=diff.modifierChanges,choiceChanges=diff.choiceChanges,choiceReselectionCostUnknown=choiceReselectionCostUnknown,steps=steps,rebuild=rebuilt,temporary=temporary,startingReachable=startingReachable,startingStatus=startingReachable==nil and "unknown" or startingReachable and "reachable" or "unreachable",startingWarning=startingWarning,lines={before.title.." -> "..after.title,#diff.removed.." changed nodes to refund; "..#diff.added.." changed nodes to allocate.","Route assumes "..budget.." base points are available. Each step preserves connectivity and the supplied budget plus granted points. Refund currency prices are not assumed."}}
 	if startingReachable==false then result.lines[#result.lines+1]="Starting plan cannot be reached with this budget. "..startingWarning
 	elseif startingReachable==nil then result.lines[#result.lines+1]="Starting plan reachability is unverified; this route assumes it is already allocated. "..startingWarning end
 	if steps then
@@ -342,6 +342,10 @@ function M.transition(before,after)
 		result.lines[#result.lines+1]=(temporary and "Temporary grant path; includes extra refunds. " or rebuilt and "Rebuild route; may require extra refunds. " or "Direct route. ")..refunds.." node refunds, "..(#steps-refunds).." allocations. This is a valid allocation route, not a minimum-refund optimizer."
 		for i,step in ipairs(steps) do result.lines[#result.lines+1]=i..". "..step.action..": "..tree.nodes[step.id].name.." ["..step.id.."]" end
 	elseif startingReachable~=false then result.lines[#result.lines+1]="No sequential route found within this budget. Earn more points or plan a temporary route before applying these allocations." end
+	if #diff.modifierChanges>0 then
+		result.lines[#result.lines+1]="Modifier changes are additive totals before keystones and other interactions; they are not effective map chances."
+		for _,change in ipairs(diff.modifierChanges) do result.lines[#result.lines+1]=string.format("%+g%% | %s",change.delta,change.text) end
+	end
 	if choiceReselectionCostUnknown then result.lines[#result.lines+1]="Changing an already selected effect may require an additional refund; its in-game cost and procedure are unverified and excluded from the node-refund count." end
 	for _,change in ipairs(diff.choiceChanges) do
 		result.lines[#result.lines+1]=change.effect and ("Choose effect for "..change.name.." ["..change.id.."]: "..table.concat(change.stats," ")) or ("Choose an effect for "..change.name.." ["..change.id.."]; the destination has none selected.")

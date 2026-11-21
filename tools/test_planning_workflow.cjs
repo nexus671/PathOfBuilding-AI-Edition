@@ -1368,6 +1368,10 @@ async function main(){
   const atlasRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:starterAtlas,targets:atlasTargets,optimize:true},'atlas');
   assert.equal(atlasRoute.atlas.routing.heuristic,false);assert.ok(atlasRoute.atlas.routing.attempts>=1);
   assert.ok(atlasTargets.every(id=>atlasRoute.atlas.plan.nodes.includes(id)));assert.equal((await call('get_build_context')).context.revision,context.revision);
+  const modifierRoute=await queued('plan_atlas_tree',{baseRevision:context.revision,plan:{id:'modifier-stage',title:'Modifier stage',version:'3.30.0c',budget:150,nodes:[]},targets:[57123,2929]},'atlas');
+  const modifierTransition=await queued('compare_atlas_plans',{baseRevision:context.revision,before:{id:'empty-stage',title:'Empty stage',version:'3.30.0c',budget:150,nodes:[]},after:modifierRoute.atlas.plan},'atlas');
+  assert.ok(modifierTransition.atlas.transition.modifierChanges.some(change=>change.text==='increased effect of Explicit Modifiers on your Maps' && change.delta>0));
+  assert.match(modifierTransition.atlas.transition.lines.join(' '),/not effective map chances/);
   const stageReview=await queued('compare_atlas_plans',{baseRevision:context.revision,before:starterAtlas,after:atlasRoute.atlas.plan},'atlas');
   assert.equal(stageReview.atlas.transition.startingReachable,true);assert.equal(stageReview.atlas.transition.startingStatus,'reachable');assert.equal(stageReview.atlas.transition.steps.length,atlasRoute.atlas.plan.nodes.length);
   const nextAtlas=atlasSearch.atlas.matches.find(node=>!atlasRoute.atlas.plan.nodes.includes(node.id));assert.ok(nextAtlas);

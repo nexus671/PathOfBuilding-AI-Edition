@@ -274,8 +274,15 @@ describe("Native Atlas planner", function()
 		local strategy=require("Modules.AtlasStrategy");local change
 		for _,entry in ipairs(strategy.compare(plan("3.30.0c"),p).modifierChanges) do if entry.text=="increased effect of Explicit Modifiers on your Maps" then change=entry;break end end
 		assert.is_truthy(change);assert.equal(found.value,change.delta)
+		local transition=strategy.transition(plan("3.30.0c"),p);local transitionChange
+		for _,entry in ipairs(transition.modifierChanges) do if entry.text==change.text then transitionChange=entry;break end end
+		assert.is_truthy(transitionChange);assert.equal(change.delta,transitionChange.delta)
+		local lines=table.concat(transition.lines,"\n");assert.is_truthy(lines:find("not effective map chances",1,true));assert.is_truthy(lines:find(change.text,1,true))
 		local reverse;for _,entry in ipairs(strategy.compare(p,plan("3.30.0c")).modifierChanges) do if entry.text==change.text then reverse=entry;break end end
 		assert.is_truthy(reverse);assert.equal(-found.value,reverse.delta)
+		local reverseTransition=strategy.transition(p,plan("3.30.0c"));local reverseChange
+		for _,entry in ipairs(reverseTransition.modifierChanges) do if entry.text==change.text then reverseChange=entry;break end end
+		assert.is_truthy(reverseChange);assert.equal(-found.value,reverseChange.delta)
 	end)
 	it("compares reduced Atlas modifiers in both directions",function()
 		local empty=plan("3.30.0c");local selected=atlas.connect(empty,{51896,8887});local report=atlas.report(selected);local total
