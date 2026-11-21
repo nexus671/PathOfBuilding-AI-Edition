@@ -35,9 +35,12 @@ return function(build,ui,frame)
 	ui.clipboard="Item Class: Active Skill Gems\nRarity: Gem\nArc\n--------\nQuality: +20%";ui:click("paste")
 	ui.clipboard="Item Class: Support Skill Gems\nRarity: Gem\nAdded Fire Damage Support\n--------\nQuality: +21%";ui:click("paste")
 	do local c=main.popups[1].controls;local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;local text=table.concat(details," ");assert(text:find("Whetstone",1,true) and text:find("Scrap",1,true) and text:find("Bauble",1,true) and text:find("Prism",1,true) and text:find("40%",1,true) and text:find("above 20% are unverified",1,true),"Quality vendor groups or gem limitation were not displayed") end
-	frame("vendor-quality-groups");ui:click("close")
+	frame("vendor-quality-groups")
+	for i=1,5 do ui.clipboard="Item Class: Active Skill Gems\nRarity: Gem\nVaal Arc\n--------"..(i==5 and "\nQuality: +20%" or "");ui:click("paste") end
+	do local c=main.popups[1].controls;local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;local text=table.concat(details," ");assert(text:find("Vaal Orb: 1 possible set",1,true) and text:find("items may overlap",1,true) and text:find("Quality unknown",1,true),"Vaal vendor recipe or overlap was not displayed") end
+	frame("vendor-vaal-gems");ui:click("close")
 	ui:click("nav_tools");do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="qualityVendor" then selected=row;break end end;assert(selected);browser.results.onClick({line=selected});ui:click("choose") end
-	assert(main.popups[1].controls.status.label:find("7 pasted items",1,true),"Quality vendor review lost its working items");frame("vendor-quality-reopened");ui:click("clear")
+	assert(main.popups[1].controls.status.label:find("12 pasted items",1,true),"Quality vendor review lost its working items");frame("vendor-quality-reopened");ui:click("clear")
 	for _,quality in ipairs({18,17,13,12,11,9}) do ui.clipboard="Item Class: Wands\nRarity: Magic\nSuperior Driftwood Wand of the Fox\n--------\nQuality: +"..quality.."%";ui:click("paste") end
 	do local c=main.popups[1].controls;local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;assert(table.concat(details," "):find("2 maximum",1,true),"Maximum quality groups were not displayed") end
 	frame("vendor-quality-optimal");ui:click("clear");ui:click("close")

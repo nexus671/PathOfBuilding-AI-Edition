@@ -26,6 +26,16 @@ describe("Quality vendor review",function()
 		assert.equal(2,#gems.groups);assert.equal("gem",gems.groups[1].singleKind);assert.equal(20,gems.groups[1].quality);assert.equal(1,#gems.leftover)
 		assert.is_true(flasks.optimal);assert.is_false(gems.optimal);assert.is_true(gems.eligibilityUncertain)
 	end)
+	it("reviews Vaal Orb groups without inventing missing quality",function()
+		local function gem(extra) return "Item Class: Active Skill Gems\nRarity: Gem\nVaal Arc\n--------\n"..(extra or "") end
+		local items={gem(),gem(),gem(),gem(),gem("Quality: +20%"),gem("Quality: +0%")}
+		local review=vendor.review(items);assert.equal(6,review.vaal.count);assert.equal(1,#review.vaal.groups);assert.equal(1,#review.vaal.remaining)
+		assert.equal(5,review.vaal.groups[1].items[5].index);assert.equal(5,review.categories[4].groups[1].items[1].index)
+		assert.equal(4,#review.categories[4].unknownQuality);assert.equal(1,#review.categories[4].zeroQuality);assert.is_false(review.categories[4].optimal)
+		assert.matches("may use the same items",review.note);assert.matches("Ruthless eligibility is unverified",review.note)
+		assert.has_error(function() vendor.parse("Item Class: Active Skill Gems\nRarity: Gem\nVaal Imaginary Spell\n--------") end)
+		assert.has_error(function() vendor.parse("Item Class: Support Skill Gems\nRarity: Gem\nVaal Arc\n--------") end)
+	end)
 	it("accepts copied active and support gem class labels",function()
 		local function gem(class,name,quality) return "Item Class: "..class.."\nRarity: Gem\n"..name.."\n--------\nQuality: +"..quality.."%" end
 		local active=gem("Active Skill Gems","Arc",20);local support=gem("Support Skill Gems","Added Fire Damage Support",20)

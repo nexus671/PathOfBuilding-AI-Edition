@@ -6,7 +6,7 @@ function M.Open(build)
 	build.planningVendorQualityItems=build.planningVendorQualityItems or {}
 	local items=build.planningVendorQualityItems;local bytes=0;for _,raw in ipairs(items) do bytes=bytes+#raw end
 	local c={};local w,h=math.min(880,main.screenW-40),math.min(580,main.screenH-48);local left=math.floor(w*0.49);local selected
-	ui.description(c,"intro",16,28,w-32,64,{"Paste quality equipment, flasks, tinctures or gems to make possible vendor groups.","Counts marked maximum are proven for these values; check the actual vendor offer."},14)
+	ui.description(c,"intro",16,28,w-32,64,{"Paste quality items or Vaal skill gems to review possible vendor recipes.","Quality and Vaal groups can overlap. Check the actual vendor offer."},14)
 	c.entries=new("TextListControl"):TextListControl(ui.anchor,{16,106,left-24,h-210},{{x=8},{x=math.floor(left*0.68)}},{})
 	c.details=new("TextListControl"):TextListControl(ui.anchor,{left+8,106,w-left-24,h-210},nil,{})
 	c.status=new("LabelControl"):LabelControl(ui.anchor,{16,h-94,0,14},"^7No items pasted")
@@ -14,12 +14,20 @@ function M.Open(build)
 		local review=vendor.review(items);local rows={{height=28,textSize=14,"^7Copied item","^7Quality"}}
 		for _,category in ipairs(review.categories) do for _,item in ipairs(category.items) do
 			local colour=item.index==selected and "^xEED49C" or "^7"
-			rows[#rows+1]={height=25,textSize=14,itemIndex=item.index,colour..ui.fit("#"..item.index.." "..item.base,math.floor(left*0.65)-18,14),colour..item.quality.."%"}
+			rows[#rows+1]={height=25,textSize=14,itemIndex=item.index,colour..ui.fit("#"..item.index.." "..item.base,math.floor(left*0.65)-18,14),colour..(item.quality==nil and "Unknown" or item.quality.."%")}
 		end end
 		c.entries.list=rows;local lines={}
+		if review.vaal.count>0 then
+			lines[#lines+1]="Vaal Orb: "..#review.vaal.groups.." possible "..(#review.vaal.groups==1 and "set" or "sets").." (5 gems each)"
+			for index,group in ipairs(review.vaal.groups) do local ids={};for _,item in ipairs(group.items) do ids[#ids+1]="#"..item.index end;lines[#lines+1]="  "..index..". "..table.concat(ids,", ") end
+			if #review.vaal.remaining>0 then local ids={};for _,item in ipairs(review.vaal.remaining) do ids[#ids+1]="#"..item.index end;lines[#lines+1]="  Remaining Vaal gems: "..table.concat(ids,", ") end
+			lines[#lines+1]="  Independent of quality groups; items may overlap. Ruthless unverified."
+		end
 		for _,category in ipairs(review.categories) do
 			lines[#lines+1]=category.name.." - "..category.reward..": "..#category.groups..(category.optimal and " maximum" or " suggested")
 			if category.eligibilityUncertain then lines[#lines+1]="  Single-gem offers above 20% are unverified." end
+			if #category.unknownQuality>0 then local ids={};for _,item in ipairs(category.unknownQuality) do ids[#ids+1]="#"..item.index end;lines[#lines+1]="  Quality unknown: "..table.concat(ids,", ") end
+			if #category.zeroQuality>0 then local ids={};for _,item in ipairs(category.zeroQuality) do ids[#ids+1]="#"..item.index end;lines[#lines+1]="  No quality: "..table.concat(ids,", ") end
 			for index,group in ipairs(category.groups) do
 				local ids={};for _,item in ipairs(group.items) do ids[#ids+1]="#"..item.index end
 				lines[#lines+1]="  "..index..". "..table.concat(ids,", ").." ("..group.quality.."%"..(group.single and (group.singleKind=="gem" and ", gem" or ", normal item") or "")..")"
@@ -43,6 +51,6 @@ function M.Open(build)
 	button("undo",316,110,"Undo last",function() if #items>0 then bytes=bytes-#items[#items];table.remove(items);selected=nil;refresh() end end);c.undo.enabled=function() return #items>0 end
 	button("clear",438,90,"Clear",function() items={};build.planningVendorQualityItems=items;bytes=0;selected=nil;refresh() end);c.clear.enabled=function() return #items>0 end
 	button("close",w-146,130,"Close",function() main:ClosePopup() end)
-	refresh();ui.style(c);main:OpenPopup(w,h,"Quality vendor review",c,nil,nil,"close");return c
+	refresh();ui.style(c);main:OpenPopup(w,h,"Quality and Vaal vendor review",c,nil,nil,"close");return c
 end
 return M

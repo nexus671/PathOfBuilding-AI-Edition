@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview952" />
+	<Version number="2.68.1-ai.preview953" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="89a3d8482ce0245032ea5778739f0e2884252c9a" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="0ef93e1bcdcb57e0e61cb18b0a4bae04a71184e1" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -1795,7 +1795,7 @@
 	<File name="Classes/PassiveTreeView.lua" part="program" sha1="e7396eaa393c3ca75bafd17cd96c4d772819407f" />
 	<File name="Classes/PathControl.lua" part="program" sha1="868c38fd9095317b6721f6932cf06590bd616f13" />
 	<File name="Classes/PlanningBrowserControl.lua" part="program" sha1="afc1e5fde74eb2b120d31a68cde3a6ea31c770b1" />
-	<File name="Classes/PlanningToolsControl.lua" part="program" sha1="5e7eeb5e9786817d72ad7c650b2d4fd339ad7c91" />
+	<File name="Classes/PlanningToolsControl.lua" part="program" sha1="c9932b6060fc950df25586ef53dc266f2cb01076" />
 	<File name="Classes/PoBArchivesProvider.lua" part="program" sha1="acf68b7718782ce267df01614b497af246389ca5" />
 	<File name="Classes/PoEAPI.lua" part="program" sha1="197f3091ba9b511b923ca95e5952933a3ffd0f21" />
 	<File name="Classes/PopupDialog.lua" part="program" sha1="1e2334c463bfbb9bac16f2abe4409cf3cece9947" />
@@ -3162,8 +3162,8 @@
 	<File name="Classes/VendorRarePairsControl.lua" part="program" sha1="5d92f9949eedb12db9f8517c973d0ebb837d83e4" />
 	<File name="Modules/VendorRarePairs.lua" part="program" sha1="6e825c5cfec6f95923681228a65c26b725ade64f" />
 	<File name="Classes/VendorRareSetsControl.lua" part="program" sha1="5a7536c3bcb5d508bf1c09394a07c282e5fedc7d" />
-	<File name="Classes/VendorQualitySetsControl.lua" part="program" sha1="80141bc98ba864262b159286e19de8cf0dba2b64" />
-	<File name="Modules/VendorQualitySets.lua" part="program" sha1="25d5420fdeda2f7cbf4847ed8ec73e40a72e0e5d" />
+	<File name="Classes/VendorQualitySetsControl.lua" part="program" sha1="8630e7cfdcca16eaa7d0336bf53db26f7f36c609" />
+	<File name="Modules/VendorQualitySets.lua" part="program" sha1="b4e8718cd9f90aeb9061345fbb82bd5df8971a66" />
 	<File name="Data/Atlas/delirium-orbs-3.30.json" part="program" sha1="8a1fe3223596c7794eff185015d266b3afa239d5" />
 	<File name="Assets/Crafting/Currency/452b63ccb02eb75f558c.png" part="program" sha1="28b1638886cc36a0949780d7a1f51cc0c83c943f" />
 	<File name="Assets/Crafting/Currency/95e43fd333795c8a758a.png" part="program" sha1="0d054218895a8b12c164d2d9abb53eeba336af56" />

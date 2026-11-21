@@ -78,31 +78,41 @@ function M.parse(raw)
 		local value=line:match("^Quality:%s*%+?(%d+)%%") or line:match("^Quality %([^%)]+%):%s*%+?(%d+)%%")
 		if value then assert(not quality,"Copied item has multiple quality values");quality=tonumber(value) end
 	end
-	assert(quality and quality>=1 and quality<=100,"The copied item needs quality between 1% and 100%")
-	return {base=base,class=class,rarity=rarity,quality=quality,category=category}
+	local gemId=class=="Skill Gems" and data.gemForBaseName[base:lower()]
+	local vaal=gemId and data.gems[gemId] and data.gems[gemId].vaalGem==true or false
+	assert(quality and quality>=1 and quality<=100 or vaal and (quality==nil or quality==0),"The copied item needs quality between 1% and 100%, or a recognized Vaal skill gem")
+	return {base=base,class=class,rarity=rarity,quality=quality,category=category,vaalGem=vaal}
 end
 function M.review(items)
 	assert(type(items)=="table","Supply copied items")
 	for index in pairs(items) do assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=#items,"Copied items must be an array") end
 	local categories={{name="Weapons",reward="Blacksmith's Whetstone",items={},groups={},leftover={}},{name="Armour",reward="Armourer's Scrap",items={},groups={},leftover={}},{name="Flasks and tinctures",reward="Glassblower's Bauble",items={},groups={},leftover={}},{name="Gems",reward="Gemcutter's Prism",items={},groups={},leftover={}}}
-	local byName={};for _,category in ipairs(categories) do byName[category.name]=category end;local bytes=0
+	local vaal={groups={},remaining={},count=0};local byName={};for _,category in ipairs(categories) do byName[category.name]=category end;local bytes=0
 	for index,raw in ipairs(items) do
 		assert(type(raw)=="string","Item "..index.." must be copied item text");bytes=bytes+#raw;assert(bytes<=M.maxBytes,"Copied items exceed the 4 MiB review limit")
 		local ok,item=pcall(M.parse,raw);assert(ok,"Item "..index..": "..tostring(item));item.index=index
 		local category=byName[item.category];category.items[#category.items+1]=item
+		if item.vaalGem then
+			vaal.count=vaal.count+1;vaal.remaining[#vaal.remaining+1]=item
+			if #vaal.remaining==5 then vaal.groups[#vaal.groups+1]={items=vaal.remaining};vaal.remaining={} end
+		end
 	end
 	for _,category in ipairs(categories) do
-		local rest={}
+		local rest={};category.unknownQuality={};category.zeroQuality={}
 		for _,item in ipairs(category.items) do
-			if category.name=="Gems" and item.quality>20 then category.eligibilityUncertain=true end
-			if item.rarity=="Normal" and item.quality>=20 or category.name=="Gems" and item.quality==20 then category.groups[#category.groups+1]={items={item},quality=item.quality,single=true,singleKind=category.name=="Gems" and "gem" or "normal"}
-			else rest[#rest+1]=item end
+			if item.quality==nil then category.unknownQuality[#category.unknownQuality+1]=item
+			elseif item.quality==0 then category.zeroQuality[#category.zeroQuality+1]=item
+			else
+				if category.name=="Gems" and item.quality>20 then category.eligibilityUncertain=true end
+				if item.rarity=="Normal" and item.quality>=20 or category.name=="Gems" and item.quality==20 then category.groups[#category.groups+1]={items={item},quality=item.quality,single=true,singleKind=category.name=="Gems" and "gem" or "normal"}
+				else rest[#rest+1]=item end
+			end
 		end
 		table.sort(rest,function(a,b) if a.quality~=b.quality then return a.quality>b.quality end return a.index<b.index end)
 		local groups,leftover,leftoverQuality,optimal=bestGroups(rest)
 		for _,group in ipairs(groups) do category.groups[#category.groups+1]=group end
-		category.leftover=leftover;category.leftoverQuality=leftoverQuality;category.optimal=optimal and not category.eligibilityUncertain
+		category.leftover=leftover;category.leftoverQuality=leftoverQuality;category.optimal=optimal and not category.eligibilityUncertain and #category.unknownQuality==0
 	end
-	return {categories=categories,totalItems=#items,note="Optimal counts are proven for the modeled recipe and supplied quality values when marked; otherwise groups are suggestions. Single-item offers for gems above 20% are unverified. Each paste must be a different item. Check eligibility and the actual vendor offer; this does not read your stash."}
+	return {categories=categories,vaal=vaal,totalItems=#items,note="Vaal Orb groups use five recognized Vaal skill gems in normal mode; Ruthless eligibility is unverified. Vaal and quality groups are independent and may use the same items. Optimal quality counts are proven for the modeled recipe and supplied quality values when marked; otherwise groups are suggestions. Single-item offers for gems above 20% are unverified. Each paste must be a different item. Check eligibility and the actual vendor offer; this does not read your stash."}
 end
 return M
