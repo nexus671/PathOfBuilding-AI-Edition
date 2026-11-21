@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview905" />
+	<Version number="2.68.1-ai.preview906" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1892,7 +1892,7 @@
 	<File name="Assets/Genesis/KeepersUniqueNode.png" part="program" sha1="b3a60b61166b5a81d923126a6de62cb9e2130c10" />
 	<File name="Assets/Genesis/KeepersUniqueNotable.png" part="program" sha1="0fb79779a84bedd1d3929ec191b9e4d0c76e063e" />
 	<File name="Assets/Genesis/MasteryBlank.png" part="program" sha1="e77fe57d12283901618685bbbd28d6bb63bf846a" />
-	<File name="Assets/Genesis/manifest.json" part="program" sha1="28c0b0a41c1b07482211364cb62c8aaf0648aa2f" />
+	<File name="Assets/Genesis/manifest.json" part="program" sha1="48b0155843664a8142f3efe71e6419e83a7248f0" />
 	<File name="Data/Genesis/3.30.0d.json" part="program" sha1="8ba49aeb742a28350e17754c302d28ec4414b776" />
 	<File name="Data/Genesis/point-reference.json" part="program" sha1="33eac52cbd6ad28e75fde4738c1b8fd556087357" />
 	<File name="Data/LootFilters/0.filter" part="program" sha1="95ae274d3a62374fcb0d573065586ec13990ec7a" />
