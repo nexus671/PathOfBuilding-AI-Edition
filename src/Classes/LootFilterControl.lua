@@ -54,6 +54,8 @@ function M.Conditions(rule,save,mode)
 	ui.label(c,"nameLabel",16,28,"Rule name",14);c.title=new("EditControl"):EditControl(ui.anchor,{16,50,w-200,26},rule.title,nil,nil,160)
 	c.action=new("DropDownControl"):DropDownControl(ui.anchor,{w-168,50,152,26},parser.actionChoices(mode,block.action));c.action:SelByValue(block.action)
 	ui.description(c,"hint",16,88,w-32,42,{"All conditions must match. Add values in quotes for names with spaces. A filter cannot inspect unidentified explicit modifiers."},14)
+	c.hint.shown=function() return not parser.actionReason(mode,c.action:GetSelValue()) end
+	ui.label(c,"modeNotice",16,88,"",14);c.modeNotice.label=function() local reason=parser.actionReason(mode,c.action:GetSelValue());return reason and "^xFFD27F"..reason or "" end
 	c.action.tooltipText=function() return parser.actionReason(mode,c.action:GetSelValue()) or "Choose how matching drops are displayed." end
 	local rows=math.max(1,math.floor((h-330)/40));local offset=1;local dialog
 	ui.label(c,"conditionFieldLabel",16,128,"Condition",14)

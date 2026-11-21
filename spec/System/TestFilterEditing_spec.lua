@@ -40,8 +40,8 @@ describe("Local filter editing",function()
 		local minimal={id="minimal",title="Minimal",text='Minimal\n BaseType == "Iron Hat"'}
 		editor.EditRule(minimal,function(value) saved=value end,"Normal")
 		local c=main.popups[1].controls;assert.equal("Minimal",c.action:GetSelValue());assert.is_false(c.keepRule:IsEnabled());assert.matches("only in Ruthless",c.modeNotice.label())
-		c.action:SelByValue("Show");c.action.selFunc();assert.is_true(c.keepRule:IsEnabled());c.conditions:Click()
-		c=main.popups[1].controls;assert.equal("Show",c.action:GetSelValue());assert.equal(2,#c.action.list);c.keepRule:Click();assert.equal("Show",parser.parse(saved.text).rules[1].action)
+		c.conditions:Click();c=main.popups[1].controls;assert.equal("Minimal",c.action:GetSelValue());assert.is_false(c.keepRule:IsEnabled());assert.matches("only in Ruthless",c.modeNotice.label())
+		c.action:SelByValue("Show");assert.is_true(c.keepRule:IsEnabled());assert.equal("",c.modeNotice.label());c.keepRule:Click();assert.equal("Show",parser.parse(saved.text).rules[1].action)
 		local hidden={id="hidden",title="Hidden",text='Hide\n BaseType == "Iron Hat"'}
 		editor.EditRule(hidden,function(value) saved=value end,"Ruthless");c=main.popups[1].controls
 		assert.equal("Hide",c.action:GetSelValue());assert.is_false(c.keepRule:IsEnabled());assert.matches("cannot hide",c.modeNotice.label())
