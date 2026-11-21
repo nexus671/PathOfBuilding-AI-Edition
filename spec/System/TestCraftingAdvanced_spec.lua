@@ -139,7 +139,8 @@ describe("Advanced native crafting", function()
 		local catalog=sim.catalog(raw,"",20);assert.is_true(warned(catalog.methodWarnings.alteration))
 		local project={id="tincture-warning",title="Tincture",slot="Flask 1",startingItem=raw,goals={},steps={},preferredMethod="alteration"};build.savers.CraftingProjects:Upsert(project)
 		local control=require("Classes.CraftingSimulatorControl").Open(build,project);local lines={};for _,row in ipairs(control.actionHint.list) do lines[#lines+1]=row[1] end
-		assert.matches("Copied tincture values",table.concat(lines," "),1,true);main.popups={}
+		assert.matches("item warnings",table.concat(lines," "),1,true);assert.is_true(control.warningDetails:IsShown());control.warningDetails:Click()
+		local found=false;for _,row in ipairs(main.popups[1].controls.results.list) do if row.entry and row.entry.label=="Tincture scaling" then found=true;assert.matches("locally scaled",row.entry.details[1],1,true) end end;assert.is_true(found);main.popups={}
 		assert.is_false(warned(sim.actionWarnings({method="alteration"},sim.model(raw:gsub("Item Class: Tinctures\n","")))))
 		local effectRaw="Item Class: Tinctures\nRarity: MAGIC\nHorticultural Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 86\nQuality: 0\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n20% increased effect\n29% increased Melee Weapon Attack Speed"
 		local saved=new("Item"):Item(effectRaw):BuildRaw();local edited=(saved:gsub("\n{prefix}20%% increased effect","")):gsub("\n20%% increased effect","")
