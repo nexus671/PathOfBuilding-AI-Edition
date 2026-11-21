@@ -7,6 +7,7 @@ return function(build,ui,frame)
 	ui:choose("operation","socket_links","val");ui:choose("socketRolls",30,"val");assert(main.popups[1].controls.socketHint:IsShown() and not main.popups[1].controls.side:IsShown(),"Socket offer details are missing");frame("crafting-rog-socket-offer")
 	ui:choose("operation","socket_count","val");ui:click("keep");ui:click("exact")
 	local socketJobs=require("Modules.CraftingTasks");for _=1,1000 do if not socketJobs.job then break end;socketJobs.tick(build) end
+	assert(StripEscapes(main.popups[1].controls.intro.label):find("Rog: best socket count of 30",1,true),"Simulation does not identify the configured offer")
 	local socketOdds=build.craftingAnalyses["rog-ui"].results.odds.result
 	assert(not socketJobs.job and not socketOdds.sampled and socketOdds.exactFor:find("estimated socket model",1,true),"Rog socket odds were not enumerated");frame("crafting-rog-socket-odds")
 	ui:click("tab_settings");ui:click("configure")
@@ -16,7 +17,7 @@ return function(build,ui,frame)
 	local odds=build.craftingAnalyses["rog-ui"].results.odds.result
 	assert(not jobs.job and not odds.sampled and odds.successChance==100,"Rog removal odds were not enumerated");frame("crafting-rog-odds")
 	ui:click("tab_settings");ui:click("configure")
-	ui:choose("operation","upgrade","val");ui:choose("upgradeCount",2,"val");assert(main.popups[1].controls.upgradeHint:IsShown(),"Upgrade explanation missing");frame("crafting-rog-upgrade");ui:click("keep");ui:click("tab_craft");assert(main.popups[1].controls.apply:IsEnabled(),"Tier upgrade could not be applied");ui:click("tab_settings");ui:click("configure");assert(main.popups[1].controls.upgradeCount:GetSelValueByKey("val")==2,"Upgrade count was not retained")
+	ui:choose("operation","upgrade","val");ui:choose("upgradeCount",2,"val");assert(main.popups[1].controls.upgradeHint:IsShown(),"Upgrade explanation missing");frame("crafting-rog-upgrade");ui:click("keep");ui:click("tab_craft");assert(StripEscapes(main.popups[1].controls.selectedAction.label()):find("Rog: upgrade 2",1,true),"Craft view does not identify the configured offer");assert(main.popups[1].controls.apply:IsEnabled(),"Tier upgrade could not be applied");ui:click("tab_settings");ui:click("configure");assert(main.popups[1].controls.upgradeCount:GetSelValueByKey("val")==2,"Upgrade count was not retained")
 	ui:choose("operation","fill","val");assert(main.popups[1].controls.fillHint:IsShown() and not main.popups[1].controls.side:IsShown(),"Fill offer did not explain its estimated rolls");frame("crafting-rog-fill")
 	ui:click("keep");ui:click("tab_craft");assert(main.popups[1].controls.apply:IsEnabled(),"Rog fill offer could not be applied");ui:click("tab_settings");ui:click("configure");assert(main.popups[1].controls.operation:GetSelValueByKey("val")=="fill","Rog fill selection was not retained")
 	ui:choose("operation","add","val");ui:choose("side","Suffix","val");ui:choose("attempts",3,"val");ui:text("grand","12");ui:click("keep")

@@ -84,7 +84,7 @@ function Panel.Open(build,project,layout)
 	local action,overrideKey,updateCurrency,actionConfigurationReason,gwennenApplyReason
 	local function actionName()
 		local selected=action()
-		return (selected.allflame and "Allflame " or "")..simulator.labels[selected.method]
+		return (selected.allflame and "Allflame " or "")..workbench.actionLabel(selected,model)
 	end
 	local priceOverrides=copyTable(restored and restored.priceOverrides or {})
 	local width=layout and layout.width or math.min(1120,main.screenW-40)
@@ -885,8 +885,7 @@ function Panel.Open(build,project,layout)
 	controls.apply.x=16;controls.apply.width=200;controls.undo.x=232;controls.undo.width=200
 	ui.label(controls,"selectedAction",16,230,"",20)
 	controls.selectedAction.label=function()
-		local selected=action();local name=simulator.labels[selected.method];local suffix=""
-		if selected.beastLevel then name="beast level "..selected.beastLevel.." | "..name end
+		local name=actionName();local suffix=""
 		while #name>0 and DrawStringWidth(20,"VAR",name..suffix)>leftWidth do name=name:sub(1,-2);suffix="..." end
 		return "^xE2C28C"..name..suffix
 	end

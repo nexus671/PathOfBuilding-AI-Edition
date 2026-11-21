@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview945" />
+	<Version number="2.68.1-ai.preview946" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1736,7 +1736,7 @@
 	<File name="Classes/CraftingRecipeControl.lua" part="program" sha1="21e6303304229f0de462efa4aaffc1a19cc3ce5a" />
 	<File name="Classes/CraftingRecipeGraphControl.lua" part="program" sha1="a3f12c0823b83e552a19e597750352622b070aa2" />
 	<File name="Classes/CraftingRecoveryControl.lua" part="program" sha1="6bdf797c867f14c6a1b5338bfc6f6dcea18cd1f1" />
-	<File name="Classes/CraftingSimulatorControl.lua" part="program" sha1="36bb3bd0d4272ab85109d237266aff8945631bea" />
+	<File name="Classes/CraftingSimulatorControl.lua" part="program" sha1="5c84dc611f8693326e3d3c1e4aebe95ceefa5d99" />
 	<File name="Classes/CraftingSocketControl.lua" part="program" sha1="27e0d2b5d303d40f03eefc754be5ad878e500eb1" />
 	<File name="Classes/CraftingTargetControl.lua" part="program" sha1="32074f37c11c10a2d30da02387ea52c1d4ee0e1d" />
 	<File name="Classes/CraftingStepCostsControl.lua" part="program" sha1="6659d42da2a3c970da94b16bf90e62d926305e7b" />
