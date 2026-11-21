@@ -37,4 +37,15 @@ return function(ui, frame, build, sim, jobs)
 		assert(results:find("Custom recipe 1",1,true) and results:find("Custom recipe 2",1,true),"Custom recipe results were not identified")
 		ui:click("close")
 	end
+	do
+		local store=build.savers.CraftingProjects;local original=copyTable(store.projects)
+		local project={id="comparison-keep-test",title="Comparison keep test",slot="Helmet",startingItem=compareRaw,goals={},steps={},preferredMethod="alchemy",nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}}
+		store:Upsert(project);require("Classes.CraftingSimulatorControl").Open(build,project)
+		ui:choose("page","Simulate recipe");ui:click("compareRecipes");ui:click("edit1");ui:click("add");ui:click("keep");frame("crafting-comparison-keep-route")
+		ui:click("keep1");frame("crafting-comparison-keep-confirm");ui:click("confirm");assert(main.popups[1].title=="Recipe kept");ui:click("close")
+		local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
+		assert(saved and #saved.nativeRecipe.steps==2 and saved.nativeRecipe.initialState.rarity=="NORMAL","Kept comparison recipe lost its state")
+		ui:click("close");ui:click("close");store.projects=original
+	end
+
 end

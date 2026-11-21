@@ -63,4 +63,14 @@ describe("Recipe comparison pagination",function()
   assert.is_nil(next(seen[1].prices));assert.is_nil(next(seen[2].prices))
  end)
 
+ it("adds the newly kept recipe to comparisons that started without one",function()
+  local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local model=sim.model(raw);local kept
+  local settings={budget=1,trials=2,seed=1,currency="chaos",hasSavedRecipe=function() return kept~=nil end,keepRecipe=function(recipe) kept=copyTable(recipe) end}
+  local c=require("Classes.CraftingCompareControl").Open(build,raw,model.initial,{}, {minAffixes=1},nil,{method="transmute"},nil,settings)
+  c.keep1:Click();assert.equal("Recipe kept",main.popups[1].title);main:ClosePopup();assert.equal("transmute",kept.steps[1].method)
+  local savedIndex;for index,entry in ipairs(c.route2.list) do if entry.label=="Saved recipe" then savedIndex=index end end
+  assert.is_not_nil(savedIndex);c.route2:SetSel(savedIndex);c.edit2:Click();assert.equal(1,#main.popups[1].controls.graph.list);main:ClosePopup()
+  c.keep1:Click();assert.equal("Replace saved recipe",main.popups[1].title);main:ClosePopup()
+ end)
+
 end)

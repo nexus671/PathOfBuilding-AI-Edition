@@ -9,7 +9,8 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 	local function add(label,recipe,priceKey) recipes[#recipes+1]={label=label,recipe=recipe,priceKey=priceKey};entries[#entries+1]={label=label,val=#recipes} end
 	local selected=copyTable(current);selected.maxAttempts=math.min(2000,settings.budget);selected.untilTargets=#targets>0 and copyTable(targets) or nil;selected.untilRequiredGroups=selected.untilTargets and requiredGroups or nil;selected.untilRequirements=requirements and copyTable(requirements)
 	add("Selected: "..(current.allflame and "Allflame " or "")..workbench.actionLabel(current,model),{steps={selected},targets=copyTable(targets),requirements=requirements and copyTable(requirements),requiredGroups=requiredGroups},sim.priceKey(selected))
-	if saved then local recipe=copyTable(saved);recipe.targets=copyTable(targets);recipe.requirements=requirements and copyTable(requirements);recipe.requiredGroups=requiredGroups;add("Saved recipe",recipe) end
+	local savedIndex
+	if saved then local recipe=copyTable(saved);recipe.targets=copyTable(targets);recipe.requirements=requirements and copyTable(requirements);recipe.requiredGroups=requiredGroups;add("Saved recipe",recipe);savedIndex=#recipes end
 	for _,method in ipairs({"alchemy","chaos","alteration","essence","fossil","harvest_reforge"}) do
 		local available=workbench.available(method,state,model)
 		if available then
@@ -49,9 +50,9 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 		end end
 	end
 	for i=1,3 do
-		local slot=i
-		controls["route"..slot]=new("DropDownControl"):DropDownControl(ui.anchor,{16,82+(slot-1)*38,width-316,26},entries)
-		controls["price"..slot]=new("EditControl"):EditControl(ui.anchor,{width-288,82+(slot-1)*38,160,26},"","Action override",nil,16)
+		local slot=i;local canKeep=settings.keepRecipe~=nil
+		controls["route"..slot]=new("DropDownControl"):DropDownControl(ui.anchor,{16,82+(slot-1)*38,width-(canKeep and 385 or 316),26},entries)
+		controls["price"..slot]=new("EditControl"):EditControl(ui.anchor,{width-(canKeep and 357 or 288),82+(slot-1)*38,canKeep and 135 or 160,26},"","Action override",nil,16)
 		local drop,input=controls["route"..slot],controls["price"..slot]
 		drop.shown=function() return rows[position(slot)]~=nil end;input.shown=drop.shown
 		drop.enabled=function() return not tasks.job end;input.changeFunc=invalidate
@@ -72,7 +73,26 @@ function M.Open(build,raw,state,targets,requirements,requiredGroups,current,save
 			end,sim.context(model,state))
 		end)
 		controls["edit"..slot].shown=drop.shown;controls["edit"..slot].enabled=function() return not tasks.job end
-		controls["edit"..slot].tooltipText="Create a separate comparison recipe from this route. Changes are kept for this comparison only."
+		controls["edit"..slot].tooltipText="Create a separate comparison recipe from this route. Use Keep to save one to the project."
+		if canKeep then
+			controls["keep"..slot]=new("ButtonControl"):ButtonControl(ui.anchor,{width-214,82+(slot-1)*38,86,26},"Keep",function()
+				savePage();local row=rows[position(slot)];local recipe=copyTable(recipes[row.choice].recipe);recipe.initialState=copyTable(state)
+				local function keep()
+					local ok,message=pcall(settings.keepRecipe,recipe)
+					if not ok then main:OpenMessagePopup("Keep recipe",ui.errorText(message));return end
+					if savedIndex then recipes[savedIndex].recipe=copyTable(recipe)
+					else add("Saved recipe",copyTable(recipe));savedIndex=#recipes end
+					for index=1,3 do controls["route"..index]:ResetSearch() end
+					invalidate()
+					main:OpenMessagePopup("Recipe kept","Saved to this crafting project. Use build Save to persist.\nComparison-only action overrides are not saved; use Resource prices.")
+				end
+				if settings.hasSavedRecipe and settings.hasSavedRecipe() then
+					main:OpenConfirmPopup("Replace saved recipe","Replace this project's saved recipe with the selected route?\nWritten guide steps stay unchanged. Use build Save to persist.","Replace",keep)
+				else keep() end
+			end)
+			controls["keep"..slot].shown=drop.shown;controls["keep"..slot].enabled=function() return not tasks.job end
+			controls["keep"..slot].tooltipText="Keep this route as the project's saved recipe, starting from the compared item. Resource prices remain separate."
+		end
 		controls["remove"..slot]=new("ButtonControl"):ButtonControl(ui.anchor,{width-52,82+(slot-1)*38,36,26},"X",function()
 			savePage();table.remove(rows,position(slot));showPage();invalidate()
 		end)

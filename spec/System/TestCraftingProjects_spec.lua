@@ -293,4 +293,20 @@ describe("Crafting projects", function()
 		assert.is_nil(next(result.transitionErrors));assert.is_truthy(result.sampleItem:find("Cold Resistance",1,true))
 	end)
 
+	it("keeps a compared recipe with its working starting state and confirms replacement",function()
+		local entry=project();entry.preferredMethod="alchemy";entry.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		build.savers.CraftingProjects:Upsert(entry);local control=require("Classes.CraftingSimulatorControl").Open(build,entry)
+		control.page:SelByValue("Emulate item");control.apply:Click();assert.equal("Crafting workbench",main.popups[1].title)
+		control.page:SelByValue("Simulate recipe");control.compareRecipes:Click();local compare=main.popups[1].controls
+		compare.edit1:Click();local editor=main.popups[1].controls;editor.add:Click();editor.keep:Click()
+		compare.keep1:Click();assert.equal("Replace saved recipe",main.popups[1].title);main:ClosePopup()
+		assert.equal(1,#build.savers.CraftingProjects.projects[1].nativeRecipe.steps)
+		compare.keep1:Click();main.popups[1].controls.confirm:Click();assert.equal("Recipe kept",main.popups[1].title);main:ClosePopup()
+		compare.edit2:Click();assert.equal(2,#main.popups[1].controls.graph.list);main:ClosePopup()
+		local kept=build.savers.CraftingProjects.projects[1];assert.equal(2,#kept.nativeRecipe.steps);assert.equal("RARE",kept.nativeRecipe.initialState.rarity)
+		assert.equal(entry.steps[1].action,kept.steps[1].action);assert.equal(0,build.itemsTab.slots.Helmet.selItemId)
+		local reopened=bridge.prepare(build,{mode="edit",title="Reopen compared recipe",baseRevision=bridge.revision(build),operations={{type="set_character",level=80}}}).candidate
+		kept=reopened.savers.CraftingProjects.projects[1];assert.equal(2,#kept.nativeRecipe.steps);assert.equal("RARE",kept.nativeRecipe.initialState.rarity)
+	end)
+
 end)

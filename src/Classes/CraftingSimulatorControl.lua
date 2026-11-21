@@ -541,7 +541,11 @@ function Panel.Open(build,project,layout)
 	button(controls,"compareRecipes",16,354,200,"Compare recipes",function()
 		assert(#targets>0 or requirements and next(requirements),"Choose target modifiers or item conditions first")
 		require("Classes.CraftingCompareControl").Open(build,draft.startingItem,copyTable(state),copyTable(targets),requirements and copyTable(requirements),requiredGroups,action(),draft.nativeRecipe,
-			{trials=assert(tonumber(controls.trials.buf)),budget=assert(tonumber(controls.budget.buf)),seed=assert(tonumber(controls.seed.buf)),currency=controls.currency.buf,treeVersion=build.spec.treeVersion,priceBook=draft.priceBook and copyTable(draft.priceBook)})
+			{trials=assert(tonumber(controls.trials.buf)),budget=assert(tonumber(controls.budget.buf)),seed=assert(tonumber(controls.seed.buf)),currency=controls.currency.buf,treeVersion=build.spec.treeVersion,priceBook=draft.priceBook and copyTable(draft.priceBook),
+				hasSavedRecipe=function() return draft.nativeRecipe~=nil end,keepRecipe=function(recipe)
+					local candidate=copyTable(draft);candidate.nativeRecipe=recipe
+					draft=copyTable(build.savers.CraftingProjects:Upsert(candidate));refresh({"Recipe kept. Use build Save to persist."})
+				end})
 	end)
 	button(controls,"resourcePrices",232,266,200,"Resource prices",function()
 		local books={};for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id~=draft.id and project.priceBook and next(project.priceBook.values) then books[#books+1]=project end end
