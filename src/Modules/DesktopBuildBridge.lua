@@ -699,12 +699,18 @@ function M.poll(build, force)
 			if ok then
 				M.status.crafting.nativeEngine=catalog
 				if request.action and catalog.uniqueCrafting then
+					if request.action.method=="gwennen" then catalog.gwennenPair={available=false,unavailableReason="Gwennen requires rare equipment in this model."} end
 					catalog.allflameUnavailable="Allflame craft analysis is not modeled for unique items."
 					if request.action.method=="beast_prefix_suffix" or request.action.method=="beast_suffix_prefix" then catalog.beastPoolUnavailable="This Bestiary modifier craft is not modeled for unique items." end
 				elseif request.action then
 					local simulator=require("Modules.CraftingSimulator");local model=simulator.model(raw)
 					local state=request.initialState and simulator.validateState(model,request.initialState) or model.initial
 					local action=copyTable(request.action)
+					if action.method=="gwennen" then
+						local available,reason=require("Modules.CraftingAvailability").check(action.method,state,model)
+						if available then reason=simulator.configurationReason(model,state,action) or simulator.gwennenPairReason(model,state,action);available=not reason end
+						catalog.gwennenPair={available=available,unavailableReason=reason,note="Both branches are probed once in the model. Random later outcomes and in-game eligibility remain unverified."}
+					end
 					if action.method=="beast_prefix_suffix" or action.method=="beast_suffix_prefix" then
 						local valid,pool=pcall(simulator.beastCatalog,model,state,action,request.query,request.limit,request.beastOffset)
 						if valid then catalog.beastPool=pool else catalog.beastPoolUnavailable=tostring(pool):match("^[^\n]+") end

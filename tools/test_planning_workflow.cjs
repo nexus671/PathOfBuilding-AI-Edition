@@ -62,6 +62,12 @@ async function main(){
   const qualityOptimalCopies=[18,17,13,12,11,9].map(q=>`Item Class: Wands\nRarity: Magic\nSuperior Driftwood Wand of the Fox\n--------\nQuality: +${q}%`);
   const qualityOptimal=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:qualityOptimalCopies},'qualityVendorReview');assert.equal(qualityOptimal.qualityVendorReview.categories[0].optimal,true);assert.equal(qualityOptimal.qualityVendorReview.categories[0].groups.length,2);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
+  const gwennenPair={method:'gwennen',firstOutcome:1000,secondOutcome:1029};
+  const pairState={rarity:'RARE',affixes:[]};
+  const ringPair=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nGold Ring\nItem Level: 86',initialState:pairState,action:gwennenPair,limit:5},'inspected');
+  assert.equal(ringPair.crafting.nativeEngine.gwennenPair.available,false);assert.match(ringPair.crafting.nativeEngine.gwennenPair.unavailableReason,/quality outcome requires/);
+  const helmetPair=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,initialState:pairState,action:gwennenPair,limit:5},'inspected');assert.equal(helmetPair.crafting.nativeEngine.gwennenPair.available,true);
+  const uniquePair=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:'Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86',action:gwennenPair,limit:5},'inspected');assert.equal(uniquePair.crafting.nativeEngine.gwennenPair.available,false);assert.match(uniquePair.crafting.nativeEngine.gwennenPair.unavailableReason,/rare equipment/);
   const fracturedOffer={rarity:'RARE',affixes:[{id:'IncreasedLife2',range:0.5,fractured:true}]};
   const offerInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,initialState:fracturedOffer,limit:5},'inspected');
   for(const method of ['rog_reroll','gwennen']) {const entry=offerInspection.crafting.nativeEngine.methodAvailability.find(value=>value.method===method);assert.equal(entry.available,false);assert.match(entry.unavailableReason,/fractured/);}

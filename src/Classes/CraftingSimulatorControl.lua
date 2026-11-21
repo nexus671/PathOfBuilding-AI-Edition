@@ -81,7 +81,7 @@ function Panel.Open(build,project,layout)
 	local paletteView
 	local populateAffix
 	local refreshTargetOptions
-	local action,overrideKey,updateCurrency,actionConfigurationReason,implicitApplyReason
+	local action,overrideKey,updateCurrency,actionConfigurationReason,gwennenApplyReason
 	local function actionName()
 		local selected=action()
 		return (selected.allflame and "Allflame " or "")..simulator.labels[selected.method]
@@ -154,7 +154,7 @@ function Panel.Open(build,project,layout)
 			local available,unavailableReason=workbench.available(method,state,model)
 			local hint=workbench.hint(method,state,model,action and action())
 			local configuration=actionConfigurationReason and actionConfigurationReason()
-			local blocker=not available and unavailableReason or configuration or (implicitApplyReason and implicitApplyReason())
+			local blocker=not available and unavailableReason or configuration or (gwennenApplyReason and gwennenApplyReason())
 			hint=blocker or hint
 			local selected=controls.option and controls.option:GetSelValue()
 			local id=selected and selected.action and selected.action.modId
@@ -793,13 +793,11 @@ function Panel.Open(build,project,layout)
 			return "Donor or selection changed, or the observation is incomplete. Reconfirm the in-game success percentage in Craft settings."
 		end
 	end
-	local implicitState,implicitReason
-	implicitApplyReason=function()
+	gwennenApplyReason=function()
 		local craft=action()
-		if craft.method~="gwennen" or craft.firstOutcome~=1032 and craft.secondOutcome~=1032 then return end
-		if not workbench.available("gwennen",state,model) then return end
-		if implicitState~=state then implicitState=state;implicitReason=require("Modules.CraftingGwennen").implicitReason(model,state) end
-		return implicitReason
+		if craft.method~="gwennen" or not workbench.available("gwennen",state,model) then return end
+		if not pcall(require("Modules.CraftingGwennen").validate,craft) then return end
+		return simulator.gwennenPairReason(model,state,craft)
 	end
 	local function actionConfigured() return actionConfigurationReason()==nil end
 	local function missingTargets() return #targets==0 and not (requirements and next(requirements)) end
@@ -810,7 +808,8 @@ function Panel.Open(build,project,layout)
 		local message=actionConfigurationReason() or tasks.job and busy or targetReason() or missingTargets() and noTargets
 		if message then return "Selected action: "..actionName().."\n"..message end
 		local available,reason=workbench.available(controls.method:GetSelValueByKey("val"),state,model)
-		return "Selected action: "..actionName().."\n"..(available and "Simulate from the working item using the chosen target modifiers or item conditions." or reason.." The simulation can still succeed without an action if the item already meets the goal.")
+		reason=not available and reason or gwennenApplyReason()
+		return "Selected action: "..actionName().."\n"..(reason and reason.." The simulation can still succeed without an action if the item already meets the goal." or "Simulate from the working item using the chosen target modifiers or item conditions.")
 	end
 	controls.resourcePrices.enabled=function() return require("Modules.CraftingTasks").job==nil end
 	controls.currency.enabled=function() return not draft.priceBook or not next(draft.priceBook.values) end
@@ -831,9 +830,10 @@ function Panel.Open(build,project,layout)
 	end
 	controls.runRecipe.enabled=function() return not tasks.job and draft.nativeRecipe~=nil and not targetReason(true) and not savedObservationReason() end
 	controls.runRecipe.tooltipText=function() return tasks.job and busy or not draft.nativeRecipe and "Save a recipe in this project first." or targetReason(true) or savedObservationReason() or "Run the project's saved steps from the original starting item, with the saved recipe's targets." end
-	controls.exact.enabled=function() return actionConfigured() and not tasks.job and not targetReason() and (#targets>0 or requirements~=nil and next(requirements)~=nil) and workbench.available(controls.method:GetSelValueByKey("val"),state,model) end
+	controls.exact.enabled=function() return actionConfigured() and not tasks.job and not targetReason() and (#targets>0 or requirements~=nil and next(requirements)~=nil) and workbench.available(controls.method:GetSelValueByKey("val"),state,model) and not gwennenApplyReason() end
 	controls.exact.tooltipText=function()
 		local configuration=actionConfigurationReason();if configuration then return configuration end
+		local pairReason=gwennenApplyReason();if pairReason then return pairReason end
 		if tasks.job then return "Finish or cancel the running calculation first." end
 		if #targets==0 and not (requirements and next(requirements)) then return "Choose a target modifier or item condition before calculating." end
 		if targetReason() then return targetReason() end
@@ -901,10 +901,10 @@ function Panel.Open(build,project,layout)
 	controls.distribution.x=232;controls.distribution.width=200
 	controls.option.shown=function() return crafting() and #controls.option.list>0 end
 	controls.optionLabel.shown=controls.option.shown
-	controls.apply.enabled=function() return actionConfigured() and workbench.available(controls.method:GetSelValueByKey("val"),state,model) and not implicitApplyReason() end
+	controls.apply.enabled=function() return actionConfigured() and workbench.available(controls.method:GetSelValueByKey("val"),state,model) and not gwennenApplyReason() end
 	controls.apply.tooltipText=function()
 		local method=controls.method:GetSelValueByKey("val");local available,reason=workbench.available(method,state,model)
-		local text=not available and reason or actionConfigurationReason() or implicitApplyReason() or workbench.hint(method,state,model,action())
+		local text=not available and reason or actionConfigurationReason() or gwennenApplyReason() or workbench.hint(method,state,model,action())
 		for _,warning in ipairs(simulator.actionWarnings(action(),{item=model.item,initial=state})) do
 			if warning.code=="abyss_socket_layout" or warning.code=="tincture_imported_values" then text=text.."\n"..warning.message end
 		end

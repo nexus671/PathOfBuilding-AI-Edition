@@ -224,6 +224,7 @@ function G.extend(M,api)
 	end
 	M.methods[#M.methods+1]="gwennen";M.labels.gwennen="Gwennen: observed pair (experimental)";table.sort(M.methods)
 	local action,components,priceKey,validateRecipe=M.action,M.components,M.priceKey,M.validateRecipe
+	local preflightOnly={}
 	function M.validateRecipe(recipe)
 		local result=validateRecipe(recipe)
 		for _,step in ipairs(result.steps) do if step.method=="gwennen" then G.validate(step) end end
@@ -378,8 +379,16 @@ function G.extend(M,api)
 			local ok,err=pcall(branch,id,function() return 0.42 end,true)
 			if not ok then error("A modeled Gwennen outcome cannot apply: "..require("Modules.PlanningUI").errorText(err),0) end
 		end
+		if random==preflightOnly then return true end
 		local outcome=random()<0.5 and craft.firstOutcome or craft.secondOutcome
 		return branch(outcome,random),{gwennen={outcome=outcome}}
+	end
+	-- Reuse the same bounded branch probes as execution. This checks the
+	-- current item without consuming a random stream or changing the state.
+	local gwennenAction=M.action
+	function M.gwennenPairReason(model,state,craft)
+		local ok,err=pcall(gwennenAction,model,state,craft,preflightOnly)
+		if not ok then return (require("Modules.PlanningUI").errorText(err):gsub("^A modeled Gwennen outcome cannot apply: ","")) end
 	end
 	function M.priceKey(craft)
 		if craft.method~="gwennen" then return priceKey(craft) end

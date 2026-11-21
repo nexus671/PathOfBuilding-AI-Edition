@@ -33,6 +33,31 @@ describe("Experimental Gwennen pair",function()
 		local hints={};for _,row in ipairs(controls.actionHint.list) do hints[#hints+1]=StripEscapes(row[1] or "") end;assert.matches("Configure a supported Gwennen pair",table.concat(hints," "))
 		main.popups={}
 	end)
+	it("checks both configured branches before applying without changing the item",function()
+		newBuild()
+		local ringRaw="Rarity: NORMAL\nGold Ring\nItem Level: 86";local model=sim.model(ringRaw);local state=copyTable(model.initial);state.rarity="RARE"
+		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1029};local before=copyTable(state)
+		local reason=sim.gwennenPairReason(model,state,pair);assert.matches("quality outcome requires a weapon or armour",reason)
+		assert.same(before,state);local ok,err=pcall(sim.action,model,state,pair,function() error("Should not draw") end);assert.is_false(ok);assert.matches("quality outcome requires",err)
+		pair.firstOutcome,pair.secondOutcome=pair.secondOutcome,pair.firstOutcome;assert.matches("quality outcome requires",sim.gwennenPairReason(model,state,pair))
+		local empty={method="gwennen",firstOutcome=1000,secondOutcome=1004};assert.is_not_nil(sim.gwennenPairReason(model,state,empty))
+		local noSockets={method="gwennen",firstOutcome=1000,secondOutcome=1016};assert.is_not_nil(sim.gwennenPairReason(model,state,noSockets))
+		local helmet=sim.model(raw);local helmetState=copyTable(helmet.initial);helmetState.rarity="RARE"
+		assert.is_nil(sim.gwennenPairReason(helmet,helmetState,pair));assert.same(before,state)
+		local randomPair={method="gwennen",firstOutcome=1005,secondOutcome=1000}
+		local pristine=sim.model(raw);local pristineState=copyTable(pristine.initial);pristineState.rarity="RARE"
+		assert.is_nil(sim.gwennenPairReason(helmet,helmetState,randomPair))
+		local function random(seed) return function() seed=seed*48271%2147483647;return seed/2147483647 end end
+		local afterProbe=sim.action(helmet,helmetState,randomPair,random(73));local withoutProbe=sim.action(pristine,pristineState,randomPair,random(73))
+		assert.same(withoutProbe,afterProbe)
+		local run=require("Modules.CraftingInventory").run(state);run.configured.gwennen=pair
+		local project={id="gwennen-branch",title="Ring",slot="Ring 1",startingItem=ringRaw,goals={},steps={},run=run}
+		local controls=require("Classes.CraftingSimulatorControl").Open(build,project);controls.method:SelByValue("gwennen","val");controls.method.selFunc()
+		assert.is_false(controls.apply:IsEnabled());assert.matches("quality outcome requires",controls.apply.tooltipText())
+		assert.is_false(controls.exact:IsEnabled());assert.is_true(controls.simulate:IsEnabled());assert.matches("without an action",controls.simulate.tooltipText())
+		local simulation=sim.simulate(ringRaw,{steps={pair},targets={},requirements={minAffixes=0}},{initialState=state,trials=2,maxActions=1});assert.equal(2,simulation.successes)
+		main.popups={}
+	end)
 	it("selects either observed branch without changing the input",function()
 		local model,state=item();local original=copyTable(state)
 		local pair={method="gwennen",firstOutcome=1000,secondOutcome=1022}
