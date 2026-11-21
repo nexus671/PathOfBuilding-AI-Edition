@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview886" />
+	<Version number="2.68.1-ai.preview887" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1877,10 +1877,11 @@
 	<File name="Assets/Genesis/KeepersEquipmentNotable.png" part="program" sha1="90a8be9988905a4bd545ac9c115e7447448de1bf" />
 	<File name="Assets/Genesis/KeepersMiscellaneousNode.png" part="program" sha1="2f438080e70a10f973d31ac86138bf641704023e" />
 	<File name="Assets/Genesis/KeepersMiscellaneousNotable.png" part="program" sha1="d2f7fcecc8a88e0ddcd92ac2b42c5f4bd2c4c263" />
+	<File name="Assets/Genesis/KeepersSelectionNotable.png" part="program" sha1="5366db1ebe342ac22648afe6f21a7e09fa3ee553" />
 	<File name="Assets/Genesis/KeepersUniqueNode.png" part="program" sha1="b3a60b61166b5a81d923126a6de62cb9e2130c10" />
 	<File name="Assets/Genesis/KeepersUniqueNotable.png" part="program" sha1="0fb79779a84bedd1d3929ec191b9e4d0c76e063e" />
 	<File name="Assets/Genesis/MasteryBlank.png" part="program" sha1="e77fe57d12283901618685bbbd28d6bb63bf846a" />
-	<File name="Assets/Genesis/manifest.json" part="program" sha1="a5744999176a6adac67629fb5a8c1574cb396361" />
+	<File name="Assets/Genesis/manifest.json" part="program" sha1="0e3a659238d10d8e2c38d59063e1a9f8599c388f" />
 	<File name="Data/Genesis/3.30.0d.json" part="program" sha1="8ba49aeb742a28350e17754c302d28ec4414b776" />
 	<File name="Data/LootFilters/0.filter" part="program" sha1="95ae274d3a62374fcb0d573065586ec13990ec7a" />
 	<File name="Data/LootFilters/1.filter" part="program" sha1="57125a56ed05ed46c9df992094586a2789ff95ee" />

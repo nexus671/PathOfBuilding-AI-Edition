@@ -19,6 +19,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local sx,sy=c.results:GetPos();ui:clickAt(sx+20,sy+12);assert(c.canvas.root==42956,"Search must switch to the result's tree")
 	ui:choose("branch",22476,"val")
 	local function find(name) ui:text("search",name);local sx,sy=c.results:GetPos();ui:clickAt(sx+20,sy+12) end
+	find("Devoted Technique");assert(c.canvas.focus==20212,"Search must focus the choice node")
+	ui:frame():write(directory.."/"..size[1].."-genesis-choice-art.json")
+	local art=false;for _,command in ipairs(ui.commands) do if command.asset=="Assets/Genesis/KeepersSelectionNotable.png" then art=true end end
+	assert(art,"Choice node art was not drawn")
 	find("Increased Attack Modifier Chance");ui:click("toggle");ui:click("confirm")
 	find("Increased Caster Modifier Chance");ui:click("toggle")
 	assert(main.popups[1].title=="Replace Genesis choice","Replacing a choice must be confirmed")
@@ -28,4 +32,4 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local found=false;for _,id in ipairs(saved.nodes) do if id==40721 then found=true end end;assert(found,"The selected passive was not saved")
 	ui:restore();main.popups={}
 end
-print("GENESIS_UI_OK",15)
+print("GENESIS_UI_OK",18)

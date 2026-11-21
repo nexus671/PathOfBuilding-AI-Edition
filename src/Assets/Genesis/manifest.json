@@ -31,6 +31,13 @@
       "sha256": "941667ee4c3b43475e31597524686849af57c5d6d14ea4d3f26eefb03f0cccb4",
       "source": "https://www.poewiki.net/images/c/c3/KeepersMiscellaneousNotable_passive_skill_icon.png"
     },
+    "KeepersSelectionNotable": {
+      "file": "Assets/Genesis/KeepersSelectionNotable.png",
+      "sha256": "90ac799bc3f1bdda3be1080d7e0d8a6f44fa97c788c5ac17427340a9608e3758",
+      "source": "https://cdn.poedb.tw/image/Art/2DArt/SkillIcons/passives/KeepersSelectionNotable.webp",
+      "sourceSha256": "69ef5974bbfc30fffb0839768ac359df5ef024bdfd3c4c0e8f6bd6ca4f1a2186",
+      "sourceFormat": "WebP"
+    },
     "KeepersUniqueNode": {
       "file": "Assets/Genesis/KeepersUniqueNode.png",
       "sha256": "599653d87ba7da4560123db52ebfef76b089a6f2455ca3c72af4a5c575bb5657",
@@ -47,5 +54,5 @@
       "source": "https://www.poewiki.net/images/6/6a/MasteryBlank_passive_skill_icon.png"
     }
   },
-  "sourceNote": "Game passive icons mirrored by PoE Wiki; artwork remains copyright Grinding Gear Games."
+  "sourceNote": "Game passive icons mirrored by PoE Wiki and PoEDB; artwork remains copyright Grinding Gear Games."
 }
