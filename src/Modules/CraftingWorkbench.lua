@@ -196,6 +196,7 @@ local descriptions={mirror="Create a mirrored copy; the original is unchanged. T
 local currencyArt,currencyNames
 function M.actionLabel(action,model)
 	if action.method=="rog_reroll" then
+		if action.rogOperation=="socket_count" or action.rogOperation=="socket_links" then return "Rog: best "..(action.rogOperation=="socket_count" and "socket count" or "links").." of "..tostring(action.rogSocketRolls) end
 		if action.rogOperation=="upgrade" and action.count then return "Rog: upgrade "..action.count.." modifier"..(action.count==1 and "" or "s").." by one tier" end
 		local fixed={fill="fill empty modifier slots",set_quality="set quality to 20%",remove_lowest="remove lowest-level modifier",remove_lowest_two="remove two lowest-level modifiers"}
 		if fixed[action.rogOperation] then return "Rog: "..fixed[action.rogOperation] end
@@ -282,7 +283,7 @@ function M.hint(method,state,model,craft)
 	if available and method=="jeweller" then return "Experimental socket-count odds and quality model; retained socket and link positions are assumed." end
 	if available and method=="fusing" then return "Experimental link odds based on historical observations; quality and layout rules are assumptions." end
 	if available and method=="gwennen" then return "Experimental: choose a pair in Settings. Coin odds, removal counts and currency transitions are assumptions." end
-	if available and method=="rog_reroll" then return "Experimental: enter an observed offer in Settings. Modifier weights and best-result selection are assumptions." end
+	if available and method=="rog_reroll" then return "Experimental: enter an observed offer in Settings. Modifier and socket odds and best-result selection are assumptions." end
 	if available and (method=="beast_prefix_suffix" or method=="beast_suffix_prefix") then return craft and craft.beastLevel and ("Uses beast level "..craft.beastLevel.." for the added modifier. Current game behavior is unverified.") or "Set the red beast's level in Settings; otherwise the item level is used. Current game behavior is unverified." end
 	if available and method=="omen_jeweller" then return "Add white sockets up to the base and item-level limit. Uses one Omen and one Jeweller's Orb." end
 	if available and method=="harvest_enchant" then return "Replace the enchantment with a quality bonus. Options show the Lifeforce cost." end

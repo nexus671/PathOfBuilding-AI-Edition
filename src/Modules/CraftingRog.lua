@@ -7,9 +7,13 @@ for index,tier in ipairs(tiers) do artifacts[tier]="Metadata/Items/Expedition/Ex
 function R.validate(craft)
 	local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
 	local fixed=craft.rogOperation=="fill" or craft.rogOperation=="set_quality" or craft.rogOperation=="upgrade"
+	local sockets=craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links"
+	if sockets then
+		assert(craft.rogSocketRolls==10 or craft.rogSocketRolls==20 or craft.rogSocketRolls==30 or craft.rogSocketRolls==50 or craft.rogSocketRolls==100,"Choose 10, 20, 30, 50 or 100 socket rerolls")
+	else assert(craft.rogSocketRolls==nil,"Socket reroll count applies only to a socket offer") end
 	if craft.rogOperation=="upgrade" then assert(type(craft.count)=="number" and craft.count==math.floor(craft.count) and craft.count>=1 and craft.count<=6,"Choose 1 to 6 modifiers to upgrade") end
-	assert(craft.rogOperation==nil or craft.rogOperation=="reroll" or craft.rogOperation=="add" or removal or fixed,"Choose a supported Rog offer")
-	if removal or fixed then assert(craft.rogSide==nil and craft.rogAttempts==nil,"This offer does not use a side or attempt count")
+	assert(craft.rogOperation==nil or craft.rogOperation=="reroll" or craft.rogOperation=="add" or removal or fixed or sockets,"Choose a supported Rog offer")
+	if removal or fixed or sockets then assert(craft.rogSide==nil and craft.rogAttempts==nil,"This offer does not use a side or attempt count")
 	else
 		assert(craft.rogSide=="Prefix" or craft.rogSide=="Suffix","Choose prefixes or suffixes")
 		assert(craft.rogAttempts==1 or craft.rogAttempts==3 or craft.rogAttempts==5,"Choose 1, 3 or 5 attempts")
@@ -83,6 +87,9 @@ end
 -- promise that every later weighted roll has a legal continuation.
 function R.readiness(M,model,input,craft)
 	if input.rarity~="MAGIC" and input.rarity~="RARE" then return end
+	if craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links" then
+		return M.methodReason(model,input,craft.rogOperation=="socket_count" and "jeweller" or "fusing")
+	end
 	if craft.rogOperation=="set_quality" then
 		if not model.item.base.armour and not data.weaponTypeInfo[model.item.type] then return "This offer requires a weapon or armour." end
 		return
@@ -153,7 +160,7 @@ function R.extend(M,api)
 		if flags.prefixes or flags.suffixes or flags.explicitAttack or flags.explicitCaster then return "Rog interactions with meta modifiers are not modeled." end
 		for _,entry in ipairs(state.affixes) do if entry.fractured or entry.crafted then return "Rog interactions with fractured or crafted modifiers are not modeled." end end
 	end
-	M.methods[#M.methods+1]="rog_reroll";M.labels.rog_reroll="Rog: observed modifier offer (experimental)";table.sort(M.methods)
+	M.methods[#M.methods+1]="rog_reroll";M.labels.rog_reroll="Rog: observed offer (experimental)";table.sort(M.methods)
 	local action,components,priceKey,validateRecipe=M.action,M.components,M.priceKey,M.validateRecipe
 	function M.validateRecipe(recipe)
 		local result=validateRecipe(recipe)
@@ -166,8 +173,12 @@ function R.extend(M,api)
 		assert((input.rarity=="MAGIC" or input.rarity=="RARE") and not input.destroyed and not input.corrupted and not input.mirrored and not input.veil,"Rog requires an uncorrupted magic or rare item")
 		assert(model.item.type~="Flask" and model.item.type~="Tincture","Rog requires equipment or a jewel")
 		local flags=api.flags(model,input)
-		assert(not (flags.prefixes or flags.suffixes or flags.explicitAttack or flags.explicitCaster or M.hasPartialLock(model,input) or craft.rogOperation~="fill" and craft.rogOperation~="set_quality" and (flags.attack or flags.caster)),"Rog interactions with meta modifiers are not modeled")
+		assert(not (flags.prefixes or flags.suffixes or flags.explicitAttack or flags.explicitCaster or M.hasPartialLock(model,input) or craft.rogOperation~="fill" and craft.rogOperation~="set_quality" and craft.rogOperation~="socket_count" and craft.rogOperation~="socket_links" and (flags.attack or flags.caster)),"Rog interactions with meta modifiers are not modeled")
 		for _,entry in ipairs(input.affixes) do assert(not entry.fractured and not entry.crafted,"Rog interactions with fractured or crafted modifiers are not modeled") end
+		if craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links" then
+			local reason=R.readiness(M,model,input,craft);assert(not reason,reason)
+			return craft.rogOperation=="socket_count" and M.bestJeweller(model,input,craft.rogSocketRolls,random) or M.bestFusing(model,input,craft.rogSocketRolls,random)
+		end
 		if craft.rogOperation=="upgrade" then
 			assert(#input.affixes>=craft.count,"Not enough modifiers to upgrade")
 			local choices=require("Modules.CraftingGwennen").tierChoices(model,input,true);local result=copyTable(input)
@@ -196,6 +207,7 @@ function R.extend(M,api)
 		local fields=(removal or craft.rogOperation=="fill" or craft.rogOperation=="set_quality") and {"rog_reroll",craft.rogOperation} or {"rog_reroll",tostring(craft.rogSide),tostring(craft.rogAttempts)}
 		if craft.rogOperation=="add" then fields[#fields+1]="add" end
 		if craft.rogOperation=="upgrade" then fields={"rog_reroll","upgrade",tostring(craft.count)} end
+		if craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links" then fields={"rog_reroll",craft.rogOperation,tostring(craft.rogSocketRolls)} end
 		for _,tier in ipairs(tiers) do fields[#fields+1]=craft.artifactCost and tostring(craft.artifactCost[tier] or 0) or "unknown" end
 		return table.concat(fields,":")
 	end
@@ -203,6 +215,6 @@ function R.extend(M,api)
 		if craft.method=="rog_reroll" then return R.components(craft) end
 		return components(craft,state,model)
 	end
-	M.limits[#M.limits+1]="Experimental Rog modifier offers use observed prices. Ordinary affix weights, side-reroll count preservation, average modifier-level ranking and first-on-tie selection are assumptions; offer generation and special interactions are not modeled."
+	M.limits[#M.limits+1]="Experimental Rog offers use observed prices. Ordinary affix weights, side-reroll count preservation, average modifier-level ranking and first-on-tie selection are assumptions; offer generation and special interactions are not modeled."
 end
 return R

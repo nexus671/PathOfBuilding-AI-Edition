@@ -4,6 +4,7 @@ return function(build,ui,frame)
 	require("Classes.CraftingSimulatorControl").Open(build,{id="rog-ui",title="Rog offer",slot="Helmet",startingItem=raw,goals={},steps={},run=require("Modules.CraftingInventory").run(state)})
 	ui:click("settings");ui:text("paletteSearch","Rog:");ui:click("paletteUse");assert(not main.popups[1].controls.apply:IsEnabled(),"Unconfigured Rog offer could be applied")
 	ui:click("tab_settings");ui:click("configure");frame("crafting-rog-offer")
+	ui:choose("operation","socket_links","val");ui:choose("socketRolls",30,"val");assert(main.popups[1].controls.socketHint:IsShown() and not main.popups[1].controls.side:IsShown(),"Socket offer details are missing");frame("crafting-rog-socket-offer")
 	ui:choose("operation","remove_lowest_two","val");assert(not main.popups[1].controls.side:IsShown() and main.popups[1].controls.removeHint:IsShown(),"Removal offer did not explain its selection assumption");frame("crafting-rog-removal")
 	ui:click("keep");ui:click("exact")
 	local jobs=require("Modules.CraftingTasks");for _=1,1000 do if not jobs.job then break end;jobs.tick(build) end

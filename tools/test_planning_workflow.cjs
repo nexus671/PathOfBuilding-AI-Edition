@@ -890,6 +890,10 @@ async function main(){
   assert.ok(enchantInspection.crafting.nativeEngine.nativeStats.Armour<bodyInspection.crafting.nativeEngine.nativeStats.Armour);
   const linksInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bodyRaw,query:'connections',limit:5},'inspected');
   const socketOmenRaw=bodyRaw.replace(/Sockets: [^\n]+/,'Sockets: R-G B');
+  const rogSocketBase=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketOmenRaw,action:{method:'alchemy'},seed:9},'crafted');
+  const rogSocketAction={method:'rog_reroll',rogOperation:'socket_count',rogSocketRolls:20,artifactCost:{grand:7}};
+  const rogSocketResult=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:socketOmenRaw,initialState:rogSocketBase.nativeCrafting.state,action:rogSocketAction,seed:9},'crafted');
+  assert.ok(rogSocketResult.nativeCrafting.state.sockets.length>=1);assert.ok(rogSocketResult.nativeCrafting.warnings.some(entry=>entry.code==='rog_reroll_assumptions' && /socket.*unverified/i.test(entry.message)));
   const socketOmenInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:socketOmenRaw,query:'omen of the jeweller',limit:5},'inspected');
   const socketOmen=socketOmenInspection.crafting.nativeEngine.socketCrafts.find(entry=>entry.method==='omen_jeweller');
   assert.ok(socketOmen.available && socketOmen.deterministic);
