@@ -370,6 +370,23 @@ local harvestExamples={
  {"Sacred Blossom","Map Fragments"},{"Harvest Scarab","Map Fragments"},
  {"Harvest Scarab of Cornucopia","Map Fragments"},{"Harvest Scarab of Doubling","Map Fragments"},
 }
+local abyssExamples={
+ {"Murderous Eye Jewel","Abyss Jewels","Rare"},{"Searching Eye Jewel","Abyss Jewels","Rare"},
+ {"Hypnotic Eye Jewel","Abyss Jewels","Rare"},{"Ghastly Eye Jewel","Abyss Jewels","Rare"},
+ {"Stygian Vise","Belts","Rare"},{"Abyss Thread","Map Fragments"},
+ {"Abyss Scarab","Map Fragments"},{"Abyss Scarab of Crystals","Map Fragments"},
+ {"Abyss Scarab of Descending","Map Fragments"},{"Abyss Scarab of Multitudes","Map Fragments"},
+ {"Abyss Scarab of the Consort","Map Fragments"},
+}
+local ultimatumExamples={
+ {"Inscribed Ultimatum","Misc Map Items"},{"Fertile Catalyst","Stackable Currency"},
+ {"Prismatic Catalyst","Stackable Currency"},{"Intrinsic Catalyst","Stackable Currency"},
+ {"Turbulent Catalyst","Stackable Currency"},{"Noxious Catalyst","Stackable Currency"},
+ {"Accelerating Catalyst","Stackable Currency"},{"Ultimatum Thread","Map Fragments"},
+ {"Ultimatum Scarab","Map Fragments"},{"Ultimatum Scarab of Bribing","Map Fragments"},
+ {"Ultimatum Scarab of Catalysing","Map Fragments"},{"Ultimatum Scarab of Dueling","Map Fragments"},
+ {"Ultimatum Scarab of Inscription","Map Fragments"},
+}
 local ritualExamples={
  {"Ritual Vessel","Stackable Currency"},{"Omen of Fortune","Stackable Currency"},
  {"Omen of Connections","Stackable Currency"},{"Omen of the Jeweller","Stackable Currency"},
@@ -437,7 +454,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		end end
 		return list
 	end
-	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Blight & oils"]=blightExamples,["Breach"]=breachExamples,["Legion"]=legionExamples,["Delirium"]=deliriumExamples,["Harvest"]=harvestExamples,["Ritual"]=ritualExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
+	local source=kind=="Preset highlights" and highlights() or ({["Covens & Threads"]=covensExamples,["Divination cards"]=cardExamples,["Essences"]=essenceExamples,["Maps & threads"]=mapExamples,["Flasks & tinctures"]=flaskExamples,["Crafting materials"]=craftingExamples,["Heist & Expedition"]=heistExpeditionExamples,["Blight & oils"]=blightExamples,["Breach"]=breachExamples,["Legion"]=legionExamples,["Delirium"]=deliriumExamples,["Harvest"]=harvestExamples,["Abyss"]=abyssExamples,["Ultimatum"]=ultimatumExamples,["Ritual"]=ritualExamples,["Vendor recipes"]=vendorExamples})[kind] or examples
 	for i=1,#source do local example=source[(i+(seed or 0)-1)%#source+1];local item=M.sample();item.BaseType=example[1];item.Class=example[2];item.Rarity=example[3] or "Normal";item.AreaLevel=area or 83
 		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end
 		applyBaseProperties(item)

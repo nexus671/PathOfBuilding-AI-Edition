@@ -181,7 +181,7 @@ describe("Visual filter catalogue",function()
 	it("offers pinned encounter examples to users and AI",function()
 		local profile=filters.profile("encounters","Encounters")
 		local file=assert(io.open("Data/LootFilters/base-classes.json","rb"));local raw=file:read("*a");file:close();local classes=assert(require("dkjson").decode(raw)).classes
-		for _,case in ipairs({{"Delirium",12,"Simulacrum Splinter"},{"Harvest",8,"Wild Crystallised Lifeforce"},{"Ritual",11,"Ritual Vessel"}}) do
+		for _,case in ipairs({{"Delirium",12,"Simulacrum Splinter"},{"Harvest",8,"Wild Crystallised Lifeforce"},{"Ritual",11,"Ritual Vessel"},{"Abyss",11,"Murderous Eye Jewel"},{"Ultimatum",13,"Inscribed Ultimatum"}}) do
 			local scene=library.scene(profile,build,case[1],0,76,81);assert.equal(case[2],#scene);assert.equal(case[3],scene[1].BaseType)
 			for _,item in ipairs(scene) do assert.equal(classes[item.BaseType],item.Class);assert.equal(76,item.AreaLevel);assert.equal(81,item.ItemLevel) end
 			if case[1]=="Delirium" then assert.equal("Threaded Delirium Orb",scene[4].BaseType);assert.equal("Stackable Currency",scene[4].Class) end

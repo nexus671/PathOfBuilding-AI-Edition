@@ -1422,7 +1422,7 @@ async function main(){
   const blightScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:blightProfile,scene:'Blight & oils',areaLevel:76,itemLevel:86,offset:14,limit:2},'tested');
   assert.equal(blightScene.examples.total,16);assert.equal(blightScene.examples.results[0].sample.BlightedMap,true);assert.equal(blightScene.examples.results[0].sample.UberBlightedMap,false);
   assert.equal(blightScene.examples.results[1].sample.UberBlightedMap,true);assert.equal(blightScene.examples.results[1].result.action,'Hide');
-  for (const [scene,first,total] of [['Delirium','Simulacrum Splinter',12],['Harvest','Wild Crystallised Lifeforce',8],['Ritual','Ritual Vessel',11]]) {
+  for (const [scene,first,total] of [['Delirium','Simulacrum Splinter',12],['Harvest','Wild Crystallised Lifeforce',8],['Ritual','Ritual Vessel',11],['Abyss','Murderous Eye Jewel',11],['Ultimatum','Inscribed Ultimatum',13]]) {
     const encounter=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene,seed:0,areaLevel:76,itemLevel:86,limit:2},'tested');
     assert.equal(encounter.examples.total,total);assert.equal(encounter.examples.results[0].sample.BaseType,first);assert.equal(encounter.examples.results[0].sample.AreaLevel,76);
     if (scene==='Delirium') {const thread=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene,seed:0,offset:3,limit:1},'tested');assert.equal(thread.examples.results[0].sample.BaseType,'Threaded Delirium Orb');}

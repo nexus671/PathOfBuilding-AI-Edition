@@ -1853,7 +1853,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("sceneKind","Vendor recipes");frame("filter-vendor-examples");ui:click("sceneStats");assert(main.popups[#main.popups].controls.count.label:find("15 results |",1,true),"Quality flask and tincture examples are missing");ui:click("choose")
 	ui:choose("sceneKind","Heist & Expedition");local heistScene=build.planningWorkspace.cache.filters.layout.snapshot();assert(heistScene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,"Heist & Expedition",heistScene.seed)[1].BaseType);frame("filter-heist-expedition-examples")
 	do ui:choose("sceneKind","Blight & oils");local blightScene=build.planningWorkspace.cache.filters.layout.snapshot();assert(blightScene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,"Blight & oils",blightScene.seed)[1].BaseType);frame("filter-blight-oil-examples") end
-	for _,kind in ipairs({"Delirium","Harvest","Ritual"}) do
+	for _,kind in ipairs({"Delirium","Harvest","Ritual","Abyss","Ultimatum"}) do
 		ui:choose("sceneKind",kind);local scene=build.planningWorkspace.cache.filters.layout.snapshot()
 		assert(scene.sceneKind==kind and scene.sample.BaseType==require("Modules.LootFilterLibrary").scene(nil,nil,kind,scene.seed)[1].BaseType,"Encounter examples did not load")
 		frame("filter-"..kind:lower().."-examples")
