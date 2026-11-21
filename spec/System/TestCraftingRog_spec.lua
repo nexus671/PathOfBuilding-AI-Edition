@@ -50,6 +50,21 @@ describe("Experimental Rog side rerolls",function()
 		local magic=copyTable(state);magic.rarity="MAGIC"
 		assert.has_error(function() sim.action(model,magic,{method="rog_reroll",rogOperation="add",rogSide="Prefix",rogAttempts=1},stream(1)) end)
 	end)
+	it("removes lowest required-level modifiers with explicit tie handling",function()
+		local model={byId={a={level=10},b={level=10},c={level=20}}}
+		local state={affixes={{id="a"},{id="b"},{id="c"}}};local before=copyTable(state)
+		local one={rogOperation="remove_lowest"};local two={rogOperation="remove_lowest_two"}
+		rog.validate(one);rog.validate(two)
+		assert.same({{id="b"},{id="c"}},rog.removeLowest(model,state,one,function() return 0 end).affixes)
+		assert.same({{id="a"},{id="c"}},rog.removeLowest(model,state,one,function() return 0.99 end).affixes)
+		assert.same({{id="c"}},rog.removeLowest(model,state,two,function() return 0 end).affixes)
+		assert.same(before,state);assert.has_error(function() rog.validate({rogOperation="remove_lowest",rogSide="Prefix"}) end)
+		local real=sim.model(raw);local input=copyTable(real.initial);input.rarity="RARE"
+		input.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}}
+		local output=sim.action(real,input,{method="rog_reroll",rogOperation="remove_lowest"},stream(1))
+		assert.equal(1,#output.affixes);sim.validateState(real,output)
+		assert.has_error(function() sim.action(real,output,{method="rog_reroll",rogOperation="remove_lowest_two"},stream(1)) end)
+	end)
 	it("runs configured offers through the shared simulator and saved checkpoint",function()
 		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
 		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}}
@@ -75,6 +90,13 @@ describe("Experimental Rog side rerolls",function()
 		c=require("Classes.CraftingRogControl").Open(saved,function() end)
 		assert.equal("Suffix",c.side:GetSelValueByKey("val"));assert.equal(5,c.attempts:GetSelValueByKey("val"));assert.equal("add",c.operation:GetSelValueByKey("val"));assert.equal("12",c.grand.buf)
 		main.popups={}
+	end)
+	it("configures a removal without unrelated side or attempt fields",function()
+		newBuild();local saved
+		local c=require("Classes.CraftingRogControl").Open(nil,function(craft) saved=craft end)
+		c.operation:SelByValue("remove_lowest_two","val");assert.is_false(c.side:IsShown());assert.is_true(c.removeHint:IsShown())
+		c.keep:Click();assert.same({method="rog_reroll",rogOperation="remove_lowest_two"},saved)
+		c=require("Classes.CraftingRogControl").Open(saved,function() end);assert.equal("remove_lowest_two",c.operation:GetSelValueByKey("val"));main.popups={}
 	end)
 	it("configures the offer from the workbench and preserves it in the working craft",function()
 		newBuild();local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"

@@ -5,9 +5,13 @@ local artifacts={}
 for index,tier in ipairs(tiers) do artifacts[tier]="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_"..index end
 
 function R.validate(craft)
-	assert(craft.rogSide=="Prefix" or craft.rogSide=="Suffix","Choose prefixes or suffixes")
-	assert(craft.rogAttempts==1 or craft.rogAttempts==3 or craft.rogAttempts==5,"Choose 1, 3 or 5 attempts")
-	assert(craft.rogOperation==nil or craft.rogOperation=="reroll" or craft.rogOperation=="add","Choose a supported Rog offer")
+	local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
+	assert(craft.rogOperation==nil or craft.rogOperation=="reroll" or craft.rogOperation=="add" or removal,"Choose a supported Rog offer")
+	if removal then assert(craft.rogSide==nil and craft.rogAttempts==nil,"Lowest-level removal does not use a side or attempt count")
+	else
+		assert(craft.rogSide=="Prefix" or craft.rogSide=="Suffix","Choose prefixes or suffixes")
+		assert(craft.rogAttempts==1 or craft.rogAttempts==3 or craft.rogAttempts==5,"Choose 1, 3 or 5 attempts")
+	end
 	assert(not craft.allflame,"Allflame cannot be used with Rog")
 	if craft.artifactCost~=nil then
 		assert(type(craft.artifactCost)=="table","Invalid observed artifact cost")
@@ -15,6 +19,23 @@ function R.validate(craft)
 			assert(artifacts[key] and type(value)=="number" and value==math.floor(value) and value>=0 and value<=1000000000,"Invalid observed artifact cost")
 		end
 	end
+end
+
+-- Ties are selected uniformly, an assumption until verified in game.
+function R.removeLowest(model,input,craft,random)
+	local count=craft.rogOperation=="remove_lowest_two" and 2 or 1
+	assert(#input.affixes>=count,"Not enough modifiers for this offer")
+	local result=copyTable(input)
+	for _=1,count do
+		local lowest,choices=nil,{}
+		for index,entry in ipairs(result.affixes) do
+			local level=assert(assert(model.byId[entry.id],"Modifier is unavailable").level,"Modifier level is unavailable")
+			if not lowest or level<lowest then lowest=level;choices={} end
+			if level==lowest then choices[#choices+1]=index end
+		end
+		table.remove(result.affixes,choices[math.floor(random()*#choices)+1])
+	end
+	return result
 end
 
 function R.components(craft)
@@ -74,11 +95,13 @@ function R.extend(M,api)
 		local flags=api.flags(model,input)
 		assert(not (flags.prefixes or flags.suffixes or flags.attack or flags.caster or flags.explicitAttack or flags.explicitCaster or M.hasPartialLock(model,input)),"Rog interactions with meta modifiers are not modeled")
 		for _,entry in ipairs(input.affixes) do assert(not entry.fractured and not entry.crafted,"Rog interactions with fractured or crafted modifiers are not modeled") end
+		if craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two" then return R.removeLowest(model,input,craft,random) end
 		return R.reroll(M,model,input,craft,random)
 	end
 	function M.priceKey(craft)
 		if craft.method~="rog_reroll" then return priceKey(craft) end
-		local fields={"rog_reroll",tostring(craft.rogSide),tostring(craft.rogAttempts)}
+		local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
+		local fields=removal and {"rog_reroll",craft.rogOperation} or {"rog_reroll",tostring(craft.rogSide),tostring(craft.rogAttempts)}
 		if craft.rogOperation=="add" then fields[#fields+1]="add" end
 		for _,tier in ipairs(tiers) do fields[#fields+1]=craft.artifactCost and tostring(craft.artifactCost[tier] or 0) or "unknown" end
 		return table.concat(fields,":")

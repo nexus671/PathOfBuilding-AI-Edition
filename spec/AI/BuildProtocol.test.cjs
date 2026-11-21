@@ -822,6 +822,10 @@ test('accepts observed Rog offers and rejects invalid attempt counts', t => {
   f.call('simulate_crafting',{...base,recipe,options:{trials:2,maxActions:1}});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe,recipe);
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  const removal={method:'rog_reroll',rogOperation:'remove_lowest_two',artifactCost:{lesser:20}};
+  f.call('calculate_crafting',{...base,action:removal,targets:[],options:{requirements:{minAffixes:1}}});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).action,removal);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   assert.throws(()=>f.call('calculate_crafting',{...base,action:{...action,rogAttempts:6},targets:[],options:{requirements:{minAffixes:1}}}),/arguments/);
   assert.throws(()=>f.call('calculate_crafting',{...base,action:{...action,rogOperation:'remove'},targets:[],options:{requirements:{minAffixes:1}}}),/arguments/);
 });
