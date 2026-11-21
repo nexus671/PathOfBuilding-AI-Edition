@@ -70,6 +70,7 @@ function M.actionWarnings(action,model)
 	if action.method=="instilling" or action.method=="enkindling" then result[#result+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."} end
 	if action.method=="bench_flask_enchant" then result[#result+1]={code="flask_bench_assumptions",message="Flask enchantment bench costs use pinned client data; eligibility, recipe availability and replacement behavior are unverified in game."} end
 	local item=model and model.item
+	if item and item.craftingNameInferred then result[#result+1]={code="magic_affix_name",message="An imported modifier was identified using the magic item name. Verify that the name is the original in-game name; a manually edited name can lead to the wrong modifier tier."} end
 	-- Native imports can preserve legacy values; hypothetical state can also
 	-- contain them. Neither proves current-game availability.
 	local function outsideTier(state)

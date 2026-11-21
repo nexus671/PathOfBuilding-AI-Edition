@@ -55,6 +55,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_map_vaal_ui.lua")
     sources.append(ROOT / "tools/test_minimal_ui.lua")
     sources += [ROOT / "tools/test_gwennen_ui.lua", ROOT / "tools/test_rog_ui.lua"]
+    sources.append(ROOT / "tools/test_magic_name_ui.lua")
     sources += [ROOT / "tools/update_flask_enchant_data.py", ROOT / "tools/test_update_flask_enchant_data.py"]
     sources.append(ROOT / "tools/run_headless_lupa.py")
     sources.append(ROOT / "tools/test_campaign_selection_ui.lua")
@@ -139,7 +140,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2136, f"Expected 2136 UI frames, found {len(paths)}"
+    assert len(paths) == 2139, f"Expected 2139 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         def label_and_background(name):
             commands = json.loads((frames / f"{width}-{name}.json").read_text())["commands"]

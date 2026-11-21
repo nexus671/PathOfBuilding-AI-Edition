@@ -344,7 +344,11 @@ function I.resolve(M,model,state)
 		failure="Copied tincture values may include quality or effect scaling, so their modifier tiers cannot be identified reliably. Start with a blank tincture and enter base-value rolls."
 	end
 	assert(#solutions == 1,failure)
-	for _,entry in ipairs(solutions[1]) do state.affixes[#state.affixes+1]=entry end
+	for _,entry in ipairs(solutions[1]) do
+		local kind=model.byId[entry.id].type
+		if kind=="Prefix" and namedPrefix or kind=="Suffix" and namedSuffix then model.item.craftingNameInferred=true end
+		state.affixes[#state.affixes+1]=entry
+	end
 	return state
 end
 return I

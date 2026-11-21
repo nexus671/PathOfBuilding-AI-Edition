@@ -6,6 +6,7 @@ describe("Magic item crafting imports",function()
   local model=sim.model(raw("Superior Hale Iron Hat of the Lost","+6 to maximum Life\n+7% to Chaos Resistance"))
   local ids={};for _,entry in ipairs(model.initial.affixes) do ids[entry.id]=true end
   assert.is_true(ids.IncreasedLife0);assert.is_true(ids.ChaosResist1);assert.equal(2,#model.initial.affixes)
+  local found=false;for _,warning in ipairs(sim.actionWarnings({method="chaos"},model)) do if warning.code=="magic_affix_name" then found=true end end;assert.is_true(found)
  end)
  it("does not infer from an unknown custom name or accept a conflicting roll",function()
   local ok,err=pcall(sim.model,raw("Custom Iron Hat","+6 to maximum Life"));assert.is_false(ok);assert.matches("several modifier identities",tostring(err))

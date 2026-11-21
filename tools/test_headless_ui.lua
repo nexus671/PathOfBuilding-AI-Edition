@@ -760,6 +760,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		frame("crafting-veiled-bench");ui:click("close")
 	end
 	dofile("../tools/test_rog_ui.lua")(build,ui,frame)
+	dofile("../tools/test_magic_name_ui.lua")(build,ui,frame)
 	dofile("../tools/test_gwennen_ui.lua")(build,ui,frame)
 	do
 		local raw="Rarity: RARE\nExample\nIron Hat\nItem Level: 86"
