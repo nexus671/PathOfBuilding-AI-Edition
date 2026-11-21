@@ -2,6 +2,16 @@ describe("Unique crafting recipes",function()
 	local sim=require("Modules.CraftingSimulator")
 	local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nQuality: 12\nSockets: R-G B"
 	before_each(function() newBuild() end)
+	it("reports an already satisfied goal exactly without rolling",function()
+		local recipe={steps={{method="chromatic"}},targets={},requirements={socketColours="R"}}
+		local result=sim.simulate(raw,recipe,{trials=10,maxActions=5,baseCost=7,currency="chaos"})
+		assert.is_false(result.sampled);assert.equal("Starting item already meets the goal",result.exactFor)
+		assert.equal(100,result.successChance);assert.equal(100,result.confidenceLow);assert.equal(100,result.confidenceHigh)
+		assert.equal(0,result.meanActions);assert.equal(0,#result.resourceUsage);assert.equal(7,result.meanCost)
+		local forced=sim.simulate(raw,recipe,{trials=10,maxActions=1,forceFirstAction=true})
+		assert.is_true(forced.sampled);assert.equal(1,forced.meanActions)
+		assert.has_error(function() sim.simulate(raw,{steps={{method="vaal"}},targets={},requirements={socketColours="R"}},{trials=1}) end)
+	end)
 	it("aggregates per-step spending across sampled unique recipes",function()
 		local input="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B W"
 		local recipe={steps={{method="fusing",maxAttempts=10,untilRequirements={links=4}}},targets={},requirements={links=4}}

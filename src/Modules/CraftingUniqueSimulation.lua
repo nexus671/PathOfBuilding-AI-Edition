@@ -77,7 +77,6 @@ local function sampled(sim,raw,recipe,options)
 end
 function M.simulate(sim,raw,recipe,options)
 	options=options or {};recipe=sim.validateRecipe(recipe)
-	if not options._uniqueSingleTrial then for _,step in ipairs(recipe.steps) do if stochastic[step.method] then return sampled(sim,raw,recipe,options) end end end
 	assert(not recipe.initialState and not options.initialState,"Unique recipes continue from item text, not an ordinary crafting state")
 	assert(#recipe.targets==0,"Modifier-identity targets are not yet supported for unique items")
 	local unique=require("Modules.CraftingUniqueQuality");local start=unique.inspect(raw)
@@ -85,7 +84,9 @@ function M.simulate(sim,raw,recipe,options)
 		local reason=M.stepReason(step);assert(not reason,reason)
 		if step.untilRequirements then unique.matches(raw,step.untilRequirements) end
 	end
-	unique.matches(raw,recipe.requirements)
+	local matchesStart=unique.matches(raw,recipe.requirements)
+	local alreadyMet=not options.forceFirstAction and (not recipe.rarity or recipe.rarity=="UNIQUE") and matchesStart
+	if not options._uniqueSingleTrial and not alreadyMet then for _,step in ipairs(recipe.steps) do if stochastic[step.method] then return sampled(sim,raw,recipe,options) end end end
 	local trials=integer(options.trials or 200,1,2000,"trial count")
 	local maxActions=integer(options.maxActions or 100,1,2000,"action budget")
 	assert(trials*maxActions<=20000,"Use at most 20000 total budgeted actions per simulation")
@@ -161,9 +162,9 @@ function M.simulate(sim,raw,recipe,options)
 	for _,route in pairs(routes) do for key,value in pairs(route) do route[key]=value*trials end end
 	for key,value in pairs(recovery) do recovery[key]=value*trials end
 	local retained={};if hit then for trial=1,math.min(retain,trials) do retained[#retained+1]={trial=trial,actions=actions,cost=not next(missing) and cost or nil,itemText=current} end end
-	local result={uniqueCrafting=true,exactFor="Supported deterministic unique-item recipe",sampled=false,trials=trials,successes=successes,successChance=hit and 100 or 0,confidenceLow=hit and 100 or 0,confidenceHigh=hit and 100 or 0,seed=seed,maxActions=maxActions,
+	local result={uniqueCrafting=true,exactFor=alreadyMet and "Starting item already meets the goal" or "Supported deterministic unique-item recipe",sampled=false,trials=trials,successes=successes,successChance=hit and 100 or 0,confidenceLow=hit and 100 or 0,confidenceHigh=hit and 100 or 0,seed=seed,maxActions=maxActions,
 		meanActions=actions,meanExecutedActions=executed,failedAttempts=(actions-executed)*trials,failedTransitionTrials=rejected and trials or 0,currencySpent=spent,resourceUsage=resources,unpriced=missing,transitionErrors=errors,
-		warnings={{code="unique_crafting_scope",message="Only supported deterministic unique actions and listed item goals are modeled. Continue using item text, not an ordinary affix state."}},limitations={"Unique modifier-identity targets and other crafting methods are not modeled."},sampleSuccess=hit,sampleItem=current,
+		warnings={{code="unique_crafting_scope",message="Only listed unique actions and item goals are modeled. Continue using item text, not an ordinary affix state."}},limitations={"Unique modifier-identity targets and other crafting methods are not modeled."},sampleSuccess=hit,sampleItem=current,
 		engineVersion=2,dataPatch=sim.dataPatch,sourceVersion=launch.versionNumber,costCurrency=currency or "supplied price units",baseCost=baseCost,retainedSuccesses=retained,retentionLimit=retain,
 		actionDistribution={{actions=actions,trials=trials,successes=successes}},executedActionDistribution={{actions=executed,trials=trials,successes=successes}},successfulActionQuantiles=hit and quantiles(actions) or nil,routeCounts=routes,budgetExhausted=not hit and at<=#recipe.steps and actions>=maxActions and trials or 0,
 		destroyedTrials=0,uniqueTrials=trials,uniqueDistribution={{name=start.title,trials=trials,successes=successes}},recovery=recovery,stepPriceKeys={},priceOverridesSupplied=suppliedPrices or suppliedActions,resourcePriceOverridesSupplied=suppliedPrices,actionPriceOverridesSupplied=suppliedActions,actionPriceOverridesApplied=actionPriceUses*trials}
