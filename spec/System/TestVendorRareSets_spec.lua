@@ -60,6 +60,14 @@ describe("Rare vendor set review",function()
   local missing={};for _,entry in ipairs(result.missing) do missing[entry.slot]=entry end
   assert.is_not_nil(missing["Weapon or shield"]);assert.is_nil(missing["Item level 60-74"])
  end)
+ it("explains an unusable one-hand Chaos anchor when a two-hand weapon is available",function()
+  local input=kit(80);input[#input+1]=item("One Hand Swords",70)
+  local result=vendor.reviewSets(input,"chaos");assert.equal(0,#result.groups)
+  local missing={};for _,entry in ipairs(result.missing) do missing[entry.slot]=entry end
+  assert.is_not_nil(missing["Chaos-level item or weapon partner"])
+  assert.matches("pair the existing one%-handed item",missing["Chaos-level item or weapon partner"].detail)
+  input[#input+1]=item("Shields",80);result=vendor.reviewSets(input,"chaos");assert.equal(1,#result.groups);assert.equal("Chaos Orb",result.groups[1].reward)
+ end)
  it("reports missing slots from unused items",function()
   local input={item("Helmets",70),item("Rings",70),item("One Hand Swords",70)};local result=vendor.reviewSets(input);local missing={}
   for _,entry in ipairs(result.missing) do missing[entry.slot]=entry end

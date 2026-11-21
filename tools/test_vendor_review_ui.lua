@@ -27,7 +27,13 @@ return function(build,ui,frame)
 	ui.clipboard="Item Class: Helmets\nRarity: Rare\nExample Base\n--------\nItem Level: 68\n--------\nUnidentified";ui:click("paste");ui:choose("preference","chaos","val")
 	do local c=main.popups[1].controls;local lines={};for _,row in ipairs(c.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;assert(table.concat(lines," "):find("Chaos Orb",1,true),"Chaos preference did not select a Chaos set") end
 	frame("vendor-rare-set-chaos");ui:click("close")
-	require("Classes.VendorRareSetsControl").Open(build);assert(main.popups[1].controls.preference:GetSelValueByKey("val")=="chaos","Rare-set preference was not retained");ui:click("clear");ui:click("close")
+	require("Classes.VendorRareSetsControl").Open(build);assert(main.popups[1].controls.preference:GetSelValueByKey("val")=="chaos","Rare-set preference was not retained");ui:click("clear")
+	for _,class in ipairs({"Helmets","Body Armours","Gloves","Boots","Amulets","Belts","Rings","Rings","Bows","One Hand Swords"}) do
+		local level=class=="One Hand Swords" and 70 or 80
+		ui.clipboard="Item Class: "..class.."\nRarity: Rare\nExample Base\n--------\nItem Level: "..level.."\n--------\nUnidentified";ui:click("paste")
+	end
+	do local lines={};for _,row in ipairs(main.popups[1].controls.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;local text=table.concat(lines," ");assert(text:find("Chaos-level item or weapon partner",1,true) and text:find("pair the existing",1,true),"Unusable Chaos weapon anchor was not explained") end
+	ui:click("clear");ui:click("close")
 	ui:click("nav_tools");do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="qualityVendor" then selected=row;break end end;assert(selected,"Quality vendor review is missing");browser.results.onClick({line=selected});ui:click("choose") end
 	ui.clipboard="Item Class: Wands\nRarity: Normal\nDriftwood Wand\n--------\nQuality: +20%";ui:click("paste")
 	for _,quality in ipairs({18,12,10}) do ui.clipboard="Item Class: Helmets\nRarity: Magic\nSuperior Iron Hat of the Fox\n--------\nQuality: +"..quality.."%";ui:click("paste") end
