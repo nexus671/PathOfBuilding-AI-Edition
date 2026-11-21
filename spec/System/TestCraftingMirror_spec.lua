@@ -35,6 +35,9 @@ describe("Mirror of Kalandra crafting",function()
   local controls=require("Classes.CraftingSimulatorControl").Open(build,project)
   controls.method:SelByValue("mirror","val");controls.method.selFunc();assert.is_true(controls.apply:IsEnabled())
   controls.apply:Click();assert.is_true(controls.undo:IsEnabled())
+  local visible={};for _,row in ipairs(controls.itemMods.list) do visible[#visible+1]=StripEscapes(row[1] or "") end;assert.matches("Mirrored",table.concat(visible," "),1,true)
+  local history=controls.history;history:Click();local changes={};for _,row in ipairs(main.popups[1].controls.changes.list) do changes[#changes+1]=StripEscapes(row[1] or "") end
+  assert.matches("Mirrored: no -> yes",table.concat(changes," "),1,true);main:ClosePopup()
   controls.keepWorking:Click();local saver=build.savers.CraftingProjects;local saved
   for _,entry in ipairs(saver.projects) do if entry.id==project.id then saved=entry end end
   assert.is_true(saved.run.state.mirrored);assert.is_false(saved.run.history[1].mirrored);assert.equal("mirror",saved.run.actions[1].method)

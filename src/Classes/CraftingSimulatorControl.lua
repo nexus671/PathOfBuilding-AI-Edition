@@ -286,7 +286,7 @@ function Panel.Open(build,project,layout)
 			local label=craft.method=="essence" and "Essence: "..workbench.actionLabel(craft,model) or simulator.labels[craft.method] or "craft"
 			state=nextState;actions[#actions+1]=craft;updateOptions(craft.method=="veiled_chaos" or craft.method=="veiled_orb")
 			local message=state.uniqueTitle and ("Applied "..label..". Unique outcome; undo or keep this item.") or ("Applied "..label..". Select another currency or undo.")
-			if craft.method=="mirror" then message="Mirrored copy selected. The original remains in item history; keep a snapshot to compare." end
+			if craft.method=="mirror" then message="Mirrored copy. Original is in Item history." end
 			for _,warning in ipairs(result.warnings or {}) do if warning.code=="abyss_socket_layout" then message="Applied "..label..". Abyss socket layout is experimental.";break end end
 			if result.gwennen then for _,entry in ipairs(require("Modules.CraftingGwennenReference").search("",100).offers) do if entry.id==result.gwennen.outcome then message="Gwennen modeled outcome: "..entry.description;break end end end
 			if state.socketLayoutUnknown then message="Socket layout is unknown after corruption. Set it in Edit hypothetical item before socket crafts or build preview." end

@@ -131,6 +131,7 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 		local state=getState();local lines={};card.defences=nil;card.weaponStats=nil;card.influenceSummary=nil
 		if state.destroyed then wrap(lines,"This item was destroyed.","^xE07070",w-30)
 		else
+			if state.mirrored then wrap(lines,"Mirrored - cannot normally be crafted further","^xE9BE7B",w-30) end
 			local context=simulator.context(model,state)
 			local item=simulator.toItem(model,state)
 			card.preview=state.uniqueTitle and item or context.item;setArt(card.preview)

@@ -464,6 +464,15 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		show(require("Modules.CraftingProjects").item(flaskProject.startingItem));main:OpenPopup(472,270,"Flask comparison",controls)
 		frame("journey-flask-card");main:ClosePopup()
 	end
+	do
+		local project={id="mirror-label-ui",title="Mirrored helmet",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}}
+		local controls=require("Classes.CraftingSimulatorControl").Open(build,project)
+		ui:click("settings");ui:text("paletteSearch","Mirror of Kalandra");ui:click("paletteUse");ui:click("item")
+		local lines={};for _,row in ipairs(controls.itemMods.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(lines," "):find("Mirrored",1,true),"Mirrored item marker is missing");frame("crafting-mirror-item")
+		ui:click("history");local changes={};for _,row in ipairs(main.popups[1].controls.changes.list) do changes[#changes+1]=StripEscapes(row[1] or "") end
+		assert(table.concat(changes," "):find("Mirrored: no %-> yes"),"Mirror history change is missing");frame("crafting-mirror-history");ui:click("close");ui:click("close")
+	end
 	local enchantedProject={id="harvest-ui",title="Body armour quality enchant",slot="Body Armour",startingItem="Rarity: NORMAL\nPlate Vest\nItem Level: 86\nQuality: 20",goals={},steps={}}
 	require("Classes.CraftingSimulatorControl").Open(build,enchantedProject)
 	ui:click("settings");ui:text("paletteSearch","replace quality");frame("crafting-harvest-service");ui:click("paletteUse")
