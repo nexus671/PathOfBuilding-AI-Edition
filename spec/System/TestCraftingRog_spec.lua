@@ -34,6 +34,22 @@ describe("Experimental Rog side rerolls",function()
 		assert.is_truthy(require("Modules.CraftingWorkbench").icon("rog_reroll"));assert.is_truthy(require("Modules.CraftingWorkbench").icon("gwennen"))
 		name,_,kind=prices.describe("rog:observed_artifacts");assert.equal("Unspecified artifact cost",name);assert.equal("Resource",kind)
 	end)
+	it("adds one legal modifier to the chosen side and selects the best independent roll",function()
+		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
+		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}};local before=copyTable(state)
+		for _,side in ipairs({"Prefix","Suffix"}) do for _,attempts in ipairs({1,3,5}) do
+			local craft={method="rog_reroll",rogOperation="add",rogSide=side,rogAttempts=attempts}
+			local actual=sim.action(model,state,craft,stream(73));local random=stream(73);local best,bestLevel
+			for _=1,attempts do
+				local one=copyTable(craft);one.rogAttempts=1;local candidate=sim.action(model,state,one,random)
+				local added=candidate.affixes[#candidate.affixes];local level=model.byId[added.id].level
+				if not bestLevel or level>bestLevel then best,bestLevel=candidate,level end
+			end
+			assert.same(best,actual);assert.same(before,state);assert.equal(#state.affixes+1,#actual.affixes);sim.validateState(model,actual)
+		end end
+		local magic=copyTable(state);magic.rarity="MAGIC"
+		assert.has_error(function() sim.action(model,magic,{method="rog_reroll",rogOperation="add",rogSide="Prefix",rogAttempts=1},stream(1)) end)
+	end)
 	it("runs configured offers through the shared simulator and saved checkpoint",function()
 		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
 		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}}
@@ -54,10 +70,10 @@ describe("Experimental Rog side rerolls",function()
 	it("configures and restores an observed offer in the dialog",function()
 		newBuild();local saved
 		local c=require("Classes.CraftingRogControl").Open(nil,function(craft) saved=craft end)
-		c.side:SelByValue("Suffix","val");c.attempts:SelByValue(5,"val");c.grand:SetText("12",true);c.keep:Click()
-		assert.same({method="rog_reroll",rogSide="Suffix",rogAttempts=5,artifactCost={grand=12}},saved)
+		c.side:SelByValue("Suffix","val");c.attempts:SelByValue(5,"val");c.operation:SelByValue("add","val");c.grand:SetText("12",true);c.keep:Click()
+		assert.same({method="rog_reroll",rogSide="Suffix",rogAttempts=5,rogOperation="add",artifactCost={grand=12}},saved)
 		c=require("Classes.CraftingRogControl").Open(saved,function() end)
-		assert.equal("Suffix",c.side:GetSelValueByKey("val"));assert.equal(5,c.attempts:GetSelValueByKey("val"));assert.equal("12",c.grand.buf)
+		assert.equal("Suffix",c.side:GetSelValueByKey("val"));assert.equal(5,c.attempts:GetSelValueByKey("val"));assert.equal("add",c.operation:GetSelValueByKey("val"));assert.equal("12",c.grand.buf)
 		main.popups={}
 	end)
 	it("configures the offer from the workbench and preserves it in the working craft",function()

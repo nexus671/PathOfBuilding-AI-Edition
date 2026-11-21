@@ -6,7 +6,8 @@ for index,tier in ipairs(tiers) do artifacts[tier]="Metadata/Items/Expedition/Ex
 
 function R.validate(craft)
 	assert(craft.rogSide=="Prefix" or craft.rogSide=="Suffix","Choose prefixes or suffixes")
-	assert(craft.rogAttempts==1 or craft.rogAttempts==3 or craft.rogAttempts==5,"Choose 1, 3 or 5 rerolls")
+	assert(craft.rogAttempts==1 or craft.rogAttempts==3 or craft.rogAttempts==5,"Choose 1, 3 or 5 attempts")
+	assert(craft.rogOperation==nil or craft.rogOperation=="reroll" or craft.rogOperation=="add","Choose a supported Rog offer")
 	assert(not craft.allflame,"Allflame cannot be used with Rog")
 	if craft.artifactCost~=nil then
 		assert(type(craft.artifactCost)=="table","Invalid observed artifact cost")
@@ -25,19 +26,21 @@ function R.components(craft)
 end
 
 -- Independent candidates start from the same item. Ordinary affix weights,
--- preserved affix count, average required-level ranking and first-on-tie are
+-- side-reroll count, average required-level ranking and first-on-tie are
 -- provisional assumptions, not a reconstruction of Rog's server logic.
 function R.reroll(M,model,input,craft,random)
 	R.validate(craft)
 	local side=craft.rogSide
 	local count=0
 	for _,entry in ipairs(input.affixes) do if assert(model.byId[entry.id],"Modifier is unavailable").type==side then count=count+1 end end
-	assert(count>0,"No "..side:lower().." modifiers to reroll")
+	local adding=craft.rogOperation=="add"
+	if adding then assert(count<M.capacities(model,input)[side] and #input.affixes<M.capacities(model,input).total,"No open "..side:lower().." modifier slot")
+	else assert(count>0,"No "..side:lower().." modifiers to reroll") end
 	local best,bestScore
 	for _=1,craft.rogAttempts do
 		local candidate=copyTable(input)
-		for index=#candidate.affixes,1,-1 do if model.byId[candidate.affixes[index].id].type==side then table.remove(candidate.affixes,index) end end
-		for _=1,count do
+		if not adding then for index=#candidate.affixes,1,-1 do if model.byId[candidate.affixes[index].id].type==side then table.remove(candidate.affixes,index) end end end
+		for _=1,adding and 1 or count do
 			local pool,total={},0
 			for _,entry in ipairs(M.pool(model,candidate)) do
 				if model.byId[entry.id].type==side then pool[#pool+1]=entry;total=total+entry.weight end
@@ -50,13 +53,13 @@ function R.reroll(M,model,input,craft,random)
 		end
 		local total=0
 		for _,entry in ipairs(candidate.affixes) do local mod=model.byId[entry.id];if mod.type==side then total=total+assert(mod.level,"Modifier level is unavailable") end end
-		local score=total/count
+		local score=total/(count+(adding and 1 or 0))
 		if not bestScore or score>bestScore then best,bestScore=candidate,score end
 	end
 	return best
 end
 function R.extend(M,api)
-	M.methods[#M.methods+1]="rog_reroll";M.labels.rog_reroll="Rog: observed side reroll (experimental)";table.sort(M.methods)
+	M.methods[#M.methods+1]="rog_reroll";M.labels.rog_reroll="Rog: observed modifier offer (experimental)";table.sort(M.methods)
 	local action,components,priceKey,validateRecipe=M.action,M.components,M.priceKey,M.validateRecipe
 	function M.validateRecipe(recipe)
 		local result=validateRecipe(recipe)
@@ -76,6 +79,7 @@ function R.extend(M,api)
 	function M.priceKey(craft)
 		if craft.method~="rog_reroll" then return priceKey(craft) end
 		local fields={"rog_reroll",tostring(craft.rogSide),tostring(craft.rogAttempts)}
+		if craft.rogOperation=="add" then fields[#fields+1]="add" end
 		for _,tier in ipairs(tiers) do fields[#fields+1]=craft.artifactCost and tostring(craft.artifactCost[tier] or 0) or "unknown" end
 		return table.concat(fields,":")
 	end
@@ -83,6 +87,6 @@ function R.extend(M,api)
 		if craft.method=="rog_reroll" then return R.components(craft) end
 		return components(craft,state,model)
 	end
-	M.limits[#M.limits+1]="Experimental Rog side rerolls use observed offers and prices. Ordinary affix weights, preserved count, average modifier-level ranking and first-on-tie selection are assumptions; offer generation and special interactions are not modeled."
+	M.limits[#M.limits+1]="Experimental Rog modifier offers use observed prices. Ordinary affix weights, side-reroll count preservation, average modifier-level ranking and first-on-tie selection are assumptions; offer generation and special interactions are not modeled."
 end
 return R

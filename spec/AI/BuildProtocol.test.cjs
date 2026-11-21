@@ -817,12 +817,13 @@ test('queues a saved crafting simulation without allowing mixed inputs', t => {
 
 test('accepts observed Rog offers and rejects invalid attempt counts', t => {
   const f=fixture(t), base={baseRevision:f.state.revision,itemText:craftingProject().startingItem};
-  const action={method:'rog_reroll',rogSide:'Suffix',rogAttempts:5,artifactCost:{grand:12}};
+  const action={method:'rog_reroll',rogSide:'Suffix',rogOperation:'add',rogAttempts:5,artifactCost:{grand:12}};
   const recipe={steps:[action],targets:[],requirements:{minAffixes:1}};
   f.call('simulate_crafting',{...base,recipe,options:{trials:2,maxActions:1}});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe,recipe);
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   assert.throws(()=>f.call('calculate_crafting',{...base,action:{...action,rogAttempts:6},targets:[],options:{requirements:{minAffixes:1}}}),/arguments/);
+  assert.throws(()=>f.call('calculate_crafting',{...base,action:{...action,rogOperation:'remove'},targets:[],options:{requirements:{minAffixes:1}}}),/arguments/);
 });
 
 test('accepts supported influence goals in recipes and calculations', t => {
