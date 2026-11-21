@@ -65,6 +65,15 @@ placeholder that pretends to provide those results offline.
 
 ## Remaining release work
 
+On November 21, checkpoint `c01b653665460c577f141bbe7742abb37b22051f` passed
+[Run Tests](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/44958840825)
+and [Spell Checker](https://github.com/nexus671/PathOfBuilding-AI-Edition/actions/runs/44958840800).
+The local source-stable headless audit recorded 2,307 frames with no audit failures,
+and the updater manifest checked 3,165 entries without errors. The Atlas release
+check matched the official 3.30.0c Standard and Ruthless exports and both generated
+graphs. These checks do not validate the live game or native GPU rendering; later
+commits require their own checks. This checkpoint is not a 1.0 release.
+
 The [3.30.0d patch notes](https://www.pathofexile.com/forum/view-thread/4017726)
 introduce Originator's Exalted Orbs for rare maps, including Nightmare Maps, and
 Primordial Exalted Orbs that reveal a random exotic Exalted Orb. They also
