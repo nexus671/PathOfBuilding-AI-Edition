@@ -8,6 +8,13 @@ local UI=require("Modules.HeadlessUI")
 local sim=require("Modules.CraftingSimulator")
 local frames=0
 local function checkPlanningSearch(ui,workspace,filter)
+	if filter=="delirium" then
+		ui:text("currentType","Unknown reward");ui:click("chooseCurrentOrb");ui:text("search","Fine Delirium Orb");ui:click("choose")
+		local c=main.popups[1].controls;assert(c.currentType.buf=="Currency Items" and c.nextType.buf=="Currency Items","Current reward picker changed the wrong field")
+		local text="";for _,row in ipairs(c.results.list) do text=text..StripEscapes(row[1] or "").." " end
+		assert(text:find("45%",1,true),"Current reward picker did not restore the stacking projection")
+		return
+	end
 	if filter=="journey" then
 		local data=workspace.build.savers.BuildJourney.data;local before=require("Modules.PlanningData").encode(data)
 		for _,group in ipairs({{"milestones","Roadmap","Journey milestones"},{"wishlist","Gear","Journey gear goals"},{"resources","Budget","Journey resources"},{"stages","Leveling","Journey leveling stages"}}) do
@@ -160,7 +167,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		local lines={};for _,row in ipairs(c.affixes.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
 		assert(table.concat(lines," "):find("Base Delirium rewards: 2 | Currency",1,true),"Delirium reward count was not displayed")
 		frame("map-delirium-imported");ui:click("delirium");assert(main.popups[1].controls.current.buf=="35");frame("map-delirium-projection");ui:click("chooseOrb");ui:text("search","Fine Delirium Orb");frame("map-delirium-orb-picker");ui:click("choose")
-		assert(main.popups[1].controls.nextType.buf=="Currency Items","Orb picker did not choose the client reward type");local projectionText="";for _,row in ipairs(main.popups[1].controls.results.list) do projectionText=projectionText..StripEscapes(row[1] or "").." " end;assert(projectionText:find("45%",1,true),"Equivalent reward labels did not stack");frame("map-delirium-orb-selected");ui:text("nextType","Imaginary reward");projectionText="";for _,row in ipairs(main.popups[1].controls.results.list) do projectionText=projectionText..StripEscapes(row[1] or "").." " end;assert(projectionText:find("Unrecognized next reward type",1,true),"Unknown reward did not explain why it cannot be projected");ui:text("nextType","Maps");ui:click("close");ui:choose("tier",16,"val")
+		assert(main.popups[1].controls.nextType.buf=="Currency Items","Orb picker did not choose the client reward type");local projectionText="";for _,row in ipairs(main.popups[1].controls.results.list) do projectionText=projectionText..StripEscapes(row[1] or "").." " end;assert(projectionText:find("45%",1,true),"Equivalent reward labels did not stack");frame("map-delirium-orb-selected");checkPlanningSearch(ui,nil,"delirium");ui:text("nextType","Imaginary reward");projectionText="";for _,row in ipairs(main.popups[1].controls.results.list) do projectionText=projectionText..StripEscapes(row[1] or "").." " end;assert(projectionText:find("Unrecognized next reward type",1,true),"Unknown reward did not explain why it cannot be projected");ui:text("nextType","Maps");ui:click("close");ui:choose("tier",16,"val")
 		ui.clipboard="Item Class: Maps\nRarity: Rare\nBlighted Example\nBlighted Map (Tier 16)\n--------\nItem Level: 83\n--------\nArea is infested with Fungal Growths (implicit)\n--------\nUnique Bosses are Possessed\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
 		ui:click("pasteMap");ui:click("keep");frame("map-blighted-imported")
 		ui.clipboard="Item Class: Maps\nRarity: Rare\nBlighted Example\nBlight-ravaged Map (Tier 16)\n--------\nItem Level: 83\n--------\nArea is infested with Fungal Growths (implicit)\nCan be Anointed up to 9 times (implicit)\n--------\nUnique Bosses are Possessed\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
