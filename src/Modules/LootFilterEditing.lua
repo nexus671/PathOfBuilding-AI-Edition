@@ -63,6 +63,33 @@ function M.validateTiers(tiers)
 	end end
 	return result
 end
+-- Apply a threshold atomically: a tier with incompatible conditions must not
+-- leave the rest of the profile partially changed.
+function M.setStackStyle(tiers,ids,minimum,styleId)
+	local next=copyTable(M.validateTiers(tiers));local byId={}
+	for _,tier in ipairs(next) do byId[tier.id]=tier end
+	local target=assert(byId[styleId],"Choose a style tier")
+	local seen={};for _,id in ipairs(list(ids)) do
+		local tier=assert(byId[id],"A selected tier no longer exists")
+		assert(not seen[id],"A tier was selected more than once");seen[id]=true
+		assert(tier.id~=target.id,"A tier cannot use its own stack style")
+		local ok,why=pcall(require("Modules.LootFilterStackTiers").rule,tier.text,target.text,minimum)
+		assert(ok,tier.title..": "..tostring(why):match("[^:]+$"))
+		tier.stackRules=tier.stackRules or {};local replaced=false
+		for _,rule in ipairs(tier.stackRules) do if rule.minimum==minimum then rule.styleTierId=styleId;replaced=true;break end end
+		if not replaced then tier.stackRules[#tier.stackRules+1]={minimum=minimum,styleTierId=styleId} end
+	end
+	assert(#ids>0,"Choose at least one tier")
+	for _,id in ipairs(ids) do
+		local tier=byId[id];local rules=copyTable(tier.stackRules);table.sort(rules,function(a,b) return a.minimum>b.minimum end)
+		if parser.parse(tier.text).rules[1].continue then for index,rule in ipairs(rules) do
+			local upper=index>1 and rules[index-1].minimum or nil
+			local ok,why=pcall(require("Modules.LootFilterStackTiers").rule,tier.text,byId[rule.styleTierId].text,rule.minimum,upper)
+			assert(ok,tier.title..": "..tostring(why):match("[^:]+$"))
+		end end
+	end
+	return M.validateTiers(next)
+end
 function M.rule(tier)
 	if #tier.items==0 or tier.enabled==false then return end
 	return {id=tier.id,title=tier.title,text=M.withItems(tier.text,tier.items),enabled=true}

@@ -1863,7 +1863,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local tierDraft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1]
 	assert(#tierDraft.tiers[1].items==1 and #tierDraft.tiers[2].items==0,"Dragging did not move the item between custom tiers")
 	ui:click("tierNew");tierDraft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1]
-	ui:click("tierStack");frame("filter-stack-styles");ui:choose("stackStyle",tierDraft.tiers[1].id,"val");ui:text("stackSize","5");ui:click("stackAdd");frame("filter-stack-added");ui:click("stackKeep")
+	ui:click("tierStack");frame("filter-stack-styles");ui:choose("stackStyle",tierDraft.tiers[1].id,"val");ui:text("stackSize","5");ui:click("stackAll");frame("filter-stack-added");ui:click("stackKeep")
 	tierDraft=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];assert(tierDraft.tiers[3].stackRules[1].minimum==5,"Stack style was not saved")
 	do
 		local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing");local profile=filters.profile("continue-stacks","Continue stacks")

@@ -20,14 +20,14 @@ function M.Open(profile,id,keep)
 	local choices={};for _,entry in ipairs(draft.tiers) do if entry.id~=id then choices[#choices+1]={label=entry.title..(entry.enabled==false and " (disabled)" or ""),val=entry.id} end end
 	controls.stackSize=new("EditControl"):EditControl(ui.anchor,{16,92,120,26},"5","Stack size",nil,10)
 	controls.stackStyle=new("DropDownControl"):DropDownControl(ui.anchor,{148,92,300,26},choices)
-	button("stackAdd",460,92,164,"Add / replace",function()
+	local function applyStyle(all)
 		local minimum=tonumber(controls.stackSize.buf);local style=assert(controls.stackStyle:GetSelValueByKey("val"),"Create another tier first")
-		local next=copyTable(draft);local current;for _,entry in ipairs(next.tiers) do if entry.id==id then current=entry end end
-		current.stackRules=current.stackRules or {};local replaced=false
-		for _,rule in ipairs(current.stackRules) do if rule.minimum==minimum then rule.styleTierId=style;replaced=true end end
-		if not replaced then current.stackRules[#current.stackRules+1]={minimum=minimum,styleTierId=style} end
-		next.tiers=editing.validateTiers(next.tiers);draft=next;for _,entry in ipairs(draft.tiers) do if entry.id==id then tier=entry end end;selected=nil;refresh()
-	end)
+		local ids={};for _,entry in ipairs(draft.tiers) do if entry.id~=style and (all or entry.id==id) then ids[#ids+1]=entry.id end end
+		local next=copyTable(draft);next.tiers=editing.setStackStyle(next.tiers,ids,minimum,style)
+		draft=next;for _,entry in ipairs(draft.tiers) do if entry.id==id then tier=entry end end;selected=nil;refresh()
+		controls.note.label=all and ("Applied to "..#ids.." tiers. Keep changes to save.") or "Stack style added. Keep changes to save."
+	end
+	button("stackAdd",460,92,164,"Add / replace",function() applyStyle(false) end)
 	local previewCache={}
 	local function previewBlock(target)
 		if previewCache[target.id] then return previewCache[target.id] end
@@ -60,14 +60,17 @@ function M.Open(profile,id,keep)
 		controls.stackList.list=#rows>0 and rows or ui.rows({"No stack styles. Items use this tier's normal visibility and appearance."},580,14)
 	end
 	ui.selectable(controls.stackList,function(row) return row.minimum end,function(row) selected=row.minimum end)
-	button("stackRemove",16,312,164,"Remove selected",function()
+	button("stackRemove",16,312,145,"Remove selected",function()
 		assert(selected,"Choose a stack style to remove")
 		for i=#(tier.stackRules or {}),1,-1 do if tier.stackRules[i].minimum==selected then table.remove(tier.stackRules,i) end end
 		selected=nil;refresh()
 	end)
 	controls.stackRemove.enabled=function() return selected~=nil end
-	button("stackKeep",300,312,160,"Keep changes",function() draft.tiers=editing.validateTiers(draft.tiers);main:ClosePopup();keep(draft) end)
-	button("stackCancel",464,312,160,"Cancel",function() main:ClosePopup() end)
+	button("stackAll",169,312,145,"Apply to all",function() applyStyle(true) end)
+	controls.stackAll.tooltipText="Apply this threshold to every custom tier except the selected style tier. Existing rules at this threshold are replaced."
+	controls.stackAll.enabled=function() return #choices>0 end
+	button("stackKeep",322,312,145,"Keep changes",function() draft.tiers=editing.validateTiers(draft.tiers);main:ClosePopup();keep(draft) end)
+	button("stackCancel",475,312,149,"Cancel",function() main:ClosePopup() end)
 	refresh();ui.style(controls,{stackKeep=true});visual.layers(controls,{stackPreview=true});main:OpenPopup(640,356,"Stack styles",controls,nil,nil,"stackCancel")
 end
 return M

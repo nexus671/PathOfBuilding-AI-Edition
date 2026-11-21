@@ -14,6 +14,20 @@ describe("Stack style preview",function()
   local first=assert(textColor(),"Preview item was not drawn");assert.is_true(first[1]>first[3])
   ui:choose("stackStyle","blue","val");local second=assert(textColor(),"Preview item was not drawn");assert.is_true(second[3]>second[1])
  end)
+ it("applies a stack style to every other custom tier without changing the input",function()
+  local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
+  local p=filters.profile("bulk","Bulk");p.tiers={editing.newTier("low","Low"),editing.newTier("mid","Mid"),editing.newTier("high","High")}
+	  p.tiers[1].items={"Chaos Orb"};p.tiers[2].items={"Divine Orb"};p.tiers[3].text='Show\n BaseType == "Mirror of Kalandra"\n SetFontSize 45';p.tiers[3].items={"Mirror of Kalandra"}
+  p.tiers[2].stackRules={{minimum=10,styleTierId="low"}};local before=copyTable(p);local kept
+  require("Classes.LootFilterStackControl").Open(p,"low",function(value) kept=value end)
+	  ui:choose("stackStyle","high","val");ui:text("stackSize","5");ui:click("stackAll");assert.matches("Applied to 2 tiers",main.popups[1].controls.note.label);ui:click("stackKeep")
+  assert.same(before,p);assert.same({{minimum=5,styleTierId="high"}},kept.tiers[1].stackRules)
+  assert.same({{minimum=10,styleTierId="low"},{minimum=5,styleTierId="high"}},kept.tiers[2].stackRules);assert.is_nil(kept.tiers[3].stackRules)
+	  for _,name in ipairs({"Chaos Orb","Divine Orb"}) do
+	   local result=filters.simulate(kept,{BaseType=name,Class="Stackable Currency",StackSize=5})
+	   assert.same({"45"},result.styles.SetFontSize)
+	  end
+ end)
  it("includes profile-wide appearance settings in the preview",function()
   local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
   local p=filters.profile("preview","Preview");local source=editing.newTier("low","Low");source.items={"Chaos Orb"}
