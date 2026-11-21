@@ -49,6 +49,7 @@ function Panel.Open(build,project,layout)
 	local requirements=draft.nativeRecipe and draft.nativeRecipe.requirements and copyTable(draft.nativeRecipe.requirements)
 	local requiredGroups=draft.nativeRecipe and draft.nativeRecipe.requiredGroups
 	local controls,history,actions={},{},{}
+	local itemWarnings={}
 	local ready=false
 	local function changed()
 		if ready then ui.draft(build,"workingCraft",draft.id) end
@@ -171,12 +172,14 @@ function Panel.Open(build,project,layout)
 					or method=="bench_reroll" and "Experimental lock: protection is selected once; some selections may leave too few removable modifiers."
 					or "Experimental partial lock: random protection is modeled with assumed equal weights."
 			end
-			local warnings={};local warningAction=selected and selected.action or action and action()
+			local warnings={};itemWarnings={};local warningAction=selected and selected.action or action and action()
+			local warningLabels={abyss_socket_layout="Abyss sockets",tincture_imported_values="Tincture scaling",magic_affix_name="Magic item name",affix_roll_outside_current_tier="Outside-tier roll"}
+			local warningBrief={abyss_socket_layout="Abyss socket placement and removal are unverified.",tincture_imported_values="Copied tincture values: verify tiers and effects.",magic_affix_name="Imported tier uses item name; verify the original name.",affix_roll_outside_current_tier="A roll is outside its current tier; verify its origin."}
 			if warningAction then for _,warning in ipairs(simulator.actionWarnings(warningAction,{item=model.item,initial=state})) do
-				if warning.code=="abyss_socket_layout" then warnings[#warnings+1]="Abyss socket placement and removal are unverified."
-				elseif warning.code=="tincture_imported_values" then warnings[#warnings+1]="Copied tincture values: verify tiers and effects."
-				elseif warning.code=="magic_affix_name" then warnings[#warnings+1]="Imported tier uses item name; verify the original name."
-				elseif warning.code=="affix_roll_outside_current_tier" then warnings[#warnings+1]="A roll is outside its current tier; verify its origin." end
+				if warningLabels[warning.code] then
+					warnings[#warnings+1]=warningBrief[warning.code]
+					itemWarnings[#itemWarnings+1]={label=warningLabels[warning.code],details={warning.message}}
+				end
 			end end
 			local unlock=id and require("Modules.CraftingBenchCosts").unlock(simulator.context(model,state),id)
 			local lines={}
@@ -190,7 +193,8 @@ function Panel.Open(build,project,layout)
 				lines[1]=#warnings>0 and ui.fit(hint,leftWidth-30,14) or hint
 				controls.option.tooltipText=unlock and hint.." Recipe location is listed by PoEDB; account unlocks and Ruthless availability are not checked." or nil
 			end
-			for _,warning in ipairs(warnings) do lines[#lines+1]=warning end
+			if #warnings>1 then lines[#lines+1]=#warnings.." item warnings; select Review warnings."
+			elseif #warnings==1 then lines[#lines+1]=warnings[1] end
 			controls.actionHint.list=ui.rows(lines,leftWidth-30,14)
 		end
 	end
@@ -910,6 +914,10 @@ function Panel.Open(build,project,layout)
 	controls.apply.height=32;controls.undo.height=32
 	controls.apply.y=function() return #controls.option.list>0 and 370 or 320 end;controls.undo.y=controls.apply.y
 	controls.settings.y=function() return controls.apply:GetProperty("y")+44 end;controls.history.y=controls.settings.y
+	button(controls,"warningDetails",232,458,200,"Review warnings",function() browser.Open("Crafting item warnings",copyTable(itemWarnings)) end)
+	controls.warningDetails.y=function() return controls.settings:GetProperty("y")+44 end
+	controls.warningDetails.shown=function() return crafting() and #itemWarnings>1 end
+	controls.warningDetails.tooltipText="Review all item import and socket warnings."
 	button(controls,"resolveSockets",16,458,200,"Set socket layout",function() openManual(true) end)
 	controls.resolveSockets.y=function() return controls.settings:GetProperty("y")+44 end
 	controls.resolveSockets.shown=function() return crafting() and state.socketLayoutUnknown and not state.destroyed and not state.veil end
