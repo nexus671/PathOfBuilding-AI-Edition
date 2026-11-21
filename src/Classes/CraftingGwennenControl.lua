@@ -45,7 +45,9 @@ function M.Open(keep,simulate,initial,checkPair)
 		local first=controls.first:GetSelValueByKey("val");local second=controls.second:GetSelValueByKey("val")
 		local supported=require("Modules.CraftingGwennen").supports
 		local message
-		if checkPair and supported(first) and supported(second) then
+		if first==1002 or second==1002 then
+			message="Hinekora\'s Lock foreseeing is not simulated. You can add the observed pair to your guide."
+		elseif checkPair and supported(first) and supported(second) then
 			local ok,reason=checkPair(first,second,needsRerolls() and controls.rerolls:GetSelValueByKey("val") or nil)
 			if not ok then
 				reason=ui.errorText(reason)

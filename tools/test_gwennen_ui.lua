@@ -4,6 +4,7 @@ return function(build,ui,frame)
 		require("Classes.CraftingSimulatorControl").Open(build,{id="gwennen-ui",title="Gwennen pair",slot="Helmet",startingItem=raw,goals={},steps={}})
 		ui:click("settings");ui:text("paletteSearch","Gwennen");ui:click("paletteUse");assert(not main.popups[1].controls.apply:IsEnabled(),"An unconfigured Gwennen pair could be applied")
 		ui:click("tab_settings");ui:click("gwennen");assert(not main.popups[1].controls.keep:IsEnabled());frame("crafting-gwennen-empty")
+		ui:choose("first",1002,"val");ui:choose("second",1000,"val");local lockNotes={};for _,row in ipairs(main.popups[1].controls.limits.list) do lockNotes[#lockNotes+1]=StripEscapes(row[1]) end;assert(main.popups[1].controls.keep:IsEnabled() and not main.popups[1].controls.simulate:IsEnabled() and table.concat(lockNotes," "):find("not simulated",1,true),"Unsupported foreseeing must remain recordable and explained");frame("crafting-gwennen-lock")
 		ui:choose("first",1030,"val");local warning={};for _,row in ipairs(main.popups[1].controls.firstNote.list) do warning[#warning+1]=StripEscapes(row[1]) end
 		assert(table.concat(warning," "):find("conflict",1,true),"Disputed outcome did not show its warning");frame("crafting-gwennen-conflict")
 		ui:choose("second",1000,"val");assert(not main.popups[1].controls.simulate:IsEnabled(),"Disputed offer needs an explicit scenario")

@@ -19,6 +19,7 @@ function M.search(query,limit)
 			count=count+1
 			if #rows<limit then
 				local row={id=entry.id,description=description,functionName=entry["function"],arguments=entry.arguments,family=entry.family,modeled=model.supports(entry.id)}
+				if entry.id==1002 then row.note="Foreseeing is not modeled; record this pair in your guide." end
 				if entry.id==1030 then row.note="The displayed 100 rerolls conflict with the listed function argument of 50. Choose a scenario; actual behavior is unverified." end
 				if entry.id==1020 or entry.id==1021 or entry.id==1043 or entry.id==1044 then row.note="Experimental: distinct random ordinary modifiers change to uniquely identified adjacent legal tiers. Selection and tier rules are unverified." end
 				if entry.id==1018 or entry.id==1019 then row.note="The model assumes the number of modifiers on this side stays the same; Gwennen's behavior is unverified." end
