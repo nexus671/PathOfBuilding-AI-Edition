@@ -290,6 +290,18 @@ on 3.29.3 and the 3.30 preview took 48-329 ms, compared with 155-450 ms before
 the change across All, Maps and Breach filters. Individual search latency and
 native desktop responsiveness still need interactive measurement.
 
+A November 21 tree responsiveness investigation measured 10 skill-cost warning
+probes per recalculation on a synthetic geared build. Three headless update frames
+took 60-101 ms, including 21-43 ms in warning probes; these timings include draw
+capture and profiling overhead, and do not establish desktop responsiveness.
+Reusing rejected warning-probe environments reduced some measured times but changed
+a nested Toxic Rain damage cache in the Mirage Archer comparison fixture. A guard
+for proxies, minions and global triggers passed the five bundled build comparisons,
+but its coverage of other interactions is not established, so it was not shipped.
+Reusing the existing main-skill output did not reduce the synthetic probe count.
+Continue performance work with full-output and nested-cache comparisons, including
+triggered and proxy builds, before enabling reuse.
+
 Timed flask and tincture projections now use the recovery worker's checkpoints
 during their native calculation. A read-only two-cycle saved-build comparison
 preserved the recovery outputs, individual trials, trace and original revision.
