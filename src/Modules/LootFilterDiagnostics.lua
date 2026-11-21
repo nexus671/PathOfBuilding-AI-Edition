@@ -141,7 +141,7 @@ local function listIntervals(rule,intervalEntries)
  return result
 end
 function M.shadowing(parsed)
- local seen,thresholds,sets,combined,paired,diagnostics={},{},{},{},{},{};local rarityIndex,intervalIndex,rarityIntersectionIndex,listIntervalIndex,pairIntervalIndex={},{},{},{},{};local terminal
+ local seen,thresholds,sets,combined,paired,diagnostics={},{},{},{},{},{};local rarityIndex,intervalIndex,rarityIntersectionIndex,listIntervalIndex,pairIntervalIndex={},{},{},{},{};local partialLists={};local terminal
  local hasMultipleRarityLines=false
  for _,rule in ipairs(parsed.rules) do
   local count=0;for _,condition in ipairs(rule.conditions) do if condition.keyword=="Rarity" then count=count+1;if count>1 then hasMultipleRarityLines=true;break end end end
@@ -244,6 +244,31 @@ function M.shadowing(parsed)
     end
    end
   end
+  -- A partial name matches every exact name containing it. Other conditions
+  -- must remain identical, and bounded lists prevent expensive imported filters.
+  local partialVariants={}
+  if not prior and #conditions<=16 then
+   for _,condition in ipairs(rule.conditions) do
+    if (condition.keyword=="BaseType" or condition.keyword=="Class") and (condition.operator=="=" or condition.operator=="==") and #condition.values>0 and #condition.values<=32 then
+     local other,removed={},false;local target=encoded(condition)
+     for _,value in ipairs(conditions) do if not removed and value==target then removed=true else other[#other+1]=field(value) end end
+     local group=field(condition.keyword)..table.concat(other)
+     for _,candidate in ipairs(partialLists[group] or {}) do
+      local covered=true
+      for _,value in ipairs(condition.values) do
+       local found=false
+       for _,fragment in ipairs(candidate.values) do if value:lower():find(fragment,1,true) then found=true;break end end
+       if not found then covered=false;break end
+      end
+      if covered and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
+     end
+     if condition.operator=="=" then
+      local values={};for _,value in ipairs(condition.values) do values[#values+1]=value:lower() end
+      partialVariants[#partialVariants+1]={group=group,values=values,rule=rule}
+     end
+    end
+   end
+  end
   if not prior then
    -- Combine one exact item-list comparison with one numeric bound. Index by
    -- all remaining conditions and cap candidates to bound imported-filter work.
@@ -329,6 +354,10 @@ function M.shadowing(parsed)
    diagnostics[#diagnostics+1]={line=rule.line,shadowedBy=prior.line,warning="This block cannot be reached: a preceding terminating block at line "..prior.line.." "..explanation}
   elseif not rule.continue then
    seen[key]=rule;if #conditions==0 then terminal=rule end
+   for _,entry in ipairs(partialVariants) do
+    local candidates=partialLists[entry.group] or {};partialLists[entry.group]=candidates
+    if #candidates<32 then candidates[#candidates+1]=entry end
+   end
    for _,entry in ipairs(intervalVariants) do
     local candidates=intervalIndex[entry.group] or {};intervalIndex[entry.group]=candidates
     if #candidates<32 then entry.rule=rule;candidates[#candidates+1]=entry end

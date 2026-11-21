@@ -51,6 +51,12 @@ describe("Compiled filter structure",function()
 		local view=structure.outline(p);local conflicts=structure.filter(view,"",nil,nil,"Priority conflicts")
 		assert.equal(1,#conflicts);assert.matches("every item matched",structure.diagnostics(view,conflicts[1])[1].warning)
 	end)
+	it("links a partial base-name conflict to its blocking rule",function()
+		local p=filters.profile("partial-base","Partial base");p.template='Hide\n BaseType "Ring"\nShow\n BaseType == "Coral Ring"'
+		local view=structure.outline(p);local conflicts=structure.filter(view,"",nil,nil,"Priority conflicts")
+		assert.equal(1,#conflicts);local reason=structure.diagnostics(view,conflicts[1])[1]
+		local blocker=structure.blockingEntry(view,conflicts[1]);assert.equal(reason.shadowedBy,blocker.line);assert.matches('BaseType "Ring"',blocker.text,1,true)
+	end)
 	it("finds exact numeric values covered by an earlier terminating range",function()
 		local parser=require("Modules.LootFilterParser")
 		local diagnostics=require("Modules.LootFilterDiagnostics")

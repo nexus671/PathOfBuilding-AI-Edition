@@ -3,6 +3,23 @@ describe("Filter threshold conflict diagnostics",function()
  local function warnings(first,second)
   return diagnostics.shadowing(parser.parse("Show\n "..first.."\nHide\n "..second))
  end
+ it("finds partial class and base names that cover later lists",function()
+  for _,key in ipairs({"BaseType","Class"}) do
+   assert.equal(1,#warnings(key..' "Ring"',key..' == "Coral Ring" "Iron Ring"'))
+   assert.equal(1,#warnings(key..' "ring" "amulet"',key..' "Coral Ring" "Gold Amulet"'))
+   assert.equal(0,#warnings(key..' "Ring"',key..' == "Coral Ring" "Gold Amulet"'))
+   assert.equal(0,#warnings(key..' == "Ring"',key..' == "Coral Ring"'))
+   assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n '..key..' "Ring"\n Continue\nHide\n '..key..' == "Coral Ring"')))
+   assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n '..key..' "Ring"\n ItemLevel >= 80\nHide\n '..key..' == "Coral Ring"')))
+  end
+  local parsed=parser.parse('Show\n BaseType "ring" "amulet"\nHide\n BaseType == "Coral Ring" "Gold Amulet"')
+  assert.equal(1,#diagnostics.shadowing(parsed))
+  for _,name in ipairs({"Coral Ring","Gold Amulet","Iron Ring","Gold Ring","Leather Belt"}) do
+   local first=parser.simulate(parser.parse('Show\n BaseType "ring" "amulet"'),{BaseType=name})
+   local later=parser.simulate(parser.parse('Hide\n BaseType == "Coral Ring" "Gold Amulet"'),{BaseType=name})
+   if later.action=="Hide" then assert.equal("Show",first.action) end
+  end
+ end)
  it("identifies narrower numeric thresholds while respecting strict boundaries",function()
   for _,pair in ipairs({{">= 70",">= 80"},{"> 70",">= 71"},{"<= 80","< 80"},{"< 80","<= 79"},{">= 70","> 70"},{"< 80","< 80"}}) do
    local result=warnings("ItemLevel "..pair[1],"ItemLevel "..pair[2]);assert.equal(1,#result,pair[1].." / "..pair[2]);assert.equal(1,result[1].shadowedBy)
@@ -102,7 +119,7 @@ describe("Filter threshold conflict diagnostics",function()
    assert.equal(1,#warnings(key..' == "Iron Hat" "Wool Shoes"',key..' == "Wool Shoes"'))
    assert.equal(0,#warnings(key..' == "Iron Hat"',key..' == "Iron Hat" "Wool Shoes"'))
    assert.equal(0,#warnings(key..' == "Iron Hat" "Wool Shoes"',key..' == "Wool Shoes" "Other"'))
-   assert.equal(0,#warnings(key..' = "Iron Hat" "Wool Shoes"',key..' == "Wool Shoes"'))
+   assert.equal(1,#warnings(key..' = "Iron Hat" "Wool Shoes"',key..' == "Wool Shoes"'))
    assert.equal(0,#diagnostics.shadowing(parser.parse('Show\n '..key..' == "Iron Hat" "Wool Shoes"\n Continue\nHide\n '..key..' == "Wool Shoes"')))
    local lists={'"Iron Hat"','"Wool Shoes"','"Iron Hat" "Wool Shoes"','"Iron Hat" "Other"'}
    for _,first in ipairs(lists) do for _,second in ipairs(lists) do
