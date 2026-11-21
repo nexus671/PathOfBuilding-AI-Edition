@@ -830,6 +830,10 @@ test('accepts observed Rog offers and rejects invalid attempt counts', t => {
   f.call('calculate_crafting',{...base,action:fill,targets:[],options:{requirements:{minAffixes:6}}});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).action,fill);
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  const quality={method:'rog_reroll',rogOperation:'set_quality',artifactCost:{grand:7}};
+  f.call('calculate_crafting',{...base,action:quality,targets:[],options:{requirements:{minQuality:20}}});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).action,quality);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   assert.throws(()=>f.call('calculate_crafting',{...base,action:{...action,rogAttempts:6},targets:[],options:{requirements:{minAffixes:1}}}),/arguments/);
   assert.throws(()=>f.call('calculate_crafting',{...base,action:{...action,rogOperation:'remove'},targets:[],options:{requirements:{minAffixes:1}}}),/arguments/);
 });

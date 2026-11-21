@@ -4,9 +4,9 @@ local M={}
 function M.Open(initial,keep)
 	local width=math.min(620,main.screenW-40);local height=412
 	local controls={};initial=initial or {}
-	ui.description(controls,"intro",16,28,width-32,38,{"Enter an offer and its price as shown by Rog. The outcome is an estimate."},16)
+	ui.description(controls,"intro",16,28,width-32,38,{"Enter an offer and its price as shown by Rog."},16)
 	ui.label(controls,"operationLabel",16,78,"Observed offer",16)
-	controls.operation=new("DropDownControl"):DropDownControl(ui.anchor,{16,100,454,26},{{label="Reroll one side",val="reroll"},{label="Add a modifier to one side",val="add"},{label="Fill empty modifier slots",val="fill"},{label="Remove the lowest-level modifier",val="remove_lowest"},{label="Remove the two lowest-level modifiers",val="remove_lowest_two"}})
+	controls.operation=new("DropDownControl"):DropDownControl(ui.anchor,{16,100,454,26},{{label="Reroll one side",val="reroll"},{label="Add a modifier to one side",val="add"},{label="Fill empty modifier slots",val="fill"},{label="Set quality to 20%",val="set_quality"},{label="Remove the lowest-level modifier",val="remove_lowest"},{label="Remove the two lowest-level modifiers",val="remove_lowest_two"}})
 	controls.operation:SelByValue(initial.rogOperation or "reroll","val")
 	ui.label(controls,"sideLabel",16,140,"Modifier side",16)
 	controls.side=new("DropDownControl"):DropDownControl(ui.anchor,{16,162,250,26},{{label="Prefixes",val="Prefix"},{label="Suffixes",val="Suffix"}})
@@ -19,6 +19,8 @@ function M.Open(initial,keep)
 	controls.removeHint.shown=function() local operation=controls.operation:GetSelValueByKey("val");return operation=="remove_lowest" or operation=="remove_lowest_two" end
 	ui.description(controls,"fillHint",16,145,width-32,40,{"The preview fills slots sequentially using estimated modifier weights."},14)
 	controls.fillHint.shown=function() return controls.operation:GetSelValueByKey("val")=="fill" end
+	ui.description(controls,"qualityHint",16,145,width-32,40,{"Sets weapon or armour quality to 20%; offer eligibility is unverified."},14)
+	controls.qualityHint.shown=function() return controls.operation:GetSelValueByKey("val")=="set_quality" end
 	ui.description(controls,"costHint",16,201,width-32,40,{"Order Artifacts: leave every field blank if the price is unknown. Enter 0 for a known free tier."},14)
 	for index,tier in ipairs({"lesser","greater","grand","exceptional"}) do
 		local x=16+(index-1)*145

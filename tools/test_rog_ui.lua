@@ -29,4 +29,8 @@ return function(build,ui,frame)
 	ui:choose("operation","add","val");ui:choose("side","Suffix","val");ui:choose("attempts",3,"val");ui:text("grand","12");frame("crafting-recipe-rog-edit");ui:click("keep");ui:click("keep")
 	local step=recipe.steps[2];assert(step.rogOperation=="add" and step.rogSide=="Suffix" and step.rogAttempts==3 and step.artifactCost.grand==12,"Edited Rog offer or price was lost")
 	assert(step.maxAttempts==4 and step.untilRequirements.minAffixes==6 and step.onFailureAction=="stop","Editing Rog changed the step's routing or attempts")
+	local updated;require("Classes.CraftingRecipeControl").Open(recipe,{method="alchemy"},function(value) updated=value end,sim.model(raw))
+	ui:choose("step",2,"val");ui:click("editRog");ui:choose("operation","set_quality","val");assert(main.popups[1].controls.qualityHint:IsShown(),"Rog quality explanation is missing");frame("crafting-recipe-rog-quality");ui:click("keep");ui:click("keep")
+	step=updated.steps[2];assert(step.rogOperation=="set_quality" and step.rogSide==nil and step.rogAttempts==nil and step.artifactCost.grand==12,"Rog quality edit retained obsolete fields or lost its price")
+	assert(step.maxAttempts==4 and step.untilRequirements.minAffixes==6 and step.onFailureAction=="stop","Rog quality edit changed the step's routes")
 end

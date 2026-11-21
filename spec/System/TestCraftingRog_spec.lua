@@ -50,6 +50,25 @@ describe("Experimental Rog side rerolls",function()
 		assert.matches("No empty",sim.configurationReason(model,result.state,action))
 		assert.has_error(function() rog.validate({rogOperation="fill",rogSide="Prefix"}) end)
 	end)
+	it("sets eligible equipment quality to 20 with one exact outcome",function()
+		local model=sim.model(raw);local input=copyTable(model.initial);input.rarity="RARE";input.quality=7
+		input.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}}
+		local before=copyTable(input);local action={method="rog_reroll",rogOperation="set_quality",artifactCost={grand=7}}
+		local output=sim.action(model,input,action,function() error("Quality offer should not draw randomness") end)
+		assert.equal(20,output.quality);assert.same(before,input);assert.same(input.affixes,output.affixes)
+		local result=sim.calculate(raw,action,{},input,{requirements={minQuality=20},trials=2})
+		assert.is_false(result.sampled);assert.equal(100,result.successChance);assert.equal(20,result.sampleState.quality)
+		assert.equal("rog_reroll_assumptions",result.warnings[1].code)
+		assert.same({["Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_3"]=7},sim.components(action))
+		local id="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_3"
+		local recipe={steps={action},targets={},requirements={minQuality=20}}
+		local plan=sim.simulate(raw,recipe,{initialState=input,trials=2,maxActions=1,currency="chaos",prices={[id]=2}})
+		assert.equal(100,plan.successChance);assert.equal(14,plan.meanCost);assert.equal(14,plan.currencySpent[id])
+		local ring=sim.model("Rarity: NORMAL\nCoral Ring\nItem Level: 86");local state=copyTable(ring.initial);state.rarity="RARE"
+		assert.matches("weapon or armour",sim.configurationReason(ring,state,action))
+		assert.has_error(function() sim.action(ring,state,action,stream(1)) end)
+		assert.has_error(function() rog.validate({rogOperation="set_quality",rogSide="Prefix"}) end)
+	end)
 	it("adds one legal modifier to the chosen side and selects the best independent roll",function()
 		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
 		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}};local before=copyTable(state)
