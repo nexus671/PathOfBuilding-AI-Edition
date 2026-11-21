@@ -5,6 +5,16 @@ describe("Linked planning tools",function()
 	local function craft() return {id="helmet",title="Helmet",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}} end
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("explains when the selected crafting slot has no equipped item",function()
+		require("Classes.CraftingProjectWizard").Open(build,nil,nil,"Helmet",nil,function() end,function() end)
+		local wizard=main.popups[1].controls
+		assert.is_false(wizard.useEquipped:IsEnabled())
+		assert.matches("Equip an item in the selected slot",wizard.useEquipped.tooltipText(),1,true)
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"
+		build.itemsTab.items[9001]=new("Item"):Item(raw);build.itemsTab.slots.Helmet.selItemId=9001
+		assert.is_true(wizard.useEquipped:IsEnabled());wizard.useEquipped:Click();assert.equal(raw,wizard.starting.buf)
+		wizard.slot:SelByValue("Gloves");assert.is_false(wizard.useEquipped:IsEnabled())
+	end)
 	it("keeps Atlas drafts attached to their own linked plans",function()
 		local first={id="first",title="First plan",version="3.30.0-preview",budget=100,nodes={},notes="First notes"}
 		local second={id="second",title="Second plan",version="3.30.0-preview",budget=120,nodes={},notes="Second notes"}

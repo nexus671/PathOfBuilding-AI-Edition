@@ -19,7 +19,10 @@ function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
 	ui.label(c,"slotLabel",col+32,70,"Equipment slot")
 	ui.label(c,"startingLabel",16,138,"Paste your starting item");edit("starting",16,164,col,148,draft.startingItem,24000)
 	button("pasteStarting",16,326,math.floor((col-8)/2),"Paste item",function() c.starting:SetText(Paste());if c.starting.changeFunc then c.starting.changeFunc() end end)
-	button("useEquipped",24+math.floor((col-8)/2),326,math.floor((col-8)/2),"Use equipped",function() local slot=build.itemsTab.slots[c.slot:GetSelValue()];local item=slot and build.itemsTab.items[slot.selItemId];assert(item,"This equipment slot is empty");c.starting:SetText(item.raw);c.starting.changeFunc() end)
+	local function equippedItem() local slot=build.itemsTab.slots[c.slot:GetSelValue()];return slot and build.itemsTab.items[slot.selItemId] end
+	button("useEquipped",24+math.floor((col-8)/2),326,math.floor((col-8)/2),"Use equipped",function() local item=assert(equippedItem(),"This equipment slot is empty");c.starting:SetText(item.raw);c.starting.changeFunc() end)
+	c.useEquipped.enabled=function() return equippedItem()~=nil end
+	c.useEquipped.tooltipText=function() return equippedItem() and "Copy the equipped item into this crafting plan." or "Equip an item in the selected slot, or paste a starting item." end
 	local startPreview=require("Classes.JourneyItemControl").new(c,"startPreview",col+32,148,col,208,"STARTING ITEM")
 	ui.label(c,"targetLabel",16,76,"Desired item (optional)");edit("target",16,102,col,180,draft.targetItem,24000)
 	button("pasteTarget",16,296,col,"Paste target item",function() c.target:SetText(Paste());c.target.changeFunc() end)
