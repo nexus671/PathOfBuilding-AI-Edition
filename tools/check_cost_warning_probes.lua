@@ -59,14 +59,23 @@ local function snapshot(includeCache)
  -- Nested calculations can publish skill caches even from a rejected probe.
  -- Capture them before a later full calculation can overwrite stale values.
  if includeCache then
-  local cache={};result.__cache=cache
+  local cache,trackedSkillFields={},0;result.__cache=cache
   for _,mode in ipairs({"MAIN","CALCULATOR"}) do for uuid,entry in pairs(GlobalCache.cachedData[mode]) do
    local prefix="cache:"..mode..":"..uuid..":"
    for key,value in pairs(entry) do if type(value)=="number" or type(value)=="boolean" or type(value)=="string" then cache[prefix..key]=value end end
    if entry.Env and entry.Env.player and entry.Env.player.output then for key,value in pairs(entry.Env.player.output) do
     if type(value)=="number" or type(value)=="boolean" or type(value)=="string" then cache[prefix.."output:"..key]=value end
    end end
+   local active=entry.ActiveSkill
+   if active then
+    for _,part in ipairs({{"skillData",active.skillData},{"skillCond",active.skillCfg and active.skillCfg.skillCond}}) do
+     for key,value in pairs(part[2] or {}) do
+      if type(key)=="string" and (type(value)=="number" or type(value)=="boolean" or type(value)=="string") then cache[prefix..part[1]..":"..key]=value;trackedSkillFields=trackedSkillFields+1 end
+     end
+    end
+   end
   end end
+  assert(trackedSkillFields>0,"No cached skill data or conditions were compared")
  end
  -- A later trigger or detail view may demand a complete skill cache.
  for _, skill in ipairs(env.player.activeSkillList) do
