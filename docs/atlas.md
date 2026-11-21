@@ -57,7 +57,7 @@ Reconnect the MCP client after updating. Enable build proposals in **AI builds**
 
 - `get_atlas_plans`: read saved plans, bundled versions and the build revision.
 - `search_atlas_nodes`: search a selected official graph for native node IDs and text.
-- `compare_atlas_plans`: compare two plans on the same tree and review a budget-aware refund and allocation route, including starting-plan reachability warnings and additive modifier changes before interactions. These changes are not effective map chances. It does not change either plan.
+- `compare_atlas_plans`: compare two plans on the same tree and review a budget-aware refund and allocation route, including starting-plan reachability warnings and additive modifier changes before interactions. These changes are not effective map chances. Saved Genesis allocation differences are listed separately; Atlas route steps do not include Genesis, whose point and refund rules remain unverified. A missing Genesis section does not establish in-game allocations. It does not change either plan.
 - `plan_atlas_tree`: connect up to thirty desired IDs to a plan, optionally avoiding nodes. Returns a separate draft, added nodes, point accounting, stat text and an official link where supported. Plans may include `choices` entries with the allocated `node` ID and selected `effect` ID from search results.
 - `propose_atlas_plan`: submit that plan for normal desktop review. Only the desktop **Apply** button commits the candidate; build **Save** persists it.
 

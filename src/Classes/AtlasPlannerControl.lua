@@ -514,6 +514,12 @@ function Panel.Open(build,source,layout)
 			elseif entry.id=="compare" then
 				local choices={};for _,plan in ipairs(store.plans) do if plan.version==draft.version then
 					local comparison=strategy.compare(plan,current());local lines={"Saved: "..plan.title,"Current draft: "..#comparison.added.." added, "..#comparison.removed.." removed"}
+					if comparison.genesisChanges then
+						local changes=comparison.genesisChanges;lines[#lines+1]=string.format("Genesis saved allocations: %d added, %d removed",#changes.added,#changes.removed)
+						if not changes.beforePresent or not changes.afterPresent then lines[#lines+1]="A plan has no saved Genesis section; its in-game allocations are unknown." end
+						for _,node in ipairs(changes.added) do lines[#lines+1]="Genesis + "..node.branch..": "..node.name end
+						for _,node in ipairs(changes.removed) do lines[#lines+1]="Genesis - "..node.branch..": "..node.name end
+					end
 					if #comparison.modifierChanges>0 then lines[#lines+1]="Modifier changes before keystone and other interactions; not effective map chances";for _,change in ipairs(comparison.modifierChanges) do lines[#lines+1]=string.format("Change: %+d%% | %s",change.delta,change.text) end end
 					for _,node in ipairs(comparison.added) do lines[#lines+1]="+ "..node.name end;for _,node in ipairs(comparison.removed) do lines[#lines+1]="- "..node.name end
 					lines[#lines+1]="Changed bonus counts";for _,stat in ipairs(comparison.stats) do lines[#lines+1]=stat end

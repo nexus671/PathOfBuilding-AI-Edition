@@ -167,6 +167,20 @@ function M.compare(before,after)
 	assert(before.version==after.version,"Choose plans from the same Atlas version to compare")
 	local old,new={},{};for _,id in ipairs(before.nodes) do old[id]=true end;for _,id in ipairs(after.nodes) do new[id]=true end
 	local result={added={},removed={},stats={},modifierChanges={},choiceChanges={}};local tree=atlas.tree(after.version)
+	if before.genesis or after.genesis then
+		local genesis=require("Modules.GenesisPlanner");local treeData=genesis.tree()
+		local prior=before.genesis and genesis.validate(before.genesis) or genesis.empty()
+		local current=after.genesis and genesis.validate(after.genesis) or genesis.empty()
+		local oldGenesis,newGenesis={},{};for _,id in ipairs(prior.nodes) do oldGenesis[id]=true end;for _,id in ipairs(current.nodes) do newGenesis[id]=true end
+		local changes={version=genesis.version,beforePresent=before.genesis~=nil,afterPresent=after.genesis~=nil,added={},removed={},pointAccountingVerified=false}
+		local function entry(id)
+			local node=treeData.nodes[id]
+			return {id=id,name=node.name,branch=genesis.roots[node.root],stats=copyTable(node.stats),choiceOption=node.choiceOption}
+		end
+		for _,id in ipairs(current.nodes) do if not oldGenesis[id] then changes.added[#changes.added+1]=entry(id) end end
+		for _,id in ipairs(prior.nodes) do if not newGenesis[id] then changes.removed[#changes.removed+1]=entry(id) end end
+		result.genesisChanges=changes
+	end
 	local priorChoices,nextChoices={},{}
 	for _,choice in ipairs(before.choices or {}) do priorChoices[choice.node]=choice.effect end
 	for _,choice in ipairs(after.choices or {}) do nextChoices[choice.node]=choice.effect end
@@ -334,7 +348,7 @@ function M.transition(before,after)
 			change.reselectionCostUnknown=true;choiceReselectionCostUnknown=true
 		end
 	end
-	local result={added=diff.added,removed=diff.removed,stats=diff.stats,modifierChanges=diff.modifierChanges,choiceChanges=diff.choiceChanges,choiceReselectionCostUnknown=choiceReselectionCostUnknown,steps=steps,rebuild=rebuilt,temporary=temporary,startingReachable=startingReachable,startingStatus=startingReachable==nil and "unknown" or startingReachable and "reachable" or "unreachable",startingWarning=startingWarning,lines={before.title.." -> "..after.title,#diff.removed.." changed nodes to refund; "..#diff.added.." changed nodes to allocate.","Route assumes "..budget.." base points are available. Each step preserves connectivity and the supplied budget plus granted points. Refund currency prices are not assumed."}}
+	local result={added=diff.added,removed=diff.removed,stats=diff.stats,modifierChanges=diff.modifierChanges,genesisChanges=diff.genesisChanges,choiceChanges=diff.choiceChanges,choiceReselectionCostUnknown=choiceReselectionCostUnknown,steps=steps,rebuild=rebuilt,temporary=temporary,startingReachable=startingReachable,startingStatus=startingReachable==nil and "unknown" or startingReachable and "reachable" or "unreachable",startingWarning=startingWarning,lines={before.title.." -> "..after.title,#diff.removed.." changed nodes to refund; "..#diff.added.." changed nodes to allocate.","Route assumes "..budget.." base points are available. Each step preserves connectivity and the supplied budget plus granted points. Refund currency prices are not assumed."}}
 	if startingReachable==false then result.lines[#result.lines+1]="Starting plan cannot be reached with this budget. "..startingWarning
 	elseif startingReachable==nil then result.lines[#result.lines+1]="Starting plan reachability is unverified; this route assumes it is already allocated. "..startingWarning end
 	if steps then
@@ -342,6 +356,13 @@ function M.transition(before,after)
 		result.lines[#result.lines+1]=(temporary and "Temporary grant path; includes extra refunds. " or rebuilt and "Rebuild route; may require extra refunds. " or "Direct route. ")..refunds.." node refunds, "..(#steps-refunds).." allocations. This is a valid allocation route, not a minimum-refund optimizer."
 		for i,step in ipairs(steps) do result.lines[#result.lines+1]=i..". "..step.action..": "..tree.nodes[step.id].name.." ["..step.id.."]" end
 	elseif startingReachable~=false then result.lines[#result.lines+1]="No sequential route found within this budget. Earn more points or plan a temporary route before applying these allocations." end
+	if diff.genesisChanges then
+		local changes=diff.genesisChanges
+		result.lines[#result.lines+1]=string.format("Genesis saved allocations: %d added, %d removed. Atlas route steps do not include Genesis; its point and refund rules are unverified.",#changes.added,#changes.removed)
+		if not changes.beforePresent or not changes.afterPresent then result.lines[#result.lines+1]="A plan has no saved Genesis section; an absent section does not establish its in-game allocations." end
+		for _,node in ipairs(changes.added) do result.lines[#result.lines+1]="Genesis + "..node.branch..": "..node.name.." ["..node.id.."]" end
+		for _,node in ipairs(changes.removed) do result.lines[#result.lines+1]="Genesis - "..node.branch..": "..node.name.." ["..node.id.."]" end
+	end
 	if #diff.modifierChanges>0 then
 		result.lines[#result.lines+1]="Modifier changes are additive totals before keystones and other interactions; they are not effective map chances."
 		for _,change in ipairs(diff.modifierChanges) do result.lines[#result.lines+1]=string.format("%+g%% | %s",change.delta,change.text) end

@@ -1357,6 +1357,9 @@ async function main(){
   const changedVariant={...variantPlan,choices:[{node:variantNode.id,effect:variantNode.variantEffects[1].effect}]};
   const variantTransition=await queued('compare_atlas_plans',{baseRevision:context.revision,before:variantPlan,after:changedVariant},'atlas');
   assert.equal(variantTransition.atlas.transition.choiceReselectionCostUnknown,true);assert.equal(variantTransition.atlas.transition.choiceChanges[0].reselectionCostUnknown,true);assert.match(variantTransition.atlas.transition.lines.join(' '),/additional refund/);
+  const genesisDifference=await queued('compare_atlas_plans',{baseRevision:context.revision,before:variantPlan,after:{...variantPlan,genesis:{version:'3.30.0d',nodes:[19912]}}},'atlas');
+  assert.equal(genesisDifference.atlas.transition.genesisChanges.removed[0].id,53412);assert.equal(genesisDifference.atlas.transition.steps.length,0);
+  assert.match(genesisDifference.atlas.transition.lines.join(' '),/Atlas route steps do not include Genesis/);
   const variantReview=await queued('propose_atlas_plan',{baseRevision:context.revision,plan:variantPlan},'review');
   assert.match(JSON.stringify(variantReview),/Selected effect: Secrets Unveiled/);assert.match(JSON.stringify(variantReview),/Genesis \[3\.30\.0d\].*2 selected nodes/);await host('apply');assert.deepEqual((await call('get_atlas_plans')).plans.find(plan=>plan.id==='variant').genesis,variantPlan.genesis);await host('undo-applied');context=(await call('get_build_context')).context;
   assert.equal(refinedRoute.atlas.routing.cost,50);assert.equal(refinedRoute.atlas.routing.heuristic,true);assert.ok(refinedTargets.every(id=>refinedRoute.atlas.plan.nodes.includes(id)));

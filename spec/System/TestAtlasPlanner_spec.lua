@@ -264,6 +264,17 @@ describe("Native Atlas planner", function()
 		assert.are.equal("Unwavering Vision",report.keystones[1])
 		assert.is_truthy(report.limitations[2]:find("not combined",1,true))
 	end)
+	it("reports Genesis changes separately from the Atlas refund route",function()
+		local before=plan("3.30.0c");before.genesis={version="3.30.0d",nodes={19912,53412}}
+		local after=copyTable(before);after.genesis.nodes={19912}
+		local strategy=require("Modules.AtlasStrategy");local change=strategy.compare(before,after).genesisChanges
+		assert.is_true(change.beforePresent);assert.is_true(change.afterPresent);assert.equal(1,#change.removed);assert.equal(53412,change.removed[1].id);assert.equal("Currency",change.removed[1].branch)
+		local transition=strategy.transition(before,after);assert.equal(0,#transition.steps);assert.equal(53412,transition.genesisChanges.removed[1].id)
+		assert.is_truthy(table.concat(transition.lines," "):find("Atlas route steps do not include Genesis",1,true))
+		local noSection=copyTable(before);noSection.genesis=nil
+		local missing=strategy.transition(noSection,after);assert.is_false(missing.genesisChanges.beforePresent);assert.is_true(missing.genesisChanges.afterPresent)
+		assert.is_truthy(table.concat(missing.lines," "):find("does not establish its in-game allocations",1,true))
+	end)
 	it("summarizes matching allocated modifiers without treating them as map odds",function()
 		local p=atlas.connect(plan("3.30.0c"),{57123,2929});local report=atlas.report(p);local found
 		for _,entry in ipairs(report.additiveTotals) do if entry.text:find("increased effect of Explicit Modifiers on your Maps",1,true) then found=entry;break end end
