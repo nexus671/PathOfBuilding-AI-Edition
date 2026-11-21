@@ -16,6 +16,19 @@ describe("Map Allflame planning",function()
   assert.has_error(function() currency.perform(input,"plan_allflame",42,nil,nil,nil,"unknown") end)
   assert.has_error(function() currency.perform(input,"clear_allflame_plan",42) end)
  end)
+ it("reports planning actions independently of currency restrictions",function()
+  local input=state();input.corrupted=true;input.twiceCorrupted=true;input.mirrored=true;input.plannedAllflame=first
+  local before=copyTable(input);local options={};for _,entry in ipairs(currency.planningOptions(input)) do options[entry.id]=entry end
+  assert.same(before,input);assert.is_true(options.plan_allflame.available);assert.is_true(options.clear_allflame_plan.available)
+  assert.is_false(options.divine_vessel.available);assert.is_true(options.clear_deified_plan.available);assert.matches("Hypothetical",options.plan_allflame.detail)
+  assert.has_error(function() currency.options(input) end)
+  local cleared=currency.perform(input,"clear_allflame_plan",42).state;local updated={};for _,entry in ipairs(currency.planningOptions(cleared)) do updated[entry.id]=entry end
+  assert.is_false(updated.clear_allflame_plan.available);assert.matches("no planned",updated.clear_allflame_plan.reason)
+  local unknown=state();unknown.unidentified=true;unknown.plannedDeified=nil
+  local hidden={};for _,entry in ipairs(currency.planningOptions(unknown)) do hidden[entry.id]=entry end
+  assert.is_true(hidden.divine_vessel.available);assert.is_true(hidden.plan_allflame.available);assert.is_false(hidden.clear_deified_plan.available)
+  assert.has_error(function() currency.options(unknown) end)
+ end)
  it("persists plans through map rerolls, Atlas save and export",function()
   local input=state();input.corrupted=true;input.twiceCorrupted=true
   local plan=currency.perform(input,"plan_allflame",42,nil,nil,nil,first).state;assert.is_true(plan.twiceCorrupted)

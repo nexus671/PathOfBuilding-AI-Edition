@@ -153,13 +153,26 @@ function M.options(input,checkpoint)
 	end
 	return result
 end
+local function planningState(input)
+ assert(type(input)=="table","Invalid map state")
+ local draft=copyTable(input);draft.id="preview";draft.title="Map preview";draft.patch=map.source().patch
+ local state=require("Modules.AtlasPlanner").validateMapDraft(draft);state.id=nil;state.title=nil;state.patch=nil
+ return state
+end
+function M.planningOptions(input)
+ local state=planningState(input);local result={}
+ for _,entry in ipairs({{id="divine_vessel",label="Plan Deified"},{id="clear_deified_plan",label="Remove planned Deified"},{id="plan_allflame",label="Plan Allflame"},{id="clear_allflame_plan",label="Remove planned Allflame"}}) do
+  local reason=M.reason(state,entry.id)
+  result[#result+1]={id=entry.id,label=entry.label,available=not reason,reason=reason,detail="Hypothetical plan only; in-game eligibility and interactions are unverified."}
+ end
+ return result
+end
 function M.perform(input,action,seed,checkpoint,identitiesOnly,cache,allflameId)
 	if action=="divine_vessel" or action=="clear_deified_plan" or action=="plan_allflame" or action=="clear_allflame_plan" then
 		-- This is a reversible planning marker, not an assertion that the currency
 		-- can be used on a corrupted, mirrored or unidentified map in the game.
-		assert(type(input)=="table","Invalid map state");rng(seed)
-		local draft=copyTable(input);draft.id="preview";draft.title="Map preview";draft.patch=map.source().patch
-		local state=require("Modules.AtlasPlanner").validateMapDraft(draft);state.id=nil;state.title=nil;state.patch=nil
+		rng(seed)
+		local state=planningState(input)
 		local reason=M.reason(state,action);assert(not reason,reason)
 		local inspected=map.inspect(state.baseId,state.tier,state.itemLevel,state.selected,"",0,1,checkpoint,state.rarity,state.rolls,state.corrupted,state.implicit,state.quality,state.observedEffects)
 		if action=="divine_vessel" then state.plannedDeified=true elseif action=="clear_deified_plan" then state.plannedDeified=nil
