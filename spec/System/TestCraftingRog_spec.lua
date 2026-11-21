@@ -34,6 +34,22 @@ describe("Experimental Rog side rerolls",function()
 		assert.is_truthy(require("Modules.CraftingWorkbench").icon("rog_reroll"));assert.is_truthy(require("Modules.CraftingWorkbench").icon("gwennen"))
 		name,_,kind=prices.describe("rog:observed_artifacts");assert.equal("Unspecified artifact cost",name);assert.equal("Resource",kind)
 	end)
+	it("fills open modifier slots while respecting a base implicit roll restriction",function()
+		local wand="Rarity: NORMAL\nSomatic Wand\nItem Level: 86\nImplicits: 1\nCannot roll Caster Modifiers"
+		local model=sim.model(wand);local input=copyTable(model.initial);input.rarity="RARE"
+		local original=copyTable(input);local action={method="rog_reroll",rogOperation="fill",artifactCost={grand=7}}
+		assert.is_nil(sim.configurationReason(model,input,action))
+		for seed=1,10 do
+			local result=sim.action(model,input,action,stream(seed));sim.validateState(model,result)
+			assert.equal(sim.capacities(model,input).total,#result.affixes)
+			for _,entry in ipairs(result.affixes) do for _,tag in ipairs(model.byId[entry.id].modTags or {}) do assert.is_false(tag=="caster") end end
+		end
+		assert.same(original,input)
+		local result=sim.perform(wand,action,17,input);assert.matches("sequential",result.warnings[1].message)
+		assert.same({["Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_3"]=7},sim.components(action))
+		assert.matches("No empty",sim.configurationReason(model,result.state,action))
+		assert.has_error(function() rog.validate({rogOperation="fill",rogSide="Prefix"}) end)
+	end)
 	it("adds one legal modifier to the chosen side and selects the best independent roll",function()
 		local model=sim.model(raw);local state=copyTable(model.initial);state.rarity="RARE"
 		state.affixes={{id="IncreasedLife2",range=0.5},{id="FireResist2",range=0.5}};local before=copyTable(state)

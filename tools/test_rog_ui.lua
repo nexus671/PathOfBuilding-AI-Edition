@@ -10,6 +10,8 @@ return function(build,ui,frame)
 	local odds=build.craftingAnalyses["rog-ui"].results.odds.result
 	assert(not jobs.job and not odds.sampled and odds.successChance==100,"Rog removal odds were not enumerated");frame("crafting-rog-odds")
 	ui:click("tab_settings");ui:click("configure")
+	ui:choose("operation","fill","val");assert(main.popups[1].controls.fillHint:IsShown() and not main.popups[1].controls.side:IsShown(),"Fill offer did not explain its estimated rolls");frame("crafting-rog-fill")
+	ui:click("keep");ui:click("tab_craft");assert(main.popups[1].controls.apply:IsEnabled(),"Rog fill offer could not be applied");ui:click("tab_settings");ui:click("configure");assert(main.popups[1].controls.operation:GetSelValueByKey("val")=="fill","Rog fill selection was not retained")
 	ui:choose("operation","add","val");ui:choose("side","Suffix","val");ui:choose("attempts",3,"val");ui:text("grand","12");ui:click("keep")
 	ui:click("tab_craft");assert(main.popups[1].controls.apply:IsEnabled(),"Configured Rog offer could not be applied");ui:click("item");frame("crafting-rog-result")
 	ui:click("keepWorking");local saved;for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id=="rog-ui" then saved=project end end
@@ -20,4 +22,7 @@ return function(build,ui,frame)
 	ui:choose("operation","add","val");ui:click("keep");ui:click("tab_craft")
 	assert(not main.popups[1].controls.apply:IsEnabled() and main.popups[1].controls.apply.tooltipText():find("No open prefix",1,true),"Full side did not explain why the offer is unavailable")
 	frame("crafting-rog-full-slot","apply");ui:click("close")
+	local recipe;require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy"}},targets={},requirements={minAffixes=6}},{method="alchemy"},function(value) recipe=value end,sim.model(raw))
+	ui:click("addCurrency");ui:text("search","Rog: observed offer");ui:click("choose");ui:choose("operation","fill","val");ui:text("grand","7");frame("crafting-recipe-rog-fill");ui:click("keep");ui:click("keep")
+	assert(recipe.steps[2].rogOperation=="fill" and recipe.steps[2].artifactCost.grand==7,"Rog fill recipe did not retain the offer and price")
 end

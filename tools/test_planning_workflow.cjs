@@ -590,6 +590,9 @@ async function main(){
   const rogAdd={method:'rog_reroll',rogOperation:'add',rogSide:'Prefix',rogAttempts:3,artifactCost:{grand:12}};
   const rogAdded=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogAdd,seed:7},'crafted');
   assert.equal(rogAdded.nativeCrafting.state.affixes.length,3);assert.ok(rogAdded.nativeCrafting.warnings.some(entry=>entry.code==='rog_reroll_assumptions'));
+  const rogFill={method:'rog_reroll',rogOperation:'fill',artifactCost:{grand:7}};
+  const rogFilled=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogFill,seed:7},'crafted');
+  assert.equal(rogFilled.nativeCrafting.state.affixes.length,6);assert.ok(rogFilled.nativeCrafting.warnings.some(entry=>entry.code==='rog_reroll_assumptions' && /sequential/.test(entry.message)));
   const rogRemove={method:'rog_reroll',rogOperation:'remove_lowest_two',artifactCost:{lesser:20}};
   const rogRemoved=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:tierStart,action:rogRemove,seed:7},'crafted');
   assert.equal(rogRemoved.nativeCrafting.state.affixes.length,0);assert.match(rogRemoved.nativeCrafting.warnings[0].message,/equal chances among ties/);

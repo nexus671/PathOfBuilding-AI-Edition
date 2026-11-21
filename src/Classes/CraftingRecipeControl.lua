@@ -191,6 +191,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 			details={"Historical Allflame craft for gloves; consumes a Ducat and Sulphur.","Socket selection and modifier probabilities are experimental assumptions."}}
 		entries[#entries+1]={id="vorici_socket_count",label=sim.labels.vorici_socket_count,category="Betrayal",action={method="vorici_socket_count"},details={"Vorici rerolls socket counts 100 times and keeps the greatest result.","Experimental Jeweller odds and socket retention; enter a whole-service price."}}
 		entries[#entries+1]={id="vorici_socket_colours",label=sim.labels.vorici_socket_colours,category="Betrayal",action={method="vorici_socket_colours"},details={"Vorici rerolls socket colours 25 times and keeps an outcome with the most non-white sockets.","Estimated colour odds and first-on-tie selection; enter a whole-service price."}}
+		entries[#entries+1]={id="rog-observed",label="Rog: observed offer",category="Expedition",icon=workbench.icon("rog_reroll"),configure="rog",details={"Record a Rog offer and its observed artifact cost.","Modifier weights and offer interactions are experimental."}}
 		entries[#entries+1]={id="beast_max_links",label=sim.labels.beast_max_links,category="Bestiary",icon=workbench.icon("beast_max_links"),action={method="beast_max_links"},details={"Link the item's existing sockets using the Black Morrigan and a Craicic Sand Spitter.","Add sockets first; this step does not increase their number."}}
 		for _,method in ipairs({"beast_imprint","restore_imprint"}) do
 			local details={sim.labels[method],method=="beast_imprint" and "Create an imprint of an eligible magic item. Enter a whole-service price if needed." or "Restore the captured imprint when one exists; this step consumes the imprint."}
@@ -244,6 +245,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 			local function append(action) draft=require("Modules.CraftingRoutes").append(draft,action);selected=#draft.steps;refresh() end
 			if entry.configure=="fossil" then require("Classes.CraftingFossilControl").Open(model,nil,append)
 			elseif entry.configure=="beast_swap" then openBeastSwap(entry.action,append,"Add step")
+			elseif entry.configure=="rog" then require("Classes.CraftingRogControl").Open(nil,append)
 			else append(entry.action) end
 		end})
 	end)

@@ -6,8 +6,9 @@ for index,tier in ipairs(tiers) do artifacts[tier]="Metadata/Items/Expedition/Ex
 
 function R.validate(craft)
 	local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
-	assert(craft.rogOperation==nil or craft.rogOperation=="reroll" or craft.rogOperation=="add" or removal,"Choose a supported Rog offer")
-	if removal then assert(craft.rogSide==nil and craft.rogAttempts==nil,"Lowest-level removal does not use a side or attempt count")
+	local fill=craft.rogOperation=="fill"
+	assert(craft.rogOperation==nil or craft.rogOperation=="reroll" or craft.rogOperation=="add" or removal or fill,"Choose a supported Rog offer")
+	if removal or fill then assert(craft.rogSide==nil and craft.rogAttempts==nil,"This offer does not use a side or attempt count")
 	else
 		assert(craft.rogSide=="Prefix" or craft.rogSide=="Suffix","Choose prefixes or suffixes")
 		assert(craft.rogAttempts==1 or craft.rogAttempts==3 or craft.rogAttempts==5,"Choose 1, 3 or 5 attempts")
@@ -81,6 +82,11 @@ end
 -- promise that every later weighted roll has a legal continuation.
 function R.readiness(M,model,input,craft)
 	if input.rarity~="MAGIC" and input.rarity~="RARE" then return end
+	if craft.rogOperation=="fill" then
+		if #input.affixes>=M.capacities(model,input).total then return "No empty modifier slots." end
+		local _,total=M.pool(model,input);if total<=0 then return "No legal modifier can be added." end
+		return
+	end
 	local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
 	if removal then
 		local count=craft.rogOperation=="remove_lowest_two" and 2 or 1
@@ -142,15 +148,21 @@ function R.extend(M,api)
 		assert((input.rarity=="MAGIC" or input.rarity=="RARE") and not input.destroyed and not input.corrupted and not input.mirrored and not input.veil,"Rog requires an uncorrupted magic or rare item")
 		assert(model.item.type~="Flask" and model.item.type~="Tincture","Rog requires equipment or a jewel")
 		local flags=api.flags(model,input)
-		assert(not (flags.prefixes or flags.suffixes or flags.attack or flags.caster or flags.explicitAttack or flags.explicitCaster or M.hasPartialLock(model,input)),"Rog interactions with meta modifiers are not modeled")
+		assert(not (flags.prefixes or flags.suffixes or flags.explicitAttack or flags.explicitCaster or M.hasPartialLock(model,input) or craft.rogOperation~="fill" and (flags.attack or flags.caster)),"Rog interactions with meta modifiers are not modeled")
 		for _,entry in ipairs(input.affixes) do assert(not entry.fractured and not entry.crafted,"Rog interactions with fractured or crafted modifiers are not modeled") end
 		if craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two" then return R.removeLowest(model,input,craft,random) end
+		if craft.rogOperation=="fill" then
+			local reason=R.readiness(M,model,input,craft);assert(not reason,reason)
+			local result=copyTable(input);local maximum=M.capacities(model,result).total
+			while #result.affixes<maximum do api.add(model,result,random) end
+			return result
+		end
 		return R.reroll(M,model,input,craft,random)
 	end
 	function M.priceKey(craft)
 		if craft.method~="rog_reroll" then return priceKey(craft) end
 		local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
-		local fields=removal and {"rog_reroll",craft.rogOperation} or {"rog_reroll",tostring(craft.rogSide),tostring(craft.rogAttempts)}
+		local fields=(removal or craft.rogOperation=="fill") and {"rog_reroll",craft.rogOperation} or {"rog_reroll",tostring(craft.rogSide),tostring(craft.rogAttempts)}
 		if craft.rogOperation=="add" then fields[#fields+1]="add" end
 		for _,tier in ipairs(tiers) do fields[#fields+1]=craft.artifactCost and tostring(craft.artifactCost[tier] or 0) or "unknown" end
 		return table.concat(fields,":")
