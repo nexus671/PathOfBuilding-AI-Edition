@@ -86,7 +86,7 @@ async function main(){
   const uniquePair=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:'Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86',action:gwennenPair,limit:5},'inspected');assert.equal(uniquePair.crafting.nativeEngine.gwennenPair.available,false);assert.match(uniquePair.crafting.nativeEngine.gwennenPair.unavailableReason,/rare equipment/);
   const fracturedOffer={rarity:'RARE',affixes:[{id:'IncreasedLife2',range:0.5,fractured:true}]};
   const offerInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,initialState:fracturedOffer,limit:5},'inspected');
-  const protectedAnnul=offerInspection.crafting.nativeEngine.methodAvailability.find(value=>value.method==='annul');assert.equal(protectedAnnul.available,false);assert.match(protectedAnnul.unavailableReason,/all are protected/);
+  const protectedAnnul=offerInspection.crafting.nativeEngine.methodAvailability.find(value=>value.method==='annul');assert.equal(protectedAnnul.available,false);assert.match(protectedAnnul.unavailableReason,/fractures or locks/);
   for(const method of ['rog_reroll','gwennen']) {const entry=offerInspection.crafting.nativeEngine.methodAvailability.find(value=>value.method===method);assert.equal(entry.available,false);assert.match(entry.unavailableReason,/fractured/);}
   const gildedBaseRaw='Rarity: NORMAL\nGold Amulet\nItem Level: 86\nImplicits: 2\n+16% to Item Rarity\nItem sells for much more to vendors';
   const ambiguousGilded=gildedBaseRaw.replace('+16% to Item Rarity','+999% to Item Rarity');

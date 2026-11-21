@@ -44,7 +44,7 @@ function M.check(method,state,model)
 				end)
 			end
 		end
-		if not possible then return false,"No modifier can be removed in the current model; all are protected." end
+		if not possible then return false,"No modifier can be removed; fractures or locks protect them." end
 	end
 	local fractured,crafted=false,false;for _,entry in ipairs(state.affixes) do fractured=fractured or entry.fractured;crafted=crafted or entry.crafted end
 	local influenced=state.influences and #state.influences>0
@@ -65,7 +65,6 @@ function M.check(method,state,model)
 		end
 		local _,total=sim.pool(model,probe);if total<=0 then return false,"No legal modifier can be added." end
 	end
-	if method=="annul" and #sim.annulCandidates(model,state)==0 then return false,"No modifier can be removed; fractures or locks protect them." end
 	if method=="fracture" then
 		if #state.affixes<4 then return false,"Fracturing requires at least four modifiers." end
 		if influenced or fractured or item.synthesised then return false,"Requires a non-influenced, non-synthesised item without fractures." end
