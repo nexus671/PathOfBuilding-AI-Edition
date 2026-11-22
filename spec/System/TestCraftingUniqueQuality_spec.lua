@@ -30,6 +30,13 @@ describe("Unique item quality",function()
 		local saved;local c=require("Classes.CraftingTargetControl").Open({},{catalyst=8,minCatalystQuality=20},nil,function(_,value) saved=value end)
 		assert.matches("Prismatic 20%%",c.info.label);c.keep:Click();assert.equal(8,saved.catalyst);assert.equal(20,saved.minCatalystQuality);main.popups={}
 	end)
+	it("edits and clears catalyst target conditions",function()
+		local saved,called;local c=require("Classes.CraftingTargetControl").Open({},{catalyst=8,minCatalystQuality=20},nil,function(_,value) saved=value;called=true end)
+		c.catalystGoal:Click();local popup=main.popups[1].controls;assert.equal(8,popup.kind:GetSelValueByKey("val"));assert.equal("20",popup.quality.buf)
+		popup.kind:SelByValue(4,"val");popup.quality:SetText("12");popup.keep:Click();assert.matches("Fertile 12%%",c.info.label);c.keep:Click();assert.is_true(called);assert.equal(4,saved.catalyst);assert.equal(12,saved.minCatalystQuality)
+		called=false;c=require("Classes.CraftingTargetControl").Open({},saved,nil,function(_,value) saved=value;called=true end);c.catalystGoal:Click();popup=main.popups[1].controls;popup.kind:SelByValue(0,"val");popup.quality:SetText("");popup.keep:Click();c.keep:Click();assert.is_true(called);assert.is_nil(saved);assert.has_error(function() require("Modules.CraftingSimulator").validateRecipe({steps={{method="chaos"}},targets={},requirements=saved}) end)
+		c=require("Classes.CraftingTargetControl").Open({},{catalyst=8,minCatalystQuality=20},nil,function(_,value) saved=value end);c.catalystGoal:Click();popup=main.popups[1].controls;popup.quality:SetText("21");popup.keep:Click();assert.equal("Catalyst goal",main.popups[1].title);main:ClosePopup();popup.close:Click();c.keep:Click();assert.equal(20,saved.minCatalystQuality);main.popups={}
+	end)
 	it("keeps unique catalyst previews, resource counts and repeatable recipes",function()
 		local raw="Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86\nImplicits: 1\nHas 1 Socket\n+3 to Level of Socketed Curse Gems\n+25% to Cold Resistance\n+25% to Lightning Resistance\nLeft Ring Slot: Your Chilling Skitterbot's Aura applies Socketed Hex Curse instead\nRight Ring Slot: Your Shocking Skitterbot's Aura applies Socketed Hex Curse instead"
 		local project={id="catalyst-preview",title="Catalyst preview",slot="Ring 1",startingItem=raw,goals={},steps={}};build.savers.CraftingProjects:Upsert(project)

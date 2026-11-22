@@ -16,10 +16,14 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 	controls.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,28,0,14},"Edit group "..groupIndex..". Blank item-property fields impose no condition.")
 	local group=groups[groupIndex]
 	if not group then controls.info.label="Set item properties. Blank fields impose no condition." end
-	if conditions.catalyst then
-		local names=require("Modules.CraftingUniqueQuality").catalysts;local name=names[conditions.catalyst] or "Unknown"
-		controls.info.label="Catalyst target: "..name.." "..tostring(conditions.minCatalystQuality or 0).."% (preserved)"
+	local defaultInfo=controls.info.label
+	local function updateCatalystInfo()
+		if conditions.catalyst then
+			local names=require("Modules.CraftingUniqueQuality").catalysts;local name=names[conditions.catalyst] or "Unknown"
+			controls.info.label="Catalyst target: "..name..(conditions.minCatalystQuality~=nil and (" "..conditions.minCatalystQuality.."%") or " (any quality)").." (edit with Catalyst)"
+		else controls.info.label=defaultInfo end
 	end
+	updateCatalystInfo()
 	edit("count",16,64,group and group.atLeast or 1,"Matching mods in group")
 	edit("roll",212,64,group and group.minRoll and group.minRoll*100 or nil,"Minimum roll % (0-100)")
 	controls.mode=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{408,80,200,24},{"Require group","Exclude group"})
@@ -79,7 +83,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 			require("Classes.PlanningBrowserControl").Open("Choose a unique jewel",entries,{action="Use name",choose=function(entry) controls.uniqueName:SetText(entry.id,true) end})
 		end)
 	end
-	button("keep",16,568,220,"Keep target conditions",function()
+	button("keep",16,568,184,"Keep conditions",function()
 		if group then
 			group.atLeast=assert(tonumber(controls.count.buf),"Enter a matching-mod count")
 			group.minRoll=controls.roll.buf ~= "" and assert(tonumber(controls.roll.buf),"Enter a minimum roll percent")/100 or nil
@@ -102,14 +106,35 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 		if controls.socketColours.buf~="" then result.socketColours=controls.socketColours.buf:upper();result.linkedColours=controls.linkedColours:GetSelValue()=="In one linked group" end
 		local required=controls.groups.buf ~= "" and assert(tonumber(controls.groups.buf),"Invalid required group count") or nil
 		if not next(result) then result=nil end
-		sim.validateRecipe({steps={{method="chaos"}},targets=groups,requirements=result,requiredGroups=required})
+		if #groups==0 and not result then required=nil else sim.validateRecipe({steps={{method="chaos"}},targets=groups,requirements=result,requiredGroups=required}) end
 		local conflict=sim.requirementsConflict(result);assert(not conflict,conflict)
 		onKeep(groups,result,required);main:ClosePopup()
 	end)
-	button("close",492,568,116,"Close",function() main:ClosePopup() end)
-	button("itemStats",250,568,224,"Weapon and defence goals",function()
+	button("close",496,568,112,"Close",function() main:ClosePopup() end)
+	button("itemStats",208,568,166,"Weapon / defence",function()
 		require("Classes.CraftingItemStatsControl").Open(conditions.nativeStats,function(value) conditions.nativeStats=value end)
 	end)
+	button("catalystGoal",382,568,106,"Catalyst...",function()
+		local ui=require("Modules.PlanningUI");local popup={};local choices={{label="Any catalyst",val=0}}
+		for id,name in ipairs(require("Modules.CraftingUniqueQuality").catalysts) do choices[#choices+1]={label=name.." Catalyst",val=id} end
+		ui.label(popup,"intro",16,20,"Jewellery catalyst target; blank quality accepts any.",14)
+		ui.label(popup,"kindLabel",16,58,"Catalyst type",14);ui.label(popup,"qualityLabel",224,58,"Minimum quality %",14)
+		popup.kind=new("DropDownControl"):DropDownControl(ui.anchor,{16,80,192,24},choices);popup.kind:SelByValue(conditions.catalyst or 0,"val")
+		popup.quality=new("EditControl"):EditControl(ui.anchor,{224,80,180,24},conditions.minCatalystQuality~=nil and tostring(conditions.minCatalystQuality) or "",nil,"%D",2)
+		popup.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,140,180,28},"Keep catalyst goal",function()
+			local ok,result=pcall(function()
+				local id=popup.kind:GetSelValueByKey("val");local value=popup.quality.buf~="" and assert(tonumber(popup.quality.buf),"Enter a numeric quality") or nil
+				assert(id~=0 or value==nil,"Choose a catalyst type before setting quality")
+				local goal={catalyst=id~=0 and id or nil,minCatalystQuality=value}
+				if next(goal) then sim.validateRecipe({steps={{method="chaos"}},targets={},requirements=goal}) end;return goal
+			end)
+			if not ok then ui.errorPopup("Catalyst goal",result);return end
+			conditions.catalyst=result.catalyst;conditions.minCatalystQuality=result.minCatalystQuality;updateCatalystInfo();main:ClosePopup()
+		end))
+		popup.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{288,140,116,28},"Cancel",function() main:ClosePopup() end))
+		ui.style(popup);main:OpenPopup(420,184,"Catalyst goal",popup,nil,nil,"close")
+	end)
+	controls.catalystGoal.tooltipText="Choose a catalyst type and optional minimum quality, or clear the goal."
 	if not group then
 		for _,key in ipairs({"count","countLabel","roll","rollLabel","mode","scope","groups","groupsLabel","fractured","crafted"}) do controls[key].enabled=false;controls[key].shown=false end
 		for _,control in pairs(controls) do if type(control.y)=="number" and control.y>=214 then control.y=control.y-150 end end

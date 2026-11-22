@@ -28,4 +28,7 @@ return function(build,ui,frame)
 	for _,command in ipairs(ui.commands) do if command.text and command.text:find("Prismatic 20%",1,true) then foundNarrow=true end end
 	assert(foundNarrow,"Narrow socketed card did not retain catalyst and quality");main:ClosePopup()
 	frame("crafting-saved-catalyst-target");local foundQuality=false;for _,command in ipairs(ui.commands) do if command.text and command.text:find("Prismatic 20%",1,true) then foundQuality=true end end;assert(foundQuality,"Saved target did not identify catalyst and quality")
+	local conditions;require("Classes.CraftingTargetControl").Open({},{catalyst=8,minCatalystQuality=20},nil,function(_,value) conditions=value end)
+	ui:click("catalystGoal");frame("crafting-catalyst-goal");ui:choose("kind",4,"val");ui:text("quality","12");ui:click("keep");frame("crafting-catalyst-goal-edited");ui:click("keep")
+	assert(conditions.catalyst==4 and conditions.minCatalystQuality==12,"Catalyst goal edits were not kept")
 end
