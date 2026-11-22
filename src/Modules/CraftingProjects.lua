@@ -70,6 +70,8 @@ function M.validate(project)
 			assert(craft.method=="bench_flask_enchant" and require("Modules.CraftingFlaskEnchants").benchCost(craft.enchantId) or craft.method~="bench_flask_enchant" and craft.enchantId==nil,"Invalid unique enchantment choice")
 			if not uniqueChecked then local ok,item,info=pcall(require("Modules.CraftingUniqueQuality").inspect,result.startingItem);uniqueItem=ok and item or nil;uniqueInfo=ok and info or nil;uniqueSocketCount=ok and #item.sockets or nil;uniqueChecked=true end
 			local compatible=uniqueInfo and (craft.method=="socket_white_bench" or craft.method=="socket_bench" or craft.method=="socket_count_bench" or craft.method=="socket_colour_bench" or (craft.method=="tainted_quality" or craft.method=="tainted_chromatic" or craft.method=="tainted_fusing" or craft.method=="tainted_jeweller") and uniqueItem.corrupted or craft.method~="tainted_quality" and craft.method~="tainted_chromatic" and craft.method~="tainted_fusing" and craft.method~="tainted_jeweller" and not uniqueItem.corrupted and (craft.method~="quality" or uniqueInfo.quality+craft.count<=20))
+			if compatible and craft.method=="quality" then compatible=uniqueInfo.qualitySupported and uniqueInfo.resource~=nil end
+			if compatible and craft.method=="tainted_quality" then compatible=not require("Modules.CraftingUniqueQuality").taintedQualityReason(result.startingItem) end
 			if compatible and craft.method=="catalyst" then
 				local jewellery=uniqueItem.type=="Ring" or uniqueItem.type=="Amulet" or uniqueItem.type=="Belt"
 				-- Earlier guide steps can change the catalyst type and reset quality.
