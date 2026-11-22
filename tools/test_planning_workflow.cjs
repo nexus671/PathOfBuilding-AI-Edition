@@ -355,6 +355,12 @@ async function main(){
   assert.equal(sacredRun.nativeCrafting.trials,3);assert.equal(sacredRun.nativeCrafting.meanCost,2);assert.match(sacredRun.nativeCrafting.warnings.find(entry=>entry.code==='unique_sacred_estimate').message,/shared roll/);
   const sacredOrdinary=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nCarnal Armour\nItem Level: 86',action:{method:'sacred'},seed:104729},'crafted');
   assert.match(sacredOrdinary.nativeCrafting.warnings.find(entry=>entry.code==='sacred_roll_assumptions').message,/shared roll/);
+  const sacredHybrid="Rarity: UNIQUE\nThe Restless Ward\nCarnal Armour\nItem Level: 86\nEvasion Rating: 300\nEnergy Shield: 50\nImplicits: 0\n+50 to maximum Life";
+  for (const itemText of ['Rarity: NORMAL\nCarnal Armour\nItem Level: 86',sacredHybrid]) {
+    const estimate=await queued('calculate_crafting',{baseRevision:context.revision,itemText,action:{method:'sacred'},targets:[],options:{requirements:{nativeStats:{EnergyShield:105}}}},'crafted');
+    assert.equal(estimate.nativeCrafting.sampled,false);assert.equal(estimate.nativeCrafting.successChance,84.375);
+    assert.match(estimate.nativeCrafting.exactFor,/unverified/);assert.equal(estimate.nativeCrafting.outcomes.length,32);
+  }
   const uniqueGuide={id:'unique-guide-workflow',title:'Unique shield guide',slot:'Weapon 2',startingItem:uniqueShield,targetItem:uniqueLinked.nativeCrafting.itemText,goals:[],steps:[
     {action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},
     {action:'Link existing sockets with an Omen of Connections and an Orb of Fusing',uniqueCraft:{method:'omen_connections',count:1}},

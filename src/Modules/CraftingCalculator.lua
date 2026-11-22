@@ -6,6 +6,22 @@ function C.extend(M)
 	function M.calculate(raw,craft,targets,initialState,options)
 		options=options or {}
 		local conflict=M.requirementsConflict(options.requirements);assert(not conflict,conflict)
+		if craft.method=="sacred" and not craft.allflame then
+			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
+			M.perform(raw,craft,options.seed,initialState)
+			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
+			model=M.context(model,state)
+			local outcomes,hits={},0
+			for position=0,31 do
+				local draws=0;local result=M.action(model,state,craft,function() draws=draws+1;assert(draws==1,"Unexpected Sacred roll draw");return (position+0.5)/32 end)
+				local hit=M.matches(result,targets,nil,model,options.requirements,options.requiredGroups);if hit then hits=hits+1 end
+				local stats=require("Modules.CraftingItemStats").values(M,model,result)
+				outcomes[#outcomes+1]={id=tostring(position),text=require("Modules.CraftingSacred").describe(stats),chance=100/32,weight=1/32,matches=hit,state=result}
+			end
+			local sample=outcomes[1].state
+			return {exactFor="One Sacred Orb under the assumed shared-roll model; game odds are unverified",sampled=false,successChance=100*hits/32,totalWeight=1,matchingWeight=hits/32,
+				outcomes=outcomes,sampleState=sample,sampleItem=M.itemText(model,sample),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+		end
 		if craft.method=="rog_reroll" and (craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links") then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial

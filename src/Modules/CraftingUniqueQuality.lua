@@ -196,10 +196,11 @@ function M.sacredReason(raw)
 		if not markers[kind] and levels~=1 then return "Could not safely locate item level" end
 	end
 end
-function M.sacred(raw,seed)
+function M.sacred(raw,seed,position)
 	local reason=M.sacredReason(raw);assert(not reason,reason)
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
-	local before=M.inspect(raw);local random=require("Modules.CalcTime").random(seed);local order={"Armour","Evasion","EnergyShield","Ward"}
+	if position~=nil then assert(type(position)=="number" and position==math.floor(position) and position>=0 and position<32,"Invalid Sacred position") end
+	local before=M.inspect(raw);local random=position~=nil and function() return (position+0.5)/32 end or require("Modules.CalcTime").random(seed);local order={"Armour","Evasion","EnergyShield","Ward"}
 	local values=require("Modules.CraftingSacred").percentiles(before.base.armour,random)
 	local newline=raw:find("\r\n",1,true) and "\r\n" or "\n";local seen={};local level=0
 	local staged=raw:gsub("[^\r\n]+",function(line)

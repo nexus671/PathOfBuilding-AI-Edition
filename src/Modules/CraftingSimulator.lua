@@ -1437,7 +1437,20 @@ do
 			options=options or {};assert(initialState==nil,"Calculate unique crafts using the item text, not an ordinary crafting state")
 			assert(type(targets)=="table" and #targets==0,"Modifier-identity targets are not yet supported for unique items")
 			M.validateRecipe({rarity="UNIQUE",steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
-			if action.method=="instilling" or action.method=="enkindling" or action.method=="divine" or action.method=="sacred" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_colour_bench" then
+			if action.method=="sacred" then
+				local initial=M.perform(raw,action,options.seed,nil,options.treeVersion);local unique=require("Modules.CraftingUniqueQuality")
+				local outcomes,hits={},0
+				for position=0,31 do
+					local result=unique.sacred(raw,options.seed or 104729,position)
+					local hit=unique.matches(result.itemText,options.requirements);if hit then hits=hits+1 end
+					local stats=require("Modules.CraftingItemStats").itemValues(unique.inspect(result.itemText))
+					outcomes[#outcomes+1]={id=tostring(position),text=require("Modules.CraftingSacred").describe(stats),chance=100/32,weight=1/32,matches=hit,itemText=result.itemText}
+				end
+				local sample=outcomes[1].itemText;local nativeStats=require("Modules.CraftingItemStats").itemValues(unique.inspect(sample))
+				return M.withTreeContext({uniqueCrafting=true,exactFor="One Sacred Orb under the assumed shared-roll model; game odds are unverified",sampled=false,successChance=100*hits/32,
+					totalWeight=1,matchingWeight=hits/32,outcomes=outcomes,sampleItem=sample,nativeStats=nativeStats,components=initial.components,warnings=initial.warnings,limitations=initial.limitations},options.treeVersion)
+			end
+			if action.method=="instilling" or action.method=="enkindling" or action.method=="divine" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_colour_bench" then
 				local sampledOptions=copyTable(options);sampledOptions.maxActions=1;sampledOptions.forceFirstAction=true
 				local sampled=M.simulate(raw,{rarity="UNIQUE",steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups},sampledOptions)
 				sampled.outcomes={};sampled.components=M.components(action,action.method=="socket_colour_bench" and {corrupted=require("Modules.CraftingUniqueQuality").inspect(raw).corrupted} or nil)

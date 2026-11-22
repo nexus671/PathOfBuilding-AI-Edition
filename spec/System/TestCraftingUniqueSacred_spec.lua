@@ -58,6 +58,21 @@ describe("Sacred Orb previews for unique armour", function()
 		local ordinaryWarning;for _,entry in ipairs(ordinary.warnings) do if entry.code=="sacred_roll_assumptions" then ordinaryWarning=entry.message end end
 		assert.matches("shared roll",assert(ordinaryWarning));assert.matches("unverified",ordinaryWarning)
 	end)
+	it("enumerates single-action targets under the shared-roll model", function()
+		local ordinary="Rarity: NORMAL\nCarnal Armour\nItem Level: 86"
+		local hybrid="Rarity: UNIQUE\nThe Restless Ward\nCarnal Armour\nItem Level: 86\nEvasion Rating: 300\nEnergy Shield: 50\nImplicits: 0\n+50 to maximum Life"
+		for _,item in ipairs({ordinary,hybrid}) do
+			local result=sim.calculate(item,{method="sacred"},{},nil,{requirements={nativeStats={EnergyShield=105}}})
+			assert.is_false(result.sampled);assert.equal(32,#result.outcomes);assert.equal(84.375,result.successChance)
+			assert.matches("unverified",result.exactFor);assert.equal(1,result.totalWeight);assert.equal(27/32,result.matchingWeight)
+			local total,matching=0,0
+			for _,outcome in ipairs(result.outcomes) do
+				total=total+outcome.weight;if outcome.matches then matching=matching+outcome.weight end
+				assert.matches("Energy shield",outcome.text)
+			end
+			assert.equal(1,total);assert.equal(result.matchingWeight,matching)
+		end
+	end)
 	it("explains unsafe item text before offering a preview", function()
 		local cases={
 			{raw:gsub("Item Level: 86", "Item Level: 86\nItem Level: 86"),"Could not safely locate item level"},

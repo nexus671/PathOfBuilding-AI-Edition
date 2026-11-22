@@ -15,4 +15,12 @@ function M.percentiles(armour,random)
 	return result
 end
 
+function M.describe(stats)
+	local parts={}
+	for _,field in ipairs({{"Armour","Armour"},{"Evasion","Evasion"},{"EnergyShield","Energy shield"},{"Ward","Ward"}}) do
+		if stats[field[1]] and stats[field[1]]>0 then parts[#parts+1]=field[2].." "..stats[field[1]] end
+	end
+	return #parts>0 and table.concat(parts,", ") or "No displayed defences"
+end
+
 return M
