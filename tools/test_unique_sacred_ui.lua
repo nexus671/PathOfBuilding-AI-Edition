@@ -4,6 +4,11 @@ local UI=require("Modules.HeadlessUI")
 for _,size in ipairs({{960,640},{1024,768},{1280,720}}) do
     newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build)
     local raw="Rarity: UNIQUE\nThe Apostate\nSavant's Robe\nItem Level: 86\nEnergy Shield: 132\nImplicits: 0\nGain Maximum Life instead of Maximum Energy Shield from Equipped Armour Items"
+    local malformed={id="sacred-bad",title="Ambiguous item",slot="Body Armour",startingItem=raw.."\nEnergy Shield: 100",goals={},steps={}}
+    local unavailable=require("Classes.CraftingUniqueQualityControl").Open(build,malformed)
+    assert(not unavailable.sacred:IsEnabled(),"Ambiguous Sacred preview was offered")
+    assert(unavailable.sacred.tooltipText()=="Duplicate base defence property","Sacred preview did not explain the ambiguity")
+    ui:click("close")
     local project={id="sacred-ui",title="Sacred guide",slot="Body Armour",startingItem=raw,goals={},steps={}}
     build.savers.CraftingProjects:Upsert(project);local controls=require("Classes.CraftingUniqueQualityControl").Open(build,project)
     assert(controls.sacred:IsEnabled(),"Sacred preview unavailable")
