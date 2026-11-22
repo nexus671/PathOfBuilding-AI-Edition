@@ -513,11 +513,11 @@ test('accepts long crafting guides and goals for desktop review', t => {
 
 test('round-trips structured unique guide actions through desktop review', t => {
   const f=fixture(t);const project=craftingProject();
-  project.steps=[{action:"Use 20 Prismatic Catalysts",uniqueCraft:{method:'catalyst',count:20,catalyst:8}},{action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},{action:'Link sockets with an Omen',uniqueCraft:{method:'omen_connections',count:1}},{action:'Make sockets white',uniqueCraft:{method:'socket_white_bench',count:1}},{action:'Link existing sockets at the crafting bench',uniqueCraft:{method:'socket_bench',count:1}},{action:'Set 4 sockets at the crafting bench',uniqueCraft:{method:'socket_count_bench',count:4}}];
+  project.steps=[{action:"Use 20 Prismatic Catalysts",uniqueCraft:{method:'catalyst',count:20,catalyst:8}},{action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},{action:'Link sockets with an Omen',uniqueCraft:{method:'omen_connections',count:1}},{action:'Make sockets white',uniqueCraft:{method:'socket_white_bench',count:1}},{action:'Link existing sockets at the crafting bench',uniqueCraft:{method:'socket_bench',count:1}},{action:'Set 4 sockets at the crafting bench',uniqueCraft:{method:'socket_count_bench',count:4}},...[2,3,4].map(count=>({action:`At least ${count} non-white sockets`,uniqueCraft:{method:'socket_colour_bench',count}}))];
   f.call('propose_crafting_plan',{baseRevision:f.state.revision,project});
   const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
   assert.deepEqual(queued.proposal.operations[0].project.steps,project.steps);
-  for (const invalid of [{method:'catalyst',count:21,catalyst:8},{method:'catalyst',count:1,catalyst:13},{method:'catalyst',count:1},{method:'quality',count:21},{method:'omen_connections',count:2},{method:'socket_count_bench',count:7},{method:'unknown',count:1}]) {
+  for (const invalid of [{method:'catalyst',count:21,catalyst:8},{method:'catalyst',count:1,catalyst:13},{method:'catalyst',count:1},{method:'quality',count:21},{method:'omen_connections',count:2},{method:'socket_count_bench',count:7},{method:'socket_colour_bench',count:1},{method:'socket_colour_bench',count:5},{method:'unknown',count:1}]) {
     assert.throws(()=>f.call('propose_crafting_plan',{baseRevision:f.state.revision,project:{...project,steps:[{action:'Invalid',uniqueCraft:invalid}]}}),/arguments/);
   }
 });

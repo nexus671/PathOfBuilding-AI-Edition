@@ -278,6 +278,14 @@ async function main(){
   const diallaApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:dialla,action:{method:'socket_white_bench'},seed:1},'failed');assert.match(diallaApply.error,/no-white-socket/);
   const diallaRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:dialla,recipe:{steps:[{method:'chromatic'}],targets:[],requirements:{socketColours:'WWW'}},options:{trials:4,maxActions:1,seed:1}},'failed');assert.match(diallaRun.error,/no-white-socket/);
   const legacyDialla=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:dialla.replace('R-G-B','R-G-W'),limit:100},'inspected');assert.equal(legacyDialla.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='socket_white_bench').available,true);
+  const uniqueBenchItem=uniqueShield+'\nCorrupted';
+  const uniqueBenchCatalog=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueBenchItem,query:'non-white',limit:50},'inspected');
+  const uniqueColourBenchOption=uniqueBenchCatalog.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='socket_colour_bench' && entry.action.count===3);
+  assert.equal(uniqueColourBenchOption.available,true);assert.equal(uniqueColourBenchOption.components.chromatic,20);assert.equal(uniqueColourBenchOption.components['Metadata/Items/Currency/CurrencyCorrupt'],20);
+  const uniqueColourBenchApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueBenchItem,action:{method:'socket_colour_bench',count:3},seed:1},'crafted');
+  assert.equal(uniqueColourBenchApply.nativeCrafting.components.chromatic,20);assert.equal(uniqueColourBenchApply.nativeCrafting.components['Metadata/Items/Currency/CurrencyCorrupt'],20);assert.doesNotMatch(uniqueColourBenchApply.nativeCrafting.itemText,/Sockets:[^\n]*W/);
+  const uniqueColourBenchRecipe={steps:[{method:'socket_colour_bench',count:3}],targets:[],requirements:{socketColours:'RR'}};
+  const uniqueColourBenchRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:uniqueBenchItem,recipe:uniqueColourBenchRecipe,options:{trials:4,maxActions:1,seed:1}},'crafted');assert.equal(uniqueColourBenchRun.nativeCrafting.trials,4);
   const uniqueInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},limit:20},'inspected');
   assert.equal(uniqueInspection.crafting.nativeEngine.uniqueCrafting,true);
   assert.ok(uniqueInspection.crafting.nativeEngine.uniqueActions.some(entry=>entry.method==='omen_connections' && entry.available));

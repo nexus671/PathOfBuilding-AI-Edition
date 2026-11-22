@@ -79,7 +79,7 @@ function M.clean(kind,entry)
 			local catalyst,count=action:match("^catalyst:(%d+):(%d+)$")
 			if catalyst then catalyst,count=tonumber(catalyst),tonumber(count);return catalyst>=1 and catalyst<=12 and count>=1 and count<=20 end
 			local id=action:match("^bench_flask_enchant:(.+)$")
-			return action:match("^socket_count_bench:[2-6]$")~=nil or id and require("Modules.CraftingFlaskEnchants").benchCost(id)~=nil
+			return action:match("^socket_count_bench:[2-6]$")~=nil or action:match("^socket_colour_bench:[2-4]$")~=nil or id and require("Modules.CraftingFlaskEnchants").benchCost(id)~=nil
 		end
 		local history,actions={},{}
 		for i=math.max(1,#value.history-63),#value.history do

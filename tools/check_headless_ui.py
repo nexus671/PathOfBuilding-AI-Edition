@@ -51,6 +51,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_crafting_replay_ui.lua")
     sources.append(ROOT / "tools/test_crafting_sequence_ui.lua")
     sources.append(ROOT / "tools/test_dialla_socket_restriction.lua")
+    sources.append(ROOT / "tools/test_unique_nonwhite_ui.lua")
     sources.append(ROOT / "tools/test_genesis_ui.lua")
     sources.append(ROOT / "tools/test_atlas_remove_ui.lua")
     sources.append(ROOT / "tools/test_atlas_search_ui.lua")
@@ -241,6 +242,10 @@ def main():
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "dialla-socket-restriction.log").write_text(dialla.stdout)
     assert dialla.returncode == 0, dialla.stdout
+    unique_nonwhite = subprocess.run(lua_command + ["../tools/test_unique_nonwhite_ui.lua"], cwd=ROOT / "src",
+                                     env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "unique-nonwhite-controls.log").write_text(unique_nonwhite.stdout)
+    assert unique_nonwhite.returncode == 0, unique_nonwhite.stdout
     genesis = subprocess.run(lua_command + ["../tools/test_genesis_ui.lua", str(frames)], cwd=ROOT / "src",
                              env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "genesis-controls.log").write_text(genesis.stdout)

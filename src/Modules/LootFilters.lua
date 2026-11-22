@@ -447,6 +447,7 @@ function M.generate(build,profile,checkpoint)
 				elseif craft.method=="tainted_jeweller" then items={{key="tainted_jeweller",name="Tainted Jeweller's Orb"}};uniqueSocketCount=nil
 				elseif craft.method=="chromatic" then items={{key="chromatic",name="Chromatic Orb"}}
 				elseif craft.method=="tainted_chromatic" then items={{key="tainted_chromatic",name="Tainted Chromatic Orb"}}
+				elseif craft.method=="socket_colour_bench" then items={{key="Metadata/Items/Currency/CurrencyRerollSocketColours",name="Chromatic Orb"}};if item.corrupted then items[#items+1]={key="Metadata/Items/Currency/CurrencyCorrupt",name="Vaal Orb"} end
 				elseif craft.method=="omen_trichromatism" then items={{key="Metadata/Items/Currency/AncestralOmenOnChromaticAddWhiteSockets",name="Omen of Trichromatism"},{key="Metadata/Items/Currency/CurrencyRerollSocketColours",name="Chromatic Orb"}}
 				elseif craft.method=="omen_jeweller" then
 					items={{key="Metadata/Items/Currency/AncestralOmenOnJewellersMakeFullSockets",name="Omen of the Jeweller"},{key="Metadata/Items/Currency/CurrencyRerollSocketNumbers",name="Jeweller's Orb"}}

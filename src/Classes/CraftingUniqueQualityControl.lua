@@ -80,7 +80,7 @@ function M.Open(build,project,layout,snapshot)
 		end
 		for i=first,#actions do
 			local action=actions[i]
-			local socketCount=tonumber(action:match("^socket_count_bench:([2-6])$"))
+			local socketCount=tonumber(action:match("^socket_count_bench:([2-6])$"));local colourCount=tonumber(action:match("^socket_colour_bench:([2-4])$"))
 			local enchantId=action:match("^bench_flask_enchant:(.+)$")
 			local catalyst,catalystCount=action:match("^catalyst:(%d+):(%d+)$");catalyst,catalystCount=tonumber(catalyst),tonumber(catalystCount)
 			if action=="quality" then qualityCount=qualityCount+1
@@ -89,6 +89,8 @@ function M.Open(build,project,layout,snapshot)
 				steps[#steps+1]=unique.catalystGuide(history[i],catalyst,target)
 			elseif enchantId then
 				flush();steps[#steps+1]={action=unique.guideAction("bench_flask_enchant",1,info.resource,item.corrupted,nil,enchantId),uniqueCraft={method="bench_flask_enchant",count=1,enchantId=enchantId},done=false}
+			elseif colourCount then
+				flush();steps[#steps+1]={action=unique.guideAction("socket_colour_bench",colourCount,info.resource,item.corrupted),uniqueCraft={method="socket_colour_bench",count=colourCount},done=false}
 			elseif socketCount then
 				flush();steps[#steps+1]={action=unique.guideAction("socket_count_bench",socketCount,info.resource,item.corrupted),uniqueCraft={method="socket_count_bench",count=socketCount},done=false}
 			elseif action=="instilling" or action=="enkindling" or action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="divine" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
@@ -146,15 +148,22 @@ function M.Open(build,project,layout,snapshot)
 		controls.apply.tooltipText=function() return unique.socketCountReason(raw,chosen()) or "Preview this bench craft without spending currency." end
 		controls.colours=new("ButtonControl"):ButtonControl(ui.anchor,{152,height-48,75,28},"Colours",function()
 			main:ClosePopup();local options={}
-			for _,entry in ipairs({{label="Chromatic Orb",val="chromatic"},{label="Tainted Chromatic Orb",val="tainted_chromatic"},{label="Omen of Trichromatism",val="omen_trichromatism"}}) do options[#options+1]=entry end
+			for _,entry in ipairs({{label="Chromatic Orb",val="chromatic"},{label="Tainted Chromatic Orb",val="tainted_chromatic"},{label="Omen of Trichromatism",val="omen_trichromatism"},{label="Bench: at least 2 non-white",val="socket_colour_bench:2"},{label="Bench: at least 3 non-white",val="socket_colour_bench:3"},{label="Bench: at least 4 non-white",val="socket_colour_bench:4"}}) do options[#options+1]=entry end
 			local colour={};local cw,ch=480,384
 			ui.description(colour,"help",16,25,cw-32,54,{"Preview one sampled colour roll.","Colour and placement probabilities are estimates."},14)
 			colour.method=new("DropDownControl"):DropDownControl(ui.anchor,{16,90,cw-32,28},options)
 			if item.corrupted then colour.method:SelByValue("tainted_chromatic","val") end
-			local function method() return colour.method:GetSelValueByKey("val") end
+			local function selection() return colour.method:GetSelValueByKey("val") end
+			local function benchCount() return tonumber(selection():match("^socket_colour_bench:([2-4])$")) end
+			local function method() return benchCount() and "socket_colour_bench" or selection() end
 			local checked,cached
-			local function reason() local selected=method();if checked~=selected then checked=selected;cached=unique.colourReason(raw,selected) end;return cached end
-			ui.label(colour,"availability",16,132,"",14);colour.availability.label=function() return "^7"..ui.fit(reason() or "Ready to preview; no currency is spent.",cw-32,14) end
+			local function reason() local selected=selection();if checked~=selected then checked=selected;cached=unique.colourReason(raw,method(),benchCount()) end;return cached end
+			local function availability()
+				local why=reason();if why then return why end
+				local count=benchCount();if count then local amount=({[2]=5,[3]=20,[4]=75})[count];return "Per craft: "..amount.." Chromatic"..(item.corrupted and " + "..amount.." Vaal" or "")..". Preview is free." end
+				return "Ready to preview; no currency is spent."
+			end
+			ui.label(colour,"availability",16,132,"",14);colour.availability.label=function() return "^7"..ui.fit(availability(),cw-32,14) end
 			ui.label(colour,"targetLabel",16,164,"Desired colours (R, G, B, W)",14)
 			ui.label(colour,"placementLabel",240,164,"Placement",14)
 			colour.target=new("EditControl"):EditControl(ui.anchor,{16,185,208,26},"","e.g. RGB",nil,6)
@@ -167,10 +176,10 @@ function M.Open(build,project,layout,snapshot)
 				local recipe=draft.nativeRecipe
 				if not recipe or #recipe.steps~=1 or not recipe.requirements then return nil end
 				local target=recipe.requirements.socketColours;local action=recipe.steps[1].method
-				if type(target)~="string" or not (action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism") then return nil end
-				local expected=unique.guideAction(action,1,info.resource,item.corrupted,#item.sockets);local found
+				if type(target)~="string" or not (action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_colour_bench") then return nil end
+				local guideCount=action=="socket_colour_bench" and recipe.steps[1].count or 1;local expected=unique.guideAction(action,guideCount,info.resource,item.corrupted,#item.sockets);local found
 				for index,step in ipairs(draft.steps) do
-					if step.uniqueCraft and step.uniqueCraft.method==action and step.uniqueCraft.count==1 and not step.done and (not step.onFailure or step.onFailure=="" or step.onFailure=="Stop after "..(recipe.steps[1].maxAttempts or 100).." attempts.") and step.action==expected and step.stopWhen==stopText(target,recipe.requirements.linkedColours) then
+					if step.uniqueCraft and step.uniqueCraft.method==action and step.uniqueCraft.count==guideCount and not step.done and (not step.onFailure or step.onFailure=="" or step.onFailure=="Stop after "..(recipe.steps[1].maxAttempts or 100).." attempts.") and step.action==expected and step.stopWhen==stopText(target,recipe.requirements.linkedColours) then
 						if found then return nil end;found=index
 					end
 				end
@@ -180,24 +189,24 @@ function M.Open(build,project,layout,snapshot)
 				if reason() then return reason() end
 				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a direct colour plan." end
 				local attempts=tonumber(colour.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
-				return unique.colourTargetReason(item,method(),colour.target.buf:upper(),linked())
+				return unique.colourTargetReason(item,method(),colour.target.buf:upper(),linked(),false,benchCount())
 			end
 			ui.label(colour,"targetHelp",16,222,"",14);colour.targetHelp.label=function() local why,met=targetReason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save a colour plan."),cw-32,14) end
 			colour.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,ch-48,140,28},"Preview roll",function()
 				local choice=method();colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
-				local result=unique.colour(raw,choice,seed);history[#history+1]=raw;actions[#actions+1]=choice;redo={};raw=result.itemText;main:ClosePopup();refresh(true)
+				local result=unique.colour(raw,choice,seed,benchCount());history[#history+1]=raw;actions[#actions+1]=selection();redo={};raw=result.itemText;main:ClosePopup();refresh(true)
 			end)
 			colour.apply.enabled=function() return not reason() end
-			colour.apply.tooltipText=function() return reason() or "Preview one sampled socket-colour outcome." end
+			colour.apply.tooltipText=function() return reason() or (benchCount() and availability() or "Preview one sampled socket-colour outcome.") end
 			colour.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,ch-48,150,28},"Save colour plan",function()
 				local why=targetReason();assert(not why,why);local choice=method();local target=colour.target.buf:upper();local together=linked();local attempts=tonumber(colour.attempts.buf)
 				local requirements={socketColours=target,linkedColours=together}
-				local recipe={steps={{method=choice,maxAttempts=attempts,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements}
+				local recipe={steps={{method=choice,count=benchCount(),maxAttempts=attempts,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements}
 				require("Modules.CraftingSimulator").validateRecipe(recipe)
 				local replaceIndex=replaceableColourStep()
 				local function keepPlan()
 					local updated=copyTable(draft);updated.nativeRecipe=recipe
-					local step={action=unique.guideAction(choice,1,info.resource,item.corrupted,#item.sockets),stopWhen=stopText(target,together),onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method=choice,count=1},done=false}
+					local count=benchCount() or 1;local step={action=unique.guideAction(choice,count,info.resource,item.corrupted,#item.sockets),stopWhen=stopText(target,together),onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method=choice,count=count},done=false}
 					if replaceIndex then updated.steps[replaceIndex]=step else updated.steps[#updated.steps+1]=step end
 					draft=build.savers.CraftingProjects:Upsert(updated);refresh(true);c.notice.label="^7Colour plan kept. Save the build.";main:ClosePopup()
 				end
@@ -593,7 +602,7 @@ function M.Open(build,project,layout,snapshot)
 		if #actions==0 or #actions~=#history or history[1]~=draft.startingItem or #actions>100 then return false end
 		local colourSeen=false
 		for _,action in ipairs(actions) do
-			local colour=action=="instilling" or action=="enkindling" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality"
+			local colour=action:match("^socket_colour_bench:[2-4]$") or action=="instilling" or action=="enkindling" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality"
 			if colour then if colourSeen then return false end;colourSeen=true
 			elseif colourSeen and action~="quality" then return false
 			elseif action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") and not action:match("^bench_flask_enchant:.+$") and not action:match("^catalyst:%d+:%d+$") then return false end
@@ -605,7 +614,7 @@ function M.Open(build,project,layout,snapshot)
 		local steps,requirements={},{};local i=1;local sampled=false
 		while i<=#actions do
 			local action=actions[i]
-			local socketCount=tonumber(action:match("^socket_count_bench:([2-6])$"))
+			local socketCount=tonumber(action:match("^socket_count_bench:([2-6])$"));local colourCount=tonumber(action:match("^socket_colour_bench:([2-4])$"))
 			local enchantId=action:match("^bench_flask_enchant:(.+)$")
 			local catalyst,catalystCount=action:match("^catalyst:(%d+):(%d+)$");catalyst,catalystCount=tonumber(catalyst),tonumber(catalystCount)
 			if catalyst then
@@ -632,10 +641,10 @@ function M.Open(build,project,layout,snapshot)
 			elseif action=="fusing" or action=="tainted_fusing" then
 				local counts,best={},0;for _,socket in ipairs(item.sockets) do counts[socket.group]=(counts[socket.group] or 0)+1;best=math.max(best,counts[socket.group]) end
 				requirements.links=best;steps[#steps+1]={method=action,maxAttempts=100,untilRequirements={links=best}};sampled=true;i=i+1
-			elseif action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" then
+			elseif colourCount or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" then
 				local colours={};for _,socket in ipairs(item.sockets) do colours[#colours+1]=socket.color end
 				local target=table.concat(colours);requirements.socketColours=target
-				steps[#steps+1]={method=action,maxAttempts=100,untilRequirements={socketColours=target}};sampled=true;i=i+1
+				steps[#steps+1]={method=colourCount and "socket_colour_bench" or action,count=colourCount,maxAttempts=100,untilRequirements={socketColours=target}};sampled=true;i=i+1
 			else
 				local before=unique.inspect(history[i]);steps[#steps+1]=action=="socket_bench" and {method=action,count=#before.sockets,linked=true} or {method=action};i=i+1
 				if action=="omen_jeweller" then requirements.exactSockets=#item.sockets
@@ -786,11 +795,12 @@ function M.Open(build,project,layout,snapshot)
 	ui.description(c,"currencyNote",68,456,218,48,{"Preview only", "No currency is spent."},14)
 	updateCurrency=function()
 		local method=actions[#actions];local lines
-		local countMethod=method and tonumber(method:match("^socket_count_bench:([2-6])$"))
+		local countMethod=method and tonumber(method:match("^socket_count_bench:([2-6])$"));local colourMethod=method and tonumber(method:match("^socket_colour_bench:([2-4])$"))
 		local catalyst,catalystCount;if method then catalyst,catalystCount=method:match("^catalyst:(%d+):(%d+)$");catalyst,catalystCount=tonumber(catalyst),tonumber(catalystCount) end
 		if catalyst then lines={catalystCount.." "..unique.catalysts[catalyst].." Catalyst"..(catalystCount==1 and "" or "s"),"Preview only"}
 		elseif method=="socket_white_bench" then
 			method="socket_white_bench";lines={"Bench: 1 Orb of Scouring",item.corrupted and "+ 1 Vaal Orb | Preview" or "Preview only"}
+		elseif colourMethod then local amount=({[2]=5,[3]=20,[4]=75})[colourMethod];method="chromatic";lines={"Bench: "..amount.." Chromatic Orbs",item.corrupted and ("+ "..amount.." Vaal Orbs | Preview") or "Preview only"}
 		elseif countMethod then local components=require("Modules.CraftingSimulator").components({method="socket_bench",count=countMethod},{sockets=item.sockets,corrupted=item.corrupted});local amount=components["Metadata/Items/Currency/CurrencyRerollSocketNumbers"] or 0;method="jeweller";lines={"Bench: "..amount.." Jeweller's Orb"..(amount==1 and "" or "s"),item.corrupted and ("+ "..amount.." Vaal Orb"..(amount==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="socket_bench" then local components=require("Modules.CraftingSimulator").components({method=method,count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted});local count=components["Metadata/Items/Currency/CurrencyRerollSocketLinks"] or 0;lines={"Bench: "..count.." Orb"..(count==1 and "" or "s").." of Fusing",item.corrupted and ("+ "..count.." Vaal Orb"..(count==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="fusing" then lines={"1 Orb of Fusing","Sampled preview"}

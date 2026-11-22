@@ -65,6 +65,7 @@ const uniqueCraftStep={oneOf:[
   object({method:{const:'catalyst'},count:integer(1,20),catalyst:integer(1,12)},['method','count','catalyst']),
   object({method:{const:'bench_flask_enchant'},count:{const:1},enchantId:string(160)},['method','count','enchantId']),
   object({method:{enum:['instilling','enkindling','divine','tainted_quality','jeweller','tainted_jeweller','beast_max_links','omen_connections','omen_jeweller','fusing','tainted_fusing','chromatic','tainted_chromatic','omen_trichromatism','socket_white_bench','socket_bench']},count:{const:1}},['method','count']),
+  object({method:{const:'socket_colour_bench'},count:{type:'integer',minimum:2,maximum:4}},['method','count']),
   object({method:{const:'socket_count_bench'},count:integer(2,6)},['method','count']),
 ]};
 const craftingProjectSchema = object({preferredMethod:{enum:craftingMethods},id:{type:'string',pattern:'^[A-Za-z0-9_-]{1,64}$'},title:string(120),slot:string(80),startingItem:string(24000),targetItem:string(24000),
