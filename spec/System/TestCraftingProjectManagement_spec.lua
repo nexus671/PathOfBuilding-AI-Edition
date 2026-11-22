@@ -102,8 +102,28 @@ describe("Crafting project removal and save-state ownership",function()
 		workspace:Show("atlas",plan);workspace.controls.title:SetText("Unkept farm",true)
 		local prepared=bridge.prepare(build,{mode="edit",title="Change level",baseRevision=bridge.revision(build),operations={{type="set_character",level=5}}})
 		local candidate=bridge.apply(prepared);assert.is_true(uiState.hasDraft(candidate,"atlas",plan.id))
+		candidate=bridge.apply(bridge.prepare(candidate,{mode="edit",title="Another edit",baseRevision=bridge.revision(candidate),operations={{type="set_character",level=6}}}))
+		assert.is_true(uiState.hasDraft(candidate,"atlas",plan.id))
 		local reopened=require("Modules.PlanningWorkspace").new(candidate);reopened:Show("atlas",candidate.savers.AtlasPlans.plans[1])
 		assert.equal("Unkept farm",reopened.controls.title.buf);assert.equal("Saved farm",candidate.savers.AtlasPlans.plans[1].title)
+	end)
+	it("carries a deferred crafting draft across consecutive AI edits",function()
+		local p=project("deferred");build.savers.CraftingProjects:Upsert(p)
+		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		local state=sim.model(p.startingItem).initial;state.quality=10;local draft=require("Modules.CraftingInventory").run(state);draft.kind="workbench";draft.project=p
+		workspace.craftDrafts[p.id]=draft;uiState.draft(build,"workingCraft",p.id)
+		local function edit(base,level) return bridge.apply(bridge.prepare(base,{mode="edit",title="Change level",baseRevision=bridge.revision(base),operations={{type="set_character",level=level}}})) end
+		local first=edit(build,5);local second=edit(first,6)
+		assert.equal(10,second.planningCraftDrafts[p.id].state.quality);assert.is_true(uiState.hasDraft(second,"workingCraft",p.id))
+	end)
+	it("carries a deferred unique preview across consecutive AI edits",function()
+		local p=project("deferred-unique");p.startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86";build.savers.CraftingProjects:Upsert(p)
+		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		local result=require("Modules.CraftingUniqueQuality").apply(p.startingItem)
+		build.planningUniqueQualityDrafts={[p.id]={kind="uniqueQuality",project=p,itemText=result.itemText,history={p.startingItem}}};uiState.draft(build,"uniqueQuality",p.id)
+		local function edit(base,level) return bridge.apply(bridge.prepare(base,{mode="edit",title="Change level",baseRevision=bridge.revision(base),operations={{type="set_character",level=level}}})) end
+		local first=edit(build,5);local second=edit(first,6)
+		assert.equal(result.itemText,second.planningUniqueQualityDrafts[p.id].itemText);assert.is_true(uiState.hasDraft(second,"uniqueQuality",p.id))
 	end)
 	it("keeps a conflicting Atlas draft separately from an AI-edited plan",function()
 		local plan={id="farm",title="Saved farm",version="3.30.0c",budget=100,nodes={}}

@@ -51,6 +51,12 @@ function M.new(build)
 	build.controls.planningContext=context
 	return self
 end
+-- Read deferred handoffs without consuming them from the source build. This
+-- lets another AI edit carry the same work forward before the tab is opened.
+function M.pendingHandoff(build)
+	if not (build.planningCraftDrafts or build.planningUniqueQualityDrafts or build.planningAtlasDrafts or build.planningFilterDraft) then return nil end
+	return setmetatable({build=build,cache={},craftDrafts=build.planningCraftDrafts or {},atlasDrafts=build.planningAtlasDrafts or {},drafts={filters=build.planningFilterDraft}},{__index=M})
+end
 function M:Remember(page)
 	local entry=self.cache[page];if not entry then return end
 	self.drafts[page]={plan=entry.layout.snapshot and entry.layout.snapshot(),view=entry.layout.viewState and entry.layout.viewState(),controls=require("Modules.PlanningUI").capture(entry.body.controls)}

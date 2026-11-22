@@ -307,7 +307,7 @@ function M.apply(prepared)
 			local copy=copyTable(previousRemoval);copy.project=require("Modules.CraftingProjects").copy({previousRemoval.project})[1]
 			candidate.savers.CraftingProjects.lastRemoved=copy;carriedRemoval=true
 		end
-		local workspace=prepared.base.planningWorkspace
+		local workspace=prepared.base.planningWorkspace or require("Modules.PlanningWorkspace").pendingHandoff(prepared.base)
 		if workspace then workspace:CopyCraftingDrafts(candidate);workspace:CopyAtlasDrafts(candidate);workspace:CopyFilterDraft(candidate) end
 		local removed=candidate.savers.CraftingProjects.lastRemoved
 		if removed and not carriedRemoval then

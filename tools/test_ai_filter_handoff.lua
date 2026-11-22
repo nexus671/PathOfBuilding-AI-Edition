@@ -9,6 +9,7 @@ for _,conflict in ipairs({false,true}) do
  local operations={{type="set_character",level=5}}
  if conflict then local edited=copyTable(build.savers.LootFilters.data);edited.profiles[1].title="AI filter";operations={{type="set_loot_filters",filters=edited}} end
  local prepared=bridge.prepare(build,{mode="edit",title="AI edit",baseRevision=bridge.revision(build),operations=operations});local candidate=bridge.apply(prepared)
+ candidate=bridge.apply(bridge.prepare(candidate,{mode="edit",title="Another AI edit",baseRevision=bridge.revision(candidate),operations={{type="set_character",level=6}}}))
  assert(status.hasDraft(candidate,"filters"));local reopened=require("Modules.PlanningWorkspace").new(candidate);reopened:Show("filters")
  local snapshot=reopened.cache.filters.layout.snapshot();assert(snapshot.data.profiles[1].title=="Saved filter" and snapshot.data.profiles[1].trackBuildPickups==false)
  reopened.controls.keep:Click()
