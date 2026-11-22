@@ -11,6 +11,15 @@ function M.Open(build,options)
 	local avoid=copyTable(options.settings and options.settings.avoid or options.avoid or {});local price=options.settings and options.settings.price and copyTable(options.settings.price) or nil;local result;local active;local alive=true;local settingsKept=options.settings~=nil
 	local width=math.min(840,main.screenW-40);local height=math.min(590,main.screenH-60);local column=math.floor((width-48)/2);local right=column+32
 	local controls={};local report
+	local eligible={};local known,offset=true,0
+	local ok=pcall(function()
+		repeat
+			local page=map.inspect(state.baseId,state.tier,state.itemLevel,{},"",offset,100,nil,state.rarity,nil,nil,nil,nil,state.observedEffects,map.isNightmare(state.baseId))
+			for _,entry in ipairs(page.candidates) do eligible[entry.id]=true end;offset=page.nextOffset
+		until not offset
+	end)
+	known=ok
+	local function availability(id) return known and not eligible[id] and " | Unavailable on this map" or "" end
 	local function invalidate()
 		if result or settingsKept then
 			local wasKept=settingsKept;result=nil;settingsKept=false
@@ -25,14 +34,14 @@ function M.Open(build,options)
 	local function refresh()
 		local function rows(ids,empty)
 			local lines={};for _,id in ipairs(ids) do
-				local mod=map.source().mods[id];lines[#lines+1]=mod and "^xE0C586"..mod.name.." | "..mod.generation_type or id
+				local mod=map.source().mods[id];lines[#lines+1]=mod and "^xE0C586"..mod.name.." | "..mod.generation_type..availability(id) or id
 				if mod then for _,line in ipairs(map.summarize({id}).effects[1].lines) do lines[#lines+1]="^7"..line end end
 			end
 			if #lines==0 then lines={empty} end;return ui.rows(lines,column-25,14)
 		end
 		local lines={};for index,group in ipairs(groups) do
 			lines[#lines+1]="^xAABBD0Target "..index.." (any one):"
-			for _,id in ipairs(group) do local mod=map.source().mods[id];lines[#lines+1]=mod and "^xE0C586"..mod.name.." | "..mod.generation_type or id;if mod then for _,line in ipairs(map.summarize({id}).effects[1].lines) do lines[#lines+1]="^7"..line end end end
+			for _,id in ipairs(group) do local mod=map.source().mods[id];lines[#lines+1]=mod and "^xE0C586"..mod.name.." | "..mod.generation_type..availability(id) or id;if mod then for _,line in ipairs(map.summarize({id}).effects[1].lines) do lines[#lines+1]="^7"..line end end end
 		end
 		if #lines==0 then lines={"No wanted modifiers. Use the map card to add some."} end
 		controls.wanted.list=ui.rows(lines,column-25,14)
@@ -61,7 +70,7 @@ function M.Open(build,options)
 	local function removePicker(ids,title,action)
 		local choices={}
 		for index,id in ipairs(ids) do
-			local mod=map.source().mods[id];local label=mod and mod.name.." | "..mod.generation_type or id
+			local mod=map.source().mods[id];local label=mod and mod.name.." | "..mod.generation_type..availability(id) or id
 			local details={label};if mod then for _,line in ipairs(map.summarize({id}).effects[1].lines) do details[#details+1]=line end end
 			choices[#choices+1]={id=id,index=index,label=label,search=id,details=details}
 		end
@@ -134,8 +143,13 @@ function M.Open(build,options)
 		if not ok then result=nil;report({ui.errorText(job)});return end
 		active=job;result=nil;report({"Estimating..."})
 	end)
-	controls.run.enabled=function() return not active and #groups+#avoid>0 end
-	controls.run.tooltipText="Select at least one wanted or avoided modifier before estimating."
+	local function unavailableWanted()
+		if not known then return false end
+		for _,group in ipairs(groups) do for _,id in ipairs(group) do if not eligible[id] then return true end end end
+		return false
+	end
+	controls.run.enabled=function() return not active and #groups+#avoid>0 and not unavailableWanted() end
+	controls.run.tooltipText=function() return unavailableWanted() and "Remove or replace unavailable wanted modifiers before estimating." or "Select at least one wanted or avoided modifier before estimating." end
 	button("cancel",204,333,120,"Cancel",function() if active and tasks.job==active then tasks.cancel() end end);controls.cancel.enabled=function() return active~=nil end
 	button("price",332,333,150,"Orb price...",function()
 		local popup={};local action=state.rarity=="rare" and "Chaos Orb" or "Orb of Alteration"
@@ -171,7 +185,7 @@ function M.Open(build,options)
 	button("use",width-324,height-48,180,"Use example result",function() if result and result.sampleSuccess then options.apply(result.sampleSuccess);alive=false;main:ClosePopup() end end)
 	controls.use.enabled=function() return not active and result and result.sampleSuccess~=nil end
 	button("close",width-132,height-48,116,"Close",function() alive=false;if active and tasks.job==active then tasks.cancel() end;main:ClosePopup() end)
-	ui.style(controls,{run=true});refresh();report({"Choose targets, then run an estimate. Up to 20,000 attempts across all trials."})
+	ui.style(controls,{run=true});refresh();report({"Choose targets, then run an estimate. Up to 20,000 attempts across all trials.","Unavailable wanted modifiers must be removed or replaced before estimating. Unavailable avoided modifiers are retained and reported."})
 	main:OpenPopup(width,height,"Estimate map rerolls",controls,nil,nil,"close");return controls
 end
 return M

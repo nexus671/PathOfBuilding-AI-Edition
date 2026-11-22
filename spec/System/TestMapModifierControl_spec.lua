@@ -195,6 +195,18 @@ describe("Map modifier explorer",function()
 		estimate=main.popups[1].controls;local text="";for _,line in ipairs(estimate.avoid.list) do text=text..StripEscapes(line[1] or "") end
 		assert.matches("Mirage",text);estimate.close:Click();controls.level:SetText("68",true);controls.keep:Click();assert.same({"MapContainsMirageWorlds"},captured.estimate.avoid)
 	end)
+	it("preserves map reroll targets across tier changes and identifies unavailable modifiers",function()
+		local initial={id="tier-targets",title="Tier targets",patch=require("Modules.MapCraftingData").source().patch,baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=83,rarity="rare",selected={},estimate={wantedGroups={{"MapMonsterFireDamageMapWorlds"}},avoid={"MapMonsterColdDamageMapWorlds"},trials=2,maxAttempts=2}}
+		local captured;local controls=require("Classes.MapModifierControl").Open({build=build,initial=initial,keep=function(entry) captured=copyTable(entry);return "tier-targets" end})
+		controls.tier:SelByValue(16,"val");controls.tier.selFunc();controls.keep:Click();assert.same(initial.estimate,captured.estimate)
+		controls.close:Click();controls=require("Classes.MapModifierControl").Open({build=build,initial=captured,keep=function(entry) captured=copyTable(entry);return "tier-targets" end})
+		controls.estimate:Click();local estimate=main.popups[1].controls;local wanted,avoid="",""
+		for _,line in ipairs(estimate.wanted.list) do wanted=wanted..StripEscapes(line[1] or "") end
+		for _,line in ipairs(estimate.avoid.list) do avoid=avoid..StripEscapes(line[1] or "") end
+		assert.matches("Unavailable on this map",wanted,1,true);assert.matches("Unavailable on this map",avoid,1,true);assert.is_false(estimate.run:IsEnabled())
+		estimate.removeTarget:Click();assert.is_true(estimate.run:IsEnabled());estimate.keepSettings:Click();estimate.close:Click();controls.keep:Click()
+		assert.same({},captured.estimate.wantedGroups);assert.same(initial.estimate.avoid,captured.estimate.avoid)
+	end)
 	it("keeps and reopens a corrupted nine-modifier map",function()
 		local captured;local controls=require("Classes.MapModifierControl").Open({build=build,keep=function(entry) captured=copyTable(entry);return "corrupt-map" end})
 		controls.list.onClick({line=controls.list.list[1]});controls.add:Click()

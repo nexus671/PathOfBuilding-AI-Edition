@@ -160,7 +160,7 @@ function M.Open(options)
 		local level=tonumber(controls.level.buf)
 		return options.build~=nil and getRarity()~="normal" and not isCorrupted() and not mirrored and not unidentified and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and level~=nil and not levelProblem()
 	end
-	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. The item level must support those modifiers. Corrupted or mirrored maps and unsupported explicit modifiers cannot be rerolled here. Nightmare estimates use unverified draw-order assumptions."
+	controls.estimate.tooltipText="Estimate Chaos or Alteration rerolls using selected modifiers as wanted targets. The item level must support those modifiers. Saved targets remain when the tier changes and may need editing. Corrupted or mirrored maps and unsupported explicit modifiers cannot be rerolled here. Nightmare estimates use unverified draw-order assumptions."
 	button("delirium",32+2*cardButtonWidth,height-62,cardButtonWidth,"Delirium",function()
 		local module=require("Modules.MapObservedEffects");local known=module.delirium(observedEffects)
 		local uncertain=unidentified or module.hasExplicit(observedEffects) and not known
@@ -384,7 +384,7 @@ function M.Open(options)
 		if tier==17 and not map.isNightmare(baseId) then baseId="Metadata/Items/Maps/MapKeyNightmareBoss";controls.level:SetText("84")
 		elseif tier<17 and (map.isNightmare(baseId) or baseId:match("^Metadata/Items/Maps/MapKeyTier%d+$")) then baseId="Metadata/Items/Maps/MapKeyTier"..tier end
 		syncRarity()
-		selected={};rolls={};implicit=nil;mirrored=nil;twiceCorrupted=nil;unidentified=nil;vaalPreview=nil;plannedDeified=nil;plannedAllflame=nil;observedEffects=nil;estimateSettings=nil;offset=0;refresh()
+		selected={};rolls={};implicit=nil;mirrored=nil;twiceCorrupted=nil;unidentified=nil;vaalPreview=nil;plannedDeified=nil;plannedAllflame=nil;observedEffects=nil;offset=0;refresh()
 	end
 	controls.rarity.selFunc=function()
 		local current=controls.rarity:GetSelValueByKey("val")
