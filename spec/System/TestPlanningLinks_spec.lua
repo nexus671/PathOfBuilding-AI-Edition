@@ -5,6 +5,10 @@ describe("Linked planning tools",function()
 	local function craft() return {id="helmet",title="Helmet",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}} end
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("clears pending AI handoff drafts when opening another build",function()
+		build.planningAtlasDrafts={stale={}};build.planningFilterDraft={plan={dirty=true}}
+		newBuild();assert.is_nil(build.planningAtlasDrafts);assert.is_nil(build.planningFilterDraft)
+	end)
 	it("explains when the selected crafting slot has no equipped item",function()
 		require("Classes.CraftingProjectWizard").Open(build,nil,nil,"Helmet",nil,function() end,function() end)
 		local wizard=main.popups[1].controls
