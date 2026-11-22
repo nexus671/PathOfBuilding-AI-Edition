@@ -81,6 +81,27 @@ describe("Crafting project removal and save-state ownership",function()
 		assert.equal(original.simulatorExport,reopened.simulatorExport);assert.is_truthy(reopened.run);assert.equal(1,#reopened.inventory)
 		assert.equal("alchemy",reopened.nativeRecipe.steps[1].method)
 	end)
+	it("carries an unfinished Atlas draft across an unrelated AI edit",function()
+		local plan={id="farm",title="Saved farm",version="3.30.0c",budget=100,nodes={}}
+		build.savers.AtlasPlans:Upsert(plan);local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		workspace:Show("atlas",plan);workspace.controls.title:SetText("Unkept farm",true)
+		local prepared=bridge.prepare(build,{mode="edit",title="Change level",baseRevision=bridge.revision(build),operations={{type="set_character",level=5}}})
+		local candidate=bridge.apply(prepared);assert.is_true(uiState.hasDraft(candidate,"atlas",plan.id))
+		local reopened=require("Modules.PlanningWorkspace").new(candidate);reopened:Show("atlas",candidate.savers.AtlasPlans.plans[1])
+		assert.equal("Unkept farm",reopened.controls.title.buf);assert.equal("Saved farm",candidate.savers.AtlasPlans.plans[1].title)
+	end)
+	it("keeps a conflicting Atlas draft separately from an AI-edited plan",function()
+		local plan={id="farm",title="Saved farm",version="3.30.0c",budget=100,nodes={}}
+		build.savers.AtlasPlans:Upsert(plan);local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		workspace:Show("atlas",plan);workspace.controls.title:SetText("Unkept farm",true)
+		local changed=copyTable(plan);changed.title="AI farm"
+		local prepared=bridge.prepare(build,{mode="edit",title="Revise Atlas",baseRevision=bridge.revision(build),operations={{type="set_atlas_plan",plan=changed}}})
+		local candidate=bridge.apply(prepared);local reopened=require("Modules.PlanningWorkspace").new(candidate);local id,entry=next(reopened.atlasDrafts)
+		assert.is_truthy(id);assert.is_not.equal(plan.id,id);assert.is_true(entry.conflict);assert.is_true(uiState.hasDraft(candidate,"atlas",id))
+		reopened:Show("atlas",candidate.savers.AtlasPlans.plans[1]);assert.equal("AI farm",reopened.controls.title.buf)
+		reopened.controls.library:Click();local library=main.popups[1].controls;library.plans:SelByValue(id,"val");assert.matches("saved plan changed",library.plans:GetSelValue().label,1,true);library.open:Click()
+		assert.equal("Unkept farm",reopened.controls.title.buf);assert.equal("AI farm",candidate.savers.AtlasPlans.plans[1].title)
+	end)
 	it("reviews removed guide, recipes, inventory and checkpoint before applying",function()
 		local original=project("review");local model=sim.model(original.startingItem)
 		original.goals={"High life"};original.steps={{action="Apply an Orb of Alchemy"},{action="Finish the helmet",done=true}}

@@ -2,8 +2,9 @@
 local M={}
 local pages={ai="AI builds",atlas="Atlas",crafting="Crafting",journey="Journey",filters="Loot filter"}
 function M.new(build)
-	local self=setmetatable({build=build,page="ai",cache={},drafts={},atlasDrafts={},transient={},selections={},craftDrafts=build.planningCraftDrafts or {},controls={},viewport={x=0,y=32,width=main.screenW,height=main.screenH-32}},{__index=M})
+	local self=setmetatable({build=build,page="ai",cache={},drafts={},atlasDrafts=build.planningAtlasDrafts or {},transient={},selections={},craftDrafts=build.planningCraftDrafts or {},controls={},viewport={x=0,y=32,width=main.screenW,height=main.screenH-32}},{__index=M})
 	build.planningCraftDrafts=nil
+	build.planningAtlasDrafts=nil
 	self.recoveryScan=require("Modules.PlanningRecovery").startScan(build)
 	self.nav=new("ControlHost"):ControlHost()
 	local anchor=new("Control"):Control(nil,{0,0,0,0})
@@ -52,7 +53,11 @@ end
 function M:Remember(page)
 	local entry=self.cache[page];if not entry then return end
 	self.drafts[page]={plan=entry.layout.snapshot and entry.layout.snapshot(),view=entry.layout.viewState and entry.layout.viewState(),controls=require("Modules.PlanningUI").capture(entry.body.controls)}
-	if page=="atlas" and self.drafts[page].plan and self.drafts[page].plan.id then self.atlasDrafts[self.drafts[page].plan.id]=self.drafts[page] end
+	if page=="atlas" and self.drafts[page].plan and self.drafts[page].plan.id then
+		local id=self.drafts[page].plan.id;local previous=self.atlasDrafts[id]
+		if previous then self.drafts[page].conflict=previous.conflict end
+		self.atlasDrafts[id]=self.drafts[page]
+	end
 	local plan=self.drafts[page].plan
 	if page=="crafting" and plan then
 		if plan.kind=="workbench" then self.craftDrafts[plan.project.id]=plan
@@ -104,6 +109,32 @@ function M:CopyCraftingDrafts(candidate)
 	end
 	if candidate.planningWorkspace then candidate.planningWorkspace.craftDrafts=copies else candidate.planningCraftDrafts=copies end
 	candidate.planningUniqueQualityDrafts=uniqueCopies
+end
+-- Keep uncommitted Atlas work when an AI candidate replaces the build object.
+-- If that candidate also changed the saved plan, retain the old draft under a
+-- fresh ID so opening it cannot silently overwrite the candidate's plan.
+function M:CopyAtlasDrafts(candidate)
+	local drafts=copyTable(self.atlasDrafts);local active=self.cache.atlas
+	if active and active.layout.snapshot then
+		local plan=active.layout.snapshot();if plan and plan.id then local previous=drafts[plan.id];drafts[plan.id]={plan=plan,view=active.layout.viewState and active.layout.viewState(),controls=require("Modules.PlanningUI").capture(active.body.controls),conflict=previous and previous.conflict} end
+	end
+	local oldPlans,newPlans,used={},{},{}
+	for _,plan in ipairs(self.build.savers.AtlasPlans.plans) do oldPlans[plan.id]=plan;used[plan.id]=true end
+	for _,plan in ipairs(candidate.savers.AtlasPlans.plans) do newPlans[plan.id]=plan;used[plan.id]=true end
+	for id in pairs(drafts) do used[id]=true end
+	local copied={};local ui=require("Modules.PlanningUI")
+	for id,entry in pairs(drafts) do
+		local dirty=ui.hasDraft(self.build,"atlas",id);local stage=entry.view and entry.view.stageResume
+		if entry.plan and (dirty or stage or not oldPlans[id]) then
+			local target=id;local old,new=oldPlans[id],newPlans[id]
+			if new and (not old or not (tableDeepEquals(old,new) and tableDeepEquals(new,old))) then
+				local serial=0;repeat serial=serial+1;target="atlas-"..require("sha1")(tostring({})..os.time()..serial):sub(1,12) until not used[target]
+				used[target]=true;entry.plan.id=target;entry.conflict=true
+			end
+			copied[target]=entry;if dirty or stage then ui.draft(candidate,"atlas",target) end
+		end
+	end
+	if candidate.planningWorkspace then candidate.planningWorkspace.atlasDrafts=copied else candidate.planningAtlasDrafts=copied end
 end
 function M:ForgetCraftingProject(id)
 	local draft=self:CraftingDraft(id)

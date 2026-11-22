@@ -667,7 +667,7 @@ function Panel.Library(build,layout)
 	local store=build.savers.AtlasPlans; local controls,list,savedIds={},{},{}
 	for _,plan in ipairs(store.plans) do savedIds[plan.id]=true;list[#list+1]={label=plan.title.." ["..atlas.versionLabel(plan.version).."]",val=plan.id,plan=plan} end
 	if layout and layout.atlasDrafts then for _,entry in ipairs(layout.atlasDrafts()) do local plan=entry.plan
-		if not savedIds[plan.id] then local title=entry.view and entry.view.title or plan.title;if not title:match("%S") then title="Untitled draft" end;list[#list+1]={label=ui.fit(title,420,14).." [Session draft]",val=plan.id,plan=plan,draft=true} end
+		if not savedIds[plan.id] then local title=entry.view and entry.view.title or plan.title;if not title:match("%S") then title="Untitled draft" end;list[#list+1]={label=ui.fit(title,entry.conflict and 260 or 420,14).." [Session draft]"..(entry.conflict and " (saved plan changed)" or ""),val=plan.id,plan=plan,draft=true} end
 	end end
 	controls.plans=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,32,568,24},list)
 	local notice=store.warning or store.notice or "Session drafts are temporary. Keep a plan and save the build to persist it."

@@ -108,6 +108,8 @@ Give a setup a name and choose **Keep map draft** to add it to the current Atlas
 
 Use `--version 3.30.0-preview` or `--version 3.30.0-preview-ruthless` to regenerate one pinned preview. Each verifies its matching league export; the 3.28.0j generators also verify the matching Mirage export. All Ruthless generators check that their Standard counterpart shares artwork. Other historical Ruthless snapshots use the official Standard-mode export, not the differing league export. Existing plans retain their original version; changing versions starts a separate empty draft rather than reinterpreting old node IDs. Keeping that draft creates another plan, and the previous session draft remains available. Official links open the current site tree; use versioned plan JSON to preserve the exact bundled version, notes and strategy. League links can be pasted when the chosen bundled version includes a compatible league graph. Links do not identify their patch, so select the matching version before importing.
 
+Applying an AI edit carries unfinished Atlas session drafts forward. If the AI also changes the same saved plan, the earlier draft is kept separately in **Saved plans** and marked as having a changed saved plan; review it before keeping it.
+
 Feature research: [Path of Pathing](https://pathofpathing.com/) offers desired/avoided-node routing and exports; [poe.ninja](https://poe.ninja/posts/atlas-trees) offers community-tree filters, heatmaps and stat breakdowns. Our planner provides local versioned planning and AI review; those broader discovery tools remain useful alongside it.
 
 
