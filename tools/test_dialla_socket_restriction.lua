@@ -20,4 +20,3 @@ ui:click('socketCount');ui:click('colours');local colours=main.popups[1].control
 assert(not colours.apply:IsEnabled() and colours.apply.tooltipText():find('no%-white%-socket'))
 ui:choose('method','omen_trichromatism','val');assert(colours.apply:IsEnabled());ui:restore()
 print('DIALLA_SOCKET_RESTRICTION_OK')
-
