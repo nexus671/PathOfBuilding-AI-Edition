@@ -77,6 +77,14 @@ test('queues reviewed crafting removals with closed project-ID validation', t =>
   }
 });
 
+test('queues a focused crafting guide edit without replacing the project', t => {
+  const f=fixture(t), op={type:'patch_crafting_guide',projectId:'helmet-guide',patch:{title:'Updated',steps:[{action:'Use an essence'}]}};
+  f.call('propose_build',{...f.proposal,mode:'edit',operations:[op]});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).proposal.operations,[op]);
+  assert.throws(()=>f.call('propose_build',{...f.proposal,operations:[{...op,patch:{}}]}),/at least one/);
+  assert.throws(()=>f.call('propose_build',{...f.proposal,operations:[{...op,patch:{startingItem:'other'}}]}),/arguments/);
+});
+
 test('accepts 3.30 crafting state markers without opening the schema', t => {
   const f=fixture(t), itemText='Rarity: NORMAL\nIron Hat\nItem Level: 86';
   const initialState={rarity:'RARE',affixes:[{id:'AttackCastSpeedPerNearbyEnemyEssence1',range:0.5,description330:true,legacySource:itemText}],corrupted:true,corruptedImplicits:[{id:'V2SupportedByLifeGainOnHitCorrupted',range:0.5,corruption330:true}],synthRetained:[1,2,3],gildedCorruptionReplaced:true,synthExhausted:true,synthRolls:[{id:'SynthesisImplicitPercentLife3',range:0.5}],socketLayoutUnknown:true};

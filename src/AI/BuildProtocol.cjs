@@ -70,6 +70,7 @@ const uniqueCraftStep={oneOf:[
 const craftingProjectSchema = object({preferredMethod:{enum:craftingMethods},id:{type:'string',pattern:'^[A-Za-z0-9_-]{1,64}$'},title:string(120),slot:string(80),startingItem:string(24000),targetItem:string(24000),
   priceBook:craftingPriceBook,nativeRecipe:craftingRecipe,primarySimulation:{oneOf:[object({trials:integer(1,2000),maxActions:integer(1,2000),seed:integer(1,2147483646)},['trials','maxActions','seed']),{const:false}]},recipeAlternatives:journeyList(object({name:string(120),recipe:craftingRecipe,trackPickups:boolean},['name','recipe'])),inventory:craftingInventory,goals:journeyList(string(300)),steps:journeyList(object({action:string(1000),stopWhen:string(500),onFailure:string(500),done:boolean,uniqueCraft:uniqueCraftStep},['action'])),notes:string(8000),estimate:quoteSchema,simulatorExport:string(128000),
   simulation:object({patch:string(40),observedAt:integer(0,4102444800),trials:integer(1,1e9),successes:integer(0,1e9),notes:string(4000)},['patch','observedAt','trials','successes'])},['id','title','slot','startingItem','goals','steps']);
+const craftingGuidePatch=object({title:craftingProjectSchema.properties.title,notes:craftingProjectSchema.properties.notes,goals:craftingProjectSchema.properties.goals,steps:craftingProjectSchema.properties.steps});
 const operations = [
   object({type:{const:'set_character'},level:integer(1,100),className:string(40),ascendancy:string(40)},['type']),
   object({type:{const:'allocate_passives'},add:array(integer(1,1000000),200),remove:array(integer(1,1000000),200),
@@ -83,6 +84,7 @@ const operations = [
   object({type:{const:'set_build_journey'},journey:journeySchema},['type','journey']),
   object({type:{const:'set_loot_filters'},filters:lootFilters},['type','filters']),
   object({type:{const:'set_crafting_project'},project:craftingProjectSchema},['type','project']),
+  object({type:{const:'patch_crafting_guide'},projectId:journeyId,patch:craftingGuidePatch},['type','projectId','patch']),
   object({type:{const:'remove_crafting_project'},projectId:{type:'string',pattern:'^[A-Za-z0-9_-]{1,64}$'}},['type','projectId']),
 ];
 const metricNames = ['LifeUnreserved','EnergyShield','ManaUnreserved','CombinedDPS','FullDPS','TotalEHP','PhysicalMaximumHitTaken','ChaosMaximumHitTaken','RecoverySimulationSurvivalChance','RecoverySimulationDamageDPS','RecoverySimulationAttackUptime','ManaRegen','Speed','EffectiveMovementSpeedMod','FireResist','ColdResist','LightningResist','ChaosResist','Str','Dex','Int'];
@@ -147,7 +149,7 @@ const tools = [
   {name:'get_build_context',description:'Read the connected desktop build: revision, character, current gear, socket groups, passives, configuration, native stats and warnings. Enable Build proposals in PoB first.',inputSchema:object({}),annotations:readOnly},
   {name:'search_build_catalog',description:'Search the desktop build\'s native gems, passive nodes (including mastery effects), configuration choices or classes. Passive paths are recomputed during a proposal; IDs are tree-version specific.',
     inputSchema:object({kind:{enum:['gems','passives','config','classes']},query:string(160),limit:integer(1,50)},['kind','query']),annotations:readOnly},
-  {name:'propose_build',description:'Calculate a new build or edits in PoB for desktop review. Use the latest baseRevision from get_build_context. set_skills replaces all active socket groups; allocate_passives adds native connecting paths and removes dependent nodes. No changes are applied or saved by this tool. Read get_proposal_status for calculated results and resolved gear/gems/tree. Only the desktop Apply button commits changes.',
+  {name:'propose_build',description:'Calculate a new build or edits in PoB for desktop review. Use the latest baseRevision from get_build_context. patch_crafting_guide updates only supplied written guide fields on an existing project, preserving other data. set_skills replaces all active socket groups; allocate_passives adds native connecting paths and removes dependent nodes. No changes are applied or saved by this tool. Read get_proposal_status for calculated results and resolved gear/gems/tree. Only the desktop Apply button commits changes.',
     inputSchema:proposalSchema,annotations:{...readOnly,readOnlyHint:false,idempotentHint:false}},
   {name:'get_proposal_status',description:'Read proposal status, calculated before/after stats, native warnings and review instructions. It cannot apply a proposal. Match the returned proposal ID to your queued request before consuming its result.',inputSchema:object({}),annotations:readOnly},
   {name:'get_build_analysis',description:'Read native assumption checks, equipment/gem dependencies and encounter death evidence from the connected build. Diagnosis separates observations from suggested paired tests.',inputSchema:object({}),annotations:readOnly},
@@ -329,7 +331,10 @@ function createBridge(reportPath, clientName = () => "MCP client") {
         if (operationCount > 99) throw new Error('Use at most 99 cumulative milestone operations.');
       }
       if (proposal.quote && (proposal.quote.quotedAt > Date.now()/1000+300 || !proposal.quote.source.trim())) throw new Error('Price quotes need a source and a valid capture time.');
-      for (const op of proposal.operations) if (op.type === 'set_crafting_project' && op.project.primarySimulation && op.project.primarySimulation.trials*op.project.primarySimulation.maxActions > 20000) throw new Error('Use at most 20000 total budgeted actions.');
+      for (const op of proposal.operations) {
+        if (op.type === 'set_crafting_project' && op.project.primarySimulation && op.project.primarySimulation.trials*op.project.primarySimulation.maxActions > 20000) throw new Error('Use at most 20000 total budgeted actions.');
+        if (op.type === 'patch_crafting_guide' && !Object.keys(op.patch).length) throw new Error('Choose at least one crafting guide field.');
+      }
       nodeCount+=proposal.operations.reduce((n,op) => n+(op.add?.length ?? 0)+(op.remove?.length ?? 0)+(op.masteries?.length ?? 0),0);
     }
     if (nodeCount > 400) throw new Error('Use at most 400 passive changes per request.');

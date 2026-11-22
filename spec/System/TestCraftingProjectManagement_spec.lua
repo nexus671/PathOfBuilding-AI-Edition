@@ -59,6 +59,17 @@ describe("Crafting project removal and save-state ownership",function()
 		result=prepare(changed);assert.is_truthy(result.candidate.savers.CraftingProjects.projects[1].recipeAlternatives[1])
 		assert.equal(proposed.title,build.savers.CraftingProjects.projects[1].title)
 	end)
+	it("patches written guide fields while preserving the rest of the project",function()
+		local original=project("patch-guide");original.simulatorExport=string.rep("x",128000)
+		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		build.savers.CraftingProjects:Upsert(original)
+		local function prepare(patch) return bridge.prepare(build,{mode="edit",title="Update guide",baseRevision=bridge.revision(build),operations={{type="patch_crafting_guide",projectId=original.id,patch=patch}}}) end
+		local prepared=prepare({title="New title",steps={{action="Use an essence"}}});local candidate=prepared.candidate.savers.CraftingProjects.projects[1]
+		assert.equal("New title",candidate.title);assert.equal("Use an essence",candidate.steps[1].action)
+		assert.equal(original.simulatorExport,candidate.simulatorExport);assert.same(build.savers.CraftingProjects.projects[1].nativeRecipe,candidate.nativeRecipe)
+		assert.equal(original.title,build.savers.CraftingProjects.projects[1].title)
+		assert.is_false(pcall(prepare,{}));assert.is_false(pcall(prepare,{startingItem="other"}))
+	end)
 	it("reviews removed guide, recipes, inventory and checkpoint before applying",function()
 		local original=project("review");local model=sim.model(original.startingItem)
 		original.goals={"High life"};original.steps={{action="Apply an Orb of Alchemy"},{action="Finish the helmet",done=true}}

@@ -191,6 +191,18 @@ local function applyOperation(build, op)
 		if type(op.project)=="table" then for _,entry in ipairs(store.projects) do if entry.id==op.project.id then previous=entry;break end end end
 		local project=store:Upsert(op.project)
 		require("Modules.CraftingProjects").checkProposedRecipeStates(previous,project)
+	elseif op.type == "patch_crafting_guide" then
+		local store=build.savers.CraftingProjects;local previous
+		assert(type(op.projectId)=="string" and type(op.patch)=="table","Invalid crafting guide edit")
+		for _,entry in ipairs(store.projects) do if entry.id==op.projectId then previous=entry;break end end
+		assert(previous,"Unknown crafting project")
+		local updated=copyTable(previous);local count=0
+		for key,value in pairs(op.patch) do
+			assert(key=="title" or key=="notes" or key=="goals" or key=="steps","Invalid crafting guide field")
+			updated[key]=type(value)=="table" and copyTable(value) or value;count=count+1
+		end
+		assert(count>0,"Choose at least one crafting guide field")
+		store:Upsert(updated)
 	elseif op.type == "remove_crafting_project" then
 		build.savers.CraftingProjects:Remove(text(op.projectId,64,"project ID"))
 	elseif op.type == "set_atlas_plan" then
