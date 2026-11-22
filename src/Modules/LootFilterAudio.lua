@@ -36,28 +36,36 @@ function M.dropSound(styles)
 	if conditional then return "Drop sound: disabled when an alert is specified; optional files may be missing." end
 	return "Drop sound: enabled."
 end
--- Scale the bundled 16-bit PCM reference tone without changing system volume.
+-- Scale integer PCM samples without changing system volume or WAV metadata.
 function M.scaleReferenceWave(raw,volume)
 	assert(type(raw)=="string" and raw:sub(1,4)=="RIFF" and raw:sub(9,12)=="WAVE","Invalid reference audio")
 	assert(type(volume)=="number" and volume==volume and volume>=0 and volume<=300,"Invalid reference volume")
 	local function u16(i) local a,b=raw:byte(i,i+1);assert(b,"Truncated reference audio");return a+b*256 end
 	local function u32(i) return u16(i)+u16(i+2)*65536 end
-	local offset,valid=13,false
-	while offset+7<=#raw do
+	local limit=u32(5)+8;assert(limit>=12 and limit<=#raw,"Truncated reference audio")
+	local offset,bits,alignment=13
+	while offset+7<=limit do
 		local kind=raw:sub(offset,offset+3);local size=u32(offset+4);local start=offset+8;local last=start+size-1
-		assert(last<=#raw,"Truncated reference audio")
+		assert(last+size%2<=limit,"Truncated reference audio")
 		if kind=="fmt " then
-			assert(size>=16 and u16(start)==1 and u16(start+14)==16,"Unsupported reference audio format");valid=true
+			assert(size>=16 and u16(start)==1,"Unsupported reference audio format")
+			local channels=u16(start+2);bits=u16(start+14);alignment=u16(start+12)
+			assert(channels>0 and (bits==8 or bits==16 or bits==24 or bits==32) and alignment==channels*bits/8,"Unsupported reference audio format")
 		elseif kind=="data" then
-			assert(valid and size%2==0,"Unsupported reference audio format")
-			local samples={};local gain=volume/100
-			for i=start,last,2 do
-				local sample=u16(i);if sample>=32768 then sample=sample-65536 end
+			assert(bits and size%alignment==0,"Unsupported reference audio format")
+			local samples,chunks={},{};local bytes=bits/8;local midpoint=2^(bits-1);local range=midpoint*2;local gain=volume/100
+			for i=start,last,bytes do
+				local sample=0;for j=0,bytes-1 do sample=sample+raw:byte(i+j)*2^(8*j) end
+				if bits==8 then sample=sample-midpoint elseif sample>=midpoint then sample=sample-range end
 				local scaled=sample*gain;scaled=scaled<0 and math.ceil(scaled) or math.floor(scaled)
-				scaled=math.max(-32768,math.min(32767,scaled));if scaled<0 then scaled=scaled+65536 end
-				samples[#samples+1]=string.char(scaled%256,math.floor(scaled/256))
+				scaled=math.max(-midpoint,math.min(midpoint-1,scaled))
+				if bits==8 then scaled=scaled+midpoint elseif scaled<0 then scaled=scaled+range end
+				local out={};for j=0,bytes-1 do out[#out+1]=string.char(math.floor(scaled/2^(8*j))%256) end
+				samples[#samples+1]=table.concat(out)
+				if #samples==4096 then chunks[#chunks+1]=table.concat(samples);samples={} end
 			end
-			return raw:sub(1,start-1)..table.concat(samples)..raw:sub(last+1)
+			chunks[#chunks+1]=table.concat(samples)
+			return raw:sub(1,start-1)..table.concat(chunks)..raw:sub(last+1)
 		end
 		offset=last+1+size%2
 	end
@@ -71,7 +79,7 @@ function M.prepareCustomWave(path,volume)
 	if path:find("[%z\r\n]") or not (path:match("^%a:[/\\]") or path:sub(1,2)=="\\\\" or path:sub(1,1)=="/") then
 		return nil,"Choose an absolute WAV path for preview; relative paths remain in the exported filter."
 	end
-	if not path:lower():match("%.wav$") then return nil,"Custom preview supports 16-bit PCM WAV files; the original path is preserved." end
+	if not path:lower():match("%.wav$") then return nil,"Custom preview supports integer PCM WAV files; the original path is preserved." end
 	volume=tonumber(volume) or 100
 	if volume~=volume or volume<0 or volume>300 then return nil,"Custom sound volume must be between 0 and 300." end
 	if volume==0 then return nil,"The custom alert volume is zero." end
@@ -80,7 +88,7 @@ function M.prepareCustomWave(path,volume)
 	if not size or size>2*1024*1024 or not file:seek("set",0) then file:close();return nil,"Custom WAV preview is limited to files of 2 MiB or less." end
 	local raw=file:read("*a");file:close()
 	local ok,wave=pcall(M.scaleReferenceWave,raw,volume)
-	if not ok then return nil,"Custom preview requires a valid 16-bit PCM WAV file." end
+	if not ok then return nil,"Custom preview requires a valid 8-, 16-, 24- or 32-bit integer PCM WAV file." end
 	return wave,"Playing the first custom WAV at the selected preview volume."
 end
 local function playWave(wave,message)
