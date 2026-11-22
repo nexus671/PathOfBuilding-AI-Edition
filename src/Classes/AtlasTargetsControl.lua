@@ -53,10 +53,10 @@ function M.Open(build,options)
 	c.targetCancel.enabled=c.targetPause.enabled
 	ui.label(c,"progress",16,h-70,"",14)
 	c.progress.label=function()
-		targets.tick(build);local state=targets.jobs[build];if not state then return "^7Shift-click a tree node to mark it as desired." end
-		if state.result then previewCurrent=previewMatches(state)
-			if previewCurrent and lastPreview~=state.result then lastPreview=state.result;showDetails(state.result.plan,true) end
-		end
+		targets.tick(build);local state=targets.jobs[build];if not state then if lastPreview then lastPreview=nil;previewCurrent=false;showDetails(options.current()) end;return "^7Shift-click a tree node to mark it as desired." end
+		previewCurrent=previewMatches(state)
+		if previewCurrent and lastPreview~=state.result then lastPreview=state.result;showDetails(state.result.plan,true)
+		elseif not previewCurrent and lastPreview then lastPreview=nil;showDetails(options.current()) end
 		local text=state.error or state.status;if state.paused then text="Paused" elseif state.thread then if state.progress.phase=="exact" then text=text.." | checking shared paths" else text=text.." | order "..(state.progress.order or 1).." / "..(state.progress.orders or "?") end elseif state.result then text=text.." | "..#state.result.plan.nodes.." allocated points" end
 		if state.result and not previewCurrent then text=not modeMatches(state) and "Route mode changed. Recalculate before using the preview." or "Plan changed. Recalculate before using the preview." end
 		return "^7"..ui.fit(text,w-36,14)
