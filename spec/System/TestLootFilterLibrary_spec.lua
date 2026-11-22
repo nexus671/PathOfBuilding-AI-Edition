@@ -168,7 +168,7 @@ describe("Visual filter catalogue",function()
 			{kind="Flasks & tinctures",base="Sacred Life Flask",class="Life Flasks",other="Prismatic Tincture",otherClass="Tinctures"},
 			{kind="Crafting materials",base="Hollow Fossil",class="Stackable Currency",other="Powerful Chaotic Resonator",otherClass="Delve Stackable Socketable Currency"},
 			{kind="Heist & Expedition",base="Blueprint: Underbelly",class="Blueprints",other="Expedition Logbook",otherClass="Expedition Logbooks"}}) do
-			local scene=library.scene(profile,build,case.kind,0,76,81);assert.equal(case.kind=="Maps & threads" and 17 or 12,#scene)
+			local scene=library.scene(profile,build,case.kind,0,76,81);assert.equal(case.kind=="Maps & threads" and 17 or case.kind=="Flasks & tinctures" and 13 or 12,#scene)
 			assert.equal(case.base,scene[1].BaseType);assert.equal(case.class,scene[1].Class)
 			if case.kind=="Maps & threads" then
 				assert.equal("Nightmare Map",scene[13].BaseType);assert.equal(17,scene[13].MapTier)

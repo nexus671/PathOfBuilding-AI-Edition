@@ -17,6 +17,12 @@ p.strictness=5;assert(not warning(select(2,filters.compile(p))))
 p.strictness=6;p.rules={filters.rule('faith','Show unique Sulphur',{'Rarity == Unique','BaseType == "Sulphur Flask"'})}
 local revised,ok=filters.compile(p);assert(not warning(ok));assert(raw~=revised)
 p.rules={filters.rule('uncertain','Unknown before target',{'FutureKeyword True'})};assert(not warning(select(2,filters.compile(p))))
+p.rules={filters.rule('uncertain-level','Unknown drop level',{'DropLevel >= 2'})};assert(not warning(select(2,filters.compile(p))),'The audit guessed the unique drop level')
+newBuild();build.savers.CraftingProjects:Upsert({id='hat',title='Helmet',slot='Helmet',startingItem='Rarity: NORMAL\nIron Hat\nItem Level: 86',goals={},steps={}})
+local plain=filters.profile('lazy','Lazy');local original=lib.sample;local calls=0;lib.sample=function(...) calls=calls+1;return original(...) end
+local ok,result=pcall(filters.simulateScene,plain,'Build targets',0,76,86,0,1,nil,build);lib.sample=original
+assert(ok,result);assert(calls==1,'Compiling the audit generated an extra scene sample')
+
 -- Exercise the workspace action and history, not just the audit callback.
 for _,size in ipairs({{960,640},{1024,768},{1280,720}}) do
  newBuild();main.popups={};local host=require('Modules.HeadlessUI').install({width=size[1],height=size[2]});host:bind(build)

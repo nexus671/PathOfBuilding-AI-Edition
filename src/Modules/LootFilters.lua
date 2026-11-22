@@ -624,8 +624,8 @@ function M.compile(profile,includeParsed)
 	-- A pinned strictness tier can hide this boss-unique base. Evaluate the
 	-- compiled rules rather than guessing from strictness, so personal and
 	-- imported rules can override it. This is a sample, not a price feed.
-	local sample=require("Modules.LootFilterLibrary").sample()
-	sample.BaseType="Sulphur Flask";sample.Class="Utility Flasks";sample.Rarity="Unique";sample.Identified=false;sample.AreaLevel=83;sample.ItemLevel=86
+	local sample={BaseType="Sulphur Flask",Class="Utility Flasks",Rarity="Unique",ItemLevel=86,AreaLevel=83,Quality=0,StackSize=1,Sockets=0,SocketGroup="",LinkedSockets=0,Width=1,Height=2,UnidentifiedItemTier=0,BaseDefencePercentile=0,HasInfluence={"None"},HasExplicitMod={},HasEnchantment={},EnchantmentPassiveNode=""}
+	for key in pairs(parser.booleans) do if key~="AlwaysShow" then sample[key]=false end end
 	local flask=parser.simulate(parsed,sample)
 	if flask.status=="matched" and flask.action=="Hide" then
 		parsed.diagnostics[#parsed.diagnostics+1]={line=flask.line,code="hiddenUniqueSulphur",warning="A level 86 unidentified unique Sulphur Flask is hidden in the test sample. This base can be Bottled Faith; review this rule if you want to see it."}
