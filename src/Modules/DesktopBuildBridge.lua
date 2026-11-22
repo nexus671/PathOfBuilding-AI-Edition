@@ -604,7 +604,7 @@ function M.poll(build, force)
 				assert(request.plannedDeified==nil or type(request.plannedDeified)=="boolean","Invalid planned Deified marker")
 				assert(not request.vaalPreview or request.corrupted,"A conditional Vaal preview requires a corrupted map")
 				assert(not request.twiceCorrupted or request.corrupted,"A twice-corrupted map must be corrupted")
-				local result=map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint,request.rarity,request.rolls,request.corrupted,request.implicit,request.quality,request.observedEffects)
+				local result=map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint,request.rarity,request.rolls,request.corrupted,request.implicit,request.quality,request.observedEffects,request.relatedTo and map.isNightmare(request.baseId),nil,request.relatedTo)
 				result.mirrored=request.mirrored or nil;result.unidentified=request.unidentified or nil;result.vaalPreview=request.vaalPreview or nil;result.twiceCorrupted=request.twiceCorrupted or nil
 				if request.unidentified then result.summary=nil;result.counts=nil;result.candidates={};result.total=nil;result.nextOffset=nil;result.note="Unidentified map: explicit modifiers and their totals are unknown.";result.unidentifiedOpeningBonus={atlasDrops=30,condition="When opened unidentified"} end
 				if request.vaalPreview then result.note=result.note.." Based on a conditional Vaal preview; outcome odds are not modeled." end

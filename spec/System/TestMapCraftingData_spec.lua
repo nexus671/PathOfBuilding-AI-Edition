@@ -1,4 +1,12 @@
 describe("Map crafting source data",function()
+	it("finds eligible matching map modifier identities without guessing values",function()
+		local map=require("Modules.MapCraftingData");local base="Metadata/Items/Maps/MapWorldsBeach"
+		local result=map.inspect(base,16,83,{},"",0,100,nil,"rare",nil,nil,nil,nil,nil,nil,nil,"MapMonsterFireDamageMapWorlds")
+		assert.equal("MapMonsterFireDamageMapWorlds",result.relatedTo);assert.equal(1,result.total);assert.equal("MapMonsterFireDamage3MapWorlds",result.candidates[1].id)
+		assert.matches("do not prove identical",result.note,1,true)
+		local empty=map.inspect(base,16,83,{},"",0,100,nil,"rare",nil,nil,nil,nil,nil,nil,nil,"MapMonsterFireDamage3MapWorlds");assert.equal(0,empty.total)
+		assert.has_error(function() map.inspect(base,16,83,{},"",0,100,nil,"rare",nil,nil,nil,nil,nil,nil,nil,"unknown") end)
+	end)
 	it("requires a current tier-based map item to match its tier",function()
 		local map=require("Modules.MapCraftingData")
 		assert.equal("Map (Tier 5)",map.inspect("Metadata/Items/Maps/MapKeyTier5",5,68,{}).baseName)

@@ -67,12 +67,6 @@ function M.Open(build,options)
 		return false
 	end
 	local function optionCount() local count=0;for _,group in ipairs(groups) do count=count+#group end;return count end
-	local function statSignature(id)
-		local mod=map.source().mods[id];if not mod then return nil end
-		local rewards={["map_drop_scaling_+%"]=true,["map_item_drop_rarity_+%"]=true,["map_pack_size_+%"]=true}
-		local stats={};for _,stat in ipairs(mod.stats or {}) do if not rewards[stat.id] then stats[#stats+1]=stat.id end end
-		if #stats==0 then return nil end;table.sort(stats);return mod.generation_type.."|"..table.concat(stats,"|")
-	end
 	local function removePicker(ids,title,action,allowLast)
 		local choices={}
 		for index,id in ipairs(ids) do
@@ -82,9 +76,9 @@ function M.Open(build,options)
 			choices[#choices+1]={id=id,index=index,label=label,search=id,details=details}
 		end
 		browser.Open(title,choices,{action=action,canChoose=function() return allowLast or #ids>1 end,choose=function(entry) table.remove(ids,entry.index);invalidate();refresh() end,secondary={label="Find matching",run=function(entry)
-			local signature=statSignature(entry.id);local matches={}
+			local signature=map.matchingSignature(entry.id);local matches={}
 			if signature then for _,candidate in ipairs(entries()) do
-				if candidate.id~=entry.id and statSignature(candidate.id)==signature then
+				if candidate.id~=entry.id and map.matchingSignature(candidate.id)==signature then
 					candidate.details[#candidate.details+1]="Matching stat identities do not prove identical values or interactions."
 					matches[#matches+1]=candidate
 				end

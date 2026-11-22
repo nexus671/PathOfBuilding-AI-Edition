@@ -178,11 +178,11 @@ test('queues copied map inspection without changing the build', t => {
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'inspect_copied_map');assert.match(request.itemText,/Strand Map/);
 });
 test('queues bounded map modifier inspection', t => {
-  const f=fixture(t), args={baseRevision:f.state.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',selected:[],limit:5,quality:{kind:'Pack Size',value:20},observedEffects:[{kind:'enchant',text:'Players are Delirious'}]};
+  const f=fixture(t), args={baseRevision:f.state.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,rarity:'magic',selected:[],limit:5,quality:{kind:'Pack Size',value:20},observedEffects:[{kind:'enchant',text:'Players are Delirious'}],relatedTo:'MapMonsterFireDamageMapWorlds'};
   f.call('inspect_map_modifiers',args);
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
   assert.equal(request.kind,'inspect_map_modifiers');assert.equal(request.tier,5);assert.equal(request.rarity,'magic');
-  assert.deepEqual(request.quality,args.quality);
+  assert.deepEqual(request.quality,args.quality);assert.equal(request.relatedTo,args.relatedTo);
   assert.deepEqual(request.observedEffects,args.observedEffects);
   const delirium=fixture(t), effects=[{kind:'explicit',text:'Players in Area are 35% Delirious'},{kind:'explicit',text:'Delirium Reward Type: Currency'}];
   delirium.call('inspect_map_modifiers',{...args,baseRevision:delirium.state.revision,rarity:'rare',observedEffects:effects});

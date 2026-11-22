@@ -1245,6 +1245,9 @@ async function main(){
   const nightmareText='Item Class: Maps\nRarity: Rare\nDread Tower\nAbomination Map\n--------\nMap Tier: 17\nItem Level: 84\n--------\nPlayers are Cursed with Vulnerability\nPlayers are Cursed with Temporal Chains\nPlayers are Cursed with Elemental Weakness\n35% more Threads found in Area\n--------\nTravel to this Map by using it in a personal Map Device.';
   const nightmareCopy=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:nightmareText},'mapData');
   assert.equal(nightmareCopy.mapData.state.tier,17);assert.deepEqual(nightmareCopy.mapData.state.selected,['MapUberModCurses']);
+  const matchingMap=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',relatedTo:'MapMonsterFireDamageMapWorlds'},'mapData');
+  assert.equal(matchingMap.mapData.relatedTo,'MapMonsterFireDamageMapWorlds');assert.ok(matchingMap.mapData.candidates.some(entry=>entry.id==='MapMonsterFireDamage3MapWorlds'));assert.ok(matchingMap.mapData.candidates.every(entry=>!entry.id.includes('ColdDamage')));assert.match(matchingMap.mapData.note,/do not prove identical/);
+  const unknownRelated=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,relatedTo:'not-a-map-mod'},'failed');assert.match(unknownRelated.error,/Unknown reference map modifier/);
   const mapMods=await queued('inspect_map_modifiers',{baseRevision:context.revision,baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:5,itemLevel:68,limit:2,quality:{kind:'Pack Size',value:20}},'mapData');
   assert.equal(mapMods.mapData.candidates.length,2);assert.equal(mapMods.mapData.nextOffset,2);assert.match(mapMods.mapData.note,/not outcome probabilities/);
   assert.equal(mapMods.mapData.summary.estimatedTotals.packSize.min,10);
