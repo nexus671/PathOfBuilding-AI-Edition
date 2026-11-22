@@ -202,7 +202,6 @@ function M.new(build)
 		local raw = table.concat(xml)
 		if raw:match("^%s*$") then return end
 		local ok,projects = pcall(function()
-			assert(#raw <= 2*1024*1024,"Crafting projects exceed size limit")
 			local decoded = assert(json.decode(raw,1,json.null),"Invalid crafting project data")
 			assert(decoded.schemaVersion == 1 and type(decoded.projects) == "table" and decoded.projects ~= json.null,"Unsupported crafting project data")
 			local meta=getmetatable(decoded.projects)
@@ -242,7 +241,6 @@ function M.new(build)
 			replacement[index]=entry; found=true; break
 		end end
 		if not found then replacement[#replacement+1]=entry end
-		assert(#require("Modules.PlanningData").encodeExact({schemaVersion=1,projects=replacement}) <= 2*1024*1024,"Crafting projects exceed the supported size")
 		self.projects=replacement;self.notice=nil; build.modFlag=true
 		require("Modules.PlanningUI").kept(build,"crafting")
 		return entry

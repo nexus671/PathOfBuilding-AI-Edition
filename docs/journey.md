@@ -10,7 +10,7 @@ Open **AI builds**, **Atlas**, or **Crafting**, then choose **Journey**. Alt+4 o
 
 In the crafting workbench, **Keep working craft** records the current item, action and undo history, targets, seed and settings. Reopening the project resumes that checkpoint. Further experiments remain a session draft until you keep it again. Checkpoints and simulations do not deduct from the budget; record actual spending separately.
 
-Use the normal **Save** command to persist everything in the build. Exported builds carry the journey and crafting checkpoints. There is no entry-count limit; each metadata section has a 2 MiB size guard. Unreadable or newer metadata is preserved unchanged.
+Use the normal **Save** command to persist everything in the build. Exported builds carry the journey and crafting checkpoints. There is no fixed entry-count limit. Journey metadata has a 2 MiB size guard; crafting metadata has individual field limits. Unreadable or newer metadata is preserved unchanged.
 
 Choose **Measure upgrades** on Gear to calculate planned items as isolated native candidates. Sort by damage, physical or chaos maximum hit, Life, or encounter survival gain. **Per resource** groups currencies separately before comparing gain per supplied cost. Missing targets, unavailable metrics, zero costs and failed constraints are not treated as measured wins. Encounter figures require the same simulation to be enabled on the base build. Changing the build, wishlist or goal settings invalidates measurements; recalculate them. Measurements are session-only and never equip an item or spend resources.
 

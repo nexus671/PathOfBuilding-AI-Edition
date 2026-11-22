@@ -160,16 +160,24 @@ describe("Crafting projects", function()
 		updated=copyTable(store.projects[1]);updated.steps[1].action="Changed later";store:Upsert(updated);browser.undoRemove:Click()
 		assert.equal("Crafting guide",main.popups[1].title);assert.equal(1,#store.projects[1].steps);assert.equal("Changed later",store.projects[1].steps[1].action)
 	end)
-	it("keeps size limits and preserves malformed project collections",function()
+	it("preserves malformed project collections",function()
 		local store=build.savers.CraftingProjects
 		for _,raw in ipairs({'{"schemaVersion":1,"projects":{}}','{"schemaVersion":1,"projects":{"one":{}}}','{"schemaVersion":1,"projects":[null]}','{"schemaVersion":1,"projects":null}',string.rep(" ",2*1024*1024).."{}"}) do
 			local loaded=projects.new(build);loaded:Load({raw});assert.is_truthy(loaded.warning)
 			local xml={};loaded:Save(xml);assert.are.equal(raw,xml[1])
 		end
-		local entry=project();entry.notes=string.rep("x",8000)
+	end)
+	it("saves and reopens crafting collections larger than the former limit",function()
+		local store=build.savers.CraftingProjects;local entry=project();entry.notes=string.rep("x",8000)
 		entry.simulatorExport=string.rep("x",128000)
 		for i=1,15 do entry.id="large-"..i;store:Upsert(entry) end
-		entry.id="too-large";assert.is_false(pcall(store.Upsert,store,entry));assert.are.equal(15,#store.projects)
+		entry.id="large-16";store:Upsert(entry);assert.are.equal(16,#store.projects)
+		local xml={};store:Save(xml);assert.is_true(#xml[1]>2*1024*1024)
+		local reopened=projects.new(build);reopened:Load(xml);assert.is_nil(reopened.warning)
+		assert.are.equal(16,#reopened.projects);assert.are.equal(entry.simulatorExport,reopened.projects[16].simulatorExport)
+		local saved=build:SaveDB("Large guides");loadBuildFromXML(saved,"Large guides")
+		assert.is_nil(build.savers.CraftingProjects.warning);assert.are.equal(16,#build.savers.CraftingProjects.projects)
+		assert.are.equal(entry.simulatorExport,build.savers.CraftingProjects.projects[16].simulatorExport)
 	end)
 	it("keeps a different equipment base after recombination without changing its slot", function()
 		local entry=project();entry.targetItem="Rarity: NORMAL\nLeather Cap"

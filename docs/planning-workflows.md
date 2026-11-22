@@ -26,7 +26,7 @@ Developers can run `luajit ../tools/benchmark_planning.lua` from `src`, optional
 
 ## Crafting recovery and spending
 
-Written crafting guides can contain as many steps and goals as fit in the build's crafting metadata. The combined saved crafting data has a 2 MiB size guard; executable simulation recipes still have their own bounded limits.
+Written crafting guides have no fixed combined metadata size or project-count limit. Individual fields and executable simulation recipes still have their own bounded limits.
 
 In a saved project's **Plan** tab, **Browse guide steps** searches instructions, stop conditions and failure notes. Filter by completion status, page through long guides and select any step to edit it, mark it done or to do, or remove it after confirmation. You can undo the last removal while the browser stays open, provided the guide steps have not changed since. Editing preserves its progress; changing a modeled instruction asks before removing its guide link and leaves the saved recipe intact. Use this editor when a text edit would otherwise discard step details. Save the build to persist those changes.
 
