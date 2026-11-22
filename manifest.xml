@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1054" />
+	<Version number="2.68.1-ai.preview1055" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1768,7 +1768,7 @@
 	<File name="Classes/LootFilterCollectionControl.lua" part="program" sha1="9a6870a82b61f4084c3c0497ab9efcd5e6963133" />
 	<File name="Classes/LootFilterControl.lua" part="program" sha1="c40ea82f493c495c2dc3b2cf1029a132aedc48ec" />
 	<File name="Classes/LootFilterDiffControl.lua" part="program" sha1="994e194583ccb50a6f50fe71876258d7b0bdd2f9" />
-	<File name="Classes/LootFilterEffectsControl.lua" part="program" sha1="e716b69b3d54d9db944da9b42c382957874242cf" />
+	<File name="Classes/LootFilterEffectsControl.lua" part="program" sha1="c0da01c25134dd3d7bda386626c07dff699ebeec" />
 	<File name="Classes/LootFilterFileBrowser.lua" part="program" sha1="8ee03d60d0aebdb49587330e7ddb369a796bcbf3" />
 	<File name="Classes/LootFilterGlobalControl.lua" part="program" sha1="f040b676a7067c2e933478996bd347c3521db19e" />
 	<File name="Classes/LootFilterImportControl.lua" part="program" sha1="735500586035d1c05bbe4ebe6a7daeefeb3bc985" />

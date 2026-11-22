@@ -1758,6 +1758,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		browser.Open=function(_,choose,options) assert(options.accept("Alert.WAV") and not options.accept("notes.txt"));choose("C:/Sounds/alert.wav") end
 		ui:click("browseSound");browser.Open=open
 		assert(main.popups[1].controls.customPath.buf=="C:/Sounds/alert.wav","Sound picker did not return the path")
+		browser.Open=function(_,choose) choose("C:/Sounds/second.wav") end
+		ui:click("addSound");browser.Open=open
+		assert(main.popups[1].controls.customPath.buf=="C:/Sounds/alert.wav;C:/Sounds/second.wav","Adding a sound replaced the existing file")
+
 	end
 	frame("filter-custom-sound");ui:choose("soundKind","Keep current");ui:click("keep");ui:click("keepRule");frame("filter-base-override")
 	do

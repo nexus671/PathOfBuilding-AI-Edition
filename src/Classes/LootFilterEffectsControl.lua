@@ -21,28 +21,37 @@ function M.Open(original,sample,onKeep)
 	c.volume=new("SliderControl"):SliderControl(ui.anchor,{16,304,352,24},function(value) volume=math.floor(value*300+0.5);volumeChanged=true end);c.volume.val=volume/300
 	label("iconSizeLabel",392,276,"Minimap size");drop("iconSize",392,300,{{label="Large",val=0},{label="Medium",val=1},{label="Small",val=2}});c.iconSize:SelByValue(tonumber(original.MinimapIcon and original.MinimapIcon[1]) or 1,"val")
 	for _,key in ipairs({"iconColor","iconSize"}) do c[key].enabled=function() return c.iconShape.selIndex>2 end end
-	label("customLabel",16,348,"Custom sound file / relative path")
-	c.customPath=new("EditControl"):EditControl(ui.anchor,{16,372,260,28},original.CustomAlertSound and original.CustomAlertSound[1] or original.CustomAlertSoundOptional and original.CustomAlertSoundOptional[1] or "",nil,nil,500);c.customPath.placeholder="sound.wav"
+	label("customLabel",16,348,"Custom sound files / relative paths")
+	c.customPath=new("EditControl"):EditControl(ui.anchor,{16,372,352,28},original.CustomAlertSound and original.CustomAlertSound[1] or original.CustomAlertSoundOptional and original.CustomAlertSoundOptional[1] or "",nil,nil,500);c.customPath.placeholder="sound.wav"
 	c.customPath.enabled=function() return c.soundKind.selIndex>=5 end
-	c.browseSound=new("ButtonControl"):ButtonControl(ui.anchor,{284,372,84,28},"Browse",function()
-		local path=c.customPath.buf
-		if path:find(";",1,true) or not (path:match("^%a:[/\\]") or path:sub(1,2)=="\\\\" or path:sub(1,1)=="/") then
+	local function browseSound(append)
+		local path=c.customPath.buf:match("([^;]+)$") or ""
+		if not (path:match("^%a:[/\\]") or path:sub(1,2)=="\\\\" or path:sub(1,1)=="/") then
 			path=(main.userPath or "./"):gsub("\\","/");if path:sub(-1)~="/" then path=path.."/" end
 		end
-		require("Classes.LootFilterFileBrowser").Open(path,function(selected) c.customPath:SetText(selected,true) end,{title="Choose a sound file",itemLabel="Sound",category="Sounds",accept=function(name)
+		require("Classes.LootFilterFileBrowser").Open(path,function(selected)
+			if selected:find('[;"\r\n]') then ui.errorPopup("Sound file","The chosen path cannot contain a semicolon, quote or newline.");return end
+			local previous=c.customPath.buf;local value=append and previous:match("%S") and previous..";"..selected or selected
+			if #value>500 then ui.errorPopup("Sound file","The sound file list is too long. Shorten it before adding another file.");return end
+			c.customPath:SetText(value,true)
+		end,{title=append and "Add a sound file" or "Choose a sound file",itemLabel="Sound",category="Sounds",accept=function(name)
 			return ({wav=true,mp3=true,ogg=true,flac=true,m4a=true,aac=true})[(name:match("%.([^%.]+)$") or ""):lower()]==true
 		end})
-	end)
-	c.browseSound.enabled=c.customPath.enabled
-	c.browseSound.tooltipText="Choose a local sound file. The selected path is saved in the filter."
+	end
+	c.browseSound=new("ButtonControl"):ButtonControl(ui.anchor,{16,406,168,28},"Browse",function() browseSound(false) end)
+	c.addSound=new("ButtonControl"):ButtonControl(ui.anchor,{200,406,168,28},"Add file",function() browseSound(true) end)
+	c.browseSound.enabled=c.customPath.enabled;c.addSound.enabled=c.customPath.enabled
+	c.browseSound.tooltipText="Replace the sound list with a selected file."
+	c.addSound.tooltipText="Add a file to the list. The game selects one file at random."
 	label("beamLabel",392,348,"Drop beam")
 	local beams={"Keep current","None"};for _,color in ipairs(options.colors) do beams[#beams+1]=color end
 	drop("beam",392,372,beams);c.beam:SelByValue(original.PlayEffect and original.PlayEffect[1] or "Keep current")
 	label("beamDurationLabel",392,420,"Beam duration");drop("beamDuration",392,444,{"Permanent","Temporary"});c.beamDuration:SelByValue(original.PlayEffect and original.PlayEffect[2]=="Temp" and "Temporary" or "Permanent");c.beamDuration.enabled=function() return c.beam.selIndex>2 end
-	ui.description(c,"help",16,420,352,58,{"Custom sound paths are saved in the filter. Preview supports local 16-bit WAV files and reference tones."},13)
+	ui.description(c,"help",16,440,352,55,{"Separate sound files with semicolons; the game chooses one. Preview plays the first local WAV or a reference tone."},13)
 	local function styles(strict)
 		local next=copyTable(original);local mode=c.soundKind.selIndex
-		if mode>1 then for _,key in ipairs({"PlayAlertSound","PlayAlertSoundPositional","CustomAlertSound","CustomAlertSoundOptional"}) do next[key]=nil end end
+		if mode==6 then next.CustomAlertSound=nil;next.CustomAlertSoundOptional=nil
+		elseif mode>1 then for _,key in ipairs({"PlayAlertSound","PlayAlertSoundPositional","CustomAlertSound","CustomAlertSoundOptional"}) do next[key]=nil end end
 		if mode==2 then next.PlayAlertSound={"None"};next.CustomAlertSound={"None"}
 		elseif mode==3 or mode==4 then next[mode==3 and "PlayAlertSound" or "PlayAlertSoundPositional"]={tostring(c.alertId:GetSelValueByKey("val")),tostring(volume)}
 		elseif mode>=5 then

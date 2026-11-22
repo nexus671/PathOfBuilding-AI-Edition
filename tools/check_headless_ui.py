@@ -55,6 +55,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_crafting_base_implicit_ui.lua")
     sources.append(ROOT / "tools/test_filter_export_race.lua")
     sources.append(ROOT / "tools/test_filter_review_ui.lua")
+    sources.append(ROOT / "tools/test_filter_sound_list_ui.lua")
     sources.append(ROOT / "tools/test_filter_union_ui.lua")
     sources.append(ROOT / "tools/test_atlas_plan_pickups_ui.lua")
     sources.append(ROOT / "tools/test_quality_calculation_ui.lua")
@@ -134,6 +135,10 @@ def main():
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-review-controls.log").write_text(filter_review.stdout)
     assert filter_review.returncode == 0, filter_review.stdout
+    filter_sound_list = subprocess.run(lua_command + ["../tools/test_filter_sound_list_ui.lua"], cwd=ROOT / "src",
+                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "filter-sound-list-controls.log").write_text(filter_sound_list.stdout)
+    assert filter_sound_list.returncode == 0, filter_sound_list.stdout
     filter_union = subprocess.run(lua_command + ["../tools/test_filter_union_ui.lua"], cwd=ROOT / "src",
                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-union-controls.log").write_text(filter_union.stdout)

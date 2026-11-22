@@ -35,7 +35,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Preview background | Stone, dark and light scenes | Additional environments |
 | Individual colours | Colour wheel, brightness and opacity controls, swatches, exact RGBA input and live preview | More built-in palette presets |
 | Font size | Live size slider | Additional typography presets |
-| Alert sound selection | All 16 numbered IDs plus silence; browse custom files and preview local 16-bit PCM WAVs on Windows | Exact game audio preview and custom sound pack management |
+| Alert sound selection | All 16 numbered IDs plus silence; browse and add multiple custom files and preview the first local PCM WAV on Windows | Exact game audio preview and broader sound pack management |
 | Minimap icons | All twelve shapes, colour/size selection and native geometry previews | Exact game-texture rendering |
 | Themes | Generated-target palettes, personal restyling, whole-filter decorators and named appearance snapshots | More built-in themes |
 | Global one-click edits | Reversible whole-filter and category font/colour, alert identity/volume, icon and beam controls | More saved appearance presets |
