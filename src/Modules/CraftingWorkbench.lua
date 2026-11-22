@@ -299,6 +299,7 @@ function M.hint(method,state,model,craft)
 	end
 	if available and method=="annul" then return "3.30: remove a random modifier. Attack/caster roll blockers do not protect it; fractures and prefix/suffix locks still apply." end
 	if available and method=="binding" then return "No longer generated in 3.30. Existing Orbs of Binding still work." end
+	if available and method=="sacred" then return "Defences roll independently in this model; the game may use a shared roll. Combinations and odds are unverified." end
 	if available and method=="recombine" then return "Uses the chosen base's item level and preliminary 3.30 small-pool estimates. Modifier weights and special cases are uncertain." end
 	if available and method=="ducat_ukatoa" then return "Replaces amulet implicits. Equal side and tier 1-4 chances are unverified assumptions." end
 	if available and method=="ducat_katakohi" then return "Historical Allflame craft. Socket counts, selection, attribute pools and modifier odds are experimental assumptions." end

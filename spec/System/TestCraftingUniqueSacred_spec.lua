@@ -26,9 +26,16 @@ describe("Sacred Orb previews for unique armour", function()
 	it("offers and simulates the action with its priced resource", function()
 		local options=sim.catalog(raw,"sacred",20).uniqueActions;assert.equal(1,#options);assert.is_true(options[1].available)
 		local result=sim.perform(raw,{method="sacred"},104729);assert.equal(1,result.components.sacred)
+		local warning;for _,entry in ipairs(result.warnings) do if entry.code=="unique_sacred_estimate" then warning=entry.message end end
+		assert.matches("independently",assert(warning));assert.matches("shared roll",warning)
 		local recipe={rarity="UNIQUE",steps={{method="sacred",maxAttempts=1}},targets={},requirements={nativeStats={EnergyShield=1}}}
 		local run=sim.simulate(raw,recipe,{trials=3,maxActions=1,forceFirstAction=true,seed=104729,prices={sacred=2},currency="chaos"})
 		assert.equal(3,run.currencySpent.sacred);assert.equal(2,run.meanCost)
+		local recipeWarning;for _,entry in ipairs(run.warnings) do if entry.code=="unique_sacred_estimate" then recipeWarning=entry.message end end
+		assert.matches("shared roll",assert(recipeWarning))
+		local ordinary=sim.perform("Rarity: NORMAL\nCarnal Armour\nItem Level: 86",{method="sacred"},104729)
+		local ordinaryWarning;for _,entry in ipairs(ordinary.warnings) do if entry.code=="sacred_roll_assumptions" then ordinaryWarning=entry.message end end
+		assert.matches("independently",assert(ordinaryWarning));assert.matches("shared roll",ordinaryWarning)
 	end)
 	it("explains unsafe item text before offering a preview", function()
 		local cases={

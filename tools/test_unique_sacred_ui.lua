@@ -12,6 +12,7 @@ for _,size in ipairs({{960,640},{1024,768},{1280,720}}) do
     local project={id="sacred-ui",title="Sacred guide",slot="Body Armour",startingItem=raw,goals={},steps={}}
     build.savers.CraftingProjects:Upsert(project);local controls=require("Classes.CraftingUniqueQualityControl").Open(build,project)
     assert(controls.sacred:IsEnabled(),"Sacred preview unavailable")
+	assert(controls.sacred.tooltipText():find("shared roll",1,true),"Sacred tooltip omitted the uncertain roll correlation")
     ui:click("sacred");if output then ui:frame():write(output.."/"..size[1].."-unique-sacred.json") end
     ui:click("apply")
     ui:click("guide");assert(controls.recipe:IsEnabled(),"Sacred recipe unavailable");ui:click("recipe")
