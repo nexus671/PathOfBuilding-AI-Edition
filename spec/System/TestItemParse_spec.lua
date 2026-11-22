@@ -1,4 +1,8 @@
 describe("TestItemParse", function()
+	it("recognizes The Apostate's life modifier for armour conditions", function()
+		local item = new("Item"):Item("Rarity: UNIQUE\nThe Apostate\nSavant's Robe\nItem Level: 86\nImplicits: 0\nGain Maximum Life instead of Maximum Energy Shield from Equipped Armour Items")
+		assert.is_true(item:FindModifierSubstring("life", "Body Armour"))
+	end)
 	it("recognizes a tiered unidentified rare item's base", function()
 		local raw = "Item Class: Body Armours\nRarity: Rare\nPlate Vest\n--------\nItem Level: 86\n--------\nUnidentified (Tier 4)"
 		local item = new("Item"):Item(raw)
