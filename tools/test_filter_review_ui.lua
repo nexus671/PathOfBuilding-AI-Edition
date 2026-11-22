@@ -93,4 +93,18 @@ do
 	for _,warning in ipairs(warnings) do inspectWarning=inspectWarning or warning.retry==true;reviewWarning=reviewWarning or warning.manualGuideSignature~=nil end
 	assert(inspectWarning and reviewWarning,"An uninspectable structured guide did not preserve both repair and review notices")
 end
+do
+	newBuild();main.popups={};local ui=UI.install({width=960,height=640});ui:bind(build)
+	for _,id in ipairs({"first-review","second-review"}) do build.savers.CraftingProjects:Upsert({id=id,title=id,slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={{action="Use a rare currency"}}}) end
+	build.savers.AtlasPlans:Upsert({id="remaining-atlas",title="Atlas warning",version="3.30.0c",budget=150,nodes={},strategy={maps="Strand Map"}})
+	local filters=require("Modules.LootFilters");build.savers.LootFilters:Upsert(filters.profile("review-queue","Filter"))
+	build.planningWorkspace=require("Modules.PlanningWorkspace").new(build);build.viewMode="PLANNER";build.planningWorkspace:Show("filters");ui:click("generate")
+	for _=1,2000 do ui:frame();if main.popups[1] and main.popups[1].title=="Review build pickups" then break end end
+	assert(main.popups[1] and main.popups[1].controls.secondary:IsEnabled(),"First guide review missing")
+	ui:click("secondary");assert(main.popups[1] and main.popups[1].title=="Review build pickups" and main.popups[1].controls.secondary:IsEnabled(),"Remaining guide review was dismissed")
+	ui:click("secondary");assert(main.popups[1] and main.popups[1].title=="Review build pickups" and not main.popups[1].controls.secondary:IsEnabled(),"Unrelated Atlas notice was dismissed")
+	ui:click("close");assert(not main.popups[1],"Review popup did not close")
+	local profile=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];assert(#profile.manualGuideReviews==2,"Both guide reviews were not kept")
+	local _,warnings=filters.generate(build,profile);for _,warning in ipairs(warnings) do assert(not warning.manualGuideSignature,"Reviewed guide still warns") end
+end
 print("FILTER_REVIEW_UI_OK")

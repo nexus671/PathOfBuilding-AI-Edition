@@ -121,7 +121,14 @@ function M.Open(build,source,layout,controller)
 		if not project or filters.manualGuideSignature(build,project)~=entry.manualGuideSignature then ui.errorPopup("Review build pickups","The guide or budget changed. Refresh build pickups and review it again.");return end
 		local reviews={};for _,review in ipairs(profile.manualGuideReviews or {}) do if review.projectId~=id then reviews[#reviews+1]=review end end
 		reviews[#reviews+1]={projectId=id,signature=entry.manualGuideSignature};profile.manualGuideReviews=reviews
-		dependencies=nil;dependencyJob=nil;dependencyTime=nil;draft();reopen()
+		dependencies=nil;dependencyJob=nil;dependencyTime=nil;draft();reopen();return true
+	end
+	local function showPickupWarnings(entries)
+		if #entries==0 then return end
+		require("Classes.PlanningBrowserControl").Open("Review build pickups",entries,{action="Open source",canChoose=function(entry) return type(entry.origin)=="string" and entry.origin~="" end,choose=function(entry) main:ClosePopup();openSource(entry.origin,entry.openGuide) end,closeOnChoose=false,
+			secondary={label="Mark guide reviewed",canRun=function(entry) return entry.manualGuideSignature~=nil end,run=function(entry)
+				main:ClosePopup();if acknowledgeGuide(entry) then local remaining={};for _,other in ipairs(entries) do if other~=entry then remaining[#remaining+1]=other end end;showPickupWarnings(remaining) end
+			end}})
 	end
 	local function targetPreview()
 		local state=transient.filterSceneTargets;local dependency=require("Modules.LootFilterDependencies")
@@ -153,8 +160,7 @@ function M.Open(build,source,layout,controller)
 		profile.rules=result.rules;profile.trackBuildPickups=true;draft();reopen()
 		if #result.warnings>0 then
 			local entries={};for _,warning in ipairs(result.warnings) do entries[#entries+1]={id=warning.origin,origin=warning.origin,openGuide=warning.openGuide,manualGuideSignature=warning.manualGuideSignature,label=warning.title,details={warning.message}} end
-			require("Classes.PlanningBrowserControl").Open("Review build pickups",entries,{action="Open source",canChoose=function(entry) return type(entry.origin)=="string" and entry.origin~="" end,choose=function(entry) main:ClosePopup();openSource(entry.origin,entry.openGuide) end,closeOnChoose=false,
-				secondary={label="Mark guide reviewed",canRun=function(entry) return entry.manualGuideSignature~=nil end,run=function(entry) main:ClosePopup();acknowledgeGuide(entry) end}})
+			showPickupWarnings(entries)
 		end
 	end
 	local function generatePickups()
