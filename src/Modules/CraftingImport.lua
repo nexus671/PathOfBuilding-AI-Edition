@@ -340,6 +340,9 @@ function I.resolve(M,model,state)
 	end
 	local failure=#solutions == 0 and "Imported values do not resolve to legal affixes at this item level; use advanced copy text or a blank base with a structured starting state" or "Imported values match several modifier identities; use advanced copy text or a blank base with a structured starting state"
 	if combinedWithoutDirect then failure="Imported values may combine multiple modifiers, so their individual rolls cannot be recovered reliably; use advanced copy text or a blank base with a structured starting state" end
+	if model.item.catalyst and (model.item.catalystQuality==nil or model.item.catalystQuality>0) then
+		failure=failure..". Catalyst quality may scale copied values; verify the unscaled rolls before constructing a starting state."
+	end
 	if model.item.type=="Tincture" and model.item.tinctureValues=="Final" and ((model.item.tinctureImportedQuality or 0)~=0 or (model.item.tinctureImportedEffect or 0)~=0) then
 		failure="Copied tincture values may include quality or effect scaling, so their modifier tiers cannot be identified reliably. Start with a blank tincture and enter base-value rolls."
 	end

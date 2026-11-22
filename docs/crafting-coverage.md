@@ -29,7 +29,7 @@ Plain item text can combine values from several modifiers. The importer checks
 for alternative combinations of integer single-stat ranges before accepting an exact
 line match, and rejects ambiguous items. The bounded search can check several
 combined rows, including overlapping hybrid and separate contributor groups. Complex multi-stat values remain incomplete;
-use advanced copy text when modifier identity matters.
+use advanced copy text when modifier identity matters. For unresolved catalyst-quality jewellery, the import error also notes that copied values may be scaled; it does not infer unscaled rolls.
 When no individual modifier matches but a bounded check finds a possible
 combined explanation, the import error says so; it does not invent the
 individual modifier rolls.

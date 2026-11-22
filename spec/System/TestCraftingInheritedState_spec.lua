@@ -38,6 +38,11 @@ describe("Crafting starting-item property inheritance",function()
 		local zero=raw:gsub("Catalyst: Prismatic","Catalyst: Prismatic\nCatalystQuality: 0");local zeroModel=sim.model(zero);assert.equal(0,zeroModel.initial.catalystQuality);assert.is_false(sim.matches(zeroModel.initial,{},"NORMAL",zeroModel,{catalyst=8,minCatalystQuality=20}));assert.is_true(sim.perform(zero,{method="catalyst",catalyst=8},42).state.catalystQuality>0)
 		local swapped=sim.perform(raw,{method="catalyst",catalyst=4},42);assert.equal(4,swapped.state.catalyst);assert.is_true(swapped.state.catalystQuality<20)
 	end)
+	it("explains catalyst scaling when copied jewellery cannot be resolved",function()
+		local raw="Rarity: RARE\nExample Belt\nStygian Vise\nItem Level: 83\nCatalyst: Prismatic\nCatalystQuality: 20\n+99% to Cold Resistance"
+		local ok,reason=pcall(sim.model,raw);assert.is_false(ok);assert.matches("Catalyst quality may scale copied values",reason,1,true)
+		local zero=raw:gsub("CatalystQuality: 20","CatalystQuality: 0");ok,reason=pcall(sim.model,zero);assert.is_false(ok);assert.is_nil(reason:find("Catalyst quality may scale",1,true))
+	end)
 	it("retains a copied Eldritch implicit when adding the other side",function()
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86"
 		local first=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11)
