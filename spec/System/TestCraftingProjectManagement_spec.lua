@@ -13,6 +13,30 @@ describe("Crafting project removal and save-state ownership",function()
 		tasks.cancel();main.popups={};main.modes.BUILD=activeMode;GlobalCache=activeCache
 		bridge.prepared=nil;bridge.owner=nil;bridge.build=nil;bridge.previous=nil;bridge.undo={};bridge.history={};bridge.enabled=false
 	end)
+	it("rejects stale recipe starting states in AI project edits without changing the build",function()
+		local original=project("state-change");local initial=sim.model(original.startingItem).initial
+		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1},initialState=initial}
+		original.recipeAlternatives={{name="Alternative",recipe=copyTable(original.nativeRecipe)}}
+		build.savers.CraftingProjects:Upsert(original)
+		local changed=copyTable(original);changed.startingItem=original.startingItem.."\nQuality: 10"
+		local function prepare(value) return bridge.prepare(build,{mode="edit",title="Change item",baseRevision=bridge.revision(build),operations={{type="set_crafting_project",project=value}}}) end
+		local ok,err=pcall(prepare,changed);assert.is_false(ok);assert.matches("starting state incompatible",err,1,true)
+		assert.equal(original.startingItem,build.savers.CraftingProjects.projects[1].startingItem)
+		changed.nativeRecipe.initialState=nil;changed.recipeAlternatives=nil
+		ok,err=pcall(prepare,changed);assert.is_false(ok);assert.matches("Alternative",err,1,true)
+		changed.recipeAlternatives={};local prepared=prepare(changed)
+		assert.equal(changed.startingItem,prepared.candidate.savers.CraftingProjects.projects[1].startingItem)
+		changed.nativeRecipe.initialState=sim.model(changed.startingItem).initial;prepared=prepare(changed)
+		assert.is_truthy(prepared.candidate.savers.CraftingProjects.projects[1].nativeRecipe.initialState)
+	end)
+	it("does not silently reuse a legacy unbound recipe state for another item",function()
+		local original=project("unbound");local state=sim.model(original.startingItem).initial;state.origin=nil
+		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1},initialState=state}
+		build.savers.CraftingProjects:Upsert(original);local changed=copyTable(original);changed.startingItem=original.startingItem.."\nQuality: 10"
+		local ok,err=pcall(build.savers.CraftingProjects.Upsert,build.savers.CraftingProjects,changed)
+		assert.is_false(ok);assert.matches("unbound starting state",err,1,true);assert.equal(original.startingItem,build.savers.CraftingProjects.projects[1].startingItem)
+		original.title="Renamed";build.savers.CraftingProjects:Upsert(original);assert.equal("Renamed",build.savers.CraftingProjects.projects[1].title)
+	end)
 	it("reviews removed guide, recipes, inventory and checkpoint before applying",function()
 		local original=project("review");local model=sim.model(original.startingItem)
 		original.goals={"High life"};original.steps={{action="Apply an Orb of Alchemy"},{action="Finish the helmet",done=true}}

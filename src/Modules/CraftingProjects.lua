@@ -138,6 +138,33 @@ function M.copy(projects)
 	return result
 end
 
+-- A saved recipe may start from an edited state rather than the pasted item.
+-- When that item changes, reject stale states before an AI or other caller can
+-- save a project that the workbench and simulator cannot execute.
+function M.checkStartingStateChange(previous,project)
+	if not previous or previous.startingItem==project.startingItem then return end
+	local recipes={};local oldStates={}
+	local function collect(target,entry,label)
+		if entry and entry.initialState then target[#target+1]={state=entry.initialState,label=label} end
+	end
+	collect(oldStates,previous.nativeRecipe,"Primary recipe")
+	for _,entry in ipairs(previous.recipeAlternatives or {}) do collect(oldStates,entry.recipe,entry.name) end
+	collect(recipes,project.nativeRecipe,"Primary recipe")
+	for _,entry in ipairs(project.recipeAlternatives or {}) do collect(recipes,entry.recipe,entry.name) end
+	if #recipes==0 then return end
+	local sim=require("Modules.CraftingSimulator");local ok,model=pcall(sim.model,project.startingItem)
+	assert(ok,"Cannot verify recipe starting states for the new item. Reset or replace them before keeping this project.")
+	for _,entry in ipairs(recipes) do
+		local state=entry.state
+		assert(type(state)=="table",entry.label.." has an invalid starting state. Reset or replace it before keeping this project.")
+		if not state.origin then for _,old in ipairs(oldStates) do
+			assert(not (tableDeepEquals(state,old.state) and tableDeepEquals(old.state,state)),entry.label.." has an unbound starting state from the previous item. Reset or replace it before keeping this project.")
+		end end
+		local valid=pcall(sim.validateState,model,copyTable(state))
+		assert(valid,entry.label.." has a starting state incompatible with the new item. Reset or replace it before keeping this project.")
+	end
+end
+
 function M.new(build)
 	local self = {projects={},build=build}
 	function self:Load(xml)
@@ -180,6 +207,7 @@ function M.new(build)
 			if project.primarySimulation==nil and existing.primarySimulation then entry.primarySimulation=copyTable(existing.primarySimulation) end
 			if project.inventory==nil and existing.inventory then entry.inventory=copyTable(existing.inventory) end
 			if project.recipeAlternatives==nil and existing.recipeAlternatives then entry.recipeAlternatives=copyTable(existing.recipeAlternatives) end
+			M.checkStartingStateChange(existing,entry)
 			replacement[index]=entry; found=true; break
 		end end
 		if not found then replacement[#replacement+1]=entry end
