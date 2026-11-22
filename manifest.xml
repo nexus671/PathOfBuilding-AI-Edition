@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1071" />
+	<Version number="2.68.1-ai.preview1072" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1693,7 +1693,7 @@
 	<File name="Assets/MapCrafting/Allflame/e79882e1a0bbca4f90dd.png" part="program" sha1="548fea8f01e777a19815582d04dd47ffbdaa2226" />
 	<File name="Data/Atlas/map-allflame-3.30.json" part="program" sha1="f8711d061efd86aacbb83186351d50d7885df832" />
 	<File name="Modules/MapAllflame.lua" part="program" sha1="563b130b2aa82c6e3fcb9421dd7298e150cb5be3" />
-	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="4a5ececab6ce0386cffe5d76c10894e108896ecb" />
+	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="7d33d7a81bd261200484950d73b339dc77fe1a1c" />
 	<File name="Classes/AtlasRegionsControl.lua" part="program" sha1="17c22b27e6e387b556b33e55d338883efc58e825" />
 	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="bc317bacfeecf533d7c1a5e3d3536a2edf847d6a" />
 	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="51bd764ac8917d56602e9d837f59a53364549738" />
@@ -2256,7 +2256,7 @@
 	<File name="Modules/PlanningPerformance.lua" part="program" sha1="0be53fc34487b96cdf7a81896764731ab5bde94a" />
 	<File name="Modules/PlanningRecovery.lua" part="program" sha1="5e15e53cfe85dfb68d4b5e51f1cf63c0b8068310" />
 	<File name="Modules/PlanningRevision.lua" part="program" sha1="f68afda18a3c9768fbc71a72c6dd67bfebfea316" />
-	<File name="Modules/PlanningUI.lua" part="program" sha1="e6cdc5dbfe4cd066168a050a9c230f2d9b27900f" />
+	<File name="Modules/PlanningUI.lua" part="program" sha1="f4f10357a5d0a04c8607b0afa438ec73dbf2a925" />
 	<File name="Modules/PlanningWorker.lua" part="program" sha1="cfa18e6b4626a7a834906bc0df0e992b386e68f2" />
 	<File name="Modules/PlanningWorkspace.lua" part="program" sha1="0abffbcd624ddd05ff60716bb054044474820cfa" />
 	<File name="Modules/RecoveryTasks.lua" part="program" sha1="99bdef734b4030782fda58f36e3863f0d25f50ac" />

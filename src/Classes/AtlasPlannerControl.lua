@@ -315,7 +315,7 @@ function Panel.Open(build,source,layout)
 			else controls.results:SetList({});controls.canvas.focus=nil;refresh() end
 		end
 		if recenter and list[1] then controls.results.selFunc(1,list[1]) end
-		controls.matchCount.label="^7"..#matches..(#matches==1 and " match" or " matches").." | costs show new points"
+		controls.matchCount.label="^7"..#matches..(#matches==1 and " match" or " matches")..(#matches>100 and " | list: Home/End" or " | costs show new points")
 	end
 	controls.find=button(side+188,96,72,"Go",function() findNodes(true) end)
 	controls.find.enabled=function() return not grantSteps and #controls.results.list>0 end

@@ -73,6 +73,9 @@ function M.selectable(control,keyOf,choose,activate)
 		local _,height=control:GetSize();local scroll=control.controls.scrollBar
 		if y<scroll.offset or y>scroll.offset+height-row.height-4 then scroll.offset=math.max(0,y-20) end
 	end
+	-- Keep an unmodified list navigator even when a view overrides arrow keys
+	-- for another action, such as Alt+arrow rule reordering.
+	control.planningJump=control.planningMove
 	control.planningSelect=select
 end
 local conditionLabels
@@ -205,6 +208,15 @@ function M.keyboard(host,events)
 	for i,event in pairs(events) do if event.type=="KeyDown" then
 		if (event.key=="UP" or event.key=="DOWN") and host.selControl and host.selControl.planningMove then
 			host.selControl.planningMove(event.key=="UP" and -1 or 1);event.type="PlanningHandled"
+		elseif host.selControl and host.selControl.planningJump and not IsKeyDown("ALT") and not IsKeyDown("CTRL") and not IsKeyDown("SHIFT") and (event.key=="HOME" or event.key=="END" or event.key=="PAGEUP" or event.key=="PAGEDOWN") then
+			local delta
+			if event.key=="HOME" then delta=-math.huge elseif event.key=="END" then delta=math.huge
+			else
+				local control=host.selControl;local _,height=control:GetSize();local line=control.list and control.list[1]
+				local step=math.max(1,math.floor((height-4)/math.max(1,line and line.height or 20)))
+				delta=event.key=="PAGEUP" and -step or step
+			end
+			host.selControl.planningJump(delta);event.type="PlanningHandled"
 		elseif event.key=="TAB" then
 			if host.selControl and host.selControl.dropped then host.selControl.dropped=false end
 			local order={};for key,control in pairs(host.controls) do if control.planningFocusable and control:IsShown() and control:IsEnabled() then order[#order+1]={key=key,control=control} end end
