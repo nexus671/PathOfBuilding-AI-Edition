@@ -1,6 +1,7 @@
 -- cspell:ignore RGBW RGBWA
 -- A deliberately bounded unique-item quality operation. It never edits a build.
 local M={}
+M.catalysts={"Abrasive","Accelerating","Dextral","Fertile","Imbued","Intrinsic","Noxious","Prismatic","Sinistral","Tempering","Turbulent","Unstable"}
 -- Partial item text can omit socket restrictions. Derive known restrictions
 -- from bundled unique data, including legacy variants, and keep hidden cases.
 local socketRestrictions={["Tabula Rasa"]="fixed",["Oni-Goroshi"]="fixed"}
@@ -39,7 +40,8 @@ local function alwaysCorrupted(title,baseName)
 	end
 	return matched
 end
-function M.guideAction(method,count,resource,corrupted,socketCount,enchantId)
+function M.guideAction(method,count,resource,corrupted,socketCount,enchantId,catalyst)
+	if method=="catalyst" then local name=M.catalysts[catalyst];if not name then return nil end;return "Use "..count.." "..name.." Catalyst"..(count==1 and "" or "s") end
 	if method=="bench_flask_enchant" then
 		local flask=require("Modules.CraftingFlaskEnchants");local cost=flask.benchCost(enchantId)
 		if not cost then return nil end
@@ -76,8 +78,8 @@ function M.guideAction(method,count,resource,corrupted,socketCount,enchantId)
 	end
 	if method=="socket_white_bench" then return "Use the crafting bench to make all sockets white (1 Orb of Scouring"..(corrupted and " and 1 Vaal Orb" or "")..")" end
 end
-function M.matchesGuideAction(method,count,resource,corrupted,action,socketCount,enchantId)
-	return action==M.guideAction(method,count,resource,corrupted,socketCount,enchantId) or method=="socket_white_bench" and action=="Use the crafting bench to make all sockets white"
+function M.matchesGuideAction(method,count,resource,corrupted,action,socketCount,enchantId,catalyst)
+	return action==M.guideAction(method,count,resource,corrupted,socketCount,enchantId,catalyst) or method=="socket_white_bench" and action=="Use the crafting bench to make all sockets white"
 end
 local function withoutQuality(raw)
 	local lines={};for line in (raw.."\n"):gmatch("([^\n]*)\n") do if not line:match("^Quality: ") then lines[#lines+1]=line end end
@@ -113,6 +115,23 @@ function M.inspect(raw)
 	local quality=jewellery and (item.catalystQuality or (item.catalyst and 20) or item.quality or 0) or (item.quality or 0);assert(type(quality)=="number" and quality>=0 and quality==math.floor(quality),"Invalid item quality")
 	return item,{quality=quality,qualitySupported=not jewellery,available=not jewellery and quality<20 and not item.corrupted,resource=not jewellery and (flask and "Glassblower's Bauble" or weapon and "Blacksmith's Whetstone" or "Armourer's Scrap") or nil,resourceKey=not jewellery and (flask and "Metadata/Items/Currency/CurrencyFlaskQuality" or weapon and "Metadata/Items/Currency/CurrencyWeaponQuality" or "Metadata/Items/Currency/CurrencyArmourQuality") or nil}
 end
+-- A guide only: the item and modifier values are not rewritten or simulated.
+local function catalystGuideForItem(raw,item,info,catalyst,target)
+	assert(item.type=="Ring" or item.type=="Amulet" or item.type=="Belt","Catalysts require a ring, amulet or belt")
+	assert(not item.corrupted,"Ordinary catalysts cannot modify a corrupted item")
+	assert(type(catalyst)=="number" and catalyst==math.floor(catalyst) and M.catalysts[catalyst],"Choose a catalyst type")
+	assert(type(target)=="number" and target==math.floor(target) and target>=1 and target<=20,"Choose a quality target from 1 to 20")
+	assert(not ("\n"..raw):find("\nCatalyst:",1,true) or item.catalyst,"The existing catalyst type could not be identified")
+	assert(info.quality==0 or item.catalyst,"The existing quality type could not be identified")
+	local start=item.catalyst==catalyst and info.quality or 0
+	assert(start<target,"The item already has at least that quality of this type")
+	local count=target-start
+	return {action=M.guideAction("catalyst",count,nil,nil,nil,nil,catalyst),stopWhen=target.."% "..M.catalysts[catalyst].." quality",uniqueCraft={method="catalyst",count=count,catalyst=catalyst},done=false}
+end
+function M.catalystGuide(raw,catalyst,target)
+	local item,info=M.inspect(raw);return catalystGuideForItem(raw,item,info,catalyst,target)
+end
+
 -- Imported armour lines are totals, which PoB uses to infer the base roll.
 -- Keep that inferred roll when an operation changes modifiers or quality;
 -- otherwise the old displayed total would be inferred again after the edit.
@@ -712,6 +731,14 @@ function M.catalog(raw,query,limit)
 		definitions[#definitions+1]={method="socket_bench",guideMethod="socket_count_bench",guideCount=count,request=request,label="Bench: "..count.." sockets",reason=M.socketCountReason(raw,count),components=sim.components(request,{sockets=item.sockets,corrupted=item.corrupted})}
 	end
 	local result={uniqueCrafting=true,methods={},uniqueActions={},socketCrafts={},quality={value=info.quality,available=info.available,resource=info.resource},nativeStats=require("Modules.CraftingItemStats").itemValues(item),limitations={"Only the listed unique actions are modeled. Continue by passing the returned item text, not an ordinary affix state.","Socket-count previews retain existing groups, remove sockets from the end and add white unlinked sockets; position and link behavior are unverified."}}
+	if item.type=="Ring" or item.type=="Amulet" or item.type=="Belt" then
+		result.catalystGuides={}
+		for id,name in ipairs(M.catalysts) do if #result.catalystGuides<limit and (name.." catalyst"):lower():find(query,1,true) then
+			local ok,step=pcall(catalystGuideForItem,raw,item,info,id,20)
+			result.catalystGuides[#result.catalystGuides+1]={catalyst=id,name=name.." Catalyst",targetQuality=20,guideOnly=true,available=ok,guideStep=ok and step or nil,unavailableReason=not ok and tostring(step):gsub("^.-:%d+: ","") or nil}
+		end end
+		result.limitations[#result.limitations+1]="Catalyst guides count currency only; modifier changes and item previews are not modeled."
+	end
 	if item.catalyst and info.quality>0 and not M.divineReason(raw) then result.limitations[#result.limitations+1]="Catalyst eligibility and scaling use bundled modifier tags and PoB rounding; tag completeness and current game behavior are unverified." end
 	local seen={}
 	for _,entry in ipairs(definitions) do

@@ -218,6 +218,8 @@ async function main(){
   const uniqueFlaskPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:uniqueUtility,recipe:{steps:[{method:'enkindling'}],targets:[],requirements:{flaskEnchant:uniqueFlaskCraft.nativeCrafting.flaskEnchant.id}},options:{trials:5,maxActions:1,seed:1}},'crafted');
   assert.equal(uniqueFlaskPlan.nativeCrafting.trials,5);
   const uniqueShield='Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\n+100 to maximum Life';
+  const uniqueRing=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:'Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86',query:'Prismatic',limit:20},'inspected');
+  const catalystGuide=uniqueRing.crafting.nativeEngine.catalystGuides.find(entry=>entry.name==='Prismatic Catalyst');assert.equal(catalystGuide.available,true);assert.equal(catalystGuide.guideOnly,true);assert.equal(catalystGuide.guideStep.uniqueCraft.count,20);assert.equal(catalystGuide.guideStep.uniqueCraft.catalyst,8);assert.match(uniqueRing.crafting.nativeEngine.limitations.join(' '),/modifier changes and item previews are not modeled/);
   const uniqueInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},limit:20},'inspected');
   assert.equal(uniqueInspection.crafting.nativeEngine.uniqueCrafting,true);
   assert.ok(uniqueInspection.crafting.nativeEngine.uniqueActions.some(entry=>entry.method==='omen_connections' && entry.available));

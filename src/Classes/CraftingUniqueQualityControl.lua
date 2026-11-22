@@ -25,7 +25,7 @@ function M.Open(build,project,layout,snapshot)
 	local c={};local cardX=310;local cardWidth=w-cardX-16
 	ui.label(c,"heading",16,18,"Unique crafting",22)
 	local utility=require("Modules.CraftingFlaskEnchants").eligible({item=item})
-	ui.description(c,"intro",16,56,270,68,{utility and "Preview flask crafts." or not info.qualitySupported and (item.corrupted and "This item is corrupted." or "Preview supported Divine Orb rolls.") or (item.type=="Flask" or item.type=="Tincture") and "Preview item quality." or "Preview quality and socket crafts.",utility and (item.corrupted and "Corrupted flasks cannot be enchanted." or "Enchant odds are experimental.") or not info.qualitySupported and (item.corrupted and "Divine Orbs cannot modify it." or "Catalyst crafting is not modeled.") or item.corrupted and ((item.type=="Flask" or item.type=="Tincture") and "Tainted quality is unavailable." or "Tainted quality rolls are estimated.") or "Quality currency adds 1%, up to 20%.",utility and "Keep target, then save the build." or "Keep the target, then save the build."},15)
+	ui.description(c,"intro",16,56,270,68,{utility and "Preview flask crafts." or not info.qualitySupported and (item.corrupted and "This item is corrupted." or "Preview supported Divine Orb rolls.") or (item.type=="Flask" or item.type=="Tincture") and "Preview item quality." or "Preview quality and socket crafts.",utility and (item.corrupted and "Corrupted flasks cannot be enchanted." or "Enchant odds are experimental.") or not info.qualitySupported and (item.corrupted and "Divine Orbs cannot modify it." or "Catalyst guides do not preview effects.") or item.corrupted and ((item.type=="Flask" or item.type=="Tincture") and "Tainted quality is unavailable." or "Tainted quality rolls are estimated.") or "Quality currency adds 1%, up to 20%.",utility and "Keep target, then save the build." or "Keep the target, then save the build."},15)
 	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM",{expanded=true})
 	local function button(key,y,label,run)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,y,270,32},label,function()
@@ -105,7 +105,7 @@ function M.Open(build,project,layout,snapshot)
 		colourReason=unique.colourReason(raw,item.corrupted and "tainted_chromatic" or "chromatic")
 		taintedQualityReason=item.corrupted and unique.taintedQualityReason(raw) or nil
 		divineReason=not item.corrupted and unique.divineReason(raw) or nil
-		c.status.label=not info.qualitySupported and "^7Catalyst quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or "Crafting not modeled") or "^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
+		c.status.label=not info.qualitySupported and "^7Catalyst quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or "Guide only") or "^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
 		c.apply.label=not info.qualitySupported and "Quality unavailable" or item.corrupted and (item.type=="Flask" or item.type=="Tincture") and "Quality unavailable" or item.corrupted and "Roll quality" or "Add quality"
 		c.apply.width=(not item.corrupted or not taintedQualityReason) and 130 or 270
 		if updateCurrency then updateCurrency() end
@@ -414,6 +414,27 @@ function M.Open(build,project,layout,snapshot)
 		main:OpenPopup(qw,qh,"Tainted quality target",controls,nil,nil,"close")
 	end)
 	c.qualityPlan.x=156;c.qualityPlan.width=130;c.qualityPlan.shown=function() return item.corrupted and not taintedQualityReason end
+	button("catalystPlan",198,"Catalyst guide",function()
+		local popup={};local pw,ph=540,250;local choices={}
+		for id,name in ipairs(unique.catalysts) do choices[#choices+1]={label=name.." Catalyst",val=id} end
+		ui.description(popup,"help",16,24,pw-32,52,{"Plan catalyst use from the project's starting item.","This adds a guide step; it does not preview changed modifiers."},14)
+		ui.label(popup,"typeLabel",16,92,"Catalyst",14);ui.label(popup,"targetLabel",340,92,"Target quality %",14)
+		popup.kind=new("DropDownControl"):DropDownControl(ui.anchor,{16,116,300,26},choices);popup.kind:SelByValue(item.catalyst or 4,"val")
+		popup.target=new("EditControl"):EditControl(ui.anchor,{340,116,120,26},"20",nil,"%D",2)
+		popup.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,ph-48,180,28},"Add guide step",function()
+			local ok,step=pcall(unique.catalystGuide,draft.startingItem,popup.kind:GetSelValueByKey("val"),tonumber(popup.target.buf))
+			if not ok then ui.errorPopup("Catalyst guide",step);return end
+			for _,existing in ipairs(draft.steps) do if not existing.done and existing.uniqueCraft and existing.uniqueCraft.method=="catalyst" then ui.errorPopup("Catalyst guide","Review or complete the existing catalyst step before adding another.");return end end
+			local updated=copyTable(draft);updated.steps[#updated.steps+1]=step;draft=build.savers.CraftingProjects:Upsert(updated)
+			main:ClosePopup();refresh(true);c.notice.label="^7Guide step added. Save the build."
+		end)
+		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{pw-132,ph-48,116,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(popup,{keep=true});for _,control in pairs(popup) do control.layoutAudit="unique-catalyst-guide" end;main:OpenPopup(pw,ph,"Catalyst guide",popup,nil,nil,"close")
+	end)
+	c.catalystPlan.width=130;c.catalystPlan.shown=function() return item.type=="Ring" or item.type=="Amulet" or item.type=="Belt" end
+	c.catalystPlan.enabled=function() return not item.corrupted and raw==draft.startingItem end
+	c.catalystPlan.tooltipText=function() return item.corrupted and "Ordinary catalysts cannot modify corrupted jewellery." or raw~=draft.startingItem and "Start a fresh preview before planning from the starting item." or "Add a catalyst resource step without changing the item preview." end
+	local qualityShown=c.apply.shown;c.apply.shown=function() return info.qualitySupported and (type(qualityShown)~="function" or qualityShown()) end
 	button("divine",198,"Divine Orb",function()
 		local controls={};local dw,dh=500,340
 		ui.description(controls,"help",16,25,dw-32,50,{"Preview a roll or plan a stat or modifier target.","Modifier-value probabilities are estimates."},14)
@@ -819,7 +840,7 @@ function M.Open(build,project,layout,snapshot)
 		for _,key in ipairs({"socketCount","omenJeweller","link","omen","benchLink","white"}) do c[key].shown=false end
 		c.status.y=130;c.apply.y=150;c.divine.y=150;c.undo.y=188;c.redo.y=188;c.keep.y=226;c.guide.y=226
 		c.loadTarget.y=264;c.recipe.y=264;c.notice.y=302;c.currency.y=330;c.currencyNote.y=332;c.reviewGuide.y=330
-		if compactJewellery then c.apply.shown=false;c.divine.x=16;c.divine.width=270 end
+		if compactJewellery then c.apply.shown=false;c.catalystPlan.y=150;c.divine.x=156;c.divine.width=130 end
 		if require("Modules.CraftingFlaskEnchants").eligible({item=item}) then
 			c.undo.y=226;c.redo.y=226;c.keep.y=264;c.guide.y=264;c.loadTarget.y=302;c.recipe.y=302;c.notice.y=340;c.currency.y=368;c.currencyNote.y=370;c.reviewGuide.y=368
 		end

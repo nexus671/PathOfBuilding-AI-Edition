@@ -2278,6 +2278,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		main.popups={}
 	end
 	dofile("../tools/test_unique_count_ui.lua")(build,ui,frame)
+	dofile("../tools/test_unique_catalyst_ui.lua")(build,ui,frame)
 	do
 		local saved;require("Classes.CraftingTargetControl").Open({},{exactSockets=3},nil,function(_,value) saved=value end)
 		assert(main.popups[1].controls.socketMode:GetSelValue()=="Exactly","Exact socket target did not reopen")

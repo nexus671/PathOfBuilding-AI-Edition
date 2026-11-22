@@ -3,6 +3,22 @@ describe("Unique item quality",function()
 	local shield="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\nImplicits: 1\n+5% Chance to Block Attack Damage\n+100 to maximum Life\n+1500 to Armour"
 	local weapon="Rarity: UNIQUE\nThe Saviour\nLegion Sword\nItem Level: 86\nQuality: 0\nSockets: R-G-B\n+100% increased Physical Damage"
 	before_each(function() newBuild() end)
+	it("plans catalysts for unique jewellery and keeps its resource pickup",function()
+		local raw="Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86\nImplicits: 1\nHas 1 Socket\n+3 to Level of Socketed Curse Gems\n+25% to Cold Resistance\n+25% to Lightning Resistance\nLeft Ring Slot: Your Chilling Skitterbot's Aura applies Socketed Hex Curse instead\nRight Ring Slot: Your Shocking Skitterbot's Aura applies Socketed Hex Curse instead"
+		local partial=raw:gsub("Item Level: 86","Item Level: 86\nCatalyst: Prismatic\nCatalystQuality: 5")
+		assert.equal(15,quality.catalystGuide(partial,8,20).uniqueCraft.count);assert.equal(20,quality.catalystGuide(partial,4,20).uniqueCraft.count)
+		local catalog=quality.catalog(partial,"Prismatic",10);assert.equal(1,#catalog.catalystGuides);assert.is_true(catalog.catalystGuides[1].guideOnly);assert.equal(15,catalog.catalystGuides[1].guideStep.uniqueCraft.count)
+		assert.has_error(function() quality.catalystGuide(partial,8,5) end);assert.has_error(function() quality.catalystGuide(raw.."\nCorrupted",8,20) end)
+		assert.has_error(function() quality.catalystGuide(raw:gsub("Item Level: 86","Item Level: 86\nCatalyst: Unknown\nCatalystQuality: 5"),8,20) end)
+		local project={id="unique-catalyst-guide",title="Ring",slot="Ring 1",startingItem=raw,goals={},steps={}};build.savers.CraftingProjects:Upsert(project)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project);assert.is_true(control.catalystPlan:IsEnabled());control.catalystPlan:Click()
+		local popup=main.popups[1].controls;popup.kind:SelByValue(8,"val");popup.keep:Click();local saved=build.savers.CraftingProjects.projects[1]
+		assert.equal("Use 20 Prismatic Catalysts",saved.steps[1].action);assert.equal(8,saved.steps[1].uniqueCraft.catalyst);assert.is_nil(saved.targetItem)
+		local filters=require("Modules.LootFilters");local rules=filters.generate(build,filters.profile("catalyst-pickup","Catalyst"));local found=false
+		for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id and rule.title=="Prismatic Catalyst" then found=true end end;assert.is_true(found)
+		local xml=build:SaveDB("Catalyst guide");loadBuildFromXML(xml,"Catalyst guide");saved=build.savers.CraftingProjects.projects[1];assert.equal(8,saved.steps[1].uniqueCraft.catalyst);assert.equal(20,saved.steps[1].uniqueCraft.count)
+		main.popups={}
+	end)
 	it("totals recorded unique preview ingredients and rejects incomplete histories",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B"
 		local first=quality.apply(raw).itemText;local second=quality.apply(first).itemText

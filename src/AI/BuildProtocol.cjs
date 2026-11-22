@@ -61,6 +61,7 @@ const craftingRecipe=object({rarity:{enum:['MAGIC','RARE','UNIQUE']},steps:{type
 const craftingPriceBook=object({currency:string(24),source:string(240),quotedAt:integer(0,4102444800),values:{type:'object',maxProperties:2000,additionalProperties:number(0,1e12)}},['currency','source','quotedAt','values']);
 const uniqueCraftStep={oneOf:[
   object({method:{const:'quality'},count:integer(1,20)},['method','count']),
+  object({method:{const:'catalyst'},count:integer(1,20),catalyst:integer(1,12)},['method','count','catalyst']),
   object({method:{const:'bench_flask_enchant'},count:{const:1},enchantId:string(160)},['method','count','enchantId']),
   object({method:{enum:['instilling','enkindling','divine','tainted_quality','jeweller','tainted_jeweller','beast_max_links','omen_connections','omen_jeweller','fusing','tainted_fusing','chromatic','tainted_chromatic','omen_trichromatism','socket_white_bench','socket_bench']},count:{const:1}},['method','count']),
   object({method:{const:'socket_count_bench'},count:integer(2,6)},['method','count']),
