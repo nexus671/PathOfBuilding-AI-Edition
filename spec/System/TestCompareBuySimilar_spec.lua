@@ -266,7 +266,7 @@ Implicits: 0]])
 		end)
 
 		it("trims whitespace after a unique name", function()
-			assert.equal("The Hateful Accuser", getUniqueQuery("The Hateful Accuser ", "Ghastly Eye Jewel").name)
+			assert.equal("The Hateful Accuser", getUniqueQuery("The Hateful Accuser ", "Nameless Ring").name)
 		end)
 
 		it("persists league choices by name for each realm", function()
