@@ -41,7 +41,7 @@ function M.report(build,profile,checkpoint)
 	end
 	local revision=require("Modules.PlanningRevision");local stamp=revision.stamp(build);local skills=skillInputs(build);local cached=generated[build]
 	if not cached or not revision.same(cached.stamp,stamp) or cached.skills~=skills then cached={stamp=stamp,skills=skills,profiles={}};generated[build]=cached end
-	local key=profile.preset..":"..profile.theme;local new=cached.profiles[key]
+	local key=profile.preset..":"..profile.theme..":"..stable.encode(profile.manualGuideReviews or {});local new=cached.profiles[key]
 	if new and new.rulesKey and new.rulesKey~=stable.encode(profile.rules) then new=nil end
 	if not new then
 		local start=os.clock();local rules,warnings=filters.generate(build,profile,checkpoint);new={groups=collect(rules),warnings=warnings or {}}
@@ -64,8 +64,8 @@ function M.report(build,profile,checkpoint)
 		if before then result.linked=result.linked+#before.rules end
 		if status~="Current" then result.stale=true end
 		local lines={status,"Source: "..M.sourceLabel(build,origin),"Refreshing replaces generated pickups and preserves personal overrides.","Existing pickups: "..table.concat(before and before.rules or {},", "),"Current targets: "..table.concat(after and after.rules or {},", ")}
-		local openGuide=false;for _,warning in ipairs(warnings or {}) do lines[#lines+1]=warning.message;openGuide=openGuide or warning.openGuide==true end
-		result.entries[#result.entries+1]={id=origin,label=(after and after.rules[1] or before and before.rules[1] or warnings[1].title).." | "..status,category=status,details=lines,origin=origin,status=status,openGuide=openGuide}
+		local openGuide,manualGuideSignature=false,nil;for _,warning in ipairs(warnings or {}) do lines[#lines+1]=warning.message;openGuide=openGuide or warning.openGuide==true;manualGuideSignature=manualGuideSignature or warning.manualGuideSignature end
+		result.entries[#result.entries+1]={id=origin,label=(after and after.rules[1] or before and before.rules[1] or warnings[1].title).." | "..status,category=status,details=lines,origin=origin,status=status,openGuide=openGuide,manualGuideSignature=manualGuideSignature}
 	end
 	-- Legacy profiles with linked rules were already tracking; new manual profiles are not.
 	local tracking=profile.trackBuildPickups~=false and (profile.trackBuildPickups==true or result.linked>0)
@@ -75,7 +75,7 @@ function M.report(build,profile,checkpoint)
 end
 local function begin(build,profile,generate)
 	local revision=require("Modules.PlanningRevision")
-	local job={build=build,profile=profile,stamp=revision.stamp(build),skills=skillInputs(build),profileKey=stable.encode({preset=profile.preset,theme=profile.theme,rules=profile.rules,trackBuildPickups=profile.trackBuildPickups}),generate=generate}
+	local job={build=build,profile=profile,stamp=revision.stamp(build),skills=skillInputs(build),profileKey=stable.encode({preset=profile.preset,theme=profile.theme,rules=profile.rules,trackBuildPickups=profile.trackBuildPickups,manualGuideReviews=profile.manualGuideReviews}),generate=generate}
 	local captured=copyTable(profile)
 	job.thread=coroutine.create(function()
 		local checkpoint=function() coroutine.yield() end
@@ -89,7 +89,7 @@ function M.beginGenerate(build,profile) return begin(build,profile,true) end
 function M.current(job)
 	local revision=require("Modules.PlanningRevision")
 	return revision.same(job.stamp,revision.stamp(job.build)) and job.skills==skillInputs(job.build)
-		and job.profileKey==stable.encode({preset=job.profile.preset,theme=job.profile.theme,rules=job.profile.rules,trackBuildPickups=job.profile.trackBuildPickups})
+		and job.profileKey==stable.encode({preset=job.profile.preset,theme=job.profile.theme,rules=job.profile.rules,trackBuildPickups=job.profile.trackBuildPickups,manualGuideReviews=job.profile.manualGuideReviews})
 end
 function M.poll(job)
 	if not M.current(job) then return true,nil,"changed" end

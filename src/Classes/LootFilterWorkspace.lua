@@ -115,6 +115,14 @@ function M.Open(build,source,layout,controller)
 		local ok,reason=require("Modules.LootFilterDependencies").open(build,layout,origin,openGuide)
 		if not ok then ui.errorPopup("Linked source",reason) end
 	end
+	local function acknowledgeGuide(entry)
+		local id=entry.origin and entry.origin:match("^craft:(.+)$");local project
+		for _,candidate in ipairs(build.savers.CraftingProjects.projects) do if candidate.id==id then project=candidate;break end end
+		if not project or filters.manualGuideSignature(build,project)~=entry.manualGuideSignature then ui.errorPopup("Review build pickups","The guide or budget changed. Refresh build pickups and review it again.");return end
+		local reviews={};for _,review in ipairs(profile.manualGuideReviews or {}) do if review.projectId~=id then reviews[#reviews+1]=review end end
+		reviews[#reviews+1]={projectId=id,signature=entry.manualGuideSignature};profile.manualGuideReviews=reviews
+		dependencies=nil;dependencyJob=nil;dependencyTime=nil;draft();reopen()
+	end
 	local function targetPreview()
 		local state=transient.filterSceneTargets;local dependency=require("Modules.LootFilterDependencies")
 		if state and (state.job.profile~=profile or not dependency.current(state.job)) then state=nil;transient.filterSceneTargets=nil end
@@ -144,8 +152,9 @@ function M.Open(build,source,layout,controller)
 		end
 		profile.rules=result.rules;profile.trackBuildPickups=true;draft();reopen()
 		if #result.warnings>0 then
-			local entries={};for _,warning in ipairs(result.warnings) do entries[#entries+1]={id=warning.origin,origin=warning.origin,openGuide=warning.openGuide,label=warning.title,details={warning.message}} end
-			require("Classes.PlanningBrowserControl").Open("Review build pickups",entries,{action="Open source",canChoose=function(entry) return type(entry.origin)=="string" and entry.origin~="" end,choose=function(entry) main:ClosePopup();openSource(entry.origin,entry.openGuide) end,closeOnChoose=false})
+			local entries={};for _,warning in ipairs(result.warnings) do entries[#entries+1]={id=warning.origin,origin=warning.origin,openGuide=warning.openGuide,manualGuideSignature=warning.manualGuideSignature,label=warning.title,details={warning.message}} end
+			require("Classes.PlanningBrowserControl").Open("Review build pickups",entries,{action="Open source",canChoose=function(entry) return type(entry.origin)=="string" and entry.origin~="" end,choose=function(entry) main:ClosePopup();openSource(entry.origin,entry.openGuide) end,closeOnChoose=false,
+				secondary={label="Mark guide reviewed",canRun=function(entry) return entry.manualGuideSignature~=nil end,run=function(entry) main:ClosePopup();acknowledgeGuide(entry) end}})
 		end
 	end
 	local function generatePickups()

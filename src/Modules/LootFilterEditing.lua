@@ -203,6 +203,7 @@ function M.review(before,after)
 		local previous=old[p.id];old[p.id]=nil
 		if not previous then
 			local lines={"New profile", "Preset: "..p.preset.." | Strictness: "..p.strictness.." | Mode: "..p.mode, "Build pickup notices: "..tracking(p.trackBuildPickups)}
+			for _,review in ipairs(p.manualGuideReviews or {}) do lines[#lines+1]="Reviewed crafting guide: "..review.projectId end
 			if p.template then lines[#lines+1]="Imported base filter: "..#p.template.." bytes" end
 			for _,file in ipairs(p.importFiles or {}) do lines[#lines+1]="Included file: "..file.name.." ("..#file.text.." bytes)" end
 			for _,rule in ipairs(p.rules) do lines[#lines+1]=(rule.enabled~=false and "Enabled: " or "Disabled: ")..rule.title;lines[#lines+1]=rule.text end
@@ -215,6 +216,9 @@ function M.review(before,after)
 			if previous.preset~=p.preset then lines[#lines+1]="Preset: "..previous.preset.." -> "..p.preset end
 			if previous.theme~=p.theme then lines[#lines+1]="Theme: "..tostring(previous.theme or "default").." -> "..tostring(p.theme or "default") end
 			if previous.trackBuildPickups~=p.trackBuildPickups then lines[#lines+1]="Build pickup notices: "..tracking(previous.trackBuildPickups).." -> "..tracking(p.trackBuildPickups) end
+			local reviews={};for _,review in ipairs(previous.manualGuideReviews or {}) do reviews[review.projectId]=review.signature end
+			for _,review in ipairs(p.manualGuideReviews or {}) do local prior=reviews[review.projectId];reviews[review.projectId]=nil;if prior~=review.signature then lines[#lines+1]=(prior and "Updated reviewed crafting guide: " or "Reviewed crafting guide: ")..review.projectId end end
+			for id in pairsSortByKey(reviews) do lines[#lines+1]="Removed guide review: "..id end
 			local included={};for _,file in ipairs(previous.importFiles or {}) do included[file.name]=file end
 			for _,file in ipairs(p.importFiles or {}) do
 				local prior=included[file.name];included[file.name]=nil

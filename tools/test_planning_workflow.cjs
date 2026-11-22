@@ -485,7 +485,9 @@ async function main(){
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:ringGuide},'review');await host('apply');context=(await call('get_build_context')).context;
   const ringGuideSaved=(await call('get_crafting_projects')).projects.find(entry=>entry.id===ringGuide.id);assert.equal(ringGuideSaved.steps[0].action,ringGuide.steps[0].action);assert.equal(ringGuideSaved.steps[0].uniqueCraft,undefined);
   const ringGuideFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'ring-guide-filter',title:'Ring guide pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');assert.ok(!ringGuideFilter.profile.rules.some(rule=>rule.origin==='craft:'+ringGuide.id && rule.title==="Armourer's Scrap"));
-  assert.ok(ringGuideFilter.warnings.some(warning=>warning.origin==='craft:'+ringGuide.id && warning.message.includes('Written guide steps')));
+  const ringGuideWarning=ringGuideFilter.warnings.find(warning=>warning.origin==='craft:'+ringGuide.id && warning.message.includes('Written guide steps'));assert.ok(ringGuideWarning);
+  const reviewedRingProfile={...ringGuideFilter.profile,manualGuideReviews:[{projectId:ringGuide.id,signature:ringGuideWarning.manualGuideSignature}]};
+  const reviewedRingFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:reviewedRingProfile},'generated');assert.ok(!reviewedRingFilter.warnings.some(warning=>warning.origin==='craft:'+ringGuide.id && warning.message.includes('Written guide steps')));
   await queued('propose_build',{mode:'edit',title:'Remove unsupported ring guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:ringGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
   const ringInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ringUniqueRaw,query:'divine',limit:10},'inspected');
   const ringOption=ringInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='divine');assert.equal(ringOption.available,true,JSON.stringify(ringOption));

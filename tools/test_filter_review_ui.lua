@@ -37,6 +37,7 @@ for _,kind in ipairs({"atlas","budget"}) do
 	local profile=require("Modules.LootFilters").profile("source-ui","Source test");build.savers.LootFilters:Upsert(profile);build.planningWorkspace=require("Modules.PlanningWorkspace").new(build);build.viewMode="PLANNER";build.planningWorkspace:Show("filters")
 	ui:click("generate");for i=1,2000 do ui:frame();if main.popups[1] and main.popups[1].title=="Review build pickups" then break end end
 	assert(main.popups[1] and main.popups[1].title=="Review build pickups",kind.." notice did not open")
+	assert(not main.popups[1].controls.secondary:IsEnabled(),"An unrelated notice offered guide acknowledgment")
 	ui:click("choose");assert(build.planningWorkspace.page==(kind=="atlas" and "atlas" or "journey"),kind.." notice opened the wrong source")
 end
 do
@@ -50,5 +51,20 @@ do
 	assert(main.popups[1] and main.popups[1].title=="Review build pickups");ui:click("choose")
 	ui:click("tab_item");ui:click("native");local after=workspace.cache.crafting.layout.snapshot().state
 	assert(tableDeepEquals(before,after) and tableDeepEquals(after,before),"Opening the guide discarded the working craft")
+end
+do
+	newBuild();main.popups={};local ui=UI.install({width=960,height=640});ui:bind(build)
+	local project={id="review-guide",title="Helmet guide",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={{action="Use a rare currency"}}};build.savers.CraftingProjects:Upsert(project)
+	local filters=require("Modules.LootFilters");local profile=filters.profile("review-guide-filter","Filter");build.savers.LootFilters:Upsert(profile)
+	build.planningWorkspace=require("Modules.PlanningWorkspace").new(build);build.viewMode="PLANNER";build.planningWorkspace:Show("filters");ui:click("generate")
+	for _=1,2000 do ui:frame();if main.popups[1] and main.popups[1].title=="Review build pickups" then break end end
+	assert(main.popups[1] and main.popups[1].title=="Review build pickups" and main.popups[1].controls.secondary:IsEnabled(),"Guide review action is unavailable")
+	if output then ui:frame():write(output.."/960-filter-guide-review.json") end
+	ui:click("secondary");local snapshot=build.planningWorkspace.cache.filters.layout.snapshot();local draft=snapshot.data.profiles[1]
+	assert(snapshot.dirty and draft.manualGuideReviews and #draft.manualGuideReviews==1,"Review was not kept in the filter draft")
+	local _,warnings=filters.generate(build,draft);for _,warning in ipairs(warnings) do assert(warning.origin~="craft:review-guide","Reviewed guide still warns") end
+	ui:click("keep");local xml=build:SaveDB("Reviewed guide UI");loadBuildFromXML(xml,"Reviewed guide UI");local kept=build.savers.LootFilters.data.profiles[1]
+	assert(kept.manualGuideReviews and #kept.manualGuideReviews==1,"Guide review did not survive save and reopen")
+	_,warnings=filters.generate(build,kept);for _,warning in ipairs(warnings) do assert(warning.origin~="craft:review-guide","Reopened guide unexpectedly warns") end
 end
 print("FILTER_REVIEW_UI_OK")

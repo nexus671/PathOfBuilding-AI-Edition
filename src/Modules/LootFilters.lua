@@ -55,6 +55,9 @@ function M.empty() return {schemaVersion=1,activeId="",profiles={}} end
 function M.profile(id,title,preset)
 	return {id=id,title=title,preset=preset or "early_maps",strictness=preset=="campaign" and 1 or preset=="endgame" and 4 or 2,theme="default",mode="Normal",baseCommit=M.source().commit,rules={}}
 end
+function M.manualGuideSignature(build,project)
+	return require("Modules.PlanningData").hash({startingItem=project.startingItem,targetItem=project.targetItem,goals=project.goals,notes=project.notes,steps=project.steps,simulatorExport=project.simulatorExport,recipe=project.nativeRecipe,alternatives=project.recipeAlternatives,resources=build.savers.BuildJourney.data.resources})
+end
 function M.validate(data)
 	assert(type(data)=="table" and data.schemaVersion==1,"Unsupported loot-filter data")
 	local result=M.empty();result.activeId=text(data.activeId or "",64,"active filter");local ids={}
@@ -66,6 +69,13 @@ function M.validate(data)
 		assert(entry.theme=="default" or entry.theme=="contrast","Unknown filter theme")
 		assert(entry.mode=="Normal" or entry.mode=="Ruthless","Unknown filter mode")
 		if p.trackBuildPickups~=nil then assert(type(p.trackBuildPickups)=="boolean","Invalid build pickup tracking setting");entry.trackBuildPickups=p.trackBuildPickups end
+		if p.manualGuideReviews~=nil then
+			entry.manualGuideReviews={};local seen={}
+			for _,review in ipairs(array(p.manualGuideReviews)) do
+				assert(type(review)=="table" and type(review.projectId)=="string" and #review.projectId<=64 and review.projectId:match("^[%w_-]+$") and not seen[review.projectId] and type(review.signature)=="string" and #review.signature==40 and review.signature:match("^[0-9a-f]+$"),"Invalid reviewed crafting guide")
+				seen[review.projectId]=true;entry.manualGuideReviews[#entry.manualGuideReviews+1]={projectId=review.projectId,signature=review.signature}
+			end
+		end
 		if p.appearance~=nil then
 			entry.appearance=require("Modules.LootFilterAppearanceSettings").validate(p.appearance)
 		end
@@ -119,6 +129,7 @@ local function linkedRecipes(project)
 end
 function M.generate(build,profile,checkpoint)
 	local result={};local used={};local ids={};local warnings={};local recipeModels={}
+	local manualReviewed={};for _,review in ipairs(profile.manualGuideReviews or {}) do manualReviewed[review.projectId]=review.signature end
 	local sliceStart=os.clock()
 	local function checkpointIfNeeded()
 		if checkpoint and os.clock()-sliceStart>=0.008 then checkpoint();sliceStart=os.clock() end
@@ -419,7 +430,10 @@ function M.generate(build,profile,checkpoint)
 	-- free text: an edited guide may no longer describe the original craft.
 	for _,project in ipairs(build.savers.CraftingProjects.projects) do
 		local tagged,manual=false,false;for _,step in ipairs(project.steps or {}) do if step.uniqueCraft then tagged=true elseif not step.done then manual=true end end
-		if manual then warnings[#warnings+1]={origin="craft:"..project.id,title=project.title,message="Written guide steps do not add currency pickups automatically. Check the saved recipe or add needed currencies to your budget.",openGuide=true} end
+		if manual then
+			local signature=M.manualGuideSignature(build,project)
+			if manualReviewed[project.id]~=signature then warnings[#warnings+1]={origin="craft:"..project.id,title=project.title,message="Written guide steps do not add currency pickups automatically. Check the saved recipe or add needed currencies to your budget.",openGuide=true,manualGuideSignature=signature} end
+		end
 		local ok,item,info=false,nil,nil
 		if tagged then local inspected,parsed,details=pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem);ok,item,info=inspected,parsed,details end
 		local uniqueSocketCount=ok and #item.sockets or nil
