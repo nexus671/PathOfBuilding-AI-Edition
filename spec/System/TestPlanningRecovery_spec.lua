@@ -172,6 +172,13 @@ describe("Local planning draft recovery",function()
 		assert.equal(2,#steps);assert.equal("Use 1 Armourer's Scrap",steps[1].action);assert.equal("Use 1 Armourer's Scrap",steps[2].action)
 		main.popups={}
 	end)
+	it("recovers unique catalyst previews and their resource history",function()
+		local raw="Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86\nImplicits: 1\nHas 1 Socket\n+3 to Level of Socketed Curse Gems\n+25% to Cold Resistance\n+25% to Lightning Resistance\nLeft Ring Slot: Your Chilling Skitterbot's Aura applies Socketed Hex Curse instead\nRight Ring Slot: Your Shocking Skitterbot's Aura applies Socketed Hex Curse instead"
+		local project={id="catalyst-recovery",title="Ring",slot="Ring 1",startingItem=raw,goals={},steps={}};build.savers.CraftingProjects:Upsert(project)
+		local c=require("Classes.CraftingUniqueQualityControl").Open(build,project);c.catalystPlan:Click();local popup=main.popups[1].controls;popup.kind:SelByValue(8,"val");popup.preview:Click();c.close:Click()
+		local saved=recovery.load(build,"uniqueQuality",project.id).entry.plan;assert.equal("catalyst:8:20",saved.actions[1]);c=require("Classes.CraftingUniqueQualityControl").Open(build,project,nil,saved)
+		c.undo:Click();assert.is_true(c.redo:IsEnabled());c.redo:Click();c.resources:Click();local text="";for _,row in ipairs(main.popups[1].controls.results.list) do text=text..StripEscapes(row[1] or "") end;assert.matches("Prismatic Catalyst: 20",text,1,true);main.popups={}
+	end)
 	it("preserves unique redo history across recovery",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
 		local project={id="unique-redo-recovery",title="Redo",slot="Helmet",startingItem=raw,goals={},steps={}}

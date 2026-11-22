@@ -126,7 +126,7 @@ local function catalystGuideForItem(raw,item,info,catalyst,target)
 	local start=item.catalyst==catalyst and info.quality or 0
 	assert(start<target,"The item already has at least that quality of this type")
 	local count=target-start
-	local warning="Check that this catalyst affects the intended modifiers; effects are not previewed."
+	local warning="Check that this catalyst affects the intended modifiers; tagged previews may be incomplete."
 	if catalyst==3 or catalyst==9 then warning=warning.." Prefix/suffix catalysts may not affect fixed unique modifiers." end
 	return {action=M.guideAction("catalyst",count,nil,nil,nil,nil,catalyst),stopWhen=target.."% "..M.catalysts[catalyst].." quality. "..warning,uniqueCraft={method="catalyst",count=count,catalyst=catalyst},done=false}
 end
@@ -296,7 +296,7 @@ local function divinePlanForReference(raw,item,reference)
 		end
 		pattern[#pattern+1]="$";expected[#expected+1]={line=text,ranges=ranges,pattern=table.concat(pattern),scalar=scalar,profile=profile,fixed=fixed,tags=line.modTags}
 	end end
-	local rows,seen={},{}
+	local rows,seen,matchedLines={},{},{}
 	for _,line in ipairs(item.explicitModLines or {}) do
 		if line.disabled or line.custom or line.crafted or line.fractured or line.mutated or line.scourge or line.crucible or line.unscalable then return nil,"Special modifier lines need a separate Divine model" end
 		local text=line.line;local match,matchedValues
@@ -326,6 +326,7 @@ local function divinePlanForReference(raw,item,reference)
 		end end
 		if not match then return nil,"Use complete modifiers matching the bundled unique template" end
 		match.used=true
+		matchedLines[#matchedLines+1]={text=text,tags=copyTable(match.tags or {})}
 		if #match.ranges>0 then
 			local source,count=nil,0
 			for rawLine in raw:gmatch("[^\r\n]+") do
@@ -346,7 +347,7 @@ local function divinePlanForReference(raw,item,reference)
 	end
 	for _,row in ipairs(expected) do if not row.used then return nil,"Use complete modifiers matching the bundled unique template" end end
 	if #rows==0 then return nil,"No supported variable explicit modifiers were found" end
-	return {item=item,rows=rows}
+	return {item=item,rows=rows,matchedLines=matchedLines}
 end
 local function divinePlan(raw)
 	local ok,item=pcall(M.inspect,raw);if not ok then return nil,tostring(item) end
@@ -422,6 +423,81 @@ function M.divine(raw,seed)
 	local after=M.inspect(output);assert(after.title==plan.item.title and after.baseName==plan.item.baseName and not after.corrupted,"Unique item did not round-trip after Divine crafting")
 	local catalystModeled=plan.item.catalyst and (plan.item.catalystQuality or 20)>0 or nil
 	return {itemText=output,components={divine=1},catalystModeled=catalystModeled}
+end
+
+-- Apply catalyst quality only when the original base values and tags can be
+-- reconstructed without choosing among possible rolls. Existing scaled copies
+-- need a separate inverse-rounding model.
+function M.catalystPreview(raw,catalyst,target)
+	local guide=M.catalystGuide(raw,catalyst,target)
+	local item,info=M.inspect(raw)
+	if info.quality>0 then
+		for _,line in ipairs(item.explicitModLines or {}) do
+			assert(not line.line:find("%d") or #(line.modTags or {})>0,"Copied catalyst-scaled modifiers need explicit unscaled values and tags")
+		end
+	end
+	assert(catalyst~=3 and catalyst~=9,"Prefix/suffix catalyst previews need a separate modifier-side model")
+	assert(not item.synthesised and not item.fractured and not item.foulborn,"Special jewellery needs a separate catalyst model")
+	assert(#(item.modMagnitudeMods or {})==0,"Modifier magnitude changes need a separate catalyst model")
+	local plan,reason=divinePlan(raw);assert(plan,reason)
+	local replacements,used={},{}
+	local function add(text,tags,allowSocket)
+		assert(type(text)=="string" and not used[text],"Repeated modifier lines need a separate catalyst model")
+		used[text]=true
+		if text:find("%d") and #tags==0 and not (allowSocket and text:match("^Has %d+ Sockets?$")) then error("A numeric modifier has no verified catalyst tags") end
+		if #tags>0 then replacements[text]=tags end
+	end
+	for _,row in ipairs(plan.matchedLines or {}) do add(row.text,row.tags,false) end
+	local templates={};for line in (item.base.implicit or ""):gmatch("[^\r\n]+") do templates[#templates+1]=line end
+	assert(#templates==#(item.implicitModLines or {}),"The original base implicits could not be verified")
+	local infer=require("Modules.CraftingImport").inferRange
+	for index,line in ipairs(item.implicitModLines or {}) do
+		assert(not line.disabled and not line.custom and not line.corrupted,"Special implicit modifiers need a separate catalyst model")
+		local shown=itemLib.applyRange(line.line,line.range or 0.5)
+		assert(infer(templates[index],shown),"An implicit modifier does not match the base item")
+		local tags=copyTable((item.base.implicitModTypes or {})[index] or {})
+		if info.quality>0 and #tags>0 and line.line:find("%d") then assert(line.modTags and #line.modTags>0,"Copied catalyst-scaled implicits need explicit unscaled values and tags") end
+		assert(not line.modTags or #line.modTags==0 or tableDeepEquals(line.modTags,tags),"An implicit modifier has conflicting tags")
+		add(line.line,tags,true)
+	end
+	local changed={};local output=raw:gsub("[^\r\n]+",function(source)
+		local plain=source;while plain:match("^%b{}") do plain=plain:gsub("^%b{}","") end
+		plain=plain:gsub(" %(implicit%)$","")
+		local tags=replacements[plain]
+		if tags then
+			assert(not changed[plain],"A modifier line appears more than once")
+			changed[plain]=true;source=source:gsub("%{tags:[^}]*%}","")
+			return "{tags:"..table.concat(tags,",").."}"..source
+		end
+		return source
+	end)
+	for text in pairs(replacements) do assert(changed[text],"A modifier line could not be reconstructed safely") end
+	local newline=raw:find("\r\n",1,true) and "\r\n" or "\n"
+	local padded="\n"..output;local count
+	padded,count=padded:gsub("\nCatalyst:[^\r\n]*","");assert(count<=1,"Multiple catalyst types are not supported")
+	padded,count=padded:gsub("\nCatalystQuality:[^\r\n]*","");assert(count<=1,"Multiple catalyst qualities are not supported")
+	local _,levels=padded:gsub("\nItem Level:[^\r\n]*","");assert(levels==1,"Exactly one explicit item level is required for catalyst preview")
+	local prefix="Catalyst: "..M.catalysts[catalyst]..newline.."CatalystQuality: "
+	local function qualityText(value)
+		local result,n=padded:gsub("(\nItem Level:[^\r\n]*)(\r?\n)",function(line,ending) return line..ending..prefix..value..ending end,1)
+		assert(n==1,"An explicit item level is required for catalyst preview");return result:sub(2)
+	end
+	local neutral=M.inspect(qualityText(0))
+	local originalNeutral=item
+	if info.quality>0 then
+		local old="\n"..raw;local changed
+		old,changed=old:gsub("\nCatalystQuality:[^\r\n]*","\nCatalystQuality: 0")
+		if changed==0 then old,changed=old:gsub("(\nCatalyst:[^\r\n]*)(\r?\n)",function(line,ending) return line..ending.."CatalystQuality: 0"..ending end,1) end
+		assert(changed==1,"The original catalyst quality could not be normalized")
+		originalNeutral=M.inspect(old:sub(2))
+	end
+	assert(#originalNeutral.baseModList==#neutral.baseModList,"Modifier parsing changed while adding catalyst tags")
+	for index,mod in ipairs(originalNeutral.baseModList) do
+		local ok,equal=pcall(tableDeepEquals,mod,neutral.baseModList[index]);assert(ok and equal,"Modifier parsing changed while adding catalyst tags")
+	end
+	local result=qualityText(target);local after,afterInfo=M.inspect(result)
+	assert(after.title==item.title and after.baseName==item.baseName and after.catalyst==catalyst and afterInfo.quality==target,"Catalyst preview did not round-trip")
+	return {itemText=result,components={["catalyst:"..catalyst]=guide.uniqueCraft.count},guideStep=guide}
 end
 
 -- Known unique restrictions still apply when a saved item has partial text.
@@ -670,13 +746,15 @@ function M.previewResources(startingItem,history,actions,currentItem,historyTrun
 	for index,encoded in ipairs(actions) do
 		if type(encoded)~="string" or type(history[index])~="string" then return nil,"The preview contains an unknown action." end
 		local count=tonumber(encoded:match("^socket_count_bench:([2-6])$"));local enchant=encoded:match("^bench_flask_enchant:(.+)$")
-		if not count and not enchant and not allowed[encoded] then return nil,"Loaded or older previews do not record every action." end
+		local catalyst,catalystCount=encoded:match("^catalyst:(%d+):(%d+)$");catalyst,catalystCount=tonumber(catalyst),tonumber(catalystCount)
+		if catalyst and not (M.catalysts[catalyst] and catalystCount and catalystCount>=1 and catalystCount<=20) then return nil,"The recorded catalyst action is invalid." end
+		if not count and not enchant and not catalyst and not allowed[encoded] then return nil,"Loaded or older previews do not record every action." end
 		local ok,item=pcall(M.inspect,history[index]);if not ok then return nil,"A recorded preview item could not be read." end;firstItem=firstItem or item
-		local action=count and {method="socket_bench",count=count} or enchant and {method="bench_flask_enchant",enchantId=enchant} or {method=encoded}
+		local action=count and {method="socket_bench",count=count} or enchant and {method="bench_flask_enchant",enchantId=enchant} or catalyst and {method="catalyst",catalyst=catalyst} or {method=encoded}
 		if encoded=="socket_bench" then action.count=#item.sockets;action.linked=true end
 		local model={item=item};local valid,components=pcall(sim.components,action,{sockets=item.sockets,corrupted=item.corrupted},model)
 		if not valid then return nil,"The resources for a recorded action could not be determined." end
-		for key,amount in pairs(components) do local canonical=prices.key(key,model);totals[canonical]=(totals[canonical] or 0)+amount end
+		for key,amount in pairs(components) do local canonical=prices.key(key,model);totals[canonical]=(totals[canonical] or 0)+amount*(catalystCount or 1) end
 	end
 	local result={};for key,amount in pairs(totals) do local name=prices.describe(key,{item=firstItem});result[#result+1]={key=key,name=name,amount=amount} end
 	table.sort(result,function(a,b) if a.name~=b.name then return a.name<b.name end;return a.key<b.key end)
@@ -734,12 +812,15 @@ function M.catalog(raw,query,limit)
 	end
 	local result={uniqueCrafting=true,methods={},uniqueActions={},socketCrafts={},quality={value=info.quality,available=info.available,resource=info.resource},nativeStats=require("Modules.CraftingItemStats").itemValues(item),limitations={"Only the listed unique actions are modeled. Continue by passing the returned item text, not an ordinary affix state.","Socket-count previews retain existing groups, remove sockets from the end and add white unlinked sockets; position and link behavior are unverified."}}
 	if item.type=="Ring" or item.type=="Amulet" or item.type=="Belt" then
-		result.catalystGuides={}
+		result.catalystGuides={};result.catalystPreviews={}
 		for id,name in ipairs(M.catalysts) do if #result.catalystGuides<limit and (name.." catalyst"):lower():find(query,1,true) then
 			local ok,step=pcall(catalystGuideForItem,raw,item,info,id,20)
 			result.catalystGuides[#result.catalystGuides+1]={catalyst=id,name=name.." Catalyst",targetQuality=20,guideOnly=true,warning=(id==3 or id==9) and "Prefix/suffix catalysts may not affect fixed unique modifiers." or "Check whether the catalyst affects the intended modifiers; effects are not previewed.",available=ok,guideStep=ok and step or nil,unavailableReason=not ok and tostring(step):gsub("^.-:%d+: ","") or nil}
+			local preview,detail
+			if query~="" then local target=item.catalyst==id and info.quality+1 or 1;preview,detail=pcall(M.catalystPreview,raw,id,target) end
+			result.catalystPreviews[#result.catalystPreviews+1]={name=name.." Catalyst",action={method="catalyst",catalyst=id},checked=query~="",available=preview,unavailableReason=preview==false and tostring(detail):gsub("^.-:%d+: ","") or nil,components=preview and detail.components or nil}
 		end end
-		result.limitations[#result.limitations+1]="Catalyst guides count currency only; modifier changes and item previews are not modeled."
+		result.limitations[#result.limitations+1]="Catalyst guides count currency only. Search for a catalyst to check preview availability; previews require unambiguous item data and use experimental tag scaling."
 	end
 	if item.catalyst and info.quality>0 and not M.divineReason(raw) then result.limitations[#result.limitations+1]="Catalyst eligibility and scaling use bundled modifier tags and PoB rounding; tag completeness and current game behavior are unverified." end
 	local seen={}
@@ -766,7 +847,7 @@ end
 
 function M.matches(raw,requirements)
 	local item,info=M.inspect(raw);requirements=requirements or {}
-	local supported={uniqueName=true,uniqueModifier=true,minQuality=true,corrupted=true,twiceCorrupted=true,mirrored=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true,flaskEnchant=true,flaskEnchantMin=true}
+	local supported={uniqueName=true,uniqueModifier=true,catalyst=true,minCatalystQuality=true,minQuality=true,corrupted=true,twiceCorrupted=true,mirrored=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true,flaskEnchant=true,flaskEnchantMin=true}
 	for key in pairs(requirements) do assert(supported[key],"This unique item property is not supported: "..tostring(key)) end
 	if requirements.uniqueName and item.title~=requirements.uniqueName then return false end
 	if requirements.flaskEnchant or requirements.flaskEnchantMin then
@@ -775,6 +856,8 @@ function M.matches(raw,requirements)
 		if requirements.flaskEnchant and (not enchant or enchant.id~=requirements.flaskEnchant) then return false end
 		if requirements.flaskEnchantMin and (not enchant or not enchant.roll or enchant.roll<requirements.flaskEnchantMin) then return false end
 	end
+	if requirements.catalyst and item.catalyst~=requirements.catalyst then return false end
+	if requirements.minCatalystQuality and info.quality<requirements.minCatalystQuality then return false end
 	if requirements.minQuality then assert(info.qualitySupported,"Jewellery catalyst-quality goals need a separate model");if info.quality<requirements.minQuality then return false end end
 	if requirements.corrupted~=nil and (not not item.corrupted)~=requirements.corrupted then return false end
 	if requirements.twiceCorrupted~=nil and (not not item.twiceCorrupted)~=requirements.twiceCorrupted then return false end

@@ -16,6 +16,10 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 	controls.info=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,28,0,14},"Edit group "..groupIndex..". Blank item-property fields impose no condition.")
 	local group=groups[groupIndex]
 	if not group then controls.info.label="Set item properties. Blank fields impose no condition." end
+	if conditions.catalyst then
+		local names=require("Modules.CraftingUniqueQuality").catalysts;local name=names[conditions.catalyst] or "Unknown"
+		controls.info.label="Catalyst target: "..name.." "..tostring(conditions.minCatalystQuality or 0).."% (preserved)"
+	end
 	edit("count",16,64,group and group.atLeast or 1,"Matching mods in group")
 	edit("roll",212,64,group and group.minRoll and group.minRoll*100 or nil,"Minimum roll % (0-100)")
 	controls.mode=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{408,80,200,24},{"Require group","Exclude group"})
@@ -82,7 +86,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 			group.negate=controls.mode:GetSelValue() == "Exclude group";local scope=controls.scope:GetSelValue();group.scope=scope == "Enchantments" and "enchant" or scope == "Implicit modifiers" and "implicit" or "explicit"
 			for _,key in ipairs({"fractured","crafted"}) do local value=controls[key]:GetSelValue();group[key]=nil;if not value:match("^Any ") then group[key]=not value:match("^Not ") end end
 		end
-		local result={nativeStats=conditions.nativeStats and copyTable(conditions.nativeStats)};for _,entry in ipairs(properties) do local value=controls[entry[1]].buf;if value ~= "" then result[entry[1]]=assert(tonumber(value),"Enter a number for "..entry[2]:lower()) end end
+		local result={nativeStats=conditions.nativeStats and copyTable(conditions.nativeStats),catalyst=conditions.catalyst,minCatalystQuality=conditions.minCatalystQuality};for _,entry in ipairs(properties) do local value=controls[entry[1]].buf;if value ~= "" then result[entry[1]]=assert(tonumber(value),"Enter a number for "..entry[2]:lower()) end end
 		if result.sockets~=nil and controls.socketMode:GetSelValue()=="Exactly" then result.exactSockets=result.sockets;result.sockets=nil end
 		if controls.uniqueName.buf:match("%S") then result.uniqueName=controls.uniqueName.buf end
 		if controls.minAbyssSockets.buf~="" then

@@ -3,6 +3,33 @@ describe("Unique item quality",function()
 	local shield="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\nImplicits: 1\n+5% Chance to Block Attack Damage\n+100 to maximum Life\n+1500 to Armour"
 	local weapon="Rarity: UNIQUE\nThe Saviour\nLegion Sword\nItem Level: 86\nQuality: 0\nSockets: R-G-B\n+100% increased Physical Damage"
 	before_each(function() newBuild() end)
+	it("previews supported unique catalyst effects without losing original rolls",function()
+		local raw="Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86\nImplicits: 1\nHas 1 Socket\n+3 to Level of Socketed Curse Gems\n+25% to Cold Resistance\n+25% to Lightning Resistance\nLeft Ring Slot: Your Chilling Skitterbot's Aura applies Socketed Hex Curse instead\nRight Ring Slot: Your Shocking Skitterbot's Aura applies Socketed Hex Curse instead"
+		local first=quality.catalystPreview(raw,8,4);local firstItem=quality.inspect(first.itemText);assert.equal(26,firstItem.baseModList:Sum("BASE",nil,"ColdResist"));assert.equal(4,first.guideStep.uniqueCraft.count)
+		local second=quality.catalystPreview(first.itemText,8,20);assert.equal(30,quality.inspect(second.itemText).baseModList:Sum("BASE",nil,"ColdResist"));assert.equal(16,second.guideStep.uniqueCraft.count)
+		local switched=quality.catalystPreview(second.itemText,4,20);assert.equal(25,quality.inspect(switched.itemText).baseModList:Sum("BASE",nil,"ColdResist"));assert.equal(20,switched.guideStep.uniqueCraft.count)
+		assert.has_error(function() quality.catalystPreview(raw.."\nCorrupted",8,20) end);assert.has_error(function() quality.catalystPreview(raw,3,20) end)
+		assert.has_error(function() quality.catalystPreview(raw:gsub("Has 1 Socket","+20%% to Fire Resistance"),8,20) end)
+		local copied=raw:gsub("Item Level: 86","Item Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20"):gsub("+25%% to Cold Resistance","+30%% to Cold Resistance"):gsub("+25%% to Lightning Resistance","+30%% to Lightning Resistance")
+		assert.has_error(function() quality.catalystPreview(copied,4,20) end)
+		local sim=require("Modules.CraftingSimulator");local recipe={rarity="UNIQUE",steps={{method="catalyst",catalyst=8,maxAttempts=4,untilRequirements={catalyst=8,minCatalystQuality=4}}},targets={},requirements={catalyst=8,minCatalystQuality=4}}
+		local result=sim.simulate(raw,recipe,{trials=1,maxActions=4,seed=1,priceBook={currency="chaos",source="manual",quotedAt=0,values={["catalyst:8"]=0.5}}})
+		assert.is_true(result.sampleSuccess);assert.equal(4,result.resourceUsage[1].amount);assert.equal("Prismatic Catalyst",result.resourceUsage[1].name);assert.is_nil(next(result.unpriced));assert.equal(2,result.meanCost);assert.equal(4,select(2,quality.inspect(result.sampleItem)).quality)
+	end)
+	it("preserves catalyst goals when editing other target conditions",function()
+		local saved;local c=require("Classes.CraftingTargetControl").Open({},{catalyst=8,minCatalystQuality=20},nil,function(_,value) saved=value end)
+		assert.matches("Prismatic 20%%",c.info.label);c.keep:Click();assert.equal(8,saved.catalyst);assert.equal(20,saved.minCatalystQuality);main.popups={}
+	end)
+	it("keeps unique catalyst previews, resource counts and repeatable recipes",function()
+		local raw="Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86\nImplicits: 1\nHas 1 Socket\n+3 to Level of Socketed Curse Gems\n+25% to Cold Resistance\n+25% to Lightning Resistance\nLeft Ring Slot: Your Chilling Skitterbot's Aura applies Socketed Hex Curse instead\nRight Ring Slot: Your Shocking Skitterbot's Aura applies Socketed Hex Curse instead"
+		local project={id="catalyst-preview",title="Catalyst preview",slot="Ring 1",startingItem=raw,goals={},steps={}};build.savers.CraftingProjects:Upsert(project)
+		local c=require("Classes.CraftingUniqueQualityControl").Open(build,project);c.catalystPlan:Click();local popup=main.popups[1].controls;popup.kind:SelByValue(8,"val");popup.preview:Click()
+		assert.is_true(c.undo:IsEnabled());c.resources:Click();local text="";for _,row in ipairs(main.popups[1].controls.results.list) do text=text..StripEscapes(row[1] or "") end;assert.matches("Prismatic Catalyst: 20",text,1,true);main:ClosePopup()
+		c.undo:Click();assert.is_true(c.redo:IsEnabled());c.redo:Click();c.guide:Click();assert.is_true(c.recipe:IsEnabled());c.recipe:Click()
+		local saved=build.savers.CraftingProjects.projects[1];assert.equal(8,saved.steps[1].uniqueCraft.catalyst);assert.equal(20,saved.steps[1].uniqueCraft.count);assert.equal(8,saved.nativeRecipe.requirements.catalyst);assert.equal(20,saved.nativeRecipe.requirements.minCatalystQuality)
+		assert.equal(30,quality.inspect(saved.targetItem).baseModList:Sum("BASE",nil,"ColdResist"))
+		local xml=build:SaveDB("Catalyst preview");loadBuildFromXML(xml,"Catalyst preview");saved=build.savers.CraftingProjects.projects[1];assert.equal(20,saved.nativeRecipe.requirements.minCatalystQuality);assert.equal(30,quality.inspect(saved.targetItem).baseModList:Sum("BASE",nil,"ColdResist"));main.popups={}
+	end)
 	it("plans catalysts for unique jewellery and keeps its resource pickup",function()
 		local raw="Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86\nImplicits: 1\nHas 1 Socket\n+3 to Level of Socketed Curse Gems\n+25% to Cold Resistance\n+25% to Lightning Resistance\nLeft Ring Slot: Your Chilling Skitterbot's Aura applies Socketed Hex Curse instead\nRight Ring Slot: Your Shocking Skitterbot's Aura applies Socketed Hex Curse instead"
 		local partial=raw:gsub("Item Level: 86","Item Level: 86\nCatalyst: Prismatic\nCatalystQuality: 5")

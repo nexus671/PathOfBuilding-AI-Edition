@@ -702,6 +702,8 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   if requirements.minFractured and fractures < requirements.minFractured or requirements.maxFractured and fractures > requirements.maxFractured then return false end
   if requirements.minIntangibility and (state.intangibility or 0) < requirements.minIntangibility or requirements.maxIntangibility and (state.intangibility or 0) > requirements.maxIntangibility then return false end
   if requirements.minQuality and (state.quality or model.item.quality or 0) < requirements.minQuality then return false end
+  if requirements.catalyst and state.catalyst~=requirements.catalyst then return false end
+  if requirements.minCatalystQuality and (state.catalystQuality or 0)<requirements.minCatalystQuality then return false end
   if requirements.minMemoryStrands and (state.memoryStrands or 0) < requirements.minMemoryStrands then return false end
   if requirements.maxMemoryStrands and (state.memoryStrands or 0) > requirements.maxMemoryStrands then return false end
   if requirements.mirrored ~= nil and (state.mirrored or false) ~= requirements.mirrored then return false end
@@ -777,6 +779,8 @@ function M.validateRecipe(recipe)
 				if value.component~=nil then integer(value.component,1,6,"unique modifier component") end
 				assert((value.minValue~=nil)~=(value.maxValue~=nil),"Choose either a minimum or maximum unique modifier roll")
 				integer(value.minValue or value.maxValue,-100000,100000,"unique modifier target")
+			elseif key == "catalyst" then integer(value,1,12,"catalyst type")
+			elseif key == "minCatalystQuality" then integer(value,0,20,"minimum catalyst quality")
 			elseif key == "harvestEnchant" then assert(type(value)=="string" and require("Modules.CraftingEnchants").data().crafts[value],"Choose a known Harvest enchantment")
 			elseif key == "flaskEnchant" then assert(type(value)=="string" and require("Modules.CraftingFlaskEnchants").entry(value),"Choose a known flask enchantment")
 			elseif key == "flaskEnchantMin" then
@@ -788,6 +792,7 @@ function M.validateRecipe(recipe)
 			else integer(value,0,assert(limits[key],"Unknown property condition"),key) end
 		end
 		assert(not requirements.linkedColours or requirements.socketColours,"Linked colours require a socket colour target")
+		assert(not requirements.minCatalystQuality or requirements.catalyst,"Catalyst quality requires a catalyst type")
 		assert(not requirements.sockets or not requirements.exactSockets or requirements.sockets<=requirements.exactSockets,"Minimum sockets exceed the exact socket count")
 		assert(not (requirements.corrupted==false and requirements.twiceCorrupted==true),"A twice corrupted item cannot be uncorrupted")
 		for _,pair in ipairs({{"minAffixes","maxAffixes"},{"minMemoryStrands","maxMemoryStrands"},{"minFractured","maxFractured"},{"minIntangibility","maxIntangibility"}}) do
@@ -1449,9 +1454,9 @@ do
 	end
 	function M.perform(raw,action,seed,initialState,treeVersion)
 		local rarity=type(raw)=="string" and (raw:match("^Rarity:%s*(%a+)") or raw:match("\nRarity:%s*(%a+)"))
-		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="instilling" or action.method=="enkindling" or action.method=="bench_flask_enchant" or action.method=="divine" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="quality" or action.method=="beast_max_links" or action.method=="omen_connections" or action.method=="omen_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_white_bench" or action.method=="socket_bench") then
+		if rarity and rarity:upper()=="UNIQUE" and type(action)=="table" and (action.method=="catalyst" or action.method=="instilling" or action.method=="enkindling" or action.method=="bench_flask_enchant" or action.method=="divine" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="quality" or action.method=="beast_max_links" or action.method=="omen_connections" or action.method=="omen_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_white_bench" or action.method=="socket_bench") then
 			assert(initialState==nil,"Continue unique crafting using the returned item text, not an ordinary crafting state")
-			for key in pairs(action) do assert(key=="method" or action.method=="socket_bench" and (key=="count" or key=="linked") or action.method=="bench_flask_enchant" and key=="enchantId","This unique action does not accept additional options") end
+			for key in pairs(action) do assert(key=="method" or action.method=="catalyst" and key=="catalyst" or action.method=="socket_bench" and (key=="count" or key=="linked") or action.method=="bench_flask_enchant" and key=="enchantId","This unique action does not accept additional options") end
 			if action.method=="socket_bench" then
 				local item=require("Modules.CraftingUniqueQuality").inspect(raw)
 				assert(action.linked==nil or type(action.linked)=="boolean","Invalid bench link option")
@@ -1466,7 +1471,8 @@ do
 				local divineRoll=action.method=="divine"
 				local flaskRoll=action.method=="instilling" or action.method=="enkindling"
 				local stochastic=flaskRoll or divineRoll or qualityRoll or socketRoll or linkRoll or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism"
-				local result=(flaskRoll or action.method=="bench_flask_enchant") and unique.flaskEnchant(raw,action.method,seed or 104729,action.enchantId) or divineRoll and unique.divine(raw,seed or 104729) or qualityRoll and unique.taintedQuality(raw,seed or 104729) or socketRoll and unique.randomSockets(raw,action.method,seed or 104729) or linkRoll and unique.randomLinks(raw,action.method,seed or 104729) or stochastic and unique.colour(raw,action.method,seed or 104729) or action.method=="omen_jeweller" and unique.socketCount(raw,unique.omenCount(unique.inspect(raw)),"omen_jeweller") or action.method=="socket_white_bench" and unique.white(raw) or action.method=="socket_bench" and not action.linked and unique.socketCount(raw,action.count) or unique.link(raw,action.method)
+				local catalystTarget;if action.method=="catalyst" then local current,currentInfo=unique.inspect(raw);catalystTarget=current.catalyst==action.catalyst and currentInfo.quality+1 or 1 end
+				local result=action.method=="catalyst" and unique.catalystPreview(raw,action.catalyst,catalystTarget) or (flaskRoll or action.method=="bench_flask_enchant") and unique.flaskEnchant(raw,action.method,seed or 104729,action.enchantId) or divineRoll and unique.divine(raw,seed or 104729) or qualityRoll and unique.taintedQuality(raw,seed or 104729) or socketRoll and unique.randomSockets(raw,action.method,seed or 104729) or linkRoll and unique.randomLinks(raw,action.method,seed or 104729) or stochastic and unique.colour(raw,action.method,seed or 104729) or action.method=="omen_jeweller" and unique.socketCount(raw,unique.omenCount(unique.inspect(raw)),"omen_jeweller") or action.method=="socket_white_bench" and unique.white(raw) or action.method=="socket_bench" and not action.linked and unique.socketCount(raw,action.count) or unique.link(raw,action.method)
 				local warnings={{code="unique_crafting_scope",message="Only listed unique crafting actions are modeled. Continue using the returned item text."}}
 				if flaskRoll then warnings[#warnings+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."}
 				elseif action.method=="bench_flask_enchant" then warnings[#warnings+1]={code="flask_bench_assumptions",message="Flask enchantment bench costs use pinned client data; eligibility, recipe availability and replacement behavior are unverified in game."}
@@ -1475,7 +1481,7 @@ do
 				elseif socketRoll then warnings[#warnings+1]={code="unique_socket_count_estimate",message="Sampled socket counts and tainted outcomes use estimated probabilities; server odds are unverified."}
 				elseif linkRoll then warnings[#warnings+1]={code="unique_socket_link_assumptions",message="Sampled socket links use estimated link and selection probabilities; server odds are unverified."}
 				elseif stochastic then warnings[#warnings+1]={code="unique_socket_colour_assumptions",message="Sampled socket colours use estimated colour and position probabilities; server odds are unverified."} end
-				if result.catalystModeled then warnings[#warnings+1]={code="unique_catalyst_tags",message="Catalyst eligibility and scaling use bundled modifier tags and PoB rounding; tag completeness and current game behavior are unverified."} end
+				if result.catalystModeled or action.method=="catalyst" then warnings[#warnings+1]={code="unique_catalyst_tags",message="Catalyst eligibility and scaling use bundled modifier tags and PoB rounding; tag completeness and current game behavior are unverified."} end
 				if socketRoll or action.method=="omen_jeweller" or action.method=="socket_bench" and not action.linked then warnings[#warnings+1]={code="unique_socket_count_assumptions",message="Socket-count previews retain existing groups, remove sockets from the end and add white unlinked sockets; position and link behavior are unverified."} end
 				return M.withTreeContext({priceKey=M.priceKey(action),itemText=result.itemText,flaskEnchant=result.flaskEnchant,components=result.components,dataPatch=M.dataPatch,
 					warnings=warnings,limitations=copyTable(M.limits)},treeVersion)

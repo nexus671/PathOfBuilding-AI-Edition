@@ -61,8 +61,8 @@ function M.validate(project)
 			local compatible=uniqueInfo and (craft.method=="socket_white_bench" or craft.method=="socket_bench" or craft.method=="socket_count_bench" or (craft.method=="tainted_quality" or craft.method=="tainted_chromatic" or craft.method=="tainted_fusing" or craft.method=="tainted_jeweller") and uniqueItem.corrupted or craft.method~="tainted_quality" and craft.method~="tainted_chromatic" and craft.method~="tainted_fusing" and craft.method~="tainted_jeweller" and not uniqueItem.corrupted and (craft.method~="quality" or uniqueInfo.quality+craft.count<=20))
 			if compatible and craft.method=="catalyst" then
 				local jewellery=uniqueItem.type=="Ring" or uniqueItem.type=="Amulet" or uniqueItem.type=="Belt"
-				local start=uniqueItem.catalyst==craft.catalyst and uniqueInfo.quality or 0
-				compatible=jewellery and (uniqueInfo.quality==0 or uniqueItem.catalyst~=nil) and start+craft.count<=20
+				-- Earlier guide steps can change the catalyst type and reset quality.
+				compatible=jewellery and (uniqueInfo.quality==0 or uniqueItem.catalyst~=nil)
 			end
 			if compatible and (craft.method=="instilling" or craft.method=="enkindling" or craft.method=="bench_flask_enchant") then compatible=require("Modules.CraftingFlaskEnchants").eligible({item=uniqueItem}) end
 			-- Keep typed steps for a unique that cannot be inspected until its item text is

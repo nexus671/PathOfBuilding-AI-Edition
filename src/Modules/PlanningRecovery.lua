@@ -73,6 +73,8 @@ function M.clean(kind,entry)
 		local function allowedAction(action)
 			if allowed[action] then return true end
 			if type(action)~="string" then return false end
+			local catalyst,count=action:match("^catalyst:(%d+):(%d+)$")
+			if catalyst then catalyst,count=tonumber(catalyst),tonumber(count);return catalyst>=1 and catalyst<=12 and count>=1 and count<=20 end
 			local id=action:match("^bench_flask_enchant:(.+)$")
 			return action:match("^socket_count_bench:[2-6]$")~=nil or id and require("Modules.CraftingFlaskEnchants").benchCost(id)~=nil
 		end

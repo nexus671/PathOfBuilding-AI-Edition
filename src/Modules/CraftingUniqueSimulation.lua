@@ -1,10 +1,11 @@
 -- Unique-item recipes use item text, not ordinary affix states.
 local M={}
-local supported={divine=true,tainted_quality=true,jeweller=true,tainted_jeweller=true,quality=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true,instilling=true,enkindling=true,bench_flask_enchant=true}
-local fields={method=true,count=true,linked=true,enchantId=true,maxAttempts=true,untilRequirements=true,onSuccess=true,onFailure=true,onFailureAction=true,recoveryNotes=true}
+local supported={catalyst=true,divine=true,tainted_quality=true,jeweller=true,tainted_jeweller=true,quality=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true,instilling=true,enkindling=true,bench_flask_enchant=true}
+local fields={method=true,catalyst=true,count=true,linked=true,enchantId=true,maxAttempts=true,untilRequirements=true,onSuccess=true,onFailure=true,onFailureAction=true,recoveryNotes=true}
 function M.stepReason(step)
 	if not supported[step.method] then return "This unique recipe action is not supported: "..tostring(step.method) end
 	if step.method~="socket_bench" and (step.count~=nil or step.linked~=nil) then return "This unique recipe action does not accept socket options" end
+	if step.method=="catalyst" then if type(step.catalyst)~="number" or step.catalyst~=math.floor(step.catalyst) or step.catalyst<1 or step.catalyst>12 then return "Choose a catalyst type" end elseif step.catalyst~=nil then return "This unique recipe action does not accept a catalyst type" end
 	if step.method=="bench_flask_enchant" then
 		if not require("Modules.CraftingFlaskEnchants").benchCost(step.enchantId) then return "Choose an available flask bench enchantment" end
 	elseif step.enchantId~=nil then return "This unique recipe action does not accept an enchantment choice" end
@@ -126,7 +127,7 @@ function M.simulate(sim,raw,recipe,options)
 			if actions>=maxActions then interrupted=true;break end
 			if options.checkpoint then options.checkpoint({trial=1,trials=trials,actions=actions,successes=0}) end
 			actions=actions+1
-			local action={method=step.method};if step.method=="socket_bench" then action.count=step.count;action.linked=step.linked elseif step.method=="bench_flask_enchant" then action.enchantId=step.enchantId end
+			local action={method=step.method};if step.method=="catalyst" then action.catalyst=step.catalyst elseif step.method=="socket_bench" then action.count=step.count;action.linked=step.linked elseif step.method=="bench_flask_enchant" then action.enchantId=step.enchantId end
 			local actionSeed=require("Modules.CalcEncounter").seed(seed,actions,31)
 			local ok,result=pcall(sim.perform,current,action,actionSeed)
 			if not ok then local message=tostring(result):match("[^:]+$") or tostring(result);errors[message]=(errors[message] or 0)+1;rejected=true;break end

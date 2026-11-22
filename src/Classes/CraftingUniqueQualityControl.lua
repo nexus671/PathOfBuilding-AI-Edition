@@ -25,8 +25,8 @@ function M.Open(build,project,layout,snapshot)
 	local c={};local cardX=310;local cardWidth=w-cardX-16
 	ui.label(c,"heading",16,18,"Unique crafting",22)
 	local utility=require("Modules.CraftingFlaskEnchants").eligible({item=item})
-	ui.description(c,"intro",16,56,270,68,{utility and "Preview flask crafts." or not info.qualitySupported and (item.corrupted and "This item is corrupted." or "Preview supported Divine Orb rolls.") or (item.type=="Flask" or item.type=="Tincture") and "Preview item quality." or "Preview quality and socket crafts.",utility and (item.corrupted and "Corrupted flasks cannot be enchanted." or "Enchant odds are experimental.") or not info.qualitySupported and (item.corrupted and "Divine Orbs cannot modify it." or "Catalyst guides do not preview effects.") or item.corrupted and ((item.type=="Flask" or item.type=="Tincture") and "Tainted quality is unavailable." or "Tainted quality rolls are estimated.") or "Quality currency adds 1%, up to 20%.",utility and "Keep target, then save the build." or "Keep the target, then save the build."},15)
-	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM",{expanded=true})
+	ui.description(c,"intro",16,56,270,68,{utility and "Preview flask crafts." or not info.qualitySupported and (item.corrupted and "This item is corrupted." or "Preview supported Divine Orb rolls.") or (item.type=="Flask" or item.type=="Tincture") and "Preview item quality." or "Preview quality and socket crafts.",utility and (item.corrupted and "Corrupted flasks cannot be enchanted." or "Enchant odds are experimental.") or not info.qualitySupported and (item.corrupted and "Divine Orbs cannot modify it." or "Catalyst preview uses bundled item tags.") or item.corrupted and ((item.type=="Flask" or item.type=="Tincture") and "Tainted quality is unavailable." or "Tainted quality rolls are estimated.") or "Quality currency adds 1%, up to 20%.",utility and "Keep target, then save the build." or "Keep the target, then save the build."},15)
+	local show=require("Classes.JourneyItemControl").new(c,"item",cardX,56,cardWidth,h-116,"WORKING ITEM",{expanded=true,scaledModifiers=true})
 	local function button(key,y,label,run)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,y,270,32},label,function()
 			local ok,err=pcall(run);if not ok then ui.errorPopup("Unique crafting",err) end
@@ -77,7 +77,11 @@ function M.Open(build,project,layout,snapshot)
 			local action=actions[i]
 			local socketCount=tonumber(action:match("^socket_count_bench:([2-6])$"))
 			local enchantId=action:match("^bench_flask_enchant:(.+)$")
+			local catalyst,catalystCount=action:match("^catalyst:(%d+):(%d+)$");catalyst,catalystCount=tonumber(catalyst),tonumber(catalystCount)
 			if action=="quality" then qualityCount=qualityCount+1
+			elseif catalyst then
+				flush();local before,beforeInfo=unique.inspect(history[i]);local target=(before.catalyst==catalyst and beforeInfo.quality or 0)+catalystCount
+				steps[#steps+1]=unique.catalystGuide(history[i],catalyst,target)
 			elseif enchantId then
 				flush();steps[#steps+1]={action=unique.guideAction("bench_flask_enchant",1,info.resource,item.corrupted,nil,enchantId),uniqueCraft={method="bench_flask_enchant",count=1,enchantId=enchantId},done=false}
 			elseif socketCount then
@@ -105,7 +109,7 @@ function M.Open(build,project,layout,snapshot)
 		colourReason=unique.colourReason(raw,item.corrupted and "tainted_chromatic" or "chromatic")
 		taintedQualityReason=item.corrupted and unique.taintedQualityReason(raw) or nil
 		divineReason=not item.corrupted and unique.divineReason(raw) or nil
-		c.status.label=not info.qualitySupported and "^7Catalyst quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or "Guide only") or "^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
+		c.status.label=not info.qualitySupported and "^7Catalyst quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or "Preview available") or "^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
 		c.apply.label=not info.qualitySupported and "Quality unavailable" or item.corrupted and (item.type=="Flask" or item.type=="Tincture") and "Quality unavailable" or item.corrupted and "Roll quality" or "Add quality"
 		c.apply.width=(not item.corrupted or not taintedQualityReason) and 130 or 270
 		if updateCurrency then updateCurrency() end
@@ -337,7 +341,7 @@ function M.Open(build,project,layout,snapshot)
 		history[#history+1]=raw;actions[#actions+1]=action;redo={};raw=result.itemText;refresh(true)
 	end)
 	c.apply.enabled=function() return item.corrupted and not unique.taintedQualityReason(raw) or not item.corrupted and info.available end
-	c.apply.tooltipText=function() return not info.qualitySupported and "Jewellery quality requires a catalyst; catalyst crafting is not modeled here." or item.corrupted and (taintedQualityReason or "Sample a tainted quality roll. The 1-20% range and odds are estimates.") or info.available and "Use "..info.resource.." to add 1% quality." or "Ordinary quality currency cannot exceed 20%." end
+	c.apply.tooltipText=function() return not info.qualitySupported and "Jewellery quality requires a catalyst; use Catalyst guide for supported previews." or item.corrupted and (taintedQualityReason or "Sample a tainted quality roll. The 1-20% range and odds are estimates.") or info.available and "Use "..info.resource.." to add 1% quality." or "Ordinary quality currency cannot exceed 20%." end
 	local function flaskButton(method,x,label)
 		button(method,188,label,function()
 			colourRollCounter=colourRollCounter%2147483646+1
@@ -417,7 +421,7 @@ function M.Open(build,project,layout,snapshot)
 	button("catalystPlan",198,"Catalyst guide",function()
 		local popup={};local pw,ph=540,270;local choices={}
 		for id,name in ipairs(unique.catalysts) do choices[#choices+1]={label=name.." Catalyst",val=id} end
-		ui.description(popup,"help",16,24,pw-32,52,{"Plan catalyst use from the project's starting item.","This adds a guide step; it does not preview changed modifiers.","Check the item tags before choosing a catalyst."},14)
+		ui.description(popup,"help",16,24,pw-32,52,{"Preview supported items or add a guide from the starting item.","Modifier tags and rounding are experimental; check item tags.","Some copied items cannot be previewed safely."},14)
 		ui.label(popup,"typeLabel",16,92,"Catalyst",14);ui.label(popup,"targetLabel",340,92,"Target quality %",14)
 		popup.kind=new("DropDownControl"):DropDownControl(ui.anchor,{16,116,300,26},choices);popup.kind:SelByValue(item.catalyst or 4,"val")
 		popup.target=new("EditControl"):EditControl(ui.anchor,{340,116,120,26},"20",nil,"%D",2)
@@ -430,12 +434,21 @@ function M.Open(build,project,layout,snapshot)
 			local updated=copyTable(draft);updated.steps[#updated.steps+1]=step;draft=build.savers.CraftingProjects:Upsert(updated)
 			main:ClosePopup();refresh(true);c.notice.label="^7Guide step added. Save the build."
 		end)
+		popup.keep.enabled=function() return raw==draft.startingItem end
+		popup.keep.tooltipText="The guide is calculated from the project's starting item."
+		popup.preview=new("ButtonControl"):ButtonControl(ui.anchor,{204,ph-48,130,28},"Preview",function()
+			local id=popup.kind:GetSelValueByKey("val");local ok,result=pcall(unique.catalystPreview,raw,id,tonumber(popup.target.buf))
+			if not ok then ui.errorPopup("Catalyst preview",result);return end
+			history[#history+1]=raw;actions[#actions+1]="catalyst:"..id..":"..result.guideStep.uniqueCraft.count;redo={};raw=result.itemText
+			main:ClosePopup();refresh(true);c.notice.label="^7Catalyst preview only."
+		end)
+		popup.preview.tooltipText="Preview this target when the original modifiers and tags can be verified."
 		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{pw-132,ph-48,116,28},"Cancel",function() main:ClosePopup() end)
 		ui.style(popup,{keep=true});for _,control in pairs(popup) do control.layoutAudit="unique-catalyst-guide" end;main:OpenPopup(pw,ph,"Catalyst guide",popup,nil,nil,"close")
 	end)
 	c.catalystPlan.width=130;c.catalystPlan.shown=function() return item.type=="Ring" or item.type=="Amulet" or item.type=="Belt" end
-	c.catalystPlan.enabled=function() return not item.corrupted and raw==draft.startingItem end
-	c.catalystPlan.tooltipText=function() return item.corrupted and "Ordinary catalysts cannot modify corrupted jewellery." or raw~=draft.startingItem and "Start a fresh preview before planning from the starting item." or "Add a catalyst resource step without changing the item preview." end
+	c.catalystPlan.enabled=function() return not item.corrupted end
+	c.catalystPlan.tooltipText=function() return item.corrupted and "Ordinary catalysts cannot modify corrupted jewellery." or "Preview supported catalyst effects or add a guide from the starting item." end
 	local qualityShown=c.apply.shown;c.apply.shown=function() return info.qualitySupported and (type(qualityShown)~="function" or qualityShown()) end
 	button("divine",198,"Divine Orb",function()
 		local controls={};local dw,dh=500,340
@@ -575,7 +588,7 @@ function M.Open(build,project,layout,snapshot)
 			local colour=action=="instilling" or action=="enkindling" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality"
 			if colour then if colourSeen then return false end;colourSeen=true
 			elseif colourSeen and action~="quality" then return false
-			elseif action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") and not action:match("^bench_flask_enchant:.+$") then return false end
+			elseif action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") and not action:match("^bench_flask_enchant:.+$") and not action:match("^catalyst:%d+:%d+$") then return false end
 		end
 		return true
 	end
@@ -586,7 +599,12 @@ function M.Open(build,project,layout,snapshot)
 			local action=actions[i]
 			local socketCount=tonumber(action:match("^socket_count_bench:([2-6])$"))
 			local enchantId=action:match("^bench_flask_enchant:(.+)$")
-			if action=="quality" then
+			local catalyst,catalystCount=action:match("^catalyst:(%d+):(%d+)$");catalyst,catalystCount=tonumber(catalyst),tonumber(catalystCount)
+			if catalyst then
+				local before,beforeInfo=unique.inspect(history[i]);local target=(before.catalyst==catalyst and beforeInfo.quality or 0)+catalystCount
+				steps[#steps+1]={method="catalyst",catalyst=catalyst,maxAttempts=catalystCount,untilRequirements={catalyst=catalyst,minCatalystQuality=target}}
+				requirements.catalyst=catalyst;requirements.minCatalystQuality=target;i=i+1
+			elseif action=="quality" then
 				local first=i;while i<=#actions and actions[i]=="quality" do i=i+1 end
 				local _,after=unique.inspect(history[i] or raw);local count=i-first
 				steps[#steps+1]={method="quality",maxAttempts=count,untilRequirements={minQuality=after.quality}}
@@ -744,8 +762,8 @@ function M.Open(build,project,layout,snapshot)
 	c.recipe.tooltipText=function() return draft.nativeRecipe and "Check the saved native recipe from its starting item. No changes are made." or canCreateRecipe() and "Save this complete preview as a recipe; then check its result and cost." or "Preview supported actions from the starting item. For sampled crafts, use one sampled action followed only by quality actions." end
 	ui.label(c,"notice",16,426,restored and "^7Session preview restored." or "",14)
 	local art,artCache=nil,{}
-	local function icon(method)
-		local path=require("Modules.CraftingWorkbench").icon(method,nil,{item=item})
+	local function icon(method,action)
+		local path=require("Modules.CraftingWorkbench").icon(method,action,{item=item})
 		if path and not artCache[path] then local handle=NewImageHandle();handle:Load(path);artCache[path]=handle end
 		return path and artCache[path] or nil
 	end
@@ -760,7 +778,9 @@ function M.Open(build,project,layout,snapshot)
 	updateCurrency=function()
 		local method=actions[#actions];local lines
 		local countMethod=method and tonumber(method:match("^socket_count_bench:([2-6])$"))
-		if method=="socket_white_bench" then
+		local catalyst,catalystCount;if method then catalyst,catalystCount=method:match("^catalyst:(%d+):(%d+)$");catalyst,catalystCount=tonumber(catalyst),tonumber(catalystCount) end
+		if catalyst then lines={catalystCount.." "..unique.catalysts[catalyst].." Catalyst"..(catalystCount==1 and "" or "s"),"Preview only"}
+		elseif method=="socket_white_bench" then
 			method="socket_white_bench";lines={"Bench: 1 Orb of Scouring",item.corrupted and "+ 1 Vaal Orb | Preview" or "Preview only"}
 		elseif countMethod then local components=require("Modules.CraftingSimulator").components({method="socket_bench",count=countMethod},{sockets=item.sockets,corrupted=item.corrupted});local amount=components["Metadata/Items/Currency/CurrencyRerollSocketNumbers"] or 0;method="jeweller";lines={"Bench: "..amount.." Jeweller's Orb"..(amount==1 and "" or "s"),item.corrupted and ("+ "..amount.." Vaal Orb"..(amount==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="socket_bench" then local components=require("Modules.CraftingSimulator").components({method=method,count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted});local count=components["Metadata/Items/Currency/CurrencyRerollSocketLinks"] or 0;lines={"Bench: "..count.." Orb"..(count==1 and "" or "s").." of Fusing",item.corrupted and ("+ "..count.." Vaal Orb"..(count==1 and "" or "s").." | Preview") or "Preview only"}
@@ -780,7 +800,7 @@ function M.Open(build,project,layout,snapshot)
 		elseif method=="beast_max_links" then lines={"Black Morrigan + Sand Spitter","Preview only"}
 		elseif method=="quality" then lines={"1 "..info.resource,"Preview only"}
 		else method=info.qualitySupported and "quality" or "divine";lines={"Preview only","No currency is spent."} end
-		art=icon(method=="socket_bench" and "fusing" or method);c.currencyNote.list=ui.rows(lines,218,14)
+		art=catalyst and icon("catalyst",{catalyst=catalyst}) or icon(method=="socket_bench" and "fusing" or method);c.currencyNote.list=ui.rows(lines,218,14)
 	end
 	c.currency.shown=function() return not guideNeedsReview() end
 	c.currencyNote.shown=c.currency.shown
