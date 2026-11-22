@@ -37,6 +37,16 @@ describe("Crafting project removal and save-state ownership",function()
 		assert.is_false(ok);assert.matches("unbound starting state",err,1,true);assert.equal(original.startingItem,build.savers.CraftingProjects.projects[1].startingItem)
 		original.title="Renamed";build.savers.CraftingProjects:Upsert(original);assert.equal("Renamed",build.savers.CraftingProjects.projects[1].title)
 	end)
+	it("rejects an old unbound state when an AI proposal recreates a guide",function()
+		local original=project("recreated");local state=sim.model(original.startingItem).initial;state.origin=nil
+		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1},initialState=state}
+		build.savers.CraftingProjects:Upsert(original);local changed=copyTable(original);changed.startingItem=original.startingItem.."\nQuality: 10"
+		local function prepare() return bridge.prepare(build,{mode="edit",title="Replace guide",baseRevision=bridge.revision(build),operations={{type="remove_crafting_project",projectId=original.id},{type="set_crafting_project",project=changed}}}) end
+		local ok,err=pcall(prepare);assert.is_false(ok);assert.matches("unbound starting state",err,1,true)
+		assert.equal(original.startingItem,build.savers.CraftingProjects.projects[1].startingItem)
+		changed.nativeRecipe.initialState=sim.model(changed.startingItem).initial
+		local result=prepare();assert.equal(changed.startingItem,result.candidate.savers.CraftingProjects.projects[1].startingItem)
+	end)
 	it("checks new AI recipe states while preserving unchanged legacy states",function()
 		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local state=sim.model(raw).initial
 		local proposed=project("new-state");proposed.startingItem=raw.."\nQuality: 10"

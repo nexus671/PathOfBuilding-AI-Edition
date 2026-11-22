@@ -230,8 +230,14 @@ function M.prepare(build, proposal, checkpoint, sourceXML, frozen)
 		candidate.planningDeferInitialRecovery=nil
 		assert(candidate.abortSave == false,"Unable to initialize proposed build")
 		candidate.planningCheckpoint=yieldingCheckpoint
+		local originalProjects={};for _,project in ipairs(candidate.savers.CraftingProjects.projects) do originalProjects[project.id]=project end
 		checkpoint("Apply candidate changes")
 		for _,operation in ipairs(proposal.operations) do applyOperation(candidate,operation) end
+		-- Removing and recreating an ID must not bypass the starting-item guard.
+		for _,project in ipairs(candidate.savers.CraftingProjects.projects) do
+			local original=originalProjects[project.id]
+			if original then require("Modules.CraftingProjects").checkStartingStateChange(original,project) end
+		end
 		candidate.configTab:BuildModList()
 		candidate.configTab:UpdateControls()
 		candidate:UpdateClassDropdowns()
