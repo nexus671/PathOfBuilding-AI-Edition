@@ -496,11 +496,18 @@ function Panel.Open(build,project,layout)
 		local options=request.options
 		return "Action limit: "..options.maxActions.." per trial | seed "..options.seed
 	end
+	local function baseCostNote(result)
+		local baseCost=result.baseCost
+		return type(baseCost)~="number" and "Starting-item cost is unavailable in this older result; rerun to review it."
+			or baseCost==0 and "Starting item counted at zero. Enter Base cost if it has a price."
+			or string.format("Starting item: %.12g %s each, included in spending.",baseCost,result.costCurrency or "units")
+	end
 	local function showSimulationResult(result,captured)
 		local lines={string.format("Modeled successes: %d / %d (%s)",result.successes,result.trials,ui.percent(result.successChance,2)),
 			result.meanCost~=nil and string.format("Mean spent: %.2f %s",result.meanCost,result.costCurrency) or "Cost unavailable: some executed actions have no supplied price.",
 			captured.label,capturedSettings(captured),
 			"95% sampling interval: "..ui.percent(result.confidenceLow,2).." to "..ui.percent(result.confidenceHigh,2),string.format("Mean attempted actions: %.2f",result.meanActions)}
+		table.insert(lines,3,baseCostNote(result))
 		if result.meanExecutedActions then lines[#lines+1]=string.format("Mean executed actions: %.2f | failed attempts: %d",result.meanExecutedActions,result.failedAttempts) end
 		local warnings=result.warnings or simulator.recipeWarnings(captured.recipe,model)
 		for i,warning in ipairs(warnings) do table.insert(lines,1+i,"Model note: "..warning.message) end
@@ -514,7 +521,7 @@ function Panel.Open(build,project,layout)
 			lines[#lines+1]="Modeled ingredients and services (all trials)"
 			for _,entry in ipairs(result.resourceUsage) do lines[#lines+1]=string.format("%s%s: %.12g total | %.3g per trial",entry.kind=="service" and "Service: " or "",entry.name,entry.amount,entry.meanPerTrial) end
 			if #result.resourceUsage==0 then lines[#lines+1]="No resources or services used." end
-			lines[#lines+1]="Starting-item cost is separate. Price overrides do not change quantities."
+			lines[#lines+1]="Ingredient quantities exclude starting items. Price overrides do not change quantities."
 		else
 			for key,count in pairsSortByKey(result.currencySpent) do lines[#lines+1]=pricing.describe(key,simulator.context(model,state))..": "..count.." priced uses" end
 		end
@@ -666,6 +673,7 @@ function Panel.Open(build,project,layout)
 		lines[#lines+1]={height=26,"Trials stopped at the action budget: "..result.budgetExhausted}
 		lines[#lines+1]={height=24,"Hypothetical items destroyed: "..result.destroyedTrials}
 		lines[#lines+1]={height=24,"Spending percentiles include capped failures. They are not the cost of guaranteed success."}
+		lines[#lines+1]={height=24,baseCostNote(result)}
 		local function show(title,values)
 			if not values then return end
 			lines[#lines+1]={height=26,title}

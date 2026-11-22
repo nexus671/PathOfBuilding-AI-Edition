@@ -63,6 +63,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_unique_variant_divine_ui.lua")
     sources.append(ROOT / "tools/test_filter_export_race.lua")
     sources.append(ROOT / "tools/test_filter_review_ui.lua")
+    sources.append(ROOT / "tools/test_crafting_base_cost_ui.lua")
     sources.append(ROOT / "tools/test_filter_unique_review.lua")
     sources.append(ROOT / "tools/test_filter_sound_list_ui.lua")
     sources.append(ROOT / "tools/test_fated_scene_ui.lua")
@@ -170,6 +171,10 @@ def main():
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-review-controls.log").write_text(filter_review.stdout)
     assert filter_review.returncode == 0, filter_review.stdout
+    base_cost = subprocess.run(lua_command + ["../tools/test_crafting_base_cost_ui.lua"], cwd=ROOT / "src",
+                               env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-base-cost-controls.log").write_text(base_cost.stdout)
+    assert base_cost.returncode == 0, base_cost.stdout
     filter_sound_list = subprocess.run(lua_command + ["../tools/test_filter_sound_list_ui.lua"], cwd=ROOT / "src",
                                        env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-sound-list-controls.log").write_text(filter_sound_list.stdout)
