@@ -4,6 +4,21 @@ describe("Visual filter catalogue",function()
 	local library=require("Modules.LootFilterLibrary")
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("does not guess relational text comparisons while retaining modifier counts",function()
+		for _,condition in ipairs({'BaseType > "Gold"','Class <= "Currency"','HasExplicitMod > "Fire"','HasEnchantment < "Damage"'}) do
+			local parsed=parser.parse('Hide\n '..condition..'\nShow')
+			assert.matches('cannot verify this text comparison',parsed.diagnostics[1].warning)
+			local result=parser.simulate(parsed,{BaseType="Gold",Class="Currency",Identified=true,HasExplicitMod={"Fire"},HasEnchantment={"Damage"}})
+			assert.equal("unknown",result.status)
+			assert.matches("Relational text comparison",result.reasons[1])
+		end
+		local item={Identified=true,HasExplicitMod={"Fire","Cold"},HasEnchantment={"Damage","Speed"}}
+		for _,condition in ipairs({'HasExplicitMod >=2 "Fire" "Cold"','HasEnchantment >=2 "Damage" "Speed"'}) do
+			local parsed=parser.parse('Hide\n '..condition..'\nShow')
+			assert.equal(0,#parsed.diagnostics)
+			assert.equal("Hide",parser.simulate(parsed,item).action)
+		end
+	end)
 	it("shows every rule condition with its comparison and quoted values",function()
 		local block=parser.parse('Show\n BaseType == "Gold" "Gold Ring"\n StackSize >= 50\n HasExplicitMod >=1 "Fire Resistance"').rules[1]
 		assert.same({'Base Type == "Gold" "Gold Ring"','Stack Size >= 50','Has Explicit Mod >=1 "Fire Resistance"'},library.conditionSummaries(block))

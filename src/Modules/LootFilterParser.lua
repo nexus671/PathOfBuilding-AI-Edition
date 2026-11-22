@@ -42,6 +42,15 @@ function M.ambiguousBoolean(condition)
  for _,value in ipairs(condition.values) do if value=="True" or value=="False" then return true end end
  return false
 end
+-- Relational comparisons are modeled only for the documented modifier count
+-- form. Do not interpret a relational text comparison as a substring match.
+function M.unverifiedTextComparison(condition)
+	if not M.strings[condition.keyword] then return false end
+	local op=condition.operator
+	if op=="=" or op=="==" or op=="!" or op=="!=" then return false end
+	local countCondition=condition.keyword=="HasExplicitMod" or condition.keyword=="HasEnchantment"
+	return not (countCondition and not (condition.quoted and condition.quoted[1]) and tonumber(condition.values[1]))
+end
 function M.tokens(line)
 	local out,quoted={},{};local pos=1
 	while pos<=#line do
@@ -99,6 +108,7 @@ function M.parse(raw)
 					local condition={keyword=key,operator=op,values=t,quoted=quoted,known=known,line=lineNo}
 					current.conditions[#current.conditions+1]=condition
 					if M.ambiguousBoolean(condition) then result.diagnostics[#result.diagnostics+1]={line=lineNo,warning="Preview cannot verify multiple boolean values; original text is preserved"} end
+					if M.unverifiedTextComparison(condition) then result.diagnostics[#result.diagnostics+1]={line=lineNo,warning="Preview cannot verify this text comparison; original text is preserved"} end
 					if M.countExactMarker(condition,2) then result.diagnostics[#result.diagnostics+1]={line=lineNo,warning="Preview cannot verify modifier count with a separate exact-match operator; original text is preserved"} end
 					if #t==0 then result.diagnostics[#result.diagnostics+1]={line=lineNo,error="Condition requires a value: "..key}
 					elseif not known then result.diagnostics[#result.diagnostics+1]={line=lineNo,warning="Simulator cannot resolve "..key.."; original text is preserved"} end
@@ -192,6 +202,7 @@ function M.condition(c,item)
 		local reason=socketConsistency(item);if reason then return nil,reason end
 	end
 	if not c.known then return nil,"Unsupported condition "..c.keyword end
+	if M.unverifiedTextComparison(c) then return nil,"Relational text comparison is not verified for "..c.keyword end
 	if M.countExactMarker(c,2) then return nil,"Modifier count with a separate exact-match operator is not yet verified" end
 	if M.ambiguousBoolean(c) then return nil,"Multiple boolean values are not verified" end
 	if c.keyword=="HasExplicitMod" and item.Identified~=true then
