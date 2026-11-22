@@ -65,9 +65,9 @@ function M.Open(build,source,layout,controller)
 		for _,sample in ipairs(samples) do size=size+#encode(sample) end;while size>1024*1024 and #samples>1 do size=size-#encode(table.remove(samples,1)) end
 	end
 	local catalog,entries,parsed,raw,report,result={},{};local selectedEntry;local scene={}
-	local function sampleDetails(sample,evaluated)
+	local function sampleDetails(sample,evaluated,selected)
 		local deciding=evaluated and (evaluated.ruleTitle or (evaluated.line and "Filter line "..evaluated.line or evaluated.status=="matched" and "No matching block: default Show" or "Resolve missing properties or filter errors.")) or "Select a drop to inspect the rule."
-		local lines={visual.sampleName(sample),"iLvl "..tostring(sample.ItemLevel or "?").." / area "..tostring(sample.AreaLevel or "?"),evaluated and evaluated.action or "Choose a drop"}
+		local lines={(selected and "Selected: " or "")..visual.sampleName(sample),"iLvl "..tostring(sample.ItemLevel or "?").." / area "..tostring(sample.AreaLevel or "?"),evaluated and evaluated.action or "Choose a drop"}
 		local firstError=evaluated and evaluated.status=="invalid" and evaluated.reasons and evaluated.reasons[1]
 		if firstError then table.insert(lines,1,"Filter error: "..firstError) end
 		local copied=not sample.HasExplicitMod and sample.KnownExplicitMods
@@ -260,7 +260,7 @@ function M.Open(build,source,layout,controller)
 		for index=first,math.min(#eligible,first+capacity-1) do local entry=eligible[index];local drop=entry.item;local evaluated=entry.result or evaluate(drop)
 			visible=visible+1;local cellW=(width-24)/columns;local cellH=(height-reserve)/rows;local cx=x+12+((visible-1)%columns)*cellW;local cy=y+12+math.floor((visible-1)/columns)*cellH
 			cells[#cells+1]={x=cx,y=cy,w=cellW,h=cellH,item=drop,result=evaluated,key=encode(drop)}
-			if selectable then local control=new("ButtonControl"):ButtonControl(ui.anchor,{cx,cy,cellW,cellH},"",function() rememberSample(drop);compile();if c.selection then c.selection.list=ui.rows(sampleDetails(drop,result),c.selection.width-28,14) end end)
+			if selectable then local control=new("ButtonControl"):ButtonControl(ui.anchor,{cx,cy,cellW,cellH},"",function() rememberSample(drop);compile();if c.selection then c.selection.list=ui.rows(sampleDetails(drop,result,true),c.selection.width-28,14) end end)
 				c["drop"..visible]=control;custom["drop"..visible]=true;control.planningFocusable=true;control.tooltipText=table.concat(sampleDetails(drop,evaluated),"\n")
 				function control:Draw(viewport) if self:IsMouseOver() then local px,py=self:GetPos();SetDrawLayer(nil,100);self:DrawTooltip(px,py,cellW,cellH,viewport or main.viewPort);SetDrawLayer(nil,0) end end
 			end
@@ -561,7 +561,7 @@ function M.Open(build,source,layout,controller)
 		button(c,"sampleHistory",124,322,100,"History",function() local entries={};for i=#samples,1,-1 do local sample=samples[i];entries[#entries+1]={id=i,label=visual.sampleName(sample),details={"Item level: "..tostring(sample.ItemLevel or "unknown"),"Area level: "..tostring(sample.AreaLevel or "unknown"),"Missing properties remain unknown."},sample=sample} end
 			require("Classes.PlanningBrowserControl").Open("Tested item history",entries,{action="Test again",choose=function(entry) rememberSample(entry.sample);scenePage=1;compile();reopen() end})
 		end)
-		button(c,"sound",16,362,100,"Play sound",function() local _,message=require("Modules.LootFilterAudio").play(result and result.styles or {});c.selection.list=ui.rows({visual.sampleName(item),message},left-28,14) end)
+		button(c,"sound",16,362,100,"Play sound",function() local _,message=require("Modules.LootFilterAudio").play(result and result.styles or {});c.selection.list=ui.rows({"Selected: "..visual.sampleName(item),message},left-28,14) end)
 		button(c,"sceneStats",124,362,100,"Drop review",function()
 			local counts={Show=0,Hide=0,Minimal=0,Unknown=0};local entries={}
 			for index,drop in ipairs(scene) do
@@ -575,7 +575,7 @@ function M.Open(build,source,layout,controller)
 			require("Classes.PlanningBrowserControl").Open(title,entries,{action="Inspect item",choose=function(entry) rememberSample(entry.sample);scenePage=1;compile();reopen() end})
 		end)
 		c.sceneStats.tooltipText="Review every example in this scene, including hidden and uncertain results. Counts are not drop-rate predictions."
-		c.selection=new("TextListControl"):TextListControl(ui.anchor,{16,410,left,h-474},nil,ui.rows(sampleDetails(item,result),left-28,14))
+		c.selection=new("TextListControl"):TextListControl(ui.anchor,{16,410,left,h-474},nil,ui.rows(sampleDetails(item,result,true),left-28,14))
 		local extraTest=false
 		if savedSet then
 			scene=copyTable(savedSet.samples);local encode=require("Modules.PlanningData").encode;local present=false;local current=encode(item);for _,sample in ipairs(scene) do if encode(sample)==current then present=true;break end end
