@@ -52,6 +52,17 @@ describe("TreeTab", function()
 			assert.is_true(type(value)=="number" and value==value,selection.label);checked=checked+1
 		end end;assert.is_true(checked>0)
 	end)
+	it("completes limited-depth node-power reports for niche defensive categories",function()
+		build.calcsTab:BuildOutput(false);local tab=build.calcsTab;tab.nodePowerMaxDepth=1
+		-- This check covers the ordinary tree; cluster calculations have their own tests.
+		build.spec.tree.clusterNodeMap={}
+		for _,key in ipairs({"MeleeAvoidChance","SpellAvoidChance","ProjectileAvoidChance","EnergyShieldRecoveryCap","LifeLeechRate","ManaRegen"}) do
+			local selection;for _,entry in ipairs(data.powerStatList) do if entry.stat==key then selection=entry;break end end;assert.is_not_nil(selection)
+			tab.powerStat=selection;tab.powerBuildFlag=true;tab.powerBuilderInitialized=false
+			for _=1,10000 do tab:BuildPower();if not tab.powerBuilder and not tab.powerBuildFlag then break end end
+			assert.is_true(tab.powerBuilderInitialized,key);assert.is_falsy(build.treeTab.powerCalculationFailed,key)
+		end
+	end)
 
 	it("restores a Runegraft after rebuilding mastery options", function()
 		local node = assert(findMasteryNode())
