@@ -62,6 +62,9 @@ describe("Crafting project removal and save-state ownership",function()
 	it("patches written guide fields while preserving the rest of the project",function()
 		local original=project("patch-guide");original.simulatorExport=string.rep("x",128000)
 		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		local state=sim.model(original.startingItem).initial
+		original.run=require("Modules.CraftingInventory").run(state)
+		original.inventory={{id="base",title="Saved base",slot="Helmet",baseItem=original.startingItem,at=1,state=state}}
 		build.savers.CraftingProjects:Upsert(original)
 		local function prepare(patch) return bridge.prepare(build,{mode="edit",title="Update guide",baseRevision=bridge.revision(build),operations={{type="patch_crafting_guide",projectId=original.id,patch=patch}}}) end
 		local prepared=prepare({title="New title",steps={{action="Use an essence"}}});local candidate=prepared.candidate.savers.CraftingProjects.projects[1]
@@ -69,6 +72,14 @@ describe("Crafting project removal and save-state ownership",function()
 		assert.equal(original.simulatorExport,candidate.simulatorExport);assert.same(build.savers.CraftingProjects.projects[1].nativeRecipe,candidate.nativeRecipe)
 		assert.equal(original.title,build.savers.CraftingProjects.projects[1].title)
 		assert.is_false(pcall(prepare,{}));assert.is_false(pcall(prepare,{startingItem="other"}))
+		local changes=table.concat(prepared.changes,"\n")
+		assert.matches("New title",changes,1,true);assert.matches("Use an essence",changes,1,true)
+		assert.is_nil(changes:find("checkpoint removed",1,true));assert.is_nil(changes:find("Removed saved item",1,true))
+		local applied=bridge.apply(prepared);local xml=applied:SaveDB("Guide patch")
+		loadBuildFromXML(xml,"Guide patch");local reopened=main.modes.BUILD.savers.CraftingProjects.projects[1]
+		assert.equal("New title",reopened.title);assert.equal("Use an essence",reopened.steps[1].action)
+		assert.equal(original.simulatorExport,reopened.simulatorExport);assert.is_truthy(reopened.run);assert.equal(1,#reopened.inventory)
+		assert.equal("alchemy",reopened.nativeRecipe.steps[1].method)
 	end)
 	it("reviews removed guide, recipes, inventory and checkpoint before applying",function()
 		local original=project("review");local model=sim.model(original.startingItem)
