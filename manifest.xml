@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1115" />
+	<Version number="2.68.1-ai.preview1116" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1777,7 +1777,7 @@
 	<File name="Classes/LootFilterStackControl.lua" part="program" sha1="31ec30fe8cd7622aafb64c141104fdf0c4028e8a" />
 	<File name="Classes/LootFilterStructureControl.lua" part="program" sha1="b5dc73fb5fa8baf59d74f7d68e8e38d255bd25de" />
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
-	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="88a24061e1661ecb9b27e065f6132ce02877d026" />
+	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="4b5ab75ac13b0f32989a081a5760a704ecdd7a3b" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="b133139457017d3bb1579c4284c14bf3f1c0a524" />
 	<File name="Classes/MapModifierControl.lua" part="program" sha1="545b24b4e4c21ad6509b92c48a443f84f966359a" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
@@ -2223,7 +2223,7 @@
 	<File name="Modules/LootFilterClipboard.lua" part="program" sha1="6033f462a4d66e64c2c242cf928789f22d938c8c" />
 	<File name="Modules/LootFilterCollections.lua" part="program" sha1="c3a235ca7bf04169ed7b010d4dae3a53caf2fc7b" />
 	<File name="Modules/LootFilterDecorators.lua" part="program" sha1="0a5fe0000ac903118f28573b4ceeee15d623aeae" />
-	<File name="Modules/LootFilterDependencies.lua" part="program" sha1="95e511708017ff5a90507d300cf8e00431bddac1" />
+	<File name="Modules/LootFilterDependencies.lua" part="program" sha1="87fa911d57a2bd55c8f9feb0f4033946d7976dee" />
 	<File name="Modules/LootFilterDiagnostics.lua" part="program" sha1="d085a909710b699ed602e7a4d7ad33fd097a4806" />
 	<File name="Modules/LootFilterDiff.lua" part="program" sha1="6f117c8c4dac0273eec0a5b64ba31140c0bac7e6" />
 	<File name="Modules/LootFilterEditing.lua" part="program" sha1="db99a9761e46b2b1415967cc6bb69796a2bbc437" />
@@ -2237,7 +2237,7 @@
 	<File name="Modules/LootFilterStructure.lua" part="program" sha1="851284bd7d874aac9b630891c12e744eb1dd6bc8" />
 	<File name="Modules/LootFilterVisuals.lua" part="program" sha1="a36e6f987aef976d6aa020a28ca98510b96adede" />
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="9785a76f851b524da1d28d67103891599f0aa12d" />
-	<File name="Modules/LootFilters.lua" part="program" sha1="d59fb23cca718f62609bde51b87a993bfab41eac" />
+	<File name="Modules/LootFilters.lua" part="program" sha1="3d1600378cdb8f113c7f8251f1f4ddccfaa1b3d5" />
 	<File name="Modules/Main.lua" part="program" sha1="617f48b41e8da9a3f116630600abc48cfa36588a" />
 	<File name="Modules/MapClipboard.lua" part="program" sha1="eb59d14815d965e0396a7ccf759a1f318b000fb5" />
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="4bde5edf6208613815c1410d2e7916ccf88b273e" />
@@ -2258,7 +2258,7 @@
 	<File name="Modules/PlanningRevision.lua" part="program" sha1="f68afda18a3c9768fbc71a72c6dd67bfebfea316" />
 	<File name="Modules/PlanningUI.lua" part="program" sha1="f4f10357a5d0a04c8607b0afa438ec73dbf2a925" />
 	<File name="Modules/PlanningWorker.lua" part="program" sha1="cfa18e6b4626a7a834906bc0df0e992b386e68f2" />
-	<File name="Modules/PlanningWorkspace.lua" part="program" sha1="fb1096ae5309fd6dafc4fa1756c4419a1b6d7ef2" />
+	<File name="Modules/PlanningWorkspace.lua" part="program" sha1="9b9edc4549bb69ebd64817a8e67b2e3e2658ef31" />
 	<File name="Modules/RecoveryTasks.lua" part="program" sha1="99bdef734b4030782fda58f36e3863f0d25f50ac" />
 	<File name="Modules/StatDescriber.lua" part="program" sha1="05f5a888f3d88c63920dde8e46500e102eef7025" />
 	<File name="Modules/ToastNotification.lua" part="program" sha1="87abe18f2c81a8df77e7e79248730e81ca5e03c5" />

@@ -16,6 +16,7 @@ describe("Build-owned loot filters",function()
 		local project={id="manual-guide",title="Manual guide",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={{action="Use a rare currency"}}}
 		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("manual","Manual");local _,warnings=filters.generate(build,profile)
 		local found=false;for _,entry in ipairs(warnings) do if entry.origin=="craft:manual-guide" and entry.message:find("Written guide steps",1,true) then found=true end end;assert.is_true(found)
+		local report=require("Modules.LootFilterDependencies").report(build,profile);local linked;for _,entry in ipairs(report.entries) do if entry.origin=="craft:manual-guide" then linked=entry end end;assert.is_true(linked.openGuide)
 		project.steps[1].done=true;build.savers.CraftingProjects:Upsert(project);_,warnings=filters.generate(build,profile)
 		for _,entry in ipairs(warnings) do assert.is_false(entry.origin=="craft:manual-guide" and entry.message:find("Written guide steps",1,true)~=nil) end
 	end)

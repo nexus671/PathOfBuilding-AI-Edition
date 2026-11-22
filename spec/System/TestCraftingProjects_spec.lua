@@ -12,7 +12,7 @@ describe("Crafting projects", function()
 	it("preserves written quality steps that are incompatible with unique jewellery",function()
 		local ring="Rarity: UNIQUE\nAhkeli's Meadow\nRuby Ring\nItem Level: 86\nImplicits: 1\n+25% to Fire Resistance\n+20 to Strength\n5% increased maximum Energy Shield\n5% increased maximum Life"
 		for _,case in ipairs({{method="quality",action="Use 1 Armourer's Scrap"},{method="tainted_quality",action="Use a Tainted Armourer's Scrap to reroll quality",corrupted=true}}) do
-			local p=project();p.slot="Ring 1";p.startingItem=ring..(case.corrupted and "\nCorrupted" or "");p.steps={{action=case.action,uniqueCraft={method=case.method,count=1}}}
+			local p=project();p.slot="Ring 1";p.targetItem=nil;p.startingItem=ring..(case.corrupted and "\nCorrupted" or "");p.steps={{action=case.action,uniqueCraft={method=case.method,count=1}}}
 			local result=projects.validate(p);assert.equal(case.action,result.steps[1].action);assert.is_nil(result.steps[1].uniqueCraft)
 			build.savers.CraftingProjects:Upsert(result)
 		end

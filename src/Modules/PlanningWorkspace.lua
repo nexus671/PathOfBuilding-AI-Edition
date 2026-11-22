@@ -202,9 +202,9 @@ function M:Show(page,source)
 			end
 			self.cache.crafting=nil;self.drafts.crafting=nil;self:Show("crafting")
 		end
-		layout.openWorkbench=function(project)
+		layout.openWorkbench=function(project,openGuide)
 			local reason=require("Modules.CraftingProjects").workbenchReason(project)
-			if reason then
+			if reason or openGuide then
 				local saved=false;for _,entry in ipairs(self.build.savers.CraftingProjects.projects) do if entry.id==project.id and entry.startingItem==project.startingItem then saved=true;break end end
 				assert(saved,reason)
 				local current=self.cache.crafting

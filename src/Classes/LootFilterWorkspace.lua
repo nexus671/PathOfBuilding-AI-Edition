@@ -111,8 +111,8 @@ function M.Open(build,source,layout,controller)
 	local function draft(field) dirty=true;history:record(data,field);ui.draft(build,"filters") end
 	local function snapshot() return {data=data,baseHash=baseHash,selected=profile and profile.id,page=page,category=category,scope=scope,query=query,rule=selected,sample=item,dirty=dirty,seed=seed,sceneKind=sceneKind,showHidden=showHidden,history=history:snapshot(),tierState=tierView and tierView.snapshot() or tierState,sceneSettings=settings,sampleHistory=samples,sampleSetId=sampleSetId,scenePage=scenePage} end
 	local function reopen() layout.navigate("filters",snapshot()) end
-	local function openSource(origin)
-		local ok,reason=require("Modules.LootFilterDependencies").open(build,layout,origin)
+	local function openSource(origin,openGuide)
+		local ok,reason=require("Modules.LootFilterDependencies").open(build,layout,origin,openGuide)
 		if not ok then ui.errorPopup("Linked source",reason) end
 	end
 	local function targetPreview()
@@ -144,8 +144,8 @@ function M.Open(build,source,layout,controller)
 		end
 		profile.rules=result.rules;profile.trackBuildPickups=true;draft();reopen()
 		if #result.warnings>0 then
-			local entries={};for _,warning in ipairs(result.warnings) do entries[#entries+1]={id=warning.origin,origin=warning.origin,label=warning.title,details={warning.message}} end
-			require("Classes.PlanningBrowserControl").Open("Review build pickups",entries,{action="Open source",canChoose=function(entry) return type(entry.origin)=="string" and entry.origin~="" end,choose=function(entry) main:ClosePopup();openSource(entry.origin) end,closeOnChoose=false})
+			local entries={};for _,warning in ipairs(result.warnings) do entries[#entries+1]={id=warning.origin,origin=warning.origin,openGuide=warning.openGuide,label=warning.title,details={warning.message}} end
+			require("Classes.PlanningBrowserControl").Open("Review build pickups",entries,{action="Open source",canChoose=function(entry) return type(entry.origin)=="string" and entry.origin~="" end,choose=function(entry) main:ClosePopup();openSource(entry.origin,entry.openGuide) end,closeOnChoose=false})
 		end
 	end
 	local function generatePickups()
@@ -322,7 +322,7 @@ function M.Open(build,source,layout,controller)
 			elseif entry.id=="changes" then require("Classes.PlanningBrowserControl").Open("Filter changes",require("Modules.LootFilterEditing").review(saver.data,data))
 			elseif entry.id=="links" and profile then
 				refreshDependencies();if not dependencies or dependencyJob then main:OpenMessagePopup("Linked filter targets",dependencyError or "Checking build pickups. Please try again shortly.");return end
-				require("Classes.PlanningBrowserControl").Open("Linked filter targets",dependencies.entries,{action="Open source",choose=function(entry) main:ClosePopup();openSource(entry.origin) end,closeOnChoose=false,
+				require("Classes.PlanningBrowserControl").Open("Linked filter targets",dependencies.entries,{action="Open source",choose=function(entry) main:ClosePopup();openSource(entry.origin,entry.openGuide) end,closeOnChoose=false,
 					secondary={label="Refresh build pickups",run=function() main:ClosePopup();generatePickups() end}})
 			elseif entry.id=="campaign" and profile then require("Classes.LootFilterCampaignControl").Open(build,profile.campaign,function(value) profile.campaign=value;draft();reopen() end,profile.mode)
 			elseif entry.id=="structure" and profile then require("Classes.LootFilterStructureControl").Open(profile,function(rule) editRule(rule,keepRule) end)

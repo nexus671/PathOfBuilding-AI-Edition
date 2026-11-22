@@ -64,8 +64,8 @@ function M.report(build,profile,checkpoint)
 		if before then result.linked=result.linked+#before.rules end
 		if status~="Current" then result.stale=true end
 		local lines={status,"Source: "..M.sourceLabel(build,origin),"Refreshing replaces generated pickups and preserves personal overrides.","Existing pickups: "..table.concat(before and before.rules or {},", "),"Current targets: "..table.concat(after and after.rules or {},", ")}
-		for _,warning in ipairs(warnings or {}) do lines[#lines+1]=warning.message end
-		result.entries[#result.entries+1]={id=origin,label=(after and after.rules[1] or before and before.rules[1] or warnings[1].title).." | "..status,category=status,details=lines,origin=origin,status=status}
+		local openGuide=false;for _,warning in ipairs(warnings or {}) do lines[#lines+1]=warning.message;openGuide=openGuide or warning.openGuide==true end
+		result.entries[#result.entries+1]={id=origin,label=(after and after.rules[1] or before and before.rules[1] or warnings[1].title).." | "..status,category=status,details=lines,origin=origin,status=status,openGuide=openGuide}
 	end
 	-- Legacy profiles with linked rules were already tracking; new manual profiles are not.
 	local tracking=profile.trackBuildPickups~=false and (profile.trackBuildPickups==true or result.linked>0)
@@ -99,9 +99,9 @@ function M.poll(job)
 	if coroutine.status(job.thread)=="dead" then if not M.current(job) then return true,nil,"changed" end;return true,result end
 	return false
 end
-function M.open(build,layout,origin)
+function M.open(build,layout,origin,openGuide)
 	local kind,id=(origin or ""):match("^([^:]+):(.+)$")
-	if kind=="craft" then for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id==id then layout.openWorkbench(project);return true end end
+	if kind=="craft" then for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id==id then layout.openWorkbench(project,openGuide);return true end end
 	elseif kind=="atlas" then for _,plan in ipairs(build.savers.AtlasPlans.plans) do if plan.id==id then layout.navigate("atlas",copyTable(plan));return true end end
 	elseif kind=="gear" or kind=="budget" then
 		local entries=build.savers.BuildJourney.data[kind=="gear" and "wishlist" or "resources"];for _,entry in ipairs(entries) do if entry.id==id then layout.navigate("journey",{page=kind=="gear" and "Gear" or "Budget",selected=id});return true end end

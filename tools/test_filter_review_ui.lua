@@ -19,5 +19,20 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	assert(table.concat(notice," "):find("Written guide steps",1,true),"Manual guide notice was not visible")
 	if output then ui:frame():write(output.."/"..size[1].."-filter-pickup-notice.json") end
 	ui:click("choose");assert(build.planningWorkspace.page=="crafting","Pickup notice did not open the crafting source")
+	assert(build.planningWorkspace.controls.libraryPage:GetSelValue()=="Plan","Manual guide notice did not open the saved guide")
+	assert(build.planningWorkspace.selections.crafting==project.id,"Manual guide notice opened a different project")
+	if output then ui:frame():write(output.."/"..size[1].."-filter-notice-guide.json") end
+end
+for _,kind in ipairs({"atlas","budget"}) do
+	newBuild();main.popups={};local ui=UI.install({width=960,height=640});ui:bind(build)
+	if kind=="atlas" then
+		build.savers.AtlasPlans:Upsert({id="warning-atlas",title="Atlas warning",version="3.30.0c",budget=150,nodes={},strategy={maps="Strand Map"}})
+	else
+		local journey=require("Modules.BuildJourney").empty();journey.resources={{id="warning-budget",title="Beach Maps"}};build.savers.BuildJourney:Replace(journey)
+	end
+	local profile=require("Modules.LootFilters").profile("source-ui","Source test");build.savers.LootFilters:Upsert(profile);build.planningWorkspace=require("Modules.PlanningWorkspace").new(build);build.viewMode="PLANNER";build.planningWorkspace:Show("filters")
+	ui:click("generate");for i=1,2000 do ui:frame();if main.popups[1] and main.popups[1].title=="Review build pickups" then break end end
+	assert(main.popups[1] and main.popups[1].title=="Review build pickups",kind.." notice did not open")
+	ui:click("choose");assert(build.planningWorkspace.page==(kind=="atlas" and "atlas" or "journey"),kind.." notice opened the wrong source")
 end
 print("FILTER_REVIEW_UI_OK")
