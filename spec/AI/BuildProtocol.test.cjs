@@ -18,6 +18,14 @@ function fixture(t) {
     operations:[{type:'set_character',level:80,className:'Witch',ascendancy:'Elementalist'},{type:'set_skills',groups:[{gems:[{name:'Fireball'}]}]}]}};
 }
 
+test('queues same-base vendor review with bounded copied items', t => {
+  const f=fixture(t), raw='Rarity: Normal\nJade Amulet\n--------\nItem Level: 60';
+  f.call('review_same_base_vendor_items',{baseRevision:f.state.revision,items:[raw]});
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
+  assert.equal(request.kind,'review_same_base_vendor_items');assert.deepEqual(request.items,[raw]);
+  for(const items of [[],[3],['x'.repeat(24001)]]) assert.throws(()=>f.call('review_same_base_vendor_items',{baseRevision:f.state.revision,items}),/arguments/);
+});
+
 test('queues same-name rare review with bounded copied items', t => {
   const f=fixture(t), raw='Rarity: Rare\nVortex Visage\nIron Hat\n--------\nItem Level: 80';
   f.call('review_same_name_rares',{baseRevision:f.state.revision,items:[raw,raw,raw]});

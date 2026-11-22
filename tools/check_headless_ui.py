@@ -45,6 +45,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_tincture_hint.lua")
     sources.append(ROOT / "tools/test_combined_fossil_ui.lua")
     sources.append(ROOT / "tools/test_vendor_review_ui.lua")
+    sources.append(ROOT / "tools/test_vendor_base_ui.lua")
     sources.append(ROOT / "tools/test_bounded_planning_errors.lua")
     sources.append(ROOT / "tools/test_modifier_paging_ui.lua")
     sources.append(ROOT / "tools/test_crafting_replay_ui.lua")
@@ -137,6 +138,10 @@ def main():
                                      env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "timeless-dialog-controls.log").write_text(timeless_dialog.stdout)
     assert timeless_dialog.returncode == 0, timeless_dialog.stdout
+    vendor_base = subprocess.run(lua_command + ["../tools/test_vendor_base_ui.lua"], cwd=ROOT / "src",
+                                 env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "vendor-base-controls.log").write_text(vendor_base.stdout)
+    assert vendor_base.returncode == 0, vendor_base.stdout
     ai_filter_review = subprocess.run(lua_command + ["../tools/test_ai_filter_proposal_ui.lua"], cwd=ROOT / "src",
                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "ai-filter-review-controls.log").write_text(ai_filter_review.stdout)
@@ -200,7 +205,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2343, f"Expected 2343 UI frames, found {len(paths)}"
+    assert len(paths) == 2352, f"Expected 2352 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         for scene in ("beyond", "incursion"):
             assert (frames / f"{width}-filter-{scene}-examples.json").is_file(), f"Missing {scene} scene at {width}px"

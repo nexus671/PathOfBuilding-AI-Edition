@@ -427,6 +427,12 @@ local vendorExamples={
 	{"Driftwood Wand","Wands","Normal",{Quality=12}},{"Iron Hat","Helmets","Normal",{Quality=12}},
 	{"Divine Life Flask","Life Flasks","Normal",{Quality=20}},{"Granite Flask","Utility Flasks","Normal",{Quality=12}},
 	{"Prismatic Tincture","Tinctures","Normal",{Quality=12}},
+	-- Same-base rarity comparison for the Chance Orb vendor recipe. These are
+	-- synthetic examples, not a claim that the four items drop together.
+	{"Jade Amulet","Amulets","Normal",{Identified=true}},
+	{"Jade Amulet","Amulets","Magic"},
+	{"Jade Amulet","Amulets","Rare"},
+	{"Jade Amulet","Amulets","Unique"},
 }
 -- Use exact names from NeverSink's pinned high-emphasis currency blocks. This
 -- is a snapshot of filter styling, not a price feed or a drop distribution.
@@ -479,6 +485,7 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		if item.Identified==false and (item.Rarity=="Magic" or item.Rarity=="Rare") then item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or nil end
 		applyBaseProperties(item)
 		for key,value in pairs(example[4] or {}) do item[key]=value end
+		if kind=="Vendor recipes" and item.Rarity=="Unique" then item.UnidentifiedItemTier=nil end
 		-- Current ordinary map bases explicitly name their tier.
 		if kind=="Maps & threads" and item.Class=="Maps" then item.MapTier=item.MapTier or tonumber(item.BaseType:match("^Map %(Tier (%d+)%)$")) end
 		if kind~="Currency" or item.Class=="Stackable Currency" then list[#list+1]=item end

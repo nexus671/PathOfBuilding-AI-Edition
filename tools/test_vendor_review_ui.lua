@@ -1,5 +1,14 @@
 return function(build,ui,frame)
 	ui:click("nav_tools")
+	do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="baseSets" then selected=row;break end end;assert(selected,"Same-base review is missing from planning tools");browser.results.onClick({line=selected});ui:click("choose") end
+	frame("vendor-base-empty")
+	for _,raw in ipairs({"Rarity: Normal\nJade Amulet","Rarity: Magic\nJade Amulet of the Lynx","Rarity: Rare\nDoom Beads\nJade Amulet","Rarity: Unique\nKarui Ward\nJade Amulet"}) do ui.clipboard="Item Class: Amulets\n"..raw.."\n--------\nItem Level: 60";ui:click("paste") end
+	do local c=main.popups[1].controls;assert(c.entries.list[2][1]:find("Jade Amulet",1,true) and c.entries.list[2][3]:find("1",1,true),"Same-base set was not displayed") end
+	frame("vendor-base-complete");ui:click("undo");assert(main.popups[1].controls.entries.list[2][3]:find("0",1,true));ui:click("undo");assert(main.popups[1].controls.entries.list[2][3]:find("1",1,true))
+	ui:click("clear");assert(#main.popups[1].controls.entries.list==1);ui:click("undo");assert(#main.popups[1].controls.entries.list==2);ui:click("close")
+	ui:click("nav_tools");do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="baseSets" then selected=row;break end end;assert(selected);browser.results.onClick({line=selected});ui:click("choose") end
+	assert(main.popups[1].controls.status.label:find("4 pasted",1,true),"Same-base review lost its working items");frame("vendor-base-reopened");ui:click("close")
+	ui:click("nav_tools")
 	do local browser=main.popups[1].controls;local selected;for _,row in ipairs(browser.results.list) do if row.entry and row.entry.id=="vendor" then selected=row;break end end;assert(selected,"Vendor review is missing from planning tools");browser.results.onClick({line=selected});ui:click("choose") end
 	frame("vendor-rare-empty")
 	ui.clipboard="Item Class: Helmets\nRarity: Rare\nVortex Visage\nIron Hat\n--------\nItem Level: 80"

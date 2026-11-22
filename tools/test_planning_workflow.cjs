@@ -50,6 +50,9 @@ async function main(){
   await host('request-test');await call('get_build_connection');await host('tick',1);
   const proof=await host('connection-proof');assert.equal(proof.client,'planning-workflow-test');assert.equal(proof.tested,true);assert.equal(proof.synced,true);
   const rareCopy='Item Class: Helmets\nRarity: Rare\nVortex Visage\nIron Hat\n--------\nItem Level: 80';
+  const baseCopies=['Rarity: Normal\nJade Amulet','Rarity: Magic\nJade Amulet of the Lynx','Rarity: Rare\nDoom Beads\nJade Amulet','Rarity: Unique\nKarui Ward\nJade Amulet'].map(text=>'Item Class: Amulets\n'+text+'\n--------\nItem Level: 60');
+  const baseReview=await queued('review_same_base_vendor_items',{baseRevision:context.revision,items:baseCopies},'baseSetVendorReview');
+  assert.equal(baseReview.baseSetVendorReview.groups[0].base,'Jade Amulet');assert.equal(baseReview.baseSetVendorReview.groups[0].sets,1);
   const rareReview=await queued('review_same_name_rares',{baseRevision:context.revision,items:[rareCopy,rareCopy,rareCopy]},'vendorReview');
   assert.equal(rareReview.vendorReview.groups[0].name,'Vortex Visage');assert.equal(rareReview.vendorReview.groups[0].exalted,1);assert.equal(rareReview.vendorReview.groups[0].chaos,0);
   const rareSetCopies=['Helmets','Body Armours','Gloves','Boots','Amulets','Belts','Rings','Rings','Bows'].map(cls=>`Item Class: ${cls}\nRarity: Rare\nExample Base\n--------\nItem Level: 70\n--------\nUnidentified`);
