@@ -377,6 +377,24 @@ describe("Unique item quality",function()
 		local count=0;for _ in pairs(seen) do count=count+1 end;assert.is_true(count>1)
 	end)
 
+	it("keeps descending unique penalties accurate with catalysts",function()
+		local template;for _,group in pairs(data.uniques) do for _,entry in ipairs(group) do if entry:match("^%s*Betrayal's Sting[\r\n]") then template=entry end end end
+		assert.is_truthy(template);local raw="Rarity: UNIQUE\n"..template:gsub("^(%s*[^\r\n]+[\r\n]+[^\r\n]+)","%1\nItem Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20",1)
+		local function resistance(text)
+			local options,reason=quality.divineOptions(text);assert.is_truthy(options,reason)
+			for _,option in ipairs(options) do if option.line:find("all Elemental Resistances",1,true) then return option end end
+		end
+		local first=resistance(raw);assert.equal(-36,first.min);assert.equal(-24,first.max);assert.equal(-30,first.current)
+		local seen={};for seed=1,15 do
+			local result=quality.divine(raw,seed*104729);local option=resistance(result.itemText);local item=quality.inspect(result.itemText)
+			local rendered;for _,mod in ipairs(item.explicitModLines) do if mod.line==option.line then rendered=itemLib.applyRange(mod.line,mod.range,mod.valueScalar) end end
+			assert.equal(tostring(option.current).."% to all Elemental Resistances",rendered)
+			assert.is_true(option.current>=-36 and option.current<=-24);seen[option.current]=true
+			assert.is_truthy(quality.divine(result.itemText,seed*130363))
+		end
+		local count=0;for _ in pairs(seen) do count=count+1 end;assert.is_true(count>1)
+	end)
+
 	it("targets a specific unique modifier roll",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40 to Evasion Rating\n+10% to Item Rarity\n+35% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
 		local options=quality.divineOptions(raw);assert.equal(2,#options);local target
