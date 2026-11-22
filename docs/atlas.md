@@ -1,3 +1,4 @@
+<!-- cspell:ignore lupa -->
 # Atlas planner
 
 For up to six new targets, the planner checks its exact route after the original-order comparison and skips further ordering when that route passes the budget checks. In a 20-run headless CPU benchmark on the bundled 3.30 tree, a six-target route took about 143 ms on average versus 161 ms before this change, with the same 36 added nodes. This is a bounded measurement, not a native desktop responsiveness test. Run `python tools/run_headless_lupa.py --filesystem tools/benchmark_atlas_route.lua` to repeat it; pass an older `AtlasPlanner.lua` path to compare another revision.

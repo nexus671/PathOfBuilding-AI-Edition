@@ -69,7 +69,12 @@ function M.Open(build,project,layout,snapshot)
 			first=matched+1
 			if first>#actions then return nil,"These preview steps are already in the guide." end
 		end
-		local steps={};local qualityCount=0
+		local steps={};local qualityCount=0;local socketKnown=true
+		local function trackSockets(action)
+			if action=="jeweller" or action=="tainted_jeweller" then socketKnown=false
+			elseif action=="omen_jeweller" or action:match("^socket_count_bench:[2-6]$") then socketKnown=true end
+		end
+		for i=1,first-1 do trackSockets(actions[i]) end
 		local function flush()
 			if qualityCount>0 then steps[#steps+1]={action=unique.guideAction("quality",qualityCount,info.resource),uniqueCraft={method="quality",count=qualityCount},done=false};qualityCount=0 end
 		end
@@ -87,8 +92,11 @@ function M.Open(build,project,layout,snapshot)
 			elseif socketCount then
 				flush();steps[#steps+1]={action=unique.guideAction("socket_count_bench",socketCount,info.resource,item.corrupted),uniqueCraft={method="socket_count_bench",count=socketCount},done=false}
 			elseif action=="instilling" or action=="enkindling" or action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="divine" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
-				local before=unique.inspect(history[i]);flush();steps[#steps+1]={action=unique.guideAction(action,1,info.resource,item.corrupted,#before.sockets),uniqueCraft={method=action,count=1},done=false}
+				local before=unique.inspect(history[i]);flush();local count=#before.sockets
+				if action=="socket_bench" and not socketKnown then count=nil end
+				steps[#steps+1]={action=unique.guideAction(action,1,info.resource,item.corrupted,count),stopWhen=action=="socket_bench" and not socketKnown and "Check socket count and bench price before linking." or nil,uniqueCraft={method=action,count=1},done=false}
 			else return nil,"Loaded or older previews do not record every action." end
+			trackSockets(action)
 		end
 		flush()
 		local signature=require("sha1")(table.concat(actions,"|").."\n"..raw)

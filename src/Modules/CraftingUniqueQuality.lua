@@ -79,7 +79,13 @@ function M.guideAction(method,count,resource,corrupted,socketCount,enchantId,cat
 	if method=="socket_white_bench" then return "Use the crafting bench to make all sockets white (1 Orb of Scouring"..(corrupted and " and 1 Vaal Orb" or "")..")" end
 end
 function M.matchesGuideAction(method,count,resource,corrupted,action,socketCount,enchantId,catalyst)
-	return action==M.guideAction(method,count,resource,corrupted,socketCount,enchantId,catalyst) or method=="socket_white_bench" and action=="Use the crafting bench to make all sockets white"
+	if action==M.guideAction(method,count,resource,corrupted,socketCount,enchantId,catalyst) or method=="socket_white_bench" and action=="Use the crafting bench to make all sockets white" then return true end
+	-- Older preview guides recorded the sampled bench price after a random
+	-- socket roll. Retain their typed pickup without treating that count as known.
+	if method=="socket_bench" and socketCount==nil then
+		for n=2,6 do if action==M.guideAction(method,count,resource,corrupted,n,enchantId,catalyst) then return true end end
+	end
+	return false
 end
 local function withoutQuality(raw)
 	local lines={};for line in (raw.."\n"):gmatch("([^\n]*)\n") do if not line:match("^Quality: ") then lines[#lines+1]=line end end

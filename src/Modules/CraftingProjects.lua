@@ -81,7 +81,7 @@ function M.validate(project)
 			-- before using these unverified steps.
 			local rarity=result.startingItem:match("^Rarity:%s*(%a+)") or result.startingItem:match("\nRarity:%s*(%a+)")
 			local pending=not uniqueInfo and rarity and rarity:upper()=="UNIQUE"
-			if pending or compatible and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,uniqueInfo.resource,uniqueItem.corrupted,entry.action,uniqueSocketCount,craft.enchantId,craft.catalyst) then entry.uniqueCraft={method=craft.method,count=craft.count,enchantId=craft.enchantId,catalyst=craft.catalyst};if not pending and craft.method=="socket_count_bench" then uniqueSocketCount=craft.count elseif not pending and craft.method=="omen_jeweller" then uniqueSocketCount=require("Modules.CraftingUniqueQuality").omenCount(uniqueItem) end end
+			if pending or compatible and require("Modules.CraftingUniqueQuality").matchesGuideAction(craft.method,craft.count,uniqueInfo.resource,uniqueItem.corrupted,entry.action,uniqueSocketCount,craft.enchantId,craft.catalyst) then entry.uniqueCraft={method=craft.method,count=craft.count,enchantId=craft.enchantId,catalyst=craft.catalyst};if not pending and craft.method=="socket_count_bench" then uniqueSocketCount=craft.count elseif not pending and craft.method=="omen_jeweller" then uniqueSocketCount=require("Modules.CraftingUniqueQuality").omenCount(uniqueItem) elseif not pending and (craft.method=="jeweller" or craft.method=="tainted_jeweller") then uniqueSocketCount=nil end end
 		end
 		result.steps[#result.steps+1]=entry
 	end
