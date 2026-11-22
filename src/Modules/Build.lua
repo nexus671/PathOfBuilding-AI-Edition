@@ -18,7 +18,7 @@ local s_format = string.format
 ---@class Build: ControlHost
 ---@field spec PassiveSpec added by TreeTab
 ---@field powerBuilderProgressCallback fun(progress: number)?
----@field powerBuilderCallback fun()
+---@field powerBuilderCallback fun(failure: string?)
 local buildMode = new("ControlHost"):ControlHost()
 
 local function InsertIfNew(t, val)

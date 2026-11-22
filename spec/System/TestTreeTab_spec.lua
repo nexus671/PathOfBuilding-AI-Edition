@@ -20,6 +20,17 @@ describe("TreeTab", function()
 		build.spec.tree.clusterNodeMap = originalClusterNodeMap
 		build.spec.tree.masteryEffects = originalMasteryEffects
 	end)
+	it("reports a failed node-power calculation without publishing partial results and can retry",function()
+		local tab,tree=build.calcsTab,build.treeTab;local node=select(2,next(build.spec.nodes));local dev=launch.devMode;launch.devMode=false
+		local original=tab.PowerBuilder;local originalReport=tree.BuildPowerReportList;local reports=0
+		tree.BuildPowerReportList=function() reports=reports+1;return {} end
+		tab.PowerBuilder=function() node.power.singleStat=123;error("synthetic power failure") end
+		tab.powerBuildFlag=true;tree.viewer.showHeatMap=true;tab:BuildPower()
+		assert.is_nil(tab.powerBuilder);assert.is_nil(tab.powerMax);assert.is_nil(node.power.singleStat);assert.is_false(tree.viewer.showHeatMap)
+		assert.is_falsy(tree.controls.powerReportList.reportReady);assert.matches("Power failed",tree.controls.powerReportList.label,1,true);assert.equal(0,reports)
+		tab.PowerBuilder=function() end;tree:SetPowerCalc({stat="Life",label="Life"});tab:BuildPower();assert.equal(1,reports);assert.is_true(tree.viewer.showHeatMap)
+		tab.PowerBuilder=original;tree.BuildPowerReportList=originalReport;launch.devMode=dev
+	end)
 
 	it("restores a Runegraft after rebuilding mastery options", function()
 		local node = assert(findMasteryNode())

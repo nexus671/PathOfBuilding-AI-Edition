@@ -149,9 +149,7 @@ describe("Linked planning tools",function()
 		local plan={id="farm",title="Farm",version="3.30.0c",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
 		store:Upsert(plan);local profile=filters.profile("linked","Linked");profile.trackBuildPickups=true
 		profile.rules=filters.generate(build,profile);build.savers.LootFilters:Upsert(profile)
-		local review=dependencies.report(build,profile);assert.is_true(review.needsReview)
-		local notice;for _,entry in ipairs(review.entries) do if entry.origin=="craft:unique-filter" then notice=entry end end
-		assert.is_true(notice.openGuide);assert.matches("Written guide steps",table.concat(notice.details," "),1,true)
+		assert.is_false(dependencies.report(build,profile).stale)
 		plan.strategy.scarabs="Orb of Scouring";store:Upsert(plan)
 		local report=dependencies.report(build,profile);assert.is_true(report.stale)
 		local status;for _,entry in ipairs(report.entries) do if entry.origin=="atlas:farm" then status=entry.status end end
@@ -462,7 +460,9 @@ describe("Linked planning tools",function()
 		local wizard=main.popups[1].controls;wizard.steps:SetText("Acquire the item\n"..saved.steps[1].action.."\n"..saved.steps[2].action)
 		wizard.wizardPage:SelByValue("Review");wizard.save:Click();saved=build.savers.CraftingProjects.projects[1]
 		assert.equal("quality",saved.steps[2].uniqueCraft.method);assert.equal("omen_connections",saved.steps[3].uniqueCraft.method)
-		assert.is_false(dependencies.report(build,profile).stale)
+		local review=dependencies.report(build,profile);assert.is_true(review.needsReview)
+		local notice;for _,entry in ipairs(review.entries) do if entry.origin=="craft:unique-filter" then notice=entry end end
+		assert.is_true(notice.openGuide);assert.matches("Written guide steps",table.concat(notice.details," "),1,true)
 		require("Classes.CraftingProjectWizard").Open(build,saved,nil,nil,nil,function() end,function() end)
 		wizard=main.popups[1].controls;wizard.steps:SetText("Acquire the item\nUse a different quality method\n"..saved.steps[3].action)
 		wizard.wizardPage:SelByValue("Method & budget");wizard.next:Click()
