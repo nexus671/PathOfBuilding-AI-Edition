@@ -308,6 +308,7 @@ local mapExamples={
 	{"Map (Tier 16)","Maps","Rare",{UberBlightedMap=true}},
 }
 local flaskExamples={
+	{"Sulphur Flask","Utility Flasks","Unique"}, -- Bottled Faith shares this unidentified base.
 	{"Sacred Life Flask","Life Flasks"},{"Divine Life Flask","Life Flasks"},
 	{"Divine Mana Flask","Mana Flasks"},{"Granite Flask","Utility Flasks"},
 	{"Quicksilver Flask","Utility Flasks"},{"Amethyst Flask","Utility Flasks"},
@@ -413,6 +414,7 @@ local sanctumExamples={
  {"Lycia's Invocation of Divine Shield","Stackable Currency"},{"Lycia's Invocation of Eldritch Battery","Stackable Currency"},
 }
 local bossExamples={
+ {"Sulphur Flask","Utility Flasks","Unique"}, -- Bottled Faith shares this unidentified base.
  {"Crescent Splinter","Stackable Currency"},{"The Maven's Writ","Map Fragments"},
  {"Fragment of the Hydra","Map Fragments"},{"Fragment of the Phoenix","Map Fragments"},
  {"Fragment of the Minotaur","Map Fragments"},{"Fragment of the Chimera","Map Fragments"},

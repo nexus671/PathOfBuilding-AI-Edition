@@ -621,6 +621,15 @@ function M.compile(profile,includeParsed)
 	for _,rule in ipairs(parsed.rules) do for _,condition in ipairs(rule.conditions) do
 		if parser.poe2Only[condition.keyword] then parsed.diagnostics[#parsed.diagnostics+1]={line=condition.line,error=condition.keyword.." is a Path of Exile 2-only condition; remove it for Path of Exile 1."} end
 	end end
+	-- A pinned strictness tier can hide this boss-unique base. Evaluate the
+	-- compiled rules rather than guessing from strictness, so personal and
+	-- imported rules can override it. This is a sample, not a price feed.
+	local sample=require("Modules.LootFilterLibrary").sample()
+	sample.BaseType="Sulphur Flask";sample.Class="Utility Flasks";sample.Rarity="Unique";sample.Identified=false;sample.AreaLevel=83;sample.ItemLevel=86
+	local flask=parser.simulate(parsed,sample)
+	if flask.status=="matched" and flask.action=="Hide" then
+		parsed.diagnostics[#parsed.diagnostics+1]={line=flask.line,code="hiddenUniqueSulphur",warning="A level 86 unidentified unique Sulphur Flask is hidden in the test sample. This base can be Bottled Faith; review this rule if you want to see it."}
+	end
 	for _,diagnostic in ipairs(require("Modules.LootFilterDiagnostics").shadowing(parsed)) do parsed.diagnostics[#parsed.diagnostics+1]=diagnostic end
 	if checked.mode=="Normal" then for _,rule in ipairs(parsed.rules) do if rule.action=="Minimal" then parsed.diagnostics[#parsed.diagnostics+1]={line=rule.line,error="Minimal blocks require Ruthless mode"} end end end
 	if checked.mode=="Ruthless" then for _,rule in ipairs(parsed.rules) do local text=rule.styles.SetTextColor;if text and tonumber(text[4]) and tonumber(text[4])<80 then parsed.diagnostics[#parsed.diagnostics+1]={line=rule.line,error="Ruthless text opacity must be at least 80"} end end end

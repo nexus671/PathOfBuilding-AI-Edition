@@ -321,7 +321,7 @@ end
 function M.Audit(profile,report,save,focusErrors)
 	local entries={{id="update",label="Update bundled NeverSink base",details={"Saved revision: "..profile.baseCommit,"Bundled revision: "..filters.source().commit,"Personal rules and original imported text are preserved. Templates refresh with fork releases; no live economy feed is implied.","Imported filters use safety rules for new 3.30 items; bundled presets use their own tiering."}}};for name,value in pairs(report and report.changes or {}) do entries[#entries+1]={id=name,label=name,details={value=="removed" and "Removed in 3.30. An empty BaseType list removes its entire rule." or "Renamed to "..value}} end
 	if report and report.error then entries[#entries+1]={id="compile-error",label="Compilation error",details={ui.errorText(report.error)}} end
-	for i,d in ipairs(report and report.diagnostics or {}) do entries[#entries+1]={id="diagnostic-"..i,label="Line "..d.line,details={d.error or d.warning}} end
+	for i,d in ipairs(report and report.diagnostics or {}) do entries[#entries+1]={id="diagnostic-"..i,label=d.code=="hiddenUniqueSulphur" and "Hidden unique Sulphur Flask (line "..d.line..")" or "Line "..d.line,search=d.code=="hiddenUniqueSulphur" and "Bottled Faith" or nil,details={d.error or d.warning}} end
 	if focusErrors then
 		local id=report and report.error and "compile-error"
 		if not id then for i,d in ipairs(report and report.diagnostics or {}) do if d.error then id="diagnostic-"..i;break end end end
