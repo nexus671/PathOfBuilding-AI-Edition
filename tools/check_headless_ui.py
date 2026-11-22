@@ -53,6 +53,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_filter_export_race.lua")
     sources.append(ROOT / "tools/test_filter_review_ui.lua")
     sources.append(ROOT / "tools/test_atlas_plan_pickups_ui.lua")
+    sources.append(ROOT / "tools/test_quality_calculation_ui.lua")
     sources.append(ROOT / "tools/test_ai_filter_proposal_ui.lua")
     sources.append(ROOT / "tools/test_ai_journey_proposal_ui.lua")
     sources.append(ROOT / "tools/test_ai_atlas_proposal_ui.lua")
@@ -122,6 +123,10 @@ def main():
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-plan-pickups-controls.log").write_text(atlas_pickups.stdout)
     assert atlas_pickups.returncode == 0, atlas_pickups.stdout
+    quality_calculation = subprocess.run(lua_command + ["../tools/test_quality_calculation_ui.lua"], cwd=ROOT / "src",
+                                         env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "quality-calculation-controls.log").write_text(quality_calculation.stdout)
+    assert quality_calculation.returncode == 0, quality_calculation.stdout
     ai_filter_review = subprocess.run(lua_command + ["../tools/test_ai_filter_proposal_ui.lua"], cwd=ROOT / "src",
                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "ai-filter-review-controls.log").write_text(ai_filter_review.stdout)

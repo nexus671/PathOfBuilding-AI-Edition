@@ -1,14 +1,20 @@
 -- Property currencies use the same hypothetical state as affix crafting.
 local P={}
 local catalysts={"Abrasive","Accelerating","Dextral","Fertile","Imbued","Intrinsic","Noxious","Prismatic","Sinistral","Tempering","Turbulent","Unstable"}
+-- The ordinary quality gain is an item-level estimate, not a published rate.
+-- Keep the calculator and sampled action on the same two-outcome model.
+function P.qualityGainProfile(itemLevel)
+	local gain=math.max(1,math.min(20,30*math.exp(-itemLevel/30)-0.3))
+	local base=math.floor(gain);return base,gain-base
+end
 function P.extend(M,A,api)
 	local actions={quality="Item quality",catalyst="Catalyst",tainted_quality="Tainted armour / weapon quality",tainted_catalyst="Tainted Catalyst",conflict="Orb of Conflict"}
 	for method,label in pairs(actions) do M.methods[#M.methods+1]=method;M.labels[method]=label end
 	table.sort(M.methods)
 	local originalModel,originalAction,originalDecorate,originalValidate,originalOptions=M.model,M.action,M.decorateItem,M.validateState,M.actionOptions
 	local function qualityGain(model,random)
-		local gain=math.max(1,math.min(20,30*math.exp(-model.item.itemLevel/30)-0.3))
-		return math.floor(gain)+(random() < gain-math.floor(gain) and 1 or 0)
+		local base,fraction=P.qualityGainProfile(model.item.itemLevel)
+		return base+(random() < fraction and 1 or 0)
 	end
 	function M.model(raw)
 		local model=originalModel(raw)

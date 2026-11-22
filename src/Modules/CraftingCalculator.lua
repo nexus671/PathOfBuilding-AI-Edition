@@ -220,6 +220,27 @@ function C.extend(M)
 					outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.itemText(model,outcomes[1].state),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 			end
 		end
+		if (craft.method=="quality" or craft.method=="catalyst") and not craft.allflame then
+			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
+			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial;model=M.context(model,state)
+			local _,fraction=require("Modules.CraftingProperties").qualityGainProfile(model.item.itemLevel)
+			local draws={};if fraction>0 then draws[#draws+1]={value=fraction/2,weight=fraction} end
+			if fraction<1 then draws[#draws+1]={value=(1+fraction)/2,weight=1-fraction} end
+			local outcomes,byQuality,hits={},{},0
+			for _,draw in ipairs(draws) do
+				local result=M.action(model,state,craft,function() return draw.value end)
+				local quality=craft.method=="catalyst" and result.catalystQuality or result.quality
+				local key=tostring(quality);local entry=byQuality[key]
+				if not entry then
+					local hit=M.matches(result,targets,nil,model,options.requirements,options.requiredGroups)
+					entry={id=key,text=(craft.method=="catalyst" and "Catalyst quality: " or "Quality: ")..quality.."%",chance=0,weight=0,matches=hit,state=result};byQuality[key]=entry;outcomes[#outcomes+1]=entry
+				end
+				entry.weight=entry.weight+draw.weight;entry.chance=entry.weight*100;if entry.matches then hits=hits+draw.weight end
+			end
+			local sample=assert(outcomes[1],"No modeled quality outcome").state
+			return {exactFor="One quality action under the estimated item-level gain model; game odds are unverified",showAllOutcomes=true,sampled=false,successChance=100*hits,totalWeight=1,matchingWeight=hits,
+				outcomes=outcomes,sampleState=sample,sampleItem=M.itemText(model,sample),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+		end
 		if (method=="socket_bench" or method=="socket_white_bench" or method=="omen_jeweller" or method=="omen_connections" or method=="beast_max_links" or method=="beast_imprint" or method=="beast_talisman_imprint" or method=="restore_imprint" or method=="bench_remove_enchant" or method=="bench_flask_enchant" or method=="rog_reroll" and craft.rogOperation=="set_quality") and not craft.allflame then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			local model=M.model(raw);local result=M.perform(raw,craft,options.seed,initialState)
