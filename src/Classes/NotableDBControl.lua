@@ -129,17 +129,18 @@ function NotableDBClass:ListBuilder()
 	end
 
 	if self.sortDetail and self.sortDetail.stat then -- stat-based
+		local useFullDPS = self.sortDetail.stat == "FullDPS"
 		local cache = { }
 		local infinites = { }
 		local start = GetTime()
 		local calcFunc = self.itemsTab.build.calcsTab:GetMiscCalculator()
 		local itemType = self.itemsTab.displayItem.base.type
-		local calcBase = calcFunc({ repSlotName = itemType, repItem = self.itemsTab:anointItem(nil) })
+		local calcBase = calcFunc({ repSlotName = itemType, repItem = self.itemsTab:anointItem(nil) }, useFullDPS)
 		self.sortMaxPower = 0
 		for nodeIndex, node in ipairs(list) do
 			node.measuredPower = 0
 			if node.modKey ~= "" then
-				local output = calcFunc({ repSlotName = itemType, repItem = self.itemsTab:anointItem(node) })
+				local output = calcFunc({ repSlotName = itemType, repItem = self.itemsTab:anointItem(node) }, useFullDPS)
 				node.measuredPower = self:CalculatePowerStat(self.sortDetail, output, calcBase)
 				if node.measuredPower == m_huge then
 					t_insert(infinites, node)

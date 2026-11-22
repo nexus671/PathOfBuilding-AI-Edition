@@ -54,6 +54,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_filter_review_ui.lua")
     sources.append(ROOT / "tools/test_atlas_plan_pickups_ui.lua")
     sources.append(ROOT / "tools/test_quality_calculation_ui.lua")
+    sources.append(ROOT / "tools/test_anoint_sort_ui.lua")
     sources.append(ROOT / "tools/test_ai_filter_proposal_ui.lua")
     sources.append(ROOT / "tools/test_ai_journey_proposal_ui.lua")
     sources.append(ROOT / "tools/test_ai_atlas_proposal_ui.lua")
@@ -127,6 +128,10 @@ def main():
                                          env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "quality-calculation-controls.log").write_text(quality_calculation.stdout)
     assert quality_calculation.returncode == 0, quality_calculation.stdout
+    anoint_sort = subprocess.run(lua_command + ["../tools/test_anoint_sort_ui.lua"], cwd=ROOT / "src",
+                                 env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "anoint-sort-controls.log").write_text(anoint_sort.stdout)
+    assert anoint_sort.returncode == 0, anoint_sort.stdout
     ai_filter_review = subprocess.run(lua_command + ["../tools/test_ai_filter_proposal_ui.lua"], cwd=ROOT / "src",
                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "ai-filter-review-controls.log").write_text(ai_filter_review.stdout)

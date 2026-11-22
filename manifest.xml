@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1025" />
+	<Version number="2.68.1-ai.preview1026" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1785,7 +1785,7 @@
 	<File name="Classes/ModDB.lua" part="program" sha1="1327beebeba14dc8320d137a3dede673b74942af" />
 	<File name="Classes/ModList.lua" part="program" sha1="e36f14e085f220c6febf726f79c621410b55ffb6" />
 	<File name="Classes/ModStore.lua" part="program" sha1="f22b8f9b4be810ba94cb2c04cf92755234c6921e" />
-	<File name="Classes/NotableDBControl.lua" part="program" sha1="339502f47fff51beefd40d275076ded7635f927e" />
+	<File name="Classes/NotableDBControl.lua" part="program" sha1="c9561b5a46b6a54249dfa05ed7baeda46759c4c6" />
 	<File name="Classes/NotesTab.lua" part="program" sha1="d62f9ee51c906fcc06cdb08f80bb8f3224c9cce4" />
 	<File name="Classes/PartyTab.lua" part="program" sha1="7cb4377e06b52737cfd5d1757b0b7ef190bb45f1" />
 	<File name="Classes/PassiveMasteryControl.lua" part="program" sha1="5459a7be287c86050fb5176c3cad996e8434447b" />
