@@ -798,6 +798,16 @@ function M.poll(build, force)
 				M.status.crafting.blankBase=ok and {available=true,itemText=base,note="Hypothetical normal base; only base type and item level are retained. Review its implicit, sockets and quality. No item was equipped or changed."}
 					or {available=false,reason=require("Modules.PlanningUI").errorText(base)}
 			end
+			assert(request.includeBaseImplicitChoices==nil or type(request.includeBaseImplicitChoices)=="boolean","Invalid base implicit option")
+			if request.includeBaseImplicitChoices then
+				local ok,choices,reason=pcall(function()
+					local sim=require("Modules.CraftingSimulator");local model=sim.model(raw)
+					local state=request.initialState and sim.validateState(model,request.initialState) or model.initial
+					return require("Modules.CraftingBaseImplicit").options(sim,model,state)
+				end)
+				M.status.crafting.baseImplicitChoices=ok and choices and {available=true,choices=choices,note="Hypothetical values use PoB scaling. Apply a listed roll in initialState.baseImplicitRanges with baseImplicitReconstructed=true; no currency or equipped item is changed."}
+					or {available=false,reason=ok and reason or require("Modules.PlanningUI").errorText(choices)}
+			end
 			local ok,catalog=pcall(require("Modules.CraftingSimulator").catalog,raw,request.query,request.limit,request.initialState,build.spec.treeVersion)
 			if ok then
 				M.status.crafting.nativeEngine=catalog

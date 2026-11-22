@@ -153,6 +153,20 @@ function Panel.Open(model,input,onKeep)
 	end)
 	controls.editSockets.enabled=function() return math.max(sim.socketLimit(model,state),#(state.sockets or {}))>0 end
 	controls.editSockets.tooltipText="Set observed colours and links without consuming currency."
+	local implicit=require("Modules.CraftingBaseImplicit");local implicitState,implicitChoices,implicitReason
+	local function implicitOptions()
+		if implicitState~=state then
+			implicitState=state;local ok,choices,reason=pcall(implicit.options,sim,model,state)
+			implicitChoices=ok and choices or nil;implicitReason=ok and reason or "This implicit cannot be inspected safely."
+		end
+		return implicitChoices,implicitReason
+	end
+	button("baseImplicit",292,368+extra,260,"Set base implicit",function()
+		local choices,reason=implicitOptions();assert(choices,reason)
+		require("Classes.PlanningBrowserControl").Open("Choose base implicit",choices,{action="Use value",choose=function(entry) commit(implicit.apply(sim,model,state,entry.roll)) end})
+	end)
+	controls.baseImplicit.enabled=function() local choices=implicitOptions();return choices~=nil end
+	controls.baseImplicit.tooltipText=function() local choices,reason=implicitOptions();return choices and "Set a hypothetical ordinary base implicit without spending currency." or reason end
 	button("keep",16,402+extra,260,"Use as recipe starting item",function() applyProperties();onKeep(sim.validateState(model,state));main:ClosePopup() end)
 	button("close",644,402+extra,116,"Cancel",function() main:ClosePopup() end)
 	refresh();main:OpenPopup(776,450+extra,"Edit hypothetical item",controls,nil,nil,"close")

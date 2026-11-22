@@ -52,6 +52,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_genesis_ui.lua")
     sources.append(ROOT / "tools/test_atlas_remove_ui.lua")
     sources.append(ROOT / "tools/test_crafting_blank_ui.lua")
+    sources.append(ROOT / "tools/test_crafting_base_implicit_ui.lua")
     sources.append(ROOT / "tools/test_filter_export_race.lua")
     sources.append(ROOT / "tools/test_filter_review_ui.lua")
     sources.append(ROOT / "tools/test_filter_union_ui.lua")
@@ -121,6 +122,10 @@ def main():
                                 env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-blank-base-controls.log").write_text(blank_base.stdout)
     assert blank_base.returncode == 0, blank_base.stdout
+    base_implicit = subprocess.run(lua_command + ["../tools/test_crafting_base_implicit_ui.lua"], cwd=ROOT / "src",
+                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-base-implicit-controls.log").write_text(base_implicit.stdout)
+    assert base_implicit.returncode == 0, base_implicit.stdout
     filter_race = subprocess.run(lua_command + ["../tools/test_filter_export_race.lua"], cwd=ROOT / "src",
                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-export-race-controls.log").write_text(filter_race.stdout)
