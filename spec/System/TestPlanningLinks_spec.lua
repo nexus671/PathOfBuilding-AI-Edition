@@ -510,6 +510,22 @@ describe("Linked planning tools",function()
 		for _,entry in ipairs(blocked) do if entry.origin=="craft:"..project.id and entry.message:find("Use the bench or tainted currency on corrupted items",1,true) then corrupt=true end end
 		assert.is_true(corrupt)
 	end)
+	it("keeps the currencies for unique socket routes in linked filter pickups",function()
+		local project={id="route-pickups",title="Socket routes",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B",goals={},steps={},nativeRecipe={steps={},targets={},requirements={links=4}}}
+		local function pickups(steps)
+			project.nativeRecipe.steps=steps;build.savers.CraftingProjects:Upsert(project)
+			local rules=filters.generate(build,filters.profile("route-pickups","Socket routes"));local names={}
+			for _,rule in ipairs(rules) do if rule.origin=="craft:"..project.id then names[rule.title]=true end end
+			return names
+		end
+		local names=pickups({{method="omen_jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}})
+		for _,name in ipairs({"Omen of the Jeweller","Jeweller's Orb","Orb of Fusing"}) do assert.is_true(names[name],name) end
+		names=pickups({{method="jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}})
+		for _,name in ipairs({"Jeweller's Orb","Orb of Fusing"}) do assert.is_true(names[name],name) end
+		project.startingItem=project.startingItem.."\nCorrupted"
+		names=pickups({{method="tainted_jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}})
+		for _,name in ipairs({"Tainted Jeweller's Orb","Orb of Fusing","Vaal Orb"}) do assert.is_true(names[name],name) end
+	end)
 	it("warns when unique recipe actions cannot modify a corrupted item",function()
 		local project={id="corrupted-unique",title="Corrupted unique",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R G B\nCorrupted",goals={},steps={},nativeRecipe={steps={{method="quality"},{method="omen_connections"}},targets={},requirements={links=3}}}
 		build.savers.CraftingProjects:Upsert(project);local rules,warnings=filters.generate(build,filters.profile("corrupted-unique","Corrupted unique"));local message=""
