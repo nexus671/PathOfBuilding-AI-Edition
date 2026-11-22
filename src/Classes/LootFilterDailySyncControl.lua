@@ -1,5 +1,7 @@
 local sync = require("Modules.LootFilterDailySync")
 local ui = require("Modules.PlanningUI")
+local market = require("Modules.LootFilterEconomy")
+local json = require("dkjson")
 local M = {}
 
 function M.Open()
@@ -29,7 +31,31 @@ function M.Open()
 	end
 	field("target", 24, "Live Path of Exile .filter file", config.target or "")
 	field("baseline", 82, "Fixed baseline .filter file", config.baseline or "")
-	field("league", 140, "poe.ninja league ID", config.league or "Covens")
+	field("league", 140, "poe.ninja league ID", config.league or "Covens", 16, width-166)
+	local loadingLeagues = false
+	c.chooseLeague = new("ButtonControl"):ButtonControl(ui.anchor,{width-142,160,126,26},"Choose league",function()
+		if launch.noSSL then main:OpenMessagePopup("Choose league", "Enable HTTPS certificate verification in PoB."); return end
+		local owner = main.popups[1]
+		loadingLeagues = true
+		launch:DownloadPage(market.endpoint.."leagues",function(response, err)
+			loadingLeagues = false
+			if main.popups[1] ~= owner then return end
+			local result = not err and response and type(response.body) == "string" and #response.body <= 65536 and json.decode(response.body)
+			local entries = {}
+			for _, league in ipairs(type(result) == "table" and result or {}) do
+				if type(league) == "table" and type(league.id) == "string" and type(league.name) == "string"
+					and #league.id <= 80 and league.id:match("^[%w%s_-]+$") and #league.name <= 160 then
+					entries[#entries+1] = {id=league.id,label=league.name,details={league.id,"PC trade economy"}}
+				end
+			end
+			if #entries == 0 then main:OpenMessagePopup("Choose league", "No PC trade leagues returned. Try again or enter the ID."); return end
+			require("Classes.PlanningBrowserControl").Open("Choose PC trade league",entries,{
+				action="Use league",
+				choose=function(entry) c.league:SetText(entry.id); main:ClosePopup() end,
+			})
+		end,{timeout=15})
+	end)
+	c.chooseLeague.enabled = function() return not loadingLeagues and not sync.busy end
 	field("hour", 198, "Daily hour (local, 0–23)", tostring(config.hour or 9), 16, 195)
 	field("targetValue", 198, "Chaos per stack", tostring(config.targetValue or 1), 236, 160)
 	field("protectionFile", 250, "Protected samples JSON (optional for tiered test)", config.protectionFile or "")

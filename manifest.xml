@@ -1779,7 +1779,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
 	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="633ef5b91d2de0897bf5b5cefde73cb4a7cc38cd" />
 	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="9ff77256a9478280cc44fe2dbaaa5d1026959fd9" />
-	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="c945d23d8d579d66e3d749664eaf4473b8757840" />
+	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="bc934fb6838063028c5f70a158b834ef822f851a" />
 	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="d32028cb20d9a1577eba45397cfa5c01e3609c42" />
 	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="889b8eb1552a61c09319198236f6d648e957767f" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="5f2e6eb7358d965289eb464c71d549bd877a6ccd" />
