@@ -365,6 +365,16 @@ describe("Visual filter catalogue",function()
 		c.BaseType:SetText("Iron Hat",true);assert.equal("",c.BaseDefencePercentile.buf)
 		c.BaseDefencePercentile:SetText("100");c.Rarity:SetText("Unique",true);assert.equal("",c.BaseDefencePercentile.buf)
 	end)
+	it("resolves the defence percentile of non-equipment examples",function()
+		local rules=parser.parse("Hide\n BaseDefencePercentile >= 1\nShow")
+		for _,case in ipairs({{"Abyssal Incubator","Incubators"},{"Allflame Ember of Abyss","Embers of the Allflame"},{"Metamorph Brain","Metamorph Samples"},{"Abberathine Horns","Heist Targets"}}) do
+			assert.equal(0,library.baseDefencePercentile(case[1],case[2],"Normal"))
+			assert.equal("Show",parser.simulate(rules,{BaseType=case[1],Class=case[2],BaseDefencePercentile=library.baseDefencePercentile(case[1],case[2],"Normal")}).action)
+		end
+		local found=0;for _,sample in ipairs(library.scene(filters.profile("test","Test"),build,"Legion",0,83,86)) do if sample.Class=="Incubators" then found=found+1;assert.equal(0,sample.BaseDefencePercentile);assert.equal("Show",parser.simulate(rules,sample).action) end end;assert.is_true(found>0)
+		assert.is_nil(library.baseDefencePercentile("Unknown item","Unrecognized class","Normal"))
+		assert.is_nil(library.baseDefencePercentile("Vaal Regalia","Body Armours","Rare"))
+	end)
 	it("offers reproducible card and essence examples for testing filter rules",function()
 		local profile=filters.profile("test","Test")
 		for _,case in ipairs({{kind="Divination cards",class="Divination Cards",base="The Doctor",count=12},

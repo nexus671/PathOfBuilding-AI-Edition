@@ -9,10 +9,15 @@ local baseMetadata,baseClasses
 local noSockets={ ["Stackable Currency"]=true,Gold=true,Contracts=true,Blueprints=true,["Expedition Logbooks"]=true,["Map Fragments"]=true,Maps=true,["Divination Cards"]=true,["Skill Gems"]=true,["Support Gems"]=true }
 function M.hasNoSockets(class) return noSockets[class]==true end
 local equipment={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true,Quiver=true,Amulet=true,Ring=true,Belt=true}
+-- These item classes are not wearable equipment. This is separate from socket
+-- inference: knowing a defence percentile does not establish socket properties.
+local nonEquipmentDefenceZero={Incubators=true,Breachstones=true,["Heist Targets"]=true,["Quest Items"]=true,
+	["Metamorph Samples"]=true,["Embers of the Allflame"]=true,["Incursion Items"]=true,
+	["Sanctum Research"]=true,["Atlas Upgrade Items"]=true,["Vault Keys"]=true,["Labyrinth Items"]=true}
 -- Unknown bases, unique equipment and random defence rolls remain unresolved.
 function M.baseDefencePercentile(name,class,rarity)
 	-- Resonators have fossil sockets, but are currency rather than equipment.
-	if noSockets[class] or class=="Delve Socketable Currency" or class=="Delve Stackable Socketable Currency" then return 0 end
+	if noSockets[class] or nonEquipmentDefenceZero[class] or class=="Delve Socketable Currency" or class=="Delve Stackable Socketable Currency" then return 0 end
 	local native=data and data.itemBases and data.itemBases[name]
 	if native and (equipment[native.type] or data.weaponTypeInfo[native.type]) and rarity~="Unique" then
 		for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
