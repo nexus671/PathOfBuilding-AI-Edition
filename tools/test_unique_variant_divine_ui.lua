@@ -40,7 +40,25 @@ for index=1,3 do
   assert(unique.divineOptions(switched),"Switching variants lost catalyst support")
  end
 end
-assert(not pcall(unique.catalystPreview,catalystRing(1):gsub("CatalystQuality: 20","CatalystQuality: 0"),8,20),"Saved-variant catalyst application should remain unavailable")
+local doedre
+for _,entries in pairs(data.uniques) do for _,raw in ipairs(entries) do if raw:match("^%s*Doedre's Damning\n") then doedre=raw end end end
+local function catalystDoedre(index)
+ return "Rarity: UNIQUE\n"..assert(doedre):gsub("^([^\r\n]+\n[^\r\n]+\n)","%1Selected Variant: "..index.."\nItem Level: 83\n",1)
+end
+for index=1,2 do
+ local raw=catalystDoedre(index)
+ local result=unique.catalystPreview(raw,4,20)
+ assert(result.itemText:find("{variant:1}{tags:attribute}+(5-10) to Intelligence",1,true),"Catalyst preview changed an inactive variant")
+ for variant=1,2 do
+  local switched=result.itemText:gsub("Selected Variant: "..index,"Selected Variant: "..variant)
+  local item=unique.inspect(switched);assert(item.variant==variant and item.catalystQuality==20)
+  local implicit=item.implicitModLines[1];local shown=itemLib.applyRange(implicit.line,implicit.range or 0.5,item:GetModLineValueScalar(implicit,"implicit"))
+  assert(shown=="+30 to maximum Mana","Catalyst preview lost implicit scaling: "..shown)
+  local options=assert(unique.divineOptions(switched));assert(#options>0,"Catalyst preview did not preserve variant rolls")
+ end
+end
+local missingTag=catalystDoedre(2):gsub("{variant:1}{tags:attribute}","{variant:1}",1)
+assert(not pcall(unique.catalystPreview,missingTag,4,20),"Missing inactive variant tags were accepted")
 assert(unique.divineReason(itemFor(999)),"Invalid saved variant was accepted")
 assert(unique.divineReason(itemFor(3):gsub("Variant: Pre 2.2.0\n",""):gsub("Variant: Pre 3.0.0\n",""):gsub("Variant: Current\n","")),"Variant lines without a saved list were accepted")
 assert(unique.divineReason(itemFor(3):gsub("Variant: Current","Variant: Unrelated")),"Changed variant names were accepted")
@@ -54,4 +72,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  local xml=build:SaveDB("Variant Divine test");loadBuildFromXML(xml,"Variant Divine test");ui:bind(build);saved=build.savers.CraftingProjects.projects[1];assert(saved.startingItem:find("Selected Variant: 3",1,true) and saved.nativeRecipe.requirements.uniqueModifier.minValue==120,"Saved variant guide did not reopen")
  ui:restore()
 end
+newBuild();main.popups={};local ui=UI.install({width=1024,height=768});ui:bind(build)
+local project={id="variant-catalyst",title="Variant catalyst",slot="Ring 1",startingItem=catalystDoedre(2),goals={},steps={}}
+build.savers.CraftingProjects:Upsert(project);local control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+ui:click("catalystPlan");ui:click("preview")
+local found=false;for _,row in ipairs(control.itemMods.list) do if table.concat(row):find("+30 to maximum Mana",1,true) then found=true end end
+assert(found,"Catalyst preview did not update the unique item display");ui:restore()
 print("UNIQUE_VARIANT_DIVINE_UI_OK")

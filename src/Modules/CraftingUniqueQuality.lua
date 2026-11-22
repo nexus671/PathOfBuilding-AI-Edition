@@ -423,7 +423,6 @@ local function divinePlan(raw,allowFixed)
 	if (jewellery and (item.quality or 0)>0) or catalystQuality>0 and (not jewellery or not item.catalyst or item.catalyst==3 or item.catalyst==9) then return nil,"Catalyst-scaled jewellery needs a separate Divine model" end
 	if item.usesVariantGroups or item.hasAltVariant or item.hasAltVariant2 or item.hasAltVariant3 or item.hasAltVariant4 or item.hasAltVariant5 then return nil,"Multiple or grouped variant selections need a separate Divine model" end
 	if not item.variantList then for _,line in ipairs(item.explicitModLines or {}) do if line.variantList then return nil,"Variant modifier lines require a saved variant list" end end end
-	if item.variantList and allowFixed then return nil,"Catalyst previews on saved variants need a separate model" end
 	uniqueSocketRestriction(item.title)
 	local candidates={}
 	for _,template in ipairs(uniquesByName[item.title] or {}) do
@@ -515,6 +514,22 @@ function M.catalystPreview(raw,catalyst,target)
 	assert(not item.synthesised and not item.fractured and not item.foulborn,"Special jewellery needs a separate catalyst model")
 	assert(#(item.modMagnitudeMods or {})==0,"Modifier magnitude changes need a separate catalyst model")
 	local plan,reason=divinePlan(raw,true);assert(plan,reason)
+	-- A catalyst affects whichever saved variant is selected later. Verify every
+	-- variant and require its numeric modifiers to carry their original tags;
+	-- changing only the currently visible lines would corrupt other selections.
+	if item.variantList then
+		local _,selections=raw:gsub("\nSelected Variant:[^\r\n]*","")
+		assert(selections==1,"Catalyst previews need one explicit saved variant selection")
+		for variant=1,#item.variantList do
+			local candidate=raw:gsub("(\nSelected Variant:)[^\r\n]*","%1 "..variant,1)
+			local checked,why=divinePlan(candidate,true);assert(checked,why)
+			for _,line in ipairs(checked.item.explicitModLines or {}) do
+				if checked.item:CheckModLineVariant(line) and line.line:find("%d") then
+					assert(line.modTags and #line.modTags>0,"Saved variants need explicit verified modifier tags for catalyst previews")
+				end
+			end
+		end
+	end
 	local replacements,used={},{}
 	local function add(text,tags,allowSocket)
 		assert(type(text)=="string" and not used[text],"Repeated modifier lines need a separate catalyst model")
@@ -522,7 +537,7 @@ function M.catalystPreview(raw,catalyst,target)
 		if text:find("%d") and #tags==0 and not (allowSocket and text:match("^Has %d+ Sockets?$")) then error("A numeric modifier has no verified catalyst tags") end
 		if #tags>0 then replacements[text]=tags end
 	end
-	for _,row in ipairs(plan.matchedLines or {}) do add(row.text,row.tags,false) end
+	if not item.variantList then for _,row in ipairs(plan.matchedLines or {}) do add(row.text,row.tags,false) end end
 	local templates={};for line in (item.base.implicit or ""):gmatch("[^\r\n]+") do templates[#templates+1]=line end
 	assert(#templates==#(item.implicitModLines or {}),"The original base implicits could not be verified")
 	local infer=require("Modules.CraftingImport").inferRange
@@ -532,7 +547,10 @@ function M.catalystPreview(raw,catalyst,target)
 		assert(infer(templates[index],shown),"An implicit modifier does not match the base item")
 		local tags=copyTable((item.base.implicitModTypes or {})[index] or {})
 		if info.quality>0 and #tags>0 and line.line:find("%d") then assert(line.modTags and #line.modTags>0,"Copied catalyst-scaled implicits need explicit unscaled values and tags") end
-		assert(not line.modTags or #line.modTags==0 or tableDeepEquals(line.modTags,tags),"An implicit modifier has conflicting tags")
+		if item.variantList and line.modTags and #line.modTags>0 then
+			local allowed={};for _,tag in ipairs(tags) do allowed[tag]=true end
+			for _,tag in ipairs(line.modTags) do assert(allowed[tag],"An implicit modifier has conflicting tags") end
+		else assert(not line.modTags or #line.modTags==0 or tableDeepEquals(line.modTags,tags),"An implicit modifier has conflicting tags") end
 		add(line.line,tags,true)
 	end
 	local changed={};local output=raw:gsub("[^\r\n]+",function(source)
