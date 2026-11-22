@@ -151,6 +151,7 @@ test('queues bounded built-in filter scenes', t => {
   assert.equal(JSON.parse(fs.readFileSync(path.join(targetFixture.dir,'AI-build-request.json'))).scene,'Build targets');
   const mapFixture=fixture(t);mapFixture.call('test_loot_filter_scene',{...args,baseRevision:mapFixture.state.revision,scene:'Map tiers'});
   assert.equal(JSON.parse(fs.readFileSync(path.join(mapFixture.dir,'AI-build-request.json'))).scene,'Map tiers');
+  const fatedFixture=fixture(t);fatedFixture.call('test_loot_filter_scene',{...args,baseRevision:fatedFixture.state.revision,scene:'Fated gear'});assert.equal(JSON.parse(fs.readFileSync(path.join(fatedFixture.dir,'AI-build-request.json'))).scene,'Fated gear');
   const blightFixture=fixture(t);blightFixture.call('test_loot_filter_scene',{...args,baseRevision:blightFixture.state.revision,scene:'Blight & oils'});
   assert.equal(JSON.parse(fs.readFileSync(path.join(blightFixture.dir,'AI-build-request.json'))).scene,'Blight & oils');
   for(const scene of ['Breach','Legion','Abyss','Ultimatum']) { const encounter=fixture(t); encounter.call('test_loot_filter_scene',{...args,baseRevision:encounter.state.revision,scene}); assert.equal(JSON.parse(fs.readFileSync(path.join(encounter.dir,'AI-build-request.json'))).scene,scene); }

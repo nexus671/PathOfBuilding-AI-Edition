@@ -235,6 +235,7 @@ function M.Open(build,source,layout,controller)
 	local function sceneControl(key,x,y,width,height,drops,selectable,caption)
 		local canvas=new("Control"):Control(ui.anchor,{x,y,width,height});c[key]=canvas;backgrounds[key]=true
 		local columns=width>700 and 4 or width>460 and 3 or 2;local reserve=selectable and 98 or 46;local rows=math.max(2,math.floor((height-reserve)/70));local capacity=columns*rows;local cells={};local visible=0;local eligible={}
+		if selectable and sceneKind=="Fated gear" then columns=math.min(columns,2);capacity=columns*rows end
 		if selectable and (sceneKind=="Essences" or sceneKind=="Preset highlights" or sceneKind=="Breach" or sceneKind=="Beyond" or sceneKind=="Incursion" or sceneKind=="Legion" or sceneKind=="Delirium" or sceneKind=="Harvest" or sceneKind=="Abyss" or sceneKind=="Ultimatum" or sceneKind=="Ritual" or sceneKind=="Sanctum" or sceneKind=="Pinnacle bosses") then columns=math.min(columns,3);capacity=columns*rows end
 		local function evaluate(drop) return evaluateDrop(drop) end
 		for _,drop in ipairs(drops) do local evaluated=not showHidden and evaluate(drop) or nil;if showHidden or evaluated.action~="Hide" then eligible[#eligible+1]={item=drop,result=evaluated} end end
@@ -257,6 +258,7 @@ function M.Open(build,source,layout,controller)
 			local selectedKey=encode(item);for _,cell in ipairs(cells) do
 				local cx,cy=px+cell.x-x,py+cell.y-y;visual.chip(cx,cy,cell.w,cell.h,cell.item,cell.result,selectedKey==cell.key)
 				if sceneKind=="Tiered gear" and cell.item.Identified==false and cell.item.UnidentifiedItemTier~=nil then visual.text(cx+5,cy+2,12,cell.item.UnidentifiedItemTier==0 and "No tier" or "Tier "..cell.item.UnidentifiedItemTier,"^xEED49C",cell.w-10) end
+				if sceneKind=="Fated gear" then visual.text(cx+5,cy+2,12,cell.item.Fated and "Fated" or "Other", "^xEED49C",cell.w-10) end
 				if sceneKind=="Map tiers" then visual.text(cx+5,cy+2,12,"Tier "..cell.item.MapTier,"^xEED49C",cell.w-10) end
 				if sceneKind=="Vendor recipes" then local note=M.vendorLabel(cell.item);if note then visual.text(cx+5,cy+2,12,note,"^xEED49C",cell.w-10) end end
 			end
@@ -461,7 +463,7 @@ function M.Open(build,source,layout,controller)
 	elseif page=="Simulate" then
 		local left=208;local groundX=240;local groundW=w-256
 		ui.label(c,"sceneTitle",16,124,"Loot simulator",20)
-		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Vendor recipes","Covens & Threads","Maps & threads","Map tiers","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition","Blight & oils","Breach","Beyond","Incursion","Legion","Delirium","Harvest","Abyss","Ultimatum","Ritual","Sanctum","Pinnacle bosses"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
+		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Fated gear","Vendor recipes","Covens & Threads","Maps & threads","Map tiers","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition","Blight & oils","Breach","Beyond","Incursion","Legion","Delirium","Harvest","Abyss","Ultimatum","Ritual","Sanctum","Pinnacle bosses"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
 		local function selectScene(value,savedId)
 			if savedId then sampleSetId=savedId end
 			sceneKind=value;scenePage=1;if value=="Saved examples" then local chosen=savedSets[1];for _,entry in ipairs(savedSets) do if entry.id==sampleSetId then chosen=entry end end;item=copyTable(chosen.samples[1]) elseif value~="Build targets" then item=library.scene(profile,build,value,seed,settings.areaLevel,settings.itemLevel)[1] or item end;reopen()
@@ -471,7 +473,7 @@ function M.Open(build,source,layout,controller)
 			local descriptions={
 				["Mixed drops"]="Compare a variety of example items.",["Build targets"]="Test pickups generated from your build and plans.",
 				Currency="Compare currency examples.",["Preset highlights"]="Review high-emphasis currency in the pinned preset, not live prices.",
-				["Tiered gear"]="Compare unidentified item tiers on the same base.",["Vendor recipes"]="Test sample recipe items and their socket or quality properties.",
+				["Tiered gear"]="Compare unidentified item tiers on the same base.",["Fated gear"]="Compare matching rare gear examples at tier 4 (no tier in Ruthless).",["Vendor recipes"]="Test sample recipe items and their socket or quality properties.",
 				["Covens & Threads"]="Compare Threads and other Covens items.",["Maps & threads"]="Compare map bases, Threads and special map examples.",
 				["Map tiers"]="Compare map tier conditions from tier 1 through 17.",["Flasks & tinctures"]="Compare life, mana and utility flasks with tinctures.",
 				["Divination cards"]="Compare example divination cards.",Essences="Compare essence tiers and special essences.",
@@ -515,7 +517,7 @@ function M.Open(build,source,layout,controller)
 		c.browseScenes.tooltipText="Search examples by name or item, and read what each scene contains."
 		c.sceneKind.tooltipText="Preset highlights use exact names from the pinned NeverSink currency snapshot. They are not live prices or drop rates."
 		button(c,"regenerate",16,202,100,"Regenerate",function() seed=seed+1;scenePage=1;if sceneKind=="Build targets" then transient.filterSceneTargets=nil end;reopen() end)
-		c.regenerate.enabled=sceneKind~="Saved examples" and sceneKind~="Tiered gear" and sceneKind~="Map tiers";c.regenerate.tooltipText="Reorder generated examples. Saved and tier-comparison examples keep their exact properties; examples are not drop-rate estimates."
+		c.regenerate.enabled=sceneKind~="Saved examples" and sceneKind~="Tiered gear" and sceneKind~="Fated gear" and sceneKind~="Map tiers";c.regenerate.tooltipText="Reorder generated examples. Saved and tier-comparison examples keep their exact properties; examples are not drop-rate estimates."
 		button(c,"savedSamples",124,202,100,"Saved sets",function() collection("sampleSets") end)
 		local savedSet
 		if sceneKind=="Saved examples" then
@@ -541,7 +543,7 @@ function M.Open(build,source,layout,controller)
 				local evaluated=evaluateDrop(drop)
 				local action=M.dropOutcome(evaluated)
 				counts[action]=counts[action]+1
-				local value=itemTier(drop);local tier=value~=nil and (value==0 and " (no tier)" or " (tier "..value..")") or (drop.Identified==false and (drop.Rarity=="Magic" or drop.Rarity=="Rare") and " (tier unknown)" or "")
+				local value=itemTier(drop);local tier=sceneKind=="Fated gear" and (drop.Fated and " (Fated)" or " (other)") or value~=nil and (value==0 and " (no tier)" or " (tier "..value..")") or (drop.Identified==false and (drop.Rarity=="Magic" or drop.Rarity=="Rare") and " (tier unknown)" or "")
 				entries[#entries+1]={id=index,label=visual.sampleName(drop)..tier.." - "..action,category=action,details=sampleDetails(drop,evaluated),sample=drop}
 			end
 			local title=string.format("Examples: %d shown, %d minimal, %d hidden, %d unknown",counts.Show,counts.Minimal,counts.Hide,counts.Unknown)
@@ -557,16 +559,16 @@ function M.Open(build,source,layout,controller)
 			local targetKeys
 			if targets then scene,targetKeys=M.targetScene(targets,profile,build,settings)
 			else scene=library.scene(profile,build,sceneKind,seed,settings.areaLevel,settings.itemLevel) end
-			if sceneKind~="Tiered gear" and sceneKind~="Map tiers" and (not targetKeys or not targetKeys[require("Modules.PlanningData").encode(item)]) then table.insert(scene,1,item) end
+			if sceneKind~="Tiered gear" and sceneKind~="Fated gear" and sceneKind~="Map tiers" and (not targetKeys or not targetKeys[require("Modules.PlanningData").encode(item)]) then table.insert(scene,1,item) end
 		end
-		if not savedSet and sceneKind~="Tiered gear" and sceneKind~="Map tiers" then
+		if not savedSet and sceneKind~="Tiered gear" and sceneKind~="Fated gear" and sceneKind~="Map tiers" then
 			if sceneKind~="Build targets" then
 				local encode=require("Modules.PlanningData").encode;local selected=encode(item)
 				for i=#scene,2,-1 do if encode(scene[i])==selected then table.remove(scene,1);break end end
 			end
 		end
 		local targets=sceneKind=="Build targets" and transient.filterSceneTargets or nil
-		local caption=invalidFilterReason and "FILTER INVALID - SEE DETAILS" or sceneKind=="Preset highlights" and "PINNED SNAPSHOT - NOT LIVE PRICES" or sceneKind=="Map tiers" and "MAP TIER COMPARISON" or sceneKind=="Tiered gear" and (profile.mode=="Ruthless" and "RUTHLESS: NO ITEM TIERS" or "TIER COMPARISON") or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
+		local caption=invalidFilterReason and "FILTER INVALID - SEE DETAILS" or sceneKind=="Preset highlights" and "PINNED SNAPSHOT - NOT LIVE PRICES" or sceneKind=="Map tiers" and "MAP TIER COMPARISON" or sceneKind=="Fated gear" and "FATED GEAR COMPARISON" or sceneKind=="Tiered gear" and (profile.mode=="Ruthless" and "RUTHLESS: NO ITEM TIERS" or "TIER COMPARISON") or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
 		sceneControl("preview",groundX,savedSet and 168 or 120,groundW,h-(savedSet and 230 or 182),scene,true,caption)
 		if targets then c.preview.tooltipText=targets.error or (#(targets.warnings or {})>0 and "Some build targets need review. Open linked build targets for details." or "Build target examples update as the build changes. The current test item is also shown.") end
 		button(c,"inspectMatch",w-216,h-96,184,invalidFilterReason and "Review filter errors" or "Inspect matched rules",function() if invalidFilterReason then openAudit(true) else inspectMatches() end end)

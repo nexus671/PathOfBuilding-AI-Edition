@@ -469,6 +469,20 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		end
 		return list
 	end
+	if kind=="Fated gear" then
+		-- Paired examples differ only in Fated state; they do not predict drops.
+		for _,base in ipairs({{"Iron Hat","Helmets"},{"Titan Greaves","Boots"},{"Titanium Spirit Shield","Shields"},{"Imperial Bow","Bows"},{"Ruby Ring","Rings"}}) do
+			for _,fated in ipairs({true,false}) do
+				local item=M.sample();item.BaseType=base[1];item.Class=base[2];item.Rarity="Rare";item.Identified=false;item.Fated=fated
+				item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or 4
+				item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86;applyBaseProperties(item)
+				item.MemoryStrands=0
+				if base[2]~="Rings" then item.Sockets=1;item.SocketColours="R";item.SocketGroup="R";item.LinkedSockets=1 end
+				list[#list+1]=item
+			end
+		end
+		return list
+	end
 	if kind=="Tiered gear" then
 		-- Identical base and rarity make the explicit tier the useful difference.
 		-- These are comparison samples, not a model of drop probabilities.

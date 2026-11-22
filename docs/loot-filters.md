@@ -12,6 +12,8 @@ The appearance and condition editors offer **Show / Hide** for Normal filters an
 
 Generated unidentified magic and rare examples have an unknown item tier unless a rule or sample explicitly supplies one. A tier-dependent filter therefore reports an unknown result until the tier is set. **Tiered gear** compares explicit example tiers; in Ruthless it shows only the example without a tier because items there do not have tiers.
 
+**Fated gear** compares paired rare items whose only difference is the [Fated filter condition](https://www.pathofexile.com/forum/view-thread/4013923). These synthetic examples use tier 4, no Memory Strands and one red socket on socketed bases; Ruthless examples use no item tier. The scene includes a shield and is also available through MCP. It does not predict what Fates drop or their item rolls.
+
 **Map tiers** compares synthetic map examples from tier 1 through tier 17, with a Nightmare Map for the tier-17 example. The tiers are explicit sample properties for testing filter rules, not estimates of drop rates or map availability. The same scene is available through MCP `test_loot_filter_scene`.
 
 Open **AI builds**, **Atlas**, or **Crafting**, then choose **Loot filter**. **Alt+5** opens it from any planning page.

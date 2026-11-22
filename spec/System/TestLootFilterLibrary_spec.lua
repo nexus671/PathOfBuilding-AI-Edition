@@ -533,6 +533,18 @@ describe("Visual filter catalogue",function()
 			assert.equal(tier>=4 and "Show" or "Hide",result.action)
 		end
 	end)
+	it("compares Fated and other rare gear at the same sample tier",function()
+		local profile=filters.profile("fated","Fated");local scene=library.scene(profile,build,"Fated gear",7,72,75)
+		assert.equal(10,#scene);assert.same(scene,library.scene(profile,build,"Fated gear",0,72,75))
+		local parsed=parser.parse("Show\n Fated True\nHide")
+		for i=1,#scene,2 do
+			local fated,other=scene[i],scene[i+1];assert.equal(fated.BaseType,other.BaseType);assert.equal(fated.Class,other.Class)
+			assert.is_true(fated.Fated);assert.is_false(other.Fated);assert.is_false(fated.Identified);assert.equal(4,fated.UnidentifiedItemTier);assert.equal(4,other.UnidentifiedItemTier)
+			assert.equal(72,fated.AreaLevel);assert.equal(75,fated.ItemLevel);assert.equal(0,fated.MemoryStrands);local same=copyTable(fated);same.Fated=false;assert.same(same,other)
+			assert.equal("Show",parser.simulate(parsed,fated).action);assert.equal("Hide",parser.simulate(parsed,other).action)
+		end
+		profile.mode="Ruthless";local ruthless=library.scene(profile,build,"Fated gear",0,83,86);assert.equal(0,ruthless[1].UnidentifiedItemTier)
+	end)
 	it("compares explicit map tiers with a Nightmare example",function()
 		local profile=filters.profile("maps","Maps");local scene=library.scene(profile,build,"Map tiers",9,72,75)
 		assert.equal(17,#scene);assert.same(scene,library.scene(profile,build,"Map tiers",3,72,75))
