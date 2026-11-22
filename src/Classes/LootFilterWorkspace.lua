@@ -462,7 +462,8 @@ function M.Open(build,source,layout,controller)
 		local left=208;local groundX=240;local groundW=w-256
 		ui.label(c,"sceneTitle",16,124,"Loot simulator",20)
 		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Vendor recipes","Covens & Threads","Maps & threads","Map tiers","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition","Blight & oils","Breach","Beyond","Incursion","Legion","Delirium","Harvest","Abyss","Ultimatum","Ritual","Sanctum","Pinnacle bosses"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
-		local function selectScene(value)
+		local function selectScene(value,savedId)
+			if savedId then sampleSetId=savedId end
 			sceneKind=value;scenePage=1;if value=="Saved examples" then local chosen=savedSets[1];for _,entry in ipairs(savedSets) do if entry.id==sampleSetId then chosen=entry end end;item=copyTable(chosen.samples[1]) elseif value~="Build targets" then item=library.scene(profile,build,value,seed,settings.areaLevel,settings.itemLevel)[1] or item end;reopen()
 		end
 		c.sceneKind=new("DropDownControl"):DropDownControl(ui.anchor,{16,162,left,26},kinds,function(_,value) selectScene(value) end);c.sceneKind:SelByValue(sceneKind)
@@ -498,9 +499,18 @@ function M.Open(build,source,layout,controller)
 					for i=1,math.min(#names,8) do details[#details+1]="  "..names[i] end
 					if #names>8 then details[#details+1]="  And "..(#names-8).." more" end
 				end
-				entries[#entries+1]={id=kind,label=kind,category=category,search=description.." "..table.concat(names," "),details=details}
+				if kind=="Saved examples" then
+					for _,saved in ipairs(savedSets) do
+						local sampleNames,seenSaved={},{}
+						for _,sample in ipairs(saved.samples) do local name=sample.BaseType;if name and not seenSaved[name] then seenSaved[name]=true;sampleNames[#sampleNames+1]=name end end
+						local savedDetails={saved.title,"Saved example set",#saved.samples.." items retain their saved properties.","Example items:"}
+						for i=1,math.min(#sampleNames,8) do savedDetails[#savedDetails+1]="  "..sampleNames[i] end
+						if #sampleNames>8 then savedDetails[#savedDetails+1]="  And "..(#sampleNames-8).." more" end
+						entries[#entries+1]={id=kind,savedId=saved.id,label=saved.title,category="Saved",search=description.." "..table.concat(sampleNames," "),details=savedDetails}
+					end
+				else entries[#entries+1]={id=kind,label=kind,category=category,search=description.." "..table.concat(names," "),details=details} end
 			end
-			require("Classes.PlanningBrowserControl").Open("Choose example scene",entries,{action="Use scene",choose=function(entry) selectScene(entry.id) end})
+			require("Classes.PlanningBrowserControl").Open("Choose example scene",entries,{action="Use scene",choose=function(entry) selectScene(entry.id,entry.savedId) end})
 		end)
 		c.browseScenes.tooltipText="Search examples by name or item, and read what each scene contains."
 		c.sceneKind.tooltipText="Preset highlights use exact names from the pinned NeverSink currency snapshot. They are not live prices or drop rates."

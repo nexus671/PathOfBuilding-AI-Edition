@@ -7,6 +7,12 @@ main.disableDevAutoSave=true
 local UI=require("Modules.HeadlessUI")
 local sim=require("Modules.CraftingSimulator")
 local frames=0
+function UI.checkSavedSceneSearch(ui,savedDraft)
+	ui:click("browseScenes");ui:choose("category","Saved");ui:text("search","Chaos Orb");local found=false;for _,row in ipairs(main.popups[1].controls.results.list) do if StripEscapes(row[1] or ""):find("Mapping examples",1,true) then found=true end end;assert(found,"Saved set item was not searchable");ui:text("search","Mapping examples");assert(main.popups[1].controls.count.label:find("1 result",1,true),"Saved set name was not searchable");ui:click("choose")
+	assert(build.planningWorkspace.cache.filters.layout.snapshot().sampleSetId==savedDraft.data.profiles[1].sampleSets[1].id,"Scene browser did not select the requested saved set")
+	ui:click("browseScenes");ui:text("search","Generated comparison set");ui:click("choose")
+	assert(build.planningWorkspace.cache.filters.layout.snapshot().sampleSetId==savedDraft.data.profiles[1].sampleSets[2].id,"Scene browser did not restore the other saved set")
+end
 local function checkPlanningSearch(ui,workspace,filter)
 	if filter=="delirium" then
 		ui:text("currentType","Unknown reward");ui:click("chooseCurrentOrb");ui:text("search","Fine Delirium Orb");ui:click("choose")
@@ -2042,6 +2048,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:choose("sceneKind","Maps & threads");ui:click("savedSamples");ui:choose("source",3,"val");ui:text("name","Generated comparison set");ui:click("saveNew");ui:click("use");frame("filter-saved-scene")
 	local savedDraft=build.planningWorkspace.cache.filters.layout.snapshot();assert(savedDraft.sceneKind=="Saved examples" and savedDraft.data.profiles[1].sampleSets[1].samples[1].AreaLevel==savedArea,"Saved examples changed their original properties")
 	local savedScene=savedDraft.data.profiles[1].sampleSets[2].samples;assert(#savedScene==17 and savedScene[1].Class=="Maps","Saved examples did not capture the selected mapping scene")
+	UI.checkSavedSceneSearch(ui,savedDraft)
 	assert(not build.planningWorkspace.controls.regenerate:IsEnabled(),"Saved sets should not offer a no-op regeneration action")
 	ui.clipboard="Item Class: Stackable Currency\nRarity: Currency\nDivine Orb\n--------\nStack Size: 3/20";ui:click("pasteDrop");frame("filter-saved-extra-test")
 	local hoveredSample=build.planningWorkspace.controls.drop1;local hx,hy=hoveredSample:GetPos();ui.cursorX,ui.cursorY=hx+10,hy+10;ui:frame():write(directory.."/"..size[1].."-filter-sample-tooltip.json");frames=frames+1
