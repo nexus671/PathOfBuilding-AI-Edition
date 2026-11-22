@@ -62,6 +62,8 @@ function M.clean(kind,entry)
 			return raw
 		end
 		assert(type(value.history)=="table","Invalid unique quality history")
+		assert(value.historyTruncated==nil or type(value.historyTruncated)=="boolean","Invalid unique crafting history marker")
+		local historyTruncated=value.historyTruncated or #value.history>64 or (value.historyTruncated==nil and #value.history==64)
 		assert(value.actions==nil or type(value.actions)=="table" and #value.actions==#value.history,"Invalid unique crafting actions")
 		assert(value.redo==nil or type(value.redo)=="table","Invalid unique crafting redo history")
 		assert(value.colourRollCounter==nil or type(value.colourRollCounter)=="number" and value.colourRollCounter==math.floor(value.colourRollCounter) and value.colourRollCounter>=0 and value.colourRollCounter<=2147483646,"Invalid unique colour roll counter")
@@ -83,7 +85,7 @@ function M.clean(kind,entry)
 			local next=value.redo[i];assert(type(next)=="table" and allowedAction(next.action),"Invalid unique crafting redo action")
 			redo[#redo+1]={itemText=item(next.itemText),action=next.action}
 		end
-		return {plan={kind="uniqueQuality",project=project,itemText=item(value.itemText),history=history,actions=actions,redo=redo,colourRollCounter=value.colourRollCounter or 0,savedTrace=value.savedTrace,savedGuideHash=value.savedGuideHash,savedGuideLength=value.savedGuideLength}}
+		return {plan={kind="uniqueQuality",project=project,itemText=item(value.itemText),history=history,actions=actions,redo=redo,historyTruncated=historyTruncated,colourRollCounter=value.colourRollCounter or 0,savedTrace=value.savedTrace,savedGuideHash=value.savedGuideHash,savedGuideLength=value.savedGuideLength}}
 	elseif kind=="crafting" then
 		assert(value.kind=="workbench","Only working crafts need draft recovery")
 		local project=require("Modules.CraftingProjects").validate(value.project);local run=copyTable(value);run.schemaVersion=1

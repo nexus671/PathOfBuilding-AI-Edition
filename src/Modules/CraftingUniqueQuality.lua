@@ -636,7 +636,8 @@ end
 
 -- Summarise only a complete recorded preview; loading an item does not record
 -- the actions that made it, and older snapshots may have unknown actions.
-function M.previewResources(startingItem,history,actions,currentItem)
+function M.previewResources(startingItem,history,actions,currentItem,historyTruncated)
+	if historyTruncated then return nil,"Earlier preview actions are unavailable after recovery." end
 	if type(history)~="table" or type(actions)~="table" or #history~=#actions then return nil,"The preview action history is incomplete." end
 	if #actions==0 then
 		if currentItem and currentItem~=startingItem then return nil,"The current preview has no recorded path from the starting item." end

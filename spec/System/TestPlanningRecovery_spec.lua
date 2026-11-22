@@ -199,6 +199,27 @@ describe("Local planning draft recovery",function()
 		local kept=build.savers.CraftingProjects.projects[1];assert.matches("1 Vaal Orb",kept.steps[1].action);assert.matches("Corrupted",kept.targetItem)
 		main.popups={}
 	end)
+	it("keeps truncated unique histories incomplete even when the item matches the start",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: W"
+		local p={id="trimmed-unique",title="Trimmed",slot="Helmet",startingItem=raw,goals={},steps={}}
+		local history,actions={},{};for i=1,65 do history[i]=raw;actions[i]="socket_white_bench" end
+		local value={plan={kind="uniqueQuality",project=p,itemText=raw,history=history,actions=actions,historyTruncated=false}}
+		assert.is_true(recovery.save(build,"uniqueQuality",value,true))
+		local saved=recovery.load(build,"uniqueQuality",p.id).entry.plan
+		assert.equal(64,#saved.history);assert.is_true(saved.historyTruncated)
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,p,nil,saved)
+		assert.is_false(control.guide:IsEnabled());assert.is_false(control.recipe:IsEnabled())
+		control.resources:Click();local lines={};for _,row in ipairs(main.popups[1].controls.results.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+		assert.matches("Earlier preview actions are unavailable",table.concat(lines," "),1,true);main.popups={}
+		for i=1,64 do control.undo:Click() end
+		control.close:Click();local draft=build.planningUniqueQualityDrafts[p.id];assert.is_true(draft.historyTruncated)
+		assert.is_true(recovery.clean("uniqueQuality",{plan=draft}).plan.historyTruncated)
+		assert.is_nil(require("Modules.CraftingUniqueQuality").previewResources(raw,{}, {},raw,true))
+		local complete=copyTable(value);complete.plan.history[65]=nil;complete.plan.actions[65]=nil
+		assert.is_false(recovery.clean("uniqueQuality",complete).plan.historyTruncated)
+		complete.plan.historyTruncated=nil;assert.is_true(recovery.clean("uniqueQuality",complete).plan.historyTruncated)
+		main.popups={}
+	end)
 	it("recovers a new unsaved project but refuses a conflicting project ID",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
 		local p={id="quality-new",title="Unsaved guide",slot="Helmet",startingItem=raw,goals={},steps={}}

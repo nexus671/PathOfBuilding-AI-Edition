@@ -12,6 +12,7 @@ function M.Open(build,project,layout,snapshot)
 	local history=snapshot and copyTable(snapshot.history or {}) or {}
 	local actions=snapshot and copyTable(snapshot.actions or {}) or {}
 	local redo=snapshot and copyTable(snapshot.redo or {}) or {}
+	local historyTruncated=snapshot and snapshot.historyTruncated or false
 	local colourRollCounter=snapshot and snapshot.colourRollCounter or 0
 	for i=1,#history do actions[i]=actions[i] or "unknown" end
 	local savedTrace=snapshot and snapshot.savedTrace
@@ -31,7 +32,7 @@ function M.Open(build,project,layout,snapshot)
 			local ok,err=pcall(run);if not ok then ui.errorPopup("Unique crafting",err) end
 		end))
 	end
-	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history),actions=copyTable(actions),redo=copyTable(redo),colourRollCounter=colourRollCounter,savedTrace=savedTrace,savedGuideHash=savedGuideHash,savedGuideLength=savedGuideLength} end
+	local function snapshotPreview() return {kind="uniqueQuality",project=copyTable(draft),itemText=raw,history=copyTable(history),actions=copyTable(actions),redo=copyTable(redo),historyTruncated=historyTruncated,colourRollCounter=colourRollCounter,savedTrace=savedTrace,savedGuideHash=savedGuideHash,savedGuideLength=savedGuideLength} end
 	local function guidePrefixHash(steps,count)
 		if not count or count>#steps then return nil end
 		local pieces={}
@@ -57,7 +58,7 @@ function M.Open(build,project,layout,snapshot)
 		return reviewCache
 	end
 	local function calculateGuideSteps()
-		if #history==0 or history[1]~=draft.startingItem then return nil,"A complete preview from the starting item is needed." end
+		if historyTruncated or #history==0 or history[1]~=draft.startingItem then return nil,"A complete preview from the starting item is needed." end
 		local first=1
 		if savedTrace then
 			if guideNeedsReview() then
@@ -544,6 +545,7 @@ function M.Open(build,project,layout,snapshot)
 	c.loadTarget.enabled=targetAvailable
 	c.loadTarget.tooltipText="Load the project's matching unique target into this preview. Undo returns to the previous item."
 	local function canCreateRecipe()
+		if historyTruncated then return false end
 		if #actions==0 or #actions~=#history or history[1]~=draft.startingItem or #actions>100 then return false end
 		local colourSeen=false
 		for _,action in ipairs(actions) do
@@ -793,7 +795,7 @@ function M.Open(build,project,layout,snapshot)
 	end)
 	c.close.width=130
 	button("resources",h-50,"Resources",function()
-		local resources,reason=unique.previewResources(draft.startingItem,history,actions,raw)
+		local resources,reason=unique.previewResources(draft.startingItem,history,actions,raw,historyTruncated)
 		local lines={"Recorded preview only; no currency is spent. Prices are not included."}
 		if not resources then lines[#lines+1]=reason
 		elseif #resources==0 then lines[#lines+1]="No preview actions recorded."
