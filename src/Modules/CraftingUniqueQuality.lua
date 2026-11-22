@@ -269,7 +269,7 @@ end
 local fractionalChecks={}
 local function divinePlanForReference(raw,item,reference,allowFixed)
 	local expected={};for _,line in ipairs(reference.explicitModLines or {}) do if reference:CheckModLineVariant(line) then
-		if reference.catalyst and (not line.modTags or #line.modTags==0) then return nil,"Catalyst-scaled or untagged explicit modifiers need a separate Divine model" end
+		if reference.catalyst and (not line.modTags or #line.modTags==0) and line.line:find("%d") then return nil,"Catalyst-scaled or untagged explicit modifiers need a separate Divine model" end
 		local scalar=reference.catalyst and reference:GetModLineValueScalar(line,"explicit") or 1
 		local text=line.line;local ranges,parts={},{};local pos=1
 		while true do
@@ -292,7 +292,7 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 				if found then scale=found;break end
 			end end
 			if fractional or scale then
-				if #ranges~=1 or scalar~=1 then return nil,"Fractional or scaled multi-range modifiers need a separate Divine model" end
+				if #ranges~=1 then return nil,"Fractional multi-range modifiers need a separate Divine model" end
 				local range=ranges[1]
 				if not scale or math.abs(range.low*scale-math.floor(range.low*scale+0.5))>1e-7 or math.abs(range.high*scale-math.floor(range.high*scale+0.5))>1e-7 or (range.high-range.low)*scale>500 then return nil,"This fractional modifier needs a separate Divine model" end
 				range.scale=scale
@@ -301,7 +301,7 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 		if scalar~=1 then
 			if #ranges==0 then fixed=itemLib.applyRange(text,0,scalar)
 			elseif #ranges==1 then
-				profile=require("Modules.CraftingUniqueCatalyst").profile(text,ranges[1].low,ranges[1].high,scalar)
+				profile=require("Modules.CraftingUniqueCatalyst").profile(text,ranges[1].low,ranges[1].high,scalar,ranges[1].scale)
 				if not profile then return nil,"This catalyst-scaled modifier needs a separate Divine model" end
 			else
 				profile=require("Modules.CraftingUniqueCatalyst").multiProfile(text,ranges,scalar)
@@ -387,7 +387,7 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 				local range=line.range or 0.5;if type(range)~="number" or range~=range or range<0 or range>1 then return nil,"The current modifier roll is outside its supported range" end
 				current={};for i,part in ipairs(match.ranges) do local value=part.start+range*(part.finish-part.start);local scale=part.scale or 1;current[i]=part.sign*(value<0 and -math.floor(-value*scale+0.5) or math.floor(value*scale+0.5))/scale end
 			end
-			seen[source]=true;rows[#rows+1]={input=source,line=match.line,ranges=match.ranges,current=current,profile=match.profile,tags=match.profile and match.tags or nil}
+			seen[source]=true;rows[#rows+1]={input=source,line=match.line,ranges=match.ranges,current=current,profile=match.profile,tags=(match.profile or reference.catalyst and match.tags and #match.tags>0) and match.tags or nil}
 		end
 	end
 	for _,row in ipairs(expected) do if not row.used then return nil,"Use complete modifiers matching the bundled unique template" end end
