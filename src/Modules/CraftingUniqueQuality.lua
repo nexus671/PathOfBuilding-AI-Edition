@@ -199,11 +199,8 @@ end
 function M.sacred(raw,seed)
 	local reason=M.sacredReason(raw);assert(not reason,reason)
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
-	local before=M.inspect(raw);local random=require("Modules.CalcTime").random(seed);local values={};local order={"Armour","Evasion","EnergyShield","Ward"}
-	for _,kind in ipairs(order) do
-		local low,high=before.base.armour[kind.."BaseMin"],before.base.armour[kind.."BaseMax"]
-		if low and high and high>low then values[kind]=math.floor(random()*(high-low+1))/(high-low) end
-	end
+	local before=M.inspect(raw);local random=require("Modules.CalcTime").random(seed);local order={"Armour","Evasion","EnergyShield","Ward"}
+	local values=require("Modules.CraftingSacred").percentiles(before.base.armour,random)
 	local newline=raw:find("\r\n",1,true) and "\r\n" or "\n";local seen={};local level=0
 	local staged=raw:gsub("[^\r\n]+",function(line)
 		local kind=line:match("^(%a+)BasePercentile:%s*")

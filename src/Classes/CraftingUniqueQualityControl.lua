@@ -357,10 +357,10 @@ function M.Open(build,project,layout,snapshot)
 	c.omenJeweller.tooltipText=function() return omenJewellerReason or "Adds white sockets up to the natural limit using an Omen of the Jeweller and a Jeweller's Orb." end
 	button("sacred",130,"Sacred",function()
 		colourRollCounter=colourRollCounter%2147483646+1;local result=unique.sacred(raw,require("Modules.CalcEncounter").seed(104729,colourRollCounter,79))
-		history[#history+1]=raw;actions[#actions+1]="sacred";redo={};raw=result.itemText;refresh(true);c.notice.label="^7Independent rolls; odds unverified."
+		history[#history+1]=raw;actions[#actions+1]="sacred";redo={};raw=result.itemText;refresh(true);c.notice.label="^7Shared-roll model; odds unverified."
 	end)
 	c.sacred.x=200;c.sacred.width=86;c.sacred.shown=function() return item.base.armour~=nil end;c.sacred.enabled=function() return not sacredReason end
-	c.sacred.tooltipText=function() return sacredReason or "Preview independent base-defence rolls. The game may use a shared roll; combinations and odds are unverified." end
+	c.sacred.tooltipText=function() return sacredReason or "Preview a shared base-defence roll. The 32-position model and official odds are unverified." end
 	if item.base.armour then c.socketCount.width=85;c.socketCount.label="Sockets";c.omenJeweller.x=108;c.omenJeweller.width=85;c.omenJeweller.label="Omen" end
 	c.socketCount.enabled=function() local allowed=socketCountAvailability();return allowed or not colourReason end
 	c.socketCount.tooltipText=function() local allowed,reason=socketCountAvailability();return allowed and "Preview socket-count or socket-colour crafts." or not colourReason and "Preview socket-colour crafts." or reason end
