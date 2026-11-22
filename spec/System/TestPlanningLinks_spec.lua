@@ -127,6 +127,20 @@ describe("Linked planning tools",function()
 		stale,statuses=sourceStatus();assert.is_true(stale);assert.equal("New target",statuses["atlas:farm"]);assert.equal("Current",statuses["craft:helmet"])
 		profile.rules=filters.generate(build,profile);stale,statuses=sourceStatus();assert.is_false(stale);assert.equal("Current",statuses["atlas:farm"])
 	end)
+	it("retains changed Atlas pickup warnings across save and reopen",function()
+		local store=build.savers.AtlasPlans
+		local plan={id="farm",title="Farm",version="3.30.0c",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
+		store:Upsert(plan);local profile=filters.profile("linked","Linked");profile.trackBuildPickups=true
+		profile.rules=filters.generate(build,profile);build.savers.LootFilters:Upsert(profile)
+		assert.is_false(dependencies.report(build,profile).stale)
+		plan.strategy.scarabs="Orb of Scouring";store:Upsert(plan)
+		local report=dependencies.report(build,profile);assert.is_true(report.stale)
+		local status;for _,entry in ipairs(report.entries) do if entry.origin=="atlas:farm" then status=entry.status end end
+		assert.equal("Changed",status)
+		local xml=build:SaveDB("Linked plans");loadBuildFromXML(xml,"Linked plans")
+		profile=build.savers.LootFilters.data.profiles[1];assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);assert.is_false(dependencies.report(build,profile).stale)
+	end)
 	it("remembers tracked build pickups after the last linked rule disappears",function()
 		local store=build.savers.AtlasPlans
 		local plan={id="only-farm",title="Only farm",version="3.30.0c",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
