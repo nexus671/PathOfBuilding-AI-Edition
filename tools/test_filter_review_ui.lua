@@ -63,8 +63,16 @@ do
 	ui:click("secondary");local snapshot=build.planningWorkspace.cache.filters.layout.snapshot();local draft=snapshot.data.profiles[1]
 	assert(snapshot.dirty and draft.manualGuideReviews and #draft.manualGuideReviews==1,"Review was not kept in the filter draft")
 	local _,warnings=filters.generate(build,draft);for _,warning in ipairs(warnings) do assert(warning.origin~="craft:review-guide","Reviewed guide still warns") end
-	ui:click("keep");local xml=build:SaveDB("Reviewed guide UI");loadBuildFromXML(xml,"Reviewed guide UI");local kept=build.savers.LootFilters.data.profiles[1]
+	ui:click("manage");ui:text("search","Duplicate profile");ui:click("choose")
+	snapshot=build.planningWorkspace.cache.filters.layout.snapshot();assert(#snapshot.data.profiles==2,"Profile was not duplicated")
+	local duplicate=snapshot.data.profiles[2];assert(duplicate.id~=draft.id and duplicate.manualGuideReviews and #duplicate.manualGuideReviews==1,"Duplicate lost its guide review")
+	_,warnings=filters.generate(build,duplicate);for _,warning in ipairs(warnings) do assert(warning.origin~="craft:review-guide","Duplicate unexpectedly warns") end
+	ui:click("keep");local bundle=require("Modules.PlanningBundle");local raw=bundle.export(build);local imported=bundle.import(raw)
+	loadBuildFromXML(imported.xml,"Imported reviewed guide");local kept=build.savers.LootFilters.data.profiles[2]
 	assert(kept.manualGuideReviews and #kept.manualGuideReviews==1,"Guide review did not survive save and reopen")
 	_,warnings=filters.generate(build,kept);for _,warning in ipairs(warnings) do assert(warning.origin~="craft:review-guide","Reopened guide unexpectedly warns") end
+	local changed=copyTable(build.savers.CraftingProjects.projects[1]);changed.steps[1].action="Use a different currency";build.savers.CraftingProjects:Upsert(changed)
+	_,warnings=filters.generate(build,kept);local warned=false;for _,warning in ipairs(warnings) do if warning.origin=="craft:review-guide" then warned=true end end
+	assert(warned,"Changing the imported guide did not restore its review notice")
 end
 print("FILTER_REVIEW_UI_OK")
