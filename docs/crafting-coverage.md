@@ -33,6 +33,7 @@ use advanced copy text when modifier identity matters. For catalyst-quality jewe
 When the first two complete assignments differ between an ordinary modifier and an Essence modifier, the error names that ambiguity. Other possible assignments may exist; it still requires more information rather than choosing one.
 On PC, hover the item in game and use **Ctrl+Alt+C** to copy its advanced modifier descriptions and roll ranges, then paste that text into the project. If the advanced-description key was rebound, use that key with Ctrl+C. Advanced text can resolve some ambiguities, but it does not guarantee that every imported item can be identified.
 When an ambiguous starting item prevents the workbench opening, **Edit starting item** in the message returns directly to the project editor. Cancel leaves the saved item unchanged; keep the edited project and reopen the workbench to try again.
+The same recovery is available when opening a linked craft from Journey or a filter target. If opening fails, the current planner and its session draft remain in place.
 When no individual modifier matches but a bounded check finds a possible
 combined explanation, the import error says so; it does not invent the
 individual modifier rolls.

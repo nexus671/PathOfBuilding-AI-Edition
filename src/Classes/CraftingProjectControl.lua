@@ -70,6 +70,16 @@ function Panel.Edit(build,source,initialItem,initialSlot,layout)
  end)
 end
 
+function Panel.ImportRecovery(build,project,err,layout)
+	local popup={};local w=math.min(760,main.screenW-40)
+	local lines=ui.rows({ui.errorText(err)},w-52,16);local content=0;for _,line in ipairs(lines) do content=content+line.height end
+	local h=math.min(main.screenH-48,math.max(140,content+76))
+	popup.message=new("TextListControl"):TextListControl(ui.anchor,{16,18,w-32,h-70},nil,lines)
+	popup.edit=button(16,h-42,160,"Edit starting item",function() main:ClosePopup();Panel.Edit(build,project,nil,nil,layout) end)
+	popup.close=button(w-136,h-42,120,"Close",function() main:ClosePopup() end)
+	ui.style(popup,{edit=true});main:OpenPopup(w,h,"Crafting project",popup,nil,nil,"close")
+end
+
 function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 	if layout then layout.snapshot=nil;layout.viewState=nil;layout.workbench=nil end
 	local controls,list={},{ }
@@ -121,13 +131,7 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 		end)
 		if not ok then
 			if not tostring(err):find("Ctrl+Alt+C",1,true) then error(err) end
-			local popup={};local w=math.min(760,main.screenW-40)
-			local lines=ui.rows({ui.errorText(err)},w-52,16);local content=0;for _,line in ipairs(lines) do content=content+line.height end
-			local h=math.min(main.screenH-48,math.max(140,content+76))
-			popup.message=new("TextListControl"):TextListControl(ui.anchor,{16,18,w-32,h-70},nil,lines)
-			popup.edit=button(16,h-42,160,"Edit starting item",function() main:ClosePopup();Panel.Edit(build,project,nil,nil,layout) end)
-			popup.close=button(w-136,h-42,120,"Close",function() main:ClosePopup() end)
-			ui.style(popup,{edit=true});main:OpenPopup(w,h,"Crafting project",popup,nil,nil,"close")
+			Panel.ImportRecovery(build,project,err,layout)
 		end
 	end)
 	controls.coe=button(16,height-48,220,"Craft of Exile (optional)",function() OpenURL(projects.handoff(selected().startingItem).url) end)

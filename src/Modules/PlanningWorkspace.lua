@@ -166,20 +166,31 @@ function M:Show(page,source)
 				local pages=self.controls.libraryPage;pages:SelByValue("Plan");if pages.selFunc then pages.selFunc() end
 				return
 			end
-			if page~="crafting" then
-				local draft=self.craftDrafts[project.id];if draft and draft.project.startingItem~=project.startingItem then draft=nil end
-				self:Show("crafting",draft or {kind="workbench",project=project});return
+			local oldPage,oldBody,oldCrafting,oldWorkbench=self.page,self.body,self.cache.crafting,layout.workbench
+			local ok,err=pcall(function()
+				if page~="crafting" then
+					local draft=self.craftDrafts[project.id];if draft and draft.project.startingItem~=project.startingItem then draft=nil end
+					self:Show("crafting",draft or {kind="workbench",project=project});return
+				end
+				local current=self.cache.crafting
+				if current and current.layout.snapshot then
+					local working=current.layout.snapshot();if working.kind=="workbench" then self.craftDrafts[working.project.id]=working end
+				end
+				self.page="crafting";self.cache.crafting=nil
+				local draft=self.craftDrafts[project.id]
+				layout.workbench=nil
+				if draft and draft.project.startingItem==project.startingItem then layout.workbench=draft end
+				require("Classes.CraftingSimulatorControl").Open(self.build,project,layout)
+			end)
+			if not ok then
+				self.page=oldPage;self.body=oldBody;self.cache.crafting=oldCrafting;layout.workbench=oldWorkbench;self:UpdateControls()
+				if tostring(err):find("Ctrl+Alt+C",1,true) then
+					require("Classes.CraftingProjectControl").ImportRecovery(self.build,project,err,page=="crafting" and layout or nil)
+					return false
+				end
+				error(err)
 			end
-			local current=self.cache.crafting
-			if current and current.layout.snapshot then
-				local working=current.layout.snapshot();if working.kind=="workbench" then self.craftDrafts[working.project.id]=working end
-			end
-			self.page="crafting";self.cache.crafting=nil
-			local draft=self.craftDrafts[project.id]
-			layout.workbench=nil
-			if draft and draft.project.startingItem==project.startingItem then layout.workbench=draft end
-			if page=="crafting" then require("Classes.CraftingSimulatorControl").Open(self.build,project,layout)
-			else self:Show("crafting",draft or {kind="workbench",project=project}) end
+			return true
 		end
 		layout.mount=function(width,height,title,controls)
 			local body=new("PopupDialog"):PopupDialog(width,height,title,controls)
