@@ -1,4 +1,4 @@
-// cspell:ignore Ukatoa Katakohi Duskwalk unmodeled
+// cspell:ignore Ukatoa Katakohi Duskwalk unmodeled lupa
 // A real MCP stdio client drives an isolated native host and explicit UI review.
 // cspell:ignore GGGRRW RGBRRR craic
 'use strict';
@@ -12,6 +12,7 @@ const {createInterface}=require('node:readline');
 const root=path.resolve(__dirname,'..');
 const directory=fs.mkdtempSync(path.join(os.tmpdir(),'pob-planning-workflow-'));
 const lua=process.argv[2] || 'luajit';
+const useLupa=lua==='--lupa';
 const children=[];const diagnostics=[];
 function connection(child,prefix='') {
   children.push(child);const pending=new Map();let next=0;let ready,rejectReady,didStart=false;
@@ -30,7 +31,9 @@ function connection(child,prefix='') {
 async function main(){
   const environment={...process.env,LUA_PATH:'../runtime/lua/?.lua;../runtime/lua/?/init.lua;;'};
   if(process.platform==='win32'){environment.LUA_CPATH=path.join(root,'runtime','?.dll')+';;';environment.PATH=path.join(root,'runtime')+path.delimiter+process.env.PATH;}
-  const native=connection(spawn(lua,['../tools/planning_workflow_host.lua',directory],{cwd:path.join(root,'src'),env:environment}),'WORKFLOW\t');
+  const command=useLupa?(process.env.POB_PYTHON || (process.platform==='win32'?'python':'python3')):lua;
+  const args=useLupa?[path.join(root,'tools','run_headless_lupa.py'),'--filesystem','../tools/planning_workflow_host.lua',directory]:['../tools/planning_workflow_host.lua',directory];
+  const native=connection(spawn(command,args,{cwd:path.join(root,'src'),env:environment}),'WORKFLOW\t');
   let startupTimer;
   await Promise.race([native.started,new Promise((_,reject)=>{startupTimer=setTimeout(()=>reject(new Error('Native startup timed out')),60000);})]).finally(()=>clearTimeout(startupTimer));
   const mcp=connection(spawn(process.execPath,[path.join(root,'src/AI/McpServer.cjs'),path.join(directory,'AI-encounter.json')]));
@@ -257,6 +260,9 @@ async function main(){
   const previewInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:previewRing,query:'Prismatic',limit:20},'inspected');
   const previewOption=previewInspect.crafting.nativeEngine.catalystPreviews[0];assert.equal(previewOption.checked,true);assert.equal(previewOption.available,true);
   const previewApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:previewRing,action:previewOption.action,seed:123},'crafted');assert.match(previewApply.nativeCrafting.itemText,/CatalystQuality: 1/);assert.ok(previewApply.nativeCrafting.warnings.some(entry=>entry.code==='unique_catalyst_tags'));
+  const variantRing="Rarity: UNIQUE\nBerek's Grip\nTwo-Stone Ring\nSelected Variant: 3\nItem Level: 83\nVariant: Pre 2.6.0\nVariant: Pre 3.8.0\nVariant: Current\nImplicits: 1\n{tags:resistance}+(12-16)% to Cold and Lightning Resistances\n{variant:1}{tags:elemental_damage}(10-15)% increased Cold Damage\n{variant:2,3}{tags:elemental_damage}(25-30)% increased Cold Damage\n{variant:1}{tags:elemental_damage,attack}Adds 1 to (1-50) Lightning Damage to Attacks\n{variant:2,3}{tags:elemental_damage,attack,caster}Adds 1 to (50-70) Lightning Damage to Spells and Attacks\n{tags:resource}+(30-40) to maximum Life\n{variant:1}{tags:resource}1% of Damage Leeched as Life against Shocked Enemies\n{variant:2,3}{tags:resource}1% of Damage Leeched as Life against Shocked Enemies\n{variant:3}{tags:defences}1% of Damage Leeched as Energy Shield against Frozen Enemies\n{variant:1,2}{tags:resource}1% of Damage Leeched as Mana against Frozen Enemies";
+  const variantCatalyst=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:variantRing,action:{method:'catalyst',catalyst:8},seed:123},'crafted');
+  assert.match(variantCatalyst.nativeCrafting.itemText,/CatalystQuality: 1/);assert.match(variantCatalyst.nativeCrafting.itemText,/\{tags:elemental,cold,lightning,resistance\}/);assert.match(variantCatalyst.nativeCrafting.itemText,/\{variant:1\}\{tags:elemental_damage\}\(10-15\)% increased Cold Damage/);
   const previewGoal={catalyst:8,minCatalystQuality:4};const previewRecipe={rarity:'UNIQUE',steps:[{method:'catalyst',catalyst:8,maxAttempts:4,untilRequirements:previewGoal}],targets:[],requirements:previewGoal};
   const previewRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:previewRing,recipe:previewRecipe,options:{trials:1,maxActions:4,seed:123}},'crafted');assert.equal(previewRun.nativeCrafting.trials,1);
   const dextralRing=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:'Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86',query:'Dextral',limit:20},'inspected');assert.match(dextralRing.crafting.nativeEngine.catalystGuides[0].warning,/may not affect fixed unique modifiers/);
