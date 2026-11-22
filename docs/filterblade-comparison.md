@@ -10,7 +10,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Strictness presets | Seven pinned NeverSink levels | Updated through fork releases |
 | Game modes | Normal and Ruthless | No PoE 2 support; Softcore/Hardcore economy tiers are separate work |
 | Build auto-adjust | Reads saved crafts, planned gear, gems, resources and Atlas plans | More stage-specific vendor recipes |
-| Campaign weapon selection | Eighteen native families, equipped-family selection and progressive base-level windows | More character-specific class presets |
+| Campaign weapon selection | Eighteen native families, equipped-family selection, editable weapon-style starters and progressive base-level windows | More character-specific class presets |
 | Campaign armour selection | Armour/evasion/ES combinations and Ward, with native base art | More starter presets |
 | Campaign vendor rares | Base preset rules and campaign pickup policies, plus copied-item reviews for quality groups and rare equipment sets | Rare set combinations, bonuses and vendor priority need in-game verification; other completed vendor sets remain unsupported |
 | Endgame build adjustment | Exact saved targets, opted-in crafting alternatives and Atlas pickups | Trade/SSF-specific policies |

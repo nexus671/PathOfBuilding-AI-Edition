@@ -187,6 +187,19 @@ describe("Offline campaign pickup policies",function()
 		local raw,report=filters.compile(p);assert.is_true(#raw<filters.limit);for _,d in ipairs(report.diagnostics) do assert.is_nil(d.error,d.error) end
 		build.savers.LootFilters:Upsert(p);local xml={};build.savers.LootFilters:Save(xml);local restored=filters.new(build);restored:Load(xml);assert.same(p.campaign,restored.data.profiles[1].campaign)
 	end)
+	it("applies editable starter families without replacing recipe or level settings",function()
+		local original=campaign.defaults();original.recipes={"Quality gems"};original.minAreaLevel=10;original.upgradeWindow=25
+		local kept;local controls=require("Classes.LootFilterCampaignControl").Open(build,original,function(value) kept=value end,"Normal")
+		controls.starters:Click();main.popups[1].controls.starter1:Click()
+		controls.weapons1:Click();controls.keep:Click()
+		assert.same({"Quiver"},kept.weapons);assert.same({"Evasion","Armour / Evasion","Evasion / Energy shield"},kept.defences)
+		assert.same({"Quality gems"},kept.recipes);assert.equal(10,kept.minAreaLevel);assert.equal(25,kept.upgradeWindow)
+		for _,starter in ipairs(campaign.starters) do
+			local value=campaign.defaults();value.weapons=starter.weapons;value.defences=starter.defences
+			local p=profile();p.campaign=campaign.validate(value);local raw,report=filters.compile(p)
+			assert.is_true(#raw<filters.limit,starter.label);for _,d in ipairs(report.diagnostics) do assert.is_nil(d.error,d.error) end
+		end
+	end)
 	it("accepts digits in every campaign level and link field through native input",function()
 		local ui=require("Modules.HeadlessUI").install({width=1024,height=768});local kept
 		local ok,err=pcall(function()

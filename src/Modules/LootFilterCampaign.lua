@@ -3,6 +3,14 @@
 local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces","Low-level unidentified rare set pieces","Vaal skill gems","Quality flasks and tinctures","Quality weapons","Quality armour"}}
 local knownWeapons={"Bow","Claw","Dagger","Rune Dagger","Fishing Rod","One Handed Axe","One Handed Mace","One Handed Sword","Thrusting Sword","Sceptre","Staff","Warstaff","Two Handed Axe","Two Handed Mace","Two Handed Sword","Wand","Shield","Quiver"}
 M.weapons=knownWeapons
+-- Suggestions are editable family selections, not build or economy recommendations.
+M.starters={
+	{label="Bow and quiver",weapons={"Bow","Quiver"},defences={"Evasion","Armour / Evasion","Evasion / Energy shield"}},
+	{label="One-handed melee and shield",weapons={"Claw","Dagger","One Handed Axe","One Handed Mace","One Handed Sword","Thrusting Sword","Shield"},defences={"Armour","Evasion","Armour / Evasion"}},
+	{label="Two-handed melee",weapons={"Warstaff","Two Handed Axe","Two Handed Mace","Two Handed Sword"},defences={"Armour","Armour / Evasion"}},
+	{label="Wand or sceptre caster",weapons={"Wand","Sceptre","Rune Dagger","Shield"},defences={"Energy shield","Armour / Energy shield","Evasion / Energy shield"}},
+	{label="Staff caster",weapons={"Staff"},defences={"Energy shield","Armour / Energy shield","Evasion / Energy shield"}},
+}
 M.rareSetSlots={"Jewellery","Armour","Weapons and shields"}
 local rareSetClasses={
 	["Jewellery"]={"Amulets","Belts","Rings"},

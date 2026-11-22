@@ -102,6 +102,19 @@ function M.Open(build,value,onKeep,mode)
 		onKeep(next);main:ClosePopup()
 	end)
 	button("reset",252,h-42,180,"Remove policy",function() onKeep(nil);main:ClosePopup() end)
+	button("starters",448,h-42,160,"Starter selections",function()
+		local popup={};local pw,ph=math.min(520,main.screenW-40),340
+		ui.description(popup,"help",16,28,pw-32,44,{"Choose a starting set of weapon and armour families.","You can change the selections before keeping the policy."},14)
+		for i,starter in ipairs(policy.starters) do
+			popup["starter"..i]=new("ButtonControl"):ButtonControl(ui.anchor,{16,82+(i-1)*38,pw-32,30},starter.label,function()
+				for _,key in ipairs({"weapons","defences"}) do selected[key]={};for _,name in ipairs(starter[key]) do selected[key][name]=true end end
+				main:ClosePopup()
+			end)
+		end
+		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{pw-136,ph-44,120,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(popup);for _,control in pairs(popup) do control.layoutAudit="filter-campaign-starters" end;main:OpenPopup(pw,ph,"Starter selections",popup,nil,nil,"close")
+	end)
+	c.starters.tooltipText="Replace weapon and armour selections with an editable starting set. Recipe and level settings stay unchanged."
 	button("close",w-156,h-42,140,"Cancel",function() main:ClosePopup() end)
 	ui.style(c,{keep=true},custom);for _,control in pairs(c) do control.layoutAudit="filter-campaign-policy" end;main:OpenPopup(w,h,"Campaign and base-family pickups",c,nil,nil,"close");return c
 end

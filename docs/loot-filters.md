@@ -6,6 +6,8 @@ Ruthless **Minimal** examples use a small label and transparent background in th
 
 The appearance and condition editors offer **Show / Hide** for Normal filters and **Show / Minimal** for Ruthless. If an existing rule uses an action incompatible with the selected mode, it remains visible for repair; choose an available action before keeping that edit.
 
+**Starter selections** in the campaign pickup editor choose editable weapon and armour families for common styles. They leave recipe and level settings unchanged; review the families for your build before keeping the policy.
+
 **Preset highlights** samples exact currency names from high-emphasis blocks in the pinned NeverSink Regular preset when their item class is known. It is a snapshot of that preset's styling, not a list of live prices, trade recommendations or drop rates. Your active filter still determines each preview result.
 
 Generated unidentified magic and rare examples have an unknown item tier unless a rule or sample explicitly supplies one. A tier-dependent filter therefore reports an unknown result until the tier is set. **Tiered gear** compares explicit example tiers; in Ruthless it shows only the example without a tier because items there do not have tiers.
