@@ -282,12 +282,17 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 		local profile,fixed
 		if #ranges>0 then
 			local fractional=false;for _,range in ipairs(ranges) do fractional=fractional or range.fractional end
-			if fractional then
+			-- Endpoint spelling does not establish roll precision: (2-3)% can
+			-- represent hundredths when the underlying stat has that precision.
+			local key=text:gsub("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)","#"):gsub("%+#","#")
+			local formats=not key:find("%d") and data.modScalability[key]
+			local scale
+			if formats and #formats==#ranges then for _,entry in ipairs(formats) do
+				local f=entry.formats;local found=f and #f==1 and ({divide_by_ten=10,divide_by_one_hundred=100})[f[1]]
+				if found then scale=found;break end
+			end end
+			if fractional or scale then
 				if #ranges~=1 or scalar~=1 then return nil,"Fractional or scaled multi-range modifiers need a separate Divine model" end
-				local key=text:gsub("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)","#"):gsub("%+#","#")
-				local formats=not key:find("%d") and data.modScalability[key]
-				local f=formats and #formats==1 and formats[1].formats
-				local scale=f and #f==1 and ({divide_by_ten=10,divide_by_one_hundred=100})[f[1]]
 				local range=ranges[1]
 				if not scale or math.abs(range.low*scale-math.floor(range.low*scale+0.5))>1e-7 or math.abs(range.high*scale-math.floor(range.high*scale+0.5))>1e-7 or (range.high-range.low)*scale>500 then return nil,"This fractional modifier needs a separate Divine model" end
 				range.scale=scale
@@ -358,7 +363,11 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 				end
 			end
 			if matches and line.modTags and #line.modTags>0 and not tableDeepEquals(line.modTags,candidate.tags or {}) then matches=false end
-			if matches then if match then return nil,"This modifier matches multiple bundled ranges" end;match=candidate;matchedValues=numbers end
+			if matches then
+				if match then
+					if #match.ranges>0 or #candidate.ranges>0 or match.line~=candidate.line or match.scalar~=candidate.scalar or not tableDeepEquals(match.tags or {},candidate.tags or {}) then return nil,"This modifier matches multiple bundled ranges" end
+				else match=candidate;matchedValues=numbers end
+			end
 		end end
 		if not match then return nil,"Use complete modifiers matching the bundled unique template" end
 		match.used=true
