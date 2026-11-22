@@ -1597,6 +1597,13 @@ async function main(){
   const uncertainContinue={...lootProfile,template:'Show\n BaseType "Iron"\n Continue unexpected\nHide'};
   const uncertainContinueTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:uncertainContinue,sample:{BaseType:'Iron Hat'}},'tested');
   assert.equal(uncertainContinueTest.result.status,'unknown');assert.match(uncertainContinueTest.result.reasons[0],/Continue arguments/);
+  const uncertainSound={...lootProfile,template:'Show\n DisableDropSound unexpected\nHide'};
+  const uncertainSoundTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:uncertainSound,sample:{BaseType:'Iron Hat'}},'tested');
+  assert.equal(uncertainSoundTest.result.status,'unknown');assert.match(uncertainSoundTest.result.reasons[0],/DisableDropSound arguments/);
+  const uncertainSoundExport=await queued('export_loot_filter',{baseRevision:context.revision,profile:uncertainSound},'exported');
+  assert.ok(uncertainSoundExport.report.diagnostics.some(entry=>entry.unverifiedAction==='DisableDropSound'));
+  const presetSound={...lootProfile,template:'Show\n DisableDropSound True'};
+  const presetSoundTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:presetSound,sample:{BaseType:'Iron Hat'}},'tested');assert.equal(presetSoundTest.result.action,'Show');
   const badSocketSample=await queued('test_loot_filter',{baseRevision:context.revision,profile:{...lootProfile,template:'Show\n Sockets >= 1\nHide'},sample:{BaseType:'Iron Hat',Sockets:2.5}},'tested');assert.equal(badSocketSample.result.status,'unknown');assert.match(badSocketSample.result.reasons[0],/Invalid Sockets/);
   const flaskRecipeProfile={...lootProfile,template:'Hide',campaign:{recipes:['Quality flasks and tinctures','Vaal skill gems'],minAreaLevel:1,maxAreaLevel:70}};
   const qualityFlask=await queued('test_loot_filter',{baseRevision:context.revision,profile:flaskRecipeProfile,sample:{Class:'Life Flasks',BaseType:'Small Life Flask',Quality:5,AreaLevel:40}},'tested');assert.equal(qualityFlask.result.action,'Show');assert.match(qualityFlask.result.ruleTitle,/Quality flasks/);
