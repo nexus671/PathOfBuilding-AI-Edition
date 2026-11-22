@@ -12,7 +12,7 @@ function P.extend(M,A,api)
 	end
 	function M.model(raw)
 		local model=originalModel(raw)
-		model.initial.catalyst=model.item.catalyst;model.initial.catalystQuality=model.item.catalystQuality
+		model.initial.catalyst=model.item.catalyst;model.initial.catalystQuality=model.item.catalyst and (model.item.catalystQuality or 20) or nil
 		return model
 	end
 	function M.decorateItem(model,state,item)

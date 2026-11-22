@@ -31,4 +31,10 @@ return function(build,ui,frame)
 	local conditions;require("Classes.CraftingTargetControl").Open({},{catalyst=8,minCatalystQuality=20},nil,function(_,value) conditions=value end)
 	ui:click("catalystGoal");frame("crafting-catalyst-goal");ui:choose("kind",4,"val");ui:text("quality","12");ui:click("keep");frame("crafting-catalyst-goal-edited");ui:click("keep")
 	assert(conditions.catalyst==4 and conditions.minCatalystQuality==12,"Catalyst goal edits were not kept")
+	local normal="Rarity: NORMAL\nRuby Ring\nItem Level: 86\nCatalyst: Prismatic\nImplicits: 1\n{tags:resistance}+25% to Fire Resistance"
+	for _,entry in ipairs({{raw=normal,expected="Prismatic quality: +20%",frame="crafting-default-catalyst-quality"},{raw=normal:gsub("Catalyst: Prismatic","Catalyst: Prismatic\nCatalystQuality: 0"),expected="Prismatic quality: +0%",frame="crafting-zero-catalyst-quality"}}) do
+		local draft={id="ordinary-catalyst-quality",title="Ring quality",slot="Ring 1",startingItem=entry.raw,goals={},steps={}}
+		require("Classes.CraftingSimulatorControl").Open(build,draft);frame(entry.frame);local shown=false;for _,command in ipairs(ui.commands) do if command.text and command.text:find(entry.expected,1,true) then shown=true end end
+		assert(shown,"Workbench did not display "..entry.expected);ui:click("close")
+	end
 end

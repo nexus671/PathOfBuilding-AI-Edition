@@ -28,6 +28,16 @@ describe("Crafting starting-item property inheritance",function()
 		partial.catalyst=5;partial.catalystQuality=nil
 		local changed=sim.validateState(model,partial);assert.equal(5,changed.catalyst);assert.is_nil(changed.catalystQuality)
 	end)
+	it("uses PoB's default 20% for a named catalyst with no quality line",function()
+		local raw="Rarity: NORMAL\nRuby Ring\nItem Level: 86\nCatalyst: Prismatic\nImplicits: 1\n{tags:resistance}+25% to Fire Resistance"
+		local model=sim.model(raw);assert.is_nil(model.item.catalystQuality);assert.equal(20,model.initial.catalystQuality)
+		assert.equal(30,model.item.baseModList:Sum("BASE",nil,"FireResist"));assert.equal(30,sim.toItem(model,model.initial).baseModList:Sum("BASE",nil,"FireResist"))
+		assert.is_true(sim.matches(model.initial,{},"NORMAL",model,{catalyst=8,minCatalystQuality=20}));assert.has_error(function() sim.perform(raw,{method="catalyst",catalyst=8},42) end)
+		local partial={rarity="NORMAL",affixes={}};local inherited=sim.validateState(model,partial);assert.equal(20,inherited.catalystQuality);assert.is_nil(partial.catalystQuality)
+		local output=sim.itemText(model,model.initial);assert.matches("CatalystQuality: 20",output,1,true);assert.equal(20,sim.model(output).initial.catalystQuality)
+		local zero=raw:gsub("Catalyst: Prismatic","Catalyst: Prismatic\nCatalystQuality: 0");local zeroModel=sim.model(zero);assert.equal(0,zeroModel.initial.catalystQuality);assert.is_false(sim.matches(zeroModel.initial,{},"NORMAL",zeroModel,{catalyst=8,minCatalystQuality=20}));assert.is_true(sim.perform(zero,{method="catalyst",catalyst=8},42).state.catalystQuality>0)
+		local swapped=sim.perform(raw,{method="catalyst",catalyst=4},42);assert.equal(4,swapped.state.catalyst);assert.is_true(swapped.state.catalystQuality<20)
+	end)
 	it("retains a copied Eldritch implicit when adding the other side",function()
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86"
 		local first=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11)

@@ -1130,6 +1130,10 @@ async function main(){
   assert.equal(updatedGloves.nativeCrafting.state.baseImplicit330,true);
   const continuedGloves=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:legacyGloves,action:{method:'quality'},initialState:updatedGloves.nativeCrafting.state,seed:1},'crafted');
   assert.match(continuedGloves.nativeCrafting.itemText,/(?:2[0-6])% increased Spell Damage/);
+  const defaultQualityRing='Rarity: NORMAL\nRuby Ring\nItem Level: 86\nCatalyst: Prismatic\nImplicits: 1\n{tags:resistance}+25% to Fire Resistance';
+  const defaultQualityInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:defaultQualityRing,limit:5},'inspected');assert.equal(defaultQualityInspect.crafting.nativeEngine.initialState.catalystQuality,20);
+  const defaultQualityBlocked=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:defaultQualityRing,action:{method:'catalyst',catalyst:8},seed:42},'failed');assert.match(defaultQualityBlocked.error,/already at 20%/);
+  const zeroQualityRing=defaultQualityRing.replace('Catalyst: Prismatic','Catalyst: Prismatic\nCatalystQuality: 0');const zeroQualityInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:zeroQualityRing,limit:5},'inspected');assert.equal(zeroQualityInspect.crafting.nativeEngine.initialState.catalystQuality,0);
   const legacyRing='Rarity: NORMAL\nAmethyst Ring\nItem Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20\nImplicits: 1\n+23% to Chaos Resistance';
   const partialCatalyst=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:legacyRing,initialState:{rarity:'NORMAL',affixes:[]},limit:5},'inspected');
   assert.equal(partialCatalyst.crafting.nativeEngine.initialState.catalystQuality,20);assert.ok(partialCatalyst.crafting.nativeEngine.initialState.catalyst);
