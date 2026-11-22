@@ -789,6 +789,20 @@ describe("Build-owned loot filters",function()
 		for _,name in ipairs({"Allflame Ember of Kulemak","Divine Vessel","Maven's Chisel of Divination","Threaded Delirium Orb","Memory of Trauma"}) do assert.is_true(titles[name],name) end
 		assert.is_nil(titles["Feral Astrolabe"]);assert.is_nil(titles["Fruiting Astrolabe"]);assert.is_nil(titles["Memory of Reverence"])
 	end)
+	it("links saved map-plan supplies to Atlas pickups and respects avoid rules",function()
+		local profile=filters.profile("test","Test")
+		local target={currentPercent=35,currentType="Currency Items",nextType="Currency Items",gain=10,targetPercent=80}
+		local draft={id="map",title="Map target",plannedDelirium=target,plannedAllflame="Metadata/Items/MapFragments/MeatSackAllflamePack",plannedDeified=true}
+		local plan={id="planned",title="Mapping",version="3.30.0-preview",nodes={},mapDrafts={draft,copyTable(draft)},strategy={scarabs="Fine Delirium Orb"}}
+		build.savers.AtlasPlans.plans={plan}
+		local function generated() local found={};local rules,warnings=filters.generate(build,profile);for _,rule in ipairs(rules) do if rule.origin=="atlas:planned" then found[rule.title]=(found[rule.title] or 0)+1 end end;return found,warnings end
+		local found=generated();assert.equal(1,found["Fine Delirium Orb"]);assert.equal(1,found["Allflame Ember of Flesh"]);assert.equal(1,found["Divine Vessel"])
+		profile.template="Hide";profile.rules=filters.generate(build,profile);assert.equal("Show",filters.simulate(profile,{BaseType="Fine Delirium Orb"}).action);assert.equal("Hide",filters.simulate(profile,{BaseType="Cartographer's Delirium Orb"}).action)
+		plan.strategy={avoid="Fine Delirium Orb, Allflame Ember of Flesh"};found=generated();assert.is_nil(found["Fine Delirium Orb"]);assert.is_nil(found["Allflame Ember of Flesh"]);assert.equal(1,found["Divine Vessel"])
+		plan.strategy={};draft.plannedDelirium.currentPercent=80;plan.mapDrafts={draft};found=generated();assert.is_nil(found["Fine Delirium Orb"])
+		draft.plannedDelirium.currentType="Map Items";found=generated();assert.equal(1,found["Fine Delirium Orb"])
+		draft.plannedDelirium="invalid";local _,warnings=generated();assert.is_true(#warnings>0);assert.matches("could not be identified",warnings[#warnings].message)
+	end)
 	it("distinguishes a generic Delirium Orb from named variants in Atlas strategies",function()
 		local profile=filters.profile("test","Test")
 		local strategy={scarabs="Threaded Delirium Orb",avoid=""}

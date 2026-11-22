@@ -510,6 +510,29 @@ function M.generate(build,profile,checkpoint)
 			if value:match("%S") and not next(found) and not (field=="avoid" and next(avoidedMechanics)) then unmatched[#unmatched+1]=({scarabs="supplies",maps="maps",avoid="avoid"})[field] end
 		end
 		if #unmatched>0 then warnings[#warnings+1]={origin="atlas:"..plan.id,title=plan.title or "Atlas strategy",message="No known item name was found in the Atlas strategy's "..table.concat(unmatched,", ").." field(s). Notes are fine, but only recognized item names generate or exclude pickups."} end
+		-- Map draft plans are conditional, but identify concrete supplies. Keep
+		-- their pickups linked to the Atlas plan and let its avoid list win.
+		for _,draft in ipairs(plan.mapDrafts or {}) do
+			local function supply(name)
+				if name and names[name] and not removed[name] then mentioned[name]=true
+				else warnings[#warnings+1]={origin="atlas:"..plan.id,title=draft.title or "Map draft",message="A planned map supply could not be identified in the pinned pickup catalogue; review the map draft."} end
+			end
+			if draft.plannedDeified then supply("Divine Vessel") end
+			if draft.plannedAllflame then
+				local ok,item=pcall(require("Modules.MapAllflame").describe,draft.plannedAllflame)
+				supply(ok and item and item.name or nil)
+			end
+			if draft.plannedDelirium then
+				local target=draft.plannedDelirium;local ok,projection=false,nil
+				if type(target)=="table" then ok,projection=pcall(require("Modules.MapObservedEffects").projectDelirium,target.currentPercent,target.currentType,target.nextType,target.gain,target.targetPercent) end
+				if not ok or not projection.target then supply(nil)
+				elseif projection.target.minimumOrbs>0 then
+					local name;local ambiguous=false
+					for _,choice in ipairs(projection.orbReference.choices) do if choice.reward==projection.nextReward then if name and name~=choice.name then ambiguous=true else name=choice.name end end end
+					supply(not ambiguous and name or nil)
+				end
+			end
+		end
 		local namesNightmare=false;for old in pairs(nightmareLocations) do if mentioned[old] or avoided[old] then namesNightmare=true;break end end
 		if namesNightmare then warnings[#warnings+1]={origin="atlas:"..plan.id,title=plan.title or "Atlas strategy",message="Nightmare destinations share the Nightmare Map item; a filter cannot distinguish where it will be used."} end
 		for old,new in pairs(strategyRenames) do if mentioned[old] then mentioned[new]=true end;if avoided[old] then avoided[new]=true end end
