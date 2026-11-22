@@ -1,6 +1,14 @@
 -- Quality guidance for a copied English-language skill or support gem.
 -- Does not apply currency or modify a build.
 local M={}
+local soulReference
+local function soulCores()
+ if not soulReference then
+  local file=assert(io.open("Data/Crafting/GemSoulCores330.json","rb"));local raw=file:read("*a");file:close()
+  soulReference=assert(require("dkjson").decode(raw))
+ end
+ return soulReference
+end
 local vaalOwner,vaalByEffect
 local function vaalCandidates(effect)
  if vaalOwner~=data.gems then
@@ -56,6 +64,13 @@ function M.inspect(raw,target)
  end
  corruption.vaalCandidates=not support and not gem.vaalGem and vaalCandidates(gem.grantedEffectId) or {}
  plan.corruption=corruption
+ local reference=soulCores();local soul={available=false,cores=copyTable(reference.cores),downsides=copyTable(reference.downsides),dataPatch=reference.patch,sourceCommit=reference.sourceCommit,
+  note="These client-defined detrimental effects are a general reference, not a per-core outcome pool. Compatibility, positive outcomes, weights and character calculations are not modeled."}
+ if support then soul.reason="Soul Cores describe level 20 active skill gems, not support gems."
+ elseif corrupted then soul.reason="Soul Cores require an uncorrupted gem."
+ elseif level~=20 then soul.reason="The copied active skill gem must be level 20."
+ else soul.available=true end
+ plan.soulCores=soul
  local tags=gem.tags or {};local vendor={available=false,prisms=1,outputLevel=1,outputQuality=20,
   note="This trades the support gem and one Prism for a level 1, 20% quality gem. The gem must be leveled again; verify the vendor offer and special gem properties in game."}
  if plan.status~="available" then vendor.reason="Choose an unmet quality target up to 20% on an uncorrupted gem."

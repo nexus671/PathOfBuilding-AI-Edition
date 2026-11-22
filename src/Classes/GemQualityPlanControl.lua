@@ -31,7 +31,7 @@ function M.Open(build)
  end
  c.target.changeFunc=refresh
  local function selectedDraft() return result and (route=="vendor" and result.vendorMilestoneDraft or result.milestoneDraft) end
- c.routes=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-424,110,190,26},"Compare quality routes",function()
+ c.routes=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-522,110,160,26},"Quality routes",function()
   if not result then return end
   local direct=result.status=="available" and ("Use "..result.prisms.." Gemcutter's Prism"..(result.prisms==1 and "" or "s").." and keep the gem's level.") or (result.reason or "Target already reached.")
   local vendor=result.vendorRecipe
@@ -41,7 +41,7 @@ function M.Open(build)
  end))
  c.routes.enabled=function() return result~=nil end
  c.routes.tooltipText="Compare Prism use with the support-gem vendor recipe."
- c.outcomes=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-218,110,202,26},"Corruption reference",function()
+ c.outcomes=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-354,110,160,26},"Corruption",function()
   if not result then return end
   local info=result.corruption;local vaal={info.vaalOrb.available and "This gem is uncorrupted; other eligibility is unverified." or info.vaalOrb.reason,
    "Historical Vaal outcomes include no change, level or quality changes, and conversion for eligible gems."}
@@ -55,6 +55,19 @@ function M.Open(build)
  end))
  c.outcomes.enabled=function() return result~=nil end
  c.outcomes.tooltipText="Review conditional outcomes and current known limits; no currency is used."
+ c.soul=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-186,110,170,26},"Soul Cores",function()
+  if not result then return end
+  local info=result.soulCores;local entries={}
+  for _,core in ipairs(info.cores) do entries[#entries+1]={id=core.name,label=core.name,category="Currencies",details={core.description,info.available and "This gem meets the known level and corruption requirements; other eligibility is unverified." or info.reason,info.note}} end
+  for _,support in ipairs(info.downsides) do
+   local lines={};for _,effect in ipairs(support.effects) do lines[#lines+1]=effect:gsub("%[([^%]|]+)|([^%]]+)%]","%2") end
+   lines[#lines+1]=support.supportText;lines[#lines+1]=info.note
+   entries[#entries+1]={id=support.id,label=support.name,category="Detrimental effects",details=lines}
+  end
+  require("Classes.PlanningBrowserControl").Open("Soul Core reference",entries)
+ end))
+ c.soul.enabled=function() return result~=nil end
+ c.soul.tooltipText="Review Soul Cores and client-defined detrimental effects; odds are not modeled."
  local function button(key,x,width,label,run) c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{x,h-54,width,28},label,run)) end
  button("paste",16,150,"Paste gem",function() raw=Paste();refresh() end)
  button("copy",178,150,"Copy guide",function() if result then local draft=selectedDraft();local text=draft and draft.notes or result.name..": "..(result.reason or "target already reached.");Copy(text) end end)
