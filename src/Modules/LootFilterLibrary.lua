@@ -469,11 +469,12 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		end
 		return list
 	end
-	if kind=="Fated gear" then
-		-- Paired examples differ only in Fated state; they do not predict drops.
+	if kind=="Fated gear" or kind=="Foulborn gear" then
+		-- Paired examples differ only in the selected property; they do not predict drops.
+		local property=kind=="Fated gear" and "Fated" or "Foulborn"
 		for _,base in ipairs({{"Iron Hat","Helmets"},{"Titan Greaves","Boots"},{"Titanium Spirit Shield","Shields"},{"Imperial Bow","Bows"},{"Ruby Ring","Rings"}}) do
-			for _,fated in ipairs({true,false}) do
-				local item=M.sample();item.BaseType=base[1];item.Class=base[2];item.Rarity="Rare";item.Identified=false;item.Fated=fated
+			for _,enabled in ipairs({true,false}) do
+				local item=M.sample();item.BaseType=base[1];item.Class=base[2];item.Rarity="Rare";item.Identified=false;item[property]=enabled
 				item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or 4
 				item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86;applyBaseProperties(item)
 				item.MemoryStrands=0

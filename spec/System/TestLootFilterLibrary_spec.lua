@@ -548,6 +548,16 @@ describe("Visual filter catalogue",function()
 			assert.equal(tier>=4 and "Show" or "Hide",result.action)
 		end
 	end)
+	it("compares Foulborn and other gear using identical examples",function()
+		local profile=filters.profile("foulborn","Foulborn");local scene=library.scene(profile,build,"Foulborn gear",7,72,75)
+		assert.equal(10,#scene);assert.same(scene,library.scene(profile,build,"Foulborn gear",0,72,75))
+		local parsed=parser.parse("Show\n Foulborn True\nHide")
+		for i=1,#scene,2 do
+			local first,second=scene[i],scene[i+1];assert.is_true(first.Foulborn);assert.is_false(second.Foulborn)
+			local same=copyTable(first);same.Foulborn=false;assert.same(same,second)
+			assert.equal("Show",parser.simulate(parsed,first).action);assert.equal("Hide",parser.simulate(parsed,second).action)
+		end
+	end)
 	it("compares Fated and other rare gear at the same sample tier",function()
 		local profile=filters.profile("fated","Fated");local scene=library.scene(profile,build,"Fated gear",7,72,75)
 		assert.equal(10,#scene);assert.same(scene,library.scene(profile,build,"Fated gear",0,72,75))

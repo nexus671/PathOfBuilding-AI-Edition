@@ -14,6 +14,8 @@ Generated unidentified magic and rare examples have an unknown item tier unless 
 
 **Fated gear** compares paired rare items whose only difference is the [Fated filter condition](https://www.pathofexile.com/forum/view-thread/4013923). These synthetic examples use tier 4, no Memory Strands and one red socket on socketed bases; Ruthless examples use no item tier. The scene includes a shield and is also available through MCP. It does not predict what Fates drop or their item rolls.
 
+**Foulborn gear** uses the same paired examples to compare the Foulborn condition. It is also available through MCP; the examples do not predict drops or item rolls.
+
 **Map tiers** compares synthetic map examples from tier 1 through tier 17, with a Nightmare Map for the tier-17 example. The tiers are explicit sample properties for testing filter rules, not estimates of drop rates or map availability. The same scene is available through MCP `test_loot_filter_scene`.
 
 Open **AI builds**, **Atlas**, or **Crafting**, then choose **Loot filter**. **Alt+5** opens it from any planning page.
