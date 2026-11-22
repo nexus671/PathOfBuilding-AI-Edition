@@ -9,6 +9,8 @@ describe("Crafting socket goal conflicts",function()
    {{exactSockets=4,links=3,minAbyssSockets=2},"Abyss sockets"},
    {{exactSockets=4,socketColours="RGB",minAbyssSockets=2},"socket colours"},
    {{exactSockets=1,minAbyssSockets=2},"Abyss sockets"},
+   {{links=5,minAbyssSockets=2},"six-socket limit"},
+   {{socketColours="RGBWW",minAbyssSockets=2},"six-socket limit"},
   }
   for _,entry in ipairs(cases) do
    local saved=sim.validateRecipe(recipe(entry[1]));assert.same(entry[1],saved.requirements)
@@ -18,6 +20,7 @@ describe("Crafting socket goal conflicts",function()
   end
   assert.is_nil(sim.requirementsConflict({exactSockets=5,links=3,minAbyssSockets=2,socketColours="RGB"}))
   assert.is_nil(sim.requirementsConflict({sockets=4,links=5}))
+  assert.is_nil(sim.requirementsConflict({links=4,minAbyssSockets=2,socketColours="RGBW"}))
  end)
  it("preserves step failure routes when a step condition is unreachable",function()
   local r=recipe({minQuality=1});r.steps[1].untilRequirements={exactSockets=2,socketColours="RGB"};r=sim.validateRecipe(r)

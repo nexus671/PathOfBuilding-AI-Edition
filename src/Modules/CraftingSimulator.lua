@@ -744,16 +744,17 @@ end
 -- Check contradictions separately from structural validation so previously
 -- saved recipes remain loadable and can be repaired.
 function M.requirementsConflict(requirements)
- if type(requirements)~="table" or type(requirements.exactSockets)~="number" then return nil end
- local exact=requirements.exactSockets
+ if type(requirements)~="table" then return nil end
+ local exact=type(requirements.exactSockets)=="number" and requirements.exactSockets or nil
+ local limit=exact or 6
  local abyss=type(requirements.minAbyssSockets)=="number" and requirements.minAbyssSockets or 0
- if type(requirements.links)=="number" and requirements.links+abyss>exact then
-  return "Minimum linked sockets and Abyss sockets exceed the exact socket count."
+ if type(requirements.links)=="number" and requirements.links+abyss>limit then
+  return exact and "Minimum linked sockets and Abyss sockets exceed the exact socket count." or "Minimum linked sockets and Abyss sockets exceed the six-socket limit."
  end
- if type(requirements.socketColours)=="string" and #requirements.socketColours+abyss>exact then
-  return "Required socket colours and Abyss sockets exceed the exact socket count."
+ if type(requirements.socketColours)=="string" and #requirements.socketColours+abyss>limit then
+  return exact and "Required socket colours and Abyss sockets exceed the exact socket count." or "Required socket colours and Abyss sockets exceed the six-socket limit."
  end
- if abyss>exact then return "Minimum Abyss sockets exceed the exact socket count." end
+ if exact and abyss>exact then return "Minimum Abyss sockets exceed the exact socket count." end
 end
 function M.recipeConflict(recipe)
  local reason=M.requirementsConflict(recipe.requirements)
