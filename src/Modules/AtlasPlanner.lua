@@ -307,8 +307,8 @@ function M.connect(plan,targets,avoid,checkpoint)
 	local result=M.validate(plan);local reachable,why=budgetReachabilityChecked(result);assert(reachable~=false,why)
 	return result,additions
 end
--- Retain existing allocations. Compare bounded orders, then solve up to six
--- unallocated targets exactly. An invalid baseline must not prevent a valid reorder.
+-- Retain existing allocations. Solve up to six unallocated targets exactly;
+-- otherwise compare bounded orders. An invalid baseline must not prevent a valid route.
 function M.connectOptimized(plan,targets,avoid,options)
 	options=options or {};plan=M.validate(plan);array(targets,300,"Atlas targets")
 	local tree=M.tree(plan.version);local blocked=nodeSet(tree,M.exclusions(plan,avoid))
@@ -349,6 +349,23 @@ function M.connectOptimized(plan,targets,avoid,options)
 		if ok and (not best or #added<#additions) then best,additions,bestOrder=value,added,copyTable(order) end
 	end
 	try(targets)
+	-- If the exact minimum is valid under the budget rules, no alternative
+	-- ordering can improve it. Keep the original-order result for comparison.
+	if options.exact~=false and #targets<=solver.maxTargets then
+		local found=solver.find(tree,allocated,blocked,targets,options.checkpoint)
+		if found then
+			local candidate=copyTable(plan);local set=copyTable(allocated)
+			for id in pairs(found) do set[id]=true end;set[tree.start]=nil;candidate.nodes=sorted(set)
+			local exclusions=M.exclusions(plan,avoid);if candidate.avoided~=nil or #exclusions>0 then candidate.avoided=exclusions end
+			local ok,value=pcall(M.validate,candidate)
+			if ok and budgetReachabilityChecked(value)~=false then
+				local added=sorted(found)
+				if not best or #added<=#additions then
+					return value,added,{attempts=attempts,originalCost=baseline,cost=#added,saved=baseline and baseline-#added or nil,heuristic=false}
+				end
+			end
+		end
+	end
 	local reversed={};for i=#targets,1,-1 do reversed[#reversed+1]=targets[i] end;try(reversed)
 	-- Bound order exploration; distribute rotations across larger desired sets.
 	for trial=1,math.min(#targets-1,30) do local offset=math.floor(trial*#targets/math.min(#targets,31));local order={};for i=1,#targets do order[i]=targets[(i+offset-1)%#targets+1] end;try(order) end
@@ -386,27 +403,9 @@ function M.connectOptimized(plan,targets,avoid,options)
 			local right=left+1+offset;local order=copyTable(seed);order[left],order[right]=order[right],order[left];try(order)
 		end
 	end
-	-- A small target set can be solved exactly, including shared paths between
-	-- targets. Larger requests retain the bounded order search above.
-	local exact=false
-	if options.exact~=false and #targets<=solver.maxTargets then
-		local found=solver.find(tree,allocated,blocked,targets,options.checkpoint)
-		if found then
-			local candidate=copyTable(plan);local set=copyTable(allocated)
-			for id in pairs(found) do set[id]=true end;set[tree.start]=nil;candidate.nodes=sorted(set)
-			local exclusions=M.exclusions(plan,avoid);if candidate.avoided~=nil or #exclusions>0 then candidate.avoided=exclusions end
-			local ok,value=pcall(M.validate,candidate)
-			if ok then
-				local reachable=budgetReachabilityChecked(value)
-				if reachable~=false then
-					local added=sorted(found)
-					if not best or #added<=#additions then best,additions=value,added;exact=true end
-				end
-			end
-		end
-	end
+
 	assert(best,"Atlas targets cannot be connected within this budget and exclusions")
-	return best,additions,{attempts=attempts,originalCost=baseline,cost=#additions,saved=baseline and baseline-#additions or nil,heuristic=not exact}
+	return best,additions,{attempts=attempts,originalCost=baseline,cost=#additions,saved=baseline and baseline-#additions or nil,heuristic=true}
 end
 function M.remove(plan,id)
 	plan=M.validate(plan); local tree=M.tree(plan.version)

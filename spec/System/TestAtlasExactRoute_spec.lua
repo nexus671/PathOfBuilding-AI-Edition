@@ -58,7 +58,7 @@ describe("Exact small Atlas routes",function()
 		local p={id="six",title="Six",version="3.30.0-preview",budget=150,nodes={},notes=""}
 		local ids={53175,34352,14203,63753,57123,55003};local checkpoints=0
 		local route,added,info=atlas.connectOptimized(p,ids,nil,{checkpoint=function(progress) if progress.phase=="exact" then checkpoints=checkpoints+1 end end})
-		assert.is_false(info.heuristic);assert.is_true(checkpoints>0)
+		assert.is_false(info.heuristic);assert.equal(1,info.attempts);assert.is_true(checkpoints>0)
 		local present={};for _,id in ipairs(route.nodes) do present[id]=true end;for _,id in ipairs(ids) do assert.is_true(present[id]) end
 		local _,greedy=atlas.connect(p,ids);assert.is_true(#added<=#greedy)
 		local tree=atlas.tree(p.version);assert.is_nil(exact.find(tree,{[tree.start]=true},{},{53175,34352,14203,63753,57123,55003,23827}))

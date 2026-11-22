@@ -1,5 +1,7 @@
 # Atlas planner
 
+For up to six new targets, the planner checks its exact route after the original-order comparison and skips further ordering when that route passes the budget checks. In a 20-run headless CPU benchmark on the bundled 3.30 tree, a six-target route took about 143 ms on average versus 161 ms before this change, with the same 36 added nodes. This is a bounded measurement, not a native desktop responsiveness test. Run `python tools/run_headless_lupa.py --filesystem tools/benchmark_atlas_route.lua` to repeat it; pass an older `AtlasPlanner.lua` path to compare another revision.
+
 Open **Atlas** beside **AI builds**, or switch to **Atlas** in the full-width planning workspace. **< Build** returns to your previous build tab.
 
 Under **Plan tools → Map modifier explorer**, choose a map base, rarity, tier and item level to inspect hypothetical modifiers on a graphical map card. Current tier-based maps use bundled game-generated item artwork, available offline. Search and add modifiers to see which groups remain available, or use the experimental currency picker to generate modifier identities and estimated values. The picker disables incompatible currencies and explains the modeled restriction. No real currency is spent. The tool does not create an in-game item, calculate verified probabilities, or establish current base availability.

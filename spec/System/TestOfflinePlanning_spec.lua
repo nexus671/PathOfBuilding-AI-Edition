@@ -120,12 +120,12 @@ describe("Offline planning refinements",function()
 		end
 		local result,added,routing=atlas.connectOptimized(plan,targets)
 		assert.equal(7,#result.nodes);assert.equal(7,#added);assert.is_nil(routing.originalCost)
-		local nearestCheckpoint=false
+		local exactCheckpoint=false
 		local job=coroutine.create(function() return atlas.connectOptimized(plan,targets,nil,{checkpoint=function(progress)
-			if progress.order==7 then nearestCheckpoint=true end;coroutine.yield()
+			if progress.phase=="exact" then exactCheckpoint=true end;coroutine.yield()
 		end}) end)
 		while coroutine.status(job)~="dead" do local ok,err=coroutine.resume(job);assert.is_true(ok,tostring(err)) end
-		assert.is_true(nearestCheckpoint)
+		assert.is_true(exactCheckpoint)
 		for _,id in ipairs(targets) do assert.is_truthy(isValueInTable(result.nodes,id)) end
 		assert.same({},plan.nodes)
 		plan.nodes={2};plan.budget=14
