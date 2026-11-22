@@ -12,14 +12,19 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  assert(c.target.buf==target,"Blank base changed the target");assert(not c.blankStarting:IsEnabled(),"Blanking twice could lose the original")
  local model=require("Modules.CraftingSimulator").model(c.starting.buf);assert(#model.initial.affixes==0 and not model.initial.corrupted,"Blank base retained item properties")
  if output then ui:frame():write(output.."/"..size[1].."-crafting-blank-base.json") end
- ui:click("undoBlank");assert(c.starting.buf==original and c.target.buf==target,"Undo did not restore the original starting item")
+ ui:choose("wizardPage","Target");assert(not c.originalTarget:IsEnabled(),"Existing target could be overwritten")
+ c.target:SetText("");c.target.changeFunc();assert(c.originalTarget:IsEnabled(),"Original item was not available as target")
+ ui:click("originalTarget");assert(c.target.buf==original,"Original item was not copied into the target");assert(not c.originalTarget:IsEnabled(),"Original target could be copied twice")
+ if output then ui:frame():write(output.."/"..size[1].."-crafting-original-target.json") end
+ ui:choose("wizardPage","Starting item")
+ ui:click("undoBlank");assert(c.starting.buf==original and c.target.buf==original,"Undo did not restore the original starting item")
  ui:click("blankStarting");ui:text("starting",c.starting.buf.."\nQuality: 1");assert(not c.undoBlank:IsEnabled(),"Undo could overwrite later edits")
  local ok=pcall(projects.blankBase,"Rarity: NORMAL\nIron Hat");assert(not ok,"Missing item level was accepted")
  local equipped=build.itemsTab.slots.Belt.selItemId;ui:click("blankStarting");ui:click("next");ui:click("next");ui:click("next");ui:click("save")
- local saved=assert(build.savers.CraftingProjects.projects[1]);assert(saved.startingItem=="Rarity: NORMAL\nStygian Vise\nItem Level: 83" and saved.targetItem==target,"Saved project changed its starting item or target")
+ local saved=assert(build.savers.CraftingProjects.projects[1]);assert(saved.startingItem=="Rarity: NORMAL\nStygian Vise\nItem Level: 83" and saved.targetItem==original,"Saved project changed its starting item or target")
  assert(build.itemsTab.slots.Belt.selItemId==equipped,"Keeping the guide changed equipped gear")
  local xml={};build.savers.CraftingProjects:Save(xml);local reopened=projects.new(build);reopened:Load(xml)
- assert(reopened.projects[1].startingItem==saved.startingItem and reopened.projects[1].targetItem==target,"Reopening changed the guide")
+ assert(reopened.projects[1].startingItem==saved.startingItem and reopened.projects[1].targetItem==original,"Reopening changed the guide")
  ui:restore()
 end
 print("CRAFTING_BLANK_BASE_UI_OK")

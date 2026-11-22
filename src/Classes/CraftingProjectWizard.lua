@@ -39,7 +39,16 @@ function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
 	ui.description(c,"blankHint",16,410,col,58,{"Fresh base: review its implicit, sockets and quality. The original modifiers are not copied."},14)
 	local startPreview=require("Classes.JourneyItemControl").new(c,"startPreview",col+32,148,col,208,"STARTING ITEM")
 	ui.label(c,"targetLabel",16,76,"Desired item (optional)");edit("target",16,102,col,180,draft.targetItem,24000)
-	button("pasteTarget",16,296,col,"Paste target item",function() c.target:SetText(Paste());c.target.changeFunc() end)
+	button("pasteTarget",16,296,math.floor((col-8)/2),"Paste target item",function() c.target:SetText(Paste());c.target.changeFunc() end)
+	button("originalTarget",24+math.floor((col-8)/2),296,math.floor((col-8)/2),"Use original item",function()
+		if beforeBlank and not c.target.buf:match("%S") then c.target:SetText(beforeBlank);c.target.changeFunc() end
+	end)
+	c.originalTarget.enabled=function() return beforeBlank~=nil and not c.target.buf:match("%S") end
+	c.originalTarget.tooltipText=function()
+		if not beforeBlank then return "Use a blank base on the first page to keep the original as a target." end
+		if c.target.buf:match("%S") then return "Clear the target first; this will not overwrite an existing target." end
+		return "Copy the original item into the target. This does not equip or change gear."
+	end
 	local targetPreview=require("Classes.JourneyItemControl").new(c,"targetPreview",col+32,82,col,244,"TARGET ITEM")
 	ui.label(c,"goalsLabel",16,344,"Target modifiers / goals (one per line)");edit("goals",16,370,w-32,math.max(50,h-450),table.concat(draft.goals,"\n"),2*1024*1024)
 	local steps={};for _,step in ipairs(draft.steps) do steps[#steps+1]=step.action end;local original=table.concat(steps,"\n")
@@ -87,7 +96,7 @@ function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
 	end
 	local groups={
 		["Starting item"]={"titleLabel","title","slotLabel","slot","startingLabel","starting","pasteStarting","useEquipped","blankStarting","undoBlank","blankHint","startPreview","startPreviewMods"},
-		Target={"targetLabel","target","pasteTarget","targetPreview","targetPreviewMods","goalsLabel","goals"},
+		Target={"targetLabel","target","pasteTarget","originalTarget","targetPreview","targetPreviewMods","goalsLabel","goals"},
 		["Method & budget"]={"stepsLabel","steps","methodLabel","method","methodHint","notesLabel","notes","costLabel","cost","currencyLabel","currency","sourceLabel","priceSource"},Review={"review"},
 	}
 	for page,keys in pairs(groups) do for _,key in ipairs(keys) do c[key].shown=function() return c.wizardPage:GetSelValue()==page end end end
