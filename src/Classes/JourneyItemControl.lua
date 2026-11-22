@@ -58,7 +58,7 @@ function M.new(controls,key,x,y,w,h,label,options)
 			art=NewImageHandle();art:Load(path);artW,artH,artSprite=itemArt.artDimensions(item,entry and entry.width or 84,entry and entry.height or 84,artSize)
 			local function display(owner,mod,index)
 				if index==1 then return StripEscapes(itemLib.formatModLine(mod,false) or mod.line) end
-				if options and options.scaledModifiers and owner.catalyst and #(mod.modTags or {})>0 then
+				if owner.catalyst and #(mod.modTags or {})>0 then
 					local scalar=owner:GetModLineValueScalar(mod,index==2 and "implicit" or "explicit")
 					return itemLib.applyRange(mod.line,mod.range or 1,scalar,mod.corruptedRange)
 				end

@@ -6,5 +6,21 @@ return function(build,ui,frame)
 	frame("crafting-unique-jewellery");ui:click("catalystPlan");frame("crafting-unique-catalyst-guide");ui:choose("kind",3,"val");assert(main.popups[1].controls.warning:IsShown(),"Prefix/suffix warning was not shown");frame("crafting-unique-catalyst-warning");ui:choose("kind",8,"val");ui:click("preview");frame("crafting-unique-catalyst-preview");local found=false;for _,row in ipairs(main.popups[1].controls.itemMods.list) do if table.concat(row):find("+30%% to Cold Resistance") then found=true end end;assert(found,"Catalyst-scaled modifier was not displayed");ui:click("undo");ui:click("catalystPlan");ui:choose("kind",8,"val");ui:click("keep")
 	local saved;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==project.id then saved=entry;break end end
 	assert(saved and saved.steps[1].uniqueCraft.catalyst==8 and saved.steps[1].uniqueCraft.count==20 and not saved.targetItem,"Catalyst guide was not kept correctly")
+	-- Saved and comparison cards must display the same scaled values as the workbench.
+	local original=require("Modules.CraftingUniqueQuality").inspect(raw)
+	local scaled=require("Modules.CraftingUniqueQuality").inspect(require("Modules.CraftingUniqueQuality").catalystPreview(raw,8,20).itemText)
+	local controls={};local show=require("Classes.JourneyItemControl").new(controls,"savedCard",16,30,440,220,"PLANNED UPGRADE")
+	show(scaled,original);local text={};for _,row in ipairs(controls.savedCardMods.list) do text[#text+1]=StripEscapes(row[1] or "") end
+	assert(table.concat(text," "):find("+ +30% to Cold Resistance",1,true),"Saved target comparison did not show its catalyst-scaled modifier")
+	show(original,scaled);text={};for _,row in ipairs(controls.savedCardMods.list) do text[#text+1]=StripEscapes(row[1] or "") end
+	assert(table.concat(text," "):find("+ +25% to Cold Resistance",1,true),"Unscaled comparison modifier changed unexpectedly")
 	main.popups={}
+	local savedProject={id="saved-catalyst-card",title="Saved catalyst target",slot="Ring 1",startingItem=raw,targetItem=scaled.raw,goals={},steps={}}
+	build.savers.CraftingProjects:Upsert(savedProject);build.planningWorkspace=build.planningWorkspace or require("Modules.PlanningWorkspace").new(build);local workspace=build.planningWorkspace;workspace.selections.crafting=savedProject.id;workspace.cache.crafting=nil;workspace.drafts.crafting=nil
+	build.viewMode="PLANNER";workspace:Show("crafting");ui:frame()
+	local savedText={};for _,row in ipairs(workspace.controls.projectItemMods.list) do savedText[#savedText+1]=StripEscapes(row[1] or "") end
+	assert(table.concat(savedText," "):find("+30% to Cold Resistance",1,true),"Saved project did not show its catalyst-scaled modifier")
+	local summary={};for _,row in ipairs(workspace.controls.summary.list) do summary[#summary+1]=StripEscapes(row[1] or "") end
+	assert(table.concat(summary," "):gsub("%s+"," "):find("jewellery has experimental catalyst previews",1,true),"Saved project help omitted catalyst previews: "..table.concat(summary," | "))
+	frame("crafting-saved-catalyst-target")
 end
