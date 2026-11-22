@@ -28,6 +28,20 @@ function M.Open(build)
   c.result.list=ui.rows(lines,w-60,14)
  end
  c.target.changeFunc=refresh
+ c.outcomes=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-218,110,202,26},"Corruption reference",function()
+  if not result then return end
+  local info=result.corruption;local vaal={info.vaalOrb.available and "This gem is uncorrupted; other eligibility is unverified." or info.vaalOrb.reason,
+   "Historical Vaal outcomes include no change, level or quality changes, and conversion for eligible gems."}
+  if info.historicalLevelRange then vaal[#vaal+1]="Historical level outcome range: "..info.historicalLevelRange.min.."–"..info.historicalLevelRange.max.."." end
+  if info.historicalQualityRange then vaal[#vaal+1]="Historical quality outcome range: "..info.historicalQualityRange.min.."–"..info.historicalQualityRange.max.."%." end
+  if #info.vaalCandidates>0 then vaal[#vaal+1]="Bundled related Vaal gem: "..table.concat(info.vaalCandidates,", ")..". Eligibility is unverified." end
+  vaal[#vaal+1]=info.note
+  local lens={info.lapidaryLens.available and "This gem is once-corrupted; other eligibility is unverified." or info.lapidaryLens.reason,
+   "The Lapidary Lens can destroy the gem. The 3.30 notes cap quality at 23% and level at one above its natural maximum.",info.note}
+  require("Classes.PlanningBrowserControl").Open("Gem corruption reference",{{id="vaal",label="Vaal Orb",details=vaal},{id="lens",label="Lapidary Lens",details=lens}})
+ end))
+ c.outcomes.enabled=function() return result~=nil end
+ c.outcomes.tooltipText="Review conditional outcomes and current known limits; no currency is used."
  local function button(key,x,width,label,run) c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{x,h-54,width,28},label,run)) end
  button("paste",16,150,"Paste gem",function() raw=Paste();refresh() end)
  button("copy",178,150,"Copy guide",function() if result then local text=result.name..": ";if result.status=="available" then text=text..result.prisms.." Gemcutter's Prisms to reach "..result.target.."% quality." elseif result.status=="complete" then text=text.."target already reached." else text=text..result.reason end;Copy(text) end end)
