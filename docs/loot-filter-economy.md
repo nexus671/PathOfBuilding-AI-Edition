@@ -13,3 +13,13 @@ This handles commodity stack rules. Cards, uniques, gear valuation, and historic
 Open **Loot Filter → Profile tools → Daily price sync**. Enter the live .filter file, the fixed baseline .filter file, and the league ID. Select **Enable / update**. PoB keeps a checksum-verified baseline copy. Use **Sync now** to run the first check immediately, or let PoB check at or after 9:00 a.m. local time while the app is open.
 
 The current daily flow supports the protected tiered-test filter profile. It checks all requested feeds for an exchange snapshot served within the past hour, parses the generated filter, and checks protected drops before publishing. It backs up a changed live file, keeps a recovery record, and pauses writes if the target was edited outside PoB. After reviewing an edit, use Enable / update to adopt it. Use Disable to stop the daily refresh. In Path of Exile, reload the filter if the game is already open.
+
+The sync settings accept a local hour and a chaos target per stack. **Sync now** can refresh again on the same day. **Pause** keeps the setup and history. **Restore backup** verifies the previous file and pauses sync while you review it. **Last review** shows cutoff changes, skipped items, and recent runs.
+
+For a different tagged filter, provide a JSON array of one to 500 sample drops in **Protected samples JSON**. Each sample needs at least a BaseType and Rarity. Add every property needed by the filter rules leading to its Show block. For example, a filter with an unconditional Cord Belt rule can use this sample:
+
+```json
+[{"BaseType":"Cord Belt","Rarity":"Magic"}]
+```
+
+PoB copies the samples into the sync settings when you enable it. For the original tiered-test filter, leave the field empty to use the built-in checks. The original live file and baseline must share the rule prefix ahead of the managed section.

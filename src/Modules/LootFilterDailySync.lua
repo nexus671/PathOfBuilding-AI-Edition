@@ -5,6 +5,7 @@ local validate = require("Modules.LootFilterSyncValidation")
 local M = { status = "Daily sync is disabled." }
 local volumeLimit = 2 * 1024 * 1024
 local nextPoll, retryAt = 0, 0
+local function nowText(now) return os.date("%Y-%m-%d %H:%M", now) end
 
 local function read(path)
 	local file = io.open(path, "rb")
@@ -82,31 +83,54 @@ function M.configuration()
 	return get()
 end
 
+function M.nextEligible(config, now)
+	if not config or not config.enabled or config.paused then return nil end
+	local date = os.date("*t", now)
+	if config.day == os.date("%Y-%m-%d", now) then date.day = date.day + 1 end
+	date.hour, date.min, date.sec, date.isdst = config.hour or 9, 0, 0, nil
+	local scheduled = math.max(now, os.time(date))
+	return nowText(math.max(scheduled, retryAt))
+end
+
 local function filterPath(path)
 	assert(type(path) == "string" and #path <= 1000 and path:match("^%a:[/\\]") and not path:find("[%c]") and path:lower():match("%.filter$"),
 		"Enter an absolute Windows .filter path")
 	return path
 end
 
-function M.configure(target, baselineFile, league)
+function M.configure(target, baselineFile, league, options)
+	options = options or {}
+	local targetValue = options.targetValue or 1
+	local hour = options.hour or 9
+	assert(type(hour) == "number" and hour >= 0 and hour <= 23 and hour == math.floor(hour), "Enter an hour from 0 to 23")
+	assert(type(targetValue) == "number" and targetValue > 0 and targetValue <= 1000, "Enter a stack target above 0 and up to 1,000 chaos")
 	assert(not M.busy, "Wait for the current sync to finish")
 	platform().lock(settingsPath() .. ".lock", function()
 		target = filterPath(target)
 		assert(type(league) == "string" and #league <= 80 and league:match("^[%w%s_-]+$"), "Enter the poe.ninja league ID")
 		local original = assert(read(target), "Target filter file was not found")
 		local baseline = assert(read(filterPath(baselineFile)), "Baseline filter was not found")
-		validate(baseline, {}, true)
-		local prefix = "# CUSTOM: Hide low-value currency and oil stacks"
-		local a, b = original:find(prefix, 1, true), baseline:find(prefix, 1, true)
+		local protections
+		if options.protectionFile and options.protectionFile ~= "" then
+			assert(options.protectionFile:lower():match("%.json$"), "Choose a protected sample JSON file")
+			local samples = assert(read(options.protectionFile), "Protected sample file was not found")
+			local decoded, _, why = json.decode(samples)
+			protections = assert(decoded, why or "Invalid protected sample JSON")
+		elseif not baseline:find("# CUSTOM: Always show Cord Belts", 1, true) then
+			error("Choose a protected sample JSON file for this baseline")
+		end
+		validate(baseline, {}, true, targetValue, protections)
+		validate(original, {}, true, targetValue, protections)
+		local a, b = market.sectionBounds(original), market.sectionBounds(baseline)
 		assert(a and b and original:sub(1,a-1) == baseline:sub(1,b-1), "Baseline and target must share the protected rule prefix")
 		local key = sha(baseline)
 		local path = main.userPath .. "LootFilterBaseline-" .. key .. ".filter"
 		if not read(path) then put(path, baseline) end
 		assert(read(path) == baseline, "Stored baseline does not match")
-		save({enabled=true, target=target, baseline=path, baselineHash=key, current=sha(original), league=league})
+		save({enabled=true, target=target, baseline=path, baselineHash=key, current=sha(original), revision=sha(tostring({}) .. tostring(os.time())), league=league, hour=hour, targetValue=targetValue, protections=protections, protectionFile=options.protectionFile})
 	end)
 	nextPoll, retryAt = 0, 0
-	M.status = "Daily sync enabled at 9:00 a.m. local time while PoB is open."
+	M.status = string.format("Daily sync enabled at %02d:00 local time while PoB is open.", hour)
 end
 
 function M.disable()
@@ -116,6 +140,41 @@ function M.disable()
 		if config then config.enabled = false; save(config) end
 	end)
 	M.status = "Daily sync is disabled."
+end
+
+function M.pause(paused)
+	assert(not M.busy, "Wait for the current sync to finish")
+	platform().lock(settingsPath() .. ".lock", function()
+		local config = assert(get(), "Enable daily sync first")
+		config.paused = paused
+		save(config)
+	end)
+	nextPoll, retryAt = 0, 0
+	M.status = paused and "Daily sync is paused." or "Daily sync resumed."
+end
+
+function M.rollback()
+	assert(not M.busy, "Wait for the current sync to finish")
+	platform().lock(settingsPath() .. ".lock", function()
+		local config = assert(get(), "Enable daily sync first")
+		assert(config.backup and config.backup:match("^[a-f0-9]+$") and #config.backup == 40, "No verified backup is available")
+		local target = filterPath(config.target)
+		local original = assert(read(target), "Target filter is missing")
+		assert(sha(original) == config.current, "Target was edited outside PoB")
+		local backup = assert(read(target .. ".before-pob-sync-" .. config.backup .. ".bak"), "Backup is missing")
+		assert(sha(backup) == config.backup, "Backup checksum mismatch")
+		config.pending = config.backup
+		config.paused = true
+		save(config)
+		assert(read(target) == original, "Target changed before rollback")
+		put(target, backup)
+		assert(read(target) == backup, "Rollback verification failed")
+		config.current, config.pending, config.backup = config.backup, nil, nil
+		config.summary = "Restored the verified backup. Daily sync is paused."
+		config.review = nil
+		save(config)
+	end)
+	M.status = "Restored the verified backup. Daily sync is paused."
 end
 
 local months = {Jan=1,Feb=2,Mar=3,Apr=4,May=5,Jun=6,Jul=7,Aug=8,Sep=9,Oct=10,Nov=11,Dec=12}
@@ -142,21 +201,22 @@ function M.fresh(response, now)
 	return response.body
 end
 
-local function publish(config, bodies, day)
+local function publish(config, bodies, day, force, now)
 	return platform().lock(settingsPath() .. ".lock", function()
 		local current = get()
 		assert(current and current.enabled and current.baselineHash == config.baselineHash and current.target == config.target
-			and current.league == config.league, "Daily sync settings changed during the refresh")
-		if current.day == day then return "Already synced today." end
+			and current.revision == config.revision and current.league == config.league and current.targetValue == config.targetValue and current.hour == config.hour and current.protectionFile == config.protectionFile, "Daily sync settings changed during the refresh")
+		if not force and current.day == day then return "Already synced today." end
 		local original = assert(read(current.target), "Target filter is missing")
 		local before = sha(original)
 		assert(before == current.current or before == current.pending, "Target was edited outside PoB. Review and re-enable sync to adopt your edits.")
 		local baseline = assert(read(current.baseline), "Baseline filter is missing")
 		assert(sha(baseline) == current.baselineHash, "Baseline checksum changed")
-		local candidate, count = validate(baseline, bodies)
+		local candidate, count, changes, skipped = validate(baseline, bodies, false, current.targetValue, current.protections)
 		if candidate ~= original then
 			local backup = current.target .. ".before-pob-sync-" .. before .. ".bak"
 			if not read(backup) then put(backup, original) end
+			current.backup = before
 			assert(read(backup) == original and read(current.target) == original, "Backup or target changed during sync")
 			current.current, current.pending = before, sha(candidate)
 			save(current)
@@ -165,7 +225,12 @@ local function publish(config, bodies, day)
 		end
 		assert(read(current.target) == candidate, "Installed filter verification failed")
 		current.current, current.pending, current.day = sha(candidate), nil, day
-		current.summary = string.format("%s: %d stack adjustments from the baseline. Protected drops verified.", day, count)
+		current.summary = string.format("%s: %d stack adjustments from the baseline. Protected drops verified.", nowText(now), count)
+		current.lastSuccess = now
+		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup}
+		current.history = current.history or {}
+		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup})
+		if #current.history > 30 then table.remove(current.history) end
 		save(current)
 		return current.summary
 	end)
@@ -183,9 +248,10 @@ function M.tick(now, force)
 	nextPoll = now + 60
 	local ok, config = pcall(get)
 	if not ok then M.status = tostring(config); return end
-	if not config or not config.enabled then return end
+	if not config or not config.enabled or config.paused then return end
+	if launch.noSSL then M.status = "Sync skipped: enable HTTPS certificate verification in PoB."; return end
 	local day = os.date("%Y-%m-%d", now)
-	if not force and (config.day == day or tonumber(os.date("%H", now)) < 9) then
+	if not force and (config.day == day or tonumber(os.date("%H", now)) < (config.hour or 9)) then
 		M.status = config.summary or M.status
 		return
 	end
@@ -199,7 +265,7 @@ function M.tick(now, force)
 	end
 	local function fetch(index)
 		local category = market.categories[index]
-		if not category then finish(pcall(publish, config, bodies, day)); return end
+		if not category then finish(pcall(publish, config, bodies, day, force, now)); return end
 		M.status = "Fetching " .. config.league .. " prices: " .. category
 		local url = market.endpoint .. "exchange/current/overview?league=" .. urlEncode(config.league) .. "&type=" .. category
 		launch:DownloadPage(url, function(response, err)
@@ -209,7 +275,7 @@ function M.tick(now, force)
 			if not current then finish(false, category .. ": " .. tostring(data)); return end
 			bodies[index] = data
 			fetch(index + 1)
-		end, {header="Accept: application/json\r\nCache-Control: no-cache"})
+		end, {timeout=20,header="Accept: application/json\r\nCache-Control: no-cache"})
 	end
 	fetch(1)
 end

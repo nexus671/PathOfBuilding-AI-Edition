@@ -1778,10 +1778,10 @@
 	<File name="Classes/LootFilterStructureControl.lua" part="program" sha1="b5dc73fb5fa8baf59d74f7d68e8e38d255bd25de" />
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
 	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="633ef5b91d2de0897bf5b5cefde73cb4a7cc38cd" />
-	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="d856f8771cf483b452d2dae3d10138cbd2aff272" />
-	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="4014d416b100ff8b0f193d03a2735856c0695bed" />
-	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="794b6bffa0cefa318b1e79efd9b6bf4a670ca83c" />
-	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="51b98574beaba2176ea9e112e38cc7c26e34401b" />
+	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="0ea9b86867ae2fca757ae35f0adb686fa5f00ba3" />
+	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="f9f73e04a7c913cbe7f7a23e8095033f1f5fe96c" />
+	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="47639a8ae7ce80a260e90cbec8bb9be9e6045bac" />
+	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="5e35febba81243c65db5ac503c7e0eb7e1dcb951" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="1c8c60a621a5dc908466e56f09b420fc28b2abec" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="b133139457017d3bb1579c4284c14bf3f1c0a524" />
 	<File name="Classes/MapModifierControl.lua" part="program" sha1="545b24b4e4c21ad6509b92c48a443f84f966359a" />
@@ -2125,7 +2125,7 @@
 	<File name="Export/statdesc.lua" part="program" sha1="6ae259967216f3a84135c168460b00b311aee0fb" />
 	<File name="GameVersions.lua" part="program" sha1="56301ee96e4fb4afbc9a2ecc42be2778ddd054a5" />
 	<File name="HeadlessWrapper.lua" part="program" sha1="4bf2e32c7bd8fd796fad41710f3509f0fea5191d" />
-	<File name="Launch.lua" part="program" sha1="757a1f5ff9e83cacdc9cb056ec13c90f541b02bb" />
+	<File name="Launch.lua" part="program" sha1="ab0a10c10574c8170a3c51a8ede74e6614cf5be2" />
 	<File name="LaunchServer.lua" part="program" sha1="f15bdfbedaf887e19556490dce49b720f8365379" />
 	<File name="Modules/AddImplicitPopup.lua" part="program" sha1="f68d391d10b95c0feef70b7e8e82326a745dcb3b" />
 	<File name="Modules/AtlasArt.lua" part="program" sha1="d007b7632f8d2e284c7ed46d6a0d98c39d3e2576" />

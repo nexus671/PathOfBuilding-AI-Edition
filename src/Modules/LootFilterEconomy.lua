@@ -45,7 +45,7 @@ function M.merge(destination, source)
 	end
 end
 
-local function sectionBounds(raw)
+function M.sectionBounds(raw)
 	local first = raw:find("# PoB economy: begin", 1, true)
 	if first then return first, raw:find("# PoB economy: end", first, true) end
 	first = raw:find("# CUSTOM: Hide low-value currency and oil stacks", 1, true)
@@ -53,7 +53,7 @@ local function sectionBounds(raw)
 end
 
 function M.supports(raw)
-	local first, last = sectionBounds(raw)
+	local first, last = M.sectionBounds(raw)
 	return first ~= nil and last ~= nil
 end
 
@@ -62,10 +62,10 @@ end
 function M.review(raw, quotes, target)
 	target = target or 1
 	assert(finite(target) and target <= 1000, "Invalid chaos per stack target")
-	local start, stop = sectionBounds(raw)
+	local start, stop = M.sectionBounds(raw)
 	if not start or not stop then return raw, {} end
 	local section = raw:sub(start, stop - 1)
-	local changes = {}
+	local changes, skipped = {}, {}
 	local function rewrite(block)
 		local parsed = parser.parse(block)
 		local rule = parsed.rules[1]
@@ -96,7 +96,12 @@ function M.review(raw, quotes, target)
 					cutoff = math.max(0, math.ceil(target / quote.price - 1e-12) - 1)
 				end
 			end
-			if cutoff ~= old then
+			if cutoff == old then
+				local reason = not quote and "Missing or ambiguous quote"
+					or quote.volume < 100 and "Hourly volume below 100 chaos"
+					or "Current cutoff is within the price margin"
+				skipped[#skipped + 1] = { name = name, old = old, reason = reason, maps = area ~= nil }
+			else
 				changed = true
 				changes[#changes + 1] = { name = name, old = old, cutoff = cutoff, price = quote.price, volume = quote.volume, maps = area ~= nil }
 			end
@@ -146,7 +151,7 @@ function M.review(raw, quotes, target)
 		end
 	end
 	section = table.concat(output)
-	return raw:sub(1, start - 1) .. section .. raw:sub(stop), changes
+	return raw:sub(1, start - 1) .. section .. raw:sub(stop), changes, skipped
 end
 
 return M
