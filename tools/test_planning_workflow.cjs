@@ -69,6 +69,10 @@ async function main(){
   const partialSet=await queued('review_rare_vendor_sets',{baseRevision:context.revision,items:[rareSetCopies[0],rareSetCopies[6]]},'rareSetVendorReview');
   assert.ok(partialSet.rareSetVendorReview.missing.some(entry=>entry.slot==='Ring' && entry.count===1));assert.ok(partialSet.rareSetVendorReview.missing.some(entry=>entry.slot==='Weapon'));assert.ok(!partialSet.rareSetVendorReview.missing.some(entry=>entry.slot==='Helmet'));
   const qualityCopies=[20,12,18,10].map(q=>`Item Class: ${q===20?'Wands':'Helmets'}\nRarity: ${q===20?'Normal':'Magic'}\n${q===20?'Driftwood Wand':'Superior Iron Hat of the Fox'}\n--------\nQuality: +${q}%`);
+  const gemPlan=await queued('plan_gem_quality',{baseRevision:context.revision,item:'Item Class: Active Skill Gems\nRarity: Gem\nArc\n--------\nLevel: 20\nQuality: +12%',target:20},'gemQualityPlan');
+  assert.equal(gemPlan.gemQualityPlan.prisms,8);assert.equal(gemPlan.gemQualityPlan.status,'available');
+  const corruptedGem=await queued('plan_gem_quality',{baseRevision:context.revision,item:'Item Class: Active Skill Gems\nRarity: Gem\nArc\n--------\nQuality: +12%\nCorrupted',target:20},'gemQualityPlan');
+  assert.equal(corruptedGem.gemQualityPlan.status,'unavailable');
   const qualityReview=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:qualityCopies},'qualityVendorReview');
   assert.equal(qualityReview.qualityVendorReview.categories[0].groups.length,1);assert.equal(qualityReview.qualityVendorReview.categories[1].groups.length,1);assert.equal(qualityReview.qualityVendorReview.categories[1].groups[0].quality,40);
   const extraQualityCopies=['Item Class: Life Flasks\nRarity: Normal\nSmall Life Flask\n--------\nQuality: +20%','Item Class: Active Skill Gems\nRarity: Gem\nArc\n--------\nQuality: +20%'];

@@ -1,0 +1,26 @@
+describe("Gem quality planning",function()
+ local planner=require("Modules.GemQualityPlan")
+ local gem="Item Class: Active Skill Gems\nRarity: Gem\nArc\n--------\nLevel: 20 (Max)\nQuality: +12% (augmented)"
+ it("plans prisms for copied active and support gems",function()
+  local result=planner.inspect(gem,20);assert.equal("available",result.status);assert.equal(8,result.prisms);assert.equal(20,result.level)
+  local support="Item Class: Support Skill Gems\nRarity: Gem\nAdded Fire Damage Support\n--------\nLevel: 5"
+  result=planner.inspect(support,10);assert.is_true(result.support);assert.equal(10,result.prisms)
+  result=planner.inspect(gem,10);assert.equal("complete",result.status);assert.equal(0,result.prisms)
+ end)
+ it("explains limits and rejects inconsistent input",function()
+  local result=planner.inspect(gem.."\nCorrupted",20);assert.equal("unavailable",result.status);assert.matches("corrupted",result.reason)
+  result=planner.inspect(gem,23);assert.equal("unavailable",result.status);assert.matches("20%%",result.reason)
+  result=planner.inspect(gem:gsub("\nArc\n","\nVaal Arc\n"),20);assert.is_true(result.corrupted);assert.equal("unavailable",result.status)
+  result=planner.inspect(gem.."\nTwice Corrupted",12);assert.is_true(result.twiceCorrupted);assert.equal("complete",result.status)
+  assert.has_error(function() planner.inspect(gem:gsub("Active Skill Gems","Support Skill Gems"),20) end)
+  assert.has_error(function() planner.inspect(gem:gsub("Arc","Unknown Gem"),20) end)
+  assert.has_error(function() planner.inspect(gem.."\nQuality: +3%",20) end)
+  assert.has_error(function() planner.inspect(gem,101) end)
+ end)
+ it("lets a user paste a gem and inspect or copy a guide",function()
+  newBuild();main.popups={};require("Classes.GemQualityPlanControl").Open(build)
+  local c=main.popups[1].controls;local original=Paste;Paste=function() return gem end;c.paste:Click();Paste=original
+  assert.is_true(c.copy:IsEnabled());local text="";for _,line in ipairs(c.result.list) do text=text..(line[1] or "") end;assert.matches("8 Gemcutter",text)
+  c.target:SetText("23",true);text="";for _,line in ipairs(c.result.list) do text=text..(line[1] or "") end;assert.matches("20%%",text);main.popups={}
+ end)
+end)

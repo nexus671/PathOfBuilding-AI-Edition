@@ -272,6 +272,12 @@ test('queues copied rare equipment for set review', t => {
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'review_rare_vendor_sets');assert.deepEqual(request.items,items);
 });
 
+test('queues a copied gem quality plan', t => {
+  const f=fixture(t);const item='Item Class: Active Skill Gems\nRarity: Gem\nArc\nQuality: +12%';
+  f.call('plan_gem_quality',{baseRevision:f.state.revision,item,target:20});
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'plan_gem_quality');assert.equal(request.item,item);assert.equal(request.target,20);
+});
+
 test('queues copied quality items for vendor review', t => {
   const f=fixture(t);const items=['Item Class: Wands\nRarity: Normal\nDriftwood Wand\nQuality: +20%'];
   f.call('review_quality_vendor_items',{baseRevision:f.state.revision,items});

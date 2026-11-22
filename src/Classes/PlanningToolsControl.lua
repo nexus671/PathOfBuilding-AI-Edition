@@ -110,6 +110,7 @@ function M.Open(build)
 		{id="baseSets",label="Same-base vendor review",details={"Group copied normal, magic, rare and unique items by base for possible Chance Orbs.","Each paste represents one item; check the vendor offer in game."}},
 		{id="vendor",label="Same-name rare review",details={"Paste identified rares to find possible Chaos and Exalted Orb vendor offers.","Each paste represents one item; review the vendor offer in game."}},
 		{id="rareSets",label="Rare equipment sets",details={"Group copied rares into possible Alchemy, Chaos or Regal vendor sets.","Check item eligibility and the actual vendor offer in game."}},
+		{id="gemQuality",label="Gem quality planner",details={"Plan Gemcutter's Prism use for a copied active or support gem.","Quality above 20% and corruption outcomes need other methods."}},
 		{id="qualityVendor",label="Quality and Vaal vendor review",details={"Group copied quality items and Vaal skill gems for possible vendor currency.","Groups can overlap; review the offer in game."}},
 		{id="bundle",label="Export / import complete bundle",details={"Carry the character, crafting guides, working checkpoints, Atlas stages and Journey plans together.","Imports open through native review as a new build."}},
 		{id="recovery",label="Recover local drafts",details={"Resume an interrupted filter, Atlas or crafting draft.","Earlier-session drafts are preserved until reviewed."}},
@@ -157,7 +158,7 @@ function M.Open(build)
 			for _,plan in ipairs(build.savers.AtlasPlans.plans) do if plan.id==entry.atlasId then workspace:Show("atlas",plan);return end end
 		elseif entry.projectId then
 			for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id==entry.projectId then workspace:Show("crafting");workspace.cache.crafting.layout.openWorkbench(project);return end end
-		elseif entry.id=="baseSets" then require("Classes.VendorBaseSetsControl").Open(build) elseif entry.id=="vendor" then require("Classes.VendorRarePairsControl").Open(build) elseif entry.id=="rareSets" then require("Classes.VendorRareSetsControl").Open(build) elseif entry.id=="qualityVendor" then require("Classes.VendorQualitySetsControl").Open(build) elseif entry.id=="performance" then M.Performance(build) elseif entry.id=="recovery" then M.Recovery(build) else M.Bundle(build) end
+		elseif entry.id=="baseSets" then require("Classes.VendorBaseSetsControl").Open(build) elseif entry.id=="vendor" then require("Classes.VendorRarePairsControl").Open(build) elseif entry.id=="rareSets" then require("Classes.VendorRareSetsControl").Open(build) elseif entry.id=="gemQuality" then require("Classes.GemQualityPlanControl").Open(build) elseif entry.id=="qualityVendor" then require("Classes.VendorQualitySetsControl").Open(build) elseif entry.id=="performance" then M.Performance(build) elseif entry.id=="recovery" then M.Recovery(build) else M.Bundle(build) end
 	end})
 end
 return M
