@@ -67,6 +67,10 @@ placeholder that pretends to provide those results offline.
 
 The anoint selector requests Full DPS for candidate calculations only when that sort is selected. Other sorts use their ordinary calculation. `tools/benchmark_anoint_sort.lua` compares the sorted order and every value against the previous behavior for a supplied read-only build, using 30 anointable nodes and several metrics. On a synthetic geared multi-skill fixture, non-Full-DPS sorts took 0.08–0.11 seconds versus 0.60–0.99 seconds with the previous calculation; Full DPS still runs the full calculation. These are bounded headless CPU measurements, not native desktop frame times or evidence of improved passive-tree click latency.
 
+## Timeless Jewel dialog
+
+The dialog adapts its width at 960, 1024 and 1280 pixels. Headless checks cover the common, Militant Faith and Reclaimed Malevolence layouts, including spacing between the Militant Faith selectors. Native desktop rendering remains unverified.
+
 ## Timeless Jewel fallback weights
 
 Regenerating fallback weights now preserves the scaling divisor when reusing a parsed modifier; previously some generated weights could become 100 times larger on the second run. The generator also skips Full DPS calculations for other selected metrics. `tools/benchmark_timeless_weights.lua` compares repeated generated weights against the prior calculation mode on a supplied read-only build. In one synthetic multi-skill run, Life, Combined DPS and projectile avoidance each produced identical weights while their generation fell from about 3 seconds to 0.4–0.9 seconds of headless CPU time. This does not measure native desktop latency or establish passive-tree click improvements.

@@ -1172,6 +1172,10 @@ function TreeTabClass:BuildPowerReportList(currentStat)
 end
 
 function TreeTabClass:FindTimelessJewel()
+	local screenWidth = GetVirtualScreenSize()
+	local edgePadding = 12
+	local listWidth = m_min(500, m_floor((screenWidth - 2 * edgePadding - 3 * edgePadding) / 2))
+	local panelWidth = edgePadding * 3 + listWidth * 2
 	local socketViewer = new("PassiveTreeView"):PassiveTreeView()
 	local treeData = self.build.spec.tree
 	local legionNodes = treeData.legion.nodes
@@ -1518,7 +1522,7 @@ function TreeTabClass:FindTimelessJewel()
 		self.build.modFlag = true
 	end
 
-	controls.devotionSelectLabel = new("LabelControl"):LabelControl({"TOPRIGHT", nil, "TOPLEFT"}, {920, 25, 0, 16}, "^7Devotion modifiers:")
+	controls.devotionSelectLabel = new("LabelControl"):LabelControl({"TOPRIGHT", nil, "TOPLEFT"}, {panelWidth - 96, 25, 0, 16}, "^7Devotion modifiers:")
 	controls.devotionSelectLabel.shown = timelessData.jewelType.id == 4
 	controls.devotionSelect1 = new("DropDownControl"):DropDownControl({"TOP", controls.devotionSelectLabel, "BOTTOM"}, {0, 8, 200, 18}, devotionVariants, function(index, value)
 		timelessData.devotionVariant1 = index
@@ -1567,7 +1571,7 @@ function TreeTabClass:FindTimelessJewel()
 		end
 	end
 
-	controls.jewelSelect = new("DropDownControl"):DropDownControl({ "TOPLEFT", nil, "TOPLEFT" }, { 520, 25, 200, rowHeight }, jewelTypes, function(index, value)
+	controls.jewelSelect = new("DropDownControl"):DropDownControl({ "TOPLEFT", nil, "TOPLEFT" }, { panelWidth / 2 + 2, 25, 200, rowHeight }, jewelTypes, function(index, value)
 		timelessData.jewelType = value
 		controls.devotionSelectLabel.shown = value.id == 4 -- Militant Faith
 		controls.abyssAscendancyLabel.shown = value.id == 11
@@ -2155,10 +2159,8 @@ function TreeTabClass:FindTimelessJewel()
 		tooltip:AddLine(16, "^7Optional: Only show results where total weight meets or exceeds this value.")
 	end
 	
-	local listWidth = 500
 	local listHeight = 200
 	local buttonHeight = 20
-	local edgePadding = 12
 	local listYOffset = -(buttonHeight + edgePadding * 2)
 	controls.searchList = new("EditControl"):EditControl({ "BOTTOMLEFT", nil, "BOTTOMLEFT" },
 		{ edgePadding, listYOffset, listWidth, listHeight }, timelessData.searchList, nil,
@@ -2194,10 +2196,8 @@ function TreeTabClass:FindTimelessJewel()
 	end)
 	controls.searchListButton.tooltipFunc = function(tooltip, mode, index, value)
 		tooltip:Clear()
-		tooltip:AddLine(16,
-			"^7This contains a list of your desired nodes along with their primary, secondary, and minimum weights.")
-		tooltip:AddLine(16,
-			"^7This list can be updated manually or by selecting the node you want to update via the search dropdown list and then moving the node weight sliders.")
+		tooltip:AddLine(16, "^7Desired nodes have primary, secondary and minimum weights.")
+		tooltip:AddLine(16, "^7Edit the list directly, or select a node and adjust its weight sliders.")
 	end
 	controls.searchListButton.locked = function() return controls.searchList.shown end
 
@@ -2210,11 +2210,11 @@ function TreeTabClass:FindTimelessJewel()
 	end)
 	controls.searchListFallbackButton.tooltipFunc = function(tooltip, mode, index, value)
 		tooltip:Clear()
-		tooltip:AddLine(16, "^7This contains a list of your fallback nodes along with their primary, secondary, and minimum weights.")
-		tooltip:AddLine(16, "^7This list can be updated manually or by selecting the node you want to update via the search dropdown list and then moving the node weight sliders.")
-		tooltip:AddLine(16, "^7Fallback node weights are only used when no matching entry exists in the desired nodes list, allowing you to override or disable specific automatic weights.")
-		tooltip:AddLine(16, "^7Fallback node weights typically contain automatically generated stat weights based on your current build.")
-		tooltip:AddLine(16, "^7Any manual changes made to your fallback nodes are lost when you click the generate button, as it completely replaces them.")
+		tooltip:AddLine(16, "^7Fallback nodes have primary, secondary and minimum weights.")
+		tooltip:AddLine(16, "^7Edit the list directly, or select a node and adjust its weight sliders.")
+		tooltip:AddLine(16, "^7Fallback weights apply when a node has no desired-node entry.")
+		tooltip:AddLine(16, "^7Generate uses your build to calculate weights and replaces this list,")
+		tooltip:AddLine(16, "^7including any manual edits.")
 	end
 	controls.searchListFallbackButton.locked = function() return controls.searchListFallback.shown end
 
@@ -2792,7 +2792,6 @@ function TreeTabClass:FindTimelessJewel()
 		return results
 	end
 
-	local panelWidth = edgePadding * 3 + listWidth * 2
 	local buttonDivider = 10
 	local buttonWidth = 80
 	-- reset button anchored to middle of panel and other buttons anchored to it
