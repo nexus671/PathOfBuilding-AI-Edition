@@ -430,10 +430,6 @@ function M.generate(build,profile,checkpoint)
 	-- free text: an edited guide may no longer describe the original craft.
 	for _,project in ipairs(build.savers.CraftingProjects.projects) do
 		local tagged,manual=false,false;for _,step in ipairs(project.steps or {}) do if step.uniqueCraft then tagged=true elseif not step.done then manual=true end end
-		if manual then
-			local signature=M.manualGuideSignature(build,project)
-			if manualReviewed[project.id]~=signature then warnings[#warnings+1]={origin="craft:"..project.id,title=project.title,message="Written guide steps do not add currency pickups automatically. Check the saved recipe or add needed currencies to your budget.",openGuide=true,manualGuideSignature=signature} end
-		end
 		local ok,item,info=false,nil,nil
 		if tagged then local inspected,parsed,details=pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem);ok,item,info=inspected,parsed,details end
 		local uniqueSocketCount=ok and #item.sockets or nil
@@ -482,8 +478,13 @@ function M.generate(build,profile,checkpoint)
 				for _,entry in ipairs(items) do if not removed[entry.name] then
 					add("craft-resource-"..project.id.."-"..require("sha1")(entry.key):sub(1,12),entry.name,{"BaseType == "..quote(entry.name)},"craft:"..project.id)
 				end end
-			end
+			elseif craft and not step.done then manual=true end
 		end end
+		if tagged and not ok then for _,step in ipairs(project.steps or {}) do if step.uniqueCraft and not step.done then manual=true end end end
+		if manual then
+			local signature=M.manualGuideSignature(build,project)
+			if manualReviewed[project.id]~=signature then warnings[#warnings+1]={origin="craft:"..project.id,title=project.title,message="Written guide steps do not add currency pickups automatically. Check the saved recipe or add needed currencies to your budget.",openGuide=true,manualGuideSignature=signature} end
+		end
 		checkpointIfNeeded()
 	end
 	local aliases={chaos="Chaos Orb",divine="Divine Orb",divines="Divine Orb",alchemy="Orb of Alchemy",alteration="Orb of Alteration",exalt="Exalted Orb",annul="Orb of Annulment",fusing="Orb of Fusing",chromatic="Chromatic Orb",jeweller="Jeweller's Orb"}

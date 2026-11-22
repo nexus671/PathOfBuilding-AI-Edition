@@ -75,4 +75,22 @@ do
 	_,warnings=filters.generate(build,kept);local warned=false;for _,warning in ipairs(warnings) do if warning.origin=="craft:review-guide" then warned=true end end
 	assert(warned,"Changing the imported guide did not restore its review notice")
 end
+do
+	newBuild();local filters=require("Modules.LootFilters");local unique=require("Modules.CraftingUniqueQuality")
+	local project={id="stale-typed-guide",title="Unique guide",slot="Weapon 1",startingItem="Rarity: UNIQUE\nThe Blood Reaper\nHeadsman Axe\nItem Level: 86",goals={},steps={{action=unique.guideAction("divine",1),uniqueCraft={method="divine",count=1}}}}
+	build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("typed-guide","Filter")
+	local _,warnings=filters.generate(build,profile);for _,warning in ipairs(warnings) do assert(warning.origin~="craft:stale-typed-guide","Valid structured step unexpectedly warned") end
+	-- Older or imported data can contain a typed action whose text no longer agrees.
+	build.savers.CraftingProjects.projects[1].steps[1].action="Use another currency"
+	local rules;rules,warnings=filters.generate(build,profile);local notice
+	for _,warning in ipairs(warnings) do if warning.origin=="craft:stale-typed-guide" and warning.manualGuideSignature then notice=warning end end
+	assert(notice,"Unmatched structured step did not offer guide review")
+	for _,rule in ipairs(rules) do assert(not (rule.origin==notice.origin and rule.text:find('BaseType == "Divine Orb"',1,true)),"Unmatched structured step generated a Divine Orb pickup") end
+	profile.manualGuideReviews={{projectId=project.id,signature=notice.manualGuideSignature}};_,warnings=filters.generate(build,profile)
+	for _,warning in ipairs(warnings) do assert(not warning.manualGuideSignature,"Reviewed unmatched step still warned") end
+	build.savers.CraftingProjects.projects[1].startingItem="Rarity: UNIQUE\nUnknown item\nUnknown base\nItem Level: 86"
+	_,warnings=filters.generate(build,profile);local inspectWarning,reviewWarning=false,false
+	for _,warning in ipairs(warnings) do inspectWarning=inspectWarning or warning.retry==true;reviewWarning=reviewWarning or warning.manualGuideSignature~=nil end
+	assert(inspectWarning and reviewWarning,"An uninspectable structured guide did not preserve both repair and review notices")
+end
 print("FILTER_REVIEW_UI_OK")
