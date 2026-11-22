@@ -60,6 +60,8 @@ stale=false
 sync.tick(now,true)
 assert(sync.status:find("Protected drops verified",1,true) and read(target):find("StackSize <= 4",1,true),sync.status)
 assert(calls==9)
+local sample = sync.configuration().review.changes[1].sample
+assert(sample.action=="Show" and sample.count==5)
 sync.tick(now+60)
 assert(calls==9)
 sync.tick(now+60,true)

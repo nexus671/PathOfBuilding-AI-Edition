@@ -134,7 +134,7 @@ function M.review(raw, quotes, target)
 				skipped[#skipped + 1] = { name = name, old = old, reason = reason, maps = area ~= nil }
 			else
 				changed = true
-				changes[#changes + 1] = { name = name, old = old, cutoff = cutoff, price = quote.price, currentPrice = quote.currentPrice, source = quote.source, observations = quote.observations, volume = quote.volume, maps = area ~= nil }
+				changes[#changes + 1] = { name = name, old = old, cutoff = cutoff, price = quote.price, currentPrice = quote.currentPrice, source = quote.source, observations = quote.observations, classes = class.values, volume = quote.volume, maps = area ~= nil }
 			end
 			group[cutoff] = group[cutoff] or {}
 			table.insert(group[cutoff], '"' .. name .. '"')

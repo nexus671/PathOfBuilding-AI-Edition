@@ -12,6 +12,19 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 	for _, diagnostic in ipairs(parsed.diagnostics) do
 		assert(not diagnostic.error, "Line " .. diagnostic.line .. ": " .. (diagnostic.error or ""))
 	end
+	for index, change in ipairs(changes) do
+		if index > 250 then break end
+		local sample = {
+			BaseType=change.name, Class=change.classes[1], Rarity="Normal",
+			StackSize=change.cutoff+1, AreaLevel=83, ItemLevel=83, DropLevel=1,
+			Width=1, Height=1, HasExplicitMod={}, HasEnchantment={}, HasInfluence={"None"}, SocketGroup="",
+			EnchantmentPassiveNode="",
+		}
+		for name in pairs(parser.numeric) do if sample[name] == nil then sample[name] = 0 end end
+		for name in pairs(parser.booleans) do sample[name] = false end
+		local result = parser.simulate(parsed, sample)
+		change.sample = {action=result.action, line=result.line, class=sample.Class, count=sample.StackSize}
+	end
 	local function check(item, marker)
 		local result = parser.simulate(parsed, item)
 		local icon = result.styles.MinimapIcon

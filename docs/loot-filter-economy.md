@@ -27,3 +27,5 @@ PoB copies the samples into the sync settings when you enable it. For the origin
 Daily sync uses the lower of the latest liquid quote and the median of available earlier daily quotes from the last week. A new profile starts with the latest quote. Repeated checks on the same day replace that day's sample. The review shows the quote used, the latest quote, and how many observations contributed. A lower current quote takes effect immediately.
 
 Use **Preview changes** before enabling a new setup. It fetches prices and validates the proposed filter, then opens the full text comparison without saving settings or replacing your file.
+
+For up to 250 changed entries, the sync review shows a simulated area-level 83 drop at one item above the proposed hide cutoff. The result uses the first class in the rule and reports the matching line when available. Other classes and area levels can match different rules.

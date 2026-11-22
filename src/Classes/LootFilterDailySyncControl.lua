@@ -85,6 +85,9 @@ function M.Open()
 				string.format("Hide up to %d → %d%s", change.old, change.cutoff, change.maps and " in maps" or ""),
 				string.format("%.4g chaos used | %.0f chaos hourly volume",change.price,change.volume),
 				string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
+				change.sample and string.format("Map sample: %d as %s → %s%s", change.sample.count,
+					change.sample.class, change.sample.action, change.sample.line and " at line "..change.sample.line or "")
+					or "Sample result unavailable.",
 			}}
 		end
 		for i, item in ipairs(review.skipped or {}) do
