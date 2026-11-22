@@ -1767,7 +1767,7 @@
 	<File name="Classes/LootFilterCategoryControl.lua" part="program" sha1="c2305569737cb47ef545e0b5770b71dabfc4ed35" />
 	<File name="Classes/LootFilterCollectionControl.lua" part="program" sha1="9a6870a82b61f4084c3c0497ab9efcd5e6963133" />
 	<File name="Classes/LootFilterControl.lua" part="program" sha1="c40ea82f493c495c2dc3b2cf1029a132aedc48ec" />
-	<File name="Classes/LootFilterDiffControl.lua" part="program" sha1="994e194583ccb50a6f50fe71876258d7b0bdd2f9" />
+	<File name="Classes/LootFilterDiffControl.lua" part="program" sha1="fce132cb6fc2e2d9e85dc5e7eb272d284cc09787" />
 	<File name="Classes/LootFilterEffectsControl.lua" part="program" sha1="c0da01c25134dd3d7bda386626c07dff699ebeec" />
 	<File name="Classes/LootFilterFileBrowser.lua" part="program" sha1="8ee03d60d0aebdb49587330e7ddb369a796bcbf3" />
 	<File name="Classes/LootFilterGlobalControl.lua" part="program" sha1="f040b676a7067c2e933478996bd347c3521db19e" />
@@ -1779,8 +1779,8 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
 	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="633ef5b91d2de0897bf5b5cefde73cb4a7cc38cd" />
 	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="9ff77256a9478280cc44fe2dbaaa5d1026959fd9" />
-	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="d244623f23ba0099b4ff4e8e167f0ce6048c52e9" />
-	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="418701fab4cb575c1041b20049b409dc188c0f4f" />
+	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="c945d23d8d579d66e3d749664eaf4473b8757840" />
+	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="d32028cb20d9a1577eba45397cfa5c01e3609c42" />
 	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="889b8eb1552a61c09319198236f6d648e957767f" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="5f2e6eb7358d965289eb464c71d549bd877a6ccd" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="b133139457017d3bb1579c4284c14bf3f1c0a524" />

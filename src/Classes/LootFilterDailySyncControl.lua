@@ -18,6 +18,9 @@ function M.Open()
 		ui.label(c, key.."Label", x, y, label, 14)
 		c[key] = new("EditControl"):EditControl(ui.anchor,{x, y+20, fieldWidth, 26},value,nil,nil,1000)
 	end
+	local function options()
+		return {hour=tonumber(c.hour.buf) or -1,targetValue=tonumber(c.targetValue.buf) or -1,protectionFile=c.protectionFile.buf}
+	end
 	local function attempt(action)
 		local passed, err = pcall(action)
 		if not passed then main:OpenMessagePopup("Daily filter sync", ui.errorText(err)); return end
@@ -33,7 +36,7 @@ function M.Open()
 	ui.description(c,"help",16,306,width-32,38,{"PoB checks for a due sync while open and keeps a copy of the baseline."},14)
 	c.status = new("LabelControl"):LabelControl(ui.anchor,{16,350,width-32,16},"",14)
 	c.status.label = function() return ui.fit(sync.status, width-32, 14) end
-	button("enable",16,"Enable / update",function() attempt(function() sync.configure(c.target.buf,c.baseline.buf,c.league.buf,{hour=tonumber(c.hour.buf) or -1,targetValue=tonumber(c.targetValue.buf) or -1,protectionFile=c.protectionFile.buf}) end) end)
+	button("enable",16,"Enable / update",function() attempt(function() sync.configure(c.target.buf,c.baseline.buf,c.league.buf,options()) end) end)
 	button("run",16+step*1,"Sync now",function() sync.tick(os.time(),true) end)
 	button("disable",16+step*2,"Disable",function() attempt(sync.disable) end)
 	button("pause",16+step*3,config.paused and "Resume" or "Pause",function() attempt(function() sync.pause(not config.paused) end) end)
@@ -69,6 +72,14 @@ function M.Open()
 		end
 		require("Classes.PlanningBrowserControl").Open("Daily filter sync review", entries)
 	end,432)
+	button("preview",16+step,"Preview changes",function()
+		local owner = main.popups[1]
+		local passed, err = pcall(sync.preview,c.target.buf,c.baseline.buf,c.league.buf,options(),function(before, after)
+			if main.popups[1] == owner then require("Classes.LootFilterDiffControl").Open(before,after,true) end
+		end)
+		if not passed then main:OpenMessagePopup("Daily filter sync", ui.errorText(err)) end
+	end,432)
+	c.preview.enabled = function() return not sync.busy end
 	button("close",width-buttonWidth-16,"Close",function() main:ClosePopup() end,432)
 	c.enable.enabled = function() return not sync.busy end
 	c.disable.enabled = function() return config.enabled and not sync.busy end

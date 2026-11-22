@@ -2,15 +2,15 @@ local ui=require("Modules.PlanningUI")
 local filters=require("Modules.LootFilters")
 local diff=require("Modules.LootFilterDiff")
 local M={}
-function M.Open(before,after)
+function M.Open(before,after, rawComparison)
 	local c={};local w,h=math.min(1080,main.screenW-40),math.min(720,main.screenH-60)
 	local previous,current,review,problems
 	local function button(key,x,y,width,label,run) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,run) end
-	c.content=new("DropDownControl"):DropDownControl(ui.anchor,{16,28,240,28},{"Compiled filter","Original base text"})
+	c.content=new("DropDownControl"):DropDownControl(ui.anchor,{16,28,240,28},rawComparison and {"Filter text"} or {"Compiled filter","Original base text"})
 	c.view=new("DropDownControl"):DropDownControl(ui.anchor,{272,28,180,28},{"Changes","All lines","Before text","After text"})
 	c.search=new("EditControl"):EditControl(ui.anchor,{468,28,w-484,28},"","Find text",nil,160)
 	ui.label(c,"summary",16,76,"",14)
-	ui.description(c,"help",16,100,w-32,36,{(before and "Before is kept in this build; after is the working draft." or "No kept profile: before is empty; after is the working draft.").." Line endings are normalized for review. Long lines are abbreviated here; copied sources and reports retain full text."},13)
+	ui.description(c,"help",16,100,w-32,36,{(rawComparison and "Compare the current filter with the proposed output." or before and "Before is kept in this build; after is the working draft." or "No kept profile: before is empty; after is the working draft.").." Line endings are normalized for review. Long lines are abbreviated here; copied sources and reports retain full text."},13)
 	c.lines=new("TextListControl"):TextListControl(ui.anchor,{16,152,w-32,h-262},nil,{})
 	ui.label(c,"status",16,h-90,"",13)
 	local function refresh()
@@ -36,6 +36,7 @@ function M.Open(before,after)
 	local function rebuild()
 		problems={};local function source(profile,label)
 			if not profile then return "" end
+			if rawComparison then return profile end
 			local ok,raw=pcall(c.content:GetSelValue()=="Original base text" and filters.base or filters.compile,profile)
 			if ok then return raw end;problems[#problems+1]=label.." unavailable: "..tostring(raw):gsub("^.-:%d+:%s*","");return nil
 		end

@@ -98,39 +98,48 @@ local function filterPath(path)
 	return path
 end
 
-function M.configure(target, baselineFile, league, options)
+local function prepare(target, baselineFile, league, options)
 	options = options or {}
 	local targetValue = options.targetValue or 1
 	local hour = options.hour or 9
 	assert(type(hour) == "number" and hour >= 0 and hour <= 23 and hour == math.floor(hour), "Enter an hour from 0 to 23")
 	assert(type(targetValue) == "number" and targetValue > 0 and targetValue <= 1000, "Enter a stack target above 0 and up to 1,000 chaos")
+	target = filterPath(target)
+	assert(type(league) == "string" and #league <= 80 and league:match("^[%w%s_-]+$"), "Enter the poe.ninja league ID")
+	local original = assert(read(target), "Target filter file was not found")
+	local baseline = assert(read(filterPath(baselineFile)), "Baseline filter was not found")
+	local protections
+	if options.protectionFile and options.protectionFile ~= "" then
+		assert(options.protectionFile:lower():match("%.json$"), "Choose a protected sample JSON file")
+		local samples = assert(read(options.protectionFile), "Protected sample file was not found")
+		local decoded, _, why = json.decode(samples)
+		protections = assert(decoded, why or "Invalid protected sample JSON")
+	elseif not baseline:find("# CUSTOM: Always show Cord Belts", 1, true) then
+		error("Choose a protected sample JSON file for this baseline")
+	end
+	validate(baseline, {}, true, targetValue, protections)
+	validate(original, {}, true, targetValue, protections)
+	local a, b = market.sectionBounds(original), market.sectionBounds(baseline)
+	assert(a and b and original:sub(1,a-1) == baseline:sub(1,b-1), "Baseline and target must share the protected rule prefix")
+	local key = sha(baseline)
+	return {
+		enabled=true, target=target, baseline=main.userPath.."LootFilterBaseline-"..key..".filter",
+		baselineHash=key, current=sha(original), revision=sha(tostring({})..tostring(os.time())),
+		league=league, hour=hour, targetValue=targetValue, protections=protections, protectionFile=options.protectionFile,
+	}, original, baseline
+end
+
+function M.configure(target, baselineFile, league, options)
 	assert(not M.busy, "Wait for the current sync to finish")
-	platform().lock(settingsPath() .. ".lock", function()
-		target = filterPath(target)
-		assert(type(league) == "string" and #league <= 80 and league:match("^[%w%s_-]+$"), "Enter the poe.ninja league ID")
-		local original = assert(read(target), "Target filter file was not found")
-		local baseline = assert(read(filterPath(baselineFile)), "Baseline filter was not found")
-		local protections
-		if options.protectionFile and options.protectionFile ~= "" then
-			assert(options.protectionFile:lower():match("%.json$"), "Choose a protected sample JSON file")
-			local samples = assert(read(options.protectionFile), "Protected sample file was not found")
-			local decoded, _, why = json.decode(samples)
-			protections = assert(decoded, why or "Invalid protected sample JSON")
-		elseif not baseline:find("# CUSTOM: Always show Cord Belts", 1, true) then
-			error("Choose a protected sample JSON file for this baseline")
-		end
-		validate(baseline, {}, true, targetValue, protections)
-		validate(original, {}, true, targetValue, protections)
-		local a, b = market.sectionBounds(original), market.sectionBounds(baseline)
-		assert(a and b and original:sub(1,a-1) == baseline:sub(1,b-1), "Baseline and target must share the protected rule prefix")
-		local key = sha(baseline)
-		local path = main.userPath .. "LootFilterBaseline-" .. key .. ".filter"
-		if not read(path) then put(path, baseline) end
-		assert(read(path) == baseline, "Stored baseline does not match")
-		save({enabled=true, target=target, baseline=path, baselineHash=key, current=sha(original), revision=sha(tostring({}) .. tostring(os.time())), league=league, hour=hour, targetValue=targetValue, protections=protections, protectionFile=options.protectionFile})
+	local config = platform().lock(settingsPath() .. ".lock", function()
+		local nextConfig, _, baseline = prepare(target, baselineFile, league, options)
+		if not read(nextConfig.baseline) then put(nextConfig.baseline, baseline) end
+		assert(read(nextConfig.baseline) == baseline, "Stored baseline does not match")
+		save(nextConfig)
+		return nextConfig
 	end)
 	nextPoll, retryAt = 0, 0
-	M.status = string.format("Daily sync enabled at %02d:00 local time while PoB is open.", hour)
+	M.status = string.format("Daily sync enabled at %02d:00 local time while PoB is open.", config.hour)
 end
 
 function M.disable()
@@ -238,6 +247,31 @@ local function publish(config, bodies, ages, day, force, now)
 	end)
 end
 
+local function fetchPrices(config, now, complete)
+	local job, bodies, ages = {}, {}, {}
+	M.busy, M.deadline = job, now + 180
+	local function finish(success, message)
+		M.busy = nil
+		M.status = success and message or ("Sync skipped: " .. tostring(message))
+		if ConPrintf then ConPrintf("%s", M.status) end
+	end
+	local function fetch(index)
+		local category = market.categories[index]
+		if not category then finish(pcall(complete, bodies, ages)); return end
+		M.status = "Fetching " .. config.league .. " prices: " .. category
+		local url = market.endpoint .. "exchange/current/overview?league=" .. urlEncode(config.league) .. "&type=" .. category
+		launch:DownloadPage(url, function(response, err)
+			if M.busy ~= job then return end
+			if err then finish(false, category .. ": " .. err); return end
+			local current, data, age = pcall(M.fresh, response, os.time())
+			if not current then finish(false, category .. ": " .. tostring(data)); return end
+			bodies[index], ages[index] = data, age
+			fetch(index + 1)
+		end, {timeout=20,header="Accept: application/json\r\nCache-Control: no-cache"})
+	end
+	fetch(1)
+end
+
 function M.tick(now, force)
 	if M.busy then
 		if now > M.deadline then
@@ -258,28 +292,21 @@ function M.tick(now, force)
 		return
 	end
 	if not force then retryAt = now + 1800 end
-	local job, bodies, ages = {}, {}, {}
-	M.busy, M.deadline = job, now + 180
-	local function finish(success, message)
-		M.busy = nil
-		M.status = success and message or ("Sync skipped: " .. tostring(message))
-		if ConPrintf then ConPrintf("%s", M.status) end
-	end
-	local function fetch(index)
-		local category = market.categories[index]
-		if not category then finish(pcall(publish, config, bodies, ages, day, force, now)); return end
-		M.status = "Fetching " .. config.league .. " prices: " .. category
-		local url = market.endpoint .. "exchange/current/overview?league=" .. urlEncode(config.league) .. "&type=" .. category
-		launch:DownloadPage(url, function(response, err)
-			if M.busy ~= job then return end
-			if err then finish(false, category .. ": " .. err); return end
-			local current, data, age = pcall(M.fresh, response, os.time())
-			if not current then finish(false, category .. ": " .. tostring(data)); return end
-			bodies[index], ages[index] = data, age
-			fetch(index + 1)
-		end, {timeout=20,header="Accept: application/json\r\nCache-Control: no-cache"})
-	end
-	fetch(1)
+	fetchPrices(config, now, function(bodies, ages)
+		return publish(config, bodies, ages, day, force, now)
+	end)
+end
+
+function M.preview(target, baselineFile, league, options, callback)
+	assert(not M.busy, "Wait for the current sync to finish")
+	assert(not launch.noSSL, "Enable HTTPS certificate verification in PoB")
+	local config, original, baseline = prepare(target, baselineFile, league, options)
+	local now = os.time()
+	fetchPrices(config, now, function(bodies)
+		local candidate = validate(baseline, bodies, false, config.targetValue, config.protections)
+		callback(original, candidate)
+		return "Preview complete. Review the proposed filter before enabling sync."
+	end)
 end
 
 return M

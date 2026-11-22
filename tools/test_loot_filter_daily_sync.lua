@@ -43,7 +43,17 @@ launch = {DownloadPage=function(_, _, callback, params)
 		body='{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.21,"volumePrimaryValue":1000}]}',
 	})
 end}
-sync.configure(target,baseline,"Covens",{hour=0,targetValue=1,protectionFile=protections})
+local options = {hour=0,targetValue=1,protectionFile=protections}
+stale=false
+local proposed
+sync.preview(target,baseline,"Covens",options,function(before, after)
+	assert(before==original)
+	proposed=after
+end)
+assert(proposed and proposed:find("StackSize <= 4",1,true))
+assert(read(target)==original and not sync.configuration())
+calls, stale = 0, true
+sync.configure(target,baseline,"Covens",options)
 sync.tick(now,true)
 assert(sync.status:find("stale",1,true) and read(target)==original,sync.status)
 stale=false
