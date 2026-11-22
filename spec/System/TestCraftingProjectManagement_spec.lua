@@ -266,6 +266,23 @@ describe("Crafting project removal and save-state ownership",function()
 		assert.is_truthy(workspace.craftDrafts.b);assert.are.equal(base,bridge.restore())
 		assert.are.equal(2,#base.savers.CraftingProjects.projects)
 	end)
+	it("protects an earlier unkept craft in a batch removal",function()
+		local a,b=project("a"),project("b");build.savers.CraftingProjects:Upsert(a);build.savers.CraftingProjects:Upsert(b)
+		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		local state=sim.model(a.startingItem).initial;state.quality=10;local draft=require("Modules.CraftingInventory").run(state);draft.kind="workbench";draft.project=a
+		workspace.craftDrafts.a=draft;uiState.draft(build,"workingCraft","a")
+		local prepared=bridge.prepare(build,{mode="edit",title="Remove guides",baseRevision=bridge.revision(build),operations={{type="remove_crafting_project",projectId="a"},{type="remove_crafting_project",projectId="b"}}})
+		local ok,err=pcall(bridge.apply,prepared);assert.is_false(ok);assert.matches("batch removal",err,1,true)
+		assert.equal(build,main.modes.BUILD);assert.equal(10,workspace:CraftingDraft("a").state.quality);assert.is_true(uiState.hasDraft(build,"workingCraft","a"))
+	end)
+	it("retains a lazy working draft when its guide is removed and restored",function()
+		local p=project("lazy");build.savers.CraftingProjects:Upsert(p)
+		local state=sim.model(p.startingItem).initial;state.quality=10;local draft=require("Modules.CraftingInventory").run(state);draft.kind="workbench";draft.project=p
+		build.planningCraftDrafts={lazy=draft};uiState.draft(build,"workingCraft","lazy")
+		local prepared=bridge.prepare(build,{mode="edit",title="Remove guide",baseRevision=bridge.revision(build),operations={{type="remove_crafting_project",projectId="lazy"}}})
+		local candidate=bridge.apply(prepared);assert.equal(10,candidate.savers.CraftingProjects.lastRemoved.draft.state.quality)
+		candidate.savers.CraftingProjects:UndoRemove();assert.equal(10,candidate.planningCraftDrafts.lazy.state.quality);assert.is_true(uiState.hasDraft(candidate,"workingCraft","lazy"))
+	end)
 	it("retains a unique quality session through a reviewed build edit",function()
 		local p=project("unique-reviewed");p.startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
 		build.savers.CraftingProjects:Upsert(p)

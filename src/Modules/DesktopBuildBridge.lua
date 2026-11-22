@@ -287,11 +287,18 @@ function M.apply(prepared)
 	local candidate = prepared.candidate
 	if prepared.mode=="edit" then
 		local previous={};for _,project in ipairs(prepared.base.savers.CraftingProjects.projects) do previous[project.id]=project end
-		local ui=require("Modules.PlanningUI")
+		local ui=require("Modules.PlanningUI");local remaining={}
 		for _,project in ipairs(candidate.savers.CraftingProjects.projects) do
+			remaining[project.id]=true
 			local old=previous[project.id]
 			if old and (old.startingItem~=project.startingItem or old.slot~=project.slot) then
 				assert(not ui.hasDraft(prepared.base,"workingCraft",project.id) and not ui.hasDraft(prepared.base,"uniqueQuality",project.id),"The crafting guide '"..old.title.."' has an unkept working draft for its previous item. Keep that work, then submit a fresh proposal.")
+			end
+		end
+		local lastRemoved=candidate.savers.CraftingProjects.lastRemoved
+		for id,old in pairs(previous) do
+			if not remaining[id] and (ui.hasDraft(prepared.base,"workingCraft",id) or ui.hasDraft(prepared.base,"uniqueQuality",id)) then
+				assert(lastRemoved and lastRemoved.project.id==id,"The crafting guide '"..old.title.."' has unkept work that cannot be recovered after this batch removal. Keep it first, or remove guides one at a time.")
 			end
 		end
 		local carriedRemoval=false
@@ -307,9 +314,11 @@ function M.apply(prepared)
 			local qualityDraft=workspace and workspace:UniqueQualityDraft(removed.project.id) or prepared.base.planningUniqueQualityDrafts and prepared.base.planningUniqueQualityDrafts[removed.project.id]
 			removed.qualityDraft=qualityDraft and copyTable(qualityDraft)
 			removed.qualityPending=require("Modules.PlanningUI").hasDraft(prepared.base,"uniqueQuality",removed.project.id)
-			removed.draft=workspace and workspace:CraftingDraft(removed.project.id)
+			removed.draft=workspace and workspace:CraftingDraft(removed.project.id) or prepared.base.planningCraftDrafts and prepared.base.planningCraftDrafts[removed.project.id]
 			removed.pending=require("Modules.PlanningUI").hasDraft(prepared.base,"workingCraft",removed.project.id)
-			if not removed.draft then local recovery=require("Modules.PlanningRecovery").forCraftingProject(prepared.base,removed.project.id);if recovery then removed.draft=recovery.draft;removed.pending=recovery.pending end end
+			if not removed.draft and not removed.pending then local recovery=require("Modules.PlanningRecovery").forCraftingProject(prepared.base,removed.project.id);if recovery then removed.draft=recovery.draft;removed.pending=recovery.pending end end
+			assert(not removed.pending or removed.draft,"Could not preserve the unkept working craft. Keep it before removing its guide.")
+			assert(not removed.qualityPending or removed.qualityDraft,"Could not preserve the unkept unique preview. Keep it before removing its guide.")
 		end
 	end
 	if prepared.mode == "edit" then candidate.dbFileName,candidate.dbFileSubPath = prepared.base.dbFileName,prepared.base.dbFileSubPath end
