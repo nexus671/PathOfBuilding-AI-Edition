@@ -631,7 +631,7 @@ function Panel.Open(build,project,layout)
 			if warning.code=="gwennen_estimate" then lines[#lines+1]="Experimental: Gwennen odds and rules are unverified.";break end
 		end
 		for _,warning in ipairs(result.warnings or {}) do lines[#lines+1]="Model note: "..warning.message end
-		if result.sampled then lines[#lines+1]=string.format("%d trials | 95%% interval %s to %s",result.trials,ui.percent(result.confidenceLow,2),ui.percent(result.confidenceHigh,2)) end
+		if result.sampled then lines[#lines+1]=string.format("%d trials | 95%% sampling interval %s to %s; model uncertainty is separate.",result.trials,ui.percent(result.confidenceLow,2),ui.percent(result.confidenceHigh,2)) end
 		for message,count in pairsSortByKey(result.transitionErrors or {}) do lines[#lines+1]="Failed modeled transitions: "..count.." | "..message end
 		if result.showAllOutcomes and not result.outcomesFirst then lines[#lines+1]="All modeled outcomes (target matches marked):" end
 		if not result.outcomesFirst then for _,entry in ipairs(result.outcomes) do if entry.matches or result.showAllOutcomes then lines[#lines+1]=ui.percent(entry.chance).." | "..(entry.text or "Finite item outcome")..(result.showAllOutcomes and entry.matches and " | Target" or "") end end end
@@ -694,7 +694,7 @@ function Panel.Open(build,project,layout)
 		local precision={}
 		if result.warnings and #result.warnings>0 then precision[#precision+1]="Model notes are listed with the distribution below." end
 		if request then precision[#precision+1]=request.label.." | "..capturedSettings(request) end
-		precision[#precision+1]=(result.trials<100 or result.confidenceHigh-result.confidenceLow>10) and "Imprecise estimate: run more trials before choosing a crafting route." or "Results describe the captured starting item, targets and supplied prices."
+		precision[#precision+1]=(result.trials<100 or result.confidenceHigh-result.confidenceLow>10) and "Imprecise sampling: run more trials; model uncertainty remains." or "Sampling interval excludes uncertainty in the model."
 		ui.description(popup,"precision",16,132,828,40,precision,14)
 		for index,entry in ipairs({{"medianSpend","MEDIAN SPEND","p50"},{"unluckySpend","90TH PERCENTILE","p90"},{"veryUnluckySpend","99TH PERCENTILE","p99"}}) do
 			local values=result.spendingQuantiles;local value=values and string.format("%.2f",values[entry[3]]) or "Not priced"

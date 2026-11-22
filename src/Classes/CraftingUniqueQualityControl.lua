@@ -673,7 +673,8 @@ function M.Open(build,project,layout,snapshot)
 		local kept=result.retainedSuccesses and result.retainedSuccesses[1];local outputItem=kept and kept.itemText or result.sampleItem;local outputSuccess=kept~=nil or result.sampleSuccess
 		local rw,rh=math.min(760,main.screenW-40),math.min(520,main.screenH-60);local view={}
 		ui.label(view,"heading",16,24,"Saved recipe result",20)
-		local lines={result.sampled and string.format("%d trials: %s success (%s - %s interval).",result.trials,ui.percent(result.successChance,1),ui.percent(result.confidenceLow,1),ui.percent(result.confidenceHigh,1)) or result.sampleSuccess and "Goal reached in the deterministic model." or "Goal not reached in the deterministic model.",
+		local lines={result.sampled and string.format("%d trials: %s success (95%% sampling interval %s - %s).",result.trials,ui.percent(result.successChance,1),ui.percent(result.confidenceLow,1),ui.percent(result.confidenceHigh,1)) or result.sampleSuccess and "Goal reached in the deterministic model." or "Goal not reached in the deterministic model.",
+			result.sampled and "The interval excludes uncertainty in the model." or "Deterministic within this model; game rules may differ.",
 			"Starts from the saved starting item; the current preview is unchanged.",
 			string.format("Mean actions: %.1f attempted, %.1f executed (limit %d).",result.meanActions,result.meanExecutedActions,budget),
 			result.sampled and ("Seed: "..seed.." | Up to "..(trials*budget).." trial-actions.") or "Deterministic action result.",

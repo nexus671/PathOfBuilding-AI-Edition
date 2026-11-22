@@ -6,7 +6,9 @@ return function(build,ui,frame)
 	ui:click("apply");frame("crafting-unique-colour-preview");ui:click("guide");ui:click("recipe")
 	local saved;for _,entry in ipairs(store.projects) do if entry.id==project.id then saved=entry end end
 	assert(saved and saved.steps[1].uniqueCraft.method=="chromatic" and saved.nativeRecipe.steps[1].method=="chromatic","Unique colour guide or recipe was not kept")
-	ui:click("recipe");local colourTasks=require("Modules.CraftingTasks");assert(colourTasks.job,"Sampled colour recipe did not use a background task");while colourTasks.job do colourTasks.tick(build) end;frame("crafting-unique-colour-result");ui:click("close")
+	ui:click("recipe");local colourTasks=require("Modules.CraftingTasks");assert(colourTasks.job,"Sampled colour recipe did not use a background task");while colourTasks.job do colourTasks.tick(build) end;frame("crafting-unique-colour-result")
+	local resultLines={};for _,row in ipairs(main.popups[1].controls.details.list) do resultLines[#resultLines+1]=StripEscapes(row[1]) end;local resultText=table.concat(resultLines," "):gsub("%s+"," ")
+	assert(resultText:find("sampling interval",1,true) and resultText:find("uncertainty in the model",1,true),"Sampling and model uncertainty should be distinguished");ui:click("close")
 	main.popups={}
 	local direct={id="unique-direct-colour-ui",title="Desired colours",slot="Helmet",startingItem=project.startingItem,goals={},steps={}}
 	store:Upsert(direct);require("Classes.CraftingUniqueQualityControl").Open(build,direct)
