@@ -486,7 +486,19 @@ function M.Open(build,source,layout,controller)
 			local entries={};for _,kind in ipairs(kinds) do
 				local description=descriptions[kind] or "Compare example items."
 				local category=encounters[kind] and "Encounters" or kind=="Saved examples" and "Saved" or kind=="Build targets" and "Build" or "Items and comparisons"
-				entries[#entries+1]={id=kind,label=kind,category=category,search=description,details={kind,description,"Examples are not predicted drops, odds or prices."}}
+				local names,seen={},{}
+				if kind~="Build targets" and kind~="Saved examples" and kind~="Preset highlights" then
+					for _,sample in ipairs(library.scene(profile,build,kind,seed,settings.areaLevel,settings.itemLevel)) do
+						local name=sample.BaseType;if name and not seen[name] then seen[name]=true;names[#names+1]=name end
+					end
+				end
+				local details={kind,description,"Examples are not predicted drops, odds or prices."}
+				if #names>0 then
+					details[#details+1]="Example items:"
+					for i=1,math.min(#names,8) do details[#details+1]="  "..names[i] end
+					if #names>8 then details[#details+1]="  And "..(#names-8).." more" end
+				end
+				entries[#entries+1]={id=kind,label=kind,category=category,search=description.." "..table.concat(names," "),details=details}
 			end
 			require("Classes.PlanningBrowserControl").Open("Choose example scene",entries,{action="Use scene",choose=function(entry) selectScene(entry.id) end})
 		end)
