@@ -7,6 +7,20 @@ describe("Crafting import ambiguity",function()
 		assert.is_false(ok)
 		assert.matches("several modifier identities",reason,1,true)
 		assert.matches("ordinary modifier and an Essence modifier",reason,1,true)
+		assert.matches("Ctrl+Alt+C",reason,1,true)
+	end)
+	it("shows the recovery shortcut without changing the saved item",function()
+		local raw="Rarity: RARE\nExample Item\nIron Hat\nItem Level: 86\nImplicits: 0\n+55 to Strength\n+107 to maximum Life"
+		local project={id="ambiguous",title="Ambiguous",slot="Helmet",startingItem=raw,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project);main.popups={}
+		local controls=require("Classes.CraftingProjectControl").Open(build,nil,nil,nil,project.id)
+		controls.native:Click();local popup=assert(main.popups[1]);local parts={}
+		for _,control in pairs(popup.controls) do
+			if control.list then for _,row in ipairs(control.list) do parts[#parts+1]=StripEscapes(row[1] or "") end
+			elseif type(control.label)=="string" then parts[#parts+1]=StripEscapes(control.label) end
+		end
+		assert.matches("Ctrl+Alt+C",table.concat(parts," "),1,true)
+		assert.equal(raw,build.savers.CraftingProjects.projects[1].startingItem);main.popups={}
 	end)
 	it("uses advanced modifier names and ranges to resolve the same displayed rolls",function()
 		for _,case in ipairs({{"of the Gods","51-55","Strength9"},{"of the Essence","51-58","StrengthEssence7_"}}) do

@@ -411,6 +411,9 @@ function I.resolve(M,model,state)
 	if model.item.type=="Tincture" and model.item.tinctureValues=="Final" and ((model.item.tinctureImportedQuality or 0)~=0 or (model.item.tinctureImportedEffect or 0)~=0) then
 		failure="Copied tincture values may include quality or effect scaling, so their modifier tiers cannot be identified reliably. Start with a blank tincture and enter base-value rolls."
 	end
+	if #solutions~=1 and failure:find("advanced copy text",1,true) then
+		failure=failure:gsub("[%.%s]+$","")..". On PC, hover the item and copy it with Ctrl+Alt+C; if rebound, use your advanced-description key with Ctrl+C."
+	end
 	if #solutions==1 and unsupportedScaled then error("Catalyst-scaled multi-value or wide modifier ranges may also match; use advanced copy text or a structured starting state") end
 	assert(#solutions == 1,failure)
 	for _,entry in ipairs(solutions[1]) do
