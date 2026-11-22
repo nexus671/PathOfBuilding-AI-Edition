@@ -276,7 +276,9 @@ function Panel.Open(build,project,layout)
 	end
 
 	button(controls,"apply",162,204,130,"Apply currency",function()
-		local craft=action();local usedSeed=assert(tonumber(controls.seed.buf),"Invalid seed")+sequence
+		local craft=action();local seed=tonumber(controls.seed.buf)
+		assert(seed and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Seed must be an integer from 1 to 2147483646")
+		local usedSeed=(seed-1+sequence)%2147483646+1
 		local result=simulator.perform(draft.startingItem,craft,usedSeed,state,build.spec.treeVersion)
 		local function keep(nextState,index)
 			sequence=sequence+1
