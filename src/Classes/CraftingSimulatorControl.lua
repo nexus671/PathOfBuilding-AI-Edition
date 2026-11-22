@@ -276,10 +276,10 @@ function Panel.Open(build,project,layout)
 	end
 
 	button(controls,"apply",162,204,130,"Apply currency",function()
-		sequence=sequence+1
-		local craft=action();local usedSeed=assert(tonumber(controls.seed.buf),"Invalid seed")+sequence-1
+		local craft=action();local usedSeed=assert(tonumber(controls.seed.buf),"Invalid seed")+sequence
 		local result=simulator.perform(draft.startingItem,craft,usedSeed,state,build.spec.treeVersion)
 		local function keep(nextState,index)
+			sequence=sequence+1
 			changedAffixes={};local previous={};for _,entry in ipairs(state.affixes) do previous[entry.id]=require("dkjson").encode(entry) end
 			for _,entry in ipairs(nextState.affixes) do if previous[entry.id]~=require("dkjson").encode(entry) then changedAffixes[entry.id]=true end end
 			ui.draft(build,"workingCraft",draft.id)
