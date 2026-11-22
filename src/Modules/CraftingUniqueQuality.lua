@@ -260,7 +260,7 @@ end
 
 -- A bounded Divine preview for complete, unambiguous unique templates.
 -- Numeric copies are matched to single integer ranges before rerolling.
-local function divinePlanForReference(raw,item,reference)
+local function divinePlanForReference(raw,item,reference,allowFixed)
 	local expected={};for _,line in ipairs(reference.explicitModLines or {}) do if reference:CheckModLineVariant(line) then
 		if reference.catalyst and (not line.modTags or #line.modTags==0) then return nil,"Catalyst-scaled or untagged explicit modifiers need a separate Divine model" end
 		local scalar=reference.catalyst and reference:GetModLineValueScalar(line,"explicit") or 1
@@ -346,10 +346,10 @@ local function divinePlanForReference(raw,item,reference)
 		end
 	end
 	for _,row in ipairs(expected) do if not row.used then return nil,"Use complete modifiers matching the bundled unique template" end end
-	if #rows==0 then return nil,"No supported variable explicit modifiers were found" end
+	if #rows==0 and not allowFixed then return nil,"No supported variable explicit modifiers were found" end
 	return {item=item,rows=rows,matchedLines=matchedLines}
 end
-local function divinePlan(raw)
+local function divinePlan(raw,allowFixed)
 	local ok,item=pcall(M.inspect,raw);if not ok then return nil,tostring(item) end
 	if item.corrupted then return nil,"Divine Orbs cannot modify a corrupted item" end
 	if item.type=="Tincture" and item.tinctureValues=="Final" then return nil,"Copied tincture values need a separate scaling model for Divine rolls" end
@@ -379,7 +379,7 @@ local function divinePlan(raw)
 	local selected,reason
 	for variant=1,reference.variantList and #reference.variantList or 1 do
 		if reference.variantList then reference.variant=variant end
-		local plan,why=divinePlanForReference(raw,item,reference)
+		local plan,why=divinePlanForReference(raw,item,reference,allowFixed)
 		if plan then
 			if selected then return nil,"This item matches multiple unique variants" end
 			selected=plan
@@ -439,7 +439,7 @@ function M.catalystPreview(raw,catalyst,target)
 	assert(catalyst~=3 and catalyst~=9,"Prefix/suffix catalyst previews need a separate modifier-side model")
 	assert(not item.synthesised and not item.fractured and not item.foulborn,"Special jewellery needs a separate catalyst model")
 	assert(#(item.modMagnitudeMods or {})==0,"Modifier magnitude changes need a separate catalyst model")
-	local plan,reason=divinePlan(raw);assert(plan,reason)
+	local plan,reason=divinePlan(raw,true);assert(plan,reason)
 	local replacements,used={},{}
 	local function add(text,tags,allowSocket)
 		assert(type(text)=="string" and not used[text],"Repeated modifier lines need a separate catalyst model")
