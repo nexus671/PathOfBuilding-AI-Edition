@@ -87,6 +87,11 @@ async function main(){
   const qualityOptimalCopies=[18,17,13,12,11,9].map(q=>`Item Class: Wands\nRarity: Magic\nSuperior Driftwood Wand of the Fox\n--------\nQuality: +${q}%`);
   const qualityOptimal=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:qualityOptimalCopies},'qualityVendorReview');assert.equal(qualityOptimal.qualityVendorReview.categories[0].optimal,true);assert.equal(qualityOptimal.qualityVendorReview.categories[0].groups.length,2);
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
+  const sourceBelt='Rarity: RARE\nExample Belt\nStygian Vise\nItem Level: 83\nCatalyst: Prismatic\nCatalystQuality: 20\n+99% to Cold Resistance\nCorrupted';
+  const blankBaseReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:sourceBelt,includeBlankBase:true,limit:3},'inspected');
+  assert.equal(blankBaseReview.crafting.blankBase.available,true);assert.equal(blankBaseReview.crafting.blankBase.itemText,'Rarity: NORMAL\nStygian Vise\nItem Level: 83');assert.match(blankBaseReview.crafting.blankBase.note,/No item was equipped or changed/);
+  const blankCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:blankBaseReview.crafting.blankBase.itemText,action:{method:'transmute'},seed:42},'crafted');assert.ok(blankCraft.nativeCrafting.itemText);
+  const noLevel=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nIron Hat',includeBlankBase:true,limit:3},'inspected');assert.equal(noLevel.crafting.blankBase.available,false);assert.match(noLevel.crafting.blankBase.reason,/item level/i);
   const gwennenPair={method:'gwennen',firstOutcome:1000,secondOutcome:1029};
   const pairState={rarity:'RARE',affixes:[]};
   const ringPair=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nGold Ring\nItem Level: 86',initialState:pairState,action:gwennenPair,limit:5},'inspected');

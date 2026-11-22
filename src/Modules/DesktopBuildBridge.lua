@@ -792,6 +792,12 @@ function M.poll(build, force)
 				raw = assert(build.itemsTab.items[slot.selItemId],"Selected slot is empty").raw
 			end
 			M.status = {id=request.id,status="inspected",crafting=require("Modules.CraftingProjects").inspect(raw,request.query,request.limit)}
+			assert(request.includeBlankBase==nil or type(request.includeBlankBase)=="boolean","Invalid blank base option")
+			if request.includeBlankBase then
+				local ok,base=pcall(require("Modules.CraftingProjects").blankBase,raw)
+				M.status.crafting.blankBase=ok and {available=true,itemText=base,note="Hypothetical normal base; only base type and item level are retained. Review its implicit, sockets and quality. No item was equipped or changed."}
+					or {available=false,reason=require("Modules.PlanningUI").errorText(base)}
+			end
 			local ok,catalog=pcall(require("Modules.CraftingSimulator").catalog,raw,request.query,request.limit,request.initialState,build.spec.treeVersion)
 			if ok then
 				M.status.crafting.nativeEngine=catalog

@@ -1055,6 +1055,14 @@ test('accepts a named Bestiary flask action and recipe', t => {
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe,recipe);
 });
 
+test('queues an optional hypothetical blank crafting base', t => {
+  const f=fixture(t),args={baseRevision:f.state.revision,itemText:'Rarity: NORMAL\nIron Hat\nItem Level: 86',includeBlankBase:true};
+  f.call('inspect_crafting_item',args);
+  const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'craftInspect');assert.equal(request.includeBlankBase,true);
+  fs.rmSync(path.join(f.dir,'AI-build-request.json'));
+  assert.throws(()=>f.call('inspect_crafting_item',{...args,includeBlankBase:'true'}),/arguments/);
+});
+
 test('queues paged Bestiary modifier inspection and validates the offset', t => {
   const f=fixture(t), action={method:'beast_prefix_suffix',beastLevel:86};
   const args={baseRevision:f.state.revision,itemText:'Rarity: NORMAL\nIron Hat\nItem Level: 20',action,query:'resistance',limit:3,beastOffset:3};
