@@ -1,7 +1,7 @@
--- Generated single-modifier catalyst imports; rejected ambiguous items remain unmodeled.
+-- Generated single-modifier catalyst imports; ambiguous items remain unsupported.
 arg={};dofile('HeadlessWrapper.lua');main.disableDevAutoSave=true
 local sim=require('Modules.CraftingSimulator');local accepted,rejected,wrong,attempted=0,0,0,0
-for _,entry in ipairs({{'Stygian Vise','Prismatic',8},{'Ruby Ring','Turbulent',11},{'Gold Amulet','Fertile',4}}) do
+for _,entry in ipairs({{'Stygian Vise','Prismatic',8},{'Ruby Ring','Turbulent',11},{'Gold Amulet','Fertile',4},{'Stygian Vise','Dextral',3},{'Ruby Ring','Sinistral',9}}) do
  local raw='Rarity: NORMAL\n'..entry[1]..'\nItem Level: 86\nCatalyst: '..entry[2]..'\nCatalystQuality: 20';local model=sim.model(raw)
  local candidates={};for _,v in ipairs(model.mods) do local mod=v.mod;if #mod==1 and mod.affix and mod.affix~='' and mod[1]:match('%(%-?%d+%-%-?%d+%)') and model.item:GetModLineValueScalar({line=mod[1],modTags=mod.modTags,prefix=mod.type=='Prefix',suffix=mod.type=='Suffix'},'explicit')>1 then candidates[#candidates+1]=v end end
  for j=1,math.min(20,#candidates) do local v=candidates[j];local state=copyTable(model.initial);state.rarity='MAGIC';state.affixes={{id=v.id,range=0.5}};local ok,item=pcall(sim.toItem,model,state)
@@ -11,4 +11,4 @@ for _,entry in ipairs({{'Stygian Vise','Prismatic',8},{'Ruby Ring','Turbulent',1
   end end
  end
 end
-print('CATALYST_SWEEP',attempted,accepted,rejected,wrong);assert(attempted>=40 and accepted>=20,'Catalyst sweep did not exercise enough supported items');assert(wrong==0,'Accepted a different modifier identity')
+print('CATALYST_SWEEP',attempted,accepted,rejected,wrong);assert(attempted>=70 and accepted>=25,'Catalyst sweep did not exercise enough supported items');assert(wrong==0,'Accepted a different modifier identity')

@@ -32,6 +32,9 @@ function I.inferRange(template,line,allowOutside)
 	return result
 end
 function I.resolve(M,model,state)
+	if model.item.catalyst and (model.item.catalystQuality==nil or model.item.catalystQuality>0) and #(model.item.modMagnitudeMods or {})>0 then
+		error("Catalyst scaling with modifier-magnitude effects cannot be resolved safely; use recognized modifier IDs or a structured starting state")
+	end
 	local rows={}
 	for _,line in ipairs(model.item.explicitModLines) do rows[#rows+1]={text=itemLib.applyRange(line.line,line.range or 0.5),crafted=line.crafted or false,fractured=line.fractured or false,prefix=line.prefix,suffix=line.suffix} end
 	local used={}
@@ -86,7 +89,7 @@ function I.resolve(M,model,state)
 	-- an ambiguous result must never be silently selected.
 	local function catalystScalar(mod,line)
 		if not model.item.catalyst or (model.item.catalystQuality~=nil and model.item.catalystQuality==0) then return 1 end
-		if not mod.modTags or #mod.modTags==0 or #(model.item.modMagnitudeMods or {})>0 then return 1 end
+		if #(model.item.modMagnitudeMods or {})>0 then return 1 end
 		return model.item:GetModLineValueScalar({line=line,modTags=mod.modTags,prefix=mod.type=="Prefix",suffix=mod.type=="Suffix"},"explicit")
 	end
 	local function scaledRanges(mod,line,text)

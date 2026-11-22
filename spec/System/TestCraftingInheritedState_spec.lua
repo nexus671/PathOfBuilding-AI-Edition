@@ -52,6 +52,13 @@ describe("Crafting starting-item property inheritance",function()
 		local ambiguous=raw:gsub("MAGIC\nStygian Vise of the Ice","RARE\nExample Belt\nStygian Vise"):gsub("+52%%","+42%%")
 		local ok,reason=pcall(sim.model,ambiguous);assert.is_false(ok);assert.matches("several modifier identities",reason,1,true)
 	end)
+	it("checks prefix and suffix catalysts even for untagged modifiers",function()
+		local raw="Rarity: MAGIC\nStygian Vise of Impact\nItem Level: 86\nCatalyst: Dextral\nCatalystQuality: 20\n18% increased Stun Duration on Enemies"
+		local model=sim.model(raw);assert.equal("StunDuration1",model.initial.affixes[1].id)
+		local item=sim.toItem(model,model.initial);assert.matches("18% increased Stun Duration",StripEscapes(itemLib.formatModLine(item.explicitModLines[1],false)),1,true)
+		local none=raw:gsub("CatalystQuality: 20","CatalystQuality: 0");assert.has_error(function() sim.model(none) end)
+		local withMagnitude=raw:gsub("18%% increased Stun Duration", "Implicits: 1\n10%% increased effect of Suffixes\n18%% increased Stun Duration");local ok,reason=pcall(sim.model,withMagnitude);assert.is_false(ok);assert.matches("modifier-magnitude effects",reason,1,true)
+	end)
 	it("retains a copied Eldritch implicit when adding the other side",function()
 		local raw="Rarity: NORMAL\nPlate Vest\nItem Level: 86"
 		local first=sim.perform(raw,{method="eldritch_implicit",side="Exarch",tier=2},11)

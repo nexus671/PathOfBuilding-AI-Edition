@@ -29,7 +29,7 @@ Plain item text can combine values from several modifiers. The importer checks
 for alternative combinations of integer single-stat ranges before accepting an exact
 line match, and rejects ambiguous items. The bounded search can check several
 combined rows, including overlapping hybrid and separate contributor groups. Complex multi-stat values remain incomplete;
-use advanced copy text when modifier identity matters. For catalyst-quality jewellery, the importer can match bounded single-integer modifier rolls against PoB-scaled display values and retains their underlying rolls. It rejects ambiguous assignments and potentially matching scaled multi-value or wide ranges; modifier-magnitude interactions are not modeled by this import path. Tags, rounding and game behavior remain unverified. For unresolved items, the error notes that copied values may be scaled.
+use advanced copy text when modifier identity matters. For catalyst-quality jewellery, the importer can match bounded single-integer modifier rolls against PoB-scaled display values and retains their underlying rolls. It includes prefix and suffix catalysts even when a modifier has no ordinary tags. It rejects ambiguous assignments, potentially matching scaled multi-value or wide ranges, and unresolved items combining catalyst quality with modifier-magnitude effects. Tags, rounding and game behavior remain unverified. For unresolved items, the error notes that copied values may be scaled.
 When no individual modifier matches but a bounded check finds a possible
 combined explanation, the import error says so; it does not invent the
 individual modifier rolls.
