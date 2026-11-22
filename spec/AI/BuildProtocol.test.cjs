@@ -18,6 +18,16 @@ function fixture(t) {
     operations:[{type:'set_character',level:80,className:'Witch',ascendancy:'Elementalist'},{type:'set_skills',groups:[{gems:[{name:'Fireball'}]}]}]}};
 }
 
+test('reads crafting collections larger than the old desktop context limit', t => {
+  const f=fixture(t);
+  f.captured.context.craftingProjects=Array.from({length:132},(_,i)=>({id:`guide-${i}`,title:`Guide ${i}`,simulatorExport:'x'.repeat(128000)}));
+  f.write('context',f.captured);
+  assert.ok(fs.statSync(path.join(f.dir,'AI-build-context.json')).size>16*1024*1024);
+  const result=f.call('get_crafting_projects',{});
+  assert.equal(result.projects.length,132);
+  assert.equal(result.projects[131].simulatorExport.length,128000);
+});
+
 test('queues same-base vendor review with bounded copied items', t => {
   const f=fixture(t), raw='Rarity: Normal\nJade Amulet\n--------\nItem Level: 60';
   f.call('review_same_base_vendor_items',{baseRevision:f.state.revision,items:[raw]});

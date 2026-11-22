@@ -183,7 +183,9 @@ function createBridge(reportPath, clientName = () => "MCP client") {
     // The native desktop may be refreshing this file. Retry brief incomplete reads.
     for (let attempt=0; ; attempt++) {
       try {
-        if (fs.statSync(file).size > 16 * 1024 * 1024) throw new Error('Desktop build data exceeds the supported size.');
+        // A build can contain many saved crafting guides. Its captured context
+        // must not inherit the control-file size guard used for bridge state.
+        if (name !== 'context' && fs.statSync(file).size > 16 * 1024 * 1024) throw new Error('Desktop build data exceeds the supported size.');
         return JSON.parse(fs.readFileSync(file,'utf8'));
       } catch (err) {
         if (attempt >= 4 || !(err instanceof SyntaxError || ['ENOENT','EBUSY'].includes(err.code))) throw err;
