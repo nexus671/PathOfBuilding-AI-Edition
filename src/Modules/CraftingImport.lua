@@ -81,6 +81,33 @@ function I.resolve(M,model,state)
 			if itemLib.applyRange(mod[1],(value-low)/(high-low),scalar)==line then return display end
 		end
 	end
+	-- Copied jewellery can show catalyst-scaled values, while crafted states
+	-- retain base rolls. Enumerate supported integer rolls and keep every match;
+	-- an ambiguous result must never be silently selected.
+	local function catalystScalar(mod,line)
+		if not model.item.catalyst or (model.item.catalystQuality~=nil and model.item.catalystQuality==0) then return 1 end
+		if not mod.modTags or #mod.modTags==0 or #(model.item.modMagnitudeMods or {})>0 then return 1 end
+		return model.item:GetModLineValueScalar({line=line,modTags=mod.modTags,prefix=mod.type=="Prefix",suffix=mod.type=="Suffix"},"explicit")
+	end
+	local function scaledRanges(mod,line,text)
+		local scalar=catalystScalar(mod,line);if scalar==1 then return {} end
+		local low,high=line:match("%((%-?%d+)%-(%-?%d+)%)");low,high=tonumber(low),tonumber(high)
+		if not low or not high or high<=low or high-low>500 then return {} end
+		local _,count=line:gsub("%(%-?%d+%-%-?%d+%)","");if count~=1 then return {} end
+		local displayed=I.inferRange(line,text,true);if not displayed or #displayed~=1 then return {} end
+		local result={};for value=low,high do local range=(value-low)/(high-low)
+			if itemLib.applyRange(line,range,scalar)==text then result[#result+1]={range} end
+		end
+		return result
+	end
+	local function expandedBounds(mod,line,low,high)
+		local scalar=catalystScalar(mod,line)
+		if scalar==1 then return low,high end
+		-- Conservative envelope: include both raw and scaled possibilities and
+		-- allow one integer of rounding at either end.
+		return math.min(low,high,low*scalar,high*scalar)-1,math.max(low,high,low*scalar,high*scalar)+1
+	end
+	local unsupportedScaled=false
 	local function consider(id,crafted,legacy,description330)
 		local key=id..(legacy and ":legacy" or description330 and ":description330" or ":current");if seen[key] then return end;seen[key]=true
 		local mod=legacy and model.legacyLightRadius[id] or description330 and model.descriptions330[id] or model.byId[id];if not mod or #mod == 0 then return end
@@ -97,10 +124,21 @@ function I.resolve(M,model,state)
 			end
 			for i,row in ipairs(rows) do if not used[i] and row.crafted == crafted and (fractured == nil or fractured == row.fractured) and (not row.prefix or mod.type == "Prefix") and (not row.suffix or mod.type == "Suffix") then
 				local already=false;for _,index in ipairs(indices) do if index == i then already=true end end
-				local inferred=not already and (I.inferRange(mod[lineIndex],row.text) or namedTinctureDisplay(mod,row.text))
-				if inferred then
+				if not already and catalystScalar(mod,mod[lineIndex])~=1 then
+					local line=mod[lineIndex];local low,high=line:match("%((%-?%d+)%-(%-?%d+)%)");low,high=tonumber(low),tonumber(high)
+					local _,n=line:gsub("%(%-?%d+%-%-?%d+%)","")
+					local function shape(value) return (value:gsub("%(%-?%d+%-%-?%d+%)","#"):gsub("%-?%d+%.?%d*","#")) end
+					if shape(line)==shape(row.text) and (n~=1 or not low or not high or high<=low or high-low>500) then unsupportedScaled=true end
+				end
+				local choices={};local inferred=not already and (I.inferRange(mod[lineIndex],row.text) or namedTinctureDisplay(mod,row.text))
+				if inferred then choices[#choices+1]=inferred end
+				if not already then for _,scaled in ipairs(scaledRanges(mod,mod[lineIndex],row.text)) do
+					local duplicate=false;for _,choice in ipairs(choices) do if #choice==1 and math.abs(choice[1]-scaled[1])<1e-9 then duplicate=true end end
+					if not duplicate then choices[#choices+1]=scaled end
+				end end
+				for _,choice in ipairs(choices) do
 					indices[#indices+1]=i;local previous=#ranges
-					for _,value in ipairs(inferred) do ranges[#ranges+1]=value end
+					for _,value in ipairs(choice) do ranges[#ranges+1]=value end
 					matchLine(lineIndex+1,row.fractured)
 					indices[#indices]=nil;while #ranges>previous do ranges[#ranges]=nil end
 				end
@@ -195,7 +233,7 @@ function I.resolve(M,model,state)
 		local function matchRemaining(parts)
 			local rest,consumed={},{}
 			for _,part in ipairs(parts) do for index,line in ipairs(part.mod) do if index~=part.line then
-				rest[#rest+1]={line=line,kind=part.mod.type,id=part.id,order=part.mod.statOrder and part.mod.statOrder[index]}
+				rest[#rest+1]={line=line,mod=part.mod,kind=part.mod.type,id=part.id,order=part.mod.statOrder and part.mod.statOrder[index]}
 			end end end
 			local function patternFor(line)
 				local first,last,low,high=line:find("%((%-?%d+)%-(%-?%d+)%)")
@@ -207,10 +245,11 @@ function I.resolve(M,model,state)
 				local first;for i=1,#rest do if not consumed[i] then first=i;break end end
 				if not first then return cover() end
 				local part=rest[first];consumed[first]=true
-				for i,row in ipairs(rows) do if not used[i] and sideFits(row,part.kind) and I.inferRange(part.line,row.text) then
+				for i,row in ipairs(rows) do if not used[i] and sideFits(row,part.kind) and (I.inferRange(part.line,row.text) or #scaledRanges(part.mod,part.line,row.text)>0) then
 					used[i]=true;local found=match();used[i]=nil;if found then consumed[first]=nil;return true end
 				end end
 				local pattern,low,high=patternFor(part.line)
+				if pattern then low,high=expandedBounds(part.mod,part.line,low,high) end
 				if pattern and part.order then
 					for rowIndex,row in ipairs(rows) do if not used[rowIndex] and sideFits(row,part.kind) then
 						local value=tonumber(row.text:match(pattern))
@@ -223,6 +262,7 @@ function I.resolve(M,model,state)
 								end
 								for j=start,#rest do if not consumed[j] then
 									local other=rest[j];local otherPattern,a,b=patternFor(other.line)
+									if otherPattern then a,b=expandedBounds(other.mod,other.line,a,b) end
 									if not ids[other.id] and other.order==part.order and otherPattern==pattern and sideFits(row,other.kind) then
 										ids[other.id]=true;consumed[j]=true
 										local found=combine(j+1,min+math.min(a,b),max+math.max(a,b),count+1)
@@ -248,7 +288,7 @@ function I.resolve(M,model,state)
 					if first and not line:sub(last+1):find("%(%-?%d+%-%-?%d+%)") then
 						local pattern="^"..escape(line:sub(1,first-1)).."(%-?%d+)"..escape(line:sub(last+1)).."$"
 						local value=tonumber(row.text:match(pattern))
-						if value then byPattern[pattern]=byPattern[pattern] or {};byPattern[pattern][#byPattern[pattern]+1]={id=entry.id,mod=mod,line=lineIndex,low=tonumber(low),high=tonumber(high),value=value} end
+						if value then local a,b=expandedBounds(mod,line,tonumber(low),tonumber(high));byPattern[pattern]=byPattern[pattern] or {};byPattern[pattern][#byPattern[pattern]+1]={id=entry.id,mod=mod,line=lineIndex,low=a,high=b,value=value} end
 					end
 				end end
 			end
@@ -346,6 +386,7 @@ function I.resolve(M,model,state)
 	if model.item.type=="Tincture" and model.item.tinctureValues=="Final" and ((model.item.tinctureImportedQuality or 0)~=0 or (model.item.tinctureImportedEffect or 0)~=0) then
 		failure="Copied tincture values may include quality or effect scaling, so their modifier tiers cannot be identified reliably. Start with a blank tincture and enter base-value rolls."
 	end
+	if #solutions==1 and unsupportedScaled then error("Catalyst-scaled multi-value or wide modifier ranges may also match; use advanced copy text or a structured starting state") end
 	assert(#solutions == 1,failure)
 	for _,entry in ipairs(solutions[1]) do
 		local kind=model.byId[entry.id].type

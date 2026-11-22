@@ -14,6 +14,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check generated plain item imports
         run: cd src && LUA_PATH='../runtime/lua/?.lua;../runtime/lua/?/init.lua;;' luajit ../tools/check_crafting_imports.lua
+      - name: Check catalyst-scaled item imports
+        run: cd src && LUA_PATH='../runtime/lua/?.lua;../runtime/lua/?/init.lua;;' luajit ../tools/check_catalyst_imports.lua
   test_planning_workflow:
     runs-on: ubuntu-latest
     container: ghcr.io/pathofbuildingcommunity/pathofbuilding-tests:latest
