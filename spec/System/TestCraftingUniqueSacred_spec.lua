@@ -30,4 +30,18 @@ describe("Sacred Orb previews for unique armour", function()
 		local run=sim.simulate(raw,recipe,{trials=3,maxActions=1,forceFirstAction=true,seed=104729,prices={sacred=2},currency="chaos"})
 		assert.equal(3,run.currencySpent.sacred);assert.equal(2,run.meanCost)
 	end)
+	it("explains unsafe item text before offering a preview", function()
+		local cases={
+			{raw:gsub("Item Level: 86", "Item Level: 86\nItem Level: 86"),"Could not safely locate item level"},
+			{raw.."\nEnergyShieldBasePercentile: 0.5\nEnergyShieldBasePercentile: 0.8","Duplicate base defence percentile"},
+			{raw.."\nEnergy Shield: 100","Duplicate base defence property"},
+			{raw:gsub("Energy Shield: 132","Energy Shield: unknown"),"Could not safely update displayed defence"},
+		}
+		for _,case in ipairs(cases) do
+			assert.equal(case[2],unique.sacredReason(case[1]))
+			local options=sim.catalog(case[1],"sacred",20).uniqueActions
+			assert.equal(1,#options);assert.is_false(options[1].available)
+			assert.has_error(function() unique.sacred(case[1],104729) end)
+		end
+	end)
 end)

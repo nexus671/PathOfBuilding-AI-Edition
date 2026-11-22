@@ -170,11 +170,31 @@ function M.sacredReason(raw)
 	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
 	if item.corrupted then return "Sacred Orbs require an uncorrupted item" end
 	if not item.base.armour then return "Sacred Orbs require armour" end
+	local variable={}
 	for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
 		local low,high=item.base.armour[kind.."BaseMin"],item.base.armour[kind.."BaseMax"]
-		if low and high and high>low then return nil end
+		if low and high and high>low then variable[kind]=true end
 	end
-	return "This armour has no variable base defences"
+	if not next(variable) then return "This armour has no variable base defences" end
+	local names={Armour="Armour",Evasion="Evasion",["Evasion Rating"]="Evasion",["Energy Shield"]="EnergyShield",Ward="Ward"}
+	local markers,properties,levels={},{},0
+	for line in raw:gmatch("[^\r\n]+") do
+		local marker=line:match("^(%a+)BasePercentile:%s*")
+		if marker and variable[marker] then
+			if markers[marker] then return "Duplicate base defence percentile" end
+			markers[marker]=true
+		end
+		if line:match("^Item Level:%s*%d+") then levels=levels+1 end
+		local kind=names[line:match("^([^:]+):")]
+		if kind and variable[kind] then
+			if properties[kind] then return "Duplicate base defence property" end
+			if not line:match("^[^:]+:%s*[%d,]+") then return "Could not safely update displayed defence" end
+			properties[kind]=true
+		end
+	end
+	for kind in pairs(variable) do
+		if not markers[kind] and levels~=1 then return "Could not safely locate item level" end
+	end
 end
 function M.sacred(raw,seed)
 	local reason=M.sacredReason(raw);assert(not reason,reason)

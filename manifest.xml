@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1126" />
+	<Version number="2.68.1-ai.preview1127" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2196,7 +2196,7 @@
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />
 	<File name="Modules/CraftingSimulator.lua" part="program" sha1="46ca5fca7fd04e4dbae07afd24f28779038c62b8" />
 	<File name="Modules/CraftingUniqueCatalyst.lua" part="program" sha1="8605c7046874178179b08a22a59a673cdda61a31" />
-	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="09521c98b8e3050b0b082f9da9550444298afd3a" />
+	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="35ccc87ea9736b7b8b5a123d5695fb4f642438fd" />
 	<File name="Modules/CraftingUniqueSimulation.lua" part="program" sha1="451e30124807d75a2d9afb3e337b212f7df883cf" />
 	<File name="Modules/CraftingUnlockTasks.lua" part="program" sha1="b1ab9cc44e5f7411715f74fff720379d44c65d21" />
 	<File name="Modules/CraftingSockets.lua" part="program" sha1="a4f92053c5ba69ce26abca43957b8cc798482853" />
