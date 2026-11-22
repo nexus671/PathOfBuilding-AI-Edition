@@ -288,6 +288,7 @@ function M.openPopup(item, slotName, primaryBuild)
 	if not item then return end
 
 	local isUnique = item.rarity == "UNIQUE" or item.rarity == "RELIC"
+	local missingUniqueBase = isUnique and (type(item.baseName) ~= "string" or not item.baseName:match("%S"))
 	local controls = {}
 	local uri = ""
 	local rowHeight = 24
@@ -421,8 +422,9 @@ function M.openPopup(item, slotName, primaryBuild)
 		-- Unique item name label
 		controls.nameLabel = new("LabelControl"):LabelControl(nil, {0, ctrlY, 0, 16}, "^x" .. (colorCodes[item.rarity] or "FFFFFF"):gsub("%^x","") .. item.name)
 		ctrlY = ctrlY + rowHeight
-		if not uniqueTradeName(item) then
-			controls.nameWarning = new("LabelControl"):LabelControl(nil, {0, ctrlY, 0, 16}, "^xFFBB77Name not recognised: searching all uniques of this base.")
+		if missingUniqueBase or not uniqueTradeName(item) then
+			local message = missingUniqueBase and "Item base not recognised: trade search unavailable." or "Name not recognised: searching all uniques of this base."
+			controls.nameWarning = new("LabelControl"):LabelControl(nil, {0, ctrlY, 0, 16}, "^xFFBB77" .. message)
 			ctrlY = ctrlY + rowHeight
 		end
 	else
@@ -521,12 +523,13 @@ function M.openPopup(item, slotName, primaryBuild)
 	-- Search button
 	ctrlY = ctrlY + 8
 	controls.search = new("ButtonControl"):ButtonControl(nil, { 0, ctrlY, 110, 20 }, "Open URL", function()
+		if missingUniqueBase or not uri or uri == "" then return end
 		Copy(uri)
 		OpenURL(uri)
 	end, nil)
-	controls.search.tooltipText = "The URL is also copied to the clipboard."
+	controls.search.tooltipText = missingUniqueBase and "A recognised item base is required for this search." or "The URL is also copied to the clipboard."
 	controls.search.enabled = function()
-		return uri and uri ~= ""
+		return not missingUniqueBase and uri and uri ~= ""
 	end
 
 	controls.close = new("ButtonControl"):ButtonControl(nil, { popupWidth / 2 - 50, ctrlY, 60, 20 }, "Close", function()
