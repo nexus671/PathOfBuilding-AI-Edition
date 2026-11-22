@@ -240,7 +240,7 @@ fields also work in fossil optimization, whose initial state is in
 | Tool | Purpose |
 | --- | --- |
 | `get_crafting_projects` | Read saved projects. Use `summaryOnly` with `offset` and `limit` to browse large collections, then `projectId` to read one complete guide. Compare the revision across pages. |
-| `propose_build` | Use `patch_crafting_guide` to review changes to a saved guide's title, notes, goals or steps without resending the rest of the project. |
+| `propose_build` | Use `patch_crafting_guide` to review changes to a saved guide's title, notes, goals or steps without resending the rest of the project. Individual MCP requests are limited to 1 MiB. |
 | `inspect_crafting_item` | Read native IDs, initial state and coverage; supply an action to inspect its Allflame profile or a paged Bestiary modifier pool. |
 | `apply_crafting_action` | Emulate an action; continue with the original text and returned state. |
 | `simulate_crafting` | Run a background recipe with targets, routes and prices. |

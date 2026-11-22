@@ -526,9 +526,9 @@ function M.poll(build, force)
 		if not M.contextRevision or not revisions.same(M.contextStamp,revisions.stamp(build)) then M.refresh(build) else M.publishState() end
 		local file = io.open(path("request"),"rb")
 		if not file then return end
-		local requestText = file:read(262145); file:close()
+		local requestText = file:read(1024*1024+1); file:close()
 		os.remove(path("request"))
-		assert(#requestText <= 262144,"Proposal exceeds the supported size")
+		assert(#requestText <= 1024*1024,"Request exceeds the supported size")
 		local request = assert(json.decode(requestText),"Invalid proposal JSON")
 		assert(request.session == M.session,"Proposal belongs to another desktop session")
 		assert(type(request.id) == "string" and request.id:match("^[%w%-]+$") and #request.id <= 80,"Invalid proposal ID")

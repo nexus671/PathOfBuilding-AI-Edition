@@ -85,6 +85,15 @@ test('queues a focused crafting guide edit without replacing the project', t => 
   assert.throws(()=>f.call('propose_build',{...f.proposal,operations:[{...op,patch:{startingItem:'other'}}]}),/arguments/);
 });
 
+test('queues large guide requests within the desktop limit and rejects larger ones', t => {
+  const f=fixture(t), makeSteps=n=>Array.from({length:n},(_,i)=>({action:`${i}:`+'x'.repeat(990)}));
+  const proposal={...f.proposal,mode:'edit',operations:[{type:'patch_crafting_guide',projectId:'helmet-guide',patch:{steps:makeSteps(300)}}]};
+  f.call('propose_build',proposal);
+  const file=path.join(f.dir,'AI-build-request.json');assert.ok(fs.statSync(file).size>256*1024);fs.unlinkSync(file);
+  proposal.operations[0].patch.steps=makeSteps(1100);
+  assert.throws(()=>f.call('propose_build',proposal),/exceeds 1 MiB/);assert.equal(fs.existsSync(file),false);
+});
+
 test('accepts 3.30 crafting state markers without opening the schema', t => {
   const f=fixture(t), itemText='Rarity: NORMAL\nIron Hat\nItem Level: 86';
   const initialState={rarity:'RARE',affixes:[{id:'AttackCastSpeedPerNearbyEnemyEssence1',range:0.5,description330:true,legacySource:itemText}],corrupted:true,corruptedImplicits:[{id:'V2SupportedByLifeGainOnHitCorrupted',range:0.5,corruption330:true}],synthRetained:[1,2,3],gildedCorruptionReplaced:true,synthExhausted:true,synthRolls:[{id:'SynthesisImplicitPercentLife3',range:0.5}],socketLayoutUnknown:true};
