@@ -495,7 +495,7 @@ describe("Visual filter catalogue",function()
 	it("tests Sanctum and pinnacle examples using pinned item classes",function()
 		local f=assert(io.open("Data/LootFilters/base-classes.json","rb"));local classes=assert(require("dkjson").decode(f:read("*a"))).classes;f:close()
 		local profile=filters.profile("scenes","Scenes");profile.template='Show\n Class == "Sanctum Research" "Map Fragments"\nHide'
-		for _,example in ipairs({{"Sanctum","Forbidden Tome",11},{"Pinnacle bosses","Crescent Splinter",11}}) do
+		for _,example in ipairs({{"Sanctum","Forbidden Tome",11},{"Pinnacle bosses","Crescent Splinter",12}}) do
 			local scene=library.scene(profile,build,example[1],0,76,81);assert.equal(example[3],#scene);assert.equal(example[2],scene[1].BaseType)
 			for _,item in ipairs(scene) do assert.is_nil(item.BaseType:find("Maven's Invitation",1,true));assert.equal(classes[item.BaseType],item.Class);assert.equal(76,item.AreaLevel);assert.equal(81,item.ItemLevel) end
 			local page=filters.simulateScene(profile,example[1],0,76,81,0,2);assert.equal(example[3],page.total);assert.equal(example[2],page.results[1].sample.BaseType)

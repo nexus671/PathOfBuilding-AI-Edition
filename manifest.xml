@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1107" />
+	<Version number="2.68.1-ai.preview1108" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1766,7 +1766,7 @@
 	<File name="Classes/LootFilterCampaignControl.lua" part="program" sha1="f322969e973075682dae46da551ec63289170674" />
 	<File name="Classes/LootFilterCategoryControl.lua" part="program" sha1="c2305569737cb47ef545e0b5770b71dabfc4ed35" />
 	<File name="Classes/LootFilterCollectionControl.lua" part="program" sha1="9a6870a82b61f4084c3c0497ab9efcd5e6963133" />
-	<File name="Classes/LootFilterControl.lua" part="program" sha1="006a8b50f59860064934557b707e1158e77f1f0c" />
+	<File name="Classes/LootFilterControl.lua" part="program" sha1="110ecdeda82b20a791d19027b986e97279debb7d" />
 	<File name="Classes/LootFilterDiffControl.lua" part="program" sha1="994e194583ccb50a6f50fe71876258d7b0bdd2f9" />
 	<File name="Classes/LootFilterEffectsControl.lua" part="program" sha1="c0da01c25134dd3d7bda386626c07dff699ebeec" />
 	<File name="Classes/LootFilterFileBrowser.lua" part="program" sha1="8ee03d60d0aebdb49587330e7ddb369a796bcbf3" />
@@ -2230,7 +2230,7 @@
 	<File name="Modules/LootFilterExports.lua" part="program" sha1="778f95494f6f7f499327b8e094457f0ff227b9e1" />
 	<File name="Modules/LootFilterFileNames.lua" part="program" sha1="dfe7063ddc6f031aca1cef3f79198006e7b50aaf" />
 	<File name="Modules/LootFilterImports.lua" part="program" sha1="14c2904c7ecbaed9a44146b21fffe1c341d8bb14" />
-	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="685f44fe5b14921823ecc252925ba8636a8fa800" />
+	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="a5eca3e5a48ca2ef49d79bead1596d9ca8f2e887" />
 	<File name="Modules/LootFilterParser.lua" part="program" sha1="56f0c48c5adb8b43dba574f055492a3d90a4db0c" />
 	<File name="Modules/LootFilterRuleOrder.lua" part="program" sha1="c9bd2dd5f27d9f701a4d82071e756c97db2ad101" />
 	<File name="Modules/LootFilterStackTiers.lua" part="program" sha1="4cde2e6df2d6277a2f6ce9af3cf1e4a2fc84ce9f" />

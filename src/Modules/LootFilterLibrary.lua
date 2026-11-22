@@ -308,13 +308,13 @@ local mapExamples={
 	{"Map (Tier 16)","Maps","Rare",{UberBlightedMap=true}},
 }
 local flaskExamples={
-	{"Sulphur Flask","Utility Flasks","Unique"}, -- Bottled Faith shares this unidentified base.
 	{"Sacred Life Flask","Life Flasks"},{"Divine Life Flask","Life Flasks"},
 	{"Divine Mana Flask","Mana Flasks"},{"Granite Flask","Utility Flasks"},
 	{"Quicksilver Flask","Utility Flasks"},{"Amethyst Flask","Utility Flasks"},
 	{"Silver Flask","Utility Flasks"},{"Bismuth Flask","Utility Flasks"},
 	{"Prismatic Tincture","Tinctures"},{"Oakbranch Tincture","Tinctures"},
 	{"Rosethorn Tincture","Tinctures"},{"Instilling Orb","Stackable Currency"},
+	{"Sulphur Flask","Utility Flasks","Unique"}, -- Bottled Faith shares this unidentified base.
 }
 -- Released base names and filter classes from the pinned client and RePoE
 -- class export. These examples do not model encounter or item probabilities.
@@ -414,13 +414,13 @@ local sanctumExamples={
  {"Lycia's Invocation of Divine Shield","Stackable Currency"},{"Lycia's Invocation of Eldritch Battery","Stackable Currency"},
 }
 local bossExamples={
- {"Sulphur Flask","Utility Flasks","Unique"}, -- Bottled Faith shares this unidentified base.
  {"Crescent Splinter","Stackable Currency"},{"The Maven's Writ","Map Fragments"},
  {"Fragment of the Hydra","Map Fragments"},{"Fragment of the Phoenix","Map Fragments"},
  {"Fragment of the Minotaur","Map Fragments"},{"Fragment of the Chimera","Map Fragments"},
  {"Fragment of Purification","Map Fragments"},{"Fragment of Constriction","Map Fragments"},
  {"Fragment of Eradication","Map Fragments"},{"Fragment of Enslavement","Map Fragments"},
  {"Orb of Conflict","Stackable Currency"},
+ {"Sulphur Flask","Utility Flasks","Unique"}, -- Bottled Faith shares this unidentified base.
 }
 -- Deliberate test items for the campaign recipe policies, not a simulated set
 -- of actual drops. Socket layouts are explicit so their preview is decisive.
