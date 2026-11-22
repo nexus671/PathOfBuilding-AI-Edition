@@ -497,6 +497,18 @@ describe("Linked planning tools",function()
 		assert.is_true(warning({{method="socket_bench",count=4,linked=true},{method="socket_bench",count=4}}))
 		assert.is_false(warning({{method="socket_bench",count=4},{method="socket_bench",count=4,linked=true}}))
 		assert.is_false(warning({{method="quality",onSuccess=3,onFailureAction="stop"},{method="socket_bench",count=4,linked=true},{method="socket_bench",count=4,onSuccess=2}}))
+		assert.is_false(warning({{method="omen_jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}}))
+		assert.is_false(warning({{method="jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}}))
+		local _,warnings=filters.generate(build,filters.profile("random-route","Random route"));local random=false
+		for _,entry in ipairs(warnings) do if entry.origin=="craft:"..project.id and entry.message:find("Random socket count before linking needs review",1,true) then random=true end end
+		assert.is_true(random)
+		assert.is_true(warning({{method="quality",onSuccess=3,onFailureAction="stop"},{method="omen_jeweller"},{method="socket_bench",count=4,linked=true}}))
+		project.startingItem=project.startingItem.."\nCorrupted"
+		assert.is_false(warning({{method="tainted_jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}}))
+		assert.is_false(warning({{method="omen_jeweller",onFailureAction="stop"},{method="socket_bench",count=4,linked=true}}))
+		local _,blocked=filters.generate(build,filters.profile("blocked-omen","Blocked Omen"));local corrupt=false
+		for _,entry in ipairs(blocked) do if entry.origin=="craft:"..project.id and entry.message:find("Use the bench or tainted currency on corrupted items",1,true) then corrupt=true end end
+		assert.is_true(corrupt)
 	end)
 	it("warns when unique recipe actions cannot modify a corrupted item",function()
 		local project={id="corrupted-unique",title="Corrupted unique",slot="Helmet",startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R G B\nCorrupted",goals={},steps={},nativeRecipe={steps={{method="quality"},{method="omen_connections"}},targets={},requirements={links=3}}}

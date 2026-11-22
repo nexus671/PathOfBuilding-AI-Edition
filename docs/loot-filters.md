@@ -31,6 +31,8 @@ The workspace has six pages:
 
 A saved recipe whose structured starting state uses a different recombined base also generates a pickup for that base and its item level. If the state cannot be read, the previous pickup is kept for review.
 
+For unique crafting recipes, linked pickup review follows the Omen of the Jeweller when it changes the socket count. A random Jeweller roll leaves the later count uncertain, so the review asks you to check it rather than claiming the link step is impossible. This checks modeled routes, not the chance of reaching the desired count.
+
 A distinct non-unique crafting target base also receives a pickup, using its recorded item level as a minimum when supplied. A starting or recipe-base pickup that already covers the target is not duplicated.
 
 A unique starting item or target in a crafting project generates a pickup for unique items of its base type. This may include other uniques sharing the base; the copied item level is not used as a minimum.

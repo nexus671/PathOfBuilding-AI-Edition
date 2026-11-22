@@ -306,7 +306,7 @@ function M.generate(build,profile,checkpoint)
 				local catalog=unique.catalog(project.startingItem,"",50);local actions={};for _,entry in ipairs(catalog.uniqueActions) do actions[entry.priceKey]=entry end
 				local result={items={},unknown={}};local prices=require("Modules.CraftingPrices");local model={item=item}
 				if project.nativeRecipe.initialState then result.unknown[#result.unknown+1]="ordinary starting state" end
-				local socketActions={socket_bench=true,socket_white_bench=true,omen_connections=true,beast_max_links=true}
+				local socketActions={socket_bench=true,socket_white_bench=true,omen_connections=true,beast_max_links=true,omen_jeweller=true,jeweller=true,tainted_jeweller=true}
 				local hasSocketAction=false;for _,step in ipairs(project.nativeRecipe.steps) do if socketActions[step.method] then hasSocketAction=true;break end end
 				if hasSocketAction and not project.startingItem:find("\nSockets: ",1,true) then result.unknown[#result.unknown+1]="Starting socket layout is not explicit" end
 				-- Follow recipe branches, including loops, so a later socket craft only
@@ -330,9 +330,10 @@ function M.generate(build,profile,checkpoint)
 				local socketModificationReason=hasSocketAction and unique.socketModificationReason(project.startingItem,item) or nil
 				local function permanentReason(step)
 					local reason=fixedCountReason(step);if reason then return reason end
-					if item.corrupted and (step.method=="quality" or step.method=="omen_connections" or step.method=="beast_max_links") then
+					if item.corrupted and (step.method=="quality" or step.method=="omen_connections" or step.method=="beast_max_links" or step.method=="omen_jeweller" or step.method=="jeweller") then
 						return step.method=="quality" and "Ordinary quality currency cannot modify a corrupted item" or "Use the bench or tainted currency on corrupted items"
 					end
+					if not item.corrupted and step.method=="tainted_jeweller" then return "Tainted currency requires a corrupted item" end
 					if step.method=="quality" and (item.quality or 0)>=20 then return "Ordinary quality currency cannot exceed 20%" end
 					if socketActions[step.method] and socketModificationReason then return socketModificationReason end
 				end
@@ -342,6 +343,14 @@ function M.generate(build,profile,checkpoint)
 					local nextCount=count
 					local blocked=permanentReason(step)
 					if step.method=="socket_bench" and not step.linked and not blocked and type(step.count)=="number" and step.count==math.floor(step.count) and step.count>=2 and step.count<=require("Modules.CraftingSimulator").socketLimit({item=item}) then nextCount=step.count end
+					if step.method=="omen_jeweller" and not blocked then
+						local maximum=unique.omenCount(item);local reason=fixedCountReason({method="socket_bench",count=maximum})
+						if not reason and count~=0 and count<maximum then nextCount=maximum end
+					elseif (step.method=="jeweller" or step.method=="tainted_jeweller") and not blocked then
+						-- A random roll does not establish a specific count. Retain an
+						-- unknown state through the route rather than declaring it impossible.
+						nextCount=-1
+					end
 					if not blocked then visit(step.onSuccess or at+1,nextCount) end
 					if step.onFailureAction=="restart" then visit(1,#item.sockets)
 					elseif step.onFailureAction~="stop" and step.onFailureAction~="salvage" then
@@ -359,7 +368,10 @@ function M.generate(build,profile,checkpoint)
 						if type(count)=="number" and count==math.floor(count) and count>=2 and count<=sim.socketLimit({item=item}) and (step.linked==nil or type(step.linked)=="boolean") then
 							local sockets={};if step.linked then for i=1,count do sockets[i]={} end end
 							entry={components=sim.components({method="socket_bench",count=count,linked=step.linked},{sockets=sockets,corrupted=item.corrupted})}
-							if step.linked and reachable[index] and not reachable[index][count] then result.unknown[#result.unknown+1]="No modeled route sets "..count.." sockets before linking" end
+							if step.linked and reachable[index] and not reachable[index][count] then
+								if reachable[index][-1] then result.unknown[#result.unknown+1]="Random socket count before linking needs review"
+								else result.unknown[#result.unknown+1]="No modeled route sets "..count.." sockets before linking" end
+							end
 						end
 					else entry=actions[step.method] end
 					if reason then result.unknown[#result.unknown+1]=reason end
