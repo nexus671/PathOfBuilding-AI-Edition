@@ -31,6 +31,7 @@ line match, and rejects ambiguous items. The bounded search can check several
 combined rows, including overlapping hybrid and separate contributor groups. Complex multi-stat values remain incomplete;
 use advanced copy text when modifier identity matters. For catalyst-quality jewellery, the importer can match bounded single-integer modifier rolls against PoB-scaled display values and retains their underlying rolls. It includes prefix and suffix catalysts even when a modifier has no ordinary tags. It rejects ambiguous assignments, potentially matching scaled multi-value or wide ranges, and unresolved items combining catalyst quality with modifier-magnitude effects. Tags, rounding and game behavior remain unverified. For unresolved items, the error notes that copied values may be scaled.
 When the first two complete assignments differ between an ordinary modifier and an Essence modifier, the error names that ambiguity. Other possible assignments may exist; it still requires more information rather than choosing one.
+On PC, hover the item in game and use **Ctrl+Alt+C** to copy its advanced modifier descriptions and roll ranges, then paste that text into the project. If the advanced-description key was rebound, use that key with Ctrl+C. Advanced text can resolve some ambiguities, but it does not guarantee that every imported item can be identified.
 When no individual modifier matches but a bounded check finds a possible
 combined explanation, the import error says so; it does not invent the
 individual modifier rolls.
