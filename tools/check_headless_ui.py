@@ -51,6 +51,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_crafting_replay_ui.lua")
     sources.append(ROOT / "tools/test_genesis_ui.lua")
     sources.append(ROOT / "tools/test_atlas_remove_ui.lua")
+    sources.append(ROOT / "tools/test_atlas_search_ui.lua")
     sources.append(ROOT / "tools/test_crafting_blank_ui.lua")
     sources.append(ROOT / "tools/test_crafting_base_implicit_ui.lua")
     sources.append(ROOT / "tools/test_unique_random_guide_ui.lua")
@@ -119,6 +120,10 @@ def main():
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "controls.log").write_text(result.stdout)
     assert result.returncode == 0, result.stdout
+    atlas_search = subprocess.run(lua_command + ["../tools/test_atlas_search_ui.lua", str(frames)], cwd=ROOT / "src",
+                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "atlas-search-controls.log").write_text(atlas_search.stdout)
+    assert atlas_search.returncode == 0, atlas_search.stdout
     atlas_removal = subprocess.run(lua_command + ["../tools/test_atlas_remove_ui.lua"], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-removal-controls.log").write_text(atlas_removal.stdout)
@@ -250,7 +255,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2364, f"Expected 2364 UI frames, found {len(paths)}"
+    assert len(paths) == 2367, f"Expected 2367 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         for scene in ("beyond", "incursion"):
             assert (frames / f"{width}-filter-{scene}-examples.json").is_file(), f"Missing {scene} scene at {width}px"

@@ -174,6 +174,18 @@ function Panel.Open(build,source,layout)
 	local preferred
 	local pointUsage,routeAvailable,routeReason,hasMissingChoices
 	local grantSteps,grantIndex,grantInitial,grantBudget,grantWarning,grantMatchLabel,stageResume,openStages
+	local function updateResult(row,node,cost)
+		row.cost=cost;row.label=node.name..(cost and " | +"..cost or " | blocked")
+		local state=cost==nil and "Blocked" or cost==0 and "Allocated" or "+"..cost.." points"
+		local category=#strategy.blocking(node)>0 and "Blocks natural spawns" or strategy.mechanic(node)
+		if row.duplicate and #strategy.blocking(node)==0 then
+			local bounds=controls.canvas.mapBounds;local x=(node.x-bounds[1])/(bounds[3]-bounds[1]);local y=(node.y-bounds[2])/(bounds[4]-bounds[2])
+			local vertical=y<1/3 and "Upper" or y>2/3 and "Lower" or "Middle"
+			local horizontal=x<1/3 and "left" or x>2/3 and "right" or "centre"
+			category=vertical.." "..horizontal.." #"..node.id
+		end
+		row.subtitle=ui.fit(state.." | "..category,inspector-30,13)
+	end
 	local function current()
 		local result=copyTable(draft); result.title=controls.title.buf; result.budget=assert(tonumber(controls.budget.buf),"Enter a point budget"); result.notes=controls.notes.buf
 		if result.avoided~=nil or #avoided>0 then result.avoided=copyTable(avoided) end
@@ -187,11 +199,6 @@ function Panel.Open(build,source,layout)
 			controls.avoid.label="Avoid selected"
 		end
 		if not controls.canvas.tree.nodes[controls.canvas.focus] then controls.canvas.focus=nil end
-		controls.results.selectedKey=nil
-		for i,row in ipairs(controls.results.list) do
-			row.selected=row.val==controls.canvas.focus
-			if row.selected then controls.results.selIndex=i;controls.results.selectedKey=row.val end
-		end
 		controls.version:SelByValue(draft.version,"val")
 		local report=atlas.report(draft,{includeAdditive=false});hasMissingChoices=#report.missingChoices>0
 		if controls.strategySummary then
@@ -240,7 +247,15 @@ function Panel.Open(build,source,layout)
 		controls.details.list=detailRows
 		controls.avoid.label=#avoided>0 and "Avoid ("..#avoided..")" or "Avoid selected"
 		local costs=strategy.costs(draft,avoided)
-		for _,entry in ipairs(controls.results.list) do local resultNode=controls.canvas.tree.nodes[entry.val];if resultNode then entry.label=resultNode.name..(costs[entry.val] and " | +"..costs[entry.val] or " | blocked") end end
+		local costsChanged=false
+		for _,entry in ipairs(controls.results.list) do local resultNode=controls.canvas.tree.nodes[entry.val];if resultNode and entry.cost~=costs[entry.val] then updateResult(entry,resultNode,costs[entry.val]);costsChanged=true end end
+		if costsChanged then table.sort(controls.results.list,function(a,b)
+			if a.cost~=b.cost then return (a.cost or math.huge)<(b.cost or math.huge) end
+			local first,second=controls.canvas.tree.nodes[a.val],controls.canvas.tree.nodes[b.val]
+			if first.name~=second.name then return first.name<second.name end;return a.val<b.val
+		end) end
+		controls.results.selectedKey=nil
+		for i,row in ipairs(controls.results.list) do row.selected=row.val==controls.canvas.focus;if row.selected then controls.results.selIndex=i;controls.results.selectedKey=row.val end end
 	end
 	local function showGrantStep(index)
 		grantIndex=index;local step=grantSteps[index];local tree=controls.canvas.tree;local node=tree.nodes[step.id]
@@ -285,9 +300,10 @@ function Panel.Open(build,source,layout)
 	controls.search.placeholder="Search nodes"
 	local function findNodes(recenter)
 		local mechanic=controls.mechanic:GetSelValue();local filtered=mechanic~="All mechanics" and mechanic or nil
-		local matches=strategy.results(draft,controls.search.buf,filtered,avoided);local list={};controls.canvas.matches={}
+		local matches=strategy.results(draft,controls.search.buf,filtered,avoided);local list={};controls.canvas.matches={};local names={}
+		for _,entry in ipairs(matches) do names[entry.node.name]=(names[entry.node.name] or 0)+1 end
 		for i,entry in ipairs(matches) do
-			if i<=100 then list[#list+1]={label=entry.node.name..(entry.cost and " | +"..entry.cost or " | blocked"),val=entry.id} end
+			if i<=100 then list[#list+1]={label=entry.node.name..(entry.cost and " | +"..entry.cost or " | blocked"),val=entry.id,cost=entry.cost,duplicate=names[entry.node.name]>1} end
 			if controls.search.buf~="" or filtered then controls.canvas.matches[entry.id]=true end
 		end
 		controls.results:SetList(list);controls.results.selIndex=1
@@ -317,8 +333,7 @@ function Panel.Open(build,source,layout)
 		self.list={};for _,entry in ipairs(entries) do local row=copyTable(entry);local node=controls.canvas.tree.nodes[row.val]
 			local title=node and node.name or row.label;while #title>0 and DrawStringWidth(14,"VAR",title)>inspector-30 do title=title:sub(1,-2) end
 			row[1]="^7"..title;row.height=40;row.textSize=14
-			local category=node and (#strategy.blocking(node)>0 and "Blocks natural spawns" or strategy.mechanic(node)) or ""
-			row.subtitle=node and ui.fit(category.." | "..(row.label:match("%+%d+") or "blocked").." points",inspector-30,12) or "";self.list[#self.list+1]=row
+			if node then updateResult(row,node,row.cost) else row.subtitle="" end;self.list[#self.list+1]=row
 		end
 	end
 	function controls.results:SelByValue(value,key) for i,row in ipairs(self.list) do if row[key or "val"]==value then self.selIndex=i end end end
