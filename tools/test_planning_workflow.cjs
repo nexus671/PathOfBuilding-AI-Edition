@@ -481,6 +481,11 @@ async function main(){
   const variantRecipe={rarity:'UNIQUE',steps:[{method:'divine',maxAttempts:10,untilRequirements:variantGoal}],targets:[],requirements:variantGoal};
   const variantRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:variantUniqueRaw,recipe:variantRecipe,options:{trials:5,maxActions:10,seed:123}},'crafted');assert.equal(variantRun.nativeCrafting.trials,5);
   const ringUniqueRaw='Rarity: UNIQUE\nAndvarius\nGold Ring\nItem Level: 86\nImplicits: 1\n+10% to Item Rarity\n+10 to Dexterity\n+60% to Item Rarity\n-20% to all Elemental Resistances';
+  const ringGuide={id:'unsupported-ring-quality',title:'Ring quality guide',slot:'Ring 1',startingItem:ringUniqueRaw,goals:[],steps:[{action:"Use 1 Armourer's Scrap",uniqueCraft:{method:'quality',count:1}}]};
+  await queued('propose_crafting_plan',{baseRevision:context.revision,project:ringGuide},'review');await host('apply');context=(await call('get_build_context')).context;
+  const ringGuideSaved=(await call('get_crafting_projects')).projects.find(entry=>entry.id===ringGuide.id);assert.equal(ringGuideSaved.steps[0].action,ringGuide.steps[0].action);assert.equal(ringGuideSaved.steps[0].uniqueCraft,undefined);
+  const ringGuideFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'ring-guide-filter',title:'Ring guide pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');assert.ok(!ringGuideFilter.profile.rules.some(rule=>rule.origin==='craft:'+ringGuide.id && rule.title==="Armourer's Scrap"));
+  await queued('propose_build',{mode:'edit',title:'Remove unsupported ring guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:ringGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
   const ringInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ringUniqueRaw,query:'divine',limit:10},'inspected');
   const ringOption=ringInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='divine');assert.equal(ringOption.available,true,JSON.stringify(ringOption));
   const ringApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:ringUniqueRaw,action:ringOption.action,seed:123},'crafted');assert.ok(ringApply.nativeCrafting.itemText.includes('+(50-70)% to Item Rarity'));
