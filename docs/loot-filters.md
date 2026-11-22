@@ -33,6 +33,8 @@ The workspace has six pages:
 
 A saved recipe whose structured starting state uses a different recombined base also generates a pickup for that base and its item level. If the state cannot be read, the previous pickup is kept for review.
 
+Unfinished written crafting steps do not automatically add currency pickups. The pickup review flags these steps so you can check the saved recipe or add needed currencies to your budget. Completed written steps do not trigger this notice.
+
 For unique crafting recipes, linked pickup review follows the Omen of the Jeweller when it changes the socket count. A random Jeweller roll leaves the later count uncertain, so the review asks you to check it rather than claiming the link step is impossible. This checks modeled routes, not the chance of reaching the desired count.
 
 A distinct non-unique crafting target base also receives a pickup, using its recorded item level as a minimum when supplied. A starting or recipe-base pickup that already covers the target is not duplicated.

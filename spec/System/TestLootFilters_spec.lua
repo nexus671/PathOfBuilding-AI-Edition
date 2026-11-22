@@ -12,6 +12,13 @@ describe("Build-owned loot filters",function()
 	end)
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("warns when unfinished written crafting steps cannot supply currency pickups",function()
+		local project={id="manual-guide",title="Manual guide",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={{action="Use a rare currency"}}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("manual","Manual");local _,warnings=filters.generate(build,profile)
+		local found=false;for _,entry in ipairs(warnings) do if entry.origin=="craft:manual-guide" and entry.message:find("Written guide steps",1,true) then found=true end end;assert.is_true(found)
+		project.steps[1].done=true;build.savers.CraftingProjects:Upsert(project);_,warnings=filters.generate(build,profile)
+		for _,entry in ipairs(warnings) do assert.is_false(entry.origin=="craft:manual-guide" and entry.message:find("Written guide steps",1,true)~=nil) end
+	end)
 	it("explains invalid filter previews with their compiled line in single and batch tests",function()
 		local direct=parser.simulate(parser.parse('Show\n SetFontSize 99'),{})
 		assert.equal("invalid",direct.status);assert.equal(2,direct.line);assert.matches("line 2: Invalid SetFontSize",direct.reasons[1])

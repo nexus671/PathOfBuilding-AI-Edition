@@ -418,7 +418,8 @@ function M.generate(build,profile,checkpoint)
 	-- Written unique previews carry typed actions. Do not infer currencies from
 	-- free text: an edited guide may no longer describe the original craft.
 	for _,project in ipairs(build.savers.CraftingProjects.projects) do
-		local tagged=false;for _,step in ipairs(project.steps or {}) do if step.uniqueCraft then tagged=true;break end end
+		local tagged,manual=false,false;for _,step in ipairs(project.steps or {}) do if step.uniqueCraft then tagged=true elseif not step.done then manual=true end end
+		if manual then warnings[#warnings+1]={origin="craft:"..project.id,title=project.title,message="Written guide steps do not add currency pickups automatically. Check the saved recipe or add needed currencies to your budget."} end
 		local ok,item,info=false,nil,nil
 		if tagged then local inspected,parsed,details=pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem);ok,item,info=inspected,parsed,details end
 		local uniqueSocketCount=ok and #item.sockets or nil
