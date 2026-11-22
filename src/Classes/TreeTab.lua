@@ -1181,6 +1181,9 @@ function TreeTabClass:FindTimelessJewel()
 	local legionNodes = treeData.legion.nodes
 	local legionAdditions = treeData.legion.additions
 	local timelessData = self.build.timelessData
+	-- Only the selected jewel's lists are saved with the build. Keep the
+	-- other drafts available while this dialog remains open.
+	local jewelDrafts = { }
 	local controls = { }
 	local modData = { }
 	local ignoredMods = { "Might of the Vaal", "Legacy of the Vaal", "Strength", "Add Strength", "Dex", "Add Dexterity", "Devotion", "Price of Glory", "Ward" }
@@ -1572,6 +1575,10 @@ function TreeTabClass:FindTimelessJewel()
 	end
 
 	controls.jewelSelect = new("DropDownControl"):DropDownControl({ "TOPLEFT", nil, "TOPLEFT" }, { panelWidth / 2 + 2, 25, 200, rowHeight }, jewelTypes, function(index, value)
+		local previousId = timelessData.jewelType.id
+		if previousId then
+			jewelDrafts[previousId] = { desired = timelessData.searchList or "", fallback = timelessData.searchListFallback or "" }
+		end
 		timelessData.jewelType = value
 		controls.devotionSelectLabel.shown = value.id == 4 -- Militant Faith
 		controls.abyssAscendancyLabel.shown = value.id == 11
@@ -1581,13 +1588,19 @@ function TreeTabClass:FindTimelessJewel()
 		timelessData.conquerorType = conquerorTypes[timelessData.jewelType.id][1]
 		controls.nodeSelect.selIndex = 1
 		buildMods()
-		updateSearchList("", false)
-		updateSearchList("", true)
+		local draft = jewelDrafts[value.id] or { desired = "", fallback = "" }
+		updateSearchList(draft.desired, false)
+		updateSearchList(draft.fallback, true)
 		if controls.socketFilter.state then
 			setAllocatedNodes()
 		end
 	end)
 	controls.jewelSelect.selIndex = timelessData.jewelType.id
+	controls.jewelSelect.tooltipFunc = function(tooltip)
+		tooltip:Clear()
+		tooltip:AddLine(16, "^7Each jewel type keeps its lists while this dialog is open.")
+		tooltip:AddLine(16, "^7Save the build to retain the selected type and its lists.")
+	end
 	controls.jewelSelectLabel = new("LabelControl"):LabelControl({"RIGHT", controls.jewelSelect, "LEFT"}, {-labelSpacing, 0, 0, labelHeight}, "^7Jewel Type:")
 	
 
@@ -2140,13 +2153,40 @@ function TreeTabClass:FindTimelessJewel()
 	end)
 	controls.fallbackWeightsLabel = new("LabelControl"):LabelControl({"RIGHT", controls.fallbackWeightsList, "LEFT"}, {-labelSpacing, 0, 0, labelHeight}, "^7Fallback Weight Mode:")
 	controls.fallbackWeightsList.selIndex = timelessData.fallbackWeightMode.idx or 1
+	local fallbackHistory = { }
 	controls.fallbackWeightsButton = new("ButtonControl"):ButtonControl({"LEFT", controls.fallbackWeightsList, "RIGHT"}, {5, 0, 66, 18}, "Generate", function()
+		local previous = timelessData.searchListFallback or ""
 		setupFallbackWeights()
+		if previous ~= (timelessData.searchListFallback or "") then
+			fallbackHistory[timelessData.jewelType.id] = { previous = previous, redo = false }
+		end
 		controls.searchListFallbackButton.label = "^4Fallback Nodes"
 	end)
 	controls.fallbackWeightsButton.tooltipFunc = function(tooltip, mode, index, value)
 		tooltip:Clear()
 		tooltip:AddLine(16, "^7Click this button to generate new fallback node weights, replacing your old ones.")
+	end
+	controls.fallbackWeightsUndo = new("ButtonControl"):ButtonControl({"LEFT", controls.fallbackWeightsButton, "RIGHT"}, {5, 0, 52, 18}, function()
+		local history = fallbackHistory[timelessData.jewelType.id]
+		return history and history.redo and "Redo" or "Undo"
+	end, function()
+		local history = fallbackHistory[timelessData.jewelType.id]
+		if not history then return end
+		local current = timelessData.searchListFallback or ""
+		if history.desired ~= nil then
+			local desired = timelessData.searchList or ""
+			updateSearchList(history.desired, false)
+			history.desired = desired
+		end
+		updateSearchList(history.previous, true)
+		history.previous, history.redo = current, not history.redo
+		controls.searchListFallbackButton.label = "^4Fallback Nodes"
+	end)
+	controls.fallbackWeightsUndo.enabled = function() return fallbackHistory[timelessData.jewelType.id] ~= nil end
+	controls.fallbackWeightsUndo.tooltipFunc = function(tooltip)
+		tooltip:Clear()
+		tooltip:AddLine(16, "^7Restore lists changed by Generate or Reset, or switch them back.")
+		tooltip:AddLine(16, "^7This history lasts until the dialog closes.")
 	end
 	controls.totalMinimumWeight = new("EditControl"):EditControl({"TOPLEFT", controls.fallbackWeightsList, "BOTTOMLEFT"}, {0, rowSpacing, 200, rowHeight}, "", nil, "%D", nil, function(val)
 		local num = tonumber(val)
@@ -2214,7 +2254,7 @@ function TreeTabClass:FindTimelessJewel()
 		tooltip:AddLine(16, "^7Edit the list directly, or select a node and adjust its weight sliders.")
 		tooltip:AddLine(16, "^7Fallback weights apply when a node has no desired-node entry.")
 		tooltip:AddLine(16, "^7Generate uses your build to calculate weights and replaces this list,")
-		tooltip:AddLine(16, "^7including any manual edits.")
+		tooltip:AddLine(16, "^7including manual edits. Undo restores the previous list while open.")
 	end
 	controls.searchListFallbackButton.locked = function() return controls.searchListFallback.shown end
 
@@ -2796,6 +2836,10 @@ function TreeTabClass:FindTimelessJewel()
 	local buttonWidth = 80
 	-- reset button anchored to middle of panel and other buttons anchored to it
 	controls.resetButton = new("ButtonControl"):ButtonControl({"BOTTOMLEFT", nil, "BOTTOMLEFT"}, {panelWidth / 2 - buttonWidth/2, -edgePadding, buttonWidth, buttonHeight}, "Reset", function()
+		local desired, fallback = timelessData.searchList or "", timelessData.searchListFallback or ""
+		if desired ~= "" or fallback ~= "" then
+			fallbackHistory[timelessData.jewelType.id] = { previous = fallback, desired = desired, redo = false }
+		end
 		updateSearchList("", true)
 		updateSearchList("", false)
 		controls.abyssAscendancySelect.selIndex = 1

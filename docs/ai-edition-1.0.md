@@ -69,7 +69,7 @@ The anoint selector requests Full DPS for candidate calculations only when that 
 
 ## Timeless Jewel dialog
 
-The dialog adapts its width at 960, 1024 and 1280 pixels. Headless checks cover the common, Militant Faith and Reclaimed Malevolence layouts, including spacing between the Militant Faith selectors. Native desktop rendering remains unverified.
+The dialog adapts its width at 960, 1024 and 1280 pixels. Headless checks cover the common, Militant Faith and Reclaimed Malevolence layouts, including spacing between the Militant Faith selectors. Native desktop rendering remains unverified. Generate and Reset have a one-step list undo/redo for each jewel type while the dialog is open; undoing Reset restores the two lists, not search results or other controls. Switching jewel types retains their list drafts in that dialog. Only the selected jewel type and its lists are saved with the build; other drafts and undo history are discarded when the dialog closes.
 
 ## Timeless Jewel fallback weights
 
