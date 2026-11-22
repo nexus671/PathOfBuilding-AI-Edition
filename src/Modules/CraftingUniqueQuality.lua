@@ -538,14 +538,25 @@ function M.catalystPreview(raw,catalyst,target)
 		if #tags>0 then replacements[text]=tags end
 	end
 	if not item.variantList then for _,row in ipairs(plan.matchedLines or {}) do add(row.text,row.tags,false) end end
-	local templates={};for line in (item.base.implicit or ""):gmatch("[^\r\n]+") do templates[#templates+1]=line end
-	assert(#templates==#(item.implicitModLines or {}),"The original base implicits could not be verified")
 	local infer=require("Modules.CraftingImport").inferRange
+	-- The shared display name resolves to only one of the three distinct base
+	-- records. Match the implicit before choosing its catalyst tags.
+	local implicitBase=item.base
+	if item.baseName=="Two-Stone Ring" and #(item.implicitModLines or {})==1 then
+		local line=item.implicitModLines[1];local shown=itemLib.applyRange(line.line,line.range or 0.5);local matched
+		for _,name in ipairs({"Two-Stone Ring (Fire/Lightning)","Two-Stone Ring (Cold/Lightning)","Two-Stone Ring (Fire/Cold)"}) do
+			local candidate=data.itemBases[name]
+			if candidate and candidate.implicit and infer(candidate.implicit,shown) then assert(not matched,"The Two-Stone Ring implicit is ambiguous");matched=candidate end
+		end
+		assert(matched,"The Two-Stone Ring implicit could not be identified");implicitBase=matched
+	end
+	local templates={};for line in (implicitBase.implicit or ""):gmatch("[^\r\n]+") do templates[#templates+1]=line end
+	assert(#templates==#(item.implicitModLines or {}),"The original base implicits could not be verified")
 	for index,line in ipairs(item.implicitModLines or {}) do
 		assert(not line.disabled and not line.custom and not line.corrupted,"Special implicit modifiers need a separate catalyst model")
 		local shown=itemLib.applyRange(line.line,line.range or 0.5)
 		assert(infer(templates[index],shown),"An implicit modifier does not match the base item")
-		local tags=copyTable((item.base.implicitModTypes or {})[index] or {})
+		local tags=copyTable((implicitBase.implicitModTypes or {})[index] or {})
 		if info.quality>0 and #tags>0 and line.line:find("%d") then assert(line.modTags and #line.modTags>0,"Copied catalyst-scaled implicits need explicit unscaled values and tags") end
 		if item.variantList and line.modTags and #line.modTags>0 then
 			local allowed={};for _,tag in ipairs(tags) do allowed[tag]=true end

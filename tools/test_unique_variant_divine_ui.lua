@@ -59,6 +59,19 @@ for index=1,2 do
 end
 local missingTag=catalystDoedre(2):gsub("{variant:1}{tags:attribute}","{variant:1}",1)
 assert(not pcall(unique.catalystPreview,missingTag,4,20),"Missing inactive variant tags were accepted")
+for _,entry in ipairs({
+ {name="Berek's Grip",tags="elemental,cold,lightning,resistance",text="Cold and Lightning"},
+}) do
+ local template
+ for _,entries in pairs(data.uniques) do for _,raw in ipairs(entries) do if raw:match("^%s*"..entry.name.."\n") then template=raw end end end
+ local raw="Rarity: UNIQUE\n"..assert(template):gsub("^([^\r\n]+\n[^\r\n]+\n)","%1Selected Variant: 1\nItem Level: 83\n",1)
+ local result=unique.catalystPreview(raw,8,20);local item=unique.inspect(result.itemText)
+ local implicit=item.implicitModLines[1];local shown=itemLib.applyRange(implicit.line,implicit.range or 0.5,item:GetModLineValueScalar(implicit,"implicit"))
+ assert(shown=="+16% to "..entry.text.." Resistances","Two-Stone implicit scaled incorrectly: "..shown)
+ assert(result.itemText:find("{tags:"..entry.tags.."}",1,true),"Two-Stone implicit used the wrong base tags")
+ local bad=raw:gsub("%(12%-16%)%% to "..entry.text,"(1-2)%% to "..entry.text,1)
+ assert(not pcall(unique.catalystPreview,bad,8,20),"Invalid Two-Stone implicit was accepted")
+end
 assert(unique.divineReason(itemFor(999)),"Invalid saved variant was accepted")
 assert(unique.divineReason(itemFor(3):gsub("Variant: Pre 2.2.0\n",""):gsub("Variant: Pre 3.0.0\n",""):gsub("Variant: Current\n","")),"Variant lines without a saved list were accepted")
 assert(unique.divineReason(itemFor(3):gsub("Variant: Current","Variant: Unrelated")),"Changed variant names were accepted")
@@ -78,4 +91,11 @@ build.savers.CraftingProjects:Upsert(project);local control=require("Classes.Cra
 ui:click("catalystPlan");ui:click("preview")
 local found=false;for _,row in ipairs(control.itemMods.list) do if table.concat(row):find("+30 to maximum Mana",1,true) then found=true end end
 assert(found,"Catalyst preview did not update the unique item display");ui:restore()
+newBuild();main.popups={};ui=UI.install({width=1024,height=768});ui:bind(build)
+local grip=catalystRing(3):gsub("\nCatalyst: Fertile\nCatalystQuality: 20","")
+project={id="two-stone-catalyst",title="Two-Stone catalyst",slot="Ring 1",startingItem=grip,goals={},steps={}}
+build.savers.CraftingProjects:Upsert(project);control=require("Classes.CraftingUniqueQualityControl").Open(build,project)
+ui:click("catalystPlan");ui:choose("kind",8,"val");ui:click("preview")
+found=false;for _,row in ipairs(control.itemMods.list) do if table.concat(row):find("+16% to Cold and Lightning Resistances",1,true) then found=true end end
+assert(found,"Two-Stone catalyst preview did not update the item display");ui:restore()
 print("UNIQUE_VARIANT_DIVINE_UI_OK")
