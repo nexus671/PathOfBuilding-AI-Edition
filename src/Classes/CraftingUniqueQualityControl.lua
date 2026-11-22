@@ -117,6 +117,10 @@ function M.Open(build,project,layout,snapshot)
 		whiteReason=unique.whiteReason(raw)
 		omenJewellerReason=unique.omenReason(raw)
 		colourReason=unique.colourReason(raw,item.corrupted and "tainted_chromatic" or "chromatic")
+		if colourReason then
+			if not unique.colourReason(raw,"omen_trichromatism") then colourReason=nil end
+			for count=2,4 do if not unique.colourReason(raw,"socket_colour_bench",count) then colourReason=nil;break end end
+		end
 		taintedQualityReason=item.corrupted and unique.taintedQualityReason(raw) or nil
 		divineReason=not item.corrupted and unique.divineReason(raw) or nil
 		c.status.label=not info.qualitySupported and "^7Catalyst quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or "Preview available") or "^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")

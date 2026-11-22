@@ -19,4 +19,8 @@ assert(not controls.white:IsEnabled() and controls.white.tooltipText():find('no%
 ui:click('socketCount');ui:click('colours');local colours=main.popups[1].controls
 assert(not colours.apply:IsEnabled() and colours.apply.tooltipText():find('no%-white%-socket'))
 ui:choose('method','omen_trichromatism','val');assert(colours.apply:IsEnabled());ui:restore()
+newBuild();main.popups={};local host=require('Modules.HeadlessUI').install({width=1024,height=768});host:bind(build)
+local two=raw:gsub('R%-G%-B','R-G');local short={id='dialla-two',title='Dialla two sockets',slot='Body Armour',startingItem=two,goals={},steps={}};build.savers.CraftingProjects:Upsert(short)
+local control=require('Classes.CraftingUniqueQualityControl').Open(build,short);assert(control.socketCount:IsEnabled(),'A safe colour craft must remain accessible when socket-count crafts are unavailable')
+host:click('socketCount');host:click('colours');host:choose('method','socket_colour_bench:2','val');assert(main.popups[1].controls.apply:IsEnabled());host:click('apply');assert(control.currencyNote.list[1][1]:find('5 Chromatic',1,true));host:restore()
 print('DIALLA_SOCKET_RESTRICTION_OK')
