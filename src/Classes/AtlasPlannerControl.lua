@@ -288,7 +288,10 @@ function Panel.Open(build,source,layout)
 		local value=selected.val
 		if value ~= draft.version then
 			controls.version:SelByValue(draft.version,"val")
-			local replacement={id=draft.id,title=controls.title.buf,version=value,budget=atlas.tree(value).maxPoints,nodes={},notes=controls.notes.buf}
+			local used={[draft.id]=true};for _,plan in ipairs(store.plans) do used[plan.id]=true end
+			if layout and layout.atlasDrafts then for _,entry in ipairs(layout.atlasDrafts()) do if entry.plan then used[entry.plan.id]=true end end end
+			local id,serial=nil,0;repeat serial=serial+1;id="atlas-"..require("sha1")(tostring({})..os.time()..serial):sub(1,12) until not used[id]
+			local replacement={id=id,title=controls.title.buf,version=value,budget=atlas.tree(value).maxPoints,nodes={},notes=controls.notes.buf}
 			main:OpenConfirmPopup("Change Atlas version","Changing versions starts an empty draft. Saved plans are kept.","Change",function() if layout and layout.replaceAtlas then layout.replaceAtlas(replacement) else if not layout then main:ClosePopup() end;Panel.Open(build,replacement,layout) end end)
 		end
 	end)

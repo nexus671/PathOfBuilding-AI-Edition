@@ -134,6 +134,7 @@ function M:Show(page,source)
 	if not cached then
 		local layout={selectedProject=self.selections[page],restore=saved and saved.view,restorePage=saved and saved.plan and saved.plan.page,transient=self.transient,width=self.viewport.width,height=self.viewport.height-52,navigate=function(target,value) self:Show(target,value) end}
 		layout.replaceAtlas=function(plan)
+			self:Remember("atlas")
 			self.cache.atlas=nil;self.drafts.atlas=nil;self.atlasDrafts[plan.id]=nil;self:Show("atlas",plan)
 		end
 		layout.atlasDrafts=function()
