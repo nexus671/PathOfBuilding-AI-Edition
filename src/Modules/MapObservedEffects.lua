@@ -72,7 +72,7 @@ function M.deified(effects,planned)
 end
 -- Project the published stacking rule using a user-supplied example gain.
 -- This does not model map reforging, eligibility or the gain distribution.
-function M.projectDelirium(currentPercent,currentType,nextType,gain)
+function M.projectDelirium(currentPercent,currentType,nextType,gain,targetPercent)
  local function number(value,low,high,label)
   assert(type(value)=="number" and value==math.floor(value) and value>=low and value<=high,"Invalid "..label);return value
  end
@@ -88,13 +88,19 @@ function M.projectDelirium(currentPercent,currentType,nextType,gain)
  local currentReward,nextReward=resolvedReward(currentType),resolvedReward(nextType)
  assert(nextReward,"Unrecognized next reward type; choose a listed Delirium Orb or reward type")
  assert(currentPercent==0 or currentReward,"Unrecognized current reward type; use a listed Delirium Orb or reward type")
+ if targetPercent~=nil then targetPercent=number(targetPercent,1,100,"target Delirium percentage") end
  local same=currentPercent>0 and currentReward:lower()==nextReward:lower()
  local start=same and currentPercent or 0
  local function outcome(add)
   local percent=math.min(100,start+add)
   return {percent=percent,baseRewardCount=1+math.floor(percent/20)}
  end
- return {currentPercent=currentPercent,currentType=currentType,nextType=nextType,currentReward=currentReward,nextReward=nextReward,orbReference=M.orbReference(),exampleGain=gain,sameType=same,
+ local target
+ if targetPercent then
+  local remaining=math.max(0,targetPercent-start)
+  target={percent=targetPercent,minimumOrbs=math.ceil(remaining/50),maximumOrbs=math.ceil(remaining/5),baseRewardCount=1+math.floor(targetPercent/20)}
+ end
+ return {currentPercent=currentPercent,currentType=currentType,nextType=nextType,currentReward=currentReward,nextReward=nextReward,orbReference=M.orbReference(),exampleGain=gain,sameType=same,target=target,
   minimum=outcome(5),maximum=outcome(50),example=outcome(gain),
   note="Projection only. No map is modified. GGG fixed Delirium Orb use on Nightmare Maps in 3.30.0d; orbs cannot be used on legacy maps with Delirium layers. Orb availability, other item eligibility, reforged modifiers, other rewards and gain probabilities are not verified."}
 end

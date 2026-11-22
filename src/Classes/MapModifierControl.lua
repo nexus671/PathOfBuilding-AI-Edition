@@ -165,7 +165,7 @@ function M.Open(options)
 		local module=require("Modules.MapObservedEffects");local known=module.delirium(observedEffects)
 		local uncertain=unidentified or module.hasExplicit(observedEffects) and not known
 		for _,effect in ipairs(observedEffects or {}) do if effect.kind=="enchant" and (effect.text:lower():find("delirious",1,true) or effect.text:lower():find("delirium",1,true)) then uncertain=true end end
-		local c={};local w,h=math.min(640,main.screenW-40),340
+		local c={};local w,h=math.min(640,main.screenW-40),390
 		ui.description(c,"intro",16,24,w-32,40,{map.isNightmare(baseId) and "3.30.0d fixed Delirium Orbs on Nightmare Maps. Preview only; reforging is not modeled." or "Preview Delirium Orb stacking. Legacy maps with Delirium layers cannot use these orbs."},14)
 		ui.label(c,"currentLabel",16,76,"Current %",14);ui.label(c,"currentTypeLabel",128,76,"Current reward type",14)
 		ui.label(c,"nextTypeLabel",344,76,"Next reward type",14)
@@ -174,14 +174,16 @@ function M.Open(options)
 		c.nextType=new("EditControl"):EditControl(ui.anchor,{344,100,w-360,26},known and known.rewardType or "Currency Items",nil,nil,80)
 		ui.label(c,"gainLabel",16,180,"Example gain (5-50%)",14)
 		c.gain=new("EditControl"):EditControl(ui.anchor,{16,204,120,26},"10",nil,"%D",2)
-		c.results=new("TextListControl"):TextListControl(ui.anchor,{152,180,w-168,96},nil,{})
+		ui.label(c,"targetLabel",16,240,"Target %",14)
+		c.target=new("EditControl"):EditControl(ui.anchor,{16,264,120,26},"100",nil,"%D",3)
+		c.results=new("TextListControl"):TextListControl(ui.anchor,{152,180,w-168,120},nil,{})
 		local function update()
-			local ok,result=pcall(module.projectDelirium,tonumber(c.current.buf),c.currentType.buf,c.nextType.buf,tonumber(c.gain.buf))
+			local ok,result=pcall(module.projectDelirium,tonumber(c.current.buf),c.currentType.buf,c.nextType.buf,tonumber(c.gain.buf),tonumber(c.target.buf))
 			if not ok then c.results.list=ui.rows({ui.errorText(result)},w-190,14);return end
 			local function line(label,value) return label..": "..value.percent.."% | "..value.baseRewardCount..(value.baseRewardCount==1 and " base reward" or " base rewards") end
-			c.results.list=ui.rows({line("Example",result.example),"Possible: "..result.minimum.percent.."-"..result.maximum.percent.."% | "..result.minimum.baseRewardCount.."-"..result.maximum.baseRewardCount.." base rewards",result.sameType and "Same type: percentage accumulates." or "Different or new type: percentage starts over."},w-190,14)
+			c.results.list=ui.rows({line("Example",result.example),"Possible: "..result.minimum.percent.."-"..result.maximum.percent.."% | "..result.minimum.baseRewardCount.."-"..result.maximum.baseRewardCount.." base rewards",result.sameType and "Same type: percentage accumulates." or "Different or new type: percentage starts over.",result.target and ("Target "..result.target.percent.."%: "..result.target.minimumOrbs.."-"..result.target.maximumOrbs.." orbs (5-50% per orb).") or "Enter a target from 1-100%."},w-190,14)
 		end
-		for _,key in ipairs({"current","currentType","nextType","gain"}) do c[key].changeFunc=update end
+		for _,key in ipairs({"current","currentType","nextType","gain","target"}) do c[key].changeFunc=update end
 		local function chooseReward(target)
 			local entries={};for _,choice in ipairs(module.orbReference().choices) do
 				entries[#entries+1]={id=choice.name,label=choice.name,search=choice.reward,reward=choice.reward,details={"Reward type: "..choice.reward,"Client data 3.30.0.4; item availability and reforge behavior are not verified."}}
@@ -192,7 +194,7 @@ function M.Open(options)
 		c.chooseOrb=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{344,136,w-360,26},"Choose next...",function() chooseReward(c.nextType) end))
 		c.chooseCurrentOrb.tooltipText="Choose the reward already on the map from pinned client data."
 		c.chooseOrb.tooltipText="Choose the next reward from pinned client data, or enter a listed orb or reward name."
-		ui.description(c,"scope",16,282,w-168,42,{"No map is changed. Eligibility, rerolled modifiers, other rewards and roll odds are not modeled."},12)
+		ui.description(c,"scope",16,320,w-168,42,{"No map is changed. Eligibility, rerolled modifiers, other rewards and roll odds are not modeled."},12)
 		c.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-132,h-42,116,28},"Close",function() main:ClosePopup() end))
 		ui.style(c);for _,control in pairs(c) do control.layoutAudit="map-delirium-projection" end
 		update();main:OpenPopup(w,h,"Delirium projection",c,nil,"gain","close")

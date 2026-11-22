@@ -592,7 +592,7 @@ function M.poll(build, force)
 			end
 			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
 				if request.kind=="list_map_allflame" then return require("Modules.MapAllflame").reference() end
-				if request.kind=="project_map_delirium" then return require("Modules.MapObservedEffects").projectDelirium(request.currentPercent,request.currentType,request.nextType,request.gain) end
+				if request.kind=="project_map_delirium" then return require("Modules.MapObservedEffects").projectDelirium(request.currentPercent,request.currentType,request.nextType,request.gain,request.targetPercent) end
 				if request.kind=="inspect_copied_map" then return require("Modules.MapClipboard").parse(request.itemText,checkpoint) end
 				if request.kind=="estimate_map_rerolls" then return require("Modules.MapCraftEstimate").run(request.state,request.options,checkpoint) end
 				if request.kind=="simulate_map_currency" then return require("Modules.MapCurrency").perform(request.state,request.action,request.seed,checkpoint,nil,nil,request.allflameId) end

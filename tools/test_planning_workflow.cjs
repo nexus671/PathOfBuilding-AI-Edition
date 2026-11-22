@@ -1206,8 +1206,9 @@ async function main(){
   const delirious=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:deliriousText},'mapData');
   assert.equal(delirious.mapData.state.observedEffects.filter(effect=>effect.kind==='explicit').length,2);
   assert.deepEqual(delirious.mapData.delirium,{percent:35,rewardType:'Currency',baseRewardCount:2});
-  const projection=await queued('project_map_delirium',{baseRevision:context.revision,currentPercent:35,currentType:'Currency',nextType:'Currency',gain:10},'mapData');
+  const projection=await queued('project_map_delirium',{baseRevision:context.revision,currentPercent:35,currentType:'Currency',nextType:'Currency',gain:10,targetPercent:80},'mapData');
   assert.equal(projection.mapData.sameType,true);assert.deepEqual(projection.mapData.example,{percent:45,baseRewardCount:3});assert.equal(projection.mapData.maximum.percent,85);assert.match(projection.mapData.note,/3\.30\.0d/);
+  assert.equal(projection.mapData.target.minimumOrbs,1);assert.equal(projection.mapData.target.maximumOrbs,9);
   const orbProjection=await queued('project_map_delirium',{baseRevision:context.revision,currentPercent:35,currentType:'Currency Items',nextType:'Fine Delirium Orb',gain:10},'mapData');assert.equal(orbProjection.mapData.sameType,true);assert.equal(orbProjection.mapData.nextReward,'Currency Items');assert.equal(orbProjection.mapData.orbReference.choices.length,20);
   const unknownProjection=await queued('project_map_delirium',{baseRevision:context.revision,currentPercent:35,currentType:'Currency',nextType:'Unknown reward',gain:10},'failed');assert.match(unknownProjection.error,/Unrecognized next reward type/);
   const deliriousState=delirious.mapData.state;
