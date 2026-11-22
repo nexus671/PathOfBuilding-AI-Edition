@@ -165,6 +165,37 @@ function M.checkStartingStateChange(previous,project)
 	end
 end
 
+-- AI proposals can introduce recipe states without changing the pasted item.
+-- Validate new states, while allowing unchanged legacy states to be reviewed
+-- or repaired through ordinary project edits.
+function M.checkProposedRecipeStates(previous,project)
+	local oldStates,pending={},{}
+	local function collect(target,recipe,label,key)
+		if recipe and recipe.initialState then target[#target+1]={state=recipe.initialState,label=label,key=key} end
+	end
+	if previous and previous.startingItem==project.startingItem then
+		collect(oldStates,previous.nativeRecipe,"Primary recipe","primary")
+		for _,entry in ipairs(previous.recipeAlternatives or {}) do collect(oldStates,entry.recipe,entry.name,"alternative:"..entry.name) end
+	end
+	collect(pending,project.nativeRecipe,"Primary recipe","primary")
+	for _,entry in ipairs(project.recipeAlternatives or {}) do collect(pending,entry.recipe,entry.name,"alternative:"..entry.name) end
+	local changed={}
+	for _,entry in ipairs(pending) do
+		local same=false
+		if type(entry.state)=="table" then for _,old in ipairs(oldStates) do
+			if entry.key==old.key and type(old.state)=="table" and tableDeepEquals(entry.state,old.state) and tableDeepEquals(old.state,entry.state) then same=true;break end
+		end end
+		if not same then changed[#changed+1]=entry end
+	end
+	if #changed==0 then return end
+	local sim=require("Modules.CraftingSimulator");local ok,model=pcall(sim.model,project.startingItem)
+	assert(ok,"Cannot verify new recipe starting states for this item. Correct the item or remove the states before proposing the project.")
+	for _,entry in ipairs(changed) do
+		local valid=type(entry.state)=="table" and pcall(sim.validateState,model,copyTable(entry.state))
+		assert(valid,entry.label.." has an invalid starting state for this item. Reset or replace it before proposing the project.")
+	end
+end
+
 function M.new(build)
 	local self = {projects={},build=build}
 	function self:Load(xml)

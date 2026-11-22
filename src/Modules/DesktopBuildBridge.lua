@@ -187,7 +187,10 @@ local function applyOperation(build, op)
 	elseif op.type == "set_loot_filters" then
 		build.savers.LootFilters:Replace(op.filters)
 	elseif op.type == "set_crafting_project" then
-		build.savers.CraftingProjects:Upsert(op.project)
+		local store=build.savers.CraftingProjects;local previous
+		if type(op.project)=="table" then for _,entry in ipairs(store.projects) do if entry.id==op.project.id then previous=entry;break end end end
+		local project=store:Upsert(op.project)
+		require("Modules.CraftingProjects").checkProposedRecipeStates(previous,project)
 	elseif op.type == "remove_crafting_project" then
 		build.savers.CraftingProjects:Remove(text(op.projectId,64,"project ID"))
 	elseif op.type == "set_atlas_plan" then

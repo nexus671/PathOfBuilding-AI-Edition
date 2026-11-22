@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1083" />
+	<Version number="2.68.1-ai.preview1084" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2190,7 +2190,7 @@
 	<File name="Modules/CraftingPalette.lua" part="program" sha1="edd27dc9231769e2c5035238bc2e6aa1a5df5de6" />
 	<File name="Modules/CraftingPredictable.lua" part="program" sha1="9c3c591db9c7aa8db9783e843f823a18d07f3d2e" />
 	<File name="Modules/CraftingPrices.lua" part="program" sha1="1a7833d65472af2036773ec947a66cf1af1e6c8f" />
-	<File name="Modules/CraftingProjects.lua" part="program" sha1="1fa93facd0eb9f241b681987ded198e94d5aa076" />
+	<File name="Modules/CraftingProjects.lua" part="program" sha1="357306dc85cbb483b4acae7223888b62e4f90871" />
 	<File name="Modules/CraftingProperties.lua" part="program" sha1="5852da0221063154756383bfe1d97cc0db2d138f" />
 	<File name="Modules/CraftingRecombination.lua" part="program" sha1="6c01c0d4c562d1dff8e20f6d71210c99e45de347" />
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />
@@ -2208,7 +2208,7 @@
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />
 	<File name="Modules/DataLegionLookUpTableHelper.lua" part="program" sha1="ece92c4b6062f627f98ba2454531366b4628abfc" />
-	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="c3c129a367b1d7efc31b5db58b22f0ca97deea6c" />
+	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="362fcd16b502436491a26c697039bd153cda2144" />
 	<File name="Modules/EncounterReport.lua" part="program" sha1="710dc78939bfbc8282f295cf626bcde9c9b7d8e5" />
 	<File name="Modules/HeadlessCompression.lua" part="program" sha1="16a42bf407eb777602f9b03b5c8466188a04ee58" />
 	<File name="Modules/HeadlessUI.lua" part="program" sha1="4f80dc993d54bcd6eaa633015dd30896c3d51353" />

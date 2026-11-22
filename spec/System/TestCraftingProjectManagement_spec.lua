@@ -37,6 +37,24 @@ describe("Crafting project removal and save-state ownership",function()
 		assert.is_false(ok);assert.matches("unbound starting state",err,1,true);assert.equal(original.startingItem,build.savers.CraftingProjects.projects[1].startingItem)
 		original.title="Renamed";build.savers.CraftingProjects:Upsert(original);assert.equal("Renamed",build.savers.CraftingProjects.projects[1].title)
 	end)
+	it("checks new AI recipe states while preserving unchanged legacy states",function()
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local state=sim.model(raw).initial
+		local proposed=project("new-state");proposed.startingItem=raw.."\nQuality: 10"
+		proposed.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1},initialState=state}
+		local function prepare(entry) return bridge.prepare(build,{mode="edit",title="Edit craft",baseRevision=bridge.revision(build),operations={{type="set_crafting_project",project=entry}}}) end
+		local ok,err=pcall(prepare,proposed);assert.is_false(ok);assert.matches("invalid starting state",err,1,true);assert.equal(0,#build.savers.CraftingProjects.projects)
+		local valid=copyTable(proposed);valid.nativeRecipe.initialState=sim.model(valid.startingItem).initial
+		local result=prepare(valid);assert.equal("new-state",result.candidate.savers.CraftingProjects.projects[1].id)
+		-- Older saves may contain states that cannot be simulated; a title edit
+		-- must preserve them without presenting them as newly validated.
+		build.savers.CraftingProjects:Upsert(proposed);local renamed=copyTable(proposed);renamed.title="Renamed"
+		result=prepare(renamed);assert.equal("Renamed",result.candidate.savers.CraftingProjects.projects[1].title)
+		local changed=copyTable(renamed);changed.recipeAlternatives={{name="New alternative",recipe=copyTable(changed.nativeRecipe)}}
+		ok,err=pcall(prepare,changed);assert.is_false(ok);assert.matches("New alternative",err,1,true)
+		changed.recipeAlternatives[1].recipe.initialState=sim.model(changed.startingItem).initial
+		result=prepare(changed);assert.is_truthy(result.candidate.savers.CraftingProjects.projects[1].recipeAlternatives[1])
+		assert.equal(proposed.title,build.savers.CraftingProjects.projects[1].title)
+	end)
 	it("reviews removed guide, recipes, inventory and checkpoint before applying",function()
 		local original=project("review");local model=sim.model(original.startingItem)
 		original.goals={"High life"};original.steps={{action="Apply an Orb of Alchemy"},{action="Finish the helmet",done=true}}
