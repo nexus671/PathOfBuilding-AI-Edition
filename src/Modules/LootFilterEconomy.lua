@@ -14,7 +14,7 @@ local function finite(value)
 	return type(value) == "number" and value > 0 and value < math.huge
 end
 
-function M.quotes(body)
+function M.quotes(body, source)
 	assert(type(body) == "string" and #body <= 2 * 1024 * 1024, "Invalid exchange response size")
 	local data = json.decode(body)
 	assert(type(data) == "table" and type(data.core) == "table" and data.core.primary == "chaos"
@@ -27,7 +27,7 @@ function M.quotes(body)
 	for _, line in ipairs(data.lines) do
 		local name = names[line.id]
 		if name and finite(line.primaryValue) and finite(line.volumePrimaryValue) then
-			quotes[name] = { price = line.primaryValue, volume = line.volumePrimaryValue }
+			quotes[name] = { price = line.primaryValue, volume = line.volumePrimaryValue, id = line.id, source = source }
 		end
 	end
 	assert(next(quotes), "No priced exchange items")
@@ -39,10 +39,41 @@ function M.merge(destination, source)
 		local existing = destination[name]
 		if existing == nil or existing and quote.volume > existing.volume then
 			destination[name] = quote
-		elseif existing and quote.volume == existing.volume and quote.price ~= existing.price then
+		elseif existing and quote.volume == existing.volume and (quote.price ~= existing.price or quote.id ~= existing.id) then
 			destination[name] = false
 		end
 	end
+end
+
+-- A price increase only loosens a hide once it is supported by recent history.
+-- A current lower quote still takes effect immediately against the fixed baseline.
+function M.remember(quotes, history, day, now)
+	local previous, snapshot = {}, {day=day, time=now, values={}}
+	for _, entry in ipairs(history or {}) do
+		if type(entry.time) == "number" and entry.day ~= day and entry.time <= now and now-entry.time <= 7*86400
+			and #previous < 6 then previous[#previous+1] = entry end
+	end
+	local adjusted = {}
+	for name, quote in pairs(quotes) do
+		if quote and quote.volume >= 100 and quote.id then
+			snapshot.values[quote.id] = quote.price
+			local prices = {}
+			for _, entry in ipairs(previous) do
+				local value = entry.values and entry.values[quote.id]
+				if finite(value) then prices[#prices+1] = value end
+			end
+			table.sort(prices)
+			local midpoint = math.floor(#prices/2)
+			local median = #prices == 0 and quote.price or #prices%2 == 1 and prices[midpoint+1]
+				or (prices[midpoint]+prices[midpoint+1])/2
+			adjusted[name] = {price=math.min(quote.price, median), currentPrice=quote.price,
+				volume=quote.volume, id=quote.id, source=quote.source, observations=#prices}
+		else
+			adjusted[name] = quote
+		end
+	end
+	table.insert(previous, 1, snapshot)
+	return adjusted, previous
 end
 
 function M.sectionBounds(raw)
@@ -103,7 +134,7 @@ function M.review(raw, quotes, target)
 				skipped[#skipped + 1] = { name = name, old = old, reason = reason, maps = area ~= nil }
 			else
 				changed = true
-				changes[#changes + 1] = { name = name, old = old, cutoff = cutoff, price = quote.price, volume = quote.volume, maps = area ~= nil }
+				changes[#changes + 1] = { name = name, old = old, cutoff = cutoff, price = quote.price, currentPrice = quote.currentPrice, source = quote.source, observations = quote.observations, volume = quote.volume, maps = area ~= nil }
 			end
 			group[cutoff] = group[cutoff] or {}
 			table.insert(group[cutoff], '"' .. name .. '"')

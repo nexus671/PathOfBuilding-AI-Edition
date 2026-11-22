@@ -23,3 +23,5 @@ For a different tagged filter, provide a JSON array of one to 500 sample drops i
 ```
 
 PoB copies the samples into the sync settings when you enable it. For the original tiered-test filter, leave the field empty to use the built-in checks. The original live file and baseline must share the rule prefix ahead of the managed section.
+
+Daily sync uses the lower of the latest liquid quote and the median of available earlier daily quotes from the last week. A new profile starts with the latest quote. Repeated checks on the same day replace that day's sample. The review shows the quote used, the latest quote, and how many observations contributed. A lower current quote takes effect immediately.

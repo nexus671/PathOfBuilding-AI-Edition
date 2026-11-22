@@ -1,10 +1,12 @@
 local market = require("Modules.LootFilterEconomy")
 local parser = require("Modules.LootFilterParser")
-return function(raw, bodies, baselineOnly, target, protections)
+return function(raw, bodies, baselineOnly, target, protections, history, day, now)
 	assert(market.supports(raw), "Baseline has no economy section")
 	local quotes = {}
-	for _, body in ipairs(bodies) do market.merge(quotes, market.quotes(body)) end
+	for index, body in ipairs(bodies) do market.merge(quotes, market.quotes(body, market.categories[index])) end
 	assert(baselineOnly or quotes["Orb of Alteration"] and quotes["Orb of Alteration"].volume >= 100, "Currency feed lacks a liquid reference quote")
+	local snapshots
+	if day then quotes, snapshots = market.remember(quotes, history, day, now) end
 	local candidate, changes, skipped = market.review(raw, quotes, target)
 	local parsed = parser.parse(candidate)
 	for _, diagnostic in ipairs(parsed.diagnostics) do
@@ -22,7 +24,7 @@ return function(raw, bodies, baselineOnly, target, protections)
 			assert(type(item) == "table" and type(item.BaseType) == "string" and type(item.Rarity) == "string", "Each protected sample needs BaseType and Rarity")
 			check(item)
 		end
-		return candidate, #changes, changes, skipped
+		return candidate, #changes, changes, skipped, snapshots
 	end
 	for _, rarity in ipairs({"Normal", "Magic", "Rare", "Unique"}) do
 		for _, flag in ipairs({true, false}) do
@@ -34,5 +36,5 @@ return function(raw, bodies, baselineOnly, target, protections)
 			check({BaseType="Iron Ring", Class="Rings", Rarity="Magic", LinkedSockets=0, FracturedItem=true, Identified=flag, Corrupted=flag}, "0 Yellow Diamond")
 		end
 	end
-	return candidate, #changes, changes, skipped
+	return candidate, #changes, changes, skipped, snapshots
 end

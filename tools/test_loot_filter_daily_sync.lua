@@ -66,4 +66,15 @@ launch.noSSL=false
 sync.disable()
 sync.tick(now+86400,true)
 assert(calls==17 and not sync.configuration().enabled)
+local market = require("Modules.LootFilterEconomy")
+local function quote(price)
+	return {["Orb of Alteration"]={id="alt",price=price,volume=1000,source="Currency"}}
+end
+local _, first = market.remember(quote(0.2), {}, "day 1", now)
+local spike, second = market.remember(quote(2), first, "day 2", now+86400)
+assert(spike["Orb of Alteration"].price==0.2 and spike["Orb of Alteration"].currentPrice==2)
+local lower = market.remember(quote(0.1), second, "day 3", now+2*86400)
+assert(lower["Orb of Alteration"].price==0.1)
+local _, repeatDay = market.remember(quote(2), second, "day 2", now+86400)
+assert(#repeatDay==2)
 print("Native daily sync: fresh/stale data, manual rerun, rollback, pause, TLS and disable passed")

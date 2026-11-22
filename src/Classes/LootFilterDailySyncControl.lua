@@ -54,7 +54,8 @@ function M.Open()
 		for i, change in ipairs(review.changes or {}) do
 			entries[#entries+1] = {id="change-"..i,label=change.name,category="Changed",details={
 				string.format("Hide up to %d → %d%s", change.old, change.cutoff, change.maps and " in maps" or ""),
-				string.format("%.4g chaos each | %.0f chaos hourly volume",change.price,change.volume),
+				string.format("%.4g chaos used | %.0f chaos hourly volume",change.price,change.volume),
+				string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
 			}}
 		end
 		for i, item in ipairs(review.skipped or {}) do
@@ -63,6 +64,7 @@ function M.Open()
 		for i, run in ipairs(saved.history or {}) do
 			entries[#entries+1] = {id="run-"..i,label=os.date("%Y-%m-%d %H:%M",run.checkedAt),category="History",details={
 				run.adjustments.." cutoff adjustments from the baseline.", "Protected drop checks passed.",
+				run.oldest and string.format("Oldest response was %.0f minutes old",run.oldest/60) or "Response age was not recorded.",
 			}}
 		end
 		require("Classes.PlanningBrowserControl").Open("Daily filter sync review", entries)

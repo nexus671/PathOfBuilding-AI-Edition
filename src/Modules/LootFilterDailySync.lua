@@ -198,10 +198,10 @@ function M.fresh(response, now)
 	local age = tonumber(("\n"..header:lower()):match("\nage:[ \t]*(%d+)")) or 0
 	assert(not header:lower():find("cf%-cache%-status:[ \t]*stale") and timestamp <= now + 300
 		and math.max(now - timestamp, age) <= 3600, "Exchange snapshot is stale")
-	return response.body
+	return response.body, math.max(now - timestamp, age)
 end
 
-local function publish(config, bodies, day, force, now)
+local function publish(config, bodies, ages, day, force, now)
 	return platform().lock(settingsPath() .. ".lock", function()
 		local current = get()
 		assert(current and current.enabled and current.baselineHash == config.baselineHash and current.target == config.target
@@ -212,7 +212,9 @@ local function publish(config, bodies, day, force, now)
 		assert(before == current.current or before == current.pending, "Target was edited outside PoB. Review and re-enable sync to adopt your edits.")
 		local baseline = assert(read(current.baseline), "Baseline filter is missing")
 		assert(sha(baseline) == current.baselineHash, "Baseline checksum changed")
-		local candidate, count, changes, skipped = validate(baseline, bodies, false, current.targetValue, current.protections)
+		local candidate, count, changes, skipped, snapshots = validate(
+			baseline, bodies, false, current.targetValue, current.protections, current.priceHistory, day, now)
+		current.priceHistory = snapshots
 		if candidate ~= original then
 			local backup = current.target .. ".before-pob-sync-" .. before .. ".bak"
 			if not read(backup) then put(backup, original) end
@@ -227,9 +229,9 @@ local function publish(config, bodies, day, force, now)
 		current.current, current.pending, current.day = sha(candidate), nil, day
 		current.summary = string.format("%s: %d stack adjustments from the baseline. Protected drops verified.", nowText(now), count)
 		current.lastSuccess = now
-		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup}
+		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages}
 		current.history = current.history or {}
-		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup})
+		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
 		if #current.history > 30 then table.remove(current.history) end
 		save(current)
 		return current.summary
@@ -256,7 +258,7 @@ function M.tick(now, force)
 		return
 	end
 	if not force then retryAt = now + 1800 end
-	local job, bodies = {}, {}
+	local job, bodies, ages = {}, {}, {}
 	M.busy, M.deadline = job, now + 180
 	local function finish(success, message)
 		M.busy = nil
@@ -265,15 +267,15 @@ function M.tick(now, force)
 	end
 	local function fetch(index)
 		local category = market.categories[index]
-		if not category then finish(pcall(publish, config, bodies, day, force, now)); return end
+		if not category then finish(pcall(publish, config, bodies, ages, day, force, now)); return end
 		M.status = "Fetching " .. config.league .. " prices: " .. category
 		local url = market.endpoint .. "exchange/current/overview?league=" .. urlEncode(config.league) .. "&type=" .. category
 		launch:DownloadPage(url, function(response, err)
 			if M.busy ~= job then return end
 			if err then finish(false, category .. ": " .. err); return end
-			local current, data = pcall(M.fresh, response, os.time())
+			local current, data, age = pcall(M.fresh, response, os.time())
 			if not current then finish(false, category .. ": " .. tostring(data)); return end
-			bodies[index] = data
+			bodies[index], ages[index] = data, age
 			fetch(index + 1)
 		end, {timeout=20,header="Accept: application/json\r\nCache-Control: no-cache"})
 	end
