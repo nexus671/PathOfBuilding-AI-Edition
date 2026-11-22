@@ -114,6 +114,8 @@ Dialla's Malefaction acquired since 3.29 can have a hidden restriction against w
 
 Unique armour and weapons can also preview the two-, three- and four-non-white socket bench crafts, save their colour targets as recipes, and include Chromatic and (for corrupted items) matching Vaal Orb pickups in a guide. The guaranteed minimum follows the [3.29 socket changes](https://www.pathofexile.com/forum/view-thread/3985332); colour weights and positions use the existing experimental model. Dialla's hidden restriction is still respected when a roll could create white sockets.
 
+Unique armour Sacred Orb previews, saved recipes and MCP actions reroll variable base defences using independent uniform integer samples. Item text preserves modifiers and updates both native percentiles and displayed defence totals. Current game distributions and special interactions are unverified.
+
 ## Saved resource prices
 
 Each gear project can store a price book with a common unit, source, quote time

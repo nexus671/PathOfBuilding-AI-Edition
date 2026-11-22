@@ -64,6 +64,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_filter_export_race.lua")
     sources.append(ROOT / "tools/test_filter_review_ui.lua")
     sources.append(ROOT / "tools/test_crafting_base_cost_ui.lua")
+    sources.append(ROOT / "tools/test_unique_sacred_ui.lua")
     sources.append(ROOT / "tools/test_filter_unique_review.lua")
     sources.append(ROOT / "tools/test_filter_sound_list_ui.lua")
     sources.append(ROOT / "tools/test_fated_scene_ui.lua")
@@ -175,6 +176,10 @@ def main():
                                env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-base-cost-controls.log").write_text(base_cost.stdout)
     assert base_cost.returncode == 0, base_cost.stdout
+    sacred = subprocess.run(lua_command + ["../tools/test_unique_sacred_ui.lua", str(frames)], cwd=ROOT / "src",
+                            env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "unique-sacred-controls.log").write_text(sacred.stdout)
+    assert sacred.returncode == 0, sacred.stdout
     filter_sound_list = subprocess.run(lua_command + ["../tools/test_filter_sound_list_ui.lua"], cwd=ROOT / "src",
                                        env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-sound-list-controls.log").write_text(filter_sound_list.stdout)
@@ -290,7 +295,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2370, f"Expected 2370 UI frames, found {len(paths)}"
+    assert len(paths) == 2373, f"Expected 2373 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         for scene in ("beyond", "incursion"):
             assert (frames / f"{width}-filter-{scene}-examples.json").is_file(), f"Missing {scene} scene at {width}px"

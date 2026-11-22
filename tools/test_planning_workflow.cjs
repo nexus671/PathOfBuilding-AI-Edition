@@ -344,6 +344,14 @@ async function main(){
   const uniqueSimulation=await queued('simulate_crafting',{baseRevision:context.revision,itemText:uniqueShield,recipe:uniqueRecipe,options:{trials:3,maxActions:10,currency:'chaos',actionPrices:{quality:2,omen_connections:10}}},'crafted');
   assert.equal(uniqueSimulation.nativeCrafting.sampled,false);assert.equal(uniqueSimulation.nativeCrafting.successChance,100);assert.equal(uniqueSimulation.nativeCrafting.meanActions,3);assert.equal(uniqueSimulation.nativeCrafting.meanCost,14);
   assert.match(uniqueSimulation.nativeCrafting.sampleItem,/Sockets: R-G-B/);
+  const sacredRaw="Rarity: UNIQUE\nThe Apostate\nSavant's Robe\nItem Level: 86\nEnergy Shield: 132\nImplicits: 0\nGain Maximum Life instead of Maximum Energy Shield from Equipped Armour Items";
+  const sacredInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:sacredRaw,query:'sacred',limit:10},'inspected');
+  assert.ok(sacredInspect.crafting.nativeEngine.uniqueActions.some(entry=>entry.method==='sacred' && entry.available));
+  const sacredApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:sacredRaw,action:{method:'sacred'},seed:104729},'crafted');
+  assert.ok(sacredApply.nativeCrafting.itemText.includes('EnergyShieldBasePercentile:'));assert.equal(sacredApply.nativeCrafting.components.sacred,1);
+  const sacredRecipe={rarity:'UNIQUE',steps:[{method:'sacred',maxAttempts:1}],targets:[],requirements:{nativeStats:{EnergyShield:1000}}};
+  const sacredRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:sacredRaw,recipe:sacredRecipe,options:{trials:3,maxActions:1,seed:104729,prices:{sacred:2},currency:'chaos'}},'crafted');
+  assert.equal(sacredRun.nativeCrafting.trials,3);assert.equal(sacredRun.nativeCrafting.meanCost,2);assert.ok(sacredRun.nativeCrafting.warnings.some(entry=>entry.code==='unique_sacred_estimate'));
   const uniqueGuide={id:'unique-guide-workflow',title:'Unique shield guide',slot:'Weapon 2',startingItem:uniqueShield,targetItem:uniqueLinked.nativeCrafting.itemText,goals:[],steps:[
     {action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},
     {action:'Link existing sockets with an Omen of Connections and an Orb of Fusing',uniqueCraft:{method:'omen_connections',count:1}},

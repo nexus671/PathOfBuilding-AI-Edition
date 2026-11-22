@@ -53,6 +53,7 @@ function M.guideAction(method,count,resource,corrupted,socketCount,enchantId,cat
 	if method=="enkindling" then return "Use an Enkindling Orb to roll a utility flask enchantment" end
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="divine" then return "Use a Divine Orb to reroll explicit modifier values" end
+	if method=="sacred" then return "Use a Sacred Orb to reroll base defences" end
 	if method=="tainted_quality" then return "Use a Tainted "..resource.." to reroll quality" end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
 	if method=="omen_connections" then return "Link existing sockets with an Omen of Connections and an Orb of Fusing" end
@@ -161,6 +162,49 @@ local function preserveArmourBaseline(raw,output,item)
 		end
 	end
 	return output
+end
+
+-- Sacred Orb previews retain the original item text, including unique mods.
+-- Copied defence totals and PoB's internal percentile markers must agree.
+function M.sacredReason(raw)
+	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
+	if item.corrupted then return "Sacred Orbs require an uncorrupted item" end
+	if not item.base.armour then return "Sacred Orbs require armour" end
+	for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
+		local low,high=item.base.armour[kind.."BaseMin"],item.base.armour[kind.."BaseMax"]
+		if low and high and high>low then return nil end
+	end
+	return "This armour has no variable base defences"
+end
+function M.sacred(raw,seed)
+	local reason=M.sacredReason(raw);assert(not reason,reason)
+	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
+	local before=M.inspect(raw);local random=require("Modules.CalcTime").random(seed);local values={};local order={"Armour","Evasion","EnergyShield","Ward"}
+	for _,kind in ipairs(order) do
+		local low,high=before.base.armour[kind.."BaseMin"],before.base.armour[kind.."BaseMax"]
+		if low and high and high>low then values[kind]=math.floor(random()*(high-low+1))/(high-low) end
+	end
+	local newline=raw:find("\r\n",1,true) and "\r\n" or "\n";local seen={};local level=0
+	local staged=raw:gsub("[^\r\n]+",function(line)
+		local kind=line:match("^(%a+)BasePercentile:%s*")
+		if kind and values[kind] then assert(not seen[kind],"Duplicate base defence percentile");seen[kind]=true;return kind.."BasePercentile: "..string.format("%.12g",values[kind]) end
+		return line
+	end)
+	local missing={};for _,kind in ipairs(order) do if values[kind] and not seen[kind] then missing[#missing+1]=kind.."BasePercentile: "..string.format("%.12g",values[kind]) end end
+	if #missing>0 then staged=staged:gsub("[^\r\n]+",function(line) if line:match("^Item Level:%s*%d+") then level=level+1;return line..newline..table.concat(missing,newline) end;return line end);assert(level==1,"Could not safely locate item level") end
+	local stagedItem=M.inspect(staged);local names={Armour="Armour",Evasion="Evasion",["Evasion Rating"]="Evasion",["Energy Shield"]="EnergyShield",Ward="Ward"};local changed={}
+	local output=staged:gsub("[^\r\n]+",function(line)
+		local label=line:match("^([^:]+):");local kind=names[label]
+		if kind and values[kind] then
+			assert(not changed[kind],"Duplicate base defence property");changed[kind]=true
+			local prefix,suffix=line:match("^([^:]+:%s*)[%d,]+(.*)$");assert(prefix and stagedItem.armourData[kind],"Could not safely update displayed defence")
+			return prefix..stagedItem.armourData[kind]..suffix
+		end
+		return line
+	end)
+	local after=M.inspect(output);assert(after.title==before.title and after.baseName==before.baseName,"Unique item changed during Sacred preview")
+	for kind,value in pairs(values) do assert(math.abs(after.armourData[kind.."BasePercentile"]-value)<1e-9,"Base defence did not round-trip") end
+	return {itemText=output,components={sacred=1}}
 end
 -- Game-copy metadata must stay in the property section. Appending a missing
 -- quality line after the modifiers would make it look like a modifier.
@@ -863,7 +907,7 @@ function M.previewResources(startingItem,history,actions,currentItem,historyTrun
 	end
 	if history[1]~=startingItem then return nil,"The preview does not start from this project's starting item." end
 	local sim=require("Modules.CraftingSimulator");local prices=require("Modules.CraftingPrices");local totals={};local firstItem
-	local allowed={quality=true,tainted_quality=true,divine=true,instilling=true,enkindling=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,jeweller=true,tainted_jeweller=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true}
+	local allowed={quality=true,tainted_quality=true,divine=true,sacred=true,instilling=true,enkindling=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,jeweller=true,tainted_jeweller=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true}
 	for index,encoded in ipairs(actions) do
 		if type(encoded)~="string" or type(history[index])~="string" then return nil,"The preview contains an unknown action." end
 		local count=tonumber(encoded:match("^socket_count_bench:([2-6])$"));local colourCount=tonumber(encoded:match("^socket_colour_bench:([2-4])$"));local enchant=encoded:match("^bench_flask_enchant:(.+)$")
@@ -904,6 +948,7 @@ function M.catalog(raw,query,limit)
 	if item.corrupted then whiteComponents["Metadata/Items/Currency/CurrencyCorrupt"]=1 end
 	local sim=require("Modules.CraftingSimulator")
 	local definitions={{method="divine",label="Divine Orb",reason=M.divineReason(raw),sampled=true,components={divine=1}}}
+	if item.base.armour then definitions[#definitions+1]={method="sacred",label="Sacred Orb",reason=M.sacredReason(raw),sampled=true,components={sacred=1}} end
 	local flask=require("Modules.CraftingFlaskEnchants")
 	if flask.eligible({item=item}) then
 		for _,method in ipairs({"instilling","enkindling"}) do definitions[#definitions+1]={method=method,label=sim.labels[method],reason=M.flaskEnchantReason(raw,method),sampled=true,components=sim.components({method=method})} end
@@ -955,7 +1000,7 @@ function M.catalog(raw,query,limit)
 			local guideMethod,guideCount=entry.guideMethod or entry.method,entry.guideCount or 1
 			action.guideStep={action=M.guideAction(guideMethod,guideCount,info.resource,item.corrupted,#item.sockets),uniqueCraft={method=guideMethod,count=guideCount}}
 			result.uniqueActions[#result.uniqueActions+1]=action
-			if entry.method~="quality" and entry.method~="tainted_quality" and entry.method~="divine" and entry.method~="instilling" and entry.method~="enkindling" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
+			if entry.method~="quality" and entry.method~="tainted_quality" and entry.method~="divine" and entry.method~="sacred" and entry.method~="instilling" and entry.method~="enkindling" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
 		end
 	end
 	result.flaskEnchants=flask.eligible({item=item}) and flask.list(query,limit) or {}

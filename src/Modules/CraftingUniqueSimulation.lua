@@ -1,6 +1,6 @@
 -- Unique-item recipes use item text, not ordinary affix states.
 local M={}
-local supported={catalyst=true,divine=true,tainted_quality=true,jeweller=true,tainted_jeweller=true,quality=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_colour_bench=true,socket_white_bench=true,socket_bench=true,instilling=true,enkindling=true,bench_flask_enchant=true}
+local supported={catalyst=true,divine=true,sacred=true,tainted_quality=true,jeweller=true,tainted_jeweller=true,quality=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_colour_bench=true,socket_white_bench=true,socket_bench=true,instilling=true,enkindling=true,bench_flask_enchant=true}
 local fields={method=true,catalyst=true,count=true,linked=true,enchantId=true,maxAttempts=true,untilRequirements=true,onSuccess=true,onFailure=true,onFailureAction=true,recoveryNotes=true}
 function M.stepReason(step)
 	if not supported[step.method] then return "This unique recipe action is not supported: "..tostring(step.method) end
@@ -18,7 +18,7 @@ end
 local function quantiles(value)
 	local result={};for _,percent in ipairs({10,25,50,75,90,95,99}) do result["p"..percent]=value end;return result
 end
-local stochastic={divine=true,tainted_quality=true,jeweller=true,tainted_jeweller=true,fusing=true,tainted_fusing=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_colour_bench=true,instilling=true,enkindling=true}
+local stochastic={divine=true,sacred=true,tainted_quality=true,jeweller=true,tainted_jeweller=true,fusing=true,tainted_fusing=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_colour_bench=true,instilling=true,enkindling=true}
 function M.isStochastic(method) return stochastic[method]==true end
 local function percentiles(values)
 	if #values==0 then return nil end

@@ -451,6 +451,7 @@ function M.generate(build,profile,checkpoint)
 				elseif craft.method=="enkindling" then items={{key="enkindling",name="Enkindling Orb"}}
 				elseif craft.method=="bench_flask_enchant" then items={{key="Metadata/Items/Currency/CurrencyInstillingOrb",name="Instilling Orb"},{key="Metadata/Items/Currency/CurrencyFlaskQuality",name="Glassblower's Bauble"}}
 				elseif craft.method=="divine" then items={{key="divine",name="Divine Orb"}}
+				elseif craft.method=="sacred" then items={{key="sacred",name="Sacred Orb"}}
 				elseif craft.method=="tainted_quality" then items={{key="tainted_quality",name="Tainted "..info.resource}}
 				elseif craft.method=="fusing" then items={{key="fusing",name="Orb of Fusing"}}
 				elseif craft.method=="tainted_fusing" then items={{key="tainted_fusing",name="Tainted Orb of Fusing"}}

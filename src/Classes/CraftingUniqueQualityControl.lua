@@ -93,7 +93,7 @@ function M.Open(build,project,layout,snapshot)
 				flush();steps[#steps+1]={action=unique.guideAction("socket_colour_bench",colourCount,info.resource,item.corrupted),uniqueCraft={method="socket_colour_bench",count=colourCount},done=false}
 			elseif socketCount then
 				flush();steps[#steps+1]={action=unique.guideAction("socket_count_bench",socketCount,info.resource,item.corrupted),uniqueCraft={method="socket_count_bench",count=socketCount},done=false}
-			elseif action=="instilling" or action=="enkindling" or action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="divine" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
+			elseif action=="instilling" or action=="enkindling" or action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="divine" or action=="sacred" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
 				local before=unique.inspect(history[i]);flush();local count=#before.sockets
 				if action=="socket_bench" and not socketKnown then count=nil end
 				steps[#steps+1]={action=unique.guideAction(action,1,info.resource,item.corrupted,count),stopWhen=action=="socket_bench" and not socketKnown and "Check socket count and bench price before linking." or nil,uniqueCraft={method=action,count=1},done=false}
@@ -108,7 +108,7 @@ function M.Open(build,project,layout,snapshot)
 		if not guideCache then local steps,reason,signature=calculateGuideSteps();guideCache={steps=steps,reason=reason,signature=signature} end
 		return guideCache.steps,guideCache.reason,guideCache.signature
 	end
-	local linkReason,benchLinkReason,whiteReason,omenJewellerReason,colourReason,taintedQualityReason,divineReason,updateCurrency,updateIcons
+	local linkReason,benchLinkReason,whiteReason,omenJewellerReason,colourReason,taintedQualityReason,divineReason,sacredReason,updateCurrency,updateIcons
 	local function refresh(persist)
 		guideCache=nil;reviewCache=nil;traceCache=nil
 		item,info=unique.inspect(raw);show(item)
@@ -123,6 +123,7 @@ function M.Open(build,project,layout,snapshot)
 		end
 		taintedQualityReason=item.corrupted and unique.taintedQualityReason(raw) or nil
 		divineReason=not item.corrupted and unique.divineReason(raw) or nil
+		sacredReason=unique.sacredReason(raw)
 		c.status.label=not info.qualitySupported and "^7Catalyst quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or "Preview available") or "^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
 		c.apply.label=not info.qualitySupported and "Quality unavailable" or item.corrupted and (item.type=="Flask" or item.type=="Tincture") and "Quality unavailable" or item.corrupted and "Roll quality" or "Add quality"
 		c.apply.width=(not item.corrupted or not taintedQualityReason) and 130 or 270
@@ -354,6 +355,13 @@ function M.Open(build,project,layout,snapshot)
 	button("omenJeweller",130,"Omen + Jeweller",function() local result=unique.socketCount(raw,unique.omenCount(item),"omen_jeweller");history[#history+1]=raw;actions[#actions+1]="omen_jeweller";redo={};raw=result.itemText;refresh(true) end)
 	c.omenJeweller.x=156;c.omenJeweller.width=130;c.omenJeweller.enabled=function() return not omenJewellerReason end
 	c.omenJeweller.tooltipText=function() return omenJewellerReason or "Adds white sockets up to the natural limit using an Omen of the Jeweller and a Jeweller's Orb." end
+	button("sacred",130,"Sacred",function()
+		colourRollCounter=colourRollCounter%2147483646+1;local result=unique.sacred(raw,require("Modules.CalcEncounter").seed(104729,colourRollCounter,79))
+		history[#history+1]=raw;actions[#actions+1]="sacred";redo={};raw=result.itemText;refresh(true);c.notice.label="^7Sacred preview; odds estimated."
+	end)
+	c.sacred.x=200;c.sacred.width=86;c.sacred.shown=function() return item.base.armour~=nil end;c.sacred.enabled=function() return not sacredReason end
+	c.sacred.tooltipText=function() return sacredReason or "Preview a Sacred Orb base-defence roll. Roll probabilities are estimated." end
+	if item.base.armour then c.socketCount.width=85;c.socketCount.label="Sockets";c.omenJeweller.x=108;c.omenJeweller.width=85;c.omenJeweller.label="Omen" end
 	c.socketCount.enabled=function() local allowed=socketCountAvailability();return allowed or not colourReason end
 	c.socketCount.tooltipText=function() local allowed,reason=socketCountAvailability();return allowed and "Preview socket-count or socket-colour crafts." or not colourReason and "Preview socket-colour crafts." or reason end
 	button("apply",198,"Use quality currency",function()
@@ -606,7 +614,7 @@ function M.Open(build,project,layout,snapshot)
 		if #actions==0 or #actions~=#history or history[1]~=draft.startingItem or #actions>100 then return false end
 		local colourSeen=false
 		for _,action in ipairs(actions) do
-			local colour=action:match("^socket_colour_bench:[2-4]$") or action=="instilling" or action=="enkindling" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality"
+			local colour=action:match("^socket_colour_bench:[2-4]$") or action=="instilling" or action=="enkindling" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="sacred"
 			if colour then if colourSeen then return false end;colourSeen=true
 			elseif colourSeen and action~="quality" then return false
 			elseif action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") and not action:match("^bench_flask_enchant:.+$") and not action:match("^catalyst:%d+:%d+$") then return false end
@@ -642,6 +650,13 @@ function M.Open(build,project,layout,snapshot)
 				requirements.minQuality=info.quality;steps[#steps+1]={method=action,maxAttempts=100,untilRequirements={minQuality=info.quality}};sampled=true;i=i+1
 			elseif action=="jeweller" or action=="tainted_jeweller" then
 				requirements.exactSockets=#item.sockets;steps[#steps+1]={method=action,maxAttempts=100,untilRequirements={exactSockets=#item.sockets}};sampled=true;i=i+1
+			elseif action=="sacred" then
+				local after=unique.inspect(history[i+1] or raw);local intermediate,final={},{}
+				for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
+					local low,high=after.base.armour[kind.."BaseMin"],after.base.armour[kind.."BaseMax"]
+					if low and high and high>low then intermediate[kind]=after.armourData[kind];final[kind]=item.armourData[kind] end
+				end
+				requirements.nativeStats=final;steps[#steps+1]={method="sacred",maxAttempts=100,untilRequirements={nativeStats=intermediate}};sampled=true;i=i+1
 			elseif action=="fusing" or action=="tainted_fusing" then
 				local counts,best={},0;for _,socket in ipairs(item.sockets) do counts[socket.group]=(counts[socket.group] or 0)+1;best=math.max(best,counts[socket.group]) end
 				requirements.links=best;steps[#steps+1]={method=action,maxAttempts=100,untilRequirements={links=best}};sampled=true;i=i+1
@@ -791,6 +806,7 @@ function M.Open(build,project,layout,snapshot)
 	end
 	updateIcons=function()
 		c.apply.planningIcon=info.qualitySupported and icon("quality") or nil
+		c.sacred.planningIcon=icon("sacred")
 		c.instilling.planningIcon=icon("instilling");c.enkindling.planningIcon=icon("enkindling")
 		c.omenJeweller.planningIcon=icon("omen_jeweller");c.omen.planningIcon=icon("omen_connections");c.benchLink.planningIcon=icon("fusing");c.white.planningIcon=icon("socket_white_bench");c.socketCount.planningIcon=icon("jeweller")
 	end
@@ -809,6 +825,7 @@ function M.Open(build,project,layout,snapshot)
 		elseif method=="socket_bench" then local components=require("Modules.CraftingSimulator").components({method=method,count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted});local count=components["Metadata/Items/Currency/CurrencyRerollSocketLinks"] or 0;lines={"Bench: "..count.." Orb"..(count==1 and "" or "s").." of Fusing",item.corrupted and ("+ "..count.." Vaal Orb"..(count==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="fusing" then lines={"1 Orb of Fusing","Sampled preview"}
 		elseif method=="divine" then lines={"1 Divine Orb","Sampled preview"}
+		elseif method=="sacred" then lines={"1 Sacred Orb","Sampled preview"}
 		elseif method=="instilling" or method=="enkindling" then lines={method=="instilling" and "1 Instilling Orb" or "1 Enkindling Orb","Sampled preview"}
 		elseif method and method:match("^bench_flask_enchant:") then method="instilling";lines={"5 Instilling Orbs","5 Glassblower's Baubles | Preview"}
 		elseif method=="tainted_quality" then lines={"1 Tainted "..info.resource,"Sampled preview"}
