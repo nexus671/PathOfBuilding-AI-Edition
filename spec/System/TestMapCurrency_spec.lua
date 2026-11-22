@@ -17,6 +17,11 @@ describe("Experimental map currency",function()
 		local removed=currency.perform(plan.state,"clear_deified_plan",1);assert.is_true(removed.state.twiceCorrupted);assert.is_nil(removed.state.plannedDeified)
 		draft.plannedDeified="yes";assert.has_error(function() require("Modules.AtlasPlanner").validateMapDraft(draft) end)
 	end)
+	it("preserves a hypothetical Delirium target through map currency previews",function()
+		local initial=state("normal");initial.plannedDelirium={currentPercent=0,nextType="Currency Items",gain=10,targetPercent=80}
+		local result=currency.perform(initial,"alchemy",123);assert.same(initial.plannedDelirium,result.state.plannedDelirium);assert.is_nil(result.state.observedEffects)
+		local invalid=copyTable(initial);invalid.plannedDelirium.targetPercent=101;assert.has_error(function() currency.perform(invalid,"alchemy",123) end)
+	end)
 	it("previews Originator suffix replacement while preserving other rolls",function()
 		local map=require("Modules.MapCraftingData");local initial=currency.perform(state("normal"),"alchemy",123).state
 		initial.quality={kind="Pack Size",value=20};local before=copyTable(initial);local choices={};for _,entry in ipairs(currency.options(initial)) do choices[entry.id]=entry end

@@ -104,6 +104,15 @@ function M.projectDelirium(currentPercent,currentType,nextType,gain,targetPercen
   minimum=outcome(5),maximum=outcome(50),example=outcome(gain),
   note="Projection only. No map is modified. GGG fixed Delirium Orb use on Nightmare Maps in 3.30.0d; orbs cannot be used on legacy maps with Delirium layers. Orb availability, other item eligibility, reforged modifiers, other rewards and gain probabilities are not verified."}
 end
+-- Store the inputs as a plan, never as an observed map modifier. Canonical
+-- reward labels keep the projection reproducible across save and reopen.
+function M.validateDeliriumPlan(plan)
+ if plan==nil then return nil end
+ assert(type(plan)=="table","Invalid Delirium plan")
+ local projection=M.projectDelirium(plan.currentPercent,plan.currentType,plan.nextType,plan.gain,plan.targetPercent)
+ assert(projection.target,"Choose a Delirium target")
+ return {currentPercent=projection.currentPercent,currentType=projection.currentPercent>0 and projection.currentReward or nil,nextType=projection.nextReward,gain=projection.exampleGain,targetPercent=projection.target.percent}
+end
 -- This visible implicit identifies a Blighted or Blight-ravaged map. Do not
 -- infer the variant merely from a map's name or an ordinary Blight encounter.
 function M.isBlighted(effects)

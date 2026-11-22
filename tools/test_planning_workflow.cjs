@@ -1241,6 +1241,9 @@ async function main(){
   const allflamePlan=await queued('simulate_map_currency',{baseRevision:context.revision,state:planBase,action:'plan_allflame',allflameId,seed:1},'mapData');assert.equal(allflamePlan.mapData.state.plannedAllflame,allflameId);assert.equal(allflamePlan.mapData.allflame.provenance,'planned');
   const allflameInspect=await queued('inspect_map_modifiers',{baseRevision:context.revision,...allflamePlan.mapData.state},'mapData');assert.equal(allflameInspect.mapData.allflame.id,allflameId);assert.match(allflameInspect.mapData.note,/conditional plan/);
   const allflameClear=await queued('simulate_map_currency',{baseRevision:context.revision,state:allflamePlan.mapData.state,action:'clear_allflame_plan',seed:1},'mapData');assert.equal(allflameClear.mapData.state.plannedAllflame,undefined);
+  const deliriumPlan={currentPercent:0,nextType:'Currency Items',gain:10,targetPercent:80};
+  const plannedDelirium=await queued('simulate_map_currency',{baseRevision:context.revision,state:{...planBase,plannedDelirium:deliriumPlan},action:'divine_vessel',seed:1},'mapData');assert.deepEqual(plannedDelirium.mapData.state.plannedDelirium,deliriumPlan);
+  const inspectDelirium=await queued('inspect_map_modifiers',{baseRevision:context.revision,...plannedDelirium.mapData.state},'mapData');assert.deepEqual(inspectDelirium.mapData.plannedDelirium,deliriumPlan);
   const plannedDeified=await queued('simulate_map_currency',{baseRevision:context.revision,state:planBase,action:'divine_vessel',seed:1},'mapData');
   assert.equal(plannedDeified.mapData.state.plannedDeified,true);assert.equal(plannedDeified.mapData.deified.provenance,'planned');assert.equal(plannedDeified.mapData.deified.bossItemRarityIncrease,50);
   const plannedInspect=await queued('inspect_map_modifiers',{baseRevision:context.revision,...plannedDeified.mapData.state},'mapData');assert.equal(plannedInspect.mapData.plannedDeified,true);assert.equal(plannedInspect.mapData.deified.provenance,'planned');
@@ -1318,6 +1321,7 @@ async function main(){
   const threadCheck=await queued('check_thread_restrictions',{baseRevision:context.revision,areaLevel:73,threads:2,spentThreads:2},'atlas');
   assert.equal(threadCheck.atlas.modifiers.filter(row=>row.restrictionsMet).length,3);assert.match(threadCheck.atlas.note,/not modeled/);
   const starterAtlas={id:'starter-atlas',title:'Starter Atlas',version:'3.29.1',budget:138,nodes:[],progression:{stage:'starter'},mapDrafts:[{id:'my-map',title:'My map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:5,itemLevel:68,rarity:'rare',selected:['MapMonsterAreaOfEffectMapWorlds'],rolls:[{id:'MapMonsterAreaOfEffectMapWorlds',values:[13,8,5,45]}],estimate:{wantedGroups:[['MapMonsterAreaOfEffectMapWorlds']],avoid:['MapMonsterColdDamageMapWorlds'],trials:20,maxAttempts:5}}]};
+  starterAtlas.mapDrafts[0].plannedDelirium={currentPercent:0,nextType:'Currency Items',gain:10,targetPercent:80};
   starterAtlas.mapDrafts.push({id:'corrupt-map',title:'Corrupted map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',corrupted:true,twiceCorrupted:true,selected:corruptedIds,implicit:{id:'MapCorruptionItemRarity',value:15}});
   starterAtlas.mapDrafts.push({...vaalMap.mapData.state,id:'vaal-preview',title:'Conditional Vaal preview',patch:'3.30.0.2.2'});
   starterAtlas.mapDrafts.push({id:'unknown-map',title:'Unidentified map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapKeyTier5',tier:5,itemLevel:68,rarity:'rare',unidentified:true,selected:[]});

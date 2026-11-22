@@ -71,7 +71,7 @@ local function validate(input,checkpoint,cache)
 	assert(input.implicit==nil,"A map corruption implicit requires a corrupted map")
 	assert(not input.mirrored,"Mirrored maps cannot be modified with these currencies")
 	assert(not input.unidentified,"Identify the map before simulating currency")
-	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,plannedDeified=input.plannedDeified or nil,plannedAllflame=plannedAllflame,selected={},rolls={},quality=require("Modules.MapQuality").validate(input.quality),observedEffects=require("Modules.MapObservedEffects").validate(input.observedEffects)}
+	local state={baseId=input.baseId,tier=input.tier,itemLevel=input.itemLevel,rarity=input.rarity,plannedDeified=input.plannedDeified or nil,plannedAllflame=plannedAllflame,plannedDelirium=require("Modules.MapObservedEffects").validateDeliriumPlan(input.plannedDelirium),selected={},rolls={},quality=require("Modules.MapQuality").validate(input.quality),observedEffects=require("Modules.MapObservedEffects").validate(input.observedEffects)}
 	assert(not require("Modules.MapObservedEffects").hasExplicit(state.observedEffects),"Currency simulation is unavailable while unsupported explicit map modifiers are recorded")
 	for _,id in ipairs(input.selected) do state.selected[#state.selected+1]=id end
 	local values=require("Modules.MapRollValues");local existing=values.validate(state.selected,input.rolls,map.source());local priorIds={}

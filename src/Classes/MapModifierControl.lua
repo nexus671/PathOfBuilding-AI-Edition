@@ -28,6 +28,7 @@ function M.Open(options)
 	local unidentified=initial and initial.unidentified or nil
 	local plannedAllflame=initial and require("Modules.MapAllflame").validate(initial.plannedAllflame) or nil
 	local plannedDeified=initial and initial.plannedDeified or nil
+	local plannedDelirium=initial and require("Modules.MapObservedEffects").validateDeliriumPlan(initial.plannedDelirium) or nil
 	local vaalPreview=initial and initial.vaalPreview or nil
 	local implicit=initial and initial.implicit and copyTable(initial.implicit) or nil
 	local quality=initial and require("Modules.MapQuality").validate(initial.quality) or nil
@@ -72,7 +73,7 @@ function M.Open(options)
 			local wasNightmare=map.isNightmare(baseId);baseId=entry.id;local tier=baseId:match("^Metadata/Items/Maps/MapKeyTier(%d+)$")
 			if tier or map.isNightmare(baseId) or wasNightmare then controls.tier:SelByValue(tier and tonumber(tier) or map.isNightmare(baseId) and 17 or 16,"val") end;syncRarity()
 			if map.isNightmare(baseId) and not wasNightmare then controls.level:SetText("84") end
-			selected={};rolls={};implicit=nil;mirrored=nil;twiceCorrupted=nil;unidentified=nil;vaalPreview=nil;quality=nil;observedEffects=nil;estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
+			selected={};rolls={};implicit=nil;mirrored=nil;twiceCorrupted=nil;unidentified=nil;vaalPreview=nil;quality=nil;observedEffects=nil;plannedDelirium=nil;estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
 		end,closeOnChoose=false})
 	end)
 	button("pasteMap",16+left-196,66,96,"Paste map",function()
@@ -85,7 +86,7 @@ function M.Open(options)
 			baseId=state.baseId;syncRarity();mirrored=state.mirrored or nil;twiceCorrupted=state.twiceCorrupted or nil;unidentified=state.unidentified or nil;selected=copyTable(state.selected);rolls=copyTable(state.rolls);implicit=state.implicit and copyTable(state.implicit) or nil;quality=state.quality and copyTable(state.quality) or nil;observedEffects=state.observedEffects and copyTable(state.observedEffects) or nil
 			controls.tier:SelByValue(state.tier,"val");controls.level:SetText(tostring(state.itemLevel))
 			previousRarity=state.corrupted and "corrupted_"..state.rarity or state.rarity;controls.rarity:SelByValue(previousRarity,"val")
-			estimateSettings=nil;vaalPreview=nil;plannedDeified=nil;plannedAllflame=nil;candidate=nil;offset=0;controls.search:SetText("");main:ClosePopup();refresh()
+			estimateSettings=nil;vaalPreview=nil;plannedDeified=nil;plannedAllflame=nil;plannedDelirium=nil;candidate=nil;offset=0;controls.search:SetText("");main:ClosePopup();refresh()
 		end)
 		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{524,154,100,28},"Cancel",function() main:ClosePopup() end)
 		ui.style(popup,{keep=true});main:OpenPopup(640,200,"Review copied map",popup,nil,nil,"close")
@@ -151,7 +152,7 @@ function M.Open(options)
 	controls.remove.enabled=function() return not unidentified and #selected>0 end
 	controls.remove.tooltipText="Select a modifier on the item to remove it, or remove the last one."
 	button("estimate",24+cardButtonWidth,height-62,cardButtonWidth,"Rerolls",function()
-		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=copyTable(selected),rolls=copyTable(rolls),quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil,plannedDeified=plannedDeified,plannedAllflame=plannedAllflame}
+		local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=copyTable(selected),rolls=copyTable(rolls),quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil,plannedDeified=plannedDeified,plannedAllflame=plannedAllflame,plannedDelirium=plannedDelirium}
 		require("Classes.MapCraftEstimateControl").Open(options.build,{state=state,wanted=selected,settings=estimateSettings,saveSettings=function(settings) estimateSettings=copyTable(settings) end,apply=function(sample)
 			selected=copyTable(sample.selected);rolls=copyTable(sample.rolls);offset=0;candidate=nil;controls.search:SetText("");refresh()
 		end})
@@ -165,17 +166,17 @@ function M.Open(options)
 		local module=require("Modules.MapObservedEffects");local known=module.delirium(observedEffects)
 		local uncertain=unidentified or module.hasExplicit(observedEffects) and not known
 		for _,effect in ipairs(observedEffects or {}) do if effect.kind=="enchant" and (effect.text:lower():find("delirious",1,true) or effect.text:lower():find("delirium",1,true)) then uncertain=true end end
-		local c={};local w,h=math.min(640,main.screenW-40),390
+		local c={};local w,h=math.min(640,main.screenW-40),430
 		ui.description(c,"intro",16,24,w-32,40,{map.isNightmare(baseId) and "3.30.0d fixed Delirium Orbs on Nightmare Maps. Preview only; reforging is not modeled." or "Preview Delirium Orb stacking. Legacy maps with Delirium layers cannot use these orbs."},14)
-		ui.label(c,"currentLabel",16,76,"Current %",14);ui.label(c,"currentTypeLabel",128,76,"Current reward type",14)
+		ui.label(c,"currentLabel",16,76,"Starting %",14);ui.label(c,"currentTypeLabel",128,76,"Starting reward type",14)
 		ui.label(c,"nextTypeLabel",344,76,"Next reward type",14)
-		c.current=new("EditControl"):EditControl(ui.anchor,{16,100,96,26},known and tostring(known.percent) or uncertain and "" or "0",nil,"%D",3)
-		c.currentType=new("EditControl"):EditControl(ui.anchor,{128,100,200,26},known and known.rewardType or "",nil,nil,80)
-		c.nextType=new("EditControl"):EditControl(ui.anchor,{344,100,w-360,26},known and known.rewardType or "Currency Items",nil,nil,80)
+		c.current=new("EditControl"):EditControl(ui.anchor,{16,100,96,26},plannedDelirium and tostring(plannedDelirium.currentPercent) or known and tostring(known.percent) or uncertain and "" or "0",nil,"%D",3)
+		c.currentType=new("EditControl"):EditControl(ui.anchor,{128,100,200,26},plannedDelirium and (plannedDelirium.currentType or "") or known and known.rewardType or "",nil,nil,80)
+		c.nextType=new("EditControl"):EditControl(ui.anchor,{344,100,w-360,26},plannedDelirium and plannedDelirium.nextType or known and known.rewardType or "Currency Items",nil,nil,80)
 		ui.label(c,"gainLabel",16,180,"Example gain (5-50%)",14)
-		c.gain=new("EditControl"):EditControl(ui.anchor,{16,204,120,26},"10",nil,"%D",2)
+		c.gain=new("EditControl"):EditControl(ui.anchor,{16,204,120,26},plannedDelirium and tostring(plannedDelirium.gain) or "10",nil,"%D",2)
 		ui.label(c,"targetLabel",16,240,"Target %",14)
-		c.target=new("EditControl"):EditControl(ui.anchor,{16,264,120,26},"100",nil,"%D",3)
+		c.target=new("EditControl"):EditControl(ui.anchor,{16,264,120,26},plannedDelirium and tostring(plannedDelirium.targetPercent) or "100",nil,"%D",3)
 		c.results=new("TextListControl"):TextListControl(ui.anchor,{152,180,w-168,120},nil,{})
 		local function update()
 			local ok,result=pcall(module.projectDelirium,tonumber(c.current.buf),c.currentType.buf,c.nextType.buf,tonumber(c.gain.buf),tonumber(c.target.buf))
@@ -194,7 +195,14 @@ function M.Open(options)
 		c.chooseOrb=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{344,136,w-360,26},"Choose next...",function() chooseReward(c.nextType) end))
 		c.chooseCurrentOrb.tooltipText="Choose the reward already on the map from pinned client data."
 		c.chooseOrb.tooltipText="Choose the next reward from pinned client data, or enter a listed orb or reward name."
-		ui.description(c,"scope",16,320,w-168,42,{"No map is changed. Eligibility, rerolled modifiers, other rewards and roll odds are not modeled."},12)
+		ui.description(c,"scope",16,320,w-32,42,{"A saved plan is hypothetical; the map is unchanged. Eligibility, rerolled modifiers, other rewards and roll odds are not modeled."},12)
+		c.keepPlan=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,h-42,125,28},"Keep plan",function()
+			local ok,plan=pcall(module.validateDeliriumPlan,{currentPercent=tonumber(c.current.buf),currentType=c.currentType.buf,nextType=c.nextType.buf,gain=tonumber(c.gain.buf),targetPercent=tonumber(c.target.buf)})
+			if not ok then ui.errorPopup("Delirium plan",plan);return end
+			plannedDelirium=plan;main:ClosePopup();refresh()
+		end))
+		c.clearPlan=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{149,h-42,125,28},"Clear plan",function() plannedDelirium=nil;main:ClosePopup();refresh() end))
+		c.clearPlan.enabled=function() return plannedDelirium~=nil end
 		c.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-132,h-42,116,28},"Close",function() main:ClosePopup() end))
 		ui.style(c);for _,control in pairs(c) do control.layoutAudit="map-delirium-projection" end
 		update();main:OpenPopup(w,h,"Delirium projection",c,nil,"gain","close")
@@ -263,12 +271,12 @@ function M.Open(options)
 	button("add",right,height-88,math.floor(rightWidth/2)-6,"Add modifier",function() if candidate then selected[#selected+1]=candidate.id;candidate=nil;offset=0;controls.search:SetText("");refresh() end end)
 	controls.add.enabled=function() return not unidentified and candidate~=nil end
 	button("currency",right+math.floor(rightWidth/2)+6,height-88,math.floor(rightWidth/2)-6,"Use currency",function()
-		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects,plannedDeified=plannedDeified,plannedAllflame=plannedAllflame}
+		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects,plannedDeified=plannedDeified,plannedAllflame=plannedAllflame,plannedDelirium=plannedDelirium}
 		local ok,actions=pcall(require("Modules.MapCurrency").options,current)
 		if not ok then ui.errorPopup("Map currency",actions);return end
 		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon=(entry.id=="divine_vessel" or entry.id=="clear_deified_plan") and require("Modules.CraftingWorkbench").icon("divine_vessel") or "Assets/Crafting/"..(entry.id:match("^vaal_") and "vaal" or entry.id)..".png",details={entry.reason or entry.detail or (entry.id=="clear_deified_plan" and "Remove only the hypothetical plan; copied enchantments remain unchanged." or entry.id=="divine_vessel" and "Plan Deified boss bonuses; eligibility and enchantment interactions are unverified." or entry.id=="originator" and "Removes a random suffix and samples a rare-only replacement; some outcomes and weights are unverified." or entry.id:match("^vaal_") and "Conditional outcome only, not a full Vaal Orb roll; outcome odds are unknown." or "Available for this modeled map."),"Experimental map crafting; no real currency is consumed.",map.isNightmare(baseId) and "Six modifiers: exclusive prefix and suffix first, then four weighted draws; order is unverified." or "Counts, selection and independent uniform stat rolls are estimates.",observedEffects and "Observed effects are not modeled and can change results." or "Unmatched translations remain ranges; some restrictions are unverified."}} end
 		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",canChoose=function(entry) return entry.available end,choose=function(entry)
-			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects,plannedDeified=plannedDeified,plannedAllflame=plannedAllflame}
+			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects,plannedDeified=plannedDeified,plannedAllflame=plannedAllflame,plannedDelirium=plannedDelirium}
 			local attemptSeed=rollSeed;rollSeed=rollSeed*16807%2147483647
 			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,attemptSeed)
 			if not ok then ui.errorPopup("Currency unavailable",result);return end
@@ -290,7 +298,7 @@ function M.Open(options)
 		ui.label(controls,"draftNameLabel",right,height-42,"Name",14)
 		controls.draftName=new("EditControl"):EditControl(ui.anchor,{right+46,height-48,160,26},initial and initial.title or "Map draft",nil,nil,120)
 		button("keep",right+218,height-48,150,"Keep map draft",function()
-			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil,twiceCorrupted=twiceCorrupted and isCorrupted() or nil,mirrored=mirrored or nil,unidentified=unidentified or nil,vaalPreview=vaalPreview or nil,plannedDeified=plannedDeified or nil,plannedAllflame=plannedAllflame,implicit=implicit and copyTable(implicit) or nil,quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
+			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil,twiceCorrupted=twiceCorrupted and isCorrupted() or nil,mirrored=mirrored or nil,unidentified=unidentified or nil,vaalPreview=vaalPreview or nil,plannedDeified=plannedDeified or nil,plannedAllflame=plannedAllflame,plannedDelirium=plannedDelirium,implicit=implicit and copyTable(implicit) or nil,quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
 			if estimateSettings then entry.estimate=copyTable(estimateSettings) end
 			local ok,result=pcall(options.keep,entry)
 			if not ok then ui.errorPopup("Map draft",result);return end
@@ -369,6 +377,10 @@ function M.Open(options)
 				prefixLines=prefixLines+1
 			end
 		end
+		if plannedDelirium then
+			table.insert(affixes,1,"^xE9BE7BPlanned Delirium: "..plannedDelirium.targetPercent.."% "..plannedDelirium.nextType.." (hypothetical)")
+			prefixLines=prefixLines+1
+		end
 		local rows={};for index,line in ipairs(affixes) do for _,row in ipairs(ui.rows({line},left-48,14)) do
 			row.modifierId=affixIds[index-prefixLines];row.selected=row.modifierId~=nil and row.modifierId==selectedAffix;rows[#rows+1]=row
 		end end
@@ -386,7 +398,7 @@ function M.Open(options)
 		if tier==17 and not map.isNightmare(baseId) then baseId="Metadata/Items/Maps/MapKeyNightmareBoss";controls.level:SetText("84")
 		elseif tier<17 and (map.isNightmare(baseId) or baseId:match("^Metadata/Items/Maps/MapKeyTier%d+$")) then baseId="Metadata/Items/Maps/MapKeyTier"..tier end
 		syncRarity()
-		selected={};rolls={};implicit=nil;mirrored=nil;twiceCorrupted=nil;unidentified=nil;vaalPreview=nil;plannedDeified=nil;plannedAllflame=nil;observedEffects=nil;offset=0;refresh()
+		selected={};rolls={};implicit=nil;mirrored=nil;twiceCorrupted=nil;unidentified=nil;vaalPreview=nil;plannedDeified=nil;plannedAllflame=nil;plannedDelirium=nil;observedEffects=nil;offset=0;refresh()
 	end
 	controls.rarity.selFunc=function()
 		local current=controls.rarity:GetSelValueByKey("val")

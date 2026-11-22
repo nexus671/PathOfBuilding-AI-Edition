@@ -587,7 +587,7 @@ test('preserves and validates shaped region observations in Atlas proposals', t 
 
 test('preserves multiple map drafts in Atlas proposals', t => {
   const f=fixture(t), mapDrafts=Array.from({length:12},(_,i)=>({id:`map-${i}`,title:`Map ${i}`,patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'normal',selected:[]}));
-  mapDrafts[0].quality={kind:'Pack Size',value:20};
+  mapDrafts[0].quality={kind:'Pack Size',value:20};mapDrafts[0].plannedDelirium={currentPercent:35,currentType:'Currency Items',nextType:'Map Items',gain:10,targetPercent:80};
   mapDrafts[0].observedEffects=[{kind:'implicit',text:"Area is Influenced by the Originator's Memories"}];
   mapDrafts[0]={...mapDrafts[0],rarity:'rare',selected:['MapMonsterAreaOfEffectMapWorlds'],rolls:[{id:'MapMonsterAreaOfEffectMapWorlds',values:[13,8,5,45]}],estimate:{wantedGroups:[['MapMonsterAreaOfEffectMapWorlds']],avoid:['MapContainsMirageWorlds'],trials:20,maxAttempts:5}};
   mapDrafts[1]={...mapDrafts[1],rarity:'rare',corrupted:true,vaalPreview:true,implicit:{id:'MapCorruptionItemRarity',value:15}};

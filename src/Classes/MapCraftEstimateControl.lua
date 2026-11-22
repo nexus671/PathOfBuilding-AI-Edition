@@ -147,6 +147,7 @@ function M.Open(build,options)
 				if map.isNightmare(state.baseId) then lines[#lines+1]="Nightmare model: exclusive prefix and suffix first, then four weighted draws; order and odds are unverified." end
 				if state.observedEffects then lines[#lines+1]="Observed effects are not modeled and can change results." end
 				if value.plannedAllflame then lines[#lines+1]="Allflame remains a plan; reroll and enchantment interactions are unverified." end
+				if value.plannedDelirium then lines[#lines+1]="Delirium remains a plan; the target has not been applied to the map." end
 				if value.plannedDeified then lines[#lines+1]="Deified remains a plan; reroll and enchantment interactions are unverified." end
 				report(lines)
 			end,

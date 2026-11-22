@@ -63,6 +63,7 @@ function M.validateMapDraft(entry)
 	assert(not entry.twiceCorrupted or result.corrupted,"A twice-corrupted map must be corrupted")
 	result.twiceCorrupted=entry.twiceCorrupted or nil
 	result.plannedAllflame=require("Modules.MapAllflame").validate(entry.plannedAllflame)
+	result.plannedDelirium=require("Modules.MapObservedEffects").validateDeliriumPlan(entry.plannedDelirium)
 	assert(entry.plannedDeified==nil or type(entry.plannedDeified)=="boolean","Invalid planned Deified marker");result.plannedDeified=entry.plannedDeified or nil
 	assert(entry.vaalPreview==nil or type(entry.vaalPreview)=="boolean","Invalid conditional Vaal preview marker")
 	assert(not entry.vaalPreview or result.corrupted,"A conditional Vaal preview requires a corrupted map")

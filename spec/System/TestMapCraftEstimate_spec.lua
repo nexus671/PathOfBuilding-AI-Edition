@@ -8,6 +8,11 @@ describe("Map reroll estimates",function()
 		assert.matches("reroll",result.note,1,true);assert.matches("unverified",result.note,1,true)
 		if result.sampleSuccess then assert.is_true(result.sampleSuccess.plannedDeified) end
 	end)
+	it("preserves a hypothetical Delirium plan through estimates",function()
+		local input=copyTable(state);input.plannedDelirium={currentPercent=0,nextType="Currency Items",gain=10,targetPercent=80}
+		local result=estimate.run(input,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})
+		assert.same(input.plannedDelirium,result.plannedDelirium);if result.sampleSuccess then assert.same(input.plannedDelirium,result.sampleSuccess.plannedDelirium) end
+	end)
 	it("reports the map data version used for an estimate",function()
 		local result=estimate.run(state,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})
 		local source=require("Modules.MapCraftingData").source()

@@ -91,6 +91,15 @@ describe("Native Atlas planner", function()
 		local lines={};for _,row in ipairs(controls.affixes.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
 		assert.matches("Planned Deified",table.concat(lines," "),1,true);assert.matches("Originator's Memories",table.concat(lines," "),1,true);main.popups={}
 	end)
+	it("keeps a Delirium target separate from observed map modifiers",function()
+		local saved;local controls=require("Classes.MapModifierControl").Open({build=build,keep=function(value) saved=value;return "delirium-plan" end})
+		controls.delirium:Click();local popup=main.popups[1].controls;popup.current:SetText("35");popup.currentType:SetText("Currency");popup.nextType:SetText("Maps");popup.target:SetText("80");popup.keepPlan:Click()
+		controls.keep:Click();assert.is_not_nil(saved.plannedDelirium);assert.equal(35,saved.plannedDelirium.currentPercent);assert.equal("Currency Items",saved.plannedDelirium.currentType);assert.equal("Map Items",saved.plannedDelirium.nextType);assert.equal(80,saved.plannedDelirium.targetPercent);assert.is_nil(saved.observedEffects)
+		saved.id="delirium-plan";local source=plan("3.30.0-preview");source.mapDrafts={saved};local store=atlas.new(build);store:Upsert(source);local xml={};store:Save(xml);local reopened=atlas.new(build);reopened:Load(xml)
+		local restored=reopened.plans[1].mapDrafts[1];assert.same(saved.plannedDelirium,restored.plannedDelirium);assert.same(saved.plannedDelirium,atlas.import(atlas.export(source)).mapDrafts[1].plannedDelirium)
+		main.popups={};controls=require("Classes.MapModifierControl").Open({build=build,initial=restored,keep=function(value) saved=value;return value.id end});controls.delirium:Click();popup=main.popups[1].controls
+		assert.equal("35",popup.current.buf);assert.equal("Map Items",popup.nextType.buf);assert.equal("80",popup.target.buf);popup.clearPlan:Click();controls.keep:Click();assert.is_nil(saved.plannedDelirium)
+	end)
 	it("persists a tier 17 Nightmare map draft",function()
 		local source=plan("3.30.0-preview")
 		source.mapDrafts={{id="nightmare",title="Abomination",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={"MapUberModCurses"}}}
