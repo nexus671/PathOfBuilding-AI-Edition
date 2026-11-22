@@ -20,6 +20,17 @@ function M.item(raw)
 	return item
 end
 
+-- Create an explicit hypothetical starting point without carrying over item
+-- properties that cannot be inferred from the base and item level alone.
+function M.blankBase(raw)
+	local item=M.item(raw);local level=item.itemLevel
+	assert(type(level)=="number" and level==math.floor(level) and level>=1 and level<=100,"The copied item needs an explicit item level from 1 to 100")
+	assert(#item.baseName<=160 and not item.baseName:find("[%c%^]"),"Invalid item base")
+	local base="Rarity: NORMAL\n"..item.baseName.."\nItem Level: "..level
+	require("Modules.CraftingSimulator").model(base)
+	return base
+end
+
 function M.workbenchReason(project)
 	local ok,item=pcall(M.item,project.startingItem)
 	if ok and (item.rarity=="UNIQUE" or item.rarity=="RELIC") then

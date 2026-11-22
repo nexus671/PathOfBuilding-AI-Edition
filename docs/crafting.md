@@ -4,6 +4,8 @@
 
 Open **AI builds → Crafting**, or choose **Items → Crafting plan**. Create a project with a starting item and explicit item level, then choose **Open workbench**.
 
+In the project wizard, **Use blank base** creates a hypothetical normal starting item with the same base type and explicit item level. It does not copy the original modifiers, influence, sockets or quality, and it leaves the target unchanged. Review the base implicit and any assumed socket layout or quality before using a result. **Undo blank base** restores the previous starting text until the blank is edited.
+
 Projects can also store written guides and preview eligible unique items. The unique crafting preview and MCP simulation support a limited set of actions; see [Unique crafting](#unique-crafting) for details. A unique target does not prevent opening the ordinary workbench for a supported starting item.
 
 The workbench tabs separate **Craft**, **Targets**, **Simulate**, and **Settings**. Crafting runs locally. AI builds, Atlas and crafting projects share a persistent planning workspace; switching pages preserves an Atlas draft. Equipped gear changes only through the desktop preview and review flow.

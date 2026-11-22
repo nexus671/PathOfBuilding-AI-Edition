@@ -23,6 +23,20 @@ function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
 	button("useEquipped",24+math.floor((col-8)/2),326,math.floor((col-8)/2),"Use equipped",function() local item=assert(equippedItem(),"This equipment slot is empty");c.starting:SetText(item.raw);c.starting.changeFunc() end)
 	c.useEquipped.enabled=function() return equippedItem()~=nil end
 	c.useEquipped.tooltipText=function() return equippedItem() and "Copy the equipped item into this crafting plan." or "Equip an item in the selected slot, or paste a starting item." end
+	local beforeBlank,blankSnapshot
+	button("blankStarting",16,368,math.floor((col-8)/2),"Use blank base",function()
+		local ok,base=pcall(projects.blankBase,c.starting.buf)
+		if not ok then ui.errorPopup("Blank starting base",base);return end
+		beforeBlank=c.starting.buf;blankSnapshot=base;c.starting:SetText(base);c.starting.changeFunc()
+	end)
+	c.blankStarting.enabled=function() return c.starting.buf:match("%S")~=nil and c.starting.buf~=blankSnapshot end
+	c.blankStarting.tooltipText="Make a hypothetical normal base at the same item level.\nReview its implicit, sockets and quality; your target stays unchanged."
+	button("undoBlank",24+math.floor((col-8)/2),368,math.floor((col-8)/2),"Undo blank base",function()
+		if beforeBlank and c.starting.buf==blankSnapshot then local original=beforeBlank;beforeBlank=nil;blankSnapshot=nil;c.starting:SetText(original);c.starting.changeFunc() end
+	end)
+	c.undoBlank.enabled=function() return beforeBlank~=nil and c.starting.buf==blankSnapshot end
+	c.undoBlank.tooltipText="Restore the previous starting item if the blank base has not been edited."
+	ui.description(c,"blankHint",16,410,col,58,{"Fresh base: review its implicit, sockets and quality. The original modifiers are not copied."},14)
 	local startPreview=require("Classes.JourneyItemControl").new(c,"startPreview",col+32,148,col,208,"STARTING ITEM")
 	ui.label(c,"targetLabel",16,76,"Desired item (optional)");edit("target",16,102,col,180,draft.targetItem,24000)
 	button("pasteTarget",16,296,col,"Paste target item",function() c.target:SetText(Paste());c.target.changeFunc() end)
@@ -72,7 +86,7 @@ function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
 		return projects.validate(draft)
 	end
 	local groups={
-		["Starting item"]={"titleLabel","title","slotLabel","slot","startingLabel","starting","pasteStarting","useEquipped","startPreview","startPreviewMods"},
+		["Starting item"]={"titleLabel","title","slotLabel","slot","startingLabel","starting","pasteStarting","useEquipped","blankStarting","undoBlank","blankHint","startPreview","startPreviewMods"},
 		Target={"targetLabel","target","pasteTarget","targetPreview","targetPreviewMods","goalsLabel","goals"},
 		["Method & budget"]={"stepsLabel","steps","methodLabel","method","methodHint","notesLabel","notes","costLabel","cost","currencyLabel","currency","sourceLabel","priceSource"},Review={"review"},
 	}
