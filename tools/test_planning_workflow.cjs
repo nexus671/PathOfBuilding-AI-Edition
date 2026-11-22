@@ -272,6 +272,12 @@ async function main(){
   const previewGoal={catalyst:8,minCatalystQuality:4};const previewRecipe={rarity:'UNIQUE',steps:[{method:'catalyst',catalyst:8,maxAttempts:4,untilRequirements:previewGoal}],targets:[],requirements:previewGoal};
   const previewRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:previewRing,recipe:previewRecipe,options:{trials:1,maxActions:4,seed:123}},'crafted');assert.equal(previewRun.nativeCrafting.trials,1);
   const dextralRing=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:'Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86',query:'Dextral',limit:20},'inspected');assert.match(dextralRing.crafting.nativeEngine.catalystGuides[0].warning,/may not affect fixed unique modifiers/);
+  const dialla="Rarity: UNIQUE\nDialla's Malefaction\nSage's Robe\nItem Level: 86\nSockets: R-G-B";
+  const diallaInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:dialla,limit:100},'inspected');
+  for(const method of ['chromatic','jeweller','omen_jeweller','socket_white_bench']){const action=diallaInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method===method);assert.equal(action.available,false,method);assert.match(action.unavailableReason,/no-white-socket/);}
+  const diallaApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:dialla,action:{method:'socket_white_bench'},seed:1},'failed');assert.match(diallaApply.error,/no-white-socket/);
+  const diallaRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:dialla,recipe:{steps:[{method:'chromatic'}],targets:[],requirements:{socketColours:'WWW'}},options:{trials:4,maxActions:1,seed:1}},'failed');assert.match(diallaRun.error,/no-white-socket/);
+  const legacyDialla=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:dialla.replace('R-G-B','R-G-W'),limit:100},'inspected');assert.equal(legacyDialla.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='socket_white_bench').available,true);
   const uniqueInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},limit:20},'inspected');
   assert.equal(uniqueInspection.crafting.nativeEngine.uniqueCrafting,true);
   assert.ok(uniqueInspection.crafting.nativeEngine.uniqueActions.some(entry=>entry.method==='omen_connections' && entry.available));
