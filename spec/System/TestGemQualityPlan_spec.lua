@@ -34,13 +34,14 @@ describe("Gem quality planning",function()
   assert.has_error(function() planner.inspect(gem,101) end)
  end)
  it("lets a user paste a gem and inspect or copy a guide",function()
-  newBuild();main.popups={};require("Classes.GemQualityPlanControl").Open(build)
-  local c=main.popups[1].controls;local original=Paste;Paste=function() return gem end;c.paste:Click();Paste=original
+  newBuild();main.popups={};local panel=require("Classes.GemQualityPlanControl");panel.Open(build)
+  local c=main.popups[1].controls;local environment=getfenv(panel.Open);local original=environment.Paste
+  environment.Paste=function() return gem end;local ok,err=pcall(function() c.paste:Click() end);environment.Paste=original;assert.is_true(ok,tostring(err))
   assert.is_true(c.copy:IsEnabled());local text="";for _,line in ipairs(c.result.list) do text=text..(line[1] or "") end;assert.matches("8 Gemcutter",text)
   assert.is_true(c.keep:IsEnabled());c.keep:Click();assert.is_false(c.keep:IsEnabled());assert.equal(1,#build.savers.BuildJourney.data.milestones)
   local saved=build.savers.BuildJourney.data.milestones[1];assert.equal("gems",saved.kind);assert.matches("8 Gemcutter",saved.notes)
   local xml={};build.savers.BuildJourney:Save(xml);local reopened=require("Modules.BuildJourney").new(build);reopened:Load(xml);assert.equal(saved.notes,reopened.data.milestones[1].notes)
-  Paste=function() return (gem:gsub("Level: 20","Level: 19")) end;c.paste:Click();Paste=original;assert.is_true(c.keep:IsEnabled())
+  environment.Paste=function() return (gem:gsub("Level: 20","Level: 19")) end;ok,err=pcall(function() c.paste:Click() end);environment.Paste=original;assert.is_true(ok,tostring(err));assert.is_true(c.keep:IsEnabled())
 
   c.target:SetText("23",true);text="";for _,line in ipairs(c.result.list) do text=text..(line[1] or "") end;assert.matches("20%%",text);main.popups={}
  end)
