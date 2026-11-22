@@ -114,9 +114,21 @@ function Panel.Open(build,displayItem,displaySlot,layout,selectedId)
 		store:Upsert(project); main.popups={}; Panel.Open(build,nil,nil,layout)
 	end)
 	controls.native=button(544,height-138,160,"Native crafting",function()
-		workbenchReason(selected())
-		if cachedUniqueQuality then require("Classes.CraftingUniqueQualityControl").Open(build,selected(),layout)
-		elseif layout then layout.openWorkbench(selected()) else require("Classes.CraftingSimulatorControl").Open(build,selected()) end
+		local project=selected();workbenchReason(project)
+		local ok,err=pcall(function()
+			if cachedUniqueQuality then require("Classes.CraftingUniqueQualityControl").Open(build,project,layout)
+			elseif layout then layout.openWorkbench(project) else require("Classes.CraftingSimulatorControl").Open(build,project) end
+		end)
+		if not ok then
+			if not tostring(err):find("Ctrl+Alt+C",1,true) then error(err) end
+			local popup={};local w=math.min(760,main.screenW-40)
+			local lines=ui.rows({ui.errorText(err)},w-52,16);local content=0;for _,line in ipairs(lines) do content=content+line.height end
+			local h=math.min(main.screenH-48,math.max(140,content+76))
+			popup.message=new("TextListControl"):TextListControl(ui.anchor,{16,18,w-32,h-70},nil,lines)
+			popup.edit=button(16,h-42,160,"Edit starting item",function() main:ClosePopup();Panel.Edit(build,project,nil,nil,layout) end)
+			popup.close=button(w-136,h-42,120,"Close",function() main:ClosePopup() end)
+			ui.style(popup,{edit=true});main:OpenPopup(w,h,"Crafting project",popup,nil,nil,"close")
+		end
 	end)
 	controls.coe=button(16,height-48,220,"Craft of Exile (optional)",function() OpenURL(projects.handoff(selected().startingItem).url) end)
 	controls.preview=button(720,height-138,144,"Preview target",function() Panel.Preview(build,selected()) end)

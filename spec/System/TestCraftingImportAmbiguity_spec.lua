@@ -22,6 +22,25 @@ describe("Crafting import ambiguity",function()
 		assert.matches("Ctrl+Alt+C",table.concat(parts," "),1,true)
 		assert.equal(raw,build.savers.CraftingProjects.projects[1].startingItem);main.popups={}
 	end)
+	it("returns to the starting item and opens the workbench after an advanced copy is kept",function()
+		local ui=require("Modules.HeadlessUI").install({width=960,height=640});ui:bind(build)
+		local ok,err=pcall(function()
+			local raw="Rarity: RARE\nExample Item\nIron Hat\nItem Level: 86\nImplicits: 0\n+55 to Strength\n+107 to maximum Life"
+			local advanced='Rarity: RARE\nExample Item\nIron Hat\nItem Level: 86\nImplicits: 0\n{ Prefix Modifier "Virile" (Tier: 5) }\n+107(100-114) to maximum Life\n{ Suffix Modifier "of the Gods" (Tier: 2) }\n+55(51-55) to Strength'
+			local project={id="ambiguous",title="Ambiguous",slot="Helmet",startingItem=raw,goals={},steps={}}
+			build.savers.CraftingProjects:Upsert(project);main.popups={}
+			build.planningWorkspace=require("Modules.PlanningWorkspace").new(build);build.viewMode="PLANNER";build.planningWorkspace:Show("crafting")
+			build.planningWorkspace.body.controls.native:Click();assert.is_truthy(main.popups[1].controls.edit)
+			main.popups[1].controls.edit:Click();local wizard=main.popups[1].controls
+			assert.equal(raw,wizard.starting.buf);wizard.close:Click();assert.equal(raw,build.savers.CraftingProjects.projects[1].startingItem)
+			build.planningWorkspace.body.controls.native:Click();main.popups[1].controls.edit:Click();wizard=main.popups[1].controls
+			wizard.starting:SetText(advanced);wizard.starting.changeFunc();wizard.wizardPage:SetSel(4);wizard.save:Click()
+			assert.equal(advanced,build.savers.CraftingProjects.projects[1].startingItem)
+			build.planningWorkspace.body.controls.native:Click()
+			assert.equal("workbench",build.planningWorkspace.cache.crafting.layout.snapshot().kind)
+		end)
+		ui:restore();main.popups={};assert.is_true(ok,err)
+	end)
 	it("uses advanced modifier names and ranges to resolve the same displayed rolls",function()
 		for _,case in ipairs({{"of the Gods","51-55","Strength9"},{"of the Essence","51-58","StrengthEssence7_"}}) do
 			local raw='Rarity: RARE\nExample Item\nIron Hat\nItem Level: 86\nImplicits: 0\n{ Prefix Modifier "Virile" (Tier: 5) }\n+107(100-114) to maximum Life\n{ Suffix Modifier "'..case[1]..'" (Tier: 2) }\n+55('..case[2]..') to Strength'
