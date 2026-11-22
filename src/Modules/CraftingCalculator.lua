@@ -220,12 +220,17 @@ function C.extend(M)
 					outcomes=outcomes,sampleState=outcomes[1].state,sampleItem=M.itemText(model,outcomes[1].state),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 			end
 		end
-		if (craft.method=="quality" or craft.method=="catalyst") and not craft.allflame then
+		if (craft.method=="quality" or craft.method=="catalyst" or craft.method=="tainted_quality") and not craft.allflame then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial;model=M.context(model,state)
-			local _,fraction=require("Modules.CraftingProperties").qualityGainProfile(model.item.itemLevel)
-			local draws={};if fraction>0 then draws[#draws+1]={value=fraction/2,weight=fraction} end
-			if fraction<1 then draws[#draws+1]={value=(1+fraction)/2,weight=1-fraction} end
+			local draws={}
+			if craft.method=="tainted_quality" then
+				for quality=1,20 do draws[#draws+1]={value=(quality-0.5)/20,weight=1/20} end
+			else
+				local _,fraction=require("Modules.CraftingProperties").qualityGainProfile(model.item.itemLevel)
+				if fraction>0 then draws[#draws+1]={value=fraction/2,weight=fraction} end
+				if fraction<1 then draws[#draws+1]={value=(1+fraction)/2,weight=1-fraction} end
+			end
 			local outcomes,byQuality,hits={},{},0
 			for _,draw in ipairs(draws) do
 				local result=M.action(model,state,craft,function() return draw.value end)
@@ -238,7 +243,8 @@ function C.extend(M)
 				entry.weight=entry.weight+draw.weight;entry.chance=entry.weight*100;if entry.matches then hits=hits+draw.weight end
 			end
 			local sample=assert(outcomes[1],"No modeled quality outcome").state
-			return {exactFor="One quality action under the estimated item-level gain model; game odds are unverified",showAllOutcomes=true,sampled=false,successChance=100*hits,totalWeight=1,matchingWeight=hits,
+			local exactFor=craft.method=="tainted_quality" and "One tainted quality action under the assumed uniform 1-20% model; game odds are unverified" or "One quality action under the estimated item-level gain model; game odds are unverified"
+			return {exactFor=exactFor,showAllOutcomes=true,sampled=false,successChance=100*hits,totalWeight=1,matchingWeight=hits,
 				outcomes=outcomes,sampleState=sample,sampleItem=M.itemText(model,sample),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 		end
 		if (method=="socket_bench" or method=="socket_white_bench" or method=="omen_jeweller" or method=="omen_connections" or method=="beast_max_links" or method=="beast_imprint" or method=="beast_talisman_imprint" or method=="restore_imprint" or method=="bench_remove_enchant" or method=="bench_flask_enchant" or method=="rog_reroll" and craft.rogOperation=="set_quality") and not craft.allflame then

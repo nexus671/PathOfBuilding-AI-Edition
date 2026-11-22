@@ -8,6 +8,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  local tasks=require("Modules.CraftingTasks");for _=1,1000 do if not tasks.job then break end;tasks.tick(build) end;assert(not tasks.job,"Quality odds did not finish")
  local lines={};for _,row in ipairs(c.resultSummary.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;local text=table.concat(lines," "):gsub("%s+"," ")
  assert(text:find("game odds are unverified",1,true) and text:find("Quality: 1%",1,true) and text:find("Quality: 2%",1,true),"Exact quality outcomes were not shown: "..text)
- ui:frame();if output then ui:write(output.."/"..size[1].."-quality-calculation.json") end;ui:click("close");ui:restore()
+ ui:frame();if output then ui:write(output.."/"..size[1].."-quality-calculation.json") end;ui:click("close")
+ project.startingItem=raw.."\nCorrupted";project.nativeRecipe={steps={{method="tainted_quality"}},targets={},requirements={minQuality=18}}
+ c=require("Classes.CraftingSimulatorControl").Open(build,project);c.method:SelByValue("tainted_quality","val");c.method.selFunc();ui:click("tab_settings");ui:click("exact")
+ for _=1,1000 do if not tasks.job then break end;tasks.tick(build) end;assert(not tasks.job,"Tainted quality odds did not finish")
+ lines={};for _,row in ipairs(c.resultSummary.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;text=table.concat(lines," "):gsub("%s+"," ")
+ assert(text:find("assumed uniform",1,true) and text:find("Quality: 20%",1,true),"Tainted quality outcomes were not shown: "..text)
+ ui:frame();if output then ui:write(output.."/"..size[1].."-tainted-quality-calculation.json") end;ui:click("close");ui:restore()
 end
 print("QUALITY_CALCULATION_UI_OK")

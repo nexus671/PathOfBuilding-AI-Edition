@@ -10,6 +10,14 @@ describe("Modeled quality calculations",function()
   assert.is_false(capped.sampled);assert.equal(1,#capped.outcomes);assert.equal(100,capped.successChance);assert.equal(20,capped.sampleState.quality)
   assert.has_error(function() sim.calculate(raw.."\nCorrupted",{method="quality"},{},nil,{requirements={minQuality=2}}) end)
  end)
+ it("enumerates tainted quality under the assumed uniform model",function()
+  local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86\nQuality: 25\nCorrupted"
+  local result=sim.calculate(raw,{method="tainted_quality"},{},nil,{requirements={minQuality=18},seed=42})
+  assert.is_false(result.sampled);assert.equal(20,#result.outcomes);assert.is_true(math.abs(result.successChance-15)<0.000001)
+  assert.matches("assumed uniform",result.exactFor,1,true)
+  for index,outcome in ipairs(result.outcomes) do assert.equal(index,outcome.state.quality);assert.equal(5,outcome.chance) end
+  assert.has_error(function() sim.calculate(raw:gsub("\nCorrupted",""),{method="tainted_quality"},{},nil,{requirements={minQuality=18}}) end)
+ end)
  it("calculates catalyst gains and resets when changing type",function()
   local raw="Rarity: NORMAL\nRuby Ring\nItem Level: 86\nCatalyst: Prismatic\nCatalystQuality: 20\nImplicits: 1\n{tags:resistance}+25% to Fire Resistance"
   local result=sim.calculate(raw,{method="catalyst",catalyst=4},{},nil,{requirements={catalyst=4,minCatalystQuality=2},seed=42})
