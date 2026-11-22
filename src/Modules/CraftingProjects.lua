@@ -166,12 +166,12 @@ function M.checkStartingStateChange(previous,project)
 end
 
 -- AI proposals can introduce recipe states without changing the pasted item.
--- Validate new states, while allowing unchanged legacy states to be reviewed
--- or repaired through ordinary project edits.
+-- Validate changed recipes, while allowing unchanged legacy recipes to be
+-- retained during ordinary project edits.
 function M.checkProposedRecipeStates(previous,project)
 	local oldStates,pending={},{}
 	local function collect(target,recipe,label,key)
-		if recipe and recipe.initialState then target[#target+1]={state=recipe.initialState,label=label,key=key} end
+		if recipe and recipe.initialState then target[#target+1]={state=recipe.initialState,recipe=recipe,label=label,key=key} end
 	end
 	if previous and previous.startingItem==project.startingItem then
 		collect(oldStates,previous.nativeRecipe,"Primary recipe","primary")
@@ -183,7 +183,7 @@ function M.checkProposedRecipeStates(previous,project)
 	for _,entry in ipairs(pending) do
 		local same=false
 		if type(entry.state)=="table" then for _,old in ipairs(oldStates) do
-			if entry.key==old.key and type(old.state)=="table" and tableDeepEquals(entry.state,old.state) and tableDeepEquals(old.state,entry.state) then same=true;break end
+			if entry.key==old.key and type(old.state)=="table" and tableDeepEquals(entry.recipe,old.recipe) and tableDeepEquals(old.recipe,entry.recipe) then same=true;break end
 		end end
 		if not same then changed[#changed+1]=entry end
 	end

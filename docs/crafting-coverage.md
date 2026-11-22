@@ -36,7 +36,7 @@ When an ambiguous starting item prevents the workbench opening, **Edit starting 
 The same recovery is available when opening a linked craft from Journey or a filter target. If opening fails, the current planner and its session draft remain in place.
 Changing a project's starting item prompts before resetting any saved recipe starting states or discarding its saved working session. Recipe steps, goals and separately kept item snapshots remain available. Cancel keeps the original project and leaves the edit open.
 AI project edits that change the starting item must also reset or replace incompatible recipe starting states. The proposal is rejected before review if retained states cannot be checked against the new item; the existing project stays unchanged. Legacy states without an origin cannot be silently reused for a different item.
-AI proposals also validate newly supplied primary and alternative recipe starting states against their item, even when the item itself has not changed. An unchanged state in an existing recipe remains editable for legacy repair; copying it to a new recipe requires validation.
+AI proposals also validate newly supplied primary and alternative recipe starting states against their item, even when the item itself has not changed. An unchanged existing recipe can be retained while editing other project details; modifying it or copying its state to a new recipe requires validation.
 When no individual modifier matches but a bounded check finds a possible
 combined explanation, the import error says so; it does not invent the
 individual modifier rolls.

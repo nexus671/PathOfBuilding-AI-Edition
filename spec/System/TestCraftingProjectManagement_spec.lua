@@ -49,6 +49,10 @@ describe("Crafting project removal and save-state ownership",function()
 		-- must preserve them without presenting them as newly validated.
 		build.savers.CraftingProjects:Upsert(proposed);local renamed=copyTable(proposed);renamed.title="Renamed"
 		result=prepare(renamed);assert.equal("Renamed",result.candidate.savers.CraftingProjects.projects[1].title)
+		local modified=copyTable(renamed);modified.nativeRecipe.steps[1].method="transmute"
+		ok,err=pcall(prepare,modified);assert.is_false(ok);assert.matches("invalid starting state",err,1,true)
+		modified.nativeRecipe.initialState=sim.model(modified.startingItem).initial
+		result=prepare(modified);assert.equal("transmute",result.candidate.savers.CraftingProjects.projects[1].nativeRecipe.steps[1].method)
 		local changed=copyTable(renamed);changed.recipeAlternatives={{name="New alternative",recipe=copyTable(changed.nativeRecipe)}}
 		ok,err=pcall(prepare,changed);assert.is_false(ok);assert.matches("New alternative",err,1,true)
 		changed.recipeAlternatives[1].recipe.initialState=sim.model(changed.startingItem).initial
