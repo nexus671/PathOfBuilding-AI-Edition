@@ -43,6 +43,17 @@ for i, entry in ipairs(LISTED_STATUS_OPTIONS) do
 end
 
 
+local function uniqueTradeName(item)
+	local name = (item.title or item.name):gsub("^Foulborn%s+", ""):gsub("%s+$", "")
+	name = (name:match("^(.-)%s+%d+$") or name):lower()
+	local best
+	for _, entry in pairs(main.uniqueDB.list) do
+		local candidate = entry.title
+		if entry.baseName == item.baseName and name:find(candidate:lower(), 1, true) and (not best or #candidate > #best or (#candidate == #best and candidate < best)) then best = candidate end
+	end
+	return best
+end
+
 -- Build the trade search URL based on popup selections
 local function buildURL(item, slotName, controls, modEntries, defenceEntries, isUnique)
 	-- Determine realm and league from the popup's dropdowns
@@ -71,21 +82,9 @@ local function buildURL(item, slotName, controls, modEntries, defenceEntries, is
 	local queryFilters = {}
 
 	if isUnique then
-		-- Search by unique name
-		-- Strip "Foulborn" prefix from unique name for trade search
-		local tradeName = (item.title or item.name):gsub("^Foulborn%s+", "")
-		-- only strip a trailing numeric identifier to avoid e.g. including
-		-- timeless jewel ids or other numbers appended to the item name.
-		tradeName = tradeName:gsub("%s+$", "")
-		tradeName = (tradeName:match("^(.-)%s+%d+$") or tradeName):lower()
-		-- verify the name since the trade site will error on an invalid name
-		for _, dbUnique in pairs(main.uniqueDB.list) do
-			local candidate = dbUnique.title
-			if tradeName:find(candidate:lower(), 1, true) and (not queryTable.name or #candidate > #queryTable.name or (#candidate == #queryTable.name and candidate < queryTable.name)) then
-				queryTable.name = candidate
-			end
-		end
+		queryTable.name = uniqueTradeName(item)
 		queryTable.type = item.baseName
+		if not queryTable.name then queryFilters.type_filters = { filters = { rarity = { option = "unique" } } } end
 		-- If item is Foulborn, add the foulborn_item filter
 		if item.foulborn then
 			queryFilters.misc_filters = queryFilters.misc_filters or { filters = {} }
@@ -422,6 +421,10 @@ function M.openPopup(item, slotName, primaryBuild)
 		-- Unique item name label
 		controls.nameLabel = new("LabelControl"):LabelControl(nil, {0, ctrlY, 0, 16}, "^x" .. (colorCodes[item.rarity] or "FFFFFF"):gsub("%^x","") .. item.name)
 		ctrlY = ctrlY + rowHeight
+		if not uniqueTradeName(item) then
+			controls.nameWarning = new("LabelControl"):LabelControl(nil, {0, ctrlY, 0, 16}, "^xFFBB77Name not recognised: searching all uniques of this base.")
+			ctrlY = ctrlY + rowHeight
+		end
 	else
 		-- Category label
 		local categoryLabel = tradeHelpers.getTradeCategoryLabel(slotName, item)
