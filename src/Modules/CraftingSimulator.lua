@@ -745,6 +745,9 @@ end
 -- saved recipes remain loadable and can be repaired.
 function M.requirementsConflict(requirements)
  if type(requirements)~="table" then return nil end
+ if type(requirements.minFractured)=="number" and type(requirements.maxAffixes)=="number" and requirements.minFractured>requirements.maxAffixes then
+  return "Minimum fractured modifiers exceed the maximum total modifiers."
+ end
  local exact=type(requirements.exactSockets)=="number" and requirements.exactSockets or nil
  local limit=exact or 6
  local abyss=type(requirements.minAbyssSockets)=="number" and requirements.minAbyssSockets or 0
