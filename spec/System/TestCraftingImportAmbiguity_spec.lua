@@ -1,0 +1,18 @@
+describe("Crafting import ambiguity",function()
+	local sim=require("Modules.CraftingSimulator")
+	before_each(function() newBuild() end)
+	it("explains when an ordinary and an Essence modifier fit the same item",function()
+		local raw="Rarity: RARE\nExample Item\nIron Hat\nItem Level: 86\nImplicits: 0\n+55 to Strength\n+107 to maximum Life"
+		local ok,reason=pcall(sim.model,raw)
+		assert.is_false(ok)
+		assert.matches("several modifier identities",reason,1,true)
+		assert.matches("ordinary modifier and an Essence modifier",reason,1,true)
+	end)
+	it("does not claim Essence ambiguity for an unrelated tier conflict",function()
+		local raw="Rarity: MAGIC\nSearching Eye Jewel\nItem Level: 86\n15% chance to Avoid Elemental Ailments while you have Elusive"
+		local ok,reason=pcall(sim.model,raw)
+		assert.is_false(ok)
+		assert.matches("several modifier identities",reason,1,true)
+		assert.is_nil(reason:find("ordinary modifier and an Essence modifier",1,true))
+	end)
+end)

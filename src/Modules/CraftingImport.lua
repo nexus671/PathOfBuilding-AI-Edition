@@ -382,6 +382,28 @@ function I.resolve(M,model,state)
 		elseif not tostring(result):find("Import has too many possible combined modifiers",1,true) then error(result) end
 	end
 	local failure=#solutions == 0 and "Imported values do not resolve to legal affixes at this item level; use advanced copy text or a blank base with a structured starting state" or "Imported values match several modifier identities; use advanced copy text or a blank base with a structured starting state"
+	-- When two complete assignments differ between an ordinary and an Essence
+	-- modifier, explain the ambiguity without choosing either one. A combined
+	-- alternative is represented by a boolean and has no identities to compare.
+	if type(solutions[1])=="table" and type(solutions[2])=="table" then
+		local ordinary,essence={},{}
+		for _,entry in ipairs(model.mods) do ordinary[entry.id]=true end
+		for _,entry in ipairs(model.essences) do essence[entry.modId]=true end
+		local function difference(left,right)
+			local other={};for _,entry in ipairs(right) do other[entry.id]=true end
+			local hasOrdinary,hasEssence=false,false
+			for _,entry in ipairs(left) do if not other[entry.id] then
+				if ordinary[entry.id] and not essence[entry.id] then hasOrdinary=true end
+				if essence[entry.id] and not ordinary[entry.id] then hasEssence=true end
+			end end
+			return hasOrdinary,hasEssence
+		end
+		local ordinaryA,essenceA=difference(solutions[1],solutions[2])
+		local ordinaryB,essenceB=difference(solutions[2],solutions[1])
+		if ordinaryA and essenceB or essenceA and ordinaryB then
+			failure=failure..". An ordinary modifier and an Essence modifier both fit the displayed item"
+		end
+	end
 	if combinedWithoutDirect then failure="Imported values may combine multiple modifiers, so their individual rolls cannot be recovered reliably; use advanced copy text or a blank base with a structured starting state" end
 	if model.item.catalyst and (model.item.catalystQuality==nil or model.item.catalystQuality>0) then
 		failure=failure..". Catalyst quality may scale copied values; verify the unscaled rolls before constructing a starting state."
