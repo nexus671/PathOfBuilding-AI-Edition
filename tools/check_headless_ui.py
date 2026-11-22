@@ -65,6 +65,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_filter_review_ui.lua")
     sources.append(ROOT / "tools/test_crafting_base_cost_ui.lua")
     sources.append(ROOT / "tools/test_unique_sacred_ui.lua")
+    sources.append(ROOT / "tools/test_recipe_currency_help.lua")
     sources.append(ROOT / "tools/test_filter_unique_review.lua")
     sources.append(ROOT / "tools/test_filter_sound_list_ui.lua")
     sources.append(ROOT / "tools/test_fated_scene_ui.lua")
@@ -180,6 +181,10 @@ def main():
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "unique-sacred-controls.log").write_text(sacred.stdout)
     assert sacred.returncode == 0, sacred.stdout
+    recipe_help = subprocess.run(lua_command + ["../tools/test_recipe_currency_help.lua"], cwd=ROOT / "src",
+                                 env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "recipe-currency-help-controls.log").write_text(recipe_help.stdout)
+    assert recipe_help.returncode == 0, recipe_help.stdout
     filter_sound_list = subprocess.run(lua_command + ["../tools/test_filter_sound_list_ui.lua"], cwd=ROOT / "src",
                                        env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-sound-list-controls.log").write_text(filter_sound_list.stdout)
