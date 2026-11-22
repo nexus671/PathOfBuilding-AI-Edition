@@ -10,7 +10,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  ui:click("outcomes");ui:text("search","Lapidary");local details="";for _,line in ipairs(main.popups[1].controls.details.list) do details=details..StripEscapes(line[1] or "").." " end
  assert(details:find("can destroy",1,true) and details:find("23%%"),"Lens limits missing: "..details)
  ui:frame();if output then ui:write(output.."/"..size[1].."-gem-corruption.json") end;ui:click("close")
- ui:click("soul");ui:text("search","Encumbrance");local soulText="";for _,line in ipairs(main.popups[1].controls.details.list) do soulText=soulText..StripEscapes(line[1] or "").." " end
+ ui:click("soul");ui:text("search","Soul Core of Intellect");local coreText="";for _,line in ipairs(main.popups[1].controls.details.list) do coreText=coreText..StripEscapes(line[1] or "").." " end
+ assert(coreText:find("eligibility is unverified",1,true),"Soul Core eligibility limit missing: "..coreText)
+ ui:text("search","Encumbrance");local soulText="";for _,line in ipairs(main.popups[1].controls.details.list) do soulText=soulText..StripEscapes(line[1] or "").." " end
  assert(soulText:find("200%%"),"Soul Core downside reference missing: "..soulText)
  ui:frame();if output then ui:write(output.."/"..size[1].."-gem-soul-cores.json") end;ui:click("close")
  ui:click("keep");assert(#build.savers.BuildJourney.data.milestones==1,"Gem plan was not added to Journey")

@@ -64,12 +64,13 @@ function M.inspect(raw,target)
  end
  corruption.vaalCandidates=not support and not gem.vaalGem and vaalCandidates(gem.grantedEffectId) or {}
  plan.corruption=corruption
- local reference=soulCores();local soul={available=false,cores=copyTable(reference.cores),downsides=copyTable(reference.downsides),dataPatch=reference.patch,sourceCommit=reference.sourceCommit,
+ local reference=soulCores();local soul={knownRequirements="unknown",eligibilityVerified=false,cores=copyTable(reference.cores),downsides=copyTable(reference.downsides),dataPatch=reference.patch,sourceCommit=reference.sourceCommit,
   note="These client-defined detrimental effects are a general reference, not a per-core outcome pool. Compatibility, positive outcomes, weights and character calculations are not modeled."}
- if support then soul.reason="Soul Cores describe level 20 active skill gems, not support gems."
- elseif corrupted then soul.reason="Soul Cores require an uncorrupted gem."
- elseif level~=20 then soul.reason="The copied active skill gem must be level 20."
- else soul.available=true end
+ if support then soul.knownRequirements="not_supported";soul.reason="This reference checks active skill gems only; support gem eligibility is unverified."
+ elseif corrupted then soul.knownRequirements="not_met";soul.reason="Soul Cores require an uncorrupted gem."
+ elseif not level then soul.reason="The copied gem does not include its level."
+ elseif level~=20 then soul.knownRequirements="not_met";soul.reason="The copied active skill gem must be level 20."
+ else soul.knownRequirements="met" end
  plan.soulCores=soul
  local tags=gem.tags or {};local vendor={available=false,prisms=1,outputLevel=1,outputQuality=20,
   note="This trades the support gem and one Prism for a level 1, 20% quality gem. The gem must be leveled again; verify the vendor offer and special gem properties in game."}

@@ -58,7 +58,7 @@ function M.Open(build)
  c.soul=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{w-186,110,170,26},"Soul Cores",function()
   if not result then return end
   local info=result.soulCores;local entries={}
-  for _,core in ipairs(info.cores) do entries[#entries+1]={id=core.name,label=core.name,category="Currencies",details={core.description,info.available and "This gem meets the known level and corruption requirements; other eligibility is unverified." or info.reason,info.note}} end
+  for _,core in ipairs(info.cores) do entries[#entries+1]={id=core.name,label=core.name,category="Currencies",details={core.description,info.knownRequirements=="met" and "This gem meets the known level and corruption requirements; other eligibility is unverified." or info.reason,info.note}} end
   for _,support in ipairs(info.downsides) do
    local lines={};for _,effect in ipairs(support.effects) do lines[#lines+1]=effect:gsub("%[([^%]|]+)|([^%]]+)%]","%2") end
    lines[#lines+1]=support.supportText;lines[#lines+1]=info.note
