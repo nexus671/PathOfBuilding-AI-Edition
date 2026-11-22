@@ -1439,12 +1439,19 @@ do
 			M.validateRecipe({rarity="UNIQUE",steps={action},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			if action.method=="sacred" then
 				local initial=M.perform(raw,action,options.seed,nil,options.treeVersion);local unique=require("Modules.CraftingUniqueQuality")
-				local outcomes,hits={},0
+				local outcomes,byItem,hits={},{},0
 				for position=0,31 do
 					local result=unique.sacred(raw,options.seed or 104729,position)
 					local hit=unique.matches(result.itemText,options.requirements);if hit then hits=hits+1 end
-					local stats=require("Modules.CraftingItemStats").itemValues(unique.inspect(result.itemText))
-					outcomes[#outcomes+1]={id=tostring(position),text=require("Modules.CraftingSacred").describe(stats),chance=100/32,weight=1/32,matches=hit,itemText=result.itemText}
+					local entry=byItem[result.itemText]
+					if entry then
+						assert(entry.matches==hit,"Identical Sacred outcomes disagree on the target")
+						entry.weight=entry.weight+1/32;entry.chance=entry.weight*100
+					else
+						local stats=require("Modules.CraftingItemStats").itemValues(unique.inspect(result.itemText))
+						entry={id=tostring(position),text=require("Modules.CraftingSacred").describe(stats),chance=100/32,weight=1/32,matches=hit,itemText=result.itemText}
+						outcomes[#outcomes+1]=entry;byItem[result.itemText]=entry
+					end
 				end
 				local sample=outcomes[1].itemText;local nativeStats=require("Modules.CraftingItemStats").itemValues(unique.inspect(sample))
 				return M.withTreeContext({uniqueCrafting=true,exactFor="One Sacred Orb under the assumed shared-roll model; game odds are unverified",sampled=false,successChance=100*hits/32,

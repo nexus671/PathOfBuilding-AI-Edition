@@ -73,6 +73,22 @@ describe("Sacred Orb previews for unique armour", function()
 			assert.equal(1,total);assert.equal(result.matchingWeight,matching)
 		end
 	end)
+	it("combines identical Sacred outcomes without changing their total chance", function()
+		for _,case in ipairs({
+			{item="Rarity: NORMAL\nIron Hat\nItem Level: 86",stat="Armour",count=5},
+			{item=raw,stat="EnergyShield",count=18},
+		}) do
+			local result=sim.calculate(case.item,{method="sacred"},{},nil,{requirements={nativeStats={[case.stat]=1}}})
+			assert.is_false(result.sampled);assert.equal(case.count,#result.outcomes);assert.equal(100,result.successChance)
+			local total,combined=0,false
+			for _,outcome in ipairs(result.outcomes) do
+				total=total+outcome.weight;assert.equal(outcome.weight*100,outcome.chance)
+				if outcome.weight>1/32 then combined=true end
+			end
+			assert.equal(1,total);assert.is_true(combined)
+			if case.stat=="Armour" then for index,chance in ipairs({12.5,25,25,25,12.5}) do assert.equal(chance,result.outcomes[index].chance) end end
+		end
+	end)
 	it("explains unsafe item text before offering a preview", function()
 		local cases={
 			{raw:gsub("Item Level: 86", "Item Level: 86\nItem Level: 86"),"Could not safely locate item level"},

@@ -361,6 +361,11 @@ async function main(){
     assert.equal(estimate.nativeCrafting.sampled,false);assert.equal(estimate.nativeCrafting.successChance,84.375);
     assert.match(estimate.nativeCrafting.exactFor,/unverified/);assert.equal(estimate.nativeCrafting.outcomes.length,32);
   }
+  for (const [itemText,stat,count] of [['Rarity: NORMAL\nIron Hat\nItem Level: 86','Armour',5],[sacredRaw,'EnergyShield',18]]) {
+    const estimate=await queued('calculate_crafting',{baseRevision:context.revision,itemText,action:{method:'sacred'},targets:[],options:{requirements:{nativeStats:{[stat]:1}}}},'crafted');
+    assert.equal(estimate.nativeCrafting.outcomes.length,count);assert.equal(estimate.nativeCrafting.successChance,100);
+    assert.equal(estimate.nativeCrafting.outcomes.reduce((sum,outcome)=>sum+outcome.weight,0),1);
+  }
   const uniqueGuide={id:'unique-guide-workflow',title:'Unique shield guide',slot:'Weapon 2',startingItem:uniqueShield,targetItem:uniqueLinked.nativeCrafting.itemText,goals:[],steps:[
     {action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},
     {action:'Link existing sockets with an Omen of Connections and an Orb of Fusing',uniqueCraft:{method:'omen_connections',count:1}},

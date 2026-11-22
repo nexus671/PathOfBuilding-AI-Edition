@@ -11,12 +11,20 @@ function C.extend(M)
 			M.perform(raw,craft,options.seed,initialState)
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
 			model=M.context(model,state)
-			local outcomes,hits={},0
+			local outcomes,byDefence,hits={},{},0
 			for position=0,31 do
 				local draws=0;local result=M.action(model,state,craft,function() draws=draws+1;assert(draws==1,"Unexpected Sacred roll draw");return (position+0.5)/32 end)
 				local hit=M.matches(result,targets,nil,model,options.requirements,options.requiredGroups);if hit then hits=hits+1 end
-				local stats=require("Modules.CraftingItemStats").values(M,model,result)
-				outcomes[#outcomes+1]={id=tostring(position),text=require("Modules.CraftingSacred").describe(stats),chance=100/32,weight=1/32,matches=hit,state=result}
+				local key={};for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do key[#key+1]=tostring(result.percentiles[kind] or "") end;key=table.concat(key,":")
+				local entry=byDefence[key]
+				if entry then
+					assert(entry.matches==hit,"Identical Sacred outcomes disagree on the target")
+					entry.weight=entry.weight+1/32;entry.chance=entry.weight*100
+				else
+					local stats=require("Modules.CraftingItemStats").values(M,model,result)
+					entry={id=tostring(position),text=require("Modules.CraftingSacred").describe(stats),chance=100/32,weight=1/32,matches=hit,state=result}
+					outcomes[#outcomes+1]=entry;byDefence[key]=entry
+				end
 			end
 			local sample=outcomes[1].state
 			return {exactFor="One Sacred Orb under the assumed shared-roll model; game odds are unverified",sampled=false,successChance=100*hits/32,totalWeight=1,matchingWeight=hits/32,
