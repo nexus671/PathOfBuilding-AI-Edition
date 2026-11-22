@@ -43,6 +43,15 @@ describe("TreeTab", function()
 		assert.is_true(reports>0);assert.is_true(tree.viewer.showHeatMap);assert.is_false(tree.powerCalculationFailed)
 		ui:restore();launch.devMode=oldDev
 	end)
+	it("calculates every available node-power category for a real passive change",function()
+		build.calcsTab:BuildOutput(false)
+		local node;for _,candidate in pairs(build.spec.nodes) do if not candidate.alloc and candidate.path and #candidate.path==1 and candidate.modKey~="" then node=candidate;break end end;assert.is_not_nil(node)
+		local calc,base=build.calcsTab:GetMiscCalculator();local normal=calc({addNodes={[node]=true}},false);local full=calc({addNodes={[node]=true}},true)
+		local checked=0;for _,selection in ipairs(data.powerStatList) do if selection.stat and not selection.ignoreForNodes then
+			local value=build.calcsTab:CalculatePowerStat(selection,selection.stat=="FullDPS" and full or normal,base)
+			assert.is_true(type(value)=="number" and value==value,selection.label);checked=checked+1
+		end end;assert.is_true(checked>0)
+	end)
 
 	it("restores a Runegraft after rebuilding mastery options", function()
 		local node = assert(findMasteryNode())
