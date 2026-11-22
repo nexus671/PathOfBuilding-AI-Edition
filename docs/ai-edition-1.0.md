@@ -81,6 +81,8 @@ On November 22, a portable package built from commit `b0489cc6f854dffb2b0dc3335d
 
 This is a startup check, not a native UI acceptance test. A separate interactive attempt could not activate the portable window in Windows computer-use, so its rendering and workflows remain unverified in the desktop renderer.
 
+On November 22, a fresh portable package from commit `7a956cd8935fdd0ac7c10cbf0ea965ad07eddc3e` also reached an unnamed build and created settings and a builds folder inside its extraction. The package builder verified the manifest while building, and the ZIP integrity check passed. A visible launch still could not be activated by computer-use after refreshing the window and retrying. The isolated copy was closed; the installed application and personal builds were not used. This confirms startup for that source revision but does not verify its rendered workflows.
+
 ## Remaining release work
 
 On November 21, checkpoint `c01b653665460c577f141bbe7742abb37b22051f` passed
