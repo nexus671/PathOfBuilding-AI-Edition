@@ -14,6 +14,12 @@ for _,width in ipairs({960,1024,1280}) do
 	for _,row in ipairs(controls.resultSummary.list) do details[#details+1]=StripEscapes(row[1] or "") end
 	local text=table.concat(details," ")
 	assert(text:find("84.375%",1,true) and text:find("unverified",1,true),"Sacred estimate or uncertainty is missing")
+	local visible,used={},0
+	for _,row in ipairs(controls.resultSummary.list) do
+		if used+(row.textSize or 14)<=controls.resultSummary.height then visible[#visible+1]=StripEscapes(row[1] or "") end
+		used=used+row.height
+	end
+	assert(table.concat(visible," "):find("Energy shield",1,true),"The modeled outcomes are hidden below the initial results area")
 	ui:restore();main.popups={}
 end
 print("SACRED_EXACT_UI_OK")

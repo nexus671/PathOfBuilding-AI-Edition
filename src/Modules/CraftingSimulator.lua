@@ -67,7 +67,7 @@ function M.hasProtectedImplicit(model,state)
 end
 function M.actionWarnings(action,model)
 	local result={}
-	if action.method=="sacred" then result[#result+1]={code="sacred_roll_assumptions",message="The model assumes a shared roll with 32 equally likely positions. Official server odds and current-game behavior are unverified.",source="https://github.com/LocalExile/LocalExile/blob/95835dc3809ad10e4681a4af9fdde10becd983d8/Agents/docs/protocol/13-items.md"} end
+	if action.method=="sacred" then result[#result+1]={code="sacred_roll_assumptions",message="Assumes 32 equally likely shared rolls; game odds are unverified.",source="https://github.com/LocalExile/LocalExile/blob/95835dc3809ad10e4681a4af9fdde10becd983d8/Agents/docs/protocol/13-items.md"} end
 	if action.method=="mirror" then result[#result+1]={code="mirror_copy",message="The result is the mirrored copy; the original remains unchanged. Item-class and special-property eligibility need current-game verification."} end
 	if action.method=="instilling" or action.method=="enkindling" then result[#result+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."} end
 	if action.method=="bench_flask_enchant" then result[#result+1]={code="flask_bench_assumptions",message="Flask enchantment bench costs use pinned client data; eligibility, recipe availability and replacement behavior are unverified in game."} end
@@ -1454,7 +1454,7 @@ do
 					end
 				end
 				local sample=outcomes[1].itemText;local nativeStats=require("Modules.CraftingItemStats").itemValues(unique.inspect(sample))
-				return M.withTreeContext({uniqueCrafting=true,exactFor="One Sacred Orb under the assumed shared-roll model; game odds are unverified",sampled=false,successChance=100*hits/32,
+				return M.withTreeContext({uniqueCrafting=true,exactFor="32 shared-roll positions; game odds unverified.",sampled=false,successChance=100*hits/32,
 					totalWeight=1,matchingWeight=hits/32,outcomes=outcomes,sampleItem=sample,nativeStats=nativeStats,components=initial.components,warnings=initial.warnings,limitations=initial.limitations},options.treeVersion)
 			end
 			if action.method=="instilling" or action.method=="enkindling" or action.method=="divine" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_colour_bench" then
@@ -1503,7 +1503,7 @@ do
 				if flaskRoll then warnings[#warnings+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."}
 				elseif action.method=="bench_flask_enchant" then warnings[#warnings+1]={code="flask_bench_assumptions",message="Flask enchantment bench costs use pinned client data; eligibility, recipe availability and replacement behavior are unverified in game."}
 				elseif divineRoll then warnings[#warnings+1]={code="unique_divine_estimate",message="Supported modifier values are sampled independently and uniformly at their modeled precision; actual roll correlations and distributions are unverified."}
-				elseif sacredRoll then warnings[#warnings+1]={code="unique_sacred_estimate",message="The model assumes a shared roll with 32 equally likely positions. Official server odds and current-game behavior are unverified.",source="https://github.com/LocalExile/LocalExile/blob/95835dc3809ad10e4681a4af9fdde10becd983d8/Agents/docs/protocol/13-items.md"}
+				elseif sacredRoll then warnings[#warnings+1]={code="unique_sacred_estimate",message="Assumes 32 equally likely shared rolls; game odds are unverified.",source="https://github.com/LocalExile/LocalExile/blob/95835dc3809ad10e4681a4af9fdde10becd983d8/Agents/docs/protocol/13-items.md"}
 				elseif qualityRoll then warnings[#warnings+1]={code="tainted_quality_estimate",message="Tainted armour and weapon quality uses an assumed uniform 1-20% range; the minimum and distribution are unverified."}
 				elseif socketRoll then warnings[#warnings+1]={code="unique_socket_count_estimate",message="Sampled socket counts and tainted outcomes use estimated probabilities; server odds are unverified."}
 				elseif linkRoll then warnings[#warnings+1]={code="unique_socket_link_assumptions",message="Sampled socket links use estimated link and selection probabilities; server odds are unverified."}

@@ -27,7 +27,7 @@ function C.extend(M)
 				end
 			end
 			local sample=outcomes[1].state
-			return {exactFor="One Sacred Orb under the assumed shared-roll model; game odds are unverified",sampled=false,successChance=100*hits/32,totalWeight=1,matchingWeight=hits/32,
+			return {exactFor="32 shared-roll positions; game odds unverified.",sampled=false,successChance=100*hits/32,totalWeight=1,matchingWeight=hits/32,
 				outcomes=outcomes,sampleState=sample,sampleItem=M.itemText(model,sample),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 		end
 		if craft.method=="rog_reroll" and (craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links") then
