@@ -147,6 +147,7 @@ function M:Show(page,source)
 			require("Modules.PlanningRecovery").forgetAtlasSessionDraft(self.build,id)
 			local active=self.cache.atlas;local current=active and active.layout.snapshot and active.layout.snapshot()
 			self.atlasDrafts[id]=nil;if self.drafts.atlas and self.drafts.atlas.plan and self.drafts.atlas.plan.id==id then self.drafts.atlas=nil end
+			require("Modules.PlanningUI").discard(self.build,"atlas",id)
 			if current and current.id==id then self.cache.atlas=nil;self.drafts.atlas=nil;self:Show("atlas",self.build.savers.AtlasPlans.plans[1]) end
 		end
 		layout.openProjects=function()

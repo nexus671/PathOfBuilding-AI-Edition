@@ -292,7 +292,7 @@ function Panel.Open(build,source,layout)
 			if layout and layout.atlasDrafts then for _,entry in ipairs(layout.atlasDrafts()) do if entry.plan then used[entry.plan.id]=true end end end
 			local id,serial=nil,0;repeat serial=serial+1;id="atlas-"..require("sha1")(tostring({})..os.time()..serial):sub(1,12) until not used[id]
 			local replacement={id=id,title=controls.title.buf,version=value,budget=atlas.tree(value).maxPoints,nodes={},notes=controls.notes.buf}
-			main:OpenConfirmPopup("Change Atlas version","Changing versions starts an empty draft. Saved plans are kept.","Change",function() if layout and layout.replaceAtlas then layout.replaceAtlas(replacement) else if not layout then main:ClosePopup() end;Panel.Open(build,replacement,layout) end end)
+			main:OpenConfirmPopup("Change Atlas version","Changing versions starts an empty draft. Saved plans are kept.","Change",function() if layout and layout.replaceAtlas then layout.replaceAtlas(replacement) else if not layout then main:ClosePopup() end;Panel.Open(build,replacement,layout) end;ui.draft(build,"atlas",replacement.id) end)
 		end
 	end)
 	controls.version:SelByValue(draft.version,"val")
@@ -355,7 +355,7 @@ function Panel.Open(build,source,layout)
 		if controls.canvas.routeOverlay and controls.help then controls.help.label="^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect" end
 		controls.canvas.routeOverlay=nil
 	end
-	local function change(nextPlan) clearRouteOverlay();exitGrantRoute();remember();draft=atlas.validate(nextPlan);avoided=copyTable(draft.avoided or {});controls.canvas.comparison=nil;ui.draft(build,"atlas");syncEditors();refresh() end
+	local function change(nextPlan) clearRouteOverlay();exitGrantRoute();remember();draft=atlas.validate(nextPlan);avoided=copyTable(draft.avoided or {});controls.canvas.comparison=nil;ui.draft(build,"atlas",draft.id);syncEditors();refresh() end
 	local function chooseEffect()
 		local node=assert(controls.canvas.tree.nodes[controls.canvas.focus],"Select a node first");local entries={}
 		for i,effect in ipairs(node.variantEffects or {}) do
@@ -640,9 +640,9 @@ function Panel.Open(build,source,layout)
 		if pointUsage and pointUsage.used>0 then SetDrawColor("^xC8A569");DrawImage(nil,x,y,graphWidth*math.min(1,pointUsage.used/math.max(1,pointUsage.budget+pointUsage.bonus)),3) end
 	end
 	ui.tabs(controls,controls.page,{{"tab_tree","Tree","Tree"},{"tab_notes","Notes & sharing","Plan & notes"}},side,64,260)
-	controls.title.changeFunc=function() clearRouteOverlay();exitGrantRoute();ui.draft(build,"atlas");refresh() end
-	controls.notes.changeFunc=function() clearRouteOverlay();ui.draft(build,"atlas") end
-	controls.budget.changeFunc=function() clearRouteOverlay();exitGrantRoute();ui.draft(build,"atlas");refresh() end
+	controls.title.changeFunc=function() clearRouteOverlay();exitGrantRoute();ui.draft(build,"atlas",draft.id);refresh() end
+	controls.notes.changeFunc=function() clearRouteOverlay();ui.draft(build,"atlas",draft.id) end
+	controls.budget.changeFunc=function() clearRouteOverlay();exitGrantRoute();ui.draft(build,"atlas",draft.id);refresh() end
 	controls.budget.enterFunc=function() safely(function() local nextPlan=current();if nextPlan.budget~=draft.budget then change(nextPlan) end end) end
 	controls.budget.tooltipText="Press Enter to keep this budget in change history."
 	if layout then

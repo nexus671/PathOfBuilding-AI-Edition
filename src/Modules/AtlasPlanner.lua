@@ -551,7 +551,7 @@ function M.new(build)
 		local seen={[entry.id]=true};local previous=entry.progression and entry.progression.previousId
 		while previous do assert(not seen[previous],"Atlas progression contains a cycle");seen[previous]=true;local nextPlan;for _,p in ipairs(replacement) do if p.id==previous then nextPlan=p end end;assert(nextPlan and nextPlan.version==entry.version,"Previous Atlas plan is missing or uses a different version");previous=nextPlan.progression and nextPlan.progression.previousId end
 		assert(#json.encode(replacement) <= 2*1024*1024,"Atlas metadata too large")
-		self.plans=replacement;self.notice=nil; build.modFlag=true;require("Modules.PlanningUI").kept(build,"atlas"); return entry
+		self.plans=replacement;self.notice=nil; build.modFlag=true;require("Modules.PlanningUI").kept(build,"atlas",entry.id); return entry
 	end
 	function self:Remove(id)
 		assert(not self.unreadable,self.warning)
