@@ -92,6 +92,10 @@ async function main(){
   assert.equal(craftImplicitInspection.crafting.baseImplicitChoices.available,true);const maximumImplicit=craftImplicitInspection.crafting.baseImplicitChoices.choices.find(entry=>entry.label==='+30% to Fire Resistance');assert.ok(maximumImplicit);assert.equal(maximumImplicit.roll,1);
   const implicitStart={rarity:'NORMAL',affixes:[],...maximumImplicit.statePatch};
   const implicitCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:implicitBase,initialState:implicitStart,action:{method:'transmute'},seed:42},'crafted');assert.match(implicitCraft.nativeCrafting.itemText,/\+30% to Fire Resistance/);
+  const bowBase='Rarity: NORMAL\nHedron Bow\nItem Level: 83';
+  const bowInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bowBase,includeBaseImplicitChoices:true,limit:3},'inspected');
+  const bowChoice=bowInspection.crafting.baseImplicitChoices.choices.find(entry=>entry.label==='Adds 46 to 83 Fire Damage');assert.ok(bowChoice);assert.deepEqual(bowChoice.roll,[0,1]);
+  const bowCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:bowBase,initialState:{rarity:'NORMAL',affixes:[],...bowChoice.statePatch},action:{method:'transmute'},seed:42},'crafted');assert.match(bowCraft.nativeCrafting.itemText,/Adds 46 to 83 Fire Damage/);
   const fixedImplicit=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nStygian Vise\nItem Level: 83',includeBaseImplicitChoices:true,limit:3},'inspected');assert.equal(fixedImplicit.crafting.baseImplicitChoices.available,false);
   const bootsBase='Rarity: NORMAL\nDuskwalk Slippers\nItem Level: 83';
   const bootsInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bootsBase,includeBaseImplicitChoices:true,limit:3},'inspected');

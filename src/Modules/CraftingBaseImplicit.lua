@@ -35,12 +35,21 @@ function M.options(sim,model,state)
  end
  local options={}
  for index,template in ipairs(templates) do
-  local low,high=template:match("%((%-?%d+)%-(%-?%d+)%)");low,high=tonumber(low),tonumber(high)
-  local _,count=template:gsub("%(%-?%d+%-%-?%d+%)","")
-  if count==1 and low and high and high>low and high-low<=100 then
+  local bounds={};local combinations=1
+  for low,high in template:gmatch("%((%-?%d+)%-(%-?%d+)%)") do
+   low,high=tonumber(low),tonumber(high);bounds[#bounds+1]={low,high}
+   if high<=low or high-low>100 then combinations=513 else combinations=combinations*(high-low+1) end
+  end
+  local _,count=template:gsub("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)","")
+  if count==#bounds and count>=1 and count<=2 and combinations<=512 then
    local scalar=item:GetModLineValueScalar(item.implicitModLines[index],"implicit");local seen={}
-   for value=low,high do
-    local roll=(value-low)/(high-low);local label=itemLib.applyRange(template,roll,scalar)
+   for choice=0,combinations-1 do
+    local remaining=choice;local values,rolls={},{}
+    for i,bound in ipairs(bounds) do
+     local width=bound[2]-bound[1]+1;values[i]=bound[1]+remaining%width
+     remaining=math.floor(remaining/width);rolls[i]=(values[i]-bound[1])/(bound[2]-bound[1])
+    end
+    local roll=count==1 and rolls[1] or rolls;local label=itemLib.applyRange(template,roll,scalar)
     if seen[label] then return nil,"Multiple base rolls display the same value; use a recognized source item." end
     seen[label]=true;local nextRanges=copyTable(ranges);nextRanges[index]=roll
     local candidate=copyTable(state);candidate.baseImplicitRanges=nextRanges;candidate.baseImplicitReconstructed=true
@@ -52,7 +61,7 @@ function M.options(sim,model,state)
      if not sameMetadata(item.implicitModLines[other],changed.implicitModLines[other]) then return nil,"Implicit modifier tags or properties cannot be preserved safely." end
      if other~=index and displayed(changed,other)~=displayed(item,other) then return nil,"The other base implicits cannot be preserved safely." end
     end
-    local id=#templates==1 and tostring(value) or index..":"..value
+    local value=table.concat(values,",");local id=#templates==1 and value or index..":"..value
     options[#options+1]={id=id,label=label,category=#templates>1 and "Implicit "..index or nil,lineIndex=index,roll=roll,
      statePatch={baseImplicitRanges=nextRanges,baseImplicitReconstructed=true},details={label,"Hypothetical starting implicit. No currency is spent and equipped gear is unchanged.","Other base implicits stay at their current modeled values. Confirm values on the actual item; game rounding and catalyst behavior may differ."}}
    end
@@ -61,9 +70,16 @@ function M.options(sim,model,state)
  if #options==0 then return nil,"No supported variable ordinary base implicit was found." end
  return options
 end
+local function sameRoll(a,b)
+ if type(a)~=type(b) then return false end
+ if type(a)~="table" then return a==b end
+ if #a~=#b then return false end
+ for i=1,#a do if a[i]~=b[i] then return false end end
+ return true
+end
 function M.apply(sim,model,state,roll,lineIndex)
  local options,reason=M.options(sim,model,state);assert(options,reason);lineIndex=lineIndex or 1
- for _,entry in ipairs(options) do if entry.roll==roll and entry.lineIndex==lineIndex then
+ for _,entry in ipairs(options) do if sameRoll(entry.roll,roll) and entry.lineIndex==lineIndex then
   local candidate=copyTable(state);candidate.baseImplicitRanges=copyTable(entry.statePatch.baseImplicitRanges);candidate.baseImplicitReconstructed=true
   return sim.validateState(model,candidate)
  end end

@@ -37,6 +37,19 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  assert(selected and selected.statePatch.baseImplicitRanges[1]==0.25,"Choice did not preserve the other roll")
  local selectedItem=sim.toItem(synthetic,picker.apply(sim,synthetic,start,selected.roll,selected.lineIndex))
  assert(StripEscapes(itemLib.formatModLine(selectedItem.implicitModLines[1],false))=="13% reduced Movement Speed","Selecting another line changed the existing roll")
+ local bow=sim.model("Rarity: NORMAL\nHedron Bow\nItem Level: 83");local bowOptions=assert(picker.options(sim,bow,bow.initial));local bowChoice
+ for _,entry in ipairs(bowOptions) do if entry.label=="Adds 46 to 83 Fire Damage" then bowChoice=entry;break end end
+ assert(bowChoice and #bowOptions==150 and bowChoice.roll[1]==0 and bowChoice.roll[2]==1,"Independent implicit values missing")
+ local bowKept
+ require("Classes.CraftingItemEditorControl").Open(bow,bow.initial,function(value) bowKept=value end)
+ ui:click("baseImplicit");ui:text("search","Adds 46 to 83 Fire Damage")
+ if output then ui:frame():write(output.."/"..size[1].."-crafting-damage-implicit.json") end
+ ui:click("choose");ui:click("keep");assert(bowKept,"Independent implicit choice was not kept")
+ assert(StripEscapes(itemLib.formatModLine(sim.toItem(bow,bowKept).implicitModLines[1],false))==bowChoice.label,"UI changed the independent implicit values")
+ local bowState=picker.apply(sim,bow,bow.initial,bowChoice.roll,bowChoice.lineIndex)
+ assert(StripEscapes(itemLib.formatModLine(sim.toItem(bow,bowState).implicitModLines[1],false))==bowChoice.label,"Independent implicit values changed")
+ local bowSaved=sim.model(assert(sim.itemText(bow,bowState)))
+ assert(StripEscapes(itemLib.formatModLine(sim.toItem(bowSaved,bowSaved.initial).implicitModLines[1],false))==bowChoice.label,"Reopening changed independent implicit values")
  ui:restore()
 end
 print("CRAFTING_BASE_IMPLICIT_UI_OK")

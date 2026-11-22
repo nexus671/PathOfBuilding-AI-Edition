@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1053" />
+	<Version number="2.68.1-ai.preview1054" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -3175,5 +3175,5 @@
 	<File name="Classes/GemQualityPlanControl.lua" part="program" sha1="8ad6cbdcb855c80692d4eb7ee37fb643d37b0e23" />
 	<File name="Modules/GemQualityPlan.lua" part="program" sha1="fa12e64e1168c57976a6e2b718a6b30545a27e84" />
 	<File name="Data/Crafting/GemSoulCores330.json" part="program" sha1="3e72815316e5ea26174bddddcae5bb84bb45cafb" />
-	<File name="Modules/CraftingBaseImplicit.lua" part="program" sha1="0c2a157302f502aacb4105bef981d72ed69cc73e" />
+	<File name="Modules/CraftingBaseImplicit.lua" part="program" sha1="d664ebb4bb48c45004d487e16c898ac3746d94c4" />
 </PoBVersion>
