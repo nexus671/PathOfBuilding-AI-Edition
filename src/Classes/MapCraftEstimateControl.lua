@@ -67,14 +67,32 @@ function M.Open(build,options)
 		return false
 	end
 	local function optionCount() local count=0;for _,group in ipairs(groups) do count=count+#group end;return count end
-	local function removePicker(ids,title,action)
+	local function statSignature(id)
+		local mod=map.source().mods[id];if not mod then return nil end
+		local rewards={["map_drop_scaling_+%"]=true,["map_item_drop_rarity_+%"]=true,["map_pack_size_+%"]=true}
+		local stats={};for _,stat in ipairs(mod.stats or {}) do if not rewards[stat.id] then stats[#stats+1]=stat.id end end
+		if #stats==0 then return nil end;table.sort(stats);return mod.generation_type.."|"..table.concat(stats,"|")
+	end
+	local function removePicker(ids,title,action,allowLast)
 		local choices={}
 		for index,id in ipairs(ids) do
 			local mod=map.source().mods[id];local label=mod and mod.name.." | "..mod.generation_type..availability(id) or id
 			local details={label};if mod then for _,line in ipairs(map.summarize({id}).effects[1].lines) do details[#details+1]=line end end
+			details[#details+1]="Find matching searches this map for the same non-reward stat identities and side; review the ranges before replacing."
 			choices[#choices+1]={id=id,index=index,label=label,search=id,details=details}
 		end
-		browser.Open(title,choices,{action=action,choose=function(entry) table.remove(ids,entry.index);invalidate();refresh() end})
+		browser.Open(title,choices,{action=action,canChoose=function() return allowLast or #ids>1 end,choose=function(entry) table.remove(ids,entry.index);invalidate();refresh() end,secondary={label="Find matching",run=function(entry)
+			local signature=statSignature(entry.id);local matches={}
+			if signature then for _,candidate in ipairs(entries()) do
+				if candidate.id~=entry.id and statSignature(candidate.id)==signature then
+					candidate.details[#candidate.details+1]="Matching stat identities do not prove identical values or interactions."
+					matches[#matches+1]=candidate
+				end
+			end end
+			browser.Open("Choose matching modifier",matches,{action="Replace modifier",canChoose=function(candidate) return not alreadyUsed(candidate.id) end,choose=function(candidate)
+				ids[entry.index]=candidate.id;invalidate();refresh();main:ClosePopup()
+			end})
+		end}})
 	end
 	local groupChoices={};for i=1,#groups do groupChoices[#groupChoices+1]={label="Target "..i,val=i} end
 	if #groupChoices==0 then groupChoices={{label="No targets",val=0}} end
@@ -91,16 +109,16 @@ function M.Open(build,options)
 			return #groups[index]<100 and optionCount()<200 and not alreadyUsed(entry.id)
 		end,choose=function(entry) groups[index][#groups[index]+1]=entry.id;invalidate();refresh() end})
 	end)
-	button("removeAlternative",257,260,column-241,"Remove option",function() local index=controls.targetGroup:GetSelValueByKey("val");removePicker(groups[index],"Remove an option","Remove option") end)
+	button("removeAlternative",257,260,column-241,"Review option",function() local index=controls.targetGroup:GetSelValueByKey("val");removePicker(groups[index],"Review an option","Remove option",false) end)
 	controls.addAlternative.enabled=function() return not active and #groups>0 end
-	controls.removeAlternative.enabled=function() local index=controls.targetGroup:GetSelValueByKey("val");return not active and index>0 and #groups[index]>1 end
+	controls.removeAlternative.enabled=function() local index=controls.targetGroup:GetSelValueByKey("val");return not active and index>0 and #groups[index]>0 end
 	button("addAvoid",right,260,190,"Add avoided modifier",function()
 		browser.Open("Choose an avoided modifier",entries(),{action="Avoid modifier",canChoose=function(entry)
 			if #avoid>=100 then return false end
 			return not alreadyUsed(entry.id)
 		end,choose=function(entry) avoid[#avoid+1]=entry.id;invalidate();refresh() end})
 	end)
-	button("removeAvoid",right+198,260,column-198,"Remove avoided",function() removePicker(avoid,"Remove an avoided modifier","Remove modifier") end)
+	button("removeAvoid",right+198,260,column-198,"Review avoided",function() removePicker(avoid,"Review an avoided modifier","Remove modifier",true) end)
 	controls.addAvoid.enabled=function() return not active end;controls.removeAvoid.enabled=function() return not active and #avoid>0 end
 	button("addTarget",16,294,190,"Add wanted target",function()
 		browser.Open("Choose a wanted target",entries(),{action="Add target",canChoose=function(entry) return #groups<6 and optionCount()<200 and not alreadyUsed(entry.id) end,

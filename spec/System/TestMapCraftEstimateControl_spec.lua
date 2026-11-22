@@ -78,6 +78,25 @@ describe("Map reroll estimate control",function()
 		picker=main.popups[1].controls;picker.search:SetText("MapContainsWildwoodWorlds",true);picker.choose:Click()
 		text="";for _,line in ipairs(controls.wanted.list) do text=text..StripEscapes(line[1] or "").."\n" end;assert.is_nil(text:find("Viridian Wildwood",1,true));assert.matches("Mirror of Delirium",text)
 	end)
+	it("reviews matching tier replacements for wanted and avoided modifiers",function()
+		local saved;local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
+		local settings={wantedGroups={{"MapMonsterFireDamageMapWorlds"}},avoid={"MapMonsterColdDamageMapWorlds"},trials=3,maxAttempts=2}
+		local controls=require("Classes.MapCraftEstimateControl").Open(build,{state=state,settings=settings,saveSettings=function(value) saved=value end,apply=function() end})
+		assert.is_false(controls.run:IsEnabled());controls.removeAlternative:Click();local picker=main.popups[1].controls;assert.is_false(picker.choose:IsEnabled());picker.secondary:Click()
+		local replacements=main.popups[1].controls;replacements.search:SetText("MapMonsterFireDamage3MapWorlds",true);assert.is_true(replacements.choose:IsEnabled());replacements.choose:Click()
+		assert.is_true(controls.run:IsEnabled());controls.removeAvoid:Click();picker=main.popups[1].controls;picker.secondary:Click()
+		replacements=main.popups[1].controls;replacements.search:SetText("MapMonsterColdDamage3MapWorlds",true);assert.is_true(replacements.choose:IsEnabled());replacements.choose:Click()
+		controls.keepSettings:Click();assert.same({{"MapMonsterFireDamage3MapWorlds"}},saved.wantedGroups);assert.same({"MapMonsterColdDamage3MapWorlds_"},saved.avoid)
+		assert.same({{"MapMonsterFireDamageMapWorlds"}},settings.wantedGroups);assert.same({"MapMonsterColdDamageMapWorlds"},settings.avoid)
+	end)
+	it("does not replace a target with an already selected modifier",function()
+		local saved;local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
+		local settings={wantedGroups={{"MapMonsterFireDamageMapWorlds"},{"MapMonsterFireDamage3MapWorlds"}},avoid={},trials=3,maxAttempts=2}
+		local controls=require("Classes.MapCraftEstimateControl").Open(build,{state=state,settings=settings,saveSettings=function(value) saved=value end,apply=function() end})
+		controls.removeAlternative:Click();main.popups[1].controls.secondary:Click();local picker=main.popups[1].controls
+		picker.search:SetText("MapMonsterFireDamage3MapWorlds",true);assert.is_false(picker.choose:IsEnabled());picker.close:Click();main.popups[1].controls.close:Click()
+		controls.keepSettings:Click();assert.same(settings.wantedGroups,saved.wantedGroups)
+	end)
 	it("removes a chosen exclusion without changing the other saved targets",function()
 		local saved;local state={baseId="Metadata/Items/Maps/MapWorldsStrand",tier=16,itemLevel=83,rarity="rare",selected={}}
 		local settings={wantedGroups={{"MapContainsMirageWorlds"}},avoid={"MapMonsterAreaOfEffectMapWorlds","MapContainsWildwoodWorlds"},trials=3,maxAttempts=2}
