@@ -149,7 +149,9 @@ describe("Linked planning tools",function()
 		local plan={id="farm",title="Farm",version="3.30.0c",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
 		store:Upsert(plan);local profile=filters.profile("linked","Linked");profile.trackBuildPickups=true
 		profile.rules=filters.generate(build,profile);build.savers.LootFilters:Upsert(profile)
-		assert.is_false(dependencies.report(build,profile).stale)
+		local review=dependencies.report(build,profile);assert.is_true(review.needsReview)
+		local notice;for _,entry in ipairs(review.entries) do if entry.origin=="craft:unique-filter" then notice=entry end end
+		assert.is_true(notice.openGuide);assert.matches("Written guide steps",table.concat(notice.details," "),1,true)
 		plan.strategy.scarabs="Orb of Scouring";store:Upsert(plan)
 		local report=dependencies.report(build,profile);assert.is_true(report.stale)
 		local status;for _,entry in ipairs(report.entries) do if entry.origin=="atlas:farm" then status=entry.status end end
