@@ -1,6 +1,6 @@
 # FilterBlade feature review
 
-Reviewed the live [PoE 1 FilterBlade site](https://www.filterblade.xyz/?game=Poe1) on November 12, 2026: Start, Overview, Customize (including currency tier lists), Simulate, Themes, Advanced, campaign auto-adjust and the anonymous export flow. Login, saved cloud content and paid background services were not exercised. That review preceded the fork's update to NeverSink 8.21.0a for 3.30.
+Reviewed the live [PoE 1 FilterBlade site](https://www.filterblade.xyz/?game=Poe1) on November 12, 2026: Start, Overview, Customize (including currency tier lists), Simulate, Themes, Advanced, campaign auto-adjust and the anonymous export flow. Login, saved cloud content and paid background services were not exercised. That review preceded the fork's update to NeverSink 8.21.1 for 3.30.
 
 This is a comparison, not a claim of FilterBlade parity. Its website, customizer definitions, economy service and cloud systems are separate from the MIT-licensed NeverSink filter files.
 
