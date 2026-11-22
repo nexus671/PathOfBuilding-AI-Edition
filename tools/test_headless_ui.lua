@@ -2063,6 +2063,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("nav_atlas");ui:text("search","");ui:choose("mechanic","Mirage");frame("atlas-mirage-filter");ui:choose("mechanic","Essence");ui:click("targets");ui:click("targetAdd")
 	ui:click("targetCalculate");for i=1,500 do ui:frame();if not require("Modules.AtlasTargets").jobs[build].thread then break end end
 	local exactRoute=require("Modules.AtlasTargets").jobs[build].result;assert(exactRoute and not exactRoute.routing.heuristic,"Exact Atlas route did not complete");ui:frame();frame("atlas-exact-target-preview")
+	ui:choose("routeMode","Rebuild from start");ui:frame()
+	assert(not main.popups[1].controls.targetApply:IsEnabled() and not main.popups[1].controls.targetShowTree:IsEnabled(),"A route preview remained usable after changing its mode")
+	assert(main.popups[1].controls.progress.label():find("Route mode changed",1,true),"Changed route mode was not explained")
+	ui:choose("routeMode","Retain existing allocations");ui:frame();assert(main.popups[1].controls.targetApply:IsEnabled(),"Restoring the calculation mode did not restore the preview")
 	ui:choose("targetMechanic","Harvest");ui:click("targetMechanicAdd");frame("atlas-desired-targets")
 	ui:click("targetCalculate");for i=1,500 do ui:frame();if not require("Modules.AtlasTargets").jobs[build].thread then break end end
 	assert(require("Modules.AtlasTargets").jobs[build].result,require("Modules.AtlasTargets").jobs[build].error)

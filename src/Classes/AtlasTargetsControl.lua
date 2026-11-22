@@ -14,7 +14,7 @@ function M.Open(build,options)
 		if preview then local diff=require("Modules.AtlasStrategy").compare(options.current(),plan);lines[#lines+1]=#diff.added.." points added | "..#diff.removed.." points refunded"
 			local job=targets.jobs[build]
 			if job and job.result and job.result.routing then
-				lines[#lines+1]=job.result.routing.heuristic and "Heuristic route: a shorter route may exist." or "Fewest added points for these targets and exclusions; existing allocations are retained."
+				lines[#lines+1]=job.result.routing.heuristic and "Heuristic route: a shorter route may exist." or job.fromStart and "Fewest points for these targets and exclusions, rebuilt from the start." or "Fewest added points for these targets and exclusions; existing allocations are retained."
 			end
 			for _,node in ipairs(diff.added) do if node.kind=="notable" or node.kind=="keystone" then lines[#lines+1]="+ "..node.name end end
 		end
@@ -42,6 +42,9 @@ function M.Open(build,options)
 	button("targetMechanicAdd",w-154,h-156,138,"Toggle notables",function() options.change(targets.mechanic(options.current(),c.targetMechanic:GetSelValue()));refresh() end)
 	c.targetMode=new("DropDownControl"):DropDownControl(ui.anchor,{16,h-156,c.desired.width,28},{"Select nodes","Mark desired","Mark avoided"},function(_,value) options.mode(value);end);c.targetMode:SelByValue(options.mode())
 	c.routeMode=new("DropDownControl"):DropDownControl(ui.anchor,{16,h-114,c.desired.width,28},{"Retain existing allocations","Rebuild from start"})
+ local priorJob=targets.jobs[build];if priorJob and priorJob.fromStart then c.routeMode:SelByValue("Rebuild from start") end
+ local function modeMatches(state) return state and state.fromStart==(c.routeMode:GetSelValue()=="Rebuild from start") end
+ local function previewMatches(state) return state and state.result~=nil and modeMatches(state) and require("Modules.PlanningData").hash(options.current())==state.baseHash end
 	button("targetCalculate",detailX,h-114,132,"Recalculate",function() targets.start(build,options.current(),c.routeMode:GetSelValue()=="Rebuild from start") end)
 	button("targetPause",detailX+144,h-114,100,"Pause",function() local state=targets.jobs[build];if state and state.thread then state.paused=not state.paused end end)
 	c.targetPause.label=function() local state=targets.jobs[build];return state and state.paused and "Resume" or "Pause" end
@@ -51,15 +54,15 @@ function M.Open(build,options)
 	ui.label(c,"progress",16,h-70,"",14)
 	c.progress.label=function()
 		targets.tick(build);local state=targets.jobs[build];if not state then return "^7Shift-click a tree node to mark it as desired." end
-		if state.result then previewCurrent=require("Modules.PlanningData").hash(options.current())==state.baseHash
+		if state.result then previewCurrent=previewMatches(state)
 			if previewCurrent and lastPreview~=state.result then lastPreview=state.result;showDetails(state.result.plan,true) end
 		end
 		local text=state.error or state.status;if state.paused then text="Paused" elseif state.thread then if state.progress.phase=="exact" then text=text.." | checking shared paths" else text=text.." | order "..(state.progress.order or 1).." / "..(state.progress.orders or "?") end elseif state.result then text=text.." | "..#state.result.plan.nodes.." allocated points" end
-		if state.result and not previewCurrent then text="Plan changed. Recalculate before using the preview." end
+		if state.result and not previewCurrent then text=not modeMatches(state) and "Route mode changed. Recalculate before using the preview." or "Plan changed. Recalculate before using the preview." end
 		return "^7"..ui.fit(text,w-36,14)
 	end
 	button("targetApply",16,h-42,220,"Use preview",function() local plan=targets.apply(build,options.current());options.change(plan);targets.jobs[build]=nil;main:ClosePopup() end)
-	c.targetApply.enabled=function() return targets.jobs[build] and targets.jobs[build].result~=nil and previewCurrent end
+	c.targetApply.enabled=function() return previewMatches(targets.jobs[build]) end
 	button("targetShowTree",248,h-42,180,"Show on tree",function() local plan=targets.apply(build,options.current());options.showTree(plan);main:ClosePopup() end)
 	c.targetShowTree.enabled=c.targetApply.enabled
 	c.targetShowTree.tooltipText="Review added and refunded paths on the tree. The draft is unchanged."

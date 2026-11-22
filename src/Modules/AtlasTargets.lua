@@ -21,7 +21,7 @@ function M.mechanic(plan,name)
 end
 function M.start(build,plan,fromStart)
 	plan=atlas.validate(plan);assert(#(plan.desired or {})>0,"Mark desired nodes first")
-	local state={status="Calculating",baseHash=identity.hash(plan),base=copyTable(plan),progress={},paused=false}
+	local state={status="Calculating",baseHash=identity.hash(plan),base=copyTable(plan),fromStart=fromStart==true,progress={},paused=false}
 	local input=copyTable(plan);if fromStart then input.nodes={};input.choices={} end
 	state.thread=coroutine.create(function()
 		local result,added,routing=atlas.connectOptimized(input,input.desired,input.avoided,{checkpoint=function(progress)
