@@ -778,7 +778,7 @@ function M.validateRecipe(recipe)
 				for field in pairs(value) do assert(field=="line" or field=="component" or field=="minValue" or field=="maxValue","Unknown unique modifier target field") end
 				if value.component~=nil then integer(value.component,1,6,"unique modifier component") end
 				assert((value.minValue~=nil)~=(value.maxValue~=nil),"Choose either a minimum or maximum unique modifier roll")
-				integer(value.minValue or value.maxValue,-100000,100000,"unique modifier target")
+				local target=value.minValue or value.maxValue;assert(type(target)=="number" and target==target and target>=-100000 and target<=100000,"Invalid unique modifier target")
 			elseif key == "catalyst" then integer(value,1,12,"catalyst type")
 			elseif key == "minCatalystQuality" then integer(value,0,20,"minimum catalyst quality")
 			elseif key == "harvestEnchant" then assert(type(value)=="string" and require("Modules.CraftingEnchants").data().crafts[value],"Choose a known Harvest enchantment")
@@ -1476,7 +1476,7 @@ do
 				local warnings={{code="unique_crafting_scope",message="Only listed unique crafting actions are modeled. Continue using the returned item text."}}
 				if flaskRoll then warnings[#warnings+1]={code="flask_enchant_assumptions",message="Flask enchantments use pinned client weights and uniformly sampled integer rolls. Replacement behavior, eligibility and current game odds are unverified."}
 				elseif action.method=="bench_flask_enchant" then warnings[#warnings+1]={code="flask_bench_assumptions",message="Flask enchantment bench costs use pinned client data; eligibility, recipe availability and replacement behavior are unverified in game."}
-				elseif divineRoll then warnings[#warnings+1]={code="unique_divine_estimate",message="Supported integer modifier values are sampled independently and uniformly; actual roll correlations and distributions are unverified."}
+				elseif divineRoll then warnings[#warnings+1]={code="unique_divine_estimate",message="Supported modifier values are sampled independently and uniformly at their modeled precision; actual roll correlations and distributions are unverified."}
 				elseif qualityRoll then warnings[#warnings+1]={code="tainted_quality_estimate",message="Tainted armour and weapon quality uses an assumed uniform 1-20% range; the minimum and distribution are unverified."}
 				elseif socketRoll then warnings[#warnings+1]={code="unique_socket_count_estimate",message="Sampled socket counts and tainted outcomes use estimated probabilities; server odds are unverified."}
 				elseif linkRoll then warnings[#warnings+1]={code="unique_socket_link_assumptions",message="Sampled socket links use estimated link and selection probabilities; server odds are unverified."}

@@ -463,7 +463,7 @@ function M.Open(build,project,layout,snapshot)
 		ui.description(controls,"help",16,25,dw-32,50,{"Preview a roll or plan a stat or modifier target.","Modifier-value probabilities are estimates."},14)
 		local stats=require("Modules.CraftingItemStats");local values=stats.itemValues(item);local options,selection={},{}
 		for _,field in ipairs(stats.fields) do if values[field[1]] and values[field[1]]>0 then options[#options+1]={label=field[2],val=field[1]};selection[field[1]]={kind="stat",label=field[2],current=values[field[1]]} end end
-		for index,row in ipairs(unique.divineOptions(raw) or {}) do local key="modifier:"..index;local part=row.components>1 and (" ["..row.component.."/"..row.components.."]") or "";options[#options+1]={label=ui.fit("Roll"..part..": "..row.line,190,14),val=key};selection[key]={kind="modifier",line=row.line,component=row.component,components=row.components,min=row.min,max=row.max,current=row.current} end
+		for index,row in ipairs(unique.divineOptions(raw) or {}) do local key="modifier:"..index;local part=row.components>1 and (" ["..row.component.."/"..row.components.."]") or "";options[#options+1]={label=ui.fit("Roll"..part..": "..row.line,190,14),val=key};selection[key]={kind="modifier",line=row.line,component=row.component,components=row.components,min=row.min,max=row.max,current=row.current,step=row.step} end
 		if #options==0 then options[1]={label="No supported target",val=""} end
 		ui.label(controls,"statLabel",16,90,"Stat or modifier roll",14)
 		controls.stat=new("DropDownControl"):DropDownControl(ui.anchor,{16,112,200,26},options)
@@ -495,7 +495,7 @@ function M.Open(build,project,layout,snapshot)
 			if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a Divine plan." end
 			local selected=selection[stat()];if not selected then return "No supported target is available." end
 			local target=tonumber(controls.target.buf);if not target or target~=target or target< -100000 or target>10000000 or selected.kind=="stat" and target<0 then return "Enter a valid minimum target." end
-			if selected.kind=="modifier" and (target~=math.floor(target) or target<selected.min or target>selected.max) then return "Enter a roll from "..selected.min.." to "..selected.max.."." end
+			if selected.kind=="modifier" and (math.abs(target/(selected.step or 1)-math.floor(target/(selected.step or 1)+0.5))>1e-7 or target<selected.min or target>selected.max) then return "Enter a roll from "..selected.min.." to "..selected.max.." in steps of "..(selected.step or 1).."." end
 			local attempts=tonumber(controls.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
 			if upper() and selected.current<=target or not upper() and selected.current>=target then return nil,true end
 		end
@@ -507,7 +507,7 @@ function M.Open(build,project,layout,snapshot)
 		end
 		ui.label(controls,"selectedRange",16,270,"",14);controls.selectedRange.label=function()
 			local selected=selection[stat()];if not selected or selected.kind~="modifier" then return "" end
-			return "^7Displayed roll: "..selected.min.."-"..selected.max.." | current: "..selected.current
+			return "^7Displayed roll: "..selected.min.."-"..selected.max.." | current: "..selected.current..((selected.step or 1)<1 and (" | step: "..selected.step) or "")
 		end
 		controls.apply=new("ButtonControl"):ButtonControl(ui.anchor,{16,dh-48,140,28},"Preview roll",function()
 			colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)

@@ -266,19 +266,33 @@ end
 
 -- A bounded Divine preview for complete, unambiguous unique templates.
 -- Numeric copies are matched to single integer ranges before rerolling.
+local fractionalChecks={}
 local function divinePlanForReference(raw,item,reference,allowFixed)
 	local expected={};for _,line in ipairs(reference.explicitModLines or {}) do if reference:CheckModLineVariant(line) then
 		if reference.catalyst and (not line.modTags or #line.modTags==0) then return nil,"Catalyst-scaled or untagged explicit modifiers need a separate Divine model" end
 		local scalar=reference.catalyst and reference:GetModLineValueScalar(line,"explicit") or 1
 		local text=line.line;local ranges,parts={},{};local pos=1
 		while true do
-			local first,last,low,high=text:find("%((%-?%d+)%-(%-?%d+)%)",pos);if not first then break end
-			low,high=tonumber(low),tonumber(high);if high==low or math.abs(high-low)>100000 or math.min(low,high)< -100000 or math.max(low,high)>100000 then return nil,"This modifier range needs a separate Divine model" end
+			local first,last,low,high=text:find("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)",pos);if not first then break end
+			local fractional=low:find("%.") or high:find("%.");low,high=tonumber(low),tonumber(high);if high==low or math.abs(high-low)>100000 or math.min(low,high)< -100000 or math.max(low,high)>100000 then return nil,"This modifier range needs a separate Divine model" end
 			local part=text:sub(pos,first-1);local sign=part:sub(-1)=="-" and -1 or 1
-			parts[#parts+1]=part;ranges[#ranges+1]={low=math.min(low,high),high=math.max(low,high),start=low,finish=high,sign=sign};pos=last+1
+			parts[#parts+1]=part;ranges[#ranges+1]={low=math.min(low,high),high=math.max(low,high),start=low,finish=high,sign=sign,fractional=fractional and true or false};pos=last+1
 		end
 		parts[#parts+1]=text:sub(pos)
 		local profile,fixed
+		if #ranges>0 then
+			local fractional=false;for _,range in ipairs(ranges) do fractional=fractional or range.fractional end
+			if fractional then
+				if #ranges~=1 or scalar~=1 then return nil,"Fractional or scaled multi-range modifiers need a separate Divine model" end
+				local key=text:gsub("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)","#"):gsub("%+#","#")
+				local formats=not key:find("%d") and data.modScalability[key]
+				local f=formats and #formats==1 and formats[1].formats
+				local scale=f and #f==1 and ({divide_by_ten=10,divide_by_one_hundred=100})[f[1]]
+				local range=ranges[1]
+				if not scale or math.abs(range.low*scale-math.floor(range.low*scale+0.5))>1e-7 or math.abs(range.high*scale-math.floor(range.high*scale+0.5))>1e-7 or (range.high-range.low)*scale>500 then return nil,"This fractional modifier needs a separate Divine model" end
+				range.scale=scale
+			end
+		end
 		if scalar~=1 then
 			if #ranges==0 then fixed=itemLib.applyRange(text,0,scalar)
 			elseif #ranges==1 then
@@ -300,9 +314,23 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 			if i<=#ranges and ranges[i].sign==-1 then part=part:sub(1,-2) end
 			if optionalPlus then part=part:sub(1,-2) end
 			pattern[#pattern+1]=part:gsub("([^%w])","%%%1");if optionalPlus then pattern[#pattern+1]="%+?" end
-			if i<=#ranges then pattern[#pattern+1]="(%-?%d+)" end
+			if i<=#ranges then pattern[#pattern+1]="(%-?%d+%.?%d*)" end
 		end
-		pattern[#pattern+1]="$";expected[#expected+1]={line=text,ranges=ranges,pattern=table.concat(pattern),scalar=scalar,profile=profile,fixed=fixed,tags=line.modTags}
+		pattern[#pattern+1]="$";local matcher=table.concat(pattern)
+		if #ranges==1 and ranges[1].scale then
+			local verified=fractionalChecks[text]
+			if verified==nil then
+				verified=true;local part=ranges[1];local lo=math.floor(part.low*part.scale+0.5);local hi=math.floor(part.high*part.scale+0.5)
+				for value=lo,hi do
+					local roll=(value/part.scale-part.start)/(part.finish-part.start)
+					local rendered=itemLib.applyRange(text,roll);local actual=tonumber(rendered:match(matcher))
+					if not actual or math.abs(actual-part.sign*value/part.scale)>1e-7 then verified=false;break end
+				end
+				fractionalChecks[text]=verified
+			end
+			if not verified then return nil,"This fractional modifier cannot be represented safely" end
+		end
+		expected[#expected+1]={line=text,ranges=ranges,pattern=matcher,scalar=scalar,profile=profile,fixed=fixed,tags=line.modTags}
 	end end
 	local rows,seen,matchedLines={},{},{}
 	for _,line in ipairs(item.explicitModLines or {}) do
@@ -326,7 +354,7 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 				local captures={text:match(candidate.pattern)}
 				if #captures==#candidate.ranges then
 					numbers={};matches=true
-					for i,value in ipairs(captures) do local number=tonumber(value);local range=candidate.ranges[i];local underlying=number and number*range.sign;if not underlying or underlying<range.low or underlying>range.high then matches=false;break end;numbers[i]=number end
+					for i,value in ipairs(captures) do local number=tonumber(value);local range=candidate.ranges[i];local underlying=number and number*range.sign;if not underlying or underlying<range.low or underlying>range.high or math.abs(underlying*(range.scale or 1)-math.floor(underlying*(range.scale or 1)+0.5))>1e-7 then matches=false;break end;numbers[i]=number end
 				end
 			end
 			if matches and line.modTags and #line.modTags>0 and not tableDeepEquals(line.modTags,candidate.tags or {}) then matches=false end
@@ -339,8 +367,8 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 			local source,count=nil,0
 			for rawLine in raw:gmatch("[^\r\n]+") do
 				local plain=rawLine:gsub("^%{range:[^}]+%}",""):gsub("^%{tags:[^}]+%}","")
-				local advanced=plain:gsub("(%-?%d+)(%(%-?%d+%-%-?%d+%))","%2")
-				local advancedValues=plain:gsub("(%-?%d+)(%(%-?%d+%-%-?%d+%))","%1")
+				local advanced=plain:gsub("(%-?%d+%.?%d*)(%(%-?%d+%.?%d*%-%-?%d+%.?%d*%))","%2")
+				local advancedValues=plain:gsub("(%-?%d+%.?%d*)(%(%-?%d+%.?%d*%-%-?%d+%.?%d*%))","%1")
 				if plain==text or line.rangeFromValue and text==match.line and advanced==match.line or advanced==match.line and advancedValues==text then source=plain;count=count+1 end
 			end
 			if count~=1 then return nil,"The original modifier line cannot be identified safely" end
@@ -348,7 +376,7 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 			local current=matchedValues
 			if text==match.line and not match.profile then
 				local range=line.range or 0.5;if type(range)~="number" or range~=range or range<0 or range>1 then return nil,"The current modifier roll is outside its supported range" end
-				current={};for i,part in ipairs(match.ranges) do current[i]=part.sign*math.floor(part.start+range*(part.finish-part.start)+0.5) end
+				current={};for i,part in ipairs(match.ranges) do local value=part.start+range*(part.finish-part.start);local scale=part.scale or 1;current[i]=part.sign*(value<0 and -math.floor(-value*scale+0.5) or math.floor(value*scale+0.5))/scale end
 			end
 			seen[source]=true;rows[#rows+1]={input=source,line=match.line,ranges=match.ranges,current=current,profile=match.profile,tags=match.profile and match.tags or nil}
 		end
@@ -400,7 +428,7 @@ end
 function M.divineReason(raw) local _,reason=divinePlan(raw);return reason end
 function M.divineOptions(raw)
 	local plan,reason=divinePlan(raw);if not plan then return nil,reason end
-	local result={};for _,row in ipairs(plan.rows) do for index,part in ipairs(row.ranges) do result[#result+1]={line=row.line,component=index,components=#row.ranges,min=row.profile and (row.profile.minima and row.profile.minima[index] or row.profile.min) or (part.sign==1 and part.low or -part.high),max=row.profile and (row.profile.maxima and row.profile.maxima[index] or row.profile.max) or (part.sign==1 and part.high or -part.low),current=row.current[index]} end end
+	local result={};for _,row in ipairs(plan.rows) do for index,part in ipairs(row.ranges) do result[#result+1]={line=row.line,component=index,components=#row.ranges,min=row.profile and (row.profile.minima and row.profile.minima[index] or row.profile.min) or (part.sign==1 and part.low or -part.high),max=row.profile and (row.profile.maxima and row.profile.maxima[index] or row.profile.max) or (part.sign==1 and part.high or -part.low),current=row.current[index],step=part.scale and 1/part.scale or 1} end end
 	return result
 end
 function M.divine(raw,seed)
@@ -409,7 +437,7 @@ function M.divine(raw,seed)
 	local random=require("Modules.CalcTime").random(seed);local replacements={}
 	for _,row in ipairs(plan.rows) do
 		if #row.ranges==1 then
-			local part=row.ranges[1];local value=part.low+math.floor(random()*(part.high-part.low+1));local range=(value-part.start)/(part.finish-part.start)
+			local part=row.ranges[1];local scale=part.scale or 1;local low=math.floor(part.low*scale+0.5);local high=math.floor(part.high*scale+0.5);local value=(low+math.floor(random()*(high-low+1)))/scale;local range=(value-part.start)/(part.finish-part.start)
 			replacements[row.input]="{range:"..string.format("%.6f",range).."}"..(row.tags and "{tags:"..table.concat(row.tags,",").."}" or "")..row.line
 		else
 			local index=0;local rendered=row.line:gsub("([%+%-]?)%((%-?%d+)%-(%-?%d+)%)",function(sign,low,high)
@@ -877,7 +905,7 @@ function M.matches(raw,requirements)
 		local component=goal.component or 1;assert(type(component)=="number" and component==math.floor(component) and component>=1 and component<=6,"Invalid unique modifier component")
 		for _,option in ipairs(options) do if option.line==goal.line and option.component==component then selected=option;break end end
 		assert(selected,"The selected unique modifier is not available on this item")
-		assert(value==math.floor(value) and value>=selected.min and value<=selected.max,"The unique modifier target is outside its roll range")
+		local scaled=value/(selected.step or 1);assert(value>=selected.min and value<=selected.max and math.abs(scaled-math.floor(scaled+0.5))<1e-7,"The unique modifier target is outside its roll range")
 		if goal.minValue and selected.current<value or goal.maxValue and selected.current>value then return false end
 	end
 	if requirements.nativeStats then

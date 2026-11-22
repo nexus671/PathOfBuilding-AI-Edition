@@ -100,6 +100,7 @@ test('accepts bounded unique modifier roll targets', t => {
   f.call('simulate_crafting',args);assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe.requirements,goal);
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   const signed={uniqueModifier:{line:'+( -2-2 ) seconds',maxValue:-1}};f.call('simulate_crafting',{...args,recipe:{...recipe,requirements:signed}});fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  const decimal={uniqueModifier:{line:'+(0.3-0.5)% to Critical Strike Chance',minValue:0.45}};f.call('simulate_crafting',{...args,recipe:{...recipe,requirements:decimal}});assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe.requirements,decimal);fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
   assert.throws(()=>f.call('simulate_crafting',{...args,recipe:{...recipe,requirements:{uniqueModifier:{...goal.uniqueModifier,maxValue:40}}}}),/arguments/);
   assert.throws(()=>f.call('simulate_crafting',{...args,recipe:{...recipe,requirements:{uniqueModifier:{...goal.uniqueModifier,minValue:-100001}}}}),/arguments/);
   assert.throws(()=>f.call('simulate_crafting',{...args,recipe:{...recipe,requirements:{uniqueModifier:{...goal.uniqueModifier,component:7}}}}),/arguments/);

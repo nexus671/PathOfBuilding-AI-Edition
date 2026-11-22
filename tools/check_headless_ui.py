@@ -54,6 +54,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_crafting_blank_ui.lua")
     sources.append(ROOT / "tools/test_crafting_base_implicit_ui.lua")
     sources.append(ROOT / "tools/test_unique_random_guide_ui.lua")
+    sources.append(ROOT / "tools/test_unique_fractional_ui.lua")
     sources.append(ROOT / "tools/test_filter_export_race.lua")
     sources.append(ROOT / "tools/test_filter_review_ui.lua")
     sources.append(ROOT / "tools/test_filter_sound_list_ui.lua")
@@ -132,6 +133,10 @@ def main():
                                          env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "unique-random-guide-controls.log").write_text(unique_random_guide.stdout)
     assert unique_random_guide.returncode == 0, unique_random_guide.stdout
+    unique_fractional = subprocess.run(lua_command + ["../tools/test_unique_fractional_ui.lua"], cwd=ROOT / "src",
+                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "unique-fractional-controls.log").write_text(unique_fractional.stdout)
+    assert unique_fractional.returncode == 0, unique_fractional.stdout
     filter_race = subprocess.run(lua_command + ["../tools/test_filter_export_race.lua"], cwd=ROOT / "src",
                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-export-race-controls.log").write_text(filter_race.stdout)
