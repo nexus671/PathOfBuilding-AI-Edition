@@ -148,6 +148,19 @@ describe("Linked planning tools",function()
 		profile=build.savers.LootFilters.data.profiles[1];assert.is_true(dependencies.report(build,profile).stale)
 		profile.rules=filters.generate(build,profile);assert.is_false(dependencies.report(build,profile).stale)
 	end)
+	it("keeps original Atlas filter links when a popup creates another version",function()
+		local store=build.savers.AtlasPlans
+		local plan={id="farm",title="Farm",version="3.30.0-preview",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
+		store:Upsert(plan);local profile=filters.profile("linked","Linked");profile.trackBuildPickups=true;profile.rules=filters.generate(build,profile)
+		assert.is_false(dependencies.report(build,profile).stale)
+		local controls=require("Classes.AtlasPlannerControl").Open(build,plan)
+		controls.version.selFunc(nil,{val="3.30.0c"});main.popups[1].controls.confirm:Click();main.popups[1].controls.keep:Click()
+		assert.equal(2,#store.plans);assert.equal(plan.version,store.plans[1].version);assert.equal("3.30.0c",store.plans[2].version)
+		assert.is_not.equal(store.plans[1].id,store.plans[2].id)
+		local report=dependencies.report(build,profile);assert.is_false(report.stale)
+		local status;for _,entry in ipairs(report.entries) do if entry.origin=="atlas:farm" then status=entry.status end end
+		assert.equal("Current",status)
+	end)
 	it("remembers tracked build pickups after the last linked rule disappears",function()
 		local store=build.savers.AtlasPlans
 		local plan={id="only-farm",title="Only farm",version="3.30.0c",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
