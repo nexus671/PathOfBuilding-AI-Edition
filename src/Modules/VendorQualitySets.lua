@@ -9,10 +9,33 @@ local function groupByQuality(items)
 	end
 	return groups,group,total
 end
+-- Pair large rolls with the smallest sufficient roll, then use larger rolls
+-- when several items are needed. Quality is bounded to 1-100 by the parser.
+local function balancedGroups(items)
+	local buckets={};for q=1,100 do buckets[q]={} end
+	for _,item in ipairs(items) do local bucket=buckets[item.quality];bucket[#bucket+1]=item end
+	local remaining=#items;local groups,leftover,leftoverQuality={},{},0
+	local function take(q) remaining=remaining-1;return table.remove(buckets[q]) end
+	local function highest() for q=100,1,-1 do if #buckets[q]>0 then return q end end end
+	while remaining>=2 do
+		local q=highest();local group={take(q)};local total=q
+		while remaining>0 and (total<40 or #group<2) do
+			local nextQuality
+			for candidate=math.max(1,40-total),100 do if #buckets[candidate]>0 then nextQuality=candidate;break end end
+			nextQuality=nextQuality or highest();group[#group+1]=take(nextQuality);total=total+nextQuality
+		end
+		if total<40 then for _,item in ipairs(group) do leftover[#leftover+1]=item;leftoverQuality=leftoverQuality+item.quality end;break end
+		groups[#groups+1]={items=group,quality=total}
+	end
+	for q=1,100 do for _,item in ipairs(buckets[q]) do leftover[#leftover+1]=item;leftoverQuality=leftoverQuality+item.quality end end
+	return groups,leftover,leftoverQuality
+end
 -- Search small collections exactly, with a fixed work budget. Larger or hard
 -- inputs keep the linear heuristic; no item is rejected because of its count.
 local function bestGroups(items)
 	local greedy,leftover,leftoverQuality=groupByQuality(items)
+	local balanced,balancedLeft,balancedQuality=balancedGroups(items)
+	if #balanced>#greedy then greedy,leftover,leftoverQuality=balanced,balancedLeft,balancedQuality end
 	local total=0;for _,item in ipairs(items) do total=total+item.quality end
 	if #greedy==math.min(math.floor(total/40),math.floor(#items/2)) then return greedy,leftover,leftoverQuality,true end
 	if #items>14 then return greedy,leftover,leftoverQuality,false end

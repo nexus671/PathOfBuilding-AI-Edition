@@ -71,6 +71,22 @@ describe("Quality vendor review",function()
 		local copies={};for _,quality in ipairs({18,17,13,12,11,9,18,17,13,12,11,9,1,1,1}) do copies[#copies+1]=item("Wands","Magic","Driftwood Wand",quality) end
 		local category=vendor.review(copies).categories[1];assert.is_false(category.optimal);assert.equal(3,#category.groups)
 	end)
+	it("finds more complete offers in larger mixed-quality collections",function()
+		local copies={};for i=1,8 do copies[#copies+1]=item("Wands","Magic","Driftwood Wand",30) end
+		for i=1,8 do copies[#copies+1]=item("Wands","Magic","Driftwood Wand",10) end
+		local category=vendor.review(copies).categories[1];assert.equal(8,#category.groups);assert.equal(0,#category.leftover);assert.is_true(category.optimal)
+		local used={};for _,group in ipairs(category.groups) do assert.equal(40,group.quality);assert.equal(2,#group.items);for _,entry in ipairs(group.items) do assert.is_nil(used[entry.index]);used[entry.index]=true end end
+	end)
+	it("never loses a group from the previous large-collection heuristic",function()
+		for trial=1,40 do
+			local values,copies={},{};for i=1,24 do local q=(trial*17+i*11+trial*i*3)%35+1;values[i]=q;copies[i]=item("Wands","Magic","Driftwood Wand",q) end
+			table.sort(values,function(a,b) return a>b end);local oldCount,sum,count=0,0,0
+			for _,q in ipairs(values) do sum=sum+q;count=count+1;if count>=2 and sum>=40 then oldCount=oldCount+1;sum=0;count=0 end end
+			local result=vendor.review(copies).categories[1];assert.is_true(#result.groups>=oldCount)
+			local seen={};for _,group in ipairs(result.groups) do local total=0;assert.is_true(#group.items>=2);for _,entry in ipairs(group.items) do assert.is_nil(seen[entry.index]);seen[entry.index]=true;total=total+entry.quality end;assert.equal(total,group.quality);assert.is_true(total>=40) end
+			for _,entry in ipairs(result.leftover) do assert.is_nil(seen[entry.index]);seen[entry.index]=true end;for i=1,#copies do assert.is_true(seen[i]) end
+		end
+	end)
 	it("matches an independent exhaustive search for small collections",function()
 		local bit=require("bit");local band=bit.band
 		for trial=1,60 do

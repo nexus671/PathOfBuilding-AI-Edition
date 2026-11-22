@@ -12,7 +12,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Build auto-adjust | Reads saved crafts, planned gear, gems, resources and Atlas plans | More stage-specific vendor recipes |
 | Campaign weapon selection | Eighteen native families, equipped-family selection, editable weapon-style starters and progressive base-level windows | More character-specific class presets |
 | Campaign armour selection | Armour/evasion/ES combinations and Ward, with native base art | More starter presets |
-| Campaign vendor rares | Base preset rules and campaign pickup policies, plus copied-item reviews for quality groups, rare equipment sets and same-base rarity sets | Rare set combinations, bonuses and vendor priority need in-game verification; other completed vendor sets remain unsupported |
+| Campaign vendor rares | Base preset rules and campaign pickup policies, plus copied-item reviews for quality groups, rare equipment sets and same-base rarity sets; quality grouping compares two heuristics and proves the maximum when it reaches an upper bound | Rare set combinations, bonuses and vendor priority need in-game verification; other completed vendor sets remain unsupported |
 | Endgame build adjustment | Exact saved targets, opted-in crafting alternatives and Atlas pickups | Trade/SSF-specific policies |
 | Item overview and colour examples | Live scene using the compiled filter | Explanatory galleries for every item family |
 | Hierarchical customizer | Category sidebar, search, personal/base/policy scope and collapsible compiled sections | Human-edited subcategories |
