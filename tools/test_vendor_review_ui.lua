@@ -58,5 +58,8 @@ return function(build,ui,frame)
 	assert(main.popups[1].controls.status.label:find("12 pasted items",1,true),"Quality vendor review lost its working items");frame("vendor-quality-reopened");ui:click("clear")
 	for _,quality in ipairs({18,17,13,12,11,9}) do ui.clipboard="Item Class: Wands\nRarity: Magic\nSuperior Driftwood Wand of the Fox\n--------\nQuality: +"..quality.."%";ui:click("paste") end
 	do local c=main.popups[1].controls;local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;assert(table.concat(details," "):find("2 maximum",1,true),"Maximum quality groups were not displayed") end
-	frame("vendor-quality-optimal");ui:click("clear");ui:click("close")
+	frame("vendor-quality-optimal");ui:click("clear")
+	for _,quality in ipairs({6,12,18,18,11,8,11,7,5,4,20,1,15,9,15}) do ui.clipboard="Item Class: Wands\nRarity: Magic\nSuperior Driftwood Wand of the Fox\n--------\nQuality: +"..quality.."%";ui:click("paste") end
+	do local c=main.popups[1].controls;local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;assert(table.concat(details," "):find("4 maximum",1,true),"Larger quality collection did not find four groups") end
+	frame("vendor-quality-larger-optimal");ui:click("clear");ui:click("close")
 end

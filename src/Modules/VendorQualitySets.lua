@@ -38,7 +38,7 @@ local function bestGroups(items)
 	if #balanced>#greedy then greedy,leftover,leftoverQuality=balanced,balancedLeft,balancedQuality end
 	local total=0;for _,item in ipairs(items) do total=total+item.quality end
 	if #greedy==math.min(math.floor(total/40),math.floor(#items/2)) then return greedy,leftover,leftoverQuality,true end
-	if #items>14 then return greedy,leftover,leftoverQuality,false end
+	if #items>18 then return greedy,leftover,leftoverQuality,false end
 	local bit=require("bit");local band=bit.band;local size=2^#items;local sums,counts,minimum,positions={[0]=0},{[0]=0},{},{}
 	for i=1,#items do positions[2^(i-1)]=i end
 	for mask=1,size-1 do

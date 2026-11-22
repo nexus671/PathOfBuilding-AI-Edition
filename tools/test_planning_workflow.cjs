@@ -89,6 +89,10 @@ async function main(){
   const supportQuality=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:['Item Class: Support Skill Gems\nRarity: Gem\nAdded Fire Damage Support\n--------\nQuality: +20%']},'qualityVendorReview');assert.equal(supportQuality.qualityVendorReview.categories[3].groups[0].singleKind,'gem');
   const qualityOptimalCopies=[18,17,13,12,11,9].map(q=>`Item Class: Wands\nRarity: Magic\nSuperior Driftwood Wand of the Fox\n--------\nQuality: +${q}%`);
   const qualityOptimal=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:qualityOptimalCopies},'qualityVendorReview');assert.equal(qualityOptimal.qualityVendorReview.categories[0].optimal,true);assert.equal(qualityOptimal.qualityVendorReview.categories[0].groups.length,2);
+  const largerQualityCopies=[6,12,18,18,11,8,11,7,5,4,20,1,15,9,15].map(quality=>`Item Class: Wands\nRarity: Magic\nSuperior Driftwood Wand of the Fox\n--------\nQuality: +${quality}%`);
+  const largerQuality=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:largerQualityCopies},'qualityVendorReview');
+  const largerGroups=largerQuality.qualityVendorReview.categories[0];assert.equal(largerGroups.optimal,true);assert.equal(largerGroups.groups.length,4);
+  const usedQualityItems=largerGroups.groups.flatMap(group=>group.items.map(item=>item.index));assert.equal(new Set(usedQualityItems).size,usedQualityItems.length);assert.ok(largerGroups.groups.every(group=>group.quality>=40));
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
   const implicitBase='Rarity: NORMAL\nRuby Ring\nItem Level: 83';
   const craftImplicitInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:implicitBase,includeBaseImplicitChoices:true,limit:3},'inspected');
