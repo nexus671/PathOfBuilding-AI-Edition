@@ -1,3 +1,4 @@
+-- cspell:ignore Duskwalk
 -- Select and retain a hypothetical ordinary base implicit in the item editor.
 local output=arg[1];arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true
 local uiModule=require("Modules.HeadlessUI");local sim=require("Modules.CraftingSimulator");local picker=require("Modules.CraftingBaseImplicit")
@@ -16,7 +17,26 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  local scaledState=picker.apply(sim,catalyst,catalyst.initial,scaled[#scaled].roll);assert(StripEscapes(itemLib.formatModLine(sim.toItem(catalyst,scaledState).implicitModLines[1],false)):find("+36% to Fire Resistance",1,true),"Catalyst result differed from its choice")
  assert(before.baseImplicitRanges==nil and model.initial.baseImplicitRanges==nil,"Editing changed the original state")
  local corrupted=copyTable(model.initial);corrupted.corrupted=true;assert(not picker.options(sim,model,corrupted),"Corrupted base should be excluded")
- local nonvariable=sim.model("Rarity: NORMAL\nStygian Vise\nItem Level: 83");assert(not picker.options(sim,nonvariable,nonvariable.initial),"Fixed implicit should not offer a roll")
+ local fixedBase=sim.model("Rarity: NORMAL\nStygian Vise\nItem Level: 83");assert(not picker.options(sim,fixedBase,fixedBase.initial),"Fixed implicit should not offer a roll")
+ local tagged=sim.model("Rarity: NORMAL\nDuskwalk Slippers\nItem Level: 83\nImplicits: 2\n{tags:attack}10% reduced Movement Speed\n47% increased Cooldown Recovery Rate of Movement Skills")
+ local unsafe,why=picker.options(sim,tagged,tagged.initial);assert(not unsafe and why:find("tags or properties",1,true),"Changed implicit tags were not rejected")
+ local boots=sim.model("Rarity: NORMAL\nDuskwalk Slippers\nItem Level: 83");local keptBoots
+ require("Classes.CraftingItemEditorControl").Open(boots,boots.initial,function(value) keptBoots=value end)
+ ui:click("baseImplicit");ui:text("search","50% increased Cooldown Recovery Rate of Movement Skills")
+ if output then ui:frame():write(output.."/"..size[1].."-crafting-multi-implicit.json") end
+ ui:click("choose");ui:click("keep");local result=sim.toItem(boots,assert(keptBoots))
+ assert(StripEscapes(itemLib.formatModLine(result.implicitModLines[1],false))=="10% reduced Movement Speed","Other implicit changed")
+ assert(StripEscapes(itemLib.formatModLine(result.implicitModLines[2],false))=="50% increased Cooldown Recovery Rate of Movement Skills","Selected implicit changed")
+ local reopenedBoots=sim.model(assert(sim.itemText(boots,keptBoots)));local saved=sim.toItem(reopenedBoots,reopenedBoots.initial)
+ assert(StripEscapes(itemLib.formatModLine(saved.implicitModLines[1],false))=="10% reduced Movement Speed" and StripEscapes(itemLib.formatModLine(saved.implicitModLines[2],false))=="50% increased Cooldown Recovery Rate of Movement Skills","Reopening changed the implicits")
+ -- Synthetic second variable line verifies a non-default roll stays intact.
+ local synthetic=sim.model("Rarity: NORMAL\nDuskwalk Slippers\nItem Level: 83");synthetic.baseImplicitTemplates[1]="(10-20)% reduced Movement Speed"
+ local start=copyTable(synthetic.initial);start.baseImplicitRanges={0.25,0.4};start.baseImplicitReconstructed=true;start=sim.validateState(synthetic,start)
+ local candidates=assert(picker.options(sim,synthetic,start));local selected
+ for _,candidate in ipairs(candidates) do if candidate.lineIndex==2 and candidate.roll==1 then selected=candidate;break end end
+ assert(selected and selected.statePatch.baseImplicitRanges[1]==0.25,"Choice did not preserve the other roll")
+ local selectedItem=sim.toItem(synthetic,picker.apply(sim,synthetic,start,selected.roll,selected.lineIndex))
+ assert(StripEscapes(itemLib.formatModLine(selectedItem.implicitModLines[1],false))=="13% reduced Movement Speed","Selecting another line changed the existing roll")
  ui:restore()
 end
 print("CRAFTING_BASE_IMPLICIT_UI_OK")

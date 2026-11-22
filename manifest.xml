@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1052" />
+	<Version number="2.68.1-ai.preview1053" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="abf92f2d96a07742dea9342baf3eea3bf36b9b54" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="80cb2c030e703b790f411724396ea432e9c4dd4f" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -1725,7 +1725,7 @@
 	<File name="Classes/CraftingHistoryControl.lua" part="program" sha1="e5d93860b1f0b56531e3c581c95713d4ce1c9ad0" />
 	<File name="Classes/CraftingInventoryControl.lua" part="program" sha1="50c3e7fcc2f5a44ad7f1fa9115073ffe8499a195" />
 	<File name="Classes/CraftingItemComparisonControl.lua" part="program" sha1="e2a04459cde8751208135bfea6239dd98280bc81" />
-	<File name="Classes/CraftingItemEditorControl.lua" part="program" sha1="6635c8f701d2f24ac918fd53a97d3fd443f0df89" />
+	<File name="Classes/CraftingItemEditorControl.lua" part="program" sha1="5b7eeaa6c3ba330494a33c879ae19da1d61566a2" />
 	<File name="Classes/CraftingItemStatsControl.lua" part="program" sha1="ab9a7cd49403a6460caa78c4a99d82498ff02136" />
 	<File name="Classes/CraftingModifierControl.lua" part="program" sha1="d15485e09c6aa68453c2ecde121457cb06eefc8d" />
 	<File name="Classes/CraftingPricesControl.lua" part="program" sha1="3a60aea75e2cec7a633345cfc5e63e1d6b41bd8d" />
@@ -2208,7 +2208,7 @@
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />
 	<File name="Modules/DataLegionLookUpTableHelper.lua" part="program" sha1="ece92c4b6062f627f98ba2454531366b4628abfc" />
-	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="25008e2171d6ccbbb47af5997081ab3858c807b1" />
+	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="c3c129a367b1d7efc31b5db58b22f0ca97deea6c" />
 	<File name="Modules/EncounterReport.lua" part="program" sha1="710dc78939bfbc8282f295cf626bcde9c9b7d8e5" />
 	<File name="Modules/HeadlessCompression.lua" part="program" sha1="16a42bf407eb777602f9b03b5c8466188a04ee58" />
 	<File name="Modules/HeadlessUI.lua" part="program" sha1="4f80dc993d54bcd6eaa633015dd30896c3d51353" />
@@ -3175,5 +3175,5 @@
 	<File name="Classes/GemQualityPlanControl.lua" part="program" sha1="8ad6cbdcb855c80692d4eb7ee37fb643d37b0e23" />
 	<File name="Modules/GemQualityPlan.lua" part="program" sha1="fa12e64e1168c57976a6e2b718a6b30545a27e84" />
 	<File name="Data/Crafting/GemSoulCores330.json" part="program" sha1="3e72815316e5ea26174bddddcae5bb84bb45cafb" />
-	<File name="Modules/CraftingBaseImplicit.lua" part="program" sha1="6810d46ae3918efec58742613d3e69fedd749bd7" />
+	<File name="Modules/CraftingBaseImplicit.lua" part="program" sha1="0c2a157302f502aacb4105bef981d72ed69cc73e" />
 </PoBVersion>

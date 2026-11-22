@@ -163,7 +163,7 @@ function Panel.Open(model,input,onKeep)
 	end
 	button("baseImplicit",292,368+extra,260,"Set base implicit",function()
 		local choices,reason=implicitOptions();assert(choices,reason)
-		require("Classes.PlanningBrowserControl").Open("Choose base implicit",choices,{action="Use value",choose=function(entry) commit(implicit.apply(sim,model,state,entry.roll)) end})
+		require("Classes.PlanningBrowserControl").Open("Choose base implicit",choices,{action="Use value",choose=function(entry) commit(implicit.apply(sim,model,state,entry.roll,entry.lineIndex)) end})
 	end)
 	controls.baseImplicit.enabled=function() local choices=implicitOptions();return choices~=nil end
 	controls.baseImplicit.tooltipText=function() local choices,reason=implicitOptions();return choices and "Set a hypothetical ordinary base implicit without spending currency." or reason end

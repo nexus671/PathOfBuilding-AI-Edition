@@ -1,4 +1,4 @@
-// cspell:ignore Ukatoa Katakohi unmodeled
+// cspell:ignore Ukatoa Katakohi Duskwalk unmodeled
 // A real MCP stdio client drives an isolated native host and explicit UI review.
 // cspell:ignore GGGRRW RGBRRR craic
 'use strict';
@@ -90,9 +90,14 @@ async function main(){
   const implicitBase='Rarity: NORMAL\nRuby Ring\nItem Level: 83';
   const craftImplicitInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:implicitBase,includeBaseImplicitChoices:true,limit:3},'inspected');
   assert.equal(craftImplicitInspection.crafting.baseImplicitChoices.available,true);const maximumImplicit=craftImplicitInspection.crafting.baseImplicitChoices.choices.find(entry=>entry.label==='+30% to Fire Resistance');assert.ok(maximumImplicit);assert.equal(maximumImplicit.roll,1);
-  const implicitStart={rarity:'NORMAL',affixes:[],baseImplicitRanges:[maximumImplicit.roll],baseImplicitReconstructed:true};
+  const implicitStart={rarity:'NORMAL',affixes:[],...maximumImplicit.statePatch};
   const implicitCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:implicitBase,initialState:implicitStart,action:{method:'transmute'},seed:42},'crafted');assert.match(implicitCraft.nativeCrafting.itemText,/\+30% to Fire Resistance/);
   const fixedImplicit=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nStygian Vise\nItem Level: 83',includeBaseImplicitChoices:true,limit:3},'inspected');assert.equal(fixedImplicit.crafting.baseImplicitChoices.available,false);
+  const bootsBase='Rarity: NORMAL\nDuskwalk Slippers\nItem Level: 83';
+  const bootsInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:bootsBase,includeBaseImplicitChoices:true,limit:3},'inspected');
+  const bootsChoice=bootsInspection.crafting.baseImplicitChoices.choices.find(entry=>entry.label==='50% increased Cooldown Recovery Rate of Movement Skills');assert.ok(bootsChoice);assert.equal(bootsChoice.lineIndex,2);assert.equal(bootsChoice.statePatch.baseImplicitRanges.length,2);
+  const bootsCraft=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:bootsBase,initialState:{rarity:'NORMAL',affixes:[],...bootsChoice.statePatch},action:{method:'transmute'},seed:42},'crafted');assert.match(bootsCraft.nativeCrafting.itemText,/10% reduced Movement Speed/);assert.match(bootsCraft.nativeCrafting.itemText,/50% increased Cooldown Recovery Rate of Movement Skills/);
+  const taggedBoots='Rarity: NORMAL\nDuskwalk Slippers\nItem Level: 83\nImplicits: 2\n{tags:attack}10% reduced Movement Speed\n47% increased Cooldown Recovery Rate of Movement Skills';const taggedReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:taggedBoots,includeBaseImplicitChoices:true,limit:3},'inspected');assert.equal(taggedReview.crafting.baseImplicitChoices.available,false);assert.match(taggedReview.crafting.baseImplicitChoices.reason,/tags or properties/);
   const sourceBelt='Rarity: RARE\nExample Belt\nStygian Vise\nItem Level: 83\nCatalyst: Prismatic\nCatalystQuality: 20\n+99% to Cold Resistance\nCorrupted';
   const blankBaseReview=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:sourceBelt,includeBlankBase:true,limit:3},'inspected');
   assert.equal(blankBaseReview.crafting.blankBase.available,true);assert.equal(blankBaseReview.crafting.blankBase.itemText,'Rarity: NORMAL\nStygian Vise\nItem Level: 83');assert.match(blankBaseReview.crafting.blankBase.note,/No item was equipped or changed/);

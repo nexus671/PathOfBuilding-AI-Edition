@@ -805,7 +805,7 @@ function M.poll(build, force)
 					local state=request.initialState and sim.validateState(model,request.initialState) or model.initial
 					return require("Modules.CraftingBaseImplicit").options(sim,model,state)
 				end)
-				M.status.crafting.baseImplicitChoices=ok and choices and {available=true,choices=choices,note="Hypothetical values use PoB scaling. Apply a listed roll in initialState.baseImplicitRanges with baseImplicitReconstructed=true; no currency or equipped item is changed."}
+				M.status.crafting.baseImplicitChoices=ok and choices and {available=true,choices=choices,note="Hypothetical values use PoB scaling. Merge the chosen statePatch into the inspected initialState; no currency or equipped item is changed."}
 					or {available=false,reason=ok and reason or require("Modules.PlanningUI").errorText(choices)}
 			end
 			local ok,catalog=pcall(require("Modules.CraftingSimulator").catalog,raw,request.query,request.limit,request.initialState,build.spec.treeVersion)
