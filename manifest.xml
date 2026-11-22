@@ -1779,7 +1779,10 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
 	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="633ef5b91d2de0897bf5b5cefde73cb4a7cc38cd" />
 	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="d856f8771cf483b452d2dae3d10138cbd2aff272" />
-	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="fc1a0f478226e869109553aee681d1b4babe4b38" />
+	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="4014d416b100ff8b0f193d03a2735856c0695bed" />
+	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="794b6bffa0cefa318b1e79efd9b6bf4a670ca83c" />
+	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="51b98574beaba2176ea9e112e38cc7c26e34401b" />
+	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="1c8c60a621a5dc908466e56f09b420fc28b2abec" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="b133139457017d3bb1579c4284c14bf3f1c0a524" />
 	<File name="Classes/MapModifierControl.lua" part="program" sha1="545b24b4e4c21ad6509b92c48a443f84f966359a" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
@@ -2240,7 +2243,7 @@
 	<File name="Modules/LootFilterVisuals.lua" part="program" sha1="a36e6f987aef976d6aa020a28ca98510b96adede" />
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="9785a76f851b524da1d28d67103891599f0aa12d" />
 	<File name="Modules/LootFilters.lua" part="program" sha1="bcd137bc32c4618c1df0672d7a14b663f7f9131b" />
-	<File name="Modules/Main.lua" part="program" sha1="617f48b41e8da9a3f116630600abc48cfa36588a" />
+	<File name="Modules/Main.lua" part="program" sha1="cb5eb031bdf0dbbd0cc4eba05f5a9a471569991a" />
 	<File name="Modules/MapClipboard.lua" part="program" sha1="eb59d14815d965e0396a7ccf759a1f318b000fb5" />
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="4bde5edf6208613815c1410d2e7916ccf88b273e" />
 	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="f213a4b8a2956a440e52ea65e9e696313cb56c45" />

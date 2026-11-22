@@ -289,11 +289,12 @@ function M.Open(build,source,layout,controller)
 			{id="sampleSets",label="Saved example sets",details={"Keep exact test items with the build and reuse them after filter edits."}},
 			{id="palettes",label="Saved palettes",details={"Name and reuse whole-filter appearance snapshots."}},
 			{id="categoryStyles",label="Category appearance",details={"Change colours, fonts and alerts for selected item families while keeping rule priority."}},
+			{id="dailySync",label="Daily price sync",details={"Set up the fixed baseline and update your local filter while PoB is open."}},
 			{id="economy",label="Review exchange prices",details={"Compare tagged stack hides with current PC trade prices and export a separate candidate."}},
 			{id="fileChanges",label="Full file changes",details={"Compare the kept and working compiled filter or original base text, then copy exact sources."}},
 			{id="delete",label="Delete this profile",details={"This changes the working draft. Keep and Save to persist."}},
 		}
-		if not profile then for i=#choices,1,-1 do if choices[i].id~="new" and choices[i].id~="import" then table.remove(choices,i) end end end
+		if not profile then for i=#choices,1,-1 do if choices[i].id~="new" and choices[i].id~="import" and choices[i].id~="dailySync" then table.remove(choices,i) end end end
 		local blocked={economy=not raw or not profile or profile.mode~="Normal"};if report and report.error then blocked.structure=true;blocked.categoryStyles=true;blocked.economy=true;for _,entry in ipairs(choices) do if blocked[entry.id] then entry.details[#entry.details+1]="Unavailable: resolve the compilation error in Overview or use Audit and update first." end end end
 		require("Classes.PlanningBrowserControl").Open("Filter profile tools",choices,{action="Open",canChoose=function(entry) return not blocked[entry.id] end,choose=function(entry)
 			main:ClosePopup()
@@ -319,6 +320,7 @@ function M.Open(build,source,layout,controller)
 			elseif entry.id=="structure" and profile then require("Classes.LootFilterStructureControl").Open(profile,function(rule) editRule(rule,keepRule) end)
 			elseif (entry.id=="sampleSets" or entry.id=="palettes") and profile then collection(entry.id)
 			elseif entry.id=="tracking" and profile then profile.trackBuildPickups=not trackingEnabled(profile);dependencyTime=nil;draft();reopen()
+			elseif entry.id=="dailySync" then require("Classes.LootFilterDailySyncControl").Open()
 			elseif entry.id=="economy" and raw and profile.mode=="Normal" then require("Classes.LootFilterEconomyControl").Open(profile,raw,controller.Export)
 			elseif entry.id=="categoryStyles" and profile then require("Classes.LootFilterCategoryControl").Open(profile,replaceProfile)
 			elseif entry.id=="fileChanges" and profile then require("Classes.LootFilterDiffControl").Open(filters.find(saver.data,profile.id),profile)
