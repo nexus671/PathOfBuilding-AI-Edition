@@ -144,8 +144,8 @@ function M.Open(build,source,layout,controller)
 		end
 		profile.rules=result.rules;profile.trackBuildPickups=true;draft();reopen()
 		if #result.warnings>0 then
-			local entries={};for _,warning in ipairs(result.warnings) do entries[#entries+1]={id=warning.origin,label=warning.title,details={warning.message}} end
-			require("Classes.PlanningBrowserControl").Open("Review build pickups",entries)
+			local entries={};for _,warning in ipairs(result.warnings) do entries[#entries+1]={id=warning.origin,origin=warning.origin,label=warning.title,details={warning.message}} end
+			require("Classes.PlanningBrowserControl").Open("Review build pickups",entries,{action="Open source",canChoose=function(entry) return type(entry.origin)=="string" and entry.origin~="" end,choose=function(entry) main:ClosePopup();openSource(entry.origin) end,closeOnChoose=false})
 		end
 	end
 	local function generatePickups()
