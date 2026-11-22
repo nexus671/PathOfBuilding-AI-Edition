@@ -91,7 +91,7 @@ do
 	build.savers.CraftingProjects.projects[1].startingItem="Rarity: UNIQUE\nUnknown item\nUnknown base\nItem Level: 86"
 	_,warnings=filters.generate(build,profile);local inspectWarning,reviewWarning=false,false
 	for _,warning in ipairs(warnings) do inspectWarning=inspectWarning or warning.retry==true;reviewWarning=reviewWarning or warning.manualGuideSignature~=nil end
-	assert(inspectWarning and reviewWarning,"An uninspectable structured guide did not preserve both repair and review notices")
+	assert(inspectWarning and reviewWarning,"A structured guide that cannot be inspected did not preserve both repair and review notices")
 end
 do
 	newBuild();main.popups={};local ui=UI.install({width=960,height=640});ui:bind(build)
