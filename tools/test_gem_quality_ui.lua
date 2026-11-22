@@ -6,6 +6,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  ui.clipboard="Item Class: Active Skill Gems\nRarity: Gem\nArc\n--------\nLevel: 20\nQuality: +12%";ui:click("paste")
  local c=main.popups[1].controls;local text="";for _,line in ipairs(c.result.list) do text=text..StripEscapes(line[1] or "").." " end
  assert(text:find("8 Gemcutter",1,true),"Gem quality count missing: "..text)
+ ui:click("keep");assert(#build.savers.BuildJourney.data.milestones==1,"Gem plan was not added to Journey")
  ui:frame();if output then ui:write(output.."/"..size[1].."-gem-quality.json") end
  ui:click("close");ui:restore()
 end

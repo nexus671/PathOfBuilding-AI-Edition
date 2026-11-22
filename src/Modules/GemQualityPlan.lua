@@ -33,6 +33,10 @@ function M.inspect(raw,target)
  elseif target>20 then plan.status="unavailable";plan.reason="Gemcutter's Prisms stop at 20% quality. Higher quality requires a different method."
  else plan.status="available";plan.prisms=target-quality end
  plan.note="A Gemcutter's Prism adds 1% quality to an eligible uncorrupted gem, up to 20%. Corruption and gem transformations are not modeled."
+ if plan.status=="available" then
+  local title="Quality: "..name;if #title>120 then title="Improve gem quality" end
+  plan.milestoneDraft={title=title,kind="gems",priority=3,done=false,dependencies={},notes=string.format("%s was copied at %d%% quality%s. Use %d Gemcutter's Prism%s to reach %d%% quality. Recheck the gem if it changes; this is a saved plan, not recorded spending.",name,quality,level and " and level "..level or "",plan.prisms,plan.prisms==1 and "" or "s",target)}
+ end
  return plan
 end
 return M

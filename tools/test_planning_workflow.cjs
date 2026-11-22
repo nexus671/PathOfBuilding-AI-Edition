@@ -70,7 +70,7 @@ async function main(){
   assert.ok(partialSet.rareSetVendorReview.missing.some(entry=>entry.slot==='Ring' && entry.count===1));assert.ok(partialSet.rareSetVendorReview.missing.some(entry=>entry.slot==='Weapon'));assert.ok(!partialSet.rareSetVendorReview.missing.some(entry=>entry.slot==='Helmet'));
   const qualityCopies=[20,12,18,10].map(q=>`Item Class: ${q===20?'Wands':'Helmets'}\nRarity: ${q===20?'Normal':'Magic'}\n${q===20?'Driftwood Wand':'Superior Iron Hat of the Fox'}\n--------\nQuality: +${q}%`);
   const gemPlan=await queued('plan_gem_quality',{baseRevision:context.revision,item:'Item Class: Active Skill Gems\nRarity: Gem\nArc\n--------\nLevel: 20\nQuality: +12%',target:20},'gemQualityPlan');
-  assert.equal(gemPlan.gemQualityPlan.prisms,8);assert.equal(gemPlan.gemQualityPlan.status,'available');
+  assert.equal(gemPlan.gemQualityPlan.prisms,8);assert.equal(gemPlan.gemQualityPlan.status,'available');assert.equal(gemPlan.gemQualityPlan.milestoneDraft.kind,'gems');assert.match(gemPlan.gemQualityPlan.milestoneDraft.notes,/8 Gemcutter/);
   const corruptedGem=await queued('plan_gem_quality',{baseRevision:context.revision,item:'Item Class: Active Skill Gems\nRarity: Gem\nArc\n--------\nQuality: +12%\nCorrupted',target:20},'gemQualityPlan');
   assert.equal(corruptedGem.gemQualityPlan.status,'unavailable');
   const qualityReview=await queued('review_quality_vendor_items',{baseRevision:context.revision,items:qualityCopies},'qualityVendorReview');
@@ -1476,9 +1476,10 @@ async function main(){
   assert.equal((await call('get_build_context')).context.revision,context.revision);
   const journey={schemaVersion:1,resources:[{id:'chaos',title:'Chaos Orbs'},{id:'fossils',title:'Pristine Fossils'}],ledger:[{id:'holdings',resourceId:'chaos',kind:'add',amount:100,at:1}],wishlist:[{id:'helmet',title:'Next helmet',slot:'Helmet',route:'craft',projectId:'helmet',resourceId:'chaos',estimate:40,reserve:true},{id:'alternative',title:'Alternative helmet',slot:'Helmet',route:'buy',targetItem:item(300),resourceId:'chaos',estimate:90}],milestones:[{id:'craft',title:'Craft the helmet',kind:'craft',projectId:'helmet',wishlistId:'helmet'}],stages:[{id:'maps',title:'Start mapping',level:68,gems:'Keep the main links',gear:'Acquire the planned helmet',transition:'After checking requirements'}]};
   journey.wishlist.push({id:'surrender',title:'The Surrender',slot:'Weapon 2',route:'farm',targetItem:'Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86'});
+  journey.milestones.push({id:'gem-arc',...gemPlan.gemQualityPlan.milestoneDraft});
   await queued('propose_journey_plan',{title:'Gear roadmap',baseRevision:context.revision,journey},'review');await host('apply');context=(await call('get_build_context')).context;
   const measured=await queued('measure_journey_upgrades',{baseRevision:context.revision},'measured');assert.ok(measured.upgrades.entries.helmet.delta.LifeUnreserved>0);assert.ok(measured.upgrades.entries.alternative.delta.LifeUnreserved>measured.upgrades.entries.helmet.delta.LifeUnreserved);
-  const saved=await call('get_build_journey');assert.equal(saved.budget.chaos.available,60);assert.equal(saved.journey.milestones[0].wishlistId,'helmet');
+  const saved=await call('get_build_journey');assert.equal(saved.budget.chaos.available,60);assert.equal(saved.journey.milestones[0].wishlistId,'helmet');assert.match(saved.journey.milestones.find(entry=>entry.id==='gem-arc').notes,/8 Gemcutter/);
   const reducedJourney={...saved.journey,milestones:[],ledger:[]};
   const journeyReview=await queued('propose_journey_plan',{title:'Review journey removals',baseRevision:context.revision,journey:reducedJourney},'review');
   assert.match(JSON.stringify(journeyReview),/Removed milestone: Craft the helmet/);assert.match(JSON.stringify(journeyReview),/Removed ledger entry: add 100 Chaos Orbs/);

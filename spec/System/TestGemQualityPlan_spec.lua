@@ -2,7 +2,7 @@ describe("Gem quality planning",function()
  local planner=require("Modules.GemQualityPlan")
  local gem="Item Class: Active Skill Gems\nRarity: Gem\nArc\n--------\nLevel: 20 (Max)\nQuality: +12% (augmented)"
  it("plans prisms for copied active and support gems",function()
-  local result=planner.inspect(gem,20);assert.equal("available",result.status);assert.equal(8,result.prisms);assert.equal(20,result.level)
+  local result=planner.inspect(gem,20);assert.equal("available",result.status);assert.equal(8,result.prisms);assert.equal(20,result.level);assert.equal("gems",result.milestoneDraft.kind);assert.matches("8 Gemcutter",result.milestoneDraft.notes)
   local support="Item Class: Support Skill Gems\nRarity: Gem\nAdded Fire Damage Support\n--------\nLevel: 5"
   result=planner.inspect(support,10);assert.is_true(result.support);assert.equal(10,result.prisms)
   result=planner.inspect(gem,10);assert.equal("complete",result.status);assert.equal(0,result.prisms)
@@ -21,6 +21,11 @@ describe("Gem quality planning",function()
   newBuild();main.popups={};require("Classes.GemQualityPlanControl").Open(build)
   local c=main.popups[1].controls;local original=Paste;Paste=function() return gem end;c.paste:Click();Paste=original
   assert.is_true(c.copy:IsEnabled());local text="";for _,line in ipairs(c.result.list) do text=text..(line[1] or "") end;assert.matches("8 Gemcutter",text)
+  assert.is_true(c.keep:IsEnabled());c.keep:Click();assert.is_false(c.keep:IsEnabled());assert.equal(1,#build.savers.BuildJourney.data.milestones)
+  local saved=build.savers.BuildJourney.data.milestones[1];assert.equal("gems",saved.kind);assert.matches("8 Gemcutter",saved.notes)
+  local xml={};build.savers.BuildJourney:Save(xml);local reopened=require("Modules.BuildJourney").new(build);reopened:Load(xml);assert.equal(saved.notes,reopened.data.milestones[1].notes)
+  Paste=function() return (gem:gsub("Level: 20","Level: 19")) end;c.paste:Click();Paste=original;assert.is_true(c.keep:IsEnabled())
+
   c.target:SetText("23",true);text="";for _,line in ipairs(c.result.list) do text=text..(line[1] or "") end;assert.matches("20%%",text);main.popups={}
  end)
 end)
