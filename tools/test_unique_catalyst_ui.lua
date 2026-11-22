@@ -37,4 +37,8 @@ return function(build,ui,frame)
 		require("Classes.CraftingSimulatorControl").Open(build,draft);frame(entry.frame);local shown=false;for _,command in ipairs(ui.commands) do if command.text and command.text:find(entry.expected,1,true) then shown=true end end
 		assert(shown,"Workbench did not display "..entry.expected);ui:click("close")
 	end
+	local targeted={id="catalyst-target-summary",title="Ring target",slot="Ring 1",startingItem=normal,goals={},steps={},nativeRecipe={steps={{method="catalyst",catalyst=8}},targets={},requirements={catalyst=8,minCatalystQuality=20}}}
+	local targetControls=require("Classes.CraftingSimulatorControl").Open(build,targeted);ui:choose("page","Target conditions");frame("crafting-catalyst-target-summary")
+	local summaryText={};for _,row in ipairs(targetControls.targetSummary.list) do summaryText[#summaryText+1]=StripEscapes(row[1] or "") end
+	local combined=table.concat(summaryText," "):gsub("%s+"," ");assert(combined:find("Catalyst: Prismatic",1,true) and combined:find("Minimum catalyst quality: 20%",1,true),"Catalyst target summary was not readable");ui:click("close")
 end

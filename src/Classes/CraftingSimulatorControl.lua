@@ -120,6 +120,8 @@ function Panel.Open(build,project,layout)
 			elseif key=="mirrored" then lines[#lines+1]=value and "Must be mirrored" or "Must not be mirrored"
 			elseif key=="twiceCorrupted" then lines[#lines+1]=value and "Must be twice corrupted" or "Must not be twice corrupted"
 			elseif key=="influence" then for _,info in ipairs(itemLib.influenceInfo.default) do if info.key==value then lines[#lines+1]="Influence: "..info.display;break end end
+			elseif key=="catalyst" then lines[#lines+1]="Catalyst: "..(require("Modules.CraftingUniqueQuality").catalysts[value] or "Unknown")
+			elseif key=="minCatalystQuality" then lines[#lines+1]="Minimum catalyst quality: "..value.."%"
 			elseif key=="minAbyssSockets" then lines[#lines+1]="Minimum Abyss sockets: "..value
 			elseif key=="flaskEnchant" then lines[#lines+1]="Flask enchantment: "..require("Modules.CraftingFlaskEnchants").label(value)
 			elseif key=="flaskEnchantMin" then lines[#lines+1]="Minimum enchantment roll: "..value
