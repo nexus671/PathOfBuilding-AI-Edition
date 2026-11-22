@@ -11,6 +11,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  ui:frame();if output then ui:write(output.."/"..size[1].."-gem-corruption.json") end;ui:click("close")
  ui:click("keep");assert(#build.savers.BuildJourney.data.milestones==1,"Gem plan was not added to Journey")
  ui:frame();if output then ui:write(output.."/"..size[1].."-gem-quality.json") end
+ ui:click("close");require("Classes.GemQualityPlanControl").Open(build)
+ ui.clipboard="Item Class: Support Skill Gems\nRarity: Gem\nAdded Fire Damage Support\n--------\nLevel: 20\nQuality: +4%";ui:click("paste");ui:click("routes");ui:text("search","Vendor and relevel");ui:click("choose")
+ local vendorText="";for _,line in ipairs(main.popups[1].controls.result.list) do vendorText=vendorText..StripEscapes(line[1] or "").." " end
+ assert(vendorText:find("level 1",1,true) and vendorText:find("Releveling",1,true),"Vendor reset was not shown: "..vendorText)
+ ui:frame();if output then ui:write(output.."/"..size[1].."-gem-vendor.json") end
+ ui:click("keep");local milestone=build.savers.BuildJourney.data.milestones[2];assert(milestone and milestone.notes:find("relevel",1,true),"Vendor route was not saved")
  ui:click("close");ui:restore()
 end
 print("GEM_QUALITY_UI_OK")

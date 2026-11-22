@@ -56,9 +56,18 @@ function M.inspect(raw,target)
  end
  corruption.vaalCandidates=not support and not gem.vaalGem and vaalCandidates(gem.grantedEffectId) or {}
  plan.corruption=corruption
+ local tags=gem.tags or {};local vendor={available=false,prisms=1,outputLevel=1,outputQuality=20,
+  note="This trades the support gem and one Prism for a level 1, 20% quality gem. Releveling is required; verify the vendor offer and special gem properties in game."}
+ if plan.status~="available" then vendor.reason="Choose an unmet quality target up to 20% on an uncorrupted gem."
+ elseif not support then vendor.reason="The quality vendor recipe applies to eligible support gems, not active skill gems."
+ elseif level~=20 then vendor.reason="The copied support gem must be level 20."
+ elseif gem.naturalMaxLevel~=20 or tags.awakened or tags.exceptional then vendor.reason="Awakened, exceptional and support gems with lower maximum levels are not supported by this recipe."
+ else vendor.available=true end
+ plan.vendorRecipe=vendor
  if plan.status=="available" then
   local title="Quality: "..name;if #title>120 then title="Improve gem quality" end
   plan.milestoneDraft={title=title,kind="gems",priority=3,done=false,dependencies={},notes=string.format("%s was copied at %d%% quality%s. Use %d Gemcutter's Prism%s to reach %d%% quality. Recheck the gem if it changes; this is a saved plan, not recorded spending.",name,quality,level and " and level "..level or "",plan.prisms,plan.prisms==1 and "" or "s",target)}
+  if vendor.available then plan.vendorMilestoneDraft={title=title,kind="gems",priority=3,done=false,dependencies={},notes=string.format("%s was copied at level 20 and %d%% quality. Vendor the eligible support gem with one Gemcutter's Prism for a level 1 gem with 20%% quality, then relevel it. Verify the offer and special properties in game; this is a plan, not recorded spending.",name,quality)} end
  end
  return plan
 end
