@@ -1,3 +1,4 @@
+-- cspell:ignore RGBW RGBWW
 describe("Crafting socket goal conflicts",function()
  local sim=require("Modules.CraftingSimulator")
  before_each(function() newBuild();main.popups={} end)
