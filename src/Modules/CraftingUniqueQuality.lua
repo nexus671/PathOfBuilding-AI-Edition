@@ -266,6 +266,23 @@ end
 
 -- A bounded Divine preview for complete, unambiguous unique templates.
 -- Numeric copies are matched to single integer ranges before rerolling.
+-- Separate the supported per-line metadata while keeping variant membership.
+local function uniqueSourceLine(source)
+	local plain=source;local variant=""
+	while plain:sub(1,1)=="{" do
+		local token=plain:match("^%b{}");if not token then return nil end
+		if token:match("^%{variant:[%d,]+%}$") then if variant~="" then return nil end;variant=token
+		elseif not token:match("^%{range:[^}]+%}$") and not token:match("^%{tags:[^}]+%}$") then return nil end
+		plain=plain:sub(#token+1)
+	end
+	return plain,variant
+end
+local function sourceInVariant(prefix,selected)
+	if prefix=="" then return true end
+	if not selected then return false end
+	for id in prefix:gmatch("%d+") do if tonumber(id)==selected then return true end end
+	return false
+end
 local fractionalChecks={}
 local function divinePlanForReference(raw,item,reference,allowFixed)
 	local expected={};for _,line in ipairs(reference.explicitModLines or {}) do if reference:CheckModLineVariant(line) then
@@ -338,7 +355,7 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 		expected[#expected+1]={line=text,ranges=ranges,pattern=matcher,scalar=scalar,profile=profile,fixed=fixed,tags=line.modTags}
 	end end
 	local rows,seen,matchedLines={},{},{}
-	for _,line in ipairs(item.explicitModLines or {}) do
+	for _,line in ipairs(item.explicitModLines or {}) do if item:CheckModLineVariant(line) then
 		if line.disabled or line.custom or line.crafted or line.fractured or line.mutated or line.scourge or line.crucible or line.unscalable then return nil,"Special modifier lines need a separate Divine model" end
 		local text=line.line;local match,matchedValues
 		for _,candidate in ipairs(expected) do if not candidate.used then
@@ -373,23 +390,25 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 		match.used=true
 		matchedLines[#matchedLines+1]={text=text,tags=copyTable(match.tags or {})}
 		if #match.ranges>0 then
-			local source,count=nil,0
+			local source,sourceVariant,count=nil,nil,0
 			for rawLine in raw:gmatch("[^\r\n]+") do
-				local plain=rawLine:gsub("^%{range:[^}]+%}",""):gsub("^%{tags:[^}]+%}","")
-				local advanced=plain:gsub("(%-?%d+%.?%d*)(%(%-?%d+%.?%d*%-%-?%d+%.?%d*%))","%2")
-				local advancedValues=plain:gsub("(%-?%d+%.?%d*)(%(%-?%d+%.?%d*%-%-?%d+%.?%d*%))","%1")
-				if plain==text or line.rangeFromValue and text==match.line and advanced==match.line or advanced==match.line and advancedValues==text then source=plain;count=count+1 end
+				local plain,variant=uniqueSourceLine(rawLine)
+				if plain and sourceInVariant(variant,item.variantList and item.variant or nil) then
+					local advanced=plain:gsub("(%-?%d+%.?%d*)(%(%-?%d+%.?%d*%-%-?%d+%.?%d*%))","%2")
+					local advancedValues=plain:gsub("(%-?%d+%.?%d*)(%(%-?%d+%.?%d*%-%-?%d+%.?%d*%))","%1")
+					if plain==text or line.rangeFromValue and text==match.line and advanced==match.line or advanced==match.line and advancedValues==text then source=plain;sourceVariant=variant;count=count+1 end
+				end
 			end
 			if count~=1 then return nil,"The original modifier line cannot be identified safely" end
-			if seen[source] then return nil,"Repeated modifier lines need a separate Divine model" end
+			if seen[sourceVariant..source] then return nil,"Repeated modifier lines need a separate Divine model" end
 			local current=matchedValues
 			if text==match.line and not match.profile then
 				local range=line.range or 0.5;if type(range)~="number" or range~=range or range<0 or range>1 then return nil,"The current modifier roll is outside its supported range" end
 				current={};for i,part in ipairs(match.ranges) do local value=part.start+range*(part.finish-part.start);local scale=part.scale or 1;current[i]=part.sign*(value<0 and -math.floor(-value*scale+0.5) or math.floor(value*scale+0.5))/scale end
 			end
-			seen[source]=true;rows[#rows+1]={input=source,line=match.line,ranges=match.ranges,current=current,profile=match.profile,tags=(match.profile or reference.catalyst and match.tags and #match.tags>0) and match.tags or nil}
+			seen[sourceVariant..source]=true;rows[#rows+1]={input=sourceVariant..source,variant=sourceVariant,line=match.line,ranges=match.ranges,current=current,profile=match.profile,tags=(match.profile or line.modTags and #line.modTags>0 or reference.catalyst and match.tags and #match.tags>0) and match.tags or nil}
 		end
-	end
+	end end
 	for _,row in ipairs(expected) do if not row.used then return nil,"Use complete modifiers matching the bundled unique template" end end
 	if #rows==0 and not allowFixed then return nil,"No supported variable explicit modifiers were found" end
 	return {item=item,rows=rows,matchedLines=matchedLines}
@@ -402,7 +421,9 @@ local function divinePlan(raw,allowFixed)
 	if jewellery and ("\n"..raw):find("\nCatalyst:",1,true) and not item.catalyst then return nil,"Unrecognized jewellery catalyst needs a separate Divine model" end
 	local catalystQuality=item.catalystQuality or (item.catalyst and 20) or 0
 	if (jewellery and (item.quality or 0)>0) or catalystQuality>0 and (not jewellery or not item.catalyst or item.catalyst==3 or item.catalyst==9) then return nil,"Catalyst-scaled jewellery needs a separate Divine model" end
-	if item.variantList or item.usesVariantGroups then return nil,"Items with saved variant selections need a separate Divine model" end
+	if item.usesVariantGroups or item.hasAltVariant or item.hasAltVariant2 or item.hasAltVariant3 or item.hasAltVariant4 or item.hasAltVariant5 then return nil,"Multiple or grouped variant selections need a separate Divine model" end
+	if not item.variantList then for _,line in ipairs(item.explicitModLines or {}) do if line.variantList then return nil,"Variant modifier lines require a saved variant list" end end end
+	if item.variantList and (allowFixed or catalystQuality>0) then return nil,"Catalyst previews on saved variants need a separate model" end
 	uniqueSocketRestriction(item.title)
 	local candidates={}
 	for _,template in ipairs(uniquesByName[item.title] or {}) do
@@ -421,8 +442,16 @@ local function divinePlan(raw,allowFixed)
 		if #(reference.modMagnitudeMods or {})>0 then return nil,"Modifier magnitude changes need a separate Divine model" end
 		reference.catalyst=item.catalyst;reference.catalystQuality=catalystQuality
 	end
+	if item.variantList and (not reference.variantList or not tableDeepEquals(item.variantList,reference.variantList) or not item.variant or item.variant<1 or item.variant>#reference.variantList) then return nil,"The saved variant does not match the bundled unique" end
+	if item.variantList then
+		local selected,count=nil,0
+		for line in raw:gmatch("[^\r\n]+") do if line:match("^Selected Variant:") then selected=tonumber(line:match("^Selected Variant:%s*(%d+)%s*$"));count=count+1 end end
+		if count>1 or count==1 and selected~=item.variant then return nil,"The saved variant selection is invalid" end
+	end
 	local selected,reason
-	for variant=1,reference.variantList and #reference.variantList or 1 do
+	local first,last=1,reference.variantList and #reference.variantList or 1
+	if item.variantList then first,last=item.variant,item.variant end
+	for variant=first,last do
 		if reference.variantList then reference.variant=variant end
 		local plan,why=divinePlanForReference(raw,item,reference,allowFixed)
 		if plan then
@@ -447,25 +476,26 @@ function M.divine(raw,seed)
 	for _,row in ipairs(plan.rows) do
 		if #row.ranges==1 then
 			local part=row.ranges[1];local scale=part.scale or 1;local low=math.floor(part.low*scale+0.5);local high=math.floor(part.high*scale+0.5);local value=(low+math.floor(random()*(high-low+1)))/scale;local range=(value-part.start)/(part.finish-part.start)
-			replacements[row.input]="{range:"..string.format("%.6f",range).."}"..(row.tags and "{tags:"..table.concat(row.tags,",").."}" or "")..row.line
+			replacements[row.input]=row.variant.."{range:"..string.format("%.6f",range).."}"..(row.tags and "{tags:"..table.concat(row.tags,",").."}" or "")..row.line
 		else
 			local index=0;local rendered=row.line:gsub("([%+%-]?)%((%-?%d+)%-(%-?%d+)%)",function(sign,low,high)
 				index=index+1;local part=row.ranges[index];local value=part.low+math.floor(random()*(part.high-part.low+1))
 				local shown=sign=="-" and -value or value;local prefix=sign=="+" and shown>0 and "+" or ""
 				return prefix..shown.."("..low.."-"..high..")"
 			end)
-			replacements[row.input]=(row.tags and "{tags:"..table.concat(row.tags,",").."}" or "")..rendered
+			replacements[row.input]=row.variant..(row.tags and "{tags:"..table.concat(row.tags,",").."}" or "")..rendered
 		end
 	end
 	local changed=0
 	local output=raw:gsub("[^\r\n]+",function(line)
-		local plain=line:gsub("^%{range:[^}]+%}",""):gsub("^%{tags:[^}]+%}","");local replacement=replacements[plain]
+		local plain,variant=uniqueSourceLine(line);local replacement=plain and replacements[variant..plain]
 		if replacement then changed=changed+1;return replacement end
 		return line
 	end)
 	assert(changed==#plan.rows,"The unique modifier lines could not be updated safely")
 	output=preserveArmourBaseline(raw,output,plan.item)
 	local after=M.inspect(output);assert(after.title==plan.item.title and after.baseName==plan.item.baseName and not after.corrupted,"Unique item did not round-trip after Divine crafting")
+	if plan.item.variantList then assert(after.variant==plan.item.variant and tableDeepEquals(after.variantList,plan.item.variantList),"Unique variant selection changed during Divine crafting") end
 	local catalystModeled=plan.item.catalyst and (plan.item.catalystQuality or 20)>0 or nil
 	return {itemText=output,components={divine=1},catalystModeled=catalystModeled}
 end
