@@ -358,6 +358,25 @@ describe("Unique item quality",function()
 		local count=0;for _ in pairs(pairsSeen) do count=count+1 end;assert.is_true(count>2)
 	end)
 
+	it("rerolls descending negative unique ranges using displayed values",function()
+		local template;for _,group in pairs(data.uniques) do for _,entry in ipairs(group) do if entry:match("^%s*Refuge in Isolation[\r\n]") then template=entry end end end
+		assert.is_truthy(template);local raw="Rarity: UNIQUE\n"..template.."\nItem Level: 86"
+		local function resistance(text)
+			local options,reason=quality.divineOptions(text);assert.is_truthy(options,reason)
+			for _,option in ipairs(options) do if option.line:find("all Elemental Resistances",1,true) then return option end end
+		end
+		local first=resistance(raw);assert.equal(-50,first.min);assert.equal(-40,first.max);assert.equal(-45,first.current)
+		local copied=raw:gsub("%-%(50%-40%)%% to all Elemental Resistances","-47%% to all Elemental Resistances")
+		assert.equal(-47,resistance(copied).current);assert.is_truthy(quality.divineReason(raw:gsub("%-%(50%-40%)%% to all Elemental Resistances","-51%% to all Elemental Resistances")))
+		assert.is_true(quality.matches(copied,{uniqueModifier={line=first.line,maxValue=-47}}))
+		local seen={};for seed=1,30 do
+			local result=quality.divine(copied,seed*104729);local option=resistance(result.itemText)
+			local item=quality.inspect(result.itemText);local rendered;for _,mod in ipairs(item.explicitModLines) do if mod.line==option.line then rendered=itemLib.applyRange(mod.line,mod.range) end end;assert.equal(tostring(option.current).."% to all Elemental Resistances",rendered);assert.is_true(option.current>=-50 and option.current<=-40)
+			seen[option.current]=true;assert.is_truthy(quality.divine(result.itemText,seed*130363))
+		end
+		local count=0;for _ in pairs(seen) do count=count+1 end;assert.is_true(count>1)
+	end)
+
 	it("targets a specific unique modifier roll",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40 to Evasion Rating\n+10% to Item Rarity\n+35% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
 		local options=quality.divineOptions(raw);assert.equal(2,#options);local target

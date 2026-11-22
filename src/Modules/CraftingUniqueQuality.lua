@@ -267,8 +267,9 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 		local text=line.line;local ranges,parts={},{};local pos=1
 		while true do
 			local first,last,low,high=text:find("%((%-?%d+)%-(%-?%d+)%)",pos);if not first then break end
-			low,high=tonumber(low),tonumber(high);if high<=low or high-low>100000 or low< -100000 or high>100000 then return nil,"This modifier range needs a separate Divine model" end
-			parts[#parts+1]=text:sub(pos,first-1);ranges[#ranges+1]={low=low,high=high};pos=last+1
+			low,high=tonumber(low),tonumber(high);if high==low or math.abs(high-low)>100000 or math.min(low,high)< -100000 or math.max(low,high)>100000 then return nil,"This modifier range needs a separate Divine model" end
+			local part=text:sub(pos,first-1);local sign=part:sub(-1)=="-" and -1 or 1
+			parts[#parts+1]=part;ranges[#ranges+1]={low=math.min(low,high),high=math.max(low,high),start=low,finish=high,sign=sign};pos=last+1
 		end
 		parts[#parts+1]=text:sub(pos)
 		local profile,fixed
@@ -290,6 +291,7 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 		local pattern={"^"}
 		for i,part in ipairs(parts) do
 			local optionalPlus=i<=#ranges and ranges[i].low<=0 and part:sub(-1)=="+"
+			if i<=#ranges and ranges[i].sign==-1 then part=part:sub(1,-2) end
 			if optionalPlus then part=part:sub(1,-2) end
 			pattern[#pattern+1]=part:gsub("([^%w])","%%%1");if optionalPlus then pattern[#pattern+1]="%+?" end
 			if i<=#ranges then pattern[#pattern+1]="(%-?%d+)" end
@@ -318,7 +320,7 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 				local captures={text:match(candidate.pattern)}
 				if #captures==#candidate.ranges then
 					numbers={};matches=true
-					for i,value in ipairs(captures) do local number=tonumber(value);local range=candidate.ranges[i];if not number or number<range.low or number>range.high then matches=false;break end;numbers[i]=number end
+					for i,value in ipairs(captures) do local number=tonumber(value);local range=candidate.ranges[i];local underlying=number and number*range.sign;if not underlying or underlying<range.low or underlying>range.high then matches=false;break end;numbers[i]=number end
 				end
 			end
 			if matches and line.modTags and #line.modTags>0 and not tableDeepEquals(line.modTags,candidate.tags or {}) then matches=false end
@@ -340,7 +342,7 @@ local function divinePlanForReference(raw,item,reference,allowFixed)
 			local current=matchedValues
 			if text==match.line and not match.profile then
 				local range=line.range or 0.5;if type(range)~="number" or range~=range or range<0 or range>1 then return nil,"The current modifier roll is outside its supported range" end
-				current={};for i,part in ipairs(match.ranges) do current[i]=math.floor(part.low+range*(part.high-part.low)+0.5) end
+				current={};for i,part in ipairs(match.ranges) do current[i]=part.sign*math.floor(part.start+range*(part.finish-part.start)+0.5) end
 			end
 			seen[source]=true;rows[#rows+1]={input=source,line=match.line,ranges=match.ranges,current=current,profile=match.profile,tags=match.profile and match.tags or nil}
 		end
@@ -392,7 +394,7 @@ end
 function M.divineReason(raw) local _,reason=divinePlan(raw);return reason end
 function M.divineOptions(raw)
 	local plan,reason=divinePlan(raw);if not plan then return nil,reason end
-	local result={};for _,row in ipairs(plan.rows) do for index,part in ipairs(row.ranges) do result[#result+1]={line=row.line,component=index,components=#row.ranges,min=row.profile and (row.profile.minima and row.profile.minima[index] or row.profile.min) or part.low,max=row.profile and (row.profile.maxima and row.profile.maxima[index] or row.profile.max) or part.high,current=row.current[index]} end end
+	local result={};for _,row in ipairs(plan.rows) do for index,part in ipairs(row.ranges) do result[#result+1]={line=row.line,component=index,components=#row.ranges,min=row.profile and (row.profile.minima and row.profile.minima[index] or row.profile.min) or (part.sign==1 and part.low or -part.high),max=row.profile and (row.profile.maxima and row.profile.maxima[index] or row.profile.max) or (part.sign==1 and part.high or -part.low),current=row.current[index]} end end
 	return result
 end
 function M.divine(raw,seed)
@@ -401,7 +403,7 @@ function M.divine(raw,seed)
 	local random=require("Modules.CalcTime").random(seed);local replacements={}
 	for _,row in ipairs(plan.rows) do
 		if #row.ranges==1 then
-			local part=row.ranges[1];local value=part.low+math.floor(random()*(part.high-part.low+1));local range=(value-part.low)/(part.high-part.low)
+			local part=row.ranges[1];local value=part.low+math.floor(random()*(part.high-part.low+1));local range=(value-part.start)/(part.finish-part.start)
 			replacements[row.input]="{range:"..string.format("%.6f",range).."}"..(row.tags and "{tags:"..table.concat(row.tags,",").."}" or "")..row.line
 		else
 			local index=0;local rendered=row.line:gsub("([%+%-]?)%((%-?%d+)%-(%-?%d+)%)",function(sign,low,high)
