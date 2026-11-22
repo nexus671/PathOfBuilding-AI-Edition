@@ -62,7 +62,7 @@ async function main(){
   const betterSet=await queued('review_rare_vendor_sets',{baseRevision:context.revision,items:betterWeapons},'rareSetVendorReview');
   assert.equal(betterSet.rareSetVendorReview.groups[0].reward,'Regal Orb');assert.equal(betterSet.rareSetVendorReview.remaining[0].level,40);
   const chaosSet=await queued('review_rare_vendor_sets',{baseRevision:context.revision,items:betterWeapons.concat([rareSetCopies[0].replace('Item Level: 70','Item Level: 68')]),preference:'chaos'},'rareSetVendorReview');
-  assert.equal(chaosSet.rareSetVendorReview.preference,'chaos');assert.match(chaosSet.rareSetVendorReview.note,/heuristic/);assert.equal(chaosSet.rareSetVendorReview.groups[0].reward,'Chaos Orb');assert.equal(chaosSet.rareSetVendorReview.groups[0].minLevel,68);
+  assert.equal(chaosSet.rareSetVendorReview.preference,'chaos');assert.equal(chaosSet.rareSetVendorReview.maximumProven,true);assert.equal(chaosSet.rareSetVendorReview.maxSetsUpperBound,1);assert.equal(chaosSet.rareSetVendorReview.groups[0].reward,'Chaos Orb');assert.equal(chaosSet.rareSetVendorReview.groups[0].minLevel,68);
   const partialSet=await queued('review_rare_vendor_sets',{baseRevision:context.revision,items:[rareSetCopies[0],rareSetCopies[6]]},'rareSetVendorReview');
   assert.ok(partialSet.rareSetVendorReview.missing.some(entry=>entry.slot==='Ring' && entry.count===1));assert.ok(partialSet.rareSetVendorReview.missing.some(entry=>entry.slot==='Weapon'));assert.ok(!partialSet.rareSetVendorReview.missing.some(entry=>entry.slot==='Helmet'));
   const qualityCopies=[20,12,18,10].map(q=>`Item Class: ${q===20?'Wands':'Helmets'}\nRarity: ${q===20?'Normal':'Magic'}\n${q===20?'Driftwood Wand':'Superior Iron Hat of the Fox'}\n--------\nQuality: +${q}%`);

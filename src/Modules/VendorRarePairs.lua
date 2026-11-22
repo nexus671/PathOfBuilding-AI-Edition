@@ -69,6 +69,27 @@ function M.reviewSets(items,preference)
   local ok,item=pcall(M.parseSet,raw);assert(ok,"Item "..index..": "..tostring(item));item.index=index
   if preference=="chaos" and item.level<60 then excluded[#excluded+1]=item else buckets[item.slot][#buckets[item.slot]+1]=item end
  end
+ -- Upper bound on Chaos sets under the modeled slot rules. Each set needs
+ -- one level 60-74 item, and a slot can contribute no more items than the
+ -- number of places available across k sets. Weapon layouts are the only
+ -- choice: t two-handed slots and k-t pairs of one-handed items or shields.
+ local chaosUpperBound
+ if preference=="chaos" then
+  local low={};for slot,bucket in pairs(buckets) do local count=0;for _,entry in ipairs(bucket) do if entry.level<=74 then count=count+1 end end;low[slot]=count end
+  local max=math.huge;for _,slot in ipairs(setSlots) do max=math.min(max,math.floor(#buckets[slot]/(slot=="Ring" and 2 or 1))) end
+  local two=#buckets["Two hand"];local singles=#buckets["One hand"]+#buckets.Shield
+  max=math.min(max,two+math.floor(singles/2));local lowSingles=low["One hand"]+low.Shield
+  chaosUpperBound=0
+  for k=max,1,-1 do
+   local fixed=0;for _,slot in ipairs(setSlots) do fixed=fixed+math.min(low[slot],k*(slot=="Ring" and 2 or 1)) end
+   local lower=math.max(0,k-math.floor(singles/2));local upper=math.min(k,two)
+   -- The weapon bound is piecewise linear; its maximum is at a boundary or
+   -- where either minimum changes branch. Test the adjacent integer points.
+   local candidates={lower,upper,low["Two hand"],k-math.floor(lowSingles/2),k-math.ceil(lowSingles/2)}
+   local best=0;for _,candidate in ipairs(candidates) do local t=math.max(lower,math.min(upper,candidate));best=math.max(best,math.min(t,low["Two hand"])+math.min(2*(k-t),lowSingles)) end
+   if fixed+best>=k then chaosUpperBound=k;break end
+  end
+ end
  -- Use high-level items first to avoid spending a low-level item in a set
  -- when a higher-level alternative is available. This is not a value optimizer.
  for _,bucket in pairs(buckets) do table.sort(bucket,function(a,b) if a.level~=b.level then return a.level<b.level end return a.index>b.index end) end
@@ -152,6 +173,9 @@ function M.reviewSets(items,preference)
    missing[#missing+1]={slot="Chaos-level item or weapon partner",count=1,detail="Use another level 60-74 item, or pair the existing weapon or shield with another one-handed weapon or shield"}
   end
  end
- return {preference=preference,groups=groups,remaining=remaining,missing=missing,totalItems=#items,note=(preference=="chaos" and "Chaos grouping is heuristic and may not maximize the number of sets. " or "").."Suggested groups use copied classes and item levels. Weapon combinations, identification and quality bonuses, special items and vendor priority need in-game verification. Each paste must be a different item; no stash is accessed."}
+ local maximumProven;if chaosUpperBound~=nil then maximumProven=#groups==chaosUpperBound end
+ if chaosUpperBound then assert(#groups<=chaosUpperBound,"Chaos set count exceeded its modeled upper bound") end
+ local note=preference=="chaos" and (maximumProven and "The set count reaches the modeled maximum. " or "Grouping may not reach the modeled maximum. ") or ""
+ return {preference=preference,groups=groups,remaining=remaining,missing=missing,totalItems=#items,maximumProven=maximumProven,maxSetsUpperBound=chaosUpperBound,note=note.."Suggested groups use copied classes and item levels. Weapon combinations, identification and quality bonuses, special items and vendor priority need in-game verification. Each paste must be a different item; no stash is accessed."}
 end
 return M

@@ -35,12 +35,40 @@ describe("Rare vendor set review",function()
  end)
  it("prioritizes Chaos sets and keeps lower-level items out of them",function()
   local input=kit(80);input[#input+1]=item("Helmets",68);input[#input+1]=item("Gloves",40)
-  local result=vendor.reviewSets(input,"chaos");assert.equal("chaos",result.preference);assert.matches("heuristic",result.note);assert.equal(1,#result.groups);assert.equal("Chaos Orb",result.groups[1].reward);assert.equal(68,result.groups[1].minLevel)
+  local result=vendor.reviewSets(input,"chaos");assert.equal("chaos",result.preference);assert.is_true(result.maximumProven);assert.equal(1,result.maxSetsUpperBound);assert.equal(1,#result.groups);assert.equal("Chaos Orb",result.groups[1].reward);assert.equal(68,result.groups[1].minLevel)
   assert.equal(2,#result.remaining);local seen={};for _,entry in ipairs(result.remaining) do seen[entry.level]=true end;assert.is_true(seen[40]);assert.is_true(seen[80])
   local noAnchor=vendor.reviewSets(kit(80),"chaos");assert.equal(0,#noAnchor.groups)
   local found;for _,entry in ipairs(noAnchor.missing) do if entry.slot=="Item level 60-74" then found=entry end end;assert.is_not_nil(found)
   assert.equal("Regal Orb",vendor.reviewSets(kit(80)).groups[1].reward)
   assert.has_error(function() vendor.reviewSets(input,"unknown") end)
+ end)
+ it("proves the modeled Chaos set count with competing weapon layouts",function()
+  local input=kit(80);local second=kit(80);for _,raw in ipairs(second) do input[#input+1]=raw end
+  input[9]=item("Bows",70);input[18]=item("Bows",80);input[#input+1]=item("One Hand Swords",68);input[#input+1]=item("Shields",80)
+  local result=vendor.reviewSets(input,"chaos");assert.equal(2,#result.groups);assert.equal(2,result.maxSetsUpperBound);assert.is_true(result.maximumProven)
+  local seen={};for _,group in ipairs(result.groups) do assert.equal("Chaos Orb",group.reward);for _,entry in ipairs(group.items) do assert.is_nil(seen[entry.index]);seen[entry.index]=true end end
+  local noAnchor=vendor.reviewSets(kit(80),"chaos");assert.equal(0,noAnchor.maxSetsUpperBound);assert.is_true(noAnchor.maximumProven)
+ end)
+ it("checks the bound against exhaustive modeled weapon layouts",function()
+  local classes={"Helmets","Body Armours","Gloves","Boots","Amulets","Belts","Rings","Bows","One Hand Swords","Shields"}
+  local seed=137;local function random(n) seed=(seed*48271)%2147483647;return seed%n end
+  for trial=1,200 do
+   local input,counts,lows={},{},{}
+   for i,class in ipairs(classes) do
+    counts[i]=random(i==7 and 7 or 5);lows[i]=0
+    for j=1,counts[i] do local level=random(2)==0 and 70 or 80;if level==70 then lows[i]=lows[i]+1 end;input[#input+1]=item(class,level) end
+   end
+   local upper=0
+   for k=1,4 do
+    local possible=true;local low=0
+    for i=1,7 do local need=k*(i==7 and 2 or 1);if counts[i]<need then possible=false end;low=low+math.min(lows[i],need) end
+    for two=0,k do
+     local paired=2*(k-two)
+     if possible and two<=counts[8] and paired<=counts[9]+counts[10] and low+math.min(two,lows[8])+math.min(paired,lows[9]+lows[10])>=k then upper=math.max(upper,k) end
+    end
+   end
+   local result=vendor.reviewSets(input,"chaos");assert.equal(upper,result.maxSetsUpperBound);assert.equal(#result.groups==upper,result.maximumProven)
+  end
  end)
  it("accepts both Chaos item-level boundaries and excludes lower pieces",function()
   for _,level in ipairs({60,74}) do local input=kit(80);input[#input+1]=item("Helmets",level);input[#input+1]=item("Helmets",59)

@@ -29,13 +29,13 @@ function M.Open(build)
     lines[#lines+1]=""
    end end
   end
+  if preference=="chaos" and #items>0 then lines[#lines+1]=review.maximumProven and "Maximum set count under modeled rules." or ("Up to "..review.maxSetsUpperBound.." sets may be possible under modeled rules.") end
   for index,group in ipairs(review.groups) do
    lines[#lines+1]="Set "..index..": possible "..group.reward.." (lowest level "..group.minLevel..")"
    lines[#lines+1]="  "..(group.unidentified and "All unidentified" or "Includes identified")..(group.quality20 and "; all 20% quality" or "").."; verify bonus."
    for _,item in ipairs(group.items) do lines[#lines+1]="  #"..item.index.." "..item.slot..": "..item.base.." (level "..item.level..")" end
    lines[#lines+1]=""
   end
-  if preference=="chaos" and #review.groups>0 then lines[#lines+1]="Chaos suggestions may not maximize sets." end
   if #review.remaining>0 then local ids={};for _,item in ipairs(review.remaining) do ids[#ids+1]="#"..item.index end;lines[#lines+1]="Remaining: "..table.concat(ids,", ") end
   if #items==0 then lines[#lines+1]="Paste a copied rare to start." elseif #review.groups==0 then lines[#lines+1]="No complete set yet." end
   if #items>0 and #review.missing>0 then
