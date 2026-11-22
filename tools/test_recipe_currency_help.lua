@@ -5,7 +5,8 @@ for _,width in ipairs({960,1024,1280}) do
 	newBuild();main.popups={};local ui=UI.install({width=width,height=768});ui:bind(build)
 	local model=sim.model("Rarity: NORMAL\nPlate Vest\nItem Level: 86")
 	require("Classes.CraftingRecipeControl").Open({steps={{method="alchemy"}},targets={},requirements={maxAffixes=0}},{method="alchemy"},function() end,model)
-	for _,case in ipairs({{"Eldritch Chaos Orb","Reroll modifiers on one side"},{"Tainted Chaos Orb","Attempt to reforge or remove"}}) do
+	for _,case in ipairs({{"Eldritch Chaos Orb","Reroll modifiers on one side"},{"Tainted Chaos Orb","Attempt to reforge or remove"},
+		{"Fracturing Orb","Fracture one modifier"},{"Orb of Remembrance","Add memory strands"},{"Foulborn Exalted Orb","experimental Foulborn model"}}) do
 		ui:click("addCurrency");ui:text("search",case[1]);local details={}
 		for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or "") end
 		assert(table.concat(details," "):find(case[2],1,true),"Recipe picker omitted "..case[1].." help")

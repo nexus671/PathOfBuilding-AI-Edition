@@ -207,6 +207,14 @@ descriptions.tainted_jeweller="Attempt to add or remove a socket on a corrupted 
 descriptions.tainted_fusing="Attempt to add or remove a link on a corrupted item."
 descriptions.tainted_exalt="Attempt to add or remove a modifier on a corrupted item."
 descriptions.tainted_chaos="Attempt to reforge or remove modifiers on a corrupted item."
+descriptions.fracture="Fracture one modifier so it is preserved by many later crafts."
+descriptions.dominance="Attempt to upgrade an influenced modifier while removing another."
+descriptions.veiled_orb="Replace a modifier with a veiled modifier to unveil later."
+descriptions.remembrance="Add memory strands to a normal item."
+descriptions.unravelling="Consume memory strands to attempt to upgrade existing modifiers."
+descriptions.foulborn_augmentation="Add a modifier to a magic item using the experimental Foulborn model."
+descriptions.foulborn_regal="Upgrade a magic item to rare using the experimental Foulborn model."
+descriptions.foulborn_exalt="Add a modifier to a rare item using the experimental Foulborn model."
 function M.description(method) return descriptions[method] end
 local currencyArt,currencyNames
 function M.actionLabel(action,model)
