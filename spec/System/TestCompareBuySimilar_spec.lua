@@ -241,6 +241,10 @@ Implicits: 0]])
 			assert.equal("Ralakesh's Impatience", getQuery(controls).name)
 		end)
 
+		it("prefers the longest matching unique name", function()
+			assert.equal("Replica Fencoil", getUniqueQuery("Replica Fencoil", "Gnarled Branch").name)
+		end)
+
 		it("removes a trailing unique ID without removing name punctuation", function()
 			assert.equal("Uul-Netol's Embrace", getUniqueQuery("Uul-Netol's Embrace 1234", "Vaal Axe").name)
 		end)

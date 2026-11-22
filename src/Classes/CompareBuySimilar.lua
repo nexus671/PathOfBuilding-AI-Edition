@@ -77,8 +77,14 @@ local function buildURL(item, slotName, controls, modEntries, defenceEntries, is
 		-- only strip a trailing numeric identifier to avoid e.g. including
 		-- timeless jewel ids or other numbers appended to the item name.
 		tradeName = tradeName:gsub("%s+$", "")
-		tradeName = tradeName:match("^(.-)%s+%d+$") or tradeName
-		queryTable.name = tradeName
+		tradeName = (tradeName:match("^(.-)%s+%d+$") or tradeName):lower()
+		-- verify the name since the trade site will error on an invalid name
+		for _, dbUnique in pairs(main.uniqueDB.list) do
+			local candidate = dbUnique.title
+			if tradeName:find(candidate:lower(), 1, true) and (not queryTable.name or #candidate > #queryTable.name or (#candidate == #queryTable.name and candidate < queryTable.name)) then
+				queryTable.name = candidate
+			end
+		end
 		queryTable.type = item.baseName
 		-- If item is Foulborn, add the foulborn_item filter
 		if item.foulborn then
