@@ -30,6 +30,60 @@ local function balancedGroups(items)
 	for q=1,100 do for _,item in ipairs(buckets[q]) do leftover[#leftover+1]=item;leftoverQuality=leftoverQuality+item.quality end end
 	return groups,leftover,leftoverQuality
 end
+-- Try to reach the mathematical upper bound without enumerating every item
+-- subset. Equal quality values are interchangeable; search their counts and
+-- stop at a fixed work budget. Failure does not prove the heuristic optimal.
+local function upperBoundGroups(items,target,total)
+	if #items>128 then return nil end
+	local buckets,counts,qualities={},{},{}
+	for _,item in ipairs(items) do
+		local q=item.quality
+		if not buckets[q] then buckets[q]={};counts[q]=0;qualities[#qualities+1]=q end
+		buckets[q][#buckets[q]+1]=item;counts[q]=counts[q]+1
+	end
+	table.sort(qualities,function(a,b) return a>b end)
+	local work,aborted,chosen=0,false,{}
+	local function tick() work=work+1;if work>100000 then aborted=true;return false end;return true end
+	local solve
+	solve=function(need,remaining,sum)
+		if need==0 then return true end
+		if aborted or remaining<need*2 or sum<need*40 or not tick() then return false end
+		local highest
+		for _,q in ipairs(qualities) do if counts[q]>0 then highest=q;break end end
+		if not highest then return false end
+		counts[highest]=counts[highest]-1;local group={highest}
+		local function fill(start,groupSum,left,leftSum)
+			if aborted or not tick() then return false end
+			if #group>=2 and groupSum>=40 then
+				chosen[#chosen+1]=copyTable(group)
+				if solve(need-1,left,leftSum) then return true end
+				chosen[#chosen]=nil;return false
+			end
+			if left==0 or groupSum+leftSum<40 or left<2*(need-1)+math.max(0,2-#group) then return false end
+			for i=start,#qualities do
+				if not tick() then return false end
+				local q=qualities[i]
+				if counts[q]>0 then
+					counts[q]=counts[q]-1;group[#group+1]=q
+					if fill(i,groupSum+q,left-1,leftSum-q) then return true end
+					group[#group]=nil;counts[q]=counts[q]+1
+				end
+			end
+			return false
+		end
+		if fill(1,highest,remaining-1,sum-highest) then return true end
+		counts[highest]=counts[highest]+1;return false
+	end
+	if not solve(target,#items,total) then return nil end
+	local groups,leftover,leftoverQuality={},{},0
+	for _,selected in ipairs(chosen) do
+		local group,quality={},0
+		for _,q in ipairs(selected) do group[#group+1]=table.remove(buckets[q]);quality=quality+q end
+		groups[#groups+1]={items=group,quality=quality}
+	end
+	for _,q in ipairs(qualities) do for _,item in ipairs(buckets[q]) do leftover[#leftover+1]=item;leftoverQuality=leftoverQuality+q end end
+	return groups,leftover,leftoverQuality
+end
 -- Search small collections exactly, with a fixed work budget. Larger or hard
 -- inputs keep the linear heuristic; no item is rejected because of its count.
 local function bestGroups(items)
@@ -37,8 +91,13 @@ local function bestGroups(items)
 	local balanced,balancedLeft,balancedQuality=balancedGroups(items)
 	if #balanced>#greedy then greedy,leftover,leftoverQuality=balanced,balancedLeft,balancedQuality end
 	local total=0;for _,item in ipairs(items) do total=total+item.quality end
-	if #greedy==math.min(math.floor(total/40),math.floor(#items/2)) then return greedy,leftover,leftoverQuality,true end
-	if #items>18 then return greedy,leftover,leftoverQuality,false end
+	local upper=math.min(math.floor(total/40),math.floor(#items/2))
+	if #greedy==upper then return greedy,leftover,leftoverQuality,true end
+	if #items>18 then
+		local groups,rest,restQuality=upperBoundGroups(items,upper,total)
+		if groups then return groups,rest,restQuality,true end
+		return greedy,leftover,leftoverQuality,false
+	end
 	local bit=require("bit");local band=bit.band;local size=2^#items;local sums,counts,minimum,positions={[0]=0},{[0]=0},{},{}
 	for i=1,#items do positions[2^(i-1)]=i end
 	for mask=1,size-1 do

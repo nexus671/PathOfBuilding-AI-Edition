@@ -65,5 +65,8 @@ return function(build,ui,frame)
 	do local c=main.popups[1].controls;local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;assert(table.concat(details," "):find("4 maximum",1,true),"Larger quality collection did not find four groups") end
 	frame("vendor-quality-larger-optimal")
 	do local c=main.popups[1].controls;local selected;for _,row in ipairs(c.entries.list) do if row.itemIndex==11 then selected=row;break end end;assert(selected,"Copied item was not listed");c.entries.onClick({line=selected});local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;local text=table.concat(details," ");assert(text:find("Selected #11",1,true) and text:find("Whetstone group",1,true) and text:find("#11 Superior Driftwood Wand",1,true) and text:find("#14 Superior Driftwood Wand",1,true),"Selected recipe companions were not displayed") end
-	frame("vendor-quality-selected-group");ui:click("clear");ui:click("close")
+	frame("vendor-quality-selected-group")
+	for _=1,4 do ui.clipboard="Item Class: Wands\nRarity: Magic\nSuperior Driftwood Wand of the Fox\n--------\nQuality: +1%";ui:click("paste") end
+	do local c=main.popups[1].controls;local details={};for _,row in ipairs(c.details.list) do details[#details+1]=StripEscapes(row[1] or "") end;assert(table.concat(details," "):find("4 maximum",1,true),"Bounded search did not prove the 19-item result") end
+	ui:click("clear");ui:click("close")
 end

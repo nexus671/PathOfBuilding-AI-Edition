@@ -71,9 +71,14 @@ describe("Quality vendor review",function()
 		local copies={};for _,quality in ipairs({18,17,13,12,11,9,18,17,13,12,11,9,1,1,1}) do copies[#copies+1]=item("Wands","Magic","Driftwood Wand",quality) end
 		local category=vendor.review(copies).categories[1];assert.is_true(category.optimal);assert.equal(4,#category.groups)
 	end)
-	it("keeps larger difficult collections as explicitly marked suggestions",function()
+	it("proves the upper bound for a difficult 19-item collection",function()
 		local copies={};for _,quality in ipairs({18,17,13,12,11,9,18,17,13,12,11,9,1,1,1,1,1,1,1}) do copies[#copies+1]=item("Wands","Magic","Driftwood Wand",quality) end
-		local category=vendor.review(copies).categories[1];assert.is_false(category.optimal);assert.equal(3,#category.groups)
+		local category=vendor.review(copies).categories[1];assert.is_true(category.optimal);assert.equal(4,#category.groups)
+		local seen={};for _,group in ipairs(category.groups) do local total=0;assert.is_true(#group.items>=2);for _,entry in ipairs(group.items) do assert.is_nil(seen[entry.index]);seen[entry.index]=true;total=total+entry.quality end;assert.equal(group.quality,total);assert.is_true(total>=40) end
+	end)
+	it("keeps very large difficult collections as explicitly marked suggestions",function()
+		local values={18,17,13,12,11,9,18,17,13,12,11,9,1,1,1};local copies={};for i=1,132 do copies[#copies+1]=item("Wands","Magic","Driftwood Wand",values[i] or 1) end
+		local category=vendor.review(copies).categories[1];assert.is_false(category.optimal);assert.equal(6,#category.groups)
 	end)
 	it("finds more complete offers in larger mixed-quality collections",function()
 		local copies={};for i=1,8 do copies[#copies+1]=item("Wands","Magic","Driftwood Wand",30) end
