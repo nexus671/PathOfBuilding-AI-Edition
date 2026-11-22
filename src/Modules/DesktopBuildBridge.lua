@@ -286,6 +286,14 @@ function M.apply(prepared)
 	assert(main.modes.BUILD == prepared.base and M.revision(prepared.base) == prepared.baseRevision,"Build changed since preview. Submit a fresh proposal.")
 	local candidate = prepared.candidate
 	if prepared.mode=="edit" then
+		local previous={};for _,project in ipairs(prepared.base.savers.CraftingProjects.projects) do previous[project.id]=project end
+		local ui=require("Modules.PlanningUI")
+		for _,project in ipairs(candidate.savers.CraftingProjects.projects) do
+			local old=previous[project.id]
+			if old and (old.startingItem~=project.startingItem or old.slot~=project.slot) then
+				assert(not ui.hasDraft(prepared.base,"workingCraft",project.id) and not ui.hasDraft(prepared.base,"uniqueQuality",project.id),"The crafting guide '"..old.title.."' has an unkept working draft for its previous item. Keep that work, then submit a fresh proposal.")
+			end
+		end
 		local carriedRemoval=false
 		local previousRemoval=prepared.base.savers.CraftingProjects.lastRemoved
 		if not candidate.savers.CraftingProjects.lastRemoved and previousRemoval then

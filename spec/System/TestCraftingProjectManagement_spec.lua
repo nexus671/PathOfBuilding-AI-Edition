@@ -59,6 +59,21 @@ describe("Crafting project removal and save-state ownership",function()
 		result=prepare(changed);assert.is_truthy(result.candidate.savers.CraftingProjects.projects[1].recipeAlternatives[1])
 		assert.equal(proposed.title,build.savers.CraftingProjects.projects[1].title)
 	end)
+	it("does not discard an unkept craft when an AI edit changes its base",function()
+		local original=project("base-draft");build.savers.CraftingProjects:Upsert(original)
+		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		local state=sim.model(original.startingItem).initial;state.quality=10
+		local draft=require("Modules.CraftingInventory").run(state);draft.kind="workbench";draft.project=original
+		workspace.craftDrafts[original.id]=draft;uiState.draft(build,"workingCraft",original.id)
+		local changed=copyTable(original);changed.startingItem="Rarity: NORMAL\nLeather Cap\nItem Level: 86"
+		local prepared=bridge.prepare(build,{mode="edit",title="Change base",baseRevision=bridge.revision(build),operations={{type="set_crafting_project",project=changed}}})
+		local ok,err=pcall(bridge.apply,prepared);assert.is_false(ok);assert.matches("unkept working draft",err,1,true)
+		assert.equal(build,main.modes.BUILD);assert.equal(10,workspace:CraftingDraft(original.id).state.quality);assert.is_true(uiState.hasDraft(build,"workingCraft",original.id))
+		uiState.discard(build,"workingCraft",original.id);uiState.draft(build,"uniqueQuality",original.id)
+		ok,err=pcall(bridge.apply,prepared);assert.is_false(ok);assert.matches("unkept working draft",err,1,true)
+		uiState.discard(build,"uniqueQuality",original.id);local candidate=bridge.apply(prepared)
+		assert.equal(changed.startingItem,candidate.savers.CraftingProjects.projects[1].startingItem)
+	end)
 	it("patches written guide fields while preserving the rest of the project",function()
 		local original=project("patch-guide");original.simulatorExport=string.rep("x",128000)
 		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
