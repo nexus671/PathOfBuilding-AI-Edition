@@ -5,6 +5,8 @@ assert(cycles >= 1 and cycles <= 20 and cycles == math.floor(cycles))
 local forcedRecovery = arg[3] == "deferred-recovery"
 local desktopRecovery = forcedRecovery or arg[3] == "desktop-recovery"
 assert(not arg[3] or desktopRecovery, "Third argument must be deferred-recovery or desktop-recovery")
+local warningProfile=arg[4]=="warning-profile"
+assert(not arg[4] or warningProfile, "Fourth argument must be warning-profile")
 arg = {}
 dofile("HeadlessWrapper.lua")
 main.disableDevAutoSave = true
@@ -86,11 +88,27 @@ end
 -- Warning-only probes are measured separately from whole BuildOutput time.
 -- These timers add overhead and do not measure native rendering latency.
 local calcs=build.calcsTab.calcs
+local probeDepth,initTime,performTime,initCalls,performCalls=0,0,0,0,0
+if warningProfile then
+	local originalInit,originalPerform=calcs.initEnv,calcs.perform
+	calcs.initEnv=function(...)
+		local inside=probeDepth>0;local start=os.clock();local a,b,c,d=originalInit(...)
+		if inside then initTime=initTime+(os.clock()-start)*1000;initCalls=initCalls+1 end
+		return a,b,c,d
+	end
+	calcs.perform=function(...)
+		local inside=probeDepth>0;local start=os.clock();local a,b,c,d=originalPerform(...)
+		if inside then performTime=performTime+(os.clock()-start)*1000;performCalls=performCalls+1 end
+		return a,b,c,d
+	end
+end
 local originalProbe=calcs.buildActiveSkill
 local warningCalls,warningTime,warningWorst=0,0,0
-calcs.buildActiveSkill=function(env,mode,skill,uuid,flags,minimum,cache,warningOnly)
+calcs.buildActiveSkill=function(env,mode,skill,uuid,flags,minimum,cache,warningOnly,...)
 	local start=os.clock()
-	local output,activeSkill=originalProbe(env,mode,skill,uuid,flags,minimum,cache,warningOnly)
+	if warningProfile and warningOnly then probeDepth=probeDepth+1 end
+	local output,activeSkill=originalProbe(env,mode,skill,uuid,flags,minimum,cache,warningOnly,...)
+	if warningProfile and warningOnly then probeDepth=probeDepth-1 end
 	if warningOnly then local elapsed=(os.clock()-start)*1000;warningCalls=warningCalls+1;warningTime=warningTime+elapsed;warningWorst=math.max(warningWorst,elapsed) end
 	return output,activeSkill
 end
@@ -100,6 +118,7 @@ build.calcsTab.BuildOutput=function(self,...) local start=os.clock();local resul
 for _ = 1, cycles do
 	local baselineTime,baselineCalls=outputTime,outputCalls
 	warningCalls,warningTime,warningWorst=0,0,0
+	initTime,performTime,initCalls,performCalls=0,0,0,0
 	recoveryStarted=false
 	recoverySlices={count=0,totalMs=0,worstMs=0}
 	local start = os.clock()
@@ -115,6 +134,7 @@ for _ = 1, cycles do
 	local updated = os.clock()
 	local measuredOutput,measuredCalls=outputTime-baselineTime,outputCalls-baselineCalls
 	local warning={count=warningCalls,totalMs=warningTime,worstMs=warningWorst}
+	if warningProfile then warning.initialization={calls=initCalls,inclusiveMs=initTime};warning.perform={calls=performCalls,inclusiveMs=performTime} end
 	if desktopRecovery and build.configTab.input.simulateRecovery then assert(recoveryStarted, "Tree update did not start deferred recovery") end
 	local recovery = finishRecovery()
 	recoveryStarted=false

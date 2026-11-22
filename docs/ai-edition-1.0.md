@@ -309,7 +309,7 @@ for proxies, minions and global triggers passed the five bundled build compariso
 but its coverage of other interactions is not established, so it was not shipped.
 Reusing the existing main-skill output did not reduce the synthetic probe count.
 Continue performance work with full-output and nested-cache comparisons, including
-triggered and proxy builds, before enabling reuse.
+triggered and proxy builds, before enabling reuse. A November 22 follow-up measured 10 initialization and 10 partial calculation calls in each of five synthetic geared-build updates; inclusive initialization took 16-38 ms and partial calculations 9-19 ms with profiling overhead. Reusing the initial base modifier databases while creating fresh probe environments changed a Mirage Archer nested Toxic Rain cache (CombinedDPS 1,202,294.56 versus 1,200,971.43), so that prototype was rejected. This does not establish the cause or safe reuse conditions. The tree UI benchmark now has an optional warning-probe breakdown for further investigation.
 
 Timed flask and tincture projections now use the recovery worker's checkpoints
 during their native calculation. A read-only two-cycle saved-build comparison
