@@ -17,4 +17,15 @@ p.strictness=5;assert(not warning(select(2,filters.compile(p))))
 p.strictness=6;p.rules={filters.rule('faith','Show unique Sulphur',{'Rarity == Unique','BaseType == "Sulphur Flask"'})}
 local revised,ok=filters.compile(p);assert(not warning(ok));assert(raw~=revised)
 p.rules={filters.rule('uncertain','Unknown before target',{'FutureKeyword True'})};assert(not warning(select(2,filters.compile(p))))
+-- Exercise the workspace action and history, not just the audit callback.
+for _,size in ipairs({{960,640},{1024,768},{1280,720}}) do
+ newBuild();main.popups={};local host=require('Modules.HeadlessUI').install({width=size[1],height=size[2]});host:bind(build)
+ local profile=filters.profile('audit','Audit');profile.strictness=6;build.savers.LootFilters:Upsert(profile)
+ build.planningWorkspace=require('Modules.PlanningWorkspace').new(build);build.viewMode='PLANNER';build.planningWorkspace:Show('filters')
+ host:click('manage');host:text('search','Audit and update');host:click('choose');host:text('search','Bottled Faith')
+ local audit=main.popups[1].controls;assert(audit.results.list[1] and audit.results.list[1].entry.showUniqueFlask);audit.results.onClick({line=audit.results.list[1]});host:click('choose')
+ local function current() return build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1] end
+ assert(current().rules[1].id=='unique-sulphur');host:click('undo');assert(#current().rules==0);host:click('redo');assert(current().rules[1].id=='unique-sulphur');host:click('keep')
+ local savedXml=build:SaveDB('Filter audit history');loadBuildFromXML(savedXml,'Filter audit history');assert(build.savers.LootFilters.data.profiles[1].rules[1].id=='unique-sulphur');host:restore()
+end
 print('FILTER_UNIQUE_REVIEW_OK')
