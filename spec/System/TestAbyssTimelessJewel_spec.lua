@@ -291,13 +291,34 @@ describe("Abyss timeless jewels", function()
 		build.timelessData.jewelType = { id = 11 }
 		build.timelessData.conquerorType = { }
 		build.timelessData.jewelSocket = { id = 26196 }
+		-- Exercise both initial parsing and reuse of the generated modifier list.
+		for _, addition in pairs(build.spec.tree.legion.additions) do
+			if addition.id == "abyss_special_notable_2" or addition.id == "abyss_special_notable_27" then addition.modListGenerated = nil end
+		end
 		build.treeTab:FindTimelessJewel()
 		local controls = main.popups[1].controls
+		local originalCalculator = build.calcsTab.GetMiscCalculator
+		local calls = { }
+		build.calcsTab.GetMiscCalculator = function(self)
+			local calc, base = originalCalculator(self)
+			return function(override, full) calls[#calls+1] = full; return calc(override, full) end, base
+		end
 		controls.fallbackWeightsList.selIndex = 1 -- Full DPS
 		controls.fallbackWeightsButton.onClick()
 
 		assert.matches("abyss_special_notable_17, 1, 0, 0", build.timelessData.searchListFallback, nil, true)
 		assert.matches("abyss_special_small_attribute25, 1, 0, 0", build.timelessData.searchListFallback, nil, true)
+		assert.is_true(#calls > 0);for _, full in ipairs(calls) do assert.is_true(full) end
+		local first = build.timelessData.searchListFallback
+		controls.fallbackWeightsButton.onClick()
+		assert.equal(first, build.timelessData.searchListFallback)
+		controls.fallbackWeightsList:SelByValue("Life", "stat")
+		calls = { };controls.fallbackWeightsButton.onClick()
+		assert.is_true(#calls > 0);for _, full in ipairs(calls) do assert.is_false(full) end
+		local life = build.timelessData.searchListFallback
+		controls.fallbackWeightsButton.onClick()
+		assert.equal(life, build.timelessData.searchListFallback)
+		build.calcsTab.GetMiscCalculator = originalCalculator
 	end)
 
 	it("reads Zorath seed 6564 node and Inquisitor ascendancy changes", function()

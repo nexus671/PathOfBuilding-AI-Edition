@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1026" />
+	<Version number="2.68.1-ai.preview1027" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1822,7 +1822,7 @@
 	<File name="Classes/TradeQueryRateLimiter.lua" part="program" sha1="2e0853cc35292f769040c1104e7877f791a79c0c" />
 	<File name="Classes/TradeQueryRequests.lua" part="program" sha1="b976753a3e884385800b3df47e493107a0e5e25a" />
 	<File name="Classes/TradeStatWeightMultiplierListControl.lua" part="program" sha1="b83a9eb1dad0e363acb3ce0cd28bb5e43fe08ced" />
-	<File name="Classes/TreeTab.lua" part="program" sha1="9fbe01cfde050f1068be7e49ba158c45324e4e28" />
+	<File name="Classes/TreeTab.lua" part="program" sha1="88e1e8cba397605ab13abf38bda6760d8ffc963e" />
 	<File name="Classes/UndoHandler.lua" part="program" sha1="586afba2e6fea36e34c1109d21498bd86d6ead93" />
 	<File name="Data/Atlas/3.27.0-ruthless.json" part="program" sha1="8d0b845c7294a4f7ce091693c5da3f9b1c2081b5" />
 	<File name="Data/Atlas/3.27.0.json" part="program" sha1="48389ee40d1a77cfcae37094d1b0461d8fcd34c8" />

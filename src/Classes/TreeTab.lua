@@ -1955,6 +1955,7 @@ function TreeTabClass:FindTimelessJewel()
 
 	local function generateFallbackWeights(nodes, powerStat)
 		local calcFunc, calcBase = self.build.calcsTab:GetMiscCalculator(self.build)
+		local useFullDPS = powerStat.stat == "FullDPS"
 		local newList = { }
 		local basePower = data.powerStatList.GetFromOutput(calcBase, powerStat)
 		for _, newNode in ipairs(nodes) do
@@ -1963,7 +1964,7 @@ function TreeTabClass:FindTimelessJewel()
 			local nodeLines = newNode.node or { newNode }
 			for i = 1, #nodeLines do
 				local node = nodeLines[i]
-				local nodeOutput = calcFunc({ addNodes = { [node] = true } })
+				local nodeOutput = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
 				local nodePower = data.powerStatList.GetFromOutput(nodeOutput, powerStat)
 				-- avoid infinity
 				if basePower == 0 then
@@ -2079,10 +2080,8 @@ function TreeTabClass:FindTimelessJewel()
 								end
 							elseif legionAddition.modList then
 								newNode.modList = legionAddition.modList
-							elseif legionAddition.modListGenerated then
-								newNode.modList = legionAddition.modListGenerated
 							else
-								-- generate modList
+								-- Recompute the divisor even when reusing the parsed mod list.
 								local originalLine = legionAddition.sd[1]
 								local line = originalLine
 								if usesVariableRolls then
@@ -2090,9 +2089,10 @@ function TreeTabClass:FindTimelessJewel()
 										line = replaceHelperFunc(line, key, stat, 100)
 									end
 								end
-								local modList, extra = modLib.parseMod(line)
-								legionAddition.modListGenerated = modList
-								newNode.modList = modList
+								if not legionAddition.modListGenerated then
+									legionAddition.modListGenerated = modLib.parseMod(line)
+								end
+								newNode.modList = legionAddition.modListGenerated
 								newNode.divisor = line ~= originalLine and 100 or 1
 							end
 							if not usesVariableRolls and modNode.totalMod then
