@@ -610,6 +610,16 @@ function M.socketModificationReason(raw,item)
 	if raw:lower():find("sockets cannot be modified",1,true) or uniqueSocketRestriction(item.title)=="locked" then return "This item's sockets cannot be modified" end
 end
 
+-- 3.29 introduced a hidden no-white-socket property on new Dialla's
+-- Malefaction copies. Older copies are unaffected, but ordinary item text
+-- cannot identify the version. An existing white socket proves this copy can
+-- have one; otherwise do not invent outcomes requiring white sockets.
+local function whiteRestrictionReason(item)
+	if item.title~="Dialla's Malefaction" or item.baseName~="Sage's Robe" then return end
+	for _,socket in ipairs(item.sockets or {}) do if socket.color=="W" then return end end
+	return "This Dialla's Malefaction may have the hidden no-white-socket restriction. Its version cannot be determined from this item."
+end
+
 -- Preserve the original item text: rebuilding a unique can lose imported
 -- properties that the item editor does not understand.
 function M.linkReason(raw,method)
@@ -649,6 +659,7 @@ function M.whiteReason(raw)
 		white=white and socket.color=="W"
 	end
 	if white then return "The item's sockets are already white" end
+	local restriction=whiteRestrictionReason(item);if restriction then return restriction end
 	local colours=line:gsub("[^RGBW]","")
 	if #colours~=#sockets then return "The socket layout could not be verified" end
 end
@@ -671,6 +682,7 @@ function M.socketCountReason(raw,count)
 	local limit=require("Modules.CraftingSimulator").socketLimit({item=item})
 	if type(count)~="number" or count~=math.floor(count) or count<2 or count>limit then return "Choose a socket count supported by this base" end
 	if #item.sockets==count then return "The item already has this many sockets" end
+	if count>#item.sockets then local restriction=whiteRestrictionReason(item);if restriction then return restriction end end
 end
 
 function M.omenCount(item)
@@ -721,6 +733,7 @@ function M.colourReason(raw,method)
 	for _,socket in ipairs(item.sockets) do if socket.color=="A" then return "Abyssal sockets need a separate socket model" end end
 	if #line:gsub("[^RGBW]","")~=#item.sockets then return "The socket layout could not be verified" end
 	if method=="omen_trichromatism" and #item.sockets<3 then return "At least three sockets are required for the RGB guarantee" end
+	if method~="omen_trichromatism" or #item.sockets>3 then local restriction=whiteRestrictionReason(item);if restriction then return restriction end end
 end
 -- Check whether any modeled colour outcome can satisfy a direct target.
 function M.colourTargetReason(item,method,target,linked,forceRoll)
@@ -807,6 +820,7 @@ function M.randomSocketReason(raw,method)
 	if method~="jeweller" and method~="tainted_jeweller" then return "Unsupported unique socket-count method" end
 	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
 	if (not not item.corrupted)~=(method=="tainted_jeweller") then return item.corrupted and "Use tainted currency on corrupted items" or "Tainted currency requires a corrupted item" end
+	local restriction=whiteRestrictionReason(item);if restriction then return restriction end
 	-- Validate the existing layout and unique restrictions independently of
 	-- whether the chosen bench target is already present.
 	local reason=M.socketCountReason(raw,2)

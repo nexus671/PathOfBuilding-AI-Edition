@@ -110,6 +110,8 @@ Experimental Harvest damage conversion uses the 3.30.0.2 client command's eligib
 
 Cluster-jewel small-passive resistance conversions use the matching size and tier. The three Delve resistance prefixes and selected Incursion resistance hybrids use corresponding elemental modifiers, based on their matching records, native equipment categories and Harvest's eligible groups. The Incursion model requires the destination to be eligible for the base and item level. These mappings and selection odds have not been verified in game. For modifier-identity targets, the action calculator lists all modeled source and replacement choices using assumed uniform selection; roll and property targets use sampling. Resistance conversion is refused when another eligible, unprotected family is not yet modeled, even if a supported modifier could be converted. This avoids presenting a definite outcome when the game could choose the unsupported modifier.
 
+Dialla's Malefaction acquired since 3.29 can have a hidden restriction against white sockets; older copies are unaffected ([3.29 patch notes](https://www.pathofexile.com/forum/view-thread/3985332)). A copy with an existing white socket is treated as unrestricted. Otherwise the item text does not identify the hidden version, so the planner refuses previews that could create white sockets, including white-socket bench, socket increases and ordinary colour rolls. Decreasing the socket count and the three-socket RGB Omen remain available. A legacy copy without white sockets is also refused because its version cannot be established; the restriction may reappear after a legacy preview removes its last white socket.
+
 ## Saved resource prices
 
 Each gear project can store a price book with a common unit, source, quote time

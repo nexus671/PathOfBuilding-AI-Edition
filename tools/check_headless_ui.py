@@ -50,6 +50,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_modifier_paging_ui.lua")
     sources.append(ROOT / "tools/test_crafting_replay_ui.lua")
     sources.append(ROOT / "tools/test_crafting_sequence_ui.lua")
+    sources.append(ROOT / "tools/test_dialla_socket_restriction.lua")
     sources.append(ROOT / "tools/test_genesis_ui.lua")
     sources.append(ROOT / "tools/test_atlas_remove_ui.lua")
     sources.append(ROOT / "tools/test_atlas_search_ui.lua")
@@ -231,6 +232,10 @@ def main():
                               env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-sequence-controls.log").write_text(sequence.stdout)
     assert sequence.returncode == 0, sequence.stdout
+    dialla = subprocess.run(lua_command + ["../tools/test_dialla_socket_restriction.lua"], cwd=ROOT / "src",
+                            env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "dialla-socket-restriction.log").write_text(dialla.stdout)
+    assert dialla.returncode == 0, dialla.stdout
     genesis = subprocess.run(lua_command + ["../tools/test_genesis_ui.lua", str(frames)], cwd=ROOT / "src",
                              env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "genesis-controls.log").write_text(genesis.stdout)
