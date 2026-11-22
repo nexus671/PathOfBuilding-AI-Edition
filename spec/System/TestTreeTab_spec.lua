@@ -31,6 +31,18 @@ describe("TreeTab", function()
 		tab.PowerBuilder=function() end;tree:SetPowerCalc({stat="Life",label="Life"});tab:BuildPower();assert.equal(1,reports);assert.is_true(tree.viewer.showHeatMap)
 		tab.PowerBuilder=original;tree.BuildPowerReportList=originalReport;launch.devMode=dev
 	end)
+	it("retries a failed node-power calculation when its checkbox is re-enabled",function()
+		local oldDev=launch.devMode;launch.devMode=false;build.viewMode="TREE";main.popups={}
+		local ui=require("Modules.HeadlessUI").install({width=1280,height=720});ui:bind(build);ui:frame()
+		local tab,tree=build.calcsTab,build.treeTab;local reports=0
+		tree.BuildPowerReportList=function() reports=reports+1;return {} end
+		tab.PowerBuilder=function() error("synthetic power failure") end;tree:SetPowerCalc({stat="Life",label="Life"});tab:BuildPower();ui:frame()
+		assert.is_true(tree.powerCalculationFailed);assert.is_false(tree.controls.treeHeatMap.state)
+		tab.PowerBuilder=function(self) self.powerMax={singleStat=0,offence=0,defence=0,offencePerPoint=0,defencePerPoint=0} end
+		ui:click("treeHeatMap");for _=1,5 do ui:frame();if reports>0 then break end end
+		assert.is_true(reports>0);assert.is_true(tree.viewer.showHeatMap);assert.is_false(tree.powerCalculationFailed)
+		ui:restore();launch.devMode=oldDev
+	end)
 
 	it("restores a Runegraft after rebuilding mastery options", function()
 		local node = assert(findMasteryNode())
