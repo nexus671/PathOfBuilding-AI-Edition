@@ -946,7 +946,9 @@ describe("Unique item quality",function()
 	it("catalogues supported unique crafts and their current availability",function()
 		local simulator=require("Modules.CraftingSimulator")
 		local catalog=simulator.catalog(shield,"",50,nil,"3_30")
-		assert.is_true(catalog.uniqueCrafting);assert.equal(17,#catalog.uniqueActions);assert.equal(14,#catalog.socketCrafts)
+		assert.is_true(catalog.uniqueCrafting);assert.equal(20,#catalog.uniqueActions);assert.equal(17,#catalog.socketCrafts)
+		local nonwhite={};for _,action in ipairs(catalog.uniqueActions) do if action.method=="socket_colour_bench" then nonwhite[action.action.count]=action end end
+		for count=2,4 do assert.is_not_nil(nonwhite[count]);assert.equal(count<=3,nonwhite[count].available);assert.equal(({[2]=5,[3]=20,[4]=75})[count],nonwhite[count].components.chromatic) end
 		assert.same(require("Modules.CraftingItemStats").itemValues(new("Item"):Item(shield)),catalog.nativeStats);assert.is_true(catalog.nativeStats.Armour>0)
 		local byMethod={};for _,action in ipairs(catalog.uniqueActions) do if action.method~="socket_bench" or action.action.linked then byMethod[action.method]=action end end
 		assert.is_true(byMethod.quality.available);assert.is_true(byMethod.beast_max_links.available);assert.is_true(byMethod.socket_white_bench.available)
