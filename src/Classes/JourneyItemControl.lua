@@ -21,11 +21,24 @@ function M.new(controls,key,x,y,w,h,label,options)
 		if art then SetDrawColor(1,1,1);itemArt.drawArt(art,cx+10+(artSize-artW)/2,cy+52+(artSize-artH)/2,artW,artH,artSprite) end
 		local propertyX=expanded and 94 or 68
 		SetDrawColor("^xD5DEE8");DrawString(cx+propertyX,cy+54,"LEFT",13,"VAR",fit(item and item.baseName or equipped and "No item equipped" or starting and "Paste your starting item" or "Choose a target item",13,w-propertyX-10))
-		DrawString(cx+propertyX,cy+76,"LEFT",13,"VAR",item and ("Item level "..tostring(item.itemLevel or "unknown")) or equipped and "Current baseline" or starting and "Or use the equipped item" or "Paste an item or link a craft")
+		local jewellery=item and (item.type=="Ring" or item.type=="Amulet" or item.type=="Belt")
+		local quality=item and (jewellery and (item.catalystQuality or (item.catalyst and 20) or item.quality or 0) or (item.quality or 0))
+		local catalyst=item and item.catalyst and require("Modules.CraftingUniqueQuality").catalysts[item.catalyst]
+		local property=item and ("Item level "..tostring(item.itemLevel or "unknown")) or equipped and "Current baseline" or starting and "Or use the equipped item" or "Paste an item or link a craft"
+		if not expanded and jewellery and catalyst then property=catalyst.." "..tostring(quality).."% | "..property end
+		local propertyWidth=w-propertyX-10
+		if not expanded and socketLabel and #item.sockets<=6 then
+			local start=w-12-(#item.sockets*20-4)
+			if start>=180 then propertyWidth=math.min(propertyWidth,start-propertyX-8) end
+		end
+		if not expanded and jewellery and catalyst and DrawStringWidth(13,"VAR",property)>propertyWidth then
+			property=catalyst.." "..tostring(quality).."% | iLvl "..tostring(item.itemLevel or "?")
+			if DrawStringWidth(13,"VAR",property)>propertyWidth then property=catalyst.." "..tostring(quality).."%" end
+		end
+		DrawString(cx+propertyX,cy+76,"LEFT",13,"VAR",fit(property,13,math.max(0,propertyWidth)))
 		if expanded and item then
-			local jewellery=item.type=="Ring" or item.type=="Amulet" or item.type=="Belt"
-			local quality=jewellery and (item.catalystQuality or (item.catalyst and 20) or item.quality or 0) or (item.quality or 0)
-			DrawString(cx+propertyX,cy+98,"LEFT",13,"VAR",(jewellery and "Catalyst quality: +" or "Quality: +")..tostring(quality).."%")
+			local qualityLabel=jewellery and (catalyst and (catalyst.." catalyst: +") or "Catalyst quality: +") or "Quality: +"
+			DrawString(cx+propertyX,cy+98,"LEFT",13,"VAR",fit(qualityLabel..tostring(quality).."%",13,w-propertyX-10))
 		end
 		if socketLabel and #item.sockets<=6 then
 			local start=cx+w-12-(#item.sockets*20-4)

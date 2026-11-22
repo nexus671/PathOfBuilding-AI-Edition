@@ -209,7 +209,7 @@ def main():
         assert any("Change: +" in c.get("text", "") for c in atlas_comparison["commands"]), "Atlas modifier comparison is not visible"
         catalyst = json.loads((frames / f"{width}-crafting-unique-ring-catalyst.json").read_text())
         catalyst_text = " ".join(c.get("text", "") for c in catalyst["commands"] if c.get("kind") == "text")
-        assert "Catalyst quality: +20%" in catalyst_text and "Catalyst quality: 20%" in catalyst_text, "Catalyst card and status disagree"
+        assert "Prismatic catalyst: +20%" in catalyst_text and "Catalyst quality: 20%" in catalyst_text, "Catalyst card and status disagree"
         before = json.loads((frames / f"{width}-crafting-unique-quality.json").read_text())
         count_menu = json.loads((frames / f"{width}-crafting-unique-count-menu.json").read_text())
         assert any("10 Jeweller's Orbs + 10 Vaal Orbs" in c.get("text", "") for c in count_menu["commands"]), "Corrupted socket-count cost is missing"

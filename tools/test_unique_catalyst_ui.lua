@@ -22,5 +22,10 @@ return function(build,ui,frame)
 	assert(table.concat(savedText," "):find("+30% to Cold Resistance",1,true),"Saved project did not show its catalyst-scaled modifier")
 	local summary={};for _,row in ipairs(workspace.controls.summary.list) do summary[#summary+1]=StripEscapes(row[1] or "") end
 	assert(table.concat(summary," "):gsub("%s+"," "):find("jewellery has experimental catalyst previews",1,true),"Saved project help omitted catalyst previews: "..table.concat(summary," | "))
-	frame("crafting-saved-catalyst-target")
+	local narrow={};local render=require("Classes.JourneyItemControl").new(narrow,"narrow",16,30,260,220,"PLANNED UPGRADE")
+	local socketed=require("Modules.CraftingUniqueQuality").inspect(require("Modules.CraftingUniqueQuality").catalystPreview(raw:gsub("Implicits: 1","Sockets: R\nImplicits: 1"),8,20).itemText)
+	render(socketed);main:OpenPopup(292,270,"Narrow comparison",narrow);ui:frame();local foundNarrow=false
+	for _,command in ipairs(ui.commands) do if command.text and command.text:find("Prismatic 20%",1,true) then foundNarrow=true end end
+	assert(foundNarrow,"Narrow socketed card did not retain catalyst and quality");main:ClosePopup()
+	frame("crafting-saved-catalyst-target");local foundQuality=false;for _,command in ipairs(ui.commands) do if command.text and command.text:find("Prismatic 20%",1,true) then foundQuality=true end end;assert(foundQuality,"Saved target did not identify catalyst and quality")
 end
