@@ -2,6 +2,15 @@
 local output=arg[1];arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true
 local uiModule=require("Modules.HeadlessUI");local effects=require("Classes.LootFilterEffectsControl")
 local browser=require("Classes.LootFilterFileBrowser");local library=require("Modules.LootFilterLibrary");local parser=require("Modules.LootFilterParser")
+local audio=require("Modules.LootFilterAudio")
+local function uncertain(styles,fragment)
+ local id,why=audio.alert(styles);assert(not id and why:find(fragment,1,true),"Ambiguous sound was described as certain")
+ local played,message=audio.play(styles);assert(not played and message:find(fragment,1,true),"Ambiguous sound played without an explanation")
+end
+local both=parser.simulate(parser.parse('Show\n CustomAlertSound "first.wav"\n Continue\nShow\n CustomAlertSoundOptional "second.wav"'),{})
+uncertain(both.styles,"Both custom alert modes")
+uncertain({CustomAlertSound={"None"},PlayAlertSound={"4"}},"disabled custom alert")
+assert(select(1,audio.alert({PlayAlertSound={"4"}}))==4,"Ordinary numbered alert changed")
 for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  newBuild();main.popups={};local ui=uiModule.install({width=size[1],height=size[2]});ui:bind(build)
  local kept;effects.Open({}, {BaseType="Chaos Orb"},function(value) kept=value end);ui:choose("soundKind","Custom sound")

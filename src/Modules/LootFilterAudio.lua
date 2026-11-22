@@ -1,7 +1,17 @@
 -- cspell:ignore hmod winmm
 -- Original reference tones; game-native alert IDs play the game's sounds on export.
 local M={}
+local function ambiguity(styles)
+	if styles.CustomAlertSound and styles.CustomAlertSoundOptional then
+		return "Both custom alert modes are present; their precedence needs in-game verification."
+	end
+	local custom=styles.CustomAlertSound or styles.CustomAlertSoundOptional
+	if custom and custom[1]=="None" and (styles.PlayAlertSound or styles.PlayAlertSoundPositional) then
+		return "A disabled custom alert and a numbered alert are both present; their interaction needs in-game verification."
+	end
+end
 function M.alert(styles)
+	local uncertain=ambiguity(styles);if uncertain then return nil,uncertain end
 	local custom=styles.CustomAlertSound or styles.CustomAlertSoundOptional
 	if custom then
 		if custom[1]=="None" then return nil,"The custom alert is disabled; no custom audio is previewed." end
@@ -102,6 +112,7 @@ local function playWave(wave,message)
 	return true,message
 end
 function M.play(styles)
+	local uncertain=ambiguity(styles);if uncertain then return false,uncertain end
 	local custom=styles.CustomAlertSound or styles.CustomAlertSoundOptional
 	if custom and custom[1]~="None" then
 		local wave,message=M.prepareCustomWave(custom[1],custom[2]);if not wave then return false,message end
