@@ -126,7 +126,9 @@ local function catalystGuideForItem(raw,item,info,catalyst,target)
 	local start=item.catalyst==catalyst and info.quality or 0
 	assert(start<target,"The item already has at least that quality of this type")
 	local count=target-start
-	return {action=M.guideAction("catalyst",count,nil,nil,nil,nil,catalyst),stopWhen=target.."% "..M.catalysts[catalyst].." quality",uniqueCraft={method="catalyst",count=count,catalyst=catalyst},done=false}
+	local warning="Check that this catalyst affects the intended modifiers; effects are not previewed."
+	if catalyst==3 or catalyst==9 then warning=warning.." Prefix/suffix catalysts may not affect fixed unique modifiers." end
+	return {action=M.guideAction("catalyst",count,nil,nil,nil,nil,catalyst),stopWhen=target.."% "..M.catalysts[catalyst].." quality. "..warning,uniqueCraft={method="catalyst",count=count,catalyst=catalyst},done=false}
 end
 function M.catalystGuide(raw,catalyst,target)
 	local item,info=M.inspect(raw);return catalystGuideForItem(raw,item,info,catalyst,target)
@@ -735,7 +737,7 @@ function M.catalog(raw,query,limit)
 		result.catalystGuides={}
 		for id,name in ipairs(M.catalysts) do if #result.catalystGuides<limit and (name.." catalyst"):lower():find(query,1,true) then
 			local ok,step=pcall(catalystGuideForItem,raw,item,info,id,20)
-			result.catalystGuides[#result.catalystGuides+1]={catalyst=id,name=name.." Catalyst",targetQuality=20,guideOnly=true,available=ok,guideStep=ok and step or nil,unavailableReason=not ok and tostring(step):gsub("^.-:%d+: ","") or nil}
+			result.catalystGuides[#result.catalystGuides+1]={catalyst=id,name=name.." Catalyst",targetQuality=20,guideOnly=true,warning=(id==3 or id==9) and "Prefix/suffix catalysts may not affect fixed unique modifiers." or "Check whether the catalyst affects the intended modifiers; effects are not previewed.",available=ok,guideStep=ok and step or nil,unavailableReason=not ok and tostring(step):gsub("^.-:%d+: ","") or nil}
 		end end
 		result.limitations[#result.limitations+1]="Catalyst guides count currency only; modifier changes and item previews are not modeled."
 	end

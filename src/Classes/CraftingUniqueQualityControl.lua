@@ -415,12 +415,14 @@ function M.Open(build,project,layout,snapshot)
 	end)
 	c.qualityPlan.x=156;c.qualityPlan.width=130;c.qualityPlan.shown=function() return item.corrupted and not taintedQualityReason end
 	button("catalystPlan",198,"Catalyst guide",function()
-		local popup={};local pw,ph=540,250;local choices={}
+		local popup={};local pw,ph=540,270;local choices={}
 		for id,name in ipairs(unique.catalysts) do choices[#choices+1]={label=name.." Catalyst",val=id} end
-		ui.description(popup,"help",16,24,pw-32,52,{"Plan catalyst use from the project's starting item.","This adds a guide step; it does not preview changed modifiers."},14)
+		ui.description(popup,"help",16,24,pw-32,52,{"Plan catalyst use from the project's starting item.","This adds a guide step; it does not preview changed modifiers.","Check the item tags before choosing a catalyst."},14)
 		ui.label(popup,"typeLabel",16,92,"Catalyst",14);ui.label(popup,"targetLabel",340,92,"Target quality %",14)
 		popup.kind=new("DropDownControl"):DropDownControl(ui.anchor,{16,116,300,26},choices);popup.kind:SelByValue(item.catalyst or 4,"val")
 		popup.target=new("EditControl"):EditControl(ui.anchor,{340,116,120,26},"20",nil,"%D",2)
+		ui.description(popup,"warning",16,154,pw-32,34,{"Prefix/suffix catalysts may not affect fixed unique modifiers."},14)
+		popup.warning.shown=function() local id=popup.kind:GetSelValueByKey("val");return id==3 or id==9 end
 		popup.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,ph-48,180,28},"Add guide step",function()
 			local ok,step=pcall(unique.catalystGuide,draft.startingItem,popup.kind:GetSelValueByKey("val"),tonumber(popup.target.buf))
 			if not ok then ui.errorPopup("Catalyst guide",step);return end
