@@ -302,8 +302,8 @@ function Panel.Open(build,source,layout)
 		local mechanic=controls.mechanic:GetSelValue();local filtered=mechanic~="All mechanics" and mechanic or nil
 		local matches=strategy.results(draft,controls.search.buf,filtered,avoided);local list={};controls.canvas.matches={};local names={}
 		for _,entry in ipairs(matches) do names[entry.node.name]=(names[entry.node.name] or 0)+1 end
-		for i,entry in ipairs(matches) do
-			if i<=100 then list[#list+1]={label=entry.node.name..(entry.cost and " | +"..entry.cost or " | blocked"),val=entry.id,cost=entry.cost,duplicate=names[entry.node.name]>1} end
+		for _,entry in ipairs(matches) do
+			list[#list+1]={label=entry.node.name..(entry.cost and " | +"..entry.cost or " | blocked"),val=entry.id,cost=entry.cost,duplicate=names[entry.node.name]>1}
 			if controls.search.buf~="" or filtered then controls.canvas.matches[entry.id]=true end
 		end
 		controls.results:SetList(list);controls.results.selIndex=1
@@ -330,7 +330,7 @@ function Panel.Open(build,source,layout)
 		controls.canvas.scale=math.max(controls.canvas.scale,0.12); refresh(value.val)
 	end
 	function controls.results:SetList(entries)
-		self.list={};for _,entry in ipairs(entries) do local row=copyTable(entry);local node=controls.canvas.tree.nodes[row.val]
+		self.controls.scrollBar:SetOffset(0);self.list={};for _,entry in ipairs(entries) do local row=copyTable(entry);local node=controls.canvas.tree.nodes[row.val]
 			local title=node and node.name or row.label;while #title>0 and DrawStringWidth(14,"VAR",title)>inspector-30 do title=title:sub(1,-2) end
 			row[1]="^7"..title;row.height=40;row.textSize=14
 			if node then updateResult(row,node,row.cost) else row.subtitle="" end;self.list[#self.list+1]=row

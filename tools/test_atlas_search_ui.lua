@@ -25,6 +25,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	ui:click("undo");assert(not result().subtitle:find("Allocated",1,true),"Search cost stayed stale after undo")
 	ui:click("avoid");assert(result().subtitle:find("Blocked",1,true),"Search did not show the avoided node")
 	ui:click("clearAvoid");assert(result().subtitle:find("+",1,true),"Search cost stayed blocked after clearing avoidance")
+	ui:text("search","a")
+	local expected=require("Modules.AtlasStrategy").results(plan,"a",nil,{})
+	assert(#expected>100 and #c.results.list==#expected,"Broad Atlas search did not include every match")
+	ui:frame();local scroll=c.results.controls.scrollBar;assert(scroll.enabled and scroll.offsetMax>0,"Broad Atlas results cannot be scrolled")
+	scroll:SetOffset(scroll.offsetMax);local last=c.results.list[#c.results.list];local x,y=c.results:GetPos();local _,h=c.results:GetSize()
+	if output then ui:frame():write(output.."/"..size[1].."-atlas-search-all-tail.json") end
+	ui:clickAt(x+8,y+h-20);assert(c.canvas.focus==last.val,"Last Atlas result could not be selected after scrolling")
+	ui:text("search","Essence");assert(scroll.offset==0,"Changing the query did not return to the first result")
 	ui:restore()
 end
 print("ATLAS_SEARCH_UI_OK")

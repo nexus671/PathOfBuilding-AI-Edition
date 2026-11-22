@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1070" />
+	<Version number="2.68.1-ai.preview1071" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -1693,7 +1693,7 @@
 	<File name="Assets/MapCrafting/Allflame/e79882e1a0bbca4f90dd.png" part="program" sha1="548fea8f01e777a19815582d04dd47ffbdaa2226" />
 	<File name="Data/Atlas/map-allflame-3.30.json" part="program" sha1="f8711d061efd86aacbb83186351d50d7885df832" />
 	<File name="Modules/MapAllflame.lua" part="program" sha1="563b130b2aa82c6e3fcb9421dd7298e150cb5be3" />
-	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="86962c473eb8da4035f96136bab14179bd1a10fd" />
+	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="4a5ececab6ce0386cffe5d76c10894e108896ecb" />
 	<File name="Classes/AtlasRegionsControl.lua" part="program" sha1="17c22b27e6e387b556b33e55d338883efc58e825" />
 	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="bc317bacfeecf533d7c1a5e3d3536a2edf847d6a" />
 	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="51bd764ac8917d56602e9d837f59a53364549738" />
