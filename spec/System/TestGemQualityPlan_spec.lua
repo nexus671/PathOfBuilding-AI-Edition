@@ -14,7 +14,7 @@ describe("Gem quality planning",function()
  it("compares the support gem vendor recipe without hiding the level reset",function()
   local support="Item Class: Support Skill Gems\nRarity: Gem\nAdded Fire Damage Support\n--------\nLevel: 20 (Max)\nQuality: +4%"
   local result=planner.inspect(support,20);assert.equal(16,result.prisms);assert.is_true(result.vendorRecipe.available);assert.equal(1,result.vendorRecipe.prisms);assert.equal(1,result.vendorRecipe.outputLevel);assert.equal(20,result.vendorRecipe.outputQuality)
-  assert.matches("relevel",result.vendorMilestoneDraft.notes);assert.is_false(planner.inspect(support.."\nCorrupted",20).vendorRecipe.available)
+  assert.matches("level it again",result.vendorMilestoneDraft.notes);assert.is_false(planner.inspect(support.."\nCorrupted",20).vendorRecipe.available)
   assert.is_false(planner.inspect(support:gsub("Level: 20","Level: 19"),20).vendorRecipe.available)
   assert.is_false(planner.inspect(gem,20).vendorRecipe.available)
   local awakened=support:gsub("Added Fire Damage Support","Awakened Added Fire Damage Support");assert.is_false(planner.inspect(awakened,20).vendorRecipe.available)

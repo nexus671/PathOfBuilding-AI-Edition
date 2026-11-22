@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1040" />
+	<Version number="2.68.1-ai.preview1041" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -3172,6 +3172,6 @@
 	<File name="Modules/CraftingFlaskEnchants.lua" part="program" sha1="4ce7cdf264cd4a2e89dab59160b97daf1d5f2325" />
 	<File name="Classes/VendorBaseSetsControl.lua" part="program" sha1="a53a30a2fcdd2ece892ff1be4a81b8be85500e49" />
 	<File name="Modules/VendorBaseSets.lua" part="program" sha1="c6a505a64698ea7b08fc93d993ee16daa255dfdf" />
-	<File name="Classes/GemQualityPlanControl.lua" part="program" sha1="cf178b845ecd8ddf9351d49eb70f36b9eaa439f4" />
-	<File name="Modules/GemQualityPlan.lua" part="program" sha1="13d4207ddfcf2efed8657eaa70d24916b61a6c4f" />
+	<File name="Classes/GemQualityPlanControl.lua" part="program" sha1="6c292010a1eb78b947f3d2de8464a26ba6e8ad2a" />
+	<File name="Modules/GemQualityPlan.lua" part="program" sha1="dd8d8a79a3b557f75d0fd820937ccf061c9ee2e7" />
 </PoBVersion>

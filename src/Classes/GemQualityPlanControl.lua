@@ -20,7 +20,7 @@ function M.Open(build)
     result=value;if route=="vendor" and not value.vendorRecipe.available then route="prisms";currentKey=raw and require("sha1")(raw..":"..c.target.buf..":"..route) or nil end
     lines={value.name.." | "..(value.level and "Level "..value.level or "Level unknown").." | Quality "..value.quality.."%",value.corrupted and "Corrupted" or "Uncorrupted"}
     if value.status=="complete" then lines[#lines+1]="Target already reached."
-    elseif route=="vendor" then lines[#lines+1]="Vendor route: 1 Gemcutter's Prism; returns a level 1, 20% quality gem.";lines[#lines+1]="Releveling is required. Verify the vendor offer and special properties."
+    elseif route=="vendor" then lines[#lines+1]="Vendor route: 1 Gemcutter's Prism; returns a level 1, 20% quality gem.";lines[#lines+1]="The gem must be leveled again. Verify the vendor offer and special properties."
     elseif value.status=="available" then lines[#lines+1]="Use "..value.prisms.." Gemcutter's Prism"..(value.prisms==1 and "" or "s").." to reach "..value.target.."% quality."
     else lines[#lines+1]=value.reason end
     lines[#lines+1]=value.note
@@ -36,7 +36,7 @@ function M.Open(build)
   local direct=result.status=="available" and ("Use "..result.prisms.." Gemcutter's Prism"..(result.prisms==1 and "" or "s").." and keep the gem's level.") or (result.reason or "Target already reached.")
   local vendor=result.vendorRecipe
   local entries={{id="prisms",label="Use Prisms",enabled=result.status=="available",details={direct,"The gem retains its level."}},
-   {id="vendor",label="Vendor and relevel",enabled=vendor.available,details={vendor.available and vendor.note or vendor.reason,"Check the actual vendor offer before trading."}}}
+   {id="vendor",label="Vendor and level again",enabled=vendor.available,details={vendor.available and vendor.note or vendor.reason,"Check the actual vendor offer before trading."}}}
   require("Classes.PlanningBrowserControl").Open("Compare gem quality routes",entries,{action="Use route",canChoose=function(entry) return entry.enabled end,choose=function(entry) route=entry.id;refresh() end})
  end))
  c.routes.enabled=function() return result~=nil end
