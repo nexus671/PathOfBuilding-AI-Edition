@@ -60,6 +60,23 @@ describe("Crafting import ambiguity",function()
 		end)
 		ui:restore();main.popups={};assert.is_true(ok,err)
 	end)
+	it("returns to the edited project after recovering a linked craft",function()
+		local ui=require("Modules.HeadlessUI").install({width=960,height=640});ui:bind(build)
+		local ok,err=pcall(function()
+			local raw="Rarity: RARE\nExample Item\nIron Hat\nItem Level: 86\nImplicits: 0\n+55 to Strength\n+107 to maximum Life"
+			local advanced='Rarity: RARE\nExample Item\nIron Hat\nItem Level: 86\nImplicits: 0\n{ Prefix Modifier "Virile" (Tier: 5) }\n+107(100-114) to maximum Life\n{ Suffix Modifier "of the Gods" (Tier: 2) }\n+55(51-55) to Strength'
+			local first={id="first",title="First",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}}
+			local second={id="second",title="Second",slot="Helmet",startingItem=raw,goals={},steps={}}
+			build.savers.CraftingProjects:Upsert(first);build.savers.CraftingProjects:Upsert(second);main.popups={}
+			local ws=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=ws;build.viewMode="PLANNER";ws:Show("filters")
+			ws.cache.filters.layout.openWorkbench(second);main.popups[1].controls.edit:Click()
+			local wizard=main.popups[1].controls;wizard.starting:SetText(advanced);wizard.starting.changeFunc();wizard.wizardPage:SetSel(4);wizard.save:Click()
+			local projects=main.popups[1].controls;local index=projects.projects:GetSelValueByKey("val")
+			assert.equal("second",build.savers.CraftingProjects.projects[index].id);assert.equal(advanced,build.savers.CraftingProjects.projects[index].startingItem)
+			assert.equal("filters",ws.page);projects.native:Click();assert.equal("Crafting workbench",main.popups[1].title)
+		end)
+		ui:restore();main.popups={};assert.is_true(ok,err)
+	end)
 	it("restores navigation for other failures and still opens valid linked crafts",function()
 		local ui=require("Modules.HeadlessUI").install({width=960,height=640});ui:bind(build)
 		local ok,err=pcall(function()

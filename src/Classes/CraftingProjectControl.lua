@@ -66,7 +66,7 @@ end
 function Panel.Edit(build,source,initialItem,initialSlot,layout)
  require("Classes.CraftingProjectWizard").Open(build,source,initialItem,initialSlot,layout,function(project) Panel.Preview(build,project) end,function(project)
   if layout then layout.selectedProject=project.id end
-  Panel.Open(build,nil,nil,layout)
+  Panel.Open(build,nil,nil,layout,project.id)
  end)
 end
 
