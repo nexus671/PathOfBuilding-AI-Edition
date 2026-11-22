@@ -67,8 +67,12 @@ describe("Quality vendor review",function()
 		local category=vendor.review(copies).categories[1];assert.is_true(category.optimal);assert.equal(2,#category.groups);assert.equal(0,#category.leftover)
 		for _,group in ipairs(category.groups) do assert.equal(40,group.quality) end
 	end)
-	it("keeps larger difficult collections as explicitly marked suggestions",function()
+	it("proves the optimum for a difficult 15-item collection",function()
 		local copies={};for _,quality in ipairs({18,17,13,12,11,9,18,17,13,12,11,9,1,1,1}) do copies[#copies+1]=item("Wands","Magic","Driftwood Wand",quality) end
+		local category=vendor.review(copies).categories[1];assert.is_true(category.optimal);assert.equal(4,#category.groups)
+	end)
+	it("keeps larger difficult collections as explicitly marked suggestions",function()
+		local copies={};for _,quality in ipairs({18,17,13,12,11,9,18,17,13,12,11,9,1,1,1,1,1,1,1}) do copies[#copies+1]=item("Wands","Magic","Driftwood Wand",quality) end
 		local category=vendor.review(copies).categories[1];assert.is_false(category.optimal);assert.equal(3,#category.groups)
 	end)
 	it("finds more complete offers in larger mixed-quality collections",function()
