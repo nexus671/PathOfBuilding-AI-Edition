@@ -1777,7 +1777,9 @@
 	<File name="Classes/LootFilterStackControl.lua" part="program" sha1="31ec30fe8cd7622aafb64c141104fdf0c4028e8a" />
 	<File name="Classes/LootFilterStructureControl.lua" part="program" sha1="b5dc73fb5fa8baf59d74f7d68e8e38d255bd25de" />
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
-	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="f1b5096499ae5a39a6aaa7586d36e302b225c6ac" />
+	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="633ef5b91d2de0897bf5b5cefde73cb4a7cc38cd" />
+	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="d856f8771cf483b452d2dae3d10138cbd2aff272" />
+	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="fc1a0f478226e869109553aee681d1b4babe4b38" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="b133139457017d3bb1579c4284c14bf3f1c0a524" />
 	<File name="Classes/MapModifierControl.lua" part="program" sha1="545b24b4e4c21ad6509b92c48a443f84f966359a" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
