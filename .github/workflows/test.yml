@@ -69,6 +69,7 @@ jobs:
           python3 tools/test_update_atlas_filter_supplies.py
           python3 tools/test_check_atlas_release.py
           python3 tools/test_update_genesis_data.py
+          python3 tools/test_update_passive_preview.py
           python3 tools/check_genesis_art.py
           python3 tools/check_loot_filter_data.py
           python3 tools/test_check_update_manifest.py

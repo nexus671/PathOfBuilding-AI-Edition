@@ -25,7 +25,7 @@ GGG's Standard and Covens Atlas exports have identical graph data within each mo
 - [Atlas preview 2, commit d225501](https://github.com/grindinggear/atlastree-export/commit/d225501d7a3e52c991309116473908c284075e89)
 - [Stable Atlas 3.29.3, commit dcb2a00](https://github.com/grindinggear/atlastree-export/commit/dcb2a006b68740f3ecbd317775c262fc6ed7b8af)
 
-`python tools/update_passive_preview.py` regenerates the passive preview using the existing ascendancy-position preprocessor. `python tools/update_atlas_data.py --version 3.30.0-preview` regenerates the Atlas preview. Both use immutable source commits and bundle artwork for offline use. Provenance and asset SHA-256 hashes are stored beside the generated data.
+`python tools/update_passive_preview.py` regenerates the earlier passive preview using the existing ascendancy-position preprocessor. Add `--check` to compare its data and artwork without modifying the checkout. `python tools/update_atlas_data.py --version 3.30.0-preview` regenerates the Atlas preview. Both use immutable source commits and bundle artwork for offline use. Provenance and asset SHA-256 hashes are stored beside the generated data.
 
 `python tools/update_genesis_data.py --check` verifies the bundled 3.30.0d Genesis data against the pinned 3.30.0.4 client export and stat translations. It records 133 nodes in four connected trees, including six multiple-choice nodes. The export preserves raw group coordinates and orbit positions. Allocation and rendering remain experimental and need in-game verification. For offline regeneration, supply `--source-dir` with the two pinned source files named `BrequelTree.json` and `stat_translations.json`.
 
