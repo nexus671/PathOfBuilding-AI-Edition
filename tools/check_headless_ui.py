@@ -53,6 +53,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_atlas_remove_ui.lua")
     sources.append(ROOT / "tools/test_filter_export_race.lua")
     sources.append(ROOT / "tools/test_filter_review_ui.lua")
+    sources.append(ROOT / "tools/test_filter_union_ui.lua")
     sources.append(ROOT / "tools/test_atlas_plan_pickups_ui.lua")
     sources.append(ROOT / "tools/test_quality_calculation_ui.lua")
     sources.append(ROOT / "tools/test_anoint_sort_ui.lua")
@@ -122,6 +123,10 @@ def main():
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-review-controls.log").write_text(filter_review.stdout)
     assert filter_review.returncode == 0, filter_review.stdout
+    filter_union = subprocess.run(lua_command + ["../tools/test_filter_union_ui.lua"], cwd=ROOT / "src",
+                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "filter-union-controls.log").write_text(filter_union.stdout)
+    assert filter_union.returncode == 0, filter_union.stdout
     atlas_pickups = subprocess.run(lua_command + ["../tools/test_atlas_plan_pickups_ui.lua"], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-plan-pickups-controls.log").write_text(atlas_pickups.stdout)
@@ -205,7 +210,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2352, f"Expected 2352 UI frames, found {len(paths)}"
+    assert len(paths) == 2358, f"Expected 2358 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         for scene in ("beyond", "incursion"):
             assert (frames / f"{width}-filter-{scene}-examples.json").is_file(), f"Missing {scene} scene at {width}px"

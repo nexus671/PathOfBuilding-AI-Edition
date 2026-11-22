@@ -1505,6 +1505,10 @@ async function main(){
   assert.ok(generated.profile.rules.some(rule=>rule.origin==='gear:alternative' && rule.text.includes('BaseType == "Iron Hat"')),'Shared base lost its gear-source link');
   const surrenderPickup=generated.profile.rules.find(rule=>rule.origin==='gear:surrender');assert.ok(surrenderPickup);
   assert.match(surrenderPickup.text,/BaseType == "Ezomyte Tower Shield"/);assert.match(surrenderPickup.text,/Rarity == Unique/);assert.doesNotMatch(surrenderPickup.text,/ItemLevel/);
+  const collectiveProfile={...lootProfile,template:'Hide\n Class == "Helmets"\nHide\n Class == "Boots"\nShow\n Class == "Helmets" "Boots"'};
+  const collectiveExport=await queued('export_loot_filter',{baseRevision:context.revision,profile:collectiveProfile},'exported');
+  const collectiveDiagnostic=collectiveExport.report.diagnostics.find(entry=>entry.shadowedByLines?.length===2);
+  assert.ok(collectiveDiagnostic);assert.match(collectiveDiagnostic.warning,/collectively/);
   const tested=await queued('test_loot_filter',{baseRevision:context.revision,profile:generated.profile,sample:{BaseType:'Iron Hat',Rarity:'Rare',ItemLevel:86}},'tested');assert.equal(tested.result.action,'Show');
   const uncertainContinue={...lootProfile,template:'Show\n BaseType "Iron"\n Continue unexpected\nHide'};
   const uncertainContinueTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:uncertainContinue,sample:{BaseType:'Iron Hat'}},'tested');

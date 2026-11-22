@@ -1861,6 +1861,16 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 		local earlier={};for _,row in ipairs(c.details.list) do earlier[#earlier+1]=StripEscapes(row[1] or "") end
 		assert(table.concat(earlier," "):find('"Wool Shoes"',1,true),"List and range blocker was not selected");ui:click("close")
 	end
+	do
+		local example=require("Modules.LootFilters").profile("union-example","Union example")
+		example.template='Hide\n Class == "Helmets"\nHide\n Class == "Boots"\nShow\n Class == "Helmets" "Boots"'
+		local c=require("Classes.LootFilterStructureControl").Open(example);ui:choose("mode","Priority conflicts")
+		local function detail() local lines={};for _,row in ipairs(c.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end;return table.concat(lines," "):gsub("%s+"," ") end
+		assert(detail():find("collectively",1,true),"Collective conflict was not explained");frame("filter-collective-conflict")
+		ui:click("blocking");assert(detail():find('"Helmets"',1,true) and c.blocking:IsEnabled(),"First collective blocker is unavailable")
+		ui:click("blocking");assert(detail():find('"Boots"',1,true) and not c.blocking:IsEnabled(),"Second collective blocker is unavailable");frame("filter-collective-blocker")
+		ui:click("backConflict");assert(c.mode:GetSelValue()=="Priority conflicts" and detail():find("collectively",1,true),"Collective navigation lost the conflict");ui:click("close")
+	end
 	ui:click("export");frame("filter-export")
 	ui:text("directory",directory);ui:text("filename","ui-"..size[1]..".filter");ui:click("write");ui:click("close")
 	local exportedPath=directory.."/ui-"..size[1]..".filter";local exportedFile=assert(io.open(exportedPath,"rb"));local exportedText=exportedFile:read("*a");exportedFile:close();assert(exportedText:find("Covens pickup plan",1,true),"Exported filter lost its title")

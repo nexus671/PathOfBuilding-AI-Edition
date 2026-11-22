@@ -170,7 +170,7 @@ function M.shadowing(parsed)
   end
   if not terminal then for _,condition in ipairs(rule.conditions) do conditions[#conditions+1]=encoded(condition) end end
   table.sort(conditions);local parts={};for _,condition in ipairs(conditions) do parts[#parts+1]=field(condition) end
-  local key=table.concat(parts);local prior=terminal or seen[key];local broader=false
+  local key=table.concat(parts);local prior=terminal or seen[key];local broader=false;local coveringLines
   if not prior then
    -- A terminating rule whose conditions are a subset of this rule also
    -- covers it. Check removal of up to two conditions without an unbounded
@@ -271,7 +271,22 @@ function M.shadowing(parsed)
      local group=field(condition.keyword)..table.concat(other)
      for _,candidate in ipairs(sets[group] or {}) do
       local covered=true;for _,value in ipairs(condition.values) do if not candidate.values[value] then covered=false;break end end
-      if covered and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true end
+      if covered and (not prior or candidate.rule.line<prior.line) then prior=candidate.rule;broader=true;coveringLines=nil end
+     end
+     -- Several earlier terminating lists can jointly cover this list even
+     -- when none covers it alone. Every other condition must still match.
+     if not prior then
+      local lines,all={},true
+      for _,value in ipairs(condition.values) do
+       local found
+       for _,candidate in ipairs(sets[group] or {}) do if candidate.values[value] then found=candidate.rule;break end end
+       if not found then all=false;break end
+       lines[found.line]=found
+      end
+      if all then
+       local ordered={};for line in pairs(lines) do ordered[#ordered+1]=line end;table.sort(ordered)
+       if #ordered>1 then prior=lines[ordered[1]];coveringLines=ordered;broader=true end
+      end
      end
     end
    end
@@ -383,7 +398,8 @@ function M.shadowing(parsed)
   end
   if prior then
    local explanation=broader and "matches every item matched by this block." or "matches the same conditions"..(terminal and " or every item." or ".")
-   diagnostics[#diagnostics+1]={line=rule.line,shadowedBy=prior.line,warning="This block cannot be reached: a preceding terminating block at line "..prior.line.." "..explanation}
+   local warning=coveringLines and ("This block cannot be reached: preceding terminating blocks at lines "..table.concat(coveringLines,", ").." collectively match every item matched by this block.") or ("This block cannot be reached: a preceding terminating block at line "..prior.line.." "..explanation)
+   diagnostics[#diagnostics+1]={line=rule.line,shadowedBy=prior.line,shadowedByLines=coveringLines,warning=warning}
   elseif not rule.continue then
    seen[key]=rule;if #conditions==0 then terminal=rule end
    if #conditions>0 and #conditions<=13 then

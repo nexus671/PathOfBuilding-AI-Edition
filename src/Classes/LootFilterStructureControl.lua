@@ -47,14 +47,23 @@ function M.Open(profile,edit)
 			c.blocks.controls.scrollBar.offset=math.min(maximum,math.max(0,(index-1)*58-20));return
 		end end
 	end
-	button("blocking",detailX,h-98,actionWidth,"View earlier rule",function()
-		if not blocking then return end
-		returnView={entry=selected,section=section,category=category,sectionKey=c.sections.selectedKey,query=c.search.buf,mode=c.mode:GetSelValue(),offset=c.blocks.controls.scrollBar.offset}
-		local target=blocking;section=nil;category=nil;c.sections.selectedKey="all";c.search:SetText("");c.mode:SelByValue("All blocks");selected=target
+	local function browsingBlockers() return returnView and returnView.blockers and selected==returnView.blockers[returnView.index] end
+	button("blocking",detailX,h-98,actionWidth,function() return browsingBlockers() and #returnView.blockers>1 and "Next earlier rule" or "View earlier rule" end,function()
+		local target
+		if browsingBlockers() then
+			if returnView.index>=#returnView.blockers then return end
+			returnView.index=returnView.index+1;target=returnView.blockers[returnView.index]
+		else
+			if not blocking then return end
+			local blockers=structure.blockingEntries(outline,selected)
+			returnView={entry=selected,section=section,category=category,sectionKey=c.sections.selectedKey,query=c.search.buf,mode=c.mode:GetSelValue(),offset=c.blocks.controls.scrollBar.offset,blockers=blockers,index=1}
+			target=blockers[1]
+		end
+		section=nil;category=nil;c.sections.selectedKey="all";c.search:SetText("");c.mode:SelByValue("All blocks");selected=target
 		refreshSections();refreshBlocks();reveal(target)
 	end)
-	c.blocking.enabled=function() return blocking~=nil end
-	c.blocking.tooltipText="Open the earlier terminating rule that makes this block unreachable."
+	c.blocking.enabled=function() if browsingBlockers() then return returnView.index<#returnView.blockers end;return blocking~=nil end
+	c.blocking.tooltipText="Open the earlier terminating rules that make this block unreachable."
 	button("backConflict",detailX+actionWidth+8,h-98,detailW-actionWidth-8,"Back to conflict",function()
 		if not returnView then return end
 		local saved=returnView;returnView=nil;section=saved.section;category=saved.category;c.sections.selectedKey=saved.sectionKey

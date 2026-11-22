@@ -32,11 +32,20 @@ end
 function M.diagnostics(outline,entry)
 	local result={};for _,d in ipairs(outline.report.diagnostics) do if d.line>=entry.line and d.line<=entry.lastLine then result[#result+1]=d end end;return result
 end
-function M.blockingEntry(outline,entry)
-	if not entry then return nil end
+function M.blockingEntries(outline,entry)
+	local result={};if not entry then return result end
 	for _,diagnostic in ipairs(M.diagnostics(outline,entry)) do
-		if diagnostic.shadowedBy then return (outline.byLine or {})[diagnostic.shadowedBy] end
+		if diagnostic.shadowedBy then
+			for _,line in ipairs(diagnostic.shadowedByLines or {diagnostic.shadowedBy}) do
+				local blocker=(outline.byLine or {})[line];if blocker then result[#result+1]=blocker end
+			end
+			return result
+		end
 	end
+	return result
+end
+function M.blockingEntry(outline,entry)
+	return M.blockingEntries(outline,entry)[1]
 end
 function M.filter(outline,query,section,category,mode)
 	query=(query or ""):lower();local result={}
