@@ -357,9 +357,13 @@ async function main(){
   assert.match(sacredOrdinary.nativeCrafting.warnings.find(entry=>entry.code==='sacred_roll_assumptions').message,/shared roll/);
   const sacredHybrid="Rarity: UNIQUE\nThe Restless Ward\nCarnal Armour\nItem Level: 86\nEvasion Rating: 300\nEnergy Shield: 50\nImplicits: 0\n+50 to maximum Life";
   for (const itemText of ['Rarity: NORMAL\nCarnal Armour\nItem Level: 86',sacredHybrid]) {
-    const estimate=await queued('calculate_crafting',{baseRevision:context.revision,itemText,action:{method:'sacred'},targets:[],options:{requirements:{nativeStats:{EnergyShield:105}}}},'crafted');
+    const estimate=await queued('calculate_crafting',{baseRevision:context.revision,itemText,action:{method:'sacred'},targets:[],options:{seed:104729,requirements:{nativeStats:{EnergyShield:105}}}},'crafted');
     assert.equal(estimate.nativeCrafting.sampled,false);assert.equal(estimate.nativeCrafting.successChance,84.375);
     assert.match(estimate.nativeCrafting.exactFor,/unverified/);assert.equal(estimate.nativeCrafting.outcomes.length,32);
+    const applied=itemText===sacredHybrid ? await queued('apply_crafting_action',{baseRevision:context.revision,itemText,action:{method:'sacred'},seed:104729},'crafted') : sacredOrdinary;
+    assert.equal(estimate.nativeCrafting.sampleItem,applied.nativeCrafting.itemText);assert.equal(estimate.nativeCrafting.sampleSuccess,true);
+    const low=await queued('calculate_crafting',{baseRevision:context.revision,itemText,action:{method:'sacred'},targets:[],options:{seed:1,requirements:{nativeStats:{EnergyShield:105}}}},'crafted');
+    assert.equal(low.nativeCrafting.successChance,84.375);assert.equal(low.nativeCrafting.sampleSuccess,false);
   }
   for (const [itemText,stat,count] of [['Rarity: NORMAL\nIron Hat\nItem Level: 86','Armour',5],[sacredRaw,'EnergyShield',18]]) {
     const estimate=await queued('calculate_crafting',{baseRevision:context.revision,itemText,action:{method:'sacred'},targets:[],options:{requirements:{nativeStats:{[stat]:1}}}},'crafted');

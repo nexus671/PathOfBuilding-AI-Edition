@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1135" />
+	<Version number="2.68.1-ai.preview1136" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
@@ -2164,7 +2164,7 @@
 	<File name="Modules/CraftingAvailability.lua" part="program" sha1="0c2fe978e8f1fe9b0c331528e0ba8048fffe7a90" />
 	<File name="Modules/CraftingBenchCosts.lua" part="program" sha1="a3178ae5e34776046bfdc8cc65beaf1b8fc9d657" />
 	<File name="Modules/CraftingBenchMigration.lua" part="program" sha1="70ba9b95ed0599ece84a7a58d1efe80e6ca18a2c" />
-	<File name="Modules/CraftingCalculator.lua" part="program" sha1="c0154e050a87469d1cfde635ea0e255afae2e8ff" />
+	<File name="Modules/CraftingCalculator.lua" part="program" sha1="40f2f476bc1e4c1fbb26c91cc72bde73ebdd9b15" />
 	<File name="Modules/CraftingChartData.lua" part="program" sha1="5fe7d66a272315a405debc59b05ec5d8a9466c74" />
 	<File name="Modules/CraftingCheckpoint.lua" part="program" sha1="267bbf312d439063100d68c8abb3d5428f44ebf4" />
 	<File name="Modules/CraftingCorruption.lua" part="program" sha1="784dfd0b6cc24d6460f70c66237e9d0fd06c393f" />
@@ -2195,7 +2195,7 @@
 	<File name="Modules/CraftingRecombination.lua" part="program" sha1="6c01c0d4c562d1dff8e20f6d71210c99e45de347" />
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />
 	<File name="Modules/CraftingSacred.lua" part="program" sha1="1e0b2db28524c90c5c72aa0eff77a0e59606a8ca" />
-	<File name="Modules/CraftingSimulator.lua" part="program" sha1="402e4e55a539f84d2afd7224d10c106cef8c4069" />
+	<File name="Modules/CraftingSimulator.lua" part="program" sha1="190741632b1aecf0e8c628bd676ec287606633b3" />
 	<File name="Modules/CraftingUniqueCatalyst.lua" part="program" sha1="8605c7046874178179b08a22a59a673cdda61a31" />
 	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="c6217b3891af02b2ac35e6e331149782427e7f38" />
 	<File name="Modules/CraftingUniqueSimulation.lua" part="program" sha1="451e30124807d75a2d9afb3e337b212f7df883cf" />

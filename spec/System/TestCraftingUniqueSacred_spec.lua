@@ -89,6 +89,28 @@ describe("Sacred Orb previews for unique armour", function()
 			if case.stat=="Armour" then for index,chance in ipairs({12.5,25,25,25,12.5}) do assert.equal(chance,result.outcomes[index].chance) end end
 		end
 	end)
+	it("uses the chosen seed for the example without changing exact modeled odds", function()
+		local ordinary="Rarity: NORMAL\nCarnal Armour\nItem Level: 86"
+		local hybrid="Rarity: UNIQUE\nThe Restless Ward\nCarnal Armour\nItem Level: 86\nEvasion Rating: 300\nEnergy Shield: 50\nImplicits: 0\n+50 to maximum Life"
+		for _,item in ipairs({ordinary,hybrid}) do
+			local previous
+			for _,seed in ipairs({1,104729,123456}) do
+				local result=sim.calculate(item,{method="sacred"},{},nil,{seed=seed,requirements={nativeStats={EnergyShield=105}}})
+				local applied=sim.perform(item,{method="sacred"},seed)
+				assert.equal(applied.itemText,result.sampleItem);assert.equal(84.375,result.successChance)
+				assert.equal(seed~=1,result.sampleSuccess)
+				if result.nativeStats then assert.equal(unique.inspect(result.sampleItem).armourData.EnergyShield,result.nativeStats.EnergyShield) end
+				if result.sampleState then assert.equal(result.sampleItem,sim.itemText(sim.model(item),result.sampleState)) end
+				if previous then assert.is_true(previous~=result.sampleItem) end;previous=result.sampleItem
+			end
+		end
+		local model=sim.model(ordinary);local initial=copyTable(model.initial);initial.quality=20
+		local requirements={nativeStats={EnergyShield=130}}
+		local result=sim.calculate(ordinary,{method="sacred"},{},initial,{seed=1,requirements=requirements})
+		local applied=sim.perform(ordinary,{method="sacred"},1,initial)
+		assert.equal(applied.itemText,result.sampleItem);assert.equal(20,result.sampleState.quality)
+		assert.equal(sim.matches(applied.state,{},nil,model,requirements),result.sampleSuccess)
+	end)
 	it("explains unsafe item text before offering a preview", function()
 		local cases={
 			{raw:gsub("Item Level: 86", "Item Level: 86\nItem Level: 86"),"Could not safely locate item level"},

@@ -1453,9 +1453,9 @@ do
 						outcomes[#outcomes+1]=entry;byItem[result.itemText]=entry
 					end
 				end
-				local sample=outcomes[1].itemText;local nativeStats=require("Modules.CraftingItemStats").itemValues(unique.inspect(sample))
+				local sample=initial.itemText;local nativeStats=require("Modules.CraftingItemStats").itemValues(unique.inspect(sample))
 				return M.withTreeContext({uniqueCrafting=true,exactFor="32 shared-roll positions; game odds unverified.",sampled=false,successChance=100*hits/32,
-					totalWeight=1,matchingWeight=hits/32,outcomes=outcomes,sampleItem=sample,nativeStats=nativeStats,components=initial.components,warnings=initial.warnings,limitations=initial.limitations},options.treeVersion)
+					totalWeight=1,matchingWeight=hits/32,outcomes=outcomes,sampleSuccess=unique.matches(sample,options.requirements),sampleItem=sample,nativeStats=nativeStats,components=initial.components,warnings=initial.warnings,limitations=initial.limitations},options.treeVersion)
 			end
 			if action.method=="instilling" or action.method=="enkindling" or action.method=="divine" or action.method=="tainted_quality" or action.method=="jeweller" or action.method=="tainted_jeweller" or action.method=="fusing" or action.method=="tainted_fusing" or action.method=="chromatic" or action.method=="tainted_chromatic" or action.method=="omen_trichromatism" or action.method=="socket_colour_bench" then
 				local sampledOptions=copyTable(options);sampledOptions.maxActions=1;sampledOptions.forceFirstAction=true

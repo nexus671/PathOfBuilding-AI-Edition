@@ -8,7 +8,7 @@ function C.extend(M)
 		local conflict=M.requirementsConflict(options.requirements);assert(not conflict,conflict)
 		if craft.method=="sacred" and not craft.allflame then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
-			M.perform(raw,craft,options.seed,initialState)
+			local sample=M.perform(raw,craft,options.seed,initialState)
 			local model=M.model(raw);local state=initialState and M.validateState(model,initialState) or model.initial
 			model=M.context(model,state)
 			local outcomes,byDefence,hits={},{},0
@@ -26,9 +26,8 @@ function C.extend(M)
 					outcomes[#outcomes+1]=entry;byDefence[key]=entry
 				end
 			end
-			local sample=outcomes[1].state
 			return {exactFor="32 shared-roll positions; game odds unverified.",sampled=false,successChance=100*hits/32,totalWeight=1,matchingWeight=hits/32,
-				outcomes=outcomes,sampleState=sample,sampleItem=M.itemText(model,sample),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
+				outcomes=outcomes,sampleSuccess=M.matches(sample.state,targets,nil,model,options.requirements,options.requiredGroups),sampleState=sample.state,sampleItem=sample.itemText,dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 		end
 		if craft.method=="rog_reroll" and (craft.rogOperation=="socket_count" or craft.rogOperation=="socket_links") then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
