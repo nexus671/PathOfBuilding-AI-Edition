@@ -40,7 +40,10 @@ local function atlasStageIsCurrent(saved,stage)
 end
 function M.clean(kind,entry)
 	local value=assert(entry.plan,"Missing draft")
-	if kind=="filters" then return {plan={data=require("Modules.LootFilters").validate(value.data),selected=value.selected,page=value.page,dirty=true}}
+	if kind=="filters" then
+		local baseHash=value.baseHash
+		assert(baseHash==nil or baseHash==false or type(baseHash)=="string" and #baseHash==40 and baseHash:match("^[a-f0-9]+$"),"Invalid filter draft baseline")
+		return {plan={data=require("Modules.LootFilters").validate(value.data),baseHash=baseHash or false,selected=value.selected,page=value.page,dirty=true}}
 	elseif kind=="atlas" then
 		local view=entry.view;local savedView
 		if view then

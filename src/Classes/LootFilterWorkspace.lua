@@ -53,6 +53,7 @@ local function identifier() return "filter-"..require("sha1")(os.time()..tostrin
 function M.Open(build,source,layout,controller)
 	local saver=build.savers.LootFilters;local c={};local custom={};local backgrounds={};local w,h=layout.width,layout.height
 	local state=source or {};local data=state.data or copyTable(saver.data);local profile=filters.find(data,state.selected) or data.profiles[1]
+	local baseHash=state.baseHash;if baseHash==nil then baseHash=require("Modules.PlanningData").hash(saver.data) end
 	local page=state.page or "Overview";local category=state.category or "All items";local scope=state.scope or (profile and #profile.rules>0 and "My rules" or "Base filter");local query=state.query or "";local selected=state.rule
 	local item=state.sample or library.sample();local dirty=state.dirty or false;local sceneKind=state.sceneKind or "Mixed drops";local seed=state.seed or 0;local showHidden=state.showHidden~=false
 	local settings=state.sceneSettings or {areaLevel=83,itemLevel=86,background="Stone"};local samples=state.sampleHistory or {}
@@ -108,7 +109,7 @@ function M.Open(build,source,layout,controller)
 		if profile then dependencyJob=require("Modules.LootFilterDependencies").begin(build,profile);advanceDependencies() else dependencies=nil;dependencyTime=GetTime() end
 	end
 	local function draft(field) dirty=true;history:record(data,field);ui.draft(build,"filters") end
-	local function snapshot() return {data=data,selected=profile and profile.id,page=page,category=category,scope=scope,query=query,rule=selected,sample=item,dirty=dirty,seed=seed,sceneKind=sceneKind,showHidden=showHidden,history=history:snapshot(),tierState=tierView and tierView.snapshot() or tierState,sceneSettings=settings,sampleHistory=samples,sampleSetId=sampleSetId,scenePage=scenePage} end
+	local function snapshot() return {data=data,baseHash=baseHash,selected=profile and profile.id,page=page,category=category,scope=scope,query=query,rule=selected,sample=item,dirty=dirty,seed=seed,sceneKind=sceneKind,showHidden=showHidden,history=history:snapshot(),tierState=tierView and tierView.snapshot() or tierState,sceneSettings=settings,sampleHistory=samples,sampleSetId=sampleSetId,scenePage=scenePage} end
 	local function reopen() layout.navigate("filters",snapshot()) end
 	local function openSource(origin)
 		local ok,reason=require("Modules.LootFilterDependencies").open(build,layout,origin)
@@ -271,7 +272,16 @@ function M.Open(build,source,layout,controller)
 	ui.label(c,"subtitle",16,48,"Customise pickups, preview loot, export to PoE.",14)
 	local profiles={};for _,p in ipairs(data.profiles) do profiles[#profiles+1]={label=p.title,val=p.id} end;if #profiles==0 then profiles={{label="No saved profile",val=""}} end
 	c.profile=new("DropDownControl"):DropDownControl(ui.anchor,{w-430,14,232,28},profiles,function(_,value) profile=filters.find(data,value.val);selected=nil;reopen() end);c.profile:SelByValue(profile and profile.id or "","val")
-	button(c,"keep",w-182,14,166,"Keep in build",function() if profile then data.activeId=profile.id end;saver:Replace(data);dirty=false end)
+	button(c,"keep",w-182,14,166,"Keep in build",function()
+		local hash=require("Modules.PlanningData").hash;local current=hash(saver.data)
+		local function keep() if profile then data.activeId=profile.id end;saver:Replace(data);dirty=false;baseHash=hash(saver.data) end
+		if current~=baseHash then
+			main:OpenConfirmPopup("Saved filters changed","Saved filters changed while this draft was open. Review changes in Profile tools. Keeping this draft replaces the current saved filters.","Keep draft",function()
+				if hash(saver.data)~=current then ui.errorPopup("Saved filters changed","Saved filters changed again. Review them and try again.");return end
+				keep()
+			end)
+		else keep() end
+	end)
 	for i,name in ipairs({"Overview","Customize","Tiers","Simulate","Style","Modules"}) do local control=button(c,"view"..name,16+(i-1)*126,76,118,name,function() page=name;reopen() end);control.locked=page==name end
 	button(c,"manage",w-172,76,156,"Profile tools",function()
 		local choices={

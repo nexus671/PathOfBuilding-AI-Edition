@@ -2,9 +2,10 @@
 local M={}
 local pages={ai="AI builds",atlas="Atlas",crafting="Crafting",journey="Journey",filters="Loot filter"}
 function M.new(build)
-	local self=setmetatable({build=build,page="ai",cache={},drafts={},atlasDrafts=build.planningAtlasDrafts or {},transient={},selections={},craftDrafts=build.planningCraftDrafts or {},controls={},viewport={x=0,y=32,width=main.screenW,height=main.screenH-32}},{__index=M})
+	local self=setmetatable({build=build,page="ai",cache={},drafts={filters=build.planningFilterDraft},atlasDrafts=build.planningAtlasDrafts or {},transient={},selections={},craftDrafts=build.planningCraftDrafts or {},controls={},viewport={x=0,y=32,width=main.screenW,height=main.screenH-32}},{__index=M})
 	build.planningCraftDrafts=nil
 	build.planningAtlasDrafts=nil
+	build.planningFilterDraft=nil
 	self.recoveryScan=require("Modules.PlanningRecovery").startScan(build)
 	self.nav=new("ControlHost"):ControlHost()
 	local anchor=new("Control"):Control(nil,{0,0,0,0})
@@ -135,6 +136,13 @@ function M:CopyAtlasDrafts(candidate)
 		end
 	end
 	if candidate.planningWorkspace then candidate.planningWorkspace.atlasDrafts=copied else candidate.planningAtlasDrafts=copied end
+end
+function M:CopyFilterDraft(candidate)
+	local entry=self.drafts.filters;local active=self.cache.filters
+	if active and active.layout.snapshot then entry={plan=active.layout.snapshot(),controls=require("Modules.PlanningUI").capture(active.body.controls)} end
+	if not entry or not entry.plan or not entry.plan.dirty then return end
+	local copied=copyTable(entry);require("Modules.PlanningUI").draft(candidate,"filters")
+	if candidate.planningWorkspace then candidate.planningWorkspace.drafts.filters=copied else candidate.planningFilterDraft=copied end
 end
 function M:ForgetCraftingProject(id)
 	local draft=self:CraftingDraft(id)

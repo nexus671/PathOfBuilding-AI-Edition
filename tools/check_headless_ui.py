@@ -68,6 +68,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_anoint_sort_ui.lua")
     sources.append(ROOT / "tools/test_timeless_dialog_ui.lua")
     sources.append(ROOT / "tools/test_ai_filter_proposal_ui.lua")
+    sources.append(ROOT / "tools/test_ai_filter_handoff.lua")
     sources.append(ROOT / "tools/test_ai_journey_proposal_ui.lua")
     sources.append(ROOT / "tools/test_ai_atlas_proposal_ui.lua")
     sources.append(ROOT / "tools/test_ai_crafting_proposal_ui.lua")
@@ -196,6 +197,10 @@ def main():
                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "ai-filter-review-controls.log").write_text(ai_filter_review.stdout)
     assert ai_filter_review.returncode == 0, ai_filter_review.stdout
+    ai_filter_handoff = subprocess.run(lua_command + ["../tools/test_ai_filter_handoff.lua"], cwd=ROOT / "src",
+                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "ai-filter-handoff-controls.log").write_text(ai_filter_handoff.stdout)
+    assert ai_filter_handoff.returncode == 0, ai_filter_handoff.stdout
     ai_journey_review = subprocess.run(lua_command + ["../tools/test_ai_journey_proposal_ui.lua"], cwd=ROOT / "src",
                                        env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "ai-journey-review-controls.log").write_text(ai_journey_review.stdout)

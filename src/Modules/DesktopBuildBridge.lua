@@ -293,7 +293,7 @@ function M.apply(prepared)
 			candidate.savers.CraftingProjects.lastRemoved=copy;carriedRemoval=true
 		end
 		local workspace=prepared.base.planningWorkspace
-		if workspace then workspace:CopyCraftingDrafts(candidate);workspace:CopyAtlasDrafts(candidate) end
+		if workspace then workspace:CopyCraftingDrafts(candidate);workspace:CopyAtlasDrafts(candidate);workspace:CopyFilterDraft(candidate) end
 		local removed=candidate.savers.CraftingProjects.lastRemoved
 		if removed and not carriedRemoval then
 			local qualityDraft=workspace and workspace:UniqueQualityDraft(removed.project.id) or prepared.base.planningUniqueQualityDrafts and prepared.base.planningUniqueQualityDrafts[removed.project.id]
