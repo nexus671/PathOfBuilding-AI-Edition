@@ -12,5 +12,9 @@ return function(build,ui,frame)
 	local saved;for _,entry in ipairs(build.savers.CraftingProjects.projects) do if entry.id==project.id then saved=entry;break end end
 	assert(saved and saved.steps[1].uniqueCraft.method=="socket_count_bench" and saved.steps[2].uniqueCraft.method=="socket_bench","Socket-count guide lost its actions")
 	assert(saved.nativeRecipe and saved.nativeRecipe.requirements.exactSockets==4,"Socket-count recipe did not preserve its exact target")
+	ui:click("resources");ui:click("restart");ui:click("confirm")
+	assert(not control.undo:IsEnabled() and not control.redo:IsEnabled(),"Restart retained preview history")
+	assert(saved.nativeRecipe and #saved.steps==2,"Restart changed the saved recipe or guide")
+	ui:click("socketCount");ui:choose("count",4,"val");ui:click("apply");assert(control.guide:IsEnabled(),"Fresh preview cannot create a guide")
 	main.popups={}
 end

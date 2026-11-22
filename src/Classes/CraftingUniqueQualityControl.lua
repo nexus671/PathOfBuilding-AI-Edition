@@ -797,15 +797,23 @@ function M.Open(build,project,layout,snapshot)
 	button("resources",h-50,"Resources",function()
 		local resources,reason=unique.previewResources(draft.startingItem,history,actions,raw,historyTruncated)
 		local lines={"Recorded preview only; no currency is spent. Prices are not included."}
-		if not resources then lines[#lines+1]=reason
+		if not resources then lines[#lines+1]=reason;if historyTruncated then lines[#lines+1]="Start a fresh preview to record a complete new path." end
 		elseif #resources==0 then lines[#lines+1]="No preview actions recorded."
 		else for _,entry in ipairs(resources) do lines[#lines+1]=entry.name..": "..entry.amount end end
 		local popup={};local rw,rh=math.min(620,main.screenW-40),math.min(480,main.screenH-60)
 		popup.results=new("TextListControl"):TextListControl(ui.anchor,{16,24,rw-32,rh-88},nil,ui.rows(lines,rw-56,15))
+		popup.restart=new("ButtonControl"):ButtonControl(ui.anchor,{16,rh-48,160,28},"Start fresh preview",function()
+			main:OpenConfirmPopup("Start fresh preview","Discard this preview and its undo history?\nThe saved target, guide and recipe will be kept.","Start fresh",function()
+				main:ClosePopup();raw=draft.startingItem;history={};actions={};redo={};historyTruncated=false;colourRollCounter=0
+				savedTrace=nil;savedGuideHash=nil;savedGuideLength=nil;refresh(true);c.notice.label="^7Fresh preview started."
+			end)
+		end)
+		popup.restart.enabled=function() return historyTruncated or #history>0 or #redo>0 or raw~=draft.startingItem end
+		popup.restart.tooltipText="Begin again from the project's starting item; saved project details remain unchanged."
 		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{rw-136,rh-48,120,28},"Close",function() main:ClosePopup() end)
 		ui.style(popup);main:OpenPopup(rw,rh,"Preview resources",popup,nil,nil,"close")
 	end)
-	c.resources.x=156;c.resources.width=130;c.resources.tooltipText="Review the ingredients recorded in this preview."
+	c.resources.x=156;c.resources.width=130;c.resources.tooltipText="Review the recorded ingredients or start a fresh preview."
 	local compactJewellery=not info.qualitySupported and require("Modules.CraftingSimulator").socketLimit({item=item})==0
 	if item.type=="Flask" or item.type=="Tincture" or compactJewellery then
 		for _,key in ipairs({"socketCount","omenJeweller","link","omen","benchLink","white"}) do c[key].shown=false end

@@ -220,6 +220,19 @@ describe("Local planning draft recovery",function()
 		complete.plan.historyTruncated=nil;assert.is_true(recovery.clean("uniqueQuality",complete).plan.historyTruncated)
 		main.popups={}
 	end)
+	it("starts a fresh unique preview without changing its saved project",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: W"
+		local target=require("Modules.CraftingUniqueQuality").apply(raw).itemText
+		local p={id="fresh-unique",title="Fresh",slot="Helmet",startingItem=raw,targetItem=target,goals={},steps={{action="Existing guide"}}}
+		build.savers.CraftingProjects:Upsert(p)
+		local snapshot={kind="uniqueQuality",project=p,itemText=raw,history={raw},actions={"socket_white_bench"},historyTruncated=true}
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,p,nil,snapshot)
+		assert.is_false(control.guide:IsEnabled());control.resources:Click();main.popups[1].controls.restart:Click();main.popups[1].controls.confirm:Click()
+		assert.is_false(control.undo:IsEnabled());assert.is_false(control.redo:IsEnabled());control.apply:Click();assert.is_true(control.guide:IsEnabled())
+		local saved=build.savers.CraftingProjects.projects[1];assert.equal(target,saved.targetItem);assert.equal("Existing guide",saved.steps[1].action)
+		control.close:Click();local recovered=recovery.load(build,"uniqueQuality",p.id).entry.plan;assert.is_false(recovered.historyTruncated);assert.equal("quality",recovered.actions[1])
+		main.popups={}
+	end)
 	it("recovers a new unsaved project but refuses a conflicting project ID",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
 		local p={id="quality-new",title="Unsaved guide",slot="Helmet",startingItem=raw,goals={},steps={}}
