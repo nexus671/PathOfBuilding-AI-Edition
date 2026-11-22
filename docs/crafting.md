@@ -239,7 +239,7 @@ fields also work in fossil optimization, whose initial state is in
 
 | Tool | Purpose |
 | --- | --- |
-| `get_crafting_projects` | Read saved projects. |
+| `get_crafting_projects` | Read saved projects. Use `summaryOnly` with `offset` and `limit` to browse large collections, then `projectId` to read one complete guide. Compare the revision across pages. |
 | `inspect_crafting_item` | Read native IDs, initial state and coverage; supply an action to inspect its Allflame profile or a paged Bestiary modifier pool. |
 | `apply_crafting_action` | Emulate an action; continue with the original text and returned state. |
 | `simulate_crafting` | Run a background recipe with targets, routes and prices. |

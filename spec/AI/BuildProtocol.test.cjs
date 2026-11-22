@@ -26,6 +26,16 @@ test('reads crafting collections larger than the old desktop context limit', t =
   const result=f.call('get_crafting_projects',{});
   assert.equal(result.projects.length,132);
   assert.equal(result.projects[131].simulatorExport.length,128000);
+  const page=f.call('get_crafting_projects',{offset:130,limit:1,summaryOnly:true});
+  assert.deepEqual(page.projects,[{id:'guide-130',title:'Guide 130',slot:undefined}]);
+  assert.equal(page.total,132);assert.equal(page.nextOffset,131);assert.equal(page.revision,f.state.revision);
+  const last=f.call('get_crafting_projects',{offset:131,limit:10,summaryOnly:true});
+  assert.equal(last.projects[0].id,'guide-131');assert.equal(last.nextOffset,undefined);
+  assert.deepEqual(f.call('get_crafting_projects',{offset:132,limit:10}).projects,[]);
+  assert.equal(f.call('get_crafting_projects',{projectId:'guide-131'}).projects[0].simulatorExport.length,128000);
+  assert.equal(f.call('get_crafting_projects',{projectId:'missing'}).total,0);
+  assert.throws(()=>f.call('get_crafting_projects',{projectId:'guide-1',offset:0}),/Choose a projectId or a page/);
+  assert.throws(()=>f.call('get_crafting_projects',{limit:0}),/arguments/);
 });
 
 test('queues same-base vendor review with bounded copied items', t => {
