@@ -423,7 +423,7 @@ local function divinePlan(raw,allowFixed)
 	if (jewellery and (item.quality or 0)>0) or catalystQuality>0 and (not jewellery or not item.catalyst or item.catalyst==3 or item.catalyst==9) then return nil,"Catalyst-scaled jewellery needs a separate Divine model" end
 	if item.usesVariantGroups or item.hasAltVariant or item.hasAltVariant2 or item.hasAltVariant3 or item.hasAltVariant4 or item.hasAltVariant5 then return nil,"Multiple or grouped variant selections need a separate Divine model" end
 	if not item.variantList then for _,line in ipairs(item.explicitModLines or {}) do if line.variantList then return nil,"Variant modifier lines require a saved variant list" end end end
-	if item.variantList and (allowFixed or catalystQuality>0) then return nil,"Catalyst previews on saved variants need a separate model" end
+	if item.variantList and allowFixed then return nil,"Catalyst previews on saved variants need a separate model" end
 	uniqueSocketRestriction(item.title)
 	local candidates={}
 	for _,template in ipairs(uniquesByName[item.title] or {}) do

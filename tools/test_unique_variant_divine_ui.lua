@@ -20,6 +20,27 @@ for _,entries in pairs(data.uniques) do for _,raw in ipairs(entries) do if raw:m
 local taggedRaw="Rarity: UNIQUE\n"..assert(taggedTemplate):gsub("^([^\r\n]+\n[^\r\n]+\n)","%1Selected Variant: 3\nItem Level: 83\n",1)
 local taggedResult=unique.divine(taggedRaw,104729);assert(taggedResult.itemText:find("{variant:2,3}{range:[^}]+}{tags:defences}%+%(75%-80%)"),"Selected modifier lost its variant or tags")
 assert(unique.divineOptions(taggedResult.itemText),"Tagged variant could not be reopened")
+local ringTemplate
+for _,entries in pairs(data.uniques) do for _,raw in ipairs(entries) do if raw:match("^%s*Berek's Grip\n") then ringTemplate=raw end end end
+local function catalystRing(index)
+ return "Rarity: UNIQUE\n"..assert(ringTemplate):gsub("^([^\r\n]+\n[^\r\n]+\n)","%1Selected Variant: "..index.."\nItem Level: 83\nCatalyst: Fertile\nCatalystQuality: 20\n",1)
+end
+for index=1,3 do
+ local raw=catalystRing(index);local options=assert(unique.divineOptions(raw));local life
+ for _,row in ipairs(options) do if row.line=="+(30-40) to maximum Life" then life=row end end
+ assert(life and life.min==36 and life.max==48 and life.current==42,"Catalyst-scaled range was not preserved")
+ for seed=1,12 do
+  local result=unique.divine(raw,require("Modules.CalcEncounter").seed(104729,seed,47));local item=unique.inspect(result.itemText)
+  assert(item.variant==index and item.catalystQuality==20 and result.catalystModeled,"Variant or catalyst changed")
+  if index~=1 then assert(result.itemText:find("{variant:1}{tags:elemental_damage}(10-15)% increased Cold Damage",1,true),"Inactive variant changed") end
+  local reopened=assert(unique.divineOptions(result.itemText));local rolledLife
+  for _,row in ipairs(reopened) do if row.line=="+(30-40) to maximum Life" then rolledLife=row end end
+  assert(rolledLife and rolledLife.current>=36 and rolledLife.current<=48,"Scaled roll did not reopen")
+  local switched=result.itemText:gsub("Selected Variant: "..index,"Selected Variant: "..(index==1 and 2 or 1))
+  assert(unique.divineOptions(switched),"Switching variants lost catalyst support")
+ end
+end
+assert(not pcall(unique.catalystPreview,catalystRing(1):gsub("CatalystQuality: 20","CatalystQuality: 0"),8,20),"Saved-variant catalyst application should remain unavailable")
 assert(unique.divineReason(itemFor(999)),"Invalid saved variant was accepted")
 assert(unique.divineReason(itemFor(3):gsub("Variant: Pre 2.2.0\n",""):gsub("Variant: Pre 3.0.0\n",""):gsub("Variant: Current\n","")),"Variant lines without a saved list were accepted")
 assert(unique.divineReason(itemFor(3):gsub("Variant: Current","Variant: Unrelated")),"Changed variant names were accepted")
