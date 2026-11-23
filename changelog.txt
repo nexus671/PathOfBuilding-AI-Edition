@@ -1,8 +1,16 @@
-VERSION[2.68.1-ai.preview1203][2026/11/23]
+VERSION[2.68.1-ai.preview1205][2026/11/23]
 
 * Publish a verified daily filter to a selected Path of Exile account filter after reviewing the exact diff.
 * Review verified age by price feed and compare eligible prices against official GGG trades.
 * Remove partial sync output after failed Windows writes while keeping the verified filter recoverable.
+
+VERSION[2.68.1-ai.preview1204][2026/11/23]
+
+* Show uncertain item levels in filter price-impact previews.
+
+VERSION[2.68.1-ai.preview1203][2026/11/23]
+
+* Correct protected-drop and price-review sample properties.
 
 VERSION[2.68.1-ai.preview1202][2026/11/23]
 
