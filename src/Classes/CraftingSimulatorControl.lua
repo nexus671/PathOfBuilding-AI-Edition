@@ -115,6 +115,7 @@ function Panel.Open(build,project,layout)
 			if group.minRoll then lines[#lines+1]="Minimum roll: "..(group.minRoll*100).."%" end
 			if group.minBaseValue~=nil then lines[#lines+1]="Minimum base roll: "..group.minBaseValue end
 			if group.maxBaseValue~=nil then lines[#lines+1]="Maximum base roll: "..group.maxBaseValue end
+			if group.baseValueComponent~=nil then lines[#lines+1]="Base roll range: "..group.baseValueComponent end
 		end
 		for key,value in pairsSortByKey(requirements or {}) do
 			if key=="nativeStats" then

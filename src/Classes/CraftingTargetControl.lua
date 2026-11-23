@@ -39,24 +39,27 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 	if group then
 		button("baseRoll",16,188,180,"Base roll value...",function()
 			local ui=require("Modules.PlanningUI");local popup={}
-			ui.description(popup,"help",16,24,448,48,{"For explicit modifiers with exactly one numeric range.","Values are before catalyst and character scaling."},14)
-			ui.label(popup,"minLabel",16,84,"Minimum base value",14);ui.label(popup,"maxLabel",244,84,"Maximum base value",14)
-			popup.minimum=new("EditControl"):EditControl(ui.anchor,{16,106,212,26},group.minBaseValue~=nil and tostring(group.minBaseValue) or "",nil,nil,16)
-			popup.maximum=new("EditControl"):EditControl(ui.anchor,{244,106,212,26},group.maxBaseValue~=nil and tostring(group.maxBaseValue) or "",nil,nil,16)
+			ui.description(popup,"help",16,24,448,48,{"Values are before catalyst and character scaling.","For multiple ranges, number them left to right, then top to bottom."},14)
+			ui.label(popup,"minLabel",16,84,"Minimum",14);ui.label(popup,"maxLabel",166,84,"Maximum",14);ui.label(popup,"componentLabel",316,84,"Range (blank if one)",14)
+			popup.minimum=new("EditControl"):EditControl(ui.anchor,{16,106,134,26},group.minBaseValue~=nil and tostring(group.minBaseValue) or "",nil,nil,16)
+			popup.maximum=new("EditControl"):EditControl(ui.anchor,{166,106,134,26},group.maxBaseValue~=nil and tostring(group.maxBaseValue) or "",nil,nil,16)
+			popup.component=new("EditControl"):EditControl(ui.anchor,{316,106,140,26},group.baseValueComponent and tostring(group.baseValueComponent) or "",nil,nil,2)
 			popup.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,158,180,28},"Keep values",function()
 				local ok,why=pcall(function()
 					local minimum=popup.minimum.buf~="" and assert(tonumber(popup.minimum.buf),"Enter a numeric minimum") or nil
 					local maximum=popup.maximum.buf~="" and assert(tonumber(popup.maximum.buf),"Enter a numeric maximum") or nil
+					local component=popup.component.buf~="" and assert(tonumber(popup.component.buf),"Enter a range number") or nil
 					for _,value in ipairs({minimum or 0,maximum or 0}) do assert(value==value and math.abs(value)<=10000000,"Base values must be within the supported range") end
 					assert(minimum==nil or maximum==nil or minimum<=maximum,"Minimum base value exceeds maximum")
+					if component~=nil then assert(component==math.floor(component) and component>=1 and component<=20,"Choose a range number from 1 to 20");assert(minimum~=nil or maximum~=nil,"A range number needs a minimum or maximum value") end
 					if minimum~=nil or maximum~=nil then
 						assert(controls.scope:GetSelValue()=="Explicit modifiers","Base-roll values currently require explicit modifier targets")
 						if model then for _,id in ipairs(group.anyOf) do
 							local mod=model.byId[id];assert(mod,"This modifier needs its own base-roll model: "..id)
-							local value,reason=sim.singleBaseRoll(mod,0.5);assert(value~=nil,(reason or "Unsupported base roll")..": "..id)
+							local reason=sim.baseRollReason(mod,component);assert(not reason,(reason or "Unsupported base roll")..": "..id)
 						end end
 					end
-					group.minBaseValue,group.maxBaseValue=minimum,maximum
+					group.minBaseValue,group.maxBaseValue,group.baseValueComponent=minimum,maximum,component
 				end)
 				if not ok then ui.errorPopup("Base roll value",why);return end;main:ClosePopup()
 			end))
@@ -67,7 +70,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 		controls.baseRoll.label=function() return (group.minBaseValue~=nil or group.maxBaseValue~=nil) and "Base value set..." or "Base roll value..." end
 		controls.baseRoll.tooltipText=function()
 			local selected=(group.minBaseValue~=nil and ("Minimum: "..group.minBaseValue..". ") or "")..(group.maxBaseValue~=nil and ("Maximum: "..group.maxBaseValue..". ") or "")
-			return selected.."Set base values before catalyst and character scaling. Every selected modifier must have one numeric range."
+			return selected..(group.baseValueComponent and ("Range: "..group.baseValueComponent..". ") or "").."Set base values before catalyst and character scaling. Choose a range number for multi-value modifiers."
 		end
 	end
 	local properties={{"openPrefixes","Open prefixes"},{"openSuffixes","Open suffixes"},{"minAffixes","Minimum affixes"},{"maxAffixes","Maximum affixes"},{"minQuality","Minimum quality"},{"sockets","Minimum sockets"},{"links","Minimum linked sockets"},{"minMemoryStrands","Minimum memory strands"},{"maxMemoryStrands","Maximum memory strands"},{"minFractured","Minimum fractured mods"},{"maxFractured","Maximum fractured mods"},{"minIntangibility","Minimum Intangibility"},{"maxIntangibility","Maximum Intangibility"}}

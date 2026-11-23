@@ -1,6 +1,10 @@
-VERSION[2.68.1-ai.preview1219][2026/11/23]
+VERSION[2.68.1-ai.preview1220][2026/11/23]
 
 * Compare new upstream files against imported filters and retain reviewed personal edits.
+
+VERSION[2.68.1-ai.preview1219][2026/11/23]
+
+* Target individual values on multi-range crafting modifiers.
 
 VERSION[2.68.1-ai.preview1218][2026/11/23]
 

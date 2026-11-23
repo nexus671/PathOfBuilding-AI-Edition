@@ -11,6 +11,17 @@ state.affixes[1]={id="IncreasedLife3",range=0.8};assert(sim.matches(state,{eithe
 state.affixes[1].range=0;assert(not sim.matches(state,{either},nil,model));either.negate=true;assert(sim.matches(state,{either},nil,model))
 assert(sim.singleBaseRoll({"Adds (1-2) to (3-4) Fire Damage"},0.5)==nil)
 assert(sim.singleBaseRoll({"+(0-5) to Level 20 Example"},0)==0)
+local weaponRaw='Rarity: NORMAL\nRusted Sword\nItem Level: 86';local weapon=sim.model(weaponRaw);local mod=weapon.byId.LocalAddedColdDamage2
+assert(sim.baseRollValue(mod,{0,1},1)==7 and sim.baseRollValue(mod,{0,1},2)==16)
+assert(sim.baseRollValue(mod,{1,0},1)==9 and sim.baseRollValue(mod,{1,0},2)==14)
+assert(sim.baseRollValue({'+(10-20) to maximum Life','+(1-5) to Strength'},{0.2,0.8},2)==4)
+assert(sim.baseRollReason(mod,nil) and sim.baseRollReason(mod,3) and not sim.baseRollReason(mod,2))
+local weaponState=copyTable(weapon.initial);weaponState.rarity="RARE";weaponState.affixes={{id="LocalAddedColdDamage2",range={0,1}}}
+local minTarget={anyOf={"LocalAddedColdDamage2"},minBaseValue=7,baseValueComponent=1}
+local maxTarget={anyOf={"LocalAddedColdDamage2"},minBaseValue=16,baseValueComponent=2}
+assert(sim.matches(weaponState,{minTarget,maxTarget},nil,weapon));maxTarget.minBaseValue=17;assert(not sim.matches(weaponState,{minTarget,maxTarget},nil,weapon));maxTarget.minBaseValue=16
+local multiEstimate=sim.calculate(weaponRaw,{method="alchemy"},{maxTarget},nil,{trials=20,seed=5});assert(multiEstimate.sampled and multiEstimate.trials==20)
+assert(not pcall(sim.validateRecipe,{steps={{method="alchemy"}},targets={{anyOf={"LocalAddedColdDamage2"},baseValueComponent=2}}}))
 assert(not pcall(sim.validateRecipe,{steps={{method="alchemy"}},targets={{anyOf={"IncreasedLife4"},scope="implicit",minBaseValue=1}}}))
 assert(not pcall(sim.validateRecipe,{steps={{method="alchemy"}},targets={{anyOf={"IncreasedLife4"},minBaseValue=70,maxBaseValue=60}}}))
 local result=sim.calculate(raw,{method="alchemy"},{goal},nil,{trials=30,seed=5})
@@ -23,6 +34,9 @@ local run=sim.simulate(raw,recipe,{trials=20,maxActions=1,seed=5});assert(run.tr
 newBuild();local store=build.savers.CraftingProjects;store:Upsert({id="base-roll",title="Base roll",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe=recipe})
 local xml={};store:Save(xml);local restored=require("Modules.CraftingProjects").new(build);restored:Load(xml)
 assert(restored.projects[1].nativeRecipe.targets[1].minBaseValue==65 and restored.projects[1].nativeRecipe.targets[1].maxBaseValue==67,"Saved recipe lost the base-roll target")
+store:Upsert({id="multi-roll",title="Multi roll",slot="Weapon 1",startingItem=weaponRaw,goals={},steps={},nativeRecipe={steps={{method="alchemy"}},targets={minTarget,maxTarget}}})
+xml={};store:Save(xml);restored=require("Modules.CraftingProjects").new(build);restored:Load(xml)
+assert(restored.projects[2].nativeRecipe.targets[2].baseValueComponent==2,"Saved recipe lost the component")
 local complex;for _,entry in ipairs(model.mods) do local n=0;for _,line in ipairs(entry.mod) do for _ in line:gmatch("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)") do n=n+1 end end;if n>1 then complex=entry.id;break end end
 assert(complex and not pcall(sim.calculate,raw,{method="alchemy"},{{anyOf={complex},minBaseValue=1}},nil,{trials=2,seed=5}),"Ambiguous multi-value modifier must be rejected")
 local tincture='Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n30% reduced Mana Burn rate\n30% increased Melee Weapon Attack Speed'
@@ -33,10 +47,10 @@ assert(sim.matches(rerolled,{{anyOf={affix.id},minBaseValue=0}},nil,tinctureMode
 local UI=require("Modules.HeadlessUI")
 for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build);local saved
-	local parent=require("Classes.CraftingTargetControl").Open({{anyOf={"IncreasedLife4"}}},nil,nil,function(groups) saved=groups end,1,nil,model)
+	local parent=require("Classes.CraftingTargetControl").Open({{anyOf={"LocalAddedColdDamage2"}}},nil,nil,function(groups) saved=groups end,1,nil,weapon)
 	if output then ui:frame():write(output.."/"..size[1].."-crafting-base-roll-parent.json") end
-	ui:click("baseRoll");ui:text("minimum","65");ui:text("maximum","67")
+	ui:click("baseRoll");ui:text("minimum","15");ui:text("maximum","16");ui:text("component","2")
 	if output then ui:frame():write(output.."/"..size[1].."-crafting-base-roll.json") end
-	ui:click("keep");assert(parent.baseRoll.label()=="Base value set...");ui:click("keep");assert(saved[1].minBaseValue==65 and saved[1].maxBaseValue==67)
+	ui:click("keep");assert(parent.baseRoll.label()=="Base value set...");ui:click("keep");assert(saved[1].minBaseValue==15 and saved[1].maxBaseValue==16 and saved[1].baseValueComponent==2)
 end
 print("CRAFTING_BASE_ROLL_OK")

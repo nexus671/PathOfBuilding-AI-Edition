@@ -107,6 +107,8 @@ async function main(){
   const raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';
   const baseRoll=await queued('calculate_crafting',{baseRevision:context.revision,itemText:raw,action:{method:'alchemy'},targets:[{anyOf:['IncreasedLife4'],minBaseValue:65,maxBaseValue:67}],options:{trials:20,seed:5}},'crafted');
   assert.equal(baseRoll.nativeCrafting.sampled,true);assert.equal(baseRoll.nativeCrafting.trials,20);
+  const multiRoll=await queued('calculate_crafting',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nRusted Sword\nItem Level: 86',action:{method:'alchemy'},targets:[{anyOf:['LocalAddedColdDamage2'],minBaseValue:15,baseValueComponent:2}],options:{trials:20,seed:5}},'crafted');
+  assert.equal(multiRoll.nativeCrafting.sampled,true);assert.equal(multiRoll.nativeCrafting.trials,20);
   const flatGoal=await queued('calculate_crafting',{baseRevision:context.revision,itemText:raw,action:{method:'alchemy'},targets:[],options:{requirements:{nativeStats:{ItemLife:40,ItemFireResist:10}},trials:20,seed:5}},'crafted');
   assert.equal(flatGoal.nativeCrafting.sampled,true);assert.equal(flatGoal.nativeCrafting.trials,20);assert.ok(flatGoal.nativeCrafting.successChance>=0 && flatGoal.nativeCrafting.successChance<=100);
   const implicitBase='Rarity: NORMAL\nRuby Ring\nItem Level: 83';
