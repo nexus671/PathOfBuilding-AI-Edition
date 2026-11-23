@@ -163,7 +163,7 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 		onKeep(groups,result,required);main:ClosePopup()
 	end)
 	button("close",496,568,112,"Close",function() main:ClosePopup() end)
-	button("itemStats",208,568,166,"Weapon / defence",function()
+	button("itemStats",208,568,166,"Item stat goals",function()
 		require("Classes.CraftingItemStatsControl").Open(conditions.nativeStats,function(value) conditions.nativeStats=value end)
 	end)
 	button("catalystGoal",382,568,106,"Catalyst...",function()

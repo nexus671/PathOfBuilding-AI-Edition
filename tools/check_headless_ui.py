@@ -59,6 +59,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_atlas_refinement.lua")
     sources.append(ROOT / "tools/test_atlas_preview_details_ui.lua")
     sources.append(ROOT / "tools/test_crafting_blank_ui.lua")
+    sources.append(ROOT / "tools/test_crafting_flat_stats.lua")
     sources.append(ROOT / "tools/test_crafting_base_implicit_ui.lua")
     sources.append(ROOT / "tools/test_unique_random_guide_ui.lua")
     sources.append(ROOT / "tools/test_unique_fractional_ui.lua")
@@ -206,6 +207,10 @@ def main():
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-base-implicit-controls.log").write_text(base_implicit.stdout)
     assert base_implicit.returncode == 0, base_implicit.stdout
+    flat_stats = subprocess.run(lua_command + ["../tools/test_crafting_flat_stats.lua", str(frames)], cwd=ROOT / "src",
+                                env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-flat-stats.log").write_text(flat_stats.stdout)
+    assert flat_stats.returncode == 0, flat_stats.stdout
     unique_random_guide = subprocess.run(lua_command + ["../tools/test_unique_random_guide_ui.lua"], cwd=ROOT / "src",
                                          env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "unique-random-guide-controls.log").write_text(unique_random_guide.stdout)
@@ -455,7 +460,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2480, f"Expected 2480 UI frames, found {len(paths)}"
+    assert len(paths) == 2483, f"Expected 2483 UI frames, found {len(paths)}"
     for name in ("960-inventory-source.json", "960-inventory-source-detail.json"):
         assert (frames / name).is_file(), f"Missing saved-item source view: {name}"
     for width in (960, 1024, 1280):
