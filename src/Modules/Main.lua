@@ -397,7 +397,7 @@ function main:Shutdown()
 end
 
 function main:OnFrame()
-	if not launch.headless and self.userPath then require("Modules.LootFilterDailySync").tick(os.time()) end
+	if not launch.headless and self.userPath then require("Modules.LootFilterDailySync").tickAll(os.time()) end
 	self.screenW, self.screenH = GetVirtualScreenSize()
 
 	if self.screenH > self.screenW then
