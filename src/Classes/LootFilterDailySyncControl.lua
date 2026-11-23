@@ -119,11 +119,21 @@ function M.Open(profileId, profileName)
 	local loadingLeagues = false
 	c.chooseLeague = new("ButtonControl"):ButtonControl(ui.anchor,{width-142,160,126,26},"Choose league",function()
 		if launch.noSSL then main:OpenMessagePopup("Choose league", "Enable HTTPS certificate verification in PoB."); return end
+		if sync.providerWait(os.time())>0 then
+			main:OpenMessagePopup("Choose league","The market provider asked PoB to wait before requesting prices again.")
+			return
+		end
 		local owner = main.popups[1]
 		loadingLeagues = true
 		launch:DownloadPage(market.endpoint.."leagues",function(response, err)
+			local code = err and tonumber(err:match("^Response code: (%d+)$"))
+			local wait = sync.noteProviderLimit(response,code,os.time())
 			loadingLeagues = false
 			if main.popups[1] ~= owner then return end
+			if wait then
+				main:OpenMessagePopup("Choose league","The market provider asked PoB to wait before requesting prices again.")
+				return
+			end
 			local valid, leagues = pcall(function()
 				assert(not err, "The price provider could not be reached")
 				return market.tradeLeagues(sync.fresh(response,os.time()))
