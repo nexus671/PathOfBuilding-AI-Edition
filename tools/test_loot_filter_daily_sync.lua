@@ -62,6 +62,10 @@ assert(sync.status:find("Protected drops verified",1,true) and read(target):find
 assert(calls==9)
 local sample = sync.configuration().review.changes[1].sample
 assert(sample.action=="Show" and sample.count==5)
+local exposed = sync.publicStatus(now)
+assert(exposed.state=="enabled" and exposed.adjustmentCount==1 and exposed.latestChanges[1].proposedCutoff==4)
+local payload=require("dkjson").encode(exposed)
+assert(not payload:find("target.filter",1,true) and not payload:find("protect.json",1,true))
 sync.tick(now+60)
 assert(calls==9)
 sync.tick(now+60,true)

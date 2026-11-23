@@ -92,6 +92,44 @@ function M.nextEligible(config, now)
 	return nowText(math.max(scheduled, retryAt))
 end
 
+
+-- The AI bridge gets a bounded, path-free view. File names, local settings,
+-- protected sample definitions and transport errors stay on the desktop.
+local publicCache
+function M.publicStatus(now)
+	if publicCache and publicCache.at == now and publicCache.status == M.status then return publicCache.value end
+	local ok, config = pcall(get)
+	if not ok then return {configured=false,state="settings_error"} end
+	if not config then return {configured=false,state="unconfigured"} end
+	local review = type(config.review)=="table" and config.review or {}
+	local output = {
+		configured=true,
+		state=M.busy and "running" or not config.enabled and "disabled" or config.paused and "paused" or "enabled",
+		league=type(config.league)=="string" and config.league:match("^[%w%s_-]+$") and config.league:sub(1,80) or nil,
+		lastSuccess=type(config.lastSuccess)=="number" and config.lastSuccess or nil,
+		latestChanges={},
+	}
+	if output.state == "enabled" and (M.status:match("^Sync skipped:") or M.status:match("^Daily sync timed out")) then
+		output.state = "error"
+		output.warning = "Open the PoB Daily price sync dialog for the latest failure."
+	end
+	local timeValid, eligible = pcall(M.nextEligible,config,now)
+	if timeValid then output.nextEligible = eligible end
+	local changes = type(review.changes)=="table" and review.changes or {}
+	output.adjustmentCount = #changes
+	output.skippedCount = type(review.skipped)=="table" and #review.skipped or 0
+	for index, item in ipairs(changes) do
+		if index > 40 then break end
+		if type(item)=="table" and type(item.name)=="string" and #item.name<=200 and not item.name:find("[%c/\\]")
+			and type(item.old)=="number" and type(item.cutoff)=="number" then
+			output.latestChanges[#output.latestChanges+1] = {item=item.name,previousCutoff=item.old,proposedCutoff=item.cutoff,
+				mapOnly=item.maps==true}
+		end
+	end
+	publicCache = {at=now, status=M.status, value=output}
+	return output
+end
+
 local function filterPath(path)
 	assert(type(path) == "string" and #path <= 1000 and path:match("^%a:[/\\]") and not path:find("[%c]") and path:lower():match("%.filter$"),
 		"Enter an absolute Windows .filter path")

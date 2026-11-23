@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="4722454be65516a878c814a5a0da92458aa9d389" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="c54c372946ec05298aa43b576120cbd21d8f7ce7" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -1787,7 +1787,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
 	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="2cbd39588b675ac2fcd5bf891cf7eabfa45a0885" />
 	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="0da126cace9ad60f854ee5664c33fa6a14e6668d" />
-	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="36c554eebfcffd0ca7760994f5accfb8e4dffe62" />
+	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="6c347008a0caac3e5f0e8b938c5085f62cc9ded6" />
 	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="5e0966bae9160352990b7e4801999bcd8684dcbc" />
 	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="79584a14f00c60ee7ebad3d3a708e60d7ccf871c" />
 	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="7ebeea7f5f2a49d4a28610721db2f04d3eb158d7" />
@@ -2225,7 +2225,7 @@
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />
 	<File name="Modules/DataLegionLookUpTableHelper.lua" part="program" sha1="ece92c4b6062f627f98ba2454531366b4628abfc" />
-	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="576f2f0c5197cf38f28193667d9bce4cff51c94e" />
+	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="1be6fe12b7d8af9a9df4e0f55857c027bbb38eaa" />
 	<File name="Modules/EncounterReport.lua" part="program" sha1="710dc78939bfbc8282f295cf626bcde9c9b7d8e5" />
 	<File name="Modules/HeadlessCompression.lua" part="program" sha1="16a42bf407eb777602f9b03b5c8466188a04ee58" />
 	<File name="Modules/HeadlessUI.lua" part="program" sha1="c6c4a15e7ea52ebd7ea65e3bfe5f53f9c9cd1637" />
