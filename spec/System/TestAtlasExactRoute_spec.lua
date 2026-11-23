@@ -117,6 +117,15 @@ describe("Exact small Atlas routes",function()
 		while job.thread and ticks<5000 do jobs.tick(owner,true);ticks=ticks+1 end
 		assert.is_nil(job.error);assert.is_truthy(job.result);assert.is_true(job.result.routing.heuristic);assert.is_true(ticks>1);jobs.reset(owner)
 	end)
+	it("reconnects groups of desired nodes to improve a larger 3.30 route",function()
+		local tree=atlas.tree("3.30.0c");local p={id="subset",title="Subset",version="3.30.0c",budget=tree.maxPoints,nodes={},notes=""}
+		local ids={3926,37197,37454,40832,48405,50907,55003,64980};local before=copyTable(p)
+		local _,baseline=atlas.connectOptimized(p,ids,nil,{exact=false})
+		local route,added,info=atlas.connectOptimized(p,ids)
+		assert.equal(63,#baseline);assert.equal(62,#added);assert.equal(2,info.refinements);assert.is_true(info.heuristic)
+		assert.same(before,p);local present={};for _,id in ipairs(route.nodes) do present[id]=true end
+		for _,id in ipairs(ids) do assert.is_true(present[id]) end;assert.is_truthy(atlas.validate(route))
+	end)
 	it("ignores allocated and repeated targets when choosing an exact route",function()
 		local p={id="existing",title="Existing",version="3.30.0-preview",budget=150,nodes={},notes=""}
 		p=atlas.connect(p,{53175});assert.is_true(#p.nodes>=4)

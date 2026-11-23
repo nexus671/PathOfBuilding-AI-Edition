@@ -56,6 +56,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_atlas_remove_ui.lua")
     sources.append(ROOT / "tools/test_atlas_regions_history_ui.lua")
     sources.append(ROOT / "tools/test_atlas_search_ui.lua")
+    sources.append(ROOT / "tools/test_atlas_refinement.lua")
     sources.append(ROOT / "tools/test_atlas_preview_details_ui.lua")
     sources.append(ROOT / "tools/test_crafting_blank_ui.lua")
     sources.append(ROOT / "tools/test_crafting_base_implicit_ui.lua")
@@ -177,6 +178,10 @@ def main():
                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-search-controls.log").write_text(atlas_search.stdout)
     assert atlas_search.returncode == 0, atlas_search.stdout
+    atlas_refinement = subprocess.run(lua_command + ["../tools/test_atlas_refinement.lua"], cwd=ROOT / "src",
+                                      env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "atlas-refinement.log").write_text(atlas_refinement.stdout)
+    assert atlas_refinement.returncode == 0, atlas_refinement.stdout
     atlas_preview = subprocess.run(lua_command + ["../tools/test_atlas_preview_details_ui.lua"], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-preview-details-controls.log").write_text(atlas_preview.stdout)
