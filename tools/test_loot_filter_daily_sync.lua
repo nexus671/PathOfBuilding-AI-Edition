@@ -182,6 +182,9 @@ Show
 		end
 	end
 	local appearance = require("Modules.LootFilterPriceAppearance")
+	local boundaryQuotes = quote(0.01)
+	local _, decimal = market.review(raw,boundaryQuotes,100,{highlightChaos=0.07,strongHighlightChaos=0.08000001})
+	assert(decimal[1].highlights[1].firstStack==7 and decimal[1].highlights[2].firstStack==9)
 	assert(appearance.strip(styled)==raw)
 	local bom = "\239\187\191"
 	local plain = bom..'Show\r\n    Class == "Stackable Currency"\r\n    BaseType == "Orb of Alteration"\r\n'
