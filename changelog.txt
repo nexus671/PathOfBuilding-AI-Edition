@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1163][2026/11/22]
+
+* Explain how AI clients can cancel saved-item searches.
+
 VERSION[2.68.1-ai.preview1162][2026/11/22]
 
 * Let AI item lookups reject a changed build revision.
