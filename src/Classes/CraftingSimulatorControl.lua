@@ -601,7 +601,7 @@ function Panel.Open(build,project,layout)
 	end)
 	button(controls,"resourcePrices",232,266,200,"Resource prices",function()
 		local books={};for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id~=draft.id and project.priceBook and next(project.priceBook.values) then books[#books+1]=project end end
-		local crafts={action()};for _,step in ipairs(draft.nativeRecipe and draft.nativeRecipe.steps or {}) do crafts[#crafts+1]=step end
+		local crafts={action()};for _,step in ipairs(require("Modules.CraftingPrices").reachableSteps(draft.nativeRecipe and draft.nativeRecipe.steps)) do crafts[#crafts+1]=step end
 		require("Classes.CraftingPricesControl").Open(simulator.context(model,state),state,crafts,draft.priceBook,controls.currency.buf,function(book)
 			if controls.currency.buf~=book.currency then controls.currency:SetText(book.currency);updateCurrency() end
 			draft.priceBook=book;if draft.run then draft.run.settings.currency=book.currency end;draft=copyTable(build.savers.CraftingProjects:Upsert(draft))

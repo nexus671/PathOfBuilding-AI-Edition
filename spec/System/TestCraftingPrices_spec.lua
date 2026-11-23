@@ -1,6 +1,12 @@
 -- cspell:ignore jsontype
 describe("Saved crafting resource prices",function()
 	local sim=require("Modules.CraftingSimulator");local prices=require("Modules.CraftingPrices")
+	it("includes every reachable success and recovery route without following dead steps",function()
+		local steps={{method="alchemy",onSuccess=3,onFailure=4},{method="alteration"},{method="chaos",onSuccess=5,onFailureAction="restart"},{method="scour",onSuccess=5,onFailureAction="stop"},{method="exalt",onSuccess=3,onFailureAction="salvage"}}
+		local reachable=prices.reachableSteps(steps);assert.are.same({steps[1],steps[3],steps[4],steps[5]},reachable)
+		steps[1].onFailure=2;assert.are.same(steps,prices.reachableSteps(steps))
+		assert.are.same({},prices.reachableSteps({}))
+	end)
 	it("does not turn new service artwork into a currency quote",function()
 		local aliases=prices.currencyAliases({alchemy="alchemy-id",beast_talisman_imprint="orb-id",future_service="orb-id"})
 		assert.equal("alchemy-id",aliases.alchemy);assert.is_nil(aliases.beast_talisman_imprint);assert.is_nil(aliases.future_service)

@@ -130,6 +130,22 @@ function M.describe(key,model,action)
 	end
 	return label,id and data.items[id].path,"Whole action"
 end
+-- Keep both success and failure paths: action outcomes and item states may vary.
+function M.reachableSteps(steps)
+	steps=steps or {};local seen,queue={},{}
+	local function visit(index)
+		if type(index)=="number" and index==math.floor(index) and index>=1 and index<=#steps and not seen[index] then seen[index]=true;queue[#queue+1]=index end
+	end
+	visit(1);local cursor=1
+	while cursor<=#queue do
+		local index=queue[cursor];cursor=cursor+1;local step=steps[index]
+		visit(step.onSuccess or index+1)
+		if step.onFailureAction=="restart" then visit(1)
+		elseif step.onFailureAction~="stop" and step.onFailureAction~="salvage" then visit(step.onFailure or index+1) end
+	end
+	local result={};for index,step in ipairs(steps) do if seen[index] then result[#result+1]=step end end
+	return result
+end
 function M.entries(model,state,actions,book,recipeState)
 	local result,seen={},{};local aliases=M.aliases(model)
 	local function add(key,required,action)

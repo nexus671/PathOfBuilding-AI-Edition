@@ -12,6 +12,15 @@ describe("Build-owned loot filters",function()
 	end)
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("updates ordinary recipe pickups when a skipped step becomes reachable",function()
+		local project={id="ordinary-route",title="Branched armour",slot="Body Armour",startingItem="Rarity: NORMAL\nPlate Vest\nItem Level: 86",goals={},steps={},nativeRecipe={targets={},requirements={minAffixes=1},steps={{method="alchemy",onSuccess=3,onFailure=3},{method="alteration"},{method="chaos"}}}}
+		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("ordinary-route","Ordinary route");profile.trackBuildPickups=true
+		local function has(rules) for _,rule in ipairs(rules) do if rule.origin=="craft:ordinary-route" and rule.title=="Orb of Alteration" then return true end end;return false end
+		profile.rules=filters.generate(build,profile);assert.is_false(has(profile.rules))
+		local dependencies=require("Modules.LootFilterDependencies");assert.is_false(dependencies.report(build,profile).stale)
+		project.nativeRecipe.steps[1].onFailure=2;build.savers.CraftingProjects:Upsert(project)
+		assert.is_true(has(filters.generate(build,profile)));assert.is_true(dependencies.report(build,profile).stale)
+	end)
 	it("tracks unique recipe resources only on reachable routes",function()
 		local project={id="route-test",title="Branched unique",slot="Weapon 1",startingItem="Rarity: UNIQUE\nThe Blood Reaper\nHeadsman Axe\nItem Level: 86\nSockets: R-G-B",goals={},steps={},nativeRecipe={targets={},requirements={minQuality=20},steps={{method="divine",onSuccess=3,onFailure=3},{method="jeweller"},{method="quality"}}}}
 		build.savers.CraftingProjects:Upsert(project)

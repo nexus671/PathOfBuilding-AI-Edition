@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1190][2026/11/23]
+
+* Track ordinary recipe resources and donor items along reachable routes.
+
 VERSION[2.68.1-ai.preview1189][2026/11/23]
 
 * Only track crafting materials from reachable unique recipe routes.

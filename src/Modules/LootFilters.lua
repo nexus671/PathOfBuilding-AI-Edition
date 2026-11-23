@@ -233,7 +233,7 @@ function M.generate(build,profile,checkpoint)
 			end
 		end
 		local invalidDonor=false
-		for _,linked in ipairs(linkedRecipes(p)) do for _,step in ipairs(linked.recipe.steps) do
+		for _,linked in ipairs(linkedRecipes(p)) do for _,step in ipairs(require("Modules.CraftingPrices").reachableSteps(linked.recipe.steps)) do
 			if (step.method=="awakener" or step.method=="recombine" or step.method=="recombine_predictable") and step.donorItem and step.donorItem~="" then
 				local ok=base(step.donorItem,function(item,level) return "craft-donor-"..p.id.."-"..require("sha1")(item.baseName..":"..tostring(level or 0)):sub(1,12) end,function(item) return "Donor base: "..item.baseName end,origin)
 				invalidDonor=invalidDonor or not ok
@@ -400,7 +400,7 @@ function M.generate(build,profile,checkpoint)
 			local sim=require("Modules.CraftingSimulator");local model=recipeModels[project.startingItem]
 			if not model then model=sim.model(project.startingItem);recipeModels[project.startingItem]=model end
 			local state=project.nativeRecipe.initialState and sim.validateState(model,project.nativeRecipe.initialState) or model.initial
-			local result={items={},unknown={}};for _,entry in ipairs(require("Modules.CraftingPrices").entries(model,state,project.nativeRecipe.steps,nil,state)) do
+			local prices=require("Modules.CraftingPrices");local result={items={},unknown={}};for _,entry in ipairs(prices.entries(model,state,prices.reachableSteps(project.nativeRecipe.steps),nil,state)) do
 				if entry.required and entry.kind=="Currency" then result.items[#result.items+1]={key=entry.key,name=entry.name}
 				elseif entry.required and entry.kind=="Whole action" then result.unknown[#result.unknown+1]=entry.name end
 			end;return result
