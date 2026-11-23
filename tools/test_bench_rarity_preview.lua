@@ -9,11 +9,14 @@ local unique=preview.preview(raw,"UNIQUE",42,nil,"Ezomyte Peak");assert(unique.c
 local UI=require("Modules.HeadlessUI")
 for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build)
- local project={id="bench-example",title="Bench example",slot="Helmet",startingItem=raw,goals={},steps={}}
+ local project={id="bench-example",title="Bench example",slot="Helmet",startingItem=raw,goals={},steps={{action="Original guide"}}};build.savers.CraftingProjects:Upsert(project)
  local c=require("Classes.CraftingSimulatorControl").Open(build,project);c.page:SelByValue("Craft settings");c.page.selFunc();assert(c.benchRarity:IsShown());c.benchRarity:Click()
- local popup=main.popups[1].controls;assert(not popup.copy:IsEnabled());popup.generate:Click();assert(popup.copy:IsEnabled() and #popup.exampleMods.list>0)
- popup.outcome:SelByValue("UNIQUE","val");popup.outcome.selFunc();assert(not popup.copy:IsEnabled());popup.unique:SelByValue("Ezomyte Peak","val");popup.unique.selFunc();popup.generate:Click();assert(popup.copy:IsEnabled())
+ local popup=main.popups[1].controls;assert(not popup.copy:IsEnabled() and not popup.keep:IsEnabled());popup.generate:Click();assert(popup.copy:IsEnabled() and #popup.exampleMods.list>0);popup.keep:Click();assert(not popup.keep:IsEnabled())
+ assert(build.savers.CraftingProjects.projects[2].run.state.rarity=="MAGIC");assert(build.savers.CraftingProjects.projects[2].notes:find("Conditional",1,true))
+ popup.outcome:SelByValue("UNIQUE","val");popup.outcome.selFunc();assert(not popup.copy:IsEnabled());popup.unique:SelByValue("Ezomyte Peak","val");popup.unique.selFunc();popup.generate:Click();assert(popup.copy:IsEnabled());popup.keep:Click()
+ assert(build.savers.CraftingProjects.projects[3].startingItem:find("Ezomyte Peak",1,true));assert(build.savers.CraftingProjects.projects[1].steps[1].action=="Original guide")
  if output then ui:frame():write(output.."/"..size[1].."-bench-rarity-example.json") end
+ if size[1]==960 then local xml=build:SaveDB("Bench examples");loadBuildFromXML(xml,"Bench examples");assert(build.savers.CraftingProjects.projects[2].run.state.rarity=="MAGIC");assert(build.savers.CraftingProjects.projects[3].notes:find("Conditional",1,true)) end
  ui:restore();main.popups={}
 end
 print("BENCH_RARITY_PREVIEW_OK")

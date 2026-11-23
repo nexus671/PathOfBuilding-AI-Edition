@@ -46,4 +46,15 @@ function M.preview(raw,outcome,seed,initialState,uniqueTitle)
 	return {itemText=result.itemText,state=result.state,outcome=outcome,conditional=true,dataPatch=result.dataPatch,
 		note="Conditional example only; no rarity outcome probability or price is modeled. Ordinary modifier counts, weights and values are assumptions, and bench eligibility and interactions are unverified."}
 end
+-- Turn an explicitly chosen example into a separate project. The warning is
+-- saved with it; no rarity roll, price, or equipped-item change is inferred.
+function M.project(raw,result,slot,title,id)
+	assert(type(result)=="table" and result.conditional==true and type(result.note)=="string","Choose a conditional example first")
+	assert(result.outcome=="MAGIC" or result.outcome=="RARE" or result.outcome=="UNIQUE","Invalid example outcome")
+	local project={id=id,title=title,slot=slot,startingItem=result.outcome=="UNIQUE" and result.itemText or raw,goals={},steps={},
+		notes="Conditional bench-rarity example; not an observed craft. "..result.note}
+	if result.referenceSource then project.notes=project.notes.." Bundled source: "..result.referenceSource:sub(1,500) end
+	if result.outcome~="UNIQUE" then project.run=require("Modules.CraftingInventory").run(assert(result.state,"Missing example state")) end
+	return require("Modules.CraftingProjects").validate(project)
+end
 return M

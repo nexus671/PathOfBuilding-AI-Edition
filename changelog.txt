@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1150][2026/11/22]
+
+* Keep conditional bench-rarity examples as separate crafting projects.
+
 VERSION[2.68.1-ai.preview1149][2026/11/22]
 
 * Preview conditional bench-rarity examples and same-base unique references.

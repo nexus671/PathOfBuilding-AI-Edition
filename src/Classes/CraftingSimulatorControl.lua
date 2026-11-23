@@ -933,34 +933,47 @@ function Panel.Open(build,project,layout)
 		popup.outcome=new("DropDownControl"):DropDownControl(ui.anchor,{16,150,300,26},{{label="Magic example",val="MAGIC"},{label="Rare example",val="RARE"},{label="Unique reference",val="UNIQUE"}})
 		popup.unique=new("DropDownControl"):DropDownControl(ui.anchor,{16,188,300,26},{})
 		popup.unique.shown=function() return popup.outcome:GetSelValueByKey("val")=="UNIQUE" end
-		popup.reference=ui.description(popup,"reference",16,310,350,90,{},14)
+		popup.reference=ui.description(popup,"reference",16,346,350,60,{},14)
 		popup.reference.shown=popup.unique.shown
+		popup.notice=ui.description(popup,"notice",16,414,350,32,{},14)
 		local function showSource()
 			local choice=popup.unique:GetSelValue();local source=choice and choice.source
 			popup.reference.list=ui.rows({source and "Bundled source: "..source or "Bundled source not recorded."},334,14)
 		end
 		local show=require("Classes.JourneyItemControl").new(popup,"example",390,30,360,408,"CONDITIONAL EXAMPLE",{expanded=true})
-		local example
+		local example,kept
 		local function generate()
 			local outcome=popup.outcome:GetSelValueByKey("val")
 			if outcome=="UNIQUE" then showSource() end
 			local title=outcome=="UNIQUE" and #popup.unique.list>0 and popup.unique:GetSelValueByKey("val") or nil
 			local ok,result=pcall(require("Modules.CraftingBenchRarityPreview").preview,draft.startingItem,outcome,tonumber(controls.seed.buf),state,title)
 			if not ok then ui.errorPopup("Bench rarity preview",result);return end
-			example=result.itemText;show(new("Item"):Item(example))
+			example=result;kept=false;popup.notice.list={};show(new("Item"):Item(example.itemText))
 		end
 		popup.outcome.selFunc=function()
-			example=nil;show(nil)
+			example=nil;popup.notice.list={};show(nil)
 			if popup.outcome:GetSelValueByKey("val")=="UNIQUE" then
 				local ok,result=pcall(require("Modules.CraftingBenchRarityPreview").uniqueCandidates,draft.startingItem,state)
 				if not ok then ui.errorPopup("Bench rarity preview",result);return end
 				local choices={};for _,entry in ipairs(result.candidates) do choices[#choices+1]={label=entry.title,val=entry.title,source=entry.source} end;popup.unique:SetList(choices);showSource()
 			end
 		end
-		popup.unique.selFunc=function() example=nil;show(nil);showSource() end
+		popup.unique.selFunc=function() example=nil;popup.notice.list={};show(nil);showSource() end
 		button(popup,"generate",16,230,300,"Generate example",generate)
-		button(popup,"copy",16,268,300,"Copy example item",function() assert(example,"Generate an example first");Copy(example) end)
+		button(popup,"copy",16,268,300,"Copy example item",function() assert(example,"Generate an example first");Copy(example.itemText) end)
 		popup.copy.enabled=function() return example~=nil end
+		button(popup,"keep",16,306,300,"Keep as new project",function()
+			assert(example,"Generate an example first")
+			local store=build.savers.CraftingProjects;local id,exists,attempt
+			repeat
+				attempt=(attempt or 0)+1;id="bench-"..require("sha1")(tostring({})..os.time()..attempt):sub(1,24);exists=false
+				for _,project in ipairs(store.projects) do if project.id==id then exists=true;break end end
+			until not exists
+			local title="Bench rarity example ("..example.outcome:lower()..")"
+			local project=require("Modules.CraftingBenchRarityPreview").project(draft.startingItem,example,draft.slot,title,id)
+			store:Upsert(project);kept=true;popup.notice.list=ui.rows({"Project kept. Save the build to retain it."},334,14)
+		end)
+		popup.keep.enabled=function() return example~=nil and not kept end
 		button(popup,"close",630,458,120,"Close",function() main:ClosePopup() end)
 		ui.style(popup,{generate=true});main:OpenPopup(768,500,"Bench rarity preview",popup,nil,nil,"close")
 	end)
