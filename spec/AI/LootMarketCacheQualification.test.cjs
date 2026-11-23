@@ -76,3 +76,14 @@ test('reports incomplete currency and optional gem evidence, stale data, and pro
   assert.match(probes.SkillGem.reason,/explicit level/);
   assert.equal(probes.ImbuedGem.httpStatus,403);
 });
+
+test('does not qualify regular gems from transfigured or ambiguous names alone',async()=>{
+  const f=fixture({SkillGem:()=>response({lines:[
+    {...gems.lines[0],name:'Arc of Surging',baseType:'Arc'},
+    gems.lines[0],
+    {...gems.lines[0],detailsId:'second-arc-price'},
+  ]})});
+  const report=await qualifyCache(root,{...f,extra:['SkillGem']});
+  assert.equal(report.status,'failed');
+  assert.match(report.probes.at(-1).reason,/unambiguous/);
+});

@@ -21,6 +21,35 @@ function cacheRoot(raw) {
   return url.href;
 }
 
+function exactGemQuotes(rows, regular) {
+  const identities = new Map();
+  const variants = new Map();
+  for (const row of rows) {
+    const id=row?.detailsId;
+    if (typeof id!=='string' || !id.trim()) continue;
+    const valid=typeof row.name==='string' && row.name.trim() && Number.isInteger(row.gemLevel)
+      && row.gemLevel>=1 && row.gemLevel<=40 && Number.isInteger(row.gemQuality)
+      && row.gemQuality>=0 && row.gemQuality<=100 && typeof row.corrupted==='boolean';
+    if (!valid) {
+      identities.set(id,false);
+      continue;
+    }
+    const tuple=[row.name,row.gemLevel,row.gemQuality,row.corrupted];
+    if (!regular) tuple.push(row.baseType,row.variant,id);
+    const key=JSON.stringify(tuple);
+    const eligible=positive(row.chaosValue) && positive(row.count) && positive(row.listingCount)
+      && (!regular || (row.baseType==null || row.baseType==='' || row.baseType===row.name)
+        && (row.variant==null || row.variant===''));
+    const signature=eligible && JSON.stringify([key,row.chaosValue]);
+    const prior=identities.get(id);
+    identities.set(id,prior===undefined || prior===signature ? signature : false);
+    const volume=eligible ? Math.min(row.count,row.listingCount) : 0;
+    const variant=variants.get(key);
+    variants.set(key,{ id,volume:!variant ? volume : variant.id===id ? Math.min(variant.volume,volume) : 0 });
+  }
+  return [...variants.values()].filter(row=>row.volume>=20 && identities.get(row.id)).length;
+}
+
 function priceEvidence(payload, category, kind) {
   if (kind==='exchange') {
     const names = new Map();
@@ -55,10 +84,9 @@ function priceEvidence(payload, category, kind) {
   const listed = priced.filter(row=>row.count>=20 && row.listingCount>=20
     && Number.isFinite(row.count) && Number.isFinite(row.listingCount));
   if (category==='SkillGem' || category==='ImbuedGem') {
-    const exact = listed.filter(row=>Number.isInteger(row.gemLevel) && row.gemLevel>0 &&
-      Number.isInteger(row.gemQuality) && row.gemQuality>=0 && typeof row.corrupted==='boolean');
-    if (!exact.length) throw new Error('Missing explicit level, quality and corruption on listing-backed gem quotes');
-    return { priced:priced.length, listed:listed.length, exactGemQuotes:exact.length };
+    const exact=exactGemQuotes(payload.lines,category==='SkillGem');
+    if (!exact) throw new Error('No unambiguous listing-backed gem quote with explicit level, quality and corruption');
+    return { priced:priced.length, listed:listed.length, exactGemQuotes:exact };
   }
   return { priced:priced.length, listed:listed.length };
 }
