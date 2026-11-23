@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1215][2026/11/23]
+
+* Review and adopt external filter edits into the fixed daily baseline while preserving managed rules and protected drops.
+
 VERSION[2.68.1-ai.preview1214][2026/11/23]
 
 * Optionally highlight managed stacks by their market value without changing whether they show.
