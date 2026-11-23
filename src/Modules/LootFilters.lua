@@ -794,7 +794,12 @@ function M.new(build)
 	local self={build=build,data=M.empty()}
 	function self:Load(xml)
 		local raw=table.concat(xml);if raw:match("^%s*$") then return end
-		local ok,result=pcall(function() assert(#raw<=M.limit,"Too large");return M.validate(assert(json.decode(raw,1,json.null))) end)
+		local ok,result=pcall(function()
+			assert(#raw<=M.limit,"Too large")
+			local decoded,position,err=json.decode(raw,1,json.null)
+			assert(decoded and position and not raw:sub(position):find("%S"),err or "Invalid loot filter data")
+			return M.validate(decoded)
+		end)
 		if ok then self.data=result else self.unreadable=raw;self.warning="Loot filters could not be read and will be preserved unchanged." end
 	end
 	function self:Save(xml) xml[#xml+1]=self.unreadable or json.encode(self.data) end
