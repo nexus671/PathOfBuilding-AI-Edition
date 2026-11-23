@@ -1,5 +1,6 @@
 local market = require("Modules.LootFilterEconomy")
 local parser = require("Modules.LootFilterParser")
+local protected = require("Modules.LootFilterProtectedDrops")
 return function(raw, bodies, baselineOnly, target, protections, history, day, now, policy)
 	assert(market.supports(raw), "Baseline has no economy section")
 	local quotes = {}
@@ -57,15 +58,6 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 		end
 		return candidate, #changes, changes, skipped, snapshots
 	end
-	for _, rarity in ipairs({"Normal", "Magic", "Rare", "Unique"}) do
-		for _, flag in ipairs({true, false}) do
-			check({BaseType="Cord Belt", Class="Belts", Rarity=rarity, Corrupted=flag, Identified=flag}, "0 Purple Star")
-			check({BaseType="Royal Plate", Class="Body Armours", Rarity=rarity, LinkedSockets=6, Corrupted=flag, Identified=flag}, "0 Red Diamond")
-			if rarity ~= "Unique" then
-				check({BaseType="Agate Amulet", Class="Amulets", Rarity=rarity, LinkedSockets=0, FracturedItem=false, Fated=true, Identified=flag, Corrupted=flag}, "0 Purple Star")
-			end
-			check({BaseType="Iron Ring", Class="Rings", Rarity="Magic", LinkedSockets=0, FracturedItem=true, Identified=flag, Corrupted=flag}, "0 Yellow Diamond")
-		end
-	end
+	for _, entry in ipairs(protected.samples()) do check(entry.item,entry.marker) end
 	return candidate, #changes, changes, skipped, snapshots
 end
