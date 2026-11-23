@@ -20,6 +20,8 @@ jobs:
         run: |
           $fixture = New-Item -ItemType Directory (Join-Path $env:RUNNER_TEMP "pob-loot-sync")
           python tools/run_headless_lupa.py tools/test_loot_filter_daily_sync.lua $fixture.FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/run_headless_lupa.py --filesystem tools/test_loot_filter_daily_sync_ui.lua
   test_crafting_imports:
     runs-on: ubuntu-latest
     container: ghcr.io/pathofbuildingcommunity/pathofbuilding-tests:latest
