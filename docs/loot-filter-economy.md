@@ -39,3 +39,11 @@ The desktop AI bridge exposes read-only daily sync status and up to 40 cutoff ch
 If a sync target was edited outside PoB, **External edits** compares the live file with the last verified file. Automatic sync stops before contacting the market until the live file matches the known state again or you explicitly re-enable with reviewed edits.
 
 **Copy diagnostics** exports a JSON report with recent run times, verified response ages, and available quote and simulated drop details. The report excludes local file paths and protected sample definitions.
+
+## Optional background sync on Windows
+
+Select **Enable background sync** in **Daily price sync** to register a task for your Windows account. While you are signed in, Windows checks every five minutes for a due update, including when PoB is closed. PoB still uses your configured daily time, verified baseline, and protected samples. The task stays idle when sync is paused or disabled, and **Disable background sync** removes it.
+
+**Enable notifications** adds a Windows notification for a new failure or when an update changes at least five managed cutoffs. Clicking it opens PoB. Windows notification settings determine when the alert appears.
+
+For a one-time scheduled check from the Windows command line, launch your PoB executable with `--loot-filter-sync`. It uses the saved local settings and exits after the check. It returns exit code 1 on failure. It respects the daily time, pause state, and provider cooldown.

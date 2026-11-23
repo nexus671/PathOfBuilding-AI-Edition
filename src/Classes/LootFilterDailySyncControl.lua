@@ -1,4 +1,5 @@
 local sync = require("Modules.LootFilterDailySync")
+local background = require("Modules.LootFilterBackgroundTask")
 local ui = require("Modules.PlanningUI")
 local market = require("Modules.LootFilterEconomy")
 local json = require("dkjson")
@@ -145,8 +146,28 @@ function M.Open()
 		end
 		return not sync.busy and cached.backup ~= nil
 	end
+	local function backgroundLabel()
+		return config.backgroundEnabled and "Disable background sync" or "Enable background sync"
+	end
+	c.background = new("ButtonControl"):ButtonControl(ui.anchor,{16,470,180,28},backgroundLabel(),function()
+		local owner = main.popups[1]
+		local passed, err = pcall(background.change, not config.backgroundEnabled, function(ok, why)
+			if main.popups[1] ~= owner then return end
+			if not ok then main:OpenMessagePopup("Background filter sync", ui.errorText(why)); return end
+			main:ClosePopup()
+			M.Open()
+		end)
+		if not passed then main:OpenMessagePopup("Background filter sync", ui.errorText(err)) end
+	end)
+	c.background.enabled = function() return (config.enabled or config.backgroundEnabled) and not background.busy and not sync.busy end
+	local notifyLabel = config.backgroundNotifications and "Disable notifications" or "Enable notifications"
+	c.backgroundNotify = new("ButtonControl"):ButtonControl(ui.anchor,{202,470,180,28},notifyLabel,function()
+		attempt(function() sync.setBackgroundNotifications(not config.backgroundNotifications) end)
+	end)
+	c.backgroundNotify.enabled = function() return config.backgroundEnabled and not background.busy end
+	ui.description(c,"backgroundHelp",16,504,width-32,23,{"Background updates run while you are signed in to Windows."},13)
 	ui.style(c)
-	main:OpenPopup(width, 476, "Daily filter sync", c, nil, nil, "close")
+	main:OpenPopup(width, 545, "Daily filter sync", c, nil, nil, "close")
 end
 
 return M

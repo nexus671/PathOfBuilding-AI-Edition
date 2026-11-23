@@ -320,6 +320,37 @@ assert(not pcall(clockSync.selectedLocalFilter,dir))
 print("PoE selection handles local filters and rejects stale or ambiguous selections")
 
 
+-- A Task Scheduler run needs opt-in. Its retry budget follows the profile
+-- across process restarts and even after reconfiguring the display schedule.
+local jobSync = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+jobSync.configure(target,baseline,"Covens",options)
+local jobNow = os.time()
+local jobRequests = 0
+launch.DownloadPage = function(_, _, callback)
+	jobRequests = jobRequests + 1
+	callback({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: 3600\r\n\r\n"}, "Response code: 429")
+end
+jobSync.tick(jobNow,false,true)
+assert(jobRequests==0 and not jobSync.configuration().backgroundEnabled)
+local revision = jobSync.configuration().revision
+jobSync.setBackground(true,revision)
+assert(jobSync.configuration().backgroundEnabled and jobSync.configuration().revision~=revision)
+assert(not pcall(jobSync.setBackground,false,revision))
+jobSync.setBackgroundNotifications(true)
+local runner = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+runner.tick(jobNow,false,true)
+local limited = runner.configuration()
+assert(jobRequests==1 and limited.lastFailure and limited.providerRetryAfter>=jobNow+3600)
+local newRunner = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+newRunner.tick(jobNow+600,true,true)
+assert(jobRequests==1 and not newRunner.isDue(limited,jobNow+1800))
+newRunner.configure(target,baseline,"Covens",options)
+local reconfigured = newRunner.configuration()
+assert(reconfigured.backgroundEnabled and reconfigured.backgroundNotifications and reconfigured.providerRetryAfter==limited.providerRetryAfter)
+newRunner.setBackground(false,reconfigured.revision)
+assert(not newRunner.configuration().backgroundEnabled)
+print("Background opt-in and provider cooldown persist across independent Windows sync instances")
+
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.
 local controls, manualReview, exported

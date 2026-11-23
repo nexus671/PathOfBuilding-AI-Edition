@@ -37,7 +37,8 @@ function launch:OnInit()
 	self.lastUpdateCheck = GetTime()
 	self.subScripts = { }
 	self.startTime = startTime
-	local firstRunFile = io.open("first.run", "r")
+	local syncOnly = arg and (arg[1] == "--loot-filter-sync" or arg[1] == "--loot-filter-sync-scheduled")
+	local firstRunFile = not syncOnly and io.open("first.run", "r")
 	if firstRunFile then
 		firstRunFile:close()
 		os.remove("first.run")
@@ -75,6 +76,11 @@ function launch:OnInit()
 	if installedFile then
 		self.installedMode = true
 		installedFile:close()
+	end
+	if syncOnly then
+		self.lootSyncWorker = require("Modules.LootFilterBackground")
+		self.lootSyncWorker.start(self, arg[1] == "--loot-filter-sync-scheduled")
+		return
 	end
 	RenderInit("DPI_AWARE")
 	ConPrintf("Loading main script...")
@@ -117,6 +123,10 @@ function launch:OnExit()
 end
 
 function launch:OnFrame()
+	if self.lootSyncWorker then
+		self.lootSyncWorker.frame(self)
+		return
+	end
 	if self.main then
 		if self.main.OnFrame then
 			local errMsg = PCall(self.main.OnFrame, self.main)

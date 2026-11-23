@@ -98,10 +98,20 @@ local function scheduledAt(config, now, tomorrow)
 	return os.time(date)
 end
 
+local function retryAfter(config)
+	return config.lastFailure and config.lastFailure.startedAt + 1800 or 0
+end
+
+function M.isDue(config, now)
+	return config and config.enabled and not config.paused
+		and config.day ~= os.date("%Y-%m-%d", now)
+		and now >= math.max(scheduledAt(config, now), retryAfter(config), config.providerRetryAfter or 0)
+end
+
 function M.nextEligible(config, now)
 	if not config or not config.enabled or config.paused then return nil end
 	local scheduled = scheduledAt(config, now, config.day == os.date("%Y-%m-%d", now))
-	return nowText(math.max(now, scheduled, nextPoll, retryAt, rateLimitUntil))
+	return nowText(math.max(now, scheduled, nextPoll, retryAt, rateLimitUntil, retryAfter(config), config.providerRetryAfter or 0))
 end
 
 
@@ -119,6 +129,8 @@ function M.publicStatus(now)
 		state=M.busy and "running" or not config.enabled and "disabled" or config.paused and "paused" or "enabled",
 		league=type(config.league)=="string" and config.league:match("^[%w%s_-]+$") and config.league:sub(1,80) or nil,
 		lastSuccess=type(config.lastSuccess)=="number" and config.lastSuccess or nil,
+		backgroundEnabled=config.backgroundEnabled==true,
+		backgroundNotifications=config.backgroundNotifications==true,
 		latestChanges={},
 	}
 	if output.state == "enabled" and type(config.lastFailure) == "table" then
@@ -272,15 +284,44 @@ local function prepare(target, baselineFile, league, options)
 	local key = sha(baseline)
 	return {
 		enabled=true, target=target, baseline=main.userPath.."LootFilterBaseline-"..key..".filter",
-		baselineHash=key, current=sha(original), revision=sha(tostring({})..tostring(os.time())),
+		baselineHash=key, current=sha(original),
 		league=league, hour=hour, minute=minute, targetValue=targetValue, protections=protections, protectionFile=options.protectionFile,
 	}, original, baseline
+end
+
+local function newRevision()
+	return sha(tostring({})..tostring(os.time()))
+end
+
+function M.setBackground(enabled, previousRevision)
+	assert(not M.busy, "Wait for the current sync to finish")
+	platform().lock(settingsPath() .. ".lock", function()
+		local config = assert(get(), "Enable daily sync first")
+		assert(config.revision == previousRevision, "Daily sync settings changed in another PoB window. Try again.")
+		config.backgroundEnabled = enabled
+		config.revision = newRevision()
+		save(config)
+	end)
+end
+
+function M.setBackgroundNotifications(enabled)
+	platform().lock(settingsPath() .. ".lock", function()
+		local config = assert(get(), "Enable daily sync first")
+		assert(config.backgroundEnabled, "Enable background sync first")
+		config.backgroundNotifications = enabled
+		save(config)
+	end)
 end
 
 function M.configure(target, baselineFile, league, options)
 	assert(not M.busy, "Wait for the current sync to finish")
 	local config = platform().lock(settingsPath() .. ".lock", function()
 		local nextConfig, original, baseline = prepare(target, baselineFile, league, options)
+		local current = get()
+		nextConfig.backgroundEnabled = current and current.backgroundEnabled == true
+		nextConfig.backgroundNotifications = current and current.backgroundNotifications == true
+		nextConfig.providerRetryAfter = current and current.providerRetryAfter
+		nextConfig.revision = newRevision()
 		if not read(nextConfig.baseline) then put(nextConfig.baseline, baseline) end
 		assert(read(nextConfig.baseline) == baseline, "Stored baseline does not match")
 		keepExpected(original)
@@ -398,6 +439,9 @@ local function rememberFailure(config, startedAt, message)
 			if not current or current.revision ~= config.revision or not current.enabled or current.paused
 				or current.lastSuccess and current.lastSuccess >= startedAt
 				or current.lastFailure and current.lastFailure.startedAt > startedAt then return end
+			if rateLimitUntil > os.time() then
+				current.providerRetryAfter = math.max(current.providerRetryAfter or 0, rateLimitUntil)
+			end
 			current.lastFailure = {
 				startedAt=startedAt, checkedAt=os.time(),
 				message=tostring(message):gsub("[%c]", " "):sub(1,350),
@@ -436,7 +480,7 @@ local function publish(config, bodies, ages, day, force, now)
 		assert(read(current.target) == candidate, "Installed filter verification failed")
 		current.current, current.pending, current.day = sha(candidate), nil, day
 		current.summary = string.format("%s: %d stack adjustments from the baseline. Protected drops verified.", nowText(now), count)
-		current.lastSuccess, current.lastFailure = now, nil
+		current.lastSuccess, current.lastFailure, current.providerRetryAfter = now, nil, nil
 		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages}
 		current.history = current.history or {}
 		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
@@ -532,7 +576,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure)
 	fetch(1, 1)
 end
 
-function M.tick(now, force)
+function M.tick(now, force, scheduled)
 	if M.busy then
 		if now > M.deadline then
 			local onFailure = M.busy.onFailure
@@ -554,9 +598,13 @@ function M.tick(now, force)
 	nextPoll = now + 60
 	local ok, config = pcall(get)
 	if not ok then M.status = tostring(config); return end
-	if not config or not config.enabled or config.paused then return end
+	if not config or not config.enabled or config.paused or scheduled and not config.backgroundEnabled then return end
+	if now < (config.providerRetryAfter or 0) then
+		if force then M.status = "Waiting before contacting the exchange again." end
+		return
+	end
 	local day = os.date("%Y-%m-%d", now)
-	if not force and (config.day == day or now < scheduledAt(config, now)) then
+	if not force and not M.isDue(config, now) then
 		M.status = config.lastFailure and failureStatus(config.lastFailure) or config.summary or enabledStatus(config)
 		return
 	end
