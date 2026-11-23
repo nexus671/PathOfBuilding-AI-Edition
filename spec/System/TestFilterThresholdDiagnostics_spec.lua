@@ -3,6 +3,15 @@ describe("Filter threshold conflict diagnostics",function()
  local function warnings(first,second)
   return diagnostics.shadowing(parser.parse("Show\n "..first.."\nHide\n "..second))
  end
+ it("detects impossible integer ranges without treating percentiles as integers",function()
+  for _,key in ipairs({"MapTier","GemLevel","LinkedSockets","Width","Height","Quality","DropLevel","BaseArmour","BaseEvasion","BaseEnergyShield","BaseWard","EnchantmentPassiveNum","CorruptedMods","HasEaterOfWorldsImplicit","HasSearingExarchImplicit","UnidentifiedItemTier","MemoryStrands"}) do
+   local function conflicts(lines) return diagnostics.contradictions(parser.parse("Show\n "..key.." "..table.concat(lines,"\n "..key.." "))) end
+   assert.equal(1,#conflicts({"> 2","< 3"}),key)
+   assert.equal(0,#conflicts({">= 2","<= 3","!= 2"}),key)
+   assert.equal(1,#conflicts({">= 2","<= 3","!= 2","!= 3"}),key)
+  end
+  assert.equal(0,#diagnostics.contradictions(parser.parse("Show\n BaseDefencePercentile > 2\n BaseDefencePercentile < 3")))
+ end)
  it("does not equate reordered ambiguous boolean values",function()
   local parsed=parser.parse("Show\n Corrupted True False\nHide\n Corrupted False True")
   assert.equal(0,#diagnostics.shadowing(parsed));assert.equal(2,#parsed.diagnostics)

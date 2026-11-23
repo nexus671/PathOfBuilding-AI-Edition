@@ -3,6 +3,12 @@ local M={}
 local parser=require("Modules.LootFilterParser")
 local numeric=parser.numeric
 local rarity={Normal=0,Magic=1,Rare=2,Unique=3}
+-- These are counts, levels, dimensions, whole defence values or implicit tiers.
+-- BaseDefencePercentile is intentionally excluded: it can be fractional.
+-- Sockets has special colour-pattern semantics and is handled separately.
+local integers={AreaLevel=true,ItemLevel=true,DropLevel=true,Quality=true,LinkedSockets=true,Width=true,Height=true,StackSize=true,GemLevel=true,MapTier=true,
+ BaseArmour=true,BaseEvasion=true,BaseEnergyShield=true,BaseWard=true,EnchantmentPassiveNum=true,CorruptedMods=true,
+ HasEaterOfWorldsImplicit=true,HasSearingExarchImplicit=true,UnidentifiedItemTier=true,MemoryStrands=true}
 local function number(condition)
  if #condition.values~=1 then return end
  if condition.keyword=="Rarity" then return rarity[condition.values[1]] end
@@ -89,9 +95,9 @@ function M.contradictions(parsed)
    local lower,upper=range.lower,range.upper
    local empty=lower and upper and (lower.value>upper.value or lower.value==upper.value and (not lower.inclusive or not upper.inclusive))
    if lower and upper and lower.value==upper.value and lower.inclusive and upper.inclusive and range.excluded and range.excluded[lower.value] then empty=true end
-   -- Levels and stack counts are whole numbers; exclusions can also cover
+   -- Whole-number properties can have empty ranges between adjacent values; exclusions can also cover
    -- every remaining integer in a bounded interval.
-   if lower and upper and (name=="ItemLevel" or name=="AreaLevel" or name=="StackSize") then
+   if lower and upper and integers[name] then
     local first=lower.inclusive and math.ceil(lower.value) or math.floor(lower.value)+1
     local last=upper.inclusive and math.floor(upper.value) or math.ceil(upper.value)-1
     empty=empty or first>last
