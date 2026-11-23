@@ -3,12 +3,12 @@ local parser = require("Modules.LootFilterParser")
 local M = {}
 M.categories = {"Currency", "Oil", "Omen", "Essence", "Thread", "Fragment", "Resonator", "Artifact"}
 M.endpoint = "https://poe.ninja/poe1/api/economy/"
-local classes = {
-	["Stackable Currency"] = true,
-	["Map Fragments"] = true,
-	["Misc Map Items"] = true,
-	["Delve Stackable Socketable Currency"] = true,
-}
+M.managedClasses = {"Stackable Currency", "Map Fragments", "Misc Map Items", "Delve Stackable Socketable Currency", "Divination Cards"}
+M.managedAreas = {{label="All areas", val="all"}, {label="Campaign", val="campaign"}, {label="Maps", val="maps"}}
+local classes = {}
+for _, class in ipairs(M.managedClasses) do
+	if class ~= "Divination Cards" then classes[class] = true end
+end
 
 local function finite(value)
 	return type(value) == "number" and value > 0 and value < math.huge
@@ -290,6 +290,58 @@ function M.review(raw, quotes, target, preferences)
 	end
 	section = table.concat(output)
 	return raw:sub(1, start - 1) .. section .. raw:sub(stop), changes, skipped
+end
+
+function M.validateManagedRules(rules)
+	assert(type(rules) == "table" and #rules <= 150, "Use up to 150 managed item rules")
+	local checked, seen = {}, {}
+	for index in pairs(rules) do
+		assert(type(index) == "number" and index == math.floor(index) and index >= 1 and index <= #rules, "Expected a list of managed rules")
+	end
+	for index=1,#rules do
+		local rule = rules[index]
+		assert(type(rule) == "table" and (classes[rule.class] or rule.class == "Divination Cards"), "Invalid economy item class")
+		assert(type(rule.name) == "string" and #rule.name <= 200 and rule.name:match("%S") and not rule.name:find('[%c"\\]'),
+			"Enter an exact item name")
+		assert(rule.scope == "all" or rule.scope == "campaign" or rule.scope == "maps", "Choose an area")
+		local cutoff = rule.cutoff
+		assert(cutoff == nil and rule.class == "Divination Cards" or
+			type(cutoff) == "number" and cutoff >= 1 and cutoff <= 10000 and cutoff == math.floor(cutoff), "Enter a hide cutoff from 1 to 10,000")
+		local key = rule.class .. "\0" .. rule.name
+		local scopes = seen[key] or {}
+		assert(not (scopes.all or scopes[rule.scope] or rule.scope == "all" and next(scopes)), "This item already has a managed rule covering that area")
+		scopes[rule.scope], seen[key] = true, scopes
+		checked[#checked+1] = {name=rule.name,class=rule.class,scope=rule.scope,cutoff=cutoff}
+	end
+	return checked
+end
+
+local function managedText(rules)
+	local blocks = {}
+	for _, rule in ipairs(rules) do
+		local lines = {"Hide", '    Class == "' .. rule.class .. '"', '    BaseType == "' .. rule.name .. '"'}
+		if rule.scope == "campaign" then lines[#lines+1] = "    AreaLevel < 68" end
+		if rule.scope == "maps" then lines[#lines+1] = "    AreaLevel >= 68" end
+		if rule.cutoff then lines[#lines+1] = "    StackSize <= " .. rule.cutoff end
+		blocks[#blocks+1] = table.concat(lines, "\n")
+	end
+	return table.concat(blocks, "\n\n") .. "\n\n"
+end
+
+-- Insert after a compiled profile's personal Show rules. If its imported
+-- base is already managed, preserve that prefix and extend the existing section.
+function M.addManagedSection(base, rules)
+	local blocks = managedText(M.validateManagedRules(rules))
+	local first, last, tagged = M.sectionBounds(base)
+	if tagged then
+		assert(first and last, "Fix the incomplete or duplicate managed price section in the imported base")
+		local lineEnd = assert(base:find("\n",first,true))
+		return base:sub(1,lineEnd) .. blocks .. base:sub(lineEnd+1)
+	elseif first and last then
+		return base:sub(1,first-1) .. "# PoB economy: begin\n" .. blocks ..
+			base:sub(first,last-1) .. "# PoB economy: end\n" .. base:sub(last)
+	end
+	return "# PoB economy: begin\n" .. blocks .. "# PoB economy: end\n\n" .. base
 end
 
 return M
