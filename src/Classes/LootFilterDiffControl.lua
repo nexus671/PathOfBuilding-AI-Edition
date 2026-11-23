@@ -2,7 +2,7 @@ local ui=require("Modules.PlanningUI")
 local filters=require("Modules.LootFilters")
 local diff=require("Modules.LootFilterDiff")
 local M={}
-function M.Open(before,after, rawComparison)
+function M.Open(before,after, rawComparison, action)
 	local c={};local w,h=math.min(1080,main.screenW-40),math.min(720,main.screenH-60)
 	local previous,current,review,problems
 	local function button(key,x,y,width,label,run) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,run) end
@@ -11,7 +11,7 @@ function M.Open(before,after, rawComparison)
 	c.search=new("EditControl"):EditControl(ui.anchor,{468,28,w-484,28},"","Find text",nil,160)
 	ui.label(c,"summary",16,76,"",14)
 	ui.description(c,"help",16,100,w-32,36,{(rawComparison and "Compare the current filter with the proposed output." or before and "Before is kept in this build; after is the working draft." or "No kept profile: before is empty; after is the working draft.").." Line endings are normalized for review. Long lines are abbreviated here; copied sources and reports retain full text."},13)
-	c.lines=new("TextListControl"):TextListControl(ui.anchor,{16,152,w-32,h-262},nil,{})
+	c.lines=new("TextListControl"):TextListControl(ui.anchor,{16,152,w-32,h-(action and 300 or 262)},nil,{})
 	ui.label(c,"status",16,h-90,"",13)
 	local function refresh()
 		local rows={};local mode=c.view:GetSelValue();local query=c.search.buf:lower();local shown=0
@@ -50,6 +50,7 @@ function M.Open(before,after, rawComparison)
 	button("copyBefore",212,h-46,180,"Copy before",function() Copy(previous) end);c.copyBefore.enabled=function() return previous~=nil end
 	button("copyAfter",408,h-46,180,"Copy after",function() Copy(current) end);c.copyAfter.enabled=function() return current~=nil end
 	button("close",w-156,h-46,140,"Close",function() main:ClosePopup() end)
+	if action then button("reviewAction",16,h-128,212,action.label,action.run) end
 	ui.style(c);for _,control in pairs(c) do control.layoutAudit="filter-source-diff" end;rebuild();main:OpenPopup(w,h,"Filter file changes",c,nil,"search","close");return c
 end
 return M

@@ -104,6 +104,26 @@ if output then reviewUI:frame():write(output..'/'..reviewWidth..'-filter-impact-
 reviewUI:text('search','Orb of Chance');local generic={};for _,row in ipairs(main.popups[1].controls.details.list) do generic[#generic+1]=StripEscapes(row[1] or '') end;assert(table.concat(generic,' '):find('preview cannot resolve a filter rule or included file',1,true),'Other uncertainty was not explained')
 reviewUI:click('close');main.popups={};reviewFixture=nil
 
+do
+	local review = {before='Show\n    BaseType == "Cord Belt"\n',after='Show\n    BaseType == "Cord Belt"\n# personal edit\n'}
+	local adopted
+	reviewFixture = {target=selected,enabled=true}
+	sync.externalDiff = function() return review.before,review.after end
+	sync.previewExternalAdoption = function() return review end
+	sync.adoptExternalEdits = function(id, seen)
+		assert(id=="default" and seen==review)
+		adopted = true
+	end
+	require("Classes.LootFilterDailySyncControl").Open()
+	reviewUI:click("externalEdits")
+	assert(main.popups[1].title=="Filter file changes")
+	reviewUI:click("reviewAction")
+	assert(main.popups[1].title=="Adopt filter edits" and not adopted)
+	reviewUI:click("confirm")
+	assert(main.popups[1].title=="Daily filter sync" and adopted)
+	main.popups={};reviewFixture=nil
+end
+
 -- Use the real GGG parser and a deterministic network response through the native review.
 newBuild()
 main.popups = {}

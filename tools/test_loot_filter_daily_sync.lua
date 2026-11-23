@@ -1017,3 +1017,46 @@ manualReview.choose()
 assert(exported:find("StackSize <= 6",1,true))
 assert(exported:find('BaseType == "Cheap Card" "Thin Card"',1,true))
 print("Manual review applies the native price freshness and class-specific liquidity checks")
+
+do
+	local adoptionTarget = dir .. "/external-adoption.filter"
+	local fixture = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local id = fixture.createProfile("External edits fixture")
+	local settings = {profileId=id,hour=9,targetValue=1,protectionFile=protections}
+	local adoptionBaseline = dir .. "/external-baseline.filter"
+	write(adoptionBaseline,original)
+	write(adoptionTarget,proposed)
+	fixture.configure(adoptionTarget,adoptionBaseline,"Covens",settings)
+	local prior = fixture.configuration(id)
+	local edited = "# Personal changes\n" .. proposed .. "# Personal footer\n"
+	write(adoptionTarget,edited)
+	local review = fixture.previewExternalAdoption(id)
+	assert(review.before==proposed and review.after==edited)
+	assert(review.baseline=="# Personal changes\n" .. original .. "# Personal footer\n")
+	assert(read(adoptionTarget)==edited and fixture.configuration(id).baselineHash==prior.baselineHash)
+	write(adoptionTarget,edited .. "# Changed after review\n")
+	local applied, why = pcall(fixture.adoptExternalEdits,id,review)
+	assert(not applied and why:find("changed after the review",1,true))
+	write(adoptionTarget,edited:gsub("StackSize <= 4","StackSize <= 40"))
+	applied, why = pcall(fixture.previewExternalAdoption,id)
+	assert(not applied and why:find("managed economy section changed",1,true))
+	write(adoptionTarget,edited:gsub("Show\n    BaseType","Hide\n    BaseType",1))
+	applied, why = pcall(fixture.previewExternalAdoption,id)
+	assert(not applied and why:find("Protected drop failed",1,true))
+	write(adoptionTarget,edited)
+	fixture.adoptExternalEdits(id,review)
+	local accepted = fixture.configuration(id)
+	assert(accepted.revision~=prior.revision and accepted.baselineHash~=prior.baselineHash
+		and accepted.target==prior.target and accepted.hour==prior.hour and accepted.league==prior.league)
+	assert(read(prior.baseline)==original and read(accepted.baseline)==review.baseline and read(adoptionTarget)==edited)
+	assert(not pcall(fixture.verifiedOutput,id))
+	launch.noSSL = false
+	launch.DownloadPage = function(_, url, callback)
+		local body = url:match("/leagues$") and '[{"id":"Covens"}]' or commodityBody
+		callback({header=header,body=body})
+	end
+	fixture.tick(now,true,false,id)
+	assert(fixture.status:find("Protected drops verified",1,true),fixture.status)
+	assert(fixture.verifiedOutput(id)==edited)
+	print("External edit adoption preserved the fixed cutoff, rejected stale review and protected drops, and kept the live file intact")
+end

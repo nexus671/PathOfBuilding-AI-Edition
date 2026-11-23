@@ -439,6 +439,62 @@ local function verifyUnmanagedRules(target, baseline)
 		"Baseline and target have different rules outside the economy section. Review edits and choose an updated baseline.")
 end
 
+local function externalAdoption(id)
+	local config = assert(get(id), "No saved sync setup")
+	assert(not config.pending, "Finish recovering the interrupted sync before adopting edits")
+	local before, after = M.externalDiff(id)
+	local baseline = assert(read(config.baseline), "Baseline filter is missing")
+	assert(sha(baseline) == config.baselineHash, "Baseline checksum changed")
+	verifyUnmanagedRules(before, baseline)
+
+	local strip = require("Modules.LootFilterPriceAppearance").strip
+	local expected, edited = strip(before), strip(after)
+	local oldStart, oldEnd = market.sectionBounds(expected)
+	local editStart, editEnd = market.sectionBounds(edited)
+	assert(editStart and editEnd and edited:sub(editStart,editEnd-1) == expected:sub(oldStart,oldEnd-1),
+		"The managed economy section changed. Use filter setup to review and select a new fixed baseline.")
+	assert(edited ~= expected, "There are no edits outside generated price highlights to adopt")
+	local baseStart, baseEnd = market.sectionBounds(baseline)
+	local candidate = edited:sub(1,editStart-1) .. baseline:sub(baseStart,baseEnd-1) .. edited:sub(editEnd)
+	verifyUnmanagedRules(after,candidate)
+	for _, raw in ipairs({after,candidate}) do
+		validate(raw,{},true,config.targetValue,config.protections,nil,nil,nil,config.pickupPolicy)
+	end
+	return {before=before,after=after,baseline=candidate,revision=config.revision}, config
+end
+
+function M.previewExternalAdoption(id)
+	assert(not M.busy, "Wait for the current sync to finish")
+	return lockSettings(function()
+		local reviewed = externalAdoption(id)
+		return reviewed
+	end)
+end
+
+function M.adoptExternalEdits(id, reviewed)
+	assert(not M.busy, "Wait for the current sync to finish")
+	local updated = lockSettings(function()
+		local latest, config = externalAdoption(id)
+		assert(latest.revision == reviewed.revision and latest.before == reviewed.before
+			and latest.after == reviewed.after and latest.baseline == reviewed.baseline,
+			"Filter or sync settings changed after the review")
+		local key = sha(latest.baseline)
+		local path = main.userPath.."LootFilterBaseline-"..key..".filter"
+		if not read(path) then put(path,latest.baseline) end
+		assert(read(path) == latest.baseline, "Stored baseline does not match")
+		keepExpected(latest.after)
+		assert(read(config.target) == latest.after, "Filter changed after the review")
+		config.baseline, config.baselineHash, config.current = path, key, sha(latest.after)
+		config.day, config.review, config.lastSuccess, config.lastFailure = nil, nil, nil, nil
+		config.revision = newRevision()
+		config.summary = "Adopted the reviewed edits into the fixed baseline. The next refresh will use fresh prices."
+		save(config,id)
+		return config
+	end)
+	polls[id or "default"], nextSweep = nil, 0
+	M.status = updated.summary
+end
+
 local function prepare(target, baselineFile, league, options)
 	options = options or {}
 	local targetValue = options.targetValue or 1
@@ -797,7 +853,7 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		if not force and current.day == day then return "Already synced today." end
 		local original = assert(read(current.target), "Target filter is missing")
 		local before = sha(original)
-		assert(before == current.current or before == current.pending, "Target was edited outside PoB. Review and re-enable sync to adopt your edits.")
+		assert(before == current.current or before == current.pending, "Target was edited outside PoB. Review and adopt the edits from External edits.")
 		local baseline = assert(read(current.baseline), "Baseline filter is missing")
 		assert(sha(baseline) == current.baselineHash, "Baseline checksum changed")
 		verifyUnmanagedRules(original, baseline)
@@ -1018,7 +1074,7 @@ function M.tick(now, force, scheduled, id)
 	local ready, baseline = pcall(function()
 		local original = assert(read(filterPath(config.target)), "Target filter is missing")
 		local current = sha(original)
-		assert(current == config.current or current == config.pending, "Target was edited outside PoB. Compare External edits before re-enabling.")
+		assert(current == config.current or current == config.pending, "Target was edited outside PoB. Review and adopt the edits from External edits.")
 		local raw = assert(read(config.baseline), "Baseline filter is missing")
 		assert(sha(raw) == config.baselineHash, "Baseline checksum changed")
 		verifyUnmanagedRules(original, raw)

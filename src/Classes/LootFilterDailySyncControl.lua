@@ -277,7 +277,23 @@ function M.Open(profileId, profileName)
 	button("externalEdits",16+step*2,"External edits",function()
 		local passed,before,after = pcall(sync.externalDiff,profileId)
 		if not passed then main:OpenMessagePopup("External filter edits", ui.errorText(before)); return end
-		require("Classes.LootFilterDiffControl").Open(before,after,true)
+		local canAdopt, reviewed = pcall(sync.previewExternalAdoption,profileId)
+		if canAdopt then before, after = reviewed.before, reviewed.after end
+		require("Classes.LootFilterDiffControl").Open(before,after,true,{
+			label="Adopt reviewed edits",
+			run=function()
+				if not canAdopt then main:OpenMessagePopup("External filter edits",ui.errorText(reviewed)); return end
+				main:OpenConfirmPopup("Adopt filter edits",
+					"Keep these edits in the fixed baseline?\nThe next refresh will price the original managed rules.",
+					"Adopt edits",function()
+						local adopted, why = pcall(sync.adoptExternalEdits,profileId,reviewed)
+						if not adopted then main:OpenMessagePopup("External filter edits",ui.errorText(why)); return end
+						main:ClosePopup()
+						main:ClosePopup()
+						M.Open(profileId,profileName)
+					end)
+			end,
+		})
 	end,432)
 	c.externalEdits.enabled = function() return config.target ~= nil and not sync.busy end
 	button("copyReport",16+step*3,"Copy diagnostics",function()
