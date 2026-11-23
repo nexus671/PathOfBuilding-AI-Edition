@@ -2,8 +2,8 @@
 # cspell:ignore lupa
 """Run a repository Lua script using Python's optional LuaJIT-backed Lupa."""
 
+import argparse
 import os
-import sys
 from pathlib import Path
 
 
@@ -38,36 +38,40 @@ def install_filesystem(lua):
 
 
 def main():
-    arguments = sys.argv[1:]
-    filesystem = bool(arguments and arguments[0] == "--filesystem")
-    if filesystem:
-        arguments = arguments[1:]
-    if not arguments:
-        raise SystemExit("Usage: python tools/run_headless_lupa.py [--filesystem] SCRIPT [ARGS...]")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--filesystem", action="store_true", help="provide a limited LuaFileSystem adapter")
+    parser.add_argument("--portable", type=Path, help="run against a freshly extracted portable package")
+    parser.add_argument("script", type=Path)
+    parser.add_argument("arguments", nargs=argparse.REMAINDER)
+    options = parser.parse_args()
     try:
         from lupa.luajit21 import LuaRuntime
     except ImportError as exc:
         raise SystemExit("Install Python's Lupa package with LuaJIT 2.1 support first.") from exc
 
     root = Path(__file__).resolve().parent.parent
-    script = Path(arguments[0]).resolve()
+    script = options.script.resolve()
     if not script.is_file():
         raise SystemExit(f"Lua script not found: {script}")
-    runtime = root / "runtime"
+    runtime = options.portable.resolve(strict=True) if options.portable else root / "runtime"
+    if options.portable and not all((runtime / name).is_file() for name in ("HeadlessWrapper.lua", "Launch.lua", "manifest.xml")):
+        raise SystemExit("The portable directory must contain HeadlessWrapper.lua, Launch.lua and manifest.xml.")
     dll_directory = None
     if os.name == "nt":
         dll_directory = os.add_dll_directory(str(runtime))
     os.environ["PATH"] = str(runtime) + os.pathsep + os.environ.get("PATH", "")
     os.environ.setdefault("CI", "1")
-    os.chdir(root / "src")
+    os.chdir(runtime if options.portable else root / "src")
     lua = LuaRuntime(unpack_returned_tuples=True)
-    lua.execute('package.path="?.lua;?/init.lua;../runtime/lua/?.lua;../runtime/lua/?/init.lua;"..package.path')
-    lua.execute('package.cpath="../runtime/?.dll;../runtime/?.so;"..package.cpath')
-    if filesystem:
+    lua_path = "lua/?.lua;lua/?/init.lua;" if options.portable else "../runtime/lua/?.lua;../runtime/lua/?/init.lua;"
+    lua_cpath = "?.dll;?.so;" if options.portable else "../runtime/?.dll;../runtime/?.so;"
+    lua.execute('package.path="?.lua;?/init.lua;"..' + repr(lua_path) + '..package.path')
+    lua.execute('package.cpath=' + repr(lua_cpath) + '..package.cpath')
+    if options.filesystem:
         install_filesystem(lua)
     args = lua.table()
     args[0] = str(script)
-    for index, value in enumerate(arguments[1:], 1):
+    for index, value in enumerate(options.arguments, 1):
         args[index] = value
     lua.globals().arg = args
     lua.execute("dofile(...)", str(script))
