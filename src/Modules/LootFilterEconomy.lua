@@ -1,6 +1,7 @@
 local json = require("dkjson")
 local parser = require("Modules.LootFilterParser")
 local maps = require("Modules.LootFilterMapMarket")
+local appearance = require("Modules.LootFilterPriceAppearance")
 local M = {}
 M.categories = {"Currency", "Oil", "Omen", "Essence", "Thread", "Fragment", "Resonator", "Artifact"}
 M.endpoint = "https://poe.ninja/poe1/api/economy/"
@@ -274,15 +275,10 @@ end
 local function appearanceSafe(raw)
 	local parsed = parser.parse(raw)
 	if #parsed.imports>0 or #parsed.diagnostics>0 then return false end
-	-- A Show Continue rule can only preserve the fallback action when no
-	-- other continuing rule could have changed it away from Show.
-	for _, rule in ipairs(parsed.rules) do
-		if rule.continue and rule.action~="Show" then return false end
-	end
 	return true
 end
 
-local function priceHighlights(policy, quote, cutoff, class, name, area)
+local function priceHighlights(policy, quote, cutoff, name, area)
 	local blocks = {}
 	if not M.liquid(quote) or not finite(quote.price) then return blocks end
 	local function stackAt(threshold)
@@ -290,19 +286,13 @@ local function priceHighlights(policy, quote, cutoff, class, name, area)
 	end
 	local highlight = stackAt(policy.highlightChaos)
 	local strong = stackAt(policy.strongHighlightChaos)
-	local function add(minimum, upper, icon, effect)
+	local function add(minimum,upper,tier)
 		if not minimum or minimum>10000 or upper and upper<=minimum then return end
-		local lines = {"Show",'    Class == "'..table.concat(class.values,'" "')..'"','    BaseType == "'..name..'"'}
-		if area then lines[#lines+1] = "    AreaLevel "..area.operator.." 68" end
-		lines[#lines+1] = "    StackSize >= "..minimum
-		if upper and upper<=10000 then lines[#lines+1] = "    StackSize < "..upper end
-		lines[#lines+1] = "    MinimapIcon "..icon
-		lines[#lines+1] = "    PlayEffect "..effect
-		lines[#lines+1] = "    Continue"
-		blocks[#blocks+1] = {firstStack=minimum,icon=icon,lines=lines}
+		blocks[#blocks+1] = {firstStack=minimum,upper=upper and upper<=10000 and upper or nil,
+			tier=tier,name=name,area=area and area.operator or nil}
 	end
-	add(highlight,strong,"1 Yellow Circle","Yellow")
-	add(strong,nil,"0 Orange Star","Orange")
+	add(highlight,strong,1)
+	add(strong,nil,2)
 	return blocks
 end
 
@@ -310,14 +300,15 @@ end
 -- Retain the complete original text for every unsupported rule.
 function M.review(raw, quotes, target, preferences)
 	local policy = M.pickupPolicy(target, preferences)
+	raw = appearance.strip(raw)
 	local start, stop, tagged = M.sectionBounds(raw)
 	if not start or not stop then return raw, {} end
 	local section = raw:sub(start, stop - 1)
-	local changes, skipped = {}, {}
+	local changes, skipped, highlights = {}, {}, {}
 	local useHighlights = (policy.highlightChaos or policy.strongHighlightChaos) and appearanceSafe(raw)
 	if (policy.highlightChaos or policy.strongHighlightChaos) and not useHighlights then
 		skipped[#skipped+1] = {name="Price highlights",styleOnly=true,
-			reason="This filter has imports, unverified syntax, or continuing hide rules."}
+			reason="This filter has imports or unverified syntax."}
 	end
 	local function rewrite(block)
 		local parsed = parser.parse(block)
@@ -353,7 +344,7 @@ function M.review(raw, quotes, target, preferences)
 		end
 		local old = stack and tonumber(stack.values[1]) or 1
 		if not old or old < 1 or old > 10000 or old ~= math.floor(old) then return block end
-		local group, highlights, changed = {}, {}, false
+		local group, changed = {}, false
 		for _, name in ipairs(base.values) do
 			if name:find('[%c"\\]') then return block end
 		end
@@ -361,14 +352,21 @@ function M.review(raw, quotes, target, preferences)
 		for _, name in ipairs(base.values) do
 			local quote = quotes[quoteKey(name, card and "DivinationCard")]
 			local cutoff, reason, usedPrice = cutoffFor(quote, old, pickupTarget, not card and policy.caps[name])
-			local styles = useHighlights and not card and priceHighlights(policy,quote,cutoff,class,name,area) or {}
-			for _, style in ipairs(styles) do highlights[#highlights+1] = style end
+			local styles = useHighlights and not card and priceHighlights(policy,quote,cutoff,name,area) or {}
+			if #styles>0 then
+				for _, itemClass in ipairs(class.values) do
+					local byName = highlights[itemClass] or {}
+					local specs = byName[name] or {}
+					for _, spec in ipairs(styles) do specs[#specs+1]=spec end
+					byName[name], highlights[itemClass] = specs, byName
+				end
+			end
 			if cutoff == old and #styles==0 then
 				skipped[#skipped + 1] = {name=name, old=old, reason=reason, maps=scope=="maps", scope=scope}
 			else
-				changed = true
+				changed = changed or cutoff~=old
 				local icons = {}
-				for index, style in ipairs(styles) do icons[index] = {firstStack=style.firstStack,icon=style.icon} end
+				for index, style in ipairs(styles) do icons[index] = {firstStack=style.firstStack,icon=appearance.icon(style.tier)} end
 				changes[#changes + 1] = {name=name, old=old, cutoff=cutoff, price=usedPrice or quote.price, currentPrice=quote.currentPrice,
 					source=quote.source, observations=quote.observations, classes=class.values,
 					volume=quote.volume, maps=scope=="maps", scope=scope,highlights=#icons>0 and icons or nil}
@@ -387,7 +385,6 @@ function M.review(raw, quotes, target, preferences)
 			if stack then lines[#lines + 1] = "    StackSize <= " .. cutoff end
 			output[#output + 1] = table.concat(lines, newline) .. newline
 		end
-		for _, style in ipairs(highlights) do output[#output+1] = table.concat(style.lines,newline)..newline end
 		return table.concat(output, newline)
 	end
 	local output, lines = {}, {}
@@ -420,7 +417,8 @@ function M.review(raw, quotes, target, preferences)
 		end
 	end
 	section = table.concat(output)
-	return raw:sub(1, start - 1) .. section .. raw:sub(stop), changes, skipped
+	local candidate = raw:sub(1, start - 1) .. section .. raw:sub(stop)
+	return appearance.apply(candidate,highlights), changes, skipped
 end
 
 function M.validateManagedRules(rules)

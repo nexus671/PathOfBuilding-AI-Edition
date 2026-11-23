@@ -155,6 +155,10 @@ Show
     StackSize == 18
     MinimapIcon 2 White Square
 Show
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration" "Chaos Orb"
+    MinimapIcon 2 White Circle
+Show
 ]]
 	local quotes = {["Orb of Alteration"]={price=0.2,volume=300,id="alt",source="Currency"}}
 	local style = {highlightChaos=2,strongHighlightChaos=3}
@@ -174,12 +178,23 @@ Show
 			if area==83 and stack==10 then assert(table.concat(after.styles.MinimapIcon," ")=="1 Yellow Circle") end
 			if area==83 and stack==15 then assert(table.concat(after.styles.MinimapIcon," ")=="0 Orange Star") end
 			if area==83 and stack==18 then assert(table.concat(after.styles.MinimapIcon," ")=="2 White Square") end
-			if area==60 and stack==10 then assert(not after.styles.MinimapIcon) end
+			if area==60 and stack==10 then assert(table.concat(after.styles.MinimapIcon," ")=="2 White Circle") end
 		end
 	end
+	local appearance = require("Modules.LootFilterPriceAppearance")
+	assert(appearance.strip(styled)==raw)
+	local bom = "\239\187\191"
+	local plain = bom..'Show\r\n    Class == "Stackable Currency"\r\n    BaseType == "Orb of Alteration"\r\n'
+	local marked = appearance.apply(plain,{["Stackable Currency"]={["Orb of Alteration"]={{name="Orb of Alteration",firstStack=10,tier=1}}}})
+	assert(marked~=plain and marked:sub(1,3)==bom and #parser.parse(marked).diagnostics==0 and appearance.strip(marked)==plain)
+	local tampered = styled:gsub("StackSize >= 15","StackSize >= 7",1)
+	assert(not pcall(appearance.strip,tampered))
 	local continuingHide = "Hide\n    Class == \"Stackable Currency\"\n    Continue\n\n" .. raw
-	local guarded, guardedDecisions, skipped = market.review(continuingHide,quotes,100,style)
-	assert(guarded==continuingHide and #guardedDecisions==0 and skipped[1].styleOnly)
+	local styledAfterHide = market.review(continuingHide,quotes,100,style)
+	assert(appearance.strip(styledAfterHide)==continuingHide)
+	local withImport='Import "custom.filter"\n'..raw
+	local guarded, guardedDecisions, skipped = market.review(withImport,quotes,100,style)
+	assert(guarded==withImport and #guardedDecisions==0 and skipped[1].styleOnly)
 	print("Opt-in highlights preserve visibility, apply at exact stack values, and respect later styles")
 end
 
@@ -823,6 +838,37 @@ local incomplete = profiles.configuration(coverageProfile)
 assert(incomplete.lastSuccess==verifiedCoverage.lastSuccess and #incomplete.priceHistory==2 and read(coverageTarget)==coverageBytes)
 assert(incomplete.lastFailure and incomplete.lastFailure.message:find("Currency feed has fewer than a quarter",1,true))
 print("A severe loss of exchange coverage retains the last verified output")
+
+local function checkAppearanceRoundTrip()
+	local styleBase, styleTarget=dir.."/appearance-baseline.filter",dir.."/appearance-live.filter"
+	local raw=table.concat({
+		'Show','    BaseType == "Cord Belt"', '# PoB economy: begin','Hide',
+		'    Class == "Stackable Currency"','    BaseType == "Orb of Alteration"','    StackSize <= 6',
+		'# PoB economy: end','Show','    Class == "Stackable Currency"',
+		'    BaseType == "Orb of Alteration"','    MinimapIcon 2 White Circle','',
+	},"\n")
+	write(styleBase,raw)
+	write(styleTarget,raw)
+	local profileId=profiles.createProfile("Appearance fixture")
+	local settings={profileId=profileId,hour=0,targetValue=100,protectionFile=protections,pickupPolicy={highlightChaos=2,strongHighlightChaos=3}}
+	profiles.configure(styleTarget,styleBase,"Covens",settings)
+	launch.DownloadPage=function(_,url,callback) reply(url,callback) end
+	profiles.tick(now,true,false,profileId)
+	local highlighted=read(styleTarget)
+	assert(highlighted~=raw and profiles.verifiedOutput(profileId)==highlighted)
+	profiles.tick(now,true,false,profileId)
+	assert(profiles.status:find("Protected drops verified",1,true) and read(styleTarget)==highlighted)
+	local edited=highlighted:gsub("MinimapIcon 1 Yellow Circle","MinimapIcon 2 Purple Circle",1)
+	write(styleTarget,edited)
+	assert(not pcall(profiles.configure,styleTarget,styleBase,"Covens",settings))
+	write(styleTarget,highlighted)
+	settings.pickupPolicy=nil
+	profiles.configure(styleTarget,styleBase,"Covens",settings)
+	profiles.tick(now,true,false,profileId)
+	assert(profiles.status:find("Protected drops verified",1,true) and read(styleTarget)==raw and read(styleBase)==raw)
+	print("Price highlights survive a second refresh and are reversibly removed from the target")
+end
+checkAppearanceRoundTrip()
 
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.

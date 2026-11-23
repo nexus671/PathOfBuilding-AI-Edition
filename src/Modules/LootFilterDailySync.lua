@@ -429,6 +429,8 @@ function M.externalDiff(id)
 end
 
 local function verifyUnmanagedRules(target, baseline)
+	local appearance = require("Modules.LootFilterPriceAppearance")
+	target, baseline = appearance.strip(target), appearance.strip(baseline)
 	local targetStart, targetEnd = market.sectionBounds(target)
 	local baseStart, baseEnd = market.sectionBounds(baseline)
 	assert(targetStart and targetEnd and baseStart and baseEnd

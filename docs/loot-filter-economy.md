@@ -10,7 +10,7 @@ For divination cards, use an exact `Class == "Divination Cards"` and exact `Base
 
 In **Browse loot market prices**, unique results show other quoted variants that share the same base, even when your search returns one name. A supported estimate needs at least 20 observations and 20 listings. Thin or conflicting quotes are counted separately from the supported range. The range helps review unidentified unique bases without using a named variant's price for the whole base.
 
-In Pickup policy, set optional chaos thresholds for yellow and orange highlights on managed commodity stacks. PoB uses the specified value for the stack and skips ambiguous or thin quotes. Later applicable rules can override the marker. PoB skips these highlights when continued hides or unresolved imports could change the resulting visibility.
+In Pickup policy, set optional chaos thresholds for yellow and orange highlights on managed commodity stacks. PoB uses the specified value for the stack and skips ambiguous or thin quotes. PoB adds these appearances only to matching explicit Show rules, keeping the original rule order and visibility. Use Last review to see the marker on a sampled stack. The feature skips any unresolved imports.
 
 ## Daily sync on Windows
 
