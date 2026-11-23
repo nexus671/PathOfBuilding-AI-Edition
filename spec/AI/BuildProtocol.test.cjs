@@ -177,7 +177,7 @@ test('reads loot sync status from the desktop heartbeat without queuing a write'
 });
 
 test('queues loot-filter generation, evaluation and reviewed profiles without writing exports', t => {
-  const f=fixture(t);const profile={id:'maps',title:'Map pickups',preset:'early_maps',strictness:2,trackBuildPickups:true,economyRules:[{name:'Orb of Alteration',class:'Stackable Currency',scope:'maps',cutoff:6}],manualGuideReviews:[{projectId:'helmet',signature:'a'.repeat(40)}],rules:[{id:'base',title:'Craft base',text:'Show\n BaseType == "Iron Hat"',enabled:true}]};
+  const f=fixture(t);const profile={id:'maps',title:'Map pickups',preset:'early_maps',strictness:2,trackBuildPickups:true,economyRules:[{name:'Orb of Alteration',class:'Stackable Currency',scope:'maps',cutoff:6},{name:'Blighted Map (Tier 16)',class:'Maps',scope:'maps',tier:16,mapType:'BlightedMap'}],manualGuideReviews:[{projectId:'helmet',signature:'a'.repeat(40)}],rules:[{id:'base',title:'Craft base',text:'Show\n BaseType == "Iron Hat"',enabled:true}]};
   const filters={schemaVersion:1,activeId:'maps',profiles:[profile]};f.captured.context.lootFilters=filters;f.write('context',f.captured);
   assert.deepEqual(f.call('get_loot_filters',{}).filters,filters);
   for(const name of ['generate_loot_filter','test_loot_filter','export_loot_filter']) {
