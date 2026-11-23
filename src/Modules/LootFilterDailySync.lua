@@ -4,7 +4,7 @@ local market = require("Modules.LootFilterEconomy")
 local validate = require("Modules.LootFilterSyncValidation")
 local M = { status = "Daily sync is disabled." }
 local volumeLimit = 2 * 1024 * 1024
-local nextPoll, retryAt, rateLimitUntil = 0, 0, 0
+local polls, nextSweep, rateLimitUntil = {}, 0, 0
 local function nowText(now) return os.date("%Y-%m-%d %H:%M", now) end
 
 local function read(path)
@@ -23,6 +23,8 @@ local function platform()
 	assert(ffi.os == "Windows", "Daily filter sync requires the Windows desktop runtime")
 	ffi.cdef[[
 		int __stdcall MultiByteToWideChar(unsigned int, unsigned long, const char *, int, uint16_t *, int);
+		int __stdcall WideCharToMultiByte(unsigned int, unsigned long, const uint16_t *, int, char *, int, const char *, int *);
+		unsigned long __stdcall GetFinalPathNameByHandleW(void *, uint16_t *, unsigned long, unsigned long);
 		int __stdcall MoveFileExW(const uint16_t *, const uint16_t *, unsigned long);
 		void * __stdcall CreateFileW(const uint16_t *, unsigned long, unsigned long, void *, unsigned long, unsigned long, void *);
 	]]
@@ -40,15 +42,23 @@ local function platform()
 		replace = function(from, to)
 			assert(kernel.MoveFileExW(wide(from), wide(to), 9) ~= 0, "Could not replace the file. Check access and file locks.")
 		end,
-		lock = function(path, run)
+		acquire = function(path)
 			-- Zero sharing serializes updates across app windows. Windows releases
 			-- the handle on exit, so a crash cannot leave a held lock.
 			local handle = kernel.CreateFileW(wide(path), 0x40000000, 0, nil, 4, 0x80, nil)
 			assert(handle ~= ffi.cast("void *", -1), "Another PoB window is updating this filter, or the directory is unavailable")
-			local ok, result = pcall(run)
+			return function() kernel.CloseHandle(handle) end
+		end,
+		canonical = function(path)
+			local handle = kernel.CreateFileW(wide(path), 0, 7, nil, 3, 0, nil)
+			if handle == ffi.cast("void *", -1) then return nil end
+			local buffer = ffi.new("uint16_t[32768]")
+			local length = kernel.GetFinalPathNameByHandleW(handle, buffer, 32768, 0)
 			kernel.CloseHandle(handle)
-			assert(ok, result)
-			return result
+			if length == 0 or length >= 32768 then return nil end
+			local bytes = ffi.new("char[?]", length * 4)
+			local count = kernel.WideCharToMultiByte(65001, 0, buffer, length, bytes, length * 4, nil, nil)
+			if count > 0 then return ffi.string(bytes, count):lower() end
 		end,
 	}
 	return windows
@@ -63,20 +73,93 @@ local function put(path, value)
 	platform().replace(temp, path)
 end
 
-local function settingsPath()
-	return main.userPath .. "LootFilterDailySync.json"
+local function settingsPath(id)
+	if id == nil or id == "default" then return main.userPath .. "LootFilterDailySync.json" end
+	assert(type(id) == "string" and #id == 40 and id:match("^[a-f0-9]+$"), "Invalid sync profile")
+	return main.userPath .. "LootFilterDailySync-" .. id .. ".json"
 end
 
-local function get()
-	local raw = read(settingsPath())
+local function lockSettings(run)
+	local release = platform().acquire(settingsPath() .. ".lock")
+	local ok, result = pcall(run)
+	release()
+	assert(ok, result)
+	return result
+end
+
+function M.acquireBackgroundSetup()
+	return platform().acquire(settingsPath() .. ".background.lock")
+end
+
+local function get(id)
+	local raw = read(settingsPath(id))
 	if not raw then return nil end
 	local config = json.decode(raw)
 	assert(type(config) == "table", "Invalid daily filter sync configuration")
 	return config
 end
 
-local function save(config)
-	put(settingsPath(), json.encode(config))
+local function save(config, id)
+	put(settingsPath(id), assert(json.encode(config)))
+end
+
+local function registryPath()
+	return main.userPath .. "LootFilterSyncProfiles.json"
+end
+
+function M.profiles()
+	local raw = read(registryPath())
+	local entries = raw and json.decode(raw) or (not raw and {})
+	assert(type(entries) == "table" and #entries <= 24, "Invalid sync profile list")
+	local result, seen = {{id="default",name="Default"}}, {}
+	for key in pairs(entries) do
+		assert(type(key) == "number" and key == math.floor(key) and key >= 1 and key <= #entries, "Invalid sync profile list")
+	end
+	for i=1,#entries do
+		local row = entries[i]
+		assert(type(row) == "table" and type(row.id) == "string" and #row.id == 40 and row.id:match("^[a-f0-9]+$")
+			and type(row.name) == "string" and #row.name > 0 and #row.name <= 80 and not row.name:find("[%c]")
+			and not seen[row.id], "Invalid sync profile entry")
+		seen[row.id] = true
+		result[#result+1] = row
+	end
+	return result
+end
+
+local function newRevision()
+	return sha(tostring({})..tostring(os.time()))
+end
+
+function M.createProfile(name)
+	assert(type(name) == "string" and #name <= 80 and not name:find("[%c]"), "Enter a profile name of up to 80 characters")
+	name = name:match("^%s*(.-)%s*$")
+	assert(name ~= "", "Enter a profile name")
+	return lockSettings(function()
+		local profiles = M.profiles()
+		assert(#profiles < 25, "Up to 25 sync profiles are supported")
+		for _, other in ipairs(profiles) do
+			assert(other.name:lower() ~= name:lower(), "A profile with that name already exists")
+		end
+		table.remove(profiles, 1)
+		local id = newRevision()
+		profiles[#profiles+1] = {id=id,name=name}
+		put(registryPath(),assert(json.encode(profiles)))
+		return id
+	end)
+end
+
+local function targetOwner(id, target)
+	local canonical = assert(platform().canonical(target), "Could not resolve the destination filter")
+	local known = false
+	for _, entry in ipairs(M.profiles()) do
+		local other = get(entry.id)
+		known = known or entry.id == id
+		if other and other.baseline then
+			assert(platform().canonical(other.baseline) ~= canonical, "Choose a live filter instead of a stored baseline")
+		end
+		if entry.id ~= id and other and other.target and platform().canonical(other.target) == canonical then return entry.name end
+	end
+	assert(known, "Choose a saved sync profile")
 end
 
 local function enabledStatus(config)
@@ -87,15 +170,22 @@ local function failureStatus(record)
 	return string.format("%s: %s", nowText(record.checkedAt), record.message)
 end
 
-function M.configuration()
-	return get()
+function M.configuration(id)
+	return get(id)
 end
 
-local function scheduledAt(config, now, tomorrow)
-	local date = os.date("*t", now)
-	if tomorrow then date.day = date.day + 1 end
+local function localSchedule(config, date)
 	date.hour, date.min, date.sec, date.isdst = config.hour or 9, config.minute or 0, 0, nil
 	return os.time(date)
+end
+
+local function scheduledAt(config, now)
+	local today = localSchedule(config,os.date("*t",now))
+	local year, month, day
+	if type(config.day) == "string" then year, month, day = config.day:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$") end
+	if not year then return today end
+	local nextDate = {year=tonumber(year), month=tonumber(month), day=tonumber(day) + (config.intervalDays or 1)}
+	return math.max(today,localSchedule(config,nextDate))
 end
 
 local function retryAfter(config)
@@ -104,29 +194,29 @@ end
 
 function M.isDue(config, now)
 	return config and config.enabled and not config.paused
-		and config.day ~= os.date("%Y-%m-%d", now)
 		and now >= math.max(scheduledAt(config, now), retryAfter(config), config.providerRetryAfter or 0)
 end
 
 function M.nextEligible(config, now)
 	if not config or not config.enabled or config.paused then return nil end
-	local scheduled = scheduledAt(config, now, config.day == os.date("%Y-%m-%d", now))
-	return nowText(math.max(now, scheduled, nextPoll, retryAt, rateLimitUntil, retryAfter(config), config.providerRetryAfter or 0))
+	local scheduled = scheduledAt(config, now)
+	return nowText(math.max(now, scheduled, rateLimitUntil, retryAfter(config), config.providerRetryAfter or 0))
 end
 
 
 -- The AI bridge gets a bounded, path-free view. File names, local settings,
 -- protected sample definitions and transport errors stay on the desktop.
 local publicCache
-function M.publicStatus(now)
-	if publicCache and publicCache.at == now and publicCache.status == M.status then return publicCache.value end
-	local ok, config = pcall(get)
+function M.publicStatus(now, id)
+	id = id or "default"
+	if publicCache and publicCache.at == now and publicCache.id == id and publicCache.status == M.status then return publicCache.value end
+	local ok, config = pcall(get,id)
 	if not ok then return {configured=false,state="settings_error"} end
 	if not config then return {configured=false,state="unconfigured"} end
 	local review = type(config.review)=="table" and config.review or {}
 	local output = {
 		configured=true,
-		state=M.busy and "running" or not config.enabled and "disabled" or config.paused and "paused" or "enabled",
+		state=M.busy and M.busy.profileId == id and "running" or not config.enabled and "disabled" or config.paused and "paused" or "enabled",
 		league=type(config.league)=="string" and config.league:match("^[%w%s_-]+$") and config.league:sub(1,80) or nil,
 		lastSuccess=type(config.lastSuccess)=="number" and config.lastSuccess or nil,
 		backgroundEnabled=config.backgroundEnabled==true,
@@ -151,16 +241,64 @@ function M.publicStatus(now)
 				mapOnly=item.maps==true}
 		end
 	end
-	publicCache = {at=now, status=M.status, value=output}
+	publicCache = {at=now, id=id, status=M.status, value=output, review=config.review}
 	return output
 end
 
-function M.diagnosticReport(now)
-	local status = M.publicStatus(now)
-	local config = status.configured and get()
+local function safeText(value, limit)
+	if type(value) == "string" and #value <= limit and not value:find("[%c/\\]") then return value end
+end
+
+local function finiteNumber(value)
+	if type(value) == "number" and value == value and value > -math.huge and value < math.huge then return value end
+end
+
+-- Share the verified cutoff decisions, not filter source, target paths or
+-- protected drop definitions. These decisions are saved after publication.
+function M.publicDiff(now, id)
+	local status = M.publicStatus(now,id)
+	if not status.configured or not publicCache or type(publicCache.review) ~= "table" then return nil end
+	if publicCache.diff then return publicCache.diff end
+	local review = publicCache.review
+	local changes = {}
+	local source = type(review.changes) == "table" and review.changes or {}
+	for index, change in ipairs(source) do
+		if index > 250 then break end
+		local item = type(change) == "table" and safeText(change.name,200)
+		if item and finiteNumber(change.old) and finiteNumber(change.cutoff) then
+			local sample = type(change.sample) == "table" and change.sample
+			changes[#changes+1] = {
+				item=item, source=safeText(change.source,40), previousCutoff=change.old,
+				proposedCutoff=change.cutoff, quotedPrice=finiteNumber(change.currentPrice or change.price),
+				priceUsed=finiteNumber(change.price), volume=finiteNumber(change.volume),
+				liquidityUnit=safeText(change.liquidityUnit,40),
+				mapOnly=change.maps==true, scope=safeText(change.scope,20),
+				sample=sample and {action=safeText(sample.action,20),class=safeText(sample.class,100),
+					count=finiteNumber(sample.count),line=finiteNumber(sample.line),before=safeText(sample.before,20),
+					area=finiteNumber(sample.area)} or nil,
+			}
+		end
+	end
+	local ages = {}
+	for index, age in ipairs(type(review.ages) == "table" and review.ages or {}) do
+		if index > 20 then break end
+		local standardAge = finiteNumber(age)
+		if standardAge and standardAge >= 0 and standardAge <= 3600 then ages[#ages+1] = standardAge end
+	end
+	publicCache.diff = {
+		checkedAt=finiteNumber(review.checkedAt), verifiedProtection=true,
+		responseAges=ages, changeCount=#source, changes=changes,
+	}
+	return publicCache.diff
+end
+
+function M.diagnosticReport(now, id)
+	local status = M.publicStatus(now,id)
+	local config = status.configured and get(id)
 	local report = {version=1, capturedAt=now, status=status}
 	if config then
 		report.dailyTime = string.format("%02d:%02d", config.hour or 9, config.minute or 0)
+		report.intervalDays = config.intervalDays or 1
 		report.targetChaos = config.targetValue
 		report.successfulRuns = {}
 		for index, run in ipairs(config.history or {}) do
@@ -169,28 +307,7 @@ function M.diagnosticReport(now)
 				checkedAt=run.checkedAt, adjustments=run.adjustments, oldestResponseAge=run.oldest,
 			}
 		end
-		local review = config.review
-		if review then
-			report.lastReview = {
-				checkedAt=review.checkedAt,
-				verifiedProtection=true,
-				responseAges=review.ages,
-				changes={},
-			}
-			for index, change in ipairs(review.changes or {}) do
-				if index > 250 then break end
-				if type(change.name) == "string" and #change.name <= 200 and not change.name:find("[%c/\\]") then
-					local sample = change.sample
-					report.lastReview.changes[#report.lastReview.changes+1] = {
-						item=change.name, source=change.source, previousCutoff=change.old,
-						proposedCutoff=change.cutoff, quotedPrice=change.currentPrice or change.price,
-						priceUsed=change.price, volume=change.volume,
-						mapOnly=change.maps,
-						sample=sample and {action=sample.action, class=sample.class, count=sample.count, line=sample.line},
-					}
-				end
-			end
-		end
+		report.lastReview = M.publicDiff(now,id)
 	end
 	return assert(json.encode(report, {indent=true}))
 end
@@ -235,8 +352,8 @@ local function keepExpected(raw)
 	assert(read(path) == raw, "Expected filter snapshot could not be verified")
 end
 
-function M.externalDiff()
-	local config = assert(get(), "No saved sync setup")
+function M.externalDiff(id)
+	local config = assert(get(id), "No saved sync setup")
 	assert(not M.busy, "Wait for the current sync to finish")
 	local actual = assert(read(filterPath(config.target)), "Target filter file was not found")
 	assert(sha(actual) ~= config.current and sha(actual) ~= config.pending, "The live filter matches the saved sync state")
@@ -263,6 +380,9 @@ local function prepare(target, baselineFile, league, options)
 	local targetValue = options.targetValue or 1
 	local pickupPolicy = market.pickupPolicy(targetValue, options.pickupPolicy)
 	local hour, minute = options.hour or 9, options.minute or 0
+	local intervalDays = options.intervalDays or 1
+	assert(type(intervalDays) == "number" and intervalDays >= 1 and intervalDays <= 7
+		and intervalDays == math.floor(intervalDays), "Enter a refresh interval from 1 to 7 days")
 	assert(type(hour) == "number" and hour >= 0 and hour <= 23 and hour == math.floor(hour), "Enter an hour from 0 to 23")
 	assert(type(minute) == "number" and minute >= 0 and minute <= 59 and minute == math.floor(minute), "Enter a minute from 0 to 59")
 	assert(type(targetValue) == "number" and targetValue > 0 and targetValue <= 1000, "Enter a stack target above 0 and up to 1,000 chaos")
@@ -286,40 +406,38 @@ local function prepare(target, baselineFile, league, options)
 	return {
 		enabled=true, target=target, baseline=main.userPath.."LootFilterBaseline-"..key..".filter",
 		baselineHash=key, current=sha(original),
-		league=league, hour=hour, minute=minute, targetValue=targetValue, pickupPolicy=pickupPolicy,
+		league=league, realm="pc", hour=hour, minute=minute, intervalDays=intervalDays, targetValue=targetValue, pickupPolicy=pickupPolicy,
 		protections=protections, protectionFile=options.protectionFile,
 	}, original, baseline
 end
 
-local function newRevision()
-	return sha(tostring({})..tostring(os.time()))
-end
-
-function M.setBackground(enabled, previousRevision)
-	assert(not M.busy, "Wait for the current sync to finish")
-	platform().lock(settingsPath() .. ".lock", function()
-		local config = assert(get(), "Enable daily sync first")
+function M.setBackground(enabled, previousRevision, id)
+	lockSettings(function()
+		local config = assert(get(id), "Enable daily sync first")
 		assert(config.revision == previousRevision, "Daily sync settings changed in another PoB window. Try again.")
 		config.backgroundEnabled = enabled
 		config.revision = newRevision()
-		save(config)
+		save(config,id)
 	end)
 end
 
-function M.setBackgroundNotifications(enabled)
-	platform().lock(settingsPath() .. ".lock", function()
-		local config = assert(get(), "Enable daily sync first")
+function M.setBackgroundNotifications(enabled, id)
+	lockSettings(function()
+		local config = assert(get(id), "Enable daily sync first")
 		assert(config.backgroundEnabled, "Enable background sync first")
 		config.backgroundNotifications = enabled
-		save(config)
+		save(config,id)
 	end)
 end
 
 function M.configure(target, baselineFile, league, options)
+	local id = options and options.profileId or "default"
 	assert(not M.busy, "Wait for the current sync to finish")
-	local config = platform().lock(settingsPath() .. ".lock", function()
+	local config = lockSettings(function()
 		local nextConfig, original, baseline = prepare(target, baselineFile, league, options)
-		local current = get()
+		local owner = targetOwner(id,target)
+		assert(not owner, "This destination already belongs to " .. tostring(owner))
+		local current = get(id)
 		nextConfig.backgroundEnabled = current and current.backgroundEnabled == true
 		nextConfig.backgroundNotifications = current and current.backgroundNotifications == true
 		nextConfig.providerRetryAfter = current and current.providerRetryAfter
@@ -330,37 +448,37 @@ function M.configure(target, baselineFile, league, options)
 		if not read(nextConfig.baseline) then put(nextConfig.baseline, baseline) end
 		assert(read(nextConfig.baseline) == baseline, "Stored baseline does not match")
 		keepExpected(original)
-		save(nextConfig)
+		save(nextConfig,id)
 		return nextConfig
 	end)
-	nextPoll, retryAt = 0, 0
+	polls[id or "default"], nextSweep = nil, 0
 	M.status = enabledStatus(config)
 end
 
-function M.disable()
+function M.disable(id)
 	assert(not M.busy, "Wait for the current sync to finish")
-	platform().lock(settingsPath() .. ".lock", function()
-		local config = get()
-		if config then config.enabled = false; save(config) end
+	lockSettings(function()
+		local config = get(id)
+		if config then config.enabled = false; save(config,id) end
 	end)
 	M.status = "Daily sync is disabled."
 end
 
-function M.pause(paused)
+function M.pause(paused, id)
 	assert(not M.busy, "Wait for the current sync to finish")
-	platform().lock(settingsPath() .. ".lock", function()
-		local config = assert(get(), "Enable daily sync first")
+	lockSettings(function()
+		local config = assert(get(id), "Enable daily sync first")
 		config.paused = paused
-		save(config)
+		save(config,id)
 	end)
-	nextPoll, retryAt = 0, 0
+	polls[id or "default"], nextSweep = nil, 0
 	M.status = paused and "Daily sync is paused." or "Daily sync resumed."
 end
 
-function M.rollback()
+function M.rollback(id)
 	assert(not M.busy, "Wait for the current sync to finish")
-	platform().lock(settingsPath() .. ".lock", function()
-		local config = assert(get(), "Enable daily sync first")
+	lockSettings(function()
+		local config = assert(get(id), "Enable daily sync first")
 		assert(config.backup and config.backup:match("^[a-f0-9]+$") and #config.backup == 40, "No verified backup is available")
 		local target = filterPath(config.target)
 		local original = assert(read(target), "Target filter is missing")
@@ -369,7 +487,7 @@ function M.rollback()
 		assert(sha(backup) == config.backup, "Backup checksum mismatch")
 		config.pending = config.backup
 		config.paused = true
-		save(config)
+		save(config,id)
 		assert(read(target) == original, "Target changed before rollback")
 		put(target, backup)
 		assert(read(target) == backup, "Rollback verification failed")
@@ -377,7 +495,7 @@ function M.rollback()
 		config.current, config.pending, config.backup = config.backup, nil, nil
 		config.summary = "Restored the verified backup. Daily sync is paused."
 		config.review = nil
-		save(config)
+		save(config,id)
 	end)
 	M.status = "Restored the verified backup. Daily sync is paused."
 end
@@ -435,12 +553,12 @@ function M.fresh(response, now)
 	return response.body, resident, tag
 end
 
-local function rememberFailure(config, startedAt, message)
+local function rememberFailure(config, startedAt, message, id)
 	-- A failed attempt may race with another window. Only record it for
 	-- this configuration and preserve a newer successful or failed attempt.
 	pcall(function()
-		platform().lock(settingsPath() .. ".lock", function()
-			local current = get()
+		lockSettings(function()
+			local current = get(id)
 			if not current or current.revision ~= config.revision or not current.enabled or current.paused
 				or current.lastSuccess and current.lastSuccess >= startedAt
 				or current.lastFailure and current.lastFailure.startedAt > startedAt then return end
@@ -451,14 +569,14 @@ local function rememberFailure(config, startedAt, message)
 				startedAt=startedAt, checkedAt=os.time(),
 				message=tostring(message):gsub("[%c]", " "):sub(1,350),
 			}
-			save(current)
+			save(current,id)
 		end)
 	end)
 end
 
-local function publish(config, bodies, ages, day, force, now)
-	return platform().lock(settingsPath() .. ".lock", function()
-		local current = get()
+local function publish(config, bodies, ages, day, force, now, id)
+	return lockSettings(function()
+		local current = get(id)
 		assert(current and current.enabled and not current.paused and current.baselineHash == config.baselineHash and current.target == config.target
 			and current.revision == config.revision and current.league == config.league and current.targetValue == config.targetValue and current.hour == config.hour and current.minute == config.minute and current.protectionFile == config.protectionFile, "Daily sync settings changed during the refresh")
 		if not force and current.day == day then return "Already synced today." end
@@ -478,7 +596,7 @@ local function publish(config, bodies, ages, day, force, now)
 			current.backup = before
 			assert(read(backup) == original and read(current.target) == original, "Backup or target changed during sync")
 			current.current, current.pending = before, sha(candidate)
-			save(current)
+			save(current,id)
 			assert(read(current.target) == original, "Target changed before replacement")
 			put(current.target, candidate)
 		end
@@ -490,7 +608,7 @@ local function publish(config, bodies, ages, day, force, now)
 		current.history = current.history or {}
 		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
 		if #current.history > 30 then table.remove(current.history) end
-		save(current)
+		save(current,id)
 		return current.summary
 	end)
 end
@@ -508,9 +626,9 @@ local function storeFeed(url, entry)
 	cache[url] = entry
 end
 
-local function fetchPrices(config, baseline, now, complete, onFailure)
+local function fetchPrices(config, baseline, now, complete, onFailure, id)
 	local categories = market.feedCategories(baseline)
-	local job, bodies, ages, observedAt = {onFailure=onFailure}, {}, {}, {}
+	local job, bodies, ages, observedAt = {onFailure=onFailure,profileId=id}, {}, {}, {}
 	M.busy, M.deadline = job, now + 300
 	local function finish(success, message)
 		M.busy = nil
@@ -530,7 +648,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure)
 			return
 		end
 		M.status = "Fetching " .. config.league .. " prices: " .. category
-		local url = market.endpoint .. "exchange/current/overview?league=" .. urlEncode(config.league) .. "&type=" .. category
+		local url = market.endpoint .. market.feedPath(config.league, category)
 		local cached, time = cache[url], os.time()
 		local cachedAge = cached and (time - cached.sourceAt)
 		local requestHeaders = "Accept: application/json"
@@ -581,7 +699,8 @@ local function fetchPrices(config, baseline, now, complete, onFailure)
 	fetch(1, 1)
 end
 
-function M.tick(now, force, scheduled)
+function M.tick(now, force, scheduled, id)
+	id = id or "default"
 	if M.busy then
 		if now > M.deadline then
 			local onFailure = M.busy.onFailure
@@ -599,9 +718,9 @@ function M.tick(now, force, scheduled)
 		if force then M.status = "Waiting before contacting the exchange again." end
 		return
 	end
-	if not force and (now < nextPoll or now < retryAt) then return end
-	nextPoll = now + 60
-	local ok, config = pcall(get)
+	if not force and now < (polls[id] or 0) then return end
+	polls[id] = now + 60
+	local ok, config = pcall(get,id)
 	if not ok then M.status = tostring(config); return end
 	if not config or not config.enabled or config.paused or scheduled and not config.backgroundEnabled then return end
 	if now < (config.providerRetryAfter or 0) then
@@ -613,8 +732,7 @@ function M.tick(now, force, scheduled)
 		M.status = config.lastFailure and failureStatus(config.lastFailure) or config.summary or enabledStatus(config)
 		return
 	end
-	if not force then retryAt = now + 1800 end
-	local function onFailure(message) rememberFailure(config, now, message) end
+	local function onFailure(message) rememberFailure(config, now, message, id) end
 	if launch.noSSL then
 		M.status = "Sync skipped: enable HTTPS certificate verification in PoB."
 		onFailure(M.status)
@@ -635,24 +753,57 @@ function M.tick(now, force, scheduled)
 		return
 	end
 	fetchPrices(config, baseline, now, function(bodies, ages)
-		return publish(config, bodies, ages, day, force, now)
-	end, onFailure)
+		return publish(config, bodies, ages, day, force, now, id)
+	end, onFailure, id)
 end
 
-function M.preview(target, baselineFile, league, options, callback)
+function M.dueProfiles(now, scheduled)
+	local due = {}
+	if now < rateLimitUntil then return due end
+	for _, entry in ipairs(M.profiles()) do
+		local ok, config = pcall(get,entry.id)
+		if ok and config and (not scheduled or config.backgroundEnabled) and now >= (polls[entry.id] or 0) and M.isDue(config,now) then
+			due[#due+1] = {id=entry.id,revision=config.revision}
+		end
+	end
+	return due
+end
+
+function M.tickAll(now)
+	if M.busy then M.tick(now); return end
+	if now < nextSweep then return end
+	local ok, due = pcall(M.dueProfiles,now)
+	if ok and due[1] then
+		M.tick(now,false,false,due[1].id)
+	else
+		nextSweep = now + 60
+		if not ok then M.status = tostring(due) end
+	end
+end
+
+function M.profileStatus(id)
+	if M.busy and M.busy.profileId == (id or "default") then return M.status end
+	local config = get(id)
+	if not config or not config.enabled then return "Daily sync is disabled." end
+	if config.paused then return "Daily sync is paused." end
+	return config.lastFailure and failureStatus(config.lastFailure) or config.summary or enabledStatus(config)
+end
+
+function M.preview(target, baselineFile, league, options, callback, onFailure)
 	assert(not M.busy, "Wait for the current sync to finish")
 	assert(not launch.noSSL, "Enable HTTPS certificate verification in PoB")
 	assert(os.time() >= rateLimitUntil, "Wait before contacting the rate-limited exchange again")
 	local config, original, baseline = prepare(target, baselineFile, league, options)
 	local now = os.time()
-	local found, saved = pcall(get)
+	local id = options and options.profileId or "default"
+	local found, saved = pcall(get,id)
 	local history = found and saved and saved.league == config.league and saved.baselineHash == config.baselineHash and saved.priceHistory
 	local day = history and os.date("%Y-%m-%d", now) or nil
 	fetchPrices(config, baseline, now, function(bodies)
 		local candidate = validate(baseline, bodies, false, config.targetValue, config.protections, history, day, now, config.pickupPolicy)
 		callback(original, candidate)
 		return "Preview complete. Review the proposed filter before enabling sync."
-	end)
+	end, onFailure, id)
 end
 
 return M

@@ -40,8 +40,9 @@ local function editPickupPolicy(width, target, policy, save)
 	main:OpenPopup(width,320,"Pickup policy",controls,nil,nil,"cancel")
 end
 
-function M.Open()
-	local ok, config = pcall(sync.configuration)
+function M.Open(profileId, profileName)
+	profileId, profileName = profileId or "default", profileName or "Default"
+	local ok, config = pcall(sync.configuration,profileId)
 	if not ok then main:OpenMessagePopup("Daily filter sync", ui.errorText(config)); return end
 	config = config or {}
 	local pickupPolicy = config.pickupPolicy or {}
@@ -59,16 +60,24 @@ function M.Open()
 	end
 	local function options()
 		local hour, minute = c.time.buf:match("^%s*(%d%d?):(%d%d)%s*$")
-		return {hour=tonumber(hour) or -1,minute=tonumber(minute) or -1,
+		return {profileId=profileId,hour=tonumber(hour) or -1,minute=tonumber(minute) or -1,intervalDays=tonumber(c.intervalDays.buf) or -1,
 			targetValue=tonumber(c.targetValue.buf) or -1,protectionFile=c.protectionFile.buf,pickupPolicy=pickupPolicy}
 	end
 	local function attempt(action)
 		local passed, err = pcall(action)
 		if not passed then main:OpenMessagePopup("Daily filter sync", ui.errorText(err)); return end
 		main:ClosePopup()
-		M.Open()
+		M.Open(profileId,profileName)
 	end
-	field("target", 24, "Live Path of Exile .filter file", config.target or "", 16, width-166)
+	local function browse(key, y, x, options)
+		c[key.."Browse"] = new("ButtonControl"):ButtonControl(ui.anchor,{x,y,82,26},"Browse",function()
+			local documents = GetUserPath()
+			local initial = c[key].buf ~= "" and c[key].buf or documents and (documents.."/My Games/Path of Exile/") or main.userPath
+			require("Classes.LootFilterFileBrowser").Open(initial,function(path) c[key]:SetText(path) end,options)
+		end)
+	end
+	field("target", 24, "Live Path of Exile 1 .filter file", config.target or "", 16, width-254)
+	browse("target",44,width-230)
 	c.detectTarget = new("ButtonControl"):ButtonControl(ui.anchor,{width-142,44,126,26},"Use PoE selection",function()
 		local documents = GetUserPath()
 		if not documents then main:OpenMessagePopup("Find PoE filter", "The Windows Documents folder is unavailable."); return end
@@ -77,8 +86,9 @@ function M.Open()
 		c.target:SetText(result)
 	end)
 	c.detectTarget.enabled = function() return not sync.busy end
-	field("baseline", 82, "Fixed baseline .filter file", config.baseline or "")
-	field("league", 140, "poe.ninja league ID", config.league or "Covens", 16, width-166)
+	field("baseline", 82, "Fixed baseline .filter file", config.baseline or "", 16, width-128)
+	browse("baseline",102,width-98)
+	field("league", 140, "PoE 1 PC trade league", config.league or "Covens", 16, width-166)
 	local loadingLeagues = false
 	c.chooseLeague = new("ButtonControl"):ButtonControl(ui.anchor,{width-142,160,126,26},"Choose league",function()
 		if launch.noSSL then main:OpenMessagePopup("Choose league", "Enable HTTPS certificate verification in PoB."); return end
@@ -104,22 +114,33 @@ function M.Open()
 	end)
 	c.chooseLeague.enabled = function() return not loadingLeagues and not sync.busy end
 	field("time", 198, "Daily time (local, HH:MM)", string.format("%02d:%02d", config.hour or 9, config.minute or 0), 16, 195)
-	field("targetValue", 198, "Chaos per stack", tostring(config.targetValue or 1), 236, 160)
-	field("protectionFile", 250, "Protected samples JSON (optional for tiered test)", config.protectionFile or "")
-	ui.description(c,"help",16,306,width-32,38,{"PoB checks for a due sync while open and keeps a copy of the baseline."},14)
+	field("targetValue", 198, "Chaos per stack", tostring(config.targetValue or 1), 228, 160)
+	field("intervalDays", 198, "Repeat every (days)", tostring(config.intervalDays or 1), 404, 150)
+	field("protectionFile", 250, "Protected samples JSON", config.protectionFile or "", 16, width-128)
+	browse("protectionFile",270,width-98,{title="Choose protected samples",itemLabel="JSON",accept=function(name) return name:lower():match("%.json$") end})
+	ui.description(c,"help",16,306,width-32,38,{"Profile: "..profileName, "PoB keeps a fixed copy of the baseline."},14)
 	c.status = new("LabelControl"):LabelControl(ui.anchor,{16,350,width-32,16},"",14)
-	c.status.label = function() return ui.fit(sync.status, width-32, 14) end
+	local cachedAt, cachedStatus
+	c.status.label = function()
+		local now = os.time()
+		if cachedAt ~= now then
+			cachedAt = now
+			local passed, value = pcall(sync.profileStatus,profileId)
+			cachedStatus = passed and value or ui.errorText(value)
+		end
+		return ui.fit(cachedStatus, width-32, 14)
+	end
 	button("enable",16,"Enable / update",function() attempt(function() sync.configure(c.target.buf,c.baseline.buf,c.league.buf,options()) end) end)
-	button("run",16+step*1,"Sync now",function() sync.tick(os.time(),true) end)
-	button("disable",16+step*2,"Disable",function() attempt(sync.disable) end)
-	button("pause",16+step*3,config.paused and "Resume" or "Pause",function() attempt(function() sync.pause(not config.paused) end) end)
+	button("run",16+step*1,"Sync now",function() sync.tick(os.time(),true,false,profileId) end)
+	button("disable",16+step*2,"Disable",function() attempt(function() sync.disable(profileId) end) end)
+	button("pause",16+step*3,config.paused and "Resume" or "Pause",function() attempt(function() sync.pause(not config.paused,profileId) end) end)
 	button("rollback",16+step*4,"Restore backup",function()
 		main:OpenConfirmPopup("Restore filter backup", "Restore the previous filter and pause daily sync?", "Restore", function()
-			attempt(sync.rollback)
+			attempt(function() sync.rollback(profileId) end)
 		end)
 	end)
 	button("review",16,"Last review",function()
-		local saved = sync.configuration()
+		local saved = sync.configuration(profileId)
 		local review = saved and saved.review
 		if not review then main:OpenMessagePopup("Daily filter sync", "Sync once to get a review."); return end
 		local entries = {{
@@ -131,7 +152,7 @@ function M.Open()
 			local scope = change.scope == "campaign" and " in campaign areas" or change.maps and " in maps" or ""
 			local details = {
 				string.format("Hide up to %d → %d%s", change.old, change.cutoff, scope),
-				string.format("%.4g chaos used | %.0f chaos quoted volume",change.price,change.volume),
+				string.format("%.4g chaos used | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
 				string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
 			}
 			local samples = change.samples or (change.sample and {change.sample}) or {}
@@ -159,18 +180,20 @@ function M.Open()
 		local owner = main.popups[1]
 		local passed, err = pcall(sync.preview,c.target.buf,c.baseline.buf,c.league.buf,options(),function(before, after)
 			if main.popups[1] == owner then require("Classes.LootFilterDiffControl").Open(before,after,true) end
+		end,function(message)
+			if main.popups[1] == owner then main:OpenMessagePopup("Filter preview failed",ui.errorText(message)) end
 		end)
 		if not passed then main:OpenMessagePopup("Daily filter sync", ui.errorText(err)) end
 	end,432)
 	c.preview.enabled = function() return not sync.busy end
 	button("externalEdits",16+step*2,"External edits",function()
-		local passed,before,after = pcall(sync.externalDiff)
+		local passed,before,after = pcall(sync.externalDiff,profileId)
 		if not passed then main:OpenMessagePopup("External filter edits", ui.errorText(before)); return end
 		require("Classes.LootFilterDiffControl").Open(before,after,true)
 	end,432)
 	c.externalEdits.enabled = function() return config.target ~= nil and not sync.busy end
 	button("copyReport",16+step*3,"Copy diagnostics",function()
-		local passed, report = pcall(sync.diagnosticReport, os.time())
+		local passed, report = pcall(sync.diagnosticReport, os.time(), profileId)
 		if not passed then main:OpenMessagePopup("Sync diagnostics", ui.errorText(report)); return end
 		Copy(report)
 		main:OpenMessagePopup("Sync diagnostics", "Copied the daily sync report.")
@@ -184,7 +207,7 @@ function M.Open()
 	c.rollback.enabled = function()
 		if not sync.busy and lastStatus ~= sync.status then
 			lastStatus = sync.status
-			local passed, saved = pcall(sync.configuration)
+			local passed, saved = pcall(sync.configuration,profileId)
 			if passed and saved then cached = saved end
 		end
 		return not sync.busy and cached.backup ~= nil
@@ -198,20 +221,53 @@ function M.Open()
 			if main.popups[1] ~= owner then return end
 			if not ok then main:OpenMessagePopup("Background filter sync", ui.errorText(why)); return end
 			main:ClosePopup()
-			M.Open()
-		end)
+			M.Open(profileId,profileName)
+		end,profileId)
 		if not passed then main:OpenMessagePopup("Background filter sync", ui.errorText(err)) end
 	end)
 	c.background.enabled = function() return (config.enabled or config.backgroundEnabled) and not background.busy and not sync.busy end
 	local notifyLabel = config.backgroundNotifications and "Disable notifications" or "Enable notifications"
 	c.backgroundNotify = new("ButtonControl"):ButtonControl(ui.anchor,{202,470,180,28},notifyLabel,function()
-		attempt(function() sync.setBackgroundNotifications(not config.backgroundNotifications) end)
+		attempt(function() sync.setBackgroundNotifications(not config.backgroundNotifications,profileId) end)
 	end)
 	c.backgroundNotify.enabled = function() return config.backgroundEnabled and not background.busy end
-	c.pickupPolicy = new("ButtonControl"):ButtonControl(ui.anchor,{388,470,160,28},"Pickup policy",function()
+	c.pickupPolicy = new("ButtonControl"):ButtonControl(ui.anchor,{388,470,135,28},"Pickup policy",function()
 		editPickupPolicy(width,tonumber(c.targetValue.buf) or -1,pickupPolicy,function(value) pickupPolicy=value end)
 	end)
 	c.pickupPolicy.enabled = function() return not sync.busy end
+	c.profiles = new("ButtonControl"):ButtonControl(ui.anchor,{width-126,470,110,28},"Profiles",function()
+		local passed, profiles = pcall(sync.profiles)
+		if not passed then main:OpenMessagePopup("Sync profiles",ui.errorText(profiles)); return end
+		local entries = {}
+		for _, entry in ipairs(profiles) do
+			entries[#entries+1] = {id=entry.id,label=entry.name,
+				details={entry.id == profileId and "Open profile" or "Select this sync profile"}}
+		end
+		entries[#entries+1] = {id="new",label="Create profile",details={"Use a separate filter destination and schedule."}}
+		require("Classes.PlanningBrowserControl").Open("Sync profiles",entries,{action="Open profile",closeOnChoose=false,
+			choose=function(entry)
+				main:ClosePopup()
+				if entry.id ~= "new" then
+					main:ClosePopup()
+					M.Open(entry.id,entry.label)
+					return
+				end
+				local controls = {}
+				ui.label(controls,"nameLabel",16,16,"Profile name",14)
+				controls.name = new("EditControl"):EditControl(ui.anchor,{16,38,328,28},"",nil,nil,80)
+				controls.create = new("ButtonControl"):ButtonControl(ui.anchor,{16,80,125,28},"Create",function()
+					local name = controls.name.buf:match("^%s*(.-)%s*$")
+					local ok, id = pcall(sync.createProfile,name)
+					if not ok then main:OpenMessagePopup("Sync profiles",ui.errorText(id)); return end
+					main:ClosePopup()
+					main:ClosePopup()
+					M.Open(id,name)
+				end)
+				controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{218,80,126,28},"Cancel",function() main:ClosePopup() end)
+				ui.style(controls)
+				main:OpenPopup(360,126,"New sync profile",controls,nil,nil,"cancel")
+			end})
+	end)
 	ui.description(c,"backgroundHelp",16,504,width-32,23,{"Background updates run while you are signed in to Windows."},13)
 	ui.style(c)
 	main:OpenPopup(width, 545, "Daily filter sync", c, nil, nil, "close")

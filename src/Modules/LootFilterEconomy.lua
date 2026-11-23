@@ -1,13 +1,14 @@
 local json = require("dkjson")
 local parser = require("Modules.LootFilterParser")
+local maps = require("Modules.LootFilterMapMarket")
 local M = {}
 M.categories = {"Currency", "Oil", "Omen", "Essence", "Thread", "Fragment", "Resonator", "Artifact"}
 M.endpoint = "https://poe.ninja/poe1/api/economy/"
-M.managedClasses = {"Stackable Currency", "Map Fragments", "Misc Map Items", "Delve Stackable Socketable Currency", "Divination Cards"}
+M.managedClasses = {"Stackable Currency", "Map Fragments", "Misc Map Items", "Delve Stackable Socketable Currency", "Divination Cards", "Maps"}
 M.managedAreas = {{label="All areas", val="all"}, {label="Campaign", val="campaign"}, {label="Maps", val="maps"}}
 local classes = {}
 for _, class in ipairs(M.managedClasses) do
-	if class ~= "Divination Cards" then classes[class] = true end
+	if class ~= "Divination Cards" and class ~= "Maps" then classes[class] = true end
 end
 
 local function finite(value)
@@ -28,6 +29,7 @@ local function addQuote(quotes, name, quote)
 end
 
 function M.quotes(body, source)
+	if maps.variants[source] then return maps.quotes(body,source) end
 	assert(type(body) == "string" and #body <= 2 * 1024 * 1024, "Invalid exchange response size")
 	local data = json.decode(body)
 	assert(type(data) == "table" and type(data.core) == "table" and data.core.primary == "chaos"
@@ -52,7 +54,8 @@ function M.quotes(body, source)
 end
 
 local function quoteKey(name, category)
-	return category == "DivinationCard" and "\0card:" .. name or name
+	if category == "DivinationCard" or maps.variants[category] then return "\0" .. category .. ":" .. name end
+	return name
 end
 
 function M.merge(destination, source, category)
@@ -61,8 +64,8 @@ function M.merge(destination, source, category)
 	end
 end
 
--- Floors are total quoted volume in chaos equivalents, not trade counts.
-local minimumVolume = { Currency=100, Oil=150, Omen=200, Essence=150, Thread=150, Fragment=200, Resonator=150, Artifact=150, DivinationCard=500 }
+-- Exchange floors use quoted chaos volume. Stash map floors use listing samples.
+local minimumVolume = { Map=20, BlightedMap=20, BlightRavagedMap=20, Currency=100, Oil=150, Omen=200, Essence=150, Thread=150, Fragment=200, Resonator=150, Artifact=150, DivinationCard=500 }
 
 function M.liquid(quote)
 	return quote and quote.volume >= (minimumVolume[quote.source] or 100)
@@ -95,7 +98,7 @@ function M.remember(quotes, history, day, now)
 				or (prices[midpoint]+prices[midpoint+1])/2
 			adjusted[name] = {price=math.min(quote.price, median), currentPrice=quote.price,
 				highPrice=#prices >= 3 and math.max(quote.price, prices[#prices]) or nil,
-				volume=quote.volume, id=quote.id, source=quote.source, observations=#prices}
+				volume=quote.volume, id=quote.id, source=quote.source, observations=#prices, liquidityUnit=quote.liquidityUnit}
 		else
 			adjusted[name] = quote
 		end
@@ -126,26 +129,53 @@ function M.supports(raw)
 	return first ~= nil and last ~= nil
 end
 
--- Add the card feed only for an explicitly managed card rule. Legacy filters
--- keep the same category set and cannot opt in through a similar item name.
+local supportedConditions = {
+	Class=true, BaseType=true, StackSize=true, AreaLevel=true, MapTier=true, Rarity=true,
+	BlightedMap=true, UberBlightedMap=true,
+}
+for _, key in ipairs(maps.excludedFlags) do supportedConditions[key] = true end
+local function ruleConditions(rule)
+	if rule.action ~= "Hide" or rule.continue or next(rule.styles) then return end
+	local conditions = {}
+	for _, condition in ipairs(rule.conditions) do
+		local key = condition.keyword
+		if conditions[key] or not supportedConditions[key] then return end
+		conditions[key] = condition
+	end
+	return conditions
+end
+
+-- Select the extra feeds only when the fixed baseline explicitly manages them.
 function M.feedCategories(raw)
 	local first, last, tagged = M.sectionBounds(raw)
-	if tagged and last then
-		for _, rule in ipairs(parser.parse(raw:sub(first,last-1)).rules) do
-			if rule.action == "Hide" then
-				for _, condition in ipairs(rule.conditions) do
-					if condition.keyword == "Class" and condition.operator == "==" and #condition.values == 1
-						and condition.values[1] == "Divination Cards" then
-						local categories = {}
-						for i, category in ipairs(M.categories) do categories[i] = category end
-						categories[#categories+1] = "DivinationCard"
-						return categories
-					end
+	if not tagged or not last then return M.categories end
+	local required = {}
+	for _, rule in ipairs(parser.parse(raw:sub(first,last-1)).rules) do
+		local conditions = ruleConditions(rule)
+		if conditions then
+			local category = maps.rule(conditions)
+			if category then
+				required[category] = true
+			else
+				local class = conditions.Class
+				if class and class.operator == "==" and #class.values == 1 and class.values[1] == "Divination Cards" then
+					required.DivinationCard = true
 				end
 			end
 		end
 	end
-	return M.categories
+	local categories = {}
+	for _, category in ipairs(M.categories) do categories[#categories+1] = category end
+	if required.DivinationCard then categories[#categories+1] = "DivinationCard" end
+	for _, category in ipairs(maps.feeds) do
+		if required[category] then categories[#categories+1] = category end
+	end
+	return categories
+end
+
+function M.feedPath(league, category)
+	local resource = maps.variants[category] and "stash/current/item/overview" or "exchange/current/overview"
+	return resource .. "?league=" .. urlEncode(league) .. "&type=" .. category
 end
 
 function M.pickupPolicy(target, preferences)
@@ -208,14 +238,26 @@ function M.review(raw, quotes, target, preferences)
 	local function rewrite(block)
 		local parsed = parser.parse(block)
 		local rule = parsed.rules[1]
-		if #parsed.rules ~= 1 or #parsed.diagnostics ~= 0 or not rule or rule.action ~= "Hide"
-			or rule.continue or next(rule.styles) or #parsed.imports > 0 then return block end
-		local conditions = {}
-		for _, condition in ipairs(rule.conditions) do
-			local key = condition.keyword
-			if conditions[key] or (key ~= "Class" and key ~= "BaseType" and key ~= "StackSize" and key ~= "AreaLevel") then return block end
-			conditions[key] = condition
+		if #parsed.rules ~= 1 or #parsed.diagnostics ~= 0 or not rule or #parsed.imports > 0 then return block end
+		local conditions = ruleConditions(rule)
+		if not conditions then return block end
+		local category, tier, variant
+		if tagged then category, tier, variant = maps.rule(conditions) end
+		if category then
+			local name = maps.quoteName(category,tier)
+			local quote = quotes[quoteKey(name,category)]
+			local cutoff, reason, price = cutoffFor(quote,1,policy.maps or policy.target)
+			if cutoff == 1 then
+				skipped[#skipped+1] = {name=name,old=1,reason=reason,maps=true,scope="maps"}
+				return block
+			end
+			changes[#changes+1] = {name=name,old=1,cutoff=0,price=price,currentPrice=quote.currentPrice,
+				source=quote.source,observations=quote.observations,classes={"Maps"},volume=quote.volume,
+				liquidityUnit=quote.liquidityUnit,maps=true,scope="maps",tier=tier,blighted=variant.blighted,ravaged=variant.ravaged}
+			return ""
 		end
+		if conditions.MapTier or conditions.Rarity or conditions.BlightedMap or conditions.UberBlightedMap then return block end
+		for _, key in ipairs(maps.excludedFlags) do if conditions[key] then return block end end
 		local class, base, stack, area = conditions.Class, conditions.BaseType, conditions.StackSize, conditions.AreaLevel
 		local scope = scopeOf(area, tagged)
 		if not class or not base or not scope or class.operator ~= "==" or base.operator ~= "=="
@@ -300,18 +342,27 @@ function M.validateManagedRules(rules)
 	end
 	for index=1,#rules do
 		local rule = rules[index]
-		assert(type(rule) == "table" and (classes[rule.class] or rule.class == "Divination Cards"), "Invalid economy item class")
-		assert(type(rule.name) == "string" and #rule.name <= 200 and rule.name:match("%S") and not rule.name:find('[%c"\\]'),
-			"Enter an exact item name")
-		assert(rule.scope == "all" or rule.scope == "campaign" or rule.scope == "maps", "Choose an area")
-		local cutoff = rule.cutoff
-		assert(cutoff == nil and rule.class == "Divination Cards" or
-			type(cutoff) == "number" and cutoff >= 1 and cutoff <= 10000 and cutoff == math.floor(cutoff), "Enter a hide cutoff from 1 to 10,000")
-		local key = rule.class .. "\0" .. rule.name
+		assert(type(rule) == "table" and (classes[rule.class] or rule.class == "Divination Cards" or rule.class == "Maps"), "Invalid economy item class")
+		local entry
+		if rule.class == "Maps" then
+			local tier = rule.tier
+			assert(type(tier) == "number" and tier >= 1 and tier <= 16 and tier == math.floor(tier)
+				and maps.variants[rule.mapType], "Choose a valid atlas map tier and variant")
+			entry = {name=maps.quoteName(rule.mapType,tier),class="Maps",scope="maps",tier=tier,mapType=rule.mapType}
+		else
+			assert(type(rule.name) == "string" and #rule.name <= 200 and rule.name:match("%S") and not rule.name:find('[%c"\\]'),
+				"Enter an exact item name")
+			assert(rule.scope == "all" or rule.scope == "campaign" or rule.scope == "maps", "Choose an area")
+			local cutoff = rule.cutoff
+			assert(cutoff == nil and rule.class == "Divination Cards" or
+				type(cutoff) == "number" and cutoff >= 1 and cutoff <= 10000 and cutoff == math.floor(cutoff), "Enter a hide cutoff from 1 to 10,000")
+			entry = {name=rule.name,class=rule.class,scope=rule.scope,cutoff=cutoff}
+		end
+		local key = entry.class .. "\0" .. entry.name
 		local scopes = seen[key] or {}
-		assert(not (scopes.all or scopes[rule.scope] or rule.scope == "all" and next(scopes)), "This item already has a managed rule covering that area")
-		scopes[rule.scope], seen[key] = true, scopes
-		checked[#checked+1] = {name=rule.name,class=rule.class,scope=rule.scope,cutoff=cutoff}
+		assert(not (scopes.all or scopes[entry.scope] or entry.scope == "all" and next(scopes)), "This item already has a managed rule covering that area")
+		scopes[entry.scope], seen[key] = true, scopes
+		checked[#checked+1] = entry
 	end
 	return checked
 end
@@ -319,10 +370,20 @@ end
 local function managedText(rules)
 	local blocks = {}
 	for _, rule in ipairs(rules) do
-		local lines = {"Hide", '    Class == "' .. rule.class .. '"', '    BaseType == "' .. rule.name .. '"'}
-		if rule.scope == "campaign" then lines[#lines+1] = "    AreaLevel < 68" end
-		if rule.scope == "maps" then lines[#lines+1] = "    AreaLevel >= 68" end
-		if rule.cutoff then lines[#lines+1] = "    StackSize <= " .. rule.cutoff end
+		local lines = {"Hide", '    Class == "' .. rule.class .. '"'}
+		if rule.mapType then
+			local variant = maps.variants[rule.mapType]
+			lines[#lines+1] = "    MapTier == " .. rule.tier
+			lines[#lines+1] = "    Rarity <= Rare"
+			for _, key in ipairs(maps.excludedFlags) do lines[#lines+1] = "    " .. key .. " False" end
+			if variant.blighted ~= nil then lines[#lines+1] = "    BlightedMap " .. (variant.blighted and "True" or "False") end
+			lines[#lines+1] = "    UberBlightedMap " .. (variant.ravaged and "True" or "False")
+		else
+			lines[#lines+1] = '    BaseType == "' .. rule.name .. '"'
+			if rule.scope == "campaign" then lines[#lines+1] = "    AreaLevel < 68" end
+			if rule.scope == "maps" then lines[#lines+1] = "    AreaLevel >= 68" end
+			if rule.cutoff then lines[#lines+1] = "    StackSize <= " .. rule.cutoff end
+		end
 		blocks[#blocks+1] = table.concat(lines, "\n")
 	end
 	return table.concat(blocks, "\n\n") .. "\n\n"

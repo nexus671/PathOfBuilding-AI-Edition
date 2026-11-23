@@ -60,11 +60,23 @@ local ok, result = pcall(function()
 	local executable = workingDirectory .. "/Path of Building.exe"
 	local worker = "$ErrorActionPreference = 'Stop'; $exe = " .. literal(executable) ..
 		"; $dir = " .. literal(workingDirectory) ..
-		"; $configFile = " .. literal(userPath .. "LootFilterDailySync.json") .. [[
+		"; $userPath = " .. literal(userPath) .. [[
 
-function Read-SyncSettings {
-    try { return Get-Content -LiteralPath $configFile -Raw -Encoding UTF8 | ConvertFrom-Json }
+function Read-JsonFile([string]$name) {
+    try { return Get-Content -LiteralPath (Join-Path $userPath $name) -Raw -Encoding UTF8 | ConvertFrom-Json }
     catch { return $null }
+}
+function Read-SyncProfiles {
+    $profiles = @{}
+    $legacy = Read-JsonFile 'LootFilterDailySync.json'
+    if ($legacy) { $profiles['default'] = $legacy }
+    foreach ($entry in (Read-JsonFile 'LootFilterSyncProfiles.json')) {
+        if ($entry.id -is [string] -and [regex]::IsMatch($entry.id, '\A[a-f0-9]{40}\z')) {
+            $config = Read-JsonFile ('LootFilterDailySync-' + $entry.id + '.json')
+            if ($config) { $profiles[$entry.id] = $config }
+        }
+    }
+    return $profiles
 }
 function Get-AdjustedCutoffs($review) {
     $cutoffs = @{}
@@ -98,28 +110,34 @@ function Show-SyncNotification([string]$text, [bool]$failed) {
     }
 }
 
-$before = Read-SyncSettings
-if (-not $before.enabled -or -not $before.backgroundEnabled -or $before.paused) { exit 0 }
+$beforeProfiles = Read-SyncProfiles
+$enabled = $beforeProfiles.Values | Where-Object { $_.enabled -and $_.backgroundEnabled -and -not $_.paused } | Select-Object -First 1
+if (-not $enabled) { exit 0 }
 if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { exit 1 }
 $process = Start-Process -FilePath $exe -WorkingDirectory $dir -ArgumentList '--loot-filter-sync-scheduled' -WindowStyle Hidden -Wait -PassThru
-$after = Read-SyncSettings
-if ($after.backgroundEnabled -and $after.backgroundNotifications -and $after.enabled -and -not $after.paused -and
-    $after.revision -eq $before.revision) {
-    try {
-        if ($process.ExitCode -ne 0 -and $after.lastFailure -and $after.lastFailure.message -ne $before.lastFailure.message) {
-            Show-SyncNotification 'A scheduled update failed. Review the last attempt in Daily price sync.' $true
-        } elseif ($process.ExitCode -eq 0 -and $after.current -ne $before.current -and $after.lastSuccess -ne $before.lastSuccess) {
-            $old = Get-AdjustedCutoffs $before.review
-            $new = Get-AdjustedCutoffs $after.review
-            $changed = 0
-            foreach ($key in (@($old.Keys) + @($new.Keys) | Select-Object -Unique)) {
-                if ($old[$key] -ne $new[$key]) { $changed++ }
-            }
-            if ($changed -ge 5) { Show-SyncNotification "$changed managed cutoffs changed after checking protected drops." $false }
+$afterProfiles = Read-SyncProfiles
+$failures = 0
+$changed = 0
+foreach ($id in $afterProfiles.Keys) {
+    $after = $afterProfiles[$id]
+    $before = $beforeProfiles[$id]
+    if (-not $before -or -not $after.backgroundEnabled -or -not $after.backgroundNotifications -or
+        -not $after.enabled -or $after.paused -or $after.revision -ne $before.revision) { continue }
+    if ($process.ExitCode -ne 0 -and $after.lastFailure -and $after.lastFailure.message -ne $before.lastFailure.message) {
+        $failures++
+    } elseif ($after.current -ne $before.current -and $after.lastSuccess -ne $before.lastSuccess) {
+        $old = Get-AdjustedCutoffs $before.review
+        $new = Get-AdjustedCutoffs $after.review
+        foreach ($key in (@($old.Keys) + @($new.Keys) | Select-Object -Unique)) {
+            if ($old[$key] -ne $new[$key]) { $changed++ }
         }
-    } catch {
-        # A disabled notification surface cannot change the sync result.
     }
+}
+try {
+    if ($failures -gt 0) { Show-SyncNotification 'A scheduled update failed. Review the last attempt in Daily price sync.' $true }
+    elseif ($changed -ge 5) { Show-SyncNotification "$changed managed cutoffs changed after checking protected drops." $false }
+} catch {
+    # A disabled notification surface cannot change the sync result.
 }
 exit $process.ExitCode
 ]]
@@ -166,20 +184,40 @@ end)
 return ok, result
 ]=]
 
-function M.change(enabled, callback)
+function M.change(enabled, callback, profileId)
 	assert(require("ffi").os == "Windows", "Background sync requires Windows")
 	assert(not M.busy, "Wait for the current background sync setup")
-	local config = assert(sync.configuration(), "Enable daily sync first")
-	local directory = GetRuntimePath()
-	local taskName = "PoB AI Loot Sync " .. sha(main.userPath:lower()):sub(1,16)
-	local id = assert(LaunchSubScript(registerScript, "", "", enabled, taskName, directory, main.userPath),
-		"Could not start background sync setup")
-	M.busy = true
-	launch:RegisterSubScript(id, function(ok, why)
-		M.busy = false
-		if ok then ok, why = pcall(sync.setBackground, enabled, config.revision) end
-		callback(ok, why)
+	profileId = profileId or "default"
+	local release = sync.acquireBackgroundSetup()
+	local ok, problem = pcall(function()
+		local config = assert(sync.configuration(profileId), "Enable daily sync first")
+		if not enabled then
+			for _, entry in ipairs(sync.profiles()) do
+				if entry.id ~= profileId then
+					local other = sync.configuration(entry.id)
+					if other and other.backgroundEnabled then
+						sync.setBackground(false, config.revision, profileId)
+						release()
+						return false
+					end
+				end
+			end
+		end
+		local directory = GetRuntimePath()
+		local taskName = "PoB AI Loot Sync " .. sha(main.userPath:lower()):sub(1,16)
+		local id = assert(LaunchSubScript(registerScript, "", "", enabled, taskName, directory, main.userPath),
+			"Could not start background sync setup")
+		M.busy = true
+		launch:RegisterSubScript(id, function(passed, why)
+			M.busy = false
+			if passed then passed, why = pcall(sync.setBackground, enabled, config.revision, profileId) end
+			release()
+			callback(passed, why)
+		end)
+		return true
 	end)
+	if not ok then release(); error(problem,0) end
+	if not problem then callback(true) end
 end
 
 return M

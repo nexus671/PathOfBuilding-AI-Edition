@@ -325,7 +325,19 @@ describe("Linked planning tools",function()
 		local workspace=require("Modules.PlanningWorkspace").new(build)
 		workspace:Show("filters",{data={schemaVersion=1,activeId=profile.id,profiles={profile}},page="Overview"})
 		workspace.controls.manage:Click();main.popups[1].controls.search:SetText("Audit and update",true);main.popups[1].controls.choose:Click()
-		assert.equal("Filter audit",main.popups[1].title);main.popups[1].controls.choose:Click()
+		assert.equal("Filter audit",main.popups[1].title)
+		local download=launch.DownloadPage
+		launch.DownloadPage=function(_,url,callback)
+			assert.is_truthy(url:find(profile.baseCommit,1,true))
+			callback({body=filters.base(filters.profile("current","Current"))})
+		end
+		local ok, failure=pcall(function()
+			main.popups[1].controls.choose:Click()
+			assert.equal("NeverSink base review",main.popups[1].title)
+			main.popups[1].controls.choose:Click()
+		end)
+		launch.DownloadPage=download
+		assert(ok,failure)
 		local updated=workspace.cache.filters.layout.snapshot().data.profiles[1]
 		assert.equal(filters.source().commit,updated.baseCommit);assert.same(profile.rules,updated.rules)
 		assert.is_truthy(filters.compile(updated));workspace.controls.keep:Click()

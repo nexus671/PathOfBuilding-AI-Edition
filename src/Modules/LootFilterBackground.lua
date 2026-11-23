@@ -29,16 +29,16 @@ function M.start(app, scheduled)
 		end
 		local sync = require("Modules.LootFilterDailySync")
 		app.lootSyncStarted = os.time()
-		local config = sync.configuration()
-		if not sync.isDue(config, app.lootSyncStarted) or scheduled and config.backgroundEnabled ~= true then
+		app.lootSyncDue = sync.dueProfiles(app.lootSyncStarted,scheduled)
+		if #app.lootSyncDue == 0 then
 			exitStatus(false)
 			return
 		end
 		app.lootSync = sync
-		app.lootSyncRevision = config.revision
+		app.lootSyncScheduled = scheduled
+		app.lootSyncIndex = 0
 		-- The native host dispatches asynchronous downloads from its frame loop.
 		RenderInit("DPI_AWARE")
-		sync.tick(app.lootSyncStarted, false, scheduled)
 	end)
 	if not ok then
 		ConPrintf("Loot filter background sync could not start: %s", tostring(problem))
@@ -48,17 +48,26 @@ end
 
 function M.frame(app)
 	local sync = app.lootSync
-	local ok, failed = pcall(function()
+	local ok, finished = pcall(function()
 		if sync.busy then sync.tick(os.time()) end
-		if sync.busy then return end
-		local config = sync.configuration()
-		local failure = config and config.lastFailure
-		local sameProfile = config and config.revision == app.lootSyncRevision
-		return sameProfile and failure and failure.startedAt >= app.lootSyncStarted or false
+		if sync.busy then return false end
+		local completed = app.lootSyncDue[app.lootSyncIndex]
+		if completed then
+			local config = sync.configuration(completed.id)
+			local failure = config and config.lastFailure
+			if config and config.revision == completed.revision and failure and failure.startedAt >= app.lootSyncStarted then
+				app.lootSyncFailed = true
+			end
+		end
+		app.lootSyncIndex = app.lootSyncIndex + 1
+		local nextProfile = app.lootSyncDue[app.lootSyncIndex]
+		if not nextProfile then return true end
+		sync.tick(os.time(),false,app.lootSyncScheduled,nextProfile.id)
+		return false
 	end)
-	if ok and failed == nil then return end
-	ConPrintf("Loot filter background sync: %s", ok and sync.status or tostring(failed))
-	exitStatus(not ok or failed)
+	if ok and not finished then return end
+	ConPrintf("Loot filter background sync: %s", ok and sync.status or tostring(finished))
+	exitStatus(not ok or app.lootSyncFailed)
 end
 
 return M

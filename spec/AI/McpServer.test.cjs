@@ -43,8 +43,9 @@ test('negotiates versions, requires initialization, and keeps applying builds in
   assert.equal((await c.request('tools/list')).error.code,-32000);
   assert.equal((await c.initialize('2025-03-26')).result.protocolVersion,'2025-03-26');
   const list = (await c.request('tools/list')).result.tools;
-  assert.equal(list.length,57);
+  assert.equal(list.length,58);
   assert.ok(list.some(tool => tool.name === 'get_loot_sync_status' && tool.annotations.readOnlyHint));
+  assert.ok(list.some(tool => tool.name === 'get_loot_sync_diff' && tool.annotations.readOnlyHint));
   assert.ok(list.every(tool => !tool.annotations.openWorldHint));
   assert.equal(list.filter(tool => !tool.annotations.readOnlyHint).length,41);
   assert.ok(list.some(tool => tool.name === 'search_crafting_inventory' && !tool.annotations.readOnlyHint));

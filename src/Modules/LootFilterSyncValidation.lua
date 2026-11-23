@@ -1,5 +1,6 @@
 local market = require("Modules.LootFilterEconomy")
 local parser = require("Modules.LootFilterParser")
+local protected = require("Modules.LootFilterProtectedDrops")
 return function(raw, bodies, baselineOnly, target, protections, history, day, now, policy)
 	assert(market.supports(raw), "Baseline has no economy section")
 	local quotes = {}
@@ -32,6 +33,11 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 					}
 					for name in pairs(parser.numeric) do if sample[name] == nil then sample[name] = 0 end end
 					for name in pairs(parser.booleans) do sample[name] = false end
+					if change.tier then
+						sample.MapTier = change.tier
+						sample.BlightedMap = change.blighted or change.ravaged
+						sample.UberBlightedMap = change.ravaged
+					end
 					local before, after = parser.simulate(earlier, sample), parser.simulate(parsed, sample)
 					change.samples[#change.samples+1] = {
 						action=after.action, line=after.line, before=before.action, beforeLine=before.line,
@@ -57,15 +63,6 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 		end
 		return candidate, #changes, changes, skipped, snapshots
 	end
-	for _, rarity in ipairs({"Normal", "Magic", "Rare", "Unique"}) do
-		for _, flag in ipairs({true, false}) do
-			check({BaseType="Cord Belt", Class="Belts", Rarity=rarity, Corrupted=flag, Identified=flag}, "0 Purple Star")
-			check({BaseType="Royal Plate", Class="Body Armours", Rarity=rarity, LinkedSockets=6, Corrupted=flag, Identified=flag}, "0 Red Diamond")
-			if rarity ~= "Unique" then
-				check({BaseType="Agate Amulet", Class="Amulets", Rarity=rarity, LinkedSockets=0, FracturedItem=false, Fated=true, Identified=flag, Corrupted=flag}, "0 Purple Star")
-			end
-			check({BaseType="Iron Ring", Class="Rings", Rarity="Magic", LinkedSockets=0, FracturedItem=true, Identified=flag, Corrupted=flag}, "0 Yellow Diamond")
-		end
-	end
+	for _, entry in ipairs(protected.samples()) do check(entry.item,entry.marker) end
 	return candidate, #changes, changes, skipped, snapshots
 end
