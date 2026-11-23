@@ -491,6 +491,25 @@ function M.setBackgroundNotifications(enabled, id)
 	end)
 end
 
+local function backupDigest(value)
+	return type(value)=="string" and #value==40 and value:match("^[a-f0-9]+$")
+end
+
+local function backupRecords(config)
+	local records = type(config.backupRecords)=="table" and config.backupRecords or {}
+	-- Import pre-catalog references before the rolling run log is shortened.
+	for _, run in ipairs(config.history or {}) do
+		if type(run)=="table" and backupDigest(run.backup) and not records[run.backup] then
+			records[run.backup] = finiteNumber(run.checkedAt) or 0
+		end
+	end
+	if backupDigest(config.backup) and not records[config.backup] then
+		records[config.backup] = finiteNumber(config.lastSuccess) or 0
+	end
+	config.backupRecords = records
+	return records
+end
+
 function M.configure(target, baselineFile, league, options)
 	local id = options and options.profileId or "default"
 	assert(not M.busy, "Wait for the current sync to finish")
@@ -503,11 +522,11 @@ function M.configure(target, baselineFile, league, options)
 		nextConfig.backgroundNotifications = current and current.backgroundNotifications == true
 		nextConfig.providerRetryAfter = current and current.providerRetryAfter
 		nextConfig.backupLimit = current and current.backupLimit
-		if current and current.league == nextConfig.league and current.baselineHash == nextConfig.baselineHash then
-			nextConfig.priceHistory = current.priceHistory
-			if nextConfig.backupLimit and current.target == nextConfig.target and current.current == nextConfig.current and not current.pending then
-				nextConfig.backup, nextConfig.history = current.backup, current.history
-				nextConfig.restoreBackups = current.restoreBackups
+		if current and current.baselineHash == nextConfig.baselineHash then
+			if current.league == nextConfig.league then nextConfig.priceHistory = current.priceHistory end
+			if current.target == nextConfig.target and current.current == nextConfig.current and not current.pending then
+				nextConfig.backupRecords = backupRecords(current)
+				if nextConfig.backupLimit then nextConfig.backup, nextConfig.history = current.backup, current.history end
 			end
 		end
 		nextConfig.revision = newRevision()
@@ -544,32 +563,25 @@ end
 local function backupChoices(config, limit)
 	local entries, seen = {}, {}
 	local function add(digest, checkedAt)
-		if type(digest) == "string" and #digest == 40 and digest:match("^[a-f0-9]+$")
-			and digest ~= config.current and not seen[digest] then
+		if backupDigest(digest) and digest ~= config.current and not seen[digest] then
 			seen[digest] = true
 			entries[#entries+1] = {digest=digest,checkedAt=checkedAt}
 		end
 	end
 	add(config.backup)
 	local recorded = {}
-	for _, run in ipairs(config.history or {}) do
-		if type(run)=="table" and type(run.backup)=="string" then
-			recorded[#recorded+1] = {digest=run.backup,checkedAt=run.checkedAt}
-		end
-	end
-	for _, saved in ipairs(config.restoreBackups or {}) do
-		if type(saved)=="table" and type(saved.digest)=="string" then
-			recorded[#recorded+1] = {digest=saved.digest,checkedAt=saved.checkedAt}
+	for digest, date in pairs(backupRecords(config)) do
+		if backupDigest(digest) then
+			recorded[#recorded+1] = {digest=digest,checkedAt=finiteNumber(date) or 0}
 		end
 	end
 	table.sort(recorded,function(left,right)
-		local leftTime, rightTime = tonumber(left.checkedAt) or 0, tonumber(right.checkedAt) or 0
-		if leftTime==rightTime then return left.digest<right.digest end
-		return leftTime>rightTime
+		if left.checkedAt==right.checkedAt then return left.digest<right.digest end
+		return left.checkedAt>right.checkedAt
 	end)
 	for _, entry in ipairs(recorded) do
-		if #entries >= (limit or 30) then break end
-		add(entry.digest,tonumber(entry.checkedAt))
+		if limit and #entries>=limit then break end
+		add(entry.digest,entry.checkedAt>0 and entry.checkedAt or nil)
 	end
 	return entries, seen
 end
@@ -601,24 +613,15 @@ local function pruneBackups(config, choices)
 	for _, run in ipairs(config.history) do
 		if removed[run.backup] then run.backup = nil end
 	end
-	for index=#(config.restoreBackups or {}),1,-1 do
-		if removed[config.restoreBackups[index].digest] then table.remove(config.restoreBackups,index) end
-	end
+	for digest in pairs(removed) do config.backupRecords[digest] = nil end
 	config.retentionSkipped = skipped>0 and skipped or nil
 end
 
 local restoreSummary = "Restored the verified backup. Daily sync is paused."
 
 local function finishRestore(config, digest, undo)
-	if undo then
-		local list = config.restoreBackups or {}
-		for index=#list,1,-1 do
-			if list[index].digest==undo then table.remove(list,index) end
-		end
-		table.insert(list,1,{digest=undo,checkedAt=os.time()})
-		if #list>30 then table.remove(list) end
-		config.restoreBackups = list
-	end
+	local records = backupRecords(config)
+	if undo then records[undo] = os.time() end
 	config.current, config.pending, config.backup = digest, nil, undo
 	config.pendingRestore = nil
 	config.summary, config.review = restoreSummary, nil
@@ -639,7 +642,7 @@ function M.backups(id)
 			end
 			save(config,id)
 		end
-		return backupChoices(config)
+		return backupChoices(config,30)
 	end)
 end
 
@@ -653,8 +656,8 @@ local function verifyRestorable(config, requested)
 	local target = filterPath(config.target)
 	local original = assert(read(target), "Target filter is missing")
 	assert(sha(original) == config.current, "Target was edited outside PoB")
-	local _, available = backupChoices(config)
-	assert(available[requested], "Choose a backup recorded for this sync profile")
+	assert(backupDigest(requested) and requested~=config.current and backupRecords(config)[requested],
+		"Choose a backup recorded for this sync profile")
 	local backup = readBackup(target,requested)
 	local baseline = assert(read(config.baseline), "Baseline filter is missing")
 	assert(sha(baseline) == config.baselineHash, "Baseline checksum changed")
@@ -798,12 +801,14 @@ local function publish(config, bodies, feeds, day, force, now, id)
 		local candidate, count, changes, skipped, snapshots = validate(
 			baseline, bodies, false, current.targetValue, current.protections, current.priceHistory, day, now, current.pickupPolicy)
 		current.priceHistory = snapshots
+		local records = backupRecords(current)
 		keepExpected(candidate)
 		if candidate ~= original then
 			local backup = current.target .. ".before-pob-sync-" .. before .. ".bak"
 			if not read(backup) then put(backup, original) end
 			current.backup = before
 			assert(read(backup) == original and read(current.target) == original, "Backup or target changed during sync")
+			records[before] = now
 			current.current, current.pending = before, sha(candidate)
 			save(current,id)
 			assert(read(current.target) == original, "Target changed before replacement")
@@ -820,7 +825,7 @@ local function publish(config, bodies, feeds, day, force, now, id)
 		current.history = current.history or {}
 		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
 		local limit = current.backupLimit
-		local backups = type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) and backupChoices(current,62)
+		local backups = type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) and backupChoices(current)
 		if #current.history > 30 then table.remove(current.history) end
 		save(current,id)
 		if backups then

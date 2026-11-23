@@ -86,11 +86,13 @@ local function verifyExchangeCoverage(current, previous)
 	local recent = countLiquidExchangeQuotes(previous[1].values)
 	local older = countLiquidExchangeQuotes(previous[2].values)
 	local latest = countLiquidExchangeQuotes(current)
-	for _, source in ipairs(M.categories) do
+	local function check(source)
 		local reference = math.min(recent[source] or 0, older[source] or 0)
 		assert(reference < 20 or (latest[source] or 0) >= reference / 4,
 			source .. " feed has fewer than a quarter of its usual liquid quotes. The existing filter was kept.")
 	end
+	for _, source in ipairs(M.categories) do check(source) end
+	check("DivinationCard")
 end
 
 -- A price increase only loosens a hide once it is supported by recent history.
