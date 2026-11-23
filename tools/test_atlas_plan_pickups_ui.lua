@@ -10,6 +10,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  for _=1,2000 do ui:frame();local value=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1];for _,rule in ipairs(value.rules) do if rule.title=="Fine Delirium Orb" and rule.origin=="atlas:pickup-atlas" then found=true end end;if found then break end end
  assert(found,"Saved Atlas target did not generate its pickup")
  if main.popups[1] then ui:click("close") end
- ui:click("viewCustomize");ui:choose("source","My rules");ui:text("search","Fine Delirium Orb");ui:frame();if output then ui:write(output.."/"..size[1].."-atlas-map-pickup.json") end;ui:restore()
+ ui:click("viewCustomize");ui:choose("source","My rules");ui:text("search","Fine Delirium Orb");ui:frame()
+ local visibleSearch=false
+ for _,command in ipairs(ui.commands) do if command.kind=="text" and command.text=="^7Fine Delirium Orb" and command.sublayer==2 then visibleSearch=true end end
+ assert(visibleSearch,"Search text was drawn behind the field when hovered")
+ if output then ui:write(output.."/"..size[1].."-atlas-map-pickup.json") end;ui:restore()
 end
 print("ATLAS_MAP_PICKUPS_UI_OK")

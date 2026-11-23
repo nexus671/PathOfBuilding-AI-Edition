@@ -90,7 +90,8 @@ function M.tile(control,entry,selected)
 end
 function M.layers(controls,backgrounds)
 	for key,control in pairs(controls) do if control.Draw then local draw=control.Draw
-		function control:Draw(...) SetDrawLayer(nil,backgrounds and backgrounds[key] and 0 or 2);draw(self,...);SetDrawLayer(nil,0) end
+		control.planningDrawSubLayer=backgrounds and backgrounds[key] and 0 or 2
+		function control:Draw(...) SetDrawLayer(nil,self.planningDrawSubLayer);draw(self,...);SetDrawLayer(nil,0) end
 	end end
 end
 return M
