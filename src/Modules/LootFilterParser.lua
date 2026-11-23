@@ -384,18 +384,32 @@ function M.simulate(parsed,item)
 		return {status="unknown",action="Unknown",line=d.line,styles={},matches={},reasons={"Filter line "..d.line..": "..d.unverifiedAction.." arguments need in-game verification; the filter may not load as expected."}}
 	end end
 	local importIndex=1
+	local assumed,seenAssumption={},{}
+	local function assumptions()
+		for _,name in ipairs(assumed) do result.reasons[#result.reasons+1]="Preview assumes optional file '"..name.."' is absent; the exported filter still references it." end
+	end
 	local function unresolvedImport()
 		local entry=parsed.imports[importIndex]
 		result.status="unknown";result.action="Unknown";result.line=entry.line
 		result.reasons={"Included file '"..entry.file.."' is unresolved and could change this result. Attach it for an exact preview."}
+		assumptions()
 		return result
 	end
+	local function skipAssumedImports(before)
+		while parsed.imports[importIndex] and (not before or parsed.imports[importIndex].line<before) do
+			local entry=parsed.imports[importIndex]
+			if not entry.optional or not (parsed.absentOptionalImports or {})[entry.file] then return false end
+			if not seenAssumption[entry.file] then assumed[#assumed+1]=entry.file;seenAssumption[entry.file]=true end
+			importIndex=importIndex+1
+		end
+		return true
+	end
 	for _,rule in ipairs(parsed.rules) do
-		if parsed.imports[importIndex] and parsed.imports[importIndex].line<rule.line then return unresolvedImport() end
+		if not skipAssumedImports(rule.line) then return unresolvedImport() end
 		local matched,unknown,missing=true,{},{}
 		for _,condition in ipairs(rule.conditions) do local pass,why=M.condition(condition,item);if pass==false then matched=false;break elseif pass==nil then unknown[#unknown+1]=why;if why=="Missing "..condition.keyword then missing[#missing+1]=condition.keyword end end end
 		if matched then
-			if #unknown>0 then result.status="unknown";result.action="Unknown";result.reasons=unknown;result.missingProperties=missing;result.line=rule.line;return result end
+			if #unknown>0 then result.status="unknown";result.action="Unknown";result.reasons=unknown;result.missingProperties=missing;result.line=rule.line;assumptions();return result end
 			result.action=rule.action;result.line=rule.line;result.ruleTitle=rule.title;result.matches[#result.matches+1]=rule.line
 			-- Both numbered alert commands address the alert sound. A later
 			-- matching block replaces its earlier numbered alert, including None.
@@ -412,12 +426,14 @@ function M.simulate(parsed,item)
 			end
 			for key,value in pairs(rule.styles) do result.styles[key]=value end
 			if not rule.continue then
-				if #parsed.imports>0 then result.reasons[#result.reasons+1]="Later included files are unresolved; this preview assumes they are valid and available when required." end
+				if parsed.imports[importIndex] then result.reasons[#result.reasons+1]="Later included files are unresolved; this preview assumes they are valid and available when required." end
+				assumptions()
 				return result
 			end
 		end
 	end
-	if parsed.imports[importIndex] then return unresolvedImport() end
+	if not skipAssumedImports() then return unresolvedImport() end
+	assumptions()
 	return result
 end
 return M

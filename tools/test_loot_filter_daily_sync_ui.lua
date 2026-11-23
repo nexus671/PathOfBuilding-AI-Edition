@@ -267,6 +267,32 @@ assert(selectedReview==sampleReview and main.popups[1].title=="Daily filter sync
 sync.configuration, sync.backups, sync.previewBackup, sync.rollback = oldConfig, oldBackups, oldPreview, oldRollback
 print("Review backups requires the diff and a separate restore confirmation")
 
+-- Searching for one unique still displays evidence for all values on its base.
+newBuild()
+main.popups = {}
+local marketUI = headless.install({width=960,height=640})
+marketUI:bind(build)
+local originalMarketDownload = launch.DownloadPage
+launch.DownloadPage = function(_,url,callback)
+	assert(url:find("type=UniqueAccessory",1,true))
+	local header = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT").."\r\n\r\n"
+	callback({header=header,body=[[{"lines":[
+		{"name":"Named result","baseType":"Cord Belt","chaosValue":30,"count":50,"listingCount":40},
+		{"name":"Competing result","baseType":"Cord Belt","chaosValue":120,"count":80,"listingCount":62}
+	]}]]})
+end
+require("Classes.LootFilterMarketBrowseControl").Open()
+marketUI:text("league","Covens")
+marketUI:choose("category","Unique accessories")
+marketUI:text("query","Named result")
+marketUI:click("get")
+assert(main.popups[1].title=="Unique accessories market prices")
+local marketDetails={}
+for _, row in ipairs(main.popups[1].controls.details.list) do marketDetails[#marketDetails+1]=StripEscapes(row[1] or "") end
+assert(table.concat(marketDetails," "):find("30 to 120 chaos",1,true))
+launch.DownloadPage = originalMarketDownload
+print("Unique market review includes competing variants for the selected base")
+
 -- Exercise the exact publish workflow with a simulated account response.
 newBuild()
 main.popups = {}

@@ -1,6 +1,10 @@
-VERSION[2.68.1-ai.preview1210][2026/11/23]
+VERSION[2.68.1-ai.preview1211][2026/11/23]
 
 * Keep the last verified daily filter when an established exchange feed loses most of its liquid quotes.
+
+VERSION[2.68.1-ai.preview1210][2026/11/23]
+
+* Preview optional filter imports as absent without changing exports.
 
 VERSION[2.68.1-ai.preview1209][2026/11/23]
 

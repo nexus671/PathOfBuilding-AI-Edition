@@ -117,6 +117,7 @@ def source_hashes():
     sources += [ROOT / "tools/update_flask_enchant_data.py", ROOT / "tools/test_update_flask_enchant_data.py"]
     sources.append(ROOT / "tools/run_headless_lupa.py")
     sources.append(ROOT / "tools/test_campaign_selection_ui.lua")
+    sources.append(ROOT / "tools/test_filter_optional_import_ui.lua")
     sources += [ROOT / "manifest.xml", ROOT / "changelog.txt"]
     return {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(sources) if path.is_file()}
 
@@ -236,6 +237,10 @@ def main():
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-review-controls.log").write_text(filter_review.stdout)
     assert filter_review.returncode == 0, filter_review.stdout
+    optional_import = subprocess.run(lua_command + ["../tools/test_filter_optional_import_ui.lua", str(frames)], cwd=ROOT / "src",
+                                     env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "filter-optional-import-controls.log").write_text(optional_import.stdout)
+    assert optional_import.returncode == 0, optional_import.stdout
     filter_impact = subprocess.run(lua_command + ["../tools/test_filter_impact_ui.lua"], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-impact-controls.log").write_text(filter_impact.stdout)

@@ -239,6 +239,18 @@ sync.disable()
 local browser = require("Modules.LootFilterMarketBrowse")
 local gear = browser.rows([[{"lines":[{"name":"Example gear","baseType":"Cord Belt","variant":"A","chaosValue":20,"listingCount":17},{"name":"Example gear","baseType":"Cord Belt","variant":"B","chaosValue":32,"listingCount":1}]}]], {id="UniqueAccessory"})
 assert(#gear==2 and gear[1].variant=="B" and gear[2].listings==17)
+local sharedBase = browser.rows([[{"lines":[
+	{"name":"Named result","baseType":"Cord Belt","detailsId":"named","chaosValue":30,"count":50,"listingCount":40,"corrupted":false},
+	{"name":"Competing result","baseType":"Cord Belt","detailsId":"competing","chaosValue":120,"count":80,"listingCount":62},
+	{"name":"Thin result","baseType":"Cord Belt","detailsId":"thin","chaosValue":9000,"count":2,"listingCount":5},
+	{"name":"Conflicted result","baseType":"Cord Belt","detailsId":"conflicted","chaosValue":700,"count":50,"listingCount":55},
+	{"name":"Conflicted result","baseType":"Cord Belt","detailsId":"conflicted","chaosValue":5,"count":100,"listingCount":70}
+]}]],{id="UniqueAccessory"},"Named result")
+assert(#sharedBase==1 and sharedBase[1].corrupted==false)
+local evidence = sharedBase[1].baseEvidence
+assert(evidence.names==4 and evidence.variants==4 and evidence.priced==2 and evidence.minimum==30 and evidence.maximum==120)
+local unmodifiedGem = browser.rows([[{"lines":[{"name":"Example gem","chaosValue":1,"gemLevel":1,"gemQuality":0}]}]],{id="SkillGem"})[1]
+assert(unmodifiedGem.gemQuality==0 and unmodifiedGem.corrupted==nil)
 local cards = browser.rows([[{"core":{"primary":"chaos"},"items":[{"id":"card","name":"Example card"}],"lines":[{"id":"card","primaryValue":12,"volumePrimaryValue":500}]}]], {id="DivinationCard",feed="exchange"})
 assert(#cards==1 and cards[1].price==12 and cards[1].volume==500)
 assert(not pcall(browser.rows, '{"lines":[{"name":"Bad","chaosValue":-1}]}', {id="Map"}))

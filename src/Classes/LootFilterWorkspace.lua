@@ -335,7 +335,7 @@ function M.Open(build,source,layout,controller)
 				end
 				draft();reopen()
 			end,profile and profile.importFiles)
-			elseif entry.id=="importFiles" and profile then require("Classes.LootFilterImportControl").Open(profile,function(files) profile.importFiles=files;draft();reopen() end)
+			elseif entry.id=="importFiles" and profile then require("Classes.LootFilterImportControl").Open(profile,function(files,absent) profile.importFiles=files;profile.absentOptionalImports=absent;draft();reopen() end)
 			elseif entry.id=="account" and profile then controller.Account(profile,function(text) profile.template=text;draft();reopen() end)
 			elseif entry.id=="audit" and profile then openAudit()
 			elseif entry.id=="changes" then require("Classes.PlanningBrowserControl").Open("Filter changes",require("Modules.LootFilterEditing").review(saver.data,data))
