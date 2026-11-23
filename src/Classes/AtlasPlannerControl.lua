@@ -491,6 +491,7 @@ function Panel.Open(build,source,layout)
 			if entry.plannedAllflame then local allflame=require("Modules.MapAllflame").describe(entry.plannedAllflame);details[#details+1]="Planned "..allflame.name..": "..allflame.description:gsub("\n"," ") end
 			if entry.plannedDeified then details[#details+1]="Planned Divine Vessel: Deified boss bonuses; eligibility and enchantment interactions unverified." end
 			if require("Modules.MapObservedEffects").deified(entry.observedEffects) then details[#details+1]="Deified bosses: +25% damage, attack/cast speed and area; +100% toughness; +50% item rarity." end
+			if entry.templePreview then details[#details+1]="Hypothetical Temple outcome: availability, implicit retention and odds are unverified." end
 			if entry.vaalPreview then details[#details+1]="Based on a conditional Vaal preview; outcome odds are not modeled." end
 			if entry.vaalTierUpPreview then details[#details+1]="Tier-up preview: item-level and quality retention are unverified assumptions." end
 			if entry.vaalPreview and entry.baseId=="Metadata/Items/Maps/MapWorldsVaalTemple" then details[#details+1]="Vaal Temple preview: item-level and quality retention are unverified assumptions." end

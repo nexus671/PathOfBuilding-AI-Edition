@@ -31,6 +31,7 @@ function M.Open(options)
 	local plannedDelirium=initial and require("Modules.MapObservedEffects").validateDeliriumPlan(initial.plannedDelirium) or nil
 	local vaalPreview=initial and initial.vaalPreview or nil
 	local vaalTierUpPreview=initial and initial.vaalTierUpPreview or nil
+	local templePreview=initial and initial.templePreview or nil
 	local implicit=initial and initial.implicit and copyTable(initial.implicit) or nil
 	local quality=initial and require("Modules.MapQuality").validate(initial.quality) or nil
 	local observedEffects=initial and require("Modules.MapObservedEffects").validate(initial.observedEffects) or nil
@@ -74,7 +75,7 @@ function M.Open(options)
 			local wasNightmare=map.isNightmare(baseId);baseId=entry.id;local tier=baseId:match("^Metadata/Items/Maps/MapKeyTier(%d+)$")
 			if tier or map.isNightmare(baseId) or wasNightmare then controls.tier:SelByValue(tier and tonumber(tier) or map.isNightmare(baseId) and 17 or 16,"val") end;syncRarity()
 			if map.isNightmare(baseId) and not wasNightmare then controls.level:SetText("84") end
-			selected={};rolls={};implicit=nil;mirrored=nil;twiceCorrupted=nil;unidentified=nil;vaalPreview=nil;vaalTierUpPreview=nil;quality=nil;observedEffects=nil;plannedDelirium=nil;estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
+			selected={};rolls={};implicit=nil;mirrored=nil;twiceCorrupted=nil;unidentified=nil;vaalPreview=nil;vaalTierUpPreview=nil;templePreview=nil;quality=nil;observedEffects=nil;plannedDelirium=nil;estimateSettings=nil;candidate=nil;offset=0;main:ClosePopup();refresh()
 		end,closeOnChoose=false})
 	end)
 	button("pasteMap",16+left-196,66,96,"Paste map",function()
@@ -87,7 +88,7 @@ function M.Open(options)
 			baseId=state.baseId;syncRarity();mirrored=state.mirrored or nil;twiceCorrupted=state.twiceCorrupted or nil;unidentified=state.unidentified or nil;selected=copyTable(state.selected);rolls=copyTable(state.rolls);implicit=state.implicit and copyTable(state.implicit) or nil;quality=state.quality and copyTable(state.quality) or nil;observedEffects=state.observedEffects and copyTable(state.observedEffects) or nil
 			controls.tier:SelByValue(state.tier,"val");controls.level:SetText(tostring(state.itemLevel))
 			previousRarity=state.corrupted and "corrupted_"..state.rarity or state.rarity;controls.rarity:SelByValue(previousRarity,"val")
-			estimateSettings=nil;vaalPreview=nil;vaalTierUpPreview=nil;plannedDeified=nil;plannedAllflame=nil;plannedDelirium=nil;candidate=nil;offset=0;controls.search:SetText("");main:ClosePopup();refresh()
+			estimateSettings=nil;vaalPreview=nil;vaalTierUpPreview=nil;templePreview=nil;plannedDeified=nil;plannedAllflame=nil;plannedDelirium=nil;candidate=nil;offset=0;controls.search:SetText("");main:ClosePopup();refresh()
 		end)
 		popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{524,154,100,28},"Cancel",function() main:ClosePopup() end)
 		ui.style(popup,{keep=true});main:OpenPopup(640,200,"Review copied map",popup,nil,nil,"close")
@@ -273,12 +274,12 @@ function M.Open(options)
 	button("add",right,height-88,math.floor(rightWidth/2)-6,"Add modifier",function() if candidate then selected[#selected+1]=candidate.id;candidate=nil;offset=0;controls.search:SetText("");refresh() end end)
 	controls.add.enabled=function() return not unidentified and candidate~=nil end
 	button("currency",right+math.floor(rightWidth/2)+6,height-88,math.floor(rightWidth/2)-6,"Use currency",function()
-		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),corrupted=isCorrupted() or nil,twiceCorrupted=twiceCorrupted,implicit=implicit,vaalPreview=vaalPreview,vaalTierUpPreview=vaalTierUpPreview,mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects,plannedDeified=plannedDeified,plannedAllflame=plannedAllflame,plannedDelirium=plannedDelirium}
+		local current={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),corrupted=isCorrupted() or nil,twiceCorrupted=twiceCorrupted,implicit=implicit,vaalPreview=vaalPreview,vaalTierUpPreview=vaalTierUpPreview,templePreview=templePreview,mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects,plannedDeified=plannedDeified,plannedAllflame=plannedAllflame,plannedDelirium=plannedDelirium}
 		local ok,actions=pcall(require("Modules.MapCurrency").options,current)
 		if not ok then ui.errorPopup("Map currency",actions);return end
 		local rows={};for _,entry in ipairs(actions) do rows[#rows+1]={id=entry.id,label=entry.label..(entry.available and "" or " (unavailable)"),available=entry.available,icon=(entry.id=="divine_vessel" or entry.id=="clear_deified_plan") and require("Modules.CraftingWorkbench").icon("divine_vessel") or "Assets/Crafting/"..((entry.id:match("^vaal_") or entry.id=="temple_add") and "vaal" or entry.id)..".png",details={entry.reason or entry.detail or (entry.id=="clear_deified_plan" and "Remove only the hypothetical plan; copied enchantments remain unchanged." or entry.id=="divine_vessel" and "Plan Deified boss bonuses; eligibility and enchantment interactions are unverified." or entry.id=="originator" and "Removes a random suffix and samples a rare-only replacement; some outcomes and weights are unverified." or entry.id:match("^vaal_") and "Conditional outcome only, not a full Vaal Orb roll; outcome odds are unknown." or "Available for this modeled map."),"Experimental map crafting; no real currency is consumed.",map.isNightmare(baseId) and "Six modifiers: exclusive prefix and suffix first, then four weighted draws; order is unverified." or "Counts, selection and independent uniform stat rolls are estimates.",observedEffects and "Observed effects are not modeled and can change results." or "Unmatched translations remain ranges; some restrictions are unverified."}} end
 		browser.Open("Use currency on hypothetical map",rows,{action="Apply estimate",canChoose=function(entry) return entry.available end,choose=function(entry)
-			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),corrupted=isCorrupted() or nil,twiceCorrupted=twiceCorrupted,implicit=implicit,vaalPreview=vaalPreview,vaalTierUpPreview=vaalTierUpPreview,mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects,plannedDeified=plannedDeified,plannedAllflame=plannedAllflame,plannedDelirium=plannedDelirium}
+			local state={baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),corrupted=isCorrupted() or nil,twiceCorrupted=twiceCorrupted,implicit=implicit,vaalPreview=vaalPreview,vaalTierUpPreview=vaalTierUpPreview,templePreview=templePreview,mirrored=mirrored,unidentified=unidentified,selected=selected,rolls=rolls,quality=quality,observedEffects=observedEffects,plannedDeified=plannedDeified,plannedAllflame=plannedAllflame,plannedDelirium=plannedDelirium}
 			local attemptSeed=rollSeed;rollSeed=rollSeed*16807%2147483647
 			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,attemptSeed)
 			if not ok then ui.errorPopup("Currency unavailable",result);return end
@@ -287,7 +288,7 @@ function M.Open(options)
 			local rarityValue=result.state.corrupted and "corrupted_"..result.state.rarity or result.state.rarity
 			local clearedEstimate=result.state.corrupted and estimateSettings~=nil
 			if result.state.corrupted then estimateSettings=nil end
-			twiceCorrupted=result.state.twiceCorrupted or nil;vaalPreview=result.state.vaalPreview or nil;vaalTierUpPreview=result.state.vaalTierUpPreview or nil;plannedDeified=result.state.plannedDeified or nil;plannedAllflame=result.state.plannedAllflame
+			twiceCorrupted=result.state.twiceCorrupted or nil;vaalPreview=result.state.vaalPreview or nil;vaalTierUpPreview=result.state.vaalTierUpPreview or nil;templePreview=result.state.templePreview or nil;plannedDeified=result.state.plannedDeified or nil;plannedAllflame=result.state.plannedAllflame
 			controls.rarity:SelByValue(rarityValue,"val");previousRarity=rarityValue;candidate=nil;offset=0
 			main:ClosePopup();controls.search:SetText("");refresh()
 			if entry.id=="temple_add" then controls.status.label=ui.fit("^xE9BE7BHypothetical Temple outcome | interactions unverified",rightWidth,14) end
@@ -304,7 +305,7 @@ function M.Open(options)
 		ui.label(controls,"draftNameLabel",right,height-42,"Name",14)
 		controls.draftName=new("EditControl"):EditControl(ui.anchor,{right+46,height-48,160,26},initial and initial.title or "Map draft",nil,nil,120)
 		button("keep",right+218,height-48,150,"Keep map draft",function()
-			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil,twiceCorrupted=twiceCorrupted and isCorrupted() or nil,mirrored=mirrored or nil,unidentified=unidentified or nil,vaalPreview=vaalPreview or nil,vaalTierUpPreview=vaalTierUpPreview or nil,plannedDeified=plannedDeified or nil,plannedAllflame=plannedAllflame,plannedDelirium=plannedDelirium,implicit=implicit and copyTable(implicit) or nil,quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
+			local entry={id=draftId,title=controls.draftName.buf,patch=map.source().patch,baseId=baseId,tier=controls.tier:GetSelValueByKey("val"),itemLevel=tonumber(controls.level.buf),rarity=getRarity(),selected=copyTable(selected),rolls=copyTable(rolls),corrupted=isCorrupted() or nil,twiceCorrupted=twiceCorrupted and isCorrupted() or nil,mirrored=mirrored or nil,unidentified=unidentified or nil,vaalPreview=vaalPreview or nil,vaalTierUpPreview=vaalTierUpPreview or nil,templePreview=templePreview or nil,plannedDeified=plannedDeified or nil,plannedAllflame=plannedAllflame,plannedDelirium=plannedDelirium,implicit=implicit and copyTable(implicit) or nil,quality=quality and copyTable(quality) or nil,observedEffects=observedEffects and copyTable(observedEffects) or nil}
 			if estimateSettings then entry.estimate=copyTable(estimateSettings) end
 			local ok,result=pcall(options.keep,entry)
 			if not ok then ui.errorPopup("Map draft",result);return end
@@ -331,6 +332,7 @@ function M.Open(options)
 		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and (isCorrupted() and "^xE07070Corrupted normal map | No explicit modifiers" or "^7Normal map | Use currency to add modifiers") or map.isNightmare(baseId) and "^xE9BE7BNightmare | Experimental | "..result.total.." candidates | Page "..(math.floor(offset/30)+1) or (isCorrupted() and "^xE07070Corrupted "..#selected.."/"..(rarity=="magic" and 2 or 9).." | " or "^7")..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
 		if unidentified then controls.status.label="^xE9BE7BUnidentified | unknown modifiers; identify and paste again"
 		elseif vaalPreview and baseId=="Metadata/Items/Maps/MapWorldsVaalTemple" then controls.status.label=ui.fit("^xE9BE7BConditional Vaal Temple | item level and quality unverified",rightWidth,14)
+		elseif templePreview then controls.status.label=ui.fit("^xE9BE7BHypothetical Temple outcome | interactions unverified",rightWidth,14)
 		elseif vaalTierUpPreview then controls.status.label=ui.fit("^xE9BE7BConditional tier-up | item level and quality unverified",rightWidth,14)
 		elseif vaalPreview then controls.status.label="^xE9BE7BBased on conditional Vaal preview | outcome odds not modeled" end
 		local problem=levelProblem();if problem then controls.status.label="^xE9BE7B"..ui.fit(problem,rightWidth,14) end
@@ -410,11 +412,11 @@ function M.Open(options)
 		if tier==17 and not map.isNightmare(baseId) then baseId="Metadata/Items/Maps/MapKeyNightmareBoss";controls.level:SetText("84")
 		elseif tier<17 and (map.isNightmare(baseId) or baseId:match("^Metadata/Items/Maps/MapKeyTier%d+$")) then baseId="Metadata/Items/Maps/MapKeyTier"..tier end
 		syncRarity()
-		selected={};rolls={};implicit=nil;mirrored=nil;twiceCorrupted=nil;unidentified=nil;vaalPreview=nil;vaalTierUpPreview=nil;plannedDeified=nil;plannedAllflame=nil;plannedDelirium=nil;observedEffects=nil;offset=0;refresh()
+		selected={};rolls={};implicit=nil;mirrored=nil;twiceCorrupted=nil;unidentified=nil;vaalPreview=nil;vaalTierUpPreview=nil;templePreview=nil;plannedDeified=nil;plannedAllflame=nil;plannedDelirium=nil;observedEffects=nil;offset=0;refresh()
 	end
 	controls.rarity.selFunc=function()
 		local current=controls.rarity:GetSelValueByKey("val")
-		if current~=previousRarity then unidentified=nil;vaalPreview=nil;vaalTierUpPreview=nil;twiceCorrupted=nil end
+		if current~=previousRarity then unidentified=nil;vaalPreview=nil;vaalTierUpPreview=nil;templePreview=nil;twiceCorrupted=nil end
 		if current~="corrupted_"..previousRarity then selected={};rolls={};implicit=nil end
 		if current~="rare" and current~="corrupted_rare" and observedEffects then
 			local kept={};for _,effect in ipairs(observedEffects) do if effect.kind~="explicit" then kept[#kept+1]=effect end end

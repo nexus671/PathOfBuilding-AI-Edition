@@ -206,7 +206,7 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache,allflameId)
   state.rolls=state.rolls or {};local first=#state.selected+1
   for _=1,math.min(2,9-#state.selected) do add(state,random,checkpoint,cache) end
   for index=first,#state.selected do local id=state.selected[index];local roll=not identitiesOnly and values.sample(map.source().mods[id],random);if roll then state.rolls[#state.rolls+1]={id=id,values=roll} end end
-  state.twiceCorrupted=true;state.vaalPreview=true
+  state.twiceCorrupted=true;state.vaalPreview=true;state.templePreview=true
   local implicitInfo=state.implicit and require("Modules.MapCorruptionImplicits").describe(state.implicit,state.itemLevel) or nil
   return {state=state,seed=seed,action=action,dataPatch=map.source().patch,dataSource=copyTable(map.source().source),summary=not identitiesOnly and map.summarize(state.selected,state.rolls,implicitInfo,state.quality) or nil,note="Hypothetical Temple second-corruption add-modifiers outcome. Whether this outcome is possible, implicit retention, weights, values, interactions and odds are unverified; this is not a full device simulation."}
  end

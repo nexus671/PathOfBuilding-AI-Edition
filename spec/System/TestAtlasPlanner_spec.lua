@@ -100,6 +100,12 @@ describe("Native Atlas planner", function()
 		main.popups={};controls=require("Classes.MapModifierControl").Open({build=build,initial=restored,keep=function(value) saved=value;return value.id end});controls.delirium:Click();popup=main.popups[1].controls
 		assert.equal("35",popup.current.buf);assert.equal("Map Items",popup.nextType.buf);assert.equal("80",popup.target.buf);popup.clearPlan:Click();controls.keep:Click();assert.is_nil(saved.plannedDelirium)
 	end)
+	it("preserves Temple preview assumptions in saved and exported drafts",function()
+		local source=plan("3.30.0-preview");source.mapDrafts={{id="temple-preview",title="Temple map",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapKeyTier16",tier=16,itemLevel=83,rarity="rare",selected={},corrupted=true,twiceCorrupted=true,vaalPreview=true,templePreview=true}}
+		local store=atlas.new(build);store:Upsert(source);local xml={};store:Save(xml);local reopened=atlas.new(build);reopened:Load(xml)
+		assert.is_true(reopened.plans[1].mapDrafts[1].templePreview);assert.is_true(atlas.import(atlas.export(source)).mapDrafts[1].templePreview)
+		local invalid=copyTable(source.mapDrafts[1]);invalid.twiceCorrupted=nil;assert.has_error(function() atlas.validateMapDraft(invalid) end)
+	end)
 	it("persists a tier 17 Nightmare map draft",function()
 		local source=plan("3.30.0-preview")
 		source.mapDrafts={{id="nightmare",title="Abomination",patch="3.30.0.2.2",baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={"MapUberModCurses"}}}

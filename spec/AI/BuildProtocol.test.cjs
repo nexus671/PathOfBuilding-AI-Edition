@@ -274,7 +274,7 @@ test('queues a seeded hypothetical map currency action', t => {
   const nightmare=fixture(t), nightmareState={baseId:'Metadata/Items/Maps/MapWorldsAbomination',tier:17,itemLevel:84,rarity:'rare',selected:[]};
   nightmare.call('simulate_map_currency',{baseRevision:nightmare.state.revision,state:nightmareState,action:'chaos',seed:42});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(nightmare.dir,'AI-build-request.json'))).state,nightmareState);
-  for(const invalid of [{...args,seed:0},{...args,action:'vaal'},{...args,state:{...state,rarity:'unique'}},{...args,state:{...state,vaalTierUpPreview:'yes'}},{...args,state:{...state,selected:Array(10).fill('x')}}]) assert.throws(()=>f.call('simulate_map_currency',invalid),/arguments/);
+  for(const invalid of [{...args,seed:0},{...args,action:'vaal'},{...args,state:{...state,rarity:'unique'}},{...args,state:{...state,vaalTierUpPreview:'yes'}},{...args,state:{...state,templePreview:'yes'}},{...args,state:{...state,selected:Array(10).fill('x')}}]) assert.throws(()=>f.call('simulate_map_currency',invalid),/arguments/);
 });
 test('queues bounded map reroll estimates', t => {
   const f=fixture(t), state={baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'}, options={wanted:[],wantedGroups:[['MapContainsMirageWorlds','MapContainsWildwoodWorlds']],avoid:['MapMonsterAreaOfEffectMapWorlds'],trials:10,maxAttempts:5,seed:42,price:{amount:0.5,currency:'chaos'}};

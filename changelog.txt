@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1175][2026/11/23]
+
+* Preserve Temple map preview assumptions in saved plans and AI tools.
+
 VERSION[2.68.1-ai.preview1174][2026/11/23]
 
 * Preview a hypothetical Temple second corruption for ordinary maps.

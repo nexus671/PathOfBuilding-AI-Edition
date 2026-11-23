@@ -71,6 +71,9 @@ function M.validateMapDraft(entry)
 	assert(entry.vaalTierUpPreview==nil or type(entry.vaalTierUpPreview)=="boolean","Invalid tier-up preview marker")
 	assert(not entry.vaalTierUpPreview or result.vaalPreview,"A tier-up preview requires a conditional Vaal preview")
 	result.vaalTierUpPreview=entry.vaalTierUpPreview or nil
+	assert(entry.templePreview==nil or type(entry.templePreview)=="boolean","Invalid Temple preview marker")
+	assert(not entry.templePreview or result.twiceCorrupted and result.vaalPreview,"A Temple preview requires a twice-corrupted conditional preview")
+	result.templePreview=entry.templePreview or nil
 	assert(entry.mirrored==nil or type(entry.mirrored)=="boolean","Invalid map mirrored state");result.mirrored=entry.mirrored or nil
 	assert(entry.unidentified==nil or type(entry.unidentified)=="boolean","Invalid map identification state");result.unidentified=entry.unidentified or nil
 	assert(not result.unidentified or result.rarity~="normal","Normal maps cannot be unidentified")
