@@ -1,3 +1,15 @@
+VERSION[2.68.1-ai.preview1139][2026/11/22]
+
+* Show verified notes for the downloaded update.
+
+VERSION[2.68.1-ai.preview1138][2026/11/22]
+
+* Keep filter results visible when previewing sounds.
+
+VERSION[2.68.1-ai.preview1137][2026/11/22]
+
+* Label the selected item in the loot simulator.
+
 VERSION[ai][2026/11/13]
 
 --- AI Edition ---

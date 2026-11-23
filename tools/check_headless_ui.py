@@ -69,6 +69,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_sacred_exact_ui.lua")
     sources.append(ROOT / "tools/test_filter_unique_review.lua")
     sources.append(ROOT / "tools/test_filter_sound_list_ui.lua")
+    sources.append(ROOT / "tools/test_update_notes_ui.lua")
     sources.append(ROOT / "tools/test_fated_scene_ui.lua")
     sources.append(ROOT / "tools/test_filter_union_ui.lua")
     sources.append(ROOT / "tools/test_atlas_plan_pickups_ui.lua")
@@ -130,6 +131,10 @@ def main():
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "controls.log").write_text(result.stdout)
     assert result.returncode == 0, result.stdout
+    update_notes = subprocess.run(lua_command + ["../tools/test_update_notes_ui.lua", str(frames)], cwd=ROOT / "src",
+                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "update-notes-controls.log").write_text(update_notes.stdout)
+    assert update_notes.returncode == 0, update_notes.stdout
     atlas_search = subprocess.run(lua_command + ["../tools/test_atlas_search_ui.lua", str(frames)], cwd=ROOT / "src",
                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-search-controls.log").write_text(atlas_search.stdout)
