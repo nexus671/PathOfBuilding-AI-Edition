@@ -1791,7 +1791,7 @@
 	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="ddc0a55c9df8442fdad75a562b3529447dc5b08b" />
 	<File name="Modules/LootFilterOfflinePrices.lua" part="program" sha1="6aa3f8e5303ef9a52b6b5593844b7365ae2cf720" />
 	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="09a99d7f70105d885f606e8db09782514a7c2c3d" />
-	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="7e767ba5c66b7659a6dc769de1ab39801483cb1d" />
+	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="830c698fe24006dffd8a44b9b865950055d8a1f8" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="33527c075ed479f779404c5d0e3053eeec68403f" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="d5efd3036d92bb2e568bc2e44209e0037fa0e94a" />
 	<File name="Classes/MapModifierControl.lua" part="program" sha1="233355ef5bf32aa8e07e4eeb1ba5e89dc45aac91" />

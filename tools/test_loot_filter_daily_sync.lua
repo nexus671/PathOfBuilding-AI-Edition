@@ -211,6 +211,14 @@ Show
 			end
 		end
 	end
+	local validation = require("Modules.LootFilterSyncValidation")
+	local bodies = {}
+	local body = [[{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.2,"volumePrimaryValue":1000}]}]]
+	for index = 1, #market.feedCategories(raw) do bodies[index] = body end
+	local _, _, reviewed = validation(raw,bodies,false,100,{{BaseType="Cord Belt",Rarity="Magic",Class="Belts"}},nil,nil,nil,style)
+	local medium, strong = reviewed[1].samples[1], reviewed[1].samples[2]
+	assert(medium.area==83 and medium.count==10 and medium.marker=="0 Cyan Diamond")
+	assert(strong.area==83 and strong.count==15 and strong.marker=="0 Purple Star")
 	local mismatched = themed:gsub("cyan%-diamond","red-diamond",1)
 	assert(not pcall(appearance.strip,mismatched))
 	local bom = "\239\187\191"

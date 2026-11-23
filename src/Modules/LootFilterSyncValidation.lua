@@ -25,13 +25,20 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 			change.samples = {}
 			local stack = change.old==change.cutoff and change.highlights and change.highlights[1].firstStack
 				or math.min(change.cutoff,change.old)+1
+			local stacks, seenStacks = {stack}, {[stack]=true}
+			for _, highlight in ipairs(change.highlights or {}) do
+				local threshold = highlight.firstStack
+				if not seenStacks[threshold] then
+					stacks[#stacks+1], seenStacks[threshold] = threshold, true
+				end
+			end
 			for _, itemClass in ipairs(change.classes) do
 				for _, area in ipairs(areas) do
 					if remaining == 0 then break end
 					local base = require("Modules.LootFilterLibrary").baseProperties(change.name,"Normal")
 					local sample = {
 						BaseType=change.name, Class=itemClass, Rarity="Normal",
-						StackSize=stack, AreaLevel=area, DropLevel=base.DropLevel,
+						AreaLevel=area, DropLevel=base.DropLevel,
 						Width=base.Width, Height=base.Height, HasExplicitMod={}, HasEnchantment={}, HasInfluence={"None"},
 						SocketGroup="", EnchantmentPassiveNode="",
 					}
@@ -42,14 +49,18 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 						sample.BlightedMap = change.blighted or change.ravaged
 						sample.UberBlightedMap = change.ravaged
 					end
-					local before, after = parser.simulate(earlier, sample), parser.simulate(parsed, sample)
-					change.samples[#change.samples+1] = {
-						action=after.action, line=after.line, before=before.action, beforeLine=before.line,
-						beforeMissing=parser.safeMissingProperties(before.missingProperties), afterMissing=parser.safeMissingProperties(after.missingProperties),
-						class=sample.Class, count=sample.StackSize, area=area,
-						marker=after.action=="Show" and after.styles.MinimapIcon and table.concat(after.styles.MinimapIcon," ") or nil,
-					}
-					remaining = remaining-1
+					for _, size in ipairs(stacks) do
+						if remaining == 0 then break end
+						sample.StackSize = size
+						local before, after = parser.simulate(earlier, sample), parser.simulate(parsed, sample)
+						change.samples[#change.samples+1] = {
+							action=after.action, line=after.line, before=before.action, beforeLine=before.line,
+							beforeMissing=parser.safeMissingProperties(before.missingProperties), afterMissing=parser.safeMissingProperties(after.missingProperties),
+							class=sample.Class, count=sample.StackSize, area=area,
+							marker=after.action=="Show" and after.styles.MinimapIcon and table.concat(after.styles.MinimapIcon," ") or nil,
+						}
+						remaining = remaining-1
+					end
 				end
 			end
 			change.sample = change.samples[1]

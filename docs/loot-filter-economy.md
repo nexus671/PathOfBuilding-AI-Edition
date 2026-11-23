@@ -40,7 +40,7 @@ Daily sync uses the lower of the latest liquid quote and the median of available
 
 Use **Preview changes** before enabling a new setup. It fetches prices and validates the proposed filter, then opens the full text comparison without saving settings or replacing your file.
 
-The sync review tests up to 500 combinations of affected classes and representative areas at the first stack size whose cutoff changed. It shows both the baseline and candidate outcome and the matching line, including stacks that another rule still hides.
+The sync review tests up to 500 combinations of affected classes and representative areas at the first stack size whose cutoff changed and at proposed highlight thresholds. It shows both the baseline and candidate outcome and the matching line, including stacks that another rule still hides.
 
 **Browse market prices** opens a read-only market browser for cards, uniques, maps, gems, and crafting bases. It shows the quote and available variant details, including map tier, gem level and quality, links, and listing counts. Daily filter changes support managed commodity stack rules and explicitly tagged card hides.
 
