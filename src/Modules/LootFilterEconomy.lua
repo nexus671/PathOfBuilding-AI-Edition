@@ -236,6 +236,11 @@ function M.pickupPolicy(target, preferences)
 		assert(value == nil or finite(value) and value <= 100000, "Enter a highlight threshold above 0 and up to 100,000 chaos")
 		policy[key] = value
 	end
+	for _, key in ipairs({"highlightStyle","strongHighlightStyle"}) do
+		local value = preferences[key]
+		assert(value==nil or appearance.validPalette(value), "Choose a valid price highlight style")
+		policy[key] = value
+	end
 	assert(not (policy.highlightChaos and policy.strongHighlightChaos)
 		or policy.strongHighlightChaos > policy.highlightChaos, "The strong highlight threshold must be larger")
 	local caps = preferences.caps or {}
@@ -298,13 +303,13 @@ local function priceHighlights(policy, quote, cutoff, name, area)
 	end
 	local highlight = stackAt(policy.highlightChaos)
 	local strong = stackAt(policy.strongHighlightChaos)
-	local function add(minimum,upper,tier)
+	local function add(minimum,upper,tier,style)
 		if not minimum or minimum>10000 or upper and upper<=minimum then return end
 		blocks[#blocks+1] = {firstStack=minimum,upper=upper and upper<=10000 and upper or nil,
-			tier=tier,name=name,area=area and area.operator or nil}
+			tier=tier,name=name,area=area and area.operator or nil,style=style}
 	end
-	add(highlight,strong,1)
-	add(strong,nil,2)
+	add(highlight,strong,1,policy.highlightStyle)
+	add(strong,nil,2,policy.strongHighlightStyle)
 	return blocks
 end
 
@@ -384,7 +389,7 @@ function M.review(raw, quotes, target, preferences, confirmation)
 			else
 				changed = changed or cutoff~=old
 				local icons = {}
-				for index, style in ipairs(styles) do icons[index] = {firstStack=style.firstStack,icon=appearance.icon(style.tier)} end
+				for index, style in ipairs(styles) do icons[index] = {firstStack=style.firstStack,icon=appearance.icon(style.tier,style.style)} end
 				changes[#changes + 1] = {name=name, old=old, cutoff=cutoff, price=usedPrice or quote.price, currentPrice=quote.currentPrice,
 					source=quote.source, observations=quote.observations, classes=class.values,
 					volume=quote.volume, maps=scope=="maps", scope=scope,highlights=#icons>0 and icons or nil,

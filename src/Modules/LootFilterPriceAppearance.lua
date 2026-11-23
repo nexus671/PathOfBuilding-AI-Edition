@@ -4,13 +4,30 @@ local M = {}
 local begin = "# PoB price highlight begin "
 local stop = "# PoB price highlight end"
 local bom = "\239\187\191"
-local styles = {
-	{icon="1 Yellow Circle",effect="Yellow"},
-	{icon="0 Orange Star",effect="Orange"},
+M.presets = {
+	{val="yellow-circle",label="Yellow circle",icon="1 Yellow Circle",effect="Yellow"},
+	{val="orange-star",label="Orange star",icon="0 Orange Star",effect="Orange"},
+	{val="cyan-diamond",label="Cyan diamond",icon="0 Cyan Diamond",effect="Cyan"},
+	{val="purple-star",label="Purple star",icon="0 Purple Star",effect="Purple"},
+	{val="red-diamond",label="Red diamond",icon="0 Red Diamond",effect="Red"},
+	{val="green-hexagon",label="Green hexagon",icon="1 Green Hexagon",effect="Green"},
 }
+local defaults = {M.presets[1],M.presets[2]}
+local styles = {}
+for _, style in ipairs(M.presets) do styles[style.val] = style end
 
-function M.icon(tier)
-	return styles[tier].icon
+local function styleFor(tier, palette)
+	if not defaults[tier] then return nil end
+	if palette==nil then return defaults[tier] end
+	return styles[palette]
+end
+
+function M.validPalette(palette)
+	return type(palette)=="string" and styles[palette]~=nil
+end
+
+function M.icon(tier, palette)
+	return assert(styleFor(tier,palette),"Invalid price highlight style").icon
 end
 
 local function linesOf(raw)
@@ -50,10 +67,11 @@ local function exactShow(rule)
 end
 
 local function duplicate(rule,spec,base)
-	assert(type(spec)=="table" and type(spec.name)=="string" and #spec.name<=200
+	local style = type(spec)=="table" and styleFor(spec.tier,spec.style)
+	assert(style and type(spec.name)=="string" and #spec.name<=200
 		and not spec.name:find('[%c"\\]') and contains(base,spec.name)
 		and validInteger(spec.firstStack) and (not spec.upper or validInteger(spec.upper) and spec.upper>spec.firstStack)
-		and styles[spec.tier] and (spec.area==nil or spec.area=="<" or spec.area==">="),
+		and (spec.area==nil or spec.area=="<" or spec.area==">="),
 		"Invalid generated price highlight")
 	local lines = {"Show"}
 	for offset=2,#rule.rawLines do
@@ -69,14 +87,14 @@ local function duplicate(rule,spec,base)
 	lines[#lines+1]="    StackSize >= "..spec.firstStack
 	if spec.upper then lines[#lines+1]="    StackSize < "..spec.upper end
 	if spec.area then lines[#lines+1]="    AreaLevel "..spec.area.." 68" end
-	lines[#lines+1]="    MinimapIcon "..styles[spec.tier].icon
-	lines[#lines+1]="    PlayEffect "..styles[spec.tier].effect
+	lines[#lines+1]="    MinimapIcon "..style.icon
+	lines[#lines+1]="    PlayEffect "..style.effect
 	return lines
 end
 
 local function render(rule,specs,base,newline)
 	-- cspell:ignore keyorder
-	local lines={begin..assert(json.encode(specs,{keyorder={"name","firstStack","upper","tier","area"}}))}
+	local lines={begin..assert(json.encode(specs,{keyorder={"name","firstStack","upper","tier","area","style"}}))}
 	for _, spec in ipairs(specs) do
 		for _, line in ipairs(duplicate(rule,spec,base)) do lines[#lines+1]=line end
 	end

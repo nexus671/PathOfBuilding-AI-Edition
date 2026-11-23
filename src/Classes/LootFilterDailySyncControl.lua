@@ -2,6 +2,7 @@ local sync = require("Modules.LootFilterDailySync")
 local background = require("Modules.LootFilterBackgroundTask")
 local ui = require("Modules.PlanningUI")
 local market = require("Modules.LootFilterEconomy")
+local appearance = require("Modules.LootFilterPriceAppearance")
 local json = require("dkjson")
 local M = {}
 
@@ -29,10 +30,20 @@ local function editPickupPolicy(width, target, policy, save)
 	end
 	highlightField("highlightChaos",16)
 	highlightField("strongHighlightChaos",width/2+4)
+	local function paletteField(key,x,defaultLabel)
+		local choices = {{label=defaultLabel}}
+		for _, preset in ipairs(appearance.presets) do choices[#choices+1] = preset end
+		controls[key] = new("DropDownControl"):DropDownControl(ui.anchor,{x,330,width/2-32,28},choices)
+		for index, preset in ipairs(choices) do
+			if preset.val==policy[key] then controls[key]:SetSel(index); break end
+		end
+	end
+	paletteField("highlightStyle",16,"Default (yellow circle)")
+	paletteField("strongHighlightStyle",width/2+4,"Default (orange star)")
 	local confirm = policy.confirmTightening==true
-	controls.confirmTightening = new("ButtonControl"):ButtonControl(ui.anchor,{16,330,width-32,28},"",function() confirm=not confirm end)
+	controls.confirmTightening = new("ButtonControl"):ButtonControl(ui.anchor,{16,374,width-32,28},"",function() confirm=not confirm end)
 	controls.confirmTightening.label = function() return "Require GGG trade confirmation for new hides: "..(confirm and "On" or "Off") end
-	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,376,180,28},"Use with next update",function()
+	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,420,180,28},"Use with next update",function()
 		local passed, checked = pcall(function()
 			local caps, nextIndex, why = json.decode(controls.caps.buf)
 			assert(type(caps) == "table" and not controls.caps.buf:sub(nextIndex):find("%S"), why or "Enter a JSON object of item caps")
@@ -41,6 +52,8 @@ local function editPickupPolicy(width, target, policy, save)
 				maps=controls.maps.buf ~= "" and (tonumber(controls.maps.buf) or -1) or nil,
 				highlightChaos=controls.highlightChaos.buf ~= "" and (tonumber(controls.highlightChaos.buf) or -1) or nil,
 				strongHighlightChaos=controls.strongHighlightChaos.buf ~= "" and (tonumber(controls.strongHighlightChaos.buf) or -1) or nil,
+				highlightStyle=controls.highlightStyle:GetSelValueByKey("val"),
+				strongHighlightStyle=controls.strongHighlightStyle:GetSelValueByKey("val"),
 				confirmTightening=confirm,
 				caps=caps,
 			})
@@ -49,9 +62,9 @@ local function editPickupPolicy(width, target, policy, save)
 		main:ClosePopup()
 		save(checked)
 	end)
-	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,376,120,28},"Cancel",function() main:ClosePopup() end)
+	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,420,120,28},"Cancel",function() main:ClosePopup() end)
 	ui.style(controls)
-	main:OpenPopup(width,422,"Pickup policy",controls,nil,nil,"cancel")
+	main:OpenPopup(width,466,"Pickup policy",controls,nil,nil,"cancel")
 end
 
 function M.Open(profileId, profileName)

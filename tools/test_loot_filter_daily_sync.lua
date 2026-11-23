@@ -186,6 +186,33 @@ Show
 	local _, decimal = market.review(raw,boundaryQuotes,100,{highlightChaos=0.07,strongHighlightChaos=0.08000001})
 	assert(decimal[1].highlights[1].firstStack==7 and decimal[1].highlights[2].firstStack==9)
 	assert(appearance.strip(styled)==raw)
+	assert(not pcall(market.pickupPolicy,100,{highlightStyle="invalid"}))
+	style.highlightStyle, style.strongHighlightStyle = "cyan-diamond", "purple-star"
+	local themed = market.review(raw,quotes,100,style)
+	local themedRules = parser.parse(themed)
+	assert(#themedRules.diagnostics==0 and appearance.strip(themed)==raw)
+	for stack=1,30 do
+		for _, area in ipairs({60,83}) do
+			local item = {BaseType="Orb of Alteration",Class="Stackable Currency",StackSize=stack,AreaLevel=area}
+			local before, after = parser.simulate(candidate,item), parser.simulate(themedRules,item)
+			assert(before.action==after.action)
+			if area==83 and stack==10 then
+				assert(table.concat(after.styles.MinimapIcon," ")=="0 Cyan Diamond")
+				assert(after.styles.PlayEffect[1]=="Cyan")
+			elseif area==83 and stack==15 then
+				assert(table.concat(after.styles.MinimapIcon," ")=="0 Purple Star")
+				assert(after.styles.PlayEffect[1]=="Purple")
+			else
+				local expected = table.concat(before.styles.MinimapIcon or {}," ")
+				if area==83 and stack>=10 and stack<20 and stack~=18 then
+					expected = stack<15 and "0 Cyan Diamond" or "0 Purple Star"
+				end
+				assert(table.concat(after.styles.MinimapIcon or {}," ")==expected)
+			end
+		end
+	end
+	local mismatched = themed:gsub("cyan%-diamond","red-diamond",1)
+	assert(not pcall(appearance.strip,mismatched))
 	local bom = "\239\187\191"
 	local plain = bom..'Show\r\n    Class == "Stackable Currency"\r\n    BaseType == "Orb of Alteration"\r\n'
 	local marked = appearance.apply(plain,{["Stackable Currency"]={["Orb of Alteration"]={{name="Orb of Alteration",firstStack=10,tier=1}}}})
