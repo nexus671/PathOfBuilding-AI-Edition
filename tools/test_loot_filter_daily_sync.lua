@@ -139,6 +139,20 @@ local spike, second = market.remember(quote(2), first, "day 2", now+86400)
 assert(spike["Orb of Alteration"].price==0.2 and spike["Orb of Alteration"].currentPrice==2)
 local lower = market.remember(quote(0.1), second, "day 3", now+2*86400)
 assert(lower["Orb of Alteration"].price==0.1)
+local function quoteBatch(count)
+	local batch = {}
+	for index=1,count do
+		batch["Currency "..index] = {price=0.21,volume=1000,id=tostring(index),source="Currency"}
+	end
+	return batch
+end
+local _, completeDay = market.remember(quoteBatch(24), {}, "complete one", now)
+local _, completeHistory = market.remember(quoteBatch(24), completeDay, "complete two", now+86400)
+local coverage, coverageError = pcall(market.remember, quoteBatch(5), completeHistory, "truncated", now+2*86400)
+assert(not coverage and coverageError:find("fewer than a quarter",1,true))
+assert(pcall(market.remember, quoteBatch(6), completeHistory, "still sufficient", now+2*86400))
+assert(pcall(market.remember, quoteBatch(5), completeDay, "first comparison", now+2*86400))
+
 local _, repeatDay = market.remember(quote(2), second, "day 2", now+86400)
 assert(#repeatDay==2)
 -- Ambiguous identities stay ineligible even when the conflicting quote has more volume.
