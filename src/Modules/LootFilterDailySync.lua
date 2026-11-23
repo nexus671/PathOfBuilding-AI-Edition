@@ -4,7 +4,7 @@ local market = require("Modules.LootFilterEconomy")
 local validate = require("Modules.LootFilterSyncValidation")
 local M = { status = "Daily sync is disabled." }
 local volumeLimit = 2 * 1024 * 1024
-local nextPoll, retryAt = 0, 0
+local nextPoll, retryAt, rateLimitUntil = 0, 0, 0
 local function nowText(now) return os.date("%Y-%m-%d %H:%M", now) end
 
 local function read(path)
@@ -195,19 +195,48 @@ local function days(year, month, day)
 	return era * 146097 + y * 365 + math.floor(y / 4) - math.floor(y / 100) + math.floor((153 * m + 2) / 5) + day - 719469
 end
 
-function M.fresh(response, now)
-	local header = response.header or ""
-	-- Redirects and proxies can emit several header blocks. Use the last response.
-	for block in header:gmatch("(HTTP/[%d%.]+[^\r]*\r?\n.-\r?\n)\r?\n") do header = block end
-	local date = ("\n"..header):match("\n[Dd][Aa][Tt][Ee]:%s*([^\r\n]+)")
+local function headers(response)
+	local input = type(response) == "table" and response.header or ""
+	if type(input) ~= "string" then return {} end
+	local result = {}
+	-- Proxy and redirect headers can precede the final response.
+	for line in input:gmatch("[^\r\n]+") do
+		if line:match("^HTTP/[%d%.]+") then result = {} end
+		local key, value = line:match("^([%w-]+):[ \t]*(.-)[ \t]*$")
+		if key then
+			key = key:lower()
+			if key=="age" or key=="date" or key=="etag" or key=="retry-after" or key=="cf-cache-status" then
+				assert(result[key]==nil, "Duplicate exchange freshness or cache header")
+				result[key] = value
+			end
+		end
+	end
+	return result
+end
+
+local function httpDate(date)
 	local d, mo, y, h, mi, s
 	if date then d, mo, y, h, mi, s = date:match("^%a+, (%d%d) (%a+) (%d%d%d%d) (%d%d):(%d%d):(%d%d) GMT$") end
-	assert(y and months[mo], "Exchange response has no valid freshness date")
-	local timestamp = days(tonumber(y), months[mo], tonumber(d))*86400 + h*3600 + mi*60 + s
-	local age = tonumber(("\n"..header:lower()):match("\nage:[ \t]*(%d+)")) or 0
-	assert(not header:lower():find("cf%-cache%-status:[ \t]*stale") and timestamp <= now + 300
-		and math.max(now - timestamp, age) <= 3600, "Exchange snapshot is stale")
-	return response.body, math.max(now - timestamp, age)
+	if not (y and months[mo]) then return nil end
+	d, y, h, mi, s = tonumber(d), tonumber(y), tonumber(h), tonumber(mi), tonumber(s)
+	local month = months[mo]
+	local leap = y%4==0 and (y%100~=0 or y%400==0)
+	local length = ({31,leap and 29 or 28,31,30,31,30,31,31,30,31,30,31})[month]
+	if y < 1970 or d < 1 or d > length or h > 23 or mi > 59 or s > 59 then return nil end
+	return days(y, month, d)*86400 + h*3600 + mi*60 + s
+end
+
+function M.fresh(response, now)
+	local header = headers(response)
+	local timestamp = assert(httpDate(header.date), "Exchange response has no valid freshness date")
+	local age = header.age and tonumber(header.age:match("^%d+$")) or (not header.age and 0)
+	assert(age, "Exchange response has an invalid Age header")
+	local resident = math.max(now - timestamp, age)
+	assert((header["cf-cache-status"] or ""):lower() ~= "stale" and timestamp <= now + 300
+		and resident <= 3600, "Exchange snapshot is stale")
+	local tag = header.etag
+	if tag and (#tag > 160 or tag:find("[%c]") or not (tag:match('^"[^"]*"$') or tag:match('^W/"[^"]*"$'))) then tag = nil end
+	return response.body, resident, tag
 end
 
 local function publish(config, bodies, ages, day, force, now)
@@ -247,29 +276,88 @@ local function publish(config, bodies, ages, day, force, now)
 	end)
 end
 
+local cache = {}
+local function storeFeed(url, entry)
+	if not cache[url] then
+		local count, oldest, oldestTime = 0, nil, math.huge
+		for key, value in pairs(cache) do
+			count = count + 1
+			if value.checkedAt < oldestTime then oldest, oldestTime = key, value.checkedAt end
+		end
+		if count >= 24 then cache[oldest] = nil end
+	end
+	cache[url] = entry
+end
+
 local function fetchPrices(config, now, complete)
-	local job, bodies, ages = {}, {}, {}
-	M.busy, M.deadline = job, now + 180
+	local job, bodies, ages, observedAt = {}, {}, {}, {}
+	M.busy, M.deadline = job, now + 300
 	local function finish(success, message)
 		M.busy = nil
 		M.status = success and message or ("Sync skipped: " .. tostring(message))
 		if ConPrintf then ConPrintf("%s", M.status) end
 	end
-	local function fetch(index)
+	local function fetch(index, attempt)
 		local category = market.categories[index]
-		if not category then finish(pcall(complete, bodies, ages)); return end
+		if not category then
+			local finishedAt = os.time()
+			for id, age in ipairs(ages) do
+				ages[id] = age + math.max(0, finishedAt - observedAt[id])
+				if ages[id] > 3600 then finish(false, "An exchange snapshot expired before the refresh finished."); return end
+			end
+			finish(pcall(complete, bodies, ages))
+			return
+		end
 		M.status = "Fetching " .. config.league .. " prices: " .. category
 		local url = market.endpoint .. "exchange/current/overview?league=" .. urlEncode(config.league) .. "&type=" .. category
+		local cached, time = cache[url], os.time()
+		local cachedAge = cached and (time - cached.sourceAt)
+		local requestHeaders = "Accept: application/json"
+		if cached and cached.tag and cachedAge >= 0 and cachedAge <= 3600 then
+			requestHeaders = requestHeaders .. "\r\nIf-None-Match: " .. cached.tag
+		else
+			cached = nil
+		end
+		local function defer(delay, message, callback)
+			job.resumeAt, job.resume = time + delay, callback
+			M.status = message
+		end
 		launch:DownloadPage(url, function(response, err)
 			if M.busy ~= job then return end
-			if err then finish(false, category .. ": " .. err); return end
-			local current, data, age = pcall(M.fresh, response, os.time())
-			if not current then finish(false, category .. ": " .. tostring(data)); return end
-			bodies[index], ages[index] = data, age
-			fetch(index + 1)
-		end, {timeout=20,header="Accept: application/json\r\nCache-Control: no-cache"})
+			time = os.time()
+			if err == "Response code: 304" and cached and time >= cached.sourceAt and time-cached.sourceAt <= 3600 then
+				bodies[index], ages[index], observedAt[index] = cached.body, time-cached.sourceAt, time
+				fetch(index + 1, 1)
+				return
+			end
+			if err then
+				local status = tonumber(err:match("^Response code: (%d+)$"))
+				local retryable = status == 429 or status and status >= 500 and status <= 599 or not status
+				local delay = 5
+				if status == 429 or status == 503 then
+					local ok, values = pcall(headers, response)
+					local value = ok and values["retry-after"]
+					local retryDate = value and httpDate(value)
+					delay = math.max(15, tonumber(value) or (retryDate and retryDate-time) or 60)
+				end
+				if retryable and attempt < 2 and delay <= 90 and time + delay + 20 < M.deadline then
+					defer(delay, category .. ": retrying the exchange request.", function() fetch(index, attempt + 1) end)
+					return
+				end
+				if status == 429 or status == 503 then rateLimitUntil = math.max(rateLimitUntil, time + delay) end
+				finish(false, category .. ": " .. err)
+				return
+			end
+			local fresh, data, age, tag = pcall(M.fresh, response, time)
+			if not fresh then finish(false, category .. ": " .. tostring(data)); return end
+			local valid, why = pcall(market.quotes, data, category)
+			if not valid then finish(false, category .. ": " .. tostring(why)); return end
+			storeFeed(url,{body=data,tag=tag,sourceAt=time-age,checkedAt=time})
+			bodies[index], ages[index], observedAt[index] = data, age, time
+			fetch(index + 1, 1)
+		end, {timeout=20,maxBytes=2*1024*1024,header=requestHeaders})
 	end
-	fetch(1)
+	fetch(1, 1)
 end
 
 function M.tick(now, force)
@@ -277,7 +365,15 @@ function M.tick(now, force)
 		if now > M.deadline then
 			M.busy = nil
 			M.status = "Daily sync timed out. The existing filter was kept."
+		elseif M.busy.resumeAt and now >= M.busy.resumeAt then
+			local run = M.busy.resume
+			M.busy.resumeAt, M.busy.resume = nil, nil
+			run()
 		end
+		return
+	end
+	if now < rateLimitUntil then
+		if force then M.status = "Waiting before contacting the exchange again." end
 		return
 	end
 	if not force and (now < nextPoll or now < retryAt) then return end
@@ -300,6 +396,7 @@ end
 function M.preview(target, baselineFile, league, options, callback)
 	assert(not M.busy, "Wait for the current sync to finish")
 	assert(not launch.noSSL, "Enable HTTPS certificate verification in PoB")
+	assert(os.time() >= rateLimitUntil, "Wait before contacting the rate-limited exchange again")
 	local config, original, baseline = prepare(target, baselineFile, league, options)
 	local now = os.time()
 	fetchPrices(config, now, function(bodies)

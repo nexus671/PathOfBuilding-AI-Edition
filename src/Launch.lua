@@ -269,9 +269,11 @@ end
 function launch:DownloadPage(url, callback, params)
 	params = params or {}
 	local script = [[
-		local url, requestHeader, requestBody, connectionProtocol, proxyURL, noSSL, timeout = ...
+		local url, requestHeader, requestBody, connectionProtocol, proxyURL, noSSL, timeout, maxBytes = ...
 		local responseHeader = ""
 		local responseBody = ""
+		local bytes, oversized = 0, false
+		local chunks = {}
 		ConPrintf("Downloading page at: %s", url)
 		local curl = require("lcurl.safe")
 		local easy = curl.easy()
@@ -309,14 +311,19 @@ function launch:DownloadPage(url, callback, params)
 			return true
 		end)
 		easy:setopt_writefunction(function(data)
-			responseBody = responseBody .. data
+			bytes = bytes + #data
+			if maxBytes and bytes > maxBytes then oversized=true;return false end
+			chunks[#chunks+1] = data
 			return true
 		end)
 		local _, error = easy:perform()
 		local code = easy:getinfo(curl.INFO_RESPONSE_CODE)
 		easy:close()
+		responseBody = table.concat(chunks)
 		local errMsg
-		if error then
+		if oversized then
+			errMsg = "Response exceeds the size limit"
+		elseif error then
 			errMsg = error:msg()
 		elseif code ~= 200 then
 			errMsg = "Response code: "..code
@@ -326,7 +333,7 @@ function launch:DownloadPage(url, callback, params)
 		ConPrintf("Download complete. Status: %s", errMsg or "OK")
 		return responseBody, errMsg, responseHeader
 	]]
-	local id = LaunchSubScript(script, "", "ConPrintf", url, params.header, params.body, self.connectionProtocol, self.proxyURL, self.noSSL or false, params.timeout)
+	local id = LaunchSubScript(script, "", "ConPrintf", url, params.header, params.body, self.connectionProtocol, self.proxyURL, self.noSSL or false, params.timeout, params.maxBytes)
 	if id then
 		self.subScripts[id] = {
 			type = "DOWNLOAD",

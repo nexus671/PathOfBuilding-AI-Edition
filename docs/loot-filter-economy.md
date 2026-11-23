@@ -29,3 +29,7 @@ Daily sync uses the lower of the latest liquid quote and the median of available
 Use **Preview changes** before enabling a new setup. It fetches prices and validates the proposed filter, then opens the full text comparison without saving settings or replacing your file.
 
 For up to 250 changed entries, the sync review shows a simulated area-level 83 drop at one item above the proposed hide cutoff. The result uses the first class in the rule and reports the matching line when available. Other classes and area levels can match different rules.
+
+**Browse market prices** opens a read-only market browser for cards, uniques, maps, gems, and crafting bases. It shows the quote and available variant details, including map tier, gem level and quality, links, and listing counts. Only the existing tagged commodity stack rules participate in daily filter changes.
+
+Daily sync retains still-fresh exchange responses in memory for conditional requests. It honors rate-limit delays and rechecks the age of every response before publication. The displayed age is the age of the response, not the age of underlying trades. Provider IDs distinguish same-name items, and ambiguous names or categories below their volume floor keep the baseline rule.

@@ -82,7 +82,7 @@ function M.Open(profile, raw, export)
 				for i, change in ipairs(changes) do
 					entries[#entries + 1] = {id = tostring(i), label = change.name, details = {
 						"Hide up to " .. change.old .. " → " .. change.cutoff .. (change.maps and " in maps" or ""),
-						string.format("%.4g chaos each | %.0f chaos hourly volume", change.price, change.volume),
+						string.format("%.4g chaos each | %.0f chaos quoted volume", change.price, change.volume),
 					}}
 				end
 				status("Review complete.")

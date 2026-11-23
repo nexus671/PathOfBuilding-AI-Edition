@@ -89,4 +89,50 @@ local lower = market.remember(quote(0.1), second, "day 3", now+2*86400)
 assert(lower["Orb of Alteration"].price==0.1)
 local _, repeatDay = market.remember(quote(2), second, "day 2", now+86400)
 assert(#repeatDay==2)
+-- Ambiguous identities stay ineligible even when the conflicting quote has more volume.
+local ambiguous = market.quotes([[{"core":{"primary":"chaos"},"items":[{"id":"a","name":"Shared"},{"id":"b","name":"Shared"}],"lines":[{"id":"a","primaryValue":1,"volumePrimaryValue":100},{"id":"b","primaryValue":10,"volumePrimaryValue":10000}]}]], "Currency")
+assert(ambiguous.Shared == false)
+local joined = {Shared={id="a",price=1,volume=100,source="Currency"}}
+market.merge(joined, {Shared={id="b",price=10,volume=10000,source="Oil"}})
+assert(joined.Shared == false)
+assert(market.liquid({source="Currency",volume=120}) and not market.liquid({source="Omen",volume=120}))
+
+-- Timed retry and conditional cache use do not touch the filter during preview.
+local systemTime = os.time
+local clock = now
+os.time = function() return clock end
+local networkCount, conditional, transient = 0, 0, true
+local cachedHeader = header:gsub("Age: 5", 'Age: 5\r\nETag: W/"fixture"')
+launch.DownloadPage = function(_, _, callback, params)
+	networkCount = networkCount + 1
+	assert(not params.header:find("no-cache",1,true))
+	if transient then
+		transient = false
+		callback({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: 20\r\n\r\n"}, "Response code: 429")
+	elseif params.header:find('If-None-Match: W/"fixture"',1,true) then
+		conditional = conditional+1
+		callback({header="HTTP/1.1 304 Not Modified\r\n\r\n",body=""}, "Response code: 304")
+	else
+		callback({header=cachedHeader,body='{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.21,"volumePrimaryValue":1000}]}'})
+	end
+end
+local reviewed
+sync.preview(target,baseline,"Covens",options,function(_, candidate) reviewed=candidate end)
+assert(not reviewed and networkCount==1 and sync.busy)
+clock=now+19
+sync.tick(clock)
+assert(networkCount==1)
+clock=now+20
+sync.tick(clock)
+assert(reviewed and networkCount==9 and read(target)==original)
+reviewed=nil
+sync.preview(target,baseline,"Covens",options,function(_, candidate) reviewed=candidate end)
+assert(reviewed and conditional==8 and networkCount==17)
+os.time=systemTime
+local browser = require("Modules.LootFilterMarketBrowse")
+local gear = browser.rows([[{"lines":[{"name":"Example gear","baseType":"Cord Belt","variant":"A","chaosValue":20,"listingCount":17},{"name":"Example gear","baseType":"Cord Belt","variant":"B","chaosValue":32,"listingCount":1}]}]], {id="UniqueAccessory"})
+assert(#gear==2 and gear[1].variant=="B" and gear[2].listings==17)
+local cards = browser.rows([[{"core":{"primary":"chaos"},"items":[{"id":"card","name":"Example card"}],"lines":[{"id":"card","primaryValue":12,"volumePrimaryValue":500}]}]], {id="DivinationCard",feed="exchange"})
+assert(#cards==1 and cards[1].price==12 and cards[1].volume==500)
+assert(not pcall(browser.rows, '{"lines":[{"name":"Bad","chaosValue":-1}]}', {id="Map"}))
 print("Native daily sync: fresh/stale data, manual rerun, rollback, pause, TLS and disable passed")
