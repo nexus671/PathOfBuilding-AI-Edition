@@ -1743,6 +1743,9 @@ async function main(){
   assert.equal(firstPage.examples.nextOffset,2);assert.deepEqual(firstPage.examples.results.map(entry=>entry.index),[0,1]);
   const lastPage=await queued('test_loot_filter_examples',{baseRevision:context.revision,profile:sampleProfile,sampleSetId:'mixed',offset:firstPage.examples.nextOffset,limit:2},'tested');
   assert.deepEqual(lastPage.examples.results.map(entry=>entry.index),[2]);assert.equal(lastPage.examples.nextOffset,undefined);
+  const impactBefore={...lootProfile,template:'Show',rules:[]};const impactAfter={...impactBefore,rules:[{id:'hide-chaos',title:'Hide Chaos',text:'Hide\n BaseType == "Chaos Orb"'}]};
+  const impactResult=await queued('compare_loot_filters',{baseRevision:context.revision,before:impactBefore,after:impactAfter,samples:[{BaseType:'Chaos Orb'},{BaseType:'Divine Orb'}]},'tested');
+  assert.equal(impactResult.comparison.total,2);assert.equal(impactResult.comparison.results[0].category,'Visibility changed');assert.equal(impactResult.comparison.results[1].category,'Unchanged');
   const scenePage=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene:'Preset highlights',seed:3,areaLevel:76,itemLevel:81,limit:2},'tested');
   assert.equal(scenePage.examples.nextOffset,2);assert.match(scenePage.examples.note,/not live prices/);assert.equal(scenePage.examples.results[0].sample.AreaLevel,76);assert.equal(scenePage.examples.results[0].sample.ItemLevel,81);
   const nextScenePage=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene:'Preset highlights',seed:3,areaLevel:76,itemLevel:81,offset:2,limit:2},'tested');

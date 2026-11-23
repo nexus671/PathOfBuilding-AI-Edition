@@ -12,6 +12,16 @@ describe("Build-owned loot filters",function()
 	end)
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("compares visibility and styles without calling uncertain outcomes unchanged",function()
+		local impact=require("Modules.LootFilterImpact");local before=filters.profile("impact","Impact");before.template="Show\n"
+		local sample={BaseType="Chaos Orb",Class="Stackable Currency",ItemLevel=83};local after=copyTable(before)
+		after.rules={{id="hide",title="Hide",text='Hide\n BaseType == "Chaos Orb"'}}
+		local row=impact.page(impact.prepare(before,after),{sample}).results[1];assert.equal("Visibility changed",row.category);assert.equal("Show",row.before.action);assert.equal("Hide",row.after.action)
+		after.rules={{id="color",title="Color",text='Show\n BaseType == "Chaos Orb"\n SetTextColor 255 0 0'}}
+		row=impact.page(impact.prepare(before,after),{sample}).results[1];assert.equal("Style changed",row.category);assert.equal("SetTextColor",row.changedStyles[1].name);assert.equal("Not set",row.changedStyles[1].before)
+		after.rules={{id="unknown",title="Unknown",text='Hide\n UnidentifiedItemTier >= 2'}}
+		row=impact.page(impact.prepare(before,after),{sample}).results[1];assert.equal("Needs review",row.category);assert.equal("Unknown",row.after.action)
+	end)
 	it("updates ordinary recipe pickups when a skipped step becomes reachable",function()
 		local project={id="ordinary-route",title="Branched armour",slot="Body Armour",startingItem="Rarity: NORMAL\nPlate Vest\nItem Level: 86",goals={},steps={},nativeRecipe={targets={},requirements={minAffixes=1},steps={{method="alchemy",onSuccess=3,onFailure=3},{method="alteration"},{method="chaos"}}}}
 		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("ordinary-route","Ordinary route");profile.trackBuildPickups=true

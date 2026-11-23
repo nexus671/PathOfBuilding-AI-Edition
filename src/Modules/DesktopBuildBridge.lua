@@ -600,6 +600,25 @@ function M.poll(build, force)
 			end)
 			M.status={id=request.id,status="calculating",kind="journeyUpgrades"};M.publishState();return
 		end
+		if request.kind=="compare_loot_filters" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh loot-filter context.")
+			assert(type(request.samples)=="table" and #request.samples>=1 and #request.samples<=50,"Use 1 to 50 examples")
+			local filters=require("Modules.LootFilters");local function checked(profile)
+				assert(type(profile)=="table","Supply both filter profiles")
+				return filters.validate({schemaVersion=1,activeId=profile.id,profiles={profile}}).profiles[1]
+			end
+			local before,after=checked(request.before),checked(request.after);local session=M.session
+			local function publish(status,values)
+				if not M.enabled or M.session~=session then return end
+				M.status={id=request.id,status=status,baseRevision=request.baseRevision};for key,value in pairs(values) do M.status[key]=value end;M.publishState()
+			end
+			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+				local impact=require("Modules.LootFilterImpact");return impact.page(impact.prepare(before,after),request.samples,0,50,checkpoint)
+			end,function(result)
+				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh loot-filter context."}) else publish("tested",{comparison=result}) end
+			end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Filter comparison slice")
+			job.requestId=request.id;publish("calculating",{});return
+		end
 		if request.kind=="generate_loot_filter" or request.kind=="test_loot_filter" or request.kind=="test_loot_filter_examples" or request.kind=="test_loot_filter_scene" or request.kind=="export_loot_filter" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh loot-filter context.")
 			local filters=require("Modules.LootFilters")
