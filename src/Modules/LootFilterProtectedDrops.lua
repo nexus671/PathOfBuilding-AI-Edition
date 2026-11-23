@@ -1,6 +1,26 @@
 local parser = require("Modules.LootFilterParser")
 local M = {}
 
+local function personalRulePrefix(raw, stop)
+	local rules = {}
+	for line in raw:sub(1,stop-1):gmatch("[^\r\n]+") do
+		local text = line:match("^%s*(.-)%s*$")
+		if text ~= "" and (text:sub(1,1) ~= "#" or text:find("# CUSTOM:",1,true)==1) then
+			rules[#rules+1] = line
+		end
+	end
+	return table.concat(rules,"\n")
+end
+
+function M.personalRulesPreserved(previous, candidate)
+	if not previous:find("# CUSTOM: Hide Wisdom and Portal Scrolls",1,true) then return true end
+	local market = require("Modules.LootFilterEconomy")
+	local oldStart, oldEnd = market.sectionBounds(previous)
+	local newStart, newEnd = market.sectionBounds(candidate)
+	return oldStart and oldEnd and newStart and newEnd
+		and personalRulePrefix(previous,oldStart)==personalRulePrefix(candidate,newStart)
+end
+
 function M.samples()
 	local output = {}
 	local function add(item, marker)

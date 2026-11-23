@@ -311,6 +311,20 @@ do
 	edited.template = edited.template:gsub("SetFontSize 30","SetFontSize 50")
 	local collision = baseRefresh.planImported(edited,previous,finalText)
 	assert(#collision.blocks==1 and not collision.profile and collision.blocks[1]:find("both change old lines",1,true))
+	local custom = copyTable(profile)
+	custom.template = mine..previous..[[# CUSTOM: Hide Wisdom and Portal Scrolls
+Hide
+    BaseType == "Scroll of Wisdom" "Portal Scroll"
+# PoB economy: begin
+Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    StackSize <= 6
+# PoB economy: end
+]]
+	local removedScroll = custom.template:gsub(' "Portal Scroll"','',1)
+	local changedPolicy = baseRefresh.planImported(custom,custom.template,removedScroll)
+	assert(changedPolicy.blocks[#changedPolicy.blocks]:find("custom drop protection rules",1,true))
 	files.readFile = function(path)
 		if path=="old.filter" then return previous end
 		assert(path=="new.filter")

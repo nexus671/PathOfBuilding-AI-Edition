@@ -124,6 +124,9 @@ function M.planImported(profile, previous, latest)
 	end
 	local evaluation = M.evaluate(oldParsed,parsed,profile.sampleSets)
 	evaluation.profile, evaluation.before, evaluation.after = nextProfile,before,after
+	if not protected.personalRulesPreserved(profile.template,candidate) then
+		evaluation.blocks[#evaluation.blocks+1] = "The new baseline changes the custom drop protection rules or their precedence."
+	end
 	return evaluation
 end
 

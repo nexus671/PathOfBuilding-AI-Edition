@@ -1788,7 +1788,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
 	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="8b65a9b5026739df4005a74aee7494aca717e6a2" />
 	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="3bb8d8007a8e49437142ae8b52606515e3f8accb" />
-	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="c5ec732f525707e9f290691f947dc361c4f31fc7" />
+	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="0d2bdfaf53a227052d63a6bd305da27be48a6d30" />
 	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="e2f3e99b0cb9b6d95c93e517a981bacadb1f577f" />
 	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="8fd7007b80f160a77ced9b31b7857d10ed2bd806" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="37a3391e15719905467dde6e34b93ec2258fa45e" />
@@ -3200,9 +3200,9 @@
 	<File name="Modules/LootFilterBackground.lua" part="program" sha1="d80487b2fe4825109212d7672c3e8881564c15bd" />
 	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="5f7e29fb07ba561a623de9905954fc48a70ce7ab" />
 	<File name="Classes/LootFilterManagedEconomyControl.lua" part="program" sha1="25883b2f0bc14896b206b488b6c0c4dfe76e6d8d" />
-	<File name="Modules/LootFilterBaseRefresh.lua" part="program" sha1="c9125729d825db503860b746867f58916b1c81a0" />
+	<File name="Modules/LootFilterBaseRefresh.lua" part="program" sha1="b4cb2d8cec8fe9036d97b9383d9df69e09c0c89f" />
 	<File name="Modules/LootFilterMapMarket.lua" part="program" sha1="ab911fe828bcb929c47d02e856169f51784ce260" />
-	<File name="Modules/LootFilterProtectedDrops.lua" part="program" sha1="08ada379e64aa72057e9421c8ea98b4c5db14f6f" />
+	<File name="Modules/LootFilterProtectedDrops.lua" part="program" sha1="6ebfe0e1e9a2046138f4a9969e0caabacfc39634" />
 	<File name="Classes/LootFilterSyncAccountControl.lua" part="program" sha1="d1f4a06a6783577e46b14f24b34c74dde22a574a" />
 	<File name="Modules/LootFilterExchangeCrossCheck.lua" part="program" sha1="b777531d09394bdeebf675a7bdee1806cbb1c02b" />
 	<File name="Modules/LootFilterPriceAppearance.lua" part="program" sha1="4785d9fd008d77f03c4230acc18a6946008507bd" />
