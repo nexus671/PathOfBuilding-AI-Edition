@@ -28,7 +28,7 @@ Daily sync uses the lower of the latest liquid quote and the median of available
 
 Use **Preview changes** before enabling a new setup. It fetches prices and validates the proposed filter, then opens the full text comparison without saving settings or replacing your file.
 
-For up to 250 changed entries, the sync review shows a simulated area-level 83 drop at one item above the proposed hide cutoff. The result uses the first class in the rule and reports the matching line when available. Other classes and area levels can match different rules.
+The sync review tests up to 500 combinations of affected classes and representative areas at the first stack size whose cutoff changed. It shows both the baseline and candidate outcome and the matching line, including stacks that another rule still hides.
 
 **Browse market prices** opens a read-only market browser for cards, uniques, maps, gems, and crafting bases. It shows the quote and available variant details, including map tier, gem level and quality, links, and listing counts. Daily filter changes support managed commodity stack rules and explicitly tagged card hides.
 
@@ -47,3 +47,11 @@ Select **Enable background sync** in **Daily price sync** to register a task for
 **Enable notifications** adds a Windows notification for a new failure or when an update changes at least five managed cutoffs. Clicking it opens PoB. Windows notification settings determine when the alert appears.
 
 For a one-time scheduled check from the Windows command line, launch your PoB executable with `--loot-filter-sync`. It uses the saved local settings and exits after the check. It returns exit code 1 on failure. It respects the daily time, pause state, and provider cooldown.
+
+## Pickup policy
+
+Open **Pickup policy** in daily sync and choose optional campaign and map chaos targets. These apply to exact managed Hide rules that say `AreaLevel < 68` or `AreaLevel >= 68`. Rules without an area condition still use the default target. Only tagged sections support the campaign condition.
+
+You can also set an absolute maximum hide cutoff for an exact commodity name. For example, `{"Orb of Alteration": 7}` permits a managed rule to hide stacks of at most seven when prices justify it. A new profile needs the latest liquid quote plus three earlier liquid daily quotes before it can tighten. The highest of the recent quotes must still put the newly hidden stacks below 85% of the pickup target. Divination cards retain their visibility-only policy.
+
+Select **Use with next update**, then **Preview changes** to check the resulting filter or **Enable / update** to save the policy. An existing matching baseline and league can reuse saved daily quotes in preview.

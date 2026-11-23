@@ -1,6 +1,6 @@
 local market = require("Modules.LootFilterEconomy")
 local parser = require("Modules.LootFilterParser")
-return function(raw, bodies, baselineOnly, target, protections, history, day, now)
+return function(raw, bodies, baselineOnly, target, protections, history, day, now, policy)
 	assert(market.supports(raw), "Baseline has no economy section")
 	local quotes = {}
 	local categories = market.feedCategories(raw)
@@ -9,23 +9,39 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 	assert(baselineOnly or quotes["Orb of Alteration"] and quotes["Orb of Alteration"].volume >= 100, "Currency feed lacks a liquid reference quote")
 	local snapshots
 	if day then quotes, snapshots = market.remember(quotes, history, day, now) end
-	local candidate, changes, skipped = market.review(raw, quotes, target)
+	local candidate, changes, skipped = market.review(raw, quotes, target, policy)
 	local parsed = parser.parse(candidate)
 	for _, diagnostic in ipairs(parsed.diagnostics) do
 		assert(not diagnostic.error, "Line " .. diagnostic.line .. ": " .. (diagnostic.error or ""))
 	end
-	for index, change in ipairs(changes) do
-		if index > 250 then break end
-		local sample = {
-			BaseType=change.name, Class=change.classes[1], Rarity="Normal",
-			StackSize=change.cutoff+1, AreaLevel=83, ItemLevel=83, DropLevel=1,
-			Width=1, Height=1, HasExplicitMod={}, HasEnchantment={}, HasInfluence={"None"}, SocketGroup="",
-			EnchantmentPassiveNode="",
-		}
-		for name in pairs(parser.numeric) do if sample[name] == nil then sample[name] = 0 end end
-		for name in pairs(parser.booleans) do sample[name] = false end
-		local result = parser.simulate(parsed, sample)
-		change.sample = {action=result.action, line=result.line, class=sample.Class, count=sample.StackSize}
+	if #changes > 0 then
+		local earlier = parser.parse(raw)
+		local remaining = 500
+		for _, change in ipairs(changes) do
+			if remaining == 0 then break end
+			local areas = change.scope == "campaign" and {60} or change.scope == "maps" and {83} or {83, 60}
+			change.samples = {}
+			for _, itemClass in ipairs(change.classes) do
+				for _, area in ipairs(areas) do
+					if remaining == 0 then break end
+					local sample = {
+						BaseType=change.name, Class=itemClass, Rarity="Normal",
+						StackSize=math.min(change.cutoff,change.old)+1, AreaLevel=area, ItemLevel=area, DropLevel=1,
+						Width=1, Height=1, HasExplicitMod={}, HasEnchantment={}, HasInfluence={"None"},
+						SocketGroup="", EnchantmentPassiveNode="",
+					}
+					for name in pairs(parser.numeric) do if sample[name] == nil then sample[name] = 0 end end
+					for name in pairs(parser.booleans) do sample[name] = false end
+					local before, after = parser.simulate(earlier, sample), parser.simulate(parsed, sample)
+					change.samples[#change.samples+1] = {
+						action=after.action, line=after.line, before=before.action, beforeLine=before.line,
+						class=sample.Class, count=sample.StackSize, area=area,
+					}
+					remaining = remaining-1
+				end
+			end
+			change.sample = change.samples[1]
+		end
 	end
 	local function check(item, marker)
 		local result = parser.simulate(parsed, item)

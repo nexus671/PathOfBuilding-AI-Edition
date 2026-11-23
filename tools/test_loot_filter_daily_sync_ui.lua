@@ -22,6 +22,8 @@ end
 sync.configure = function(target, baseline, _, options)
 	assert(target == selected and baseline == "C:/PoE/baseline.filter")
 	assert(options.hour == 12 and options.minute == 37)
+	assert(options.pickupPolicy.campaign == 0.25 and options.pickupPolicy.maps == 2)
+	assert(options.pickupPolicy.caps["Orb of Alteration"] == 7)
 	configured = true
 end
 
@@ -45,6 +47,12 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	assert(main.popups[1].controls.target.buf == selected)
 	harness:text("baseline", "C:/PoE/baseline.filter")
 	harness:text("time", "12:37")
+	harness:click("pickupPolicy")
+	assert(main.popups[1].title == "Pickup policy")
+	harness:text("campaign", "0.25")
+	harness:text("maps", "2")
+	harness:text("caps", '{"Orb of Alteration":7}')
+	harness:click("apply")
 	harness:click("enable")
 	assert(configured and main.popups[1].title == "Daily filter sync")
 	harness:click("background")
