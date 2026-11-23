@@ -388,7 +388,7 @@ function Panel.Open(build,project,layout)
 		local popup={}
 		if method == "gwennen" then openGwennen();return
 		elseif method == "rog_reroll" then
-			require("Classes.CraftingRogControl").Open(configured.rog_reroll,function(craft) configured.rog_reroll=craft;changed();refresh() end);return
+			require("Classes.CraftingRogControl").Open(configured.rog_reroll,function(craft) configured.rog_reroll=craft;changed();refresh() end,model);return
 		elseif method == "fossil" then
 			require("Classes.CraftingFossilControl").Open(model,configured.fossil,function(craft) configured.fossil=craft;updateOptions();changed();refresh() end)
 			return

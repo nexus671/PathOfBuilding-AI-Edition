@@ -135,6 +135,10 @@ function M.actionWarnings(action,model)
 	if action.method=="fusing" then result[#result+1]={code="fusing_estimate",message="Experimental: link-group weights use historical 20% quality observations; applying them to shorter items, quality scaling and excluding the current layout are assumptions. Current game odds are unverified.",source="https://www.reddit.com/r/pathofexile/comments/75t1c9/i_used_100000_fusings_for_science_statistics/"} end
 	if action.method=="veiled_chaos" then result[#result+1]={code="veiled_chaos_assumptions",message="The reforge uses the ordinary rare-modifier count and weights, chooses and reserves the veil side before the ordinary modifiers; unveil offers are generated afterward. Veil side and offer selection use the existing Veiled Exalted model. These odds, ordering and lock interactions are unverified; a partial-lock selection that protects the existing veil fails without a modeled charge.",source="https://www.pathofexile.com/forum/view-thread/4016174",asOfPatch="3.30.0b Hotfix 4"} end
 	if action.method=="rog_reroll" then
+		local jewelWarning=require("Modules.CraftingRog").jewelOfferWarning(model,action)
+		if jewelWarning then result[#result+1]={code="rog_jewel_offer_history",message=jewelWarning,source="https://www.poewiki.net/wiki/Rog"} end
+	end
+	if action.method=="rog_reroll" then
 		local removal=action.rogOperation=="remove_lowest" or action.rogOperation=="remove_lowest_two"
 		local socketOffer=action.rogOperation=="socket_count" or action.rogOperation=="socket_links"
 		local valueOffer=action.rogOperation=="values_one" or action.rogOperation=="values_side" or action.rogOperation=="values_implicit"

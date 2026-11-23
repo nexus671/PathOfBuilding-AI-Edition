@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1176][2026/11/23]
+
+* Explain historical Rog jewel-offer restrictions when planning crafts.
+
 VERSION[2.68.1-ai.preview1175][2026/11/23]
 
 * Preserve Temple map preview assumptions in saved plans and AI tools.

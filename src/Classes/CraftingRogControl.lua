@@ -1,7 +1,7 @@
 -- Configure a single observed Rog offer; no offer generation is implied.
 local ui=require("Modules.PlanningUI")
 local M={}
-function M.Open(initial,keep)
+function M.Open(initial,keep,model)
 	local width=math.min(620,main.screenW-40);local height=412
 	local controls={};initial=initial or {}
 	ui.description(controls,"intro",16,28,width-32,38,{"Enter an offer and its price as shown by Rog."},16)
@@ -53,9 +53,15 @@ function M.Open(initial,keep)
 		controls[tier]=new("EditControl"):EditControl(ui.anchor,{x,273,125,26},initial.artifactCost and tostring(initial.artifactCost[tier] or 0) or "",nil,nil,10)
 	end
 	ui.description(controls,"limits",16,315,width-32,32,{"Offer availability, ranking and model odds are unverified."},14)
-	controls.limits.shown=function() local op=controls.operation:GetSelValueByKey("val");return op~="values_one" and op~="values_side" and op~="values_implicit" end
+	local function jewelWarning() return require("Modules.CraftingRog").jewelOfferWarning(model,{rogOperation=controls.operation:GetSelValueByKey("val")}) end
+	controls.limits.shown=function() local op=controls.operation:GetSelValueByKey("val");return not jewelWarning() and op~="values_one" and op~="values_side" and op~="values_implicit" end
 	ui.description(controls,"valueHint",16,315,width-32,38,{"Best ranks numeric rolls, which may not match your preference. Odds and offer rules are unverified."},14)
-	controls.valueHint.shown=function() local op=controls.operation:GetSelValueByKey("val");return op=="values_one" or op=="values_side" or op=="values_implicit" end
+	controls.valueHint.shown=function() local op=controls.operation:GetSelValueByKey("val");return not jewelWarning() and (op=="values_one" or op=="values_side" or op=="values_implicit") end
+	ui.description(controls,"jewelHint",16,315,width-32,38,{"Not listed for jewels in 3.15.2; check the observed offer. Current availability is unverified."},14)
+	local function jewelValueOffer() local op=controls.operation:GetSelValueByKey("val");return jewelWarning() and (op=="values_one" or op=="values_implicit") end
+	controls.jewelHint.shown=function() return jewelWarning()~=nil and not jewelValueOffer() end
+	ui.description(controls,"jewelValueHint",16,315,width-32,38,{"Not listed for jewels in 3.15.2; availability is unverified. Best ranks numeric rolls, not preferences."},14)
+	controls.jewelValueHint.shown=function() return not not jewelValueOffer() end
 	controls.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,height-44,180,28},"Use observed offer",function()
 		local ok,err=pcall(function()
 		local operation=controls.operation:GetSelValueByKey("val");local craft={method="rog_reroll"};local cost={};local any=false

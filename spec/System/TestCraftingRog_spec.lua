@@ -85,6 +85,12 @@ describe("Experimental Rog side rerolls",function()
 		local magic=copyTable(state);magic.rarity="MAGIC"
 		assert.has_error(function() sim.action(model,magic,{method="rog_reroll",rogOperation="add",rogSide="Prefix",rogAttempts=1},stream(1)) end)
 	end)
+	it("warns when a jewel offer conflicts with the historical list",function()
+		local jewel=sim.model("Rarity: NORMAL\nCobalt Jewel\nItem Level: 86");local helmet=sim.model("Rarity: NORMAL\nIron Hat\nItem Level: 86")
+		local action={method="rog_reroll",rogOperation="remove_lowest"};assert.matches("3.15.2",rog.jewelOfferWarning(jewel,action),1,true);assert.is_nil(rog.jewelOfferWarning(helmet,action))
+		for _,op in ipairs({"reroll","add","values_side"}) do assert.is_nil(rog.jewelOfferWarning(jewel,{rogOperation=op})) end
+		local found=false;for _,warning in ipairs(sim.actionWarnings(action,jewel)) do if warning.code=="rog_jewel_offer_history" then found=true end end;assert.is_true(found)
+	end)
 	it("removes lowest required-level modifiers with explicit tie handling",function()
 		local model={byId={a={level=10},b={level=10},c={level=20}}}
 		local state={affixes={{id="a"},{id="b"},{id="c"}}};local before=copyTable(state)

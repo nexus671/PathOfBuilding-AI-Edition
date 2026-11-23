@@ -248,7 +248,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 			local function append(action) draft=require("Modules.CraftingRoutes").append(draft,action);selected=#draft.steps;refresh() end
 			if entry.configure=="fossil" then require("Classes.CraftingFossilControl").Open(model,nil,append)
 			elseif entry.configure=="beast_swap" then openBeastSwap(entry.action,append,"Add step")
-			elseif entry.configure=="rog" then require("Classes.CraftingRogControl").Open(nil,append)
+			elseif entry.configure=="rog" then require("Classes.CraftingRogControl").Open(nil,append,model)
 			else append(entry.action) end
 		end})
 	end)
@@ -279,7 +279,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 			local next=copyTable(step)
 			for _,key in ipairs({"rogOperation","rogSide","rogAttempts","rogSocketRolls","artifactCost","count"}) do next[key]=type(action[key])=="table" and copyTable(action[key]) or action[key] end
 			draft.steps[index]=next;refresh()
-		end)
+		end,model)
 	end)
 	controls.editRog.shown=selectedRog
 

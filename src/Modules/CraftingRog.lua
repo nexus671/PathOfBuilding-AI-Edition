@@ -4,6 +4,14 @@ local tiers={"lesser","greater","grand","exceptional"}
 local artifacts={}
 for index,tier in ipairs(tiers) do artifacts[tier]="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction3_"..index end
 
+-- The 3.15.2 jewel-deal list may have changed; warn without rejecting an
+-- observed offer until the current game is verified.
+function R.jewelOfferWarning(model,craft)
+ if model and model.item and model.item.type=="Jewel" and craft.rogOperation~=nil and craft.rogOperation~="reroll" and craft.rogOperation~="add" and craft.rogOperation~="values_side" then
+  return "The 3.15.2 notes did not list this Rog offer for jewels. Check the observed offer; current-game availability is unverified."
+ end
+end
+
 function R.validate(craft)
 	local removal=craft.rogOperation=="remove_lowest" or craft.rogOperation=="remove_lowest_two"
 	local highest=craft.rogOperation=="upgrade_highest" or craft.rogOperation=="upgrade_highest_all"
