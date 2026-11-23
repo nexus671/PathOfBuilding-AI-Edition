@@ -333,8 +333,8 @@ function ItemsTabClass:ItemsTab(build)
 		return self.controls.selectDB.selIndex == 2
 	end
 	-- Viscera database
-	self.controls.visceraDB = new("ItemDBControl"):ItemDBControl({"TOPLEFT",self.controls.itemList,"BOTTOMLEFT"}, {0, 76, 360, function(c) return m_min(260, self.maxY - select(2, c:GetPos())) end}, self, main.visceraDB, "RARE")
-	self.controls.visceraDB.y = 78
+	self.controls.visceraDB = new("ItemDBControl"):ItemDBControl({"TOPLEFT",self.controls.itemList,"BOTTOMLEFT"}, {0, 76, 360, function(c) return m_min(260, self.maxY - select(2, c:GetPos())) end}, self, main.visceraDB, "VISCERA")
+	self.controls.visceraDB.y = 98
 	self.controls.visceraDB.shown = function()
 		return self.controls.selectDB.selIndex == 3
 	end

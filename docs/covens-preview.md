@@ -10,7 +10,7 @@ The tree warning and AI build analysis identify builds still using the earlier p
 
 ## Wickerman
 
-Paste Viscera item text into Items, or use character import with OAuth to bring in equipped Wickerman items. The four Wickerman slots can also be used in AI build proposals and Journey acquisition plans. Names and slot types are provisional; the catalogue does not invent modifier values. Enter or import the item's actual modifiers and review unsupported lines. Account-name import does not currently expose Wickerman data.
+Paste Viscera item text into Items, or use character import with OAuth to bring in equipped Wickerman items. The four Wickerman slots can also be used in AI build proposals and Journey acquisition plans. Names and slot types are provisional; the catalogue does not invent modifier values. Enter or import the item's actual modifiers and review unsupported lines. Account-name import does not currently expose Wickerman data. The Viscera item browser can sort its templates by the same calculated stats as the unique-item browser. Sorting uses the current build configuration and the template rolls; inspect your actual item before deciding on an upgrade.
 
 ## Atlas
 

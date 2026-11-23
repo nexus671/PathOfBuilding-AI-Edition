@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1225" />
+	<Version number="2.68.1-ai.preview1226" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="9ab8d02ef6a479aba7108ce53d557c48c36fea71" />
+	<File name="changelog.txt" part="default" sha1="e7595ec9d08ed88910528093ffc158c38ee5046c" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1760,11 +1760,11 @@
 	<File name="Classes/GemTooltip.lua" part="program" sha1="aa0ce7d2eb619fc6b6e55aec9767320bee187343" />
 	<File name="Classes/ImportTab.lua" part="program" sha1="6b81f9ee1e6858b353c8f8a35ac84f937e85a1f3" />
 	<File name="Classes/Item.lua" part="program" sha1="a1fbb4aa80326100eda5dddf03720ccd4d138097" />
-	<File name="Classes/ItemDBControl.lua" part="program" sha1="253d49b3a3facf0881a281380cecfcca73daae8a" />
+	<File name="Classes/ItemDBControl.lua" part="program" sha1="5f0cf80bcfec3ab29b421d9829562ee5dd147b6a" />
 	<File name="Classes/ItemListControl.lua" part="program" sha1="ec7ddd4ae85601a4723e36e43a5a9040b11371cd" />
 	<File name="Classes/ItemSetListControl.lua" part="program" sha1="1c4c0ea4fd5105a865ba1677618022cbb485a8c8" />
 	<File name="Classes/ItemSlotControl.lua" part="program" sha1="81c630eec68468a45663973480899f4a4f5cd877" />
-	<File name="Classes/ItemsTab.lua" part="program" sha1="a59a7420d2cd67db9d34134cb8a8b73666e58cfb" />
+	<File name="Classes/ItemsTab.lua" part="program" sha1="a7426a52d3000fd810611090a7c81b8e552f7afe" />
 	<File name="Classes/JourneyItemControl.lua" part="program" sha1="7a779a1d27b7358792c6ab2f950e2d557e4061bb" />
 	<File name="Classes/JourneyPrerequisiteControl.lua" part="program" sha1="63db94f78c0055427ae4e35b6f2e76aba6c89476" />
 	<File name="Classes/JourneyViews.lua" part="program" sha1="b89da0fb5e79ca13c8b4c8111f46b4fbe348c6a8" />
