@@ -325,6 +325,15 @@ Hide
 	local removedScroll = custom.template:gsub(' "Portal Scroll"','',1)
 	local changedPolicy = baseRefresh.planImported(custom,custom.template,removedScroll)
 	assert(changedPolicy.blocks[#changedPolicy.blocks]:find("custom drop protection rules",1,true))
+	local withoutEconomy = copyTable(custom)
+	withoutEconomy.template = custom.template:match("^(.-)# PoB economy: begin").."Show\n    SetFontSize 30\n"
+	withoutEconomy.template = withoutEconomy.template:gsub("\r\n","\n"):gsub("\n","\r\n")
+	local unrelated = withoutEconomy.template:gsub("SetFontSize 30\r\n$","SetFontSize 32\r\n")
+	local refreshed = baseRefresh.planImported(withoutEconomy,withoutEconomy.template,unrelated)
+	assert(#refreshed.blocks==0 and refreshed.profile.template==unrelated)
+	local missingScroll = withoutEconomy.template:gsub(' "Portal Scroll"','',1)
+	local unsafeUpdate = baseRefresh.planImported(withoutEconomy,withoutEconomy.template,missingScroll)
+	assert(unsafeUpdate.blocks[#unsafeUpdate.blocks]:find("custom drop protection rules",1,true))
 	local imports = copyTable(profile)
 	imports.template = 'Import "old.filter"\n'
 	imports.importFiles = {{name="old.filter",text=previous},{name="new.filter",text=finalText}}

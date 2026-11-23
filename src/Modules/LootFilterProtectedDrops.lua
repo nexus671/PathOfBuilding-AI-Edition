@@ -1,5 +1,7 @@
 local parser = require("Modules.LootFilterParser")
 local M = {}
+local scrollMarker = "# CUSTOM: Hide Wisdom and Portal Scrolls"
+local ruleStarts = {Show=true,Hide=true,Minimal=true,Import=true}
 
 local function personalRulePrefix(raw, stop)
 	local rules = {}
@@ -12,13 +14,32 @@ local function personalRulePrefix(raw, stop)
 	return table.concat(rules,"\n")
 end
 
+local function afterScrollRule(raw)
+	local marked, inRule = false, false
+	for offset, line in raw:gmatch("()([^\n]*)\n?") do
+		local text = line:match("^%s*(.-)%s*$")
+		local keyword = text:match("^[^%s#]+")
+		if text==scrollMarker then
+			marked = true
+		elseif marked and ruleStarts[keyword] then
+			if inRule then return offset end
+			if keyword~="Hide" then return nil end
+			inRule = true
+		end
+	end
+	return inRule and #raw+1 or nil
+end
+
 function M.personalRulesPreserved(previous, candidate)
-	if not previous:find("# CUSTOM: Hide Wisdom and Portal Scrolls",1,true) then return true end
+	if not previous:find(scrollMarker,1,true) then return true end
 	local market = require("Modules.LootFilterEconomy")
 	local oldStart, oldEnd = market.sectionBounds(previous)
-	local newStart, newEnd = market.sectionBounds(candidate)
-	return oldStart and oldEnd and newStart and newEnd
-		and personalRulePrefix(previous,oldStart)==personalRulePrefix(candidate,newStart)
+	if oldStart and oldEnd then
+		local newStart, newEnd = market.sectionBounds(candidate)
+		return newStart and newEnd and personalRulePrefix(previous,oldStart)==personalRulePrefix(candidate,newStart)
+	end
+	local oldStop, newStop = afterScrollRule(previous), afterScrollRule(candidate)
+	return oldStop and newStop and personalRulePrefix(previous,oldStop)==personalRulePrefix(candidate,newStop)
 end
 
 function M.samples()
