@@ -69,6 +69,13 @@ describe("Offline campaign pickup policies",function()
 		local saved;local panel=require("Classes.LootFilterCampaignControl").Open(build,nil,function(value) saved=value end,"Normal")
 		panel.recipe9:Click();panel.recipe10:Click();panel.keep:Click();assert.same({"Quality weapons","Quality armour"},saved.recipes)
 	end)
+	it("supports optional quality jewellery pickups",function()
+		local p=profile();p.campaign.recipes={"Quality jewellery"}
+		local sample={Class="Rings",BaseType="Gold Ring",Rarity="Rare",Quality=20,AreaLevel=40}
+		assert.equal("Show",filters.simulate(p,sample).action);sample.Quality=0;assert.equal("Hide",filters.simulate(p,sample).action)
+		local saved;local panel=require("Classes.LootFilterCampaignControl").Open(build,nil,function(value) saved=value end,"Normal")
+		panel.recipe11:Click();panel.keep:Click();assert.same({"Quality jewellery"},saved.recipes)
+	end)
 	it("makes the Vaal-gem pickup available in campaign settings",function()
 		local saved;local panel=require("Classes.LootFilterCampaignControl").Open(build,nil,function(value) saved=value end,"Normal")
 		assert.is_true(panel.recipe7:IsEnabled());panel.recipe7:Click();panel.keep:Click()

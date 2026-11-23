@@ -50,9 +50,10 @@ function M.Open(build,value,onKeep,mode)
 	end
 	for i,name in ipairs(policy.recipes) do
 		local x,y,width=right,396+(i-1)*20,column
-		if name=="Vaal skill gems" then x,y,width=right+column-98,456,98 elseif i>=8 then width=math.floor((column-12)/3);x=right+(i-8)*(width+6);y=516 end
+		if name=="Vaal skill gems" then x,y,width=right+column-98,456,98 elseif i>=8 then width=math.floor((column-18)/4);x=right+(i-8)*(width+6);y=516 end
 		local caption=name=="Vaal skill gems" and "Vaal gems" or name=="Quality flasks and tinctures" and "Quality flasks" or name
 		button("recipe"..i,x,y,width,caption,function() selected.recipes[name]=not selected.recipes[name] or nil;updateSummary() end);c["recipe"..i].height=20;c["recipe"..i].locked=function() return selected.recipes[name] end
+		if name=="Quality jewellery" then c["recipe"..i].tooltipText="Highlights non-unique quality rings, amulets and belts. Group matching quality types for a possible random Catalyst; verify the offer." end
 		if name=="Quality flasks and tinctures" then c["recipe"..i].tooltipText="Highlights quality flasks and tinctures for the Glassblower's Bauble recipe. Several items generally need 40% total quality; check the vendor offer." end
 		if name=="Quality weapons" or name=="Quality armour" then c["recipe"..i].tooltipText="Highlights non-unique quality "..(name=="Quality weapons" and "weapons for Blacksmith's Whetstones" or "armour and shields for Armourer's Scraps")..". Several items need 40% total quality; check the vendor offer." end
 		if name=="Vaal skill gems" then

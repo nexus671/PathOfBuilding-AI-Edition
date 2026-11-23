@@ -114,6 +114,12 @@ describe("Quality vendor review",function()
 			local category=vendor.review(copies).categories[1];assert.is_true(category.optimal);assert.equal(brute(2^#values-1),#category.groups)
 		end
 	end)
+	it("groups jewellery only when catalyst quality types match",function()
+		local function jewel(class,base,kind) return "Item Class: "..class.."\nRarity: Rare\nExample Name\n"..base.."\n--------\nQuality ("..kind.." Modifiers): +20%\n--------\nItem Level: 80" end
+		local result=vendor.review({jewel("Rings","Gold Ring","Attribute"),jewel("Amulets","Jade Amulet","Attribute"),jewel("Belts","Leather Belt","Resistance")})
+		assert.equal("Jewellery: Attribute",result.categories[5].name);assert.equal(1,#result.categories[5].groups);assert.equal("Random Catalyst",result.categories[5].reward)
+		assert.equal("Jewellery: Resistance",result.categories[6].name);assert.equal(0,#result.categories[6].groups)
+	end)
 	it("keeps pasted items while the build remains open",function()
 		newBuild();main.popups={};local raw=item("Wands","Normal","Driftwood Wand",20)
 		build.planningVendorQualityItems={raw}

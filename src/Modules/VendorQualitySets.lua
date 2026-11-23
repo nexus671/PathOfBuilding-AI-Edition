@@ -1,5 +1,9 @@
 -- Review copied items only; no stash access or currency transaction.
 local M={maxBytes=4*1024*1024}
+local jewelleryClasses={Rings=true,Amulets=true,Belts=true}
+-- Descriptors used by PoB's item parser for the supported catalyst types.
+local catalystTypes={}
+for _,name in ipairs({"Attack","Speed","Suffix","Life and Mana","Caster","Attribute","Physical and Chaos","Resistance","Prefix","Defence","Elemental","Critical"}) do catalystTypes[name:lower()]=name end
 local function clean(value) return (value:gsub("^%s+",""):gsub("%s+$","")) end
 local function groupByQuality(items)
 	local groups,group,total={}, {},0
@@ -141,8 +145,9 @@ function M.parse(raw)
 	class=({["Active Skill Gems"]="Skill Gems",["Support Skill Gems"]="Support Gems"})[class] or class
 	local kind=require("Modules.LootFilterCampaign").qualityCategory(class)
 	local flaskClasses={ ["Life Flasks"]=true,["Mana Flasks"]=true,["Hybrid Flasks"]=true,["Utility Flasks"]=true,["Critical Utility Flasks"]=true,["Tinctures"]=true }
-	local category=kind=="Quality weapon" and "Weapons" or kind=="Quality armour" and "Armour" or flaskClasses[class] and "Flasks and tinctures" or (class=="Skill Gems" or class=="Support Gems") and "Gems"
-	assert(category,"Copy a weapon, armour, flask, tincture or gem with its item class")
+	local jewellery=jewelleryClasses[class] or false
+	local category=kind=="Quality weapon" and "Weapons" or kind=="Quality armour" and "Armour" or flaskClasses[class] and "Flasks and tinctures" or (class=="Skill Gems" or class=="Support Gems") and "Gems" or jewellery and "Jewellery"
+	assert(category,"Copy a weapon, armour, jewellery, flask, tincture or gem with its item class")
 	local rarity=lines[2] and lines[2]:match("^Rarity:%s*(%a+)$")
 	assert(category=="Gems" and rarity=="Gem" or category~="Gems" and rarity and ({Normal=true,Magic=true,Rare=true,Unique=true})[rarity],"The copied item needs a supported rarity")
 	-- Magic items normally have one displayed name, including their affixes.
@@ -155,15 +160,19 @@ function M.parse(raw)
 	local singleName=endOfName and (rarity=="Magic" or (rarity=="Rare" or rarity=="Unique") and (raw:match("\nUnidentified\n") or raw:match("\nUnidentified %(Tier %d+%)\n") or raw:match("\nUnidentified$") or raw:match("\nUnidentified %(Tier %d+%)$")))
 	local base=lines[(rarity=="Normal" or rarity=="Gem" or singleName) and 3 or 4]
 	assert(base and base~="--------" and not property(base) and #base<=160 and not base:find("[%c%^]"),"The copied item needs a visible base type")
-	local quality
+	local quality,qualityType
 	for _,line in ipairs(lines) do
 		local value=line:match("^Quality:%s*%+?(%d+)%%") or line:match("^Quality %([^%)]+%):%s*%+?(%d+)%%")
-		if value then assert(not quality,"Copied item has multiple quality values");quality=tonumber(value) end
+		if value then
+			assert(not quality,"Copied item has multiple quality values");quality=tonumber(value)
+			local descriptor=line:match("^Quality %(([%a%s]+) Modifiers%):")
+			if jewellery and descriptor then qualityType=catalystTypes[descriptor:lower()] end
+		end
 	end
 	local gemId=class=="Skill Gems" and data.gemForBaseName[base:lower()]
 	local vaal=gemId and data.gems[gemId] and data.gems[gemId].vaalGem==true or false
 	assert(quality and quality>=1 and quality<=100 or vaal and (quality==nil or quality==0),"The copied item needs quality between 1% and 100%, or a recognized Vaal skill gem")
-	return {base=base,class=class,rarity=rarity,quality=quality,category=category,vaalGem=vaal}
+	return {base=base,class=class,rarity=rarity,quality=quality,qualityType=qualityType,jewellery=jewellery or nil,category=category,vaalGem=vaal}
 end
 function M.review(items)
 	assert(type(items)=="table","Supply copied items")
@@ -173,12 +182,24 @@ function M.review(items)
 	for index,raw in ipairs(items) do
 		assert(type(raw)=="string","Item "..index.." must be copied item text");bytes=bytes+#raw;assert(bytes<=M.maxBytes,"Copied items exceed the 4 MiB review limit")
 		local ok,item=pcall(M.parse,raw);assert(ok,"Item "..index..": "..tostring(item));item.index=index
-		local category=byName[item.category];category.items[#category.items+1]=item
+		local category
+		if item.jewellery then
+			local name="Jewellery: "..(item.qualityType or "unknown quality type")
+			item.category=name;category=byName[name]
+			if not category then category={name=name,reward="Random Catalyst",qualityType=item.qualityType,unknownType=not item.qualityType,items={},groups={},leftover={}};byName[name]=category;categories[#categories+1]=category end
+		else category=byName[item.category] end
+		category.items[#category.items+1]=item
 		if item.vaalGem then
 			vaal.count=vaal.count+1;vaal.remaining[#vaal.remaining+1]=item
 			if #vaal.remaining==5 then vaal.groups[#vaal.groups+1]={items=vaal.remaining};vaal.remaining={} end
 		end
 	end
+	table.sort(categories,function(a,b)
+		local aJew=a.name:match("^Jewellery:")~=nil;local bJew=b.name:match("^Jewellery:")~=nil
+		if aJew~=bJew then return not aJew end
+		if aJew then return a.name<b.name end
+		local order={Weapons=1,Armour=2,["Flasks and tinctures"]=3,Gems=4};return order[a.name]<order[b.name]
+	end)
 	for _,category in ipairs(categories) do
 		local rest={};category.unknownQuality={};category.zeroQuality={}
 		for _,item in ipairs(category.items) do
@@ -186,15 +207,18 @@ function M.review(items)
 			elseif item.quality==0 then category.zeroQuality[#category.zeroQuality+1]=item
 			else
 				if category.name=="Gems" and item.quality>20 then category.eligibilityUncertain=true end
-				if item.rarity=="Normal" and item.quality>=20 or category.name=="Gems" and item.quality==20 then category.groups[#category.groups+1]={items={item},quality=item.quality,single=true,singleKind=category.name=="Gems" and "gem" or "normal"}
+				if item.jewellery and (category.unknownType or item.rarity=="Normal" and item.quality>=20 or item.quality>=40) then category.eligibilityUncertain=true end
+				if not item.jewellery and item.rarity=="Normal" and item.quality>=20 or category.name=="Gems" and item.quality==20 then category.groups[#category.groups+1]={items={item},quality=item.quality,single=true,singleKind=category.name=="Gems" and "gem" or "normal"}
 				else rest[#rest+1]=item end
 			end
 		end
 		table.sort(rest,function(a,b) if a.quality~=b.quality then return a.quality>b.quality end return a.index<b.index end)
-		local groups,leftover,leftoverQuality,optimal=bestGroups(rest)
+		local groups,leftover,leftoverQuality,optimal
+		if category.unknownType then groups={};leftover=rest;leftoverQuality=0;for _,item in ipairs(rest) do leftoverQuality=leftoverQuality+item.quality end;optimal=false
+		else groups,leftover,leftoverQuality,optimal=bestGroups(rest) end
 		for _,group in ipairs(groups) do category.groups[#category.groups+1]=group end
 		category.leftover=leftover;category.leftoverQuality=leftoverQuality;category.optimal=optimal and not category.eligibilityUncertain and #category.unknownQuality==0
 	end
-	return {categories=categories,vaal=vaal,totalItems=#items,note="Vaal Orb groups use five recognized Vaal skill gems in normal mode; Ruthless eligibility is unverified. Vaal and quality groups are independent and may use the same items. Optimal quality counts are proven for the modeled recipe and supplied quality values when marked; otherwise groups are suggestions. Single-item offers for gems above 20% are unverified. Each paste must be a different item. Check eligibility and the actual vendor offer; this does not read your stash."}
+	return {categories=categories,vaal=vaal,totalItems=#items,note="Vaal Orb groups use five recognized Vaal skill gems in normal mode; Ruthless eligibility is unverified. Vaal and quality groups are independent and may use the same items. Optimal quality counts are proven for the modeled recipe and supplied quality values when marked; otherwise groups are suggestions. Jewellery is grouped only by recognized matching quality types; a random Catalyst is suggested for groups totalling at least 40%. Single-item jewellery offers and gems above 20% are unverified. Each paste must be a different item. Check eligibility and the actual vendor offer; this does not read your stash."}
 end
 return M

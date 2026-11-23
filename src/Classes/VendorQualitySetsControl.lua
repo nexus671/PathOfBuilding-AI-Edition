@@ -22,7 +22,7 @@ function M.Open(build)
 			for _,category in ipairs(review.categories) do for _,item in ipairs(category.items) do if item.index==selected then selectedItem=item end end end
 			if selectedItem then
 				lines[#lines+1]="Selected #"..selected..": "..selectedItem.base
-				lines[#lines+1]="Quality: "..(selectedItem.quality==nil and "unknown" or selectedItem.quality.."%")
+				lines[#lines+1]="Quality: "..(selectedItem.quality==nil and "unknown" or selectedItem.quality.."%")..(selectedItem.jewellery and " | "..(selectedItem.qualityType or "type unknown") or "")
 				local assigned=false
 				local function describe(label,group)
 					local contains=false;for _,item in ipairs(group.items) do if item.index==selected then contains=true;break end end
@@ -46,7 +46,9 @@ function M.Open(build)
 		end
 		for _,category in ipairs(review.categories) do
 			lines[#lines+1]=category.name.." - "..category.reward..": "..#category.groups..(category.optimal and " maximum" or " suggested")
-			if category.eligibilityUncertain then lines[#lines+1]="  Single-gem offers above 20% are unverified." end
+			if category.unknownType then lines[#lines+1]="  Unknown catalyst quality type; items are not grouped."
+			elseif category.eligibilityUncertain and category.qualityType then lines[#lines+1]="  Single-item jewellery offers are unverified."
+			elseif category.eligibilityUncertain then lines[#lines+1]="  Single-gem offers above 20% are unverified." end
 			if #category.unknownQuality>0 then local ids={};for _,item in ipairs(category.unknownQuality) do ids[#ids+1]="#"..item.index end;lines[#lines+1]="  Quality unknown: "..table.concat(ids,", ") end
 			if #category.zeroQuality>0 then local ids={};for _,item in ipairs(category.zeroQuality) do ids[#ids+1]="#"..item.index end;lines[#lines+1]="  No quality: "..table.concat(ids,", ") end
 			for index,group in ipairs(category.groups) do

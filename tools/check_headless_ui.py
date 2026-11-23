@@ -85,6 +85,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_unique_beast_sockets.lua")
     sources.append(ROOT / "tools/test_same_name_choice.lua")
     sources.append(ROOT / "tools/test_vendor_chaos_bound.lua")
+    sources.append(ROOT / "tools/test_jewellery_vendor.lua")
     sources.append(ROOT / "tools/test_anoint_sort_ui.lua")
     sources.append(ROOT / "tools/test_timeless_dialog_ui.lua")
     sources.append(ROOT / "tools/test_ai_filter_proposal_ui.lua")
@@ -269,6 +270,10 @@ def main():
                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "vendor-chaos-bound.log").write_text(chaos_bound.stdout)
     assert chaos_bound.returncode == 0, chaos_bound.stdout
+    jewellery_vendor = subprocess.run(lua_command + ["../tools/test_jewellery_vendor.lua", str(frames)], cwd=ROOT / "src",
+                                      env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "jewellery-vendor.log").write_text(jewellery_vendor.stdout)
+    assert jewellery_vendor.returncode == 0, jewellery_vendor.stdout
     anoint_sort = subprocess.run(lua_command + ["../tools/test_anoint_sort_ui.lua"], cwd=ROOT / "src",
                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "anoint-sort-controls.log").write_text(anoint_sort.stdout)
@@ -360,10 +365,12 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2432, f"Expected 2432 UI frames, found {len(paths)}"
+    assert len(paths) == 2438, f"Expected 2438 UI frames, found {len(paths)}"
     for name in ("960-inventory-source.json", "960-inventory-source-detail.json"):
         assert (frames / name).is_file(), f"Missing saved-item source view: {name}"
     for width in (960, 1024, 1280):
+        for view in ("jewellery-vendor", "jewellery-filter-policy"):
+            assert (frames / f"{width}-{view}.json").is_file(), f"Missing {view} at {width}px"
         assert (frames / f"{width}-same-name-choice.json").is_file(), f"Missing same-name choice at {width}px"
         assert (frames / f"{width}-unique-beast-sockets.json").is_file(), f"Missing unique Bestiary socket view at {width}px"
         assert (frames / f"{width}-beast-max-sockets.json").is_file(), f"Missing Bestiary socket view at {width}px"

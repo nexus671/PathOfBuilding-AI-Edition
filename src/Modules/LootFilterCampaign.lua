@@ -1,6 +1,6 @@
 -- Offline family policies derived from the bundled native bases, never prices.
 -- cspell:ignore jsontype
-local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces","Low-level unidentified rare set pieces","Vaal skill gems","Quality flasks and tinctures","Quality weapons","Quality armour"}}
+local M={defences={"Armour","Evasion","Energy shield","Armour / Evasion","Armour / Energy shield","Evasion / Energy shield","All three defences","Ward"},recipes={"Three-colour linked equipment","Six-socket equipment","Six-link equipment","Quality gems","Unidentified rare set pieces","Low-level unidentified rare set pieces","Vaal skill gems","Quality flasks and tinctures","Quality weapons","Quality armour","Quality jewellery"}}
 local knownWeapons={"Bow","Claw","Dagger","Rune Dagger","Fishing Rod","One Handed Axe","One Handed Mace","One Handed Sword","Thrusting Sword","Sceptre","Staff","Warstaff","Two Handed Axe","Two Handed Mace","Two Handed Sword","Wand","Shield","Quiver"}
 M.weapons=knownWeapons
 -- Suggestions are editable family selections, not build or economy recommendations.
@@ -20,6 +20,7 @@ local rareSetClasses={
 local armourTypes={Helmet=true,["Body Armour"]=true,Gloves=true,Boots=true,Shield=true}
 function M.qualityCategory(class)
 	if class=="Shields" then return "Quality armour" end
+	for _,name in ipairs(rareSetClasses.Jewellery) do if class==name then return "Quality jewellery" end end
 	for _,name in ipairs(rareSetClasses.Armour) do if class==name then return "Quality armour" end end
 	for _,name in ipairs(rareSetClasses["Weapons and shields"]) do if class==name then return "Quality weapon" end end
 end
@@ -106,10 +107,11 @@ function M.rules(value,theme,mode)
 		["Quality flasks and tinctures"]={'Class == "Life Flasks" "Mana Flasks" "Hybrid Flasks" "Utility Flasks" "Critical Utility Flasks" "Tinctures"',"Quality >= 1"},
 		["Quality weapons"]={'Class == "Bows" "Claws" "Daggers" "Fishing Rods" "One Hand Axes" "One Hand Maces" "One Hand Swords" "Rune Daggers" "Sceptres" "Staves" "Thrusting One Hand Swords" "Two Hand Axes" "Two Hand Maces" "Two Hand Swords" "Wands" "Warstaves"',"Rarity <= Rare","Quality >= 1"},
 		["Quality armour"]={'Class == "Body Armours" "Boots" "Gloves" "Helmets" "Shields"',"Rarity <= Rare","Quality >= 1"},
+		["Quality jewellery"]={'Class == "Amulets" "Belts" "Rings"',"Rarity <= Rare","Quality >= 1"},
 	}
 	-- Vendor recipes resolve six links before six sockets, then linked colours.
 	-- Keep the original indices for stable rule IDs and saved overrides.
-	local recipeOrder={3,2,1,4,8,5,6,7,9,10}
+	local recipeOrder={3,2,1,4,8,5,6,7,9,10,11}
 	for _,i in ipairs(recipeOrder) do local name=M.recipes[i];for _,chosen in ipairs(policy.recipes) do if name==chosen then
 		if name=="Vaal skill gems" then
 			if mode~="Ruthless" then
