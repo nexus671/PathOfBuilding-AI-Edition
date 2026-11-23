@@ -234,6 +234,78 @@ assert(accepted and accepted.baseCommit==filters.source().commit and #accepted.r
 launch.DownloadPage=actualDownload
 print("NeverSink refresh previews and validates the compiled candidate before preserving personal rules in the draft")
 
+-- Open a historical backup in the usual workspace and require the exact
+-- source review before the restore action can be clicked.
+newBuild()
+main.popups = {}
+local backupUI = headless.install({width=720,height=600})
+backupUI:bind(build)
+local oldConfig, oldBackups, oldPreview, oldRollback = sync.configuration, sync.backups, sync.previewBackup, sync.rollback
+local oldBackupLimit = sync.setBackupLimit
+local selectedLimit
+local backupId = string.rep("a",40)
+local selectedReview
+local sampleReview = {digest=backupId,before="Show\n",after="Hide\n"}
+sync.configuration = function() return {hour=9,enabled=true,backup=backupId,target=selected,revision="backup revision"} end
+sync.setBackupLimit = function(id,limit,revision)
+	assert(id=="default" and revision=="backup revision")
+	selectedLimit = limit
+end
+sync.backups = function() return {{digest=backupId,checkedAt=1795449900}} end
+sync.previewBackup = function(_,id)
+	assert(id==backupId)
+	return sampleReview
+end
+sync.rollback = function(_,review)
+	selectedReview = review
+end
+require("Classes.LootFilterDailySyncControl").Open()
+backupUI:click("rollback")
+assert(main.popups[1].title=="Filter backups" and not main.popups[1].controls.secondary:IsEnabled())
+backupUI:click("choose")
+assert(main.popups[1].title=="Filter file changes" and not selectedReview)
+backupUI:click("close")
+assert(main.popups[1].controls.secondary:IsEnabled())
+backupUI:click("secondary")
+assert(main.popups[1].title=="Restore filter backup" and not selectedReview)
+backupUI:click("confirm")
+assert(selectedReview==sampleReview and main.popups[1].title=="Daily filter sync")
+backupUI:click("backupRetention")
+backupUI:text("count","3")
+backupUI:click("keep")
+assert(not selectedLimit and main.popups[1].title=="Limit recorded backups")
+backupUI:click("confirm")
+assert(selectedLimit==3 and main.popups[1].title=="Daily filter sync")
+sync.setBackupLimit = oldBackupLimit
+sync.configuration, sync.backups, sync.previewBackup, sync.rollback = oldConfig, oldBackups, oldPreview, oldRollback
+print("Review backups requires the diff and a separate restore confirmation")
+
+-- Searching for one unique still displays evidence for all values on its base.
+newBuild()
+main.popups = {}
+local marketUI = headless.install({width=960,height=640})
+marketUI:bind(build)
+local originalMarketDownload = launch.DownloadPage
+launch.DownloadPage = function(_,url,callback)
+	assert(url:find("type=UniqueAccessory",1,true))
+	local header = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT").."\r\n\r\n"
+	callback({header=header,body=[[{"lines":[
+		{"name":"Named result","baseType":"Cord Belt","chaosValue":30,"count":50,"listingCount":40},
+		{"name":"Competing result","baseType":"Cord Belt","chaosValue":120,"count":80,"listingCount":62}
+	]}]]})
+end
+require("Classes.LootFilterMarketBrowseControl").Open()
+marketUI:text("league","Covens")
+marketUI:choose("category","Unique accessories")
+marketUI:text("query","Named result")
+marketUI:click("get")
+assert(main.popups[1].title=="Unique accessories market prices")
+local marketDetails={}
+for _, row in ipairs(main.popups[1].controls.details.list) do marketDetails[#marketDetails+1]=StripEscapes(row[1] or "") end
+assert(table.concat(marketDetails," "):find("30 to 120 chaos",1,true))
+launch.DownloadPage = originalMarketDownload
+print("Unique market review includes competing variants for the selected base")
+
 -- Exercise the exact publish workflow with a simulated account response.
 newBuild()
 main.popups = {}
