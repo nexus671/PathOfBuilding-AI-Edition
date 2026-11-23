@@ -373,29 +373,31 @@ function M.Open(build,source,layout,controller)
 		ui.label(c,"emptyTitle",16,124,"Choose where you are in your build",20)
 		ui.description(c,"emptyHelp",16,410,w-32,70,{saver.warning or "Start with a ready-made preset, then customise the labels, sounds and pickups for your character."},16)
 	elseif page=="Overview" then
-		local cw=math.floor((w-64)/3)
+		local cw=math.floor((w-64)/3);local compactHeight=h<480
+		if not compactHeight then
 		card("strictCard",16,120,cw,"STRICTNESS",filters.strictness[profile.strictness+1],"Choose how much loot gets through","Assets/Crafting/chaos.png")
 		card("targetCard",32+cw,120,cw,"PERSONAL PICKUPS",tostring(#profile.rules),"Crafting, gear and Atlas targets","Assets/Crafting/exalt.png")
 		card("baseCard",48+cw*2,120,cw,"BASE PRESET",profile.template and "Imported" or "NeverSink","PoE 3.30 / "..profile.mode,"Assets/Crafting/vaal.png")
+		end
 		local left=math.max(274,math.floor(w*0.31));local right=w-left-48
-		ui.label(c,"setupLabel",16,214,"Your profile",18)
-		ui.label(c,"titleLabel",16,246,"Name",12);c.title=new("EditControl"):EditControl(ui.anchor,{16,264,left,28},profile.title,nil,nil,120,function(value) profile.title=value;for _,entry in ipairs(c.profile.list) do if entry.val==profile.id then entry.label=value end end;draft("title") end)
-		c.preset=new("DropDownControl"):DropDownControl(ui.anchor,{16,306,left/2-6,26},{{label="Campaign",val="campaign"},{label="Early maps",val="early_maps"},{label="Endgame",val="endgame"}},function(_,value) profile.preset=value.val;draft() end);c.preset:SelByValue(profile.preset,"val")
-		c.mode=new("DropDownControl"):DropDownControl(ui.anchor,{28+left/2-6,306,left/2-6,26},{"Normal","Ruthless"},function(_,value) profile.mode=value;draft();reopen() end);c.mode:SelByValue(profile.mode)
-		ui.label(c,"strictLabel",16,346,"Strictness",12);c.strictness=new("DropDownControl"):DropDownControl(ui.anchor,{16,364,left,26},filters.strictness,function(index) profile.strictness=index-1;draft();reopen() end);c.strictness.selIndex=profile.strictness+1
-		button(c,"generate",16,406,left,"Auto-adjust for this build",generatePickups)
+		ui.label(c,"setupLabel",16,compactHeight and 118 or 214,"Your profile",18)
+		ui.label(c,"titleLabel",16,compactHeight and 144 or 246,"Name",12);c.title=new("EditControl"):EditControl(ui.anchor,{16,compactHeight and 160 or 264,left,28},profile.title,nil,nil,120,function(value) profile.title=value;for _,entry in ipairs(c.profile.list) do if entry.val==profile.id then entry.label=value end end;draft("title") end)
+		c.preset=new("DropDownControl"):DropDownControl(ui.anchor,{16,compactHeight and 194 or 306,left/2-6,26},{{label="Campaign",val="campaign"},{label="Early maps",val="early_maps"},{label="Endgame",val="endgame"}},function(_,value) profile.preset=value.val;draft() end);c.preset:SelByValue(profile.preset,"val")
+		c.mode=new("DropDownControl"):DropDownControl(ui.anchor,{28+left/2-6,compactHeight and 194 or 306,left/2-6,26},{"Normal","Ruthless"},function(_,value) profile.mode=value;draft();reopen() end);c.mode:SelByValue(profile.mode)
+		ui.label(c,"strictLabel",16,compactHeight and 228 or 346,"Strictness",12);c.strictness=new("DropDownControl"):DropDownControl(ui.anchor,{16,compactHeight and 244 or 364,left,26},filters.strictness,function(index) profile.strictness=index-1;draft();reopen() end);c.strictness.selIndex=profile.strictness+1
+		button(c,"generate",16,compactHeight and 278 or 406,left,"Auto-adjust for this build",generatePickups)
 		c.generate.label=function() return generationJob and "Updating build pickups..." or dependencyJob and "Checking build pickups..." or dependencies and dependencies.needsReview and "Build pickups need review *" or dependencies and dependencies.stale and "Refresh build pickups *" or "Auto-adjust for this build" end
 		c.generate.enabled=function() return not dependencyJob and not generationJob end
 		c.generate.tooltipText="* means linked targets changed or need review. Profile tools > Linked build targets shows the sources. Refreshing preserves personal overrides."
-		button(c,"customize",16,448,left,"Customize pickups  >",function() page="Customize";reopen() end)
-		sceneControl("preview",left+32,214,right,h-288,library.scene(profile,build,"Mixed drops",0,83),true)
-		ui.description(c,"sceneHint",left+32,h-68,right,24,{"Live filter appearance. Open Simulate for drop inspection."},14)
+		button(c,"customize",16,compactHeight and 312 or 448,left,"Customize pickups  >",function() page="Customize";reopen() end)
+		sceneControl("preview",left+32,compactHeight and 120 or 214,right,compactHeight and h-194 or h-288,library.scene(profile,build,"Mixed drops",0,83),true)
+		ui.description(c,"sceneHint",left+32,h-68,right,24,{compactHeight and "Open Simulate to inspect drops." or "Live filter appearance. Open Simulate for drop inspection."},14)
 	elseif page=="Tiers" then
 		tierView=require("Classes.LootFilterTierControl").Mount(c,profile,w,h,tierState,{id=identifier,change=replaceProfile,reopen=reopen,edit=editRule})
 	elseif page=="Modules" then
 		require("Classes.LootFilterModuleControl").Mount(c,data,profile,w,h,{id=identifier,change=function() draft();reopen() end,edit=editRule})
 	elseif page=="Customize" then
-		local sidebar=152;local listX=184;local listW=math.floor((w-216)*0.51);local detailX=listX+listW+16;local detailW=w-detailX-16
+		local sidebar=152;local listX=184;local listW=math.floor((w-216)*0.51);local detailX=listX+listW+16;local detailW=w-detailX-16;local sourceWidth=w<760 and 92 or 130
 		local ok,base=pcall(library.catalog,profile);catalog=ok and base or {}
 		local sourceEntries=scope=="Base filter" and catalog or scope=="Policies" and library.campaign(profile) or library.personal(profile)
 		local categoryRows={};for _,name in ipairs(library.categories) do categoryRows[#categoryRows+1]={height=36,textSize=14,"^7"..name,name=name} end
@@ -403,9 +405,9 @@ function M.Open(build,source,layout,controller)
 		ui.selectable(c.categories,function(row) return row.name end,function(row) category=row.name;if category=="Campaign" then scope="Policies" end;selected=nil;reopen() end)
 		c.categories.selectedKey=category
 		local offset=0;for _,row in ipairs(categoryRows) do row.selected=row.name==category;if row.selected then c.categories.controls.scrollBar.offset=math.max(0,offset-(h-240)) end;offset=offset+row.height end
-		c.search=new("EditControl"):EditControl(ui.anchor,{listX,120,listW-138,26},query,nil,nil,160,function(value) query=value end)
-		c.search.placeholder="Find an item or rule"
-		c.source=new("DropDownControl"):DropDownControl(ui.anchor,{listX+listW-130,120,130,26},{"My rules","Base filter","Policies"},function(_,value) scope=value;selected=nil;query="";if scope=="Policies" then category="Campaign" elseif category=="Campaign" then category="All items" end;reopen() end);c.source:SelByValue(scope)
+		c.search=new("EditControl"):EditControl(ui.anchor,{listX,120,listW-sourceWidth-8,26},query,nil,nil,160,function(value) query=value end)
+		c.search.placeholder=listW<260 and "Search" or "Find an item or rule"
+		c.source=new("DropDownControl"):DropDownControl(ui.anchor,{listX+listW-sourceWidth,120,sourceWidth,26},{"My rules","Base filter","Policies"},function(_,value) scope=value;selected=nil;query="";if scope=="Policies" then category="Campaign" elseif category=="Campaign" then category="All items" end;reopen() end);c.source:SelByValue(scope)
 		c.rules=new("TextListControl"):TextListControl(ui.anchor,{listX,170,listW,h-274},nil,{})
 		ui.label(c,"ruleCount",listX,152,"",12)
 		local function refreshList()
@@ -491,9 +493,11 @@ function M.Open(build,source,layout,controller)
 		c.up.tooltipText="Move before the previous visible rule. Hidden rules between them will also be crossed."
 		c.down.tooltipText="Move after the next visible rule. Hidden rules between them will also be crossed."
 		c.rules.tooltipText="Drag a personal rule, use the arrows, or press Alt+Up/Down. Rule order determines priority."
-		c.preview=new("Control"):Control(ui.anchor,{detailX,120,detailW,126});backgrounds.preview=true
-		function c.preview:Draw() local x,y=self:GetPos();visual.floor(x,y,detailW,126);visual.chip(x+8,y+8,detailW-16,112,item,result) end
-		c.detail=new("TextListControl"):TextListControl(ui.anchor,{detailX,260,detailW,h-382},nil,{})
+		local previewHeight=h<480 and 64 or 126
+		local detailY=120+previewHeight+14
+		c.preview=new("Control"):Control(ui.anchor,{detailX,120,detailW,previewHeight});backgrounds.preview=true
+		function c.preview:Draw() local x,y=self:GetPos();visual.floor(x,y,detailW,previewHeight);visual.chip(x+8,y+8,detailW-16,previewHeight-14,item,result) end
+		c.detail=new("TextListControl"):TextListControl(ui.anchor,{detailX,detailY,detailW,h-118-detailY},nil,{})
 		button(c,"appearance",detailX,h-110,detailW,"Colours, sound & size",edit)
 		c.appearance.width=math.floor((detailW-12)/2);c.appearance.label="Appearance"
 		c.appearance.enabled=function() return selectedEntry~=nil end
