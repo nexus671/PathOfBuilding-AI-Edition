@@ -583,7 +583,9 @@ function M.Open(build,source,layout,controller)
 				entries[#entries+1]={id=index,label=visual.sampleName(drop)..tier.." - "..action,category=action,details=sampleDetails(drop,evaluated),sample=drop}
 			end
 			local title=string.format("Examples: %d shown, %d minimal, %d hidden, %d unknown",counts.Show,counts.Minimal,counts.Hide,counts.Unknown)
-			require("Classes.PlanningBrowserControl").Open(title,entries,{action="Inspect item",choose=function(entry) rememberSample(entry.sample);scenePage=1;compile();reopen() end})
+			local saved=filters.find(saver.data,profile.id)
+			require("Classes.PlanningBrowserControl").Open(title,entries,{action="Inspect item",choose=function(entry) rememberSample(entry.sample);scenePage=1;compile();reopen() end,
+				secondary=saved and {label="Compare saved",run=function() main:ClosePopup();require("Classes.LootFilterImpactControl").Open(saved,profile,scene,function(sample) rememberSample(sample);scenePage=1;compile();reopen() end) end} or nil})
 		end)
 		c.sceneStats.tooltipText="Review every example in this scene, including hidden and uncertain results. Counts are not drop-rate predictions."
 		c.selection=new("TextListControl"):TextListControl(ui.anchor,{16,410,left,h-474},nil,ui.rows(sampleDetails(item,result,true),left-28,14))

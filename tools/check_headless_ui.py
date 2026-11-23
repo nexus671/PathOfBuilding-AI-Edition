@@ -65,6 +65,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_unique_variant_divine_ui.lua")
     sources.append(ROOT / "tools/test_filter_export_race.lua")
     sources.append(ROOT / "tools/test_filter_review_ui.lua")
+    sources.append(ROOT / "tools/test_filter_impact_ui.lua")
     sources.append(ROOT / "tools/test_crafting_base_cost_ui.lua")
     sources.append(ROOT / "tools/test_unique_sacred_ui.lua")
     sources.append(ROOT / "tools/test_recipe_currency_help.lua")
@@ -220,6 +221,10 @@ def main():
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-review-controls.log").write_text(filter_review.stdout)
     assert filter_review.returncode == 0, filter_review.stdout
+    filter_impact = subprocess.run(lua_command + ["../tools/test_filter_impact_ui.lua"], cwd=ROOT / "src",
+                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "filter-impact-controls.log").write_text(filter_impact.stdout)
+    assert filter_impact.returncode == 0, filter_impact.stdout
     base_cost = subprocess.run(lua_command + ["../tools/test_crafting_base_cost_ui.lua"], cwd=ROOT / "src",
                                env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-base-cost-controls.log").write_text(base_cost.stdout)
