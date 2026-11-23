@@ -834,6 +834,13 @@ function M.poll(build, force)
 				raw = assert(build.itemsTab.items[slot.selItemId],"Selected slot is empty").raw
 			end
 			M.status = {id=request.id,status="inspected",crafting=require("Modules.CraftingProjects").inspect(raw,request.query,request.limit)}
+			if request.benchRarityOutcome~=nil then
+				local preview=require("Modules.CraftingBenchRarityPreview")
+				local ok,result
+				if request.benchRarityOutcome=="UNIQUE" and not request.benchRarityUniqueTitle then ok,result=pcall(preview.uniqueCandidates,raw,request.initialState)
+				else ok,result=pcall(preview.preview,raw,request.benchRarityOutcome,request.benchRaritySeed,request.initialState,request.benchRarityUniqueTitle) end
+				M.status.crafting.benchRarityPreview=ok and {available=true,result=result} or {available=false,reason=require("Modules.PlanningUI").errorText(result)}
+			end
 			assert(request.includeBlankBase==nil or type(request.includeBlankBase)=="boolean","Invalid blank base option")
 			if request.includeBlankBase then
 				local ok,base=pcall(require("Modules.CraftingProjects").blankBase,raw)

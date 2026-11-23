@@ -927,6 +927,44 @@ function Panel.Open(build,project,layout)
 	controls.page=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,18,416,28},{"Emulate item","Target conditions","Simulate recipe","Craft settings"})
 	controls.page.selFunc=function() refresh() end
 	button(controls,"settings",16,380,200,"Find currencies",palette)
+	button(controls,"benchRarity",16,458,416,"Preview bench rarity outcome",function()
+		local popup={}
+		ui.description(popup,"help",16,30,350,110,{"Choose a hypothetical outcome to inspect.","Modifier rolls and retained properties are estimates.","Rarity odds, price and eligibility are unknown.","Unique references may be legacy or unavailable.","Unique values, sockets and quality are illustrative.","Copied text does not retain this label."},14)
+		popup.outcome=new("DropDownControl"):DropDownControl(ui.anchor,{16,150,300,26},{{label="Magic example",val="MAGIC"},{label="Rare example",val="RARE"},{label="Unique reference",val="UNIQUE"}})
+		popup.unique=new("DropDownControl"):DropDownControl(ui.anchor,{16,188,300,26},{})
+		popup.unique.shown=function() return popup.outcome:GetSelValueByKey("val")=="UNIQUE" end
+		popup.reference=ui.description(popup,"reference",16,310,350,90,{},14)
+		popup.reference.shown=popup.unique.shown
+		local function showSource()
+			local choice=popup.unique:GetSelValue();local source=choice and choice.source
+			popup.reference.list=ui.rows({source and "Bundled source: "..source or "Bundled source not recorded."},334,14)
+		end
+		local show=require("Classes.JourneyItemControl").new(popup,"example",390,30,360,408,"CONDITIONAL EXAMPLE",{expanded=true})
+		local example
+		local function generate()
+			local outcome=popup.outcome:GetSelValueByKey("val")
+			if outcome=="UNIQUE" then showSource() end
+			local title=outcome=="UNIQUE" and #popup.unique.list>0 and popup.unique:GetSelValueByKey("val") or nil
+			local ok,result=pcall(require("Modules.CraftingBenchRarityPreview").preview,draft.startingItem,outcome,tonumber(controls.seed.buf),state,title)
+			if not ok then ui.errorPopup("Bench rarity preview",result);return end
+			example=result.itemText;show(new("Item"):Item(example))
+		end
+		popup.outcome.selFunc=function()
+			example=nil;show(nil)
+			if popup.outcome:GetSelValueByKey("val")=="UNIQUE" then
+				local ok,result=pcall(require("Modules.CraftingBenchRarityPreview").uniqueCandidates,draft.startingItem,state)
+				if not ok then ui.errorPopup("Bench rarity preview",result);return end
+				local choices={};for _,entry in ipairs(result.candidates) do choices[#choices+1]={label=entry.title,val=entry.title,source=entry.source} end;popup.unique:SetList(choices);showSource()
+			end
+		end
+		popup.unique.selFunc=function() example=nil;show(nil);showSource() end
+		button(popup,"generate",16,230,300,"Generate example",generate)
+		button(popup,"copy",16,268,300,"Copy example item",function() assert(example,"Generate an example first");Copy(example) end)
+		popup.copy.enabled=function() return example~=nil end
+		button(popup,"close",630,458,120,"Close",function() main:ClosePopup() end)
+		ui.style(popup,{generate=true});main:OpenPopup(768,500,"Bench rarity preview",popup,nil,nil,"close")
+	end)
+	controls.benchRarity.tooltipText="View a conditional magic or rare example; this does not simulate rarity odds or apply a craft."
 	local function crafting() return controls.page:GetSelValue()=="Emulate item" and not paletteOpen and not inspectedId end
 	controls.item.enabled=function() return crafting() and controls.apply:IsEnabled() end
 	controls.apply.x=16;controls.apply.width=200;controls.undo.x=232;controls.undo.width=200
@@ -938,7 +976,7 @@ function Panel.Open(build,project,layout)
 	end
 	controls.actionHint=ui.description(controls,"actionHint",16,264,416,40,{})
 	local pages={
-		["Craft settings"]={methodLabel=96,method=116,configure=160,keepRecipe=198,reset=198,exact=238,compareItem=238,seedLabel=278,seed=298,inspectItem=338,allflame=378,gwennen=378,manual=418},
+		["Craft settings"]={methodLabel=96,method=116,configure=160,keepRecipe=198,reset=198,exact=238,compareItem=238,seedLabel=278,seed=298,inspectItem=338,allflame=378,gwennen=378,manual=418,benchRarity=458},
 		["Emulate item"]={selectedAction=230,actionHint=264,optionLabel=310,option=330,apply=370,undo=370,settings=414,history=414},
 		["Target conditions"]={targetLabel=96,target=116,addTarget=154,alternative=154,clearTargets=154,targetPicker=188,targetConditions=226,targetGroups=226,targetSummary=270},
 		["Simulate recipe"]={trialsLabel=96,trials=116,budget=116,priceLabel=160,price=180,currency=180,baseCost=180,simulate=224,runRecipe=224,editRecipe=266,resourcePrices=266,optimize=310,fossilResults=310,distribution=354,compareRecipes=354,resultSummary=398},

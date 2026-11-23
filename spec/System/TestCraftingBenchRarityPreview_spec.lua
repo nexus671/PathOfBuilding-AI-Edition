@@ -1,0 +1,25 @@
+describe("Conditional bench rarity previews",function()
+	local preview=require("Modules.CraftingBenchRarityPreview")
+	local sim=require("Modules.CraftingSimulator")
+	local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86"
+	it("generates reproducible magic and rare examples without outcome odds",function()
+		local magic=preview.preview(raw,"MAGIC",42)
+		assert.is_true(magic.conditional);assert.equal("MAGIC",magic.state.rarity);assert.is_true(#magic.state.affixes>0)
+		assert.equal(magic.itemText,preview.preview(raw,"MAGIC",42).itemText)
+		local rare=preview.preview(raw,"RARE",42,magic.state)
+		assert.equal("RARE",rare.state.rarity);assert.is_true(#rare.state.affixes>0)
+		assert.is_nil(rare.probability);assert.is_nil(rare.price)
+	end)
+	it("lists same-base unique references without claiming eligibility or odds",function()
+		local candidates=preview.uniqueCandidates(raw).candidates;local found
+		for _,entry in ipairs(candidates) do if entry.title=="Ezomyte Peak" then found=true end end
+		assert.is_true(found);local unique=preview.preview(raw,"UNIQUE",42,nil,"Ezomyte Peak")
+		assert.matches("Ezomyte Peak",unique.itemText);assert.is_true(unique.conditional);assert.is_nil(unique.probability)
+		assert.has_error(function() preview.preview(raw,"UNIQUE",42,nil,"Goldrim") end)
+	end)
+	it("rejects missing unique selections and corrupted items",function()
+		assert.has_error(function() preview.preview(raw,"UNIQUE",42) end)
+		local state=sim.model(raw).initial;state.corrupted=true
+		assert.has_error(function() preview.preview(raw,"MAGIC",42,state) end)
+	end)
+end)
