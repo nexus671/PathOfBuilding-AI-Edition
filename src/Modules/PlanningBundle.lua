@@ -13,21 +13,21 @@ function M.contents(xml)
 				local data,pos=json.decode(raw)
 				assert(type(data)=="table" and pos and not raw:sub(pos):find("%S") and data.schemaVersion==1)
 				local counts={}
-				local function array(value)
-					if value==nil then return {} end
+				local function array(value,required)
+					if value==nil and not required then return {} end
 					assert(type(value)=="table" and value~=json.null)
 					local meta=getmetatable(value);assert(not meta or meta.__jsontype~="object")
 					return value
 				end
 				if node.elem=="CraftingProjects" then
 					counts.crafts,counts.inventory,counts.checkpoints=0,0,0
-					for _,project in ipairs(array(data.projects)) do
+					for _,project in ipairs(array(data.projects,true)) do
 						assert(type(project)=="table");counts.crafts=counts.crafts+1
 						counts.inventory=counts.inventory+#array(project.inventory)
 						if project.run then counts.checkpoints=counts.checkpoints+1 end
 					end
-				elseif node.elem=="AtlasPlans" then counts.atlas=#array(data.plans)
-				elseif node.elem=="LootFilters" then counts.filters=#array(data.profiles)
+				elseif node.elem=="AtlasPlans" then counts.atlas=#array(data.plans,true)
+				elseif node.elem=="LootFilters" then counts.filters=#array(data.profiles,true)
 				else for _,key in ipairs({"stages","wishlist","milestones"}) do counts[key]=#array(data[key]) end end
 				return counts
 			end)
