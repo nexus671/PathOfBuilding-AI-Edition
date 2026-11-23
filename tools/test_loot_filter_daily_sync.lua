@@ -53,7 +53,23 @@ end)
 assert(proposed and proposed:find("StackSize <= 4",1,true))
 assert(read(target)==original and not sync.configuration())
 calls, stale = 0, true
+local editedSuffix = original .. "\n# A personal edit after the economy section\n"
+write(target,editedSuffix)
+local adopted, adoptionError = pcall(sync.configure,target,baseline,"Covens",options)
+assert(not adopted and adoptionError:find("different rules outside the economy section",1,true))
+assert(read(target)==editedSuffix and not sync.configuration())
+write(target,original)
 sync.configure(target,baseline,"Covens",options)
+local configFile = dir.."/LootFilterDailySync.json"
+local verifiedConfig = read(configFile)
+local oldConfig = require("dkjson").decode(verifiedConfig)
+oldConfig.current = require("sha1")(editedSuffix)
+write(configFile,assert(require("dkjson").encode(oldConfig)))
+write(target,editedSuffix)
+sync.tick(now,true)
+assert(calls==0 and read(target)==editedSuffix and sync.status:find("different rules outside the economy section",1,true))
+write(configFile,verifiedConfig)
+write(target,original)
 sync.tick(now,true)
 assert(sync.status:find("stale",1,true) and read(target)==original,sync.status)
 stale=false

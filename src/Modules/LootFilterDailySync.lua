@@ -228,6 +228,15 @@ function M.externalDiff()
 	return expected, actual
 end
 
+local function verifyUnmanagedRules(target, baseline)
+	local targetStart, targetEnd = market.sectionBounds(target)
+	local baseStart, baseEnd = market.sectionBounds(baseline)
+	assert(targetStart and targetEnd and baseStart and baseEnd
+		and target:sub(1,targetStart-1) == baseline:sub(1,baseStart-1)
+		and target:sub(targetEnd) == baseline:sub(baseEnd),
+		"Baseline and target have different rules outside the economy section. Review edits and choose an updated baseline.")
+end
+
 local function prepare(target, baselineFile, league, options)
 	options = options or {}
 	local targetValue = options.targetValue or 1
@@ -250,8 +259,7 @@ local function prepare(target, baselineFile, league, options)
 	end
 	validate(baseline, {}, true, targetValue, protections)
 	validate(original, {}, true, targetValue, protections)
-	local a, b = market.sectionBounds(original), market.sectionBounds(baseline)
-	assert(a and b and original:sub(1,a-1) == baseline:sub(1,b-1), "Baseline and target must share the protected rule prefix")
+	verifyUnmanagedRules(original, baseline)
 	local key = sha(baseline)
 	return {
 		enabled=true, target=target, baseline=main.userPath.."LootFilterBaseline-"..key..".filter",
@@ -383,6 +391,7 @@ local function publish(config, bodies, ages, day, force, now)
 		assert(before == current.current or before == current.pending, "Target was edited outside PoB. Review and re-enable sync to adopt your edits.")
 		local baseline = assert(read(current.baseline), "Baseline filter is missing")
 		assert(sha(baseline) == current.baselineHash, "Baseline checksum changed")
+		verifyUnmanagedRules(original, baseline)
 		local candidate, count, changes, skipped, snapshots = validate(
 			baseline, bodies, false, current.targetValue, current.protections, current.priceHistory, day, now)
 		current.priceHistory = snapshots
@@ -524,10 +533,12 @@ function M.tick(now, force)
 	end
 	if not force then retryAt = now + 1800 end
 	local ready, baseline = pcall(function()
-		local current = sha(assert(read(filterPath(config.target)), "Target filter is missing"))
+		local original = assert(read(filterPath(config.target)), "Target filter is missing")
+		local current = sha(original)
 		assert(current == config.current or current == config.pending, "Target was edited outside PoB. Compare External edits before re-enabling.")
 		local raw = assert(read(config.baseline), "Baseline filter is missing")
 		assert(sha(raw) == config.baselineHash, "Baseline checksum changed")
+		verifyUnmanagedRules(original, raw)
 		return raw
 	end)
 	if not ready then M.status = "Sync skipped: " .. tostring(baseline); return end
