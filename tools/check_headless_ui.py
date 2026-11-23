@@ -60,6 +60,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_crafting_base_implicit_ui.lua")
     sources.append(ROOT / "tools/test_unique_random_guide_ui.lua")
     sources.append(ROOT / "tools/test_unique_fractional_ui.lua")
+    sources.append(ROOT / "tools/test_unique_multiple_targets.lua")
     sources.append(ROOT / "tools/test_unique_variant_divine_ui.lua")
     sources.append(ROOT / "tools/test_filter_export_race.lua")
     sources.append(ROOT / "tools/test_filter_review_ui.lua")
@@ -198,6 +199,10 @@ def main():
                                        env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "unique-fractional-controls.log").write_text(unique_fractional.stdout)
     assert unique_fractional.returncode == 0, unique_fractional.stdout
+    unique_multiple = subprocess.run(lua_command + ["../tools/test_unique_multiple_targets.lua"], cwd=ROOT / "src",
+                                     env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "unique-multiple-targets-controls.log").write_text(unique_multiple.stdout)
+    assert unique_multiple.returncode == 0, unique_multiple.stdout
     unique_variant_divine = subprocess.run(lua_command + ["../tools/test_unique_variant_divine_ui.lua"], cwd=ROOT / "src",
                                            env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "unique-variant-divine-controls.log").write_text(unique_variant_divine.stdout)

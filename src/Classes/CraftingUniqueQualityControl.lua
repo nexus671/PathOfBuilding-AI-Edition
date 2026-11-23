@@ -486,7 +486,7 @@ function M.Open(build,project,layout,snapshot)
 	c.catalystPlan.tooltipText=function() return item.corrupted and "Ordinary catalysts cannot modify corrupted jewellery." or "Preview supported catalyst effects or add a guide from the starting item." end
 	local qualityShown=c.apply.shown;c.apply.shown=function() return info.qualitySupported and (type(qualityShown)~="function" or qualityShown()) end
 	button("divine",198,"Divine Orb",function()
-		local controls={};local dw,dh=500,340
+		local controls={};local dw,dh=500,420;local staged={}
 		ui.description(controls,"help",16,25,dw-32,50,{"Preview a roll or plan a stat or modifier target.","Modifier-value probabilities are estimates."},14)
 		local stats=require("Modules.CraftingItemStats");local values=stats.itemValues(item);local options,selection={},{}
 		for _,field in ipairs(stats.fields) do if values[field[1]] and values[field[1]]>0 then options[#options+1]={label=field[2],val=field[1]};selection[field[1]]={kind="stat",label=field[2],current=values[field[1]]} end end
@@ -501,10 +501,28 @@ function M.Open(build,project,layout,snapshot)
 		local function stat() return controls.stat:GetSelValueByKey("val") end
 		controls.direction.enabled=function() local selected=selection[stat()];return selected and selected.kind=="modifier" end
 		local function upper() return controls.direction:IsEnabled() and controls.direction:GetSelValue()=="At most" end
+		local function currentGoal()
+			local selected=selection[stat()];local goal={line=selected.line};if selected.components>1 then goal.component=selected.component end
+			goal[upper() and "maxValue" or "minValue"]=tonumber(controls.target.buf);return goal
+		end
+		local function sameGoal(a,b) return a.line==b.line and (a.component or 1)==(b.component or 1) and (a.maxValue~=nil)==(b.maxValue~=nil) end
+		local function combined()
+			local goals=copyTable(staged);local current=currentGoal();local replaced=false
+			for index,goal in ipairs(goals) do if sameGoal(goal,current) then goals[index]=current;replaced=true;break end end
+			if not replaced then goals[#goals+1]=current end;return goals
+		end
+		local function modifierStop(goals)
+			local lines={};for _,goal in ipairs(goals) do
+				local part=goal.component and (" [part "..goal.component.."]") or ""
+				lines[#lines+1]="Roll "..(goal.maxValue~=nil and "at most "..goal.maxValue or "at least "..goal.minValue).." on "..goal.line..part
+			end
+			local description=table.concat(lines,"; ");return #description<=500 and description or ("Meet all "..#goals.." modifier conditions in the saved recipe")
+		end
 		local function replaceable()
 			local recipe=draft.nativeRecipe;if not recipe or #recipe.steps~=1 or recipe.steps[1].method~="divine" or not recipe.requirements then return nil end
 			local stop
-			if recipe.requirements.uniqueModifier then local goal=recipe.requirements.uniqueModifier;local part=goal.component and (" [part "..goal.component.."]") or "";stop="Roll "..(goal.maxValue~=nil and "at most "..goal.maxValue or "at least "..goal.minValue).." on "..goal.line..part
+			if recipe.requirements.uniqueModifier then stop=modifierStop({recipe.requirements.uniqueModifier})
+			elseif recipe.requirements.uniqueModifiers then stop=modifierStop(recipe.requirements.uniqueModifiers)
 			elseif type(recipe.requirements.nativeStats)=="table" then
 				local key,target=next(recipe.requirements.nativeStats);if not key or next(recipe.requirements.nativeStats,key)~=nil then return nil end
 				local label;for _,field in ipairs(stats.fields) do if field[1]==key then label=field[2];break end end;if not label then return nil end;stop="At least "..target.." "..label
@@ -521,18 +539,47 @@ function M.Open(build,project,layout,snapshot)
 			if divineReason then return divineReason end
 			if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a Divine plan." end
 			local selected=selection[stat()];if not selected then return "No supported target is available." end
+			if #staged>0 and selected.kind~="modifier" then return "Choose a modifier roll or clear the added conditions." end
 			local target=tonumber(controls.target.buf);if not target or target~=target or target< -100000 or target>10000000 or selected.kind=="stat" and target<0 then return "Enter a valid minimum target." end
 			if selected.kind=="modifier" and (math.abs(target/(selected.step or 1)-math.floor(target/(selected.step or 1)+0.5))>1e-7 or target<selected.min or target>selected.max) then return "Enter a roll from "..selected.min.." to "..selected.max.." in steps of "..(selected.step or 1).."." end
+			if selected.kind=="modifier" then
+				local goals=combined();if #goals>12 then return "Use at most twelve modifier conditions." end
+				for i,goal in ipairs(goals) do for j=i+1,#goals do local other=goals[j]
+					if goal.line==other.line and (goal.component or 1)==(other.component or 1) then
+						local low=goal.minValue or other.minValue;local high=goal.maxValue or other.maxValue
+						if low and high and low>high then return "Minimum roll exceeds maximum roll for a modifier." end
+					end
+				end end
+			end
 			local attempts=tonumber(controls.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
-			if upper() and selected.current<=target or not upper() and selected.current>=target then return nil,true end
+			if #staged>0 then
+				local met=true;for _,goal in ipairs(combined()) do
+					local current;for _,option in pairs(selection) do if option.kind=="modifier" and option.line==goal.line and option.component==(goal.component or 1) then current=option.current;break end end
+					if current==nil or goal.minValue and current<goal.minValue or goal.maxValue and current>goal.maxValue then met=false;break end
+				end
+				if met then return nil,true end
+			elseif upper() and selected.current<=target or not upper() and selected.current>=target then return nil,true end
 		end
-		ui.label(controls,"targetHelp",16,222,"",14);controls.targetHelp.label=function() local why,met=reason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Ready to save a target plan."),dw-32,14) end
-		ui.label(controls,"selectedInfo",16,250,"",14);controls.selectedInfo.label=function()
+		controls.addGoal=new("ButtonControl"):ButtonControl(ui.anchor,{16,220,150,26},"Add condition",function() staged=combined() end)
+		controls.addGoal.enabled=function() local selected=selection[stat()];return selected and selected.kind=="modifier" and not reason() end
+		controls.clearGoals=new("ButtonControl"):ButtonControl(ui.anchor,{176,220,120,26},"Clear added",function() staged={} end)
+		controls.clearGoals.enabled=function() return #staged>0 end
+		controls.reviewGoals=new("ButtonControl"):ButtonControl(ui.anchor,{306,220,160,26},"Review added",function()
+			local entries={};for index,goal in ipairs(staged) do
+				local part=goal.component and (" [part "..goal.component.."]") or "";local text=(goal.maxValue~=nil and "At most "..goal.maxValue or "At least "..goal.minValue).." | "..goal.line..part
+				entries[#entries+1]={id=index,label=text,details={text,"All added conditions must be met together.","Remove this condition to edit it, or close to keep it."}}
+			end
+			require("Classes.PlanningBrowserControl").Open("Added Divine conditions",entries,{action="Remove condition",choose=function(entry) table.remove(staged,entry.id) end})
+		end)
+		controls.reviewGoals.enabled=function() return #staged>0 end
+		ui.label(controls,"goalCount",16,340,"",14);controls.goalCount.label=function() return "^7"..#staged.." added condition"..(#staged==1 and "" or "s").."; the current target is also included." end
+		ui.label(controls,"targetHelp",16,262,"",14);controls.targetHelp.label=function() local why,met=reason();return "^7"..ui.fit(why or (met and "Already met; the plan will use no currency." or "Add conditions, then save the plan."),dw-32,14) end
+		ui.label(controls,"selectedInfo",16,290,"",14);controls.selectedInfo.label=function()
 			local selected=selection[stat()];if not selected or selected.kind~="modifier" then return "" end
 			local part=selected.components>1 and (" [part "..selected.component.."/"..selected.components.."]") or ""
 			return "^7"..ui.fit(selected.line..part,dw-32,14)
 		end
-		ui.label(controls,"selectedRange",16,270,"",14);controls.selectedRange.label=function()
+		ui.label(controls,"selectedRange",16,310,"",14);controls.selectedRange.label=function()
 			local selected=selection[stat()];if not selected or selected.kind~="modifier" then return "" end
 			return "^7Displayed roll: "..selected.min.."-"..selected.max.." | current: "..selected.current..((selected.step or 1)<1 and (" | step: "..selected.step) or "")
 		end
@@ -543,9 +590,8 @@ function M.Open(build,project,layout,snapshot)
 		controls.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,dh-48,150,28},"Save Divine plan",function()
 			local why=reason();assert(not why,why);local key=stat();local target=tonumber(controls.target.buf);local attempts=tonumber(controls.attempts.buf)
 			local selected=selection[key];local requirements
-			if selected.kind=="modifier" then requirements={uniqueModifier={line=selected.line}};if selected.components>1 then requirements.uniqueModifier.component=selected.component end;requirements.uniqueModifier[upper() and "maxValue" or "minValue"]=target else requirements={nativeStats={[key]=target}} end
-			local part=selected.kind=="modifier" and selected.components>1 and (" [part "..selected.component.."]") or ""
-			local stop=selected.kind=="modifier" and ("Roll "..(upper() and "at most " or "at least ")..target.." on "..selected.line..part) or ("At least "..target.." "..selected.label)
+			if selected.kind=="modifier" then local goals=combined();requirements=#goals==1 and {uniqueModifier=goals[1]} or {uniqueModifiers=goals} else requirements={nativeStats={[key]=target}} end
+			local stop=selected.kind=="modifier" and modifierStop(requirements.uniqueModifiers or {requirements.uniqueModifier}) or ("At least "..target.." "..selected.label)
 			local recipe={rarity="UNIQUE",steps={{method="divine",maxAttempts=attempts,untilRequirements=copyTable(requirements)}},targets={},requirements=requirements};require("Modules.CraftingSimulator").validateRecipe(recipe);local replaceIndex=replaceable()
 			local function keepPlan()
 				local updated=copyTable(draft);updated.nativeRecipe=recipe;local step={action=unique.guideAction("divine",1,info.resource,item.corrupted,#item.sockets),stopWhen=stop,onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method="divine",count=1},done=false}

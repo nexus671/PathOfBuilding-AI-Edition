@@ -1034,7 +1034,7 @@ end
 
 function M.matches(raw,requirements)
 	local item,info=M.inspect(raw);requirements=requirements or {}
-	local supported={uniqueName=true,uniqueModifier=true,catalyst=true,minCatalystQuality=true,minQuality=true,corrupted=true,twiceCorrupted=true,mirrored=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true,flaskEnchant=true,flaskEnchantMin=true}
+	local supported={uniqueName=true,uniqueModifier=true,uniqueModifiers=true,catalyst=true,minCatalystQuality=true,minQuality=true,corrupted=true,twiceCorrupted=true,mirrored=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true,flaskEnchant=true,flaskEnchantMin=true}
 	for key in pairs(requirements) do assert(supported[key],"This unique item property is not supported: "..tostring(key)) end
 	if requirements.uniqueName and item.title~=requirements.uniqueName then return false end
 	if requirements.flaskEnchant or requirements.flaskEnchantMin then
@@ -1049,15 +1049,25 @@ function M.matches(raw,requirements)
 	if requirements.corrupted~=nil and (not not item.corrupted)~=requirements.corrupted then return false end
 	if requirements.twiceCorrupted~=nil and (not not item.twiceCorrupted)~=requirements.twiceCorrupted then return false end
 	if requirements.mirrored~=nil and (not not item.mirrored)~=requirements.mirrored then return false end
-	if requirements.uniqueModifier then
-		local goal=requirements.uniqueModifier;assert(type(goal)=="table" and type(goal.line)=="string" and (goal.minValue~=nil)~=(goal.maxValue~=nil),"Invalid unique modifier target")
-		local value=goal.minValue or goal.maxValue;assert(type(value)=="number","Invalid unique modifier target")
-		local options,reason=M.divineOptions(raw);assert(options,reason);local selected
-		local component=goal.component or 1;assert(type(component)=="number" and component==math.floor(component) and component>=1 and component<=6,"Invalid unique modifier component")
-		for _,option in ipairs(options) do if option.line==goal.line and option.component==component then selected=option;break end end
-		assert(selected,"The selected unique modifier is not available on this item")
-		local scaled=value/(selected.step or 1);assert(value>=selected.min and value<=selected.max and math.abs(scaled-math.floor(scaled+0.5))<1e-7,"The unique modifier target is outside its roll range")
-		if goal.minValue and selected.current<value or goal.maxValue and selected.current>value then return false end
+	local goals={};if requirements.uniqueModifier then goals[#goals+1]=requirements.uniqueModifier end
+	if requirements.uniqueModifiers then
+		local list=requirements.uniqueModifiers;assert(type(list)=="table" and #list>=1 and #list<=12,"Invalid unique modifier target list")
+		local count=0;for index in pairs(list) do assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=#list,"Invalid unique modifier target list");count=count+1 end
+		assert(count==#list,"Invalid unique modifier target list");for _,goal in ipairs(list) do goals[#goals+1]=goal end
+	end
+	if #goals>0 then
+		local options,reason=M.divineOptions(raw);assert(options,reason);local matched=true
+		for _,goal in ipairs(goals) do
+			assert(type(goal)=="table" and type(goal.line)=="string" and (goal.minValue~=nil)~=(goal.maxValue~=nil),"Invalid unique modifier target")
+			local value=goal.minValue or goal.maxValue;assert(type(value)=="number","Invalid unique modifier target")
+			local selected
+			local component=goal.component or 1;assert(type(component)=="number" and component==math.floor(component) and component>=1 and component<=6,"Invalid unique modifier component")
+			for _,option in ipairs(options) do if option.line==goal.line and option.component==component then selected=option;break end end
+			assert(selected,"The selected unique modifier is not available on this item")
+			local scaled=value/(selected.step or 1);assert(value>=selected.min and value<=selected.max and math.abs(scaled-math.floor(scaled+0.5))<1e-7,"The unique modifier target is outside its roll range")
+			if goal.minValue and selected.current<value or goal.maxValue and selected.current>value then matched=false end
+		end
+		if not matched then return false end
 	end
 	if requirements.nativeStats then
 		local stats=require("Modules.CraftingItemStats");stats.validate(requirements.nativeStats)

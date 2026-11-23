@@ -3,6 +3,16 @@ describe("Unique item quality",function()
 	local shield="Rarity: UNIQUE\nThe Surrender\nEzomyte Tower Shield\nItem Level: 86\nQuality: 12\nSockets: R-G B\nImplicits: 1\n+5% Chance to Block Attack Damage\n+100 to maximum Life\n+1500 to Armour"
 	local weapon="Rarity: UNIQUE\nThe Saviour\nLegion Sword\nItem Level: 86\nQuality: 0\nSockets: R-G-B\n+100% increased Physical Damage"
 	before_each(function() newBuild() end)
+	it("requires every selected unique roll and rejects conflicting bounds",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nSockets: R-G B\n+40 to Evasion Rating\n+10% to Item Rarity\n+35% to all Elemental Resistances\nReflects 4 Physical Damage to Melee Attackers"
+		local sim=require("Modules.CraftingSimulator");local options=assert(quality.divineOptions(raw))
+		local goal={uniqueModifiers={{line=options[1].line,minValue=40},{line=options[2].line,minValue=35}}}
+		assert.is_true(quality.matches(raw,goal));goal.uniqueModifiers[2].minValue=36;assert.is_false(quality.matches(raw,goal))
+		local recipe={rarity="UNIQUE",steps={{method="divine",maxAttempts=10,untilRequirements=goal}},targets={},requirements=goal}
+		local result=sim.simulate(raw,recipe,{trials=5,maxActions=10,seed=42,retainSuccesses=5});assert.is_true(result.sampled)
+		for _,success in ipairs(result.retainedSuccesses) do assert.is_true(quality.matches(success.itemText,goal)) end
+		goal.uniqueModifiers[2]={line=options[1].line,maxValue=39};assert.has_error(function() sim.validateRecipe(recipe) end)
+	end)
 	it("previews supported unique catalyst effects without losing original rolls",function()
 		local raw="Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86\nImplicits: 1\nHas 1 Socket\n+3 to Level of Socketed Curse Gems\n+25% to Cold Resistance\n+25% to Lightning Resistance\nLeft Ring Slot: Your Chilling Skitterbot's Aura applies Socketed Hex Curse instead\nRight Ring Slot: Your Shocking Skitterbot's Aura applies Socketed Hex Curse instead"
 		local first=quality.catalystPreview(raw,8,4);local firstItem=quality.inspect(first.itemText);assert.equal(26,firstItem.baseModList:Sum("BASE",nil,"ColdResist"));assert.equal(4,first.guideStep.uniqueCraft.count)
