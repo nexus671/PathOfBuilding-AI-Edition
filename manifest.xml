@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1169" />
+	<Version number="2.68.1-ai.preview1170" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="2abc553decfb8462140e1a4db9a7d59eeead981f" />
+	<File name="changelog.txt" part="default" sha1="9004300747d91ccb37ffad15530acbace43de548" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1731,7 +1731,7 @@
 	<File name="Classes/CraftingPricesControl.lua" part="program" sha1="3a60aea75e2cec7a633345cfc5e63e1d6b41bd8d" />
 	<File name="Classes/CraftingGuideStepsControl.lua" part="program" sha1="d1073234f6f3faa3851e58860d04322c686ce2c9" />
 	<File name="Classes/CraftingProjectControl.lua" part="program" sha1="e42cfd85c3b821718e8a73503d3a0408ddf8029a" />
-	<File name="Classes/CraftingUniqueQualityControl.lua" part="program" sha1="70dd748324f76772abce0d4c745cc4694edfebcb" />
+	<File name="Classes/CraftingUniqueQualityControl.lua" part="program" sha1="6adee44133ac193aee695fb843489dd02185d6a9" />
 	<File name="Classes/CraftingProjectWizard.lua" part="program" sha1="30fe1ef2a5f7767ca3231c21c4b056ba38d68d32" />
 	<File name="Classes/CraftingRecipeControl.lua" part="program" sha1="c7403d98d3afbc103999d49bb1ed77995da91d81" />
 	<File name="Classes/CraftingRecipeGraphControl.lua" part="program" sha1="a3f12c0823b83e552a19e597750352622b070aa2" />
@@ -2196,15 +2196,15 @@
 	<File name="Modules/CraftingPalette.lua" part="program" sha1="edd27dc9231769e2c5035238bc2e6aa1a5df5de6" />
 	<File name="Modules/CraftingPredictable.lua" part="program" sha1="9c3c591db9c7aa8db9783e843f823a18d07f3d2e" />
 	<File name="Modules/CraftingPrices.lua" part="program" sha1="ef032ba7899e949c8a87a7249b6a47aa2e26d168" />
-	<File name="Modules/CraftingProjects.lua" part="program" sha1="75d5187dbabaa008ca20cc9acaf9c960d8fcedc8" />
+	<File name="Modules/CraftingProjects.lua" part="program" sha1="6d4f560390a1868ae271ba94c2b2af075a41bb8b" />
 	<File name="Modules/CraftingProperties.lua" part="program" sha1="5852da0221063154756383bfe1d97cc0db2d138f" />
 	<File name="Modules/CraftingRecombination.lua" part="program" sha1="6c01c0d4c562d1dff8e20f6d71210c99e45de347" />
 	<File name="Modules/CraftingRoutes.lua" part="program" sha1="85fb2b73b56457836bdb630f3789126f00668589" />
 	<File name="Modules/CraftingSacred.lua" part="program" sha1="1e0b2db28524c90c5c72aa0eff77a0e59606a8ca" />
-	<File name="Modules/CraftingSimulator.lua" part="program" sha1="a96b745e3e55ff2e14f3aeaacff5f8e1373eafb7" />
+	<File name="Modules/CraftingSimulator.lua" part="program" sha1="813b2d165cd699063761025c37d991eadf8b81e4" />
 	<File name="Modules/CraftingUniqueCatalyst.lua" part="program" sha1="8605c7046874178179b08a22a59a673cdda61a31" />
-	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="c6217b3891af02b2ac35e6e331149782427e7f38" />
-	<File name="Modules/CraftingUniqueSimulation.lua" part="program" sha1="451e30124807d75a2d9afb3e337b212f7df883cf" />
+	<File name="Modules/CraftingUniqueQuality.lua" part="program" sha1="ce236a29636a3a96f6e85e368c0adf375309ace2" />
+	<File name="Modules/CraftingUniqueSimulation.lua" part="program" sha1="9351a67f2e61e37c380bed02c5c8870aa5934d6e" />
 	<File name="Modules/CraftingUnlockTasks.lua" part="program" sha1="b1ab9cc44e5f7411715f74fff720379d44c65d21" />
 	<File name="Modules/CraftingSockets.lua" part="program" sha1="a04878acc08197d3ef25120dcb0a8ee540e6c78a" />
 	<File name="Modules/CraftingSynthesisGroups.lua" part="program" sha1="058e5d8e2e20c77edf4db6f0acf9326486a4e3f0" />
@@ -2244,7 +2244,7 @@
 	<File name="Modules/LootFilterStructure.lua" part="program" sha1="851284bd7d874aac9b630891c12e744eb1dd6bc8" />
 	<File name="Modules/LootFilterVisuals.lua" part="program" sha1="a36e6f987aef976d6aa020a28ca98510b96adede" />
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="9785a76f851b524da1d28d67103891599f0aa12d" />
-	<File name="Modules/LootFilters.lua" part="program" sha1="dc1915c97277924586d50a133246ecaa978489cb" />
+	<File name="Modules/LootFilters.lua" part="program" sha1="03487c7b1e9be52e6debd4aad186acb4690696b3" />
 	<File name="Modules/Main.lua" part="program" sha1="3e49ff7461faa69ba875920be44a1e976662aa52" />
 	<File name="Modules/MapClipboard.lua" part="program" sha1="984b53897a5ae596d363f0cb326eb931aa55d4a9" />
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="4bde5edf6208613815c1410d2e7916ccf88b273e" />
@@ -2261,7 +2261,7 @@
 	<File name="Modules/PlanningData.lua" part="program" sha1="2cd509d752cb9433d1cd47017ea5395d33aa5d84" />
 	<File name="Modules/PlanningHistory.lua" part="program" sha1="46165d8b5a518970153e8cc0345054ef30db62fe" />
 	<File name="Modules/PlanningPerformance.lua" part="program" sha1="0be53fc34487b96cdf7a81896764731ab5bde94a" />
-	<File name="Modules/PlanningRecovery.lua" part="program" sha1="8d9be01d74be2dee09ca54116f8fde9ae2bc5847" />
+	<File name="Modules/PlanningRecovery.lua" part="program" sha1="e71d6deddf7f9b1759f6b89a22d81bfde68b01a9" />
 	<File name="Modules/PlanningRevision.lua" part="program" sha1="f68afda18a3c9768fbc71a72c6dd67bfebfea316" />
 	<File name="Modules/PlanningUI.lua" part="program" sha1="f4f10357a5d0a04c8607b0afa438ec73dbf2a925" />
 	<File name="Modules/PlanningWorker.lua" part="program" sha1="cfa18e6b4626a7a834906bc0df0e992b386e68f2" />

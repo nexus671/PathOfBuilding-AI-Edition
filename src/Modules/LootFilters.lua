@@ -317,7 +317,7 @@ function M.generate(build,profile,checkpoint)
 				local catalog=unique.catalog(project.startingItem,"",50);local actions={};for _,entry in ipairs(catalog.uniqueActions) do actions[entry.priceKey]=entry end
 				local result={items={},unknown={}};local prices=require("Modules.CraftingPrices");local model={item=item}
 				if project.nativeRecipe.initialState then result.unknown[#result.unknown+1]="ordinary starting state" end
-				local socketActions={socket_bench=true,socket_white_bench=true,omen_connections=true,beast_max_links=true,omen_jeweller=true,jeweller=true,tainted_jeweller=true}
+				local socketActions={socket_bench=true,socket_white_bench=true,omen_connections=true,beast_max_links=true,beast_max_sockets=true,omen_jeweller=true,jeweller=true,tainted_jeweller=true}
 				local hasSocketAction=false;for _,step in ipairs(project.nativeRecipe.steps) do if socketActions[step.method] then hasSocketAction=true;break end end
 				if hasSocketAction and not project.startingItem:find("\nSockets: ",1,true) then result.unknown[#result.unknown+1]="Starting socket layout is not explicit" end
 				-- Follow recipe branches, including loops, so a later socket craft only
@@ -341,7 +341,7 @@ function M.generate(build,profile,checkpoint)
 				local socketModificationReason=hasSocketAction and unique.socketModificationReason(project.startingItem,item) or nil
 				local function permanentReason(step)
 					local reason=fixedCountReason(step);if reason then return reason end
-					if item.corrupted and (step.method=="quality" or step.method=="omen_connections" or step.method=="beast_max_links" or step.method=="omen_jeweller" or step.method=="jeweller") then
+					if item.corrupted and (step.method=="quality" or step.method=="omen_connections" or step.method=="beast_max_links" or step.method=="beast_max_sockets" or step.method=="omen_jeweller" or step.method=="jeweller") then
 						return step.method=="quality" and "Ordinary quality currency cannot modify a corrupted item" or "Use the bench or tainted currency on corrupted items"
 					end
 					if not item.corrupted and step.method=="tainted_jeweller" then return "Tainted currency requires a corrupted item" end
@@ -354,7 +354,7 @@ function M.generate(build,profile,checkpoint)
 					local nextCount=count
 					local blocked=permanentReason(step)
 					if step.method=="socket_bench" and not step.linked and not blocked and type(step.count)=="number" and step.count==math.floor(step.count) and step.count>=2 and step.count<=require("Modules.CraftingSimulator").socketLimit({item=item}) then nextCount=step.count end
-					if step.method=="omen_jeweller" and not blocked then
+					if (step.method=="omen_jeweller" or step.method=="beast_max_sockets") and not blocked then
 						local maximum=unique.omenCount(item);local reason=fixedCountReason({method="socket_bench",count=maximum})
 						if not reason and count~=0 and count<maximum then nextCount=maximum end
 					elseif (step.method=="jeweller" or step.method=="tainted_jeweller") and not blocked then
@@ -464,6 +464,7 @@ function M.generate(build,profile,checkpoint)
 				elseif craft.method=="omen_jeweller" then
 					items={{key="Metadata/Items/Currency/AncestralOmenOnJewellersMakeFullSockets",name="Omen of the Jeweller"},{key="Metadata/Items/Currency/CurrencyRerollSocketNumbers",name="Jeweller's Orb"}}
 					uniqueSocketCount=require("Modules.CraftingUniqueQuality").omenCount(item)
+				elseif craft.method=="beast_max_sockets" then uniqueSocketCount=require("Modules.CraftingUniqueQuality").omenCount(item)
 				elseif craft.method=="omen_connections" then items={{key="Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks",name="Omen of Connections"},{key="Metadata/Items/Currency/CurrencyRerollSocketLinks",name="Orb of Fusing"}}
 				elseif craft.method=="socket_bench" then
 					items={{key="Metadata/Items/Currency/CurrencyRerollSocketLinks",name="Orb of Fusing"}}

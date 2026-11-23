@@ -65,6 +65,7 @@ function M.guideAction(method,count,resource,corrupted,socketCount,enchantId,cat
 	if method=="tainted_chromatic" then return "Use a Tainted Chromatic Orb to reroll socket colours" end
 	if method=="omen_trichromatism" then return "Use an Omen of Trichromatism and a Chromatic Orb to guarantee red, green and blue sockets" end
 	if method=="socket_colour_bench" then local n=({[2]=5,[3]=20,[4]=75})[count];if not n then return nil end;return "Use the crafting bench for at least "..count.." non-white sockets ("..n.." Chromatic Orbs"..(corrupted and " and "..n.." Vaal Orbs" or "")..")" end
+	if method=="beast_max_sockets" then return "Maximize sockets with a Black Morrigan and a Craicic Shield Crab" end
 	if method=="omen_jeweller" then return "Add white sockets with an Omen of the Jeweller and a Jeweller's Orb" end
 	if method=="socket_count_bench" then
 		local components=require("Modules.CraftingSimulator").components({method="socket_bench",count=count},{sockets={},corrupted=corrupted})
@@ -761,10 +762,10 @@ function M.omenReason(raw)
 end
 
 function M.socketCount(raw,count,method)
-	assert(method==nil or method=="omen_jeweller","Unsupported unique socket-count method")
-	if method=="omen_jeweller" then
+	assert(method==nil or method=="omen_jeweller" or method=="beast_max_sockets","Unsupported unique socket-count method")
+	if method=="omen_jeweller" or method=="beast_max_sockets" then
 		local reason=M.omenReason(raw);assert(not reason,reason)
-		assert(count==M.omenCount(M.inspect(raw)),"The Jeweller Omen must use the maximum natural socket count")
+		assert(count==M.omenCount(M.inspect(raw)),"This craft must use the maximum natural socket count")
 	end
 	local reason=M.socketCountReason(raw,count);assert(not reason,reason)
 	local before=M.inspect(raw);local parts={}
@@ -777,7 +778,7 @@ function M.socketCount(raw,count,method)
 	assert(n==1,"The socket layout could not be updated")
 	local after=M.inspect(output);assert(after.title==before.title and after.baseName==before.baseName and #after.sockets==count and after.corrupted==before.corrupted,"Unique item did not round-trip after socket crafting")
 	for i=1,math.min(count,#before.sockets) do assert(after.sockets[i].color==before.sockets[i].color and (i==1 or (after.sockets[i].group==after.sockets[i-1].group)==(before.sockets[i].group==before.sockets[i-1].group)),"Existing sockets changed unexpectedly") end
-	local components=require("Modules.CraftingSimulator").components(method=="omen_jeweller" and {method=method} or {method="socket_bench",count=count},{sockets=before.sockets,corrupted=before.corrupted})
+	local components=require("Modules.CraftingSimulator").components(method and {method=method} or {method="socket_bench",count=count},{sockets=before.sockets,corrupted=before.corrupted})
 	return {itemText=output,components=components}
 end
 
@@ -925,7 +926,7 @@ function M.previewResources(startingItem,history,actions,currentItem,historyTrun
 	end
 	if history[1]~=startingItem then return nil,"The preview does not start from this project's starting item." end
 	local sim=require("Modules.CraftingSimulator");local prices=require("Modules.CraftingPrices");local totals={};local firstItem
-	local allowed={quality=true,tainted_quality=true,divine=true,sacred=true,instilling=true,enkindling=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,jeweller=true,tainted_jeweller=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true}
+	local allowed={quality=true,tainted_quality=true,divine=true,sacred=true,instilling=true,enkindling=true,beast_max_links=true,beast_max_sockets=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,jeweller=true,tainted_jeweller=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true}
 	for index,encoded in ipairs(actions) do
 		if type(encoded)~="string" or type(history[index])~="string" then return nil,"The preview contains an unknown action." end
 		local count=tonumber(encoded:match("^socket_count_bench:([2-6])$"));local colourCount=tonumber(encoded:match("^socket_colour_bench:([2-4])$"));local enchant=encoded:match("^bench_flask_enchant:(.+)$")
@@ -984,6 +985,7 @@ function M.catalog(raw,query,limit)
 		{method="tainted_chromatic",label="Tainted Chromatic Orb",reason=M.colourReason(raw,"tainted_chromatic"),sampled=true,components=sim.components({method="tainted_chromatic"})},
 		{method="omen_trichromatism",label="Omen of Trichromatism + Chromatic Orb",reason=M.colourReason(raw,"omen_trichromatism"),sampled=true,components=sim.components({method="omen_trichromatism"})},
 		{method="omen_jeweller",label="Omen of the Jeweller + Jeweller's Orb",reason=M.omenReason(raw),components=sim.components({method="omen_jeweller"})},
+		{method="beast_max_sockets",label="Bestiary: maximum sockets (experimental)",reason=M.omenReason(raw),components=sim.components({method="beast_max_sockets"})},
 		{method="omen_connections",label="Omen of Connections + Orb of Fusing",reason=linkReason,components={["Metadata/Items/Currency/AncestralOmenOnFusingMakeFullLinks"]=1,["Metadata/Items/Currency/CurrencyRerollSocketLinks"]=1}},
 		{method="socket_bench",label="Bench: link existing sockets",reason=benchLinkReason,components=not benchLinkReason and require("Modules.CraftingSimulator").components({method="socket_bench",count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted}) or {}},
 		{method="socket_white_bench",label="Bench: white sockets",reason=whiteReason,components=whiteComponents},

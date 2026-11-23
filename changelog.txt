@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1170][2026/11/23]
+
+* Add the experimental Bestiary maximum-sockets craft for supported unique items.
+
 VERSION[2.68.1-ai.preview1169][2026/11/23]
 
 * Add an experimental Bestiary maximum-sockets craft for ordinary equipment.

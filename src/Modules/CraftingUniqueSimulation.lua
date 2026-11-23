@@ -1,6 +1,6 @@
 -- Unique-item recipes use item text, not ordinary affix states.
 local M={}
-local supported={catalyst=true,divine=true,sacred=true,tainted_quality=true,jeweller=true,tainted_jeweller=true,quality=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_colour_bench=true,socket_white_bench=true,socket_bench=true,instilling=true,enkindling=true,bench_flask_enchant=true}
+local supported={catalyst=true,divine=true,sacred=true,tainted_quality=true,jeweller=true,tainted_jeweller=true,quality=true,beast_max_links=true,beast_max_sockets=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_colour_bench=true,socket_white_bench=true,socket_bench=true,instilling=true,enkindling=true,bench_flask_enchant=true}
 local fields={method=true,catalyst=true,count=true,linked=true,enchantId=true,maxAttempts=true,untilRequirements=true,onSuccess=true,onFailure=true,onFailureAction=true,recoveryNotes=true}
 function M.stepReason(step)
 	if not supported[step.method] then return "This unique recipe action is not supported: "..tostring(step.method) end

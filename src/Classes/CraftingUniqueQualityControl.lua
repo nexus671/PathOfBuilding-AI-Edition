@@ -72,7 +72,7 @@ function M.Open(build,project,layout,snapshot)
 		local steps={};local qualityCount=0;local socketKnown=true
 		local function trackSockets(action)
 			if action=="jeweller" or action=="tainted_jeweller" then socketKnown=false
-			elseif action=="omen_jeweller" or action:match("^socket_count_bench:[2-6]$") then socketKnown=true end
+			elseif (action=="omen_jeweller" or action=="beast_max_sockets") or action:match("^socket_count_bench:[2-6]$") then socketKnown=true end
 		end
 		for i=1,first-1 do trackSockets(actions[i]) end
 		local function flush()
@@ -93,7 +93,7 @@ function M.Open(build,project,layout,snapshot)
 				flush();steps[#steps+1]={action=unique.guideAction("socket_colour_bench",colourCount,info.resource,item.corrupted),uniqueCraft={method="socket_colour_bench",count=colourCount},done=false}
 			elseif socketCount then
 				flush();steps[#steps+1]={action=unique.guideAction("socket_count_bench",socketCount,info.resource,item.corrupted),uniqueCraft={method="socket_count_bench",count=socketCount},done=false}
-			elseif action=="instilling" or action=="enkindling" or action=="beast_max_links" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="divine" or action=="sacred" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
+			elseif action=="instilling" or action=="enkindling" or action=="beast_max_links" or action=="beast_max_sockets" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="divine" or action=="sacred" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
 				local before=unique.inspect(history[i]);flush();local count=#before.sockets
 				if action=="socket_bench" and not socketKnown then count=nil end
 				steps[#steps+1]={action=unique.guideAction(action,1,info.resource,item.corrupted,count),stopWhen=action=="socket_bench" and not socketKnown and "Check socket count and bench price before linking." or nil,uniqueCraft={method=action,count=1},done=false}
@@ -139,9 +139,15 @@ function M.Open(build,project,layout,snapshot)
 		local limit=require("Modules.CraftingSimulator").socketLimit({item=item})
 		for count=2,limit do options[#options+1]={label=count.." sockets",val=count} end
 		assert(#options>0,"This base cannot use socket-count recipes")
-		ui.description(controls,"help",16,28,width-32,42,{"Choose the number of sockets. Added sockets are white and unlinked in this preview."},14)
+		ui.description(controls,"help",16,28,width-32,42,{"Choose a bench count or Bestiary maximum. Socket colours and links are modeled estimates."},14)
 		controls.count=new("DropDownControl"):DropDownControl(ui.anchor,{16,82,180,28},options)
 		local function chosen() return controls.count:GetSelValueByKey("val") end
+		controls.beastSockets=new("ButtonControl"):ButtonControl(ui.anchor,{216,82,190,28},"Bestiary: max sockets",function()
+			local result=unique.socketCount(raw,unique.omenCount(item),"beast_max_sockets");history[#history+1]=raw;actions[#actions+1]="beast_max_sockets";redo={};raw=result.itemText;main:ClosePopup();refresh(true);c.notice.label="^7Bestiary socket layout is an estimate."
+		end)
+		controls.beastSockets.enabled=function() return not unique.omenReason(raw) end
+		controls.beastSockets.tooltipText=function() return unique.omenReason(raw) or "Black Morrigan + Craicic Shield Crab. Socket layout is unverified." end
+		ui.label(controls,"beastCost",216,141,"^7Black Morrigan + Shield Crab",14)
 		ui.label(controls,"cost",16,122,"",14);controls.cost.label=function()
 			local cost=require("Modules.CraftingSimulator").components({method="socket_bench",count=chosen()},{sockets=item.sockets,corrupted=item.corrupted});local amount=cost["Metadata/Items/Currency/CurrencyRerollSocketNumbers"] or 0
 			return "^7Cost: "..amount.." Jeweller's Orb"..(amount==1 and "" or "s")..(item.corrupted and " + "..amount.." Vaal Orb"..(amount==1 and "" or "s") or "")
@@ -617,7 +623,7 @@ function M.Open(build,project,layout,snapshot)
 			local colour=action:match("^socket_colour_bench:[2-4]$") or action=="instilling" or action=="enkindling" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="sacred"
 			if colour then if colourSeen then return false end;colourSeen=true
 			elseif colourSeen and action~="quality" then return false
-			elseif action~="quality" and action~="beast_max_links" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") and not action:match("^bench_flask_enchant:.+$") and not action:match("^catalyst:%d+:%d+$") then return false end
+			elseif action~="quality" and action~="beast_max_links" and action~="beast_max_sockets" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") and not action:match("^bench_flask_enchant:.+$") and not action:match("^catalyst:%d+:%d+$") then return false end
 		end
 		return true
 	end
@@ -666,7 +672,7 @@ function M.Open(build,project,layout,snapshot)
 				steps[#steps+1]={method=colourCount and "socket_colour_bench" or action,count=colourCount,maxAttempts=100,untilRequirements={socketColours=target}};sampled=true;i=i+1
 			else
 				local before=unique.inspect(history[i]);steps[#steps+1]=action=="socket_bench" and {method=action,count=#before.sockets,linked=true} or {method=action};i=i+1
-				if action=="omen_jeweller" then requirements.exactSockets=#item.sockets
+				if action=="omen_jeweller" or action=="beast_max_sockets" then requirements.exactSockets=#item.sockets
 				elseif action=="socket_white_bench" then requirements.socketColours=string.rep("W",#item.sockets)
 				else local best=0;for _,socket in ipairs(item.sockets) do local count=0;for _,other in ipairs(item.sockets) do if other.group==socket.group then count=count+1 end end;best=math.max(best,count) end;requirements.links=best end
 			end
