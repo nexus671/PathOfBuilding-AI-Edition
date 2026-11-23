@@ -7,6 +7,13 @@ local first=sim.rollRange(regen,function() return 0.001 end);assert(first==0)
 local middle=sim.rollRange(regen,function() return 0.5 end);assert(math.abs(middle-177/354)<1e-10)
 assert(sim.baseRollValue(regen,middle)==5.1)
 assert(sim.rollRange(regen,function() return 0.9999 end)==1)
+local regenState=copyTable(model.initial);regenState.rarity="RARE";regenState.affixes={{id="LifeRegeneration2",range=0.5}}
+local divined=sim.perform(raw,{method="divine"},7,regenState);local reroll=divined.state.affixes[1].range
+assert(math.abs(reroll*354-math.floor(reroll*354+0.5))<1e-8,"Divine reroll must retain a raw per-minute tick")
+assert(divined.itemText:find("Regenerate 4 Life per second",1,true))
+local regenGoal={anyOf={"LifeRegeneration2"},minBaseValue=4,maxBaseValue=4}
+assert(sim.matches(divined.state,{regenGoal},nil,model))
+
 
 local goal={anyOf={"IncreasedLife4"},minBaseValue=65,maxBaseValue=67}
 assert(sim.singleBaseRoll(model.byId.IncreasedLife4,0.8)==66)

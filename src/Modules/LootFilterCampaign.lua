@@ -76,6 +76,16 @@ function M.equipped(build)
 	for _,name in ipairs(M.weapons) do if weapons[name] then result.weapons[#result.weapons+1]=name end end
 	for _,name in ipairs(M.defences) do if defences[name] then result.defences[#result.defences+1]=name end end;return result
 end
+local vaalNames,vaalLookup
+local function vaalGems()
+ if not vaalNames then
+  vaalNames,vaalLookup={},{}
+  for _,gem in pairs(data.gems) do if gem.vaalGem and gem.baseTypeName and not vaalLookup[gem.baseTypeName] then vaalLookup[gem.baseTypeName]=true;vaalNames[#vaalNames+1]=gem.baseTypeName end end
+  table.sort(vaalNames)
+ end
+ return vaalNames,vaalLookup
+end
+function M.isVaalGem(name) local _,lookup=vaalGems();return lookup[name]==true end
 function M.rules(value,theme,mode)
 	if not value then return {} end;local policy=M.validate(value);if not policy.enabled then return {} end
 	local filters=require("Modules.LootFilters");local result={};local families=M.families()
@@ -115,8 +125,7 @@ function M.rules(value,theme,mode)
 	for _,i in ipairs(recipeOrder) do local name=M.recipes[i];for _,chosen in ipairs(policy.recipes) do if name==chosen then
 		if name=="Vaal skill gems" then
 			if mode~="Ruthless" then
-				local names,seen={},{};for _,gem in pairs(data.gems) do if gem.vaalGem and gem.baseTypeName and not seen[gem.baseTypeName] then seen[gem.baseTypeName]=true;names[#names+1]=gem.baseTypeName end end
-				table.sort(names);local quoted={};for _,baseName in ipairs(names) do quoted[#quoted+1]=filters.quote(baseName) end
+				local names=vaalGems();local quoted={};for _,baseName in ipairs(names) do quoted[#quoted+1]=filters.quote(baseName) end
 				if #quoted>0 then rule("recipe-"..i,name,{'Class == "Skill Gems"',"BaseType == "..table.concat(quoted," "),"AreaLevel >= "..policy.minAreaLevel,"AreaLevel <= "..policy.maxAreaLevel}) end
 			end
 		elseif name=="Unidentified rare set pieces" or name=="Low-level unidentified rare set pieces" then
