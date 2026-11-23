@@ -15,7 +15,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build)
  os.remove(dir..'/audio-'..size[1]..'-sounds.zip')
  local c=require('Classes.LootFilterControl').Export(profile,raw);ui:text('directory',dir);ui:text('filename','audio-'..size[1]..'.filter')
- ui:frame():write(dir..'/'..size[1]..'-filter-sound-export.json');ui:click('soundZip');ui:frame():write(dir..'/'..size[1]..'-filter-sound-bundle.json')
+ ui:frame():write(dir..'/'..size[1]..'-filter-sound-export.json');ui:click('soundZip');local sourceControl=main.popups[1].controls.source;local long=dir..'/'..string.rep('long-directory-',12);sourceControl:SetText(long);assert(sourceControl.inactiveText(long):find('click to view',1,true));ui:frame():write(dir..'/'..size[1]..'-filter-sound-bundle.json');assert(sourceControl.buf==long);sourceControl:SetText(dir)
  ui:click('save');assert(main.popups[1] and main.popups[1].title=='Filter and sounds exported');local out=assert(io.open(dir..'/audio-'..size[1]..'-sounds.zip','rb'));assert(out:read(4)=='PK\3\4');out:close()
 end
 print('FILTER_SOUND_BUNDLE_OK')

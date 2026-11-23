@@ -319,6 +319,9 @@ function M.Export(profile,raw,report)
 	button(c,"soundZip",16,326,280,"Save filter + sounds ZIP",function()
 		local popup={};ui.description(popup,"help",16,24,568,45,{"Relative sound paths are read from this folder. Absolute local paths are also supported."},14)
 		popup.source=new("EditControl"):EditControl(ui.anchor,{16,82,568,26},c.directory.buf,nil,nil,1000)
+		popup.source.inactiveText=function(value)
+			return DrawStringWidth(popup.source.planningTextSize or 16,"VAR",value)>560 and "Long folder path (click to view or edit)" or value
+		end
 		ui.description(popup,"note",16,120,568,45,{"Extract all files together into the game's filter folder. Missing sounds or remaining imports stop export."},14)
 		button(popup,"save",16,180,180,"Save sound bundle",function() attempt(function()
 			local stem=names.stem(profile,c.filename.buf);local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a destination directory")
