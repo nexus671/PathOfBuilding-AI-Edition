@@ -942,6 +942,10 @@ test('queues numeric base-roll crafting targets', t => {
   const recipe={steps:[{method:'alchemy'}],targets:[{anyOf:['IncreasedLife4'],minBaseValue:65,maxBaseValue:67}]};
   f.call('simulate_crafting',{...base,recipe,options:{trials:3,maxActions:1}});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe,recipe);
+  fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
+  const multi={steps:[{method:'alchemy'}],targets:[{anyOf:['LocalAddedColdDamage2'],minBaseValue:15,baseValueComponent:2}]};
+  f.call('simulate_crafting',{...base,recipe:multi,options:{trials:3,maxActions:1}});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe,multi);
 });
 
 test('queues a saved crafting simulation without allowing mixed inputs', t => {

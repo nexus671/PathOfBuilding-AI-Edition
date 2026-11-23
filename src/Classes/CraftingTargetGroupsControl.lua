@@ -22,6 +22,7 @@ function M.Open(model,state,input,requirements,count,onKeep)
 		for i,entry in ipairs(groups) do
 			local traits={entry.scope=="enchant" and "Enchantment" or entry.scope=="implicit" and "Implicit" or "Explicit"};if entry.minRoll then traits[#traits+1]="Roll >= "..math.floor(entry.minRoll*100).."%" end
 			if entry.minBaseValue~=nil then traits[#traits+1]="Base >= "..entry.minBaseValue end;if entry.maxBaseValue~=nil then traits[#traits+1]="Base <= "..entry.maxBaseValue end
+			if entry.baseValueComponent~=nil then traits[#traits+1]="Range "..entry.baseValueComponent end
 			for _,key in ipairs({"fractured","crafted"}) do if entry[key]~=nil then traits[#traits+1]=(entry[key] and "" or "Not ")..key end end
 			list[#list+1]={height=88,textSize=16,x=10,card=true,selected=i==selected,"^7Group "..i.." | "..(entry.negate and "Exclude" or "Require"),subtitle="Match "..(entry.atLeast or 1).." of "..#entry.anyOf.." alternative modifiers",detail=ui.fit(table.concat(traits," | "),left-30,14),index=i}
 		end
