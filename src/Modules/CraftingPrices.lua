@@ -122,9 +122,9 @@ function M.describe(key,model,action)
 		return "Any red beast",path,"Beast"
 	end
 	if key=="dead_mans_sulphur" then return "Dead Man's Sulphur",nil,"Resource" end
-	if key=="beast_black_morrigan" or key=="beast_craicic_sand_spitter" then
+	if key=="beast_black_morrigan" or key=="beast_craicic_sand_spitter" or key=="beast_craicic_shield_crab" then
 		local orb=data.methods.beast_max_links;local path=orb and data.items[orb] and data.items[orb].path
-		return key=="beast_black_morrigan" and "The Black Morrigan" or "Craicic Sand Spitter",path,"Beast"
+		return key=="beast_black_morrigan" and "The Black Morrigan" or key=="beast_craicic_sand_spitter" and "Craicic Sand Spitter" or "Craicic Shield Crab",path,"Beast"
 	end
 	return label,id and data.items[id].path,"Whole action"
 end

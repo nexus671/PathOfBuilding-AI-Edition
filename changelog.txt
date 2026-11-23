@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1169][2026/11/23]
+
+* Add an experimental Bestiary maximum-sockets craft for ordinary equipment.
+
 VERSION[2.68.1-ai.preview1168][2026/11/23]
 
 * Reject extra data after an imported planning bundle.

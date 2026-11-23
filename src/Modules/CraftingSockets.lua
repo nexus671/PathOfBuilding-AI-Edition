@@ -3,7 +3,7 @@
 local S={}
 local colours={"R","G","B"}
 function S.extend(M,A,api)
-	local methods={vorici_socket_count="Vorici: best of 100 socket counts",vorici_socket_colours="Vorici: best of 25 socket colours",beast_max_links="Bestiary: maximum links",jeweller="Jeweller's Orb (experimental)",fusing="Orb of Fusing (experimental)",omen_jeweller="Jeweller's Orb + Omen of the Jeweller",omen_trichromatism="Omen of Trichromatism (RGB)",omen_connections="Orb of Fusing + Omen of Connections",chromatic="Chromatic Orb",socket_colour_bench="Bench: non-white sockets",socket_white_bench="Bench: white sockets (3.30)",tainted_chromatic="Tainted Chromatic Orb",tainted_jeweller="Tainted Jeweller's Orb",tainted_fusing="Tainted Orb of Fusing"}
+	local methods={vorici_socket_count="Vorici: best of 100 socket counts",vorici_socket_colours="Vorici: best of 25 socket colours",beast_max_links="Bestiary: maximum links",beast_max_sockets="Bestiary: maximum sockets (experimental)",jeweller="Jeweller's Orb (experimental)",fusing="Orb of Fusing (experimental)",omen_jeweller="Jeweller's Orb + Omen of the Jeweller",omen_trichromatism="Omen of Trichromatism (RGB)",omen_connections="Orb of Fusing + Omen of Connections",chromatic="Chromatic Orb",socket_colour_bench="Bench: non-white sockets",socket_white_bench="Bench: white sockets (3.30)",tainted_chromatic="Tainted Chromatic Orb",tainted_jeweller="Tainted Jeweller's Orb",tainted_fusing="Tainted Orb of Fusing"}
 	for method,label in pairs(methods) do M.methods[#M.methods+1]=method;M.labels[method]=label end;table.sort(M.methods)
 	local originalAction,originalOptions,originalPrice,originalComponents=M.action,M.actionOptions,M.priceKey,M.components
 	local function naturalLimit(model,state)
@@ -16,6 +16,7 @@ function S.extend(M,A,api)
 		for _,socket in ipairs(sockets) do if socket.color=="A" then return "Abyssal sockets need a separate socket model." end end
 		if #sockets>=naturalLimit(model,state) then return "The item already has its maximum natural socket count." end
 	end
+	M.methodChecks.beast_max_sockets=M.methodChecks.omen_jeweller
 	M.methodChecks.jeweller=M.methodChecks.omen_jeweller
 	M.methodChecks.vorici_socket_count=M.methodChecks.omen_jeweller
 	M.methodChecks.vorici_socket_colours=function(model,state)
@@ -147,7 +148,7 @@ function S.extend(M,A,api)
 		for _,socket in ipairs(sockets) do assert(socket.color ~= "A" or method=="chromatic","Abyssal sockets need a separate socket model") end
 		if method == "socket_white_bench" then
 			for _,socket in ipairs(sockets) do socket.color="W" end
-		elseif method == "jeweller" or method == "omen_jeweller" then
+		elseif method == "jeweller" or method == "omen_jeweller" or method == "beast_max_sockets" then
 			local count=naturalLimit(model,state)
 			if method=="jeweller" then
 				local probabilities=S.jewellerProbabilities(model,state);local pick=random()
@@ -241,6 +242,7 @@ function S.extend(M,A,api)
 	end
 	function M.priceKey(action) if action.method == "socket_colour_bench" then return action.method..":"..tostring(action.count) end;return originalPrice(action) end
 	function M.components(action,state,model)
+		if action.method == "beast_max_sockets" then return {beast_black_morrigan=1,beast_craicic_shield_crab=1} end
 		if action.method == "beast_max_links" then return {beast_black_morrigan=1,beast_craicic_sand_spitter=1} end
 		if action.method == "socket_white_bench" then
 			local result={["Metadata/Items/Currency/CurrencyConvertToNormal"]=1};if state and state.corrupted then result["Metadata/Items/Currency/CurrencyCorrupt"]=1 end;return result
@@ -260,13 +262,13 @@ function S.extend(M,A,api)
 		local state=initialState and M.validateState(model,initialState) or model.initial
 		model=M.context(model,state);query=(query or ""):lower();result.socketCrafts={}
 		local available=require("Modules.CraftingAvailability").check
-		for _,method in ipairs({"socket_bench","socket_white_bench","socket_colour_bench","chromatic","vorici_socket_colours","vorici_socket_count","beast_max_links","jeweller","fusing","omen_jeweller","omen_connections","omen_trichromatism","tainted_chromatic","tainted_jeweller","tainted_fusing"}) do
+		for _,method in ipairs({"socket_bench","socket_white_bench","socket_colour_bench","chromatic","vorici_socket_colours","vorici_socket_count","beast_max_links","beast_max_sockets","jeweller","fusing","omen_jeweller","omen_connections","omen_trichromatism","tainted_chromatic","tainted_jeweller","tainted_fusing"}) do
 			local choices=(method=="socket_bench" or method=="socket_colour_bench") and M.actionOptions(model,state,method) or {{label=M.labels[method],action={method=method}}}
 			local allowed,reason=available(method,state,model)
 			for _,choice in ipairs(choices) do
 				if #result.socketCrafts<(limit or 50) and (method.." "..choice.label):lower():find(query,1,true) then
 					result.socketCrafts[#result.socketCrafts+1]={method=method,label=choice.label,action=copyTable(choice.action),priceKey=M.priceKey(choice.action),
-						available=allowed,unavailableReason=not allowed and reason or nil,deterministic=method=="socket_bench" or method=="socket_white_bench" or method=="beast_max_links" or method=="omen_jeweller" or method=="omen_connections",guaranteedColours=method=="omen_trichromatism" and "RGB" or nil,components=M.components(choice.action,state)}
+						available=allowed,unavailableReason=not allowed and reason or nil,deterministic=method=="socket_bench" or method=="socket_white_bench" or method=="beast_max_links" or method=="beast_max_sockets" or method=="omen_jeweller" or method=="omen_connections",guaranteedColours=method=="omen_trichromatism" and "RGB" or nil,assumptions=method=="beast_max_sockets" and "Socket limits, retained colours and links, and added white unlinked sockets are unverified." or nil,components=M.components(choice.action,state)}
 				end
 			end
 		end

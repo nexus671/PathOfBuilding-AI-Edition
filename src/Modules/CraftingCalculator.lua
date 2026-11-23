@@ -270,12 +270,12 @@ function C.extend(M)
 			return {exactFor=exactFor,showAllOutcomes=true,sampled=false,successChance=100*hits,totalWeight=1,matchingWeight=hits,
 				outcomes=outcomes,sampleState=sample,sampleItem=M.itemText(model,sample),dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 		end
-		if (method=="socket_bench" or method=="socket_white_bench" or method=="omen_jeweller" or method=="omen_connections" or method=="beast_max_links" or method=="beast_imprint" or method=="beast_talisman_imprint" or method=="restore_imprint" or method=="bench_remove_enchant" or method=="bench_flask_enchant" or method=="rog_reroll" and craft.rogOperation=="set_quality") and not craft.allflame then
+		if (method=="socket_bench" or method=="socket_white_bench" or method=="omen_jeweller" or method=="omen_connections" or method=="beast_max_links" or method=="beast_max_sockets" or method=="beast_imprint" or method=="beast_talisman_imprint" or method=="restore_imprint" or method=="bench_remove_enchant" or method=="bench_flask_enchant" or method=="rog_reroll" and craft.rogOperation=="set_quality") and not craft.allflame then
 			M.validateRecipe({steps={craft},targets=targets,requirements=options.requirements,requiredGroups=options.requiredGroups})
 			local model=M.model(raw);local result=M.perform(raw,craft,options.seed,initialState)
 			local hit=M.matches(result.state,targets,nil,model,options.requirements,options.requiredGroups)
 			local imprint=method=="beast_imprint" or method=="beast_talisman_imprint" or method=="restore_imprint"
-			return {exactFor=imprint and "One deterministic imprint action on the supplied item" or method=="bench_remove_enchant" and "One deterministic enchantment removal on the supplied item" or method=="bench_flask_enchant" and "One deterministic flask enchantment on the supplied item" or method=="rog_reroll" and "One modeled Rog quality action on the supplied item" or "One deterministic socket craft on the supplied item",sampled=false,successChance=hit and 100 or 0,
+			return {exactFor=imprint and "One deterministic imprint action on the supplied item" or method=="bench_remove_enchant" and "One deterministic enchantment removal on the supplied item" or method=="bench_flask_enchant" and "One deterministic flask enchantment on the supplied item" or method=="rog_reroll" and "One modeled Rog quality action on the supplied item" or method=="beast_max_sockets" and "One maximum-socket craft under the assumed socket layout model" or "One deterministic socket craft on the supplied item",sampled=false,successChance=hit and 100 or 0,
 				totalWeight=1,matchingWeight=hit and 1 or 0,sampleState=result.state,sampleItem=result.itemText,
 				outcomes={{chance=100,weight=1,matches=hit,text=M.labels[method],state=result.state}},dataPatch=M.dataPatch,limitations=copyTable(M.limits)}
 		end

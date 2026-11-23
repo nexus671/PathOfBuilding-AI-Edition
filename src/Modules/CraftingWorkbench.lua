@@ -192,7 +192,7 @@ local currencies={
 	{"transmute","Transmute"},{"alteration","Alteration"},{"augmentation","Augment"},{"regal","Regal"},{"alchemy","Alchemy"},{"chaos","Chaos"},
 	{"exalt","Exalted"},{"annul","Annul"},{"scour","Scour"},{"divine","Divine"},{"vaal","Vaal"},{"chromatic","Chromatic"},
 }
-local descriptions={mirror="Create a mirrored copy; the original is unchanged. The copy cannot normally be crafted further.",beast_max_links="Link existing sockets using the Black Morrigan and a Craicic Sand Spitter.",omen_trichromatism="Guarantee one red, green and blue socket. Uses one Omen and one Chromatic Orb.",omen_connections="Fully link existing sockets. Uses one Omen of Connections and one Orb of Fusing.",transmute="Add magic modifiers to a normal item.",alteration="Reroll the modifiers on a magic item.",augmentation="Add a modifier to a magic item.",regal="Upgrade a magic item and add a modifier.",alchemy="Turn a normal item into a rare item.",chaos="Reroll the modifiers on a rare item.",veiled_chaos="Reforge a rare item with a veiled modifier.",exalt="Add a modifier to a rare item.",annul="Remove a random modifier.",scour="Remove the item's modifiers.",divine="Reroll the values of existing modifiers.",vaal="Corrupt the item. Outcomes can be destructive.",chromatic="Reroll socket colours."}
+local descriptions={mirror="Create a mirrored copy; the original is unchanged. The copy cannot normally be crafted further.",beast_max_links="Link existing sockets using the Black Morrigan and a Craicic Sand Spitter.",beast_max_sockets="Maximize sockets using the Black Morrigan and a Craicic Shield Crab. Socket layout is an unverified estimate.",omen_trichromatism="Guarantee one red, green and blue socket. Uses one Omen and one Chromatic Orb.",omen_connections="Fully link existing sockets. Uses one Omen of Connections and one Orb of Fusing.",transmute="Add magic modifiers to a normal item.",alteration="Reroll the modifiers on a magic item.",augmentation="Add a modifier to a magic item.",regal="Upgrade a magic item and add a modifier.",alchemy="Turn a normal item into a rare item.",chaos="Reroll the modifiers on a rare item.",veiled_chaos="Reforge a rare item with a veiled modifier.",exalt="Add a modifier to a rare item.",annul="Remove a random modifier.",scour="Remove the item's modifiers.",divine="Reroll the values of existing modifiers.",vaal="Corrupt the item. Outcomes can be destructive.",chromatic="Reroll socket colours."}
 descriptions.binding="Turn a normal item into a rare item with up to four linked sockets."
 descriptions.blessed="Reroll the values of supported implicit modifiers."
 descriptions.sacred="Reroll the base defence values of armour."
@@ -252,7 +252,8 @@ function M.icon(method,action,model)
 		for _,entry in pairs(currencyArt.items) do currencyNames[entry.name]=entry.path end
 	end
 	action=action or {};local id=currencyArt.methods[method];local name
-	if method=="bench_flask_enchant" then name="Instilling Orb"
+	if method=="beast_max_sockets" then return M.icon("beast_max_links")
+	elseif method=="bench_flask_enchant" then name="Instilling Orb"
 	elseif method=="socket_white_bench" then name="Orb of Scouring"
 	elseif method=="omen_jeweller" then name="Jeweller's Orb"
 	elseif method=="essence" and action.essenceId then
@@ -316,6 +317,7 @@ function M.hint(method,state,model,craft)
 	if available and method=="gwennen" then return "Experimental: choose a pair in Settings. Coin odds, removal counts and currency transitions are assumptions." end
 	if available and method=="rog_reroll" then return "Experimental: enter an observed offer in Settings. Modifier and socket odds and best-result selection are assumptions." end
 	if available and (method=="beast_prefix_suffix" or method=="beast_suffix_prefix") then return craft and craft.beastLevel and ("Uses beast level "..craft.beastLevel.." for the added modifier. Current game behavior is unverified.") or "Set the red beast's level in Settings; otherwise the item level is used. Current game behavior is unverified." end
+	if available and method=="beast_max_sockets" then return "Black Morrigan + Craicic Shield Crab. Maximum sockets; colours and links are unverified assumptions." end
 	if available and method=="omen_jeweller" then return "Add white sockets up to the base and item-level limit. Uses one Omen and one Jeweller's Orb." end
 	if available and method=="harvest_enchant" then return "Replace the enchantment with a quality bonus. Options show the Lifeforce cost." end
 	if available and method=="harvest_resistance" then return "Change one elemental resistance to another. Costs 300 Lifeforce for each element." end

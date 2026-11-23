@@ -1,0 +1,20 @@
+arg={};dofile('HeadlessWrapper.lua');newBuild()
+local sim=require('Modules.CraftingSimulator')
+local raw='Rarity: NORMAL\nAstral Plate\nItem Level: 86\nSockets: R-G B'
+local catalog=sim.catalog(raw,'beast_max_sockets',20)
+local entry;for _,v in ipairs(catalog.socketCrafts) do if v.method=='beast_max_sockets' then entry=v end end
+assert(entry and entry.available and entry.components.beast_black_morrigan==1 and entry.components.beast_craicic_shield_crab==1,'Maximum socket craft missing or wrong components')
+local result=sim.perform(raw,{method='beast_max_sockets'},1)
+assert(#result.state.sockets==6 and result.state.sockets[1].color=='R' and result.state.sockets[4].color=='W','Unexpected model output')
+local warned=false;for _,v in ipairs(result.warnings) do if v.code=='beast_max_sockets_assumptions' then warned=true end end;assert(warned,'Unverified assumptions not reported')
+local prices=require('Modules.CraftingPrices');assert(prices.describe('beast_craicic_shield_crab')=='Craicic Shield Crab')
+assert(not pcall(sim.perform,raw..'\nCorrupted',{method='beast_max_sockets'},1),'Corrupted item accepted')
+local odds=sim.calculate(raw,{method='beast_max_sockets'},{},nil,{requirements={exactSockets=6}})
+assert(odds.successChance==100 and not odds.sampled,'Maximum socket calculation incorrect')
+local warning=false;for _,w in ipairs(odds.warnings or {}) do if w.code=='beast_max_sockets_assumptions' then warning=true end end;assert(warning,'Calculation omitted socket assumptions')
+local outcome=sim.simulate(raw,{steps={{method='beast_max_sockets'}},targets={},requirements={exactSockets=6}},{trials=2,maxActions=2,seed=1})
+assert(outcome.successChance==100,'Saved recipe could not use maximum sockets')
+
+local low=raw:gsub('Item Level: 86','Item Level: 25');assert(#sim.perform(low,{method='beast_max_sockets'},1).state.sockets==4,'Item-level limit was ignored')
+assert(not pcall(sim.perform,raw:gsub('Sockets: R%-G B','Sockets: R-G B W W W'),{method='beast_max_sockets'},1),'Already-maximized item accepted')
+print('BEAST_MAX_SOCKETS_OK')
