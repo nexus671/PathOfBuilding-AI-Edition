@@ -21,6 +21,7 @@ function M.Open(model,state,input,requirements,count,onKeep)
 		selected=math.max(1,math.min(selected,#groups));local list={}
 		for i,entry in ipairs(groups) do
 			local traits={entry.scope=="enchant" and "Enchantment" or entry.scope=="implicit" and "Implicit" or "Explicit"};if entry.minRoll then traits[#traits+1]="Roll >= "..math.floor(entry.minRoll*100).."%" end
+			if entry.minBaseValue~=nil then traits[#traits+1]="Base >= "..entry.minBaseValue end;if entry.maxBaseValue~=nil then traits[#traits+1]="Base <= "..entry.maxBaseValue end
 			for _,key in ipairs({"fractured","crafted"}) do if entry[key]~=nil then traits[#traits+1]=(entry[key] and "" or "Not ")..key end end
 			list[#list+1]={height=88,textSize=16,x=10,card=true,selected=i==selected,"^7Group "..i.." | "..(entry.negate and "Exclude" or "Require"),subtitle="Match "..(entry.atLeast or 1).." of "..#entry.anyOf.." alternative modifiers",detail=ui.fit(table.concat(traits," | "),left-30,14),index=i}
 		end
@@ -48,7 +49,7 @@ function M.Open(model,state,input,requirements,count,onKeep)
 		assert(member,"Choose an alternative");local chosen=assert(group());for i=#chosen.anyOf,1,-1 do if chosen.anyOf[i]==member then table.remove(chosen.anyOf,i) end end;if #chosen.anyOf==0 then table.remove(groups,selected) end;refresh()
 	end);c.deleteAlternative.enabled=function() return member~=nil end
 	button("groupConditions",right,h-84,rightW,"Group conditions & item properties",function()
-		require("Classes.CraftingTargetControl").Open(groups,properties,required,function(next,conditions,matching) groups=next;properties=conditions;required=matching;refresh() end,selected,model.item.baseName)
+		require("Classes.CraftingTargetControl").Open(groups,properties,required,function(next,conditions,matching) groups=next;properties=conditions;required=matching;refresh() end,selected,model.item.baseName,model)
 	end)
 	button("keepGroups",16,h-42,220,"Keep targets",function() sim.validateRecipe({steps={{method="alchemy"}},targets=groups,requirements=properties,requiredGroups=required});onKeep(groups,properties,required);main:ClosePopup() end)
 	c.keepGroups.enabled=function() return #groups>0 or properties and next(properties)~=nil end

@@ -1,7 +1,7 @@
 -- cspell:ignore RRBG
 local sim=require("Modules.CraftingSimulator")
 local Panel={}
-function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseName)
+function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseName,model)
 	local groups=copyTable(targets);local conditions=copyTable(requirements or {});local controls={}
 	local function edit(key,x,y,value,prompt)
 		controls[key.."Label"]=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,0,14},prompt)
@@ -35,6 +35,40 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 		local title=key == "fractured" and "Fractured" or "Crafted"
 		controls[key]=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16+(i-1)*294,164,278,24},{"Any "..key.." state",title.." only","Not "..key})
 		controls[key]:SelByValue(group and group[key] == true and title.." only" or group and group[key] == false and "Not "..key or "Any "..key.." state")
+	end
+	if group then
+		button("baseRoll",16,188,180,"Base roll value...",function()
+			local ui=require("Modules.PlanningUI");local popup={}
+			ui.description(popup,"help",16,24,448,48,{"For explicit modifiers with exactly one numeric range.","Values are before catalyst and character scaling."},14)
+			ui.label(popup,"minLabel",16,84,"Minimum base value",14);ui.label(popup,"maxLabel",244,84,"Maximum base value",14)
+			popup.minimum=new("EditControl"):EditControl(ui.anchor,{16,106,212,26},group.minBaseValue~=nil and tostring(group.minBaseValue) or "",nil,nil,16)
+			popup.maximum=new("EditControl"):EditControl(ui.anchor,{244,106,212,26},group.maxBaseValue~=nil and tostring(group.maxBaseValue) or "",nil,nil,16)
+			popup.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,158,180,28},"Keep values",function()
+				local ok,why=pcall(function()
+					local minimum=popup.minimum.buf~="" and assert(tonumber(popup.minimum.buf),"Enter a numeric minimum") or nil
+					local maximum=popup.maximum.buf~="" and assert(tonumber(popup.maximum.buf),"Enter a numeric maximum") or nil
+					for _,value in ipairs({minimum or 0,maximum or 0}) do assert(value==value and math.abs(value)<=10000000,"Base values must be within the supported range") end
+					assert(minimum==nil or maximum==nil or minimum<=maximum,"Minimum base value exceeds maximum")
+					if minimum~=nil or maximum~=nil then
+						assert(controls.scope:GetSelValue()=="Explicit modifiers","Base-roll values currently require explicit modifier targets")
+						if model then for _,id in ipairs(group.anyOf) do
+							local mod=model.byId[id];assert(mod,"This modifier needs its own base-roll model: "..id)
+							local value,reason=sim.singleBaseRoll(mod,0.5);assert(value~=nil,(reason or "Unsupported base roll")..": "..id)
+						end end
+					end
+					group.minBaseValue,group.maxBaseValue=minimum,maximum
+				end)
+				if not ok then ui.errorPopup("Base roll value",why);return end;main:ClosePopup()
+			end))
+			popup.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{340,158,116,28},"Cancel",function() main:ClosePopup() end))
+			ui.style(popup,{keep=true});for _,control in pairs(popup) do control.layoutAudit="crafting-base-roll-target" end
+			main:OpenPopup(472,202,"Base roll value",popup,nil,nil,"close")
+		end)
+		controls.baseRoll.label=function() return (group.minBaseValue~=nil or group.maxBaseValue~=nil) and "Base value set..." or "Base roll value..." end
+		controls.baseRoll.tooltipText=function()
+			local selected=(group.minBaseValue~=nil and ("Minimum: "..group.minBaseValue..". ") or "")..(group.maxBaseValue~=nil and ("Maximum: "..group.maxBaseValue..". ") or "")
+			return selected.."Set base values before catalyst and character scaling. Every selected modifier must have one numeric range."
+		end
 	end
 	local properties={{"openPrefixes","Open prefixes"},{"openSuffixes","Open suffixes"},{"minAffixes","Minimum affixes"},{"maxAffixes","Maximum affixes"},{"minQuality","Minimum quality"},{"sockets","Minimum sockets"},{"links","Minimum linked sockets"},{"minMemoryStrands","Minimum memory strands"},{"maxMemoryStrands","Maximum memory strands"},{"minFractured","Minimum fractured mods"},{"maxFractured","Maximum fractured mods"},{"minIntangibility","Minimum Intangibility"},{"maxIntangibility","Maximum Intangibility"}}
 	for i,entry in ipairs(properties) do edit(entry[1],16+(i-1)%3*196,214+math.floor((i-1)/3)*42,conditions[entry[1]],entry[2]) end

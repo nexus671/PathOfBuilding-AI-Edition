@@ -191,7 +191,7 @@ M.limits = {"Experimental PoE 1 model, not a complete game crafting implementati
 	"Supported crafts include fossils, Harvest, recombination, influence, corruption, sockets and veiled crafts; unsupported combinations fail explicitly. Review each action's model notes.",
 	"Rerolls model 4/5/6 rare modifiers with weights 8/3/1, and 1/2 magic modifiers equally. These distribution assumptions and PoB data coverage affect estimates.",
 	"Integer roll ranges use inclusive integer draws. Fractional display ranges use illustrative normalized rolls because the underlying stat precision is not present in this data export.",
-	"Modifier targets match IDs and optional normalized minimum rolls, not exact individual stat values. Wilson intervals measure sampling uncertainty only. Results describe the bounded recipe, not guaranteed in-game costs."}
+	"Modifier targets match IDs and optional normalized rolls or supported single base-roll values. Base values precede catalyst and character scaling. Wilson intervals measure sampling uncertainty only. Results describe the bounded recipe, not guaranteed in-game costs."}
 
 local function integer(value,low,high,label)
 	assert(type(value) == "number" and value == math.floor(value) and value >= low and value <= high,"Invalid "..label)
@@ -264,6 +264,26 @@ end
 
 -- Use the native renderer so every preview retains the same independent rolls.
 function M.rolledLines(mod,range) return itemLib.applyModRanges(mod,range) end
+-- A base-value goal is supported only when one range uniquely identifies the
+-- value. The rendered base roll provides PoB's own rounding and precision.
+function M.singleBaseRoll(mod,range)
+	local index,first,last,count=nil,nil,nil,0
+	for i,line in ipairs(mod or {}) do
+		for a,b in line:gmatch("()%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)()") do
+			count=count+1;index=i;first=a;last=b
+		end
+		if line:find("%-%(") then return nil,"Negative-sign range notation needs a separate roll model" end
+	end
+	if count~=1 then return nil,"Choose modifiers with one numeric base roll" end
+	local rendered=M.rolledLines(mod,range)[index]
+	local function escape(text) return (text:gsub("([^%w])","%%%1")) end
+	local prefix=mod[index]:sub(1,first-1);local optionalPlus=prefix:sub(-1)=="+"
+	if optionalPlus then prefix=prefix:sub(1,-2) end
+	local pattern="^"..escape(prefix)..(optionalPlus and "%+?" or "").."(%-?%d+%.?%d*)"..escape(mod[index]:sub(last)).."$"
+	local value=tonumber(rendered:match(pattern))
+	if value==nil then return nil,"This modifier's displayed base roll cannot be identified" end
+	return value
+end
 function M.entryMod(model,entry)
 	return entry.legacyLightRadius and assert(model.legacyLightRadius[entry.id],"Unknown legacy Light Radius modifier") or entry.description330 and assert(model.descriptions330[entry.id],"Unknown 3.30 modifier description") or entry.corruption330 and assert(model.corruptions330[entry.id],"Unknown 3.30 corruption modifier") or model.byId[entry.id]
 end
@@ -689,7 +709,19 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   end
   for _,entry in ipairs(entries) do
    local roll=type(entry.range) == "table" and math.min(unpack(entry.range)) or entry.range or 0.5
-   for _,id in ipairs(group.anyOf) do if entry.id == id and roll >= (group.minRoll or 0) and (group.fractured == nil or (entry.fractured or false) == group.fractured) and (group.crafted == nil or (entry.crafted or false) == group.crafted) then count=count+1; break end end
+   for _,id in ipairs(group.anyOf) do if entry.id == id and roll >= (group.minRoll or 0) and (group.fractured == nil or (entry.fractured or false) == group.fractured) and (group.crafted == nil or (entry.crafted or false) == group.crafted) then
+    local matches=true
+    if group.minBaseValue~=nil or group.maxBaseValue~=nil then
+     assert(model,"A native item model is required for base-roll targets")
+     local mod=M.entryMod(model,entry);local item=model.item
+     if item.type=="Tincture" and item.tinctureValues=="Final" and ((item.tinctureImportedQuality or 0)>0 or (item.tinctureImportedEffect or item.tinctureData and item.tinctureData.effectInc or 0)~=0) then
+      assert(state.tinctureBaseExplicit or state["tinctureBase"..mod.type],"The imported tincture's original base roll is unknown; reroll that side before using a base-value goal")
+     end
+     local value,why=M.singleBaseRoll(mod,entry.range);assert(value~=nil,why)
+     matches=(group.minBaseValue==nil or value>=group.minBaseValue) and (group.maxBaseValue==nil or value<=group.maxBaseValue)
+    end
+    if matches then count=count+1;break end
+   end end
   end
   local hit=count >= (group.atLeast or 1)
   if group.negate and not unknown then hit=not hit end
@@ -838,6 +870,9 @@ function M.validateRecipe(recipe)
 		for _,id in ipairs(group.anyOf) do assert(type(id) == "string" and #id <= 160,"Invalid target modifier ID") end
 		if group.atLeast then integer(group.atLeast,1,6,"matching modifiers") end
 		if group.minRoll then assert(type(group.minRoll) == "number" and group.minRoll >= 0 and group.minRoll <= 1,"Invalid minimum roll") end
+		for _,key in ipairs({"minBaseValue","maxBaseValue"}) do local value=group[key];if value~=nil then assert(type(value)=="number" and value==value and math.abs(value)<=10000000,"Invalid base-roll value") end end
+		assert(group.minBaseValue==nil or group.maxBaseValue==nil or group.minBaseValue<=group.maxBaseValue,"Minimum base roll exceeds maximum")
+		assert((group.minBaseValue==nil and group.maxBaseValue==nil) or not group.scope or group.scope=="explicit","Base-roll values currently require explicit modifier targets")
 		assert(not group.scope or group.scope == "explicit" or group.scope == "implicit" or group.scope == "enchant","Invalid target scope")
 		for _,key in ipairs({"fractured","crafted"}) do assert(group[key] == nil or type(group[key]) == "boolean","Invalid modifier condition") end
 		assert(group.negate == nil or type(group.negate) == "boolean","Invalid exclusion condition")
@@ -988,7 +1023,13 @@ function M.validateTargetAvailability(model,targets,steps)
 		for _,entry in ipairs(donor.mods) do available[entry.id]=true end
 		for _,entry in ipairs(donor.initial.affixes) do available[entry.id]=true end
 	end end
-	local function check(groups) for _,group in ipairs(groups) do for _,id in ipairs(group.anyOf) do assert(available[id],"Target modifier ID is unavailable for this base: "..id) end end end
+	local function check(groups) for _,group in ipairs(groups) do for _,id in ipairs(group.anyOf) do
+		assert(available[id],"Target modifier ID is unavailable for this base: "..id)
+		if group.minBaseValue~=nil or group.maxBaseValue~=nil then
+			local mod=model.byId[id];assert(mod,"This modifier needs its own base-roll model")
+			local value,why=M.singleBaseRoll(mod,0.5);assert(value~=nil,(why or "Unsupported base roll")..": "..id)
+		end
+	end end end
 	check(targets)
 	for _,step in ipairs(steps or {}) do if step.untilTargets then check(step.untilTargets) end end
 end
