@@ -56,6 +56,42 @@ local function containsAll(earlier,later)
  for value in pairs(later) do if not earlier[value] then return false end end
  return true
 end
+-- Report only empty intersections that follow from documented AND conditions.
+-- Unknown operators, multi-value numeric predicates and sockets are skipped.
+function M.contradictions(parsed)
+ local diagnostics={}
+ for _,rule in ipairs(parsed.rules) do
+  local ranges,rarities={},nil
+  for _,condition in ipairs(rule.conditions) do
+   if condition.keyword=="Rarity" and #condition.values==1 then
+    local choices=rarityChoices(condition)
+    if choices then
+     if not rarities then rarities={};for name in pairs(choices) do rarities[name]=true end
+     else for name in pairs(rarities) do if not choices[name] then rarities[name]=nil end end end
+    end
+   elseif condition.keyword~="Rarity" then
+    local b=bound(condition);local exact=(condition.operator=="=" or condition.operator=="==") and number(condition)
+    if exact and (exact~=exact or math.abs(exact)==math.huge) then exact=nil end
+    if b or exact then
+     local range=ranges[condition.keyword] or {};ranges[condition.keyword]=range
+     local function add(value)
+      local old=range[value.direction]
+      if not old or covers(old,value) then range[value.direction]=value end
+     end
+     if b then add(b) else add({direction="lower",value=exact,inclusive=true});add({direction="upper",value=exact,inclusive=true}) end
+    end
+   end
+  end
+  local names={};for name,range in pairs(ranges) do
+   local lower,upper=range.lower,range.upper
+   if lower and upper and (lower.value>upper.value or lower.value==upper.value and (not lower.inclusive or not upper.inclusive)) then names[#names+1]=name end
+  end
+  if rarities and not next(rarities) then names[#names+1]="Rarity" end
+  table.sort(names)
+  for _,name in ipairs(names) do diagnostics[#diagnostics+1]={line=rule.line,code="contradictoryConditions",warning="This block cannot match: its "..name.." conditions conflict."} end
+ end
+ return diagnostics
+end
 -- Multiple rarity lines are ANDed by the filter; compare their exact finite
 -- intersection while keeping every non-rarity condition identical.
 local function rarityIntersection(rule,choicesFor)

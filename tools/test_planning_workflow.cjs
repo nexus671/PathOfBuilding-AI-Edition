@@ -1808,6 +1808,9 @@ async function main(){
   const rangeConflictProfile={id:'range-conflict',title:'List and range conflict',preset:'early_maps',strictness:2,rules:[],template:'Show\n BaseType == "Iron Hat" "Wool Shoes"\n ItemLevel >= 60\n ItemLevel < 80\nHide\n BaseType == "Iron Hat"\n ItemLevel >= 70\n ItemLevel <= 75'};
   const rangeConflictExport=await queued('export_loot_filter',{baseRevision:context.revision,profile:rangeConflictProfile},'exported');
   assert.ok(rangeConflictExport.report.diagnostics.some(entry=>entry.shadowedBy && entry.warning.includes('cannot be reached')));
+  const contradictoryProfile={id:'contradictory-filter',title:'Contradictory filter',preset:'early_maps',strictness:2,rules:[],template:'Show\n ItemLevel >= 80\n ItemLevel < 70'};
+  const contradictoryExport=await queued('export_loot_filter',{baseRevision:context.revision,profile:contradictoryProfile},'exported');
+  assert.ok(contradictoryExport.report.diagnostics.some(entry=>entry.code==='contradictoryConditions' && entry.warning.includes('ItemLevel')));assert.match(contradictoryExport.filter,/ItemLevel >= 80/);
   const exported=await queued('export_loot_filter',{baseRevision:context.revision,profile:generated.profile},'exported');assert.ok(exported.filter.includes('PoB rule:'));assert.ok(exported.filter.includes('Frayed Thread'));
   assert.ok(exported.filter.includes('# PoB rule: Campaign /'));assert.ok(exported.filter.includes('Crude Bow'));
   const importProfile={...generated.profile,id:'imports-ai',template:'Import "outer.filter"\nImport "absent.filter" Optional\nShow',importFiles:[{name:'outer.filter',text:'Import "outer.filter"\nImport "inner.filter"\nHide'}]};
