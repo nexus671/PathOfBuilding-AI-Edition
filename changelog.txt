@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1174][2026/11/23]
+
+* Preview a hypothetical Temple second corruption for ordinary maps.
+
 VERSION[2.68.1-ai.preview1173][2026/11/23]
 
 * Review matching quality jewellery for Catalyst vendor groups and optional filter pickups.

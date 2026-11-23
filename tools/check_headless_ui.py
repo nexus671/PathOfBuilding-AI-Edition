@@ -98,6 +98,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_flask_enchant_ui.lua")
     sources.append(ROOT / "tools/test_unique_flask_enchant_ui.lua")
     sources.append(ROOT / "tools/test_map_vaal_ui.lua")
+    sources.append(ROOT / "tools/test_temple_map_preview.lua")
     sources.append(ROOT / "tools/test_minimal_ui.lua")
     sources += [ROOT / "tools/test_gwennen_ui.lua", ROOT / "tools/test_rog_ui.lua"]
     sources.append(ROOT / "tools/test_magic_name_ui.lua")
@@ -350,6 +351,9 @@ def main():
                               env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "map-vaal-controls.log").write_text(map_vaal.stdout)
     assert map_vaal.returncode == 0, map_vaal.stdout
+    temple_map = subprocess.run(lua_command + ["../tools/test_temple_map_preview.lua", str(frames)], cwd=ROOT / "src", env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "temple-map-controls.log").write_text(temple_map.stdout)
+    assert temple_map.returncode == 0, temple_map.stdout
     assert source_hashes() == hashes, "Source files changed during UI capture; repeat against stable sources"
     for width in (1280, 1024, 960):
         archive = frames / f"ui-{width}-strictnesses.zip"

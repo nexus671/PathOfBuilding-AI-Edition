@@ -144,7 +144,25 @@ function M.reason(state,action)
 	elseif action=="vaal_implicit" or action=="vaal_unchanged" then return nil
 	else return "Unsupported map currency." end
 end
+local planningState
+local function templeReason(state,checkpoint)
+ if not state.corrupted then return "Requires an already corrupted map." end
+ if state.twiceCorrupted then return "This map is already twice corrupted." end
+ if state.mirrored or state.unidentified then return "Requires an identified, unmirrored map." end
+ if state.rarity~="rare" or state.baseId~="Metadata/Items/Maps/MapKeyTier"..state.tier or state.tier>16 then return "Only generic rare tier 1-16 maps are modeled." end
+ if state.observedEffects and #state.observedEffects>0 or state.plannedDeified or state.plannedAllflame or state.plannedDelirium then return "Special and planned effects are not modeled for this preview." end
+ if #state.selected>=9 then return "This map already has nine modifiers." end
+ inspect(state,0,checkpoint)
+ local eligible={};local probe=copyTable(state);probe.selected={}
+ for _,entry in ipairs(candidates(probe,checkpoint)) do eligible[entry.id]=true end
+ for _,id in ipairs(state.selected) do if not eligible[id] then return "A selected modifier is not eligible in the modeled pool." end end
+ if #candidates(state,checkpoint)==0 then return "No modeled eligible modifier remains." end
+end
 function M.options(input,checkpoint)
+ if input.corrupted then
+  local state=planningState(input);local reason=templeReason(state,checkpoint)
+  return {{id="temple_add",label="Temple: +2 modifiers (hypothetical)",available=not reason,reason=reason,detail="Hypothetical second-corruption outcome; availability, implicit retention and odds are unverified."}}
+ end
 	local state=validate(input,checkpoint);local result={};local cache={}
 	for _,action in ipairs(M.actions) do
 		local reason=M.reason(state,action.id)
@@ -166,7 +184,7 @@ function M.options(input,checkpoint)
 	end
 	return result
 end
-local function planningState(input)
+planningState=function(input)
  assert(type(input)=="table","Invalid map state")
  local draft=copyTable(input);draft.id="preview";draft.title="Map preview";draft.patch=map.source().patch
  local state=require("Modules.AtlasPlanner").validateMapDraft(draft);state.id=nil;state.title=nil;state.patch=nil
@@ -181,6 +199,17 @@ function M.planningOptions(input)
  return result
 end
 function M.perform(input,action,seed,checkpoint,identitiesOnly,cache,allflameId)
+ if action=="temple_add" then
+  local random=rng(seed);local state=planningState(input)
+  local reason=templeReason(state,checkpoint);assert(not reason,reason)
+  local values=require("Modules.MapRollValues");values.validate(state.selected,state.rolls,map.source())
+  state.rolls=state.rolls or {};local first=#state.selected+1
+  for _=1,math.min(2,9-#state.selected) do add(state,random,checkpoint,cache) end
+  for index=first,#state.selected do local id=state.selected[index];local roll=not identitiesOnly and values.sample(map.source().mods[id],random);if roll then state.rolls[#state.rolls+1]={id=id,values=roll} end end
+  state.twiceCorrupted=true;state.vaalPreview=true
+  local implicitInfo=state.implicit and require("Modules.MapCorruptionImplicits").describe(state.implicit,state.itemLevel) or nil
+  return {state=state,seed=seed,action=action,dataPatch=map.source().patch,dataSource=copyTable(map.source().source),summary=not identitiesOnly and map.summarize(state.selected,state.rolls,implicitInfo,state.quality) or nil,note="Hypothetical Temple second-corruption add-modifiers outcome. Whether this outcome is possible, implicit retention, weights, values, interactions and odds are unverified; this is not a full device simulation."}
+ end
 	if action=="divine_vessel" or action=="clear_deified_plan" or action=="plan_allflame" or action=="clear_allflame_plan" then
 		-- This is a reversible planning marker, not an assertion that the currency
 		-- can be used on a corrupted, mirrored or unidentified map in the game.
