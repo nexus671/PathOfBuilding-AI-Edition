@@ -64,7 +64,7 @@ function M.Open(build,options)
 		previewCurrent=previewMatches(state)
 		if previewCurrent and lastPreview~=state.result then lastPreview=state.result;showDetails(state.result.plan,true)
 		elseif not previewCurrent and lastPreview then lastPreview=nil;showDetails(options.current()) end
-		local text=state.error or state.status;if state.paused then text="Paused" elseif state.thread then if state.progress.phase=="exact" then text=text.." | checking shared paths" else text=text.." | order "..(state.progress.order or 1).." / "..(state.progress.orders or "?") end elseif state.result then text=text.." | "..#state.result.plan.nodes.." allocated points" end
+		local text=state.error or state.status;if state.paused then text="Paused" elseif state.thread then if state.progress.phase=="exact" or state.progress.phase=="refine" then text=text.." | checking shared paths" else text=text.." | order "..(state.progress.order or 1).." / "..(state.progress.orders or "?") end elseif state.result then text=text.." | "..#state.result.plan.nodes.." allocated points" end
 		if state.result and not previewCurrent then text=not modeMatches(state) and "Route mode changed. Recalculate before using the preview." or "Plan changed. Recalculate before using the preview." end
 		return "^7"..ui.fit(text,w-36,14)
 	end

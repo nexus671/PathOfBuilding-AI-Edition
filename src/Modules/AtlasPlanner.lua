@@ -409,9 +409,45 @@ function M.connectOptimized(plan,targets,avoid,options)
 			local right=left+1+offset;local order=copyTable(seed);order[left],order[right]=order[right],order[left];try(order)
 		end
 	end
+	-- For larger target sets, re-solve two small groups against the retained
+	-- connected route. Removing only non-anchor leaves preserves connectivity;
+	-- the exact subproblem may then reconnect those targets more efficiently.
+	-- Always retain the original allocations and every target outside the group.
+	local refinements=0
+	if best and #targets>solver.maxTargets and options.refine~=false and options.exact~=false then
+		local slots=math.min(8,#targets)
+		for parity=0,1 do
+			local group,selected={},{}
+			for slot=1,slots do if slot%2==parity then
+				local id=targets[math.floor((slot-1)*#targets/slots)+1];group[#group+1]=id;selected[id]=true
+			end end
+			local core=copyTable(allocated);for _,id in ipairs(best.nodes) do core[id]=true end
+			local anchors=copyTable(allocated);for _,id in ipairs(targets) do if not selected[id] then anchors[id]=true end end
+			local changed=true;local operations=0
+			while changed do
+				changed=false
+				for _,id in ipairs(sorted(core)) do if not anchors[id] then
+					local degree=0;for _,other in ipairs(tree.nodes[id].links) do if core[other] then degree=degree+1 end end
+					if degree<=1 then core[id]=nil;changed=true end
+					operations=operations+1;if options.checkpoint and operations%128==0 then options.checkpoint({phase="refine",target=parity+1,targets=2}) end
+				end end
+			end
+			refinements=refinements+1
+			local found=solver.find(tree,core,blocked,group,options.checkpoint)
+			if found then
+				for id in pairs(found) do core[id]=true end
+				local added={};for id in pairs(core) do if not allocated[id] then added[#added+1]=id end end;table.sort(added)
+				if #added<#additions then
+					local candidate=copyTable(best);core[tree.start]=nil;candidate.nodes=sorted(core)
+					local ok,value=pcall(M.validate,candidate)
+					if ok and budgetReachabilityChecked(value)~=false then best,additions=value,added end
+				end
+			end
+		end
+	end
 
 	assert(best,"Atlas targets cannot be connected within this budget and exclusions")
-	return best,additions,{attempts=attempts,originalCost=baseline,cost=#additions,saved=baseline and baseline-#additions or nil,heuristic=true}
+	return best,additions,{attempts=attempts,refinements=refinements,originalCost=baseline,cost=#additions,saved=baseline and baseline-#additions or nil,heuristic=true}
 end
 function M.remove(plan,id)
 	plan=M.validate(plan); local tree=M.tree(plan.version)
