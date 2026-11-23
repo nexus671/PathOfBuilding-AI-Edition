@@ -2,6 +2,12 @@
 local output=arg[1];arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true
 local sim=require("Modules.CraftingSimulator");local raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';local model=sim.model(raw)
 local state=copyTable(model.initial);state.rarity="RARE";state.affixes={{id="IncreasedLife4",range=0.8}}
+local regen=assert(model.byId.LifeRegeneration2)
+local first=sim.rollRange(regen,function() return 0.001 end);assert(first==0)
+local middle=sim.rollRange(regen,function() return 0.5 end);assert(math.abs(middle-177/354)<1e-10)
+assert(sim.baseRollValue(regen,middle)==5.1)
+assert(sim.rollRange(regen,function() return 0.9999 end)==1)
+
 local goal={anyOf={"IncreasedLife4"},minBaseValue=65,maxBaseValue=67}
 assert(sim.singleBaseRoll(model.byId.IncreasedLife4,0.8)==66)
 assert(sim.matches(state,{goal},nil,model));state.affixes[1].range=0.5;assert(not sim.matches(state,{goal},nil,model))

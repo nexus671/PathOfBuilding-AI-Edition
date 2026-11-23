@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1223][2026/11/23]
+
+* Sample supported life-regeneration modifiers using their raw per-minute values.
+
 VERSION[2.68.1-ai.preview1222][2026/11/23]
 
 * Improve fractional crafting roll sampling when modifier precision is known.
