@@ -549,14 +549,20 @@ local function httpDate(date)
 	return days(y, month, d)*86400 + h*3600 + mi*60 + s
 end
 
-function M.fresh(response, now)
-	local header = headers(response)
-	local timestamp = assert(httpDate(header.date), "Exchange response has no valid freshness date")
+local function responseAge(header, now, cachedAge)
+	local timestamp = httpDate(header.date)
+	assert(timestamp or cachedAge and not header.date, "Exchange response has no valid freshness date")
 	local age = header.age and tonumber(header.age:match("^%d+$")) or (not header.age and 0)
 	assert(age, "Exchange response has an invalid Age header")
-	local resident = math.max(now - timestamp, age)
-	assert((header["cf-cache-status"] or ""):lower() ~= "stale" and timestamp <= now + 300
+	local resident = math.max(timestamp and now - timestamp or 0, age, cachedAge or 0)
+	assert((header["cf-cache-status"] or ""):lower() ~= "stale" and (not timestamp or timestamp <= now + 300)
 		and resident <= 3600, "Exchange snapshot is stale")
+	return resident
+end
+
+function M.fresh(response, now)
+	local header = headers(response)
+	local resident = responseAge(header, now)
 	local tag = header.etag
 	if tag and (#tag > 160 or tag:find("[%c]") or not (tag:match('^"[^"]*"$') or tag:match('^W/"[^"]*"$'))) then tag = nil end
 	return response.body, resident, tag
@@ -678,7 +684,10 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			if M.busy ~= job then return end
 			time = os.time()
 			if err == "Response code: 304" and cached and time >= cached.sourceAt and time-cached.sourceAt <= 3600 then
-				bodies[index], responses[index] = cached.body, {initialAge=time-cached.sourceAt, checkedAt=time, revalidated=true}
+				local valid, age = pcall(function() return responseAge(headers(response), time, time-cached.sourceAt) end)
+				if not valid then finish(false, category .. ": " .. tostring(age)); return end
+				cached.sourceAt = time-age
+				bodies[index], responses[index] = cached.body, {initialAge=age, checkedAt=time, revalidated=true}
 				fetch(index + 1, 1)
 				return
 			end

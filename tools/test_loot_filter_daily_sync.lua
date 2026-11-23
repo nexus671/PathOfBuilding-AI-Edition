@@ -180,6 +180,14 @@ local originalAge = revalidated.feeds[1].responseAge
 clock=clock+61
 sync.tick(clock,true)
 assert(sync.publicDiff(clock).feeds[1].responseAge==originalAge+61)
+local successfulOutput = read(target)
+launch.DownloadPage = function(_, _, callback, params)
+	assert(params.header:find('If-None-Match: W/"fixture"',1,true))
+	callback({header="HTTP/1.1 304 Not Modified\r\nAge: 3601\r\n\r\n", body=""}, "Response code: 304")
+end
+clock=clock+1
+sync.tick(clock,true)
+assert(sync.status:find("snapshot is stale",1,true) and read(target)==successfulOutput)
 sync.rollback()
 sync.disable()
 os.time=systemTime
