@@ -21,7 +21,9 @@ function M.Open()
 		c[key] = new("EditControl"):EditControl(ui.anchor,{x, y+20, fieldWidth, 26},value,nil,nil,1000)
 	end
 	local function options()
-		return {hour=tonumber(c.hour.buf) or -1,targetValue=tonumber(c.targetValue.buf) or -1,protectionFile=c.protectionFile.buf}
+		local hour, minute = c.time.buf:match("^%s*(%d%d?):(%d%d)%s*$")
+		return {hour=tonumber(hour) or -1,minute=tonumber(minute) or -1,
+			targetValue=tonumber(c.targetValue.buf) or -1,protectionFile=c.protectionFile.buf}
 	end
 	local function attempt(action)
 		local passed, err = pcall(action)
@@ -29,7 +31,15 @@ function M.Open()
 		main:ClosePopup()
 		M.Open()
 	end
-	field("target", 24, "Live Path of Exile .filter file", config.target or "")
+	field("target", 24, "Live Path of Exile .filter file", config.target or "", 16, width-166)
+	c.detectTarget = new("ButtonControl"):ButtonControl(ui.anchor,{width-142,44,126,26},"Use PoE selection",function()
+		local documents = GetUserPath()
+		if not documents then main:OpenMessagePopup("Find PoE filter", "The Windows Documents folder is unavailable."); return end
+		local passed, result = pcall(sync.selectedLocalFilter, documents.."/My Games/Path of Exile")
+		if not passed then main:OpenMessagePopup("Find PoE filter", ui.errorText(result)); return end
+		c.target:SetText(result)
+	end)
+	c.detectTarget.enabled = function() return not sync.busy end
 	field("baseline", 82, "Fixed baseline .filter file", config.baseline or "")
 	field("league", 140, "poe.ninja league ID", config.league or "Covens", 16, width-166)
 	local loadingLeagues = false
@@ -56,7 +66,7 @@ function M.Open()
 		end,{timeout=15})
 	end)
 	c.chooseLeague.enabled = function() return not loadingLeagues and not sync.busy end
-	field("hour", 198, "Daily hour (local, 0–23)", tostring(config.hour or 9), 16, 195)
+	field("time", 198, "Daily time (local, HH:MM)", string.format("%02d:%02d", config.hour or 9, config.minute or 0), 16, 195)
 	field("targetValue", 198, "Chaos per stack", tostring(config.targetValue or 1), 236, 160)
 	field("protectionFile", 250, "Protected samples JSON (optional for tiered test)", config.protectionFile or "")
 	ui.description(c,"help",16,306,width-32,38,{"PoB checks for a due sync while open and keeps a copy of the baseline."},14)
@@ -115,6 +125,12 @@ function M.Open()
 		require("Classes.LootFilterDiffControl").Open(before,after,true)
 	end,432)
 	c.externalEdits.enabled = function() return config.target ~= nil and not sync.busy end
+	button("copyReport",16+step*3,"Copy diagnostics",function()
+		local passed, report = pcall(sync.diagnosticReport, os.time())
+		if not passed then main:OpenMessagePopup("Sync diagnostics", ui.errorText(report)); return end
+		Copy(report)
+		main:OpenMessagePopup("Sync diagnostics", "Copied the daily sync report.")
+	end,432)
 	button("close",width-buttonWidth-16,"Close",function() main:ClosePopup() end,432)
 	c.enable.enabled = function() return not sync.busy end
 	c.disable.enabled = function() return config.enabled and not sync.busy end

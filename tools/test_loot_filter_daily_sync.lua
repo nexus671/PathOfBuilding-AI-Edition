@@ -53,13 +53,34 @@ end)
 assert(proposed and proposed:find("StackSize <= 4",1,true))
 assert(read(target)==original and not sync.configuration())
 calls, stale = 0, true
+local editedSuffix = original .. "\n# A personal edit after the economy section\n"
+write(target,editedSuffix)
+local adopted, adoptionError = pcall(sync.configure,target,baseline,"Covens",options)
+assert(not adopted and adoptionError:find("different rules outside the economy section",1,true))
+assert(read(target)==editedSuffix and not sync.configuration())
+write(target,original)
 sync.configure(target,baseline,"Covens",options)
+local configFile = dir.."/LootFilterDailySync.json"
+local verifiedConfig = read(configFile)
+local oldConfig = require("dkjson").decode(verifiedConfig)
+oldConfig.current = require("sha1")(editedSuffix)
+write(configFile,assert(require("dkjson").encode(oldConfig)))
+write(target,editedSuffix)
+sync.tick(now,true)
+assert(calls==0 and read(target)==editedSuffix and sync.status:find("different rules outside the economy section",1,true))
+write(configFile,verifiedConfig)
+write(target,original)
 sync.tick(now,true)
 assert(sync.status:find("stale",1,true) and read(target)==original,sync.status)
+assert(sync.configuration().lastFailure)
+local afterRestart = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+local failedStatus = afterRestart.publicStatus(now)
+assert(failedStatus.state=="error" and failedStatus.lastFailure and not failedStatus.warning:find("target.filter",1,true))
+
 stale=false
 sync.tick(now,true)
 assert(sync.status:find("Protected drops verified",1,true) and read(target):find("StackSize <= 4",1,true),sync.status)
-assert(calls==9)
+assert(calls==9 and not sync.configuration().lastFailure)
 local sample = sync.configuration().review.changes[1].sample
 assert(sample.action=="Show" and sample.count==5)
 local exposed = sync.publicStatus(now)
@@ -250,6 +271,54 @@ local replacementWindow = assert(loadfile("Modules/LootFilterDailySync.lua"))()
 replacementWindow.tick(now,true)
 assert(read(target)==refreshed and not replacementWindow.configuration().pending,replacementWindow.status)
 print("Windows fault recovery: concurrent pause, locked target, and both pending-journal states passed")
+
+
+-- Old hour-only settings still trigger on the hour. The new minute is used
+-- both by the due check and the UI's next eligible time.
+local localTime = os.date("*t",now)
+localTime.hour, localTime.min, localTime.sec, localTime.isdst = 12, 37, 0, nil
+local scheduled = os.time(localTime)
+local clockSync = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+local legacy = {enabled=true,hour=12}
+assert(clockSync.nextEligible(legacy,scheduled-3600)==os.date("%Y-%m-%d 12:00",scheduled))
+local scheduleOptions = {hour=12,minute=37,targetValue=1,protectionFile=protections}
+assert(not pcall(clockSync.configure,target,baseline,"Covens",{hour=12,minute=60}))
+clockSync.configure(target,baseline,"Covens",scheduleOptions)
+assert(clockSync.configuration().minute==37)
+assert(clockSync.nextEligible(clockSync.configuration(),scheduled-60)==os.date("%Y-%m-%d %H:%M",scheduled))
+local scheduledRequests = 0
+launch.DownloadPage = function(_, url, callback)
+	scheduledRequests = scheduledRequests + 1
+	reply(url,callback)
+end
+clockSync.tick(scheduled-60)
+assert(scheduledRequests==0)
+clockSync.tick(scheduled)
+assert(scheduledRequests==9)
+localTime.day = localTime.day + 1
+assert(clockSync.nextEligible(clockSync.configuration(),scheduled)==os.date("%Y-%m-%d %H:%M",os.time(localTime)))
+local reportText = clockSync.diagnosticReport(scheduled)
+assert(not reportText:find("target.filter",1,true) and not reportText:find("protect.json",1,true))
+local diagnostics = require("dkjson").decode(reportText)
+assert(diagnostics.status.state=="enabled" and diagnostics.dailyTime=="12:37")
+assert(diagnostics.lastReview.verifiedProtection and #diagnostics.lastReview.responseAges==9)
+assert(#diagnostics.lastReview.changes==2 and #diagnostics.successfulRuns==1)
+assert(not diagnostics.successfulRuns[1].backup)
+print("Daily scheduler respects minute precision and continues to read older hour-only settings")
+
+local gameConfig = dir.."/production_Config.ini"
+write(gameConfig,"[GENERAL]\r\nitem_filter=account-reference\r\n[UI]\r\nitem_filter=target.filter\r\n")
+assert(clockSync.selectedLocalFilter(dir)==target)
+write(gameConfig,"[UI]\nitem_filter=someone@example\n")
+assert(not pcall(clockSync.selectedLocalFilter,dir))
+write(gameConfig,"[UI]\nitem_filter=../target.filter\n")
+assert(not pcall(clockSync.selectedLocalFilter,dir))
+write(gameConfig,"[UI]\nitem_filter=target.filter\nitem_filter=other.filter\n")
+assert(not pcall(clockSync.selectedLocalFilter,dir))
+write(gameConfig,"[UI]\nitem_filter=missing.filter\n")
+assert(not pcall(clockSync.selectedLocalFilter,dir))
+print("PoE selection handles local filters and rejects stale or ambiguous selections")
+
 
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.

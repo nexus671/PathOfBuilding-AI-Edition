@@ -1,3 +1,9 @@
+VERSION[2.68.1-ai.preview1195][2026/11/23]
+
+* Find the local filter selected in Path of Exile and schedule economy sync at a local hour and minute.
+* Copy sync diagnostics and see the latest failed update after restarting PoB.
+* Preserve personal filter edits on either side of the managed price section.
+
 VERSION[2.68.1-ai.preview1194][2026/11/23]
 
 * Browse market prices for cards, uniques, maps, gems, and bases.
