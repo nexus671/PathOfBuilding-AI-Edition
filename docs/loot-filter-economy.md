@@ -106,3 +106,11 @@ PoB can use an operator-managed HTTPS cache for all poe.ninja economy requests. 
 The operator runs `node tools/serve_loot_market_cache.cjs` with `POB_MARKET_UPSTREAM_AGENT` set to the application's descriptive User-Agent and contact. It binds to loopback on port 9410 by default. Publish that service through the deployment's HTTPS reverse proxy by stripping the configured path prefix. Restrict the proxy to the intended audience and use `/health` from monitoring to inspect pending work, cache hits, coalesced requests and failures.
 
 The service accepts only the app's public economy routes and active leagues. It coalesces requests, bounds the upstream queue, respects provider caching, and preserves origin age and retry timing. Throttled, stale, oversized and malformed data go through the app's existing checks before any filter is published. The operator needs to qualify the deployed host with the provider and verify fresh responses from that host before enabling distribution. [poe.ninja API guidelines](https://poe.ninja/docs/api)
+
+Run the cache probe after configuring HTTPS and before pointing scheduled clients at the service.
+
+```sh
+node tools/check_loot_market_cache.cjs https://prices.example.test/pob-market/ Covens SkillGem,BaseType
+```
+
+The league defaults to the current PC trade league. Omit the third argument to check only the eight core feeds. The read-only command reports cache health, source age, quote evidence and HTTP failures. A successful probe qualifies the requested transport and feed shape. Then use PoB's **Preview changes** against the intended baseline to check exact matches and protected drops before enabling sync.
