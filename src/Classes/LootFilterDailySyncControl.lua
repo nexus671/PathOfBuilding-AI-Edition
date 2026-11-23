@@ -115,7 +115,7 @@ function M.Open(profileId, profileName)
 	c.detectTarget.enabled = function() return not sync.busy end
 	field("baseline", 82, "Fixed baseline .filter file", config.baseline or "", 16, width-128)
 	browse("baseline",102,width-98)
-	field("league", 140, "PoE 1 PC trade league", config.league or "Covens", 16, width-166)
+	field("league", 140, "PoE 1 PC trade league", config.league or "", 16, width-166)
 	local loadingLeagues = false
 	c.chooseLeague = new("ButtonControl"):ButtonControl(ui.anchor,{width-142,160,126,26},"Choose league",function()
 		if launch.noSSL then main:OpenMessagePopup("Choose league", "Enable HTTPS certificate verification in PoB."); return end
@@ -124,17 +124,23 @@ function M.Open(profileId, profileName)
 		launch:DownloadPage(market.endpoint.."leagues",function(response, err)
 			loadingLeagues = false
 			if main.popups[1] ~= owner then return end
-			local valid, leagues = pcall(market.tradeLeagues, not err and response and response.body)
-			if not valid then main:OpenMessagePopup("Choose league", "No PC trade leagues returned. Try again or enter the ID."); return end
+			local valid, leagues = pcall(function()
+				assert(not err, "The price provider could not be reached")
+				return market.tradeLeagues(sync.fresh(response,os.time()))
+			end)
+			if not valid then
+				main:OpenMessagePopup("Choose league","Could not verify the PC trade league list. Try again or enter the league ID.")
+				return
+			end
 			local entries = {}
 			for _, league in ipairs(leagues) do
 				entries[#entries+1] = {id=league.id,label=league.name,details={league.id,"PC trade economy"}}
 			end
 			require("Classes.PlanningBrowserControl").Open("Choose PC trade league",entries,{
 				action="Use league",
-				choose=function(entry) c.league:SetText(entry.id); main:ClosePopup() end,
+				choose=function(entry) c.league:SetText(entry.id) end,
 			})
-		end,{timeout=15})
+		end,{timeout=15,maxBytes=65536,header="Accept: application/json"})
 	end)
 	c.chooseLeague.enabled = function() return not loadingLeagues and not sync.busy end
 	field("time", 198, "Daily time (local, HH:MM)", string.format("%02d:%02d", config.hour or 9, config.minute or 0), 16, 195)

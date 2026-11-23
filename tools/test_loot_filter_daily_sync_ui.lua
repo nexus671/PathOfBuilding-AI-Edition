@@ -19,13 +19,13 @@ end
 sync.configuration = function(id)
 	currentProfile = id
 	if reviewFixture then return reviewFixture end
-	return {hour=9, minute=15, enabled=true, backgroundEnabled=backgroundEnabled, backgroundNotifications=notifyEnabled}
+	return {hour=9, minute=15, enabled=true, backgroundEnabled=backgroundEnabled, backgroundNotifications=notifyEnabled, league=configured and "New Season" or nil}
 end
 sync.diagnosticReport = function()
 	return '{"version":1}'
 end
-sync.configure = function(target, baseline, _, options)
-	assert(target == selected and baseline == "C:/PoE/baseline.filter")
+sync.configure = function(target, baseline, league, options)
+	assert(target == selected and baseline == "C:/PoE/baseline.filter" and league == "New Season")
 	assert(options.hour == 12 and options.minute == 37 and options.intervalDays == 3)
 	assert(options.profileId == namedId)
 	assert(options.pickupPolicy.campaign == 0.25 and options.pickupPolicy.maps == 2)
@@ -70,6 +70,25 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	assert(main.popups[1].controls.target.buf == selected)
 	harness:click("baselineBrowse")
 	assert(main.popups[1].controls.baseline.buf == "C:/PoE/baseline.filter")
+	assert(main.popups[1].controls.league.buf=="")
+	local downloadPage = launch.DownloadPage
+	local age = 3601
+	launch.DownloadPage = function(_,url,callback,options)
+		assert(url=="https://poe.ninja/poe1/api/economy/leagues" and options.maxBytes==65536)
+		local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\nAge: "..age.."\r\n\r\n",
+			body='[{"id":"New Season","name":"New Season Trade"},{"id":"Standard","name":"Standard"}]'})
+	end
+	harness:click("chooseLeague")
+	assert(main.popups[1].title=="Choose league")
+	harness:click("close")
+	assert(main.popups[1].controls.league.buf=="")
+	age = 0
+	harness:click("chooseLeague")
+	harness:text("search","New Season Trade")
+	harness:click("choose")
+	assert(main.popups[1].controls.league.buf=="New Season")
+	launch.DownloadPage = downloadPage
 	harness:text("time", "12:37")
 	harness:text("intervalDays", "3")
 	harness:click("pickupPolicy")
@@ -84,7 +103,7 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	harness:click("confirmTightening")
 	harness:click("apply")
 	harness:click("enable")
-	assert(configured and main.popups[1].title == "Daily filter sync")
+	assert(configured and main.popups[1].title == "Daily filter sync" and main.popups[1].controls.league.buf=="New Season")
 	harness:click("background")
 	assert(backgroundEnabled)
 	harness:click("backgroundNotify")
