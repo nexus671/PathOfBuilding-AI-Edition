@@ -81,8 +81,7 @@ async function boundedBody(response, limit) {
   return Buffer.concat(chunks, bytes);
 }
 
-function validateBody(body, kind) {
-  const value = JSON.parse(body.toString('utf8'));
+function validatePayload(value, kind) {
   if (kind === 'leagues') {
     const ids = new Set(value.map(entry => {
       if (typeof entry?.id !== 'string' || !leaguePattern.test(entry.id) || typeof entry.name !== 'string') {
@@ -165,7 +164,7 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
       }
       if (response.status !== 200) throw new MarketError(response.status >= 400 && response.status < 600 ? response.status : 502,'Provider did not return prices');
       const body = await boundedBody(response,details.limit);
-      const leagues = validateBody(body,details.kind);
+      const leagues = validatePayload(JSON.parse(body.toString('utf8')),details.kind);
       const timing = ageSource(response.headers,now());
       const rawTag = response.headers.get('etag');
       const etag = rawTag?.length <= 160 && /^(?:W\/)?"[^"\x00-\x1f]*"$/.test(rawTag) ? rawTag : null;
@@ -239,4 +238,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createMarketCache };
+module.exports = { createMarketCache, requestKey, ageSource, boundedBody, validatePayload };

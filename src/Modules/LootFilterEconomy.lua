@@ -1,6 +1,7 @@
 local json = require("dkjson")
 local parser = require("Modules.LootFilterParser")
 local maps = require("Modules.LootFilterMapMarket")
+local gems = require("Modules.LootFilterGemMarket")
 local appearance = require("Modules.LootFilterPriceAppearance")
 local M = {}
 M.categories = {"Currency", "Oil", "Omen", "Essence", "Thread", "Fragment", "Resonator", "Artifact"}
@@ -18,11 +19,11 @@ end
 
 M.endpoint = M.resolveEndpoint(os.getenv("POB_MARKET_CACHE_URL"))
 M.endpointError = "The configured PoB market cache must be an HTTPS URL without a query or credentials."
-M.managedClasses = {"Stackable Currency", "Map Fragments", "Misc Map Items", "Delve Stackable Socketable Currency", "Divination Cards", "Maps"}
+M.managedClasses = {"Stackable Currency", "Map Fragments", "Misc Map Items", "Delve Stackable Socketable Currency", "Divination Cards", "Skill Gems", "Support Gems", "Maps"}
 M.managedAreas = {{label="All areas", val="all"}, {label="Campaign", val="campaign"}, {label="Maps", val="maps"}}
 local classes = {}
 for _, class in ipairs(M.managedClasses) do
-	if class ~= "Divination Cards" and class ~= "Maps" then classes[class] = true end
+	if class ~= "Divination Cards" and class ~= "Maps" and not gems.classes[class] then classes[class] = true end
 end
 
 local function finite(value)
@@ -44,7 +45,12 @@ local function quoteText(value)
 	return type(value)=="string" and #value<=200 and value:match("%S") and not value:find("[%c]")
 end
 
-function M.quotes(body, source)
+function M.maxFeedBytes(category)
+	return category==gems.feed and gems.maxBytes or 2*1024*1024
+end
+
+function M.quotes(body, source, gemRequests)
+	if source==gems.feed then return gems.quotes(body,gemRequests) end
 	if maps.variants[source] then return maps.quotes(body,source) end
 	assert(type(body) == "string" and #body <= 2 * 1024 * 1024, "Invalid exchange response size")
 	local data = json.decode(body)
@@ -69,7 +75,7 @@ function M.quotes(body, source)
 end
 
 local function quoteKey(name, category)
-	if category == "DivinationCard" or maps.variants[category] then return "\0" .. category .. ":" .. name end
+	if category == "DivinationCard" or maps.variants[category] or category==gems.feed then return "\0" .. category .. ":" .. name end
 	return name
 end
 
@@ -80,7 +86,7 @@ function M.merge(destination, source, category)
 end
 
 -- Exchange floors use quoted chaos volume. Stash map floors use listing samples.
-local minimumVolume = { Map=20, BlightedMap=20, BlightRavagedMap=20, Currency=100, Oil=150, Omen=200, Essence=150, Thread=150, Fragment=200, Resonator=150, Artifact=150, DivinationCard=500 }
+local minimumVolume = { SkillGem=20, Map=20, BlightedMap=20, BlightRavagedMap=20, Currency=100, Oil=150, Omen=200, Essence=150, Thread=150, Fragment=200, Resonator=150, Artifact=150, DivinationCard=500 }
 
 function M.liquid(quote)
 	return quote and quote.volume >= (minimumVolume[quote.source] or 100)
@@ -190,8 +196,10 @@ end
 function M.feedCategories(raw)
 	local first, last, tagged = M.sectionBounds(raw)
 	if not tagged or not last then return M.categories end
-	local required = {}
+	local required, gemRequests = {}, {}
 	for _, rule in ipairs(parser.parse(raw:sub(first,last-1)).rules) do
+		local gem = gems.rule(rule)
+		if gem then gemRequests[gem.key] = true end
 		local conditions = ruleConditions(rule)
 		if conditions then
 			local category = maps.rule(conditions)
@@ -211,7 +219,8 @@ function M.feedCategories(raw)
 	for _, category in ipairs(maps.feeds) do
 		if required[category] then categories[#categories+1] = category end
 	end
-	return categories
+	if next(gemRequests) then categories[#categories+1] = gems.feed end
+	return categories, gemRequests
 end
 
 function M.tradeLeagues(raw)
@@ -229,7 +238,7 @@ function M.tradeLeagues(raw)
 end
 
 function M.feedPath(league, category)
-	local resource = maps.variants[category] and "stash/current/item/overview" or "exchange/current/overview"
+	local resource = (maps.variants[category] or category==gems.feed) and "stash/current/item/overview" or "exchange/current/overview"
 	return resource .. "?league=" .. urlEncode(league) .. "&type=" .. category
 end
 
@@ -344,6 +353,23 @@ function M.review(raw, quotes, target, preferences, confirmation)
 		local parsed = parser.parse(block)
 		local rule = parsed.rules[1]
 		if #parsed.rules ~= 1 or #parsed.diagnostics ~= 0 or not rule or #parsed.imports > 0 then return block end
+		local gem = tagged and gems.rule(rule)
+		if gem then
+			local quote = quotes[quoteKey(gem.key,gems.feed)]
+			gem.key = nil
+			local cutoff, reason, price = cutoffFor(quote,1,policy[gem.scope] or policy.target)
+			if cutoff==1 then
+				gem.old, gem.reason, gem.maps = 1, reason, gem.scope=="maps"
+				skipped[#skipped+1] = gem
+				return block
+			end
+			gem.old, gem.cutoff, gem.price = 1, 0, price
+			gem.source, gem.currentPrice, gem.observations = quote.source, quote.currentPrice, quote.observations
+			gem.classes, gem.maps = {gem.class}, gem.scope=="maps"
+			gem.volume, gem.liquidityUnit = quote.volume, quote.liquidityUnit
+			changes[#changes+1] = gem
+			return ""
+		end
 		local conditions = ruleConditions(rule)
 		if not conditions then return block end
 		local category, tier, variant
@@ -466,7 +492,7 @@ function M.validateManagedRules(rules)
 	end
 	for index=1,#rules do
 		local rule = rules[index]
-		assert(type(rule) == "table" and (classes[rule.class] or rule.class == "Divination Cards" or rule.class == "Maps"), "Invalid economy item class")
+		assert(type(rule) == "table" and (classes[rule.class] or rule.class == "Divination Cards" or rule.class == "Maps" or gems.classes[rule.class]), "Invalid economy item class")
 		local entry
 		if rule.class == "Maps" then
 			local tier = rule.tier
@@ -478,11 +504,19 @@ function M.validateManagedRules(rules)
 				"Enter an exact item name")
 			assert(rule.scope == "all" or rule.scope == "campaign" or rule.scope == "maps", "Choose an area")
 			local cutoff = rule.cutoff
-			assert(cutoff == nil and rule.class == "Divination Cards" or
-				type(cutoff) == "number" and cutoff >= 1 and cutoff <= 10000 and cutoff == math.floor(cutoff), "Enter a hide cutoff from 1 to 10,000")
-			entry = {name=rule.name,class=rule.class,scope=rule.scope,cutoff=cutoff}
+			if gems.classes[rule.class] then
+				assert(cutoff==nil and gems.key(rule.name,rule.gemLevel,rule.gemQuality,rule.corrupted),
+					"Choose exact gem level, quality, and corruption")
+				entry = {name=rule.name,class=rule.class,scope=rule.scope,gemLevel=rule.gemLevel,
+					gemQuality=rule.gemQuality,corrupted=rule.corrupted}
+			else
+				assert(cutoff == nil and rule.class == "Divination Cards" or
+					type(cutoff) == "number" and cutoff >= 1 and cutoff <= 10000 and cutoff == math.floor(cutoff), "Enter a hide cutoff from 1 to 10,000")
+				entry = {name=rule.name,class=rule.class,scope=rule.scope,cutoff=cutoff}
+			end
 		end
-		local key = entry.class .. "\0" .. entry.name
+		local variant = entry.gemLevel and gems.key(entry.name,entry.gemLevel,entry.gemQuality,entry.corrupted)
+		local key = entry.class .. "\0" .. (variant or entry.name)
 		local scopes = seen[key] or {}
 		assert(not (scopes.all or scopes[entry.scope] or entry.scope == "all" and next(scopes)), "This item already has a managed rule covering that area")
 		scopes[entry.scope], seen[key] = true, scopes
@@ -506,6 +540,13 @@ local function managedText(rules)
 			lines[#lines+1] = '    BaseType == "' .. rule.name .. '"'
 			if rule.scope == "campaign" then lines[#lines+1] = "    AreaLevel < 68" end
 			if rule.scope == "maps" then lines[#lines+1] = "    AreaLevel >= 68" end
+			if rule.gemLevel then
+				lines[#lines+1] = "    GemLevel == "..rule.gemLevel
+				lines[#lines+1] = "    Quality == "..rule.gemQuality
+				lines[#lines+1] = "    Corrupted "..(rule.corrupted and "True" or "False")
+				lines[#lines+1] = "    Imbued False"
+				lines[#lines+1] = "    TransfiguredGem False"
+			end
 			if rule.cutoff then lines[#lines+1] = "    StackSize <= " .. rule.cutoff end
 		end
 		blocks[#blocks+1] = table.concat(lines, "\n")

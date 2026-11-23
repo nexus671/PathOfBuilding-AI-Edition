@@ -1,17 +1,18 @@
 local json = require("dkjson")
 local sha = require("sha1")
-local maxBody = 2*1024*1024
+local market = require("Modules.LootFilterEconomy")
+local maxBody = market.maxFeedBytes()
 local maxHeader = 16*1024
 local maxFeeds = 16
-local M = {maxSize=maxFeeds*maxBody+maxHeader}
+local M = {maxSize=(maxFeeds-1)*maxBody+market.maxFeedBytes("SkillGem")+maxHeader}
 
 function M.encode(config, bodies, feeds, checkedAt, recordedAt, day, confirmation)
 	assert(#bodies==#feeds and #feeds<=maxFeeds, "Invalid offline price feed list")
 	local header = {version=1,league=config.league,baselineHash=config.baselineHash,output=config.current,
 		checkedAt=checkedAt,recordedAt=recordedAt,day=day,feeds={},confirmation=confirmation}
 	for index, body in ipairs(bodies) do
-		assert(type(body)=="string" and #body>0 and #body<=maxBody, "Invalid offline price response size")
 		local feed = feeds[index]
+		assert(type(body)=="string" and #body>0 and #body<=market.maxFeedBytes(feed.category), "Invalid offline price response size")
 		header.feeds[index] = {category=feed.category,age=feed.age,size=#body,digest=sha(body)}
 	end
 	local record = assert(json.encode(header))
@@ -35,7 +36,7 @@ function M.decode(raw, config, categories, now)
 		local feed = header.feeds[index]
 		assert(type(feed)=="table" and feed.category==category and type(feed.age)=="number"
 			and feed.age>=0 and feed.age<=3600 and type(feed.size)=="number"
-			and feed.size>0 and feed.size<=maxBody and feed.size==math.floor(feed.size),
+			and feed.size>0 and feed.size<=market.maxFeedBytes(category) and feed.size==math.floor(feed.size),
 			"Invalid offline price feed record")
 		local body = raw:sub(cursor,cursor+feed.size-1)
 		assert(#body==feed.size and sha(body)==feed.digest, "Offline price response checksum mismatch")
