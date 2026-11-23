@@ -69,6 +69,9 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 	controls.influence:SelByValue(conditions.influence or false,"val")
 	controls.uniqueNameLabel=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{408,502,0,14},"Unique jewel name (exact)")
 	local uniqueCandidates=require("Modules.CraftingJewelCorruption").candidates(baseName)
+	local uniqueRollName=conditions.uniqueName
+	local function updateUniqueRollLabel() controls.uniqueNameLabel.label=(conditions.uniqueModifier or conditions.uniqueModifiers) and "Unique jewel name (roll target set)" or "Unique jewel name (exact)" end
+	updateUniqueRollLabel()
 	controls.uniqueName=new("EditControl"):EditControl({"TOPLEFT",nil,"TOPLEFT"},{408,518,#uniqueCandidates>0 and 120 or 180,24},conditions.uniqueName or "",nil,nil,160)
 	if #uniqueCandidates>0 then
 		button("chooseUnique",536,518,52,"Pick",function()
@@ -82,6 +85,27 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 			end
 			require("Classes.PlanningBrowserControl").Open("Choose a unique jewel",entries,{action="Use name",choose=function(entry) controls.uniqueName:SetText(entry.id,true) end})
 		end)
+		button("uniqueRoll",408,545,180,"Unique roll target...",function()
+			assert(not conditions.uniqueModifiers,"Multiple saved roll targets must be edited through the recipe")
+			local name=controls.uniqueName.buf;local jewel=require("Modules.CraftingJewelCorruption");local item=jewel.item(baseName,name,83,104729);local options=jewel.rollOptions(item)
+			assert(#options>0,"This jewel has no supported single-integer roll targets")
+			local ui=require("Modules.PlanningUI");local popup={};local choices={}
+			for index,option in ipairs(options) do choices[#choices+1]={label=option.line.." ("..option.min.."-"..option.max..")",val=index} end
+			ui.label(popup,"help",16,20,"Choose a roll on "..name..". Odds are experimental.",14)
+			popup.stat=new("DropDownControl"):DropDownControl(ui.anchor,{16,48,448,24},choices)
+			local previous=conditions.uniqueModifier;if previous and uniqueRollName==name then for index,option in ipairs(options) do if option.line==previous.line then popup.stat:SelByValue(index,"val") end end end
+			popup.direction=new("DropDownControl"):DropDownControl(ui.anchor,{16,90,180,24},{"At least","At most"});popup.direction:SelByValue(previous and previous.maxValue~=nil and "At most" or "At least")
+			popup.value=new("EditControl"):EditControl(ui.anchor,{208,90,120,24},previous and tostring(previous.minValue or previous.maxValue) or "",nil,"%D",6)
+			popup.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,150,160,28},"Keep roll target",function()
+				local ok,result=pcall(function() local option=options[popup.stat:GetSelValueByKey("val")];assert(option,"Choose a modifier");local value=assert(tonumber(popup.value.buf),"Enter a roll value");local goal={line=option.line,component=1};goal[popup.direction:GetSelValue()=="At most" and "maxValue" or "minValue"]=value;jewel.matchesRolls(item,{uniqueModifier=goal});return goal end)
+				if not ok then ui.errorPopup("Unique jewel roll",result);return end
+				conditions.uniqueModifier=result;uniqueRollName=name;updateUniqueRollLabel();main:ClosePopup()
+			end))
+			popup.clear=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{184,150,128,28},"Clear target",function() conditions.uniqueModifier=nil;uniqueRollName=nil;updateUniqueRollLabel();main:ClosePopup() end))
+			popup.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{344,150,120,28},"Cancel",function() main:ClosePopup() end))
+			ui.style(popup);for _,control in pairs(popup) do control.layoutAudit="unique-jewel-roll-target" end;main:OpenPopup(480,196,"Unique jewel roll",popup,nil,nil,"close")
+		end)
+		controls.uniqueRoll.tooltipText=function() return conditions.uniqueModifier and ("Roll target: "..conditions.uniqueModifier.line.." | "..tostring(conditions.uniqueModifier.minValue or conditions.uniqueModifier.maxValue)) or "Choose a supported modifier and roll threshold for the named unique jewel." end
 	end
 	button("keep",16,568,184,"Keep conditions",function()
 		if group then
@@ -90,9 +114,10 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 			group.negate=controls.mode:GetSelValue() == "Exclude group";local scope=controls.scope:GetSelValue();group.scope=scope == "Enchantments" and "enchant" or scope == "Implicit modifiers" and "implicit" or "explicit"
 			for _,key in ipairs({"fractured","crafted"}) do local value=controls[key]:GetSelValue();group[key]=nil;if not value:match("^Any ") then group[key]=not value:match("^Not ") end end
 		end
-		local result={nativeStats=conditions.nativeStats and copyTable(conditions.nativeStats),catalyst=conditions.catalyst,minCatalystQuality=conditions.minCatalystQuality};for _,entry in ipairs(properties) do local value=controls[entry[1]].buf;if value ~= "" then result[entry[1]]=assert(tonumber(value),"Enter a number for "..entry[2]:lower()) end end
+		local result={nativeStats=conditions.nativeStats and copyTable(conditions.nativeStats),catalyst=conditions.catalyst,minCatalystQuality=conditions.minCatalystQuality,uniqueModifier=conditions.uniqueModifier and copyTable(conditions.uniqueModifier),uniqueModifiers=conditions.uniqueModifiers and copyTable(conditions.uniqueModifiers)};for _,entry in ipairs(properties) do local value=controls[entry[1]].buf;if value ~= "" then result[entry[1]]=assert(tonumber(value),"Enter a number for "..entry[2]:lower()) end end
 		if result.sockets~=nil and controls.socketMode:GetSelValue()=="Exactly" then result.exactSockets=result.sockets;result.sockets=nil end
 		if controls.uniqueName.buf:match("%S") then result.uniqueName=controls.uniqueName.buf end
+		if result.uniqueModifier or result.uniqueModifiers then assert(result.uniqueName and result.uniqueName==uniqueRollName,"Choose the same unique jewel as the saved roll target, or clear the target") end
 		if controls.minAbyssSockets.buf~="" then
 			local value=assert(tonumber(controls.minAbyssSockets.buf),"Enter a numeric minimum")
 			if flask then result.flaskEnchantMin=value else result.minAbyssSockets=value end
