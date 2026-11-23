@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1192][2026/11/23]
+
+* Add undo and redo to Shaped Region drafts.
+
 VERSION[2.68.1-ai.preview1191][2026/11/23]
 
 * Plan multiple unique-item Divine Orb roll conditions together.

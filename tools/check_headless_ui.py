@@ -54,6 +54,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_unique_nonwhite_ui.lua")
     sources.append(ROOT / "tools/test_genesis_ui.lua")
     sources.append(ROOT / "tools/test_atlas_remove_ui.lua")
+    sources.append(ROOT / "tools/test_atlas_regions_history_ui.lua")
     sources.append(ROOT / "tools/test_atlas_search_ui.lua")
     sources.append(ROOT / "tools/test_atlas_preview_details_ui.lua")
     sources.append(ROOT / "tools/test_crafting_blank_ui.lua")
@@ -183,6 +184,10 @@ def main():
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-removal-controls.log").write_text(atlas_removal.stdout)
     assert atlas_removal.returncode == 0, atlas_removal.stdout
+    atlas_region_history = subprocess.run(lua_command + ["../tools/test_atlas_regions_history_ui.lua"], cwd=ROOT / "src",
+                                          env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "atlas-region-history-controls.log").write_text(atlas_region_history.stdout)
+    assert atlas_region_history.returncode == 0, atlas_region_history.stdout
     blank_base = subprocess.run(lua_command + ["../tools/test_crafting_blank_ui.lua"], cwd=ROOT / "src",
                                 env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-blank-base-controls.log").write_text(blank_base.stdout)

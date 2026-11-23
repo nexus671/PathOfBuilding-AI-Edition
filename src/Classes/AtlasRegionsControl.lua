@@ -4,7 +4,7 @@ local regions=require("Modules.AtlasRegions")
 local M={}
 function M.Open(plan,keep)
 	local w,h=math.min(900,main.screenW-40),math.min(620,main.screenH-60)
-	local draft=regions.validate(plan.shapedRegions or {});local selected;local c={}
+	local draft=regions.validate(plan.shapedRegions or {});local selected;local c={};local undo,redo={},{}
 	local function button(key,x,y,width,label,fn)
 		c[key]=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,function()
 			local ok,err=pcall(fn);if not ok then c.status.label="^xE9BE7B"..ui.fit(ui.errorText(err),w-32,14) end
@@ -25,12 +25,25 @@ function M.Open(plan,keep)
 	local function refresh()
 		local region=findRegion(c.region:GetSelValue());local rows={}
 		for _,map in ipairs(region and region.maps or {}) do
-			local lines=ui.rows({map.name.." | "..map.freeThreads.." free Threads"},w-60,16)
+			local lines=ui.rows({(selected==map.name and "^xF3D89D" or "^7")..map.name.." | "..map.freeThreads.." free Threads"},w-60,16)
 			for _,line in ipairs(lines) do line.entry=map;rows[#rows+1]=line end
 		end
 		if #rows==0 then rows=ui.rows({"No maps recorded for this Thread type."},w-60,16) end
 		c.list.list=rows;c.list.controls.scrollBar.offset=0
 		c.status.label="^7Select a map to edit it or record a run. Changes stay in this draft."
+	end
+	local function snapshot() return {regions=copyTable(draft),mechanic=c.region:GetSelValue(),selected=selected} end
+	local function apply(candidate,nextSelected)
+		candidate=regions.validate(candidate)
+		if require("Modules.PlanningData").encode(candidate)~=require("Modules.PlanningData").encode(draft) then undo[#undo+1]=snapshot();redo={};draft=candidate end
+		selected=nextSelected;refresh()
+	end
+	local function restore(entry)
+		draft=entry.regions;c.region:SelByValue(entry.mechanic);selected=nil;c.map:SetText("");c.count:SetText("0")
+		local region=findRegion(entry.mechanic);for _,map in ipairs(region and region.maps or {}) do if map.name==entry.selected then
+			selected=map.name;c.map:SetText(map.name);c.count:SetText(tostring(map.freeThreads));break
+		end end
+		refresh()
 	end
 	c.region.selFunc=function() selected=nil;refresh() end
 	c.list.onClick=function(hit)
@@ -43,12 +56,12 @@ function M.Open(plan,keep)
 		local name=c.map.buf:match("^%s*(.-)%s*$");local found
 		for _,map in ipairs(target.maps) do if map.name:lower()==name:lower() then map.name=name;map.freeThreads=tonumber(c.count.buf);found=true;break end end
 		if not found then target.maps[#target.maps+1]={name=name,freeThreads=tonumber(c.count.buf)} end
-		draft=regions.validate(candidate);selected=name;refresh()
+		apply(candidate,name)
 	end)
 	button("remove",208,h-126,150,"Remove map",function()
-		local target=assert(findRegion(c.region:GetSelValue()),"No region is recorded")
+		local candidate=copyTable(draft);local target;for _,region in ipairs(candidate) do if region.mechanic==c.region:GetSelValue() then target=region;break end end;assert(target,"No region is recorded")
 		local found=false;for i=#target.maps,1,-1 do if selected and target.maps[i].name==selected then table.remove(target.maps,i);found=true;break end end
-		assert(found,"Select a map to remove");selected=nil;refresh()
+		assert(found,"Select a map to remove");apply(candidate,nil)
 	end)
 	c.remove.enabled=function() return selected~=nil end
 	local function recordRun(name)
@@ -63,7 +76,7 @@ function M.Open(plan,keep)
 			local completed={};for i,mechanic in ipairs(involved) do if confirm["objective"..i].state then completed[#completed+1]=mechanic end end
 			local ok,result=pcall(regions.complete,draft,name,completed)
 			if not ok then ui.errorPopup("Shaped Regions",result);return end
-			draft=result;selected=nil;main:ClosePopup();refresh()
+			main:ClosePopup();apply(result,nil)
 		end),"primary")
 		confirm.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{pw-156,ph-48,140,28},"Cancel",function() main:ClosePopup() end))
 		ui.style(confirm,{apply=true});for _,control in pairs(confirm) do control.layoutAudit="shaped-region-run" end
@@ -90,9 +103,13 @@ function M.Open(plan,keep)
 		require("Classes.PlanningBrowserControl").Open("Recorded region maps",entries,{action="Record run",closeOnChoose=false,choose=function(entry) main:ClosePopup();recordRun(entry.id) end})
 	end)
 	c.overview.tooltipText="Compare recorded region overlaps by map and record a run."
+	button("undo",208,h-88,150,"Undo",function() local entry=table.remove(undo);assert(entry,"Nothing to undo");redo[#redo+1]=snapshot();restore(entry) end)
+	c.undo.enabled=function() return #undo>0 end;c.undo.tooltipText="Undo the last region edit or recorded run while this window is open."
+	button("redo",370,h-88,150,"Redo",function() local entry=table.remove(redo);assert(entry,"Nothing to redo");undo[#undo+1]=snapshot();restore(entry) end)
+	c.redo.enabled=function() return #redo>0 end;c.redo.tooltipText="Redo an undone region edit or recorded run while this window is open."
 	button("removeRegion",w-176,h-126,160,"Remove region",function()
-		local mechanic=c.region:GetSelValue();for i=#draft,1,-1 do if draft[i].mechanic==mechanic then table.remove(draft,i);break end end
-		selected=nil;refresh()
+		local candidate=copyTable(draft);local mechanic=c.region:GetSelValue();for i=#candidate,1,-1 do if candidate[i].mechanic==mechanic then table.remove(candidate,i);break end end
+		apply(candidate,nil)
 	end)
 	button("keep",16,h-48,200,"Use in Atlas draft",function() keep(regions.validate(draft));main:ClosePopup() end)
 	button("close",w-156,h-48,140,"Cancel",function() main:ClosePopup() end)

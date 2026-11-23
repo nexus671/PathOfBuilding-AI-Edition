@@ -41,6 +41,13 @@ describe("Manually tracked Shaped Regions",function()
 		local text=table.concat(result," ");assert.matches("Blight: %+40%%",text);assert.not_matches("Abyss:",text)
 		checker.close:Click();assert.equal("Strand Map",controls.map.buf);assert.equal("3",controls.count.buf);main.popups={}
 	end)
+	it("undoes and redoes a run across all overlapping regions",function()
+		newBuild();main.popups={};local kept;local controls=require("Classes.AtlasRegionsControl").Open({shapedRegions=fixture()},function(value) kept=value end)
+		assert.is_false(controls.undo:IsEnabled());controls.overview:Click();local picker=main.popups[1].controls;picker.search:SetText("Beach Map",true);picker.choose:Click()
+		local confirm=main.popups[1].controls;confirm.objective1.state=true;confirm.apply:Click();assert.is_true(controls.undo:IsEnabled())
+		controls.undo:Click();assert.is_true(controls.redo:IsEnabled());controls.redo:Click();controls.undo:Click();controls.keep:Click()
+		assert.same(fixture(),kept);main.popups={}
+	end)
 	it("explains when an observed count exceeds the Thread checker's range",function()
 		newBuild();main.popups={};local input=fixture();input[1].maps[1].freeThreads=101
 		local controls=require("Classes.AtlasRegionsControl").Open({shapedRegions=input},function() end)
