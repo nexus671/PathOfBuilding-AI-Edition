@@ -170,6 +170,7 @@ function Panel.Open(build,source,layout)
 	local width=layout and layout.width or math.min(1180,main.screenW-40); local height=layout and layout.height or math.min(820,main.screenH-50)
 	local inspector=math.max(260,math.min(width-600,layout and (layout.inspectorWidth or layout.restore and layout.restore.inspectorWidth) or 260))
 	local graphWidth=width-inspector-48; local graphHeight=height-262; local side=graphWidth+32
+	local compact=height<480
 	local controls,undo,avoided,redo={},{},copyTable(draft.avoided or {}),{}
 	local preferred
 	local pointUsage,routeAvailable,routeReason,hasMissingChoices
@@ -277,7 +278,7 @@ function Panel.Open(build,source,layout)
 		controls.help.label="^7"..ui.fit("Route step "..index.." / "..#grantSteps..": "..step.action.." | Preview after step; plan unchanged",graphWidth,14)
 	end
 	local function exitGrantRoute()
-		grantSteps=nil;grantIndex=nil;grantInitial=nil;grantBudget=nil;grantWarning=nil;controls.canvas.routeState=nil;if grantMatchLabel then controls.matchCount.label=grantMatchLabel;grantMatchLabel=nil end;controls.help.label="^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect"
+		grantSteps=nil;grantIndex=nil;grantInitial=nil;grantBudget=nil;grantWarning=nil;controls.canvas.routeState=nil;if grantMatchLabel then controls.matchCount.label=grantMatchLabel;grantMatchLabel=nil end;controls.help.label=compact and "^7Wheel: zoom | Drag: pan" or "^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect"
 	end
 	controls.title=edit(16,30,graphWidth-130,24,draft.title,nil,120)
 	ui.label(controls,"planLabel",16,10,"Plan name",13)
@@ -352,7 +353,7 @@ function Panel.Open(build,source,layout)
 	local function snapshot() return {plan=copyTable(draft),avoided=copyTable(avoided)} end
 	local function remember() undo[#undo+1]=snapshot();if #undo>40 then table.remove(undo,1) end;redo={} end
 	local function clearRouteOverlay()
-		if controls.canvas.routeOverlay and controls.help then controls.help.label="^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect" end
+		if controls.canvas.routeOverlay and controls.help then controls.help.label=compact and "^7Wheel: zoom | Drag: pan" or "^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect" end
 		controls.canvas.routeOverlay=nil
 	end
 	local function change(nextPlan) clearRouteOverlay();exitGrantRoute();remember();draft=atlas.validate(nextPlan);avoided=copyTable(draft.avoided or {});controls.canvas.comparison=nil;ui.draft(build,"atlas",draft.id);syncEditors();refresh() end
@@ -376,13 +377,13 @@ function Panel.Open(build,source,layout)
 			main:OpenConfirmPopup("Remove Atlas branch",string.format("Removing this node also removes %d disconnected nodes.\n%d nodes will be unallocated. You can undo this change.",count-1,count),"Remove",function() change(after) end)
 		else change(after) end
 	end)
-	controls.undo=button(16,height-86,64,"Undo",function() clearRouteOverlay();exitGrantRoute();assert(#undo>0,"No changes to undo");redo[#redo+1]=snapshot();local saved=table.remove(undo);draft=saved.plan;avoided=saved.avoided;syncEditors();refresh() end)
-	controls.redo=button(86,height-86,64,"Redo",function() clearRouteOverlay();exitGrantRoute();assert(#redo>0,"No changes to redo");undo[#undo+1]=snapshot();local saved=table.remove(redo);draft=saved.plan;avoided=saved.avoided;syncEditors();refresh() end)
-	controls.grantPrevious=button(16,height-86,64,"Prev",function() showGrantStep(grantIndex-1) end)
-	controls.grantNext=button(86,height-86,64,"Next",function() showGrantStep(grantIndex+1) end)
-	controls.grantExit=button(338,height-86,86,"Exit route",function() local view=stageResume;exitGrantRoute();refresh();if view then openStages(view) end end)
-	controls.fit=button(156,height-86,70,"Fit tree",function() controls.canvas:Fit() end)
-	controls.help=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,height-106,0,14},"^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect")
+	controls.undo=button(16,height-86,compact and 52 or 64,"Undo",function() clearRouteOverlay();exitGrantRoute();assert(#undo>0,"No changes to undo");redo[#redo+1]=snapshot();local saved=table.remove(undo);draft=saved.plan;avoided=saved.avoided;syncEditors();refresh() end)
+	controls.redo=button(compact and 74 or 86,height-86,compact and 52 or 64,"Redo",function() clearRouteOverlay();exitGrantRoute();assert(#redo>0,"No changes to redo");undo[#undo+1]=snapshot();local saved=table.remove(redo);draft=saved.plan;avoided=saved.avoided;syncEditors();refresh() end)
+	controls.grantPrevious=button(16,height-86,compact and 52 or 64,"Prev",function() showGrantStep(grantIndex-1) end)
+	controls.grantNext=button(compact and 74 or 86,height-86,compact and 52 or 64,"Next",function() showGrantStep(grantIndex+1) end)
+	controls.grantExit=button(compact and 270 or 338,height-86,compact and 76 or 86,"Exit route",function() local view=stageResume;exitGrantRoute();refresh();if view then openStages(view) end end)
+	controls.fit=button(compact and 132 or 156,height-86,compact and 60 or 70,"Fit tree",function() controls.canvas:Fit() end)
+	controls.help=new("LabelControl"):LabelControl({"TOPLEFT",nil,"TOPLEFT"},{16,height-106,0,14},compact and "^7Wheel: zoom | Drag: pan" or "^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect")
 	controls.avoid=button(side,height-156,124,"Avoid selected",function()
 		local id=assert(controls.canvas.focus,"Select a node first"); local tree=atlas.tree(draft.version)
 		assert(id ~= tree.start,"Cannot avoid the start")
@@ -424,7 +425,7 @@ function Panel.Open(build,source,layout)
 		end} or nil
 		browser.Open("Atlas bonuses by mechanic",entries,routeOptions)
 	end)
-	controls.browse=button(232,height-86,100,"Find nodes",function()
+	controls.browse=button(compact and 198 or 232,height-86,compact and 76 or 100,"Find nodes",function()
 		local costs=strategy.results(current(),"",nil,avoided);local entries={}
 		for _,entry in ipairs(costs) do
 			local node=entry.node
@@ -553,7 +554,7 @@ function Panel.Open(build,source,layout)
 			elseif entry.id=="history" then
 				local choices={};for i=#undo,1,-1 do local saved=undo[i];choices[#choices+1]={id=i,label="State "..i.." | "..#saved.plan.nodes.." points",details={saved.plan.title,#saved.plan.nodes.." points",#saved.avoided.." exclusions"},saved=saved,index=i} end
 				browser.Open("Atlas change history",choices,{action="Restore state",choose=function(choice) remember();draft=copyTable(choice.saved.plan);avoided=copyTable(choice.saved.avoided);syncEditors();refresh() end})
-			elseif entry.id=="clearComparison" then controls.canvas.comparison=nil;controls.help.label="^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect"
+			elseif entry.id=="clearComparison" then controls.canvas.comparison=nil;controls.help.label=compact and "^7Wheel: zoom | Drag: pan" or "^7Wheel: zoom | Drag: pan | Shift-click: desire | Double click: connect"
 			else preferred=controls.canvas.focus;refresh() end
 		end})
 	end)
@@ -582,7 +583,29 @@ function Panel.Open(build,source,layout)
 	for _,key in ipairs({"canvas","strategySummary","search","find","results","mechanic","matchCount","details","allocate","remove","undo","redo","fit","help","avoid","clearAvoid","stats","browse","routes","targets","tools"}) do
 		controls[key].shown=function() return controls.page:GetSelValue()=="Tree" end
 	end
-	for _,key in ipairs({"undo","redo","routes"}) do controls[key].shown=function() return controls.page:GetSelValue()=="Tree" and not grantSteps end end
+	if compact then
+		for _,key in ipairs({"results","details","matchCount","routes","targets","tools"}) do controls[key].shown=false end
+		controls.nodeDetails=button(side,164,124,"Node details",function()
+			local lines={};for _,row in ipairs(controls.details.list) do lines[#lines+1]=StripEscapes(row[1] or "") end
+			main:OpenMessagePopup("Selected Atlas node",table.concat(lines,"\n"))
+		end)
+		controls.nodeDetails.shown=function() return controls.page:GetSelValue()=="Tree" end
+		controls.matchBrowse=button(side+136,164,124,"Search matches",function()
+			local entries={};for _,result in ipairs(controls.results.list) do
+				local node=controls.canvas.tree.nodes[result.val];local details={node.name,node.kind,result.subtitle or ""};for _,stat in ipairs(node.stats) do details[#details+1]=atlas.displayStat(stat) end
+				entries[#entries+1]={id=result.val,label=result.label,details=details}
+			end
+			browser.Open("Atlas search matches",entries,{action="Show on tree",choose=function(entry) controls.results.selFunc(nil,{val=entry.id}) end})
+		end)
+		controls.matchBrowse.enabled=function() return not grantSteps and #controls.results.list>0 end
+		controls.matchBrowse.shown=function() return controls.page:GetSelValue()=="Tree" end
+		controls.more=button(280,height-86,68,"More",function()
+			local entries={{id="routes",label="Compare routes"},{id="targets",label="Targets"},{id="tools",label="Plan tools"}}
+			browser.Open("Atlas tools",entries,{action="Open",closeOnChoose=false,canChoose=function(entry) return controls[entry.id]:IsEnabled() end,choose=function(entry) main:ClosePopup();controls[entry.id].onClick() end})
+		end)
+		controls.more.shown=function() return controls.page:GetSelValue()=="Tree" and not grantSteps end
+	end
+	for _,key in ipairs({"undo","redo","routes"}) do controls[key].shown=function() return controls.page:GetSelValue()=="Tree" and not grantSteps and (key~="routes" or not compact) end end
 	for _,key in ipairs({"grantPrevious","grantNext","grantExit"}) do controls[key].shown=function() return controls.page:GetSelValue()=="Tree" and grantSteps~=nil end end
 	controls.grantPrevious.enabled=function() return grantSteps and grantIndex>1 end
 	controls.grantNext.enabled=function() return grantSteps and grantIndex<#grantSteps end

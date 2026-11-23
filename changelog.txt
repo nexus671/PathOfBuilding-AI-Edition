@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1236][2026/11/23]
+
+* Fit Atlas tree controls in smaller windows while keeping search and planning tools available.
+
 VERSION[2.68.1-ai.preview1235][2026/11/23]
 
 * Preserve damaged planning data, improve bundle recovery, and fit build reviews in small windows.

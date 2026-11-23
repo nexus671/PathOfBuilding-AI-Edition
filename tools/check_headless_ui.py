@@ -91,6 +91,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_global_crafting_item_ui.lua")
     sources.append(ROOT / "tools/test_planning_bundle_errors.lua")
     sources.append(ROOT / "tools/test_filter_compact_ui.lua")
+    sources.append(ROOT / "tools/test_atlas_compact_ui.lua")
     sources.append(ROOT / "tools/test_beast_max_sockets.lua")
     sources.append(ROOT / "tools/test_beast_max_sockets_ui.lua")
     sources.append(ROOT / "tools/test_unique_beast_sockets.lua")
@@ -314,6 +315,10 @@ def main():
                                     env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-compact-controls.log").write_text(compact_filter.stdout)
     assert compact_filter.returncode == 0, compact_filter.stdout
+    compact_atlas = subprocess.run(lua_command + ["../tools/test_atlas_compact_ui.lua", str(frames)], cwd=ROOT / "src",
+                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "atlas-compact-controls.log").write_text(compact_atlas.stdout)
+    assert compact_atlas.returncode == 0, compact_atlas.stdout
     bundle_errors = subprocess.run(lua_command + ["../tools/test_planning_bundle_errors.lua", str(frames)], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "planning-bundle-errors.log").write_text(bundle_errors.stdout)
