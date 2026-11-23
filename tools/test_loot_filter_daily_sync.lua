@@ -631,6 +631,42 @@ assert(not pcall(profiles.verifiedOutput,id))
 print("Account publication can only read the latest verified, unchanged local output")
 
 
+-- A successful-looking but severely incomplete feed must keep the last
+-- verified file and its publication record.
+local coverageTarget = dir.."/coverage-target.filter"
+write(coverageTarget,cardBaseline)
+local coverageProfile = profiles.createProfile("Coverage fixture")
+profiles.configure(coverageTarget,baseline,"Covens",{profileId=coverageProfile,hour=0,targetValue=1,protectionFile=protections})
+local exchangeClock, originalClock, extra = now, os.time, 23
+os.time = function() return exchangeClock end
+local codec = require("dkjson")
+launch.DownloadPage = function(_,url,callback)
+	local body = url:match("&type=DivinationCard$") and cardBody or commodityBody
+	if url:match("&type=Currency$") then
+		local data = assert(codec.decode(body))
+		for index=1,extra do
+			local id = "fixture-"..index
+			data.items[#data.items+1] = {id=id,name="Fixture currency "..index}
+			data.lines[#data.lines+1] = {id=id,primaryValue=0.21,volumePrimaryValue=1000}
+		end
+		body = codec.encode(data)
+	end
+	callback({header="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",exchangeClock).."\r\nAge: 5\r\n\r\n",body=body})
+end
+profiles.tick(exchangeClock,true,false,coverageProfile)
+exchangeClock = exchangeClock+86400
+profiles.tick(exchangeClock,true,false,coverageProfile)
+local verifiedCoverage = profiles.configuration(coverageProfile)
+assert(verifiedCoverage.lastSuccess==exchangeClock and #verifiedCoverage.priceHistory==2)
+local coverageBytes = read(coverageTarget)
+extra, exchangeClock = 4, exchangeClock+86400
+profiles.tick(exchangeClock,true,false,coverageProfile)
+os.time = originalClock
+local incomplete = profiles.configuration(coverageProfile)
+assert(incomplete.lastSuccess==verifiedCoverage.lastSuccess and #incomplete.priceHistory==2 and read(coverageTarget)==coverageBytes)
+assert(incomplete.lastFailure and incomplete.lastFailure.message:find("Currency feed has fewer than a quarter",1,true))
+print("A severe loss of exchange coverage retains the last verified output")
+
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.
 local controls, manualReview, exported
