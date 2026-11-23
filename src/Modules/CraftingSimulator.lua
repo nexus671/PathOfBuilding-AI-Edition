@@ -791,7 +791,7 @@ function M.validateRecipe(recipe)
 				local target=value.minValue or value.maxValue;integer(target,-100000,100000,"unique implicit roll")
 			elseif key == "uniqueModifier" or key == "uniqueModifiers" then
 				local goals=key=="uniqueModifier" and {value} or value
-				assert(recipe.rarity=="UNIQUE" and type(goals)=="table" and #goals>=1 and #goals<=12,"Choose up to twelve unique modifier targets on a unique recipe")
+				assert((recipe.rarity=="UNIQUE" or requirements.uniqueName) and type(goals)=="table" and #goals>=1 and #goals<=12,"Choose up to twelve unique modifier targets on a unique recipe")
 				local count=0;for index in pairs(goals) do assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=#goals,"Invalid unique modifier target list");count=count+1 end
 				assert(count==#goals,"Invalid unique modifier target list")
 				for _,goal in ipairs(goals) do
@@ -1031,7 +1031,13 @@ function M.simulate(raw,recipe,options)
 	end
 	if mayTransform then
 		local function checkUniqueRequirements(requirements)
-			for key in pairs(requirements or {}) do assert(key=="corrupted" or key=="twiceCorrupted" or key=="mirrored" or key=="uniqueName","This property target cannot yet be checked for a transformed unique jewel: "..key) end
+			requirements=requirements or {}
+			for key in pairs(requirements) do assert(key=="corrupted" or key=="twiceCorrupted" or key=="mirrored" or key=="uniqueName" or key=="uniqueModifier" or key=="uniqueModifiers","This property target cannot yet be checked for a transformed unique jewel: "..key) end
+			if requirements.uniqueModifier or requirements.uniqueModifiers then
+				assert(requirements.uniqueName,"Choose a specific unique jewel before setting its roll target")
+				local jewel=require("Modules.CraftingJewelCorruption");local item=jewel.item(model.item.baseName,requirements.uniqueName,model.item.itemLevel,104729)
+				jewel.matchesRolls(item,requirements)
+			end
 		end
 		if recipe.rarity~="RARE" and recipe.rarity~="MAGIC" then checkUniqueRequirements(recipe.requirements) end
 		for _,step in ipairs(recipe.steps) do checkUniqueRequirements(step.untilRequirements) end
@@ -1202,7 +1208,13 @@ function M.catalog(raw,query,limit)
 	local uniqueCandidates=require("Modules.CraftingJewelCorruption").candidates(model.item.baseName)
 	if #uniqueCandidates>0 then
 		result.uniqueCorruption={names={},note="Bundled modeled candidates; actual eligibility and selection weights are unverified."}
-		for _,candidate in ipairs(uniqueCandidates) do result.uniqueCorruption.names[#result.uniqueCorruption.names+1]=candidate.title end
+		for _,candidate in ipairs(uniqueCandidates) do
+			result.uniqueCorruption.names[#result.uniqueCorruption.names+1]=candidate.title
+			if query==candidate.title:lower() then
+				local jewel=require("Modules.CraftingJewelCorruption");local item=jewel.item(model.item.baseName,candidate.title,model.item.itemLevel,104729)
+				result.uniqueCorruption.rollTargets=jewel.rollOptions(item)
+			end
+		end
 	end
 	for _,method in ipairs(M.methods) do local warnings=M.actionWarnings({method=method},model);if #warnings>0 then result.methodWarnings[method]=warnings end end
 	for _,entry in ipairs(model.mods) do if #result.modifiers < limit and (entry.id.." "..table.concat(entry.mod," / ")):lower():find(query,1,true) then result.modifiers[#result.modifiers+1]={id=entry.id,text=table.concat(entry.mod," / "),level=entry.mod.level,type=entry.mod.type,weight=entry.weight,group=entry.mod.group} end end
@@ -1436,10 +1448,17 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
 	if requirements then
 		for key,value in pairs(requirements) do
 			if key=="uniqueName" then if value~=state.uniqueTitle then return false end
+			elseif key=="uniqueModifier" or key=="uniqueModifiers" then
+				-- Evaluated together after the name, independent of table iteration order.
 			elseif key=="corrupted" then if value~=true then return false end
 			elseif key=="twiceCorrupted" then if value~=false then return false end
 			elseif key=="mirrored" then if value~=false then return false end
 			else error("This property target cannot yet be checked for a transformed unique jewel: "..key) end
+		end
+		if requirements.uniqueName and requirements.uniqueName~=state.uniqueTitle then return false end
+		if requirements.uniqueModifier or requirements.uniqueModifiers then
+			local jewel=require("Modules.CraftingJewelCorruption");local item=jewel.item(model.item.baseName,state.uniqueTitle,model.item.itemLevel,state.uniqueSeed)
+			if not jewel.matchesRolls(item,requirements) then return false end
 		end
 	end
 	return true

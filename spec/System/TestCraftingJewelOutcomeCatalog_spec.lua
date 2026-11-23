@@ -74,4 +74,18 @@ describe("Corruption-exclusive jewel outcome catalogue",function()
 		editor=require("Classes.CraftingTargetControl").Open({},saved,nil,function() end)
 		assert.equal("Powerlessness",editor.uniqueName.buf);editor.close:Click();main.popups={}
 	end)
+	it("matches supported rolls on a named transformed unique jewel",function()
+		local sim=require("Modules.CraftingSimulator");local raw="Rarity: NORMAL\nCobalt Jewel\nItem Level: 83";local model=sim.model(raw)
+		local state={origin=model.initial.origin,rarity="UNIQUE",corrupted=true,affixes={},uniqueTitle="Brute Force Solution",uniqueSeed=123}
+		local goal={uniqueName=state.uniqueTitle,uniqueModifier={line="+(16-24) to Intelligence",minValue=16}}
+		assert.is_true(sim.matches(state,{},"UNIQUE",model,goal));goal.uniqueModifier.minValue=24;assert.is_false(sim.matches(state,{},"UNIQUE",model,goal))
+		local other=copyTable(state);other.uniqueTitle="Fertile Mind";assert.is_false(sim.matches(other,{},"UNIQUE",model,goal))
+		local inspection=sim.catalog(raw,"brute force solution",20);assert.equal("+(16-24) to Intelligence",inspection.uniqueCorruption.rollTargets[1].line)
+		goal.uniqueModifier.minValue=20;local recipe={steps={{method="vaal"}},targets={},rarity="UNIQUE",requirements=goal};local run=sim.simulate(raw,recipe,{trials=1000,maxActions=1,seed=321,retainSuccesses=10})
+		assert.is_true(run.successes>0);for _,entry in ipairs(run.retainedSuccesses) do assert.is_true(sim.matches(entry.state,{},"UNIQUE",model,goal)) end
+		goal.uniqueModifier.minValue=25;assert.has_error(function() sim.simulate(raw,recipe,{trials=1,maxActions=1}) end)
+		goal.uniqueModifier=nil;goal.uniqueModifiers={{line="+(16-24) to Intelligence",minValue=24},{line="unsupported modifier",minValue=1}};assert.has_error(function() sim.simulate(raw,recipe,{trials=1,maxActions=1}) end)
+		goal.uniqueModifiers=nil;goal.uniqueModifier={line="+(16-24) to Intelligence",minValue=24}
+		goal.uniqueModifier.minValue=24;goal.uniqueName=nil;assert.has_error(function() sim.simulate(raw,recipe,{trials=1,maxActions=1}) end)
+	end)
 end)
