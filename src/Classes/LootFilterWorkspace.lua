@@ -37,6 +37,7 @@ function M.vendorLabel(sample)
 	if type(sample.SocketGroup)=="string" then for group in sample.SocketGroup:gmatch("%S+") do
 		if group:find("R",1,true) and group:find("G",1,true) and group:find("B",1,true) then return "3 linked colours" end
 	end end
+	if sample.Class=="Skill Gems" and require("Modules.LootFilterCampaign").isVaalGem(sample.BaseType) then return "Vaal gem" end
 	if (sample.Class=="Skill Gems" or sample.Class=="Support Gems") and quality and quality>0 then return "Quality gem" end
 	if quality and quality>0 then
 		if sample.Class=="Tinctures" then return "Quality tincture" end

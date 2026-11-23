@@ -39,13 +39,13 @@ describe("Visual filter catalogue",function()
 	end)
 	it("compares explicit vendor-recipe examples at the selected levels",function()
 		local profile=filters.profile("vendor-scenes","Vendor scenes");local scene=library.scene(profile,build,"Vendor recipes",0,65,72)
-		assert.equal(19,#scene);for _,item in ipairs(scene) do assert.equal(65,item.AreaLevel);assert.equal(72,item.ItemLevel) end
+		assert.equal(20,#scene);for _,item in ipairs(scene) do assert.equal(65,item.AreaLevel);assert.equal(72,item.ItemLevel) end
 		local function matches(condition,item) return parser.simulate(parser.parse("Hide\n "..condition.."\nShow"),item).action end
 		assert.equal("Hide",matches("SocketGroup RGB",scene[1]));assert.equal("Hide",matches("Sockets 6",scene[2]));assert.equal("Hide",matches("LinkedSockets 6",scene[3]))
 		assert.equal("Hide",matches("Quality >= 1",scene[4]));assert.equal("Hide",matches("Rarity Rare\n Identified False\n ItemLevel >= 60",scene[5]))
 		local rotated=library.scene(profile,build,"Vendor recipes",1,65,72);assert.equal(scene[2].BaseType,rotated[1].BaseType)
-		local page=filters.simulateScene(profile,"Vendor recipes",0,65,72,0,10);assert.equal(19,page.total);assert.equal("Iron Hat",page.results[1].sample.BaseType)
-		local second=filters.simulateScene(profile,"Vendor recipes",0,65,72,10,10);assert.equal(9,#second.results);assert.equal("Prismatic Tincture",second.results[5].sample.BaseType)
+		local page=filters.simulateScene(profile,"Vendor recipes",0,65,72,0,10);assert.equal(20,page.total);assert.equal("Iron Hat",page.results[1].sample.BaseType)
+		local second=filters.simulateScene(profile,"Vendor recipes",0,65,72,10,10);assert.equal(10,#second.results);assert.equal("Prismatic Tincture",second.results[5].sample.BaseType)
 		for i,rarity in ipairs({"Normal","Magic","Rare","Unique"}) do assert.equal("Jade Amulet",scene[15+i].BaseType);assert.equal(rarity,scene[15+i].Rarity) end
 		assert.is_true(scene[16].Identified);assert.is_nil(scene[19].UnidentifiedItemTier)
 		local label=require("Classes.LootFilterWorkspace").vendorLabel
@@ -53,6 +53,7 @@ describe("Visual filter catalogue",function()
 		assert.equal("Quality weapon",label(scene[11]));assert.equal("Quality armour",label(scene[12]))
 		assert.equal("Quality flask",label(scene[13]));assert.equal("Quality flask",label(scene[14]));assert.equal("Quality tincture",label(scene[15]))
 		for i=13,15 do assert.equal("Hide",matches('Class == "Life Flasks" "Utility Flasks" "Tinctures"\n Quality >= 1',scene[i])) end
+		assert.equal("Vaal Arc",scene[20].BaseType);assert.equal("Vaal gem",label(scene[20]));assert.is_nil(label({Class="Skill Gems",BaseType="Vaal Fiction"}))
 		assert.is_nil(label({SocketGroup="R G B"}))
 	end)
 	it("shows the identifying properties of a vendor-recipe sample",function()

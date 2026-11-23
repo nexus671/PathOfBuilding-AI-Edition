@@ -440,6 +440,7 @@ local vendorExamples={
 	{"Jade Amulet","Amulets","Magic"},
 	{"Jade Amulet","Amulets","Rare"},
 	{"Jade Amulet","Amulets","Unique"},
+	{"Vaal Arc","Skill Gems","Normal",{Corrupted=true}},
 }
 -- Use exact names from NeverSink's pinned high-emphasis currency blocks. This
 -- is a snapshot of filter styling, not a price feed or a drop distribution.
