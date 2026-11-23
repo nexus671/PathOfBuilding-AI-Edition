@@ -42,6 +42,7 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 					local before, after = parser.simulate(earlier, sample), parser.simulate(parsed, sample)
 					change.samples[#change.samples+1] = {
 						action=after.action, line=after.line, before=before.action, beforeLine=before.line,
+						beforeMissing=parser.safeMissingProperties(before.missingProperties), afterMissing=parser.safeMissingProperties(after.missingProperties),
 						class=sample.Class, count=sample.StackSize, area=area,
 					}
 					remaining = remaining-1

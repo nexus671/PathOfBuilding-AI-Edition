@@ -97,6 +97,15 @@ assert(diff.verifiedProtection and diff.changeCount==1 and #diff.changes==1)
 assert(diff.changes[1].item=="Orb of Alteration" and diff.changes[1].sample.action=="Show")
 local diffPayload=require("dkjson").encode(diff)
 assert(not diffPayload:find("target.filter",1,true) and not diffPayload:find("protect.json",1,true))
+local configPath=dir.."/LootFilterDailySync.json";local originalConfig=read(configPath);local json=require("dkjson");local edited=json.decode(originalConfig)
+edited.review.changes[1].sample.before="Unknown";edited.review.changes[1].sample.action="Unknown"
+edited.review.changes[1].sample.beforeMissing={"ItemLevel","C:/private/filter","ItemLevel"};edited.review.changes[1].sample.afterMissing={"DropLevel","UntrustedPrivateName"}
+edited.review.changes[1].samples={edited.review.changes[1].sample,{area=60,class='Stackable Currency',count=5,before='Hide',action='Unknown',afterMissing={'ItemLevel'}}}
+for i=3,25 do edited.review.changes[1].samples[i]={area=83,class='Stackable Currency',count=i,before='Hide',action='Show'} end
+write(configPath,assert(json.encode(edited)));local publicChange=assert(sync.publicDiff(now+1)).changes[1];local redacted=publicChange.sample
+assert(#redacted.beforeMissing==1 and redacted.beforeMissing[1]=="ItemLevel" and #redacted.afterMissing==1 and redacted.afterMissing[1]=="DropLevel")
+assert(#publicChange.samples==20 and publicChange.samplesTruncated and publicChange.samples[2].area==60 and publicChange.samples[2].afterMissing[1]=='ItemLevel')
+local redactedText=json.encode(publicChange);assert(not redactedText:find("private",1,true) and not redactedText:find("Untrusted",1,true));write(configPath,originalConfig)
 sync.tick(now+60)
 assert(calls==9)
 sync.tick(now+60,true)

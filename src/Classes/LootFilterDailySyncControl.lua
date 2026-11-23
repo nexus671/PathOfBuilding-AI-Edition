@@ -161,6 +161,10 @@ function M.Open(profileId, profileName)
 				details[#details+1] = string.format("%s, %d as %s: %s%s", area, sample.count, sample.class,
 					sample.before and (sample.before.." → "..sample.action) or sample.action,
 					sample.line and (" at line "..sample.line) or "")
+				for _,phase in ipairs({{"Before",sample.before,sample.beforeMissing},{"After",sample.action,sample.afterMissing}}) do if phase[2]=="Unknown" then
+					local missing=require("Modules.LootFilterParser").safeMissingProperties(phase[3])
+					details[#details+1]=phase[1]..(missing and (": needs "..table.concat(missing,", ").." for this example.") or ": the preview cannot resolve a condition or included file.")
+				end end
 			end
 			if #samples == 0 then details[#details+1] = "Sample result unavailable." end
 			entries[#entries+1] = {id="change-"..i,label=change.name,category="Changed",details=details}

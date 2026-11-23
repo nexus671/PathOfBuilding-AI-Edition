@@ -253,6 +253,15 @@ local function finiteNumber(value)
 	if type(value) == "number" and value == value and value > -math.huge and value < math.huge then return value end
 end
 
+local function publicImpactSample(sample)
+	if type(sample)~="table" then return nil end
+	local parser=require("Modules.LootFilterParser")
+	return {action=safeText(sample.action,20),class=safeText(sample.class,100),count=finiteNumber(sample.count),
+		line=finiteNumber(sample.line),before=safeText(sample.before,20),beforeLine=finiteNumber(sample.beforeLine),area=finiteNumber(sample.area),
+		beforeMissing=sample.before=="Unknown" and parser.safeMissingProperties(sample.beforeMissing) or nil,
+		afterMissing=sample.action=="Unknown" and parser.safeMissingProperties(sample.afterMissing) or nil}
+end
+
 -- Share the verified cutoff decisions, not filter source, target paths or
 -- protected drop definitions. These decisions are saved after publication.
 function M.publicDiff(now, id)
@@ -266,16 +275,15 @@ function M.publicDiff(now, id)
 		if index > 250 then break end
 		local item = type(change) == "table" and safeText(change.name,200)
 		if item and finiteNumber(change.old) and finiteNumber(change.cutoff) then
-			local sample = type(change.sample) == "table" and change.sample
+			local sample = publicImpactSample(change.sample)
+			local samples={};if type(change.samples)=="table" then for index,entry in ipairs(change.samples) do if index>20 then break end;samples[#samples+1]=publicImpactSample(entry) end end
 			changes[#changes+1] = {
 				item=item, source=safeText(change.source,40), previousCutoff=change.old,
 				proposedCutoff=change.cutoff, quotedPrice=finiteNumber(change.currentPrice or change.price),
 				priceUsed=finiteNumber(change.price), volume=finiteNumber(change.volume),
 				liquidityUnit=safeText(change.liquidityUnit,40),
 				mapOnly=change.maps==true, scope=safeText(change.scope,20),
-				sample=sample and {action=safeText(sample.action,20),class=safeText(sample.class,100),
-					count=finiteNumber(sample.count),line=finiteNumber(sample.line),before=safeText(sample.before,20),
-					area=finiteNumber(sample.area)} or nil,
+				sample=sample,samples=#samples>0 and samples or nil,samplesTruncated=type(change.samples)=="table" and #change.samples>20 or nil,
 			}
 		end
 	end

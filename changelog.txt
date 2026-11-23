@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1205][2026/11/23]
+
+* Explain uncertain filter price-impact examples in reviews and AI results.
+
 VERSION[2.68.1-ai.preview1204][2026/11/23]
 
 * Show uncertain item levels in filter price-impact previews.
