@@ -1,7 +1,7 @@
 VERSION[2.68.1-ai.preview1235][2026/11/23]
 
 * Preserve damaged planning data, improve bundle recovery, and fit build reviews in small windows.
-* Keep loot-filter search text visible while editing.
+* Keep loot-filter search text visible and planning navigation accessible in smaller windows.
 
 VERSION[2.68.1-ai.preview1234][2026/11/23]
 

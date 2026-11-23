@@ -298,8 +298,10 @@ function M.Open(build,source,layout,controller)
 			end)
 		else keep() end
 	end)
-	for i,name in ipairs({"Overview","Customize","Tiers","Simulate","Style","Modules"}) do local control=button(c,"view"..name,16+(i-1)*126,76,118,name,function() page=name;reopen() end);control.locked=page==name end
-	button(c,"manage",w-172,76,156,"Profile tools",function()
+	local manageWidth=math.min(156,math.max(120,math.floor(w*0.18)))
+	local tabWidth=math.min(118,math.floor((w-32-manageWidth-48)/6))
+	for i,name in ipairs({"Overview","Customize","Tiers","Simulate","Style","Modules"}) do local control=button(c,"view"..name,16+(i-1)*(tabWidth+8),76,tabWidth,name,function() page=name;reopen() end);control.locked=page==name end
+	button(c,"manage",w-16-manageWidth,76,manageWidth,"Profile tools",function()
 		local choices={
 			{id="new",label="Create profile",details={"Start from a pinned NeverSink preset."}},
 			{id="duplicate",label="Duplicate profile",details={"Keep a separate version for another character or stage."}},
