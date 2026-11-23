@@ -16,9 +16,11 @@ local function u16(n) return string.char(band(n,255),band(rshift(n,8),255)) end
 local function u32(n) return u16(n)..u16(rshift(n,16)) end
 local M={}
 local function archive(files)
-	local output,central={},{};local offset=0
+	local output,central,seen={},{},{};local offset=0
+	assert(#files<=65535,"Too many ZIP entries")
 	for _,file in ipairs(files) do
 		local name,body=file.name,file.text
+		assert(not seen[name:lower()],"ZIP filenames collide");seen[name:lower()]=true
 		local size=#body;local crc=crc32(body)
 		local metadata=u16(20)..u16(0x0800)..u16(0)..u16(0)..u16(0)..u32(crc)..u32(size)..u32(size)..u16(#name)..u16(0)
 		local localHeader="PK\003\004"..metadata..name
@@ -38,9 +40,8 @@ function M.variants(profile,filename)
 end
 -- Explicit export only: include referenced local files in the ZIP and rewrite
 -- paths to safe flat filenames. Never silently omit a missing optional sound.
-function M.soundBundle(profile,filename,raw,sourceDirectory)
- local names=require("Modules.LootFilterFileNames");names.stem(profile,filename)
- assert(type(raw)=="string" and type(sourceDirectory)=="string" and not sourceDirectory:find("[%c]"),"Invalid filter or sound directory")
+local function soundBundle(filters,sourceDirectory)
+ assert(type(filters)=="table" and type(sourceDirectory)=="string" and not sourceDirectory:find("[%c]"),"Invalid filter or sound directory")
  assert(not sourceDirectory:match("^[/\\][/\\]"),"Network sound folders are not supported in a portable bundle")
  local files,byPath,total={}, {},0
  local function sound(path)
@@ -65,8 +66,10 @@ function M.soundBundle(profile,filename,raw,sourceDirectory)
   assert(#files<256,"A sound bundle can contain at most 256 files")
   files[#files+1]={name=target,text=body};byPath[full]=target;return target
  end
+ local rewritten={}
+ for _,filter in ipairs(filters) do
  local lines={};local lineNumber=0
- for line,ending in raw:gmatch("([^\n]*)(\n?)") do
+ for line,ending in filter.text:gmatch("([^\n]*)(\n?)") do
   if line=="" and ending=="" then break end
   lineNumber=lineNumber+1
   assert(not line:match("^%s*Import%s"),"Resolve all filter imports before bundling sounds")
@@ -80,7 +83,19 @@ function M.soundBundle(profile,filename,raw,sourceDirectory)
   end
   lines[#lines+1]=line..ending
  end
- table.insert(files,1,{name=filename,text=table.concat(lines)})
- return archive(files),#files-1
+ rewritten[#rewritten+1]={name=filter.name,text=table.concat(lines)}
+ end
+ local count=#files;for _,file in ipairs(files) do rewritten[#rewritten+1]=file end
+ return archive(rewritten),count
+end
+function M.soundBundle(profile,filename,raw,sourceDirectory)
+ require("Modules.LootFilterFileNames").stem(profile,filename)
+ assert(type(raw)=="string","Invalid filter")
+ return soundBundle({{name=filename,text=raw}},sourceDirectory)
+end
+function M.soundBundleVariants(profile,filename,sourceDirectory)
+ local names=require("Modules.LootFilterFileNames");names.stem(profile,filename)
+ local files={};for _,file in ipairs(require("Modules.LootFilters").variants(profile)) do files[#files+1]={name=names.variant(profile,filename,file.strictness),text=file.text} end
+ return soundBundle(files,sourceDirectory)
 end
 return M

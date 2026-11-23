@@ -323,12 +323,18 @@ function M.Export(profile,raw,report)
 			return DrawStringWidth(popup.source.planningTextSize or 16,"VAR",value)>560 and "Long folder path (click to view or edit)" or value
 		end
 		ui.description(popup,"note",16,120,568,45,{"Extract all files together into the game's filter folder. Missing sounds or remaining imports stop export."},14)
-		button(popup,"save",16,180,180,"Save sound bundle",function() attempt(function()
-			local stem=names.stem(profile,c.filename.buf);local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a destination directory")
-			local target=directory.."/"..stem.."-sounds.zip";local existing=io.open(target,"rb");if existing then existing:close();error("File exists; choose another filename.") end
-			local archive,count=require("Modules.LootFilterZip").soundBundle(profile,c.filename.buf,raw,popup.source.buf)
-			MakeDir(directory);require("Modules.LootFilterExports").writeNew(target,archive);main:ClosePopup();notify("Filter and sounds exported",count.." sound files in "..target)
-		end) end)
+		local function saveBundle(all)
+			attempt(function()
+				local stem=names.stem(profile,c.filename.buf);local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a destination directory")
+				local target=directory.."/"..stem..(all and "-strictnesses-sounds.zip" or "-sounds.zip");local existing=io.open(target,"rb");if existing then existing:close();error("File exists; choose another filename.") end
+				local zip=require("Modules.LootFilterZip");local archive,count
+				if all then archive,count=zip.soundBundleVariants(profile,c.filename.buf,popup.source.buf) else archive,count=zip.soundBundle(profile,c.filename.buf,raw,popup.source.buf) end
+				MakeDir(directory);require("Modules.LootFilterExports").writeNew(target,archive);main:ClosePopup();notify("Filter and sounds exported",count.." sound files in "..target)
+			end)
+		end
+		button(popup,"save",16,180,180,"Save sound bundle",function() saveBundle(false) end)
+		button(popup,"saveAllSounds",210,180,220,"Save all + sounds",function() saveBundle(true) end)
+		popup.saveAllSounds.enabled=not profile.template;popup.saveAllSounds.tooltipText="Includes all seven preset strictnesses. Imported filters have no preset variants."
 		button(popup,"close",468,180,116,"Cancel",function() main:ClosePopup() end);ui.style(popup,{save=true});main:OpenPopup(600,224,"Portable filter and sounds",popup,nil,nil,"close")
 	end)
 	c.soundZip.tooltipText="Package this filter and local sounds together. Existing archives are never replaced."

@@ -50,7 +50,7 @@ This is a comparison, not a claim of FilterBlade parity. Its website, customizer
 | Automatic uploads | Not implemented | Requires a separately operated update service |
 | Frequent economy refresh | Not connected | FilterBlade's hosted economy feed is not bundled |
 | Single-filter download | Copy/export `.filter`, preserving existing files; optional ZIP includes local custom sounds with rewritten references | In-game sound-bundle validation and optional replacement workflow |
-| Export all strictnesses | Seven files or one ZIP, including personal edits and appearance, with collision checks | Imported filters have no preset variants |
+| Export all strictnesses | Seven files or one ZIP, including personal edits and appearance, with collision checks; a sound bundle can include all seven and shared local sounds | Imported filters have no preset variants; sound paths need in-game validation |
 | Validation | Native parser checks and account-server validation when authorised | Broader syntax coverage and live game validation |
 | Mobile layout | Desktop layouts tested at 960, 1024 and 1280 widths | Native PoB is not a mobile web app |
 

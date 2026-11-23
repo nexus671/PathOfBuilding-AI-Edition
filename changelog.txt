@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1179][2026/11/23]
+
+* Bundle all seven loot-filter strictnesses with their custom sounds.
+
 VERSION[2.68.1-ai.preview1178][2026/11/23]
 
 * Keep long sound-folder paths readable in the bundle dialog.

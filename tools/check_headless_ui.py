@@ -372,7 +372,17 @@ def main():
             text = z.read(filter_name).decode()
             assert f'"{wav};{ogg}" 200 # note' in text and f'CustomAlertSoundOptional "{wav}"' in text
         (frames / name).unlink()
-    for name in ("bundle-test.wav", "bundle-test.ogg"):
+    for name, stem in (("sound-variants-check.zip", "audio"), ("audio-all-strictnesses-sounds.zip", "audio-all")):
+        with zipfile.ZipFile(frames / name) as z:
+            assert z.testzip() is None and len(z.namelist()) == 9, "Invalid strictness sound bundle"
+            wav = next(n for n in z.namelist() if n.endswith(".wav"))
+            ogg = next(n for n in z.namelist() if n.endswith(".ogg"))
+            assert z.read(wav) == b"RIFF-test-sound" and z.read(ogg) == b"OggS-test-sound"
+            for level in range(7):
+                text = z.read(f"{stem}-{level}.filter").decode()
+                assert f'"{wav};{ogg}" 200' in text, "Strictness lost its sound reference"
+        (frames / name).unlink()
+    for name in ("bundle-test.wav", "bundle-test.ogg", "sound-as-filter.filter"):
         (frames / name).unlink()
     assert source_hashes() == hashes, "Source files changed during UI capture; repeat against stable sources"
     for width in (1280, 1024, 960):
