@@ -68,9 +68,16 @@ local function put(path, value)
 	local temp = path .. ".tmp"
 	local file = assert(io.open(temp, "wb"))
 	local written, why = file:write(value)
-	local closed = file:close()
-	assert(written and closed, "Could not write sync data: " .. tostring(why))
-	platform().replace(temp, path)
+	local closed, closeError = file:close()
+	if not written or not closed then
+		os.remove(temp)
+		error("Could not write sync data: " .. tostring(why or closeError), 0)
+	end
+	local replaced, replaceError = pcall(platform().replace, temp, path)
+	if not replaced then
+		os.remove(temp)
+		error(replaceError, 0)
+	end
 end
 
 local function settingsPath(id)

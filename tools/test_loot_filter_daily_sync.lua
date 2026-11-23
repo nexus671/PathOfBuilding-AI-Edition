@@ -250,6 +250,28 @@ assert(not sync.busy and sync.status:find("settings changed",1,true),sync.status
 assert(read(target)==cardBaseline and sync.configuration().paused)
 secondWindow.pause(false)
 
+-- Inject a partial write at the same point a full volume can reject a
+-- buffered write. The real target and its recovery journal stay usable.
+local openFile = io.open
+local injected = false
+io.open = function(path, mode)
+	local file, why = openFile(path, mode)
+	if path ~= target .. ".tmp" or mode ~= "wb" or not file then return file, why end
+	injected = true
+	return {
+		write=function(_, value)
+			assert(file:write(value:sub(1,13)))
+			return nil,"No space left on device"
+		end,
+		close=function() return file:close() end,
+	}
+end
+launch.DownloadPage = function(_, url, callback) reply(url,callback) end
+sync.tick(now,true)
+io.open = openFile
+assert(injected and read(target)==cardBaseline and sync.status:find("No space left",1,true),sync.status)
+assert(sync.configuration().pending and not io.open(target..".tmp","rb"))
+
 -- A sharing violation must keep the original and leave a usable journal.
 -- The handle permits readers but denies the atomic replacement.
 local ffi = require("ffi")
@@ -264,6 +286,7 @@ launch.DownloadPage = function(_, url, callback) reply(url,callback) end
 sync.tick(now,true)
 local closed = kernel.CloseHandle(locked)
 assert(closed~=0 and sync.status:find("Check access and file locks",1,true),sync.status)
+assert(not io.open(target..".tmp","rb"))
 local pending = sync.configuration()
 assert(read(target)==cardBaseline and pending.current and pending.pending and pending.current~=pending.pending)
 secondWindow.tick(now,true)
