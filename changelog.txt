@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1185][2026/11/23]
+
+* Explain crafting target and simulation limits before an action is attempted.
+
 VERSION[2.68.1-ai.preview1184][2026/11/23]
 
 * Validate recorded map modifiers before estimating rerolls.

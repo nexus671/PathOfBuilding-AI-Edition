@@ -802,7 +802,13 @@ function Panel.Open(build,project,layout)
 			controls.trials:SetText(tostring(request.options.trials),true);main:ClosePopup();startSimulation(request)
 		end)
 		popup.moreTrials.enabled=function() return request~=nil and not tasks.job and result.trials<math.min(2000,math.floor(20000/request.options.maxActions)) end
-		popup.moreTrials.tooltipText=request and "Repeat this captured recipe, item, targets, seed and prices with more trials. Only the trial count changes." or "Run a fresh simulation to capture the setup for this older result."
+		popup.moreTrials.tooltipText=function()
+			if not request then return "Run a fresh simulation to capture the setup for this older result." end
+			if tasks.job then return "Finish or cancel the running calculation before starting more trials." end
+			local limit=math.min(2000,math.floor(20000/request.options.maxActions))
+			if result.trials>=limit then return limit==2000 and "This setup has reached the maximum of 2,000 trials." or "This setup has reached its "..limit.."-trial limit. Reduce the action budget in a new simulation to allow more trials." end
+			return "Repeat this captured recipe, item, targets, seed and prices with more trials. Only the trial count changes."
+		end
 		ui.style(popup,{moreTrials=true})
 		main:OpenPopup(860,resultHeight,"Crafting simulation results",popup,nil,nil,"close")
 	end)
@@ -837,6 +843,7 @@ function Panel.Open(build,project,layout)
 	end)
 	controls.resultSummary=new("TextListControl"):TextListControl({"TOPLEFT",nil,"TOPLEFT"},{16,398,416,height-464},nil,rows({"Run an action or a recipe to inspect its results."}))
 	controls.undo.enabled=function() return #history>0 end
+	controls.undo.tooltipText=function() return #history==0 and "Apply a crafting action first; there is nothing to undo." or "Undo the most recent crafting action." end
 	targetReason=function(saved)
 		local recipe=saved and draft.nativeRecipe
 		local current=recipe and (recipe.initialState or model.initial) or state
@@ -935,6 +942,7 @@ function Panel.Open(build,project,layout)
 	controls.preview.tooltipText=function() return state.destroyed and "This item was destroyed. Undo that action before previewing it." or state.veil and "Resolve the veiled modifier before previewing this item." or state.socketLayoutUnknown and "Set the unknown socket layout before previewing this item in a build." or "Preview this item against the current build." end
 	controls.configure.label=function() local method=controls.method:GetSelValueByKey("val");return method=="fossil" and "Configure fossil combination" or method=="gwennen" and "Configure Gwennen pair" or method=="rog_reroll" and "Configure Rog offer" or (method=="beast_prefix_suffix" or method=="beast_suffix_prefix") and "Set beast level" or "Configure donor item" end
 	controls.configure.enabled=function() local method=controls.method:GetSelValueByKey("val");return method=="beast_prefix_suffix" or method=="beast_suffix_prefix" or method=="gwennen" or method=="rog_reroll" or method=="fossil" or method=="awakener" or method=="recombine" or method=="recombine_predictable" end
+	controls.configure.tooltipText=function() return controls.configure:IsEnabled() and "Configure the selected craft before applying or simulating it." or "The selected craft does not need additional settings." end
 	controls.page=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,18,416,28},{"Emulate item","Target conditions","Simulate recipe","Craft settings"})
 	controls.page.selFunc=function() refresh() end
 	button(controls,"settings",16,380,200,"Find currencies",palette)
@@ -1113,6 +1121,13 @@ function Panel.Open(build,project,layout)
 	local affixControls={}
 	for _,key in ipairs({"affixHeading","affixFacts","affixAction","affixUseAction","affixBack","affixTarget"}) do controls[key].shown=function() return controls.page:GetSelValue()=="Emulate item" and inspectedId~=nil end;affixControls[key]=controls[key] end
 	controls.affixUseAction.enabled=function() local method=controls.affixAction:GetSelValueByKey("val");return method and workbench.available(method,state,model) end
+	controls.affixUseAction.tooltipText=function()
+		local method=controls.affixAction:GetSelValueByKey("val");if not method then return "Choose an action for this modifier first." end
+		local available,reason=workbench.available(method,state,model)
+		return available and "Select this action in the currency tray." or reason or "This action is not available for the current item."
+	end
+	controls.affixTarget.enabled=function() return #targets<6 end
+	controls.affixTarget.tooltipText=function() return #targets>=6 and "This plan already has six target groups. Remove one before adding another." or "Add this modifier as a target group." end
 	controls.affixBack.height=28;controls.affixTarget.height=28
 	ui.style(affixControls,{affixTarget=true})
 	for key,control in pairs(controls) do

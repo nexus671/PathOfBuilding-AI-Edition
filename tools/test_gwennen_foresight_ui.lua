@@ -27,6 +27,14 @@ for _,case in ipairs({{method='essence',title='Foreseeing: hypothetical sample'}
  local p={id='review-'..case.method,title='Review',slot='Helmet',startingItem=raw,goals={},steps={},preferredMethod=case.method,nativeRecipe={targets={},initialState=locked}}
  local c=require('Classes.CraftingSimulatorControl').Open(build,p);assert(c.apply:IsEnabled(),case.method..' must be available');ui:click('apply');assert(main.popups[1].title==case.title,case.method..' must be reviewed');ui:frame():write(output..'/960-craft-foresight-'..case.method..'.json');ui:click('close');ui:click('apply');assert(main.popups[1].title==case.title);ui:click('keep');ui:click('undo');ui:click('apply');assert(main.popups[1].title==case.title);ui:click('close');ui:restore();main.popups={}
 end
+for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
+ newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build)
+ local id=sample.state.affixes[1].id;local targets={};for i=1,6 do targets[i]={anyOf={id}} end
+ local p={id='target-limit',title='Target limit',slot='Helmet',startingItem=raw,goals={},steps={},nativeRecipe={targets=targets,initialState=sample.state}}
+ local c=require('Classes.CraftingSimulatorControl').Open(build,p);assert(not c.undo:IsEnabled() and c.undo.tooltipText():find('nothing to undo',1,true));assert(not c.configure:IsEnabled() and c.configure.tooltipText():find('does not need',1,true))
+ c.itemMods.onClick({line={affixId=id}});assert(not c.affixTarget:IsEnabled() and c.affixTarget.tooltipText():find('six target groups',1,true));ui:frame():write(output..'/'..size[1]..'-crafting-target-limit.json');ui:click('close')
+ table.remove(targets);p.nativeRecipe.targets=targets;c=require('Classes.CraftingSimulatorControl').Open(build,p);c.itemMods.onClick({line={affixId=id}});assert(c.affixTarget:IsEnabled() and c.affixTarget.tooltipText():find('Add this modifier',1,true));ui:click('close');ui:restore();main.popups={}
+end
 newBuild();main.popups={};local ui=UI.install({width=960,height=640});ui:bind(build)
 local c=require('Classes.CraftingSimulatorControl').Open(build,{id='lock-action-ui',title='Lock action',slot='Helmet',startingItem=raw,goals={},steps={}})
 ui:click('settings');ui:text('paletteSearch',"Hinekora's Lock");assert(main.popups[1].controls.paletteUse:IsEnabled());ui:frame():write(output..'/960-craft-hinekora-palette.json');ui:click('paletteUse');ui:click('item')

@@ -74,6 +74,17 @@ describe("Native crafting simulation replay",function()
 		main:ClosePopup();newBuild();snapshot.lastSimulationRun=nil;layout.workbench=snapshot;c=panel.Open(build,p,layout)
 		c.distribution:Click();assert.is_false(main.popups[1].controls.moreTrials:IsEnabled())
 	end)
+	it("explains why refinement is unavailable",function()
+		local layout={width=920,height=580,mount=function(w,h,title,controls) main:OpenPopup(w,h,title,controls,nil,nil,"close") end,openProjects=function() main:ClosePopup() end}
+		local c=panel.Open(build,project(),layout);page(c,"Simulate recipe");c.trials:SetText("1");c.budget:SetText("1");c.runRecipe:Click();finish()
+		local snapshot=layout.snapshot();main:ClosePopup();newBuild();snapshot.lastSimulation.trials=2000;snapshot.lastSimulationRun.options.maxActions=1;layout.workbench=snapshot
+		c=panel.Open(build,project(),layout);c.distribution:Click();local more=main.popups[1].controls.moreTrials
+		assert.is_false(more:IsEnabled());assert.matches("maximum of 2,000 trials",more.tooltipText(),1,true)
+		main:ClosePopup();main:ClosePopup();newBuild();snapshot.lastSimulation.trials=20;snapshot.lastSimulationRun.options.maxActions=1000;layout.workbench=snapshot
+		c=panel.Open(build,project(),layout);c.distribution:Click();more=main.popups[1].controls.moreTrials
+		assert.is_false(more:IsEnabled());assert.matches("20-trial limit",more.tooltipText(),1,true);assert.matches("Reduce the action budget",more.tooltipText(),1,true)
+		local job=tasks.start(build,function() return {} end,function() end);assert.matches("running calculation",more.tooltipText(),1,true);assert.equal(job,tasks.job);tasks.cancel()
+	end)
 	it("keeps the captured simulation setup for an explicit rerun after restart",function()
 		local p=project();local c=panel.Open(build,p);page(c,"Simulate recipe")
 		c.trials:SetText("1");c.budget:SetText("1");c.runRecipe:Click();finish()
