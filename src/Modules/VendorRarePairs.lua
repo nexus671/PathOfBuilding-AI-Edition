@@ -92,12 +92,13 @@ function M.reviewSets(items,preference)
   max=math.min(max,two+math.floor(singles/2));local lowSingles=low["One hand"]+low.Shield
   chaosUpperBound=0
   for k=max,1,-1 do
-   local fixed=0;for _,slot in ipairs(setSlots) do fixed=fixed+math.min(low[slot],k*(slot=="Ring" and 2 or 1)) end
+   local fixed=0;for _,slot in ipairs(setSlots) do fixed=fixed+math.min(low[slot],k) end
    local lower=math.max(0,k-math.floor(singles/2));local upper=math.min(k,two)
    -- The weapon bound is piecewise linear; its maximum is at a boundary or
-   -- where either minimum changes branch. Test the adjacent integer points.
-   local candidates={lower,upper,low["Two hand"],k-math.floor(lowSingles/2),k-math.ceil(lowSingles/2)}
-   local best=0;for _,candidate in ipairs(candidates) do local t=math.max(lower,math.min(upper,candidate));best=math.max(best,math.min(t,low["Two hand"])+math.min(2*(k-t),lowSingles)) end
+   -- where either minimum changes branch. At most one low-level item is
+   -- useful per set, even when it has two rings or two one-hand slots.
+   local candidates={lower,upper,low["Two hand"],k-lowSingles}
+   local best=0;for _,candidate in ipairs(candidates) do local t=math.max(lower,math.min(upper,candidate));best=math.max(best,math.min(t,low["Two hand"])+math.min(k-t,lowSingles)) end
    if fixed+best>=k then chaosUpperBound=k;break end
   end
  end

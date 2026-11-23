@@ -84,6 +84,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_beast_max_sockets_ui.lua")
     sources.append(ROOT / "tools/test_unique_beast_sockets.lua")
     sources.append(ROOT / "tools/test_same_name_choice.lua")
+    sources.append(ROOT / "tools/test_vendor_chaos_bound.lua")
     sources.append(ROOT / "tools/test_anoint_sort_ui.lua")
     sources.append(ROOT / "tools/test_timeless_dialog_ui.lua")
     sources.append(ROOT / "tools/test_ai_filter_proposal_ui.lua")
@@ -264,6 +265,10 @@ def main():
                                env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "same-name-choice.log").write_text(same_name.stdout)
     assert same_name.returncode == 0, same_name.stdout
+    chaos_bound = subprocess.run(lua_command + ["../tools/test_vendor_chaos_bound.lua"], cwd=ROOT / "src",
+                                 env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "vendor-chaos-bound.log").write_text(chaos_bound.stdout)
+    assert chaos_bound.returncode == 0, chaos_bound.stdout
     anoint_sort = subprocess.run(lua_command + ["../tools/test_anoint_sort_ui.lua"], cwd=ROOT / "src",
                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "anoint-sort-controls.log").write_text(anoint_sort.stdout)

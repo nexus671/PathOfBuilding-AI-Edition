@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1171" />
+	<Version number="2.68.1-ai.preview1172" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="8bdcb85f4d9f118295d751530ad877e145817f6f" />
+	<File name="changelog.txt" part="default" sha1="11086da66a12473a0db093a70f8243df124ca465" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -3168,7 +3168,7 @@
 	<File name="Data/Atlas/3.30.0c-ruthless.json" part="program" sha1="93ddab4905bcb99e4bbdb9b31193cdee1f19f420" />
 	<File name="Data/Atlas/3.30.0c.json" part="program" sha1="1f1948c184857a627414410890c2b1a62d7a16cf" />
 	<File name="Classes/VendorRarePairsControl.lua" part="program" sha1="8ab4c19951b68324f2132d097a911fad18698742" />
-	<File name="Modules/VendorRarePairs.lua" part="program" sha1="7db74df3b40c7c7c781a8e9611932a8bb9fa98f9" />
+	<File name="Modules/VendorRarePairs.lua" part="program" sha1="96ad32284f46978636ece2d823e71acbf09b8529" />
 	<File name="Classes/VendorRareSetsControl.lua" part="program" sha1="1aeef197d0798c6942c764ab79b19973ee9e4fed" />
 	<File name="Classes/VendorQualitySetsControl.lua" part="program" sha1="c86f4f0193053fa9be2e6ccfff481ce3d8558ab9" />
 	<File name="Modules/VendorQualitySets.lua" part="program" sha1="84b67265d104acc55224197852a0e89c12ec385d" />

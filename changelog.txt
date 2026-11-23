@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1172][2026/11/23]
+
+* Improve maximum Chaos vendor-set estimates for paired weapons and rings.
+
 VERSION[2.68.1-ai.preview1171][2026/11/23]
 
 * Choose Chaos or Exalted priorities in same-name rare reviews.

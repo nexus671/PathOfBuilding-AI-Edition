@@ -49,6 +49,11 @@ describe("Rare vendor set review",function()
   local seen={};for _,group in ipairs(result.groups) do assert.equal("Chaos Orb",group.reward);for _,entry in ipairs(group.items) do assert.is_nil(seen[entry.index]);seen[entry.index]=true end end
   local noAnchor=vendor.reviewSets(kit(80),"chaos");assert.equal(0,noAnchor.maxSetsUpperBound);assert.is_true(noAnchor.maximumProven)
  end)
+ it("does not count two low weapons in one set as two Chaos sets",function()
+  local input=kit(80);for _,raw in ipairs(kit(80)) do input[#input+1]=raw end
+  input[#input+1]=item("One Hand Swords",70);input[#input+1]=item("Shields",70);input[#input+1]=item("Shields",70)
+  local result=vendor.reviewSets(input,"chaos");assert.equal(1,#result.groups);assert.equal(1,result.maxSetsUpperBound);assert.is_true(result.maximumProven)
+ end)
  it("checks the bound against exhaustive modeled weapon layouts",function()
   local classes={"Helmets","Body Armours","Gloves","Boots","Amulets","Belts","Rings","Bows","One Hand Swords","Shields"}
   local seed=137;local function random(n) seed=(seed*48271)%2147483647;return seed%n end
@@ -61,10 +66,10 @@ describe("Rare vendor set review",function()
    local upper=0
    for k=1,4 do
     local possible=true;local low=0
-    for i=1,7 do local need=k*(i==7 and 2 or 1);if counts[i]<need then possible=false end;low=low+math.min(lows[i],need) end
+    for i=1,7 do local need=k*(i==7 and 2 or 1);if counts[i]<need then possible=false end;low=low+math.min(lows[i],k) end
     for two=0,k do
      local paired=2*(k-two)
-     if possible and two<=counts[8] and paired<=counts[9]+counts[10] and low+math.min(two,lows[8])+math.min(paired,lows[9]+lows[10])>=k then upper=math.max(upper,k) end
+     if possible and two<=counts[8] and paired<=counts[9]+counts[10] and low+math.min(two,lows[8])+math.min(k-two,lows[9]+lows[10])>=k then upper=math.max(upper,k) end
     end
    end
    local result=vendor.reviewSets(input,"chaos");assert.equal(upper,result.maxSetsUpperBound);assert.equal(#result.groups==upper,result.maximumProven)
