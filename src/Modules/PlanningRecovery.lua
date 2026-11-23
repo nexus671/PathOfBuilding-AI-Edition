@@ -6,7 +6,7 @@ local kinds={filters=true,atlas=true,crafting=true,uniqueQuality=true}
 local function buildIdentity(build) return (build.dbFileName or "untitled:"..(build.buildName or ""))..":"..GetScriptPath() end
 local function path(build,kind,slot,projectId,hashed)
 	assert(kinds[kind],"Unsupported draft type")
-	if kind=="uniqueQuality" then
+	if kind=="uniqueQuality" or kind=="crafting" and projectId then
 		assert(type(projectId)=="string" and (hashed and #projectId==40 and projectId:match("^[a-f0-9]+$") or not hashed and #projectId<=64 and projectId:match("^[%w%-_]+$")),"Invalid recovery project ID")
 	end
 	if launch.headless and not M.testDirectory then return end
@@ -131,7 +131,7 @@ local function readRecord(build,kind,slot,projectId,hashed)
 	local ok,value=pcall(function()
 		local record=assert(json.decode(raw));assert(record.schemaVersion==1 and record.kind==kind and type(record.generation)=="number" and record.generation==math.floor(record.generation) and record.generation>=1 and record.generation<1e12,"Invalid recovery record")
 		assert(type(record.at)=="number" and record.at>=0 and record.at<4102444800,"Invalid recovery date")
-		assert(record.digest==data.hash(record.entry),"Incomplete recovery record");record.entry=M.clean(kind,record.entry);if kind=="uniqueQuality" then assert((hashed and require("sha1")(record.entry.plan.project.id)==projectId) or (not hashed and record.entry.plan.project.id==projectId),"Recovery project ID mismatch") end;record.path=filePath;return record
+		assert(record.digest==data.hash(record.entry),"Incomplete recovery record");record.entry=M.clean(kind,record.entry);if projectId then assert((hashed and require("sha1")(record.entry.plan.project.id)==projectId) or (not hashed and record.entry.plan.project.id==projectId),"Recovery project ID mismatch") end;record.path=filePath;return record
 	end)
 	if ok then return value end
 end
@@ -142,8 +142,8 @@ function M.load(build,kind,projectId)
 end
 -- Each unique project has its own rotating pair; browsing one item never
 -- replaces the interrupted preview of another item in the same build.
-function M.listUnique(build,visit,checkpoint)
-	local sample,directory=path(build,"uniqueQuality",1,"_");if not sample then return {} end
+local function listProjects(build,kind,visit,checkpoint)
+	local sample,directory=path(build,kind,1,"_");if not sample then return {} end
 	local suffix=require("sha1")("_").."%-1%.json$"
 	local prefix=assert(sample:match("([^/\\]+)"..suffix));local escaped=prefix:gsub("(%W)","%%%1")
 	local ids={};local scanned=0
@@ -160,19 +160,22 @@ function M.listUnique(build,visit,checkpoint)
 	end
 	local result={}
 	for id in pairs(ids) do
-		local first=readRecord(build,"uniqueQuality",1,id,true);local second=readRecord(build,"uniqueQuality",2,id,true)
+		local first=readRecord(build,kind,1,id,true);local second=readRecord(build,kind,2,id,true)
 		local record=first and second and (first.generation>second.generation and first or second) or first or second
 		if record then result[#result+1]=record;if visit then visit(record) end end
 	end
 	table.sort(result,function(a,b) return a.entry.plan.project.id<b.entry.plan.project.id end);return result
 end
+function M.listUnique(build,visit,checkpoint) return listProjects(build,"uniqueQuality",visit,checkpoint) end
+function M.listCrafting(build,visit,checkpoint) return listProjects(build,"crafting",visit,checkpoint) end
 function M.forCraftingProject(build,id)
-	local best
-	for slot=1,2 do local record=readRecord(build,"crafting",slot);if record and record.entry.plan.project.id==id and (not best or record.generation>best.generation) then best=record end end
+	local best=M.load(build,"crafting",id)
+	if not best then for slot=1,2 do local record=readRecord(build,"crafting",slot);if record and record.entry.plan.project.id==id and (not best or record.generation>best.generation) then best=record end end end
 	if best then return {draft=best.entry.plan,pending=not M.isCurrent(build,"crafting",best.entry)} end
 end
 function M.forgetCraftingProject(build,id)
 	local removed=M.forCraftingProject(build,id)
+	M.clear(build,"crafting",id)
 	for slot=1,2 do
 		local record=readRecord(build,"crafting",slot)
 		if record and record.entry.plan.project.id==id then local ok,why,code=os.remove(record.path);assert(ok or code==2,why) end
@@ -202,8 +205,8 @@ local function noticeKey(build,kind,projectId)
 	return "scan:"..tostring(build)..":"..identity..":"..kind..":"..(projectId or "")
 end
 function M.save(build,kind,entry,force)
-	local projectId=kind=="uniqueQuality" and entry and entry.plan and entry.plan.project and entry.plan.project.id or nil
-	if kind=="uniqueQuality" and (type(projectId)~="string" or #projectId>64 or not projectId:match("^[%w%-_]+$")) then return false,"Invalid recovery project ID" end
+	local projectId=(kind=="uniqueQuality" or kind=="crafting") and entry and entry.plan and entry.plan.project and entry.plan.project.id or nil
+	if (kind=="uniqueQuality" or kind=="crafting") and (type(projectId)~="string" or #projectId>64 or not projectId:match("^[%w%-_]+$")) then return false,"Invalid recovery project ID" end
 	local _,directory=path(build,kind,1,projectId);if not directory then return end
 	local key=directory..":"..(build.dbFileName or build.buildName or "")..":"..kind..(projectId and ":"..projectId or "");local cache=M.cache[key] or {};cache.build=build;cache.identity=buildIdentity(build);M.cache[key]=cache
 	local now=GetTime();if not force and cache.checked and now-cache.checked<2000 then return end;cache.checked=now
@@ -232,6 +235,7 @@ function M.startScan(build)
 			end
 		end
 		for _,kind in ipairs({"filters","atlas","crafting"}) do visit(kind,M.load(build,kind));coroutine.yield() end
+		M.listCrafting(build,function(record) visit("crafting",record,record.entry.plan.project.id);coroutine.yield() end,coroutine.yield)
 		M.listUnique(build,function(record) visit("uniqueQuality",record,record.entry.plan.project.id);coroutine.yield() end,coroutine.yield)
 	end)
 end

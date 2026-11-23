@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1146][2026/11/22]
+
+* Keep separate local recovery drafts for each crafting project.
+
 VERSION[2.68.1-ai.preview1145][2026/11/22]
 
 * Detect empty item-level and rarity ranges in filter blocks.

@@ -283,3 +283,5 @@ Eligible unique armour, weapons, flasks and tinctures can use the **Unique craft
 MCP route comparisons use shared simulation settings for every route. Defaults scale to fit the combined 20,000-action budget, and the result reports the effective trials, action limit and seed. Supplied options are kept; a request exceeding the combined budget is rejected. These comparison defaults are separate from a primary recipe’s saved simulation settings.
 
 AI project updates show removed or changed goals, guide steps, recipes, saved items, checkpoints and simulation or price settings on the proposal Changes page. Reviewing does not apply the update; Apply and build Save are separate actions.
+
+Interrupted ordinary crafting work has two local recovery slots per project. Open **Tools → Recover local drafts** to review and restore them; older shared-slot drafts remain available. Keep the project and save the build to retain your work.

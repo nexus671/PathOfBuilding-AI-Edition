@@ -70,6 +70,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_filter_unique_review.lua")
     sources.append(ROOT / "tools/test_filter_sound_list_ui.lua")
     sources.append(ROOT / "tools/test_filter_contradictions.lua")
+    sources.append(ROOT / "tools/test_craft_project_recovery.lua")
     sources.append(ROOT / "tools/test_update_notes_ui.lua")
     sources.append(ROOT / "tools/test_fated_scene_ui.lua")
     sources.append(ROOT / "tools/test_filter_union_ui.lua")
@@ -137,6 +138,10 @@ def main():
                                           env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-contradictions-controls.log").write_text(filter_contradictions.stdout)
     assert filter_contradictions.returncode == 0, filter_contradictions.stdout
+    craft_recovery = subprocess.run(lua_command + ["../tools/test_craft_project_recovery.lua"], cwd=ROOT / "src",
+                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "craft-project-recovery.log").write_text(craft_recovery.stdout)
+    assert craft_recovery.returncode == 0, craft_recovery.stdout
     update_notes = subprocess.run(lua_command + ["../tools/test_update_notes_ui.lua", str(frames)], cwd=ROOT / "src",
                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "update-notes-controls.log").write_text(update_notes.stdout)
