@@ -2,7 +2,7 @@ local output=assert(arg[1]);arg={};dofile('HeadlessWrapper.lua');main.disableDev
 local sim=require('Modules.CraftingSimulator');local UI=require('Modules.HeadlessUI');local raw='Rarity: RARE\nExample\nIron Hat\nItem Level: 86'
 newBuild();local model=sim.model(raw);local original=copyTable(model.initial);local craft={method='gwennen',firstOutcome=1002,secondOutcome=1000}
 local direct=sim.action(model,original,{method='hinekora_lock'},function() return 0.25 end);assert(direct.foreseeing and sim.components({method='hinekora_lock'})['Metadata/Items/Currency/CurrencyHinekorasLock']==1);assert(not pcall(sim.action,model,direct,{method='hinekora_lock'},function() return 0.25 end))
-assert(require('Modules.CraftingGwennen').isForesightCurrency('chaos') and not require('Modules.CraftingGwennen').isForesightCurrency('gwennen') and not require('Modules.CraftingGwennen').isForesightCurrency('locus'))
+assert(require('Modules.CraftingGwennen').isForesightCurrency('chaos') and require('Modules.CraftingGwennen').isForesightCurrency('essence') and not require('Modules.CraftingGwennen').isForesightCurrency('gwennen') and not require('Modules.CraftingGwennen').isForesightCurrency('locus'))
 local locked,details=sim.action(model,original,craft,function() return 0.25 end);assert(locked.foreseeing and details.gwennen.outcome==1002 and not original.foreseeing)
 local sample=sim.perform(raw,{method='chaos'},123,locked);local repeatSample=sim.perform(raw,{method='chaos'},123,locked);assert(tableDeepEquals(sample.state,repeatSample.state) and locked.foreseeing and not sample.state.foreseeing)
 assert(sim.validateState(model,locked).foreseeing);local invalid=copyTable(locked);invalid.mirrored=true;assert(not pcall(sim.validateState,model,invalid));invalid=copyTable(locked);invalid.corrupted=true;assert(not pcall(sim.validateState,model,invalid));assert(not pcall(sim.validateRecipe,{steps={{method='chaos'}},targets={},requirements={foreseeing=true,mirrored=true}}));local modified=sim.action(model,locked,{method='chaos'},function() return 0.42 end);assert(not modified.foreseeing and locked.foreseeing)
@@ -21,6 +21,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  ui:click('undo');ui:click('apply');assert(main.popups[1].title=='Foreseeing: hypothetical sample');ui:click('close');main.popups={}
  local kept;local target=require('Classes.CraftingTargetControl').Open({}, {foreseeing=true},nil,function(_,v) kept=v end);assert(target.mirrored:GetSelValue()=='Must be foreseeing');ui:frame():write(output..'/'..size[1]..'-craft-foresight-target.json');ui:choose('mirrored','Neither mirrored nor foreseeing');ui:click('keep');assert(kept.foreseeing==false and kept.mirrored==false)
  ui:restore();main.popups={}
+end
+for _,case in ipairs({{method='essence',title='Foreseeing: hypothetical sample'},{method='bench',title='Review modeled action'}}) do
+ newBuild();main.popups={};local ui=UI.install({width=960,height=640});ui:bind(build)
+ local p={id='review-'..case.method,title='Review',slot='Helmet',startingItem=raw,goals={},steps={},preferredMethod=case.method,nativeRecipe={targets={},initialState=locked}}
+ local c=require('Classes.CraftingSimulatorControl').Open(build,p);assert(c.apply:IsEnabled(),case.method..' must be available');ui:click('apply');assert(main.popups[1].title==case.title,case.method..' must be reviewed');ui:frame():write(output..'/960-craft-foresight-'..case.method..'.json');ui:click('close');ui:click('apply');assert(main.popups[1].title==case.title);ui:click('keep');ui:click('undo');ui:click('apply');assert(main.popups[1].title==case.title);ui:click('close');ui:restore();main.popups={}
 end
 newBuild();main.popups={};local ui=UI.install({width=960,height=640});ui:bind(build)
 local c=require('Classes.CraftingSimulatorControl').Open(build,{id='lock-action-ui',title='Lock action',slot='Helmet',startingItem=raw,goals={},steps={}})

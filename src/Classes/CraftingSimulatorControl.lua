@@ -297,12 +297,14 @@ function Panel.Open(build,project,layout)
 			if state.socketLayoutUnknown then message="Socket layout is unknown after corruption. Set it in Edit hypothetical item before socket crafts or build preview." end
 			refresh({message})
 		end
-		if state.foreseeing and require("Modules.CraftingGwennen").isForesightCurrency(craft.method) and not (result.choices and #result.choices>1) then
-			local popup={};ui.description(popup,"note",16,24,628,32,{"Hypothetical sample only: this does not predict the game's actual future."},14)
+		if state.foreseeing and not (result.choices and #result.choices>1) then
+			local currency=require("Modules.CraftingGwennen").isForesightCurrency(craft.method)
+			local note=currency and "Hypothetical sample only: this does not predict the game's actual future." or "This modeled action consumes foreseeing. This is not a game Lock preview."
+			local popup={};ui.description(popup,"note",16,24,628,32,{note},14)
 			local update=workbench.item(popup,"preview",16,60,628,300,model,function() return result.state end);update()
 			button(popup,"keep",16,390,200,"Apply sample",function() keep(result.state);main:ClosePopup() end)
 			button(popup,"close",528,390,116,"Cancel",function() main:ClosePopup() end)
-			main:OpenPopup(660,440,"Foreseeing: hypothetical sample",popup,nil,nil,"close")
+			main:OpenPopup(660,440,currency and "Foreseeing: hypothetical sample" or "Review modeled action",popup,nil,nil,"close")
 		elseif result.choices and #result.choices > 1 then
 			local popup={};local choices={}
 			for i=1,#result.choices do choices[i]={label="Ghost outcome "..i,val=i} end
@@ -311,7 +313,7 @@ function Panel.Open(build,project,layout)
 				return result.choices[popup.choice:GetSelValueByKey("val")].state
 			end)
 			popup.choice.selFunc=showChoice;showChoice()
-			if state.foreseeing and require("Modules.CraftingGwennen").isForesightCurrency(craft.method) then ui.description(popup,"note",16,50,628,20,{"Hypothetical samples; the game's future is unknown."},14) end
+			if state.foreseeing then ui.description(popup,"note",16,50,628,20,{"Hypothetical samples; applying one consumes modeled foreseeing."},14) end
 			button(popup,"keep",16,390,200,"Keep ghost outcome",function() local index=popup.choice:GetSelValueByKey("val");keep(result.choices[index].state,index);main:ClosePopup() end)
 			button(popup,"close",528,390,116,"Cancel",function() main:ClosePopup() end)
 			main:OpenPopup(660,440,"Allflame outcomes",popup,nil,nil,"close")

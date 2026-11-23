@@ -7,7 +7,7 @@ local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
 local lockId="Metadata/Items/Currency/CurrencyHinekorasLock"
 -- The preview is a sample, but only offer it for modeled currency actions.
 -- Services such as Gwennen, Harvest, bench and the altar are excluded.
-local foreseeable={transmute=true,alteration=true,augmentation=true,regal=true,alchemy=true,chaos=true,exalt=true,annul=true,scour=true,divine=true,blessed=true,vaal=true,quality=true,catalyst=true,chromatic=true,jeweller=true,fusing=true}
+local foreseeable={essence=true,transmute=true,alteration=true,augmentation=true,regal=true,alchemy=true,chaos=true,exalt=true,annul=true,scour=true,divine=true,blessed=true,vaal=true,quality=true,catalyst=true,chromatic=true,jeweller=true,fusing=true}
 function G.isForesightCurrency(method) return foreseeable[method]==true end
 local function belowMaximum(mod,range)
 	local ranges=type(range)=="table" and range or {range};local index=0;local below=false
