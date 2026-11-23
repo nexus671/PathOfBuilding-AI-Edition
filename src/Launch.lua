@@ -259,7 +259,7 @@ end
 function launch:DownloadPage(url, callback, params)
 	params = params or {}
 	local script = [[
-		local url, requestHeader, requestBody, connectionProtocol, proxyURL, noSSL = ...
+		local url, requestHeader, requestBody, connectionProtocol, proxyURL, noSSL, timeout = ...
 		local responseHeader = ""
 		local responseBody = ""
 		ConPrintf("Downloading page at: %s", url)
@@ -276,6 +276,10 @@ function launch:DownloadPage(url, callback, params)
 		easy:setopt(curl.OPT_USERAGENT, "Path of Building/]]..self.versionNumber..[[")
 		easy:setopt(curl.OPT_ACCEPT_ENCODING, "")
 		easy:setopt(curl.OPT_FOLLOWLOCATION, 1)
+		if timeout then
+			easy:setopt(curl.OPT_TIMEOUT, timeout)
+			easy:setopt(curl.OPT_CONNECTTIMEOUT, math.min(timeout, 10))
+		end
 		if requestBody then
 			easy:setopt(curl.OPT_POST, true)
 			easy:setopt(curl.OPT_POSTFIELDS, requestBody)
@@ -312,7 +316,7 @@ function launch:DownloadPage(url, callback, params)
 		ConPrintf("Download complete. Status: %s", errMsg or "OK")
 		return responseBody, errMsg, responseHeader
 	]]
-	local id = LaunchSubScript(script, "", "ConPrintf", url, params.header, params.body, self.connectionProtocol, self.proxyURL, self.noSSL or false)
+	local id = LaunchSubScript(script, "", "ConPrintf", url, params.header, params.body, self.connectionProtocol, self.proxyURL, self.noSSL or false, params.timeout)
 	if id then
 		self.subScripts[id] = {
 			type = "DOWNLOAD",

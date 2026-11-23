@@ -1,3 +1,8 @@
+VERSION[2.68.1-ai.preview1148][2026/11/22]
+
+* Review market-based loot filter changes and sync a local filter daily from a fixed baseline in PoB.
+* Verify protected drops before replacement and restore the previous filter from the sync dialog.
+
 VERSION[2.68.1-ai.preview1147][2026/11/22]
 
 * Preserve unique crafting redo history when a preview matches the saved item.
