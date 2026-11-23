@@ -97,7 +97,13 @@ end
 newBuild();main.popups={};local reviewUI=headless.install({width=reviewWidth,height=reviewWidth==720 and 600 or 640});reviewUI:bind(build)
 reviewFixture={hour=9,minute=15,enabled=true,summary='Review ready',history={},review={changes={{name='Orb of Alteration',old=6,cutoff=4,price=.2,volume=1000,samples={{area=83,count=5,class='Stackable Currency',before='Unknown',action='Unknown',beforeMissing={'DropLevel','C:/private/filter'},afterMissing={'ItemLevel'}}}}},skipped={}}}
 reviewFixture.review.changes[2]={name='Orb of Chance',old=6,cutoff=4,price=.2,volume=1000,samples={{area=83,count=5,class='Stackable Currency',before='Hide',action='Unknown'}}}
-require('Classes.LootFilterDailySyncControl').Open();reviewUI:click('review');reviewUI:text('search','Orb of Alteration')
+reviewFixture.review.protectedChecks=600
+require('Classes.LootFilterDailySyncControl').Open();reviewUI:click('review')
+local statusRows = {}
+for _, row in ipairs(main.popups[1].controls.details.list) do statusRows[#statusRows+1] = StripEscapes(row[1] or "") end
+local proof = table.concat(statusRows," "):gsub("%s+"," ")
+assert(proof:find("600 protected filter checks passed.",1,true))
+reviewUI:text('search','Orb of Alteration')
 local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or '') end;local shown=table.concat(details,' ')
 assert(shown:find('Before: needs DropLevel',1,true) and shown:find('After: needs ItemLevel',1,true) and not shown:find('C:/private',1,true),'Missing-property reasons were not shown safely')
 if output then reviewUI:frame():write(output..'/'..reviewWidth..'-filter-impact-reasons.json') end
