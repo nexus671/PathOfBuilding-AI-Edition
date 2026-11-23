@@ -524,7 +524,7 @@ marketUI:text("query","Named result")
 local originalUniqueDB = main.uniqueDB
 main.uniqueDB = {list={
 	{title="Named result",baseName="Cord Belt"},
-	{title="Catalogue-only unique",baseName="Cord Belt"},
+	{title="Catalogue-only unique",baseName="Leather Belt",baseLines={["Leather Belt"]={},["Cord Belt"]={}}},
 }}
 marketUI:click("get")
 main.uniqueDB = originalUniqueDB
