@@ -13,6 +13,15 @@ describe("Map reroll estimates",function()
 		local result=estimate.run(input,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})
 		assert.same(input.plannedDelirium,result.plannedDelirium);if result.sampleSuccess then assert.same(input.plannedDelirium,result.sampleSuccess.plannedDelirium) end
 	end)
+	it("validates the supplied starting modifiers and rolls before rerolling",function()
+		local options={avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42}
+		local input=copyTable(state);input.selected={"MapContainsMirageWorlds"}
+		local updates=0;estimate.run(input,options,function(progress) assert.is_truthy(progress.trial);updates=updates+1 end);assert.is_true(updates>0);assert.equal("MapContainsMirageWorlds",input.selected[1])
+		input.itemLevel=1;assert.has_error(function() estimate.run(input,options) end)
+		input=copyTable(state);input.selected={"NonexistentMapModifier"};assert.has_error(function() estimate.run(input,options) end)
+		input=copyTable(state);input.selected={"MapContainsMirageWorlds"};input.rolls={{id="MapMonsterAreaOfEffectMapWorlds",values={}}};assert.has_error(function() estimate.run(input,options) end)
+		input=copyTable(state);input.selected={[2]="MapContainsMirageWorlds"};assert.has_error(function() estimate.run(input,options) end)
+	end)
 	it("reports the map data version used for an estimate",function()
 		local result=estimate.run(state,{avoid={"MapMonsterAreaOfEffectMapWorlds"},trials=1,maxAttempts=1,seed=42})
 		local source=require("Modules.MapCraftingData").source()

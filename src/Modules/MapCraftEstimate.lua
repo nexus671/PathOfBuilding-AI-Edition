@@ -54,6 +54,12 @@ function M.run(state,options,checkpoint)
 	assert(not require("Modules.MapObservedEffects").hasExplicit(base.observedEffects),"Reroll estimates are unavailable while unsupported explicit map modifiers are recorded")
 	local progress={trial=1,trials=trials,attempts=0}
 	local function slice() if checkpoint then checkpoint(progress) end end
+	-- Rerolls replace existing modifiers, but the supplied starting item must
+	-- still be valid. The desktop and MCP must agree on stale or malformed maps.
+	if state.selected~=nil or state.rolls~=nil then
+		local existing=copyTable(state);if existing.selected==nil then existing.selected={} end
+		currency.validateInput(existing,slice)
+	end
 	-- The ordered wanted list must itself be a supported ordinary-map state.
 	local test=copyTable(base);test.selected=copyTable(wanted);currency.perform(test,action,seed,slice,true)
 	local unavailableAvoid={}

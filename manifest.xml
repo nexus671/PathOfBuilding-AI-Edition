@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1183" />
+	<Version number="2.68.1-ai.preview1184" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="43e682d88cedbf85be8885273da878e89b48347b" />
+	<File name="changelog.txt" part="default" sha1="ad4ab711299f067c221dddedf70c0c557db462a7" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -2249,12 +2249,12 @@
 	<File name="Modules/Main.lua" part="program" sha1="3e49ff7461faa69ba875920be44a1e976662aa52" />
 	<File name="Modules/MapClipboard.lua" part="program" sha1="984b53897a5ae596d363f0cb326eb931aa55d4a9" />
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="4bde5edf6208613815c1410d2e7916ccf88b273e" />
-	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="d166b572fc4553a8f7c83452985ed76b7156b5b8" />
+	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="6babdb50faa61eacf3ede4f30c37d26f78d4f25f" />
 	<File name="Modules/MapCraftingData.lua" part="program" sha1="db0243da079cabcd26318816198c57fd747b2837" />
-	<File name="Modules/MapCurrency.lua" part="program" sha1="b395ea7534b92c50f89391b49c8d1d9084d69b4e" />
+	<File name="Modules/MapCurrency.lua" part="program" sha1="d717885204a7d236e5747592f4113e6c4986e5bd" />
 	<File name="Modules/MapObservedEffects.lua" part="program" sha1="a6c5523dd74350b6d8b4dca0e2a85c168c794376" />
 	<File name="Modules/MapQuality.lua" part="program" sha1="072aa3d75c40cc19893f34a726587c0da1747eb6" />
-	<File name="Modules/MapRollValues.lua" part="program" sha1="738d8da00d86027c40d51555476d7c2a947a72c8" />
+	<File name="Modules/MapRollValues.lua" part="program" sha1="0cce7c560501af205f4b6bb021519bdf7110f191" />
 	<File name="Modules/ModParser.lua" part="program" sha1="7ef312261c2a59e9c9a76844e7cbd6647ac49272" />
 	<File name="Modules/ModTools.lua" part="program" sha1="c987491da4021b5bdc4744b5eec84fb5995284cf" />
 	<File name="Modules/PantheonTools.lua" part="program" sha1="ebe91a7d8f8444a6061acf4758da0e775cc8c314" />

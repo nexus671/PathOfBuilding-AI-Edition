@@ -61,6 +61,8 @@ local function originatorBranches(state,checkpoint,cache)
 end
 local function validate(input,checkpoint,cache)
 	assert(type(input)=="table" and type(input.selected)=="table","Invalid map state")
+	local selectedCount=0;for key in pairs(input.selected) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=#input.selected,"Invalid selected map modifiers");selectedCount=selectedCount+1 end
+	assert(selectedCount==#input.selected,"Invalid selected map modifiers")
 	assert(input.twiceCorrupted==nil or type(input.twiceCorrupted)=="boolean","Invalid twice-corrupted map state")
 	assert(not input.twiceCorrupted or input.corrupted,"A twice-corrupted map must be corrupted")
 	local plannedAllflame=require("Modules.MapAllflame").validate(input.plannedAllflame)
@@ -112,6 +114,8 @@ local function validate(input,checkpoint,cache)
 	end
 	return state,existing,priorIds
 end
+-- Validate an existing state without consuming currency or generating a roll.
+function M.validateInput(input,checkpoint) validate(input,checkpoint) end
 function M.reason(state,action)
 	local rarity=state.rarity;local count=#state.selected
 	if map.isNightmare(state.baseId) and action~="chaos" and action~="originator" and action~="divine_vessel" and action~="clear_deified_plan" and action~="plan_allflame" and action~="clear_allflame_plan" then return "Only Chaos and Originator's Exalted Orbs are modeled for Nightmare maps." end

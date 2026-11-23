@@ -2,12 +2,14 @@
 local M={}
 local function array(value,limit,label)
 	assert(type(value)=="table" and #value<=limit,"Invalid "..label)
-	for key in pairs(value) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=#value,"Invalid "..label) end
+	local count=0;for key in pairs(value) do assert(type(key)=="number" and key==math.floor(key) and key>=1 and key<=#value,"Invalid "..label);count=count+1 end
+	assert(count==#value,"Invalid "..label)
 	return value
 end
 function M.validate(selected,rolls,source)
 	local byId,allowed={},{};for _,id in ipairs(selected or {}) do allowed[id]=true end
-	for _,entry in ipairs(array(rolls or {},9,"map rolls")) do
+	if rolls==nil then rolls={} end
+	for _,entry in ipairs(array(rolls,9,"map rolls")) do
 		assert(type(entry)=="table" and type(entry.id)=="string" and allowed[entry.id] and not byId[entry.id],"Invalid map roll modifier")
 		local mod=assert(source.mods[entry.id],"Unknown rolled map modifier");local values=array(entry.values,20,"map roll values")
 		assert(#values==#mod.stats,"Map roll does not match the modifier stats")
