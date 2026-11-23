@@ -6,7 +6,7 @@
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="f5164cf36cbdacffc1ee0cb2500c84adac3b4a56" />
+	<File name="changelog.txt" part="default" sha1="a224754ee81a1a92850c7a2beb07164b831659fb" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -2147,7 +2147,7 @@
 	<File name="Modules/Build.lua" part="program" sha1="a489fd59fca2b67d63e8ccac58bf24667f2d7441" />
 	<File name="Modules/BuildDisplayStats.lua" part="program" sha1="ffc4da3b13c3d50f3580b452622429f0bd7e70ab" />
 	<File name="Modules/BuildInsights.lua" part="program" sha1="4fa3f589f42f550df982c5ede6be5827ff0a5c87" />
-	<File name="Modules/BuildJourney.lua" part="program" sha1="55dc50fadcede28a55a0c207bf61678478f4a083" />
+	<File name="Modules/BuildJourney.lua" part="program" sha1="bcd648490a5d3468e499e43e786ea5f2057d96d8" />
 	<File name="Modules/BuildList.lua" part="program" sha1="daa0c88f606ade9687f037b6e99c9cec2904200e" />
 	<File name="Modules/BuildListHelpers.lua" part="program" sha1="a95770f18b54c05ed1d68f870f3693cac53a0fab" />
 	<File name="Modules/BuildSiteTools.lua" part="program" sha1="1338f63cefd36a330f49b1725f771156d4ba1c93" />

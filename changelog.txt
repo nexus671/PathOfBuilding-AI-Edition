@@ -1,6 +1,6 @@
 VERSION[2.68.1-ai.preview1232][2026/11/23]
 
-* Preserve damaged Atlas plans, crafting guides and loot-filter profiles; reject malformed Atlas imports.
+* Preserve damaged Atlas plans, crafting guides, roadmaps and loot filters; reject malformed Atlas imports.
 
 VERSION[2.68.1-ai.preview1231][2026/11/23]
 

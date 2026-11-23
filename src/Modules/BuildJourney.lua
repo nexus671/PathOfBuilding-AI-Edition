@@ -194,7 +194,12 @@ function M.new(build)
 	local self={build=build,data=M.empty()}
 	function self:Load(xml)
 		local raw=table.concat(xml);if raw:match("^%s*$") then return end
-		local ok,data=pcall(function() assert(#raw<=M.limit,"Journey too large");return M.validate(assert(json.decode(raw,1,json.null)),build) end)
+		local ok,data=pcall(function()
+			assert(#raw<=M.limit,"Journey too large")
+			local decoded,position,err=json.decode(raw,1,json.null)
+			assert(decoded and position and not raw:sub(position):find("%S"),err or "Invalid journey data")
+			return M.validate(decoded,build)
+		end)
 		if ok then self.data=data else self.unreadable=raw;self.warning="Journey data could not be read. It will be preserved unchanged." end
 	end
 	function self:Save(xml) xml[#xml+1]=self.unreadable or json.encode(self.data) end
