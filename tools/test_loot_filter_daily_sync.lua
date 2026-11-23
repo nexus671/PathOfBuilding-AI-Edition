@@ -689,7 +689,7 @@ assert(not pcall(profiles.verifiedOutput,id))
 print("Account publication can only read the latest verified, unchanged local output")
 
 
-do
+local function checkBackupHistory()
 	-- Review an older recorded backup, refuse checksum and revision drift,
 	-- then retain the previously active bytes as an undo point after restore.
 	local recorded = profiles.configuration()
@@ -729,6 +729,20 @@ do
 	local reconciled = profiles.configuration()
 	assert(reconciled.paused and reconciled.current==intended and not reconciled.pending and not reconciled.pendingRestore)
 	assert(availableBackups[1].digest==oldDigest and read(target)==verifiedRaw)
+	-- Once another restore changes the latest undo pointer, the earlier
+	-- undo-only snapshot remains available from the persistent list.
+	local third = olderBytes:gsub("StackSize <= 3","StackSize <= 8",1)
+	local thirdDigest = digestOf(third)
+	local thirdPath = target..".before-pob-sync-"..thirdDigest..".bak"
+	write(thirdPath,third)
+	table.insert(reconciled.history,{backup=thirdDigest,checkedAt=now-86400})
+	write(configFile,assert(configurationCodec.encode(reconciled)))
+	profiles.rollback("default",profiles.previewBackup("default",thirdDigest))
+	assert(read(target)==third and profiles.configuration().backup~=oldDigest)
+	assert(profiles.previewBackup("default",oldDigest).after==olderBytes)
+	profiles.rollback("default",profiles.previewBackup("default",profiles.configuration().backup))
+	reconciled = profiles.configuration()
+	assert(read(target)==verifiedRaw)
 	print("Reviewed backup restore checks historical bytes and recovers an interrupted restore")
 
 	-- A new limit becomes effective after a successful refresh. Reclaim
@@ -743,6 +757,11 @@ do
 	write(suspectPath,suspect.."# modified")
 	table.insert(reconciled.history,{backup=retiredDigest,checkedAt=now-2*86400})
 	table.insert(reconciled.history,{backup=suspectDigest,checkedAt=now-3*86400})
+	local heldBytes = olderBytes:gsub("StackSize <= 3","StackSize <= 9",1)
+	local heldDigest = digestOf(heldBytes)
+	local heldPath = target..".before-pob-sync-"..heldDigest..".bak"
+	write(heldPath,heldBytes)
+	table.insert(reconciled.history,{backup=heldDigest,checkedAt=now-4*86400})
 	write(configFile,assert(configurationCodec.encode(reconciled)))
 	assert(not pcall(profiles.setBackupLimit,"default",1,"stale revision"))
 	profiles.setBackupLimit("default",1,reconciled.revision)
@@ -754,14 +773,21 @@ do
 		if mapBody then callback({header=header,body=mapBody}); return end
 		reply(url,callback)
 	end
+	local size = kernel.MultiByteToWideChar(65001,8,heldPath,-1,nil,0)
+	local wide = ffi.new("uint16_t[?]",size)
+	assert(kernel.MultiByteToWideChar(65001,8,heldPath,-1,wide,size)==size)
+	local holding = kernel.CreateFileW(wide,0x80000000,1,nil,3,0x80,nil)
+	assert(holding~=ffi.cast("void *",-1))
 	profiles.tick(now,true)
-	assert(profiles.status:find("Protected drops verified",1,true),profiles.status)
+	assert(kernel.CloseHandle(holding)~=0)
+	assert(read(heldPath)==heldBytes and profiles.status:find("Protected drops verified",1,true),profiles.status)
 	assert(profiles.verifiedOutput("default")==read(target))
 	assert(not io.open(retiredPath,"rb") and read(suspectPath)==suspect.."# modified")
 	assert(read(reconciled.baseline)==fixedAtReview and read(namedTarget)==otherProfileBytes)
-	assert(profiles.configuration().retentionSkipped==1)
+	assert(profiles.configuration().retentionSkipped==2)
 	print("Opt-in retention preserves unverifiable files, the baseline and other profiles")
 end
+checkBackupHistory()
 -- A successful-looking but severely incomplete feed must keep the last
 -- verified file and its publication record.
 local coverageTarget = dir.."/coverage-target.filter"

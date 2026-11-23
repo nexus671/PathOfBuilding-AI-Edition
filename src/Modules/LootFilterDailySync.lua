@@ -27,6 +27,9 @@ local function platform()
 		unsigned long __stdcall GetFinalPathNameByHandleW(void *, uint16_t *, unsigned long, unsigned long);
 		int __stdcall MoveFileExW(const uint16_t *, const uint16_t *, unsigned long);
 		void * __stdcall CreateFileW(const uint16_t *, unsigned long, unsigned long, void *, unsigned long, unsigned long, void *);
+		int __stdcall GetFileSizeEx(void *, int64_t *);
+		int __stdcall ReadFile(void *, void *, unsigned long, unsigned long *, void *);
+		int __stdcall SetFileInformationByHandle(void *, int, void *, unsigned long);
 	]]
 	-- Use an alias type through a cast so other Windows modules can bind CloseHandle too.
 	local kernel = ffi.load("kernel32")
@@ -48,6 +51,28 @@ local function platform()
 			local handle = kernel.CreateFileW(wide(path), 0x40000000, 0, nil, 4, 0x80, nil)
 			assert(handle ~= ffi.cast("void *", -1), "Another PoB window is updating this filter, or the directory is unavailable")
 			return function() kernel.CloseHandle(handle) end
+		end,
+		prune = function(path, digest)
+			-- Hold one handle through both verification and deletion. Sharing
+			-- permits readers while blocking writers and path replacement.
+			local readAndDelete, shareRead, openExisting, openReparsePoint = 0x80010000, 1, 3, 0x00200000
+			local handle = kernel.CreateFileW(wide(path),readAndDelete,shareRead,nil,openExisting,openReparsePoint,nil)
+			if handle == ffi.cast("void *",-1) then return false end
+			local ok, marked = pcall(function()
+				local length = ffi.new("int64_t[1]")
+				if kernel.GetFileSizeEx(handle,length)==0 then return false end
+				local size = tonumber(length[0])
+				if size<1 or size>volumeLimit then return false end
+				local bytes = ffi.new("char[?]",size)
+				local count = ffi.new("unsigned long[1]")
+				if kernel.ReadFile(handle,bytes,size,count,nil)==0 or count[0]~=size
+					or sha(ffi.string(bytes,size))~=digest then return false end
+				local disposition = ffi.new("uint8_t[1]",1)
+				local fileDispositionInfo = 4
+				return kernel.SetFileInformationByHandle(handle,fileDispositionInfo,disposition,ffi.sizeof(disposition))~=0
+			end)
+			local closed = kernel.CloseHandle(handle)
+			return ok and marked and closed~=0
 		end,
 		canonical = function(path)
 			local handle = kernel.CreateFileW(wide(path), 0, 7, nil, 3, 0, nil)
@@ -483,6 +508,7 @@ function M.configure(target, baselineFile, league, options)
 			nextConfig.priceHistory = current.priceHistory
 			if nextConfig.backupLimit and current.target == nextConfig.target and current.current == nextConfig.current and not current.pending then
 				nextConfig.backup, nextConfig.history = current.backup, current.history
+				nextConfig.restoreBackups = current.restoreBackups
 			end
 		end
 		nextConfig.revision = newRevision()
@@ -526,9 +552,25 @@ local function backupChoices(config, limit)
 		end
 	end
 	add(config.backup)
+	local recorded = {}
 	for _, run in ipairs(config.history or {}) do
+		if type(run)=="table" and type(run.backup)=="string" then
+			recorded[#recorded+1] = {digest=run.backup,checkedAt=run.checkedAt}
+		end
+	end
+	for _, saved in ipairs(config.restoreBackups or {}) do
+		if type(saved)=="table" and type(saved.digest)=="string" then
+			recorded[#recorded+1] = {digest=saved.digest,checkedAt=saved.checkedAt}
+		end
+	end
+	table.sort(recorded,function(left,right)
+		local leftTime, rightTime = tonumber(left.checkedAt) or 0, tonumber(right.checkedAt) or 0
+		if leftTime==rightTime then return left.digest<right.digest end
+		return leftTime>rightTime
+	end)
+	for _, entry in ipairs(recorded) do
 		if #entries >= (limit or 30) then break end
-		if type(run) == "table" then add(run.backup,run.checkedAt) end
+		add(entry.digest,tonumber(entry.checkedAt))
 	end
 	return entries, seen
 end
@@ -551,8 +593,7 @@ local function pruneBackups(config, choices)
 	for index=config.backupLimit+1,#choices do
 		local digest = choices[index].digest
 		local path = config.target .. ".before-pob-sync-" .. digest .. ".bak"
-		local checked, raw = pcall(read,path)
-		if checked and raw and sha(raw)==digest and os.remove(path) then
+		if platform().prune(path,digest) then
 			removed[digest] = true
 		else
 			skipped = skipped+1
@@ -561,12 +602,24 @@ local function pruneBackups(config, choices)
 	for _, run in ipairs(config.history) do
 		if removed[run.backup] then run.backup = nil end
 	end
+	for index=#(config.restoreBackups or {}),1,-1 do
+		if removed[config.restoreBackups[index].digest] then table.remove(config.restoreBackups,index) end
+	end
 	config.retentionSkipped = skipped>0 and skipped or nil
 end
 
 local restoreSummary = "Restored the verified backup. Daily sync is paused."
 
 local function finishRestore(config, digest, undo)
+	if undo then
+		local list = config.restoreBackups or {}
+		for index=#list,1,-1 do
+			if list[index].digest==undo then table.remove(list,index) end
+		end
+		table.insert(list,1,{digest=undo,checkedAt=os.time()})
+		if #list>30 then table.remove(list) end
+		config.restoreBackups = list
+	end
 	config.current, config.pending, config.backup = digest, nil, undo
 	config.pendingRestore = nil
 	config.summary, config.review = restoreSummary, nil
@@ -768,7 +821,7 @@ local function publish(config, bodies, feeds, day, force, now, id)
 		current.history = current.history or {}
 		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
 		local limit = current.backupLimit
-		local backups = type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) and backupChoices(current,32)
+		local backups = type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) and backupChoices(current,62)
 		if #current.history > 30 then table.remove(current.history) end
 		save(current,id)
 		if backups then

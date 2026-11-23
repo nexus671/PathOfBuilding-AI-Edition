@@ -11,6 +11,7 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 	local snapshots
 	if day then quotes, snapshots = market.remember(quotes, history, day, now) end
 	local candidate, changes, skipped = market.review(raw, quotes, target, policy)
+	assert(#candidate <= 2*1024*1024, "Generated filter exceeds the sync file size limit")
 	local parsed = parser.parse(candidate)
 	for _, diagnostic in ipairs(parsed.diagnostics) do
 		assert(not diagnostic.error, "Line " .. diagnostic.line .. ": " .. (diagnostic.error or ""))
