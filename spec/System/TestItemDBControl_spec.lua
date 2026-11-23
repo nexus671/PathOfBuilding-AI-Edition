@@ -137,6 +137,19 @@ describe("ItemDBControl", function()
 			end
 		end
 	end)
+	it("sorts Viscera by the calculated stat while keeping name sorting as default", function()
+		newBuild()
+		local control=build.itemsTab.controls.visceraDB
+		assert.is_truthy(control.controls.sort);assert.equal("NAME",control.sortMode);assert.is_nil(control.sortDetail.stat)
+		local selected={}
+		for _,item in pairs(control.db.list) do
+			if item.name:find("Lesser Warden's Arm",1,true) or item.name:find("Crustacean's Claw",1,true) then selected[#selected+1]=item end
+		end
+		assert.is_true(#selected>=2);control.db={list=selected};control.controls.slot:SelByValue("Arm");control:SetSortMode("Life")
+		local task=coroutine.create(function() control:ListBuilder() end)
+		repeat local ok,err=coroutine.resume(task);assert.is_true(ok,err) until coroutine.status(task)=="dead"
+		assert.is_truthy(control.list[1].name:find("Lesser Warden's Arm",1,true));assert.is_true(control.list[1].measuredPower>control.list[#control.list].measuredPower)
+	end)
 	it("filters upstream Viscera using the fork's compatible Wickerman slots", function()
 		local item = new("Item"):Item("Rarity: NORMAL\nScorched Arm")
 		assert.are.equal("Viscera", item.type)
