@@ -464,7 +464,7 @@ function M.Open(profileId, profileName)
 				targetValue=tonumber(c.targetValue.buf) or false,pickupPolicy=pickupPolicy,
 			})
 			if not ok then main:OpenMessagePopup("Offline prices",ui.errorText(review)); return end
-			local note = string.format("Offline review. Oldest quote is %d minutes old. Prices were recorded on %s.",
+			local note = string.format("Offline review. Oldest quote is %d minutes old. Verified refresh started on %s.",
 				math.ceil(review.age/60),os.date("%Y-%m-%d %H:%M",review.checkedAt))
 			require("Classes.LootFilterDiffControl").Open(review.before,review.after,true,{
 				title="Offline price preview",note=note,reviewOnly=true,
