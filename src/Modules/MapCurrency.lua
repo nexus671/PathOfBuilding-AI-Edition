@@ -148,7 +148,7 @@ local planningState
 local function templeReason(state,checkpoint)
  if not state.corrupted then return "Requires an already corrupted map." end
  if state.twiceCorrupted then return "This map is already twice corrupted." end
- if state.mirrored or state.unidentified then return "Requires an identified, unmirrored map." end
+ if state.mirrored or state.unidentified then return "Requires an identified map that is not mirrored." end
  if state.rarity~="rare" or state.baseId~="Metadata/Items/Maps/MapKeyTier"..state.tier or state.tier>16 then return "Only generic rare tier 1-16 maps are modeled." end
  if state.observedEffects and #state.observedEffects>0 or state.plannedDeified or state.plannedAllflame or state.plannedDelirium then return "Special and planned effects are not modeled for this preview." end
  if #state.selected>=9 then return "This map already has nine modifiers." end

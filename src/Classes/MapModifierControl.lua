@@ -298,7 +298,7 @@ function M.Open(options)
 		end,closeOnChoose=false})
 	end)
 	controls.currency.enabled=function() return not twiceCorrupted and not (isCorrupted() and (#selected>=9 or getRarity()~="rare" or baseId~="Metadata/Items/Maps/MapKeyTier"..controls.tier:GetSelValueByKey("val") or controls.tier:GetSelValueByKey("val")>16)) and not mirrored and not unidentified and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and not levelProblem() end
-	controls.currency.tooltipText="Currency simulation requires a valid item level and identified, unmirrored map. Corrupted maps offer a hypothetical Temple preview with unverified outcomes and interactions."
+	controls.currency.tooltipText="Currency simulation requires a valid item level and identified map that is not mirrored. Corrupted maps offer a hypothetical Temple preview with unverified outcomes and interactions."
 	button("close",width-132,height-48,116,"Close",function() main:ClosePopup() end)
 	if options.keep then
 		ui.label(controls,"draftNameLabel",right,height-42,"Name",14)

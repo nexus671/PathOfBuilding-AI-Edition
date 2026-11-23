@@ -1784,7 +1784,7 @@
 	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="79584a14f00c60ee7ebad3d3a708e60d7ccf871c" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="5e45b16e0b7be898e1edcfdc0baa10086536d4a6" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="b133139457017d3bb1579c4284c14bf3f1c0a524" />
-	<File name="Classes/MapModifierControl.lua" part="program" sha1="bf1f1b002dae8847b53bebbeaff1e4f30a48310e" />
+	<File name="Classes/MapModifierControl.lua" part="program" sha1="06678e2ed71c3e5a84629911f0955f9c08671f2f" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
 	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="cfff5d76e380c7bdcbdac229325cefb1599af36c" />
 	<File name="Classes/ModDB.lua" part="program" sha1="1327beebeba14dc8320d137a3dede673b74942af" />
@@ -2250,7 +2250,7 @@
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="4bde5edf6208613815c1410d2e7916ccf88b273e" />
 	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="8e0e67ef6aa6d05127f4783c78f563056605d44a" />
 	<File name="Modules/MapCraftingData.lua" part="program" sha1="db0243da079cabcd26318816198c57fd747b2837" />
-	<File name="Modules/MapCurrency.lua" part="program" sha1="16a2af2ead7190bd35f9bce9b52ad5626690e6ff" />
+	<File name="Modules/MapCurrency.lua" part="program" sha1="866c2051b1da467b74882ee299dce07420b7cbc5" />
 	<File name="Modules/MapObservedEffects.lua" part="program" sha1="a6c5523dd74350b6d8b4dca0e2a85c168c794376" />
 	<File name="Modules/MapQuality.lua" part="program" sha1="072aa3d75c40cc19893f34a726587c0da1747eb6" />
 	<File name="Modules/MapRollValues.lua" part="program" sha1="738d8da00d86027c40d51555476d7c2a947a72c8" />
