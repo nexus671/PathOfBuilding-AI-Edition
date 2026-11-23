@@ -23,7 +23,10 @@ function M.install(options)
 	local function font(height, name)
 		local family = assert(fontNames[name],"Unknown headless font: "..tostring(name))
 		if not fonts[family] then
-			local file = assert(io.open((options.fontRoot or "../runtime/SimpleGraphic/Fonts").."/"..family..".tgf","r"))
+			local file
+			if options.fontRoot then file=io.open(options.fontRoot.."/"..family..".tgf","r")
+			else file=io.open("../runtime/SimpleGraphic/Fonts/"..family..".tgf","r") or io.open("SimpleGraphic/Fonts/"..family..".tgf","r") end
+			assert(file,"Headless font not found: "..family)
 			local sizes, current, index = { }, nil, 0
 			for line in file:lines() do
 				local size = tonumber(line:match("^HEIGHT (%d+)"))
