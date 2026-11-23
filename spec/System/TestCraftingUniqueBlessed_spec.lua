@@ -10,6 +10,21 @@ describe("Blessed Orb on unique base implicits",function()
 		local copied="Item Class: Rings\nRarity: Unique\nAndvarius\nGold Ring\n--------\nItem Level: 86\n--------\n+12% to Item Rarity (implicit)\n--------\n+100 to Dexterity"
 		assert.matches("%(implicit%)",blessed.roll(copied,123).itemText)
 	end)
+	it("excludes the current value on every roll, including repeated attempts",function()
+		for _,starting in ipairs({6,12,15}) do
+			local item=raw:gsub("%+12%% to Item Rarity","+"..starting.."%% to Item Rarity",1)
+			local seen={}
+			for seed=1,100 do
+				local nextItem=blessed.roll(item,seed*104729).itemText
+				local value=assert(blessed.options(nextItem)).current
+				assert.is_not.equal(starting,value)
+				seen[value]=true
+				local second=blessed.roll(nextItem,seed*104729+31).itemText
+				assert.is_not.equal(value,assert(blessed.options(second)).current)
+			end
+			for value=6,15 do if value~=starting then assert.is_true(seen[value],"missing value "..value) end end
+		end
+	end)
 	it("rejects unknown or unsafe implicits and invalid targets",function()
 		for _,bad in ipairs({raw.."\nCorrupted",raw.."\nSynthesised Item",raw:gsub("%+12%% to Item Rarity","+99%% to Item Rarity"),raw.."\n+12% to Item Rarity"}) do assert.is_not_nil(blessed.reason(bad)) end
 		assert.has_error(function() quality.matches(raw,{uniqueImplicit={minValue=16}}) end)
