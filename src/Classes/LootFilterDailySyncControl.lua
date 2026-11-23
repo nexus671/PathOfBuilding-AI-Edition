@@ -425,6 +425,44 @@ function M.Open(profileId, profileName)
 		main:OpenPopup(popupWidth,188,"Backup retention",controls,nil,"count","cancel")
 	end)
 	c.backupRetention.enabled = function() return config.target ~= nil and not sync.busy end
+	c.offlinePrices = new("ButtonControl"):ButtonControl(ui.anchor,{192,534,168,26},"Offline prices",function()
+		local saved, latest = pcall(sync.configuration,profileId)
+		if not saved or not latest then main:OpenMessagePopup("Offline prices","Could not read this sync profile."); return end
+		local controls = {}
+		local popupWidth = math.min(560,width)
+		local days = {0,1,3,7}
+		ui.description(controls,"help",16,18,popupWidth-32,54,{
+			"Keep prices from the latest verified refresh for offline review.",
+			"Preview your pending pickup settings in a read-only diff.",
+		},14)
+		ui.label(controls,"maxAge",16,78,"Maximum age for offline prices",14)
+		controls.days = new("DropDownControl"):DropDownControl(ui.anchor,{16,100,popupWidth-32,28},
+			{"Off","1 day","3 days","7 days"})
+		for index, day in ipairs(days) do
+			if day==(latest.offlinePriceDays or 0) then controls.days:SetSel(index); break end
+		end
+		controls.save = new("ButtonControl"):ButtonControl(ui.anchor,{16,146,150,28},"Save setting",function()
+			local ok, why = pcall(sync.setOfflinePriceDays,profileId,days[controls.days.selIndex],latest.revision)
+			if not ok then main:OpenMessagePopup("Offline prices",ui.errorText(why)); return end
+			main:ClosePopup()
+		end)
+		controls.preview = new("ButtonControl"):ButtonControl(ui.anchor,{174,146,160,28},"Preview last prices",function()
+			local ok, review = pcall(sync.previewOffline,os.time(),profileId,{
+				targetValue=tonumber(c.targetValue.buf) or false,pickupPolicy=pickupPolicy,
+			})
+			if not ok then main:OpenMessagePopup("Offline prices",ui.errorText(review)); return end
+			local note = string.format("Offline review. Oldest quote is %d minutes old. Prices were recorded on %s.",
+				math.ceil(review.age/60),os.date("%Y-%m-%d %H:%M",review.checkedAt))
+			require("Classes.LootFilterDiffControl").Open(review.before,review.after,true,{
+				title="Offline price preview",note=note,reviewOnly=true,
+			})
+		end)
+		controls.preview.enabled = function() return latest.offlinePriceDays~=nil and not sync.busy end
+		controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{popupWidth-120,146,104,28},"Close",function() main:ClosePopup() end)
+		ui.style(controls)
+		main:OpenPopup(popupWidth,204,"Offline prices",controls,nil,nil,"cancel")
+	end)
+	c.offlinePrices.enabled = function() return config.target~=nil and not sync.busy end
 	ui.style(c)
 	main:OpenPopup(width, 578, "Daily filter sync", c, nil, nil, "close")
 end

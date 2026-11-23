@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1228][2026/11/23]
+
+* Review proposed pickup settings offline with opt-in, age-limited snapshots from verified refreshes.
+
 VERSION[2.68.1-ai.preview1227][2026/11/23]
 
 * Keep the verified loot filter when map pricing is incomplete and reject conflicting quote IDs.

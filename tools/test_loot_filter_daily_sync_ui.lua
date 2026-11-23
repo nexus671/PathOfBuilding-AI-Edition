@@ -117,6 +117,33 @@ assert(reason:find("preview cannot resolve a filter rule or included file",1,tru
 reviewUI:click('close');main.popups={};reviewFixture=nil
 
 do
+	local raw = 'Show\n    BaseType == "Cord Belt"\n'
+	local chosen, save, originalPreview = nil, sync.setOfflinePriceDays, sync.previewOffline
+	reviewFixture={target=selected,enabled=true,revision="offline-review"}
+	sync.setOfflinePriceDays=function(id,days,revision)
+		assert(id=="default" and revision=="offline-review")
+		chosen=days
+		reviewFixture.offlinePriceDays=days
+	end
+	sync.previewOffline=function(_,id)
+		assert(id=="default" and chosen==3)
+		return {before=raw,after=raw.."# cached example\n",age=7201,checkedAt=1795449900}
+	end
+	require("Classes.LootFilterDailySyncControl").Open()
+	reviewUI:click("offlinePrices")
+	assert(not main.popups[1].controls.preview:IsEnabled())
+	reviewUI:choose("days","3 days")
+	reviewUI:click("save")
+	reviewUI:click("offlinePrices")
+	reviewUI:click("preview")
+	assert(main.popups[1].title=="Offline price preview" and not main.popups[1].controls.copyAfter)
+	reviewUI:click("copyReview")
+	assert(reviewUI.clipboard:find("Oldest quote is 121 minutes old.",1,true))
+	main.popups={};reviewFixture=nil
+	sync.setOfflinePriceDays, sync.previewOffline = save, originalPreview
+end
+
+do
 	local review = {before='Show\n    BaseType == "Cord Belt"\n',after='Show\n    BaseType == "Cord Belt"\n# personal edit\n'}
 	local adopted
 	reviewFixture = {target=selected,enabled=true}
