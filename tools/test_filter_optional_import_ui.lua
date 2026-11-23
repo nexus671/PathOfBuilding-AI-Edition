@@ -15,4 +15,19 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local saver=filters.new(build);saver.data={schemaVersion=1,activeId=profile.id,profiles={profile}};local xml={};saver:Save(xml)
 	local restored=filters.new(build);restored:Load(xml);assert(restored.data.profiles[1].absentOptionalImports[1]=="missing.filter")
 end
+do
+	local profile=filters.profile("nested-optional","Nested optional");profile.template='Import "outer.filter"\nShow'
+	profile.importFiles={{name="outer.filter",text='Import "missing.filter" Optional\nHide\n BaseType "Iron Hat"'}}
+	local before=copyTable(profile);assert(filters.simulate(before,{BaseType="Iron Hat"}).status=="unknown")
+	profile.absentOptionalImports={"missing.filter"}
+	local result=filters.simulate(profile,{BaseType="Iron Hat"});assert(result.action=="Hide" and result.reasons[1]:find("assumes optional",1,true))
+	local changes=require("Modules.LootFilterEditing").review({activeId=before.id,profiles={before}},{activeId=profile.id,profiles={profile}})
+	assert(table.concat(changes[1].details," "):find("Preview now assumes optional file absent",1,true))
+	local impact=require("Modules.LootFilterImpact");local comparison=impact.page(impact.prepare(before,profile),{{BaseType="Iron Hat"}},0,1)
+	assert(comparison.results[1].category=="Needs review" and comparison.results[1].after.reasons[1]:find("assumes optional",1,true))
+	profile.template='Import "missing.filter"\nShow';assert(filters.simulate(profile,{BaseType="Iron Hat"}).status=="unknown")
+	profile.template='Import "missing.filter" Optional\nShow';profile.importFiles={{name="missing.filter",text='Import "missing.filter" Optional'}}
+	assert(filters.simulate(profile,{BaseType="Iron Hat"}).status=="unknown")
+	profile.importFiles={{name="missing.filter",text="Show"}};assert(filters.simulate(profile,{BaseType="Iron Hat"}).action=="Show")
+end
 print("FILTER_OPTIONAL_IMPORT_UI_OK")

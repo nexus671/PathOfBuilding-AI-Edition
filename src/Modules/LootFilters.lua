@@ -103,6 +103,7 @@ function M.validate(data)
 				assert(name:match("%S") and not name:find('[%c"]') and not names[name],"Invalid or duplicate optional import filename")
 				names[name]=true;entry.absentOptionalImports[#entry.absentOptionalImports+1]=name
 			end
+			if #entry.absentOptionalImports==0 then entry.absentOptionalImports=nil end
 		end
 		local seen={}
 		for _,rule in ipairs(array(p.rules)) do

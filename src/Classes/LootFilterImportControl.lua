@@ -69,7 +69,7 @@ function M.Open(profile,keep)
 	end)
 	c.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-48,152,28},"Keep files",function()
 		local ok,why=pcall(saveCurrent,false);if not ok then ui.errorPopup("Included filter",why);return end
-		keep(draft.importFiles,draft.absentOptionalImports);main:ClosePopup()
+		keep(draft.importFiles,#draft.absentOptionalImports>0 and draft.absentOptionalImports or nil);main:ClosePopup()
 	end)
 	c.cancel=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-48,140,28},"Cancel",function() main:ClosePopup() end)
 	refresh(0);ui.style(c,{keep=true});main:OpenPopup(w,h,"Included filter files",c,nil,"name","cancel")
