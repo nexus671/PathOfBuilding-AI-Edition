@@ -316,12 +316,13 @@ function M.Open(build,source,layout,controller)
 			{id="categoryStyles",label="Category appearance",details={"Change colours, fonts and alerts for selected item families while keeping rule priority."}},
 			{id="dailySync",label="Daily price sync",details={"Set up the fixed baseline and update your local filter while PoB is open."}},
 			{id="marketBrowse",label="Browse market prices",details={"Inspect cards, maps, uniques, gems and crafting bases by league."}},
-			{id="economy",label="Review exchange prices",details={"Compare tagged stack hides with current PC trade prices and export a separate candidate."}},
+			{id="economy",label="Review exchange prices",details={"Compare managed hides with current PC trade prices and export a candidate."}},
+			{id="economyRules",label="Managed price rules",details={"Choose the exact commodity or card hides used by price-based updates."}},
 			{id="fileChanges",label="Full file changes",details={"Compare the kept and working compiled filter or original base text, then copy exact sources."}},
 			{id="delete",label="Delete this profile",details={"This changes the working draft. Keep and Save to persist."}},
 		}
 		if not profile then for i=#choices,1,-1 do if choices[i].id~="new" and choices[i].id~="import" then table.remove(choices,i) end end end
-		local blocked={economy=not raw or not profile or profile.mode~="Normal"};if report and report.error then blocked.structure=true;blocked.categoryStyles=true;blocked.economy=true;for _,entry in ipairs(choices) do if blocked[entry.id] then entry.details[#entry.details+1]="Unavailable: resolve the compilation error in Overview or use Audit and update first." end end end
+		local blocked={economy=not raw or not profile or profile.mode~="Normal",economyRules=not profile or profile.mode~="Normal"};if report and report.error then blocked.structure=true;blocked.categoryStyles=true;blocked.economy=true;for _,entry in ipairs(choices) do if blocked[entry.id] then entry.details[#entry.details+1]="Unavailable: resolve the compilation error in Overview or use Audit and update first." end end end
 		require("Classes.PlanningBrowserControl").Open("Filter profile tools",choices,{action="Open",canChoose=function(entry) return not blocked[entry.id] end,choose=function(entry)
 			main:ClosePopup()
 			if entry.id=="new" then profile=filters.profile(identifier(),"My loot filter");data.profiles[#data.profiles+1]=profile;data.activeId=profile.id;page="Overview";selected=nil;draft();reopen()
@@ -349,6 +350,12 @@ function M.Open(build,source,layout,controller)
 			elseif entry.id=="dailySync" then require("Classes.LootFilterDailySyncControl").Open()
 			elseif entry.id=="marketBrowse" then require("Classes.LootFilterMarketBrowseControl").Open()
 			elseif entry.id=="economy" and raw and profile.mode=="Normal" then require("Classes.LootFilterEconomyControl").Open(profile,raw,controller.Export)
+			elseif entry.id=="economyRules" and profile.mode=="Normal" then
+				require("Classes.LootFilterManagedEconomyControl").Open(profile.economyRules, function(rules)
+					profile.economyRules=rules
+					draft()
+					reopen()
+				end)
 			elseif entry.id=="categoryStyles" and profile then require("Classes.LootFilterCategoryControl").Open(profile,replaceProfile)
 			elseif entry.id=="fileChanges" and profile then require("Classes.LootFilterDiffControl").Open(filters.find(saver.data,profile.id),profile)
 			elseif entry.id=="delete" and profile then for i,p in ipairs(data.profiles) do if p.id==profile.id then table.remove(data.profiles,i);break end end;profile=data.profiles[1];data.activeId=profile and profile.id or "";draft();reopen() end

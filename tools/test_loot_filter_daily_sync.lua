@@ -351,6 +351,77 @@ newRunner.setBackground(false,reconfigured.revision)
 assert(not newRunner.configuration().backgroundEnabled)
 print("Background opt-in and provider cooldown persist across independent Windows sync instances")
 
+-- Campaign and map policies only apply to the matching managed rules.
+-- A cap is a ceiling, and a recent liquid spike prevents tightening.
+local scoped = [[Show
+    BaseType == "Cord Belt"
+
+# PoB economy: begin
+Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    AreaLevel < 68
+    StackSize <= 3
+
+Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    AreaLevel >= 68
+    StackSize <= 3
+
+# PoB economy: end
+Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    AreaLevel < 68
+    StackSize <= 2
+
+Show
+    Class == "Stackable Currency"
+]]
+local policy = {campaign=0.30,maps=3,caps={["Orb of Alteration"]=7}}
+local history = {}
+for days=1,3 do
+	history[days] = {day="day "..days,time=now-days*86400,values={["Currency:alt"]=0.21}}
+end
+local applied, count, decisions = validate(scoped,missing,false,1,samples,history,"today",now,policy)
+assert(count==2 and applied:find("AreaLevel < 68\n    StackSize <= 1",1,true))
+assert(applied:find("AreaLevel >= 68\n    StackSize <= 7",1,true))
+assert(decisions[1].scope=="campaign" and decisions[1].sample.area==60
+	and decisions[1].sample.before=="Hide" and decisions[1].sample.action=="Hide")
+assert(decisions[2].scope=="maps" and decisions[2].sample.before=="Show" and decisions[2].sample.action=="Hide")
+local _, withoutHistory, _, skips = validate(scoped,missing,false,1,samples,{},"today",now,policy)
+assert(withoutHistory==1 and skips[1].reason:find("three earlier",1,true))
+history[3].values["Currency:alt"]=0.8
+local _, withSpike, _, moreSkips = validate(scoped,missing,false,1,samples,history,"today",now,policy)
+assert(withSpike==1 and moreSkips[1].reason:find("Recent high price",1,true))
+assert(not pcall(market.pickupPolicy,1,{caps={["Orb of Alteration"]=7.5}}))
+local young = {history[1],history[1],history[2]}
+local _, duplicateDays = validate(scoped,missing,false,1,samples,young,"today",now,policy)
+assert(duplicateDays==1)
+
+-- Exercise the scheduler and the read-only preview with saved daily history.
+local policySync = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+local ownSettings = policySync.configuration()
+ownSettings.providerRetryAfter = nil
+write(configFile,assert(require("dkjson").encode(ownSettings)))
+write(target,scoped)
+write(baseline,scoped)
+policySync.configure(target,baseline,"Covens",{hour=0,targetValue=1,protectionFile=protections,pickupPolicy=policy})
+history[3].values["Currency:alt"] = 0.21
+local saved = policySync.configuration()
+saved.priceHistory = history
+write(configFile,assert(require("dkjson").encode(saved)))
+launch.DownloadPage = function(_, _, callback) callback({header=header,body=commodityBody}) end
+local policyPreview
+policySync.preview(target,baseline,"Covens",{hour=0,targetValue=1,protectionFile=protections,pickupPolicy=policy},
+	function(_, candidate) policyPreview=candidate end)
+assert(policyPreview==applied and read(target)==scoped)
+policySync.tick(now,true)
+assert(read(target)==policyPreview and policySync.configuration().review.changes[2].sample.action=="Hide")
+
+print("Pickup policy applies area thresholds, requires distinct daily observations, and shows shadowed outcomes")
+
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.
 local controls, manualReview, exported

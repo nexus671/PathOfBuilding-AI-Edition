@@ -5,10 +5,46 @@ local market = require("Modules.LootFilterEconomy")
 local json = require("dkjson")
 local M = {}
 
+local function editPickupPolicy(width, target, policy, save)
+	local controls = {}
+	ui.label(controls,"campaignLabel",16,16,"Campaign chaos per stack",14)
+	ui.label(controls,"mapsLabel",width/2+4,16,"Maps chaos per stack",14)
+	local function targetField(key,x)
+		controls[key] = new("EditControl"):EditControl(ui.anchor,{x,38,width/2-32,26},
+			policy[key] and tostring(policy[key]) or "", "Use default target", nil, 10)
+	end
+	targetField("campaign",16)
+	targetField("maps",width/2+4)
+	ui.description(controls,"capsLabel",16,80,width-32,48,{
+		"Optional item caps allow tightening after three earlier liquid daily quotes.",
+		"Enter exact commodity names and their highest hide cutoff, for example: " .. '{"Orb of Alteration": 6}',
+	},14)
+	controls.caps = new("EditControl"):EditControl(ui.anchor,{16,134,width-32,122},
+		next(policy.caps or {}) and json.encode(policy.caps,{indent=true}) or "{}",nil,nil,24000,nil,18)
+	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,274,180,28},"Use with next update",function()
+		local passed, checked = pcall(function()
+			local caps, nextIndex, why = json.decode(controls.caps.buf)
+			assert(type(caps) == "table" and not controls.caps.buf:sub(nextIndex):find("%S"), why or "Enter a JSON object of item caps")
+			return market.pickupPolicy(target, {
+				campaign=controls.campaign.buf ~= "" and (tonumber(controls.campaign.buf) or -1) or nil,
+				maps=controls.maps.buf ~= "" and (tonumber(controls.maps.buf) or -1) or nil,
+				caps=caps,
+			})
+		end)
+		if not passed then main:OpenMessagePopup("Pickup policy",ui.errorText(checked)); return end
+		main:ClosePopup()
+		save(checked)
+	end)
+	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,274,120,28},"Cancel",function() main:ClosePopup() end)
+	ui.style(controls)
+	main:OpenPopup(width,320,"Pickup policy",controls,nil,nil,"cancel")
+end
+
 function M.Open()
 	local ok, config = pcall(sync.configuration)
 	if not ok then main:OpenMessagePopup("Daily filter sync", ui.errorText(config)); return end
 	config = config or {}
+	local pickupPolicy = config.pickupPolicy or {}
 	local width = math.min(720, main.screenW - 40)
 	local c = {}
 	local buttonWidth = math.floor((width - 56) / 5)
@@ -24,7 +60,7 @@ function M.Open()
 	local function options()
 		local hour, minute = c.time.buf:match("^%s*(%d%d?):(%d%d)%s*$")
 		return {hour=tonumber(hour) or -1,minute=tonumber(minute) or -1,
-			targetValue=tonumber(c.targetValue.buf) or -1,protectionFile=c.protectionFile.buf}
+			targetValue=tonumber(c.targetValue.buf) or -1,protectionFile=c.protectionFile.buf,pickupPolicy=pickupPolicy}
 	end
 	local function attempt(action)
 		local passed, err = pcall(action)
@@ -92,14 +128,21 @@ function M.Open()
 				review.backup and ("Backup: " .. saved.target .. ".before-pob-sync-" .. review.backup .. ".bak") or "No replacement backup yet."},
 		}}
 		for i, change in ipairs(review.changes or {}) do
-			entries[#entries+1] = {id="change-"..i,label=change.name,category="Changed",details={
-				string.format("Hide up to %d → %d%s", change.old, change.cutoff, change.maps and " in maps" or ""),
+			local scope = change.scope == "campaign" and " in campaign areas" or change.maps and " in maps" or ""
+			local details = {
+				string.format("Hide up to %d → %d%s", change.old, change.cutoff, scope),
 				string.format("%.4g chaos used | %.0f chaos quoted volume",change.price,change.volume),
 				string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
-				change.sample and string.format("Map sample: %d as %s → %s%s", change.sample.count,
-					change.sample.class, change.sample.action, change.sample.line and " at line "..change.sample.line or "")
-					or "Sample result unavailable.",
-			}}
+			}
+			local samples = change.samples or (change.sample and {change.sample}) or {}
+			for _, sample in ipairs(samples) do
+				local area = (sample.area or 83) >= 68 and "Maps" or "Campaign"
+				details[#details+1] = string.format("%s, %d as %s: %s%s", area, sample.count, sample.class,
+					sample.before and (sample.before.." → "..sample.action) or sample.action,
+					sample.line and (" at line "..sample.line) or "")
+			end
+			if #samples == 0 then details[#details+1] = "Sample result unavailable." end
+			entries[#entries+1] = {id="change-"..i,label=change.name,category="Changed",details=details}
 		end
 		for i, item in ipairs(review.skipped or {}) do
 			entries[#entries+1] = {id="skip-"..i,label=item.name,category="Unchanged",details={item.reason,"Hide up to "..item.old}}
@@ -165,6 +208,10 @@ function M.Open()
 		attempt(function() sync.setBackgroundNotifications(not config.backgroundNotifications) end)
 	end)
 	c.backgroundNotify.enabled = function() return config.backgroundEnabled and not background.busy end
+	c.pickupPolicy = new("ButtonControl"):ButtonControl(ui.anchor,{388,470,160,28},"Pickup policy",function()
+		editPickupPolicy(width,tonumber(c.targetValue.buf) or -1,pickupPolicy,function(value) pickupPolicy=value end)
+	end)
+	c.pickupPolicy.enabled = function() return not sync.busy end
 	ui.description(c,"backgroundHelp",16,504,width-32,23,{"Background updates run while you are signed in to Windows."},13)
 	ui.style(c)
 	main:OpenPopup(width, 545, "Daily filter sync", c, nil, nil, "close")

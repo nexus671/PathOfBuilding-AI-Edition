@@ -83,6 +83,9 @@ function M.validate(data)
 		if p.sampleSets~=nil then entry.sampleSets=require("Modules.LootFilterCollections").sampleSets(p.sampleSets) end
 		if p.palettes~=nil then entry.palettes=require("Modules.LootFilterCollections").palettes(p.palettes) end
 		if p.categoryStyles~=nil then entry.categoryStyles=require("Modules.LootFilterCategoryStyles").validate(p.categoryStyles) end
+		if p.economyRules~=nil then
+			entry.economyRules=require("Modules.LootFilterEconomy").validateManagedRules(p.economyRules)
+		end
 		entry.baseCommit=p.baseCommit and text(p.baseCommit,40,"template revision") or M.source().commit
 		if p.template then entry.template=text(p.template,M.limit,"imported filter");local parsed=parser.parse(p.template);assert(#parsed.rules>0 or #parsed.imports>0,"Imported filter has no rules or imports") end
 		if p.importFiles~=nil then
@@ -637,7 +640,12 @@ function M.compile(profile,includeParsed)
 			output[#output+1]=styled("\n# 3.30 new-item safety: "..class.."\nShow\n    BaseType == "..table.concat(values," ").."\n    SetTextColor 255 235 175\n    SetBorderColor 175 110 230\n    SetFontSize 40",kind)
 		end
 	end
-	local base,changes=M.migratedBase(checked);output[#output+1]="\n# Pinned base filter\n"..styled(base)
+	local base,changes=M.migratedBase(checked)
+	base=styled(base)
+	if checked.mode=="Normal" and #(checked.economyRules or {})>0 then
+		base=require("Modules.LootFilterEconomy").addManagedSection(base,checked.economyRules)
+	end
+	output[#output+1]="\n# Pinned base filter\n"..base
 	local raw=require("Modules.LootFilterDecorators").apply(table.concat(output,"\n"),checked.appearance);assert(#raw<=M.limit,"Compiled filter exceeds 2 MiB")
 	if checked.mode=="Ruthless" then raw=raw:gsub("\n([ \t]*)Hide(%f[%W])","\n%1Minimal%2") end
 	local parsed=parser.parse(raw)

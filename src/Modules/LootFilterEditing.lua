@@ -228,6 +228,7 @@ function M.review(before,after)
 			for name in pairsSortByKey(included) do lines[#lines+1]="Included file removed: "..name end
 			if previous.template~=p.template then lines[#lines+1]="Base filter changed: "..(previous.template and "imported ("..#previous.template.." bytes)" or "pinned preset").." -> "..(p.template and "imported ("..#p.template.." bytes)" or "pinned preset") end
 			if previous.baseCommit~=p.baseCommit then lines[#lines+1]="Base revision: "..tostring(previous.baseCommit).." -> "..tostring(p.baseCommit) end
+			if encode(previous.economyRules or {})~=encode(p.economyRules or {}) then lines[#lines+1]="Managed price rules changed" end
 			for _,key in ipairs({"rules","tiers","modules"}) do local a,b={},{};for _,v in ipairs(previous[key] or {}) do a[#a+1]=v.id end;for _,v in ipairs(p[key] or {}) do b[#b+1]=v.id end;if #a==#b and table.concat(a,"/")~=table.concat(b,"/") then lines[#lines+1]="Priority order changed: "..key end end
 			for _,key in ipairs({"rules","tiers","modules","sampleSets","palettes"}) do
 				local map={};for _,v in ipairs(previous[key] or {}) do map[v.id]=v end

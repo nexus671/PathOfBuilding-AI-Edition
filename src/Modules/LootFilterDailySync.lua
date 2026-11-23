@@ -261,6 +261,7 @@ end
 local function prepare(target, baselineFile, league, options)
 	options = options or {}
 	local targetValue = options.targetValue or 1
+	local pickupPolicy = market.pickupPolicy(targetValue, options.pickupPolicy)
 	local hour, minute = options.hour or 9, options.minute or 0
 	assert(type(hour) == "number" and hour >= 0 and hour <= 23 and hour == math.floor(hour), "Enter an hour from 0 to 23")
 	assert(type(minute) == "number" and minute >= 0 and minute <= 59 and minute == math.floor(minute), "Enter a minute from 0 to 59")
@@ -278,14 +279,15 @@ local function prepare(target, baselineFile, league, options)
 	elseif not baseline:find("# CUSTOM: Always show Cord Belts", 1, true) then
 		error("Choose a protected sample JSON file for this baseline")
 	end
-	validate(baseline, {}, true, targetValue, protections)
-	validate(original, {}, true, targetValue, protections)
+	validate(baseline, {}, true, targetValue, protections, nil, nil, nil, pickupPolicy)
+	validate(original, {}, true, targetValue, protections, nil, nil, nil, pickupPolicy)
 	verifyUnmanagedRules(original, baseline)
 	local key = sha(baseline)
 	return {
 		enabled=true, target=target, baseline=main.userPath.."LootFilterBaseline-"..key..".filter",
 		baselineHash=key, current=sha(original),
-		league=league, hour=hour, minute=minute, targetValue=targetValue, protections=protections, protectionFile=options.protectionFile,
+		league=league, hour=hour, minute=minute, targetValue=targetValue, pickupPolicy=pickupPolicy,
+		protections=protections, protectionFile=options.protectionFile,
 	}, original, baseline
 end
 
@@ -321,6 +323,9 @@ function M.configure(target, baselineFile, league, options)
 		nextConfig.backgroundEnabled = current and current.backgroundEnabled == true
 		nextConfig.backgroundNotifications = current and current.backgroundNotifications == true
 		nextConfig.providerRetryAfter = current and current.providerRetryAfter
+		if current and current.league == nextConfig.league and current.baselineHash == nextConfig.baselineHash then
+			nextConfig.priceHistory = current.priceHistory
+		end
 		nextConfig.revision = newRevision()
 		if not read(nextConfig.baseline) then put(nextConfig.baseline, baseline) end
 		assert(read(nextConfig.baseline) == baseline, "Stored baseline does not match")
@@ -464,7 +469,7 @@ local function publish(config, bodies, ages, day, force, now)
 		assert(sha(baseline) == current.baselineHash, "Baseline checksum changed")
 		verifyUnmanagedRules(original, baseline)
 		local candidate, count, changes, skipped, snapshots = validate(
-			baseline, bodies, false, current.targetValue, current.protections, current.priceHistory, day, now)
+			baseline, bodies, false, current.targetValue, current.protections, current.priceHistory, day, now, current.pickupPolicy)
 		current.priceHistory = snapshots
 		keepExpected(candidate)
 		if candidate ~= original then
@@ -640,8 +645,11 @@ function M.preview(target, baselineFile, league, options, callback)
 	assert(os.time() >= rateLimitUntil, "Wait before contacting the rate-limited exchange again")
 	local config, original, baseline = prepare(target, baselineFile, league, options)
 	local now = os.time()
+	local found, saved = pcall(get)
+	local history = found and saved and saved.league == config.league and saved.baselineHash == config.baselineHash and saved.priceHistory
+	local day = history and os.date("%Y-%m-%d", now) or nil
 	fetchPrices(config, baseline, now, function(bodies)
-		local candidate = validate(baseline, bodies, false, config.targetValue, config.protections)
+		local candidate = validate(baseline, bodies, false, config.targetValue, config.protections, history, day, now, config.pickupPolicy)
 		callback(original, candidate)
 		return "Preview complete. Review the proposed filter before enabling sync."
 	end)
