@@ -148,6 +148,12 @@ function M.Open(profileId, profileName)
 			details={saved.summary, "Next eligible run: " .. (sync.nextEligible(saved,os.time()) or "Paused or disabled"),
 				review.backup and ("Backup: " .. saved.target .. ".before-pob-sync-" .. review.backup .. ".bak") or "No replacement backup yet."},
 		}}
+		for i, feed in ipairs(review.feeds or {}) do
+			entries[#entries+1] = {id="feed-"..i,label=feed.category,category="Price feeds",details={
+				string.format("poe.ninja response age at sync: %d seconds",feed.age),
+				feed.revalidated and "Server confirmed the saved response was unchanged." or "Downloaded response and verified its freshness.",
+			}}
+		end
 		for i, change in ipairs(review.changes or {}) do
 			local scope = change.scope == "campaign" and " in campaign areas" or change.maps and " in maps" or ""
 			local details = {
@@ -163,7 +169,7 @@ function M.Open(profileId, profileName)
 					sample.line and (" at line "..sample.line) or "")
 			end
 			if #samples == 0 then details[#details+1] = "Sample result unavailable." end
-			entries[#entries+1] = {id="change-"..i,label=change.name,category="Changed",details=details}
+			entries[#entries+1] = {id="change-"..i,label=change.name,category="Changed",details=details,decision=change}
 		end
 		for i, item in ipairs(review.skipped or {}) do
 			entries[#entries+1] = {id="skip-"..i,label=item.name,category="Unchanged",details={item.reason,"Hide up to "..item.old}}
@@ -174,7 +180,40 @@ function M.Open(profileId, profileName)
 				run.oldest and string.format("Oldest response was %.0f minutes old",run.oldest/60) or "Response age was not recorded.",
 			}}
 		end
-		require("Classes.PlanningBrowserControl").Open("Daily filter sync review", entries)
+		local exchange = require("Modules.LootFilterExchangeCrossCheck")
+		local waiting, owner
+		require("Classes.PlanningBrowserControl").Open("Daily filter sync review", entries, {
+			secondary = {
+				label="Compare GGG trades",
+				canRun=function(entry)
+					local change = entry.decision
+					return not waiting and change and not change.tier and exchange.itemId(change.name)
+						and type(review.checkedAt)=="number"
+				end,
+				run=function(entry)
+					if launch.noSSL then main:OpenMessagePopup("GGG trade comparison","Enable HTTPS certificate verification in PoB."); return end
+					local change = entry.decision
+					local hour = exchange.hour(review.checkedAt)
+					waiting = true
+					exchange.fetch(hour,function(markets, err)
+						waiting = false
+						if main.popups[1] ~= owner then return end
+						local quote
+						if markets then quote, err = exchange.compare(markets,saved.league,change.name) end
+						local period = os.date("!%Y-%m-%d %H:%M UTC",hour)
+						local text = change.name .. " | " .. saved.league .. "\nGGG completed hour beginning " .. period .. "\n"
+						if quote then
+							text = text .. string.format("GGG traded average %.4g chaos (%d items, %.0f chaos)\npoe.ninja quote at sync %.4g chaos",
+								quote.price,quote.count,quote.chaosVolume,change.currentPrice or change.price)
+						else
+							text = text .. ui.errorText(err)
+						end
+						main:OpenMessagePopup("GGG trade comparison",text)
+					end)
+				end,
+			},
+		})
+		owner = main.popups[1]
 	end,432)
 	button("preview",16+step,"Preview changes",function()
 		local owner = main.popups[1]

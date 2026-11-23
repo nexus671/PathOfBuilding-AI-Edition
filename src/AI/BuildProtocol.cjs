@@ -318,9 +318,13 @@ function createBridge(reportPath, clientName = () => "MCP client") {
       const offset = args.offset ?? 0, limit = args.limit ?? 25;
       const decisions = Array.isArray(snapshot.changes) ? snapshot.changes.slice(0,250) : [];
       const nextOffset = offset + limit < decisions.length ? offset + limit : null;
+      const feeds = Array.isArray(snapshot.feeds) ? snapshot.feeds.slice(0,20)
+        .filter(feed => typeof feed?.category === 'string' && /^[A-Za-z]{1,40}$/.test(feed.category)
+          && Number.isFinite(feed.responseAge) && feed.responseAge >= 0 && feed.responseAge <= 3600)
+        .map(({category,responseAge,revalidated}) => ({category,responseAge,revalidated:revalidated===true})) : [];
       return {
         heartbeat:current.heartbeat,available:true,checkedAt:snapshot.checkedAt,
-        verifiedProtection:snapshot.verifiedProtection === true,responseAges:snapshot.responseAges,
+        verifiedProtection:snapshot.verifiedProtection === true,responseAges:snapshot.responseAges,feeds,
         changeCount:snapshot.changeCount,changes:decisions.slice(offset,offset+limit),
         nextOffset,truncated:snapshot.changeCount>decisions.length,
       };
