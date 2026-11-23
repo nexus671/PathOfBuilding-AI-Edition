@@ -81,7 +81,7 @@ function M.Open(options)
 		local ok,result=pcall(require("Modules.MapClipboard").parse,Paste())
 		if not ok then ui.errorPopup("Paste map",result);return end
 		local state=result.state;local popup={}
-		local label=map.source().bases[state.baseId].name.." | Tier "..state.tier.." | "..(state.unidentified and "Modifiers unknown" or #state.selected.." modifiers")..(state.twiceCorrupted and " | Twice Corrupted" or state.corrupted and " | Corrupted" or "")..(state.mirrored and " | Mirrored" or "")..(state.unidentified and " | Unidentified" or "")
+		local label=map.source().bases[state.baseId].name.." | Tier "..state.tier.." | "..(state.unidentified and "Modifiers unknown" or #state.selected.." modifier"..(#state.selected==1 and "" or "s"))..(state.twiceCorrupted and " | Twice Corrupted" or state.corrupted and " | Corrupted" or "")..(state.mirrored and " | Mirrored" or "")..(state.unidentified and " | Unidentified" or "")
 		ui.description(popup,"review",16,28,608,108,{label,result.notes[1],result.notes[2],result.notes[3],"Using this map replaces the current draft's working modifiers and targets."},14)
 		popup.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,154,200,28},"Use copied map",function()
 			baseId=state.baseId;syncRarity();mirrored=state.mirrored or nil;twiceCorrupted=state.twiceCorrupted or nil;unidentified=state.unidentified or nil;selected=copyTable(state.selected);rolls=copyTable(state.rolls);implicit=state.implicit and copyTable(state.implicit) or nil;quality=state.quality and copyTable(state.quality) or nil;observedEffects=state.observedEffects and copyTable(state.observedEffects) or nil

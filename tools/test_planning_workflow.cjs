@@ -1367,6 +1367,8 @@ async function main(){
   const temple=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyTier16',tier:16,itemLevel:83,rarity:'rare',selected:[]},action:'vaal_temple',seed:42},'mapData');
   assert.equal(temple.mapData.state.baseId,'Metadata/Items/Maps/MapWorldsVaalTemple');assert.equal(temple.mapData.state.vaalPreview,true);assert.match(temple.mapData.baseImplicit.text,/10 additional guarded Vaal Vessels/);
   const templeInspection=await queued('inspect_map_modifiers',{baseRevision:context.revision,...temple.mapData.state,limit:5},'mapData');assert.match(templeInspection.mapData.note,/Vaal Temple preview/);assert.equal(templeInspection.mapData.baseImplicit.id,'MapVaalTempleContainsVaalVessels');
+  const copiedTempleText='Item Class: Maps\nRarity: Rare\nAncient Example\nVaal Temple Map\n--------\nMap Tier: 16\nItem Level: 83\n--------\nArea contains 10 additional guarded Vaal Vessels (implicit)\n--------\nMonsters have 100% increased Area of Effect\n--------\nTravel to this Map by using it in a personal Map Device.\n--------\nCorrupted';
+  const copiedTemple=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:copiedTempleText},'mapData');assert.equal(copiedTemple.mapData.baseImplicitObserved,true);assert.equal(copiedTemple.mapData.baseImplicit.id,'MapVaalTempleContainsVaalVessels');assert.equal(copiedTemple.mapData.state.observedEffects,undefined);
   const nightmareEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare'},options:{wantedGroups:[['MapUberWeakContainsDeliriumMirror']],trials:2,maxAttempts:2,seed:42}},'mapData');
   assert.equal(nightmareEstimate.mapData.action,'chaos');assert.match(nightmareEstimate.mapData.note,/generation order is unverified/);
   const allflameRef=await queued('list_map_allflame',{baseRevision:context.revision},'mapData');assert.equal(allflameRef.mapData.items.length,11);const allflameId=allflameRef.mapData.items.find(item=>item.name==='Allflame Ember of the Multitude').id;
@@ -1459,6 +1461,7 @@ async function main(){
   starterAtlas.mapDrafts.push({...vaalMap.mapData.state,id:'vaal-preview',title:'Conditional Vaal preview',patch:'3.30.0.2.2'});
   starterAtlas.mapDrafts.push({...tierUp.mapData.state,id:'tier-up-preview',title:'Conditional tier-up preview',patch:'3.30.0.4'});
   starterAtlas.mapDrafts.push({...temple.mapData.state,id:'temple-preview',title:'Conditional Vaal Temple preview',patch:'3.30.0.4'});
+  starterAtlas.mapDrafts.push({...copiedTemple.mapData.state,id:'temple-copy',title:'Copied Vaal Temple',patch:'3.30.0.4'});
   starterAtlas.mapDrafts.push({id:'unknown-map',title:'Unidentified map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapKeyTier5',tier:5,itemLevel:68,rarity:'rare',unidentified:true,selected:[]});
   for(const version of ['3.28.0j','3.28.0j-ruthless']) {
     const search=await queued('search_atlas_nodes',{baseRevision:context.revision,version,query:'Essence',limit:10},'atlas');

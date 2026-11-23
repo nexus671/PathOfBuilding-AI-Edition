@@ -22,6 +22,14 @@ local templeInput={baseId="Metadata/Items/Maps/MapKeyTier16",tier=16,itemLevel=8
 local temple=currency.perform(templeInput,"vaal_temple",42)
 assert(temple.state.baseId=="Metadata/Items/Maps/MapWorldsVaalTemple" and temple.state.tier==16 and temple.state.corrupted and temple.state.vaalPreview,"Invalid Vaal Temple preview")
 assert(temple.baseImplicit and temple.baseImplicit.text:find("10 additional guarded Vaal Vessels",1,true),"Vaal Temple base implicit is missing")
+local copiedText="Item Class: Maps\nRarity: Rare\nAncient Example\nVaal Temple Map\n--------\nMap Tier: 16\nItem Level: 83\n--------\nArea contains 10 additional guarded Vaal Vessels (implicit)\n--------\nMonsters have 100% increased Area of Effect\n--------\nTravel to this Map by using it in a personal Map Device.\n--------\nCorrupted"
+local copiedMap=require("Modules.MapClipboard").parse(copiedText)
+assert(copiedMap.baseImplicitObserved and copiedMap.baseImplicit.id==temple.baseImplicit.id and not copiedMap.state.observedEffects,"Copied Vaal Temple base implicit was not recognized")
+local otherText=copiedText:gsub("Vaal Vessels %(implicit%)","Vaal Vessels (implicit)\nArea is Influenced by the Originator's Memories (implicit)")
+local otherMap=require("Modules.MapClipboard").parse(otherText)
+assert(otherMap.state.observedEffects and #otherMap.state.observedEffects==1 and otherMap.state.observedEffects[1].text=="Area is Influenced by the Originator's Memories","Other copied implicits were lost")
+local repeatedText=copiedText:gsub("Vaal Vessels %(implicit%)","Vaal Vessels (implicit)\nArea contains 10 additional guarded Vaal Vessels (implicit)")
+assert(not pcall(require("Modules.MapClipboard").parse,repeatedText),"Duplicate base implicits were accepted")
 local invalidTemple=copyTable(templeInput);invalidTemple.tier=15;invalidTemple.baseId="Metadata/Items/Maps/MapKeyTier15"
 assert(not pcall(currency.perform,invalidTemple,"vaal_temple",42),"Non-tier-16 Vaal Temple input was accepted")
 for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
@@ -61,6 +69,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  local copied=copyTable(saved);copied.observedEffects={{kind="implicit",text="Area contains 10 additional guarded Vaal Vessels"}}
  c=require("Classes.MapModifierControl").Open({initial=copied});rows={};for _,line in ipairs(c.affixes.list) do rows[#rows+1]=StripEscapes(line[1] or "") end
  local _,matches=table.concat(rows," "):gsub("%s+"," "):gsub("10 additional guarded Vaal Vessels","")
- assert(matches==1,"Copied base implicit should not be displayed twice");ui:restore();main.popups={}
+ assert(matches==1,"Copied base implicit should not be displayed twice")
+ ui.clipboard=copiedText;ui:click("pasteMap");ui:frame():write(directory.."/"..size[1].."-map-temple-copy-review.json");ui:click("keep")
+ assert(not c.status.label:find("Conditional Vaal Temple",1,true),"Copied map was mistaken for a conditional preview")
+ rows={};for _,line in ipairs(c.affixes.list) do rows[#rows+1]=StripEscapes(line[1] or "") end
+ local _,copiedMatches=table.concat(rows," "):gsub("%s+"," "):gsub("10 additional guarded Vaal Vessels","")
+ assert(copiedMatches==1,"Copied map should show one recognized base implicit")
+ ui:frame():write(directory.."/"..size[1].."-map-temple-copy-applied.json");ui:restore();main.popups={}
 end
-print("MAP_VAAL_UI_OK",27)
+print("MAP_VAAL_UI_OK",33)

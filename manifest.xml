@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1142" />
+	<Version number="2.68.1-ai.preview1143" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="1fcd1aee920e5e07a6d982ab9373743cdcf4fa82" />
+	<File name="changelog.txt" part="default" sha1="cb4f6875e9336d707c03150dd65cbb74ae0ec7fa" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1779,7 +1779,7 @@
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="e634f9baf6208734a911e9ee61a423667b6ca319" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="b133139457017d3bb1579c4284c14bf3f1c0a524" />
-	<File name="Classes/MapModifierControl.lua" part="program" sha1="425a9df28d587c497cfd45614a0e6265b02f234b" />
+	<File name="Classes/MapModifierControl.lua" part="program" sha1="c06600496cc52e46593f17372e83e9094c451a7f" />
 	<File name="Classes/MinionListControl.lua" part="program" sha1="655a6ddb06ba75011e51d5a6130db8cf7a9f3895" />
 	<File name="Classes/MinionSearchListControl.lua" part="program" sha1="cfff5d76e380c7bdcbdac229325cefb1599af36c" />
 	<File name="Classes/ModDB.lua" part="program" sha1="1327beebeba14dc8320d137a3dede673b74942af" />
@@ -2240,7 +2240,7 @@
 	<File name="Modules/LootFilterZip.lua" part="program" sha1="9785a76f851b524da1d28d67103891599f0aa12d" />
 	<File name="Modules/LootFilters.lua" part="program" sha1="a3c1ac161613b533ce9f8491818615c952335ce7" />
 	<File name="Modules/Main.lua" part="program" sha1="00b2277d0bf1ef05423b7e1693119ace76baf8de" />
-	<File name="Modules/MapClipboard.lua" part="program" sha1="eb59d14815d965e0396a7ccf759a1f318b000fb5" />
+	<File name="Modules/MapClipboard.lua" part="program" sha1="984b53897a5ae596d363f0cb326eb931aa55d4a9" />
 	<File name="Modules/MapCorruptionImplicits.lua" part="program" sha1="4bde5edf6208613815c1410d2e7916ccf88b273e" />
 	<File name="Modules/MapCraftEstimate.lua" part="program" sha1="8e0e67ef6aa6d05127f4783c78f563056605d44a" />
 	<File name="Modules/MapCraftingData.lua" part="program" sha1="db0243da079cabcd26318816198c57fd747b2837" />

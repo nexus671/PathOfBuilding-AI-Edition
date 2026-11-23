@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1143][2026/11/22]
+
+* Recognize Vaal Temple's base implicit in copied maps.
+
 VERSION[2.68.1-ai.preview1142][2026/11/22]
 
 * Preview the conditional Vaal Temple map corruption outcome.
