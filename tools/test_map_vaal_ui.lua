@@ -25,6 +25,9 @@ assert(temple.baseImplicit and temple.baseImplicit.text:find("10 additional guar
 local copiedText="Item Class: Maps\nRarity: Rare\nAncient Example\nVaal Temple Map\n--------\nMap Tier: 16\nItem Level: 83\n--------\nArea contains 10 additional guarded Vaal Vessels (implicit)\n--------\nMonsters have 100% increased Area of Effect\n--------\nTravel to this Map by using it in a personal Map Device.\n--------\nCorrupted"
 local copiedMap=require("Modules.MapClipboard").parse(copiedText)
 assert(copiedMap.baseImplicitObserved and copiedMap.baseImplicit.id==temple.baseImplicit.id and not copiedMap.state.observedEffects,"Copied Vaal Temple base implicit was not recognized")
+local dualText=copiedText:gsub("Area contains 10 additional guarded Vaal Vessels %(implicit%)","+15%% Item Rarity (implicit)\nArea contains 10 additional guarded Vaal Vessels (implicit)")
+local dualMap=require("Modules.MapClipboard").parse(dualText)
+assert(dualMap.baseImplicitObserved and dualMap.state.implicit and dualMap.state.implicit.id=="MapCorruptionItemRarity" and dualMap.state.implicit.value==15 and not dualMap.state.observedEffects,"Base and corruption implicits were not kept separately")
 local otherText=copiedText:gsub("Vaal Vessels %(implicit%)","Vaal Vessels (implicit)\nArea is Influenced by the Originator's Memories (implicit)")
 local otherMap=require("Modules.MapClipboard").parse(otherText)
 assert(otherMap.state.observedEffects and #otherMap.state.observedEffects==1 and otherMap.state.observedEffects[1].text=="Area is Influenced by the Originator's Memories","Other copied implicits were lost")
@@ -67,14 +70,19 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  ui:click("close");c=require("Classes.MapModifierControl").Open({initial=saved});assert(c.status.label:find("Conditional Vaal Temple",1,true),"Reopened Vaal Temple lost its assumption label")
  ui:frame():write(directory.."/"..size[1].."-map-vaal-temple-reopened.json");ui:click("close")
  local copied=copyTable(saved);copied.observedEffects={{kind="implicit",text="Area contains 10 additional guarded Vaal Vessels"}}
- c=require("Classes.MapModifierControl").Open({initial=copied});rows={};for _,line in ipairs(c.affixes.list) do rows[#rows+1]=StripEscapes(line[1] or "") end
+ c=require("Classes.MapModifierControl").Open({initial=copied,keep=function(value) saved=require("Modules.AtlasPlanner").validateMapDraft(value);return value.id end});rows={};for _,line in ipairs(c.affixes.list) do rows[#rows+1]=StripEscapes(line[1] or "") end
  local _,matches=table.concat(rows," "):gsub("%s+"," "):gsub("10 additional guarded Vaal Vessels","")
  assert(matches==1,"Copied base implicit should not be displayed twice")
- ui.clipboard=copiedText;ui:click("pasteMap");ui:frame():write(directory.."/"..size[1].."-map-temple-copy-review.json");ui:click("keep")
+ ui.clipboard=dualText;ui:click("pasteMap");ui:frame():write(directory.."/"..size[1].."-map-temple-copy-review.json");ui:click("keep")
  assert(not c.status.label:find("Conditional Vaal Temple",1,true),"Copied map was mistaken for a conditional preview")
  rows={};for _,line in ipairs(c.affixes.list) do rows[#rows+1]=StripEscapes(line[1] or "") end
  local _,copiedMatches=table.concat(rows," "):gsub("%s+"," "):gsub("10 additional guarded Vaal Vessels","")
  assert(copiedMatches==1,"Copied map should show one recognized base implicit")
- ui:frame():write(directory.."/"..size[1].."-map-temple-copy-applied.json");ui:restore();main.popups={}
+ assert(table.concat(rows," "):find("+15% Item Rarity",1,true),"Copied corruption implicit is not visible")
+ ui:frame():write(directory.."/"..size[1].."-map-temple-copy-applied.json");ui:click("keep")
+ assert(saved.baseId=="Metadata/Items/Maps/MapWorldsVaalTemple" and saved.implicit and saved.implicit.id=="MapCorruptionItemRarity" and saved.implicit.value==15 and not saved.vaalPreview and not saved.observedEffects,"Copied map did not save both implicits correctly")
+ ui:click("close");c=require("Classes.MapModifierControl").Open({initial=saved});rows={};for _,line in ipairs(c.affixes.list) do rows[#rows+1]=StripEscapes(line[1] or "") end
+ local reopened=table.concat(rows," "):gsub("%s+"," ");assert(reopened:find("10 additional guarded Vaal Vessels",1,true) and reopened:find("+15% Item Rarity",1,true),"Reopened copied map lost an implicit")
+ ui:restore();main.popups={}
 end
 print("MAP_VAAL_UI_OK",33)
