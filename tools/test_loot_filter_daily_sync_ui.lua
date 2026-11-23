@@ -96,7 +96,7 @@ require('Classes.LootFilterDailySyncControl').Open();reviewUI:click('review');re
 local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or '') end;local shown=table.concat(details,' ')
 assert(shown:find('Before: needs DropLevel',1,true) and shown:find('After: needs ItemLevel',1,true) and not shown:find('C:/private',1,true),'Missing-property reasons were not shown safely')
 if output then reviewUI:frame():write(output..'/'..reviewWidth..'-filter-impact-reasons.json') end
-reviewUI:text('search','Orb of Chance');local generic={};for _,row in ipairs(main.popups[1].controls.details.list) do generic[#generic+1]=StripEscapes(row[1] or '') end;assert(table.concat(generic,' '):find('preview cannot resolve a condition or included file',1,true),'Other uncertainty was not explained')
+reviewUI:text('search','Orb of Chance');local generic={};for _,row in ipairs(main.popups[1].controls.details.list) do generic[#generic+1]=StripEscapes(row[1] or '') end;assert(table.concat(generic,' '):find('preview cannot resolve a filter rule or included file',1,true),'Other uncertainty was not explained')
 reviewUI:click('close');main.popups={};reviewFixture=nil
 
 -- Add a price-managed rule through the normal workspace and round-trip the
