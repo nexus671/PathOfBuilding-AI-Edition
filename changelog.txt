@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1229][2026/11/23]
+
+* Add item crafting goals for additive hit-damage avoidance.
+
 VERSION[2.68.1-ai.preview1228][2026/11/23]
 
 * Set crafting goals for suppression, block modifiers and ailment avoidance.

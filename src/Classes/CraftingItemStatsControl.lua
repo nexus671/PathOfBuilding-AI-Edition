@@ -4,14 +4,15 @@ function Panel.Open(goals,onKeep)
 	local controls={};local anchor={"TOPLEFT",nil,"TOPLEFT"}
 	controls.info=new("LabelControl"):LabelControl(anchor,{16,24,0,14},"Minimum item values. Blank fields impose no condition.")
 	controls.scope=new("LabelControl"):LabelControl(anchor,{16,46,0,14},function() return controls.page:GetSelValue()=="Weapon / defence" and "Local stats, before character bonuses." or "Unconditional item modifiers, before caps and character bonuses." end)
-	controls.page=new("DropDownControl"):DropDownControl(anchor,{16,66,488,26},{"Weapon / defence","Life / resists / attributes","Suppression / avoidance"})
+	controls.page=new("DropDownControl"):DropDownControl(anchor,{16,66,488,26},{"Weapon / defence","Life / resists / attributes","Suppression / avoidance","Hit avoidance"})
 	if goals then
 		local pages={};for i,field in ipairs(stats.fields) do if goals[field[1]]~=nil then pages[math.floor((i-1)/10)+1]=true end end
-		if pages[2] and not pages[1] and not pages[3] then controls.page:SelByValue("Life / resists / attributes")
-		elseif pages[3] and not pages[1] and not pages[2] then controls.page:SelByValue("Suppression / avoidance") end
+		if pages[2] and not pages[1] and not pages[3] and not pages[4] then controls.page:SelByValue("Life / resists / attributes")
+		elseif pages[3] and not pages[1] and not pages[2] and not pages[4] then controls.page:SelByValue("Suppression / avoidance")
+		elseif pages[4] and not pages[1] and not pages[2] and not pages[3] then controls.page:SelByValue("Hit avoidance") end
 	end
 	for i,field in ipairs(stats.fields) do
-		local index=(i-1)%10;local page=({"Weapon / defence","Life / resists / attributes","Suppression / avoidance"})[math.floor((i-1)/10)+1]
+		local index=(i-1)%10;local page=({"Weapon / defence","Life / resists / attributes","Suppression / avoidance","Hit avoidance"})[math.floor((i-1)/10)+1]
 		local x=16+index%2*256;local y=100+math.floor(index/2)*54
 		controls[field[1].."Label"]=new("LabelControl"):LabelControl(anchor,{x,y,0,14},field[2])
 		controls[field[1]]=new("EditControl"):EditControl(anchor,{x,y+18,232,26},tostring(goals and goals[field[1]] or ""),nil,nil,16)

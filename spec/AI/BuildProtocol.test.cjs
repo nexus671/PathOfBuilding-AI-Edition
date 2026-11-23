@@ -1083,7 +1083,7 @@ test('accepts supported influence goals in recipes and calculations', t => {
 
 test('queues native item stat goals with decimal thresholds and rejects unknown stats', t => {
   const f=fixture(t);const base={baseRevision:f.state.revision,itemText:craftingProject().startingItem};
-  const recipe={steps:[{method:'quality',maxAttempts:20,untilRequirements:{nativeStats:{PhysicalDPS:12.4,ItemLife:50}}}],targets:[],requirements:{nativeStats:{PhysicalDPS:12.4,AttackRate:1.55,ItemFireResist:35,ItemStrength:20,ItemSpellSuppression:15,ItemAvoidShock:32}}};
+  const recipe={steps:[{method:'quality',maxAttempts:20,untilRequirements:{nativeStats:{PhysicalDPS:12.4,ItemLife:50}}}],targets:[],requirements:{nativeStats:{PhysicalDPS:12.4,AttackRate:1.55,ItemFireResist:35,ItemStrength:20,ItemSpellSuppression:15,ItemAvoidShock:32,ItemAvoidChaosHitDamage:15}}};
   f.call('simulate_crafting',{...base,recipe,options:{trials:3,maxActions:20}});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe,recipe);
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));
