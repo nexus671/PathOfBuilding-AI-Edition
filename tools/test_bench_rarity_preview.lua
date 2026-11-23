@@ -27,4 +27,12 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  end
  ui:restore();main.popups={}
 end
+newBuild();main.popups={};local ui=UI.install({width=960,height=640});ui:bind(build)
+local emptyProject={id="bench-empty",title="No unique reference",slot="Weapon 2",startingItem="Rarity: NORMAL\nTwig Spirit Shield\nItem Level: 86",goals={},steps={}}
+build.savers.CraftingProjects:Upsert(emptyProject)
+local emptyControl=require("Classes.CraftingSimulatorControl").Open(build,emptyProject);emptyControl.page:SelByValue("Craft settings");emptyControl.page.selFunc();emptyControl.benchRarity:Click()
+local emptyPopup=main.popups[1].controls;emptyPopup.outcome:SelByValue("UNIQUE","val");emptyPopup.outcome.selFunc()
+assert(#emptyPopup.unique.list==0 and not emptyPopup.generate:IsEnabled());assert(emptyPopup.generate.tooltipText():find("No bundled unique references",1,true))
+emptyPopup.outcome:SelByValue("MAGIC","val");emptyPopup.outcome.selFunc();assert(emptyPopup.generate:IsEnabled())
+ui:restore();main.popups={}
 print("BENCH_RARITY_PREVIEW_OK")

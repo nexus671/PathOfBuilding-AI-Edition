@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1152" />
+	<Version number="2.68.1-ai.preview1153" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="1cc879214d6207e1d1c804e6e214a4c02fc05492" />
+	<File name="changelog.txt" part="default" sha1="23b46d4705f10fe7671cb2c0139a9f56a109f11d" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1736,7 +1736,7 @@
 	<File name="Classes/CraftingRecipeControl.lua" part="program" sha1="89bf745943e9591f9ad3744fd2db3ac57362cdbb" />
 	<File name="Classes/CraftingRecipeGraphControl.lua" part="program" sha1="a3f12c0823b83e552a19e597750352622b070aa2" />
 	<File name="Classes/CraftingRecoveryControl.lua" part="program" sha1="6bdf797c867f14c6a1b5338bfc6f6dcea18cd1f1" />
-	<File name="Classes/CraftingSimulatorControl.lua" part="program" sha1="f31bfc6d9fb2e1a3d29be0a1ffd7e716934dfe6f" />
+	<File name="Classes/CraftingSimulatorControl.lua" part="program" sha1="243541ae3b2d260612a06d5b95d07c1b84c2d400" />
 	<File name="Classes/CraftingSocketControl.lua" part="program" sha1="b3c3ded23f79a59c16a034bd2642696c05048066" />
 	<File name="Classes/CraftingTargetControl.lua" part="program" sha1="492e8e95645c80b9951aaa5e67cd9b6405e03321" />
 	<File name="Classes/CraftingStepCostsControl.lua" part="program" sha1="6659d42da2a3c970da94b16bf90e62d926305e7b" />

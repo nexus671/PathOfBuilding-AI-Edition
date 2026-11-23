@@ -938,7 +938,7 @@ function Panel.Open(build,project,layout)
 		popup.notice=ui.description(popup,"notice",16,414,350,32,{},14)
 		local function showSource()
 			local choice=popup.unique:GetSelValue();local source=choice and choice.source
-			popup.reference.list=ui.rows({source and "Bundled source: "..source or "Bundled source not recorded."},334,14)
+			popup.reference.list=ui.rows({#popup.unique.list==0 and "No bundled unique references for this base." or source and "Bundled source: "..source or "Bundled source not recorded."},334,14)
 		end
 		local show=require("Classes.JourneyItemControl").new(popup,"example",390,30,360,408,"CONDITIONAL EXAMPLE",{expanded=true})
 		local example,kept
@@ -960,6 +960,8 @@ function Panel.Open(build,project,layout)
 		end
 		popup.unique.selFunc=function() example=nil;popup.notice.list={};show(nil);showSource() end
 		button(popup,"generate",16,230,300,"Generate example",generate)
+		popup.generate.enabled=function() return popup.outcome:GetSelValueByKey("val")~="UNIQUE" or #popup.unique.list>0 end
+		popup.generate.tooltipText=function() return not popup.generate:IsEnabled() and "No bundled unique references are available for this base. Choose another outcome." or "Generate a conditional example without applying a craft." end
 		button(popup,"copy",16,268,300,"Copy example item",function() assert(example,"Generate an example first");Copy(example.itemText) end)
 		popup.copy.enabled=function() return example~=nil end
 		button(popup,"keep",16,306,300,"Keep as new project",function()

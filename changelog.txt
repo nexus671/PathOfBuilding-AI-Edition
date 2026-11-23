@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1153][2026/11/22]
+
+* Explain when a base has no bundled unique rarity example.
+
 VERSION[2.68.1-ai.preview1152][2026/11/22]
 
 * Preserve conditional example notes when resuming saved item snapshots.
