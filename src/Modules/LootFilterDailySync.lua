@@ -919,6 +919,21 @@ function M.fresh(response, now)
 	return response.body, resident, tag
 end
 
+function M.providerWait(now)
+	return math.max(0,rateLimitUntil-now)
+end
+
+function M.noteProviderLimit(response, status, now)
+	if status~=429 and status~=503 then return end
+	local ok, values = pcall(headers,response)
+	local value = ok and values["retry-after"]
+	local seconds = value and value:match("^%d+$") and finiteNumber(tonumber(value))
+	local retryDate = value and not seconds and httpDate(value)
+	local delay = math.max(15,math.min(seconds or (retryDate and retryDate-now) or 60,7*86400))
+	rateLimitUntil = math.max(rateLimitUntil,now+delay)
+	return M.providerWait(now)
+end
+
 local function rememberFailure(config, startedAt, message, id)
 	-- A failed attempt may race with another window. Only record it for
 	-- this configuration and preserve a newer successful or failed attempt.
@@ -1023,9 +1038,12 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 		if ConPrintf then ConPrintf("%s", M.status) end
 	end
 	local function diagnoseLeague(problem)
-		if os.time()+15 >= M.deadline then finish(false,problem); return end
+		local time = os.time()
+		if time+15>=M.deadline or M.providerWait(time)>0 then finish(false,problem); return end
 		M.status = "Checking current PC trade league availability."
 		launch:DownloadPage(market.endpoint.."leagues",function(response,err)
+			local code = err and tonumber(err:match("^Response code: (%d+)$"))
+			M.noteProviderLimit(response,code,os.time())
 			if M.busy ~= job then return end
 			if not err then
 				local valid, _, leagues = pcall(function()
@@ -1075,16 +1093,22 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 		M.status = "Fetching " .. config.league .. " prices: " .. category
 		local url = market.endpoint .. market.feedPath(config.league, category)
 		local cached, time = cache[url], os.time()
+		local function defer(delay,message,callback)
+			job.resumeAt, job.resume = time+delay,callback
+			M.status = message
+		end
+		local wait = M.providerWait(time)
+		if wait>0 then
+			if time+wait+20>=M.deadline then finish(false,category..": provider cooldown extends beyond this refresh."); return end
+			defer(wait,category..": waiting for the provider cooldown.",function() fetch(index,attempt) end)
+			return
+		end
 		local cachedAge = cached and (time - cached.sourceAt)
 		local requestHeaders = "Accept: application/json"
 		if cached and cached.tag and cachedAge >= 0 and cachedAge <= 3600 then
 			requestHeaders = requestHeaders .. "\r\nIf-None-Match: " .. cached.tag
 		else
 			cached = nil
-		end
-		local function defer(delay, message, callback)
-			job.resumeAt, job.resume = time + delay, callback
-			M.status = message
 		end
 		launch:DownloadPage(url, function(response, err)
 			if M.busy ~= job then return end
@@ -1100,19 +1124,12 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			if err then
 				local status = tonumber(err:match("^Response code: (%d+)$"))
 				local retryable = status == 429 or status and status >= 500 and status <= 599 or not status
-				local delay = 5
-				if status == 429 or status == 503 then
-					local ok, values = pcall(headers, response)
-					local value = ok and values["retry-after"]
-					local seconds = value and value:match("^%d+$") and finiteNumber(tonumber(value))
-					local retryDate = value and not seconds and httpDate(value)
-					delay = math.max(15, math.min(seconds or (retryDate and retryDate-time) or 60,7*86400))
-				end
+				local providerDelay = M.noteProviderLimit(response,status,time)
+				local delay = providerDelay or 5
 				if retryable and attempt < 2 and delay <= 90 and time + delay + 20 < M.deadline then
 					defer(delay, category .. ": retrying the exchange request.", function() fetch(index, attempt + 1) end)
 					return
 				end
-				if status == 429 or status == 503 then rateLimitUntil = math.max(rateLimitUntil, time + delay) end
 				local problem = category .. ": " .. err
 				if index == 1 and status == 404 then diagnoseLeague(problem) else finish(false,problem) end
 				return

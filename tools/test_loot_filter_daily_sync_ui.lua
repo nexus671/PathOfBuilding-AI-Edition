@@ -673,3 +673,42 @@ assert(account.pending and writes==0)
 account.tick(os.time())
 assert(writes==1 and main.popups[1].title=="Account filter published")
 print("Reviewed account publication preserves the realm, rejects remote drift and sends the exact approved file")
+
+-- Manual browsing, league discovery, and the scheduler share the server cooldown.
+do
+	newBuild()
+	main.popups = {}
+	local ui = headless.install({width=720,height=600})
+	ui:bind(build)
+	local oldTime, oldDownload = os.time, launch.DownloadPage
+	local time, requests = os.time(), 0
+	os.time = function() return time end
+	launch.DownloadPage = function(_,_,callback)
+		requests = requests+1
+		if requests==1 then
+			callback({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: 30\r\n\r\n"},"Response code: 429")
+		else
+			callback(nil,"Response code: 403")
+		end
+	end
+	require("Classes.LootFilterMarketBrowseControl").Open()
+	ui:text("league","Covens")
+	ui:click("get")
+	assert(requests==1 and sync.providerWait(time)==30)
+	ui:click("get")
+	assert(requests==1 and main.popups[1].controls.status.label:find("cooldown",1,true))
+	ui:click("close")
+	require("Classes.LootFilterDailySyncControl").Open()
+	ui:click("chooseLeague")
+	assert(requests==1 and main.popups[1].title=="Choose league")
+	ui:click("close")
+	main:ClosePopup()
+	time = time+30
+	require("Classes.LootFilterMarketBrowseControl").Open()
+	ui:text("league","Covens")
+	ui:click("get")
+	assert(requests==2 and main.popups[1].controls.status.label:find("denied access",1,true))
+	assert(sync.providerWait(time)==0)
+	os.time, launch.DownloadPage = oldTime, oldDownload
+end
+print("Manual price review and league selection honor the same provider cooldown as sync")

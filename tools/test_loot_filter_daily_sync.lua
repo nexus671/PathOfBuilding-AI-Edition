@@ -336,13 +336,13 @@ launch.DownloadPage = function(_, _, callback, params)
 end
 local reviewed
 sync.preview(target,baseline,"Covens",options,function(_, candidate) reviewed=candidate end)
-assert(not reviewed and networkCount==1 and sync.busy)
+assert(not reviewed and networkCount==1 and sync.busy and sync.providerWait(clock)==20)
 clock=now+19
 sync.tick(clock)
-assert(networkCount==1)
+assert(networkCount==1 and sync.providerWait(clock)==1)
 clock=now+20
 sync.tick(clock)
-assert(reviewed and networkCount==9 and read(target)==original)
+assert(reviewed and networkCount==9 and sync.providerWait(clock)==0 and read(target)==original)
 reviewed=nil
 sync.preview(target,baseline,"Covens",options,function(_, candidate) reviewed=candidate end)
 assert(reviewed and conditional==8 and networkCount==17)
@@ -366,6 +366,7 @@ assert(sync.status:find("snapshot is stale",1,true) and read(target)==successful
 sync.rollback()
 sync.disable()
 os.time=systemTime
+sync=assert(loadfile("Modules/LootFilterDailySync.lua"))()
 
 -- An expired season yields an empty successful price response. Confirm
 -- against the fresh provider list and retain the user's chosen profile.
