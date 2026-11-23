@@ -106,6 +106,45 @@ local function searchPreset(build,profile)
 	end
 	require("Classes.PlanningBrowserControl").Open("Search base filter rules",entries,{action="Open rule",closeOnChoose=false,choose=function(entry) main:ClosePopup();openFilter(build,profile.id,entry.id,"Base filter") end})
 end
+-- Search saved descriptions as well as titles. Atlas nodes are read from their
+-- pinned tree, including selected choice effects; no allocations are changed.
+function M.atlasSearchTerms(plan)
+	local terms={"atlas strategy tree"};local segments={};local function add(label,value) if value and value~="" then terms[#terms+1]=value;segments[#segments+1]={label=label,text=value} end end
+	add("Plan notes",plan.notes);local strategy=plan.strategy or {}
+	for _,key in ipairs({"maps","scarabs","requirements","avoid","notes"}) do add("Strategy "..key,strategy[key]) end
+	for _,map in ipairs(plan.mapDrafts or {}) do add("Map draft",map.title.." "..map.baseId) end
+	local atlas=require("Modules.AtlasPlanner");local ok,tree=pcall(atlas.tree,plan.version)
+	if not ok then return table.concat(terms," "),false,segments end
+	local seen={};for _,group in ipairs({{"Allocated node",plan.nodes or {}},{"Desired node",plan.desired or {}},{"Avoided node",plan.avoided or {}}}) do for _,id in ipairs(group[2]) do
+		local node=tree.nodes[id];if node and not seen[id] then seen[id]=true;local text={node.name};for _,stat in ipairs(atlas.nodeStats(plan,node)) do text[#text+1]=stat end;add(group[1],table.concat(text," | ")) end
+	end end
+	return table.concat(terms," "),true,segments
+end
+function M.craftingSearchTerms(project)
+	local terms={"crafting project"};local segments={};local function add(label,value) if value and value~="" then terms[#terms+1]=value;segments[#segments+1]={label=label,text=value} end end
+	add("Slot",project.slot);add("Starting item",project.startingItem);add("Target item",project.targetItem);add("Notes",project.notes);add("Source",project.originNote)
+	for _,goal in ipairs(project.goals or {}) do add("Goal",goal) end
+	for _,step in ipairs(project.steps or {}) do for _,key in ipairs({"action","stopWhen","onFailure"}) do add("Guide "..key,step[key]) end end
+	for _,recipe in ipairs(project.recipeAlternatives or {}) do add("Alternative recipe",recipe.name) end
+	return table.concat(terms," "),segments
+end
+function M.searchDetails(header,segments,query,footer)
+	local lines={header};local terms={};local phrase=query:lower():match("^%s*(.-)%s*$");for term in phrase:gmatch("%S+") do terms[#terms+1]=term end
+	local matches={}
+	if #terms>0 then for _,segment in ipairs(segments) do
+		local text=StripEscapes(segment.text);local found,best,position=nil,0,nil
+		for line in (text.."\n"):gmatch("([^\n]*)\n") do
+			local lower=line:lower();local pos=lower:find(phrase,1,true);local score=pos and 100 or 0
+			for _,term in ipairs(terms) do local index=lower:find(term,1,true);if index then score=score+1;pos=pos or index end end
+			if score>best then found=line;best=score;position=pos end
+		end
+		if found then matches[#matches+1]={score=best,index=#matches+1,text=segment.label..": "..found:sub(math.max(1,position-60),math.min(#found,position+150))} end
+	end end
+	table.sort(matches,function(a,b) if a.score~=b.score then return a.score>b.score end;return a.index<b.index end)
+	local bestCount=0;for _,match in ipairs(matches) do if match.score==matches[1].score then bestCount=bestCount+1;if bestCount<=5 then lines[#lines+1]=match.text end end end
+	if bestCount>5 then lines[#lines+1]="More matching details are available in the plan." end
+	for _,line in ipairs(footer or {}) do lines[#lines+1]=line end;return lines
+end
 function M.Open(build)
 	local entries={
 		{id="performance",label="Performance diagnostics",details={"See observed calculation and background-slice times. Refresh, copy or reset the session measurements."}},
@@ -121,14 +160,17 @@ function M.Open(build)
 		entries[#entries+1]={id="page:"..page[1],label=page[2],category="Pages",page=page[1],details={"Open this planning page.","In-progress page drafts remain available."}}
 	end
 	for _,plan in ipairs(build.savers.AtlasPlans.plans) do
-		entries[#entries+1]={id="atlas:"..plan.id,label=plan.title,search="atlas strategy tree",category="Atlas plans",atlasId=plan.id,details={"Open saved Atlas plan: "..plan.title,"An existing session draft for this plan takes precedence."}}
+		local terms,complete,segments=M.atlasSearchTerms(plan)
+		entries[#entries+1]={id="atlas:"..plan.id,label=plan.title,search=terms,category="Atlas plans",atlasId=plan.id,queryDetails=function(query) return M.searchDetails("Open saved Atlas plan: "..plan.title,segments,query,{"Search includes allocated, desired and avoided nodes.",complete and "An existing session draft takes precedence." or "The tree could not be read; node search is incomplete."}) end}
 	end
 	for _,project in ipairs(build.savers.CraftingProjects.projects) do
-		entries[#entries+1]={id="craft:"..project.id,label=project.title,search="crafting project "..project.slot,category="Crafting projects",projectId=project.id,details={"Open crafting project: "..project.title,"Equipment slot: "..project.slot,"A working craft for this project remains available."}}
+		local terms,segments=M.craftingSearchTerms(project)
+		entries[#entries+1]={id="craft:"..project.id,label=project.title,search=terms,category="Crafting projects",projectId=project.id,queryDetails=function(query) return M.searchDetails("Open crafting project: "..project.title,segments,query,{"Search covers saved items, goals, guide and notes.","A working craft for this project remains available."}) end}
 		for _,item in ipairs(project.inventory or {}) do
 			entries[#entries+1]={id="craft-item:"..project.id..":"..item.id,label=item.title,search="saved crafting item "..project.title.." "..item.slot.." "..(item.originNote or ""),category="Saved crafting items",projectId=project.id,itemId=item.id,details={"Open saved item in "..project.title,"Equipment slot: "..item.slot,"Search its modifiers in the item inventory."}}
 		end
 	end
+	entries[#entries+1]={id="craftInventorySearch",label="Search saved crafting item modifiers",search="crafting inventory item snapshot modifiers",category="Saved crafting items",details={"Search modifiers across saved crafting snapshots.","The inventory indexes item states in background slices."}}
 	for _,group in ipairs({{"milestones","Roadmap","Journey milestones"},{"wishlist","Gear","Journey gear goals"},{"resources","Budget","Journey resources"},{"stages","Leveling","Journey leveling stages"}}) do
 		for _,item in ipairs(build.savers.BuildJourney.data[group[1]]) do
 			local terms={"journey",group[2]};for _,key in ipairs({"notes","slot","gems","passives","gear","ascendancy","quests","transition","targetItem"}) do if item[key] then terms[#terms+1]=item[key] end end
@@ -149,6 +191,8 @@ function M.Open(build)
 	require("Classes.PlanningBrowserControl").Open("Planning tools",entries,{action="Open",closeOnChoose=false,canChoose=function(entry) return entry.id~="presetSearch" or activeProfile~=nil end,choose=function(entry)
 		main:ClosePopup();local workspace=build.planningWorkspace
 		if entry.page then workspace:Show(entry.page)
+		elseif entry.id=="craftInventorySearch" then
+			workspace:Show("crafting");require("Classes.CraftingInventoryControl").Open(build,{resume=function(project) workspace.cache.crafting.layout.openWorkbench(project) end})
 		elseif entry.journeyId then
 			local found=false;for _,item in ipairs(build.savers.BuildJourney.data[entry.journeyGroup]) do if item.id==entry.journeyId then found=true;break end end
 			if not found then return end

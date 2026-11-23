@@ -46,6 +46,8 @@ If an imported stage references a missing, incompatible or cyclic previous stage
 
 ## Sharing
 
+Planning **Tools** can find a saved Atlas plan by its strategy notes, map draft names, or allocated, desired and avoided node names and effects. Open the result to distinguish the node's state; an existing session draft takes precedence over the saved plan.
+
 In **Saved Atlas plans**, **Undo removal** restores the most recently deleted saved plan during the current build session, including its Genesis allocations. It will not replace another plan with the same ID, and a missing or incompatible previous stage must be repaired first. Save the build to persist the restoration.
 
 **Copy plan** exports JSON with the exact patch version, point budget, allocations and notes. **Paste plan** imports that JSON into the current draft. Review it before keeping it.
