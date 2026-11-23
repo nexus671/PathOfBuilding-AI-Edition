@@ -96,6 +96,15 @@ function M.validate(data)
 				entry.importFiles[#entry.importFiles+1]={name=name,text=text(file.text,M.limit,"imported filter text")}
 			end
 		end
+		if p.absentOptionalImports~=nil then
+			entry.absentOptionalImports={};local names={}
+			for _,value in ipairs(array(p.absentOptionalImports)) do
+				local name=text(value,240,"optional import filename")
+				assert(name:match("%S") and not name:find('[%c"]') and not names[name],"Invalid or duplicate optional import filename")
+				names[name]=true;entry.absentOptionalImports[#entry.absentOptionalImports+1]=name
+			end
+			if #entry.absentOptionalImports==0 then entry.absentOptionalImports=nil end
+		end
 		local seen={}
 		for _,rule in ipairs(array(p.rules)) do
 			local r={id=text(rule.id,100,"rule ID"),title=text(rule.title,160,"rule title"),text=text(rule.text,24000,"rule text"),enabled=rule.enabled~=false}
@@ -654,6 +663,8 @@ function M.compile(profile,includeParsed,previousBase)
 	local raw=require("Modules.LootFilterDecorators").apply(table.concat(output,"\n"),checked.appearance);assert(#raw<=M.limit,"Compiled filter exceeds 2 MiB")
 	if checked.mode=="Ruthless" then raw=raw:gsub("\n([ \t]*)Hide(%f[%W])","\n%1Minimal%2") end
 	local parsed=parser.parse(raw)
+	local suppliedImports={};for _,file in ipairs(checked.importFiles or {}) do suppliedImports[file.name]=true end
+	parsed.absentOptionalImports={};for _,name in ipairs(checked.absentOptionalImports or {}) do if not suppliedImports[name] then parsed.absentOptionalImports[name]=true end end
 	for _,rule in ipairs(parsed.rules) do for _,condition in ipairs(rule.conditions) do
 		if parser.poe2Only[condition.keyword] then parsed.diagnostics[#parsed.diagnostics+1]={line=condition.line,error=condition.keyword.." is a Path of Exile 2-only condition; remove it for Path of Exile 1."} end
 	end end

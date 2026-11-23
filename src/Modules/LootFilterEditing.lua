@@ -206,6 +206,7 @@ function M.review(before,after)
 			for _,review in ipairs(p.manualGuideReviews or {}) do lines[#lines+1]="Reviewed crafting guide: "..review.projectId end
 			if p.template then lines[#lines+1]="Imported base filter: "..#p.template.." bytes" end
 			for _,file in ipairs(p.importFiles or {}) do lines[#lines+1]="Included file: "..file.name.." ("..#file.text.." bytes)" end
+			for _,name in ipairs(p.absentOptionalImports or {}) do lines[#lines+1]="Preview assumes optional file absent: "..name end
 			for _,rule in ipairs(p.rules) do lines[#lines+1]=(rule.enabled~=false and "Enabled: " or "Disabled: ")..rule.title;lines[#lines+1]=rule.text end
 			entries[#entries+1]={id=p.id,label="+ "..p.title,details=lines}
 		elseif encode(previous)~=encode(p) then
@@ -226,6 +227,9 @@ function M.review(before,after)
 				elseif prior.text~=file.text then lines[#lines+1]="Included file changed: "..file.name.." ("..#prior.text.." -> "..#file.text.." bytes)" end
 			end
 			for name in pairsSortByKey(included) do lines[#lines+1]="Included file removed: "..name end
+			local absent={};for _,name in ipairs(previous.absentOptionalImports or {}) do absent[name]=true end
+			for _,name in ipairs(p.absentOptionalImports or {}) do if absent[name] then absent[name]=nil else lines[#lines+1]="Preview now assumes optional file absent: "..name end end
+			for name in pairsSortByKey(absent) do lines[#lines+1]="Removed absent-file preview assumption: "..name end
 			if previous.template~=p.template then lines[#lines+1]="Base filter changed: "..(previous.template and "imported ("..#previous.template.." bytes)" or "pinned preset").." -> "..(p.template and "imported ("..#p.template.." bytes)" or "pinned preset") end
 			if previous.baseCommit~=p.baseCommit then lines[#lines+1]="Base revision: "..tostring(previous.baseCommit).." -> "..tostring(p.baseCommit) end
 			if encode(previous.economyRules or {})~=encode(p.economyRules or {}) then lines[#lines+1]="Managed price rules changed" end

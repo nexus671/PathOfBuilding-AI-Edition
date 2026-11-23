@@ -136,6 +136,39 @@ describe("Build-owned loot filters",function()
 		profile.importFiles={{name="missing.filter",text='Hide\n BaseType "Iron Ring"'}}
 		assert.equal("Hide",filters.simulate(profile,{BaseType="Iron Ring"}).action)
 	end)
+	it("previews explicitly absent optional imports without changing exports",function()
+		local profile=filters.profile("optional-preview","Optional preview")
+		profile.template='Import "outer.filter"\nShow'
+		profile.importFiles={{name="outer.filter",text='Import "missing.filter" Optional\nHide\n BaseType "Iron Hat"'}}
+		assert.equal("unknown",filters.simulate(profile,{BaseType="Iron Hat"}).status)
+		profile.absentOptionalImports={"missing.filter"}
+		local before=copyTable(profile);before.absentOptionalImports=nil
+		local changes=require("Modules.LootFilterEditing").review({activeId=before.id,profiles={before}},{activeId=profile.id,profiles={profile}})
+		assert.matches("Preview now assumes optional file absent",table.concat(changes[1].details," "),1,true)
+		local result=filters.simulate(profile,{BaseType="Iron Hat"})
+		assert.equal("Hide",result.action);assert.matches("Preview assumes optional file",result.reasons[1],1,true)
+		profile.sampleSets={{id="hat",title="Hat",samples={{BaseType="Iron Hat"}}}}
+		local page=filters.simulateExamples(profile,"hat",0,1);assert.matches("Preview assumes optional file",page.results[1].result.reasons[1],1,true)
+		local impact=require("Modules.LootFilterImpact");local compared=impact.page(impact.prepare(before,profile),{{BaseType="Iron Hat"}},0,1)
+		assert.equal("Needs review",compared.results[1].category);assert.matches("Preview assumes optional file",compared.results[1].after.reasons[1],1,true)
+		local raw,report=filters.compile(profile);assert.is_truthy(raw:find('Import "missing.filter" Optional',1,true));assert.equal(1,#report.unresolvedImports)
+		local checked=filters.validate({schemaVersion=1,activeId=profile.id,profiles={profile}})
+		local store=filters.new(build);store.data=checked;local xml={};store:Save(xml);local restored=filters.new(build);restored:Load(xml)
+		assert.same({"missing.filter"},restored.data.profiles[1].absentOptionalImports)
+		profile.template='Import "missing.filter"\nShow';assert.equal("unknown",filters.simulate(profile,{BaseType="Iron Hat"}).status)
+		profile.template='Import "missing.filter" Optional\nShow';profile.importFiles={{name="missing.filter",text='Import "missing.filter" Optional'}}
+		assert.equal("unknown",filters.simulate(profile,{BaseType="Iron Hat"}).status)
+		profile.importFiles={{name="missing.filter",text='Show'}};assert.equal("Show",filters.simulate(profile,{BaseType="Iron Hat"}).action)
+		assert.has_error(function() local bad=copyTable(profile);bad.absentOptionalImports={"same","same"};filters.validate({schemaVersion=1,activeId=bad.id,profiles={bad}}) end)
+	end)
+	it("lets users toggle an optional import preview assumption",function()
+		local profile=filters.profile("optional-ui","Optional UI");profile.template='Import "missing.filter" Optional\nShow';local files,absent
+		require("Classes.LootFilterImportControl").Open(profile,function(a,b) files,absent=a,b end)
+		local editor=main.popups[1].controls;editor.findImports:Click();local browser=main.popups[1].controls
+		assert.is_true(browser.secondary:IsEnabled());browser.secondary:Click();browser=main.popups[1].controls
+		assert.matches("Preview assumes absent",browser.results.list[1].entry.label,1,true)
+		main:ClosePopup();editor.keep:Click();assert.same({},files);assert.same({"missing.filter"},absent)
+	end)
 	it("evaluates saved example sets in stable pages without changing the profile",function()
 		local profile=filters.profile("examples","Examples")
 		profile.template='Hide\n BaseType "Iron Hat"\nShow\n ItemLevel >= 80\nHide'
