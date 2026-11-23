@@ -1,0 +1,18 @@
+-- Verify the optional-import assumption through the native popup and persistence.
+local output=arg[1];arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true
+local UI=require("Modules.HeadlessUI");local filters=require("Modules.LootFilters")
+for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
+	newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build)
+	local profile=filters.profile("optional-ui","Optional import");profile.template='Import "missing.filter" Optional\nHide'
+	local files,absent;require("Classes.LootFilterImportControl").Open(profile,function(a,b) files,absent=a,b end)
+	ui:click("findImports");assert(main.popups[1].title=="Unresolved filter imports")
+	if output then ui:frame():write(output.."/"..size[1].."-filter-optional-import.json") end
+	ui:click("secondary");local browser=main.popups[1].controls
+	assert(browser.results.list[1].entry.label:find("Preview assumes absent",1,true))
+	ui:click("close");ui:click("keep");profile.importFiles=files;profile.absentOptionalImports=absent
+	local result=filters.simulate(profile,{BaseType="Iron Hat"});assert(result.action=="Hide" and result.reasons[1]:find("assumes optional",1,true))
+	local raw=filters.compile(profile);assert(raw:find('Import "missing.filter" Optional',1,true))
+	local saver=filters.new(build);saver.data={schemaVersion=1,activeId=profile.id,profiles={profile}};local xml={};saver:Save(xml)
+	local restored=filters.new(build);restored:Load(xml);assert(restored.data.profiles[1].absentOptionalImports[1]=="missing.filter")
+end
+print("FILTER_OPTIONAL_IMPORT_UI_OK")
