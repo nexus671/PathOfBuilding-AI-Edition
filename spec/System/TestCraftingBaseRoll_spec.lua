@@ -34,6 +34,13 @@ describe("Crafting modifier base-roll targets",function()
 		assert.is_true(result.sampled);assert.equal(20,result.trials)
 		assert.has_error(function() sim.validateRecipe({steps={{method="alchemy"}},targets={{anyOf={"LocalAddedColdDamage2"},baseValueComponent=2}}}) end)
 	end)
+	it("uses verified fractional precision for ordinary modifier rolls",function()
+		local ring=sim.model('Rarity: NORMAL\nIron Ring\nItem Level: 86');local leech=ring.byId.LifeLeechPermyriadSuffix1
+		assert.equal(0,sim.rollRange(leech,function() return 0.02 end))
+		local range=sim.rollRange(leech,function() return 0.34 end)
+		assert.is_true(math.abs(sim.baseRollValue(leech,range)-0.27)<1e-7)
+		assert.equal(1,sim.rollRange(leech,function() return 0.999 end))
+	end)
 	it("preserves base-roll goals in saved crafting recipes",function()
 		newBuild();local recipe={steps={{method="alchemy"}},targets={{anyOf={"IncreasedLife4"},minBaseValue=65,maxBaseValue=67}}}
 		local store=build.savers.CraftingProjects;store:Upsert({id="roll-goal",title="Roll goal",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe=recipe})

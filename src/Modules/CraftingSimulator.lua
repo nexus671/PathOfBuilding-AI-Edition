@@ -190,7 +190,7 @@ M.limits = {"Experimental PoE 1 model, not a complete game crafting implementati
 	"Supported: ordinary equipment, known modifier IDs, fractured modifiers, basic currencies, bench modifiers and essences. Meta modifiers protect/remap only the supported actions.",
 	"Supported crafts include fossils, Harvest, recombination, influence, corruption, sockets and veiled crafts; unsupported combinations fail explicitly. Review each action's model notes.",
 	"Rerolls model 4/5/6 rare modifiers with weights 8/3/1, and 1/2 magic modifiers equally. These distribution assumptions and PoB data coverage affect estimates.",
-	"Integer roll ranges use inclusive integer draws. Fractional display ranges use illustrative normalized rolls because the underlying stat precision is not present in this data export.",
+	"Integer roll ranges use inclusive integer draws. Recognized fractional formats use inclusive precision ticks; other fractional ranges use illustrative normalized rolls. Actual distributions remain unverified.",
 	"Modifier targets match IDs and optional normalized rolls or supported base-roll components. Base values precede catalyst and character scaling. Wilson intervals measure sampling uncertainty only. Results describe the bounded recipe, not guaranteed in-game costs."}
 
 local function integer(value,low,high,label)
@@ -470,6 +470,25 @@ function M.pool(model,state)
 	end
 	return result,total
 end
+-- Only use finer ticks when PoB identifies one unambiguous format and every
+-- candidate round-trips through the native renderer. Other formats remain
+-- illustrative normalized draws rather than guessed precision.
+local rollPrecisionCache={}
+local function rollPrecision(line,low,high)
+ local cached=rollPrecisionCache[line];if cached~=nil then return cached or nil end
+ local key,count=line:gsub("%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)","#")
+ key=key:gsub("%+#","#");local formats=count==1 and not key:find("%d") and data.modScalability[key]
+ local f=formats and #formats==1 and formats[1].formats
+ local scale=f and #f==1 and ({divide_by_ten=10,divide_by_one_hundred=100})[f[1]]
+ local steps=scale and math.abs(high-low)*scale
+ if not steps or steps<1 or steps>500 or math.abs(steps-math.floor(steps+0.5))>1e-7 then rollPrecisionCache[line]=false;return end
+ steps=math.floor(steps+0.5);local sign=line:match("%-%(%-?%d") and -1 or 1
+ for i=0,steps do
+  local actual=M.baseRollValue({line},i/steps,1);local expected=sign*(low+(high-low)*i/steps)
+  if not actual or math.abs(actual-expected)>1e-7 then rollPrecisionCache[line]=false;return end
+ end
+ rollPrecisionCache[line]=scale;return scale
+end
 local function rollRange(mod,random)
 	local ranges={ }
 	for _,line in ipairs(mod) do for range in line:gmatch("%b()") do
@@ -477,9 +496,9 @@ local function rollRange(mod,random)
 		if low and high then
 			low,high=tonumber(low),tonumber(high)
 			local value=random()
-			if low ~= high and low == math.floor(low) and high == math.floor(high) then
-				local steps=math.abs(high-low);value=math.floor(value*(steps+1))/steps
-			end
+			local scale=rollPrecision(line,low,high)
+			local steps=scale and math.floor(math.abs(high-low)*scale+0.5) or (low == math.floor(low) and high == math.floor(high) and math.abs(high-low))
+			if steps and steps>0 then value=math.floor(value*(steps+1))/steps end
 			ranges[#ranges+1]=value
 		end
 	end end
