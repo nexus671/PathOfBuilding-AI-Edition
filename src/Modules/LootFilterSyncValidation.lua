@@ -55,11 +55,13 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 			change.sample = change.samples[1]
 		end
 	end
-	local function check(item, marker)
+	local protectedChecks = 0
+	local function check(item, marker, action)
 		local result = parser.simulate(parsed, item)
 		local icon = result.styles.MinimapIcon
-		assert(result.action == "Show" and #result.matches > 0 and (not marker or icon and table.concat(icon, " ") == marker),
+		assert(result.action == (action or "Show") and #result.matches > 0 and (not marker or icon and table.concat(icon, " ") == marker),
 			"Protected drop failed: " .. item.Rarity .. " " .. item.BaseType .. (result.action == "Unknown" and (" ("..(result.reasons[1] or "result is unknown")..")") or ""))
+		protectedChecks = protectedChecks+1
 	end
 	if protections then
 		assert(type(protections) == "table" and #protections >= 1 and #protections <= 500, "Provide 1 to 500 protected sample items")
@@ -67,8 +69,9 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 			assert(type(item) == "table" and type(item.BaseType) == "string" and type(item.Rarity) == "string", "Each protected sample needs BaseType and Rarity")
 			check(item)
 		end
-		return candidate, #changes, changes, skipped, snapshots
+	else
+		for _, entry in ipairs(protected.samples()) do check(entry.item,entry.marker) end
+		protected.checkPersonalSamples(raw,check)
 	end
-	for _, entry in ipairs(protected.samples()) do check(entry.item,entry.marker) end
-	return candidate, #changes, changes, skipped, snapshots
+	return candidate, #changes, changes, skipped, snapshots, protectedChecks
 end

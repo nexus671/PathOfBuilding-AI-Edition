@@ -44,24 +44,28 @@ function M.personalRulesPreserved(previous, candidate)
 	return personalRulePrefix(previous,oldStop)==personalRulePrefix(candidate,newStop)
 end
 
+local function sample(item)
+	local base = require("Modules.LootFilterLibrary").baseProperties(item.BaseType,item.Rarity)
+	assert(base.Width and base.Height, "Protected sample is missing base dimensions: "..item.BaseType)
+	-- A level 85 item can drop from a rare monster in an area-level 83 map.
+	-- Unique drop levels are not established by the base alone.
+	item.AreaLevel, item.ItemLevel, item.StackSize = item.AreaLevel or 83, item.ItemLevel or 85, item.StackSize or 1
+	item.Width, item.Height, item.DropLevel, item.HasInfluence = base.Width, base.Height, base.DropLevel, {"None"}
+	-- Non-unique jewellery has no random base defence. For the ordinary
+	-- plate, exercise the lowest roll; unique defence remains unknown.
+	if item.Rarity ~= "Unique" then item.BaseDefencePercentile = item.BaseType == "Royal Plate" and 0 or 100 end
+	item.HasExplicitMod, item.HasEnchantment = {}, {}
+	item.SocketGroup = item.SocketGroup or ""
+	item.EnchantmentPassiveNode = ""
+	for key in pairs(parser.numeric) do if item[key] == nil and key ~= "DropLevel" and key ~= "BaseDefencePercentile" then item[key] = 0 end end
+	for key in pairs(parser.booleans) do if item[key] == nil then item[key] = false end end
+	return item
+end
+
 function M.samples()
 	local output = {}
 	local function add(item, marker)
-		local base = require("Modules.LootFilterLibrary").baseProperties(item.BaseType,item.Rarity)
-		assert(base.Width and base.Height, "Protected sample is missing base dimensions: "..item.BaseType)
-		-- A level 85 item can drop from a rare monster in an area-level 83 map.
-		-- Unique drop levels are not established by the base alone.
-		item.AreaLevel, item.ItemLevel, item.StackSize = 83, 85, 1
-		item.Width, item.Height, item.DropLevel, item.HasInfluence = base.Width, base.Height, base.DropLevel, {"None"}
-		-- Non-unique jewellery has no random base defence. For the ordinary
-		-- plate, exercise the lowest roll; unique defence remains unknown.
-		if item.Rarity ~= "Unique" then item.BaseDefencePercentile = item.BaseType == "Royal Plate" and 0 or 100 end
-		item.HasExplicitMod, item.HasEnchantment = {}, {}
-		item.SocketGroup = item.SocketGroup or ""
-		item.EnchantmentPassiveNode = ""
-		for key in pairs(parser.numeric) do if item[key] == nil and key ~= "DropLevel" and key ~= "BaseDefencePercentile" then item[key] = 0 end end
-		for key in pairs(parser.booleans) do if item[key] == nil then item[key] = false end end
-		output[#output+1] = {item=item, marker=marker}
+		output[#output+1] = {item=sample(item), marker=marker}
 	end
 	for _, corrupted in ipairs({true,false}) do
 		for _, identified in ipairs({true,false}) do
@@ -77,6 +81,57 @@ function M.samples()
 		end
 	end
 	return output
+end
+
+local function declaredValues(raw, marker, keyword)
+	local _, markerEnd = raw:find(marker,1,true)
+	if not markerEnd then return {} end
+	local block, started = {}
+	for line in raw:sub(markerEnd+1):gmatch("[^\n]+") do
+		local statement = line:match("^%s*([^%s#]+)")
+		if ruleStarts[statement] then
+			if started then break end
+			assert(statement=="Show", "Expected a Show block after "..marker)
+			started = true
+		end
+		if started then block[#block+1] = line end
+	end
+	local rule = parser.parse(table.concat(block,"\n")).rules[1]
+	for _, condition in ipairs(rule and rule.conditions or {}) do
+		if condition.keyword==keyword and condition.operator=="==" then return condition.values end
+	end
+	error("Use an exact "..keyword.." list after "..marker)
+end
+
+function M.checkPersonalSamples(raw, check)
+	local library = require("Modules.LootFilterLibrary")
+	local seen = {}
+	for _, name in ipairs(declaredValues(raw,"# CUSTOM: Show Fated equipment on rank A and B bases","BaseType")) do
+		if not seen[name] then
+			seen[name] = true
+			local class = assert(library.baseClass(name),"Protected Fated base has no known class: "..name)
+			for _, rarity in ipairs({"Normal","Magic","Rare"}) do
+				check(sample({BaseType=name,Class=class,Rarity=rarity,Fated=true}),"0 Purple Star")
+			end
+		end
+	end
+	seen = {}
+	for _, class in ipairs(declaredValues(raw,"# CUSTOM: Show fractured magic equipment","Class")) do
+		if not seen[class] then
+			seen[class] = true
+			local name = assert(library.baseExampleForClass(class),"Protected fractured class has no known sample: "..class)
+			check(sample({BaseType=name,Class=class,Rarity="Magic",FracturedItem=true}),"0 Yellow Diamond")
+		end
+	end
+	if raw:find(scrollMarker,1,true) then
+		for _, name in ipairs({"Scroll of Wisdom","Portal Scroll"}) do
+			for _, area in ipairs({1,68,83}) do
+				for _, size in ipairs({1,40}) do
+					check(sample({BaseType=name,Class="Stackable Currency",Rarity="Normal",AreaLevel=area,StackSize=size}),nil,"Hide")
+				end
+			end
+		end
+	end
 end
 
 function M.explicitlyShown(result)

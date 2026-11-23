@@ -31,14 +31,17 @@ function M.quotes(body, category)
 	assert(type(body) == "string" and #body <= 2*1024*1024, "Invalid map response size")
 	local data = json.decode(body)
 	assert(type(data) == "table" and type(data.lines) == "table", "Invalid stash map response")
-	local quotes = {}
+	local quotes, seen = {}, {}
 	for _, row in ipairs(data.lines) do
 		assert(type(row) == "table", "Invalid stash map entry")
 		local tier = M.tier(row,category)
-		if tier and type(row.detailsId) == "string" and #row.detailsId > 0 and #row.detailsId <= 200
+		if tier and type(row.detailsId) == "string" and #row.detailsId <= 200 and row.detailsId:match("%S") and not row.detailsId:find("[%c]")
 			and positive(row.chaosValue) and positive(row.count) and positive(row.listingCount) then
 			local existing = quotes[row.name]
-			if existing == false or existing and (existing.id ~= row.detailsId or existing.price ~= row.chaosValue or existing.variant ~= row.variant) then
+			local owner = seen[row.detailsId]
+			if owner and owner ~= row.name then
+				quotes[owner], quotes[row.name] = false,false
+			elseif existing == false or existing and (existing.id ~= row.detailsId or existing.price ~= row.chaosValue or existing.variant ~= row.variant) then
 				quotes[row.name] = false
 			else
 				local volume = math.min(row.count,row.listingCount)
@@ -47,6 +50,7 @@ function M.quotes(body, category)
 						variant=row.variant,liquidityUnit="listing samples"}
 				end
 			end
+			seen[row.detailsId] = owner or row.name
 		end
 	end
 	assert(next(quotes), "Map feed has no identifiable tier-wide prices")

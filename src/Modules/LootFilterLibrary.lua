@@ -88,11 +88,15 @@ local classExamples={["Body Armours"]="Vaal Regalia",Helmets="Iron Hat",Gloves="
 -- Filter class names from the pinned RePoE item_classes.json (ae6d85a5).
 -- Native base types use different names for several weapon families.
 local nativeClasses={Helmet="Helmets",["Body Armour"]="Body Armours",Gloves="Gloves",Boots="Boots",Shield="Shields",Ring="Rings",Amulet="Amulets",Belt="Belts",Quiver="Quivers",Bow="Bows",Claw="Claws",Dagger="Daggers",["Rune Dagger"]="Rune Daggers",Wand="Wands",Sceptre="Sceptres",Staff="Staves",Warstaff="Warstaves",["Thrusting Sword"]="Thrusting One Hand Swords",["One Handed Sword"]="One Hand Swords",["One Handed Axe"]="One Hand Axes",["One Handed Mace"]="One Hand Maces",["Two Handed Sword"]="Two Hand Swords",["Two Handed Axe"]="Two Hand Axes",["Two Handed Mace"]="Two Hand Maces",Tincture="Tinctures"}
-local function baseClass(name)
+local function officialClasses()
 	if not baseClasses then
 		local file=assert(io.open("Data/LootFilters/base-classes.json","rb"));local raw=file:read("*a");file:close()
 		baseClasses=assert(require("dkjson").decode(raw))
 	end
+	return baseClasses
+end
+local function baseClass(name)
+	local baseClasses = officialClasses()
 	-- Some names, such as resonators, exist in more than one class. A named
 	-- base cannot resolve those cases; retain a separately supplied class.
 	if baseClasses.ambiguous[name] then return nil end
@@ -105,6 +109,22 @@ local function baseClass(name)
 	for class,example in pairs(classExamples) do if example==name then return class end end
 end
 M.baseClass=baseClass
+
+local verifiedClassExamples
+function M.baseExampleForClass(class)
+	if not verifiedClassExamples then
+		local known = officialClasses()
+		verifiedClassExamples = {}
+		for name, itemClass in pairs(known.classes) do
+			local current = verifiedClassExamples[itemClass]
+			if not known.ambiguous[name] and (not current or name<current) then
+				local properties = M.baseProperties(name,"Magic")
+				if properties.Width and properties.Height and properties.DropLevel then verifiedClassExamples[itemClass] = name end
+			end
+		end
+	end
+	return verifiedClassExamples[class]
+end
 function M.sample(rule,block)
 	local item={BaseType="Chaos Orb",Class="Stackable Currency",Rarity="Normal",ItemLevel=86,AreaLevel=83,DropLevel=1,Quality=0,StackSize=1,Sockets=0,SocketGroup="",LinkedSockets=0,Width=1,Height=1,UnidentifiedItemTier=0,HasInfluence={"None"},HasExplicitMod={},HasEnchantment={},EnchantmentPassiveNode=""}
 	for key in pairs(parser.booleans) do if key~="AlwaysShow" then item[key]=false end end

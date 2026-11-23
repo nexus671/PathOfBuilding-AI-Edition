@@ -31,6 +31,73 @@ local function marketName(value)
 	return type(value)=="string" and #value>0 and #value<=200 and not value:find("[%c]")
 end
 
+local uniqueCategories = {
+	["Body Armour"]="UniqueArmour", Boots="UniqueArmour", Gloves="UniqueArmour", Helmet="UniqueArmour",
+	Shield="UniqueArmour", Quiver="UniqueArmour", Amulet="UniqueAccessory", Ring="UniqueAccessory",
+	Belt="UniqueAccessory", Jewel="UniqueJewel", Flask="UniqueFlask",
+}
+
+function M.buildTargets(build)
+	local targets, seen = {}, {}
+	local function add(target)
+		if not marketName(target.name) then return end
+		local key = table.concat({target.category,target.name,target.level or "",target.quality or "",target.imbuedSupport or ""},"\0")
+		if not seen[key] then
+			seen[key] = true
+			target.id = tostring(#targets+1)
+			targets[#targets+1] = target
+		end
+	end
+	local skills = build.skillsTab
+	for _, group in ipairs(skills and skills.socketGroupList or {}) do
+		if group.enabled~=false and not group.source then
+			for _, gem in ipairs(group.gemList or {}) do
+				local source = gem.gemData
+				local name = source and (source.itemBaseName or source.name)
+				local level, quality = tonumber(gem.level), tonumber(gem.quality)
+				if gem.enabled~=false and marketName(name) and positive(level) and quality and quality>=0 and quality<math.huge then
+					local imbued = marketName(group.imbuedSupport) and source.grantedEffect
+						and not source.grantedEffect.support and group.imbuedSupport
+					add({category=imbued and "ImbuedGem" or "SkillGem",name=name,
+						label=string.format("%s | Level %g, %g%% quality",name,level,quality),
+						level=level,quality=quality,imbuedSupport=imbued or nil,details={
+							string.format("Level %g, %g%% quality",level,quality),
+							imbued and ("Build support: "..imbued..". Compare supports and corruption states.") or
+								"Compare the available corruption states and variants.",
+						}})
+				end
+			end
+		end
+	end
+	local gear = build.itemsTab
+	local spec = build.spec
+	for _, slot in ipairs(gear and gear.orderedSlots or {}) do
+		local itemId
+		if slot.nodeId then
+			if spec and spec.allocNodes and spec.allocNodes[slot.nodeId] and spec.jewels then
+				itemId = spec.jewels[slot.nodeId]
+			end
+		else
+			local selected = gear.activeItemSet and gear.activeItemSet[slot.slotName]
+			itemId = selected and selected.selItemId
+		end
+		local item = itemId and gear.items and gear.items[itemId]
+		if item and marketName(item.baseName) then
+			local category = item.rarity=="UNIQUE" and (uniqueCategories[item.type]
+				or data and data.weaponTypeInfo and data.weaponTypeInfo[item.type] and "UniqueWeapon")
+			local label = slot.label or slot.slotName
+			if category and marketName(item.title) then
+				add({name=item.title,category=category,label=label.." | "..item.title,
+					details={"Compare the listed unique variants and rolls."}})
+			elseif item.rarity~="UNIQUE" then
+				add({name=item.baseName,category="BaseType",label=label.." | "..item.baseName,
+					details={"Compare this crafting base. The equipped modifiers have their own value."}})
+			end
+		end
+	end
+	return targets
+end
+
 local function supportedVolume(item)
 	return positive(item.count) and positive(item.listingCount) and math.min(item.count,item.listingCount)>=20
 end
@@ -95,7 +162,7 @@ local function uniqueBaseEvidence(lines)
 	return evidence
 end
 
-function M.rows(body, category, query)
+function M.rows(body, category, query, target)
 	assert(type(body)=="string" and #body<=M.maxBytes, "Market response exceeds the size limit")
 	local out = {}
 	query = (query or ""):lower()
@@ -126,8 +193,11 @@ function M.rows(body, category, query)
 			assert(type(item)=="table", "Invalid stash overview entry")
 			local identity = marketName(item.detailsId) and item.detailsId or nil
 			local advisoryId = variants and identity
+			local comparable = not target or (target.level and item.name==target.name and item.gemLevel==target.level
+				and item.gemQuality==target.quality or not target.level and (item.name==target.name
+					or target.category=="BaseType" and item.baseType==target.name))
 			if marketName(item.name) and positive(item.chaosValue) and matches(item.name,item.baseType,item.variant,identity)
-				and not (advisoryId and handled[advisoryId]) then
+				and comparable and not (advisoryId and handled[advisoryId]) then
 				local corrupted
 				if type(item.corrupted)=="boolean" then corrupted=item.corrupted end
 				local gemLevel = positive(item.gemLevel) and item.gemLevel==math.floor(item.gemLevel) and item.gemLevel or nil

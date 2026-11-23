@@ -4,10 +4,10 @@ local ui = require("Modules.PlanningUI")
 local json = require("dkjson")
 local M = {}
 
-function M.Open()
+function M.Open(build)
 	local width = math.min(680,main.screenW-40)
 	local controls = {}
-	local busy, popup
+	local busy, popup, target
 	ui.label(controls,"leagueLabel",16,24,"PC trade league ID",14)
 	controls.league=new("EditControl"):EditControl(ui.anchor,{16,50,width-32,26},"","Current trade league",nil,80)
 	local options={}
@@ -18,6 +18,29 @@ function M.Open()
 	ui.description(controls,"help",16,196,width-32,44,{"Start with = to match an exact name, base or price ID."},14)
 	ui.label(controls,"status",16,250,"",14)
 	local function status(label) controls.status.label=ui.fit(label,width-32,14) end
+	local function clearTarget()
+		if target then target=nil; status("") end
+	end
+	controls.category.selFunc = clearTarget
+	controls.query.changeFunc = clearTarget
+	local buildTargets = build and browse.buildTargets(build) or {}
+	if #buildTargets>0 then
+		controls.buildTarget = new("ButtonControl"):ButtonControl(ui.anchor,{162,282,152,28},"From build",function()
+			require("Classes.PlanningBrowserControl").Open("Compare a build item",buildTargets,{
+				action="Use item",
+				choose=function(entry)
+					for index, category in ipairs(browse.categories) do
+						if category.id==entry.category then controls.category:SetSel(index); break end
+					end
+					controls.query:SetText("="..entry.name)
+					target = entry
+					status(entry.level and string.format("Matching level %g and %g%% quality.",entry.level,entry.quality)
+						or entry.details[1])
+				end,
+			})
+		end)
+		controls.buildTarget.enabled = function() return not busy end
+	end
 	controls.get=new("ButtonControl"):ButtonControl(ui.anchor,{16,282,138,28},"Show prices",function()
 		if busy then return end
 		if launch.noSSL then status("Enable HTTPS certificate verification first."); return end
@@ -25,6 +48,7 @@ function M.Open()
 		if league~="" and not league:match("^[%w%s_-]+$") then status("Enter a valid league ID."); return end
 		local category=browse.categories[controls.category.selIndex or 1]
 		local query=controls.query.buf:match("^%s*(.-)%s*$")
+		local comparable = target
 		local advisory=browse.advisory(category)
 		if advisory and #query:gsub("^=%s*","")<2 then
 			status("Enter at least two characters to search this category.")
@@ -48,7 +72,7 @@ function M.Open()
 			request(route.."?league="..urlEncode(league).."&type="..category.id,function(response)
 				local ok,body,age=pcall(require("Modules.LootFilterDailySync").fresh,response,os.time())
 				if not ok then finish("Exchange response is unavailable or stale.");return end
-				local valid,rows=pcall(browse.rows,body,category,query)
+				local valid,rows=pcall(browse.rows,body,category,query,comparable)
 				if not valid then finish(ui.errorText(rows));return end
 				local entries={}
 				for i,row in ipairs(rows) do
@@ -58,6 +82,9 @@ function M.Open()
 				elseif row.ambiguous then price="Ambiguous exchange name"
 				else price=string.format("%.4g chaos estimated",row.price) end
 				local details={price,"Response age: "..math.ceil(age/60).." minutes"}
+				if comparable and not row.conflicting then
+					details[#details+1] = comparable.details[#comparable.details]
+				end
 					local function show(label,value)
 						if value then details[#details+1]=label..tostring(value) end
 					end

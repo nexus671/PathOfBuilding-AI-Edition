@@ -349,7 +349,7 @@ function M.Open(build,source,layout,controller)
 			elseif (entry.id=="sampleSets" or entry.id=="palettes") and profile then collection(entry.id)
 			elseif entry.id=="tracking" and profile then profile.trackBuildPickups=not trackingEnabled(profile);dependencyTime=nil;draft();reopen()
 			elseif entry.id=="dailySync" then require("Classes.LootFilterDailySyncControl").Open()
-			elseif entry.id=="marketBrowse" then require("Classes.LootFilterMarketBrowseControl").Open()
+			elseif entry.id=="marketBrowse" then require("Classes.LootFilterMarketBrowseControl").Open(build)
 			elseif entry.id=="economy" and raw and profile.mode=="Normal" then require("Classes.LootFilterEconomyControl").Open(profile,raw,controller.Export)
 			elseif entry.id=="economyRules" and profile.mode=="Normal" then
 				require("Classes.LootFilterManagedEconomyControl").Open(profile.economyRules, function(rules)

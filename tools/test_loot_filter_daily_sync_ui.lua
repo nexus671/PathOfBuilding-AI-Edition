@@ -97,7 +97,13 @@ end
 newBuild();main.popups={};local reviewUI=headless.install({width=reviewWidth,height=reviewWidth==720 and 600 or 640});reviewUI:bind(build)
 reviewFixture={hour=9,minute=15,enabled=true,summary='Review ready',history={},review={changes={{name='Orb of Alteration',old=6,cutoff=4,price=.2,volume=1000,samples={{area=83,count=5,class='Stackable Currency',before='Unknown',action='Unknown',beforeMissing={'DropLevel','C:/private/filter'},afterMissing={'ItemLevel'}}}}},skipped={}}}
 reviewFixture.review.changes[2]={name='Orb of Chance',old=6,cutoff=4,price=.2,volume=1000,samples={{area=83,count=5,class='Stackable Currency',before='Hide',action='Unknown'}}}
-require('Classes.LootFilterDailySyncControl').Open();reviewUI:click('review');reviewUI:text('search','Orb of Alteration')
+reviewFixture.review.protectedChecks=600
+require('Classes.LootFilterDailySyncControl').Open();reviewUI:click('review')
+local statusRows = {}
+for _, row in ipairs(main.popups[1].controls.details.list) do statusRows[#statusRows+1] = StripEscapes(row[1] or "") end
+local proof = table.concat(statusRows," "):gsub("%s+"," ")
+assert(proof:find("600 protected filter checks passed.",1,true))
+reviewUI:text('search','Orb of Alteration')
 local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or '') end;local shown=table.concat(details,' ')
 assert(shown:find('Before: needs DropLevel',1,true) and shown:find('After: needs ItemLevel',1,true) and not shown:find('C:/private',1,true),'Missing-property reasons were not shown safely')
 if output then reviewUI:frame():write(output..'/'..reviewWidth..'-filter-impact-reasons.json') end
@@ -495,6 +501,64 @@ do
 end
 launch.DownloadPage = originalMarketDownload
 print("Unique market review includes competing variants for the selected base")
+
+do
+	local collection = {
+		skillsTab={socketGroupList={{gemList={
+			{gemData=data.gems["Metadata/Items/Gems/SkillGemSupportAddedFireDamage"],level=20,quality=0,enabled=true},
+			{gemData={name="Disabled gem"},level=20,quality=0,enabled=false},
+		}}, {imbuedSupport="Test support",gemList={
+			{gemData={name="Imbued test skill",grantedEffect={support=false}},level=20,quality=20},
+		}}}},
+		itemsTab={
+			orderedSlots={{slotName="Body Armour",label="Body Armour"},{slotName="Ring 1",label="Ring 1"},
+				{nodeId=100,label="Socket #1"},{nodeId=200,label="Socket #2"}},
+			activeItemSet={["Body Armour"]={selItemId=1},["Ring 1"]={selItemId=2}},
+			items={{baseName="Royal Plate",type="Body Armour",rarity="RARE"},
+				{baseName="Iron Ring",title="Test unique",type="Ring",rarity="UNIQUE"},
+				{baseName="Cobalt Jewel",title="Hidden Potential",type="Jewel",rarity="UNIQUE"},
+				{baseName="Viridian Jewel",type="Jewel",rarity="RARE"}},
+		},
+		spec={allocNodes={[100]=true},jewels={[100]=3,[200]=4}},
+	}
+	local targets = require("Modules.LootFilterMarketBrowse").buildTargets(collection)
+	assert(#targets==5 and targets[1].name=="Added Fire Damage Support" and targets[1].level==20 and targets[1].quality==0)
+	assert(data.gems["Metadata/Items/Gems/SkillGemSupportBarrage"].itemBaseName=="Barrage Support")
+	assert(targets[2].category=="ImbuedGem" and targets[2].imbuedSupport=="Test support")
+	assert(targets[3].category=="BaseType" and targets[3].name=="Royal Plate")
+	assert(targets[4].category=="UniqueAccessory" and targets[4].name=="Test unique")
+	assert(targets[5].category=="UniqueJewel" and targets[5].name=="Hidden Potential")
+	main.popups = {}
+	local requested
+	launch.DownloadPage = function(_,url,callback)
+		assert(url:find("type=SkillGem",1,true))
+		requested = true
+		local date=os.date("!%a, %d %b %Y %H:%M:%S GMT")
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\n\r\n",body=[[{"lines":[
+			{"name":"Added Fire Damage Support","detailsId":"support-20-0","chaosValue":3,"gemLevel":20,"gemQuality":0,"corrupted":false},
+			{"name":"Added Fire Damage Support","detailsId":"support-20-0-corrupt","chaosValue":7,"gemLevel":20,"gemQuality":0,"corrupted":true},
+			{"name":"Added Fire Damage Support","detailsId":"support-21-20","chaosValue":80,"gemLevel":21,"gemQuality":20,"corrupted":true},
+			{"name":"Awakened Added Fire Damage Support","baseType":"Added Fire Damage Support","detailsId":"alternate","chaosValue":90,"gemLevel":20,"gemQuality":0}
+		]}]]})
+	end
+	require("Classes.LootFilterMarketBrowseControl").Open(collection)
+	marketUI:text("league","Covens")
+	marketUI:click("buildTarget")
+	marketUI:text("search","Added Fire Damage Support")
+	marketUI:click("choose")
+	assert(not requested and main.popups[1].controls.query.buf=="=Added Fire Damage Support")
+	marketUI:click("get")
+	assert(requested and main.popups[1].controls.count.label:find("2 results",1,true))
+	local shown={}
+	for _, row in ipairs(main.popups[1].controls.details.list) do shown[#shown+1]=StripEscapes(row[1] or "") end
+	local detail=table.concat(shown," "):gsub("%s+"," ")
+	assert(detail:find("7 chaos estimated",1,true) and detail:find("available corruption states",1,true))
+	marketUI:click("close")
+	marketUI:text("query","Added Fire Damage Support")
+	marketUI:click("get")
+	assert(main.popups[1].controls.count.label:find("4 results",1,true))
+	launch.DownloadPage = originalMarketDownload
+end
 
 -- Exercise the exact publish workflow with a simulated account response.
 newBuild()
