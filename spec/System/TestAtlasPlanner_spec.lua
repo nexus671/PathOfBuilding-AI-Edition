@@ -470,6 +470,14 @@ describe("Native Atlas planner", function()
 			local saved={};saver:Save(saved);assert.equal(value,saved[1])
 		end
 	end)
+	it("preserves unknown nested planning XML through reload and bundle export",function()
+		local names={"CraftingProjects","BuildJourney","LootFilters","AtlasPlans"}
+		local unknown={elem="Future",attrib={key="value"},"opaque"}
+		for _,name in ipairs(names) do local saver=build.savers[name];saver:Load({unknown});assert.is_truthy(saver.warning,name) end
+		local xml=build:SaveDB("Future fixture");loadBuildFromXML(xml,"Future fixture")
+		for _,name in ipairs(names) do local saver=build.savers[name];assert.is_truthy(saver.warning,name);local saved={};saver:Save(saved);assert.same(unknown,saved[1]) end
+		local bundle,summary=require("Modules.PlanningBundle").export(build);assert.equal(4,#summary.unreadableSections);assert.is_truthy(require("Modules.PlanningBundle").import(bundle))
+	end)
 	it("exports preserved malformed planning sections in a bundle",function()
 		local raw='{"schemaVersion":1,"projects":42}'
 		build.savers.CraftingProjects:Load({raw});assert.is_truthy(build.savers.CraftingProjects.warning)

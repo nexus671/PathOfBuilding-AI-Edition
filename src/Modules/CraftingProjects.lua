@@ -205,6 +205,9 @@ end
 function M.new(build)
 	local self = {projects={},build=build}
 	function self:Load(xml)
+		for _,entry in ipairs(xml) do if type(entry)~="string" then
+			self.unreadable=copyTable(xml);self.warning="Crafting metadata could not be read. It is preserved unchanged when saving.";return
+		end end
 		local raw = table.concat(xml)
 		if raw:match("^%s*$") then return end
 		local ok,projects = pcall(function()
@@ -221,7 +224,8 @@ function M.new(build)
 		if ok then self.projects=projects else self.unreadable=raw; self.warning="Crafting metadata could not be read. It is preserved unchanged when saving." end
 	end
 	function self:Save(xml)
-		if self.unreadable then xml[#xml+1]=self.unreadable
+		if type(self.unreadable)=="table" then for _,entry in ipairs(self.unreadable) do xml[#xml+1]=type(entry)=="table" and copyTable(entry) or entry end
+		elseif self.unreadable then xml[#xml+1]=self.unreadable
 		elseif #self.projects > 0 then xml[#xml+1]=require("Modules.PlanningData").encodeExact({schemaVersion=1,projects=self.projects}) end
 	end
 	function self:Upsert(project)

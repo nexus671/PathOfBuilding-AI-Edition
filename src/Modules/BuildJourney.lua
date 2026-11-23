@@ -193,6 +193,9 @@ end
 function M.new(build)
 	local self={build=build,data=M.empty()}
 	function self:Load(xml)
+		for _,entry in ipairs(xml) do if type(entry)~="string" then
+			self.unreadable=copyTable(xml);self.warning="Journey data could not be read. It will be preserved unchanged.";return
+		end end
 		local raw=table.concat(xml);if raw:match("^%s*$") then return end
 		local ok,data=pcall(function()
 			assert(#raw<=M.limit,"Journey too large")
@@ -202,7 +205,10 @@ function M.new(build)
 		end)
 		if ok then self.data=data else self.unreadable=raw;self.warning="Journey data could not be read. It will be preserved unchanged." end
 	end
-	function self:Save(xml) xml[#xml+1]=self.unreadable or json.encode(self.data) end
+	function self:Save(xml)
+		if type(self.unreadable)=="table" then for _,entry in ipairs(self.unreadable) do xml[#xml+1]=type(entry)=="table" and copyTable(entry) or entry end
+		else xml[#xml+1]=self.unreadable or json.encode(self.data) end
+	end
 	function self:Replace(data) assert(not self.unreadable,self.warning);self.data=M.validate(data,build);build.modFlag=true;require("Modules.PlanningUI").kept(build,"journey");return self.data end
 	function self:Put(key,entry)
 		assert(type(self.data[key])=="table","Unknown collection")
