@@ -146,3 +146,51 @@ local cards = browser.rows([[{"core":{"primary":"chaos"},"items":[{"id":"card","
 assert(#cards==1 and cards[1].price==12 and cards[1].volume==500)
 assert(not pcall(browser.rows, '{"lines":[{"name":"Bad","chaosValue":-1}]}', {id="Map"}))
 print("Native daily sync: fresh/stale data, manual rerun, rollback, pause, TLS and disable passed")
+
+-- An exact card rule opts in to the ninth feed. Its quote cannot cross over
+-- to a commodity rule for the same name, even when the provider IDs differ.
+local cardRules = [[Hide
+    Class == "Divination Cards"
+    BaseType == "Orb of Alteration" "Cheap Card" "Thin Card"
+
+Hide
+    Class == "Divination Cards"
+    BaseType == "Compound Card"
+    Identified True
+
+]]
+local cardBaseline = original:gsub("# PoB economy: end", cardRules.."# PoB economy: end")
+local cardBody = [[{"core":{"primary":"chaos"},"items":[{"id":"card","name":"Orb of Alteration"},{"id":"cheap","name":"Cheap Card"},{"id":"thin","name":"Thin Card"},{"id":"compound","name":"Compound Card"}],"lines":[{"id":"card","primaryValue":3,"volumePrimaryValue":900},{"id":"cheap","primaryValue":0.4,"volumePrimaryValue":900},{"id":"thin","primaryValue":10,"volumePrimaryValue":499},{"id":"compound","primaryValue":10,"volumePrimaryValue":900}]}]]
+local commodityBody = [[{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.21,"volumePrimaryValue":1000}]}]]
+local validate = require("Modules.LootFilterSyncValidation")
+local missing = {}
+for index = 1, #market.categories do missing[index] = commodityBody end
+local samples = {{BaseType="Cord Belt", Rarity="Magic"}}
+local validationOK, validationError = pcall(validate, cardBaseline, missing, false, 1, samples)
+assert(not validationOK and validationError:find("category responses are missing",1,true))
+assert(#market.feedCategories(original) == 8 and #market.feedCategories(cardBaseline) == 9)
+local malformed = cardBaseline:gsub("# PoB economy: end", "# PoB economy: begin\n# PoB economy: end")
+assert(not market.supports(malformed))
+write(target,cardBaseline)
+write(baseline,cardBaseline)
+local cardRequests, unavailable = 0, true
+launch.DownloadPage = function(_, url, callback)
+	if url:match("&type=DivinationCard$") then
+		cardRequests = cardRequests + 1
+		callback({header=header,body=unavailable and "{}" or cardBody})
+	else
+		callback({header=header,body=commodityBody})
+	end
+end
+sync.configure(target,baseline,"Covens",options)
+sync.tick(now,true)
+assert(cardRequests==1 and read(target)==cardBaseline and not sync.busy,sync.status)
+unavailable=false
+sync.tick(now,true)
+assert(cardRequests==2 and sync.status:find("Protected drops verified",1,true),sync.status)
+local refreshed = read(target)
+assert(refreshed:find('BaseType == "Orb of Alteration"\n    StackSize <= 4',1,true))
+assert(refreshed:find('BaseType == "Cheap Card" "Thin Card"',1,true))
+assert(not refreshed:find('BaseType == "Orb of Alteration" "Cheap Card"',1,true))
+assert(refreshed:find('BaseType == "Compound Card"\n    Identified True',1,true))
+print("Managed cards: required category, broken feed, class-scoped same-name quotes and liquidity passed")

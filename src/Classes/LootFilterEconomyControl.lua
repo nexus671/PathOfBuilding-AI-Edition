@@ -53,13 +53,14 @@ function M.Open(profile, raw, export)
 			end
 			if not league then busy = false; status("Could not resolve the league. Use an active poe.ninja league ID."); return end
 			local quotes, failed = {}, {}
+			local categories = economy.feedCategories(raw)
 			local function fetch(index)
-				local category = economy.categories[index]
+				local category = categories[index]
 				if category then
-					status("Fetching " .. league .. " prices (" .. index .. "/" .. #economy.categories .. ")...")
+					status("Fetching " .. league .. " prices (" .. index .. "/" .. #categories .. ")...")
 					request("exchange/current/overview?league=" .. urlEncode(league) .. "&type=" .. category, function(data)
 						local ok, result = pcall(economy.quotes, data)
-						if ok then economy.merge(quotes, result) else failed[#failed + 1] = category end
+						if ok then economy.merge(quotes, result, category) else failed[#failed + 1] = category end
 						fetch(index + 1)
 					end)
 					return

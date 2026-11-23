@@ -355,7 +355,8 @@ local function storeFeed(url, entry)
 	cache[url] = entry
 end
 
-local function fetchPrices(config, now, complete)
+local function fetchPrices(config, baseline, now, complete)
+	local categories = market.feedCategories(baseline)
 	local job, bodies, ages, observedAt = {}, {}, {}, {}
 	M.busy, M.deadline = job, now + 300
 	local function finish(success, message)
@@ -364,7 +365,7 @@ local function fetchPrices(config, now, complete)
 		if ConPrintf then ConPrintf("%s", M.status) end
 	end
 	local function fetch(index, attempt)
-		local category = market.categories[index]
+		local category = categories[index]
 		if not category then
 			local finishedAt = os.time()
 			for id, age in ipairs(ages) do
@@ -454,13 +455,15 @@ function M.tick(now, force)
 		return
 	end
 	if not force then retryAt = now + 1800 end
-	local ready, why = pcall(function()
+	local ready, baseline = pcall(function()
 		local current = sha(assert(read(filterPath(config.target)), "Target filter is missing"))
 		assert(current == config.current or current == config.pending, "Target was edited outside PoB. Compare External edits before re-enabling.")
-		assert(sha(assert(read(config.baseline), "Baseline filter is missing")) == config.baselineHash, "Baseline checksum changed")
+		local raw = assert(read(config.baseline), "Baseline filter is missing")
+		assert(sha(raw) == config.baselineHash, "Baseline checksum changed")
+		return raw
 	end)
-	if not ready then M.status = "Sync skipped: " .. tostring(why); return end
-	fetchPrices(config, now, function(bodies, ages)
+	if not ready then M.status = "Sync skipped: " .. tostring(baseline); return end
+	fetchPrices(config, baseline, now, function(bodies, ages)
 		return publish(config, bodies, ages, day, force, now)
 	end)
 end
@@ -471,7 +474,7 @@ function M.preview(target, baselineFile, league, options, callback)
 	assert(os.time() >= rateLimitUntil, "Wait before contacting the rate-limited exchange again")
 	local config, original, baseline = prepare(target, baselineFile, league, options)
 	local now = os.time()
-	fetchPrices(config, now, function(bodies)
+	fetchPrices(config, baseline, now, function(bodies)
 		local candidate = validate(baseline, bodies, false, config.targetValue, config.protections)
 		callback(original, candidate)
 		return "Preview complete. Review the proposed filter before enabling sync."
