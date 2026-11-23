@@ -1080,7 +1080,7 @@ function M.matches(raw,requirements)
 	end
 	if requirements.nativeStats then
 		local stats=require("Modules.CraftingItemStats");stats.validate(requirements.nativeStats)
-		local values=stats.itemValues(item);for key,minimum in pairs(requirements.nativeStats) do if values[key]==nil or values[key]<minimum then return false end end
+		if not stats.matchesValues(stats.itemValues(item),requirements.nativeStats) then return false end
 	end
 	local socketGoal=requirements.sockets~=nil or requirements.exactSockets~=nil or requirements.links~=nil or requirements.socketColours~=nil or requirements.minAbyssSockets~=nil
 	if socketGoal then

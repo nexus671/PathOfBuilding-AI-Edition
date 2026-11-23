@@ -1,11 +1,16 @@
-VERSION[2.68.1-ai.preview1215][2026/11/23]
+VERSION[2.68.1-ai.preview1216][2026/11/23]
 
 * Review and adopt external filter edits into the fixed daily baseline while preserving managed rules and protected drops.
+* Review the quotes and protected-drop results from recent successful daily runs.
 
-VERSION[2.68.1-ai.preview1214][2026/11/23]
+VERSION[2.68.1-ai.preview1215][2026/11/23]
 
 * Optionally highlight managed stacks by their market value without changing whether they show.
 * Optionally confirm any increase in a managed hide cutoff against completed GGG trades.
+
+VERSION[2.68.1-ai.preview1214][2026/11/23]
+
+* Add flat life, resistance and attribute goals to crafting.
 
 VERSION[2.68.1-ai.preview1213][2026/11/23]
 
