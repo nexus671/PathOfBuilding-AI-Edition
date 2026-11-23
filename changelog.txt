@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1235][2026/11/23]
+
+* Manage exact skill and support gem hides with listing-backed prices and preserve other variants.
+
 VERSION[2.68.1-ai.preview1234][2026/11/23]
 
 * Support an opt-in shared HTTPS market cache with bounded requests and source freshness checks.

@@ -1388,3 +1388,78 @@ Show
 	write(live,"# New personal comment\n"..raw)
 	assert(fixture.previewExternalAdoption(id))
 end
+
+local function checkManagedGemPrices()
+	local raw = market.addManagedSection(original..'\nShow\n    Class == "Skill Gems" "Support Gems"\n',{
+		{name="Arc",class="Skill Gems",scope="maps",gemLevel=20,gemQuality=20,corrupted=false},
+		{name="Arc",class="Skill Gems",scope="maps",gemLevel=20,gemQuality=20,corrupted=true},
+		{name="Freezing Pulse",class="Skill Gems",scope="all",gemLevel=20,gemQuality=0,corrupted=false},
+		{name="Fireball",class="Skill Gems",scope="all",gemLevel=20,gemQuality=20,corrupted=false},
+		{name="Added Fire Damage Support",class="Support Gems",scope="all",gemLevel=20,gemQuality=20,corrupted=false},
+	})
+	local categories, requests = market.feedCategories(raw)
+	assert(#categories==9 and categories[9]=="SkillGem")
+	assert(#market.feedCategories(raw:gsub("Imbued False","Imbued True"))==8)
+	assert(market.maxFeedBytes("SkillGem")==12*1024*1024)
+	assert(not pcall(market.validateManagedRules,{{name="Arc",class="Skill Gems",scope="maps",gemLevel=20,gemQuality=20}}))
+	local gems = require("Modules.LootFilterGemMarket")
+	local overview = [[{"lines":[
+		{"name":"Arc","detailsId":"arc-exact","gemLevel":20,"gemQuality":20,"corrupted":false,"chaosValue":50,"count":100,"listingCount":100},
+		{"name":"Arc","detailsId":"arc-corrupt-19","gemLevel":20,"gemQuality":19,"corrupted":true,"chaosValue":500,"count":100,"listingCount":100},
+		{"name":"Freezing Pulse","detailsId":"thin-pulse","gemLevel":20,"gemQuality":0,"corrupted":false,"chaosValue":500,"count":5,"listingCount":100},
+		{"name":"Fireball","detailsId":"fireball-one","gemLevel":20,"gemQuality":20,"corrupted":false,"chaosValue":500,"count":100,"listingCount":100},
+		{"name":"Fireball","detailsId":"fireball-two","gemLevel":20,"gemQuality":20,"corrupted":false,"chaosValue":500,"count":100,"listingCount":100},
+		{"name":"Added Fire Damage Support","detailsId":"support","gemLevel":20,"gemQuality":20,"corrupted":false,"chaosValue":9,"count":100,"listingCount":100}
+	]}]]
+	local actual = market.quotes(overview,"SkillGem",requests)
+	assert(actual[gems.key("Arc",20,20,false)].price==50)
+	assert(not actual[gems.key("Arc",20,19,true)])
+	assert(actual[gems.key("Fireball",20,20,false)]==false)
+	local reused = overview:gsub("arc%-corrupt%-19","arc-exact")
+	assert(market.quotes(reused,"SkillGem",requests)[gems.key("Arc",20,20,false)]==false)
+	assert(not pcall(market.quotes,overview.."broken","SkillGem",requests))
+	local setup = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local id = setup.createProfile("Managed gem prices")
+	local target, baseline = dir.."/gem-target.filter",dir.."/gem-baseline.filter"
+	write(target,raw); write(baseline,raw)
+	setup.configure(target,baseline,"Covens",{profileId=id,hour=0,targetValue=20,protectionFile=protections})
+	setup.setOfflinePriceDays(id,1,setup.configuration(id).revision)
+	local clock, requestsSent, denied = systemTime(), 0, false
+	os.time = function() return clock end
+	launch.DownloadPage = function(_,url,callback,params)
+		requestsSent=requestsSent+1
+		local headers="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock).."\r\n\r\n"
+		if url:find("type=SkillGem",1,true) then
+			assert(url:find("stash/current/item/overview",1,true) and params.maxBytes==12*1024*1024)
+			if denied then callback(nil,"Response code: 403") else callback({header=headers,body=overview}) end
+		else callback({header=headers,body=commodityBody}) end
+	end
+	setup.tick(clock,true,false,id)
+	local state = setup.configuration(id)
+	assert(state.review and requestsSent==9 and state.review.protectedChecks==1,setup.status)
+	local decision
+	for _, change in ipairs(state.review.changes) do if change.gemLevel then decision=change end end
+	assert(decision and decision.name=="Arc" and decision.gemLevel==20 and decision.gemQuality==20 and decision.corrupted==false)
+	assert(decision.sample.before=="Hide" and decision.sample.action=="Show")
+	local function testItem(candidate,name,quality,corrupted,imbued,transfigured,area)
+		local parser = require("Modules.LootFilterParser")
+		return parser.simulate(parser.parse(candidate),{
+			BaseType=name,Class="Skill Gems",GemLevel=20,Quality=quality,Corrupted=corrupted,
+			Imbued=imbued,TransfiguredGem=transfigured,AreaLevel=area,
+		}).action
+	end
+	local targetOutput = read(target)
+	assert(testItem(targetOutput,"Arc",20,false,false,false,83)=="Show")
+	assert(testItem(targetOutput,"Arc",20,true,false,false,83)=="Hide")
+	assert(testItem(targetOutput,"Fireball",20,false,false,false,83)=="Hide")
+	assert(testItem(targetOutput,"Freezing Pulse",0,false,false,false,83)=="Hide")
+	assert(testItem(raw,"Arc",20,false,true,false,83)=="Show" and testItem(raw,"Arc",20,false,false,"Arc",83)=="Show")
+	local replay = setup.previewOffline(clock,id,{targetValue=1000})
+	assert(replay.before==targetOutput and replay.after==raw and requestsSent==9)
+	denied, clock = true, clock+20
+	setup.tick(clock,true,false,id)
+	assert(requestsSent==18 and read(target)==targetOutput and setup.configuration(id).lastFailure.message:find("403",1,true))
+	os.time=systemTime
+end
+checkManagedGemPrices()
+print("Exact managed gems preserve other variants, replay offline, and retain verified output when the feed is denied")

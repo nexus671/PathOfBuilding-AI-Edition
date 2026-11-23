@@ -237,6 +237,10 @@ function M.Open(profileId, profileName)
 					string.format("%.4g chaos used | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
 					string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
 				}
+				if change.gemLevel then
+					details[#details+1] = string.format("Level %d, %d%% quality, %s",change.gemLevel,change.gemQuality,
+						change.corrupted and "corrupted" or "uncorrupted")
+				end
 				if change.confirmedPrice then
 					details[#details+1] = string.format("GGG completed-hour trade average: %.4g chaos",change.confirmedPrice)
 				end
@@ -260,7 +264,10 @@ function M.Open(profileId, profileName)
 			end
 			for i, item in ipairs(review.skipped or {}) do
 				local details = {item.reason}
-				if not item.styleOnly then details[#details+1] = "Hide up to "..item.old end
+				if item.gemLevel then
+					details[#details+1] = string.format("Level %d, %d%% quality, %s",item.gemLevel,item.gemQuality,
+						item.corrupted and "corrupted" or "uncorrupted")
+				elseif not item.styleOnly then details[#details+1] = "Hide up to "..item.old end
 				entries[#entries+1] = {id="skip-"..i,label=item.name,category="Unchanged",details=details}
 			end
 			if not historical then
