@@ -104,12 +104,20 @@ if warningProfile then
 end
 local originalProbe=calcs.buildActiveSkill
 local warningCalls,warningTime,warningWorst=0,0,0
+local warningSkills={}
 calcs.buildActiveSkill=function(env,mode,skill,uuid,flags,minimum,cache,warningOnly,...)
 	local start=os.clock()
 	if warningProfile and warningOnly then probeDepth=probeDepth+1 end
 	local output,activeSkill=originalProbe(env,mode,skill,uuid,flags,minimum,cache,warningOnly,...)
 	if warningProfile and warningOnly then probeDepth=probeDepth-1 end
-	if warningOnly then local elapsed=(os.clock()-start)*1000;warningCalls=warningCalls+1;warningTime=warningTime+elapsed;warningWorst=math.max(warningWorst,elapsed) end
+	if warningOnly then
+		local elapsed=(os.clock()-start)*1000;warningCalls=warningCalls+1;warningTime=warningTime+elapsed;warningWorst=math.max(warningWorst,elapsed)
+		if warningProfile then
+			local effect=skill and skill.activeEffect;local granted=effect and effect.grantedEffect
+			local name=granted and granted.name or "Unknown skill";local row=warningSkills[name] or {name=name,count=0,totalMs=0,worstMs=0}
+			row.count=row.count+1;row.totalMs=row.totalMs+elapsed;row.worstMs=math.max(row.worstMs,elapsed);warningSkills[name]=row
+		end
+	end
 	return output,activeSkill
 end
 local originalOutput=build.calcsTab.BuildOutput
@@ -118,6 +126,7 @@ build.calcsTab.BuildOutput=function(self,...) local start=os.clock();local resul
 for _ = 1, cycles do
 	local baselineTime,baselineCalls=outputTime,outputCalls
 	warningCalls,warningTime,warningWorst=0,0,0
+	warningSkills={}
 	initTime,performTime,initCalls,performCalls=0,0,0,0
 	recoveryStarted=false
 	recoverySlices={count=0,totalMs=0,worstMs=0}
@@ -134,7 +143,10 @@ for _ = 1, cycles do
 	local updated = os.clock()
 	local measuredOutput,measuredCalls=outputTime-baselineTime,outputCalls-baselineCalls
 	local warning={count=warningCalls,totalMs=warningTime,worstMs=warningWorst}
-	if warningProfile then warning.initialization={calls=initCalls,inclusiveMs=initTime};warning.perform={calls=performCalls,inclusiveMs=performTime} end
+	if warningProfile then warning.initialization={calls=initCalls,inclusiveMs=initTime};warning.perform={calls=performCalls,inclusiveMs=performTime}
+		warning.skills={};for _,row in pairs(warningSkills) do warning.skills[#warning.skills+1]=copyTable(row) end
+		table.sort(warning.skills,function(a,b) if a.totalMs~=b.totalMs then return a.totalMs>b.totalMs end;return a.name<b.name end)
+	end
 	if desktopRecovery and build.configTab.input.simulateRecovery then assert(recoveryStarted, "Tree update did not start deferred recovery") end
 	local recovery = finishRecovery()
 	recoveryStarted=false
@@ -144,6 +156,11 @@ for _ = 1, cycles do
 	ui:frame()
 	if desktopRecovery and build.configTab.input.simulateRecovery then assert(recoveryStarted, "Tree removal did not start deferred recovery") end
 	finishRecovery()
+	if warningProfile then
+		local count,total=0,0
+		for _,entry in ipairs(warning.skills) do count=count+entry.count;total=total+entry.totalMs end
+		assert(count==warning.count and math.abs(total-warning.totalMs)<0.001,"Warning skill timings changed after the measured frame")
+	end
 	rows[#rows+1] = { hoverMs=(hovered-start)*1000, pressMs=(pressed-hovered)*1000,
 		releaseMs=(clicked-pressed)*1000, updateFrameMs=(updated-clicked)*1000, buildOutputMs=measuredOutput, buildOutputCalls=measuredCalls, warningProbes=warning, recovery=recovery }
 end

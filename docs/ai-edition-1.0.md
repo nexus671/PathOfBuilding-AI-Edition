@@ -333,6 +333,8 @@ Reusing the existing main-skill output did not reduce the synthetic probe count.
 Continue performance work with full-output and nested-cache comparisons, including
 triggered and proxy builds, before enabling reuse. A November 22 follow-up measured 10 initialization and 10 partial calculation calls in each of five synthetic geared-build updates; inclusive initialization took 16-38 ms and partial calculations 9-19 ms with profiling overhead. Reusing the initial base modifier databases while creating fresh probe environments changed a Mirage Archer nested Toxic Rain cache (CombinedDPS 1,202,294.56 versus 1,200,971.43), so that prototype was rejected. This does not establish the cause or safe reuse conditions. The tree UI benchmark now has an optional warning-probe breakdown for further investigation.
 
+A November 23 read-only comparison on a saved 3.30 build tested recycling per-node modifier lists inside warning-only calculations. It passed the current scalar-output and nested-cache comparisons on that build and the five bundled fixtures, but did not improve the measured timings: across 15 captured clicks each, baseline median BuildOutput was 96 ms and the candidate was 108 ms; update-frame medians were 141 ms and 157 ms. Results varied substantially and include headless capture and profiling overhead. The candidate was discarded. The optional warning profile now groups measured allocation-frame probes by skill name to help locate future work; its inclusive timings are not desktop frame times.
+
 Timed flask and tincture projections now use the recovery worker's checkpoints
 during their native calculation. A read-only two-cycle saved-build comparison
 preserved the recovery outputs, individual trials, trace and original revision.
