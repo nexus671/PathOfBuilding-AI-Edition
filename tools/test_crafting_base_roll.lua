@@ -20,6 +20,9 @@ assert(not sim.baseRollReason(mana,2));assert(sim.baseRollValue(mana,{0,0},2)==-
 assert(sim.baseRollReason({"-(10-5)% increased Damage"},1))
 local ring=sim.model("Rarity: NORMAL\nIron Ring\nItem Level: 86");local manaId="IncreasedManaEnhancedLevel50ModCostNew";assert(ring.byId[manaId]);local ringState=copyTable(ring.initial);ringState.rarity="RARE";ringState.affixes={{id=manaId,range={0,0}}}
 local manaGoal={anyOf={manaId},baseValueComponent=2,maxBaseValue=-8};assert(sim.matches(ringState,{manaGoal},nil,ring));ringState.affixes[1].range={1,1};assert(not sim.matches(ringState,{manaGoal},nil,ring))
+for _,sample in ipairs({{0,-8},{0.32,-8},{0.34,-7},{0.66,-7},{0.68,-6},{0.999,-6}}) do
+ local range=sim.rollRange(ring.byId[manaId],function() return sample[1] end);assert(sim.baseRollValue(ring.byId[manaId],range,2)==sample[2],"Descending rolls must use equal-width outcome buckets")
+end
 assert(sim.baseRollReason(mod,nil) and sim.baseRollReason(mod,3) and not sim.baseRollReason(mod,2))
 local weaponState=copyTable(weapon.initial);weaponState.rarity="RARE";weaponState.affixes={{id="LocalAddedColdDamage2",range={0,1}}}
 local minTarget={anyOf={"LocalAddedColdDamage2"},minBaseValue=7,baseValueComponent=1}

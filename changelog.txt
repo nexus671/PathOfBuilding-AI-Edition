@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1221][2026/11/23]
+
+* Correct sampled probabilities for descending integer modifier ranges.
+
 VERSION[2.68.1-ai.preview1220][2026/11/23]
 
 * Target negative crafting modifier rolls using their signed values.

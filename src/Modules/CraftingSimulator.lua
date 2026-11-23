@@ -477,7 +477,9 @@ local function rollRange(mod,random)
 		if low and high then
 			low,high=tonumber(low),tonumber(high)
 			local value=random()
-			if low < high and low == math.floor(low) and high == math.floor(high) then value=math.floor(value*(high-low+1))/(high-low) end
+			if low ~= high and low == math.floor(low) and high == math.floor(high) then
+				local steps=math.abs(high-low);value=math.floor(value*(steps+1))/steps
+			end
 			ranges[#ranges+1]=value
 		end
 	end end
