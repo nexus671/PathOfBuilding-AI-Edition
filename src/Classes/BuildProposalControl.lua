@@ -25,6 +25,7 @@ function Panel.Review()
 	local width=math.min(1120,main.screenW-40)
 	local compact=width<760
 	local cardWidth=math.floor((width-64)/3)
+	local metricWidth=math.floor((width-48)*0.61)
 	local function number(value,signed)
 		local scale,suffix=1,"";for _,unit in ipairs({{1e9,"b"},{1e6,"m"},{1e3,"k"}}) do if math.abs(value)>=unit[1] then scale,suffix=unpack(unit);break end end
 		return string.format(signed and "%+.2f%s" or "%.2f%s",value/scale,suffix)
@@ -43,14 +44,22 @@ function Panel.Review()
   local rows={{height=26,textSize=16,"^7Metric",compact and "^7Now" or "^7Current",compact and "^7New" or "^7Proposed",compact and "^7Diff" or "^7Change"}}
   local keys={};for key in pairs(prepared.after) do if showUnchanged or (prepared.delta[key] or 0)~=0 then keys[#keys+1]=key end end
   table.sort(keys,function(a,b) local ac,bc=(prepared.delta[a] or 0)~=0,(prepared.delta[b] or 0)~=0;if ac~=bc then return ac end;return (insights.labels[a] or a)<(insights.labels[b] or b) end)
-  for _,key in ipairs(keys) do rows[#rows+1]={height=26,textSize=16,"^7"..(insights.labels[key] or key:gsub("(%l)(%u)","%1 %2")),"^7"..number(prepared.before[key] or 0),"^7"..number(prepared.after[key]),((prepared.delta[key] or 0)>0 and "^x92D39C" or (prepared.delta[key] or 0)<0 and "^xE58F8F" or "^7")..number(prepared.delta[key] or 0,true)} end
+  for _,key in ipairs(keys) do
+   local label=insights.labels[key] or key:gsub("(%l)(%u)","%1 %2")
+   local before,after,delta=number(prepared.before[key] or 0),number(prepared.after[key]),number(prepared.delta[key] or 0,true)
+   if compact then
+    label=ui.fit(label,math.floor(metricWidth*0.39)-16,14)
+    before=ui.fit(before,math.floor(metricWidth*0.19)-8,14);after=ui.fit(after,math.floor(metricWidth*0.18)-8,14)
+    delta=ui.fit(delta,math.floor(metricWidth*0.24)-30,14)
+   end
+   rows[#rows+1]={height=26,textSize=compact and 14 or 16,"^7"..label,"^7"..before,"^7"..after,((prepared.delta[key] or 0)>0 and "^x92D39C" or (prepared.delta[key] or 0)<0 and "^xE58F8F" or "^7")..delta}
+  end
   if #keys==0 then rows[#rows+1]={height=26,"^7No measured stat changes"} end
   if evaluation.quote then rows[#rows+1]={height=26,"^7Quoted cost","","^7"..string.format("%.2f %s",evaluation.quote.amount,evaluation.quote.currency),""} end
   return rows
  end
 
-	local metricWidth=math.floor((width-48)*0.61)
-	controls.metrics=new("TextListControl"):TextListControl(ui.anchor,{16,198,metricWidth,height-292},{{x=8,align="LEFT"},{x=math.floor(metricWidth*0.43),align="LEFT"},{x=math.floor(metricWidth*0.62),align="LEFT"},{x=math.floor(metricWidth*0.81),align="LEFT"}},metricRows())
+	controls.metrics=new("TextListControl"):TextListControl(ui.anchor,{16,198,metricWidth,height-292},{{x=8,align="LEFT"},{x=math.floor(metricWidth*(compact and 0.39 or 0.43)),align="LEFT"},{x=math.floor(metricWidth*(compact and 0.58 or 0.62)),align="LEFT"},{x=math.floor(metricWidth*(compact and 0.76 or 0.81)),align="LEFT"}},metricRows())
  local toggleWidth=compact and 170 or 200
  controls.toggleMetrics=button(width-16-toggleWidth,166,toggleWidth,"Show unchanged metrics",function() showUnchanged=not showUnchanged;controls.metrics.list=metricRows();controls.toggleMetrics.label=showUnchanged and "Hide unchanged metrics" or "Show unchanged metrics" end)
  controls.toggleMetrics.shown=function() return controls.page:GetSelValue()=="Summary" end
