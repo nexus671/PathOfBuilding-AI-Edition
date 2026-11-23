@@ -277,14 +277,14 @@ function M.baseRollValue(mod,range,component)
 	if component==nil and count~=1 then return nil,"Choose a component for modifiers with multiple numeric ranges" end
 	component=component or 1;local chosen=ranges[component]
 	if not chosen then return nil,"The selected component is not present on this modifier" end
-	local line=mod[chosen.line];if line:find("%-%(") then return nil,"Negative-sign range notation needs a separate roll model" end
+	local line=mod[chosen.line]
 	local rendered=M.rolledLines(mod,range)[chosen.line]
 	local function escape(text) return (text:gsub("([^%w])","%%%1")) end
 	local pattern,cursor,localIndex,chosenIndex="^",1,0,nil
 	for i,entry in ipairs(ranges) do if entry.line==chosen.line then
-		local prefix=line:sub(cursor,entry.first-1);local plus=prefix:sub(-1)=="+"
-		if plus then prefix=prefix:sub(1,-2) end
-		pattern=pattern..escape(prefix)..(plus and "%+?" or "").."(%-?%d+%.?%d*)"
+		local prefix=line:sub(cursor,entry.first-1);local sign=prefix:sub(-1)
+		if sign=="+" or sign=="-" then prefix=prefix:sub(1,-2) end
+		pattern=pattern..escape(prefix)..(sign=="+" and "%+?" or "").."(%-?%d+%.?%d*)"
 		cursor=entry.last;localIndex=localIndex+1;if i==component then chosenIndex=localIndex end
 	end end
 	pattern=pattern..escape(line:sub(cursor)).."$"

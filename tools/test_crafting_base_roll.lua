@@ -15,6 +15,11 @@ local weaponRaw='Rarity: NORMAL\nRusted Sword\nItem Level: 86';local weapon=sim.
 assert(sim.baseRollValue(mod,{0,1},1)==7 and sim.baseRollValue(mod,{0,1},2)==16)
 assert(sim.baseRollValue(mod,{1,0},1)==9 and sim.baseRollValue(mod,{1,0},2)==14)
 assert(sim.baseRollValue({'+(10-20) to maximum Life','+(1-5) to Strength'},{0.2,0.8},2)==4)
+local mana={"+(74-78) to maximum Mana","Non-Channelling Skills have -(8-6) to Total Mana Cost"}
+assert(not sim.baseRollReason(mana,2));assert(sim.baseRollValue(mana,{0,0},2)==-8);assert(sim.baseRollValue(mana,{1,1},2)==-6)
+assert(sim.baseRollReason({"-(10-5)% increased Damage"},1))
+local ring=sim.model("Rarity: NORMAL\nIron Ring\nItem Level: 86");local manaId="IncreasedManaEnhancedLevel50ModCostNew";assert(ring.byId[manaId]);local ringState=copyTable(ring.initial);ringState.rarity="RARE";ringState.affixes={{id=manaId,range={0,0}}}
+local manaGoal={anyOf={manaId},baseValueComponent=2,maxBaseValue=-8};assert(sim.matches(ringState,{manaGoal},nil,ring));ringState.affixes[1].range={1,1};assert(not sim.matches(ringState,{manaGoal},nil,ring))
 assert(sim.baseRollReason(mod,nil) and sim.baseRollReason(mod,3) and not sim.baseRollReason(mod,2))
 local weaponState=copyTable(weapon.initial);weaponState.rarity="RARE";weaponState.affixes={{id="LocalAddedColdDamage2",range={0,1}}}
 local minTarget={anyOf={"LocalAddedColdDamage2"},minBaseValue=7,baseValueComponent=1}
