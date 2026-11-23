@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1236][2026/11/23]
+
+* Keep provider cooldowns across PoB windows and Windows background jobs.
+
 VERSION[2.68.1-ai.preview1235][2026/11/23]
 
 * Manage exact skill and support gem hides with listing-backed prices and preserve other variants.
