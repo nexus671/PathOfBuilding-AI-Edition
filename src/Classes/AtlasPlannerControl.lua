@@ -170,7 +170,7 @@ function Panel.Open(build,source,layout)
 	local width=layout and layout.width or math.min(1180,main.screenW-40); local height=layout and layout.height or math.min(820,main.screenH-50)
 	local inspector=math.max(260,math.min(width-600,layout and (layout.inspectorWidth or layout.restore and layout.restore.inspectorWidth) or 260))
 	local graphWidth=width-inspector-48; local graphHeight=height-262; local side=graphWidth+32
-	local compact=height<480
+	local compact=height<528 or graphWidth<606
 	local controls,undo,avoided,redo={},{},copyTable(draft.avoided or {}),{}
 	local preferred
 	local pointUsage,routeAvailable,routeReason,hasMissingChoices
@@ -549,7 +549,7 @@ function Panel.Open(build,source,layout)
 					lines[#lines+1]="Changed bonus counts";for _,stat in ipairs(comparison.stats) do lines[#lines+1]=stat end
 					choices[#choices+1]={id=plan.id,label=plan.title,details=lines,plan=plan}
 				end end;browser.Open("Compare Atlas plans",choices,{action="Show overlay",choose=function(choice)
-					local before={};for _,id in ipairs(choice.plan.nodes) do before[id]=true end;controls.canvas.comparison={before=before};controls.help.label="^7Green: added paths | Red: removed paths | Gold: shared paths"
+					local before={};for _,id in ipairs(choice.plan.nodes) do before[id]=true end;controls.canvas.comparison={before=before};controls.help.label="^7"..ui.fit("Green: added paths | Red: removed paths | Gold: shared paths",graphWidth,14)
 				end})
 			elseif entry.id=="history" then
 				local choices={};for i=#undo,1,-1 do local saved=undo[i];choices[#choices+1]={id=i,label="State "..i.." | "..#saved.plan.nodes.." points",details={saved.plan.title,#saved.plan.nodes.." points",#saved.avoided.." exclusions"},saved=saved,index=i} end

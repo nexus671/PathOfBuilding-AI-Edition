@@ -315,10 +315,11 @@ def main():
                                     env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-compact-controls.log").write_text(compact_filter.stdout)
     assert compact_filter.returncode == 0, compact_filter.stdout
-    compact_atlas = subprocess.run(lua_command + ["../tools/test_atlas_compact_ui.lua", str(frames)], cwd=ROOT / "src",
-                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    (directory / "atlas-compact-controls.log").write_text(compact_atlas.stdout)
-    assert compact_atlas.returncode == 0, compact_atlas.stdout
+    for width, height in ((640, 480), (720, 600), (960, 540)):
+        compact_atlas = subprocess.run(lua_command + ["../tools/test_atlas_compact_ui.lua", str(frames), str(width), str(height)], cwd=ROOT / "src",
+                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        (directory / f"atlas-compact-{width}-controls.log").write_text(compact_atlas.stdout)
+        assert compact_atlas.returncode == 0, compact_atlas.stdout
     bundle_errors = subprocess.run(lua_command + ["../tools/test_planning_bundle_errors.lua", str(frames)], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "planning-bundle-errors.log").write_text(bundle_errors.stdout)
