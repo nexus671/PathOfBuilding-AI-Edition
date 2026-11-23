@@ -73,3 +73,9 @@ PoB checks due profiles in order. Enable background sync individually on profile
 When a kept bundled profile references an older NeverSink revision, open **Profile tools → Audit and update → Update bundled NeverSink base**. PoB retrieves the exact saved revision and compiles it and the bundled revision with the same personal rules. The review shows removed conditions, matching visibility checks for protected drops, and changes to saved examples. **View full diff** compares both compiled filters.
 
 **Apply to draft** is available after the protected checks pass. The new bundled revision and preserved personal rules remain in the draft until you keep it. The daily sync file and its fixed baseline can be replaced separately after reviewing the new export.
+
+## Publish a verified filter to a PoE account
+
+In **Daily price sync**, open **Publish to account** after a successful refresh. Use the existing PoE login and item-filter permission, select an existing filter in the matching realm, and review the full diff. **Publish exact output** rechecks the local checksum and the remote filter before sending the approved text. The server validates the update.
+
+Local and background sync do not publish account filters. An uncertain server result is shown for review before retrying.

@@ -170,3 +170,60 @@ refreshUI:click("choose")
 assert(accepted and accepted.baseCommit==filters.source().commit and #accepted.rules==1 and accepted.rules[1].text==legacy.rules[1].text)
 launch.DownloadPage=actualDownload
 print("NeverSink refresh previews and validates the compiled candidate before preserving personal rules in the draft")
+
+-- Exercise the exact publish workflow with a simulated account response.
+newBuild()
+main.popups = {}
+local accountUI = headless.install({width=960,height=640})
+accountUI:bind(build)
+local account = require("Modules.LootFilterAccount")
+local confirmedRaw = "Show\n    Class == \"Maps\"\n"
+local existingRaw = "Hide\n    Class == \"Maps\"\n"
+local tokenRequests = 0
+local writes = 0
+local remoteBody = existingRaw
+sync.verifiedOutput = function(id)
+	assert(id == "default")
+	return confirmedRaw,{digest=string.rep("a",40),revision=string.rep("b",40),realm="pc"}
+end
+account.request = function(_,method,id,payload,callback)
+	tokenRequests = tokenRequests+1
+	if not id then
+		assert(method=="GET")
+		callback({filters={{id="verified-target",realm="pc",filter_name="Account mapping"},{id="console",realm="xbox",filter_name="Console"}}})
+	elseif method=="GET" then
+		assert(id=="verified-target")
+		callback({filter={id=id,realm="pc",filter_name="Account mapping",filter=remoteBody}})
+	else
+		assert(method=="POST" and id=="verified-target" and payload.filter==confirmedRaw and payload.realm=="pc")
+		assert(payload.public==nil)
+		writes = writes+1
+		callback({filter={id=id,realm="pc",filter=payload.filter,validation={valid=true}}})
+	end
+end
+local function openAccount()
+	require("Classes.LootFilterSyncAccountControl").Open("default")
+	accountUI:click("list")
+	assert(main.popups[1].title=="Choose an account filter")
+	local selection = main.popups[1].controls
+	for _, row in ipairs(selection.results.list) do assert(not row.entry or row.entry.id ~= "console") end
+	accountUI:click("choose")
+	assert(main.popups[1].title=="Review verified account output")
+	assert(not main.popups[1].controls.publish:IsEnabled())
+	accountUI:click("diff")
+	assert(main.popups[1].title=="Filter file changes")
+	accountUI:click("close")
+	assert(main.popups[1].controls.publish:IsEnabled())
+end
+openAccount()
+remoteBody = remoteBody .. "# account has changed"
+accountUI:click("publish")
+assert(writes==0 and tokenRequests==3 and main.popups[1].title=="Account filter publication")
+main.popups = {}
+remoteBody = existingRaw
+openAccount()
+accountUI:click("publish")
+assert(account.pending and writes==0)
+account.tick(os.time())
+assert(writes==1 and main.popups[1].title=="Account filter published")
+print("Reviewed account publication preserves the realm, rejects remote drift and sends the exact approved file")

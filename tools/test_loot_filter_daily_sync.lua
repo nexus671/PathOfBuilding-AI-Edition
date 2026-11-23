@@ -528,6 +528,15 @@ local report = require("dkjson").decode(profiles.diagnosticReport(now,id))
 assert(report.status.league=="Standard" and report.intervalDays==3)
 print("Named profiles isolate destinations, history, schedule, rollback, and background opt-in")
 
+local verifiedRaw, verifiedState = profiles.verifiedOutput("default")
+assert(verifiedRaw==read(target) and verifiedState.realm=="pc" and verifiedState.digest==profiles.configuration().current)
+write(target,verifiedRaw.."# local edit")
+assert(not pcall(profiles.verifiedOutput,"default"))
+write(target,verifiedRaw)
+assert(not pcall(profiles.verifiedOutput,id))
+print("Account publication can only read the latest verified, unchanged local output")
+
+
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.
 local controls, manualReview, exported

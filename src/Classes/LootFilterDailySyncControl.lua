@@ -266,7 +266,11 @@ function M.Open(profileId, profileName)
 				main:OpenPopup(360,126,"New sync profile",controls,nil,nil,"cancel")
 			end})
 	end)
-	ui.description(c,"backgroundHelp",16,504,width-32,23,{"Background updates run while you are signed in to Windows."},13)
+	ui.description(c,"backgroundHelp",16,504,width-210,25,{"Background updates run while you are signed in to Windows."},13)
+	c.account = new("ButtonControl"):ButtonControl(ui.anchor,{width-184,504,168,26},"Publish to account",function()
+		require("Classes.LootFilterSyncAccountControl").Open(profileId)
+	end)
+	c.account.enabled = function() return not sync.busy end
 	ui.style(c)
 	main:OpenPopup(width, 545, "Daily filter sync", c, nil, nil, "close")
 end

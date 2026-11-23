@@ -1,6 +1,19 @@
 -- Explicit account actions only. No background writes or tokens in build metadata.
 local json=require("dkjson")
 local M={busy=false,nextRequest=0}
+
+function M.afterRequest(callback)
+	assert(not M.pending, "Wait for the active account publication")
+	M.pending=callback
+end
+
+function M.tick(now)
+	if M.pending and not M.busy and now>=M.nextRequest then
+		local run=M.pending
+		M.pending=nil
+		run()
+	end
+end
 function M.request(api,method,id,payload,callback)
 	assert(method=="GET" or method=="POST","Unsupported filter action")
 	assert(not id or type(id)=="string" and #id<=100 and id:match("^[%w_-]+$"),"Invalid account filter ID")
@@ -15,8 +28,9 @@ function M.request(api,method,id,payload,callback)
 	M.busy=true
 	local function finish(value,err,wait) M.busy=false;M.nextRequest=os.time()+(wait or 1);callback(value,err) end
 	api:ValidateAuth(function(valid,err)
-		if not valid then finish(nil,err or "Log in with item-filter access first");return end
-		local options={header="Authorization: Bearer "..api.authToken.."\r\nContent-Type: application/json"}
+		if not valid then finish(nil,"Account authorization failed. Log in with item-filter access first.");return end
+		local options={header="Authorization: Bearer "..api.authToken.."\r\nContent-Type: application/json",timeout=25,
+			maxBytes=method=="GET" and not id and 12*1024*1024 or 4*1024*1024}
 		if method=="POST" then options.body=json.encode(payload) end
 		launch:DownloadPage("https://api.pathofexile.com/item-filter"..(id and "/"..id or "")..(method=="POST" and "?validate=true" or ""),function(response,errorMessage)
 			local status;for code in (response and response.header or ""):gmatch("HTTP/[%d%.]+ (%d+)") do status=tonumber(code) end

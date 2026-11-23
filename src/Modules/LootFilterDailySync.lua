@@ -352,6 +352,16 @@ local function keepExpected(raw)
 	assert(read(path) == raw, "Expected filter snapshot could not be verified")
 end
 
+function M.verifiedOutput(id)
+	local config = assert(get(id), "Enable and run daily sync first")
+	assert(not M.busy and config.lastSuccess and config.review and not config.pending,
+		"A completed, verified local refresh is required")
+	local raw = assert(read(filterPath(config.target)), "Target filter file was not found")
+	assert(sha(raw) == config.current, "The local filter changed after the verified refresh")
+	validate(raw,{},true,config.targetValue,config.protections,nil,nil,nil,config.pickupPolicy)
+	return raw, {digest=config.current, revision=config.revision, realm=config.realm or "pc", checkedAt=config.lastSuccess}
+end
+
 function M.externalDiff(id)
 	local config = assert(get(id), "No saved sync setup")
 	assert(not M.busy, "Wait for the current sync to finish")

@@ -397,7 +397,12 @@ function main:Shutdown()
 end
 
 function main:OnFrame()
-	if not launch.headless and self.userPath then require("Modules.LootFilterDailySync").tickAll(os.time()) end
+	if not launch.headless and self.userPath then
+		local now = os.time()
+		require("Modules.LootFilterDailySync").tickAll(now)
+		local filterAccount = package.loaded["Modules.LootFilterAccount"]
+		if filterAccount then filterAccount.tick(now) end
+	end
 	self.screenW, self.screenH = GetVirtualScreenSize()
 
 	if self.screenH > self.screenW then
