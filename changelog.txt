@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1187][2026/11/23]
+
+* Bring in upstream loadout management, Imbued supports, and calculation fixes.
+
 VERSION[2.68.1-ai.preview1186][2026/11/23]
 
 * Fix the headless UI test size limit.

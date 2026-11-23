@@ -103,6 +103,8 @@ def source_hashes():
     sources.append(ROOT / "tools/test_filter_sound_bundle.lua")
     sources.append(ROOT / "tools/test_gwennen_foresight_ui.lua")
     sources.append(ROOT / "tools/test_map_cost_maximum.lua")
+    sources.append(ROOT / "tools/test_upstream_loadouts_ui.lua")
+    sources.append(ROOT / "tools/test_upstream_skill_fixes.lua")
     sources.append(ROOT / "tools/test_minimal_ui.lua")
     sources += [ROOT / "tools/test_gwennen_ui.lua", ROOT / "tools/test_rog_ui.lua"]
     sources.append(ROOT / "tools/test_magic_name_ui.lua")
@@ -370,6 +372,12 @@ def main():
     map_cost = subprocess.run(lua_command + ["../tools/test_map_cost_maximum.lua", str(frames)], cwd=ROOT / "src", env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "map-cost-maximum.log").write_text(map_cost.stdout)
     assert map_cost.returncode == 0, map_cost.stdout
+    upstream_loadouts = subprocess.run(lua_command + ["../tools/test_upstream_loadouts_ui.lua", str(frames)], cwd=ROOT / "src", env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "upstream-loadouts-controls.log").write_text(upstream_loadouts.stdout)
+    assert upstream_loadouts.returncode == 0, upstream_loadouts.stdout
+    upstream_skills = subprocess.run(lua_command + ["../tools/test_upstream_skill_fixes.lua"], cwd=ROOT / "src", env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "upstream-skills.log").write_text(upstream_skills.stdout)
+    assert upstream_skills.returncode == 0, upstream_skills.stdout
     for name in ["sound-bundle-check.zip"] + [f"audio-{w}-sounds.zip" for w in (960, 1024, 1280)]:
         with zipfile.ZipFile(frames / name) as z:
             assert z.testzip() is None and len(z.namelist()) == 3, "Invalid sound bundle"
@@ -407,7 +415,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2471, f"Expected 2471 UI frames, found {len(paths)}"
+    assert len(paths) == 2477, f"Expected 2477 UI frames, found {len(paths)}"
     for name in ("960-inventory-source.json", "960-inventory-source-detail.json"):
         assert (frames / name).is_file(), f"Missing saved-item source view: {name}"
     for width in (960, 1024, 1280):
