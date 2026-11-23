@@ -344,7 +344,22 @@ do
 	local evidence = sharedBase[1].baseEvidence
 	assert(evidence.names==4 and evidence.variants==4 and evidence.priced==2 and evidence.minimum==30 and evidence.maximum==120)
 	local unmodifiedGem = browser.rows([[{"lines":[{"name":"Example gem","chaosValue":1,"gemLevel":1,"gemQuality":0}]}]],{id="SkillGem"})[1]
-	assert(unmodifiedGem.gemQuality==0 and unmodifiedGem.corrupted==nil)
+	assert(unmodifiedGem.gemQuality==0 and unmodifiedGem.corrupted==nil and unmodifiedGem.incomplete)
+	local gems = [[{"lines":[
+		{"name":"Example gem","detailsId":"example-gem-1-0","chaosValue":1,"gemLevel":1,"gemQuality":0,"corrupted":false,"count":30,"listingCount":25},
+		{"name":"Example gem","detailsId":"example-gem-21-20","chaosValue":41,"gemLevel":21,"gemQuality":20,"corrupted":true,"count":35,"listingCount":18},
+		{"name":"Example gem of Testing","detailsId":"transfigured-gem","chaosValue":710,"gemLevel":1,"gemQuality":0,"corrupted":false}
+	]}]]
+	local exact = browser.rows(gems,{id="SkillGem"},"=Example gem")
+	assert(#exact==2 and exact[1].price==41 and exact[1].corrupted and not exact[1].supported)
+	assert(exact[2].supported and exact[2].corrupted==false and not exact[2].incomplete)
+	assert(browser.rows(gems,{id="SkillGem"},"=example-gem-1-0")[1].gemQuality==0)
+	local base = browser.rows([[{"lines":[
+		{"name":"Example base","detailsId":"example-base","chaosValue":12,"count":50,"listingCount":25},
+		{"name":"Example base","detailsId":"example-base","chaosValue":40,"count":50,"listingCount":25}
+	]}]],{id="BaseType"},"=example-base")
+	assert(#base==1 and base[1].conflicting and not base[1].price)
+	assert(browser.rows(gems,{id="ImbuedGem"},"=transfigured-gem")[1].incomplete==nil)
 end
 local cards = browser.rows([[{"core":{"primary":"chaos"},"items":[{"id":"card","name":"Example card"}],"lines":[{"id":"card","primaryValue":12,"volumePrimaryValue":500}]}]], {id="DivinationCard",feed="exchange"})
 assert(#cards==1 and cards[1].price==12 and cards[1].volume==500)

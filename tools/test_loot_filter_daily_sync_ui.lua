@@ -355,6 +355,28 @@ assert(main.popups[1].title=="Unique accessories market prices")
 local marketDetails={}
 for _, row in ipairs(main.popups[1].controls.details.list) do marketDetails[#marketDetails+1]=StripEscapes(row[1] or "") end
 assert(table.concat(marketDetails," "):find("30 to 120 chaos",1,true))
+do
+	main.popups = {}
+	launch.DownloadPage = function(_,url,callback)
+		assert(url:find("type=ImbuedGem",1,true))
+		local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\n\r\n",body=[[{"lines":[
+			{"name":"Example support","detailsId":"example-support-1-0","chaosValue":3,"gemLevel":1,"gemQuality":0,
+				"corrupted":false,"count":7,"listingCount":9},
+			{"name":"Example support of Testing","detailsId":"example-support-variant","chaosValue":700}
+		]}]]})
+	end
+	require("Classes.LootFilterMarketBrowseControl").Open()
+	marketUI:text("league","Covens")
+	marketUI:choose("category","Imbued gems")
+	marketUI:text("query","=Example support")
+	marketUI:click("get")
+	assert(main.popups[1].title=="Imbued gems market prices")
+	local detail = {}
+	for _, row in ipairs(main.popups[1].controls.details.list) do detail[#detail+1]=StripEscapes(row[1] or "") end
+	local text = table.concat(detail," ")
+	assert(text:find("3 chaos estimated",1,true) and text:find("Gem quality: 0",1,true) and text:find("Fewer than 20",1,true))
+end
 launch.DownloadPage = originalMarketDownload
 print("Unique market review includes competing variants for the selected base")
 

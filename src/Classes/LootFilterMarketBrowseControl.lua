@@ -15,7 +15,7 @@ function M.Open()
 	controls.category=new("DropDownControl"):DropDownControl(ui.anchor,{16,98,width-32,28},options)
 	ui.label(controls,"queryLabel",16,138,"Item name, base or variant",14)
 	controls.query=new("EditControl"):EditControl(ui.anchor,{16,160,width-32,26},"","Search prices",nil,100)
-	ui.description(controls,"help",16,196,width-32,44,{"Compare price estimates and variant details. The browser reads one category at a time."},14)
+	ui.description(controls,"help",16,196,width-32,44,{"Start with = to match an exact name, base or price ID."},14)
 	ui.label(controls,"status",16,250,"",14)
 	local function status(label) controls.status.label=ui.fit(label,width-32,14) end
 	controls.get=new("ButtonControl"):ButtonControl(ui.anchor,{16,282,138,28},"Show prices",function()
@@ -25,7 +25,8 @@ function M.Open()
 		if league~="" and not league:match("^[%w%s_-]+$") then status("Enter a valid league ID."); return end
 		local category=browse.categories[controls.category.selIndex or 1]
 		local query=controls.query.buf:match("^%s*(.-)%s*$")
-		if (category.id=="BaseType" or category.id=="SkillGem") and #query<2 then
+		local advisory=browse.advisory(category)
+		if advisory and #query:gsub("^=%s*","")<2 then
 			status("Enter at least two characters to search this category.")
 			return
 		end
@@ -52,15 +53,21 @@ function M.Open()
 				local entries={}
 				for i,row in ipairs(rows) do
 					if i>1000 then break end
-					local details={
-						row.ambiguous and "Ambiguous exchange name" or string.format("%.4g chaos estimated",row.price),
-						"Response age: "..math.ceil(age/60).." minutes",
-					}
+				local price
+				if row.conflicting then price="Conflicting quotes for this price ID"
+				elseif row.ambiguous then price="Ambiguous exchange name"
+				else price=string.format("%.4g chaos estimated",row.price) end
+				local details={price,"Response age: "..math.ceil(age/60).." minutes"}
 					local function show(label,value)
 						if value then details[#details+1]=label..tostring(value) end
 					end
-					show("Base: ",row.base);show("Variant: ",row.variant)
-					if row.corrupted~=nil then details[#details+1]=row.corrupted and "Corrupted" or "Uncorrupted" end
+				show("Price ID: ",row.identity)
+				if not row.conflicting then show("Base: ",row.base);show("Variant: ",row.variant) end
+				if advisory and not row.conflicting then
+					if row.incomplete then details[#details+1]="The listing is missing variant details." end
+					if not row.supported then details[#details+1]="Fewer than 20 listings or observations are documented." end
+				end
+				if not row.conflicting and row.corrupted~=nil then details[#details+1]=row.corrupted and "Corrupted" or "Uncorrupted" end
 					local evidence = row.baseEvidence
 					if evidence and evidence.variants>1 then
 						details[#details+1]=string.format("Shared base: %d unique names across %d listed variants",evidence.names,evidence.variants)
@@ -70,10 +77,13 @@ function M.Open()
 						end
 						details[#details+1]="An unidentified drop on this base can belong to different variants."
 					end
+				if not row.conflicting then
 					show("Links: ",row.links);show("Gem level: ",row.gemLevel)
 					show("Gem quality: ",row.gemQuality);show("Map tier: ",row.mapTier)
 					show("Observations: ",row.count);show("Listings: ",row.listings);show("Chaos quoted volume: ",row.volume)
-					entries[#entries+1]={id=tostring(i), label=row.name, details=details, search=table.concat(details," ")}
+				end
+				entries[#entries+1]={id=tostring(i), label=row.conflicting and row.identity or row.name,
+					details=details, search=table.concat(details," ")}
 				end
 				finish("Showing "..#entries.." of "..#rows.." matches.")
 				require("Classes.PlanningBrowserControl").Open(category.label.." market prices",entries)
