@@ -1,4 +1,5 @@
 -- Portable data only. Native build XML carries kept plans and checkpoints.
+-- cspell:ignore jsontype
 local json=require("dkjson")
 local sha1=require("sha1")
 local M={limit=16*1024*1024}
