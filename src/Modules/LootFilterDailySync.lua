@@ -307,7 +307,7 @@ end
 local function publish(config, bodies, ages, day, force, now)
 	return platform().lock(settingsPath() .. ".lock", function()
 		local current = get()
-		assert(current and current.enabled and current.baselineHash == config.baselineHash and current.target == config.target
+		assert(current and current.enabled and not current.paused and current.baselineHash == config.baselineHash and current.target == config.target
 			and current.revision == config.revision and current.league == config.league and current.targetValue == config.targetValue and current.hour == config.hour and current.protectionFile == config.protectionFile, "Daily sync settings changed during the refresh")
 		if not force and current.day == day then return "Already synced today." end
 		local original = assert(read(current.target), "Target filter is missing")

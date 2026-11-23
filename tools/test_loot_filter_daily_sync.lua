@@ -194,3 +194,59 @@ assert(refreshed:find('BaseType == "Cheap Card" "Thin Card"',1,true))
 assert(not refreshed:find('BaseType == "Orb of Alteration" "Cheap Card"',1,true))
 assert(refreshed:find('BaseType == "Compound Card"\n    Identified True',1,true))
 print("Managed cards: required category, broken feed, class-scoped same-name quotes and liquidity passed")
+
+-- A second window can pause while the first has an in-flight response.
+-- Load a second instance of the sync module to give each its own busy state.
+local secondWindow = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+write(target,cardBaseline)
+sync.configure(target,baseline,"Covens",options)
+local waiting
+local function reply(url, callback)
+	callback({header=header,body=url:match("&type=DivinationCard$") and cardBody or commodityBody})
+end
+launch.DownloadPage = function(_, url, callback)
+	if not waiting then
+		waiting = function() reply(url, callback) end
+	else
+		reply(url, callback)
+	end
+end
+sync.tick(now,true)
+assert(sync.busy and waiting)
+secondWindow.pause(true)
+waiting()
+assert(not sync.busy and sync.status:find("settings changed",1,true),sync.status)
+assert(read(target)==cardBaseline and sync.configuration().paused)
+secondWindow.pause(false)
+
+-- A sharing violation must keep the original and leave a usable journal.
+-- The handle permits readers but denies the atomic replacement.
+local ffi = require("ffi")
+local kernel = ffi.load("kernel32")
+local targetPath = target:gsub("/","\\")
+local size = kernel.MultiByteToWideChar(65001,8,targetPath,-1,nil,0)
+local widePath = ffi.new("uint16_t[?]",size)
+assert(kernel.MultiByteToWideChar(65001,8,targetPath,-1,widePath,size)==size)
+local locked = kernel.CreateFileW(widePath,0x80000000,1,nil,3,0x80,nil)
+assert(locked~=ffi.cast("void *",-1))
+launch.DownloadPage = function(_, url, callback) reply(url,callback) end
+sync.tick(now,true)
+local closed = kernel.CloseHandle(locked)
+assert(closed~=0 and sync.status:find("Check access and file locks",1,true),sync.status)
+local pending = sync.configuration()
+assert(read(target)==cardBaseline and pending.current and pending.pending and pending.current~=pending.pending)
+secondWindow.tick(now,true)
+assert(read(target)==refreshed and secondWindow.status:find("Protected drops verified",1,true),secondWindow.status)
+assert(not secondWindow.configuration().pending)
+secondWindow.rollback()
+assert(read(target)==cardBaseline and secondWindow.configuration().paused)
+
+-- Simulate termination after the atomic replace and before the final
+-- settings commit. A new window must recognize the installed candidate.
+secondWindow.pause(false)
+write(target,refreshed)
+write(dir.."/LootFilterDailySync.json",assert(require("dkjson").encode(pending)))
+local replacementWindow = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+replacementWindow.tick(now,true)
+assert(read(target)==refreshed and not replacementWindow.configuration().pending,replacementWindow.status)
+print("Windows fault recovery: concurrent pause, locked target, and both pending-journal states passed")
