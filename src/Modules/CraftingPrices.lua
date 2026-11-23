@@ -26,6 +26,7 @@ function M.aliases(model)
 	local kind=model and model.item.type or ""
 	if aliasCache[kind] then return aliasCache[kind] end
 	local data=catalogue();local result=M.currencyAliases(data.methods)
+	result.hinekora_lock="Metadata/Items/Currency/CurrencyHinekorasLock"
 	for id,entry in pairs(data.items) do
 		local stackable=id:gsub("/DelveSocketableCurrencyReroll","/DelveStackableSocketableCurrencyReroll")
 		if stackable~=id and data.items[stackable] and data.items[stackable].name==entry.name then result[id]=stackable end
@@ -100,6 +101,7 @@ function M.describe(key,model,action)
 	if canonical=="Metadata/Items/Currency/AncestralOmenOnJewellersMakeFullSockets" then return "Omen of the Jeweller",nil,"Currency" end
 	local faction,tier=canonical:match("^Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction([13])_([1-4])$")
 	if faction then return ({"Lesser","Greater","Grand","Exceptional"})[tonumber(tier)]..(faction=="1" and " Broken Circle Artifact" or " Order Artifact"),nil,"Currency" end
+	if canonical=="Metadata/Items/Currency/CurrencyHinekorasLock" then return "Hinekora's Lock",nil,"Currency" end
 	if canonical=="gwennen:observed_artifacts" or canonical=="rog:observed_artifacts" then return "Unspecified artifact cost",nil,"Resource" end
 	local donor=canonical:match("^donor:([a-f0-9]+)$")
 	if donor then

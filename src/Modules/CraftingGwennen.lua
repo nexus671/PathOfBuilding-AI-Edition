@@ -1,9 +1,14 @@
 -- Bounded model of a pair observed in Gwennen's 3.30 crafting interface.
 local G={}
-local supported={[1000]=true,[1001]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1016]=true,[1017]=true,[1018]=true,[1019]=true,[1020]=true,[1021]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1028]=true,[1029]=true,[1030]=true,[1031]=true,[1032]=true,[1033]=true,[1034]=true,[1035]=true,[1036]=true,[1037]=true,[1038]=true,[1039]=true,[1040]=true,[1041]=true,[1042]=true,[1043]=true,[1044]=true}
-local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1022]="Destroy",[1029]="Set quality to 20%"}
+local supported={[1000]=true,[1001]=true,[1002]=true,[1003]=true,[1004]=true,[1005]=true,[1006]=true,[1007]=true,[1008]=true,[1009]=true,[1010]=true,[1011]=true,[1012]=true,[1013]=true,[1014]=true,[1015]=true,[1016]=true,[1017]=true,[1018]=true,[1019]=true,[1020]=true,[1021]=true,[1022]=true,[1023]=true,[1024]=true,[1025]=true,[1026]=true,[1027]=true,[1028]=true,[1029]=true,[1030]=true,[1031]=true,[1032]=true,[1033]=true,[1034]=true,[1035]=true,[1036]=true,[1037]=true,[1038]=true,[1039]=true,[1040]=true,[1041]=true,[1042]=true,[1043]=true,[1044]=true}
+local deterministic={[1000]="No change",[1001]="Remove all modifiers",[1002]="Apply Hinekora's Lock",[1022]="Destroy",[1029]="Set quality to 20%"}
 local currencies={lesser="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_1",greater="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_2",grand="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_3",exceptional="Metadata/Items/Expedition/ExpeditionVendorCurrencyFaction1_4"}
 local astragali="Metadata/Items/Currency/CurrencyRefreshGambler"
+local lockId="Metadata/Items/Currency/CurrencyHinekorasLock"
+-- The preview is a sample, but only offer it for modeled currency actions.
+-- Services such as Gwennen, Harvest, bench and the altar are excluded.
+local foreseeable={transmute=true,alteration=true,augmentation=true,regal=true,alchemy=true,chaos=true,exalt=true,annul=true,scour=true,divine=true,blessed=true,vaal=true,quality=true,catalyst=true,chromatic=true,jeweller=true,fusing=true}
+function G.isForesightCurrency(method) return foreseeable[method]==true end
 local function belowMaximum(mod,range)
 	local ranges=type(range)=="table" and range or {range};local index=0;local below=false
 	for _,line in ipairs(mod) do for low,high in line:gmatch("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)") do
@@ -184,7 +189,14 @@ function G.extend(M,api)
 		if flags.prefixes or flags.suffixes or flags.attack or flags.caster or flags.explicitAttack or flags.explicitCaster then return "Gwennen interactions with meta modifiers or implicit roll restrictions are not modeled." end
 		for _,entry in ipairs(state.affixes) do if entry.fractured then return "Gwennen interactions with fractured modifiers are not modeled." end end
 	end
-	M.methods[#M.methods+1]="gwennen";M.labels.gwennen="Gwennen: observed pair (experimental)";table.sort(M.methods)
+	M.methods[#M.methods+1]="gwennen";M.labels.gwennen="Gwennen: observed pair (experimental)"
+	M.methods[#M.methods+1]="hinekora_lock";M.labels.hinekora_lock="Hinekora's Lock (experimental)"
+	M.methodChecks.hinekora_lock=function(model,state)
+		if state.foreseeing then return "This item already has a modeled foreseeing marker." end
+		if state.corrupted or state.destroyed or state.mirrored or state.veil then return "This model requires an intact, uncorrupted item without a pending unveil." end
+		if model.item.type=="Flask" or model.item.type=="Tincture" then return "This model supports ordinary equipment and jewels." end
+	end
+	table.sort(M.methods)
 	local action,components,priceKey,validateRecipe=M.action,M.components,M.priceKey,M.validateRecipe
 	local preflightOnly={}
 	function M.validateRecipe(recipe)
@@ -193,6 +205,10 @@ function G.extend(M,api)
 		return result
 	end
 	function M.action(model,input,craft,random)
+		if craft.method=="hinekora_lock" then
+			local reason=M.methodChecks.hinekora_lock(model,input);assert(not reason,reason)
+			local result=copyTable(input);result.foreseeing=true;return result
+		end
 		if craft.method~="gwennen" then return action(model,input,craft,random) end
 		G.validate(craft);model=M.context(model,input)
 		assert(input.rarity=="RARE" and not input.destroyed and not input.corrupted and not input.mirrored and not input.veil,"Gwennen requires an uncorrupted rare equipment item")
@@ -203,6 +219,7 @@ function G.extend(M,api)
 		local tierCache={}
 		local function branch(id,draw,probe)
 			if id==1000 then return copyTable(input) end
+			if id==1002 then local result=copyTable(input);result.foreseeing=true;return result end
 			if id>=1033 and id<=1040 then
 				local single=({[1033]=1009,[1034]=1009,[1035]=1008,[1036]=1008,[1037]=1018,[1038]=1018,[1039]=1019,[1040]=1019})[id]
 				local count=({[1033]=3,[1034]=5,[1035]=3,[1036]=5,[1037]=3,[1038]=6,[1039]=3,[1040]=6})[id]
@@ -359,12 +376,14 @@ function G.extend(M,api)
 		return table.concat(fields,":")
 	end
 	function M.components(craft,state,model)
+		if craft.method=="hinekora_lock" then return {[lockId]=1} end
 		if craft.method~="gwennen" then return components(craft,state,model) end
 		G.validate(craft);local result={[astragali]=1}
 		if craft.artifactCost==nil then result["gwennen:observed_artifacts"]=1
 		else for key,amount in pairs(craft.artifactCost) do if amount>0 then result[currencies[key]]=amount end end end
 		return result
 	end
+	M.limits[#M.limits+1]="Hinekora foresight is represented by a marker and hypothetical seeded samples, not the actual game future. Successful modeled actions clear it; no-change and special interactions are unverified. Copied item text does not preserve the marker."
 	M.limits[#M.limits+1]="Experimental Gwennen pairs use only observed supported outcomes. A fair coin, uniform selection and removal counts, side-reroll count preservation, normalized maximum-roll checks and ordinary crafting transitions are assumptions; offer generation, prices and special modifier interactions are not verified. Unknown artifact prices remain unpriced."
 end
 return G

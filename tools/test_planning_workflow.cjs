@@ -780,9 +780,17 @@ async function main(){
   const gwennenReference=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'destroy',limit:20},'inspected');
   assert.equal(gwennenReference.crafting.nativeEngine.gwennenReference.offers[0].id,1022);assert.equal(gwennenReference.crafting.nativeEngine.gwennenReference.offers[0].modeled,true);assert.match(gwennenReference.crafting.nativeEngine.gwennenReference.note,/not item eligibility or offer probabilities/);
   const gwennenLock=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,query:'1002',limit:20},'inspected');
-  assert.equal(gwennenLock.crafting.nativeEngine.gwennenReference.catalogModeledCount,44);assert.equal(gwennenLock.crafting.nativeEngine.gwennenReference.offers[0].modeled,false);
+  assert.equal(gwennenLock.crafting.nativeEngine.gwennenReference.catalogModeledCount,45);assert.equal(gwennenLock.crafting.nativeEngine.gwennenReference.offers[0].modeled,true);
   assert.equal(inspected.crafting.nativeEngine.methodWarnings.binding[0].code,'binding_legacy');
   const binding=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,action:{method:'binding'},seed:1},'crafted');assert.equal(binding.nativeCrafting.warnings[0].code,'binding_legacy');assert.equal(binding.nativeCrafting.state.rarity,'RARE');
+  const standaloneLock=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:{method:'hinekora_lock'},seed:7},'crafted');
+  assert.equal(standaloneLock.nativeCrafting.state.foreseeing,true);assert.ok(standaloneLock.nativeCrafting.warnings.some(entry=>entry.code==='foreseeing_sample'));
+  const lockOdds=await queued('calculate_crafting',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1002,secondOutcome:1000},targets:[],options:{requirements:{foreseeing:true}}},'crafted');
+  assert.equal(lockOdds.nativeCrafting.successChance,50);assert.equal(lockOdds.nativeCrafting.sampled,false);
+  const lockPair=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:binding.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1002,secondOutcome:1002},seed:7},'crafted');
+  assert.equal(lockPair.nativeCrafting.state.foreseeing,true);assert.ok(lockPair.nativeCrafting.warnings.some(entry=>entry.code==='foreseeing_sample'));
+  const lockConsumed=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:raw,initialState:lockPair.nativeCrafting.state,action:{method:'chaos'},seed:7},'crafted');
+  assert.notEqual(lockConsumed.nativeCrafting.state.foreseeing,true);assert.ok(lockConsumed.nativeCrafting.warnings.some(entry=>entry.code==='foreseeing_sample'));
   const gwennenImplicitRaw='Rarity: NORMAL\nCoral Ring\nItem Level: 86\nImplicits: 1\n+25 to maximum Life';
   const gwennenImplicitStart=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gwennenImplicitRaw,action:{method:'alchemy'},seed:1},'crafted');
   const gwennenImplicitPair=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:gwennenImplicitRaw,initialState:gwennenImplicitStart.nativeCrafting.state,action:{method:'gwennen',firstOutcome:1032,secondOutcome:1032},seed:7},'crafted');

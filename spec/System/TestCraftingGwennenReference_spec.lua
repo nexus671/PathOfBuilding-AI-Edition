@@ -4,11 +4,11 @@ describe("Gwennen outcome reference",function()
 	it("searches the pinned reference without claiming availability or probabilities",function()
 		local all=sim.catalog(raw,"",100).gwennenReference
 		assert.equal(45,all.total);assert.equal(45,#all.offers);assert.equal(64,#all.sourceSha256)
-		assert.matches("not item eligibility or offer probabilities",all.note);assert.equal(44,all.catalogModeledCount)
+		assert.matches("not item eligibility or offer probabilities",all.note);assert.equal(45,all.catalogModeledCount)
 		local supported=require("Modules.CraftingGwennen");for _,row in ipairs(all.offers) do
 			assert.is_nil(row.chance);assert.is_nil(row.action);assert.equal(supported.supports(row.id),row.modeled)
 		end
-		assert.is_false(sim.catalog(raw,"1002",10).gwennenReference.offers[1].modeled)
+		assert.is_true(sim.catalog(raw,"1002",10).gwennenReference.offers[1].modeled)
 		assert.is_true(sim.catalog(raw,"1038",10).gwennenReference.offers[1].modeled)
 		local destroyed=sim.catalog(raw,"destroy",10).gwennenReference
 		assert.equal(1,destroyed.total);assert.equal(1022,destroyed.offers[1].id)

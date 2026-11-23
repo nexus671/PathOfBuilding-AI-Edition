@@ -144,6 +144,7 @@ function M.actionWarnings(action,model)
 		local valueOffer=action.rogOperation=="values_one" or action.rogOperation=="values_side" or action.rogOperation=="values_implicit"
 		result[#result+1]={code="rog_reroll_assumptions",message=valueOffer and "Experimental: selects one modifier uniformly when applicable, samples independent value rolls, ranks candidates by average normalized numeric position and keeps the first tie. Higher numeric values are not always better; offer availability, selection, ranking and roll distributions are unverified." or socketOffer and "Experimental: models independent Jeweller or Fusing rolls and keeps the first highest result. Offer availability, eligibility, socket retention, tie rules and probabilities are unverified." or (action.rogOperation=="upgrade_highest" or action.rogOperation=="upgrade_highest_all") and "Experimental: selects distinct modifiers uniformly and upgrades each to its highest uniquely identified legal tier, rerolling values. Offer availability, item-level limits, selection and tier rules are unverified; ambiguous and boundary tiers are excluded." or action.rogOperation=="upgrade" and "Experimental: selects distinct modifiers uniformly, upgrades each to its nearest uniquely identified legal tier and rerolls values. Offer availability, eligibility, selection and tier rules are unverified; ambiguous and boundary tiers are excluded." or removal and "Experimental: removes the lowest required-level modifiers, assuming equal chances among ties. Offer eligibility and special interactions are unverified." or action.rogOperation=="set_quality" and "Sets weapon or armour quality to 20%. Offer eligibility and special interactions are unverified." or action.rogOperation=="fill" and "Experimental: fills open slots with sequential ordinary-weight rolls. Order, weights and special interactions are unverified; a later roll can fail when no legal modifier remains." or "Experimental: assumes independent ordinary-weight rolls, side-reroll count preservation, average modifier-level ranking and first-on-tie selection. Offer generation, ranking, weights and special interactions are unverified; some selections can fail.",source=(valueOffer or socketOffer or removal or action.rogOperation=="upgrade" or action.rogOperation=="upgrade_highest" or action.rogOperation=="upgrade_highest_all") and "https://poedb.tw/us/Rog" or action.rogOperation=="set_quality" and "https://poedb.tw/us/Broker_Deals_with_Rog" or "https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"}
 	end
+	if action.method=="hinekora_lock" or action.method=="gwennen" and (action.firstOutcome==1002 or action.secondOutcome==1002) then result[#result+1]={code="foreseeing_model",message="The Lock action or branch records only a hypothetical foreseeing marker; seeded previews cannot predict the game's hidden outcome. A successful modeled action clears it, including modeled no-change results. Eligibility and special interactions are unverified."} end
 	if action.method=="gwennen" then result[#result+1]={code="gwennen_estimate",message="Experimental: assumes a fair coin, uniform selection and removal counts, normalized maximum-roll checks and ordinary currency transitions. Offer generation, costs and special interactions are not verified.",source="https://www.pathofexile.com/forum/view-thread/4013680",asOfPatch="3.30"} end
 	if action.method=="gwennen" and (action.firstOutcome==1020 or action.firstOutcome==1021 or action.firstOutcome==1043 or action.firstOutcome==1044 or action.secondOutcome==1020 or action.secondOutcome==1021 or action.secondOutcome==1043 or action.secondOutcome==1044) then result[#result+1]={code="gwennen_tier_assumptions",message="Tier changes assume uniform selection without replacement among all modifiers, and use the nearest uniquely identified legal tier in the same ordinary family. Gwennen's selection, item-level restrictions and tier rules are unverified; ambiguous, crafted and boundary-tier modifiers are excluded.",source="https://poe-datamine.phelnaxgaming.workers.dev/"} end
 	if action.method=="gwennen" and (action.firstOutcome==1018 or action.firstOutcome==1019 or action.secondOutcome==1018 or action.secondOutcome==1019) then result[#result+1]={code="gwennen_side_reroll_assumptions",message="Side rerolls preserve the original number of modifiers on that side, based on comparable Rog research. Applying that rule and the ordinary modifier weights to Gwennen is unverified; some modeled selections can fail.",source="https://www.sirgog.com/wp-content/uploads/2022/12/rog.pdf"} end
@@ -715,6 +716,7 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
   if requirements.mirrored ~= nil and (state.mirrored or false) ~= requirements.mirrored then return false end
   if requirements.corrupted ~= nil and (state.corrupted or false) ~= requirements.corrupted then return false end
   if requirements.twiceCorrupted ~= nil and (state.twiceCorrupted or false) ~= requirements.twiceCorrupted then return false end
+  if requirements.foreseeing ~= nil and (state.foreseeing or false) ~= requirements.foreseeing then return false end
 	  if requirements.influence then
 	   local found=false;for _,key in ipairs(state.influences or model.initial.influences or {}) do if key==requirements.influence then found=true;break end end
 	   if not found then return false end
@@ -796,7 +798,7 @@ function M.validateRecipe(recipe)
 			elseif key == "flaskEnchantMin" then
 				integer(value,0,100,"minimum flask enchantment roll");local lo,hi=require("Modules.CraftingFlaskEnchants").bounds(requirements.flaskEnchant)
 				assert(lo and value<=hi,"Choose a rolled flask enchantment and a minimum within its range")
-			elseif key == "corrupted" or key == "twiceCorrupted" or key == "mirrored" or key == "linkedColours" then assert(type(value) == "boolean","Invalid boolean property condition")
+			elseif key == "corrupted" or key == "twiceCorrupted" or key == "mirrored" or key == "foreseeing" or key == "linkedColours" then assert(type(value) == "boolean","Invalid boolean property condition")
 			elseif key == "influence" then assert(({shaper=true,elder=true,adjudicator=true,basilisk=true,crusader=true,eyrie=true})[value],"Choose a supported influence")
 			elseif key == "socketColours" then assert(type(value)=="string" and #value>=1 and #value<=6 and not value:find("[^RGBW]"),"Use one to six socket colours: R, G, B or W")
 			else integer(value,0,assert(limits[key],"Unknown property condition"),key) end
@@ -805,6 +807,8 @@ function M.validateRecipe(recipe)
 		assert(not requirements.minCatalystQuality or requirements.catalyst,"Catalyst quality requires a catalyst type")
 		assert(not requirements.sockets or not requirements.exactSockets or requirements.sockets<=requirements.exactSockets,"Minimum sockets exceed the exact socket count")
 		assert(not (requirements.corrupted==false and requirements.twiceCorrupted==true),"A twice corrupted item cannot be uncorrupted")
+		assert(not (requirements.mirrored==true and requirements.foreseeing==true),"A modeled foreseeing item cannot be mirrored")
+		assert(not (requirements.foreseeing==true and (requirements.corrupted==true or requirements.twiceCorrupted==true)),"A modeled foreseeing item cannot be corrupted")
 		for _,pair in ipairs({{"minAffixes","maxAffixes"},{"minMemoryStrands","maxMemoryStrands"},{"minFractured","maxFractured"},{"minIntangibility","maxIntangibility"}}) do
 			assert(not requirements[pair[1]] or not requirements[pair[2]] or requirements[pair[1]] <= requirements[pair[2]],"Minimum property condition exceeds maximum")
 		end
@@ -909,6 +913,8 @@ end
 function M.validateState(model,state)
 	assert(type(state) == "table" and type(state.affixes) == "table" and #state.affixes <= 6,"Invalid crafting state")
 	assert(state.socketLayoutUnknown==nil or type(state.socketLayoutUnknown)=="boolean","Invalid unknown socket layout marker")
+	assert(state.foreseeing==nil or type(state.foreseeing)=="boolean" and (not state.foreseeing or not state.destroyed and not state.mirrored and not state.corrupted and not state.veil),"Invalid foreseeing marker")
+	assert(not state.imprint or not state.imprint.foreseeing,"An imprint cannot retain modeled foreseeing")
 	for _,key in ipairs({"tinctureBaseExplicit","tinctureBasePrefix","tinctureBaseSuffix","tinctureBaseImplicit"}) do
 		assert(state[key]==nil or state[key]==true and model.item.type=="Tincture" and model.item.tinctureValues=="Final","Invalid tincture value provenance")
 	end
@@ -1166,6 +1172,7 @@ function M.perform(raw,action,seed,initialState,treeVersion)
 	if initialState then model.initial=M.validateState(model,initialState) end
 	local state,details=M.action(model,model.initial,action,rng(encounter.seed(integer(seed or 104729,1,2147483646,"seed"),1,31)))
 	local warnings=M.actionWarnings(action,model)
+	if state.foreseeing or model.initial.foreseeing then warnings[#warnings+1]={code="foreseeing_sample",message="Foreseeing is modeled as a marker. Previewed outcomes are seeded examples, not the actual game's hidden future. A successful modeled craft consumes the marker; no-change and special interactions are unverified."} end
 	if model.initial.veil and (action.method=="bench" or action.method=="remove_crafted") then veilBenchWarning(warnings) end
 	if state.socketLayoutUnknown then unknownSocketWarning(warnings) end
 	if M.hasPartialLock(M.context(model,model.initial),model.initial) then partialWarning(warnings) end
@@ -1278,7 +1285,7 @@ do
 	end
 end
 -- Extensions register state prerequisites once for both execution and browsing.
-local partialLockActions={mirror=true,veiled_chaos=true,recombine=true,bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true,beast_imprint=true,beast_talisman_imprint=true,
+local partialLockActions={hinekora_lock=true,mirror=true,veiled_chaos=true,recombine=true,bench=true,bench_reroll=true,remove_crafted=true,annul=true,chaos=true,alteration=true,scour=true,divine=true,exalt=true,augmentation=true,regal=true,harvest_reforge=true,harvest_augment=true,harvest_resistance=true,harvest_damage=true,beast_imprint=true,beast_talisman_imprint=true,
 	socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,beast_max_sockets=true,ducat_ukatoa=true,ducat_katakohi=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,
 	quality=true,tainted_quality=true,catalyst=true,tainted_catalyst=true,blessed=true,sacred=true,harvest_enchant=true,bench_remove_enchant=true,bench_flask_enchant=true,eldritch_implicit=true,conflict=true}
 local socketDependent={socket_bench=true,socket_white_bench=true,socket_colour_bench=true,vorici_socket_count=true,vorici_socket_colours=true,chromatic=true,beast_max_links=true,beast_max_sockets=true,jeweller=true,fusing=true,omen_jeweller=true,omen_connections=true,omen_trichromatism=true,tainted_chromatic=true,tainted_jeweller=true,tainted_fusing=true,vaal=true,locus=true,binding=true,gwennen=true,fossil=true,ducat_katakohi=true,recombine=true,recombine_predictable=true}
@@ -1320,6 +1327,13 @@ end
 function M.action(model,state,craft,random)
 	if type(state)=="table" and type(craft)=="table" then local reason=M.methodReason(model,state,craft.method);assert(not reason,reason) end
 	local result,details=transition(model,state,craft,random)
+	-- A successful modeled action consumes an existing Lock. A Gwennen Lock
+	-- outcome applies a fresh marker; the game seed is never inferred here.
+	if state.foreseeing and craft.method~="hinekora_lock" and not (details and details.gwennen and details.gwennen.outcome==1002) then
+		result.foreseeing=nil
+		if result.imprint then result.imprint.foreseeing=nil end
+		if details and details.choices then for _,choice in ipairs(details.choices) do if choice.state then choice.state.foreseeing=nil;if choice.state.imprint then choice.state.imprint.foreseeing=nil end;choice.itemText=M.itemText(model,choice.state) end end end
+	end
 	-- Mark each outcome before exposing it: Allflame can return several
 	-- alternatives, including the selected state and its serialized item text.
 	local function markTincture(candidate)

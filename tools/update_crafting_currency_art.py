@@ -15,6 +15,7 @@ SOURCE = {"repo": "repoe-fork/repoe-fork.github.io", "commit": "0071545fba8d079f
 BASE_ITEMS_HASH = "336cbd6c463249c862b8e47ab78392f7fbe03864044d5d8fcf5a7f3433de2ae4"
 METHODS = {
     "gwennen": "Astragali", "rog_reroll": "Grand Order Artifact",
+    "hinekora_lock": "Hinekora's Lock",
     "beast_max_links": "Imprinted Bestiary Orb",
     "beast_talisman_imprint": "Imprinted Bestiary Orb",
     "omen_connections": "Omen of Connections",

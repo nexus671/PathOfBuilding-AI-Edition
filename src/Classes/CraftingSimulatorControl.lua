@@ -119,6 +119,7 @@ function Panel.Open(build,project,layout)
 				for _,field in ipairs(require("Modules.CraftingItemStats").fields) do if value[field[1]] then lines[#lines+1]="Minimum "..field[2]..": "..value[field[1]] end end
 			elseif key=="mirrored" then lines[#lines+1]=value and "Must be mirrored" or "Must not be mirrored"
 			elseif key=="twiceCorrupted" then lines[#lines+1]=value and "Must be twice corrupted" or "Must not be twice corrupted"
+			elseif key=="foreseeing" then lines[#lines+1]=value and "Must be foreseeing" or "Must not be foreseeing"
 			elseif key=="influence" then for _,info in ipairs(itemLib.influenceInfo.default) do if info.key==value then lines[#lines+1]="Influence: "..info.display;break end end
 			elseif key=="catalyst" then lines[#lines+1]="Catalyst: "..(require("Modules.CraftingUniqueQuality").catalysts[value] or "Unknown")
 			elseif key=="minCatalystQuality" then lines[#lines+1]="Minimum catalyst quality: "..value.."%"
@@ -296,7 +297,13 @@ function Panel.Open(build,project,layout)
 			if state.socketLayoutUnknown then message="Socket layout is unknown after corruption. Set it in Edit hypothetical item before socket crafts or build preview." end
 			refresh({message})
 		end
-		if result.choices and #result.choices > 1 then
+		if state.foreseeing and require("Modules.CraftingGwennen").isForesightCurrency(craft.method) and not (result.choices and #result.choices>1) then
+			local popup={};ui.description(popup,"note",16,24,628,32,{"Hypothetical sample only: this does not predict the game's actual future."},14)
+			local update=workbench.item(popup,"preview",16,60,628,300,model,function() return result.state end);update()
+			button(popup,"keep",16,390,200,"Apply sample",function() keep(result.state);main:ClosePopup() end)
+			button(popup,"close",528,390,116,"Cancel",function() main:ClosePopup() end)
+			main:OpenPopup(660,440,"Foreseeing: hypothetical sample",popup,nil,nil,"close")
+		elseif result.choices and #result.choices > 1 then
 			local popup={};local choices={}
 			for i=1,#result.choices do choices[i]={label="Ghost outcome "..i,val=i} end
 			popup.choice=new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"},{16,28,628,24},choices)
@@ -304,6 +311,7 @@ function Panel.Open(build,project,layout)
 				return result.choices[popup.choice:GetSelValueByKey("val")].state
 			end)
 			popup.choice.selFunc=showChoice;showChoice()
+			if state.foreseeing and require("Modules.CraftingGwennen").isForesightCurrency(craft.method) then ui.description(popup,"note",16,50,628,20,{"Hypothetical samples; the game's future is unknown."},14) end
 			button(popup,"keep",16,390,200,"Keep ghost outcome",function() local index=popup.choice:GetSelValueByKey("val");keep(result.choices[index].state,index);main:ClosePopup() end)
 			button(popup,"close",528,390,116,"Cancel",function() main:ClosePopup() end)
 			main:OpenPopup(660,440,"Allflame outcomes",popup,nil,nil,"close")
@@ -798,6 +806,7 @@ function Panel.Open(build,project,layout)
 	end)
 	local function openManual(directSockets)
 		local editor=require("Classes.CraftingItemEditorControl").Open(model,state,function(edited)
+			if state.foreseeing and not tableDeepEquals(state,edited) then edited.foreseeing=nil end
 			state=edited;initial=copyTable(edited);history={};actions={};analysis:clearSimulation();syncAnalysis();changedAffixes={};ui.draft(build,"workingCraft",draft.id)
 			updateOptions();refresh({"Manual edits set a new recipe starting state."})
 		end)

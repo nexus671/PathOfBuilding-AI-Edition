@@ -101,6 +101,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_temple_map_preview.lua")
     sources.append(ROOT / "tools/test_rog_jewel_ui.lua")
     sources.append(ROOT / "tools/test_filter_sound_bundle.lua")
+    sources.append(ROOT / "tools/test_gwennen_foresight_ui.lua")
     sources.append(ROOT / "tools/test_minimal_ui.lua")
     sources += [ROOT / "tools/test_gwennen_ui.lua", ROOT / "tools/test_rog_ui.lua"]
     sources.append(ROOT / "tools/test_magic_name_ui.lua")
@@ -362,6 +363,9 @@ def main():
     sound_bundle = subprocess.run(lua_command + ["../tools/test_filter_sound_bundle.lua", str(frames)], cwd=ROOT / "src", env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-sound-bundle-controls.log").write_text(sound_bundle.stdout)
     assert sound_bundle.returncode == 0, sound_bundle.stdout
+    foresight = subprocess.run(lua_command + ["../tools/test_gwennen_foresight_ui.lua", str(frames)], cwd=ROOT / "src", env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "gwennen-foresight-controls.log").write_text(foresight.stdout)
+    assert foresight.returncode == 0, foresight.stdout
     for name in ["sound-bundle-check.zip"] + [f"audio-{w}-sounds.zip" for w in (960, 1024, 1280)]:
         with zipfile.ZipFile(frames / name) as z:
             assert z.testzip() is None and len(z.namelist()) == 3, "Invalid sound bundle"
@@ -399,7 +403,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2456, f"Expected 2456 UI frames, found {len(paths)}"
+    assert len(paths) == 2463, f"Expected 2463 UI frames, found {len(paths)}"
     for name in ("960-inventory-source.json", "960-inventory-source-detail.json"):
         assert (frames / name).is_file(), f"Missing saved-item source view: {name}"
     for width in (960, 1024, 1280):

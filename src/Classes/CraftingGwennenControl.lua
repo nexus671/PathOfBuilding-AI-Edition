@@ -45,9 +45,7 @@ function M.Open(keep,simulate,initial,checkPair)
 		local first=controls.first:GetSelValueByKey("val");local second=controls.second:GetSelValueByKey("val")
 		local supported=require("Modules.CraftingGwennen").supports
 		local message
-		if first==1002 or second==1002 then
-			message="Hinekora\'s Lock foreseeing is not simulated. You can add the observed pair to your guide."
-		elseif checkPair and supported(first) and supported(second) then
+		if checkPair and supported(first) and supported(second) then
 			local ok,reason=checkPair(first,second,needsRerolls() and controls.rerolls:GetSelValueByKey("val") or nil)
 			if not ok then
 				reason=ui.errorText(reason)
@@ -56,6 +54,7 @@ function M.Open(keep,simulate,initial,checkPair)
 				message="Example preview cannot run on the current item: "..reason.." You can still plan this pair for a later step."
 			end
 		end
+		if not message and (first==1002 or second==1002) then message="The Lock marks the item for hypothetical samples; it cannot reveal the game's actual future outcome." end
 		limits.list=ui.rows({message or defaultNote},width-32,14)
 	end
 	for _,control in ipairs({controls.first,controls.second}) do local refresh=control.selFunc;control.selFunc=function(...) refresh(...);refreshReadiness() end end

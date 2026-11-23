@@ -175,6 +175,7 @@ function M.item(controls,key,x,y,w,h,model,getState,onClick,options)
 			elseif #state.affixes == 0 then wrap(lines,"No explicit modifiers","^xAAAAAA",w-30) end
 			if state.veil then wrap(lines,(state.veil.fractured and "Fractured veiled modifier" or "Veiled modifier").." - choose an offered modifier","^xD3B987",w-30) end
 			if state.corrupted then wrap(lines,state.twiceCorrupted and "Twice Corrupted" or "Corrupted","^xE07070",w-30) end
+			if state.foreseeing then wrap(lines,"Foreseeing (modeled; game outcome unknown)","^xD4A5FF",w-30) end
 			if (state.intangibility or 0)>0 then wrap(lines,"Intangibility: "..state.intangibility.."%","^xD3B987",w-30) end
 			if (state.memoryStrands or 0)>0 then wrap(lines,"Memory strands: "..state.memoryStrands,"^xD3B987",w-30) end
 		end
@@ -282,6 +283,7 @@ function M.available(method,state,model)
 end
 function M.hint(method,state,model,craft)
 	local available,reason=M.available(method,state,model)
+	if available and method=="hinekora_lock" then return "Records a Lock marker; previews are hypothetical and cannot predict the game outcome." end
 	if available and method=="beast_flask" then return "Uses one red beast. Choose a named suffix; item eligibility and roll odds are experimental." end
 	if available and (method=="instilling" or method=="enkindling") then return "Replace the utility flask enchantment. Client weights and uniformly sampled rolls are experimental; verify in game." end
 	if available and method=="bench_flask_enchant" then return "Choose a utility flask enchantment: 5 Instilling Orbs and 5 Glassblower's Baubles. Availability is unverified in game." end
