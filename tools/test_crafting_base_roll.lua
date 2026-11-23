@@ -19,6 +19,9 @@ local mana={"+(74-78) to maximum Mana","Non-Channelling Skills have -(8-6) to To
 assert(not sim.baseRollReason(mana,2));assert(sim.baseRollValue(mana,{0,0},2)==-8);assert(sim.baseRollValue(mana,{1,1},2)==-6)
 assert(sim.baseRollReason({"-(10-5)% increased Damage"},1))
 local ring=sim.model("Rarity: NORMAL\nIron Ring\nItem Level: 86");local manaId="IncreasedManaEnhancedLevel50ModCostNew";assert(ring.byId[manaId]);local ringState=copyTable(ring.initial);ringState.rarity="RARE";ringState.affixes={{id=manaId,range={0,0}}}
+local leech=assert(ring.byId.LifeLeechPermyriadSuffix1);assert(sim.rollRange(leech,function() return 0.02 end)==0)
+local leechRange=sim.rollRange(leech,function() return 0.34 end);assert(math.abs(sim.baseRollValue(leech,leechRange)-0.27)<1e-7)
+assert(sim.rollRange(leech,function() return 0.999 end)==1)
 local manaGoal={anyOf={manaId},baseValueComponent=2,maxBaseValue=-8};assert(sim.matches(ringState,{manaGoal},nil,ring));ringState.affixes[1].range={1,1};assert(not sim.matches(ringState,{manaGoal},nil,ring))
 for _,sample in ipairs({{0,-8},{0.32,-8},{0.34,-7},{0.66,-7},{0.68,-6},{0.999,-6}}) do
  local range=sim.rollRange(ring.byId[manaId],function() return sample[1] end);assert(sim.baseRollValue(ring.byId[manaId],range,2)==sample[2],"Descending rolls must use equal-width outcome buckets")

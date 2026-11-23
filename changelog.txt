@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1222][2026/11/23]
+
+* Improve fractional crafting roll sampling when modifier precision is known.
+
 VERSION[2.68.1-ai.preview1221][2026/11/23]
 
 * Correct sampled probabilities for descending integer modifier ranges.
