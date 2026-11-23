@@ -276,6 +276,13 @@ clockSync.tick(scheduled)
 assert(scheduledRequests==9)
 localTime.day = localTime.day + 1
 assert(clockSync.nextEligible(clockSync.configuration(),scheduled)==os.date("%Y-%m-%d %H:%M",os.time(localTime)))
+local reportText = clockSync.diagnosticReport(scheduled)
+assert(not reportText:find("target.filter",1,true) and not reportText:find("protect.json",1,true))
+local diagnostics = require("dkjson").decode(reportText)
+assert(diagnostics.status.state=="enabled" and diagnostics.dailyTime=="12:37")
+assert(diagnostics.lastReview.verifiedProtection and #diagnostics.lastReview.responseAges==9)
+assert(#diagnostics.lastReview.changes==2 and #diagnostics.successfulRuns==1)
+assert(not diagnostics.successfulRuns[1].backup)
 print("Daily scheduler respects minute precision and continues to read older hour-only settings")
 
 local gameConfig = dir.."/production_Config.ini"

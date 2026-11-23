@@ -37,3 +37,5 @@ Daily sync retains still-fresh exchange responses in memory for conditional requ
 The desktop AI bridge exposes read-only daily sync status and up to 40 cutoff changes through `get_loot_sync_status`. Local paths, protected sample definitions, and raw transport errors stay in the desktop app.
 
 If a sync target was edited outside PoB, **External edits** compares the live file with the last verified file. Automatic sync stops before contacting the market until the live file matches the known state again or you explicitly re-enable with reviewed edits.
+
+**Copy diagnostics** exports a JSON report with recent run times, verified response ages, and available quote and simulated drop details. The report excludes local file paths and protected sample definitions.

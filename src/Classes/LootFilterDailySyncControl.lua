@@ -125,6 +125,12 @@ function M.Open()
 		require("Classes.LootFilterDiffControl").Open(before,after,true)
 	end,432)
 	c.externalEdits.enabled = function() return config.target ~= nil and not sync.busy end
+	button("copyReport",16+step*3,"Copy diagnostics",function()
+		local passed, report = pcall(sync.diagnosticReport, os.time())
+		if not passed then main:OpenMessagePopup("Sync diagnostics", ui.errorText(report)); return end
+		Copy(report)
+		main:OpenMessagePopup("Sync diagnostics", "Copied the daily sync report.")
+	end,432)
 	button("close",width-buttonWidth-16,"Close",function() main:ClosePopup() end,432)
 	c.enable.enabled = function() return not sync.busy end
 	c.disable.enabled = function() return config.enabled and not sync.busy end

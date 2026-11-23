@@ -134,6 +134,46 @@ function M.publicStatus(now)
 	return output
 end
 
+function M.diagnosticReport(now)
+	local status = M.publicStatus(now)
+	local config = status.configured and get()
+	local report = {version=1, capturedAt=now, status=status}
+	if config then
+		report.dailyTime = string.format("%02d:%02d", config.hour or 9, config.minute or 0)
+		report.targetChaos = config.targetValue
+		report.successfulRuns = {}
+		for index, run in ipairs(config.history or {}) do
+			if index > 30 then break end
+			report.successfulRuns[index] = {
+				checkedAt=run.checkedAt, adjustments=run.adjustments, oldestResponseAge=run.oldest,
+			}
+		end
+		local review = config.review
+		if review then
+			report.lastReview = {
+				checkedAt=review.checkedAt,
+				verifiedProtection=true,
+				responseAges=review.ages,
+				changes={},
+			}
+			for index, change in ipairs(review.changes or {}) do
+				if index > 250 then break end
+				if type(change.name) == "string" and #change.name <= 200 and not change.name:find("[%c/\\]") then
+					local sample = change.sample
+					report.lastReview.changes[#report.lastReview.changes+1] = {
+						item=change.name, source=change.source, previousCutoff=change.old,
+						proposedCutoff=change.cutoff, quotedPrice=change.currentPrice or change.price,
+						priceUsed=change.price, volume=change.volume,
+						mapOnly=change.maps,
+						sample=sample and {action=sample.action, class=sample.class, count=sample.count, line=sample.line},
+					}
+				end
+			end
+		end
+	end
+	return assert(json.encode(report, {indent=true}))
+end
+
 local function filterPath(path)
 	assert(type(path) == "string" and #path <= 1000 and path:match("^%a:[/\\]") and not path:find("[%c]") and path:lower():match("%.filter$"),
 		"Enter an absolute Windows .filter path")
