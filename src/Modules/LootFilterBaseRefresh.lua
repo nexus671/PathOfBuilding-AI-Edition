@@ -94,7 +94,7 @@ end
 local function validateUpstream(raw)
 	assert(type(raw)=="string" and #raw<=filters.limit, "Choose an upstream filter within the file size limit")
 	local parsed = parser.parse(raw)
-	assert(#parsed.rules>0, "The selected upstream filter contains no display rules")
+	assert(#parsed.rules>0 or #parsed.imports>0, "The selected upstream filter contains no rules or imports")
 	for _, diagnostic in ipairs(parsed.diagnostics) do assert(not diagnostic.error,diagnostic.error) end
 end
 

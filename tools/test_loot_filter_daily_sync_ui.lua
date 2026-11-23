@@ -325,6 +325,12 @@ Hide
 	local removedScroll = custom.template:gsub(' "Portal Scroll"','',1)
 	local changedPolicy = baseRefresh.planImported(custom,custom.template,removedScroll)
 	assert(changedPolicy.blocks[#changedPolicy.blocks]:find("custom drop protection rules",1,true))
+	local imports = copyTable(profile)
+	imports.template = 'Import "old.filter"\n'
+	imports.importFiles = {{name="old.filter",text=previous},{name="new.filter",text=finalText}}
+	local importOnly = baseRefresh.planImported(imports,imports.template,'Import "new.filter"\n')
+	assert(importOnly.profile.template=='Import "new.filter"\n' and importOnly.after:find("SetFontSize 40",1,true))
+	assert(not pcall(baseRefresh.planImported,imports,imports.template,'Import "missing.filter"\n'))
 	files.readFile = function(path)
 		if path=="old.filter" then return previous end
 		assert(path=="new.filter")
@@ -346,6 +352,34 @@ Hide
 	assert(changed and changed.template==mine..finalText and changed.rules[1].text==profile.rules[1].text)
 	files.readFile = originalReader
 	print("Imported baseline review preserves personal edits and blocks conflicts and lost visibility")
+end
+
+do
+	local control = require("Classes.LootFilterControl")
+	local function replaceVia(label, method)
+		newBuild();main.popups={}
+		local harness = headless.install({width=960,height=640})
+		harness:bind(build)
+		local profile = filters.profile("replace-source","Replace source")
+		profile.template, profile.upstreamDigest = 'Show\n    BaseType == "Cord Belt"', string.rep("a",40)
+		build.savers.LootFilters:Upsert(profile)
+		build.planningWorkspace = require("Modules.PlanningWorkspace").new(build)
+		build.viewMode = "PLANNER"
+		build.planningWorkspace:Show("filters")
+		local replacement, original = 'Show\n    BaseType == "Agate Amulet"', control[method]
+		control[method] = function(first, second)
+			local import = method=="Account" and second or first
+			import(replacement)
+		end
+		harness:click("manage")
+		harness:text("search",label)
+		harness:click("choose")
+		control[method] = original
+		local active = build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1]
+		assert(active.template==replacement and not active.upstreamDigest)
+	end
+	replaceVia("Import filter","Import")
+	replaceVia("Account filters","Account")
 end
 
 -- Open a historical backup in the usual workspace and require the exact
