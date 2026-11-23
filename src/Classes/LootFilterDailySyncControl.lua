@@ -109,6 +109,12 @@ function M.Open()
 		if not passed then main:OpenMessagePopup("Daily filter sync", ui.errorText(err)) end
 	end,432)
 	c.preview.enabled = function() return not sync.busy end
+	button("externalEdits",16+step*2,"External edits",function()
+		local passed,before,after = pcall(sync.externalDiff)
+		if not passed then main:OpenMessagePopup("External filter edits", ui.errorText(before)); return end
+		require("Classes.LootFilterDiffControl").Open(before,after,true)
+	end,432)
+	c.externalEdits.enabled = function() return config.target ~= nil and not sync.busy end
 	button("close",width-buttonWidth-16,"Close",function() main:ClosePopup() end,432)
 	c.enable.enabled = function() return not sync.busy end
 	c.disable.enabled = function() return config.enabled and not sync.busy end

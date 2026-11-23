@@ -136,6 +136,31 @@ local function filterPath(path)
 	return path
 end
 
+local function expectedPath(hash)
+	assert(type(hash) == "string" and #hash == 40 and hash:match("^[a-f0-9]+$"), "Invalid expected filter checksum")
+	return main.userPath .. "LootFilterExpected-" .. hash .. ".filter"
+end
+
+local function keepExpected(raw)
+	local path = expectedPath(sha(raw))
+	if not read(path) then put(path,raw) end
+	assert(read(path) == raw, "Expected filter snapshot could not be verified")
+end
+
+function M.externalDiff()
+	local config = assert(get(), "No saved sync setup")
+	assert(not M.busy, "Wait for the current sync to finish")
+	local actual = assert(read(filterPath(config.target)), "Target filter file was not found")
+	assert(sha(actual) ~= config.current and sha(actual) ~= config.pending, "The live filter matches the saved sync state")
+	local expected = read(expectedPath(config.current))
+	if not expected then
+		local baseline = read(config.baseline)
+		if baseline and sha(baseline)==config.current then expected = baseline end
+	end
+	assert(expected and sha(expected)==config.current, "No verified previous filter is available for this setup. Preview against the fixed baseline instead.")
+	return expected, actual
+end
+
 local function prepare(target, baselineFile, league, options)
 	options = options or {}
 	local targetValue = options.targetValue or 1
@@ -170,9 +195,10 @@ end
 function M.configure(target, baselineFile, league, options)
 	assert(not M.busy, "Wait for the current sync to finish")
 	local config = platform().lock(settingsPath() .. ".lock", function()
-		local nextConfig, _, baseline = prepare(target, baselineFile, league, options)
+		local nextConfig, original, baseline = prepare(target, baselineFile, league, options)
 		if not read(nextConfig.baseline) then put(nextConfig.baseline, baseline) end
 		assert(read(nextConfig.baseline) == baseline, "Stored baseline does not match")
+		keepExpected(original)
 		save(nextConfig)
 		return nextConfig
 	end)
@@ -216,6 +242,7 @@ function M.rollback()
 		assert(read(target) == original, "Target changed before rollback")
 		put(target, backup)
 		assert(read(target) == backup, "Rollback verification failed")
+		keepExpected(backup)
 		config.current, config.pending, config.backup = config.backup, nil, nil
 		config.summary = "Restored the verified backup. Daily sync is paused."
 		config.review = nil
@@ -291,6 +318,7 @@ local function publish(config, bodies, ages, day, force, now)
 		local candidate, count, changes, skipped, snapshots = validate(
 			baseline, bodies, false, current.targetValue, current.protections, current.priceHistory, day, now)
 		current.priceHistory = snapshots
+		keepExpected(candidate)
 		if candidate ~= original then
 			local backup = current.target .. ".before-pob-sync-" .. before .. ".bak"
 			if not read(backup) then put(backup, original) end
@@ -426,6 +454,12 @@ function M.tick(now, force)
 		return
 	end
 	if not force then retryAt = now + 1800 end
+	local ready, why = pcall(function()
+		local current = sha(assert(read(filterPath(config.target)), "Target filter is missing"))
+		assert(current == config.current or current == config.pending, "Target was edited outside PoB. Compare External edits before re-enabling.")
+		assert(sha(assert(read(config.baseline), "Baseline filter is missing")) == config.baselineHash, "Baseline checksum changed")
+	end)
+	if not ready then M.status = "Sync skipped: " .. tostring(why); return end
 	fetchPrices(config, now, function(bodies, ages)
 		return publish(config, bodies, ages, day, force, now)
 	end)

@@ -82,6 +82,12 @@ launch.noSSL=false
 sync.disable()
 sync.tick(now+86400,true)
 assert(calls==17 and not sync.configuration().enabled)
+write(target,original .. "# external edit")
+local expected, edited = sync.externalDiff()
+assert(expected==original and edited==original .. "# external edit")
+assert(read(target)==edited)
+write(target,original)
+assert(not pcall(sync.externalDiff))
 local market = require("Modules.LootFilterEconomy")
 local function quote(price)
 	return {["Orb of Alteration"]={id="alt",price=price,volume=1000,source="Currency"}}
