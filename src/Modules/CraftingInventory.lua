@@ -30,7 +30,7 @@ end
 function M.entries(projects,query)
 	local result={};query=(query or ""):lower()
 	for _,project in ipairs(projects) do for _,entry in ipairs(project.inventory or {}) do
-		if (entry.title.." "..entry.slot.." "..project.title.." "..entry.baseItem):lower():find(query,1,true) then result[#result+1]={project=project,item=entry} end
+		if (entry.title.." "..entry.slot.." "..project.title.." "..entry.baseItem.." "..(entry.originNote or "")):lower():find(query,1,true) then result[#result+1]={project=project,item=entry} end
 	end end
 	table.sort(result,function(a,b) if a.item.at~=b.item.at then return a.item.at>b.item.at end;return a.project.id..a.item.id<b.project.id..b.item.id end)
 	return result

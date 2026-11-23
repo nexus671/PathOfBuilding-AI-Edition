@@ -7,7 +7,7 @@ local visual=require("Modules.LootFilterVisuals")
 local M={}
 function M.Open(build,options)
 	options=options or {};local store=build.savers.CraftingProjects;local c={};local w,h=math.min(1080,main.screenW-40),math.min(720,main.screenH-60)
-	local left=math.floor((w-48)*0.46);local right=left+32;local selected,entries,removed;local thumbs={};local models={}
+	local left=math.floor((w-48)*0.46);local right=left+32;local selected,entries,removed;local thumbs={};local models={};local searchCache={};local pending
 	-- Reuse recent starting-item models while browsing snapshots. This
 	-- cache belongs to the open dialog and never limits the saved inventory.
 	local function itemModel(raw)
@@ -25,7 +25,7 @@ function M.Open(build,options)
 		for _,project in ipairs(store.projects) do if project.id==selected.project.id then return copyTable(project) end end
 		error("The owning project is no longer available")
 	end
-	c.search=new("EditControl"):EditControl(ui.anchor,{16,28,left,28},"","Search items, slots and projects",nil,160)
+	c.search=new("EditControl"):EditControl(ui.anchor,{16,28,left,28},"","Search items, slots and modifiers",nil,160)
 	c.itemTitle=new("EditControl"):EditControl(ui.anchor,{right,28,w-right-16,28},"","Snapshot name",nil,120)
 	local grid=new("Control"):Control(ui.anchor,{16,76,left,h-188});c.items=grid;grid.scroll=0;grid.planningFocusable=true
 	function grid:IsMouseOver() return self:IsShown() and self:IsMouseInBounds() end
@@ -43,6 +43,28 @@ function M.Open(build,options)
 		local old=selected;entries=inventory.entries(store.projects,c.search.buf);grid.scroll=0;local keep
 		for _,entry in ipairs(entries) do if old and entry.item.id==old.item.id and entry.project.id==old.project.id then keep=entry end end
 		choose(keep or entries[1])
+		pending=nil
+		if c.search.buf~="" then
+			local all=inventory.entries(store.projects,"");local seen={};for _,entry in ipairs(entries) do seen[entry.project.id.."/"..entry.item.id]=true end
+			local queue={};for _,entry in ipairs(all) do if not seen[entry.project.id.."/"..entry.item.id] then queue[#queue+1]=entry end end
+			if #queue>0 then pending={queue=queue,index=1,query=c.search.buf:lower(),failed=0} end
+		end
+	end
+	-- Index one unmatched snapshot per frame so searching a large inventory stays
+	-- responsive. Cached text is tied to its exact state and starting item.
+	local function searchStep()
+		if not pending or pending.index>#pending.queue then return end
+		local entry=pending.queue[pending.index];pending.index=pending.index+1
+		local id=entry.project.id.."/"..entry.item.id;local signature=entry.item.baseItem.."\0"..require("dkjson").encode(entry.item.state);local cached=searchCache[id]
+		if not cached or cached.signature~=signature then
+			local ok,item=pcall(function() return sim.toItem(itemModel(entry.item.baseItem),entry.item.state) end)
+			cached={signature=signature,text=ok and item.raw and item.raw:lower() or nil};searchCache[id]=cached
+		end
+		if not cached.text then pending.failed=pending.failed+1
+		elseif cached.text:find(pending.query,1,true) then
+			entries[#entries+1]=entry;table.sort(entries,function(a,b) if a.item.at~=b.item.at then return a.item.at>b.item.at end;return a.project.id..a.item.id<b.project.id..b.item.id end)
+			if not selected then choose(entry) end
+		end
 	end
 	local function dimensions() local cols=math.max(1,math.floor(grid.width/126));return cols,(grid.width-12-(cols-1)*8)/cols end
 	local function move(delta)
@@ -56,6 +78,7 @@ function M.Open(build,options)
 		if key=="LEFT" or key=="RIGHT" then move(key=="LEFT" and -1 or 1);return self end
 	end
 	function grid:Draw()
+		searchStep()
 		local x,y=self:GetPos();local cols,tile=dimensions();SetViewport(x,y,self.width,self.height);visual.box(0,0,self.width,self.height,"^x101822")
 		for i,entry in ipairs(entries) do local tx,ty=6+(i-1)%cols*(tile+8),6+math.floor((i-1)/cols)*128-self.scroll
 			if ty+120>0 and ty<self.height then
@@ -68,9 +91,10 @@ function M.Open(build,options)
 				visual.text(tx+6,ty+78,13,entry.item.title,color,tile-12);visual.text(tx+6,ty+100,12,entry.item.slot,"^xA6B3C6",tile-12)
 			end
 		end
-		if #entries==0 then visual.text(12,16,14,"No saved items match.","^xD5DEE8",self.width-24);visual.text(12,44,13,"Use Keep item snapshot in the workbench.","^xA6B3C6",self.width-24) end
+		if #entries==0 then visual.text(12,16,14,pending and pending.index<=#pending.queue and "Searching item modifiers..." or "No saved items match.","^xD5DEE8",self.width-24);if c.search.buf=="" then visual.text(12,44,13,"Use Keep item snapshot in the workbench.","^xA6B3C6",self.width-24) end end
 		SetViewport()
 	end
+	ui.label(c,"searchStatus",16,h-106,"",12);c.searchStatus.label=function() return pending and (pending.index<=#pending.queue and "^7Searching item modifiers: "..(pending.index-1).." / "..#pending.queue or pending.failed>0 and "^xE4B26C Some items could not be searched" or "") or "" end
 	function grid:OnKeyUp(key)
 		if not self:IsMouseOver() then return end;local cols,tile=dimensions()
 		if key=="WHEELUP" or key=="WHEELDOWN" then self.scroll=math.max(0,math.min(math.max(0,12+math.ceil(#entries/cols)*128-self.height),self.scroll+(key=="WHEELUP" and -128 or 128)));return self

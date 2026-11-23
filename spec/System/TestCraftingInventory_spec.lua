@@ -28,6 +28,10 @@ describe("Build-owned crafting inventory",function()
 		assert.equal(store.projects[1].originNote,restored.projects[1].originNote)
 		assert.is_truthy(table.concat(require("Modules.CraftingProjects").lines(restored.projects[1]),"\n"):find("Source: Conditional",1,true))
 	end)
+	it("finds saved items by their retained source notes",function()
+		local value=project();value.inventory={inventory.capture(value,sim.model(raw).initial,"Example","Conditional source assumptions")}
+		assert.equal(1,#inventory.entries({value},"source assumptions"));assert.equal(0,#inventory.entries({value},"unrelated source"))
+	end)
 	it("rejects malformed inventory data and slot mismatches without changing projects",function()
 		local value=project();local entry=inventory.capture(value,sim.model(raw).initial)
 		entry.originNote=string.rep("x",1001);assert.has_error(function() inventory.validate({entry}) end);entry.originNote=nil
