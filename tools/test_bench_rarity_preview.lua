@@ -37,4 +37,10 @@ local emptyPopup=main.popups[1].controls;emptyPopup.outcome:SelByValue("UNIQUE",
 assert(#emptyPopup.unique.list==0 and not emptyPopup.generate:IsEnabled());assert(emptyPopup.generate.tooltipText():find("No bundled unique references",1,true))
 emptyPopup.outcome:SelByValue("MAGIC","val");emptyPopup.outcome.selFunc();assert(emptyPopup.generate:IsEnabled())
 ui:restore();main.popups={}
+newBuild();local browse=UI.install({width=960,height=640});browse:bind(build)
+local collection={id="inventory-cache",title="Inventory cache",slot="Helmet",startingItem=raw,goals={},steps={}}
+local snapshots=require("Modules.CraftingInventory");collection.inventory={snapshots.capture(collection,preview.preview(raw,"MAGIC",42).state,"Magic"),snapshots.capture(collection,preview.preview(raw,"RARE",42).state,"Rare")};build.savers.CraftingProjects:Upsert(collection)
+local inventoryControl=require("Classes.CraftingInventoryControl").Open(build,{});local first=inventoryControl.savedItemMods.list;local firstText={};for _,row in ipairs(first) do firstText[#firstText+1]=row[1] or "" end
+inventoryControl.items:OnKeyDown("RIGHT");local secondText={};for _,row in ipairs(inventoryControl.savedItemMods.list) do secondText[#secondText+1]=row[1] or "" end;assert(table.concat(firstText,"\n")~=table.concat(secondText,"\n"))
+inventoryControl.items:OnKeyDown("LEFT");local again={};for _,row in ipairs(inventoryControl.savedItemMods.list) do again[#again+1]=row[1] or "" end;assert(table.concat(firstText,"\n")==table.concat(again,"\n"));browse:restore();main.popups={}
 print("BENCH_RARITY_PREVIEW_OK")

@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1157][2026/11/22]
+
+* Speed up repeated browsing of saved crafting items.
+
 VERSION[2.68.1-ai.preview1156][2026/11/22]
 
 * Explain more impossible numeric and stack-count filter conditions.

@@ -7,7 +7,13 @@ local visual=require("Modules.LootFilterVisuals")
 local M={}
 function M.Open(build,options)
 	options=options or {};local store=build.savers.CraftingProjects;local c={};local w,h=math.min(1080,main.screenW-40),math.min(720,main.screenH-60)
-	local left=math.floor((w-48)*0.46);local right=left+32;local selected,entries,removed;local thumbs={}
+	local left=math.floor((w-48)*0.46);local right=left+32;local selected,entries,removed;local thumbs={};local models={}
+	-- Reuse recent starting-item models while browsing snapshots. This
+	-- cache belongs to the open dialog and never limits the saved inventory.
+	local function itemModel(raw)
+		for i,entry in ipairs(models) do if entry.raw==raw then table.remove(models,i);table.insert(models,1,entry);return entry.model end end
+		local model=sim.model(raw);table.insert(models,1,{raw=raw,model=model});if #models>4 then table.remove(models) end;return model
+	end
 	local function button(key,x,y,width,label,run)
 		c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,width,28},label,function() local ok,err=pcall(run);if not ok then require("Modules.PlanningUI").errorPopup("Crafting inventory",err) end end)
 	end
@@ -27,7 +33,7 @@ function M.Open(build,options)
 		selected=entry;c.itemTitle:SetText(entry and entry.item.title or "")
 		c.savedItem=nil;c.savedItemMods=nil
 		if entry then
-			local model=sim.model(entry.item.baseItem)
+			local model=itemModel(entry.item.baseItem)
 			local refresh=art.item(c,"savedItem",right,76,w-right-16,h-188,model,function() return entry.item.state end,nil,{header=180,artSize=88});refresh()
 			for _,key in ipairs({"savedItem","savedItemMods"}) do c[key].anchor.other=c.search.anchor.other end
 			c.savedItem.enabled=false;c.savedItem.layoutAudit="crafting-inventory";c.savedItemMods.layoutAudit="crafting-inventory"
