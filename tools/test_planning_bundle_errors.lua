@@ -4,6 +4,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build)
 	local valid=bundles.export(build);require("Classes.PlanningToolsControl").Bundle(build);local controls=main.popups[1].controls
 	ui.clipboard=valid;ui:click("paste");assert(controls.review:IsEnabled(),"Valid bundle was not available for review")
+	ui.clipboard=valid.." \r\n\t";ui:click("paste");assert(controls.review:IsEnabled(),"Trailing whitespace should be accepted")
+	ui.clipboard=valid.."{}";ui:click("paste");assert(#main.popups==2 and not controls.review:IsEnabled(),"Extra data after a bundle must be rejected")
+	main:ClosePopup();ui.clipboard=valid;ui:click("paste");assert(controls.review:IsEnabled(),"A valid bundle could not be pasted after extra data")
 	ui.clipboard="{invalid bundle";ui:click("paste");assert(#main.popups==2 and not controls.review:IsEnabled(),"Invalid paste did not clear the previous review")
 	assert(controls.text.buf=="{invalid bundle","Invalid input was not retained")
 	local message="";for _,control in pairs(main.popups[1].controls) do if type(control.label)=="string" then message=message..control.label end end
