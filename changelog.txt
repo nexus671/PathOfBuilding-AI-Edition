@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1208][2026/11/23]
+
+* Preserve socket-colour shorthand in filter samples.
+
 VERSION[2.68.1-ai.preview1207][2026/11/23]
 
 * Reject inconsistent socket samples in filter previews.

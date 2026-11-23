@@ -208,6 +208,7 @@ describe("Build-owned loot filters",function()
 			end
 			assert.equal("Show",test(condition,{Sockets=3,SocketGroup="R-G B",LinkedSockets=2}).action)
 		end
+		assert.equal("Show",test("Sockets RGB",{Sockets="RGB"}).action)
 	end)
 	it("uses complete socket colours when the separate count is omitted",function()
 		local function test(condition,item) return parser.simulate(parser.parse("Show\n "..condition.."\nHide"),item) end
