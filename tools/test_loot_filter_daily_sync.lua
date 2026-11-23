@@ -1021,7 +1021,7 @@ assert(exported:find("StackSize <= 6",1,true))
 assert(exported:find('BaseType == "Cheap Card" "Thin Card"',1,true))
 print("Manual review applies the native price freshness and class-specific liquidity checks")
 
-do
+local function checkExternalAdoption()
 	local adoptionTarget = dir .. "/external-adoption.filter"
 	local fixture = assert(loadfile("Modules/LootFilterDailySync.lua"))()
 	local id = fixture.createProfile("External edits fixture")
@@ -1062,4 +1062,30 @@ do
 	assert(fixture.status:find("Protected drops verified",1,true),fixture.status)
 	assert(fixture.verifiedOutput(id)==edited)
 	print("External edit adoption preserved the fixed cutoff, rejected stale review and protected drops, and kept the live file intact")
+
+	local reviewNow = now
+	local realClock = os.time
+	os.time = function() return reviewNow end
+	launch.DownloadPage = function(_, url, callback)
+		local body = url:match("/leagues$") and '[{"id":"Covens"}]' or commodityBody
+		local date = os.date("!%a, %d %b %Y %H:%M:%S GMT",reviewNow)
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\n\r\n",body=body})
+	end
+	for index=1,7 do
+		reviewNow = now+index*86400
+		fixture.tick(reviewNow,true,false,id)
+		assert(fixture.status:find("Protected drops verified",1,true),fixture.status)
+	end
+	os.time = realClock
+	local restart = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local runs, archive = restart.configuration(id).history, restart.archivedReviews(id)
+	assert(#runs==8 and not archive[runs[8].reviewKey])
+	for index=1,7 do
+		local detail = assert(archive[runs[index].reviewKey])
+		assert(detail.league=="Covens" and detail.checkedAt==runs[index].checkedAt and #detail.feeds==8)
+	end
+	local newest = archive[runs[1].reviewKey]
+	assert(newest.changes[1].price and newest.changes[1].sample and not restart.archivedReviews()[runs[1].reviewKey])
+	print("Seven exact archived reviews persist after restarting and remain isolated to their sync profile")
 end
+checkExternalAdoption()

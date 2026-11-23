@@ -177,92 +177,108 @@ function M.Open(profileId, profileName)
 	end)
 	button("review",16,"Last review",function()
 		local saved = sync.configuration(profileId)
-		local review = saved and saved.review
-		if not review then main:OpenMessagePopup("Daily filter sync", "Sync once to get a review."); return end
-		local entries = {{
-			id="summary", label="Sync status", category="Run",
-			details={saved.summary, "Next eligible run: " .. (sync.nextEligible(saved,os.time()) or "Paused or disabled"),
-				review.backup and ("Backup: " .. saved.target .. ".before-pob-sync-" .. review.backup .. ".bak") or "No replacement backup yet."},
-		}}
-		for i, feed in ipairs(review.feeds or {}) do
-			entries[#entries+1] = {id="feed-"..i,label=feed.category,category="Price feeds",details={
-				string.format("poe.ninja response age at sync: %d seconds",feed.age),
-				feed.revalidated and "Server confirmed the saved response was unchanged." or "Downloaded response and verified its freshness.",
+		if not saved or not saved.review and not (saved.history and #saved.history>0) then
+			main:OpenMessagePopup("Daily filter sync", "Sync once to get a review.")
+			return
+		end
+		local archived = sync.archivedReviews(profileId)
+		local function openReview(review, historical)
+			local league = review.league or saved.league
+			local entries = {{
+				id="summary", label="Sync status", category="Run",
+				details=historical and {os.date("%Y-%m-%d %H:%M",historical.checkedAt),
+					historical.adjustments.." price decisions from the baseline.", "Protected drop checks passed."}
+					or {saved.summary or "Daily price sync", "Next eligible run: " .. (sync.nextEligible(saved,os.time()) or "Paused or disabled"),
+						review.backup and ("Backup: " .. saved.target .. ".before-pob-sync-" .. review.backup .. ".bak") or "No replacement backup yet."},
 			}}
-		end
-		for i, change in ipairs(review.changes or {}) do
-			local scope = change.scope == "campaign" and " in campaign areas" or change.maps and " in maps" or ""
-			local details = {
-				string.format("Hide up to %d → %d%s", change.old, change.cutoff, scope),
-				string.format("%.4g chaos used | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
-				string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
-			}
-			if change.confirmedPrice then
-				details[#details+1] = string.format("GGG completed-hour trade average: %.4g chaos",change.confirmedPrice)
+			for i, feed in ipairs(review.feeds or {}) do
+				entries[#entries+1] = {id="feed-"..i,label=feed.category,category="Price feeds",details={
+					string.format("poe.ninja response age at sync: %d seconds",feed.age),
+					feed.revalidated and "Server confirmed the saved response was unchanged." or "Downloaded response and verified its freshness.",
+				}}
 			end
-			for _, highlight in ipairs(change.highlights or {}) do
-				details[#details+1] = string.format("Proposed highlight at %d items: %s",highlight.firstStack,highlight.icon)
+			for i, change in ipairs(review.changes or {}) do
+				local scope = change.scope == "campaign" and " in campaign areas" or change.maps and " in maps" or ""
+				local details = {
+					string.format("Hide up to %d → %d%s", change.old, change.cutoff, scope),
+					string.format("%.4g chaos used | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
+					string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
+				}
+				if change.confirmedPrice then
+					details[#details+1] = string.format("GGG completed-hour trade average: %.4g chaos",change.confirmedPrice)
+				end
+				for _, highlight in ipairs(change.highlights or {}) do
+					details[#details+1] = string.format("Proposed highlight at %d items: %s",highlight.firstStack,highlight.icon)
+				end
+				local samples = change.samples or (change.sample and {change.sample}) or {}
+				for _, sample in ipairs(samples) do
+					local area = (sample.area or 83) >= 68 and "Maps" or "Campaign"
+					details[#details+1] = string.format("%s, %d as %s: %s%s", area, sample.count, sample.class,
+						sample.before and (sample.before.." → "..sample.action) or sample.action,
+						sample.line and (" at line "..sample.line) or "")
+					if sample.marker then details[#details+1] = "Sample marker: "..sample.marker end
+					for _,phase in ipairs({{"Before",sample.before,sample.beforeMissing},{"After",sample.action,sample.afterMissing}}) do if phase[2]=="Unknown" then
+						local missing=require("Modules.LootFilterParser").safeMissingProperties(phase[3])
+						details[#details+1]=phase[1]..(missing and (": needs "..table.concat(missing,", ").." for this example.") or ": the preview cannot resolve a filter rule or included file.")
+					end end
+				end
+				if #samples == 0 then details[#details+1] = "Sample result unavailable." end
+				entries[#entries+1] = {id="change-"..i,label=change.name,category="Changed",details=details,decision=change}
 			end
-			local samples = change.samples or (change.sample and {change.sample}) or {}
-			for _, sample in ipairs(samples) do
-				local area = (sample.area or 83) >= 68 and "Maps" or "Campaign"
-				details[#details+1] = string.format("%s, %d as %s: %s%s", area, sample.count, sample.class,
-					sample.before and (sample.before.." → "..sample.action) or sample.action,
-					sample.line and (" at line "..sample.line) or "")
-				if sample.marker then details[#details+1] = "Sample marker: "..sample.marker end
-				for _,phase in ipairs({{"Before",sample.before,sample.beforeMissing},{"After",sample.action,sample.afterMissing}}) do if phase[2]=="Unknown" then
-					local missing=require("Modules.LootFilterParser").safeMissingProperties(phase[3])
-					details[#details+1]=phase[1]..(missing and (": needs "..table.concat(missing,", ").." for this example.") or ": the preview cannot resolve a filter rule or included file.")
-				end end
+			for i, item in ipairs(review.skipped or {}) do
+				local details = {item.reason}
+				if not item.styleOnly then details[#details+1] = "Hide up to "..item.old end
+				entries[#entries+1] = {id="skip-"..i,label=item.name,category="Unchanged",details=details}
 			end
-			if #samples == 0 then details[#details+1] = "Sample result unavailable." end
-			entries[#entries+1] = {id="change-"..i,label=change.name,category="Changed",details=details,decision=change}
+			if not historical then
+				for i, run in ipairs(saved.history or {}) do
+					local detail = archived[run.reviewKey]
+					entries[#entries+1] = {id="run-"..i,label=os.date("%Y-%m-%d %H:%M",run.checkedAt),category="History",
+						historical=detail and run or nil, details={
+						run.adjustments.." price decisions from the baseline.", "Protected drop checks passed.",
+						run.oldest and string.format("Oldest response was %.0f minutes old",run.oldest/60) or "Response age was not recorded.",
+					}}
+				end
+			end
+			local exchange = require("Modules.LootFilterExchangeCrossCheck")
+			local waiting, owner
+			require("Classes.PlanningBrowserControl").Open(historical and "Archived filter sync review" or "Daily filter sync review", entries, {
+				action=not historical and "Open run" or nil, enterChooses=false, closeOnChoose=false,
+				canChoose=function(entry) return entry.historical ~= nil end,
+				choose=function(entry) openReview(archived[entry.historical.reviewKey],entry.historical) end,
+				secondary = {
+					label="Compare GGG trades",
+					canRun=function(entry)
+						local change = entry.decision
+						return not waiting and change and not change.tier and exchange.itemId(change.name)
+							and league and type(review.checkedAt)=="number"
+					end,
+					run=function(entry)
+						if launch.noSSL then main:OpenMessagePopup("GGG trade comparison","Enable HTTPS certificate verification in PoB."); return end
+						local change = entry.decision
+						local hour = exchange.hour(review.checkedAt)
+						waiting = true
+						exchange.fetch(hour,function(markets, err)
+							waiting = false
+							if main.popups[1] ~= owner then return end
+							local quote
+							if markets then quote, err = exchange.compare(markets,league,change.name) end
+							local period = os.date("!%Y-%m-%d %H:%M UTC",hour)
+							local text = change.name .. " | " .. league .. "\nGGG completed hour beginning " .. period .. "\n"
+							if quote then
+								text = text .. string.format("GGG traded average %.4g chaos (%d items, %.0f chaos)\npoe.ninja quote at sync %.4g chaos",
+									quote.price,quote.count,quote.chaosVolume,change.currentPrice or change.price)
+							else
+								text = text .. ui.errorText(err)
+							end
+							main:OpenMessagePopup("GGG trade comparison",text)
+						end)
+					end,
+				},
+			})
+			owner = main.popups[1]
 		end
-		for i, item in ipairs(review.skipped or {}) do
-			local details = {item.reason}
-			if not item.styleOnly then details[#details+1] = "Hide up to "..item.old end
-			entries[#entries+1] = {id="skip-"..i,label=item.name,category="Unchanged",details=details}
-		end
-		for i, run in ipairs(saved.history or {}) do
-			entries[#entries+1] = {id="run-"..i,label=os.date("%Y-%m-%d %H:%M",run.checkedAt),category="History",details={
-				run.adjustments.." price decisions from the baseline.", "Protected drop checks passed.",
-				run.oldest and string.format("Oldest response was %.0f minutes old",run.oldest/60) or "Response age was not recorded.",
-			}}
-		end
-		local exchange = require("Modules.LootFilterExchangeCrossCheck")
-		local waiting, owner
-		require("Classes.PlanningBrowserControl").Open("Daily filter sync review", entries, {
-			secondary = {
-				label="Compare GGG trades",
-				canRun=function(entry)
-					local change = entry.decision
-					return not waiting and change and not change.tier and exchange.itemId(change.name)
-						and type(review.checkedAt)=="number"
-				end,
-				run=function(entry)
-					if launch.noSSL then main:OpenMessagePopup("GGG trade comparison","Enable HTTPS certificate verification in PoB."); return end
-					local change = entry.decision
-					local hour = exchange.hour(review.checkedAt)
-					waiting = true
-					exchange.fetch(hour,function(markets, err)
-						waiting = false
-						if main.popups[1] ~= owner then return end
-						local quote
-						if markets then quote, err = exchange.compare(markets,saved.league,change.name) end
-						local period = os.date("!%Y-%m-%d %H:%M UTC",hour)
-						local text = change.name .. " | " .. saved.league .. "\nGGG completed hour beginning " .. period .. "\n"
-						if quote then
-							text = text .. string.format("GGG traded average %.4g chaos (%d items, %.0f chaos)\npoe.ninja quote at sync %.4g chaos",
-								quote.price,quote.count,quote.chaosVolume,change.currentPrice or change.price)
-						else
-							text = text .. ui.errorText(err)
-						end
-						main:OpenMessagePopup("GGG trade comparison",text)
-					end)
-				end,
-			},
-		})
-		owner = main.popups[1]
+		openReview(saved.review or {})
 	end,432)
 	button("preview",16+step,"Preview changes",function()
 		local owner = main.popups[1]

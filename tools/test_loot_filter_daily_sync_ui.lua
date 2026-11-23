@@ -130,6 +130,27 @@ do
 	main.popups={};reviewFixture=nil
 end
 
+do
+	local old = {checkedAt=1795449900, adjustments=1,oldest=300,reviewKey="archive-fixture"}
+	local mock = sync.archivedReviews
+	reviewFixture = {target=selected,enabled=true,history={old}}
+	sync.archivedReviews = function()
+		return {[old.reviewKey]={checkedAt=old.checkedAt,league="Covens",changes={
+			{name="Orb of Alteration",old=6,cutoff=4,price=.21,volume=1000},
+		}}}
+	end
+	require("Classes.LootFilterDailySyncControl").Open()
+	reviewUI:click("review")
+	reviewUI:text("search",os.date("%Y-%m-%d %H:%M",old.checkedAt))
+	reviewUI:click("choose")
+	assert(main.popups[1].title=="Archived filter sync review")
+	reviewUI:text("search","Orb of Alteration")
+	local lines = main.popups[1].controls.details.list
+	assert(lines[2][1]:find("0.21 chaos used",1,true))
+	main.popups={};reviewFixture=nil
+	sync.archivedReviews = mock
+end
+
 -- Use the real GGG parser and a deterministic network response through the native review.
 newBuild()
 main.popups = {}

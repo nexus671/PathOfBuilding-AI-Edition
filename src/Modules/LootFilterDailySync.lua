@@ -135,6 +135,49 @@ local function save(config, id)
 	put(settingsPath(id), assert(json.encode(config)))
 end
 
+local function reviewPath(id)
+	return settingsPath(id):gsub("%.json$", "-Reviews.json")
+end
+
+local function readReviews(id)
+	local raw = read(reviewPath(id))
+	local archive = raw and json.decode(raw)
+	return type(archive)=="table" and archive or {}
+end
+
+local function archiveReview(id, digest, payload)
+	local archive = {{digest=digest,payload=payload}}
+	local ok, prior = pcall(readReviews,id)
+	for _, entry in ipairs(ok and prior or {}) do
+		if #archive==7 then break end
+		if type(entry)=="table" and type(entry.payload)=="string" and type(entry.digest)=="string" and entry.digest~=digest then
+			archive[#archive+1] = entry
+		end
+	end
+	local raw = assert(json.encode(archive))
+	while #archive>0 and #raw>volumeLimit do
+		table.remove(archive)
+		raw = assert(json.encode(archive))
+	end
+	put(reviewPath(id),raw)
+end
+
+function M.archivedReviews(id)
+	local config = get(id)
+	local found = {}
+	local ok, archive = pcall(readReviews,id)
+	if not config or not ok then return found end
+	local keys = {}
+	for _, run in ipairs(config.history or {}) do if run.reviewKey then keys[run.reviewKey] = true end end
+	for _, value in ipairs(archive) do
+		if type(value)=="table" and type(value.payload)=="string" and keys[value.digest] and sha(value.payload)==value.digest then
+			local detail = json.decode(value.payload)
+			if type(detail)=="table" then found[value.digest] = detail end
+		end
+	end
+	return found
+end
+
 local function registryPath()
 	return main.userPath .. "LootFilterSyncProfiles.json"
 end
@@ -880,13 +923,16 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		current.lastSuccess, current.lastFailure, current.providerRetryAfter = now, nil, nil
 		local ages = {}
 		for index, feed in ipairs(feeds) do ages[index] = feed.age end
-		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages, feeds=feeds}
+		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages, feeds=feeds, league=current.league}
+		local evidence = assert(json.encode(current.review))
+		local reviewKey = sha(evidence)
 		current.history = current.history or {}
-		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
+		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages)), reviewKey=reviewKey})
 		local limit = current.backupLimit
 		local backups = type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) and backupChoices(current)
 		if #current.history > 30 then table.remove(current.history) end
 		save(current,id)
+		pcall(archiveReview,id,reviewKey,evidence)
 		if backups then
 			pruneBackups(current,backups)
 			pcall(save,current,id)
