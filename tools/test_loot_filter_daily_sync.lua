@@ -198,6 +198,31 @@ Show
 	print("Opt-in highlights preserve visibility, apply at exact stack values, and respect later styles")
 end
 
+do
+	local raw = [[# PoB economy: begin
+Hide
+    Class == "Divination Cards"
+    BaseType == "Expensive Card" "Cheap Card"
+# PoB economy: end
+Show
+    Class == "Divination Cards"
+    BaseType == "Expensive Card" "Cheap Card"
+    MinimapIcon 2 White Circle
+Show
+]]
+	local quotes = {}
+	market.merge(quotes,{["Expensive Card"]={price=3,volume=800,id="expensive",source="DivinationCard"},
+		["Cheap Card"]={price=0.2,volume=800,id="cheap",source="DivinationCard"}},"DivinationCard")
+	local output, changes = market.review(raw,quotes,1,{highlightChaos=2,strongHighlightChaos=10})
+	assert(#changes==1 and changes[1].name=="Expensive Card")
+	local parser=require("Modules.LootFilterParser")
+	local compiled=parser.parse(output)
+	local cheap=parser.simulate(compiled,{Class="Divination Cards",BaseType="Cheap Card",StackSize=12})
+	assert(cheap.action=="Hide")
+	local expensive=parser.simulate(compiled,{Class="Divination Cards",BaseType="Expensive Card",StackSize=1})
+	assert(expensive.action=="Show" and table.concat(expensive.styles.MinimapIcon," ")=="1 Yellow Circle")
+end
+
 local function quoteBatch(count, source)
 	local batch = {}
 	for index=1,count do

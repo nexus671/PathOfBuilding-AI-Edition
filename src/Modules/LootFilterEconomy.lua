@@ -354,7 +354,7 @@ function M.review(raw, quotes, target, preferences)
 		for _, name in ipairs(base.values) do
 			local quote = quotes[quoteKey(name, card and "DivinationCard")]
 			local cutoff, reason, usedPrice = cutoffFor(quote, old, pickupTarget, not card and policy.caps[name])
-			local styles = useHighlights and not card and priceHighlights(policy,quote,cutoff,name,area) or {}
+			local styles = useHighlights and (stack or cutoff==0) and priceHighlights(policy,quote,cutoff,name,area) or {}
 			if #styles>0 then
 				for _, itemClass in ipairs(class.values) do
 					local byName = highlights[itemClass] or {}
