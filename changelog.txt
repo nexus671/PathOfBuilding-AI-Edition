@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1150][2026/11/22]
+
+* Clarify assumptions in bench-rarity examples.
+
 VERSION[2.68.1-ai.preview1149][2026/11/22]
 
 * Let headless UI tests locate fonts in portable packages.

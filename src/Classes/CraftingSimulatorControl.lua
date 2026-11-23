@@ -929,7 +929,7 @@ function Panel.Open(build,project,layout)
 	button(controls,"settings",16,380,200,"Find currencies",palette)
 	button(controls,"benchRarity",16,458,416,"Preview bench rarity outcome",function()
 		local popup={}
-		ui.description(popup,"help",16,30,350,110,{"Choose a hypothetical outcome to inspect.","Rarity odds, price and special interactions are unknown.","Unique references may be legacy or unavailable; eligibility is unverified.","Unique values, sockets and quality are illustrative.","Copied text does not retain this label."},14)
+		ui.description(popup,"help",16,30,350,110,{"Choose a hypothetical outcome to inspect.","Modifier rolls and retained properties are estimates.","Rarity odds, price and eligibility are unknown.","Unique references may be legacy or unavailable.","Unique values, sockets and quality are illustrative.","Copied text does not retain this label."},14)
 		popup.outcome=new("DropDownControl"):DropDownControl(ui.anchor,{16,150,300,26},{{label="Magic example",val="MAGIC"},{label="Rare example",val="RARE"},{label="Unique reference",val="UNIQUE"}})
 		popup.unique=new("DropDownControl"):DropDownControl(ui.anchor,{16,188,300,26},{})
 		popup.unique.shown=function() return popup.outcome:GetSelValueByKey("val")=="UNIQUE" end
