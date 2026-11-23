@@ -492,6 +492,7 @@ function Panel.Open(build,source,layout)
 			if entry.plannedDeified then details[#details+1]="Planned Divine Vessel: Deified boss bonuses; eligibility and enchantment interactions unverified." end
 			if require("Modules.MapObservedEffects").deified(entry.observedEffects) then details[#details+1]="Deified bosses: +25% damage, attack/cast speed and area; +100% toughness; +50% item rarity." end
 			if entry.vaalPreview then details[#details+1]="Based on a conditional Vaal preview; outcome odds are not modeled." end
+			if entry.vaalTierUpPreview then details[#details+1]="Tier-up preview: item-level and quality retention are unverified assumptions." end
 			details[#details+1]="Data version "..entry.patch;details[#details+1]="Keep the Atlas plan and save the build to persist changes."
 			choices[#choices+1]={id=entry.id,label=entry.title,details=details,draft=entry}
 		end

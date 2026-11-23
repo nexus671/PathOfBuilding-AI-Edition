@@ -67,6 +67,8 @@ local function validate(input,checkpoint,cache)
 	assert(input.plannedDeified==nil or type(input.plannedDeified)=="boolean","Invalid planned Deified marker")
 	assert(input.vaalPreview==nil or type(input.vaalPreview)=="boolean","Invalid conditional Vaal preview marker")
 	assert(not input.vaalPreview or input.corrupted,"A conditional Vaal preview requires a corrupted map")
+	assert(input.vaalTierUpPreview==nil or type(input.vaalTierUpPreview)=="boolean","Invalid tier-up preview marker")
+	assert(not input.vaalTierUpPreview or input.vaalPreview,"A tier-up preview requires a conditional Vaal preview")
 	assert(not input.corrupted,"Corrupted maps cannot be modified with these currencies")
 	assert(input.implicit==nil,"A map corruption implicit requires a corrupted map")
 	assert(not input.mirrored,"Mirrored maps cannot be modified with these currencies")
@@ -227,7 +229,7 @@ function M.perform(input,action,seed,checkpoint,identitiesOnly,cache,allflameId)
 		local value=random();local count=state.rarity=="magic" and (value<0.5 and 1 or 2) or (value<8/12 and 4 or value<11/12 and 5 or 6)
 		for _=1,count do add(state,random,checkpoint,cache) end
 	end
-	if action=="vaal_reroll" or action=="vaal_tier_up" then state.corrupted=true;state.vaalPreview=true end
+	if action=="vaal_reroll" or action=="vaal_tier_up" then state.corrupted=true;state.vaalPreview=true;state.vaalTierUpPreview=action=="vaal_tier_up" or nil end
 	for _,id in ipairs(state.selected) do
 		local roll=existing[id] or (not identitiesOnly and not priorIds[id] and values.sample(map.source().mods[id],random))
 		if roll then state.rolls[#state.rolls+1]={id=id,values=roll} end

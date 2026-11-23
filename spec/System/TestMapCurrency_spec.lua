@@ -166,10 +166,11 @@ describe("Experimental map currency",function()
 			local input={baseId="Metadata/Items/Maps/MapKeyTier"..tier,tier=tier,itemLevel=83,rarity="rare",selected={}}
 			local before=copyTable(input);local result=currency.perform(input,"vaal_tier_up",42);local next=result.state
 			assert.same(before,input);assert.equal(tier+1,next.tier);assert.equal("Metadata/Items/Maps/MapKeyTier"..(tier+1),next.baseId)
-			assert.equal(input.itemLevel,next.itemLevel);assert.is_true(next.corrupted);assert.is_true(next.vaalPreview)
+			assert.equal(input.itemLevel,next.itemLevel);assert.is_true(next.corrupted);assert.is_true(next.vaalPreview);assert.is_true(next.vaalTierUpPreview)
 			assert.is_true(#next.selected>=4 and #next.selected<=6);assert.matches("unchanged item level",result.note,1,true)
 			local draft=copyTable(next);draft.id="tier-up";draft.title="Tier-up";draft.patch=map.source().patch
-			assert.has_no.errors(function() atlas.validateMapDraft(draft) end)
+			assert.is_true(atlas.validateMapDraft(draft).vaalTierUpPreview)
+			local invalid=copyTable(draft);invalid.vaalPreview=nil;assert.has_error(function() atlas.validateMapDraft(invalid) end)
 			assert.same(next,currency.perform(input,"vaal_tier_up",42).state)
 		end
 		local highest={baseId="Metadata/Items/Maps/MapKeyTier16",tier=16,itemLevel=83,rarity="rare",selected={}}

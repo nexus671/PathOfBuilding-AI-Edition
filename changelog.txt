@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1141][2026/11/22]
+
+* Keep map tier-up preview assumptions visible in saved plans.
+
 VERSION[2.68.1-ai.preview1140][2026/11/22]
 
 * Preview a conditional one-tier map corruption outcome.
