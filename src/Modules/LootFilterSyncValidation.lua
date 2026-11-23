@@ -4,9 +4,9 @@ local protected = require("Modules.LootFilterProtectedDrops")
 return function(raw, bodies, baselineOnly, target, protections, history, day, now, policy, confirmation)
 	assert(market.supports(raw), "Baseline has no economy section")
 	local quotes = {}
-	local categories = market.feedCategories(raw)
+	local categories, gemRequests = market.feedCategories(raw)
 	assert(baselineOnly or #bodies == #categories, "Required market category responses are missing")
-	for index, body in ipairs(bodies) do market.merge(quotes, market.quotes(body, categories[index]), categories[index]) end
+	for index, body in ipairs(bodies) do market.merge(quotes, market.quotes(body, categories[index], gemRequests), categories[index]) end
 	assert(baselineOnly or quotes["Orb of Alteration"] and quotes["Orb of Alteration"].volume >= 100, "Currency feed lacks a liquid reference quote")
 	local snapshots
 	if day then quotes, snapshots = market.remember(quotes, history, day, now) end
@@ -48,6 +48,9 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 						sample.MapTier = change.tier
 						sample.BlightedMap = change.blighted or change.ravaged
 						sample.UberBlightedMap = change.ravaged
+					end
+					if change.gemLevel then
+						sample.GemLevel, sample.Quality, sample.Corrupted = change.gemLevel, change.gemQuality, change.corrupted
 					end
 					for _, size in ipairs(stacks) do
 						if remaining == 0 then break end

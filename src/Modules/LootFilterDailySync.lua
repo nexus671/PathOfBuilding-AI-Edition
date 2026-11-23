@@ -361,12 +361,15 @@ function M.publicDiff(now, id)
 		local item = type(change) == "table" and safeText(change.name,200)
 		if item and finiteNumber(change.old) and finiteNumber(change.cutoff) then
 			local sample = publicImpactSample(change.sample)
+			local corruption
+			if type(change.corrupted)=="boolean" then corruption=change.corrupted end
 			local samples={};if type(change.samples)=="table" then for index,entry in ipairs(change.samples) do if index>20 then break end;samples[#samples+1]=publicImpactSample(entry) end end
 			changes[#changes+1] = {
 				item=item, source=safeText(change.source,40), previousCutoff=change.old,
 				proposedCutoff=change.cutoff, quotedPrice=finiteNumber(change.currentPrice or change.price),
 				priceUsed=finiteNumber(change.price), volume=finiteNumber(change.volume), confirmedPrice=finiteNumber(change.confirmedPrice),
 				liquidityUnit=safeText(change.liquidityUnit,40),
+				gemLevel=finiteNumber(change.gemLevel),gemQuality=finiteNumber(change.gemQuality),corrupted=corruption,
 				mapOnly=change.maps==true, scope=safeText(change.scope,20),
 				sample=sample,samples=#samples>0 and samples or nil,samplesTruncated=type(change.samples)=="table" and #change.samples>20 or nil,
 			}
@@ -1014,21 +1017,26 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 	end)
 end
 
-local cache = {}
+local cache, cacheCount, cacheBytes = {}, 0, 0
+local function removeFeed(url)
+	cacheCount, cacheBytes = cacheCount-1,cacheBytes-#cache[url].body
+	cache[url] = nil
+end
+
 local function storeFeed(url, entry)
-	if not cache[url] then
-		local count, oldest, oldestTime = 0, nil, math.huge
+	if cache[url] then removeFeed(url) end
+	while cacheCount>=24 or cacheBytes+#entry.body>48*1024*1024 do
+		local oldest, oldestTime = nil, math.huge
 		for key, value in pairs(cache) do
-			count = count + 1
-			if value.checkedAt < oldestTime then oldest, oldestTime = key, value.checkedAt end
+			if value.checkedAt<oldestTime then oldest, oldestTime = key,value.checkedAt end
 		end
-		if count >= 24 then cache[oldest] = nil end
+		removeFeed(oldest)
 	end
-	cache[url] = entry
+	cache[url], cacheCount, cacheBytes = entry,cacheCount+1,cacheBytes+#entry.body
 end
 
 local function fetchPrices(config, baseline, now, complete, onFailure, id)
-	local categories = market.feedCategories(baseline)
+	local categories, gemRequests = market.feedCategories(baseline)
 	local job, bodies, responses = {onFailure=onFailure,profileId=id}, {}, {}
 	M.busy, M.deadline = job, now + 300
 	local function finish(success, message)
@@ -1136,7 +1144,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			end
 			local fresh, data, age, tag = pcall(M.fresh, response, time)
 			if not fresh then finish(false, category .. ": " .. tostring(data)); return end
-			local valid, why = pcall(market.quotes, data, category)
+			local valid, why = pcall(market.quotes, data, category, gemRequests)
 			if not valid then
 				local problem = category .. ": " .. tostring(why)
 				if index == 1 and tostring(why):find("No priced exchange items",1,true) then
@@ -1149,7 +1157,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			storeFeed(url,{body=data,tag=tag,sourceAt=time-age,checkedAt=time})
 			bodies[index], responses[index] = data, {initialAge=age, checkedAt=time, revalidated=false}
 			fetch(index + 1, 1)
-		end, {timeout=20,maxBytes=2*1024*1024,header=requestHeaders})
+		end, {timeout=20,maxBytes=market.maxFeedBytes(category),header=requestHeaders})
 	end
 	fetch(1, 1)
 end
