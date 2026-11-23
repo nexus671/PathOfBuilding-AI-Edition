@@ -404,10 +404,10 @@ function M.reviewChanges(before,after)
 	order("saved items",before.inventory,after.inventory,"id")
 	local oldItems,newItems={},{};for _,entry in ipairs(before.inventory or {}) do oldItems[entry.id]=entry end;for _,entry in ipairs(after.inventory or {}) do newItems[entry.id]=entry end
 	for _,entry in ipairs(after.inventory or {}) do local prior=oldItems[entry.id]
-		if not prior then summary[#summary+1]="Added saved item: "..entry.title.." ["..entry.id.."]";details[#details+1]="Saved item "..entry.id.." base: "..entry.baseItem;details[#details+1]="Saved item "..entry.id.." state: "..json.encode(entry.state)
+		if not prior then summary[#summary+1]="Added saved item: "..entry.title.." ["..entry.id.."]";details[#details+1]="Saved item "..entry.id.." base: "..entry.baseItem;details[#details+1]="Saved item "..entry.id.." state: "..json.encode(entry.state);if entry.originNote then details[#details+1]="Saved item "..entry.id.." source note: "..entry.originNote end
 		elseif not same(prior,entry) then
 			summary[#summary+1]="Changed saved item: "..prior.title.." -> "..entry.title.." ["..entry.id.."]"
-			for _,field in ipairs({"slot","baseItem","at","state"}) do if not same(prior[field],entry[field]) then details[#details+1]="Saved item "..entry.id.." "..field..": "..value(prior[field]).." -> "..value(entry[field]) end end
+			for _,field in ipairs({"slot","baseItem","at","state","originNote"}) do if not same(prior[field],entry[field]) then details[#details+1]="Saved item "..entry.id.." "..field..": "..value(prior[field]).." -> "..value(entry[field]) end end
 		end
 	end
 	for _,entry in ipairs(before.inventory or {}) do if not newItems[entry.id] then summary[#summary+1]="Removed saved item: "..entry.title.." ["..entry.id.."]" end end

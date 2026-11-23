@@ -6,6 +6,8 @@ assert(not magic.probability and not rare.price and preview.preview(raw,"MAGIC",
 assert(not pcall(preview.preview,raw,"UNIQUE",42,nil,"Goldrim"))
 local refs=preview.uniqueCandidates(raw);local found=false;for _,entry in ipairs(refs.candidates) do if entry.title=="Ezomyte Peak" then found=true end end;assert(found)
 local unique=preview.preview(raw,"UNIQUE",42,nil,"Ezomyte Peak");assert(unique.conditional and unique.itemText:find("Ezomyte Peak",1,true))
+local template=preview.proposal(raw,magic,"Helmet","Conditional","example");local entry=template.inventory[1];entry.title="Renamed";assert(require("Modules.CraftingInventory").project(entry).notes==template.notes)
+local prior=copyTable(template);prior.inventory={};assert(table.concat(require("Modules.CraftingProjects").reviewChanges(prior,template),"\n"):find("source note: Conditional",1,true))
 local UI=require("Modules.HeadlessUI")
 for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build)
@@ -16,7 +18,13 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  popup.outcome:SelByValue("UNIQUE","val");popup.outcome.selFunc();assert(not popup.copy:IsEnabled());popup.unique:SelByValue("Ezomyte Peak","val");popup.unique.selFunc();popup.generate:Click();assert(popup.copy:IsEnabled());popup.keep:Click()
  assert(build.savers.CraftingProjects.projects[3].startingItem:find("Ezomyte Peak",1,true));assert(build.savers.CraftingProjects.projects[1].steps[1].action=="Original guide")
  if output then ui:frame():write(output.."/"..size[1].."-bench-rarity-example.json") end
- if size[1]==960 then local xml=build:SaveDB("Bench examples");loadBuildFromXML(xml,"Bench examples");assert(build.savers.CraftingProjects.projects[2].run.state.rarity=="MAGIC");assert(build.savers.CraftingProjects.projects[3].notes:find("Conditional",1,true)) end
+ if size[1]==960 then
+  main.popups={};build.savers.CraftingProjects:Upsert(template);local resumed
+  local inventory=require("Classes.CraftingInventoryControl").Open(build,{resume=function(project) resumed=project end});assert(inventory.count.label():find("Source note retained",1,true));inventory.itemTitle:SetText("User renamed",true);inventory.rename:Click();inventory.resume:Click()
+  assert(resumed and resumed.notes==template.notes and resumed.run.state.rarity=="MAGIC")
+  local resumedControl=require("Classes.CraftingSimulatorControl").Open(build,resumed);resumedControl.keepItem:Click();assert(build.savers.CraftingProjects.projects[5].inventory[1].originNote==template.notes)
+  local xml=build:SaveDB("Bench examples");loadBuildFromXML(xml,"Bench examples");assert(build.savers.CraftingProjects.projects[2].run.state.rarity=="MAGIC");assert(build.savers.CraftingProjects.projects[3].notes:find("Conditional",1,true));assert(build.savers.CraftingProjects.projects[4].inventory[1].originNote==template.notes);assert(build.savers.CraftingProjects.projects[5].inventory[1].originNote==template.notes)
+ end
  ui:restore();main.popups={}
 end
 print("BENCH_RARITY_PREVIEW_OK")

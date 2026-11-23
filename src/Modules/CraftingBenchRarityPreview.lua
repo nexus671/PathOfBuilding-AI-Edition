@@ -62,7 +62,7 @@ end
 function M.proposal(raw,result,slot,title,id)
 	local project=M.project(raw,result,slot,title,id)
 	if project.run then
-		project.inventory={require("Modules.CraftingInventory").capture(project,project.run.state,"Conditional bench-rarity example")}
+		project.inventory={require("Modules.CraftingInventory").capture(project,project.run.state,"Conditional bench-rarity example",project.notes)}
 		project.run=nil
 	end
 	return require("Modules.CraftingProjects").validate(project)

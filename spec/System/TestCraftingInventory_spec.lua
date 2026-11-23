@@ -22,6 +22,7 @@ describe("Build-owned crafting inventory",function()
 	end)
 	it("rejects malformed inventory data and slot mismatches without changing projects",function()
 		local value=project();local entry=inventory.capture(value,sim.model(raw).initial)
+		entry.originNote=string.rep("x",1001);assert.has_error(function() inventory.validate({entry}) end);entry.originNote=nil
 		assert.has_error(function() inventory.validate({entry,entry}) end)
 		assert.has_error(function() inventory.validate({[2]=entry}) end)
 		entry.state.affixes={{id="unknown-modifier"}};assert.has_error(function() inventory.validate({entry}) end)

@@ -14,17 +14,18 @@ function M.validate(entries)
 		for key,limit in pairs({id=64,title=120,slot=80,baseItem=24000}) do assert(type(entry[key])=="string" and #entry[key]<=limit and entry[key]:match("%S"),"Invalid inventory "..key) end
 		assert(entry.id:match("^[%w_-]+$") and not ids[entry.id],"Invalid or duplicate inventory ID");ids[entry.id]=true
 		assert(type(entry.at)=="number" and entry.at>=0 and entry.at<=4102444800 and entry.at==math.floor(entry.at),"Invalid inventory time")
+		assert(entry.originNote==nil or type(entry.originNote)=="string" and #entry.originNote<=1000,"Invalid inventory source note")
 		local run=require("Modules.CraftingCheckpoint").validate(entry.baseItem,M.run(entry.state),models)
-		result[#result+1]={id=entry.id,title=entry.title,slot=entry.slot,baseItem=entry.baseItem,at=entry.at,state=run.state}
+		result[#result+1]={id=entry.id,title=entry.title,slot=entry.slot,baseItem=entry.baseItem,at=entry.at,state=run.state,originNote=entry.originNote}
 	end
 	return result
 end
-function M.capture(project,state,title)
-	return M.validate({{id="item-"..require("sha1")(tostring({})..os.time()):sub(1,20),title=title or project.title,slot=project.slot,baseItem=project.startingItem,at=os.time(),state=state}})[1]
+function M.capture(project,state,title,originNote)
+	return M.validate({{id="item-"..require("sha1")(tostring({})..os.time()):sub(1,20),title=title or project.title,slot=project.slot,baseItem=project.startingItem,at=os.time(),state=state,originNote=originNote}})[1]
 end
 function M.project(entry)
 	entry=M.validate({entry})[1]
-	return {id="craft-"..require("sha1")(tostring({})..os.time()):sub(1,20),title=entry.title,slot=entry.slot,startingItem=entry.baseItem,goals={},steps={},run=M.run(entry.state)}
+	return {id="craft-"..require("sha1")(tostring({})..os.time()):sub(1,20),title=entry.title,slot=entry.slot,startingItem=entry.baseItem,goals={},steps={},notes=entry.originNote,run=M.run(entry.state)}
 end
 function M.entries(projects,query)
 	local result={};query=(query or ""):lower()
