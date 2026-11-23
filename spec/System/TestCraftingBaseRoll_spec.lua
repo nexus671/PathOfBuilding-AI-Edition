@@ -41,6 +41,13 @@ describe("Crafting modifier base-roll targets",function()
 		assert.is_true(math.abs(sim.baseRollValue(leech,range)-0.27)<1e-7)
 		assert.equal(1,sim.rollRange(leech,function() return 0.999 end))
 	end)
+	it("samples pinned per-minute life regeneration rolls",function()
+		local model=sim.model(raw);local regen=model.byId.LifeRegeneration2
+		assert.equal(0,sim.rollRange(regen,function() return 0.001 end))
+		local range=sim.rollRange(regen,function() return 0.5 end)
+		assert.equal(0.5,range);assert.equal(5.1,sim.baseRollValue(regen,range))
+		assert.equal(1,sim.rollRange(regen,function() return 0.9999 end))
+	end)
 	it("preserves base-roll goals in saved crafting recipes",function()
 		newBuild();local recipe={steps={{method="alchemy"}},targets={{anyOf={"IncreasedLife4"},minBaseValue=65,maxBaseValue=67}}}
 		local store=build.savers.CraftingProjects;store:Upsert({id="roll-goal",title="Roll goal",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe=recipe})
