@@ -33,7 +33,7 @@ local function covers(previous,current)
 end
 -- Rarity is a finite domain, so compare its actual matching tiers instead of
 -- guessing from the spelling of equality, exclusion or range expressions.
-local function rarityChoices(condition)
+local function rarityChoices(condition, includeEmpty)
  if condition.keyword~="Rarity" or #condition.values<1 or #condition.values>16 then return end
  local allowed={["="]=true,["=="]=true,["!"]=true,["!="]=true,[">"]=true,[">="]=true,["<"]=true,["<="]=true}
  if not allowed[condition.operator] then return end
@@ -50,7 +50,7 @@ local function rarityChoices(condition)
   if op=="!" or op=="!=" then matched=not matched end
   if matched then values[name]=true;count=count+1 end
  end
- if count>0 then return values end
+ if count>0 or includeEmpty then return values end
 end
 local function containsAll(earlier,later)
  for value in pairs(later) do if not earlier[value] then return false end end
@@ -64,7 +64,7 @@ function M.contradictions(parsed)
   local ranges,rarities={},nil
   for _,condition in ipairs(rule.conditions) do
    if condition.keyword=="Rarity" and #condition.values==1 then
-    local choices=rarityChoices(condition)
+    local choices=rarityChoices(condition,true)
     if choices then
      if not rarities then rarities={};for name in pairs(choices) do rarities[name]=true end
      else for name in pairs(rarities) do if not choices[name] then rarities[name]=nil end end end
@@ -84,7 +84,15 @@ function M.contradictions(parsed)
   end
   local names={};for name,range in pairs(ranges) do
    local lower,upper=range.lower,range.upper
-   if lower and upper and (lower.value>upper.value or lower.value==upper.value and (not lower.inclusive or not upper.inclusive)) then names[#names+1]=name end
+   local empty=lower and upper and (lower.value>upper.value or lower.value==upper.value and (not lower.inclusive or not upper.inclusive))
+   -- Item and area levels are whole numbers; a gap between adjacent integers
+   -- can be empty even when the bounds do not meet on the real number line.
+   if lower and upper and (name=="ItemLevel" or name=="AreaLevel") then
+    local first=lower.inclusive and math.ceil(lower.value) or math.floor(lower.value)+1
+    local last=upper.inclusive and math.floor(upper.value) or math.ceil(upper.value)-1
+    empty=empty or first>last
+   end
+   if empty then names[#names+1]=name end
   end
   if rarities and not next(rarities) then names[#names+1]="Rarity" end
   table.sort(names)

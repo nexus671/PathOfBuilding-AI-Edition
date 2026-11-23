@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1145][2026/11/22]
+
+* Detect empty item-level and rarity ranges in filter blocks.
+
 VERSION[2.68.1-ai.preview1144][2026/11/22]
 
 * Warn about conflicting numeric and rarity conditions in filter blocks.

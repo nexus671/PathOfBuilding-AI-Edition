@@ -11,6 +11,9 @@ for _,a in ipairs({">",">=","<","<=","="}) do for _,b in ipairs({">",">=","<","<
 end end
 assert(#diagnostics.contradictions(parser.parse("Show\n Rarity = Rare\n Rarity >= Unique"))==1,"Disjoint rarity conditions were missed")
 assert(#diagnostics.contradictions(parser.parse("Show\n Rarity >= Rare\n Rarity != Unique"))==0,"A valid rarity intersection was flagged")
+assert(#diagnostics.contradictions(parser.parse("Show\n Rarity > Unique"))==1,"An empty rarity range was missed")
+assert(#diagnostics.contradictions(parser.parse("Show\n ItemLevel > 80\n ItemLevel < 81"))==1,"An empty integer level range was missed")
+assert(#diagnostics.contradictions(parser.parse("Show\n AreaLevel > 80\n AreaLevel <= 81"))==0,"A valid integer level range was flagged")
 assert(#diagnostics.contradictions(parser.parse("Show\n Sockets >= 6\n Sockets < 3"))==0,"Special socket semantics were guessed")
 local p=filters.profile("contradictory","Conflicting filter");p.template="Show\n ItemLevel >= 80\n ItemLevel < 70"
 local raw,report=filters.compile(p);assert(raw and not report.error,"A warning blocked filter compilation")
