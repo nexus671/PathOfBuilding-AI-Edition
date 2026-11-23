@@ -250,3 +250,52 @@ local replacementWindow = assert(loadfile("Modules/LootFilterDailySync.lua"))()
 replacementWindow.tick(now,true)
 assert(read(target)==refreshed and not replacementWindow.configuration().pending,replacementWindow.status)
 print("Windows fault recovery: concurrent pause, locked target, and both pending-journal states passed")
+
+-- Exercise the manual screen through its Fetch and Export actions. It must
+-- enforce the same freshness and liquidity criteria as the scheduler.
+local controls, manualReview, exported
+package.loaded["Modules.PlanningUI"] = {
+	description=function() end, label=function() end, style=function() end,
+	rows=function(value) return value end, errorText=tostring,
+}
+package.loaded["Classes.PlanningBrowserControl"] = {Open=function(_, _, options) manualReview=options end}
+function new()
+	return {
+		ButtonControl=function(_, _, _, _, action) return {action=action} end,
+		EditControl=function(_, _, _, value) return {buf=value} end,
+		TextListControl=function() return {} end,
+	}
+end
+function copyTable(value) return {} end
+main.popups = {}
+function main:OpenPopup(_, _, _, currentControls)
+	controls = currentControls
+	self.popups[1] = {}
+	return self.popups[1]
+end
+function main:ClosePopup() self.popups[1]=nil end
+main.screenW = 1024
+launch.DownloadPage = function(_, url, callback, params)
+	assert(params.timeout == 20)
+	if url:match("/leagues$") then callback({body='[{"id":"Covens"}]'}); return end
+	reply(url,callback)
+end
+require("Classes.LootFilterEconomyControl").Open({},cardBaseline,function(_, value) exported=value end)
+controls.fetch.action()
+assert(manualReview and manualReview.canChoose())
+manualReview.choose()
+assert(exported==refreshed)
+
+launch.DownloadPage = function(_, url, callback)
+	if url:match("/leagues$") then callback({body='[{"id":"Covens"}]'}); return end
+	if url:match("&type=DivinationCard$") then reply(url,callback); return end
+	callback({header=header:gsub("Age: 5","Age: 4001"),body=commodityBody})
+end
+local manual = require("Classes.LootFilterEconomyControl")
+manual.Open({},cardBaseline,function(_, value) exported=value end)
+controls.fetch.action()
+assert(manualReview.canChoose())
+manualReview.choose()
+assert(exported:find("StackSize <= 6",1,true))
+assert(exported:find('BaseType == "Cheap Card" "Thin Card"',1,true))
+print("Manual review applies the native price freshness and class-specific liquidity checks")

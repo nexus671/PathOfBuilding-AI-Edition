@@ -1,4 +1,5 @@
 local economy = require("Modules.LootFilterEconomy")
+local sync = require("Modules.LootFilterDailySync")
 local ui = require("Modules.PlanningUI")
 local json = require("dkjson")
 local M = {}
@@ -18,7 +19,7 @@ function M.Open(profile, raw, export)
 		c[key] = new("ButtonControl"):ButtonControl(ui.anchor, {x, 234, 136, 28}, label, action)
 	end
 	ui.description(c, "info", 16, 24, width - 32, 52, {
-		"Review tagged currency stack rules against PC exchange prices. The cutoff only moves down when current prices justify showing smaller stacks.",
+		"Review tagged currency and divination card hides against PC exchange prices. The cutoff only moves down when current prices justify showing smaller stacks.",
 	}, 14)
 	ui.label(c, "leagueLabel", 16, 90, "League ID", 14)
 	ui.label(c, "targetLabel", 246, 90, "Chaos per stack", 14)
@@ -30,6 +31,7 @@ function M.Open(profile, raw, export)
 	button("fetch", 16, "Fetch prices", function()
 		local target = tonumber(c.target.buf)
 		if busy then return end
+		if launch.noSSL then status("Enable HTTPS certificate verification in PoB."); return end
 		if not target or target <= 0 or target > 1000 or target ~= target then
 			status("Enter a stack value between 0 and 1,000 chaos.")
 			return
@@ -39,13 +41,13 @@ function M.Open(profile, raw, export)
 		local function request(path, callback)
 			launch:DownloadPage(economy.endpoint .. path, function(response, err)
 				if not active() then return end
-				callback(not err and response and response.body or nil)
-			end)
+				callback(not err and response or nil)
+			end, {timeout=20,maxBytes=2*1024*1024})
 		end
 		busy = true
 		status("Checking trade leagues...")
-		request("leagues", function(body)
-			local leagues = body and json.decode(body)
+		request("leagues", function(response)
+			local leagues = response and type(response.body) == "string" and json.decode(response.body)
 			local league
 			for index, entry in ipairs(type(leagues) == "table" and leagues or {}) do
 				if type(entry) == "table" and type(entry.id) == "string"
@@ -58,8 +60,10 @@ function M.Open(profile, raw, export)
 				local category = categories[index]
 				if category then
 					status("Fetching " .. league .. " prices (" .. index .. "/" .. #categories .. ")...")
-					request("exchange/current/overview?league=" .. urlEncode(league) .. "&type=" .. category, function(data)
-						local ok, result = pcall(economy.quotes, data)
+					request("exchange/current/overview?league=" .. urlEncode(league) .. "&type=" .. category, function(response)
+						local fresh, data = pcall(sync.fresh, response, os.time())
+						local ok, result = false
+						if fresh then ok, result = pcall(economy.quotes, data, category) end
 						if ok then economy.merge(quotes, result, category) else failed[#failed + 1] = category end
 						fetch(index + 1)
 					end)
