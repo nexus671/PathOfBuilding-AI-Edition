@@ -1,3 +1,11 @@
+VERSION[2.68.1-ai.preview1192][2026/11/23]
+
+* Add undo and redo to Shaped Region drafts.
+
+VERSION[2.68.1-ai.preview1191][2026/11/23]
+
+* Plan multiple unique-item Divine Orb roll conditions together.
+
 VERSION[2.68.1-ai.preview1190][2026/11/23]
 
 * Track ordinary recipe resources and donor items along reachable routes.

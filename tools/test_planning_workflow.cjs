@@ -465,6 +465,14 @@ async function main(){
   await queued('propose_crafting_plan',{baseRevision:context.revision,project:divineUniqueGuide},'review');await host('apply');context=(await call('get_build_context')).context;
   const divineUniqueSaved=(await call('get_crafting_projects')).projects.find(entry=>entry.id===divineUniqueGuide.id);assert.equal(divineUniqueSaved.steps[0].uniqueCraft.method,'divine');
   const divineUniqueRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:divineUniqueRaw,recipe:divineUniqueSaved.nativeRecipe,options:{trials:5,maxActions:10,seed:123}},'crafted');assert.equal(divineUniqueRun.nativeCrafting.trials,5);
+  const evasionModifier=divineUniqueOption.modifierTargets.find(entry=>entry.line.includes('Evasion Rating'));assert.ok(evasionModifier);
+  const bothRolls={uniqueModifiers:[{line:evasionModifier.line,minValue:45},{line:divineModifier.line,minValue:38}]};
+  const combinedRecipe={rarity:'UNIQUE',steps:[{method:'divine',maxAttempts:10,untilRequirements:bothRolls}],targets:[],requirements:bothRolls};
+  const combinedRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:divineUniqueRaw,recipe:combinedRecipe,options:{trials:5,maxActions:10,seed:123,retainSuccesses:5}},'crafted');assert.equal(combinedRun.nativeCrafting.trials,5);assert.equal(combinedRun.nativeCrafting.sampled,true);
+  const combinedGuide={id:'combined-divine-workflow',title:'Combined Divine targets',slot:'Helmet',startingItem:divineUniqueRaw,goals:[],steps:[],nativeRecipe:combinedRecipe};
+  await queued('propose_crafting_plan',{baseRevision:context.revision,project:combinedGuide},'review');await host('apply');context=(await call('get_build_context')).context;
+  const savedCombined=(await call('get_crafting_projects')).projects.find(entry=>entry.id===combinedGuide.id);assert.equal(savedCombined.nativeRecipe.requirements.uniqueModifiers.length,2);
+  await queued('propose_build',{mode:'edit',title:'Remove combined Divine test',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:combinedGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
   const divinePrimary=await queued('simulate_crafting',{baseRevision:context.revision,projectId:divineUniqueGuide.id,usePrimary:true},'crafted');
   assert.deepEqual(divinePrimary.nativeCrafting.savedPrimary,{projectId:divineUniqueGuide.id});assert.equal(divinePrimary.nativeCrafting.successes,divineUniqueRun.nativeCrafting.successes);assert.equal(divinePrimary.nativeCrafting.meanActions,divineUniqueRun.nativeCrafting.meanActions);
   assert.equal(divinePrimary.nativeCrafting.trials,5);assert.equal(divinePrimary.nativeCrafting.maxActions,10);assert.equal(divinePrimary.nativeCrafting.seed,123);

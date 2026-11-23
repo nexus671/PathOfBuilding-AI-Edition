@@ -697,7 +697,7 @@ function M.matches(state,targets,rarity,model,requirements,requiredGroups)
  end
  if matched < (requiredGroups or #targets) then return false end
  if requirements then
-  if requirements.uniqueModifier then return false end -- Unique text goals require the unique-item engine.
+  if requirements.uniqueModifier or requirements.uniqueModifiers then return false end -- Unique text goals require the unique-item engine.
   assert(model,"A native item model is required for property conditions")
   local c=counts(model,state); local caps=M.capacities(model,state)
   local prefix=c.Prefix+(state.veil and state.veil.type == "Prefix" and 1 or 0)
@@ -785,12 +785,18 @@ function M.validateRecipe(recipe)
 		for key,value in pairs(requirements) do
 			if key == "uniqueName" then assert(type(value)=="string" and #value<=160 and value:match("%S"),"Enter a unique item name")
 			elseif key == "nativeStats" then require("Modules.CraftingItemStats").validate(value)
-			elseif key == "uniqueModifier" then
-				assert(recipe.rarity=="UNIQUE" and type(value)=="table" and type(value.line)=="string" and #value.line>0 and #value.line<=1000,"Choose a unique modifier target on a unique recipe")
-				for field in pairs(value) do assert(field=="line" or field=="component" or field=="minValue" or field=="maxValue","Unknown unique modifier target field") end
-				if value.component~=nil then integer(value.component,1,6,"unique modifier component") end
-				assert((value.minValue~=nil)~=(value.maxValue~=nil),"Choose either a minimum or maximum unique modifier roll")
-				local target=value.minValue or value.maxValue;assert(type(target)=="number" and target==target and target>=-100000 and target<=100000,"Invalid unique modifier target")
+			elseif key == "uniqueModifier" or key == "uniqueModifiers" then
+				local goals=key=="uniqueModifier" and {value} or value
+				assert(recipe.rarity=="UNIQUE" and type(goals)=="table" and #goals>=1 and #goals<=12,"Choose up to twelve unique modifier targets on a unique recipe")
+				local count=0;for index in pairs(goals) do assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=#goals,"Invalid unique modifier target list");count=count+1 end
+				assert(count==#goals,"Invalid unique modifier target list")
+				for _,goal in ipairs(goals) do
+					assert(type(goal)=="table" and type(goal.line)=="string" and #goal.line>0 and #goal.line<=1000,"Choose a unique modifier target on a unique recipe")
+					for field in pairs(goal) do assert(field=="line" or field=="component" or field=="minValue" or field=="maxValue","Unknown unique modifier target field") end
+					if goal.component~=nil then integer(goal.component,1,6,"unique modifier component") end
+					assert((goal.minValue~=nil)~=(goal.maxValue~=nil),"Choose either a minimum or maximum unique modifier roll")
+					local target=goal.minValue or goal.maxValue;assert(type(target)=="number" and target==target and target>=-100000 and target<=100000,"Invalid unique modifier target")
+				end
 			elseif key == "catalyst" then integer(value,1,12,"catalyst type")
 			elseif key == "minCatalystQuality" then integer(value,0,20,"minimum catalyst quality")
 			elseif key == "harvestEnchant" then assert(type(value)=="string" and require("Modules.CraftingEnchants").data().crafts[value],"Choose a known Harvest enchantment")
@@ -802,6 +808,12 @@ function M.validateRecipe(recipe)
 			elseif key == "influence" then assert(({shaper=true,elder=true,adjudicator=true,basilisk=true,crusader=true,eyrie=true})[value],"Choose a supported influence")
 			elseif key == "socketColours" then assert(type(value)=="string" and #value>=1 and #value<=6 and not value:find("[^RGBW]"),"Use one to six socket colours: R, G, B or W")
 			else integer(value,0,assert(limits[key],"Unknown property condition"),key) end
+		end
+		local bounds={};local goals={};if requirements.uniqueModifier then goals[#goals+1]=requirements.uniqueModifier end;for _,goal in ipairs(requirements.uniqueModifiers or {}) do goals[#goals+1]=goal end
+		for _,goal in ipairs(goals) do
+			local key=goal.line.."\0"..(goal.component or 1);local range=bounds[key] or {};bounds[key]=range
+			if goal.minValue~=nil then range.min=math.max(range.min or goal.minValue,goal.minValue) else range.max=math.min(range.max or goal.maxValue,goal.maxValue) end
+			assert(not range.min or not range.max or range.min<=range.max,"Minimum unique modifier roll exceeds maximum")
 		end
 		assert(not requirements.linkedColours or requirements.socketColours,"Linked colours require a socket colour target")
 		assert(not requirements.minCatalystQuality or requirements.catalyst,"Catalyst quality requires a catalyst type")
