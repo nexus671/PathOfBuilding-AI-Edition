@@ -239,18 +239,20 @@ sync.disable()
 local browser = require("Modules.LootFilterMarketBrowse")
 local gear = browser.rows([[{"lines":[{"name":"Example gear","baseType":"Cord Belt","variant":"A","chaosValue":20,"listingCount":17},{"name":"Example gear","baseType":"Cord Belt","variant":"B","chaosValue":32,"listingCount":1}]}]], {id="UniqueAccessory"})
 assert(#gear==2 and gear[1].variant=="B" and gear[2].listings==17)
-local sharedBase = browser.rows([[{"lines":[
-	{"name":"Named result","baseType":"Cord Belt","detailsId":"named","chaosValue":30,"count":50,"listingCount":40,"corrupted":false},
-	{"name":"Competing result","baseType":"Cord Belt","detailsId":"competing","chaosValue":120,"count":80,"listingCount":62},
-	{"name":"Thin result","baseType":"Cord Belt","detailsId":"thin","chaosValue":9000,"count":2,"listingCount":5},
-	{"name":"Conflicted result","baseType":"Cord Belt","detailsId":"conflicted","chaosValue":700,"count":50,"listingCount":55},
-	{"name":"Conflicted result","baseType":"Cord Belt","detailsId":"conflicted","chaosValue":5,"count":100,"listingCount":70}
-]}]],{id="UniqueAccessory"},"Named result")
-assert(#sharedBase==1 and sharedBase[1].corrupted==false)
-local evidence = sharedBase[1].baseEvidence
-assert(evidence.names==4 and evidence.variants==4 and evidence.priced==2 and evidence.minimum==30 and evidence.maximum==120)
-local unmodifiedGem = browser.rows([[{"lines":[{"name":"Example gem","chaosValue":1,"gemLevel":1,"gemQuality":0}]}]],{id="SkillGem"})[1]
-assert(unmodifiedGem.gemQuality==0 and unmodifiedGem.corrupted==nil)
+do
+	local sharedBase = browser.rows([[{"lines":[
+		{"name":"Named result","baseType":"Cord Belt","detailsId":"named","chaosValue":30,"count":50,"listingCount":40,"corrupted":false},
+		{"name":"Competing result","baseType":"Cord Belt","detailsId":"competing","chaosValue":120,"count":80,"listingCount":62},
+		{"name":"Thin result","baseType":"Cord Belt","detailsId":"thin","chaosValue":9000,"count":2,"listingCount":5},
+		{"name":"Conflicted result","baseType":"Cord Belt","detailsId":"conflicted","chaosValue":700,"count":50,"listingCount":55},
+		{"name":"Conflicted result","baseType":"Cord Belt","detailsId":"conflicted","chaosValue":5,"count":100,"listingCount":70}
+	]}]],{id="UniqueAccessory"},"Named result")
+	assert(#sharedBase==1 and sharedBase[1].corrupted==false)
+	local evidence = sharedBase[1].baseEvidence
+	assert(evidence.names==4 and evidence.variants==4 and evidence.priced==2 and evidence.minimum==30 and evidence.maximum==120)
+	local unmodifiedGem = browser.rows([[{"lines":[{"name":"Example gem","chaosValue":1,"gemLevel":1,"gemQuality":0}]}]],{id="SkillGem"})[1]
+	assert(unmodifiedGem.gemQuality==0 and unmodifiedGem.corrupted==nil)
+end
 local cards = browser.rows([[{"core":{"primary":"chaos"},"items":[{"id":"card","name":"Example card"}],"lines":[{"id":"card","primaryValue":12,"volumePrimaryValue":500}]}]], {id="DivinationCard",feed="exchange"})
 assert(#cards==1 and cards[1].price==12 and cards[1].volume==500)
 assert(not pcall(browser.rows, '{"lines":[{"name":"Bad","chaosValue":-1}]}', {id="Map"}))
@@ -643,50 +645,48 @@ assert(not pcall(profiles.verifiedOutput,id))
 print("Account publication can only read the latest verified, unchanged local output")
 
 
--- Review an older recorded backup, refuse checksum and revision drift,
--- then retain the previously active bytes as an undo point after restore.
-local recorded = profiles.configuration()
-local fixedAtReview = read(recorded.baseline)
-local olderBytes, changed = fixedAtReview:gsub("# PoB economy: end", [[Hide
-    Class == "Stackable Currency"
-    BaseType == "Orb of Transmutation"
-    StackSize <= 3
-
-# PoB economy: end]],1)
-assert(changed == 1)
-local digestOf = require("sha1")
-local oldDigest = digestOf(olderBytes)
-local oldPath = target .. ".before-pob-sync-" .. oldDigest .. ".bak"
-local configurationCodec = require("dkjson")
-assert(oldDigest ~= recorded.current and oldDigest ~= recorded.backup)
-table.insert(recorded.history,{backup=oldDigest,checkedAt=now-86400})
-write(configFile,assert(configurationCodec.encode(recorded)))
-write(oldPath,olderBytes.."# edited")
-local canReview, reason = pcall(profiles.previewBackup,"default",oldDigest)
-assert(not canReview and reason:find("checksum mismatch",1,true))
-write(oldPath,olderBytes)
-local reviewedBackup = profiles.previewBackup("default",oldDigest)
-assert(reviewedBackup.before == verifiedRaw and reviewedBackup.after == olderBytes)
-profiles.setBackground(false,recorded.revision)
-assert(not pcall(profiles.rollback,"default",reviewedBackup) and read(target)==verifiedRaw)
-reviewedBackup = profiles.previewBackup("default",oldDigest)
-profiles.rollback("default",reviewedBackup)
-local restoredConfig = profiles.configuration()
-assert(restoredConfig.paused and not restoredConfig.review and read(target)==olderBytes)
-assert(profiles.previewBackup("default",restoredConfig.backup).after==verifiedRaw)
--- Simulate a restart after replacing the target but before finishing its journal.
-local interrupted = profiles.configuration()
-interrupted.pending = interrupted.backup
-interrupted.pendingRestore = {undo=interrupted.current}
-local intended = interrupted.pending
-write(configFile,assert(configurationCodec.encode(interrupted)))
-write(target,verifiedRaw)
-local availableBackups = profiles.backups("default")
-local reconciled = profiles.configuration()
-assert(reconciled.paused and reconciled.current==intended and not reconciled.pending and not reconciled.pendingRestore)
-assert(availableBackups[1].digest==oldDigest and read(target)==verifiedRaw)
-print("Reviewed backup restore checks historical bytes and recovers an interrupted restore")
-
+do
+	-- Review an older recorded backup, refuse checksum and revision drift,
+	-- then retain the previously active bytes as an undo point after restore.
+	local recorded = profiles.configuration()
+	local fixedAtReview = read(recorded.baseline)
+	local olderRule = table.concat({"Hide", '    Class == "Stackable Currency"', '    BaseType == "Orb of Transmutation"',
+		"    StackSize <= 3", "", "# PoB economy: end"}, "\n")
+	local olderBytes, changed = fixedAtReview:gsub("# PoB economy: end",olderRule,1)
+	assert(changed == 1)
+	local digestOf = require("sha1")
+	local oldDigest = digestOf(olderBytes)
+	local oldPath = target .. ".before-pob-sync-" .. oldDigest .. ".bak"
+	local configurationCodec = require("dkjson")
+	assert(oldDigest ~= recorded.current and oldDigest ~= recorded.backup)
+	table.insert(recorded.history,{backup=oldDigest,checkedAt=now-86400})
+	write(configFile,assert(configurationCodec.encode(recorded)))
+	write(oldPath,olderBytes.."# edited")
+	local canReview, reason = pcall(profiles.previewBackup,"default",oldDigest)
+	assert(not canReview and reason:find("checksum mismatch",1,true))
+	write(oldPath,olderBytes)
+	local reviewedBackup = profiles.previewBackup("default",oldDigest)
+	assert(reviewedBackup.before == verifiedRaw and reviewedBackup.after == olderBytes)
+	profiles.setBackground(false,recorded.revision)
+	assert(not pcall(profiles.rollback,"default",reviewedBackup) and read(target)==verifiedRaw)
+	reviewedBackup = profiles.previewBackup("default",oldDigest)
+	profiles.rollback("default",reviewedBackup)
+	local restoredConfig = profiles.configuration()
+	assert(restoredConfig.paused and not restoredConfig.review and read(target)==olderBytes)
+	assert(profiles.previewBackup("default",restoredConfig.backup).after==verifiedRaw)
+	-- Simulate a restart after replacing the target but before finishing its journal.
+	local interrupted = profiles.configuration()
+	interrupted.pending = interrupted.backup
+	interrupted.pendingRestore = {undo=interrupted.current}
+	local intended = interrupted.pending
+	write(configFile,assert(configurationCodec.encode(interrupted)))
+	write(target,verifiedRaw)
+	local availableBackups = profiles.backups("default")
+	local reconciled = profiles.configuration()
+	assert(reconciled.paused and reconciled.current==intended and not reconciled.pending and not reconciled.pendingRestore)
+	assert(availableBackups[1].digest==oldDigest and read(target)==verifiedRaw)
+	print("Reviewed backup restore checks historical bytes and recovers an interrupted restore")
+end
 -- A successful-looking but severely incomplete feed must keep the last
 -- verified file and its publication record.
 local coverageTarget = dir.."/coverage-target.filter"
