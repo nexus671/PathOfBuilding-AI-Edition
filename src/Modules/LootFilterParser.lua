@@ -181,7 +181,7 @@ local function socketConsistency(item)
 	local b,nb
 	if item.SocketGroup~=nil then b,nb,err=colours(item.SocketGroup,true);if err then return err end end
 	local count=tonumber(item.Sockets)
-	if count and (count~=count or math.abs(count)==math.huge or count<0 or count>6 or count~=math.floor(count)) then return "Invalid Sockets" end
+	if item.Sockets~=nil and (not count or count~=count or math.abs(count)==math.huge or count<0 or count>6 or count~=math.floor(count)) then return "Invalid Sockets" end
 	if count and na and count~=na then return "Socket count does not match socket colours" end
 	if count and nb and count~=nb then return "Socket group layout does not account for the stated socket count" end
 	if a and b then
@@ -190,9 +190,17 @@ local function socketConsistency(item)
 		end
 	end
 	local linked=tonumber(item.LinkedSockets)
+	if item.LinkedSockets~=nil and (not linked or linked~=linked or math.abs(linked)==math.huge or linked<0 or linked>6 or linked~=math.floor(linked)) then return "Invalid LinkedSockets" end
+	if linked and count and linked>count then return "Linked socket count exceeds total sockets" end
 	if linked and na and linked>na then return "Linked socket count exceeds total socket colours" end
 	if linked==0 and ((count and count>0) or (na and na>0) or (nb and nb>0)) then
 		return "Zero linked sockets conflicts with sockets on the item"
+	end
+	if linked and nb then
+		local largest=0
+		local groups=item.SocketGroup:gsub("([AD])"," %1 "):gsub("%-","")
+		for group in groups:gmatch("%S+") do if group~="0" then largest=math.max(largest,#group) end end
+		if linked~=largest then return "Linked socket count conflicts with socket group layout" end
 	end
 end
 local function influenceState(item)
