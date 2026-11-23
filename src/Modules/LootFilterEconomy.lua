@@ -222,7 +222,8 @@ function M.pickupPolicy(target, preferences)
 	target, preferences = target or 1, preferences or {}
 	assert(type(preferences) == "table", "Invalid pickup policy")
 	assert(finite(target) and target <= 1000, "Invalid chaos per stack target")
-	local policy = {target=target, caps={}}
+	assert(preferences.confirmTightening==nil or type(preferences.confirmTightening)=="boolean","Invalid confirmation setting")
+	local policy = {target=target,caps={},confirmTightening=preferences.confirmTightening==true or nil}
 	for _, key in ipairs({"campaign", "maps"}) do
 		local value = preferences[key]
 		assert(value == nil or finite(value) and value <= 1000, "Invalid " .. key .. " chaos target")
@@ -256,7 +257,7 @@ local function scopeOf(area, tagged)
 	end
 end
 
-local function cutoffFor(quote, old, target, limit)
+local function cutoffFor(quote, old, target, limit, confirmedPrice)
 	if quote == false then return old, "Ambiguous price mapping" end
 	if not quote then return old, "Missing quote" end
 	if not M.liquid(quote) then return old, "Quoted volume below this category floor" end
@@ -267,8 +268,10 @@ local function cutoffFor(quote, old, target, limit)
 	end
 	if limit and limit > old then
 		if not quote.highPrice then return old, "Tightening needs three earlier liquid daily quotes" end
-		local higher = math.min(limit, math.ceil(target * 0.85 / quote.highPrice - 1e-12) - 1)
-		if higher > old then return higher, nil, quote.highPrice end
+		if confirmedPrice==false then return old, "No liquid direct-chaos GGG trade to confirm a higher hide cutoff" end
+		local protectivePrice = math.max(quote.highPrice,confirmedPrice or 0)
+		local higher = math.min(limit, math.ceil(target * 0.85 / protectivePrice - 1e-12) - 1)
+		if higher > old then return higher, nil, protectivePrice end
 		return old, "Recent high price keeps the cutoff"
 	end
 	return old, "Current cutoff is within the price margin"
@@ -300,7 +303,7 @@ end
 
 -- Only rewrite the personal stack section, and only exact, simple Hide rules.
 -- Retain the complete original text for every unsupported rule.
-function M.review(raw, quotes, target, preferences)
+function M.review(raw, quotes, target, preferences, confirmation)
 	local policy = M.pickupPolicy(target, preferences)
 	raw = appearance.strip(raw)
 	local start, stop, tagged = M.sectionBounds(raw)
@@ -353,7 +356,13 @@ function M.review(raw, quotes, target, preferences)
 		local pickupTarget = policy[scope] or policy.target
 		for _, name in ipairs(base.values) do
 			local quote = quotes[quoteKey(name, card and "DivinationCard")]
-			local cutoff, reason, usedPrice = cutoffFor(quote, old, pickupTarget, not card and policy.caps[name])
+			local limit = not card and policy.caps[name]
+			local comparison
+			if policy.confirmTightening and limit and limit>old then
+				local confirmed = confirmation and confirmation[name]
+				comparison = finite(confirmed) and confirmed or false
+			end
+			local cutoff, reason, usedPrice = cutoffFor(quote,old,pickupTarget,limit,comparison)
 			local styles = useHighlights and (stack or cutoff==0) and priceHighlights(policy,quote,cutoff,name,area) or {}
 			if #styles>0 then
 				for _, itemClass in ipairs(class.values) do
@@ -371,7 +380,8 @@ function M.review(raw, quotes, target, preferences)
 				for index, style in ipairs(styles) do icons[index] = {firstStack=style.firstStack,icon=appearance.icon(style.tier)} end
 				changes[#changes + 1] = {name=name, old=old, cutoff=cutoff, price=usedPrice or quote.price, currentPrice=quote.currentPrice,
 					source=quote.source, observations=quote.observations, classes=class.values,
-					volume=quote.volume, maps=scope=="maps", scope=scope,highlights=#icons>0 and icons or nil}
+					volume=quote.volume, maps=scope=="maps", scope=scope,highlights=#icons>0 and icons or nil,
+					confirmedPrice=cutoff>old and comparison or nil}
 			end
 			group[cutoff] = group[cutoff] or {}
 			table.insert(group[cutoff], '"' .. name .. '"')

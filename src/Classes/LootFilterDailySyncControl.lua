@@ -29,7 +29,10 @@ local function editPickupPolicy(width, target, policy, save)
 	end
 	highlightField("highlightChaos",16)
 	highlightField("strongHighlightChaos",width/2+4)
-	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,334,180,28},"Use with next update",function()
+	local confirm = policy.confirmTightening==true
+	controls.confirmTightening = new("ButtonControl"):ButtonControl(ui.anchor,{16,330,width-32,28},"",function() confirm=not confirm end)
+	controls.confirmTightening.label = function() return "Require GGG trade confirmation for new hides: "..(confirm and "On" or "Off") end
+	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,376,180,28},"Use with next update",function()
 		local passed, checked = pcall(function()
 			local caps, nextIndex, why = json.decode(controls.caps.buf)
 			assert(type(caps) == "table" and not controls.caps.buf:sub(nextIndex):find("%S"), why or "Enter a JSON object of item caps")
@@ -38,6 +41,7 @@ local function editPickupPolicy(width, target, policy, save)
 				maps=controls.maps.buf ~= "" and (tonumber(controls.maps.buf) or -1) or nil,
 				highlightChaos=controls.highlightChaos.buf ~= "" and (tonumber(controls.highlightChaos.buf) or -1) or nil,
 				strongHighlightChaos=controls.strongHighlightChaos.buf ~= "" and (tonumber(controls.strongHighlightChaos.buf) or -1) or nil,
+				confirmTightening=confirm,
 				caps=caps,
 			})
 		end)
@@ -45,9 +49,9 @@ local function editPickupPolicy(width, target, policy, save)
 		main:ClosePopup()
 		save(checked)
 	end)
-	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,334,120,28},"Cancel",function() main:ClosePopup() end)
+	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,376,120,28},"Cancel",function() main:ClosePopup() end)
 	ui.style(controls)
-	main:OpenPopup(width,380,"Pickup policy",controls,nil,nil,"cancel")
+	main:OpenPopup(width,422,"Pickup policy",controls,nil,nil,"cancel")
 end
 
 function M.Open(profileId, profileName)
@@ -193,6 +197,9 @@ function M.Open(profileId, profileName)
 				string.format("%.4g chaos used | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
 				string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
 			}
+			if change.confirmedPrice then
+				details[#details+1] = string.format("GGG completed-hour trade average: %.4g chaos",change.confirmedPrice)
+			end
 			for _, highlight in ipairs(change.highlights or {}) do
 				details[#details+1] = string.format("Proposed highlight at %d items: %s",highlight.firstStack,highlight.icon)
 			end

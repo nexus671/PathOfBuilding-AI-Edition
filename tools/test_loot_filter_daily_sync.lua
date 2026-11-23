@@ -923,6 +923,52 @@ local function checkAppearanceRoundTrip()
 end
 checkAppearanceRoundTrip()
 
+local function checkConfirmedTightening()
+	local target=dir.."/confirmed-live.filter"
+	local fixed=dir.."/confirmed-fixed.filter"
+	local raw=table.concat({
+		'Show','    BaseType == "Cord Belt"','# PoB economy: begin','Hide',
+		'    Class == "Stackable Currency"','    BaseType == "Orb of Alteration"',
+		'    StackSize <= 2','# PoB economy: end','Show','',
+	},"\n")
+	write(target,raw);write(fixed,raw)
+	local id=profiles.createProfile("GGG confirmation fixture")
+	profiles.configure(target,fixed,"Covens",{profileId=id,hour=0,targetValue=1,protectionFile=protections,
+		pickupPolicy={caps={["Orb of Alteration"]=7},confirmTightening=true}})
+	local clock, systemTime, chaosVolume=now,os.time,nil
+	os.time=function() return clock end
+	local exchange=require("Modules.LootFilterExchangeCrossCheck")
+	local itemId=assert(exchange.itemId("Orb of Alteration"))
+	local chaosId="Metadata/Items/Currency/CurrencyRerollRare"
+	launch.DownloadPage=function(_,url,callback)
+		if url:find(exchange.endpoint,1,true)==1 then
+			if not chaosVolume then callback(nil,"Temporary outage"); return end
+			callback({body=require("dkjson").encode({next_change_id=exchange.hour(clock)+3600,markets={{
+				league="Covens",market_pair={itemId,chaosId},volume_traded={[itemId]=500,[chaosId]=chaosVolume}
+			}}})})
+			return
+		end
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock).."\r\n\r\n",body=commodityBody})
+	end
+	for _=1,4 do
+		profiles.tick(clock,true,false,id)
+		assert(profiles.status:find("Protected drops verified",1,true) and read(target)==raw)
+		clock=clock+86400
+	end
+	local skipped=profiles.configuration(id).review.skipped[1]
+	assert(skipped.reason:find("GGG trade",1,true))
+	chaosVolume=450
+	profiles.tick(clock,true,false,id)
+	assert(read(target)==raw)
+	clock, chaosVolume = clock+86400, 100
+	profiles.tick(clock,true,false,id)
+	os.time=systemTime
+	local review=profiles.configuration(id).review
+	assert(read(target):find("StackSize <= 4",1,true) and review.changes[1].confirmedPrice==0.2)
+	print("GGG confirmation vetoes a new hide on missing or higher historical trades")
+end
+checkConfirmedTightening()
+
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.
 local controls, manualReview, exported

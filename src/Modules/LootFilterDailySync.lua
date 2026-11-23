@@ -313,7 +313,7 @@ function M.publicDiff(now, id)
 			changes[#changes+1] = {
 				item=item, source=safeText(change.source,40), previousCutoff=change.old,
 				proposedCutoff=change.cutoff, quotedPrice=finiteNumber(change.currentPrice or change.price),
-				priceUsed=finiteNumber(change.price), volume=finiteNumber(change.volume),
+				priceUsed=finiteNumber(change.price), volume=finiteNumber(change.volume), confirmedPrice=finiteNumber(change.confirmedPrice),
 				liquidityUnit=safeText(change.liquidityUnit,40),
 				mapOnly=change.maps==true, scope=safeText(change.scope,20),
 				sample=sample,samples=#samples>0 and samples or nil,samplesTruncated=type(change.samples)=="table" and #change.samples>20 or nil,
@@ -789,7 +789,7 @@ local function rememberFailure(config, startedAt, message, id)
 	end)
 end
 
-local function publish(config, bodies, feeds, day, force, now, id)
+local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 	return lockSettings(function()
 		local current = get(id)
 		assert(current and current.enabled and not current.paused and current.baselineHash == config.baselineHash and current.target == config.target
@@ -802,7 +802,7 @@ local function publish(config, bodies, feeds, day, force, now, id)
 		assert(sha(baseline) == current.baselineHash, "Baseline checksum changed")
 		verifyUnmanagedRules(original, baseline)
 		local candidate, count, changes, skipped, snapshots = validate(
-			baseline, bodies, false, current.targetValue, current.protections, current.priceHistory, day, now, current.pickupPolicy)
+			baseline, bodies, false, current.targetValue, current.protections, current.priceHistory, day, now, current.pickupPolicy, confirmation)
 		current.priceHistory = snapshots
 		local records = backupRecords(current)
 		keepExpected(candidate)
@@ -879,19 +879,39 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			finish(false,problem)
 		end,{timeout=15,maxBytes=65536,header="Accept: application/json"})
 	end
-	local function fetch(index, attempt)
-		local category = categories[index]
-		if not category then
-			local finishedAt = os.time()
-			local feeds = {}
-			for index, response in ipairs(responses) do
-				local age = response.initialAge + math.max(0, finishedAt - response.checkedAt)
-				if age > 3600 then finish(false, categories[index] .. ": snapshot expired before the refresh finished."); return end
-				feeds[index] = {category=categories[index], age=age, revalidated=response.revalidated}
-			end
-			finish(pcall(complete, bodies, feeds))
+	local function finishWithPrices(confirmation)
+		local finishedAt = os.time()
+		local feeds = {}
+		for index, response in ipairs(responses) do
+			local age = response.initialAge + math.max(0, finishedAt - response.checkedAt)
+			if age > 3600 then finish(false,categories[index]..": snapshot expired before the refresh finished."); return end
+			feeds[index] = {category=categories[index],age=age,revalidated=response.revalidated}
+		end
+		finish(pcall(complete,bodies,feeds,confirmation))
+	end
+	local function confirmTightening()
+		local policy = config.pickupPolicy
+		if not policy or not policy.confirmTightening or not next(policy.caps or {}) or os.time()+15>=M.deadline then
+			finishWithPrices()
 			return
 		end
+		local exchange = require("Modules.LootFilterExchangeCrossCheck")
+		M.status = "Checking completed GGG trades for new hide cutoffs."
+		exchange.fetch(exchange.hour(os.time()),function(rows)
+			if M.busy~=job then return end
+			local prices = {}
+			if rows then
+				for name in pairs(policy.caps) do
+					local trade = exchange.compare(rows,config.league,name)
+					if trade then prices[name]=trade.price end
+				end
+			end
+			finishWithPrices(prices)
+		end)
+	end
+	local function fetch(index, attempt)
+		local category = categories[index]
+		if not category then confirmTightening(); return end
 		M.status = "Fetching " .. config.league .. " prices: " .. category
 		local url = market.endpoint .. market.feedPath(config.league, category)
 		local cached, time = cache[url], os.time()
@@ -1009,8 +1029,8 @@ function M.tick(now, force, scheduled, id)
 		onFailure(M.status)
 		return
 	end
-	fetchPrices(config, baseline, now, function(bodies, feeds)
-		return publish(config, bodies, feeds, day, force, now, id)
+	fetchPrices(config, baseline, now, function(bodies, feeds, confirmation)
+		return publish(config,bodies,feeds,day,force,now,id,confirmation)
 	end, onFailure, id)
 end
 
@@ -1056,8 +1076,8 @@ function M.preview(target, baselineFile, league, options, callback, onFailure)
 	local found, saved = pcall(get,id)
 	local history = found and saved and saved.league == config.league and saved.baselineHash == config.baselineHash and saved.priceHistory
 	local day = history and os.date("%Y-%m-%d", now) or nil
-	fetchPrices(config, baseline, now, function(bodies)
-		local candidate = validate(baseline, bodies, false, config.targetValue, config.protections, history, day, now, config.pickupPolicy)
+	fetchPrices(config, baseline, now, function(bodies, _, confirmation)
+		local candidate = validate(baseline,bodies,false,config.targetValue,config.protections,history,day,now,config.pickupPolicy,confirmation)
 		callback(original, candidate)
 		return "Preview complete. Review the proposed filter before enabling sync."
 	end, onFailure, id)

@@ -1,7 +1,7 @@
 local market = require("Modules.LootFilterEconomy")
 local parser = require("Modules.LootFilterParser")
 local protected = require("Modules.LootFilterProtectedDrops")
-return function(raw, bodies, baselineOnly, target, protections, history, day, now, policy)
+return function(raw, bodies, baselineOnly, target, protections, history, day, now, policy, confirmation)
 	assert(market.supports(raw), "Baseline has no economy section")
 	local quotes = {}
 	local categories = market.feedCategories(raw)
@@ -10,7 +10,7 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 	assert(baselineOnly or quotes["Orb of Alteration"] and quotes["Orb of Alteration"].volume >= 100, "Currency feed lacks a liquid reference quote")
 	local snapshots
 	if day then quotes, snapshots = market.remember(quotes, history, day, now) end
-	local candidate, changes, skipped = market.review(raw, quotes, target, policy)
+	local candidate, changes, skipped = market.review(raw, quotes, target, policy, confirmation)
 	assert(#candidate <= 2*1024*1024, "Generated filter exceeds the sync file size limit")
 	local parsed = parser.parse(candidate)
 	for _, diagnostic in ipairs(parsed.diagnostics) do

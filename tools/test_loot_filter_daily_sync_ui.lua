@@ -31,6 +31,7 @@ sync.configure = function(target, baseline, _, options)
 	assert(options.pickupPolicy.campaign == 0.25 and options.pickupPolicy.maps == 2)
 	assert(options.pickupPolicy.caps["Orb of Alteration"] == 7)
 	assert(options.pickupPolicy.highlightChaos == 10 and options.pickupPolicy.strongHighlightChaos == 50)
+	assert(options.pickupPolicy.confirmTightening)
 	configured = true
 end
 
@@ -77,6 +78,7 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	harness:text("caps", '{"Orb of Alteration":7}')
 	harness:text("highlightChaos","10")
 	harness:text("strongHighlightChaos","50")
+	harness:click("confirmTightening")
 	harness:click("apply")
 	harness:click("enable")
 	assert(configured and main.popups[1].title == "Daily filter sync")
