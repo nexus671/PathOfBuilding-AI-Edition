@@ -97,15 +97,12 @@ function M.Open(profileId, profileName)
 		launch:DownloadPage(market.endpoint.."leagues",function(response, err)
 			loadingLeagues = false
 			if main.popups[1] ~= owner then return end
-			local result = not err and response and type(response.body) == "string" and #response.body <= 65536 and json.decode(response.body)
+			local valid, leagues = pcall(market.tradeLeagues, not err and response and response.body)
+			if not valid then main:OpenMessagePopup("Choose league", "No PC trade leagues returned. Try again or enter the ID."); return end
 			local entries = {}
-			for _, league in ipairs(type(result) == "table" and result or {}) do
-				if type(league) == "table" and type(league.id) == "string" and type(league.name) == "string"
-					and #league.id <= 80 and league.id:match("^[%w%s_-]+$") and #league.name <= 160 then
-					entries[#entries+1] = {id=league.id,label=league.name,details={league.id,"PC trade economy"}}
-				end
+			for _, league in ipairs(leagues) do
+				entries[#entries+1] = {id=league.id,label=league.name,details={league.id,"PC trade economy"}}
 			end
-			if #entries == 0 then main:OpenMessagePopup("Choose league", "No PC trade leagues returned. Try again or enter the ID."); return end
 			require("Classes.PlanningBrowserControl").Open("Choose PC trade league",entries,{
 				action="Use league",
 				choose=function(entry) c.league:SetText(entry.id); main:ClosePopup() end,

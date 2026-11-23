@@ -191,6 +191,28 @@ assert(sync.status:find("snapshot is stale",1,true) and read(target)==successful
 sync.rollback()
 sync.disable()
 os.time=systemTime
+
+-- An expired season yields an empty successful price response. Confirm
+-- against the fresh provider list and retain the user's chosen profile.
+local obsolete = "Ended Fixture"
+local leagueChecks = 0
+local markets = '[{"id":"Covens","name":"Covens"},{"id":"Standard","name":"Standard"}]'
+launch.DownloadPage = function(_,url,callback)
+	if url:match("/leagues$") then
+		leagueChecks = leagueChecks+1
+		callback({header=header,body=markets})
+	else
+		callback({header=header,body='{"core":{"primary":"chaos"},"items":[],"lines":[]}'})
+	end
+end
+sync.configure(target,baseline,obsolete,options)
+sync.tick(now,true)
+assert(leagueChecks==1 and sync.configuration().league==obsolete and read(target)==original)
+assert(sync.status:find("no longer listed",1,true) and sync.configuration().lastFailure)
+sync.configure(target,baseline,"Covens",options)
+sync.tick(now,true)
+assert(leagueChecks==2 and sync.status:find("No priced exchange items",1,true) and read(target)==original)
+sync.disable()
 local browser = require("Modules.LootFilterMarketBrowse")
 local gear = browser.rows([[{"lines":[{"name":"Example gear","baseType":"Cord Belt","variant":"A","chaosValue":20,"listingCount":17},{"name":"Example gear","baseType":"Cord Belt","variant":"B","chaosValue":32,"listingCount":1}]}]], {id="UniqueAccessory"})
 assert(#gear==2 and gear[1].variant=="B" and gear[2].listings==17)
