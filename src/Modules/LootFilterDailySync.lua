@@ -135,6 +135,49 @@ local function save(config, id)
 	put(settingsPath(id), assert(json.encode(config)))
 end
 
+local function reviewPath(id)
+	return settingsPath(id):gsub("%.json$", "-Reviews.json")
+end
+
+local function readReviews(id)
+	local raw = read(reviewPath(id))
+	local archive = raw and json.decode(raw)
+	return type(archive)=="table" and archive or {}
+end
+
+local function archiveReview(id, digest, payload)
+	local archive = {{digest=digest,payload=payload}}
+	local ok, prior = pcall(readReviews,id)
+	for _, entry in ipairs(ok and prior or {}) do
+		if #archive==7 then break end
+		if type(entry)=="table" and type(entry.payload)=="string" and type(entry.digest)=="string" and entry.digest~=digest then
+			archive[#archive+1] = entry
+		end
+	end
+	local raw = assert(json.encode(archive))
+	while #archive>0 and #raw>volumeLimit do
+		table.remove(archive)
+		raw = assert(json.encode(archive))
+	end
+	put(reviewPath(id),raw)
+end
+
+function M.archivedReviews(id)
+	local config = get(id)
+	local found = {}
+	local ok, archive = pcall(readReviews,id)
+	if not config or not ok then return found end
+	local keys = {}
+	for _, run in ipairs(config.history or {}) do if run.reviewKey then keys[run.reviewKey] = true end end
+	for _, value in ipairs(archive) do
+		if type(value)=="table" and type(value.payload)=="string" and keys[value.digest] and sha(value.payload)==value.digest then
+			local detail = json.decode(value.payload)
+			if type(detail)=="table" then found[value.digest] = detail end
+		end
+	end
+	return found
+end
+
 local function registryPath()
 	return main.userPath .. "LootFilterSyncProfiles.json"
 end
@@ -437,6 +480,77 @@ local function verifyUnmanagedRules(target, baseline)
 		and target:sub(1,targetStart-1) == baseline:sub(1,baseStart-1)
 		and target:sub(targetEnd) == baseline:sub(baseEnd),
 		"Baseline and target have different rules outside the economy section. Review edits and choose an updated baseline.")
+end
+
+local function personalRulePrefix(raw, stop)
+	local rules = {}
+	for line in raw:sub(1,stop-1):gmatch("[^\r\n]+") do
+		local text = line:match("^%s*(.-)%s*$")
+		if text ~= "" and (text:sub(1,1) ~= "#" or text:find("# CUSTOM:",1,true)==1) then
+			rules[#rules+1] = line
+		end
+	end
+	return table.concat(rules,"\n")
+end
+
+local function externalAdoption(id)
+	local config = assert(get(id), "No saved sync setup")
+	assert(not config.pending, "Finish recovering the interrupted sync before adopting edits")
+	local before, after = M.externalDiff(id)
+	local baseline = assert(read(config.baseline), "Baseline filter is missing")
+	assert(sha(baseline) == config.baselineHash, "Baseline checksum changed")
+	verifyUnmanagedRules(before, baseline)
+
+	local strip = require("Modules.LootFilterPriceAppearance").strip
+	local expected, edited = strip(before), strip(after)
+	local oldStart, oldEnd = market.sectionBounds(expected)
+	local editStart, editEnd = market.sectionBounds(edited)
+	assert(editStart and editEnd and edited:sub(editStart,editEnd-1) == expected:sub(oldStart,oldEnd-1),
+		"The managed economy section changed. Use filter setup to review and select a new fixed baseline.")
+	assert(edited ~= expected, "There are no edits outside generated price highlights to adopt")
+	local baseStart, baseEnd = market.sectionBounds(baseline)
+	if not config.protections and baseline:find("# CUSTOM: Hide Wisdom and Portal Scrolls",1,true) then
+		assert(personalRulePrefix(baseline,baseStart)==personalRulePrefix(edited,editStart),
+			"An edit changed the custom protection rules or their precedence. Review the complete protection policy in filter setup.")
+	end
+	local candidate = edited:sub(1,editStart-1) .. baseline:sub(baseStart,baseEnd-1) .. edited:sub(editEnd)
+	verifyUnmanagedRules(after,candidate)
+	for _, raw in ipairs({after,candidate}) do
+		validate(raw,{},true,config.targetValue,config.protections,nil,nil,nil,config.pickupPolicy)
+	end
+	return {before=before,after=after,baseline=candidate,revision=config.revision}, config
+end
+
+function M.previewExternalAdoption(id)
+	assert(not M.busy, "Wait for the current sync to finish")
+	return lockSettings(function()
+		local reviewed = externalAdoption(id)
+		return reviewed
+	end)
+end
+
+function M.adoptExternalEdits(id, reviewed)
+	assert(not M.busy, "Wait for the current sync to finish")
+	local updated = lockSettings(function()
+		local latest, config = externalAdoption(id)
+		assert(latest.revision == reviewed.revision and latest.before == reviewed.before
+			and latest.after == reviewed.after and latest.baseline == reviewed.baseline,
+			"Filter or sync settings changed after the review")
+		local key = sha(latest.baseline)
+		local path = main.userPath.."LootFilterBaseline-"..key..".filter"
+		if not read(path) then put(path,latest.baseline) end
+		assert(read(path) == latest.baseline, "Stored baseline does not match")
+		keepExpected(latest.after)
+		assert(read(config.target) == latest.after, "Filter changed after the review")
+		config.baseline, config.baselineHash, config.current = path, key, sha(latest.after)
+		config.day, config.review, config.lastSuccess, config.lastFailure = nil, nil, nil, nil
+		config.revision = newRevision()
+		config.summary = "Adopted the reviewed edits into the fixed baseline. The next refresh will use fresh prices."
+		save(config,id)
+		return config
+	end)
+	polls[id or "default"], nextSweep = nil, 0
+	M.status = updated.summary
 end
 
 local function prepare(target, baselineFile, league, options)
@@ -797,7 +911,7 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		if not force and current.day == day then return "Already synced today." end
 		local original = assert(read(current.target), "Target filter is missing")
 		local before = sha(original)
-		assert(before == current.current or before == current.pending, "Target was edited outside PoB. Review and re-enable sync to adopt your edits.")
+		assert(before == current.current or before == current.pending, "Target was edited outside PoB. Review and adopt the edits from External edits.")
 		local baseline = assert(read(current.baseline), "Baseline filter is missing")
 		assert(sha(baseline) == current.baselineHash, "Baseline checksum changed")
 		verifyUnmanagedRules(original, baseline)
@@ -824,13 +938,16 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		current.lastSuccess, current.lastFailure, current.providerRetryAfter = now, nil, nil
 		local ages = {}
 		for index, feed in ipairs(feeds) do ages[index] = feed.age end
-		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages, feeds=feeds}
+		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages, feeds=feeds, league=current.league}
+		local evidence = assert(json.encode(current.review))
+		local reviewKey = sha(evidence)
 		current.history = current.history or {}
-		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
+		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages)), reviewKey=reviewKey})
 		local limit = current.backupLimit
 		local backups = type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) and backupChoices(current)
 		if #current.history > 30 then table.remove(current.history) end
 		save(current,id)
+		pcall(archiveReview,id,reviewKey,evidence)
 		if backups then
 			pruneBackups(current,backups)
 			pcall(save,current,id)
@@ -1018,7 +1135,7 @@ function M.tick(now, force, scheduled, id)
 	local ready, baseline = pcall(function()
 		local original = assert(read(filterPath(config.target)), "Target filter is missing")
 		local current = sha(original)
-		assert(current == config.current or current == config.pending, "Target was edited outside PoB. Compare External edits before re-enabling.")
+		assert(current == config.current or current == config.pending, "Target was edited outside PoB. Review and adopt the edits from External edits.")
 		local raw = assert(read(config.baseline), "Baseline filter is missing")
 		assert(sha(raw) == config.baselineHash, "Baseline checksum changed")
 		verifyUnmanagedRules(original, raw)

@@ -1020,3 +1020,112 @@ manualReview.choose()
 assert(exported:find("StackSize <= 6",1,true))
 assert(exported:find('BaseType == "Cheap Card" "Thin Card"',1,true))
 print("Manual review applies the native price freshness and class-specific liquidity checks")
+
+local function checkExternalAdoption()
+	local adoptionTarget = dir .. "/external-adoption.filter"
+	local fixture = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local id = fixture.createProfile("External edits fixture")
+	local settings = {profileId=id,hour=9,targetValue=1,protectionFile=protections}
+	local adoptionBaseline = dir .. "/external-baseline.filter"
+	write(adoptionBaseline,original)
+	write(adoptionTarget,proposed)
+	fixture.configure(adoptionTarget,adoptionBaseline,"Covens",settings)
+	local prior = fixture.configuration(id)
+	local edited = "# Personal changes\n" .. proposed .. "# Personal footer\n"
+	write(adoptionTarget,edited)
+	local review = fixture.previewExternalAdoption(id)
+	assert(review.before==proposed and review.after==edited)
+	assert(review.baseline=="# Personal changes\n" .. original .. "# Personal footer\n")
+	assert(read(adoptionTarget)==edited and fixture.configuration(id).baselineHash==prior.baselineHash)
+	write(adoptionTarget,edited .. "# Changed after review\n")
+	local applied, why = pcall(fixture.adoptExternalEdits,id,review)
+	assert(not applied and why:find("changed after the review",1,true))
+	write(adoptionTarget,edited:gsub("StackSize <= 4","StackSize <= 40"))
+	applied, why = pcall(fixture.previewExternalAdoption,id)
+	assert(not applied and why:find("managed economy section changed",1,true))
+	write(adoptionTarget,edited:gsub("Show\n    BaseType","Hide\n    BaseType",1))
+	applied, why = pcall(fixture.previewExternalAdoption,id)
+	assert(not applied and why:find("Protected drop failed",1,true))
+	write(adoptionTarget,edited)
+	fixture.adoptExternalEdits(id,review)
+	local accepted = fixture.configuration(id)
+	assert(accepted.revision~=prior.revision and accepted.baselineHash~=prior.baselineHash
+		and accepted.target==prior.target and accepted.hour==prior.hour and accepted.league==prior.league)
+	assert(read(prior.baseline)==original and read(accepted.baseline)==review.baseline and read(adoptionTarget)==edited)
+	assert(not pcall(fixture.verifiedOutput,id))
+	launch.noSSL = false
+	launch.DownloadPage = function(_, url, callback)
+		local body = url:match("/leagues$") and '[{"id":"Covens"}]' or commodityBody
+		callback({header=header,body=body})
+	end
+	fixture.tick(now,true,false,id)
+	assert(fixture.status:find("Protected drops verified",1,true),fixture.status)
+	assert(fixture.verifiedOutput(id)==edited)
+	print("External edit adoption preserved the fixed cutoff, rejected stale review and protected drops, and kept the live file intact")
+
+	local reviewNow = now
+	local realClock = os.time
+	os.time = function() return reviewNow end
+	launch.DownloadPage = function(_, url, callback)
+		local body = url:match("/leagues$") and '[{"id":"Covens"}]' or commodityBody
+		local date = os.date("!%a, %d %b %Y %H:%M:%S GMT",reviewNow)
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\n\r\n",body=body})
+	end
+	for index=1,7 do
+		reviewNow = now+index*86400
+		fixture.tick(reviewNow,true,false,id)
+		assert(fixture.status:find("Protected drops verified",1,true),fixture.status)
+	end
+	os.time = realClock
+	local restart = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local runs, archive = restart.configuration(id).history, restart.archivedReviews(id)
+	assert(#runs==8 and not archive[runs[8].reviewKey])
+	for index=1,7 do
+		local detail = assert(archive[runs[index].reviewKey])
+		assert(detail.league=="Covens" and detail.checkedAt==runs[index].checkedAt and #detail.feeds==8)
+	end
+	local newest = archive[runs[1].reviewKey]
+	assert(newest.changes[1].price and newest.changes[1].sample and not restart.archivedReviews()[runs[1].reviewKey])
+	print("Seven exact archived reviews persist after restarting and remain isolated to their sync profile")
+end
+checkExternalAdoption()
+
+do
+	local fixture = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local id = fixture.createProfile("Custom protection order fixture")
+	local live, fixed = dir.."/custom-order.filter", dir.."/custom-order-fixed.filter"
+	local raw = [[# CUSTOM: Always show Cord Belts
+Show
+    BaseType == "Cord Belt" "Agate Amulet" "Amethyst Ring"
+    MinimapIcon 0 Purple Star
+Show
+    BaseType == "Royal Plate"
+    MinimapIcon 0 Red Diamond
+Show
+    BaseType == "Iron Ring"
+    MinimapIcon 0 Yellow Diamond
+# CUSTOM: Hide Wisdom and Portal Scrolls
+Hide
+    BaseType == "Scroll of Wisdom" "Portal Scroll"
+# PoB economy: begin
+Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    StackSize <= 6
+# PoB economy: end
+Show
+]]
+	write(live,raw);write(fixed,raw)
+	fixture.configure(live,fixed,"Covens",{profileId=id})
+	for _, edited in ipairs({
+		raw:gsub(' "Amethyst Ring"',''),
+		raw:gsub(' "Portal Scroll"',''),
+		'Hide\n    BaseType == "Amethyst Ring"\n' .. raw,
+	}) do
+		write(live,edited)
+		local ok, why = pcall(fixture.previewExternalAdoption,id)
+		assert(not ok and why:find("custom protection rules or their precedence",1,true),why)
+	end
+	write(live,"# New personal comment\n"..raw)
+	assert(fixture.previewExternalAdoption(id))
+end

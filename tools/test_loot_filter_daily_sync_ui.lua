@@ -101,8 +101,55 @@ require('Classes.LootFilterDailySyncControl').Open();reviewUI:click('review');re
 local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or '') end;local shown=table.concat(details,' ')
 assert(shown:find('Before: needs DropLevel',1,true) and shown:find('After: needs ItemLevel',1,true) and not shown:find('C:/private',1,true),'Missing-property reasons were not shown safely')
 if output then reviewUI:frame():write(output..'/'..reviewWidth..'-filter-impact-reasons.json') end
-reviewUI:text('search','Orb of Chance');local generic={};for _,row in ipairs(main.popups[1].controls.details.list) do generic[#generic+1]=StripEscapes(row[1] or '') end;assert(table.concat(generic,' '):find('preview cannot resolve a filter rule or included file',1,true),'Other uncertainty was not explained')
+reviewUI:text("search","Orb of Chance")
+local generic = {}
+for _, row in ipairs(main.popups[1].controls.details.list) do
+	generic[#generic+1] = StripEscapes(row[1] or "")
+end
+local reason = table.concat(generic," "):gsub("%s+"," ")
+assert(reason:find("preview cannot resolve a filter rule or included file",1,true),"Other uncertainty was not explained")
 reviewUI:click('close');main.popups={};reviewFixture=nil
+
+do
+	local review = {before='Show\n    BaseType == "Cord Belt"\n',after='Show\n    BaseType == "Cord Belt"\n# personal edit\n'}
+	local adopted
+	reviewFixture = {target=selected,enabled=true}
+	sync.externalDiff = function() return review.before,review.after end
+	sync.previewExternalAdoption = function() return review end
+	sync.adoptExternalEdits = function(id, seen)
+		assert(id=="default" and seen==review)
+		adopted = true
+	end
+	require("Classes.LootFilterDailySyncControl").Open()
+	reviewUI:click("externalEdits")
+	assert(main.popups[1].title=="Filter file changes")
+	reviewUI:click("reviewAction")
+	assert(main.popups[1].title=="Adopt filter edits" and not adopted)
+	reviewUI:click("confirm")
+	assert(main.popups[1].title=="Daily filter sync" and adopted)
+	main.popups={};reviewFixture=nil
+end
+
+do
+	local old = {checkedAt=1795449900, adjustments=1,oldest=300,reviewKey="archive-fixture"}
+	local mock = sync.archivedReviews
+	reviewFixture = {target=selected,enabled=true,history={old}}
+	sync.archivedReviews = function()
+		return {[old.reviewKey]={checkedAt=old.checkedAt,league="Covens",changes={
+			{name="Orb of Alteration",old=6,cutoff=4,price=.21,volume=1000},
+		}}}
+	end
+	require("Classes.LootFilterDailySyncControl").Open()
+	reviewUI:click("review")
+	reviewUI:text("search",os.date("%Y-%m-%d %H:%M",old.checkedAt))
+	reviewUI:click("choose")
+	assert(main.popups[1].title=="Archived filter sync review")
+	reviewUI:text("search","Orb of Alteration")
+	local lines = main.popups[1].controls.details.list
+	assert(lines[2][1]:find("0.21 chaos used",1,true))
+	main.popups={};reviewFixture=nil
+	sync.archivedReviews = mock
+end
 
 -- Use the real GGG parser and a deterministic network response through the native review.
 newBuild()
