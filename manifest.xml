@@ -1809,7 +1809,7 @@
 	<File name="Classes/PassiveTreeView.lua" part="program" sha1="b330ee507dee78257fbdcab224df34803646eedc" />
 	<File name="Classes/PathControl.lua" part="program" sha1="868c38fd9095317b6721f6932cf06590bd616f13" />
 	<File name="Classes/PlanningBrowserControl.lua" part="program" sha1="7854a5b72ad573580b35a5f96c3d64fa73fe412c" />
-	<File name="Classes/PlanningToolsControl.lua" part="program" sha1="c6a81c295053e18ce9944164a92c24a60b7ad512" />
+	<File name="Classes/PlanningToolsControl.lua" part="program" sha1="9e9aba1b78c3632eb7ddfd4b516f78f507b44c61" />
 	<File name="Classes/PoBArchivesProvider.lua" part="program" sha1="acf68b7718782ce267df01614b497af246389ca5" />
 	<File name="Classes/PoEAPI.lua" part="program" sha1="197f3091ba9b511b923ca95e5952933a3ffd0f21" />
 	<File name="Classes/PopupDialog.lua" part="program" sha1="1e2334c463bfbb9bac16f2abe4409cf3cece9947" />
@@ -2268,7 +2268,7 @@
 	<File name="Modules/ModParser.lua" part="program" sha1="1e7fd0355a9205a98a6ec49e09960b186484a619" />
 	<File name="Modules/ModTools.lua" part="program" sha1="c987491da4021b5bdc4744b5eec84fb5995284cf" />
 	<File name="Modules/PantheonTools.lua" part="program" sha1="ebe91a7d8f8444a6061acf4758da0e775cc8c314" />
-	<File name="Modules/PlanningBundle.lua" part="program" sha1="0d1da8fba4e187b24a9ced8202ceb0842b55a4dc" />
+	<File name="Modules/PlanningBundle.lua" part="program" sha1="9744ed9e0c25c4d96f6e9518b1e5d4221f17118c" />
 	<File name="Modules/PlanningData.lua" part="program" sha1="2cd509d752cb9433d1cd47017ea5395d33aa5d84" />
 	<File name="Modules/PlanningHistory.lua" part="program" sha1="46165d8b5a518970153e8cc0345054ef30db62fe" />
 	<File name="Modules/PlanningPerformance.lua" part="program" sha1="0be53fc34487b96cdf7a81896764731ab5bde94a" />

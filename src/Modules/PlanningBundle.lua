@@ -52,8 +52,13 @@ function M.import(raw)
 	assert(type(bundle.buildName)=="string" and #bundle.buildName<=120 and bundle.buildName:match("%S") and not bundle.buildName:find("[%c]"),"Invalid bundle build name")
 	bundle.contents=M.contents(bundle.xml);return bundle
 end
+local sectionsForCount={crafts="CraftingProjects",checkpoints="CraftingProjects",inventory="CraftingProjects",atlas="AtlasPlans",stages="BuildJourney",wishlist="BuildJourney",milestones="BuildJourney",filters="LootFilters"}
+function M.count(contents,key)
+	for _,section in ipairs(contents.unreadableSections or {}) do if section==sectionsForCount[key] then return "Unavailable" end end
+	return tostring(contents[key] or 0)
+end
 function M.lines(contents)
-	local lines={string.format("%d crafting guides | %d working checkpoints | %d saved items | %d Atlas plans",contents.crafts,contents.checkpoints,contents.inventory or 0,contents.atlas),string.format("%d milestones | %d gear goals | %d leveling stages",contents.milestones,contents.wishlist,contents.stages),string.format("%d loot-filter profiles | native character, items, skills, passives, configuration and notes.",contents.filters or 0),"Only kept plans and checkpoints travel. Keep working drafts before exporting.","Prices, crafting odds and external references retain their recorded dates and assumptions. They are not refreshed on import."}
+	local lines={string.format("%s crafting guides | %s working checkpoints | %s saved items | %s Atlas plans",M.count(contents,"crafts"),M.count(contents,"checkpoints"),M.count(contents,"inventory"),M.count(contents,"atlas")),string.format("%s milestones | %s gear goals | %s leveling stages",M.count(contents,"milestones"),M.count(contents,"wishlist"),M.count(contents,"stages")),string.format("%s loot-filter profiles | native character, items, skills, passives, configuration and notes.",M.count(contents,"filters")),"Only kept plans and checkpoints travel. Keep working drafts before exporting.","Prices, crafting odds and external references retain their recorded dates and assumptions. They are not refreshed on import."}
 	if contents.unreadableSections and #contents.unreadableSections>0 then lines[#lines+1]="Some planning data could not be summarized; its original data is included unchanged: "..table.concat(contents.unreadableSections,", ") end
 	return lines
 end

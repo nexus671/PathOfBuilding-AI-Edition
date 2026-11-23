@@ -25,7 +25,7 @@ function M.Bundle(build)
 	c.text.shown=false
 	local cardWidth=math.floor((w-64)/3)
 	for i,entry in ipairs({{"crafts","CRAFTING GUIDES"},{"checkpoints","WORKING CHECKPOINTS"},{"atlas","ATLAS PLANS"}}) do
-		local key,label=unpack(entry);ui.card(c,key,16+(i-1)*(cardWidth+16),124,cardWidth,label,function() return contents and tostring(contents[key]) or "-" end,"Kept planning data")
+		local key,label=unpack(entry);ui.card(c,key,16+(i-1)*(cardWidth+16),124,cardWidth,label,function() return contents and bundles.count(contents,key) or "-" end,"Kept planning data")
 	end
 	c.details=new("TextListControl"):TextListControl(ui.anchor,{16,252,w-32,h-330},nil,ui.rows({"Keep working crafts and Atlas drafts before exporting. Importing goes through native proposal review; it does not overwrite a saved build."},w-56))
 	button(c,"export",16,h-48,172,"Copy complete bundle",action(function() local raw,exported=bundles.export(build);Copy(raw);imported=nil;reviewedText=nil;contents=exported;local lines=bundles.lines(contents);table.insert(lines,1,"Complete bundle copied to clipboard.");c.details.list=ui.rows(lines,w-56) end))
