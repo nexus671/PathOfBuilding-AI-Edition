@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1232][2026/11/23]
+
+* Improve Blessed Orb estimates for supported unique base implicits.
+
 VERSION[2.68.1-ai.preview1231][2026/11/23]
 
 * Choose a current PC trade league for new daily sync profiles and keep setup open after selection.

@@ -33,7 +33,10 @@ function M.options(raw)
 end
 function M.roll(raw,seed)
 	local p,reason=plan(raw);assert(p,reason);assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
-	local random=require("Modules.CalcTime").random(seed);local value=p.low+math.floor(random()*(p.high-p.low+1))
+	local random=require("Modules.CalcTime").random(seed)
+	-- The current value is excluded; each remaining integer is equally likely in this model.
+	local value=p.low+math.floor(random()*(p.high-p.low))
+	if value>=p.current then value=value+1 end
 	local display=itemLib.applyRange(p.template,(value-p.low)/(p.high-p.low));local replacements=0
 	local output=raw:gsub("[^\r\n]+",function(line) if line==p.source then replacements=replacements+1;return display..p.suffix end;return line end)
 	assert(replacements==1,"The implicit line could not be replaced safely")
