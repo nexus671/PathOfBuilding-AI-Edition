@@ -48,7 +48,7 @@ test('coalesces concurrent clients, canonicalizes query order and preserves orig
   let coalesced;
   try {
     for (let attempt=0; attempt<30; attempt++) {
-      coalesced = (await (await cache.request('/healthz')).json()).coalesced;
+      coalesced = (await (await cache.request('/health')).json()).coalesced;
       if (coalesced>=5) break;
     }
   } finally {
@@ -70,7 +70,7 @@ test('coalesces concurrent clients, canonicalizes query order and preserves orig
   assert.equal(unchanged.status,304);
   assert.equal(unchanged.headers.get('age'),'331');
   assert.deepEqual(cache.requests.slice(2).map(request=>request.tag),['"shared"','"shared"']);
-  const metrics = await (await cache.request('/healthz')).json();
+  const metrics = await (await cache.request('/health')).json();
   assert.ok(metrics.coalesced>=5);
   assert.equal(metrics.requests,4);
   assert.equal(metrics.pending,0);
@@ -118,7 +118,7 @@ test('rejects unknown destinations, malformed, stale and oversized feeds',async 
   assert.equal((await cache.request(currencyPath)).status,502);
   mode = 'oversized';
   assert.equal((await cache.request(currencyPath)).status,502);
-  assert.equal((await (await cache.request('/healthz')).json()).cached,1);
+  assert.equal((await (await cache.request('/health')).json()).cached,1);
 });
 
 test('honors no-cache validation and never stores no-store responses',async t=>{

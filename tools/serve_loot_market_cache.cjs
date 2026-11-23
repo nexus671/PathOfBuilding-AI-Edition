@@ -187,7 +187,7 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
   return createServer({ requestTimeout: 20000, headersTimeout: 10000 }, async (request,res) => {
     try {
       if (request.method !== 'GET') throw new MarketError(405,'Use GET for market requests');
-      if (request.url === '/healthz') {
+      if (request.url === '/health') {
         res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});
         res.end(JSON.stringify({ status:'ready', cached:cache.size, pending:running.size, ...stats }));
         return;
