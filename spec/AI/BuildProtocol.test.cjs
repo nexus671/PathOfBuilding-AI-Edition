@@ -46,6 +46,12 @@ test('reads one crafting snapshot without returning its siblings', t => {
   assert.throws(()=>f.call('get_crafting_inventory_item',{projectId:'missing',itemId:'item-1'}),/project not found/i);assert.throws(()=>f.call('get_crafting_inventory_item',{projectId:'guide',itemId:'missing'}),/item not found/i);
 });
 
+test('reads one snapshot from a large crafting inventory', t => {
+  const f=fixture(t),inventory=Array.from({length:120},(_,i)=>({id:`item-${i}`,title:`Item ${i}`,state:{note:'x'.repeat(8000)}}));
+  f.captured.context.craftingProjects=[{id:'guide',title:'Guide',slot:'Helmet',inventory}];f.write('context',f.captured);
+  const result=f.call('get_crafting_inventory_item',{projectId:'guide',itemId:'item-119',expectedRevision:f.state.revision});assert.deepEqual(result.item,inventory[119]);assert.ok(JSON.stringify(result).length<10000);
+});
+
 test('queues same-base vendor review with bounded copied items', t => {
   const f=fixture(t), raw='Rarity: Normal\nJade Amulet\n--------\nItem Level: 60';
   f.call('review_same_base_vendor_items',{baseRevision:f.state.revision,items:[raw]});
