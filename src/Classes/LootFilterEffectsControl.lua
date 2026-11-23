@@ -49,13 +49,37 @@ function M.Open(original,sample,onKeep)
 	label("beamDurationLabel",392,420,"Beam duration");drop("beamDuration",392,444,{"Permanent","Temporary"});c.beamDuration:SelByValue(original.PlayEffect and original.PlayEffect[2]=="Temp" and "Temporary" or "Permanent");c.beamDuration.enabled=function() return c.beam.selIndex>2 end
 	local function customActive() return c.soundKind.selIndex>=5 or c.soundKind.selIndex==1 and isCustom and current[1]~="None" end
 	label("previewFileLabel",16,440,"Custom file to preview");c.previewFileLabel.shown=customActive
-	drop("previewFile",16,460,{});c.previewFile.shown=customActive;c.previewFile.enabled=function() return #c.previewFile.list>0 end
+	drop("previewFile",16,460,{});c.previewFile.width=220;c.previewFile.shown=customActive;c.previewFile.enabled=function() return #c.previewFile.list>0 end
 	c.previewFile.tooltipText="Preview one local WAV; the exported list still lets the game choose a file."
 	local function updatePreviewFiles()
 		local list={};for index,path in ipairs(require("Modules.LootFilterAudio").customPaths(c.customPath.buf)) do list[#list+1]={label=path,val=index} end
 		local selected=c.previewFile.selIndex;c.previewFile:SetList(list);c.previewFile.selIndex=math.max(1,math.min(selected,#list))
 	end
 	c.customPath.changeFunc=updatePreviewFiles;updatePreviewFiles()
+	c.manageFiles=new("ButtonControl"):ButtonControl(ui.anchor,{248,460,120,28},"Manage",function()
+		local files=require("Modules.LootFilterAudio").customPaths(c.customPath.buf);local selected=math.min(c.previewFile.selIndex,#files);if selected==0 then selected=nil end
+		local controls={};local refresh
+		ui.label(controls,"intro",16,28,"Reorder or remove files. The game chooses one from the kept list.",14)
+		controls.files=new("TextListControl"):TextListControl(ui.anchor,{16,58,608,190},nil,{})
+		local details=ui.description(controls,"details",16,258,608,40,{},13)
+		refresh=function()
+			local rows={};for i,path in ipairs(files) do rows[#rows+1]={height=28,textSize=14,"^7"..ui.fit(path,566,14),index=i,selected=i==selected} end
+			controls.files.list=#rows>0 and rows or ui.rows({"No files remain."},580,14);controls.files.selectedKey=selected
+			if selected then local scroll=controls.files.controls.scrollBar;local top=(selected-1)*28;local height=controls.files.height-4;if top<scroll.offset then scroll.offset=top elseif top+28>scroll.offset+height then scroll.offset=top+28-height end end
+			details.list=ui.rows({selected and files[selected] or "Select a file to reorder or remove it."},590,13)
+		end
+		ui.selectable(controls.files,function(row) return row.index end,function(row) selected=row.index;refresh() end)
+		local function button(key,x,width,title,callback) controls[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,310,width,28},title,callback) end
+		button("up",16,140,"Move up",function() files[selected],files[selected-1]=files[selected-1],files[selected];selected=selected-1;refresh() end)
+		button("down",164,140,"Move down",function() files[selected],files[selected+1]=files[selected+1],files[selected];selected=selected+1;refresh() end)
+		button("remove",312,140,"Remove",function() table.remove(files,selected);selected=#files>0 and math.min(selected,#files) or nil;refresh() end)
+		controls.up.enabled=function() return selected~=nil and selected>1 end;controls.down.enabled=function() return selected~=nil and selected<#files end;controls.remove.enabled=function() return selected~=nil end
+		button("keep",16,180,"Use list",function() c.customPath:SetText(table.concat(files,";"),true);if selected then c.previewFile.selIndex=selected end;main:ClosePopup() end)
+		controls.keep.y=352;button("cancel",484,140,"Cancel",function() main:ClosePopup() end);controls.cancel.y=352
+		refresh();ui.style(controls,{keep=true});main:OpenPopup(640,398,"Manage custom sounds",controls,nil,nil,"cancel")
+	end)
+	c.manageFiles.shown=customActive;c.manageFiles.enabled=function() return c.soundKind.selIndex>=5 and #c.previewFile.list>0 end
+	c.manageFiles.tooltipText=function() return c.soundKind.selIndex<5 and "Choose Custom sound or Optional custom sound to edit the list." or #c.previewFile.list==0 and "Add a sound file first." or "Reorder or remove files before keeping the filter style." end
 	local help=ui.description(c,"help",16,440,352,55,{"Numbered alerts use reference tones; the game plays its own sounds."},13);help.shown=function() return not customActive() end
 	local function styles(strict)
 		local next=copyTable(original);local mode=c.soundKind.selIndex
@@ -73,6 +97,8 @@ function M.Open(original,sample,onKeep)
 	end
 	c.preview=new("Control"):Control(ui.anchor,{16,28,w-32,92});function c.preview:Draw() local x,y=self:GetPos();visual.floor(x,y,self.width,self.height);visual.chip(x,y,self.width,self.height,sample,{action="Show",styles=styles()}) end
 	c.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-42,220,28},"Use sound and effects",function() onKeep(styles(true));main:ClosePopup() end)
+	c.keep.enabled=function() return c.soundKind.selIndex<5 or #require("Modules.LootFilterAudio").customPaths(c.customPath.buf)>0 and not c.customPath.buf:find('["\r\n]') end
+	c.keep.tooltipText=function() return not c.keep:IsEnabled() and "Add a sound file without quotes or newlines, or choose another alert type." or "Keep these sound and effect settings." end
 	c.test=new("ButtonControl"):ButtonControl(ui.anchor,{252,h-42,220,28},"Preview sound",function() local index=customActive() and #c.previewFile.list>0 and c.previewFile:GetSelValueByKey("val") or nil;local _,message=require("Modules.LootFilterAudio").play(styles(),index);main:OpenMessagePopup("Sound preview",message) end)
 	c.close=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-42,140,28},"Cancel",function() main:ClosePopup() end)
 	ui.style(c,{keep=true});visual.layers(c,{preview=true});main:OpenPopup(w,h,"Sound, minimap icon and beam",c,nil,nil,"close");return c

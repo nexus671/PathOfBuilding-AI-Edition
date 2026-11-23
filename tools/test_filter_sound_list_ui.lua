@@ -19,6 +19,11 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  ui:click("addSound");assert(main.popups[1].controls.customPath.buf==selected,"Adding to an empty list failed")
  selected="C:/Sounds/second.wav";ui:click("addSound");assert(initial=="C:/Sounds/first.wav","Picker did not start near the previous file")
  assert(main.popups[1].controls.customPath.buf=="C:/Sounds/first.wav;C:/Sounds/second.wav","Adding replaced the existing path")
+ ui:choose("previewFile",2,"val");ui:click("manageFiles");ui:click("up")
+ if output then ui:frame():write(output.."/"..size[1].."-filter-sound-manager.json") end
+ ui:click("keep");assert(main.popups[1].controls.customPath.buf=="C:/Sounds/second.wav;C:/Sounds/first.wav","Moving a file did not keep its order")
+ ui:click("manageFiles");ui:click("remove");ui:click("cancel");assert(main.popups[1].controls.customPath.buf=="C:/Sounds/second.wav;C:/Sounds/first.wav","Cancelling changed the sound list")
+ ui:click("manageFiles");ui:click("down");ui:click("keep");assert(main.popups[1].controls.customPath.buf=="C:/Sounds/first.wav;C:/Sounds/second.wav","Moving a file back failed")
  ui:choose("previewFile",2,"val");local savedPlay=audio.play;local chosen
  audio.play=function(styles,index) chosen=index;assert(styles.CustomAlertSound[1]=="C:/Sounds/first.wav;C:/Sounds/second.wav");return true,"Preview played." end
  ui:click("test");assert(chosen==2,"Preview did not use the chosen file");main:ClosePopup();audio.play=savedPlay
@@ -26,6 +31,7 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  ui:click("keep");assert(kept.CustomAlertSound[1]=="C:/Sounds/first.wav;C:/Sounds/second.wav")
  local saved=library.appearance({id="sound",title="Sound",text="Show\n BaseType == \"Chaos Orb\""},kept)
  local parsed=parser.parse(saved.text);assert(#parsed.diagnostics==0 and parsed.rules[1].styles.CustomAlertSound[1]==kept.CustomAlertSound[1],"Sound list did not survive filter export and import")
+ effects.Open(kept,{BaseType="Chaos Orb"},function(value) kept=value end);ui:choose("soundKind","Custom sound");ui:choose("previewFile",2,"val");ui:click("manageFiles");ui:click("remove");ui:click("keep");assert(main.popups[1].controls.customPath.buf=="C:/Sounds/first.wav","Removing a selected file failed");ui:click("close");assert(kept.CustomAlertSound[1]=="C:/Sounds/first.wav;C:/Sounds/second.wav","Cancelling the effects editor changed its saved list")
  effects.Open(kept,{BaseType="Chaos Orb"},function(value) kept=value end);ui:choose("soundKind","Custom sound");selected="C:/Sounds/replacement.wav";ui:click("browseSound")
  assert(main.popups[1].controls.customPath.buf==selected,"Browse did not replace the existing list")
  ui:click("keep");assert(kept.CustomAlertSound[1]==selected)
@@ -35,6 +41,8 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  effects.Open(kept,{BaseType="Chaos Orb"},function() end);assert(main.popups[1].controls.previewFile:IsShown());ui:choose("previewFile",2,"val");savedPlay=audio.play;chosen=nil
  audio.play=function(styles,index) chosen=index;assert(styles.PlayAlertSound[1]=="4" and styles.CustomAlertSoundOptional[1]=="C:/Sounds/first.wav;C:/Sounds/second.wav");return true,"Preview played." end
  ui:click("test");assert(chosen==2,"Saved optional list preview did not use the chosen file");main:ClosePopup();audio.play=savedPlay;ui:click("close")
+ local many={};for i=1,10 do many[i]="C:/s/"..i..".wav" end;effects.Open({CustomAlertSound={table.concat(many,";"),"100"}},{BaseType="Chaos Orb"},function() end);ui:choose("soundKind","Custom sound");ui:choose("previewFile",10,"val");ui:click("manageFiles");assert(main.popups[1].controls.files.controls.scrollBar.offset>0,"Selected file was not scrolled into view");ui:click("cancel");ui:click("close")
+ effects.Open({CustomAlertSound={"C:/Sounds/only.wav","100"}},{BaseType="Chaos Orb"},function() end);ui:choose("soundKind","Custom sound");ui:click("manageFiles");ui:click("remove");ui:click("keep");local empty=main.popups[1].controls;assert(not empty.keep:IsEnabled() and empty.keep.tooltipText():find("Add a sound file",1,true));ui:choose("soundKind","Silent");assert(empty.keep:IsEnabled());ui:click("close")
  browser.Open=original;ui:restore()
 end
 -- Playing a preview must not discard the selected item's filter result.

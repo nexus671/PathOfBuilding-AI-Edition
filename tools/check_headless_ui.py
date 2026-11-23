@@ -212,7 +212,7 @@ def main():
                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "sacred-exact-controls.log").write_text(sacred_exact.stdout)
     assert sacred_exact.returncode == 0, sacred_exact.stdout
-    filter_sound_list = subprocess.run(lua_command + ["../tools/test_filter_sound_list_ui.lua"], cwd=ROOT / "src",
+    filter_sound_list = subprocess.run(lua_command + ["../tools/test_filter_sound_list_ui.lua", str(frames)], cwd=ROOT / "src",
                                        env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-sound-list-controls.log").write_text(filter_sound_list.stdout)
     assert filter_sound_list.returncode == 0, filter_sound_list.stdout
@@ -331,10 +331,12 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2408, f"Expected 2408 UI frames, found {len(paths)}"
+    assert len(paths) == 2420, f"Expected 2420 UI frames, found {len(paths)}"
     for name in ("960-inventory-source.json", "960-inventory-source-detail.json"):
         assert (frames / name).is_file(), f"Missing saved-item source view: {name}"
     for width in (960, 1024, 1280):
+        for view in ("list", "manager", "result", "failure"):
+            assert (frames / f"{width}-filter-sound-{view}.json").is_file(), f"Missing sound {view} at {width}px"
         for view in ("search", "selected"):
             assert (frames / f"{width}-global-crafting-item-{view}.json").is_file(), f"Missing global item {view} at {width}px"
         for scene in ("beyond", "incursion"):

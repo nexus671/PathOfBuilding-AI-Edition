@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1166][2026/11/23]
+
+* Reorder and remove custom filter sounds in a staged list.
+
 VERSION[2.68.1-ai.preview1165][2026/11/22]
 
 * Preview a chosen WAV from a custom filter sound list.
