@@ -1,3 +1,4 @@
+# cspell:ignore lupa
 """Exercise the real headless font loader from source and portable layouts."""
 import os
 from pathlib import Path
