@@ -1,6 +1,8 @@
 local filters = require("Modules.LootFilters")
 local parser = require("Modules.LootFilterParser")
 local protected = require("Modules.LootFilterProtectedDrops")
+local diff = require("Modules.LootFilterDiff")
+local sha = require("sha1")
 local M = {}
 
 function M.previousURL(profile)
@@ -86,6 +88,42 @@ function M.plan(profile, previousBase)
 	evaluation.profile = updated
 	evaluation.before = before
 	evaluation.after = after
+	return evaluation
+end
+
+local function validateUpstream(raw)
+	assert(type(raw)=="string" and #raw<=filters.limit, "Choose an upstream filter within the file size limit")
+	local parsed = parser.parse(raw)
+	assert(#parsed.rules>0, "The selected upstream filter contains no display rules")
+	for _, diagnostic in ipairs(parsed.diagnostics) do assert(not diagnostic.error,diagnostic.error) end
+end
+
+function M.planImported(profile, previous, latest)
+	assert(profile.template, "Choose an imported filter first")
+	validateUpstream(previous)
+	validateUpstream(latest)
+	local oldDigest, digest = sha(previous), sha(latest)
+	assert(not profile.upstreamDigest or oldDigest==profile.upstreamDigest,
+		"The previous filter does not match the last reviewed baseline checksum")
+	assert(oldDigest~=digest, "The upstream files contain identical bytes")
+	local candidate, overlap = diff.mergeBaseline(previous,profile.template,latest)
+	if not candidate then
+		return {blocks={string.format("Your draft and the new baseline both change old lines %d through %d.",
+			overlap.first,math.max(overlap.first,overlap.after-1))},before=previous,after=latest,
+			comparison="The diff shows the two upstream files while this conflict is unresolved."}
+	end
+	local nextProfile = copyTable(profile)
+	nextProfile.template, nextProfile.upstreamDigest = candidate, digest
+	local before, oldReport, oldParsed = filters.compile(profile,true)
+	local after, report, parsed = filters.compile(nextProfile,true)
+	for _, compiled in ipairs({oldReport,report}) do
+		for _, diagnostic in ipairs(compiled.diagnostics) do assert(not diagnostic.error,diagnostic.error) end
+		for _, entry in ipairs(compiled.unresolvedImports) do
+			assert(entry.optional and not entry.cycle, "Resolve the included filter before reviewing this update: " .. entry.name)
+		end
+	end
+	local evaluation = M.evaluate(oldParsed,parsed,profile.sampleSets)
+	evaluation.profile, evaluation.before, evaluation.after = nextProfile,before,after
 	return evaluation
 end
 

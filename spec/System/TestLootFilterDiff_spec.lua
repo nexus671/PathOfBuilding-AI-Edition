@@ -34,4 +34,20 @@ describe("Filter source review",function()
 		assert.has_error(function() diff.compare(string.rep("x",2*1024*1024+1),"") end)
 		assert.has_error(function() diff.compare(string.rep("\n",diff.maxLines+1),"") end)
 	end)
+	it("merges independent baseline edits and common changes",function()
+		local old = "shared heading\nold header\nfirst Show\nold style\nlast Show\n"
+		local draft = "personal rule\r\nshared heading\r\nold header\r\nfirst Show\r\nnew style\r\nlast Show\r\n"
+		local updated = "shared heading\nnew header\nfirst Show\nnew style\nlast Show\nnew rule\n"
+		assert.equal("personal rule\r\nshared heading\r\nnew header\r\nfirst Show\r\nnew style\r\nlast Show\r\nnew rule\r\n",
+			diff.mergeBaseline(old,draft,updated))
+	end)
+	it("reports competing insertions and overlapping replacements as conflicts",function()
+		local old = "first\nsecond\nlast\n"
+		local merged, conflict = diff.mergeBaseline(old,"first\nlocal\nsecond\nlast\n","first\nupstream\nsecond\nlast\n")
+		assert.is_nil(merged)
+		assert.same({first=2,after=2},conflict)
+		merged, conflict = diff.mergeBaseline(old,"first\npersonal\nlast\n","first\nupstream\n")
+		assert.is_nil(merged)
+		assert.same({first=2,after=4},conflict)
+	end)
 end)
