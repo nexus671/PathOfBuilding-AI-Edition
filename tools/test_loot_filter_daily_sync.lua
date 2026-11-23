@@ -131,6 +131,9 @@ assert(read(target)==edited)
 write(target,original)
 assert(not pcall(sync.externalDiff))
 local market = require("Modules.LootFilterEconomy")
+assert(market.resolveEndpoint("https://prices.example.test:9443/pob-market/")=="https://prices.example.test:9443/pob-market/")
+assert(not market.resolveEndpoint("http://localhost:9410") and not market.resolveEndpoint("https://prices.example.test/?token=secret"))
+assert(not market.resolveEndpoint("https://login@prices.example.test") and not market.resolveEndpoint("https://prices.example.test:100000"))
 local function quote(price)
 	return {["Orb of Alteration"]={id="alt",price=price,volume=1000,source="Currency"}}
 end
@@ -1113,6 +1116,21 @@ manualReview.choose()
 assert(exported:find("StackSize <= 6",1,true))
 assert(exported:find('BaseType == "Cheap Card" "Thin Card"',1,true))
 manualReview, exported = nil,nil
+do
+	local direct = market.endpoint
+	market.endpoint = market.resolveEndpoint("https://prices.example.test/pob-market")
+	local relayRequests = 0
+	launch.DownloadPage = function(_,url,callback)
+		relayRequests = relayRequests+1
+		assert(url=="https://prices.example.test/pob-market/leagues")
+		callback(nil,"Response code: 403")
+	end
+	manual.Open({},cardBaseline,function(_, value) exported=value end)
+	controls.fetch.action()
+	assert(relayRequests==1 and not manualReview and not exported)
+	market.endpoint = direct
+end
+
 local limitedReviewCalls = 0
 launch.DownloadPage = function(_,url,callback)
 	limitedReviewCalls = limitedReviewCalls+1

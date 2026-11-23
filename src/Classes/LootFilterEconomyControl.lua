@@ -30,6 +30,7 @@ function M.Open(profile, raw, export)
 	button("fetch", 16, "Fetch prices", function()
 		local target = tonumber(c.target.buf)
 		if busy then return end
+		if not economy.endpoint then status(economy.endpointError); return end
 		if launch.noSSL then status("Enable HTTPS certificate verification in PoB."); return end
 		if not target or target <= 0 or target > 1000 or target ~= target then
 			status("Enter a stack value between 0 and 1,000 chaos.")

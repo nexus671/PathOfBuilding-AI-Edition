@@ -43,6 +43,7 @@ function M.Open(build)
 	end
 	controls.get=new("ButtonControl"):ButtonControl(ui.anchor,{16,282,138,28},"Show prices",function()
 		if busy then return end
+		if not market.endpoint then status(market.endpointError); return end
 		if launch.noSSL then status("Enable HTTPS certificate verification first."); return end
 		local league=controls.league.buf:match("^%s*(.-)%s*$")
 		if league~="" and not league:match("^[%w%s_-]+$") then status("Enter a valid league ID."); return end

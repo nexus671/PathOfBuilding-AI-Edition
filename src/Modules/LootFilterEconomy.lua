@@ -4,7 +4,20 @@ local maps = require("Modules.LootFilterMapMarket")
 local appearance = require("Modules.LootFilterPriceAppearance")
 local M = {}
 M.categories = {"Currency", "Oil", "Omen", "Essence", "Thread", "Fragment", "Resonator", "Artifact"}
-M.endpoint = "https://poe.ninja/poe1/api/economy/"
+function M.resolveEndpoint(value)
+	if not value or value=="" then return "https://poe.ninja/poe1/api/economy/" end
+	if type(value)~="string" or #value>400 then return nil end
+	local authority, path = (value.."/"):match("^https://([^/]+)(/[%w_/%-]*)$")
+	if not authority then return nil end
+	local host, port = authority:match("^([%w%.%-]+):(%d+)$")
+	host = host or authority
+	if not host:match("^%w[%w%.%-]*$") or host:find("..",1,true)
+		or port and (tonumber(port)<1 or tonumber(port)>65535) then return nil end
+	return "https://"..authority..path:gsub("/+$","").."/"
+end
+
+M.endpoint = M.resolveEndpoint(os.getenv("POB_MARKET_CACHE_URL"))
+M.endpointError = "The configured PoB market cache must be an HTTPS URL without a query or credentials."
 M.managedClasses = {"Stackable Currency", "Map Fragments", "Misc Map Items", "Delve Stackable Socketable Currency", "Divination Cards", "Maps"}
 M.managedAreas = {{label="All areas", val="all"}, {label="Campaign", val="campaign"}, {label="Maps", val="maps"}}
 local classes = {}
