@@ -27,6 +27,9 @@ local function platform()
 		unsigned long __stdcall GetFinalPathNameByHandleW(void *, uint16_t *, unsigned long, unsigned long);
 		int __stdcall MoveFileExW(const uint16_t *, const uint16_t *, unsigned long);
 		void * __stdcall CreateFileW(const uint16_t *, unsigned long, unsigned long, void *, unsigned long, unsigned long, void *);
+		int __stdcall GetFileSizeEx(void *, int64_t *);
+		int __stdcall ReadFile(void *, void *, unsigned long, unsigned long *, void *);
+		int __stdcall SetFileInformationByHandle(void *, int, void *, unsigned long);
 	]]
 	-- Use an alias type through a cast so other Windows modules can bind CloseHandle too.
 	local kernel = ffi.load("kernel32")
@@ -48,6 +51,28 @@ local function platform()
 			local handle = kernel.CreateFileW(wide(path), 0x40000000, 0, nil, 4, 0x80, nil)
 			assert(handle ~= ffi.cast("void *", -1), "Another PoB window is updating this filter, or the directory is unavailable")
 			return function() kernel.CloseHandle(handle) end
+		end,
+		prune = function(path, digest)
+			-- Hold one handle through both verification and deletion. Sharing
+			-- permits readers while blocking writers and path replacement.
+			local readAndDelete, shareRead, openExisting, openReparsePoint = 0x80010000, 1, 3, 0x00200000
+			local handle = kernel.CreateFileW(wide(path),readAndDelete,shareRead,nil,openExisting,openReparsePoint,nil)
+			if handle == ffi.cast("void *",-1) then return false end
+			local ok, marked = pcall(function()
+				local length = ffi.new("int64_t[1]")
+				if kernel.GetFileSizeEx(handle,length)==0 then return false end
+				local size = tonumber(length[0])
+				if size<1 or size>volumeLimit then return false end
+				local bytes = ffi.new("char[?]",size)
+				local count = ffi.new("unsigned long[1]")
+				if kernel.ReadFile(handle,bytes,size,count,nil)==0 or count[0]~=size
+					or sha(ffi.string(bytes,size))~=digest then return false end
+				local disposition = ffi.new("uint8_t[1]",1)
+				local fileDispositionInfo = 4
+				return kernel.SetFileInformationByHandle(handle,fileDispositionInfo,disposition,ffi.sizeof(disposition))~=0
+			end)
+			local closed = kernel.CloseHandle(handle)
+			return ok and marked and closed~=0
 		end,
 		canonical = function(path)
 			local handle = kernel.CreateFileW(wide(path), 0, 7, nil, 3, 0, nil)
@@ -567,8 +592,7 @@ local function pruneBackups(config, choices)
 	for index=config.backupLimit+1,#choices do
 		local digest = choices[index].digest
 		local path = config.target .. ".before-pob-sync-" .. digest .. ".bak"
-		local checked, raw = pcall(read,path)
-		if checked and raw and sha(raw)==digest and os.remove(path) then
+		if platform().prune(path,digest) then
 			removed[digest] = true
 		else
 			skipped = skipped+1
