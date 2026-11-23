@@ -53,6 +53,7 @@ function M.guideAction(method,count,resource,corrupted,socketCount,enchantId,cat
 	if method=="enkindling" then return "Use an Enkindling Orb to roll a utility flask enchantment" end
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="divine" then return "Use a Divine Orb to reroll explicit modifier values" end
+	if method=="blessed" then return "Use a Blessed Orb to reroll the base implicit" end
 	if method=="sacred" then return "Use a Sacred Orb to reroll base defences" end
 	if method=="tainted_quality" then return "Use a Tainted "..resource.." to reroll quality" end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
@@ -926,7 +927,7 @@ function M.previewResources(startingItem,history,actions,currentItem,historyTrun
 	end
 	if history[1]~=startingItem then return nil,"The preview does not start from this project's starting item." end
 	local sim=require("Modules.CraftingSimulator");local prices=require("Modules.CraftingPrices");local totals={};local firstItem
-	local allowed={quality=true,tainted_quality=true,divine=true,sacred=true,instilling=true,enkindling=true,beast_max_links=true,beast_max_sockets=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,jeweller=true,tainted_jeweller=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true}
+	local allowed={quality=true,tainted_quality=true,divine=true,blessed=true,sacred=true,instilling=true,enkindling=true,beast_max_links=true,beast_max_sockets=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,jeweller=true,tainted_jeweller=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true}
 	for index,encoded in ipairs(actions) do
 		if type(encoded)~="string" or type(history[index])~="string" then return nil,"The preview contains an unknown action." end
 		local count=tonumber(encoded:match("^socket_count_bench:([2-6])$"));local colourCount=tonumber(encoded:match("^socket_colour_bench:([2-4])$"));local enchant=encoded:match("^bench_flask_enchant:(.+)$")
@@ -967,6 +968,7 @@ function M.catalog(raw,query,limit)
 	if item.corrupted then whiteComponents["Metadata/Items/Currency/CurrencyCorrupt"]=1 end
 	local sim=require("Modules.CraftingSimulator")
 	local definitions={{method="divine",label="Divine Orb",reason=M.divineReason(raw),sampled=true,components={divine=1}}}
+	definitions[#definitions+1]={method="blessed",label="Blessed Orb",reason=require("Modules.CraftingUniqueBlessed").reason(raw),sampled=true,components={blessed=1}}
 	if item.base.armour then definitions[#definitions+1]={method="sacred",label="Sacred Orb",reason=M.sacredReason(raw),sampled=true,components={sacred=1}} end
 	local flask=require("Modules.CraftingFlaskEnchants")
 	if flask.eligible({item=item}) then
@@ -1017,10 +1019,11 @@ function M.catalog(raw,query,limit)
 			local request=entry.request or (entry.method=="socket_bench" and {method=entry.method,count=#item.sockets,linked=true} or {method=entry.method})
 			local action={method=entry.method,label=entry.label,action=request,priceKey=(entry.method=="socket_bench" or entry.method=="socket_colour_bench") and require("Modules.CraftingSimulator").priceKey(request) or entry.method,available=entry.reason==nil,unavailableReason=entry.reason,deterministic=not entry.sampled,components=entry.components}
 			if entry.method=="divine" and action.available then action.modifierTargets=M.divineOptions(raw) end
+			if entry.method=="blessed" and action.available then action.implicitTarget=require("Modules.CraftingUniqueBlessed").options(raw) end
 			local guideMethod,guideCount=entry.guideMethod or entry.method,entry.guideCount or 1
 			action.guideStep={action=M.guideAction(guideMethod,guideCount,info.resource,item.corrupted,#item.sockets),uniqueCraft={method=guideMethod,count=guideCount}}
 			result.uniqueActions[#result.uniqueActions+1]=action
-			if entry.method~="quality" and entry.method~="tainted_quality" and entry.method~="divine" and entry.method~="sacred" and entry.method~="instilling" and entry.method~="enkindling" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
+			if entry.method~="quality" and entry.method~="tainted_quality" and entry.method~="divine" and entry.method~="blessed" and entry.method~="sacred" and entry.method~="instilling" and entry.method~="enkindling" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
 		end
 	end
 	result.flaskEnchants=flask.eligible({item=item}) and flask.list(query,limit) or {}
@@ -1034,7 +1037,7 @@ end
 
 function M.matches(raw,requirements)
 	local item,info=M.inspect(raw);requirements=requirements or {}
-	local supported={uniqueName=true,uniqueModifier=true,uniqueModifiers=true,catalyst=true,minCatalystQuality=true,minQuality=true,corrupted=true,twiceCorrupted=true,mirrored=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true,flaskEnchant=true,flaskEnchantMin=true}
+	local supported={uniqueName=true,uniqueModifier=true,uniqueModifiers=true,uniqueImplicit=true,catalyst=true,minCatalystQuality=true,minQuality=true,corrupted=true,twiceCorrupted=true,mirrored=true,sockets=true,exactSockets=true,links=true,socketColours=true,linkedColours=true,minAbyssSockets=true,nativeStats=true,flaskEnchant=true,flaskEnchantMin=true}
 	for key in pairs(requirements) do assert(supported[key],"This unique item property is not supported: "..tostring(key)) end
 	if requirements.uniqueName and item.title~=requirements.uniqueName then return false end
 	if requirements.flaskEnchant or requirements.flaskEnchantMin then
@@ -1049,6 +1052,12 @@ function M.matches(raw,requirements)
 	if requirements.corrupted~=nil and (not not item.corrupted)~=requirements.corrupted then return false end
 	if requirements.twiceCorrupted~=nil and (not not item.twiceCorrupted)~=requirements.twiceCorrupted then return false end
 	if requirements.mirrored~=nil and (not not item.mirrored)~=requirements.mirrored then return false end
+	if requirements.uniqueImplicit then
+		local goal=requirements.uniqueImplicit;assert(type(goal)=="table" and (goal.minValue~=nil)~=(goal.maxValue~=nil),"Invalid unique implicit target")
+		local target=goal.minValue or goal.maxValue;local option,reason=require("Modules.CraftingUniqueBlessed").options(raw);assert(option,reason)
+		assert(type(target)=="number" and target==math.floor(target) and target>=option.min and target<=option.max,"Unique implicit target is outside its base range")
+		if goal.minValue and option.current<target or goal.maxValue and option.current>target then return false end
+	end
 	local goals={};if requirements.uniqueModifier then goals[#goals+1]=requirements.uniqueModifier end
 	if requirements.uniqueModifiers then
 		local list=requirements.uniqueModifiers;assert(type(list)=="table" and #list>=1 and #list<=12,"Invalid unique modifier target list")

@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1196][2026/11/23]
+
+* Preview and plan Blessed Orb rolls on recognized unique base implicits.
+
 VERSION[2.68.1-ai.preview1195][2026/11/23]
 
 * Find the local filter selected in Path of Exile and schedule economy sync at a local hour and minute.
