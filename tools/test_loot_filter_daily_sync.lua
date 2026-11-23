@@ -52,6 +52,11 @@ sync.preview(target,baseline,"Covens",options,function(before, after)
 end)
 assert(proposed and proposed:find("StackSize <= 4",1,true))
 assert(read(target)==original and not sync.configuration())
+stale=true
+local previewFailure
+sync.preview(target,baseline,"Covens",options,function() error("Stale data cannot produce a preview") end,
+	function(reason) previewFailure=reason end)
+assert(previewFailure and previewFailure:find("stale",1,true) and not sync.configuration())
 calls, stale = 0, true
 local editedSuffix = original .. "\n# A personal edit after the economy section\n"
 write(target,editedSuffix)

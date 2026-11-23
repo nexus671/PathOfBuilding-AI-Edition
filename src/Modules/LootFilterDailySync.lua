@@ -799,7 +799,7 @@ function M.profileStatus(id)
 	return config.lastFailure and failureStatus(config.lastFailure) or config.summary or enabledStatus(config)
 end
 
-function M.preview(target, baselineFile, league, options, callback)
+function M.preview(target, baselineFile, league, options, callback, onFailure)
 	assert(not M.busy, "Wait for the current sync to finish")
 	assert(not launch.noSSL, "Enable HTTPS certificate verification in PoB")
 	assert(os.time() >= rateLimitUntil, "Wait before contacting the rate-limited exchange again")
@@ -813,7 +813,7 @@ function M.preview(target, baselineFile, league, options, callback)
 		local candidate = validate(baseline, bodies, false, config.targetValue, config.protections, history, day, now, config.pickupPolicy)
 		callback(original, candidate)
 		return "Preview complete. Review the proposed filter before enabling sync."
-	end, nil, id)
+	end, onFailure, id)
 end
 
 return M

@@ -6,7 +6,8 @@ function M.samples()
 	local function add(item, marker)
 		item.AreaLevel, item.ItemLevel, item.StackSize = 83, 83, 1
 		item.Width, item.Height, item.HasInfluence = 1, 1, {"None"}
-		item.HasExplicitMod, item.HasEnchantment, item.SocketGroup = {}, {}, ""
+		item.HasExplicitMod, item.HasEnchantment = {}, {}
+		item.SocketGroup = item.SocketGroup or ""
 		item.EnchantmentPassiveNode = ""
 		for key in pairs(parser.numeric) do if item[key] == nil then item[key] = 0 end end
 		for key in pairs(parser.booleans) do if item[key] == nil then item[key] = false end end
