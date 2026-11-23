@@ -3205,5 +3205,5 @@
 	<File name="Modules/LootFilterProtectedDrops.lua" part="program" sha1="08ada379e64aa72057e9421c8ea98b4c5db14f6f" />
 	<File name="Classes/LootFilterSyncAccountControl.lua" part="program" sha1="d1f4a06a6783577e46b14f24b34c74dde22a574a" />
 	<File name="Modules/LootFilterExchangeCrossCheck.lua" part="program" sha1="b777531d09394bdeebf675a7bdee1806cbb1c02b" />
-	<File name="Modules/LootFilterPriceAppearance.lua" part="program" sha1="b4e1602d09a1e27e863b42f5cd330510d78ae452" />
+	<File name="Modules/LootFilterPriceAppearance.lua" part="program" sha1="4785d9fd008d77f03c4230acc18a6946008507bd" />
 </PoBVersion>
