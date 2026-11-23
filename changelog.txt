@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1226][2026/11/23]
+
+* Keep the verified filter when map pricing is incomplete, and guard against conflicting quote IDs and malformed cooldowns.
+
 VERSION[2.68.1-ai.preview1225][2026/11/23]
 
 * Compare new upstream files against imported filters and retain reviewed personal edits.

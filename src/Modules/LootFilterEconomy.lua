@@ -20,13 +20,15 @@ local function addQuote(quotes, name, quote)
 	local existing = quotes[name]
 	if existing == false or quote == false then
 		quotes[name] = false
-	elseif existing and existing.id ~= quote.id then
+	elseif existing and (existing.id ~= quote.id or existing.price ~= quote.price) then
 		quotes[name] = false
-	elseif not existing or quote.volume > existing.volume then
+	elseif not existing or existing.source == quote.source and quote.volume > existing.volume then
 		quotes[name] = quote
-	elseif quote.volume == existing.volume and quote.price ~= existing.price then
-		quotes[name] = false
 	end
+end
+
+local function quoteText(value)
+	return type(value)=="string" and #value<=200 and value:match("%S") and not value:find("[%c]")
 end
 
 function M.quotes(body, source)
@@ -37,13 +39,12 @@ function M.quotes(body, source)
 		and type(data.items) == "table" and type(data.lines) == "table", "Invalid chaos-denominated exchange response")
 	local names, quotes, priced = {}, {}, false
 	for _, item in ipairs(data.items) do
-		assert(type(item) == "table" and type(item.id) == "string" and #item.id > 0
-			and type(item.name) == "string" and #item.name > 0, "Invalid exchange item")
+		assert(type(item) == "table" and quoteText(item.id) and quoteText(item.name), "Invalid exchange item")
 		assert(not names[item.id] or names[item.id] == item.name, "Exchange identifier has conflicting names")
 		names[item.id] = item.name
 	end
 	for _, line in ipairs(data.lines) do
-		assert(type(line) == "table" and type(line.id) == "string", "Invalid exchange price line")
+		assert(type(line) == "table" and quoteText(line.id), "Invalid exchange price line")
 		local name = names[line.id]
 		if name and finite(line.primaryValue) and finite(line.volumePrimaryValue) then
 			addQuote(quotes, name, { price=line.primaryValue, volume=line.volumePrimaryValue, id=line.id, source=source })
@@ -72,7 +73,7 @@ function M.liquid(quote)
 	return quote and quote.volume >= (minimumVolume[quote.source] or 100)
 end
 
-local function countLiquidExchangeQuotes(values)
+local function countLiquidQuotes(values)
 	local counts = {}
 	if type(values) ~= "table" then return counts end
 	for key, price in pairs(values) do
@@ -82,18 +83,19 @@ local function countLiquidExchangeQuotes(values)
 	return counts
 end
 
-local function verifyExchangeCoverage(current, previous)
+local function verifyCoverage(current, previous)
 	if #previous < 2 then return end
-	local recent = countLiquidExchangeQuotes(previous[1].values)
-	local older = countLiquidExchangeQuotes(previous[2].values)
-	local latest = countLiquidExchangeQuotes(current)
-	local function check(source)
+	local recent = countLiquidQuotes(previous[1].values)
+	local older = countLiquidQuotes(previous[2].values)
+	local latest = countLiquidQuotes(current)
+	local function check(source, minimum, fraction, description)
 		local reference = math.min(recent[source] or 0, older[source] or 0)
-		assert(reference < 20 or (latest[source] or 0) >= reference / 4,
-			source .. " feed has fewer than a quarter of its usual liquid quotes. The existing filter was kept.")
+		assert(reference < minimum or (latest[source] or 0) >= reference * fraction,
+			source .. " feed has fewer than " .. description .. " of its usual liquid quotes. The existing filter was kept.")
 	end
-	for _, source in ipairs(M.categories) do check(source) end
-	check("DivinationCard")
+	for _, source in ipairs(M.categories) do check(source,20,0.25,"a quarter") end
+	check("DivinationCard",20,0.25,"a quarter")
+	for _, source in ipairs(maps.feeds) do check(source,4,0.5,"half") end
 end
 
 -- A price increase only loosens a hide once it is supported by recent history.
@@ -128,7 +130,7 @@ function M.remember(quotes, history, day, now)
 			adjusted[name] = quote
 		end
 	end
-	verifyExchangeCoverage(snapshot.values, previous)
+	verifyCoverage(snapshot.values, previous)
 	table.insert(previous, 1, snapshot)
 	return adjusted, previous
 end

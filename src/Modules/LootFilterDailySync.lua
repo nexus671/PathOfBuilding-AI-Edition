@@ -1050,8 +1050,9 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 				if status == 429 or status == 503 then
 					local ok, values = pcall(headers, response)
 					local value = ok and values["retry-after"]
-					local retryDate = value and httpDate(value)
-					delay = math.max(15, tonumber(value) or (retryDate and retryDate-time) or 60)
+					local seconds = value and value:match("^%d+$") and finiteNumber(tonumber(value))
+					local retryDate = value and not seconds and httpDate(value)
+					delay = math.max(15, math.min(seconds or (retryDate and retryDate-time) or 60,7*86400))
 				end
 				if retryable and attempt < 2 and delay <= 90 and time + delay + 20 < M.deadline then
 					defer(delay, category .. ": retrying the exchange request.", function() fetch(index, attempt + 1) end)

@@ -245,12 +245,36 @@ do
 	local valid, failure = pcall(market.remember,quoteBatch(5,"DivinationCard"),cardHistory,"cards three",now+2*86400)
 	assert(not valid and failure:find("DivinationCard feed has fewer",1,true))
 end
+do
+	local _, first = market.remember(quoteBatch(8,"Map"),{},"maps one",now)
+	local _, second = market.remember(quoteBatch(8,"Map"),first,"maps two",now+86400)
+	local ok, failure = pcall(market.remember,quoteBatch(3,"Map"),second,"thin maps",now+2*86400)
+	assert(not ok and failure:find("Map feed has fewer than half",1,true),failure)
+	assert(pcall(market.remember,quoteBatch(4,"Map"),second,"four map tiers",now+2*86400))
+end
 
 local _, repeatDay = market.remember(quote(2), second, "day 2", now+86400)
 assert(#repeatDay==2)
 -- Ambiguous identities stay ineligible even when the conflicting quote has more volume.
 local ambiguous = market.quotes([[{"core":{"primary":"chaos"},"items":[{"id":"a","name":"Shared"},{"id":"b","name":"Shared"}],"lines":[{"id":"a","primaryValue":1,"volumePrimaryValue":100},{"id":"b","primaryValue":10,"volumePrimaryValue":10000}]}]], "Currency")
 assert(ambiguous.Shared == false)
+do
+	local mixed = market.quotes([[{"core":{"primary":"chaos"},"items":[{"id":"x","name":"Repeated"}],
+		"lines":[{"id":"x","primaryValue":1,"volumePrimaryValue":500},{"id":"x","primaryValue":2,"volumePrimaryValue":900}]}]],"Currency")
+	assert(mixed.Repeated==false)
+	local merged = {}
+	market.merge(merged,{Overlap={id="same",price=1,volume=200,source="Currency"}},"Currency")
+	market.merge(merged,{Overlap={id="same",price=1,volume=2000,source="Oil"}},"Oil")
+	assert(merged.Overlap.source=="Currency" and merged.Overlap.volume==200)
+	market.merge(merged,{Overlap={id="same",price=2,volume=2000,source="Oil"}},"Oil")
+	assert(merged.Overlap==false)
+	assert(not pcall(market.quotes,[[{"core":{"primary":"chaos"},"items":[{"id":"a\u0000b","name":"Unsafe"}],"lines":[]}]],"Currency"))
+	local mapQuotes = market.quotes([[{"lines":[
+		{"name":"Map (Tier 12)","detailsId":"same-tier","chaosValue":2,"count":40,"listingCount":40},
+		{"name":"Map (Tier 13)","detailsId":"same-tier","chaosValue":2,"count":40,"listingCount":40}
+	]}]],"Map")
+	assert(mapQuotes["Map (Tier 12)"]==false and mapQuotes["Map (Tier 13)"]==false)
+end
 local joined = {Shared={id="a",price=1,volume=100,source="Currency"}}
 market.merge(joined, {Shared={id="b",price=10,volume=10000,source="Oil"}})
 assert(joined.Shared == false)
@@ -1104,6 +1128,75 @@ local function checkExternalAdoption()
 	print("Seven exact archived reviews persist after restarting and remain isolated to their sync profile")
 end
 checkExternalAdoption()
+
+do
+	local function checkInvalidCooldown()
+		local fixture = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+		local id = fixture.createProfile("Invalid cooldown fixture")
+		local live, fixed = dir.."/invalid-cooldown.filter", dir.."/invalid-cooldown-fixed.filter"
+		write(live,original);write(fixed,original)
+		fixture.configure(live,fixed,"Covens",{profileId=id,protectionFile=protections})
+		local download, systemTime = launch.DownloadPage, os.time
+		local clock, requests = now, 0
+		os.time = function() return clock end
+		launch.DownloadPage = function(_,_,callback)
+			requests = requests+1
+			callback({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: "..string.rep("9",400).."\r\n\r\n"}, "Response code: 429")
+		end
+		fixture.tick(clock,true,false,id)
+		assert(requests==1 and fixture.busy)
+		clock=now+59
+		fixture.tick(clock)
+		assert(requests==1 and fixture.busy)
+		clock=now+60
+		fixture.tick(clock)
+		os.time, launch.DownloadPage = systemTime, download
+		assert(requests==2 and not fixture.busy and fixture.configuration(id).providerRetryAfter==now+120)
+		assert(read(live)==original and not fixture.configuration(id).lastSuccess)
+	end
+	checkInvalidCooldown()
+end
+
+do
+	local function checkTruncatedMap()
+		local fixture = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+		local id = fixture.createProfile("Map coverage fixture")
+		local live, fixed = dir.."/map-coverage.filter", dir.."/map-coverage-fixed.filter"
+		local samplePath = dir.."/map-coverage.json"
+		local json = require("dkjson")
+		write(live,mapBase);write(fixed,mapBase);write(samplePath,assert(json.encode(mapSamples)))
+		fixture.configure(live,fixed,"Covens",{profileId=id,protectionFile=samplePath,pickupPolicy={maps=5}})
+		local clock, systemTime, download = now, os.time, launch.DownloadPage
+		os.time = function() return clock end
+		local complete = {}
+		for tier=13,16 do
+			complete[#complete+1] = {name=mapMarket.quoteName("Map",tier),detailsId="ordinary-"..tier,
+				chaosValue=12,count=40,listingCount=400}
+		end
+		local truncate = false
+		launch.DownloadPage = function(_, url, callback)
+			local kind = url:match("&type=(%w+)$")
+			local body = kind=="Map" and assert(json.encode({lines=truncate and {complete[1]} or complete}))
+				or stash[kind] or commodityBody
+			local date = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock).."\r\n\r\n"
+			callback({header=date,body=body})
+		end
+		for day=1,2 do
+			fixture.tick(clock,true,false,id)
+			assert(fixture.status:find("Protected drops verified",1,true),fixture.status)
+			clock=clock+86400
+		end
+		local good, installed = fixture.configuration(id), read(live)
+		assert(installed~=mapBase and #good.priceHistory==2)
+		truncate = true
+		fixture.tick(clock,true,false,id)
+		os.time, launch.DownloadPage = systemTime, download
+		local failed = fixture.configuration(id)
+		assert(fixture.status:find("Map feed has fewer than half",1,true),fixture.status)
+		assert(read(live)==installed and failed.lastSuccess==good.lastSuccess and #failed.priceHistory==2)
+	end
+	checkTruncatedMap()
+end
 
 do
 	local fixture = assert(loadfile("Modules/LootFilterDailySync.lua"))()
