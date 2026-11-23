@@ -498,11 +498,11 @@ local function externalAdoption(id)
 		"The managed economy section changed. Use filter setup to review and select a new fixed baseline.")
 	assert(edited ~= expected, "There are no edits outside generated price highlights to adopt")
 	local baseStart, baseEnd = market.sectionBounds(baseline)
+	local candidate = edited:sub(1,editStart-1) .. baseline:sub(baseStart,baseEnd-1) .. edited:sub(editEnd)
 	if not config.protections then
-		assert(require("Modules.LootFilterProtectedDrops").personalRulesPreserved(baseline,edited),
+		assert(require("Modules.LootFilterProtectedDrops").personalRulesPreserved(baseline,candidate),
 			"An edit changed the custom protection rules or their precedence. Review the complete protection policy in filter setup.")
 	end
-	local candidate = edited:sub(1,editStart-1) .. baseline:sub(baseStart,baseEnd-1) .. edited:sub(editEnd)
 	verifyUnmanagedRules(after,candidate)
 	for _, raw in ipairs({after,candidate}) do
 		validate(raw,{},true,config.targetValue,config.protections,nil,nil,nil,config.pickupPolicy)

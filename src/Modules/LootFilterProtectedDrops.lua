@@ -32,14 +32,16 @@ end
 
 function M.personalRulesPreserved(previous, candidate)
 	if not previous:find(scrollMarker,1,true) then return true end
+	local oldStop, newStop = afterScrollRule(previous), afterScrollRule(candidate)
+	if not oldStop or not newStop then return false end
 	local market = require("Modules.LootFilterEconomy")
 	local oldStart, oldEnd = market.sectionBounds(previous)
 	if oldStart and oldEnd then
 		local newStart, newEnd = market.sectionBounds(candidate)
-		return newStart and newEnd and personalRulePrefix(previous,oldStart)==personalRulePrefix(candidate,newStart)
+		if not newStart or not newEnd then return false end
+		oldStop, newStop = math.max(oldStart,oldStop), math.max(newStart,newStop)
 	end
-	local oldStop, newStop = afterScrollRule(previous), afterScrollRule(candidate)
-	return oldStop and newStop and personalRulePrefix(previous,oldStop)==personalRulePrefix(candidate,newStop)
+	return personalRulePrefix(previous,oldStop)==personalRulePrefix(candidate,newStop)
 end
 
 function M.samples()

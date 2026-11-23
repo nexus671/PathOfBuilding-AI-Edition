@@ -334,6 +334,14 @@ Hide
 	local missingScroll = withoutEconomy.template:gsub(' "Portal Scroll"','',1)
 	local unsafeUpdate = baseRefresh.planImported(withoutEconomy,withoutEconomy.template,missingScroll)
 	assert(unsafeUpdate.blocks[#unsafeUpdate.blocks]:find("custom drop protection rules",1,true))
+	local lateScroll = copyTable(custom)
+	local title, section = "# CUSTOM: Hide Wisdom and Portal Scrolls", "# PoB economy: begin"
+	local first = custom.template:find(title,1,true)
+	local start = custom.template:find(section,first,true)
+	lateScroll.template = custom.template:sub(1,first-1)..custom.template:sub(start)..custom.template:sub(first,start-1)
+	local changedLateScroll = lateScroll.template:gsub(' "Portal Scroll"','',1)
+	local unsafeLateScroll = baseRefresh.planImported(lateScroll,lateScroll.template,changedLateScroll)
+	assert(unsafeLateScroll.blocks[#unsafeLateScroll.blocks]:find("custom drop protection rules",1,true))
 	local imports = copyTable(profile)
 	imports.template = 'Import "old.filter"\n'
 	imports.importFiles = {{name="old.filter",text=previous},{name="new.filter",text=finalText}}
