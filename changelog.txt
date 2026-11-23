@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1154][2026/11/22]
+
+* Let saved-item inventory show its retained source notes.
+
 VERSION[2.68.1-ai.preview1153][2026/11/22]
 
 * Explain when a base has no bundled unique rarity example.

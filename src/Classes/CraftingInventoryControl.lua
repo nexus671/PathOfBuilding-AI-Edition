@@ -84,8 +84,13 @@ function M.Open(build,options)
 	end)
 	c.undoRemove.enabled=function() return removed~=nil end
 	for _,key in ipairs({"rename","remove","itemTitle"}) do c[key].enabled=function() return selected~=nil end end
-	ui.label(c,"count",right,h-78,"",13);c.count.label=function() return "^7"..ui.fit(selected and (selected.project.title..(selected.item.originNote and " | Source note retained" or "")) or #entries.." saved items",w-right-16,13) end
-	c.count.tooltipText=function() return selected and selected.item.originNote or nil end
+	button("source",right,h-84,132,"View source",function()
+		assert(selected and selected.item.originNote,"No source note for this item")
+		require("Classes.PlanningBrowserControl").Open("Saved item source",{{id="source",label=selected.item.title,details={selected.item.originNote}}})
+	end)
+	c.source.enabled=function() return selected~=nil and selected.item.originNote~=nil and selected.item.originNote~="" end
+	c.source.tooltipText="Read the saved item's source and assumptions."
+	ui.label(c,"count",right+144,h-78,"",13);c.count.label=function() return "^7"..ui.fit(selected and selected.project.title or #entries.." saved items",w-right-160,13) end
 	button("resume",16,h-42,260,"Resume as separate working craft",function()
 		assert(selected,"Select an item first");local project=inventory.project(selected.item);main:ClosePopup();options.resume(project)
 	end);c.resume.enabled=function() return selected~=nil and options.resume~=nil end
