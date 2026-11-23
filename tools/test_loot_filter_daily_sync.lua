@@ -139,6 +139,93 @@ local spike, second = market.remember(quote(2), first, "day 2", now+86400)
 assert(spike["Orb of Alteration"].price==0.2 and spike["Orb of Alteration"].currentPrice==2)
 local lower = market.remember(quote(0.1), second, "day 3", now+2*86400)
 assert(lower["Orb of Alteration"].price==0.1)
+do
+	local raw = [[# PoB economy: begin
+Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    StackSize <= 6
+    AreaLevel >= 68
+# PoB economy: end
+Hide
+    Class == "Stackable Currency"
+    StackSize >= 20
+Show
+    Class == "Stackable Currency"
+    StackSize == 18
+    MinimapIcon 2 White Square
+Show
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration" "Chaos Orb"
+    MinimapIcon 2 White Circle
+Show
+]]
+	local quotes = {["Orb of Alteration"]={price=0.2,volume=300,id="alt",source="Currency"}}
+	local style = {highlightChaos=2,strongHighlightChaos=3}
+	assert(not pcall(market.pickupPolicy,100,{highlightChaos=3,strongHighlightChaos=2}))
+	local unchanged = market.review(raw,quotes,100)
+	assert(unchanged==raw)
+	local styled, decisions = market.review(raw,quotes,100,style)
+	assert(#decisions==1 and decisions[1].old==decisions[1].cutoff and #decisions[1].highlights==2)
+	local parser = require("Modules.LootFilterParser")
+	local old, candidate = parser.parse(raw), parser.parse(styled)
+	assert(#candidate.diagnostics==0)
+	for stack=1,30 do
+		for _, area in ipairs({60,83}) do
+			local item = {BaseType="Orb of Alteration",Class="Stackable Currency",StackSize=stack,AreaLevel=area}
+			local before, after = parser.simulate(old,item), parser.simulate(candidate,item)
+			assert(before.action==after.action)
+			if area==83 and stack==10 then assert(table.concat(after.styles.MinimapIcon," ")=="1 Yellow Circle") end
+			if area==83 and stack==15 then assert(table.concat(after.styles.MinimapIcon," ")=="0 Orange Star") end
+			if area==83 and stack==18 then assert(table.concat(after.styles.MinimapIcon," ")=="2 White Square") end
+			if area==60 and stack==10 then assert(table.concat(after.styles.MinimapIcon," ")=="2 White Circle") end
+		end
+	end
+	local appearance = require("Modules.LootFilterPriceAppearance")
+	local boundaryQuotes = quote(0.01)
+	local _, decimal = market.review(raw,boundaryQuotes,100,{highlightChaos=0.07,strongHighlightChaos=0.08000001})
+	assert(decimal[1].highlights[1].firstStack==7 and decimal[1].highlights[2].firstStack==9)
+	assert(appearance.strip(styled)==raw)
+	local bom = "\239\187\191"
+	local plain = bom..'Show\r\n    Class == "Stackable Currency"\r\n    BaseType == "Orb of Alteration"\r\n'
+	local marked = appearance.apply(plain,{["Stackable Currency"]={["Orb of Alteration"]={{name="Orb of Alteration",firstStack=10,tier=1}}}})
+	assert(marked~=plain and marked:sub(1,3)==bom and #parser.parse(marked).diagnostics==0 and appearance.strip(marked)==plain)
+	local tampered = styled:gsub("StackSize >= 15","StackSize >= 7",1)
+	assert(not pcall(appearance.strip,tampered))
+	local continuingHide = "Hide\n    Class == \"Stackable Currency\"\n    Continue\n\n" .. raw
+	local styledAfterHide = market.review(continuingHide,quotes,100,style)
+	assert(appearance.strip(styledAfterHide)==continuingHide)
+	local withImport='Import "custom.filter"\n'..raw
+	local guarded, guardedDecisions, skipped = market.review(withImport,quotes,100,style)
+	assert(guarded==withImport and #guardedDecisions==0 and skipped[1].styleOnly)
+	print("Opt-in highlights preserve visibility, apply at exact stack values, and respect later styles")
+end
+
+do
+	local raw = [[# PoB economy: begin
+Hide
+    Class == "Divination Cards"
+    BaseType == "Expensive Card" "Cheap Card"
+# PoB economy: end
+Show
+    Class == "Divination Cards"
+    BaseType == "Expensive Card" "Cheap Card"
+    MinimapIcon 2 White Circle
+Show
+]]
+	local quotes = {}
+	market.merge(quotes,{["Expensive Card"]={price=3,volume=800,id="expensive",source="DivinationCard"},
+		["Cheap Card"]={price=0.2,volume=800,id="cheap",source="DivinationCard"}},"DivinationCard")
+	local output, changes = market.review(raw,quotes,1,{highlightChaos=2,strongHighlightChaos=10})
+	assert(#changes==1 and changes[1].name=="Expensive Card")
+	local parser=require("Modules.LootFilterParser")
+	local compiled=parser.parse(output)
+	local cheap=parser.simulate(compiled,{Class="Divination Cards",BaseType="Cheap Card",StackSize=12})
+	assert(cheap.action=="Hide")
+	local expensive=parser.simulate(compiled,{Class="Divination Cards",BaseType="Expensive Card",StackSize=1})
+	assert(expensive.action=="Show" and table.concat(expensive.styles.MinimapIcon," ")=="1 Yellow Circle")
+end
+
 local function quoteBatch(count, source)
 	local batch = {}
 	for index=1,count do
@@ -807,6 +894,83 @@ local incomplete = profiles.configuration(coverageProfile)
 assert(incomplete.lastSuccess==verifiedCoverage.lastSuccess and #incomplete.priceHistory==2 and read(coverageTarget)==coverageBytes)
 assert(incomplete.lastFailure and incomplete.lastFailure.message:find("Currency feed has fewer than a quarter",1,true))
 print("A severe loss of exchange coverage retains the last verified output")
+
+local function checkAppearanceRoundTrip()
+	local styleBase, styleTarget=dir.."/appearance-baseline.filter",dir.."/appearance-live.filter"
+	local raw=table.concat({
+		'Show','    BaseType == "Cord Belt"', '# PoB economy: begin','Hide',
+		'    Class == "Stackable Currency"','    BaseType == "Orb of Alteration"','    StackSize <= 6',
+		'# PoB economy: end','Show','    Class == "Stackable Currency"',
+		'    BaseType == "Orb of Alteration"','    MinimapIcon 2 White Circle','',
+	},"\n")
+	write(styleBase,raw)
+	write(styleTarget,raw)
+	local profileId=profiles.createProfile("Appearance fixture")
+	local settings={profileId=profileId,hour=0,targetValue=100,protectionFile=protections,pickupPolicy={highlightChaos=2,strongHighlightChaos=3}}
+	profiles.configure(styleTarget,styleBase,"Covens",settings)
+	launch.DownloadPage=function(_,url,callback) reply(url,callback) end
+	profiles.tick(now,true,false,profileId)
+	local highlighted=read(styleTarget)
+	assert(highlighted~=raw and profiles.verifiedOutput(profileId)==highlighted)
+	profiles.tick(now,true,false,profileId)
+	assert(profiles.status:find("Protected drops verified",1,true) and read(styleTarget)==highlighted)
+	local edited=highlighted:gsub("MinimapIcon 1 Yellow Circle","MinimapIcon 2 Purple Circle",1)
+	write(styleTarget,edited)
+	assert(not pcall(profiles.configure,styleTarget,styleBase,"Covens",settings))
+	write(styleTarget,highlighted)
+	settings.pickupPolicy=nil
+	profiles.configure(styleTarget,styleBase,"Covens",settings)
+	profiles.tick(now,true,false,profileId)
+	assert(profiles.status:find("Protected drops verified",1,true) and read(styleTarget)==raw and read(styleBase)==raw)
+	print("Price highlights survive a second refresh and are reversibly removed from the target")
+end
+checkAppearanceRoundTrip()
+
+local function checkConfirmedTightening()
+	local target=dir.."/confirmed-live.filter"
+	local fixed=dir.."/confirmed-fixed.filter"
+	local raw=table.concat({
+		'Show','    BaseType == "Cord Belt"','# PoB economy: begin','Hide',
+		'    Class == "Stackable Currency"','    BaseType == "Orb of Alteration"',
+		'    StackSize <= 2','# PoB economy: end','Show','',
+	},"\n")
+	write(target,raw);write(fixed,raw)
+	local id=profiles.createProfile("GGG confirmation fixture")
+	profiles.configure(target,fixed,"Covens",{profileId=id,hour=0,targetValue=1,protectionFile=protections,
+		pickupPolicy={caps={["Orb of Alteration"]=7},confirmTightening=true}})
+	local clock, systemTime, chaosVolume=now,os.time,nil
+	os.time=function() return clock end
+	local exchange=require("Modules.LootFilterExchangeCrossCheck")
+	local itemId=assert(exchange.itemId("Orb of Alteration"))
+	local chaosId="Metadata/Items/Currency/CurrencyRerollRare"
+	launch.DownloadPage=function(_,url,callback)
+		if url:find(exchange.endpoint,1,true)==1 then
+			if not chaosVolume then callback(nil,"Temporary outage"); return end
+			callback({body=require("dkjson").encode({next_change_id=exchange.hour(clock)+3600,markets={{
+				league="Covens",market_pair={itemId,chaosId},volume_traded={[itemId]=500,[chaosId]=chaosVolume}
+			}}})})
+			return
+		end
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock).."\r\n\r\n",body=commodityBody})
+	end
+	for _=1,4 do
+		profiles.tick(clock,true,false,id)
+		assert(profiles.status:find("Protected drops verified",1,true) and read(target)==raw)
+		clock=clock+86400
+	end
+	local skipped=profiles.configuration(id).review.skipped[1]
+	assert(skipped.reason:find("GGG trade",1,true))
+	chaosVolume=450
+	profiles.tick(clock,true,false,id)
+	assert(read(target)==raw)
+	clock, chaosVolume = clock+86400, 100
+	profiles.tick(clock,true,false,id)
+	os.time=systemTime
+	local review=profiles.configuration(id).review
+	assert(read(target):find("StackSize <= 4",1,true) and review.changes[1].confirmedPrice==0.2)
+	print("GGG confirmation vetoes a new hide on missing or higher historical trades")
+end
+checkConfirmedTightening()
 
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.

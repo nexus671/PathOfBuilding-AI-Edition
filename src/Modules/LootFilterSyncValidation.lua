@@ -1,7 +1,7 @@
 local market = require("Modules.LootFilterEconomy")
 local parser = require("Modules.LootFilterParser")
 local protected = require("Modules.LootFilterProtectedDrops")
-return function(raw, bodies, baselineOnly, target, protections, history, day, now, policy)
+return function(raw, bodies, baselineOnly, target, protections, history, day, now, policy, confirmation)
 	assert(market.supports(raw), "Baseline has no economy section")
 	local quotes = {}
 	local categories = market.feedCategories(raw)
@@ -10,7 +10,8 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 	assert(baselineOnly or quotes["Orb of Alteration"] and quotes["Orb of Alteration"].volume >= 100, "Currency feed lacks a liquid reference quote")
 	local snapshots
 	if day then quotes, snapshots = market.remember(quotes, history, day, now) end
-	local candidate, changes, skipped = market.review(raw, quotes, target, policy)
+	local candidate, changes, skipped = market.review(raw, quotes, target, policy, confirmation)
+	assert(#candidate <= 2*1024*1024, "Generated filter exceeds the sync file size limit")
 	local parsed = parser.parse(candidate)
 	for _, diagnostic in ipairs(parsed.diagnostics) do
 		assert(not diagnostic.error, "Line " .. diagnostic.line .. ": " .. (diagnostic.error or ""))
@@ -22,13 +23,15 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 			if remaining == 0 then break end
 			local areas = change.scope == "campaign" and {60} or change.scope == "maps" and {83} or {83, 60}
 			change.samples = {}
+			local stack = change.old==change.cutoff and change.highlights and change.highlights[1].firstStack
+				or math.min(change.cutoff,change.old)+1
 			for _, itemClass in ipairs(change.classes) do
 				for _, area in ipairs(areas) do
 					if remaining == 0 then break end
 					local base = require("Modules.LootFilterLibrary").baseProperties(change.name,"Normal")
 					local sample = {
 						BaseType=change.name, Class=itemClass, Rarity="Normal",
-						StackSize=math.min(change.cutoff,change.old)+1, AreaLevel=area, DropLevel=base.DropLevel,
+						StackSize=stack, AreaLevel=area, DropLevel=base.DropLevel,
 						Width=base.Width, Height=base.Height, HasExplicitMod={}, HasEnchantment={}, HasInfluence={"None"},
 						SocketGroup="", EnchantmentPassiveNode="",
 					}
@@ -44,6 +47,7 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 						action=after.action, line=after.line, before=before.action, beforeLine=before.line,
 						beforeMissing=parser.safeMissingProperties(before.missingProperties), afterMissing=parser.safeMissingProperties(after.missingProperties),
 						class=sample.Class, count=sample.StackSize, area=area,
+						marker=after.action=="Show" and after.styles.MinimapIcon and table.concat(after.styles.MinimapIcon," ") or nil,
 					}
 					remaining = remaining-1
 				end

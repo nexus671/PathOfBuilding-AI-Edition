@@ -1,6 +1,7 @@
 local json = require("dkjson")
 local parser = require("Modules.LootFilterParser")
 local maps = require("Modules.LootFilterMapMarket")
+local appearance = require("Modules.LootFilterPriceAppearance")
 local M = {}
 M.categories = {"Currency", "Oil", "Omen", "Essence", "Thread", "Fragment", "Resonator", "Artifact"}
 M.endpoint = "https://poe.ninja/poe1/api/economy/"
@@ -221,12 +222,20 @@ function M.pickupPolicy(target, preferences)
 	target, preferences = target or 1, preferences or {}
 	assert(type(preferences) == "table", "Invalid pickup policy")
 	assert(finite(target) and target <= 1000, "Invalid chaos per stack target")
-	local policy = {target=target, caps={}}
+	assert(preferences.confirmTightening==nil or type(preferences.confirmTightening)=="boolean","Invalid confirmation setting")
+	local policy = {target=target,caps={},confirmTightening=preferences.confirmTightening==true or nil}
 	for _, key in ipairs({"campaign", "maps"}) do
 		local value = preferences[key]
 		assert(value == nil or finite(value) and value <= 1000, "Invalid " .. key .. " chaos target")
 		policy[key] = value
 	end
+	for _, key in ipairs({"highlightChaos","strongHighlightChaos"}) do
+		local value = preferences[key]
+		assert(value == nil or finite(value) and value <= 100000, "Enter a highlight threshold above 0 and up to 100,000 chaos")
+		policy[key] = value
+	end
+	assert(not (policy.highlightChaos and policy.strongHighlightChaos)
+		or policy.strongHighlightChaos > policy.highlightChaos, "The strong highlight threshold must be larger")
 	local caps = preferences.caps or {}
 	assert(type(caps) == "table", "Provide a table of maximum hide cutoffs")
 	local count = 0
@@ -248,7 +257,7 @@ local function scopeOf(area, tagged)
 	end
 end
 
-local function cutoffFor(quote, old, target, limit)
+local function cutoffFor(quote, old, target, limit, confirmedPrice)
 	if quote == false then return old, "Ambiguous price mapping" end
 	if not quote then return old, "Missing quote" end
 	if not M.liquid(quote) then return old, "Quoted volume below this category floor" end
@@ -259,21 +268,58 @@ local function cutoffFor(quote, old, target, limit)
 	end
 	if limit and limit > old then
 		if not quote.highPrice then return old, "Tightening needs three earlier liquid daily quotes" end
-		local higher = math.min(limit, math.ceil(target * 0.85 / quote.highPrice - 1e-12) - 1)
-		if higher > old then return higher, nil, quote.highPrice end
+		if confirmedPrice==false then return old, "No liquid direct-chaos GGG trade to confirm a higher hide cutoff" end
+		local protectivePrice = math.max(quote.highPrice,confirmedPrice or 0)
+		local higher = math.min(limit, math.ceil(target * 0.85 / protectivePrice - 1e-12) - 1)
+		if higher > old then return higher, nil, protectivePrice end
 		return old, "Recent high price keeps the cutoff"
 	end
 	return old, "Current cutoff is within the price margin"
 end
 
+local function appearanceSafe(raw)
+	local parsed = parser.parse(raw)
+	if #parsed.imports>0 or #parsed.diagnostics>0 then return false end
+	return true
+end
+
+local function priceHighlights(policy, quote, cutoff, name, area)
+	local blocks = {}
+	if not M.liquid(quote) or not finite(quote.price) then return blocks end
+	local function stackAt(threshold)
+		if not threshold then return nil end
+		local stack = threshold / quote.price
+		local whole = math.floor(stack)
+		-- An exact decimal multiple can land a few binary rounding steps above a whole stack.
+		local first = stack-whole <= whole*4.44e-16 and whole or math.ceil(stack)
+		return math.max(cutoff+1,first)
+	end
+	local highlight = stackAt(policy.highlightChaos)
+	local strong = stackAt(policy.strongHighlightChaos)
+	local function add(minimum,upper,tier)
+		if not minimum or minimum>10000 or upper and upper<=minimum then return end
+		blocks[#blocks+1] = {firstStack=minimum,upper=upper and upper<=10000 and upper or nil,
+			tier=tier,name=name,area=area and area.operator or nil}
+	end
+	add(highlight,strong,1)
+	add(strong,nil,2)
+	return blocks
+end
+
 -- Only rewrite the personal stack section, and only exact, simple Hide rules.
 -- Retain the complete original text for every unsupported rule.
-function M.review(raw, quotes, target, preferences)
+function M.review(raw, quotes, target, preferences, confirmation)
 	local policy = M.pickupPolicy(target, preferences)
+	raw = appearance.strip(raw)
 	local start, stop, tagged = M.sectionBounds(raw)
 	if not start or not stop then return raw, {} end
 	local section = raw:sub(start, stop - 1)
-	local changes, skipped = {}, {}
+	local changes, skipped, highlights = {}, {}, {}
+	local useHighlights = (policy.highlightChaos or policy.strongHighlightChaos) and appearanceSafe(raw)
+	if (policy.highlightChaos or policy.strongHighlightChaos) and not useHighlights then
+		skipped[#skipped+1] = {name="Price highlights",styleOnly=true,
+			reason="This filter has imports or unverified syntax."}
+	end
 	local function rewrite(block)
 		local parsed = parser.parse(block)
 		local rule = parsed.rules[1]
@@ -315,14 +361,32 @@ function M.review(raw, quotes, target, preferences)
 		local pickupTarget = policy[scope] or policy.target
 		for _, name in ipairs(base.values) do
 			local quote = quotes[quoteKey(name, card and "DivinationCard")]
-			local cutoff, reason, usedPrice = cutoffFor(quote, old, pickupTarget, not card and policy.caps[name])
-			if cutoff == old then
+			local limit = not card and policy.caps[name]
+			local comparison
+			if policy.confirmTightening and limit and limit>old then
+				local confirmed = confirmation and confirmation[name]
+				comparison = finite(confirmed) and confirmed or false
+			end
+			local cutoff, reason, usedPrice = cutoffFor(quote,old,pickupTarget,limit,comparison)
+			local styles = useHighlights and (stack or cutoff==0) and priceHighlights(policy,quote,cutoff,name,area) or {}
+			if #styles>0 then
+				for _, itemClass in ipairs(class.values) do
+					local byName = highlights[itemClass] or {}
+					local specs = byName[name] or {}
+					for _, spec in ipairs(styles) do specs[#specs+1]=spec end
+					byName[name], highlights[itemClass] = specs, byName
+				end
+			end
+			if cutoff == old and #styles==0 then
 				skipped[#skipped + 1] = {name=name, old=old, reason=reason, maps=scope=="maps", scope=scope}
 			else
-				changed = true
-				changes[#changes + 1] = {name=name, old=old, cutoff=cutoff, price=usedPrice, currentPrice=quote.currentPrice,
+				changed = changed or cutoff~=old
+				local icons = {}
+				for index, style in ipairs(styles) do icons[index] = {firstStack=style.firstStack,icon=appearance.icon(style.tier)} end
+				changes[#changes + 1] = {name=name, old=old, cutoff=cutoff, price=usedPrice or quote.price, currentPrice=quote.currentPrice,
 					source=quote.source, observations=quote.observations, classes=class.values,
-					volume=quote.volume, maps=scope=="maps", scope=scope}
+					volume=quote.volume, maps=scope=="maps", scope=scope,highlights=#icons>0 and icons or nil,
+					confirmedPrice=cutoff>old and comparison or nil}
 			end
 			group[cutoff] = group[cutoff] or {}
 			table.insert(group[cutoff], '"' .. name .. '"')
@@ -370,7 +434,8 @@ function M.review(raw, quotes, target, preferences)
 		end
 	end
 	section = table.concat(output)
-	return raw:sub(1, start - 1) .. section .. raw:sub(stop), changes, skipped
+	local candidate = raw:sub(1, start - 1) .. section .. raw:sub(stop)
+	return appearance.apply(candidate,highlights), changes, skipped
 end
 
 function M.validateManagedRules(rules)
