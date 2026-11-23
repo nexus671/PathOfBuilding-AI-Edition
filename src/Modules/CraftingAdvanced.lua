@@ -1625,7 +1625,7 @@ function A.extend(M,api)
 		local method=M.baseCurrency and M.baseCurrency(action) or action.method
 		assert(method == "exalt" or method == "augmentation" or method == "regal" or method == "influence_exalt","Exact next-mod odds support augmentation, regal, exalt and influence slams")
 		M.validateRecipe({steps={action},targets=targets})
-		for _,group in ipairs(targets) do assert(not group.minRoll,"Use simulation for roll-value thresholds") end
+		for _,group in ipairs(targets) do assert(group.minRoll==nil and group.minBaseValue==nil and group.maxBaseValue==nil,"Use simulation for roll-value thresholds") end
 		-- Validate the transition independently, then enumerate every legal next modifier.
 		M.action(model,state,action,function() return 0.5 end)
 		if method == "regal" then state.rarity="RARE" end

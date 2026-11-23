@@ -106,7 +106,7 @@ function F.extend(M,A,api)
 		local plain=copyTable(craft);plain.allflame=nil
 		local result=calculate(raw,plain,targets,initialState)
 		local preferences=profile.preferredTargets or targets
-		for _,group in ipairs(preferences) do assert(not group.minRoll,"Use simulation for Allflame roll-value thresholds") end
+		for _,group in ipairs(preferences) do assert(group.minRoll==nil and group.minBaseValue==nil and group.maxBaseValue==nil,"Use simulation for Allflame roll-value thresholds") end
 		local mass={}
 		for _,entry in ipairs(result.outcomes) do
 			local candidate=entry.state and copyTable(entry.state) or copyTable(state)

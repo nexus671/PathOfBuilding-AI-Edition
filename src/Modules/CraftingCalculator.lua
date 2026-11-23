@@ -91,7 +91,7 @@ function C.extend(M)
 		-- targets only refer to modifier identities, the value roll cannot alter
 		-- whether a target matches, so enumerate the modeled choices exactly.
 		if method=="harvest_damage" and not partialConversion and not craft.allflame and not options.requirements then
-			local rollGoal=false;for _,group in ipairs(targets or {}) do if group.minRoll~=nil then rollGoal=true;break end end
+			local rollGoal=false;for _,group in ipairs(targets or {}) do if group.minRoll~=nil or group.minBaseValue~=nil or group.maxBaseValue~=nil then rollGoal=true;break end end
 			if not rollGoal then
 				M.validateRecipe({steps={craft},targets=targets,requiredGroups=options.requiredGroups})
 				M.perform(raw,craft,options.seed,initialState)
@@ -115,7 +115,7 @@ function C.extend(M)
 			end
 		end
 		if method=="harvest_resistance" and not partialConversion and not craft.allflame and not options.requirements then
-			local rollGoal=false;for _,group in ipairs(targets or {}) do if group.minRoll~=nil then rollGoal=true;break end end
+			local rollGoal=false;for _,group in ipairs(targets or {}) do if group.minRoll~=nil or group.minBaseValue~=nil or group.maxBaseValue~=nil then rollGoal=true;break end end
 			if not rollGoal then
 				M.validateRecipe({steps={craft},targets=targets,requiredGroups=options.requiredGroups})
 				M.perform(raw,craft,options.seed,initialState)
@@ -281,7 +281,7 @@ function C.extend(M)
 		end
 		local sampled=not finite[method] or options.requirements~=nil or options.requiredGroups~=nil
 		for _,list in ipairs({targets,craft.allflame and craft.allflame.preferredTargets or {}}) do
-			for _,group in ipairs(list) do if group.minRoll ~= nil then sampled=true end end
+			for _,group in ipairs(list) do if group.minRoll ~= nil or group.minBaseValue~=nil or group.maxBaseValue~=nil then sampled=true end end
 		end
 		if not sampled then return calculate(raw,craft,targets,initialState) end
 		-- A calculator always applies its action, even when the input already matches.
