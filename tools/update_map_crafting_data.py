@@ -11,6 +11,7 @@ FIELDS = ("name", "generation_type", "required_level", "groups", "spawn_weights"
           "generation_weights", "adds_tags", "stats", "text")
 ORDINARY_MAP_KEYS = {f"Metadata/Items/Maps/MapKeyTier{tier}" for tier in range(1, 17)}
 CURRENT_MAP_KEYS = ORDINARY_MAP_KEYS | {"Metadata/Items/Maps/MapKeyNightmareBoss"}
+REVIEWED_BASE_IMPLICITS = {"Metadata/Items/Maps/MapWorldsVaalTemple": "MapVaalTempleContainsVaalVessels"}
 
 
 def extract(raw, expected_hash, base_raw, expected_base_hash, source):
@@ -33,9 +34,17 @@ def extract(raw, expected_hash, base_raw, expected_base_hash, source):
                  (value.get("item_class") == "MapKey" and key in CURRENT_MAP_KEYS)}
     if not map_bases:
         raise ValueError("No map bases found")
+    base_implicits = {}
+    for base_id, mod_id in REVIEWED_BASE_IMPLICITS.items():
+        if base_id not in map_bases:
+            continue
+        base, mod = bases[base_id], mods.get(mod_id, {})
+        if base.get("implicits") != [mod_id] or mod.get("domain") != "area" or mod.get("generation_type") != "unique" or not isinstance(mod.get("text"), str) or not mod["text"]:
+            raise ValueError(f"Review changed map base implicit: {base_id}")
+        base_implicits[base_id] = {"id": mod_id, "text": mod["text"], "source": "base"}
     return {"_comment": "Generated GGG game data from RePoE; cspell:disable",
             "patch": "3.30.0.4", "source": source, "modsSha256": actual,
-            "basesSha256": base_hash, "bases": map_bases, "mods": selected}
+            "basesSha256": base_hash, "bases": map_bases, "baseImplicits": base_implicits, "mods": selected}
 
 
 def main():

@@ -18,6 +18,12 @@ for _,input in ipairs({
  {baseId="Metadata/Items/Maps/MapWorldsStrand",tier=5,itemLevel=83,rarity="rare",selected={}},
  {baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=83,rarity="rare",selected={},plannedDeified=true},
 }) do assert(not pcall(currency.perform,input,"vaal_tier_up",42),"Unsupported tier-up was accepted") end
+local templeInput={baseId="Metadata/Items/Maps/MapKeyTier16",tier=16,itemLevel=83,rarity="rare",selected={}}
+local temple=currency.perform(templeInput,"vaal_temple",42)
+assert(temple.state.baseId=="Metadata/Items/Maps/MapWorldsVaalTemple" and temple.state.tier==16 and temple.state.corrupted and temple.state.vaalPreview,"Invalid Vaal Temple preview")
+assert(temple.baseImplicit and temple.baseImplicit.text:find("10 additional guarded Vaal Vessels",1,true),"Vaal Temple base implicit is missing")
+local invalidTemple=copyTable(templeInput);invalidTemple.tier=15;invalidTemple.baseId="Metadata/Items/Maps/MapKeyTier15"
+assert(not pcall(currency.perform,invalidTemple,"vaal_temple",42),"Non-tier-16 Vaal Temple input was accepted")
 for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build)
  local base={baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=68,rarity="normal",selected={},id="vaal-implicit-ui",title="Map",patch=map.source().patch}
@@ -41,6 +47,20 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  assert(saved.tier==6 and saved.baseId=="Metadata/Items/Maps/MapKeyTier6" and saved.vaalPreview and saved.vaalTierUpPreview,"Tier-up preview was not saved")
  ui:click("close");c=require("Classes.MapModifierControl").Open({initial=saved})
  assert(c.tier:GetSelValueByKey("val")==6 and c.status.label:find("Conditional tier-up",1,true),"Reopened tier-up preview lost its assumption label")
- ui:frame():write(directory.."/"..size[1].."-map-vaal-tier-up-reopened.json");ui:restore();main.popups={}
+ ui:frame():write(directory.."/"..size[1].."-map-vaal-tier-up-reopened.json");ui:click("close")
+ local templeDraft=copyTable(templeInput);templeDraft.id="temple-ui";templeDraft.title="Temple";templeDraft.patch=map.source().patch
+ c=require("Classes.MapModifierControl").Open({initial=templeDraft,keep=function(value) saved=require("Modules.AtlasPlanner").validateMapDraft(value);return value.id end})
+ ui:click("currency");ui:text("search","Vaal: Vaal Temple outcome");ui:click("choose")
+ assert(c.tier:GetSelValueByKey("val")==16 and c.rarity:GetSelValueByKey("val")=="corrupted_rare","Vaal Temple preview did not update the map")
+ local rows={};for _,line in ipairs(c.affixes.list) do rows[#rows+1]=StripEscapes(line[1] or "") end
+ assert(table.concat(rows," "):gsub("%s+"," "):find("10 additional guarded Vaal Vessels",1,true),"Vaal Temple base implicit is not visible")
+ ui:frame():write(directory.."/"..size[1].."-map-vaal-temple.json");ui:click("keep")
+ assert(saved.baseId=="Metadata/Items/Maps/MapWorldsVaalTemple" and saved.vaalPreview,"Vaal Temple preview was not saved")
+ ui:click("close");c=require("Classes.MapModifierControl").Open({initial=saved});assert(c.status.label:find("Conditional Vaal Temple",1,true),"Reopened Vaal Temple lost its assumption label")
+ ui:frame():write(directory.."/"..size[1].."-map-vaal-temple-reopened.json");ui:click("close")
+ local copied=copyTable(saved);copied.observedEffects={{kind="implicit",text="Area contains 10 additional guarded Vaal Vessels"}}
+ c=require("Classes.MapModifierControl").Open({initial=copied});rows={};for _,line in ipairs(c.affixes.list) do rows[#rows+1]=StripEscapes(line[1] or "") end
+ local _,matches=table.concat(rows," "):gsub("%s+"," "):gsub("10 additional guarded Vaal Vessels","")
+ assert(matches==1,"Copied base implicit should not be displayed twice");ui:restore();main.popups={}
 end
-print("MAP_VAAL_UI_OK",21)
+print("MAP_VAAL_UI_OK",27)

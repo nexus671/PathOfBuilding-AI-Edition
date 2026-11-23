@@ -282,7 +282,7 @@ function M.Open(options)
 			local attemptSeed=rollSeed;rollSeed=rollSeed*16807%2147483647
 			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,attemptSeed)
 			if not ok then ui.errorPopup("Currency unavailable",result);return end
-			if entry.id=="vaal_tier_up" then baseId=result.state.baseId;controls.tier:SelByValue(result.state.tier,"val") end
+			if entry.id=="vaal_tier_up" or entry.id=="vaal_temple" then baseId=result.state.baseId;controls.tier:SelByValue(result.state.tier,"val") end
 			selected=result.state.selected;rolls=result.state.rolls;implicit=result.state.implicit and copyTable(result.state.implicit) or nil
 			local rarityValue=result.state.corrupted and "corrupted_"..result.state.rarity or result.state.rarity
 			local clearedEstimate=result.state.corrupted and estimateSettings~=nil
@@ -293,6 +293,7 @@ function M.Open(options)
 			if entry.id=="originator" then controls.status.label="^xE9BE7BOriginator preview | replacement weights and interactions unverified" end
 			if entry.id:match("^vaal_") then controls.status.label=clearedEstimate and "^xE9BE7BConditional Vaal outcome | reroll settings cleared" or "^xE9BE7BConditional Vaal outcome | overall odds not modeled" end
 			if entry.id=="vaal_tier_up" and not clearedEstimate then controls.status.label=ui.fit("^xE9BE7BConditional tier-up | item level retained (unverified)",rightWidth,14) end
+			if entry.id=="vaal_temple" and not clearedEstimate then controls.status.label=ui.fit("^xE9BE7BVaal Temple preview | item level retained (unverified)",rightWidth,14) end
 		end,closeOnChoose=false})
 	end)
 	controls.currency.enabled=function() return not isCorrupted() and not mirrored and not unidentified and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and not levelProblem() end
@@ -328,6 +329,7 @@ function M.Open(options)
 		end
 		controls.list.list=lines;controls.list.controls.scrollBar.offset=0;controls.status.label=rarity=="normal" and (isCorrupted() and "^xE07070Corrupted normal map | No explicit modifiers" or "^7Normal map | Use currency to add modifiers") or map.isNightmare(baseId) and "^xE9BE7BNightmare | Experimental | "..result.total.." candidates | Page "..(math.floor(offset/30)+1) or (isCorrupted() and "^xE07070Corrupted "..#selected.."/"..(rarity=="magic" and 2 or 9).." | " or "^7")..result.total.." candidates | Page "..(math.floor(offset/30)+1).." | weights are not odds"
 		if unidentified then controls.status.label="^xE9BE7BUnidentified | unknown modifiers; identify and paste again"
+		elseif vaalPreview and baseId=="Metadata/Items/Maps/MapWorldsVaalTemple" then controls.status.label=ui.fit("^xE9BE7BConditional Vaal Temple | item level and quality unverified",rightWidth,14)
 		elseif vaalTierUpPreview then controls.status.label=ui.fit("^xE9BE7BConditional tier-up | item level and quality unverified",rightWidth,14)
 		elseif vaalPreview then controls.status.label="^xE9BE7BBased on conditional Vaal preview | outcome odds not modeled" end
 		local problem=levelProblem();if problem then controls.status.label="^xE9BE7B"..ui.fit(problem,rightWidth,14) end
@@ -347,6 +349,10 @@ function M.Open(options)
 				local lines=#effect.lines==0 and {effect.name} or effect.lines
 				for _,line in ipairs(lines) do affixes[#affixes+1]=line;affixIds[#affixes]=effect.id end
 			end
+		end
+		if not unidentified and result.baseImplicit then
+			local present=false;for _,effect in ipairs(observedEffects or {}) do if effect.kind=="implicit" and effect.text==result.baseImplicit.text then present=true end end
+			if not present then table.insert(affixes,1,"^xB4B4FFBase implicit: "..result.baseImplicit.text);prefixLines=prefixLines+1 end
 		end
 		if quality then
 			local effect=result.summary.qualityEffect

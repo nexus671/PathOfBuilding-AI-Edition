@@ -181,6 +181,19 @@ describe("Experimental map currency",function()
 		local planned=copyTable(magic);planned.rarity="rare";planned.plannedDeified=true
 		assert.has_error(function() currency.perform(planned,"vaal_tier_up",42) end)
 	end)
+	it("previews the conditional Vaal Temple outcome with its base implicit",function()
+		local map=require("Modules.MapCraftingData");local atlas=require("Modules.AtlasPlanner")
+		local input={baseId="Metadata/Items/Maps/MapKeyTier16",tier=16,itemLevel=83,rarity="rare",selected={}}
+		local before=copyTable(input);local result=currency.perform(input,"vaal_temple",42);local next=result.state
+		assert.same(before,input);assert.equal("Metadata/Items/Maps/MapWorldsVaalTemple",next.baseId);assert.equal(16,next.tier);assert.equal(83,next.itemLevel)
+		assert.is_true(next.corrupted);assert.is_true(next.vaalPreview);assert.is_nil(next.vaalTierUpPreview)
+		assert.equal("MapVaalTempleContainsVaalVessels",result.baseImplicit.id);assert.matches("10 additional guarded Vaal Vessels",result.baseImplicit.text,1,true)
+		assert.matches("not a full Vaal Orb roll",result.note,1,true);assert.same(next,currency.perform(input,"vaal_temple",42).state)
+		local draft=copyTable(next);draft.id="temple";draft.title="Temple";draft.patch=map.source().patch
+		assert.equal(next.baseId,atlas.validateMapDraft(draft).baseId)
+		local other=copyTable(input);other.tier=15;other.baseId="Metadata/Items/Maps/MapKeyTier15";assert.has_error(function() currency.perform(other,"vaal_temple",42) end)
+		other=copyTable(input);other.plannedDeified=true;assert.has_error(function() currency.perform(other,"vaal_temple",42) end)
+	end)
 	it("rerolls values even when Chaos selects the same modifier again",function()
 		local map=require("Modules.MapCraftingData")
 		local inputs={state("rare"),{baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}}

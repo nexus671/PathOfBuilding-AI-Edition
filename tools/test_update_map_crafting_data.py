@@ -26,6 +26,8 @@ class MapDataExtractionTest(unittest.TestCase):
         self.assertIn("35% more [Thread|Threads]", maps["mods"]["MapUberModCurses"]["text"])
         self.assertIn("47% more Currency", maps["mods"]["MapUberModJuggernaut"]["text"])
         self.assertIn("Metadata/Items/Maps/MapWorldsBeach", maps["bases"])
+        self.assertEqual({"id": "MapVaalTempleContainsVaalVessels", "text": "Area contains 10 additional guarded Vaal Vessels", "source": "base"},
+                         maps["baseImplicits"]["Metadata/Items/Maps/MapWorldsVaalTemple"])
         self.assertEqual("Nightmare Map", maps["bases"]["Metadata/Items/Maps/MapKeyNightmareBoss"]["name"])
         for tier in range(1, 17):
             self.assertEqual(f"Map (Tier {tier})", maps["bases"][f"Metadata/Items/Maps/MapKeyTier{tier}"]["name"])
@@ -68,6 +70,21 @@ class MapDataExtractionTest(unittest.TestCase):
         source = b"{}"
         with self.assertRaisesRegex(ValueError, "No area modifiers"):
             extract(source, hashlib.sha256(source).hexdigest(), source, hashlib.sha256(source).hexdigest(), {})
+
+    def test_reviews_implicit_identity_before_exporting(self):
+        base_id = "Metadata/Items/Maps/MapWorldsVaalTemple"
+        mod_id = "MapVaalTempleContainsVaalVessels"
+        affix = {field: [] for field in ("groups", "spawn_weights", "generation_weights", "adds_tags", "stats")}
+        affix.update(name="Example", generation_type="prefix", required_level=1, text="Example", domain="area")
+        mods = json.dumps({"example": affix, mod_id: {"domain": "area", "generation_type": "unique", "text": "Ten vessels"}}).encode()
+        base = {"name": "Vaal Temple Map", "tags": ["map", "default"], "release_state": "released", "drop_level": 83,
+                "visual_identity": None, "item_class": "Map", "implicits": [mod_id]}
+        def run(value):
+            bases = json.dumps({base_id: value}).encode()
+            return extract(mods, hashlib.sha256(mods).hexdigest(), bases, hashlib.sha256(bases).hexdigest(), {})
+        self.assertEqual("Ten vessels", run(base)["baseImplicits"][base_id]["text"])
+        with self.assertRaisesRegex(ValueError, "Review changed map base implicit"):
+            run({**base, "implicits": []})
 
 
 if __name__ == "__main__":
