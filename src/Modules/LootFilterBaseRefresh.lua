@@ -124,7 +124,10 @@ function M.planImported(profile, previous, latest)
 	end
 	local evaluation = M.evaluate(oldParsed,parsed,profile.sampleSets)
 	evaluation.profile, evaluation.before, evaluation.after = nextProfile,before,after
-	if not protected.personalRulesPreserved(profile.template,candidate) then
+	local expand = require("Modules.LootFilterImports").expand
+	local previousExpanded = expand(profile.template,profile.importFiles,filters.limit)
+	local candidateExpanded = expand(candidate,nextProfile.importFiles,filters.limit)
+	if not protected.personalRulesPreserved(previousExpanded,candidateExpanded) then
 		evaluation.blocks[#evaluation.blocks+1] = "The new baseline changes the custom drop protection rules or their precedence."
 	end
 	return evaluation

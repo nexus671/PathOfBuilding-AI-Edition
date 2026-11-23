@@ -331,6 +331,9 @@ Hide
 	local importOnly = baseRefresh.planImported(imports,imports.template,'Import "new.filter"\n')
 	assert(importOnly.profile.template=='Import "new.filter"\n' and importOnly.after:find("SetFontSize 40",1,true))
 	assert(not pcall(baseRefresh.planImported,imports,imports.template,'Import "missing.filter"\n'))
+	imports.importFiles = {{name="old.filter",text=custom.template},{name="new.filter",text=removedScroll}}
+	local changedAttachment = baseRefresh.planImported(imports,imports.template,'Import "new.filter"\n')
+	assert(changedAttachment.blocks[#changedAttachment.blocks]:find("custom drop protection rules",1,true))
 	files.readFile = function(path)
 		if path=="old.filter" then return previous end
 		assert(path=="new.filter")
