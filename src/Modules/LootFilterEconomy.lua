@@ -71,6 +71,30 @@ function M.liquid(quote)
 	return quote and quote.volume >= (minimumVolume[quote.source] or 100)
 end
 
+local function countLiquidExchangeQuotes(values)
+	local counts = {}
+	if type(values) ~= "table" then return counts end
+	for key, price in pairs(values) do
+		local source = type(key) == "string" and key:match("^([^:]+):")
+		if source and finite(price) then counts[source] = (counts[source] or 0) + 1 end
+	end
+	return counts
+end
+
+local function verifyExchangeCoverage(current, previous)
+	if #previous < 2 then return end
+	local recent = countLiquidExchangeQuotes(previous[1].values)
+	local older = countLiquidExchangeQuotes(previous[2].values)
+	local latest = countLiquidExchangeQuotes(current)
+	local function check(source)
+		local reference = math.min(recent[source] or 0, older[source] or 0)
+		assert(reference < 20 or (latest[source] or 0) >= reference / 4,
+			source .. " feed has fewer than a quarter of its usual liquid quotes. The existing filter was kept.")
+	end
+	for _, source in ipairs(M.categories) do check(source) end
+	check("DivinationCard")
+end
+
 -- A price increase only loosens a hide once it is supported by recent history.
 -- A current lower quote still takes effect immediately against the fixed baseline.
 function M.remember(quotes, history, day, now)
@@ -103,6 +127,7 @@ function M.remember(quotes, history, day, now)
 			adjusted[name] = quote
 		end
 	end
+	verifyExchangeCoverage(snapshot.values, previous)
 	table.insert(previous, 1, snapshot)
 	return adjusted, previous
 end

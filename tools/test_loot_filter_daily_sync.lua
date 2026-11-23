@@ -139,6 +139,26 @@ local spike, second = market.remember(quote(2), first, "day 2", now+86400)
 assert(spike["Orb of Alteration"].price==0.2 and spike["Orb of Alteration"].currentPrice==2)
 local lower = market.remember(quote(0.1), second, "day 3", now+2*86400)
 assert(lower["Orb of Alteration"].price==0.1)
+local function quoteBatch(count, source)
+	local batch = {}
+	for index=1,count do
+		batch["Fixture "..index] = {price=0.21,volume=1000,id=tostring(index),source=source or "Currency"}
+	end
+	return batch
+end
+local _, completeDay = market.remember(quoteBatch(24), {}, "complete one", now)
+local _, completeHistory = market.remember(quoteBatch(24), completeDay, "complete two", now+86400)
+local coverage, coverageError = pcall(market.remember, quoteBatch(5), completeHistory, "truncated", now+2*86400)
+assert(not coverage and coverageError:find("fewer than a quarter",1,true))
+assert(pcall(market.remember, quoteBatch(6), completeHistory, "still sufficient", now+2*86400))
+assert(pcall(market.remember, quoteBatch(5), completeDay, "first comparison", now+2*86400))
+do
+	local _, cardFirst = market.remember(quoteBatch(24,"DivinationCard"),{},"cards one",now)
+	local _, cardHistory = market.remember(quoteBatch(24,"DivinationCard"),cardFirst,"cards two",now+86400)
+	local valid, failure = pcall(market.remember,quoteBatch(5,"DivinationCard"),cardHistory,"cards three",now+2*86400)
+	assert(not valid and failure:find("DivinationCard feed has fewer",1,true))
+end
+
 local _, repeatDay = market.remember(quote(2), second, "day 2", now+86400)
 assert(#repeatDay==2)
 -- Ambiguous identities stay ineligible even when the conflicting quote has more volume.
@@ -225,6 +245,20 @@ sync.disable()
 local browser = require("Modules.LootFilterMarketBrowse")
 local gear = browser.rows([[{"lines":[{"name":"Example gear","baseType":"Cord Belt","variant":"A","chaosValue":20,"listingCount":17},{"name":"Example gear","baseType":"Cord Belt","variant":"B","chaosValue":32,"listingCount":1}]}]], {id="UniqueAccessory"})
 assert(#gear==2 and gear[1].variant=="B" and gear[2].listings==17)
+do
+	local sharedBase = browser.rows([[{"lines":[
+		{"name":"Named result","baseType":"Cord Belt","detailsId":"named","chaosValue":30,"count":50,"listingCount":40,"corrupted":false},
+		{"name":"Competing result","baseType":"Cord Belt","detailsId":"competing","chaosValue":120,"count":80,"listingCount":62},
+		{"name":"Thin result","baseType":"Cord Belt","detailsId":"thin","chaosValue":9000,"count":2,"listingCount":5},
+		{"name":"Conflicted result","baseType":"Cord Belt","detailsId":"conflicted","chaosValue":700,"count":50,"listingCount":55},
+		{"name":"Conflicted result","baseType":"Cord Belt","detailsId":"conflicted","chaosValue":5,"count":100,"listingCount":70}
+	]}]],{id="UniqueAccessory"},"Named result")
+	assert(#sharedBase==1 and sharedBase[1].corrupted==false)
+	local evidence = sharedBase[1].baseEvidence
+	assert(evidence.names==4 and evidence.variants==4 and evidence.priced==2 and evidence.minimum==30 and evidence.maximum==120)
+	local unmodifiedGem = browser.rows([[{"lines":[{"name":"Example gem","chaosValue":1,"gemLevel":1,"gemQuality":0}]}]],{id="SkillGem"})[1]
+	assert(unmodifiedGem.gemQuality==0 and unmodifiedGem.corrupted==nil)
+end
 local cards = browser.rows([[{"core":{"primary":"chaos"},"items":[{"id":"card","name":"Example card"}],"lines":[{"id":"card","primaryValue":12,"volumePrimaryValue":500}]}]], {id="DivinationCard",feed="exchange"})
 assert(#cards==1 and cards[1].price==12 and cards[1].volume==500)
 assert(not pcall(browser.rows, '{"lines":[{"name":"Bad","chaosValue":-1}]}', {id="Map"}))
@@ -616,6 +650,163 @@ write(target,verifiedRaw)
 assert(not pcall(profiles.verifiedOutput,id))
 print("Account publication can only read the latest verified, unchanged local output")
 
+
+local function checkBackupHistory()
+	-- Review an older recorded backup, refuse checksum and revision drift,
+	-- then retain the previously active bytes as an undo point after restore.
+	local recorded = profiles.configuration()
+	local fixedAtReview = read(recorded.baseline)
+	local olderRule = table.concat({"Hide", '    Class == "Stackable Currency"', '    BaseType == "Orb of Transmutation"',
+		"    StackSize <= 3", "", "# PoB economy: end"}, "\n")
+	local olderBytes, changed = fixedAtReview:gsub("# PoB economy: end",olderRule,1)
+	assert(changed == 1)
+	local digestOf = require("sha1")
+	local oldDigest = digestOf(olderBytes)
+	local oldPath = target .. ".before-pob-sync-" .. oldDigest .. ".bak"
+	local configurationCodec = require("dkjson")
+	assert(oldDigest ~= recorded.current and oldDigest ~= recorded.backup)
+	table.insert(recorded.history,{backup=oldDigest,checkedAt=now-86400})
+	write(configFile,assert(configurationCodec.encode(recorded)))
+	write(oldPath,olderBytes.."# edited")
+	local canReview, reason = pcall(profiles.previewBackup,"default",oldDigest)
+	assert(not canReview and reason:find("checksum mismatch",1,true))
+	write(oldPath,olderBytes)
+	local reviewedBackup = profiles.previewBackup("default",oldDigest)
+	assert(reviewedBackup.before == verifiedRaw and reviewedBackup.after == olderBytes)
+	profiles.setBackground(false,recorded.revision)
+	assert(not pcall(profiles.rollback,"default",reviewedBackup) and read(target)==verifiedRaw)
+	reviewedBackup = profiles.previewBackup("default",oldDigest)
+	profiles.rollback("default",reviewedBackup)
+	local restoredConfig = profiles.configuration()
+	assert(restoredConfig.paused and not restoredConfig.review and read(target)==olderBytes)
+	assert(profiles.previewBackup("default",restoredConfig.backup).after==verifiedRaw)
+	-- Simulate a restart after replacing the target but before finishing its journal.
+	local interrupted = profiles.configuration()
+	interrupted.pending = interrupted.backup
+	interrupted.pendingRestore = {undo=interrupted.current}
+	local intended = interrupted.pending
+	write(configFile,assert(configurationCodec.encode(interrupted)))
+	write(target,verifiedRaw)
+	local availableBackups = profiles.backups("default")
+	local reconciled = profiles.configuration()
+	assert(reconciled.paused and reconciled.current==intended and not reconciled.pending and not reconciled.pendingRestore)
+	assert(availableBackups[1].digest==oldDigest and read(target)==verifiedRaw)
+	-- Once another restore changes the latest undo pointer, the earlier
+	-- undo-only snapshot remains available from the persistent list.
+	local third = olderBytes:gsub("StackSize <= 3","StackSize <= 8",1)
+	local thirdDigest = digestOf(third)
+	local thirdPath = target..".before-pob-sync-"..thirdDigest..".bak"
+	write(thirdPath,third)
+	table.insert(reconciled.history,{backup=thirdDigest,checkedAt=now-86400})
+	write(configFile,assert(configurationCodec.encode(reconciled)))
+	profiles.rollback("default",profiles.previewBackup("default",thirdDigest))
+	assert(read(target)==third and profiles.configuration().backup~=oldDigest)
+	assert(profiles.previewBackup("default",oldDigest).after==olderBytes)
+	profiles.rollback("default",profiles.previewBackup("default",profiles.configuration().backup))
+	reconciled = profiles.configuration()
+	assert(read(target)==verifiedRaw)
+	print("Reviewed backup restore checks historical bytes and recovers an interrupted restore")
+
+	-- A new limit becomes effective after a successful refresh. Reclaim
+	-- only recorded backup bytes that still match their original digest.
+	local retired = olderBytes:gsub("StackSize <= 3","StackSize <= 2",1)
+	local suspect = olderBytes:gsub("StackSize <= 3","StackSize <= 7",1)
+	local retiredDigest, suspectDigest = digestOf(retired), digestOf(suspect)
+	assert(retiredDigest~=oldDigest and suspectDigest~=oldDigest and retiredDigest~=suspectDigest)
+	local retiredPath = target..".before-pob-sync-"..retiredDigest..".bak"
+	local suspectPath = target..".before-pob-sync-"..suspectDigest..".bak"
+	write(retiredPath,retired)
+	write(suspectPath,suspect.."# modified")
+	table.insert(reconciled.history,{backup=retiredDigest,checkedAt=now-2*86400})
+	table.insert(reconciled.history,{backup=suspectDigest,checkedAt=now-3*86400})
+	local heldBytes = olderBytes:gsub("StackSize <= 3","StackSize <= 9",1)
+	local heldDigest = digestOf(heldBytes)
+	local heldPath = target..".before-pob-sync-"..heldDigest..".bak"
+	write(heldPath,heldBytes)
+	table.insert(reconciled.history,{backup=heldDigest,checkedAt=now-4*86400})
+	write(configFile,assert(configurationCodec.encode(reconciled)))
+	assert(not pcall(profiles.setBackupLimit,"default",1,"stale revision"))
+	profiles.setBackupLimit("default",1,reconciled.revision)
+	assert(read(retiredPath)==retired and read(suspectPath)==suspect.."# modified")
+	local otherProfileBytes = read(namedTarget)
+	profiles.pause(false)
+	launch.DownloadPage = function(_,url,callback)
+		local mapBody = stash[url:match("&type=(%w+)$")]
+		if mapBody then callback({header=header,body=mapBody}); return end
+		reply(url,callback)
+	end
+	local size = kernel.MultiByteToWideChar(65001,8,heldPath,-1,nil,0)
+	local wide = ffi.new("uint16_t[?]",size)
+	assert(kernel.MultiByteToWideChar(65001,8,heldPath,-1,wide,size)==size)
+	local holding = kernel.CreateFileW(wide,0x80000000,1,nil,3,0x80,nil)
+	assert(holding~=ffi.cast("void *",-1))
+	profiles.tick(now,true)
+	assert(kernel.CloseHandle(holding)~=0)
+	assert(read(heldPath)==heldBytes and profiles.status:find("Protected drops verified",1,true),profiles.status)
+	assert(profiles.verifiedOutput("default")==read(target))
+	assert(not io.open(retiredPath,"rb") and read(suspectPath)==suspect.."# modified")
+	assert(read(reconciled.baseline)==fixedAtReview and read(namedTarget)==otherProfileBytes)
+	assert(profiles.configuration().retentionSkipped==2)
+	print("Opt-in retention preserves unverifiable files, the baseline and other profiles")
+
+	local afterRetention = profiles.configuration()
+	profiles.setBackupLimit("default",0,afterRetention.revision)
+	local aged = olderBytes:gsub("StackSize <= 3","StackSize <= 12",1)
+	local agedDigest = digestOf(aged)
+	local agedPath = target..".before-pob-sync-"..agedDigest..".bak"
+	write(agedPath,aged)
+	local state = profiles.configuration()
+	table.insert(state.history,{backup=agedDigest,checkedAt=now-7*86400})
+	write(configFile,assert(configurationCodec.encode(state)))
+	for _=1,31 do
+		profiles.tick(now,true)
+		assert(profiles.status:find("Protected drops verified",1,true),profiles.status)
+	end
+	state=profiles.configuration()
+	assert(#state.history==30 and state.backupRecords[agedDigest] and read(agedPath)==aged)
+	for _, run in ipairs(state.history) do assert(run.backup~=agedDigest) end
+	profiles.setBackupLimit("default",1,state.revision)
+	profiles.tick(now,true)
+	assert(profiles.status:find("Protected drops verified",1,true),profiles.status)
+	assert(not io.open(agedPath,"rb") and not profiles.configuration().backupRecords[agedDigest])
+	print("The backup catalog survives repeated unchanged refreshes and still supports retention")
+end
+checkBackupHistory()
+-- A successful-looking but severely incomplete feed must keep the last
+-- verified file and its publication record.
+local coverageTarget = dir.."/coverage-target.filter"
+write(coverageTarget,cardBaseline)
+local coverageProfile = profiles.createProfile("Coverage fixture")
+profiles.configure(coverageTarget,baseline,"Covens",{profileId=coverageProfile,hour=0,targetValue=1,protectionFile=protections})
+local exchangeClock, originalClock, extra = now, os.time, 23
+os.time = function() return exchangeClock end
+local codec = require("dkjson")
+launch.DownloadPage = function(_,url,callback)
+	local body = url:match("&type=DivinationCard$") and cardBody or commodityBody
+	if url:match("&type=Currency$") then
+		local data = assert(codec.decode(body))
+		for index=1,extra do
+			local id = "fixture-"..index
+			data.items[#data.items+1] = {id=id,name="Fixture currency "..index}
+			data.lines[#data.lines+1] = {id=id,primaryValue=0.21,volumePrimaryValue=1000}
+		end
+		body = codec.encode(data)
+	end
+	callback({header="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",exchangeClock).."\r\nAge: 5\r\n\r\n",body=body})
+end
+profiles.tick(exchangeClock,true,false,coverageProfile)
+exchangeClock = exchangeClock+86400
+profiles.tick(exchangeClock,true,false,coverageProfile)
+local verifiedCoverage = profiles.configuration(coverageProfile)
+assert(verifiedCoverage.lastSuccess==exchangeClock and #verifiedCoverage.priceHistory==2)
+local coverageBytes = read(coverageTarget)
+extra, exchangeClock = 4, exchangeClock+86400
+profiles.tick(exchangeClock,true,false,coverageProfile)
+os.time = originalClock
+local incomplete = profiles.configuration(coverageProfile)
+assert(incomplete.lastSuccess==verifiedCoverage.lastSuccess and #incomplete.priceHistory==2 and read(coverageTarget)==coverageBytes)
+assert(incomplete.lastFailure and incomplete.lastFailure.message:find("Currency feed has fewer than a quarter",1,true))
+print("A severe loss of exchange coverage retains the last verified output")
 
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.

@@ -27,6 +27,9 @@ local function platform()
 		unsigned long __stdcall GetFinalPathNameByHandleW(void *, uint16_t *, unsigned long, unsigned long);
 		int __stdcall MoveFileExW(const uint16_t *, const uint16_t *, unsigned long);
 		void * __stdcall CreateFileW(const uint16_t *, unsigned long, unsigned long, void *, unsigned long, unsigned long, void *);
+		int __stdcall GetFileSizeEx(void *, int64_t *);
+		int __stdcall ReadFile(void *, void *, unsigned long, unsigned long *, void *);
+		int __stdcall SetFileInformationByHandle(void *, int, void *, unsigned long);
 	]]
 	-- Use an alias type through a cast so other Windows modules can bind CloseHandle too.
 	local kernel = ffi.load("kernel32")
@@ -48,6 +51,28 @@ local function platform()
 			local handle = kernel.CreateFileW(wide(path), 0x40000000, 0, nil, 4, 0x80, nil)
 			assert(handle ~= ffi.cast("void *", -1), "Another PoB window is updating this filter, or the directory is unavailable")
 			return function() kernel.CloseHandle(handle) end
+		end,
+		prune = function(path, digest)
+			-- Hold one handle through both verification and deletion. Sharing
+			-- permits readers while blocking writers and path replacement.
+			local readAndDelete, shareRead, openExisting, openReparsePoint = 0x80010000, 1, 3, 0x00200000
+			local handle = kernel.CreateFileW(wide(path),readAndDelete,shareRead,nil,openExisting,openReparsePoint,nil)
+			if handle == ffi.cast("void *",-1) then return false end
+			local ok, marked = pcall(function()
+				local length = ffi.new("int64_t[1]")
+				if kernel.GetFileSizeEx(handle,length)==0 then return false end
+				local size = tonumber(length[0])
+				if size<1 or size>volumeLimit then return false end
+				local bytes = ffi.new("char[?]",size)
+				local count = ffi.new("unsigned long[1]")
+				if kernel.ReadFile(handle,bytes,size,count,nil)==0 or count[0]~=size
+					or sha(ffi.string(bytes,size))~=digest then return false end
+				local disposition = ffi.new("uint8_t[1]",1)
+				local fileDispositionInfo = 4
+				return kernel.SetFileInformationByHandle(handle,fileDispositionInfo,disposition,ffi.sizeof(disposition))~=0
+			end)
+			local closed = kernel.CloseHandle(handle)
+			return ok and marked and closed~=0
 		end,
 		canonical = function(path)
 			local handle = kernel.CreateFileW(wide(path), 0, 7, nil, 3, 0, nil)
@@ -324,6 +349,8 @@ function M.diagnosticReport(now, id)
 		report.dailyTime = string.format("%02d:%02d", config.hour or 9, config.minute or 0)
 		report.intervalDays = config.intervalDays or 1
 		report.targetChaos = config.targetValue
+		report.backupLimit = config.backupLimit
+		report.retentionSkipped = config.retentionSkipped
 		report.successfulRuns = {}
 		for index, run in ipairs(config.history or {}) do
 			if index > 30 then break end
@@ -464,6 +491,25 @@ function M.setBackgroundNotifications(enabled, id)
 	end)
 end
 
+local function backupDigest(value)
+	return type(value)=="string" and #value==40 and value:match("^[a-f0-9]+$")
+end
+
+local function backupRecords(config)
+	local records = type(config.backupRecords)=="table" and config.backupRecords or {}
+	-- Import pre-catalog references before the rolling run log is shortened.
+	for _, run in ipairs(config.history or {}) do
+		if type(run)=="table" and backupDigest(run.backup) and not records[run.backup] then
+			records[run.backup] = finiteNumber(run.checkedAt) or 0
+		end
+	end
+	if backupDigest(config.backup) and not records[config.backup] then
+		records[config.backup] = finiteNumber(config.lastSuccess) or 0
+	end
+	config.backupRecords = records
+	return records
+end
+
 function M.configure(target, baselineFile, league, options)
 	local id = options and options.profileId or "default"
 	assert(not M.busy, "Wait for the current sync to finish")
@@ -475,8 +521,13 @@ function M.configure(target, baselineFile, league, options)
 		nextConfig.backgroundEnabled = current and current.backgroundEnabled == true
 		nextConfig.backgroundNotifications = current and current.backgroundNotifications == true
 		nextConfig.providerRetryAfter = current and current.providerRetryAfter
-		if current and current.league == nextConfig.league and current.baselineHash == nextConfig.baselineHash then
-			nextConfig.priceHistory = current.priceHistory
+		nextConfig.backupLimit = current and current.backupLimit
+		if current and current.baselineHash == nextConfig.baselineHash then
+			if current.league == nextConfig.league then nextConfig.priceHistory = current.priceHistory end
+			if current.target == nextConfig.target and current.current == nextConfig.current and not current.pending then
+				nextConfig.backupRecords = backupRecords(current)
+				if nextConfig.backupLimit then nextConfig.backup, nextConfig.history = current.backup, current.history end
+			end
 		end
 		nextConfig.revision = newRevision()
 		if not read(nextConfig.baseline) then put(nextConfig.baseline, baseline) end
@@ -509,29 +560,150 @@ function M.pause(paused, id)
 	M.status = paused and "Daily sync is paused." or "Daily sync resumed."
 end
 
-function M.rollback(id)
+local function backupChoices(config, limit)
+	local entries, seen = {}, {}
+	local function add(digest, checkedAt)
+		if backupDigest(digest) and digest ~= config.current and not seen[digest] then
+			seen[digest] = true
+			entries[#entries+1] = {digest=digest,checkedAt=checkedAt}
+		end
+	end
+	add(config.backup)
+	local recorded = {}
+	for digest, date in pairs(backupRecords(config)) do
+		if backupDigest(digest) then
+			recorded[#recorded+1] = {digest=digest,checkedAt=finiteNumber(date) or 0}
+		end
+	end
+	table.sort(recorded,function(left,right)
+		if left.checkedAt==right.checkedAt then return left.digest<right.digest end
+		return left.checkedAt>right.checkedAt
+	end)
+	for _, entry in ipairs(recorded) do
+		if limit and #entries>=limit then break end
+		add(entry.digest,entry.checkedAt>0 and entry.checkedAt or nil)
+	end
+	return entries, seen
+end
+
+function M.setBackupLimit(id, limit, revision)
+	assert(not M.busy, "Wait for the current sync to finish")
+	assert(type(limit) == "number" and limit >= 0 and limit <= 30 and limit == math.floor(limit),
+		"Enter a whole number from 0 to 30")
+	lockSettings(function()
+		local config = assert(get(id), "Enable daily sync first")
+		assert(config.revision == revision, "Daily sync settings changed. Reopen backup retention.")
+		config.backupLimit, config.revision = limit>0 and limit or nil, newRevision()
+		config.retentionSkipped = nil
+		save(config,id)
+	end)
+end
+
+local function pruneBackups(config, choices)
+	local removed, skipped = {}, 0
+	for index=config.backupLimit+1,#choices do
+		local digest = choices[index].digest
+		local path = config.target .. ".before-pob-sync-" .. digest .. ".bak"
+		if platform().prune(path,digest) then
+			removed[digest] = true
+		else
+			skipped = skipped+1
+		end
+	end
+	for _, run in ipairs(config.history) do
+		if removed[run.backup] then run.backup = nil end
+	end
+	for digest in pairs(removed) do config.backupRecords[digest] = nil end
+	config.retentionSkipped = skipped>0 and skipped or nil
+end
+
+local restoreSummary = "Restored the verified backup. Daily sync is paused."
+
+local function finishRestore(config, digest, undo)
+	local records = backupRecords(config)
+	if undo then records[undo] = os.time() end
+	config.current, config.pending, config.backup = digest, nil, undo
+	config.pendingRestore = nil
+	config.summary, config.review = restoreSummary, nil
+	config.revision = newRevision()
+end
+
+function M.backups(id)
+	return lockSettings(function()
+		local config = assert(get(id), "Enable daily sync first")
+		if config.pendingRestore then
+			local target = assert(read(filterPath(config.target)), "Target filter is missing")
+			local actual = sha(target)
+			if actual == config.pending then
+				finishRestore(config,actual,config.pendingRestore.undo)
+			else
+				assert(actual == config.current, "Target changed during the interrupted restore")
+				config.pending, config.pendingRestore = nil, nil
+			end
+			save(config,id)
+		end
+		return backupChoices(config,30)
+	end)
+end
+
+local function readBackup(target, digest)
+	local raw = assert(read(target .. ".before-pob-sync-" .. digest .. ".bak"), "Backup is missing")
+	assert(sha(raw) == digest, "Backup checksum mismatch")
+	return raw
+end
+
+local function verifyRestorable(config, requested)
+	local target = filterPath(config.target)
+	local original = assert(read(target), "Target filter is missing")
+	assert(sha(original) == config.current, "Target was edited outside PoB")
+	assert(backupDigest(requested) and requested~=config.current and backupRecords(config)[requested],
+		"Choose a backup recorded for this sync profile")
+	local backup = readBackup(target,requested)
+	local baseline = assert(read(config.baseline), "Baseline filter is missing")
+	assert(sha(baseline) == config.baselineHash, "Baseline checksum changed")
+	verifyUnmanagedRules(backup,baseline)
+	validate(backup,{},true,config.targetValue,config.protections,nil,nil,nil,config.pickupPolicy)
+	return original, backup, target
+end
+
+function M.previewBackup(id, digest)
+	assert(not M.busy, "Wait for the current sync to finish")
+	return lockSettings(function()
+		local config = assert(get(id), "Enable daily sync first")
+		assert(not config.pending, "Finish recovering the interrupted sync before restoring a backup")
+		local before, after = verifyRestorable(config,digest)
+		return {before=before,after=after,digest=digest,revision=config.revision,current=config.current}
+	end)
+end
+
+function M.rollback(id, reviewed)
 	assert(not M.busy, "Wait for the current sync to finish")
 	lockSettings(function()
 		local config = assert(get(id), "Enable daily sync first")
-		assert(config.backup and config.backup:match("^[a-f0-9]+$") and #config.backup == 40, "No verified backup is available")
-		local target = filterPath(config.target)
-		local original = assert(read(target), "Target filter is missing")
-		assert(sha(original) == config.current, "Target was edited outside PoB")
-		local backup = assert(read(target .. ".before-pob-sync-" .. config.backup .. ".bak"), "Backup is missing")
-		assert(sha(backup) == config.backup, "Backup checksum mismatch")
-		config.pending = config.backup
-		config.paused = true
+		local digest = reviewed and reviewed.digest or config.backup
+		assert(digest, "No verified backup is available")
+		assert(not config.pendingRestore, "Reopen Review backups to recover the interrupted restore")
+		local original, backup, target = verifyRestorable(config,digest)
+		local undo
+		if reviewed then
+			assert(not config.pending and config.revision == reviewed.revision and config.current == reviewed.current
+				and original == reviewed.before and backup == reviewed.after, "Filter or sync settings changed after the review")
+			undo = config.current
+			local undoPath = target .. ".before-pob-sync-" .. undo .. ".bak"
+			if not read(undoPath) then put(undoPath,original) end
+			assert(read(undoPath) == original, "Current filter backup could not be verified")
+		end
+		keepExpected(backup)
+		config.pending, config.paused = digest, true
+		config.pendingRestore = {undo=undo}
 		save(config,id)
 		assert(read(target) == original, "Target changed before rollback")
 		put(target, backup)
 		assert(read(target) == backup, "Rollback verification failed")
-		keepExpected(backup)
-		config.current, config.pending, config.backup = config.backup, nil, nil
-		config.summary = "Restored the verified backup. Daily sync is paused."
-		config.review = nil
+		finishRestore(config,digest,undo)
 		save(config,id)
 	end)
-	M.status = "Restored the verified backup. Daily sync is paused."
+	M.status = restoreSummary
 end
 
 local months = {Jan=1,Feb=2,Mar=3,Apr=4,May=5,Jun=6,Jul=7,Aug=8,Sep=9,Oct=10,Nov=11,Dec=12}
@@ -629,12 +801,14 @@ local function publish(config, bodies, feeds, day, force, now, id)
 		local candidate, count, changes, skipped, snapshots = validate(
 			baseline, bodies, false, current.targetValue, current.protections, current.priceHistory, day, now, current.pickupPolicy)
 		current.priceHistory = snapshots
+		local records = backupRecords(current)
 		keepExpected(candidate)
 		if candidate ~= original then
 			local backup = current.target .. ".before-pob-sync-" .. before .. ".bak"
 			if not read(backup) then put(backup, original) end
 			current.backup = before
 			assert(read(backup) == original and read(current.target) == original, "Backup or target changed during sync")
+			records[before] = now
 			current.current, current.pending = before, sha(candidate)
 			save(current,id)
 			assert(read(current.target) == original, "Target changed before replacement")
@@ -642,6 +816,7 @@ local function publish(config, bodies, feeds, day, force, now, id)
 		end
 		assert(read(current.target) == candidate, "Installed filter verification failed")
 		current.current, current.pending, current.day = sha(candidate), nil, day
+		current.pendingRestore = nil
 		current.summary = string.format("%s: %d stack adjustments from the baseline. Protected drops verified.", nowText(now), count)
 		current.lastSuccess, current.lastFailure, current.providerRetryAfter = now, nil, nil
 		local ages = {}
@@ -649,8 +824,14 @@ local function publish(config, bodies, feeds, day, force, now, id)
 		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages, feeds=feeds}
 		current.history = current.history or {}
 		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
+		local limit = current.backupLimit
+		local backups = type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) and backupChoices(current)
 		if #current.history > 30 then table.remove(current.history) end
 		save(current,id)
+		if backups then
+			pruneBackups(current,backups)
+			pcall(save,current,id)
+		end
 		return current.summary
 	end)
 end

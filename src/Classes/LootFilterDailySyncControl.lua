@@ -131,10 +131,35 @@ function M.Open(profileId, profileName)
 	button("run",16+step*1,"Sync now",function() sync.tick(os.time(),true,false,profileId) end)
 	button("disable",16+step*2,"Disable",function() attempt(function() sync.disable(profileId) end) end)
 	button("pause",16+step*3,config.paused and "Resume" or "Pause",function() attempt(function() sync.pause(not config.paused,profileId) end) end)
-	button("rollback",16+step*4,"Restore backup",function()
-		main:OpenConfirmPopup("Restore filter backup", "Restore the previous filter and pause daily sync?", "Restore", function()
-			attempt(function() sync.rollback(profileId) end)
-		end)
+	button("rollback",16+step*4,"Review backups",function()
+		local passed, backups = pcall(sync.backups,profileId)
+		if not passed then main:OpenMessagePopup("Filter backups",ui.errorText(backups)); return end
+		local entries, reviewed = {}, nil
+		for _, backup in ipairs(backups) do
+			entries[#entries+1] = {id=backup.digest,label=backup.checkedAt and os.date("%Y-%m-%d %H:%M",backup.checkedAt) or "Most recent backup",
+				details={backup.digest, "Review the file changes before restoring this backup."}}
+		end
+		if #entries == 0 then main:OpenMessagePopup("Filter backups","No recorded backup is available for this profile."); return end
+		require("Classes.PlanningBrowserControl").Open("Filter backups",entries,{
+			action="Review changes",closeOnChoose=false,enterChooses=false,
+			choose=function(entry)
+				local verified, result = pcall(sync.previewBackup,profileId,entry.id)
+				reviewed = verified and result or nil
+				if not verified then main:OpenMessagePopup("Filter backups",ui.errorText(result)); return end
+				require("Classes.LootFilterDiffControl").Open(result.before,result.after,true)
+			end,
+			secondary={label="Restore reviewed",canRun=function(entry) return reviewed ~= nil and reviewed.digest == entry.id and not sync.busy end,
+				run=function()
+					local selected = reviewed
+					main:OpenConfirmPopup("Restore filter backup","Restore the reviewed filter and pause daily sync?","Restore",function()
+						local restored, why = pcall(sync.rollback,profileId,selected)
+						if not restored then main:OpenMessagePopup("Filter backups",ui.errorText(why)); return end
+						main:ClosePopup()
+						main:ClosePopup()
+						M.Open(profileId,profileName)
+					end)
+				end},
+		})
 	end)
 	button("review",16,"Last review",function()
 		local saved = sync.configuration(profileId)
@@ -250,7 +275,8 @@ function M.Open(profileId, profileName)
 			local passed, saved = pcall(sync.configuration,profileId)
 			if passed and saved then cached = saved end
 		end
-		return not sync.busy and cached.backup ~= nil
+		return not sync.busy and (cached.backup ~= nil or type(cached.history) == "table" and #cached.history > 0
+			or type(cached.backupRecords) == "table" and next(cached.backupRecords) ~= nil)
 	end
 	local function backgroundLabel()
 		return config.backgroundEnabled and "Disable background sync" or "Enable background sync"
@@ -313,8 +339,36 @@ function M.Open(profileId, profileName)
 		require("Classes.LootFilterSyncAccountControl").Open(profileId)
 	end)
 	c.account.enabled = function() return not sync.busy end
+	c.backupRetention = new("ButtonControl"):ButtonControl(ui.anchor,{16,534,168,26},"Backup retention",function()
+		local saved, latest = pcall(sync.configuration,profileId)
+		if not saved or not latest then main:OpenMessagePopup("Backup retention","Could not read this sync profile."); return end
+		local controls = {}
+		local popupWidth = math.min(510,width)
+		local help = {"Keep a set number of recorded backups after a successful sync.", "Enter 0 to keep all backups. The live filter and fixed baseline are preserved."}
+		if latest.retentionSkipped then help[#help+1] = tostring(latest.retentionSkipped).." older files could not be verified or removed." end
+		ui.description(controls,"help",16,18,popupWidth-32,72,help,14)
+		controls.count = new("EditControl"):EditControl(ui.anchor,{16,96,140,26},tostring(latest.backupLimit or 0),nil,nil,2)
+		local function save(limit)
+			local done, why = pcall(sync.setBackupLimit,profileId,limit,latest.revision)
+			if not done then main:OpenMessagePopup("Backup retention",ui.errorText(why)); return end
+			main:ClosePopup()
+		end
+		controls.keep = new("ButtonControl"):ButtonControl(ui.anchor,{16,142,135,28},"Save retention",function()
+			local limit = tonumber(controls.count.buf)
+			if not limit or limit<0 or limit>30 or limit~=math.floor(limit) then
+				main:OpenMessagePopup("Backup retention","Enter a whole number from 0 to 30.")
+				return
+			end
+			if limit==0 then save(limit); return end
+			main:OpenConfirmPopup("Limit recorded backups","Remove older verified backups after the next successful refresh?","Use limit",function() save(limit) end)
+		end)
+		controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{popupWidth-136,142,120,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(controls)
+		main:OpenPopup(popupWidth,188,"Backup retention",controls,nil,"count","cancel")
+	end)
+	c.backupRetention.enabled = function() return config.target ~= nil and not sync.busy end
 	ui.style(c)
-	main:OpenPopup(width, 545, "Daily filter sync", c, nil, nil, "close")
+	main:OpenPopup(width, 578, "Daily filter sync", c, nil, nil, "close")
 end
 
 return M
