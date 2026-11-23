@@ -683,12 +683,17 @@ do
 	local oldTime, oldDownload = os.time, launch.DownloadPage
 	local time, requests = os.time(), 0
 	os.time = function() return time end
-	launch.DownloadPage = function(_,_,callback)
+	launch.DownloadPage = function(_,url,callback)
 		requests = requests+1
 		if requests==1 then
 			callback({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: 30\r\n\r\n"},"Response code: 429")
-		else
+		elseif requests==2 then
 			callback(nil,"Response code: 403")
+		else
+			assert(url:find("/leagues",1,true))
+			local date = os.date("!%a, %d %b %Y %H:%M:%S GMT",time)
+			callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\nAge: 3601\r\n\r\n",
+				body='[{"id":"Covens","name":"Covens"}]'})
 		end
 	end
 	require("Classes.LootFilterMarketBrowseControl").Open()
@@ -709,6 +714,9 @@ do
 	ui:click("get")
 	assert(requests==2 and main.popups[1].controls.status.label:find("denied access",1,true))
 	assert(sync.providerWait(time)==0)
+	ui:text("league","")
+	ui:click("get")
+	assert(requests==3 and main.popups[1].controls.status.label:find("Could not verify",1,true))
 	os.time, launch.DownloadPage = oldTime, oldDownload
 end
 print("Manual price review and league selection honor the same provider cooldown as sync")

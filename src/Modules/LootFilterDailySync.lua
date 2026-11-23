@@ -1111,8 +1111,10 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			cached = nil
 		end
 		launch:DownloadPage(url, function(response, err)
-			if M.busy ~= job then return end
 			time = os.time()
+			local status = err and tonumber(err:match("^Response code: (%d+)$"))
+			local providerDelay = M.noteProviderLimit(response,status,time)
+			if M.busy ~= job then return end
 			if err == "Response code: 304" and cached and time >= cached.sourceAt and time-cached.sourceAt <= 3600 then
 				local valid, age = pcall(function() return responseAge(headers(response), time, time-cached.sourceAt) end)
 				if not valid then finish(false, category .. ": " .. tostring(age)); return end
@@ -1122,9 +1124,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 				return
 			end
 			if err then
-				local status = tonumber(err:match("^Response code: (%d+)$"))
 				local retryable = status == 429 or status and status >= 500 and status <= 599 or not status
-				local providerDelay = M.noteProviderLimit(response,status,time)
 				local delay = providerDelay or 5
 				if retryable and attempt < 2 and delay <= 90 and time + delay + 20 < M.deadline then
 					defer(delay, category .. ": retrying the exchange request.", function() fetch(index, attempt + 1) end)
