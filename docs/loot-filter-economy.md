@@ -10,6 +10,8 @@ For divination cards, use an exact `Class == "Divination Cards"` and exact `Base
 
 In **Browse loot market prices**, unique results show other quoted variants that share the same base, even when your search returns one name. A supported estimate needs at least 20 observations and 20 listings. Thin or conflicting quotes are counted separately from the supported range. The range helps review unidentified unique bases without using a named variant's price for the whole base.
 
+In Pickup policy, set optional chaos thresholds for yellow and orange highlights on managed commodity stacks. PoB uses the specified value for the stack and skips ambiguous or thin quotes. Later applicable rules can override the marker. PoB skips these highlights when continued hides or unresolved imports could change the resulting visibility.
+
 ## Daily sync on Windows
 
 Open **Loot Filter → Profile tools → Daily price sync**. Choose the live .filter file, fixed baseline, and PoE 1 PC trade league. The Browse buttons open a local file picker. **Use PoE selection** fills in the local filter currently selected in the Path of Exile 1 client. Select **Enable / update**. PoB keeps a checksum-verified baseline copy. Use **Sync now** to run the first check immediately, or let PoB check at or after 9:00 a.m. local time while the app is open.

@@ -225,6 +225,13 @@ function M.pickupPolicy(target, preferences)
 		assert(value == nil or finite(value) and value <= 1000, "Invalid " .. key .. " chaos target")
 		policy[key] = value
 	end
+	for _, key in ipairs({"highlightChaos","strongHighlightChaos"}) do
+		local value = preferences[key]
+		assert(value == nil or finite(value) and value <= 100000, "Enter a highlight threshold above 0 and up to 100,000 chaos")
+		policy[key] = value
+	end
+	assert(not (policy.highlightChaos and policy.strongHighlightChaos)
+		or policy.strongHighlightChaos > policy.highlightChaos, "The strong highlight threshold must be larger")
 	local caps = preferences.caps or {}
 	assert(type(caps) == "table", "Provide a table of maximum hide cutoffs")
 	local count = 0
@@ -264,6 +271,41 @@ local function cutoffFor(quote, old, target, limit)
 	return old, "Current cutoff is within the price margin"
 end
 
+local function appearanceSafe(raw)
+	local parsed = parser.parse(raw)
+	if #parsed.imports>0 or #parsed.diagnostics>0 then return false end
+	-- A Show Continue rule can only preserve the fallback action when no
+	-- other continuing rule could have changed it away from Show.
+	for _, rule in ipairs(parsed.rules) do
+		if rule.continue and rule.action~="Show" then return false end
+	end
+	return true
+end
+
+local function priceHighlights(policy, quote, cutoff, class, name, area)
+	local blocks = {}
+	if not M.liquid(quote) or not finite(quote.price) then return blocks end
+	local function stackAt(threshold)
+		return threshold and math.max(cutoff+1,math.ceil(threshold/quote.price)) or nil
+	end
+	local highlight = stackAt(policy.highlightChaos)
+	local strong = stackAt(policy.strongHighlightChaos)
+	local function add(minimum, upper, icon, effect)
+		if not minimum or minimum>10000 or upper and upper<=minimum then return end
+		local lines = {"Show",'    Class == "'..table.concat(class.values,'" "')..'"','    BaseType == "'..name..'"'}
+		if area then lines[#lines+1] = "    AreaLevel "..area.operator.." 68" end
+		lines[#lines+1] = "    StackSize >= "..minimum
+		if upper and upper<=10000 then lines[#lines+1] = "    StackSize < "..upper end
+		lines[#lines+1] = "    MinimapIcon "..icon
+		lines[#lines+1] = "    PlayEffect "..effect
+		lines[#lines+1] = "    Continue"
+		blocks[#blocks+1] = {firstStack=minimum,icon=icon,lines=lines}
+	end
+	add(highlight,strong,"1 Yellow Circle","Yellow")
+	add(strong,nil,"0 Orange Star","Orange")
+	return blocks
+end
+
 -- Only rewrite the personal stack section, and only exact, simple Hide rules.
 -- Retain the complete original text for every unsupported rule.
 function M.review(raw, quotes, target, preferences)
@@ -272,6 +314,11 @@ function M.review(raw, quotes, target, preferences)
 	if not start or not stop then return raw, {} end
 	local section = raw:sub(start, stop - 1)
 	local changes, skipped = {}, {}
+	local useHighlights = (policy.highlightChaos or policy.strongHighlightChaos) and appearanceSafe(raw)
+	if (policy.highlightChaos or policy.strongHighlightChaos) and not useHighlights then
+		skipped[#skipped+1] = {name="Price highlights",styleOnly=true,
+			reason="This filter has imports, unverified syntax, or continuing hide rules."}
+	end
 	local function rewrite(block)
 		local parsed = parser.parse(block)
 		local rule = parsed.rules[1]
@@ -306,7 +353,7 @@ function M.review(raw, quotes, target, preferences)
 		end
 		local old = stack and tonumber(stack.values[1]) or 1
 		if not old or old < 1 or old > 10000 or old ~= math.floor(old) then return block end
-		local group, changed = {}, false
+		local group, highlights, changed = {}, {}, false
 		for _, name in ipairs(base.values) do
 			if name:find('[%c"\\]') then return block end
 		end
@@ -314,13 +361,17 @@ function M.review(raw, quotes, target, preferences)
 		for _, name in ipairs(base.values) do
 			local quote = quotes[quoteKey(name, card and "DivinationCard")]
 			local cutoff, reason, usedPrice = cutoffFor(quote, old, pickupTarget, not card and policy.caps[name])
-			if cutoff == old then
+			local styles = useHighlights and not card and priceHighlights(policy,quote,cutoff,class,name,area) or {}
+			for _, style in ipairs(styles) do highlights[#highlights+1] = style end
+			if cutoff == old and #styles==0 then
 				skipped[#skipped + 1] = {name=name, old=old, reason=reason, maps=scope=="maps", scope=scope}
 			else
 				changed = true
-				changes[#changes + 1] = {name=name, old=old, cutoff=cutoff, price=usedPrice, currentPrice=quote.currentPrice,
+				local icons = {}
+				for index, style in ipairs(styles) do icons[index] = {firstStack=style.firstStack,icon=style.icon} end
+				changes[#changes + 1] = {name=name, old=old, cutoff=cutoff, price=usedPrice or quote.price, currentPrice=quote.currentPrice,
 					source=quote.source, observations=quote.observations, classes=class.values,
-					volume=quote.volume, maps=scope=="maps", scope=scope}
+					volume=quote.volume, maps=scope=="maps", scope=scope,highlights=#icons>0 and icons or nil}
 			end
 			group[cutoff] = group[cutoff] or {}
 			table.insert(group[cutoff], '"' .. name .. '"')
@@ -336,6 +387,7 @@ function M.review(raw, quotes, target, preferences)
 			if stack then lines[#lines + 1] = "    StackSize <= " .. cutoff end
 			output[#output + 1] = table.concat(lines, newline) .. newline
 		end
+		for _, style in ipairs(highlights) do output[#output+1] = table.concat(style.lines,newline)..newline end
 		return table.concat(output, newline)
 	end
 	local output, lines = {}, {}

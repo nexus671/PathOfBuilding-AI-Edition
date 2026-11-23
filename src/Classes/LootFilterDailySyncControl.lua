@@ -21,13 +21,23 @@ local function editPickupPolicy(width, target, policy, save)
 	},14)
 	controls.caps = new("EditControl"):EditControl(ui.anchor,{16,134,width-32,122},
 		next(policy.caps or {}) and json.encode(policy.caps,{indent=true}) or "{}",nil,nil,24000,nil,18)
-	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,274,180,28},"Use with next update",function()
+	ui.label(controls,"highlightLabel",16,270,"Highlight from (chaos)",14)
+	ui.label(controls,"strongLabel",width/2+4,270,"Strong highlight from (chaos)",14)
+	local function highlightField(key,x)
+		controls[key] = new("EditControl"):EditControl(ui.anchor,{x,292,width/2-32,26},
+			policy[key] and tostring(policy[key]) or "", "Disabled", nil, 10)
+	end
+	highlightField("highlightChaos",16)
+	highlightField("strongHighlightChaos",width/2+4)
+	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,334,180,28},"Use with next update",function()
 		local passed, checked = pcall(function()
 			local caps, nextIndex, why = json.decode(controls.caps.buf)
 			assert(type(caps) == "table" and not controls.caps.buf:sub(nextIndex):find("%S"), why or "Enter a JSON object of item caps")
 			return market.pickupPolicy(target, {
 				campaign=controls.campaign.buf ~= "" and (tonumber(controls.campaign.buf) or -1) or nil,
 				maps=controls.maps.buf ~= "" and (tonumber(controls.maps.buf) or -1) or nil,
+				highlightChaos=controls.highlightChaos.buf ~= "" and (tonumber(controls.highlightChaos.buf) or -1) or nil,
+				strongHighlightChaos=controls.strongHighlightChaos.buf ~= "" and (tonumber(controls.strongHighlightChaos.buf) or -1) or nil,
 				caps=caps,
 			})
 		end)
@@ -35,9 +45,9 @@ local function editPickupPolicy(width, target, policy, save)
 		main:ClosePopup()
 		save(checked)
 	end)
-	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,274,120,28},"Cancel",function() main:ClosePopup() end)
+	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,334,120,28},"Cancel",function() main:ClosePopup() end)
 	ui.style(controls)
-	main:OpenPopup(width,320,"Pickup policy",controls,nil,nil,"cancel")
+	main:OpenPopup(width,380,"Pickup policy",controls,nil,nil,"cancel")
 end
 
 function M.Open(profileId, profileName)
@@ -183,12 +193,16 @@ function M.Open(profileId, profileName)
 				string.format("%.4g chaos used | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
 				string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
 			}
+			for _, highlight in ipairs(change.highlights or {}) do
+				details[#details+1] = string.format("Proposed highlight at %d items: %s",highlight.firstStack,highlight.icon)
+			end
 			local samples = change.samples or (change.sample and {change.sample}) or {}
 			for _, sample in ipairs(samples) do
 				local area = (sample.area or 83) >= 68 and "Maps" or "Campaign"
 				details[#details+1] = string.format("%s, %d as %s: %s%s", area, sample.count, sample.class,
 					sample.before and (sample.before.." → "..sample.action) or sample.action,
 					sample.line and (" at line "..sample.line) or "")
+				if sample.marker then details[#details+1] = "Sample marker: "..sample.marker end
 				for _,phase in ipairs({{"Before",sample.before,sample.beforeMissing},{"After",sample.action,sample.afterMissing}}) do if phase[2]=="Unknown" then
 					local missing=require("Modules.LootFilterParser").safeMissingProperties(phase[3])
 					details[#details+1]=phase[1]..(missing and (": needs "..table.concat(missing,", ").." for this example.") or ": the preview cannot resolve a filter rule or included file.")
@@ -198,11 +212,13 @@ function M.Open(profileId, profileName)
 			entries[#entries+1] = {id="change-"..i,label=change.name,category="Changed",details=details,decision=change}
 		end
 		for i, item in ipairs(review.skipped or {}) do
-			entries[#entries+1] = {id="skip-"..i,label=item.name,category="Unchanged",details={item.reason,"Hide up to "..item.old}}
+			local details = {item.reason}
+			if not item.styleOnly then details[#details+1] = "Hide up to "..item.old end
+			entries[#entries+1] = {id="skip-"..i,label=item.name,category="Unchanged",details=details}
 		end
 		for i, run in ipairs(saved.history or {}) do
 			entries[#entries+1] = {id="run-"..i,label=os.date("%Y-%m-%d %H:%M",run.checkedAt),category="History",details={
-				run.adjustments.." cutoff adjustments from the baseline.", "Protected drop checks passed.",
+				run.adjustments.." price decisions from the baseline.", "Protected drop checks passed.",
 				run.oldest and string.format("Oldest response was %.0f minutes old",run.oldest/60) or "Response age was not recorded.",
 			}}
 		end

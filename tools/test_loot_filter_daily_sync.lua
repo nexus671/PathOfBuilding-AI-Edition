@@ -139,6 +139,50 @@ local spike, second = market.remember(quote(2), first, "day 2", now+86400)
 assert(spike["Orb of Alteration"].price==0.2 and spike["Orb of Alteration"].currentPrice==2)
 local lower = market.remember(quote(0.1), second, "day 3", now+2*86400)
 assert(lower["Orb of Alteration"].price==0.1)
+do
+	local raw = [[# PoB economy: begin
+Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    StackSize <= 6
+    AreaLevel >= 68
+# PoB economy: end
+Hide
+    Class == "Stackable Currency"
+    StackSize >= 20
+Show
+    Class == "Stackable Currency"
+    StackSize == 18
+    MinimapIcon 2 White Square
+Show
+]]
+	local quotes = {["Orb of Alteration"]={price=0.2,volume=300,id="alt",source="Currency"}}
+	local style = {highlightChaos=2,strongHighlightChaos=3}
+	assert(not pcall(market.pickupPolicy,100,{highlightChaos=3,strongHighlightChaos=2}))
+	local unchanged = market.review(raw,quotes,100)
+	assert(unchanged==raw)
+	local styled, decisions = market.review(raw,quotes,100,style)
+	assert(#decisions==1 and decisions[1].old==decisions[1].cutoff and #decisions[1].highlights==2)
+	local parser = require("Modules.LootFilterParser")
+	local old, candidate = parser.parse(raw), parser.parse(styled)
+	assert(#candidate.diagnostics==0)
+	for stack=1,30 do
+		for _, area in ipairs({60,83}) do
+			local item = {BaseType="Orb of Alteration",Class="Stackable Currency",StackSize=stack,AreaLevel=area}
+			local before, after = parser.simulate(old,item), parser.simulate(candidate,item)
+			assert(before.action==after.action)
+			if area==83 and stack==10 then assert(table.concat(after.styles.MinimapIcon," ")=="1 Yellow Circle") end
+			if area==83 and stack==15 then assert(table.concat(after.styles.MinimapIcon," ")=="0 Orange Star") end
+			if area==83 and stack==18 then assert(table.concat(after.styles.MinimapIcon," ")=="2 White Square") end
+			if area==60 and stack==10 then assert(not after.styles.MinimapIcon) end
+		end
+	end
+	local continuingHide = "Hide\n    Class == \"Stackable Currency\"\n    Continue\n\n" .. raw
+	local guarded, guardedDecisions, skipped = market.review(continuingHide,quotes,100,style)
+	assert(guarded==continuingHide and #guardedDecisions==0 and skipped[1].styleOnly)
+	print("Opt-in highlights preserve visibility, apply at exact stack values, and respect later styles")
+end
+
 local function quoteBatch(count)
 	local batch = {}
 	for index=1,count do

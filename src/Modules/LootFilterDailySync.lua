@@ -265,6 +265,7 @@ local function publicImpactSample(sample)
 	local parser=require("Modules.LootFilterParser")
 	return {action=safeText(sample.action,20),class=safeText(sample.class,100),count=finiteNumber(sample.count),
 		line=finiteNumber(sample.line),before=safeText(sample.before,20),beforeLine=finiteNumber(sample.beforeLine),area=finiteNumber(sample.area),
+		marker=safeText(sample.marker,40),
 		beforeMissing=sample.before=="Unknown" and parser.safeMissingProperties(sample.beforeMissing) or nil,
 		afterMissing=sample.action=="Unknown" and parser.safeMissingProperties(sample.afterMissing) or nil}
 end
@@ -759,7 +760,7 @@ local function publish(config, bodies, feeds, day, force, now, id)
 		assert(read(current.target) == candidate, "Installed filter verification failed")
 		current.current, current.pending, current.day = sha(candidate), nil, day
 		current.pendingRestore = nil
-		current.summary = string.format("%s: %d stack adjustments from the baseline. Protected drops verified.", nowText(now), count)
+		current.summary = string.format("%s: %d price decisions from the baseline. Protected drops verified.", nowText(now), count)
 		current.lastSuccess, current.lastFailure, current.providerRetryAfter = now, nil, nil
 		local ages = {}
 		for index, feed in ipairs(feeds) do ages[index] = feed.age end
