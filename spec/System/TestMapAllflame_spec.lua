@@ -21,7 +21,7 @@ describe("Map Allflame planning",function()
   local before=copyTable(input);local options={};for _,entry in ipairs(currency.planningOptions(input)) do options[entry.id]=entry end
   assert.same(before,input);assert.is_true(options.plan_allflame.available);assert.is_true(options.clear_allflame_plan.available)
   assert.is_false(options.divine_vessel.available);assert.is_true(options.clear_deified_plan.available);assert.matches("Hypothetical",options.plan_allflame.detail)
-  assert.has_error(function() currency.options(input) end)
+  local currencyOptions=currency.options(input);assert.equal("temple_add",currencyOptions[1].id);assert.is_false(currencyOptions[1].available)
   local cleared=currency.perform(input,"clear_allflame_plan",42).state;local updated={};for _,entry in ipairs(currency.planningOptions(cleared)) do updated[entry.id]=entry end
   assert.is_false(updated.clear_allflame_plan.available);assert.matches("no planned",updated.clear_allflame_plan.reason)
   local unknown=state();unknown.unidentified=true;unknown.plannedDeified=nil
