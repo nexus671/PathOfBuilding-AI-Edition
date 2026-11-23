@@ -35,8 +35,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640},{720,600},{640,480}}) do
 end
 do
 	newBuild();main.popups={};local ui=UI.install({width=640,height=480});ui:bind(build)
+	bridge.configure({goal="balanced",minimums={LifeUnreserved=1000000}})
 	local prepared=bridge.prepare(build,{mode="edit",title="Level update",baseRevision=bridge.revision(build),operations={{type="set_character",level=80}}})
 	bridge.prepared=prepared;require("Classes.BuildProposalControl").Review();ui:frame()
+	assert(main.popups[1].controls.constraintCheck.label=="Check constraints","Compact proposal must show unmet constraints")
 	if output then ui:frame():write(output.."/640-proposal-real-metrics.json") end
 	ui:click("toggleMetrics");if output then ui:frame():write(output.."/640-proposal-all-metrics.json") end
 	ui:restore();main.popups={};bridge.prepared=nil

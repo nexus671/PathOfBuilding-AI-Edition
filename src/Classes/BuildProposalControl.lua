@@ -64,7 +64,7 @@ function Panel.Review()
  controls.toggleMetrics=button(width-16-toggleWidth,166,toggleWidth,"Show unchanged metrics",function() showUnchanged=not showUnchanged;controls.metrics.list=metricRows();controls.toggleMetrics.label=showUnchanged and "Hide unchanged metrics" or "Show unchanged metrics" end)
  controls.toggleMetrics.shown=function() return controls.page:GetSelValue()=="Summary" end
  local constraintWidth=compact and 125 or 230
- controls.constraintCheck=button(width-28-toggleWidth-constraintWidth,166,constraintWidth,compact and "Constraints" or (evaluation.eligible and "Within constraints" or "Review constraints"),function() controls.page:SelByValue("Checks");controls.page.selFunc() end)
+ controls.constraintCheck=button(width-28-toggleWidth-constraintWidth,166,constraintWidth,compact and (evaluation.eligible and "Constraints OK" or "Check constraints") or (evaluation.eligible and "Within constraints" or "Review constraints"),function() controls.page:SelByValue("Checks");controls.page.selFunc() end)
 
 	controls.metrics.shown=function() return controls.page:GetSelValue()=="Summary" end
 	controls.changeSummary=new("TextListControl"):TextListControl(ui.anchor,{32+metricWidth,198,width-metricWidth-48,height-292},nil,wrapRows(prepared.changes,width-metricWidth-78))
