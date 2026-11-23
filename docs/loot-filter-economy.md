@@ -16,6 +16,8 @@ The current daily flow supports the protected tiered-test filter profile. It che
 
 Protected examples use bundled base dimensions and ordinary base drop levels. A unique's drop level and defence percentile are left unknown when its base does not establish them; if either could decide a protected result, the daily check stops and explains why. Base-update reviews warn when the previous result is unknown. These are representative examples, not a guarantee for every possible drop.
 
+Price-change examples use known base properties and the chosen area level. They leave the item's level unknown, so a dependent rule produces an uncertain preview rather than assuming an item level from the area.
+
 The sync settings accept a local time in HH:MM, a repeat interval from one to seven days, and a chaos target per stack. **Sync now** can refresh again on the same day. **Pause** keeps the setup and history. **Restore backup** verifies the previous file and pauses sync while you review it. **Last review** shows cutoff changes, skipped items, and recent runs. The most recent failed refresh remains visible after restarting PoB until a refresh succeeds.
 
 For a different tagged filter, provide a JSON array of one to 500 sample drops in **Protected samples JSON**. Each sample needs at least a BaseType and Rarity. Add every property needed by the filter rules leading to its Show block. For example, a filter with an unconditional Cord Belt rule can use this sample:

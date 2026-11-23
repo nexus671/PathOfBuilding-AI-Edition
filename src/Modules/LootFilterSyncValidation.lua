@@ -28,11 +28,11 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 					local base = require("Modules.LootFilterLibrary").baseProperties(change.name,"Normal")
 					local sample = {
 						BaseType=change.name, Class=itemClass, Rarity="Normal",
-						StackSize=math.min(change.cutoff,change.old)+1, AreaLevel=area, ItemLevel=area, DropLevel=base.DropLevel,
+						StackSize=math.min(change.cutoff,change.old)+1, AreaLevel=area, DropLevel=base.DropLevel,
 						Width=base.Width, Height=base.Height, HasExplicitMod={}, HasEnchantment={}, HasInfluence={"None"},
 						SocketGroup="", EnchantmentPassiveNode="",
 					}
-					for name in pairs(parser.numeric) do if sample[name] == nil and name ~= "DropLevel" and name ~= "Width" and name ~= "Height" then sample[name] = 0 end end
+					for name in pairs(parser.numeric) do if sample[name] == nil and name ~= "ItemLevel" and name ~= "DropLevel" and name ~= "Width" and name ~= "Height" then sample[name] = 0 end end
 					for name in pairs(parser.booleans) do sample[name] = false end
 					if change.tier then
 						sample.MapTier = change.tier

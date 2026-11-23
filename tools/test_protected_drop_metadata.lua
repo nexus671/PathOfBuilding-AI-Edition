@@ -39,4 +39,5 @@ Hide
 local body='{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.21,"volumePrimaryValue":1000}]}'
 local bodies={};for index in ipairs(require('Modules.LootFilterEconomy').categories) do bodies[index]=body end
 local _,count,changes=validate(impact,bodies,false,1,{{BaseType='Cord Belt',Rarity='Magic'}});assert(count==1 and changes[1].sample.before=='Hide' and changes[1].sample.action=='Show','Economy impact did not use the base drop level')
+local levelImpact=impact:gsub('DropLevel == 2','ItemLevel >= 84');local _,levelCount,levelChanges=validate(levelImpact,bodies,false,1,{{BaseType='Cord Belt',Rarity='Magic'}});assert(levelCount==1 and levelChanges[1].sample.action=='Unknown','An unknown item level was treated as certain')
 print('ECONOMY_IMPACT_METADATA_OK')
