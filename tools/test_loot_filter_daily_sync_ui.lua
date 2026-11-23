@@ -693,7 +693,7 @@ do
 	ui:bind(build)
 	local oldTime, oldDownload = os.time, launch.DownloadPage
 	local oldDirectory = main.userPath
-	main.userPath = output.."/"
+	main.userPath = output and output.."/" or nil
 	local time, requests = os.time(), 0
 	os.time = function() return time end
 	launch.DownloadPage = function(_,url,callback)
