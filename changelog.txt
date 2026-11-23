@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1214][2026/11/23]
+
+* Add flat life, resistance and attribute goals to crafting.
+
 VERSION[2.68.1-ai.preview1213][2026/11/23]
 
 * Keep the last verified daily filter when an established exchange feed loses most of its liquid quotes.
