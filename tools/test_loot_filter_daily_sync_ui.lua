@@ -87,6 +87,46 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	print(string.format("Native setup and diagnostics controls passed at %dx%d.", unpack(size)))
 end
 
+-- Use the real GGG parser and a deterministic network response through the native review.
+newBuild()
+main.popups = {}
+local feedUI = headless.install({width=960,height=640})
+feedUI:bind(build)
+local ggg = require("Modules.LootFilterExchangeCrossCheck")
+local reviewTime = 1795449900
+local hour = ggg.hour(reviewTime)
+local itemId = assert(ggg.itemId("Orb of Alteration"))
+local chaosId = "Metadata/Items/Currency/CurrencyRerollRare"
+local trade = {league="Covens",market_pair={chaosId,itemId},volume_traded={[itemId]=500,[chaosId]=120}}
+local encode = require("dkjson").encode
+local valid = encode({next_change_id=hour+3600,markets={trade}})
+assert(not pcall(ggg.decode,valid,hour-3600))
+local quote = assert(ggg.compare(ggg.decode(valid,hour),"Covens","Orb of Alteration"))
+assert(quote.price==0.24 and quote.count==500)
+assert(not ggg.compare({trade,trade},"Covens","Orb of Alteration"))
+assert(not ggg.compare({trade},"Standard","Orb of Alteration"))
+assert(not ggg.compare({trade},"Covens","Chaos Orb"))
+trade.volume_traded[chaosId] = 20
+assert(not ggg.compare({trade},"Covens","Orb of Alteration"))
+local configMock, originalFetch = sync.configuration, launch.DownloadPage
+sync.configuration = function()
+	return {league="Covens", target=selected, enabled=true, hour=9, summary="Protected drops verified.",
+		review={checkedAt=reviewTime,changes={{name="Orb of Alteration",old=10,cutoff=6,price=0.21,volume=1000,maps=true}},
+			feeds={{category="Currency",age=128,revalidated=true}}}}
+end
+launch.DownloadPage = function(_, url, callback)
+	assert(url==ggg.endpoint..hour)
+	callback({body=valid})
+end
+require("Classes.LootFilterDailySyncControl").Open()
+feedUI:click("review")
+assert(main.popups[1].title=="Daily filter sync review")
+feedUI:text("search","Orb of Alteration")
+feedUI:click("secondary")
+assert(main.popups[1].title=="GGG trade comparison")
+sync.configuration, launch.DownloadPage = configMock, originalFetch
+print("Native review compares exact direct-chaos historical trade volumes with the primary quote")
+
 -- Add a price-managed rule through the normal workspace and round-trip the
 -- profile through its build saver and compiler without editing filter text.
 newBuild()
