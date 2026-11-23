@@ -126,6 +126,7 @@ const tools = [
   {name:'measure_journey_upgrades',description:'Calculate each planned wishlist target against the exact current native build without applying it. Targets come from exact item text or linked crafting targets. Poll get_proposal_status for measured deltas, constraints and ratios per supplied resource. No currency conversion or measured benefit is assumed.',inputSchema:object({baseRevision:string(40)},['baseRevision']),annotations:{...readOnly,readOnlyHint:false,idempotentHint:false}},
   {name:'get_build_journey',description:'Read the saved roadmap, gear wishlist, leveling guide, actual resource ledger, reservations and explained next actions. Prices are user supplied. No live inventory or currency conversion is inferred.',inputSchema:object({}),annotations:readOnly},
   {name:'get_loot_sync_status',description:'Read the last captured desktop loot filter sync status, last successful run and up to 40 cutoff changes. This reads no arbitrary files and exposes no local paths. It does not request prices or publish a filter.',inputSchema:object({}),annotations:readOnly},
+  {name:'get_loot_sync_diff',description:'Read the stored cutoff decisions comparing the fixed baseline with the last verified filter output, including quote volumes and sampled outcomes. Read-only and path-free. Paginated up to 50 changes at a time.',inputSchema:object({offset:integer(0,250),limit:integer(1,50)}),annotations:readOnly},
   {name:'get_loot_filters',description:'Read kept build-owned loot-filter profiles and personal rules. Bundled NeverSink templates are pinned; there is no live economy feed. Use native preview tools to test rules before proposing changes.',inputSchema:object({}),annotations:readOnly},
   {name:'propose_loot_filters',description:'Propose replacement loot-filter profiles for native desktop review. Read and preserve existing profiles first. Apply keeps the candidate; build Save persists it. This tool never exports files or publishes account filters.',inputSchema:object({title:string(120),baseRevision:string(40),filters:lootFilters},['title','baseRevision','filters']),annotations:{...readOnly,readOnlyHint:false,idempotentHint:false}},
   ...['generate_loot_filter','test_loot_filter','export_loot_filter'].map(name=>({name,description:name==='generate_loot_filter'?'Queue generation of separate pickup rules from saved crafts, planned gear, gems, budget resources and Atlas plans. Returns a draft profile; propose_loot_filters is required to keep it.':name==='test_loot_filter'?'Queue deterministic drop evaluation using exactly one of sample (exact PoE filter property names) or itemText (copied game item). Optional areaLevel applies to itemText. The returned sample shows known properties; missing information can yield unknown. Poll get_proposal_status and match the request ID.':'Queue compilation and return valid .filter text plus migration diagnostics; invalid filters fail with an explanation. Returns text only: no files or account filters are written. Poll get_proposal_status and match the request ID.',inputSchema:object({baseRevision:string(40),profileId:string(64),profile:lootProfile,...(name==='test_loot_filter'?{sample:lootSample,itemText:string(24000),areaLevel:integer(1,100)}:{})},['baseRevision']),annotations:{...readOnly,readOnlyHint:false,idempotentHint:false}})),
@@ -311,6 +312,19 @@ function createBridge(reportPath, clientName = () => "MCP client") {
     }
     if (name === 'get_build_journey') return {revision:current.revision,journey:captured.context.journey,budget:captured.context.journeyBudget,nextActions:captured.context.nextActions,warning:captured.context.journeyWarning};
     if (name === 'get_loot_sync_status') return {heartbeat:current.heartbeat,status:current.lootSyncStatus ?? {configured:false,state:'unavailable'}};
+    if (name === 'get_loot_sync_diff') {
+      const snapshot = current.lootSyncDiff;
+      if (!snapshot) return {heartbeat:current.heartbeat,available:false,changes:[]};
+      const offset = args.offset ?? 0, limit = args.limit ?? 25;
+      const decisions = Array.isArray(snapshot.changes) ? snapshot.changes.slice(0,250) : [];
+      const nextOffset = offset + limit < decisions.length ? offset + limit : null;
+      return {
+        heartbeat:current.heartbeat,available:true,checkedAt:snapshot.checkedAt,
+        verifiedProtection:snapshot.verifiedProtection === true,responseAges:snapshot.responseAges,
+        changeCount:snapshot.changeCount,changes:decisions.slice(offset,offset+limit),
+        nextOffset,truncated:snapshot.changeCount>decisions.length,
+      };
+    }
     if (name === 'get_loot_filters') return {revision:current.revision,filters:captured.context.lootFilters,warning:captured.context.lootFilterWarning};
     if (name === 'get_build_analysis') return {revision:current.revision,capturedAt:captured.capturedAt,audit:captured.context.audit,encounter:captured.context.encounter,plan:current.plan};
     if (name === 'get_build_context') {

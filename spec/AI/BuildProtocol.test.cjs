@@ -176,6 +176,29 @@ test('reads loot sync status from the desktop heartbeat without queuing a write'
   assert.equal(fs.existsSync(path.join(f.dir,'AI-build-request.json')),false);
 });
 
+test('pages the last verified cutoff diff without recording a request', t => {
+  const f = fixture(t);
+  assert.equal(f.call('get_loot_sync_diff',{}).available,false);
+  const changes = [{item:'Orb of Alteration',previousCutoff:6,proposedCutoff:4},
+    {item:'Silver Oil',previousCutoff:4,proposedCutoff:1,quotedPrice:0.9}];
+  f.state.lootSyncDiff = {checkedAt:100,verifiedProtection:true,responseAges:[8],changeCount:3,changes,privatePath:'C:/do-not-share.filter'};
+  f.write('state',f.state);
+  const first = f.call('get_loot_sync_diff',{offset:0,limit:1});
+  assert.deepEqual(first.changes,[changes[0]]);
+  assert.equal(first.nextOffset,1);
+  assert.equal(first.truncated,true);
+  assert.equal(first.verifiedProtection,true);
+  assert.equal(first.privatePath,undefined);
+  assert.deepEqual(first.responseAges,[8]);
+  const last = f.call('get_loot_sync_diff',{offset:first.nextOffset,limit:1});
+  assert.deepEqual(last.changes,[changes[1]]);
+  assert.equal(last.nextOffset,null);
+  for (const args of [{limit:51},{offset:-1},{path:'private.filter'}]) {
+    assert.throws(()=>f.call('get_loot_sync_diff',args),/arguments/);
+  }
+  assert.equal(fs.existsSync(path.join(f.dir,'AI-build-request.json')),false);
+});
+
 test('queues loot-filter generation, evaluation and reviewed profiles without writing exports', t => {
   const f=fixture(t);const profile={id:'maps',title:'Map pickups',preset:'early_maps',strictness:2,trackBuildPickups:true,economyRules:[{name:'Orb of Alteration',class:'Stackable Currency',scope:'maps',cutoff:6},{name:'Blighted Map (Tier 16)',class:'Maps',scope:'maps',tier:16,mapType:'BlightedMap'}],manualGuideReviews:[{projectId:'helmet',signature:'a'.repeat(40)}],rules:[{id:'base',title:'Craft base',text:'Show\n BaseType == "Iron Hat"',enabled:true}]};
   const filters={schemaVersion:1,activeId:'maps',profiles:[profile]};f.captured.context.lootFilters=filters;f.write('context',f.captured);

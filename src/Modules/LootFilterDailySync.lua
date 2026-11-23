@@ -241,8 +241,55 @@ function M.publicStatus(now, id)
 				mapOnly=item.maps==true}
 		end
 	end
-	publicCache = {at=now, id=id, status=M.status, value=output}
+	publicCache = {at=now, id=id, status=M.status, value=output, review=config.review}
 	return output
+end
+
+local function safeText(value, limit)
+	if type(value) == "string" and #value <= limit and not value:find("[%c/\\]") then return value end
+end
+
+local function finiteNumber(value)
+	if type(value) == "number" and value == value and value > -math.huge and value < math.huge then return value end
+end
+
+-- Share the verified cutoff decisions, not filter source, target paths or
+-- protected drop definitions. These decisions are saved after publication.
+function M.publicDiff(now, id)
+	local status = M.publicStatus(now,id)
+	if not status.configured or not publicCache or type(publicCache.review) ~= "table" then return nil end
+	if publicCache.diff then return publicCache.diff end
+	local review = publicCache.review
+	local changes = {}
+	local source = type(review.changes) == "table" and review.changes or {}
+	for index, change in ipairs(source) do
+		if index > 250 then break end
+		local item = type(change) == "table" and safeText(change.name,200)
+		if item and finiteNumber(change.old) and finiteNumber(change.cutoff) then
+			local sample = type(change.sample) == "table" and change.sample
+			changes[#changes+1] = {
+				item=item, source=safeText(change.source,40), previousCutoff=change.old,
+				proposedCutoff=change.cutoff, quotedPrice=finiteNumber(change.currentPrice or change.price),
+				priceUsed=finiteNumber(change.price), volume=finiteNumber(change.volume),
+				liquidityUnit=safeText(change.liquidityUnit,40),
+				mapOnly=change.maps==true, scope=safeText(change.scope,20),
+				sample=sample and {action=safeText(sample.action,20),class=safeText(sample.class,100),
+					count=finiteNumber(sample.count),line=finiteNumber(sample.line),before=safeText(sample.before,20),
+					area=finiteNumber(sample.area)} or nil,
+			}
+		end
+	end
+	local ages = {}
+	for index, age in ipairs(type(review.ages) == "table" and review.ages or {}) do
+		if index > 20 then break end
+		local standardAge = finiteNumber(age)
+		if standardAge and standardAge >= 0 and standardAge <= 3600 then ages[#ages+1] = standardAge end
+	end
+	publicCache.diff = {
+		checkedAt=finiteNumber(review.checkedAt), verifiedProtection=true,
+		responseAges=ages, changeCount=#source, changes=changes,
+	}
+	return publicCache.diff
 end
 
 function M.diagnosticReport(now, id)
@@ -260,28 +307,7 @@ function M.diagnosticReport(now, id)
 				checkedAt=run.checkedAt, adjustments=run.adjustments, oldestResponseAge=run.oldest,
 			}
 		end
-		local review = config.review
-		if review then
-			report.lastReview = {
-				checkedAt=review.checkedAt,
-				verifiedProtection=true,
-				responseAges=review.ages,
-				changes={},
-			}
-			for index, change in ipairs(review.changes or {}) do
-				if index > 250 then break end
-				if type(change.name) == "string" and #change.name <= 200 and not change.name:find("[%c/\\]") then
-					local sample = change.sample
-					report.lastReview.changes[#report.lastReview.changes+1] = {
-						item=change.name, source=change.source, previousCutoff=change.old,
-						proposedCutoff=change.cutoff, quotedPrice=change.currentPrice or change.price,
-						priceUsed=change.price, volume=change.volume,
-						mapOnly=change.maps,
-						sample=sample and {action=sample.action, class=sample.class, count=sample.count, line=sample.line},
-					}
-				end
-			end
-		end
+		report.lastReview = M.publicDiff(now,id)
 	end
 	return assert(json.encode(report, {indent=true}))
 end
