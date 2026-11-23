@@ -8,6 +8,13 @@ describe("Same-name rare vendor review",function()
   assert.equal("Hubris Circlet",result.groups[1].items[2].base);assert.equal(1,result.groups[2].remaining)
   assert.matches("each paste",result.note)
  end)
+ it("can prioritise pairs and assigns each pasted item only once",function()
+  local a=item("Vortex Visage");local result=vendor.review({a,a,a,a},"chaos");local group=result.groups[1]
+  assert.equal("chaos",result.preference);assert.equal(2,group.chaos);assert.equal(0,group.exalted);assert.equal(0,group.remaining)
+  assert.same({1,2},group.trades[1].itemIndices);assert.same({3,4},group.trades[2].itemIndices)
+  local exalt=vendor.review({a,a,a,a});assert.equal(1,exalt.groups[1].exalted);assert.equal(1,exalt.groups[1].remaining)
+  assert.has_error(function() vendor.review({a},"invalid") end)
+ end)
  it("does not impose an item-count limit",function()
   local copies={};for i=1,205 do copies[i]=item("Vortex Visage") end
   local result=vendor.review(copies);assert.equal(205,result.totalItems);assert.equal(68,result.groups[1].exalted);assert.equal(1,result.groups[1].remaining)

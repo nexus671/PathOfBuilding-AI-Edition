@@ -573,7 +573,7 @@ function M.poll(build, force)
 		end
 		if request.kind=="review_same_name_rares" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
-			local result=require("Modules.VendorRarePairs").review(request.items)
+			local result=require("Modules.VendorRarePairs").review(request.items,request.preference)
 			M.status={id=request.id,status="vendorReview",vendorReview=result};M.publishState();return
 		end
 		if request.kind=="review_rare_vendor_sets" then

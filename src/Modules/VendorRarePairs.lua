@@ -14,8 +14,10 @@ function M.parse(raw)
  assert(name and base and name~="--------" and base~="--------" and #name<=120 and #base<=160 and not name:find("[%c%^]") and not base:find("[%c%^]"),"The copied rare item needs a visible name and base")
  return {name=name,base=base}
 end
-function M.review(items)
+function M.review(items,preference)
+ preference=preference or "exalted";assert(preference=="exalted" or preference=="chaos","Choose Exalted or Chaos trades")
  assert(type(items)=="table","Supply copied rare items")
+ for index in pairs(items) do assert(type(index)=="number" and index==math.floor(index) and index>=1 and index<=#items,"Copied items must be an array") end
  local groups,totalBytes={},0;for index,raw in ipairs(items) do
   assert(type(raw)=="string","Item "..index.." must be copied item text")
   totalBytes=totalBytes+#raw;assert(totalBytes<=M.maxBytes,"Copied items exceed the 4 MiB review limit")
@@ -24,11 +26,20 @@ function M.review(items)
   group.count=group.count+1;group.items[#group.items+1]={index=index,base=item.base};groups[item.name]=group
  end
  local result={};for _,group in pairs(groups) do
-  group.exalted=math.floor(group.count/3);group.chaos=math.floor((group.count%3)/2);group.remaining=group.count%3%2
+  group.exalted=preference=="exalted" and math.floor(group.count/3) or 0
+  group.chaos=math.floor((group.count-group.exalted*3)/2)
+  group.remaining=group.count-group.exalted*3-group.chaos*2
+  group.trades={};local cursor=1
+  for _,kind in ipairs({{reward="Exalted Orb",count=group.exalted,size=3},{reward="Chaos Orb",count=group.chaos,size=2}}) do
+   for _=1,kind.count do
+    local trade={reward=kind.reward,itemIndices={}};for _=1,kind.size do trade.itemIndices[#trade.itemIndices+1]=group.items[cursor].index;cursor=cursor+1 end
+    group.trades[#group.trades+1]=trade
+   end
+  end
   result[#result+1]=group
  end
  table.sort(result,function(a,b) if a.count~=b.count then return a.count>b.count end return a.name<b.name end)
- return {groups=result,totalItems=#items,note="Name matches only. Counts assume each paste is a different item; verify item eligibility and the vendor offer in game. No stash is read or changed."}
+ return {groups=result,totalItems=#items,preference=preference,note="Name matches only. Counts assume each paste is a different item; verify item eligibility and the vendor offer in game. No stash is read or changed."}
 end
 -- A full set is assembled from copied item classes and item levels only.
 -- The result is a suggestion, not proof that the game will accept a trade.

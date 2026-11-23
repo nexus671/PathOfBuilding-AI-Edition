@@ -85,6 +85,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	self.viewMode = "TREE"
 	self.planningWorkspace = nil
 	self.planningVendorRareItems = nil
+	self.planningVendorRarePreference = nil
 	self.planningVendorBaseItems = nil
 	self.planningVendorRareSetItems = nil
 	self.planningVendorRareSetPreference = nil

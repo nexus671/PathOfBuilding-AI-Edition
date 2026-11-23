@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1170" />
+	<Version number="2.68.1-ai.preview1171" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="9004300747d91ccb37ffad15530acbace43de548" />
+	<File name="changelog.txt" part="default" sha1="8bdcb85f4d9f118295d751530ad877e145817f6f" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="fa86505aca8c2c4a81e4a0fbb8507f97766b84fe" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="0329b2ed1ff52c1e89a33380545eed7efb5281a9" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -2135,7 +2135,7 @@
 	<File name="Modules/AtlasRegions.lua" part="program" sha1="e418859ff34df69202221e4d46f5c3f1275afc3b" />
 	<File name="Modules/AtlasStrategy.lua" part="program" sha1="ded6873f204e28aeb113fa20e3f842753d54a730" />
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="645f7029289c96e150d0f14283ca126ba7411df7" />
-	<File name="Modules/Build.lua" part="program" sha1="7bd6b7d70393da9f84026962f67e83d06be5e06d" />
+	<File name="Modules/Build.lua" part="program" sha1="cc5246f0c8356c21408c245d63b6763e5c4cf8df" />
 	<File name="Modules/BuildDisplayStats.lua" part="program" sha1="ffc4da3b13c3d50f3580b452622429f0bd7e70ab" />
 	<File name="Modules/BuildInsights.lua" part="program" sha1="4fa3f589f42f550df982c5ede6be5827ff0a5c87" />
 	<File name="Modules/BuildJourney.lua" part="program" sha1="55dc50fadcede28a55a0c207bf61678478f4a083" />
@@ -2215,7 +2215,7 @@
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />
 	<File name="Modules/DataLegionLookUpTableHelper.lua" part="program" sha1="ece92c4b6062f627f98ba2454531366b4628abfc" />
-	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="7b05038b2f852795a85a439934ed5cd702c66b11" />
+	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="6b8d53f47d606351147afb1f763f3a9e59f5874c" />
 	<File name="Modules/EncounterReport.lua" part="program" sha1="710dc78939bfbc8282f295cf626bcde9c9b7d8e5" />
 	<File name="Modules/HeadlessCompression.lua" part="program" sha1="16a42bf407eb777602f9b03b5c8466188a04ee58" />
 	<File name="Modules/HeadlessUI.lua" part="program" sha1="c6c4a15e7ea52ebd7ea65e3bfe5f53f9c9cd1637" />
@@ -3167,8 +3167,8 @@
 	<File name="Assets/Atlas/3.30.0c/manifest.json" part="program" sha1="a6b3e2e771e8e13e86f3625b479663f8dcb0b3bd" />
 	<File name="Data/Atlas/3.30.0c-ruthless.json" part="program" sha1="93ddab4905bcb99e4bbdb9b31193cdee1f19f420" />
 	<File name="Data/Atlas/3.30.0c.json" part="program" sha1="1f1948c184857a627414410890c2b1a62d7a16cf" />
-	<File name="Classes/VendorRarePairsControl.lua" part="program" sha1="5d92f9949eedb12db9f8517c973d0ebb837d83e4" />
-	<File name="Modules/VendorRarePairs.lua" part="program" sha1="c9496aef8c9169bd77924a1cc00aea87e38a1738" />
+	<File name="Classes/VendorRarePairsControl.lua" part="program" sha1="8ab4c19951b68324f2132d097a911fad18698742" />
+	<File name="Modules/VendorRarePairs.lua" part="program" sha1="7db74df3b40c7c7c781a8e9611932a8bb9fa98f9" />
 	<File name="Classes/VendorRareSetsControl.lua" part="program" sha1="1aeef197d0798c6942c764ab79b19973ee9e4fed" />
 	<File name="Classes/VendorQualitySetsControl.lua" part="program" sha1="c86f4f0193053fa9be2e6ccfff481ce3d8558ab9" />
 	<File name="Modules/VendorQualitySets.lua" part="program" sha1="84b67265d104acc55224197852a0e89c12ec385d" />

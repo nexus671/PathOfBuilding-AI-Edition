@@ -58,6 +58,8 @@ async function main(){
   assert.equal(baseReview.baseSetVendorReview.groups[0].base,'Jade Amulet');assert.equal(baseReview.baseSetVendorReview.groups[0].sets,1);
   const rareReview=await queued('review_same_name_rares',{baseRevision:context.revision,items:[rareCopy,rareCopy,rareCopy]},'vendorReview');
   assert.equal(rareReview.vendorReview.groups[0].name,'Vortex Visage');assert.equal(rareReview.vendorReview.groups[0].exalted,1);assert.equal(rareReview.vendorReview.groups[0].chaos,0);
+  const rareChaos=await queued('review_same_name_rares',{baseRevision:context.revision,items:[rareCopy,rareCopy,rareCopy,rareCopy],preference:'chaos'},'vendorReview');
+  assert.equal(rareChaos.vendorReview.groups[0].chaos,2);assert.deepEqual(rareChaos.vendorReview.groups[0].trades.map(trade=>trade.itemIndices),[[1,2],[3,4]]);
   const rareSetCopies=['Helmets','Body Armours','Gloves','Boots','Amulets','Belts','Rings','Rings','Bows'].map(cls=>`Item Class: ${cls}\nRarity: Rare\nExample Base\n--------\nItem Level: 70\n--------\nUnidentified`);
   const rareSetReview=await queued('review_rare_vendor_sets',{baseRevision:context.revision,items:rareSetCopies},'rareSetVendorReview');
   assert.equal(rareSetReview.rareSetVendorReview.groups.length,1);assert.equal(rareSetReview.rareSetVendorReview.groups[0].reward,'Chaos Orb');assert.equal(rareSetReview.rareSetVendorReview.groups[0].items.length,9);
@@ -301,7 +303,8 @@ async function main(){
   assert.equal(uniqueBenchOption.available,true);assert.deepEqual(uniqueBenchOption.action,{method:'socket_bench',count:3,linked:true});
   assert.equal(uniqueBenchOption.components['Metadata/Items/Currency/CurrencyRerollSocketLinks'],3);assert.equal(uniqueBenchOption.components['Metadata/Items/Currency/CurrencyCorrupt'],3);
   assert.match(uniqueBenchOption.guideStep.action,/3 Vaal Orbs/);
-  const uniqueCountOption=corruptedUniqueInspection.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='socket_bench' && entry.action.count===2 && !entry.action.linked);
+  const uniqueCountInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueShield+'\nCorrupted',query:'socket_bench',limit:20},'inspected');
+  const uniqueCountOption=uniqueCountInspection.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='socket_bench' && entry.action.count===2 && !entry.action.linked);
   assert.equal(uniqueCountOption.available,true);assert.equal(uniqueCountOption.components['Metadata/Items/Currency/CurrencyRerollSocketNumbers'],1);assert.equal(uniqueCountOption.components['Metadata/Items/Currency/CurrencyCorrupt'],1);
   const uniqueQuality=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},seed:1},'crafted');
   assert.equal(uniqueQuality.nativeCrafting.uniqueQuality.quality,13);assert.equal(uniqueQuality.nativeCrafting.uniqueQuality.resource,"Armourer's Scrap");

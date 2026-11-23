@@ -62,9 +62,11 @@ test('queues same-base vendor review with bounded copied items', t => {
 
 test('queues same-name rare review with bounded copied items', t => {
   const f=fixture(t), raw='Rarity: Rare\nVortex Visage\nIron Hat\n--------\nItem Level: 80';
-  f.call('review_same_name_rares',{baseRevision:f.state.revision,items:[raw,raw,raw]});
+  f.call('review_same_name_rares',{baseRevision:f.state.revision,items:[raw,raw,raw],preference:'chaos'});
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
   assert.equal(request.kind,'review_same_name_rares');assert.equal(request.items.length,3);
+  assert.equal(request.preference,'chaos');
+  assert.throws(()=>f.call('review_same_name_rares',{baseRevision:f.state.revision,items:[raw],preference:'other'}),/arguments/);
   for(const items of [[],[3],['x'.repeat(24001)]]) assert.throws(()=>f.call('review_same_name_rares',{baseRevision:f.state.revision,items}),/arguments/);
 });
 
