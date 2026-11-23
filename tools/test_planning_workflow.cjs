@@ -110,7 +110,9 @@ async function main(){
   const multiRoll=await queued('calculate_crafting',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nRusted Sword\nItem Level: 86',action:{method:'alchemy'},targets:[{anyOf:['LocalAddedColdDamage2'],minBaseValue:15,baseValueComponent:2}],options:{trials:20,seed:5}},'crafted');
   assert.equal(multiRoll.nativeCrafting.sampled,true);assert.equal(multiRoll.nativeCrafting.trials,20);
   const flatGoal=await queued('calculate_crafting',{baseRevision:context.revision,itemText:raw,action:{method:'alchemy'},targets:[],options:{requirements:{nativeStats:{ItemLife:40,ItemFireResist:10}},trials:20,seed:5}},'crafted');
-  assert.equal(flatGoal.nativeCrafting.sampled,true);assert.equal(flatGoal.nativeCrafting.trials,20);assert.ok(flatGoal.nativeCrafting.successChance>=0 && flatGoal.nativeCrafting.successChance<=100);
+  assert.equal(flatGoal.nativeCrafting.sampled,true);assert.equal(flatGoal.nativeCrafting.trials,20);
+  const defensiveGoal=await queued('calculate_crafting',{baseRevision:context.revision,itemText:raw,action:{method:'alchemy'},targets:[],options:{requirements:{nativeStats:{ItemSpellSuppression:10,ItemAvoidShock:10}},trials:20,seed:5}},'crafted');
+  assert.equal(defensiveGoal.nativeCrafting.sampled,true);assert.equal(defensiveGoal.nativeCrafting.trials,20);assert.ok(flatGoal.nativeCrafting.successChance>=0 && flatGoal.nativeCrafting.successChance<=100);
   const implicitBase='Rarity: NORMAL\nRuby Ring\nItem Level: 83';
   const craftImplicitInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:implicitBase,includeBaseImplicitChoices:true,limit:3},'inspected');
   assert.equal(craftImplicitInspection.crafting.baseImplicitChoices.available,true);const maximumImplicit=craftImplicitInspection.crafting.baseImplicitChoices.choices.find(entry=>entry.label==='+30% to Fire Resistance');assert.ok(maximumImplicit);assert.equal(maximumImplicit.roll,1);
