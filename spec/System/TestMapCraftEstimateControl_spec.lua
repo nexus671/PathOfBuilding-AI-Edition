@@ -35,10 +35,10 @@ describe("Map reroll estimate control",function()
 		local controls=require("Classes.MapCraftEstimateControl").Open(build,options)
 		controls.price:Click();local popup=main.popups[1].controls;popup.amount:SetText("0.5",true);popup.currency:SetText("chaos",true);popup.keep:Click()
 		assert.matches("Keep targets again",StripEscapes(controls.report.list[2][1]))
-		controls.trials:SetText("2",true);controls.attempts:SetText("1",true);controls.keepSettings:Click();assert.same({amount=0.5,currency="chaos"},saved.price)
+		controls.trials:SetText("2",true);controls.attempts:SetText("5",true);controls.keepSettings:Click();assert.same({amount=0.5,currency="chaos"},saved.price)
 		controls.run:Click();for _=1,10000 do if not tasks.job then break end;tasks.tick(build) end
 		local report="";for _,row in ipairs(controls.report.list) do report=report..StripEscapes(row[1] or "").." " end
-		assert.matches("Mean orb cost per trial: 0.5 chaos",report);assert.matches("excludes the map",report)
+		assert.matches("Mean orb cost per trial: 0.5 chaos",report);assert.matches("observed maximum: 0.5 chaos",report,1,true);assert.matches("Configured cost limit per trial: 2.5 chaos",report,1,true);assert.matches("excludes the map",report)
 		assert.matches("Spending percentiles: median 0.5",report);assert.matches("Includes failed trials",report)
 		controls.close:Click();options.settings=saved;controls=require("Classes.MapCraftEstimateControl").Open(build,options)
 		controls.price:Click();popup=main.popups[1].controls;assert.equal("0.5",popup.amount.buf);popup.clear:Click();controls.keepSettings:Click();assert.is_nil(saved.price)

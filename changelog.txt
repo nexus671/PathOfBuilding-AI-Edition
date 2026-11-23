@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1183][2026/11/23]
+
+* Correct the observed maximum cost in map reroll estimates.
+
 VERSION[2.68.1-ai.preview1182][2026/11/23]
 
 * Warn about more impossible whole-number loot-filter conditions.

@@ -166,7 +166,9 @@ function M.run(state,options,checkpoint)
 				if count>=rank then return attempt*price.amount end
 			end
 		end
-		cost={currency=price.currency,unitPrice=price.amount,totalSpent=totalAttempts*price.amount,meanSpent=totalAttempts/trials*price.amount,maxPerTrial=maxAttempts*price.amount,p50=percentile(0.5),p90=percentile(0.9),p99=percentile(0.99)}
+		-- Failures stop at the attempt limit; successful trials can all finish earlier.
+		local observedMax=successes<trials and maxAttempts or distribution[#distribution].attempt
+		cost={currency=price.currency,unitPrice=price.amount,totalSpent=totalAttempts*price.amount,meanSpent=totalAttempts/trials*price.amount,maxPerTrial=observedMax*price.amount,p50=percentile(0.5),p90=percentile(0.9),p99=percentile(0.99)}
 	end
 	return {plannedDelirium=base.plannedDelirium,plannedAllflame=base.plannedAllflame,allflame=require("Modules.MapAllflame").describe(base.plannedAllflame),plannedDeified=base.plannedDeified or nil,deified=require("Modules.MapObservedEffects").deified(base.observedEffects,base.plannedDeified),dataPatch=map.source().patch,dataSource=copyTable(map.source().source),feasibilityUnverified=feasibilityUnverified,trials=trials,maxAttempts=maxAttempts,successes=successes,successChance=successes/trials*100,confidenceLow=low,confidenceHigh=high,cost=cost,
 		attempts=totalAttempts,meanAttempts=totalAttempts/trials,action=action,seed=seed,wanted=copyTable(wanted),wantedGroups=copyTable(alternatives),avoid=copyTable(avoid),unavailableAvoid=unavailableAvoid,
