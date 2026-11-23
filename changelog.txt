@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1225][2026/11/23]
+
+* Compare new upstream files against imported filters and retain reviewed personal edits.
+
 VERSION[2.68.1-ai.preview1224][2026/11/23]
 
 * Add a Vaal gem to the filter vendor-recipe simulator.

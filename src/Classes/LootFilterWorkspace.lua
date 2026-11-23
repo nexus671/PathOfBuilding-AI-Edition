@@ -330,14 +330,14 @@ function M.Open(build,source,layout,controller)
 			elseif entry.id=="duplicate" and profile then profile=copyTable(profile);profile.id=identifier();profile.title=profile.title.." copy";data.profiles[#data.profiles+1]=profile;draft();reopen()
 			elseif entry.id=="import" then controller.Import(function(text,linked)
 				if not profile then profile=filters.profile(identifier(),"Imported filter");data.profiles[#data.profiles+1]=profile end
-				profile.template=text
+				profile.template,profile.upstreamDigest=text,nil
 				if linked then
 					profile.importFiles=require("Modules.LootFilterImports").merge(profile.importFiles,linked)
 				end
 				draft();reopen()
 			end,profile and profile.importFiles)
 			elseif entry.id=="importFiles" and profile then require("Classes.LootFilterImportControl").Open(profile,function(files,absent) profile.importFiles=files;profile.absentOptionalImports=absent;draft();reopen() end)
-			elseif entry.id=="account" and profile then controller.Account(profile,function(text) profile.template=text;draft();reopen() end)
+			elseif entry.id=="account" and profile then controller.Account(profile,function(text) profile.template,profile.upstreamDigest=text,nil;draft();reopen() end)
 			elseif entry.id=="audit" and profile then openAudit()
 			elseif entry.id=="changes" then require("Classes.PlanningBrowserControl").Open("Filter changes",require("Modules.LootFilterEditing").review(saver.data,data))
 			elseif entry.id=="links" and profile then

@@ -44,6 +44,60 @@ function M.compare(before,after)
 	return {rows=rows,added=added,removed=removed,grouped=grouped,equal=before==after,beforeLines=#a,afterLines=#b,
 		beforeFinalNewline=before:sub(-1)=="\n",afterFinalNewline=after:sub(-1)=="\n",before=before,after=after}
 end
+
+local function edits(comparison)
+	local result, active, position = {}, nil, 1
+	for _, row in ipairs(comparison.rows) do
+		if row.kind==" " then
+			position, active = position+1, nil
+		else
+			if not active then
+				active = {first=position, after=position, replacement={}}
+				result[#result+1] = active
+			end
+			if row.kind=="-" then
+				position = position+1
+				active.after = position
+			else
+				active.replacement[#active.replacement+1] = row.text
+			end
+		end
+	end
+	return result
+end
+
+function M.mergeBaseline(previous, draft, updated)
+	local localEdits = edits(M.compare(previous,draft))
+	local upstreamEdits = edits(M.compare(previous,updated))
+	local source, output = lines(previous), {}
+	local a, b, nextLine = 1, 1, 1
+	local function apply(edit)
+		for index=nextLine,edit.first-1 do output[#output+1] = source[index] end
+		for _, line in ipairs(edit.replacement) do output[#output+1] = line end
+		nextLine = edit.after
+	end
+	while a<=#localEdits or b<=#upstreamEdits do
+		local personal, upstream = localEdits[a], upstreamEdits[b]
+		if not upstream or personal and personal.first<upstream.first and personal.after<=upstream.first then
+			apply(personal)
+			a = a+1
+		elseif not personal or upstream.first<personal.first and upstream.after<=personal.first then
+			apply(upstream)
+			b = b+1
+		elseif personal.first==upstream.first and personal.after==upstream.after
+			and table.concat(personal.replacement,"\n")==table.concat(upstream.replacement,"\n")
+			and #personal.replacement==#upstream.replacement then
+			apply(personal)
+			a, b = a+1, b+1
+		else
+			return nil, {first=math.min(personal.first,upstream.first),after=math.max(personal.after,upstream.after)}
+		end
+	end
+	for index=nextLine,#source do output[#output+1] = source[index] end
+	local newline = draft:find("\r\n",1,true) and "\r\n" or "\n"
+	return table.concat(output,newline) .. (draft:sub(-1)=="\n" and #output>0 and newline or "")
+end
+
 function M.visible(diff,context,query)
 	context=context or 3;query=(query or ""):lower();local ranges={}
 	for i,row in ipairs(diff.rows) do if row.kind~=" " then

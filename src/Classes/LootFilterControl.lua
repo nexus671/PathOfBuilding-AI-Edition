@@ -340,6 +340,34 @@ function M.Export(profile,raw,report)
 	c.soundZip.tooltipText="Package this filter and local sounds together. Existing archives are never replaced."
 	button(c,"close",w-156,236,140,"Close",function() main:ClosePopup() end);ui.style(c,{write=true});main:OpenPopup(w,h,"Export loot filter",c,nil,"filename","close")
 end
+local function showBaselineReview(title, plan, versions, save)
+	local details = versions
+	if plan.checked then
+		details[#details+1] = string.format("%d added and %d removed condition occurrences",plan.addedCount,plan.removedCount)
+		details[#details+1] = string.format("%d protected visibility checks and %d saved examples",plan.checked,plan.examplesChecked)
+	end
+	if plan.comparison then details[#details+1] = plan.comparison end
+	details[#details+1] = #plan.blocks == 0 and "Apply to the draft after reviewing the changes."
+		or "Resolve the changes in the Blocked category before applying."
+	local entries = {{id="summary",label="Baseline update summary",category="Summary",details=details}}
+	for index, problem in ipairs(plan.blocks) do
+		entries[#entries+1] = {id="protected-"..index,label="Baseline update blocked",category="Blocked",details={problem}}
+	end
+	for index, problem in ipairs(plan.warnings or {}) do
+		entries[#entries+1] = {id="example-"..index,label="Saved example changed",category="Examples",details={problem}}
+	end
+	for index, removed in ipairs(plan.removedConditions or {}) do
+		entries[#entries+1] = {id="removed-"..index,label=removed.text:sub(1,100),category="Removed conditions",
+			details={removed.text:sub(1,2000),"Occurrences removed: "..removed.count}}
+	end
+	require("Classes.PlanningBrowserControl").Open(title,entries,{
+		action="Apply to draft",enterChooses=false,closeOnChoose=false,
+		canChoose=function(entry) return entry.id=="summary" and plan.profile and #plan.blocks==0 end,
+		choose=function() main:ClosePopup(); save(plan.profile) end,
+		secondary={label="View full diff",run=function() require("Classes.LootFilterDiffControl").Open(plan.before,plan.after,true) end},
+	})
+end
+
 local function reviewBaseUpdate(profile, save)
 	local refresh = require("Modules.LootFilterBaseRefresh")
 	local owner = main.popups[1]
@@ -355,30 +383,46 @@ local function reviewBaseUpdate(profile, save)
 		local ok, plan = pcall(refresh.plan,profile,response.body)
 		if not ok then main:OpenMessagePopup("NeverSink base review",ui.errorText(plan)); return end
 		main:ClosePopup()
-		local entries = {{id="summary",label="Baseline update summary",category="Summary",details={
+		showBaselineReview("NeverSink base review",plan,{
 			"Saved revision: "..profile.baseCommit,
 			"Bundled revision: "..plan.profile.baseCommit,
-			string.format("%d added and %d removed condition occurrences",plan.addedCount,plan.removedCount),
-			string.format("%d protected visibility checks and %d saved examples",plan.checked,plan.examplesChecked),
-			#plan.blocks == 0 and "Apply to the draft after reviewing the changes." or "Resolve protected drop changes before applying.",
-		}}}
-		for index, problem in ipairs(plan.blocks) do
-			entries[#entries+1] = {id="protected-"..index,label="Protected drop changed",category="Blocked",details={problem}}
-		end
-		for index, problem in ipairs(plan.warnings) do
-			entries[#entries+1] = {id="example-"..index,label="Saved example changed",category="Examples",details={problem}}
-		end
-		for index, removed in ipairs(plan.removedConditions) do
-			entries[#entries+1] = {id="removed-"..index,label=removed.text:sub(1,100),category="Removed conditions",
-				details={removed.text:sub(1,2000),"Occurrences removed: "..removed.count}}
-		end
-		require("Classes.PlanningBrowserControl").Open("NeverSink base review",entries,{
-			action="Apply to draft",enterChooses=false,closeOnChoose=false,
-			canChoose=function(entry) return entry.id=="summary" and #plan.blocks==0 end,
-			choose=function() main:ClosePopup(); save(plan.profile) end,
-			secondary={label="View full diff",run=function() require("Classes.LootFilterDiffControl").Open(plan.before,plan.after,true) end},
-		})
+		},save)
 	end,{timeout=20,maxBytes=filters.limit})
+end
+
+local function reviewImportedBase(profile, save)
+	local width = math.min(main.screenW-40,640)
+	local controls = {}
+	local function fileField(key, y, label)
+		ui.label(controls,key.."Label",16,y,label,14)
+		local field = new("EditControl"):EditControl(ui.anchor,{16,y+24,width-140,26},"",nil,nil,1024)
+		controls[key] = field
+		button(controls,key.."Browse",width-112,y+24,96,"Browse",function()
+			require("Classes.LootFilterFileBrowser").Open(field.buf,function(path) field:SetText(path) end)
+		end)
+	end
+	ui.description(controls,"help",16,16,width-32,44,{"Choose the original upstream file and its replacement to carry your personal edits forward."},14)
+	fileField("previous",68,"Previous upstream filter")
+	fileField("latest",132,"New upstream filter")
+	button(controls,"preview",16,202,150,"Review update",function()
+		attempt(function()
+			local read = require("Modules.LootFilterImports").readFile
+			local before = read(controls.previous.buf,filters.limit)
+			local after = read(controls.latest.buf,filters.limit)
+			local plan = require("Modules.LootFilterBaseRefresh").planImported(profile,before,after)
+			local sha = require("sha1")
+			main:ClosePopup()
+			main:ClosePopup()
+			showBaselineReview("Imported base review",plan,{
+				"Previous upstream checksum: "..sha(before),
+				"New upstream checksum: "..sha(after),
+			},save)
+		end)
+	end)
+	controls.preview.enabled=function() return controls.previous.buf:match("%S") and controls.latest.buf:match("%S") end
+	button(controls,"close",width-132,202,116,"Cancel",function() main:ClosePopup() end)
+	ui.style(controls)
+	main:OpenPopup(width,248,"Update imported baseline",controls,nil,"previous","close")
 end
 
 function M.Audit(profile,report,save,focusErrors)
@@ -386,6 +430,12 @@ function M.Audit(profile,report,save,focusErrors)
 	local needsUpdate = not profile.template and profile.baseCommit ~= revision
 	local entries={{id="update",label="Update bundled NeverSink base",details={"Saved revision: "..profile.baseCommit,"Bundled revision: "..revision,
 		needsUpdate and "Review baseline differences and protected drops before applying." or profile.template and "This profile uses an imported base." or "This profile is current."}}};for name,value in pairs(report and report.changes or {}) do entries[#entries+1]={id=name,label=name,details={value=="removed" and "Removed in 3.30. An empty BaseType list removes its entire rule." or "Renamed to "..value}} end
+	if profile.template then
+		entries[1] = {id="imported-update",label="Update imported baseline",details={
+			profile.upstreamDigest and "Last reviewed upstream checksum: "..profile.upstreamDigest or "Choose the original upstream filter.",
+			"Preview how the new baseline combines with personal rules before applying.",
+		}}
+	end
 	if report and report.error then entries[#entries+1]={id="compile-error",label="Compilation error",details={ui.errorText(report.error)}} end
 	for i,d in ipairs(report and report.diagnostics or {}) do
 		local uniqueFlask=d.code=="hiddenUniqueSulphur"
@@ -397,8 +447,9 @@ function M.Audit(profile,report,save,focusErrors)
 		if id then for i,entry in ipairs(entries) do if entry.id==id then table.insert(entries,1,table.remove(entries,i));break end end end
 	end
 	local controls=require("Classes.PlanningBrowserControl").Open("Filter audit",entries,{action="Apply selected",enterChooses=false,closeOnChoose=false,
-		canChoose=function(entry) return entry.id=="update" and needsUpdate or entry.showUniqueFlask end,choose=function(entry)
+		canChoose=function(entry) return entry.id=="imported-update" or entry.id=="update" and needsUpdate or entry.showUniqueFlask end,choose=function(entry)
 			if entry.id=="update" then reviewBaseUpdate(profile,save); return
+		elseif entry.id=="imported-update" then reviewImportedBase(profile,save); return
 			elseif entry.showUniqueFlask then
 				local next=copyTable(profile);local used={};for _,rule in ipairs(next.rules or {}) do used[rule.id]=true end
 				local id="unique-sulphur";local suffix=1;while used[id] do suffix=suffix+1;id="unique-sulphur-"..suffix end

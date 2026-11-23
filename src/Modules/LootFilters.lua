@@ -88,6 +88,11 @@ function M.validate(data)
 		end
 		entry.baseCommit=p.baseCommit and text(p.baseCommit,40,"template revision") or M.source().commit
 		if p.template then entry.template=text(p.template,M.limit,"imported filter");local parsed=parser.parse(p.template);assert(#parsed.rules>0 or #parsed.imports>0,"Imported filter has no rules or imports") end
+		if p.upstreamDigest then
+			assert(entry.template and type(p.upstreamDigest)=="string" and #p.upstreamDigest==40
+				and p.upstreamDigest:match("^[a-f0-9]+$"), "Invalid imported baseline checksum")
+			entry.upstreamDigest = p.upstreamDigest
+		end
 		if p.importFiles~=nil then
 			entry.importFiles={};local names={}
 			for _,file in ipairs(array(p.importFiles)) do
@@ -640,7 +645,8 @@ end
 function M.compile(profile,includeParsed,previousBase)
 	local checked=M.validate({schemaVersion=1,activeId=profile.id,profiles={profile}}).profiles[1]
 	local function styled(text,category) return require("Modules.LootFilterCategoryStyles").apply(text,checked.categoryStyles,category) end
-	local output={"# Path of Building AI Edition | "..checked.title,"# PoE 3.30 | NeverSink base "..checked.baseCommit,"# NeverSink templates: MIT. Personal rules precede the base filter."}
+	local baseVersion = checked.upstreamDigest and "Imported baseline "..checked.upstreamDigest or "NeverSink base "..checked.baseCommit
+	local output={"# Path of Building AI Edition | "..checked.title,"# PoE 3.30 | "..baseVersion,"# NeverSink templates: MIT. Personal rules precede the base filter."}
 	output[#output+1]="# "..read("LICENSE-NeverSink.txt"):gsub("\r\n","\n"):gsub("\n","\n# ")
 	for _,r in ipairs(checked.rules) do if r.enabled then output[#output+1]="\n# PoB rule: "..r.title..(r.origin and " ["..r.origin.."]" or "");output[#output+1]=styled(r.text,r.origin and "Build targets") end end
 	for _,rule in ipairs(require("Modules.LootFilterEditing").tierRules(checked.tiers)) do output[#output+1]="\n# PoB rule: Tier / "..rule.title;output[#output+1]=styled(rule.text) end

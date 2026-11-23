@@ -286,6 +286,122 @@ assert(accepted and accepted.baseCommit==filters.source().commit and #accepted.r
 launch.DownloadPage=actualDownload
 print("NeverSink refresh previews and validates the compiled candidate before preserving personal rules in the draft")
 
+do
+	local profile = filters.profile("imported-baseline","Imported baseline")
+	local files = require("Modules.LootFilterImports")
+	local originalReader = files.readFile
+	local previous = table.concat({"# Prior upstream",'Show','    BaseType == "Cord Belt"',
+		'    MinimapIcon 0 Purple Star','# Currency','Show','    Class == "Stackable Currency"',
+		'    SetFontSize 30',''}, "\r\n")
+	local finalText = previous:gsub("SetFontSize 30","SetFontSize 40")
+	local mine = '# Personal exception\r\nShow\r\n    LinkedSockets 6\r\n    MinimapIcon 0 Red Diamond\r\n'
+	profile.template = mine..previous
+	profile.rules = {{id="personal",title="Personal",text='Hide\n    BaseType == "Portal Scroll"',enabled=true}}
+	local affected = baseRefresh.planImported(profile,previous,finalText)
+	assert(#affected.blocks==0 and affected.profile.template==mine..finalText)
+	assert(affected.profile.upstreamDigest==require("sha1")(finalText))
+	assert(affected.after:find("# PoE 3.30 | Imported baseline "..affected.profile.upstreamDigest,1,true))
+	assert(not pcall(baseRefresh.planImported,affected.profile,previous,finalText))
+	local newer = finalText:gsub("SetFontSize 40","SetFontSize 41")
+	assert(baseRefresh.planImported(affected.profile,finalText,newer).profile.template==mine..newer)
+	local hidden = previous:gsub("\r\nShow\r\n","\r\nHide\r\n",1)
+	local unsafe = baseRefresh.planImported(profile,previous,hidden)
+	assert(#unsafe.blocks==16)
+	local edited = copyTable(profile)
+	edited.template = edited.template:gsub("SetFontSize 30","SetFontSize 50")
+	local collision = baseRefresh.planImported(edited,previous,finalText)
+	assert(#collision.blocks==1 and not collision.profile and collision.blocks[1]:find("both change old lines",1,true))
+	local custom = copyTable(profile)
+	custom.template = mine..previous..[[# CUSTOM: Hide Wisdom and Portal Scrolls
+Hide
+    BaseType == "Scroll of Wisdom" "Portal Scroll"
+# PoB economy: begin
+Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    StackSize <= 6
+# PoB economy: end
+]]
+	local removedScroll = custom.template:gsub(' "Portal Scroll"','',1)
+	local changedPolicy = baseRefresh.planImported(custom,custom.template,removedScroll)
+	assert(changedPolicy.blocks[#changedPolicy.blocks]:find("custom drop protection rules",1,true))
+	local withoutEconomy = copyTable(custom)
+	withoutEconomy.template = custom.template:match("^(.-)# PoB economy: begin").."Show\n    SetFontSize 30\n"
+	withoutEconomy.template = withoutEconomy.template:gsub("\r\n","\n"):gsub("\n","\r\n")
+	local unrelated = withoutEconomy.template:gsub("SetFontSize 30\r\n$","SetFontSize 32\r\n")
+	local refreshed = baseRefresh.planImported(withoutEconomy,withoutEconomy.template,unrelated)
+	assert(#refreshed.blocks==0 and refreshed.profile.template==unrelated)
+	local missingScroll = withoutEconomy.template:gsub(' "Portal Scroll"','',1)
+	local unsafeUpdate = baseRefresh.planImported(withoutEconomy,withoutEconomy.template,missingScroll)
+	assert(unsafeUpdate.blocks[#unsafeUpdate.blocks]:find("custom drop protection rules",1,true))
+	local lateScroll = copyTable(custom)
+	local title, section = "# CUSTOM: Hide Wisdom and Portal Scrolls", "# PoB economy: begin"
+	local first = custom.template:find(title,1,true)
+	local start = custom.template:find(section,first,true)
+	lateScroll.template = custom.template:sub(1,first-1)..custom.template:sub(start)..custom.template:sub(first,start-1)
+	local changedLateScroll = lateScroll.template:gsub(' "Portal Scroll"','',1)
+	local unsafeLateScroll = baseRefresh.planImported(lateScroll,lateScroll.template,changedLateScroll)
+	assert(unsafeLateScroll.blocks[#unsafeLateScroll.blocks]:find("custom drop protection rules",1,true))
+	local imports = copyTable(profile)
+	imports.template = 'Import "old.filter"\n'
+	imports.importFiles = {{name="old.filter",text=previous},{name="new.filter",text=finalText}}
+	local importOnly = baseRefresh.planImported(imports,imports.template,'Import "new.filter"\n')
+	assert(importOnly.profile.template=='Import "new.filter"\n' and importOnly.after:find("SetFontSize 40",1,true))
+	assert(not pcall(baseRefresh.planImported,imports,imports.template,'Import "missing.filter"\n'))
+	imports.importFiles = {{name="old.filter",text=custom.template},{name="new.filter",text=removedScroll}}
+	local changedAttachment = baseRefresh.planImported(imports,imports.template,'Import "new.filter"\n')
+	assert(changedAttachment.blocks[#changedAttachment.blocks]:find("custom drop protection rules",1,true))
+	files.readFile = function(path)
+		if path=="old.filter" then return previous end
+		assert(path=="new.filter")
+		return finalText
+	end
+	main.popups = {}
+	local changed
+	require("Classes.LootFilterControl").Audit(profile,{},function(updated) changed=updated end)
+	refreshUI:click("choose")
+	assert(main.popups[1].title=="Update imported baseline")
+	refreshUI:text("previous","old.filter")
+	refreshUI:text("latest","new.filter")
+	refreshUI:click("preview")
+	assert(main.popups[1].title=="Imported base review" and not changed)
+	refreshUI:click("secondary")
+	assert(main.popups[1].title=="Filter file changes")
+	refreshUI:click("close")
+	refreshUI:click("choose")
+	assert(changed and changed.template==mine..finalText and changed.rules[1].text==profile.rules[1].text)
+	files.readFile = originalReader
+	print("Imported baseline review preserves personal edits and blocks conflicts and lost visibility")
+end
+
+do
+	local control = require("Classes.LootFilterControl")
+	local function replaceVia(label, method)
+		newBuild();main.popups={}
+		local harness = headless.install({width=960,height=640})
+		harness:bind(build)
+		local profile = filters.profile("replace-source","Replace source")
+		profile.template, profile.upstreamDigest = 'Show\n    BaseType == "Cord Belt"', string.rep("a",40)
+		build.savers.LootFilters:Upsert(profile)
+		build.planningWorkspace = require("Modules.PlanningWorkspace").new(build)
+		build.viewMode = "PLANNER"
+		build.planningWorkspace:Show("filters")
+		local replacement, original = 'Show\n    BaseType == "Agate Amulet"', control[method]
+		control[method] = function(first, second)
+			local import = method=="Account" and second or first
+			import(replacement)
+		end
+		harness:click("manage")
+		harness:text("search",label)
+		harness:click("choose")
+		control[method] = original
+		local active = build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1]
+		assert(active.template==replacement and not active.upstreamDigest)
+	end
+	replaceVia("Import filter","Import")
+	replaceVia("Account filters","Account")
+end
+
 -- Open a historical backup in the usual workspace and require the exact
 -- source review before the restore action can be clicked.
 newBuild()

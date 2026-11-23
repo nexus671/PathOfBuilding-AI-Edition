@@ -482,17 +482,6 @@ local function verifyUnmanagedRules(target, baseline)
 		"Baseline and target have different rules outside the economy section. Review edits and choose an updated baseline.")
 end
 
-local function personalRulePrefix(raw, stop)
-	local rules = {}
-	for line in raw:sub(1,stop-1):gmatch("[^\r\n]+") do
-		local text = line:match("^%s*(.-)%s*$")
-		if text ~= "" and (text:sub(1,1) ~= "#" or text:find("# CUSTOM:",1,true)==1) then
-			rules[#rules+1] = line
-		end
-	end
-	return table.concat(rules,"\n")
-end
-
 local function externalAdoption(id)
 	local config = assert(get(id), "No saved sync setup")
 	assert(not config.pending, "Finish recovering the interrupted sync before adopting edits")
@@ -509,11 +498,11 @@ local function externalAdoption(id)
 		"The managed economy section changed. Use filter setup to review and select a new fixed baseline.")
 	assert(edited ~= expected, "There are no edits outside generated price highlights to adopt")
 	local baseStart, baseEnd = market.sectionBounds(baseline)
-	if not config.protections and baseline:find("# CUSTOM: Hide Wisdom and Portal Scrolls",1,true) then
-		assert(personalRulePrefix(baseline,baseStart)==personalRulePrefix(edited,editStart),
+	local candidate = edited:sub(1,editStart-1) .. baseline:sub(baseStart,baseEnd-1) .. edited:sub(editEnd)
+	if not config.protections then
+		assert(require("Modules.LootFilterProtectedDrops").personalRulesPreserved(baseline,candidate),
 			"An edit changed the custom protection rules or their precedence. Review the complete protection policy in filter setup.")
 	end
-	local candidate = edited:sub(1,editStart-1) .. baseline:sub(baseStart,baseEnd-1) .. edited:sub(editEnd)
 	verifyUnmanagedRules(after,candidate)
 	for _, raw in ipairs({after,candidate}) do
 		validate(raw,{},true,config.targetValue,config.protections,nil,nil,nil,config.pickupPolicy)
