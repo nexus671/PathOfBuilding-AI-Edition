@@ -148,6 +148,12 @@ function M.Open(profileId, profileName)
 			details={saved.summary, "Next eligible run: " .. (sync.nextEligible(saved,os.time()) or "Paused or disabled"),
 				review.backup and ("Backup: " .. saved.target .. ".before-pob-sync-" .. review.backup .. ".bak") or "No replacement backup yet."},
 		}}
+		for i, feed in ipairs(review.feeds or {}) do
+			entries[#entries+1] = {id="feed-"..i,label=feed.category,category="Price feeds",details={
+				string.format("poe.ninja response age at sync: %d seconds",feed.age),
+				feed.revalidated and "Server confirmed the saved response was unchanged." or "Downloaded response and verified its freshness.",
+			}}
+		end
 		for i, change in ipairs(review.changes or {}) do
 			local scope = change.scope == "campaign" and " in campaign areas" or change.maps and " in maps" or ""
 			local details = {

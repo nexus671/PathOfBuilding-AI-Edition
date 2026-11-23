@@ -285,9 +285,18 @@ function M.publicDiff(now, id)
 		local standardAge = finiteNumber(age)
 		if standardAge and standardAge >= 0 and standardAge <= 3600 then ages[#ages+1] = standardAge end
 	end
+	local feeds = {}
+	for index, feed in ipairs(type(review.feeds) == "table" and review.feeds or {}) do
+		if index > 20 then break end
+		local category = type(feed) == "table" and safeText(feed.category,40)
+		local age = category and finiteNumber(feed.age)
+		if age and age >= 0 and age <= 3600 then
+			feeds[#feeds+1] = {category=category, responseAge=age, revalidated=feed.revalidated==true}
+		end
+	end
 	publicCache.diff = {
 		checkedAt=finiteNumber(review.checkedAt), verifiedProtection=true,
-		responseAges=ages, changeCount=#source, changes=changes,
+		responseAges=ages, feeds=feeds, changeCount=#source, changes=changes,
 	}
 	return publicCache.diff
 end
@@ -574,7 +583,7 @@ local function rememberFailure(config, startedAt, message, id)
 	end)
 end
 
-local function publish(config, bodies, ages, day, force, now, id)
+local function publish(config, bodies, feeds, day, force, now, id)
 	return lockSettings(function()
 		local current = get(id)
 		assert(current and current.enabled and not current.paused and current.baselineHash == config.baselineHash and current.target == config.target
@@ -604,7 +613,9 @@ local function publish(config, bodies, ages, day, force, now, id)
 		current.current, current.pending, current.day = sha(candidate), nil, day
 		current.summary = string.format("%s: %d stack adjustments from the baseline. Protected drops verified.", nowText(now), count)
 		current.lastSuccess, current.lastFailure, current.providerRetryAfter = now, nil, nil
-		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages}
+		local ages = {}
+		for index, feed in ipairs(feeds) do ages[index] = feed.age end
+		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages, feeds=feeds}
 		current.history = current.history or {}
 		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
 		if #current.history > 30 then table.remove(current.history) end
@@ -628,7 +639,7 @@ end
 
 local function fetchPrices(config, baseline, now, complete, onFailure, id)
 	local categories = market.feedCategories(baseline)
-	local job, bodies, ages, observedAt = {onFailure=onFailure,profileId=id}, {}, {}, {}
+	local job, bodies, responses = {onFailure=onFailure,profileId=id}, {}, {}
 	M.busy, M.deadline = job, now + 300
 	local function finish(success, message)
 		M.busy = nil
@@ -640,11 +651,13 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 		local category = categories[index]
 		if not category then
 			local finishedAt = os.time()
-			for id, age in ipairs(ages) do
-				ages[id] = age + math.max(0, finishedAt - observedAt[id])
-				if ages[id] > 3600 then finish(false, "An exchange snapshot expired before the refresh finished."); return end
+			local feeds = {}
+			for index, response in ipairs(responses) do
+				local age = response.initialAge + math.max(0, finishedAt - response.checkedAt)
+				if age > 3600 then finish(false, categories[index] .. ": snapshot expired before the refresh finished."); return end
+				feeds[index] = {category=categories[index], age=age, revalidated=response.revalidated}
 			end
-			finish(pcall(complete, bodies, ages))
+			finish(pcall(complete, bodies, feeds))
 			return
 		end
 		M.status = "Fetching " .. config.league .. " prices: " .. category
@@ -665,7 +678,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			if M.busy ~= job then return end
 			time = os.time()
 			if err == "Response code: 304" and cached and time >= cached.sourceAt and time-cached.sourceAt <= 3600 then
-				bodies[index], ages[index], observedAt[index] = cached.body, time-cached.sourceAt, time
+				bodies[index], responses[index] = cached.body, {initialAge=time-cached.sourceAt, checkedAt=time, revalidated=true}
 				fetch(index + 1, 1)
 				return
 			end
@@ -692,7 +705,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			local valid, why = pcall(market.quotes, data, category)
 			if not valid then finish(false, category .. ": " .. tostring(why)); return end
 			storeFeed(url,{body=data,tag=tag,sourceAt=time-age,checkedAt=time})
-			bodies[index], ages[index], observedAt[index] = data, age, time
+			bodies[index], responses[index] = data, {initialAge=age, checkedAt=time, revalidated=false}
 			fetch(index + 1, 1)
 		end, {timeout=20,maxBytes=2*1024*1024,header=requestHeaders})
 	end
@@ -752,8 +765,8 @@ function M.tick(now, force, scheduled, id)
 		onFailure(M.status)
 		return
 	end
-	fetchPrices(config, baseline, now, function(bodies, ages)
-		return publish(config, bodies, ages, day, force, now, id)
+	fetchPrices(config, baseline, now, function(bodies, feeds)
+		return publish(config, bodies, feeds, day, force, now, id)
 	end, onFailure, id)
 end
 

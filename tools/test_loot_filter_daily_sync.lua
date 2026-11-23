@@ -94,6 +94,8 @@ local payload=require("dkjson").encode(exposed)
 assert(not payload:find("target.filter",1,true) and not payload:find("protect.json",1,true))
 local diff = sync.publicDiff(now)
 assert(diff.verifiedProtection and diff.changeCount==1 and #diff.changes==1)
+assert(#diff.feeds==8 and diff.feeds[1].category=="Currency" and not diff.feeds[1].revalidated
+	and diff.feeds[1].responseAge==diff.responseAges[1])
 assert(diff.changes[1].item=="Orb of Alteration" and diff.changes[1].sample.action=="Show")
 local diffPayload=require("dkjson").encode(diff)
 assert(not diffPayload:find("target.filter",1,true) and not diffPayload:find("protect.json",1,true))
@@ -169,6 +171,17 @@ assert(reviewed and networkCount==9 and read(target)==original)
 reviewed=nil
 sync.preview(target,baseline,"Covens",options,function(_, candidate) reviewed=candidate end)
 assert(reviewed and conditional==8 and networkCount==17)
+sync.configure(target,baseline,"Covens",options)
+sync.tick(clock,true)
+local revalidated = sync.publicDiff(clock)
+assert(#revalidated.feeds==8 and revalidated.feeds[1].category=="Currency" and revalidated.feeds[1].revalidated
+	and revalidated.feeds[1].responseAge==revalidated.responseAges[1])
+local originalAge = revalidated.feeds[1].responseAge
+clock=clock+61
+sync.tick(clock,true)
+assert(sync.publicDiff(clock).feeds[1].responseAge==originalAge+61)
+sync.rollback()
+sync.disable()
 os.time=systemTime
 local browser = require("Modules.LootFilterMarketBrowse")
 local gear = browser.rows([[{"lines":[{"name":"Example gear","baseType":"Cord Belt","variant":"A","chaosValue":20,"listingCount":17},{"name":"Example gear","baseType":"Cord Belt","variant":"B","chaosValue":32,"listingCount":1}]}]], {id="UniqueAccessory"})
