@@ -482,6 +482,7 @@ function M.configure(target, baselineFile, league, options)
 			nextConfig.priceHistory = current.priceHistory
 			if nextConfig.backupLimit and current.target == nextConfig.target and current.current == nextConfig.current and not current.pending then
 				nextConfig.backup, nextConfig.history = current.backup, current.history
+				nextConfig.restoreBackups = current.restoreBackups
 			end
 		end
 		nextConfig.revision = newRevision()
@@ -525,9 +526,25 @@ local function backupChoices(config, limit)
 		end
 	end
 	add(config.backup)
+	local recorded = {}
 	for _, run in ipairs(config.history or {}) do
+		if type(run)=="table" and type(run.backup)=="string" then
+			recorded[#recorded+1] = {digest=run.backup,checkedAt=run.checkedAt}
+		end
+	end
+	for _, saved in ipairs(config.restoreBackups or {}) do
+		if type(saved)=="table" and type(saved.digest)=="string" then
+			recorded[#recorded+1] = {digest=saved.digest,checkedAt=saved.checkedAt}
+		end
+	end
+	table.sort(recorded,function(left,right)
+		local leftTime, rightTime = tonumber(left.checkedAt) or 0, tonumber(right.checkedAt) or 0
+		if leftTime==rightTime then return left.digest<right.digest end
+		return leftTime>rightTime
+	end)
+	for _, entry in ipairs(recorded) do
 		if #entries >= (limit or 30) then break end
-		if type(run) == "table" then add(run.backup,run.checkedAt) end
+		add(entry.digest,tonumber(entry.checkedAt))
 	end
 	return entries, seen
 end
@@ -560,12 +577,24 @@ local function pruneBackups(config, choices)
 	for _, run in ipairs(config.history) do
 		if removed[run.backup] then run.backup = nil end
 	end
+	for index=#(config.restoreBackups or {}),1,-1 do
+		if removed[config.restoreBackups[index].digest] then table.remove(config.restoreBackups,index) end
+	end
 	config.retentionSkipped = skipped>0 and skipped or nil
 end
 
 local restoreSummary = "Restored the verified backup. Daily sync is paused."
 
 local function finishRestore(config, digest, undo)
+	if undo then
+		local list = config.restoreBackups or {}
+		for index=#list,1,-1 do
+			if list[index].digest==undo then table.remove(list,index) end
+		end
+		table.insert(list,1,{digest=undo,checkedAt=os.time()})
+		if #list>30 then table.remove(list) end
+		config.restoreBackups = list
+	end
 	config.current, config.pending, config.backup = digest, nil, undo
 	config.pendingRestore = nil
 	config.summary, config.review = restoreSummary, nil
@@ -767,7 +796,7 @@ local function publish(config, bodies, feeds, day, force, now, id)
 		current.history = current.history or {}
 		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
 		local limit = current.backupLimit
-		local backups = type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) and backupChoices(current,32)
+		local backups = type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) and backupChoices(current,62)
 		if #current.history > 30 then table.remove(current.history) end
 		save(current,id)
 		if backups then
