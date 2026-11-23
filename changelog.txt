@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1148][2026/11/22]
+
+* Preview conditional bench-rarity examples and same-base unique references.
+
 VERSION[2.68.1-ai.preview1147][2026/11/22]
 
 * Preserve unique crafting redo history when a preview matches the saved item.

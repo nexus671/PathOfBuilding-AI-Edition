@@ -71,6 +71,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_filter_sound_list_ui.lua")
     sources.append(ROOT / "tools/test_filter_contradictions.lua")
     sources.append(ROOT / "tools/test_craft_project_recovery.lua")
+    sources.append(ROOT / "tools/test_bench_rarity_preview.lua")
     sources.append(ROOT / "tools/test_update_notes_ui.lua")
     sources.append(ROOT / "tools/test_fated_scene_ui.lua")
     sources.append(ROOT / "tools/test_filter_union_ui.lua")
@@ -142,6 +143,10 @@ def main():
                                     env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "craft-project-recovery.log").write_text(craft_recovery.stdout)
     assert craft_recovery.returncode == 0, craft_recovery.stdout
+    bench_rarity = subprocess.run(lua_command + ["../tools/test_bench_rarity_preview.lua", str(frames)], cwd=ROOT / "src",
+                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "bench-rarity-preview.log").write_text(bench_rarity.stdout)
+    assert bench_rarity.returncode == 0, bench_rarity.stdout
     update_notes = subprocess.run(lua_command + ["../tools/test_update_notes_ui.lua", str(frames)], cwd=ROOT / "src",
                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "update-notes-controls.log").write_text(update_notes.stdout)
@@ -321,7 +326,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2397, f"Expected 2397 UI frames, found {len(paths)}"
+    assert len(paths) == 2400, f"Expected 2400 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         for scene in ("beyond", "incursion"):
             assert (frames / f"{width}-filter-{scene}-examples.json").is_file(), f"Missing {scene} scene at {width}px"
