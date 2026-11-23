@@ -37,6 +37,7 @@ function M.Open(profile,keep)
 		local next=copyTable(draft);local file={name=name,text=contents}
 		local index=selected==0 and #next.importFiles+1 or selected;next.importFiles[index]=file
 		draft=filters.validate({schemaVersion=1,activeId=next.id,profiles={next}}).profiles[1]
+		draft.absentOptionalImports=draft.absentOptionalImports or {}
 		return index
 	end
 	c.files.selFunc=function(_,entry)

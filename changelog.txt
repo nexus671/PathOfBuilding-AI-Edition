@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1211][2026/11/23]
+
+* Keep ordinary included-file editing working with optional preview settings.
+
 VERSION[2.68.1-ai.preview1210][2026/11/23]
 
 * Preview optional filter imports as absent without changing exports.
