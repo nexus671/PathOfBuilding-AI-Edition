@@ -4,8 +4,9 @@ main.disableDevAutoSave = true
 
 local sync = require("Modules.LootFilterDailySync")
 local headless = require("Modules.HeadlessUI")
+local task = require("Modules.LootFilterBackgroundTask")
 local selected = "C:/PoE/selected.filter"
-local configured
+local configured, backgroundEnabled, notifyEnabled
 
 function GetUserPath() return "C:/Users/QA/Documents" end
 sync.selectedLocalFilter = function(dir)
@@ -13,7 +14,7 @@ sync.selectedLocalFilter = function(dir)
 	return selected
 end
 sync.configuration = function()
-	return {hour=9, minute=15}
+	return {hour=9, minute=15, enabled=true, backgroundEnabled=backgroundEnabled, backgroundNotifications=notifyEnabled}
 end
 sync.diagnosticReport = function()
 	return '{"version":1}'
@@ -24,10 +25,18 @@ sync.configure = function(target, baseline, _, options)
 	configured = true
 end
 
+task.change = function(wanted, callback)
+	backgroundEnabled = wanted
+	callback(true)
+end
+sync.setBackgroundNotifications = function(wanted)
+	notifyEnabled = wanted
+end
+
 for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	newBuild()
 	main.popups = {}
-	configured = false
+	configured, backgroundEnabled, notifyEnabled = false, false, false
 	local harness = headless.install({width=size[1], height=size[2]})
 	harness:bind(build)
 	require("Classes.LootFilterDailySyncControl").Open()
@@ -38,6 +47,12 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	harness:text("time", "12:37")
 	harness:click("enable")
 	assert(configured and main.popups[1].title == "Daily filter sync")
+	harness:click("background")
+	assert(backgroundEnabled)
+	harness:click("backgroundNotify")
+	assert(notifyEnabled)
+	harness:click("background")
+	assert(not backgroundEnabled)
 	harness:click("copyReport")
 	assert(harness.clipboard == '{"version":1}' and main.popups[1].title == "Sync diagnostics")
 	harness:frame()
