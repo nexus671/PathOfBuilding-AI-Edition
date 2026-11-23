@@ -59,7 +59,11 @@ function M.count(contents,key)
 end
 function M.lines(contents)
 	local lines={string.format("%s crafting guides | %s working checkpoints | %s saved items | %s Atlas plans",M.count(contents,"crafts"),M.count(contents,"checkpoints"),M.count(contents,"inventory"),M.count(contents,"atlas")),string.format("%s milestones | %s gear goals | %s leveling stages",M.count(contents,"milestones"),M.count(contents,"wishlist"),M.count(contents,"stages")),string.format("%s loot-filter profiles | native character, items, skills, passives, configuration and notes.",M.count(contents,"filters")),"Only kept plans and checkpoints travel. Keep working drafts before exporting.","Prices, crafting odds and external references retain their recorded dates and assumptions. They are not refreshed on import."}
-	if contents.unreadableSections and #contents.unreadableSections>0 then lines[#lines+1]="Some planning data could not be summarized; its original data is included unchanged: "..table.concat(contents.unreadableSections,", ") end
+	if contents.unreadableSections and #contents.unreadableSections>0 then
+		local labels={CraftingProjects="crafting guides",AtlasPlans="Atlas plans",BuildJourney="roadmap",LootFilters="loot filters"};local names={}
+		for _,section in ipairs(contents.unreadableSections) do names[#names+1]=labels[section] or section end
+		lines[#lines+1]="Some planning data could not be summarized; its original data is included unchanged: "..table.concat(names,", ")
+	end
 	return lines
 end
 return M
