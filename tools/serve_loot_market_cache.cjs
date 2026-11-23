@@ -51,11 +51,16 @@ function ageSource(headers, now, previous) {
   return sourceAt;
 }
 
-function cacheSeconds(headers, fallback = 300) {
-  const policy = headers.get('cache-control') || '';
-  if (/(?:^|,)\s*(?:no-cache|no-store|private)\s*(?=,|$)/i.test(policy)) return 0;
-  const maxAge = policy.match(/(?:^|,)\s*max-age=(\d+)/i);
-  return Math.min(300, maxAge ? Number(maxAge[1]) : fallback);
+function responsePolicy(headers, previous) {
+  const policy = headers.get('cache-control');
+  if (policy==null && previous) return { store:previous.store, ttl:previous.ttl };
+  const directives = (policy || '').split(',').map(part=>part.trim().toLowerCase());
+  const store = !directives.some(part=>/^(?:no-store|private)(?:=|$)/.test(part));
+  if (!store || directives.some(part=>/^no-cache(?:=|$)/.test(part))) return { store, ttl:0 };
+  const seconds = name => Number(directives.find(part=>part.startsWith(name+'='))?.split('=')[1]);
+  const shared = seconds('s-maxage');
+  const ttl = Number.isFinite(shared) ? shared : seconds('max-age');
+  return { store, ttl:Math.max(0,Math.min(300,Number.isFinite(ttl) ? ttl : 300)) };
 }
 
 function retrySeconds(headers, now) {
@@ -107,7 +112,7 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
   function save(key, entry) {
     size -= cache.get(key)?.body.length || 0;
     cache.delete(key);
-    if (!entry.ttl) return;
+    if (!entry.store) return;
     cache.set(key, entry);
     size += entry.body.length;
     while (cache.size > 48 || size > cacheLimit) {
@@ -138,10 +143,12 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
         retryAt = at + seconds * 1000;
         throw new MarketError(response.status,'Provider temporarily unavailable',seconds);
       }
-      const ttl = cacheSeconds(response.headers,response.status===304 ? prior?.ttl : undefined);
+      const policy = responsePolicy(response.headers,response.status===304 ? prior : undefined);
+      const upstreamAge = Number(response.headers.get('age') || 0);
+      const ttlRemaining = Math.max(0,policy.ttl-upstreamAge);
       if (response.status === 304 && prior) {
         const sourceAt = ageSource(response.headers,at,prior);
-        const entry = { ...prior, sourceAt, ttl, validUntil: Math.min(at + ttl * 1000, sourceAt + freshestAge * 1000) };
+        const entry = { ...prior, ...policy, sourceAt, validUntil:Math.min(at+ttlRemaining*1000,sourceAt+freshestAge*1000) };
         save(details.key,entry);
         return entry;
       }
@@ -151,7 +158,7 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
       const sourceAt = ageSource(response.headers,now());
       const rawTag = response.headers.get('etag');
       const etag = rawTag?.length <= 160 && /^(?:W\/)?"[^"\x00-\x1f]*"$/.test(rawTag) ? rawTag : null;
-      const entry = { body, leagues, sourceAt, etag, ttl, validUntil: Math.min(at + ttl * 1000, sourceAt + freshestAge * 1000) };
+      const entry = { body, leagues, sourceAt, etag, ...policy, validUntil:Math.min(at+ttlRemaining*1000,sourceAt+freshestAge*1000) };
       save(details.key,entry);
       return entry;
     } finally {

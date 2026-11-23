@@ -120,3 +120,20 @@ test('rejects unknown destinations, malformed, stale and oversized feeds',async 
   assert.equal((await cache.request(currencyPath)).status,502);
   assert.equal((await (await cache.request('/healthz')).json()).cached,1);
 });
+
+test('honors no-cache validation and never stores no-store responses',async t=>{
+  let forbidStorage = false;
+  const cache = await fixture(t, (path,options,{ now })=>{
+    if (path==='/leagues') return snapshot(leagueBody,now);
+    if (forbidStorage) return snapshot(priceBody,now,{ 'cache-control':'no-store', etag:'"transient"' });
+    if (options.headers['If-None-Match']) return new Response(null,{ status:304, headers:{ date:new Date(now).toUTCString() } });
+    return snapshot(priceBody,now,{ 'cache-control':'no-cache', etag:'"must-check"' });
+  });
+  assert.equal((await cache.request(currencyPath)).status,200);
+  assert.equal((await cache.request(currencyPath)).status,200);
+  assert.equal(cache.requests.at(-1).tag,'"must-check"');
+  forbidStorage = true;
+  assert.equal((await cache.request(currencyPath)).headers.get('cache-control'),'no-store');
+  assert.equal((await cache.request(currencyPath)).status,200);
+  assert.equal(cache.requests.at(-1).tag,undefined);
+});
