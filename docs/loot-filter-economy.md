@@ -91,3 +91,12 @@ When a kept bundled profile references an older NeverSink revision, open **Profi
 In **Daily price sync**, open **Publish to account** after a successful refresh. Use the existing PoE login and item-filter permission, select an existing filter in the matching realm, and review the full diff. **Publish exact output** rechecks the local checksum and the remote filter before sending the approved text. The server validates the update.
 
 Local and background sync do not publish account filters. An uncertain server result is shown for review before retrying.
+
+
+## Shared cache for app distribution
+
+PoB can use an operator-managed HTTPS cache for all poe.ninja economy requests. Set `POB_MARKET_CACHE_URL` to the full public HTTPS prefix, such as `https://prices.example.test/pob-market/`, in the desktop and scheduled worker environment before starting them. A configured cache is the only destination for those requests. The existing direct source remains the default when the setting is empty.
+
+The operator runs `node tools/serve_loot_market_cache.cjs` with `POB_MARKET_UPSTREAM_AGENT` set to the application's descriptive User-Agent and contact. It binds to loopback on port 9410 by default. Publish that service through the deployment's HTTPS reverse proxy by stripping the configured path prefix. Restrict the proxy to the intended audience and use `/healthz` from monitoring to inspect pending work, cache hits, coalesced requests and failures.
+
+The service accepts only the app's public economy routes and active leagues. It coalesces requests, bounds the upstream queue, respects provider caching, and preserves origin age and retry timing. Throttled, stale, oversized and malformed data go through the app's existing checks before any filter is published. The operator needs to qualify the deployed host with the provider and verify fresh responses from that host before enabling distribution. [poe.ninja API guidelines](https://poe.ninja/docs/api)
