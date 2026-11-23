@@ -3,7 +3,7 @@ local ui=require("Modules.PlanningUI")
 local filters=require("Modules.LootFilters")
 local M={}
 function M.Open(profile,keep)
-	local draft=copyTable(profile);draft.importFiles=draft.importFiles or {};local c={};local selected=0;local suggested
+	local draft=copyTable(profile);draft.importFiles=draft.importFiles or {};draft.absentOptionalImports=draft.absentOptionalImports or {};local c={};local selected=0;local suggested
 	local w,h=math.min(860,main.screenW-40),math.min(640,main.screenH-60)
 	ui.description(c,"help",16,28,w-32,48,{"Find unresolved imports, then paste contents or load a local file. Optional files can be assumed absent for preview only."},14)
 	c.files=new("DropDownControl"):DropDownControl(ui.anchor,{16,82,w-32,26},{})
@@ -37,6 +37,7 @@ function M.Open(profile,keep)
 		local next=copyTable(draft);local file={name=name,text=contents}
 		local index=selected==0 and #next.importFiles+1 or selected;next.importFiles[index]=file
 		draft=filters.validate({schemaVersion=1,activeId=next.id,profiles={next}}).profiles[1]
+		draft.absentOptionalImports=draft.absentOptionalImports or {}
 		return index
 	end
 	c.files.selFunc=function(_,entry)
@@ -51,7 +52,7 @@ function M.Open(profile,keep)
 	c.removeFile.enabled=function() return selected>0 end
 	button("findImports",312,160,"Find unresolved",function()
 		local saved=saveCurrent(false);refresh(saved)
-		local assumed={};for _,name in ipairs(draft.absentOptionalImports or {}) do assumed[name]=true end
+		local assumed={};for _,name in ipairs(draft.absentOptionalImports) do assumed[name]=true end
 		local entries={};for _,row in ipairs(require("Modules.LootFilterImports").unresolved(draft.template or "",draft.importFiles,filters.limit)) do
 			local status=row.cycle and "Circular reference" or row.optional and (assumed[row.name] and "Preview assumes absent" or "Optional file not attached") or "Required file not attached"
 			entries[#entries+1]={id=row.name,label=row.name.." | "..status,category=status,details={status,row.count..(row.count==1 and " occurrence" or " occurrences"),row.cycle and "Edit an included file to break the cycle." or "Select this name, then paste the file contents.",row.optional and "Toggle the preview assumption only if the file will be absent in game. Export keeps the original import." or "This file must be available to the game."},cycle=row.cycle,optional=row.optional}
@@ -62,16 +63,14 @@ function M.Open(profile,keep)
 				for index,file in ipairs(draft.importFiles) do if file.name==entry.id then refresh(index);return end end
 			else refresh(0);c.name:SetText(entry.id);suggested=entry.id end
 		end,secondary={label="Toggle absent",canRun=function(entry) return entry.optional and not entry.cycle end,run=function(entry)
-			local absent=draft.absentOptionalImports or {}
-			local found=false;for i=#absent,1,-1 do if absent[i]==entry.id then table.remove(absent,i);found=true end end
-			if not found then absent[#absent+1]=entry.id end
-			draft.absentOptionalImports=#absent>0 and absent or nil
+			local found=false;for i=#draft.absentOptionalImports,1,-1 do if draft.absentOptionalImports[i]==entry.id then table.remove(draft.absentOptionalImports,i);found=true end end
+			if not found then draft.absentOptionalImports[#draft.absentOptionalImports+1]=entry.id end
 			main:ClosePopup();c.findImports:Click()
 		end}})
 	end)
 	c.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-48,152,28},"Keep files",function()
 		local ok,why=pcall(saveCurrent,false);if not ok then ui.errorPopup("Included filter",why);return end
-		keep(draft.importFiles,draft.absentOptionalImports);main:ClosePopup()
+		keep(draft.importFiles,#draft.absentOptionalImports>0 and draft.absentOptionalImports or nil);main:ClosePopup()
 	end)
 	c.cancel=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-48,140,28},"Cancel",function() main:ClosePopup() end)
 	refresh(0);ui.style(c,{keep=true});main:OpenPopup(w,h,"Included filter files",c,nil,"name","cancel")

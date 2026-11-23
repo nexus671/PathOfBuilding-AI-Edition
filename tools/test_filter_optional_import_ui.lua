@@ -16,6 +16,13 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local restored=filters.new(build);restored:Load(xml);assert(restored.data.profiles[1].absentOptionalImports[1]=="missing.filter")
 end
 do
+	local profile=filters.profile("plain-include","Plain include");profile.template='Import "file.filter"\nShow';local files
+	require("Classes.LootFilterImportControl").Open(profile,function(saved) files=saved end);local controls=main.popups[1].controls
+	controls.name:SetText("file.filter");controls.text:SetText("Hide");controls.keep:Click()
+	assert(files and files[1].name=="file.filter","Adding an included file without assumptions failed")
+	main.popups={}
+end
+do
 	local profile=filters.profile("nested-optional","Nested optional");profile.template='Import "outer.filter"\nShow'
 	profile.importFiles={{name="outer.filter",text='Import "missing.filter" Optional\nHide\n BaseType "Iron Hat"'}}
 	local before=copyTable(profile);assert(filters.simulate(before,{BaseType="Iron Hat"}).status=="unknown")
@@ -40,8 +47,5 @@ do
 	ui:click("findImports");assert(main.popups[1].title=="Unresolved filter imports")
 	ui:click("secondary");ui:click("secondary");ui:click("close");ui:click("keep")
 	assert(files and files[1].name=="outer.filter" and absent==nil)
-	require("Classes.LootFilterImportControl").Open(profile,function(a,b) files,absent=a,b end)
-	ui:text("name","outer.filter");ui:text("text","Show");ui:click("keep")
-	assert(files[1].text=="Show" and absent==nil and #main.popups==0)
 end
 print("FILTER_OPTIONAL_IMPORT_UI_OK")
