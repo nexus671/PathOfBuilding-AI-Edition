@@ -79,6 +79,14 @@ local function save(config)
 	put(settingsPath(), json.encode(config))
 end
 
+local function enabledStatus(config)
+	return string.format("Daily sync enabled at %02d:%02d local time while PoB is open.", config.hour or 9, config.minute or 0)
+end
+
+local function failureStatus(record)
+	return string.format("%s: %s", nowText(record.checkedAt), record.message)
+end
+
 function M.configuration()
 	return get()
 end
@@ -113,8 +121,9 @@ function M.publicStatus(now)
 		lastSuccess=type(config.lastSuccess)=="number" and config.lastSuccess or nil,
 		latestChanges={},
 	}
-	if output.state == "enabled" and (M.status:match("^Sync skipped:") or M.status:match("^Daily sync timed out")) then
+	if output.state == "enabled" and type(config.lastFailure) == "table" then
 		output.state = "error"
+		output.lastFailure = config.lastFailure.checkedAt
 		output.warning = "Open the PoB Daily price sync dialog for the latest failure."
 	end
 	local timeValid, eligible = pcall(M.nextEligible,config,now)
@@ -279,7 +288,7 @@ function M.configure(target, baselineFile, league, options)
 		return nextConfig
 	end)
 	nextPoll, retryAt = 0, 0
-	M.status = string.format("Daily sync enabled at %02d:%02d local time while PoB is open.", config.hour, config.minute)
+	M.status = enabledStatus(config)
 end
 
 function M.disable()
@@ -380,6 +389,24 @@ function M.fresh(response, now)
 	return response.body, resident, tag
 end
 
+local function rememberFailure(config, startedAt, message)
+	-- A failed attempt may race with another window. Only record it for
+	-- this configuration and preserve a newer successful or failed attempt.
+	pcall(function()
+		platform().lock(settingsPath() .. ".lock", function()
+			local current = get()
+			if not current or current.revision ~= config.revision or not current.enabled or current.paused
+				or current.lastSuccess and current.lastSuccess >= startedAt
+				or current.lastFailure and current.lastFailure.startedAt > startedAt then return end
+			current.lastFailure = {
+				startedAt=startedAt, checkedAt=os.time(),
+				message=tostring(message):gsub("[%c]", " "):sub(1,350),
+			}
+			save(current)
+		end)
+	end)
+end
+
 local function publish(config, bodies, ages, day, force, now)
 	return platform().lock(settingsPath() .. ".lock", function()
 		local current = get()
@@ -409,7 +436,7 @@ local function publish(config, bodies, ages, day, force, now)
 		assert(read(current.target) == candidate, "Installed filter verification failed")
 		current.current, current.pending, current.day = sha(candidate), nil, day
 		current.summary = string.format("%s: %d stack adjustments from the baseline. Protected drops verified.", nowText(now), count)
-		current.lastSuccess = now
+		current.lastSuccess, current.lastFailure = now, nil
 		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages}
 		current.history = current.history or {}
 		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
@@ -432,13 +459,14 @@ local function storeFeed(url, entry)
 	cache[url] = entry
 end
 
-local function fetchPrices(config, baseline, now, complete)
+local function fetchPrices(config, baseline, now, complete, onFailure)
 	local categories = market.feedCategories(baseline)
-	local job, bodies, ages, observedAt = {}, {}, {}, {}
+	local job, bodies, ages, observedAt = {onFailure=onFailure}, {}, {}, {}
 	M.busy, M.deadline = job, now + 300
 	local function finish(success, message)
 		M.busy = nil
 		M.status = success and message or ("Sync skipped: " .. tostring(message))
+		if not success and onFailure then onFailure(M.status) end
 		if ConPrintf then ConPrintf("%s", M.status) end
 	end
 	local function fetch(index, attempt)
@@ -507,8 +535,10 @@ end
 function M.tick(now, force)
 	if M.busy then
 		if now > M.deadline then
+			local onFailure = M.busy.onFailure
 			M.busy = nil
 			M.status = "Daily sync timed out. The existing filter was kept."
+			if onFailure then onFailure(M.status) end
 		elseif M.busy.resumeAt and now >= M.busy.resumeAt then
 			local run = M.busy.resume
 			M.busy.resumeAt, M.busy.resume = nil, nil
@@ -525,13 +555,18 @@ function M.tick(now, force)
 	local ok, config = pcall(get)
 	if not ok then M.status = tostring(config); return end
 	if not config or not config.enabled or config.paused then return end
-	if launch.noSSL then M.status = "Sync skipped: enable HTTPS certificate verification in PoB."; return end
 	local day = os.date("%Y-%m-%d", now)
 	if not force and (config.day == day or now < scheduledAt(config, now)) then
-		M.status = config.summary or M.status
+		M.status = config.lastFailure and failureStatus(config.lastFailure) or config.summary or enabledStatus(config)
 		return
 	end
 	if not force then retryAt = now + 1800 end
+	local function onFailure(message) rememberFailure(config, now, message) end
+	if launch.noSSL then
+		M.status = "Sync skipped: enable HTTPS certificate verification in PoB."
+		onFailure(M.status)
+		return
+	end
 	local ready, baseline = pcall(function()
 		local original = assert(read(filterPath(config.target)), "Target filter is missing")
 		local current = sha(original)
@@ -541,10 +576,14 @@ function M.tick(now, force)
 		verifyUnmanagedRules(original, raw)
 		return raw
 	end)
-	if not ready then M.status = "Sync skipped: " .. tostring(baseline); return end
+	if not ready then
+		M.status = "Sync skipped: " .. tostring(baseline)
+		onFailure(M.status)
+		return
+	end
 	fetchPrices(config, baseline, now, function(bodies, ages)
 		return publish(config, bodies, ages, day, force, now)
-	end)
+	end, onFailure)
 end
 
 function M.preview(target, baselineFile, league, options, callback)

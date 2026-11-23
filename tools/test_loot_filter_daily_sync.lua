@@ -72,10 +72,15 @@ write(configFile,verifiedConfig)
 write(target,original)
 sync.tick(now,true)
 assert(sync.status:find("stale",1,true) and read(target)==original,sync.status)
+assert(sync.configuration().lastFailure)
+local afterRestart = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+local failedStatus = afterRestart.publicStatus(now)
+assert(failedStatus.state=="error" and failedStatus.lastFailure and not failedStatus.warning:find("target.filter",1,true))
+
 stale=false
 sync.tick(now,true)
 assert(sync.status:find("Protected drops verified",1,true) and read(target):find("StackSize <= 4",1,true),sync.status)
-assert(calls==9)
+assert(calls==9 and not sync.configuration().lastFailure)
 local sample = sync.configuration().review.changes[1].sample
 assert(sample.action=="Show" and sample.count==5)
 local exposed = sync.publicStatus(now)
