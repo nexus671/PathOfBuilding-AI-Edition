@@ -12,6 +12,16 @@ describe("Build-owned loot filters",function()
 	end)
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("tracks unique recipe resources only on reachable routes",function()
+		local project={id="route-test",title="Branched unique",slot="Weapon 1",startingItem="Rarity: UNIQUE\nThe Blood Reaper\nHeadsman Axe\nItem Level: 86\nSockets: R-G-B",goals={},steps={},nativeRecipe={targets={},requirements={minQuality=20},steps={{method="divine",onSuccess=3,onFailure=3},{method="jeweller"},{method="quality"}}}}
+		build.savers.CraftingProjects:Upsert(project)
+		local profile=filters.profile("route-test","Route test");profile.trackBuildPickups=true
+		local function hasJeweller(rules) for _,rule in ipairs(rules) do if rule.origin=="craft:route-test" and rule.title=="Jeweller's Orb" then return true end end;return false end
+		profile.rules=filters.generate(build,profile);assert.is_false(hasJeweller(profile.rules))
+		local dependencies=require("Modules.LootFilterDependencies");assert.is_false(dependencies.report(build,profile).stale)
+		project.nativeRecipe.steps[1].onFailure=2;build.savers.CraftingProjects:Upsert(project)
+		assert.is_true(hasJeweller(filters.generate(build,profile)));assert.is_true(dependencies.report(build,profile).stale)
+	end)
 	it("warns when unfinished written crafting steps cannot supply currency pickups",function()
 		local project={id="manual-guide",title="Manual guide",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={{action="Use a rare currency"}}}
 		build.savers.CraftingProjects:Upsert(project);local profile=filters.profile("manual","Manual");local _,warnings=filters.generate(build,profile)

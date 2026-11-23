@@ -319,7 +319,6 @@ function M.generate(build,profile,checkpoint)
 				if project.nativeRecipe.initialState then result.unknown[#result.unknown+1]="ordinary starting state" end
 				local socketActions={socket_bench=true,socket_white_bench=true,omen_connections=true,beast_max_links=true,beast_max_sockets=true,omen_jeweller=true,jeweller=true,tainted_jeweller=true}
 				local hasSocketAction=false;for _,step in ipairs(project.nativeRecipe.steps) do if socketActions[step.method] then hasSocketAction=true;break end end
-				if hasSocketAction and not project.startingItem:find("\nSockets: ",1,true) then result.unknown[#result.unknown+1]="Starting socket layout is not explicit" end
 				-- Follow recipe branches, including loops, so a later socket craft only
 				-- counts when a route can actually reach it before the link step.
 				local steps=project.nativeRecipe.steps;local reachable,queue={},{}
@@ -368,10 +367,14 @@ function M.generate(build,profile,checkpoint)
 						visit(step.onFailure or at+1,count);visit(step.onFailure or at+1,nextCount)
 					end
 				end
+				local reachableSocketAction=false;for index,step in ipairs(steps) do if reachable[index] and socketActions[step.method] then reachableSocketAction=true;break end end
+				if reachableSocketAction and not project.startingItem:find("\nSockets: ",1,true) then result.unknown[#result.unknown+1]="Starting socket layout is not explicit" end
 				for index,step in ipairs(steps) do
 					-- Preserve known base ingredients even when an unsupported option
 					-- adds a price-key prefix. Socket variants still need their count.
 					local reason=require("Modules.CraftingUniqueSimulation").stepReason(step)
+					if reason then result.unknown[#result.unknown+1]=reason end
+					if reachable[index] then
 					local blocked=permanentReason(step);if blocked then result.unknown[#result.unknown+1]=blocked end
 					local entry
 					if step.method=="socket_bench" then
@@ -385,12 +388,12 @@ function M.generate(build,profile,checkpoint)
 							end
 						end
 					else entry=actions[step.method] end
-					if reason then result.unknown[#result.unknown+1]=reason end
 					if not entry and not reason then result.unknown[#result.unknown+1]="No modeled unique resource breakdown for "..step.method end
 					if entry then for resource in pairs(entry.components) do
 						local canonical=prices.key(resource,model);local name,_,kind=prices.describe(canonical,model,step)
 						if kind=="Currency" then result.items[#result.items+1]={key=canonical,name=name} end
 					end end
+					end
 				end
 				return result
 			end
