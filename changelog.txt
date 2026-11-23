@@ -1,8 +1,12 @@
-VERSION[2.68.1-ai.preview1196][2026/11/23]
+VERSION[2.68.1-ai.preview1197][2026/11/23]
 
 * Optionally run daily loot filter sync through Windows Task Scheduler while PoB is closed.
 * Optionally receive Windows notifications when a scheduled refresh fails or meaningfully changes the filter.
 * Preserve exchange backoff across PoB and background worker restarts.
+
+VERSION[2.68.1-ai.preview1196][2026/11/23]
+
+* Preview and plan Blessed Orb rolls on recognized unique base implicits.
 
 VERSION[2.68.1-ai.preview1195][2026/11/23]
 

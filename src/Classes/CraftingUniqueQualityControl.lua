@@ -93,7 +93,7 @@ function M.Open(build,project,layout,snapshot)
 				flush();steps[#steps+1]={action=unique.guideAction("socket_colour_bench",colourCount,info.resource,item.corrupted),uniqueCraft={method="socket_colour_bench",count=colourCount},done=false}
 			elseif socketCount then
 				flush();steps[#steps+1]={action=unique.guideAction("socket_count_bench",socketCount,info.resource,item.corrupted),uniqueCraft={method="socket_count_bench",count=socketCount},done=false}
-			elseif action=="instilling" or action=="enkindling" or action=="beast_max_links" or action=="beast_max_sockets" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="divine" or action=="sacred" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
+			elseif action=="instilling" or action=="enkindling" or action=="beast_max_links" or action=="beast_max_sockets" or action=="omen_connections" or action=="omen_jeweller" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="divine" or action=="blessed" or action=="sacred" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="socket_white_bench" or action=="socket_bench" then
 				local before=unique.inspect(history[i]);flush();local count=#before.sockets
 				if action=="socket_bench" and not socketKnown then count=nil end
 				steps[#steps+1]={action=unique.guideAction(action,1,info.resource,item.corrupted,count),stopWhen=action=="socket_bench" and not socketKnown and "Check socket count and bench price before linking." or nil,uniqueCraft={method=action,count=1},done=false}
@@ -108,7 +108,7 @@ function M.Open(build,project,layout,snapshot)
 		if not guideCache then local steps,reason,signature=calculateGuideSteps();guideCache={steps=steps,reason=reason,signature=signature} end
 		return guideCache.steps,guideCache.reason,guideCache.signature
 	end
-	local linkReason,benchLinkReason,whiteReason,omenJewellerReason,colourReason,taintedQualityReason,divineReason,sacredReason,updateCurrency,updateIcons
+	local linkReason,benchLinkReason,whiteReason,omenJewellerReason,colourReason,taintedQualityReason,divineReason,blessedReason,sacredReason,updateCurrency,updateIcons
 	local function refresh(persist)
 		guideCache=nil;reviewCache=nil;traceCache=nil
 		item,info=unique.inspect(raw);show(item)
@@ -123,6 +123,7 @@ function M.Open(build,project,layout,snapshot)
 		end
 		taintedQualityReason=item.corrupted and unique.taintedQualityReason(raw) or nil
 		divineReason=not item.corrupted and unique.divineReason(raw) or nil
+		blessedReason=require("Modules.CraftingUniqueBlessed").reason(raw)
 		sacredReason=unique.sacredReason(raw)
 		c.status.label=not info.qualitySupported and "^7Catalyst quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or "Preview available") or "^7Quality: "..info.quality.."% | "..(item.corrupted and "Corrupted" or info.available and "Ready" or "20% cap reached")
 		c.apply.label=not info.qualitySupported and "Quality unavailable" or item.corrupted and (item.type=="Flask" or item.type=="Tincture") and "Quality unavailable" or item.corrupted and "Roll quality" or "Add quality"
@@ -486,7 +487,7 @@ function M.Open(build,project,layout,snapshot)
 	c.catalystPlan.tooltipText=function() return item.corrupted and "Ordinary catalysts cannot modify corrupted jewellery." or "Preview supported catalyst effects or add a guide from the starting item." end
 	local qualityShown=c.apply.shown;c.apply.shown=function() return info.qualitySupported and (type(qualityShown)~="function" or qualityShown()) end
 	button("divine",198,"Divine Orb",function()
-		local controls={};local dw,dh=500,420;local staged={}
+		local controls={};local dw,dh=500,460;local staged={}
 		ui.description(controls,"help",16,25,dw-32,50,{"Preview a roll or plan a stat or modifier target.","Modifier-value probabilities are estimates."},14)
 		local stats=require("Modules.CraftingItemStats");local values=stats.itemValues(item);local options,selection={},{}
 		for _,field in ipairs(stats.fields) do if values[field[1]] and values[field[1]]>0 then options[#options+1]={label=field[2],val=field[1]};selection[field[1]]={kind="stat",label=field[2],current=values[field[1]]} end end
@@ -587,6 +588,51 @@ function M.Open(build,project,layout,snapshot)
 			colourRollCounter=colourRollCounter%2147483646+1;local seed=require("Modules.CalcEncounter").seed(104729,colourRollCounter,79)
 			local result=unique.divine(raw,seed);history[#history+1]=raw;actions[#actions+1]="divine";redo={};raw=result.itemText;main:ClosePopup();refresh(true)
 		end)
+		controls.apply.enabled=function() return not divineReason end
+		controls.apply.tooltipText=function() return divineReason or "Preview an explicit modifier roll." end
+		controls.blessed=new("ButtonControl"):ButtonControl(ui.anchor,{16,364,150,28},"Blessed Orb...",function()
+			local blessed=require("Modules.CraftingUniqueBlessed");local option,why=blessed.options(raw);assert(option,why)
+			main:ClosePopup();local popup={};local bw,bh=500,290
+			ui.description(popup,"help",16,22,bw-32,58,{"Preview or plan a roll of the recognized base implicit.","Repeat behavior and roll odds are unverified."},14)
+			ui.label(popup,"implicit",16,88,ui.fit(option.line,bw-32,14),14)
+			popup.direction=new("DropDownControl"):DropDownControl(ui.anchor,{16,116,130,26},{"At least","At most"})
+			popup.target=new("EditControl"):EditControl(ui.anchor,{156,116,110,26},tostring(option.max),"Value",nil,10)
+			popup.attempts=new("EditControl"):EditControl(ui.anchor,{276,116,130,26},"100","Attempts",nil,4)
+			ui.label(popup,"range",16,155,"Range "..option.min.."-"..option.max.." | current "..option.current,14)
+			local function reason()
+				local target=tonumber(popup.target.buf);if not target or target~=math.floor(target) or target<option.min or target>option.max then return "Enter a whole roll in the displayed range." end
+				local attempts=tonumber(popup.attempts.buf);if not attempts or attempts~=math.floor(attempts) or attempts<1 or attempts>2000 then return "Enter an attempt limit from 1 to 2000." end
+				if raw~=draft.startingItem or #history>0 then return "Return to the starting item before saving a plan." end
+			end
+			ui.label(popup,"status",16,184,"",14);popup.status.label=function()
+				local target=tonumber(popup.target.buf);local met=target and (popup.direction:GetSelValue()=="At most" and option.current<=target or popup.direction:GetSelValue()=="At least" and option.current>=target)
+				return "^7"..ui.fit(reason() or (met and "Already met; the plan will use no currency." or "Ready to save a target plan."),bw-32,14)
+			end
+			popup.preview=new("ButtonControl"):ButtonControl(ui.anchor,{16,bh-48,140,28},"Preview roll",function()
+				colourRollCounter=colourRollCounter%2147483646+1;local result=blessed.roll(raw,require("Modules.CalcEncounter").seed(104729,colourRollCounter,79))
+				history[#history+1]=raw;actions[#actions+1]="blessed";redo={};raw=result.itemText;main:ClosePopup();refresh(true);c.notice.label="^7Implicit roll odds are unverified."
+			end)
+			popup.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,bh-48,150,28},"Save plan",function()
+				local problem=reason();assert(not problem,problem);local target=tonumber(popup.target.buf);local attempts=tonumber(popup.attempts.buf);local upper=popup.direction:GetSelValue()=="At most"
+				local goal={uniqueImplicit={[upper and "maxValue" or "minValue"]=target}};local recipe={rarity="UNIQUE",steps={{method="blessed",maxAttempts=attempts,untilRequirements=copyTable(goal)}},targets={},requirements=goal}
+				require("Modules.CraftingSimulator").validateRecipe(recipe)
+				local replaceIndex;local old=draft.nativeRecipe
+				if old and #old.steps==1 and old.steps[1].method=="blessed" and old.requirements and old.requirements.uniqueImplicit then
+					local oldGoal=old.requirements.uniqueImplicit;local oldStop=(oldGoal.maxValue~=nil and "At most "..oldGoal.maxValue or "At least "..oldGoal.minValue).." on "..option.line
+					for index,step in ipairs(draft.steps) do if step.uniqueCraft and step.uniqueCraft.method=="blessed" and step.uniqueCraft.count==1 and not step.done and step.action==unique.guideAction("blessed",1) and step.stopWhen==oldStop and (not step.onFailure or step.onFailure=="" or step.onFailure=="Stop after "..(old.steps[1].maxAttempts or 100).." attempts.") then if replaceIndex then replaceIndex=false;break end;replaceIndex=index end end
+				end
+				local function keepPlan()
+					local updated=copyTable(draft);updated.nativeRecipe=recipe;local step={action=unique.guideAction("blessed",1),stopWhen=(upper and "At most " or "At least ")..target.." on "..option.line,onFailure="Stop after "..attempts.." attempts.",uniqueCraft={method="blessed",count=1},done=false}
+					if replaceIndex then updated.steps[replaceIndex]=step else updated.steps[#updated.steps+1]=step end
+					draft=build.savers.CraftingProjects:Upsert(updated);refresh(true);c.notice.label="^7Blessed plan kept. Save the build.";main:ClosePopup()
+				end
+				if draft.nativeRecipe then main:OpenConfirmPopup("Replace crafting recipe",replaceIndex and "Replace the saved recipe and its unchanged Blessed guide step?\nOther guide steps will be kept." or "Replace the saved recipe with this Blessed plan?\nExisting guide steps will be kept.","Replace",keepPlan) else keepPlan() end
+			end)
+			popup.plan.enabled=function() return not reason() end;popup.plan.tooltipText=function() return reason() or "Save a bounded repeat-until-target recipe." end
+			popup.close=new("ButtonControl"):ButtonControl(ui.anchor,{bw-132,bh-48,116,28},"Cancel",function() main:ClosePopup() end)
+			ui.style(popup,{plan=true});for _,control in pairs(popup) do control.layoutAudit="unique-blessed-target" end;main:OpenPopup(bw,bh,"Blessed Orb",popup,nil,nil,"close")
+		end)
+		controls.blessed.enabled=function() return not blessedReason end;controls.blessed.tooltipText=function() return blessedReason or "Preview or plan a base implicit roll." end
 		controls.plan=new("ButtonControl"):ButtonControl(ui.anchor,{168,dh-48,150,28},"Save Divine plan",function()
 			local why=reason();assert(not why,why);local key=stat();local target=tonumber(controls.target.buf);local attempts=tonumber(controls.attempts.buf)
 			local selected=selection[key];local requirements
@@ -605,8 +651,8 @@ function M.Open(build,project,layout,snapshot)
 		ui.style(controls,{apply=true});for _,control in pairs(controls) do control.layoutAudit="unique-divine-target" end
 		main:OpenPopup(dw,dh,"Divine Orb",controls,nil,nil,"close")
 	end)
-	c.divine.x=156;c.divine.width=130;c.divine.shown=function() return not item.corrupted end;c.divine.enabled=function() return not divineReason end
-	c.divine.tooltipText=function() return divineReason or item.catalyst and info.quality>0 and "Preview a Divine Orb roll. Catalyst eligibility uses bundled modifier tags and PoB rounding; game behavior is unverified." or "Preview a Divine Orb roll. Modifier-value probabilities are estimated." end
+	c.divine.x=156;c.divine.width=130;c.divine.label="Divine / Blessed";c.divine.shown=function() return not item.corrupted end;c.divine.enabled=function() return not divineReason or not blessedReason end
+	c.divine.tooltipText=function() return divineReason and blessedReason and (divineReason.." "..blessedReason) or item.catalyst and info.quality>0 and "Preview or plan explicit or recognized base implicit rolls. Catalyst eligibility uses bundled modifier tags and PoB rounding; game behavior is unverified." or "Preview or plan explicit or recognized base implicit rolls. Probabilities are estimated." end
 	button("link",236,"Bestiary link",function() local result=unique.link(raw);history[#history+1]=raw;actions[#actions+1]="beast_max_links";redo={};raw=result.itemText;refresh(true) end)
 	c.link.width=130
 	c.link.enabled=function() return not linkReason end
@@ -666,7 +712,7 @@ function M.Open(build,project,layout,snapshot)
 		if #actions==0 or #actions~=#history or history[1]~=draft.startingItem or #actions>100 then return false end
 		local colourSeen=false
 		for _,action in ipairs(actions) do
-			local colour=action:match("^socket_colour_bench:[2-4]$") or action=="instilling" or action=="enkindling" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="sacred"
+			local colour=action:match("^socket_colour_bench:[2-4]$") or action=="instilling" or action=="enkindling" or action=="chromatic" or action=="tainted_chromatic" or action=="omen_trichromatism" or action=="fusing" or action=="tainted_fusing" or action=="jeweller" or action=="tainted_jeweller" or action=="tainted_quality" or action=="blessed" or action=="sacred"
 			if colour then if colourSeen then return false end;colourSeen=true
 			elseif colourSeen and action~="quality" then return false
 			elseif action~="quality" and action~="beast_max_links" and action~="beast_max_sockets" and action~="omen_connections" and action~="omen_jeweller" and action~="socket_white_bench" and action~="socket_bench" and not action:match("^socket_count_bench:[2-6]$") and not action:match("^bench_flask_enchant:.+$") and not action:match("^catalyst:%d+:%d+$") then return false end
@@ -702,6 +748,9 @@ function M.Open(build,project,layout,snapshot)
 				requirements.minQuality=info.quality;steps[#steps+1]={method=action,maxAttempts=100,untilRequirements={minQuality=info.quality}};sampled=true;i=i+1
 			elseif action=="jeweller" or action=="tainted_jeweller" then
 				requirements.exactSockets=#item.sockets;steps[#steps+1]={method=action,maxAttempts=100,untilRequirements={exactSockets=#item.sockets}};sampled=true;i=i+1
+			elseif action=="blessed" then
+				local after=assert(require("Modules.CraftingUniqueBlessed").options(history[i+1] or raw));local goal={uniqueImplicit={minValue=after.current}}
+				requirements.uniqueImplicit=copyTable(goal.uniqueImplicit);steps[#steps+1]={method="blessed",maxAttempts=100,untilRequirements=goal};sampled=true;i=i+1
 			elseif action=="sacred" then
 				local after=unique.inspect(history[i+1] or raw);local intermediate,final={},{}
 				for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
@@ -724,7 +773,7 @@ function M.Open(build,project,layout,snapshot)
 			end
 		end
 		assert(#steps<=20,"This preview needs more than 20 recipe steps")
-		local recipe={steps=steps,targets={},requirements=requirements}
+		local recipe={rarity=requirements.uniqueImplicit and "UNIQUE" or nil,steps=steps,targets={},requirements=requirements}
 		if sampled then
 			assert(unique.matches(raw,requirements),"The preview does not meet its recipe goals")
 		else
@@ -877,6 +926,7 @@ function M.Open(build,project,layout,snapshot)
 		elseif method=="socket_bench" then local components=require("Modules.CraftingSimulator").components({method=method,count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted});local count=components["Metadata/Items/Currency/CurrencyRerollSocketLinks"] or 0;lines={"Bench: "..count.." Orb"..(count==1 and "" or "s").." of Fusing",item.corrupted and ("+ "..count.." Vaal Orb"..(count==1 and "" or "s").." | Preview") or "Preview only"}
 		elseif method=="fusing" then lines={"1 Orb of Fusing","Sampled preview"}
 		elseif method=="divine" then lines={"1 Divine Orb","Sampled preview"}
+		elseif method=="blessed" then lines={"1 Blessed Orb","Sampled preview"}
 		elseif method=="sacred" then lines={"1 Sacred Orb","Sampled preview"}
 		elseif method=="instilling" or method=="enkindling" then lines={method=="instilling" and "1 Instilling Orb" or "1 Enkindling Orb","Sampled preview"}
 		elseif method and method:match("^bench_flask_enchant:") then method="instilling";lines={"5 Instilling Orbs","5 Glassblower's Baubles | Preview"}
