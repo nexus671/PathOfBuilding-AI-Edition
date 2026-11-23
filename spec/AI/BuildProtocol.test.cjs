@@ -166,6 +166,16 @@ test('accepts bounded long crafting steps', t => {
   fs.unlinkSync(path.join(f.dir,'AI-build-request.json'));assert.throws(()=>f.call('simulate_crafting',{...args,recipe:{...recipe,steps:[{...recipe.steps[0],maxAttempts:2001}]}}),/arguments/);
 });
 
+test('reads loot sync status from the desktop heartbeat without queuing a write', t => {
+  const f=fixture(t);
+  assert.equal(f.call('get_loot_sync_status',{}).status.state,'unavailable');
+  f.state.lootSyncStatus={configured:true,state:'enabled',adjustmentCount:1,latestChanges:[{item:'Orb of Alteration',previousCutoff:6,proposedCutoff:4}]};
+  f.write('state',f.state);
+  assert.deepEqual(f.call('get_loot_sync_status',{}).status,f.state.lootSyncStatus);
+  assert.throws(()=>f.call('get_loot_sync_status',{path:'private.filter'}),/arguments/);
+  assert.equal(fs.existsSync(path.join(f.dir,'AI-build-request.json')),false);
+});
+
 test('queues loot-filter generation, evaluation and reviewed profiles without writing exports', t => {
   const f=fixture(t);const profile={id:'maps',title:'Map pickups',preset:'early_maps',strictness:2,trackBuildPickups:true,manualGuideReviews:[{projectId:'helmet',signature:'a'.repeat(40)}],rules:[{id:'base',title:'Craft base',text:'Show\n BaseType == "Iron Hat"',enabled:true}]};
   const filters={schemaVersion:1,activeId:'maps',profiles:[profile]};f.captured.context.lootFilters=filters;f.write('context',f.captured);

@@ -1,3 +1,9 @@
+VERSION[2.68.1-ai.preview1194][2026/11/23]
+
+* Browse market prices for cards, uniques, maps, gems, and bases.
+* Use verified market prices for managed divination card hides and require enough market volume for each category.
+* Review external filter edits, check daily sync status through the AI bridge, and recover from an interrupted replacement.
+
 VERSION[2.68.1-ai.preview1193][2026/11/23]
 
 * Compare saved and draft loot filters on the same examples.

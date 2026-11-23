@@ -4,9 +4,9 @@ In PoB AI Edition, open **Loot Filter → Profile tools → Review exchange pric
 
 For another filter, add standalone comments `# PoB economy: begin` and `# PoB economy: end` around the exact item-name stack hides you want to review. Existing personal filters with the original tiered-test section headings also work.
 
-The review uses the current poe.ninja exchange snapshot. The default target is one chaos per stack. It requires 100 chaos of hourly volume and a 15% margin above the target at the old cutoff before suggesting a reduction. Unsupported rules and thin markets keep their existing cutoffs. General currency rules later in the filter still determine the label and visibility of stacks that pass these hides.
+The review uses the current poe.ninja exchange snapshot. The default target is one chaos per stack. It requires the category's minimum quoted market volume and a 15% margin above the target at the old cutoff before suggesting a reduction. Unsupported rules and thin markets keep their existing cutoffs. General currency rules later in the filter still determine the label and visibility of stacks that pass these hides.
 
-This handles commodity stack rules. Cards, uniques, gear valuation, and historical price smoothing are outside this release.
+For divination cards, use an exact `Class == "Divination Cards"` and exact `BaseType ==` names in a tagged Hide block. The card feed requires a quoted volume of at least 500 chaos. If a unit clears the price margin, PoB can remove its name from the managed hide. Later rules still determine whether it appears in game.
 
 ## Daily sync on Windows
 
@@ -29,3 +29,11 @@ Daily sync uses the lower of the latest liquid quote and the median of available
 Use **Preview changes** before enabling a new setup. It fetches prices and validates the proposed filter, then opens the full text comparison without saving settings or replacing your file.
 
 For up to 250 changed entries, the sync review shows a simulated area-level 83 drop at one item above the proposed hide cutoff. The result uses the first class in the rule and reports the matching line when available. Other classes and area levels can match different rules.
+
+**Browse market prices** opens a read-only market browser for cards, uniques, maps, gems, and crafting bases. It shows the quote and available variant details, including map tier, gem level and quality, links, and listing counts. Daily filter changes support managed commodity stack rules and explicitly tagged card hides.
+
+Daily sync retains still-fresh exchange responses in memory for conditional requests. It honors rate-limit delays and rechecks the age of every response before publication. The displayed age is the age of the response, not the age of underlying trades. Provider IDs distinguish same-name items, and ambiguous names or categories below their volume floor keep the baseline rule.
+
+The desktop AI bridge exposes read-only daily sync status and up to 40 cutoff changes through `get_loot_sync_status`. Local paths, protected sample definitions, and raw transport errors stay in the desktop app.
+
+If a sync target was edited outside PoB, **External edits** compares the live file with the last verified file. Automatic sync stops before contacting the market until the live file matches the known state again or you explicitly re-enable with reviewed edits.

@@ -393,7 +393,7 @@ function M.capture(build)
 end
 
 function M.publishState()
-	writeFile(path("state"),{schemaVersion=1,session=M.session,enabled=M.enabled,heartbeat=os.time(),revision=M.contextRevision,connectionTest=M.connectionTest,proposal=M.status,history=M.historySummary(),plan=M.plan,diagnostics={lastPoll=M.lastPoll,lastContext=M.lastContext,lastRequest=M.lastRequest,lastError=M.lastError,undoDepth=#M.undo}})
+	writeFile(path("state"),{schemaVersion=1,session=M.session,enabled=M.enabled,heartbeat=os.time(),revision=M.contextRevision,connectionTest=M.connectionTest,proposal=M.status,history=M.historySummary(),plan=M.plan,lootSyncStatus=M.enabled and require("Modules.LootFilterDailySync").publicStatus(os.time()) or nil,diagnostics={lastPoll=M.lastPoll,lastContext=M.lastContext,lastRequest=M.lastRequest,lastError=M.lastError,undoDepth=#M.undo}})
 end
 
 function M.refresh(build)

@@ -3,7 +3,9 @@ local parser = require("Modules.LootFilterParser")
 return function(raw, bodies, baselineOnly, target, protections, history, day, now)
 	assert(market.supports(raw), "Baseline has no economy section")
 	local quotes = {}
-	for index, body in ipairs(bodies) do market.merge(quotes, market.quotes(body, market.categories[index])) end
+	local categories = market.feedCategories(raw)
+	assert(baselineOnly or #bodies == #categories, "Required market category responses are missing")
+	for index, body in ipairs(bodies) do market.merge(quotes, market.quotes(body, categories[index]), categories[index]) end
 	assert(baselineOnly or quotes["Orb of Alteration"] and quotes["Orb of Alteration"].volume >= 100, "Currency feed lacks a liquid reference quote")
 	local snapshots
 	if day then quotes, snapshots = market.remember(quotes, history, day, now) end

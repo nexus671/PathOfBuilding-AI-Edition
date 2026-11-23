@@ -83,7 +83,7 @@ function M.Open()
 		for i, change in ipairs(review.changes or {}) do
 			entries[#entries+1] = {id="change-"..i,label=change.name,category="Changed",details={
 				string.format("Hide up to %d → %d%s", change.old, change.cutoff, change.maps and " in maps" or ""),
-				string.format("%.4g chaos used | %.0f chaos hourly volume",change.price,change.volume),
+				string.format("%.4g chaos used | %.0f chaos quoted volume",change.price,change.volume),
 				string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
 				change.sample and string.format("Map sample: %d as %s → %s%s", change.sample.count,
 					change.sample.class, change.sample.action, change.sample.line and " at line "..change.sample.line or "")
@@ -109,6 +109,12 @@ function M.Open()
 		if not passed then main:OpenMessagePopup("Daily filter sync", ui.errorText(err)) end
 	end,432)
 	c.preview.enabled = function() return not sync.busy end
+	button("externalEdits",16+step*2,"External edits",function()
+		local passed,before,after = pcall(sync.externalDiff)
+		if not passed then main:OpenMessagePopup("External filter edits", ui.errorText(before)); return end
+		require("Classes.LootFilterDiffControl").Open(before,after,true)
+	end,432)
+	c.externalEdits.enabled = function() return config.target ~= nil and not sync.busy end
 	button("close",width-buttonWidth-16,"Close",function() main:ClosePopup() end,432)
 	c.enable.enabled = function() return not sync.busy end
 	c.disable.enabled = function() return config.enabled and not sync.busy end
