@@ -21,7 +21,9 @@ function M.Open()
 		c[key] = new("EditControl"):EditControl(ui.anchor,{x, y+20, fieldWidth, 26},value,nil,nil,1000)
 	end
 	local function options()
-		return {hour=tonumber(c.hour.buf) or -1,targetValue=tonumber(c.targetValue.buf) or -1,protectionFile=c.protectionFile.buf}
+		local hour, minute = c.time.buf:match("^%s*(%d%d?):(%d%d)%s*$")
+		return {hour=tonumber(hour) or -1,minute=tonumber(minute) or -1,
+			targetValue=tonumber(c.targetValue.buf) or -1,protectionFile=c.protectionFile.buf}
 	end
 	local function attempt(action)
 		local passed, err = pcall(action)
@@ -56,7 +58,7 @@ function M.Open()
 		end,{timeout=15})
 	end)
 	c.chooseLeague.enabled = function() return not loadingLeagues and not sync.busy end
-	field("hour", 198, "Daily hour (local, 0–23)", tostring(config.hour or 9), 16, 195)
+	field("time", 198, "Daily time (local, HH:MM)", string.format("%02d:%02d", config.hour or 9, config.minute or 0), 16, 195)
 	field("targetValue", 198, "Chaos per stack", tostring(config.targetValue or 1), 236, 160)
 	field("protectionFile", 250, "Protected samples JSON (optional for tiered test)", config.protectionFile or "")
 	ui.description(c,"help",16,306,width-32,38,{"PoB checks for a due sync while open and keeps a copy of the baseline."},14)

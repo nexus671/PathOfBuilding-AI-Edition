@@ -83,13 +83,17 @@ function M.configuration()
 	return get()
 end
 
+local function scheduledAt(config, now, tomorrow)
+	local date = os.date("*t", now)
+	if tomorrow then date.day = date.day + 1 end
+	date.hour, date.min, date.sec, date.isdst = config.hour or 9, config.minute or 0, 0, nil
+	return os.time(date)
+end
+
 function M.nextEligible(config, now)
 	if not config or not config.enabled or config.paused then return nil end
-	local date = os.date("*t", now)
-	if config.day == os.date("%Y-%m-%d", now) then date.day = date.day + 1 end
-	date.hour, date.min, date.sec, date.isdst = config.hour or 9, 0, 0, nil
-	local scheduled = math.max(now, os.time(date))
-	return nowText(math.max(scheduled, retryAt))
+	local scheduled = scheduledAt(config, now, config.day == os.date("%Y-%m-%d", now))
+	return nowText(math.max(now, scheduled, nextPoll, retryAt, rateLimitUntil))
 end
 
 
@@ -164,8 +168,9 @@ end
 local function prepare(target, baselineFile, league, options)
 	options = options or {}
 	local targetValue = options.targetValue or 1
-	local hour = options.hour or 9
+	local hour, minute = options.hour or 9, options.minute or 0
 	assert(type(hour) == "number" and hour >= 0 and hour <= 23 and hour == math.floor(hour), "Enter an hour from 0 to 23")
+	assert(type(minute) == "number" and minute >= 0 and minute <= 59 and minute == math.floor(minute), "Enter a minute from 0 to 59")
 	assert(type(targetValue) == "number" and targetValue > 0 and targetValue <= 1000, "Enter a stack target above 0 and up to 1,000 chaos")
 	target = filterPath(target)
 	assert(type(league) == "string" and #league <= 80 and league:match("^[%w%s_-]+$"), "Enter the poe.ninja league ID")
@@ -188,7 +193,7 @@ local function prepare(target, baselineFile, league, options)
 	return {
 		enabled=true, target=target, baseline=main.userPath.."LootFilterBaseline-"..key..".filter",
 		baselineHash=key, current=sha(original), revision=sha(tostring({})..tostring(os.time())),
-		league=league, hour=hour, targetValue=targetValue, protections=protections, protectionFile=options.protectionFile,
+		league=league, hour=hour, minute=minute, targetValue=targetValue, protections=protections, protectionFile=options.protectionFile,
 	}, original, baseline
 end
 
@@ -203,7 +208,7 @@ function M.configure(target, baselineFile, league, options)
 		return nextConfig
 	end)
 	nextPoll, retryAt = 0, 0
-	M.status = string.format("Daily sync enabled at %02d:00 local time while PoB is open.", config.hour)
+	M.status = string.format("Daily sync enabled at %02d:%02d local time while PoB is open.", config.hour, config.minute)
 end
 
 function M.disable()
@@ -308,7 +313,7 @@ local function publish(config, bodies, ages, day, force, now)
 	return platform().lock(settingsPath() .. ".lock", function()
 		local current = get()
 		assert(current and current.enabled and not current.paused and current.baselineHash == config.baselineHash and current.target == config.target
-			and current.revision == config.revision and current.league == config.league and current.targetValue == config.targetValue and current.hour == config.hour and current.protectionFile == config.protectionFile, "Daily sync settings changed during the refresh")
+			and current.revision == config.revision and current.league == config.league and current.targetValue == config.targetValue and current.hour == config.hour and current.minute == config.minute and current.protectionFile == config.protectionFile, "Daily sync settings changed during the refresh")
 		if not force and current.day == day then return "Already synced today." end
 		local original = assert(read(current.target), "Target filter is missing")
 		local before = sha(original)
@@ -450,7 +455,7 @@ function M.tick(now, force)
 	if not config or not config.enabled or config.paused then return end
 	if launch.noSSL then M.status = "Sync skipped: enable HTTPS certificate verification in PoB."; return end
 	local day = os.date("%Y-%m-%d", now)
-	if not force and (config.day == day or tonumber(os.date("%H", now)) < (config.hour or 9)) then
+	if not force and (config.day == day or now < scheduledAt(config, now)) then
 		M.status = config.summary or M.status
 		return
 	end

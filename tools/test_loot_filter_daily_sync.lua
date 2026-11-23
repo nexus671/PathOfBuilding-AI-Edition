@@ -251,6 +251,33 @@ replacementWindow.tick(now,true)
 assert(read(target)==refreshed and not replacementWindow.configuration().pending,replacementWindow.status)
 print("Windows fault recovery: concurrent pause, locked target, and both pending-journal states passed")
 
+
+-- Old hour-only settings still trigger on the hour. The new minute is used
+-- both by the due check and the UI's next eligible time.
+local localTime = os.date("*t",now)
+localTime.hour, localTime.min, localTime.sec, localTime.isdst = 12, 37, 0, nil
+local scheduled = os.time(localTime)
+local clockSync = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+local legacy = {enabled=true,hour=12}
+assert(clockSync.nextEligible(legacy,scheduled-3600)==os.date("%Y-%m-%d 12:00",scheduled))
+local scheduleOptions = {hour=12,minute=37,targetValue=1,protectionFile=protections}
+assert(not pcall(clockSync.configure,target,baseline,"Covens",{hour=12,minute=60}))
+clockSync.configure(target,baseline,"Covens",scheduleOptions)
+assert(clockSync.configuration().minute==37)
+assert(clockSync.nextEligible(clockSync.configuration(),scheduled-60)==os.date("%Y-%m-%d %H:%M",scheduled))
+local scheduledRequests = 0
+launch.DownloadPage = function(_, url, callback)
+	scheduledRequests = scheduledRequests + 1
+	reply(url,callback)
+end
+clockSync.tick(scheduled-60)
+assert(scheduledRequests==0)
+clockSync.tick(scheduled)
+assert(scheduledRequests==9)
+localTime.day = localTime.day + 1
+assert(clockSync.nextEligible(clockSync.configuration(),scheduled)==os.date("%Y-%m-%d %H:%M",os.time(localTime)))
+print("Daily scheduler respects minute precision and continues to read older hour-only settings")
+
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.
 local controls, manualReview, exported
