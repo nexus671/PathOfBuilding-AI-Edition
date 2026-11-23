@@ -460,6 +460,16 @@ describe("Native Atlas planner", function()
 		store=atlas.new(build); raw='{"schemaVersion":1,"plans":[{"id":"x","title":"x","version":"3.27.0","budget":132,"nodes":{"unexpected":true}}]}'
 		store:Load({raw}); assert.is_truthy(store.warning); xml={};store:Save(xml);assert.are.equal(raw,xml[1])
 	end)
+	it("preserves damaged planning sections through a native build reload",function()
+		local json=require("dkjson")
+		local raw={AtlasPlans='{"schemaVersion":1,"plans":[]} damaged',CraftingProjects='{"schemaVersion":1,"projects":[]} damaged',BuildJourney=json.encode(require("Modules.BuildJourney").empty()).." damaged",LootFilters=json.encode(require("Modules.LootFilters").empty()).." damaged"}
+		for name,value in pairs(raw) do build.savers[name]:Load({value});assert.is_truthy(build.savers[name].warning,name) end
+		local xml=build:SaveDB("Recovery fixture");loadBuildFromXML(xml,"Recovery fixture")
+		for name,value in pairs(raw) do
+			local saver=build.savers[name];assert.is_truthy(saver.warning,name)
+			local saved={};saver:Save(saved);assert.equal(value,saved[1])
+		end
+	end)
 	it("persists native plans through candidate XML without changing character stats or live state", function()
 		local entry=atlas.connect(plan(),{65225}); local revision=bridge.revision(build)
 		local prepared=bridge.prepare(build,{mode="edit",title=entry.title,baseRevision=revision,operations={{type="set_atlas_plan",plan=entry}}})
