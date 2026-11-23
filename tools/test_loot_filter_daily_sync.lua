@@ -408,11 +408,13 @@ do
 		{title="Missing result",baseName="Cord Belt"},
 		{title="Thin result",baseName="Cord Belt"},
 		{title="Different base",baseName="Leather Belt"},
+		{title="Alternate base",baseName="Leather Belt",baseLines={["Leather Belt"]={},["Cord Belt"]={}}},
 	})
 	assert(#sharedBase==1 and sharedBase[1].corrupted==false)
 	local evidence = sharedBase[1].baseEvidence
 	assert(evidence.names==6 and evidence.variants==6 and evidence.priced==2 and evidence.minimum==30 and evidence.maximum==120)
-	assert(#evidence.unquoted==2 and evidence.unquoted[1]=="Missing result" and evidence.unquoted[2]=="Thin result")
+	assert(#evidence.unquoted==3 and evidence.unquoted[1]=="Alternate base"
+		and evidence.unquoted[2]=="Missing result" and evidence.unquoted[3]=="Thin result")
 	local collision = browser.rows([[{"lines":[
 		{"name":"Same name","baseType":"Cord Belt","detailsId":"shared-id","chaosValue":300,"count":100,"listingCount":70},
 		{"name":"Different name","baseType":"Cord Belt","detailsId":"shared-id","chaosValue":300,"count":100,"listingCount":70}

@@ -147,12 +147,21 @@ local function uniqueBaseEvidence(lines, variants, catalogue)
 		end
 	end
 	local missing = {}
+	local function recordMissing(baseName,title,key)
+		local group = groups[baseName]
+		if group and not group.supportedNames[key] then
+			local names = missing[baseName] or {}
+			names[key] = title
+			missing[baseName] = names
+		end
+	end
 	for _, item in pairs(catalogue or {}) do
-		local group = groups[item.baseName]
-		if group and marketName(item.title) and not group.supportedNames[item.title:lower()] then
-			local names = missing[item.baseName] or {}
-			names[item.title:lower()] = item.title
-			missing[item.baseName] = names
+		if marketName(item.title) then
+			local key = item.title:lower()
+			recordMissing(item.baseName,item.title,key)
+			for baseName in pairs(item.baseLines or {}) do
+				recordMissing(baseName,item.title,key)
+			end
 		end
 	end
 	local evidence = {}
