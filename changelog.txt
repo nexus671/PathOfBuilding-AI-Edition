@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1204][2026/11/23]
+
+* Detect when the price provider stops listing the selected trade league and keep the last verified filter.
+
 VERSION[2.68.1-ai.preview1203][2026/11/23]
 
 * Publish a verified daily filter to a selected Path of Exile account filter after reviewing the exact diff.
