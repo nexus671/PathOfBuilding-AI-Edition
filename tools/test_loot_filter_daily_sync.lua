@@ -1104,3 +1104,43 @@ local function checkExternalAdoption()
 	print("Seven exact archived reviews persist after restarting and remain isolated to their sync profile")
 end
 checkExternalAdoption()
+
+do
+	local fixture = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local id = fixture.createProfile("Custom protection order fixture")
+	local live, fixed = dir.."/custom-order.filter", dir.."/custom-order-fixed.filter"
+	local raw = [[# CUSTOM: Always show Cord Belts
+Show
+    BaseType == "Cord Belt" "Agate Amulet" "Amethyst Ring"
+    MinimapIcon 0 Purple Star
+Show
+    BaseType == "Royal Plate"
+    MinimapIcon 0 Red Diamond
+Show
+    BaseType == "Iron Ring"
+    MinimapIcon 0 Yellow Diamond
+# CUSTOM: Hide Wisdom and Portal Scrolls
+Hide
+    BaseType == "Scroll of Wisdom" "Portal Scroll"
+# PoB economy: begin
+Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Alteration"
+    StackSize <= 6
+# PoB economy: end
+Show
+]]
+	write(live,raw);write(fixed,raw)
+	fixture.configure(live,fixed,"Covens",{profileId=id})
+	for _, edited in ipairs({
+		raw:gsub(' "Amethyst Ring"',''),
+		raw:gsub(' "Portal Scroll"',''),
+		'Hide\n    BaseType == "Amethyst Ring"\n' .. raw,
+	}) do
+		write(live,edited)
+		local ok, why = pcall(fixture.previewExternalAdoption,id)
+		assert(not ok and why:find("custom protection rules or their precedence",1,true),why)
+	end
+	write(live,"# New personal comment\n"..raw)
+	assert(fixture.previewExternalAdoption(id))
+end
