@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1213" />
+	<Version number="2.68.1-ai.preview1214" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="1aabc8a3b0b98fc877494c8d1d7fa541d4d3f709" />
+	<File name="changelog.txt" part="default" sha1="c1bbd138fbe2549628ecd804396d7d81f3948f47" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1704,7 +1704,7 @@
 	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="252e74924f5d77f8c6ef9edc0b3ed807f8b58cd4" />
 	<File name="Classes/AtlasRegionsControl.lua" part="program" sha1="fcf7b3074dc10119bf4b309e96ccc626c1491609" />
 	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="bc317bacfeecf533d7c1a5e3d3536a2edf847d6a" />
-	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="62889b74eb2e577d736481ccae0a7a4904897c22" />
+	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="091b4a396966a60064fe5c3ad148a80f97be18e7" />
 	<File name="Classes/AtlasThreadControl.lua" part="program" sha1="59040cbafbf9f1dc7db5c758751f933f0a53a479" />
 	<File name="Classes/BuildJourneyControl.lua" part="program" sha1="365bc1230da4825548cf0eb348e1b4883c9a6ff7" />
 	<File name="Classes/BuildListControl.lua" part="program" sha1="f60f0d7f6aecbe851db896913cd1aa707c7fb304" />
@@ -2140,7 +2140,7 @@
 	<File name="Modules/AtlasArt.lua" part="program" sha1="d007b7632f8d2e284c7ed46d6a0d98c39d3e2576" />
 	<File name="Modules/AtlasExactRoute.lua" part="program" sha1="4468353ae36dc220916b985ce6de0e1403c7643c" />
 	<File name="Modules/AtlasGrantRoute.lua" part="program" sha1="c9b1be59c1d2c9c6359d5546b3b41e1cfc3bdf12" />
-	<File name="Modules/AtlasPlanner.lua" part="program" sha1="4571f945ba155aeff549cea02f5c6657841e5af5" />
+	<File name="Modules/AtlasPlanner.lua" part="program" sha1="019fff6650f1d0614e2fa95fdc0f96160a9779e5" />
 	<File name="Modules/AtlasRegions.lua" part="program" sha1="e418859ff34df69202221e4d46f5c3f1275afc3b" />
 	<File name="Modules/AtlasStrategy.lua" part="program" sha1="ded6873f204e28aeb113fa20e3f842753d54a730" />
 	<File name="Modules/AtlasTargets.lua" part="program" sha1="645f7029289c96e150d0f14283ca126ba7411df7" />

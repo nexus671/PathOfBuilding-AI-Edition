@@ -1,13 +1,17 @@
-VERSION[2.68.1-ai.preview1213][2026/11/23]
+VERSION[2.68.1-ai.preview1214][2026/11/23]
 
 * Optionally highlight managed stacks by their market value without changing whether they show.
 
-VERSION[2.68.1-ai.preview1212][2026/11/23]
+VERSION[2.68.1-ai.preview1213][2026/11/23]
 
 * Keep the last verified daily filter when an established exchange feed loses most of its liquid quotes.
 * Review and restore recorded filter backups with an exact diff and an undo point.
 * Optionally cap verified backups after a successful daily refresh.
 * Compare listing-backed prices across different uniques on the same base.
+
+VERSION[2.68.1-ai.preview1212][2026/11/23]
+
+* Improve larger Atlas routes by reconsidering shared paths.
 
 VERSION[2.68.1-ai.preview1211][2026/11/23]
 
