@@ -148,7 +148,7 @@ describe("TreeTab", function()
 			local newTitle = "Copied Tree"
 			local newSpec = build.treeTab:CopyTree(1, newTitle)
 
-			assert.is_not.same(build.treeTab.specList[1], newSpec)
+			assert.is_false(rawequal(build.treeTab.specList[1], newSpec))
 			assert.are.equals(newTitle, newSpec.title)
 		end)
 
@@ -237,7 +237,8 @@ describe("TreeTab", function()
 
 			assert.are.equals(2, copy1.id)
 			assert.are.equals(3, copy2.id)
-			assert.are.not_same(copy1, copy2)
+			-- Specs contain the shared cyclic tree graph; compare identity, not the graph.
+			assert.is_false(rawequal(copy1, copy2))
 		end)
 
 		it("Copies from copied spec", function()
