@@ -937,6 +937,13 @@ test('queues exact socket goals and rejects out-of-range counts', t => {
   for(const invalid of [-1,7,1.5]) assert.throws(()=>f.call('simulate_crafting',{...base,recipe:{...recipe,requirements:{exactSockets:invalid}}}),/arguments/);
 });
 
+test('queues numeric base-roll crafting targets', t => {
+  const f=fixture(t),base={baseRevision:f.state.revision,itemText:craftingProject().startingItem};
+  const recipe={steps:[{method:'alchemy'}],targets:[{anyOf:['IncreasedLife4'],minBaseValue:65,maxBaseValue:67}]};
+  f.call('simulate_crafting',{...base,recipe,options:{trials:3,maxActions:1}});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).recipe,recipe);
+});
+
 test('queues a saved crafting simulation without allowing mixed inputs', t => {
   const f=fixture(t),baseRevision=f.state.revision;
   f.call('simulate_crafting',{baseRevision,projectId:'helmet-guide'});

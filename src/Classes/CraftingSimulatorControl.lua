@@ -113,6 +113,8 @@ function Panel.Open(build,project,layout)
 			if group.fractured ~= nil then lines[#lines+1]=group.fractured and "Fractured only" or "Not fractured" end
 			if group.crafted ~= nil then lines[#lines+1]=group.crafted and "Crafted only" or "Not crafted" end
 			if group.minRoll then lines[#lines+1]="Minimum roll: "..(group.minRoll*100).."%" end
+			if group.minBaseValue~=nil then lines[#lines+1]="Minimum base roll: "..group.minBaseValue end
+			if group.maxBaseValue~=nil then lines[#lines+1]="Maximum base roll: "..group.maxBaseValue end
 		end
 		for key,value in pairsSortByKey(requirements or {}) do
 			if key=="nativeStats" then
