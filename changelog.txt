@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1161][2026/11/22]
+
+* Let AI clients inspect one saved crafting snapshot directly.
+
 VERSION[2.68.1-ai.preview1160][2026/11/22]
 
 * Let AI clients search saved crafting items by their outcome modifiers.

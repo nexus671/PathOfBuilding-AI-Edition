@@ -38,6 +38,13 @@ test('reads crafting collections larger than the old desktop context limit', t =
   assert.throws(()=>f.call('get_crafting_projects',{limit:0}),/arguments/);
 });
 
+test('reads one crafting snapshot without returning its siblings', t => {
+  const f=fixture(t),item={id:'item-1',title:'One',state:{rarity:'RARE'},originNote:'Conditional example'};
+  f.captured.context.craftingProjects=[{id:'guide',title:'Guide',slot:'Helmet',inventory:[item,{id:'item-2',title:'Other'}]}];f.write('context',f.captured);
+  const result=f.call('get_crafting_inventory_item',{projectId:'guide',itemId:'item-1'});assert.equal(result.revision,f.state.revision);assert.deepEqual(result.item,item);assert.deepEqual(result.project,{id:'guide',title:'Guide',slot:'Helmet'});assert.equal(result.project.inventory,undefined);
+  assert.throws(()=>f.call('get_crafting_inventory_item',{projectId:'missing',itemId:'item-1'}),/project not found/i);assert.throws(()=>f.call('get_crafting_inventory_item',{projectId:'guide',itemId:'missing'}),/item not found/i);
+});
+
 test('queues same-base vendor review with bounded copied items', t => {
   const f=fixture(t), raw='Rarity: Normal\nJade Amulet\n--------\nItem Level: 60';
   f.call('review_same_base_vendor_items',{baseRevision:f.state.revision,items:[raw]});
