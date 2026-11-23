@@ -234,6 +234,39 @@ assert(accepted and accepted.baseCommit==filters.source().commit and #accepted.r
 launch.DownloadPage=actualDownload
 print("NeverSink refresh previews and validates the compiled candidate before preserving personal rules in the draft")
 
+-- Open a historical backup in the usual workspace and require the exact
+-- source review before the restore action can be clicked.
+newBuild()
+main.popups = {}
+local backupUI = headless.install({width=720,height=600})
+backupUI:bind(build)
+local oldConfig, oldBackups, oldPreview, oldRollback = sync.configuration, sync.backups, sync.previewBackup, sync.rollback
+local backupId = string.rep("a",40)
+local selectedReview
+local sampleReview = {digest=backupId,before="Show\n",after="Hide\n"}
+sync.configuration = function() return {hour=9,enabled=true,backup=backupId} end
+sync.backups = function() return {{digest=backupId,checkedAt=1795449900}} end
+sync.previewBackup = function(_,id)
+	assert(id==backupId)
+	return sampleReview
+end
+sync.rollback = function(_,review)
+	selectedReview = review
+end
+require("Classes.LootFilterDailySyncControl").Open()
+backupUI:click("rollback")
+assert(main.popups[1].title=="Filter backups" and not main.popups[1].controls.secondary:IsEnabled())
+backupUI:click("choose")
+assert(main.popups[1].title=="Filter file changes" and not selectedReview)
+backupUI:click("close")
+assert(main.popups[1].controls.secondary:IsEnabled())
+backupUI:click("secondary")
+assert(main.popups[1].title=="Restore filter backup" and not selectedReview)
+backupUI:click("confirm")
+assert(selectedReview==sampleReview and main.popups[1].title=="Daily filter sync")
+sync.configuration, sync.backups, sync.previewBackup, sync.rollback = oldConfig, oldBackups, oldPreview, oldRollback
+print("Review backups requires the diff and a separate restore confirmation")
+
 -- Exercise the exact publish workflow with a simulated account response.
 newBuild()
 main.popups = {}

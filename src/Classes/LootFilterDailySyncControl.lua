@@ -131,10 +131,35 @@ function M.Open(profileId, profileName)
 	button("run",16+step*1,"Sync now",function() sync.tick(os.time(),true,false,profileId) end)
 	button("disable",16+step*2,"Disable",function() attempt(function() sync.disable(profileId) end) end)
 	button("pause",16+step*3,config.paused and "Resume" or "Pause",function() attempt(function() sync.pause(not config.paused,profileId) end) end)
-	button("rollback",16+step*4,"Restore backup",function()
-		main:OpenConfirmPopup("Restore filter backup", "Restore the previous filter and pause daily sync?", "Restore", function()
-			attempt(function() sync.rollback(profileId) end)
-		end)
+	button("rollback",16+step*4,"Review backups",function()
+		local passed, backups = pcall(sync.backups,profileId)
+		if not passed then main:OpenMessagePopup("Filter backups",ui.errorText(backups)); return end
+		local entries, reviewed = {}, nil
+		for _, backup in ipairs(backups) do
+			entries[#entries+1] = {id=backup.digest,label=backup.checkedAt and os.date("%Y-%m-%d %H:%M",backup.checkedAt) or "Most recent backup",
+				details={backup.digest, "Review the file changes before restoring this backup."}}
+		end
+		if #entries == 0 then main:OpenMessagePopup("Filter backups","No recorded backup is available for this profile."); return end
+		require("Classes.PlanningBrowserControl").Open("Filter backups",entries,{
+			action="Review changes",closeOnChoose=false,enterChooses=false,
+			choose=function(entry)
+				local verified, result = pcall(sync.previewBackup,profileId,entry.id)
+				reviewed = verified and result or nil
+				if not verified then main:OpenMessagePopup("Filter backups",ui.errorText(result)); return end
+				require("Classes.LootFilterDiffControl").Open(result.before,result.after,true)
+			end,
+			secondary={label="Restore reviewed",canRun=function(entry) return reviewed ~= nil and reviewed.digest == entry.id and not sync.busy end,
+				run=function()
+					local selected = reviewed
+					main:OpenConfirmPopup("Restore filter backup","Restore the reviewed filter and pause daily sync?","Restore",function()
+						local restored, why = pcall(sync.rollback,profileId,selected)
+						if not restored then main:OpenMessagePopup("Filter backups",ui.errorText(why)); return end
+						main:ClosePopup()
+						main:ClosePopup()
+						M.Open(profileId,profileName)
+					end)
+				end},
+		})
 	end)
 	button("review",16,"Last review",function()
 		local saved = sync.configuration(profileId)
@@ -250,7 +275,7 @@ function M.Open(profileId, profileName)
 			local passed, saved = pcall(sync.configuration,profileId)
 			if passed and saved then cached = saved end
 		end
-		return not sync.busy and cached.backup ~= nil
+		return not sync.busy and (cached.backup ~= nil or type(cached.history) == "table" and #cached.history > 0)
 	end
 	local function backgroundLabel()
 		return config.backgroundEnabled and "Disable background sync" or "Enable background sync"

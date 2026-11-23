@@ -631,6 +631,50 @@ assert(not pcall(profiles.verifiedOutput,id))
 print("Account publication can only read the latest verified, unchanged local output")
 
 
+-- Review an older recorded backup, refuse checksum and revision drift,
+-- then retain the previously active bytes as an undo point after restore.
+local recorded = profiles.configuration()
+local fixedAtReview = read(recorded.baseline)
+local olderBytes, changed = fixedAtReview:gsub("# PoB economy: end", [[Hide
+    Class == "Stackable Currency"
+    BaseType == "Orb of Transmutation"
+    StackSize <= 3
+
+# PoB economy: end]],1)
+assert(changed == 1)
+local digestOf = require("sha1")
+local oldDigest = digestOf(olderBytes)
+local oldPath = target .. ".before-pob-sync-" .. oldDigest .. ".bak"
+local configurationCodec = require("dkjson")
+assert(oldDigest ~= recorded.current and oldDigest ~= recorded.backup)
+table.insert(recorded.history,{backup=oldDigest,checkedAt=now-86400})
+write(configFile,assert(configurationCodec.encode(recorded)))
+write(oldPath,olderBytes.."# edited")
+local canReview, reason = pcall(profiles.previewBackup,"default",oldDigest)
+assert(not canReview and reason:find("checksum mismatch",1,true))
+write(oldPath,olderBytes)
+local reviewedBackup = profiles.previewBackup("default",oldDigest)
+assert(reviewedBackup.before == verifiedRaw and reviewedBackup.after == olderBytes)
+profiles.setBackground(false,recorded.revision)
+assert(not pcall(profiles.rollback,"default",reviewedBackup) and read(target)==verifiedRaw)
+reviewedBackup = profiles.previewBackup("default",oldDigest)
+profiles.rollback("default",reviewedBackup)
+local restoredConfig = profiles.configuration()
+assert(restoredConfig.paused and not restoredConfig.review and read(target)==olderBytes)
+assert(profiles.previewBackup("default",restoredConfig.backup).after==verifiedRaw)
+-- Simulate a restart after replacing the target but before finishing its journal.
+local interrupted = profiles.configuration()
+interrupted.pending = interrupted.backup
+interrupted.pendingRestore = {undo=interrupted.current}
+local intended = interrupted.pending
+write(configFile,assert(configurationCodec.encode(interrupted)))
+write(target,verifiedRaw)
+local availableBackups = profiles.backups("default")
+local reconciled = profiles.configuration()
+assert(reconciled.paused and reconciled.current==intended and not reconciled.pending and not reconciled.pendingRestore)
+assert(availableBackups[1].digest==oldDigest and read(target)==verifiedRaw)
+print("Reviewed backup restore checks historical bytes and recovers an interrupted restore")
+
 -- A successful-looking but severely incomplete feed must keep the last
 -- verified file and its publication record.
 local coverageTarget = dir.."/coverage-target.filter"

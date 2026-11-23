@@ -509,29 +509,108 @@ function M.pause(paused, id)
 	M.status = paused and "Daily sync is paused." or "Daily sync resumed."
 end
 
-function M.rollback(id)
+local function backupChoices(config)
+	local entries, seen = {}, {}
+	local function add(digest, checkedAt)
+		if type(digest) == "string" and #digest == 40 and digest:match("^[a-f0-9]+$")
+			and digest ~= config.current and not seen[digest] then
+			seen[digest] = true
+			entries[#entries+1] = {digest=digest,checkedAt=checkedAt}
+		end
+	end
+	add(config.backup)
+	for _, run in ipairs(config.history or {}) do
+		if #entries >= 30 then break end
+		if type(run) == "table" then add(run.backup,run.checkedAt) end
+	end
+	return entries, seen
+end
+
+local restoreSummary = "Restored the verified backup. Daily sync is paused."
+
+local function finishRestore(config, digest, undo)
+	config.current, config.pending, config.backup = digest, nil, undo
+	config.pendingRestore = nil
+	config.summary, config.review = restoreSummary, nil
+	config.revision = newRevision()
+end
+
+function M.backups(id)
+	return lockSettings(function()
+		local config = assert(get(id), "Enable daily sync first")
+		if config.pendingRestore then
+			local target = assert(read(filterPath(config.target)), "Target filter is missing")
+			local actual = sha(target)
+			if actual == config.pending then
+				finishRestore(config,actual,config.pendingRestore.undo)
+			else
+				assert(actual == config.current, "Target changed during the interrupted restore")
+				config.pending, config.pendingRestore = nil, nil
+			end
+			save(config,id)
+		end
+		return backupChoices(config)
+	end)
+end
+
+local function readBackup(target, digest)
+	local raw = assert(read(target .. ".before-pob-sync-" .. digest .. ".bak"), "Backup is missing")
+	assert(sha(raw) == digest, "Backup checksum mismatch")
+	return raw
+end
+
+local function verifyRestorable(config, requested)
+	local target = filterPath(config.target)
+	local original = assert(read(target), "Target filter is missing")
+	assert(sha(original) == config.current, "Target was edited outside PoB")
+	local _, available = backupChoices(config)
+	assert(available[requested], "Choose a backup recorded for this sync profile")
+	local backup = readBackup(target,requested)
+	local baseline = assert(read(config.baseline), "Baseline filter is missing")
+	assert(sha(baseline) == config.baselineHash, "Baseline checksum changed")
+	verifyUnmanagedRules(backup,baseline)
+	validate(backup,{},true,config.targetValue,config.protections,nil,nil,nil,config.pickupPolicy)
+	return original, backup, target
+end
+
+function M.previewBackup(id, digest)
+	assert(not M.busy, "Wait for the current sync to finish")
+	return lockSettings(function()
+		local config = assert(get(id), "Enable daily sync first")
+		assert(not config.pending, "Finish recovering the interrupted sync before restoring a backup")
+		local before, after = verifyRestorable(config,digest)
+		return {before=before,after=after,digest=digest,revision=config.revision,current=config.current}
+	end)
+end
+
+function M.rollback(id, reviewed)
 	assert(not M.busy, "Wait for the current sync to finish")
 	lockSettings(function()
 		local config = assert(get(id), "Enable daily sync first")
-		assert(config.backup and config.backup:match("^[a-f0-9]+$") and #config.backup == 40, "No verified backup is available")
-		local target = filterPath(config.target)
-		local original = assert(read(target), "Target filter is missing")
-		assert(sha(original) == config.current, "Target was edited outside PoB")
-		local backup = assert(read(target .. ".before-pob-sync-" .. config.backup .. ".bak"), "Backup is missing")
-		assert(sha(backup) == config.backup, "Backup checksum mismatch")
-		config.pending = config.backup
-		config.paused = true
+		local digest = reviewed and reviewed.digest or config.backup
+		assert(digest, "No verified backup is available")
+		assert(not config.pendingRestore, "Reopen Review backups to recover the interrupted restore")
+		local original, backup, target = verifyRestorable(config,digest)
+		local undo
+		if reviewed then
+			assert(not config.pending and config.revision == reviewed.revision and config.current == reviewed.current
+				and original == reviewed.before and backup == reviewed.after, "Filter or sync settings changed after the review")
+			undo = config.current
+			local undoPath = target .. ".before-pob-sync-" .. undo .. ".bak"
+			if not read(undoPath) then put(undoPath,original) end
+			assert(read(undoPath) == original, "Current filter backup could not be verified")
+		end
+		keepExpected(backup)
+		config.pending, config.paused = digest, true
+		config.pendingRestore = {undo=undo}
 		save(config,id)
 		assert(read(target) == original, "Target changed before rollback")
 		put(target, backup)
 		assert(read(target) == backup, "Rollback verification failed")
-		keepExpected(backup)
-		config.current, config.pending, config.backup = config.backup, nil, nil
-		config.summary = "Restored the verified backup. Daily sync is paused."
-		config.review = nil
+		finishRestore(config,digest,undo)
 		save(config,id)
 	end)
-	M.status = "Restored the verified backup. Daily sync is paused."
+	M.status = restoreSummary
 end
 
 local months = {Jan=1,Feb=2,Mar=3,Apr=4,May=5,Jun=6,Jul=7,Aug=8,Sep=9,Oct=10,Nov=11,Dec=12}
@@ -642,6 +721,7 @@ local function publish(config, bodies, feeds, day, force, now, id)
 		end
 		assert(read(current.target) == candidate, "Installed filter verification failed")
 		current.current, current.pending, current.day = sha(candidate), nil, day
+		current.pendingRestore = nil
 		current.summary = string.format("%s: %d stack adjustments from the baseline. Protected drops verified.", nowText(now), count)
 		current.lastSuccess, current.lastFailure, current.providerRetryAfter = now, nil, nil
 		local ages = {}
