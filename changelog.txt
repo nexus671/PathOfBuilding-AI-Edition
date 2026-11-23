@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1177][2026/11/23]
+
+* Export a portable loot filter ZIP with referenced custom sounds.
+
 VERSION[2.68.1-ai.preview1176][2026/11/23]
 
 * Explain historical Rog jewel-offer restrictions when planning crafts.

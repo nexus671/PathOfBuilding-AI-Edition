@@ -264,7 +264,7 @@ function M.EditSample(item,save,focusKey)
 	for _,key in ipairs(additionalSampleFields()) do if key==focusKey then M.EditAdditionalSample(extra,function(value) extra=value end,key);break end end
 end
 function M.Export(profile,raw,report)
-	local c={};local w,h=math.min(800,main.screenW-40),342
+	local c={};local w,h=math.min(800,main.screenW-40),386
 	local names=require("Modules.LootFilterFileNames");local extension=names.extension(profile)
 	local imports=report and report.unresolvedImports or require("Modules.LootFilterImports").summarize(parser.parse(raw),profile.importFiles)
 	ui.description(c,"help",16,28,w-32,62,{"Save a "..extension.." file, then select it in Path of Exile's item-filter settings. Exporting does not equip items or change the character."},16)
@@ -316,6 +316,19 @@ function M.Export(profile,raw,report)
 		notify("Filters exported",target)
 	end) end)
 	c.writeZip.enabled=not profile.template;c.writeZip.tooltipText=c.writeAll.tooltipText
+	button(c,"soundZip",16,326,280,"Save filter + sounds ZIP",function()
+		local popup={};ui.description(popup,"help",16,24,568,45,{"Relative sound paths are read from this folder. Absolute local paths are also supported."},14)
+		popup.source=new("EditControl"):EditControl(ui.anchor,{16,82,568,26},c.directory.buf,nil,nil,1000)
+		ui.description(popup,"note",16,120,568,45,{"Extract all files together into the game's filter folder. Missing sounds or remaining imports stop export."},14)
+		button(popup,"save",16,180,180,"Save sound bundle",function() attempt(function()
+			local stem=names.stem(profile,c.filename.buf);local directory=c.directory.buf;assert(directory~="" and not directory:find("[%c]"),"Choose a destination directory")
+			local target=directory.."/"..stem.."-sounds.zip";local existing=io.open(target,"rb");if existing then existing:close();error("File exists; choose another filename.") end
+			local archive,count=require("Modules.LootFilterZip").soundBundle(profile,c.filename.buf,raw,popup.source.buf)
+			MakeDir(directory);require("Modules.LootFilterExports").writeNew(target,archive);main:ClosePopup();notify("Filter and sounds exported",count.." sound files in "..target)
+		end) end)
+		button(popup,"close",468,180,116,"Cancel",function() main:ClosePopup() end);ui.style(popup,{save=true});main:OpenPopup(600,224,"Portable filter and sounds",popup,nil,nil,"close")
+	end)
+	c.soundZip.tooltipText="Package this filter and local sounds together. Existing archives are never replaced."
 	button(c,"close",w-156,236,140,"Close",function() main:ClosePopup() end);ui.style(c,{write=true});main:OpenPopup(w,h,"Export loot filter",c,nil,"filename","close")
 end
 function M.Audit(profile,report,save,focusErrors)

@@ -100,6 +100,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_map_vaal_ui.lua")
     sources.append(ROOT / "tools/test_temple_map_preview.lua")
     sources.append(ROOT / "tools/test_rog_jewel_ui.lua")
+    sources.append(ROOT / "tools/test_filter_sound_bundle.lua")
     sources.append(ROOT / "tools/test_minimal_ui.lua")
     sources += [ROOT / "tools/test_gwennen_ui.lua", ROOT / "tools/test_rog_ui.lua"]
     sources.append(ROOT / "tools/test_magic_name_ui.lua")
@@ -358,6 +359,21 @@ def main():
     rog_jewel = subprocess.run(lua_command + ["../tools/test_rog_jewel_ui.lua", str(frames)], cwd=ROOT / "src", env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "rog-jewel-controls.log").write_text(rog_jewel.stdout)
     assert rog_jewel.returncode == 0, rog_jewel.stdout
+    sound_bundle = subprocess.run(lua_command + ["../tools/test_filter_sound_bundle.lua", str(frames)], cwd=ROOT / "src", env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "filter-sound-bundle-controls.log").write_text(sound_bundle.stdout)
+    assert sound_bundle.returncode == 0, sound_bundle.stdout
+    for name in ["sound-bundle-check.zip"] + [f"audio-{w}-sounds.zip" for w in (960, 1024, 1280)]:
+        with zipfile.ZipFile(frames / name) as z:
+            assert z.testzip() is None and len(z.namelist()) == 3, "Invalid sound bundle"
+            wav = next(n for n in z.namelist() if n.endswith(".wav"))
+            ogg = next(n for n in z.namelist() if n.endswith(".ogg"))
+            filter_name = next(n for n in z.namelist() if n.endswith(".filter"))
+            assert z.read(wav) == b"RIFF-test-sound" and z.read(ogg) == b"OggS-test-sound"
+            text = z.read(filter_name).decode()
+            assert f'"{wav};{ogg}" 200 # note' in text and f'CustomAlertSoundOptional "{wav}"' in text
+        (frames / name).unlink()
+    for name in ("bundle-test.wav", "bundle-test.ogg"):
+        (frames / name).unlink()
     assert source_hashes() == hashes, "Source files changed during UI capture; repeat against stable sources"
     for width in (1280, 1024, 960):
         archive = frames / f"ui-{width}-strictnesses.zip"
@@ -373,7 +389,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2450, f"Expected 2450 UI frames, found {len(paths)}"
+    assert len(paths) == 2456, f"Expected 2456 UI frames, found {len(paths)}"
     for name in ("960-inventory-source.json", "960-inventory-source-detail.json"):
         assert (frames / name).is_file(), f"Missing saved-item source view: {name}"
     for width in (960, 1024, 1280):
