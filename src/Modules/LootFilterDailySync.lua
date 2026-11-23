@@ -670,6 +670,23 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 		if not success and onFailure then onFailure(M.status) end
 		if ConPrintf then ConPrintf("%s", M.status) end
 	end
+	local function diagnoseLeague(problem)
+		if os.time()+15 >= M.deadline then finish(false,problem); return end
+		M.status = "Checking current PC trade league availability."
+		launch:DownloadPage(market.endpoint.."leagues",function(response,err)
+			if M.busy ~= job then return end
+			if not err then
+				local valid, _, leagues = pcall(function()
+					return market.tradeLeagues(M.fresh(response,os.time()))
+				end)
+				if valid and not leagues[config.league] then
+					finish(false,"The configured league is no longer listed by the price provider. Use Choose league to review available seasons. The existing filter was kept.")
+					return
+				end
+			end
+			finish(false,problem)
+		end,{timeout=15,maxBytes=65536,header="Accept: application/json"})
+	end
 	local function fetch(index, attempt)
 		local category = categories[index]
 		if not category then
@@ -723,13 +740,22 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 					return
 				end
 				if status == 429 or status == 503 then rateLimitUntil = math.max(rateLimitUntil, time + delay) end
-				finish(false, category .. ": " .. err)
+				local problem = category .. ": " .. err
+				if index == 1 and status == 404 then diagnoseLeague(problem) else finish(false,problem) end
 				return
 			end
 			local fresh, data, age, tag = pcall(M.fresh, response, time)
 			if not fresh then finish(false, category .. ": " .. tostring(data)); return end
 			local valid, why = pcall(market.quotes, data, category)
-			if not valid then finish(false, category .. ": " .. tostring(why)); return end
+			if not valid then
+				local problem = category .. ": " .. tostring(why)
+				if index == 1 and tostring(why):find("No priced exchange items",1,true) then
+					diagnoseLeague(problem)
+				else
+					finish(false,problem)
+				end
+				return
+			end
 			storeFeed(url,{body=data,tag=tag,sourceAt=time-age,checkedAt=time})
 			bodies[index], responses[index] = data, {initialAge=age, checkedAt=time, revalidated=false}
 			fetch(index + 1, 1)

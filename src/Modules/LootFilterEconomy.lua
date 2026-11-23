@@ -173,6 +173,20 @@ function M.feedCategories(raw)
 	return categories
 end
 
+function M.tradeLeagues(raw)
+	assert(type(raw)=="string" and #raw<=65536, "Invalid PC trade league list size")
+	local data = json.decode(raw)
+	assert(type(data)=="table" and #data>0 and #data<=100, "No PC trade leagues returned")
+	local seen = {}
+	for _, league in ipairs(data) do
+		assert(type(league)=="table" and type(league.id)=="string" and #league.id<=80 and league.id:match("^[%w%s_-]+$")
+			and type(league.name)=="string" and #league.name<=160 and not league.name:find("[%c]")
+			and not seen[league.id], "Invalid PC trade league list")
+		seen[league.id] = true
+	end
+	return data, seen
+end
+
 function M.feedPath(league, category)
 	local resource = maps.variants[category] and "stash/current/item/overview" or "exchange/current/overview"
 	return resource .. "?league=" .. urlEncode(league) .. "&type=" .. category
