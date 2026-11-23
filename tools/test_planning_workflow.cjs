@@ -1918,6 +1918,9 @@ async function main(){
   const finalTemplate=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,benchRarityOutcome:'MAGIC',benchRaritySeed:42,benchRarityProject:{id:'conditional-retained',title:'Conditional example',slot:'Helmet'},limit:3},'inspected');
   assert.equal(finalTemplate.crafting.benchRarityProject.available,true);await queued('propose_crafting_plan',{baseRevision:context.revision,project:finalTemplate.crafting.benchRarityProject.project},'review');await host('apply');await host('bundle-roundtrip');
   const retainedExample=(await call('get_crafting_projects')).projects.find(entry=>entry.id==='conditional-retained');assert.match(retainedExample.notes,/Conditional/);assert.equal(retainedExample.originNote,retainedExample.notes);assert.equal(retainedExample.inventory[0].state.rarity,'MAGIC');assert.equal(retainedExample.inventory[0].originNote,retainedExample.notes);
+  context=(await call('get_build_context')).context;
+  const inventorySearch=await queued('search_crafting_inventory',{baseRevision:context.revision,query:'Stun and Block Recovery',limit:20},'inventorySearch');assert.equal(inventorySearch.inventorySearch.incomplete,false);assert.ok(inventorySearch.inventorySearch.matches.some(item=>item.projectId==='conditional-retained' && item.itemId===retainedExample.inventory[0].id));
+  const inventoryNotes=await queued('search_crafting_inventory',{baseRevision:context.revision,query:'not an observed craft',limit:1,offset:0},'inventorySearch');assert.ok(inventoryNotes.inventorySearch.total>=1);assert.equal(inventoryNotes.inventorySearch.matches.length,1);
   await host('quit');
   console.log('PLANNING_WORKFLOW_OK: real MCP stdio, native calculations, UI review, crafting simulation, Journey ranking, Atlas strategy, save/reopen, checkpoint undo and portable bundle import');
 }

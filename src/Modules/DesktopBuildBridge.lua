@@ -808,6 +808,22 @@ function M.poll(build, force)
 			end
 			return
 		end
+		if request.kind == "craftInventorySearch" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh crafting context.")
+			assert(not build.savers.CraftingProjects.unreadable,build.savers.CraftingProjects.warning)
+			assert(type(request.query)=="string" and #request.query<=160 and request.query:match("%S"),"Enter a search query")
+			local projects=build.savers.CraftingProjects.projects;local session=M.session
+			local function publish(status,values)
+				if not M.enabled or M.session~=session then return end
+				M.status={id=request.id,status=status,baseRevision=request.baseRevision};for key,value in pairs(values) do M.status[key]=value end;M.publishState()
+			end
+			local job=require("Modules.CraftingTasks").start(build,function(checkpoint)
+				return require("Modules.CraftingInventory").search(projects,request.query,request.offset,request.limit,checkpoint)
+			end,function(result)
+				if M.revision(build)~=request.baseRevision then publish("failed",{error="Build changed. Refresh crafting context."}) else publish("inventorySearch",{inventorySearch=result}) end
+			end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end,"Crafting inventory search slice")
+			job.requestId=request.id;publish("calculating",{});return
+		end
 		if request.kind == "craftUnlockReview" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh crafting context.")
 			assert(not build.savers.CraftingProjects.unreadable,build.savers.CraftingProjects.warning)

@@ -32,6 +32,16 @@ describe("Build-owned crafting inventory",function()
 		local value=project();value.inventory={inventory.capture(value,sim.model(raw).initial,"Example","Conditional source assumptions")}
 		assert.equal(1,#inventory.entries({value},"source assumptions"));assert.equal(0,#inventory.entries({value},"unrelated source"))
 	end)
+	it("searches outcome modifiers with pagination and reports unrenderable states",function()
+		local value=project();local state=sim.perform(raw,{method="alchemy"},42).state
+		value.inventory={inventory.capture(value,state,"First"),inventory.capture(value,state,"Second")};value.inventory[1].id="first";value.inventory[2].id="second"
+		local checkpoints=0;local result=inventory.search({value},"Accuracy Rating",0,1,function() checkpoints=checkpoints+1 end)
+		assert.equal(2,result.total);assert.equal(1,#result.matches);assert.equal(1,result.nextOffset);assert.equal(2,checkpoints);assert.is_false(result.incomplete)
+		local nextPage=inventory.search({value},"Accuracy Rating",1,1);assert.equal(1,#nextPage.matches);assert.not_equal(result.matches[1].itemId,nextPage.matches[1].itemId);assert.is_nil(nextPage.nextOffset)
+		local original=sim.toItem;sim.toItem=function() error("unrenderable") end
+		local ok,missing=pcall(inventory.search,{value},"not in metadata",0,20);sim.toItem=original
+		assert.is_true(ok);assert.is_true(missing.incomplete);assert.equal(2,missing.unsearched);assert.equal(0,missing.total)
+	end)
 	it("rejects malformed inventory data and slot mismatches without changing projects",function()
 		local value=project();local entry=inventory.capture(value,sim.model(raw).initial)
 		entry.originNote=string.rep("x",1001);assert.has_error(function() inventory.validate({entry}) end);entry.originNote=nil

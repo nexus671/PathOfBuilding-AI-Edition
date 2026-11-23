@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1160][2026/11/22]
+
+* Let AI clients search saved crafting items by their outcome modifiers.
+
 VERSION[2.68.1-ai.preview1159][2026/11/22]
 
 * Search saved crafting items by their outcome modifiers and source notes.

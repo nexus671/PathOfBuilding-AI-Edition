@@ -1117,6 +1117,12 @@ test('queues conditional bench-rarity references with bounded inputs', t => {
   const missingTitle={...args};delete missingTitle.benchRarityUniqueTitle;assert.throws(()=>f.call('inspect_crafting_item',missingTitle),/selected bench-rarity example/);
 });
 
+test('queues a bounded saved crafting item search', t => {
+  const f=fixture(t),args={baseRevision:f.state.revision,query:'maximum life',offset:2,limit:5};
+  const response=f.call('search_crafting_inventory',args);assert.match(response.instructions,/does not change the build/);const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,'craftInventorySearch');assert.equal(request.query,args.query);assert.equal(request.offset,2);assert.equal(request.limit,5);
+  fs.rmSync(path.join(f.dir,'AI-build-request.json'));assert.throws(()=>f.call('search_crafting_inventory',{...args,query:'   '}),/search query/);assert.throws(()=>f.call('search_crafting_inventory',{...args,limit:101}),/arguments/);
+});
+
 test('queues paged Bestiary modifier inspection and validates the offset', t => {
   const f=fixture(t), action={method:'beast_prefix_suffix',beastLevel:86};
   const args={baseRevision:f.state.revision,itemText:'Rarity: NORMAL\nIron Hat\nItem Level: 20',action,query:'resistance',limit:3,beastOffset:3};

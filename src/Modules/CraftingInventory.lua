@@ -27,12 +27,40 @@ function M.project(entry)
 	entry=M.validate({entry})[1]
 	return {id="craft-"..require("sha1")(tostring({})..os.time()):sub(1,20),title=entry.title,slot=entry.slot,startingItem=entry.baseItem,goals={},steps={},notes=entry.originNote,originNote=entry.originNote,run=M.run(entry.state)}
 end
+local function metadataMatches(project,entry,query)
+	return (entry.title.." "..entry.slot.." "..project.title.." "..entry.baseItem.." "..(entry.originNote or "")):lower():find(query,1,true)~=nil
+end
 function M.entries(projects,query)
 	local result={};query=(query or ""):lower()
 	for _,project in ipairs(projects) do for _,entry in ipairs(project.inventory or {}) do
-		if (entry.title.." "..entry.slot.." "..project.title.." "..entry.baseItem.." "..(entry.originNote or "")):lower():find(query,1,true) then result[#result+1]={project=project,item=entry} end
+		if metadataMatches(project,entry,query) then result[#result+1]={project=project,item=entry} end
 	end end
 	table.sort(result,function(a,b) if a.item.at~=b.item.at then return a.item.at>b.item.at end;return a.project.id..a.item.id<b.project.id..b.item.id end)
 	return result
+end
+-- Search the same saved states as the desktop inventory. The checkpoint lets
+-- callers yield between items; a failed render makes the result incomplete.
+function M.search(projects,query,offset,limit,checkpoint)
+	assert(type(query)=="string" and #query<=160 and query:match("%S"),"Enter a search query")
+	offset=offset or 0;limit=limit or 20
+	assert(type(offset)=="number" and offset>=0 and offset<=1000000000 and offset==math.floor(offset),"Invalid search offset")
+	assert(type(limit)=="number" and limit>=1 and limit<=100 and limit==math.floor(limit),"Invalid search limit")
+	local sim=require("Modules.CraftingSimulator");local rows=M.entries(projects,"");local models={};local matches,total,failed={},0,0;query=query:lower()
+	local function model(raw)
+		for i,entry in ipairs(models) do if entry.raw==raw then table.remove(models,i);table.insert(models,1,entry);return entry.model end end
+		local value=sim.model(raw);table.insert(models,1,{raw=raw,model=value});if #models>4 then table.remove(models) end;return value
+	end
+	for index,row in ipairs(rows) do
+		if checkpoint then checkpoint({trial=index-1,total=#rows}) end
+		local entry=row.item;local found=metadataMatches(row.project,entry,query)
+		if not found then
+			local ok,item=pcall(function() return sim.toItem(model(entry.baseItem),entry.state) end)
+			if ok and item.raw then found=item.raw:lower():find(query,1,true)~=nil else failed=failed+1 end
+		end
+		if found then
+			total=total+1;if total>offset and #matches<limit then matches[#matches+1]={projectId=row.project.id,projectTitle=row.project.title,itemId=entry.id,title=entry.title,slot=entry.slot,originNote=entry.originNote} end
+		end
+	end
+	return {matches=matches,total=total,offset=offset,nextOffset=offset+limit<total and offset+limit or nil,unsearched=failed,incomplete=failed>0}
 end
 return M

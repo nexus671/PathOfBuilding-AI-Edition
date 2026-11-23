@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1159" />
+	<Version number="2.68.1-ai.preview1160" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="7bd496ace7afe1b8b938b3e3a908fc6883cf7109" />
+	<File name="changelog.txt" part="default" sha1="45f30b3969ca2ae9589f05f8084a85a53a8ef3aa" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="2451ee0455dc1d944ddfa2ad9c674fa8f919ebb7" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="58799babc60b9bcb2748892f5c9b67a5911ea93b" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -2185,7 +2185,7 @@
 	<File name="Modules/CraftingGwennenReference.lua" part="program" sha1="22d50174ea0b45453f1bb0353341d42a0d03976c" />
 	<File name="Modules/CraftingImport.lua" part="program" sha1="f9dbff6223b65de9d0f9548e7c42be9c3fcda653" />
 	<File name="Modules/CraftingInspection.lua" part="program" sha1="0e5018942d2829b0e874f3caa69323f8b38c3376" />
-	<File name="Modules/CraftingInventory.lua" part="program" sha1="f270b54527a89b56d1668acca8d0cf0857c5ce16" />
+	<File name="Modules/CraftingInventory.lua" part="program" sha1="c4eb1c2d35078804403750bd654a20bfcd5630fb" />
 	<File name="Modules/CraftingItemStats.lua" part="program" sha1="a807f7e8c8cc19533587e5b289739e45a91a5295" />
 	<File name="Modules/CraftingJewelCorruption.lua" part="program" sha1="9a7a39c82356e301945bf76b885de810ee887bef" />
 	<File name="Modules/CraftingKatakohi.lua" part="program" sha1="a0d1fd11a6196cf674bf1b582ec0ee197c87aa2c" />
@@ -2215,7 +2215,7 @@
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />
 	<File name="Modules/DataLegionLookUpTableHelper.lua" part="program" sha1="ece92c4b6062f627f98ba2454531366b4628abfc" />
-	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="0bb520a83712685f599544907228552621c87b3e" />
+	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="7b05038b2f852795a85a439934ed5cd702c66b11" />
 	<File name="Modules/EncounterReport.lua" part="program" sha1="710dc78939bfbc8282f295cf626bcde9c9b7d8e5" />
 	<File name="Modules/HeadlessCompression.lua" part="program" sha1="16a42bf407eb777602f9b03b5c8466188a04ee58" />
 	<File name="Modules/HeadlessUI.lua" part="program" sha1="c6c4a15e7ea52ebd7ea65e3bfe5f53f9c9cd1637" />
