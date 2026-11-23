@@ -17,13 +17,17 @@ end
 function M.request(api,method,id,payload,callback)
 	assert(method=="GET" or method=="POST","Unsupported filter action")
 	assert(not id or type(id)=="string" and #id<=100 and id:match("^[%w_-]+$"),"Invalid account filter ID")
-	assert(not M.busy,"Wait for the active account request")
+	assert(not M.busy and not M.pending,"Wait for the active account request")
 	assert(os.time()>=M.nextRequest,"Wait before requesting account filters again")
 	assert(api and api.authToken,"Log in with item-filter access first")
 	if method=="POST" then
 		assert(type(payload)=="table" and type(payload.filter)=="string" and #payload.filter<=2*1024*1024,"Invalid filter payload")
-		assert(payload.realm=="pc" or payload.realm=="xbox" or payload.realm=="sony","Choose a PoE 1 realm")
-		assert(type(payload.filter_name)=="string" and #payload.filter_name<=120 and payload.filter_name:match("%S"),"Enter an account filter name")
+		if not id or payload.realm ~= nil then
+			assert(payload.realm=="pc" or payload.realm=="xbox" or payload.realm=="sony","Choose a PoE 1 realm")
+		end
+		if not id or payload.filter_name ~= nil then
+			assert(type(payload.filter_name)=="string" and #payload.filter_name<=120 and payload.filter_name:match("%S"),"Enter an account filter name")
+		end
 	end
 	M.busy=true
 	local function finish(value,err,wait) M.busy=false;M.nextRequest=os.time()+(wait or 1);callback(value,err) end
@@ -43,7 +47,11 @@ function M.request(api,method,id,payload,callback)
 			local decoded=response and type(response.body)=="string" and json.decode(response.body)
 			if type(decoded)~="table" then finish(nil,"Invalid account response; check your account before retrying a write.");return end
 			if status==202 or decoded.error then finish(decoded,"The server accepted the request but processing/validation is incomplete. Check the account before retrying.");return end
-			if method=="POST" and (not decoded.filter or not decoded.filter.validation or decoded.filter.validation.valid~=true) then finish(decoded,"The server did not confirm a valid filter. Check its validation result on your account.");return end
+			local validation = type(decoded.filter) == "table" and decoded.filter.validation
+			if method=="POST" and (type(validation) ~= "table" or validation.valid ~= true) then
+				finish(decoded,"The server did not confirm a valid filter. Check its validation result on your account.")
+				return
+			end
 			finish(decoded)
 		end,options)
 	end)

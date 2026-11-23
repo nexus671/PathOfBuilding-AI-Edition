@@ -2232,7 +2232,7 @@
 	<File name="Modules/ItemSlotHelper.lua" part="program" sha1="4b7d441f9ade5d57c413aa1f8f8067b654cfb927" />
 	<File name="Modules/ItemTools.lua" part="program" sha1="62fa758105b259225f7227aba60857f0e45c5fa8" />
 	<File name="Modules/JourneyUpgrades.lua" part="program" sha1="bb121d8115f693518ae9431fefff305fdb46878f" />
-	<File name="Modules/LootFilterAccount.lua" part="program" sha1="6bafce077c56701ed1d479703ec4aab45c1200c9" />
+	<File name="Modules/LootFilterAccount.lua" part="program" sha1="c78eb1f7738944007b3b98e8e9385bd94432cabd" />
 	<File name="Modules/LootFilterAppearanceSettings.lua" part="program" sha1="feecc806a9fd76a8977a3365cb565f32f33ee9fe" />
 	<File name="Modules/LootFilterAudio.lua" part="program" sha1="be558b4b26daea559d591f63c8c1839746d92750" />
 	<File name="Modules/LootFilterCampaign.lua" part="program" sha1="ed1bd47f6a995a01b4a2da0bef529ec04461136f" />
@@ -3203,5 +3203,5 @@
 	<File name="Modules/LootFilterBaseRefresh.lua" part="program" sha1="f39e6c2af3c3b871f0ea82be8f4631be180e438d" />
 	<File name="Modules/LootFilterMapMarket.lua" part="program" sha1="ab911fe828bcb929c47d02e856169f51784ce260" />
 	<File name="Modules/LootFilterProtectedDrops.lua" part="program" sha1="7ada28c5f6a4cfb3ed8e4b9fefd029992ebd2802" />
-	<File name="Classes/LootFilterSyncAccountControl.lua" part="program" sha1="172540b8552450cade08b39b97a33dba882c2706" />
+	<File name="Classes/LootFilterSyncAccountControl.lua" part="program" sha1="d1f4a06a6783577e46b14f24b34c74dde22a574a" />
 </PoBVersion>

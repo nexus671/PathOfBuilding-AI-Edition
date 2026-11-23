@@ -59,7 +59,7 @@ local function reviewedPublication(profileId, plan)
 				if main.popups[1] ~= owner then return end
 				if err then fail(err); return end
 				local remote = response and response.filter
-				if not remote or remote.id ~= plan.id or remote.realm ~= plan.realm or remote.filter_name ~= plan.name
+				if type(remote) ~= "table" or remote.id ~= plan.id or remote.realm ~= plan.realm or remote.filter_name ~= plan.name
 					or not sameText(remote.filter,plan.remote) then
 					fail("The account filter changed after your review. Open a new publication review.")
 					return
@@ -68,12 +68,13 @@ local function reviewedPublication(profileId, plan)
 					if main.popups[1] ~= owner then return end
 					local sent, sendError = pcall(function()
 						stillVerified(profileId,plan)
-						request("POST",plan.id,{filter=plan.raw,realm=plan.realm,filter_name=plan.name},function(value,writeError)
+						request("POST",plan.id,{filter=plan.raw},function(value,writeError)
 							submitting = false
 							if main.popups[1] ~= owner then return end
 							if writeError then fail(writeError); return end
 							local accepted = value and value.filter
-							if not accepted or accepted.id ~= plan.id or accepted.realm ~= plan.realm or not sameText(accepted.filter,plan.raw) then
+							if not accepted or accepted.id ~= plan.id or accepted.realm ~= plan.realm or accepted.filter_name ~= plan.name
+								or not sameText(accepted.filter,plan.raw) then
 								fail("The server response did not confirm the exact reviewed filter. Check the account before retrying.")
 								return
 							end

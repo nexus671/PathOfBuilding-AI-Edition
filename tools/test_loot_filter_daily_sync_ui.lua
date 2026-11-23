@@ -206,10 +206,10 @@ account.request = function(_,method,id,payload,callback)
 		assert(id=="verified-target")
 		callback({filter={id=id,realm="pc",filter_name="Account mapping",filter=remoteBody}})
 	else
-		assert(method=="POST" and id=="verified-target" and payload.filter==confirmedRaw and payload.realm=="pc")
-		assert(payload.public==nil)
+		assert(method=="POST" and id=="verified-target" and payload.filter==confirmedRaw)
+		for key in pairs(payload) do assert(key=="filter") end
 		writes = writes+1
-		callback({filter={id=id,realm="pc",filter=payload.filter,validation={valid=true}}})
+		callback({filter={id=id,realm="pc",filter_name="Account mapping",filter=payload.filter,validation={valid=true}}})
 	end
 end
 local function openAccount()
