@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1199" />
+	<Version number="2.68.1-ai.preview1200" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="8f6b49fd6d48821dcdd1c484f7c9843ed9f30351" />
+	<File name="changelog.txt" part="default" sha1="36a6e9959780348613481832122ebfd3a33d6776" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1746,7 +1746,7 @@
 	<File name="Classes/CraftingRecoveryControl.lua" part="program" sha1="6bdf797c867f14c6a1b5338bfc6f6dcea18cd1f1" />
 	<File name="Classes/CraftingSimulatorControl.lua" part="program" sha1="0bcbc5183f4a6bbd6e6294e277a19f68d7b08148" />
 	<File name="Classes/CraftingSocketControl.lua" part="program" sha1="b3c3ded23f79a59c16a034bd2642696c05048066" />
-	<File name="Classes/CraftingTargetControl.lua" part="program" sha1="5924ac8c57f0e0187060666913391275899de54c" />
+	<File name="Classes/CraftingTargetControl.lua" part="program" sha1="ad245de76c115d6ecd8349cbf9e48116b64fd20d" />
 	<File name="Classes/CraftingStepCostsControl.lua" part="program" sha1="6659d42da2a3c970da94b16bf90e62d926305e7b" />
 	<File name="Classes/CraftingTargetGroupsControl.lua" part="program" sha1="c05fa3bc165d1d1b74c7d99aeda016a427d007ba" />
 	<File name="Classes/DraggerControl.lua" part="program" sha1="99b86b751df018a33714b000c9eed240a7101b8e" />

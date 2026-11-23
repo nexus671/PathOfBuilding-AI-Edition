@@ -86,26 +86,52 @@ function Panel.Open(targets,requirements,requiredGroups,onKeep,groupIndex,baseNa
 			require("Classes.PlanningBrowserControl").Open("Choose a unique jewel",entries,{action="Use name",choose=function(entry) controls.uniqueName:SetText(entry.id,true) end})
 		end)
 		button("uniqueRoll",408,545,180,"Unique roll target...",function()
-			assert(not conditions.uniqueModifiers,"Multiple saved roll targets must be edited through the recipe")
-			local name=controls.uniqueName.buf;local jewel=require("Modules.CraftingJewelCorruption");local item=jewel.item(baseName,name,83,104729);local options=jewel.rollOptions(item)
-			assert(#options>0,"This jewel has no supported single-integer roll targets")
+			local name=uniqueRollName or controls.uniqueName.buf;local jewel=require("Modules.CraftingJewelCorruption");local okItem,item=pcall(jewel.item,baseName,name,83,104729);local options=okItem and jewel.rollOptions(item) or {}
+			if #options==0 and not conditions.uniqueModifier and not conditions.uniqueModifiers then error("This jewel has no supported single-integer roll targets") end
 			local ui=require("Modules.PlanningUI");local popup={};local choices={}
-			for index,option in ipairs(options) do choices[#choices+1]={label=option.line.." ("..option.min.."-"..option.max..")",val=index} end
+			for index,option in ipairs(options) do choices[#choices+1]={label=ui.fit(option.line.." ("..option.min.."-"..option.max..")",410,14),val=index} end
+			if #choices==0 then choices[1]={label="No supported roll targets",val=0} end
 			ui.label(popup,"help",16,20,"Choose a roll on "..name..". Odds are experimental.",14)
 			popup.stat=new("DropDownControl"):DropDownControl(ui.anchor,{16,48,448,24},choices)
+			popup.stat.tooltipText=function() local option=options[popup.stat:GetSelValueByKey("val")];return option and (option.line.." | "..option.min.."-"..option.max) or "No supported roll targets are available." end
+			local staged=copyTable(conditions.uniqueModifiers or {});if conditions.uniqueModifier then staged[#staged+1]=copyTable(conditions.uniqueModifier) end
 			local previous=conditions.uniqueModifier;if previous and uniqueRollName==name then for index,option in ipairs(options) do if option.line==previous.line then popup.stat:SelByValue(index,"val") end end end
 			popup.direction=new("DropDownControl"):DropDownControl(ui.anchor,{16,90,180,24},{"At least","At most"});popup.direction:SelByValue(previous and previous.maxValue~=nil and "At most" or "At least")
 			popup.value=new("EditControl"):EditControl(ui.anchor,{208,90,120,24},previous and tostring(previous.minValue or previous.maxValue) or "",nil,"%D",6)
-			popup.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,150,160,28},"Keep roll target",function()
-				local ok,result=pcall(function() local option=options[popup.stat:GetSelValueByKey("val")];assert(option,"Choose a modifier");local value=assert(tonumber(popup.value.buf),"Enter a roll value");local goal={line=option.line,component=1};goal[popup.direction:GetSelValue()=="At most" and "maxValue" or "minValue"]=value;jewel.matchesRolls(item,{uniqueModifier=goal});return goal end)
-				if not ok then ui.errorPopup("Unique jewel roll",result);return end
-				conditions.uniqueModifier=result;uniqueRollName=name;updateUniqueRollLabel();main:ClosePopup()
+			local function combined(includeCurrent)
+				local goals=copyTable(staged)
+				if includeCurrent and popup.value.buf~="" then
+					local option=options[popup.stat:GetSelValueByKey("val")];assert(option,"Choose a modifier");local value=assert(tonumber(popup.value.buf),"Enter a roll value");local goal={line=option.line,component=1};goal[popup.direction:GetSelValue()=="At most" and "maxValue" or "minValue"]=value
+					local replaced=false;for index,existing in ipairs(goals) do if existing.line==goal.line and (existing.component or 1)==1 and (existing.maxValue~=nil)==(goal.maxValue~=nil) then goals[index]=goal;replaced=true;break end end
+					if not replaced then goals[#goals+1]=goal end
+				end
+				assert(#goals<=12,"Use at most twelve roll conditions")
+				if #goals>0 then assert(okItem,"The saved unique jewel is unavailable; remove or clear its roll conditions");local requirements={uniqueName=name,uniqueModifiers=goals};sim.validateRecipe({steps={{method="vaal"}},targets={},requirements=requirements});jewel.matchesRolls(item,requirements) end
+				return goals
+			end
+			popup.add=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,132,160,28},"Add condition",function()
+				local ok,result=pcall(function() assert(popup.value.buf~="","Enter a roll value");return combined(true) end);if not ok then ui.errorPopup("Unique jewel roll",result);return end
+				staged=result;popup.value:SetText("",true)
 			end))
-			popup.clear=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{184,150,128,28},"Clear target",function() conditions.uniqueModifier=nil;uniqueRollName=nil;updateUniqueRollLabel();main:ClosePopup() end))
-			popup.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{344,150,120,28},"Cancel",function() main:ClosePopup() end))
-			ui.style(popup);for _,control in pairs(popup) do control.layoutAudit="unique-jewel-roll-target" end;main:OpenPopup(480,196,"Unique jewel roll",popup,nil,nil,"close")
+			popup.add.enabled=function() return #options>0 end
+			popup.review=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{184,132,128,28},"Review added",function()
+				local entries={};for index,goal in ipairs(staged) do local text=(goal.maxValue~=nil and "At most "..goal.maxValue or "At least "..goal.minValue).." | "..goal.line;entries[#entries+1]={id=index,label=text,details={text,"All conditions must be met on the same jewel.","Remove this condition or close to keep it."}} end
+				require("Classes.PlanningBrowserControl").Open("Unique jewel conditions",entries,{action="Remove condition",choose=function(entry)
+					local removed=table.remove(staged,entry.id);local selected=options[popup.stat:GetSelValueByKey("val")];local upper=popup.direction:GetSelValue()=="At most"
+					if selected and removed.line==selected.line and (removed.component or 1)==1 and (removed.maxValue~=nil)==upper and tonumber(popup.value.buf)==(removed.minValue or removed.maxValue) then popup.value:SetText("",true) end
+				end})
+			end));popup.review.enabled=function() return #staged>0 end
+			ui.label(popup,"count",16,180,"",14);popup.count.label=function() return "^7"..#staged.." added condition"..(#staged==1 and "" or "s").."; a filled value is also included." end
+			popup.keep=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{16,220,160,28},"Keep roll target",function()
+				local ok,result=pcall(function() local goals=combined(true);assert(#goals>0,"Add a condition or enter a roll value");return goals end)
+				if not ok then ui.errorPopup("Unique jewel roll",result);return end
+				conditions.uniqueModifier=#result==1 and result[1] or nil;conditions.uniqueModifiers=#result>1 and result or nil;uniqueRollName=name;updateUniqueRollLabel();main:ClosePopup()
+			end))
+			popup.clear=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{184,220,128,28},"Clear targets",function() conditions.uniqueModifier=nil;conditions.uniqueModifiers=nil;uniqueRollName=nil;updateUniqueRollLabel();main:ClosePopup() end))
+			popup.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{344,220,120,28},"Cancel",function() main:ClosePopup() end))
+			ui.style(popup);for _,control in pairs(popup) do control.layoutAudit="unique-jewel-roll-target" end;main:OpenPopup(480,266,"Unique jewel roll",popup,nil,nil,"close")
 		end)
-		controls.uniqueRoll.tooltipText=function() return conditions.uniqueModifier and ("Roll target: "..conditions.uniqueModifier.line.." | "..tostring(conditions.uniqueModifier.minValue or conditions.uniqueModifier.maxValue)) or "Choose a supported modifier and roll threshold for the named unique jewel." end
+		controls.uniqueRoll.tooltipText=function() return conditions.uniqueModifier and ("Roll target: "..conditions.uniqueModifier.line.." | "..tostring(conditions.uniqueModifier.minValue or conditions.uniqueModifier.maxValue)) or conditions.uniqueModifiers and (#conditions.uniqueModifiers.." roll conditions; review or remove them here.") or "Choose supported modifier roll conditions for the named unique jewel." end
 	end
 	button("keep",16,568,184,"Keep conditions",function()
 		if group then

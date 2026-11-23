@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1200][2026/11/23]
+
+* Add multi-condition editing for unique jewel roll targets.
+
 VERSION[2.68.1-ai.preview1199][2026/11/23]
 
 * Author managed currency and card rules from the PoB filter workspace.
