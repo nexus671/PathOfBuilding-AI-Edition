@@ -10,7 +10,7 @@ For divination cards, use an exact `Class == "Divination Cards"` and exact `Base
 
 ## Daily sync on Windows
 
-Open **Loot Filter → Profile tools → Daily price sync**. Enter the live .filter file, the fixed baseline .filter file, and the league ID. Select **Enable / update**. PoB keeps a checksum-verified baseline copy. Use **Sync now** to run the first check immediately, or let PoB check at or after 9:00 a.m. local time while the app is open.
+Open **Loot Filter → Profile tools → Daily price sync**. Enter the live .filter file, the fixed baseline .filter file, and the league ID. **Use PoE selection** fills in the local filter currently selected in the Path of Exile 1 client. Select **Enable / update**. PoB keeps a checksum-verified baseline copy. Use **Sync now** to run the first check immediately, or let PoB check at or after 9:00 a.m. local time while the app is open.
 
 The current daily flow supports the protected tiered-test filter profile. It checks all requested feeds for an exchange snapshot served within the past hour, parses the generated filter, and checks protected drops before publishing. It backs up a changed live file, keeps a recovery record, and pauses writes if the target was edited outside PoB. After reviewing an edit, use Enable / update to adopt it. Use Disable to stop the daily refresh. In Path of Exile, reload the filter if the game is already open.
 

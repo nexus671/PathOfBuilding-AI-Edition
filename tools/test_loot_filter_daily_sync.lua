@@ -278,6 +278,20 @@ localTime.day = localTime.day + 1
 assert(clockSync.nextEligible(clockSync.configuration(),scheduled)==os.date("%Y-%m-%d %H:%M",os.time(localTime)))
 print("Daily scheduler respects minute precision and continues to read older hour-only settings")
 
+local gameConfig = dir.."/production_Config.ini"
+write(gameConfig,"[GENERAL]\r\nitem_filter=account-reference\r\n[UI]\r\nitem_filter=target.filter\r\n")
+assert(clockSync.selectedLocalFilter(dir)==target)
+write(gameConfig,"[UI]\nitem_filter=someone@example\n")
+assert(not pcall(clockSync.selectedLocalFilter,dir))
+write(gameConfig,"[UI]\nitem_filter=../target.filter\n")
+assert(not pcall(clockSync.selectedLocalFilter,dir))
+write(gameConfig,"[UI]\nitem_filter=target.filter\nitem_filter=other.filter\n")
+assert(not pcall(clockSync.selectedLocalFilter,dir))
+write(gameConfig,"[UI]\nitem_filter=missing.filter\n")
+assert(not pcall(clockSync.selectedLocalFilter,dir))
+print("PoE selection handles local filters and rejects stale or ambiguous selections")
+
+
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.
 local controls, manualReview, exported

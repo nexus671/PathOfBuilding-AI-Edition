@@ -31,7 +31,15 @@ function M.Open()
 		main:ClosePopup()
 		M.Open()
 	end
-	field("target", 24, "Live Path of Exile .filter file", config.target or "")
+	field("target", 24, "Live Path of Exile .filter file", config.target or "", 16, width-166)
+	c.detectTarget = new("ButtonControl"):ButtonControl(ui.anchor,{width-142,44,126,26},"Use PoE selection",function()
+		local documents = GetUserPath()
+		if not documents then main:OpenMessagePopup("Find PoE filter", "The Windows Documents folder is unavailable."); return end
+		local passed, result = pcall(sync.selectedLocalFilter, documents.."/My Games/Path of Exile")
+		if not passed then main:OpenMessagePopup("Find PoE filter", ui.errorText(result)); return end
+		c.target:SetText(result)
+	end)
+	c.detectTarget.enabled = function() return not sync.busy end
 	field("baseline", 82, "Fixed baseline .filter file", config.baseline or "")
 	field("league", 140, "poe.ninja league ID", config.league or "Covens", 16, width-166)
 	local loadingLeagues = false

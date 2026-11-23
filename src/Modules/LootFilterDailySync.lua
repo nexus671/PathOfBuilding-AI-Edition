@@ -140,6 +140,29 @@ local function filterPath(path)
 	return path
 end
 
+function M.selectedLocalFilter(gameDirectory)
+	assert(type(gameDirectory) == "string" and gameDirectory:match("^%a:[/\\]"),
+		"Path of Exile's local configuration folder is unavailable")
+	local config = assert(read(gameDirectory .. "/production_Config.ini"), "Path of Exile's settings file was not found")
+	local section, selection
+	for line in config:gmatch("[^\r\n]+") do
+		local name = line:match("^%s*%[([^%]]+)%]%s*$")
+		if name then section = name end
+		if section == "UI" then
+			local value = line:match("^%s*item_filter%s*=%s*(.-)%s*$")
+			if value then
+				assert(selection == nil, "Path of Exile's settings have more than one filter selection")
+				selection = value
+			end
+		end
+	end
+	assert(selection and selection:lower():match("%.filter$") and not selection:find('[%c/\\:*?"<>|]'),
+		"Select a local .filter file in Path of Exile")
+	local path = filterPath(gameDirectory .. "/" .. selection)
+	assert(read(path), "The local filter selected in Path of Exile was not found")
+	return path
+end
+
 local function expectedPath(hash)
 	assert(type(hash) == "string" and #hash == 40 and hash:match("^[a-f0-9]+$"), "Invalid expected filter checksum")
 	return main.userPath .. "LootFilterExpected-" .. hash .. ".filter"
