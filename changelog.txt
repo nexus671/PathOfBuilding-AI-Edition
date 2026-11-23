@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1232][2026/11/23]
+
+* Compare unidentified unique price coverage against PoB's item catalogue and reject conflicting price IDs.
+
 VERSION[2.68.1-ai.preview1231][2026/11/23]
 
 * Choose a current PC trade league for new daily sync profiles and keep setup open after selection.

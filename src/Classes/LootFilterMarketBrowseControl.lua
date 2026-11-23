@@ -72,7 +72,8 @@ function M.Open(build)
 			request(route.."?league="..urlEncode(league).."&type="..category.id,function(response)
 				local ok,body,age=pcall(require("Modules.LootFilterDailySync").fresh,response,os.time())
 				if not ok then finish("Exchange response is unavailable or stale.");return end
-				local valid,rows=pcall(browse.rows,body,category,query,comparable)
+				local catalogue = main.uniqueDB and not main.uniqueDB.loading and main.uniqueDB.list
+				local valid,rows=pcall(browse.rows,body,category,query,comparable,catalogue)
 				if not valid then finish(ui.errorText(rows));return end
 				local entries={}
 				for i,row in ipairs(rows) do
@@ -96,13 +97,19 @@ function M.Open(build)
 				end
 				if not row.conflicting and row.corrupted~=nil then details[#details+1]=row.corrupted and "Corrupted" or "Uncorrupted" end
 					local evidence = row.baseEvidence
-					if evidence and evidence.variants>1 then
-						details[#details+1]=string.format("Shared base: %d unique names across %d listed variants",evidence.names,evidence.variants)
+					if evidence then
+						details[#details+1]=string.format("Market coverage: %d unique names across %d listed variants",evidence.names,evidence.variants)
 						details[#details+1]=string.format("Listing-backed estimates: %d of %d variants",evidence.priced,evidence.variants)
 						if evidence.priced>0 then
 							details[#details+1]=string.format("Supported price range: %.4g to %.4g chaos",evidence.minimum,evidence.maximum)
 						end
-						details[#details+1]="An unidentified drop on this base can belong to different variants."
+						if #evidence.unquoted>0 then
+							details[#details+1]=string.format("PoB catalogue entries without a supported quote (%d)",#evidence.unquoted)
+							for index=1,math.min(3,#evidence.unquoted) do
+								details[#details+1]="Unpriced: "..evidence.unquoted[index]
+							end
+						end
+						details[#details+1]="An unidentified drop can be a different unique or variant."
 					end
 				if not row.conflicting then
 					show("Links: ",row.links);show("Gem level: ",row.gemLevel)
