@@ -605,6 +605,11 @@ async function main(){
   const corruptJewelRaw='Rarity: NORMAL\nCobalt Jewel\nItem Level: 83';
   const corruptJewelInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:corruptJewelRaw,query:'',limit:5},'inspected');
   assert.ok(corruptJewelInspection.crafting.nativeEngine.uniqueCorruption.names.includes('Powerlessness'));
+  const jewelRollInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:corruptJewelRaw,query:'Brute Force Solution',limit:5},'inspected');
+  const jewelRoll=jewelRollInspection.crafting.nativeEngine.uniqueCorruption.rollTargets.find(entry=>entry.line==='+(16-24) to Intelligence');assert.ok(jewelRoll);assert.equal(jewelRoll.max,24);
+  const jewelRollGoal={uniqueName:'Brute Force Solution',uniqueModifier:{line:jewelRoll.line,minValue:20}};
+  const jewelRollPlan=await queued('simulate_crafting',{baseRevision:context.revision,itemText:corruptJewelRaw,recipe:{steps:[{method:'vaal'}],targets:[],rarity:'UNIQUE',requirements:jewelRollGoal},options:{trials:500,maxActions:1,seed:321,retainSuccesses:10}},'crafted');
+  assert.ok(jewelRollPlan.nativeCrafting.successes>0);assert.ok(jewelRollPlan.nativeCrafting.retainedSuccesses.every(entry=>entry.state.uniqueTitle==='Brute Force Solution'));
   const corruptJewel=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:corruptJewelRaw,action:{method:'vaal'},seed:3},'crafted');
   assert.equal(corruptJewel.nativeCrafting.state.rarity,'UNIQUE');assert.ok(corruptJewel.nativeCrafting.state.uniqueTitle);assert.match(corruptJewel.nativeCrafting.itemText,/Corrupted/);
   const corruptJewelRecipe={steps:[{method:'vaal'}],targets:[],rarity:'UNIQUE',requirements:{uniqueName:corruptJewel.nativeCrafting.state.uniqueTitle}};

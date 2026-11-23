@@ -1,0 +1,7 @@
+local output,width=arg[1],tonumber(arg[2]) or 960;arg={};dofile('HeadlessWrapper.lua');main.disableDevAutoSave=true;newBuild()
+local ui=require('Modules.HeadlessUI').install({width=width,height=width==960 and 640 or 768});ui:bind(build)
+local saved;local editor=require('Classes.CraftingTargetControl').Open({},nil,nil,function(_,value) saved=value end,nil,'Cobalt Jewel')
+ui:text('uniqueName','Brute Force Solution');if output then ui:frame():write(output..'/'..width..'-jewel-properties.json') end;ui:click('uniqueRoll');assert(main.popups[1].title=='Unique jewel roll');if output then ui:frame():write(output..'/'..width..'-jewel-roll.json') end;ui:text('value','20');ui:click('keep');ui:click('keep')
+assert(saved and saved.uniqueName=='Brute Force Solution' and saved.uniqueModifier.line=='+(16-24) to Intelligence' and saved.uniqueModifier.minValue==20)
+local reopened=require('Classes.CraftingTargetControl').Open({},saved,nil,function(_,value) saved=value end,nil,'Cobalt Jewel');ui:click('uniqueRoll');assert(main.popups[1].controls.value.buf=='20');ui:click('clear');ui:click('keep');assert(not saved.uniqueModifier and saved.uniqueName=='Brute Force Solution')
+print('JEWEL_ROLL_UI_OK')

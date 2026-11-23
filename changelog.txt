@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1198][2026/11/23]
+
+* Plan supported roll targets on corrupted unique jewel outcomes.
+
 VERSION[2.68.1-ai.preview1197][2026/11/23]
 
 * Optionally run daily loot filter sync through Windows Task Scheduler while PoB is closed.
