@@ -507,14 +507,16 @@ function M.Open(build,source,layout,controller)
 		button(c,"sampleEdit",detailX,h-72,detailW,"Test sample properties",function() controller.EditSample(item,function(next) rememberSample(next);compile();updateDetail() end) end)
 		refreshList()
 	elseif page=="Simulate" then
-		local left=208;local groundX=240;local groundW=w-256
-		ui.label(c,"sceneTitle",16,124,"Loot simulator",20)
+		local left=208;local groundX=240;local groundW=w-256;local compactHeight=h<480
+		if compactHeight then
+			button(c,"itemDetails",16,120,120,"Item details",function() main:OpenMessagePopup("Item details",table.concat(sampleDetails(item,result,true),"\n")) end)
+		else ui.label(c,"sceneTitle",16,124,"Loot simulator",20) end
 		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Fated gear","Foulborn gear","Vendor recipes","Covens & Threads","Maps & threads","Map tiers","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition","Blight & oils","Breach","Beyond","Incursion","Legion","Delirium","Harvest","Abyss","Ultimatum","Ritual","Sanctum","Pinnacle bosses"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
 		local function selectScene(value,savedId)
 			if savedId then sampleSetId=savedId end
 			sceneKind=value;scenePage=1;if value=="Saved examples" then local chosen=savedSets[1];for _,entry in ipairs(savedSets) do if entry.id==sampleSetId then chosen=entry end end;item=copyTable(chosen.samples[1]) elseif value~="Build targets" then item=library.scene(profile,build,value,seed,settings.areaLevel,settings.itemLevel)[1] or item end;reopen()
 		end
-		c.sceneKind=new("DropDownControl"):DropDownControl(ui.anchor,{16,162,left,26},kinds,function(_,value) selectScene(value) end);c.sceneKind:SelByValue(sceneKind)
+		c.sceneKind=new("DropDownControl"):DropDownControl(ui.anchor,{16,compactHeight and 152 or 162,left,26},kinds,function(_,value) selectScene(value) end);c.sceneKind:SelByValue(sceneKind)
 		button(c,"browseScenes",146,120,78,"Browse",function()
 			local descriptions={
 				["Mixed drops"]="Compare a variety of example items.",["Build targets"]="Test pickups generated from your build and plans.",
@@ -562,33 +564,33 @@ function M.Open(build,source,layout,controller)
 		end)
 		c.browseScenes.tooltipText="Search examples by name or item, and read what each scene contains."
 		c.sceneKind.tooltipText="Preset highlights use exact names from the pinned NeverSink currency snapshot. They are not live prices or drop rates."
-		button(c,"regenerate",16,202,100,"Regenerate",function() seed=seed+1;scenePage=1;if sceneKind=="Build targets" then transient.filterSceneTargets=nil end;reopen() end)
+		button(c,"regenerate",16,compactHeight and 184 or 202,100,"Regenerate",function() seed=seed+1;scenePage=1;if sceneKind=="Build targets" then transient.filterSceneTargets=nil end;reopen() end)
 		c.regenerate.enabled=sceneKind~="Saved examples" and sceneKind~="Tiered gear" and sceneKind~="Fated gear" and sceneKind~="Foulborn gear" and sceneKind~="Map tiers";c.regenerate.tooltipText="Reorder generated examples. Saved and tier-comparison examples keep their exact properties; examples are not drop-rate estimates."
-		button(c,"savedSamples",124,202,100,"Saved sets",function() collection("sampleSets") end)
+		button(c,"savedSamples",124,compactHeight and 184 or 202,100,"Saved sets",function() collection("sampleSets") end)
 		local savedSet
 		if sceneKind=="Saved examples" then
 			local choices={};for _,entry in ipairs(savedSets) do choices[#choices+1]={label=entry.title,val=entry.id};if entry.id==sampleSetId then savedSet=entry end end;savedSet=savedSet or savedSets[1];sampleSetId=savedSet.id
 			c.sceneSet=new("DropDownControl"):DropDownControl(ui.anchor,{groundX+16,130,groundW-32,26},choices,function(_,entry) sampleSetId=entry.val;scenePage=1;for _,value in ipairs(savedSets) do if value.id==sampleSetId then item=copyTable(value.samples[1]) end end;reopen() end);c.sceneSet:SelByValue(sampleSetId,"val")
 		end
-		button(c,"hidden",16,242,left,showHidden and "Hidden drops: visible" or "Hidden drops: off",function() showHidden=not showHidden;scenePage=1;reopen() end)
-		button(c,"sampleEdit",16,282,100,"Configure",function() controller.EditSample(item,function(next) rememberSample(next);scenePage=1;compile();reopen() end,result and result.missingProperties and result.missingProperties[1]) end)
-		button(c,"pasteDrop",124,282,100,"Paste item",function()
+		button(c,"hidden",16,compactHeight and 216 or 242,left,showHidden and "Hidden drops: visible" or "Hidden drops: off",function() showHidden=not showHidden;scenePage=1;reopen() end)
+		button(c,"sampleEdit",16,compactHeight and 248 or 282,100,"Configure",function() controller.EditSample(item,function(next) rememberSample(next);scenePage=1;compile();reopen() end,result and result.missingProperties and result.missingProperties[1]) end)
+		button(c,"pasteDrop",124,compactHeight and 248 or 282,100,"Paste item",function()
 			local ok,sample=pcall(function() return require("Modules.LootFilterClipboard").parse(Paste(),settings.areaLevel) end)
 			if not ok then ui.errorPopup("Paste item",sample);return end
 			rememberSample(sample);scenePage=1;compile();reopen()
 		end)
-		button(c,"sceneSettings",16,322,100,"Scene",function() require("Classes.LootFilterSceneControl").Open(settings,function(next) settings=next;reopen() end) end)
+		button(c,"sceneSettings",16,compactHeight and 280 or 322,100,"Scene",function() require("Classes.LootFilterSceneControl").Open(settings,function(next) settings=next;reopen() end) end)
 		if savedSet then c.sceneSettings.tooltipText="Background settings apply here. Saved examples retain their recorded item and area levels." end
-		button(c,"sampleHistory",124,322,100,"History",function() local entries={};for i=#samples,1,-1 do local sample=samples[i];entries[#entries+1]={id=i,label=visual.sampleName(sample),details={"Item level: "..tostring(sample.ItemLevel or "unknown"),"Area level: "..tostring(sample.AreaLevel or "unknown"),"Missing properties remain unknown."},sample=sample} end
+		button(c,"sampleHistory",124,compactHeight and 280 or 322,100,"History",function() local entries={};for i=#samples,1,-1 do local sample=samples[i];entries[#entries+1]={id=i,label=visual.sampleName(sample),details={"Item level: "..tostring(sample.ItemLevel or "unknown"),"Area level: "..tostring(sample.AreaLevel or "unknown"),"Missing properties remain unknown."},sample=sample} end
 			require("Classes.PlanningBrowserControl").Open("Tested item history",entries,{action="Test again",choose=function(entry) rememberSample(entry.sample);scenePage=1;compile();reopen() end})
 		end)
-		button(c,"sound",16,362,100,"Play sound",function()
+		button(c,"sound",16,compactHeight and 312 or 362,100,"Play sound",function()
 			local ok,message=require("Modules.LootFilterAudio").play(result and result.styles or {})
 			local lines=sampleDetails(item,result,true);lines[#lines+1]=message;c.selection.list=ui.rows(lines,left-28,14)
-			if not ok then ui.errorPopup("Sound preview",message) end
+			if not ok then ui.errorPopup("Sound preview",message) elseif compactHeight then main:OpenMessagePopup("Sound preview",message) end
 		end)
 		c.sound.tooltipText="Preview a reference tone or local WAV; the game's numbered alert may sound different."
-		button(c,"sceneStats",124,362,100,"Drop review",function()
+		button(c,"sceneStats",124,compactHeight and 312 or 362,100,"Drop review",function()
 			local counts={Show=0,Hide=0,Minimal=0,Unknown=0};local entries={}
 			for index,drop in ipairs(scene) do
 				local evaluated=evaluateDrop(drop)
@@ -603,7 +605,8 @@ function M.Open(build,source,layout,controller)
 				secondary=saved and {label="Compare saved",run=function() main:ClosePopup();require("Classes.LootFilterImpactControl").Open(saved,profile,scene,function(sample) rememberSample(sample);scenePage=1;compile();reopen() end) end} or nil})
 		end)
 		c.sceneStats.tooltipText="Review every example in this scene, including hidden and uncertain results. Counts are not drop-rate predictions."
-		c.selection=new("TextListControl"):TextListControl(ui.anchor,{16,410,left,h-474},nil,ui.rows(sampleDetails(item,result,true),left-28,14))
+		c.selection=new("TextListControl"):TextListControl(ui.anchor,{16,410,left,math.max(48,h-474)},nil,ui.rows(sampleDetails(item,result,true),left-28,14))
+		if compactHeight then c.selection.shown=false end
 		local extraTest=false
 		if savedSet then
 			scene=copyTable(savedSet.samples);local encode=require("Modules.PlanningData").encode;local present=false;local current=encode(item);for _,sample in ipairs(scene) do if encode(sample)==current then present=true;break end end
@@ -627,17 +630,18 @@ function M.Open(build,source,layout,controller)
 		button(c,"inspectMatch",w-216,h-96,184,invalidFilterReason and "Review filter errors" or "Inspect matched rules",function() if invalidFilterReason then openAudit(true) else inspectMatches() end end)
 		c.inspectMatch.enabled=function() return invalidFilterReason~=nil or parsed~=nil end
 	else
-		ui.label(c,"styleHeading",16,128,"A palette for your pickups",22)
-		ui.description(c,"styleHelp",16,164,w-32,44,{"Choose the default style for generated targets, or edit a specific pickup in Customize. Existing base-preset colours are preserved."},14)
-		local sw=math.floor((w-48)/2)
+		local compactHeight=h<480
+		ui.label(c,"styleHeading",16,compactHeight and 118 or 128,"A palette for your pickups",22)
+		ui.description(c,"styleHelp",16,compactHeight and 148 or 164,w-32,compactHeight and 24 or 44,{compactHeight and "Choose a default style for new pickups." or "Choose the default style for generated targets, or edit a specific pickup in Customize. Existing base-preset colours are preserved."},14)
+		local sw=math.floor((w-48)/2);local cardY=compactHeight and 174 or 226;local cardHeight=compactHeight and 112 or 180
 		for i,entry in ipairs({{"Gold / cyan","default",{255,235,175},{105,195,245},{20,30,45}},{"High contrast","contrast",{255,255,255},{255,220,0},{0,0,0}}}) do
-			local x=16+(i-1)*(sw+16);local key="style"..i;local control=button(c,key,x,226,sw,entry[1],function() profile.theme=entry[2];draft();reopen() end);control.height=180;custom[key]=true;control.planningFocusable=true
-			function control:Draw() local px,py=self:GetPos();visual.box(px,py,sw,180,profile.theme==entry[2] and "^xD1B579" or "^x384A5B");visual.box(px+1,py+1,sw-2,178,"^x14202C");visual.floor(px+12,py+12,sw-24,94);visual.chip(px+20,py+20,sw-40,76,{BaseType="Crafting base"},{action="Show",styles={SetTextColor=entry[3],SetBorderColor=entry[4],SetBackgroundColor=entry[5],SetFontSize={"42"}}});visual.text(px+18,py+124,20,entry[1],"^xEED39D",sw-36);visual.text(px+18,py+154,14,profile.theme==entry[2] and "Selected for new build targets" or "Use this palette","^xAFC2D3",sw-36) end
+			local x=16+(i-1)*(sw+16);local key="style"..i;local control=button(c,key,x,cardY,sw,entry[1],function() profile.theme=entry[2];draft();reopen() end);control.height=cardHeight;custom[key]=true;control.planningFocusable=true
+			function control:Draw() local px,py=self:GetPos();visual.box(px,py,sw,cardHeight,profile.theme==entry[2] and "^xD1B579" or "^x384A5B");visual.box(px+1,py+1,sw-2,cardHeight-2,"^x14202C");visual.floor(px+12,py+12,sw-24,compactHeight and 48 or 94);visual.chip(px+20,py+20,sw-40,compactHeight and 32 or 76,{BaseType="Crafting base"},{action="Show",styles={SetTextColor=entry[3],SetBorderColor=entry[4],SetBackgroundColor=entry[5],SetFontSize={"42"}}});visual.text(px+18,py+(compactHeight and 68 or 124),compactHeight and 16 or 20,entry[1],"^xEED39D",sw-36);visual.text(px+18,py+(compactHeight and 90 or 154),14,profile.theme==entry[2] and "Selected for new build targets" or "Use this palette","^xAFC2D3",sw-36) end
 		end
-		button(c,"applyStyle",16,438,260,"Restyle personal pickups",function() local template=parser.parse(filters.rule("style","Style",{},nil,profile.theme).text).rules[1].styles;for i,rule in ipairs(profile.rules) do profile.rules[i]=library.appearance(rule,template);profile.rules[i].origin=rule.origin end;draft();reopen() end)
-		button(c,"globalStyle",292,438,260,"Whole-filter appearance",function() require("Classes.LootFilterGlobalControl").Open(profile,function(next) profile.appearance=next.appearance;draft();reopen() end) end)
-		button(c,"savedPalettes",568,438,math.min(260,w-584),"Saved palettes",function() collection("palettes") end)
-		button(c,"categoryStyles",16,478,260,"Category appearance",function() require("Classes.LootFilterCategoryControl").Open(profile,replaceProfile) end);c.categoryStyles.enabled=not report.error;c.categoryStyles.tooltipText="Resolve compilation errors in Overview before opening category styles."
+		button(c,"applyStyle",16,compactHeight and 294 or 438,compactHeight and sw or 260,"Restyle personal pickups",function() local template=parser.parse(filters.rule("style","Style",{},nil,profile.theme).text).rules[1].styles;for i,rule in ipairs(profile.rules) do profile.rules[i]=library.appearance(rule,template);profile.rules[i].origin=rule.origin end;draft();reopen() end)
+		button(c,"globalStyle",compactHeight and 32+sw or 292,compactHeight and 294 or 438,compactHeight and sw or 260,"Whole-filter appearance",function() require("Classes.LootFilterGlobalControl").Open(profile,function(next) profile.appearance=next.appearance;draft();reopen() end) end)
+		button(c,"savedPalettes",compactHeight and 16 or 568,compactHeight and 326 or 438,compactHeight and sw or math.min(260,w-584),"Saved palettes",function() collection("palettes") end)
+		button(c,"categoryStyles",compactHeight and 32+sw or 16,compactHeight and 326 or 478,compactHeight and sw or 260,"Category appearance",function() require("Classes.LootFilterCategoryControl").Open(profile,replaceProfile) end);c.categoryStyles.enabled=not report.error;c.categoryStyles.tooltipText="Resolve compilation errors in Overview before opening category styles."
 	end
 	if profile then
 		button(c,"undo",w-332,h-38,68,"Undo",function() local id=profile.id;data=history:step(true);profile=filters.find(data,id) or data.profiles[1];dirty=true;reopen() end);c.undo.enabled=#history.undo>0
