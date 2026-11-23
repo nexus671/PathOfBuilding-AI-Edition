@@ -44,10 +44,12 @@ end
 function M.evaluate(previous, candidate, sampleSets)
 	local summary, removed, added = changesBetween(previous,candidate)
 	local result = {removedConditions=summary,removedCount=removed,addedCount=added,warnings={},blocks={},checked=0,examplesChecked=0}
+	local unresolved=0
 	for _, sample in ipairs(protected.samples()) do
 		local item = sample.item
 		local old = parser.simulate(previous,item)
-		if protected.explicitlyShown(old) then
+		if old.action=="Unknown" then unresolved=unresolved+1
+		elseif protected.explicitlyShown(old) then
 			result.checked = result.checked+1
 			local new = parser.simulate(candidate,item)
 			local marker = protected.marker(old)
@@ -57,6 +59,7 @@ function M.evaluate(previous, candidate, sampleSets)
 			end
 		end
 	end
+	if unresolved>0 then result.warnings[#result.warnings+1]=unresolved.." protected examples have an unknown previous result; review them in the game or supply exact item properties." end
 	for _, set in ipairs(sampleSets or {}) do
 		for _, item in ipairs(set.samples) do
 			if result.examplesChecked >= 100 then break end

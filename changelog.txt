@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1203][2026/11/23]
+
+* Correct protected-drop and price-review sample properties.
+
 VERSION[2.68.1-ai.preview1202][2026/11/23]
 
 * Run named loot sync profiles with separate leagues, filters, and schedules.

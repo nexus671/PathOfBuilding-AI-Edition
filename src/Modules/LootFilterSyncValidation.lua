@@ -25,13 +25,14 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 			for _, itemClass in ipairs(change.classes) do
 				for _, area in ipairs(areas) do
 					if remaining == 0 then break end
+					local base = require("Modules.LootFilterLibrary").baseProperties(change.name,"Normal")
 					local sample = {
 						BaseType=change.name, Class=itemClass, Rarity="Normal",
-						StackSize=math.min(change.cutoff,change.old)+1, AreaLevel=area, ItemLevel=area, DropLevel=1,
-						Width=1, Height=1, HasExplicitMod={}, HasEnchantment={}, HasInfluence={"None"},
+						StackSize=math.min(change.cutoff,change.old)+1, AreaLevel=area, ItemLevel=area, DropLevel=base.DropLevel,
+						Width=base.Width, Height=base.Height, HasExplicitMod={}, HasEnchantment={}, HasInfluence={"None"},
 						SocketGroup="", EnchantmentPassiveNode="",
 					}
-					for name in pairs(parser.numeric) do if sample[name] == nil then sample[name] = 0 end end
+					for name in pairs(parser.numeric) do if sample[name] == nil and name ~= "DropLevel" and name ~= "Width" and name ~= "Height" then sample[name] = 0 end end
 					for name in pairs(parser.booleans) do sample[name] = false end
 					if change.tier then
 						sample.MapTier = change.tier
@@ -53,7 +54,7 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 		local result = parser.simulate(parsed, item)
 		local icon = result.styles.MinimapIcon
 		assert(result.action == "Show" and #result.matches > 0 and (not marker or icon and table.concat(icon, " ") == marker),
-			"Protected drop failed: " .. item.Rarity .. " " .. item.BaseType)
+			"Protected drop failed: " .. item.Rarity .. " " .. item.BaseType .. (result.action == "Unknown" and (" ("..(result.reasons[1] or "result is unknown")..")") or ""))
 	end
 	if protections then
 		assert(type(protections) == "table" and #protections >= 1 and #protections <= 500, "Provide 1 to 500 protected sample items")

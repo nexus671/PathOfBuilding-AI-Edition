@@ -4,12 +4,19 @@ local M = {}
 function M.samples()
 	local output = {}
 	local function add(item, marker)
-		item.AreaLevel, item.ItemLevel, item.StackSize = 83, 83, 1
-		item.Width, item.Height, item.HasInfluence = 1, 1, {"None"}
+		local base = require("Modules.LootFilterLibrary").baseProperties(item.BaseType,item.Rarity)
+		assert(base.Width and base.Height, "Protected sample is missing base dimensions: "..item.BaseType)
+		-- A level 85 item can drop from a rare monster in an area-level 83 map.
+		-- Unique drop levels are not established by the base alone.
+		item.AreaLevel, item.ItemLevel, item.StackSize = 83, 85, 1
+		item.Width, item.Height, item.DropLevel, item.HasInfluence = base.Width, base.Height, base.DropLevel, {"None"}
+		-- Non-unique jewellery has no random base defence. For the ordinary
+		-- plate, exercise the lowest roll; unique defence remains unknown.
+		if item.Rarity ~= "Unique" then item.BaseDefencePercentile = item.BaseType == "Royal Plate" and 0 or 100 end
 		item.HasExplicitMod, item.HasEnchantment = {}, {}
 		item.SocketGroup = item.SocketGroup or ""
 		item.EnchantmentPassiveNode = ""
-		for key in pairs(parser.numeric) do if item[key] == nil then item[key] = 0 end end
+		for key in pairs(parser.numeric) do if item[key] == nil and key ~= "DropLevel" and key ~= "BaseDefencePercentile" then item[key] = 0 end end
 		for key in pairs(parser.booleans) do if item[key] == nil then item[key] = false end end
 		output[#output+1] = {item=item, marker=marker}
 	end
