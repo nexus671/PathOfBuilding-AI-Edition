@@ -32,6 +32,11 @@ return function(raw, bodies, baselineOnly, target, protections, history, day, no
 					}
 					for name in pairs(parser.numeric) do if sample[name] == nil then sample[name] = 0 end end
 					for name in pairs(parser.booleans) do sample[name] = false end
+					if change.tier then
+						sample.MapTier = change.tier
+						sample.BlightedMap = change.blighted or change.ravaged
+						sample.UberBlightedMap = change.ravaged
+					end
 					local before, after = parser.simulate(earlier, sample), parser.simulate(parsed, sample)
 					change.samples[#change.samples+1] = {
 						action=after.action, line=after.line, before=before.action, beforeLine=before.line,

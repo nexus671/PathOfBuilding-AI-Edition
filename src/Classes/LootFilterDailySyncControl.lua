@@ -131,7 +131,7 @@ function M.Open()
 			local scope = change.scope == "campaign" and " in campaign areas" or change.maps and " in maps" or ""
 			local details = {
 				string.format("Hide up to %d → %d%s", change.old, change.cutoff, scope),
-				string.format("%.4g chaos used | %.0f chaos quoted volume",change.price,change.volume),
+				string.format("%.4g chaos used | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
 				string.format("Latest %.4g chaos | %d earlier daily quotes",change.currentPrice or change.price,change.observations or 0),
 			}
 			local samples = change.samples or (change.sample and {change.sample}) or {}

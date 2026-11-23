@@ -19,7 +19,7 @@ function M.Open(profile, raw, export)
 		c[key] = new("ButtonControl"):ButtonControl(ui.anchor, {x, 234, 136, 28}, label, action)
 	end
 	ui.description(c, "info", 16, 24, width - 32, 52, {
-		"Review tagged currency and divination card hides against PC exchange prices. The cutoff only moves down when current prices justify showing smaller stacks.",
+		"Review managed currency, card, and map hides against PC trade prices. The cutoff only moves down when current prices justify showing smaller stacks.",
 	}, 14)
 	ui.label(c, "leagueLabel", 16, 90, "League ID", 14)
 	ui.label(c, "targetLabel", 246, 90, "Chaos per stack", 14)
@@ -60,7 +60,7 @@ function M.Open(profile, raw, export)
 				local category = categories[index]
 				if category then
 					status("Fetching " .. league .. " prices (" .. index .. "/" .. #categories .. ")...")
-					request("exchange/current/overview?league=" .. urlEncode(league) .. "&type=" .. category, function(response)
+					request(economy.feedPath(league, category), function(response)
 						local fresh, data = pcall(sync.fresh, response, os.time())
 						local ok, result = false
 						if fresh then ok, result = pcall(economy.quotes, data, category) end
@@ -87,7 +87,7 @@ function M.Open(profile, raw, export)
 				for i, change in ipairs(changes) do
 					entries[#entries + 1] = {id = tostring(i), label = change.name, details = {
 						"Hide up to " .. change.old .. " → " .. change.cutoff .. (change.maps and " in maps" or ""),
-						string.format("%.4g chaos each | %.0f chaos quoted volume", change.price, change.volume),
+						string.format("%.4g chaos each | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
 					}}
 				end
 				status("Review complete.")

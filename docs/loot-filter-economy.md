@@ -2,7 +2,7 @@
 
 In PoB AI Edition, open **Loot Filter → Profile tools → Review exchange prices** on a Normal-mode profile that imports your filter. Leave League ID blank to use the current PC trade league or enter the exact poe.ninja league ID. Review the proposed stack changes, then export a separate filter.
 
-Use **Profile tools → Managed price rules** to add exact commodity or divination card hides in a Normal-mode profile. Export the profile to get the managed section automatically. To author the section by hand, add standalone comments `# PoB economy: begin` and `# PoB economy: end` around the exact item-name stack hides you want to review. Existing personal filters with the original tiered-test section headings also work.
+Use **Profile tools → Managed price rules** to add exact commodity, divination card, or map-tier hides in a Normal-mode profile. Export the profile to get the managed section automatically. To author the section by hand, add standalone comments `# PoB economy: begin` and `# PoB economy: end` around the exact item-name stack hides you want to review. Existing personal filters with the original tiered-test section headings also work.
 
 The review uses the current poe.ninja exchange snapshot. The default target is one chaos per stack. It requires the category's minimum quoted market volume and a 15% margin above the target at the old cutoff before suggesting a reduction. Unsupported rules and thin markets keep their existing cutoffs. General currency rules later in the filter still determine the label and visibility of stacks that pass these hides.
 
@@ -55,3 +55,9 @@ Open **Pickup policy** in daily sync and choose optional campaign and map chaos 
 You can also set an absolute maximum hide cutoff for an exact commodity name. For example, `{"Orb of Alteration": 7}` permits a managed rule to hide stacks of at most seven when prices justify it. A new profile needs the latest liquid quote plus three earlier liquid daily quotes before it can tighten. The highest of the recent quotes must still put the newly hidden stacks below 85% of the pickup target. Divination cards retain their visibility-only policy.
 
 Select **Use with next update**, then **Preview changes** to check the resulting filter or **Enable / update** to save the policy. An existing matching baseline and league can reuse saved daily quotes in preview.
+
+## Managed maps
+
+In **Managed price rules**, choose **Maps**, a tier from 1 to 16, and Ordinary, Blighted, or Blight-ravaged. PoB uses separate stash price feeds for those variants. The rule excludes unique, corrupted, implicit-modified, enchanted, Mirage, memory, Shaped, and Elder maps. It can be relaxed when that exact tier-wide quote clears the price margin. The maps pickup target applies when configured.
+
+The provider often groups maps by tier. Exact named maps, Atlas boss variants, and unique maps keep their existing rules. A quote needs at least 20 sampled listings and 20 listings in the overview. Missing or conflicting tier quotes keep the baseline hide. Automatic map repricing can loosen these managed hides.

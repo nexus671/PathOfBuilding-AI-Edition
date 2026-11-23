@@ -1,4 +1,5 @@
 local economy = require("Modules.LootFilterEconomy")
+local maps = require("Modules.LootFilterMapMarket")
 local ui = require("Modules.PlanningUI")
 local M = {}
 
@@ -9,20 +10,42 @@ local function edit(rules, index, save)
 	local classes = {}
 	for _, name in ipairs(economy.managedClasses) do classes[#classes+1] = {label=name} end
 	ui.label(c,"nameLabel",16,16,"Exact item name",14)
-	c.name = new("EditControl"):EditControl(ui.anchor,{16,38,width-32,26},existing.name or "",nil,nil,200)
+	c.name = new("EditControl"):EditControl(ui.anchor,{16,38,width-32,26},existing.tier and tostring(existing.tier) or existing.name or "",nil,nil,200)
 	ui.label(c,"classLabel",16,80,"Item class",14)
 	ui.label(c,"scopeLabel",width-176,80,"Area",14)
 	c.class = new("DropDownControl"):DropDownControl(ui.anchor,{16,102,width-202,26},classes)
 	c.class:SelByValue(existing.class,"label")
-	c.scope = new("DropDownControl"):DropDownControl(ui.anchor,{width-176,102,160,26},economy.managedAreas)
-	c.scope:SelByValue(existing.scope,"val")
+	local mapTypes = {}
+	for _, category in ipairs(maps.feeds) do mapTypes[#mapTypes+1] = {label=maps.variants[category].label,val=category} end
+	local function isMap() return c.class:GetSelValueByKey("label") == "Maps" end
+	c.nameLabel.label = function() return isMap() and "Map tier (1–16)" or "Exact item name" end
+	c.scopeLabel.label = function() return isMap() and "Map variant" or "Area" end
+	c.scope = new("DropDownControl"):DropDownControl(ui.anchor,{width-176,102,160,26},isMap() and mapTypes or economy.managedAreas)
+	c.scope:SelByValue(existing.mapType or existing.scope,"val")
 	ui.label(c,"cutoffLabel",16,144,"Maximum stack hidden at baseline",14)
 	c.cutoff = new("EditControl"):EditControl(ui.anchor,{16,166,160,26},existing.cutoff and tostring(existing.cutoff) or "",nil,nil,10)
-	ui.description(c,"help",190,161,width-208,45,{"Leave the cutoff empty to manage a single-card hide."},13)
+	c.cutoff.shown = function() return not isMap() end
+	c.cutoffLabel.shown = c.cutoff.shown
+	ui.description(c,"help",190,161,width-208,45,{},13)
+	local function updateHelp()
+		c.help.list = ui.rows({isMap() and "Uses the price for this tier and variant." or
+			"Leave the cutoff empty to manage a single-card hide."},width-208,13)
+	end
+	updateHelp()
+	c.class.selFunc = function()
+		c.scope:SetList(isMap() and mapTypes or economy.managedAreas)
+		c.scope:SetSel(1)
+		updateHelp()
+	end
 	c.save = new("ButtonControl"):ButtonControl(ui.anchor,{16,218,140,28},"Save rule",function()
 		local nextRules = copyTable(rules)
-		nextRules[index] = {name=c.name.buf:match("^%s*(.-)%s*$"),class=c.class:GetSelValueByKey("label"),scope=c.scope:GetSelValueByKey("val"),
-			cutoff=c.cutoff.buf ~= "" and (tonumber(c.cutoff.buf) or -1) or nil}
+		local kind = c.class:GetSelValueByKey("label")
+		if isMap() then
+			nextRules[index] = {class=kind,tier=tonumber(c.name.buf),mapType=c.scope:GetSelValueByKey("val")}
+		else
+			nextRules[index] = {name=c.name.buf:match("^%s*(.-)%s*$"),class=kind,scope=c.scope:GetSelValueByKey("val"),
+				cutoff=c.cutoff.buf ~= "" and (tonumber(c.cutoff.buf) or -1) or nil}
+		end
 		local ok, result = pcall(economy.validateManagedRules,nextRules)
 		if not ok then main:OpenMessagePopup("Managed price rules",ui.errorText(result)); return end
 		main:ClosePopup()
@@ -39,7 +62,8 @@ function M.Open(rules, save)
 	for index, rule in ipairs(rules) do
 		local area = rule.scope == "maps" and "Maps" or rule.scope == "campaign" and "Campaign" or "All areas"
 		entries[#entries+1] = {id=tostring(index),index=index,label=rule.name,category=area,
-			details={rule.class,area,rule.cutoff and "Hide stacks up to " .. rule.cutoff or "Hide the card by exact name"}}
+			details={rule.class,area,rule.mapType and "Hide the tier and variant by default"
+				or rule.cutoff and "Hide stacks up to " .. rule.cutoff or "Hide the card by exact name"}}
 	end
 	local function keep(value)
 		save(value)

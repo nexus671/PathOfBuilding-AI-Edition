@@ -422,6 +422,64 @@ assert(read(target)==policyPreview and policySync.configuration().review.changes
 
 print("Pickup policy applies area thresholds, requires distinct daily observations, and shows shadowed outcomes")
 
+
+-- Stash maps often use aggregate names and omit the mapTier property.
+-- Keep ordinary, blighted and ravaged feeds separate.
+local mapSamples = {{BaseType="Cord Belt",Class="Belts",Rarity="Magic"}}
+local mapMarket = require("Modules.LootFilterMapMarket")
+local normalMap = [[{"lines":[{"name":"Map (Tier 16)","detailsId":"ordinary-16","variant":"Gen-24","chaosValue":12,"count":40,"listingCount":400},{"name":"Map (Tier 15)","detailsId":"old-15","variant":"Gen-22","chaosValue":50,"count":40,"listingCount":400},{"name":"Map (Tier 15)","detailsId":"current-15","variant":"Gen-24","chaosValue":3,"count":50,"listingCount":400}]}]]
+local blightMap = [[{"lines":[{"name":"Blighted Map (Tier 16)","detailsId":"blight-16","variant":"Gen-24","chaosValue":3,"count":40,"listingCount":400}]}]]
+local ravagedMap = [[{"lines":[{"name":"Blight-ravaged Map (Tier 16)","detailsId":"ravaged-16","variant":"Gen-24","chaosValue":50,"count":19,"listingCount":500}]}]]
+assert(mapMarket.quotes(normalMap,"Map")["Map (Tier 15)"]==false)
+assert(browser.rows(normalMap,{id="Map"})[1].mapTier==15)
+local mapBase = market.addManagedSection([[Show
+    BaseType == "Cord Belt"
+Show
+    Class == "Maps"
+]], {
+	{class="Maps",tier=16,mapType="Map"},
+	{class="Maps",tier=15,mapType="Map"},
+	{class="Maps",tier=16,mapType="BlightedMap"},
+	{class="Maps",tier=16,mapType="BlightRavagedMap"},
+})
+local drop = {BaseType="Vaal Temple Map",Class="Maps",Rarity="Rare",MapTier=16}
+local mapParser = require("Modules.LootFilterParser")
+for flag in pairs(mapParser.booleans) do drop[flag] = false end
+local mapParsed = mapParser.parse(mapBase)
+assert(mapParser.simulate(mapParsed,drop).action=="Hide")
+for _, flag in ipairs(mapMarket.excludedFlags) do
+	drop[flag] = true
+	assert(mapParser.simulate(mapParsed,drop).action=="Show",flag)
+	drop[flag] = false
+end
+drop.Rarity="Unique"
+assert(mapParser.simulate(mapParsed,drop).action=="Show")
+local feedKinds = market.feedCategories(mapBase)
+assert(#feedKinds==11 and feedKinds[9]=="Map" and feedKinds[10]=="BlightedMap" and feedKinds[11]=="BlightRavagedMap")
+local stash = {Map=normalMap,BlightedMap=blightMap,BlightRavagedMap=ravagedMap}
+local mapBodies = {}
+for index, category in ipairs(feedKinds) do mapBodies[index] = stash[category] or commodityBody end
+local promoted, mapCount, mapChanges, mapSkips = validate(mapBase,mapBodies,false,1,mapSamples,nil,nil,nil,{maps=5})
+assert(mapCount==1 and mapChanges[1].name=="Map (Tier 16)" and mapChanges[1].liquidityUnit=="listing samples")
+assert(mapChanges[1].sample.before=="Hide" and mapChanges[1].sample.action=="Show")
+assert(#mapSkips==3 and mapSkips[1].reason:find("Ambiguous",1,true) and mapSkips[3].reason:find("floor",1,true))
+assert(not pcall(validate,mapBase,missing,false,1,mapSamples))
+write(target,mapBase)
+write(baseline,mapBase)
+write(protections,assert(require("dkjson").encode(mapSamples)))
+local marketSync = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+marketSync.configure(target,baseline,"Covens",{hour=0,protectionFile=protections,pickupPolicy={maps=5}})
+local pathCount=0
+launch.DownloadPage = function(_, url, callback)
+	local kind = url:match("&type=(%w+)$")
+	if stash[kind] then assert(url:find("stash/current/item/overview",1,true)); pathCount=pathCount+1
+	else assert(url:find("exchange/current/overview",1,true)) end
+	callback({header=header,body=stash[kind] or commodityBody})
+end
+marketSync.tick(now,true)
+assert(read(target)==promoted and pathCount==3)
+print("Managed maps use separate stash feeds, reject ambiguous variants, and preserve thin markets")
+
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.
 local controls, manualReview, exported

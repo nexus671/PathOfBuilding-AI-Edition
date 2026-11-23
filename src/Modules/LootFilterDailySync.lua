@@ -530,7 +530,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure)
 			return
 		end
 		M.status = "Fetching " .. config.league .. " prices: " .. category
-		local url = market.endpoint .. "exchange/current/overview?league=" .. urlEncode(config.league) .. "&type=" .. category
+		local url = market.endpoint .. market.feedPath(config.league, category)
 		local cached, time = cache[url], os.time()
 		local cachedAge = cached and (time - cached.sourceAt)
 		local requestHeaders = "Accept: application/json"

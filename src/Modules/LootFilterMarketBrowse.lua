@@ -1,4 +1,5 @@
 local json = require("dkjson")
+local maps = require("Modules.LootFilterMapMarket")
 local M = {maxBytes=12*1024*1024}
 M.categories = {
 	{ id="DivinationCard", label="Divination cards", feed="exchange" },
@@ -45,7 +46,7 @@ function M.rows(body, category, query)
 					links=positive(item.links) and item.links or nil,
 					gemLevel=positive(item.gemLevel) and item.gemLevel or nil,
 					gemQuality=positive(item.gemQuality) and item.gemQuality or nil,
-					mapTier=positive(item.mapTier) and item.mapTier or nil,
+					mapTier=maps.tier(item,category.id) or (positive(item.mapTier) and item.mapTier or nil),
 					count=positive(item.count) and item.count or nil,
 					listings=positive(item.listingCount) and item.listingCount or nil,
 				}
