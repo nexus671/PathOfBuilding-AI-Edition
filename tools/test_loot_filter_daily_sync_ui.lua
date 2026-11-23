@@ -496,6 +496,58 @@ end
 launch.DownloadPage = originalMarketDownload
 print("Unique market review includes competing variants for the selected base")
 
+do
+	local collection = {
+		skillsTab={socketGroupList={{gemList={
+			{gemData={name="Example support"},level=20,quality=0,enabled=true},
+			{gemData={name="Disabled gem"},level=20,quality=0,enabled=false},
+		}}, {imbuedSupport="Test support",gemList={
+			{gemData={name="Imbued test skill",grantedEffect={support=false}},level=20,quality=20},
+		}}}},
+		itemsTab={
+			orderedSlots={{slotName="Body Armour",label="Body Armour"},{slotName="Ring 1",label="Ring 1"}},
+			activeItemSet={["Body Armour"]={selItemId=1},["Ring 1"]={selItemId=2}},
+			items={{baseName="Royal Plate",type="Body Armour",rarity="RARE"},
+				{baseName="Iron Ring",title="Test unique",type="Ring",rarity="UNIQUE"}},
+		},
+	}
+	local targets = require("Modules.LootFilterMarketBrowse").buildTargets(collection)
+	assert(#targets==4 and targets[1].level==20 and targets[1].quality==0)
+	assert(targets[2].category=="ImbuedGem" and targets[2].imbuedSupport=="Test support")
+	assert(targets[3].category=="BaseType" and targets[3].name=="Royal Plate")
+	assert(targets[4].category=="UniqueAccessory" and targets[4].name=="Test unique")
+	main.popups = {}
+	local requested
+	launch.DownloadPage = function(_,url,callback)
+		assert(url:find("type=SkillGem",1,true))
+		requested = true
+		local date=os.date("!%a, %d %b %Y %H:%M:%S GMT")
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\n\r\n",body=[[{"lines":[
+			{"name":"Example support","detailsId":"support-20-0","chaosValue":3,"gemLevel":20,"gemQuality":0,"corrupted":false},
+			{"name":"Example support","detailsId":"support-20-0-corrupt","chaosValue":7,"gemLevel":20,"gemQuality":0,"corrupted":true},
+			{"name":"Example support","detailsId":"support-21-20","chaosValue":80,"gemLevel":21,"gemQuality":20,"corrupted":true},
+			{"name":"Example support of Testing","baseType":"Example support","detailsId":"alternate","chaosValue":90,"gemLevel":20,"gemQuality":0}
+		]}]]})
+	end
+	require("Classes.LootFilterMarketBrowseControl").Open(collection)
+	marketUI:text("league","Covens")
+	marketUI:click("buildTarget")
+	marketUI:text("search","Example support")
+	marketUI:click("choose")
+	assert(not requested and main.popups[1].controls.query.buf=="=Example support")
+	marketUI:click("get")
+	assert(requested and main.popups[1].controls.count.label:find("2 results",1,true))
+	local shown={}
+	for _, row in ipairs(main.popups[1].controls.details.list) do shown[#shown+1]=StripEscapes(row[1] or "") end
+	local detail=table.concat(shown," "):gsub("%s+"," ")
+	assert(detail:find("7 chaos estimated",1,true) and detail:find("available corruption states",1,true))
+	marketUI:click("close")
+	marketUI:text("query","Example support")
+	marketUI:click("get")
+	assert(main.popups[1].controls.count.label:find("4 results",1,true))
+	launch.DownloadPage = originalMarketDownload
+end
+
 -- Exercise the exact publish workflow with a simulated account response.
 newBuild()
 main.popups = {}
