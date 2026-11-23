@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1147][2026/11/22]
+
+* Preserve unique crafting redo history when a preview matches the saved item.
+
 VERSION[2.68.1-ai.preview1146][2026/11/22]
 
 * Keep separate local recovery drafts for each crafting project.

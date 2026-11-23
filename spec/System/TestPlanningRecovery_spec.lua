@@ -54,6 +54,20 @@ describe("Local planning draft recovery",function()
 		local file=assert(io.open(latest.path,"wb"));file:write('{"schemaVersion":');file:close()
 		assert.equal("First",recovery.load(build,"filters").entry.plan.data.profiles[1].title)
 	end)
+	it("offers a unique preview's redo history when its item matches the saved starting item",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
+		local project={id="redo-history",title="Redo history",slot="Helmet",startingItem=raw,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local layout={width=1000,height=700,mount=function() end}
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project,layout)
+		control.apply:Click();control.undo:Click()
+		local snapshot=layout.snapshot();assert.equal(raw,snapshot.itemText);assert.equal(1,#snapshot.redo)
+		assert.is_false(recovery.isCurrent(build,"uniqueQuality",{plan=snapshot}))
+		assert.is_true(recovery.save(build,"uniqueQuality",{plan=snapshot},true))
+		recovery.session="later-session";recovery.cache={};local scan=assert(recovery.startScan(build))
+		while coroutine.status(scan)~="dead" do assert(coroutine.resume(scan)) end
+		assert.is_true(recovery.hasPending(build));assert.equal(1,#recovery.load(build,"uniqueQuality",project.id).entry.plan.redo)
+	end)
 	it("preserves earlier-session drafts until they are acknowledged",function()
 		recovery.save(build,"filters",entry("Interrupted"),true);recovery.session="new-session";recovery.cache={}
 		recovery.save(build,"filters",entry("Current saved state"),true)

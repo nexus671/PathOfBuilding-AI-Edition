@@ -22,4 +22,14 @@ for _,id in ipairs({'b','c'}) do recovery.clear(build,'crafting',id) end
 -- Older shared-slot records remain discoverable after upgrading.
 recovery.session='old-session';recovery.cache={};assert(recovery.save(build,'crafting',craft('legacy'),true));local record=recovery.load(build,'crafting','legacy');local file=assert(io.open(record.path,'rb'));local raw=file:read('*a');file:close()
 local legacy=record.path:gsub('%-crafting%-[a-f0-9]+%-%d%.json$','-crafting-1.json');assert(legacy~=record.path);file=assert(io.open(legacy,'wb'));assert(file:write(raw));file:close();recovery.clear(build,'crafting','legacy');assert(recovery.forCraftingProject(build,'legacy'))
-recovery.clear(build,'crafting');assert(lfs.rmdir(dir));recovery.testDirectory=nil;print('CRAFT_PROJECT_RECOVERY_OK')
+recovery.clear(build,'crafting');assert(lfs.rmdir(dir));recovery.testDirectory=nil
+-- Undoing back to the saved item must not hide the remaining redo history.
+newBuild();local raw='Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86';local project={id='unique-redo',title='Unique redo',slot='Helmet',startingItem=raw,goals={},steps={}}
+build.savers.CraftingProjects:Upsert(project);local layout={width=1000,height=700,mount=function() end};local control=require('Classes.CraftingUniqueQualityControl').Open(build,project,layout)
+assert(recovery.isCurrent(build,'uniqueQuality',{plan=layout.snapshot()}),'An unchanged preview was flagged')
+control.apply:Click();control.undo:Click();local snapshot=layout.snapshot();assert(snapshot.itemText==raw and #snapshot.redo==1)
+assert(not recovery.isCurrent(build,'uniqueQuality',{plan=snapshot}),'Redo history was treated as saved')
+dir=os.tmpname();os.remove(dir);assert(lfs.mkdir(dir));recovery.testDirectory=dir;recovery.cache={};assert(recovery.save(build,'uniqueQuality',{plan=snapshot},true))
+recovery.session='next-session';recovery.cache={};local scan=assert(recovery.startScan(build));while coroutine.status(scan)~='dead' do assert(coroutine.resume(scan)) end;assert(recovery.hasPending(build))
+local recovered=recovery.load(build,'uniqueQuality',project.id).entry.plan;local restored={width=1000,height=700,mount=function() end};local reopened=require('Classes.CraftingUniqueQualityControl').Open(build,project,restored,recovered);reopened.redo:Click();assert(restored.snapshot().itemText~=raw,'Redo did not restore the craft')
+recovery.clear(build,'uniqueQuality',project.id);assert(lfs.rmdir(dir));recovery.testDirectory=nil;print('CRAFT_PROJECT_RECOVERY_OK')

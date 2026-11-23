@@ -109,6 +109,9 @@ function M.isCurrent(build,kind,entry)
 			for _,saved in ipairs(build.savers.AtlasPlans.plans) do if saved.id==plan.id then return data.hash(saved)==data.hash(plan) and (not view or not view.stageResume or atlasStageIsCurrent(saved,view.stageResume)) end end
 		elseif kind=="uniqueQuality" then
 			local working=entry.plan
+			-- A matching item can still have redo actions that exist only in the
+			-- local preview and are not preserved by keeping the target item.
+			if working.redo and #working.redo>0 then return false end
 			for _,project in ipairs(build.savers.CraftingProjects.projects) do
 				if project.id==working.project.id and project.startingItem==working.project.startingItem and project.slot==working.project.slot then
 					return working.itemText==project.startingItem or working.itemText==project.targetItem
