@@ -2,7 +2,7 @@
 
 In PoB AI Edition, open **Loot Filter → Profile tools → Review exchange prices** on a Normal-mode profile that imports your filter. Leave League ID blank to use the current PC trade league or enter the exact poe.ninja league ID. Review the proposed stack changes, then export a separate filter.
 
-Use **Profile tools → Managed price rules** to add exact commodity, divination card, or map-tier hides in a Normal-mode profile. Export the profile to get the managed section automatically. To author the section by hand, add standalone comments `# PoB economy: begin` and `# PoB economy: end` around the exact item-name stack hides you want to review. Existing personal filters with the original tiered-test section headings also work.
+Use **Profile tools → Managed price rules** to add exact commodity, divination card, map-tier, or gem hides in a Normal-mode profile. Export the profile to get the managed section automatically. To author the section by hand, add standalone comments `# PoB economy: begin` and `# PoB economy: end` around the exact item-name stack hides you want to review. Existing personal filters with the original tiered-test section headings also work.
 
 The review uses the current poe.ninja exchange snapshot. The default target is one chaos per stack. It requires the category's minimum quoted market volume and a 15% margin above the target at the old cutoff before suggesting a reduction. Unsupported rules and thin markets keep their existing cutoffs. General currency rules later in the filter still determine the label and visibility of stacks that pass these hides.
 
@@ -42,7 +42,7 @@ Use **Preview changes** before enabling a new setup. It fetches prices and valid
 
 The sync review tests up to 500 combinations of affected classes and representative areas at the first stack size whose cutoff changed and at proposed highlight thresholds. It shows both the baseline and candidate outcome and the matching line, including stacks that another rule still hides.
 
-**Browse market prices** opens a read-only market browser for cards, uniques, maps, gems, and crafting bases. It shows the quote and available variant details, including map tier, gem level and quality, links, and listing counts. Daily filter changes support managed commodity stack rules and explicitly tagged card hides.
+**Browse market prices** opens a read-only market browser for cards, uniques, maps, gems, and crafting bases. It shows the quote and available variant details, including map tier, gem level and quality, links, and listing counts. Daily filter changes support managed commodity stacks, cards, tier-wide maps, and exact regular gem variants.
 
 Daily sync retains still-fresh exchange responses in memory for conditional requests. The scheduler, exchange review, market browser, and league picker share provider cooldowns within the open PoB process. Daily sync also records sustained throttling for the next run and rechecks the age of every response before publication. The displayed age is the age of the response, not the age of underlying trades. Provider IDs distinguish same-name items, and ambiguous names or categories below their volume floor keep the baseline rule.
 
@@ -73,6 +73,12 @@ Select **Use with next update**, then **Preview changes** to check the resulting
 In **Managed price rules**, choose **Maps**, a tier from 1 to 16, and Ordinary, Blighted, or Blight-ravaged. PoB uses separate stash price feeds for those variants. The rule excludes unique, corrupted, implicit-modified, enchanted, Mirage, memory, Shaped, and Elder maps. It can be relaxed when that exact tier-wide quote clears the price margin. The maps pickup target applies when configured.
 
 The provider often groups maps by tier. Exact named maps, Atlas boss variants, and unique maps keep their existing rules. A quote needs at least 20 sampled listings and 20 listings in the overview. Missing or conflicting tier quotes keep the baseline hide. Automatic map repricing can loosen these managed hides.
+
+## Managed gem variants
+
+In **Managed price rules**, select **Skill Gems** or **Support Gems**. Enter the exact name, gem level, quality and corruption state, then choose the area. The generated rule applies to regular gems and excludes transfigured and imbued gems. A matching listing-backed quote can remove the baseline hide. Later filter rules still decide how the gem appears.
+
+A quote needs a stable price ID, at least 20 observations and at least 20 listings. Invalid or conflicting identities, a missing exact variant, and thin listings keep the baseline hide. Daily profiles with managed gem rules additionally require a fresh `SkillGem` overview. If the feed is unavailable, the profile keeps its last verified output. Other profiles continue using their existing feeds. Enable gem rules when your market source can serve the stash category reliably. [Item filter reference](https://www.pathofexile.com/item-filter/about) · [Market API reference](https://poe.ninja/docs/api)
 
 ## Named sync profiles
 

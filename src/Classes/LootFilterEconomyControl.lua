@@ -18,7 +18,7 @@ function M.Open(profile, raw, export)
 		c[key] = new("ButtonControl"):ButtonControl(ui.anchor, {x, 234, 136, 28}, label, action)
 	end
 	ui.description(c, "info", 16, 24, width - 32, 52, {
-		"Review managed currency, card, and map hides against PC trade prices. The cutoff only moves down when current prices justify showing smaller stacks.",
+		"Review managed currency, card, map, and exact gem hides against PC trade prices. The cutoff only moves down when current prices justify showing smaller stacks.",
 	}, 14)
 	ui.label(c, "leagueLabel", 16, 90, "League ID", 14)
 	ui.label(c, "targetLabel", 246, 90, "Chaos per stack", 14)
@@ -42,7 +42,7 @@ function M.Open(profile, raw, export)
 			busy = false
 			status(string.format("Market provider cooldown. Try again in %d minutes.",math.ceil(wait/60)))
 		end
-		local function request(path, callback)
+		local function request(path, callback, maxBytes)
 			local wait = sync.providerWait(os.time())
 			if wait>0 then cooldown(wait); return end
 			launch:DownloadPage(economy.endpoint .. path, function(response, err)
@@ -51,7 +51,7 @@ function M.Open(profile, raw, export)
 				if not active() then return end
 				if delay then cooldown(delay); return end
 				callback(not err and response or nil)
-			end, {timeout=20,maxBytes=2*1024*1024,header="Accept: application/json"})
+			end, {timeout=20,maxBytes=maxBytes or 65536,header="Accept: application/json"})
 		end
 		busy = true
 		status("Checking trade leagues...")
@@ -62,7 +62,7 @@ function M.Open(profile, raw, export)
 			local league = valid and (requested=="" and leagues[1].id or seen[requested] and requested)
 			if not league then busy = false; status("Could not resolve the league. Use an active poe.ninja league ID."); return end
 			local quotes, failed = {}, {}
-			local categories = economy.feedCategories(raw)
+			local categories, gemRequests = economy.feedCategories(raw)
 			local function fetch(index)
 				local category = categories[index]
 				if category then
@@ -70,10 +70,10 @@ function M.Open(profile, raw, export)
 					request(economy.feedPath(league, category), function(response)
 						local fresh, data = pcall(sync.fresh, response, os.time())
 						local ok, result = false
-						if fresh then ok, result = pcall(economy.quotes, data, category) end
+						if fresh then ok, result = pcall(economy.quotes, data, category, gemRequests) end
 						if ok then economy.merge(quotes, result, category) else failed[#failed + 1] = category end
 						fetch(index + 1)
-					end)
+					end, economy.maxFeedBytes(category))
 					return
 				end
 				busy = false
@@ -95,6 +95,8 @@ function M.Open(profile, raw, export)
 					entries[#entries + 1] = {id = tostring(i), label = change.name, details = {
 						"Hide up to " .. change.old .. " → " .. change.cutoff .. (change.maps and " in maps" or ""),
 						string.format("%.4g chaos each | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
+						change.gemLevel and string.format("Level %d, %d%% quality, %s",change.gemLevel,change.gemQuality,
+							change.corrupted and "corrupted" or "uncorrupted") or nil,
 					}}
 				end
 				status("Review complete.")
