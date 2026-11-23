@@ -24,6 +24,17 @@ M.numeric={AreaLevel=true,ItemLevel=true,DropLevel=true,Quality=true,LinkedSocke
 M.booleans={AlwaysShow=true,Identified=true,Corrupted=true,TwiceCorrupted=true,Mirrored=true,FracturedItem=true,SynthesisedItem=true,ShaperItem=true,ElderItem=true,ShapedMap=true,ElderMap=true,
 	BlightedMap=true,UberBlightedMap=true,Replica=true,Scourged=true,HasImplicitMod=true,AnyEnchantment=true,HasCruciblePassiveTree=true,Foulborn=true,Fated=true,Exceptional=true,TransfiguredGem=true,AlternateQuality=true,Imbued=true,Vestigial=true,ZanaMemory=true,MirageMap=true}
 M.strings={Class=true,BaseType=true,HasInfluence=true,HasExplicitMod=true,HasEnchantment=true,EnchantmentPassiveNode=true,Prophecy=true,ArchnemesisMod=true,GemQualityType=true}
+-- Restrict persisted or shared missing-property lists to known filter keys.
+function M.safeMissingProperties(values)
+	if type(values)~="table" then return nil end
+	local result,seen={},{}
+	for _,value in ipairs(values) do
+		if type(value)=="string" and (M.numeric[value] or M.booleans[value] or M.strings[value] or value=="Rarity" or value=="SocketGroup") and not seen[value] then
+			seen[value]=true;result[#result+1]=value
+		end
+	end
+	return #result>0 and result or nil
+end
 local rarity={Normal=0,Magic=1,Rare=2,Unique=3}
 local influences={shaper=true,elder=true,crusader=true,hunter=true,redeemer=true,warlord=true,none=true}
 local dropSoundPairs={{"DisableDropSound","EnableDropSound"},{"DisableDropSoundIfAlertSound","EnableDropSoundIfAlertSound"}}
@@ -179,9 +190,17 @@ local function socketConsistency(item)
 		end
 	end
 	local linked=tonumber(item.LinkedSockets)
+	if item.LinkedSockets~=nil and (not linked or linked~=linked or math.abs(linked)==math.huge or linked<0 or linked>6 or linked~=math.floor(linked)) then return "Invalid LinkedSockets" end
+	if linked and count and linked>count then return "Linked socket count exceeds total sockets" end
 	if linked and na and linked>na then return "Linked socket count exceeds total socket colours" end
 	if linked==0 and ((count and count>0) or (na and na>0) or (nb and nb>0)) then
 		return "Zero linked sockets conflicts with sockets on the item"
+	end
+	if linked and nb then
+		local largest=0
+		local groups=item.SocketGroup:gsub("([AD])"," %1 "):gsub("%-","")
+		for group in groups:gmatch("%S+") do if group~="0" then largest=math.max(largest,#group) end end
+		if linked~=largest then return "Linked socket count conflicts with socket group layout" end
 	end
 end
 local function influenceState(item)

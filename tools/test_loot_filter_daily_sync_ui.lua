@@ -1,3 +1,4 @@
+local output, reviewWidth = arg[1], tonumber(arg[2]) or 960
 arg = {}
 dofile("HeadlessWrapper.lua")
 main.disableDevAutoSave = true
@@ -6,7 +7,7 @@ local sync = require("Modules.LootFilterDailySync")
 local headless = require("Modules.HeadlessUI")
 local task = require("Modules.LootFilterBackgroundTask")
 local selected = "C:/PoE/selected.filter"
-local configured, backgroundEnabled, notifyEnabled
+local configured, backgroundEnabled, notifyEnabled, reviewFixture
 local namedId = string.rep("b",40)
 local currentProfile
 
@@ -17,6 +18,7 @@ sync.selectedLocalFilter = function(dir)
 end
 sync.configuration = function(id)
 	currentProfile = id
+	if reviewFixture then return reviewFixture end
 	return {hour=9, minute=15, enabled=true, backgroundEnabled=backgroundEnabled, backgroundNotifications=notifyEnabled}
 end
 sync.diagnosticReport = function()
@@ -86,6 +88,16 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	harness:frame()
 	print(string.format("Native setup and diagnostics controls passed at %dx%d.", unpack(size)))
 end
+
+newBuild();main.popups={};local reviewUI=headless.install({width=reviewWidth,height=reviewWidth==720 and 600 or 640});reviewUI:bind(build)
+reviewFixture={hour=9,minute=15,enabled=true,summary='Review ready',history={},review={changes={{name='Orb of Alteration',old=6,cutoff=4,price=.2,volume=1000,samples={{area=83,count=5,class='Stackable Currency',before='Unknown',action='Unknown',beforeMissing={'DropLevel','C:/private/filter'},afterMissing={'ItemLevel'}}}}},skipped={}}}
+reviewFixture.review.changes[2]={name='Orb of Chance',old=6,cutoff=4,price=.2,volume=1000,samples={{area=83,count=5,class='Stackable Currency',before='Hide',action='Unknown'}}}
+require('Classes.LootFilterDailySyncControl').Open();reviewUI:click('review');reviewUI:text('search','Orb of Alteration')
+local details={};for _,row in ipairs(main.popups[1].controls.details.list) do details[#details+1]=StripEscapes(row[1] or '') end;local shown=table.concat(details,' ')
+assert(shown:find('Before: needs DropLevel',1,true) and shown:find('After: needs ItemLevel',1,true) and not shown:find('C:/private',1,true),'Missing-property reasons were not shown safely')
+if output then reviewUI:frame():write(output..'/'..reviewWidth..'-filter-impact-reasons.json') end
+reviewUI:text('search','Orb of Chance');local generic={};for _,row in ipairs(main.popups[1].controls.details.list) do generic[#generic+1]=StripEscapes(row[1] or '') end;assert(table.concat(generic,' '):find('preview cannot resolve a filter rule or included file',1,true),'Other uncertainty was not explained')
+reviewUI:click('close');main.popups={};reviewFixture=nil
 
 -- Use the real GGG parser and a deterministic network response through the native review.
 newBuild()

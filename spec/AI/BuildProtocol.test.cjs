@@ -179,7 +179,7 @@ test('reads loot sync status from the desktop heartbeat without queuing a write'
 test('pages the last verified cutoff diff without recording a request', t => {
   const f = fixture(t);
   assert.equal(f.call('get_loot_sync_diff',{}).available,false);
-  const changes = [{item:'Orb of Alteration',previousCutoff:6,proposedCutoff:4},
+  const changes = [{item:'Orb of Alteration',previousCutoff:6,proposedCutoff:4,samples:[{area:83,before:'Hide',action:'Unknown',afterMissing:['ItemLevel']},{area:60,before:'Unknown',beforeMissing:['DropLevel'],action:'Show'}]},
     {item:'Silver Oil',previousCutoff:4,proposedCutoff:1,quotedPrice:0.9}];
   const priceFeed = {category:'Currency',responseAge:8,revalidated:true};
   f.state.lootSyncDiff = {checkedAt:100,verifiedProtection:true,responseAges:[8],changeCount:3,changes,

@@ -1,9 +1,25 @@
-VERSION[2.68.1-ai.preview1205][2026/11/23]
+VERSION[2.68.1-ai.preview1209][2026/11/23]
 
 * Publish a verified daily filter to a selected Path of Exile account filter after reviewing the exact diff.
 * Review verified age by price feed and compare eligible prices against official GGG trades.
 * Remove partial sync output after failed Windows writes while keeping the verified filter recoverable.
 * Diagnose expired trade-league settings while preserving the last verified filter.
+
+VERSION[2.68.1-ai.preview1208][2026/11/23]
+
+* Preserve socket-colour shorthand in filter samples.
+
+VERSION[2.68.1-ai.preview1207][2026/11/23]
+
+* Reject inconsistent socket samples in filter previews.
+
+VERSION[2.68.1-ai.preview1206][2026/11/23]
+
+* Clarify unresolved filter rule explanations.
+
+VERSION[2.68.1-ai.preview1205][2026/11/23]
+
+* Explain uncertain filter price-impact examples in reviews and AI results.
 
 VERSION[2.68.1-ai.preview1204][2026/11/23]
 
