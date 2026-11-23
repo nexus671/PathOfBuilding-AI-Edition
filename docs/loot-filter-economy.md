@@ -10,11 +10,11 @@ For divination cards, use an exact `Class == "Divination Cards"` and exact `Base
 
 ## Daily sync on Windows
 
-Open **Loot Filter → Profile tools → Daily price sync**. Enter the live .filter file, the fixed baseline .filter file, and the league ID. **Use PoE selection** fills in the local filter currently selected in the Path of Exile 1 client. Select **Enable / update**. PoB keeps a checksum-verified baseline copy. Use **Sync now** to run the first check immediately, or let PoB check at or after 9:00 a.m. local time while the app is open.
+Open **Loot Filter → Profile tools → Daily price sync**. Choose the live .filter file, fixed baseline, and PoE 1 PC trade league. The Browse buttons open a local file picker. **Use PoE selection** fills in the local filter currently selected in the Path of Exile 1 client. Select **Enable / update**. PoB keeps a checksum-verified baseline copy. Use **Sync now** to run the first check immediately, or let PoB check at or after 9:00 a.m. local time while the app is open.
 
 The current daily flow supports the protected tiered-test filter profile. It checks all requested feeds for an exchange snapshot served within the past hour, parses the generated filter, and checks protected drops before publishing. It backs up a changed live file, keeps a recovery record, and pauses writes if the target was edited outside PoB. After reviewing an edit, use Enable / update to adopt it. Use Disable to stop the daily refresh. In Path of Exile, reload the filter if the game is already open.
 
-The sync settings accept a local time in HH:MM and a chaos target per stack. **Sync now** can refresh again on the same day. **Pause** keeps the setup and history. **Restore backup** verifies the previous file and pauses sync while you review it. **Last review** shows cutoff changes, skipped items, and recent runs. The most recent failed refresh remains visible after restarting PoB until a refresh succeeds.
+The sync settings accept a local time in HH:MM, a repeat interval from one to seven days, and a chaos target per stack. **Sync now** can refresh again on the same day. **Pause** keeps the setup and history. **Restore backup** verifies the previous file and pauses sync while you review it. **Last review** shows cutoff changes, skipped items, and recent runs. The most recent failed refresh remains visible after restarting PoB until a refresh succeeds.
 
 For a different tagged filter, provide a JSON array of one to 500 sample drops in **Protected samples JSON**. Each sample needs at least a BaseType and Rarity. Add every property needed by the filter rules leading to its Show block. For example, a filter with an unconditional Cord Belt rule can use this sample:
 
@@ -61,3 +61,9 @@ Select **Use with next update**, then **Preview changes** to check the resulting
 In **Managed price rules**, choose **Maps**, a tier from 1 to 16, and Ordinary, Blighted, or Blight-ravaged. PoB uses separate stash price feeds for those variants. The rule excludes unique, corrupted, implicit-modified, enchanted, Mirage, memory, Shaped, and Elder maps. It can be relaxed when that exact tier-wide quote clears the price margin. The maps pickup target applies when configured.
 
 The provider often groups maps by tier. Exact named maps, Atlas boss variants, and unique maps keep their existing rules. A quote needs at least 20 sampled listings and 20 listings in the overview. Missing or conflicting tier quotes keep the baseline hide. Automatic map repricing can loosen these managed hides.
+
+## Named sync profiles
+
+Open **Profiles** in **Daily price sync** to create or switch profiles. Each profile has its own fixed baseline, protected samples, PoE 1 PC trade league, schedule, and price history. The original setup appears as **Default**. A destination belongs to one profile, including when a different Windows path spelling resolves to the same file.
+
+PoB checks due profiles in order. Enable background sync individually on profiles that should also run while PoB is closed. They share one Windows task, which is removed when the last profile turns off background sync.

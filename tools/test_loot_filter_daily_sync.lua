@@ -480,6 +480,49 @@ marketSync.tick(now,true)
 assert(read(target)==promoted and pathCount==3)
 print("Managed maps use separate stash feeds, reject ambiguous variants, and preserve thin markets")
 
+-- Named profiles preserve existing default settings and isolate their live
+-- paths, league seasons, protection files and recurrence.
+local profiles = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+local id = profiles.createProfile("Mapping")
+assert(not pcall(profiles.createProfile,"mapping"))
+assert(#profiles.profiles()==2 and profiles.profiles()[2].id==id)
+local namedTarget = dir.."/named.filter"
+write(namedTarget,cardBaseline)
+write(baseline,cardBaseline)
+local namedOptions = {hour=0,intervalDays=3,profileId=id,protectionFile=protections}
+local alias = dir:gsub("\\","/").."/./target.filter"
+local shared, sharedError = pcall(profiles.configure,alias,alias,"Standard",namedOptions)
+assert(not shared and sharedError:find("already belongs to Default",1,true))
+profiles.configure(namedTarget,baseline,"Standard",namedOptions)
+assert(profiles.configuration(id).league=="Standard" and profiles.configuration().league=="Covens")
+assert(profiles.configuration(id).intervalDays==3 and profiles.configuration().intervalDays==1)
+assert(not pcall(profiles.configure,namedTarget,baseline,"Standard",{profileId=string.rep("a",40),protectionFile=protections}))
+local current = profiles.configuration(id)
+profiles.setBackground(true,current.revision,id)
+local due = profiles.dueProfiles(now,true)
+assert(#due==1 and due[1].id==id)
+local standardFeeds = 0
+launch.DownloadPage = function(_, url, callback)
+	assert(url:find("league=Standard",1,true))
+	standardFeeds = standardFeeds+1
+	reply(url,callback)
+end
+local defaultState = read(configFile)
+profiles.tickAll(now)
+assert(standardFeeds==9 and read(namedTarget)==refreshed and read(configFile)==defaultState)
+local config = profiles.configuration(id)
+assert(config.lastSuccess and config.day and #config.priceHistory==1)
+local nextDate = os.date("*t",now)
+nextDate.day, nextDate.hour, nextDate.min, nextDate.sec, nextDate.isdst = nextDate.day+3,0,0,0,nil
+assert(not profiles.isDue(config,os.time(nextDate)-1) and profiles.isDue(config,os.time(nextDate)))
+profiles.pause(true,id)
+assert(profiles.configuration(id).paused and not profiles.configuration().paused)
+profiles.rollback(id)
+assert(read(namedTarget)==cardBaseline and read(configFile)==defaultState)
+local report = require("dkjson").decode(profiles.diagnosticReport(now,id))
+assert(report.status.league=="Standard" and report.intervalDays==3)
+print("Named profiles isolate destinations, history, schedule, rollback, and background opt-in")
+
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.
 local controls, manualReview, exported

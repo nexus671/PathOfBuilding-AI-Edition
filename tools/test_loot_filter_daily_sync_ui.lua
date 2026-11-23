@@ -7,13 +7,16 @@ local headless = require("Modules.HeadlessUI")
 local task = require("Modules.LootFilterBackgroundTask")
 local selected = "C:/PoE/selected.filter"
 local configured, backgroundEnabled, notifyEnabled
+local namedId = string.rep("b",40)
+local currentProfile
 
 function GetUserPath() return "C:/Users/QA/Documents" end
 sync.selectedLocalFilter = function(dir)
 	assert(dir == "C:/Users/QA/Documents/My Games/Path of Exile")
 	return selected
 end
-sync.configuration = function()
+sync.configuration = function(id)
+	currentProfile = id
 	return {hour=9, minute=15, enabled=true, backgroundEnabled=backgroundEnabled, backgroundNotifications=notifyEnabled}
 end
 sync.diagnosticReport = function()
@@ -21,13 +24,23 @@ sync.diagnosticReport = function()
 end
 sync.configure = function(target, baseline, _, options)
 	assert(target == selected and baseline == "C:/PoE/baseline.filter")
-	assert(options.hour == 12 and options.minute == 37)
+	assert(options.hour == 12 and options.minute == 37 and options.intervalDays == 3)
+	assert(options.profileId == namedId)
 	assert(options.pickupPolicy.campaign == 0.25 and options.pickupPolicy.maps == 2)
 	assert(options.pickupPolicy.caps["Orb of Alteration"] == 7)
 	configured = true
 end
 
-task.change = function(wanted, callback)
+sync.profiles = function() return {{id="default",name="Default"}} end
+sync.createProfile = function(name)
+	assert(name == "Endgame prices")
+	return namedId
+end
+require("Classes.LootFilterFileBrowser").Open = function(_, selectedPath)
+	selectedPath("C:/PoE/baseline.filter")
+end
+task.change = function(wanted, callback, id)
+	assert(id == namedId)
 	backgroundEnabled = wanted
 	callback(true)
 end
@@ -42,11 +55,18 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	local harness = headless.install({width=size[1], height=size[2]})
 	harness:bind(build)
 	require("Classes.LootFilterDailySyncControl").Open()
-	assert(main.popups[1].controls.time.buf == "09:15")
+	harness:click("profiles")
+	harness:text("search","Create profile")
+	harness:click("choose")
+	harness:text("name","Endgame prices")
+	harness:click("create")
+	assert(currentProfile == namedId and main.popups[1].controls.time.buf == "09:15")
 	harness:click("detectTarget")
 	assert(main.popups[1].controls.target.buf == selected)
-	harness:text("baseline", "C:/PoE/baseline.filter")
+	harness:click("baselineBrowse")
+	assert(main.popups[1].controls.baseline.buf == "C:/PoE/baseline.filter")
 	harness:text("time", "12:37")
+	harness:text("intervalDays", "3")
 	harness:click("pickupPolicy")
 	assert(main.popups[1].title == "Pickup policy")
 	harness:text("campaign", "0.25")
