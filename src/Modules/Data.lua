@@ -1124,6 +1124,7 @@ local function setupGem(gem, gemId)
 	if gem.grantedEffect.support and gem.grantedEffectId ~= "SupportBarrage" then
 		baseName = baseName .. " Support"
 	end
+	gem.itemBaseName = baseName
 	data.gemForBaseName[baseName:lower()] = gemId
 	-- Hybrid gems (e.g. Vaal gems) use the display name of the active skill e.g. Vaal Summon Skeletons of Sorcery
 	if gem.baseTypeName and gem.baseTypeName ~= baseName then

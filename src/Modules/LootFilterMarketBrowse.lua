@@ -53,12 +53,13 @@ function M.buildTargets(build)
 		if group.enabled~=false and not group.source then
 			for _, gem in ipairs(group.gemList or {}) do
 				local source = gem.gemData
+				local name = source and (source.itemBaseName or source.name)
 				local level, quality = tonumber(gem.level), tonumber(gem.quality)
-				if gem.enabled~=false and source and marketName(source.name) and positive(level) and quality and quality>=0 and quality<math.huge then
+				if gem.enabled~=false and marketName(name) and positive(level) and quality and quality>=0 and quality<math.huge then
 					local imbued = marketName(group.imbuedSupport) and source.grantedEffect
 						and not source.grantedEffect.support and group.imbuedSupport
-					add({category=imbued and "ImbuedGem" or "SkillGem",name=source.name,
-						label=string.format("%s | Level %g, %g%% quality",source.name,level,quality),
+					add({category=imbued and "ImbuedGem" or "SkillGem",name=name,
+						label=string.format("%s | Level %g, %g%% quality",name,level,quality),
 						level=level,quality=quality,imbuedSupport=imbued or nil,details={
 							string.format("Level %g, %g%% quality",level,quality),
 							imbued and ("Build support: "..imbued..". Compare supports and corruption states.") or
@@ -69,9 +70,18 @@ function M.buildTargets(build)
 		end
 	end
 	local gear = build.itemsTab
+	local spec = build.spec
 	for _, slot in ipairs(gear and gear.orderedSlots or {}) do
-		local selected = gear.activeItemSet and gear.activeItemSet[slot.slotName]
-		local item = selected and gear.items and gear.items[selected.selItemId]
+		local itemId
+		if slot.nodeId then
+			if spec and spec.allocNodes and spec.allocNodes[slot.nodeId] and spec.jewels then
+				itemId = spec.jewels[slot.nodeId]
+			end
+		else
+			local selected = gear.activeItemSet and gear.activeItemSet[slot.slotName]
+			itemId = selected and selected.selItemId
+		end
+		local item = itemId and gear.items and gear.items[itemId]
 		if item and marketName(item.baseName) then
 			local category = item.rarity=="UNIQUE" and (uniqueCategories[item.type]
 				or data and data.weaponTypeInfo and data.weaponTypeInfo[item.type] and "UniqueWeapon")
