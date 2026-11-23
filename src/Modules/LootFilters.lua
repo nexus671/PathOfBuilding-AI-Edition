@@ -613,7 +613,12 @@ function M.base(profile)
 	assert(profile.baseCommit==M.source().commit,"The bundled base changed. Review Audit / update before exporting this profile.")
 	return read(profile.strictness..".filter")
 end
-function M.migratedBase(profile)
+function M.migratedBase(profile, previous)
+	if previous then
+		assert(not profile.template and previous.commit == profile.baseCommit and type(previous.raw)=="string" and #previous.raw <= M.limit,
+			"Invalid prior NeverSink base for this profile")
+		return M.migrate(previous.raw)
+	end
 	local raw=M.base(profile)
 	if profile.template then return M.migrate(require("Modules.LootFilterImports").expand(raw,profile.importFiles,M.limit)) end
 	-- A reviewed native 3.30 preset already encodes the author's current rules.
@@ -623,7 +628,7 @@ function M.migratedBase(profile)
 	if not cache[key] then cache[key]={M.migrate(raw)} end
 	return cache[key][1],copyTable(cache[key][2])
 end
-function M.compile(profile,includeParsed)
+function M.compile(profile,includeParsed,previousBase)
 	local checked=M.validate({schemaVersion=1,activeId=profile.id,profiles={profile}}).profiles[1]
 	local function styled(text,category) return require("Modules.LootFilterCategoryStyles").apply(text,checked.categoryStyles,category) end
 	local output={"# Path of Building AI Edition | "..checked.title,"# PoE 3.30 | NeverSink base "..checked.baseCommit,"# NeverSink templates: MIT. Personal rules precede the base filter."}
@@ -640,7 +645,7 @@ function M.compile(profile,includeParsed)
 			output[#output+1]=styled("\n# 3.30 new-item safety: "..class.."\nShow\n    BaseType == "..table.concat(values," ").."\n    SetTextColor 255 235 175\n    SetBorderColor 175 110 230\n    SetFontSize 40",kind)
 		end
 	end
-	local base,changes=M.migratedBase(checked)
+	local base,changes=M.migratedBase(checked,previousBase)
 	base=styled(base)
 	if checked.mode=="Normal" and #(checked.economyRules or {})>0 then
 		base=require("Modules.LootFilterEconomy").addManagedSection(base,checked.economyRules)

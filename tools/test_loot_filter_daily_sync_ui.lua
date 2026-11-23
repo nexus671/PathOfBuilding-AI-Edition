@@ -133,3 +133,40 @@ local merged = market.addManagedSection(existing,saved.economyRules)
 assert(market.supports(merged) and #market.feedCategories(merged) == 10)
 assert(merged:find('BaseType == "The Apothecary"',1,true))
 print("Managed price rules round-tripped through the native workspace and compiled into the existing price engine")
+
+-- A bundled-base update is an explicit review, not an immediate profile write.
+newBuild()
+main.popups = {}
+local refreshUI = headless.install({width=960,height=640})
+refreshUI:bind(build)
+local baseRefresh = require("Modules.LootFilterBaseRefresh")
+local parser = require("Modules.LootFilterParser")
+local before = parser.parse([[Show
+    BaseType == "Cord Belt"
+    MinimapIcon 0 Purple Star
+]])
+local after = parser.parse([[Hide
+    BaseType == "Cord Belt"
+]])
+assert(#baseRefresh.evaluate(before,after).blocks == 16)
+assert(baseRefresh.evaluate(before,before).checked == 16)
+local revision = "9f94f4bd120574b4aa5a3366ceac461f8b733264"
+local legacy = filters.profile("base-review","Base review")
+legacy.baseCommit = revision
+legacy.rules = {{id="personal",title="Personal",text='Show\n    BaseType == "Cord Belt"\n    MinimapIcon 0 Purple Star',enabled=true}}
+local actualDownload = launch.DownloadPage
+launch.DownloadPage = function(_, url, callback)
+	assert(url:find(revision,1,true))
+	callback({body=filters.base(filters.profile("latest","Latest"))})
+end
+local accepted
+require("Classes.LootFilterControl").Audit(legacy,{},function(updated) accepted=updated end)
+refreshUI:click("choose")
+assert(main.popups[1].title=="NeverSink base review" and not accepted)
+refreshUI:click("secondary")
+assert(main.popups[1].title=="Filter file changes" and not accepted)
+refreshUI:click("close")
+refreshUI:click("choose")
+assert(accepted and accepted.baseCommit==filters.source().commit and #accepted.rules==1 and accepted.rules[1].text==legacy.rules[1].text)
+launch.DownloadPage=actualDownload
+print("NeverSink refresh previews and validates the compiled candidate before preserving personal rules in the draft")

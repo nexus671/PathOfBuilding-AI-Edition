@@ -340,8 +340,52 @@ function M.Export(profile,raw,report)
 	c.soundZip.tooltipText="Package this filter and local sounds together. Existing archives are never replaced."
 	button(c,"close",w-156,236,140,"Close",function() main:ClosePopup() end);ui.style(c,{write=true});main:OpenPopup(w,h,"Export loot filter",c,nil,"filename","close")
 end
+local function reviewBaseUpdate(profile, save)
+	local refresh = require("Modules.LootFilterBaseRefresh")
+	local owner = main.popups[1]
+	if launch.noSSL then main:OpenMessagePopup("NeverSink base review","Enable HTTPS certificate verification in PoB."); return end
+	local supported, endpoint = pcall(refresh.previousURL,profile)
+	if not supported then main:OpenMessagePopup("NeverSink base review",ui.errorText(endpoint)); return end
+	launch:DownloadPage(endpoint,function(response,err)
+		if main.popups[1] ~= owner then return end
+		if err or not response or type(response.body) ~= "string" then
+			main:OpenMessagePopup("NeverSink base review","Could not load the saved NeverSink revision. Try again before applying an update.")
+			return
+		end
+		local ok, plan = pcall(refresh.plan,profile,response.body)
+		if not ok then main:OpenMessagePopup("NeverSink base review",ui.errorText(plan)); return end
+		main:ClosePopup()
+		local entries = {{id="summary",label="Baseline update summary",category="Summary",details={
+			"Saved revision: "..profile.baseCommit,
+			"Bundled revision: "..plan.profile.baseCommit,
+			string.format("%d added and %d removed condition occurrences",plan.addedCount,plan.removedCount),
+			string.format("%d protected visibility checks and %d saved examples",plan.checked,plan.examplesChecked),
+			#plan.blocks == 0 and "Apply to the draft after reviewing the changes." or "Resolve protected drop changes before applying.",
+		}}}
+		for index, problem in ipairs(plan.blocks) do
+			entries[#entries+1] = {id="protected-"..index,label="Protected drop changed",category="Blocked",details={problem}}
+		end
+		for index, problem in ipairs(plan.warnings) do
+			entries[#entries+1] = {id="example-"..index,label="Saved example changed",category="Examples",details={problem}}
+		end
+		for index, removed in ipairs(plan.removedConditions) do
+			entries[#entries+1] = {id="removed-"..index,label=removed.text:sub(1,100),category="Removed conditions",
+				details={removed.text:sub(1,2000),"Occurrences removed: "..removed.count}}
+		end
+		require("Classes.PlanningBrowserControl").Open("NeverSink base review",entries,{
+			action="Apply to draft",enterChooses=false,closeOnChoose=false,
+			canChoose=function(entry) return entry.id=="summary" and #plan.blocks==0 end,
+			choose=function() main:ClosePopup(); save(plan.profile) end,
+			secondary={label="View full diff",run=function() require("Classes.LootFilterDiffControl").Open(plan.before,plan.after,true) end},
+		})
+	end,{timeout=20,maxBytes=filters.limit})
+end
+
 function M.Audit(profile,report,save,focusErrors)
-	local entries={{id="update",label="Update bundled NeverSink base",details={"Saved revision: "..profile.baseCommit,"Bundled revision: "..filters.source().commit,"Personal rules and original imported text are preserved. Templates refresh with fork releases; no live economy feed is implied.","Imported filters use safety rules for new 3.30 items; bundled presets use their own tiering."}}};for name,value in pairs(report and report.changes or {}) do entries[#entries+1]={id=name,label=name,details={value=="removed" and "Removed in 3.30. An empty BaseType list removes its entire rule." or "Renamed to "..value}} end
+	local revision = filters.source().commit
+	local needsUpdate = not profile.template and profile.baseCommit ~= revision
+	local entries={{id="update",label="Update bundled NeverSink base",details={"Saved revision: "..profile.baseCommit,"Bundled revision: "..revision,
+		needsUpdate and "Review baseline differences and protected drops before applying." or profile.template and "This profile uses an imported base." or "This profile is current."}}};for name,value in pairs(report and report.changes or {}) do entries[#entries+1]={id=name,label=name,details={value=="removed" and "Removed in 3.30. An empty BaseType list removes its entire rule." or "Renamed to "..value}} end
 	if report and report.error then entries[#entries+1]={id="compile-error",label="Compilation error",details={ui.errorText(report.error)}} end
 	for i,d in ipairs(report and report.diagnostics or {}) do
 		local uniqueFlask=d.code=="hiddenUniqueSulphur"
@@ -353,8 +397,8 @@ function M.Audit(profile,report,save,focusErrors)
 		if id then for i,entry in ipairs(entries) do if entry.id==id then table.insert(entries,1,table.remove(entries,i));break end end end
 	end
 	local controls=require("Classes.PlanningBrowserControl").Open("Filter audit",entries,{action="Apply selected",enterChooses=false,closeOnChoose=false,
-		canChoose=function(entry) return entry.id=="update" or entry.showUniqueFlask end,choose=function(entry)
-			if entry.id=="update" then save(filters.update(profile))
+		canChoose=function(entry) return entry.id=="update" and needsUpdate or entry.showUniqueFlask end,choose=function(entry)
+			if entry.id=="update" then reviewBaseUpdate(profile,save); return
 			elseif entry.showUniqueFlask then
 				local next=copyTable(profile);local used={};for _,rule in ipairs(next.rules or {}) do used[rule.id]=true end
 				local id="unique-sulphur";local suffix=1;while used[id] do suffix=suffix+1;id="unique-sulphur-"..suffix end

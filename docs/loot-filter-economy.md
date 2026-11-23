@@ -67,3 +67,9 @@ The provider often groups maps by tier. Exact named maps, Atlas boss variants, a
 Open **Profiles** in **Daily price sync** to create or switch profiles. Each profile has its own fixed baseline, protected samples, PoE 1 PC trade league, schedule, and price history. The original setup appears as **Default**. A destination belongs to one profile, including when a different Windows path spelling resolves to the same file.
 
 PoB checks due profiles in order. Enable background sync individually on profiles that should also run while PoB is closed. They share one Windows task, which is removed when the last profile turns off background sync.
+
+## NeverSink base updates
+
+When a kept bundled profile references an older NeverSink revision, open **Profile tools → Audit and update → Update bundled NeverSink base**. PoB retrieves the exact saved revision and compiles it and the bundled revision with the same personal rules. The review shows removed conditions, matching visibility checks for protected drops, and changes to saved examples. **View full diff** compares both compiled filters.
+
+**Apply to draft** is available after the protected checks pass. The new bundled revision and preserved personal rules remain in the draft until you keep it. The daily sync file and its fixed baseline can be replaced separately after reviewing the new export.
