@@ -71,7 +71,7 @@ function Read-SyncProfiles {
     $legacy = Read-JsonFile 'LootFilterDailySync.json'
     if ($legacy) { $profiles['default'] = $legacy }
     foreach ($entry in (Read-JsonFile 'LootFilterSyncProfiles.json')) {
-        if ($entry.id -cmatch '^[a-f0-9]{40}$') {
+        if ($entry.id -is [string] -and [regex]::IsMatch($entry.id, '\A[a-f0-9]{40}\z')) {
             $config = Read-JsonFile ('LootFilterDailySync-' + $entry.id + '.json')
             if ($config) { $profiles[$entry.id] = $config }
         }

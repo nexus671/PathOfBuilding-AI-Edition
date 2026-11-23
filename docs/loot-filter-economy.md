@@ -34,7 +34,7 @@ The sync review tests up to 500 combinations of affected classes and representat
 
 Daily sync retains still-fresh exchange responses in memory for conditional requests. It honors rate-limit delays and rechecks the age of every response before publication. The displayed age is the age of the response, not the age of underlying trades. Provider IDs distinguish same-name items, and ambiguous names or categories below their volume floor keep the baseline rule.
 
-The desktop AI bridge exposes read-only daily sync status and up to 40 cutoff changes through `get_loot_sync_status`. The read-only `get_loot_sync_diff` tool pages through the last verified cutoff decisions, quote evidence, and sampled outcomes. Local paths, protected sample definitions, and raw transport errors stay in the desktop app.
+The desktop AI bridge exposes read-only daily sync status and up to 40 cutoff changes through `get_loot_sync_status`. The read-only `get_loot_sync_diff` tool pages through the Default profile's last verified cutoff decisions, quote evidence, and sampled outcomes. For other profiles, use Copy diagnostics in that profile's daily sync dialog. Local paths, protected sample definitions, and raw transport errors stay in the desktop app.
 
 If a sync target was edited outside PoB, **External edits** compares the live file with the last verified file. Automatic sync stops before contacting the market until the live file matches the known state again or you explicitly re-enable with reviewed edits.
 
