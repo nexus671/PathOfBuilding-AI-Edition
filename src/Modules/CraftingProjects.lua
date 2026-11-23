@@ -49,7 +49,9 @@ function M.validate(project)
 	assert(type(project) == "table","Invalid crafting project")
 	local result = {id=text(project.id,64,"project ID"),title=text(project.title,120,"project title"),slot=text(project.slot,80,"slot"),
 		startingItem=text(project.startingItem,24000,"starting item"),targetItem=text(project.targetItem,24000,"target item",true),
-		notes=text(project.notes,8000,"project notes",true),simulatorExport=text(project.simulatorExport,128000,"simulator export",true),goals={},steps={}}
+		notes=text(project.notes,8000,"project notes",true),originNote=text(project.originNote,1000,"project source note",true),simulatorExport=text(project.simulatorExport,128000,"simulator export",true),goals={},steps={}}
+	-- Older conditional examples stored their provenance only in editable notes.
+	if not result.originNote and result.notes and result.notes:find("Conditional bench-rarity example;",1,true)==1 then result.originNote=result.notes:sub(1,1000) end
 	assert(result.id:match("^[%w%-_]+$"),"Project ID must use letters, numbers, underscores or hyphens")
 	local function denseArray(value,label)
 		assert(type(value)=="table" and value~=json.null,"Invalid "..label)
@@ -237,6 +239,7 @@ function M.new(build)
 		local found=false
 		for index,existing in ipairs(replacement) do if existing.id == entry.id then
 			if not entry.run and existing.run and entry.startingItem==existing.startingItem then entry.run=copyTable(existing.run) end
+			if project.originNote==nil and existing.originNote and entry.startingItem==existing.startingItem then entry.originNote=existing.originNote end
 			if project.primarySimulation==nil and existing.primarySimulation then entry.primarySimulation=copyTable(existing.primarySimulation) end
 			if project.inventory==nil and existing.inventory then entry.inventory=copyTable(existing.inventory) end
 			if project.recipeAlternatives==nil and existing.recipeAlternatives then entry.recipeAlternatives=copyTable(existing.recipeAlternatives) end
@@ -335,7 +338,7 @@ function M.reviewChanges(before,after)
 		return a==b
 	end
 	local function value(v) if v==nil then return "(not saved)" end;if type(v)=="table" then return json.encode(v) end;if v=="" then return "(empty)" end;return tostring(v) end
-	for _,field in ipairs({{"title","Name"},{"slot","Slot"},{"preferredMethod","Preferred action"},{"notes","Notes"},{"estimate","Cost estimate"},{"simulation","Supplied simulation"},{"primarySimulation","Primary simulation defaults"}}) do
+	for _,field in ipairs({{"title","Name"},{"slot","Slot"},{"preferredMethod","Preferred action"},{"notes","Notes"},{"originNote","Source note"},{"estimate","Cost estimate"},{"simulation","Supplied simulation"},{"primarySimulation","Primary simulation defaults"}}) do
 		local key,label=field[1],field[2]
 		local function format(v)
 			if not v then return "(not saved)" end
@@ -462,6 +465,7 @@ function M.lines(project)
 		end
 	end
 	for _,alternative in ipairs(project.recipeAlternatives or {}) do lines[#lines+1]="Alternative recipe: "..alternative.name.." ("..#alternative.recipe.steps.." steps"..(alternative.trackPickups and "; filter pickups tracked" or "")..")" end
+	if project.originNote and project.originNote ~= "" and project.originNote ~= project.notes then lines[#lines+1]="Source: "..project.originNote end
 	if project.notes and project.notes ~= "" then lines[#lines+1]=project.notes end
 	return lines
 end

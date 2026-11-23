@@ -25,7 +25,7 @@ function M.capture(project,state,title,originNote)
 end
 function M.project(entry)
 	entry=M.validate({entry})[1]
-	return {id="craft-"..require("sha1")(tostring({})..os.time()):sub(1,20),title=entry.title,slot=entry.slot,startingItem=entry.baseItem,goals={},steps={},notes=entry.originNote,run=M.run(entry.state)}
+	return {id="craft-"..require("sha1")(tostring({})..os.time()):sub(1,20),title=entry.title,slot=entry.slot,startingItem=entry.baseItem,goals={},steps={},notes=entry.originNote,originNote=entry.originNote,run=M.run(entry.state)}
 end
 function M.entries(projects,query)
 	local result={};query=(query or ""):lower()

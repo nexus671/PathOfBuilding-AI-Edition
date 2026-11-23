@@ -1917,7 +1917,7 @@ async function main(){
   assert.equal(whiteLink.result.action,'Show');assert.equal(whiteLink.result.ruleTitle,'Links for skill group 1 [gems]');
   const finalTemplate=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:raw,benchRarityOutcome:'MAGIC',benchRaritySeed:42,benchRarityProject:{id:'conditional-retained',title:'Conditional example',slot:'Helmet'},limit:3},'inspected');
   assert.equal(finalTemplate.crafting.benchRarityProject.available,true);await queued('propose_crafting_plan',{baseRevision:context.revision,project:finalTemplate.crafting.benchRarityProject.project},'review');await host('apply');await host('bundle-roundtrip');
-  const retainedExample=(await call('get_crafting_projects')).projects.find(entry=>entry.id==='conditional-retained');assert.match(retainedExample.notes,/Conditional/);assert.equal(retainedExample.inventory[0].state.rarity,'MAGIC');assert.equal(retainedExample.inventory[0].originNote,retainedExample.notes);
+  const retainedExample=(await call('get_crafting_projects')).projects.find(entry=>entry.id==='conditional-retained');assert.match(retainedExample.notes,/Conditional/);assert.equal(retainedExample.originNote,retainedExample.notes);assert.equal(retainedExample.inventory[0].state.rarity,'MAGIC');assert.equal(retainedExample.inventory[0].originNote,retainedExample.notes);
   await host('quit');
   console.log('PLANNING_WORKFLOW_OK: real MCP stdio, native calculations, UI review, crafting simulation, Journey ranking, Atlas strategy, save/reopen, checkpoint undo and portable bundle import');
 }
