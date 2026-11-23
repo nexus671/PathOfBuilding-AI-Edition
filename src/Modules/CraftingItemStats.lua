@@ -11,9 +11,16 @@ M.fields={
 	{"ItemLightningResist","Lightning resistance (%)"},{"ItemChaosResist","Chaos resistance (%)"},
 	{"ItemStrength","Strength"},{"ItemDexterity","Dexterity"},
 	{"ItemIntelligence","Intelligence"},{"ItemAccuracy","Accuracy"},
+	{"ItemSpellSuppression","Spell suppression (%)"},{"ItemAttackBlock","Attack block from mods (%)"},
+	{"ItemSpellBlock","Spell block from mods (%)"},{"ItemAvoidElementalAilments","Avoid elemental ailments (%)"},
+	{"ItemAvoidShock","Avoid shock (%)"},{"ItemAvoidFreeze","Avoid freeze (%)"},
+	{"ItemAvoidIgnite","Avoid ignite (%)"},{"ItemAvoidChill","Avoid chill (%)"},
+	{"ItemAvoidBleed","Avoid bleeding (%)"},{"ItemAvoidPoison","Avoid poison (%)"},
 }
 local known={};for _,field in ipairs(M.fields) do known[field[1]]=true end
 local flat={Life="ItemLife",Mana="ItemMana",FireResist="ItemFireResist",ColdResist="ItemColdResist",LightningResist="ItemLightningResist",ChaosResist="ItemChaosResist",Str="ItemStrength",Dex="ItemDexterity",Int="ItemIntelligence",Accuracy="ItemAccuracy"}
+flat.SpellSuppressionChance="ItemSpellSuppression";flat.BlockChance="ItemAttackBlock";flat.SpellBlockChance="ItemSpellBlock"
+flat.AvoidElementalAilments="ItemAvoidElementalAilments";flat.AvoidShock="ItemAvoidShock";flat.AvoidFreeze="ItemAvoidFreeze";flat.AvoidIgnite="ItemAvoidIgnite";flat.AvoidChill="ItemAvoidChill";flat.AvoidBleed="ItemAvoidBleed";flat.AvoidPoison="ItemAvoidPoison"
 local flatKeys={};for _,key in pairs(flat) do flatKeys[key]=true end
 function M.validate(goals)
 	assert(type(goals)=="table" and next(goals),"Choose at least one minimum item stat")
@@ -46,6 +53,10 @@ function M.itemValues(item)
 			if mod.type=="BASE" and (mod.flags or 0)==0 and (mod.keywordFlags or 0)==0 and mod[1]==nil then
 				local key=flat[mod.name];if key then add(key,mod.value) end
 				if mod.name=="ElementalResist" then for _,element in ipairs({"ItemFireResist","ItemColdResist","ItemLightningResist"}) do add(element,mod.value) end end
+				if mod.name=="AvoidElementalAilments" or mod.name=="AvoidAilments" then
+					for _,ailment in ipairs({"ItemAvoidShock","ItemAvoidFreeze","ItemAvoidIgnite","ItemAvoidChill"}) do add(ailment,mod.value) end
+				end
+				if mod.name=="AvoidAilments" then for _,ailment in ipairs({"ItemAvoidElementalAilments","ItemAvoidBleed","ItemAvoidPoison"}) do add(ailment,mod.value) end end
 			end
 		end
 		return values

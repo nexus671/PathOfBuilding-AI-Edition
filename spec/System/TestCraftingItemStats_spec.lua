@@ -47,6 +47,13 @@ describe("Native crafting item stat goals",function()
 		local uncertain={slotModList={{{name="Life",type="BASE",value=10}},{{name="Life",type="BASE",value=20}}}}
 		values=stats.itemValues(uncertain);assert.is_nil(values.ItemLife);assert.has_error(function() stats.matchesValues(values,{ItemLife=1}) end)
 	end)
+	it("targets unconditional suppression and additive ailment avoidance",function()
+		local item=new("Item"):Item('Rarity: RARE\nTest\nIron Hat\nItem Level: 86\nImplicits: 0\n15% chance to Suppress Spell Damage\n20% chance to Avoid Elemental Ailments\n12% chance to Avoid being Shocked\n10% chance to Block Attack Damage\n11% chance to Block Spell Damage');item:BuildAndParseRaw()
+		local values=stats.itemValues(item);assert.equal(15,values.ItemSpellSuppression);assert.equal(10,values.ItemAttackBlock);assert.equal(11,values.ItemSpellBlock)
+		assert.equal(20,values.ItemAvoidElementalAilments);assert.equal(32,values.ItemAvoidShock);assert.equal(20,values.ItemAvoidFreeze);assert.equal(0,values.ItemAvoidPoison)
+		assert.is_true(stats.matchesValues(values,{ItemSpellSuppression=15,ItemAvoidShock=32}));assert.is_false(stats.matchesValues(values,{ItemAvoidShock=33}))
+		local all=stats.itemValues({modList={{name="AvoidAilments",type="BASE",value=7}}});assert.equal(7,all.ItemAvoidElementalAilments);assert.equal(7,all.ItemAvoidShock);assert.equal(7,all.ItemAvoidBleed);assert.equal(7,all.ItemAvoidPoison)
+	end)
 	it("rejects unknown, empty and non-finite goals",function()
 		for _,value in ipairs({{}, {Life=1}, {PhysicalDPS=-1}, {AttackRate="1.5"}, {CritChance=math.huge}, {Armour=0/0}}) do
 			assert.is_false(pcall(sim.validateRecipe,{steps={{method="chaos"}},targets={},requirements={nativeStats=value}}))
