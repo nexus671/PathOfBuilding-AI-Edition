@@ -840,6 +840,17 @@ function M.poll(build, force)
 				if request.benchRarityOutcome=="UNIQUE" and not request.benchRarityUniqueTitle then ok,result=pcall(preview.uniqueCandidates,raw,request.initialState)
 				else ok,result=pcall(preview.preview,raw,request.benchRarityOutcome,request.benchRaritySeed,request.initialState,request.benchRarityUniqueTitle) end
 				M.status.crafting.benchRarityPreview=ok and {available=true,result=result} or {available=false,reason=require("Modules.PlanningUI").errorText(result)}
+				if request.benchRarityProject then
+					local valid,project=pcall(function()
+						assert(ok and result.conditional,"Choose a valid example before making a project template")
+						local args=request.benchRarityProject;assert(type(args)=="table","Invalid project request")
+						for _,existing in ipairs(build.savers.CraftingProjects.projects) do assert(existing.id~=args.id,"A project already uses this ID") end
+						local candidate=preview.proposal(raw,result,args.slot,args.title,args.id)
+						assert(build.itemsTab.slots[candidate.slot] and build.itemsTab:IsItemValidForSlot(require("Modules.CraftingProjects").item(candidate.startingItem),candidate.slot),"Example does not fit the selected slot")
+						return candidate
+					end)
+					M.status.crafting.benchRarityProject=valid and {available=true,project=project,note="Template only; propose for desktop review and save the build."} or {available=false,reason=require("Modules.PlanningUI").errorText(project)}
+				end
 			end
 			assert(request.includeBlankBase==nil or type(request.includeBlankBase)=="boolean","Invalid blank base option")
 			if request.includeBlankBase then

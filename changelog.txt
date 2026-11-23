@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1151][2026/11/22]
+
+* Let AI clients prepare reviewable projects from conditional rarity examples.
+
 VERSION[2.68.1-ai.preview1150][2026/11/22]
 
 * Keep conditional bench-rarity examples as separate crafting projects.

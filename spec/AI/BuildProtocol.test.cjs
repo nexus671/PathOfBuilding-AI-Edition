@@ -1108,12 +1108,13 @@ test('queues an optional hypothetical blank crafting base', t => {
 });
 
 test('queues conditional bench-rarity references with bounded inputs', t => {
-  const f=fixture(t),args={baseRevision:f.state.revision,itemText:'Rarity: NORMAL\nIron Hat\nItem Level: 86',benchRarityOutcome:'UNIQUE',benchRarityUniqueTitle:'Ezomyte Peak',benchRaritySeed:42};
+  const f=fixture(t),args={baseRevision:f.state.revision,itemText:'Rarity: NORMAL\nIron Hat\nItem Level: 86',benchRarityOutcome:'UNIQUE',benchRarityUniqueTitle:'Ezomyte Peak',benchRaritySeed:42,benchRarityProject:{id:'example',title:'Conditional example',slot:'Helmet'}};
   f.call('inspect_crafting_item',args);
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.benchRarityOutcome,'UNIQUE');assert.equal(request.benchRarityUniqueTitle,'Ezomyte Peak');assert.equal(request.benchRaritySeed,42);
   fs.rmSync(path.join(f.dir,'AI-build-request.json'));
   assert.throws(()=>f.call('inspect_crafting_item',{...args,benchRarityOutcome:'CERTAIN'}),/arguments/);
   assert.throws(()=>f.call('inspect_crafting_item',{...args,benchRaritySeed:0}),/arguments/);
+  const missingTitle={...args};delete missingTitle.benchRarityUniqueTitle;assert.throws(()=>f.call('inspect_crafting_item',missingTitle),/selected bench-rarity example/);
 });
 
 test('queues paged Bestiary modifier inspection and validates the offset', t => {

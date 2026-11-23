@@ -57,4 +57,14 @@ function M.project(raw,result,slot,title,id)
 	if result.outcome~="UNIQUE" then project.run=require("Modules.CraftingInventory").run(assert(result.state,"Missing example state")) end
 	return require("Modules.CraftingProjects").validate(project)
 end
+-- The MCP proposal schema accepts portable inventory snapshots rather than
+-- desktop workbench checkpoints. A user can resume that snapshot after review.
+function M.proposal(raw,result,slot,title,id)
+	local project=M.project(raw,result,slot,title,id)
+	if project.run then
+		project.inventory={require("Modules.CraftingInventory").capture(project,project.run.state,"Conditional bench-rarity example")}
+		project.run=nil
+	end
+	return require("Modules.CraftingProjects").validate(project)
+end
 return M
