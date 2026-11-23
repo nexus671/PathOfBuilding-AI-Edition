@@ -1,6 +1,10 @@
+VERSION[2.68.1-ai.preview1235][2026/11/23]
+
+* Preserve damaged planning data, improve bundle recovery, and fit build reviews in small windows.
+
 VERSION[2.68.1-ai.preview1234][2026/11/23]
 
-* Preserve damaged planning data, including in bundle exports; reject malformed Atlas imports.
+* Support an opt-in shared HTTPS market cache with bounded requests and source freshness checks.
 
 VERSION[2.68.1-ai.preview1233][2026/11/23]
 

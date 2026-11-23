@@ -118,6 +118,7 @@ function M.Open(profileId, profileName)
 	field("league", 140, "PoE 1 PC trade league", config.league or "", 16, width-166)
 	local loadingLeagues = false
 	c.chooseLeague = new("ButtonControl"):ButtonControl(ui.anchor,{width-142,160,126,26},"Choose league",function()
+		if not market.endpoint then main:OpenMessagePopup("Choose league",market.endpointError); return end
 		if launch.noSSL then main:OpenMessagePopup("Choose league", "Enable HTTPS certificate verification in PoB."); return end
 		if sync.providerWait(os.time())>0 then
 			main:OpenMessagePopup("Choose league","The market provider asked PoB to wait before requesting prices again.")

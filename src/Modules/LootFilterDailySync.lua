@@ -1188,6 +1188,11 @@ function M.tick(now, force, scheduled, id)
 		return
 	end
 	local function onFailure(message) rememberFailure(config, now, message, id) end
+	if not market.endpoint then
+		M.status = "Sync skipped: "..market.endpointError
+		onFailure(M.status)
+		return
+	end
 	if launch.noSSL then
 		M.status = "Sync skipped: enable HTTPS certificate verification in PoB."
 		onFailure(M.status)
@@ -1247,6 +1252,7 @@ end
 function M.preview(target, baselineFile, league, options, callback, onFailure)
 	assert(not M.busy, "Wait for the current sync to finish")
 	assert(not launch.noSSL, "Enable HTTPS certificate verification in PoB")
+	assert(market.endpoint,market.endpointError)
 	assert(os.time() >= rateLimitUntil, "Wait before contacting the rate-limited exchange again")
 	local config, original, baseline = prepare(target, baselineFile, league, options)
 	local now = os.time()
