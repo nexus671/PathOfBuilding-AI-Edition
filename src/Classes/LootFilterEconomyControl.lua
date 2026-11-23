@@ -1,7 +1,6 @@
 local economy = require("Modules.LootFilterEconomy")
 local sync = require("Modules.LootFilterDailySync")
 local ui = require("Modules.PlanningUI")
-local json = require("dkjson")
 local M = {}
 
 function M.Open(profile, raw, export)
@@ -38,21 +37,28 @@ function M.Open(profile, raw, export)
 		end
 		local requested = c.league.buf:match("^%s*(.-)%s*$")
 		local function active() return main.popups[1] == popup end
+		local function cooldown(wait)
+			busy = false
+			status(string.format("Market provider cooldown. Try again in %d minutes.",math.ceil(wait/60)))
+		end
 		local function request(path, callback)
+			local wait = sync.providerWait(os.time())
+			if wait>0 then cooldown(wait); return end
 			launch:DownloadPage(economy.endpoint .. path, function(response, err)
+				local code = err and tonumber(err:match("^Response code: (%d+)$"))
+				local delay = sync.noteProviderLimit(response,code,os.time())
 				if not active() then return end
+				if delay then cooldown(delay); return end
 				callback(not err and response or nil)
-			end, {timeout=20,maxBytes=2*1024*1024})
+			end, {timeout=20,maxBytes=2*1024*1024,header="Accept: application/json"})
 		end
 		busy = true
 		status("Checking trade leagues...")
 		request("leagues", function(response)
-			local leagues = response and type(response.body) == "string" and json.decode(response.body)
-			local league
-			for index, entry in ipairs(type(leagues) == "table" and leagues or {}) do
-				if type(entry) == "table" and type(entry.id) == "string"
-					and (entry.id == requested or requested == "" and index == 1) then league = entry.id; break end
-			end
+			local valid, leagues, seen = pcall(function()
+				return economy.tradeLeagues(sync.fresh(response,os.time()))
+			end)
+			local league = valid and (requested=="" and leagues[1].id or seen[requested] and requested)
 			if not league then busy = false; status("Could not resolve the league. Use an active poe.ninja league ID."); return end
 			local quotes, failed = {}, {}
 			local categories = economy.feedCategories(raw)

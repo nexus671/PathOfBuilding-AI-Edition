@@ -1,7 +1,7 @@
 local market = require("Modules.LootFilterEconomy")
 local browse = require("Modules.LootFilterMarketBrowse")
 local ui = require("Modules.PlanningUI")
-local json = require("dkjson")
+local sync = require("Modules.LootFilterDailySync")
 local M = {}
 
 function M.Open(build)
@@ -59,9 +59,18 @@ function M.Open(build)
 			busy=false
 			status(message)
 		end
+		local function waitMessage(wait)
+			return string.format("Market provider cooldown. Try again in %d minutes.",math.ceil(wait/60))
+		end
 		local function request(path,callback)
+			local wait = sync.providerWait(os.time())
+			if wait>0 then finish(waitMessage(wait)); return end
 			launch:DownloadPage(market.endpoint..path,function(response,err)
+				local code = err and tonumber(err:match("^Response code: (%d+)$"))
+				local delay = sync.noteProviderLimit(response,code,os.time())
 				if main.popups[1]~=popup then busy=false;return end
+				if delay then finish(waitMessage(delay)); return end
+				if code==401 or code==403 then finish("Market provider denied access to this feed."); return end
 				if err or not response then finish("Market request failed. Try again later."); return end
 				callback(response)
 			end,{timeout=20,maxBytes=browse.maxBytes,header="Accept: application/json"})
@@ -70,7 +79,7 @@ function M.Open(build)
 			status("Fetching "..category.label:lower().." for "..league.."...")
 			local route=category.feed=="exchange" and "exchange/current/overview" or "stash/current/item/overview"
 			request(route.."?league="..urlEncode(league).."&type="..category.id,function(response)
-				local ok,body,age=pcall(require("Modules.LootFilterDailySync").fresh,response,os.time())
+				local ok,body,age=pcall(sync.fresh,response,os.time())
 				if not ok then finish("Exchange response is unavailable or stale.");return end
 				local catalogue = main.uniqueDB and not main.uniqueDB.loading and main.uniqueDB.list
 				local valid,rows=pcall(browse.rows,body,category,query,comparable,catalogue)
@@ -126,10 +135,11 @@ function M.Open(build)
 		if league~="" then prices();return end
 		status("Checking the current PC trade league...")
 		request("leagues",function(response)
-			local list = type(response.body)=="string" and #response.body<=65536 and json.decode(response.body)
-			local first=type(list)=="table" and list[1]
-			if type(first)~="table" or type(first.id)~="string" or not first.id:match("^[%w%s_-]+$") then finish("Could not find a current league.");return end
-			league=first.id
+			local valid, list = pcall(function()
+				return market.tradeLeagues(sync.fresh(response,os.time()))
+			end)
+			if not valid then finish("Could not verify the current PC trade league."); return end
+			league=list[1].id
 			prices()
 		end)
 	end)
