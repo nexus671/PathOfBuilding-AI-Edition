@@ -338,8 +338,36 @@ function M.Open(profileId, profileName)
 		require("Classes.LootFilterSyncAccountControl").Open(profileId)
 	end)
 	c.account.enabled = function() return not sync.busy end
+	c.backupRetention = new("ButtonControl"):ButtonControl(ui.anchor,{16,534,168,26},"Backup retention",function()
+		local saved, latest = pcall(sync.configuration,profileId)
+		if not saved or not latest then main:OpenMessagePopup("Backup retention","Could not read this sync profile."); return end
+		local controls = {}
+		local popupWidth = math.min(510,width)
+		local help = {"Keep a set number of recorded backups after a successful sync.", "Enter 0 to keep all backups. The live filter and fixed baseline are preserved."}
+		if latest.retentionSkipped then help[#help+1] = tostring(latest.retentionSkipped).." older files could not be verified or removed." end
+		ui.description(controls,"help",16,18,popupWidth-32,72,help,14)
+		controls.count = new("EditControl"):EditControl(ui.anchor,{16,96,140,26},tostring(latest.backupLimit or 0),nil,nil,2)
+		local function save(limit)
+			local done, why = pcall(sync.setBackupLimit,profileId,limit,latest.revision)
+			if not done then main:OpenMessagePopup("Backup retention",ui.errorText(why)); return end
+			main:ClosePopup()
+		end
+		controls.keep = new("ButtonControl"):ButtonControl(ui.anchor,{16,142,135,28},"Save retention",function()
+			local limit = tonumber(controls.count.buf)
+			if not limit or limit<0 or limit>30 or limit~=math.floor(limit) then
+				main:OpenMessagePopup("Backup retention","Enter a whole number from 0 to 30.")
+				return
+			end
+			if limit==0 then save(limit); return end
+			main:OpenConfirmPopup("Limit recorded backups","Remove older verified backups after the next successful refresh?","Use limit",function() save(limit) end)
+		end)
+		controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{popupWidth-136,142,120,28},"Cancel",function() main:ClosePopup() end)
+		ui.style(controls)
+		main:OpenPopup(popupWidth,188,"Backup retention",controls,nil,"count","cancel")
+	end)
+	c.backupRetention.enabled = function() return config.target ~= nil and not sync.busy end
 	ui.style(c)
-	main:OpenPopup(width, 545, "Daily filter sync", c, nil, nil, "close")
+	main:OpenPopup(width, 578, "Daily filter sync", c, nil, nil, "close")
 end
 
 return M

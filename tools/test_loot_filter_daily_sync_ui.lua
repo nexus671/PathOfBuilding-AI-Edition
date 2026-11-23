@@ -241,10 +241,16 @@ main.popups = {}
 local backupUI = headless.install({width=720,height=600})
 backupUI:bind(build)
 local oldConfig, oldBackups, oldPreview, oldRollback = sync.configuration, sync.backups, sync.previewBackup, sync.rollback
+local oldBackupLimit = sync.setBackupLimit
+local selectedLimit
 local backupId = string.rep("a",40)
 local selectedReview
 local sampleReview = {digest=backupId,before="Show\n",after="Hide\n"}
-sync.configuration = function() return {hour=9,enabled=true,backup=backupId} end
+sync.configuration = function() return {hour=9,enabled=true,backup=backupId,target=selected,revision="backup revision"} end
+sync.setBackupLimit = function(id,limit,revision)
+	assert(id=="default" and revision=="backup revision")
+	selectedLimit = limit
+end
 sync.backups = function() return {{digest=backupId,checkedAt=1795449900}} end
 sync.previewBackup = function(_,id)
 	assert(id==backupId)
@@ -264,6 +270,13 @@ backupUI:click("secondary")
 assert(main.popups[1].title=="Restore filter backup" and not selectedReview)
 backupUI:click("confirm")
 assert(selectedReview==sampleReview and main.popups[1].title=="Daily filter sync")
+backupUI:click("backupRetention")
+backupUI:text("count","3")
+backupUI:click("keep")
+assert(not selectedLimit and main.popups[1].title=="Limit recorded backups")
+backupUI:click("confirm")
+assert(selectedLimit==3 and main.popups[1].title=="Daily filter sync")
+sync.setBackupLimit = oldBackupLimit
 sync.configuration, sync.backups, sync.previewBackup, sync.rollback = oldConfig, oldBackups, oldPreview, oldRollback
 print("Review backups requires the diff and a separate restore confirmation")
 

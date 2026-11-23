@@ -324,6 +324,8 @@ function M.diagnosticReport(now, id)
 		report.dailyTime = string.format("%02d:%02d", config.hour or 9, config.minute or 0)
 		report.intervalDays = config.intervalDays or 1
 		report.targetChaos = config.targetValue
+		report.backupLimit = config.backupLimit
+		report.retentionSkipped = config.retentionSkipped
 		report.successfulRuns = {}
 		for index, run in ipairs(config.history or {}) do
 			if index > 30 then break end
@@ -475,8 +477,12 @@ function M.configure(target, baselineFile, league, options)
 		nextConfig.backgroundEnabled = current and current.backgroundEnabled == true
 		nextConfig.backgroundNotifications = current and current.backgroundNotifications == true
 		nextConfig.providerRetryAfter = current and current.providerRetryAfter
+		nextConfig.backupLimit = current and current.backupLimit
 		if current and current.league == nextConfig.league and current.baselineHash == nextConfig.baselineHash then
 			nextConfig.priceHistory = current.priceHistory
+			if nextConfig.backupLimit and current.target == nextConfig.target and current.current == nextConfig.current and not current.pending then
+				nextConfig.backup, nextConfig.history = current.backup, current.history
+			end
 		end
 		nextConfig.revision = newRevision()
 		if not read(nextConfig.baseline) then put(nextConfig.baseline, baseline) end
@@ -509,7 +515,7 @@ function M.pause(paused, id)
 	M.status = paused and "Daily sync is paused." or "Daily sync resumed."
 end
 
-local function backupChoices(config)
+local function backupChoices(config, limit)
 	local entries, seen = {}, {}
 	local function add(digest, checkedAt)
 		if type(digest) == "string" and #digest == 40 and digest:match("^[a-f0-9]+$")
@@ -520,10 +526,41 @@ local function backupChoices(config)
 	end
 	add(config.backup)
 	for _, run in ipairs(config.history or {}) do
-		if #entries >= 30 then break end
+		if #entries >= (limit or 30) then break end
 		if type(run) == "table" then add(run.backup,run.checkedAt) end
 	end
 	return entries, seen
+end
+
+function M.setBackupLimit(id, limit, revision)
+	assert(not M.busy, "Wait for the current sync to finish")
+	assert(type(limit) == "number" and limit >= 0 and limit <= 30 and limit == math.floor(limit),
+		"Enter a whole number from 0 to 30")
+	lockSettings(function()
+		local config = assert(get(id), "Enable daily sync first")
+		assert(config.revision == revision, "Daily sync settings changed. Reopen backup retention.")
+		config.backupLimit, config.revision = limit>0 and limit or nil, newRevision()
+		config.retentionSkipped = nil
+		save(config,id)
+	end)
+end
+
+local function pruneBackups(config, choices)
+	local removed, skipped = {}, 0
+	for index=config.backupLimit+1,#choices do
+		local digest = choices[index].digest
+		local path = config.target .. ".before-pob-sync-" .. digest .. ".bak"
+		local checked, raw = pcall(read,path)
+		if checked and raw and sha(raw)==digest and os.remove(path) then
+			removed[digest] = true
+		else
+			skipped = skipped+1
+		end
+	end
+	for _, run in ipairs(config.history) do
+		if removed[run.backup] then run.backup = nil end
+	end
+	config.retentionSkipped = skipped>0 and skipped or nil
 end
 
 local restoreSummary = "Restored the verified backup. Daily sync is paused."
@@ -729,8 +766,14 @@ local function publish(config, bodies, feeds, day, force, now, id)
 		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages, feeds=feeds}
 		current.history = current.history or {}
 		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
+		local limit = current.backupLimit
+		local backups = type(limit)=="number" and limit>=1 and limit<=30 and limit==math.floor(limit) and backupChoices(current,32)
 		if #current.history > 30 then table.remove(current.history) end
 		save(current,id)
+		if backups then
+			pruneBackups(current,backups)
+			pcall(save,current,id)
+		end
 		return current.summary
 	end)
 end

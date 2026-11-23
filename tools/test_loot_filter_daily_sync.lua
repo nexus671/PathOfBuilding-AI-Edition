@@ -686,6 +686,37 @@ do
 	assert(reconciled.paused and reconciled.current==intended and not reconciled.pending and not reconciled.pendingRestore)
 	assert(availableBackups[1].digest==oldDigest and read(target)==verifiedRaw)
 	print("Reviewed backup restore checks historical bytes and recovers an interrupted restore")
+
+	-- A new limit becomes effective after a successful refresh. Reclaim
+	-- only recorded backup bytes that still match their original digest.
+	local retired = olderBytes:gsub("StackSize <= 3","StackSize <= 2",1)
+	local suspect = olderBytes:gsub("StackSize <= 3","StackSize <= 7",1)
+	local retiredDigest, suspectDigest = digestOf(retired), digestOf(suspect)
+	assert(retiredDigest~=oldDigest and suspectDigest~=oldDigest and retiredDigest~=suspectDigest)
+	local retiredPath = target..".before-pob-sync-"..retiredDigest..".bak"
+	local suspectPath = target..".before-pob-sync-"..suspectDigest..".bak"
+	write(retiredPath,retired)
+	write(suspectPath,suspect.."# modified")
+	table.insert(reconciled.history,{backup=retiredDigest,checkedAt=now-2*86400})
+	table.insert(reconciled.history,{backup=suspectDigest,checkedAt=now-3*86400})
+	write(configFile,assert(configurationCodec.encode(reconciled)))
+	assert(not pcall(profiles.setBackupLimit,"default",1,"stale revision"))
+	profiles.setBackupLimit("default",1,reconciled.revision)
+	assert(read(retiredPath)==retired and read(suspectPath)==suspect.."# modified")
+	local otherProfileBytes = read(namedTarget)
+	profiles.pause(false)
+	launch.DownloadPage = function(_,url,callback)
+		local mapBody = stash[url:match("&type=(%w+)$")]
+		if mapBody then callback({header=header,body=mapBody}); return end
+		reply(url,callback)
+	end
+	profiles.tick(now,true)
+	assert(profiles.status:find("Protected drops verified",1,true),profiles.status)
+	assert(profiles.verifiedOutput("default")==read(target))
+	assert(not io.open(retiredPath,"rb") and read(suspectPath)==suspect.."# modified")
+	assert(read(reconciled.baseline)==fixedAtReview and read(namedTarget)==otherProfileBytes)
+	assert(profiles.configuration().retentionSkipped==1)
+	print("Opt-in retention preserves unverifiable files, the baseline and other profiles")
 end
 -- A successful-looking but severely incomplete feed must keep the last
 -- verified file and its publication record.
