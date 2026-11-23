@@ -2,6 +2,7 @@ local sync = require("Modules.LootFilterDailySync")
 local background = require("Modules.LootFilterBackgroundTask")
 local ui = require("Modules.PlanningUI")
 local market = require("Modules.LootFilterEconomy")
+local appearance = require("Modules.LootFilterPriceAppearance")
 local json = require("dkjson")
 local M = {}
 
@@ -29,10 +30,20 @@ local function editPickupPolicy(width, target, policy, save)
 	end
 	highlightField("highlightChaos",16)
 	highlightField("strongHighlightChaos",width/2+4)
+	local function paletteField(key,x,defaultLabel)
+		local choices = {{label=defaultLabel}}
+		for _, preset in ipairs(appearance.presets) do choices[#choices+1] = preset end
+		controls[key] = new("DropDownControl"):DropDownControl(ui.anchor,{x,330,width/2-32,28},choices)
+		for index, preset in ipairs(choices) do
+			if preset.val==policy[key] then controls[key]:SetSel(index); break end
+		end
+	end
+	paletteField("highlightStyle",16,"Default (yellow circle)")
+	paletteField("strongHighlightStyle",width/2+4,"Default (orange star)")
 	local confirm = policy.confirmTightening==true
-	controls.confirmTightening = new("ButtonControl"):ButtonControl(ui.anchor,{16,330,width-32,28},"",function() confirm=not confirm end)
+	controls.confirmTightening = new("ButtonControl"):ButtonControl(ui.anchor,{16,374,width-32,28},"",function() confirm=not confirm end)
 	controls.confirmTightening.label = function() return "Require GGG trade confirmation for new hides: "..(confirm and "On" or "Off") end
-	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,376,180,28},"Use with next update",function()
+	controls.apply = new("ButtonControl"):ButtonControl(ui.anchor,{16,420,180,28},"Use with next update",function()
 		local passed, checked = pcall(function()
 			local caps, nextIndex, why = json.decode(controls.caps.buf)
 			assert(type(caps) == "table" and not controls.caps.buf:sub(nextIndex):find("%S"), why or "Enter a JSON object of item caps")
@@ -41,6 +52,8 @@ local function editPickupPolicy(width, target, policy, save)
 				maps=controls.maps.buf ~= "" and (tonumber(controls.maps.buf) or -1) or nil,
 				highlightChaos=controls.highlightChaos.buf ~= "" and (tonumber(controls.highlightChaos.buf) or -1) or nil,
 				strongHighlightChaos=controls.strongHighlightChaos.buf ~= "" and (tonumber(controls.strongHighlightChaos.buf) or -1) or nil,
+				highlightStyle=controls.highlightStyle:GetSelValueByKey("val"),
+				strongHighlightStyle=controls.strongHighlightStyle:GetSelValueByKey("val"),
 				confirmTightening=confirm,
 				caps=caps,
 			})
@@ -49,9 +62,9 @@ local function editPickupPolicy(width, target, policy, save)
 		main:ClosePopup()
 		save(checked)
 	end)
-	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,376,120,28},"Cancel",function() main:ClosePopup() end)
+	controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,420,120,28},"Cancel",function() main:ClosePopup() end)
 	ui.style(controls)
-	main:OpenPopup(width,422,"Pickup policy",controls,nil,nil,"cancel")
+	main:OpenPopup(width,466,"Pickup policy",controls,nil,nil,"cancel")
 end
 
 function M.Open(profileId, profileName)
@@ -425,6 +438,44 @@ function M.Open(profileId, profileName)
 		main:OpenPopup(popupWidth,188,"Backup retention",controls,nil,"count","cancel")
 	end)
 	c.backupRetention.enabled = function() return config.target ~= nil and not sync.busy end
+	c.offlinePrices = new("ButtonControl"):ButtonControl(ui.anchor,{192,534,168,26},"Offline prices",function()
+		local saved, latest = pcall(sync.configuration,profileId)
+		if not saved or not latest then main:OpenMessagePopup("Offline prices","Could not read this sync profile."); return end
+		local controls = {}
+		local popupWidth = math.min(560,width)
+		local days = {0,1,3,7}
+		ui.description(controls,"help",16,18,popupWidth-32,54,{
+			"Keep prices from the latest verified refresh for offline review.",
+			"Preview your pending pickup settings in a read-only diff.",
+		},14)
+		ui.label(controls,"maxAge",16,78,"Maximum age for offline prices",14)
+		controls.days = new("DropDownControl"):DropDownControl(ui.anchor,{16,100,popupWidth-32,28},
+			{"Off","1 day","3 days","7 days"})
+		for index, day in ipairs(days) do
+			if day==(latest.offlinePriceDays or 0) then controls.days:SetSel(index); break end
+		end
+		controls.save = new("ButtonControl"):ButtonControl(ui.anchor,{16,146,150,28},"Save setting",function()
+			local ok, why = pcall(sync.setOfflinePriceDays,profileId,days[controls.days.selIndex],latest.revision)
+			if not ok then main:OpenMessagePopup("Offline prices",ui.errorText(why)); return end
+			main:ClosePopup()
+		end)
+		controls.preview = new("ButtonControl"):ButtonControl(ui.anchor,{174,146,160,28},"Preview last prices",function()
+			local ok, review = pcall(sync.previewOffline,os.time(),profileId,{
+				targetValue=tonumber(c.targetValue.buf) or false,pickupPolicy=pickupPolicy,
+			})
+			if not ok then main:OpenMessagePopup("Offline prices",ui.errorText(review)); return end
+			local note = string.format("Offline review. Oldest quote is %d minutes old. Verified refresh started on %s.",
+				math.ceil(review.age/60),os.date("%Y-%m-%d %H:%M",review.checkedAt))
+			require("Classes.LootFilterDiffControl").Open(review.before,review.after,true,{
+				title="Offline price preview",note=note,reviewOnly=true,
+			})
+		end)
+		controls.preview.enabled = function() return latest.offlinePriceDays~=nil and not sync.busy end
+		controls.cancel = new("ButtonControl"):ButtonControl(ui.anchor,{popupWidth-120,146,104,28},"Close",function() main:ClosePopup() end)
+		ui.style(controls)
+		main:OpenPopup(popupWidth,204,"Offline prices",controls,nil,nil,"cancel")
+	end)
+	c.offlinePrices.enabled = function() return config.target~=nil and not sync.busy end
 	ui.style(c)
 	main:OpenPopup(width, 578, "Daily filter sync", c, nil, nil, "close")
 end

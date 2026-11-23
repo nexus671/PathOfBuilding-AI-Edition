@@ -1,3 +1,8 @@
+VERSION[2.68.1-ai.preview1230][2026/11/23]
+
+* Review proposed pickup settings offline with opt-in, age-limited snapshots from verified refreshes.
+* Choose separate minimap icons and light beams for each price highlight tier and check both tiers in the review.
+
 VERSION[2.68.1-ai.preview1229][2026/11/23]
 
 * Add item crafting goals for additive hit-damage avoidance.

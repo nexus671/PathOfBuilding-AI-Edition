@@ -2,18 +2,23 @@ local json = require("dkjson")
 local sha = require("sha1")
 local market = require("Modules.LootFilterEconomy")
 local validate = require("Modules.LootFilterSyncValidation")
+local offline = require("Modules.LootFilterOfflinePrices")
 local M = { status = "Daily sync is disabled." }
 local volumeLimit = 2 * 1024 * 1024
 local polls, nextSweep, rateLimitUntil = {}, 0, 0
 local function nowText(now) return os.date("%Y-%m-%d %H:%M", now) end
 
-local function read(path)
+local function readWithLimit(path, limit)
 	local file = io.open(path, "rb")
 	if not file then return nil end
-	local data = file:read(volumeLimit + 1)
+	local data = file:read(limit + 1)
 	file:close()
-	assert(data and #data <= volumeLimit, "Filter or sync record exceeds the size limit")
+	assert(data and #data <= limit, "Filter or sync record exceeds the size limit")
 	return data
+end
+
+local function read(path)
+	return readWithLimit(path,volumeLimit)
 end
 
 local windows
@@ -109,6 +114,10 @@ local function settingsPath(id)
 	if id == nil or id == "default" then return main.userPath .. "LootFilterDailySync.json" end
 	assert(type(id) == "string" and #id == 40 and id:match("^[a-f0-9]+$"), "Invalid sync profile")
 	return main.userPath .. "LootFilterDailySync-" .. id .. ".json"
+end
+
+local function offlinePricePath(id)
+	return (settingsPath(id):gsub("%.json$", "-OfflinePrices.cache"))
 end
 
 local function lockSettings(run)
@@ -597,6 +606,44 @@ function M.setBackgroundNotifications(enabled, id)
 	end)
 end
 
+local function offlineDays(value)
+	return value==1 or value==3 or value==7
+end
+
+function M.setOfflinePriceDays(id, days, revision)
+	assert(not M.busy, "Wait for the current sync to finish")
+	assert(days==0 or offlineDays(days), "Choose 0, 1, 3, or 7 days")
+	lockSettings(function()
+		local config = assert(get(id), "Enable daily sync first")
+		assert(config.revision==revision, "Daily sync settings changed. Reopen offline prices.")
+		config.offlinePriceDays, config.revision = days>0 and days or nil, newRevision()
+		save(config,id)
+	end)
+end
+
+function M.previewOffline(now, id, settings)
+	assert(not M.busy, "Wait for the current sync to finish")
+	return lockSettings(function()
+		local config = assert(get(id), "Enable daily sync first")
+		assert(offlineDays(config.offlinePriceDays), "Enable offline prices for this profile")
+		assert(config.lastSuccess and not config.pending, "Run a verified online refresh before previewing offline prices")
+		local original = assert(read(filterPath(config.target)), "Target filter is missing")
+		assert(sha(original)==config.current, "The live filter changed. Review external edits before previewing prices.")
+		local baseline = assert(read(config.baseline), "Baseline filter is missing")
+		assert(sha(baseline)==config.baselineHash, "Baseline checksum changed")
+		verifyUnmanagedRules(original,baseline)
+		local raw = assert(readWithLimit(offlinePricePath(id),offline.maxSize), "No verified offline price snapshot. Run an online refresh first.")
+		local bodies, header, age = offline.decode(raw,config,market.feedCategories(baseline),now)
+		settings = settings or {}
+		local value = settings.targetValue
+		if value==nil then value=config.targetValue end
+		assert(type(value)=="number" and value>0 and value<=1000, "Enter a stack target above 0 and up to 1,000 chaos")
+		local candidate = validate(baseline,bodies,false,value,config.protections,config.priceHistory,
+			header.day,header.checkedAt,settings.pickupPolicy or config.pickupPolicy,header.confirmation)
+		return {before=original,after=candidate,age=age,checkedAt=header.checkedAt}
+	end)
+end
+
 local function backupDigest(value)
 	return type(value)=="string" and #value==40 and value:match("^[a-f0-9]+$")
 end
@@ -628,6 +675,7 @@ function M.configure(target, baselineFile, league, options)
 		nextConfig.backgroundNotifications = current and current.backgroundNotifications == true
 		nextConfig.providerRetryAfter = current and current.providerRetryAfter
 		nextConfig.backupLimit = current and current.backupLimit
+		nextConfig.offlinePriceDays = current and current.offlinePriceDays
 		if current and current.baselineHash == nextConfig.baselineHash then
 			if current.league == nextConfig.league then nextConfig.priceHistory = current.priceHistory end
 			if current.target == nextConfig.target and current.current == nextConfig.current and not current.pending then
@@ -938,6 +986,11 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		if #current.history > 30 then table.remove(current.history) end
 		save(current,id)
 		pcall(archiveReview,id,reviewKey,evidence)
+		if offlineDays(current.offlinePriceDays) then
+			pcall(function()
+				put(offlinePricePath(id),offline.encode(current,bodies,feeds,now,math.max(now,os.time()),day,confirmation))
+			end)
+		end
 		if backups then
 			pruneBackups(current,backups)
 			pcall(save,current,id)

@@ -10,7 +10,7 @@ For divination cards, use an exact `Class == "Divination Cards"` and exact `Base
 
 In **Browse loot market prices**, unique results show other quoted variants that share the same base, even when your search returns one name. A supported estimate needs at least 20 observations and 20 listings. Thin or conflicting quotes are counted separately from the supported range. The range helps review unidentified unique bases without using a named variant's price for the whole base.
 
-In Pickup policy, set optional chaos thresholds for yellow and orange highlights on managed commodity stacks and divination cards. PoB uses the specified value for the stack and skips ambiguous or thin quotes. PoB adds these appearances only to matching explicit Show rules, keeping the original rule order and visibility. Use Last review to see the marker on a sampled stack. The feature skips any unresolved imports.
+In Pickup policy, set optional chaos thresholds for the normal and strong highlights on managed commodity stacks and divination cards. Choose a minimap icon and beam preset for each threshold. The defaults are a yellow circle and an orange star. PoB uses the specified value for the stack and skips ambiguous or thin quotes. PoB adds these appearances only to matching explicit Show rules, keeping the original rule order and visibility. Use Last review to see the marker on a sampled stack. The feature skips any unresolved imports.
 
 Enable GGG trade confirmation in Pickup policy to require a liquid direct-chaos trade before increasing a managed hide cutoff. PoB uses the higher of the recent live-price samples and the completed-hour GGG trade average. If the historical trade feed or exact match is unavailable, the original cutoff remains. This option leaves price-based visibility increases available.
 
@@ -26,6 +26,8 @@ Price-change examples use known base properties and the chosen area level. They 
 
 The sync settings accept a local time in HH:MM, a repeat interval from one to seven days, and a chaos target per stack. **Sync now** can refresh again on the same day. **Pause** keeps the setup and history. **Review backups** lists up to 30 recorded versions. Open the exact file diff before confirming a restore. PoB validates the backup and the current state, keeps the replaced file as an undo point, and pauses daily sync. **Backup retention** defaults to keeping all files. An optional limit removes older recorded backups after a successful refresh only when their bytes still match the recorded checksum. The live filter and fixed baseline stay in place. **Last review** shows cutoff changes, skipped items, and recent runs. The most recent failed refresh remains visible after restarting PoB until a refresh succeeds.
 
+To review pickup settings when the price service is unavailable, open **Offline prices** and select a maximum age of one, three, or seven days before the next successful refresh. Use **Preview last prices** to compare pending settings against that profile's most recent verified snapshot. PoB checks the snapshot and reports the age of the oldest quote. Scheduled sync still requires fresh prices.
+
 For a different tagged filter, provide a JSON array of one to 500 sample drops in **Protected samples JSON**. Each sample needs at least a BaseType and Rarity. Add every property needed by the filter rules leading to its Show block. For example, a filter with an unconditional Cord Belt rule can use this sample:
 
 ```json
@@ -38,7 +40,7 @@ Daily sync uses the lower of the latest liquid quote and the median of available
 
 Use **Preview changes** before enabling a new setup. It fetches prices and validates the proposed filter, then opens the full text comparison without saving settings or replacing your file.
 
-The sync review tests up to 500 combinations of affected classes and representative areas at the first stack size whose cutoff changed. It shows both the baseline and candidate outcome and the matching line, including stacks that another rule still hides.
+The sync review tests up to 500 combinations of affected classes and representative areas at the first stack size whose cutoff changed and at proposed highlight thresholds. It shows both the baseline and candidate outcome and the matching line, including stacks that another rule still hides.
 
 **Browse market prices** opens a read-only market browser for cards, uniques, maps, gems, and crafting bases. It shows the quote and available variant details, including map tier, gem level and quality, links, and listing counts. Daily filter changes support managed commodity stack rules and explicitly tagged card hides.
 

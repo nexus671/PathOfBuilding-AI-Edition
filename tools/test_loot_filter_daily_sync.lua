@@ -186,6 +186,41 @@ Show
 	local _, decimal = market.review(raw,boundaryQuotes,100,{highlightChaos=0.07,strongHighlightChaos=0.08000001})
 	assert(decimal[1].highlights[1].firstStack==7 and decimal[1].highlights[2].firstStack==9)
 	assert(appearance.strip(styled)==raw)
+	assert(not pcall(market.pickupPolicy,100,{highlightStyle="invalid"}))
+	style.highlightStyle, style.strongHighlightStyle = "cyan-diamond", "purple-star"
+	local themed = market.review(raw,quotes,100,style)
+	local themedRules = parser.parse(themed)
+	assert(#themedRules.diagnostics==0 and appearance.strip(themed)==raw)
+	for stack=1,30 do
+		for _, area in ipairs({60,83}) do
+			local item = {BaseType="Orb of Alteration",Class="Stackable Currency",StackSize=stack,AreaLevel=area}
+			local before, after = parser.simulate(candidate,item), parser.simulate(themedRules,item)
+			assert(before.action==after.action)
+			if area==83 and stack==10 then
+				assert(table.concat(after.styles.MinimapIcon," ")=="0 Cyan Diamond")
+				assert(after.styles.PlayEffect[1]=="Cyan")
+			elseif area==83 and stack==15 then
+				assert(table.concat(after.styles.MinimapIcon," ")=="0 Purple Star")
+				assert(after.styles.PlayEffect[1]=="Purple")
+			else
+				local expected = table.concat(before.styles.MinimapIcon or {}," ")
+				if area==83 and stack>=10 and stack<20 and stack~=18 then
+					expected = stack<15 and "0 Cyan Diamond" or "0 Purple Star"
+				end
+				assert(table.concat(after.styles.MinimapIcon or {}," ")==expected)
+			end
+		end
+	end
+	local validation = require("Modules.LootFilterSyncValidation")
+	local bodies = {}
+	local body = [[{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.2,"volumePrimaryValue":1000}]}]]
+	for index = 1, #market.feedCategories(raw) do bodies[index] = body end
+	local _, _, reviewed = validation(raw,bodies,false,100,{{BaseType="Cord Belt",Rarity="Magic",Class="Belts"}},nil,nil,nil,style)
+	local medium, strong = reviewed[1].samples[1], reviewed[1].samples[2]
+	assert(medium.area==83 and medium.count==10 and medium.marker=="0 Cyan Diamond")
+	assert(strong.area==83 and strong.count==15 and strong.marker=="0 Purple Star")
+	local mismatched = themed:gsub("cyan%-diamond","red-diamond",1)
+	assert(not pcall(appearance.strip,mismatched))
 	local bom = "\239\187\191"
 	local plain = bom..'Show\r\n    Class == "Stackable Currency"\r\n    BaseType == "Orb of Alteration"\r\n'
 	local marked = appearance.apply(plain,{["Stackable Currency"]={["Orb of Alteration"]={{name="Orb of Alteration",firstStack=10,tier=1}}}})
@@ -1196,6 +1231,70 @@ do
 		assert(read(live)==installed and failed.lastSuccess==good.lastSuccess and #failed.priceHistory==2)
 	end
 	checkTruncatedMap()
+end
+
+do
+	local function checkOfflinePrices()
+		local fixture = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+		local id = fixture.createProfile("Offline price review fixture")
+		local live, fixed = dir.."/offline-live.filter", dir.."/offline-fixed.filter"
+		local sampleFile = dir.."/offline-protection.json"
+		write(live,original);write(fixed,original)
+		write(sampleFile,'[{"BaseType":"Cord Belt","Rarity":"Magic"}]')
+		fixture.configure(live,fixed,"Covens",{profileId=id,protectionFile=sampleFile})
+		assert(not pcall(fixture.previewOffline,now,id))
+		local revision = fixture.configuration(id).revision
+		fixture.setOfflinePriceDays(id,1,revision)
+		assert(not pcall(fixture.setOfflinePriceDays,id,3,revision))
+		local download, systemTime = launch.DownloadPage, os.time
+		os.time = function() return now end
+		launch.DownloadPage = function(_,_,callback) callback({header=header,body=commodityBody}) end
+		fixture.tick(now,true,false,id)
+		os.time = systemTime
+		local verified = fixture.configuration(id)
+		assert(verified.lastSuccess==now)
+		local installed = read(live)
+		local retained = dir.."/LootFilterDailySync-"..id.."-OfflinePrices.cache"
+		local prices = read(retained)
+		local restart = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+		launch.DownloadPage = function() error("Offline preview made a network request") end
+		local review = restart.previewOffline(now+7200,id)
+		assert(review.age>=7200 and review.before==installed and review.after==installed)
+		local whatIf = restart.previewOffline(now+7200,id,{targetValue=10})
+		assert(whatIf.before==installed and whatIf.after==original and read(live)==installed)
+		assert(not pcall(restart.previewOffline,now+86400,id))
+		assert(not pcall(restart.previewOffline,now+7200))
+		write(retained,prices:sub(1,-2).."!")
+		local intact, failure = pcall(restart.previewOffline,now+7200,id)
+		assert(not intact and failure:find("checksum mismatch",1,true),failure)
+		write(retained,prices)
+		write(live,installed.."\n# External edit")
+		assert(not pcall(restart.previewOffline,now+7200,id))
+		write(live,installed)
+		launch.DownloadPage = function(_,_,callback) callback(nil,"Response code: 403") end
+		restart.tick(now+7200,true,false,id)
+		assert(not restart.busy and restart.configuration(id).lastSuccess==now and read(live)==installed)
+		assert(restart.previewOffline(now+7200,id).after==installed)
+		local open, clock = io.open, now+7300
+		io.open = function(path, mode)
+			if path==retained..".tmp" and mode=="wb" then return nil,"Offline cache is read-only" end
+			return open(path,mode)
+		end
+		os.time = function() return clock end
+		launch.DownloadPage = function(_,_,callback)
+			local date = os.date("!%a, %d %b %Y %H:%M:%S GMT",clock)
+			callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\n\r\n",body=commodityBody})
+		end
+		restart.tick(clock,true,false,id)
+		io.open, os.time = open, systemTime
+		assert(restart.configuration(id).lastSuccess==clock and read(live)==installed)
+		assert(read(retained)==prices and not pcall(restart.previewOffline,clock,id))
+		restart.setOfflinePriceDays(id,0,restart.configuration(id).revision)
+		assert(not pcall(restart.previewOffline,now+7200,id))
+		launch.DownloadPage = download
+		print("Offline review replays only an intact matching snapshot and leaves the live filter untouched")
+	end
+	checkOfflinePrices()
 end
 
 do
