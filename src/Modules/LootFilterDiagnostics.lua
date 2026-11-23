@@ -71,26 +71,34 @@ function M.contradictions(parsed)
     end
    elseif condition.keyword~="Rarity" then
     local b=bound(condition);local exact=(condition.operator=="=" or condition.operator=="==") and number(condition)
+    local excluded=(condition.operator=="!" or condition.operator=="!=") and number(condition)
     if exact and (exact~=exact or math.abs(exact)==math.huge) then exact=nil end
-    if b or exact then
+    if excluded and (excluded~=excluded or math.abs(excluded)==math.huge) then excluded=nil end
+    if b or exact or excluded then
      local range=ranges[condition.keyword] or {};ranges[condition.keyword]=range
      local function add(value)
       local old=range[value.direction]
       if not old or covers(old,value) then range[value.direction]=value end
      end
-     if b then add(b) else add({direction="lower",value=exact,inclusive=true});add({direction="upper",value=exact,inclusive=true}) end
+     if b then add(b) elseif exact then add({direction="lower",value=exact,inclusive=true});add({direction="upper",value=exact,inclusive=true})
+     else range.excluded=range.excluded or {};range.excluded[excluded]=true end
     end
    end
   end
   local names={};for name,range in pairs(ranges) do
    local lower,upper=range.lower,range.upper
    local empty=lower and upper and (lower.value>upper.value or lower.value==upper.value and (not lower.inclusive or not upper.inclusive))
-   -- Item and area levels are whole numbers; a gap between adjacent integers
-   -- can be empty even when the bounds do not meet on the real number line.
-   if lower and upper and (name=="ItemLevel" or name=="AreaLevel") then
+   if lower and upper and lower.value==upper.value and lower.inclusive and upper.inclusive and range.excluded and range.excluded[lower.value] then empty=true end
+   -- Levels and stack counts are whole numbers; exclusions can also cover
+   -- every remaining integer in a bounded interval.
+   if lower and upper and (name=="ItemLevel" or name=="AreaLevel" or name=="StackSize") then
     local first=lower.inclusive and math.ceil(lower.value) or math.floor(lower.value)+1
     local last=upper.inclusive and math.floor(upper.value) or math.ceil(upper.value)-1
     empty=empty or first>last
+    if not empty and range.excluded then
+     local excluded=0;for value in pairs(range.excluded) do if value==math.floor(value) and value>=first and value<=last then excluded=excluded+1 end end
+     empty=excluded==last-first+1
+    end
    end
    if empty then names[#names+1]=name end
   end
