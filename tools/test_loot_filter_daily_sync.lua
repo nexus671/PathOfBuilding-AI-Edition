@@ -366,7 +366,8 @@ assert(sync.status:find("snapshot is stale",1,true) and read(target)==successful
 sync.rollback()
 sync.disable()
 os.time=systemTime
-sync=assert(loadfile("Modules/LootFilterDailySync.lua"))()
+package.loaded["Modules.LootFilterDailySync"]=nil
+sync=require("Modules.LootFilterDailySync")
 
 -- An expired season yields an empty successful price response. Confirm
 -- against the fresh provider list and retain the user's chosen profile.
@@ -1090,7 +1091,7 @@ function main:ClosePopup() self.popups[1]=nil end
 main.screenW = 1024
 launch.DownloadPage = function(_, url, callback, params)
 	assert(params.timeout == 20)
-	if url:match("/leagues$") then callback({body='[{"id":"Covens"}]'}); return end
+	if url:match("/leagues$") then callback({header=header,body='[{"id":"Covens","name":"Covens"}]'}); return end
 	reply(url,callback)
 end
 require("Classes.LootFilterEconomyControl").Open({},cardBaseline,function(_, value) exported=value end)
@@ -1100,7 +1101,7 @@ manualReview.choose()
 assert(exported==refreshed)
 
 launch.DownloadPage = function(_, url, callback)
-	if url:match("/leagues$") then callback({body='[{"id":"Covens"}]'}); return end
+	if url:match("/leagues$") then callback({header=header,body='[{"id":"Covens","name":"Covens"}]'}); return end
 	if url:match("&type=DivinationCard$") then reply(url,callback); return end
 	callback({header=header:gsub("Age: 5","Age: 4001"),body=commodityBody})
 end
@@ -1111,7 +1112,22 @@ assert(manualReview.canChoose())
 manualReview.choose()
 assert(exported:find("StackSize <= 6",1,true))
 assert(exported:find('BaseType == "Cheap Card" "Thin Card"',1,true))
-print("Manual review applies the native price freshness and class-specific liquidity checks")
+manualReview, exported = nil,nil
+local limitedReviewCalls = 0
+launch.DownloadPage = function(_,url,callback)
+	limitedReviewCalls = limitedReviewCalls+1
+	if url:match("/leagues$") then
+		callback({header=header,body='[{"id":"Covens","name":"Covens"}]'})
+	else
+		callback({header="HTTP/1.1 503 Unavailable\r\nRetry-After: 60\r\n\r\n"},"Response code: 503")
+	end
+end
+manual.Open({},cardBaseline,function(_, value) exported=value end)
+controls.fetch.action()
+assert(limitedReviewCalls==2 and not manualReview and not exported)
+controls.fetch.action()
+assert(limitedReviewCalls==2 and controls.status.list[1]:find("provider cooldown",1,true))
+print("Manual review applies the native price freshness, liquidity checks and provider cooldown")
 
 local function checkExternalAdoption()
 	local adoptionTarget = dir .. "/external-adoption.filter"
