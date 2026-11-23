@@ -193,6 +193,29 @@ local currencies={
 	{"exalt","Exalted"},{"annul","Annul"},{"scour","Scour"},{"divine","Divine"},{"vaal","Vaal"},{"chromatic","Chromatic"},
 }
 local descriptions={mirror="Create a mirrored copy; the original is unchanged. The copy cannot normally be crafted further.",beast_max_links="Link existing sockets using the Black Morrigan and a Craicic Sand Spitter.",omen_trichromatism="Guarantee one red, green and blue socket. Uses one Omen and one Chromatic Orb.",omen_connections="Fully link existing sockets. Uses one Omen of Connections and one Orb of Fusing.",transmute="Add magic modifiers to a normal item.",alteration="Reroll the modifiers on a magic item.",augmentation="Add a modifier to a magic item.",regal="Upgrade a magic item and add a modifier.",alchemy="Turn a normal item into a rare item.",chaos="Reroll the modifiers on a rare item.",veiled_chaos="Reforge a rare item with a veiled modifier.",exalt="Add a modifier to a rare item.",annul="Remove a random modifier.",scour="Remove the item's modifiers.",divine="Reroll the values of existing modifiers.",vaal="Corrupt the item. Outcomes can be destructive.",chromatic="Reroll socket colours."}
+descriptions.binding="Turn a normal item into a rare item with up to four linked sockets."
+descriptions.blessed="Reroll the values of supported implicit modifiers."
+descriptions.sacred="Reroll the base defence values of armour."
+descriptions.jeweller="Reroll the number of sockets."
+descriptions.fusing="Reroll the links between sockets."
+descriptions.quality="Improve the item's quality using its appropriate quality currency."
+descriptions.eldritch_chaos="Reroll modifiers on one side of an eligible Eldritch item."
+descriptions.eldritch_exalt="Add a modifier to an eligible Eldritch item."
+descriptions.eldritch_annul="Remove a modifier from an eligible Eldritch item."
+descriptions.tainted_chromatic="Reroll the socket colours of a corrupted item."
+descriptions.tainted_jeweller="Attempt to add or remove a socket on a corrupted item."
+descriptions.tainted_fusing="Attempt to add or remove a link on a corrupted item."
+descriptions.tainted_exalt="Attempt to add or remove a modifier on a corrupted item."
+descriptions.tainted_chaos="Attempt to reforge or remove modifiers on a corrupted item."
+descriptions.fracture="Fracture one modifier so it is preserved by many later crafts."
+descriptions.dominance="Attempt to upgrade an influenced modifier while removing another."
+descriptions.veiled_orb="Replace a modifier with a veiled modifier to unveil later."
+descriptions.remembrance="Add memory strands to a normal item."
+descriptions.unravelling="Consume memory strands to attempt to upgrade existing modifiers."
+descriptions.foulborn_augmentation="Add a modifier to a magic item using the experimental Foulborn model."
+descriptions.foulborn_regal="Upgrade a magic item to rare using the experimental Foulborn model."
+descriptions.foulborn_exalt="Add a modifier to a rare item using the experimental Foulborn model."
+function M.description(method) return descriptions[method] end
 local currencyArt,currencyNames
 function M.actionLabel(action,model)
 	if action.method=="rog_reroll" then
@@ -276,6 +299,7 @@ function M.hint(method,state,model,craft)
 	end
 	if available and method=="annul" then return "3.30: remove a random modifier. Attack/caster roll blockers do not protect it; fractures and prefix/suffix locks still apply." end
 	if available and method=="binding" then return "No longer generated in 3.30. Existing Orbs of Binding still work." end
+	if available and method=="sacred" then return "Assumes a shared roll with 32 equally likely positions; official odds and current-game behavior are unverified." end
 	if available and method=="recombine" then return "Uses the chosen base's item level and preliminary 3.30 small-pool estimates. Modifier weights and special cases are uncertain." end
 	if available and method=="ducat_ukatoa" then return "Replaces amulet implicits. Equal side and tier 1-4 chances are unverified assumptions." end
 	if available and method=="ducat_katakohi" then return "Historical Allflame craft. Socket counts, selection, attribute pools and modifier odds are experimental assumptions." end

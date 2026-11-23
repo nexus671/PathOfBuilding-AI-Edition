@@ -53,6 +53,7 @@ function M.guideAction(method,count,resource,corrupted,socketCount,enchantId,cat
 	if method=="enkindling" then return "Use an Enkindling Orb to roll a utility flask enchantment" end
 	if method=="quality" then return "Use "..count.." "..resource..(count==1 and "" or "s") end
 	if method=="divine" then return "Use a Divine Orb to reroll explicit modifier values" end
+	if method=="sacred" then return "Use a Sacred Orb to reroll base defences" end
 	if method=="tainted_quality" then return "Use a Tainted "..resource.." to reroll quality" end
 	if method=="beast_max_links" then return "Link existing sockets with a Black Morrigan and a Craicic Sand Spitter" end
 	if method=="omen_connections" then return "Link existing sockets with an Omen of Connections and an Orb of Fusing" end
@@ -63,6 +64,7 @@ function M.guideAction(method,count,resource,corrupted,socketCount,enchantId,cat
 	if method=="chromatic" then return "Use a Chromatic Orb to reroll socket colours" end
 	if method=="tainted_chromatic" then return "Use a Tainted Chromatic Orb to reroll socket colours" end
 	if method=="omen_trichromatism" then return "Use an Omen of Trichromatism and a Chromatic Orb to guarantee red, green and blue sockets" end
+	if method=="socket_colour_bench" then local n=({[2]=5,[3]=20,[4]=75})[count];if not n then return nil end;return "Use the crafting bench for at least "..count.." non-white sockets ("..n.." Chromatic Orbs"..(corrupted and " and "..n.." Vaal Orbs" or "")..")" end
 	if method=="omen_jeweller" then return "Add white sockets with an Omen of the Jeweller and a Jeweller's Orb" end
 	if method=="socket_count_bench" then
 		local components=require("Modules.CraftingSimulator").components({method="socket_bench",count=count},{sockets={},corrupted=corrupted})
@@ -160,6 +162,67 @@ local function preserveArmourBaseline(raw,output,item)
 		end
 	end
 	return output
+end
+
+-- Sacred Orb previews retain the original item text, including unique mods.
+-- Copied defence totals and PoB's internal percentile markers must agree.
+function M.sacredReason(raw)
+	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
+	if item.corrupted then return "Sacred Orbs require an uncorrupted item" end
+	if not item.base.armour then return "Sacred Orbs require armour" end
+	local variable={}
+	for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
+		local low,high=item.base.armour[kind.."BaseMin"],item.base.armour[kind.."BaseMax"]
+		if low and high and high>low then variable[kind]=true end
+	end
+	if not next(variable) then return "This armour has no variable base defences" end
+	local names={Armour="Armour",Evasion="Evasion",["Evasion Rating"]="Evasion",["Energy Shield"]="EnergyShield",Ward="Ward"}
+	local markers,properties,levels={},{},0
+	for line in raw:gmatch("[^\r\n]+") do
+		local marker=line:match("^(%a+)BasePercentile:%s*")
+		if marker and variable[marker] then
+			if markers[marker] then return "Duplicate base defence percentile" end
+			markers[marker]=true
+		end
+		if line:match("^Item Level:%s*%d+") then levels=levels+1 end
+		local kind=names[line:match("^([^:]+):")]
+		if kind and variable[kind] then
+			if properties[kind] then return "Duplicate base defence property" end
+			if not line:match("^[^:]+:%s*[%d,]+") then return "Could not safely update displayed defence" end
+			properties[kind]=true
+		end
+	end
+	for kind in pairs(variable) do
+		if not markers[kind] and levels~=1 then return "Could not safely locate item level" end
+	end
+end
+function M.sacred(raw,seed,position)
+	local reason=M.sacredReason(raw);assert(not reason,reason)
+	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
+	if position~=nil then assert(type(position)=="number" and position==math.floor(position) and position>=0 and position<32,"Invalid Sacred position") end
+	local before=M.inspect(raw);local random=position~=nil and function() return (position+0.5)/32 end or require("Modules.CalcTime").random(seed);local order={"Armour","Evasion","EnergyShield","Ward"}
+	local values=require("Modules.CraftingSacred").percentiles(before.base.armour,random)
+	local newline=raw:find("\r\n",1,true) and "\r\n" or "\n";local seen={};local level=0
+	local staged=raw:gsub("[^\r\n]+",function(line)
+		local kind=line:match("^(%a+)BasePercentile:%s*")
+		if kind and values[kind] then assert(not seen[kind],"Duplicate base defence percentile");seen[kind]=true;return kind.."BasePercentile: "..string.format("%.12g",values[kind]) end
+		return line
+	end)
+	local missing={};for _,kind in ipairs(order) do if values[kind] and not seen[kind] then missing[#missing+1]=kind.."BasePercentile: "..string.format("%.12g",values[kind]) end end
+	if #missing>0 then staged=staged:gsub("[^\r\n]+",function(line) if line:match("^Item Level:%s*%d+") then level=level+1;return line..newline..table.concat(missing,newline) end;return line end);assert(level==1,"Could not safely locate item level") end
+	local stagedItem=M.inspect(staged);local names={Armour="Armour",Evasion="Evasion",["Evasion Rating"]="Evasion",["Energy Shield"]="EnergyShield",Ward="Ward"};local changed={}
+	local output=staged:gsub("[^\r\n]+",function(line)
+		local label=line:match("^([^:]+):");local kind=names[label]
+		if kind and values[kind] then
+			assert(not changed[kind],"Duplicate base defence property");changed[kind]=true
+			local prefix,suffix=line:match("^([^:]+:%s*)[%d,]+(.*)$");assert(prefix and stagedItem.armourData[kind],"Could not safely update displayed defence")
+			return prefix..stagedItem.armourData[kind]..suffix
+		end
+		return line
+	end)
+	local after=M.inspect(output);assert(after.title==before.title and after.baseName==before.baseName,"Unique item changed during Sacred preview")
+	for kind,value in pairs(values) do assert(math.abs(after.armourData[kind.."BasePercentile"]-value)<1e-9,"Base defence did not round-trip") end
+	return {itemText=output,components={sacred=1}}
 end
 -- Game-copy metadata must stay in the property section. Appending a missing
 -- quality line after the modifiers would make it look like a modifier.
@@ -610,6 +673,16 @@ function M.socketModificationReason(raw,item)
 	if raw:lower():find("sockets cannot be modified",1,true) or uniqueSocketRestriction(item.title)=="locked" then return "This item's sockets cannot be modified" end
 end
 
+-- 3.29 introduced a hidden no-white-socket property on new Dialla's
+-- Malefaction copies. Older copies are unaffected, but ordinary item text
+-- cannot identify the version. An existing white socket proves this copy can
+-- have one; otherwise do not invent outcomes requiring white sockets.
+local function whiteRestrictionReason(item)
+	if item.title~="Dialla's Malefaction" or item.baseName~="Sage's Robe" then return end
+	for _,socket in ipairs(item.sockets or {}) do if socket.color=="W" then return end end
+	return "This Dialla's Malefaction may have the hidden no-white-socket restriction. Its version cannot be determined from this item."
+end
+
 -- Preserve the original item text: rebuilding a unique can lose imported
 -- properties that the item editor does not understand.
 function M.linkReason(raw,method)
@@ -649,6 +722,7 @@ function M.whiteReason(raw)
 		white=white and socket.color=="W"
 	end
 	if white then return "The item's sockets are already white" end
+	local restriction=whiteRestrictionReason(item);if restriction then return restriction end
 	local colours=line:gsub("[^RGBW]","")
 	if #colours~=#sockets then return "The socket layout could not be verified" end
 end
@@ -671,6 +745,7 @@ function M.socketCountReason(raw,count)
 	local limit=require("Modules.CraftingSimulator").socketLimit({item=item})
 	if type(count)~="number" or count~=math.floor(count) or count<2 or count>limit then return "Choose a socket count supported by this base" end
 	if #item.sockets==count then return "The item already has this many sockets" end
+	if count>#item.sockets then local restriction=whiteRestrictionReason(item);if restriction then return restriction end end
 end
 
 function M.omenCount(item)
@@ -708,11 +783,11 @@ end
 
 -- Reuse the ordinary socket-colour model while retaining the unique item text.
 -- These are sampled outcomes; a single result is not a probability estimate.
-function M.colourReason(raw,method)
+function M.colourReason(raw,method,count)
 	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
-	if method~="chromatic" and method~="tainted_chromatic" and method~="omen_trichromatism" then return "Unsupported unique socket colour method" end
+	if method~="chromatic" and method~="tainted_chromatic" and method~="omen_trichromatism" and method~="socket_colour_bench" then return "Unsupported unique socket colour method" end
 	if item.type=="Flask" or item.type=="Tincture" then return "Flasks and tinctures have no sockets" end
-	if (not not item.corrupted)~=(method=="tainted_chromatic") then return item.corrupted and "Use tainted currency on corrupted items" or "Tainted currency requires a corrupted item" end
+	if method~="socket_colour_bench" and (not not item.corrupted)~=(method=="tainted_chromatic") then return item.corrupted and "Use tainted currency on corrupted items" or "Tainted currency requires a corrupted item" end
 	local immutable=M.socketModificationReason(raw,item);if immutable then return immutable end
 	local line,lines=raw:match("\nSockets: ([^\r\n]*)"),0
 	for _ in ("\n"..raw):gmatch("\nSockets:") do lines=lines+1 end
@@ -721,9 +796,11 @@ function M.colourReason(raw,method)
 	for _,socket in ipairs(item.sockets) do if socket.color=="A" then return "Abyssal sockets need a separate socket model" end end
 	if #line:gsub("[^RGBW]","")~=#item.sockets then return "The socket layout could not be verified" end
 	if method=="omen_trichromatism" and #item.sockets<3 then return "At least three sockets are required for the RGB guarantee" end
+	if method=="socket_colour_bench" and (type(count)~="number" or count~=math.floor(count) or count<2 or count>4 or count>#item.sockets) then return "Choose two to four non-white sockets within the item socket count" end
+	if not (method=="omen_trichromatism" and #item.sockets==3 or method=="socket_colour_bench" and count==#item.sockets) then local restriction=whiteRestrictionReason(item);if restriction then return restriction end end
 end
 -- Check whether any modeled colour outcome can satisfy a direct target.
-function M.colourTargetReason(item,method,target,linked,forceRoll)
+function M.colourTargetReason(item,method,target,linked,forceRoll,count)
 	if type(target)~="string" or target=="" or not target:match("^[RGBW]+$") then return "Enter one or more socket colours using R, G, B or W." end
 	local sockets=item.sockets or {}
 	if #target>#sockets then return "The target has more colours than the item has sockets." end
@@ -738,6 +815,7 @@ function M.colourTargetReason(item,method,target,linked,forceRoll)
 		local matched=true;for colour,count in pairs(needed) do if (available[colour] or 0)<count then matched=false;break end end
 		if matched then return nil,true end
 	end end
+	if method=="socket_colour_bench" and count and #sockets-(needed.W or 0)<count then return "This target conflicts with the bench's guaranteed non-white sockets." end
 	if method=="omen_trichromatism" then
 		local missing=0;for _,colour in ipairs({"R","G","B"}) do if not target:find(colour,1,true) then missing=missing+1 end end
 		if #sockets-#target<missing then return "This target conflicts with the Omen's guaranteed red, green and blue sockets." end
@@ -745,13 +823,13 @@ function M.colourTargetReason(item,method,target,linked,forceRoll)
 		return "This target conflicts with the currency's guaranteed non-white socket."
 	end
 end
-function M.colour(raw,method,seed)
-	local reason=M.colourReason(raw,method);assert(not reason,reason)
+function M.colour(raw,method,seed,count)
+	local reason=M.colourReason(raw,method,count);assert(not reason,reason)
 	assert(type(seed)=="number" and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Invalid seed")
 	local before=M.inspect(raw)
 	local sim=require("Modules.CraftingSimulator")
 	local state={affixes={},sockets=copyTable(before.sockets),quality=before.quality,corrupted=before.corrupted}
-	local result=sim.action({item=before,byId={}},state,{method=method},require("Modules.CalcTime").random(seed))
+	local result=sim.action({item=before,byId={}},state,{method=method,count=count},require("Modules.CalcTime").random(seed))
 	local parts={};for i,socket in ipairs(result.sockets) do
 		if i>1 then parts[#parts+1]=socket.group==result.sockets[i-1].group and "-" or " " end
 		parts[#parts+1]=socket.color
@@ -761,7 +839,7 @@ function M.colour(raw,method,seed)
 	local after=M.inspect(output)
 	assert(after.title==before.title and after.baseName==before.baseName and #after.sockets==#before.sockets and after.corrupted==before.corrupted,"Unique item did not round-trip after colour crafting")
 	for i,socket in ipairs(after.sockets) do assert(i==1 or (socket.group==after.sockets[i-1].group)==(before.sockets[i].group==before.sockets[i-1].group),"Socket links changed unexpectedly") end
-	return {itemText=output,components=sim.components({method=method})}
+	return {itemText=output,components=sim.components({method=method,count=count},state)}
 end
 
 -- Socket-link rolls use the same estimated model as ordinary equipment.
@@ -807,6 +885,7 @@ function M.randomSocketReason(raw,method)
 	if method~="jeweller" and method~="tainted_jeweller" then return "Unsupported unique socket-count method" end
 	local ok,item=pcall(M.inspect,raw);if not ok then return tostring(item) end
 	if (not not item.corrupted)~=(method=="tainted_jeweller") then return item.corrupted and "Use tainted currency on corrupted items" or "Tainted currency requires a corrupted item" end
+	local restriction=whiteRestrictionReason(item);if restriction then return restriction end
 	-- Validate the existing layout and unique restrictions independently of
 	-- whether the chosen bench target is already present.
 	local reason=M.socketCountReason(raw,2)
@@ -846,15 +925,15 @@ function M.previewResources(startingItem,history,actions,currentItem,historyTrun
 	end
 	if history[1]~=startingItem then return nil,"The preview does not start from this project's starting item." end
 	local sim=require("Modules.CraftingSimulator");local prices=require("Modules.CraftingPrices");local totals={};local firstItem
-	local allowed={quality=true,tainted_quality=true,divine=true,instilling=true,enkindling=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,jeweller=true,tainted_jeweller=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true}
+	local allowed={quality=true,tainted_quality=true,divine=true,sacred=true,instilling=true,enkindling=true,beast_max_links=true,omen_connections=true,omen_jeweller=true,fusing=true,tainted_fusing=true,jeweller=true,tainted_jeweller=true,chromatic=true,tainted_chromatic=true,omen_trichromatism=true,socket_white_bench=true,socket_bench=true}
 	for index,encoded in ipairs(actions) do
 		if type(encoded)~="string" or type(history[index])~="string" then return nil,"The preview contains an unknown action." end
-		local count=tonumber(encoded:match("^socket_count_bench:([2-6])$"));local enchant=encoded:match("^bench_flask_enchant:(.+)$")
+		local count=tonumber(encoded:match("^socket_count_bench:([2-6])$"));local colourCount=tonumber(encoded:match("^socket_colour_bench:([2-4])$"));local enchant=encoded:match("^bench_flask_enchant:(.+)$")
 		local catalyst,catalystCount=encoded:match("^catalyst:(%d+):(%d+)$");catalyst,catalystCount=tonumber(catalyst),tonumber(catalystCount)
 		if catalyst and not (M.catalysts[catalyst] and catalystCount and catalystCount>=1 and catalystCount<=20) then return nil,"The recorded catalyst action is invalid." end
-		if not count and not enchant and not catalyst and not allowed[encoded] then return nil,"Loaded or older previews do not record every action." end
+		if not count and not colourCount and not enchant and not catalyst and not allowed[encoded] then return nil,"Loaded or older previews do not record every action." end
 		local ok,item=pcall(M.inspect,history[index]);if not ok then return nil,"A recorded preview item could not be read." end;firstItem=firstItem or item
-		local action=count and {method="socket_bench",count=count} or enchant and {method="bench_flask_enchant",enchantId=enchant} or catalyst and {method="catalyst",catalyst=catalyst} or {method=encoded}
+		local action=count and {method="socket_bench",count=count} or colourCount and {method="socket_colour_bench",count=colourCount} or enchant and {method="bench_flask_enchant",enchantId=enchant} or catalyst and {method="catalyst",catalyst=catalyst} or {method=encoded}
 		if encoded=="socket_bench" then action.count=#item.sockets;action.linked=true end
 		local model={item=item};local valid,components=pcall(sim.components,action,{sockets=item.sockets,corrupted=item.corrupted},model)
 		if not valid then return nil,"The resources for a recorded action could not be determined." end
@@ -887,6 +966,7 @@ function M.catalog(raw,query,limit)
 	if item.corrupted then whiteComponents["Metadata/Items/Currency/CurrencyCorrupt"]=1 end
 	local sim=require("Modules.CraftingSimulator")
 	local definitions={{method="divine",label="Divine Orb",reason=M.divineReason(raw),sampled=true,components={divine=1}}}
+	if item.base.armour then definitions[#definitions+1]={method="sacred",label="Sacred Orb",reason=M.sacredReason(raw),sampled=true,components={sacred=1}} end
 	local flask=require("Modules.CraftingFlaskEnchants")
 	if flask.eligible({item=item}) then
 		for _,method in ipairs({"instilling","enkindling"}) do definitions[#definitions+1]={method=method,label=sim.labels[method],reason=M.flaskEnchantReason(raw,method),sampled=true,components=sim.components({method=method})} end
@@ -908,6 +988,7 @@ function M.catalog(raw,query,limit)
 		{method="socket_bench",label="Bench: link existing sockets",reason=benchLinkReason,components=not benchLinkReason and require("Modules.CraftingSimulator").components({method="socket_bench",count=#item.sockets,linked=true},{sockets=item.sockets,corrupted=item.corrupted}) or {}},
 		{method="socket_white_bench",label="Bench: white sockets",reason=whiteReason,components=whiteComponents},
 		}
+		for count=2,4 do local action={method="socket_colour_bench",count=count};socketDefinitions[#socketDefinitions+1]={method=action.method,request=action,guideMethod=action.method,guideCount=count,label="Bench: at least "..count.." non-white sockets",reason=M.colourReason(raw,action.method,count),sampled=true,components=sim.components(action,{corrupted=item.corrupted})} end
 		for _,entry in ipairs(socketDefinitions) do definitions[#definitions+1]=entry end
 	end
 	for count=2,sim.socketLimit({item=item}) do
@@ -932,12 +1013,12 @@ function M.catalog(raw,query,limit)
 		if not seen[entry.method] then result.methods[#result.methods+1]=entry.method;seen[entry.method]=true end
 		if #result.uniqueActions<limit and (entry.method.." "..entry.label):lower():find(query,1,true) then
 			local request=entry.request or (entry.method=="socket_bench" and {method=entry.method,count=#item.sockets,linked=true} or {method=entry.method})
-			local action={method=entry.method,label=entry.label,action=request,priceKey=entry.method=="socket_bench" and require("Modules.CraftingSimulator").priceKey(request) or entry.method,available=entry.reason==nil,unavailableReason=entry.reason,deterministic=not entry.sampled,components=entry.components}
+			local action={method=entry.method,label=entry.label,action=request,priceKey=(entry.method=="socket_bench" or entry.method=="socket_colour_bench") and require("Modules.CraftingSimulator").priceKey(request) or entry.method,available=entry.reason==nil,unavailableReason=entry.reason,deterministic=not entry.sampled,components=entry.components}
 			if entry.method=="divine" and action.available then action.modifierTargets=M.divineOptions(raw) end
 			local guideMethod,guideCount=entry.guideMethod or entry.method,entry.guideCount or 1
 			action.guideStep={action=M.guideAction(guideMethod,guideCount,info.resource,item.corrupted,#item.sockets),uniqueCraft={method=guideMethod,count=guideCount}}
 			result.uniqueActions[#result.uniqueActions+1]=action
-			if entry.method~="quality" and entry.method~="tainted_quality" and entry.method~="divine" and entry.method~="instilling" and entry.method~="enkindling" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
+			if entry.method~="quality" and entry.method~="tainted_quality" and entry.method~="divine" and entry.method~="sacred" and entry.method~="instilling" and entry.method~="enkindling" then result.socketCrafts[#result.socketCrafts+1]=copyTable(action) end
 		end
 	end
 	result.flaskEnchants=flask.eligible({item=item}) and flask.list(query,limit) or {}

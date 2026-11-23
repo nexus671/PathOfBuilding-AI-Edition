@@ -55,6 +55,9 @@ function M.empty() return {schemaVersion=1,activeId="",profiles={}} end
 function M.profile(id,title,preset)
 	return {id=id,title=title,preset=preset or "early_maps",strictness=preset=="campaign" and 1 or preset=="endgame" and 4 or 2,theme="default",mode="Normal",baseCommit=M.source().commit,rules={}}
 end
+function M.manualGuideSignature(build,project)
+	return require("Modules.PlanningData").hash({startingItem=project.startingItem,targetItem=project.targetItem,goals=project.goals,notes=project.notes,steps=project.steps,simulatorExport=project.simulatorExport,recipe=project.nativeRecipe,alternatives=project.recipeAlternatives,resources=build.savers.BuildJourney.data.resources})
+end
 function M.validate(data)
 	assert(type(data)=="table" and data.schemaVersion==1,"Unsupported loot-filter data")
 	local result=M.empty();result.activeId=text(data.activeId or "",64,"active filter");local ids={}
@@ -66,6 +69,13 @@ function M.validate(data)
 		assert(entry.theme=="default" or entry.theme=="contrast","Unknown filter theme")
 		assert(entry.mode=="Normal" or entry.mode=="Ruthless","Unknown filter mode")
 		if p.trackBuildPickups~=nil then assert(type(p.trackBuildPickups)=="boolean","Invalid build pickup tracking setting");entry.trackBuildPickups=p.trackBuildPickups end
+		if p.manualGuideReviews~=nil then
+			entry.manualGuideReviews={};local seen={}
+			for _,review in ipairs(array(p.manualGuideReviews)) do
+				assert(type(review)=="table" and type(review.projectId)=="string" and #review.projectId<=64 and review.projectId:match("^[%w_-]+$") and not seen[review.projectId] and type(review.signature)=="string" and #review.signature==40 and review.signature:match("^[0-9a-f]+$"),"Invalid reviewed crafting guide")
+				seen[review.projectId]=true;entry.manualGuideReviews[#entry.manualGuideReviews+1]={projectId=review.projectId,signature=review.signature}
+			end
+		end
 		if p.appearance~=nil then
 			entry.appearance=require("Modules.LootFilterAppearanceSettings").validate(p.appearance)
 		end
@@ -119,6 +129,7 @@ local function linkedRecipes(project)
 end
 function M.generate(build,profile,checkpoint)
 	local result={};local used={};local ids={};local warnings={};local recipeModels={}
+	local manualReviewed={};for _,review in ipairs(profile.manualGuideReviews or {}) do manualReviewed[review.projectId]=review.signature end
 	local sliceStart=os.clock()
 	local function checkpointIfNeeded()
 		if checkpoint and os.clock()-sliceStart>=0.008 then checkpoint();sliceStart=os.clock() end
@@ -418,7 +429,7 @@ function M.generate(build,profile,checkpoint)
 	-- Written unique previews carry typed actions. Do not infer currencies from
 	-- free text: an edited guide may no longer describe the original craft.
 	for _,project in ipairs(build.savers.CraftingProjects.projects) do
-		local tagged=false;for _,step in ipairs(project.steps or {}) do if step.uniqueCraft then tagged=true;break end end
+		local tagged,manual=false,false;for _,step in ipairs(project.steps or {}) do if step.uniqueCraft then tagged=true elseif not step.done then manual=true end end
 		local ok,item,info=false,nil,nil
 		if tagged then local inspected,parsed,details=pcall(require("Modules.CraftingUniqueQuality").inspect,project.startingItem);ok,item,info=inspected,parsed,details end
 		local uniqueSocketCount=ok and #item.sockets or nil
@@ -440,6 +451,7 @@ function M.generate(build,profile,checkpoint)
 				elseif craft.method=="enkindling" then items={{key="enkindling",name="Enkindling Orb"}}
 				elseif craft.method=="bench_flask_enchant" then items={{key="Metadata/Items/Currency/CurrencyInstillingOrb",name="Instilling Orb"},{key="Metadata/Items/Currency/CurrencyFlaskQuality",name="Glassblower's Bauble"}}
 				elseif craft.method=="divine" then items={{key="divine",name="Divine Orb"}}
+				elseif craft.method=="sacred" then items={{key="sacred",name="Sacred Orb"}}
 				elseif craft.method=="tainted_quality" then items={{key="tainted_quality",name="Tainted "..info.resource}}
 				elseif craft.method=="fusing" then items={{key="fusing",name="Orb of Fusing"}}
 				elseif craft.method=="tainted_fusing" then items={{key="tainted_fusing",name="Tainted Orb of Fusing"}}
@@ -447,6 +459,7 @@ function M.generate(build,profile,checkpoint)
 				elseif craft.method=="tainted_jeweller" then items={{key="tainted_jeweller",name="Tainted Jeweller's Orb"}};uniqueSocketCount=nil
 				elseif craft.method=="chromatic" then items={{key="chromatic",name="Chromatic Orb"}}
 				elseif craft.method=="tainted_chromatic" then items={{key="tainted_chromatic",name="Tainted Chromatic Orb"}}
+				elseif craft.method=="socket_colour_bench" then items={{key="Metadata/Items/Currency/CurrencyRerollSocketColours",name="Chromatic Orb"}};if item.corrupted then items[#items+1]={key="Metadata/Items/Currency/CurrencyCorrupt",name="Vaal Orb"} end
 				elseif craft.method=="omen_trichromatism" then items={{key="Metadata/Items/Currency/AncestralOmenOnChromaticAddWhiteSockets",name="Omen of Trichromatism"},{key="Metadata/Items/Currency/CurrencyRerollSocketColours",name="Chromatic Orb"}}
 				elseif craft.method=="omen_jeweller" then
 					items={{key="Metadata/Items/Currency/AncestralOmenOnJewellersMakeFullSockets",name="Omen of the Jeweller"},{key="Metadata/Items/Currency/CurrencyRerollSocketNumbers",name="Jeweller's Orb"}}
@@ -466,8 +479,13 @@ function M.generate(build,profile,checkpoint)
 				for _,entry in ipairs(items) do if not removed[entry.name] then
 					add("craft-resource-"..project.id.."-"..require("sha1")(entry.key):sub(1,12),entry.name,{"BaseType == "..quote(entry.name)},"craft:"..project.id)
 				end end
-			end
+			elseif craft and not step.done then manual=true end
 		end end
+		if tagged and not ok then for _,step in ipairs(project.steps or {}) do if step.uniqueCraft and not step.done then manual=true end end end
+		if manual then
+			local signature=M.manualGuideSignature(build,project)
+			if manualReviewed[project.id]~=signature then warnings[#warnings+1]={origin="craft:"..project.id,title=project.title,message="Written guide steps do not add currency pickups automatically. Check the saved recipe or add needed currencies to your budget.",openGuide=true,manualGuideSignature=signature} end
+		end
 		checkpointIfNeeded()
 	end
 	local aliases={chaos="Chaos Orb",divine="Divine Orb",divines="Divine Orb",alchemy="Orb of Alchemy",alteration="Orb of Alteration",exalt="Exalted Orb",annul="Orb of Annulment",fusing="Orb of Fusing",chromatic="Chromatic Orb",jeweller="Jeweller's Orb"}
@@ -621,7 +639,17 @@ function M.compile(profile,includeParsed)
 	for _,rule in ipairs(parsed.rules) do for _,condition in ipairs(rule.conditions) do
 		if parser.poe2Only[condition.keyword] then parsed.diagnostics[#parsed.diagnostics+1]={line=condition.line,error=condition.keyword.." is a Path of Exile 2-only condition; remove it for Path of Exile 1."} end
 	end end
+	-- A pinned strictness tier can hide this boss-unique base. Evaluate the
+	-- compiled rules rather than guessing from strictness, so personal and
+	-- imported rules can override it. This is a sample, not a price feed.
+	local sample={BaseType="Sulphur Flask",Class="Utility Flasks",Rarity="Unique",ItemLevel=86,AreaLevel=83,Quality=0,StackSize=1,Sockets=0,SocketGroup="",LinkedSockets=0,Width=1,Height=2,UnidentifiedItemTier=0,BaseDefencePercentile=0,HasInfluence={"None"},HasExplicitMod={},HasEnchantment={},EnchantmentPassiveNode=""}
+	for key in pairs(parser.booleans) do if key~="AlwaysShow" then sample[key]=false end end
+	local flask=parser.simulate(parsed,sample)
+	if flask.status=="matched" and flask.action=="Hide" then
+		parsed.diagnostics[#parsed.diagnostics+1]={line=flask.line,code="hiddenUniqueSulphur",warning="A level 86 unidentified unique Sulphur Flask is hidden in the test sample. This base can be Bottled Faith; review this rule if you want to see it."}
+	end
 	for _,diagnostic in ipairs(require("Modules.LootFilterDiagnostics").shadowing(parsed)) do parsed.diagnostics[#parsed.diagnostics+1]=diagnostic end
+	for _,diagnostic in ipairs(require("Modules.LootFilterDiagnostics").contradictions(parsed)) do parsed.diagnostics[#parsed.diagnostics+1]=diagnostic end
 	if checked.mode=="Normal" then for _,rule in ipairs(parsed.rules) do if rule.action=="Minimal" then parsed.diagnostics[#parsed.diagnostics+1]={line=rule.line,error="Minimal blocks require Ruthless mode"} end end end
 	if checked.mode=="Ruthless" then for _,rule in ipairs(parsed.rules) do local text=rule.styles.SetTextColor;if text and tonumber(text[4]) and tonumber(text[4])<80 then parsed.diagnostics[#parsed.diagnostics+1]={line=rule.line,error="Ruthless text opacity must be at least 80"} end end end
 	local report={changes=changes,diagnostics=parsed.diagnostics,imports=parsed.imports,unresolvedImports=require("Modules.LootFilterImports").summarize(parsed,checked.importFiles),rules=#parsed.rules,baseCommit=checked.baseCommit,currentCommit=M.source().commit,imported=checked.template~=nil}
@@ -687,7 +715,7 @@ function M.simulateExamples(profile,setId,offset,limit,checkpoint)
 	assert(selected,"Choose a saved example set")
 	return simulatePage(profile,selected,offset,limit,checkpoint,false)
 end
-local sceneKinds={ ["Mixed drops"]=true,["Build targets"]=true,Currency=true,["Preset highlights"]=true,["Tiered gear"]=true,["Fated gear"]=true,["Vendor recipes"]=true,["Covens & Threads"]=true,["Maps & threads"]=true,["Map tiers"]=true,["Flasks & tinctures"]=true,["Divination cards"]=true,Essences=true,["Crafting materials"]=true,["Heist & Expedition"]=true,["Blight & oils"]=true,Breach=true,Beyond=true,Incursion=true,Legion=true,Delirium=true,Harvest=true,Abyss=true,Ultimatum=true,Ritual=true,Sanctum=true,["Pinnacle bosses"]=true }
+local sceneKinds={ ["Mixed drops"]=true,["Build targets"]=true,Currency=true,["Preset highlights"]=true,["Tiered gear"]=true,["Fated gear"]=true,["Foulborn gear"]=true,["Vendor recipes"]=true,["Covens & Threads"]=true,["Maps & threads"]=true,["Map tiers"]=true,["Flasks & tinctures"]=true,["Divination cards"]=true,Essences=true,["Crafting materials"]=true,["Heist & Expedition"]=true,["Blight & oils"]=true,Breach=true,Beyond=true,Incursion=true,Legion=true,Delirium=true,Harvest=true,Abyss=true,Ultimatum=true,Ritual=true,Sanctum=true,["Pinnacle bosses"]=true }
 function M.simulateScene(profile,kind,seed,areaLevel,itemLevel,offset,limit,checkpoint,build)
 	assert(sceneKinds[kind],"Choose a supported built-in filter scene")
 	seed=seed or 0;areaLevel=areaLevel or 83;itemLevel=itemLevel or 86

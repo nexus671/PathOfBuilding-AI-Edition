@@ -49,5 +49,10 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
 	local saved=assert(build.savers.AtlasPlans.plans[1].genesis,"Genesis draft was not saved")
 	local found=false;for _,id in ipairs(saved.nodes) do if id==40721 then found=true end end;assert(found,"The selected passive was not saved")
 	ui:restore();main.popups={}
+	local expected={};for _,id in ipairs(saved.nodes) do expected[id]=true end
+	local xml=build:SaveDB("Genesis round trip");loadBuildFromXML(xml,"Genesis round trip")
+	local reopened=assert(build.savers.AtlasPlans.plans[1].genesis,"Genesis tree was lost when reopening the build")
+	assert(reopened.version==saved.version and #reopened.nodes==#saved.nodes,"Genesis version or allocation count changed after reopening")
+	for _,id in ipairs(reopened.nodes) do assert(expected[id],"A Genesis allocation or choice changed after reopening") end
 end
 print("GENESIS_UI_OK",18)

@@ -71,7 +71,7 @@ function M.Open(title,entries,options)
 	if options.secondary then
 		assert(not options.favorites,"Choose either a secondary action or a favorite toggle")
 		button("secondary",208,height-48,180,options.secondary.label,function() if selected then options.secondary.run(selected) end end)
-		controls.secondary.enabled=function() return selected~=nil end
+		controls.secondary.enabled=function() return selected~=nil and (not options.secondary.canRun or options.secondary.canRun(selected)) end
 	end
 	if options.favorites then
 		button("favorite",208,height-48,180,"Toggle favorite",function() if selected then options.favorites[selected.id]=not options.favorites[selected.id] or nil;refresh() end end)

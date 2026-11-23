@@ -18,6 +18,26 @@ function fixture(t) {
     operations:[{type:'set_character',level:80,className:'Witch',ascendancy:'Elementalist'},{type:'set_skills',groups:[{gems:[{name:'Fireball'}]}]}]}};
 }
 
+test('reads crafting collections larger than the old desktop context limit', t => {
+  const f=fixture(t);
+  f.captured.context.craftingProjects=Array.from({length:132},(_,i)=>({id:`guide-${i}`,title:`Guide ${i}`,simulatorExport:'x'.repeat(128000)}));
+  f.write('context',f.captured);
+  assert.ok(fs.statSync(path.join(f.dir,'AI-build-context.json')).size>16*1024*1024);
+  const result=f.call('get_crafting_projects',{});
+  assert.equal(result.projects.length,132);
+  assert.equal(result.projects[131].simulatorExport.length,128000);
+  const page=f.call('get_crafting_projects',{offset:130,limit:1,summaryOnly:true});
+  assert.deepEqual(page.projects,[{id:'guide-130',title:'Guide 130',slot:undefined}]);
+  assert.equal(page.total,132);assert.equal(page.nextOffset,131);assert.equal(page.revision,f.state.revision);
+  const last=f.call('get_crafting_projects',{offset:131,limit:10,summaryOnly:true});
+  assert.equal(last.projects[0].id,'guide-131');assert.equal(last.nextOffset,undefined);
+  assert.deepEqual(f.call('get_crafting_projects',{offset:132,limit:10}).projects,[]);
+  assert.equal(f.call('get_crafting_projects',{projectId:'guide-131'}).projects[0].simulatorExport.length,128000);
+  assert.equal(f.call('get_crafting_projects',{projectId:'missing'}).total,0);
+  assert.throws(()=>f.call('get_crafting_projects',{projectId:'guide-1',offset:0}),/Choose a projectId or a page/);
+  assert.throws(()=>f.call('get_crafting_projects',{limit:0}),/arguments/);
+});
+
 test('queues same-base vendor review with bounded copied items', t => {
   const f=fixture(t), raw='Rarity: Normal\nJade Amulet\n--------\nItem Level: 60';
   f.call('review_same_base_vendor_items',{baseRevision:f.state.revision,items:[raw]});
@@ -55,6 +75,23 @@ test('queues reviewed crafting removals with closed project-ID validation', t =>
   for(const operation of [{type:'remove_crafting_project',projectId:'../other'},{type:'remove_crafting_project',projectId:''},{type:'remove_crafting_project',projectId:'helmet',project:{}}]) {
     assert.throws(()=>f.call('propose_build',{...proposal,operations:[operation]}),/arguments/);
   }
+});
+
+test('queues a focused crafting guide edit without replacing the project', t => {
+  const f=fixture(t), op={type:'patch_crafting_guide',projectId:'helmet-guide',patch:{title:'Updated',steps:[{action:'Use an essence'}]}};
+  f.call('propose_build',{...f.proposal,mode:'edit',operations:[op]});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json'))).proposal.operations,[op]);
+  assert.throws(()=>f.call('propose_build',{...f.proposal,operations:[{...op,patch:{}}]}),/at least one/);
+  assert.throws(()=>f.call('propose_build',{...f.proposal,operations:[{...op,patch:{startingItem:'other'}}]}),/arguments/);
+});
+
+test('queues large guide requests within the desktop limit and rejects larger ones', t => {
+  const f=fixture(t), makeSteps=n=>Array.from({length:n},(_,i)=>({action:`${i}:`+'x'.repeat(990)}));
+  const proposal={...f.proposal,mode:'edit',operations:[{type:'patch_crafting_guide',projectId:'helmet-guide',patch:{steps:makeSteps(300)}}]};
+  f.call('propose_build',proposal);
+  const file=path.join(f.dir,'AI-build-request.json');assert.ok(fs.statSync(file).size>256*1024);fs.unlinkSync(file);
+  proposal.operations[0].patch.steps=makeSteps(1100);
+  assert.throws(()=>f.call('propose_build',proposal),/exceeds 1 MiB/);assert.equal(fs.existsSync(file),false);
 });
 
 test('accepts 3.30 crafting state markers without opening the schema', t => {
@@ -114,13 +151,13 @@ test('accepts bounded long crafting steps', t => {
 });
 
 test('queues loot-filter generation, evaluation and reviewed profiles without writing exports', t => {
-  const f=fixture(t);const profile={id:'maps',title:'Map pickups',preset:'early_maps',strictness:2,trackBuildPickups:true,rules:[{id:'base',title:'Craft base',text:'Show\n BaseType == "Iron Hat"',enabled:true}]};
+  const f=fixture(t);const profile={id:'maps',title:'Map pickups',preset:'early_maps',strictness:2,trackBuildPickups:true,manualGuideReviews:[{projectId:'helmet',signature:'a'.repeat(40)}],rules:[{id:'base',title:'Craft base',text:'Show\n BaseType == "Iron Hat"',enabled:true}]};
   const filters={schemaVersion:1,activeId:'maps',profiles:[profile]};f.captured.context.lootFilters=filters;f.write('context',f.captured);
   assert.deepEqual(f.call('get_loot_filters',{}).filters,filters);
   for(const name of ['generate_loot_filter','test_loot_filter','export_loot_filter']) {
     f.call(name,{baseRevision:f.state.revision,profile,...(name==='test_loot_filter'?{sample:{BaseType:'Iron Hat',Fated:false,UnidentifiedItemTier:3}}:{})});
     const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.kind,name);
-    assert.equal(request.profile.id,'maps');assert.equal(request.profile.trackBuildPickups,true);assert.equal(request.path,undefined);fs.rmSync(path.join(f.dir,'AI-build-request.json'));
+    assert.equal(request.profile.id,'maps');assert.equal(request.profile.trackBuildPickups,true);assert.deepEqual(request.profile.manualGuideReviews,profile.manualGuideReviews);assert.equal(request.path,undefined);fs.rmSync(path.join(f.dir,'AI-build-request.json'));
   }
   f.call('propose_loot_filters',{title:'Pickups',baseRevision:f.state.revision,filters});
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.proposal.operations[0].type,'set_loot_filters');
@@ -152,6 +189,7 @@ test('queues bounded built-in filter scenes', t => {
   const mapFixture=fixture(t);mapFixture.call('test_loot_filter_scene',{...args,baseRevision:mapFixture.state.revision,scene:'Map tiers'});
   assert.equal(JSON.parse(fs.readFileSync(path.join(mapFixture.dir,'AI-build-request.json'))).scene,'Map tiers');
   const fatedFixture=fixture(t);fatedFixture.call('test_loot_filter_scene',{...args,baseRevision:fatedFixture.state.revision,scene:'Fated gear'});assert.equal(JSON.parse(fs.readFileSync(path.join(fatedFixture.dir,'AI-build-request.json'))).scene,'Fated gear');
+  const foulbornFixture=fixture(t);foulbornFixture.call('test_loot_filter_scene',{...args,baseRevision:foulbornFixture.state.revision,scene:'Foulborn gear'});assert.equal(JSON.parse(fs.readFileSync(path.join(foulbornFixture.dir,'AI-build-request.json'))).scene,'Foulborn gear');
   const blightFixture=fixture(t);blightFixture.call('test_loot_filter_scene',{...args,baseRevision:blightFixture.state.revision,scene:'Blight & oils'});
   assert.equal(JSON.parse(fs.readFileSync(path.join(blightFixture.dir,'AI-build-request.json'))).scene,'Blight & oils');
   for(const scene of ['Breach','Legion','Abyss','Ultimatum']) { const encounter=fixture(t); encounter.call('test_loot_filter_scene',{...args,baseRevision:encounter.state.revision,scene}); assert.equal(JSON.parse(fs.readFileSync(path.join(encounter.dir,'AI-build-request.json'))).scene,scene); }
@@ -213,10 +251,14 @@ test('queues a seeded hypothetical map currency action', t => {
   assert.equal(request.kind,'simulate_map_currency');assert.deepEqual(request.state,state);assert.equal(request.seed,42);
   const vaal=fixture(t);vaal.call('simulate_map_currency',{baseRevision:vaal.state.revision,state:{...state,rarity:'rare'},action:'vaal_add',seed:42});
   assert.equal(JSON.parse(fs.readFileSync(path.join(vaal.dir,'AI-build-request.json'))).action,'vaal_add');
+  const tierUp=fixture(t);tierUp.call('simulate_map_currency',{baseRevision:tierUp.state.revision,state:{...state,baseId:'Metadata/Items/Maps/MapKeyTier5',tier:5,rarity:'rare'},action:'vaal_tier_up',seed:42});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(tierUp.dir,'AI-build-request.json'))).action,'vaal_tier_up');
+  const temple=fixture(t);temple.call('simulate_map_currency',{baseRevision:temple.state.revision,state:{...state,baseId:'Metadata/Items/Maps/MapKeyTier16',tier:16,rarity:'rare'},action:'vaal_temple',seed:42});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(temple.dir,'AI-build-request.json'))).action,'vaal_temple');
   const nightmare=fixture(t), nightmareState={baseId:'Metadata/Items/Maps/MapWorldsAbomination',tier:17,itemLevel:84,rarity:'rare',selected:[]};
   nightmare.call('simulate_map_currency',{baseRevision:nightmare.state.revision,state:nightmareState,action:'chaos',seed:42});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(nightmare.dir,'AI-build-request.json'))).state,nightmareState);
-  for(const invalid of [{...args,seed:0},{...args,action:'vaal'},{...args,state:{...state,rarity:'unique'}},{...args,state:{...state,selected:Array(10).fill('x')}}]) assert.throws(()=>f.call('simulate_map_currency',invalid),/arguments/);
+  for(const invalid of [{...args,seed:0},{...args,action:'vaal'},{...args,state:{...state,rarity:'unique'}},{...args,state:{...state,vaalTierUpPreview:'yes'}},{...args,state:{...state,selected:Array(10).fill('x')}}]) assert.throws(()=>f.call('simulate_map_currency',invalid),/arguments/);
 });
 test('queues bounded map reroll estimates', t => {
   const f=fixture(t), state={baseId:'Metadata/Items/Maps/MapWorldsStrand',tier:16,itemLevel:83,rarity:'rare'}, options={wanted:[],wantedGroups:[['MapContainsMirageWorlds','MapContainsWildwoodWorlds']],avoid:['MapMonsterAreaOfEffectMapWorlds'],trials:10,maxAttempts:5,seed:42,price:{amount:0.5,currency:'chaos'}};
@@ -475,11 +517,11 @@ test('accepts long crafting guides and goals for desktop review', t => {
 
 test('round-trips structured unique guide actions through desktop review', t => {
   const f=fixture(t);const project=craftingProject();
-  project.steps=[{action:"Use 20 Prismatic Catalysts",uniqueCraft:{method:'catalyst',count:20,catalyst:8}},{action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},{action:'Link sockets with an Omen',uniqueCraft:{method:'omen_connections',count:1}},{action:'Make sockets white',uniqueCraft:{method:'socket_white_bench',count:1}},{action:'Link existing sockets at the crafting bench',uniqueCraft:{method:'socket_bench',count:1}},{action:'Set 4 sockets at the crafting bench',uniqueCraft:{method:'socket_count_bench',count:4}}];
+  project.steps=[{action:'Use a Sacred Orb to reroll base defences',uniqueCraft:{method:'sacred',count:1}},{action:"Use 20 Prismatic Catalysts",uniqueCraft:{method:'catalyst',count:20,catalyst:8}},{action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},{action:'Link sockets with an Omen',uniqueCraft:{method:'omen_connections',count:1}},{action:'Make sockets white',uniqueCraft:{method:'socket_white_bench',count:1}},{action:'Link existing sockets at the crafting bench',uniqueCraft:{method:'socket_bench',count:1}},{action:'Set 4 sockets at the crafting bench',uniqueCraft:{method:'socket_count_bench',count:4}},...[2,3,4].map(count=>({action:`At least ${count} non-white sockets`,uniqueCraft:{method:'socket_colour_bench',count}}))];
   f.call('propose_crafting_plan',{baseRevision:f.state.revision,project});
   const queued=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));
   assert.deepEqual(queued.proposal.operations[0].project.steps,project.steps);
-  for (const invalid of [{method:'catalyst',count:21,catalyst:8},{method:'catalyst',count:1,catalyst:13},{method:'catalyst',count:1},{method:'quality',count:21},{method:'omen_connections',count:2},{method:'socket_count_bench',count:7},{method:'unknown',count:1}]) {
+  for (const invalid of [{method:'catalyst',count:21,catalyst:8},{method:'catalyst',count:1,catalyst:13},{method:'catalyst',count:1},{method:'quality',count:21},{method:'omen_connections',count:2},{method:'socket_count_bench',count:7},{method:'socket_colour_bench',count:1},{method:'socket_colour_bench',count:5},{method:'unknown',count:1}]) {
     assert.throws(()=>f.call('propose_crafting_plan',{baseRevision:f.state.revision,project:{...project,steps:[{action:'Invalid',uniqueCraft:invalid}]}}),/arguments/);
   }
 });

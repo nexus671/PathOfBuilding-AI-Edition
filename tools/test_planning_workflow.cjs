@@ -272,6 +272,20 @@ async function main(){
   const previewGoal={catalyst:8,minCatalystQuality:4};const previewRecipe={rarity:'UNIQUE',steps:[{method:'catalyst',catalyst:8,maxAttempts:4,untilRequirements:previewGoal}],targets:[],requirements:previewGoal};
   const previewRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:previewRing,recipe:previewRecipe,options:{trials:1,maxActions:4,seed:123}},'crafted');assert.equal(previewRun.nativeCrafting.trials,1);
   const dextralRing=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:'Rarity: UNIQUE\nProfane Proxy\nUnset Ring\nItem Level: 86',query:'Dextral',limit:20},'inspected');assert.match(dextralRing.crafting.nativeEngine.catalystGuides[0].warning,/may not affect fixed unique modifiers/);
+  const dialla="Rarity: UNIQUE\nDialla's Malefaction\nSage's Robe\nItem Level: 86\nSockets: R-G-B";
+  const diallaInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:dialla,limit:100},'inspected');
+  for(const method of ['chromatic','jeweller','omen_jeweller','socket_white_bench']){const action=diallaInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method===method);assert.equal(action.available,false,method);assert.match(action.unavailableReason,/no-white-socket/);}
+  const diallaApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:dialla,action:{method:'socket_white_bench'},seed:1},'failed');assert.match(diallaApply.error,/no-white-socket/);
+  const diallaRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:dialla,recipe:{steps:[{method:'chromatic'}],targets:[],requirements:{socketColours:'WWW'}},options:{trials:4,maxActions:1,seed:1}},'failed');assert.match(diallaRun.error,/no-white-socket/);
+  const legacyDialla=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:dialla.replace('R-G-B','R-G-W'),limit:100},'inspected');assert.equal(legacyDialla.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='socket_white_bench').available,true);
+  const uniqueBenchItem=uniqueShield+'\nCorrupted';
+  const uniqueBenchCatalog=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueBenchItem,query:'non-white',limit:50},'inspected');
+  const uniqueColourBenchOption=uniqueBenchCatalog.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='socket_colour_bench' && entry.action.count===3);
+  assert.equal(uniqueColourBenchOption.available,true);assert.equal(uniqueColourBenchOption.components.chromatic,20);assert.equal(uniqueColourBenchOption.components['Metadata/Items/Currency/CurrencyCorrupt'],20);
+  const uniqueColourBenchApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:uniqueBenchItem,action:{method:'socket_colour_bench',count:3},seed:1},'crafted');
+  assert.equal(uniqueColourBenchApply.nativeCrafting.components.chromatic,20);assert.equal(uniqueColourBenchApply.nativeCrafting.components['Metadata/Items/Currency/CurrencyCorrupt'],20);assert.doesNotMatch(uniqueColourBenchApply.nativeCrafting.itemText,/Sockets:[^\n]*W/);
+  const uniqueColourBenchRecipe={steps:[{method:'socket_colour_bench',count:3}],targets:[],requirements:{socketColours:'RR'}};
+  const uniqueColourBenchRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:uniqueBenchItem,recipe:uniqueColourBenchRecipe,options:{trials:4,maxActions:1,seed:1}},'crafted');assert.equal(uniqueColourBenchRun.nativeCrafting.trials,4);
   const uniqueInspection=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:uniqueShield,action:{method:'quality'},limit:20},'inspected');
   assert.equal(uniqueInspection.crafting.nativeEngine.uniqueCrafting,true);
   assert.ok(uniqueInspection.crafting.nativeEngine.uniqueActions.some(entry=>entry.method==='omen_connections' && entry.available));
@@ -330,6 +344,32 @@ async function main(){
   const uniqueSimulation=await queued('simulate_crafting',{baseRevision:context.revision,itemText:uniqueShield,recipe:uniqueRecipe,options:{trials:3,maxActions:10,currency:'chaos',actionPrices:{quality:2,omen_connections:10}}},'crafted');
   assert.equal(uniqueSimulation.nativeCrafting.sampled,false);assert.equal(uniqueSimulation.nativeCrafting.successChance,100);assert.equal(uniqueSimulation.nativeCrafting.meanActions,3);assert.equal(uniqueSimulation.nativeCrafting.meanCost,14);
   assert.match(uniqueSimulation.nativeCrafting.sampleItem,/Sockets: R-G-B/);
+  const sacredRaw="Rarity: UNIQUE\nThe Apostate\nSavant's Robe\nItem Level: 86\nEnergy Shield: 132\nImplicits: 0\nGain Maximum Life instead of Maximum Energy Shield from Equipped Armour Items";
+  const sacredInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:sacredRaw,query:'sacred',limit:10},'inspected');
+  assert.ok(sacredInspect.crafting.nativeEngine.uniqueActions.some(entry=>entry.method==='sacred' && entry.available));
+  const sacredApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:sacredRaw,action:{method:'sacred'},seed:104729},'crafted');
+  assert.ok(sacredApply.nativeCrafting.itemText.includes('EnergyShieldBasePercentile:'));assert.equal(sacredApply.nativeCrafting.components.sacred,1);
+  assert.match(sacredApply.nativeCrafting.warnings.find(entry=>entry.code==='unique_sacred_estimate').message,/shared roll/);
+  const sacredRecipe={rarity:'UNIQUE',steps:[{method:'sacred',maxAttempts:1}],targets:[],requirements:{nativeStats:{EnergyShield:1000}}};
+  const sacredRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:sacredRaw,recipe:sacredRecipe,options:{trials:3,maxActions:1,seed:104729,prices:{sacred:2},currency:'chaos'}},'crafted');
+  assert.equal(sacredRun.nativeCrafting.trials,3);assert.equal(sacredRun.nativeCrafting.meanCost,2);assert.match(sacredRun.nativeCrafting.warnings.find(entry=>entry.code==='unique_sacred_estimate').message,/shared roll/);
+  const sacredOrdinary=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:'Rarity: NORMAL\nCarnal Armour\nItem Level: 86',action:{method:'sacred'},seed:104729},'crafted');
+  assert.match(sacredOrdinary.nativeCrafting.warnings.find(entry=>entry.code==='sacred_roll_assumptions').message,/shared roll/);
+  const sacredHybrid="Rarity: UNIQUE\nThe Restless Ward\nCarnal Armour\nItem Level: 86\nEvasion Rating: 300\nEnergy Shield: 50\nImplicits: 0\n+50 to maximum Life";
+  for (const itemText of ['Rarity: NORMAL\nCarnal Armour\nItem Level: 86',sacredHybrid]) {
+    const estimate=await queued('calculate_crafting',{baseRevision:context.revision,itemText,action:{method:'sacred'},targets:[],options:{seed:104729,requirements:{nativeStats:{EnergyShield:105}}}},'crafted');
+    assert.equal(estimate.nativeCrafting.sampled,false);assert.equal(estimate.nativeCrafting.successChance,84.375);
+    assert.match(estimate.nativeCrafting.exactFor,/unverified/);assert.equal(estimate.nativeCrafting.outcomes.length,32);
+    const applied=itemText===sacredHybrid ? await queued('apply_crafting_action',{baseRevision:context.revision,itemText,action:{method:'sacred'},seed:104729},'crafted') : sacredOrdinary;
+    assert.equal(estimate.nativeCrafting.sampleItem,applied.nativeCrafting.itemText);assert.equal(estimate.nativeCrafting.sampleSuccess,true);
+    const low=await queued('calculate_crafting',{baseRevision:context.revision,itemText,action:{method:'sacred'},targets:[],options:{seed:1,requirements:{nativeStats:{EnergyShield:105}}}},'crafted');
+    assert.equal(low.nativeCrafting.successChance,84.375);assert.equal(low.nativeCrafting.sampleSuccess,false);
+  }
+  for (const [itemText,stat,count] of [['Rarity: NORMAL\nIron Hat\nItem Level: 86','Armour',5],[sacredRaw,'EnergyShield',18]]) {
+    const estimate=await queued('calculate_crafting',{baseRevision:context.revision,itemText,action:{method:'sacred'},targets:[],options:{requirements:{nativeStats:{[stat]:1}}}},'crafted');
+    assert.equal(estimate.nativeCrafting.outcomes.length,count);assert.equal(estimate.nativeCrafting.successChance,100);
+    assert.equal(estimate.nativeCrafting.outcomes.reduce((sum,outcome)=>sum+outcome.weight,0),1);
+  }
   const uniqueGuide={id:'unique-guide-workflow',title:'Unique shield guide',slot:'Weapon 2',startingItem:uniqueShield,targetItem:uniqueLinked.nativeCrafting.itemText,goals:[],steps:[
     {action:"Use 2 Armourer's Scraps",uniqueCraft:{method:'quality',count:2}},
     {action:'Link existing sockets with an Omen of Connections and an Orb of Fusing',uniqueCraft:{method:'omen_connections',count:1}},
@@ -467,6 +507,14 @@ async function main(){
   const variantRecipe={rarity:'UNIQUE',steps:[{method:'divine',maxAttempts:10,untilRequirements:variantGoal}],targets:[],requirements:variantGoal};
   const variantRun=await queued('simulate_crafting',{baseRevision:context.revision,itemText:variantUniqueRaw,recipe:variantRecipe,options:{trials:5,maxActions:10,seed:123}},'crafted');assert.equal(variantRun.nativeCrafting.trials,5);
   const ringUniqueRaw='Rarity: UNIQUE\nAndvarius\nGold Ring\nItem Level: 86\nImplicits: 1\n+10% to Item Rarity\n+10 to Dexterity\n+60% to Item Rarity\n-20% to all Elemental Resistances';
+  const ringGuide={id:'unsupported-ring-quality',title:'Ring quality guide',slot:'Ring 1',startingItem:ringUniqueRaw,goals:[],steps:[{action:"Use 1 Armourer's Scrap",uniqueCraft:{method:'quality',count:1}}]};
+  await queued('propose_crafting_plan',{baseRevision:context.revision,project:ringGuide},'review');await host('apply');context=(await call('get_build_context')).context;
+  const ringGuideSaved=(await call('get_crafting_projects')).projects.find(entry=>entry.id===ringGuide.id);assert.equal(ringGuideSaved.steps[0].action,ringGuide.steps[0].action);assert.equal(ringGuideSaved.steps[0].uniqueCraft,undefined);
+  const ringGuideFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:{id:'ring-guide-filter',title:'Ring guide pickups',preset:'early_maps',strictness:2,rules:[]}},'generated');assert.ok(!ringGuideFilter.profile.rules.some(rule=>rule.origin==='craft:'+ringGuide.id && rule.title==="Armourer's Scrap"));
+  const ringGuideWarning=ringGuideFilter.warnings.find(warning=>warning.origin==='craft:'+ringGuide.id && warning.message.includes('Written guide steps'));assert.ok(ringGuideWarning);
+  const reviewedRingProfile={...ringGuideFilter.profile,manualGuideReviews:[{projectId:ringGuide.id,signature:ringGuideWarning.manualGuideSignature}]};
+  const reviewedRingFilter=await queued('generate_loot_filter',{baseRevision:context.revision,profile:reviewedRingProfile},'generated');assert.ok(!reviewedRingFilter.warnings.some(warning=>warning.origin==='craft:'+ringGuide.id && warning.message.includes('Written guide steps')));
+  await queued('propose_build',{mode:'edit',title:'Remove unsupported ring guide',baseRevision:context.revision,operations:[{type:'remove_crafting_project',projectId:ringGuide.id}]},'review');await host('apply');context=(await call('get_build_context')).context;
   const ringInspect=await queued('inspect_crafting_item',{baseRevision:context.revision,itemText:ringUniqueRaw,query:'divine',limit:10},'inspected');
   const ringOption=ringInspect.crafting.nativeEngine.uniqueActions.find(entry=>entry.method==='divine');assert.equal(ringOption.available,true,JSON.stringify(ringOption));
   const ringApply=await queued('apply_crafting_action',{baseRevision:context.revision,itemText:ringUniqueRaw,action:ringOption.action,seed:123},'crafted');assert.ok(ringApply.nativeCrafting.itemText.includes('+(50-70)% to Item Rarity'));
@@ -1313,6 +1361,14 @@ async function main(){
   for(const response of [copiedMap,unidentifiedCopy,mapBases]) { assert.equal(response.mapData.dataPatch,nightmareMap.mapData.patch);assert.deepEqual(response.mapData.dataSource,nightmareMap.mapData.source); }
   const nightmareRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare',selected:[]},action:'chaos',seed:42},'mapData');
   assert.equal(nightmareRoll.mapData.state.selected.length,6);assert.match(nightmareRoll.mapData.note,/unverified assumptions/);
+  const tierUp=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyTier5',tier:5,itemLevel:83,rarity:'rare',selected:[]},action:'vaal_tier_up',seed:42},'mapData');
+  assert.equal(tierUp.mapData.state.tier,6);assert.equal(tierUp.mapData.state.baseId,'Metadata/Items/Maps/MapKeyTier6');assert.equal(tierUp.mapData.state.itemLevel,83);assert.equal(tierUp.mapData.state.vaalPreview,true);assert.equal(tierUp.mapData.state.vaalTierUpPreview,true);assert.match(tierUp.mapData.note,/unchanged item level/);
+  const tierInspection=await queued('inspect_map_modifiers',{baseRevision:context.revision,...tierUp.mapData.state,limit:5},'mapData');assert.equal(tierInspection.mapData.vaalTierUpPreview,true);assert.match(tierInspection.mapData.note,/item-level and quality retention/);
+  const temple=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyTier16',tier:16,itemLevel:83,rarity:'rare',selected:[]},action:'vaal_temple',seed:42},'mapData');
+  assert.equal(temple.mapData.state.baseId,'Metadata/Items/Maps/MapWorldsVaalTemple');assert.equal(temple.mapData.state.vaalPreview,true);assert.match(temple.mapData.baseImplicit.text,/10 additional guarded Vaal Vessels/);
+  const templeInspection=await queued('inspect_map_modifiers',{baseRevision:context.revision,...temple.mapData.state,limit:5},'mapData');assert.match(templeInspection.mapData.note,/Vaal Temple preview/);assert.equal(templeInspection.mapData.baseImplicit.id,'MapVaalTempleContainsVaalVessels');
+  const copiedTempleText='Item Class: Maps\nRarity: Rare\nAncient Example\nVaal Temple Map\n--------\nMap Tier: 16\nItem Level: 83\n--------\n+15% Item Rarity (implicit)\nArea contains 10 additional guarded Vaal Vessels (implicit)\n--------\nMonsters have 100% increased Area of Effect\n--------\nTravel to this Map by using it in a personal Map Device.\n--------\nCorrupted';
+  const copiedTemple=await queued('inspect_copied_map',{baseRevision:context.revision,itemText:copiedTempleText},'mapData');assert.equal(copiedTemple.mapData.baseImplicitObserved,true);assert.equal(copiedTemple.mapData.baseImplicit.id,'MapVaalTempleContainsVaalVessels');assert.equal(copiedTemple.mapData.state.observedEffects,undefined);assert.deepEqual(copiedTemple.mapData.state.implicit,{id:'MapCorruptionItemRarity',value:15});
   const nightmareEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare'},options:{wantedGroups:[['MapUberWeakContainsDeliriumMirror']],trials:2,maxAttempts:2,seed:42}},'mapData');
   assert.equal(nightmareEstimate.mapData.action,'chaos');assert.match(nightmareEstimate.mapData.note,/generation order is unverified/);
   const allflameRef=await queued('list_map_allflame',{baseRevision:context.revision},'mapData');assert.equal(allflameRef.mapData.items.length,11);const allflameId=allflameRef.mapData.items.find(item=>item.name==='Allflame Ember of the Multitude').id;
@@ -1403,6 +1459,9 @@ async function main(){
   starterAtlas.mapDrafts[0].plannedDelirium={currentPercent:0,nextType:'Currency Items',gain:10,targetPercent:80};
   starterAtlas.mapDrafts.push({id:'corrupt-map',title:'Corrupted map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',corrupted:true,twiceCorrupted:true,selected:corruptedIds,implicit:{id:'MapCorruptionItemRarity',value:15}});
   starterAtlas.mapDrafts.push({...vaalMap.mapData.state,id:'vaal-preview',title:'Conditional Vaal preview',patch:'3.30.0.2.2'});
+  starterAtlas.mapDrafts.push({...tierUp.mapData.state,id:'tier-up-preview',title:'Conditional tier-up preview',patch:'3.30.0.4'});
+  starterAtlas.mapDrafts.push({...temple.mapData.state,id:'temple-preview',title:'Conditional Vaal Temple preview',patch:'3.30.0.4'});
+  starterAtlas.mapDrafts.push({...copiedTemple.mapData.state,id:'temple-copy',title:'Copied Vaal Temple',patch:'3.30.0.4'});
   starterAtlas.mapDrafts.push({id:'unknown-map',title:'Unidentified map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapKeyTier5',tier:5,itemLevel:68,rarity:'rare',unidentified:true,selected:[]});
   for(const version of ['3.28.0j','3.28.0j-ruthless']) {
     const search=await queued('search_atlas_nodes',{baseRevision:context.revision,version,query:'Essence',limit:10},'atlas');
@@ -1583,6 +1642,13 @@ async function main(){
   const uncertainContinue={...lootProfile,template:'Show\n BaseType "Iron"\n Continue unexpected\nHide'};
   const uncertainContinueTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:uncertainContinue,sample:{BaseType:'Iron Hat'}},'tested');
   assert.equal(uncertainContinueTest.result.status,'unknown');assert.match(uncertainContinueTest.result.reasons[0],/Continue arguments/);
+  const uncertainSound={...lootProfile,template:'Show\n DisableDropSound unexpected\nHide'};
+  const uncertainSoundTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:uncertainSound,sample:{BaseType:'Iron Hat'}},'tested');
+  assert.equal(uncertainSoundTest.result.status,'unknown');assert.match(uncertainSoundTest.result.reasons[0],/DisableDropSound arguments/);
+  const uncertainSoundExport=await queued('export_loot_filter',{baseRevision:context.revision,profile:uncertainSound},'exported');
+  assert.ok(uncertainSoundExport.report.diagnostics.some(entry=>entry.unverifiedAction==='DisableDropSound'));
+  const presetSound={...lootProfile,template:'Show\n DisableDropSound True'};
+  const presetSoundTest=await queued('test_loot_filter',{baseRevision:context.revision,profile:presetSound,sample:{BaseType:'Iron Hat'}},'tested');assert.equal(presetSoundTest.result.action,'Show');
   const badSocketSample=await queued('test_loot_filter',{baseRevision:context.revision,profile:{...lootProfile,template:'Show\n Sockets >= 1\nHide'},sample:{BaseType:'Iron Hat',Sockets:2.5}},'tested');assert.equal(badSocketSample.result.status,'unknown');assert.match(badSocketSample.result.reasons[0],/Invalid Sockets/);
   const flaskRecipeProfile={...lootProfile,template:'Hide',campaign:{recipes:['Quality flasks and tinctures','Vaal skill gems'],minAreaLevel:1,maxAreaLevel:70}};
   const qualityFlask=await queued('test_loot_filter',{baseRevision:context.revision,profile:flaskRecipeProfile,sample:{Class:'Life Flasks',BaseType:'Small Life Flask',Quality:5,AreaLevel:40}},'tested');assert.equal(qualityFlask.result.action,'Show');assert.match(qualityFlask.result.ruleTitle,/Quality flasks/);
@@ -1653,13 +1719,16 @@ async function main(){
   const fatedProfile={id:'fated-comparison',title:'Fated comparison',preset:'early_maps',strictness:2,rules:[{id:'fated-rule',title:'Show Fated',enabled:true,text:'Show\n Fated True'},{id:'other-rule',title:'Hide other',enabled:true,text:'Hide'}]};
   const fatedScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:fatedProfile,scene:'Fated gear',areaLevel:76,itemLevel:86,offset:4,limit:2},'tested');
   assert.equal(fatedScene.examples.total,10);assert.equal(fatedScene.examples.results[0].sample.BaseType,'Titanium Spirit Shield');assert.equal(fatedScene.examples.results[0].sample.Fated,true);assert.equal(fatedScene.examples.results[0].sample.UnidentifiedItemTier,4);assert.equal(fatedScene.examples.results[0].sample.MemoryStrands,0);assert.equal(fatedScene.examples.results[0].sample.Sockets,1);assert.equal(fatedScene.examples.results[1].sample.Fated,false);assert.equal(fatedScene.examples.results[0].result.action,'Show');assert.equal(fatedScene.examples.results[1].result.action,'Hide');
+  const foulbornProfile={...fatedProfile,id:'foulborn-comparison',rules:[{id:'foulborn-rule',title:'Show Foulborn',enabled:true,text:'Show\n Foulborn True'},{id:'other-rule',title:'Hide other',enabled:true,text:'Hide'}]};
+  const foulbornScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:foulbornProfile,scene:'Foulborn gear',areaLevel:76,itemLevel:86,offset:4,limit:2},'tested');
+  assert.equal(foulbornScene.examples.total,10);assert.equal(foulbornScene.examples.results[0].sample.BaseType,'Titanium Spirit Shield');assert.equal(foulbornScene.examples.results[0].sample.Foulborn,true);assert.equal(foulbornScene.examples.results[1].sample.Foulborn,false);assert.equal(foulbornScene.examples.results[0].result.action,'Show');assert.equal(foulbornScene.examples.results[1].result.action,'Hide');
   const mapTierScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene:'Map tiers',areaLevel:76,itemLevel:86,offset:15,limit:2},'tested');
   assert.equal(mapTierScene.examples.total,17);assert.equal(mapTierScene.examples.results[0].sample.MapTier,16);assert.equal(mapTierScene.examples.results[1].sample.MapTier,17);
   const blightProfile={id:'blight-rules',title:'Blight comparison',preset:'early_maps',strictness:2,rules:[{id:'blight-rule',title:'Blight-ravaged maps',enabled:true,text:'Hide\n UberBlightedMap True'}]};
   const blightScene=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:blightProfile,scene:'Blight & oils',areaLevel:76,itemLevel:86,offset:14,limit:2},'tested');
   assert.equal(blightScene.examples.total,16);assert.equal(blightScene.examples.results[0].sample.BlightedMap,true);assert.equal(blightScene.examples.results[0].sample.UberBlightedMap,false);
   assert.equal(blightScene.examples.results[1].sample.UberBlightedMap,true);assert.equal(blightScene.examples.results[1].result.action,'Hide');
-  for (const [scene,first,total] of [['Beyond','Tainted Chromatic Orb',9],['Incursion','Royal Visage',7],['Delirium','Simulacrum Splinter',8],['Harvest','Wild Crystallised Lifeforce',5],['Ritual','Ritual Vessel',8],['Abyss','Murderous Eye Jewel',7],['Ultimatum','Inscribed Ultimatum',9],['Sanctum','Forbidden Tome',11],['Pinnacle bosses','Crescent Splinter',11]]) {
+  for (const [scene,first,total] of [['Beyond','Tainted Chromatic Orb',9],['Incursion','Royal Visage',7],['Delirium','Simulacrum Splinter',8],['Harvest','Wild Crystallised Lifeforce',5],['Ritual','Ritual Vessel',8],['Abyss','Murderous Eye Jewel',7],['Ultimatum','Inscribed Ultimatum',9],['Sanctum','Forbidden Tome',11],['Pinnacle bosses','Crescent Splinter',12]]) {
     const encounter=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene,seed:0,areaLevel:76,itemLevel:86,limit:2},'tested');
     assert.equal(encounter.examples.total,total);assert.equal(encounter.examples.results[0].sample.BaseType,first);assert.equal(encounter.examples.results[0].sample.AreaLevel,76);
     if (scene==='Delirium') {const thread=await queued('test_loot_filter_scene',{baseRevision:context.revision,profile:generated.profile,scene,seed:0,offset:3,limit:1},'tested');assert.equal(thread.examples.results[0].sample.BaseType,'Threaded Delirium Orb');}
@@ -1739,6 +1808,9 @@ async function main(){
   const rangeConflictProfile={id:'range-conflict',title:'List and range conflict',preset:'early_maps',strictness:2,rules:[],template:'Show\n BaseType == "Iron Hat" "Wool Shoes"\n ItemLevel >= 60\n ItemLevel < 80\nHide\n BaseType == "Iron Hat"\n ItemLevel >= 70\n ItemLevel <= 75'};
   const rangeConflictExport=await queued('export_loot_filter',{baseRevision:context.revision,profile:rangeConflictProfile},'exported');
   assert.ok(rangeConflictExport.report.diagnostics.some(entry=>entry.shadowedBy && entry.warning.includes('cannot be reached')));
+  const contradictoryProfile={id:'contradictory-filter',title:'Contradictory filter',preset:'early_maps',strictness:2,rules:[],template:'Show\n ItemLevel >= 80\n ItemLevel < 70'};
+  const contradictoryExport=await queued('export_loot_filter',{baseRevision:context.revision,profile:contradictoryProfile},'exported');
+  assert.ok(contradictoryExport.report.diagnostics.some(entry=>entry.code==='contradictoryConditions' && entry.warning.includes('ItemLevel')));assert.match(contradictoryExport.filter,/ItemLevel >= 80/);
   const exported=await queued('export_loot_filter',{baseRevision:context.revision,profile:generated.profile},'exported');assert.ok(exported.filter.includes('PoB rule:'));assert.ok(exported.filter.includes('Frayed Thread'));
   assert.ok(exported.filter.includes('# PoB rule: Campaign /'));assert.ok(exported.filter.includes('Crude Bow'));
   const importProfile={...generated.profile,id:'imports-ai',template:'Import "outer.filter"\nImport "absent.filter" Optional\nShow',importFiles:[{name:'outer.filter',text:'Import "outer.filter"\nImport "inner.filter"\nHide'}]};
@@ -1813,7 +1885,7 @@ async function main(){
   assert.equal(savedBody.nativeRecipe.steps[2].method,'socket_white_bench');
   assert.deepEqual(savedBody.nativeRecipe.steps.find(entry=>entry.rogOperation==='remove_lowest_two'),rogRemove,'Rog offer did not survive save and reopen');
   assert.equal(savedBody.inventory[0].state.harvestEnchant,'LifeBodyEnchant');assert.equal(savedBody.targetItem,bodySimulation.nativeCrafting.sampleItem);
-  const atlasPlans=await call('get_atlas_plans');assert.equal(atlasPlans.plans[1].strategy.setupCost.amount,25);assert.equal(atlasPlans.plans[1].progression.previousId,'starter-atlas');assert.deepEqual(atlasPlans.plans[0].mapDrafts,starterAtlas.mapDrafts);assert.ok(atlasPlans.limitations.some(note=>note.includes('unknown explicit modifiers') && note.includes('+30% Atlas Drops')));assert.ok(atlasPlans.limitations.some(note=>note.includes('one conditional modeled outcome')));await host('bundle-roundtrip');
+  const atlasPlans=await call('get_atlas_plans');assert.equal(atlasPlans.plans[1].strategy.setupCost.amount,25);assert.equal(atlasPlans.plans[1].progression.previousId,'starter-atlas');assert.deepEqual(atlasPlans.plans[0].mapDrafts,starterAtlas.mapDrafts);assert.ok(atlasPlans.limitations.some(note=>note.includes('unknown explicit modifiers') && note.includes('+30% Atlas Drops')));assert.ok(atlasPlans.limitations.some(note=>note.includes('one conditional modeled outcome')));assert.ok(atlasPlans.limitations.some(note=>note.includes('item-level and quality retention')));assert.ok(atlasPlans.limitations.some(note=>note.includes('Vaal Temple previews')));await host('bundle-roundtrip');
   assert.deepEqual((await call('get_atlas_plans')).plans[0].mapDrafts,starterAtlas.mapDrafts);
   assert.deepEqual((await call('get_crafting_projects')).projects.find(entry=>entry.id==='body-enchant').priceBook,bodyPriceBook);
   context=(await call('get_build_context')).context;

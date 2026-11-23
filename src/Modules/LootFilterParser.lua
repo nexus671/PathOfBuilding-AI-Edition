@@ -88,6 +88,11 @@ function M.parse(raw)
 					if #t>0 then result.diagnostics[#result.diagnostics+1]={line=lineNo,warning="Continue arguments need in-game verification; original text is preserved",unverifiedContinue=true} end
 				elseif M.actions[key] then
 					current.styles[key]=t
+					-- The bundled NeverSink filters use DisableDropSound True. Keep
+					-- that established spelling while flagging other undocumented arguments.
+					if (key=="DisableDropSound" or key=="EnableDropSound" or key=="DisableDropSoundIfAlertSound" or key=="EnableDropSoundIfAlertSound") and #t>0 and not (key=="DisableDropSound" and #t==1 and t[1]=="True") then
+						result.diagnostics[#result.diagnostics+1]={line=lineNo,warning=key.." arguments need in-game verification; original text is preserved",unverifiedAction=key}
+					end
 					local invalid
 					if key=="SetTextColor" or key=="SetBorderColor" or key=="SetBackgroundColor" then
 						invalid=#t<3 or #t>4;for _,v in ipairs(t) do local n=tonumber(v);if not n or n<0 or n>255 or n~=math.floor(n) then invalid=true end end
@@ -356,6 +361,8 @@ function M.simulate(parsed,item)
 	for _,d in ipairs(parsed.diagnostics) do if d.error then return M.invalidResult(d) end end
 	for _,d in ipairs(parsed.diagnostics) do if d.unverifiedContinue then
 		return {status="unknown",action="Unknown",line=d.line,styles={},matches={},reasons={"Filter line "..d.line..": Continue arguments need in-game verification; the filter may not load as expected."}}
+	elseif d.unverifiedAction then
+		return {status="unknown",action="Unknown",line=d.line,styles={},matches={},reasons={"Filter line "..d.line..": "..d.unverifiedAction.." arguments need in-game verification; the filter may not load as expected."}}
 	end end
 	local importIndex=1
 	local function unresolvedImport()

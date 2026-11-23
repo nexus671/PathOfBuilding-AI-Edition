@@ -18,7 +18,7 @@ local s_format = string.format
 ---@class Build: ControlHost
 ---@field spec PassiveSpec added by TreeTab
 ---@field powerBuilderProgressCallback fun(progress: number)?
----@field powerBuilderCallback fun()
+---@field powerBuilderCallback fun(failure: string?)
 local buildMode = new("ControlHost"):ControlHost()
 
 local function InsertIfNew(t, val)
@@ -91,6 +91,8 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	self.planningVendorQualityItems = nil
 	self.planningCraftDrafts = nil
 	self.planningUniqueQualityDrafts = nil
+	self.planningAtlasDrafts = nil
+	self.planningFilterDraft = nil
 	self.characterLevel = m_min(m_max(main.defaultCharLevel or 1, 1), 100)
 	self.targetVersion = liveTargetVersion
 	self.bandit = "None"

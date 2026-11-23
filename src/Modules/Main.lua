@@ -1358,26 +1358,11 @@ function main:SetManifestBranch(branchName)
 end
 
 function main:OpenUpdatePopup()
-	local changeList = { }
-	local changelogName = launch.devMode and "../changelog.txt" or "changelog.txt"
-	local changelogFile = io.open(changelogName, "r")
-	if changelogFile then
-		changelogFile:close()
-		for line in io.lines(changelogName) do
-			local ver, date = line:match("^VERSION%[(.+)%]%[(.+)%]$")
-			if ver then
-				if ver == launch.versionNumber then
-					break
-				end
-				if #changeList > 0 then
-					t_insert(changeList, { height = 12 })
-				end
-				t_insert(changeList, { height = 20, "^7Version "..ver.." ("..date..")" })
-			else
-				t_insert(changeList, { height = 14, "^7"..line })
-			end
-		end
-	end
+	local notes = require("Modules.UpdateNotes")
+	local target, changelogHash = notes.target("Update/manifest.xml")
+	local installedLog = launch.devMode and "../changelog.txt" or "changelog.txt"
+	local text = notes.readVerified("Update/changelog.txt", changelogHash) or notes.readVerified(installedLog, changelogHash)
+	local changeList = require("Modules.PlanningUI").rows(notes.describe(text, launch.versionNumber, target), 740, 16)
 	local controls = { }
 	controls.changeLog = new("TextListControl"):TextListControl(nil, {0, 20, 780, 542}, nil, changeList)
 	controls.update = new("ButtonControl"):ButtonControl(nil, {-45, 570, 80, 20}, "Update", function()

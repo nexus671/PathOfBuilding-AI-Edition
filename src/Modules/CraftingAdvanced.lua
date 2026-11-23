@@ -1292,10 +1292,7 @@ function A.extend(M,api)
 			end
 		elseif method == "sacred" then
 			assert(model.item.base.armour,"Sacred Orbs require armour")
-			state.percentiles={}; for _,kind in ipairs({"Armour","Evasion","EnergyShield","Ward"}) do
-				local low,high=model.item.base.armour[kind.."BaseMin"],model.item.base.armour[kind.."BaseMax"]
-				if low and high and high > low then state.percentiles[kind]=math.floor(random()*(high-low+1))/(high-low) end
-			end
+			state.percentiles=require("Modules.CraftingSacred").percentiles(model.item.base.armour,random)
 			assert(next(state.percentiles),"This armour has no base defence variance")
 		elseif method == "socket_bench" or method == "binding" then
 			for _,socket in ipairs(state.sockets or {}) do assert(socket.color~="A","Abyssal sockets need a separate socket model") end

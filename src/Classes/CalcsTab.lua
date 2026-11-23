@@ -521,8 +521,14 @@ function CalcsTabClass:BuildPower()
 		local sliceStart=os.clock()
 		local res, errMsg = coroutine.resume(self.powerBuilder, self)
 		require("Modules.PlanningPerformance").record(self.build,"Passive power slice",os.clock()-sliceStart)
-		if launch.devMode and not res then
-			error(errMsg)
+		if not res then
+			self.powerBuilder = nil
+			self.powerMax = nil
+			for _,node in pairs(self.build.spec.nodes) do if node.power then wipeTable(node.power) end end
+			for _,node in pairs(self.build.spec.tree.clusterNodeMap) do if node.power then wipeTable(node.power) end end
+			if self.build.powerBuilderCallback then self.build.powerBuilderCallback(errMsg or "Unknown error") end
+			if launch.devMode then error(errMsg) end
+			return
 		end
 		if coroutine.status(self.powerBuilder) == "dead" then
 			self.powerBuilder = nil

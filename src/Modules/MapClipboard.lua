@@ -101,6 +101,7 @@ function M.parse(raw,checkpoint)
  local corrupted=twiceCorrupted or raw:match("\nCorrupted\n")~=nil or raw:match("\nCorrupted$")~=nil
  local _,levelEnd=raw:find("\nItem Level:%s*%d+");local tail=raw:sub(assert(levelEnd,"The copied map needs its item level")+1)
  local lines,implicit,observed={},nil,{}
+ local baseImplicit=map.baseImplicit(matches[1]);local baseImplicitObserved=false
  local deliriumDepth,deliriumReward
  for rawLine in tail:gmatch("[^\n]+") do
   local line=clean(rawLine)
@@ -108,8 +109,13 @@ function M.parse(raw,checkpoint)
    observed[#observed+1]={kind="enchant",text=line:gsub(" %(enchant%)$","")}
   elseif line:match(" %(implicit%)$") then
    local value=line:gsub(" %(implicit%)$","")
-   local known=corrupted and implicitFrom(value,level) or nil
-   if known and not implicit then implicit=known else observed[#observed+1]={kind="implicit",text=value} end
+   if baseImplicit and value==baseImplicit.text then
+    assert(not baseImplicitObserved,"The copied map repeats its base implicit")
+    baseImplicitObserved=true
+   else
+    local known=corrupted and implicitFrom(value,level) or nil
+    if known and not implicit then implicit=known else observed[#observed+1]={kind="implicit",text=value} end
+   end
   elseif line:match("^Players in Area are %d+%% Delirious$") then
    assert(not deliriumDepth,"The copied map has multiple Delirious percentages")
    local depth=tonumber(line:match("(%d+)%%"));assert(depth>=1 and depth<=100,"The copied Delirious percentage is out of range")
@@ -215,6 +221,6 @@ function M.parse(raw,checkpoint)
  local state={baseId=matches[1],tier=tier,itemLevel=level,rarity=rarity,selected=solutions[1].ids,rolls=solutions[1].rolls,corrupted=corrupted or nil,twiceCorrupted=twiceCorrupted or nil,mirrored=mirrored or nil,unidentified=unidentified or nil,implicit=implicit,quality=quality,observedEffects=observed}
  if rarity~="normal" then map.inspect(state.baseId,tier,level,state.selected,"",0,1,checkpoint,rarity,nil,corrupted,implicit,nil,observed) end
  local qualityEffect=require("Modules.MapQuality").effect(quality)
- return {state=state,dataPatch=map.source().patch,dataSource=copyTable(map.source().source),delirium=require("Modules.MapObservedEffects").delirium(observed),deified=require("Modules.MapObservedEffects").deified(observed),unidentifiedOpeningBonus=unidentified and {atlasDrops=30,condition="When opened unidentified"} or nil,notes={unidentified and "Unidentified map: explicit modifiers and their totals are unknown. Opening it unidentified grants +30% Atlas Drops." or "Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality: "..quality.kind.." +"..quality.value.."%. "..(qualityEffect.supported and qualityEffect.text or "Effect not modeled")..".") or "No quality recorded.",observed and (#observed.." additional effect lines recorded."..require("Modules.MapObservedEffects").note(observed)..(map.hasBlightedLegacy(state.selected,observed) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")) or (nightmare and "Nightmare Chaos estimates use an experimental draw order and unverified odds." or itemTier and "The tier-based map item is independent of the Atlas destination." or "This named map base is historical; verify older items separately.")}}
+ return {state=state,baseImplicit=baseImplicit,baseImplicitObserved=baseImplicitObserved or nil,dataPatch=map.source().patch,dataSource=copyTable(map.source().source),delirium=require("Modules.MapObservedEffects").delirium(observed),deified=require("Modules.MapObservedEffects").deified(observed),unidentifiedOpeningBonus=unidentified and {atlasDrops=30,condition="When opened unidentified"} or nil,notes={unidentified and "Unidentified map: explicit modifiers and their totals are unknown. Opening it unidentified grants +30% Atlas Drops." or "Modifier identities match pinned data. Verified exact values are retained; other values remain ranges.",quality and ("Quality: "..quality.kind.." +"..quality.value.."%. "..(qualityEffect.supported and qualityEffect.text or "Effect not modeled")..".") or "No quality recorded.",observed and (#observed.." additional effect lines recorded."..require("Modules.MapObservedEffects").note(observed)..(map.hasBlightedLegacy(state.selected,observed) and " Existing rare-only modifiers are retained as possible pre-hotfix rolls; they cannot roll again." or "")) or (nightmare and "Nightmare Chaos estimates use an experimental draw order and unverified odds." or itemTier and "The tier-based map item is independent of the Atlas destination." or baseImplicit and "The base implicit is identified from pinned data; verify the copied item in game." or "This named map base is historical; verify older items separately.")}}
 end
 return M

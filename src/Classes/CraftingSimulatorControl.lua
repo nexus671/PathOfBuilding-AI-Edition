@@ -276,10 +276,12 @@ function Panel.Open(build,project,layout)
 	end
 
 	button(controls,"apply",162,204,130,"Apply currency",function()
-		sequence=sequence+1
-		local craft=action();local usedSeed=assert(tonumber(controls.seed.buf),"Invalid seed")+sequence-1
+		local craft=action();local seed=tonumber(controls.seed.buf)
+		assert(seed and seed==math.floor(seed) and seed>=1 and seed<=2147483646,"Seed must be an integer from 1 to 2147483646")
+		local usedSeed=(seed-1+sequence)%2147483646+1
 		local result=simulator.perform(draft.startingItem,craft,usedSeed,state,build.spec.treeVersion)
 		local function keep(nextState,index)
+			sequence=sequence+1
 			changedAffixes={};local previous={};for _,entry in ipairs(state.affixes) do previous[entry.id]=require("dkjson").encode(entry) end
 			for _,entry in ipairs(nextState.affixes) do if previous[entry.id]~=require("dkjson").encode(entry) then changedAffixes[entry.id]=true end end
 			ui.draft(build,"workingCraft",draft.id)
@@ -494,11 +496,18 @@ function Panel.Open(build,project,layout)
 		local options=request.options
 		return "Action limit: "..options.maxActions.." per trial | seed "..options.seed
 	end
+	local function baseCostNote(result)
+		local baseCost=result.baseCost
+		return type(baseCost)~="number" and "Starting-item cost is unavailable in this older result; rerun to review it."
+			or baseCost==0 and "Starting item counted at zero. Enter Base cost if it has a price."
+			or string.format("Starting item: %.12g %s each, included in spending.",baseCost,result.costCurrency or "units")
+	end
 	local function showSimulationResult(result,captured)
 		local lines={string.format("Modeled successes: %d / %d (%s)",result.successes,result.trials,ui.percent(result.successChance,2)),
 			result.meanCost~=nil and string.format("Mean spent: %.2f %s",result.meanCost,result.costCurrency) or "Cost unavailable: some executed actions have no supplied price.",
 			captured.label,capturedSettings(captured),
 			"95% sampling interval: "..ui.percent(result.confidenceLow,2).." to "..ui.percent(result.confidenceHigh,2),string.format("Mean attempted actions: %.2f",result.meanActions)}
+		table.insert(lines,3,baseCostNote(result))
 		if result.meanExecutedActions then lines[#lines+1]=string.format("Mean executed actions: %.2f | failed attempts: %d",result.meanExecutedActions,result.failedAttempts) end
 		local warnings=result.warnings or simulator.recipeWarnings(captured.recipe,model)
 		for i,warning in ipairs(warnings) do table.insert(lines,1+i,"Model note: "..warning.message) end
@@ -512,7 +521,7 @@ function Panel.Open(build,project,layout)
 			lines[#lines+1]="Modeled ingredients and services (all trials)"
 			for _,entry in ipairs(result.resourceUsage) do lines[#lines+1]=string.format("%s%s: %.12g total | %.3g per trial",entry.kind=="service" and "Service: " or "",entry.name,entry.amount,entry.meanPerTrial) end
 			if #result.resourceUsage==0 then lines[#lines+1]="No resources or services used." end
-			lines[#lines+1]="Starting-item cost is separate. Price overrides do not change quantities."
+			lines[#lines+1]="Ingredient quantities exclude starting items. Price overrides do not change quantities."
 		else
 			for key,count in pairsSortByKey(result.currencySpent) do lines[#lines+1]=pricing.describe(key,simulator.context(model,state))..": "..count.." priced uses" end
 		end
@@ -631,7 +640,7 @@ function Panel.Open(build,project,layout)
 			if warning.code=="gwennen_estimate" then lines[#lines+1]="Experimental: Gwennen odds and rules are unverified.";break end
 		end
 		for _,warning in ipairs(result.warnings or {}) do lines[#lines+1]="Model note: "..warning.message end
-		if result.sampled then lines[#lines+1]=string.format("%d trials | 95%% interval %s to %s",result.trials,ui.percent(result.confidenceLow,2),ui.percent(result.confidenceHigh,2)) end
+		if result.sampled then lines[#lines+1]=string.format("%d trials | 95%% sampling interval %s to %s; model uncertainty is separate.",result.trials,ui.percent(result.confidenceLow,2),ui.percent(result.confidenceHigh,2)) end
 		for message,count in pairsSortByKey(result.transitionErrors or {}) do lines[#lines+1]="Failed modeled transitions: "..count.." | "..message end
 		if result.showAllOutcomes and not result.outcomesFirst then lines[#lines+1]="All modeled outcomes (target matches marked):" end
 		if not result.outcomesFirst then for _,entry in ipairs(result.outcomes) do if entry.matches or result.showAllOutcomes then lines[#lines+1]=ui.percent(entry.chance).." | "..(entry.text or "Finite item outcome")..(result.showAllOutcomes and entry.matches and " | Target" or "") end end end
@@ -664,6 +673,7 @@ function Panel.Open(build,project,layout)
 		lines[#lines+1]={height=26,"Trials stopped at the action budget: "..result.budgetExhausted}
 		lines[#lines+1]={height=24,"Hypothetical items destroyed: "..result.destroyedTrials}
 		lines[#lines+1]={height=24,"Spending percentiles include capped failures. They are not the cost of guaranteed success."}
+		lines[#lines+1]={height=24,baseCostNote(result)}
 		local function show(title,values)
 			if not values then return end
 			lines[#lines+1]={height=26,title}
@@ -694,7 +704,7 @@ function Panel.Open(build,project,layout)
 		local precision={}
 		if result.warnings and #result.warnings>0 then precision[#precision+1]="Model notes are listed with the distribution below." end
 		if request then precision[#precision+1]=request.label.." | "..capturedSettings(request) end
-		precision[#precision+1]=(result.trials<100 or result.confidenceHigh-result.confidenceLow>10) and "Imprecise estimate: run more trials before choosing a crafting route." or "Results describe the captured starting item, targets and supplied prices."
+		precision[#precision+1]=(result.trials<100 or result.confidenceHigh-result.confidenceLow>10) and "Imprecise sampling: run more trials; model uncertainty remains." or "Sampling interval excludes uncertainty in the model."
 		ui.description(popup,"precision",16,132,828,40,precision,14)
 		for index,entry in ipairs({{"medianSpend","MEDIAN SPEND","p50"},{"unluckySpend","90TH PERCENTILE","p90"},{"veryUnluckySpend","99TH PERCENTILE","p99"}}) do
 			local values=result.spendingQuantiles;local value=values and string.format("%.2f",values[entry[3]]) or "Not priced"

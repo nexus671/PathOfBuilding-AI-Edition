@@ -65,11 +65,14 @@ function M.validate(project)
 		assert(type(step) == "table","Invalid crafting step")
 		local entry={action=text(step.action,1000,"step action"),stopWhen=text(step.stopWhen,500,"stop condition",true),onFailure=text(step.onFailure,500,"failure route",true),done=step.done == true}
 		if step.uniqueCraft~=nil then
-			local craft=step.uniqueCraft;assert(type(craft)=="table" and (craft.method=="catalyst" or craft.method=="instilling" or craft.method=="enkindling" or craft.method=="bench_flask_enchant" or craft.method=="divine" or craft.method=="tainted_quality" or craft.method=="jeweller" or craft.method=="tainted_jeweller" or craft.method=="quality" or craft.method=="beast_max_links" or craft.method=="omen_connections" or craft.method=="omen_jeweller" or craft.method=="fusing" or craft.method=="tainted_fusing" or craft.method=="chromatic" or craft.method=="tainted_chromatic" or craft.method=="omen_trichromatism" or craft.method=="socket_white_bench" or craft.method=="socket_bench" or craft.method=="socket_count_bench") and type(craft.count)=="number" and craft.count==math.floor(craft.count) and craft.count>=(craft.method=="socket_count_bench" and 2 or 1) and craft.count<=((craft.method=="quality" or craft.method=="catalyst") and 20 or craft.method=="socket_count_bench" and 6 or 1),"Invalid unique crafting step")
+			local craft=step.uniqueCraft;assert(type(craft)=="table" and (craft.method=="catalyst" or craft.method=="instilling" or craft.method=="enkindling" or craft.method=="bench_flask_enchant" or craft.method=="divine" or craft.method=="sacred" or craft.method=="tainted_quality" or craft.method=="jeweller" or craft.method=="tainted_jeweller" or craft.method=="quality" or craft.method=="beast_max_links" or craft.method=="omen_connections" or craft.method=="omen_jeweller" or craft.method=="fusing" or craft.method=="tainted_fusing" or craft.method=="chromatic" or craft.method=="tainted_chromatic" or craft.method=="omen_trichromatism" or craft.method=="socket_colour_bench" or craft.method=="socket_white_bench" or craft.method=="socket_bench" or craft.method=="socket_count_bench") and type(craft.count)=="number" and craft.count==math.floor(craft.count) and craft.count>=((craft.method=="socket_count_bench" or craft.method=="socket_colour_bench") and 2 or 1) and craft.count<=((craft.method=="quality" or craft.method=="catalyst") and 20 or craft.method=="socket_count_bench" and 6 or craft.method=="socket_colour_bench" and 4 or 1),"Invalid unique crafting step")
 			assert(craft.method=="catalyst" and type(craft.catalyst)=="number" and craft.catalyst==math.floor(craft.catalyst) and require("Modules.CraftingUniqueQuality").catalysts[craft.catalyst] or craft.method~="catalyst" and craft.catalyst==nil,"Invalid unique catalyst choice")
 			assert(craft.method=="bench_flask_enchant" and require("Modules.CraftingFlaskEnchants").benchCost(craft.enchantId) or craft.method~="bench_flask_enchant" and craft.enchantId==nil,"Invalid unique enchantment choice")
 			if not uniqueChecked then local ok,item,info=pcall(require("Modules.CraftingUniqueQuality").inspect,result.startingItem);uniqueItem=ok and item or nil;uniqueInfo=ok and info or nil;uniqueSocketCount=ok and #item.sockets or nil;uniqueChecked=true end
-			local compatible=uniqueInfo and (craft.method=="socket_white_bench" or craft.method=="socket_bench" or craft.method=="socket_count_bench" or (craft.method=="tainted_quality" or craft.method=="tainted_chromatic" or craft.method=="tainted_fusing" or craft.method=="tainted_jeweller") and uniqueItem.corrupted or craft.method~="tainted_quality" and craft.method~="tainted_chromatic" and craft.method~="tainted_fusing" and craft.method~="tainted_jeweller" and not uniqueItem.corrupted and (craft.method~="quality" or uniqueInfo.quality+craft.count<=20))
+			local compatible=uniqueInfo and (craft.method=="socket_white_bench" or craft.method=="socket_bench" or craft.method=="socket_count_bench" or craft.method=="socket_colour_bench" or (craft.method=="tainted_quality" or craft.method=="tainted_chromatic" or craft.method=="tainted_fusing" or craft.method=="tainted_jeweller") and uniqueItem.corrupted or craft.method~="tainted_quality" and craft.method~="tainted_chromatic" and craft.method~="tainted_fusing" and craft.method~="tainted_jeweller" and not uniqueItem.corrupted and (craft.method~="quality" or uniqueInfo.quality+craft.count<=20))
+			if compatible and craft.method=="sacred" then compatible=not require("Modules.CraftingUniqueQuality").sacredReason(result.startingItem) end
+			if compatible and craft.method=="quality" then compatible=uniqueInfo.qualitySupported and uniqueInfo.resource~=nil end
+			if compatible and craft.method=="tainted_quality" then compatible=not require("Modules.CraftingUniqueQuality").taintedQualityReason(result.startingItem) end
 			if compatible and craft.method=="catalyst" then
 				local jewellery=uniqueItem.type=="Ring" or uniqueItem.type=="Amulet" or uniqueItem.type=="Belt"
 				-- Earlier guide steps can change the catalyst type and reset quality.
@@ -138,13 +141,70 @@ function M.copy(projects)
 	return result
 end
 
+-- A saved recipe may start from an edited state rather than the pasted item.
+-- When that item changes, reject stale states before an AI or other caller can
+-- save a project that the workbench and simulator cannot execute.
+function M.checkStartingStateChange(previous,project)
+	if not previous or previous.startingItem==project.startingItem then return end
+	local recipes={};local oldStates={}
+	local function collect(target,entry,label)
+		if entry and entry.initialState then target[#target+1]={state=entry.initialState,label=label} end
+	end
+	collect(oldStates,previous.nativeRecipe,"Primary recipe")
+	for _,entry in ipairs(previous.recipeAlternatives or {}) do collect(oldStates,entry.recipe,entry.name) end
+	collect(recipes,project.nativeRecipe,"Primary recipe")
+	for _,entry in ipairs(project.recipeAlternatives or {}) do collect(recipes,entry.recipe,entry.name) end
+	if #recipes==0 then return end
+	local sim=require("Modules.CraftingSimulator");local ok,model=pcall(sim.model,project.startingItem)
+	assert(ok,"Cannot verify recipe starting states for the new item. Reset or replace them before keeping this project.")
+	for _,entry in ipairs(recipes) do
+		local state=entry.state
+		assert(type(state)=="table",entry.label.." has an invalid starting state. Reset or replace it before keeping this project.")
+		if not state.origin then for _,old in ipairs(oldStates) do
+			assert(not (tableDeepEquals(state,old.state) and tableDeepEquals(old.state,state)),entry.label.." has an unbound starting state from the previous item. Reset or replace it before keeping this project.")
+		end end
+		local valid=pcall(sim.validateState,model,copyTable(state))
+		assert(valid,entry.label.." has a starting state incompatible with the new item. Reset or replace it before keeping this project.")
+	end
+end
+
+-- AI proposals can introduce recipe states without changing the pasted item.
+-- Validate changed recipes, while allowing unchanged legacy recipes to be
+-- retained during ordinary project edits.
+function M.checkProposedRecipeStates(previous,project)
+	local oldStates,pending={},{}
+	local function collect(target,recipe,label,key)
+		if recipe and recipe.initialState then target[#target+1]={state=recipe.initialState,recipe=recipe,label=label,key=key} end
+	end
+	if previous and previous.startingItem==project.startingItem then
+		collect(oldStates,previous.nativeRecipe,"Primary recipe","primary")
+		for _,entry in ipairs(previous.recipeAlternatives or {}) do collect(oldStates,entry.recipe,entry.name,"alternative:"..entry.name) end
+	end
+	collect(pending,project.nativeRecipe,"Primary recipe","primary")
+	for _,entry in ipairs(project.recipeAlternatives or {}) do collect(pending,entry.recipe,entry.name,"alternative:"..entry.name) end
+	local changed={}
+	for _,entry in ipairs(pending) do
+		local same=false
+		if type(entry.state)=="table" then for _,old in ipairs(oldStates) do
+			if entry.key==old.key and type(old.state)=="table" and tableDeepEquals(entry.recipe,old.recipe) and tableDeepEquals(old.recipe,entry.recipe) then same=true;break end
+		end end
+		if not same then changed[#changed+1]=entry end
+	end
+	if #changed==0 then return end
+	local sim=require("Modules.CraftingSimulator");local ok,model=pcall(sim.model,project.startingItem)
+	assert(ok,"Cannot verify new recipe starting states for this item. Correct the item or remove the states before proposing the project.")
+	for _,entry in ipairs(changed) do
+		local valid=type(entry.state)=="table" and pcall(sim.validateState,model,copyTable(entry.state))
+		assert(valid,entry.label.." has an invalid starting state for this item. Reset or replace it before proposing the project.")
+	end
+end
+
 function M.new(build)
 	local self = {projects={},build=build}
 	function self:Load(xml)
 		local raw = table.concat(xml)
 		if raw:match("^%s*$") then return end
 		local ok,projects = pcall(function()
-			assert(#raw <= 2*1024*1024,"Crafting projects exceed size limit")
 			local decoded = assert(json.decode(raw,1,json.null),"Invalid crafting project data")
 			assert(decoded.schemaVersion == 1 and type(decoded.projects) == "table" and decoded.projects ~= json.null,"Unsupported crafting project data")
 			local meta=getmetatable(decoded.projects)
@@ -180,10 +240,10 @@ function M.new(build)
 			if project.primarySimulation==nil and existing.primarySimulation then entry.primarySimulation=copyTable(existing.primarySimulation) end
 			if project.inventory==nil and existing.inventory then entry.inventory=copyTable(existing.inventory) end
 			if project.recipeAlternatives==nil and existing.recipeAlternatives then entry.recipeAlternatives=copyTable(existing.recipeAlternatives) end
+			M.checkStartingStateChange(existing,entry)
 			replacement[index]=entry; found=true; break
 		end end
 		if not found then replacement[#replacement+1]=entry end
-		assert(#require("Modules.PlanningData").encodeExact({schemaVersion=1,projects=replacement}) <= 2*1024*1024,"Crafting projects exceed the supported size")
 		self.projects=replacement;self.notice=nil; build.modFlag=true
 		require("Modules.PlanningUI").kept(build,"crafting")
 		return entry

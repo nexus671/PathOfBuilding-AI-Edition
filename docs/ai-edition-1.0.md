@@ -77,6 +77,8 @@ Regenerating fallback weights now preserves the scaling divisor when reusing a p
 
 ## Portable desktop startup check
 
+On November 22, a portable package built from commit `31f37cb7383ecc56c8a68096a6babd60f8feb768` matched all 3,171 Windows manifest entries. A fresh extraction passed `tools/smoke_portable_windows.py`: it reached an unnamed build, exited cleanly, and created its settings and builds folder inside that extraction. This verifies startup for that source revision, not interactive desktop rendering or the release candidate.
+
 On November 22, a portable package built from commit `b0489cc6f854dffb2b0dc3335d22f9924b72b0f3` passed `tools/smoke_portable_windows.py` in a fresh extraction. It reached an unnamed build, exited cleanly and created its settings and builds folder inside that extraction. The installed application and personal builds were not used for the smoke test.
 
 This is a startup check, not a native UI acceptance test. A separate interactive attempt could not activate the portable window in Windows computer-use, so its rendering and workflows remain unverified in the desktop renderer.

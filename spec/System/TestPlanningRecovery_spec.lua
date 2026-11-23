@@ -6,7 +6,7 @@ describe("Local planning draft recovery",function()
 	before_each(function()
 		newBuild();directory=os.tmpname();os.remove(directory);assert(require("lfs").mkdir(directory));session=recovery.session;recovery.testDirectory=directory;recovery.cache={}
 	end)
-	after_each(function() for _,kind in ipairs({"filters","atlas","crafting"}) do recovery.clear(build,kind) end;for _,record in ipairs(recovery.listUnique(build)) do recovery.clear(build,"uniqueQuality",record.entry.plan.project.id) end;require("lfs").rmdir(directory);recovery.testDirectory=nil;recovery.cache={};recovery.session=session;recovery.lastError=nil;main.popups={} end)
+	after_each(function() for _,kind in ipairs({"filters","atlas","crafting"}) do recovery.clear(build,kind) end;for _,record in ipairs(recovery.listUnique(build)) do recovery.clear(build,"uniqueQuality",record.entry.plan.project.id) end;for _,record in ipairs(recovery.listCrafting(build)) do recovery.clear(build,"crafting",record.entry.plan.project.id) end;require("lfs").rmdir(directory);recovery.testDirectory=nil;recovery.cache={};recovery.session=session;recovery.lastError=nil;main.popups={} end)
 	it("discovers earlier drafts incrementally without changing recovery files",function()
 		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
 		local p={id="scan-unique",title="Unique",slot="Helmet",startingItem=raw,goals={},steps={}}
@@ -54,6 +54,20 @@ describe("Local planning draft recovery",function()
 		local file=assert(io.open(latest.path,"wb"));file:write('{"schemaVersion":');file:close()
 		assert.equal("First",recovery.load(build,"filters").entry.plan.data.profiles[1].title)
 	end)
+	it("offers a unique preview's redo history when its item matches the saved starting item",function()
+		local raw="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"
+		local project={id="redo-history",title="Redo history",slot="Helmet",startingItem=raw,goals={},steps={}}
+		build.savers.CraftingProjects:Upsert(project)
+		local layout={width=1000,height=700,mount=function() end}
+		local control=require("Classes.CraftingUniqueQualityControl").Open(build,project,layout)
+		control.apply:Click();control.undo:Click()
+		local snapshot=layout.snapshot();assert.equal(raw,snapshot.itemText);assert.equal(1,#snapshot.redo)
+		assert.is_false(recovery.isCurrent(build,"uniqueQuality",{plan=snapshot}))
+		assert.is_true(recovery.save(build,"uniqueQuality",{plan=snapshot},true))
+		recovery.session="later-session";recovery.cache={};local scan=assert(recovery.startScan(build))
+		while coroutine.status(scan)~="dead" do assert(coroutine.resume(scan)) end
+		assert.is_true(recovery.hasPending(build));assert.equal(1,#recovery.load(build,"uniqueQuality",project.id).entry.plan.redo)
+	end)
 	it("preserves earlier-session drafts until they are acknowledged",function()
 		recovery.save(build,"filters",entry("Interrupted"),true);recovery.session="new-session";recovery.cache={}
 		recovery.save(build,"filters",entry("Current saved state"),true)
@@ -65,6 +79,12 @@ describe("Local planning draft recovery",function()
 		assert.is_false(recovery.save(build,"filters",{plan={data={schemaVersion=99}}},true));assert.is_nil(recovery.load(build,"filters"))
 		local atlas=require("Modules.AtlasPlanner");local plan={id="test",title="Test",version="3.30.0-preview",budget=150,nodes={}}
 		assert.is_true(recovery.save(build,"atlas",{plan=plan},true));assert.same(atlas.validate(plan),recovery.load(build,"atlas").entry.plan);assert.is_nil(recovery.load(build,"filters"))
+	end)
+	it("retains filter draft baselines and marks older drafts as unknown",function()
+		local value=entry("Draft");value.plan.baseHash=require("Modules.PlanningData").hash(build.savers.LootFilters.data)
+		assert.is_true(recovery.save(build,"filters",value,true));assert.equal(value.plan.baseHash,recovery.load(build,"filters").entry.plan.baseHash)
+		assert.is_false(recovery.clean("filters",entry("Older draft")).plan.baseHash)
+		value.plan.baseHash="invalid";assert.is_false(recovery.save(build,"filters",value,true))
 	end)
 	it("does not flag an identical kept plan but retains unfinished Atlas editor text",function()
 		local value=entry("Kept");build.savers.LootFilters:Replace(value.plan.data);assert.is_true(recovery.isCurrent(build,"filters",recovery.clean("filters",value)))
@@ -125,7 +145,7 @@ describe("Local planning draft recovery",function()
 		assert.is_true(recovery.save(build,"crafting",craft("a"),true));assert.is_true(recovery.save(build,"crafting",craft("b"),true))
 		assert.is_true(recovery.save(build,"filters",entry("Unrelated filter"),true))
 		local saved=recovery.forgetCraftingProject(build,"a");assert.are.equal("a",saved.draft.project.id)
-		assert.is_nil(recovery.forCraftingProject(build,"a"));assert.are.equal("b",recovery.load(build,"crafting").entry.plan.project.id)
+		assert.is_nil(recovery.forCraftingProject(build,"a"));assert.are.equal("b",recovery.load(build,"crafting","b").entry.plan.project.id)
 		assert.are.equal("Unrelated filter",recovery.load(build,"filters").entry.plan.data.profiles[1].title)
 		assert.is_true(recovery.save(build,"crafting",{plan=saved.draft},true));assert.is_truthy(recovery.forCraftingProject(build,"a"))
 	end)
@@ -309,7 +329,7 @@ describe("Local planning draft recovery",function()
 		build.savers.CraftingProjects:Upsert(p)
 		local run=require("Modules.CraftingInventory").run(require("Modules.CraftingSimulator").model(p.startingItem).initial);run.project=p;run.kind="workbench"
 		assert.is_true(recovery.save(build,"crafting",{plan=run},true))
-		local function bytes() local f=assert(io.open(recovery.load(build,"crafting").path,"rb"));local raw=f:read("*a");f:close();return raw end
+		local function bytes() local f=assert(io.open(recovery.load(build,"crafting",run.project.id).path,"rb"));local raw=f:read("*a");f:close();return raw end
 		local original=bytes();local bridge=require("Modules.DesktopBuildBridge");local base=build
 		local prepared=bridge.prepare(base,{mode="edit",title="Remove guide",baseRevision=bridge.revision(base),operations={{type="remove_crafting_project",projectId=p.id}}})
 		assert.are.equal(original,bytes());bridge.apply(prepared);assert.are.equal(original,bytes())

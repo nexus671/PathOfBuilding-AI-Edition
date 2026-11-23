@@ -27,6 +27,16 @@ describe("Desktop build proposals", function()
 	local function proposal(operations,mode)
 		return {mode=mode or "edit",title="AI test candidate",baseRevision=bridge.revision(build),operations=operations}
 	end
+	it("accepts larger guide requests and rejects requests over one MiB",function()
+		build.savers.CraftingProjects:Upsert({id="large",title="Guide",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}})
+		fakeFiles();bridge.enable(build);local steps={}
+		for i=1,300 do steps[i]={action=tostring(i)..":"..string.rep("x",990)} end
+		files.request=json.encode({id="large-guide",session=bridge.session,proposal=proposal({{type="patch_crafting_guide",projectId="large",patch={steps=steps}}})})
+		assert.is_true(#files.request>256*1024);bridge.poll(build,true)
+		assert.equal("review",bridge.status.status);assert.equal(300,#bridge.prepared.candidate.savers.CraftingProjects.projects[1].steps)
+		bridge.prepared=nil;files.request=string.rep("x",1024*1024+1);bridge.poll(build,true)
+		assert.equal("failed",bridge.status.status);assert.matches("exceeds",bridge.status.error,1,true)
+	end)
 
 	it("calculates edits without touching the desktop build, cache, or notes editor", function()
 		local revision, cache = bridge.revision(build),_G.GlobalCache

@@ -53,6 +53,7 @@ local function identifier() return "filter-"..require("sha1")(os.time()..tostrin
 function M.Open(build,source,layout,controller)
 	local saver=build.savers.LootFilters;local c={};local custom={};local backgrounds={};local w,h=layout.width,layout.height
 	local state=source or {};local data=state.data or copyTable(saver.data);local profile=filters.find(data,state.selected) or data.profiles[1]
+	local baseHash=state.baseHash;if baseHash==nil then baseHash=require("Modules.PlanningData").hash(saver.data) end
 	local page=state.page or "Overview";local category=state.category or "All items";local scope=state.scope or (profile and #profile.rules>0 and "My rules" or "Base filter");local query=state.query or "";local selected=state.rule
 	local item=state.sample or library.sample();local dirty=state.dirty or false;local sceneKind=state.sceneKind or "Mixed drops";local seed=state.seed or 0;local showHidden=state.showHidden~=false
 	local settings=state.sceneSettings or {areaLevel=83,itemLevel=86,background="Stone"};local samples=state.sampleHistory or {}
@@ -64,9 +65,9 @@ function M.Open(build,source,layout,controller)
 		for _,sample in ipairs(samples) do size=size+#encode(sample) end;while size>1024*1024 and #samples>1 do size=size-#encode(table.remove(samples,1)) end
 	end
 	local catalog,entries,parsed,raw,report,result={},{};local selectedEntry;local scene={}
-	local function sampleDetails(sample,evaluated)
+	local function sampleDetails(sample,evaluated,selected)
 		local deciding=evaluated and (evaluated.ruleTitle or (evaluated.line and "Filter line "..evaluated.line or evaluated.status=="matched" and "No matching block: default Show" or "Resolve missing properties or filter errors.")) or "Select a drop to inspect the rule."
-		local lines={visual.sampleName(sample),"iLvl "..tostring(sample.ItemLevel or "?").." / area "..tostring(sample.AreaLevel or "?"),evaluated and evaluated.action or "Choose a drop"}
+		local lines={(selected and "Selected: " or "")..visual.sampleName(sample),"iLvl "..tostring(sample.ItemLevel or "?").." / area "..tostring(sample.AreaLevel or "?"),evaluated and evaluated.action or "Choose a drop"}
 		local firstError=evaluated and evaluated.status=="invalid" and evaluated.reasons and evaluated.reasons[1]
 		if firstError then table.insert(lines,1,"Filter error: "..firstError) end
 		local copied=not sample.HasExplicitMod and sample.KnownExplicitMods
@@ -108,11 +109,26 @@ function M.Open(build,source,layout,controller)
 		if profile then dependencyJob=require("Modules.LootFilterDependencies").begin(build,profile);advanceDependencies() else dependencies=nil;dependencyTime=GetTime() end
 	end
 	local function draft(field) dirty=true;history:record(data,field);ui.draft(build,"filters") end
-	local function snapshot() return {data=data,selected=profile and profile.id,page=page,category=category,scope=scope,query=query,rule=selected,sample=item,dirty=dirty,seed=seed,sceneKind=sceneKind,showHidden=showHidden,history=history:snapshot(),tierState=tierView and tierView.snapshot() or tierState,sceneSettings=settings,sampleHistory=samples,sampleSetId=sampleSetId,scenePage=scenePage} end
+	local function snapshot() return {data=data,baseHash=baseHash,selected=profile and profile.id,page=page,category=category,scope=scope,query=query,rule=selected,sample=item,dirty=dirty,seed=seed,sceneKind=sceneKind,showHidden=showHidden,history=history:snapshot(),tierState=tierView and tierView.snapshot() or tierState,sceneSettings=settings,sampleHistory=samples,sampleSetId=sampleSetId,scenePage=scenePage} end
 	local function reopen() layout.navigate("filters",snapshot()) end
-	local function openSource(origin)
-		local ok,reason=require("Modules.LootFilterDependencies").open(build,layout,origin)
+	local function openSource(origin,openGuide)
+		local ok,reason=require("Modules.LootFilterDependencies").open(build,layout,origin,openGuide)
 		if not ok then ui.errorPopup("Linked source",reason) end
+	end
+	local function acknowledgeGuide(entry)
+		local id=entry.origin and entry.origin:match("^craft:(.+)$");local project
+		for _,candidate in ipairs(build.savers.CraftingProjects.projects) do if candidate.id==id then project=candidate;break end end
+		if not project or filters.manualGuideSignature(build,project)~=entry.manualGuideSignature then ui.errorPopup("Review build pickups","The guide or budget changed. Refresh build pickups and review it again.");return end
+		local reviews={};for _,review in ipairs(profile.manualGuideReviews or {}) do if review.projectId~=id then reviews[#reviews+1]=review end end
+		reviews[#reviews+1]={projectId=id,signature=entry.manualGuideSignature};profile.manualGuideReviews=reviews
+		dependencies=nil;dependencyJob=nil;dependencyTime=nil;draft();reopen();return true
+	end
+	local function showPickupWarnings(entries)
+		if #entries==0 then return end
+		require("Classes.PlanningBrowserControl").Open("Review build pickups",entries,{action="Open source",canChoose=function(entry) return type(entry.origin)=="string" and entry.origin~="" end,choose=function(entry) main:ClosePopup();openSource(entry.origin,entry.openGuide) end,closeOnChoose=false,
+			secondary={label="Mark guide reviewed",canRun=function(entry) return entry.manualGuideSignature~=nil end,run=function(entry)
+				main:ClosePopup();if acknowledgeGuide(entry) then local remaining={};for _,other in ipairs(entries) do if other~=entry then remaining[#remaining+1]=other end end;showPickupWarnings(remaining) end
+			end}})
 	end
 	local function targetPreview()
 		local state=transient.filterSceneTargets;local dependency=require("Modules.LootFilterDependencies")
@@ -143,8 +159,8 @@ function M.Open(build,source,layout,controller)
 		end
 		profile.rules=result.rules;profile.trackBuildPickups=true;draft();reopen()
 		if #result.warnings>0 then
-			local entries={};for _,warning in ipairs(result.warnings) do entries[#entries+1]={id=warning.origin,label=warning.title,details={warning.message}} end
-			require("Classes.PlanningBrowserControl").Open("Review build pickups",entries)
+			local entries={};for _,warning in ipairs(result.warnings) do entries[#entries+1]={id=warning.origin,origin=warning.origin,openGuide=warning.openGuide,manualGuideSignature=warning.manualGuideSignature,label=warning.title,details={warning.message}} end
+			showPickupWarnings(entries)
 		end
 	end
 	local function generatePickups()
@@ -235,7 +251,7 @@ function M.Open(build,source,layout,controller)
 	local function sceneControl(key,x,y,width,height,drops,selectable,caption)
 		local canvas=new("Control"):Control(ui.anchor,{x,y,width,height});c[key]=canvas;backgrounds[key]=true
 		local columns=width>700 and 4 or width>460 and 3 or 2;local reserve=selectable and 98 or 46;local rows=math.max(2,math.floor((height-reserve)/70));local capacity=columns*rows;local cells={};local visible=0;local eligible={}
-		if selectable and sceneKind=="Fated gear" then columns=math.min(columns,2);capacity=columns*rows end
+		if selectable and (sceneKind=="Fated gear" or sceneKind=="Foulborn gear") then columns=math.min(columns,2);capacity=columns*rows end
 		if selectable and (sceneKind=="Essences" or sceneKind=="Preset highlights" or sceneKind=="Breach" or sceneKind=="Beyond" or sceneKind=="Incursion" or sceneKind=="Legion" or sceneKind=="Delirium" or sceneKind=="Harvest" or sceneKind=="Abyss" or sceneKind=="Ultimatum" or sceneKind=="Ritual" or sceneKind=="Sanctum" or sceneKind=="Pinnacle bosses") then columns=math.min(columns,3);capacity=columns*rows end
 		local function evaluate(drop) return evaluateDrop(drop) end
 		for _,drop in ipairs(drops) do local evaluated=not showHidden and evaluate(drop) or nil;if showHidden or evaluated.action~="Hide" then eligible[#eligible+1]={item=drop,result=evaluated} end end
@@ -244,7 +260,7 @@ function M.Open(build,source,layout,controller)
 		for index=first,math.min(#eligible,first+capacity-1) do local entry=eligible[index];local drop=entry.item;local evaluated=entry.result or evaluate(drop)
 			visible=visible+1;local cellW=(width-24)/columns;local cellH=(height-reserve)/rows;local cx=x+12+((visible-1)%columns)*cellW;local cy=y+12+math.floor((visible-1)/columns)*cellH
 			cells[#cells+1]={x=cx,y=cy,w=cellW,h=cellH,item=drop,result=evaluated,key=encode(drop)}
-			if selectable then local control=new("ButtonControl"):ButtonControl(ui.anchor,{cx,cy,cellW,cellH},"",function() rememberSample(drop);compile();if c.selection then c.selection.list=ui.rows(sampleDetails(drop,result),c.selection.width-28,14) end end)
+			if selectable then local control=new("ButtonControl"):ButtonControl(ui.anchor,{cx,cy,cellW,cellH},"",function() rememberSample(drop);compile();if c.selection then c.selection.list=ui.rows(sampleDetails(drop,result,true),c.selection.width-28,14) end end)
 				c["drop"..visible]=control;custom["drop"..visible]=true;control.planningFocusable=true;control.tooltipText=table.concat(sampleDetails(drop,evaluated),"\n")
 				function control:Draw(viewport) if self:IsMouseOver() then local px,py=self:GetPos();SetDrawLayer(nil,100);self:DrawTooltip(px,py,cellW,cellH,viewport or main.viewPort);SetDrawLayer(nil,0) end end
 			end
@@ -258,7 +274,7 @@ function M.Open(build,source,layout,controller)
 			local selectedKey=encode(item);for _,cell in ipairs(cells) do
 				local cx,cy=px+cell.x-x,py+cell.y-y;visual.chip(cx,cy,cell.w,cell.h,cell.item,cell.result,selectedKey==cell.key)
 				if sceneKind=="Tiered gear" and cell.item.Identified==false and cell.item.UnidentifiedItemTier~=nil then visual.text(cx+5,cy+2,12,cell.item.UnidentifiedItemTier==0 and "No tier" or "Tier "..cell.item.UnidentifiedItemTier,"^xEED49C",cell.w-10) end
-				if sceneKind=="Fated gear" then visual.text(cx+5,cy+2,12,cell.item.Fated and "Fated" or "Other", "^xEED49C",cell.w-10) end
+				if sceneKind=="Fated gear" or sceneKind=="Foulborn gear" then local property=sceneKind=="Fated gear" and "Fated" or "Foulborn";visual.text(cx+5,cy+2,12,cell.item[property] and property or "Other", "^xEED49C",cell.w-10) end
 				if sceneKind=="Map tiers" then visual.text(cx+5,cy+2,12,"Tier "..cell.item.MapTier,"^xEED49C",cell.w-10) end
 				if sceneKind=="Vendor recipes" then local note=M.vendorLabel(cell.item);if note then visual.text(cx+5,cy+2,12,note,"^xEED49C",cell.w-10) end end
 			end
@@ -271,7 +287,16 @@ function M.Open(build,source,layout,controller)
 	ui.label(c,"subtitle",16,48,"Customise pickups, preview loot, export to PoE.",14)
 	local profiles={};for _,p in ipairs(data.profiles) do profiles[#profiles+1]={label=p.title,val=p.id} end;if #profiles==0 then profiles={{label="No saved profile",val=""}} end
 	c.profile=new("DropDownControl"):DropDownControl(ui.anchor,{w-430,14,232,28},profiles,function(_,value) profile=filters.find(data,value.val);selected=nil;reopen() end);c.profile:SelByValue(profile and profile.id or "","val")
-	button(c,"keep",w-182,14,166,"Keep in build",function() if profile then data.activeId=profile.id end;saver:Replace(data);dirty=false end)
+	button(c,"keep",w-182,14,166,"Keep in build",function()
+		local hash=require("Modules.PlanningData").hash;local current=hash(saver.data)
+		local function keep() if profile then data.activeId=profile.id end;saver:Replace(data);dirty=false;baseHash=hash(saver.data) end
+		if current~=baseHash then
+			main:OpenConfirmPopup("Saved filters changed","Saved filters changed while this draft was open. Review changes in Profile tools. Keeping this draft replaces the current saved filters.","Keep draft",function()
+				if hash(saver.data)~=current then ui.errorPopup("Saved filters changed","Saved filters changed again. Review them and try again.");return end
+				keep()
+			end)
+		else keep() end
+	end)
 	for i,name in ipairs({"Overview","Customize","Tiers","Simulate","Style","Modules"}) do local control=button(c,"view"..name,16+(i-1)*126,76,118,name,function() page=name;reopen() end);control.locked=page==name end
 	button(c,"manage",w-172,76,156,"Profile tools",function()
 		local choices={
@@ -314,7 +339,7 @@ function M.Open(build,source,layout,controller)
 			elseif entry.id=="changes" then require("Classes.PlanningBrowserControl").Open("Filter changes",require("Modules.LootFilterEditing").review(saver.data,data))
 			elseif entry.id=="links" and profile then
 				refreshDependencies();if not dependencies or dependencyJob then main:OpenMessagePopup("Linked filter targets",dependencyError or "Checking build pickups. Please try again shortly.");return end
-				require("Classes.PlanningBrowserControl").Open("Linked filter targets",dependencies.entries,{action="Open source",choose=function(entry) main:ClosePopup();openSource(entry.origin) end,closeOnChoose=false,
+				require("Classes.PlanningBrowserControl").Open("Linked filter targets",dependencies.entries,{action="Open source",choose=function(entry) main:ClosePopup();openSource(entry.origin,entry.openGuide) end,closeOnChoose=false,
 					secondary={label="Refresh build pickups",run=function() main:ClosePopup();generatePickups() end}})
 			elseif entry.id=="campaign" and profile then require("Classes.LootFilterCampaignControl").Open(build,profile.campaign,function(value) profile.campaign=value;draft();reopen() end,profile.mode)
 			elseif entry.id=="structure" and profile then require("Classes.LootFilterStructureControl").Open(profile,function(rule) editRule(rule,keepRule) end)
@@ -467,7 +492,7 @@ function M.Open(build,source,layout,controller)
 	elseif page=="Simulate" then
 		local left=208;local groundX=240;local groundW=w-256
 		ui.label(c,"sceneTitle",16,124,"Loot simulator",20)
-		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Fated gear","Vendor recipes","Covens & Threads","Maps & threads","Map tiers","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition","Blight & oils","Breach","Beyond","Incursion","Legion","Delirium","Harvest","Abyss","Ultimatum","Ritual","Sanctum","Pinnacle bosses"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
+		local kinds={"Mixed drops","Build targets","Currency","Preset highlights","Tiered gear","Fated gear","Foulborn gear","Vendor recipes","Covens & Threads","Maps & threads","Map tiers","Flasks & tinctures","Divination cards","Essences","Crafting materials","Heist & Expedition","Blight & oils","Breach","Beyond","Incursion","Legion","Delirium","Harvest","Abyss","Ultimatum","Ritual","Sanctum","Pinnacle bosses"};local savedSets=profile.sampleSets or {};if #savedSets>0 then kinds[#kinds+1]="Saved examples" elseif sceneKind=="Saved examples" then sceneKind="Mixed drops" end
 		local function selectScene(value,savedId)
 			if savedId then sampleSetId=savedId end
 			sceneKind=value;scenePage=1;if value=="Saved examples" then local chosen=savedSets[1];for _,entry in ipairs(savedSets) do if entry.id==sampleSetId then chosen=entry end end;item=copyTable(chosen.samples[1]) elseif value~="Build targets" then item=library.scene(profile,build,value,seed,settings.areaLevel,settings.itemLevel)[1] or item end;reopen()
@@ -477,7 +502,7 @@ function M.Open(build,source,layout,controller)
 			local descriptions={
 				["Mixed drops"]="Compare a variety of example items.",["Build targets"]="Test pickups generated from your build and plans.",
 				Currency="Compare currency examples.",["Preset highlights"]="Review high-emphasis currency in the pinned preset, not live prices.",
-				["Tiered gear"]="Compare unidentified item tiers on the same base.",["Fated gear"]="Compare matching rare gear examples at tier 4 (no tier in Ruthless).",["Vendor recipes"]="Test sample recipe items and their socket or quality properties.",
+				["Tiered gear"]="Compare unidentified item tiers on the same base.",["Fated gear"]="Compare matching rare gear examples at tier 4 (no tier in Ruthless).",["Foulborn gear"]="Compare matched examples with and without Foulborn.",["Vendor recipes"]="Test sample recipe items and their socket or quality properties.",
 				["Covens & Threads"]="Compare Threads and other Covens items.",["Maps & threads"]="Compare map bases, Threads and special map examples.",
 				["Map tiers"]="Compare map tier conditions from tier 1 through 17.",["Flasks & tinctures"]="Compare life, mana and utility flasks with tinctures.",
 				["Divination cards"]="Compare example divination cards.",Essences="Compare essence tiers and special essences.",
@@ -521,7 +546,7 @@ function M.Open(build,source,layout,controller)
 		c.browseScenes.tooltipText="Search examples by name or item, and read what each scene contains."
 		c.sceneKind.tooltipText="Preset highlights use exact names from the pinned NeverSink currency snapshot. They are not live prices or drop rates."
 		button(c,"regenerate",16,202,100,"Regenerate",function() seed=seed+1;scenePage=1;if sceneKind=="Build targets" then transient.filterSceneTargets=nil end;reopen() end)
-		c.regenerate.enabled=sceneKind~="Saved examples" and sceneKind~="Tiered gear" and sceneKind~="Fated gear" and sceneKind~="Map tiers";c.regenerate.tooltipText="Reorder generated examples. Saved and tier-comparison examples keep their exact properties; examples are not drop-rate estimates."
+		c.regenerate.enabled=sceneKind~="Saved examples" and sceneKind~="Tiered gear" and sceneKind~="Fated gear" and sceneKind~="Foulborn gear" and sceneKind~="Map tiers";c.regenerate.tooltipText="Reorder generated examples. Saved and tier-comparison examples keep their exact properties; examples are not drop-rate estimates."
 		button(c,"savedSamples",124,202,100,"Saved sets",function() collection("sampleSets") end)
 		local savedSet
 		if sceneKind=="Saved examples" then
@@ -540,21 +565,26 @@ function M.Open(build,source,layout,controller)
 		button(c,"sampleHistory",124,322,100,"History",function() local entries={};for i=#samples,1,-1 do local sample=samples[i];entries[#entries+1]={id=i,label=visual.sampleName(sample),details={"Item level: "..tostring(sample.ItemLevel or "unknown"),"Area level: "..tostring(sample.AreaLevel or "unknown"),"Missing properties remain unknown."},sample=sample} end
 			require("Classes.PlanningBrowserControl").Open("Tested item history",entries,{action="Test again",choose=function(entry) rememberSample(entry.sample);scenePage=1;compile();reopen() end})
 		end)
-		button(c,"sound",16,362,100,"Play sound",function() local _,message=require("Modules.LootFilterAudio").play(result and result.styles or {});c.selection.list=ui.rows({visual.sampleName(item),message},left-28,14) end)
+		button(c,"sound",16,362,100,"Play sound",function()
+			local ok,message=require("Modules.LootFilterAudio").play(result and result.styles or {})
+			local lines=sampleDetails(item,result,true);lines[#lines+1]=message;c.selection.list=ui.rows(lines,left-28,14)
+			if not ok then ui.errorPopup("Sound preview",message) end
+		end)
+		c.sound.tooltipText="Preview a reference tone or local WAV; the game's numbered alert may sound different."
 		button(c,"sceneStats",124,362,100,"Drop review",function()
 			local counts={Show=0,Hide=0,Minimal=0,Unknown=0};local entries={}
 			for index,drop in ipairs(scene) do
 				local evaluated=evaluateDrop(drop)
 				local action=M.dropOutcome(evaluated)
 				counts[action]=counts[action]+1
-				local value=itemTier(drop);local tier=sceneKind=="Fated gear" and (drop.Fated and " (Fated)" or " (other)") or value~=nil and (value==0 and " (no tier)" or " (tier "..value..")") or (drop.Identified==false and (drop.Rarity=="Magic" or drop.Rarity=="Rare") and " (tier unknown)" or "")
+				local value=itemTier(drop);local tier=(sceneKind=="Fated gear" or sceneKind=="Foulborn gear") and (drop[sceneKind=="Fated gear" and "Fated" or "Foulborn"] and " ("..(sceneKind=="Fated gear" and "Fated" or "Foulborn")..")" or " (other)") or value~=nil and (value==0 and " (no tier)" or " (tier "..value..")") or (drop.Identified==false and (drop.Rarity=="Magic" or drop.Rarity=="Rare") and " (tier unknown)" or "")
 				entries[#entries+1]={id=index,label=visual.sampleName(drop)..tier.." - "..action,category=action,details=sampleDetails(drop,evaluated),sample=drop}
 			end
 			local title=string.format("Examples: %d shown, %d minimal, %d hidden, %d unknown",counts.Show,counts.Minimal,counts.Hide,counts.Unknown)
 			require("Classes.PlanningBrowserControl").Open(title,entries,{action="Inspect item",choose=function(entry) rememberSample(entry.sample);scenePage=1;compile();reopen() end})
 		end)
 		c.sceneStats.tooltipText="Review every example in this scene, including hidden and uncertain results. Counts are not drop-rate predictions."
-		c.selection=new("TextListControl"):TextListControl(ui.anchor,{16,410,left,h-474},nil,ui.rows(sampleDetails(item,result),left-28,14))
+		c.selection=new("TextListControl"):TextListControl(ui.anchor,{16,410,left,h-474},nil,ui.rows(sampleDetails(item,result,true),left-28,14))
 		local extraTest=false
 		if savedSet then
 			scene=copyTable(savedSet.samples);local encode=require("Modules.PlanningData").encode;local present=false;local current=encode(item);for _,sample in ipairs(scene) do if encode(sample)==current then present=true;break end end
@@ -563,16 +593,16 @@ function M.Open(build,source,layout,controller)
 			local targetKeys
 			if targets then scene,targetKeys=M.targetScene(targets,profile,build,settings)
 			else scene=library.scene(profile,build,sceneKind,seed,settings.areaLevel,settings.itemLevel) end
-			if sceneKind~="Tiered gear" and sceneKind~="Fated gear" and sceneKind~="Map tiers" and (not targetKeys or not targetKeys[require("Modules.PlanningData").encode(item)]) then table.insert(scene,1,item) end
+			if sceneKind~="Tiered gear" and sceneKind~="Fated gear" and sceneKind~="Foulborn gear" and sceneKind~="Map tiers" and (not targetKeys or not targetKeys[require("Modules.PlanningData").encode(item)]) then table.insert(scene,1,item) end
 		end
-		if not savedSet and sceneKind~="Tiered gear" and sceneKind~="Fated gear" and sceneKind~="Map tiers" then
+		if not savedSet and sceneKind~="Tiered gear" and sceneKind~="Fated gear" and sceneKind~="Foulborn gear" and sceneKind~="Map tiers" then
 			if sceneKind~="Build targets" then
 				local encode=require("Modules.PlanningData").encode;local selected=encode(item)
 				for i=#scene,2,-1 do if encode(scene[i])==selected then table.remove(scene,1);break end end
 			end
 		end
 		local targets=sceneKind=="Build targets" and transient.filterSceneTargets or nil
-		local caption=invalidFilterReason and "FILTER INVALID - SEE DETAILS" or sceneKind=="Preset highlights" and "PINNED SNAPSHOT - NOT LIVE PRICES" or sceneKind=="Map tiers" and "MAP TIER COMPARISON" or sceneKind=="Fated gear" and "FATED GEAR COMPARISON" or sceneKind=="Tiered gear" and (profile.mode=="Ruthless" and "RUTHLESS: NO ITEM TIERS" or "TIER COMPARISON") or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
+		local caption=invalidFilterReason and "FILTER INVALID - SEE DETAILS" or sceneKind=="Preset highlights" and "PINNED SNAPSHOT - NOT LIVE PRICES" or sceneKind=="Map tiers" and "MAP TIER COMPARISON" or sceneKind=="Fated gear" and "FATED GEAR COMPARISON" or sceneKind=="Foulborn gear" and "FOULBORN GEAR COMPARISON" or sceneKind=="Tiered gear" and (profile.mode=="Ruthless" and "RUTHLESS: NO ITEM TIERS" or "TIER COMPARISON") or savedSet and (extraTest and "SAVED SET + CURRENT TEST" or "SAVED EXAMPLES") or targets and (targets.error and "TARGETS UNAVAILABLE" or not targets.rules and "CHECKING BUILD TARGETS..." or #targets.warnings>0 and "SOME TARGETS NEED REVIEW" or "BUILD TARGETS")
 		sceneControl("preview",groundX,savedSet and 168 or 120,groundW,h-(savedSet and 230 or 182),scene,true,caption)
 		if targets then c.preview.tooltipText=targets.error or (#(targets.warnings or {})>0 and "Some build targets need review. Open linked build targets for details." or "Build target examples update as the build changes. The current test item is also shown.") end
 		button(c,"inspectMatch",w-216,h-96,184,invalidFilterReason and "Review filter errors" or "Inspect matched rules",function() if invalidFilterReason then openAudit(true) else inspectMatches() end end)

@@ -168,7 +168,7 @@ describe("Visual filter catalogue",function()
 			{kind="Flasks & tinctures",base="Sacred Life Flask",class="Life Flasks",other="Prismatic Tincture",otherClass="Tinctures"},
 			{kind="Crafting materials",base="Hollow Fossil",class="Stackable Currency",other="Powerful Chaotic Resonator",otherClass="Delve Stackable Socketable Currency"},
 			{kind="Heist & Expedition",base="Blueprint: Underbelly",class="Blueprints",other="Expedition Logbook",otherClass="Expedition Logbooks"}}) do
-			local scene=library.scene(profile,build,case.kind,0,76,81);assert.equal(case.kind=="Maps & threads" and 17 or 12,#scene)
+			local scene=library.scene(profile,build,case.kind,0,76,81);assert.equal(case.kind=="Maps & threads" and 17 or case.kind=="Flasks & tinctures" and 13 or 12,#scene)
 			assert.equal(case.base,scene[1].BaseType);assert.equal(case.class,scene[1].Class)
 			if case.kind=="Maps & threads" then
 				assert.equal("Nightmare Map",scene[13].BaseType);assert.equal(17,scene[13].MapTier)
@@ -495,7 +495,7 @@ describe("Visual filter catalogue",function()
 	it("tests Sanctum and pinnacle examples using pinned item classes",function()
 		local f=assert(io.open("Data/LootFilters/base-classes.json","rb"));local classes=assert(require("dkjson").decode(f:read("*a"))).classes;f:close()
 		local profile=filters.profile("scenes","Scenes");profile.template='Show\n Class == "Sanctum Research" "Map Fragments"\nHide'
-		for _,example in ipairs({{"Sanctum","Forbidden Tome",11},{"Pinnacle bosses","Crescent Splinter",11}}) do
+		for _,example in ipairs({{"Sanctum","Forbidden Tome",11},{"Pinnacle bosses","Crescent Splinter",12}}) do
 			local scene=library.scene(profile,build,example[1],0,76,81);assert.equal(example[3],#scene);assert.equal(example[2],scene[1].BaseType)
 			for _,item in ipairs(scene) do assert.is_nil(item.BaseType:find("Maven's Invitation",1,true));assert.equal(classes[item.BaseType],item.Class);assert.equal(76,item.AreaLevel);assert.equal(81,item.ItemLevel) end
 			local page=filters.simulateScene(profile,example[1],0,76,81,0,2);assert.equal(example[3],page.total);assert.equal(example[2],page.results[1].sample.BaseType)
@@ -546,6 +546,16 @@ describe("Visual filter catalogue",function()
 			assert.equal("Iron Hat",item.BaseType);assert.equal(72,item.AreaLevel);assert.equal(75,item.ItemLevel)
 			local result=parser.simulate(parser.parse("Show\n UnidentifiedItemTier >= 4\nHide"),item)
 			assert.equal(tier>=4 and "Show" or "Hide",result.action)
+		end
+	end)
+	it("compares Foulborn and other gear using identical examples",function()
+		local profile=filters.profile("foulborn","Foulborn");local scene=library.scene(profile,build,"Foulborn gear",7,72,75)
+		assert.equal(10,#scene);assert.same(scene,library.scene(profile,build,"Foulborn gear",0,72,75))
+		local parsed=parser.parse("Show\n Foulborn True\nHide")
+		for i=1,#scene,2 do
+			local first,second=scene[i],scene[i+1];assert.is_true(first.Foulborn);assert.is_false(second.Foulborn)
+			local same=copyTable(first);same.Foulborn=false;assert.same(same,second)
+			assert.equal("Show",parser.simulate(parsed,first).action);assert.equal("Hide",parser.simulate(parsed,second).action)
 		end
 	end)
 	it("compares Fated and other rare gear at the same sample tier",function()

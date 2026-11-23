@@ -26,6 +26,21 @@ describe("Compiled filter structure",function()
 		assert.is_truthy(reason.shadowedBy);assert.matches("every item matched",reason.warning)
 		local blocker=structure.blockingEntry(view,conflicts[1]);assert.is_not_nil(blocker);assert.equal(reason.shadowedBy,blocker.line);assert.matches("ItemLevel >= 70",blocker.text,1,true);assert.is_nil(structure.blockingEntry(view,blocker))
 	end)
+	it("reports impossible numeric and rarity intersections without blocking export",function()
+		local parser=require("Modules.LootFilterParser");local diagnostics=require("Modules.LootFilterDiagnostics")
+		local cases={
+			{'Show\n ItemLevel >= 80\n ItemLevel < 70',"ItemLevel"},
+			{'Hide\n AreaLevel > 80\n AreaLevel <= 80',"AreaLevel"},
+			{'Show\n Quality = 20\n Quality != 20\n Quality > 20',"Quality"},
+			{'Show\n Rarity = Rare\n Rarity >= Unique',"Rarity"},
+		}
+		for _,case in ipairs(cases) do local result=diagnostics.contradictions(parser.parse(case[1]));assert.equal(1,#result);assert.matches(case[2],result[1].warning,1,true) end
+		for _,raw in ipairs({'Show\n ItemLevel >= 70\n ItemLevel <= 80','Show\n ItemLevel >= 80\n AreaLevel < 70','Show\n Sockets >= 6\n Sockets < 3','Show\n Rarity >= Rare\n Rarity != Unique'}) do assert.equal(0,#diagnostics.contradictions(parser.parse(raw)),raw) end
+		local p=filters.profile("conflicting","Conflicting");p.template='Show\n ItemLevel >= 80\n ItemLevel < 70'
+		local raw,report=filters.compile(p);assert.is_truthy(raw);assert.is_nil(report.error)
+		local view=structure.outline(p);local warnings=structure.filter(view,"",nil,nil,"Warnings / errors")
+		assert.equal(1,#warnings);assert.matches("conditions conflict",structure.diagnostics(view,warnings[1])[1].warning,1,true)
+	end)
 	it("detects a broad rule with several additional conditions without guessing other rules",function()
 		local parser=require("Modules.LootFilterParser");local diagnostics=require("Modules.LootFilterDiagnostics")
 		local earlier='Class == "Rings"\n Rarity == Rare'

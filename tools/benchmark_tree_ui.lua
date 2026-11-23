@@ -40,7 +40,6 @@ if forcedRecovery then
 	build.configTab.input.recoverySimulationWindow = 60
 end
 local bridge = require("Modules.DesktopBuildBridge")
-local revision = bridge.revision(build)
 local ui = require("Modules.HeadlessUI").install({width=1280,height=720,interactiveRecovery=desktopRecovery})
 -- Suppress captured draw calls only for CPU profiling. This is not a renderer benchmark.
 if noCapture then
@@ -164,6 +163,9 @@ if profileFull then
 		end,base
 	end
 end
+-- Conversion and initial frames can settle automatic level and other saved
+-- values. Compare the measured clicks with the settled, in-memory build.
+local revision = bridge.revision(build)
 local performance=require("Modules.PlanningPerformance")
 performance.clear(build)
 for cycle = 1, cycles do

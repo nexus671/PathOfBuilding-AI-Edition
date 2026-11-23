@@ -1,3 +1,52 @@
+VERSION[2.68.1-ai.preview1148][2026/11/22]
+
+* Review market-based loot filter changes and sync a local filter daily from a fixed baseline in PoB.
+* Verify protected drops before replacement and restore the previous filter from the sync dialog.
+
+VERSION[2.68.1-ai.preview1147][2026/11/22]
+
+* Preserve unique crafting redo history when a preview matches the saved item.
+
+VERSION[2.68.1-ai.preview1146][2026/11/22]
+
+* Keep separate local recovery drafts for each crafting project.
+
+VERSION[2.68.1-ai.preview1145][2026/11/22]
+
+* Detect empty item-level and rarity ranges in filter blocks.
+
+VERSION[2.68.1-ai.preview1144][2026/11/22]
+
+* Warn about conflicting numeric and rarity conditions in filter blocks.
+
+VERSION[2.68.1-ai.preview1143][2026/11/22]
+
+* Recognize Vaal Temple's base implicit in copied maps.
+
+VERSION[2.68.1-ai.preview1142][2026/11/22]
+
+* Preview the conditional Vaal Temple map corruption outcome.
+
+VERSION[2.68.1-ai.preview1141][2026/11/22]
+
+* Keep map tier-up preview assumptions visible in saved plans.
+
+VERSION[2.68.1-ai.preview1140][2026/11/22]
+
+* Preview a conditional one-tier map corruption outcome.
+
+VERSION[2.68.1-ai.preview1139][2026/11/22]
+
+* Show verified notes for the downloaded update.
+
+VERSION[2.68.1-ai.preview1138][2026/11/22]
+
+* Keep filter results visible when previewing sounds.
+
+VERSION[2.68.1-ai.preview1137][2026/11/22]
+
+* Label the selected item in the loot simulator.
+
 VERSION[ai][2026/11/13]
 
 --- AI Edition ---

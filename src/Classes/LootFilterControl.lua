@@ -321,14 +321,26 @@ end
 function M.Audit(profile,report,save,focusErrors)
 	local entries={{id="update",label="Update bundled NeverSink base",details={"Saved revision: "..profile.baseCommit,"Bundled revision: "..filters.source().commit,"Personal rules and original imported text are preserved. Templates refresh with fork releases; no live economy feed is implied.","Imported filters use safety rules for new 3.30 items; bundled presets use their own tiering."}}};for name,value in pairs(report and report.changes or {}) do entries[#entries+1]={id=name,label=name,details={value=="removed" and "Removed in 3.30. An empty BaseType list removes its entire rule." or "Renamed to "..value}} end
 	if report and report.error then entries[#entries+1]={id="compile-error",label="Compilation error",details={ui.errorText(report.error)}} end
-	for i,d in ipairs(report and report.diagnostics or {}) do entries[#entries+1]={id="diagnostic-"..i,label="Line "..d.line,details={d.error or d.warning}} end
+	for i,d in ipairs(report and report.diagnostics or {}) do
+		local uniqueFlask=d.code=="hiddenUniqueSulphur"
+		entries[#entries+1]={id="diagnostic-"..i,label=uniqueFlask and "Hidden unique Sulphur Flask (line "..d.line..")" or "Line "..d.line,search=uniqueFlask and "Bottled Faith" or nil,showUniqueFlask=uniqueFlask,details=uniqueFlask and {d.warning,"Apply selected adds a styled Show rule with an alert above all other rules for every unique Sulphur Flask, including replicas. You can edit, move or remove it later."} or {d.error or d.warning}}
+	end
 	if focusErrors then
 		local id=report and report.error and "compile-error"
 		if not id then for i,d in ipairs(report and report.diagnostics or {}) do if d.error then id="diagnostic-"..i;break end end end
 		if id then for i,entry in ipairs(entries) do if entry.id==id then table.insert(entries,1,table.remove(entries,i));break end end end
 	end
-	local controls=require("Classes.PlanningBrowserControl").Open("Filter audit",entries,{action="Use current base",enterChooses=false,closeOnChoose=false,
-		canChoose=function(entry) return entry.id=="update" end,choose=function() save(filters.update(profile));main:ClosePopup() end})
-	controls.choose.tooltipText="Select Update bundled NeverSink base to use this action. Filter errors require a separate edit."
+	local controls=require("Classes.PlanningBrowserControl").Open("Filter audit",entries,{action="Apply selected",enterChooses=false,closeOnChoose=false,
+		canChoose=function(entry) return entry.id=="update" or entry.showUniqueFlask end,choose=function(entry)
+			if entry.id=="update" then save(filters.update(profile))
+			elseif entry.showUniqueFlask then
+				local next=copyTable(profile);local used={};for _,rule in ipairs(next.rules or {}) do used[rule.id]=true end
+				local id="unique-sulphur";local suffix=1;while used[id] do suffix=suffix+1;id="unique-sulphur-"..suffix end
+				next.rules=next.rules or {};table.insert(next.rules,1,filters.rule(id,"Unique Sulphur Flask",{'Rarity == Unique','BaseType == "Sulphur Flask"'},nil,next.theme))
+				next=filters.validate({schemaVersion=1,activeId=next.id,profiles={next}}).profiles[1];save(next)
+			end
+			main:ClosePopup()
+		end})
+	controls.choose.tooltipText="Select the base update or the unique-flask warning to apply its described change. Other diagnostics require a separate edit."
 end
 return M

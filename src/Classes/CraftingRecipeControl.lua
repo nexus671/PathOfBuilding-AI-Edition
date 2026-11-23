@@ -164,6 +164,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		local entries={};local workbench=require("Modules.CraftingWorkbench")
 		for _,method in ipairs({"transmute","alteration","augmentation","regal","alchemy","binding","chaos","exalt","annul","scour","divine","vaal","blessed","sacred","chromatic","jeweller","fusing","tainted_chromatic","tainted_jeweller","tainted_fusing","quality"}) do
 			local details={"Add this action to the recipe without changing the working item.","The item must meet its requirements when this step runs."}
+			local description=workbench.description(method);if description then table.insert(details,1,description) end
 			if method=="binding" then details[#details+1]="No longer generated in 3.30; existing Orbs of Binding still work." end
 			if method=="jeweller" or method=="fusing" then details[#details+1]="Experimental probabilities; current game odds and some socket behavior are unverified." end
 			if method:find("tainted_",1,true) then details[#details+1]="Requires a corrupted item. Outcome probabilities and edge cases are unverified." end
@@ -173,6 +174,7 @@ function Panel.Open(recipe,currentAction,onKeep,model,options)
 		end
 		for _,method in ipairs({"fracture","dominance","veiled_orb","veiled_chaos","eldritch_exalt","eldritch_annul","eldritch_chaos","tainted_exalt","tainted_chaos","remembrance","unravelling","foulborn_augmentation","foulborn_regal","foulborn_exalt"}) do
 			local action={method=method};local details={"Add this action to the recipe without changing the working item.","The item must meet its requirements when this step runs."}
+			local description=workbench.description(method);if description then table.insert(details,1,description) end
 			for _,warning in ipairs(sim.actionWarnings(action,model)) do details[#details+1]=warning.message end
 			entries[#entries+1]={id=method,label=sim.labels[method],category="Currency",icon=workbench.icon(method),action=action,details=details}
 		end

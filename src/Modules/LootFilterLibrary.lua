@@ -314,6 +314,7 @@ local flaskExamples={
 	{"Silver Flask","Utility Flasks"},{"Bismuth Flask","Utility Flasks"},
 	{"Prismatic Tincture","Tinctures"},{"Oakbranch Tincture","Tinctures"},
 	{"Rosethorn Tincture","Tinctures"},{"Instilling Orb","Stackable Currency"},
+	{"Sulphur Flask","Utility Flasks","Unique"}, -- Bottled Faith shares this unidentified base.
 }
 -- Released base names and filter classes from the pinned client and RePoE
 -- class export. These examples do not model encounter or item probabilities.
@@ -419,6 +420,7 @@ local bossExamples={
  {"Fragment of Purification","Map Fragments"},{"Fragment of Constriction","Map Fragments"},
  {"Fragment of Eradication","Map Fragments"},{"Fragment of Enslavement","Map Fragments"},
  {"Orb of Conflict","Stackable Currency"},
+ {"Sulphur Flask","Utility Flasks","Unique"}, -- Bottled Faith shares this unidentified base.
 }
 -- Deliberate test items for the campaign recipe policies, not a simulated set
 -- of actual drops. Socket layouts are explicit so their preview is decisive.
@@ -469,11 +471,12 @@ function M.scene(profile,build,kind,seed,area,itemLevel,targetRules)
 		end
 		return list
 	end
-	if kind=="Fated gear" then
-		-- Paired examples differ only in Fated state; they do not predict drops.
+	if kind=="Fated gear" or kind=="Foulborn gear" then
+		-- Paired examples differ only in the selected property; they do not predict drops.
+		local property=kind=="Fated gear" and "Fated" or "Foulborn"
 		for _,base in ipairs({{"Iron Hat","Helmets"},{"Titan Greaves","Boots"},{"Titanium Spirit Shield","Shields"},{"Imperial Bow","Bows"},{"Ruby Ring","Rings"}}) do
-			for _,fated in ipairs({true,false}) do
-				local item=M.sample();item.BaseType=base[1];item.Class=base[2];item.Rarity="Rare";item.Identified=false;item.Fated=fated
+			for _,enabled in ipairs({true,false}) do
+				local item=M.sample();item.BaseType=base[1];item.Class=base[2];item.Rarity="Rare";item.Identified=false;item[property]=enabled
 				item.UnidentifiedItemTier=profile and profile.mode=="Ruthless" and 0 or 4
 				item.AreaLevel=area or 83;item.ItemLevel=itemLevel or 86;applyBaseProperties(item)
 				item.MemoryStrands=0

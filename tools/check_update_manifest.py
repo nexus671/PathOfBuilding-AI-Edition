@@ -22,6 +22,26 @@ def check(root, read_bytes=None):
     manifest = ET.fromstring(read_bytes("manifest.xml"))
     errors, seen = [], set()
     entries = manifest.findall("File")
+    version = manifest.find("Version")
+    version_number = version.get("number", "") if version is not None else ""
+    if re.fullmatch(r".+-ai\.preview\d+", version_number):
+        if not any(e.get("part") == "default" and e.get("name") == "changelog.txt" for e in entries):
+            errors.append("AI preview changelog is missing from the manifest")
+        try:
+            lines = read_bytes("changelog.txt").decode("utf-8").splitlines()
+        except (OSError, UnicodeError):
+            lines = []
+        if not lines or not re.fullmatch(r"VERSION\[" + re.escape(version_number) + r"\]\[[^\]]+\]", lines[0]):
+            errors.append("AI preview release notes do not match the manifest version")
+        else:
+            body = []
+            for line in lines[1:]:
+                if line.startswith("VERSION["):
+                    break
+                if line.strip() and not line.strip().startswith("---"):
+                    body.append(line)
+            if not body:
+                errors.append("AI preview release notes contain no changes")
     if not entries:
         errors.append("The manifest contains no files")
     for entry in entries:

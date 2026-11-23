@@ -92,7 +92,12 @@ function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
 			end
 		end
 		if c.cost.buf~="" then local amount=assert(tonumber(c.cost.buf),"Enter a numeric cost");local old=draft.estimate;draft.estimate={amount=amount,currency=c.currency.buf,source=c.priceSource.buf,quotedAt=old and old.amount==amount and old.currency==c.currency.buf and old.source==c.priceSource.buf and old.quotedAt or os.time()} else draft.estimate=nil end
-		return projects.validate(draft)
+		-- A checkpoint belongs to its original item. Keep it in the editor's
+		-- draft until the user confirms changing that item; do not validate it
+		-- against a different base while preparing the review.
+		local candidate=copyTable(draft)
+		if source and candidate.startingItem~=source.startingItem then candidate.run=nil end
+		return projects.validate(candidate)
 	end
 	local groups={
 		["Starting item"]={"titleLabel","title","slotLabel","slot","startingLabel","starting","pasteStarting","useEquipped","blankStarting","undoBlank","blankHint","startPreview","startPreviewMods"},
@@ -109,7 +114,30 @@ function M.Open(build,source,initialItem,initialSlot,layout,preview,onKeep)
 		if c.wizardPage.selIndex==1 then local item=projects.item(c.starting.buf);assert(build.itemsTab:IsItemValidForSlot(item,c.slot:GetSelValue()),"Item cannot use this slot") end
 		c.wizardPage:SetSel(math.min(4,c.wizardPage.selIndex+1))
 	end)
-	button("save",16,h-48,200,"Keep project in build",function() local kept=build.savers.CraftingProjects:Upsert(read());main:ClosePopup();onKeep(kept) end)
+	button("save",16,h-48,200,"Keep project in build",function()
+		local candidate=read();local changed=source and candidate.startingItem~=source.startingItem
+		local starts=0
+		if changed then
+			if candidate.nativeRecipe and candidate.nativeRecipe.initialState then starts=starts+1 end
+			for _,alternative in ipairs(candidate.recipeAlternatives or {}) do if alternative.recipe.initialState then starts=starts+1 end end
+		end
+		local function keep(reset)
+			if reset then
+				if candidate.nativeRecipe then candidate.nativeRecipe.initialState=nil end
+				for _,alternative in ipairs(candidate.recipeAlternatives or {}) do alternative.recipe.initialState=nil end
+			end
+			local kept=build.savers.CraftingProjects:Upsert(candidate);main:ClosePopup();onKeep(kept)
+		end
+		if changed and (starts>0 or source.run) then
+			local lines={}
+			if starts>0 then lines[#lines+1]="Changing the item resets "..starts.." saved recipe starting state"..(starts==1 and "" or "s").."." end
+			if source.run then lines[#lines+1]="The saved working session and its history will be discarded." end
+			lines[#lines+1]="Recipe steps, goals and item snapshots are kept."
+			main:OpenConfirmPopup("Change starting item",table.concat(lines,"\n"),"Use new item",function()
+				local ok,err=pcall(keep,true);if not ok then ui.errorPopup("Crafting project",err) end
+			end)
+		else keep(false) end
+	end)
 	button("preview",232,h-48,180,"Preview target stats",function() preview(read()) end)
 	button("close",w-136,h-48,120,"Cancel",function() ui.discard(build,"crafting");main:ClosePopup() end)
 	c.save.shown=function() return c.wizardPage.selIndex==4 end;c.preview.shown=c.save.shown;c.previous.shown=function() return c.wizardPage.selIndex>1 and c.wizardPage.selIndex<4 end;c.next.shown=function() return c.wizardPage.selIndex<4 end

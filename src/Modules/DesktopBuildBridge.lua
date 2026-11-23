@@ -187,7 +187,22 @@ local function applyOperation(build, op)
 	elseif op.type == "set_loot_filters" then
 		build.savers.LootFilters:Replace(op.filters)
 	elseif op.type == "set_crafting_project" then
-		build.savers.CraftingProjects:Upsert(op.project)
+		local store=build.savers.CraftingProjects;local previous
+		if type(op.project)=="table" then for _,entry in ipairs(store.projects) do if entry.id==op.project.id then previous=entry;break end end end
+		local project=store:Upsert(op.project)
+		require("Modules.CraftingProjects").checkProposedRecipeStates(previous,project)
+	elseif op.type == "patch_crafting_guide" then
+		local store=build.savers.CraftingProjects;local previous
+		assert(type(op.projectId)=="string" and type(op.patch)=="table","Invalid crafting guide edit")
+		for _,entry in ipairs(store.projects) do if entry.id==op.projectId then previous=entry;break end end
+		assert(previous,"Unknown crafting project")
+		local updated=copyTable(previous);local count=0
+		for key,value in pairs(op.patch) do
+			assert(key=="title" or key=="notes" or key=="goals" or key=="steps","Invalid crafting guide field")
+			updated[key]=type(value)=="table" and copyTable(value) or value;count=count+1
+		end
+		assert(count>0,"Choose at least one crafting guide field")
+		store:Upsert(updated)
 	elseif op.type == "remove_crafting_project" then
 		build.savers.CraftingProjects:Remove(text(op.projectId,64,"project ID"))
 	elseif op.type == "set_atlas_plan" then
@@ -215,8 +230,14 @@ function M.prepare(build, proposal, checkpoint, sourceXML, frozen)
 		candidate.planningDeferInitialRecovery=nil
 		assert(candidate.abortSave == false,"Unable to initialize proposed build")
 		candidate.planningCheckpoint=yieldingCheckpoint
+		local originalProjects={};for _,project in ipairs(candidate.savers.CraftingProjects.projects) do originalProjects[project.id]=project end
 		checkpoint("Apply candidate changes")
 		for _,operation in ipairs(proposal.operations) do applyOperation(candidate,operation) end
+		-- Removing and recreating an ID must not bypass the starting-item guard.
+		for _,project in ipairs(candidate.savers.CraftingProjects.projects) do
+			local original=originalProjects[project.id]
+			if original then require("Modules.CraftingProjects").checkStartingStateChange(original,project) end
+		end
 		candidate.configTab:BuildModList()
 		candidate.configTab:UpdateControls()
 		candidate:UpdateClassDropdowns()
@@ -271,22 +292,39 @@ function M.apply(prepared)
 	assert(main.modes.BUILD == prepared.base and M.revision(prepared.base) == prepared.baseRevision,"Build changed since preview. Submit a fresh proposal.")
 	local candidate = prepared.candidate
 	if prepared.mode=="edit" then
+		local previous={};for _,project in ipairs(prepared.base.savers.CraftingProjects.projects) do previous[project.id]=project end
+		local ui=require("Modules.PlanningUI");local remaining={}
+		for _,project in ipairs(candidate.savers.CraftingProjects.projects) do
+			remaining[project.id]=true
+			local old=previous[project.id]
+			if old and (old.startingItem~=project.startingItem or old.slot~=project.slot) then
+				assert(not ui.hasDraft(prepared.base,"workingCraft",project.id) and not ui.hasDraft(prepared.base,"uniqueQuality",project.id),"The crafting guide '"..old.title.."' has an unkept working draft for its previous item. Keep that work, then submit a fresh proposal.")
+			end
+		end
+		local lastRemoved=candidate.savers.CraftingProjects.lastRemoved
+		for id,old in pairs(previous) do
+			if not remaining[id] and (ui.hasDraft(prepared.base,"workingCraft",id) or ui.hasDraft(prepared.base,"uniqueQuality",id)) then
+				assert(lastRemoved and lastRemoved.project.id==id,"The crafting guide '"..old.title.."' has unkept work that cannot be recovered after this batch removal. Keep it first, or remove guides one at a time.")
+			end
+		end
 		local carriedRemoval=false
 		local previousRemoval=prepared.base.savers.CraftingProjects.lastRemoved
 		if not candidate.savers.CraftingProjects.lastRemoved and previousRemoval then
 			local copy=copyTable(previousRemoval);copy.project=require("Modules.CraftingProjects").copy({previousRemoval.project})[1]
 			candidate.savers.CraftingProjects.lastRemoved=copy;carriedRemoval=true
 		end
-		local workspace=prepared.base.planningWorkspace
-		if workspace then workspace:CopyCraftingDrafts(candidate) end
+		local workspace=prepared.base.planningWorkspace or require("Modules.PlanningWorkspace").pendingHandoff(prepared.base)
+		if workspace then workspace:CopyCraftingDrafts(candidate);workspace:CopyAtlasDrafts(candidate);workspace:CopyFilterDraft(candidate) end
 		local removed=candidate.savers.CraftingProjects.lastRemoved
 		if removed and not carriedRemoval then
 			local qualityDraft=workspace and workspace:UniqueQualityDraft(removed.project.id) or prepared.base.planningUniqueQualityDrafts and prepared.base.planningUniqueQualityDrafts[removed.project.id]
 			removed.qualityDraft=qualityDraft and copyTable(qualityDraft)
 			removed.qualityPending=require("Modules.PlanningUI").hasDraft(prepared.base,"uniqueQuality",removed.project.id)
-			removed.draft=workspace and workspace:CraftingDraft(removed.project.id)
+			removed.draft=workspace and workspace:CraftingDraft(removed.project.id) or prepared.base.planningCraftDrafts and prepared.base.planningCraftDrafts[removed.project.id]
 			removed.pending=require("Modules.PlanningUI").hasDraft(prepared.base,"workingCraft",removed.project.id)
-			if not removed.draft then local recovery=require("Modules.PlanningRecovery").forCraftingProject(prepared.base,removed.project.id);if recovery then removed.draft=recovery.draft;removed.pending=recovery.pending end end
+			if not removed.draft and not removed.pending then local recovery=require("Modules.PlanningRecovery").forCraftingProject(prepared.base,removed.project.id);if recovery then removed.draft=recovery.draft;removed.pending=recovery.pending end end
+			assert(not removed.pending or removed.draft,"Could not preserve the unkept working craft. Keep it before removing its guide.")
+			assert(not removed.qualityPending or removed.qualityDraft,"Could not preserve the unkept unique preview. Keep it before removing its guide.")
 		end
 	end
 	if prepared.mode == "edit" then candidate.dbFileName,candidate.dbFileSubPath = prepared.base.dbFileName,prepared.base.dbFileSubPath end
@@ -511,9 +549,9 @@ function M.poll(build, force)
 		if not M.contextRevision or not revisions.same(M.contextStamp,revisions.stamp(build)) then M.refresh(build) else M.publishState() end
 		local file = io.open(path("request"),"rb")
 		if not file then return end
-		local requestText = file:read(262145); file:close()
+		local requestText = file:read(1024*1024+1); file:close()
 		os.remove(path("request"))
-		assert(#requestText <= 262144,"Proposal exceeds the supported size")
+		assert(#requestText <= 1024*1024,"Request exceeds the supported size")
 		local request = assert(json.decode(requestText),"Invalid proposal JSON")
 		assert(request.session == M.session,"Proposal belongs to another desktop session")
 		assert(type(request.id) == "string" and request.id:match("^[%w%-]+$") and #request.id <= 80,"Invalid proposal ID")
@@ -613,15 +651,19 @@ function M.poll(build, force)
 				local plannedAllflame=require("Modules.MapAllflame").validate(request.plannedAllflame)
 				assert(request.plannedDeified==nil or type(request.plannedDeified)=="boolean","Invalid planned Deified marker")
 				assert(not request.vaalPreview or request.corrupted,"A conditional Vaal preview requires a corrupted map")
+				assert(request.vaalTierUpPreview==nil or type(request.vaalTierUpPreview)=="boolean","Invalid tier-up preview marker")
+				assert(not request.vaalTierUpPreview or request.vaalPreview,"A tier-up preview requires a conditional Vaal preview")
 				assert(not request.twiceCorrupted or request.corrupted,"A twice-corrupted map must be corrupted")
 				local result=map.inspect(request.baseId,request.tier,request.itemLevel,request.selected,request.query,request.offset,request.limit,checkpoint,request.rarity,request.rolls,request.corrupted,request.implicit,request.quality,request.observedEffects,request.relatedTo and map.isNightmare(request.baseId),nil,request.relatedTo)
-				result.mirrored=request.mirrored or nil;result.unidentified=request.unidentified or nil;result.vaalPreview=request.vaalPreview or nil;result.twiceCorrupted=request.twiceCorrupted or nil
+				result.mirrored=request.mirrored or nil;result.unidentified=request.unidentified or nil;result.vaalPreview=request.vaalPreview or nil;result.vaalTierUpPreview=request.vaalTierUpPreview or nil;result.twiceCorrupted=request.twiceCorrupted or nil
 				if request.unidentified then result.summary=nil;result.counts=nil;result.candidates={};result.total=nil;result.nextOffset=nil;result.note="Unidentified map: explicit modifiers and their totals are unknown.";result.unidentifiedOpeningBonus={atlasDrops=30,condition="When opened unidentified"} end
 				if request.vaalPreview then result.note=result.note.." Based on a conditional Vaal preview; outcome odds are not modeled." end
+				if request.vaalTierUpPreview then result.note=result.note.." Tier-up preview: item-level and quality retention are unverified assumptions." end
+				if request.vaalPreview and request.baseId=="Metadata/Items/Maps/MapWorldsVaalTemple" then result.note=result.note.." Vaal Temple preview: item-level and quality retention are unverified assumptions." end
 				if plannedAllflame then result.plannedAllflame=plannedAllflame;result.allflame=require("Modules.MapAllflame").describe(plannedAllflame);result.note=result.note.." Allflame is a conditional plan; eligibility and enchantment interactions are unverified." end
 				if request.plannedDelirium then result.plannedDelirium=require("Modules.MapObservedEffects").validateDeliriumPlan(request.plannedDelirium);result.note=result.note.." Delirium target is a hypothetical plan; the map is unchanged." end
 				if request.plannedDeified then result.plannedDeified=true;result.deified=result.deified or require("Modules.MapObservedEffects").deified(nil,true);result.note=result.note.." Deified is a conditional plan; eligibility and enchantment interactions are unverified." end
-				local state={baseId=request.baseId,tier=request.tier,itemLevel=request.itemLevel,rarity=request.rarity or "rare",selected=request.selected or {},rolls=request.rolls,corrupted=request.corrupted,twiceCorrupted=request.twiceCorrupted,mirrored=request.mirrored,unidentified=request.unidentified,vaalPreview=request.vaalPreview,implicit=request.implicit,quality=request.quality,observedEffects=request.observedEffects,plannedDeified=request.plannedDeified,plannedAllflame=plannedAllflame,plannedDelirium=request.plannedDelirium}
+				local state={baseId=request.baseId,tier=request.tier,itemLevel=request.itemLevel,rarity=request.rarity or "rare",selected=request.selected or {},rolls=request.rolls,corrupted=request.corrupted,twiceCorrupted=request.twiceCorrupted,mirrored=request.mirrored,unidentified=request.unidentified,vaalPreview=request.vaalPreview,vaalTierUpPreview=request.vaalTierUpPreview,implicit=request.implicit,quality=request.quality,observedEffects=request.observedEffects,plannedDeified=request.plannedDeified,plannedAllflame=plannedAllflame,plannedDelirium=request.plannedDelirium}
 				local planOk,plans=pcall(require("Modules.MapCurrency").planningOptions,state)
 				if planOk then result.planningOptions=plans else result.planningOptionsWarning=require("Modules.PlanningUI").errorText(plans) end
 				local ok,options=pcall(require("Modules.MapCurrency").options,state,checkpoint)

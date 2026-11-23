@@ -13,6 +13,140 @@ describe("Crafting project removal and save-state ownership",function()
 		tasks.cancel();main.popups={};main.modes.BUILD=activeMode;GlobalCache=activeCache
 		bridge.prepared=nil;bridge.owner=nil;bridge.build=nil;bridge.previous=nil;bridge.undo={};bridge.history={};bridge.enabled=false
 	end)
+	it("rejects stale recipe starting states in AI project edits without changing the build",function()
+		local original=project("state-change");local initial=sim.model(original.startingItem).initial
+		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1},initialState=initial}
+		original.recipeAlternatives={{name="Alternative",recipe=copyTable(original.nativeRecipe)}}
+		build.savers.CraftingProjects:Upsert(original)
+		local changed=copyTable(original);changed.startingItem=original.startingItem.."\nQuality: 10"
+		local function prepare(value) return bridge.prepare(build,{mode="edit",title="Change item",baseRevision=bridge.revision(build),operations={{type="set_crafting_project",project=value}}}) end
+		local ok,err=pcall(prepare,changed);assert.is_false(ok);assert.matches("starting state incompatible",err,1,true)
+		assert.equal(original.startingItem,build.savers.CraftingProjects.projects[1].startingItem)
+		changed.nativeRecipe.initialState=nil;changed.recipeAlternatives=nil
+		ok,err=pcall(prepare,changed);assert.is_false(ok);assert.matches("Alternative",err,1,true)
+		changed.recipeAlternatives={};local prepared=prepare(changed)
+		assert.equal(changed.startingItem,prepared.candidate.savers.CraftingProjects.projects[1].startingItem)
+		changed.nativeRecipe.initialState=sim.model(changed.startingItem).initial;prepared=prepare(changed)
+		assert.is_truthy(prepared.candidate.savers.CraftingProjects.projects[1].nativeRecipe.initialState)
+	end)
+	it("does not silently reuse a legacy unbound recipe state for another item",function()
+		local original=project("unbound");local state=sim.model(original.startingItem).initial;state.origin=nil
+		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1},initialState=state}
+		build.savers.CraftingProjects:Upsert(original);local changed=copyTable(original);changed.startingItem=original.startingItem.."\nQuality: 10"
+		local ok,err=pcall(build.savers.CraftingProjects.Upsert,build.savers.CraftingProjects,changed)
+		assert.is_false(ok);assert.matches("unbound starting state",err,1,true);assert.equal(original.startingItem,build.savers.CraftingProjects.projects[1].startingItem)
+		original.title="Renamed";build.savers.CraftingProjects:Upsert(original);assert.equal("Renamed",build.savers.CraftingProjects.projects[1].title)
+	end)
+	it("rejects an old unbound state when an AI proposal recreates a guide",function()
+		local original=project("recreated");local state=sim.model(original.startingItem).initial;state.origin=nil
+		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1},initialState=state}
+		build.savers.CraftingProjects:Upsert(original);local changed=copyTable(original);changed.startingItem=original.startingItem.."\nQuality: 10"
+		local function prepare() return bridge.prepare(build,{mode="edit",title="Replace guide",baseRevision=bridge.revision(build),operations={{type="remove_crafting_project",projectId=original.id},{type="set_crafting_project",project=changed}}}) end
+		local ok,err=pcall(prepare);assert.is_false(ok);assert.matches("unbound starting state",err,1,true)
+		assert.equal(original.startingItem,build.savers.CraftingProjects.projects[1].startingItem)
+		changed.nativeRecipe.initialState=sim.model(changed.startingItem).initial
+		local result=prepare();assert.equal(changed.startingItem,result.candidate.savers.CraftingProjects.projects[1].startingItem)
+	end)
+	it("checks new AI recipe states while preserving unchanged legacy states",function()
+		local raw="Rarity: NORMAL\nIron Hat\nItem Level: 86";local state=sim.model(raw).initial
+		local proposed=project("new-state");proposed.startingItem=raw.."\nQuality: 10"
+		proposed.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1},initialState=state}
+		local function prepare(entry) return bridge.prepare(build,{mode="edit",title="Edit craft",baseRevision=bridge.revision(build),operations={{type="set_crafting_project",project=entry}}}) end
+		local ok,err=pcall(prepare,proposed);assert.is_false(ok);assert.matches("invalid starting state",err,1,true);assert.equal(0,#build.savers.CraftingProjects.projects)
+		local valid=copyTable(proposed);valid.nativeRecipe.initialState=sim.model(valid.startingItem).initial
+		local result=prepare(valid);assert.equal("new-state",result.candidate.savers.CraftingProjects.projects[1].id)
+		-- Older saves may contain states that cannot be simulated; a title edit
+		-- must preserve them without presenting them as newly validated.
+		build.savers.CraftingProjects:Upsert(proposed);local renamed=copyTable(proposed);renamed.title="Renamed"
+		result=prepare(renamed);assert.equal("Renamed",result.candidate.savers.CraftingProjects.projects[1].title)
+		local modified=copyTable(renamed);modified.nativeRecipe.steps[1].method="transmute"
+		ok,err=pcall(prepare,modified);assert.is_false(ok);assert.matches("invalid starting state",err,1,true)
+		modified.nativeRecipe.initialState=sim.model(modified.startingItem).initial
+		result=prepare(modified);assert.equal("transmute",result.candidate.savers.CraftingProjects.projects[1].nativeRecipe.steps[1].method)
+		local changed=copyTable(renamed);changed.recipeAlternatives={{name="New alternative",recipe=copyTable(changed.nativeRecipe)}}
+		ok,err=pcall(prepare,changed);assert.is_false(ok);assert.matches("New alternative",err,1,true)
+		changed.recipeAlternatives[1].recipe.initialState=sim.model(changed.startingItem).initial
+		result=prepare(changed);assert.is_truthy(result.candidate.savers.CraftingProjects.projects[1].recipeAlternatives[1])
+		assert.equal(proposed.title,build.savers.CraftingProjects.projects[1].title)
+	end)
+	it("does not discard an unkept craft when an AI edit changes its base",function()
+		local original=project("base-draft");build.savers.CraftingProjects:Upsert(original)
+		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		local state=sim.model(original.startingItem).initial;state.quality=10
+		local draft=require("Modules.CraftingInventory").run(state);draft.kind="workbench";draft.project=original
+		workspace.craftDrafts[original.id]=draft;uiState.draft(build,"workingCraft",original.id)
+		local changed=copyTable(original);changed.startingItem="Rarity: NORMAL\nLeather Cap\nItem Level: 86"
+		local prepared=bridge.prepare(build,{mode="edit",title="Change base",baseRevision=bridge.revision(build),operations={{type="set_crafting_project",project=changed}}})
+		local ok,err=pcall(bridge.apply,prepared);assert.is_false(ok);assert.matches("unkept working draft",err,1,true)
+		assert.equal(build,main.modes.BUILD);assert.equal(10,workspace:CraftingDraft(original.id).state.quality);assert.is_true(uiState.hasDraft(build,"workingCraft",original.id))
+		uiState.discard(build,"workingCraft",original.id);uiState.draft(build,"uniqueQuality",original.id)
+		ok,err=pcall(bridge.apply,prepared);assert.is_false(ok);assert.matches("unkept working draft",err,1,true)
+		uiState.discard(build,"uniqueQuality",original.id);local candidate=bridge.apply(prepared)
+		assert.equal(changed.startingItem,candidate.savers.CraftingProjects.projects[1].startingItem)
+	end)
+	it("patches written guide fields while preserving the rest of the project",function()
+		local original=project("patch-guide");original.simulatorExport=string.rep("x",128000)
+		original.nativeRecipe={steps={{method="alchemy"}},targets={},requirements={minAffixes=1}}
+		local state=sim.model(original.startingItem).initial
+		original.run=require("Modules.CraftingInventory").run(state)
+		original.inventory={{id="base",title="Saved base",slot="Helmet",baseItem=original.startingItem,at=1,state=state}}
+		build.savers.CraftingProjects:Upsert(original)
+		local function prepare(patch) return bridge.prepare(build,{mode="edit",title="Update guide",baseRevision=bridge.revision(build),operations={{type="patch_crafting_guide",projectId=original.id,patch=patch}}}) end
+		local prepared=prepare({title="New title",steps={{action="Use an essence"}}});local candidate=prepared.candidate.savers.CraftingProjects.projects[1]
+		assert.equal("New title",candidate.title);assert.equal("Use an essence",candidate.steps[1].action)
+		assert.equal(original.simulatorExport,candidate.simulatorExport);assert.same(build.savers.CraftingProjects.projects[1].nativeRecipe,candidate.nativeRecipe)
+		assert.equal(original.title,build.savers.CraftingProjects.projects[1].title)
+		assert.is_false(pcall(prepare,{}));assert.is_false(pcall(prepare,{startingItem="other"}))
+		local changes=table.concat(prepared.changes,"\n")
+		assert.matches("New title",changes,1,true);assert.matches("Use an essence",changes,1,true)
+		assert.is_nil(changes:find("checkpoint removed",1,true));assert.is_nil(changes:find("Removed saved item",1,true))
+		local applied=bridge.apply(prepared);local xml=applied:SaveDB("Guide patch")
+		loadBuildFromXML(xml,"Guide patch");local reopened=main.modes.BUILD.savers.CraftingProjects.projects[1]
+		assert.equal("New title",reopened.title);assert.equal("Use an essence",reopened.steps[1].action)
+		assert.equal(original.simulatorExport,reopened.simulatorExport);assert.is_truthy(reopened.run);assert.equal(1,#reopened.inventory)
+		assert.equal("alchemy",reopened.nativeRecipe.steps[1].method)
+	end)
+	it("carries an unfinished Atlas draft across an unrelated AI edit",function()
+		local plan={id="farm",title="Saved farm",version="3.30.0c",budget=100,nodes={}}
+		build.savers.AtlasPlans:Upsert(plan);local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		workspace:Show("atlas",plan);workspace.controls.title:SetText("Unkept farm",true)
+		local prepared=bridge.prepare(build,{mode="edit",title="Change level",baseRevision=bridge.revision(build),operations={{type="set_character",level=5}}})
+		local candidate=bridge.apply(prepared);assert.is_true(uiState.hasDraft(candidate,"atlas",plan.id))
+		candidate=bridge.apply(bridge.prepare(candidate,{mode="edit",title="Another edit",baseRevision=bridge.revision(candidate),operations={{type="set_character",level=6}}}))
+		assert.is_true(uiState.hasDraft(candidate,"atlas",plan.id))
+		local reopened=require("Modules.PlanningWorkspace").new(candidate);reopened:Show("atlas",candidate.savers.AtlasPlans.plans[1])
+		assert.equal("Unkept farm",reopened.controls.title.buf);assert.equal("Saved farm",candidate.savers.AtlasPlans.plans[1].title)
+	end)
+	it("carries a deferred crafting draft across consecutive AI edits",function()
+		local p=project("deferred");build.savers.CraftingProjects:Upsert(p)
+		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		local state=sim.model(p.startingItem).initial;state.quality=10;local draft=require("Modules.CraftingInventory").run(state);draft.kind="workbench";draft.project=p
+		workspace.craftDrafts[p.id]=draft;uiState.draft(build,"workingCraft",p.id)
+		local function edit(base,level) return bridge.apply(bridge.prepare(base,{mode="edit",title="Change level",baseRevision=bridge.revision(base),operations={{type="set_character",level=level}}})) end
+		local first=edit(build,5);local second=edit(first,6)
+		assert.equal(10,second.planningCraftDrafts[p.id].state.quality);assert.is_true(uiState.hasDraft(second,"workingCraft",p.id))
+	end)
+	it("carries a deferred unique preview across consecutive AI edits",function()
+		local p=project("deferred-unique");p.startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86";build.savers.CraftingProjects:Upsert(p)
+		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		local result=require("Modules.CraftingUniqueQuality").apply(p.startingItem)
+		build.planningUniqueQualityDrafts={[p.id]={kind="uniqueQuality",project=p,itemText=result.itemText,history={p.startingItem}}};uiState.draft(build,"uniqueQuality",p.id)
+		local function edit(base,level) return bridge.apply(bridge.prepare(base,{mode="edit",title="Change level",baseRevision=bridge.revision(base),operations={{type="set_character",level=level}}})) end
+		local first=edit(build,5);local second=edit(first,6)
+		assert.equal(result.itemText,second.planningUniqueQualityDrafts[p.id].itemText);assert.is_true(uiState.hasDraft(second,"uniqueQuality",p.id))
+	end)
+	it("keeps a conflicting Atlas draft separately from an AI-edited plan",function()
+		local plan={id="farm",title="Saved farm",version="3.30.0c",budget=100,nodes={}}
+		build.savers.AtlasPlans:Upsert(plan);local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		workspace:Show("atlas",plan);workspace.controls.title:SetText("Unkept farm",true)
+		local changed=copyTable(plan);changed.title="AI farm"
+		local prepared=bridge.prepare(build,{mode="edit",title="Revise Atlas",baseRevision=bridge.revision(build),operations={{type="set_atlas_plan",plan=changed}}})
+		local candidate=bridge.apply(prepared);local reopened=require("Modules.PlanningWorkspace").new(candidate);local id,entry=next(reopened.atlasDrafts)
+		assert.is_truthy(id);assert.is_not.equal(plan.id,id);assert.is_true(entry.conflict);assert.is_true(uiState.hasDraft(candidate,"atlas",id))
+		reopened:Show("atlas",candidate.savers.AtlasPlans.plans[1]);assert.equal("AI farm",reopened.controls.title.buf)
+		reopened.controls.library:Click();local library=main.popups[1].controls;library.plans:SelByValue(id,"val");assert.matches("saved plan changed",library.plans:GetSelValue().label,1,true);library.open:Click()
+		assert.equal("Unkept farm",reopened.controls.title.buf);assert.equal("AI farm",candidate.savers.AtlasPlans.plans[1].title)
+	end)
 	it("reviews removed guide, recipes, inventory and checkpoint before applying",function()
 		local original=project("review");local model=sim.model(original.startingItem)
 		original.goals={"High life"};original.steps={{action="Apply an Orb of Alchemy"},{action="Finish the helmet",done=true}}
@@ -161,6 +295,23 @@ describe("Crafting project removal and save-state ownership",function()
 		assert.is_truthy(applied.planningCraftDrafts.b);assert.is_true(uiState.hasDraft(applied,"workingCraft","b"))
 		assert.is_truthy(workspace.craftDrafts.b);assert.are.equal(base,bridge.restore())
 		assert.are.equal(2,#base.savers.CraftingProjects.projects)
+	end)
+	it("protects an earlier unkept craft in a batch removal",function()
+		local a,b=project("a"),project("b");build.savers.CraftingProjects:Upsert(a);build.savers.CraftingProjects:Upsert(b)
+		local workspace=require("Modules.PlanningWorkspace").new(build);build.planningWorkspace=workspace
+		local state=sim.model(a.startingItem).initial;state.quality=10;local draft=require("Modules.CraftingInventory").run(state);draft.kind="workbench";draft.project=a
+		workspace.craftDrafts.a=draft;uiState.draft(build,"workingCraft","a")
+		local prepared=bridge.prepare(build,{mode="edit",title="Remove guides",baseRevision=bridge.revision(build),operations={{type="remove_crafting_project",projectId="a"},{type="remove_crafting_project",projectId="b"}}})
+		local ok,err=pcall(bridge.apply,prepared);assert.is_false(ok);assert.matches("batch removal",err,1,true)
+		assert.equal(build,main.modes.BUILD);assert.equal(10,workspace:CraftingDraft("a").state.quality);assert.is_true(uiState.hasDraft(build,"workingCraft","a"))
+	end)
+	it("retains a lazy working draft when its guide is removed and restored",function()
+		local p=project("lazy");build.savers.CraftingProjects:Upsert(p)
+		local state=sim.model(p.startingItem).initial;state.quality=10;local draft=require("Modules.CraftingInventory").run(state);draft.kind="workbench";draft.project=p
+		build.planningCraftDrafts={lazy=draft};uiState.draft(build,"workingCraft","lazy")
+		local prepared=bridge.prepare(build,{mode="edit",title="Remove guide",baseRevision=bridge.revision(build),operations={{type="remove_crafting_project",projectId="lazy"}}})
+		local candidate=bridge.apply(prepared);assert.equal(10,candidate.savers.CraftingProjects.lastRemoved.draft.state.quality)
+		candidate.savers.CraftingProjects:UndoRemove();assert.equal(10,candidate.planningCraftDrafts.lazy.state.quality);assert.is_true(uiState.hasDraft(candidate,"workingCraft","lazy"))
 	end)
 	it("retains a unique quality session through a reviewed build edit",function()
 		local p=project("unique-reviewed");p.startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86"

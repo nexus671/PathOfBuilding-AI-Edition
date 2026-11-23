@@ -2,6 +2,20 @@ describe("Map clipboard import",function()
  local parser=require("Modules.MapClipboard")
  local header="Item Class: Maps\nRarity: Rare\nDreary Strand\nStrand Map\n--------\nMap Tier: 5\nItem Level: 68\n--------\nMonster Level: 72\n--------\n"
  local trailer="\n--------\nTravel to this Map by using it in a personal Map Device. Maps can only be used once."
+ it("recognizes the pinned Vaal Temple base implicit without inventing an extra effect",function()
+  local raw="Item Class: Maps\nRarity: Rare\nAncient Example\nVaal Temple Map\n--------\nMap Tier: 16\nItem Level: 83\n--------\nArea contains 10 additional guarded Vaal Vessels (implicit)\n--------\nMonsters have 100% increased Area of Effect"..trailer.."\n--------\nCorrupted"
+  local result=parser.parse(raw);assert.equal("Metadata/Items/Maps/MapWorldsVaalTemple",result.state.baseId)
+  assert.is_true(result.baseImplicitObserved);assert.equal("MapVaalTempleContainsVaalVessels",result.baseImplicit.id);assert.is_nil(result.state.observedEffects)
+  local withOther=raw:gsub("Area contains 10 additional guarded Vaal Vessels %(implicit%)", "Area contains 10 additional guarded Vaal Vessels (implicit)\nArea is Influenced by the Originator's Memories (implicit)")
+  local extra=parser.parse(withOther);assert.same({{kind="implicit",text="Area is Influenced by the Originator's Memories"}},extra.state.observedEffects)
+  local withCorruption=raw:gsub("Area contains 10 additional guarded Vaal Vessels %(implicit%)", "+15%% Item Rarity (implicit)\nArea contains 10 additional guarded Vaal Vessels (implicit)")
+  local dual=parser.parse(withCorruption);assert.is_true(dual.baseImplicitObserved);assert.same({id="MapCorruptionItemRarity",value=15},dual.state.implicit);assert.is_nil(dual.state.observedEffects)
+  local map=require("Modules.MapCraftingData");local state=dual.state
+  local inspected=map.inspect(state.baseId,state.tier,state.itemLevel,state.selected,"",0,1,nil,state.rarity,state.rolls,true,state.implicit,state.quality,state.observedEffects)
+  assert.equal("MapVaalTempleContainsVaalVessels",inspected.baseImplicit.id);assert.equal("MapCorruptionItemRarity",inspected.implicit.id)
+  local duplicate=raw:gsub("Area contains 10 additional guarded Vaal Vessels %(implicit%)", "Area contains 10 additional guarded Vaal Vessels (implicit)\nArea contains 10 additional guarded Vaal Vessels (implicit)")
+  assert.has_error(function() parser.parse(duplicate) end)
+ end)
  it("imports a current tier-based map without a separate Map Tier line",function()
   local raw="Item Class: Maps\nRarity: Rare\nVortex Artifice\nMap (Tier 5)\n--------\nQuality (Pack Size): +20% (augmented)\n--------\nItem Level: 68\n--------\nMonsters have 45% increased Area of Effect"..trailer
   local result=parser.parse(raw)

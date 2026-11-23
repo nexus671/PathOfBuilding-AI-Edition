@@ -49,9 +49,13 @@ def source_hashes():
     sources.append(ROOT / "tools/test_bounded_planning_errors.lua")
     sources.append(ROOT / "tools/test_modifier_paging_ui.lua")
     sources.append(ROOT / "tools/test_crafting_replay_ui.lua")
+    sources.append(ROOT / "tools/test_crafting_sequence_ui.lua")
+    sources.append(ROOT / "tools/test_dialla_socket_restriction.lua")
+    sources.append(ROOT / "tools/test_unique_nonwhite_ui.lua")
     sources.append(ROOT / "tools/test_genesis_ui.lua")
     sources.append(ROOT / "tools/test_atlas_remove_ui.lua")
     sources.append(ROOT / "tools/test_atlas_search_ui.lua")
+    sources.append(ROOT / "tools/test_atlas_preview_details_ui.lua")
     sources.append(ROOT / "tools/test_crafting_blank_ui.lua")
     sources.append(ROOT / "tools/test_crafting_base_implicit_ui.lua")
     sources.append(ROOT / "tools/test_unique_random_guide_ui.lua")
@@ -59,7 +63,15 @@ def source_hashes():
     sources.append(ROOT / "tools/test_unique_variant_divine_ui.lua")
     sources.append(ROOT / "tools/test_filter_export_race.lua")
     sources.append(ROOT / "tools/test_filter_review_ui.lua")
+    sources.append(ROOT / "tools/test_crafting_base_cost_ui.lua")
+    sources.append(ROOT / "tools/test_unique_sacred_ui.lua")
+    sources.append(ROOT / "tools/test_recipe_currency_help.lua")
+    sources.append(ROOT / "tools/test_sacred_exact_ui.lua")
+    sources.append(ROOT / "tools/test_filter_unique_review.lua")
     sources.append(ROOT / "tools/test_filter_sound_list_ui.lua")
+    sources.append(ROOT / "tools/test_filter_contradictions.lua")
+    sources.append(ROOT / "tools/test_craft_project_recovery.lua")
+    sources.append(ROOT / "tools/test_update_notes_ui.lua")
     sources.append(ROOT / "tools/test_fated_scene_ui.lua")
     sources.append(ROOT / "tools/test_filter_union_ui.lua")
     sources.append(ROOT / "tools/test_atlas_plan_pickups_ui.lua")
@@ -68,6 +80,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_anoint_sort_ui.lua")
     sources.append(ROOT / "tools/test_timeless_dialog_ui.lua")
     sources.append(ROOT / "tools/test_ai_filter_proposal_ui.lua")
+    sources.append(ROOT / "tools/test_ai_filter_handoff.lua")
     sources.append(ROOT / "tools/test_ai_journey_proposal_ui.lua")
     sources.append(ROOT / "tools/test_ai_atlas_proposal_ui.lua")
     sources.append(ROOT / "tools/test_ai_crafting_proposal_ui.lua")
@@ -82,6 +95,7 @@ def source_hashes():
     sources += [ROOT / "tools/update_flask_enchant_data.py", ROOT / "tools/test_update_flask_enchant_data.py"]
     sources.append(ROOT / "tools/run_headless_lupa.py")
     sources.append(ROOT / "tools/test_campaign_selection_ui.lua")
+    sources += [ROOT / "manifest.xml", ROOT / "changelog.txt"]
     return {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(sources) if path.is_file()}
 
 
@@ -120,10 +134,30 @@ def main():
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "controls.log").write_text(result.stdout)
     assert result.returncode == 0, result.stdout
+    filter_contradictions = subprocess.run(lua_command + ["../tools/test_filter_contradictions.lua", str(frames)], cwd=ROOT / "src",
+                                          env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "filter-contradictions-controls.log").write_text(filter_contradictions.stdout)
+    assert filter_contradictions.returncode == 0, filter_contradictions.stdout
+    craft_recovery = subprocess.run(lua_command + ["../tools/test_craft_project_recovery.lua"], cwd=ROOT / "src",
+                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "craft-project-recovery.log").write_text(craft_recovery.stdout)
+    assert craft_recovery.returncode == 0, craft_recovery.stdout
+    update_notes = subprocess.run(lua_command + ["../tools/test_update_notes_ui.lua", str(frames)], cwd=ROOT / "src",
+                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "update-notes-controls.log").write_text(update_notes.stdout)
+    assert update_notes.returncode == 0, update_notes.stdout
     atlas_search = subprocess.run(lua_command + ["../tools/test_atlas_search_ui.lua", str(frames)], cwd=ROOT / "src",
                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-search-controls.log").write_text(atlas_search.stdout)
     assert atlas_search.returncode == 0, atlas_search.stdout
+    atlas_preview = subprocess.run(lua_command + ["../tools/test_atlas_preview_details_ui.lua"], cwd=ROOT / "src",
+                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "atlas-preview-details-controls.log").write_text(atlas_preview.stdout)
+    assert atlas_preview.returncode == 0, atlas_preview.stdout
+    filter_unique = subprocess.run(lua_command + ["../tools/test_filter_unique_review.lua"], cwd=ROOT / "src",
+                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "filter-unique-review.log").write_text(filter_unique.stdout)
+    assert filter_unique.returncode == 0, filter_unique.stdout
     atlas_removal = subprocess.run(lua_command + ["../tools/test_atlas_remove_ui.lua"], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "atlas-removal-controls.log").write_text(atlas_removal.stdout)
@@ -156,6 +190,22 @@ def main():
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-review-controls.log").write_text(filter_review.stdout)
     assert filter_review.returncode == 0, filter_review.stdout
+    base_cost = subprocess.run(lua_command + ["../tools/test_crafting_base_cost_ui.lua"], cwd=ROOT / "src",
+                               env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-base-cost-controls.log").write_text(base_cost.stdout)
+    assert base_cost.returncode == 0, base_cost.stdout
+    sacred = subprocess.run(lua_command + ["../tools/test_unique_sacred_ui.lua", str(frames)], cwd=ROOT / "src",
+                            env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "unique-sacred-controls.log").write_text(sacred.stdout)
+    assert sacred.returncode == 0, sacred.stdout
+    recipe_help = subprocess.run(lua_command + ["../tools/test_recipe_currency_help.lua"], cwd=ROOT / "src",
+                                 env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "recipe-currency-help-controls.log").write_text(recipe_help.stdout)
+    assert recipe_help.returncode == 0, recipe_help.stdout
+    sacred_exact = subprocess.run(lua_command + ["../tools/test_sacred_exact_ui.lua"], cwd=ROOT / "src",
+                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "sacred-exact-controls.log").write_text(sacred_exact.stdout)
+    assert sacred_exact.returncode == 0, sacred_exact.stdout
     filter_sound_list = subprocess.run(lua_command + ["../tools/test_filter_sound_list_ui.lua"], cwd=ROOT / "src",
                                        env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-sound-list-controls.log").write_text(filter_sound_list.stdout)
@@ -196,6 +246,10 @@ def main():
                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "ai-filter-review-controls.log").write_text(ai_filter_review.stdout)
     assert ai_filter_review.returncode == 0, ai_filter_review.stdout
+    ai_filter_handoff = subprocess.run(lua_command + ["../tools/test_ai_filter_handoff.lua"], cwd=ROOT / "src",
+                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "ai-filter-handoff-controls.log").write_text(ai_filter_handoff.stdout)
+    assert ai_filter_handoff.returncode == 0, ai_filter_handoff.stdout
     ai_journey_review = subprocess.run(lua_command + ["../tools/test_ai_journey_proposal_ui.lua"], cwd=ROOT / "src",
                                        env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "ai-journey-review-controls.log").write_text(ai_journey_review.stdout)
@@ -216,6 +270,18 @@ def main():
                             env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-replay-controls.log").write_text(replay.stdout)
     assert replay.returncode == 0, replay.stdout
+    sequence = subprocess.run(lua_command + ["../tools/test_crafting_sequence_ui.lua"], cwd=ROOT / "src",
+                              env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-sequence-controls.log").write_text(sequence.stdout)
+    assert sequence.returncode == 0, sequence.stdout
+    dialla = subprocess.run(lua_command + ["../tools/test_dialla_socket_restriction.lua"], cwd=ROOT / "src",
+                            env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "dialla-socket-restriction.log").write_text(dialla.stdout)
+    assert dialla.returncode == 0, dialla.stdout
+    unique_nonwhite = subprocess.run(lua_command + ["../tools/test_unique_nonwhite_ui.lua"], cwd=ROOT / "src",
+                                     env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "unique-nonwhite-controls.log").write_text(unique_nonwhite.stdout)
+    assert unique_nonwhite.returncode == 0, unique_nonwhite.stdout
     genesis = subprocess.run(lua_command + ["../tools/test_genesis_ui.lua", str(frames)], cwd=ROOT / "src",
                              env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "genesis-controls.log").write_text(genesis.stdout)
@@ -255,7 +321,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2370, f"Expected 2370 UI frames, found {len(paths)}"
+    assert len(paths) == 2397, f"Expected 2397 UI frames, found {len(paths)}"
     for width in (960, 1024, 1280):
         for scene in ("beyond", "incursion"):
             assert (frames / f"{width}-filter-{scene}-examples.json").is_file(), f"Missing {scene} scene at {width}px"

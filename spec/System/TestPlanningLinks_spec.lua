@@ -5,6 +5,10 @@ describe("Linked planning tools",function()
 	local function craft() return {id="helmet",title="Helmet",slot="Helmet",startingItem="Rarity: NORMAL\nIron Hat\nItem Level: 86",goals={},steps={}} end
 	before_each(function() newBuild();main.popups={} end)
 	after_each(function() main.popups={} end)
+	it("clears pending AI handoff drafts when opening another build",function()
+		build.planningAtlasDrafts={stale={}};build.planningFilterDraft={plan={dirty=true}}
+		newBuild();assert.is_nil(build.planningAtlasDrafts);assert.is_nil(build.planningFilterDraft)
+	end)
 	it("explains when the selected crafting slot has no equipped item",function()
 		require("Classes.CraftingProjectWizard").Open(build,nil,nil,"Helmet",nil,function() end,function() end)
 		local wizard=main.popups[1].controls
@@ -56,14 +60,27 @@ describe("Linked planning tools",function()
 		workspace.controls.version.selFunc(nil,{val=version});main.popups[1].controls.confirm:Click()
 		assert.equal(version,workspace.cache.atlas.layout.snapshot().version);assert.equal("First unfinished",workspace.controls.title.buf)
 		assert.equal(first.version,build.savers.AtlasPlans.plans[1].version)
+		local newId=workspace.cache.atlas.layout.snapshot().id;assert.is_not.equal(first.id,newId)
+		local uiState=require("Modules.PlanningUI");assert.is_true(uiState.hasDraft(build,"atlas",first.id));assert.is_true(uiState.hasDraft(build,"atlas",newId))
+		workspace.controls.keep:Click();assert.equal(3,#build.savers.AtlasPlans.plans)
+		assert.is_true(uiState.hasDraft(build,"atlas",first.id));assert.is_false(uiState.hasDraft(build,"atlas",newId))
+		assert.matches("Working draft",uiState.saveStatus(build),1,true)
+		assert.equal(first.version,build.savers.AtlasPlans.plans[1].version);assert.equal(version,build.savers.AtlasPlans.plans[3].version)
+		open("first");assert.equal("First unfinished",workspace.controls.title.buf);assert.equal("Private draft",workspace.controls.notes.buf)
+		assert.equal(first.version,workspace.cache.atlas.layout.snapshot().version)
+		workspace.controls.keep:Click();assert.is_false(uiState.hasDraft(build,"atlas",first.id))
+		local xml=build:SaveDB("Atlas versions");loadBuildFromXML(xml,"Atlas versions")
+		assert.equal(3,#build.savers.AtlasPlans.plans);assert.equal(first.version,build.savers.AtlasPlans.plans[1].version);assert.equal(version,build.savers.AtlasPlans.plans[3].version)
 	end)
 	it("discards an Atlas session draft without deleting a saved plan",function()
 		local saved={id="saved",title="Saved",version="3.30.0-preview",budget=150,nodes={}}
 		build.savers.AtlasPlans:Upsert(saved);local workspace=require("Modules.PlanningWorkspace").new(build);workspace:Show("atlas",saved)
 		workspace.controls.new:Click();local id=workspace.cache.atlas.layout.snapshot().id;workspace.controls.title:SetText("Temporary",true)
+		assert.is_true(require("Modules.PlanningUI").hasDraft(build,"atlas",id))
 		workspace.controls.library:Click();local library=main.popups[1].controls;library.plans:SelByValue("saved","val");library.open:Click()
 		workspace.controls.library:Click();library=main.popups[1].controls;library.plans:SelByValue(id,"val");library.delete:Click()
 		assert.equal("Discard session draft",main.popups[1].title);main.popups[1].controls.confirm:Click()
+		assert.is_false(require("Modules.PlanningUI").hasDraft(build,"atlas",id))
 		library=main.popups[1].controls;for _,entry in ipairs(library.plans.list) do assert.is_not.equal(id,entry.val) end
 		assert.equal("Saved",build.savers.AtlasPlans.plans[1].title);assert.is_nil(workspace.atlasDrafts[id])
 		library.close:Click();workspace.controls.new:Click();local activeId=workspace.cache.atlas.layout.snapshot().id
@@ -126,6 +143,33 @@ describe("Linked planning tools",function()
 		store:Remove("farm");profile.rules=filters.generate(build,profile);store:UndoRemove()
 		stale,statuses=sourceStatus();assert.is_true(stale);assert.equal("New target",statuses["atlas:farm"]);assert.equal("Current",statuses["craft:helmet"])
 		profile.rules=filters.generate(build,profile);stale,statuses=sourceStatus();assert.is_false(stale);assert.equal("Current",statuses["atlas:farm"])
+	end)
+	it("retains changed Atlas pickup warnings across save and reopen",function()
+		local store=build.savers.AtlasPlans
+		local plan={id="farm",title="Farm",version="3.30.0c",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
+		store:Upsert(plan);local profile=filters.profile("linked","Linked");profile.trackBuildPickups=true
+		profile.rules=filters.generate(build,profile);build.savers.LootFilters:Upsert(profile)
+		assert.is_false(dependencies.report(build,profile).stale)
+		plan.strategy.scarabs="Orb of Scouring";store:Upsert(plan)
+		local report=dependencies.report(build,profile);assert.is_true(report.stale)
+		local status;for _,entry in ipairs(report.entries) do if entry.origin=="atlas:farm" then status=entry.status end end
+		assert.equal("Changed",status)
+		local xml=build:SaveDB("Linked plans");loadBuildFromXML(xml,"Linked plans")
+		profile=build.savers.LootFilters.data.profiles[1];assert.is_true(dependencies.report(build,profile).stale)
+		profile.rules=filters.generate(build,profile);assert.is_false(dependencies.report(build,profile).stale)
+	end)
+	it("keeps original Atlas filter links when a popup creates another version",function()
+		local store=build.savers.AtlasPlans
+		local plan={id="farm",title="Farm",version="3.30.0-preview",budget=100,nodes={},strategy={scarabs="Orb of Alchemy"}}
+		store:Upsert(plan);local profile=filters.profile("linked","Linked");profile.trackBuildPickups=true;profile.rules=filters.generate(build,profile)
+		assert.is_false(dependencies.report(build,profile).stale)
+		local controls=require("Classes.AtlasPlannerControl").Open(build,plan)
+		controls.version.selFunc(nil,{val="3.30.0c"});main.popups[1].controls.confirm:Click();main.popups[1].controls.keep:Click()
+		assert.equal(2,#store.plans);assert.equal(plan.version,store.plans[1].version);assert.equal("3.30.0c",store.plans[2].version)
+		assert.is_not.equal(store.plans[1].id,store.plans[2].id)
+		local report=dependencies.report(build,profile);assert.is_false(report.stale)
+		local status;for _,entry in ipairs(report.entries) do if entry.origin=="atlas:farm" then status=entry.status end end
+		assert.equal("Current",status)
 	end)
 	it("remembers tracked build pickups after the last linked rule disappears",function()
 		local store=build.savers.AtlasPlans
@@ -416,7 +460,9 @@ describe("Linked planning tools",function()
 		local wizard=main.popups[1].controls;wizard.steps:SetText("Acquire the item\n"..saved.steps[1].action.."\n"..saved.steps[2].action)
 		wizard.wizardPage:SelByValue("Review");wizard.save:Click();saved=build.savers.CraftingProjects.projects[1]
 		assert.equal("quality",saved.steps[2].uniqueCraft.method);assert.equal("omen_connections",saved.steps[3].uniqueCraft.method)
-		assert.is_false(dependencies.report(build,profile).stale)
+		local review=dependencies.report(build,profile);assert.is_true(review.needsReview)
+		local notice;for _,entry in ipairs(review.entries) do if entry.origin=="craft:unique-filter" then notice=entry end end
+		assert.is_true(notice.openGuide);assert.matches("Written guide steps",table.concat(notice.details," "),1,true)
 		require("Classes.CraftingProjectWizard").Open(build,saved,nil,nil,nil,function() end,function() end)
 		wizard=main.popups[1].controls;wizard.steps:SetText("Acquire the item\nUse a different quality method\n"..saved.steps[3].action)
 		wizard.wizardPage:SelByValue("Method & budget");wizard.next:Click()

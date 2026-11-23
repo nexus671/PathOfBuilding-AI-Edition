@@ -40,6 +40,13 @@ function M.new(controls,key,x,y,w,h,label,options)
 			local qualityLabel=jewellery and (catalyst and (catalyst.." catalyst: +") or "Catalyst quality: +") or "Quality: +"
 			DrawString(cx+propertyX,cy+98,"LEFT",13,"VAR",fit(qualityLabel..tostring(quality).."%",13,w-propertyX-10))
 		end
+		if expanded and item and item.armourData then
+			local parts={};for _,entry in ipairs({{"Armour","Armour"},{"Evasion","Evasion"},{"EnergyShield","Energy shield"},{"Ward","Ward"}}) do
+				local value=item.armourData[entry[1]];if value and value>0 then parts[#parts+1]=entry[2].." "..value end
+			end
+			local room=w-propertyX-10-(socketLabel and math.min(#item.sockets,6)*20+8 or 0)
+			if #parts>0 and room>=70 then DrawString(cx+propertyX,cy+122,"LEFT",13,"VAR",fit(table.concat(parts," | "),13,room)) end
+		end
 		if socketLabel and #item.sockets<=6 then
 			local start=cx+w-12-(#item.sockets*20-4)
 			if start>=cx+180 then

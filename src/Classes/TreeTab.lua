@@ -198,6 +198,9 @@ function TreeTabClass:TreeTab(build)
 	self.controls.treeHeatMap = new("CheckBoxControl"):CheckBoxControl({ "LEFT", self.controls.findTimelessJewel, "RIGHT" }, { 130, 0, 20 }, "Show Node Power:", function(state)
 		self.viewer.showHeatMap = state
 		self.controls.treeHeatMapStatSelect.shown = state
+		if state and self.powerCalculationFailed then
+			self:SetPowerCalc(self.build.calcsTab.powerStat or data.powerStatList[1])
+		end
 
 		if state == false and ToastNotification:Exists(self.powerBuilderToastId) then
 			self.controls.powerReportList.shown = false 
@@ -310,16 +313,26 @@ function TreeTabClass:TreeTab(build)
 		end
 	end
 	-- Completion callback from the CalcsTab power builder coroutine
-	self.build.powerBuilderCallback = function()
+	self.build.powerBuilderCallback = function(failure)
 		local powerStat = self.build.calcsTab.powerStat or data.powerStatList[1]
-		local report = self:BuildPowerReportList(powerStat)
-		self.controls.powerReportList:SetReport(powerStat, report)
+		if failure then
+			self.powerCalculationFailed = true
+			self.viewer.showHeatMap = false
+			self.controls.powerReportList:SetReport(powerStat, nil)
+			self.controls.powerReportList.label = "^1Power failed. Re-enable to retry."
+			ConPrintf("Node power calculation failed: "..tostring(failure))
+		else
+			self.powerCalculationFailed = false
+			local report = self:BuildPowerReportList(powerStat)
+			self.controls.powerReportList:SetReport(powerStat, report)
+		end
 
 		if self.powerBuilderToastId then
 			ToastNotification:ClearDismissed(self.powerBuilderToastId)
 			ToastNotification:Remove(self.powerBuilderToastId)
 			self.powerBuilderToastId = nil
 		end
+		if failure then ToastNotification:Add("Power report failed. Re-enable Node Power to retry.") end
 	end
 
 	self.controls.specConvertText = new("LabelControl"):LabelControl({ "BOTTOMLEFT", self.controls.specSelect, "TOPLEFT" }, { 0, -14, 0, 16 }, "^7This is an older tree version, which may not be fully compatible with the current game version.")
@@ -1049,6 +1062,7 @@ function TreeTabClass:OpenMasteryPopup(node, viewPort)
 end
 
 function TreeTabClass:SetPowerCalc(powerStat)
+	self.powerCalculationFailed = false
 	self.viewer.showHeatMap = true
 	self.build.buildFlag = true
 	self.build.calcsTab.powerBuildFlag = true

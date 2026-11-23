@@ -9,6 +9,16 @@ describe("Crafting projects", function()
 			targetItem="Rarity: RARE\nPlanned Hat\nIron Hat\n+100 to maximum Life",goals={"100 Life"},
 			steps={{action="Choose and test a method in Craft of Exile",stopWhen="Target modifiers present",onFailure="Stop at budget limit"}}}
 	end
+	it("preserves written quality steps that are incompatible with unique jewellery",function()
+		local ring="Rarity: UNIQUE\nAhkeli's Meadow\nRuby Ring\nItem Level: 86\nImplicits: 1\n+25% to Fire Resistance\n+20 to Strength\n5% increased maximum Energy Shield\n5% increased maximum Life"
+		for _,case in ipairs({{method="quality",action="Use 1 Armourer's Scrap"},{method="tainted_quality",action="Use a Tainted Armourer's Scrap to reroll quality",corrupted=true}}) do
+			local p=project();p.slot="Ring 1";p.targetItem=nil;p.startingItem=ring..(case.corrupted and "\nCorrupted" or "");p.steps={{action=case.action,uniqueCraft={method=case.method,count=1}}}
+			local result=projects.validate(p);assert.equal(case.action,result.steps[1].action);assert.is_nil(result.steps[1].uniqueCraft)
+			build.savers.CraftingProjects:Upsert(result)
+		end
+		local p=project();p.startingItem="Rarity: UNIQUE\nGoldrim\nLeather Cap\nItem Level: 86\nCorrupted";p.steps={{action="Use a Tainted Armourer's Scrap to reroll quality",uniqueCraft={method="tainted_quality",count=1}}}
+		assert.equal("tainted_quality",projects.validate(p).steps[1].uniqueCraft.method)
+	end)
 	it("presents guarded planning errors without source paths or missing messages", function()
 		local ui=require("Modules.PlanningUI")
 		local function message()
@@ -160,16 +170,24 @@ describe("Crafting projects", function()
 		updated=copyTable(store.projects[1]);updated.steps[1].action="Changed later";store:Upsert(updated);browser.undoRemove:Click()
 		assert.equal("Crafting guide",main.popups[1].title);assert.equal(1,#store.projects[1].steps);assert.equal("Changed later",store.projects[1].steps[1].action)
 	end)
-	it("keeps size limits and preserves malformed project collections",function()
+	it("preserves malformed project collections",function()
 		local store=build.savers.CraftingProjects
 		for _,raw in ipairs({'{"schemaVersion":1,"projects":{}}','{"schemaVersion":1,"projects":{"one":{}}}','{"schemaVersion":1,"projects":[null]}','{"schemaVersion":1,"projects":null}',string.rep(" ",2*1024*1024).."{}"}) do
 			local loaded=projects.new(build);loaded:Load({raw});assert.is_truthy(loaded.warning)
 			local xml={};loaded:Save(xml);assert.are.equal(raw,xml[1])
 		end
-		local entry=project();entry.notes=string.rep("x",8000)
+	end)
+	it("saves and reopens crafting collections larger than the former limit",function()
+		local store=build.savers.CraftingProjects;local entry=project();entry.notes=string.rep("x",8000)
 		entry.simulatorExport=string.rep("x",128000)
 		for i=1,15 do entry.id="large-"..i;store:Upsert(entry) end
-		entry.id="too-large";assert.is_false(pcall(store.Upsert,store,entry));assert.are.equal(15,#store.projects)
+		entry.id="large-16";store:Upsert(entry);assert.are.equal(16,#store.projects)
+		local xml={};store:Save(xml);assert.is_true(#xml[1]>2*1024*1024)
+		local reopened=projects.new(build);reopened:Load(xml);assert.is_nil(reopened.warning)
+		assert.are.equal(16,#reopened.projects);assert.are.equal(entry.simulatorExport,reopened.projects[16].simulatorExport)
+		local saved=build:SaveDB("Large guides");loadBuildFromXML(saved,"Large guides")
+		assert.is_nil(build.savers.CraftingProjects.warning);assert.are.equal(16,#build.savers.CraftingProjects.projects)
+		assert.are.equal(entry.simulatorExport,build.savers.CraftingProjects.projects[16].simulatorExport)
 	end)
 	it("keeps a different equipment base after recombination without changing its slot", function()
 		local entry=project();entry.targetItem="Rarity: NORMAL\nLeather Cap"

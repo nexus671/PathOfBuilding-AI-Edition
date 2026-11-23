@@ -46,6 +46,13 @@ function M.Open(build,options)
  local function modeMatches(state) return state and state.fromStart==(c.routeMode:GetSelValue()=="Rebuild from start") end
  local function previewMatches(state) return state and state.result~=nil and modeMatches(state) and require("Modules.PlanningData").hash(options.current())==state.baseHash end
 	button("targetCalculate",detailX,h-114,132,"Recalculate",function() targets.start(build,options.current(),c.routeMode:GetSelValue()=="Rebuild from start") end)
+	c.targetCalculate.enabled=function() return #(options.current().desired or {})>0 end
+	c.targetCalculate.tooltipText=function()
+		if #(options.current().desired or {})==0 then return "Mark at least one desired node to calculate a route." end
+		local state=targets.jobs[build]
+		if state and state.thread then return "Start over with the selected route mode; this replaces the running calculation." end
+		return "Calculate a route to all desired nodes using the selected mode."
+	end
 	button("targetPause",detailX+144,h-114,100,"Pause",function() local state=targets.jobs[build];if state and state.thread then state.paused=not state.paused end end)
 	c.targetPause.label=function() local state=targets.jobs[build];return state and state.paused and "Resume" or "Pause" end
 	c.targetPause.enabled=function() return targets.jobs[build] and targets.jobs[build].thread~=nil end
@@ -53,19 +60,28 @@ function M.Open(build,options)
 	c.targetCancel.enabled=c.targetPause.enabled
 	ui.label(c,"progress",16,h-70,"",14)
 	c.progress.label=function()
-		targets.tick(build);local state=targets.jobs[build];if not state then return "^7Shift-click a tree node to mark it as desired." end
-		if state.result then previewCurrent=previewMatches(state)
-			if previewCurrent and lastPreview~=state.result then lastPreview=state.result;showDetails(state.result.plan,true) end
-		end
+		targets.tick(build);local state=targets.jobs[build];if not state then if lastPreview then lastPreview=nil;previewCurrent=false;showDetails(options.current()) end;return "^7Shift-click a tree node to mark it as desired." end
+		previewCurrent=previewMatches(state)
+		if previewCurrent and lastPreview~=state.result then lastPreview=state.result;showDetails(state.result.plan,true)
+		elseif not previewCurrent and lastPreview then lastPreview=nil;showDetails(options.current()) end
 		local text=state.error or state.status;if state.paused then text="Paused" elseif state.thread then if state.progress.phase=="exact" then text=text.." | checking shared paths" else text=text.." | order "..(state.progress.order or 1).." / "..(state.progress.orders or "?") end elseif state.result then text=text.." | "..#state.result.plan.nodes.." allocated points" end
 		if state.result and not previewCurrent then text=not modeMatches(state) and "Route mode changed. Recalculate before using the preview." or "Plan changed. Recalculate before using the preview." end
 		return "^7"..ui.fit(text,w-36,14)
 	end
 	button("targetApply",16,h-42,220,"Use preview",function() local plan=targets.apply(build,options.current());options.change(plan);targets.jobs[build]=nil;main:ClosePopup() end)
 	c.targetApply.enabled=function() return previewMatches(targets.jobs[build]) end
+	local function previewReason()
+		local state=targets.jobs[build]
+		if not state then return "Calculate a route first." end
+		if state.thread then return state.paused and "Resume the paused calculation to finish the preview." or "Wait for the route calculation to finish." end
+		if not state.result then return state.error and "The route calculation failed. Review the message and recalculate." or "Calculate a route first." end
+		if not modeMatches(state) then return "The route mode changed. Restore it or recalculate." end
+		if not previewMatches(state) then return "The plan changed. Recalculate the route." end
+	end
+	c.targetApply.tooltipText=function() return previewReason() or "Apply the route to this Atlas draft." end
 	button("targetShowTree",248,h-42,180,"Show on tree",function() local plan=targets.apply(build,options.current());options.showTree(plan);main:ClosePopup() end)
 	c.targetShowTree.enabled=c.targetApply.enabled
-	c.targetShowTree.tooltipText="Review added and refunded paths on the tree. The draft is unchanged."
+	c.targetShowTree.tooltipText=function() return previewReason() or "Review added and refunded paths on the tree. The draft is unchanged." end
 	button("close",w-156,h-42,140,"Back to tree",function() main:ClosePopup() end)
 	ui.style(c,{targetApply=true});refresh();main:OpenPopup(w,h,"Atlas desired nodes and routes",c,nil,nil,"close")
 end

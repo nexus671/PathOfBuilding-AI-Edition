@@ -20,6 +20,49 @@ describe("TreeTab", function()
 		build.spec.tree.clusterNodeMap = originalClusterNodeMap
 		build.spec.tree.masteryEffects = originalMasteryEffects
 	end)
+	it("reports a failed node-power calculation without publishing partial results and can retry",function()
+		local tab,tree=build.calcsTab,build.treeTab;local node=select(2,next(build.spec.nodes));local dev=launch.devMode;launch.devMode=false
+		local original=tab.PowerBuilder;local originalReport=tree.BuildPowerReportList;local reports=0
+		tree.BuildPowerReportList=function() reports=reports+1;return {} end
+		tab.PowerBuilder=function() node.power.singleStat=123;error("synthetic power failure") end
+		tab.powerBuildFlag=true;tree.viewer.showHeatMap=true;tab:BuildPower()
+		assert.is_nil(tab.powerBuilder);assert.is_nil(tab.powerMax);assert.is_nil(node.power.singleStat);assert.is_false(tree.viewer.showHeatMap)
+		assert.is_falsy(tree.controls.powerReportList.reportReady);assert.matches("Power failed",tree.controls.powerReportList.label,1,true);assert.equal(0,reports)
+		tab.PowerBuilder=function() end;tree:SetPowerCalc({stat="Life",label="Life"});tab:BuildPower();assert.equal(1,reports);assert.is_true(tree.viewer.showHeatMap)
+		tab.PowerBuilder=original;tree.BuildPowerReportList=originalReport;launch.devMode=dev
+	end)
+	it("retries a failed node-power calculation when its checkbox is re-enabled",function()
+		local oldDev=launch.devMode;launch.devMode=false;build.viewMode="TREE";main.popups={}
+		local ui=require("Modules.HeadlessUI").install({width=1280,height=720});ui:bind(build);ui:frame()
+		local tab,tree=build.calcsTab,build.treeTab;local reports=0
+		tree.BuildPowerReportList=function() reports=reports+1;return {} end
+		tab.PowerBuilder=function() error("synthetic power failure") end;tree:SetPowerCalc({stat="Life",label="Life"});tab:BuildPower();ui:frame()
+		assert.is_true(tree.powerCalculationFailed);assert.is_false(tree.controls.treeHeatMap.state)
+		tab.PowerBuilder=function(self) self.powerMax={singleStat=0,offence=0,defence=0,offencePerPoint=0,defencePerPoint=0} end
+		ui:click("treeHeatMap");for _=1,5 do ui:frame();if reports>0 then break end end
+		assert.is_true(reports>0);assert.is_true(tree.viewer.showHeatMap);assert.is_false(tree.powerCalculationFailed)
+		ui:restore();launch.devMode=oldDev
+	end)
+	it("calculates every available node-power category for a real passive change",function()
+		build.calcsTab:BuildOutput(false)
+		local node;for _,candidate in pairs(build.spec.nodes) do if not candidate.alloc and candidate.path and #candidate.path==1 and candidate.modKey~="" then node=candidate;break end end;assert.is_not_nil(node)
+		local calc,base=build.calcsTab:GetMiscCalculator();local normal=calc({addNodes={[node]=true}},false);local full=calc({addNodes={[node]=true}},true)
+		local checked=0;for _,selection in ipairs(data.powerStatList) do if selection.stat and not selection.ignoreForNodes then
+			local value=build.calcsTab:CalculatePowerStat(selection,selection.stat=="FullDPS" and full or normal,base)
+			assert.is_true(type(value)=="number" and value==value,selection.label);checked=checked+1
+		end end;assert.is_true(checked>0)
+	end)
+	it("completes limited-depth node-power reports for niche defensive categories",function()
+		build.calcsTab:BuildOutput(false);local tab=build.calcsTab;tab.nodePowerMaxDepth=1
+		-- This check covers the ordinary tree; cluster calculations have their own tests.
+		build.spec.tree.clusterNodeMap={}
+		for _,key in ipairs({"MeleeAvoidChance","SpellAvoidChance","ProjectileAvoidChance","EnergyShieldRecoveryCap","LifeLeechRate","ManaRegen"}) do
+			local selection;for _,entry in ipairs(data.powerStatList) do if entry.stat==key then selection=entry;break end end;assert.is_not_nil(selection)
+			tab.powerStat=selection;tab.powerBuildFlag=true;tab.powerBuilderInitialized=false
+			for _=1,10000 do tab:BuildPower();if not tab.powerBuilder and not tab.powerBuildFlag then break end end
+			assert.is_true(tab.powerBuilderInitialized,key);assert.is_falsy(build.treeTab.powerCalculationFailed,key)
+		end
+	end)
 
 	it("restores a Runegraft after rebuilding mastery options", function()
 		local node = assert(findMasteryNode())

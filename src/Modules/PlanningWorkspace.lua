@@ -2,8 +2,10 @@
 local M={}
 local pages={ai="AI builds",atlas="Atlas",crafting="Crafting",journey="Journey",filters="Loot filter"}
 function M.new(build)
-	local self=setmetatable({build=build,page="ai",cache={},drafts={},atlasDrafts={},transient={},selections={},craftDrafts=build.planningCraftDrafts or {},controls={},viewport={x=0,y=32,width=main.screenW,height=main.screenH-32}},{__index=M})
+	local self=setmetatable({build=build,page="ai",cache={},drafts={filters=build.planningFilterDraft},atlasDrafts=build.planningAtlasDrafts or {},transient={},selections={},craftDrafts=build.planningCraftDrafts or {},controls={},viewport={x=0,y=32,width=main.screenW,height=main.screenH-32}},{__index=M})
 	build.planningCraftDrafts=nil
+	build.planningAtlasDrafts=nil
+	build.planningFilterDraft=nil
 	self.recoveryScan=require("Modules.PlanningRecovery").startScan(build)
 	self.nav=new("ControlHost"):ControlHost()
 	local anchor=new("Control"):Control(nil,{0,0,0,0})
@@ -49,10 +51,20 @@ function M.new(build)
 	build.controls.planningContext=context
 	return self
 end
+-- Read deferred handoffs without consuming them from the source build. This
+-- lets another AI edit carry the same work forward before the tab is opened.
+function M.pendingHandoff(build)
+	if not (build.planningCraftDrafts or build.planningUniqueQualityDrafts or build.planningAtlasDrafts or build.planningFilterDraft) then return nil end
+	return setmetatable({build=build,cache={},craftDrafts=build.planningCraftDrafts or {},atlasDrafts=build.planningAtlasDrafts or {},drafts={filters=build.planningFilterDraft}},{__index=M})
+end
 function M:Remember(page)
 	local entry=self.cache[page];if not entry then return end
 	self.drafts[page]={plan=entry.layout.snapshot and entry.layout.snapshot(),view=entry.layout.viewState and entry.layout.viewState(),controls=require("Modules.PlanningUI").capture(entry.body.controls)}
-	if page=="atlas" and self.drafts[page].plan and self.drafts[page].plan.id then self.atlasDrafts[self.drafts[page].plan.id]=self.drafts[page] end
+	if page=="atlas" and self.drafts[page].plan and self.drafts[page].plan.id then
+		local id=self.drafts[page].plan.id;local previous=self.atlasDrafts[id]
+		if previous then self.drafts[page].conflict=previous.conflict end
+		self.atlasDrafts[id]=self.drafts[page]
+	end
 	local plan=self.drafts[page].plan
 	if page=="crafting" and plan then
 		if plan.kind=="workbench" then self.craftDrafts[plan.project.id]=plan
@@ -105,6 +117,39 @@ function M:CopyCraftingDrafts(candidate)
 	if candidate.planningWorkspace then candidate.planningWorkspace.craftDrafts=copies else candidate.planningCraftDrafts=copies end
 	candidate.planningUniqueQualityDrafts=uniqueCopies
 end
+-- Keep uncommitted Atlas work when an AI candidate replaces the build object.
+-- If that candidate also changed the saved plan, retain the old draft under a
+-- fresh ID so opening it cannot silently overwrite the candidate's plan.
+function M:CopyAtlasDrafts(candidate)
+	local drafts=copyTable(self.atlasDrafts);local active=self.cache.atlas
+	if active and active.layout.snapshot then
+		local plan=active.layout.snapshot();if plan and plan.id then local previous=drafts[plan.id];drafts[plan.id]={plan=plan,view=active.layout.viewState and active.layout.viewState(),controls=require("Modules.PlanningUI").capture(active.body.controls),conflict=previous and previous.conflict} end
+	end
+	local oldPlans,newPlans,used={},{},{}
+	for _,plan in ipairs(self.build.savers.AtlasPlans.plans) do oldPlans[plan.id]=plan;used[plan.id]=true end
+	for _,plan in ipairs(candidate.savers.AtlasPlans.plans) do newPlans[plan.id]=plan;used[plan.id]=true end
+	for id in pairs(drafts) do used[id]=true end
+	local copied={};local ui=require("Modules.PlanningUI")
+	for id,entry in pairs(drafts) do
+		local dirty=ui.hasDraft(self.build,"atlas",id);local stage=entry.view and entry.view.stageResume
+		if entry.plan and (dirty or stage or not oldPlans[id]) then
+			local target=id;local old,new=oldPlans[id],newPlans[id]
+			if new and (not old or not (tableDeepEquals(old,new) and tableDeepEquals(new,old))) then
+				local serial=0;repeat serial=serial+1;target="atlas-"..require("sha1")(tostring({})..os.time()..serial):sub(1,12) until not used[target]
+				used[target]=true;entry.plan.id=target;entry.conflict=true
+			end
+			copied[target]=entry;if dirty or stage then ui.draft(candidate,"atlas",target) end
+		end
+	end
+	if candidate.planningWorkspace then candidate.planningWorkspace.atlasDrafts=copied else candidate.planningAtlasDrafts=copied end
+end
+function M:CopyFilterDraft(candidate)
+	local entry=self.drafts.filters;local active=self.cache.filters
+	if active and active.layout.snapshot then entry={plan=active.layout.snapshot(),controls=require("Modules.PlanningUI").capture(active.body.controls)} end
+	if not entry or not entry.plan or not entry.plan.dirty then return end
+	local copied=copyTable(entry);require("Modules.PlanningUI").draft(candidate,"filters")
+	if candidate.planningWorkspace then candidate.planningWorkspace.drafts.filters=copied else candidate.planningFilterDraft=copied end
+end
 function M:ForgetCraftingProject(id)
 	local draft=self:CraftingDraft(id)
 	local entry=self.cache.crafting
@@ -134,6 +179,7 @@ function M:Show(page,source)
 	if not cached then
 		local layout={selectedProject=self.selections[page],restore=saved and saved.view,restorePage=saved and saved.plan and saved.plan.page,transient=self.transient,width=self.viewport.width,height=self.viewport.height-52,navigate=function(target,value) self:Show(target,value) end}
 		layout.replaceAtlas=function(plan)
+			self:Remember("atlas")
 			self.cache.atlas=nil;self.drafts.atlas=nil;self.atlasDrafts[plan.id]=nil;self:Show("atlas",plan)
 		end
 		layout.atlasDrafts=function()
@@ -146,6 +192,7 @@ function M:Show(page,source)
 			require("Modules.PlanningRecovery").forgetAtlasSessionDraft(self.build,id)
 			local active=self.cache.atlas;local current=active and active.layout.snapshot and active.layout.snapshot()
 			self.atlasDrafts[id]=nil;if self.drafts.atlas and self.drafts.atlas.plan and self.drafts.atlas.plan.id==id then self.drafts.atlas=nil end
+			require("Modules.PlanningUI").discard(self.build,"atlas",id)
 			if current and current.id==id then self.cache.atlas=nil;self.drafts.atlas=nil;self:Show("atlas",self.build.savers.AtlasPlans.plans[1]) end
 		end
 		layout.openProjects=function()
@@ -155,9 +202,9 @@ function M:Show(page,source)
 			end
 			self.cache.crafting=nil;self.drafts.crafting=nil;self:Show("crafting")
 		end
-		layout.openWorkbench=function(project)
+		layout.openWorkbench=function(project,openGuide)
 			local reason=require("Modules.CraftingProjects").workbenchReason(project)
-			if reason then
+			if reason or openGuide then
 				local saved=false;for _,entry in ipairs(self.build.savers.CraftingProjects.projects) do if entry.id==project.id and entry.startingItem==project.startingItem then saved=true;break end end
 				assert(saved,reason)
 				local current=self.cache.crafting
@@ -166,20 +213,31 @@ function M:Show(page,source)
 				local pages=self.controls.libraryPage;pages:SelByValue("Plan");if pages.selFunc then pages.selFunc() end
 				return
 			end
-			if page~="crafting" then
-				local draft=self.craftDrafts[project.id];if draft and draft.project.startingItem~=project.startingItem then draft=nil end
-				self:Show("crafting",draft or {kind="workbench",project=project});return
+			local oldPage,oldBody,oldCrafting,oldWorkbench=self.page,self.body,self.cache.crafting,layout.workbench
+			local ok,err=pcall(function()
+				if page~="crafting" then
+					local draft=self.craftDrafts[project.id];if draft and draft.project.startingItem~=project.startingItem then draft=nil end
+					self:Show("crafting",draft or {kind="workbench",project=project});return
+				end
+				local current=self.cache.crafting
+				if current and current.layout.snapshot then
+					local working=current.layout.snapshot();if working.kind=="workbench" then self.craftDrafts[working.project.id]=working end
+				end
+				self.page="crafting";self.cache.crafting=nil
+				local draft=self.craftDrafts[project.id]
+				layout.workbench=nil
+				if draft and draft.project.startingItem==project.startingItem then layout.workbench=draft end
+				require("Classes.CraftingSimulatorControl").Open(self.build,project,layout)
+			end)
+			if not ok then
+				self.page=oldPage;self.body=oldBody;self.cache.crafting=oldCrafting;layout.workbench=oldWorkbench;self:UpdateControls()
+				if tostring(err):find("Ctrl+Alt+C",1,true) then
+					require("Classes.CraftingProjectControl").ImportRecovery(self.build,project,err,page=="crafting" and layout or nil)
+					return false
+				end
+				error(err)
 			end
-			local current=self.cache.crafting
-			if current and current.layout.snapshot then
-				local working=current.layout.snapshot();if working.kind=="workbench" then self.craftDrafts[working.project.id]=working end
-			end
-			self.page="crafting";self.cache.crafting=nil
-			local draft=self.craftDrafts[project.id]
-			layout.workbench=nil
-			if draft and draft.project.startingItem==project.startingItem then layout.workbench=draft end
-			if page=="crafting" then require("Classes.CraftingSimulatorControl").Open(self.build,project,layout)
-			else self:Show("crafting",draft or {kind="workbench",project=project}) end
+			return true
 		end
 		layout.mount=function(width,height,title,controls)
 			local body=new("PopupDialog"):PopupDialog(width,height,title,controls)

@@ -8,6 +8,25 @@ from check_update_manifest import check, check_index
 
 
 class ManifestCheckTest(unittest.TestCase):
+    def test_preview_requires_matching_nonempty_versioned_notes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            log = root / "changelog.txt"
+            manifest = root / "manifest.xml"
+            def write_log(text):
+                data = text.encode("utf-8")
+                log.write_bytes(data)
+                digest = hashlib.sha1(data).hexdigest()
+                manifest.write_text('<PoBVersion><Version number="2.68.1-ai.preview5"/>'
+                                    '<File part="default" name="changelog.txt" sha1="' + digest + '"/>'
+                                    '</PoBVersion>', encoding="utf-8")
+            write_log('VERSION[2.68.1-ai.preview4][2026/11/22]\nOld\n')
+            self.assertTrue(any("do not match" in error for error in check(root)[1]))
+            write_log('VERSION[2.68.1-ai.preview5][2026/11/22]\n\n--- Notes ---\n')
+            self.assertTrue(any("no changes" in error for error in check(root)[1]))
+            write_log('VERSION[2.68.1-ai.preview5][2026/11/22]\nA change\n')
+            self.assertEqual([], check(root)[1])
+
     def test_rejects_lf_only_source_hash_that_would_fail_on_windows(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

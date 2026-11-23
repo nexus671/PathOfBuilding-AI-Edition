@@ -39,12 +39,12 @@ function M.Bundle(build)
 end
 function M.Recovery(build)
 	local recovery=require("Modules.PlanningRecovery");local entries={}
-	local function add(kind,record)
+	local function add(kind,record,perProject)
 		if record and not recovery.isCurrent(build,kind,record.entry) then
 			local details={"Saved locally: "..os.date("%Y-%m-%d %H:%M",record.at),"Restore opens a working draft. Review it, then Keep and Save.","An earlier-session draft is preserved until you restore or discard it."}
 			if kind=="atlas" and record.entry.view and record.entry.view.stageResume then details[#details+1]="Choose Resume stages to recover unfinished stage inputs." end
-			local projectId=kind=="uniqueQuality" and record.entry.plan.project.id or nil
-			if projectId then
+			local projectId=(kind=="uniqueQuality" or kind=="crafting" and perProject) and record.entry.plan.project.id or nil
+			if kind=="uniqueQuality" then
 				local item,info=require("Modules.CraftingUniqueQuality").inspect(record.entry.plan.itemText)
 				table.insert(details,1,(item.title or item.baseName).." | "..record.entry.plan.project.slot.." | "..info.quality.."% quality")
 				if #item.sockets>0 then
@@ -57,11 +57,12 @@ function M.Recovery(build)
 				end
 				details[#details+1]="Up to 64 undo and redo steps are retained."
 			end
-			local label=kind=="uniqueQuality" and ("Unique crafting: "..record.entry.plan.project.title) or ({filters="Loot-filter draft",atlas="Atlas draft",crafting="Working craft"})[kind]
+			local label=kind=="uniqueQuality" and ("Unique crafting: "..record.entry.plan.project.title) or kind=="crafting" and ("Working craft: "..record.entry.plan.project.title) or ({filters="Loot-filter draft",atlas="Atlas draft"})[kind]
 			entries[#entries+1]={id=projectId and kind..":"..projectId or kind,kind=kind,projectId=projectId,label=label,details=details,record=record}
 		end
 	end
 	for _,kind in ipairs({"filters","atlas","crafting"}) do add(kind,recovery.load(build,kind)) end
+	for _,record in ipairs(recovery.listCrafting(build)) do add("crafting",record,true) end
 	for _,record in ipairs(recovery.listUnique(build)) do add("uniqueQuality",record) end
 	if recovery.lastError then entries[#entries+1]={id="error",label="Draft recovery needs attention",details={recovery.lastError,"Keep your working project and save the build."}} end
 	require("Classes.PlanningBrowserControl").Open("Recover local drafts",entries,{action="Restore draft",closeOnChoose=false,choose=function(entry)
