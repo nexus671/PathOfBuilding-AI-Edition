@@ -4,7 +4,7 @@ describe("Saved crafting resource prices",function()
 	it("includes every reachable success and recovery route without following dead steps",function()
 		local steps={{method="alchemy",onSuccess=3,onFailure=4},{method="alteration"},{method="chaos",onSuccess=5,onFailureAction="restart"},{method="scour",onSuccess=5,onFailureAction="stop"},{method="exalt",onSuccess=3,onFailureAction="salvage"}}
 		local reachable=prices.reachableSteps(steps);assert.are.same({steps[1],steps[3],steps[4],steps[5]},reachable)
-		steps[1].onFailure=2;assert.are.same(steps,prices.reachableSteps(steps))
+		steps[1].onFailure=2;steps[2].onFailure=4;assert.are.same(steps,prices.reachableSteps(steps))
 		assert.are.same({},prices.reachableSteps({}))
 	end)
 	it("does not turn new service artwork into a currency quote",function()
