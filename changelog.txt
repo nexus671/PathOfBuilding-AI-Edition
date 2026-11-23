@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1167][2026/11/23]
+
+* Explain invalid and oversized planning bundles in the UI.
+
 VERSION[2.68.1-ai.preview1166][2026/11/23]
 
 * Reorder and remove custom filter sounds in a staged list.

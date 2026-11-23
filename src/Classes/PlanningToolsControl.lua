@@ -18,7 +18,8 @@ function M.Performance(build)
 	refresh();ui.style(c);main:OpenPopup(w,h,"Performance diagnostics",c,nil,nil,"close")
 end
 function M.Bundle(build)
-	local bundles=require("Modules.PlanningBundle");local c={};local w,h=math.min(900,main.screenW-40),math.min(620,main.screenH-48);local imported,contents
+	local bundles=require("Modules.PlanningBundle");local c={};local w,h=math.min(900,main.screenW-40),math.min(620,main.screenH-48);local imported,contents,reviewedText
+	local function action(run) return function() local ok,err=pcall(run);if not ok then ui.errorPopup("Planning bundle",err) end end end
 	ui.description(c,"help",16,28,w-32,88,{"Copy a complete planning bundle, or paste one to review it as a new build. The bundle carries saved crafting guides, checkpoints, Atlas strategies and Journey plans with the character."},16)
 	c.text=new("EditControl"):EditControl(ui.anchor,{16,124,w-32,112},"",nil,"^%C\t\n",bundles.limit,nil,14)
 	c.text.shown=false
@@ -27,13 +28,13 @@ function M.Bundle(build)
 		local key,label=unpack(entry);ui.card(c,key,16+(i-1)*(cardWidth+16),124,cardWidth,label,function() return contents and tostring(contents[key]) or "-" end,"Kept planning data")
 	end
 	c.details=new("TextListControl"):TextListControl(ui.anchor,{16,252,w-32,h-330},nil,ui.rows({"Keep working crafts and Atlas drafts before exporting. Importing goes through native proposal review; it does not overwrite a saved build."},w-56))
-	button(c,"export",16,h-48,172,"Copy complete bundle",function() local raw;raw,contents=bundles.export(build);Copy(raw);local lines=bundles.lines(contents);table.insert(lines,1,"Complete bundle copied to clipboard.");c.details.list=ui.rows(lines,w-56) end)
-	button(c,"paste",204,h-48,140,"Paste / inspect",function() c.text:SetText(Paste());imported=bundles.import(c.text.buf);contents=imported.contents;local lines=bundles.lines(contents);table.insert(lines,1,"Ready to review: "..imported.buildName);c.details.list=ui.rows(lines,w-56) end)
-	button(c,"review",360,h-48,210,"Review as new build",function()
+	button(c,"export",16,h-48,172,"Copy complete bundle",action(function() local raw,exported=bundles.export(build);Copy(raw);imported=nil;reviewedText=nil;contents=exported;local lines=bundles.lines(contents);table.insert(lines,1,"Complete bundle copied to clipboard.");c.details.list=ui.rows(lines,w-56) end))
+	button(c,"paste",204,h-48,140,"Paste / inspect",action(function() c.text:SetText(Paste());imported=nil;contents=nil;reviewedText=nil;c.details.list=ui.rows({"Paste a valid planning bundle to inspect it."},w-56);imported=bundles.import(c.text.buf);reviewedText=c.text.buf;contents=imported.contents;local lines=bundles.lines(contents);table.insert(lines,1,"Ready to review: "..imported.buildName);c.details.list=ui.rows(lines,w-56) end))
+	button(c,"review",360,h-48,210,"Review as new build",action(function()
 		imported=bundles.import(c.text.buf);local bridge=require("Modules.DesktopBuildBridge");local prepared=bridge.prepareBundle(build,imported);prepared.id="bundle-"..require("sha1")(tostring({})..os.time()):sub(1,16)
 		bridge.remember(prepared);bridge.prepared=prepared;bridge.status=bridge.summary(prepared);bridge.status.status="review";main:ClosePopup();require("Classes.BuildProposalControl").Review()
-	end)
-	c.review.enabled=function() return c.text.buf:match("%S")~=nil end
+	end))
+	c.review.enabled=function() return imported~=nil and reviewedText==c.text.buf end
 	button(c,"close",w-156,h-48,140,"Close",function() main:ClosePopup() end)
 	ui.style(c,{review=true});main:OpenPopup(w,h,"Portable planning bundle",c,nil,"export","close")
 end

@@ -62,6 +62,6 @@ Linked stages must use the same Atlas version and cannot form a cycle. Saved Atl
 
 Keep working drafts before exporting. Paste and inspect a bundle to see its contents, then **Review as new build**. Native proposal review calculates it before you choose Apply. It opens as an unsaved new build and does not overwrite the source file.
 
-Bundles have a version and corruption checksum, with a 16 MiB size guard. Imports retain recorded price dates, recipe assumptions and references; they do not refresh external data. Native builds also retain their normal save/export behavior.
+Bundles have a version and corruption checksum, with a 16 MiB size guard. If a paste fails, the screen explains the error and clears the previous review; you can paste another bundle without reopening it. Imports retain recorded price dates, recipe assumptions and references; they do not refresh external data. Native builds also retain their normal save/export behavior.
 
 For AI-proposed Journey replacements, the Changes page lists added, edited, removed and reordered entries, including ledger removals. Reviewing does not apply the candidate; use Apply and then build Save to keep it.
