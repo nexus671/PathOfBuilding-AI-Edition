@@ -30,4 +30,18 @@ do
 	assert(filters.simulate(profile,{BaseType="Iron Hat"}).status=="unknown")
 	profile.importFiles={{name="missing.filter",text="Show"}};assert(filters.simulate(profile,{BaseType="Iron Hat"}).action=="Show")
 end
+do
+	newBuild();main.popups={};local ui=UI.install({width=960,height=640});ui:bind(build)
+	local profile=filters.profile("attach-optional","Attach filters")
+	profile.template='Import "outer.filter"\nHide'
+	local files, absent
+	require("Classes.LootFilterImportControl").Open(profile,function(a,b) files,absent=a,b end)
+	ui:text("name","outer.filter");ui:text("text",'Import "inner.filter" Optional\nShow')
+	ui:click("findImports");assert(main.popups[1].title=="Unresolved filter imports")
+	ui:click("secondary");ui:click("secondary");ui:click("close");ui:click("keep")
+	assert(files and files[1].name=="outer.filter" and absent==nil)
+	require("Classes.LootFilterImportControl").Open(profile,function(a,b) files,absent=a,b end)
+	ui:text("name","outer.filter");ui:text("text","Show");ui:click("keep")
+	assert(files[1].text=="Show" and absent==nil and #main.popups==0)
+end
 print("FILTER_OPTIONAL_IMPORT_UI_OK")
