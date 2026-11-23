@@ -561,7 +561,12 @@ function M.Open(build,source,layout,controller)
 		button(c,"sampleHistory",124,322,100,"History",function() local entries={};for i=#samples,1,-1 do local sample=samples[i];entries[#entries+1]={id=i,label=visual.sampleName(sample),details={"Item level: "..tostring(sample.ItemLevel or "unknown"),"Area level: "..tostring(sample.AreaLevel or "unknown"),"Missing properties remain unknown."},sample=sample} end
 			require("Classes.PlanningBrowserControl").Open("Tested item history",entries,{action="Test again",choose=function(entry) rememberSample(entry.sample);scenePage=1;compile();reopen() end})
 		end)
-		button(c,"sound",16,362,100,"Play sound",function() local _,message=require("Modules.LootFilterAudio").play(result and result.styles or {});c.selection.list=ui.rows({"Selected: "..visual.sampleName(item),message},left-28,14) end)
+		button(c,"sound",16,362,100,"Play sound",function()
+			local ok,message=require("Modules.LootFilterAudio").play(result and result.styles or {})
+			local lines=sampleDetails(item,result,true);lines[#lines+1]=message;c.selection.list=ui.rows(lines,left-28,14)
+			if not ok then ui.errorPopup("Sound preview",message) end
+		end)
+		c.sound.tooltipText="Preview a reference tone or local WAV; the game's numbered alert may sound different."
 		button(c,"sceneStats",124,362,100,"Drop review",function()
 			local counts={Show=0,Hide=0,Minimal=0,Unknown=0};local entries={}
 			for index,drop in ipairs(scene) do
