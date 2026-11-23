@@ -1,6 +1,6 @@
 local output=arg[1];arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true
 local UI=require("Modules.HeadlessUI");local bundles=require("Modules.PlanningBundle");local bridge=require("Modules.DesktopBuildBridge")
-for _,size in ipairs({{1280,720},{1024,768},{960,640},{720,600}}) do
+for _,size in ipairs({{1280,720},{1024,768},{960,640},{720,600},{640,480}}) do
 	newBuild();main.popups={};local ui=UI.install({width=size[1],height=size[2]});ui:bind(build)
 	local valid=bundles.export(build);require("Classes.PlanningToolsControl").Bundle(build);local controls=main.popups[1].controls
 	ui:frame()
@@ -22,6 +22,14 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640},{720,600}}) do
 		ui.clipboard="clipboard sentinel";ui:click("export");bridge.serialize=original
 		assert(#main.popups==2 and ui.clipboard=="clipboard sentinel" and controls.review:IsEnabled(),"Oversized export lost the clipboard or previous review")
 		main:ClosePopup()
+	end
+	if size[1]<=720 then
+		bridge.prepared=nil
+		ui:click("review")
+		local proposal=main.popups[1].controls;assert(proposal.constraintCheck,tostring(size[1]).." "..tostring(main.popups[1].title));ui:frame()
+		local x=proposal.constraintCheck:GetPos();local w=proposal.constraintCheck:GetSize();local nextX=proposal.toggleMetrics:GetPos()
+		assert(x+w<=nextX,"Overlapping proposal controls")
+		assert(not proposal.candidateTitle:IsShown(),"Proposal title overlaps compact tabs")
 	end
 	ui:restore();main.popups={}
 end
