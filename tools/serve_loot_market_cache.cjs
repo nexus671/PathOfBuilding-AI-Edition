@@ -43,12 +43,13 @@ function ageSource(headers, now, previous) {
   const date = value == null && previous ? previous.sourceAt : Date.parse(value);
   const ageHeader = headers.get('age');
   const age = ageHeader == null ? 0 : /^\d+$/.test(ageHeader) ? Number(ageHeader) : NaN;
-  const sourceAt = Math.min(now, date, now - age * 1000, previous?.sourceAt ?? now);
+  const responseAt = Math.min(now,date,now-age*1000);
+  const sourceAt = Math.min(responseAt,previous?.sourceAt ?? now);
   if (!Number.isFinite(sourceAt) || date > now + 300000 || now - sourceAt > freshestAge * 1000 ||
       headers.get('cf-cache-status')?.toLowerCase() === 'stale') {
     throw new MarketError(502, 'Provider response is stale or has invalid freshness headers');
   }
-  return sourceAt;
+  return { sourceAt,responseAt };
 }
 
 function responsePolicy(headers, previous) {
@@ -109,16 +110,19 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
   let queue = Promise.resolve();
   const stats = { hits: 0, requests: 0, coalesced: 0, rejected: 0 };
 
-  function save(key, entry) {
+  function remove(key) {
     size -= cache.get(key)?.body.length || 0;
     cache.delete(key);
+  }
+
+  function save(key, entry) {
+    remove(key);
     if (!entry.store) return;
     cache.set(key, entry);
     size += entry.body.length;
     while (cache.size > 48 || size > cacheLimit) {
       const oldest = cache.keys().next().value;
-      size -= cache.get(oldest).body.length;
-      cache.delete(oldest);
+      remove(oldest);
     }
   }
 
@@ -130,6 +134,8 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
     if (sendAt>queuedAt) await delay(sendAt-queuedAt);
     const budget = deadline-now();
     if (budget<=0) throw new MarketError(503,'Price refresh queue deadline expired',15);
+    const cached = cache.get(details.key);
+    if (cached && now()-cached.sourceAt>=freshestAge*1000) remove(details.key);
     const prior = cache.get(details.key);
     const headers = { Accept: 'application/json', 'User-Agent': agent };
     if (prior?.etag) headers['If-None-Match'] = prior.etag;
@@ -144,21 +150,27 @@ function createMarketCache({ agent, fetcher = fetch, now = Date.now, spacingMs =
         throw new MarketError(response.status,'Provider temporarily unavailable',seconds);
       }
       const policy = responsePolicy(response.headers,response.status===304 ? prior : undefined);
-      const upstreamAge = Number(response.headers.get('age') || 0);
-      const ttlRemaining = Math.max(0,policy.ttl-upstreamAge);
-      if (response.status === 304 && prior) {
-        const sourceAt = ageSource(response.headers,at,prior);
-        const entry = { ...prior, ...policy, sourceAt, validUntil:Math.min(at+ttlRemaining*1000,sourceAt+freshestAge*1000) };
+      if (response.status === 304 && prior?.etag) {
+        let timing;
+        try {
+          timing = ageSource(response.headers,at,prior);
+        } catch (error) {
+          remove(details.key);
+          throw error;
+        }
+        const entry = { ...prior, ...policy, sourceAt:timing.sourceAt,
+          validUntil:Math.min(timing.responseAt+policy.ttl*1000,timing.sourceAt+freshestAge*1000) };
         save(details.key,entry);
         return entry;
       }
       if (response.status !== 200) throw new MarketError(response.status >= 400 && response.status < 600 ? response.status : 502,'Provider did not return prices');
       const body = await boundedBody(response,details.limit);
       const leagues = validateBody(body,details.kind);
-      const sourceAt = ageSource(response.headers,now());
+      const timing = ageSource(response.headers,now());
       const rawTag = response.headers.get('etag');
       const etag = rawTag?.length <= 160 && /^(?:W\/)?"[^"\x00-\x1f]*"$/.test(rawTag) ? rawTag : null;
-      const entry = { body, leagues, sourceAt, etag, ...policy, validUntil:Math.min(at+ttlRemaining*1000,sourceAt+freshestAge*1000) };
+      const entry = { body, leagues, sourceAt:timing.sourceAt, etag, ...policy,
+        validUntil:Math.min(timing.responseAt+policy.ttl*1000,timing.sourceAt+freshestAge*1000) };
       save(details.key,entry);
       return entry;
     } finally {

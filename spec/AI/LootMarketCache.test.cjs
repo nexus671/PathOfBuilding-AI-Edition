@@ -137,3 +137,33 @@ test('honors no-cache validation and never stores no-store responses',async t=>{
   assert.equal((await cache.request(currencyPath)).status,200);
   assert.equal(cache.requests.at(-1).tag,undefined);
 });
+
+test('expires cache using apparent Date age even when the Age header is missing',async t=>{
+  const cache = await fixture(t, (path,options,{ now,initial })=>{
+    if (path==='/leagues') return snapshot(leagueBody,now);
+    if (options.headers['If-None-Match']) return new Response(null,{ status:304, headers:{ date:new Date(now).toUTCString() } });
+    return snapshot(priceBody,initial-295000,{ etag:'"old-response"' });
+  });
+  assert.equal((await cache.request(currencyPath)).status,200);
+  cache.advance(4000);
+  assert.equal((await cache.request(currencyPath)).status,200);
+  assert.equal(cache.requests.length,2);
+  cache.advance(2000);
+  assert.equal((await cache.request(currencyPath)).status,200);
+  assert.equal(cache.requests.at(-1).tag,'"old-response"');
+  assert.equal(cache.requests.length,3);
+});
+
+test('drops a validator whose body is too old and fetches a full replacement',async t=>{
+  const cache = await fixture(t, (path,options,{ now })=>{
+    if (path==='/leagues') return snapshot(leagueBody,now);
+    if (options.headers['If-None-Match']) return new Response(null,{ status:304, headers:{ date:new Date(now).toUTCString() } });
+    return snapshot(priceBody,now,{ etag:'"same-valid-tag"' });
+  });
+  assert.equal((await cache.request(currencyPath)).status,200);
+  cache.advance(3601000);
+  const refreshed = await cache.request(currencyPath);
+  assert.equal(refreshed.status,200);
+  assert.equal(refreshed.headers.get('age'),'0');
+  assert.equal(cache.requests.at(-1).tag,undefined);
+});
