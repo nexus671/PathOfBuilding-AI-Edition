@@ -198,10 +198,10 @@ Show
 	print("Opt-in highlights preserve visibility, apply at exact stack values, and respect later styles")
 end
 
-local function quoteBatch(count)
+local function quoteBatch(count, source)
 	local batch = {}
 	for index=1,count do
-		batch["Currency "..index] = {price=0.21,volume=1000,id=tostring(index),source="Currency"}
+		batch["Fixture "..index] = {price=0.21,volume=1000,id=tostring(index),source=source or "Currency"}
 	end
 	return batch
 end
@@ -211,6 +211,12 @@ local coverage, coverageError = pcall(market.remember, quoteBatch(5), completeHi
 assert(not coverage and coverageError:find("fewer than a quarter",1,true))
 assert(pcall(market.remember, quoteBatch(6), completeHistory, "still sufficient", now+2*86400))
 assert(pcall(market.remember, quoteBatch(5), completeDay, "first comparison", now+2*86400))
+do
+	local _, cardFirst = market.remember(quoteBatch(24,"DivinationCard"),{},"cards one",now)
+	local _, cardHistory = market.remember(quoteBatch(24,"DivinationCard"),cardFirst,"cards two",now+86400)
+	local valid, failure = pcall(market.remember,quoteBatch(5,"DivinationCard"),cardHistory,"cards three",now+2*86400)
+	assert(not valid and failure:find("DivinationCard feed has fewer",1,true))
+end
 
 local _, repeatDay = market.remember(quote(2), second, "day 2", now+86400)
 assert(#repeatDay==2)
@@ -801,6 +807,28 @@ local function checkBackupHistory()
 	assert(read(reconciled.baseline)==fixedAtReview and read(namedTarget)==otherProfileBytes)
 	assert(profiles.configuration().retentionSkipped==2)
 	print("Opt-in retention preserves unverifiable files, the baseline and other profiles")
+
+	local afterRetention = profiles.configuration()
+	profiles.setBackupLimit("default",0,afterRetention.revision)
+	local aged = olderBytes:gsub("StackSize <= 3","StackSize <= 12",1)
+	local agedDigest = digestOf(aged)
+	local agedPath = target..".before-pob-sync-"..agedDigest..".bak"
+	write(agedPath,aged)
+	local state = profiles.configuration()
+	table.insert(state.history,{backup=agedDigest,checkedAt=now-7*86400})
+	write(configFile,assert(configurationCodec.encode(state)))
+	for _=1,31 do
+		profiles.tick(now,true)
+		assert(profiles.status:find("Protected drops verified",1,true),profiles.status)
+	end
+	state=profiles.configuration()
+	assert(#state.history==30 and state.backupRecords[agedDigest] and read(agedPath)==aged)
+	for _, run in ipairs(state.history) do assert(run.backup~=agedDigest) end
+	profiles.setBackupLimit("default",1,state.revision)
+	profiles.tick(now,true)
+	assert(profiles.status:find("Protected drops verified",1,true),profiles.status)
+	assert(not io.open(agedPath,"rb") and not profiles.configuration().backupRecords[agedDigest])
+	print("The backup catalog survives repeated unchanged refreshes and still supports retention")
 end
 checkBackupHistory()
 -- A successful-looking but severely incomplete feed must keep the last

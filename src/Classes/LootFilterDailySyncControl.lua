@@ -292,7 +292,7 @@ function M.Open(profileId, profileName)
 			if passed and saved then cached = saved end
 		end
 		return not sync.busy and (cached.backup ~= nil or type(cached.history) == "table" and #cached.history > 0
-			or type(cached.restoreBackups) == "table" and #cached.restoreBackups > 0)
+			or type(cached.backupRecords) == "table" and next(cached.backupRecords) ~= nil)
 	end
 	local function backgroundLabel()
 		return config.backgroundEnabled and "Disable background sync" or "Enable background sync"
