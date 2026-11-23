@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1228][2026/11/23]
+
+* Check every declared Fated base, every fractured equipment class, and hidden scrolls on each daily refresh.
+
 VERSION[2.68.1-ai.preview1227][2026/11/23]
 
 * Compare selected build gems, equipped uniques, and crafting bases in the loot market browser.

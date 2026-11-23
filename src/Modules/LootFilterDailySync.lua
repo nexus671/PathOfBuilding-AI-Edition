@@ -380,7 +380,7 @@ function M.publicDiff(now, id)
 	end
 	publicCache.diff = {
 		checkedAt=finiteNumber(review.checkedAt), verifiedProtection=true,
-		responseAges=ages, feeds=feeds, changeCount=#source, changes=changes,
+		responseAges=ages, feeds=feeds, changeCount=#source, changes=changes, protectedChecks=finiteNumber(review.protectedChecks),
 	}
 	return publicCache.diff
 end
@@ -904,7 +904,7 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		local baseline = assert(read(current.baseline), "Baseline filter is missing")
 		assert(sha(baseline) == current.baselineHash, "Baseline checksum changed")
 		verifyUnmanagedRules(original, baseline)
-		local candidate, count, changes, skipped, snapshots = validate(
+		local candidate, count, changes, skipped, snapshots, protectedChecks = validate(
 			baseline, bodies, false, current.targetValue, current.protections, current.priceHistory, day, now, current.pickupPolicy, confirmation)
 		current.priceHistory = snapshots
 		local records = backupRecords(current)
@@ -927,7 +927,8 @@ local function publish(config, bodies, feeds, day, force, now, id, confirmation)
 		current.lastSuccess, current.lastFailure, current.providerRetryAfter = now, nil, nil
 		local ages = {}
 		for index, feed in ipairs(feeds) do ages[index] = feed.age end
-		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages, feeds=feeds, league=current.league}
+		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages, feeds=feeds,
+			league=current.league, protectedChecks=protectedChecks}
 		local evidence = assert(json.encode(current.review))
 		local reviewKey = sha(evidence)
 		current.history = current.history or {}

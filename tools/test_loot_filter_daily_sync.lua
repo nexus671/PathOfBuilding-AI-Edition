@@ -93,7 +93,7 @@ assert(exposed.state=="enabled" and exposed.adjustmentCount==1 and exposed.lates
 local payload=require("dkjson").encode(exposed)
 assert(not payload:find("target.filter",1,true) and not payload:find("protect.json",1,true))
 local diff = sync.publicDiff(now)
-assert(diff.verifiedProtection and diff.changeCount==1 and #diff.changes==1)
+assert(diff.verifiedProtection and diff.protectedChecks==1 and diff.changeCount==1 and #diff.changes==1)
 assert(#diff.feeds==8 and diff.feeds[1].category=="Currency" and not diff.feeds[1].revalidated
 	and diff.feeds[1].responseAge==diff.responseAges[1])
 assert(diff.changes[1].item=="Orb of Alteration" and diff.changes[1].sample.action=="Show")

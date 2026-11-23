@@ -184,12 +184,15 @@ function M.Open(profileId, profileName)
 		local archived = sync.archivedReviews(profileId)
 		local function openReview(review, historical)
 			local league = review.league or saved.league
+			local protection = type(review.protectedChecks)=="number"
+				and string.format("%d protected filter checks passed.",review.protectedChecks) or nil
 			local entries = {{
 				id="summary", label="Sync status", category="Run",
 				details=historical and {os.date("%Y-%m-%d %H:%M",historical.checkedAt),
-					historical.adjustments.." price decisions from the baseline.", "Protected drop checks passed."}
+					historical.adjustments.." price decisions from the baseline.", protection or "Protected drop checks passed."}
 					or {saved.summary or "Daily price sync", "Next eligible run: " .. (sync.nextEligible(saved,os.time()) or "Paused or disabled"),
-						review.backup and ("Backup: " .. saved.target .. ".before-pob-sync-" .. review.backup .. ".bak") or "No replacement backup yet."},
+						review.backup and ("Backup: " .. saved.target .. ".before-pob-sync-" .. review.backup .. ".bak") or "No replacement backup yet.",
+						protection},
 			}}
 			for i, feed in ipairs(review.feeds or {}) do
 				entries[#entries+1] = {id="feed-"..i,label=feed.category,category="Price feeds",details={

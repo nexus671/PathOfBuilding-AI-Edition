@@ -17,6 +17,34 @@ Hide
 Show
 ]]
 assert(validate(raw,{},true,1))
+local personal = [[# CUSTOM: Show Fated equipment on rank A and B bases
+Show
+    BaseType == "Amethyst Ring" "Agate Amulet"
+    Fated True
+    Rarity Normal Magic Rare
+    MinimapIcon 0 Purple Star
+# CUSTOM: Show fractured magic equipment
+Show
+    Class == "Boots" "Rings"
+    Rarity Magic
+    FracturedItem True
+    MinimapIcon 0 Yellow Diamond
+# CUSTOM: Hide Wisdom and Portal Scrolls
+Hide
+    BaseType == "Scroll of Wisdom" "Portal Scroll"
+]]..raw
+assert(select(6,validate(personal,{},true,1))==68)
+local extraChecks=0
+protected.checkPersonalSamples(personal,function() extraChecks=extraChecks+1 end)
+assert(extraChecks==20)
+for _, obstruction in ipairs({
+	{block='Hide\n    BaseType == "Amethyst Ring"\n',name="Amethyst Ring"},
+	{block='Hide\n    Class == "Boots"\n    Rarity Magic\n',name=require("Modules.LootFilterLibrary").baseExampleForClass("Boots")},
+	{block='Show\n    BaseType == "Portal Scroll"\n',name="Portal Scroll"},
+}) do
+	local ok, why = pcall(validate,obstruction.block..personal,{},true,1)
+	assert(not ok and why:find("Protected drop failed",1,true) and why:find(obstruction.name,1,true),tostring(why))
+end
 local candidate='Hide\n BaseType == "Cord Belt"\n Width >= 2\n'..raw;local ok,why=pcall(validate,candidate,{},true,1);assert(not ok and why:find('Protected drop failed',1,true),tostring(why))
 local uncertain='Hide\n Rarity == Unique\n DropLevel >= 1\n'..raw;local certain,reason=pcall(validate,uncertain,{},true,1);assert(not certain and reason:find('Missing DropLevel',1,true),tostring(reason))
 local uncertainDefence='Hide\n Rarity == Unique\n BaseDefencePercentile >= 50\n'..raw;local certainDefence,defenceReason=pcall(validate,uncertainDefence,{},true,1);assert(not certainDefence and defenceReason:find('Missing BaseDefencePercentile',1,true),tostring(defenceReason))
