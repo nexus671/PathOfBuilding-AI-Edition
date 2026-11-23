@@ -397,11 +397,28 @@ do
 		{"name":"Competing result","baseType":"Cord Belt","detailsId":"competing","chaosValue":120,"count":80,"listingCount":62},
 		{"name":"Thin result","baseType":"Cord Belt","detailsId":"thin","chaosValue":9000,"count":2,"listingCount":5},
 		{"name":"Conflicted result","baseType":"Cord Belt","detailsId":"conflicted","chaosValue":700,"count":50,"listingCount":55},
-		{"name":"Conflicted result","baseType":"Cord Belt","detailsId":"conflicted","chaosValue":5,"count":100,"listingCount":70}
-	]}]],{id="UniqueAccessory"},"Named result")
+		{"name":"Conflicted result","baseType":"Cord Belt","detailsId":"conflicted","chaosValue":5,"count":100,"listingCount":70},
+		{"name":"No identifier","baseType":"Cord Belt","chaosValue":400,"count":100,"listingCount":70},
+		{"name":"Wrong base","baseType":"Heavy Belt","detailsId":"collision","chaosValue":500,"count":100,"listingCount":70},
+		{"name":"Wrong base","baseType":"Cord Belt","detailsId":"collision","chaosValue":500,"count":100,"listingCount":70}
+	]}]],{id="UniqueAccessory"},"Named result",nil,{
+		{title="NAMED RESULT",baseName="Cord Belt"},
+		{title="Missing result",baseName="Cord Belt"},
+		{title="Missing result",baseName="Cord Belt"},
+		{title="Thin result",baseName="Cord Belt"},
+		{title="Different base",baseName="Leather Belt"},
+		{title="Alternate base",baseName="Leather Belt",baseLines={["Leather Belt"]={},["Cord Belt"]={}}},
+	})
 	assert(#sharedBase==1 and sharedBase[1].corrupted==false)
 	local evidence = sharedBase[1].baseEvidence
-	assert(evidence.names==4 and evidence.variants==4 and evidence.priced==2 and evidence.minimum==30 and evidence.maximum==120)
+	assert(evidence.names==6 and evidence.variants==6 and evidence.priced==2 and evidence.minimum==30 and evidence.maximum==120)
+	assert(#evidence.unquoted==3 and evidence.unquoted[1]=="Alternate base"
+		and evidence.unquoted[2]=="Missing result" and evidence.unquoted[3]=="Thin result")
+	local collision = browser.rows([[{"lines":[
+		{"name":"Same name","baseType":"Cord Belt","detailsId":"shared-id","chaosValue":300,"count":100,"listingCount":70},
+		{"name":"Different name","baseType":"Cord Belt","detailsId":"shared-id","chaosValue":300,"count":100,"listingCount":70}
+	]}]],{id="UniqueAccessory"},"=Same name")[1]
+	assert(collision.conflicting and not collision.price and collision.baseEvidence.priced==0)
 	local unmodifiedGem = browser.rows([[{"lines":[{"name":"Example gem","chaosValue":1,"gemLevel":1,"gemQuality":0}]}]],{id="SkillGem"})[1]
 	assert(unmodifiedGem.gemQuality==0 and unmodifiedGem.corrupted==nil and unmodifiedGem.incomplete)
 	local gems = [[{"lines":[

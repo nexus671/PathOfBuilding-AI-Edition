@@ -1,6 +1,10 @@
-VERSION[2.68.1-ai.preview1232][2026/11/23]
+VERSION[2.68.1-ai.preview1233][2026/11/23]
 
 * Preserve damaged planning data, including in bundle exports; reject malformed Atlas imports.
+
+VERSION[2.68.1-ai.preview1232][2026/11/23]
+
+* Compare unidentified unique price coverage against PoB's item catalogue and reject conflicting price IDs.
 
 VERSION[2.68.1-ai.preview1231][2026/11/23]
 
