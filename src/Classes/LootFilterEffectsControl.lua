@@ -21,7 +21,7 @@ function M.Open(original,sample,onKeep)
 	c.volume=new("SliderControl"):SliderControl(ui.anchor,{16,304,352,24},function(value) volume=math.floor(value*300+0.5);volumeChanged=true end);c.volume.val=volume/300
 	label("iconSizeLabel",392,276,"Minimap size");drop("iconSize",392,300,{{label="Large",val=0},{label="Medium",val=1},{label="Small",val=2}});c.iconSize:SelByValue(tonumber(original.MinimapIcon and original.MinimapIcon[1]) or 1,"val")
 	for _,key in ipairs({"iconColor","iconSize"}) do c[key].enabled=function() return c.iconShape.selIndex>2 end end
-	label("customLabel",16,348,"Custom sound files / relative paths")
+	label("customLabel",16,348,"Custom files (separate with semicolons)")
 	c.customPath=new("EditControl"):EditControl(ui.anchor,{16,372,352,28},original.CustomAlertSound and original.CustomAlertSound[1] or original.CustomAlertSoundOptional and original.CustomAlertSoundOptional[1] or "",nil,nil,500);c.customPath.placeholder="sound.wav"
 	c.customPath.enabled=function() return c.soundKind.selIndex>=5 end
 	local function browseSound(append)
@@ -47,7 +47,16 @@ function M.Open(original,sample,onKeep)
 	local beams={"Keep current","None"};for _,color in ipairs(options.colors) do beams[#beams+1]=color end
 	drop("beam",392,372,beams);c.beam:SelByValue(original.PlayEffect and original.PlayEffect[1] or "Keep current")
 	label("beamDurationLabel",392,420,"Beam duration");drop("beamDuration",392,444,{"Permanent","Temporary"});c.beamDuration:SelByValue(original.PlayEffect and original.PlayEffect[2]=="Temp" and "Temporary" or "Permanent");c.beamDuration.enabled=function() return c.beam.selIndex>2 end
-	ui.description(c,"help",16,440,352,55,{"Separate sound files with semicolons; the game chooses one. Preview plays the first local WAV or a reference tone."},13)
+	local function customActive() return c.soundKind.selIndex>=5 or c.soundKind.selIndex==1 and isCustom and current[1]~="None" end
+	label("previewFileLabel",16,440,"Custom file to preview");c.previewFileLabel.shown=customActive
+	drop("previewFile",16,460,{});c.previewFile.shown=customActive;c.previewFile.enabled=function() return #c.previewFile.list>0 end
+	c.previewFile.tooltipText="Preview one local WAV; the exported list still lets the game choose a file."
+	local function updatePreviewFiles()
+		local list={};for index,path in ipairs(require("Modules.LootFilterAudio").customPaths(c.customPath.buf)) do list[#list+1]={label=path,val=index} end
+		local selected=c.previewFile.selIndex;c.previewFile:SetList(list);c.previewFile.selIndex=math.max(1,math.min(selected,#list))
+	end
+	c.customPath.changeFunc=updatePreviewFiles;updatePreviewFiles()
+	local help=ui.description(c,"help",16,440,352,55,{"Numbered alerts use reference tones; the game plays its own sounds."},13);help.shown=function() return not customActive() end
 	local function styles(strict)
 		local next=copyTable(original);local mode=c.soundKind.selIndex
 		if mode==6 then next.CustomAlertSound=nil;next.CustomAlertSoundOptional=nil
@@ -64,7 +73,7 @@ function M.Open(original,sample,onKeep)
 	end
 	c.preview=new("Control"):Control(ui.anchor,{16,28,w-32,92});function c.preview:Draw() local x,y=self:GetPos();visual.floor(x,y,self.width,self.height);visual.chip(x,y,self.width,self.height,sample,{action="Show",styles=styles()}) end
 	c.keep=new("ButtonControl"):ButtonControl(ui.anchor,{16,h-42,220,28},"Use sound and effects",function() onKeep(styles(true));main:ClosePopup() end)
-	c.test=new("ButtonControl"):ButtonControl(ui.anchor,{252,h-42,220,28},"Preview sound",function() local _,message=require("Modules.LootFilterAudio").play(styles());main:OpenMessagePopup("Sound preview",message) end)
+	c.test=new("ButtonControl"):ButtonControl(ui.anchor,{252,h-42,220,28},"Preview sound",function() local index=customActive() and #c.previewFile.list>0 and c.previewFile:GetSelValueByKey("val") or nil;local _,message=require("Modules.LootFilterAudio").play(styles(),index);main:OpenMessagePopup("Sound preview",message) end)
 	c.close=new("ButtonControl"):ButtonControl(ui.anchor,{w-156,h-42,140,28},"Cancel",function() main:ClosePopup() end)
 	ui.style(c,{keep=true});visual.layers(c,{preview=true});main:OpenPopup(w,h,"Sound, minimap icon and beam",c,nil,nil,"close");return c
 end

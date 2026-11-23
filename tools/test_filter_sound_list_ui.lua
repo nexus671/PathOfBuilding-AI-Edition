@@ -19,6 +19,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  ui:click("addSound");assert(main.popups[1].controls.customPath.buf==selected,"Adding to an empty list failed")
  selected="C:/Sounds/second.wav";ui:click("addSound");assert(initial=="C:/Sounds/first.wav","Picker did not start near the previous file")
  assert(main.popups[1].controls.customPath.buf=="C:/Sounds/first.wav;C:/Sounds/second.wav","Adding replaced the existing path")
+ ui:choose("previewFile",2,"val");local savedPlay=audio.play;local chosen
+ audio.play=function(styles,index) chosen=index;assert(styles.CustomAlertSound[1]=="C:/Sounds/first.wav;C:/Sounds/second.wav");return true,"Preview played." end
+ ui:click("test");assert(chosen==2,"Preview did not use the chosen file");main:ClosePopup();audio.play=savedPlay
  if output then ui:frame():write(output.."/"..size[1].."-filter-sound-list.json") end
  ui:click("keep");assert(kept.CustomAlertSound[1]=="C:/Sounds/first.wav;C:/Sounds/second.wav")
  local saved=library.appearance({id="sound",title="Sound",text="Show\n BaseType == \"Chaos Orb\""},kept)
@@ -29,6 +32,9 @@ for _,size in ipairs({{1280,720},{1024,768},{960,640}}) do
  effects.Open({PlayAlertSound={"4","50"},CustomAlertSoundOptional={"C:/Sounds/first.wav","100"}},{BaseType="Chaos Orb"},function(value) kept=value end)
  ui:choose("soundKind","Optional custom sound");selected="C:/Sounds/second.wav";ui:click("addSound");ui:click("keep")
  assert(kept.PlayAlertSound[1]=="4" and kept.PlayAlertSound[2]=="50" and kept.CustomAlertSoundOptional[1]=="C:/Sounds/first.wav;C:/Sounds/second.wav","Optional sound lost its numbered fallback")
+ effects.Open(kept,{BaseType="Chaos Orb"},function() end);assert(main.popups[1].controls.previewFile:IsShown());ui:choose("previewFile",2,"val");savedPlay=audio.play;chosen=nil
+ audio.play=function(styles,index) chosen=index;assert(styles.PlayAlertSound[1]=="4" and styles.CustomAlertSoundOptional[1]=="C:/Sounds/first.wav;C:/Sounds/second.wav");return true,"Preview played." end
+ ui:click("test");assert(chosen==2,"Saved optional list preview did not use the chosen file");main:ClosePopup();audio.play=savedPlay;ui:click("close")
  browser.Open=original;ui:restore()
 end
 -- Playing a preview must not discard the selected item's filter result.

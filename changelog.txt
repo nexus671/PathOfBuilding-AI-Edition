@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1165][2026/11/22]
+
+* Preview a chosen WAV from a custom filter sound list.
+
 VERSION[2.68.1-ai.preview1164][2026/11/22]
 
 * Find saved crafting items from Planning Tools.

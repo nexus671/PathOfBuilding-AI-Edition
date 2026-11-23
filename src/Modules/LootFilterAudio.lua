@@ -82,10 +82,17 @@ function M.scaleReferenceWave(raw,volume)
 	error("Missing reference audio samples")
 end
 -- Prepare only explicitly selected local WAV files; relative game paths are preserved.
-function M.prepareCustomWave(path,volume)
+function M.customPaths(value,limit)
+	local result={};if type(value)~="string" then return result end
+	for path in (value..";"):gmatch("(.-);") do path=path:match("^%s*(.-)%s*$");if path~="" then result[#result+1]=path;if limit and #result>=limit then break end end end
+	return result
+end
+function M.prepareCustomWave(path,volume,index)
 	if type(path)~="string" then return nil,"No custom sound path is configured." end
-	path=path:match("^[^;]*") or ""
-	path=path:match("^%s*(.-)%s*$")
+	index=index or 1
+	if type(index)~="number" or index<1 or index~=math.floor(index) then return nil,"Choose a custom sound file to preview." end
+	local paths=M.customPaths(path,index);if not paths[index] then return nil,"Choose a custom sound file to preview." end
+	path=paths[index]
 	if path:find("[%z\r\n]") or not (path:match("^%a:[/\\]") or path:sub(1,2)=="\\\\" or path:sub(1,1)=="/") then
 		return nil,"Choose an absolute WAV path for preview; relative paths remain in the exported filter."
 	end
@@ -99,7 +106,7 @@ function M.prepareCustomWave(path,volume)
 	local raw=file:read("*a");file:close()
 	local ok,wave=pcall(M.scaleReferenceWave,raw,volume)
 	if not ok then return nil,"Custom preview requires a valid 8-, 16-, 24- or 32-bit integer PCM WAV file." end
-	return wave,"Playing the first custom WAV at the selected preview volume."
+	return wave,"Playing the selected custom WAV at the selected preview volume."
 end
 local function playWave(wave,message)
 	local ffi=require("ffi");if ffi.os~="Windows" then return false,"Audio preview is available on Windows." end
@@ -111,11 +118,11 @@ local function playWave(wave,message)
 	M.buffer=buffer;M.library=sound
 	return true,message
 end
-function M.play(styles)
+function M.play(styles,customIndex)
 	local uncertain=ambiguity(styles);if uncertain then return false,uncertain end
 	local custom=styles.CustomAlertSound or styles.CustomAlertSoundOptional
 	if custom and custom[1]~="None" then
-		local wave,message=M.prepareCustomWave(custom[1],custom[2]);if not wave then return false,message end
+		local wave,message=M.prepareCustomWave(custom[1],custom[2],customIndex);if not wave then return false,message end
 		return playWave(wave,message)
 	end
 	local id,why=M.alert(styles);if not id then return false,why end
