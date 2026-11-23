@@ -513,19 +513,27 @@ launch.DownloadPage = function(_,url,callback)
 	assert(url:find("type=UniqueAccessory",1,true))
 	local header = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT").."\r\n\r\n"
 	callback({header=header,body=[[{"lines":[
-		{"name":"Named result","baseType":"Cord Belt","chaosValue":30,"count":50,"listingCount":40},
-		{"name":"Competing result","baseType":"Cord Belt","chaosValue":120,"count":80,"listingCount":62}
+		{"name":"Named result","baseType":"Cord Belt","detailsId":"named-result","chaosValue":30,"count":50,"listingCount":40},
+		{"name":"Competing result","baseType":"Cord Belt","detailsId":"competing-result","chaosValue":120,"count":80,"listingCount":62}
 	]}]]})
 end
 require("Classes.LootFilterMarketBrowseControl").Open()
 marketUI:text("league","Covens")
 marketUI:choose("category","Unique accessories")
 marketUI:text("query","Named result")
+local originalUniqueDB = main.uniqueDB
+main.uniqueDB = {list={
+	{title="Named result",baseName="Cord Belt"},
+	{title="Catalogue-only unique",baseName="Cord Belt"},
+}}
 marketUI:click("get")
+main.uniqueDB = originalUniqueDB
 assert(main.popups[1].title=="Unique accessories market prices")
 local marketDetails={}
 for _, row in ipairs(main.popups[1].controls.details.list) do marketDetails[#marketDetails+1]=StripEscapes(row[1] or "") end
-assert(table.concat(marketDetails," "):find("30 to 120 chaos",1,true))
+local coverage = table.concat(marketDetails," ")
+assert(coverage:find("30 to 120 chaos",1,true) and coverage:find("PoB catalogue entries without a supported quote (1)",1,true),coverage)
+assert(coverage:find("Unpriced: Catalogue-only unique",1,true))
 do
 	main.popups = {}
 	launch.DownloadPage = function(_,url,callback)

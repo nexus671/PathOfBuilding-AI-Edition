@@ -110,7 +110,7 @@ local function variantEvidence(lines)
 			local current = evidence[id]
 			if current then
 				current.supported = current.supported and supportedVolume(item)
-				for _, field in ipairs({"name","baseType","gemLevel","gemQuality","corrupted","variant","chaosValue"}) do
+				for _, field in ipairs({"name","baseType","gemLevel","gemQuality","corrupted","variant","links","chaosValue"}) do
 					if current.item[field]~=item[field] then
 						current.conflicting = true
 						break
@@ -126,24 +126,33 @@ end
 
 -- A loot filter sees the base of an unidentified unique. Group the whole
 -- category first so searching for one unique cannot hide competing outcomes.
-local function uniqueBaseEvidence(lines)
+local function uniqueBaseEvidence(lines, variants, catalogue)
 	local groups = {}
 	for _, item in ipairs(lines) do
 		if type(item)=="table" and marketName(item.name) and marketName(item.baseType) then
 			local base = groups[item.baseType]
 			if not base then
-				base = {names={}, quotes={}}
+				base = {names={}, quotes={}, supportedNames={}}
 				groups[item.baseType] = base
 			end
-			base.names[item.name] = true
-			local identity = item.name .. "\0" .. (marketName(item.detailsId) and item.detailsId
-				or (marketName(item.variant) and item.variant or "") .. "\0" .. (positive(item.links) and item.links or ""))
-			local price = positive(item.chaosValue) and supportedVolume(item) and item.chaosValue or false
-			if base.quotes[identity] == nil then
-				base.quotes[identity] = price
-			elseif base.quotes[identity] ~= price then
-				base.quotes[identity] = false
-			end
+			local name = item.name:lower()
+			base.names[name] = true
+			local id = marketName(item.detailsId) and item.detailsId
+			local unverified = (marketName(item.variant) and item.variant or "") .. "\0" .. (positive(item.links) and item.links or "")
+			local identity = id and ("id\0"..id) or ("unidentified\0"..name.."\0"..unverified)
+			local quote = id and variants[id]
+			local price = quote and not quote.conflicting and quote.supported and positive(item.chaosValue) and item.chaosValue or false
+			base.quotes[identity] = price
+			if price then base.supportedNames[name] = true end
+		end
+	end
+	local missing = {}
+	for _, item in pairs(catalogue or {}) do
+		local group = groups[item.baseName]
+		if group and marketName(item.title) and not group.supportedNames[item.title:lower()] then
+			local names = missing[item.baseName] or {}
+			names[item.title:lower()] = item.title
+			missing[item.baseName] = names
 		end
 	end
 	local evidence = {}
@@ -157,12 +166,15 @@ local function uniqueBaseEvidence(lines)
 				minimum, maximum = math.min(price,minimum or price), math.max(price,maximum or price)
 			end
 		end
-		evidence[name] = {names=names,variants=total,priced=priced,minimum=minimum,maximum=maximum}
+		local unquoted = {}
+		for _, title in pairs(missing[name] or {}) do unquoted[#unquoted+1] = title end
+		table.sort(unquoted)
+		evidence[name] = {names=names,variants=total,priced=priced,minimum=minimum,maximum=maximum,unquoted=unquoted}
 	end
 	return evidence
 end
 
-function M.rows(body, category, query, target)
+function M.rows(body, category, query, target, catalogue)
 	assert(type(body)=="string" and #body<=M.maxBytes, "Market response exceeds the size limit")
 	local out = {}
 	query = (query or ""):lower()
@@ -186,13 +198,15 @@ function M.rows(body, category, query, target)
 	else
 		local data = json.decode(body)
 		assert(type(data)=="table" and type(data.lines)=="table", "Invalid stash overview")
-		local uniqueEvidence = category.id:match("^Unique") and uniqueBaseEvidence(data.lines)
-		local variants = M.advisory(category) and variantEvidence(data.lines)
+		local unique = category.id:match("^Unique")
+		local advisory = M.advisory(category)
+		local variants = (unique or advisory) and variantEvidence(data.lines)
+		local uniqueEvidence = unique and uniqueBaseEvidence(data.lines,variants,catalogue)
 		local handled = {}
 		for _, item in ipairs(data.lines) do
 			assert(type(item)=="table", "Invalid stash overview entry")
 			local identity = marketName(item.detailsId) and item.detailsId or nil
-			local advisoryId = variants and identity
+			local advisoryId = advisory and identity
 			local comparable = not target or (target.level and item.name==target.name and item.gemLevel==target.level
 				and item.gemQuality==target.quality or not target.level and (item.name==target.name
 					or target.category=="BaseType" and item.baseType==target.name))
@@ -203,14 +217,14 @@ function M.rows(body, category, query, target)
 				local gemLevel = positive(item.gemLevel) and item.gemLevel==math.floor(item.gemLevel) and item.gemLevel or nil
 				local gemQuality = (positive(item.gemQuality) or item.gemQuality==0)
 					and item.gemQuality==math.floor(item.gemQuality) and item.gemQuality or nil
-				local evidence = advisoryId and variants[advisoryId]
+				local evidence = variants and identity and variants[identity]
 				local conflicting = evidence and evidence.conflicting
 				local supported = variants and supportedVolume(item) and (not evidence or evidence.supported)
 				if advisoryId then handled[advisoryId] = true end
 				out[#out+1] = {
 					name=item.name, price=not conflicting and item.chaosValue or nil, identity=identity,
 					conflicting=conflicting, supported=supported or nil,
-					incomplete=variants and (not identity or gems[category.id]
+					incomplete=advisory and (not identity or gems[category.id]
 						and (not gemLevel or gemQuality==nil or corrupted==nil)) or nil,
 					base=type(item.baseType)=="string" and item.baseType or nil,
 					variant=type(item.variant)=="string" and item.variant or nil,
