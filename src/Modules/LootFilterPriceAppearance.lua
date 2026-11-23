@@ -75,6 +75,7 @@ local function duplicate(rule,spec,base)
 end
 
 local function render(rule,specs,base,newline)
+	-- cspell:ignore keyorder
 	local lines={begin..assert(json.encode(specs,{keyorder={"name","firstStack","upper","tier","area"}}))}
 	for _, spec in ipairs(specs) do
 		for _, line in ipairs(duplicate(rule,spec,base)) do lines[#lines+1]=line end

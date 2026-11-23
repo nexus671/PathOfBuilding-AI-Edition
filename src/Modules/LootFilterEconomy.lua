@@ -287,7 +287,12 @@ local function priceHighlights(policy, quote, cutoff, name, area)
 	local blocks = {}
 	if not M.liquid(quote) or not finite(quote.price) then return blocks end
 	local function stackAt(threshold)
-		return threshold and math.max(cutoff+1,math.ceil(threshold/quote.price)) or nil
+		if not threshold then return nil end
+		local stack = threshold / quote.price
+		local whole = math.floor(stack)
+		-- An exact decimal multiple can land a few binary rounding steps above a whole stack.
+		local first = stack-whole <= whole*4.44e-16 and whole or math.ceil(stack)
+		return math.max(cutoff+1,first)
 	end
 	local highlight = stackAt(policy.highlightChaos)
 	local strong = stackAt(policy.strongHighlightChaos)
