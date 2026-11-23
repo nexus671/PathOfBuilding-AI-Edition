@@ -141,6 +141,17 @@ local refreshUI = headless.install({width=960,height=640})
 refreshUI:bind(build)
 local baseRefresh = require("Modules.LootFilterBaseRefresh")
 local parser = require("Modules.LootFilterParser")
+local protected = require("Modules.LootFilterProtectedDrops")
+local sixLinks = parser.parse([[Show
+    LinkedSockets 6
+    MinimapIcon 0 Red Diamond
+Hide
+]])
+for _, sample in ipairs(protected.samples()) do
+	if sample.item.BaseType=="Royal Plate" then
+		assert(sample.item.SocketGroup=="WWWWWW" and protected.explicitlyShown(parser.simulate(sixLinks,sample.item)))
+	end
+end
 local before = parser.parse([[Show
     BaseType == "Cord Belt"
     MinimapIcon 0 Purple Star

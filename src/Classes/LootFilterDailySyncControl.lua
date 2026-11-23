@@ -180,6 +180,8 @@ function M.Open(profileId, profileName)
 		local owner = main.popups[1]
 		local passed, err = pcall(sync.preview,c.target.buf,c.baseline.buf,c.league.buf,options(),function(before, after)
 			if main.popups[1] == owner then require("Classes.LootFilterDiffControl").Open(before,after,true) end
+		end,function(message)
+			if main.popups[1] == owner then main:OpenMessagePopup("Filter preview failed",ui.errorText(message)) end
 		end)
 		if not passed then main:OpenMessagePopup("Daily filter sync", ui.errorText(err)) end
 	end,432)
