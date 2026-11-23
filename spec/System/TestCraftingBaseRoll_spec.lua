@@ -47,6 +47,12 @@ describe("Crafting modifier base-roll targets",function()
 		local range=sim.rollRange(regen,function() return 0.5 end)
 		assert.equal(0.5,range);assert.equal(5.1,sim.baseRollValue(regen,range))
 		assert.equal(1,sim.rollRange(regen,function() return 0.9999 end))
+		local state=copyTable(model.initial);state.rarity="RARE";state.affixes={{id="LifeRegeneration2",range=0.5}}
+		local result=sim.perform(raw,{method="divine"},7,state);local tick=result.state.affixes[1].range*354
+		assert.is_true(math.abs(tick-math.floor(tick+0.5))<1e-8)
+		assert.is_truthy(result.itemText:find("Regenerate 4 Life per second",1,true))
+		assert.is_true(sim.matches(result.state,{{anyOf={"LifeRegeneration2"},minBaseValue=4,maxBaseValue=4}},nil,model))
+
 	end)
 	it("preserves base-roll goals in saved crafting recipes",function()
 		newBuild();local recipe={steps={{method="alchemy"}},targets={{anyOf={"IncreasedLife4"},minBaseValue=65,maxBaseValue=67}}}
