@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1163" />
+	<Version number="2.68.1-ai.preview1164" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="e3d064b8ad22407239792f58e48971aad3e49f28" />
+	<File name="changelog.txt" part="default" sha1="3c264755d388e172059689b6e44bfdd216fa32ad" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1723,7 +1723,7 @@
 	<File name="Classes/CraftingGwennenControl.lua" part="program" sha1="3e68fc27dfc20ca962fb4c1ed5381fecc818adef" />
 	<File name="Classes/CraftingRogControl.lua" part="program" sha1="785a0db547ce4fe70d1338dd173a355e3b58d5a4" />
 	<File name="Classes/CraftingHistoryControl.lua" part="program" sha1="e5d93860b1f0b56531e3c581c95713d4ce1c9ad0" />
-	<File name="Classes/CraftingInventoryControl.lua" part="program" sha1="6dd21bac60a25c1822f8b5260609cfe90ff2bc7f" />
+	<File name="Classes/CraftingInventoryControl.lua" part="program" sha1="df82e6f4a1c4802eceaa169911d746596111b651" />
 	<File name="Classes/CraftingItemComparisonControl.lua" part="program" sha1="e2a04459cde8751208135bfea6239dd98280bc81" />
 	<File name="Classes/CraftingItemEditorControl.lua" part="program" sha1="5b7eeaa6c3ba330494a33c879ae19da1d61566a2" />
 	<File name="Classes/CraftingItemStatsControl.lua" part="program" sha1="ab9a7cd49403a6460caa78c4a99d82498ff02136" />
@@ -1800,7 +1800,7 @@
 	<File name="Classes/PassiveTreeView.lua" part="program" sha1="b330ee507dee78257fbdcab224df34803646eedc" />
 	<File name="Classes/PathControl.lua" part="program" sha1="868c38fd9095317b6721f6932cf06590bd616f13" />
 	<File name="Classes/PlanningBrowserControl.lua" part="program" sha1="8ac548138f005b08f701ba50d043d3a042af81e0" />
-	<File name="Classes/PlanningToolsControl.lua" part="program" sha1="5ec1503686dba99f4b3b36012bbb02d65985372c" />
+	<File name="Classes/PlanningToolsControl.lua" part="program" sha1="9589ef2dcec22897463374d0af0ff83a783ca0fb" />
 	<File name="Classes/PoBArchivesProvider.lua" part="program" sha1="acf68b7718782ce267df01614b497af246389ca5" />
 	<File name="Classes/PoEAPI.lua" part="program" sha1="197f3091ba9b511b923ca95e5952933a3ffd0f21" />
 	<File name="Classes/PopupDialog.lua" part="program" sha1="1e2334c463bfbb9bac16f2abe4409cf3cece9947" />

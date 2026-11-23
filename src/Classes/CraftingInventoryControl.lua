@@ -129,6 +129,11 @@ function M.Open(build,options)
 	ui.label(c,"saveHint",528,h-36,"Use build Save.",12)
 	button("close",w-156,h-42,140,"Close",function() main:ClosePopup() end)
 	c.search.changeFunc=refresh;ui.style(c,{resume=true},{savedItem=true});for _,control in pairs(c) do control.layoutAudit="crafting-inventory" end;refresh()
+	if options.selectProjectId and options.selectItemId then
+		for index,entry in ipairs(entries) do if entry.project.id==options.selectProjectId and entry.item.id==options.selectItemId then
+			choose(entry);local cols=dimensions();local top=6+math.floor((index-1)/cols)*128;grid.scroll=math.max(0,math.min(math.max(0,12+math.ceil(#entries/cols)*128-grid.height),top));break
+		end end
+	end
 	main:OpenPopup(w,h,"Crafting item inventory",c,nil,"search","close");return c
 end
 return M

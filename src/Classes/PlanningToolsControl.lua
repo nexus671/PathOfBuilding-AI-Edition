@@ -124,6 +124,9 @@ function M.Open(build)
 	end
 	for _,project in ipairs(build.savers.CraftingProjects.projects) do
 		entries[#entries+1]={id="craft:"..project.id,label=project.title,search="crafting project "..project.slot,category="Crafting projects",projectId=project.id,details={"Open crafting project: "..project.title,"Equipment slot: "..project.slot,"A working craft for this project remains available."}}
+		for _,item in ipairs(project.inventory or {}) do
+			entries[#entries+1]={id="craft-item:"..project.id..":"..item.id,label=item.title,search="saved crafting item "..project.title.." "..item.slot.." "..(item.originNote or ""),category="Saved crafting items",projectId=project.id,itemId=item.id,details={"Open saved item in "..project.title,"Equipment slot: "..item.slot,"Search its modifiers in the item inventory."}}
+		end
 	end
 	for _,group in ipairs({{"milestones","Roadmap","Journey milestones"},{"wishlist","Gear","Journey gear goals"},{"resources","Budget","Journey resources"},{"stages","Leveling","Journey leveling stages"}}) do
 		for _,item in ipairs(build.savers.BuildJourney.data[group[1]]) do
@@ -157,6 +160,11 @@ function M.Open(build)
 		elseif entry.filterId then openFilter(build,entry.filterId,entry.ruleId)
 		elseif entry.atlasId then
 			for _,plan in ipairs(build.savers.AtlasPlans.plans) do if plan.id==entry.atlasId then workspace:Show("atlas",plan);return end end
+		elseif entry.projectId and entry.itemId then
+			local found=false;for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id==entry.projectId then for _,item in ipairs(project.inventory or {}) do if item.id==entry.itemId then found=true;break end end;break end end
+			if not found then return end
+			workspace:Show("crafting")
+			require("Classes.CraftingInventoryControl").Open(build,{selectProjectId=entry.projectId,selectItemId=entry.itemId,resume=function(project) workspace.cache.crafting.layout.openWorkbench(project) end})
 		elseif entry.projectId then
 			for _,project in ipairs(build.savers.CraftingProjects.projects) do if project.id==entry.projectId then workspace:Show("crafting");workspace.cache.crafting.layout.openWorkbench(project);return end end
 		elseif entry.id=="baseSets" then require("Classes.VendorBaseSetsControl").Open(build) elseif entry.id=="vendor" then require("Classes.VendorRarePairsControl").Open(build) elseif entry.id=="rareSets" then require("Classes.VendorRareSetsControl").Open(build) elseif entry.id=="gemQuality" then require("Classes.GemQualityPlanControl").Open(build) elseif entry.id=="qualityVendor" then require("Classes.VendorQualitySetsControl").Open(build) elseif entry.id=="performance" then M.Performance(build) elseif entry.id=="recovery" then M.Recovery(build) else M.Bundle(build) end

@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1164][2026/11/22]
+
+* Find saved crafting items from Planning Tools.
+
 VERSION[2.68.1-ai.preview1163][2026/11/22]
 
 * Explain how AI clients can cancel saved-item searches.

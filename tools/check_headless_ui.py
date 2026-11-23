@@ -78,6 +78,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_atlas_plan_pickups_ui.lua")
     sources.append(ROOT / "tools/test_quality_calculation_ui.lua")
     sources.append(ROOT / "tools/test_gem_quality_ui.lua")
+    sources.append(ROOT / "tools/test_global_crafting_item_ui.lua")
     sources.append(ROOT / "tools/test_anoint_sort_ui.lua")
     sources.append(ROOT / "tools/test_timeless_dialog_ui.lua")
     sources.append(ROOT / "tools/test_ai_filter_proposal_ui.lua")
@@ -235,6 +236,10 @@ def main():
                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "gem-quality-controls.log").write_text(gem_quality.stdout)
     assert gem_quality.returncode == 0, gem_quality.stdout
+    global_crafting_item = subprocess.run(lua_command + ["../tools/test_global_crafting_item_ui.lua", str(frames)], cwd=ROOT / "src",
+                                          env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "global-crafting-item-controls.log").write_text(global_crafting_item.stdout)
+    assert global_crafting_item.returncode == 0, global_crafting_item.stdout
     anoint_sort = subprocess.run(lua_command + ["../tools/test_anoint_sort_ui.lua"], cwd=ROOT / "src",
                                  env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "anoint-sort-controls.log").write_text(anoint_sort.stdout)
@@ -326,10 +331,12 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2402, f"Expected 2402 UI frames, found {len(paths)}"
+    assert len(paths) == 2408, f"Expected 2408 UI frames, found {len(paths)}"
     for name in ("960-inventory-source.json", "960-inventory-source-detail.json"):
         assert (frames / name).is_file(), f"Missing saved-item source view: {name}"
     for width in (960, 1024, 1280):
+        for view in ("search", "selected"):
+            assert (frames / f"{width}-global-crafting-item-{view}.json").is_file(), f"Missing global item {view} at {width}px"
         for scene in ("beyond", "incursion"):
             assert (frames / f"{width}-filter-{scene}-examples.json").is_file(), f"Missing {scene} scene at {width}px"
         def label_and_background(name):
