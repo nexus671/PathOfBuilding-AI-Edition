@@ -16,7 +16,7 @@ class ManifestCheckTest(unittest.TestCase):
             def write_log(text):
                 data = text.encode("utf-8")
                 log.write_bytes(data)
-                digest = hashlib.sha1(data).hexdigest()
+                digest = hashlib.sha1(data.replace(b"\n", b"\r\n")).hexdigest()
                 manifest.write_text('<PoBVersion><Version number="2.68.1-ai.preview5"/>'
                                     '<File part="default" name="changelog.txt" sha1="' + digest + '"/>'
                                     '</PoBVersion>', encoding="utf-8")
@@ -25,6 +25,25 @@ class ManifestCheckTest(unittest.TestCase):
             write_log('VERSION[2.68.1-ai.preview5][2026/11/22]\n\n--- Notes ---\n')
             self.assertTrue(any("no changes" in error for error in check(root)[1]))
             write_log('VERSION[2.68.1-ai.preview5][2026/11/22]\nA change\n')
+            self.assertEqual([], check(root)[1])
+
+    def test_changelog_hash_must_verify_windows_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            data = b"VERSION[2.68.1-ai.preview5][2026/11/22]\nA change\n"
+            (root / "changelog.txt").write_bytes(data)
+            manifest = root / "manifest.xml"
+            def write_hash(content):
+                digest = hashlib.sha1(content).hexdigest()
+                manifest.write_text('<PoBVersion><Version number="2.68.1-ai.preview5"/>'
+                                    '<File part="default" name="changelog.txt" sha1="' + digest + '"/>'
+                                    '</PoBVersion>', encoding="utf-8")
+            write_hash(data)
+            self.assertTrue(any("Windows newline mismatch" in error for error in check(root)[1]))
+            windows = data.replace(b"\n", b"\r\n")
+            write_hash(windows)
+            self.assertEqual([], check(root)[1])
+            (root / "changelog.txt").write_bytes(windows)
             self.assertEqual([], check(root)[1])
 
     def test_rejects_lf_only_source_hash_that_would_fail_on_windows(self):

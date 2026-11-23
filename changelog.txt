@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1158][2026/11/22]
+
+* Verify release notes consistently across Windows and other platforms.
+
 VERSION[2.68.1-ai.preview1157][2026/11/22]
 
 * Speed up repeated browsing of saved crafting items.

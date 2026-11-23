@@ -64,7 +64,7 @@ def check(root, read_bytes=None):
         digest = hashlib.sha1(content).hexdigest()
         if digest != expected and hashlib.sha1(content.replace(b"\n", b"\r\n")).hexdigest() != expected:
             errors.append(f"Hash mismatch: {part}/{name}")
-        elif part in {"program", "tree"} and path.suffix.lower() in SOURCE_TEXT_SUFFIXES and b"\0" not in content:
+        elif ((part in {"program", "tree"} and path.suffix.lower() in SOURCE_TEXT_SUFFIXES) or (part == "default" and name == "changelog.txt")) and b"\0" not in content:
             windows_content = content.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
             if hashlib.sha1(windows_content).hexdigest() != expected:
                 errors.append(f"Windows newline mismatch: {part}/{name}")
