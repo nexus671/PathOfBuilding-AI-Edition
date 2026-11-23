@@ -99,6 +99,46 @@ if output then reviewUI:frame():write(output..'/'..reviewWidth..'-filter-impact-
 reviewUI:text('search','Orb of Chance');local generic={};for _,row in ipairs(main.popups[1].controls.details.list) do generic[#generic+1]=StripEscapes(row[1] or '') end;assert(table.concat(generic,' '):find('preview cannot resolve a filter rule or included file',1,true),'Other uncertainty was not explained')
 reviewUI:click('close');main.popups={};reviewFixture=nil
 
+-- Use the real GGG parser and a deterministic network response through the native review.
+newBuild()
+main.popups = {}
+local feedUI = headless.install({width=960,height=640})
+feedUI:bind(build)
+local ggg = require("Modules.LootFilterExchangeCrossCheck")
+local reviewTime = 1795449900
+local hour = ggg.hour(reviewTime)
+local itemId = assert(ggg.itemId("Orb of Alteration"))
+local chaosId = "Metadata/Items/Currency/CurrencyRerollRare"
+local trade = {league="Covens",market_pair={chaosId,itemId},volume_traded={[itemId]=500,[chaosId]=120}}
+local encode = require("dkjson").encode
+local valid = encode({next_change_id=hour+3600,markets={trade}})
+assert(not pcall(ggg.decode,valid,hour-3600))
+local quote = assert(ggg.compare(ggg.decode(valid,hour),"Covens","Orb of Alteration"))
+assert(quote.price==0.24 and quote.count==500)
+assert(not ggg.compare({trade,trade},"Covens","Orb of Alteration"))
+assert(not ggg.compare({trade},"Standard","Orb of Alteration"))
+assert(not ggg.compare({trade},"Covens","Chaos Orb"))
+trade.volume_traded[chaosId] = 20
+assert(not ggg.compare({trade},"Covens","Orb of Alteration"))
+local configMock, originalFetch = sync.configuration, launch.DownloadPage
+sync.configuration = function()
+	return {league="Covens", target=selected, enabled=true, hour=9, summary="Protected drops verified.",
+		review={checkedAt=reviewTime,changes={{name="Orb of Alteration",old=10,cutoff=6,price=0.21,volume=1000,maps=true}},
+			feeds={{category="Currency",age=128,revalidated=true}}}}
+end
+launch.DownloadPage = function(_, url, callback)
+	assert(url==ggg.endpoint..hour)
+	callback({body=valid})
+end
+require("Classes.LootFilterDailySyncControl").Open()
+feedUI:click("review")
+assert(main.popups[1].title=="Daily filter sync review")
+feedUI:text("search","Orb of Alteration")
+feedUI:click("secondary")
+assert(main.popups[1].title=="GGG trade comparison")
+sync.configuration, launch.DownloadPage = configMock, originalFetch
+print("Native review compares exact direct-chaos historical trade volumes with the primary quote")
+
 -- Add a price-managed rule through the normal workspace and round-trip the
 -- profile through its build saver and compiler without editing filter text.
 newBuild()
@@ -193,3 +233,60 @@ refreshUI:click("choose")
 assert(accepted and accepted.baseCommit==filters.source().commit and #accepted.rules==1 and accepted.rules[1].text==legacy.rules[1].text)
 launch.DownloadPage=actualDownload
 print("NeverSink refresh previews and validates the compiled candidate before preserving personal rules in the draft")
+
+-- Exercise the exact publish workflow with a simulated account response.
+newBuild()
+main.popups = {}
+local accountUI = headless.install({width=960,height=640})
+accountUI:bind(build)
+local account = require("Modules.LootFilterAccount")
+local confirmedRaw = "Show\n    Class == \"Maps\"\n"
+local existingRaw = "Hide\n    Class == \"Maps\"\n"
+local tokenRequests = 0
+local writes = 0
+local remoteBody = existingRaw
+sync.verifiedOutput = function(id)
+	assert(id == "default")
+	return confirmedRaw,{digest=string.rep("a",40),revision=string.rep("b",40),realm="pc"}
+end
+account.request = function(_,method,id,payload,callback)
+	tokenRequests = tokenRequests+1
+	if not id then
+		assert(method=="GET")
+		callback({filters={{id="verified-target",realm="pc",filter_name="Account mapping"},{id="console",realm="xbox",filter_name="Console"}}})
+	elseif method=="GET" then
+		assert(id=="verified-target")
+		callback({filter={id=id,realm="pc",filter_name="Account mapping",filter=remoteBody}})
+	else
+		assert(method=="POST" and id=="verified-target" and payload.filter==confirmedRaw)
+		for key in pairs(payload) do assert(key=="filter") end
+		writes = writes+1
+		callback({filter={id=id,realm="pc",filter_name="Account mapping",filter=payload.filter,validation={valid=true}}})
+	end
+end
+local function openAccount()
+	require("Classes.LootFilterSyncAccountControl").Open("default")
+	accountUI:click("list")
+	assert(main.popups[1].title=="Choose an account filter")
+	local selection = main.popups[1].controls
+	for _, row in ipairs(selection.results.list) do assert(not row.entry or row.entry.id ~= "console") end
+	accountUI:click("choose")
+	assert(main.popups[1].title=="Review verified account output")
+	assert(not main.popups[1].controls.publish:IsEnabled())
+	accountUI:click("diff")
+	assert(main.popups[1].title=="Filter file changes")
+	accountUI:click("close")
+	assert(main.popups[1].controls.publish:IsEnabled())
+end
+openAccount()
+remoteBody = remoteBody .. "# account has changed"
+accountUI:click("publish")
+assert(writes==0 and tokenRequests==3 and main.popups[1].title=="Account filter publication")
+main.popups = {}
+remoteBody = existingRaw
+openAccount()
+accountUI:click("publish")
+assert(account.pending and writes==0)
+account.tick(os.time())
+assert(writes==1 and main.popups[1].title=="Account filter published")
+print("Reviewed account publication preserves the realm, rejects remote drift and sends the exact approved file")

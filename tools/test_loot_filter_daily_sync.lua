@@ -94,6 +94,8 @@ local payload=require("dkjson").encode(exposed)
 assert(not payload:find("target.filter",1,true) and not payload:find("protect.json",1,true))
 local diff = sync.publicDiff(now)
 assert(diff.verifiedProtection and diff.changeCount==1 and #diff.changes==1)
+assert(#diff.feeds==8 and diff.feeds[1].category=="Currency" and not diff.feeds[1].revalidated
+	and diff.feeds[1].responseAge==diff.responseAges[1])
 assert(diff.changes[1].item=="Orb of Alteration" and diff.changes[1].sample.action=="Show")
 local diffPayload=require("dkjson").encode(diff)
 assert(not diffPayload:find("target.filter",1,true) and not diffPayload:find("protect.json",1,true))
@@ -178,7 +180,48 @@ assert(reviewed and networkCount==9 and read(target)==original)
 reviewed=nil
 sync.preview(target,baseline,"Covens",options,function(_, candidate) reviewed=candidate end)
 assert(reviewed and conditional==8 and networkCount==17)
+sync.configure(target,baseline,"Covens",options)
+sync.tick(clock,true)
+local revalidated = sync.publicDiff(clock)
+assert(#revalidated.feeds==8 and revalidated.feeds[1].category=="Currency" and revalidated.feeds[1].revalidated
+	and revalidated.feeds[1].responseAge==revalidated.responseAges[1])
+local originalAge = revalidated.feeds[1].responseAge
+clock=clock+61
+sync.tick(clock,true)
+assert(sync.publicDiff(clock).feeds[1].responseAge==originalAge+61)
+local successfulOutput = read(target)
+launch.DownloadPage = function(_, _, callback, params)
+	assert(params.header:find('If-None-Match: W/"fixture"',1,true))
+	callback({header="HTTP/1.1 304 Not Modified\r\nAge: 3601\r\n\r\n", body=""}, "Response code: 304")
+end
+clock=clock+1
+sync.tick(clock,true)
+assert(sync.status:find("snapshot is stale",1,true) and read(target)==successfulOutput)
+sync.rollback()
+sync.disable()
 os.time=systemTime
+
+-- An expired season yields an empty successful price response. Confirm
+-- against the fresh provider list and retain the user's chosen profile.
+local obsolete = "Ended Fixture"
+local leagueChecks = 0
+local markets = '[{"id":"Covens","name":"Covens"},{"id":"Standard","name":"Standard"}]'
+launch.DownloadPage = function(_,url,callback)
+	if url:match("/leagues$") then
+		leagueChecks = leagueChecks+1
+		callback({header=header,body=markets})
+	else
+		callback({header=header,body='{"core":{"primary":"chaos"},"items":[],"lines":[]}'})
+	end
+end
+sync.configure(target,baseline,obsolete,options)
+sync.tick(now,true)
+assert(leagueChecks==1 and sync.configuration().league==obsolete and read(target)==original)
+assert(sync.status:find("no longer listed",1,true) and sync.configuration().lastFailure)
+sync.configure(target,baseline,"Covens",options)
+sync.tick(now,true)
+assert(leagueChecks==2 and sync.status:find("No priced exchange items",1,true) and read(target)==original)
+sync.disable()
 local browser = require("Modules.LootFilterMarketBrowse")
 local gear = browser.rows([[{"lines":[{"name":"Example gear","baseType":"Cord Belt","variant":"A","chaosValue":20,"listingCount":17},{"name":"Example gear","baseType":"Cord Belt","variant":"B","chaosValue":32,"listingCount":1}]}]], {id="UniqueAccessory"})
 assert(#gear==2 and gear[1].variant=="B" and gear[2].listings==17)
@@ -259,6 +302,28 @@ assert(not sync.busy and sync.status:find("settings changed",1,true),sync.status
 assert(read(target)==cardBaseline and sync.configuration().paused)
 secondWindow.pause(false)
 
+-- Inject a partial write at the same point a full volume can reject a
+-- buffered write. The real target and its recovery journal stay usable.
+local openFile = io.open
+local injected = false
+io.open = function(path, mode)
+	local file, why = openFile(path, mode)
+	if path ~= target .. ".tmp" or mode ~= "wb" or not file then return file, why end
+	injected = true
+	return {
+		write=function(_, value)
+			assert(file:write(value:sub(1,13)))
+			return nil,"No space left on device"
+		end,
+		close=function() return file:close() end,
+	}
+end
+launch.DownloadPage = function(_, url, callback) reply(url,callback) end
+sync.tick(now,true)
+io.open = openFile
+assert(injected and read(target)==cardBaseline and sync.status:find("No space left",1,true),sync.status)
+assert(sync.configuration().pending and not io.open(target..".tmp","rb"))
+
 -- A sharing violation must keep the original and leave a usable journal.
 -- The handle permits readers but denies the atomic replacement.
 local ffi = require("ffi")
@@ -273,6 +338,7 @@ launch.DownloadPage = function(_, url, callback) reply(url,callback) end
 sync.tick(now,true)
 local closed = kernel.CloseHandle(locked)
 assert(closed~=0 and sync.status:find("Check access and file locks",1,true),sync.status)
+assert(not io.open(target..".tmp","rb"))
 local pending = sync.configuration()
 assert(read(target)==cardBaseline and pending.current and pending.pending and pending.current~=pending.pending)
 secondWindow.tick(now,true)
@@ -541,6 +607,15 @@ assert(read(namedTarget)==cardBaseline and read(configFile)==defaultState)
 local report = require("dkjson").decode(profiles.diagnosticReport(now,id))
 assert(report.status.league=="Standard" and report.intervalDays==3)
 print("Named profiles isolate destinations, history, schedule, rollback, and background opt-in")
+
+local verifiedRaw, verifiedState = profiles.verifiedOutput("default")
+assert(verifiedRaw==read(target) and verifiedState.realm=="pc" and verifiedState.digest==profiles.configuration().current)
+write(target,verifiedRaw.."# local edit")
+assert(not pcall(profiles.verifiedOutput,"default"))
+write(target,verifiedRaw)
+assert(not pcall(profiles.verifiedOutput,id))
+print("Account publication can only read the latest verified, unchanged local output")
+
 
 -- Exercise the manual screen through its Fetch and Export actions. It must
 -- enforce the same freshness and liquidity criteria as the scheduler.

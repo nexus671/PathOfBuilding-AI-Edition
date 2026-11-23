@@ -68,9 +68,16 @@ local function put(path, value)
 	local temp = path .. ".tmp"
 	local file = assert(io.open(temp, "wb"))
 	local written, why = file:write(value)
-	local closed = file:close()
-	assert(written and closed, "Could not write sync data: " .. tostring(why))
-	platform().replace(temp, path)
+	local closed, closeError = file:close()
+	if not written or not closed then
+		os.remove(temp)
+		error("Could not write sync data: " .. tostring(why or closeError), 0)
+	end
+	local replaced, replaceError = pcall(platform().replace, temp, path)
+	if not replaced then
+		os.remove(temp)
+		error(replaceError, 0)
+	end
 end
 
 local function settingsPath(id)
@@ -293,9 +300,18 @@ function M.publicDiff(now, id)
 		local standardAge = finiteNumber(age)
 		if standardAge and standardAge >= 0 and standardAge <= 3600 then ages[#ages+1] = standardAge end
 	end
+	local feeds = {}
+	for index, feed in ipairs(type(review.feeds) == "table" and review.feeds or {}) do
+		if index > 20 then break end
+		local category = type(feed) == "table" and safeText(feed.category,40)
+		local age = category and finiteNumber(feed.age)
+		if age and age >= 0 and age <= 3600 then
+			feeds[#feeds+1] = {category=category, responseAge=age, revalidated=feed.revalidated==true}
+		end
+	end
 	publicCache.diff = {
 		checkedAt=finiteNumber(review.checkedAt), verifiedProtection=true,
-		responseAges=ages, changeCount=#source, changes=changes,
+		responseAges=ages, feeds=feeds, changeCount=#source, changes=changes,
 	}
 	return publicCache.diff
 end
@@ -358,6 +374,16 @@ local function keepExpected(raw)
 	local path = expectedPath(sha(raw))
 	if not read(path) then put(path,raw) end
 	assert(read(path) == raw, "Expected filter snapshot could not be verified")
+end
+
+function M.verifiedOutput(id)
+	local config = assert(get(id), "Enable and run daily sync first")
+	assert(not M.busy and config.lastSuccess and config.review and not config.pending,
+		"A completed, verified local refresh is required")
+	local raw = assert(read(filterPath(config.target)), "Target filter file was not found")
+	assert(sha(raw) == config.current, "The local filter changed after the verified refresh")
+	validate(raw,{},true,config.targetValue,config.protections,nil,nil,nil,config.pickupPolicy)
+	return raw, {digest=config.current, revision=config.revision, realm=config.realm or "pc", checkedAt=config.lastSuccess}
 end
 
 function M.externalDiff(id)
@@ -548,14 +574,20 @@ local function httpDate(date)
 	return days(y, month, d)*86400 + h*3600 + mi*60 + s
 end
 
-function M.fresh(response, now)
-	local header = headers(response)
-	local timestamp = assert(httpDate(header.date), "Exchange response has no valid freshness date")
+local function responseAge(header, now, cachedAge)
+	local timestamp = httpDate(header.date)
+	assert(timestamp or cachedAge and not header.date, "Exchange response has no valid freshness date")
 	local age = header.age and tonumber(header.age:match("^%d+$")) or (not header.age and 0)
 	assert(age, "Exchange response has an invalid Age header")
-	local resident = math.max(now - timestamp, age)
-	assert((header["cf-cache-status"] or ""):lower() ~= "stale" and timestamp <= now + 300
+	local resident = math.max(timestamp and now - timestamp or 0, age, cachedAge or 0)
+	assert((header["cf-cache-status"] or ""):lower() ~= "stale" and (not timestamp or timestamp <= now + 300)
 		and resident <= 3600, "Exchange snapshot is stale")
+	return resident
+end
+
+function M.fresh(response, now)
+	local header = headers(response)
+	local resident = responseAge(header, now)
 	local tag = header.etag
 	if tag and (#tag > 160 or tag:find("[%c]") or not (tag:match('^"[^"]*"$') or tag:match('^W/"[^"]*"$'))) then tag = nil end
 	return response.body, resident, tag
@@ -582,7 +614,7 @@ local function rememberFailure(config, startedAt, message, id)
 	end)
 end
 
-local function publish(config, bodies, ages, day, force, now, id)
+local function publish(config, bodies, feeds, day, force, now, id)
 	return lockSettings(function()
 		local current = get(id)
 		assert(current and current.enabled and not current.paused and current.baselineHash == config.baselineHash and current.target == config.target
@@ -612,7 +644,9 @@ local function publish(config, bodies, ages, day, force, now, id)
 		current.current, current.pending, current.day = sha(candidate), nil, day
 		current.summary = string.format("%s: %d stack adjustments from the baseline. Protected drops verified.", nowText(now), count)
 		current.lastSuccess, current.lastFailure, current.providerRetryAfter = now, nil, nil
-		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages}
+		local ages = {}
+		for index, feed in ipairs(feeds) do ages[index] = feed.age end
+		current.review = {changes=changes, skipped=skipped, checkedAt=now, backup=current.backup, ages=ages, feeds=feeds}
 		current.history = current.history or {}
 		table.insert(current.history, 1, {checkedAt=now, adjustments=count, backup=current.backup, oldest=math.max(unpack(ages))})
 		if #current.history > 30 then table.remove(current.history) end
@@ -636,7 +670,7 @@ end
 
 local function fetchPrices(config, baseline, now, complete, onFailure, id)
 	local categories = market.feedCategories(baseline)
-	local job, bodies, ages, observedAt = {onFailure=onFailure,profileId=id}, {}, {}, {}
+	local job, bodies, responses = {onFailure=onFailure,profileId=id}, {}, {}
 	M.busy, M.deadline = job, now + 300
 	local function finish(success, message)
 		M.busy = nil
@@ -644,15 +678,34 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 		if not success and onFailure then onFailure(M.status) end
 		if ConPrintf then ConPrintf("%s", M.status) end
 	end
+	local function diagnoseLeague(problem)
+		if os.time()+15 >= M.deadline then finish(false,problem); return end
+		M.status = "Checking current PC trade league availability."
+		launch:DownloadPage(market.endpoint.."leagues",function(response,err)
+			if M.busy ~= job then return end
+			if not err then
+				local valid, _, leagues = pcall(function()
+					return market.tradeLeagues(M.fresh(response,os.time()))
+				end)
+				if valid and not leagues[config.league] then
+					finish(false,"The configured league is no longer listed by the price provider. Use Choose league to review available seasons. The existing filter was kept.")
+					return
+				end
+			end
+			finish(false,problem)
+		end,{timeout=15,maxBytes=65536,header="Accept: application/json"})
+	end
 	local function fetch(index, attempt)
 		local category = categories[index]
 		if not category then
 			local finishedAt = os.time()
-			for id, age in ipairs(ages) do
-				ages[id] = age + math.max(0, finishedAt - observedAt[id])
-				if ages[id] > 3600 then finish(false, "An exchange snapshot expired before the refresh finished."); return end
+			local feeds = {}
+			for index, response in ipairs(responses) do
+				local age = response.initialAge + math.max(0, finishedAt - response.checkedAt)
+				if age > 3600 then finish(false, categories[index] .. ": snapshot expired before the refresh finished."); return end
+				feeds[index] = {category=categories[index], age=age, revalidated=response.revalidated}
 			end
-			finish(pcall(complete, bodies, ages))
+			finish(pcall(complete, bodies, feeds))
 			return
 		end
 		M.status = "Fetching " .. config.league .. " prices: " .. category
@@ -673,7 +726,10 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			if M.busy ~= job then return end
 			time = os.time()
 			if err == "Response code: 304" and cached and time >= cached.sourceAt and time-cached.sourceAt <= 3600 then
-				bodies[index], ages[index], observedAt[index] = cached.body, time-cached.sourceAt, time
+				local valid, age = pcall(function() return responseAge(headers(response), time, time-cached.sourceAt) end)
+				if not valid then finish(false, category .. ": " .. tostring(age)); return end
+				cached.sourceAt = time-age
+				bodies[index], responses[index] = cached.body, {initialAge=age, checkedAt=time, revalidated=true}
 				fetch(index + 1, 1)
 				return
 			end
@@ -692,15 +748,24 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 					return
 				end
 				if status == 429 or status == 503 then rateLimitUntil = math.max(rateLimitUntil, time + delay) end
-				finish(false, category .. ": " .. err)
+				local problem = category .. ": " .. err
+				if index == 1 and status == 404 then diagnoseLeague(problem) else finish(false,problem) end
 				return
 			end
 			local fresh, data, age, tag = pcall(M.fresh, response, time)
 			if not fresh then finish(false, category .. ": " .. tostring(data)); return end
 			local valid, why = pcall(market.quotes, data, category)
-			if not valid then finish(false, category .. ": " .. tostring(why)); return end
+			if not valid then
+				local problem = category .. ": " .. tostring(why)
+				if index == 1 and tostring(why):find("No priced exchange items",1,true) then
+					diagnoseLeague(problem)
+				else
+					finish(false,problem)
+				end
+				return
+			end
 			storeFeed(url,{body=data,tag=tag,sourceAt=time-age,checkedAt=time})
-			bodies[index], ages[index], observedAt[index] = data, age, time
+			bodies[index], responses[index] = data, {initialAge=age, checkedAt=time, revalidated=false}
 			fetch(index + 1, 1)
 		end, {timeout=20,maxBytes=2*1024*1024,header=requestHeaders})
 	end
@@ -760,8 +825,8 @@ function M.tick(now, force, scheduled, id)
 		onFailure(M.status)
 		return
 	end
-	fetchPrices(config, baseline, now, function(bodies, ages)
-		return publish(config, bodies, ages, day, force, now, id)
+	fetchPrices(config, baseline, now, function(bodies, feeds)
+		return publish(config, bodies, feeds, day, force, now, id)
 	end, onFailure, id)
 end
 
