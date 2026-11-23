@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1140][2026/11/22]
+
+* Preview a conditional one-tier map corruption outcome.
+
 VERSION[2.68.1-ai.preview1139][2026/11/22]
 
 * Show verified notes for the downloaded update.

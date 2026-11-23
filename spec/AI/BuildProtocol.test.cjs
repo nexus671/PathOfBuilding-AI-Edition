@@ -251,6 +251,8 @@ test('queues a seeded hypothetical map currency action', t => {
   assert.equal(request.kind,'simulate_map_currency');assert.deepEqual(request.state,state);assert.equal(request.seed,42);
   const vaal=fixture(t);vaal.call('simulate_map_currency',{baseRevision:vaal.state.revision,state:{...state,rarity:'rare'},action:'vaal_add',seed:42});
   assert.equal(JSON.parse(fs.readFileSync(path.join(vaal.dir,'AI-build-request.json'))).action,'vaal_add');
+  const tierUp=fixture(t);tierUp.call('simulate_map_currency',{baseRevision:tierUp.state.revision,state:{...state,baseId:'Metadata/Items/Maps/MapKeyTier5',tier:5,rarity:'rare'},action:'vaal_tier_up',seed:42});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(tierUp.dir,'AI-build-request.json'))).action,'vaal_tier_up');
   const nightmare=fixture(t), nightmareState={baseId:'Metadata/Items/Maps/MapWorldsAbomination',tier:17,itemLevel:84,rarity:'rare',selected:[]};
   nightmare.call('simulate_map_currency',{baseRevision:nightmare.state.revision,state:nightmareState,action:'chaos',seed:42});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(nightmare.dir,'AI-build-request.json'))).state,nightmareState);

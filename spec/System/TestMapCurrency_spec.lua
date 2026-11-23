@@ -160,6 +160,26 @@ describe("Experimental map currency",function()
 		assert.matches("same tier",reroll.note,1,true);assert.matches("Vaal Temple",reroll.note,1,true)
 		assert.has_error(function() currency.perform(state("magic"),"vaal_reroll",42) end)
 	end)
+	it("previews a conditional tier-up reroll for generic map items",function()
+		local map=require("Modules.MapCraftingData");local atlas=require("Modules.AtlasPlanner")
+		for _,tier in ipairs({1,5,15}) do
+			local input={baseId="Metadata/Items/Maps/MapKeyTier"..tier,tier=tier,itemLevel=83,rarity="rare",selected={}}
+			local before=copyTable(input);local result=currency.perform(input,"vaal_tier_up",42);local next=result.state
+			assert.same(before,input);assert.equal(tier+1,next.tier);assert.equal("Metadata/Items/Maps/MapKeyTier"..(tier+1),next.baseId)
+			assert.equal(input.itemLevel,next.itemLevel);assert.is_true(next.corrupted);assert.is_true(next.vaalPreview)
+			assert.is_true(#next.selected>=4 and #next.selected<=6);assert.matches("unchanged item level",result.note,1,true)
+			local draft=copyTable(next);draft.id="tier-up";draft.title="Tier-up";draft.patch=map.source().patch
+			assert.has_no.errors(function() atlas.validateMapDraft(draft) end)
+			assert.same(next,currency.perform(input,"vaal_tier_up",42).state)
+		end
+		local highest={baseId="Metadata/Items/Maps/MapKeyTier16",tier=16,itemLevel=83,rarity="rare",selected={}}
+		assert.has_error(function() currency.perform(highest,"vaal_tier_up",42) end)
+		assert.has_error(function() currency.perform(state("rare"),"vaal_tier_up",42) end)
+		local magic={baseId="Metadata/Items/Maps/MapKeyTier5",tier=5,itemLevel=83,rarity="magic",selected={}}
+		assert.has_error(function() currency.perform(magic,"vaal_tier_up",42) end)
+		local planned=copyTable(magic);planned.rarity="rare";planned.plannedDeified=true
+		assert.has_error(function() currency.perform(planned,"vaal_tier_up",42) end)
+	end)
 	it("rerolls values even when Chaos selects the same modifier again",function()
 		local map=require("Modules.MapCraftingData")
 		local inputs={state("rare"),{baseId="Metadata/Items/Maps/MapWorldsAbomination",tier=17,itemLevel=84,rarity="rare",selected={}}}

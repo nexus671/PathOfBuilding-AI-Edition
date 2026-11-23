@@ -268,6 +268,7 @@ function M.Open(options)
 	controls.next.enabled=function() return nextOffset~=nil end
 	controls.details=new("TextListControl"):TextListControl(ui.anchor,{right,height-226,rightWidth,100},nil,{})
 	ui.label(controls,"status",right,height-118,"",14)
+	controls.status.tooltipText="Conditional Vaal previews use modeled outcomes and assumptions; values, eligibility and game interactions may differ."
 	button("add",right,height-88,math.floor(rightWidth/2)-6,"Add modifier",function() if candidate then selected[#selected+1]=candidate.id;candidate=nil;offset=0;controls.search:SetText("");refresh() end end)
 	controls.add.enabled=function() return not unidentified and candidate~=nil end
 	button("currency",right+math.floor(rightWidth/2)+6,height-88,math.floor(rightWidth/2)-6,"Use currency",function()
@@ -280,6 +281,7 @@ function M.Open(options)
 			local attemptSeed=rollSeed;rollSeed=rollSeed*16807%2147483647
 			local ok,result=pcall(require("Modules.MapCurrency").perform,state,entry.id,attemptSeed)
 			if not ok then ui.errorPopup("Currency unavailable",result);return end
+			if entry.id=="vaal_tier_up" then baseId=result.state.baseId;controls.tier:SelByValue(result.state.tier,"val") end
 			selected=result.state.selected;rolls=result.state.rolls;implicit=result.state.implicit and copyTable(result.state.implicit) or nil
 			local rarityValue=result.state.corrupted and "corrupted_"..result.state.rarity or result.state.rarity
 			local clearedEstimate=result.state.corrupted and estimateSettings~=nil
@@ -289,6 +291,7 @@ function M.Open(options)
 			main:ClosePopup();controls.search:SetText("");refresh()
 			if entry.id=="originator" then controls.status.label="^xE9BE7BOriginator preview | replacement weights and interactions unverified" end
 			if entry.id:match("^vaal_") then controls.status.label=clearedEstimate and "^xE9BE7BConditional Vaal outcome | reroll settings cleared" or "^xE9BE7BConditional Vaal outcome | overall odds not modeled" end
+			if entry.id=="vaal_tier_up" and not clearedEstimate then controls.status.label=ui.fit("^xE9BE7BConditional tier-up | item level retained (unverified)",rightWidth,14) end
 		end,closeOnChoose=false})
 	end)
 	controls.currency.enabled=function() return not isCorrupted() and not mirrored and not unidentified and not require("Modules.MapObservedEffects").hasExplicit(observedEffects) and not levelProblem() end

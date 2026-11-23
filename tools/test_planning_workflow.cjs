@@ -1361,6 +1361,8 @@ async function main(){
   for(const response of [copiedMap,unidentifiedCopy,mapBases]) { assert.equal(response.mapData.dataPatch,nightmareMap.mapData.patch);assert.deepEqual(response.mapData.dataSource,nightmareMap.mapData.source); }
   const nightmareRoll=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare',selected:[]},action:'chaos',seed:42},'mapData');
   assert.equal(nightmareRoll.mapData.state.selected.length,6);assert.match(nightmareRoll.mapData.note,/unverified assumptions/);
+  const tierUp=await queued('simulate_map_currency',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyTier5',tier:5,itemLevel:83,rarity:'rare',selected:[]},action:'vaal_tier_up',seed:42},'mapData');
+  assert.equal(tierUp.mapData.state.tier,6);assert.equal(tierUp.mapData.state.baseId,'Metadata/Items/Maps/MapKeyTier6');assert.equal(tierUp.mapData.state.itemLevel,83);assert.equal(tierUp.mapData.state.vaalPreview,true);assert.match(tierUp.mapData.note,/unchanged item level/);
   const nightmareEstimate=await queued('estimate_map_rerolls',{baseRevision:context.revision,state:{baseId:'Metadata/Items/Maps/MapKeyNightmareBoss',tier:17,itemLevel:84,rarity:'rare'},options:{wantedGroups:[['MapUberWeakContainsDeliriumMirror']],trials:2,maxAttempts:2,seed:42}},'mapData');
   assert.equal(nightmareEstimate.mapData.action,'chaos');assert.match(nightmareEstimate.mapData.note,/generation order is unverified/);
   const allflameRef=await queued('list_map_allflame',{baseRevision:context.revision},'mapData');assert.equal(allflameRef.mapData.items.length,11);const allflameId=allflameRef.mapData.items.find(item=>item.name==='Allflame Ember of the Multitude').id;
@@ -1451,6 +1453,7 @@ async function main(){
   starterAtlas.mapDrafts[0].plannedDelirium={currentPercent:0,nextType:'Currency Items',gain:10,targetPercent:80};
   starterAtlas.mapDrafts.push({id:'corrupt-map',title:'Corrupted map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapWorldsBeach',tier:16,itemLevel:83,rarity:'rare',corrupted:true,twiceCorrupted:true,selected:corruptedIds,implicit:{id:'MapCorruptionItemRarity',value:15}});
   starterAtlas.mapDrafts.push({...vaalMap.mapData.state,id:'vaal-preview',title:'Conditional Vaal preview',patch:'3.30.0.2.2'});
+  starterAtlas.mapDrafts.push({...tierUp.mapData.state,id:'tier-up-preview',title:'Conditional tier-up preview',patch:'3.30.0.4'});
   starterAtlas.mapDrafts.push({id:'unknown-map',title:'Unidentified map',patch:'3.30.0.2.2',baseId:'Metadata/Items/Maps/MapKeyTier5',tier:5,itemLevel:68,rarity:'rare',unidentified:true,selected:[]});
   for(const version of ['3.28.0j','3.28.0j-ruthless']) {
     const search=await queued('search_atlas_nodes',{baseRevision:context.revision,version,query:'Essence',limit:10},'atlas');
