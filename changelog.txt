@@ -1,3 +1,9 @@
+VERSION[2.68.1-ai.preview1198][2026/11/23]
+
+* Author managed currency and card rules from the PoB filter workspace.
+* Set different campaign and map pickup targets, with optional per-item hide caps backed by daily market history.
+* Review the before-and-after outcomes of recent price decisions.
+
 VERSION[2.68.1-ai.preview1197][2026/11/23]
 
 * Optionally run daily loot filter sync through Windows Task Scheduler while PoB is closed.
