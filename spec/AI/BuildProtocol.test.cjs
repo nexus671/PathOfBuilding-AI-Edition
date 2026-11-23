@@ -41,7 +41,8 @@ test('reads crafting collections larger than the old desktop context limit', t =
 test('reads one crafting snapshot without returning its siblings', t => {
   const f=fixture(t),item={id:'item-1',title:'One',state:{rarity:'RARE'},originNote:'Conditional example'};
   f.captured.context.craftingProjects=[{id:'guide',title:'Guide',slot:'Helmet',inventory:[item,{id:'item-2',title:'Other'}]}];f.write('context',f.captured);
-  const result=f.call('get_crafting_inventory_item',{projectId:'guide',itemId:'item-1'});assert.equal(result.revision,f.state.revision);assert.deepEqual(result.item,item);assert.deepEqual(result.project,{id:'guide',title:'Guide',slot:'Helmet'});assert.equal(result.project.inventory,undefined);
+  const result=f.call('get_crafting_inventory_item',{projectId:'guide',itemId:'item-1',expectedRevision:f.state.revision});assert.equal(result.revision,f.state.revision);assert.deepEqual(result.item,item);assert.deepEqual(result.project,{id:'guide',title:'Guide',slot:'Helmet'});assert.equal(result.project.inventory,undefined);
+  assert.throws(()=>f.call('get_crafting_inventory_item',{projectId:'guide',itemId:'item-1',expectedRevision:'b'.repeat(40)}),/revision changed/i);assert.deepEqual(f.call('get_crafting_inventory_item',{projectId:'guide',itemId:'item-1'}).item,item);
   assert.throws(()=>f.call('get_crafting_inventory_item',{projectId:'missing',itemId:'item-1'}),/project not found/i);assert.throws(()=>f.call('get_crafting_inventory_item',{projectId:'guide',itemId:'missing'}),/item not found/i);
 });
 

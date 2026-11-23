@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1162][2026/11/22]
+
+* Let AI item lookups reject a changed build revision.
+
 VERSION[2.68.1-ai.preview1161][2026/11/22]
 
 * Let AI clients inspect one saved crafting snapshot directly.
