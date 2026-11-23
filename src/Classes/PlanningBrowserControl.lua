@@ -31,8 +31,8 @@ function M.Open(title,entries,options)
 	ui.label(controls,"count",16,height-86,"",14)
 	local function show(entry)
 		selected=entry
-		local lines=entry and detailCache[entry] or nil
-		if not lines then lines=entry and (type(entry.details)=="function" and entry.details() or entry.details or {entry.label}) or {"No matches. Try a shorter search or another category."};if entry then detailCache[entry]=lines end end
+		local lines=entry and not entry.queryDetails and detailCache[entry] or nil
+		if not lines then lines=entry and (entry.queryDetails and entry.queryDetails(controls.search.buf) or type(entry.details)=="function" and entry.details() or entry.details or {entry.label}) or {"No matches. Try a shorter search or another category."};if entry and not entry.queryDetails then detailCache[entry]=lines end end
 		controls.details.list=ui.rows(lines,width-left-78)
 		controls.details.controls.scrollBar.offset=0
 	end
