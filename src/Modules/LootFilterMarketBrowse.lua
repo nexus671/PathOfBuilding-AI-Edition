@@ -19,6 +19,49 @@ local function positive(value)
 	return type(value) == "number" and value > 0 and value < math.huge
 end
 
+local function marketName(value)
+	return type(value)=="string" and #value>0 and #value<=200 and not value:find("[%c]")
+end
+
+-- A loot filter sees the base of an unidentified unique. Group the whole
+-- category first so searching for one unique cannot hide competing outcomes.
+local function uniqueBaseEvidence(lines)
+	local groups = {}
+	for _, item in ipairs(lines) do
+		if type(item)=="table" and marketName(item.name) and marketName(item.baseType) then
+			local base = groups[item.baseType]
+			if not base then
+				base = {names={}, quotes={}}
+				groups[item.baseType] = base
+			end
+			base.names[item.name] = true
+			local identity = item.name .. "\0" .. (marketName(item.detailsId) and item.detailsId
+				or (marketName(item.variant) and item.variant or "") .. "\0" .. (positive(item.links) and item.links or ""))
+			local price = positive(item.chaosValue) and positive(item.count) and positive(item.listingCount)
+				and math.min(item.count,item.listingCount)>=20 and item.chaosValue or false
+			if base.quotes[identity] == nil then
+				base.quotes[identity] = price
+			elseif base.quotes[identity] ~= price then
+				base.quotes[identity] = false
+			end
+		end
+	end
+	local evidence = {}
+	for name, group in pairs(groups) do
+		local names, total, priced, minimum, maximum = 0, 0, 0
+		for _ in pairs(group.names) do names = names+1 end
+		for _, price in pairs(group.quotes) do
+			total = total+1
+			if price then
+				priced = priced+1
+				minimum, maximum = math.min(price,minimum or price), math.max(price,maximum or price)
+			end
+		end
+		evidence[name] = {names=names,variants=total,priced=priced,minimum=minimum,maximum=maximum}
+	end
+	return evidence
+end
+
 function M.rows(body, category, query)
 	assert(type(body)=="string" and #body<=M.maxBytes, "Market response exceeds the size limit")
 	local out = {}
@@ -35,17 +78,21 @@ function M.rows(body, category, query)
 	else
 		local data = json.decode(body)
 		assert(type(data)=="table" and type(data.lines)=="table", "Invalid stash overview")
+		local uniqueEvidence = category.id:match("^Unique") and uniqueBaseEvidence(data.lines)
 		for _, item in ipairs(data.lines) do
 			assert(type(item)=="table", "Invalid stash overview entry")
-			if type(item.name)=="string" and #item.name>0 and #item.name<=200 and positive(item.chaosValue) and matches(item.name,item.baseType,item.variant) then
+			if marketName(item.name) and positive(item.chaosValue) and matches(item.name,item.baseType,item.variant) then
+				local corrupted
+				if type(item.corrupted)=="boolean" then corrupted=item.corrupted end
 				out[#out+1] = {
 					name=item.name, price=item.chaosValue,
 					base=type(item.baseType)=="string" and item.baseType or nil,
 					variant=type(item.variant)=="string" and item.variant or nil,
-					corrupted=type(item.corrupted)=="boolean" and item.corrupted,
+					corrupted=corrupted,
+					baseEvidence=uniqueEvidence and uniqueEvidence[item.baseType] or nil,
 					links=positive(item.links) and item.links or nil,
 					gemLevel=positive(item.gemLevel) and item.gemLevel or nil,
-					gemQuality=positive(item.gemQuality) and item.gemQuality or nil,
+					gemQuality=(positive(item.gemQuality) or item.gemQuality==0) and item.gemQuality or nil,
 					mapTier=maps.tier(item,category.id) or (positive(item.mapTier) and item.mapTier or nil),
 					count=positive(item.count) and item.count or nil,
 					listings=positive(item.listingCount) and item.listingCount or nil,

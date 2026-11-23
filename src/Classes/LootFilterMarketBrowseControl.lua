@@ -60,7 +60,16 @@ function M.Open()
 						if value then details[#details+1]=label..tostring(value) end
 					end
 					show("Base: ",row.base);show("Variant: ",row.variant)
-					if row.corrupted then details[#details+1]="Corrupted" end
+					if row.corrupted~=nil then details[#details+1]=row.corrupted and "Corrupted" or "Uncorrupted" end
+					local evidence = row.baseEvidence
+					if evidence and evidence.variants>1 then
+						details[#details+1]=string.format("Shared base: %d unique names across %d listed variants",evidence.names,evidence.variants)
+						details[#details+1]=string.format("Listing-backed estimates: %d of %d variants",evidence.priced,evidence.variants)
+						if evidence.priced>0 then
+							details[#details+1]=string.format("Supported price range: %.4g to %.4g chaos",evidence.minimum,evidence.maximum)
+						end
+						details[#details+1]="An unidentified drop on this base can belong to different variants."
+					end
 					show("Links: ",row.links);show("Gem level: ",row.gemLevel)
 					show("Gem quality: ",row.gemQuality);show("Map tier: ",row.mapTier)
 					show("Observations: ",row.count);show("Listings: ",row.listings);show("Chaos quoted volume: ",row.volume)
