@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1229" />
+	<Version number="2.68.1-ai.preview1230" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="ddbef87b73fdafd8120fbaa37ea048f5faf7ceed" />
+	<File name="changelog.txt" part="default" sha1="1a3fcad289d53144c56c4f2c3f2eb032425ced88" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1786,11 +1786,11 @@
 	<File name="Classes/LootFilterStackControl.lua" part="program" sha1="31ec30fe8cd7622aafb64c141104fdf0c4028e8a" />
 	<File name="Classes/LootFilterStructureControl.lua" part="program" sha1="b5dc73fb5fa8baf59d74f7d68e8e38d255bd25de" />
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
-	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="96028b2e8ecea961816b27880b13e17030600d86" />
+	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="4527a72eb492f8bf04a87f2f7d142584ad27a1e1" />
 	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="3bb8d8007a8e49437142ae8b52606515e3f8accb" />
 	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="ddc0a55c9df8442fdad75a562b3529447dc5b08b" />
 	<File name="Modules/LootFilterOfflinePrices.lua" part="program" sha1="6aa3f8e5303ef9a52b6b5593844b7365ae2cf720" />
-	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="ad1b578b26e6ea54bcef0c78fda35f689b99c5f0" />
+	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="09a99d7f70105d885f606e8db09782514a7c2c3d" />
 	<File name="Modules/LootFilterSyncValidation.lua" part="program" sha1="7e767ba5c66b7659a6dc769de1ab39801483cb1d" />
 	<File name="Classes/LootFilterWorkspace.lua" part="program" sha1="33527c075ed479f779404c5d0e3053eeec68403f" />
 	<File name="Classes/MapCraftEstimateControl.lua" part="program" sha1="d5efd3036d92bb2e568bc2e44209e0037fa0e94a" />
@@ -3206,5 +3206,5 @@
 	<File name="Modules/LootFilterProtectedDrops.lua" part="program" sha1="90bd5369a5cbfc83dc7c87acc323805b0f3f33af" />
 	<File name="Classes/LootFilterSyncAccountControl.lua" part="program" sha1="d1f4a06a6783577e46b14f24b34c74dde22a574a" />
 	<File name="Modules/LootFilterExchangeCrossCheck.lua" part="program" sha1="b777531d09394bdeebf675a7bdee1806cbb1c02b" />
-	<File name="Modules/LootFilterPriceAppearance.lua" part="program" sha1="4785d9fd008d77f03c4230acc18a6946008507bd" />
+	<File name="Modules/LootFilterPriceAppearance.lua" part="program" sha1="ac023aaeca31d302340b29b15235055b8fe0fc47" />
 </PoBVersion>
