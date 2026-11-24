@@ -1,4 +1,4 @@
-VERSION[2.69.0-ai.preview1270][2026/11/24]
+VERSION[2.69.0-ai.preview1271][2026/11/24]
 
 * Integrate upstream Path of Building 2.69.0.
 * Keep the Spectre Library usable while editing its gem level.
@@ -47,6 +47,10 @@ VERSION[2.69.0][2026/11/24]
 --- Fixed Bugs ---
 * Fix invalid trade site query on modified unique title (vaisest)
 * Fix item granted skills permanently modifying skill data (vaisest)
+
+VERSION[2.68.1-ai.preview1270][2026/11/24]
+
+* Explain when a pickup cap cannot tighten any managed rule in the fixed filter baseline.
 
 VERSION[2.68.1-ai.preview1269][2026/11/24]
 

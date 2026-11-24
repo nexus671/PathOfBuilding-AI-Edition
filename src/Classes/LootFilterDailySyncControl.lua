@@ -71,7 +71,7 @@ local function editItemCap(width, target, caps, selected, save)
 	local controls = {}
 	ui.label(controls,"itemLabel",16,20,"Exact managed item name",14)
 	controls.item = new("EditControl"):EditControl(ui.anchor,{16,42,width-32,28},selected or "",nil,nil,200)
-	ui.label(controls,"limitLabel",16,84,"Maximum hidden stack size (1 to 10,000)",14)
+	ui.label(controls,"limitLabel",16,84,"Cap for new hides (1 to 10,000)",14)
 	controls.limit = new("EditControl"):EditControl(ui.anchor,{16,106,140,28},selected and tostring(caps[selected]) or "",nil,nil,5)
 	local function apply()
 		local name = controls.item.buf==selected and selected or controls.item.buf:match("^%s*(.-)%s*$")
@@ -454,11 +454,14 @@ function M.Open(profileId, profileName)
 			for i, item in ipairs(review.skipped or {}) do
 				local details = {item.reason}
 				if item.source then details[#details+1] = "Price feed · "..item.source end
-				if item.gemLevel then
+				if item.policyCap then
+					details[#details+1] = "Configured cap: "..item.policyCap
+					if item.old then details[#details+1] = "Lowest baseline cutoff: "..item.old end
+				elseif item.gemLevel then
 					details[#details+1] = string.format("Level %d, %d%% quality, %s",item.gemLevel,item.gemQuality,
 						item.corrupted and "corrupted" or "uncorrupted")
 				elseif not item.styleOnly then details[#details+1] = "Hide up to "..item.old end
-				entries[#entries+1] = {id="skip-"..i,label=item.name,category="Unchanged",details=details}
+				entries[#entries+1] = {id="skip-"..i,label=item.name,category=item.policyCap and "Pickup policy" or "Unchanged",details=details}
 			end
 			if not historical then
 				for i, run in ipairs(saved.history or {}) do

@@ -144,6 +144,24 @@ assert(spike["Orb of Alteration"].price==0.2 and spike["Orb of Alteration"].curr
 local lower = market.remember(quote(0.1), second, "day 3", now+2*86400)
 assert(lower["Orb of Alteration"].price==0.1)
 do
+	local raw = market.addManagedSection([[Hide
+    Class == "Stackable Currency"
+    BaseType == "Chaos Orb"
+    StackSize <= 2
+]], {
+		{name="Orb of Alteration",class="Stackable Currency",scope="campaign",cutoff=4},
+		{name="Orb of Alteration",class="Stackable Currency",scope="maps",cutoff=7},
+	})
+	local caps = {["Orb of Alteration"]=6,["orb of alteration"]=10,["Chaos Orb"]=5}
+	local after, changes, skipped = market.review(raw,{},1,{caps=caps})
+	assert(after==raw and #changes==0)
+	assert(skipped[3].name=="Chaos Orb" and skipped[3].policyCap==5 and not skipped[3].old)
+	assert(skipped[4].name=="orb of alteration" and skipped[4].policyCap==10 and not skipped[4].old)
+	caps["Orb of Alteration"]=4
+	local _, _, bounded = market.review(raw,{},1,{caps=caps})
+	assert(bounded[4].name=="Orb of Alteration" and bounded[4].old==4 and bounded[4].policyCap==4)
+end
+do
 	local raw = [[# PoB economy: begin
 Hide
     Class == "Stackable Currency"

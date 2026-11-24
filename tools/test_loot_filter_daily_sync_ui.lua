@@ -182,6 +182,10 @@ reviewFixture.review.changes[3]={name="Map (Tier 16)",old=1,cutoff=0,price=8,vol
 		{area=83,count=1,class="Maps",rarity="Rare",before="Hide",beforeLine=21,action="Hide",line=26}}}
 reviewFixture.review.changes[4]={name="Blighted Map (Tier 16)",old=1,cutoff=0,price=12,volume=40,samplesLimited=true}
 reviewFixture.review.protectedChecks=600
+reviewFixture.review.skipped={
+	{name="Chaos Orb",policyCap=5,reason="No eligible managed stack rule matches this exact item name in the fixed baseline."},
+	{name="Vaal Orb",policyCap=4,old=6,reason="No managed stack cutoff is below the cap. Price-based tightening needs room above the baseline."},
+}
 require('Classes.LootFilterDailySyncControl').Open();reviewUI:click('review')
 local statusRows = {}
 for _, row in ipairs(main.popups[1].controls.details.list) do statusRows[#statusRows+1] = StripEscapes(row[1] or "") end
@@ -210,6 +214,11 @@ assert(mapProof:find("Normal Maps",1,true) and mapProof:find("Rare Maps",1,true)
 assert(mapProof:find("still hidden",1,true) and mapProof:find("Some cases were omitted",1,true))
 if output then reviewUI:frame():write(output.."/"..reviewWidth.."-filter-map-rarity-impact.json") end
 assert(impactText("Blighted Map"):find("No samples for this decision",1,true))
+local capProof=impactText("Chaos Orb")
+assert(capProof:find("No eligible managed stack rule",1,true) and capProof:find("Configured cap: 5",1,true),capProof)
+if output then reviewUI:frame():write(output.."/"..reviewWidth.."-filter-cap-coverage.json") end
+local boundedCap=impactText("Vaal Orb")
+assert(boundedCap:find("Configured cap: 4",1,true) and boundedCap:find("Lowest baseline cutoff: 6",1,true),boundedCap)
 reviewUI:click('close');main.popups={};reviewFixture=nil
 
 do
