@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1252][2026/11/23]
+
+* Fix skill-gem support effects with Mantle of Dreams, from upstream.
+
 VERSION[2.68.1-ai.preview1251][2026/11/23]
 
 * Keep filter tier instructions readable in small windows.
