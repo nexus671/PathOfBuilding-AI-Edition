@@ -336,8 +336,12 @@ local failureReasons = {access_denied=true,rate_limited=true,provider_unavailabl
 function M.failedFeedEvidence(value)
 	if type(value)~="table" or not failureCategories[value.category] or not failureReasons[value.reason] then return nil end
 	local status = finiteNumber(value.httpStatus)
+	local league = value.reason=="league_unavailable" and market.tradeLeague(value.currentLeague) or nil
+	local verifiedAt = finiteNumber(value.verifiedAt)
+	if not verifiedAt or verifiedAt<0 or verifiedAt>4102444800 or verifiedAt~=math.floor(verifiedAt) then league=nil end
 	return {category=value.category,reason=value.reason,
-		httpStatus=status and status>=100 and status<=599 and status==math.floor(status) and status or nil}
+		httpStatus=status and status>=100 and status<=599 and status==math.floor(status) and status or nil,
+		currentLeague=league or nil,verifiedAt=league and verifiedAt or nil}
 end
 
 local function feedFailure(category, reason, status)
@@ -758,6 +762,32 @@ local function backupRecords(config)
 	return records
 end
 
+
+local reviewedLeague
+local function leagueReviewFingerprint(config, saved, id)
+	local encode = require("Modules.PlanningData").encodeExact
+	local protectionFile = config.protectionFile
+	if protectionFile and protectionFile~="" then
+		protectionFile=assert(platform().canonical(protectionFile),"Protected sample file could not be resolved")
+	else protectionFile=nil end
+	local state = saved and {revision=saved.revision,enabled=saved.enabled,paused=saved.paused,current=saved.current,
+		league=saved.league,baselineHash=saved.baselineHash,source=saved.marketSourceHash,
+		pending=saved.pending,pendingRefresh=saved.pendingRefresh,pendingRestore=saved.pendingRestore} or false
+	return sha(encode({profile=id,target=assert(platform().canonical(config.target),"Target filter could not be resolved"),
+		baseline=config.baselineHash,live=config.current,league=config.league,source=config.marketSourceHash,
+		targetValue=config.targetValue,pickupPolicy=config.pickupPolicy,protections=config.protections,protectionFile=protectionFile,
+		hour=config.hour,minute=config.minute,intervalDays=config.intervalDays,saved=state}))
+end
+
+local function verifyLeagueReview(expected, config, saved, id)
+	local receipt = reviewedLeague
+	assert(type(expected)=="table" and receipt and expected.version==1 and expected.token==receipt.token
+		and expected.league==receipt.league and expected.profileId==id and expected.verifiedAt==receipt.verifiedAt
+		and expected.expiresAt==receipt.expiresAt and os.time()>=receipt.verifiedAt and os.time()<=receipt.expiresAt
+		and leagueReviewFingerprint(config,saved,id)==receipt.fingerprint,
+		"League review changed or expired. Preview the current settings again.")
+end
+
 function M.configure(target, baselineFile, league, options)
 	local id = options and options.profileId or "default"
 	assert(not M.busy, "Wait for the current sync to finish")
@@ -766,6 +796,14 @@ function M.configure(target, baselineFile, league, options)
 		local owner = targetOwner(id,target)
 		assert(not owner, "This destination already belongs to " .. tostring(owner))
 		local current = get(id)
+		if options and options.expectedSavedLeague~=nil then
+			assert((current and current.league or false)==options.expectedSavedLeague,
+				"The saved league changed. Reopen Daily price sync and review again.")
+		end
+		if options and options.expectedLeagueReview then
+			verifyLeagueReview(options.expectedLeagueReview,nextConfig,current,id)
+			if current then nextConfig.enabled, nextConfig.paused = current.enabled, current.paused end
+		end
 		nextConfig.backgroundEnabled = current and current.backgroundEnabled == true
 		nextConfig.backgroundNotifications = current and current.backgroundNotifications == true
 		nextConfig.providerRetryAfter = current and current.providerRetryAfter
@@ -789,8 +827,9 @@ function M.configure(target, baselineFile, league, options)
 		save(nextConfig,id)
 		return nextConfig
 	end)
+	if options and options.expectedLeagueReview then reviewedLeague=nil end
 	polls[id or "default"], nextSweep = nil, 0
-	M.status = enabledStatus(config)
+	M.status = config.paused and "Daily sync is paused." or not config.enabled and "Daily sync is disabled." or enabledStatus(config)
 end
 
 function M.disable(id)
@@ -1251,7 +1290,7 @@ local function storeFeed(url, entry)
 	cache[url], cacheCount, cacheBytes = entry,cacheCount+1,cacheBytes+#entry.body
 end
 
-local function fetchPrices(config, baseline, now, complete, onFailure, id)
+local function fetchPrices(config, baseline, now, complete, onFailure, id, onLeagueVerified)
 	local validFeedList, categories, gemRequests = pcall(market.feedCategories, baseline)
 	if not validFeedList then
 		M.status = "Sync skipped: " .. tostring(categories)
@@ -1279,12 +1318,14 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			local code = err and tonumber(err:match("^Response code: (%d+)$"))
 			M.noteProviderLimit(response,code,os.time())
 			if not err then
-				local valid, _, leagues = pcall(function()
-					return market.tradeLeagues(M.fresh(response,os.time()))
+				local verifiedAt = os.time()
+				local valid, list, leagues = pcall(function()
+					return market.tradeLeagues(M.fresh(response,verifiedAt))
 				end)
 				if valid and not leagues[config.league] then
-					finish(false,"The configured league is no longer listed by the price provider. Use Choose league to review available seasons. The existing filter was kept.",
-						feedFailure(failedFeed and failedFeed.category,"league_unavailable",failedFeed and failedFeed.httpStatus))
+					local evidence = M.failedFeedEvidence({category=failedFeed and failedFeed.category,reason="league_unavailable",
+						httpStatus=failedFeed and failedFeed.httpStatus,currentLeague=list[1],verifiedAt=verifiedAt})
+					finish(false,"The configured league is no longer listed by the price provider. Use Choose league to review available seasons. The existing filter was kept.",evidence)
 					return
 				end
 			end
@@ -1397,7 +1438,25 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 			fetch(index + 1, 1)
 		end, {followRedirects=false,timeout=20,maxBytes=market.maxFeedBytes(category),header=requestHeaders})
 	end
-	fetch(1, 1)
+	if onLeagueVerified then
+		job.category = "leagues"
+		M.status = "Verifying the selected PC trade league before review."
+		launch:DownloadPage(endpoint.."leagues",function(response,err)
+			if M.busy~=job then return end
+			if market.endpoint~=endpoint then finish(false,sourceChanged,feedFailure("leagues","source_changed"));return end
+			local at = os.time()
+			local code = err and tonumber(err:match("^Response code: (%d+)$"))
+			M.noteProviderLimit(response,code,at)
+			if err then finish(false,"Could not verify the selected PC trade league.",requestFailure("leagues",code,err));return end
+			local fresh, body, age = pcall(M.fresh,response,at)
+			if not fresh then finish(false,"The PC trade league list is unavailable or stale.",feedFailure("leagues","stale",200));return end
+			local valid, _, leagues = pcall(market.tradeLeagues,body)
+			if not valid then finish(false,"The PC trade league list is invalid.",feedFailure("leagues","invalid_response",200));return end
+			if not leagues[config.league] then finish(false,"The selected league is no longer in the PC trade league list.",feedFailure("leagues","league_unavailable",200));return end
+			onLeagueVerified(at,at+3600-age)
+			fetch(1,1)
+		end,{followRedirects=false,timeout=15,maxBytes=65536,header="Accept: application/json"})
+	else fetch(1,1) end
 end
 
 function M.tick(now, force, scheduled, id, onAttemptFailure)
@@ -1543,6 +1602,10 @@ function M.preview(target, baselineFile, league, options, callback, onFailure)
 	local now = os.time()
 	local id = options and options.profileId or "default"
 	local found, saved = pcall(get,id)
+	local reviewLeague = options and options.reviewLeague==true
+	if reviewLeague then assert(found,saved);reviewedLeague=nil end
+	local fingerprint = reviewLeague and leagueReviewFingerprint(config,saved,id)
+	local verifiedAt, expiresAt
 	local savedHold = found and saved and finiteNumber(saved.providerRetryAfter)
 	assert(not savedHold or now>=savedHold,"Wait before contacting the rate-limited exchange again")
 	local matching = found and saved and saved.league == config.league and saved.baselineHash == config.baselineHash
@@ -1551,12 +1614,21 @@ function M.preview(target, baselineFile, league, options, callback, onFailure)
 	local continuity = matching and not saved.pending and saved.target==config.target and saved.current==config.current
 		and cutoffContinuity(saved,config.targetValue,config.pickupPolicy) or nil
 	local day = history and os.date("%Y-%m-%d", now) or nil
-	fetchPrices(config, baseline, now, function(bodies, _, confirmation)
+	fetchPrices(config, baseline, now, function(bodies, feeds, confirmation)
 		local candidate = validate(baseline,bodies,false,config.targetValue,config.protections,
 			history,day,now,config.pickupPolicy,confirmation,continuity)
-		callback(original, candidate)
+		local receipt
+		if reviewLeague then
+			local at = os.time()
+			for _, feed in ipairs(feeds) do expiresAt=math.min(expiresAt,at+3600-feed.age) end
+			assert(at<=expiresAt,"League review expired before the preview finished")
+			reviewedLeague={version=1,token=newRevision(),league=config.league,profileId=id,verifiedAt=verifiedAt,expiresAt=expiresAt,
+				fingerprint=fingerprint}
+			receipt={version=1,token=reviewedLeague.token,league=config.league,profileId=id,verifiedAt=verifiedAt,expiresAt=expiresAt}
+		end
+		callback(original, candidate,receipt)
 		return "Preview complete. Review the proposed filter before enabling sync."
-	end, onFailure, id)
+	end, onFailure, id, reviewLeague and function(at,expires) verifiedAt,expiresAt=at,expires end or nil)
 end
 
 return M

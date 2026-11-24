@@ -330,9 +330,16 @@ function createBridge(reportPath, clientName = () => "MCP client") {
     if (name === 'get_loot_sync_status') {
       const {failedFeed,...status}=current.lootSyncStatus ?? {configured:false,state:'unavailable'};
       if (lootFailureCategories.has(failedFeed?.category) && lootFailureReasons.has(failedFeed.reason)) {
-        const {category,reason,httpStatus}=failedFeed;
+        const {category,reason,httpStatus,currentLeague,verifiedAt}=failedFeed;
         status.failedFeed={category,reason};
         if (Number.isInteger(httpStatus) && httpStatus>=100 && httpStatus<=599) status.failedFeed.httpStatus=httpStatus;
+        const {id,name}=currentLeague ?? {};
+        if (reason==='league_unavailable' && typeof id==='string' && /^[A-Za-z0-9 _-]{1,80}$/.test(id) && id.trim()===id
+            && typeof name==='string' && Buffer.byteLength(name)<=160 && /\S/u.test(name) && !/[\u0000-\u001f\u007f/\\^]/u.test(name)
+            && Number.isInteger(verifiedAt) && verifiedAt>=0 && verifiedAt<=4102444800) {
+          status.failedFeed.currentLeague={id,name};
+          status.failedFeed.verifiedAt=verifiedAt;
+        }
       }
       return {heartbeat:current.heartbeat,status};
     }

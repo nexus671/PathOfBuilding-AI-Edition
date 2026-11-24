@@ -48,13 +48,16 @@ function M.Open(before,after, rawComparison, options)
 	end
 	c.content.selFunc=rebuild;c.view.selFunc=refresh;c.search.changeFunc=refresh
 	c.view.enabled=function() return review~=nil end;c.search.enabled=c.view.enabled
-	button("copyReview",16,h-46,180,"Copy review",function()
+	local copyCount = options.reviewOnly and 2 or 3
+	local copyWidth = math.min(180, math.floor((w-172-copyCount*16)/copyCount))
+	local copyStep = copyWidth+16
+	button("copyReview",16,h-46,copyWidth,"Copy review",function()
 		local report=diff.report(review)
 		Copy(options.note and options.note.."\n"..report or report)
 	end);c.copyReview.enabled=function() return review~=nil end
-	button("copyBefore",212,h-46,180,"Copy before",function() Copy(previous) end);c.copyBefore.enabled=function() return previous~=nil end
+	button("copyBefore",16+copyStep,h-46,copyWidth,"Copy before",function() Copy(previous) end);c.copyBefore.enabled=function() return previous~=nil end
 	if not options.reviewOnly then
-		button("copyAfter",408,h-46,180,"Copy after",function() Copy(current) end);c.copyAfter.enabled=function() return current~=nil end
+		button("copyAfter",16+2*copyStep,h-46,copyWidth,"Copy after",function() Copy(current) end);c.copyAfter.enabled=function() return current~=nil end
 	end
 	button("close",w-156,h-46,140,"Close",function() main:ClosePopup() end)
 	if options.run then button("reviewAction",16,h-128,212,options.label,options.run) end

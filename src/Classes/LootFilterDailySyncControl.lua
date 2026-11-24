@@ -45,6 +45,11 @@ local function showLastAttempt(profileId)
 			local category = feed.category=="leagues" and "League list" or feed.category
 			details[#details+1] = category.." price feed"..(feed.httpStatus and " (HTTP "..feed.httpStatus..")" or "")
 			details[#details+1] = feedFailureDescriptions[feed.reason] or "The price feed check failed."
+			if feed.currentLeague then
+				details[#details+1] = ui.fit("Current challenge league: "..feed.currentLeague.id, math.min(488, main.screenW-72), 14)
+				local checked = attemptTime(feed.verifiedAt)
+				if checked then details[#details+1] = "League list verified on "..checked end
+			end
 		elseif type(failure.message)=="string" then
 			details[#details+1] = ui.fit(ui.errorText(failure.message),460,16)
 		end
@@ -145,7 +150,8 @@ function M.Open(profileId, profileName)
 	local function options()
 		local hour, minute = c.time.buf:match("^%s*(%d%d?):(%d%d)%s*$")
 		return {profileId=profileId,hour=tonumber(hour) or -1,minute=tonumber(minute) or -1,intervalDays=tonumber(c.intervalDays.buf) or -1,
-			targetValue=tonumber(c.targetValue.buf) or -1,protectionFile=c.protectionFile.buf,pickupPolicy=pickupPolicy}
+			targetValue=tonumber(c.targetValue.buf) or -1,protectionFile=c.protectionFile.buf,pickupPolicy=pickupPolicy,
+			expectedSavedLeague=config.league or false}
 	end
 	local function attempt(action)
 		local passed, err = pcall(action)
@@ -181,12 +187,16 @@ function M.Open(profileId, profileName)
 			main:OpenMessagePopup("Choose league","The market provider asked PoB to wait before requesting prices again.")
 			return
 		end
-		local owner = main.popups[1]
+		local owner, endpoint = main.popups[1], market.endpoint
 		loadingLeagues = true
-		launch:DownloadPage(market.endpoint.."leagues",function(response, err)
+		launch:DownloadPage(endpoint.."leagues",function(response, err)
+			loadingLeagues = false
+			if endpoint ~= market.endpoint then
+				if main.popups[1] == owner then main:OpenMessagePopup("Choose league","The price source changed. Reopen the league list.") end
+				return
+			end
 			local code = err and tonumber(err:match("^Response code: (%d+)$"))
 			local wait = sync.noteProviderLimit(response,code,os.time())
-			loadingLeagues = false
 			if main.popups[1] ~= owner then return end
 			if wait then
 				main:OpenMessagePopup("Choose league","The market provider asked PoB to wait before requesting prices again.")
@@ -201,8 +211,10 @@ function M.Open(profileId, profileName)
 				return
 			end
 			local entries = {}
-			for _, league in ipairs(leagues) do
-				entries[#entries+1] = {id=league.id,label=league.name,details={league.id,"PC trade economy"}}
+			for index, league in ipairs(leagues) do
+				local details = {league.id, index == 1 and "Current PC challenge league" or "PC trade economy"}
+				if league.id==config.league then details[#details+1] = "Saved for this profile" end
+				entries[#entries+1] = {id=league.id,label=StripEscapes(league.name),details=details}
 			end
 			require("Classes.PlanningBrowserControl").Open("Choose PC trade league",entries,{
 				action="Use league",
@@ -228,7 +240,49 @@ function M.Open(profileId, profileName)
 		end
 		return ui.fit(cachedStatus, width-32, 14)
 	end
-	button("enable",16,"Enable / update",function() attempt(function() sync.configure(c.target.buf,c.baseline.buf,c.league.buf,options()) end) end)
+	local function selectedLeague()
+		return c.league.buf:match("^%s*(.-)%s*$")
+	end
+	local function leagueChanged()
+		return config.league and config.league~=selectedLeague()
+	end
+	local function previewChanges(rollover)
+		local owner = main.popups[1]
+		local target, baseline, league, draft = c.target.buf,c.baseline.buf,selectedLeague(),options()
+		draft.reviewLeague = rollover and true or nil
+		local passed, err = pcall(sync.preview,target,baseline,league,draft,function(before, after, receipt)
+			if main.popups[1] ~= owner then return end
+			local reviewOptions
+			if rollover then
+				if not receipt then
+					main:OpenMessagePopup("Review league change","The saved profile changed. Reopen Daily price sync and review again.")
+					return
+				end
+				reviewOptions = {
+					title="Review league change",
+					note="Preview for "..league..". Saving updates the profile. The live filter updates after a successful fresh sync.",
+					label="Save reviewed league",
+					run=function()
+						draft.expectedLeagueReview = receipt
+						local saved, why = pcall(sync.configure,target,baseline,league,draft)
+						if not saved then main:OpenMessagePopup("Review league change",ui.errorText(why)); return end
+						main:ClosePopup()
+						main:ClosePopup()
+						M.Open(profileId,profileName)
+					end,
+				}
+			end
+			require("Classes.LootFilterDiffControl").Open(before,after,true,reviewOptions)
+		end,function(message)
+			if main.popups[1] == owner then main:OpenMessagePopup("Filter preview failed",ui.errorText(message)) end
+		end)
+		if not passed then main:OpenMessagePopup("Daily filter sync", ui.errorText(err)) end
+	end
+	button("enable",16,"Enable / update",function()
+		if leagueChanged() then previewChanges(true)
+		else attempt(function() sync.configure(c.target.buf,c.baseline.buf,selectedLeague(),options()) end) end
+	end)
+	c.enable.label = function() return leagueChanged() and "Review league" or "Enable / update" end
 	button("run",16+step*1,"Sync now",function() sync.tick(os.time(),true,false,profileId) end)
 	button("disable",16+step*2,"Disable",function() attempt(function() sync.disable(profileId) end) end)
 	button("pause",16+step*3,config.paused and "Resume" or "Pause",function() attempt(function() sync.pause(not config.paused,profileId) end) end)
@@ -385,15 +439,7 @@ function M.Open(profileId, profileName)
 		end
 		openReview(saved.review or {})
 	end,432)
-	button("preview",16+step,"Preview changes",function()
-		local owner = main.popups[1]
-		local passed, err = pcall(sync.preview,c.target.buf,c.baseline.buf,c.league.buf,options(),function(before, after)
-			if main.popups[1] == owner then require("Classes.LootFilterDiffControl").Open(before,after,true) end
-		end,function(message)
-			if main.popups[1] == owner then main:OpenMessagePopup("Filter preview failed",ui.errorText(message)) end
-		end)
-		if not passed then main:OpenMessagePopup("Daily filter sync", ui.errorText(err)) end
-	end,432)
+	button("preview",16+step,"Preview changes",function() previewChanges(leagueChanged()) end,432)
 	c.preview.enabled = function() return not sync.busy end
 	button("externalEdits",16+step*2,"External edits",function()
 		local passed,before,after = pcall(sync.externalDiff,profileId)

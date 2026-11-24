@@ -1051,3 +1051,73 @@ local function checkAdvisoryStashCoverage()
 end
 checkAdvisoryStashCoverage()
 print("All 29 stash market types preserve scoped native inspection, safe provider evidence, variant ambiguity and build routes")
+
+
+local function checkReviewedRolloverControls()
+	local oldConfig, oldPreview, oldConfigure, oldDownload = sync.configuration, sync.preview, sync.configure, launch.DownloadPage
+	local market = require("Modules.LootFilterEconomy")
+	local endpoint = market.endpoint
+	local live, fixed = "C:/PoE/rollover.filter", "C:/PoE/rollover-baseline.filter"
+	local saved, saves, previews = "Retired League", 0, 0
+	local receipt = {proof="fixture-receipt"}
+	local checkedAt = os.time()
+	sync.configuration = function()
+		return {enabled=true,league=saved,hour=9,target=live,baseline=fixed,
+			lastFailure={checkedAt=checkedAt,failedFeed={category="Currency",reason="league_unavailable",httpStatus=404,
+				currentLeague={id="New League",name="New Challenge League"},verifiedAt=checkedAt}}}
+	end
+	sync.preview = function(target,baseline,league,draft,onReview)
+		assert(target==live and baseline==fixed and league=="New League" and draft.reviewLeague==true)
+		assert(saved=="Retired League")
+		previews = previews+1
+		onReview("Hide\n    Class == \"Stackable Currency\"\n","Show\n    Class == \"Stackable Currency\"\n",receipt)
+	end
+	sync.configure = function(target,baseline,league,draft)
+		assert(target==live and baseline==fixed and league=="New League" and draft.expectedLeagueReview==receipt)
+		assert(draft.expectedSavedLeague==saved)
+		saves = saves+1
+		saved = league
+	end
+	local pending
+	launch.DownloadPage = function(_,url,callback,params)
+		assert(url==endpoint.."leagues" and params.followRedirects==false)
+		pending = callback
+	end
+	local reply = {header="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",checkedAt).."\r\n\r\n",
+		body='[{"id":"New League","name":"New Challenge League"},{"id":"Standard","name":"Standard"}]'}
+	newBuild()
+	main.popups = {}
+	local harness = headless.install({width=720,height=600})
+	harness:bind(build)
+	require("Classes.LootFilterDailySyncControl").Open()
+	harness:click("lastAttempt")
+	assert(main.popups[1].title=="Last sync attempt")
+	harness:click("close")
+	harness:click("chooseLeague")
+	market.endpoint=endpoint.."changed/"
+	pending(reply)
+	assert(main.popups[1].title=="Choose league" and saved=="Retired League")
+	market.endpoint=endpoint
+	harness:click("close")
+	harness:click("chooseLeague")
+	pending(reply)
+	assert(main.popups[1].title=="Choose PC trade league")
+	harness:text("search","New Challenge League")
+	local evidence = {}
+	for _, row in ipairs(main.popups[1].controls.details.list) do evidence[#evidence+1] = StripEscapes(row[1] or "") end
+	assert(table.concat(evidence," "):find("Current PC challenge league",1,true))
+	harness:click("choose")
+	assert(main.popups[1].controls.league.buf=="New League" and saved=="Retired League")
+	harness:click("enable")
+	assert(main.popups[1].title=="Review league change" and saves==0 and previews==1)
+	harness:click("close")
+	assert(main.popups[1].title=="Daily filter sync" and saved=="Retired League")
+	harness:click("preview")
+	assert(main.popups[1].title=="Review league change" and saves==0 and previews==2)
+	harness:click("reviewAction")
+	assert(main.popups[1].title=="Daily filter sync" and saved=="New League" and saves==1)
+	sync.configuration,sync.preview,sync.configure,launch.DownloadPage=oldConfig,oldPreview,oldConfigure,oldDownload
+end
+
+checkReviewedRolloverControls()
+print("Native league selection and preview keep the current profile until explicit review approval")
