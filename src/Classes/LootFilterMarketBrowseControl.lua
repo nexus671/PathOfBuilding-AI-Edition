@@ -4,6 +4,17 @@ local ui = require("Modules.PlanningUI")
 local sync = require("Modules.LootFilterDailySync")
 local M = {}
 
+local function openExactBase(target,league)
+	local json = require("dkjson")
+	local trade = require("Classes.TradeHelpers")
+	local level = target.itemLevel
+	local query = {type=target.name,status={option="available"},
+		stats={{type="and",filters={}}},filters={misc_filters={filters={ilvl={min=level,max=level}}}}}
+	if target.baseImplicit then query.stats[1].filters[1]={id=target.baseImplicit} end
+	local url = "https://www.pathofexile.com/trade/search/"..urlEncode(league).."/"..trade.B64GzipEncode(json.encode(query))
+	OpenURL(url)
+end
+
 local function showManagedQuote(entry)
 	local width = math.min(500,main.screenW-40)
 	local lines = {entry.label}
@@ -42,6 +53,8 @@ local function open(build, managedTarget)
 	controls.category.selFunc = clearTarget
 	controls.query.changeFunc = clearTarget
 	local buildTargets = build and browse.buildTargets(build) or {}
+	local canSearchBase
+	for _, entry in ipairs(buildTargets) do if entry.itemLevel then canSearchBase=true; break end end
 	if #buildTargets>0 then
 		controls.buildTarget = new("ButtonControl"):ButtonControl(ui.anchor,{162,282,152,28},"From build",function()
 			require("Classes.PlanningBrowserControl").Open("Compare a build item",buildTargets,{
@@ -54,11 +67,20 @@ local function open(build, managedTarget)
 					target = entry
 					status(entry.imbuedSupport and "Comparing gem and support; listed level or quality must agree."
 						or entry.level and string.format("Matching level %g and %g%% quality.",entry.level,entry.quality)
+						or entry.itemLevel and ("Build item level "..entry.itemLevel..". Enter a league to search exact listings.")
 						or entry.details[1])
 				end,
 			})
 		end)
 		controls.buildTarget.enabled = function() return not busy end
+	end
+	if canSearchBase then
+		controls.exactBase=new("ButtonControl"):ButtonControl(ui.anchor,{16,320,192,28},"Search exact base on trade",function()
+			local league=controls.league.buf:match("^%s*(.-)%s*$")
+			if not league:match("^[%w _-]+$") then status("Enter a valid league ID to search official trade."); return end
+			openExactBase(target,league)
+		end)
+		controls.exactBase.enabled=function() return not busy and target and target.itemLevel~=nil end
 	end
 	controls.get=new("ButtonControl"):ButtonControl(ui.anchor,{16,282,138,28},"Show prices",function()
 		if busy then return end
@@ -129,6 +151,10 @@ local function open(build, managedTarget)
 				if comparable and not row.conflicting and not row.partialGemMatch then
 					details[#details+1] = comparable.details[#comparable.details]
 				end
+				if category.id=="BaseType" and not row.conflicting then
+					if comparable and comparable.itemLevel then details[#details+1]="Build item level: "..comparable.itemLevel end
+					details[#details+1]="The market feed does not verify the item's level."
+				end
 				if row.partialGemMatch and not row.conflicting then
 					details[#details+1]="Advisory match: exact gem name and Imbued support. Any listed level or quality agrees with the build."
 					local missing={}
@@ -182,7 +208,11 @@ local function open(build, managedTarget)
 					table.insert(entries[1].details,1,category.label.." in "..league)
 					showManagedQuote(entries[1])
 				else
-					require("Classes.PlanningBrowserControl").Open(category.label.." market prices",entries)
+					local options
+					if comparable and comparable.itemLevel then
+						options={secondary={label="Search exact base on trade",run=function() openExactBase(comparable,league) end}}
+					end
+					require("Classes.PlanningBrowserControl").Open(category.label.." market prices",entries,options)
 				end
 			end)
 		end
@@ -208,7 +238,7 @@ local function open(build, managedTarget)
 		status("Exact managed target. Show prices to check its current quote.")
 	end
 	ui.style(controls)
-	popup=main:OpenPopup(width,330,"Browse loot market prices",controls,nil,nil,"close")
+	popup=main:OpenPopup(width,canSearchBase and 366 or 330,"Browse loot market prices",controls,nil,nil,"close")
 end
 
 function M.Open(build)
