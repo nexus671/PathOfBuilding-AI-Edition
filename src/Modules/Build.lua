@@ -15,6 +15,8 @@ local m_huge = math.huge
 local m_floor = math.floor
 local m_abs = math.abs
 local s_format = string.format
+local function compactHeader() return main.screenW < 1170 end
+local function headerHeight(build) return compactHeader() and build.viewMode ~= "PLANNER" and 56 or 32 end
 
 ---@class Build: ControlHost
 ---@field spec PassiveSpec added by TreeTab
@@ -201,7 +203,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 		return buildNameConditional() and -196 or 8
 	end
 	self.controls.buildName.y = function()
-		return buildNameConditional() and 32 or 0
+		return buildNameConditional() and (compactHeader() and 56 or 32) or 0
 	end
 
 	-- Controls: top bar, right side
@@ -210,7 +212,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	local function getPointDisplayX() -- I had it hardcoded to -323 before switching to the control sizing
 		return - (23 + self.controls.pointDisplay:GetSize() + self.controls.levelScalingButton:GetSize() + self.controls.characterLevel:GetSize())
 	end
-	self.controls.pointDisplay = new("Control"):Control({"LEFT",self.anchorTopBarRight,"RIGHT"}, {function() return getPointDisplayX() end, 0, 0, 20})
+	self.controls.pointDisplay = new("Control"):Control({"LEFT",self.anchorTopBarRight,"RIGHT"}, {function() return compactHeader() and (4 - self.anchorTopBarRight:GetPos()) or getPointDisplayX() end, function() return compactHeader() and 28 or 0 end, 0, 20})
 	self.controls.pointDisplay.width = function(control)
 		return DrawStringWidth(16, "FIXED", control.str) + 8
 	end
@@ -299,6 +301,8 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 			end
 		end
 	end)
+	self.controls.classDrop.x = function() return compactHeader() and (210 - self.controls.characterLevel:GetPos() - self.controls.characterLevel:GetSize()) or 10 end
+	self.controls.classDrop.y = function() return compactHeader() and -28 or 0 end
 	self.controls.ascendDrop = new("DropDownControl"):DropDownControl({"LEFT",self.controls.classDrop,"RIGHT"}, {4, 0, 120, 20}, nil, function(index, value)
 		self.spec:SelectAscendClass(value.ascendClassId)
 		self.spec:AddUndoState()
@@ -364,7 +368,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	-- Controls: Side bar
 	self.anchorSideBar = new("Control"):Control(nil, {4, 60, 0, 0})
 	self.anchorSideBar.y = function()
-		return buildNameConditional() and 60 or 36
+		return buildNameConditional() and (compactHeader() and 84 or 60) or 36
 	end
 
 	self.controls.modeImport = new("ButtonControl"):ButtonControl({"TOPLEFT",self.anchorSideBar,"TOPLEFT"}, {0, 0, 134, 20}, "Import/Export Build", function()
@@ -659,7 +663,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 		local shown=control.shown
 		control.shown=function(widget)
 			local visible=shown;if type(shown)=="function" then visible=shown(widget) end
-			return visible and (self.viewMode~="PLANNER" or select(2,widget:GetPos())<32)
+			return visible and (self.viewMode~="PLANNER" or select(2,widget:GetPos())<headerHeight(self))
 		end
 	end
 
@@ -1388,6 +1392,11 @@ function buildMode:OnFrame(inputEvents)
 		main:DrawBackground(main.viewPort)
 		return
 	end
+	local extra = m_max(0, main.screenW - 640) / 4
+	self.controls.classDrop.width = compactHeader() and m_min(85, 75 + extra) or 85
+	self.controls.ascendDrop.width = compactHeader() and m_min(120, 85 + extra) or 120
+	self.controls.secondaryAscendDrop.width = compactHeader() and m_min(160, 95 + extra) or 160
+	self.controls.buildLoadouts.width = compactHeader() and m_min(190, 125 + extra) or 190
 
 	if self.abortSave and not launch.devMode then
 		self:CloseBuild()
@@ -1475,15 +1484,15 @@ function buildMode:OnFrame(inputEvents)
 
 	end
 
-	local headerFocus=self.viewMode=="PLANNER" and self.selControl and select(2,self.selControl:GetPos())<32
+	local headerFocus=self.viewMode=="PLANNER" and self.selControl and select(2,self.selControl:GetPos())<headerHeight(self)
 	if self.viewMode=="PLANNER" then
 		for _,event in pairs(inputEvents) do if event.type=="KeyDown" and event.key:match("BUTTON") then
-			if cursorY<32 and self.planningWorkspace and self.planningWorkspace.body then
+			if cursorY<headerHeight(self) and self.planningWorkspace and self.planningWorkspace.body then
 				self.planningWorkspace.body:SelectControl(nil);self.planningWorkspace.nav:SelectControl(nil)
 			elseif headerFocus and not self.selControl.dropped then self:SelectControl(nil);headerFocus=false end
 		end end
 	end
-	if self.viewMode~="PLANNER" or cursorY<32 or headerFocus then self:ProcessControlsInput(inputEvents, main.viewPort) end
+	if self.viewMode~="PLANNER" or cursorY<headerHeight(self) or headerFocus then self:ProcessControlsInput(inputEvents, main.viewPort) end
 
 	self.controls.classDrop:SelByValue(self.spec.curClassId, "classId")
 	self.controls.ascendDrop.list = self.controls.classDrop:GetSelValueByKey("ascendancies")
@@ -1557,9 +1566,9 @@ function buildMode:OnFrame(inputEvents)
 	local sideBarWidth = 312
 	local tabViewPort = {
 		x = sideBarWidth,
-		y = 32,
+		y = headerHeight(self),
 		width = main.screenW - sideBarWidth,
-		height = main.screenH - 32
+		height = main.screenH - headerHeight(self)
 	}
 	if self.viewMode == "IMPORT" then
 		self.importTab:Draw(tabViewPort, inputEvents)
@@ -1581,7 +1590,7 @@ function buildMode:OnFrame(inputEvents)
 		self.compareTab:Draw(tabViewPort, inputEvents)
 	elseif self.viewMode == "PLANNER" then
 		self.planningWorkspace=self.planningWorkspace or require("Modules.PlanningWorkspace").new(self)
-		self.planningWorkspace:Draw({x=0,y=32,width=main.screenW,height=main.screenH-32},inputEvents)
+		self.planningWorkspace:Draw({x=0,y=headerHeight(self),width=main.screenW,height=main.screenH-headerHeight(self)},inputEvents)
 	end
 
 	-- Draw overlay panes on top of all tab content (last = topmost)
@@ -1597,21 +1606,21 @@ function buildMode:OnFrame(inputEvents)
 
 	-- Draw top bar background
 	SetDrawColor(0.2, 0.2, 0.2)
-	DrawImage(nil, 0, 0, main.screenW, 28)
+	DrawImage(nil, 0, 0, main.screenW, headerHeight(self) - 4)
 	SetDrawColor(0.85, 0.85, 0.85)
-	DrawImage(nil, 0, 28, main.screenW, 4)
-	if self.viewMode~="PLANNER" then DrawImage(nil, main.screenW/2 - 2, 0, 4, 28) end
+	DrawImage(nil, 0, headerHeight(self) - 4, main.screenW, 4)
+	if self.viewMode~="PLANNER" and not compactHeader() then DrawImage(nil, main.screenW/2 - 2, 0, 4, 28) end
 
 	if self.viewMode=="PLANNER" then
 		for _,control in pairs(self.controls) do
-			if control:IsShown() and control.Draw and select(2,control:GetPos())<32 then control:Draw(main.viewPort) end
+			if control:IsShown() and control.Draw and select(2,control:GetPos())<headerHeight(self) then control:Draw(main.viewPort) end
 		end
 	else
 		-- Draw side bar background
 		SetDrawColor(0.1, 0.1, 0.1)
-		DrawImage(nil, 0, 32, sideBarWidth - 4, main.screenH - 32)
+		DrawImage(nil, 0, headerHeight(self), sideBarWidth - 4, main.screenH - headerHeight(self))
 		SetDrawColor(0.85, 0.85, 0.85)
-		DrawImage(nil, sideBarWidth - 4, 32, 4, main.screenH - 32)
+		DrawImage(nil, sideBarWidth - 4, headerHeight(self), 4, main.screenH - headerHeight(self))
 
 
 		local hovered = self.controls.statBox and self.controls.statBox.hoveredLine
