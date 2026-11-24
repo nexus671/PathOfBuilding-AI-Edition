@@ -825,7 +825,9 @@ do
 	ui:bind(build)
 	local oldTime, oldDownload = os.time, launch.DownloadPage
 	local oldDirectory = main.userPath
-	main.userPath = output and output.."/" or nil
+	-- This block tests shared in-process cooldown behavior. Keep it independent
+	-- of persisted holds from other runs writing frames to the same directory.
+	main.userPath = nil
 	local time, requests = os.time(), 0
 	os.time = function() return time end
 	launch.DownloadPage = function(_,url,callback)
