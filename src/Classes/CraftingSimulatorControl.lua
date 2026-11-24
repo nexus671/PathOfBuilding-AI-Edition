@@ -1153,6 +1153,8 @@ function Panel.Open(build,project,layout)
 		end
 	end
 	if compact then
+		-- Leave room for values when the fields shrink in a small window.
+		controls.budget.prompt="Budget";controls.price.prompt="Price";controls.baseCost.prompt="Base"
 		local compactRows={
 			["Target conditions"]={targetLabel=96,target=112,addTarget=144,alternative=144,clearTargets=144,targetPicker=176,targetConditions=208,targetGroups=208,targetSummary=240},
 			["Simulate recipe"]={trialsLabel=88,trials=104,budget=104,priceLabel=136,price=152,currency=152,baseCost=152,simulate=184,runRecipe=184,editRecipe=216,resourcePrices=216,optimize=248,fossilResults=248,distribution=280,compareRecipes=280,resultSummary=312},
