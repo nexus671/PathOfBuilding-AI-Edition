@@ -77,10 +77,28 @@ function M.install(options)
 	replace("Copy",function(text) ui.clipboard=text end)
 	replace("Paste",function() return ui.clipboard end)
 	replace("DrawStringWidth",measure)
-	replace("DrawStringCursorIndex",function(height,name,text,x)
-		-- SimpleGraphic converts the renderer's zero-based offset to a Lua index.
-		for i=1,#text do if measure(height,name,text:sub(1,i))>x then return i end end
-		return #text+1
+	replace("DrawStringCursorIndex",function(height,name,text,x,y)
+		-- SimpleGraphic chooses a line, skips colour codes, and maps its cursor
+		-- offset back to a one-based UTF-8 byte index for Lua.
+		local start,lineY=1,height
+		while true do
+			local newline=text:find("\n",start,true)
+			local finish=newline and newline-1 or #text
+			if (y or 0)<=lineY or not newline then
+				local line=text:sub(start,finish);local index=1
+				while index<=#line do
+					local _,length=escape(line:sub(index))
+					if length then index=index+length
+					else
+						local char=line:sub(index):match("^[\194-\244][\128-\191]*") or line:sub(index,index)
+						if x<=measure(height,name,line:sub(1,index+#char-1)) then return start+index-1 end
+						index=index+#char
+					end
+				end
+				return start+#line
+			end
+			start=newline+1;lineY=lineY+height
+		end
 	end)
 	replace("SetDrawColor",function(r,g,b,a) color=type(r)=="string" and assert(escape(r),"Unknown colour escape") or {r,g,b,a or 1} end)
 	replace("GetDrawColor",function() return unpack(color) end)
