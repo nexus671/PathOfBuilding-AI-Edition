@@ -60,7 +60,7 @@ function M.fetch(hour, callback)
 		if not ok then callback(nil,markets); return end
 		cachedHour, cachedMarkets = hour, markets
 		callback(markets)
-	end,{header="Accept: application/json",timeout=15,maxBytes=12*1024*1024})
+	end,{followRedirects=false,header="Accept: application/json",timeout=15,maxBytes=12*1024*1024})
 end
 
 return M

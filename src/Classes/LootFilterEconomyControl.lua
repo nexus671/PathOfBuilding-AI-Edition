@@ -51,7 +51,7 @@ function M.Open(profile, raw, export)
 				if not active() then return end
 				if delay then cooldown(delay); return end
 				callback(not err and response or nil)
-			end, {timeout=20,maxBytes=maxBytes or 65536,header="Accept: application/json"})
+			end, {followRedirects=false,timeout=20,maxBytes=maxBytes or 65536,header="Accept: application/json"})
 		end
 		busy = true
 		status("Checking trade leagues...")

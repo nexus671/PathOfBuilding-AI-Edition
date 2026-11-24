@@ -2,12 +2,13 @@
 -- policy and calls the same native worker as the on-demand command.
 local M = {}
 local sync = require("Modules.LootFilterDailySync")
+local market = require("Modules.LootFilterEconomy")
 local sha = require("sha1")
 
 -- Run registration away from the UI. Windows PowerShell is resolved from the
 -- system directory and invoked directly, with no command interpreter or PATH lookup.
 local registerScript = [=[
-local enable, taskName, workingDirectory, userPath = ...
+local enable, taskName, workingDirectory, userPath, endpoint = ...
 local ok, result = pcall(function()
 	local inspecting = enable=="inspect"
 	assert(inspecting or type(enable)=="boolean", "Invalid background task request")
@@ -62,7 +63,8 @@ local ok, result = pcall(function()
 	local executable = workingDirectory .. "/Path of Building.exe"
 	local worker = "$ErrorActionPreference = 'Stop'; $exe = " .. literal(executable) ..
 		"; $dir = " .. literal(workingDirectory) ..
-		"; $userPath = " .. literal(userPath) .. [[
+		"; $userPath = " .. literal(userPath) ..
+		"; $env:POB_MARKET_CACHE_URL = " .. literal(endpoint or "") .. [[
 
 function Read-JsonFile([string]$name) {
     try { return Get-Content -LiteralPath (Join-Path $userPath $name) -Raw -Encoding UTF8 | ConvertFrom-Json }
@@ -155,13 +157,14 @@ try {
 if ($task -and $task.Description -ne $description) { exit 11 }
 ]]
 	if enable then
-		local arguments = launchArguments..encode(worker)
 		script = script .. "$powershell = "..literal(powershell).."\n"
 		if inspecting then
-			-- Keep the inspection command below Windows' process argument limit.
+			local arguments = launchArguments..encode(worker)
 			script = script .. "$argumentHash = "..literal(require("sha1")(arguments)).."; $exe = "..literal(executable).."\n"
 		else
-			script = script .. "$arguments = "..literal(arguments).."\n"
+			-- Encode the worker in PowerShell to avoid nested base64 on the Windows command line.
+			script = script .. "$arguments = "..literal(launchArguments)..
+				" + [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes("..literal(worker).."))\n"
 		end
 	end
 	if inspecting then
@@ -240,7 +243,8 @@ return ok, result
 
 local function launchTaskCheck(mode)
 	local taskName = "PoB AI Loot Sync " .. sha(main.userPath:lower()):sub(1,16)
-	return LaunchSubScript(registerScript, "", "", mode, taskName, GetRuntimePath(), main.userPath)
+	local endpoint = mode and assert(market.endpoint, market.endpointError) or ""
+	return LaunchSubScript(registerScript, "", "", mode, taskName, GetRuntimePath(), main.userPath, (endpoint:gsub("/$", "")))
 end
 
 function M.inspect(callback)
@@ -261,6 +265,7 @@ function M.change(enabled, callback, profileId)
 	local release = sync.acquireBackgroundSetup()
 	local ok, problem = pcall(function()
 		local config = assert(sync.configuration(profileId), "Enable daily sync first")
+		if enabled then sync.assertPriceSource(config) end
 		if not enabled then
 			for _, entry in ipairs(sync.profiles()) do
 				if entry.id ~= profileId then
