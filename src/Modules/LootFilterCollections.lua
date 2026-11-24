@@ -32,6 +32,7 @@ local function validate(values,kind)
 		else
 			next.appearance=appearance.validate(entry.appearance);next.theme=entry.theme or "default";assert(next.theme=="default" or next.theme=="contrast","Invalid palette theme")
 			if entry.categoryStyles~=nil then next.categoryStyles=require("Modules.LootFilterCategoryStyles").validate(entry.categoryStyles) end
+			if entry.sharedStyles~=nil then next.sharedStyles=require("Modules.LootFilterSharedStyles").validate(entry.sharedStyles) end
 		end;result[#result+1]=next
 	end;return result
 end
@@ -46,7 +47,7 @@ function M.install(profile,key,entry)
 	if not found then next[key][#next[key]+1]=copyTable(entry) end;return checked(next)
 end
 function M.palette(profile,id)
-	for _,entry in ipairs(profile.palettes or {}) do if entry.id==id then local next=copyTable(profile);next.appearance=copyTable(entry.appearance);next.theme=entry.theme;if entry.categoryStyles~=nil then next.categoryStyles=copyTable(entry.categoryStyles) end;return checked(next) end end
+	for _,entry in ipairs(profile.palettes or {}) do if entry.id==id then local next=copyTable(profile);next.appearance=copyTable(entry.appearance);next.theme=entry.theme;if entry.categoryStyles~=nil then next.categoryStyles=copyTable(entry.categoryStyles) end;if entry.sharedStyles~=nil then next.sharedStyles=copyTable(entry.sharedStyles) end;return checked(next) end end
 	error("Choose a saved palette")
 end
 return M

@@ -29,8 +29,9 @@ function M.Open(profile,kind,sources,onAccept)
 			if preview then lines[#lines+1]="Preview: "..preview.action;for _,reason in ipairs(preview.reasons or {}) do lines[#lines+1]=reason end end
 			for _,sample in ipairs(entry and entry.samples or {}) do lines[#lines+1]=visual.sampleName(sample).." | item level "..tostring(sample.ItemLevel or "unknown").." | area "..tostring(sample.AreaLevel or "unknown") end
 		else
-			example={BaseType="Crafting base"};local p=copyTable(draft);if entry then p.appearance=entry.appearance;p.theme=entry.theme;if entry.categoryStyles~=nil then p.categoryStyles=entry.categoryStyles end end
+			example={BaseType="Crafting base"};local p=copyTable(draft);if entry then p.appearance=entry.appearance;p.theme=entry.theme;if entry.categoryStyles~=nil then p.categoryStyles=entry.categoryStyles end;if entry.sharedStyles~=nil then p.sharedStyles=entry.sharedStyles end end
 			local raw=require("Modules.LootFilterCategoryStyles").apply(filters.rule("example","Example",{},nil,p.theme).text,p.categoryStyles,"Build targets")
+			raw=require("Modules.LootFilterSharedStyles").apply(raw,p.sharedStyles)
 			raw=require("Modules.LootFilterDecorators").apply(raw,p.appearance)
 			preview={action="Show",styles=parser.parse(raw).rules[1].styles};lines[#lines+1]=entry and "Use selected restores this snapshot. Further edits do not change the saved palette." or "Tune Whole-filter appearance on the Style page before saving a new palette."
 			lines[#lines+1]=entry and entry.categoryStyles~=nil and "Restores "..#entry.categoryStyles.." saved category styles." or "Category settings stay as currently configured."
@@ -48,7 +49,7 @@ function M.Open(profile,kind,sources,onAccept)
 	local function capture(id)
 		local entry={id=id,title=c.name.buf}
 		if samples then entry.samples=copyTable(sources[c.source:GetSelValueByKey("val")].samples)
-		else entry.appearance=copyTable(profile.appearance or {});entry.theme=profile.theme;entry.categoryStyles=copyTable(profile.categoryStyles or {}) end
+		else entry.appearance=copyTable(profile.appearance or {});entry.theme=profile.theme;entry.categoryStyles=copyTable(profile.categoryStyles or {});entry.sharedStyles=copyTable(profile.sharedStyles or {}) end
 		draft=collections.install(draft,kind,entry);refresh(id)
 	end
 	local bw=math.floor((w-56)/4)
