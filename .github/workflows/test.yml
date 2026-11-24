@@ -72,7 +72,6 @@ jobs:
       - name: Exercise controls and audit frames
         run: |
           (cd src && LUA_PATH='../runtime/lua/?.lua;../runtime/lua/?/init.lua;;' luajit ../tools/benchmark_atlas_report.lua)
-          (cd src && LUA_PATH='../runtime/lua/?.lua;../runtime/lua/?/init.lua;;' luajit ../tools/test_filter_shared_styles.lua)
           python3 tools/test_crafting_data_status.py
           python3 tools/test_crafting_export_refresh.py
           python3 tools/test_compare_crafting_export.py

@@ -91,6 +91,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_global_crafting_item_ui.lua")
     sources.append(ROOT / "tools/test_planning_bundle_errors.lua")
     sources.append(ROOT / "tools/test_filter_compact_ui.lua")
+    sources.append(ROOT / "tools/test_filter_shared_styles.lua")
     sources.append(ROOT / "tools/test_atlas_compact_ui.lua")
     sources.append(ROOT / "tools/test_campaign_compact_ui.lua")
     sources.append(ROOT / "tools/test_global_compact_ui.lua")
@@ -323,6 +324,10 @@ def main():
                                     env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-compact-controls.log").write_text(compact_filter.stdout)
     assert compact_filter.returncode == 0, compact_filter.stdout
+    shared_styles = subprocess.run(lua_command + ["../tools/test_filter_shared_styles.lua", str(frames)], cwd=ROOT / "src",
+                                   env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "filter-shared-styles.log").write_text(shared_styles.stdout)
+    assert shared_styles.returncode == 0, shared_styles.stdout
     compact_campaign = subprocess.run(lua_command + ["../tools/test_campaign_compact_ui.lua", str(frames)], cwd=ROOT / "src",
                                       env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "campaign-compact-controls.log").write_text(compact_campaign.stdout)
@@ -522,7 +527,10 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2697, f"Expected 2697 UI frames, found {len(paths)}"
+    assert len(paths) == 2706, f"Expected 2706 UI frames, found {len(paths)}"
+    for width in (640, 960, 1280):
+        for view in ("browser", "edit", "workspace"):
+            assert (frames / f"{width}-shared-style-{view}.json").is_file(), f"Missing shared-style {view} at {width}px"
     for name in ("960-inventory-source.json", "960-inventory-source-detail.json"):
         assert (frames / name).is_file(), f"Missing saved-item source view: {name}"
     for width in (960, 1024, 1280):
