@@ -94,8 +94,17 @@ async function boundedBody(response, limit) {
   return Buffer.concat(chunks, bytes);
 }
 
+function record(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function recordList(value) {
+  return Array.isArray(value) && value.every(record);
+}
+
 function validatePayload(value, kind) {
   if (kind === 'leagues') {
+    if (!recordList(value)) throw new MarketError(502, 'Provider league list is invalid',undefined,'invalid_response');
     const ids = new Set(value.map(entry => {
       if (typeof entry?.id !== 'string' || !leaguePattern.test(entry.id) || typeof entry.name !== 'string') {
         throw new MarketError(502, 'Provider returned an invalid league',undefined,'invalid_response');
@@ -105,8 +114,8 @@ function validatePayload(value, kind) {
     if (ids.size === 0 || ids.size > 100 || ids.size !== value.length) throw new MarketError(502, 'Provider league list is invalid',undefined,'invalid_response');
     return ids;
   }
-  if (!Array.isArray(value?.lines)) throw new MarketError(502, 'Provider overview is invalid',undefined,'invalid_response');
-  if (kind === 'exchange' && (!Array.isArray(value.items) || value.core?.primary !== 'chaos')) {
+  if (!record(value) || !recordList(value.lines)) throw new MarketError(502, 'Provider overview is invalid',undefined,'invalid_response');
+  if (kind === 'exchange' && (!recordList(value.items) || !record(value.core) || value.core.primary !== 'chaos')) {
     throw new MarketError(502, 'Provider exchange overview is invalid',undefined,'invalid_response');
   }
   return null;

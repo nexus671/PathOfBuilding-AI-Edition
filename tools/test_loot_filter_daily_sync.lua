@@ -1862,6 +1862,7 @@ local function checkStructuredFeedFailures()
 		{mode="empty",category="Currency",reason="empty_response",status=200},
 		{mode="empty",category="Scarab",reason="empty_response",status=200},
 		{mode="invalid",category="Scarab",reason="invalid_response",status=200},
+		{mode="partial",category="Scarab",reason="invalid_response",status=200},
 		{mode="stale",category="Scarab",reason="stale",status=200},
 		{mode="denied",category="Scarab",reason="access_denied",status=403},
 		{mode="limited",category="Scarab",reason="rate_limited",status=429},
@@ -1896,6 +1897,9 @@ local function checkStructuredFeedFailures()
 				attempts=attempts+1
 				if case.mode=="empty" then callback({header=date,body='{"core":{"primary":"chaos"},"items":[],"lines":[]}'});return
 				elseif case.mode=="invalid" then callback({header=date,body='{"core":'});return
+				elseif case.mode=="partial" then
+					callback({header=date,body='{"core":{"primary":"chaos"},"items":[{"id":"scarab","name":"Harbinger Scarab"}],"lines":[{"id":"scarab","primaryValue":0.05,"volumePrimaryValue":1000},null,{"id":"scarab","primaryValue":0.4,"volumePrimaryValue":1000}]}'})
+					return
 				elseif case.mode=="stale" then callback({header=date:gsub("\r\n\r\n","\r\nAge: 4001\r\n\r\n"),body=commodityBody});return
 				elseif case.mode=="timeout" then return
 				elseif case.mode=="oversized" then callback(nil,"Response exceeds the size limit");return
@@ -1944,6 +1948,37 @@ local function checkStructuredFeedFailures()
 end
 checkStructuredFeedFailures()
 print("Failed feed evidence survives restart, covers retries and timeouts, preserves verified output, and excludes private errors")
+
+local function checkMarketCollectionContracts()
+	local browse = require("Modules.LootFilterMarketBrowse")
+	local name = "Added Cold Damage Support"
+	local gem = '{"detailsId":"added-cold-damage-support","name":"'..name..'","gemLevel":20,"gemQuality":20,"corrupted":false,"chaosValue":15,"count":40,"listingCount":35,"variant":null,"baseType":null}'
+	local map = '{"name":"Map (Tier 16)","detailsId":"tier-16-map","mapTier":16,"chaosValue":10,"count":40,"listingCount":35,"baseType":null}'
+	local league = '{"id":"Covens","name":"Covens of Umbra"}'
+	local commodity = '{"id":"alt","primaryValue":0.2,"volumePrimaryValue":400}'
+	local item = '{"id":"alt","name":"Orb of Alteration","icon":null}'
+	local stash = {id="SkillGem",feed="stash"}
+	local function overview(lines) return '{"lines":'..lines..'}' end
+	local function exchange(items,lines) return '{"core":{"primary":"chaos"},"items":'..items..',"lines":'..lines..'}' end
+	local function verify(parser,row)
+		parser("["..row.."]")
+		for _, bad in ipairs({"[null,"..row.."]","["..row..",null,"..row.."]","["..row..",null]","["..row..",[]]","["..row..",false]","{\"1\":"..row.."}"}) do
+			assert(not pcall(parser,bad),bad)
+		end
+	end
+	verify(function(list) return market.quotes(exchange(list,"["..commodity.."]"),"Currency") end,item)
+	verify(function(list) return market.quotes(exchange("["..item.."]",list),"Currency") end,commodity)
+	verify(function(list) return market.quotes(overview(list),"Map") end,map)
+	local gemKey = require("Modules.LootFilterGemMarket").key(name,20,20,false)
+	verify(function(list) return market.quotes(overview(list),"SkillGem",{[gemKey]=true}) end,gem)
+	local valid = market.quotes(overview("["..gem.."]"),"SkillGem",{[gemKey]=true})
+	assert(valid[gemKey].price==15)
+	verify(function(list) return browse.rows(overview(list),stash,"",nil) end,gem)
+	assert(not pcall(browse.rows,overview("["..gem.."]").."{}",stash,""))
+	verify(market.tradeLeagues,league)
+end
+checkMarketCollectionContracts()
+print("Market decoders reject malformed rows in exchange, map, gem, stash and league collections")
 
 
 local function checkExactManagedQuoteInspection()

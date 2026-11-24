@@ -121,6 +121,36 @@ test('rejects unknown destinations, malformed, stale and oversized feeds',async 
   assert.equal((await (await cache.request('/health')).json()).cached,1);
 });
 
+test('never caches a partial overview with malformed collection entries',async t=>{
+  const good = JSON.parse(priceBody);
+  let offered = good;
+  const cache = await fixture(t,(path,options,{ now })=>{
+    if (path === '/leagues') return snapshot(leagueBody,now);
+    return snapshot(JSON.stringify(offered),now,{ etag:'"fixture"' });
+  });
+  assert.equal((await cache.request(currencyPath)).status,200);
+  cache.advance(301000);
+  for (const payload of [
+    {...good,lines:[null,...good.lines]},
+    {...good,lines:[...good.lines,null]},
+    {...good,lines:[...good.lines,[]]},
+    {...good,lines:{0:good.lines[0]}},
+    {...good,items:[...good.items,false]},
+  ]) {
+    offered = payload;
+    assert.equal((await cache.request(currencyPath)).status,502);
+    const health = await (await cache.request('/health')).json();
+    assert.equal(health.provider.lastFailure.reason,'invalid_response');
+  }
+  const stash = '/stash/current/item/overview?league=Covens&type=SkillGem';
+  offered = {lines:[{name:'Added Cold Damage Support'},null]};
+  assert.equal((await cache.request(stash)).status,502);
+  offered = good;
+  const recovered = await cache.request(currencyPath);
+  assert.equal(recovered.status,200);
+  assert.equal(await recovered.text(),priceBody);
+});
+
 test('honors no-cache validation and never stores no-store responses',async t=>{
   let forbidStorage = false;
   const cache = await fixture(t, (path,options,{ now })=>{
