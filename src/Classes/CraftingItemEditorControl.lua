@@ -9,6 +9,18 @@ function Panel.Open(model,input,onKeep)
 	local hasOffers=model.unveiledJewels and next(model.unveiledJewels)~=nil
 	local hasKatakohi=model.item.type=="Gloves"
 	local extra=(hasOffers or hasKatakohi) and 34 or 0
+	local function fitNestedPopup(popup,originalWidth)
+		local width=math.min(originalWidth,main.screenW-24)
+		if width<originalWidth then
+			local factor=(width-32)/(originalWidth-32)
+			for _,control in pairs(popup) do
+				if type(control.x)=="number" then control.x=16+math.floor((control.x-16)*factor) end
+				if type(control.width)=="number" and control.width>0 then control.width=math.floor(control.width*factor) end
+				if type(control.label)=="string" and control.width==0 then control.tooltipText=control.label;control.label=require("Modules.PlanningUI").fit(control.label,width-control.x-16,14) end
+			end
+		end
+		return width
+	end
 	local function button(key,x,y,w,text,callback)
 		controls[key]=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{x,y,w,24},text,function()
 			local ok,message=pcall(callback);if not ok then require("Modules.PlanningUI").errorPopup("Edit hypothetical item",message) end
@@ -125,7 +137,7 @@ function Panel.Open(model,input,onKeep)
 		popup.clear=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{232,222,200,28},"Clear choices",function() state=copyTable(state);state.veil=nil;refresh();main:ClosePopup() end)
 		popup.clear.enabled=function() return state.veil~=nil end
 		popup.close=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{644,222,116,28},"Cancel",function() main:ClosePopup() end)
-		main:OpenPopup(776,268,"Jewel unveil choices",popup,nil,nil,"close")
+		main:OpenPopup(fitNestedPopup(popup,776),268,"Jewel unveil choices",popup,nil,nil,"close")
 	end) end
 	if hasKatakohi then button("katakohi",16,340,376,"Set socket enchantments",function()
 		local katakohi=require("Modules.CraftingKatakohi");local rows=katakohi.catalog("",100,model);local popup={};local options={{label="No enchantment",val=""}}
@@ -146,7 +158,8 @@ function Panel.Open(model,input,onKeep)
 			state=result;refresh();main:ClosePopup()
 		end)
 		popup.close=new("ButtonControl"):ButtonControl({"TOPLEFT",nil,"TOPLEFT"},{644,208,116,28},"Cancel",function() main:ClosePopup() end)
-		main:OpenPopup(776,254,"Socket enchantments",popup,nil,nil,"close")
+		local width=fitNestedPopup(popup,776);if width<776 then popup.use.label="Use enchantments" end
+		main:OpenPopup(width,254,"Socket enchantments",popup,nil,nil,"close")
 	end) end
 	button("editSockets",16,368+extra,260,"Set socket layout",function()
 		require("Classes.CraftingSocketControl").Open(model,state,function(candidate) commit(candidate) end)
@@ -169,7 +182,22 @@ function Panel.Open(model,input,onKeep)
 	controls.baseImplicit.tooltipText=function() local choices,reason=implicitOptions();return choices and "Set a hypothetical ordinary base implicit without spending currency." or reason end
 	button("keep",16,402+extra,260,"Use as recipe starting item",function() applyProperties();onKeep(sim.validateState(model,state));main:ClosePopup() end)
 	button("close",644,402+extra,116,"Cancel",function() main:ClosePopup() end)
-	refresh();main:OpenPopup(776,450+extra,"Edit hypothetical item",controls,nil,nil,"close")
+	local popupWidth=math.min(776,main.screenW-24);local popupHeight=math.min(450+extra,main.screenH-24)
+	if popupHeight<450+extra then
+		local factor=(popupHeight-30)/(420+extra)
+		for _,control in pairs(controls) do if type(control.y)=="number" and control.y>28 then control.y=28+math.floor((control.y-28)*factor) end end
+	end
+	if popupWidth<776 then
+		local factor=(popupWidth-32)/744
+		for _,control in pairs(controls) do
+			if type(control.x)=="number" then control.x=16+math.floor((control.x-16)*factor) end
+			if type(control.width)=="number" and control.width>0 then control.width=math.floor(control.width*factor) end
+		end
+		controls.searchHint.label="Type to search";controls.roll.prompt="Roll %";controls.roll.tooltipText="Enter a roll from 0 to 100 percent.";controls.keep.label="Use starting item"
+		local originalRefresh=refresh
+		refresh=function() originalRefresh();controls.info.label=require("Modules.PlanningUI").fit(controls.info.label,popupWidth-32,14) end
+	end
+	refresh();main:OpenPopup(popupWidth,popupHeight,"Edit hypothetical item",controls,nil,nil,"close")
 	return controls
 end
 return Panel

@@ -3,7 +3,7 @@ local ui=require("Modules.PlanningUI")
 local reference=require("Modules.CraftingGwennenReference")
 local M={}
 function M.Open(keep,simulate,initial,checkPair)
-	local width=math.min(780,main.screenW-40);local height=500
+	local width=math.min(780,main.screenW-40);local height=math.min(500,main.screenH-24)
 	local controls={};local entries=reference.search("",100).offers;local byId={};local choices={{label="Select an observed outcome",val=0}}
 	table.sort(entries,function(a,b) return a.description<b.description end)
 	for _,entry in ipairs(entries) do byId[entry.id]=entry;choices[#choices+1]={label=entry.description,val=entry.id} end
@@ -82,6 +82,18 @@ function M.Open(keep,simulate,initial,checkPair)
 		controls.simulate.tooltipText="Available for "..supportedCount.." experimental outcomes. Unknown or unrecognized artifact prices remain unpriced."
 	end
 	controls.close=ui.styleButton(new("ButtonControl"):ButtonControl(ui.anchor,{width-132,height-48,116,28},"Cancel",function() main:ClosePopup() end))
+	if height<500 then
+		controls.intro.height=36;controls.firstLabel.y=70;controls.first.y=90;controls.firstNote.y=120;controls.firstNote.height=28
+		controls.secondLabel.y=150;controls.second.y=170;controls.secondNote.y=200;controls.secondNote.height=28
+		controls.costLabel.y=232;controls.costLabel.label="Observed artifact price (optional)";controls.cost.y=252
+		controls.rerollsLabel.y=284;controls.rerolls.y=304;controls.limits.y=338;controls.limits.height=height-402
+	end
+	if width<720 then
+		local count=controls.simulate and 3 or 2;local cell=math.floor((width-32-(count-1)*8)/count)
+		controls.keep.x=16;controls.keep.width=cell
+		if controls.simulate then controls.simulate.x=24+cell;controls.simulate.width=cell end
+		controls.close.x=16+(count-1)*(cell+8);controls.close.width=cell
+	end
 	ui.style(controls,{keep=true});for _,control in pairs(controls) do control.layoutAudit="gwennen-pair" end
 	main:OpenPopup(width,height,"Gwennen: observed pair",controls,nil,nil,"close")
 	return controls
