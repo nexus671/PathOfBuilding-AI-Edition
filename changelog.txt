@@ -1,8 +1,12 @@
-VERSION[2.68.1-ai.preview1250][2026/11/23]
+VERSION[2.68.1-ai.preview1251][2026/11/23]
 
 * Keep filter tier instructions readable in small windows.
 * Keep crafting simulation budget and price values visible in small windows.
 * Explain when actions in the enlarged Atlas tree are unavailable.
+
+VERSION[2.68.1-ai.preview1250][2026/11/23]
+
+* Finish interrupted loot filter refreshes locally once the installed filter and its backup are verified.
 
 VERSION[2.68.1-ai.preview1249][2026/11/23]
 
