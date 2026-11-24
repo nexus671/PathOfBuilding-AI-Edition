@@ -13,7 +13,7 @@ describe("Headless text cursor", function()
 		assert.equal("life", search.buf)
 		ui:clickAt(x + 2, y + 10)
 		ui:dispatch(ui:activeHost(), { { type = "Char", key = "X" } })
-		assert.equal("Xlife", search.buf)
+		assert.equal("X" .. "life", search.buf)
 		main.popups = { }; ui:restore()
 	end)
 
