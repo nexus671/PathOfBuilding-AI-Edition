@@ -210,8 +210,10 @@ function healthEvidence(payload) {
     if (Object.keys(rejections).length) info.rejections = rejections;
   }
   const provider = payload.provider;
+  if (provider?.cooldownPersistence==='error') throw new Error('Provider cooldown state is unavailable');
   if (providerStates.has(provider?.state)) {
     const snapshot = {state:provider.state};
+    if (provider.cooldownPersistence==='ready') snapshot.cooldownPersistence='ready';
     numericEvidence(snapshot,provider,['lastValidatedAt','cooldownSeconds','successes','failures']);
     if (provider.lastValidatedAt===null) snapshot.lastValidatedAt = null;
     const failure = provider.lastFailure;

@@ -3,6 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { once } = require('node:events');
+const { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } = require('node:fs');
+const { tmpdir } = require('node:os');
+const { join } = require('node:path');
 const { createMarketCache } = require('../../tools/serve_loot_market_cache.cjs');
 
 const currencyPath = '/exchange/current/overview?league=Covens&type=Currency';
@@ -10,12 +13,12 @@ const oilPath = '/exchange/current/overview?league=Covens&type=Oil';
 const leagueBody = '[{"id":"Covens","name":"Covens of Umbra"}]';
 const priceBody = '{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.2,"volumePrimaryValue":400}]}';
 
-async function fixture(t, provider) {
+async function fixture(t, provider, cooldownFile) {
   const initial = Date.UTC(2026, 10, 23);
   let now = initial;
   const requests = [];
   const server = createMarketCache({
-    agent:'PoB economy test (local fixture)', now:()=>now, spacingMs:0,
+    agent:'PoB economy test (local fixture)', now:()=>now, spacingMs:0, cooldownFile,
     async fetcher(url, options) {
       assert.equal(new URL(url).origin,'https://poe.ninja');
       assert.equal(options.redirect,'error');
@@ -27,9 +30,10 @@ async function fixture(t, provider) {
   });
   server.listen(0,'127.0.0.1');
   await once(server,'listening');
-  t.after(() => new Promise(resolve => server.close(resolve)));
+  const close = () => new Promise(resolve => server.close(resolve));
+  t.after(close);
   const origin = 'http://127.0.0.1:' + server.address().port;
-  return { requests, request:(path,options)=>fetch(origin+path,options), advance:ms=>{ now+=ms; } };
+  return { requests, request:(path,options)=>fetch(origin+path,options), advance:ms=>{ now+=ms; }, close };
 }
 
 function snapshot(body, time, headers = {}) {
@@ -98,6 +102,70 @@ test('carries provider cooldown and never falls back to expired quotes',async t=
   const denied = await cache.request(currencyPath);
   assert.equal(denied.status,403);
   assert.deepEqual(await denied.json(),{ error:'Provider did not return prices' });
+});
+
+test('retains the provider retry deadline through a relay restart',async t=>{
+  const directory = mkdtempSync(join(tmpdir(),'pob-market-restart-'));
+  t.after(()=>rmSync(directory,{recursive:true,force:true}));
+  const file = join(directory,'retry');
+  const first = await fixture(t,(path,_,{now})=>path==='/leagues' ? snapshot(leagueBody,now)
+    : new Response(null,{status:503,headers:{'retry-after':'90'}}),file);
+  const limited = await first.request(currencyPath);
+  assert.equal(limited.status,503);
+  assert.equal(limited.headers.get('retry-after'),'90');
+  assert.equal(readFileSync(file,'utf8'),String(Date.UTC(2026,10,23)+90000)+'\n');
+  await first.close();
+  const restarted = await fixture(t,(path,_,{now})=>snapshot(path==='/leagues' ? leagueBody : priceBody,now),file);
+  restarted.advance(25000);
+  const provider = (await (await restarted.request('/health')).json()).provider;
+  assert.equal(provider.state,'cooldown');
+  assert.equal(provider.cooldownSeconds,65);
+  assert.equal(provider.cooldownPersistence,'ready');
+  const blocked = await restarted.request(oilPath);
+  assert.equal(blocked.status,429);
+  assert.equal(blocked.headers.get('retry-after'),'65');
+  assert.equal(restarted.requests.length,0);
+  restarted.advance(65000);
+  assert.equal((await restarted.request(currencyPath)).status,200);
+  assert.deepEqual(restarted.requests.map(entry=>entry.path),['/leagues',currencyPath]);
+});
+
+test('keeps upstream paused on cooldown storage failure and recovers after a successful write',async t=>{
+  const root = mkdtempSync(join(tmpdir(),'pob-market-state-'));
+  t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const directory = join(root,'state');
+  const moved = join(root,'moved');
+  mkdirSync(directory);
+  const file = join(directory,'retry');
+  let limited = true;
+  const cache = await fixture(t,(path,_,{now})=>path==='/leagues' ? snapshot(leagueBody,now) : limited
+    ? new Response(null,{status:429,headers:{'retry-after':'15'}}) : snapshot(priceBody,now),file);
+  renameSync(directory,moved);
+  assert.equal((await cache.request(currencyPath)).status,429);
+  assert.equal((await (await cache.request('/health')).json()).provider.cooldownPersistence,'error');
+  cache.advance(15000);
+  const unavailable=await cache.request(oilPath);
+  assert.equal(unavailable.status,503);
+  assert.deepEqual(await unavailable.json(),{error:'Provider cooldown state is unavailable'});
+  assert.equal(cache.requests.length,2);
+  renameSync(moved,directory);
+  limited=false;
+  assert.equal((await cache.request(oilPath)).status,200);
+  assert.equal((await (await cache.request('/health')).json()).provider.cooldownPersistence,'ready');
+  assert.equal(readFileSync(file,'utf8'),String(Date.UTC(2026,10,23)+15000)+'\n');
+});
+
+test('refuses to start with malformed or inaccessible cooldown state',t=>{
+  const directory = mkdtempSync(join(tmpdir(),'pob-market-invalid-'));
+  t.after(()=>rmSync(directory,{recursive:true,force:true}));
+  const file = join(directory,'retry');
+  const agent='PoB economy test (local fixture)';
+  assert.throws(()=>createMarketCache({agent,cooldownFile:join(directory,'missing','retry')}),/Cannot open the market cooldown state/);
+  for (const value of ['','0\n\n','1e3\n','99999999999999999999999999','999999999999999\n','-1\n']) {
+    writeFileSync(file,value);
+    assert.throws(()=>createMarketCache({agent,cooldownFile:file}),/Cannot open the market cooldown state/);
+    assert.equal(readFileSync(file,'utf8'),value);
+  }
 });
 
 test('rejects unknown destinations, malformed, stale and oversized feeds',async t=>{
