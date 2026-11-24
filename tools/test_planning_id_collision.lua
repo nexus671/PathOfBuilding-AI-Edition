@@ -57,3 +57,21 @@ data.newId=function(prefix,entries,length)
 end
 gemUI:click('keep');data.newId=realNewId
 assert(#journey.data.milestones==2 and journey.data.milestones[1].title=='Existing milestone' and journey.data.milestones[2].id=='gem-'..string.rep('b',20));gemUI:restore();print('GEM_MILESTONE_ID_COLLISION_OK')
+newBuild();main.popups={};local proposalUI=require('Modules.HeadlessUI').install({width=960,height=640});proposalUI:bind(build)
+local bridge=require('Modules.DesktopBuildBridge');bridge.enabled=false;bridge.prepared=nil;bridge.history={{id='craft-'..string.rep('a',16)}}
+local target='Rarity: RARE\nTest Hat\nIron Hat\nItem Level: 86\n+20 to maximum Life'
+local candidate={id='guide',title='Guide',slot='Helmet',startingItem=raw,targetItem=target,goals={},steps={}}
+data.newId=function(prefix,entries,length)
+ calls=0;package.loaded.sha1=function() calls=calls+1;return string.rep(calls==1 and 'a' or 'b',40) end
+ local result=realNewId(prefix,entries,length);package.loaded.sha1=old or originalSha;return result
+end
+require('Classes.CraftingProjectControl').Preview(build,candidate);data.newId=realNewId
+assert(#bridge.history==2 and bridge.history[1].id=='craft-'..string.rep('a',16) and bridge.history[2].id=='craft-'..string.rep('b',16));proposalUI:restore();print('PROPOSAL_ID_COLLISION_OK')
+newBuild();main.popups={};local bundleUI=require('Modules.HeadlessUI').install({width=960,height=640});bundleUI:bind(build)
+bridge.prepared=nil;bridge.history={{id='bundle-'..string.rep('a',16)}};bundleUI.clipboard=require('Modules.PlanningBundle').export(build);require('Classes.PlanningToolsControl').Bundle(build);bundleUI:click('paste')
+data.newId=function(prefix,entries,length)
+ calls=0;package.loaded.sha1=function() calls=calls+1;return string.rep(calls==1 and 'a' or 'b',40) end
+ local result=realNewId(prefix,entries,length);package.loaded.sha1=old or originalSha;return result
+end
+bundleUI:click('review');data.newId=realNewId
+assert(#bridge.history==2 and bridge.history[1].id=='bundle-'..string.rep('a',16) and bridge.history[2].id=='bundle-'..string.rep('b',16));bundleUI:restore();print('BUNDLE_ID_COLLISION_OK')

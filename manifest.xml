@@ -1613,7 +1613,7 @@
 	<File name="Classes/CraftingItemStatsControl.lua" part="program" sha1="1d86a65414a33ff8a7b663fce0d2f0a44b8cb72d" />
 	<File name="Classes/CraftingModifierControl.lua" part="program" sha1="831308ec5aacfd906599fb5ac6833b9245299a20" />
 	<File name="Classes/CraftingPricesControl.lua" part="program" sha1="9d4eea23479e6aac285e1525f8bbefab40c1ed85" />
-	<File name="Classes/CraftingProjectControl.lua" part="program" sha1="559fbd8772d39b47007d5a10196b8d2523c5f515" />
+	<File name="Classes/CraftingProjectControl.lua" part="program" sha1="4cf836f437e018ffb7503dab1439125a235ee2fc" />
 	<File name="Classes/CraftingProjectWizard.lua" part="program" sha1="bd301ea537fa442fc68454b6f97a41dcee458f39" />
 	<File name="Classes/CraftingRecipeControl.lua" part="program" sha1="c02e780d6ceb01137921f3aac7b9c8ee2230205e" />
 	<File name="Classes/CraftingRecipeGraphControl.lua" part="program" sha1="a3f12c0823b83e552a19e597750352622b070aa2" />
@@ -1689,7 +1689,7 @@
 	<File name="Classes/PassiveTreeView.lua" part="program" sha1="b330ee507dee78257fbdcab224df34803646eedc" />
 	<File name="Classes/PathControl.lua" part="program" sha1="868c38fd9095317b6721f6932cf06590bd616f13" />
 	<File name="Classes/PlanningBrowserControl.lua" part="program" sha1="7854a5b72ad573580b35a5f96c3d64fa73fe412c" />
-	<File name="Classes/PlanningToolsControl.lua" part="program" sha1="92f30bf1e4be910bf499e3ba179ec5e4631ae32c" />
+	<File name="Classes/PlanningToolsControl.lua" part="program" sha1="aaba7d5c78011297c560bd6b6127fa895e92a6a2" />
 	<File name="Classes/PoBArchivesProvider.lua" part="program" sha1="acf68b7718782ce267df01614b497af246389ca5" />
 	<File name="Classes/PoEAPI.lua" part="program" sha1="197f3091ba9b511b923ca95e5952933a3ffd0f21" />
 	<File name="Classes/PopupDialog.lua" part="program" sha1="1e2334c463bfbb9bac16f2abe4409cf3cece9947" />

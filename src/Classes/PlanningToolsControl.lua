@@ -34,7 +34,7 @@ function M.Bundle(build)
 	button(c,"export",16,h-48,exportWidth,"Copy complete bundle",action(function() local raw,exported=bundles.export(build);Copy(raw);imported=nil;reviewedText=nil;contents=exported;local lines=bundles.lines(contents);table.insert(lines,1,"Complete bundle copied to clipboard.");c.details.list=ui.rows(lines,w-56) end))
 	button(c,"paste",pasteX,h-48,pasteWidth,"Paste / inspect",action(function() c.text:SetText(Paste());imported=nil;contents=nil;reviewedText=nil;c.details.list=ui.rows({"Paste a valid planning bundle to inspect it."},w-56);imported=bundles.import(c.text.buf);reviewedText=c.text.buf;contents=imported.contents;local lines=bundles.lines(contents);table.insert(lines,1,"Ready to review: "..imported.buildName);c.details.list=ui.rows(lines,w-56) end))
 	button(c,"review",reviewX,h-48,reviewWidth,"Review as new build",action(function()
-		imported=bundles.import(c.text.buf);local bridge=require("Modules.DesktopBuildBridge");local prepared=bridge.prepareBundle(build,imported);prepared.id="bundle-"..require("sha1")(tostring({})..os.time()):sub(1,16)
+		imported=bundles.import(c.text.buf);local bridge=require("Modules.DesktopBuildBridge");local prepared=bridge.prepareBundle(build,imported);prepared.id=require("Modules.PlanningData").newId("bundle-",bridge.history,16)
 		bridge.remember(prepared);bridge.prepared=prepared;bridge.status=bridge.summary(prepared);bridge.status.status="review";main:ClosePopup();require("Classes.BuildProposalControl").Review()
 	end))
 	c.review.enabled=function() return imported~=nil and reviewedText==c.text.buf end
