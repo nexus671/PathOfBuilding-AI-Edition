@@ -1688,7 +1688,7 @@ async function main(){
   generated.profile.campaign={weapons:['Bow'],defences:['Energy shield'],recipes:['Quality gems'],minAreaLevel:1,maxAreaLevel:70,upgradeWindow:15};
   generated.profile.sampleSets=[{id:'campaign-drop',title:'Early helmet',samples:[{BaseType:'Iron Hat',Class:'Helmets',Rarity:'Normal',AreaLevel:12,ItemLevel:12}]}];
   generated.profile.categoryStyles=[{category:'Currency',appearance:{minimumFontSize:40,alertVolume:0}}];
-  generated.profile.sharedStyles=[{key:'Colour',from:'ABCDEF12',to:'123456FF'}];
+  generated.profile.sharedStyles=[{key:'Colour',from:'ABCDEF12',to:'123456FF'},{key:'AlertSound',from:'None',to:'3'}];
   generated.profile.palettes=[{id:'gold',title:'Gold highlights',appearance:generated.profile.appearance,theme:'default',categoryStyles:generated.profile.categoryStyles,sharedStyles:generated.profile.sharedStyles}];
   assert.ok(generated.profile.rules.some(rule=>rule.origin==='craft:helmet'));
   assert.ok(generated.profile.rules.some(rule=>rule.origin==='gear:alternative' && rule.text.includes('BaseType == "Iron Hat"')),'Shared base lost its gear-source link');
@@ -1701,6 +1701,8 @@ async function main(){
   const tested=await queued('test_loot_filter',{baseRevision:context.revision,profile:generated.profile,sample:{BaseType:'Iron Hat',Rarity:'Rare',ItemLevel:86}},'tested');assert.equal(tested.result.action,'Show');
   const sharedProfile={...lootProfile,template:'Show\n SetTextColor 255 0 0\n PlayAlertSound 2 200',sharedStyles:[{key:'SetTextColor',from:'FF0000FF',to:'00FF00FF'},{key:'PlayAlertSound',from:'2',to:'6'}]};
   const sharedResult=await queued('test_loot_filter',{baseRevision:context.revision,profile:sharedProfile,sample:{BaseType:'Iron Hat'}},'tested');assert.deepEqual(sharedResult.result.styles.SetTextColor,['0','255','0','255']);assert.deepEqual(sharedResult.result.styles.PlayAlertSound,['6','200']);
+  const mutedProfile={...sharedProfile,template:'Show\n PlayAlertSound None',sharedStyles:[{key:'AlertSound',from:'None',to:'3'}]};
+  const mutedResult=await queued('test_loot_filter',{baseRevision:context.revision,profile:mutedProfile,sample:{BaseType:'Iron Hat'}},'tested');assert.deepEqual(mutedResult.result.styles.PlayAlertSound,['3']);
   const groupedProfile={...sharedProfile,template:'Show\n SetTextColor 255 0 0\n SetBorderColor 255 0 0',sharedStyles:[{key:'Colour',from:'FF0000FF',to:'00FF00FF'}]};
   const groupedResult=await queued('test_loot_filter',{baseRevision:context.revision,profile:groupedProfile,sample:{BaseType:'Iron Hat'}},'tested');assert.deepEqual(groupedResult.result.styles.SetTextColor,['0','255','0','255']);assert.deepEqual(groupedResult.result.styles.SetBorderColor,['0','255','0','255']);
   const uncertainContinue={...lootProfile,template:'Show\n BaseType "Iron"\n Continue unexpected\nHide'};

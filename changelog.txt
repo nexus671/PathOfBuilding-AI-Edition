@@ -1,6 +1,10 @@
-VERSION[2.68.1-ai.preview1258][2026/11/24]
+VERSION[2.68.1-ai.preview1259][2026/11/24]
 
 * Review a PoE 1 PC trade league change against verified prices before saving daily sync settings.
+
+VERSION[2.68.1-ai.preview1258][2026/11/24]
+
+* Re-enable muted alerts through shared filter styles.
 
 VERSION[2.68.1-ai.preview1257][2026/11/24]
 
