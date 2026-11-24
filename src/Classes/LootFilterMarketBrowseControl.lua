@@ -10,6 +10,7 @@ local function openExactBase(target,league)
 	local level = target.itemLevel
 	local query = {type=target.name,status={option="available"},
 		stats={{type="and",filters={}}},filters={misc_filters={filters={ilvl={min=level,max=level}}}}}
+	if target.baseImplicit then query.stats[1].filters[1]={id=target.baseImplicit} end
 	local url = "https://www.pathofexile.com/trade/search/"..urlEncode(league).."/"..trade.B64GzipEncode(json.encode(query))
 	OpenURL(url)
 end

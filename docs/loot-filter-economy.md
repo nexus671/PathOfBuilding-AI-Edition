@@ -104,7 +104,7 @@ PoB checks the provider label against the gem fields. For example, `20/20c` must
 
 When comparing an Imbued gem from a build, PoB can show a read-only market estimate for the same gem and support when the feed omits level or quality. The result lists missing fields and warns about insufficient listing evidence.
 
-For equipped crafting bases, **From build** shows item levels available in the build. **Search exact base on trade** opens official PC trade with the exact base and item level. Enter a league first or use the action from the price results, where PoB uses the selected or verified current league. The overview's provider level remains unverified and its prices are estimates for base variants.
+For equipped crafting bases, **From build** shows item levels available in the build. **Search exact base on trade** opens official PC trade with the exact base and item level. PoB uses the original base implicit to distinguish known variants that share a trade name. Enter a league first or use the action from the price results, where PoB uses the selected or verified current league. The overview's provider level remains unverified and its prices are estimates for base variants.
 
 ## Named sync profiles
 

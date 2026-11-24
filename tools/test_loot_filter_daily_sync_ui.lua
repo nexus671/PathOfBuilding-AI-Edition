@@ -719,19 +719,22 @@ do
 	local opened
 	OpenURL=function(url) opened=url end
 	local collection={itemsTab={
-		orderedSlots={{slotName="Ring 1"},{slotName="Ring 2"},{slotName="Ring 3"}},
-		activeItemSet={["Ring 1"]={selItemId=1},["Ring 2"]={selItemId=2},["Ring 3"]={selItemId=3}},
+		orderedSlots={{slotName="Ring 1"},{slotName="Ring 2"},{slotName="Ring 3"},{slotName="Boots"}},
+		activeItemSet={["Ring 1"]={selItemId=1},["Ring 2"]={selItemId=2},["Ring 3"]={selItemId=3},Boots={selItemId=4}},
 		items={{baseName="Unset Ring",type="Ring",rarity="RARE",itemLevel=84},
 			{baseName="Unset Ring",type="Ring",rarity="RARE",itemLevel=86},
-			{baseName="Moonstone Ring",type="Ring",rarity="RARE",itemLevel="85"}},
+			{baseName="Moonstone Ring",type="Ring",rarity="RARE",itemLevel="85"},
+			{baseName="Two-Toned Boots (Armour/Evasion)",type="Boots",rarity="RARE",itemLevel=85}},
 	}}
-	local function checkUrl(league,level)
+	local function checkUrl(league,level,base,implicit)
 		local prefix="https://www.pathofexile.com/trade/search/"..urlEncode(league).."/"
 		assert(opened and opened:sub(1,#prefix)==prefix,tostring(opened))
 		local json=require("dkjson")
 		local payload=assert(json.decode(require("Classes.TradeHelpers").B64GzipDecode(opened:sub(#prefix+1))))
 		local filter=payload.filters.misc_filters.filters.ilvl
-		assert(payload.type=="Unset Ring" and filter.min==level and filter.max==level)
+		assert(payload.type==(base or "Unset Ring") and filter.min==level and filter.max==level)
+		local stat=payload.stats[1].filters[1]
+		assert((stat and stat.id)==implicit)
 	end
 	launch.DownloadPage=function(_,url,callback)
 		local date=os.date("!%a, %d %b %Y %H:%M:%S GMT")
@@ -746,6 +749,14 @@ do
 		callback({header="HTTP/1.1 200 OK\r\nDate: "..date.."\r\n\r\n",body=body})
 	end
 	require("Classes.LootFilterMarketBrowseControl").Open(collection)
+	baseUI:text("league","Covens")
+	baseUI:click("buildTarget")
+	baseUI:text("search","Two-Toned Boots")
+	baseUI:click("choose")
+	assert(main.popups[1].controls.query.buf=="=Two-Toned Boots")
+	baseUI:click("exactBase")
+	checkUrl("Covens",85,"Two-Toned Boots","implicit.stat_2915988346")
+	opened=nil
 	baseUI:click("buildTarget")
 	baseUI:text("search","Moonstone Ring")
 	baseUI:click("choose")

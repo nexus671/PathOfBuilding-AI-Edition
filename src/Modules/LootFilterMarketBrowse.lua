@@ -126,12 +126,38 @@ local uniqueCategories = {
 	Belt="UniqueAccessory", Jewel="UniqueJewel", Flask="UniqueFlask", Tincture="UniqueTincture",
 }
 
+local variantBases = {
+	["Two-Toned Boots"]=true, ["Two-Stone Ring"]=true,
+	["Avian Twins Talisman"]=true, ["Monkey Paw Talisman"]=true,
+}
+
+local function baseTradeIdentity(baseName)
+	local displayName = baseName:match("^(.-) %([^()]+%)$")
+	if not variantBases[displayName] then return baseName end
+	local base = data and data.itemBases and data.itemBases[baseName]
+	if not base or type(base.implicit)~="string" then return displayName,false end
+	local trade = require("Classes.TradeHelpers")
+	local template = trade.modLineTemplate(base.implicit:gsub("%(%d+%-%d+%)","#"))
+	local match
+	for _, group in ipairs(trade.getTradeStats()) do
+		if group.id=="implicit" then
+			for _, stat in ipairs(group.entries) do
+				if stat.text==template and stat.id:match("^implicit%.stat_%d+$") then
+					if match and match~=stat.id then return displayName,false end
+					match=stat.id
+				end
+			end
+		end
+	end
+	return displayName,match or false
+end
+
 function M.buildTargets(build)
 	local targets, seen = {}, {}
 	local function add(target)
 		if not marketName(target.name) then return end
 		local key = table.concat({target.category,target.name,target.level or "",target.quality or "",
-			target.imbuedSupport or "",target.itemLevel or ""},"\0")
+			target.imbuedSupport or "",target.itemLevel or "",target.baseVariant or ""},"\0")
 		if not seen[key] then
 			seen[key] = true
 			target.id = tostring(#targets+1)
@@ -186,9 +212,12 @@ function M.buildTargets(build)
 				local cluster = item.type=="Jewel" and (item.baseName=="Large Cluster Jewel" or item.baseName=="Medium Cluster Jewel" or item.baseName=="Small Cluster Jewel")
 				local baseCategory = ({Viscera="Viscera",Flask="Flask"})[item.type]
 				local category = baseCategory or cluster and "ClusterJewel" or "BaseType"
+				local baseName, implicit = item.baseName
+				if category=="BaseType" then baseName,implicit=baseTradeIdentity(item.baseName) end
 				local itemLevel = item.itemLevel
-				if category~="BaseType" or not positive(itemLevel) or itemLevel>100 or itemLevel~=math.floor(itemLevel) then itemLevel=nil end
-				add({name=item.baseName,category=category,baseTarget=true,itemLevel=itemLevel,
+				if category~="BaseType" or implicit==false or not positive(itemLevel) or itemLevel>100 or itemLevel~=math.floor(itemLevel) then itemLevel=nil end
+				add({name=baseName,category=category,baseTarget=true,itemLevel=itemLevel,baseImplicit=implicit or nil,
+					baseVariant=baseName~=item.baseName and item.baseName or nil,
 					label=label.." | "..item.baseName..(itemLevel and (" | Item level "..itemLevel) or ""),
 					details={"Compare this crafting base. The equipped modifiers have their own value."}})
 			end
