@@ -35,6 +35,7 @@ function M.Open(profile,id,keep)
 		local ok,raw=pcall(require("Modules.LootFilterStackTiers").rule,source,target.text,2)
 		if ok then
 			raw=require("Modules.LootFilterCategoryStyles").apply(raw,draft.categoryStyles)
+			raw=require("Modules.LootFilterSharedStyles").apply(raw,draft.sharedStyles)
 			raw=require("Modules.LootFilterDecorators").apply(raw,draft.appearance)
 		else raw=target.text end
 		local result={block=parser.parse(raw).rules[1],fallback=not ok};previewCache[target.id]=result;return result
