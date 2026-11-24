@@ -13,7 +13,7 @@ function M.Open(before,after, rawComparison, options)
 	ui.label(c,"summary",16,76,"",14)
 	local help=options.note or ((rawComparison and "Compare the current filter with the proposed output." or before and "Before is kept in this build; after is the working draft." or "No kept profile: before is empty; after is the working draft.").." Line endings are normalized for review. Long lines are abbreviated here; copied sources and reports retain full text.")
 	ui.description(c,"help",16,100,w-32,36,{help},13)
-	c.lines=new("TextListControl"):TextListControl(ui.anchor,{16,152,w-32,h-(options.run and 300 or 262)},nil,{})
+	c.lines=new("TextListControl"):TextListControl(ui.anchor,{16,152,w-32,h-((options.run or options.inspectStack) and 300 or 262)},nil,{})
 	ui.label(c,"status",16,h-90,"",13)
 	local function refresh()
 		local rows={};local mode=c.view:GetSelValue();local query=c.search.buf:lower();local shown=0
@@ -61,6 +61,12 @@ function M.Open(before,after, rawComparison, options)
 	end
 	button("close",w-156,h-46,140,"Close",function() main:ClosePopup() end)
 	if options.run then button("reviewAction",16,h-128,212,options.label,options.run) end
+	if options.inspectStack then
+		button("inspectStack",options.run and 244 or 16,h-128,168,"Test observed stack",function()
+			options.inspectStack(previous,current)
+		end)
+		c.inspectStack.enabled=function() return previous~=nil and current~=nil end
+	end
 	ui.style(c);for _,control in pairs(c) do control.layoutAudit="filter-source-diff" end;rebuild();main:OpenPopup(w,h,options.title or "Filter file changes",c,nil,"search","close");return c
 end
 return M

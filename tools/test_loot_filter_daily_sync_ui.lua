@@ -248,8 +248,26 @@ local boundedCap=impactText("Vaal Orb")
 assert(boundedCap:find("Configured cap: 4",1,true) and boundedCap:find("Lowest baseline cutoff: 6",1,true),boundedCap)
 reviewUI:click('close');main.popups={};reviewFixture=nil
 
+local function testPreviewStack(harness)
+	local preview=main.popups[1]
+	harness:click("inspectStack")
+	harness:text("name","Orb of Alteration")
+	harness:text("size","5")
+	harness:text("area","83")
+	harness:click("test")
+	assert(main.popups[1].title=="Observed stack result")
+	local rows={}
+	for _, row in ipairs(main.popups[1].controls.details.list) do rows[#rows+1]=StripEscapes(row[1] or "") end
+	local shown=table.concat(rows," ")
+	assert(shown:find("Current filter | Hide at line 1",1,true)
+		and shown:find("Proposed filter | Show at line 1",1,true),shown)
+	harness:click("close")
+	harness:click("close")
+	assert(main.popups[1]==preview)
+end
+
 do
-	local raw = 'Show\n    BaseType == "Cord Belt"\n'
+	local raw = 'Hide\n    BaseType == "Orb of Alteration"\n'
 	local chosen, save, originalPreview = nil, sync.setOfflinePriceDays, sync.previewOffline
 	reviewFixture={target=selected,enabled=true,revision="offline-review"}
 	sync.setOfflinePriceDays=function(id,days,revision)
@@ -259,7 +277,7 @@ do
 	end
 	sync.previewOffline=function(_,id)
 		assert(id=="default" and chosen==3)
-		return {before=raw,after=raw.."# cached example\n",age=7201,checkedAt=1795449900}
+		return {before=raw,after=raw:gsub("^Hide","Show"),age=7201,checkedAt=1795449900}
 	end
 	require("Classes.LootFilterDailySyncControl").Open()
 	reviewUI:click("offlinePrices")
@@ -271,6 +289,8 @@ do
 	assert(main.popups[1].title=="Offline price preview" and not main.popups[1].controls.copyAfter)
 	reviewUI:click("copyReview")
 	assert(reviewUI.clipboard:find("Oldest quote is 121 minutes old.",1,true))
+	if output then reviewUI:frame():write(output.."/"..reviewWidth.."-offline-observed-stack.json") end
+	testPreviewStack(reviewUI)
 	main.popups={};reviewFixture=nil
 	sync.setOfflinePriceDays, sync.previewOffline = save, originalPreview
 end
@@ -1334,6 +1354,8 @@ local function checkReviewedRolloverControls()
 	assert(main.popups[1].title=="Daily filter sync" and saved=="Retired League")
 	harness:click("preview")
 	assert(main.popups[1].title=="Review league change" and saves==0 and previews==2)
+	testPreviewStack(harness)
+	assert(saved=="Retired League" and saves==0)
 	harness:click("reviewAction")
 	assert(main.popups[1].title=="Daily filter sync" and saved=="New League" and saves==1)
 	sync.configuration,sync.preview,sync.configure,launch.DownloadPage=oldConfig,oldPreview,oldConfigure,oldDownload
