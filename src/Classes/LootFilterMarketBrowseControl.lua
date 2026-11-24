@@ -100,7 +100,7 @@ local function open(build, managedTarget)
 			local route=category.feed=="exchange" and "exchange/current/overview" or "stash/current/item/overview"
 			request(route.."?league="..urlEncode(league).."&type="..category.id,function(response)
 				local ok,body,age=pcall(sync.fresh,response,os.time())
-				if not ok then finish("Exchange response is unavailable or stale.");return end
+				if not ok then finish("Market response is unavailable or stale.");return end
 				local catalogue = main.uniqueDB and not main.uniqueDB.loading and main.uniqueDB.list
 				local valid,rows
 				local managedState
@@ -121,7 +121,7 @@ local function open(build, managedTarget)
 				for i,row in ipairs(rows) do
 					if i>1000 then break end
 				local price
-				if row.conflicting then price="Conflicting quotes for this price ID"
+				if row.conflicting then price=advisory and "Conflicting price or variant evidence" or "Conflicting quotes for this price ID"
 				elseif row.ambiguous then price="Ambiguous exchange name"
 				else price=string.format("%.4g chaos estimated",row.price) end
 				local details={price,"Response age: "..math.ceil(age/60).." minutes"}
@@ -137,8 +137,8 @@ local function open(build, managedTarget)
 				end
 				if not row.conflicting then show("Base: ",row.base);show("Variant: ",row.variant) end
 				if advisory and not row.conflicting then
-					if row.incomplete then details[#details+1]="The listing is missing variant details." end
-					if not row.supported then details[#details+1]="Fewer than 20 listings or observations are documented." end
+					if row.incomplete then details[#details+1]="The listing lacks verifiable price ID or variant details."
+					elseif not row.supported then details[#details+1]="The estimate needs at least 20 consistent listings and observations." end
 				end
 				if not row.conflicting and row.corrupted~=nil then details[#details+1]=row.corrupted and "Corrupted" or "Uncorrupted" end
 					local evidence = row.baseEvidence

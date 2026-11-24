@@ -651,7 +651,7 @@ do
 	local detail = {}
 	for _, row in ipairs(main.popups[1].controls.details.list) do detail[#detail+1]=StripEscapes(row[1] or "") end
 	local text = table.concat(detail," ")
-	assert(text:find("3 chaos estimated",1,true) and text:find("Gem quality: 0",1,true) and text:find("Fewer than 20",1,true))
+	assert(text:find("3 chaos estimated",1,true) and text:find("Gem quality: 0",1,true) and text:find("at least 20 consistent listings",1,true))
 end
 launch.DownloadPage = originalMarketDownload
 print("Unique market review includes competing variants for the selected base")
@@ -1005,6 +1005,20 @@ local function checkAdvisoryStashCoverage()
 		local shown=table.concat(lines," ")
 		assert(shown:find("Required character level: 64",1,true) and shown:find("Listed mutated:",1,true))
 		assert(not shown:find("SECRET",1,true) and not shown:find("https://",1,true))
+		if index == 1 then
+			main.popups={}
+			good.variant="https://private.example.test/variant"
+			require("Classes.LootFilterMarketBrowseControl").Open()
+			harness:text("league","Covens")
+			harness:choose("category",category.label)
+			harness:text("query","Fixture")
+			harness:click("get")
+			local warning={}
+			for _,entry in ipairs(main.popups[1].controls.details.list) do warning[#warning+1]=StripEscapes(entry[1] or "") end
+			local evidence=table.concat(warning," "):gsub("%s+"," ")
+			assert(evidence:find("lacks verifiable price ID or variant details",1,true), evidence)
+			assert(not evidence:find("at least 20",1,true))
+		end
 	end
 	launch.DownloadPage=oldDownload
 	local collection={itemsTab={orderedSlots={},activeItemSet={},items={}}}

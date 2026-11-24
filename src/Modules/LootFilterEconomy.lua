@@ -47,7 +47,7 @@ local function addQuote(quotes, name, quote)
 		quotes[name] = false
 	elseif existing and (existing.id ~= quote.id or existing.price ~= quote.price) then
 		quotes[name] = false
-	elseif not existing or existing.source == quote.source and quote.volume > existing.volume then
+	elseif not existing or existing.source == quote.source and quote.volume < existing.volume then
 		quotes[name] = quote
 	end
 end
@@ -64,9 +64,10 @@ function M.quotes(body, source, gemRequests)
 	if source==gems.feed then return gems.quotes(body,gemRequests) end
 	if maps.variants[source] then return maps.quotes(body,source) end
 	assert(type(body) == "string" and #body <= 2 * 1024 * 1024, "Invalid exchange response size")
-	local data = json.decode(body)
+	local data, position = json.decode(body)
 	assert(type(data) == "table" and type(data.core) == "table" and data.core.primary == "chaos"
-		and type(data.items) == "table" and type(data.lines) == "table", "Invalid chaos-denominated exchange response")
+		and type(data.items) == "table" and type(data.lines) == "table"
+		and not body:sub(position):find("%S"), "Invalid chaos-denominated exchange response")
 	local names, quotes, priced = {}, {}, false
 	for _, item in ipairs(data.items) do
 		assert(type(item) == "table" and quoteText(item.id) and quoteText(item.name), "Invalid exchange item")
@@ -76,9 +77,13 @@ function M.quotes(body, source, gemRequests)
 	for _, line in ipairs(data.lines) do
 		assert(type(line) == "table" and quoteText(line.id), "Invalid exchange price line")
 		local name = names[line.id]
-		if name and finite(line.primaryValue) and finite(line.volumePrimaryValue) then
-			addQuote(quotes, name, { price=line.primaryValue, volume=line.volumePrimaryValue, id=line.id, source=source })
-			priced = true
+		if name then
+			if finite(line.primaryValue) and finite(line.volumePrimaryValue) then
+				addQuote(quotes, name, { price=line.primaryValue, volume=line.volumePrimaryValue, id=line.id, source=source })
+				priced = true
+			else
+				addQuote(quotes, name, false)
+			end
 		end
 	end
 	assert(priced, "No priced exchange items")
