@@ -1997,3 +1997,151 @@ local function checkExactManagedQuoteInspection()
 end
 checkExactManagedQuoteInspection()
 print("Managed quote inspection uses exact exchange, card, map, gem and Allflame identities with shared liquidity checks")
+
+
+local function checkWindowsWorkerResult()
+	local module = "Modules.LootFilterDailySync"
+	local engine = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local worker = assert(loadfile("Modules/LootFilterBackground.lua"))()
+	local root = dir.."/worker-result"
+	assert(require("lfs").mkdir(root))
+	local oldMain, oldTime, oldDownload, oldPrint = main, os.time, launch.DownloadPage, ConPrintf
+	local openFile = io.open
+	local clock = oldTime()
+	main = {userPath=root.."/"}
+	os.time = function(date) return date and oldTime(date) or clock end
+	ConPrintf = function() end
+	local live = root.."/failed.filter"
+	local healthy = root.."/healthy.filter"
+	local settings = root.."/LootFilterDailySync.json"
+	local fixed = root.."/baseline.filter"
+	write(fixed,original)
+	write(live,original)
+	write(healthy,original)
+	local other = engine.createProfile("Healthy scheduled profile")
+	engine.createProfile("Never configured")
+	engine.configure(live,fixed,"Covens",{hour=0,protectionFile=protections})
+	engine.configure(healthy,fixed,"Covens",{profileId=other,hour=0,protectionFile=protections})
+	engine.setBackground(true,engine.configuration().revision)
+	engine.setBackground(true,engine.configuration(other).revision,other)
+
+	-- Replace only the process exit, leaving the real worker and sync paths intact.
+	local exitFailed, exited
+	for index=1,20 do
+		local name = debug.getupvalue(worker.frame,index)
+		if name=="exitStatus" then
+			debug.setupvalue(worker.frame,index,function(failed) exitFailed,exited=not not failed,true end)
+			break
+		end
+	end
+	for index=1,20 do
+		local name = debug.getupvalue(worker.start,index)
+		if name=="exitStatus" then
+			debug.setupvalue(worker.start,index,function(failed) exitFailed,exited=not not failed,true end)
+			break
+		end
+	end
+	local function frameUntilExit(app)
+		for _=1,8 do
+			worker.frame(app)
+			if exited then return end
+		end
+		error("Windows worker did not exit")
+	end
+	local function makeApp()
+		local due = engine.dueProfiles(clock,true)
+		return {lootSync=engine,lootSyncDue=due,lootSyncScheduled=true,lootSyncIndex=0,lootSyncStarted=clock}
+	end
+
+	local failCallback, injected, healthyCalls
+	healthyCalls = 0
+	launch.DownloadPage = function(_,url,callback)
+		assert(url:find("league=Covens",1,true))
+		if not failCallback then failCallback=callback; return end
+		healthyCalls = healthyCalls + 1
+		local date = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock).."\r\n\r\n"
+		callback({header=date,body=commodityBody})
+	end
+	local app = makeApp()
+	assert(#app.lootSyncDue==2 and app.lootSyncDue[1].id=="default")
+	worker.frame(app)
+	assert(engine.busy and failCallback and not exited)
+	io.open = function(path,mode)
+		if path==settings..".tmp" and mode=="wb" then
+			injected = true
+			return nil,"No space left on device",28
+		end
+		return openFile(path,mode)
+	end
+	failCallback(nil,"Response code: 403")
+	io.open = openFile
+	assert(injected and not engine.configuration().lastFailure and read(live)==original)
+	frameUntilExit(app)
+	assert(exitFailed,"Windows task reported success after a failure that could not be saved")
+	assert(healthyCalls==8 and engine.configuration(other).lastSuccess==clock and read(healthy)~=original)
+
+	-- The same process result must survive a timed-out async request.
+	clock, exited, exitFailed = clock+86400,nil,nil
+	app = makeApp()
+	launch.DownloadPage = function() end
+	worker.frame(app)
+	assert(engine.busy and not exited)
+	clock = clock+301
+	-- Keep the healthy profile out of this timeout case.
+	io.open = function(path,mode)
+		if path==settings..".tmp" and mode=="wb" then return nil,"Access denied",13 end
+		return openFile(path,mode)
+	end
+	table.remove(app.lootSyncDue,2)
+	frameUntilExit(app)
+	io.open = openFile
+	assert(exitFailed and not engine.configuration().lastFailure and read(live)==original)
+
+	-- A profile that became paused after discovery is an ordinary skip.
+	clock, exited, exitFailed = clock+86400,nil,nil
+	app = makeApp()
+	table.remove(app.lootSyncDue,2)
+	assert(#app.lootSyncDue==1 and app.lootSyncDue[1].id=="default")
+	engine.pause(true)
+	launch.DownloadPage = function() error("Paused profile requested prices") end
+	frameUntilExit(app)
+	assert(not exitFailed)
+	engine.pause(false)
+
+	-- An unreadable configuration must not quietly look like an idle worker.
+	clock, exited, exitFailed = clock+86400,nil,nil
+	local oldLoad, oldGetScriptPath, oldRender = LoadModule, GetScriptPath, RenderInit
+	local originalEngine = package.loaded[module]
+	package.loaded[module] = engine
+	LoadModule = function() end
+	GetScriptPath = function() return root end
+	RenderInit = function() end
+	engine.pause(true,other)
+	io.open = function(path,mode)
+		if path==settings and mode=="rb" then return nil,"Access denied",13 end
+		return openFile(path,mode)
+	end
+	worker.start({devMode=true},true)
+	io.open = openFile
+	assert(exited and exitFailed,"Unreadable settings produced a successful Windows task result")
+
+	-- Default is independently usable when the profile list cannot be decoded.
+	clock, exited, exitFailed = clock+86400,nil,nil
+	write(root.."/LootFilterSyncProfiles.json","{}")
+	app = {devMode=true}
+	local defaultCalls = 0
+	launch.DownloadPage = function(_,_,callback)
+		defaultCalls = defaultCalls + 1
+		local date = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock).."\r\n\r\n"
+		callback({header=date,body=commodityBody})
+	end
+	worker.start(app,true)
+	assert(not exited and #app.lootSyncDue==1 and app.lootSyncDue[1].id=="default")
+	frameUntilExit(app)
+	assert(exitFailed and defaultCalls==8 and engine.configuration().lastSuccess==clock and read(live)~=original)
+	LoadModule,GetScriptPath,RenderInit,package.loaded[module] = oldLoad,oldGetScriptPath,oldRender,originalEngine
+	main,os.time,launch.DownloadPage,ConPrintf = oldMain,oldTime,oldDownload,oldPrint
+end
+
+checkWindowsWorkerResult()
+print("Windows worker result survives unsaved failures and processes other due profiles")

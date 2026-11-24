@@ -66,9 +66,20 @@ local ok, result = pcall(function()
 		"; $userPath = " .. literal(userPath) ..
 		"; $env:POB_MARKET_CACHE_URL = " .. literal(endpoint or "") .. [[
 
+$script:syncSettingsReadFailed = $false
 function Read-JsonFile([string]$name) {
-    try { return Get-Content -LiteralPath (Join-Path $userPath $name) -Raw -Encoding UTF8 | ConvertFrom-Json }
-    catch { return $null }
+    try {
+        $text = Get-Content -LiteralPath (Join-Path $userPath $name) -Raw -Encoding UTF8
+        $prefix = if ($name -eq 'LootFilterSyncProfiles.json') { '[' } else { '{' }
+        if ($null -eq $text -or -not $text.TrimStart().StartsWith($prefix)) {
+            $script:syncSettingsReadFailed = $true
+            return $null
+        }
+        return ConvertFrom-Json -InputObject $text
+    } catch {
+        if ($_.CategoryInfo.Category -ne 'ObjectNotFound') { $script:syncSettingsReadFailed = $true }
+        return $null
+    }
 }
 function Read-SyncProfiles {
     $profiles = @{}
@@ -116,7 +127,8 @@ function Show-SyncNotification([string]$text, [bool]$failed) {
 
 $beforeProfiles = Read-SyncProfiles
 $enabled = $beforeProfiles.Values | Where-Object { $_.enabled -and $_.backgroundEnabled -and -not $_.paused } | Select-Object -First 1
-if (-not $enabled) { exit 0 }
+if (-not $enabled -and -not $script:syncSettingsReadFailed) { exit 0 }
+# Let the native worker diagnose unreadable settings.
 if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { exit 1 }
 $process = Start-Process -FilePath $exe -WorkingDirectory $dir -ArgumentList '--loot-filter-sync-scheduled' -WindowStyle Hidden -Wait -PassThru
 $afterProfiles = Read-SyncProfiles

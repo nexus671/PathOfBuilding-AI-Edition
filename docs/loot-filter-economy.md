@@ -64,7 +64,7 @@ Select **Enable background sync** in **Daily price sync** to register a task for
 
 **Enable notifications** adds a Windows notification for a new failure or when an update changes at least five managed cutoffs. Clicking it opens PoB. Windows notification settings determine when the alert appears.
 
-For a one-time scheduled check from the Windows command line, launch your PoB executable with `--loot-filter-sync`. It uses the saved local settings and exits after the check. It returns exit code 1 on failure. It respects the daily time, pause state, and provider cooldown.
+For a one-time scheduled check from the Windows command line, launch your PoB executable with `--loot-filter-sync`. It uses the saved local settings and exits after the check. It returns exit code 1 on failure, even if Windows cannot save the failure to the sync history. The worker continues checking other due profiles and respects the daily time, pause state, and provider cooldown. For a task registered by an older version, use **Check Windows task** and **Repair task** if the action needs updating.
 
 ## Pickup policy
 

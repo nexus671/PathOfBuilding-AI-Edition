@@ -29,9 +29,14 @@ function M.start(app, scheduled)
 		end
 		local sync = require("Modules.LootFilterDailySync")
 		app.lootSyncStarted = os.time()
-		app.lootSyncDue = sync.dueProfiles(app.lootSyncStarted,scheduled)
+		local errors
+		app.lootSyncDue, errors = sync.dueProfiles(app.lootSyncStarted,scheduled)
+		app.lootSyncFailed = #errors>0
+		for _, failure in ipairs(errors) do
+			ConPrintf("Loot filter background sync could not read profile %s: %s",failure.id,failure.message)
+		end
 		if #app.lootSyncDue == 0 then
-			exitStatus(false)
+			exitStatus(app.lootSyncFailed)
 			return
 		end
 		app.lootSync = sync
@@ -48,21 +53,28 @@ end
 
 function M.frame(app)
 	local sync = app.lootSync
+	local function failure(message)
+		app.lootSyncFailed = true
+		ConPrintf("Loot filter background sync attempt failed: %s",tostring(message))
+	end
+	local function advance(...)
+		local ok, problem = pcall(sync.tick,...)
+		if ok then return end
+		app.lootSyncFailed = true
+		local job = sync.busy
+		sync.busy = nil
+		if job and job.onFailure then
+			local recorded, why = pcall(job.onFailure,tostring(problem))
+			if not recorded then failure(why) end
+		else failure(problem) end
+	end
 	local ok, finished = pcall(function()
-		if sync.busy then sync.tick(os.time()) end
+		if sync.busy then advance(os.time()) end
 		if sync.busy then return false end
-		local completed = app.lootSyncDue[app.lootSyncIndex]
-		if completed then
-			local config = sync.configuration(completed.id)
-			local failure = config and config.lastFailure
-			if config and config.revision == completed.revision and failure and failure.startedAt >= app.lootSyncStarted then
-				app.lootSyncFailed = true
-			end
-		end
 		app.lootSyncIndex = app.lootSyncIndex + 1
 		local nextProfile = app.lootSyncDue[app.lootSyncIndex]
 		if not nextProfile then return true end
-		sync.tick(os.time(),false,app.lootSyncScheduled,nextProfile.id)
+		advance(os.time(),false,app.lootSyncScheduled,nextProfile.id,failure)
 		return false
 	end)
 	if ok and not finished then return end

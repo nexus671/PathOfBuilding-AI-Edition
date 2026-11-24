@@ -18,8 +18,8 @@ function M.assertPriceSource(config)
 end
 
 local function readWithLimit(path, limit)
-	local file = io.open(path, "rb")
-	if not file then return nil end
+	local file, why, code = io.open(path, "rb")
+	if not file then return nil, why, code end
 	local data = file:read(limit + 1)
 	file:close()
 	assert(data and #data <= limit, "Filter or sync record exceeds the size limit")
@@ -141,11 +141,18 @@ function M.acquireBackgroundSetup()
 	return platform().acquire(settingsPath() .. ".background.lock")
 end
 
+local function readSettings(path)
+	local raw, why, code = read(path)
+	assert(raw or code==2 or not why and not code, "Could not read daily sync settings: "..tostring(why or code))
+	return raw
+end
+
 local function get(id)
-	local raw = read(settingsPath(id))
+	local raw = readSettings(settingsPath(id))
 	if not raw then return nil end
-	local config = json.decode(raw)
-	assert(type(config) == "table", "Invalid daily filter sync configuration")
+	local config, position = json.decode(raw)
+	assert(type(config)=="table" and raw:match("^%s*{") and position and not raw:sub(position):find("%S")
+		and type(config.enabled)=="boolean", "Invalid daily filter sync configuration")
 	return config
 end
 
@@ -211,9 +218,11 @@ local function registryPath()
 end
 
 function M.profiles()
-	local raw = read(registryPath())
-	local entries = raw and json.decode(raw) or (not raw and {})
-	assert(type(entries) == "table" and #entries <= 24, "Invalid sync profile list")
+	local raw = readSettings(registryPath())
+	local entries, position
+	if raw then entries, position = json.decode(raw) else entries = {} end
+	assert(type(entries)=="table" and #entries<=24 and (not raw or raw:match("^%s*%[")
+		and position and not raw:sub(position):find("%S")), "Invalid sync profile list")
 	local result, seen = {{id="default",name="Default"}}, {}
 	for key in pairs(entries) do
 		assert(type(key) == "number" and key == math.floor(key) and key >= 1 and key <= #entries, "Invalid sync profile list")
@@ -1361,7 +1370,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 	fetch(1, 1)
 end
 
-function M.tick(now, force, scheduled, id)
+function M.tick(now, force, scheduled, id, onAttemptFailure)
 	id = id or "default"
 	if M.busy then
 		if now > M.deadline then
@@ -1380,7 +1389,11 @@ function M.tick(now, force, scheduled, id)
 	if not force and now < (polls[id] or 0) then return end
 	polls[id] = now + 60
 	local ok, config = pcall(get,id)
-	if not ok then M.status = tostring(config); return end
+	if not ok then
+		M.status = tostring(config)
+		if onAttemptFailure then onAttemptFailure(M.status) end
+		return
+	end
 	if not config or not config.enabled or config.paused or scheduled and not config.backgroundEnabled then return end
 	if config.pendingRefresh and (force or now >= retryAfter(config)) then
 		local recovered, result = pcall(lockSettings,function()
@@ -1390,6 +1403,7 @@ function M.tick(now, force, scheduled, id)
 		end)
 		if not recovered then
 			M.status = "Sync recovery failed: "..tostring(result)
+			if onAttemptFailure then onAttemptFailure(M.status) end
 			rememberFailure(config,now,M.status,id,nil,config.pending)
 			return
 		end
@@ -1406,7 +1420,10 @@ function M.tick(now, force, scheduled, id)
 		M.status = config.lastFailure and failureStatus(config.lastFailure) or config.summary or enabledStatus(config)
 		return
 	end
-	local function onFailure(message, failedFeed) rememberFailure(config, now, message, id, failedFeed) end
+	local function onFailure(message, failedFeed)
+		if onAttemptFailure then onAttemptFailure(message,failedFeed) end
+		rememberFailure(config, now, message, id, failedFeed)
+	end
 	if not market.endpoint then
 		M.status = "Sync skipped: "..market.endpointError
 		onFailure(M.status)
@@ -1444,16 +1461,26 @@ function M.tick(now, force, scheduled, id)
 end
 
 function M.dueProfiles(now, scheduled)
-	local due = {}
+	local due, errors = {}, {}
 	local waiting = M.providerWait(now)>0
-	for _, entry in ipairs(M.profiles()) do
-		local ok, config = pcall(get,entry.id)
-		if ok and config and config.enabled and not config.paused and (not scheduled or config.backgroundEnabled) and now >= (polls[entry.id] or 0)
-			and (config.pendingRefresh and now >= retryAfter(config) or not waiting and M.isDue(config,now)) then
-			due[#due+1] = {id=entry.id,revision=config.revision}
-		end
+	local found, profiles = pcall(M.profiles)
+	if not found then
+		errors[#errors+1] = {id="registry",message=tostring(profiles):gsub("[%c]"," "):sub(1,350)}
+		profiles = {{id="default"}}
 	end
-	return due
+	for _, entry in ipairs(profiles) do
+		local ok, result = pcall(function()
+			local config = get(entry.id)
+			if config and config.enabled and not config.paused and (not scheduled or config.backgroundEnabled) and now >= (polls[entry.id] or 0)
+				and (config.pendingRefresh and now >= retryAfter(config) or not waiting and M.isDue(config,now)) then
+				return {id=entry.id,revision=config.revision}
+			end
+		end)
+		if not ok then
+			errors[#errors+1] = {id=entry.id,message=tostring(result):gsub("[%c]"," "):sub(1,350)}
+		elseif result then due[#due+1] = result end
+	end
+	return due, errors
 end
 
 function M.tickAll(now)

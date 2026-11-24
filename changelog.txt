@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1251][2026/11/23]
+
+* Report the actual Windows background sync result when a failure cannot be saved.
+
 VERSION[2.68.1-ai.preview1250][2026/11/23]
 
 * Finish interrupted loot filter refreshes locally once the installed filter and its backup are verified.
