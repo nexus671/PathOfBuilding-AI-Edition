@@ -23,3 +23,16 @@ assert(not workspace.atlasDrafts[oldId] and workspace.atlasDrafts[newId] and wor
 ui:click('keep');assert(#build.savers.AtlasPlans.plans==2,'Keeping the same draft created a duplicate')
 workspace:Show('filters');workspace:Show('atlas');assert(workspace.cache.atlas.layout.snapshot().id==newId,'Navigation restored the old ID')
 ui:restore();print('ATLAS_SAVE_COLLISION_OK')
+-- A separate unsaved Atlas draft is also reserved when creating another plan.
+newBuild();main.popups={};local otherUI=require('Modules.HeadlessUI').install({width=960,height=640});otherUI:bind(build)
+local other=require('Modules.PlanningWorkspace').new(build);build.planningWorkspace=other;build.viewMode='PLANNER';other:Show('atlas')
+local reserved=copyTable(other.cache.atlas.layout.snapshot());reserved.id='atlas-'..string.rep('a',12);reserved.title='Reserved draft';other.atlasDrafts[reserved.id]={plan=reserved}
+local planning=require('Modules.PlanningData');local nextId=planning.newId;local sha=package.loaded.sha1 or require('sha1')
+planning.newId=function(prefix,entries,length)
+ local calls=0;package.loaded.sha1=function() calls=calls+1;return string.rep(calls==1 and 'a' or 'b',40) end
+ local result=nextId(prefix,entries,length);package.loaded.sha1=sha;return result
+end
+otherUI:click('new');planning.newId=nextId
+assert(other.cache.atlas.layout.snapshot().id=='atlas-'..string.rep('b',12),'New plan reused a session draft ID')
+assert(other.atlasDrafts[reserved.id] and other.atlasDrafts[reserved.id].plan.title=='Reserved draft','Creating a plan replaced another draft')
+otherUI:restore();print('ATLAS_SESSION_DRAFT_ID_OK')
