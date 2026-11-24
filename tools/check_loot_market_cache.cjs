@@ -1,9 +1,12 @@
 'use strict';
 
+const { isDeepStrictEqual } = require('node:util');
 const { requestKey, overviewRoute, ageSource, boundedBody, validatePayload } = require('./serve_loot_market_cache.cjs');
 
 const coreFeeds = ['Currency', 'Oil', 'Omen', 'Essence', 'Thread', 'Fragment', 'Resonator', 'Artifact'];
 const positive = value => Number.isFinite(value) && value>0;
+const stashIdentityFields = ['name','baseType','gemLevel','gemQuality','corrupted','variant','links','mapTier','chaosValue',
+  'itemType','itemClass','levelRequired','stackSize','mapRegion','implicitModifiers','explicitModifiers','mutatedModifiers','metadata'];
 
 function cacheRoot(raw) {
   let url;
@@ -73,11 +76,23 @@ function priceEvidence(payload, category, kind) {
     }
     return { priced:priced.length };
   }
-  const priced = payload.lines.filter(row=>typeof row?.name==='string' && typeof row.detailsId==='string'
-    && row.detailsId.length>0 && positive(row.chaosValue));
-  if (!priced.length) throw new Error('No priced stash variants with stable IDs');
-  const listed = priced.filter(row=>row.count>=20 && row.listingCount>=20
-    && Number.isFinite(row.count) && Number.isFinite(row.listingCount));
+  const candidates = new Map();
+  for (const row of payload.lines) {
+    const id = row?.detailsId;
+    if (typeof id!=='string' || !/^[A-Za-z0-9_.-]{1,200}$/.test(id)) continue;
+    const previous = candidates.get(id);
+    const valid = typeof row.name==='string' && row.name.length<=200 && row.name.trim() &&
+      !/[\x00-\x1f\x7f]/.test(row.name) && positive(row.chaosValue);
+    if (!valid || previous===false || previous && stashIdentityFields.some(field=>!isDeepStrictEqual(previous.row[field],row[field]))) {
+      candidates.set(id,false);
+    } else {
+      const liquid = Number.isFinite(row.count) && row.count>=20 && Number.isFinite(row.listingCount) && row.listingCount>=20;
+      candidates.set(id,{row:previous?.row ?? row,liquid:liquid && (previous?.liquid ?? true)});
+    }
+  }
+  const priced = [...candidates.values()].filter(Boolean);
+  if (!priced.length) throw new Error('No unambiguous priced stash variants with stable IDs');
+  const listed = priced.filter(row=>row.liquid);
   if (category==='SkillGem' || category==='ImbuedGem') {
     const exact=exactGemQuotes(payload.lines,category==='SkillGem');
     if (!exact) throw new Error('No unambiguous listing-backed gem quote with explicit level, quality and corruption');
