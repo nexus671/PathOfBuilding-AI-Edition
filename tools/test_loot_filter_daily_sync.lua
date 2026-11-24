@@ -1521,3 +1521,72 @@ local function checkSharedProviderHold()
 end
 checkSharedProviderHold()
 print("Provider retry deadlines survive independent instances, preserve the longest wait, and isolate endpoints")
+
+
+local function checkMarketSourceBinding()
+	local service = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local json, sha = require("dkjson"), require("sha1")
+	local endpoint = market.endpoint
+	local alternate = endpoint.."test-source-binding/"
+	local id = service.createProfile("Price source binding")
+	local live, fixed = dir.."/source-bound.filter",dir.."/source-bound-fixed.filter"
+	local settings = dir.."/LootFilterDailySync-"..id..".json"
+	local options = {profileId=id,hour=0,protectionFile=protections}
+	write(live,original); write(fixed,original)
+	service.configure(live,fixed,"Covens",options)
+	assert(service.configuration(id).marketSourceHash==sha(endpoint))
+	local requests, held = 0,nil
+	local function reply(_,url,callback)
+		requests=requests+1
+		callback({header=header,body=commodityBody})
+	end
+	launch.DownloadPage = reply
+	service.tick(now,true,false,id)
+	local verified = read(live)
+	local historySource=service.configuration(id)
+	historySource.priceHistory={{day="other-source",time=now-86400,values={["Currency:alt"]=100}}}
+	write(settings,assert(json.encode(historySource)))
+	assert(service.configuration(id).lastSuccess and #service.configuration(id).priceHistory==1)
+	market.endpoint=alternate
+	requests=0
+	service.tick(now+1,true,false,id)
+	assert(requests==0 and read(live)==verified and service.configuration(id).lastFailure.message:find("price source changed",1,true))
+	local proposed
+	service.preview(live,fixed,"Covens",options,function(_,after) proposed=after end)
+	assert(proposed==verified and requests==8 and read(live)==verified)
+	service.configure(live,fixed,"Covens",options)
+	assert(service.configuration(id).marketSourceHash==sha(alternate) and not service.configuration(id).priceHistory)
+	service.tick(now+2,true,false,id)
+	assert(service.configuration(id).lastSuccess and #service.configuration(id).priceHistory==1)
+	service.configure(live,fixed,"Covens",options)
+	assert(#service.configuration(id).priceHistory==1)
+
+	-- An in-flight request cannot mix sources or publish after the source changes.
+	requests=0
+	launch.DownloadPage=function(_,url,callback) requests=requests+1; held=callback end
+	local before = read(live)
+	service.tick(now+3,true,false,id)
+	assert(held and service.busy and requests==1)
+	market.endpoint=endpoint
+	held({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: 120\r\n\r\n"},"Response code: 429")
+	assert(service.providerWait(now)==0)
+	assert(not service.busy and requests==1 and read(live)==before and service.status:find("price source changed",1,true))
+
+	-- Older profiles remain usable, then bind only verified prices from this source.
+	local legacy=service.configuration(id)
+	legacy.marketSourceHash=nil
+	legacy.priceHistory={{day="old-source",time=now-86400,values={["Currency:alt"]=100}}}
+	write(settings,assert(json.encode(legacy)))
+	launch.DownloadPage=reply
+	service.tick(now+4,true,false,id)
+	local migrated=service.configuration(id)
+	assert(migrated.lastSuccess==now+4 and migrated.marketSourceHash==sha(endpoint) and #migrated.priceHistory==1)
+	assert(migrated.priceHistory[1].day~="old-source")
+	legacy=service.configuration(id)
+	legacy.marketSourceHash=nil
+	write(settings,assert(json.encode(legacy)))
+	service.configure(live,fixed,"Covens",options)
+	assert(service.configuration(id).marketSourceHash==sha(endpoint) and not service.configuration(id).priceHistory)
+end
+checkMarketSourceBinding()
+print("Daily profiles bind verified sources, reset changed or legacy histories, and stop mismatched asynchronous requests")

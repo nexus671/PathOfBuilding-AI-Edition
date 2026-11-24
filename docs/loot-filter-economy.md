@@ -103,7 +103,9 @@ Use **Check Windows task** in daily sync to compare the profile's background pre
 
 ## Shared cache for app distribution
 
-PoB can use an operator-managed HTTPS cache for all poe.ninja economy requests. Set `POB_MARKET_CACHE_URL` to the full public HTTPS prefix, such as `https://prices.example.test/pob-market/`, in the desktop and scheduled worker environment before starting them. A configured cache is the only destination for those requests. The existing direct source remains the default when the setting is empty.
+PoB can use an operator-managed HTTPS cache for all poe.ninja economy requests. Set `POB_MARKET_CACHE_URL` to the full public HTTPS prefix, such as `https://prices.example.test/pob-market/`, before starting PoB. The Windows task records that source when you enable or repair it, so the scheduled worker uses the same endpoint even if Task Scheduler inherits different settings. The direct source is the default when the setting is empty.
+
+Daily sync records the source when you enable or update a profile. If the runtime's source differs, sync leaves the active filter in place. To change sources, restart with the desired setting, preview the prices, save the profile, and repair the Windows task if you use background sync. Use **Check Windows task** after upgrading an older task to see whether it needs repair.
 
 The operator runs `node tools/serve_loot_market_cache.cjs` with `POB_MARKET_UPSTREAM_AGENT` set to the application's descriptive User-Agent and contact. It binds to loopback on port 9410 by default. Publish that service through the deployment's HTTPS reverse proxy by stripping the configured path prefix. Restrict the proxy to the intended audience and use `/health` from monitoring to inspect pending work, cache hits, coalesced requests and failures.
 
