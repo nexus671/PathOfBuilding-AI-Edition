@@ -1090,9 +1090,10 @@ function M.validateTargetAvailability(model,targets,steps)
 	end end
 	for _,step in ipairs(steps or {}) do if (step.method=="recombine" or step.method=="recombine_predictable") and step.donorItem then
 		local donor=M.model(step.donorItem)
-		for id,mod in pairs(donor.byId) do donorMods[id]=donorMods[id] or mod end
-		for _,entry in ipairs(donor.mods) do available[entry.id]=true end
-		for _,entry in ipairs(donor.initial.affixes) do available[entry.id]=true end
+		for _,entries in ipairs({donor.mods,donor.initial.affixes}) do for _,entry in ipairs(entries) do
+			available[entry.id]=true
+			if not model.byId[entry.id] then donorMods[entry.id]=donorMods[entry.id] or donor.byId[entry.id] end
+		end end
 	end end
 	local function check(groups) for _,group in ipairs(groups) do for _,id in ipairs(group.anyOf) do
 		assert(available[id],"Target modifier ID is unavailable for this base: "..id)

@@ -32,4 +32,13 @@ local ok,reason=pcall(simulator.validateTargetAvailability,model,mixed,{})
 assert(not ok and tostring(reason):find('scope',1,true), 'Mixed-scope API targets must be rejected')
 ok,reason=pcall(simulator.validateTargetAvailability,model,{},{{untilTargets=mixed}})
 assert(not ok and tostring(reason):find('scope',1,true), 'Mixed-scope step targets must be rejected')
+local donor='Rarity: NORMAL\nIron Hat\nItem Level: 86'
+local donorModel=simulator.model(donor);local available={};local donorOnly
+for _,entry in ipairs(model.mods) do available[entry.id]=true end
+for _,entry in ipairs(donorModel.mods) do if not available[entry.id] and (entry.mod.type=='Prefix' or entry.mod.type=='Suffix') then donorOnly=entry.id;break end end
+assert(donorOnly, 'Expected a donor-only explicit modifier')
+local steps={{method='recombine',donorItem=donor}}
+assert(pcall(simulator.validateTargetAvailability,model,{{scope='explicit',anyOf={donorOnly}}},steps), 'Valid donor target was rejected')
+ok,reason=pcall(simulator.validateTargetAvailability,model,{{scope='implicit',anyOf={donorOnly}}},steps)
+assert(not ok and tostring(reason):find('scope',1,true), 'Donor scope mismatch must be rejected')
 ui:restore();print('CRAFTING_ALTERNATIVE_SCOPE_OK')
