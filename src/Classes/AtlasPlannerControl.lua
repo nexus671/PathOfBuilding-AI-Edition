@@ -166,7 +166,7 @@ function Canvas:OnFocusLost() self.drag=nil end
 function Panel.Open(build,source,layout)
 	local store=build.savers.AtlasPlans
 	local version=atlas.defaultVersion(build.spec.treeVersion)
-	local draft=copyTable(source or store.plans[1] or {id="atlas-"..require("sha1")(tostring({})..os.time()):sub(1,12),title="New Atlas plan",version=version,budget=atlas.tree(version).maxPoints,nodes={},notes=""})
+	local draft=copyTable(source or store.plans[1] or {id=require("Modules.PlanningData").newId("atlas-",store.plans,12),title="New Atlas plan",version=version,budget=atlas.tree(version).maxPoints,nodes={},notes=""})
 	local width=layout and layout.width or math.min(1180,main.screenW-40); local height=layout and layout.height or math.min(820,main.screenH-50)
 	local inspector=math.max(260,math.min(width-600,layout and (layout.inspectorWidth or layout.restore and layout.restore.inspectorWidth) or 260))
 	local graphWidth=width-inspector-48; local graphHeight=height-262; local side=graphWidth+32
@@ -567,7 +567,7 @@ function Panel.Open(build,source,layout)
 	controls.keep.label=function() return (controls.canvas.routeOverlay or grantSteps) and "Keep current plan" or "Keep plan" end
 	controls.keep.tooltipText=function() return grantSteps and "Keeps the destination draft, not the step preview." or controls.canvas.routeOverlay and "Keeps the current draft, not the route preview. Open Targets to apply the preview first." or "Keep this plan in the build. Save the build to persist it." end
 	controls.library=button(188,height-42,120,"Saved plans",function() Panel.Library(build,layout) end)
-	controls.new=button(320,height-42,120,"New plan",function() local plan={id="atlas-"..require("sha1")(tostring({})..os.time()):sub(1,12),title="New Atlas plan",version=draft.version,budget=atlas.tree(draft.version).maxPoints,nodes={},notes=""};if layout and layout.navigate then layout.navigate("atlas",plan) else if not layout then main:ClosePopup() end;Panel.Open(build,plan,layout) end end)
+	controls.new=button(320,height-42,120,"New plan",function() local plan={id=require("Modules.PlanningData").newId("atlas-",store.plans,12),title="New Atlas plan",version=draft.version,budget=atlas.tree(draft.version).maxPoints,nodes={},notes=""};if layout and layout.navigate then layout.navigate("atlas",plan) else if not layout then main:ClosePopup() end;Panel.Open(build,plan,layout) end end)
 	openStages=function(view)
 		require("Classes.AtlasPlanningControl").Open(build,current(),function(plan) stageResume=nil;change(plan) end,function(steps,saved,initial,budget,warning)
 			stageResume=saved;grantWarning=warning;clearRouteOverlay();controls.canvas.comparison=nil;controls.page:SelByValue("Tree");grantSteps=copyTable(steps);grantInitial=copyTable(initial);grantBudget=budget;showGrantStep(1)

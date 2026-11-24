@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1289][2026/11/24]
+
+* Prevent new crafting plans, item snapshots and Atlas plans from reusing saved IDs.
+
 VERSION[2.69.0-ai.preview1288][2026/11/24]
 
 * Prevent duplicate daily filter sync profile IDs and repeated revision tokens.
