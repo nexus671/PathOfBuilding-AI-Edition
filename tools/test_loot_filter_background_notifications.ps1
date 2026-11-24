@@ -1,3 +1,4 @@
+# cspell:ignore pscustomobject
 $ErrorActionPreference = 'Stop'
 
 # Parse the command installed in Windows Task Scheduler and exercise its cutoff comparison.
