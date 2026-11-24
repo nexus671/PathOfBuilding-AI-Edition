@@ -51,4 +51,27 @@ describe("Compact Calcs navigation", function()
 		assert.is_true(found)
 		main.popups = { }; ui:restore()
 	end)
+
+	it("allows horizontal navigation in a narrow portrait window", function()
+		newBuild(); main.popups = { }
+		local originalPortrait = main.portraitMode
+		local ui = require("Modules.HeadlessUI").install({ width = 640, height = 800 })
+		main.portraitMode = true
+		ui:bind(build); ui:frame(); ui:click("modeCalcs"); ui:frame()
+		local calcs = build.calcsTab
+		local horizontal = calcs.controls.scrollBarH
+		assert.is_true(horizontal.enabled)
+		local defence
+		for _, section in ipairs(calcs.sectionList) do
+			if section.enabled and not section.isOverlay and section.group == 2 then defence = section; break end
+		end
+		assert.is_truthy(defence)
+		horizontal:SetOffset(defence.x - 312)
+		calcs.controls.scrollBar:SetOffset(defence.y - 90)
+		ui:frame()
+		assert.is_true(defence.x >= 312 and defence.x + defence.width <= 640)
+		assert.is_true(defence.y >= 56 and defence.y < 800)
+		main.portraitMode = originalPortrait
+		main.popups = { }; ui:restore()
+	end)
 end)

@@ -237,12 +237,11 @@ function CalcsTabClass:Draw(viewPort, inputEvents)
 	local baseX = viewPort.x + 4
 	local baseY = viewPort.y + 30
 	local maxCol = m_floor(viewPort.width / (self.colWidth + 8))
-	local compactScroll = not main.portraitMode and maxCol < 4
-	if compactScroll then maxCol = 4 end
-	if main.portraitMode then maxCol = 3 end
+	local compactScroll = maxCol < 4
+	if main.portraitMode then maxCol = 3 elseif compactScroll then maxCol = 4 end
 	local horizontal = self.controls.scrollBarH
 	horizontal.width = m_max(1, viewPort.width - 18)
-	horizontal:SetContentDimension(compactScroll and (4 * (self.colWidth + 8)) or horizontal.width, horizontal.width)
+	horizontal:SetContentDimension(compactScroll and ((main.portraitMode and 3 or 4) * (self.colWidth + 8)) or horizontal.width, horizontal.width)
 	self.controls.search.width = compactScroll and m_max(80, m_min(260, viewPort.width - 160)) or 260
 	local colY = { }
 	local maxY = 0
