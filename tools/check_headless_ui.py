@@ -500,6 +500,12 @@ def main():
             text = z.read(filter_name).decode()
             assert f'"{wav};{ogg}" 200 # note' in text and f'CustomAlertSoundOptional "{wav}"' in text
         (frames / name).unlink()
+    with zipfile.ZipFile(frames / "shared-style-sound-check.zip") as z:
+        assert z.testzip() is None and len(z.namelist()) == 2, "Invalid shared-style sound bundle"
+        sound = next(n for n in z.namelist() if n.endswith(".ogg"))
+        assert z.read(sound) == b"OggS-test-sound", "Shared-style bundle used the original sound"
+        assert f'CustomAlertSound "{sound}" 200' in z.read("shared.filter").decode(), "Shared-style bundle lost its replacement"
+    (frames / "shared-style-sound-check.zip").unlink()
     for name, stem in (("sound-variants-check.zip", "audio"), ("audio-all-strictnesses-sounds.zip", "audio-all")):
         with zipfile.ZipFile(frames / name) as z:
             assert z.testzip() is None and len(z.namelist()) == 9, "Invalid strictness sound bundle"
