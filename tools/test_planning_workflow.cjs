@@ -224,6 +224,7 @@ async function main(){
   const partialGroupResult=await queued('simulate_crafting',{baseRevision:context.revision,itemText:raw,recipe:partialGroupRecipe,options:{trials:1,maxActions:2}},'crafted');
   const mixedScope=await queued('simulate_crafting',{baseRevision:context.revision,itemText:raw,recipe:{steps:[{method:'alchemy'}],targets:[{scope:'explicit',anyOf:[partialGroupInitial.affixes[0].id,'AreaOfEffectEldritchImplicit1']}]},options:{trials:1,maxActions:1}},'failed');
   assert.match(mixedScope.error,/scope/i);
+  assert.doesNotMatch(mixedScope.error,/\.lua:\d+:/i,'Crafting errors should not expose source locations');
   assert.equal(partialGroupResult.nativeCrafting.routeCounts[0].success,1);assert.equal(partialGroupResult.nativeCrafting.routeCounts[1].visits,1);
   const copiedTincture='Item Class: Tinctures\nRarity: MAGIC\nPersevering Prismatic Tincture of Mastery\nPrismatic Tincture\nItem Level: 85\nQuality: 18\nImplicits: 1\n100% increased Elemental Damage with Melee Weapons\n26% reduced Mana Burn rate\n29% increased Melee Weapon Attack Speed';
   const scaledTincture=copiedTincture.replace('26% reduced Mana Burn rate','30% reduced Mana Burn rate').replace('29% increased Melee Weapon Attack Speed','30% increased Melee Weapon Attack Speed');

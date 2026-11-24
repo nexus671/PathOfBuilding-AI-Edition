@@ -5,7 +5,7 @@
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="16314dbc1890b0035edf005c4be820a9a68bf468" />
+	<File name="changelog.txt" part="default" sha1="e4c0e074ef9e80f80d5fe623aaecf3aca0a08de8" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
@@ -2101,7 +2101,7 @@
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />
 	<File name="Modules/DataLegionLookUpTableHelper.lua" part="program" sha1="ece92c4b6062f627f98ba2454531366b4628abfc" />
-	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="c7fc7094666c8a2b16f1b097988b5e11918da98e" />
+	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="2169aa3ab0b68bb60df5d213ef5fe8a09affb55b" />
 	<File name="Modules/EncounterReport.lua" part="program" sha1="710dc78939bfbc8282f295cf626bcde9c9b7d8e5" />
 	<File name="Modules/GemQualityPlan.lua" part="program" sha1="fa12e64e1168c57976a6e2b718a6b30545a27e84" />
 	<File name="Modules/GenesisPlanner.lua" part="program" sha1="14ef6d29220456d78d1034816d57b7042042ec38" />

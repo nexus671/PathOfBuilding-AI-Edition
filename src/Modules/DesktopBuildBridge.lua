@@ -824,7 +824,7 @@ function M.poll(build, force)
 					if alternative then result.savedAlternative={projectId=request.projectId,name=alternative.name} end
 					if primary then result.savedPrimary={projectId=request.projectId} end
 					return result
-				end,function(result) publish("crafted",{nativeCrafting=result}) end,function(message) publish("failed",{error=message}) end,function(progress) publish("calculating",{progress=progress}) end)
+				end,function(result) publish("crafted",{nativeCrafting=result}) end,function(message) publish("failed",{error=require("Modules.PlanningUI").errorText(message)}) end,function(progress) publish("calculating",{progress=progress}) end)
 				job.requestId=request.id
 			else
 				local result=simulator.perform(raw,request.action,request.seed,request.initialState,build.spec.treeVersion)
