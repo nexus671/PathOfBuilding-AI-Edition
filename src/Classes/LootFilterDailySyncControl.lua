@@ -67,7 +67,7 @@ local function showLastAttempt(profileId)
 	main:OpenPopup(width,contentHeight+68,"Last sync attempt",controls,nil,nil,"close")
 end
 
-local function compareObservedStack(profileId)
+local function compareObservedStack(compare, beforeLabel, afterLabel)
 	local width = math.min(540,main.screenW-40)
 	local controls = {}
 	local function input(key,label,x,y,w,limit)
@@ -89,11 +89,11 @@ local function compareObservedStack(profileId)
 		local name = controls.name.buf:match("^%s*(.-)%s*$")
 		local level
 		if controls.level.buf~="" then level=tonumber(controls.level.buf) or false end
-		local ok,before,after = pcall(sync.compareObservedStack,profileId,name,
+		local ok,before,after = pcall(compare,name,
 			tonumber(controls.size.buf),tonumber(controls.area.buf),level,controls.class:GetSelValueByKey("class"))
 		if not ok then main:OpenMessagePopup("Test observed stack",ui.errorText(before)); return end
 		local details = {string.format("%s, stack of %d, area level %d",name,tonumber(controls.size.buf),tonumber(controls.area.buf))}
-		for _, pair in ipairs({{"Fixed baseline",before},{"Verified filter",after}}) do
+		for _, pair in ipairs({{beforeLabel,before},{afterLabel,after}}) do
 			local result = pair[2]
 			details[#details+1] = pair[1].." | "..result.action..(result.line and (" at line "..result.line) or "")
 			if result.action=="Unknown" then
@@ -116,6 +116,11 @@ local function compareObservedStack(profileId)
 	controls.close = new("ButtonControl"):ButtonControl(ui.anchor,{width-136,206,120,28},"Close",function() main:ClosePopup() end)
 	ui.style(controls,{test=true})
 	main:OpenPopup(width,252,"Test observed stack",controls,nil,"name","close")
+end
+
+local function comparePreviewStack(before, after)
+	compareObservedStack(function(...) return sync.compareObservedStackPreview(before,after,...) end,
+		"Current filter","Proposed filter")
 end
 
 local function editItemCap(width, target, caps, selected, save)
@@ -365,25 +370,23 @@ function M.Open(profileId, profileName)
 		draft.reviewLeague = rollover and true or nil
 		local passed, err = pcall(sync.preview,target,baseline,league,draft,function(before, after, receipt)
 			if main.popups[1] ~= owner then return end
-			local reviewOptions
+			local reviewOptions = {inspectStack=comparePreviewStack}
 			if rollover then
 				if not receipt then
 					main:OpenMessagePopup("Review league change","The saved profile changed. Reopen Daily price sync and review again.")
 					return
 				end
-				reviewOptions = {
-					title="Review league change",
-					note="Preview for "..league..". Saving updates the profile. The live filter updates after a successful fresh sync.",
-					label="Save reviewed league",
-					run=function()
-						draft.expectedLeagueReview = receipt
-						local saved, why = pcall(sync.configure,target,baseline,league,draft)
-						if not saved then main:OpenMessagePopup("Review league change",ui.errorText(why)); return end
-						main:ClosePopup()
-						main:ClosePopup()
-						M.Open(profileId,profileName)
-					end,
-				}
+				reviewOptions.title="Review league change"
+				reviewOptions.note="Preview for "..league..". Saving updates the profile. The live filter updates after a successful fresh sync."
+				reviewOptions.label="Save reviewed league"
+				reviewOptions.run=function()
+					draft.expectedLeagueReview = receipt
+					local saved, why = pcall(sync.configure,target,baseline,league,draft)
+					if not saved then main:OpenMessagePopup("Review league change",ui.errorText(why)); return end
+					main:ClosePopup()
+					main:ClosePopup()
+					M.Open(profileId,profileName)
+				end
 			end
 			require("Classes.LootFilterDiffControl").Open(before,after,true,reviewOptions)
 		end,function(message)
@@ -776,7 +779,7 @@ function M.Open(profileId, profileName)
 			local note = string.format("Offline review. Oldest quote is %d minutes old. Verified refresh started on %s.",
 				math.ceil(review.age/60),os.date("%Y-%m-%d %H:%M",review.checkedAt))
 			require("Classes.LootFilterDiffControl").Open(review.before,review.after,true,{
-				title="Offline price preview",note=note,reviewOnly=true,
+				title="Offline price preview",note=note,reviewOnly=true,inspectStack=comparePreviewStack,
 			})
 		end)
 		controls.preview.enabled = function() return latest.offlinePriceDays~=nil and not sync.busy end
@@ -790,7 +793,7 @@ function M.Open(profileId, profileName)
 	end)
 	c.lastAttempt.enabled = function() return config.target~=nil end
 	c.observedStack = new("ButtonControl"):ButtonControl(ui.anchor,{34+3*fourth,534,fourth,26},"Test observed stack",function()
-		compareObservedStack(profileId)
+		compareObservedStack(function(...) return sync.compareObservedStack(profileId,...) end,"Fixed baseline","Verified filter")
 	end)
 	c.observedStack.enabled = function() return not sync.busy and latestActionConfig().lastSuccess~=nil end
 	ui.style(c)
