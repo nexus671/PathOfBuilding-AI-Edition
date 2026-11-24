@@ -172,6 +172,15 @@ test('reads loot sync status from the desktop heartbeat without queuing a write'
   f.state.lootSyncStatus={configured:true,state:'enabled',adjustmentCount:1,latestChanges:[{item:'Orb of Alteration',previousCutoff:6,proposedCutoff:4}]};
   f.write('state',f.state);
   assert.deepEqual(f.call('get_loot_sync_status',{}).status,f.state.lootSyncStatus);
+  f.state.lootSyncStatus.failedFeed={category:'Scarab',reason:'empty_response',httpStatus:200,rawError:'C:/private.filter'};
+  f.write('state',f.state);
+  assert.deepEqual(f.call('get_loot_sync_status',{}).status.failedFeed,{category:'Scarab',reason:'empty_response',httpStatus:200});
+  f.state.lootSyncStatus.failedFeed={category:'Scarab',reason:'access_denied',httpStatus:1000};
+  f.write('state',f.state);
+  assert.deepEqual(f.call('get_loot_sync_status',{}).status.failedFeed,{category:'Scarab',reason:'access_denied'});
+  f.state.lootSyncStatus.failedFeed={category:'C:/private.filter',reason:'raw error',httpStatus:403};
+  f.write('state',f.state);
+  assert.equal(f.call('get_loot_sync_status',{}).status.failedFeed,undefined);
   assert.throws(()=>f.call('get_loot_sync_status',{path:'private.filter'}),/arguments/);
   assert.equal(fs.existsSync(path.join(f.dir,'AI-build-request.json')),false);
 });
