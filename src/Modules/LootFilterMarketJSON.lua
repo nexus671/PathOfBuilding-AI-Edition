@@ -8,7 +8,7 @@ local function isObject(value)
 	return type(value)=="table" and getmetatable(value)==objectMeta
 end
 
-local function objectRows(value)
+function M.objectRows(value)
 	if type(value)~="table" or getmetatable(value)~=arrayMeta then return false end
 	-- Explicit null decoding keeps every slot, including a null suffix. Validate
 	-- the complete collection before any consumer can use ipairs on its rows.
@@ -36,11 +36,11 @@ function M.decode(body, collections, rootRows)
 	local data, position, problem = json.decode(body,1,null,objectMeta,arrayMeta)
 	if problem or not position or body:sub(position):find("%S") then return nil end
 	if rootRows then
-		if not objectRows(data) then return nil end
+		if not M.objectRows(data) then return nil end
 	else
 		if not isObject(data) then return nil end
 		for _, field in ipairs(collections or {}) do
-			if not objectRows(data[field]) then return nil end
+			if not M.objectRows(data[field]) then return nil end
 		end
 	end
 	optionalNulls(data)
