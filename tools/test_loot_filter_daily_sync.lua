@@ -65,6 +65,27 @@ end)
 assert(proposed and proposed:find("StackSize <= 4",1,true))
 local previewBefore,previewAfter=sync.compareObservedStackPreview(original,proposed,"Orb of Alteration",5,83)
 assert(previewBefore.action=="Hide" and previewAfter.action=="Show")
+do
+	local path=dir.."/observed.json"
+	local first='{"BaseType":"Orb of Alteration","StackSize":5,"AreaLevel":83}'
+	local second='{"BaseType":"Orb of Alteration","StackSize":3,"AreaLevel":60}'
+	local third='{"BaseType":"Orb of Chance","StackSize":2,"AreaLevel":83}'
+	local observations="["..table.concat({first,first,second,third},",").."]"
+	write(path,observations)
+	local summary,rows=sync.compareObservedStackBatch(original,proposed,path)
+	assert(summary.count==4 and summary.units==15 and summary.shown==2 and summary.hidden==0
+		and summary.unchanged==1 and summary.unknown==1)
+	assert(rows[1].before.action=="Hide" and rows[2].after.action=="Show")
+	assert(rows[4].after.missingProperties[1]=="ItemLevel")
+	local reversed=sync.compareObservedStackBatch(proposed,original,path)
+	assert(reversed.hidden==2 and reversed.shown==0)
+	for _,invalid in ipairs({first,"[null]","[]",observations.." trailing",'['..first:gsub('"StackSize"','"WrongSize"')..']'}) do
+		write(path,invalid)
+		assert(not pcall(sync.compareObservedStackBatch,original,proposed,path))
+	end
+	write(path,"["..string.rep(first..",",250)..first.."]")
+	assert(not pcall(sync.compareObservedStackBatch,original,proposed,path))
+end
 assert(read(target)==original and not sync.configuration())
 stale=true
 local previewFailure
@@ -117,6 +138,10 @@ do
 	local settings=read(configFile)
 	local before,after=sync.compareObservedStack("default","Orb of Alteration",5,83)
 	assert(before.action=="Hide" and after.action=="Show" and before.line and after.line)
+	local file=dir.."/verified-observation.json"
+	write(file,'[{"BaseType":"Orb of Alteration","StackSize":5,"AreaLevel":83}]')
+	local batch,rows=sync.compareVerifiedObservedStackBatch("default",file)
+	assert(batch.count==1 and batch.shown==1 and rows[1].after.line==after.line)
 	before,after=sync.compareObservedStack("default","Orb of Chance",5,83)
 	assert(before.action=="Unknown" and after.action=="Unknown" and after.missingProperties[1]=="ItemLevel")
 	before,after=sync.compareObservedStack("default","Orb of Chance",5,83,69)
@@ -126,6 +151,7 @@ do
 	assert(read(target)==output and read(configFile)==settings)
 	write(target,output.."\n# External edit")
 	assert(not pcall(sync.compareObservedStack,"default","Orb of Alteration",5,83))
+	assert(not pcall(sync.compareVerifiedObservedStackBatch,"default",file))
 	write(target,output)
 end
 local diffPayload=require("dkjson").encode(diff)
