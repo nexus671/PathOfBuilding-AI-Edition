@@ -274,6 +274,11 @@ test('qualifies Imbued gems as advisory name and support variants without fabric
   const accepted=await probe([row,{...row,count:20}]);
   assert.equal(accepted.status,'passed');assert.equal(accepted.advisoryGemQuotes,1);
   assert.equal(accepted.exactGemQuotes,undefined);
+  assert.equal((await probe([{...row,gemLevel:null,gemQuality:null,corrupted:null}])).advisoryGemQuotes,1);
+  const uncorrupted={...row,detailsId:'uncorrupted-id',gemLevel:20,gemQuality:0,corrupted:false};
+  const corrupted={...row,detailsId:'corrupted-id',gemLevel:20,gemQuality:0,corrupted:true};
+  assert.equal((await probe([uncorrupted,corrupted])).advisoryGemQuotes,1);
+  assert.equal((await probe([uncorrupted,corrupted,{...corrupted,detailsId:'conflict'}])).advisoryGemQuotes,1);
   for (const lines of [
     [{...row,variant:undefined}], [{...row,variant:''}], [{...row,variant:'unsafe\nlabel'}],
     [{...row,count:19}], [{...row,listingCount:19}], [row,{...row,count:1}],
@@ -282,6 +287,9 @@ test('qualifies Imbued gems as advisory name and support variants without fabric
     [row,{...row,chaosValue:99},{...row,detailsId:'other-id'}],
     [row,{...row,variant:'Different support'},{...row,detailsId:'other-id'}],
     [row,{...row,variant:'Power Charge on Critical Support',detailsId:'other-id'}],
+    [{...row,gemLevel:'20'}], [{...row,gemLevel:0}], [{...row,gemLevel:41}],
+    [{...row,gemQuality:false}], [{...row,gemQuality:101}], [{...row,gemQuality:19.5}],
+    [{...row,corrupted:'false'}],
   ]) {
     assert.equal((await probe(lines)).status,'failed');
     assert.equal((await probe([...lines].reverse())).status,'failed');
