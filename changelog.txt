@@ -1,10 +1,19 @@
-VERSION[2.69.0-ai.preview1287][2026/11/24]
+VERSION[2.69.0-ai.preview1288][2026/11/24]
 
 * Let AI tools compare equipped or copied jewellery against a local listing snapshot.
 
-VERSION[2.69.0-ai.preview1286][2026/11/24]
+VERSION[2.69.0-ai.preview1287][2026/11/24]
 
 * Exclude unverified special item states from gear listing comparisons.
+
+VERSION[2.69.0-ai.preview1286][2026/11/24]
+
+* Compare recorded loot stacks by item class and area level.
+* Flag uncertain filter comparisons and show their warnings.
+* Show matching rule order for recorded stack comparisons.
+* Show colors, beams and sounds in observed stack reviews.
+* Preview observed loot labels side by side.
+* Open label previews from recorded stack files.
 
 VERSION[2.69.0-ai.preview1285][2026/11/24]
 
