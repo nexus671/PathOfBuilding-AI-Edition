@@ -353,6 +353,13 @@ assert(not coverage and coverageError:find("fewer than a quarter",1,true))
 assert(pcall(market.remember, quoteBatch(6), completeHistory, "still sufficient", now+2*86400))
 assert(pcall(market.remember, quoteBatch(5), completeDay, "first comparison", now+2*86400))
 do
+	local _, thinDay = market.remember(quoteBatch(6),completeHistory,"thin day",now+2*86400)
+	local valid, failure = pcall(market.remember,quoteBatch(3),thinDay,"thinner day",now+3*86400)
+	assert(not valid and failure:find("3 available, recent median 24",1,true),failure)
+	assert(pcall(market.remember,quoteBatch(24),thinDay,"recovery",now+3*86400))
+	assert(pcall(market.remember,quoteBatch(3),thinDay,"old history",now+10*86400))
+end
+do
 	local _, cardFirst = market.remember(quoteBatch(24,"DivinationCard"),{},"cards one",now)
 	local _, cardHistory = market.remember(quoteBatch(24,"DivinationCard"),cardFirst,"cards two",now+86400)
 	local valid, failure = pcall(market.remember,quoteBatch(5,"DivinationCard"),cardHistory,"cards three",now+2*86400)
@@ -1208,16 +1215,22 @@ end
 profiles.tick(exchangeClock,true,false,coverageProfile)
 exchangeClock = exchangeClock+86400
 profiles.tick(exchangeClock,true,false,coverageProfile)
+extra, exchangeClock = 7, exchangeClock+86400
+profiles.tick(exchangeClock,true,false,coverageProfile)
 local verifiedCoverage = profiles.configuration(coverageProfile)
-assert(verifiedCoverage.lastSuccess==exchangeClock and #verifiedCoverage.priceHistory==2)
+assert(verifiedCoverage.lastSuccess==exchangeClock and #verifiedCoverage.priceHistory==3)
 local coverageBytes = read(coverageTarget)
-extra, exchangeClock = 4, exchangeClock+86400
+extra, exchangeClock = 2, exchangeClock+86400
+profiles.tick(exchangeClock,true,false,coverageProfile)
+local incomplete = profiles.configuration(coverageProfile)
+assert(incomplete.lastSuccess==verifiedCoverage.lastSuccess and #incomplete.priceHistory==3 and read(coverageTarget)==coverageBytes)
+assert(incomplete.lastFailure and incomplete.lastFailure.message:find("Currency feed has fewer than a quarter",1,true))
+extra, exchangeClock = 23, exchangeClock+86400
 profiles.tick(exchangeClock,true,false,coverageProfile)
 os.time = originalClock
-local incomplete = profiles.configuration(coverageProfile)
-assert(incomplete.lastSuccess==verifiedCoverage.lastSuccess and #incomplete.priceHistory==2 and read(coverageTarget)==coverageBytes)
-assert(incomplete.lastFailure and incomplete.lastFailure.message:find("Currency feed has fewer than a quarter",1,true))
-print("A severe loss of exchange coverage retains the last verified output")
+local recovered = profiles.configuration(coverageProfile)
+assert(recovered.lastSuccess==exchangeClock and #recovered.priceHistory==4 and not recovered.lastFailure)
+print("Weekly exchange coverage retains verified output through two thin feeds and resumes after recovery")
 
 local function checkAppearanceRoundTrip()
 	local styleBase, styleTarget=dir.."/appearance-baseline.filter",dir.."/appearance-live.filter"
