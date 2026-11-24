@@ -1997,3 +1997,257 @@ local function checkExactManagedQuoteInspection()
 end
 checkExactManagedQuoteInspection()
 print("Managed quote inspection uses exact exchange, card, map, gem and Allflame identities with shared liquidity checks")
+
+
+local function replaceWorkerExit(worker, onExit)
+	for index=1,20 do
+		if debug.getupvalue(worker.frame,index)=="exitStatus" then
+			debug.setupvalue(worker.frame,index,onExit)
+			return
+		end
+	end
+	error("Could not intercept the worker process exit")
+end
+
+local function checkWindowsWorkerResult()
+	local module = "Modules.LootFilterDailySync"
+	local engine = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local worker = assert(loadfile("Modules/LootFilterBackground.lua"))()
+	local root = dir.."/worker-result"
+	assert(require("lfs").mkdir(root))
+	local oldMain, oldTime, oldDownload, oldPrint = main, os.time, launch.DownloadPage, ConPrintf
+	local openFile = io.open
+	local clock = oldTime()
+	main = {userPath=root.."/"}
+	os.time = function(date) return date and oldTime(date) or clock end
+	ConPrintf = function() end
+	local live = root.."/failed.filter"
+	local healthy = root.."/healthy.filter"
+	local settings = root.."/LootFilterDailySync.json"
+	local fixed = root.."/baseline.filter"
+	write(fixed,original)
+	write(live,original)
+	write(healthy,original)
+	local other = engine.createProfile("Healthy scheduled profile")
+	engine.createProfile("Never configured")
+	engine.configure(live,fixed,"Covens",{hour=0,protectionFile=protections})
+	engine.configure(healthy,fixed,"Covens",{profileId=other,hour=0,protectionFile=protections})
+	engine.setBackground(true,engine.configuration().revision)
+	engine.setBackground(true,engine.configuration(other).revision,other)
+
+	-- Replace only the process exit, leaving the real worker and sync paths intact.
+	local exitFailed, exited
+	replaceWorkerExit(worker,function(failed) exitFailed,exited=not not failed,true end)
+	local function frameUntilExit(app)
+		for _=1,8 do
+			worker.frame(app)
+			if exited then return end
+		end
+		error("Windows worker did not exit")
+	end
+	local function makeApp()
+		local due = engine.dueProfiles(clock,true)
+		return {lootSync=engine,lootSyncDue=due,lootSyncScheduled=true,lootSyncIndex=0,lootSyncStarted=clock}
+	end
+
+	local failCallback, injected, healthyCalls
+	healthyCalls = 0
+	launch.DownloadPage = function(_,url,callback)
+		assert(url:find("league=Covens",1,true))
+		if not failCallback then failCallback=callback; return end
+		healthyCalls = healthyCalls + 1
+		local date = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock).."\r\n\r\n"
+		callback({header=date,body=commodityBody})
+	end
+	local app = makeApp()
+	assert(#app.lootSyncDue==2 and app.lootSyncDue[1].id=="default")
+	worker.frame(app)
+	assert(engine.busy and failCallback and not exited)
+	io.open = function(path,mode)
+		if path==settings..".tmp" and mode=="wb" then
+			injected = true
+			return nil,"No space left on device",28
+		end
+		return openFile(path,mode)
+	end
+	failCallback(nil,"Response code: 403")
+	io.open = openFile
+	assert(injected and not engine.configuration().lastFailure and read(live)==original)
+	frameUntilExit(app)
+	assert(exitFailed,"Windows task reported success after a failure that could not be saved")
+	assert(healthyCalls==8 and engine.configuration(other).lastSuccess==clock and read(healthy)~=original)
+
+	-- The same process result must survive a timed-out async request.
+	clock, exited, exitFailed = clock+86400,nil,nil
+	app = makeApp()
+	launch.DownloadPage = function() end
+	worker.frame(app)
+	assert(engine.busy and not exited)
+	clock = clock+301
+	-- Keep the healthy profile out of this timeout case.
+	io.open = function(path,mode)
+		if path==settings..".tmp" and mode=="wb" then return nil,"Access denied",13 end
+		return openFile(path,mode)
+	end
+	table.remove(app.lootSyncDue,2)
+	frameUntilExit(app)
+	io.open = openFile
+	assert(exitFailed and not engine.configuration().lastFailure and read(live)==original)
+
+	-- A profile that became paused after discovery is an ordinary skip.
+	clock, exited, exitFailed = clock+86400,nil,nil
+	app = makeApp()
+	table.remove(app.lootSyncDue,2)
+	assert(#app.lootSyncDue==1 and app.lootSyncDue[1].id=="default")
+	engine.pause(true)
+	launch.DownloadPage = function() error("Paused profile requested prices") end
+	frameUntilExit(app)
+	assert(not exitFailed)
+	engine.pause(false)
+
+	-- An unreadable configuration must not quietly look like an idle worker.
+	clock, exited, exitFailed = clock+86400,nil,nil
+	local oldLoad, oldGetScriptPath, oldRender, oldGetTime = LoadModule, GetScriptPath, RenderInit, GetTime
+	GetTime = function() return 0 end
+	local originalEngine = package.loaded[module]
+	package.loaded[module] = engine
+	LoadModule = function() end
+	GetScriptPath = function() return root end
+	RenderInit = function() end
+	engine.pause(true,other)
+	io.open = function(path,mode)
+		if path==settings and mode=="rb" then return nil,"Access denied",13 end
+		return openFile(path,mode)
+	end
+	worker.start({devMode=true},true)
+	io.open = openFile
+	assert(exited and exitFailed,"Unreadable settings produced a successful Windows task result")
+
+	-- Default is independently usable when the profile list cannot be decoded.
+	clock, exited, exitFailed = clock+86400,nil,nil
+	write(root.."/LootFilterSyncProfiles.json","{}")
+	app = {devMode=true}
+	local defaultCalls = 0
+	launch.DownloadPage = function(_,_,callback)
+		defaultCalls = defaultCalls + 1
+		local date = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",clock).."\r\n\r\n"
+		callback({header=date,body=commodityBody})
+	end
+	worker.start(app,true)
+	assert(not exited and #app.lootSyncDue==1 and app.lootSyncDue[1].id=="default")
+	frameUntilExit(app)
+	assert(exitFailed and defaultCalls==8 and engine.configuration().lastSuccess==clock and read(live)~=original)
+	LoadModule,GetScriptPath,RenderInit,GetTime,package.loaded[module] = oldLoad,oldGetScriptPath,oldRender,oldGetTime,originalEngine
+	main,os.time,launch.DownloadPage,ConPrintf = oldMain,oldTime,oldDownload,oldPrint
+end
+
+checkWindowsWorkerResult()
+print("Windows worker result survives unsaved failures and processes other due profiles")
+
+
+local function checkScheduledWorkerBudget()
+	local module = "Modules.LootFilterDailySync"
+	local originalEngine = package.loaded[module]
+	local oldMain, oldTime, oldDownload, oldPrint = main, os.time, launch.DownloadPage, ConPrintf
+	local oldLoad, oldGetScriptPath, oldRender, oldGetTime = LoadModule, GetScriptPath, RenderInit, GetTime
+	local calendar = os.date("*t")
+	calendar.hour, calendar.min, calendar.sec, calendar.isdst = 12, 0, 0, nil
+	local epoch = oldTime(calendar)
+	local elapsed, wallElapsed = 0,0
+	os.time = function(date) return date and oldTime(date) or epoch+wallElapsed end
+	GetTime = function() return elapsed*1000 end
+	ConPrintf = function() end
+	LoadModule = function() end
+	RenderInit = function() end
+	local root = dir.."/worker-budget"
+	assert(require("lfs").mkdir(root))
+	GetScriptPath = function() return root end
+	main = {userPath=root.."/"}
+
+	local engine = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local fixed = root.."/fixed.filter"
+	write(fixed,original)
+	local ids = {"default",engine.createProfile("Second budget profile"),engine.createProfile("Third budget profile")}
+	local targets = {}
+	for index,id in ipairs(ids) do
+		targets[id] = root.."/profile-"..index..".filter"
+		write(targets[id],original)
+		engine.configure(targets[id],fixed,"Covens",{profileId=id,hour=0,protectionFile=protections})
+		engine.setBackground(true,engine.configuration(id).revision,id)
+	end
+
+	local worker = assert(loadfile("Modules/LootFilterBackground.lua"))()
+	local exitFailed, exited, pending
+	replaceWorkerExit(worker,function(failed) exitFailed,exited=not not failed,true end)
+	local requests = 0
+	local function reply(callback)
+		local date = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",os.time()).."\r\n\r\n"
+		callback({header=date,body=commodityBody})
+	end
+	launch.DownloadPage = function(_,url,callback)
+		requests = requests+1
+		if url:find("type=Currency",1,true) then
+			assert(not pending)
+			pending = callback
+		else reply(callback) end
+	end
+	local function start(scheduled, at)
+		exited,exitFailed,elapsed,wallElapsed = nil,nil,at,at
+		engine = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+		package.loaded[module] = engine
+		local app = {devMode=true,startTime=elapsed*1000}
+		worker.start(app,scheduled)
+		assert(not exited)
+		worker.frame(app)
+		assert(pending and engine.busy)
+		return app
+	end
+	local function finish(elapsedAt, wallAt)
+		elapsed,wallElapsed = elapsedAt,wallAt
+		local callback = assert(pending)
+		pending = nil
+		reply(callback)
+		assert(not engine.busy)
+	end
+
+	package.loaded[module] = engine
+	local lateStartup = {devMode=true,startTime=0}
+	elapsed,wallElapsed = 90,90
+	worker.start(lateStartup,true)
+	worker.frame(lateStartup)
+	assert(exited and not exitFailed and not pending and requests==0)
+	assert(#engine.dueProfiles(os.time(),true)==3)
+
+	for index,id in ipairs(ids) do
+		local startAt = (index-1)*300
+		local app = start(true,startAt)
+		assert(#app.lootSyncDue==4-index and app.lootSyncDue[1].id==id)
+		local deadline = startAt+240
+		-- A wall-clock change cannot expand the Windows process budget.
+		finish(deadline,startAt+60)
+		local completed = engine.configuration(id)
+		assert(completed.review and completed.review.protectedChecks==1 and read(targets[id])~=original)
+		for later=index+1,#ids do
+			assert(not engine.configuration(ids[later]).lastSuccess and read(targets[ids[later]])==original)
+		end
+		worker.frame(app)
+		assert(exited and not exitFailed and not pending and requests==index*8)
+	end
+
+	local app = start(false,86400)
+	finish(86640,86640)
+	worker.frame(app)
+	assert(not exited and engine.busy and pending,"Manual worker should continue the remaining profiles")
+	finish(86880,86880)
+	worker.frame(app)
+	assert(not exited and engine.busy and pending)
+	finish(87120,87120)
+	worker.frame(app)
+	assert(exited and not exitFailed and not pending and requests==48)
+	for _,id in ipairs(ids) do assert(#engine.configuration(id).history==2) end
+	LoadModule,GetScriptPath,RenderInit,GetTime,package.loaded[module] = oldLoad,oldGetScriptPath,oldRender,oldGetTime,originalEngine
+	main,os.time,launch.DownloadPage,ConPrintf = oldMain,oldTime,oldDownload,oldPrint
+end
+
+checkScheduledWorkerBudget()
+print("Windows task budget defers slow profiles and completes each on later triggers")
