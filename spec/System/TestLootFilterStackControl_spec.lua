@@ -107,6 +107,21 @@ describe("Stack style preview",function()
   assert.is_true(found)
  end)
 
+ it("refreshes the preview after adding and removing a continuing threshold",function()
+  local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
+  local p=filters.profile("preview","Preview")
+  local source=editing.newTier("low","Low",'Show\n BaseType == "Chaos Orb"\n StackSize >= 10\n Continue');source.items={"Chaos Orb"}
+  local target=editing.newTier("other","Other");p.tiers={source,target}
+  require("Classes.LootFilterStackControl").Open(p,"low",function() end)
+  local function preview()
+   ui:frame();for _,command in ipairs(ui.commands) do if command.kind=="text" and (command.text=="Tier preview" or command.text=="Style preview") then return command.text end end
+  end
+  assert.equal("Tier preview",preview())
+  ui:text("stackSize","10");ui:click("stackAdd");ui:text("stackSize","5");assert.equal("Style preview",preview())
+  local list=main.popups[1].controls.stackList;local x,y=list:GetPos();ui:clickAt(x+10,y+10);ui:click("stackRemove")
+  assert.equal("Tier preview",preview())
+ end)
+
  it("uses the full tier preview for a continuing target",function()
   local filters=require("Modules.LootFilters");local editing=require("Modules.LootFilterEditing")
   local p=filters.profile("preview","Preview");local source=editing.newTier("low","Low");source.items={"Chaos Orb"}
