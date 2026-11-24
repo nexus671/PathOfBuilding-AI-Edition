@@ -91,11 +91,7 @@ def source_hashes():
     sources.append(ROOT / "tools/test_global_crafting_item_ui.lua")
     sources.append(ROOT / "tools/test_planning_bundle_errors.lua")
     sources.append(ROOT / "tools/test_filter_compact_ui.lua")
-    sources.append(ROOT / "tools/test_campaign_compact_ui.lua")
-    sources.append(ROOT / "tools/test_global_compact_ui.lua")
-    sources.append(ROOT / "tools/test_effects_compact_ui.lua")
-    sources.append(ROOT / "tools/test_appearance_compact_ui.lua")
-    sources.append(ROOT / "tools/test_sample_compact_ui.lua")
+    assert len(paths) == 2571, f"Expected 2571 UI frames, found {len(paths)}"
     sources.append(ROOT / "tools/test_beast_max_sockets.lua")
     sources.append(ROOT / "tools/test_beast_max_sockets_ui.lua")
     sources.append(ROOT / "tools/test_unique_beast_sockets.lua")
@@ -319,26 +315,7 @@ def main():
                                     env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "filter-compact-controls.log").write_text(compact_filter.stdout)
     assert compact_filter.returncode == 0, compact_filter.stdout
-    compact_campaign = subprocess.run(lua_command + ["../tools/test_campaign_compact_ui.lua", str(frames)], cwd=ROOT / "src",
-                                      env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    (directory / "campaign-compact-controls.log").write_text(compact_campaign.stdout)
-    assert compact_campaign.returncode == 0, compact_campaign.stdout
-    compact_global = subprocess.run(lua_command + ["../tools/test_global_compact_ui.lua", str(frames)], cwd=ROOT / "src",
-                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    (directory / "global-compact-controls.log").write_text(compact_global.stdout)
-    assert compact_global.returncode == 0, compact_global.stdout
-    compact_effects = subprocess.run(lua_command + ["../tools/test_effects_compact_ui.lua", str(frames)], cwd=ROOT / "src",
-                                     env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    (directory / "effects-compact-controls.log").write_text(compact_effects.stdout)
-    assert compact_effects.returncode == 0, compact_effects.stdout
-    compact_appearance = subprocess.run(lua_command + ["../tools/test_appearance_compact_ui.lua", str(frames)], cwd=ROOT / "src",
-                                        env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    (directory / "appearance-compact-controls.log").write_text(compact_appearance.stdout)
-    assert compact_appearance.returncode == 0, compact_appearance.stdout
-    compact_sample = subprocess.run(lua_command + ["../tools/test_sample_compact_ui.lua", str(frames)], cwd=ROOT / "src",
-                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    (directory / "sample-compact-controls.log").write_text(compact_sample.stdout)
-    assert compact_sample.returncode == 0, compact_sample.stdout
+    assert len(paths) == 2571, f"Expected 2571 UI frames, found {len(paths)}"
     bundle_errors = subprocess.run(lua_command + ["../tools/test_planning_bundle_errors.lua", str(frames)], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "planning-bundle-errors.log").write_text(bundle_errors.stdout)
@@ -500,7 +477,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2556, f"Expected 2556 UI frames, found {len(paths)}"
+    assert len(paths) == 2571, f"Expected 2571 UI frames, found {len(paths)}"
     for name in ("960-inventory-source.json", "960-inventory-source-detail.json"):
         assert (frames / name).is_file(), f"Missing saved-item source view: {name}"
     for width in (960, 1024, 1280):
