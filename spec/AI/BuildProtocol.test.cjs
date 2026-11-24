@@ -204,7 +204,7 @@ test('pages the last verified cutoff diff without recording a request', t => {
 });
 
 test('queues loot-filter generation, evaluation and reviewed profiles without writing exports', t => {
-  const f=fixture(t);const profile={id:'maps',title:'Map pickups',preset:'early_maps',strictness:2,trackBuildPickups:true,economyRules:[{name:'Orb of Alteration',class:'Stackable Currency',scope:'maps',cutoff:6},{name:'Blighted Map (Tier 16)',class:'Maps',scope:'maps',tier:16,mapType:'BlightedMap'},{name:'Arc',class:'Skill Gems',scope:'maps',gemLevel:20,gemQuality:0,corrupted:false}],manualGuideReviews:[{projectId:'helmet',signature:'a'.repeat(40)}],rules:[{id:'base',title:'Craft base',text:'Show\n BaseType == "Iron Hat"',enabled:true}]};
+  const f=fixture(t);const profile={id:'maps',title:'Map pickups',preset:'early_maps',strictness:2,trackBuildPickups:true,economyRules:[{name:'Orb of Alteration',class:'Stackable Currency',scope:'maps',cutoff:6},{name:'Harbinger Scarab',class:'Map Fragments',scope:'maps',cutoff:5,exchangeCategory:'Scarab'},{name:'Blighted Map (Tier 16)',class:'Maps',scope:'maps',tier:16,mapType:'BlightedMap'},{name:'Arc',class:'Skill Gems',scope:'maps',gemLevel:20,gemQuality:0,corrupted:false}],manualGuideReviews:[{projectId:'helmet',signature:'a'.repeat(40)}],rules:[{id:'base',title:'Craft base',text:'Show\n BaseType == "Iron Hat"',enabled:true}]};
   const filters={schemaVersion:1,activeId:'maps',profiles:[profile]};f.captured.context.lootFilters=filters;f.write('context',f.captured);
   assert.deepEqual(f.call('get_loot_filters',{}).filters,filters);
   for(const name of ['generate_loot_filter','test_loot_filter','export_loot_filter']) {
@@ -214,6 +214,13 @@ test('queues loot-filter generation, evaluation and reviewed profiles without wr
   }
   f.call('propose_loot_filters',{title:'Pickups',baseRevision:f.state.revision,filters});
   const request=JSON.parse(fs.readFileSync(path.join(f.dir,'AI-build-request.json')));assert.equal(request.proposal.operations[0].type,'set_loot_filters');
+  for (const rule of [
+    {...profile.economyRules[1],exchangeCategory:'SkillGem'},
+    {name:'The Apothecary',class:'Divination Cards',scope:'maps',exchangeCategory:'Scarab'},
+    {...profile.economyRules[2],exchangeCategory:'Currency'},
+  ]) {
+    assert.throws(()=>f.call('generate_loot_filter',{baseRevision:f.state.revision,profile:{...profile,economyRules:[rule]}}),/arguments/);
+  }
   assert.throws(()=>f.call('test_loot_filter',{baseRevision:f.state.revision,profile,sample:{},path:'arbitrary'}),/arguments/);
 });
 test('queues copied items for filter evaluation with bounded optional area level', t => {

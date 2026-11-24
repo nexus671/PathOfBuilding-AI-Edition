@@ -70,6 +70,12 @@ You can also set an absolute maximum hide cutoff for an exact commodity name. Fo
 
 Select **Use with next update**, then **Preview changes** to check the resulting filter or **Enable / update** to save the policy. An existing matching baseline and league can reuse saved daily quotes in preview.
 
+## Managed exchange feeds
+
+In **Managed price rules**, enter an exact commodity name, its filter class, scope, and baseline stack cutoff. Choose **Exchange feed** for a category such as Scarabs, Fossils, or Tattoos. PoB matches the name within that feed and uses its own price history. **Default exchange feeds** keeps the usual lookup for existing rules.
+
+Choose **Embers of the Allflame** for an exact ember. PoB uses its per-item quote and can remove the baseline hide. An exported fixed baseline carries these feed selections into daily sync. Each explicit extra category is fetched once per refresh. If a required feed is unavailable or stale, daily sync keeps the last verified output. Missing, ambiguous, or thin item quotes keep their baseline rules. [Market API reference](https://poe.ninja/docs/api)
+
 ## Managed maps
 
 In **Managed price rules**, choose **Maps**, a tier from 1 to 16, and Ordinary, Blighted, or Blight-ravaged. PoB uses separate stash price feeds for those variants. The rule excludes unique, corrupted, implicit-modified, enchanted, Mirage, memory, Shaped, and Elder maps. It can be relaxed when that exact tier-wide quote clears the price margin. The maps pickup target applies when configured.

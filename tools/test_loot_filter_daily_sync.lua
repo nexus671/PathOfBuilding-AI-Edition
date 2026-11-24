@@ -1604,3 +1604,137 @@ local function checkMarketSourceBinding()
 end
 checkMarketSourceBinding()
 print("Daily profiles bind verified sources, reset changed or legacy histories, and stop mismatched asynchronous requests")
+
+
+local function checkManagedExchangeSelections()
+	local core={}
+	for _,category in ipairs(market.categories) do core[category]=true end
+	assert(#market.exchangeCategories==18 and #market.categories==8)
+	for _,category in ipairs(market.exchangeCategories) do
+		local entry={name="Fixture "..category,class="Stackable Currency",scope="maps",cutoff=6,exchangeCategory=category}
+		assert(market.validateManagedRules({entry})[1].exchangeCategory==category)
+		local raw=market.addManagedSection(original,{entry})
+		local feeds=market.feedCategories(raw)
+		assert(#feeds==(core[category] and 8 or 9))
+		local occurrences=0
+		for _,feed in ipairs(feeds) do if feed==category then occurrences=occurrences+1 end end
+		assert(occurrences==1 and raw:find("# PoB economy: exchange "..category.."\nHide",1,true))
+	end
+	for _,invalid in ipairs({
+		{name="Fixture",class="Stackable Currency",scope="all",cutoff=6,exchangeCategory="Invented"},
+		{name="Fixture",class="Divination Cards",scope="all",exchangeCategory="DivinationCard"},
+		{name="Arc",class="Skill Gems",scope="all",gemLevel=20,gemQuality=20,corrupted=false,exchangeCategory="Currency"},
+		{name="Harbinger Scarab",class="Stackable Currency",scope="all",cutoff=6,exchangeCategory="Scarab"},
+		{name="Allflame Ember of Abyss",class="Embers of the Allflame",scope="all",cutoff=1,exchangeCategory="AllflameEmber"},
+		{name="Allflame Ember of Abyss",class="Embers of the Allflame",scope="all"},
+	}) do assert(not pcall(market.validateManagedRules,{invalid})) end
+	local entry={name="Harbinger Scarab",class="Map Fragments",scope="all",cutoff=6,exchangeCategory="Scarab"}
+	local raw=market.addManagedSection(original,{entry})
+	local quotes={}
+	local function merge(category,price,name,id)
+		market.merge(quotes,{[name or "Harbinger Scarab"]={id=id or "scarab",price=price,volume=1000,source=category}},category)
+	end
+	merge("Currency",0.01)
+	merge("Scarab",0.3)
+	assert(quotes["Harbinger Scarab"].source=="Currency")
+	local after,changes=market.review(raw,quotes,1)
+	assert(#changes==1 and changes[1].source=="Scarab" and changes[1].cutoff==3)
+	assert(after:find("# PoB economy: exchange Scarab\nHide",1,true) and #market.feedCategories(after)==9)
+	local second=market.review(after,quotes,1)
+	assert(second==after)
+	local remembered,snapshots=market.remember(quotes,{},"source day",now)
+	assert(snapshots[1].values["Currency:scarab"]==0.01 and snapshots[1].values["Scarab:scarab"]==0.3)
+	assert(market.review(raw,remembered,1)==after)
+	local missing=market.review(raw,{["Harbinger Scarab"]={id="wrong",price=100,volume=1000,source="Currency"}},1)
+	assert(missing==raw)
+	quotes={};merge("Scarab",2)
+	local removed,removedChanges=market.review(raw,quotes,1)
+	assert(#removedChanges==1 and not removed:find("# PoB economy: exchange Scarab",1,true) and #market.feedCategories(removed)==8)
+	assert(market.review(removed,quotes,1)==removed)
+	for _,broken in ipairs({
+		raw:gsub("exchange Scarab","exchange Invented"),
+		raw:gsub("exchange Scarab\nHide","exchange Scarab\n\nHide"),
+		raw:gsub("exchange Scarab\nHide","exchange Scarab\n# Different rule\nHide"),
+		raw:gsub("exchange Scarab\nHide","exchange Scarab\nShow"),
+	}) do
+		assert(not pcall(market.feedCategories,broken))
+		assert(not pcall(market.review,broken,quotes,1))
+	end
+	local allflame=market.addManagedSection(original,{{name="Allflame Ember of Abyss",class="Embers of the Allflame",
+		scope="maps",exchangeCategory="AllflameEmber"}})
+	local emberRule=require("Modules.LootFilterParser").parse(allflame).rules[2]
+	assert(emberRule.conditions[1].values[1]=="Embers of the Allflame")
+	for _,condition in ipairs(emberRule.conditions) do assert(condition.keyword~="StackSize") end
+	quotes={};merge("AllflameEmber",0.1,"Allflame Ember of Abyss","allflame")
+	assert(market.review(allflame,quotes,1,{caps={["Allflame Ember of Abyss"]=10}})==allflame)
+	quotes={};merge("AllflameEmber",3,"Allflame Ember of Abyss","allflame")
+	local shown,allflameChanges=market.review(allflame,quotes,1,{highlightChaos=2,strongHighlightChaos=4})
+	assert(#allflameChanges==1 and allflameChanges[1].cutoff==0 and not allflameChanges[1].highlights)
+	assert(not shown:find("# PoB economy: exchange AllflameEmber",1,true) and #market.feedCategories(shown)==8)
+
+	local allRules={}
+	for _,category in ipairs(market.exchangeCategories) do
+		allRules[#allRules+1]={name="Fixture "..category,class="Stackable Currency",scope="all",cutoff=6,exchangeCategory=category}
+	end
+	allRules[#allRules+1]={name="Fixture Card",class="Divination Cards",scope="all"}
+	for _,category in ipairs(require("Modules.LootFilterMapMarket").feeds) do
+		allRules[#allRules+1]={class="Maps",tier=16,mapType=category}
+	end
+	allRules[#allRules+1]={name="Arc",class="Skill Gems",scope="all",gemLevel=20,gemQuality=20,corrupted=false}
+	local allFeeds=market.feedCategories(market.addManagedSection(original,allRules))
+	assert(#allFeeds==23)
+	local bodies,feeds={},{}
+	for index,category in ipairs(allFeeds) do bodies[index]=category;feeds[index]={category=category,age=0} end
+	local state={league="Covens",baselineHash="fixed",current="verified",lastSuccess=now,offlinePriceDays=1}
+	local offline=require("Modules.LootFilterOfflinePrices")
+	local packed=offline.encode(state,bodies,feeds,now,now,os.date("%Y-%m-%d",now))
+	local decoded=offline.decode(packed,state,allFeeds,now)
+	assert(#decoded==23 and decoded[23]==allFeeds[23])
+end
+checkManagedExchangeSelections()
+print("Explicit exchange selections bind exact adjacent rules, isolate category prices, preserve rewrite metadata, and support non-stackable Allflames")
+
+
+local function checkManagedExchangeDailySync()
+	local fixture=assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local id=fixture.createProfile("Optional exchange refresh")
+	local live,fixed=dir.."/selected-exchange.filter",dir.."/selected-exchange-fixed.filter"
+	local raw=market.addManagedSection(original,{
+		{name="Harbinger Scarab",class="Map Fragments",scope="maps",cutoff=6,exchangeCategory="Scarab"},
+		{name="Allflame Ember of Abyss",class="Embers of the Allflame",scope="maps",exchangeCategory="AllflameEmber"},
+	})
+	write(live,raw);write(fixed,raw)
+	fixture.configure(live,fixed,"Covens",{profileId=id,hour=0,protectionFile=protections})
+	fixture.setOfflinePriceDays(id,1,fixture.configuration(id).revision)
+	local sent,denied={},false
+	local savedDownload=launch.DownloadPage
+	launch.DownloadPage=function(_,url,callback,params)
+		assert(params.followRedirects==false)
+		local category=assert(url:match("type=([%w]+)$"))
+		sent[#sent+1]=category
+		local body=commodityBody
+		if category=="Scarab" then
+			if denied then callback(nil,"Response code: 403");return end
+			body='{"core":{"primary":"chaos"},"items":[{"id":"harbinger","name":"Harbinger Scarab"}],"lines":[{"id":"harbinger","primaryValue":0.3,"volumePrimaryValue":1000}]}'
+		elseif category=="AllflameEmber" then
+			body='{"core":{"primary":"chaos"},"items":[{"id":"abyss","name":"Allflame Ember of Abyss"}],"lines":[{"id":"abyss","primaryValue":3,"volumePrimaryValue":1000}]}'
+		end
+		callback({header=header,body=body})
+	end
+	fixture.tick(now,true,false,id)
+	local state=fixture.configuration(id)
+	assert(#sent==10 and state.lastSuccess==now and state.review.protectedChecks==1,fixture.status)
+	local output=read(live)
+	assert(output~=raw and output:find("# PoB economy: exchange Scarab",1,true))
+	assert(not output:find("# PoB economy: exchange AllflameEmber",1,true))
+	local replay=fixture.previewOffline(os.time(),id)
+	assert(replay.after==output and replay.before==output and #sent==10)
+	denied=true
+	fixture.tick(now+1,true,false,id)
+	assert(read(live)==output and fixture.configuration(id).lastSuccess==now and fixture.configuration(id).lastFailure.message:find("403",1,true))
+	fixture.rollback(id)
+	assert(read(live)==raw and fixture.configuration(id).paused)
+	launch.DownloadPage=savedDownload
+end
+checkManagedExchangeDailySync()
+print("Optional Scarab and Allflame prices use verified daily sync, offline replay, safe failure retention and rollback")

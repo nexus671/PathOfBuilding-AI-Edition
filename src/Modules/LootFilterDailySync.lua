@@ -1105,7 +1105,12 @@ local function storeFeed(url, entry)
 end
 
 local function fetchPrices(config, baseline, now, complete, onFailure, id)
-	local categories, gemRequests = market.feedCategories(baseline)
+	local validFeedList, categories, gemRequests = pcall(market.feedCategories, baseline)
+	if not validFeedList then
+		M.status = "Sync skipped: " .. tostring(categories)
+		if onFailure then onFailure(M.status) end
+		return
+	end
 	local endpoint = market.endpoint
 	local job, bodies, responses = {onFailure=onFailure,profileId=id}, {}, {}
 	M.busy, M.deadline = job, now + 300

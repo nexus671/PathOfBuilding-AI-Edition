@@ -1,9 +1,11 @@
 local json = require("dkjson")
 local sha = require("sha1")
 local market = require("Modules.LootFilterEconomy")
+local maps = require("Modules.LootFilterMapMarket")
 local maxBody = market.maxFeedBytes()
 local maxHeader = 16*1024
-local maxFeeds = 16
+-- All exchange categories, the map variants, and the single gem overview.
+local maxFeeds = #market.exchangeCategories + #maps.feeds + 2
 local M = {maxSize=(maxFeeds-1)*maxBody+market.maxFeedBytes("SkillGem")+maxHeader}
 
 function M.encode(config, bodies, feeds, checkedAt, recordedAt, day, confirmation)

@@ -36,6 +36,8 @@ function M.Open(profile, raw, export)
 			status("Enter a stack value between 0 and 1,000 chaos.")
 			return
 		end
+		local validFeedList, categories, gemRequests = pcall(economy.feedCategories, raw)
+		if not validFeedList then status(ui.errorText(categories)); return end
 		local requested = c.league.buf:match("^%s*(.-)%s*$")
 		local function active() return main.popups[1] == popup end
 		local function cooldown(wait)
@@ -62,7 +64,6 @@ function M.Open(profile, raw, export)
 			local league = valid and (requested=="" and leagues[1].id or seen[requested] and requested)
 			if not league then busy = false; status("Could not resolve the league. Use an active poe.ninja league ID."); return end
 			local quotes, failed = {}, {}
-			local categories, gemRequests = economy.feedCategories(raw)
 			local function fetch(index)
 				local category = categories[index]
 				if category then

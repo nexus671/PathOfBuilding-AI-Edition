@@ -1,8 +1,17 @@
 local economy = require("Modules.LootFilterEconomy")
 local maps = require("Modules.LootFilterMapMarket")
 local gems = require("Modules.LootFilterGemMarket")
+local marketBrowse = require("Modules.LootFilterMarketBrowse")
 local ui = require("Modules.PlanningUI")
 local M = {}
+local exchangeOptions = {{label="Default exchange feeds",val=""}}
+local exchangeLabels = {}
+for _, category in ipairs(marketBrowse.categories) do
+	if category.feed=="exchange" and category.id~="DivinationCard" then
+		exchangeOptions[#exchangeOptions+1] = {label=category.label,val=category.id}
+		exchangeLabels[category.id] = category.label
+	end
+end
 
 local function edit(rules, index, save)
 	local existing = rules[index] or {class="Stackable Currency",scope="all",cutoff=1}
@@ -20,14 +29,23 @@ local function edit(rules, index, save)
 	for _, category in ipairs(maps.feeds) do mapTypes[#mapTypes+1] = {label=maps.variants[category].label,val=category} end
 	local function isMap() return c.class:GetSelValueByKey("label") == "Maps" end
 	local function isGem() return gems.classes[c.class:GetSelValueByKey("label")] end
+	local function itemFeed() return economy.exchangeItemClasses[c.class:GetSelValueByKey("label")] end
+	local function isCommodity() return not isMap() and not isGem() and not itemFeed() and c.class:GetSelValueByKey("label") ~= "Divination Cards" end
 	c.nameLabel.label = function() return isMap() and "Map tier (1–16)" or "Exact item name" end
 	c.scopeLabel.label = function() return isMap() and "Map variant" or "Area" end
 	c.scope = new("DropDownControl"):DropDownControl(ui.anchor,{width-176,102,160,26},copyTable(isMap() and mapTypes or economy.managedAreas))
 	c.scope:SelByValue(existing.mapType or existing.scope,"val")
-	ui.label(c,"cutoffLabel",16,144,"Maximum stack hidden at baseline",14)
+	ui.label(c,"cutoffLabel",16,144,"Baseline stack cutoff",14)
 	c.cutoff = new("EditControl"):EditControl(ui.anchor,{16,166,160,26},existing.cutoff and tostring(existing.cutoff) or "",nil,nil,10)
-	c.cutoff.shown = function() return not isMap() and not isGem() end
+	c.cutoff.shown = function() return not isMap() and not isGem() and not itemFeed() end
 	c.cutoffLabel.shown = c.cutoff.shown
+	ui.label(c,"exchangeLabel",192,144,"Exchange feed",14)
+	c.exchangeCategory = new("DropDownControl"):DropDownControl(ui.anchor,{192,166,width-208,26},exchangeOptions)
+	c.exchangeCategory:SelByValue(existing.exchangeCategory or "","val")
+	c.exchangeLabel.shown, c.exchangeCategory.shown = isCommodity, isCommodity
+	ui.label(c,"itemFeed",16,149,"",14)
+	c.itemFeed.shown = function() return itemFeed() ~= nil end
+	c.itemFeed.label = function() return "Exchange feed · "..(exchangeLabels[itemFeed()] or "") end
 	ui.label(c,"gemLevelLabel",16,144,"Gem level",14)
 	ui.label(c,"gemQualityLabel",120,144,"Quality (%)",14)
 	ui.label(c,"corruptLabel",224,144,"Corruption",14)
@@ -40,6 +58,8 @@ local function edit(rules, index, save)
 	local function updateHelp()
 		c.help.list = ui.rows({isMap() and "Uses the price for this tier and variant."
 			or isGem() and "Applies to this exact gem, level, quality, and corruption."
+			or itemFeed() and "Uses the per-item price to relax the exact baseline hide."
+			or isCommodity() and "Choose a feed to use its exact item quote for this rule."
 			or "Leave the cutoff empty to manage a single-card hide."},width-32,13)
 	end
 	updateHelp()
@@ -56,9 +76,14 @@ local function edit(rules, index, save)
 		elseif isGem() then
 			nextRules[index] = {class=kind,name=c.name.buf:match("^%s*(.-)%s*$"),scope=c.scope:GetSelValueByKey("val"),
 				gemLevel=tonumber(c.gemLevel.buf),gemQuality=tonumber(c.gemQuality.buf),corrupted=c.corruption.selIndex==2}
-		else
+		elseif itemFeed() then
 			nextRules[index] = {name=c.name.buf:match("^%s*(.-)%s*$"),class=kind,scope=c.scope:GetSelValueByKey("val"),
-				cutoff=c.cutoff.buf ~= "" and (tonumber(c.cutoff.buf) or -1) or nil}
+				exchangeCategory=itemFeed()}
+		else
+			local feed = isCommodity() and c.exchangeCategory:GetSelValueByKey("val")
+			nextRules[index] = {name=c.name.buf:match("^%s*(.-)%s*$"),class=kind,scope=c.scope:GetSelValueByKey("val"),
+				cutoff=c.cutoff.buf ~= "" and (tonumber(c.cutoff.buf) or -1) or nil,
+				exchangeCategory=feed and feed~="" and feed or nil}
 		end
 		local ok, result = pcall(economy.validateManagedRules,nextRules)
 		if not ok then main:OpenMessagePopup("Managed price rules",ui.errorText(result)); return end
@@ -75,11 +100,12 @@ function M.Open(rules, save)
 	local entries = {{id="add",label="Add a managed price rule",details={"Choose an exact item and establish its baseline hide cutoff."}}}
 	for index, rule in ipairs(rules) do
 		local area = rule.scope == "maps" and "Maps" or rule.scope == "campaign" and "Campaign" or "All areas"
+		local feed = exchangeLabels[rule.exchangeCategory]
 		entries[#entries+1] = {id=tostring(index),index=index,label=rule.name,category=area,
 			details={rule.class,area,rule.mapType and "Hide the tier and variant by default"
 				or rule.gemLevel and string.format("Level %d, %d%% quality, %s",rule.gemLevel,rule.gemQuality,
 					rule.corrupted and "corrupted" or "uncorrupted")
-				or rule.cutoff and "Hide stacks up to " .. rule.cutoff or "Hide the card by exact name"}}
+				or rule.cutoff and "Hide stacks up to " .. rule.cutoff or "Hide by exact name",feed}}
 	end
 	local function keep(value)
 		save(value)
