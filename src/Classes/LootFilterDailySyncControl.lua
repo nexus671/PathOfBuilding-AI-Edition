@@ -429,16 +429,25 @@ function M.Open(profileId, profileName)
 				local samples = change.samples or (change.sample and {change.sample}) or {}
 				for _, sample in ipairs(samples) do
 					local area = (sample.area or 83) >= 68 and "Maps" or "Campaign"
-					details[#details+1] = string.format("%s, %d as %s: %s%s", area, sample.count, sample.class,
-						sample.before and (sample.before.." → "..sample.action) or sample.action,
-						sample.line and (" at line "..sample.line) or "")
+					local itemClass = sample.rarity and (sample.rarity.." "..sample.class) or sample.class
+					local after = sample.action..(sample.line and (" at result line "..sample.line) or "")
+					local before = sample.before and (sample.before..(sample.beforeLine and (" at baseline line "..sample.beforeLine) or "").." to ") or ""
+					details[#details+1] = string.format("%s, %d as %s: %s%s", area, sample.count, itemClass, before, after)
+					if sample.action=="Hide" and change.cutoff<change.old and sample.count>change.cutoff and sample.count<=change.old then
+						details[#details+1] = "This drop is still hidden after the cutoff was lowered."
+					end
 					if sample.marker then details[#details+1] = "Sample marker: "..sample.marker end
 					for _,phase in ipairs({{"Before",sample.before,sample.beforeMissing},{"After",sample.action,sample.afterMissing}}) do if phase[2]=="Unknown" then
 						local missing=require("Modules.LootFilterParser").safeMissingProperties(phase[3])
 						details[#details+1]=phase[1]..(missing and (": needs "..table.concat(missing,", ").." for this example.") or ": the preview cannot resolve a filter rule or included file.")
 					end end
 				end
-				if #samples == 0 then details[#details+1] = "Sample result unavailable." end
+				if change.samplesLimited then
+					details[#details+1] = #samples==0 and "No samples for this decision. The review reached its sample limit."
+						or "Some cases were omitted because the review reached its sample limit."
+				elseif #samples == 0 then
+					details[#details+1] = "Sample result unavailable."
+				end
 				entries[#entries+1] = {id="change-"..i,label=change.name,
 					category=change.retainedReason and "Retained" or "Changed",details=details,decision=change}
 			end

@@ -197,7 +197,9 @@ test('pages the last verified cutoff diff without recording a request', t => {
   const f = fixture(t);
   assert.equal(f.call('get_loot_sync_diff',{}).available,false);
   const changes = [{item:'Orb of Alteration',priceId:'orb-of-alteration',previousCutoff:6,proposedCutoff:4,samples:[{area:83,before:'Hide',action:'Unknown',afterMissing:['ItemLevel']},{area:60,before:'Unknown',beforeMissing:['DropLevel'],action:'Show'}]},
-    {item:'Silver Oil',previousCutoff:4,proposedCutoff:1,quotedPrice:0.9}];
+    {item:'Map (Tier 16)',previousCutoff:1,proposedCutoff:0,quotedPrice:8,samplesLimited:true,
+      samples:[{class:'Maps',rarity:'Normal',before:'Hide',beforeLine:21,action:'Show',line:29},
+        {class:'Maps',rarity:'Rare',before:'Hide',beforeLine:21,action:'Hide',line:26}]}];
   const priceFeed = {category:'Currency',responseAge:8,revalidated:true};
   f.state.lootSyncDiff = {checkedAt:100,verifiedProtection:true,protectedChecks:600,responseAges:[8,'private',3601],changeCount:3,
     changes:[changes[0],{...changes[1],priceId:'C:/private.filter'}],
