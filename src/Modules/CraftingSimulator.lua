@@ -507,8 +507,22 @@ local function rawRegenSteps(mod,line,low,high)
  local metadata=require("Modules.CraftingAdvanced").data().mods[id]
  local stats=metadata and metadata.stats;local stat=stats and #stats==1 and stats[1]
  local steps=stat and stat.id==expectedStat and stat.max-stat.min
- if not steps or steps<1 or steps>100000 or math.abs(stat.min/60-low)>1e-7 or math.abs(stat.max/60-high)>1e-7 then rawRegenCache[mod]=false;return end
- rawRegenCache[mod]=steps;return steps
+ if not steps or steps<1 or steps>100000 or high<=low then rawRegenCache[mod]=false;return end
+ local first,last=(stat.min/60-low)/(high-low),(stat.max/60-low)/(high-low)
+ -- The raw bounds may round to the displayed endpoints. Only use them when
+ -- both fit the native range and render identically to those endpoints.
+ local firstDisplay,lastDisplay=M.baseRollValue(mod,first,1),M.baseRollValue(mod,last,1)
+ if first< -1e-9 or last>1+1e-9 or firstDisplay==nil or lastDisplay==nil or firstDisplay~=M.baseRollValue(mod,0,1) or lastDisplay~=M.baseRollValue(mod,1,1) then rawRegenCache[mod]=false;return end
+ first=math.max(0,first);last=math.min(1,last)
+ local bounds={steps=steps,first=first,last=last};rawRegenCache[mod]=bounds;return bounds
+end
+function M.rawRegenRange(mod,random)
+ local line=#mod==1 and mod[1];if not line then return end
+ local low,high=line:match("%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)")
+ if not low then return end
+ local raw=rawRegenSteps(mod,line,tonumber(low),tonumber(high));if not raw then return end
+ local step=math.floor(random()*(raw.steps+1))
+ return raw.first+(step/raw.steps)*(raw.last-raw.first)
 end
 local function rollRange(mod,random)
 	local ranges={ }
@@ -518,8 +532,9 @@ local function rollRange(mod,random)
 			low,high=tonumber(low),tonumber(high)
 			local value=random()
 			local scale=rollPrecision(line,low,high)
-			local steps=rawRegenSteps(mod,line,low,high) or (scale and math.floor(math.abs(high-low)*scale+0.5)) or (low == math.floor(low) and high == math.floor(high) and math.abs(high-low))
-			if steps and steps>0 then value=math.floor(value*(steps+1))/steps end
+			local raw=rawRegenSteps(mod,line,low,high)
+			local steps=raw and raw.steps or (scale and math.floor(math.abs(high-low)*scale+0.5)) or (low == math.floor(low) and high == math.floor(high) and math.abs(high-low))
+			if steps and steps>0 then value=math.floor(value*(steps+1))/steps;if raw then value=raw.first+value*(raw.last-raw.first) end end
 			ranges[#ranges+1]=value
 		end
 	end end
