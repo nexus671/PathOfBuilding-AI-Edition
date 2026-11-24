@@ -319,58 +319,63 @@ assert(joined.Shared == false)
 assert(market.liquid({source="Currency",volume=120}) and not market.liquid({source="Omen",volume=120}))
 
 -- Timed retry and conditional cache use do not touch the filter during preview.
+local testEndpoint = market.endpoint
 local systemTime = os.time
-local clock = now
-os.time = function() return clock end
-local networkCount, conditional, transient = 0, 0, true
-local cachedHeader = header:gsub("Age: 5", 'Age: 5\r\nETag: W/"fixture"')
-launch.DownloadPage = function(_, _, callback, params)
-	networkCount = networkCount + 1
-	assert(not params.header:find("no-cache",1,true))
-	if transient then
-		transient = false
-		callback({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: 20\r\n\r\n"}, "Response code: 429")
-	elseif params.header:find('If-None-Match: W/"fixture"',1,true) then
-		conditional = conditional+1
-		callback({header="HTTP/1.1 304 Not Modified\r\n\r\n",body=""}, "Response code: 304")
-	else
-		callback({header=cachedHeader,body='{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.21,"volumePrimaryValue":1000}]}'})
+do
+	market.endpoint = testEndpoint.."test-timed/"
+	local clock = now
+	os.time = function() return clock end
+	local networkCount, conditional, transient = 0, 0, true
+	local cachedHeader = header:gsub("Age: 5", 'Age: 5\r\nETag: W/"fixture"')
+	launch.DownloadPage = function(_, _, callback, params)
+		networkCount = networkCount + 1
+		assert(not params.header:find("no-cache",1,true))
+		if transient then
+			transient = false
+			callback({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: 20\r\n\r\n"}, "Response code: 429")
+		elseif params.header:find('If-None-Match: W/"fixture"',1,true) then
+			conditional = conditional+1
+			callback({header="HTTP/1.1 304 Not Modified\r\n\r\n",body=""}, "Response code: 304")
+		else
+			callback({header=cachedHeader,body='{"core":{"primary":"chaos"},"items":[{"id":"alt","name":"Orb of Alteration"}],"lines":[{"id":"alt","primaryValue":0.21,"volumePrimaryValue":1000}]}'})
+		end
 	end
+	local reviewed
+	sync.preview(target,baseline,"Covens",options,function(_, candidate) reviewed=candidate end)
+	assert(not reviewed and networkCount==1 and sync.busy and sync.providerWait(clock)==20)
+	clock=now+19
+	sync.tick(clock)
+	assert(networkCount==1 and sync.providerWait(clock)==1)
+	clock=now+20
+	sync.tick(clock)
+	assert(reviewed and networkCount==9 and sync.providerWait(clock)==0 and read(target)==original)
+	reviewed=nil
+	sync.preview(target,baseline,"Covens",options,function(_, candidate) reviewed=candidate end)
+	assert(reviewed and conditional==8 and networkCount==17)
+	sync.configure(target,baseline,"Covens",options)
+	sync.tick(clock,true)
+	local revalidated = sync.publicDiff(clock)
+	assert(#revalidated.feeds==8 and revalidated.feeds[1].category=="Currency" and revalidated.feeds[1].revalidated
+		and revalidated.feeds[1].responseAge==revalidated.responseAges[1])
+	local originalAge = revalidated.feeds[1].responseAge
+	clock=clock+61
+	sync.tick(clock,true)
+	assert(sync.publicDiff(clock).feeds[1].responseAge==originalAge+61)
+	local successfulOutput = read(target)
+	launch.DownloadPage = function(_, _, callback, params)
+		assert(params.header:find('If-None-Match: W/"fixture"',1,true))
+		callback({header="HTTP/1.1 304 Not Modified\r\nAge: 3601\r\n\r\n", body=""}, "Response code: 304")
+	end
+	clock=clock+1
+	sync.tick(clock,true)
+	assert(sync.status:find("snapshot is stale",1,true) and read(target)==successfulOutput)
+	sync.rollback()
+	sync.disable()
+	os.time=systemTime
+	market.endpoint=testEndpoint
+	package.loaded["Modules.LootFilterDailySync"]=nil
+	sync=require("Modules.LootFilterDailySync")
 end
-local reviewed
-sync.preview(target,baseline,"Covens",options,function(_, candidate) reviewed=candidate end)
-assert(not reviewed and networkCount==1 and sync.busy and sync.providerWait(clock)==20)
-clock=now+19
-sync.tick(clock)
-assert(networkCount==1 and sync.providerWait(clock)==1)
-clock=now+20
-sync.tick(clock)
-assert(reviewed and networkCount==9 and sync.providerWait(clock)==0 and read(target)==original)
-reviewed=nil
-sync.preview(target,baseline,"Covens",options,function(_, candidate) reviewed=candidate end)
-assert(reviewed and conditional==8 and networkCount==17)
-sync.configure(target,baseline,"Covens",options)
-sync.tick(clock,true)
-local revalidated = sync.publicDiff(clock)
-assert(#revalidated.feeds==8 and revalidated.feeds[1].category=="Currency" and revalidated.feeds[1].revalidated
-	and revalidated.feeds[1].responseAge==revalidated.responseAges[1])
-local originalAge = revalidated.feeds[1].responseAge
-clock=clock+61
-sync.tick(clock,true)
-assert(sync.publicDiff(clock).feeds[1].responseAge==originalAge+61)
-local successfulOutput = read(target)
-launch.DownloadPage = function(_, _, callback, params)
-	assert(params.header:find('If-None-Match: W/"fixture"',1,true))
-	callback({header="HTTP/1.1 304 Not Modified\r\nAge: 3601\r\n\r\n", body=""}, "Response code: 304")
-end
-clock=clock+1
-sync.tick(clock,true)
-assert(sync.status:find("snapshot is stale",1,true) and read(target)==successfulOutput)
-sync.rollback()
-sync.disable()
-os.time=systemTime
-package.loaded["Modules.LootFilterDailySync"]=nil
-sync=require("Modules.LootFilterDailySync")
 
 -- An expired season yields an empty successful price response. Confirm
 -- against the fresh provider list and retain the user's chosen profile.
@@ -624,6 +629,7 @@ print("PoE selection handles local filters and rejects stale or ambiguous select
 
 -- A Task Scheduler run needs opt-in. Its retry budget follows the profile
 -- across process restarts and even after reconfiguring the display schedule.
+market.endpoint=testEndpoint.."test-background/"
 local jobSync = assert(loadfile("Modules/LootFilterDailySync.lua"))()
 jobSync.configure(target,baseline,"Covens",options)
 local jobNow = os.time()
@@ -651,6 +657,7 @@ local reconfigured = newRunner.configuration()
 assert(reconfigured.backgroundEnabled and reconfigured.backgroundNotifications and reconfigured.providerRetryAfter==limited.providerRetryAfter)
 newRunner.setBackground(false,reconfigured.revision)
 assert(not newRunner.configuration().backgroundEnabled)
+market.endpoint=testEndpoint
 print("Background opt-in and provider cooldown persist across independent Windows sync instances")
 
 -- Campaign and map policies only apply to the matching managed rules.
@@ -1131,6 +1138,7 @@ do
 	market.endpoint = direct
 end
 
+market.endpoint=testEndpoint.."test-review/"
 local limitedReviewCalls = 0
 launch.DownloadPage = function(_,url,callback)
 	limitedReviewCalls = limitedReviewCalls+1
@@ -1145,6 +1153,7 @@ controls.fetch.action()
 assert(limitedReviewCalls==2 and not manualReview and not exported)
 controls.fetch.action()
 assert(limitedReviewCalls==2 and controls.status.list[1]:find("provider cooldown",1,true))
+market.endpoint=testEndpoint
 print("Manual review applies the native price freshness, liquidity checks and provider cooldown")
 
 local function checkExternalAdoption()
@@ -1218,6 +1227,7 @@ checkExternalAdoption()
 
 do
 	local function checkInvalidCooldown()
+		market.endpoint=testEndpoint.."test-overflow/"
 		local fixture = assert(loadfile("Modules/LootFilterDailySync.lua"))()
 		local id = fixture.createProfile("Invalid cooldown fixture")
 		local live, fixed = dir.."/invalid-cooldown.filter", dir.."/invalid-cooldown-fixed.filter"
@@ -1240,6 +1250,7 @@ do
 		os.time, launch.DownloadPage = systemTime, download
 		assert(requests==2 and not fixture.busy and fixture.configuration(id).providerRetryAfter==now+120)
 		assert(read(live)==original and not fixture.configuration(id).lastSuccess)
+		market.endpoint=testEndpoint
 	end
 	checkInvalidCooldown()
 end
@@ -1463,3 +1474,50 @@ local function checkManagedGemPrices()
 end
 checkManagedGemPrices()
 print("Exact managed gems preserve other variants, replay offline, and retain verified output when the feed is denied")
+
+local function checkSharedProviderHold()
+	local now = os.time()
+	local endpoint = testEndpoint.."test-shared/"
+	market.endpoint = endpoint
+	local first = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local second = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local suffix = require("sha1")(endpoint)
+	local statePath = dir.."/LootFilterProviderCooldown-"..suffix..".json"
+	local function note(service,delay,at)
+		return service.noteProviderLimit({header="HTTP/1.1 429 Too Many Requests\r\nRetry-After: "..delay.."\r\n\r\n"},429,at)
+	end
+	local id = second.createProfile("Shared provider fixture")
+	local live, fixed = dir.."/shared-provider.filter",dir.."/shared-provider-fixed.filter"
+	write(live,original); write(fixed,original)
+	second.configure(live,fixed,"Covens",{profileId=id,hour=0,protectionFile=protections})
+	second.setBackground(true,second.configuration(id).revision,id)
+	assert(second.isDue(second.configuration(id),now))
+	assert(note(first,120,now)==120)
+	assert(second.providerWait(now+10)==110)
+	local diagnostic = second.publicStatus(now+10,id)
+	assert(diagnostic.providerWaitSeconds==110 and diagnostic.priceSource=="shared_cache")
+	assert(not pcall(second.preview,target,baseline,"Covens",options,function() end))
+	assert(#second.dueProfiles(now+10,true)==0)
+	local calls, download = 0,launch.DownloadPage
+	launch.DownloadPage = function() calls=calls+1 end
+	second.tick(now+10,true,true,id)
+	launch.DownloadPage = download
+	assert(calls==0 and read(live)==original and not second.configuration(id).lastFailure)
+	assert(note(second,30,now+10)==110)
+	assert(first.providerWait(now+119)==1 and second.providerWait(now+120)==0)
+	market.endpoint=testEndpoint.."test-alternate-provider/"
+	assert(second.providerWait(now+10)==0)
+	assert(note(second,15,now+10)==15)
+	market.endpoint=endpoint
+	assert(first.providerWait(now+10)==110 and second.providerWait(now+10)==110)
+
+	-- A corrupt record can be replaced, and its contents cannot manufacture a hold.
+	write(statePath,string.rep("x",513))
+	local restarted = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	assert(restarted.providerWait(now)==0)
+	assert(note(restarted,45,now)==45)
+	assert(assert(loadfile("Modules/LootFilterDailySync.lua"))().providerWait(now)==45)
+	market.endpoint=testEndpoint
+end
+checkSharedProviderHold()
+print("Provider retry deadlines survive independent instances, preserve the longest wait, and isolate endpoints")
