@@ -1,10 +1,11 @@
 VERSION[2.68.1-ai.preview1245][2026/11/23]
 
+* Show the failed price feed and reason in daily sync and diagnostics.
 * Check the exact market quote from a managed price rule before saving it.
 
 VERSION[2.68.1-ai.preview1244][2026/11/23]
 
-* Show the failed price feed and reason in daily sync and diagnostics.
+* Use bundled raw precision for matching mana and percentage regeneration modifier rolls.
 
 VERSION[2.68.1-ai.preview1243][2026/11/23]
 
