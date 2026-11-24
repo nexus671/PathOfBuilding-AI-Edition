@@ -1667,7 +1667,7 @@
 	<File name="Classes/LootFilterModuleControl.lua" part="program" sha1="8b1822a802967708f03ae5091752c06876637186" />
 	<File name="Classes/LootFilterSceneControl.lua" part="program" sha1="1bc33be06c10aa0659eb9448fe517848cd6cbf75" />
 	<File name="Classes/LootFilterSharedStylesControl.lua" part="program" sha1="3034e9508dd9c106b68014616ebc39573ed5ac7d" />
-	<File name="Classes/LootFilterStackControl.lua" part="program" sha1="4c0f2beb9be56357babeb0433376f1527db80199" />
+	<File name="Classes/LootFilterStackControl.lua" part="program" sha1="a1ed10f5dfba5fa0e62ac415d312eef0273a6617" />
 	<File name="Classes/LootFilterStructureControl.lua" part="program" sha1="b5dc73fb5fa8baf59d74f7d68e8e38d255bd25de" />
 	<File name="Classes/LootFilterSyncAccountControl.lua" part="program" sha1="d1f4a06a6783577e46b14f24b34c74dde22a574a" />
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="9274355ca1cb23e3b58d20facff148dd9cf38438" />

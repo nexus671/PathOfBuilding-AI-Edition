@@ -74,7 +74,7 @@ function M.Open(profile,id,keep)
 			local item=library.sample({text=tier.text});item.BaseType=tier.items[1] or "Example stack"
 			local preview=previewBlock(target);local block=preview.block
 			visual.text(x+8,y+8,12,preview.fallback and "Style preview" or "Tier preview","^xB7C5D4")
-			visual.text(x+width-60,y+8,12,block.action=="Hide" and "Hidden" or block.action=="Minimal" and "Minimal" or "Shown","^xB7C5D4")
+			visual.text(x+width-90,y+8,12,preview.fallback and "Unavailable" or block.action=="Hide" and "Hidden" or block.action=="Minimal" and "Minimal" or "Shown","^xB7C5D4")
 			visual.chip(x+80,y+8,width-160,height-12,item,{action=block.action,styles=block.styles})
 		end
 	end

@@ -78,6 +78,8 @@ describe("Stack style preview",function()
    end
   end
   assert.equal("Style preview",label())
+  local unavailable=false;for _,command in ipairs(ui.commands) do if command.kind=="text" and command.text=="Unavailable" then unavailable=true end end
+  assert.is_true(unavailable)
   ui:text("stackSize","3");assert.equal("Tier preview",label())
   ui:text("stackSize","5");assert.equal("Style preview",label())
   ui:text("stackSize","");assert.equal("Style preview",label())
