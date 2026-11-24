@@ -1,15 +1,15 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.69.0-ai.preview1286" />
+	<Version number="2.69.0-ai.preview1287" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
-	<File name="changelog.txt" part="default" sha1="65f32262deb134aa5a462666c2e3e89a2f5556a9" />
+	<File name="changelog.txt" part="default" sha1="68eb4f021f0b603446885fe08a868cedb5572933" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
 	<File name="_SimpleGraphic.def.lua" part="program" sha1="c9ace520131fbc2c3232665f4a17fd6e05bddc1d" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="93571951417fe8e1da8403c07bba9bee333f7573" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="a519cc81210176a6a1c80c268375e9816f5d8326" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/ascendancypassiveheaderleft.png" part="program" sha1="6a65683dcc3b14382dc083198fe9361454e91b15" />
 	<File name="Assets/ascendancypassiveheadermiddle.png" part="program" sha1="79ccf100c4154d8f65544e2b32d44a612b7007c0" />
@@ -2101,7 +2101,7 @@
 	<File name="Modules/DataAbyssJewelLookUpTableHelper.lua" part="program" sha1="c95c4e8af0e9ab9c2abec801e5a279952754cf05" />
 	<File name="Modules/DataJewelFileLoader.lua" part="program" sha1="7f437192153f03eb1fecb4ea00283ead108fbde8" />
 	<File name="Modules/DataLegionLookUpTableHelper.lua" part="program" sha1="ece92c4b6062f627f98ba2454531366b4628abfc" />
-	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="76be4120477492facb24eaf94487743f3f903eef" />
+	<File name="Modules/DesktopBuildBridge.lua" part="program" sha1="b346f81a220c39c1b521ee72affea34e0f628e96" />
 	<File name="Modules/EncounterReport.lua" part="program" sha1="710dc78939bfbc8282f295cf626bcde9c9b7d8e5" />
 	<File name="Modules/GemQualityPlan.lua" part="program" sha1="fa12e64e1168c57976a6e2b718a6b30545a27e84" />
 	<File name="Modules/GenesisPlanner.lua" part="program" sha1="14ef6d29220456d78d1034816d57b7042042ec38" />
@@ -2136,7 +2136,7 @@
 	<File name="Modules/LootFilterImports.lua" part="program" sha1="14c2904c7ecbaed9a44146b21fffe1c341d8bb14" />
 	<File name="Modules/LootFilterLibrary.lua" part="program" sha1="a76556313986aea1d2e1789e56e9492501f41333" />
 	<File name="Modules/LootFilterMapMarket.lua" part="program" sha1="76b442c3a957f5b077a3c4cd4554ae1bc5437840" />
-	<File name="Modules/LootFilterMarketBrowse.lua" part="program" sha1="e499784e889513b3a0caa2c4eb8a7c221cf54664" />
+	<File name="Modules/LootFilterMarketBrowse.lua" part="program" sha1="678faff9faf9f5356e1bb9108c09101e26fcd904" />
 	<File name="Modules/LootFilterMarketJSON.lua" part="program" sha1="0883c3b33441facef93fa3ae059ba06bae617da3" />
 	<File name="Modules/LootFilterOfflinePrices.lua" part="program" sha1="73ea6e7affe77039ae8009e4f8fdcde597f6db44" />
 	<File name="Modules/LootFilterParser.lua" part="program" sha1="200696aa146b23876bc2e8663be20c872517e164" />
