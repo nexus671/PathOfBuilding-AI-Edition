@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1260][2026/11/24]
+
+* Explain unsupported Thread counts before opening the Atlas checker.
+
 VERSION[2.68.1-ai.preview1259][2026/11/24]
 
 * Improve regeneration roll precision for rounded crafting modifiers.

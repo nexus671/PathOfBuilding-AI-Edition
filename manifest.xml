@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <PoBVersion>
-	<Version number="2.68.1-ai.preview1259" />
+	<Version number="2.68.1-ai.preview1260" />
 	<Source part="default" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/" />
 	<Source part="runtime" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/runtime/" platform="win32" />
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="cbe090d03e7e2d413d4a140183011a1998269f80" />
+	<File name="changelog.txt" part="default" sha1="146ad8cb20da218e9cd7ed1b1c119872005db436" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1702,7 +1702,7 @@
 	<File name="Classes/BuildSetService.lua" part="program" sha1="c7158b62b336228f8196988a5af91fce8c711937" />
 	<File name="Classes/BuildSetListControl.lua" part="program" sha1="039e015034f73155ad51b38976ab1d7e9501ff16" />
 	<File name="Classes/AtlasPlannerControl.lua" part="program" sha1="3b4fa4abbcd20e14e325e38515707561a2dee032" />
-	<File name="Classes/AtlasRegionsControl.lua" part="program" sha1="fcf7b3074dc10119bf4b309e96ccc626c1491609" />
+	<File name="Classes/AtlasRegionsControl.lua" part="program" sha1="697e1d3fb9d0d2a90b7637beeb1bf0ff97ea22c3" />
 	<File name="Classes/AtlasPlanningControl.lua" part="program" sha1="bc317bacfeecf533d7c1a5e3d3536a2edf847d6a" />
 	<File name="Classes/AtlasTargetsControl.lua" part="program" sha1="091b4a396966a60064fe5c3ad148a80f97be18e7" />
 	<File name="Classes/AtlasThreadControl.lua" part="program" sha1="59040cbafbf9f1dc7db5c758751f933f0a53a479" />
