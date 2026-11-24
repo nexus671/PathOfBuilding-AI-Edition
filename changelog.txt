@@ -1,14 +1,18 @@
-VERSION[2.68.1-ai.preview1260][2026/11/24]
+VERSION[2.68.1-ai.preview1261][2026/11/24]
 
 * Count distinct cutoff changes accurately in Windows economy notifications.
 
-VERSION[2.68.1-ai.preview1259][2026/11/24]
+VERSION[2.68.1-ai.preview1260][2026/11/24]
 
 * Add native controls for editing the maximum hidden stack size of managed commodity rules.
 
-VERSION[2.68.1-ai.preview1258][2026/11/24]
+VERSION[2.68.1-ai.preview1259][2026/11/24]
 
 * Review a PoE 1 PC trade league change against verified prices before saving daily sync settings.
+
+VERSION[2.68.1-ai.preview1258][2026/11/24]
+
+* Re-enable muted alerts through shared filter styles.
 
 VERSION[2.68.1-ai.preview1257][2026/11/24]
 
