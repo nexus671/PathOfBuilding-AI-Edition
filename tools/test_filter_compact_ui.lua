@@ -1,0 +1,14 @@
+local output=arg[1];arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave=true;newBuild()
+local filters=require("Modules.LootFilters");local profile=filters.profile("profile","Sample");profile.rules={filters.rule("mine","Chaos pickup",{'BaseType == "Chaos Orb"'})};build.savers.LootFilters:Upsert(profile)
+local ui=require("Modules.HeadlessUI").install({width=640,height=480});ui:bind(build)
+build.planningWorkspace=require("Modules.PlanningWorkspace").new(build);build.viewMode="PLANNER";build.planningWorkspace:Show("filters")
+ui:click("viewSimulate");if output then ui:frame():write(output.."/640-filter-compact-simulate.json") end;ui:click("itemDetails");assert(main.popups[1] and main.popups[1].title=="Item details");main:ClosePopup()
+ui:click("hidden");ui:click("sceneStats");assert(main.popups[1]);main:ClosePopup()
+ui:click("viewStyle");if output then ui:frame():write(output.."/640-filter-compact-style.json") end;ui:click("style2");assert(build.planningWorkspace.controls.style2);ui:click("savedPalettes");assert(main.popups[1]);main:ClosePopup()
+ui:click("viewModules");if output then ui:frame():write(output.."/640-filter-compact-modules.json") end;ui:text("moduleTitle","My materials");ui:click("moduleCreate");assert(#build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].modules==1)
+ui:click("moduleToggle");assert(not build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].modules[1].enabled);ui:click("moduleToggle");assert(build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].modules[1].enabled);ui:click("moduleCopy");ui:click("moduleRemove");assert(#build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].modules==0);ui:click("modulePaste");assert(#build.planningWorkspace.cache.filters.layout.snapshot().data.profiles[1].modules==1)
+ui:click("viewTiers");if output then ui:frame():write(output.."/640-filter-compact-tiers.json") end;ui:click("tierNew");assert(build.planningWorkspace.controls.tiers)
+local draft=build.planningWorkspace.cache.filters.layout.snapshot();local sample={Class="Stackable Currency",BaseType="Chaos Orb",Rarity="Normal",ItemLevel=83,AreaLevel=83};draft.data.profiles[1].sampleSets={{id="examples",title="Examples",samples={sample}}};draft.page="Simulate";draft.sceneKind="Saved examples";draft.sampleSetId="examples";draft.sample=sample
+build.planningWorkspace:Show("filters",draft);assert(build.planningWorkspace.controls.sceneSet);if output then ui:frame():write(output.."/640-filter-compact-saved-examples.json") end;ui:click("itemDetails");assert(main.popups[1] and main.popups[1].title=="Item details");main:ClosePopup()
+print("Compact simulator, style, modules and tier interactions passed")
+ui:restore();main.popups={}

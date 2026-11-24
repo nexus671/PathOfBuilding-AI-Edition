@@ -793,11 +793,22 @@ end
 function M.new(build)
 	local self={build=build,data=M.empty()}
 	function self:Load(xml)
+		for _,entry in ipairs(xml) do if type(entry)~="string" then
+			self.unreadable=copyTable(xml);self.warning="Loot filters could not be read and will be preserved unchanged.";return
+		end end
 		local raw=table.concat(xml);if raw:match("^%s*$") then return end
-		local ok,result=pcall(function() assert(#raw<=M.limit,"Too large");return M.validate(assert(json.decode(raw,1,json.null))) end)
+		local ok,result=pcall(function()
+			assert(#raw<=M.limit,"Too large")
+			local decoded,position,err=json.decode(raw,1,json.null)
+			assert(decoded and position and not raw:sub(position):find("%S"),err or "Invalid loot filter data")
+			return M.validate(decoded)
+		end)
 		if ok then self.data=result else self.unreadable=raw;self.warning="Loot filters could not be read and will be preserved unchanged." end
 	end
-	function self:Save(xml) xml[#xml+1]=self.unreadable or json.encode(self.data) end
+	function self:Save(xml)
+		if type(self.unreadable)=="table" then for _,entry in ipairs(self.unreadable) do xml[#xml+1]=type(entry)=="table" and copyTable(entry) or entry end
+		else xml[#xml+1]=self.unreadable or json.encode(self.data) end
+	end
 	function self:Replace(data) assert(not self.unreadable,self.warning);self.data=M.validate(data);build.modFlag=true;require("Modules.PlanningUI").kept(build,"filters");return self.data end
 	function self:Upsert(profile)
 		local data=copyTable(self.data);local found=false;for i,p in ipairs(data.profiles) do if p.id==profile.id then data.profiles[i]=profile;found=true end end

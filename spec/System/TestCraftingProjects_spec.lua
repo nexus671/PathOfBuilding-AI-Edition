@@ -172,7 +172,7 @@ describe("Crafting projects", function()
 	end)
 	it("preserves malformed project collections",function()
 		local store=build.savers.CraftingProjects
-		for _,raw in ipairs({'{"schemaVersion":1,"projects":{}}','{"schemaVersion":1,"projects":{"one":{}}}','{"schemaVersion":1,"projects":[null]}','{"schemaVersion":1,"projects":null}',string.rep(" ",2*1024*1024).."{}"}) do
+		for _,raw in ipairs({'{"schemaVersion":1,"projects":[]} trailing','{"schemaVersion":1,"projects":{}}','{"schemaVersion":1,"projects":{"one":{}}}','{"schemaVersion":1,"projects":[null]}','{"schemaVersion":1,"projects":null}',string.rep(" ",2*1024*1024).."{}"}) do
 			local loaded=projects.new(build);loaded:Load({raw});assert.is_truthy(loaded.warning)
 			local xml={};loaded:Save(xml);assert.are.equal(raw,xml[1])
 		end

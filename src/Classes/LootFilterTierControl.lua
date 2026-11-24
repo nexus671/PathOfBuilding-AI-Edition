@@ -12,8 +12,8 @@ function M.Mount(c,profile,w,h,view,options)
 	local function chosen() assert(selected,"Choose a tier");return selected end
 	local function custom() assert(chosen().custom,"Copy a preset tier before editing it");return selected end
 	c.tierSearch=new("EditControl"):EditControl(ui.anchor,{16,120,300,26},view.query or "","Find a tier or item",nil,160)
-	c.tierScope=new("DropDownControl"):DropDownControl(ui.anchor,{332,120,200,26},{"My tiers","Preset tiers"},function(_,value) source=value;view.scope=value;view.selected=nil;options.reopen() end);c.tierScope:SelByValue(source)
-	button("tierStack",548,120,160,"Stack styles",function()
+	c.tierScope=new("DropDownControl"):DropDownControl(ui.anchor,{332,120,w<740 and w-476 or 200,26},{"My tiers","Preset tiers"},function(_,value) source=value;view.scope=value;view.selected=nil;options.reopen() end);c.tierScope:SelByValue(source)
+	button("tierStack",w<740 and w-128 or 548,120,w<740 and 112 or 160,"Stack styles",function()
 		local entry=custom();require("Classes.LootFilterStackControl").Open(profile,entry.id,function(next) change(next,entry.id) end)
 	end)
 	c.tierStack.enabled=function() return selected and selected.custom and #(profile.tiers or {})>1 end

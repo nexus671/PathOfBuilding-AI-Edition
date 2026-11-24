@@ -57,7 +57,7 @@ describe("Build journey",function()
 		local reasons=json.encode(actions);assert.truthy(reasons:find("Requires level 70",1,true));assert.truthy(reasons:find("50.00",1,true));assert.truthy(reasons:find("Atlas plan is missing",1,true))
 	end)
 	it("preserves unsupported or malformed data and refuses destructive replacement",function()
-		for _,raw in ipairs({'{"schemaVersion":2}','{"schemaVersion":1,"milestones":{}}','{"schemaVersion":1,"milestones":false}','not json'}) do
+		for _,raw in ipairs({json.encode(journey.empty())..' trailing','{"schemaVersion":2}','{"schemaVersion":1,"milestones":{}}','{"schemaVersion":1,"milestones":false}','not json'}) do
 			local saver=journey.new(build);saver:Load({raw});local xml={};saver:Save(xml);assert.equal(raw,xml[1]);assert.has_error(function() saver:Replace(journey.empty()) end)
 		end
 	end)
