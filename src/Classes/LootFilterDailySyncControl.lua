@@ -449,7 +449,26 @@ function M.Open(profileId, profileName)
 			local preference = not config.enabled and "Price sync is disabled for this profile."
 				or config.backgroundEnabled and "Background sync is enabled for this profile."
 				or "This profile uses in-app sync."
-			main:OpenMessagePopup("Windows background task",preference.."\n"..(message or descriptions.unavailable))
+			message = preference.."\n"..(message or descriptions.unavailable)
+			local repairable = state=="missing" or state=="disabled" or state=="action_changed"
+				or state=="account_changed" or state=="trigger_changed"
+			if ok and config.enabled and config.backgroundEnabled and repairable then
+				main:OpenConfirmPopup("Windows background task",message,"Repair task",function()
+					local saved, problem = pcall(function()
+						local latest = assert(sync.configuration(profileId), "The sync profile is unavailable.")
+						assert(latest.enabled and latest.backgroundEnabled and latest.revision==config.revision,
+							"Sync settings changed. Check the task again.")
+						background.change(true,function(repaired,reason)
+							if main.popups[1]~=owner then return end
+							main:OpenMessagePopup("Windows background task",
+								repaired and "Windows accepted the repaired task registration." or ui.errorText(reason))
+						end,profileId)
+					end)
+					if not saved then main:OpenMessagePopup("Windows background task",ui.errorText(problem)) end
+				end)
+			else
+				main:OpenMessagePopup("Windows background task",message)
+			end
 		end)
 		if not passed then main:OpenMessagePopup("Windows background task",ui.errorText(err)) end
 	end)

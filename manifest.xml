@@ -6,7 +6,7 @@
 	<Source part="program" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<Source part="tree" url="https://raw.githubusercontent.com/nexus671/PathOfBuilding-AI-Edition/{branch}/src/" />
 	<File name="LICENSE.md" part="default" sha1="c77635aa1ba0a2ffe8eb72f93b3376e3a3d2041a" />
-	<File name="changelog.txt" part="default" sha1="c6e4b679b3ec14924ad0bdad022c26fcd83f57c0" />
+	<File name="changelog.txt" part="default" sha1="8a099736fd6f3fa8eaae15e1e4abfde239d5ebe2" />
 	<File name="help.txt" part="default" sha1="e486cb63a78f5ca355430b67fa23e02fd30f5771" />
 	<File name="Path{space}of{space}Building.exe" part="runtime" sha1="8dcd46aac0b70d0a4d5eac5c7244302c9b805f85" platform="win32" />
 	<File name="SimpleGraphic.dll" part="runtime" sha1="9d823db1e01eb8fde7f5118e351da609be4ed679" platform="win32" />
@@ -1786,7 +1786,7 @@
 	<File name="Classes/LootFilterStackControl.lua" part="program" sha1="31ec30fe8cd7622aafb64c141104fdf0c4028e8a" />
 	<File name="Classes/LootFilterStructureControl.lua" part="program" sha1="b5dc73fb5fa8baf59d74f7d68e8e38d255bd25de" />
 	<File name="Classes/LootFilterTierControl.lua" part="program" sha1="27ab4153f470d9021c9adee80d0966df820e0aca" />
-	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="d99d7e93564e739598cfdb81f595d5dd8d82c5b7" />
+	<File name="Classes/LootFilterDailySyncControl.lua" part="program" sha1="5ebd2258a0d591c4019defeaf63bd5bf8b985e6f" />
 	<File name="Classes/LootFilterEconomyControl.lua" part="program" sha1="f9c50562810deb0f3631d6a21da0738cf6f3cb38" />
 	<File name="Modules/LootFilterDailySync.lua" part="program" sha1="13303f565a63e9e43c3aca26454b19038bef85d7" />
 	<File name="Modules/LootFilterEconomy.lua" part="program" sha1="bbc7392516f3329071a6d75265b61dff92132b29" />

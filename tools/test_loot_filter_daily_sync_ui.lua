@@ -115,6 +115,16 @@ for _, size in ipairs({{1280,720}, {960,640}, {720,600}}) do
 	harness:click("backgroundStatus")
 	assert(main.popups[1].title=="Windows background task" and main.popups[1].controls[2].label:find("expected",1,true))
 	harness:click("close")
+	do
+		local original = task.inspect
+		task.inspect = function(callback) callback(true,"disabled") end
+		harness:click("backgroundStatus")
+		assert(main.popups[1].controls.confirm and main.popups[1].controls[2].label:find("disabled",1,true))
+		harness:click("confirm")
+		assert(main.popups[1].controls[1].label:find("accepted",1,true))
+		harness:click("close")
+		task.inspect = original
+	end
 	harness:click("backgroundNotify")
 	assert(notifyEnabled)
 	harness:click("background")

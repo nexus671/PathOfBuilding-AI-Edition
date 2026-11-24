@@ -99,7 +99,7 @@ In **Daily price sync**, open **Publish to account** after a successful refresh.
 Local and background sync do not publish account filters. An uncertain server result is shown for review before retrying.
 
 
-Use **Check Windows task** in daily sync to compare the profile's background preference with Task Scheduler. The check reports missing or disabled registrations, mismatched worker actions, account or trigger changes, and a missing PoB executable. The expected task checks for due profiles every five minutes while the user is signed in.
+Use **Check Windows task** in daily sync to compare the profile's background preference with Task Scheduler. The check reports missing or disabled registrations, mismatched worker actions, account or trigger changes, and a missing PoB executable. The expected task checks for due profiles every five minutes while the user is signed in. If the profile already opts in, use **Repair task** to register the expected Windows task for recoverable problems.
 
 ## Shared cache for app distribution
 
