@@ -1,6 +1,7 @@
 VERSION[2.68.1-ai.preview1255][2026/11/24]
 
 * Require a value for new loot filter conditions.
+* Identify category colours overridden by whole-filter appearance.
 
 VERSION[2.68.1-ai.preview1254][2026/11/24]
 
