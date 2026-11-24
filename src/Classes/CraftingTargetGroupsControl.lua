@@ -41,7 +41,11 @@ function M.Open(model,state,input,requirements,count,onKeep)
 	end);c.newGroup.enabled=function() return #groups<6 end
 	button("deleteGroup",28+math.floor((left-12)/2),84,math.floor((left-12)/2),"Remove group",function() assert(group(),"Choose a group");table.remove(groups,selected);refresh() end);c.deleteGroup.enabled=function() return group()~=nil end
 	button("newAlternative",right,84,math.floor((rightW-12)/2),"+ Alternative",function()
-		local chosen=assert(group(),"Choose a group");require("Classes.CraftingModifierControl").Open(model,state,{action="Add alternative",choose=function(id)
+		local chosen=assert(group(),"Choose a group");require("Classes.CraftingModifierControl").Open(model,state,{action="Add alternative",chooseReason=function(id)
+			if require("Modules.CraftingModifiers").scope(model.byId[id])~=(chosen.scope or "explicit") then return "Choose a modifier with the same explicit, implicit or enchantment scope." end
+			for _,other in ipairs(chosen.anyOf) do if other==id then return "This modifier is already in the target group." end end
+			if #chosen.anyOf>=30 then return "Use up to thirty alternatives per group." end
+		end,choose=function(id)
 			assert(require("Modules.CraftingModifiers").scope(model.byId[id])==(chosen.scope or "explicit"),"Choose the same explicit/implicit scope, or create a separate group")
 			for _,other in ipairs(chosen.anyOf) do if other==id then return end end;assert(#chosen.anyOf<30,"Use up to thirty alternatives per group");chosen.anyOf[#chosen.anyOf+1]=id;refresh()
 		end})
