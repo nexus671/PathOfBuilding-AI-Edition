@@ -79,4 +79,10 @@ for _,size in ipairs({{640,480},{960,640},{1280,720}}) do
 	assert(current().sharedStyles[1].to=="00FF00FF");ui:click("undo");assert(not current().sharedStyles);ui:click("redo");assert(current().sharedStyles[1].to=="00FF00FF","Workspace undo/redo lost the replacement")
 	ui:restore()
 end
+local bulk={};for i=1,600 do bulk[#bulk+1]={key="Colour",from=string.format("%08X",i),to="FFFFFFFF"} end
+local large=filters.profile("many","Many replacements");large.template="Show\n SetTextColor 255 0 0";large.sharedStyles=bulk
+local checked=filters.validate({schemaVersion=1,activeId=large.id,profiles={large}}).profiles[1];assert(#checked.sharedStyles==600,"Shared replacements were capped below the metadata guard")
+newBuild();ui=require("Modules.HeadlessUI").install({width=960,height=640});ui:bind(build);local keptLarge
+require("Classes.LootFilterSharedStylesControl").Open(checked,function(value) keptLarge=value end);ui:text("search","00000258");ui:click("choose")
+assert(main.popups[1].controls.target.buf=="FFFFFFFF","A later saved replacement was not reachable");ui:click("remove");assert(#keptLarge.sharedStyles==599,"Removing a later replacement lost other entries");ui:restore()
 print("FILTER_SHARED_STYLES_OK")

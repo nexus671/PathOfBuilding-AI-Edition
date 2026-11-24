@@ -71,11 +71,11 @@ local function edit(profile,row,onKeep)
 end
 function M.Open(profile,onKeep)
 	local probe=copyTable(profile);probe.sharedStyles=nil;probe.appearance=nil
-	local raw=filters.compile(probe);local rows=shared.list(raw);local indexed={};local entries={}
+	local raw=filters.compile(probe);local rows=shared.list(raw);local indexed,targets={},{};local entries={}
 	for _,row in ipairs(rows) do indexed[row.key.."\0"..row.value]=row end
-	for _,entry in ipairs(profile.sharedStyles or {}) do local id=entry.key.."\0"..entry.from;if not indexed[id] then local row={key=entry.key,value=entry.from,count=0};rows[#rows+1]=row;indexed[id]=row end end
+	for _,entry in ipairs(profile.sharedStyles or {}) do local id=entry.key.."\0"..entry.from;targets[id]=entry.to;if not indexed[id] then local row={key=entry.key,value=entry.from,count=0};rows[#rows+1]=row;indexed[id]=row end end
 	for _,row in ipairs(rows) do
-		local target;for _,entry in ipairs(profile.sharedStyles or {}) do if entry.key==row.key and entry.from==row.value then target=entry.to end end
+		local target=targets[row.key.."\0"..row.value]
 		entries[#entries+1]={id=row.key.."/"..row.value,label=names[row.key].." | "..row.value.." | "..row.count,category=names[row.key],details={names[row.key],row.count.." declared occurrences before whole-filter overrides.",target and ("Replacement: "..target) or "No replacement saved.","Specific style replacements take priority over shared groups.","Replacements are simultaneous and preserve rule order.","Unresolved imported files cannot be changed."},row=row}
 	end
 	require("Classes.PlanningBrowserControl").Open("Shared colours and sounds",entries,{action="Edit replacement",closeOnChoose=false,choose=function(entry) main:ClosePopup();edit(profile,entry.row,onKeep) end})

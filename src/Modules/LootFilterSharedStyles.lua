@@ -50,7 +50,7 @@ function M.validate(entries)
 		local key=entry.key;assert(colours[key] or sounds[key] or groups[key],"Unknown shared style")
 		local from,to=normalized(key,entry.from),normalized(key,entry.to,true);local id=key.."\0"..from
 		assert(not seen[id],"Duplicate shared style source");seen[id]=true
-		result[#result+1]={key=key,from=from,to=to};assert(#result<=500,"Too many shared styles")
+		result[#result+1]={key=key,from=from,to=to}
 	end
 	return result
 end

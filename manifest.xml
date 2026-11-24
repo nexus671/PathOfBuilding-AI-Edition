@@ -165,7 +165,7 @@
 	<File name="z.dll" part="runtime" sha1="08517c87f5b9e8791ee5d471429be7fbfa5ddd0b" platform="win32" />
 	<File name="zlib1.dll" part="runtime" sha1="49f1ccf17328fca0a831555a35b8eacb1e845ae0" platform="win32" />
 	<File name="zstd.dll" part="runtime" sha1="2a20ae088f2398af5dfd5db2ccc2155eeac8e94d" platform="win32" />
-	<File name="AI/BuildProtocol.cjs" part="program" sha1="587c39cc2bb09c94b5503cecb4ffb81bf1ba562e" />
+	<File name="AI/BuildProtocol.cjs" part="program" sha1="ca5d28888a1161242bdfbc701c6ef7255cde9490" />
 	<File name="AI/McpServer.cjs" part="program" sha1="29ff0c8f35eacb9ae56f60f528a1a16016bdb39d" />
 	<File name="Assets/Atlas/3.27.0/atlas-background-3.jpg" part="program" sha1="4db9c28ea7c03108f89785c65bc3b17ef7b64d5e" />
 	<File name="Assets/Atlas/3.27.0/atlas-frame-3.png" part="program" sha1="479b9fa4e1e821905313d42fbc6c1cbd4a672d3b" />
@@ -3208,6 +3208,6 @@
 	<File name="Modules/LootFilterPriceAppearance.lua" part="program" sha1="ac023aaeca31d302340b29b15235055b8fe0fc47" />
 	<File name="Modules/LootFilterOfflinePrices.lua" part="program" sha1="73ea6e7affe77039ae8009e4f8fdcde597f6db44" />
 	<File name="Modules/LootFilterGemMarket.lua" part="program" sha1="cb819c1e4abde8459b5e82ee2019bd6eaf736471" />
-	<File name="Classes/LootFilterSharedStylesControl.lua" part="program" sha1="2dae34bd8f9721ef74ec2da9f3b7cd326bc70c4e" />
-	<File name="Modules/LootFilterSharedStyles.lua" part="program" sha1="9c7985d262b3aa7c26a48e63aeaccb8e965a894c" />
+	<File name="Classes/LootFilterSharedStylesControl.lua" part="program" sha1="aab02c387203ff27a465e2bd1cabd8ed1ee6885e" />
+	<File name="Modules/LootFilterSharedStyles.lua" part="program" sha1="e4ab3df10235b7cca52abcbcf5971f12b08c78c5" />
 </PoBVersion>
