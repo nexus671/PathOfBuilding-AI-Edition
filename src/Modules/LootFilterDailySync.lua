@@ -644,16 +644,31 @@ function M.compareObservedStackBatch(before, after, path)
 	end
 	local compare = observedStackComparison(before,after)
 	local summary = {count=#items,units=0,shown=0,hidden=0,unchanged=0,unknown=0}
+	local classes, areas = {}, {}
+	local function record(groups,key,item,group)
+		local entry=groups[key]
+		if not entry then entry={key=key,count=0,units=0,shown=0,hidden=0,unchanged=0,unknown=0};groups[key]=entry end
+		entry.count=entry.count+1
+		entry.units=entry.units+item.StackSize
+		entry[group]=entry[group]+1
+	end
 	local rows = {}
 	for index, item in ipairs(items) do
 		local earlier, later = compare(item)
 		local wasVisible, isVisible = visibility[earlier.action],visibility[later.action]
-		local group = (wasVisible==nil or isVisible==nil) and "unknown"
+		local group = (wasVisible==nil or isVisible==nil or #(earlier.reasons or {})>0 or #(later.reasons or {})>0) and "unknown"
 			or wasVisible==isVisible and "unchanged" or isVisible and "shown" or "hidden"
 		summary[group] = summary[group]+1
 		summary.units = summary.units+item.StackSize
+		record(classes,item.Class,item,group)
+		record(areas,item.AreaLevel,item,group)
 		rows[index] = {item=item,before=earlier,after=later,group=group}
 	end
+	summary.byClass,summary.byArea={},{}
+	for _,entry in pairs(classes) do summary.byClass[#summary.byClass+1]=entry end
+	for _,entry in pairs(areas) do summary.byArea[#summary.byArea+1]=entry end
+	table.sort(summary.byClass,function(a,b) return a.key<b.key end)
+	table.sort(summary.byArea,function(a,b) return a.key<b.key end)
 	return summary,rows
 end
 
