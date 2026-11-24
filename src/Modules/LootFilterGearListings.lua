@@ -68,6 +68,7 @@ function M.target(item, publicBase)
 	if item.rarity~="RARE" or not jewellery[item.type] or not item.base or item.unidentifiedMarker
 		or type(item.itemLevel)~="number" or item.itemLevel<1 or item.itemLevel>100 or item.itemLevel~=math.floor(item.itemLevel)
 		or item.variant or item.mirrored or item.twiceCorrupted or item.talismanTier or item.memoryStrands or item.intangibility
+		or item.crucible or item.vestigial
 		or (item.catalyst or 0)>0 or (item.catalystQuality or 0)>0 or (item.quality or 0)>0
 		or (item.base.socketLimit or 0)>0 or hasEntries(item.sockets) or hasEntries(item.scourgeModLines)
 		or hasEntries(item.crucibleModLines) then return end
@@ -87,12 +88,18 @@ local function sameItem(item, target)
 	if item.identified~=true or item.rarity~="Rare" or item.ilvl~=target.level or item.realm~=nil
 		or item.duplicated or item.doubleCorrupted or item.memoryItem or item.mutated or item.veiled
 		or item.lockedToCharacter or item.lockedToAccount or item.enshrouded or item.unmodifiable
+		or item.vestigial or item.delve or item.foreseeing or item.scourged~=nil or item.crucible~=nil
+		or item.incubatedItem~=nil or item.builtInSupport~=nil or item.monsterLevel~=nil
 		or item.unmodifiableExceptChaos or item.stackSize and item.stackSize~=1 or hasEntries(item.sockets)
 		or hasEntries(item.socketedItems) or hasEntries(item.scourgeMods) or hasEntries(item.crucibleMods)
 		or hasEntries(item.veiledMods) or hasEntries(item.grantedSkills) then return false end
 	-- These comparisons only cover jewellery without extra item properties,
 	-- including catalyst quality, Intangibility and Memory Strands.
 	if item.properties~=nil and (type(item.properties)~="table" or next(item.properties)) then return false end
+	for _,field in ipairs({"notableProperties","additionalProperties","utilityMods","ultimatumMods"}) do
+		local value=item[field]
+		if value~=nil and (type(value)~="table" or next(value)) then return false end
+	end
 	for _, key in ipairs(conditions) do
 		if (item[key]==true)~=target[key] then return false end
 	end

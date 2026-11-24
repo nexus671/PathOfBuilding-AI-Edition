@@ -1352,6 +1352,22 @@ Item Level: 86
 	local function stash(id,seller,items,note)
 		return {id=string.format("%064x",id),accountName=seller,items=items,stash=note,league="Covens",public=true}
 	end
+	do
+		item.crucible=true;assert(not listings.target(item),"A target with a Crucible tree needs review");item.crucible=nil
+		item.vestigial=true;assert(not listings.target(item),"A vestigial target needs review");item.vestigial=false
+		local json=require("dkjson")
+		local cases={
+			{"crucible",{nodes={}}}, {"scourged",{tier=1}}, {"incubatedItem",{name="Test"}},
+			{"vestigial",true}, {"delve",true}, {"foreseeing",true}, {"builtInSupport","Support"}, {"monsterLevel",1},
+			{"notableProperties",{{name="Unknown",values={}}}}, {"additionalProperties",{{name="Unknown",values={}}}},
+			{"utilityMods",{"Unknown"}}, {"ultimatumMods",{{type="Unknown",tier=1}}}, {"additionalProperties","invalid"},
+		}
+		for index,case in ipairs(cases) do
+			local listed=row(100+index,"~price 1 chaos");listed[case[1]]=case[2]
+			local snapshot={next_change_id="cursor",stashes={stash(100+index,"Seller#0001",{listed})}}
+			assert(listings.compare(json.encode(snapshot),target,"Covens").matched==0,case[1].." must not be treated as an exact match")
+		end
+	end
 	local low, early, high = row(1,"~price 20 chaos"),row(2,"~price 10 chaos"),row(3,"~b/o 30 chaos")
 	early.explicitMods={{description="+41% to Cold Resistance\n+79 to maximum Life"}}
 	local wrongRoll, wrongLevel, wrongState, wrongChannel = row(4,"~price 1 chaos"),row(5,"~price 2 chaos"),row(6,"~price 3 chaos"),row(7,"~price 4 chaos")
