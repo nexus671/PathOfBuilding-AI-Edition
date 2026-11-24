@@ -3198,7 +3198,7 @@
 	<File name="Classes/LootFilterMarketBrowseControl.lua" part="program" sha1="1610cbbc209d6e619d6307acc4cbc4d139f553f7" />
 	<File name="Modules/LootFilterMarketBrowse.lua" part="program" sha1="31dfc5d5a01b372b1490c33855d39a8aba5c4751" />
 	<File name="Modules/LootFilterBackground.lua" part="program" sha1="d80487b2fe4825109212d7672c3e8881564c15bd" />
-	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="ee7ddd8259c4f4ecdbfa2a0e8d4fc07ba30b818c" />
+	<File name="Modules/LootFilterBackgroundTask.lua" part="program" sha1="14d1346327856a5353332dad6a485ec884a2c939" />
 	<File name="Classes/LootFilterManagedEconomyControl.lua" part="program" sha1="fa894d28fc10e6032a8d6def5ec5b77b16bafe9c" />
 	<File name="Modules/LootFilterBaseRefresh.lua" part="program" sha1="5d56325487cf70b68b8fb6a679b6173c02fcbde5" />
 	<File name="Modules/LootFilterMapMarket.lua" part="program" sha1="7e1e85f42cbfcaca5380322c6ff4f63447b49994" />

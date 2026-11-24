@@ -188,7 +188,8 @@ try {
     if (@($task.Triggers).Count -ne 1 -or $trigger.CimClass.CimClassName -ne 'MSFT_TaskTimeTrigger' -or
         -not $trigger.Enabled -or $trigger.EndBoundary -or $trigger.Repetition.Duration -or
         [System.Xml.XmlConvert]::ToTimeSpan($trigger.Repetition.Interval).TotalMinutes -ne 5 -or
-        $task.Settings.MultipleInstances -ne 'IgnoreNew') { exit 15 }
+        $task.Settings.MultipleInstances -ne 'IgnoreNew' -or -not $task.Settings.StartWhenAvailable -or
+        [System.Xml.XmlConvert]::ToTimeSpan($task.Settings.ExecutionTimeLimit).TotalMinutes -ne 7) { exit 15 }
 } catch { exit 15 }
 if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { exit 16 }
 if ($task.State -eq 'Running') { exit 17 }
