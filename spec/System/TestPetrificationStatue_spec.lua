@@ -53,4 +53,26 @@ describe("Petrification Statue", function()
 		enemy = build.calcsTab.mainEnv.enemy.modDB
 		assert.same(before, { enemy:Sum("BASE", nil, "ActionSpeed"), enemy:Sum("INC", nil, "ActionSpeed"), enemy:More(nil, "ActionSpeed") })
 	end)
+
+	it("calculates the selected skill's duration and cooldown with modifiers", function()
+		local item = new("Item"):Item("Rarity: UNIQUE\nGreater Chimeral Eye\nChimeral Eye\nImplicits: 1\nGrants Level 20 Petrification Statue")
+		build.itemsTab:AddItem(item)
+		build.itemsTab.slots["Wickerman Head"].selItemId = item.id
+		build.buildFlag = true; runCallback("OnFrame"); build.calcsTab:BuildOutput()
+		local groupIndex
+		for index, group in ipairs(build.skillsTab.socketGroupList) do
+			if group.gemList[1] and group.gemList[1].skillId == "SummonPetrificationStatue" then groupIndex = index end
+		end
+		assert.is_truthy(groupIndex)
+		build.mainSocketGroup = groupIndex
+		build.buildFlag = true; runCallback("OnFrame"); build.calcsTab:BuildOutput()
+		local output = build.calcsTab.mainOutput
+		assert.is_true(output.Duration >= 4 and output.Duration < 4.04)
+		assert.is_true(output.Cooldown >= 30 and output.Cooldown < 30.04)
+		build.configTab.input.customMods = "50% increased Skill Effect Duration\n50% increased Cooldown Recovery Rate"
+		build.configTab:BuildModList(); build.buildFlag = true; runCallback("OnFrame"); build.calcsTab:BuildOutput()
+		output = build.calcsTab.mainOutput
+		assert.is_true(output.Duration >= 6 and output.Duration < 6.04)
+		assert.is_true(output.Cooldown >= 20 and output.Cooldown < 20.04)
+	end)
 end)
