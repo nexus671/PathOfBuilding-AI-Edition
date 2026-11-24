@@ -78,6 +78,10 @@ def contrast(first, second):
 @functools.lru_cache(maxsize=4096)
 def texture_region(path, uv):
     texture = Image.open(path).convert("RGBA")
+    # Upstream icon checkboxes draw a single-image PNG with a lone 1 argument.
+    # The headless capture cannot resolve image stacks; render its first image.
+    if uv == (1,):
+        uv = None
     if uv:
         left, top, right, bottom = [round(v * (texture.width if i % 2 == 0 else texture.height)) for i, v in enumerate(uv)]
         texture = texture.crop((min(left, right), min(top, bottom), max(left, right), max(top, bottom)))
