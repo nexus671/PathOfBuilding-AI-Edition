@@ -98,7 +98,7 @@ A quote needs a stable price ID, at least 20 observations and at least 20 listin
 
 Open **Profiles** in **Daily price sync** to create or switch profiles. Each profile has its own fixed baseline, protected samples, PoE 1 PC trade league, schedule, and price history. The original setup appears as **Default**. A destination belongs to one profile, including when a different Windows path spelling resolves to the same file.
 
-PoB checks due profiles in order. Enable background sync individually on profiles that should also run while PoB is closed. They share one Windows task, which is removed when the last profile turns off background sync.
+PoB checks due profiles in order. A Windows background run starts a profile only if there is time for a full refresh before the task limit. Profiles left in the queue stay due and are checked on the next trigger. Enable background sync individually on profiles that should also run while PoB is closed. They share one Windows task, which is removed when the last profile turns off background sync.
 
 ## NeverSink base updates
 

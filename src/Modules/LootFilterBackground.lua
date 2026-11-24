@@ -9,6 +9,7 @@ local function exitStatus(failed)
 end
 
 function M.start(app, scheduled)
+	local startedMs = app.startTime or GetTime()
 	local ok, problem = pcall(function()
 		assert(require("ffi").os == "Windows", "Loot filter background sync requires Windows")
 		local userPath
@@ -29,6 +30,10 @@ function M.start(app, scheduled)
 		end
 		local sync = require("Modules.LootFilterDailySync")
 		app.lootSyncStarted = os.time()
+		-- GetTime and the native launch startTime are milliseconds. Reserve 30 seconds
+		-- for the final settings commit, process shutdown, and the Windows task wrapper.
+		app.lootSyncLatestStart = scheduled and startedMs + 1000 *
+			(sync.taskExecutionSeconds-sync.refreshTimeoutSeconds-sync.workerFinalizationSeconds) or nil
 		local errors
 		app.lootSyncDue, errors = sync.dueProfiles(app.lootSyncStarted,scheduled)
 		app.lootSyncFailed = #errors>0
@@ -71,9 +76,15 @@ function M.frame(app)
 	local ok, finished = pcall(function()
 		if sync.busy then advance(os.time()) end
 		if sync.busy then return false end
-		app.lootSyncIndex = app.lootSyncIndex + 1
-		local nextProfile = app.lootSyncDue[app.lootSyncIndex]
+		local nextIndex = app.lootSyncIndex + 1
+		local nextProfile = app.lootSyncDue[nextIndex]
 		if not nextProfile then return true end
+		if app.lootSyncLatestStart and GetTime()>=app.lootSyncLatestStart then
+			app.lootSyncDeferred = #app.lootSyncDue-app.lootSyncIndex
+			sync.status = string.format("Deferred %d profiles until the next scheduled check.",app.lootSyncDeferred)
+			return true
+		end
+		app.lootSyncIndex = nextIndex
 		advance(os.time(),false,app.lootSyncScheduled,nextProfile.id,failure)
 		return false
 	end)

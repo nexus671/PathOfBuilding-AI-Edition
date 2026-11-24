@@ -3,7 +3,12 @@ local sha = require("sha1")
 local market = require("Modules.LootFilterEconomy")
 local validate = require("Modules.LootFilterSyncValidation")
 local offline = require("Modules.LootFilterOfflinePrices")
-local M = { status = "Daily sync is disabled." }
+local M = {
+	status = "Daily sync is disabled.",
+	refreshTimeoutSeconds = 300,
+	taskExecutionSeconds = 420,
+	workerFinalizationSeconds = 30,
+}
 local volumeLimit = 2 * 1024 * 1024
 local polls, nextSweep = {}, 0
 local function nowText(now) return os.date("%Y-%m-%d %H:%M", now) end
@@ -1230,7 +1235,7 @@ local function fetchPrices(config, baseline, now, complete, onFailure, id)
 	end
 	local endpoint = market.endpoint
 	local job, bodies, responses = {onFailure=onFailure,profileId=id}, {}, {}
-	M.busy, M.deadline = job, now + 300
+	M.busy, M.deadline = job, now + M.refreshTimeoutSeconds
 	local function finish(success, message, failedFeed)
 		M.busy = nil
 		M.status = success and message or ("Sync skipped: " .. tostring(message))

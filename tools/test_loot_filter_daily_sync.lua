@@ -1999,6 +1999,16 @@ checkExactManagedQuoteInspection()
 print("Managed quote inspection uses exact exchange, card, map, gem and Allflame identities with shared liquidity checks")
 
 
+local function replaceWorkerExit(worker, onExit)
+	for index=1,20 do
+		if debug.getupvalue(worker.frame,index)=="exitStatus" then
+			debug.setupvalue(worker.frame,index,onExit)
+			return
+		end
+	end
+	error("Could not intercept the worker process exit")
+end
+
 local function checkWindowsWorkerResult()
 	local module = "Modules.LootFilterDailySync"
 	local engine = assert(loadfile("Modules/LootFilterDailySync.lua"))()
@@ -2027,20 +2037,7 @@ local function checkWindowsWorkerResult()
 
 	-- Replace only the process exit, leaving the real worker and sync paths intact.
 	local exitFailed, exited
-	for index=1,20 do
-		local name = debug.getupvalue(worker.frame,index)
-		if name=="exitStatus" then
-			debug.setupvalue(worker.frame,index,function(failed) exitFailed,exited=not not failed,true end)
-			break
-		end
-	end
-	for index=1,20 do
-		local name = debug.getupvalue(worker.start,index)
-		if name=="exitStatus" then
-			debug.setupvalue(worker.start,index,function(failed) exitFailed,exited=not not failed,true end)
-			break
-		end
-	end
+	replaceWorkerExit(worker,function(failed) exitFailed,exited=not not failed,true end)
 	local function frameUntilExit(app)
 		for _=1,8 do
 			worker.frame(app)
@@ -2110,7 +2107,8 @@ local function checkWindowsWorkerResult()
 
 	-- An unreadable configuration must not quietly look like an idle worker.
 	clock, exited, exitFailed = clock+86400,nil,nil
-	local oldLoad, oldGetScriptPath, oldRender = LoadModule, GetScriptPath, RenderInit
+	local oldLoad, oldGetScriptPath, oldRender, oldGetTime = LoadModule, GetScriptPath, RenderInit, GetTime
+	GetTime = function() return 0 end
 	local originalEngine = package.loaded[module]
 	package.loaded[module] = engine
 	LoadModule = function() end
@@ -2139,9 +2137,117 @@ local function checkWindowsWorkerResult()
 	assert(not exited and #app.lootSyncDue==1 and app.lootSyncDue[1].id=="default")
 	frameUntilExit(app)
 	assert(exitFailed and defaultCalls==8 and engine.configuration().lastSuccess==clock and read(live)~=original)
-	LoadModule,GetScriptPath,RenderInit,package.loaded[module] = oldLoad,oldGetScriptPath,oldRender,originalEngine
+	LoadModule,GetScriptPath,RenderInit,GetTime,package.loaded[module] = oldLoad,oldGetScriptPath,oldRender,oldGetTime,originalEngine
 	main,os.time,launch.DownloadPage,ConPrintf = oldMain,oldTime,oldDownload,oldPrint
 end
 
 checkWindowsWorkerResult()
 print("Windows worker result survives unsaved failures and processes other due profiles")
+
+
+local function checkScheduledWorkerBudget()
+	local module = "Modules.LootFilterDailySync"
+	local originalEngine = package.loaded[module]
+	local oldMain, oldTime, oldDownload, oldPrint = main, os.time, launch.DownloadPage, ConPrintf
+	local oldLoad, oldGetScriptPath, oldRender, oldGetTime = LoadModule, GetScriptPath, RenderInit, GetTime
+	local calendar = os.date("*t")
+	calendar.hour, calendar.min, calendar.sec, calendar.isdst = 12, 0, 0, nil
+	local epoch = oldTime(calendar)
+	local elapsed, wallElapsed = 0,0
+	os.time = function(date) return date and oldTime(date) or epoch+wallElapsed end
+	GetTime = function() return elapsed*1000 end
+	ConPrintf = function() end
+	LoadModule = function() end
+	RenderInit = function() end
+	local root = dir.."/worker-budget"
+	assert(require("lfs").mkdir(root))
+	GetScriptPath = function() return root end
+	main = {userPath=root.."/"}
+
+	local engine = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+	local fixed = root.."/fixed.filter"
+	write(fixed,original)
+	local ids = {"default",engine.createProfile("Second budget profile"),engine.createProfile("Third budget profile")}
+	local targets = {}
+	for index,id in ipairs(ids) do
+		targets[id] = root.."/profile-"..index..".filter"
+		write(targets[id],original)
+		engine.configure(targets[id],fixed,"Covens",{profileId=id,hour=0,protectionFile=protections})
+		engine.setBackground(true,engine.configuration(id).revision,id)
+	end
+
+	local worker = assert(loadfile("Modules/LootFilterBackground.lua"))()
+	local exitFailed, exited, pending
+	replaceWorkerExit(worker,function(failed) exitFailed,exited=not not failed,true end)
+	local requests = 0
+	local function reply(callback)
+		local date = "HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT",os.time()).."\r\n\r\n"
+		callback({header=date,body=commodityBody})
+	end
+	launch.DownloadPage = function(_,url,callback)
+		requests = requests+1
+		if url:find("type=Currency",1,true) then
+			assert(not pending)
+			pending = callback
+		else reply(callback) end
+	end
+	local function start(scheduled, at)
+		exited,exitFailed,elapsed,wallElapsed = nil,nil,at,at
+		engine = assert(loadfile("Modules/LootFilterDailySync.lua"))()
+		package.loaded[module] = engine
+		local app = {devMode=true,startTime=elapsed*1000}
+		worker.start(app,scheduled)
+		assert(not exited)
+		worker.frame(app)
+		assert(pending and engine.busy)
+		return app
+	end
+	local function finish(elapsedAt, wallAt)
+		elapsed,wallElapsed = elapsedAt,wallAt
+		local callback = assert(pending)
+		pending = nil
+		reply(callback)
+		assert(not engine.busy)
+	end
+
+	package.loaded[module] = engine
+	local lateStartup = {devMode=true,startTime=0}
+	elapsed,wallElapsed = 90,90
+	worker.start(lateStartup,true)
+	worker.frame(lateStartup)
+	assert(exited and not exitFailed and not pending and requests==0)
+	assert(#engine.dueProfiles(os.time(),true)==3)
+
+	for index,id in ipairs(ids) do
+		local startAt = (index-1)*300
+		local app = start(true,startAt)
+		assert(#app.lootSyncDue==4-index and app.lootSyncDue[1].id==id)
+		local deadline = startAt+240
+		-- A wall-clock change cannot expand the Windows process budget.
+		finish(deadline,startAt+60)
+		local completed = engine.configuration(id)
+		assert(completed.review and completed.review.protectedChecks==1 and read(targets[id])~=original)
+		for later=index+1,#ids do
+			assert(not engine.configuration(ids[later]).lastSuccess and read(targets[ids[later]])==original)
+		end
+		worker.frame(app)
+		assert(exited and not exitFailed and not pending and requests==index*8)
+	end
+
+	local app = start(false,86400)
+	finish(86640,86640)
+	worker.frame(app)
+	assert(not exited and engine.busy and pending,"Manual worker should continue the remaining profiles")
+	finish(86880,86880)
+	worker.frame(app)
+	assert(not exited and engine.busy and pending)
+	finish(87120,87120)
+	worker.frame(app)
+	assert(exited and not exitFailed and not pending and requests==48)
+	for _,id in ipairs(ids) do assert(#engine.configuration(id).history==2) end
+	LoadModule,GetScriptPath,RenderInit,GetTime,package.loaded[module] = oldLoad,oldGetScriptPath,oldRender,oldGetTime,originalEngine
+	main,os.time,launch.DownloadPage,ConPrintf = oldMain,oldTime,oldDownload,oldPrint
+end
+
+checkScheduledWorkerBudget()
+print("Windows task budget defers slow profiles and completes each on later triggers")

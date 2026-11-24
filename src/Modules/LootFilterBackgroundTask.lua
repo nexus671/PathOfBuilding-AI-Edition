@@ -8,7 +8,7 @@ local sha = require("sha1")
 -- Run registration away from the UI. Windows PowerShell is resolved from the
 -- system directory and invoked directly, with no command interpreter or PATH lookup.
 local registerScript = [=[
-local enable, taskName, workingDirectory, userPath, endpoint = ...
+local enable, taskName, workingDirectory, userPath, endpoint, executionSeconds = ...
 local ok, result = pcall(function()
 	local inspecting = enable=="inspect"
 	assert(inspecting or type(enable)=="boolean", "Invalid background task request")
@@ -169,6 +169,8 @@ try {
 if ($task -and $task.Description -ne $description) { exit 11 }
 ]]
 	if enable then
+		assert(type(executionSeconds)=="number" and executionSeconds>0 and executionSeconds==math.floor(executionSeconds), "Invalid task execution limit")
+		script = script .. "$executionSeconds = "..executionSeconds.."\n"
 		script = script .. "$powershell = "..literal(powershell).."\n"
 		if inspecting then
 			local arguments = launchArguments..encode(worker)
@@ -204,7 +206,7 @@ try {
         -not $trigger.Enabled -or $trigger.EndBoundary -or $trigger.Repetition.Duration -or
         [System.Xml.XmlConvert]::ToTimeSpan($trigger.Repetition.Interval).TotalMinutes -ne 5 -or
         $task.Settings.MultipleInstances -ne 'IgnoreNew' -or -not $task.Settings.StartWhenAvailable -or
-        [System.Xml.XmlConvert]::ToTimeSpan($task.Settings.ExecutionTimeLimit).TotalMinutes -ne 7) { exit 15 }
+        [System.Xml.XmlConvert]::ToTimeSpan($task.Settings.ExecutionTimeLimit).TotalSeconds -ne $executionSeconds) { exit 15 }
 } catch { exit 15 }
 if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { exit 16 }
 if ($task.State -eq 'Running') { exit 17 }
@@ -218,7 +220,7 @@ $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $action = New-ScheduledTaskAction -Execute $powershell -Argument $arguments
 $principal = New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Limited
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)
-$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 7)
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Seconds $executionSeconds)
 Register-ScheduledTask -TaskName $name -TaskPath '\' -Description $description -Action $action -Principal $principal -Trigger $trigger -Settings $settings -Force | Out-Null
 exit 0
 ]]
@@ -256,7 +258,7 @@ return ok, result
 local function launchTaskCheck(mode)
 	local taskName = "PoB AI Loot Sync " .. sha(main.userPath:lower()):sub(1,16)
 	local endpoint = mode and assert(market.endpoint, market.endpointError) or ""
-	return LaunchSubScript(registerScript, "", "", mode, taskName, GetRuntimePath(), main.userPath, (endpoint:gsub("/$", "")))
+	return LaunchSubScript(registerScript, "", "", mode, taskName, GetRuntimePath(), main.userPath, (endpoint:gsub("/$", "")), sync.taskExecutionSeconds)
 end
 
 function M.inspect(callback)
