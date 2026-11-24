@@ -569,6 +569,25 @@ function M.poll(build, force)
 		end
 		assert(not require("Modules.CraftingTasks").job,"Finish or cancel the active crafting job first")
 		assert(not require("Modules.JourneyUpgrades").job,"Finish or cancel upgrade measurements first")
+		if request.kind=="compare_gear_listings" then
+			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
+			local hasSlot=request.slot~=nil;local hasItem=request.itemText~=nil
+			assert(hasSlot~=hasItem,"Provide exactly one slot or itemText")
+			if hasSlot then assert(request.slot=="Ring 1" or request.slot=="Ring 2" or request.slot=="Amulet" or request.slot=="Belt","Choose an equipped jewellery slot") end
+			if hasItem then assert(type(request.itemText)=="string" and #request.itemText<=24000 and request.itemText:match("%S"),"Provide a copied item") end
+			local path=request.snapshotPath
+			assert(type(path)=="string" and #path<=1024 and not path:find("[%c]") and path:lower():match("%.json$")
+				and (path:match("^[A-Za-z]:[\\/]") or path:sub(1,1)=="/" and path:sub(1,2)~="//"),"Supply an absolute local JSON snapshot path")
+			local target
+			local browse=require("Modules.LootFilterMarketBrowse")
+			if hasItem then target=browse.listingTargetForItem(new("Item"):Item(request.itemText))
+			else for _,entry in ipairs(browse.buildTargets(build)) do if entry.listingSlot==request.slot then target=entry.listingItem;break end end end
+			assert(target,"The supplied item or selected slot does not contain supported comparable rare jewellery")
+			local result=require("Modules.LootFilterGearListings").compareFile(path,target,request.league)
+			M.status={id=request.id,status="gearListings",gearListings={slot=request.slot,source=hasItem and "copied item" or "equipped item",league=request.league,comparison=result,
+				note="Asking prices from the supplied snapshot only; freshness, availability and completed sales are not established."}}
+			M.publishState();return
+		end
 		if request.kind=="review_same_base_vendor_items" then
 			assert(request.baseRevision==M.revision(build),"Build changed. Refresh context.")
 			local result=require("Modules.VendorBaseSets").review(request.items)

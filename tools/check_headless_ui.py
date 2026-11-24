@@ -564,7 +564,7 @@ def main():
             assert all(b"Minimal" in z.read(name) for name in z.namelist()), "Ruthless ZIP lost its mode-specific rules"
         ruthless_archive.unlink()
     paths = sorted(frames.glob("*.json"))
-    assert len(paths) == 2707, f"Expected 2707 UI frames, found {len(paths)}"
+    assert len(paths) == 2713, f"Expected 2713 UI frames, found {len(paths)}"
     for width in (640, 960, 1280):
         for view in ("browser", "edit", "workspace"):
             assert (frames / f"{width}-shared-style-{view}.json").is_file(), f"Missing shared-style {view} at {width}px"
