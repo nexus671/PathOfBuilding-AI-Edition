@@ -66,6 +66,13 @@ describe("Crafting modifier base-roll targets",function()
 			local model=sim.model(case[1]);local mod=assert(model.byId[case[2]]);assert.is_true(math.abs(sim.rollRange(mod,function() return 0.04 end)-1/30)<1e-9)
 		end
 	end)
+	it("samples pinned per-minute degeneration rolls",function()
+		local model=sim.model(raw)
+		for _,case in ipairs({{"LifeRegeneration2Inverted",354},{"AddedManaRegenerationDelveInverted",120}}) do
+			local mod=assert(model.byId[case[1]])
+			assert.is_true(math.abs(sim.rollRange(mod,function() return 0.5 end)*case[2]-math.floor((case[2]+1)*0.5))<1e-8)
+		end
+	end)
 	it("preserves base-roll goals in saved crafting recipes",function()
 		newBuild();local recipe={steps={{method="alchemy"}},targets={{anyOf={"IncreasedLife4"},minBaseValue=65,maxBaseValue=67}}}
 		local store=build.savers.CraftingProjects;store:Upsert({id="roll-goal",title="Roll goal",slot="Helmet",startingItem=raw,goals={},steps={},nativeRecipe=recipe})

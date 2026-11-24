@@ -190,7 +190,7 @@ M.limits = {"Experimental PoE 1 model, not a complete game crafting implementati
 	"Supported: ordinary equipment, known modifier IDs, fractured modifiers, basic currencies, bench modifiers and essences. Meta modifiers protect/remap only the supported actions.",
 	"Supported crafts include fossils, Harvest, recombination, influence, corruption, sockets and veiled crafts; unsupported combinations fail explicitly. Review each action's model notes.",
 	"Rerolls model 4/5/6 rare modifiers with weights 8/3/1, and 1/2 magic modifiers equally. These distribution assumptions and PoB data coverage affect estimates.",
-	"Integer roll ranges use inclusive integer draws. Recognized fractional formats and matching per-minute regeneration modifiers use inclusive raw precision ticks; other fractional ranges use illustrative normalized rolls. Actual distributions remain unverified.",
+	"Integer roll ranges use inclusive integer draws. Recognized fractional formats and matching per-minute regeneration or degeneration modifiers use inclusive raw precision ticks; other fractional ranges use illustrative normalized rolls. Actual distributions remain unverified.",
 	"Modifier targets match IDs and optional normalized rolls or supported base-roll components. Base values precede catalyst and character scaling. Wilson intervals measure sampling uncertainty only. Results describe the bounded recipe, not guaranteed in-game costs."}
 
 local function integer(value,low,high,label)
@@ -495,12 +495,12 @@ local function rollPrecision(line,low,high)
  end
  rollPrecisionCache[line]=scale;return scale
 end
--- A displayed regeneration-per-second endpoint can conceal a per-minute integer.
+-- A displayed regeneration or degeneration endpoint can conceal a per-minute integer.
 -- Use pinned raw bounds only when the identity, stat and endpoints agree.
 local rawRegenCache=setmetatable({},{__mode="k"})
 local function rawRegenSteps(mod,line,low,high)
- if #mod~=1 or not line:match("^Regenerate %(") then return end
- local expectedStat=line:match("%% of Life per second$") and "life_regeneration_rate_per_minute_%" or line:match("%% of Energy Shield per second$") and "base_energy_shield_regeneration_rate_per_minute_%" or line:match(" Life per second$") and "base_life_regeneration_rate_per_minute" or line:match(" Mana per second$") and "base_mana_regeneration_rate_per_minute"
+ if #mod~=1 or not (line:match("^Regenerate %(") or line:match("^Lose %(")) then return end
+ local expectedStat=line:match("^Lose %(.+%) Life per second$") and "life_degeneration_per_minute_not_in_grace" or line:match("^Lose %(.+%) Mana per second$") and "mana_degeneration_per_minute_not_in_grace" or line:match("^Regenerate %(.+%)%% of Life per second$") and "life_regeneration_rate_per_minute_%" or line:match("^Regenerate %(.+%)%% of Energy Shield per second$") and "base_energy_shield_regeneration_rate_per_minute_%" or line:match("^Regenerate %(.+%) Life per second$") and "base_life_regeneration_rate_per_minute" or line:match("^Regenerate %(.+%) Mana per second$") and "base_mana_regeneration_rate_per_minute"
  if not expectedStat then return end
  local cached=rawRegenCache[mod];if cached~=nil then return cached or nil end
  local id=rollModifierIds[mod];if not id then return end

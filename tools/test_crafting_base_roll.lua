@@ -3,6 +3,13 @@ local output=arg[1];arg={};dofile("HeadlessWrapper.lua");main.disableDevAutoSave
 local sim=require("Modules.CraftingSimulator");local raw='Rarity: NORMAL\nIron Hat\nItem Level: 86';local model=sim.model(raw)
 local state=copyTable(model.initial);state.rarity="RARE";state.affixes={{id="IncreasedLife4",range=0.8}}
 local regen=assert(model.byId.LifeRegeneration2)
+for _,case in ipairs({{"LifeRegeneration2Inverted",354},{"AddedManaRegenerationDelveInverted",120}}) do
+ local mod=assert(model.byId[case[1]])
+ for _,p in ipairs({0.001,0.02,0.5,0.999}) do
+  local actual=sim.rollRange(mod,function() return p end)
+  assert(math.abs(actual-math.floor(p*(case[2]+1))/case[2])<1e-9,case[1].." must use pinned per-minute ticks")
+ end
+end
 local first=sim.rollRange(regen,function() return 0.001 end);assert(first==0)
 local middle=sim.rollRange(regen,function() return 0.5 end);assert(math.abs(middle-177/354)<1e-10)
 assert(sim.baseRollValue(regen,middle)==5.1)
