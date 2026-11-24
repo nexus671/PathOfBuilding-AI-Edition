@@ -1367,6 +1367,14 @@ Item Level: 86
 			local snapshot={next_change_id="cursor",stashes={stash(100+index,"Seller#0001",{listed})}}
 			assert(listings.compare(json.encode(snapshot),target,"Covens").matched==0,case[1].." must not be treated as an exact match")
 		end
+		for index,flags in ipairs({{unknown=true},{fractured="yes"},{crafted=false}}) do
+			local listed=row(200+index,"~price 1 chaos");listed.explicitMods[1].flags=flags
+			local snapshot={next_change_id="cursor",stashes={stash(200+index,"Seller#0001",{listed})}}
+			assert(listings.compare(json.encode(snapshot),target,"Covens").matched==0,"Unknown or invalid modifier flags need review")
+		end
+		local contradiction=row(210,"~price 1 chaos");contradiction.frameType=3
+		local snapshot={next_change_id="cursor",stashes={stash(210,"Seller#0001",{contradiction})}}
+		assert(listings.compare(json.encode(snapshot),target,"Covens").matched==0,"A contradictory item frame needs review")
 	end
 	local low, early, high = row(1,"~price 20 chaos"),row(2,"~price 10 chaos"),row(3,"~b/o 30 chaos")
 	early.explicitMods={{description="+41% to Cold Resistance\n+79 to maximum Life"}}
