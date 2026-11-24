@@ -243,3 +243,55 @@ test('rejects malformed exchange item names and line identifiers using native te
   const conflicting=fixture({Currency:()=>response({...exchange,items:[...exchange.items,{id:'alt',name:'Different item'}]})});
   assert.match((await qualifyCache(root,conflicting)).probes.find(probe=>probe.name==='Currency').reason,/conflicting exchange item ID/);
 });
+
+
+test('requires liquid native-identifiable tier-wide map quotes for every map feed',async()=>{
+  for (const [category,name] of Object.entries({Map:'Map',BlightedMap:'Blighted Map',BlightRavagedMap:'Blight-ravaged Map'})) {
+    const row={name:`${name} (Tier 16)`,detailsId:'tier-16',chaosValue:12,count:40,listingCount:50};
+    const probe=async lines=>(await qualifyCache(root,{...fixture({[category]:()=>response({lines})}),extra:[category]})).probes.at(-1);
+    assert.deepEqual((await probe([row,{...row,count:20},{...row,name:`${name} (Tier 3)`,detailsId:'tier-3',mapTier:3}])).exactMapTiers,[3,16]);
+    for (const bad of [
+      [{...row,name:'Vaal Temple Map',mapTier:16}], [{...row,count:19}], [{...row,listingCount:19}],
+      [{...row,detailsId:'bad/id'}], [{...row,mapTier:15}], [{...row,baseType:'Vaal Temple Map'}],
+      [row,{...row,count:1}], [row,{...row,chaosValue:13}], [row,{...row,variant:'different'}],
+      [row,{...row,detailsId:'other-id'}], [row,{...row,name:'Named map'}], [row,{...row,count:0}],
+    ]) {
+      for (const lines of [bad,[...bad].reverse()]) {
+        const result=await probe(lines);
+        assert.equal(result.status,'failed',JSON.stringify(lines));
+        assert.match(result.reason,/tier-wide/);
+      }
+    }
+    const healthy=await probe([row,{...row,count:25}]);
+    assert.deepEqual(healthy.exactMapTiers,[16]);
+    assert.equal(healthy.priced,1);assert.equal(healthy.listed,1);
+  }
+});
+
+test('qualifies Imbued gems as advisory name and support variants without fabricated regular tuples',async()=>{
+  const row={name:'Cyclone',variant:'Power Charge On Critical',detailsId:'cyclone-power-charge-on-critical',chaosValue:50,count:25,listingCount:30};
+  const probe=async lines=>(await qualifyCache(root,{...fixture({ImbuedGem:()=>response({lines})}),extra:['ImbuedGem']})).probes.at(-1);
+  const accepted=await probe([row,{...row,count:20}]);
+  assert.equal(accepted.status,'passed');assert.equal(accepted.advisoryGemQuotes,1);
+  assert.equal(accepted.exactGemQuotes,undefined);
+  assert.equal((await probe([{...row,gemLevel:null,gemQuality:null,corrupted:null}])).advisoryGemQuotes,1);
+  const uncorrupted={...row,detailsId:'uncorrupted-id',gemLevel:20,gemQuality:0,corrupted:false};
+  const corrupted={...row,detailsId:'corrupted-id',gemLevel:20,gemQuality:0,corrupted:true};
+  assert.equal((await probe([uncorrupted,corrupted])).advisoryGemQuotes,1);
+  assert.equal((await probe([uncorrupted,corrupted,{...corrupted,detailsId:'conflict'}])).advisoryGemQuotes,1);
+  for (const lines of [
+    [{...row,variant:undefined}], [{...row,variant:''}], [{...row,variant:'unsafe\nlabel'}],
+    [{...row,count:19}], [{...row,listingCount:19}], [row,{...row,count:1}],
+    [row,{...row,chaosValue:99}], [row,{...row,detailsId:'other-id'}],
+    [row,{...row,variant:'Different support'}], [{...row,detailsId:'bad/id'}],
+    [row,{...row,chaosValue:99},{...row,detailsId:'other-id'}],
+    [row,{...row,variant:'Different support'},{...row,detailsId:'other-id'}],
+    [row,{...row,variant:'Power Charge on Critical Support',detailsId:'other-id'}],
+    [{...row,gemLevel:'20'}], [{...row,gemLevel:0}], [{...row,gemLevel:41}],
+    [{...row,gemQuality:false}], [{...row,gemQuality:101}], [{...row,gemQuality:19.5}],
+    [{...row,corrupted:'false'}],
+  ]) {
+    assert.equal((await probe(lines)).status,'failed');
+    assert.equal((await probe([...lines].reverse())).status,'failed');
+  }
+});

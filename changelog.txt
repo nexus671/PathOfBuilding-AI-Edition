@@ -1,3 +1,7 @@
+VERSION[2.68.1-ai.preview1269][2026/11/24]
+
+* Compare Imbued gems in your build by gem and support when the market reports an aggregate quote.
+
 VERSION[2.68.1-ai.preview1268][2026/11/24]
 
 * Clarify when Atlas comparison bonus counts do not change.
