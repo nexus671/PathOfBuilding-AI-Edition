@@ -52,7 +52,8 @@ local function open(build, managedTarget)
 					end
 					controls.query:SetText("="..entry.name)
 					target = entry
-					status(entry.level and string.format("Matching level %g and %g%% quality.",entry.level,entry.quality)
+					status(entry.imbuedSupport and "Comparing gem and support; listed level or quality must agree."
+						or entry.level and string.format("Matching level %g and %g%% quality.",entry.level,entry.quality)
 						or entry.details[1])
 				end,
 			})
@@ -128,6 +129,14 @@ local function open(build, managedTarget)
 				if comparable and not row.conflicting then
 					details[#details+1] = comparable.details[#comparable.details]
 				end
+				if row.partialGemMatch and not row.conflicting then
+					details[#details+1]="Advisory match: exact gem name and Imbued support. Any listed level or quality agrees with the build."
+					local missing={}
+					if row.gemLevel==nil then missing[#missing+1]="level" end
+					if row.gemQuality==nil then missing[#missing+1]="quality" end
+					if row.corrupted==nil then missing[#missing+1]="corruption" end
+					details[#details+1]="Not provided by this quote: "..table.concat(missing,", ")..". Compare the actual item before valuing it."
+				end
 					local function show(label,value)
 						if value then details[#details+1]=label..tostring(value) end
 					end
@@ -138,7 +147,8 @@ local function open(build, managedTarget)
 				if not row.conflicting then show("Base: ",row.base);show("Variant: ",row.variant) end
 				if advisory and not row.conflicting then
 					if row.incomplete then details[#details+1]="The listing lacks verifiable price ID or variant details."
-					elseif not row.supported then details[#details+1]="The estimate needs at least 20 consistent listings and observations." end
+					end
+					if not row.supported and (not row.incomplete or row.partialGemMatch) then details[#details+1]="The estimate needs at least 20 consistent listings and observations." end
 				end
 				if not row.conflicting and row.corrupted~=nil then details[#details+1]=row.corrupted and "Corrupted" or "Uncorrupted" end
 					local evidence = row.baseEvidence

@@ -364,6 +364,23 @@ local function uniqueBaseEvidence(lines, variants, catalogue)
 	return evidence
 end
 
+local function partialImbuedMatch(item, target)
+	if not target or target.category~="ImbuedGem" or item.name~=target.name
+		or item.gemLevel~=nil and item.gemQuality~=nil then return false end
+	local function support(value)
+		if not marketName(value) then return nil end
+		return value:lower():gsub(" support$","")
+	end
+	local wanted, listed = support(target.imbuedSupport), support(item.variant)
+	if not wanted or wanted=="" or wanted~=listed then return false end
+	local function agrees(value, expected, minimum, maximum)
+		return value==nil or type(value)=="number" and value==math.floor(value)
+			and value>=minimum and value<=maximum and value==expected
+	end
+	return agrees(item.gemLevel,target.level,1,40) and agrees(item.gemQuality,target.quality,0,100)
+		and (item.corrupted==nil or type(item.corrupted)=="boolean")
+end
+
 function M.rows(body, category, query, target, catalogue)
 	assert(type(body)=="string" and #body<=M.maxBytes, "Market response exceeds the size limit")
 	local out = {}
@@ -409,10 +426,13 @@ function M.rows(body, category, query, target, catalogue)
 				_, normalizedQuality, normalizedCorrupted, _, validGemTuple = gemMarket.variant(item)
 			end
 			local advisoryId = advisory and identity
+			local partialGemMatch = category.id=="ImbuedGem" and partialImbuedMatch(item,target)
 			local comparable = not target or (target.level and item.name==target.name and item.gemLevel==target.level
 				and (regularFeed and validGemTuple and normalizedQuality==target.quality
 					or not regularFeed and item.gemQuality==target.quality) or not target.level and (item.name==target.name
-					or (target.category=="BaseType" or target.baseTarget) and item.baseType==target.name))
+					or (target.category=="BaseType" or target.baseTarget) and item.baseType==target.name)) or partialGemMatch
+			if target and target.category=="ImbuedGem" and category.id=="ImbuedGem"
+				and item.corrupted~=nil and type(item.corrupted)~="boolean" then comparable=false end
 			if marketName(name) and positive(item.chaosValue) and matches(name,base,variant,identity)
 				and comparable and not (advisoryId and handled[advisoryId]) then
 				local corrupted
@@ -443,6 +463,7 @@ function M.rows(body, category, query, target, catalogue)
 					links=positive(item.links) and item.links or nil,
 					gemLevel=gemLevel,
 					gemQuality=gemQuality,
+					partialGemMatch=partialGemMatch or nil,
 					mapTier=maps.tier(item,category.id) or (positive(item.mapTier) and item.mapTier or nil),
 					count=positive(item.count) and item.count or nil,
 					listings=positive(item.listingCount) and item.listingCount or nil,

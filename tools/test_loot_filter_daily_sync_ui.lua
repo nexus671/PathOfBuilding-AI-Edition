@@ -760,6 +760,43 @@ do
 	launch.DownloadPage = originalMarketDownload
 end
 
+-- Real-shaped Imbued rows compare only the verified gem/support dimensions.
+do
+	local browser=require("Modules.LootFilterMarketBrowse")
+	local json=require("dkjson")
+	local target={category="ImbuedGem",name="Cyclone",level=20,quality=20,imbuedSupport="Power Charge On Critical Support"}
+	local row={name="Cyclone",variant="power charge on critical",detailsId="cyclone-power-charge-on-critical",chaosValue=50,count=1,listingCount=1}
+	local function compare(value) return browser.rows(assert(json.encode({lines={value}})),{id="ImbuedGem"},"",target) end
+	local result=compare(row)[1]
+	assert(result.partialGemMatch and result.gemLevel==nil and result.gemQuality==nil and result.corrupted==nil and result.incomplete)
+	for _, patch in ipairs({{variant="Alternate Support"},{gemLevel=19},{gemQuality=19},{gemLevel="20"},{gemQuality=false},{corrupted="false"}}) do
+		local value={};for key,entry in pairs(row) do value[key]=entry end
+		for key,entry in pairs(patch) do value[key]=entry end
+		assert(not pcall(compare,value))
+	end
+	row.gemLevel=20;assert(compare(row)[1].partialGemMatch)
+	row.gemQuality=20;row.variant="Alternate Support"
+	assert(not compare(row)[1].partialGemMatch) -- Existing complete alternate comparisons survive.
+	row.corrupted="false";assert(not pcall(compare,row));row.corrupted=nil
+	row.gemLevel=nil;row.gemQuality=nil;row.variant="Power Charge On Critical"
+	local collection={skillsTab={socketGroupList={{imbuedSupport=target.imbuedSupport,gemList={{gemData={name="Cyclone",grantedEffect={support=false}},level=20,quality=20}}}}}}
+	main.popups={}
+	launch.DownloadPage=function(_,url,callback)
+		assert(url:find("type=ImbuedGem",1,true))
+		callback({header="HTTP/1.1 200 OK\r\nDate: "..os.date("!%a, %d %b %Y %H:%M:%S GMT").."\r\n\r\n",body=assert(json.encode({lines={row}}))})
+	end
+	require("Classes.LootFilterMarketBrowseControl").Open(collection)
+	marketUI:text("league","Covens");marketUI:click("buildTarget");marketUI:text("search","Cyclone");marketUI:click("choose")
+	marketUI:click("get")
+	local shown={};for _,line in ipairs(main.popups[1].controls.details.list) do shown[#shown+1]=StripEscapes(line[1] or "") end
+	local detail=table.concat(shown," "):gsub("%s+"," ")
+	assert(detail:find("Advisory match: exact gem name and Imbued support",1,true),detail)
+	assert(detail:find("Not provided by this quote: level, quality, corruption",1,true),detail)
+	assert(detail:find("at least 20 consistent listings and observations",1,true),detail)
+	if output then marketUI:frame():write(output.."/"..reviewWidth.."-imbued-partial-advisory.json") end
+	launch.DownloadPage=originalMarketDownload
+end
+
 -- Exercise the exact publish workflow with a simulated account response.
 newBuild()
 main.popups = {}
