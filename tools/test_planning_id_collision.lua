@@ -31,3 +31,20 @@ end
 local snapshot=inv.capture(project,state,'New snapshot',nil,{prior});assert(snapshot.id=='item-'..string.rep('b',20))
 local resumed=inv.project(snapshot,{{id='craft-'..string.rep('a',20)}});assert(resumed.id=='craft-'..string.rep('b',20));data.newId=realNewId
 print('INVENTORY_ID_COLLISION_OK')
+newBuild();main.popups={};local filterUI=require('Modules.HeadlessUI').install({width=960,height=640});filterUI:bind(build)
+local filters=require('Modules.LootFilters');local profile=filters.profile('filter-existing','Existing filter');profile.rules={filters.rule('rule-existing','Keep this rule',{'BaseType == "Iron Hat"'})};build.savers.LootFilters:Upsert(profile)
+build.planningWorkspace=require('Modules.PlanningWorkspace').new(build);build.viewMode='PLANNER';build.planningWorkspace:Show('filters');filterUI:click('viewCustomize');filterUI:choose('source','My rules')
+attempts=0;data.newId=function(prefix,entries,length) attempts=attempts+1;if attempts==1 then return 'rule-existing' end;return realNewId(prefix,entries,length) end
+filterUI:click('add');filterUI:click('keepRule');data.newId=realNewId
+local draft=build.planningWorkspace.cache.filters.layout.snapshot();local saved=draft.data.profiles[1].rules
+assert(#saved==2 and saved[1].title=='Keep this rule' and saved[2].id~='rule-existing');filterUI:restore();print('FILTER_RULE_ID_COLLISION_OK')
+newBuild();main.popups={};local filterCopyUI=require('Modules.HeadlessUI').install({width=960,height=640});filterCopyUI:bind(build)
+local original=filters.profile('filter-'..string.rep('a',20),'Original');build.savers.LootFilters:Upsert(original)
+build.planningWorkspace=require('Modules.PlanningWorkspace').new(build);build.viewMode='PLANNER';build.planningWorkspace:Show('filters')
+data.newId=function(prefix,entries,length)
+ calls=0;package.loaded.sha1=function() calls=calls+1;return string.rep(calls==1 and 'a' or 'b',40) end
+ local result=realNewId(prefix,entries,length);package.loaded.sha1=old or originalSha;return result
+end
+filterCopyUI:click('manage');filterCopyUI:text('search','Duplicate profile');filterCopyUI:click('choose');data.newId=realNewId
+local copied=build.planningWorkspace.cache.filters.layout.snapshot().data.profiles
+assert(#copied==2 and copied[1].title=='Original' and copied[2].id=='filter-'..string.rep('b',20));filterCopyUI:restore();print('FILTER_PROFILE_ID_COLLISION_OK')

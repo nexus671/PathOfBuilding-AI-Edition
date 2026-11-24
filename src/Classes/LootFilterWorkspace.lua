@@ -50,7 +50,7 @@ local function itemTier(sample)
 	if sample.Identified==false and (sample.Rarity=="Magic" or sample.Rarity=="Rare") then return sample.UnidentifiedItemTier end
 end
 local function button(c,key,x,y,w,label,run) c[key]=new("ButtonControl"):ButtonControl(ui.anchor,{x,y,w,28},label,run);return c[key] end
-local function identifier() return "filter-"..require("sha1")(os.time()..tostring({})):sub(1,20) end
+local function identifier(entries,prefix) return require("Modules.PlanningData").newId(prefix or "filter-",entries,20) end
 function M.Open(build,source,layout,controller)
 	local saver=build.savers.LootFilters;local c={};local custom={};local backgrounds={};local w,h=layout.width,layout.height
 	local state=source or {};local data=state.data or copyTable(saver.data);local profile=filters.find(data,state.selected) or data.profiles[1]
@@ -329,10 +329,10 @@ function M.Open(build,source,layout,controller)
 		local blocked={economy=not raw or not profile or profile.mode~="Normal",economyRules=not profile or profile.mode~="Normal"};if report and report.error then blocked.structure=true;blocked.categoryStyles=true;blocked.sharedStyles=true;blocked.economy=true;for _,entry in ipairs(choices) do if blocked[entry.id] then entry.details[#entry.details+1]="Unavailable: resolve the compilation error in Overview or use Audit and update first." end end end
 		require("Classes.PlanningBrowserControl").Open("Filter profile tools",choices,{action="Open",canChoose=function(entry) return not blocked[entry.id] end,choose=function(entry)
 			main:ClosePopup()
-			if entry.id=="new" then profile=filters.profile(identifier(),"My loot filter");data.profiles[#data.profiles+1]=profile;data.activeId=profile.id;page="Overview";selected=nil;draft();reopen()
-			elseif entry.id=="duplicate" and profile then profile=copyTable(profile);profile.id=identifier();profile.title=profile.title.." copy";data.profiles[#data.profiles+1]=profile;draft();reopen()
+			if entry.id=="new" then profile=filters.profile(identifier(data.profiles),"My loot filter");data.profiles[#data.profiles+1]=profile;data.activeId=profile.id;page="Overview";selected=nil;draft();reopen()
+			elseif entry.id=="duplicate" and profile then profile=copyTable(profile);profile.id=identifier(data.profiles);profile.title=profile.title.." copy";data.profiles[#data.profiles+1]=profile;draft();reopen()
 			elseif entry.id=="import" then controller.Import(function(text,linked)
-				if not profile then profile=filters.profile(identifier(),"Imported filter");data.profiles[#data.profiles+1]=profile end
+				if not profile then profile=filters.profile(identifier(data.profiles),"Imported filter");data.profiles[#data.profiles+1]=profile end
 				profile.template,profile.upstreamDigest=text,nil
 				if linked then
 					profile.importFiles=require("Modules.LootFilterImports").merge(profile.importFiles,linked)
@@ -369,7 +369,7 @@ function M.Open(build,source,layout,controller)
 	if not profile then
 		local cw=math.floor((w-64)/3)
 		for i,entry in ipairs({{"Campaign","Start a new journey","campaign","Assets/Crafting/transmute.png"},{"Early maps","Build a useful pickup list","early_maps","Assets/Crafting/chaos.png"},{"Endgame","Keep the drops that matter","endgame","Assets/Crafting/exalt.png"}}) do
-			local x=16+(i-1)*(cw+16);local key="create"..i;local control=button(c,key,x,164,cw,entry[1],function() profile=filters.profile(identifier(),entry[1].." loot",entry[3]);data.profiles[#data.profiles+1]=profile;data.activeId=profile.id;draft();reopen() end);control.height=220;custom[key]=true;control.planningFocusable=true
+			local x=16+(i-1)*(cw+16);local key="create"..i;local control=button(c,key,x,164,cw,entry[1],function() profile=filters.profile(identifier(data.profiles),entry[1].." loot",entry[3]);data.profiles[#data.profiles+1]=profile;data.activeId=profile.id;draft();reopen() end);control.height=220;custom[key]=true;control.planningFocusable=true
 			function control:Draw() local px,py=self:GetPos();visual.box(px,py,cw,220,self:IsMouseOver() and "^x829AB1" or "^x394D60");visual.box(px+1,py+1,cw-2,218,"^x152B43");SetDrawColor(1,1,1);DrawImage(visual.image(entry[4]),px+(cw-64)/2,py+28,64,64);visual.text(px+20,py+116,24,entry[1],"^xF2D69E",cw-40);visual.text(px+20,py+158,14,entry[2],"^xBECFDC",cw-40);visual.text(px+20,py+192,14,"Create profile  >","^xA6D8EF",cw-40) end
 		end
 		ui.label(c,"emptyTitle",16,124,"Choose where you are in your build",20)
@@ -468,7 +468,10 @@ function M.Open(build,source,layout,controller)
 		local bw=math.floor((listW-24)/4)
 		button(c,"add",listX,h-94,bw,scope=="Policies" and "Set policy" or "+ Rule",function()
 			if scope=="Policies" then require("Classes.LootFilterCampaignControl").Open(build,profile.campaign,function(value) profile.campaign=value;draft();reopen() end,profile.mode)
-			else editRule(filters.rule("rule-"..identifier(),"New pickup",{'BaseType == "Iron Hat"'}),keepRule) end
+			else editRule(filters.rule(identifier(profile.rules,"rule-filter-"),"New pickup",{'BaseType == "Iron Hat"'}),function(rule)
+				for _,existing in ipairs(profile.rules) do if existing.id==rule.id then rule.id=identifier(profile.rules,"rule-filter-");break end end
+				keepRule(rule)
+			end) end
 		end)
 		button(c,"edit",listX+bw+8,h-94,bw,"Edit",edit)
 		c.edit.enabled=function() return selectedEntry~=nil end
