@@ -395,13 +395,41 @@ local function priceHighlights(policy, quote, cutoff, name, area)
 	return blocks
 end
 
+local continuityLimit = 1000
+local function checkedContinuity(previous)
+	if previous==nil then return {} end
+	assert(type(previous)=="table", "Invalid verified cutoff continuity")
+	local count = 0
+	for key, cutoff in pairs(previous) do
+		count=count+1
+		assert(count<=continuityLimit and type(key)=="string" and #key<=24 and key:match("^[1-9]%d*:[1-9]%d*$")
+			and type(cutoff)=="number" and cutoff>=0 and cutoff<10000 and cutoff==math.floor(cutoff),
+			"Invalid verified cutoff continuity")
+	end
+	return previous
+end
+
 -- Only rewrite the personal stack section, and only exact, simple Hide rules.
 -- Retain the complete original text for every unsupported rule.
-function M.review(raw, quotes, target, preferences, confirmation)
+function M.review(raw, quotes, target, preferences, confirmation, priorContinuity)
 	local policy = M.pickupPolicy(target, preferences)
+	local previous = checkedContinuity(priorContinuity)
+	local continuity, continuityCount = {}, 0
+	local function retain(ordinal, position, quote, old, cutoff, reason)
+		local key = ordinal..":"..position
+		local retainedReason
+		if (not quote or not M.liquid(quote)) and previous[key]~=nil and previous[key]<old then
+			cutoff, retainedReason = previous[key], reason
+		end
+		if cutoff<old and continuityCount<continuityLimit then
+			continuityCount=continuityCount+1
+			continuity[key] = cutoff
+		end
+		return cutoff, retainedReason
+	end
 	raw = appearance.strip(raw)
 	local start, stop, tagged = M.sectionBounds(raw)
-	if not start or not stop then return raw, {} end
+	if not start or not stop then return raw, {}, nil, continuity end
 	local section = raw:sub(start, stop - 1)
 	local changes, skipped, highlights = {}, {}, {}
 	local useHighlights = (policy.highlightChaos or policy.strongHighlightChaos) and appearanceSafe(raw)
@@ -409,7 +437,7 @@ function M.review(raw, quotes, target, preferences, confirmation)
 		skipped[#skipped+1] = {name="Price highlights",styleOnly=true,
 			reason="This filter has imports or unverified syntax."}
 	end
-	local function rewrite(block, exchangeCategory)
+	local function rewrite(block, exchangeCategory, ordinal)
 		local parsed = parser.parse(block)
 		local rule = parsed.rules[1]
 		if #parsed.rules ~= 1 or #parsed.diagnostics ~= 0 or not rule or #parsed.imports > 0 then return block end
@@ -419,15 +447,21 @@ function M.review(raw, quotes, target, preferences, confirmation)
 			gem.key = nil
 			gem.source, gem.priceId = gems.feed, M.evidencePriceId(quote and quote.providerId)
 			local cutoff, reason, price = cutoffFor(quote,1,policy[gem.scope] or policy.target)
+			local retainedReason
+			cutoff, retainedReason = retain(ordinal,1,quote,1,cutoff,reason)
 			if cutoff==1 then
 				gem.old, gem.reason, gem.maps = 1, reason, gem.scope=="maps"
 				skipped[#skipped+1] = gem
 				return block
 			end
 			gem.old, gem.cutoff, gem.price = 1, 0, price
-			gem.source, gem.currentPrice, gem.observations = quote.source, quote.currentPrice, quote.observations
+			gem.retainedReason = retainedReason
 			gem.classes, gem.maps = {gem.class}, gem.scope=="maps"
-			gem.volume, gem.liquidityUnit = quote.volume, quote.liquidityUnit
+			if retainedReason then gem.priceId = nil
+			else
+				gem.source, gem.currentPrice, gem.observations = quote.source, quote.currentPrice, quote.observations
+				gem.volume, gem.liquidityUnit = quote.volume, quote.liquidityUnit
+			end
 			changes[#changes+1] = gem
 			return ""
 		end
@@ -439,13 +473,17 @@ function M.review(raw, quotes, target, preferences, confirmation)
 			local name = maps.quoteName(category,tier)
 			local quote = quotes[quoteKey(name,category)]
 			local cutoff, reason, price = cutoffFor(quote,1,policy.maps or policy.target)
+			local retainedReason
+			cutoff, retainedReason = retain(ordinal,1,quote,1,cutoff,reason)
 			if cutoff == 1 then
 				skipped[#skipped+1] = {name=name,old=1,reason=reason,maps=true,scope="maps",source=category,priceId=M.evidencePriceId(quote and quote.id)}
 				return block
 			end
-			changes[#changes+1] = {name=name,old=1,cutoff=0,price=price,currentPrice=quote.currentPrice,
-				source=quote.source,priceId=M.evidencePriceId(quote.id),observations=quote.observations,classes={"Maps"},volume=quote.volume,
-				liquidityUnit=quote.liquidityUnit,maps=true,scope="maps",tier=tier,blighted=variant.blighted,ravaged=variant.ravaged}
+			local evidenceQuote = not retainedReason and quote or nil
+			changes[#changes+1] = {name=name,old=1,cutoff=0,price=price,currentPrice=evidenceQuote and evidenceQuote.currentPrice,
+				source=category,priceId=M.evidencePriceId(evidenceQuote and evidenceQuote.id),observations=evidenceQuote and evidenceQuote.observations,
+				classes={"Maps"},volume=evidenceQuote and evidenceQuote.volume,liquidityUnit=evidenceQuote and evidenceQuote.liquidityUnit,
+				maps=true,scope="maps",tier=tier,blighted=variant.blighted,ravaged=variant.ravaged,retainedReason=retainedReason}
 			return ""
 		end
 		if conditions.MapTier or conditions.Rarity or conditions.BlightedMap or conditions.UberBlightedMap then return block end
@@ -467,7 +505,7 @@ function M.review(raw, quotes, target, preferences, confirmation)
 			if name:find('[%c"\\]') then return block end
 		end
 		local pickupTarget = policy[scope] or policy.target
-		for _, name in ipairs(base.values) do
+		for position, name in ipairs(base.values) do
 			local quote = quotes[quoteKey(name, card and "DivinationCard" or exchangeCategory)]
 			local limit = not card and not singleItem and policy.caps[name]
 			local comparison
@@ -476,7 +514,9 @@ function M.review(raw, quotes, target, preferences, confirmation)
 				comparison = finite(confirmed) and confirmed or false
 			end
 			local cutoff, reason, usedPrice = cutoffFor(quote,old,pickupTarget,limit,comparison)
-			local styles = not singleItem and useHighlights and (stack or cutoff==0) and priceHighlights(policy,quote,cutoff,name,area) or {}
+			local retainedReason
+			cutoff, retainedReason = retain(ordinal,position,quote,old,cutoff,reason)
+			local styles = not retainedReason and not singleItem and useHighlights and (stack or cutoff==0) and priceHighlights(policy,quote,cutoff,name,area) or {}
 			if #styles>0 then
 				for _, itemClass in ipairs(class.values) do
 					local byName = highlights[itemClass] or {}
@@ -493,10 +533,12 @@ function M.review(raw, quotes, target, preferences, confirmation)
 				changed = changed or cutoff~=old
 				local icons = {}
 				for index, style in ipairs(styles) do icons[index] = {firstStack=style.firstStack,icon=appearance.icon(style.tier,style.style)} end
-				changes[#changes + 1] = {name=name, old=old, cutoff=cutoff, price=usedPrice or quote.price, currentPrice=quote.currentPrice,
-					source=quote.source, priceId=M.evidencePriceId(quote.id), observations=quote.observations, classes=class.values,
-					volume=quote.volume, maps=scope=="maps", scope=scope,highlights=#icons>0 and icons or nil,
-					confirmedPrice=cutoff>old and comparison or nil}
+				local evidenceQuote = not retainedReason and quote or nil
+				changes[#changes + 1] = {name=name, old=old, cutoff=cutoff, price=evidenceQuote and (usedPrice or evidenceQuote.price),
+					currentPrice=evidenceQuote and evidenceQuote.currentPrice,source=exchangeCategory or card and "DivinationCard" or evidenceQuote and evidenceQuote.source,
+					priceId=M.evidencePriceId(evidenceQuote and evidenceQuote.id),observations=evidenceQuote and evidenceQuote.observations,classes=class.values,
+					volume=evidenceQuote and evidenceQuote.volume,maps=scope=="maps",scope=scope,highlights=#icons>0 and icons or nil,
+					confirmedPrice=cutoff>old and comparison or nil,retainedReason=retainedReason}
 			end
 			group[cutoff] = group[cutoff] or {}
 			table.insert(group[cutoff], '"' .. name .. '"')
@@ -522,7 +564,7 @@ function M.review(raw, quotes, target, preferences, confirmation)
 	local blocks = {}
 	local parsed = parser.parse(section)
 	local selections = tagged and exchangeSelections(section,parsed) or {}
-	for _, rule in ipairs(parsed.rules) do
+	for ordinal, rule in ipairs(parsed.rules) do
 		local last = rule.line + #rule.rawLines - 1
 		local original = table.concat(lines, "", rule.line, last)
 		-- A formatting gap or inline comment makes the exact text unsafe to replace.
@@ -533,7 +575,7 @@ function M.review(raw, quotes, target, preferences, confirmation)
 		end
 		if contiguous and not original:find("#", 1, true) then
 			local category = selections[rule.line]
-			local rewritten = rewrite(original,category)
+			local rewritten = rewrite(original,category,ordinal)
 			local first = category and rule.line-1 or rule.line
 			if category and rewritten==original then rewritten=lines[first]..rewritten end
 			blocks[first] = { last = last, text = rewritten }
@@ -552,7 +594,7 @@ function M.review(raw, quotes, target, preferences, confirmation)
 	end
 	section = table.concat(output)
 	local candidate = raw:sub(1, start - 1) .. section .. raw:sub(stop)
-	return appearance.apply(candidate,highlights), changes, skipped
+	return appearance.apply(candidate,highlights), changes, skipped, continuity
 end
 
 function M.validateManagedRules(rules)
