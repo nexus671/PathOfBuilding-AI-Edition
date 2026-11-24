@@ -54,6 +54,8 @@ If a sync target was edited outside PoB, **External edits** compares the live fi
 
 **Copy diagnostics** exports a JSON report with recent run times, verified response ages, and available quote and simulated drop details. The report excludes local file paths and protected sample definitions.
 
+**Last review**, **Copy diagnostics**, and the read-only AI diff include the provider price ID for changed rules when the feed supplies an ID. The AI diff includes the protected check count and the freshness of every requested feed. For an unchanged managed rule, Last review shows the selected feed when a quote is missing or ambiguous.
+
 ## Optional background sync on Windows
 
 Select **Enable background sync** in **Daily price sync** to register a task for your Windows account. While you are signed in, Windows checks every five minutes for a due update, including when PoB is closed. PoB still uses your configured daily time, verified baseline, and protected samples. The task stays idle when sync is paused or disabled, and **Disable background sync** removes it.
@@ -69,6 +71,12 @@ Open **Pickup policy** in daily sync and choose optional campaign and map chaos 
 You can also set an absolute maximum hide cutoff for an exact commodity name. For example, `{"Orb of Alteration": 7}` permits a managed rule to hide stacks of at most seven when prices justify it. A new profile needs the latest liquid quote plus three earlier liquid daily quotes before it can tighten. The highest of the recent quotes must still put the newly hidden stacks below 85% of the pickup target. Divination cards retain their visibility-only policy.
 
 Select **Use with next update**, then **Preview changes** to check the resulting filter or **Enable / update** to save the policy. An existing matching baseline and league can reuse saved daily quotes in preview.
+
+## Managed exchange feeds
+
+In **Managed price rules**, enter an exact commodity name, its filter class, scope, and baseline stack cutoff. Choose **Exchange feed** for a category such as Scarabs, Fossils, or Tattoos. PoB matches the name within that feed and uses its own price history. **Default exchange feeds** keeps the usual lookup for existing rules.
+
+Choose **Embers of the Allflame** for an exact ember. PoB uses its per-item quote and can remove the baseline hide. An exported fixed baseline carries these feed selections into daily sync. Each explicit extra category is fetched once per refresh. If a required feed is unavailable or stale, daily sync keeps the last verified output. Missing, ambiguous, or thin item quotes keep their baseline rules. [Market API reference](https://poe.ninja/docs/api)
 
 ## Managed maps
 

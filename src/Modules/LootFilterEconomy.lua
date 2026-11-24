@@ -5,6 +5,16 @@ local gems = require("Modules.LootFilterGemMarket")
 local appearance = require("Modules.LootFilterPriceAppearance")
 local M = {}
 M.categories = {"Currency", "Oil", "Omen", "Essence", "Thread", "Fragment", "Resonator", "Artifact"}
+M.exchangeCategories = {"Currency", "Fragment", "Runegraft", "AllflameEmber", "Tattoo", "Omen", "DjinnCoin", "Ducat",
+	"EnshroudingCrystal", "Artifact", "Oil", "DeliriumOrb", "Scarab", "Astrolabe", "Thread", "Fossil", "Resonator", "Essence"}
+M.maxFeedCount = #M.exchangeCategories + #maps.feeds + 2
+function M.evidencePriceId(value)
+	return type(value)=="string" and #value>=1 and #value<=200 and value:match("^[A-Za-z0-9_.%-]+$") and value or nil
+end
+local exchangeCategories, coreCategories = {}, {}
+for _, category in ipairs(M.exchangeCategories) do exchangeCategories[category] = true end
+for _, category in ipairs(M.categories) do coreCategories[category] = true end
+local exchangeMarker = "# PoB economy: exchange "
 function M.resolveEndpoint(value)
 	if not value or value=="" then return "https://poe.ninja/poe1/api/economy/" end
 	if type(value)~="string" or #value>400 then return nil end
@@ -19,11 +29,12 @@ end
 
 M.endpoint = M.resolveEndpoint(os.getenv("POB_MARKET_CACHE_URL"))
 M.endpointError = "The configured PoB market cache must be an HTTPS URL without a query or credentials."
-M.managedClasses = {"Stackable Currency", "Map Fragments", "Misc Map Items", "Delve Stackable Socketable Currency", "Divination Cards", "Skill Gems", "Support Gems", "Maps"}
+M.managedClasses = {"Stackable Currency", "Map Fragments", "Misc Map Items", "Delve Stackable Socketable Currency", "Divination Cards", "Skill Gems", "Support Gems", "Maps", "Embers of the Allflame"}
 M.managedAreas = {{label="All areas", val="all"}, {label="Campaign", val="campaign"}, {label="Maps", val="maps"}}
+M.exchangeItemClasses = {["Embers of the Allflame"]="AllflameEmber"}
 local classes = {}
 for _, class in ipairs(M.managedClasses) do
-	if class ~= "Divination Cards" and class ~= "Maps" and not gems.classes[class] then classes[class] = true end
+	if class ~= "Divination Cards" and class ~= "Maps" and not gems.classes[class] and not M.exchangeItemClasses[class] then classes[class] = true end
 end
 
 local function finite(value)
@@ -75,13 +86,14 @@ function M.quotes(body, source, gemRequests)
 end
 
 local function quoteKey(name, category)
-	if category == "DivinationCard" or maps.variants[category] or category==gems.feed then return "\0" .. category .. ":" .. name end
+	if category then return "\0" .. category .. ":" .. name end
 	return name
 end
 
 function M.merge(destination, source, category)
 	for name, quote in pairs(source) do
 		addQuote(destination, quoteKey(name, category), quote)
+		if coreCategories[category] then addQuote(destination, name, quote) end
 	end
 end
 
@@ -112,7 +124,7 @@ local function verifyCoverage(current, previous)
 		assert(reference < minimum or (latest[source] or 0) >= reference * fraction,
 			source .. " feed has fewer than " .. description .. " of its usual liquid quotes. The existing filter was kept.")
 	end
-	for _, source in ipairs(M.categories) do check(source,20,0.25,"a quarter") end
+	for _, source in ipairs(M.exchangeCategories) do check(source,20,0.25,"a quarter") end
 	check("DivinationCard",20,0.25,"a quarter")
 	for _, source in ipairs(maps.feeds) do check(source,4,0.5,"half") end
 end
@@ -144,7 +156,7 @@ function M.remember(quotes, history, day, now)
 				or (prices[midpoint]+prices[midpoint+1])/2
 			adjusted[name] = {price=math.min(quote.price, median), currentPrice=quote.price,
 				highPrice=#prices >= 3 and math.max(quote.price, prices[#prices]) or nil,
-				volume=quote.volume, id=quote.id, source=quote.source, observations=#prices, liquidityUnit=quote.liquidityUnit}
+				volume=quote.volume, id=quote.id, providerId=quote.providerId, source=quote.source, observations=#prices, liquidityUnit=quote.liquidityUnit}
 		else
 			adjusted[name] = quote
 		end
@@ -192,12 +204,52 @@ local function ruleConditions(rule)
 	return conditions
 end
 
+local function exchangeSelections(section, parsed)
+	local rules, selections = {}, {}
+	for _, rule in ipairs(parsed.rules) do rules[rule.line] = rule end
+	local lineNumber = 0
+	for line in section:gmatch("[^\n]*\n?") do
+		if line~="" then
+			lineNumber = lineNumber+1
+			local text = line:match("^%s*(.-)%s*$")
+			if text:sub(1,#exchangeMarker-1)==exchangeMarker:sub(1,-2) then
+				local category = text:match("^# PoB economy: exchange ([%w]+)$")
+				assert(exchangeCategories[category], "Choose a documented commodity exchange category")
+				local rule = rules[lineNumber+1]
+				local conditions = rule and ruleConditions(rule)
+				assert(conditions, "Attach the exchange category immediately before a simple Hide rule")
+				for key in pairs(conditions) do
+					assert(key=="Class" or key=="BaseType" or key=="StackSize" or key=="AreaLevel",
+						"Exchange selection only supports exact commodity stack rules")
+				end
+				local class,base,stack,area = conditions.Class,conditions.BaseType,conditions.StackSize,conditions.AreaLevel
+				local cutoff = stack and tonumber(stack.values[1])
+				local itemClass = class and class.values[1]
+				local singleItem = M.exchangeItemClasses[itemClass]==category
+				local stackRule = stack and stack.operator=="<=" and #stack.values==1 and cutoff and cutoff>=1
+					and cutoff<=10000 and cutoff==math.floor(cutoff)
+				assert(class and class.operator=="==" and #class.values==1 and (classes[itemClass] or singleItem)
+					and base and base.operator=="==" and #base.values==1
+					and (singleItem and not stack or not singleItem and stackRule) and (not area or #area.values==1 and area.values[1]=="68"
+						and (area.operator=="<" or area.operator==">=")),
+					"Exchange selection only supports exact commodity stack rules")
+				selections[rule.line] = category
+			end
+		end
+	end
+	return selections
+end
+
 -- Select the extra feeds only when the fixed baseline explicitly manages them.
 function M.feedCategories(raw)
 	local first, last, tagged = M.sectionBounds(raw)
 	if not tagged or not last then return M.categories end
 	local required, gemRequests = {}, {}
-	for _, rule in ipairs(parser.parse(raw:sub(first,last-1)).rules) do
+	local section = raw:sub(first,last-1)
+	local parsed = parser.parse(section)
+	local selected = exchangeSelections(section,parsed)
+	for _, rule in ipairs(parsed.rules) do
+		if selected[rule.line] then required[selected[rule.line]] = true end
 		local gem = gems.rule(rule)
 		if gem then gemRequests[gem.key] = true end
 		local conditions = ruleConditions(rule)
@@ -215,6 +267,9 @@ function M.feedCategories(raw)
 	end
 	local categories = {}
 	for _, category in ipairs(M.categories) do categories[#categories+1] = category end
+	for _, category in ipairs(M.exchangeCategories) do
+		if required[category] and not coreCategories[category] then categories[#categories+1] = category end
+	end
 	if required.DivinationCard then categories[#categories+1] = "DivinationCard" end
 	for _, category in ipairs(maps.feeds) do
 		if required[category] then categories[#categories+1] = category end
@@ -349,7 +404,7 @@ function M.review(raw, quotes, target, preferences, confirmation)
 		skipped[#skipped+1] = {name="Price highlights",styleOnly=true,
 			reason="This filter has imports or unverified syntax."}
 	end
-	local function rewrite(block)
+	local function rewrite(block, exchangeCategory)
 		local parsed = parser.parse(block)
 		local rule = parsed.rules[1]
 		if #parsed.rules ~= 1 or #parsed.diagnostics ~= 0 or not rule or #parsed.imports > 0 then return block end
@@ -357,6 +412,7 @@ function M.review(raw, quotes, target, preferences, confirmation)
 		if gem then
 			local quote = quotes[quoteKey(gem.key,gems.feed)]
 			gem.key = nil
+			gem.source, gem.priceId = gems.feed, M.evidencePriceId(quote and quote.providerId)
 			local cutoff, reason, price = cutoffFor(quote,1,policy[gem.scope] or policy.target)
 			if cutoff==1 then
 				gem.old, gem.reason, gem.maps = 1, reason, gem.scope=="maps"
@@ -379,11 +435,11 @@ function M.review(raw, quotes, target, preferences, confirmation)
 			local quote = quotes[quoteKey(name,category)]
 			local cutoff, reason, price = cutoffFor(quote,1,policy.maps or policy.target)
 			if cutoff == 1 then
-				skipped[#skipped+1] = {name=name,old=1,reason=reason,maps=true,scope="maps"}
+				skipped[#skipped+1] = {name=name,old=1,reason=reason,maps=true,scope="maps",source=category,priceId=M.evidencePriceId(quote and quote.id)}
 				return block
 			end
 			changes[#changes+1] = {name=name,old=1,cutoff=0,price=price,currentPrice=quote.currentPrice,
-				source=quote.source,observations=quote.observations,classes={"Maps"},volume=quote.volume,
+				source=quote.source,priceId=M.evidencePriceId(quote.id),observations=quote.observations,classes={"Maps"},volume=quote.volume,
 				liquidityUnit=quote.liquidityUnit,maps=true,scope="maps",tier=tier,blighted=variant.blighted,ravaged=variant.ravaged}
 			return ""
 		end
@@ -394,7 +450,8 @@ function M.review(raw, quotes, target, preferences, confirmation)
 		if not class or not base or not scope or class.operator ~= "==" or base.operator ~= "=="
 			or stack and (stack.operator ~= "<=" or #stack.values ~= 1) then return block end
 		local card = tagged and #class.values == 1 and class.values[1] == "Divination Cards"
-		if not card then
+		local singleItem = exchangeCategory and #class.values==1 and M.exchangeItemClasses[class.values[1]]==exchangeCategory
+		if not card and not singleItem then
 			if not stack then return block end
 			for _, name in ipairs(class.values) do if not classes[name] then return block end end
 		end
@@ -406,15 +463,15 @@ function M.review(raw, quotes, target, preferences, confirmation)
 		end
 		local pickupTarget = policy[scope] or policy.target
 		for _, name in ipairs(base.values) do
-			local quote = quotes[quoteKey(name, card and "DivinationCard")]
-			local limit = not card and policy.caps[name]
+			local quote = quotes[quoteKey(name, card and "DivinationCard" or exchangeCategory)]
+			local limit = not card and not singleItem and policy.caps[name]
 			local comparison
 			if policy.confirmTightening and limit and limit>old then
 				local confirmed = confirmation and confirmation[name]
 				comparison = finite(confirmed) and confirmed or false
 			end
 			local cutoff, reason, usedPrice = cutoffFor(quote,old,pickupTarget,limit,comparison)
-			local styles = useHighlights and (stack or cutoff==0) and priceHighlights(policy,quote,cutoff,name,area) or {}
+			local styles = not singleItem and useHighlights and (stack or cutoff==0) and priceHighlights(policy,quote,cutoff,name,area) or {}
 			if #styles>0 then
 				for _, itemClass in ipairs(class.values) do
 					local byName = highlights[itemClass] or {}
@@ -424,13 +481,15 @@ function M.review(raw, quotes, target, preferences, confirmation)
 				end
 			end
 			if cutoff == old and #styles==0 then
-				skipped[#skipped + 1] = {name=name, old=old, reason=reason, maps=scope=="maps", scope=scope}
+				skipped[#skipped + 1] = {name=name, old=old, reason=reason, maps=scope=="maps", scope=scope,
+					source=exchangeCategory or card and "DivinationCard" or quote and quote.source or nil,
+					priceId=M.evidencePriceId(quote and quote.id)}
 			else
 				changed = changed or cutoff~=old
 				local icons = {}
 				for index, style in ipairs(styles) do icons[index] = {firstStack=style.firstStack,icon=appearance.icon(style.tier,style.style)} end
 				changes[#changes + 1] = {name=name, old=old, cutoff=cutoff, price=usedPrice or quote.price, currentPrice=quote.currentPrice,
-					source=quote.source, observations=quote.observations, classes=class.values,
+					source=quote.source, priceId=M.evidencePriceId(quote.id), observations=quote.observations, classes=class.values,
 					volume=quote.volume, maps=scope=="maps", scope=scope,highlights=#icons>0 and icons or nil,
 					confirmedPrice=cutoff>old and comparison or nil}
 			end
@@ -444,6 +503,7 @@ function M.review(raw, quotes, target, preferences, confirmation)
 		table.sort(cutoffs)
 		for _, cutoff in ipairs(cutoffs) do
 			local lines = {"Hide", '    Class == "' .. table.concat(class.values, '" "') .. '"', "    BaseType == " .. table.concat(group[cutoff], " ")}
+			if exchangeCategory then table.insert(lines,1,exchangeMarker..exchangeCategory) end
 			if area then lines[#lines + 1] = "    AreaLevel " .. area.operator .. " 68" end
 			if stack then lines[#lines + 1] = "    StackSize <= " .. cutoff end
 			output[#output + 1] = table.concat(lines, newline) .. newline
@@ -455,7 +515,9 @@ function M.review(raw, quotes, target, preferences, confirmation)
 		if line ~= "" then lines[#lines + 1] = line end
 	end
 	local blocks = {}
-	for _, rule in ipairs(parser.parse(section).rules) do
+	local parsed = parser.parse(section)
+	local selections = tagged and exchangeSelections(section,parsed) or {}
+	for _, rule in ipairs(parsed.rules) do
 		local last = rule.line + #rule.rawLines - 1
 		local original = table.concat(lines, "", rule.line, last)
 		-- A formatting gap or inline comment makes the exact text unsafe to replace.
@@ -465,7 +527,11 @@ function M.review(raw, quotes, target, preferences, confirmation)
 			if not source or source:gsub("\n$", "") ~= line then contiguous = false; break end
 		end
 		if contiguous and not original:find("#", 1, true) then
-			blocks[rule.line] = { last = last, text = rewrite(original) }
+			local category = selections[rule.line]
+			local rewritten = rewrite(original,category)
+			local first = category and rule.line-1 or rule.line
+			if category and rewritten==original then rewritten=lines[first]..rewritten end
+			blocks[first] = { last = last, text = rewritten }
 		end
 	end
 	local index = 1
@@ -492,7 +558,11 @@ function M.validateManagedRules(rules)
 	end
 	for index=1,#rules do
 		local rule = rules[index]
-		assert(type(rule) == "table" and (classes[rule.class] or rule.class == "Divination Cards" or rule.class == "Maps" or gems.classes[rule.class]), "Invalid economy item class")
+		assert(type(rule) == "table" and (classes[rule.class] or rule.class == "Divination Cards" or rule.class == "Maps" or gems.classes[rule.class] or M.exchangeItemClasses[rule.class]), "Invalid economy item class")
+		assert(rule.exchangeCategory==nil and not M.exchangeItemClasses[rule.class]
+			or classes[rule.class] and exchangeCategories[rule.exchangeCategory]
+			or M.exchangeItemClasses[rule.class] and rule.exchangeCategory==M.exchangeItemClasses[rule.class],
+			"Choose a documented commodity exchange category")
 		local entry
 		if rule.class == "Maps" then
 			local tier = rule.tier
@@ -502,6 +572,10 @@ function M.validateManagedRules(rules)
 		else
 			assert(type(rule.name) == "string" and #rule.name <= 200 and rule.name:match("%S") and not rule.name:find('[%c"\\]'),
 				"Enter an exact item name")
+			if rule.exchangeCategory then
+				local knownClass = require("Modules.LootFilterLibrary").baseClass(rule.name)
+				assert(not knownClass or knownClass==rule.class, "The exact item name belongs to a different filter class")
+			end
 			assert(rule.scope == "all" or rule.scope == "campaign" or rule.scope == "maps", "Choose an area")
 			local cutoff = rule.cutoff
 			if gems.classes[rule.class] then
@@ -510,9 +584,10 @@ function M.validateManagedRules(rules)
 				entry = {name=rule.name,class=rule.class,scope=rule.scope,gemLevel=rule.gemLevel,
 					gemQuality=rule.gemQuality,corrupted=rule.corrupted}
 			else
-				assert(cutoff == nil and rule.class == "Divination Cards" or
+				assert(cutoff == nil and (rule.class == "Divination Cards" or M.exchangeItemClasses[rule.class]) or
+					not M.exchangeItemClasses[rule.class] and
 					type(cutoff) == "number" and cutoff >= 1 and cutoff <= 10000 and cutoff == math.floor(cutoff), "Enter a hide cutoff from 1 to 10,000")
-				entry = {name=rule.name,class=rule.class,scope=rule.scope,cutoff=cutoff}
+				entry = {name=rule.name,class=rule.class,scope=rule.scope,cutoff=cutoff,exchangeCategory=rule.exchangeCategory}
 			end
 		end
 		local variant = entry.gemLevel and gems.key(entry.name,entry.gemLevel,entry.gemQuality,entry.corrupted)
@@ -529,6 +604,7 @@ local function managedText(rules)
 	local blocks = {}
 	for _, rule in ipairs(rules) do
 		local lines = {"Hide", '    Class == "' .. rule.class .. '"'}
+		if rule.exchangeCategory then table.insert(lines,1,exchangeMarker..rule.exchangeCategory) end
 		if rule.mapType then
 			local variant = maps.variants[rule.mapType]
 			lines[#lines+1] = "    MapTier == " .. rule.tier

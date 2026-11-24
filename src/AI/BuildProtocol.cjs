@@ -22,10 +22,18 @@ const lootCampaign=object({enabled:boolean,weapons:array({enum:['Bow','Claw','Da
 const lootSample={type:'object',maxProperties:80,additionalProperties:{oneOf:[string(1000),number(-1e9,1e9),boolean,array(string(240),40)]}};
 const lootAppearance=object({minimumFontSize:integer(1,45),alertVolume:integer(0,300),alertId:integer(1,16),disableEffects:boolean,disableIcons:boolean,effectColor:{enum:['Blue','Brown','Cyan','Green','Grey','Orange','Pink','Purple','Red','White','Yellow']},textColor:lootColour,borderColor:lootColour,backgroundColor:lootColour});
 const lootCategoryStyles=journeyList(object({category:{enum:['Build targets','Campaign','Currency','Special currency','Equipment','Unique items','Flasks','Tinctures','Jewels','Divination cards','Maps & fragments','Gems','Recipes','League items','Other']},enabled:boolean,appearance:lootAppearance},['category','appearance']));
-const lootEconomyStackRule=object({name:string(200),class:{enum:['Stackable Currency','Map Fragments','Misc Map Items','Delve Stackable Socketable Currency','Divination Cards']},scope:{enum:['all','campaign','maps']},cutoff:integer(1,10000)},['name','class','scope']);
+const lootEconomyStackFields={name:string(200),scope:{enum:['all','campaign','maps']},cutoff:integer(1,10000)};
+const lootExchangeCategory={enum:['Currency','Fragment','Runegraft','AllflameEmber','Tattoo','Omen','DjinnCoin','Ducat',
+  'EnshroudingCrystal','Artifact','Oil','DeliriumOrb','Scarab','Astrolabe','Thread','Fossil','Resonator','Essence']};
+// Divination cards, ordinary and blight map variants, and regular gems.
+const lootMaxFeedCount=lootExchangeCategory.enum.length+5;
+const lootEconomyStackRule=object({...lootEconomyStackFields,class:{enum:['Stackable Currency','Map Fragments','Misc Map Items','Delve Stackable Socketable Currency']},exchangeCategory:lootExchangeCategory},['name','class','scope']);
+const lootEconomyCardRule=object({...lootEconomyStackFields,class:{const:'Divination Cards'}},['name','class','scope']);
+const lootEconomyEmberRule=object({name:lootEconomyStackFields.name,class:{const:'Embers of the Allflame'},
+  scope:lootEconomyStackFields.scope,exchangeCategory:{const:'AllflameEmber'}},['name','class','scope','exchangeCategory']);
 const lootEconomyMapRule=object({name:string(200),class:{const:'Maps'},scope:{const:'maps'},tier:integer(1,16),mapType:{enum:['Map','BlightedMap','BlightRavagedMap']}},['class','tier','mapType']);
 const lootEconomyGemRule=object({name:string(200),class:{enum:['Skill Gems','Support Gems']},scope:{enum:['all','campaign','maps']},gemLevel:integer(1,40),gemQuality:integer(0,100),corrupted:boolean},['name','class','scope','gemLevel','gemQuality','corrupted']);
-const lootEconomyRule={oneOf:[lootEconomyStackRule,lootEconomyMapRule,lootEconomyGemRule]};
+const lootEconomyRule={oneOf:[lootEconomyStackRule,lootEconomyCardRule,lootEconomyEmberRule,lootEconomyMapRule,lootEconomyGemRule]};
 const lootProfile=object({id:journeyId,title:string(120),preset:{enum:['campaign','early_maps','endgame']},strictness:integer(0,6),theme:{enum:['default','contrast']},mode:{enum:['Normal','Ruthless']},baseCommit:string(40),trackBuildPickups:{type:'boolean'},manualGuideReviews:journeyList(object({projectId:journeyId,signature:{type:'string',pattern:'^[0-9a-f]{40}$'}},['projectId','signature'])),campaign:lootCampaign,categoryStyles:lootCategoryStyles,sampleSets:journeyList(object({id:journeyId,title:string(120),samples:{type:'array',minItems:1,items:lootSample}},['id','title','samples'])),palettes:journeyList(object({id:journeyId,title:string(120),theme:{enum:['default','contrast']},categoryStyles:lootCategoryStyles,appearance:lootAppearance},['id','title','appearance'])),appearance:lootAppearance,template:string(2000000),importFiles:journeyList(object({name:string(240),text:string(2000000)},['name','text'])),rules:journeyList(lootRule),economyRules:array(lootEconomyRule,150),tiers:journeyList(lootTier),modules:journeyList(lootModule)},['id','title','preset','strictness','rules']);
 const lootFilters=object({schemaVersion:{const:1},activeId:string(64),profiles:journeyList(lootProfile)},['schemaVersion','activeId','profiles']);
 const journeyLinks={projectId:journeyId,atlasId:journeyId,stageId:journeyId,wishlistId:journeyId};
@@ -323,14 +331,20 @@ function createBridge(reportPath, clientName = () => "MCP client") {
       const offset = args.offset ?? 0, limit = args.limit ?? 25;
       const decisions = Array.isArray(snapshot.changes) ? snapshot.changes.slice(0,250) : [];
       const nextOffset = offset + limit < decisions.length ? offset + limit : null;
-      const feeds = Array.isArray(snapshot.feeds) ? snapshot.feeds.slice(0,20)
+      const feeds = Array.isArray(snapshot.feeds) ? snapshot.feeds.slice(0,lootMaxFeedCount)
         .filter(feed => typeof feed?.category === 'string' && /^[A-Za-z]{1,40}$/.test(feed.category)
           && Number.isFinite(feed.responseAge) && feed.responseAge >= 0 && feed.responseAge <= 3600)
         .map(({category,responseAge,revalidated}) => ({category,responseAge,revalidated:revalidated===true})) : [];
+      const responseAges = Array.isArray(snapshot.responseAges) ? snapshot.responseAges.slice(0,lootMaxFeedCount)
+        .filter(age => Number.isFinite(age) && age>=0 && age<=3600) : [];
+      const changes = decisions.slice(offset,offset+limit).filter(change => change && typeof change==='object')
+        .map(({priceId,...change}) => typeof priceId==='string' && /^[A-Za-z0-9_.-]{1,200}$/.test(priceId)
+          ? {...change,priceId} : change);
       return {
         heartbeat:current.heartbeat,available:true,checkedAt:snapshot.checkedAt,
-        verifiedProtection:snapshot.verifiedProtection === true,responseAges:snapshot.responseAges,feeds,
-        changeCount:snapshot.changeCount,changes:decisions.slice(offset,offset+limit),
+        verifiedProtection:snapshot.verifiedProtection === true,responseAges,feeds,
+        protectedChecks:Number.isSafeInteger(snapshot.protectedChecks) && snapshot.protectedChecks>=0 ? snapshot.protectedChecks : undefined,
+        changeCount:snapshot.changeCount,changes,
         nextOffset,truncated:snapshot.changeCount>decisions.length,
       };
     }

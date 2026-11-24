@@ -36,6 +36,8 @@ function M.Open(profile, raw, export)
 			status("Enter a stack value between 0 and 1,000 chaos.")
 			return
 		end
+		local validFeedList, categories, gemRequests = pcall(economy.feedCategories, raw)
+		if not validFeedList then status(ui.errorText(categories)); return end
 		local requested = c.league.buf:match("^%s*(.-)%s*$")
 		local function active() return main.popups[1] == popup end
 		local function cooldown(wait)
@@ -62,7 +64,6 @@ function M.Open(profile, raw, export)
 			local league = valid and (requested=="" and leagues[1].id or seen[requested] and requested)
 			if not league then busy = false; status("Could not resolve the league. Use an active poe.ninja league ID."); return end
 			local quotes, failed = {}, {}
-			local categories, gemRequests = economy.feedCategories(raw)
 			local function fetch(index)
 				local category = categories[index]
 				if category then
@@ -92,12 +93,15 @@ function M.Open(profile, raw, export)
 					"Missing or thin markets keep existing rules. Later filter rules can still affect visibility.",
 				}}}
 				for i, change in ipairs(changes) do
-					entries[#entries + 1] = {id = tostring(i), label = change.name, details = {
+					local details = {
 						"Hide up to " .. change.old .. " → " .. change.cutoff .. (change.maps and " in maps" or ""),
 						string.format("%.4g chaos each | %.0f %s",change.price,change.volume,change.liquidityUnit or "chaos quoted volume"),
 						change.gemLevel and string.format("Level %d, %d%% quality, %s",change.gemLevel,change.gemQuality,
 							change.corrupted and "corrupted" or "uncorrupted") or nil,
-					}}
+					}
+					local priceId = economy.evidencePriceId(change.priceId)
+					if priceId then details[#details+1] = "Price ID · "..priceId end
+					entries[#entries + 1] = {id = tostring(i), label = change.name, details = details}
 				end
 				status("Review complete.")
 				require("Classes.PlanningBrowserControl").Open("Review exchange prices", entries, {
