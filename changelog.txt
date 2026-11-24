@@ -1,6 +1,12 @@
-VERSION[2.68.1-ai.preview1254][2026/11/24]
+VERSION[2.68.1-ai.preview1255][2026/11/24]
 
 * Keep previously verified lower hide cutoffs when individual market quotes become unusable.
+* Align relay qualification with native exchange quote evidence.
+
+VERSION[2.68.1-ai.preview1254][2026/11/24]
+
+* Fix skill-gem support effects with Mantle of Dreams, from upstream.
+* Fix defensive breakdowns for gear with no base value, from upstream.
 
 VERSION[2.68.1-ai.preview1253][2026/11/23]
 

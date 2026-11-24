@@ -289,7 +289,7 @@ function M.Open(profileId, profileName)
 			end
 			for i, change in ipairs(review.changes or {}) do
 				local scope = change.scope == "campaign" and " in campaign areas" or change.maps and " in maps" or ""
-				local details = {string.format("Hide up to %d → %d%s", change.old, change.cutoff, scope)}
+				local details = {string.format("Hide cutoff from %d to %d%s", change.old, change.cutoff, scope)}
 				if change.retainedReason then
 					details[#details+1] = "Kept the last verified lower cutoff. "..change.retainedReason.."."
 				else

@@ -3,6 +3,27 @@ describe("TestDefence", function()
 		newBuild()
 	end)
 
+	it("omits zero-base gear from defensive breakdown tables", function()
+		local control = build.calcsTab.controls.breakdown
+		local actor = { breakdown = { Test = { slots = {
+			{ item = { armourData = {}, rarity = "RARE", name = "Test Armour" }, base = 0, source = "Body Armour" },
+		} } } }
+		control.GetActor = function() return actor end
+		control.sectionList = {}
+		control:AddBreakdownSection({ breakdown = "Test", gearOnly = true })
+		assert.are.equal(0, #control.sectionList)
+
+		control:AddBreakdownSection({ breakdown = "Test", gearOnly = false })
+		assert.are.equal(1, #control.sectionList)
+		assert.are.equal(1, #control.sectionList[1].rowList)
+
+		actor.breakdown.Test.slots[1].base = 12
+		control.sectionList = {}
+		control:AddBreakdownSection({ breakdown = "Test", gearOnly = true })
+		assert.are.equal(1, #control.sectionList)
+		assert.are.equal(1, #control.sectionList[1].rowList)
+	end)
+
 	teardown(function()
 		-- newBuild() takes care of resetting everything in setup()
 	end)
