@@ -28,6 +28,12 @@ assert(result:find('CustomAlertSound "C:\\sounds\\b.wav" 100',1,true),"Quoted cu
 assert(result:find('Import "other.filter"\n SetTextColor 255 0 0',1,true),"An import's contents were changed without loading it")
 local silent=shared.apply(raw,{{key="PlayAlertSound",from="2",to="None"},{key="CustomAlertSound",from="C:\\sounds\\a#1.wav",to="None"}})
 assert(silent:find("PlayAlertSound None # alert",1,true) and silent:find('CustomAlertSound "None"',1,true),"Muting shared sounds must remove their volume, quote custom None and preserve comments")
+local muted='Show\n PlayAlertSound None # muted\n PlayAlertSoundPositional None\n CustomAlertSound "None"'
+local mutedRows=shared.list(muted);local foundMuted=false
+for _,row in ipairs(mutedRows) do if row.key=="AlertSound" and row.value=="None" and row.count==2 then foundMuted=true end end
+assert(foundMuted,"Silenced sounds must appear in the shared-style browser")
+local enabled=shared.apply(muted,{{key="AlertSound",from="None",to="3"},{key="PlayAlertSoundPositional",from="None",to="4"},{key="CustomSound",from="None",to="new.wav"}})
+assert(enabled:find("PlayAlertSound 3 # muted",1,true) and enabled:find("PlayAlertSoundPositional 4",1,true) and enabled:find('CustomAlertSound "new.wav"',1,true),"Re-enabling muted sounds must preserve comments, specificity and default volumes")
 assert(shared.apply(raw,{})==raw,"Empty mappings changed the filter")
 local grouped='Show\n SetTextColor 255 0 0\n SetBorderColor 255 0 0\n SetBackgroundColor 255 0 0 255\n PlayAlertSound 2 100\n PlayAlertSoundPositional 2 200'
 local groupedResult=shared.apply(grouped,{{key="Colour",from="FF0000FF",to="00FF00FF"},{key="SetBorderColor",from="FF0000FF",to="0000FFFF"},{key="AlertSound",from="2",to="6"}})
@@ -35,6 +41,8 @@ assert(groupedResult:find("SetTextColor 0 255 0 255",1,true) and groupedResult:f
 assert(groupedResult:find("SetBorderColor 0 0 255 255",1,true),"Specific replacement must take precedence over the shared group")
 assert(groupedResult:find("PlayAlertSound 6 100",1,true) and groupedResult:find("PlayAlertSoundPositional 6 200",1,true),"Shared alert did not preserve positional mode and volume")
 local preview=require("Classes.LootFilterSharedStylesControl").previewStyles
+local reenabledPreview=preview({},{key="PlayAlertSound",value="None"},"3")
+assert(reenabledPreview.PlayAlertSound and reenabledPreview.PlayAlertSound[1]=="3" and #reenabledPreview.PlayAlertSound==1,"Re-enabled preview must retain the default sound volume")
 local borderOnly=shared.list('Show\n SetBorderColor 255 0 0');local groupRow;for _,row in ipairs(borderOnly) do if row.key=="Colour" then groupRow=row end end
 assert(groupRow and groupRow.types.SetBorderColor and not groupRow.types.SetTextColor,"Shared inventory lost actual colour uses")
 local borderPreview=preview({},groupRow,"00FF00FF");assert(table.concat(borderPreview.SetBorderColor,",")=="0,255,0,255" and table.concat(borderPreview.SetTextColor,",")=="255,235,175,255","Grouped preview did not retain the actual border-only use")

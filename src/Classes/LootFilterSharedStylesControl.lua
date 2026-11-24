@@ -18,7 +18,7 @@ function M.previewStyles(profile,row,target)
 		rows[#rows+1]=" SetFontSize 32"
 	else
 		local value=(key=="CustomAlertSound" or key=="CustomAlertSoundOptional") and ('"'..row.value..'"') or row.value
-		rows[#rows+1]=" "..key.." "..value.." 100"
+		rows[#rows+1]=" "..key.." "..value..(row.value=="None" and "" or " 100")
 	end
 	local replacements=copyTable(profile.sharedStyles or {});local found
 	for i,entry in ipairs(replacements) do if entry.key==row.key and entry.from==row.value then replacements[i]={key=row.key,from=row.value,to=target};found=true;break end end
