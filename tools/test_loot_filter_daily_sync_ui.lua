@@ -1369,11 +1369,15 @@ local function checkReviewedRolloverControls()
 	assert(main.popups[1].title=="Last sync attempt")
 	harness:click("close")
 	harness:click("chooseLeague")
+	local waitingPopup=main.popups[1]
+	harness:resize(640,480);harness:frame()
+	assert(main.popups[1]==waitingPopup,"Resize must not discard a pending league request")
 	market.endpoint=endpoint.."changed/"
 	pending(reply)
 	assert(main.popups[1].title=="Choose league" and saved=="Retired League")
 	market.endpoint=endpoint
 	harness:click("close")
+	harness:resize(960,640);harness:frame()
 	harness:click("chooseLeague")
 	pending(reply)
 	assert(main.popups[1].title=="Choose PC trade league")
@@ -1437,7 +1441,10 @@ do
 	require("Classes.LootFilterDailySyncControl").Open()
 	resized:text("target","C:/PoE/resize-draft.filter")
 	main.popups[1]:SelectControl(main.popups[1].controls.target)
-	resized:resize(640,480);resized:frame();resized:frame()
+	local waitingPopup=main.popups[1]
+	sync.busy={};resized:resize(640,480);resized:frame()
+	assert(main.popups[1]==waitingPopup,"Resize must not discard a pending sync preview")
+	sync.busy=nil;resized:frame();resized:frame()
 	local controls=main.popups[1].controls
 	assert(#main.popups==1 and controls.actionsPage and controls.target.buf=="C:/PoE/resize-draft.filter")
 	assert(main.popups[1].selControl==controls.target,"Resize lost the focused draft field")

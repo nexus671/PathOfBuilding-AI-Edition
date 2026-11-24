@@ -871,7 +871,8 @@ function M.Open(profileId, profileName, restored)
 	popup=main:OpenPopup(width,popupHeight,"Daily filter sync",c,nil,nil,"close",nil,function()
 		local nextWidth=math.min(720,main.screenW-40)
 		local nextHeight=main.screenH<600 and math.max(400,main.screenH-40) or 578
-		if main.popups[1]~=popup or nextWidth==width and nextHeight==popupHeight then return end
+		if main.popups[1]~=popup or sync.busy or loadingLeagues or background.busy
+			or nextWidth==width and nextHeight==popupHeight then return end
 		local fields,focus={}
 		for _,key in ipairs(draftFields) do fields[key]=c[key].buf;if popup.selControl==c[key] then focus=key end end
 		local replacement=M.Open(profileId,profileName,{fields=fields,pickupPolicy=pickupPolicy,page=page,focus=focus})
