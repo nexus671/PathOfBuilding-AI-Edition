@@ -831,8 +831,39 @@ function M.Open(profileId, profileName)
 			function(path) return sync.compareVerifiedObservedStackBatch(profileId,path) end,"Fixed baseline","Verified filter")
 	end)
 	c.observedStack.enabled = function() return not sync.busy and latestActionConfig().lastSuccess~=nil end
+	local popupHeight=578
+	if main.screenH<600 then
+		popupHeight=math.max(400,main.screenH-40)
+		local page="Setup"
+		for key,control in pairs(c) do
+			if key~="close" then
+				local group=control.y>=350 and "Actions" or "Setup"
+				if group=="Actions" then control.y=control.y-330 end
+				control.shown=function() return page==group end
+			end
+		end
+		local half=math.floor((width-40)/2)
+		local function place(key,x,y,w) c[key].x,c[key].y,c[key].width=x,y,w end
+		place("background",16,140,half)
+		place("backgroundNotify",24+half,140,half)
+		place("pickupPolicy",16,174,half)
+		place("profiles",24+half,174,half)
+		place("backgroundStatus",16,208,half)
+		place("account",24+half,208,half)
+		local quarter=math.floor((width-56)/4)
+		for index,key in ipairs({"backupRetention","offlinePrices","lastAttempt","observedStack"}) do
+			place(key,16+(index-1)*(quarter+8),242,quarter)
+		end
+		place("backgroundHelp",16,280,width-32)
+		c.backgroundHelp.list=ui.rows({"Runs while you are signed in to Windows."},width-32,13)
+		place("close",width-132,popupHeight-48,116)
+		c.setupPage=new("ButtonControl"):ButtonControl(ui.anchor,{16,popupHeight-48,140,28},"Setup",function() page="Setup" end)
+		c.actionsPage=new("ButtonControl"):ButtonControl(ui.anchor,{164,popupHeight-48,140,28},"Actions",function() page="Actions" end)
+		c.setupPage.enabled=function() return page~="Setup" end
+		c.actionsPage.enabled=function() return page~="Actions" end
+	end
 	ui.style(c)
-	main:OpenPopup(width, 578, "Daily filter sync", c, nil, nil, "close")
+	main:OpenPopup(width, popupHeight, "Daily filter sync", c, nil, nil, "close")
 end
 
 return M

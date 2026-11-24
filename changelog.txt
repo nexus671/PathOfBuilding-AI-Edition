@@ -1,3 +1,7 @@
+VERSION[2.69.0-ai.preview1284][2026/11/24]
+
+* Keep daily filter sync usable in compact windows.
+
 VERSION[2.69.0-ai.preview1283][2026/11/24]
 
 * Explain duplicate and incompatible crafting target alternatives before adding them.

@@ -1398,3 +1398,35 @@ end
 
 checkReviewedRolloverControls()
 print("Native league selection and preview keep the current profile until explicit review approval")
+
+do
+	newBuild();main.popups={};reviewFixture=nil
+	local compact=headless.install({width=640,height=480});compact:bind(build)
+	require("Classes.LootFilterDailySyncControl").Open()
+	local controls=main.popups[1].controls
+	local function visibleControlsFit()
+		for key,control in pairs(controls) do if control:IsShown() then
+			local x,y=control:GetPos();local w,h=control:GetSize()
+			assert(x>=0 and y>=0 and x+w<=640 and y+h<=480,key.." leaves the compact window")
+		end end
+	end
+	assert(controls.target:IsShown() and not controls.observedStack:IsShown())
+	compact:text("target","C:/PoE/compact.filter")
+	visibleControlsFit()
+	if output then compact:frame():write(output.."/640-filter-sync-setup.json") end
+	compact:click("actionsPage")
+	assert(not controls.target:IsShown() and controls.observedStack:IsShown())
+	visibleControlsFit()
+	local _,bottom=controls.observedStack:GetPos();local _,buttonHeight=controls.observedStack:GetSize()
+	local _,helpTop=controls.backgroundHelp:GetPos()
+	assert(helpTop>=bottom+buttonHeight,"Background help overlaps the action buttons")
+	assert(StripEscapes(controls.backgroundHelp.list[1][1]):find("Windows.",1,true),"Background help must fit on the page")
+	if output then compact:frame():write(output.."/640-filter-sync-actions.json") end
+	compact:click("pickupPolicy")
+	assert(main.popups[1].title=="Pickup policy")
+	compact:click("cancel")
+	compact:click("setupPage")
+	assert(controls.target.buf=="C:/PoE/compact.filter","Page navigation lost the draft")
+	compact:click("close")
+	compact:restore()
+end
