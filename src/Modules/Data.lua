@@ -17,6 +17,7 @@ local skillTypes = {
 	"act_dex",
 	"act_int",
 	"other",
+	"ai_edition",
 	"glove",
 	"minion",
 	"spectre",
