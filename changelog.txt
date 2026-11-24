@@ -1,6 +1,7 @@
 VERSION[2.69.0-ai.preview1280][2026/11/24]
 
 * Explain duplicate and incompatible crafting target alternatives before adding them.
+* Wrap crafting target descriptions to fit compact windows.
 
 VERSION[2.69.0-ai.preview1279][2026/11/24]
 

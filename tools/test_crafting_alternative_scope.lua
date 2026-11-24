@@ -1,5 +1,6 @@
+local output,width=arg[1],tonumber(arg[2]) or 960
 arg={};dofile('HeadlessWrapper.lua');main.disableDevAutoSave=true;newBuild()
-local ui=require('Modules.HeadlessUI').install({width=960,height=640});ui:bind(build)
+local ui=require('Modules.HeadlessUI').install({width=width,height=width==640 and 480 or 640});ui:bind(build)
 local project={id='scope-test',title='Scope test',slot='Body Armour',startingItem='Rarity: NORMAL\nPlate Vest\nItem Level: 86',goals={},steps={}}
 build.savers.CraftingProjects:Upsert(project)
 build.planningWorkspace=require('Modules.PlanningWorkspace').new(build);build.viewMode='PLANNER'
@@ -18,6 +19,7 @@ controls.target:SetSel(explicit);ui:click('addTarget')
 assert(not controls.alternative:IsEnabled() and controls.alternative.tooltipText():find('already',1,true), 'Duplicate target should be explained')
 controls.target:SetSel(implicit)
 assert(not controls.alternative:IsEnabled() and controls.alternative.tooltipText():find('same',1,true), 'Mixed scope should be explained')
+if output then ui:frame():write(output..'/'..width..'-crafting-alternative-scope.json') end
 controls.target:SetSel(other)
 assert(controls.alternative:IsEnabled(), 'A distinct modifier in the same scope should be available')
 ui:click('alternative')

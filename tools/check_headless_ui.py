@@ -238,6 +238,10 @@ def main():
                                        env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-alternative-scope.log").write_text(alternative_scope.stdout)
     assert alternative_scope.returncode == 0, alternative_scope.stdout
+    compact_alternative = subprocess.run(lua_command + ["../tools/test_crafting_alternative_scope.lua", str(frames), "640"], cwd=ROOT / "src",
+                                         env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    (directory / "crafting-alternative-scope-compact.log").write_text(compact_alternative.stdout)
+    assert compact_alternative.returncode == 0, compact_alternative.stdout
     base_implicit = subprocess.run(lua_command + ["../tools/test_crafting_base_implicit_ui.lua"], cwd=ROOT / "src",
                                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     (directory / "crafting-base-implicit-controls.log").write_text(base_implicit.stdout)

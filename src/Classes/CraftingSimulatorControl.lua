@@ -133,7 +133,7 @@ function Panel.Open(build,project,layout)
 			elseif key=="flaskEnchantMin" then lines[#lines+1]="Minimum enchantment roll: "..value
 			else lines[#lines+1]=key:gsub("(%l)(%u)","%1 %2")..": "..tostring(value) end
 		end
-		controls.targetSummary.list=rows(lines)
+		controls.targetSummary.list=rows(lines,math.max(1,leftWidth-32))
 		local workingWarning=targetReason and targetReason()
 		local savedWarning=targetReason and draft.nativeRecipe and targetReason(true)
 		if controls.resultSummary then
