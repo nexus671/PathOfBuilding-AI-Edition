@@ -294,7 +294,7 @@ function EditClass:Draw(viewPort, noTooltip)
 	if mOver and not noTooltip then
 		SetDrawLayer(nil, 100)
 		self:DrawTooltip(x, y, width, height, viewPort)
-		SetDrawLayer(nil, 0)
+		SetDrawLayer(nil, self.planningDrawSubLayer or 0)
 	end
 	self:UpdateScrollBars()
 	local marginL = textX - x - 2
