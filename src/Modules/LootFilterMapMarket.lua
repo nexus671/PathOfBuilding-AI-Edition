@@ -29,28 +29,38 @@ end
 
 function M.quotes(body, category)
 	assert(type(body) == "string" and #body <= 2*1024*1024, "Invalid map response size")
-	local data = json.decode(body)
-	assert(type(data) == "table" and type(data.lines) == "table", "Invalid stash map response")
+	local data, position = json.decode(body)
+	assert(type(data) == "table" and type(data.lines) == "table"
+		and not body:sub(position):find("%S"), "Invalid stash map response")
 	local quotes, seen = {}, {}
 	for _, row in ipairs(data.lines) do
 		assert(type(row) == "table", "Invalid stash map entry")
 		local tier = M.tier(row,category)
-		if tier and type(row.detailsId) == "string" and #row.detailsId <= 200 and row.detailsId:match("%S") and not row.detailsId:find("[%c]")
-			and positive(row.chaosValue) and positive(row.count) and positive(row.listingCount) then
+		local id = type(row.detailsId) == "string" and #row.detailsId <= 200
+			and row.detailsId:match("^[A-Za-z0-9_.%-]+$") and row.detailsId
+		local priced = tier and id and positive(row.chaosValue) and positive(row.count) and positive(row.listingCount)
+		-- A named map or malformed row can also claim a tier-wide price ID.
+		if id then
+			local name = priced and row.name or false
+			local owner = seen[id]
+			if owner ~= nil and owner ~= name then
+				if owner then quotes[owner] = false end
+				name = false
+			end
+			seen[id] = name
+			priced = name
+		end
+		if tier then
 			local existing = quotes[row.name]
-			local owner = seen[row.detailsId]
-			if owner and owner ~= row.name then
-				quotes[owner], quotes[row.name] = false,false
-			elseif existing == false or existing and (existing.id ~= row.detailsId or existing.price ~= row.chaosValue or existing.variant ~= row.variant) then
+			if not priced or existing == false or existing and (existing.id ~= id or existing.price ~= row.chaosValue or existing.variant ~= row.variant) then
 				quotes[row.name] = false
 			else
 				local volume = math.min(row.count,row.listingCount)
-				if not existing or volume > existing.volume then
-					quotes[row.name] = {id=row.detailsId,price=row.chaosValue,volume=volume,source=category,
+				if not existing or volume < existing.volume then
+					quotes[row.name] = {id=id,price=row.chaosValue,volume=volume,source=category,
 						variant=row.variant,liquidityUnit="listing samples"}
 				end
 			end
-			seen[row.detailsId] = owner or row.name
 		end
 	end
 	assert(next(quotes), "Map feed has no identifiable tier-wide prices")
