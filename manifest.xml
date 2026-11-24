@@ -2167,7 +2167,7 @@
 	<File name="Modules/PlanningData.lua" part="program" sha1="59bb3042085258b71c2a2f185b89f851aaaecb84" />
 	<File name="Modules/PlanningHistory.lua" part="program" sha1="46165d8b5a518970153e8cc0345054ef30db62fe" />
 	<File name="Modules/PlanningPerformance.lua" part="program" sha1="0be53fc34487b96cdf7a81896764731ab5bde94a" />
-	<File name="Modules/PlanningRecovery.lua" part="program" sha1="7bc579f897717f06040c88571ae31305dd18656a" />
+	<File name="Modules/PlanningRecovery.lua" part="program" sha1="27f461a46829b9d4b31a5026e404ca16420f9d32" />
 	<File name="Modules/PlanningRevision.lua" part="program" sha1="f68afda18a3c9768fbc71a72c6dd67bfebfea316" />
 	<File name="Modules/PlanningUI.lua" part="program" sha1="26a949d5f5407c9038c56d86473a47a223567d3e" />
 	<File name="Modules/PlanningWorker.lua" part="program" sha1="cfa18e6b4626a7a834906bc0df0e992b386e68f2" />
